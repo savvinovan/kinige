@@ -1,0 +1,22 @@
+# Постоянный раннер Gitea Actions для Kinige: контейнер kinige-act-runner на ubuntu-server.
+# Запуск (DOCKER_HOST уже указывает на ubuntu-server; токен — из Gitea: Настройки → Actions → Раннеры):
+#   GITEA_RUNNER_REGISTRATION_TOKEN=<токен> docker compose -f ci/act-runner/compose.yaml up -d
+# Токен не хранится в репозитории и не попадает в .env. Имена переменных и образа взяты из
+# документации act_runner; на практике в слайсе 0 НЕ проверены (токена у агента не было).
+services:
+  kinige-act-runner:
+    container_name: kinige-act-runner
+    image: gitea/act_runner:latest
+    restart: unless-stopped
+    environment:
+      GITEA_INSTANCE_URL: https://gitea.savvinov.me
+      GITEA_RUNNER_REGISTRATION_TOKEN: ${GITEA_RUNNER_REGISTRATION_TOKEN:?нужен токен регистрации}
+      GITEA_RUNNER_NAME: kinige-act-runner
+      GITEA_RUNNER_LABELS: ubuntu-latest:docker://docker.gitea.com/runner-images:ubuntu-latest
+    volumes:
+      # Путь на самом ubuntu-server (не на Mac): раннер запускает job-контейнеры через его Docker.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - kinige-act-runner-data:/data
+
+volumes:
+  kinige-act-runner-data:

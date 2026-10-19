@@ -27,5 +27,5 @@ JXA
 [ -n "$WINDOW_ID" ] || { echo "окно процесса '$OWNER' не найдено (приложение запущено?)" >&2; exit 1; }
 
 mkdir -p "$(dirname "$OUT")"
-screencapture -o -l "$WINDOW_ID" "$OUT"
+screencapture -x -o -l "$WINDOW_ID" "$OUT"
 echo "окно $WINDOW_ID -> $OUT"

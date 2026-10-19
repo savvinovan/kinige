@@ -1,0 +1,69 @@
+# CI на каждый PR (Gitea Actions, Linux-раннер). Сборка и подпись .app — локально: scripts/build-app.sh.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Системные библиотеки Tauri на Linux (wry/WebKitGTK).
+      - name: Системные зависимости Tauri
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential curl pkg-config libssl-dev \
+            libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
+
+      # Версия и компоненты берутся из rust-toolchain.toml.
+      - name: Rust toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          "$HOME/.cargo/bin/rustup" toolchain install
+
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - name: kinige-domain под wasm32
+        run: cargo build -p kinige-domain --target wasm32-unknown-unknown
+      # `cargo test` выше перегенерировал TS-типы (ts-rs); если они отличаются от закоммиченных — падаем.
+      - name: Сгенерированные TS-типы актуальны
+        run: git diff --exit-code -- web/src/api/generated
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: npm ci
+      - name: tokens.css актуален
+        run: |
+          npm run tokens
+          git diff --exit-code -- src/ui/tokens.css
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+  visual:
+    runs-on: ubuntu-latest
+    # Тот же образ, что в docker/visual.Dockerfile: эталоны снимаются в такой же среде.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run build-storybook
+      - run: npx playwright test

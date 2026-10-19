@@ -6,6 +6,7 @@ const meta = {
   title: "Каркас/Пустое окно",
   component: EmptyWindow,
   args: { api: new MockApi() },
+  argTypes: { api: { control: false } },
 } satisfies Meta<typeof EmptyWindow>;
 
 export default meta;
