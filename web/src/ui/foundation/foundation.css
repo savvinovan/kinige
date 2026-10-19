@@ -2,7 +2,7 @@
 
 .foundation {
   box-sizing: border-box;
-  max-width: 140ch;
+  max-width: var(--layout-measure-page);
   margin: 0 auto;
   padding: var(--space-6) var(--space-6) var(--space-8);
 }
@@ -16,7 +16,7 @@
 }
 
 .foundation__lead {
-  max-width: 60ch;
+  max-width: var(--layout-measure-text);
   margin: 0 0 var(--space-6);
   color: var(--color-text-secondary);
 }
@@ -38,7 +38,7 @@
 
 .foundation__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(34ch, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--layout-measure-column), 1fr));
   gap: var(--space-5);
   align-items: start;
 }

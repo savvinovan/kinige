@@ -11,7 +11,7 @@
 
 .space {
   display: grid;
-  grid-template-columns: 10ch 18ch 1fr;
+  grid-template-columns: calc(var(--space-8) * 1.5) calc(var(--space-8) * 2.5) 1fr;
   gap: var(--space-3);
   align-items: center;
   font-family: var(--type-small-family);

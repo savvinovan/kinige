@@ -94,7 +94,8 @@ describe("шкалы", () => {
   it("у каждой длительности анимации есть вариант для Reduce Motion", () => {
     const themes = css("themes.css");
     for (const [, name] of tokens.matchAll(/--motion-duration-(\w+):/g)) {
-      expect(themes, `reduced ${name}`).toContain(`--motion-duration-${name}: 0s;`);
+      // Для Reduce Motion длительность нулевая (SD пишет её в секундах).
+      expect(themes, `reduced ${name}`).toMatch(new RegExp(`--motion-duration-${name}: 0(?:s|ms);`));
     }
     expect(themes).toContain("prefers-reduced-motion: reduce");
   });

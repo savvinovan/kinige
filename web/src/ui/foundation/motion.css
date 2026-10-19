@@ -8,7 +8,7 @@
 
 .motion__row {
   display: grid;
-  grid-template-columns: 24ch 1fr;
+  grid-template-columns: calc(var(--space-8) * 3) 1fr;
   gap: var(--space-4);
   align-items: center;
   font-family: var(--type-small-family);
@@ -73,7 +73,8 @@
 .motion__curve path {
   fill: none;
   stroke: var(--color-accent-default);
-  stroke-width: 3;
+  stroke-width: var(--border-width-strong);
+  vector-effect: non-scaling-stroke;
 }
 
 .demo-button {
