@@ -1,0 +1,10 @@
+.git
+target
+**/node_modules
+**/dist
+**/storybook-static
+**/test-results
+**/playwright-report
+src-tauri
+crates
+docs

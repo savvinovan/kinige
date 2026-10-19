@@ -1,0 +1,18 @@
+{
+  "font": {
+    "size": {
+      "body": {
+        "$type": "dimension",
+        "$value": "16px",
+        "$description": "Временное значение слайса 0; шкалу задаёт слайс D1."
+      }
+    },
+    "family": {
+      "body": {
+        "$type": "fontFamily",
+        "$value": ["-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        "$description": "Временный системный стек слайса 0; шрифты выбирает слайс D1 (Q11)."
+      }
+    }
+  }
+}

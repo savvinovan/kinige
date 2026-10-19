@@ -1,0 +1,25 @@
+@import "./ui/tokens.css";
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--color-surface-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-body);
+}
+
+.empty-window {
+  box-sizing: border-box;
+  height: 100%;
+  padding: var(--space-4);
+}
+
+.empty-window__title {
+  margin: 0;
+}
