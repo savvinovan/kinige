@@ -3,7 +3,7 @@
     "$type": "color",
     "surface": {
       "background": {
-        "$value": "#1c1a17",
+        "$value": "#ff0000",
         "$description": "Временное значение слайса 0; палитру задаёт слайс D1."
       }
     },
