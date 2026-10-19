@@ -60,15 +60,21 @@ fn main_window_cannot_call_unlisted_commands() {
         .build()
         .unwrap();
 
-    // Ни команды ядра Tauri, ни несуществующие команды из capability не выданы.
+    // Команды из `core:default` (event, app) не выданы: capability перечисляет только `allow-app-info`.
+    // Если кто-то добавит `core:default`, `plugin:event|listen` и `plugin:app|version` станут доступны,
+    // и тест покраснеет. Остальные команды недоступны при любой capability, но проверяются для порядка.
     for cmd in [
+        "plugin:event|listen",
+        "plugin:app|version",
         "plugin:window|close",
         "plugin:fs|read_file",
         "no_such_command",
     ] {
+        let error = get_ipc_response(&window, request(cmd))
+            .expect_err(&format!("{cmd} не должна быть доступна главному окну"));
         assert!(
-            get_ipc_response(&window, request(cmd)).is_err(),
-            "{cmd} не должна быть доступна главному окну"
+            error.as_str().is_some_and(|e| e.contains("not allowed")),
+            "{cmd}: ожидали отказ ACL, получили: {error}"
         );
     }
 }
