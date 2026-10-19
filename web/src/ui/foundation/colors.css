@@ -119,6 +119,10 @@
   font-weight: var(--font-weight-regular);
 }
 
+.ratios__norm {
+  white-space: nowrap;
+}
+
 .ratios__number {
   font-family: var(--type-code-family);
   text-align: right;

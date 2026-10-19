@@ -97,8 +97,8 @@ function Typography() {
         {Object.keys(fontsets)
           .sort((a, b) => Number(b === active.fontset) - Number(a === active.fontset) || a.localeCompare(b))
           .map((name) => (
-          <Candidate key={name} name={name} />
-        ))}
+            <Candidate key={name} name={name} />
+          ))}
       </div>
     </main>
   );

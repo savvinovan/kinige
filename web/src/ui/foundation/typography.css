@@ -121,7 +121,6 @@
   line-height: var(--type-meta-line-height);
 }
 
-
 /* Образец записи: день, время, абзацы на «бумаге» */
 .page {
   padding: var(--space-5);

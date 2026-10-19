@@ -66,7 +66,7 @@ function Candidate({ name }: { name: string }) {
                 <td>{pair.foreground}</td>
                 <td>{pair.background}</td>
                 <td className="ratios__number">{ratio.toFixed(2)}:1</td>
-                <td>
+                <td className="ratios__norm">
                   {ratio >= min ? "ок" : "НИЖЕ НОРМЫ"} ≥ {min}
                 </td>
               </tr>
@@ -91,8 +91,8 @@ function Colors() {
         {Object.keys(palettes)
           .sort((a, b) => Number(b === active.palette) - Number(a === active.palette) || a.localeCompare(b))
           .map((name) => (
-          <Candidate key={name} name={name} />
-        ))}
+            <Candidate key={name} name={name} />
+          ))}
       </div>
     </main>
   );
