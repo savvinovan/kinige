@@ -39,10 +39,10 @@
 Workflow — [`.gitea/workflows/ci.yml`](.gitea/workflows/ci.yml): `rust` (fmt, clippy, test, wasm32, актуальность TS-типов), `web` (актуальность `tokens.css`, tsc, ESLint, vitest), `visual` (снимки Storybook в контейнере Playwright).
 `.app` собирается и подписывается локально; macOS-раннер — не раньше слайса 10.
 
-Раннер: на homelab `act_runner` не найден. Поднять его на ubuntu-server (контейнер `kinige-act-runner`) можно так (токен регистрации — в Gitea: Настройки → Actions → Раннеры; в репозиторий не кладётся):
+Раннер: постоянный контейнер `kinige-act-runner` (act_runner 0.6.1) на ubuntu-server, зарегистрирован на репозиторий. Поднять или пересоздать (токен регистрации — в Gitea: Настройки → Actions → Раннеры; в репозиторий не кладётся):
 
 ```sh
-GITEA_RUNNER_REGISTRATION_TOKEN=<токен> docker compose -f ci/act-runner/compose.yaml up -d
+GITEA_RUNNER_REGISTRATION_TOKEN=<токен> docker compose -f ci/act-runner/compose.yaml -p kinige-act-runner up -d
 ```
 
 ## Методика замера холодного старта
