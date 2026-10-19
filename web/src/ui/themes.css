@@ -1,0 +1,220 @@
+/* Сгенерировано из design/tokens (npm run tokens). Не править вручную. */
+
+/* Кандидаты палитр: [data-palette] на любом элементе, в т.ч. <html>. Блоки идут после :root из tokens.css. */
+[data-palette="dusk"] {
+  --color-surface-background: #1a1817;
+  --color-surface-paper: #232120;
+  --color-text-primary: #eae4de;
+  --color-text-secondary: #b9b1a9;
+  --color-text-tertiary: #a0978f;
+  --color-accent-default: #8aa2bf;
+  --color-border-divider: #3a3634;
+  --color-highlight-background: #292e38;
+  --color-focus-ring: #a3bad6;
+  --color-status-error: #e88f86;
+}
+
+[data-palette="moss"] {
+  --color-surface-background: #171814;
+  --color-surface-paper: #1f201b;
+  --color-text-primary: #e6e4d5;
+  --color-text-secondary: #b5b7a1;
+  --color-text-tertiary: #9a9d89;
+  --color-accent-default: #98ad84;
+  --color-border-divider: #33352d;
+  --color-highlight-background: #292f23;
+  --color-focus-ring: #b4c99b;
+  --color-status-error: #e58f80;
+}
+
+[data-palette="umber"] {
+  --color-surface-background: #191614;
+  --color-surface-paper: #211d1a;
+  --color-text-primary: #ebe2d2;
+  --color-text-secondary: #bcaf9b;
+  --color-text-tertiary: #a39683;
+  --color-accent-default: #c99c63;
+  --color-border-divider: #38322b;
+  --color-highlight-background: #322a21;
+  --color-focus-ring: #dcae6f;
+  --color-status-error: #e58a78;
+}
+
+/* Кандидаты шрифтов: [data-fontset]; роли --type-*-family пересчитываются под набор. */
+[data-fontset="literata"] {
+  --font-family-serif: Literata, Georgia, 'Times New Roman', serif;
+  --font-family-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --type-day-family: Literata, Georgia, 'Times New Roman', serif;
+  --type-h1-family: Literata, Georgia, 'Times New Roman', serif;
+  --type-h2-family: Literata, Georgia, 'Times New Roman', serif;
+  --type-h3-family: Literata, Georgia, 'Times New Roman', serif;
+  --type-body-family: Literata, Georgia, 'Times New Roman', serif;
+  --type-small-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --type-code-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --type-meta-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+[data-fontset="plex"] {
+  --font-family-serif: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --font-family-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --type-day-family: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --type-h1-family: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --type-h2-family: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --type-h3-family: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --type-body-family: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --type-small-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --type-code-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --type-meta-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+[data-fontset="source"] {
+  --font-family-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-family-sans: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family-mono: 'Source Code Pro', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --type-day-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --type-h1-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --type-h2-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --type-h3-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --type-body-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --type-small-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --type-code-family: 'Source Code Pro', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --type-meta-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Начертания: пути относительно этого файла. */
+@font-face {
+  font-family: "Literata";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: block;
+  src: url("./fonts/literata/Literata-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Literata";
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: block;
+  src: url("./fonts/literata/Literata-Italic-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url("./fonts/inter/Inter-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: block;
+  src: url("./fonts/jetbrains-mono/JetBrainsMono-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("./fonts/ibm-plex-serif/IBMPlexSerif-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url("./fonts/ibm-plex-serif/IBMPlexSerif-Italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Serif";
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url("./fonts/ibm-plex-serif/IBMPlexSerif-SemiBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("./fonts/ibm-plex-serif/IBMPlexSerif-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url("./fonts/ibm-plex-sans/IBMPlexSans-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("./fonts/ibm-plex-mono/IBMPlexMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("./fonts/ibm-plex-mono/IBMPlexMono-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: block;
+  src: url("./fonts/source-serif-4/SourceSerif4-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: block;
+  src: url("./fonts/source-serif-4/SourceSerif4-Italic-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: block;
+  src: url("./fonts/source-sans-3/SourceSans3-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Source Code Pro";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: block;
+  src: url("./fonts/source-code-pro/SourceCodePro-Variable.woff2") format("woff2");
+}
+
+/* Reduce Motion: настройка ОС или атрибут data-reduce-motion (переключатель в Storybook и в настройках). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-short: 0s;
+    --motion-duration-medium: 0s;
+    --motion-duration-long: 0s;
+  }
+}
+
+:root[data-reduce-motion] {
+  --motion-duration-short: 0s;
+  --motion-duration-medium: 0s;
+  --motion-duration-long: 0s;
+}

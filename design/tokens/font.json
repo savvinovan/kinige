@@ -1,18 +1,16 @@
 {
   "font": {
-    "size": {
-      "body": {
-        "$type": "dimension",
-        "$value": "16px",
-        "$description": "Временное значение слайса 0; шкалу задаёт слайс D1."
-      }
+    "weight": {
+      "$type": "fontWeight",
+      "regular": { "$value": 400 },
+      "semibold": { "$value": 600, "$description": "Заголовки." },
+      "bold": { "$value": 700, "$description": "Выделение жирным в тексте записи." }
     },
-    "family": {
-      "body": {
-        "$type": "fontFamily",
-        "$value": ["-apple-system", "BlinkMacSystemFont", "sans-serif"],
-        "$description": "Временный системный стек слайса 0; шрифты выбирает слайс D1 (Q11)."
-      }
+    "scale": {
+      "$type": "number",
+      "$description": "Масштаб текста: множитель корневого размера шрифта. Все размеры шрифта и отступы — в rem, поэтому масштаб меняет всё пропорционально. Переключается атрибутом data-text-scale на корневом элементе (см. base.css).",
+      "default": { "$value": 1 },
+      "large": { "$value": 1.25, "$description": "«Крупный текст» (+25%)." }
     }
   }
 }

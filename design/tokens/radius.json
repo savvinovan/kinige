@@ -1,0 +1,9 @@
+{
+  "radius": {
+    "$type": "dimension",
+    "inline": { "$value": "4px", "$description": "Строчный код, тег." },
+    "control": { "$value": "6px", "$description": "Кнопки и поля ввода." },
+    "panel": { "$value": "10px", "$description": "Блок кода, composer, тост, контекстное меню." },
+    "round": { "$value": "999px", "$description": "Полностью скруглённые элементы." }
+  }
+}

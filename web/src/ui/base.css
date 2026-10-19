@@ -1,0 +1,32 @@
+/* Базовые правила на семантических токенах: масштаб текста, фон и текст страницы, фокус. */
+
+/* Масштаб текста (механизм «крупный текст»): font.scale.* из токенов.
+   Размеры шрифта и отступы заданы в rem, поэтому множитель на корне меняет всё пропорционально. */
+:root {
+  --text-scale: var(--font-scale-default);
+  --font-root-size: calc(100% * var(--text-scale));
+}
+
+:root[data-text-scale="large"] {
+  --text-scale: var(--font-scale-large);
+}
+
+html {
+  font-size: var(--font-root-size);
+}
+
+body {
+  background: var(--color-surface-background);
+  color: var(--color-text-primary);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line-height);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Видимый фокус с клавиатуры на любом интерактивном элементе. */
+:focus-visible {
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-offset);
+}

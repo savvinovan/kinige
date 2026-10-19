@@ -1,0 +1,19 @@
+{
+  "shadow": {
+    "$type": "shadow",
+    "$description": "На тёмной бумаге тени едва заметны; поверхности отделяются цветом и разделителем.",
+    "raised": {
+      "$description": "Приподнятое: composer, тост.",
+      "$value": [
+        { "color": "#00000066", "offsetX": "0px", "offsetY": "1px", "blur": "2px", "spread": "0px" },
+        { "color": "#00000040", "offsetX": "0px", "offsetY": "4px", "blur": "12px", "spread": "0px" }
+      ]
+    },
+    "overlay": {
+      "$description": "Поверх всего: контекстное меню, диалог.",
+      "$value": [
+        { "color": "#00000073", "offsetX": "0px", "offsetY": "8px", "blur": "24px", "spread": "0px" }
+      ]
+    }
+  }
+}

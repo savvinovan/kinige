@@ -1,0 +1,25 @@
+{
+  "motion": {
+    "duration": {
+      "$type": "duration",
+      "short": { "$value": "120ms", "$description": "Наведение, появление подсветки." },
+      "medium": { "$value": "200ms", "$description": "Появление тоста, раскрытие поля ввода." },
+      "long": { "$value": "320ms", "$description": "Крупные переходы." }
+    },
+    "easing": {
+      "$type": "cubicBezier",
+      "standard": { "$value": [0.2, 0, 0, 1] },
+      "enter": { "$value": [0, 0, 0.2, 1], "$description": "Появление: быстрый старт, мягкая остановка." },
+      "exit": { "$value": [0.4, 0, 1, 1], "$description": "Уход: плавный разгон." }
+    },
+    "reduced": {
+      "$description": "Значения длительностей при Reduce Motion (prefers-reduced-motion: reduce): переходы мгновенные. Подставляются поверх motion.duration.* в themes.css.",
+      "duration": {
+        "$type": "duration",
+        "short": { "$value": "0ms" },
+        "medium": { "$value": "0ms" },
+        "long": { "$value": "0ms" }
+      }
+    }
+  }
+}

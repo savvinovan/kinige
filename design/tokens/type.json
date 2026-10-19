@@ -1,0 +1,58 @@
+{
+  "type": {
+    "$description": "Типографическая шкала по ролям. Размер в rem (масштабируется механизмом font.scale), межстрочный — безразмерный множитель. Семейство — роль font.family.* (serif / sans / mono), реальные шрифты задаёт активный набор (active.fontset).",
+    "day": {
+      "$description": "Заголовок дня в ленте.",
+      "family": { "$type": "fontFamily", "$value": "{font.family.serif}" },
+      "size": { "$type": "dimension", "$value": "1.25rem" },
+      "lineHeight": { "$type": "number", "$value": 1.3 },
+      "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
+    },
+    "h1": {
+      "family": { "$type": "fontFamily", "$value": "{font.family.serif}" },
+      "size": { "$type": "dimension", "$value": "1.625rem" },
+      "lineHeight": { "$type": "number", "$value": 1.25 },
+      "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
+    },
+    "h2": {
+      "family": { "$type": "fontFamily", "$value": "{font.family.serif}" },
+      "size": { "$type": "dimension", "$value": "1.375rem" },
+      "lineHeight": { "$type": "number", "$value": 1.3 },
+      "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
+    },
+    "h3": {
+      "family": { "$type": "fontFamily", "$value": "{font.family.serif}" },
+      "size": { "$type": "dimension", "$value": "1.1875rem" },
+      "lineHeight": { "$type": "number", "$value": 1.4 },
+      "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
+    },
+    "body": {
+      "$description": "Текст записи.",
+      "family": { "$type": "fontFamily", "$value": "{font.family.serif}" },
+      "size": { "$type": "dimension", "$value": "1.0625rem" },
+      "lineHeight": { "$type": "number", "$value": 1.65 },
+      "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
+    },
+    "small": {
+      "$description": "Мелкий текст интерфейса: подсказки, подписи, кнопки.",
+      "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
+      "size": { "$type": "dimension", "$value": "0.875rem" },
+      "lineHeight": { "$type": "number", "$value": 1.5 },
+      "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
+    },
+    "code": {
+      "$description": "Код: строчный и блок.",
+      "family": { "$type": "fontFamily", "$value": "{font.family.mono}" },
+      "size": { "$type": "dimension", "$value": "0.9375rem" },
+      "lineHeight": { "$type": "number", "$value": 1.55 },
+      "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
+    },
+    "meta": {
+      "$description": "Метаданные: время записи, счётчики.",
+      "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
+      "size": { "$type": "dimension", "$value": "0.8125rem" },
+      "lineHeight": { "$type": "number", "$value": 1.4 },
+      "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
+    }
+  }
+}

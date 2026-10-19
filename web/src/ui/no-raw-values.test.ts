@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 // Цвета, размеры и шрифты живут только в design/tokens -> tokens.css (§11.1 ТЗ).
 const SRC = join(import.meta.dirname, "..");
-const SKIP = new Set(["ui/tokens.css", "api/generated"]);
+const SKIP = new Set(["ui/tokens.css", "ui/themes.css", "api/generated"]);
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

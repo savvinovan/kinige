@@ -1,17 +1,12 @@
 @import "./ui/tokens.css";
+@import "./ui/themes.css";
+@import "./ui/base.css";
 
 html,
 body,
 #root {
   margin: 0;
   height: 100%;
-}
-
-body {
-  background: var(--color-surface-background);
-  color: var(--color-text-primary);
-  font-family: var(--font-family-body);
-  font-size: var(--font-size-body);
 }
 
 .empty-window {

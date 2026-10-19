@@ -1,0 +1,75 @@
+{
+  "fontset": {
+    "literata": {
+      "$description": "Кандидат набора шрифтов. Literata (книжная антиква, Google Play Books) + Inter + JetBrains Mono. Все три переменные: одна ось веса покрывает regular / semibold / bold. Подробности и источники — web/src/ui/fonts/README.md.",
+      "family": {
+        "$type": "fontFamily",
+        "serif": {
+          "$value": [
+            "Literata",
+            "Georgia",
+            "Times New Roman",
+            "serif"
+          ]
+        },
+        "sans": {
+          "$value": [
+            "Inter",
+            "-apple-system",
+            "BlinkMacSystemFont",
+            "Segoe UI",
+            "sans-serif"
+          ]
+        },
+        "mono": {
+          "$value": [
+            "JetBrains Mono",
+            "ui-monospace",
+            "SF Mono",
+            "Menlo",
+            "Consolas",
+            "monospace"
+          ]
+        }
+      },
+      "face": {
+        "serif-variable": {
+          "$type": "fontFace",
+          "$value": {
+            "family": "Literata",
+            "style": "normal",
+            "weight": "200 900",
+            "file": "fonts/literata/Literata-Variable.woff2"
+          }
+        },
+        "serif-italic-variable": {
+          "$type": "fontFace",
+          "$value": {
+            "family": "Literata",
+            "style": "italic",
+            "weight": "200 900",
+            "file": "fonts/literata/Literata-Italic-Variable.woff2"
+          }
+        },
+        "sans-variable": {
+          "$type": "fontFace",
+          "$value": {
+            "family": "Inter",
+            "style": "normal",
+            "weight": "100 900",
+            "file": "fonts/inter/Inter-Variable.woff2"
+          }
+        },
+        "mono-variable": {
+          "$type": "fontFace",
+          "$value": {
+            "family": "JetBrains Mono",
+            "style": "normal",
+            "weight": "100 800",
+            "file": "fonts/jetbrains-mono/JetBrainsMono-Variable.woff2"
+          }
+        }
+      }
+    }
+  }
+}

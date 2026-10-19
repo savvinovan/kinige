@@ -52,10 +52,10 @@ jobs:
         with:
           node-version-file: .node-version
       - run: npm ci
-      - name: tokens.css актуален
+      - name: tokens.css и themes.css актуальны
         run: |
           npm run tokens
-          changed="$(git status --porcelain -- src/ui/tokens.css)"
+          changed="$(git status --porcelain -- src/ui/tokens.css src/ui/themes.css)"
           if [ -n "$changed" ]; then
             echo "$changed"
             exit 1
