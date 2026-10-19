@@ -12,7 +12,9 @@ services:
       GITEA_INSTANCE_URL: https://gitea.savvinov.me
       GITEA_RUNNER_REGISTRATION_TOKEN: ${GITEA_RUNNER_REGISTRATION_TOKEN:?нужен токен регистрации}
       GITEA_RUNNER_NAME: kinige-act-runner
-      GITEA_RUNNER_LABELS: ubuntu-latest:docker://docker.gitea.com/runner-images:ubuntu-latest
+      # Образ job — с Docker Hub: docker.gitea.com (Cloudflare) с ubuntu-server не скачивается, таймаут.
+      # Метки запоминаются при регистрации (/data/.runner); после смены — поправить и там.
+      GITEA_RUNNER_LABELS: ubuntu-latest:docker://gitea/runner-images:ubuntu-latest
     volumes:
       # Путь на самом ubuntu-server (не на Mac): раннер запускает job-контейнеры через его Docker.
       - /var/run/docker.sock:/var/run/docker.sock
