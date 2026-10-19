@@ -50,8 +50,8 @@ const RUSSIAN = [
 ];
 
 describe("наборы шрифтов", () => {
-  it("есть хотя бы два кандидата и активный набор существует", () => {
-    expect(Object.keys(fontsets).length).toBeGreaterThanOrEqual(2);
+  it("активный набор существует", () => {
+    expect(Object.keys(fontsets).length).toBeGreaterThanOrEqual(1);
     expect(fontsets[active.fontset]).toBeDefined();
   });
 

@@ -49,7 +49,7 @@ test("встроенные шрифты загружаются в браузер
   });
   expect(faces.length).toBeGreaterThan(0);
 
-  await open(page, "основа-типографика--кандидаты");
+  await open(page, "основа-типографика--начертания");
   const loaded = await page.evaluate(() =>
     [...document.fonts]
       .filter((font) => font.status === "loaded")

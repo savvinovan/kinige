@@ -26,9 +26,8 @@ export function coreFilter(token) {
 }
 
 const declarations = (pairs, indent = "  ") => pairs.map(([name, value]) => `${indent}--${name}: ${value};`).join("\n");
-const roleOf = (token) => /^\{font\.family\.(\w+)\}$/.exec(token.original.$value)?.[1];
 
-/** themes.css: блоки кандидатов, @font-face, Reduce Motion. */
+/** themes.css: блоки кандидатов палитр, @font-face, Reduce Motion. */
 export function candidatesFormat({ dictionary }) {
   const tokens = dictionary.allTokens;
   const out = ["/* Сгенерировано из design/tokens (npm run tokens). Не править вручную. */", ""];
@@ -37,18 +36,6 @@ export function candidatesFormat({ dictionary }) {
   for (const name of unique(tokens.filter((t) => t.path[0] === "palette").map((t) => t.path[1]))) {
     const own = tokens.filter((t) => t.path[0] === "palette" && t.path[1] === name);
     out.push(`[data-palette="${name}"] {`, declarations(own.map((t) => [`color-${t.path.slice(2).join("-")}`, t.$value])), "}", "");
-  }
-
-  out.push("/* Кандидаты шрифтов: [data-fontset]; роли --type-*-family пересчитываются под набор. */");
-  const typeFamilies = tokens.filter((t) => t.path[0] === "type" && t.path[2] === "family");
-  for (const name of unique(tokens.filter((t) => t.path[0] === "fontset").map((t) => t.path[1]))) {
-    const families = tokens.filter((t) => t.path[0] === "fontset" && t.path[1] === name && t.path[2] === "family");
-    const byRole = Object.fromEntries(families.map((t) => [t.path[3], t.$value]));
-    const pairs = [
-      ...families.map((t) => [`font-family-${t.path[3]}`, t.$value]),
-      ...typeFamilies.map((t) => [t.name, byRole[roleOf(t)]]),
-    ];
-    out.push(`[data-fontset="${name}"] {`, declarations(pairs), "}", "");
   }
 
   out.push("/* Начертания: пути относительно этого файла. */");

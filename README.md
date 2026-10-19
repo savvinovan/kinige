@@ -31,8 +31,8 @@
 - `crates/kinige-domain` — правила предметной области, без IO, собирается под `wasm32`.
 - `src-tauri/` — тонкий слой Tauri: окно, команды, capability главного окна (`capabilities/main.json`), CSP.
 - `web/` — React + TS + Vite; `src/api` (`KinigeApi`, `TauriApi`, `MockApi`, сгенерированные типы), `src/ui/tokens.css` (генерируется).
-- `design/tokens/**/*.json` — токены в формате DTCG → Style Dictionary → `web/src/ui/tokens.css` (роли, `:root`) и `web/src/ui/themes.css` (кандидаты палитр и шрифтов, `@font-face`, Reduce Motion). Цвета, размеры и шрифты вне этих файлов в `web/src` запрещены (проверяет тест `no-raw-values`).
-- Кандидаты D1: палитры в `design/tokens/palettes/`, наборы шрифтов в `design/tokens/fontsets/` (файлы — `web/src/ui/fonts/`, источники и лицензии — в его `README.md`). Какой кандидат действует по умолчанию, задаёт `design/tokens/active.json`; в Storybook кандидаты переключаются в панели. После выбора пользователя лишние кандидаты удаляются.
+- `design/tokens/**/*.json` — токены в формате DTCG → Style Dictionary → `web/src/ui/tokens.css` (роли, `:root`) и `web/src/ui/themes.css` (кандидаты палитр, `@font-face`, Reduce Motion). Цвета, размеры и шрифты вне этих файлов в `web/src` запрещены (проверяет тест `no-raw-values`).
+- Кандидаты D1: палитры в `design/tokens/palettes/` (источники и отступления от официальных палитр — в его `README.md`). Набор шрифтов выбран (`design/tokens/fontsets/literata.json`; файлы — `web/src/ui/fonts/`, источники и лицензии — в его `README.md`). Какая палитра действует по умолчанию, задаёт `design/tokens/active.json`; в Storybook палитры переключаются в панели. После выбора пользователя лишние палитры удаляются.
 - Масштаб текста: все размеры шрифта и отступы в rem; `data-text-scale="large"` на `<html>` умножает корневой размер (`font.scale.large`). Reduce Motion: `prefers-reduced-motion` или атрибут `data-reduce-motion`.
 - Типы Rust → TS: `ts-rs`, см. [ADR-0002](docs/adr/0002-ts-types-via-ts-rs.md). Ключи подписи: [ADR-0003](docs/adr/0003-signing-keys.md).
 

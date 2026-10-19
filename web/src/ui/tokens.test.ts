@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { contrastRatio } from "./contrast";
 import { CONTRAST_PAIRS, MIN_RATIO } from "./contrastPairs";
-import { PALETTE_ROLES, active, fontsets, palettes } from "./tokenSource";
+import { PALETTE_ROLES, active, palettes } from "./tokenSource";
 
 const css = (file: string) => readFileSync(join(import.meta.dirname, file), "utf8");
 
@@ -67,10 +67,10 @@ describe("сгенерированный CSS не отстал от токено
     }
   });
 
-  it("themes.css: есть блок на каждый кандидат палитры и шрифтов", () => {
+  it("themes.css: есть блок на каждый кандидат палитры, переключателя шрифтов нет", () => {
     const themes = css("themes.css");
     for (const name of Object.keys(palettes)) expect(themes).toContain(`[data-palette="${name}"]`);
-    for (const name of Object.keys(fontsets)) expect(themes).toContain(`[data-fontset="${name}"]`);
+    expect(themes).not.toContain("data-fontset");
   });
 });
 

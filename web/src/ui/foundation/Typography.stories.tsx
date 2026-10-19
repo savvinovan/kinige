@@ -28,14 +28,14 @@ const SCALE: { role: string; label: string; text: string }[] = [
   { role: "meta", label: "meta: время и счётчики", text: "09:12 · 3 записи" },
 ];
 
-function Candidate({ name }: { name: string }) {
+function Specimen() {
+  const name = active.fontset;
   const set = fontsets[name];
   if (!set) return null;
   return (
-    <section className="candidate" data-fontset={name} aria-labelledby={`fontset-${name}`}>
+    <section className="candidate" aria-labelledby={`fontset-${name}`}>
       <h2 className="candidate__name" id={`fontset-${name}`}>
         {name}
-        {name === active.fontset ? " (по умолчанию)" : ""}
       </h2>
       <p className="candidate__about">{set.description}</p>
 
@@ -88,17 +88,13 @@ function Candidate({ name }: { name: string }) {
 function Typography() {
   return (
     <main className="foundation">
-      <h1 className="foundation__title">Типографика: кандидаты шрифтов</h1>
+      <h1 className="foundation__title">Типографика</h1>
       <p className="foundation__lead">
-        Три набора «serif + sans + mono» с кириллицей. Все начертания — встроенные woff2, не системные. Шкала одна на все
-        наборы: размеры в rem, масштаб текста переключается в панели Storybook («Крупный текст»).
+        Набор «serif + sans + mono» с кириллицей, выбран пользователем. Все начертания — встроенные woff2, не системные.
+        Размеры в rem: масштаб текста переключается в панели Storybook («Крупный текст», ×1,25).
       </p>
       <div className="foundation__grid">
-        {Object.keys(fontsets)
-          .sort((a, b) => Number(b === active.fontset) - Number(a === active.fontset) || a.localeCompare(b))
-          .map((name) => (
-            <Candidate key={name} name={name} />
-          ))}
+        <Specimen />
       </div>
     </main>
   );
@@ -111,4 +107,4 @@ const meta = {
 
 export default meta;
 
-export const Кандидаты: StoryObj<typeof meta> = {};
+export const Начертания: StoryObj<typeof meta> = {};

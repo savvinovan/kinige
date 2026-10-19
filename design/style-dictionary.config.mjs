@@ -1,9 +1,9 @@
 // design/tokens/**/*.json (DTCG) -> web/src/ui/tokens.css + web/src/ui/themes.css (CSS-переменные).
 // Запуск из web/: `npm run tokens` (пути относительно web/). CI проверяет, что сгенерированные файлы не отстали от токенов.
 //
-// Кандидаты палитр (design/tokens/palettes) и наборов шрифтов (design/tokens/fontsets) лежат в токенах как есть.
+// Кандидаты палитр (design/tokens/palettes) и выбранный набор шрифтов (design/tokens/fontsets) лежат в токенах как есть.
 // Активный кандидат (design/tokens/active.json) препроцессором копируется в роли color.* и font.family.* -> :root в tokens.css.
-// themes.css: остальные кандидаты по data-palette / data-fontset, @font-face, Reduce Motion.
+// themes.css: остальные кандидаты палитр по data-palette, @font-face, Reduce Motion.
 import { candidatesFormat, coreFilter, selectActive } from "./sd-hooks.mjs";
 
 export default {

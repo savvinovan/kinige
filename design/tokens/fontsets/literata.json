@@ -1,7 +1,7 @@
 {
   "fontset": {
     "literata": {
-      "$description": "Кандидат набора шрифтов. Literata (книжная антиква, Google Play Books) + Inter + JetBrains Mono. Все три переменные: одна ось веса покрывает regular / semibold / bold. Подробности и источники — web/src/ui/fonts/README.md.",
+      "$description": "Выбранный набор шрифтов. Literata (книжная антиква, Google Play Books) + Inter + JetBrains Mono. Все три переменные: одна ось веса покрывает regular / semibold / bold. Подробности и источники — web/src/ui/fonts/README.md.",
       "family": {
         "$type": "fontFamily",
         "serif": {
