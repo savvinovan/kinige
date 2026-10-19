@@ -70,14 +70,14 @@ export function candidatesFormat({ dictionary }) {
     .filter((t) => t.path[0] === "motion" && t.path[1] === "reduced")
     .map((t) => [`motion-${t.path.slice(2).join("-")}`, t.$value]);
   out.push(
-    "/* Reduce Motion: настройка ОС или атрибут data-reduce-motion (переключатель в Storybook и в настройках). */",
+    "/* Reduce Motion: настройка ОС или атрибут data-reduce-motion на любом элементе (переключатель в Storybook и в настройках). */",
     "@media (prefers-reduced-motion: reduce) {",
     "  :root {",
     declarations(reduced, "    "),
     "  }",
     "}",
     "",
-    ":root[data-reduce-motion] {",
+    "[data-reduce-motion] {",
     declarations(reduced),
     "}",
     "",

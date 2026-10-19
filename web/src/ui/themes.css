@@ -204,7 +204,7 @@
   src: url("./fonts/source-code-pro/SourceCodePro-Variable.woff2") format("woff2");
 }
 
-/* Reduce Motion: настройка ОС или атрибут data-reduce-motion (переключатель в Storybook и в настройках). */
+/* Reduce Motion: настройка ОС или атрибут data-reduce-motion на любом элементе (переключатель в Storybook и в настройках). */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-duration-short: 0s;
@@ -213,7 +213,7 @@
   }
 }
 
-:root[data-reduce-motion] {
+[data-reduce-motion] {
   --motion-duration-short: 0s;
   --motion-duration-medium: 0s;
   --motion-duration-long: 0s;

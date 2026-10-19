@@ -108,3 +108,21 @@ export const active = Object.fromEntries(
     .filter(([key]) => !key.startsWith("$"))
     .map(([key, leaf]) => [key, String((leaf as Leaf).$value)]),
 ) as { palette: string; fontset: string };
+
+const motionFile = import.meta.glob("../../../design/tokens/motion.json", { eager: true, import: "default" });
+
+/** Длительности анимаций: обычные и для Reduce Motion (строки как в токенах, например «120ms»). */
+export const motionDurations: Record<string, { normal: string; reduced: string }> = (() => {
+  const motion = load(motionFile, "motion") as {
+    duration: Record<string, Leaf>;
+    reduced: { duration: Record<string, Leaf> };
+  };
+  return Object.fromEntries(
+    Object.entries(motion.duration)
+      .filter(([key]) => !key.startsWith("$"))
+      .map(([key, leaf]) => [
+        key,
+        { normal: String(leaf.$value), reduced: String(motion.reduced.duration[key]?.$value) },
+      ]),
+  );
+})();

@@ -22,7 +22,7 @@
 | Замерить холодный старт | `scripts/measure-cold-start.sh [прогонов]` |
 | Визуальные тесты Storybook (Linux-контейнер) | `scripts/visual-tests.sh` |
 | Обновить эталоны снимков | `scripts/visual-tests.sh --update` |
-| Пересобрать `tokens.css` из `design/tokens/*.json` | `npm --prefix web run tokens` |
+| Пересобрать `tokens.css` и `themes.css` из `design/tokens/**/*.json` | `npm --prefix web run tokens` |
 
 Остальные проверки (те же, что в CI) — в разделе «Сборка и тесты» файла [`CLAUDE.md`](CLAUDE.md).
 
@@ -31,12 +31,14 @@
 - `crates/kinige-domain` — правила предметной области, без IO, собирается под `wasm32`.
 - `src-tauri/` — тонкий слой Tauri: окно, команды, capability главного окна (`capabilities/main.json`), CSP.
 - `web/` — React + TS + Vite; `src/api` (`KinigeApi`, `TauriApi`, `MockApi`, сгенерированные типы), `src/ui/tokens.css` (генерируется).
-- `design/tokens/*.json` — токены в формате DTCG → Style Dictionary → `web/src/ui/tokens.css`. Цвета, размеры и шрифты вне `tokens.css` в `web/src` запрещены (проверяет тест `no-raw-values`).
+- `design/tokens/**/*.json` — токены в формате DTCG → Style Dictionary → `web/src/ui/tokens.css` (роли, `:root`) и `web/src/ui/themes.css` (кандидаты палитр и шрифтов, `@font-face`, Reduce Motion). Цвета, размеры и шрифты вне этих файлов в `web/src` запрещены (проверяет тест `no-raw-values`).
+- Кандидаты D1: палитры в `design/tokens/palettes/`, наборы шрифтов в `design/tokens/fontsets/` (файлы — `web/src/ui/fonts/`, источники и лицензии — в его `README.md`). Какой кандидат действует по умолчанию, задаёт `design/tokens/active.json`; в Storybook кандидаты переключаются в панели. После выбора пользователя лишние кандидаты удаляются.
+- Масштаб текста: все размеры шрифта и отступы в rem; `data-text-scale="large"` на `<html>` умножает корневой размер (`font.scale.large`). Reduce Motion: `prefers-reduced-motion` или атрибут `data-reduce-motion`.
 - Типы Rust → TS: `ts-rs`, см. [ADR-0002](docs/adr/0002-ts-types-via-ts-rs.md). Ключи подписи: [ADR-0003](docs/adr/0003-signing-keys.md).
 
 ## CI (Gitea Actions, Linux)
 
-Workflow — [`.gitea/workflows/ci.yml`](.gitea/workflows/ci.yml): `rust` (fmt, clippy, test, wasm32, актуальность TS-типов), `web` (актуальность `tokens.css`, tsc, ESLint, vitest), `visual` (снимки Storybook в контейнере Playwright).
+Workflow — [`.gitea/workflows/ci.yml`](.gitea/workflows/ci.yml): `rust` (fmt, clippy, test, wasm32, актуальность TS-типов), `web` (актуальность `tokens.css` и `themes.css`, tsc, ESLint, vitest), `visual` (снимки Storybook в контейнере Playwright).
 `.app` собирается и подписывается локально; macOS-раннер — не раньше слайса 10.
 
 Раннер: постоянный контейнер `kinige-act-runner` (act_runner 0.6.1) на ubuntu-server, зарегистрирован на репозиторий. Поднять или пересоздать (токен регистрации — в Gitea: Настройки → Actions → Раннеры; в репозиторий не кладётся):
