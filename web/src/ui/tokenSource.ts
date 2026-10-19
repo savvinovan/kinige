@@ -28,6 +28,7 @@ export const PALETTE_ROLES = [
   "text.tertiary",
   "accent.default",
   "border.divider",
+  "border.control",
   "highlight.background",
   "focus.ring",
   "status.error",

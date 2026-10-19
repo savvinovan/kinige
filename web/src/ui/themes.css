@@ -9,6 +9,7 @@
   --color-text-tertiary: #a0978f;
   --color-accent-default: #8aa2bf;
   --color-border-divider: #3a3634;
+  --color-border-control: #7e7670;
   --color-highlight-background: #292e38;
   --color-focus-ring: #a3bad6;
   --color-status-error: #e88f86;
@@ -22,6 +23,7 @@
   --color-text-tertiary: #9a9d89;
   --color-accent-default: #98ad84;
   --color-border-divider: #33352d;
+  --color-border-control: #787a68;
   --color-highlight-background: #292f23;
   --color-focus-ring: #b4c99b;
   --color-status-error: #e58f80;
@@ -35,6 +37,7 @@
   --color-text-tertiary: #a39683;
   --color-accent-default: #c99c63;
   --color-border-divider: #38322b;
+  --color-border-control: #7d7263;
   --color-highlight-background: #322a21;
   --color-focus-ring: #dcae6f;
   --color-status-error: #e58a78;

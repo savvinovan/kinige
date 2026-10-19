@@ -20,6 +20,9 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     SURFACES.map((background) => ({ foreground, background, kind: "text" as const })),
   ),
   ...SURFACES.map((background) => ({ foreground: "focus.ring", background, kind: "ui" as const })),
+  // Рамка элемента управления — граница компонента, WCAG 1.4.11: 3:1 к соседним цветам (фон и бумага).
+  { foreground: "border.control", background: "surface.background", kind: "ui" },
+  { foreground: "border.control", background: "surface.paper", kind: "ui" },
   { foreground: "border.divider", background: "surface.background", kind: "decorative" },
   { foreground: "border.divider", background: "surface.paper", kind: "decorative" },
 ];
