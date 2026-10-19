@@ -8,7 +8,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   reporter: [["list"]],
   use: { baseURL: "http://127.0.0.1:6007" },
-  expect: { toHaveScreenshot: { animations: "disabled" } },
+  // threshold: 0 — по умолчанию 0.2, и тогда заметная смена фона проходит как «то же самое».
+  expect: { toHaveScreenshot: { animations: "disabled", threshold: 0 } },
   projects: [
     {
       name: "chromium",
