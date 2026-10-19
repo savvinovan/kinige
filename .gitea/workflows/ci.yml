@@ -31,9 +31,15 @@ jobs:
       - run: cargo test --workspace
       - name: kinige-domain под wasm32
         run: cargo build -p kinige-domain --target wasm32-unknown-unknown
-      # `cargo test` выше перегенерировал TS-типы (ts-rs); если они отличаются от закоммиченных — падаем.
+      # `cargo test` выше перегенерировал TS-типы (ts-rs); любое отличие от закоммиченного,
+      # включая новые неотслеживаемые файлы, — падаем (`git diff` их не видит).
       - name: Сгенерированные TS-типы актуальны
-        run: git diff --exit-code -- web/src/api/generated
+        run: |
+          changed="$(git status --porcelain -- web/src/api/generated)"
+          if [ -n "$changed" ]; then
+            echo "$changed"
+            exit 1
+          fi
 
   web:
     runs-on: ubuntu-latest
@@ -49,7 +55,11 @@ jobs:
       - name: tokens.css актуален
         run: |
           npm run tokens
-          git diff --exit-code -- src/ui/tokens.css
+          changed="$(git status --porcelain -- src/ui/tokens.css)"
+          if [ -n "$changed" ]; then
+            echo "$changed"
+            exit 1
+          fi
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
