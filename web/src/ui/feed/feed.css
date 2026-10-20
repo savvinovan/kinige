@@ -4,6 +4,7 @@
   flex-direction: column-reverse;
   box-sizing: border-box;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: var(--layout-feed-padding-block) var(--layout-feed-padding-inline);
   background: var(--color-surface-paper);
@@ -26,8 +27,10 @@
   list-style: none;
 }
 
+/* Строка списка занимает всю колонку: свободное место справа от плашки принадлежит ей (там встаёт ряд действий). */
 .feed__item {
   display: flex;
+  width: 100%;
   max-width: 100%;
   margin-top: var(--layout-message-gap-group);
 }

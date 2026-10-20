@@ -5,22 +5,41 @@
   max-width: min(100%, var(--layout-message-measure));
 }
 
-/* Ряд действий под плашкой накладывается на промежуток и не меняет высоту сообщения: лента не прыгает. Виден при
-   наведении на сообщение и когда фокус внутри него (кнопки всегда в дереве, поэтому доступны с клавиатуры). */
+/* Ряд действий стоит справа от плашки, на уровне её нижней строки (рядом со временем), в свободном месте колонки:
+   ничего не накрывает, место не резервируется, высота сообщения и плотность не меняются. Виден при наведении на
+   сообщение и когда фокус внутри него (кнопки всегда в дереве, поэтому доступны с клавиатуры).
+   Внешний слой держит прозрачный зазор слева: мышь переходит с плашки на ряд, не теряя наведения. */
 .message-actions {
   position: absolute;
-  top: calc(100% + var(--layout-action-offset));
-  left: 0;
+  /* На уровне нижней строки плашки: нижний край ряда там же, где нижний край последней строки текста. */
+  bottom: var(--layout-message-padding-block);
+  left: 100%;
   z-index: 1;
+  padding-left: var(--layout-action-gap);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.message-actions__bar {
   display: flex;
   gap: var(--space-1);
+}
+
+/* Узкое окно: справа нет места (ряд не помещается между краем плашки и краем колонки). Тогда ряд стоит поверх правого
+   верхнего угла самой плашки и накрывает только её собственный край; у него своя заливка и тонкая граница. */
+.message-wrap--actions-inside .message-actions {
+  top: var(--layout-action-offset);
+  right: var(--layout-action-offset);
+  bottom: auto;
+  left: auto;
+}
+
+.message-wrap--actions-inside .message-actions__bar {
   padding: var(--space-1);
   border: var(--border-width-hairline) solid var(--color-border-divider);
   border-radius: var(--radius-panel);
   background: var(--color-surface-paper);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--motion-duration-short) var(--motion-easing-standard);
 }
 
 .message-wrap:hover .message-actions,

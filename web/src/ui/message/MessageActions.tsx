@@ -22,8 +22,9 @@ const VIEW_ONLY: { icon: IconName; label: string }[] = [
 ];
 
 /**
- * Ряд действий под плашкой: копировать, редактировать, задача, избранное, «ещё». Виден при наведении на сообщение и
- * когда фокус внутри него (стили в message.css). Это панель инструментов с одной остановкой в обходе по Tab: стрелки,
+ * Ряд действий справа от плашки, на уровне её нижней строки (рядом со временем): копировать, редактировать, задача,
+ * избранное, «ещё». Виден при наведении на сообщение и когда фокус внутри него (стили в message.css); в узком окне,
+ * где справа нет места, Message ставит его поверх правого верхнего угла самой плашки. Это панель инструментов с одной остановкой в обходе по Tab: стрелки,
  * Home и End ходят между кнопками. «Копировать» работает — `navigator.clipboard.writeText` текста сообщения (Markdown),
  * новых разрешений Tauri не нужно; остальные пока только вид (`aria-disabled`, «Появится позже»).
  */
@@ -64,7 +65,10 @@ export function MessageActions({ markdown }: { markdown: string }) {
   };
 
   return (
-    <div className="message-actions" role="toolbar" aria-label="Действия с сообщением" ref={bar} onKeyDown={onKeyDown}>
+    // Внешний слой — место справа от плашки вместе с прозрачным зазором (мышь переходит с плашки на ряд, не теряя наведения);
+    // внутренний — сам ряд. Ширину внешнего слоя Message сравнивает со свободным местом колонки.
+    <div className="message-actions">
+      <div className="message-actions__bar" role="toolbar" aria-label="Действия с сообщением" ref={bar} onKeyDown={onKeyDown}>
       <IconButton
         small
         icon={copy === "copied" ? "done" : "copy"}
@@ -87,6 +91,7 @@ export function MessageActions({ markdown }: { markdown: string }) {
       <span className="visually-hidden" role="status">
         {copy === "idle" ? "" : COPY_LABEL[copy]}
       </span>
+      </div>
     </div>
   );
 }

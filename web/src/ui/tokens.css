@@ -36,7 +36,7 @@
   --layout-field-height: 2.3rem; /** Высота однострочного поля ввода: поиск (32 px). */
   --layout-composer-min-height: 3.5rem; /** Минимальная высота поля ввода с кнопками (49 px). */
   --layout-composer-max-height: 40vh; /** Поле растёт до 40% высоты окна, дальше внутри него прокрутка (ТЗ §5). */
-  --layout-action-size: 1.6rem; /** Мелкая кнопка в ряду действий под плашкой (22 px). Ряд накладывается на промежуток под плашкой и не сдвигает ленту. */
+  --layout-action-size: 1.6rem; /** Мелкая кнопка в ряду действий справа от плашки (22 px). */
   --layout-control-height: 2.3rem; /** Высота кнопки и иконки-кнопки (32 px). */
   --layout-toast-offset: 5.5rem; /** Отступ тоста от нижнего края ленты: над полем ввода (77 px). */
   --layout-window-height: 100vh; /** Высота окна приложения: всё окно. */
@@ -103,7 +103,8 @@
   --layout-feed-padding-inline: var(--space-5); /** Поле ленты слева и справа (21 px). */
   --layout-feed-padding-block: var(--space-3); /** Поле ленты сверху и снизу (10,5 px). */
   --layout-sidebar-padding: var(--space-2); /** Поле сайдбара вокруг поиска и списка чатов (7 px). */
-  --layout-action-offset: var(--space-1); /** Зазор между плашкой и рядом действий (3,5 px). */
+  --layout-action-gap: var(--space-2); /** Прозрачный зазор между плашкой и рядом действий справа от неё (7 px); в него входит наведение мыши. */
+  --layout-action-offset: var(--space-1); /** Отступ ряда от верхнего и правого краёв плашки, когда справа нет места и ряд стоит поверх её угла (3,5 px). */
   --type-day-family: var(--font-family-sans);
   --type-day-weight: var(--font-weight-medium);
   --type-h1-family: var(--font-family-sans);

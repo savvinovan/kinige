@@ -40,6 +40,55 @@ describe("ряд действий под плашкой", () => {
     expect(container.querySelector("article")).not.toContainElement(toolbar());
   });
 
+  describe("положение ряда: справа от плашки или, если места нет, поверх её правого верхнего угла", () => {
+    // jsdom не считает раскладку, поэтому ширины задаются подменой offsetWidth и clientWidth.
+    const sizes = (wrap: number, actions: number, column: number) => {
+      const offset = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
+        if (this.classList.contains("message-wrap")) return wrap;
+        if (this.classList.contains("message-actions")) return actions;
+        return 0;
+      });
+      const client = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(column);
+      return () => {
+        offset.mockRestore();
+        client.mockRestore();
+      };
+    };
+
+    it("места хватает (плашка 300 + ряд 150 ≤ колонка 500): ряд справа, режима «поверх угла» нет", () => {
+      const restore = sizes(300, 150, 500);
+      const { container } = render(
+        <div>
+          <Message markdown="Купить хлеб" sentAt={sentAt} />
+        </div>,
+      );
+      expect(container.querySelector(".message-wrap")).not.toHaveClass("message-wrap--actions-inside");
+      restore();
+    });
+
+    it("места ровно впритык (плашка 350 + ряд 150 = колонка 500): ещё справа", () => {
+      const restore = sizes(350, 150, 500);
+      const { container } = render(
+        <div>
+          <Message markdown="Купить хлеб" sentAt={sentAt} />
+        </div>,
+      );
+      expect(container.querySelector(".message-wrap")).not.toHaveClass("message-wrap--actions-inside");
+      restore();
+    });
+
+    it("места нет (плашка 400 + ряд 150 > колонка 500): ряд поверх правого верхнего угла плашки", () => {
+      const restore = sizes(400, 150, 500);
+      const { container } = render(
+        <div>
+          <Message markdown="Купить хлеб" sentAt={sentAt} />
+        </div>,
+      );
+      expect(container.querySelector(".message-wrap")).toHaveClass("message-wrap--actions-inside");
+      restore();
+    });
+  });
+
   it("showActions для историй добавляет класс «показан»", () => {
     const { container } = render(<Message markdown="Купить хлеб" sentAt={sentAt} showActions />);
     expect(container.querySelector(".message-wrap")).toHaveClass("message-wrap--actions");

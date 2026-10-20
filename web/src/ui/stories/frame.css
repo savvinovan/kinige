@@ -43,6 +43,17 @@
   flex: 1;
 }
 
+/* Колонка ленты как в окне (720 px при корне 14 px) и узкая колонка: места справа от плашки хватает или нет. */
+.story-column {
+  display: grid;
+  gap: var(--layout-message-gap-group);
+  max-width: var(--layout-feed-column);
+}
+
+.story-column--narrow {
+  max-width: var(--layout-measure-column);
+}
+
 .story-frame__inner--narrow {
   max-width: var(--layout-measure-column);
 }

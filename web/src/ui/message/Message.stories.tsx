@@ -136,18 +136,49 @@ function FocusedRetry() {
   );
 }
 
-/** Наведение: под плашкой ряд действий (копировать, редактировать, задача, избранное, ещё). «Копировать» работает, остальные только вид. */
+/** Наведение, короткое сообщение: справа от плашки, на уровне нижней строки, ряд действий (копировать, редактировать, задача, избранное, ещё). «Копировать» работает, остальные только вид. */
 export const Наведение: Story = {
-  args: { markdown: "Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft.", showActions: true },
+  render: () => (
+    <div className="story-column">
+      <Message markdown="Купить хлеб" sentAt={at(9, 12)} showActions />
+    </div>
+  ),
 };
 
-/** Наведение на сообщение в серии: ряд накладывается на промежуток и следующую плашку, не сдвигая ленту. */
+/** Наведение, сообщение максимальной ширины (около 65 знаков) в колонке 720 px: справа ещё хватает места. */
+export const НаведениеШирокаяПлашка: Story = {
+  render: () => (
+    <div className="story-column">
+      <Message
+        markdown="Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям, разобрать, чем консенсус отличается от двухфазной фиксации."
+        sentAt={at(9, 12)}
+        showActions
+      />
+    </div>
+  ),
+};
+
+/** Наведение в узком окне: справа нет места, ряд стоит поверх правого верхнего угла самой плашки и накрывает только её край. */
+export const НаведениеУзкоеОкно: Story = {
+  render: () => (
+    <div className="story-column story-column--narrow">
+      <Message
+        markdown="Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft."
+        sentAt={at(9, 12)}
+        showActions
+      />
+    </div>
+  ),
+};
+
+/** Наведение на сообщение в серии: ряд справа от плашки не задевает ни верхнюю, ни нижнюю соседнюю плашку. */
 export const НаведениеВСерии: Story = {
   render: () => (
-    <>
-      <Message markdown="Первая мысль" sentAt={at(9, 12)} showActions />
-      <Message markdown="Вторая, через две минуты" sentAt={at(9, 14)} />
-    </>
+    <div className="story-column" style={{ gap: "var(--layout-message-gap-series)" }}>
+      <Message markdown="Первая мысль" sentAt={at(9, 12)} />
+      <Message markdown="Вторая, через две минуты" sentAt={at(9, 14)} showActions />
+      <Message markdown="Третья, ещё через три" sentAt={at(9, 17)} />
+    </div>
   ),
 };
 
@@ -160,7 +191,7 @@ function FocusedActions() {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => host.current?.querySelector<HTMLButtonElement>(".message-actions button")?.focus(), []);
   return (
-    <div ref={host}>
+    <div className="story-column" ref={host}>
       <Message markdown="Купить билеты на субботу" sentAt={at(16, 10)} />
     </div>
   );
