@@ -1,0 +1,145 @@
+/* Оформление отрендеренного Markdown внутри плашки: абзацы, заголовки, списки, задачи, цитата, код, ссылки. Только токены. */
+/* Все блоки без полей браузера; промежуток между соседними блоками (в том числе внутри цитаты и пункта) задаётся ниже. */
+.markdown :is(p, blockquote, ul, ol, pre, hr, h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+}
+
+.markdown :is(p, blockquote, ul, ol, pre, hr, h1, h2, h3, h4, h5, h6) + :is(p, blockquote, ul, ol, pre, hr, h1, h2, h3, h4, h5, h6) {
+  margin-top: var(--space-2);
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-weight: var(--font-weight-semibold);
+}
+
+.markdown h1 {
+  font-size: var(--type-h1-size);
+  line-height: var(--type-h1-line-height);
+}
+
+.markdown h2 {
+  font-size: var(--type-h2-size);
+  line-height: var(--type-h2-line-height);
+}
+
+/* H3 и глубже выглядят одинаково: в записях глубже третьего уровня заголовки не нужны. */
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-size: var(--type-h3-size);
+  line-height: var(--type-h3-line-height);
+}
+
+.markdown strong {
+  font-weight: var(--font-weight-bold);
+}
+
+.markdown ul,
+.markdown ol {
+  padding: 0 0 0 var(--space-5);
+}
+
+.markdown li + li {
+  margin-top: var(--space-1);
+}
+
+.markdown li > ul,
+.markdown li > ol {
+  margin-top: var(--space-1);
+}
+
+/* Задачи: список без маркеров, перед пунктом квадрат; текст пункта остаётся обычным строчным потоком. */
+.markdown ul.task-list {
+  padding: 0;
+  list-style: none;
+}
+
+.markdown li.task {
+  position: relative;
+  padding-left: calc(var(--layout-checkbox-size) + var(--space-2));
+}
+
+.task__box {
+  position: absolute;
+  top: calc((var(--type-body-size) * var(--type-body-line-height) - var(--layout-checkbox-size)) / 2);
+  left: 0;
+  box-sizing: border-box;
+  width: var(--layout-checkbox-size);
+  height: var(--layout-checkbox-size);
+  border: var(--border-width-strong) solid var(--color-border-control);
+  border-radius: var(--radius-inline);
+}
+
+.task--done .task__box {
+  border-color: var(--color-accent-default);
+  background: var(--color-accent-default);
+}
+
+/* Галочка из двух сторон повёрнутого прямоугольника, цвет — заливка плашки (5,03:1 к акценту). */
+.task--done .task__box::after {
+  content: "";
+  position: absolute;
+  top: 12%;
+  left: 31%;
+  box-sizing: border-box;
+  width: 30%;
+  height: 56%;
+  border: solid var(--color-surface-message);
+  border-width: 0 var(--border-width-strong) var(--border-width-strong) 0;
+  transform: rotate(45deg);
+}
+
+/* Цитата: черта слева только у самой цитаты. */
+.markdown blockquote {
+  padding-left: var(--space-3);
+  border-left: var(--border-width-strong) solid var(--color-border-control);
+}
+
+.markdown hr {
+  border: 0;
+  border-top: var(--border-width-hairline) solid var(--color-border-divider);
+}
+
+.markdown a {
+  color: var(--color-accent-default);
+  text-decoration: underline;
+  text-decoration-thickness: var(--border-width-hairline);
+  text-underline-offset: var(--space-1);
+}
+
+/* Код: врезка темнее плашки; строчный код без обратных кавычек. */
+.markdown code {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-inline);
+  background: var(--color-surface-code);
+  box-decoration-break: clone;
+  font-family: var(--type-code-family);
+  font-size: var(--type-code-size);
+  font-weight: var(--type-code-weight);
+  line-height: var(--type-code-line-height);
+}
+
+.markdown pre {
+  box-sizing: border-box;
+  overflow-x: auto;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-code);
+  font-family: var(--type-code-family);
+  font-size: var(--type-code-size);
+  line-height: var(--type-code-line-height);
+  /* Блок кода не переносит строки: длинная строка прокручивается. */
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.markdown pre code {
+  padding: 0;
+  background: transparent;
+}

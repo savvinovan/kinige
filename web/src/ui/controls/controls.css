@@ -1,0 +1,126 @@
+/* Кнопка, иконка-кнопка, поле ввода. Только семантические токены. */
+
+.button {
+  box-sizing: border-box;
+  min-height: var(--layout-control-height);
+  margin: 0;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--type-small-line-height);
+  cursor: pointer;
+  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.button--accent {
+  color: var(--color-accent-default);
+}
+
+.button--accent:hover {
+  background: var(--color-surface-selected);
+}
+
+/* В строке текста: высота и поля не раздвигают строку, цвет и размер наследуются, подчёркивание показывает действие. */
+.button--inline {
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--radius-inline);
+  color: inherit;
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+
+.button--inline:hover {
+  text-decoration-thickness: var(--border-width-strong);
+}
+
+.icon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--layout-control-height);
+  height: var(--layout-control-height);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-easing-standard),
+    color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.icon-button:hover {
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+}
+
+.button:disabled,
+.icon-button:disabled {
+  cursor: default;
+  opacity: var(--opacity-disabled);
+}
+
+/* Поле ввода: рамка control, значок слева, ошибка под полем. */
+.text-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.text-field__box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-height: var(--layout-field-height);
+  padding: 0 var(--space-2);
+  border: var(--border-width-hairline) solid var(--color-border-control);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-field);
+  color: var(--color-text-tertiary);
+}
+
+.text-field__box:has(.text-field__input:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.text-field__box--invalid {
+  border-color: var(--color-status-error);
+}
+
+.text-field__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  outline: none;
+}
+
+.text-field__input::placeholder {
+  color: var(--color-text-tertiary);
+  opacity: 1;
+}
+
+.text-field__error {
+  margin: 0;
+  color: var(--color-status-error);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}

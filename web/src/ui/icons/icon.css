@@ -1,0 +1,7 @@
+/* Линейный значок: размер и толщина линии из токенов, цвет — currentColor (задаёт кнопка или поле). */
+.icon {
+  flex: none;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  stroke-width: var(--icon-stroke);
+}

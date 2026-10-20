@@ -1,0 +1,78 @@
+/* Composer: поле ввода с кнопками. Только токены. */
+.composer {
+  box-sizing: border-box;
+  padding: var(--space-2) var(--layout-feed-padding-inline) var(--layout-feed-padding-block);
+  background: var(--color-surface-paper);
+}
+
+.composer__error {
+  margin: 0 0 var(--space-2);
+  color: var(--color-status-error);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.composer__bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  box-sizing: border-box;
+  min-height: var(--layout-composer-min-height);
+  padding: var(--space-2);
+  border: var(--border-width-hairline) solid var(--color-border-control);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-field);
+}
+
+.composer__bar:has(.composer__input:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.composer__bar--invalid {
+  border-color: var(--color-status-error);
+}
+
+/* Растущее поле: в ячейке сетки лежат textarea и невидимая копия текста; высоту задаёт копия. */
+.composer__field {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  max-height: var(--layout-composer-max-height);
+  overflow-y: auto;
+}
+
+.composer__field::after,
+.composer__input {
+  grid-area: 1 / 1;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  padding: calc((var(--layout-control-height) - var(--type-body-size) * var(--type-body-line-height)) / 2) var(--space-1);
+  border: 0;
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line-height);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.composer__field::after {
+  content: attr(data-replicated-value) " ";
+  visibility: hidden;
+}
+
+.composer__input {
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.composer__input::placeholder {
+  color: var(--color-text-tertiary);
+  opacity: 1;
+}

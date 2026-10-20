@@ -1,0 +1,5 @@
+/* Только для историй Storybook: узкое окно — колонка шириной layout.window.narrow. */
+.screen-narrow {
+  max-width: var(--layout-window-narrow);
+  border-right: var(--border-width-hairline) solid var(--color-border-divider);
+}

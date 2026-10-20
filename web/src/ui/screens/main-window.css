@@ -1,0 +1,20 @@
+/* Главное окно: сайдбар слева, лента и поле ввода справа на всю высоту окна. Только токены. */
+.main-window {
+  display: flex;
+  height: var(--layout-window-height);
+  min-height: 0;
+  background: var(--color-surface-background);
+}
+
+.main-window__chat {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--color-surface-paper);
+}
+
+.main-window__chat > .feed-scroll {
+  flex: 1;
+}

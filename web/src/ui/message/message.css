@@ -1,0 +1,59 @@
+/* Плашка сообщения: заливка, скругление, без хвоста, тени и аватара. Только токены. */
+.message {
+  position: relative;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: min(100%, var(--layout-message-measure));
+  padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
+  /* Рамка всегда занимает место (прозрачная), поэтому подсветка не сдвигает текст. */
+  border: var(--border-width-hairline) solid transparent;
+  border-radius: var(--radius-message);
+  background: var(--color-surface-message);
+  color: var(--color-text-primary);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line-height);
+  /* Длинная строка без пробелов переносится, а не вылезает из плашки. */
+  overflow-wrap: anywhere;
+}
+
+.message--highlighted {
+  border-color: var(--color-highlight-border);
+}
+
+/* Время: правый нижний угол, на одной строке с концом текста. Высота строки равна высоте строки текста, поэтому базовые линии совпадают. */
+.message__time {
+  position: absolute;
+  right: var(--layout-message-padding-inline);
+  bottom: var(--layout-message-padding-block);
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+  line-height: calc(var(--type-body-size) * var(--type-body-line-height));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Распорка в конце последней строки: резервирует место под время, чтобы текст его не накрывал. */
+.message__spacer {
+  display: inline-block;
+  width: var(--layout-message-time-reserve);
+}
+
+/* Сообщение кончается блоком кода: под блоком отдельная строка для времени. */
+.message--time-below {
+  padding-bottom: calc(var(--layout-message-padding-block) + var(--type-body-size) * var(--type-body-line-height));
+}
+
+/* «Не отправилось. Повторить» — строка под текстом, время справа на её уровне. */
+.message__error {
+  margin: var(--space-1) 0 0;
+  padding-right: var(--layout-message-time-reserve);
+  color: var(--color-status-error);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}

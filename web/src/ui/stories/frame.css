@@ -1,0 +1,56 @@
+/* Подложка историй компонентов. Только токены. */
+.story-frame {
+  position: relative;
+  box-sizing: border-box;
+  min-height: var(--layout-window-height);
+  padding: var(--space-5);
+}
+
+.story-frame--paper {
+  background: var(--color-surface-paper);
+}
+
+.story-frame--background {
+  background: var(--color-surface-background);
+}
+
+.story-frame--bottom {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0;
+}
+
+.story-frame--bottom .story-frame__inner {
+  max-width: none;
+  gap: 0;
+}
+
+.story-frame__inner {
+  display: grid;
+  gap: var(--space-4);
+  max-width: var(--layout-measure-page);
+}
+
+/* Лента в истории занимает всё окно по высоте и прокручивается внутри. */
+.story-feed {
+  display: flex;
+  flex-direction: column;
+  height: var(--layout-window-height);
+}
+
+.story-feed > .feed-scroll {
+  flex: 1;
+}
+
+.story-frame__inner--narrow {
+  max-width: var(--layout-measure-column);
+}
+
+.story-frame__label {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
