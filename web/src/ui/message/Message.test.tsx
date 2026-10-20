@@ -15,7 +15,7 @@ describe("Message", () => {
 
   it("обычное сообщение: кнопки «Повторить» нет, у конца текста есть распорка под время", () => {
     const { container } = render(<Message markdown="Купить хлеб" sentAt={sentAt} />);
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Повторить/ })).toBeNull();
     expect(container.querySelector(".message__spacer")).not.toBeNull();
   });
 

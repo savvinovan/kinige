@@ -126,3 +126,48 @@ describe("insideCodeFence", () => {
     expect(insideCodeFence("текст\n```", 5)).toBe(false);
   });
 });
+
+describe("Composer: «Отправить» вместо «микрофона»", () => {
+  it("пустое поле и пробелы: «микрофон», «Отправить» нет", () => {
+    const { rerender } = render(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Записать голосовое" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Отправить" })).toBeNull();
+    rerender(<Composer value={"  \n "} onChange={vi.fn()} onSubmit={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Записать голосовое" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Отправить" })).toBeNull();
+  });
+
+  it("есть текст: «микрофон» заменяется кнопкой «Отправить», место одно и то же", () => {
+    const { container, rerender } = render(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} />);
+    expect(container.querySelectorAll(".composer__action")).toHaveLength(1);
+    rerender(<Composer value="купить хлеб" onChange={vi.fn()} onSubmit={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Записать голосовое" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Отправить" })).toBeInTheDocument();
+    expect(container.querySelectorAll(".composer__action")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Отправить" })).toHaveClass("icon-button--accent");
+  });
+
+  it("нажатие делает то же, что Enter: вызывает onSubmit и возвращает фокус в поле", () => {
+    const onSubmit = vi.fn();
+    render(<Composer value="купить хлеб" onChange={vi.fn()} onSubmit={onSubmit} />);
+    const button = screen.getByRole("button", { name: "Отправить" });
+    button.focus();
+    fireEvent.click(button);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("textbox", { name: "Новая заметка" })).toHaveFocus();
+  });
+
+  it("без onSubmit (D1) кнопка объявлена недоступной и ничего не отправляет", () => {
+    render(<Composer value="купить хлеб" onChange={vi.fn()} />);
+    const button = screen.getByRole("button", { name: "Отправить" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAccessibleDescription("Появится позже");
+  });
+
+  it("без кнопки «микрофон» при пустом поле правого места нет, с текстом «Отправить» есть", () => {
+    const { container, rerender } = render(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} buttons={{ emoji: true }} />);
+    expect(container.querySelector(".composer__action")).toBeNull();
+    rerender(<Composer value="текст" onChange={vi.fn()} onSubmit={vi.fn()} buttons={{ emoji: true }} />);
+    expect(screen.getByRole("button", { name: "Отправить" })).toBeInTheDocument();
+  });
+});

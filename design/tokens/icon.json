@@ -5,6 +5,11 @@
       "$value": "1.35rem",
       "$description": "Размер линейного значка: 19 px при корне 14 px (18–20 px)."
     },
+    "size-small": {
+      "$type": "dimension",
+      "$value": "1.05rem",
+      "$description": "Мелкий значок: ряд действий под плашкой сообщения (15 px)."
+    },
     "stroke": {
       "$type": "number",
       "$value": 1.75,

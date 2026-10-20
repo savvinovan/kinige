@@ -37,7 +37,7 @@ describe("Sidebar", () => {
     render(<Sidebar chats={DEMO_CHATS} selectedId="inbox" />);
     const recipes = screen.getByRole("button", { name: /^Рецепты/ });
     expect(within(recipes).getByText("12 тыс.")).toHaveClass("chat-row__count", { exact: false });
-    expect(recipes).toHaveAccessibleName("Рецепты записей: 12 тыс.");
+    expect(recipes).toHaveAccessibleName("Рецепты, записей: 12 тыс.");
     expect(recipes).toHaveAttribute("title", "Рецепты, 12 345 записей");
     const books = screen.getByRole("button", { name: /^Книги/ });
     // jest-dom сводит все пробелы к обычному, поэтому узкий неразрывный проверяем по сырому textContent.

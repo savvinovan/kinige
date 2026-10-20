@@ -9,12 +9,18 @@
   background: var(--color-surface-paper);
 }
 
-/* Единственный элемент области `column-reverse` стоит у её нижнего края: короткая лента лежит внизу, как в мессенджере. */
+/* Единственный элемент области `column-reverse` стоит у её нижнего края: короткая лента лежит внизу, как в мессенджере.
+   Лента — колонка по центру области чата шириной layout.feed.column (720 px при корне 14 px); в узком окне колонка
+   занимает всю ширину за вычетом полей. Плашки прижаты к левому краю колонки, метки дней стоят по её центру. */
 .feed {
   display: flex;
   flex: none;
   flex-direction: column;
   align-items: flex-start;
+  align-self: center;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--layout-feed-column);
   margin: 0;
   padding: 0;
   list-style: none;

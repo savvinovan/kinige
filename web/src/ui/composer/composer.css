@@ -5,8 +5,16 @@
   background: var(--color-surface-paper);
 }
 
+/* Поле ввода — по ширине той же колонки, что и лента; в узком окне на всю ширину за вычетом полей. */
+.composer > * {
+  max-width: var(--layout-feed-column);
+  margin-right: auto;
+  margin-left: auto;
+}
+
 .composer__error {
-  margin: 0 0 var(--space-2);
+  margin-top: 0;
+  margin-bottom: var(--space-2);
   color: var(--color-status-error);
   font-family: var(--type-small-family);
   font-size: var(--type-small-size);
@@ -27,15 +35,34 @@
   transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
-/* Фокус в поле: курсор (акцентный) и чуть более светлая заливка, без кольца и рамки. Кнопки внутри получают
-   обычное кольцо фокуса только с клавиатуры (:focus-visible). */
+/* Фокус в поле: курсор (акцентный), чуть более светлая заливка и одна тонкая линия внутри поля цветом фокуса
+   (одной смены заливки, 1,15:1, мало для видимости фокуса, WCAG 2.4.7). В покое обводки нет, outline нет, линия не двойная.
+   Кнопки внутри получают обычное кольцо фокуса только с клавиатуры (:focus-visible). */
 .composer__bar:has(.composer__input:focus) {
   background: var(--color-surface-field-active);
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-focus-ring);
 }
 
 /* Ошибка отправки: единственный случай, когда у поля есть рамка. */
 .composer__bar--invalid {
   border-color: var(--color-status-error);
+}
+
+/* Правое место поля: «микрофон» или «Отправить». Всегда ровно размер кнопки, поэтому ширина поля при смене не прыгает;
+   новая кнопка плавно проявляется и чуть вырастает. При Reduce Motion длительность нулевая (themes.css): смена мгновенная. */
+.composer__action {
+  display: inline-flex;
+  flex: none;
+  width: var(--layout-control-height);
+  height: var(--layout-control-height);
+  animation: composer-action-in var(--motion-duration-short) var(--motion-easing-enter);
+}
+
+@keyframes composer-action-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
 }
 
 /* Растущее поле: в ячейке сетки лежат textarea и невидимая копия текста; высоту задаёт копия. */

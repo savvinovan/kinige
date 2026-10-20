@@ -8,6 +8,14 @@
 | `emoji` | `smile` | MIT (из Feather) |
 | `voice` | `mic` | ISC |
 | `search` | `search` | MIT (из Feather) |
+| `chevron` | `chevron-down` | MIT (из Feather) |
+| `send` | `arrow-up` | MIT (из Feather) |
+| `copy` | `copy` | ISC |
+| `edit` | `pencil` | ISC |
+| `task` | `square-check` | ISC |
+| `favorite` | `star` | ISC |
+| `more` | `ellipsis` (прежнее имя `more-horizontal`) | MIT (из Feather) |
+| `done` | `check` | MIT (из Feather) |
 
 Какие значки произошли от Feather, видно по списку в `LICENSE` пакета; проверено по версии 1.60.0.
 

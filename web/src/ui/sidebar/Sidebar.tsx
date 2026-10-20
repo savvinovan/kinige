@@ -1,5 +1,6 @@
 import { TextField } from "../controls/TextField";
 import { describeCount, formatCount } from "./formatCount";
+import { ProfileMenu } from "./ProfileMenu";
 import "./sidebar.css";
 
 export interface SidebarChat {
@@ -16,13 +17,15 @@ interface SidebarProps {
   selectedId: string;
   /** В D1 сайдбар статичный (выбор чата и сворачивание — слайс 3): без обработчика строки только показывают выбор. */
   onSelect?: (chatId: string) => void;
+  /** Строка профиля внизу: имя (по умолчанию «Я») и точка статуса у аватара (слайс 11; в D1 не показывается). */
+  profile?: { name?: string; statusDot?: boolean };
 }
 
 /**
  * Сайдбар: поле «Поиск» и чаты строками «эмодзи + имя + счётчик записей»; выбранный чат подсвечен.
  * Счётчик справа — тихий серый (не акцент): сколько записей накоплено, а не «что не прочитано». Выбор эмодзи и сворачивание — слайс 3.
  */
-export function Sidebar({ chats, selectedId, onSelect }: SidebarProps) {
+export function Sidebar({ chats, selectedId, onSelect, profile }: SidebarProps) {
   return (
     <aside className="sidebar">
       <TextField label="Поиск" icon="search" type="search" placeholder="Поиск" />
@@ -45,13 +48,10 @@ export function Sidebar({ chats, selectedId, onSelect }: SidebarProps) {
                   </span>
                   <span className="chat-row__name">{chat.name}</span>
                   {counter ? (
-                    // Пробелы между частями нужны диктору: в имени кнопки они разделяют название, подпись и число.
-                    <>
-                      {" "}
-                      <span className="chat-row__count">
-                        <span className="visually-hidden">записей:</span> {counter}
-                      </span>
-                    </>
+                    // Диктору читается «Рецепты, записей: 12 тыс.»: запятая и подпись скрыты визуально, число видно.
+                    <span className="chat-row__count">
+                      <span className="visually-hidden">, записей:</span> {counter}
+                    </span>
                   ) : null}
                 </button>
               </li>
@@ -59,6 +59,7 @@ export function Sidebar({ chats, selectedId, onSelect }: SidebarProps) {
           })}
         </ul>
       </nav>
+      <ProfileMenu name={profile?.name} statusDot={profile?.statusDot} />
     </aside>
   );
 }

@@ -135,3 +135,33 @@ function FocusedRetry() {
     </div>
   );
 }
+
+/** Наведение: под плашкой ряд действий (копировать, редактировать, задача, избранное, ещё). «Копировать» работает, остальные только вид. */
+export const Наведение: Story = {
+  args: { markdown: "Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft.", showActions: true },
+};
+
+/** Наведение на сообщение в серии: ряд накладывается на промежуток и следующую плашку, не сдвигая ленту. */
+export const НаведениеВСерии: Story = {
+  render: () => (
+    <>
+      <Message markdown="Первая мысль" sentAt={at(9, 12)} showActions />
+      <Message markdown="Вторая, через две минуты" sentAt={at(9, 14)} />
+    </>
+  ),
+};
+
+/** Фокус с клавиатуры на первой кнопке ряда: ряд виден, у кнопки кольцо фокуса. */
+export const ФокусНаДействиях: Story = {
+  render: () => <FocusedActions />,
+};
+
+function FocusedActions() {
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => host.current?.querySelector<HTMLButtonElement>(".message-actions button")?.focus(), []);
+  return (
+    <div ref={host}>
+      <Message markdown="Купить билеты на субботу" sentAt={at(16, 10)} />
+    </div>
+  );
+}

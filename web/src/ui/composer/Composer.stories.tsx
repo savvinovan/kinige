@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Frame } from "../stories/Frame";
 import { Composer, type ComposerButtons } from "./Composer";
 
@@ -85,3 +85,23 @@ export const БезКнопок: Story = {
 export const Фокус: Story = {
   args: { autoFocus: true },
 };
+
+/** С текстом: «микрофон» сменился круглой акцентной кнопкой «Отправить» (то же, что Enter). */
+export const СТекстом: Story = { args: { initial: "Купить билеты на субботу" } };
+
+/** Фокус с клавиатуры на кнопке «Отправить»: кольцо фокуса вокруг круглой кнопки. */
+export const ФокусНаОтправить: Story = {
+  args: { initial: "Купить билеты на субботу" },
+  render: (args) => <FocusedSend {...args} />,
+};
+
+/** Ставит фокус на «Отправить» после показа: так история показывает кольцо фокуса без мыши. */
+function FocusedSend(args: DemoProps) {
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => host.current?.querySelector<HTMLButtonElement>('button[aria-label="Отправить"]')?.focus(), []);
+  return (
+    <div ref={host}>
+      <Demo {...args} />
+    </div>
+  );
+}

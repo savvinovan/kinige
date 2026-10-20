@@ -1,9 +1,41 @@
+/* Обёртка: плашка и под ней ряд действий. Ширина по тексту, не шире layout.message.measure (около 65 знаков). */
+.message-wrap {
+  position: relative;
+  width: fit-content;
+  max-width: min(100%, var(--layout-message-measure));
+}
+
+/* Ряд действий под плашкой накладывается на промежуток и не меняет высоту сообщения: лента не прыгает. Виден при
+   наведении на сообщение и когда фокус внутри него (кнопки всегда в дереве, поэтому доступны с клавиатуры). */
+.message-actions {
+  position: absolute;
+  top: calc(100% + var(--layout-action-offset));
+  left: 0;
+  z-index: 1;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-paper);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.message-wrap:hover .message-actions,
+.message-wrap:focus-within .message-actions,
+.message-wrap--actions .message-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* Плашка сообщения: заливка, скругление, без хвоста, тени и аватара. Только токены. */
 .message {
   position: relative;
   box-sizing: border-box;
   width: fit-content;
-  max-width: min(100%, var(--layout-message-measure));
+  max-width: 100%;
   padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
   border-radius: var(--radius-message);
   background: var(--color-surface-message);

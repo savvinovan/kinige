@@ -65,6 +65,25 @@
   color: var(--color-text-primary);
 }
 
+/* «Отправить»: круглая акцентная кнопка, стрелка цветом фона (9,2:1 к акценту). Размер тот же, что у «микрофона»: ширина не прыгает. */
+.icon-button--accent,
+.icon-button--accent:hover {
+  background: var(--color-accent-default);
+  color: var(--color-surface-background);
+}
+
+/* Мелкая кнопка: ряд действий под плашкой. */
+.icon-button--small {
+  width: var(--layout-action-size);
+  height: var(--layout-action-size);
+  border-radius: var(--radius-control);
+}
+
+.icon-button--small .icon {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}
+
 .button:disabled,
 .icon-button:disabled {
   cursor: default;
@@ -78,6 +97,13 @@
   color: var(--color-text-tertiary);
   cursor: default;
   opacity: var(--opacity-unavailable);
+}
+
+/* «Отправить» без обработчика (D1): остаётся акцентной, но приглушённой. */
+.icon-button--accent.icon-button--unavailable,
+.icon-button--accent.icon-button--unavailable:hover {
+  background: var(--color-accent-default);
+  color: var(--color-surface-background);
 }
 
 /* Текст только для экранного диктора. */
@@ -111,9 +137,10 @@
   transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
-/* Фокус: курсор (акцентный) и чуть более светлая заливка, без кольца и рамки. */
+/* Фокус: курсор (акцентный), чуть более светлая заливка и одна тонкая линия внутри поля цветом фокуса; снаружи кольца нет. */
 .text-field__box:has(.text-field__input:focus) {
   background: var(--color-surface-field-active);
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-focus-ring);
 }
 
 /* Ошибка: единственный случай, когда у поля есть рамка. */

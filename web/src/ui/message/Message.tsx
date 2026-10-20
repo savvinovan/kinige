@@ -2,6 +2,7 @@ import { useMemo, type MouseEvent } from "react";
 import { Button } from "../controls/Button";
 import { formatTime } from "../feed/dates";
 import { renderMarkdown } from "./markdown";
+import { MessageActions } from "./MessageActions";
 import "./message.css";
 import "./markdown.css";
 
@@ -12,16 +13,18 @@ export interface MessageProps {
   sentAt: Date;
   /** «failed» — не отправилось: под текстом строка «Не отправилось. Повторить». */
   status?: "sent" | "failed";
-  /** Подсвеченное сообщение (найдено поиском, переход по ссылке): рамка, заливка не меняется. */
+  /** Подсвеченное сообщение (найдено поиском, переход по ссылке): другая заливка плашки. */
   highlighted?: boolean;
   onRetry?: () => void;
+  /** Показать ряд действий без наведения (для историй и снимков состояния «наведение»). */
+  showActions?: boolean;
 }
 
 /**
  * Сообщение — плашка без хвоста и аватара; время мелко в правом нижнем углу на одной строке с концом текста.
  * Промежуток до соседних плашек задаёт лента (серия — меньше), здесь только сама плашка.
  */
-export function Message({ markdown, sentAt, status = "sent", highlighted = false, onRetry }: MessageProps) {
+export function Message({ markdown, sentAt, status = "sent", highlighted = false, onRetry, showActions = false }: MessageProps) {
   const failed = status === "failed";
   const html = useMemo(() => renderMarkdown(markdown, { timeSpacer: !failed }), [markdown, failed]);
   // Сообщение кончается блоком (код): распорки у последней строки нет, время стоит под блоком.
@@ -38,24 +41,27 @@ export function Message({ markdown, sentAt, status = "sent", highlighted = false
   if (timeBelow) classes.push("message--time-below");
 
   return (
-    <article className={classes.join(" ")}>
-      <div
-        className="markdown"
-        onClick={blockLinkNavigation}
-        onAuxClick={blockLinkNavigation}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-      {failed ? (
-        <p className="message__error">
-          Не отправилось.{" "}
-          <Button variant="inline" onClick={onRetry} aria-label="Повторить отправку сообщения">
-            Повторить
-          </Button>
-        </p>
-      ) : null}
-      <time className="message__time" dateTime={sentAt.toISOString()}>
-        {formatTime(sentAt)}
-      </time>
-    </article>
+    <div className={`message-wrap${showActions ? " message-wrap--actions" : ""}`}>
+      <article className={classes.join(" ")}>
+        <div
+          className="markdown"
+          onClick={blockLinkNavigation}
+          onAuxClick={blockLinkNavigation}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+        {failed ? (
+          <p className="message__error">
+            Не отправилось.{" "}
+            <Button variant="inline" onClick={onRetry} aria-label="Повторить отправку сообщения">
+              Повторить
+            </Button>
+          </p>
+        ) : null}
+        <time className="message__time" dateTime={sentAt.toISOString()}>
+          {formatTime(sentAt)}
+        </time>
+      </article>
+      <MessageActions markdown={markdown} />
+    </div>
   );
 }

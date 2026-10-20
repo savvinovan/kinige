@@ -1,4 +1,4 @@
-import { useId, type KeyboardEvent } from "react";
+import { useId, useRef, type KeyboardEvent } from "react";
 import { IconButton } from "../controls/IconButton";
 import "./composer.css";
 
@@ -34,7 +34,8 @@ export function insideCodeFence(text: string, caret: number): boolean {
 }
 
 /**
- * Поле ввода как в Telegram: слева «файл», в середине обычное поле «Написать заметку…», справа «эмодзи» и «микрофон».
+ * Поле ввода как в Telegram: слева «файл», в середине обычное поле «Написать заметку…», справа «эмодзи» и «микрофон»;
+ * когда в поле есть текст, «микрофон» сменяется круглой акцентной кнопкой «Отправить» (как в ChatGPT и Claude).
  * Растёт вместе с текстом до 40% высоты окна, дальше — прокрутка внутри (ТЗ §5). Подсказку про Enter не показываем.
  */
 export function Composer({
@@ -48,6 +49,14 @@ export function Composer({
   autoFocus,
 }: ComposerProps) {
   const errorId = useId();
+  const input = useRef<HTMLTextAreaElement>(null);
+  const hasText = value.trim() !== "";
+
+  // Кнопка «Отправить» делает то же, что Enter. После щелчка фокус возвращается в поле: сама кнопка исчезает, как только поле пустеет.
+  const send = () => {
+    onSubmit?.();
+    input.current?.focus();
+  };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== "Enter" || event.shiftKey || !onSubmit) return;
@@ -55,7 +64,7 @@ export function Composer({
     if (event.nativeEvent.isComposing) return;
     if (insideCodeFence(event.currentTarget.value, event.currentTarget.selectionStart)) return;
     event.preventDefault();
-    if (value.trim() !== "") onSubmit();
+    if (hasText) onSubmit();
   };
 
   return (
@@ -71,6 +80,7 @@ export function Composer({
         <div className="composer__field" data-replicated-value={value}>
           <textarea
             className="composer__input"
+            ref={input}
             rows={1}
             value={value}
             placeholder={placeholder}
@@ -83,7 +93,16 @@ export function Composer({
           />
         </div>
         {buttons.emoji ? <IconButton icon="emoji" label="Эмодзи" unavailable={viewOnly} /> : null}
-        {buttons.voice ? <IconButton icon="voice" label="Записать голосовое" unavailable={viewOnly} /> : null}
+        {/* Правое место: «Отправить» при непробельном тексте, иначе «микрофон». Обе кнопки одного размера, ширина не прыгает. */}
+        {hasText ? (
+          <span className="composer__action" key="send">
+            <IconButton icon="send" label="Отправить" tone="accent" unavailable={!onSubmit} onClick={send} />
+          </span>
+        ) : buttons.voice ? (
+          <span className="composer__action" key="voice">
+            <IconButton icon="voice" label="Записать голосовое" unavailable={viewOnly} />
+          </span>
+        ) : null}
       </div>
     </div>
   );

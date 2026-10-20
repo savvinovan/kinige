@@ -11,16 +11,32 @@ interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
    * обхода и объявляется как недоступная (`aria-disabled`) с пояснением «Появится позже»; нажатие ничего не делает.
    */
   unavailable?: boolean;
+  /** accent — круглая акцентная кнопка («Отправить»); quiet — обычная, тихая. */
+  tone?: "quiet" | "accent";
+  /** Мелкая кнопка для ряда действий под плашкой. */
+  small?: boolean;
 }
 
 /** Кнопка со значком. Значок декоративный, имя кнопки — `label`. */
-export function IconButton({ icon, label, unavailable = false, className, type = "button", onClick, ...rest }: IconButtonProps) {
+export function IconButton({
+  icon,
+  label,
+  unavailable = false,
+  tone = "quiet",
+  small = false,
+  className,
+  type = "button",
+  onClick,
+  ...rest
+}: IconButtonProps) {
   const noteId = useId();
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     if (unavailable) event.preventDefault();
     else onClick?.(event);
   };
   const classes = ["icon-button"];
+  if (tone === "accent") classes.push("icon-button--accent");
+  if (small) classes.push("icon-button--small");
   if (unavailable) classes.push("icon-button--unavailable");
   if (className) classes.push(className);
 
