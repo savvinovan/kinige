@@ -5,7 +5,6 @@ import "../src/app.css";
 // все значения живут в токенах (src/ui/tokens.css, themes.css, base.css). Пустое значение — «по умолчанию».
 // Палитра и шрифты не переключаются: выбраны (graphite, Inter + JetBrains Mono; ADR-0004).
 const ATTRIBUTES: Record<string, string> = {
-  textSize: "data-text-size",
   textScale: "data-text-scale",
   reduceMotion: "data-reduce-motion",
 };
@@ -23,23 +22,8 @@ const withDesignSystem: Decorator = (Story, context) => {
 const preview: Preview = {
   parameters: { layout: "fullscreen" },
   decorators: [withDesignSystem],
-  initialGlobals: { textSize: "", textScale: "", reduceMotion: "" },
+  initialGlobals: { textScale: "", reduceMotion: "" },
   globalTypes: {
-    // ВРЕМЕННО: кандидаты размера текста записей для выбора пользователем (ADR-0004, «Открыто»).
-    // После выбора лишние значения удаляются вместе с токенами font.root.candidate-* и правилами в base.css.
-    textSize: {
-      description: "Размер текста записей (временный выбор)",
-      toolbar: {
-        title: "Размер текста",
-        icon: "type",
-        dynamicTitle: true,
-        items: [
-          { value: "13", title: "Текст записей 13 px" },
-          { value: "", title: "Текст записей 14 px (по умолчанию)" },
-          { value: "15", title: "Текст записей 15 px" },
-        ],
-      },
-    },
     textScale: {
       description: "Масштаб текста",
       toolbar: {

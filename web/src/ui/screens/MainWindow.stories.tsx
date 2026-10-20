@@ -30,12 +30,6 @@ export const Узкое: Story = {
   ],
 };
 
-/** Временный выбор размера текста: 13 px (панель Storybook «Размер текста»). Плотность меняется целиком. */
-export const Текст13: Story = { globals: { textSize: "13" } };
-
-/** Временный выбор размера текста: 15 px. */
-export const Текст15: Story = { globals: { textSize: "15" } };
-
 /** Пустой чат: подсказка в ленте, поле ввода на месте. */
 export const ПустойЧат: Story = { args: { messages: [] } };
 

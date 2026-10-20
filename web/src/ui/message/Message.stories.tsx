@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef } from "react";
+import "../feed/feed.css";
 import { Frame, FrameLabel } from "../stories/Frame";
 import { Message } from "./Message";
 
@@ -196,3 +197,28 @@ function FocusedActions() {
     </div>
   );
 }
+
+/** Наведение на первое сообщение у верхнего края ленты в узком окне: над плашкой нет места, ряд прижимается внутрь, а не обрезается краем ленты. */
+export const НаведениеПервоеСообщение: Story = {
+  render: () => (
+    <div className="story-column story-column--narrow story-feed-top">
+      <div className="feed-scroll">
+        <ol className="feed">
+          <li className="feed__item">
+            <Message markdown="Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft." sentAt={at(9, 12)} showActions />
+          </li>
+        </ol>
+      </div>
+    </div>
+  ),
+};
+
+/** Наведение в серии в узком окне: промежуток 3,25 px, ряд над плашкой неизбежно заходит на нижний край предыдущей (и на её время, если плашки одной ширины). */
+export const НаведениеВСерииУзкоеОкно: Story = {
+  render: () => (
+    <div className="story-column story-column--narrow" style={{ gap: "var(--layout-message-gap-series)" }}>
+      <Message markdown="Первая мысль, достаточно длинная, чтобы занять почти всю ширину" sentAt={at(9, 12)} />
+      <Message markdown="Вторая, через две минуты, тоже довольно длинная для узкой колонки" sentAt={at(9, 14)} showActions />
+    </div>
+  ),
+};

@@ -25,9 +25,8 @@ function Spacing() {
     <main className="foundation">
       <h1 className="foundation__title">Отступы, радиусы, тени</h1>
       <p className="foundation__lead">
-        Шкала отступов с шагом 0,25 rem (3,5 px при размере текста 14 px). Отступы, радиусы, высоты строк и значки
-        заданы в rem, поэтому растут вместе с текстом: смена размера текста меняет плотность целиком, а крупный текст не
-        слипается. Разделитель — линия <code>border.width.hairline</code> цвета <code>color.border.divider</code>, фокус —
+        Шкала отступов с шагом 0,25 rem (3,25 px при размере текста 13 px). Отступы, радиусы, высоты строк и значки
+        заданы в rem, поэтому растут вместе с текстом: «крупный текст» меняет плотность целиком и не слипается. Разделитель — линия <code>border.width.hairline</code> цвета <code>color.border.divider</code>, фокус —
         кольцо <code>focus.width</code> с зазором <code>focus.offset</code>.
       </p>
 

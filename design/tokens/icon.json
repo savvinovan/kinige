@@ -3,12 +3,12 @@
     "size": {
       "$type": "dimension",
       "$value": "1.35rem",
-      "$description": "Размер линейного значка: 19 px при корне 14 px (18–20 px)."
+      "$description": "Размер линейного значка: 17,5 px при корне 13 px."
     },
     "size-small": {
       "$type": "dimension",
       "$value": "1.05rem",
-      "$description": "Мелкий значок: ряд действий под плашкой сообщения (15 px)."
+      "$description": "Мелкий значок: ряд действий справа от плашки сообщения (13,5 px)."
     },
     "stroke": {
       "$type": "number",

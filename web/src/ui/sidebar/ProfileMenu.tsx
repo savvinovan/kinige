@@ -122,6 +122,7 @@ export function ProfileMenu({ name = DEFAULT_PROFILE_NAME, statusDot = false, de
         type="button"
         className="profile__button"
         ref={button}
+        aria-label={`Профиль: ${name}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}

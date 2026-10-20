@@ -1,57 +1,57 @@
 {
   "type": {
-    "$description": "Типографическая шкала по ролям, компактная (плотность как в Telegram, ADR-0004). Размер в rem, где 1rem = размер текста записей (font.root.*, по умолчанию 14 px), поэтому смена размера и «крупный текст» меняют всю плотность вместе. Межстрочный — безразмерный множитель. Семейство — роль font.family.* (sans / mono), реальные шрифты задаёт активный набор (active.fontset). Значения в px — при корне 14 px.",
+    "$description": "Типографическая шкала по ролям, компактная (плотность как в Telegram, ADR-0004). Размер в rem, где 1rem = размер текста записей (font.root.default, 13 px), поэтому «крупный текст» меняет всю плотность вместе. Межстрочный — безразмерный множитель. Семейство — роль font.family.* (sans / mono), реальные шрифты задаёт активный набор (active.fontset). Значения в px — при корне 13 px.",
     "day": {
-      "$description": "Метка дня («таблетка» по центру ленты): 12 px.",
+      "$description": "Метка дня («таблетка» по центру ленты): 11,2 px.",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "0.86rem" },
       "lineHeight": { "$type": "number", "$value": 1.3 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.medium}" }
     },
     "h1": {
-      "$description": "Заголовок H1 в записи: 18 px, ненамного крупнее текста.",
+      "$description": "Заголовок H1 в записи: 16,8 px, ненамного крупнее текста.",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1.29rem" },
       "lineHeight": { "$type": "number", "$value": 1.3 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
     },
     "h2": {
-      "$description": "Заголовок H2 в записи: 16 px.",
+      "$description": "Заголовок H2 в записи: 14,8 px.",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1.14rem" },
       "lineHeight": { "$type": "number", "$value": 1.35 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
     },
     "h3": {
-      "$description": "Заголовок H3 в записи: 15 px.",
+      "$description": "Заголовок H3 в записи: 13,9 px.",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1.07rem" },
       "lineHeight": { "$type": "number", "$value": 1.4 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
     },
     "body": {
-      "$description": "Текст записи и поле ввода: Inter 14 px, межстрочный 1,43 (20 px).",
+      "$description": "Текст записи и поле ввода: Inter 13 px, межстрочный 1,43 (18,6 px).",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1rem" },
       "lineHeight": { "$type": "number", "$value": 1.43 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
     },
     "small": {
-      "$description": "Интерфейс: сайдбар, кнопки, подписи, поиск: 13 px.",
+      "$description": "Интерфейс: сайдбар, кнопки, подписи, поиск: 12,1 px.",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "0.93rem" },
       "lineHeight": { "$type": "number", "$value": 1.4 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
     },
     "code": {
-      "$description": "Код: строчный и блок, 13 px.",
+      "$description": "Код: строчный и блок, 12,1 px.",
       "family": { "$type": "fontFamily", "$value": "{font.family.mono}" },
       "size": { "$type": "dimension", "$value": "0.93rem" },
       "lineHeight": { "$type": "number", "$value": 1.5 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
     },
     "meta": {
-      "$description": "Метаданные: время в плашке, счётчики, 11 px.",
+      "$description": "Метаданные: время в плашке, счётчики, 10,4 px.",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "0.8rem" },
       "lineHeight": { "$type": "number", "$value": 1.3 },

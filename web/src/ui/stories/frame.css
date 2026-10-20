@@ -43,7 +43,7 @@
   flex: 1;
 }
 
-/* Колонка ленты как в окне (720 px при корне 14 px) и узкая колонка: места справа от плашки хватает или нет. */
+/* Колонка ленты как в окне (668 px при корне 13 px) и узкая колонка: места справа от плашки хватает или нет. */
 .story-column {
   display: grid;
   gap: var(--layout-message-gap-group);
@@ -64,4 +64,10 @@
   font-family: var(--type-meta-family);
   font-size: var(--type-meta-size);
   line-height: var(--type-meta-line-height);
+}
+
+/* Первое сообщение у верхнего края ленты (в историях «Наведение»): лента в обычном порядке, первая плашка сразу под полем. */
+.story-feed-top .feed-scroll {
+  flex-direction: column;
+  overflow-y: hidden;
 }

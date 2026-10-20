@@ -142,3 +142,114 @@ describe("ряд действий под плашкой", () => {
     });
   });
 });
+
+describe("зона наведения и задержка скрытия", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const renderInFeed = () => {
+    const view = render(
+      <ul>
+        <li className="feed__item">
+          <Message markdown="Купить хлеб" sentAt={sentAt} />
+        </li>
+      </ul>,
+    );
+    const row = view.container.querySelector(".feed__item") as HTMLElement;
+    const wrap = view.container.querySelector(".message-wrap") as HTMLElement;
+    return { row, wrap };
+  };
+  const enter = (element: Element) => act(() => void element.dispatchEvent(new Event("pointerenter")));
+  const leave = (element: Element) => act(() => void element.dispatchEvent(new Event("pointerleave")));
+  const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
+
+  it("в покое ряд не показан; наведение на строку ленты показывает его", () => {
+    const { row, wrap } = renderInFeed();
+    expect(wrap).not.toHaveClass("message-wrap--actions");
+    enter(row);
+    expect(wrap).toHaveClass("message-wrap--actions");
+  });
+
+  it("уход с плашки в пустую часть строки не скрывает ряд (зона — вся строка, а не плашка)", () => {
+    const { row, wrap } = renderInFeed();
+    enter(row);
+    // Мышь покинула плашку, но осталась внутри строки: у строки pointerleave нет.
+    leave(wrap);
+    advance(5000);
+    expect(wrap).toHaveClass("message-wrap--actions");
+  });
+
+  it("уход за строку скрывает ряд только после задержки (180 мс)", () => {
+    const { row, wrap } = renderInFeed();
+    enter(row);
+    leave(row);
+    advance(179);
+    expect(wrap).toHaveClass("message-wrap--actions");
+    advance(1);
+    expect(wrap).not.toHaveClass("message-wrap--actions");
+  });
+
+  it("возврат мыши в строку до конца задержки отменяет скрытие", () => {
+    const { row, wrap } = renderInFeed();
+    enter(row);
+    leave(row);
+    advance(100);
+    enter(row);
+    advance(5000);
+    expect(wrap).toHaveClass("message-wrap--actions");
+  });
+
+  it("вне ленты зоной служит сама обёртка сообщения", () => {
+    const { container } = render(<Message markdown="Купить хлеб" sentAt={sentAt} />);
+    const wrap = container.querySelector(".message-wrap") as HTMLElement;
+    enter(wrap);
+    expect(wrap).toHaveClass("message-wrap--actions");
+    leave(wrap);
+    advance(180);
+    expect(wrap).not.toHaveClass("message-wrap--actions");
+  });
+
+  it("узкое окно: ряд над плашкой; у верхнего края ленты, где над плашкой нет места, прижимается внутрь", () => {
+    const widths = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains("message-wrap")) return 400;
+      if (this.classList.contains("message-actions")) return 150;
+      return 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(500);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("message-actions") ? 26 : 0;
+    });
+    // Верх обёртки сообщения относительно верха ленты (верх ленты — 0).
+    let wrapTop = 100;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const y = this.classList.contains("message-wrap") ? wrapTop : 0;
+      return { top: y, bottom: y, left: 0, right: 0, width: 0, height: 0, x: 0, y, toJSON: () => ({}) };
+    });
+
+    const { container } = render(
+      <div className="feed-scroll">
+        <ul>
+          <li className="feed__item">
+            <Message markdown="Купить хлеб" sentAt={sentAt} />
+          </li>
+        </ul>
+      </div>,
+    );
+    const wrap = container.querySelector(".message-wrap") as HTMLElement;
+    const row = container.querySelector(".feed__item") as HTMLElement;
+    expect(wrap).toHaveClass("message-wrap--actions-inside");
+
+    wrapTop = 100; // сверху 100 px при высоте ряда 26: места достаточно
+    enter(row);
+    expect(wrap).not.toHaveClass("message-wrap--actions-flip");
+    leave(row);
+    advance(180);
+
+    wrapTop = 5; // над плашкой всего 5 px: ряд прижимается внутрь, а не обрезается краем ленты
+    enter(row);
+    expect(wrap).toHaveClass("message-wrap--actions-flip");
+
+    vi.restoreAllMocks();
+    widths.mockRestore();
+  });
+});

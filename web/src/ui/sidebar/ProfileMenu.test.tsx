@@ -12,7 +12,7 @@ const items = () => screen.getAllByRole("menuitem");
 describe("ProfileMenu", () => {
   it("по умолчанию «Я», аватар с инициалом скрыт от диктора, меню закрыто", () => {
     const { container } = render(<ProfileMenu />);
-    const button = screen.getByRole("button", { name: "Я" });
+    const button = screen.getByRole("button", { name: "Профиль: Я" });
     expect(button).toHaveAttribute("aria-haspopup", "menu");
     expect(button).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("menu")).toBeNull();
@@ -22,7 +22,7 @@ describe("ProfileMenu", () => {
   it("инициалы из имени; длинное имя остаётся в тексте кнопки (обрезается стилем)", () => {
     const { container } = render(<ProfileMenu name="Александр Саввинов-Очень-Длинная-Фамилия" />);
     expect(container.querySelector(".profile__avatar")?.textContent).toBe("АС");
-    expect(screen.getByRole("button")).toHaveAccessibleName("Александр Саввинов-Очень-Длинная-Фамилия");
+    expect(screen.getByRole("button")).toHaveAccessibleName("Профиль: Александр Саввинов-Очень-Длинная-Фамилия");
   });
 
   it("щелчок открывает меню «Настройки», «Экспорт», «О программе»; фокус на первом пункте", () => {

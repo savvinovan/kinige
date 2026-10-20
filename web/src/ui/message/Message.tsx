@@ -1,8 +1,9 @@
-import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useMemo, type MouseEvent } from "react";
 import { Button } from "../controls/Button";
 import { formatTime } from "../feed/dates";
 import { renderMarkdown } from "./markdown";
 import { MessageActions } from "./MessageActions";
+import { useActionsPlacement } from "./useActionsPlacement";
 import "./message.css";
 import "./markdown.css";
 
@@ -36,24 +37,9 @@ export function Message({ markdown, sentAt, status = "sent", highlighted = false
     if (event.target instanceof Element && event.target.closest("a")) event.preventDefault();
   };
 
-  // Ряд действий стоит справа от плашки. Если он не помещается между правым краем плашки и правым краем колонки
-  // (узкое окно, плашка почти на всю ширину), он переходит на правый верхний угол самой плашки. Ширина внешнего
-  // слоя ряда не зависит от режима (зазор слева остаётся), поэтому переключение не дребезжит на границе.
-  const wrap = useRef<HTMLDivElement>(null);
-  const [actionsInside, setActionsInside] = useState(false);
-  useLayoutEffect(() => {
-    const element = wrap.current;
-    const column = element?.parentElement;
-    const actions = element?.querySelector<HTMLElement>(".message-actions");
-    if (!element || !column || !actions) return;
-    const measure = () => setActionsInside(element.offsetWidth + actions.offsetWidth > column.clientWidth);
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(column);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [html]);
+  // Ряд действий: справа от плашки; в узком окне — чуть выше плашки у её правого края; у верхнего края ленты — внутри.
+  // Виден, пока мышь в строке ленты (и ещё короткую задержку после ухода). Подробности — в useActionsPlacement.
+  const { wrap, inside, flip, shown } = useActionsPlacement(html);
 
   const classes = ["message"];
   if (highlighted) classes.push("message--highlighted");
@@ -61,7 +47,14 @@ export function Message({ markdown, sentAt, status = "sent", highlighted = false
 
   return (
     <div
-      className={`message-wrap${showActions ? " message-wrap--actions" : ""}${actionsInside ? " message-wrap--actions-inside" : ""}`}
+      className={[
+        "message-wrap",
+        showActions || shown ? "message-wrap--actions" : "",
+        inside ? "message-wrap--actions-inside" : "",
+        inside && flip ? "message-wrap--actions-flip" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       ref={wrap}
     >
       <article className={classes.join(" ")}>

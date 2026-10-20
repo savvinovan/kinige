@@ -16,14 +16,14 @@ const FACES: { role: Role; weight: "regular" | "semibold" | "bold"; italic?: boo
 ];
 
 const SCALE: { role: string; label: string; text: string }[] = [
-  { role: "day", label: "day: метка дня, 12 px", text: "14 марта 2025" },
-  { role: "h1", label: "h1: 18 px", text: "Заголовок первого уровня" },
-  { role: "h2", label: "h2: 16 px", text: "Заголовок второго уровня" },
-  { role: "h3", label: "h3: 15 px", text: "Заголовок третьего уровня" },
-  { role: "body", label: "body: текст записи, 14 px", text: "Проснулся рано и до завтрака записал мысль про журнал. Woke up early and wrote a thought down." },
-  { role: "small", label: "small: интерфейс, 13 px", text: "Входящие, Идеи, Книги, Работа, Рецепты. Search" },
-  { role: "code", label: "code: код, 13 px", text: "fn main() { println!(\"Записей: {}\", today.count()); }" },
-  { role: "meta", label: "meta: время, 11 px", text: "09:12" },
+  { role: "day", label: "day: метка дня, 11,2 px", text: "14 марта 2025" },
+  { role: "h1", label: "h1: 16,8 px", text: "Заголовок первого уровня" },
+  { role: "h2", label: "h2: 14,8 px", text: "Заголовок второго уровня" },
+  { role: "h3", label: "h3: 13,9 px", text: "Заголовок третьего уровня" },
+  { role: "body", label: "body: текст записи, 13 px", text: "Проснулся рано и до завтрака записал мысль про журнал. Woke up early and wrote a thought down." },
+  { role: "small", label: "small: интерфейс, 12,1 px", text: "Входящие, Идеи, Книги, Работа, Рецепты. Search" },
+  { role: "code", label: "code: код, 12,1 px", text: "fn main() { println!(\"Записей: {}\", today.count()); }" },
+  { role: "meta", label: "meta: время, 10,4 px", text: "09:12" },
 ];
 
 function Specimen() {
@@ -89,9 +89,8 @@ function Typography() {
       <h1 className="foundation__title">Типографика</h1>
       <p className="foundation__lead">
         Набор «Inter + JetBrains Mono» с кириллицей, выбран пользователем (Inter и для текста записей, и для интерфейса). Все начертания — встроенные woff2, не системные.
-        Компактная шкала: текст записей 14 px, интерфейс 13 px, время 11 px. Размеры в rem (один rem равен размеру текста записей):
-        размер переключается в панели Storybook («Размер текста» 13 / 14 / 15 px — временный выбор пользователя) и
-        «Крупный текст» (×1,25).
+        Компактная шкала: текст записей 13 px (выбран пользователем), интерфейс 12,1 px, время 10,4 px. Размеры в rem (один rem
+        равен размеру текста записей); «Крупный текст» (×1,25) переключается в панели Storybook.
       </p>
       <div className="foundation__grid">
         <Specimen />

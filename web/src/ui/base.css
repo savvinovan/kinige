@@ -1,20 +1,11 @@
 /* Базовые правила на семантических токенах: размер и масштаб текста, фон и текст страницы, фокус. */
 
-/* Плотность целиком: 1rem = размер текста записей (font.root.*). Размеры шрифта, отступы, радиусы, высоты строк и значки
-   заданы в rem, поэтому смена корневого размера (data-text-size, временный выбор 13 / 14 / 15 px) и масштаб текста
-   (data-text-scale="large", font.scale.large) меняют всю плотность пропорционально, а не только текст. */
+/* Плотность целиком: 1rem = размер текста записей (font.root.default, 13 px). Размеры шрифта, отступы, радиусы, высоты строк
+   и значки заданы в rem, поэтому масштаб текста (data-text-scale="large", font.scale.large) меняет всю плотность
+   пропорционально, а не только текст. */
 :root {
   --text-scale: var(--font-scale-default);
   --text-root-size: var(--font-root-default);
-}
-
-/* ВРЕМЕННО: кандидаты размера текста для выбора пользователем; после выбора удаляются вместе с токенами font.root.candidate-*. */
-:root[data-text-size="13"] {
-  --text-root-size: var(--font-root-candidate-13);
-}
-
-:root[data-text-size="15"] {
-  --text-root-size: var(--font-root-candidate-15);
 }
 
 :root[data-text-scale="large"] {
