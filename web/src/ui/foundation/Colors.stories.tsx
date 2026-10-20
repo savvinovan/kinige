@@ -70,7 +70,7 @@ function PaletteSheet({ name }: { name: string }) {
             const ratio = contrastRatio(palette.colors[pair.foreground] ?? "", palette.colors[pair.background] ?? "");
             const min = MIN_RATIO[pair.kind];
             return (
-              <tr key={`${pair.foreground}/${pair.background}`}>
+              <tr key={`${pair.foreground}/${pair.background}/${pair.kind}`}>
                 <td>{pair.foreground}</td>
                 <td>{pair.background}</td>
                 <td className="ratios__number">{ratio.toFixed(2)}:1</td>
