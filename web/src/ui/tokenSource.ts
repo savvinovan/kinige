@@ -20,17 +20,22 @@ const paletteFiles = import.meta.glob("../../../design/tokens/palettes/*.json", 
 const fontsetFiles = import.meta.glob("../../../design/tokens/fontsets/*.json", { eager: true, import: "default" });
 const activeFile = import.meta.glob("../../../design/tokens/active.json", { eager: true, import: "default" });
 
-/** Роли цвета, которые должна задавать каждая палитра. */
+/** Роли цвета, которые должна задавать палитра. */
 export const PALETTE_ROLES = [
   "surface.background",
   "surface.paper",
+  "surface.message",
+  "surface.code",
+  "surface.day",
+  "surface.selected",
+  "surface.field",
   "text.primary",
   "text.secondary",
   "text.tertiary",
   "accent.default",
   "border.divider",
   "border.control",
-  "highlight.background",
+  "highlight.border",
   "focus.ring",
   "status.error",
 ] as const;

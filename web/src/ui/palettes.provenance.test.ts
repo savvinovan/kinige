@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PALETTE_ROLES, palettes } from "./tokenSource";
 
-// Палитры по мотивам готовых схем (Nord, Catppuccin) честно размечены: у каждой роли указано происхождение.
+// Палитра по мотивам готовой схемы (Nord) честно размечена: у каждой роли указано происхождение.
 // «Официальный» цвет обязан совпасть с первоисточником (design/sources/official-palettes.json) и по значению,
 // и по имени; всё остальное обязано называться подгонкой. Так «настоящий Nord» нельзя подменить незаметно.
 
@@ -15,9 +15,9 @@ const OFFICIAL = JSON.parse(readFileSync(join(import.meta.dirname, "../../../des
 const FITTED = "подгонка";
 const schemes = Object.entries(palettes).filter(([, palette]) => Object.keys(palette.origins).length > 0);
 
-describe("происхождение цветов палитр по мотивам готовых схем", () => {
-  it("такие палитры есть и у каждой есть официальный первоисточник", () => {
-    expect(schemes.map(([name]) => name).sort()).toEqual(["catppuccin-macchiato", "catppuccin-mocha", "nord"]);
+describe("происхождение цветов палитры по мотивам готовой схемы", () => {
+  it("палитра есть и у неё есть официальный первоисточник", () => {
+    expect(schemes.map(([name]) => name)).toEqual(["nord"]);
     for (const [name] of schemes) expect(OFFICIAL[name]?.source, name).toMatch(/^https:\/\//);
   });
 

@@ -140,7 +140,7 @@
 .page__code {
   padding: 0 var(--space-1);
   border-radius: var(--radius-inline);
-  background: var(--color-highlight-background);
+  background: var(--color-surface-code);
   font-family: var(--type-code-family);
   font-size: var(--type-code-size);
 }

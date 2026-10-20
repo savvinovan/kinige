@@ -96,6 +96,16 @@ describe("наборы шрифтов", () => {
         });
       }
 
+      // Единственное исключение из «шрифты только встроенные» (ADR-0004): эмодзи чатов — данные пользователя,
+      // цветные эмодзи не встраиваются. Любая другая роль без файла в наборе — ошибка.
+      it("кроме эмодзи, у каждой роли есть встроенные начертания; эмодзи — системные шрифты", () => {
+        expect(Object.keys(set.families).sort()).toEqual(["emoji", "mono", "sans", "serif"]);
+        expect(Object.keys(set.faces).filter((key) => key.startsWith("emoji-"))).toEqual([]);
+        const embedded = new Set(Object.values(set.faces).map((face) => face.family));
+        for (const family of set.families.emoji ?? []) expect(embedded.has(family), family).toBe(false);
+        expect(set.families.emoji?.length ?? 0).toBeGreaterThan(0);
+      });
+
       it("покрывает все нужные начертания: regular, italic, semibold, bold", () => {
         for (const [role, style, weight] of REQUIRED) {
           const covering = Object.entries(set.faces).filter(([key, face]) => {

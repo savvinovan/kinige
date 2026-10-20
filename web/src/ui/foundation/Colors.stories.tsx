@@ -7,14 +7,13 @@ import "./colors.css";
 
 const cssVar = (role: string) => `var(--color-${role.replaceAll(".", "-")})`;
 
-function Candidate({ name }: { name: string }) {
+function PaletteSheet({ name }: { name: string }) {
   const palette = palettes[name];
   if (!palette) return null;
   return (
-    <section className="candidate" data-palette={name} aria-labelledby={`palette-${name}`}>
+    <section className="candidate" aria-labelledby={`palette-${name}`}>
       <h2 className="candidate__name" id={`palette-${name}`}>
         {name}
-        {name === active.palette ? " (по умолчанию)" : ""}
       </h2>
       <p className="candidate__about">{palette.description}</p>
 
@@ -30,19 +29,27 @@ function Candidate({ name }: { name: string }) {
       </ul>
 
       <div className="sample">
-        <p className="sample__day">Вторник, 20 октября</p>
-        <hr className="sample__rule" />
-        <p className="sample__time">09:12</p>
-        <p className="sample__text">
-          Проснулся рано и до завтрака записал мысль про журнал: <em>пишешь как в мессенджере, перечитываешь как
-          книгу</em>. Главное — <strong>не выбирать</strong>, куда писать.
-        </p>
-        <p className="sample__text sample__secondary">Вторичный текст: подпись, приглушённый синтаксис.</p>
-        <p className="sample__text">
-          <span className="sample__link">The Psychology of Habits — fs.blog</span>
-        </p>
-        <p className="sample__text sample__highlight">Подсвеченная запись: нашлась поиском.</p>
-        <p className="sample__error">Не отправилось. Повторить</p>
+        <p className="sample__day">Сегодня</p>
+        <div className="sample__plate">
+          <p className="sample__text">
+            Проснулся рано и до завтрака записал мысль про журнал: <em>пишешь как в мессенджере, перечитываешь как
+            книгу</em>. Главное — <strong>не выбирать</strong>, куда писать.
+          </p>
+          <p className="sample__text sample__secondary">Вторичный текст: подпись, имя чата.</p>
+          <p className="sample__text">
+            <span className="sample__link">The Psychology of Habits — fs.blog</span>{" "}
+            <code className="sample__code">git rebase --onto main</code>
+          </p>
+          <p className="sample__meta">09:12</p>
+        </div>
+        <div className="sample__plate sample__plate--highlighted">
+          <p className="sample__text">Подсвеченная запись: нашлась поиском. Заливка та же, меняется рамка.</p>
+          <p className="sample__meta">09:14</p>
+        </div>
+        <div className="sample__plate">
+          <p className="sample__text">Купить билеты на субботу</p>
+          <p className="sample__error">Не отправилось. Повторить</p>
+        </div>
         <span className="sample__focus">Фокус с клавиатуры</span>
       </div>
 
@@ -82,20 +89,15 @@ function Candidate({ name }: { name: string }) {
 function Colors() {
   return (
     <main className="foundation">
-      <h1 className="foundation__title">Цвета: кандидаты палитры</h1>
+      <h1 className="foundation__title">Цвета: палитра Nord</h1>
       <p className="foundation__lead">
-        Тёмные палитры на одних и тех же ролях: три «бумажные» тёплые или нейтральные (umber, moss, dusk) и три по мотивам
-        готовых схем (nord, catppuccin-mocha, catppuccin-macchiato). У последних под ролью указано происхождение цвета:
-        имя в официальной палитре или «подгонка». Компоненты знают только роли (<code>color.surface.paper</code>,{" "}
-        <code>color.text.primary</code> …), поэтому выбор палитры — смена значения в <code>design/tokens/active.json</code>.
-        Контраст проверяет тест <code>tokens.test.ts</code> для каждой палитры.
+        Единственная палитра (ADR-0004). Под ролью указано происхождение цвета: имя в официальной палитре Nord или
+        «подгонка». Компоненты знают только роли (<code>color.surface.message</code>, <code>color.text.primary</code> …),
+        поэтому смена палитры — смена значений в <code>design/tokens/palettes</code>. Контраст всех пар проверяет тест{" "}
+        <code>tokens.test.ts</code>.
       </p>
       <div className="foundation__grid">
-        {Object.keys(palettes)
-          .sort((a, b) => Number(b === active.palette) - Number(a === active.palette) || a.localeCompare(b))
-          .map((name) => (
-            <Candidate key={name} name={name} />
-          ))}
+        <PaletteSheet name={active.palette} />
       </div>
     </main>
   );
@@ -104,9 +106,9 @@ function Colors() {
 const meta = {
   title: "Основа/Цвета",
   component: Colors,
-  parameters: { docs: { description: { component: "Все кандидаты палитры рядом, с ролями и контрастом." } } },
+  parameters: { docs: { description: { component: "Роли палитры, образец плашек и контраст всех пар." } } },
 } satisfies Meta<typeof Colors>;
 
 export default meta;
 
-export const Кандидаты: StoryObj<typeof meta> = {};
+export const Палитра: StoryObj<typeof meta> = {};

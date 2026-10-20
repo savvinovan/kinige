@@ -58,6 +58,10 @@
   border-radius: var(--radius-panel);
 }
 
+.shape__box--message {
+  border-radius: var(--radius-message);
+}
+
 .shape__box--round {
   border-radius: var(--radius-round);
 }

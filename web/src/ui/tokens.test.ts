@@ -26,9 +26,9 @@ describe("палитры", () => {
     console.log(`\nКонтраст пар (WCAG 2.x; порог: text 4,5, ui 3, decorative 1,2)\n${rows.join("\n")}`);
   });
 
-  it("есть хотя бы два кандидата, активный существует", () => {
-    expect(Object.keys(palettes).length).toBeGreaterThanOrEqual(2);
-    expect(palettes[active.palette]).toBeDefined();
+  it("палитра одна: Nord, она же активная (ADR-0004)", () => {
+    expect(Object.keys(palettes)).toEqual(["nord"]);
+    expect(active.palette).toBe("nord");
   });
 
   for (const [name, palette] of Object.entries(palettes)) {
@@ -67,9 +67,9 @@ describe("сгенерированный CSS не отстал от токено
     }
   });
 
-  it("themes.css: есть блок на каждый кандидат палитры, переключателя шрифтов нет", () => {
+  it("themes.css: переключателей палитры и шрифтов нет", () => {
     const themes = css("themes.css");
-    for (const name of Object.keys(palettes)) expect(themes).toContain(`[data-palette="${name}"]`);
+    expect(themes).not.toContain("data-palette");
     expect(themes).not.toContain("data-fontset");
   });
 });

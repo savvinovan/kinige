@@ -18,14 +18,14 @@ const FACES: { role: Role; weight: "regular" | "semibold" | "bold"; italic?: boo
 ];
 
 const SCALE: { role: string; label: string; text: string }[] = [
-  { role: "day", label: "day: заголовок дня", text: "Вторник, 20 октября" },
-  { role: "h1", label: "h1", text: "Заголовок первого уровня" },
-  { role: "h2", label: "h2", text: "Заголовок второго уровня" },
-  { role: "h3", label: "h3", text: "Заголовок третьего уровня" },
-  { role: "body", label: "body: текст записи", text: "Проснулся рано и до завтрака записал мысль про журнал. Woke up early and wrote a thought down." },
-  { role: "small", label: "small: подсказки и подписи", text: "Enter — отправить, Shift+Enter — новая строка" },
-  { role: "code", label: "code: код", text: "fn main() { println!(\"Записей: {}\", today.count()); }" },
-  { role: "meta", label: "meta: время и счётчики", text: "09:12 · 3 записи" },
+  { role: "day", label: "day: метка дня, 12 px", text: "14 марта 2025" },
+  { role: "h1", label: "h1: 18 px", text: "Заголовок первого уровня" },
+  { role: "h2", label: "h2: 16 px", text: "Заголовок второго уровня" },
+  { role: "h3", label: "h3: 15 px", text: "Заголовок третьего уровня" },
+  { role: "body", label: "body: текст записи, 14 px", text: "Проснулся рано и до завтрака записал мысль про журнал. Woke up early and wrote a thought down." },
+  { role: "small", label: "small: интерфейс, 13 px", text: "Входящие, Идеи, Книги, Работа, Рецепты. Search" },
+  { role: "code", label: "code: код, 13 px", text: "fn main() { println!(\"Записей: {}\", today.count()); }" },
+  { role: "meta", label: "meta: время, 11 px", text: "09:12" },
 ];
 
 function Specimen() {
@@ -69,7 +69,7 @@ function Specimen() {
 
       <h3 className="foundation__heading">Образец записи</h3>
       <div className="page">
-        <p className="scale__text scale__text--day">Вторник, 20 октября</p>
+        <p className="scale__text scale__text--day">Сегодня</p>
         <p className="scale__text scale__text--meta page__time">09:12</p>
         <p className="scale__text scale__text--body page__paragraph">
           Проснулся рано и до завтрака записал мысль про журнал: <em>пишешь как в мессенджере, перечитываешь как
@@ -91,7 +91,9 @@ function Typography() {
       <h1 className="foundation__title">Типографика</h1>
       <p className="foundation__lead">
         Набор «serif + sans + mono» с кириллицей, выбран пользователем. Все начертания — встроенные woff2, не системные.
-        Размеры в rem: масштаб текста переключается в панели Storybook («Крупный текст», ×1,25).
+        Компактная шкала: текст записей 14 px, интерфейс 13 px, время 11 px. Размеры в rem (один rem равен размеру текста записей):
+        размер переключается в панели Storybook («Размер текста» 13 / 14 / 15 px — временный выбор пользователя) и
+        «Крупный текст» (×1,25).
       </p>
       <div className="foundation__grid">
         <Specimen />

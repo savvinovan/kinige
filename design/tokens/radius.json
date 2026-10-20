@@ -1,9 +1,11 @@
 {
   "radius": {
     "$type": "dimension",
-    "inline": { "$value": "4px", "$description": "Строчный код, тег." },
-    "control": { "$value": "6px", "$description": "Кнопки и поля ввода." },
-    "panel": { "$value": "10px", "$description": "Блок кода, composer, тост, контекстное меню." },
-    "round": { "$value": "999px", "$description": "Полностью скруглённые элементы." }
+    "$description": "Радиусы в rem: растут вместе с размером текста, как и отступы (при корне 14 px: inline 3,5 px, control 7 px, panel и message 10,5 px).",
+    "inline": { "$value": "0.25rem", "$description": "Строчный код, тег." },
+    "control": { "$value": "0.5rem", "$description": "Кнопки, поля ввода, строка чата, блок кода внутри плашки." },
+    "panel": { "$value": "0.75rem", "$description": "Composer, тост, контекстное меню." },
+    "message": { "$value": "0.75rem", "$description": "Плашка сообщения." },
+    "round": { "$value": "999px", "$description": "Полностью скруглённые элементы: метка дня." }
   }
 }

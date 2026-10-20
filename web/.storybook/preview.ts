@@ -1,12 +1,11 @@
 import type { Decorator, Preview } from "@storybook/react-vite";
 import "../src/app.css";
-import { palettes } from "../src/ui/tokenSource";
 
 // Переключатели дизайн-системы в панели Storybook. Они только ставят атрибуты на <html>,
-// все значения живут в токенах (src/ui/tokens.css, themes.css, base.css). Пустое значение — «по умолчанию» из design/tokens/active.json.
-// Шрифты не переключаются: набор выбран (design/tokens/fontsets/literata.json).
+// все значения живут в токенах (src/ui/tokens.css, themes.css, base.css). Пустое значение — «по умолчанию».
+// Палитра и шрифты не переключаются: выбраны (Nord, Literata; ADR-0004).
 const ATTRIBUTES: Record<string, string> = {
-  palette: "data-palette",
+  textSize: "data-text-size",
   textScale: "data-text-scale",
   reduceMotion: "data-reduce-motion",
 };
@@ -24,17 +23,20 @@ const withDesignSystem: Decorator = (Story, context) => {
 const preview: Preview = {
   parameters: { layout: "fullscreen" },
   decorators: [withDesignSystem],
-  initialGlobals: { palette: "", textScale: "", reduceMotion: "" },
+  initialGlobals: { textSize: "", textScale: "", reduceMotion: "" },
   globalTypes: {
-    palette: {
-      description: "Кандидат палитры",
+    // ВРЕМЕННО: кандидаты размера текста записей для выбора пользователем (ADR-0004, «Открыто»).
+    // После выбора лишние значения удаляются вместе с токенами font.root.candidate-* и правилами в base.css.
+    textSize: {
+      description: "Размер текста записей (временный выбор)",
       toolbar: {
-        title: "Палитра",
-        icon: "paintbrush",
+        title: "Размер текста",
+        icon: "type",
         dynamicTitle: true,
         items: [
-          { value: "", title: "Палитра: по умолчанию" },
-          ...Object.keys(palettes).map((name) => ({ value: name, title: name })),
+          { value: "13", title: "Текст записей 13 px" },
+          { value: "", title: "Текст записей 14 px (по умолчанию)" },
+          { value: "15", title: "Текст записей 15 px" },
         ],
       },
     },

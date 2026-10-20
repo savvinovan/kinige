@@ -27,16 +27,10 @@ export function coreFilter(token) {
 
 const declarations = (pairs, indent = "  ") => pairs.map(([name, value]) => `${indent}--${name}: ${value};`).join("\n");
 
-/** themes.css: блоки кандидатов палитр, @font-face, Reduce Motion. */
+/** themes.css: @font-face, Reduce Motion. */
 export function candidatesFormat({ dictionary }) {
   const tokens = dictionary.allTokens;
   const out = ["/* Сгенерировано из design/tokens (npm run tokens). Не править вручную. */", ""];
-
-  out.push("/* Кандидаты палитр: [data-palette] на любом элементе, в т.ч. <html>. Блоки идут после :root из tokens.css. */");
-  for (const name of unique(tokens.filter((t) => t.path[0] === "palette").map((t) => t.path[1]))) {
-    const own = tokens.filter((t) => t.path[0] === "palette" && t.path[1] === name);
-    out.push(`[data-palette="${name}"] {`, declarations(own.map((t) => [`color-${t.path.slice(2).join("-")}`, t.$value])), "}", "");
-  }
 
   out.push("/* Начертания: пути относительно этого файла. */");
   for (const face of tokens.filter((t) => t.path[0] === "fontset" && t.path[2] === "face")) {
@@ -70,8 +64,4 @@ export function candidatesFormat({ dictionary }) {
     "",
   );
   return out.join("\n");
-}
-
-function unique(list) {
-  return [...new Set(list)];
 }
