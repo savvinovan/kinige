@@ -26,9 +26,9 @@ describe("палитры", () => {
     console.log(`\nКонтраст пар (WCAG 2.x; порог: text 4,5, ui 3, decorative 1,2)\n${rows.join("\n")}`);
   });
 
-  it("палитра одна: Nord, она же активная (ADR-0004)", () => {
-    expect(Object.keys(palettes)).toEqual(["nord"]);
-    expect(active.palette).toBe("nord");
+  it("палитра одна: graphite, она же активная (ADR-0004)", () => {
+    expect(Object.keys(palettes)).toEqual(["graphite"]);
+    expect(active.palette).toBe("graphite");
   });
 
   for (const [name, palette] of Object.entries(palettes)) {

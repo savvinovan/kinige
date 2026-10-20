@@ -1,24 +1,10 @@
 {
-  "$comment": "Официальные значения цветов для проверки происхождения палитры (тест palettes.provenance.test.ts). Скопированы из первоисточника программно, без правок вручную. Это не токены: Style Dictionary сюда не заглядывает. Остальные кандидаты (Catppuccin и авторские) удалены после выбора Nord (ADR-0004).",
+  "$comment": "Официальные значения цветов Nord, из которых взяты акцент и ошибка палитры graphite (тест palettes.provenance.test.ts). Скопированы из первоисточника программно, без правок вручную. Это не токены: Style Dictionary сюда не заглядывает. Остальные цвета Nord и все прочие кандидаты удалены (ADR-0004).",
   "nord": {
     "source": "https://github.com/nordtheme/nord, коммит 1cef71605416a222e57225b544540ce0fcec18d4 (ветка develop, пакет 0.2.1), src/nord.css; те же значения на https://www.nordtheme.com/docs/colors-and-palettes (сверено 20.10.2026)",
     "colors": {
-      "nord0": "#2e3440",
-      "nord1": "#3b4252",
-      "nord2": "#434c5e",
-      "nord3": "#4c566a",
-      "nord4": "#d8dee9",
-      "nord5": "#e5e9f0",
-      "nord6": "#eceff4",
-      "nord7": "#8fbcbb",
       "nord8": "#88c0d0",
-      "nord9": "#81a1c1",
-      "nord10": "#5e81ac",
-      "nord11": "#bf616a",
-      "nord12": "#d08770",
-      "nord13": "#ebcb8b",
-      "nord14": "#a3be8c",
-      "nord15": "#b48ead"
+      "nord11": "#bf616a"
     }
   }
 }

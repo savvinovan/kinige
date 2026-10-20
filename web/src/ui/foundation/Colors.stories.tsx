@@ -89,10 +89,10 @@ function PaletteSheet({ name }: { name: string }) {
 function Colors() {
   return (
     <main className="foundation">
-      <h1 className="foundation__title">Цвета: палитра Nord</h1>
+      <h1 className="foundation__title">Цвета: нейтральный графит</h1>
       <p className="foundation__lead">
-        Единственная палитра (ADR-0004). Под ролью указано происхождение цвета: имя в официальной палитре Nord или
-        «подгонка». Компоненты знают только роли (<code>color.surface.message</code>, <code>color.text.primary</code> …),
+        Единственная палитра (ADR-0004): серые поверхности и текст без оттенка, акцент и ошибка из Nord. Под ролью
+        указано происхождение цвета: «авторский», официальное имя в палитре Nord или «подгонка». Компоненты знают только роли (<code>color.surface.message</code>, <code>color.text.primary</code> …),
         поэтому смена палитры — смена значений в <code>design/tokens/palettes</code>. Контраст всех пар проверяет тест{" "}
         <code>tokens.test.ts</code>.
       </p>
