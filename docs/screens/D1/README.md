@@ -1,6 +1,6 @@
 # Скриншоты D1
 
-Снимки обновлены 20.10.2026 после правок по живому окну (Inter вместо Literata, темнее и белее, поля без обводки, счётчики записей). Файлы `main-window-*`, `typography.png`, `colors.png`, `sidebar-long-names*.png`, `composer-focus.png` сняты в Chromium из Storybook (dev) на macOS, 2× (2560 px по ширине); эталоны визуальных тестов (Linux-контейнер, Chromium) лежат в `web/tests/visual/stories.spec.ts-snapshots/` и считаются единственным источником для сравнения. `app-main-window.png` — настоящее окно Tauri (WKWebView, dev-режим, только окно, `scripts/screenshot-window.sh`).
+Снимки обновлены 20.10.2026 после правок по живому окну (Inter вместо Literata, нейтральный графит вместо Nord, колонка ленты по центру, строка профиля, поля без обводки с линией фокуса, кнопка «Отправить», действия под плашкой, счётчики записей). Файлы `main-window-*`, `typography.png`, `colors.png`, `sidebar-long-names*.png`, `composer-focus.png` сняты в Chromium из Storybook (dev) на macOS, 2× (2560 px по ширине); эталоны визуальных тестов (Linux-контейнер, Chromium) лежат в `web/tests/visual/stories.spec.ts-snapshots/` и считаются единственным источником для сравнения. `app-main-window.png` — настоящее окно Tauri (WKWebView, dev-режим, только окно, `scripts/screenshot-window.sh`).
 
 | Файл | Что |
 |---|---|
@@ -9,7 +9,10 @@
 | `main-window-text-13.png`, `main-window-text-15.png` | то же при размере текста записей 13 и 15 px (кандидаты; 14 px — `main-window.png`) |
 | `main-window-narrow.png` | узкое окно (ширина `layout.window.narrow`) |
 | `sidebar-long-names.png`, `sidebar-long-names-large.png` | сайдбар с длинными именами чатов: многоточие, счётчик справа, без горизонтальной прокрутки, обычный и крупный текст |
-| `composer-focus.png` | поле ввода в фокусе: без обводки и кольца, чуть светлее заливка, курсор акцентный |
+| `composer-focus.png` | поле ввода в фокусе: чуть светлее заливка и одна тонкая линия внутри цветом фокуса, снаружи кольца нет |
+| `composer-with-text.png`, `composer-send-focus.png` | поле с текстом: «микрофон» заменён круглой акцентной кнопкой «Отправить»; она же с фокусом с клавиатуры |
+| `profile-menu.png` | строка профиля внизу сайдбара с открытым меню «Настройки», «Экспорт», «О программе» (только вид) |
+| `message-actions-hover.png` | наведение на сообщение: ряд значков под плашкой (копировать, редактировать, задача, избранное, ещё) |
 | `typography.png` | «Основа / Типографика»: Inter (regular, italic, semibold, bold, bold italic), JetBrains Mono и компактная шкала |
 | `colors.png` | «Основа / Цвета»: роли палитры, образец плашек, таблица контраста |
 | `app-main-window.png` | настоящее окно Tauri с временным главным окном на `MockApi` |
