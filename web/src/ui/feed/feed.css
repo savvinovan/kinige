@@ -1,0 +1,72 @@
+/* Лента: прокручиваемая область, список плашек и меток дней. Только токены. */
+.feed-scroll {
+  display: flex;
+  flex-direction: column-reverse;
+  box-sizing: border-box;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--layout-feed-padding-block) var(--layout-feed-padding-inline);
+  background: var(--color-surface-paper);
+}
+
+/* Единственный элемент области `column-reverse` стоит у её нижнего края: короткая лента лежит внизу, как в мессенджере.
+   Лента — колонка по центру области чата шириной layout.feed.column (668 px при корне 13 px); в узком окне колонка
+   занимает всю ширину за вычетом полей. Плашки прижаты к левому краю колонки, метки дней стоят по её центру. */
+.feed {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: center;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--layout-feed-column);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Строка списка занимает всю колонку: свободное место справа от плашки принадлежит ей (там встаёт ряд действий). */
+.feed__item {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  margin-top: var(--layout-message-gap-group);
+}
+
+.feed__item:first-child {
+  margin-top: 0;
+}
+
+/* Серия: пауза меньше 5 минут, плашки ближе друг к другу. */
+.feed__item--series {
+  margin-top: var(--layout-message-gap-series);
+}
+
+.feed__item--day {
+  align-self: stretch;
+  justify-content: center;
+}
+
+/* Метка дня: маленькая «таблетка» по центру, одна на день. */
+.day-label {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-round);
+  background: var(--color-surface-day);
+  color: var(--color-text-secondary);
+  font-family: var(--type-day-family);
+  font-size: var(--type-day-size);
+  font-weight: var(--type-day-weight);
+  line-height: var(--type-day-line-height);
+}
+
+.feed__empty {
+  margin: auto;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  text-align: center;
+}

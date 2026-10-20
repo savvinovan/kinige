@@ -5,7 +5,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
-  server: { port: 1420, strictPort: true },
+  // fs.allow: сам web/ и design/tokens (тесты и истории читают токены JSON на уровень выше web/).
+  server: { port: 1420, strictPort: true, fs: { allow: [".", "../design/tokens"] } },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],

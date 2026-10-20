@@ -1,0 +1,37 @@
+/* Базовые правила на семантических токенах: размер и масштаб текста, фон и текст страницы, фокус. */
+
+/* Плотность целиком: 1rem = размер текста записей (font.root.default, 13 px). Размеры шрифта, отступы, радиусы, высоты строк
+   и значки заданы в rem, поэтому масштаб текста (data-text-scale="large", font.scale.large) меняет всю плотность
+   пропорционально, а не только текст. */
+:root {
+  --text-scale: var(--font-scale-default);
+  --text-root-size: var(--font-root-default);
+}
+
+:root[data-text-scale="large"] {
+  --text-scale: var(--font-scale-large);
+}
+
+:root {
+  --text-root-resolved: calc(var(--text-root-size) * var(--text-scale));
+}
+
+html {
+  font-size: var(--text-root-resolved);
+}
+
+body {
+  background: var(--color-surface-background);
+  color: var(--color-text-primary);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line-height);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Видимый фокус с клавиатуры на любом интерактивном элементе. */
+:focus-visible {
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-offset);
+}

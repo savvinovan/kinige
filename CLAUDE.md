@@ -46,8 +46,8 @@ Rust (из корня):
 - `cargo build -p kinige-domain --target wasm32-unknown-unknown`
 
 Фронтенд (из `web/`, после `npm ci`):
-- `npm run tokens` — пересобрать `src/ui/tokens.css` из `design/tokens/*.json` (запускается само перед `dev`, `build`, `storybook`); результат коммитится
-- `npm run typecheck`, `npm run lint`, `npm test` (vitest; включает проверку «нет сырых цветов и размеров вне tokens.css»)
+- `npm run tokens` — пересобрать `src/ui/tokens.css` и `src/ui/themes.css` из `design/tokens/**/*.json` (запускается само перед `dev`, `build`, `storybook`); результат коммитится
+- `npm run typecheck`, `npm run lint`, `npm test` (vitest; включает проверку «нет сырых цветов и размеров вне tokens.css / themes.css», контраст всех пар «цвет / фон» палитры и проверку шрифтов по самим woff2-файлам)
 - `npm run build-storybook`
 
 Визуальные тесты Storybook идут только в Linux-контейнере: `scripts/visual-tests.sh` (сравнение), `scripts/visual-tests.sh --update` (новые эталоны). Эталоны на macOS не снимаются.

@@ -1,0 +1,142 @@
+/* Страница «Типографика». Только токены. */
+
+/* Типографика */
+.faces {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+
+.face__label {
+  display: block;
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  color: var(--color-text-tertiary);
+}
+
+.face__sample {
+  display: block;
+  font-size: var(--type-h3-size);
+  line-height: var(--type-h3-line-height);
+  overflow-wrap: anywhere;
+}
+
+.face__sample--sans {
+  font-family: var(--font-family-sans);
+}
+
+.face__sample--mono {
+  font-family: var(--font-family-mono);
+}
+
+.face__sample--regular {
+  font-weight: var(--font-weight-regular);
+}
+
+.face__sample--semibold {
+  font-weight: var(--font-weight-semibold);
+}
+
+.face__sample--bold {
+  font-weight: var(--font-weight-bold);
+}
+
+.face__sample--italic {
+  font-style: italic;
+}
+
+.scale {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+
+.scale__row {
+  margin: 0;
+}
+
+.scale__text {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.scale__text--day {
+  font-family: var(--type-day-family);
+  font-size: var(--type-day-size);
+  font-weight: var(--type-day-weight);
+  line-height: var(--type-day-line-height);
+}
+
+.scale__text--h1 {
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line-height);
+}
+
+.scale__text--h2 {
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line-height);
+}
+
+.scale__text--h3 {
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line-height);
+}
+
+.scale__text--body {
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line-height);
+}
+
+.scale__text--small {
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  font-weight: var(--type-small-weight);
+  line-height: var(--type-small-line-height);
+}
+
+.scale__text--code {
+  font-family: var(--type-code-family);
+  font-size: var(--type-code-size);
+  font-weight: var(--type-code-weight);
+  line-height: var(--type-code-line-height);
+}
+
+.scale__text--meta {
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+  line-height: var(--type-meta-line-height);
+}
+
+/* Образец записи: день, время, абзацы на «бумаге» */
+.page {
+  padding: var(--space-5);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-paper);
+}
+
+.page__time {
+  margin: 0;
+  color: var(--color-text-tertiary);
+}
+
+.page__paragraph {
+  margin: 0 0 var(--space-3);
+}
+
+.page__code {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-inline);
+  background: var(--color-surface-code);
+  font-family: var(--type-code-family);
+  font-size: var(--type-code-size);
+}

@@ -1,0 +1,176 @@
+/* Кнопка, иконка-кнопка, поле ввода. Только семантические токены. */
+
+.button {
+  box-sizing: border-box;
+  min-height: var(--layout-control-height);
+  margin: 0;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--type-small-line-height);
+  cursor: pointer;
+  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.button--accent {
+  color: var(--color-accent-default);
+}
+
+.button--accent:hover {
+  background: var(--color-surface-selected);
+}
+
+/* В строке текста: высота и поля не раздвигают строку, цвет и размер наследуются, подчёркивание показывает действие. */
+.button--inline {
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--radius-inline);
+  color: inherit;
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+
+.button--inline:hover {
+  text-decoration-thickness: var(--border-width-strong);
+}
+
+.icon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--layout-control-height);
+  height: var(--layout-control-height);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-duration-short) var(--motion-easing-standard),
+    color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.icon-button:hover {
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+}
+
+/* «Отправить»: круглая акцентная кнопка, стрелка цветом фона (9,2:1 к акценту). Размер тот же, что у «микрофона»: ширина не прыгает. */
+.icon-button--accent,
+.icon-button--accent:hover {
+  background: var(--color-accent-default);
+  color: var(--color-surface-background);
+}
+
+/* Мелкая кнопка: ряд действий под плашкой. */
+.icon-button--small {
+  width: var(--layout-action-size);
+  height: var(--layout-action-size);
+  border-radius: var(--radius-control);
+}
+
+.icon-button--small .icon {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}
+
+.button:disabled,
+.icon-button:disabled {
+  cursor: default;
+  opacity: var(--opacity-disabled);
+}
+
+/* Кнопка без функции («Появится позже»): остаётся в порядке обхода, но не откликается на наведение и нажатие. */
+.icon-button--unavailable,
+.icon-button--unavailable:hover {
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: default;
+  opacity: var(--opacity-unavailable);
+}
+
+/* «Отправить» без обработчика (D1): остаётся акцентной, но приглушённой. */
+.icon-button--accent.icon-button--unavailable,
+.icon-button--accent.icon-button--unavailable:hover {
+  background: var(--color-accent-default);
+  color: var(--color-surface-background);
+}
+
+/* Текст только для экранного диктора. */
+.visually-hidden {
+  position: absolute;
+  width: var(--border-width-hairline);
+  height: var(--border-width-hairline);
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Поле ввода: тёмная заливка без рамки, значок слева, ошибка под полем. */
+.text-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.text-field__box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-height: var(--layout-field-height);
+  padding: 0 var(--space-2);
+  /* Рамки у поля нет, только заливка (как в Telegram); прозрачная рамка нужна, чтобы ошибка не сдвигала содержимое. */
+  border: var(--border-width-hairline) solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-field);
+  color: var(--color-text-tertiary);
+  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+/* Фокус: курсор (акцентный), чуть более светлая заливка и одна тонкая линия внутри поля цветом фокуса; снаружи кольца нет. */
+.text-field__box:has(.text-field__input:focus) {
+  background: var(--color-surface-field-active);
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-focus-ring);
+}
+
+/* Ошибка: единственный случай, когда у поля есть рамка. */
+.text-field__box--invalid {
+  border-color: var(--color-status-error);
+}
+
+.text-field__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  caret-color: var(--color-accent-default);
+  color: var(--color-text-primary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  outline: none;
+}
+
+.text-field__input::placeholder {
+  color: var(--color-text-tertiary);
+  opacity: 1;
+}
+
+.text-field__error {
+  margin: 0;
+  color: var(--color-status-error);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}

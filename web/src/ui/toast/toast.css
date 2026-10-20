@@ -1,0 +1,42 @@
+/* Тост «Отменить»: плашка над полем ввода. Только токены. */
+.toast-region {
+  position: absolute;
+  right: var(--layout-feed-padding-inline);
+  bottom: var(--layout-toast-offset);
+  left: var(--layout-feed-padding-inline);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-message);
+  box-shadow: var(--shadow-raised);
+  color: var(--color-text-primary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  pointer-events: auto;
+  animation: toast-in var(--motion-duration-medium) var(--motion-easing-enter);
+}
+
+.toast__message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Reduce Motion обнуляет длительность (themes.css): тост появляется сразу. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+}

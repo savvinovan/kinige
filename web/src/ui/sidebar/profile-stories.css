@@ -1,0 +1,6 @@
+/* Только для историй Storybook: строка профиля шириной сайдбара, с полями и местом над собой для меню. */
+.story-profile {
+  box-sizing: border-box;
+  width: var(--layout-sidebar-width);
+  padding: var(--layout-sidebar-padding);
+}

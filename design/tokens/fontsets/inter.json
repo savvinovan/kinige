@@ -1,0 +1,67 @@
+{
+  "fontset": {
+    "inter": {
+      "$description": "Выбранный набор шрифтов (ADR-0004, по живому окну): Inter для текста записей и интерфейса, JetBrains Mono для кода. Оба переменные: одна ось веса покрывает regular / semibold / bold, у Inter есть и прямое, и курсивное начертание. Подробности и источники — web/src/ui/fonts/README.md.",
+      "family": {
+        "$type": "fontFamily",
+        "sans": {
+          "$value": [
+            "Inter",
+            "-apple-system",
+            "BlinkMacSystemFont",
+            "Segoe UI",
+            "sans-serif"
+          ]
+        },
+        "mono": {
+          "$value": [
+            "JetBrains Mono",
+            "ui-monospace",
+            "SF Mono",
+            "Menlo",
+            "Consolas",
+            "monospace"
+          ]
+        },
+        "emoji": {
+          "$value": [
+            "Apple Color Emoji",
+            "Segoe UI Emoji",
+            "Noto Color Emoji",
+            "sans-serif"
+          ],
+          "$description": "ИСКЛЮЧЕНИЕ из правила «шрифты только встроенные»: эмодзи чатов рисует системный эмодзи-шрифт (цветные эмодзи не встраиваем). Это данные пользователя (chats.icon), а не декор; других системных шрифтов в интерфейсе нет. Проверяет fonts.test.ts."
+        }
+      },
+      "face": {
+        "sans-variable": {
+          "$type": "fontFace",
+          "$value": {
+            "family": "Inter",
+            "style": "normal",
+            "weight": "100 900",
+            "file": "fonts/inter/Inter-Variable.woff2"
+          }
+        },
+        "sans-italic-variable": {
+          "$type": "fontFace",
+          "$value": {
+            "family": "Inter",
+            "style": "italic",
+            "weight": "100 900",
+            "file": "fonts/inter/Inter-Italic-Variable.woff2"
+          }
+        },
+        "mono-variable": {
+          "$type": "fontFace",
+          "$value": {
+            "family": "JetBrains Mono",
+            "style": "normal",
+            "weight": "100 800",
+            "file": "fonts/jetbrains-mono/JetBrainsMono-Variable.woff2"
+          }
+        }
+      }
+    }
+  }
+}

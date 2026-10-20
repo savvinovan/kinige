@@ -1,0 +1,14 @@
+{
+  "border": {
+    "width": {
+      "$type": "dimension",
+      "hairline": { "$value": "1px", "$description": "Тонкий разделитель и рамка элемента." },
+      "strong": { "$value": "2px", "$description": "Линия, которая должна читаться как линия: кривые на графиках." }
+    }
+  },
+  "focus": {
+    "$type": "dimension",
+    "width": { "$value": "2px", "$description": "Толщина кольца фокуса с клавиатуры." },
+    "offset": { "$value": "2px", "$description": "Зазор между элементом и кольцом фокуса." }
+  }
+}
