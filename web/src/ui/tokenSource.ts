@@ -4,6 +4,7 @@
 interface Leaf {
   $value: unknown;
   $description?: string;
+  $extensions?: { kinige?: { origin?: string } };
 }
 
 const isLeaf = (node: unknown): node is Leaf => typeof node === "object" && node !== null && "$value" in node;
@@ -49,6 +50,8 @@ export interface Palette {
   description: string;
   /** Роль («surface.paper») -> цвет «#rrggbb». */
   colors: Record<string, string>;
+  /** Роль -> откуда цвет (официальное имя или «подгонка: …»); есть у палитр по мотивам готовых схем. */
+  origins: Record<string, string>;
 }
 
 export const palettes: Record<string, Palette> = Object.fromEntries(
@@ -60,6 +63,12 @@ export const palettes: Record<string, Palette> = Object.fromEntries(
       {
         description: String(node.$description ?? ""),
         colors: Object.fromEntries([...leaves].map(([role, leaf]) => [role, String(leaf.$value)])),
+        origins: Object.fromEntries(
+          [...leaves].flatMap(([role, leaf]) => {
+            const origin = leaf.$extensions?.kinige?.origin;
+            return origin ? [[role, origin]] : [];
+          }),
+        ),
       },
     ];
   }),

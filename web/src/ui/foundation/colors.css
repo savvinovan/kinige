@@ -30,6 +30,14 @@
   color: var(--color-text-secondary);
 }
 
+.swatch__origin {
+  grid-column: 2 / -1;
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  color: var(--color-text-tertiary);
+}
+
 /* Цвета: образец ленты на «бумаге» кандидата */
 .sample {
   margin: 0 0 var(--space-4);

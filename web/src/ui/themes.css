@@ -1,6 +1,34 @@
 /* Сгенерировано из design/tokens (npm run tokens). Не править вручную. */
 
 /* Кандидаты палитр: [data-palette] на любом элементе, в т.ч. <html>. Блоки идут после :root из tokens.css. */
+[data-palette="catppuccin-macchiato"] {
+  --color-surface-background: #1e2030;
+  --color-surface-paper: #24273a;
+  --color-text-primary: #cad3f5;
+  --color-text-secondary: #b8c0e0;
+  --color-text-tertiary: #a5adcb;
+  --color-accent-default: #8aadf4;
+  --color-border-divider: #363a4f;
+  --color-border-control: #6e738d;
+  --color-highlight-background: #363a4f;
+  --color-focus-ring: #b7bdf8;
+  --color-status-error: #ed8796;
+}
+
+[data-palette="catppuccin-mocha"] {
+  --color-surface-background: #181825;
+  --color-surface-paper: #1e1e2e;
+  --color-text-primary: #cdd6f4;
+  --color-text-secondary: #bac2de;
+  --color-text-tertiary: #a6adc8;
+  --color-accent-default: #89b4fa;
+  --color-border-divider: #313244;
+  --color-border-control: #6c7086;
+  --color-highlight-background: #313244;
+  --color-focus-ring: #b4befe;
+  --color-status-error: #f38ba8;
+}
+
 [data-palette="dusk"] {
   --color-surface-background: #1a1817;
   --color-surface-paper: #232120;
@@ -27,6 +55,20 @@
   --color-highlight-background: #292f23;
   --color-focus-ring: #b4c99b;
   --color-status-error: #e58f80;
+}
+
+[data-palette="nord"] {
+  --color-surface-background: #252a34;
+  --color-surface-paper: #2e3440;
+  --color-text-primary: #eceff4;
+  --color-text-secondary: #d8dee9;
+  --color-text-tertiary: #a7aebd;
+  --color-accent-default: #88c0d0;
+  --color-border-divider: #4c566a;
+  --color-border-control: #81a1c1;
+  --color-highlight-background: #3b4252;
+  --color-focus-ring: #88c0d0;
+  --color-status-error: #d89fa4;
 }
 
 [data-palette="umber"] {

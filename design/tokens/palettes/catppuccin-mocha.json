@@ -1,0 +1,77 @@
+{
+  "palette": {
+    "catppuccin-mocha": {
+      "$type": "color",
+      "$description": "Кандидат в духе Catppuccin Mocha (официальный palette.json v1.8.0): холодный сине-лиловый графит. Все цвета официальные, без подгонки; роли выбраны по официальному style guide. Отступления от §11.2 — в design/tokens/palettes/README.md.",
+      "surface": {
+        "background": {
+          "$value": "#181825",
+          "$description": "Фон окна и сайдбара вокруг ленты.",
+          "$extensions": { "kinige": { "origin": "Mantle (официально: «Secondary Panes»)" } }
+        },
+        "paper": {
+          "$value": "#1e1e2e",
+          "$description": "«Бумага» ленты и поля ввода: чуть светлее фона.",
+          "$extensions": { "kinige": { "origin": "Base (официально: «Background Pane»)" } }
+        }
+      },
+      "text": {
+        "primary": {
+          "$value": "#cdd6f4",
+          "$description": "Основной текст записей.",
+          "$extensions": { "kinige": { "origin": "Text (официально: «Body Copy»)" } }
+        },
+        "secondary": {
+          "$value": "#bac2de",
+          "$description": "Вторичный текст: подписи, приглушённый синтаксис.",
+          "$extensions": { "kinige": { "origin": "Subtext 1 (официально: «Sub-Headlines, Labels»)" } }
+        },
+        "tertiary": {
+          "$value": "#a6adc8",
+          "$description": "Метаданные: время, счётчики, подсказки.",
+          "$extensions": { "kinige": { "origin": "Subtext 0 (официально: «Sub-Headlines, Labels»). Для «Subtle» гайд даёт Overlay 1, но он не проходит 4,5:1 (4,44 на Base, 3,40 на Surface 0)" } }
+        }
+      },
+      "accent": {
+        "default": {
+          "$value": "#89b4fa",
+          "$description": "Приглушённый акцент: ссылки, выбранный пункт, курсор.",
+          "$extensions": { "kinige": { "origin": "Blue (официально: «Links, URLs»). Фирменный Mauve не взят: он фиолетовый" } }
+        }
+      },
+      "border": {
+        "divider": {
+          "$value": "#313244",
+          "$description": "Тонкий разделитель дней и записей (декоративный, не граница элемента управления).",
+          "$extensions": { "kinige": { "origin": "Surface 0 (официально: «Surface Elements»); роль разделителя в гайде не описана" } }
+        },
+        "control": {
+          "$value": "#6c7086",
+          "$description": "Рамка элемента управления (кнопка, поле ввода): не ниже 3:1 к бумаге и фону (WCAG 1.4.11).",
+          "$extensions": { "kinige": { "origin": "Overlay 0 (официально: «Inactive Border»)" } }
+        }
+      },
+      "highlight": {
+        "background": {
+          "$value": "#313244",
+          "$description": "Подсвеченная запись, выделение текста.",
+          "$extensions": { "kinige": { "origin": "Surface 0 (официальный цвет). Гайд задаёт выделение как Overlay 2 с прозрачностью 20–30 %; в токенах нужен непрозрачный цвет (контраст считается по hex), поэтому взят ближайший официальный непрозрачный Surface 0" } }
+        }
+      },
+      "focus": {
+        "ring": {
+          "$value": "#b4befe",
+          "$description": "Кольцо фокуса с клавиатуры.",
+          "$extensions": { "kinige": { "origin": "Lavender (официально: «Active Border»)" } }
+        }
+      },
+      "status": {
+        "error": {
+          "$value": "#f38ba8",
+          "$description": "Состояние «не отправилось» и ошибки (§1.2 п. 9).",
+          "$extensions": { "kinige": { "origin": "Red (официально: «Errors»)" } }
+        }
+      }
+    }
+  }
+}

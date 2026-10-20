@@ -24,6 +24,7 @@ function Candidate({ name }: { name: string }) {
             <span className="swatch__chip" style={{ background: cssVar(role) }} role="img" aria-label={role} />
             <span>{role}</span>
             <span className="swatch__value">{palette.colors[role]}</span>
+            {palette.origins[role] ? <span className="swatch__origin">{palette.origins[role]}</span> : null}
           </li>
         ))}
       </ul>
@@ -83,7 +84,9 @@ function Colors() {
     <main className="foundation">
       <h1 className="foundation__title">Цвета: кандидаты палитры</h1>
       <p className="foundation__lead">
-        Три тёмные «бумажные» палитры на одних и тех же ролях. Компоненты знают только роли (<code>color.surface.paper</code>,{" "}
+        Тёмные палитры на одних и тех же ролях: три «бумажные» тёплые или нейтральные (umber, moss, dusk) и три по мотивам
+        готовых схем (nord, catppuccin-mocha, catppuccin-macchiato). У последних под ролью указано происхождение цвета:
+        имя в официальной палитре или «подгонка». Компоненты знают только роли (<code>color.surface.paper</code>,{" "}
         <code>color.text.primary</code> …), поэтому выбор палитры — смена значения в <code>design/tokens/active.json</code>.
         Контраст проверяет тест <code>tokens.test.ts</code> для каждой палитры.
       </p>
