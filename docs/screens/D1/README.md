@@ -5,7 +5,7 @@
 | История | Обычный текст | Крупный текст |
 |---|---|---|
 | Цвета | `web/tests/visual/stories.spec.ts-snapshots/основа-цвета--кандидаты-chromium-linux.png` | `…/основа-цвета--кандидаты-large-chromium-linux.png` |
-| Типографика | `…/основа-типографика--кандидаты-chromium-linux.png` | `…/основа-типографика--кандидаты-large-chromium-linux.png` |
+| Типографика | `…/основа-типографика--начертания-chromium-linux.png` | `…/основа-типографика--начертания-large-chromium-linux.png` |
 | Отступы | `…/основа-отступы--шкала-chromium-linux.png` | `…/основа-отступы--шкала-large-chromium-linux.png` |
 | Анимации | `…/основа-анимации--длительности-chromium-linux.png` | `…/основа-анимации--длительности-large-chromium-linux.png` |
 

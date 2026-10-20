@@ -47,7 +47,7 @@ describe("палитры", () => {
           expect(bg, pair.background).toBeDefined();
           const ratio = contrastRatio(fg ?? "", bg ?? "");
           rows.push(
-            `${name.padEnd(8)} ${pair.foreground.padEnd(16)} на ${pair.background.padEnd(21)} ${ratio.toFixed(2).padStart(5)}:1  (${pair.kind}, нужно >= ${MIN_RATIO[pair.kind]})`,
+            `${name.padEnd(21)} ${pair.foreground.padEnd(16)} на ${pair.background.padEnd(21)} ${ratio.toFixed(2).padStart(5)}:1  (${pair.kind}, нужно >= ${MIN_RATIO[pair.kind]})`,
           );
           expect(ratio).toBeGreaterThanOrEqual(MIN_RATIO[pair.kind]);
         });
