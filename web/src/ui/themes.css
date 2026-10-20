@@ -1,0 +1,41 @@
+/* Сгенерировано из design/tokens (npm run tokens). Не править вручную. */
+
+/* Начертания: пути относительно этого файла. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url("./fonts/inter/Inter-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: block;
+  src: url("./fonts/inter/Inter-Italic-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: block;
+  src: url("./fonts/jetbrains-mono/JetBrainsMono-Variable.woff2") format("woff2");
+}
+
+/* Reduce Motion: настройка ОС или атрибут data-reduce-motion на любом элементе (переключатель в Storybook и в настройках). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-short: 0s;
+    --motion-duration-medium: 0s;
+    --motion-duration-long: 0s;
+  }
+}
+
+[data-reduce-motion] {
+  --motion-duration-short: 0s;
+  --motion-duration-medium: 0s;
+  --motion-duration-long: 0s;
+}

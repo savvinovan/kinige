@@ -1,0 +1,20 @@
+@import "./ui/tokens.css";
+@import "./ui/themes.css";
+@import "./ui/base.css";
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+.empty-window {
+  box-sizing: border-box;
+  height: 100%;
+  padding: var(--space-4);
+}
+
+.empty-window__title {
+  margin: 0;
+}

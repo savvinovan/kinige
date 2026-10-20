@@ -1,0 +1,10 @@
+{
+  "$comment": "Официальные значения цветов Nord, из которых взяты акцент и ошибка палитры graphite (тест palettes.provenance.test.ts). Скопированы из первоисточника программно, без правок вручную. Это не токены: Style Dictionary сюда не заглядывает. Остальные цвета Nord и все прочие кандидаты удалены (ADR-0004).",
+  "nord": {
+    "source": "https://github.com/nordtheme/nord, коммит 1cef71605416a222e57225b544540ce0fcec18d4 (ветка develop, пакет 0.2.1), src/nord.css; те же значения на https://www.nordtheme.com/docs/colors-and-palettes (сверено 20.10.2026)",
+    "colors": {
+      "nord8": "#88c0d0",
+      "nord11": "#bf616a"
+    }
+  }
+}

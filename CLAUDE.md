@@ -9,7 +9,7 @@
 - `docs/slices/<id>-<name>.md` — одностраничная спецификация слайса (§12.1a).
 - `docs/screens/<slice>/` — скриншоты настоящего окна для приёмки.
 
-Проект пока в стадии планирования: кода ещё нет, первый слайс — 0 (каркас), затем D1 (основа дизайн-системы) и параллельно ADR-0001 (протокол + ключи). Команды сборки и тестов появятся в этом файле после слайса 0.
+Состояние: слайс 0 (каркас) реализован; дальше D1 (основа дизайн-системы) и параллельно ADR-0001 (протокол + ключи). Команды сборки и тестов — в разделе «Сборка и тесты» ниже.
 
 ## Как работаем (обязательно, §12 ТЗ)
 
@@ -34,6 +34,27 @@
 - Схема SQLite, протокол синхронизации, формат конверта, ключи — §4 и §10 ТЗ. Любое изменение здесь проходит через `sync-crypto-guardian` до мержа.
 - Своя криптография запрещена: только libsodium / RustCrypto и описанная в ТЗ схема.
 - Команды Tauri: у каждого окна свой набор разрешённых команд (§12.3), с отрицательными тестами.
+
+## Сборка и тесты
+
+Раскладка: `crates/kinige-domain` (правила, без IO, собирается под wasm32), `src-tauri/` (тонкий слой Tauri 2), `web/` (React + TS + Vite + Storybook), `design/tokens/` (DTCG), `scripts/`, `.gitea/workflows/ci.yml`. Версии Rust и Node закреплены в `rust-toolchain.toml` и `.node-version`. Подробности и методика замера старта — в `README.md`.
+
+Rust (из корня):
+- `cargo fmt --all --check`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo test --workspace` — заодно перегенерирует TS-типы в `web/src/api/generated/` (ts-rs, ADR-0002); после изменения типов в Rust закоммитить результат
+- `cargo build -p kinige-domain --target wasm32-unknown-unknown`
+
+Фронтенд (из `web/`, после `npm ci`):
+- `npm run tokens` — пересобрать `src/ui/tokens.css` и `src/ui/themes.css` из `design/tokens/**/*.json` (запускается само перед `dev`, `build`, `storybook`); результат коммитится
+- `npm run typecheck`, `npm run lint`, `npm test` (vitest; включает проверку «нет сырых цветов и размеров вне tokens.css / themes.css», контраст всех пар «цвет / фон» палитры и проверку шрифтов по самим woff2-файлам)
+- `npm run build-storybook`
+
+Визуальные тесты Storybook идут только в Linux-контейнере: `scripts/visual-tests.sh` (сравнение), `scripts/visual-tests.sh --update` (новые эталоны). Эталоны на macOS не снимаются.
+
+Приложение: `scripts/run-app.sh` (dev), `scripts/storybook.sh`, `scripts/build-app.sh` (release `.app` + ad-hoc подпись + `codesign --verify`), `scripts/screenshot-window.sh <out.png>` (окно Kinige, `screencapture -x -o -l`; нужен доступ терминала к записи экрана; на скриншот не должно попадать ничего, кроме окна), `scripts/measure-cold-start.sh`.
+
+CI (Gitea Actions) повторяет всё перечисленное, кроме сборки `.app`. Локально проверить «зелёный CI» нельзя; ближайший аналог — команды выше.
 
 ## Окружение
 

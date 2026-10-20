@@ -1,0 +1,78 @@
+/* Страница «Отступы». Только токены. */
+
+/* Отступы, радиусы, тени */
+.spaces {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.space {
+  display: grid;
+  grid-template-columns: calc(var(--space-8) * 1.5) calc(var(--space-8) * 2.5) 1fr;
+  gap: var(--space-3);
+  align-items: center;
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.space__bar {
+  height: var(--space-4);
+  border-radius: var(--radius-inline);
+  background: var(--color-accent-default);
+}
+
+.shapes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.shape {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  margin: 0;
+}
+
+.shape__box {
+  box-sizing: border-box;
+  width: calc(var(--space-8) * 2);
+  height: var(--space-8);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
+  background: var(--color-surface-paper);
+}
+
+.shape__box--inline {
+  border-radius: var(--radius-inline);
+}
+
+.shape__box--control {
+  border-radius: var(--radius-control);
+}
+
+.shape__box--panel {
+  border-radius: var(--radius-panel);
+}
+
+.shape__box--message {
+  border-radius: var(--radius-message);
+}
+
+.shape__box--round {
+  border-radius: var(--radius-round);
+}
+
+.shape__box--raised {
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-raised);
+}
+
+.shape__box--overlay {
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-overlay);
+}
+

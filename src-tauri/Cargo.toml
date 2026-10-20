@@ -1,0 +1,23 @@
+[package]
+name = "kinige"
+description = "Kinige — личный журнал в формате чата с собой"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "kinige_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+kinige-domain = { path = "../crates/kinige-domain" }
+tauri = { version = "2.12", features = [] }
+
+[dev-dependencies]
+tauri = { version = "2.12", features = ["test"] }
+serde_json = "1"

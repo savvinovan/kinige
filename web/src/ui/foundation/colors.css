@@ -1,0 +1,158 @@
+/* Страница «Цвета». Только токены. */
+
+/* Цвета: роли */
+.swatches {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.swatch {
+  display: grid;
+  grid-template-columns: var(--space-7) 1fr auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.swatch__chip {
+  height: var(--space-5);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
+  border-radius: var(--radius-inline);
+}
+
+.swatch__value {
+  font-family: var(--type-code-family);
+  color: var(--color-text-secondary);
+}
+
+.swatch__origin {
+  grid-column: 2 / -1;
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  color: var(--color-text-tertiary);
+}
+
+/* Цвета: образец ленты на «бумаге» */
+.sample {
+  display: grid;
+  gap: var(--layout-message-gap-group);
+  justify-items: start;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-paper);
+}
+
+.sample__day {
+  justify-self: center;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-round);
+  background: var(--color-surface-day);
+  color: var(--color-text-secondary);
+  font-family: var(--type-day-family);
+  font-size: var(--type-day-size);
+  font-weight: var(--type-day-weight);
+  line-height: var(--type-day-line-height);
+}
+
+.sample__plate {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
+  border-radius: var(--radius-message);
+  background: var(--color-surface-message);
+}
+
+.sample__plate--highlighted {
+  background: var(--color-highlight-background);
+}
+
+.sample__text {
+  margin: 0;
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+}
+
+.sample__text + .sample__text {
+  margin-top: var(--space-2);
+}
+
+.sample__secondary {
+  color: var(--color-text-secondary);
+}
+
+.sample__link {
+  color: var(--color-accent-default);
+  text-decoration: underline;
+}
+
+.sample__code {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-inline);
+  background: var(--color-surface-code);
+  font-family: var(--type-code-family);
+  font-size: var(--type-code-size);
+}
+
+.sample__meta {
+  margin: 0;
+  text-align: right;
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  color: var(--color-text-tertiary);
+}
+
+.sample__error {
+  margin: 0;
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  color: var(--color-status-error);
+}
+
+.sample__focus {
+  display: inline-block;
+  margin-top: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-control);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Цвета: таблица контраста */
+.ratios {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+.ratios th,
+.ratios td {
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
+  border-bottom: var(--border-width-hairline) solid var(--color-border-divider);
+  text-align: left;
+  font-weight: var(--font-weight-regular);
+}
+
+.ratios__norm {
+  white-space: nowrap;
+}
+
+.ratios__number {
+  font-family: var(--type-code-family);
+  text-align: right;
+  white-space: nowrap;
+}

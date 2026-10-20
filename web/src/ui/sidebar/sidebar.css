@@ -1,0 +1,93 @@
+/* Сайдбар: поиск и список чатов. Только токены. */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: var(--layout-sidebar-width);
+  min-height: 0;
+  padding: var(--layout-sidebar-padding);
+  background: var(--color-surface-background);
+  /* Тонкая граница с лентой: поверхности фона и бумаги близки по яркости. */
+  border-right: var(--border-width-hairline) solid var(--color-border-divider);
+}
+
+/* Список прокручивается только по вертикали: длинные имена обрезаются многоточием, а не раздвигают сайдбар. */
+.sidebar nav {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Колонка minmax(0, 1fr): без этого колонка grid не сжимается ниже ширины самого длинного имени (min-content). */
+.sidebar__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: var(--layout-row-height);
+  margin: 0;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.chat-row:hover {
+  color: var(--color-text-primary);
+}
+
+.chat-row--selected {
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+}
+
+/* Эмодзи чата — единственное место, где интерфейс берёт системный шрифт (design/tokens/fontsets/inter.json). */
+.chat-row__emoji {
+  flex: none;
+  width: var(--icon-size);
+  font-family: var(--font-family-emoji);
+  font-size: var(--icon-size);
+  line-height: var(--type-small-line-height);
+  text-align: center;
+}
+
+.chat-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Счётчик записей: тихий серый, не акцент и не заливка; справа, не сжимается и не переносится. */
+.chat-row__count {
+  flex: none;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--type-meta-line-height);
+  white-space: nowrap;
+}
