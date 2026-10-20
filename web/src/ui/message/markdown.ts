@@ -15,7 +15,10 @@ md.disable(["image", "table"]);
 md.renderer.rules.fence = (tokens, idx) =>
   `<pre class="code-block" tabindex="0"><code>${md.utils.escapeHtml(tokens[idx]?.content ?? "")}</code></pre>\n`;
 
-// Ссылки открываются снаружи (системный браузер, обработчик в приложении); rel закрывает доступ к window.opener.
+// Ссылка остаётся настоящим <a href> (видна диктору, берёт фокус, адрес читается при наведении), но в D1 переход по ней
+// отменяется в Message: webview не должен уходить с экрана приложения на внешний сайт. Открытие в системном браузере —
+// слайс 1 (команда или плагин Tauri и capability); пока его нет, щелчок и Enter по ссылке ничего не открывают.
+// rel закрывает доступ к window.opener на случай, если переход когда-нибудь разрешат.
 const defaultLinkOpen = md.renderer.rules.link_open ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
 md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
   tokens[idx]?.attrSet("rel", "noopener noreferrer");

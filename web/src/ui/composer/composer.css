@@ -20,16 +20,20 @@
   box-sizing: border-box;
   min-height: var(--layout-composer-min-height);
   padding: var(--space-2);
-  border: var(--border-width-hairline) solid var(--color-border-control);
+  /* Рамки у поля нет, только тёмная заливка (как в Telegram); прозрачная рамка нужна, чтобы ошибка не сдвигала содержимое. */
+  border: var(--border-width-hairline) solid transparent;
   border-radius: var(--radius-panel);
   background: var(--color-surface-field);
+  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
-.composer__bar:has(.composer__input:focus-visible) {
-  outline: var(--focus-width) solid var(--color-focus-ring);
-  outline-offset: var(--focus-offset);
+/* Фокус в поле: курсор (акцентный) и чуть более светлая заливка, без кольца и рамки. Кнопки внутри получают
+   обычное кольцо фокуса только с клавиатуры (:focus-visible). */
+.composer__bar:has(.composer__input:focus) {
+  background: var(--color-surface-field-active);
 }
 
+/* Ошибка отправки: единственный случай, когда у поля есть рамка. */
 .composer__bar--invalid {
   border-color: var(--color-status-error);
 }
@@ -68,6 +72,7 @@
   resize: none;
   overflow: hidden;
   background: transparent;
+  caret-color: var(--color-accent-default);
   color: var(--color-text-primary);
   outline: none;
 }

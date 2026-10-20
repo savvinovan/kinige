@@ -8,14 +8,24 @@ interface DemoProps {
   buttons?: ComposerButtons;
   error?: string;
   autoFocus?: boolean;
+  /** Кнопки только нарисованы («Появится позже»); в D1 так везде. */
+  viewOnly?: boolean;
 }
 
 /** Поле у нижнего края окна с рабочим состоянием (черновик живёт в истории). */
-function Demo({ initial = "", buttons, error, autoFocus }: DemoProps) {
+function Demo({ initial = "", buttons, error, autoFocus, viewOnly = true }: DemoProps) {
   const [value, setValue] = useState(initial);
   return (
     <Frame bottom>
-      <Composer value={value} onChange={setValue} onSubmit={() => setValue("")} buttons={buttons} error={error} autoFocus={autoFocus} />
+      <Composer
+        value={value}
+        onChange={setValue}
+        onSubmit={() => setValue("")}
+        buttons={buttons}
+        error={error}
+        autoFocus={autoFocus}
+        viewOnly={viewOnly}
+      />
     </Frame>
   );
 }
@@ -28,8 +38,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Пустое: подсказка «Написать заметку…», слева «файл», справа «эмодзи» и «микрофон». */
+/** Пустое: подсказка «Написать заметку…», слева «файл», справа «эмодзи» и «микрофон» (в D1 они только нарисованы). */
 export const Пусто: Story = {};
+
+/** Кнопки с функцией (так будет, когда их слайсы готовы): обычные, откликаются на наведение. */
+export const КнопкиРаботают: Story = { args: { viewOnly: false } };
 
 /** Черновик: несколько строк, поле выросло; кириллица и латиница. */
 export const Черновик: Story = {

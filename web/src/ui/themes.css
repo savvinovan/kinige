@@ -2,27 +2,19 @@
 
 /* Начертания: пути относительно этого файла. */
 @font-face {
-  font-family: "Literata";
-  font-style: normal;
-  font-weight: 200 900;
-  font-display: block;
-  src: url("./fonts/literata/Literata-Variable.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Literata";
-  font-style: italic;
-  font-weight: 200 900;
-  font-display: block;
-  src: url("./fonts/literata/Literata-Italic-Variable.woff2") format("woff2");
-}
-
-@font-face {
   font-family: "Inter";
   font-style: normal;
   font-weight: 100 900;
   font-display: block;
   src: url("./fonts/inter/Inter-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: block;
+  src: url("./fonts/inter/Inter-Italic-Variable.woff2") format("woff2");
 }
 
 @font-face {

@@ -66,13 +66,12 @@
   box-sizing: border-box;
   max-width: 100%;
   padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
-  border: var(--border-width-hairline) solid transparent;
   border-radius: var(--radius-message);
   background: var(--color-surface-message);
 }
 
 .sample__plate--highlighted {
-  border-color: var(--color-highlight-border);
+  background: var(--color-highlight-background);
 }
 
 .sample__text {

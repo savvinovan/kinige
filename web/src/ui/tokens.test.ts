@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { contrastRatio } from "./contrast";
-import { CONTRAST_PAIRS, MIN_RATIO } from "./contrastPairs";
+import { contrastRatio, relativeLuminance } from "./contrast";
+import { CONTRAST_PAIRS, MESSAGE_TARGETS, MIN_RATIO } from "./contrastPairs";
 import { PALETTE_ROLES, active, palettes } from "./tokenSource";
 
 const css = (file: string) => readFileSync(join(import.meta.dirname, file), "utf8");
@@ -47,11 +47,31 @@ describe("палитры", () => {
           expect(bg, pair.background).toBeDefined();
           const ratio = contrastRatio(fg ?? "", bg ?? "");
           rows.push(
-            `${name.padEnd(21)} ${pair.foreground.padEnd(16)} на ${pair.background.padEnd(21)} ${ratio.toFixed(2).padStart(5)}:1  (${pair.kind}, нужно >= ${MIN_RATIO[pair.kind]})`,
+            `${name.padEnd(5)} ${pair.foreground.padEnd(21)} на ${pair.background.padEnd(21)} ${ratio.toFixed(2).padStart(5)}:1  (${pair.kind}, нужно >= ${MIN_RATIO[pair.kind]})`,
           );
           expect(ratio).toBeGreaterThanOrEqual(MIN_RATIO[pair.kind]);
         });
       }
+
+      // Цели пользователя по живому окну (ADR-0004): темнее и белее.
+      for (const target of MESSAGE_TARGETS) {
+        it(`цель пользователя: ${target.foreground} на плашке (surface.message) >= ${target.min}`, () => {
+          const ratio = contrastRatio(palette.colors[target.foreground] ?? "", palette.colors["surface.message"] ?? "");
+          rows.push(
+            `${name.padEnd(5)} ${target.foreground.padEnd(21)} на ${"surface.message".padEnd(21)} ${ratio.toFixed(2).padStart(5)}:1  (цель, нужно >= ${target.min})`,
+          );
+          expect(ratio).toBeGreaterThanOrEqual(target.min);
+        });
+      }
+
+      it("иерархия поверхностей: фон темнее бумаги, плашка светлее бумаги, код темнее плашки", () => {
+        const lum = (role: string) => relativeLuminance(palette.colors[role] ?? "");
+        expect(lum("surface.background")).toBeLessThan(lum("surface.paper"));
+        expect(lum("surface.paper")).toBeLessThan(lum("surface.message"));
+        expect(lum("surface.code")).toBeLessThan(lum("surface.message"));
+        expect(lum("highlight.background")).toBeGreaterThan(lum("surface.message"));
+        expect(lum("surface.field-active")).toBeGreaterThan(lum("surface.field"));
+      });
     });
   }
 });

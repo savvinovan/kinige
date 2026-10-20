@@ -3,14 +3,6 @@ import type { DemoChat, DemoMessage } from "./demo";
 // Записи и чаты из брифа концепта (design/concepts/brief-v2.md, раздел «Записи»): один набор для Storybook,
 // временного экрана приложения и тестов. Дни — относительно `now`, чтобы метки «Сегодня» и «Вчера» были верны.
 
-export const DEMO_CHATS: DemoChat[] = [
-  { id: "inbox", name: "Входящие", emoji: "📥" },
-  { id: "ideas", name: "Идеи", emoji: "💡" },
-  { id: "books", name: "Книги", emoji: "📚" },
-  { id: "work", name: "Работа", emoji: "💼" },
-  { id: "recipes", name: "Рецепты", emoji: "🍳" },
-];
-
 const CODE = ["```", "fn main() {", "    let today = Day::new(2026, 10, 20);", '    println!("Записей: {}", today.count());', "}", "```"].join("\n");
 
 /** Записи чата «Входящие»: прошлый год, вчера, сегодня (серия из двух сообщений, задачи, код, не отправилось). */
@@ -50,6 +42,21 @@ export function demoMessages(now: Date): DemoMessage[] {
       sentAt: day(0, 13, 45),
       markdown: `Починил историю командой \`git rebase --onto main\`, вот что получилось:\n\n${CODE}`,
     },
+    {
+      id: "m9",
+      sentAt: day(0, 15, 20),
+      markdown: "Прочитал [The Psychology of Habits — fs.blog](https://fs.blog/habits) и записал вывод: **привычка — это петля**.",
+    },
     { id: "m8", sentAt: day(0, 16, 10), markdown: "Купить билеты на субботу", status: "failed" },
   ];
 }
+
+// Числа записей — демонстрационные, чтобы увидеть бейдж в разных видах (42, «1 234», «12 тыс.»); у «Входящих» — настоящее
+// число демо-записей из ленты, чтобы счётчик совпадал с тем, что на экране.
+export const DEMO_CHATS: DemoChat[] = [
+  { id: "inbox", name: "Входящие", emoji: "📥", count: demoMessages(new Date(0)).length },
+  { id: "ideas", name: "Идеи", emoji: "💡", count: 42 },
+  { id: "books", name: "Книги", emoji: "📚", count: 1234 },
+  { id: "work", name: "Работа", emoji: "💼", count: 987 },
+  { id: "recipes", name: "Рецепты", emoji: "🍳", count: 12345 },
+];

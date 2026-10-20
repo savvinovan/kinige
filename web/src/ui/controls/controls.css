@@ -71,7 +71,26 @@
   opacity: var(--opacity-disabled);
 }
 
-/* Поле ввода: рамка control, значок слева, ошибка под полем. */
+/* Кнопка без функции («Появится позже»): остаётся в порядке обхода, но не откликается на наведение и нажатие. */
+.icon-button--unavailable,
+.icon-button--unavailable:hover {
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: default;
+  opacity: var(--opacity-unavailable);
+}
+
+/* Текст только для экранного диктора. */
+.visually-hidden {
+  position: absolute;
+  width: var(--border-width-hairline);
+  height: var(--border-width-hairline);
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Поле ввода: тёмная заливка без рамки, значок слева, ошибка под полем. */
 .text-field {
   display: grid;
   gap: var(--space-1);
@@ -84,17 +103,20 @@
   box-sizing: border-box;
   min-height: var(--layout-field-height);
   padding: 0 var(--space-2);
-  border: var(--border-width-hairline) solid var(--color-border-control);
+  /* Рамки у поля нет, только заливка (как в Telegram); прозрачная рамка нужна, чтобы ошибка не сдвигала содержимое. */
+  border: var(--border-width-hairline) solid transparent;
   border-radius: var(--radius-control);
   background: var(--color-surface-field);
   color: var(--color-text-tertiary);
+  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
-.text-field__box:has(.text-field__input:focus-visible) {
-  outline: var(--focus-width) solid var(--color-focus-ring);
-  outline-offset: var(--focus-offset);
+/* Фокус: курсор (акцентный) и чуть более светлая заливка, без кольца и рамки. */
+.text-field__box:has(.text-field__input:focus) {
+  background: var(--color-surface-field-active);
 }
 
+/* Ошибка: единственный случай, когда у поля есть рамка. */
 .text-field__box--invalid {
   border-color: var(--color-status-error);
 }
@@ -105,6 +127,7 @@
   padding: 0;
   border: 0;
   background: transparent;
+  caret-color: var(--color-accent-default);
   color: var(--color-text-primary);
   font-family: var(--type-small-family);
   font-size: var(--type-small-size);

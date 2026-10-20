@@ -43,7 +43,7 @@ function PaletteSheet({ name }: { name: string }) {
           <p className="sample__meta">09:12</p>
         </div>
         <div className="sample__plate sample__plate--highlighted">
-          <p className="sample__text">Подсвеченная запись: нашлась поиском. Заливка та же, меняется рамка.</p>
+          <p className="sample__text">Подсвеченная запись: нашлась поиском. Заливка чуть светлее и бирюзовее.</p>
           <p className="sample__meta">09:14</p>
         </div>
         <div className="sample__plate">

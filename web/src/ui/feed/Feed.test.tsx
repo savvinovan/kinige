@@ -22,7 +22,7 @@ describe("Feed", () => {
   it("у каждого сообщения своё время, слияния в «страницу» нет (09:12 и 09:14 — два сообщения)", () => {
     render(<Feed messages={demoMessages(NOW)} now={NOW} />);
     const articles = screen.getAllByRole("article");
-    expect(articles).toHaveLength(8);
+    expect(articles).toHaveLength(9);
     for (const article of articles) expect(article.querySelector("time")).not.toBeNull();
     expect(screen.getAllByText("09:12")).toHaveLength(2);
     expect(screen.getByText("09:14")).toBeInTheDocument();

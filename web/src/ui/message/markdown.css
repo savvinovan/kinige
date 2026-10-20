@@ -8,6 +8,11 @@
   margin-top: var(--space-2);
 }
 
+/* Заголовок ближе к своему тексту, чем обычные блоки друг к другу. */
+.markdown :is(h1, h2, h3, h4, h5, h6) + :is(p, blockquote, ul, ol, pre) {
+  margin-top: var(--space-1);
+}
+
 .markdown h1,
 .markdown h2,
 .markdown h3,
@@ -72,7 +77,7 @@
   box-sizing: border-box;
   width: var(--layout-checkbox-size);
   height: var(--layout-checkbox-size);
-  border: var(--border-width-strong) solid var(--color-border-control);
+  border: var(--border-width-strong) solid var(--color-text-tertiary);
   border-radius: var(--radius-inline);
 }
 
@@ -81,15 +86,15 @@
   background: var(--color-accent-default);
 }
 
-/* Галочка из двух сторон повёрнутого прямоугольника, цвет — заливка плашки (5,03:1 к акценту). */
+/* Галочка из двух сторон повёрнутого прямоугольника, цвет — заливка плашки (7,2:1 к акценту). Размеры — токены layout.checkbox.tick-*. */
 .task--done .task__box::after {
   content: "";
   position: absolute;
-  top: 12%;
-  left: 31%;
+  top: var(--layout-checkbox-tick-top);
+  left: var(--layout-checkbox-tick-left);
   box-sizing: border-box;
-  width: 30%;
-  height: 56%;
+  width: var(--layout-checkbox-tick-width);
+  height: var(--layout-checkbox-tick-height);
   border: solid var(--color-surface-message);
   border-width: 0 var(--border-width-strong) var(--border-width-strong) 0;
   transform: rotate(45deg);
@@ -98,7 +103,7 @@
 /* Цитата: черта слева только у самой цитаты. */
 .markdown blockquote {
   padding-left: var(--space-3);
-  border-left: var(--border-width-strong) solid var(--color-border-control);
+  border-left: var(--border-width-strong) solid var(--color-text-tertiary);
 }
 
 .markdown hr {

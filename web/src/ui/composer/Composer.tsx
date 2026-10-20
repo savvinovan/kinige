@@ -18,6 +18,8 @@ interface ComposerProps {
   onSubmit?: () => void;
   /** Какие кнопки показывать; по умолчанию все три. В приложении кнопка появляется в слайсе, где её функция работает. */
   buttons?: ComposerButtons;
+  /** Кнопки только нарисованы (D1): объявляются как недоступные («Появится позже») и ничего не делают. */
+  viewOnly?: boolean;
   /** Ошибка отправки: показывается над полем, черновик остаётся. */
   error?: string;
   placeholder?: string;
@@ -40,6 +42,7 @@ export function Composer({
   onChange,
   onSubmit,
   buttons = { attach: true, emoji: true, voice: true },
+  viewOnly = false,
   error,
   placeholder = "Написать заметку…",
   autoFocus,
@@ -63,7 +66,7 @@ export function Composer({
         </p>
       ) : null}
       <div className={`composer__bar${error ? " composer__bar--invalid" : ""}`}>
-        {buttons.attach ? <IconButton icon="attach" label="Прикрепить файл" /> : null}
+        {buttons.attach ? <IconButton icon="attach" label="Прикрепить файл" unavailable={viewOnly} /> : null}
         {/* Копия текста в ::after задаёт высоту поля: оно растёт без скриптов измерения. */}
         <div className="composer__field" data-replicated-value={value}>
           <textarea
@@ -79,8 +82,8 @@ export function Composer({
             onKeyDown={onKeyDown}
           />
         </div>
-        {buttons.emoji ? <IconButton icon="emoji" label="Эмодзи" /> : null}
-        {buttons.voice ? <IconButton icon="voice" label="Записать голосовое" /> : null}
+        {buttons.emoji ? <IconButton icon="emoji" label="Эмодзи" unavailable={viewOnly} /> : null}
+        {buttons.voice ? <IconButton icon="voice" label="Записать голосовое" unavailable={viewOnly} /> : null}
       </div>
     </div>
   );

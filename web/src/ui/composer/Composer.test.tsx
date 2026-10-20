@@ -18,6 +18,20 @@ describe("Composer: вид и доступность", () => {
     expect(screen.getByRole("button", { name: "Записать голосовое" })).toBeInTheDocument();
   });
 
+  it("кнопки только для вида: aria-disabled, пояснение «Появится позже», нажатие ничего не делает", () => {
+    render(<Composer value="" onChange={vi.fn()} viewOnly />);
+    const emoji = screen.getByRole("button", { name: "Эмодзи" });
+    expect(emoji).toHaveAttribute("aria-disabled", "true");
+    expect(emoji).not.toBeDisabled();
+    expect(emoji).toHaveAccessibleDescription("Появится позже");
+    expect(emoji).toHaveAttribute("title", "Эмодзи. Появится позже");
+  });
+
+  it("без viewOnly кнопки обычные: без aria-disabled", () => {
+    setup();
+    expect(screen.getByRole("button", { name: "Эмодзи" })).not.toHaveAttribute("aria-disabled");
+  });
+
   it("подсказки про Enter и Shift+Enter нет", () => {
     setup();
     expect(screen.queryByText(/Enter/)).toBeNull();

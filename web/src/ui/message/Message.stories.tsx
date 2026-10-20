@@ -104,7 +104,7 @@ export const КириллицаИЛатиница: Story = {
 export const Состояния: Story = {
   render: () => (
     <>
-      <FrameLabel>Подсвечено: заливка та же, рамка акцентом</FrameLabel>
+      <FrameLabel>Подсвечено: другая заливка (светлее и бирюзовее плашки)</FrameLabel>
       <Message markdown="Нашлось поиском: системный дизайн" sentAt={at(9, 12)} highlighted />
       <FrameLabel>Не отправилось: «Повторить» доступна с клавиатуры</FrameLabel>
       <Message markdown="Купить билеты на субботу" sentAt={at(16, 10)} status="failed" onRetry={() => undefined} />

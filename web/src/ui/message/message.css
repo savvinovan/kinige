@@ -5,8 +5,6 @@
   width: fit-content;
   max-width: min(100%, var(--layout-message-measure));
   padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
-  /* Рамка всегда занимает место (прозрачная), поэтому подсветка не сдвигает текст. */
-  border: var(--border-width-hairline) solid transparent;
   border-radius: var(--radius-message);
   background: var(--color-surface-message);
   color: var(--color-text-primary);
@@ -18,8 +16,9 @@
   overflow-wrap: anywhere;
 }
 
+/* Подсветка — только заливка: чуть светлее и бирюзовее плашки, текст остаётся ≥ 4,5:1 (тест контраста). */
 .message--highlighted {
-  border-color: var(--color-highlight-border);
+  background: var(--color-highlight-background);
 }
 
 /* Время: правый нижний угол, на одной строке с концом текста. Высота строки равна высоте строки текста, поэтому базовые линии совпадают. */

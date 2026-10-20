@@ -7,6 +7,8 @@ export interface DemoChat {
   name: string;
   /** Эмодзи чата — данные пользователя (`chats.icon`), системный эмодзи-шрифт. */
   emoji: string;
+  /** Сколько записей в чате, кроме корзины (счётчик в сайдбаре). */
+  count: number;
 }
 
 export interface DemoMessage {

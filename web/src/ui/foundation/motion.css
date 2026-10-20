@@ -79,7 +79,7 @@
 
 .demo-button {
   padding: var(--space-2) var(--space-4);
-  border: var(--border-width-hairline) solid var(--color-border-control);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
   border-radius: var(--radius-control);
   background: var(--color-surface-paper);
   color: var(--color-text-primary);

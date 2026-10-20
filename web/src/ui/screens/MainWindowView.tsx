@@ -12,7 +12,7 @@ interface MainWindowViewProps {
   /** «Сейчас» для меток дней: в историях фиксируется. */
   now: Date;
   onRetry?: (messageId: string) => void;
-  /** Какие кнопки показывать в поле ввода; в D1 все три нарисованы. */
+  /** Какие кнопки показывать в поле ввода; в D1 все три нарисованы и объявлены недоступными («Появится позже»). */
   composerButtons?: ComposerButtons;
 }
 
@@ -27,7 +27,7 @@ export function MainWindowView({ chats, selectedChatId, messages, now, onRetry, 
       <Sidebar chats={chats} selectedId={selectedChatId} />
       <main className="main-window__chat">
         <Feed messages={messages} now={now} onRetry={onRetry} />
-        <Composer value={draft} onChange={setDraft} buttons={composerButtons} />
+        <Composer value={draft} onChange={setDraft} buttons={composerButtons} viewOnly />
       </main>
     </div>
   );

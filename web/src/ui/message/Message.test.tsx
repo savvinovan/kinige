@@ -39,7 +39,7 @@ describe("Message", () => {
     expect(container.querySelector(".message__spacer")).toBeNull();
   });
 
-  it("подсвеченное сообщение помечено классом рамки", () => {
+  it("подсвеченное сообщение помечено классом заливки", () => {
     const { container } = render(<Message markdown="Нашлось" sentAt={sentAt} highlighted />);
     expect(container.querySelector("article")).toHaveClass("message--highlighted");
   });
@@ -54,6 +54,40 @@ describe("Message", () => {
       <Message markdown={'<img src=x onerror="alert(1)"> [x](javascript:alert(1)) <script>alert(2)</script>'} sentAt={sentAt} />,
     );
     expect(container.querySelector("img, script, a")).toBeNull();
+  });
+
+  describe("ссылки не уводят webview (D1)", () => {
+    const withLink = "Прочитал [The Psychology of Habits — fs.blog](https://fs.blog/habits) и записал вывод";
+
+    it("ссылка остаётся ссылкой: адрес, rel, фокус с клавиатуры", () => {
+      render(<Message markdown={withLink} sentAt={sentAt} />);
+      const link = screen.getByRole("link", { name: "The Psychology of Habits — fs.blog" });
+      expect(link).toHaveAttribute("href", "https://fs.blog/habits");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      link.focus();
+      expect(link).toHaveFocus();
+    });
+
+    it("щелчок отменяет переход, адрес страницы не меняется", () => {
+      const before = window.location.href;
+      render(<Message markdown={withLink} sentAt={sentAt} />);
+      const link = screen.getByRole("link");
+      // fireEvent возвращает false, если обработчик вызвал preventDefault.
+      expect(fireEvent.click(link)).toBe(false);
+      expect(window.location.href).toBe(before);
+    });
+
+    it("щелчок по тексту внутри ссылки (вложенный <strong>) и средняя кнопка тоже отменяются", () => {
+      render(<Message markdown="[**жирная** ссылка](https://example.com/x)" sentAt={sentAt} />);
+      const inner = screen.getByText("жирная");
+      expect(fireEvent.click(inner)).toBe(false);
+      expect(fireEvent(inner, new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }))).toBe(false);
+    });
+
+    it("щелчок вне ссылки не отменяется (выделение текста, фокус)", () => {
+      render(<Message markdown={withLink} sentAt={sentAt} />);
+      expect(fireEvent.click(screen.getByText(/и записал вывод/))).toBe(true);
+    });
   });
 
   it("задачи: квадраты с подписью состояния для диктора", () => {
