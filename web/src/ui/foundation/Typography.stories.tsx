@@ -3,16 +3,14 @@ import { active, fontsets } from "../tokenSource";
 import "./foundation.css";
 import "./typography.css";
 
-type Role = "serif" | "sans" | "mono";
+type Role = "sans" | "mono";
 
 const FACES: { role: Role; weight: "regular" | "semibold" | "bold"; italic?: boolean; label: string; text: string }[] = [
-  { role: "serif", weight: "regular", label: "Serif · Regular 400", text: "Тихо тянется день. Quiet days, written down. 0123456789" },
-  { role: "serif", weight: "regular", italic: true, label: "Serif · Italic 400", text: "Пишешь как в мессенджере, перечитываешь как книгу. Write like you text." },
-  { role: "serif", weight: "semibold", label: "Serif · SemiBold 600", text: "Заголовок дня и подзаголовки. Headings and subheads" },
-  { role: "serif", weight: "bold", label: "Serif · Bold 700", text: "Жирный в тексте записи. Bold inside a note" },
-  { role: "sans", weight: "regular", label: "Sans · Regular 400", text: "Время, подписи и интерфейс. Timestamps and UI 09:12" },
-  { role: "sans", weight: "semibold", label: "Sans · SemiBold 600", text: "Кнопки и акценты интерфейса. Buttons and emphasis" },
-  { role: "sans", weight: "bold", label: "Sans · Bold 700", text: "Сильный акцент. Strong emphasis" },
+  { role: "sans", weight: "regular", label: "Inter · Regular 400", text: "Тихо тянется день. Quiet days, written down. 0123456789 09:12" },
+  { role: "sans", weight: "regular", italic: true, label: "Inter · Italic 400", text: "Пишешь как в мессенджере, перечитываешь как книгу. Write like you text." },
+  { role: "sans", weight: "semibold", label: "Inter · SemiBold 600", text: "Заголовки и кнопки. Headings and buttons" },
+  { role: "sans", weight: "bold", label: "Inter · Bold 700", text: "Жирный в тексте записи. Bold inside a note" },
+  { role: "sans", weight: "bold", italic: true, label: "Inter · Bold Italic 700", text: "Жирный курсив. Bold italic emphasis" },
   { role: "mono", weight: "regular", label: "Mono · Regular 400", text: "git rebase --onto main  // Raft: ёё 0O 1lI" },
   { role: "mono", weight: "bold", label: "Mono · Bold 700", text: "let today = Day::new(2026, 10, 20);" },
 ];
@@ -54,8 +52,8 @@ function Specimen() {
       </div>
 
       <h3 className="foundation__heading">Regular рядом с Bold</h3>
-      <p className="face__sample face__sample--serif face__sample--regular">Лес — это то, что вырастает из записей.</p>
-      <p className="face__sample face__sample--serif face__sample--bold">Лес — это то, что вырастает из записей.</p>
+      <p className="face__sample face__sample--sans face__sample--regular">Лес — это то, что вырастает из записей.</p>
+      <p className="face__sample face__sample--sans face__sample--bold">Лес — это то, что вырастает из записей.</p>
 
       <h3 className="foundation__heading">Шкала</h3>
       <div className="scale">
@@ -90,7 +88,7 @@ function Typography() {
     <main className="foundation">
       <h1 className="foundation__title">Типографика</h1>
       <p className="foundation__lead">
-        Набор «serif + sans + mono» с кириллицей, выбран пользователем. Все начертания — встроенные woff2, не системные.
+        Набор «Inter + JetBrains Mono» с кириллицей, выбран пользователем (Inter и для текста записей, и для интерфейса). Все начертания — встроенные woff2, не системные.
         Компактная шкала: текст записей 14 px, интерфейс 13 px, время 11 px. Размеры в rem (один rem равен размеру текста записей):
         размер переключается в панели Storybook («Размер текста» 13 / 14 / 15 px — временный выбор пользователя) и
         «Крупный текст» (×1,25).

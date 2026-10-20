@@ -9,15 +9,13 @@ import { type FontFace, active, fontsets } from "./tokenSource";
 
 const UI_DIR = import.meta.dirname;
 
-/** Начертания, которые нужны любому набору: роль, стиль, вес. Остальное (курсив sans и mono) не используется. */
+/** Начертания, которые нужны любому набору: роль, стиль, вес. Остальное (курсив mono) не используется. */
 const REQUIRED: [role: string, style: "normal" | "italic", weight: number][] = [
-  ["serif", "normal", 400],
-  ["serif", "italic", 400],
-  ["serif", "normal", 600],
-  ["serif", "normal", 700],
   ["sans", "normal", 400],
+  ["sans", "italic", 400],
   ["sans", "normal", 600],
   ["sans", "normal", 700],
+  ["sans", "italic", 700],
   ["mono", "normal", 400],
   ["mono", "normal", 700],
 ];
@@ -57,8 +55,8 @@ describe("наборы шрифтов", () => {
 
   for (const [name, set] of Object.entries(fontsets)) {
     describe(name, () => {
-      it("задаёт семейства serif, sans, mono, и первое семейство каждой роли есть среди начертаний", () => {
-        for (const role of ["serif", "sans", "mono"]) {
+      it("задаёт семейства sans, mono, и первое семейство каждой роли есть среди начертаний", () => {
+        for (const role of ["sans", "mono"]) {
           const first = set.families[role]?.[0];
           expect(first, `family.${role}`).toBeTruthy();
           const faces = Object.entries(set.faces).filter(([key]) => key.startsWith(`${role}-`));
@@ -99,7 +97,7 @@ describe("наборы шрифтов", () => {
       // Единственное исключение из «шрифты только встроенные» (ADR-0004): эмодзи чатов — данные пользователя,
       // цветные эмодзи не встраиваются. Любая другая роль без файла в наборе — ошибка.
       it("кроме эмодзи, у каждой роли есть встроенные начертания; эмодзи — системные шрифты", () => {
-        expect(Object.keys(set.families).sort()).toEqual(["emoji", "mono", "sans", "serif"]);
+        expect(Object.keys(set.families).sort()).toEqual(["emoji", "mono", "sans"]);
         expect(Object.keys(set.faces).filter((key) => key.startsWith("emoji-"))).toEqual([]);
         const embedded = new Set(Object.values(set.faces).map((face) => face.family));
         for (const family of set.families.emoji ?? []) expect(embedded.has(family), family).toBe(false);

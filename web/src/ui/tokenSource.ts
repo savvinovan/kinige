@@ -29,13 +29,13 @@ export const PALETTE_ROLES = [
   "surface.day",
   "surface.selected",
   "surface.field",
+  "surface.field-active",
   "text.primary",
   "text.secondary",
   "text.tertiary",
   "accent.default",
   "border.divider",
-  "border.control",
-  "highlight.border",
+  "highlight.background",
   "focus.ring",
   "status.error",
 ] as const;
@@ -90,9 +90,9 @@ export interface FontFace {
 
 export interface Fontset {
   description: string;
-  /** Роль (serif / sans / mono) -> список семейств, первое — встроенное. */
+  /** Роль (sans / mono / emoji) -> список семейств, первое — встроенное (у emoji системные). */
   families: Record<string, string[]>;
-  /** Ключ начертания («serif-italic») -> описание. Префикс ключа — роль. */
+  /** Ключ начертания («sans-italic-variable») -> описание. Префикс ключа — роль. */
   faces: Record<string, FontFace>;
 }
 

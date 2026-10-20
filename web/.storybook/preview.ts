@@ -3,7 +3,7 @@ import "../src/app.css";
 
 // Переключатели дизайн-системы в панели Storybook. Они только ставят атрибуты на <html>,
 // все значения живут в токенах (src/ui/tokens.css, themes.css, base.css). Пустое значение — «по умолчанию».
-// Палитра и шрифты не переключаются: выбраны (Nord, Literata; ADR-0004).
+// Палитра и шрифты не переключаются: выбраны (Nord, Inter + JetBrains Mono; ADR-0004).
 const ATTRIBUTES: Record<string, string> = {
   textSize: "data-text-size",
   textScale: "data-text-scale",
