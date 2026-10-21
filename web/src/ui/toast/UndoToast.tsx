@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../controls/Button";
 import "./toast.css";
 
@@ -22,6 +23,7 @@ interface UndoToastProps {
  * родитель: тост прижимается к его нижнему краю, над полем ввода.
  */
 export function UndoToast({ open, message, onUndo, onExpire, durationMs = UNDO_TOAST_MS }: UndoToastProps) {
+  const { t } = useTranslation();
   const [paused, setPaused] = useState(false);
   const remaining = useRef(durationMs);
 
@@ -50,7 +52,7 @@ export function UndoToast({ open, message, onUndo, onExpire, durationMs = UNDO_T
           onBlur={() => setPaused(false)}
         >
           <span className="toast__message">{message}</span>
-          <Button onClick={onUndo}>Отменить</Button>
+          <Button onClick={onUndo}>{t("toast.undo")}</Button>
         </div>
       ) : null}
     </div>

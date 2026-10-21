@@ -1,4 +1,5 @@
-import { useId, useRef, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { IconButton } from "../controls/IconButton";
 import "./composer.css";
 
@@ -25,6 +26,8 @@ interface ComposerProps {
   placeholder?: string;
   /** Фокус в поле при показе: после отправки и при открытии чата. */
   autoFocus?: boolean;
+  /** Значение растёт каждый раз, когда фокус нужно вернуть в поле (после «Отменить»: кнопка тоста исчезает вместе с фокусом). */
+  focusSignal?: number;
 }
 
 /** Внутри блока кода (открыто нечётное число ограждений ```) Enter — новая строка, а не отправка (ТЗ §5). */
@@ -45,11 +48,16 @@ export function Composer({
   buttons = { attach: true, emoji: true, voice: true },
   viewOnly = false,
   error,
-  placeholder = "Написать заметку…",
+  placeholder,
   autoFocus,
+  focusSignal = 0,
 }: ComposerProps) {
+  const { t } = useTranslation();
   const errorId = useId();
   const input = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (focusSignal > 0) input.current?.focus();
+  }, [focusSignal]);
   const hasText = value.trim() !== "";
 
   // Кнопка «Отправить» делает то же, что Enter. После щелчка фокус возвращается в поле: сама кнопка исчезает, как только поле пустеет.
@@ -75,7 +83,7 @@ export function Composer({
         </p>
       ) : null}
       <div className={`composer__bar${error ? " composer__bar--invalid" : ""}`}>
-        {buttons.attach ? <IconButton icon="attach" label="Прикрепить файл" unavailable={viewOnly} /> : null}
+        {buttons.attach ? <IconButton icon="attach" label={t("composer.attach")} unavailable={viewOnly} /> : null}
         {/* Копия текста в ::after задаёт высоту поля: оно растёт без скриптов измерения. */}
         <div className="composer__field" data-replicated-value={value}>
           <textarea
@@ -83,8 +91,8 @@ export function Composer({
             ref={input}
             rows={1}
             value={value}
-            placeholder={placeholder}
-            aria-label="Новая заметка"
+            placeholder={placeholder ?? t("composer.placeholder")}
+            aria-label={t("composer.label")}
             autoFocus={autoFocus}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
@@ -92,15 +100,15 @@ export function Composer({
             onKeyDown={onKeyDown}
           />
         </div>
-        {buttons.emoji ? <IconButton icon="emoji" label="Эмодзи" unavailable={viewOnly} /> : null}
+        {buttons.emoji ? <IconButton icon="emoji" label={t("composer.emoji")} unavailable={viewOnly} /> : null}
         {/* Правое место: «Отправить» при непробельном тексте, иначе «микрофон». Обе кнопки одного размера, ширина не прыгает. */}
         {hasText ? (
           <span className="composer__action" key="send">
-            <IconButton icon="send" label="Отправить" tone="accent" unavailable={!onSubmit} onClick={send} />
+            <IconButton icon="send" label={t("composer.send")} tone="accent" unavailable={!onSubmit} onClick={send} />
           </span>
         ) : buttons.voice ? (
           <span className="composer__action" key="voice">
-            <IconButton icon="voice" label="Записать голосовое" unavailable={viewOnly} />
+            <IconButton icon="voice" label={t("composer.voice")} unavailable={viewOnly} />
           </span>
         ) : null}
       </div>

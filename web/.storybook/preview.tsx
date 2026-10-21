@@ -1,4 +1,6 @@
 import type { Decorator, Preview } from "@storybook/react-vite";
+import { I18n } from "../src/i18n/I18n";
+import type { Language } from "../src/i18n";
 import "../src/app.css";
 
 // Переключатели дизайн-системы в панели Storybook. Они только ставят атрибуты на <html>,
@@ -19,11 +21,35 @@ const withDesignSystem: Decorator = (Story, context) => {
   return Story();
 };
 
+// Язык интерфейса. По умолчанию русский: снимки историй D1 сняты на русском. Английский — `globals: { language: "en" }`
+// в истории или переключатель в панели.
+const withLanguage: Decorator = (Story, context) => {
+  const language: Language = context.globals.language === "en" ? "en" : "ru";
+  document.documentElement.lang = language;
+  return (
+    <I18n language={language}>
+      <Story />
+    </I18n>
+  );
+};
+
 const preview: Preview = {
   parameters: { layout: "fullscreen" },
-  decorators: [withDesignSystem],
-  initialGlobals: { textScale: "", reduceMotion: "" },
+  decorators: [withLanguage, withDesignSystem],
+  initialGlobals: { textScale: "", reduceMotion: "", language: "ru" },
   globalTypes: {
+    language: {
+      description: "Язык интерфейса",
+      toolbar: {
+        title: "Язык",
+        icon: "globe",
+        dynamicTitle: true,
+        items: [
+          { value: "ru", title: "Русский" },
+          { value: "en", title: "English" },
+        ],
+      },
+    },
     textScale: {
       description: "Масштаб текста",
       toolbar: {

@@ -11,7 +11,7 @@ describe("EmptyWindow", () => {
   });
 
   it("показывает ошибку бэкенда, а не пустое окно", async () => {
-    const failing: KinigeApi = { appInfo: () => Promise.reject(new Error("нет связи")) };
+    const failing = { appInfo: () => Promise.reject(new Error("нет связи")) } as unknown as KinigeApi;
     render(<EmptyWindow api={failing} />);
     expect(await screen.findByText(/нет связи/)).toBeInTheDocument();
   });

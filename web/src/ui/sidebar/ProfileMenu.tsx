@@ -1,27 +1,33 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import "../controls/controls.css";
 import { Icon } from "../icons/Icon";
-import { DEFAULT_PROFILE_NAME, initials } from "./initials";
+import { initials } from "./initials";
 import "./profile.css";
 
-const ITEMS = ["Настройки", "Экспорт", "О программе"] as const;
+const ITEMS = ["settings", "export", "about"] as const;
+type Item = (typeof ITEMS)[number];
 
 interface ProfileMenuProps {
-  /** Имя в строке профиля; по умолчанию «Я». Из него берутся инициалы аватара. */
+  /** Имя в строке профиля; по умолчанию «Я» / «Me» из переводов. Из него берутся инициалы аватара. */
   name?: string;
   /** Точка статуса у аватара (синхронизация, слайс 11). В D1 не показывается; значение появится вместе со слайсом. */
   statusDot?: boolean;
   /** Меню открыто с самого начала (для историй и снимков). */
   defaultOpen?: boolean;
+  /** «Настройки» (слайс 1). Без обработчика пункт только нарисован и объявлен недоступным, как «Экспорт» и «О программе». */
+  onOpenSettings?: () => void;
 }
 
 /**
  * Строка профиля внизу сайдбара, как в Notion: аватар с инициалами, имя, шеврон и меню «Настройки», «Экспорт»,
- * «О программе». В D1 только вид: пункты объявлены недоступными (`aria-disabled`, «Появится позже»), но меню настоящее:
- * открывается щелчком, Enter, пробелом или стрелкой; стрелки, Home и End ходят по пунктам, Esc закрывает и возвращает
- * фокус на кнопку, щелчок вне меню и Tab закрывают.
+ * «О программе». Работает «Настройки» (если передан обработчик); остальные пункты объявлены недоступными
+ * (`aria-disabled`, «Появится позже»), но меню настоящее: открывается щелчком, Enter, пробелом или стрелкой; стрелки,
+ * Home и End ходят по пунктам, Esc закрывает и возвращает фокус на кнопку, щелчок вне меню и Tab закрывают.
  */
-export function ProfileMenu({ name = DEFAULT_PROFILE_NAME, statusDot = false, defaultOpen = false }: ProfileMenuProps) {
+export function ProfileMenu({ name, statusDot = false, defaultOpen = false, onOpenSettings }: ProfileMenuProps) {
+  const { t } = useTranslation();
+  const displayName = name ?? t("profile.defaultName");
   const [open, setOpen] = useState(defaultOpen);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -94,27 +100,47 @@ export function ProfileMenu({ name = DEFAULT_PROFILE_NAME, statusDot = false, de
     }
   };
 
+  const itemAvailable = (item: Item) => item === "settings" && onOpenSettings !== undefined;
+
   return (
     <div className="profile" ref={root}>
       {open ? (
-        <div className="profile__menu" role="menu" id={menuId} aria-label="Профиль" ref={menu} onKeyDown={onMenuKeyDown}>
-          {ITEMS.map((item) => (
-            <button
-              key={item}
-              type="button"
-              role="menuitem"
-              className="profile__item"
-              tabIndex={-1}
-              aria-disabled="true"
-              aria-describedby={noteId}
-              title={`${item}. Появится позже`}
-              onClick={(event) => event.preventDefault()}
-            >
-              {item}
-            </button>
-          ))}
+        <div className="profile__menu" role="menu" id={menuId} aria-label={t("profile.menu")} ref={menu} onKeyDown={onMenuKeyDown}>
+          {ITEMS.map((item) =>
+            itemAvailable(item) ? (
+              <button
+                key={item}
+                type="button"
+                role="menuitem"
+                className="profile__item"
+                tabIndex={-1}
+                onClick={() => {
+                  // Фокус сначала возвращается на кнопку профиля (пункт меню исчезнет): окно настроек запомнит её
+                  // и вернёт фокус на неё при закрытии.
+                  close(true);
+                  onOpenSettings?.();
+                }}
+              >
+                {t(`profile.${item}`)}
+              </button>
+            ) : (
+              <button
+                key={item}
+                type="button"
+                role="menuitem"
+                className="profile__item"
+                tabIndex={-1}
+                aria-disabled="true"
+                aria-describedby={noteId}
+                title={`${t(`profile.${item}`)}. ${t("common.comingLater")}`}
+                onClick={(event) => event.preventDefault()}
+              >
+                {t(`profile.${item}`)}
+              </button>
+            ),
+          )}
           <span className="visually-hidden" id={noteId}>
-            Появится позже
+            {t("common.comingLater")}
           </span>
         </div>
       ) : null}
@@ -122,7 +148,7 @@ export function ProfileMenu({ name = DEFAULT_PROFILE_NAME, statusDot = false, de
         type="button"
         className="profile__button"
         ref={button}
-        aria-label={`Профиль: ${name}`}
+        aria-label={t("profile.button", { name: displayName })}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
@@ -133,10 +159,10 @@ export function ProfileMenu({ name = DEFAULT_PROFILE_NAME, statusDot = false, de
         onKeyDown={onButtonKeyDown}
       >
         <span className="profile__avatar" aria-hidden="true">
-          {initials(name)}
+          {initials(displayName, t("profile.defaultName"))}
           {statusDot ? <span className="profile__dot" /> : null}
         </span>
-        <span className="profile__name">{name}</span>
+        <span className="profile__name">{displayName}</span>
         <span className="profile__chevron" aria-hidden="true">
           <Icon name="chevron" />
         </span>

@@ -1,0 +1,100 @@
+{
+  "chat": {
+    "inbox": "Входящие"
+  },
+  "count": {
+    "entries_one": "{{count, number}} запись",
+    "entries_few": "{{count, number}} записи",
+    "entries_many": "{{count, number}} записей",
+    "entries_other": "{{count, number}} записи"
+  },
+  "common": {
+    "comingLater": "Появится позже",
+    "close": "Закрыть"
+  },
+  "sidebar": {
+    "search": "Поиск",
+    "chats": "Чаты",
+    "entriesLabel": ", записей:"
+  },
+  "profile": {
+    "defaultName": "Я",
+    "button": "Профиль: {{name}}",
+    "menu": "Профиль",
+    "settings": "Настройки",
+    "export": "Экспорт",
+    "about": "О программе"
+  },
+  "composer": {
+    "placeholder": "Написать заметку…",
+    "label": "Новая заметка",
+    "attach": "Прикрепить файл",
+    "emoji": "Эмодзи",
+    "voice": "Записать голосовое",
+    "send": "Отправить"
+  },
+  "feed": {
+    "label": "Записи",
+    "empty": "Пока пусто. Напишите первую заметку внизу.",
+    "today": "Сегодня",
+    "yesterday": "Вчера"
+  },
+  "message": {
+    "actions": "Действия с сообщением",
+    "copy": "Копировать",
+    "copied": "Скопировано",
+    "copyFailed": "Не удалось скопировать",
+    "edit": "Редактировать",
+    "task": "Сделать задачей",
+    "favorite": "В избранное",
+    "more": "Ещё",
+    "notSent": "Не отправилось.",
+    "retry": "Повторить",
+    "retryLabel": "Повторить отправку сообщения",
+    "taskDone": "Выполнено",
+    "taskTodo": "Не выполнено"
+  },
+  "toast": {
+    "undo": "Отменить",
+    "sent": "Запись отправлена"
+  },
+  "error": {
+    "empty_message": "Запись пустая.",
+    "message_too_large": "Запись слишком длинная.",
+    "chat_not_found": "Чат не найден.",
+    "message_not_found": "Запись не найдена.",
+    "store_write_failed": "Не удалось сохранить запись. Текст остался в поле.",
+    "store_read_failed": "Не удалось прочитать записи.",
+    "link_not_allowed": "Эту ссылку открыть нельзя.",
+    "folder_pick_failed": "Не удалось выбрать папку.",
+    "internal": "Что-то пошло не так.",
+    "loadFailed": "Не удалось загрузить Kinige"
+  },
+  "settings": {
+    "title": "Настройки",
+    "close": "Закрыть настройки",
+    "mirror": {
+      "title": "Копия в Markdown",
+      "description": "Каждая запись дополнительно пишется в обычный файл Markdown, по файлу на день: журнал читается и без Kinige.",
+      "folder": "Папка",
+      "notSelected": "Папка не выбрана",
+      "isDefault": "Папка по умолчанию",
+      "choose": "Выбрать…",
+      "warning": "Копия — открытый текст: любой, кто может открыть папку, прочитает ваши записи.",
+      "upToDate": "Копия актуальна",
+      "pending_one": "{{count}} день ждёт записи в копию",
+      "pending_few": "{{count}} дня ждут записи в копию",
+      "pending_many": "{{count}} дней ждут записи в копию",
+      "pending_other": "{{count}} дня ждут записи в копию",
+      "error": {
+        "folder_unavailable": "Папка недоступна. Записи сохранены и попадут в копию, когда она заработает.",
+        "write_failed": "Не удалось записать копию. Записи сохранены, Kinige повторит попытку."
+      }
+    },
+    "textSize": {
+      "title": "Размер текста",
+      "normal": "Обычный",
+      "large": "Крупный"
+    }
+  }
+}

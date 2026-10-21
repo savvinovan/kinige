@@ -3,7 +3,7 @@ import { renderMarkdown, sanitizeHtml } from "./markdown";
 
 const render = (source: string, timeSpacer = false) => {
   const host = document.createElement("div");
-  host.innerHTML = renderMarkdown(source, { timeSpacer });
+  host.innerHTML = renderMarkdown(source, { timeSpacer, taskLabels: { done: "Выполнено", todo: "Не выполнено" } });
   return host;
 };
 

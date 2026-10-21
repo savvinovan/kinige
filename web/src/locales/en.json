@@ -1,0 +1,96 @@
+{
+  "chat": {
+    "inbox": "Inbox"
+  },
+  "count": {
+    "entries_one": "{{count, number}} entry",
+    "entries_other": "{{count, number}} entries"
+  },
+  "common": {
+    "comingLater": "Coming soon",
+    "close": "Close"
+  },
+  "sidebar": {
+    "search": "Search",
+    "chats": "Chats",
+    "entriesLabel": ", entries:"
+  },
+  "profile": {
+    "defaultName": "Me",
+    "button": "Profile: {{name}}",
+    "menu": "Profile",
+    "settings": "Settings",
+    "export": "Export",
+    "about": "About"
+  },
+  "composer": {
+    "placeholder": "Write a note…",
+    "label": "New note",
+    "attach": "Attach file",
+    "emoji": "Emoji",
+    "voice": "Record voice note",
+    "send": "Send"
+  },
+  "feed": {
+    "label": "Entries",
+    "empty": "Nothing here yet. Write your first note below.",
+    "today": "Today",
+    "yesterday": "Yesterday"
+  },
+  "message": {
+    "actions": "Entry actions",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Could not copy",
+    "edit": "Edit",
+    "task": "Make a task",
+    "favorite": "Add to favorites",
+    "more": "More",
+    "notSent": "Not sent.",
+    "retry": "Retry",
+    "retryLabel": "Retry sending the entry",
+    "taskDone": "Done",
+    "taskTodo": "Not done"
+  },
+  "toast": {
+    "undo": "Undo",
+    "sent": "Entry sent"
+  },
+  "error": {
+    "empty_message": "The entry is empty.",
+    "message_too_large": "The entry is too long.",
+    "chat_not_found": "This chat was not found.",
+    "message_not_found": "This entry was not found.",
+    "store_write_failed": "Could not save the entry. The text is still in the field.",
+    "store_read_failed": "Could not read your entries.",
+    "link_not_allowed": "This link cannot be opened.",
+    "folder_pick_failed": "Could not choose the folder.",
+    "internal": "Something went wrong.",
+    "loadFailed": "Could not load Kinige"
+  },
+  "settings": {
+    "title": "Settings",
+    "close": "Close settings",
+    "mirror": {
+      "title": "Markdown copy",
+      "description": "Every entry is also written to a plain Markdown file, one file per day, so you can read your journal without Kinige.",
+      "folder": "Folder",
+      "notSelected": "No folder selected",
+      "isDefault": "Default folder",
+      "choose": "Choose…",
+      "warning": "The copy is plain text: anyone who can open the folder can read your entries.",
+      "upToDate": "The copy is up to date",
+      "pending_one": "{{count}} day is waiting to be written",
+      "pending_other": "{{count}} days are waiting to be written",
+      "error": {
+        "folder_unavailable": "The folder is not available. Entries are kept and will be written when it works again.",
+        "write_failed": "Could not write the copy. Entries are kept; Kinige will try again."
+      }
+    },
+    "textSize": {
+      "title": "Text size",
+      "normal": "Normal",
+      "large": "Large"
+    }
+  }
+}
