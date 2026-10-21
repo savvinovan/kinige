@@ -3,16 +3,7 @@ import { Composer, type ComposerButtons } from "../composer/Composer";
 import { Feed } from "../feed/Feed";
 import type { FeedMessage } from "../feed/buildFeed";
 import { Sidebar, type SidebarChat } from "../sidebar/Sidebar";
-import { UndoToast } from "../toast/UndoToast";
 import "./main-window.css";
-
-export interface UndoToastState {
-  /** Меняется с каждым новым тостом: таймер в 5 секунд начинается заново. */
-  key: string;
-  message: string;
-  onUndo: () => void;
-  onExpire: () => void;
-}
 
 interface MainWindowViewProps {
   chats: readonly SidebarChat[];
@@ -32,10 +23,6 @@ interface MainWindowViewProps {
   onSubmit?: () => void;
   /** Ошибка отправки над полем ввода (уже переведённый текст). */
   composerError?: string;
-  /** Тост «Отменить»; `undefined` — тоста нет. */
-  toast?: UndoToastState;
-  /** Растёт, когда фокус нужно вернуть в поле ввода. */
-  composerFocusSignal?: number;
   onOpenSettings?: () => void;
   /** Поле «Поиск» в сайдбаре: в приложении его нет до слайса 4. */
   showSearch?: boolean;
@@ -60,8 +47,6 @@ export function MainWindowView({
   onDraftChange,
   onSubmit,
   composerError,
-  toast,
-  composerFocusSignal,
   onOpenSettings,
   showSearch = true,
   overlay,
@@ -70,9 +55,8 @@ export function MainWindowView({
   return (
     <div className="main-window">
       <Sidebar chats={chats} selectedId={selectedChatId} onOpenSettings={onOpenSettings} showSearch={showSearch} />
-      <main className={`main-window__chat${toast ? " main-window__chat--toast" : ""}`}>
+      <main className="main-window__chat">
         <Feed messages={messages} today={today} onRetry={onRetry} onOpenLink={onOpenLink} />
-        {toast ? <UndoToast key={toast.key} open message={toast.message} onUndo={toast.onUndo} onExpire={toast.onExpire} /> : null}
         <Composer
           value={draft ?? ownDraft}
           onChange={onDraftChange ?? setOwnDraft}
@@ -81,7 +65,6 @@ export function MainWindowView({
           viewOnly={!interactive}
           error={composerError}
           autoFocus={interactive}
-          focusSignal={composerFocusSignal}
         />
       </main>
       {overlay}

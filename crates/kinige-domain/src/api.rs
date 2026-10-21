@@ -58,14 +58,6 @@ pub struct MessagePage {
     pub today: String,
 }
 
-/// Результат «Отменить»: текст возвращается в поле ввода.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "UndoResult.ts")]
-pub struct UndoResult {
-    pub body_md: String,
-}
-
 /// Размер текста (ADR-0004): «Обычный» или «Крупный» ×1,25.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
@@ -136,7 +128,6 @@ pub enum ErrorCode {
     EmptyMessage,
     MessageTooLarge,
     ChatNotFound,
-    MessageNotFound,
     StoreWriteFailed,
     StoreReadFailed,
     LinkNotAllowed,

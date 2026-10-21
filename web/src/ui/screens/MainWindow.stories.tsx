@@ -64,7 +64,7 @@ export const ДлинныйТекст: Story = {
   },
 };
 
-/** Настоящее окно слайса 1 в приложении: одна запись, счётчик 1, пустое поле, тост «Отменить», без мёртвых кнопок. */
+/** Настоящее окно слайса 1 в приложении: одна запись, счётчик 1, пустое поле, без тоста и без мёртвых кнопок (запись просто появляется). */
 export const ПослеОтправки: Story = {
   args: {
     chats: [{ ...toSidebarChat(DEMO_INBOX), count: 1 }],
@@ -72,7 +72,6 @@ export const ПослеОтправки: Story = {
     interactive: true,
     showSearch: false,
     composerButtons: {},
-    toast: { key: "t", message: "Запись отправлена", onUndo: () => undefined, onExpire: () => undefined },
   },
 };
 
@@ -100,7 +99,6 @@ export const ОшибкаОтправки: Story = {
 export const НастройкиОткрыты: Story = {
   args: {
     ...ПослеОтправки.args,
-    toast: undefined,
     overlay: (
       <SettingsDialog
         settings={{

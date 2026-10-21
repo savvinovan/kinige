@@ -30,8 +30,6 @@ pub enum GroupError {
     Jcs(JcsError),
     /// `groups_raw` или `hlc_json` повреждены.
     Corrupt(String),
-    /// Нет группы, которую нужно заменить.
-    MissingGroup(&'static str),
 }
 
 impl fmt::Display for GroupError {
@@ -39,7 +37,6 @@ impl fmt::Display for GroupError {
         match self {
             GroupError::Jcs(error) => write!(f, "{error}"),
             GroupError::Corrupt(why) => write!(f, "повреждены группы записи: {why}"),
-            GroupError::MissingGroup(name) => write!(f, "нет группы {name}"),
         }
     }
 }
@@ -237,37 +234,6 @@ pub fn inbox_chat(hlc: &str, now_ms: i64) -> Result<ChatRow, GroupError> {
     })
 }
 
-/// Группа `deleted` сообщения с новым HLC («Отменить» отправку: запись уходит в корзину, ADR-0001 §3.5). Остальные группы
-/// и их HLC не меняются, их байты переписываются дословно.
-pub fn set_deleted(
-    groups_raw: &str,
-    hlc_json: &str,
-    deleted_at: i64,
-    hlc: &str,
-) -> Result<(String, String), GroupError> {
-    let mut groups: BTreeMap<String, Box<RawValue>> =
-        serde_json::from_str(groups_raw).map_err(|e| GroupError::Corrupt(e.to_string()))?;
-    if !groups.contains_key("deleted") {
-        return Err(GroupError::MissingGroup("deleted"));
-    }
-    let bytes = jcs::canonical_bytes(&json!({"deleted_at": deleted_at}))?;
-    let value = RawValue::from_string(String::from_utf8(bytes).expect("JCS выдаёт UTF-8"))
-        .map_err(|e| GroupError::Corrupt(e.to_string()))?;
-    groups.insert("deleted".to_string(), value);
-
-    let mut hlcs: BTreeMap<String, Value> =
-        serde_json::from_str(hlc_json).map_err(|e| GroupError::Corrupt(e.to_string()))?;
-    hlcs.insert(
-        "deleted".to_string(),
-        json!({"h": hlc, "sv": SCHEMA_VERSION}),
-    );
-
-    let groups_raw =
-        serde_json::to_string(&groups).map_err(|e| GroupError::Corrupt(e.to_string()))?;
-    let hlc_json = serde_json::to_string(&hlcs).map_err(|e| GroupError::Corrupt(e.to_string()))?;
-    Ok((groups_raw, hlc_json))
-}
-
 /// Группы из `groups_raw` с дословными байтами (для проверки инварианта и для слияния).
 pub fn parse_groups_raw(groups_raw: &str) -> Result<BTreeMap<String, Box<RawValue>>, GroupError> {
     serde_json::from_str(groups_raw).map_err(|e| GroupError::Corrupt(e.to_string()))
@@ -423,56 +389,6 @@ mod tests {
             r#"{"archived_at":null,"pinned_at":null}"#
         );
         assert_eq!(groups["privacy"].get(), r#"{"ai_excluded":false}"#);
-    }
-
-    #[test]
-    fn set_deleted_rewrites_only_the_deleted_group() {
-        let row = sample();
-        let (groups_raw, hlc_json) =
-            set_deleted(&row.groups_raw, &row.hlc_json, 1_760_000_004_321, HLC2).unwrap();
-        let before = parse_groups_raw(&row.groups_raw).unwrap();
-        let after = parse_groups_raw(&groups_raw).unwrap();
-        assert_eq!(after["deleted"].get(), r#"{"deleted_at":1760000004321}"#);
-        for name in ["core", "body", "flags", "placement"] {
-            assert_eq!(after[name].get(), before[name].get(), "{name} дословно");
-        }
-        let hlcs: BTreeMap<String, Value> = serde_json::from_str(&hlc_json).unwrap();
-        assert_eq!(hlcs["deleted"], json!({"h": HLC2, "sv": 1}));
-        assert_eq!(hlcs["body"], json!({"h": HLC, "sv": 1}));
-    }
-
-    #[test]
-    fn set_deleted_keeps_unknown_groups_and_unknown_hlc_entries_verbatim() {
-        // Группа новой версии клиента (`zzz`, `sv: 2`) переживает правку чужой группы дословно, вместе с пробелами в байтах.
-        let row = sample();
-        let mut groups = row.groups_raw.clone();
-        groups.insert_str(1, r#""zzz":{ "q" : 1 },"#);
-        let mut hlcs: BTreeMap<String, Value> = serde_json::from_str(&row.hlc_json).unwrap();
-        hlcs.insert("zzz".into(), json!({"h": HLC, "sv": 2, "extra": {"q": 1}}));
-        let hlc_json = serde_json::to_string(&hlcs).unwrap();
-
-        let (groups_raw, hlc_json_after) = set_deleted(&groups, &hlc_json, 5, HLC2).unwrap();
-        let after = parse_groups_raw(&groups_raw).unwrap();
-        assert_eq!(after["zzz"].get(), r#"{ "q" : 1 }"#);
-        assert_eq!(after["deleted"].get(), r#"{"deleted_at":5}"#);
-        let hlcs_after: BTreeMap<String, Value> = serde_json::from_str(&hlc_json_after).unwrap();
-        assert_eq!(
-            hlcs_after["zzz"],
-            json!({"h": HLC, "sv": 2, "extra": {"q": 1}})
-        );
-        assert_eq!(hlcs_after["deleted"], json!({"h": HLC2, "sv": 1}));
-    }
-
-    #[test]
-    fn set_deleted_rejects_corrupt_input() {
-        assert!(matches!(
-            set_deleted("не json", "{}", 1, HLC),
-            Err(GroupError::Corrupt(_))
-        ));
-        assert_eq!(
-            set_deleted("{}", "{}", 1, HLC),
-            Err(GroupError::MissingGroup("deleted"))
-        );
     }
 
     #[test]

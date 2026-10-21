@@ -10,7 +10,6 @@ pub enum StoreError {
     /// Текст длиннее предела.
     TooLarge,
     ChatNotFound,
-    MessageNotFound,
     /// Запись в базу не удалась: ничего не записано (транзакция откатилась).
     Write(String),
     /// Чтение не удалось.
@@ -25,7 +24,6 @@ impl StoreError {
             StoreError::Empty => ErrorCode::EmptyMessage,
             StoreError::TooLarge => ErrorCode::MessageTooLarge,
             StoreError::ChatNotFound => ErrorCode::ChatNotFound,
-            StoreError::MessageNotFound => ErrorCode::MessageNotFound,
             StoreError::Write(_) => ErrorCode::StoreWriteFailed,
             StoreError::Read(_) => ErrorCode::StoreReadFailed,
             StoreError::Internal(_) => ErrorCode::Internal,
@@ -41,7 +39,6 @@ impl StoreError {
             StoreError::Empty => "empty",
             StoreError::TooLarge => "too_large",
             StoreError::ChatNotFound => "chat_not_found",
-            StoreError::MessageNotFound => "message_not_found",
             StoreError::Write(_) => "write",
             StoreError::Read(_) => "read",
             StoreError::Internal(_) => "internal",
@@ -55,7 +52,6 @@ impl fmt::Display for StoreError {
             StoreError::Empty => f.write_str("пустая запись"),
             StoreError::TooLarge => f.write_str("запись слишком длинная"),
             StoreError::ChatNotFound => f.write_str("чат не найден"),
-            StoreError::MessageNotFound => f.write_str("запись не найдена"),
             StoreError::Write(why) => write!(f, "запись в базу не удалась: {why}"),
             StoreError::Read(why) => write!(f, "чтение базы не удалось: {why}"),
             StoreError::Internal(why) => write!(f, "внутренняя ошибка: {why}"),

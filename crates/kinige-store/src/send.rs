@@ -1,13 +1,12 @@
-//! Отправка записи и «Отменить» (ТЗ §5): одна транзакция — запись, HLC в `sync_state`, отметка для Markdown-копии.
+//! Отправка записи (ТЗ §5): одна транзакция — запись, HLC в `sync_state`, отметка для Markdown-копии.
 
 use crate::hlc_state::{get_state, load_clock, next_hlc, save_clock, set_state};
 use crate::{Now, Store, StoreError};
 use kinige_domain::MessageView;
-use kinige_domain::UndoResult;
 use kinige_domain::groups::{self, ChatRow, MessageRow, NewMessage};
 use kinige_domain::hlc::Clock;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
-use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
+use rusqlite::{Connection, Transaction, TransactionBehavior};
 use uuid::Uuid;
 
 fn write_err(error: rusqlite::Error) -> StoreError {
@@ -175,40 +174,6 @@ impl Store {
         })?;
         self.wake_mirror();
         Ok(view)
-    }
-
-    /// «Отменить» отправку: пишет группу `deleted` с новым HLC — запись уходит в корзину (её интерфейс — слайс 3).
-    /// Возвращает текст, чтобы фронтенд вернул его в поле ввода.
-    pub fn undo_send(&self, message_id: &str, now: &Now) -> Result<UndoResult, StoreError> {
-        let message_id = message_id.to_string();
-        let now = now.clone();
-        let result = self.write(move |conn| {
-            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate).map_err(write_err)?;
-            let found: Option<(String, String, String, String, String)> = tx
-                .query_row(
-                    "SELECT body_md, chat_id, journal_date, groups_raw, hlc_json FROM message WHERE id = ?1 AND deleted_at IS NULL",
-                    [&message_id],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
-                )
-                .optional()
-                .map_err(write_err)?;
-            let Some((body_md, chat_id, date, groups_raw, hlc_json)) = found else {
-                return Err(StoreError::MessageNotFound);
-            };
-            let hlc = next_hlc(&tx, now.ms)?;
-            let (groups_raw, hlc_json) = groups::set_deleted(&groups_raw, &hlc_json, now.ms, &hlc)
-                .map_err(|e| StoreError::Internal(e.to_string()))?;
-            tx.execute(
-                "UPDATE message SET deleted_at = ?1, groups_raw = ?2, hlc_json = ?3 WHERE id = ?4",
-                rusqlite::params![now.ms, groups_raw, hlc_json, message_id],
-            )
-            .map_err(write_err)?;
-            mark_dirty(&tx, &chat_id, &date).map_err(write_err)?;
-            tx.commit().map_err(write_err)?;
-            Ok(UndoResult { body_md })
-        })?;
-        self.wake_mirror();
-        Ok(result)
     }
 }
 

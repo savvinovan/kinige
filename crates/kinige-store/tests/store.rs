@@ -366,55 +366,27 @@ fn group_bytes_and_hlc_of_a_sent_message_are_complete() {
 }
 
 #[test]
-fn undo_moves_the_entry_to_the_trash_and_returns_its_text() {
+fn deleted_entries_are_neither_shown_nor_counted() {
+    // Корзина (слайс 3) уже учтена чтением: запись с `deleted_at` не видна в ленте и не входит в счётчик.
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let first = store.send_message(INBOX_ID, "первая", &moscow(T0)).unwrap();
     let second = store
-        .send_message(INBOX_ID, "вторая — поправить", &moscow(T0 + 1000))
+        .send_message(INBOX_ID, "вторая", &moscow(T0 + 1000))
         .unwrap();
     assert_eq!(store.list_chats().unwrap()[0].count, 2);
 
-    let undone = store.undo_send(&second.id, &moscow(T0 + 2000)).unwrap();
-    assert_eq!(undone.body_md, "вторая — поправить");
+    raw(dir.path())
+        .execute(
+            "UPDATE message SET deleted_at = ?1 WHERE id = ?2",
+            (T0 + 2000, &second.id),
+        )
+        .unwrap();
     let page = store
         .list_messages(INBOX_ID, None, 50, &moscow(T0 + 3000))
         .unwrap();
-    assert_eq!(page.messages, vec![first], "запись пропала из ленты");
-    assert_eq!(store.list_chats().unwrap()[0].count, 1, "счётчик снова 1");
-
-    // Запись осталась в базе (корзина, слайс 3): группа deleted с новым HLC, остальные группы не тронуты.
-    let (deleted_at, groups_raw, hlc_json): (i64, String, String) = raw(dir.path())
-        .query_row(
-            "SELECT deleted_at, groups_raw, hlc_json FROM message WHERE id = ?1",
-            [&second.id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-        )
-        .unwrap();
-    assert_eq!(deleted_at, T0 + 2000);
-    let groups = parse_groups_raw(&groups_raw).unwrap();
-    assert_eq!(
-        groups["deleted"].get(),
-        format!(r#"{{"deleted_at":{}}}"#, T0 + 2000)
-    );
-    assert!(groups["body"].get().contains("вторая — поправить"));
-    let hlcs: Value = serde_json::from_str(&hlc_json).unwrap();
-    assert!(
-        hlcs["deleted"]["h"].as_str().unwrap() > hlcs["body"]["h"].as_str().unwrap(),
-        "новый HLC у deleted"
-    );
-
-    assert!(
-        matches!(
-            store.undo_send(&second.id, &moscow(T0 + 4000)),
-            Err(StoreError::MessageNotFound)
-        ),
-        "повторно нельзя"
-    );
-    assert!(matches!(
-        store.undo_send("нет", &moscow(T0)),
-        Err(StoreError::MessageNotFound)
-    ));
+    assert_eq!(page.messages, vec![first]);
+    assert_eq!(store.list_chats().unwrap()[0].count, 1);
 }
 
 #[test]
@@ -485,19 +457,6 @@ fn write_failure_leaves_nothing_behind_and_returns_a_code() {
         .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |r| r.get(0))
         .unwrap();
     assert_eq!(dirty_after, dirty_before);
-
-    // «Отменить» при отказе тоже ничего не меняет.
-    let id: String = conn
-        .query_row("SELECT id FROM message", [], |r| r.get(0))
-        .unwrap();
-    assert_eq!(
-        store.undo_send(&id, &moscow(T0 + 2000)).unwrap_err().code(),
-        ErrorCode::StoreWriteFailed
-    );
-    let deleted: Option<i64> = conn
-        .query_row("SELECT deleted_at FROM message", [], |r| r.get(0))
-        .unwrap();
-    assert_eq!(deleted, None);
 
     // Отказ прошёл: запись снова работает.
     conn.execute_batch("DROP TRIGGER fail_dirty; DROP TRIGGER fail_dirty_update;")

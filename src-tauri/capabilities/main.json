@@ -9,7 +9,6 @@
     "allow-list-chats",
     "allow-list-messages",
     "allow-send-message",
-    "allow-undo-send",
     "allow-get-settings",
     "allow-set-text-size",
     "allow-choose-mirror-folder",

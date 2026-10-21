@@ -22,8 +22,24 @@ fn dirty_count(dir: &Path) -> i64 {
         .unwrap()
 }
 
+/// Запись уходит в корзину (интерфейс корзины — слайс 3): день помечается для перезаписи, как это сделает удаление.
+/// Копия просыпается от смены папки (на ту же самую).
+fn delete_entry(store: &kinige_store::Store, dir: &Path, id: &str, date: &str) {
+    let conn = raw(dir);
+    conn.execute("UPDATE message SET deleted_at = 1 WHERE id = ?1", [id])
+        .unwrap();
+    conn.execute(
+        "INSERT INTO mirror_dirty (chat_id, journal_date, seq) \
+         VALUES (?1, ?2, (SELECT COALESCE(MAX(seq), 0) + 1 FROM mirror_dirty)) \
+         ON CONFLICT(chat_id, journal_date) DO UPDATE SET seq = excluded.seq",
+        (INBOX_ID, date),
+    )
+    .unwrap();
+    store.set_mirror_dir(&mirror_dir(dir)).unwrap();
+}
+
 #[test]
-fn sending_writes_the_day_file_with_time_and_undo_rewrites_it() {
+fn sending_writes_the_day_file_with_time_and_deleted_entries_leave_it() {
     let dir = tempfile::tempdir().unwrap();
     let store = open(dir.path());
     let file = day_file(dir.path(), "2026-10-21");
@@ -51,9 +67,7 @@ fn sending_writes_the_day_file_with_time_and_undo_rewrites_it() {
         "# 2026-10-21\n\n## 09:12\n\nКупить **молоко**\n- [ ] позвонить маме\n\n## 09:14\n\n### Заголовок внутри записи\nвторая\n"
     );
 
-    store
-        .undo_send(&second.id, &moscow(T0 + 3 * MINUTE))
-        .unwrap();
+    delete_entry(&store, dir.path(), &second.id, "2026-10-21");
     wait_until(
         "запись из корзины ушла из копии",
         || fs::read_to_string(&file).is_ok_and(|t| !t.contains("вторая")),
@@ -73,7 +87,7 @@ fn a_day_without_entries_loses_its_file_and_empty_folders() {
     let sent = store.send_message(INBOX_ID, "одна", &moscow(T0)).unwrap();
     wait_until("файл дня", || file.exists());
 
-    store.undo_send(&sent.id, &moscow(T0 + MINUTE)).unwrap();
+    delete_entry(&store, dir.path(), &sent.id, "2026-10-21");
     wait_until("файл удалён", || !file.exists());
     wait_until("отметки сняты", || dirty_count(dir.path()) == 0);
     assert!(

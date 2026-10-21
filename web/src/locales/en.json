@@ -53,14 +53,12 @@
     "taskTodo": "Not done"
   },
   "toast": {
-    "undo": "Undo",
-    "sent": "Entry sent"
+    "undo": "Undo"
   },
   "error": {
     "empty_message": "The entry is empty.",
     "message_too_large": "The entry is too long.",
     "chat_not_found": "This chat was not found.",
-    "message_not_found": "This entry was not found.",
     "store_write_failed": "Could not save the entry. The text is still in the field.",
     "store_read_failed": "Could not read your entries.",
     "link_not_allowed": "This link cannot be opened.",

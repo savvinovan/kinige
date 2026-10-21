@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type KeyboardEvent } from "react";
+import { useId, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../controls/IconButton";
 import "./composer.css";
@@ -26,8 +26,6 @@ interface ComposerProps {
   placeholder?: string;
   /** Фокус в поле при показе: после отправки и при открытии чата. */
   autoFocus?: boolean;
-  /** Значение растёт каждый раз, когда фокус нужно вернуть в поле (после «Отменить»: кнопка тоста исчезает вместе с фокусом). */
-  focusSignal?: number;
 }
 
 /** Внутри блока кода (открыто нечётное число ограждений ```) Enter — новая строка, а не отправка (ТЗ §5). */
@@ -50,14 +48,10 @@ export function Composer({
   error,
   placeholder,
   autoFocus,
-  focusSignal = 0,
 }: ComposerProps) {
   const { t } = useTranslation();
   const errorId = useId();
   const input = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    if (focusSignal > 0) input.current?.focus();
-  }, [focusSignal]);
   const hasText = value.trim() !== "";
 
   // Кнопка «Отправить» делает то же, что Enter. После щелчка фокус возвращается в поле: сама кнопка исчезает, как только поле пустеет.

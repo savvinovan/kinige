@@ -8,7 +8,6 @@ import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
 import type { Settings } from "./generated/Settings";
 import type { TextSize } from "./generated/TextSize";
-import type { UndoResult } from "./generated/UndoResult";
 
 export interface MockApiOptions {
   /** «Сейчас» для новых записей и метки «сегодня»; по умолчанию — часы окна. */
@@ -101,13 +100,6 @@ export class MockApi implements KinigeApi {
     };
     this.messages.push(message);
     return Promise.resolve(message);
-  }
-
-  undoSend(messageId: string): Promise<UndoResult> {
-    const found = this.messages.find((m) => m.id === messageId);
-    if (!found) return Promise.reject(new KinigeApiError("message_not_found"));
-    this.messages = this.messages.filter((m) => m.id !== messageId);
-    return Promise.resolve({ bodyMd: found.bodyMd });
   }
 
   getSettings(): Promise<Settings> {

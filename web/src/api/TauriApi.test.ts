@@ -21,10 +21,6 @@ describe("TauriApi", () => {
     await new TauriApi().sendMessage("chat-1", "текст");
     expect(invoke).toHaveBeenCalledWith("send_message", { chatId: "chat-1", body: "текст" });
 
-    invoke.mockResolvedValue({ bodyMd: "текст" });
-    await new TauriApi().undoSend("m");
-    expect(invoke).toHaveBeenCalledWith("undo_send", { messageId: "m" });
-
     invoke.mockResolvedValue(undefined);
     await new TauriApi().setTextSize("large");
     expect(invoke).toHaveBeenCalledWith("set_text_size", { size: "large" });

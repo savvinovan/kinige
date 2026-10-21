@@ -14,7 +14,7 @@ use ts_rs::TS;
 
 pub use api::{
     ApiError, ChatSummary, ErrorCode, FeedCursor, MessagePage, MessageView, MirrorError,
-    MirrorStatus, Settings, TextSize, UndoResult,
+    MirrorStatus, Settings, TextSize,
 };
 pub use lang::Language;
 

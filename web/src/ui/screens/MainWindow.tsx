@@ -39,9 +39,6 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const [loadError, setLoadError] = useState<ErrorCode | null>(null);
   const [draft, setDraft] = useState("");
   const [composerError, setComposerError] = useState<ErrorCode | null>(null);
-  const [toast, setToast] = useState<{ messageId: string } | null>(null);
-  const [focusSignal, setFocusSignal] = useState(0);
-  const closeToast = useCallback(() => setToast(null), []);
   const [settings, setSettings] = useState(initialSettings);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [choosing, setChoosing] = useState(false);
@@ -105,28 +102,14 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
         setMessages((all) => [...all, sent]);
         setDraft("");
         setComposerError(null);
-        setToast({ messageId: sent.id });
         void refreshChats();
       })
-      // Текст остаётся в поле; запись не показана (без оптимистичного показа).
+      // Успех: запись просто появляется в ленте, без тоста и подтверждений (как в Telegram). Ошибка: текст остаётся в поле,
+      // запись не показана (без оптимистичного показа).
       .catch((reason: unknown) => setComposerError(errorCode(reason)))
       .finally(() => {
         sending.current = false;
       });
-  };
-
-  const undo = (messageId: string) => {
-    api
-      .undoSend(messageId)
-      .then(({ bodyMd }) => {
-        setMessages((all) => all.filter((m) => m.id !== messageId));
-        // Текст возвращается в поле, чтобы поправить и отправить заново; набранное за 5 секунд не затирается.
-        setDraft((current) => (current.trim() === "" ? bodyMd : current));
-        setToast(null);
-        setFocusSignal((n) => n + 1);
-        void refreshChats();
-      })
-      .catch((reason: unknown) => setComposerError(errorCode(reason)));
   };
 
   const openLink = (url: string) => {
@@ -168,12 +151,6 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       }}
       onSubmit={submit}
       composerError={composerError ? t(`error.${composerError}`) : undefined}
-      toast={
-        toast
-          ? { key: toast.messageId, message: t("toast.sent"), onUndo: () => undo(toast.messageId), onExpire: closeToast }
-          : undefined
-      }
-      composerFocusSignal={focusSignal}
       onOpenLink={openLink}
       onOpenSettings={openSettings}
       overlay={

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Frame } from "../stories/Frame";
 import { UndoToast } from "./UndoToast";
 
+// Тост накладывается поверх и не сдвигает содержимое: в историях он стоит над полем ввода на пустом фоне.
 // В историях тост не исчезает сам (десять минут): снимок и просмотр не гонятся с таймером на 5 секунд.
 const LONG_MS = 600_000;
 

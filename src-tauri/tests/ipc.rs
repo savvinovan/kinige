@@ -59,7 +59,6 @@ fn args_for(command: &str) -> Value {
     match command {
         "list_messages" => json!({"chatId": kinige_domain::groups::INBOX_ID}),
         "send_message" => json!({"chatId": kinige_domain::groups::INBOX_ID, "body": "проверка"}),
-        "undo_send" => json!({"messageId": "нет-такой"}),
         "set_text_size" => json!({"size": "normal"}),
         "open_external_url" => json!({"url": "file:///etc/passwd"}),
         _ => json!({}),
@@ -170,7 +169,7 @@ fn open_external_url_rejects_everything_but_http_https_and_mailto() {
 }
 
 #[test]
-fn send_undo_and_settings_work_end_to_end_over_ipc() {
+fn send_and_settings_work_end_to_end_over_ipc() {
     let fixture = fixture();
     let window = window(&fixture, "main");
     let inbox = kinige_domain::groups::INBOX_ID;
@@ -186,7 +185,6 @@ fn send_undo_and_settings_work_end_to_end_over_ipc() {
     )
     .unwrap();
     assert_eq!(sent["bodyMd"], "Купить **молоко**");
-    let id = sent["id"].as_str().unwrap().to_string();
 
     let page = call(
         &window,
@@ -201,13 +199,6 @@ fn send_undo_and_settings_work_end_to_end_over_ipc() {
         1
     );
 
-    let undone = call(&window, "undo_send", json!({"messageId": id})).unwrap();
-    assert_eq!(undone["bodyMd"], "Купить **молоко**");
-    assert_eq!(
-        call(&window, "list_chats", json!({})).unwrap()[0]["count"],
-        0
-    );
-
     let empty = call(
         &window,
         "send_message",
@@ -215,8 +206,6 @@ fn send_undo_and_settings_work_end_to_end_over_ipc() {
     )
     .unwrap_err();
     assert_eq!(empty, json!({"code": "empty_message"}));
-    let missing = call(&window, "undo_send", json!({"messageId": "нет"})).unwrap_err();
-    assert_eq!(missing, json!({"code": "message_not_found"}));
 
     call(&window, "set_text_size", json!({"size": "large"})).unwrap();
     let settings = call(&window, "get_settings", json!({})).unwrap();

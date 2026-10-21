@@ -7,7 +7,6 @@ import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
 import type { Settings } from "./generated/Settings";
 import type { TextSize } from "./generated/TextSize";
-import type { UndoResult } from "./generated/UndoResult";
 
 /** Id Inbox: константа протокола, одна на все аккаунты (ADR-0001, §3.6). */
 export const INBOX_ID = "00000000-0000-4000-8000-000000000001";
@@ -39,8 +38,6 @@ export interface KinigeApi {
   listMessages(chatId: string, options?: { before?: FeedCursor; limit?: number }): Promise<MessagePage>;
   /** Отправка: ответ — сохранённая запись; без оптимистичного показа. */
   sendMessage(chatId: string, body: string): Promise<MessageView>;
-  /** «Отменить» отправку: запись уходит в корзину, ответ — её текст (для возврата в поле ввода). */
-  undoSend(messageId: string): Promise<UndoResult>;
   getSettings(): Promise<Settings>;
   setTextSize(size: TextSize): Promise<void>;
   /** Системный диалог выбора папки Markdown-копии (вызывается из Rust). Отмена возвращает прежние настройки. */

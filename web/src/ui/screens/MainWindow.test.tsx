@@ -39,7 +39,7 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
     expect(screen.queryByRole("button", { name: "Отправить" })).toBeNull();
   });
 
-  it("отправка Enter: запись под меткой «Сегодня» с временем, счётчик 1, тост «Отменить», поле пусто", async () => {
+  it("отправка Enter: запись под меткой «Сегодня» с временем, счётчик 1, поле пусто, никакого тоста и подтверждения", async () => {
     setup();
     await type("Купить **молоко**\n- [ ] позвонить маме");
     expect(screen.getByRole("button", { name: "Отправить" })).toBeInTheDocument();
@@ -50,8 +50,10 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
     expect(within(plate).getByText("06:12")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Сегодня");
     expect(screen.getByRole("button", { name: /^Входящие/ })).toHaveTextContent("1");
-    expect(screen.getByText("Запись отправлена")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Отменить" })).toBeInTheDocument();
+    // После отправки нет ни тоста, ни другого подтверждения: запись просто появилась в ленте.
+    expect(screen.queryByText("Запись отправлена")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Отменить" })).toBeNull();
+    expect(document.querySelector(".toast, .toast-region")).toBeNull();
     expect(field().value).toBe("");
   });
 
@@ -71,36 +73,6 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
     expect(await screen.findByRole("article")).toHaveTextContent("через кнопку");
   });
 
-  it("«Отменить»: запись пропадает, счётчик снова 1, текст возвращается в поле, фокус в поле", async () => {
-    setup();
-    await type("первая");
-    fireEvent.keyDown(field(), { key: "Enter" });
-    await screen.findByText("первая");
-    await type("вторая — поправить");
-    fireEvent.keyDown(field(), { key: "Enter" });
-    await screen.findByText("вторая — поправить");
-    expect(screen.getByRole("button", { name: /^Входящие/ })).toHaveTextContent("2");
-
-    fireEvent.click(screen.getByRole("button", { name: "Отменить" }));
-    await waitFor(() => expect(screen.queryByText("вторая — поправить", { selector: "article *" })).toBeNull());
-    expect(screen.getAllByRole("article")).toHaveLength(1);
-    expect(screen.getByRole("button", { name: /^Входящие/ })).toHaveTextContent("1");
-    expect(field().value).toBe("вторая — поправить");
-    expect(field()).toHaveFocus();
-    expect(screen.queryByRole("button", { name: "Отменить" })).toBeNull();
-  });
-
-  it("«Отменить» не затирает то, что уже набрано в поле", async () => {
-    setup();
-    await type("отправлено");
-    fireEvent.keyDown(field(), { key: "Enter" });
-    await screen.findByText("отправлено");
-    await type("уже печатаю новое");
-    fireEvent.click(screen.getByRole("button", { name: "Отменить" }));
-    await waitFor(() => expect(screen.queryByRole("article")).toBeNull());
-    expect(field().value).toBe("уже печатаю новое");
-  });
-
   it("ошибка записи: запись не показана, текст остаётся в поле, над ним ошибка; повтор проходит", async () => {
     const api = setup();
     api.failNextSend = "store_write_failed";
@@ -110,7 +82,6 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось сохранить запись. Текст остался в поле.");
     expect(field().value).toBe("важная мысль");
     expect(screen.queryByRole("article")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Отменить" })).toBeNull();
     expect(document.querySelector(".chat-row__count")).toBeNull();
 
     fireEvent.keyDown(field(), { key: "Enter" });
@@ -128,7 +99,7 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("по-английски: «Inbox», «Entry sent», «Undo», ошибки и «Today»", async () => {
+  it("по-английски: «Inbox», ошибки и «Today»", async () => {
     const api = setup({}, SETTINGS, "en");
     expect(await screen.findByRole("button", { name: /^Inbox/ })).toBeInTheDocument();
     api.failNextSend = "store_write_failed";
@@ -138,8 +109,6 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
     fireEvent.keyDown(field(), { key: "Enter" });
     await screen.findByRole("article");
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Today");
-    expect(screen.getByText("Entry sent")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
   });
 
   it("запись из прошлого дня: метка по journal_date, а не «Сегодня»", async () => {

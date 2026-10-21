@@ -13,7 +13,6 @@ fn main() {
         "list_chats",
         "list_messages",
         "send_message",
-        "undo_send",
         "get_settings",
         "set_text_size",
         "choose_mirror_folder",

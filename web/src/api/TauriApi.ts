@@ -10,13 +10,11 @@ import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
 import type { Settings } from "./generated/Settings";
 import type { TextSize } from "./generated/TextSize";
-import type { UndoResult } from "./generated/UndoResult";
 
 const CODES: readonly ErrorCode[] = [
   "empty_message",
   "message_too_large",
   "chat_not_found",
-  "message_not_found",
   "store_write_failed",
   "store_read_failed",
   "link_not_allowed",
@@ -58,10 +56,6 @@ export class TauriApi implements KinigeApi {
 
   sendMessage(chatId: string, body: string): Promise<MessageView> {
     return call("send_message", { chatId, body });
-  }
-
-  undoSend(messageId: string): Promise<UndoResult> {
-    return call("undo_send", { messageId });
   }
 
   getSettings(): Promise<Settings> {

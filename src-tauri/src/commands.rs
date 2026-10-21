@@ -4,7 +4,7 @@
 use kinige_domain::link::{LinkError, validate_external_url};
 use kinige_domain::{
     ApiError, AppInfo, ChatSummary, ErrorCode, FeedCursor, Language, MessagePage, MessageView,
-    Settings, TextSize, UndoResult,
+    Settings, TextSize,
 };
 use kinige_store::{DEFAULT_PAGE, Now, Store, StoreError};
 use tauri::{AppHandle, Runtime, State};
@@ -63,11 +63,6 @@ pub fn send_message(
     store
         .send_message(&chat_id, &body, &Now::system())
         .map_err(api)
-}
-
-#[tauri::command(async)]
-pub fn undo_send(store: State<'_, Store>, message_id: String) -> ApiResult<UndoResult> {
-    store.undo_send(&message_id, &Now::system()).map_err(api)
 }
 
 #[tauri::command(async)]
