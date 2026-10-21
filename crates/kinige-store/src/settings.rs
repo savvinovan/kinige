@@ -59,6 +59,7 @@ impl Store {
                 error: self.inner.mirror.error(),
                 pending_days,
             },
+            shortcuts: Vec::new(),
         })
     }
 

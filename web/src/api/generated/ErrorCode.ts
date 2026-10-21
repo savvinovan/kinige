@@ -3,4 +3,4 @@
 /**
  * Код ошибки команды; текст — во фронтенде (`error.<код>` в файлах переводов).
  */
-export type ErrorCode = "empty_message" | "message_too_large" | "chat_not_found" | "store_write_failed" | "store_read_failed" | "link_not_allowed" | "folder_pick_failed" | "internal";
+export type ErrorCode = "empty_message" | "message_too_large" | "chat_not_found" | "store_write_failed" | "store_read_failed" | "link_not_allowed" | "folder_pick_failed" | "shortcut_invalid" | "shortcut_taken" | "shortcut_duplicate" | "internal";

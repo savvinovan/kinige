@@ -17,7 +17,14 @@ tauri-build = { version = "2.7", features = [] }
 [dependencies]
 kinige-domain = { path = "../crates/kinige-domain" }
 kinige-store = { path = "../crates/kinige-store" }
-tauri = { version = "2.12", features = [] }
+# tray-icon: значок в menu bar (ядро Tauri); image-png: иконка трея из PNG, вшитого в бинарник.
+tauri = { version = "2.12", features = ["tray-icon", "image-png"] }
+# Глобальные сочетания клавиш (захват и буфер) — только из Rust; JS-разрешений у окон нет.
+tauri-plugin-global-shortcut = "2.4"
+# Второй запуск показывает существующее главное окно (ТЗ §5.1).
+tauri-plugin-single-instance = "2.5"
+# Текст из буфера обмена — только из Rust (хоткей буфера).
+arboard = { version = "3.7", default-features = false }
 # Открытие ссылок в системном браузере и системный диалог выбора папки — только из Rust (JS-разрешений у окна нет, §12.3).
 tauri-plugin-opener = "2.7"
 tauri-plugin-dialog = "2.8"

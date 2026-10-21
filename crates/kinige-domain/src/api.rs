@@ -1,6 +1,8 @@
 //! Типы, которыми обмениваются Rust и фронтенд (`KinigeApi`). TS-типы генерируются в `web/src/api/generated/`
 //! (`cargo test`, ADR-0002). Тексты ошибок — во фронтенде: Rust возвращает только коды.
 
+use crate::lang::Language;
+use crate::shortcuts::ShortcutStatus;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -118,6 +120,47 @@ pub struct MirrorStatus {
 pub struct Settings {
     pub text_size: TextSize,
     pub mirror: MirrorStatus,
+    /// Глобальные сочетания клавиш (слайс 2): по одному на каждое действие.
+    pub shortcuts: Vec<ShortcutStatus>,
+}
+
+/// Что сделал быстрый захват.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "CaptureAction.ts")]
+pub enum CaptureAction {
+    /// Создана новая запись.
+    Created,
+    /// Текст дописан к последней записи.
+    Appended,
+}
+
+/// Ответ окну захвата: что сделано и запись, как она теперь выглядит.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "CaptureOutcome.ts")]
+pub struct CaptureOutcome {
+    pub action: CaptureAction,
+    pub message: MessageView,
+}
+
+/// Всё, что нужно окну захвата при показе, одним ответом (§5.1, слайс 2).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "CaptureState.ts")]
+pub struct CaptureState {
+    pub language: Language,
+    pub text_size: TextSize,
+    /// Сегодняшний `journal_date` (с границей дня 04:00).
+    pub today: String,
+    /// До трёх последних неудалённых записей Inbox за сегодня, по возрастанию: самая новая последней.
+    pub context: Vec<MessageView>,
+    /// Id записи, к которой ⌘Enter допишет текст; `null` — ⌘Enter создаст новую запись.
+    pub append_target: Option<String>,
+    /// Черновик окна захвата.
+    pub draft: String,
+    /// Ошибка, с которой окно открыто (сбой записи из буфера): показывается один раз.
+    pub error: Option<ErrorCode>,
 }
 
 /// Код ошибки команды; текст — во фронтенде (`error.<код>` в файлах переводов).
@@ -132,6 +175,12 @@ pub enum ErrorCode {
     StoreReadFailed,
     LinkNotAllowed,
     FolderPickFailed,
+    /// Сочетание не принято: нет модификатора, зарезервировано системой или записано неверно.
+    ShortcutInvalid,
+    /// Сочетание занято другой программой или системой.
+    ShortcutTaken,
+    /// Такое же сочетание уже назначено другому действию Kinige.
+    ShortcutDuplicate,
     Internal,
 }
 
