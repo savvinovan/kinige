@@ -18,3 +18,8 @@
 .main-window__chat > .feed-scroll {
   flex: 1;
 }
+
+/* Пока виден тост «Отменить», внизу ленты оставлено место под него: тост не закрывает время последней плашки. */
+.main-window__chat--toast > .feed-scroll {
+  padding-bottom: calc(var(--layout-feed-padding-block) + var(--layout-toast-reserve));
+}

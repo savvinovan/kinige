@@ -97,6 +97,18 @@ describe("SettingsDialog", () => {
     expect(onTextSizeChange).toHaveBeenLastCalledWith("large");
   });
 
+  it("Tab обходит окно по кругу, группа размера текста — одна остановка (найдено в настоящем окне)", () => {
+    view();
+    const stops: string[] = [];
+    const tab = () => {
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Tab" });
+      stops.push(document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent ?? "");
+    };
+    stops.push(document.activeElement?.getAttribute("aria-label") ?? "");
+    for (let i = 0; i < 4; i++) tab();
+    expect(stops).toEqual(["Закрыть настройки", "Выбрать…", "Обычный", "Закрыть настройки", "Выбрать…"]);
+  });
+
   it("«Крупный» выбран по настройкам", () => {
     view({ settings: settings({}, "large") });
     expect(screen.getByRole("radio", { name: "Крупный" })).toHaveAttribute("aria-checked", "true");

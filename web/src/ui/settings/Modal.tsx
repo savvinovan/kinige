@@ -19,7 +19,10 @@ interface ModalProps {
   children: ReactNode;
 }
 
-const focusablesIn = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>(FOCUSABLE)];
+// `tabindex="-1"` выводит элемент из обхода Tab (выбранный вариант радиогруппы — единственная остановка группы),
+// хотя селектор кнопок его захватывает: такие элементы отбрасываются.
+const focusablesIn = (root: HTMLElement) =>
+  [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((element) => element.getAttribute("tabindex") !== "-1");
 
 /**
  * Модальное окно внутри главного окна приложения (не второе окно ОС): подложка, панель по центру, заголовок и кнопка

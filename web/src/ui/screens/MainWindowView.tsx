@@ -70,7 +70,7 @@ export function MainWindowView({
   return (
     <div className="main-window">
       <Sidebar chats={chats} selectedId={selectedChatId} onOpenSettings={onOpenSettings} showSearch={showSearch} />
-      <main className="main-window__chat">
+      <main className={`main-window__chat${toast ? " main-window__chat--toast" : ""}`}>
         <Feed messages={messages} today={today} onRetry={onRetry} onOpenLink={onOpenLink} />
         {toast ? <UndoToast key={toast.key} open message={toast.message} onUndo={toast.onUndo} onExpire={toast.onExpire} /> : null}
         <Composer
