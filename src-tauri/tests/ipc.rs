@@ -128,6 +128,8 @@ fn main_window_cannot_call_unlisted_commands_or_plugin_commands() {
         "plugin:dialog|confirm",
         "plugin:shell|open",
         "no_such_command",
+        // Отмена отправки убрана в слайсе 1 (решение пользователя); команды больше нет.
+        "undo_send",
     ] {
         let error = call(
             &window,
