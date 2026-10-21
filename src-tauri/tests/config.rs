@@ -35,13 +35,74 @@ fn dev_csp_still_forbids_inline_scripts() {
     assert_eq!(script, "'self'");
 }
 
+/// `allow-list-messages` для команды `list_messages`.
+fn permission(command: &str) -> String {
+    format!("allow-{}", command.replace('_', "-"))
+}
+
 #[test]
-fn main_capability_lists_commands_explicitly() {
+fn main_capability_lists_exactly_the_commands_of_the_slice() {
     let capability = read("capabilities/main.json");
     assert_eq!(capability["windows"], serde_json::json!(["main"]));
+    let granted: Vec<String> = capability["permissions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p.as_str().unwrap().to_string())
+        .collect();
+    let expected: Vec<String> = kinige_lib::COMMANDS.iter().map(|c| permission(c)).collect();
     assert_eq!(
-        capability["permissions"],
-        serde_json::json!(["allow-app-info"]),
-        "главному окну выданы только перечисленные команды, без core:default и масок"
+        granted, expected,
+        "главному окну выданы только команды слайса: без core:default, масок и разрешений плагинов"
+    );
+    for permission in &granted {
+        assert!(
+            permission.starts_with("allow-") && !permission.contains(':'),
+            "{permission}: разрешения плагинов (opener:, dialog:) и core: окну не выдаются"
+        );
+    }
+}
+
+#[test]
+fn there_is_exactly_one_capability_file() {
+    let dir = format!("{}/capabilities", env!("CARGO_MANIFEST_DIR"));
+    let files: Vec<String> = std::fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(
+        files,
+        ["main.json"],
+        "второго окна и своей capability в слайсе 1 нет"
+    );
+}
+
+#[test]
+fn build_script_manifest_matches_the_command_list() {
+    let build =
+        std::fs::read_to_string(format!("{}/build.rs", env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let list = build
+        .split("commands(&[")
+        .nth(1)
+        .and_then(|rest| rest.split("])").next())
+        .expect("список команд в build.rs");
+    // Между кавычками — имена команд: нечётные части при разбиении по «"».
+    let declared: Vec<&str> = list.split('"').skip(1).step_by(2).collect();
+    assert_eq!(
+        declared,
+        kinige_lib::COMMANDS,
+        "список в build.rs должен совпадать с kinige_lib::COMMANDS"
+    );
+}
+
+#[test]
+fn only_one_window_without_remote_urls() {
+    let conf = read("tauri.conf.json");
+    let windows = conf["app"]["windows"].as_array().unwrap();
+    assert_eq!(windows.len(), 1);
+    assert_eq!(windows[0]["label"], "main");
+    assert!(
+        windows[0].get("url").is_none(),
+        "окно грузит только страницу приложения"
     );
 }

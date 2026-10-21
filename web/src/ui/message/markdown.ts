@@ -5,7 +5,13 @@ import MarkdownIt from "markdown-it";
 // в D1 не рендерятся, ссылки только http(s) и mailto, результат дополнительно проходит DOMPurify по белому списку.
 // Заметки — пользовательские данные, а у webview есть доступ к командам Tauri, поэтому защита двойная.
 
-type RenderEnv = { timeSpacer?: boolean };
+/** Подписи квадратиков задач для диктора: из переводов, поэтому приходят снаружи. */
+export interface TaskLabels {
+  done: string;
+  todo: string;
+}
+
+type RenderEnv = { timeSpacer?: boolean; taskLabels?: TaskLabels };
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true, typographer: false });
 md.linkify.set({ fuzzyLink: false, fuzzyEmail: false });
@@ -15,9 +21,9 @@ md.disable(["image", "table"]);
 md.renderer.rules.fence = (tokens, idx) =>
   `<pre class="code-block" tabindex="0"><code>${md.utils.escapeHtml(tokens[idx]?.content ?? "")}</code></pre>\n`;
 
-// Ссылка остаётся настоящим <a href> (видна диктору, берёт фокус, адрес читается при наведении), но в D1 переход по ней
-// отменяется в Message: webview не должен уходить с экрана приложения на внешний сайт. Открытие в системном браузере —
-// слайс 1 (команда или плагин Tauri и capability); пока его нет, щелчок и Enter по ссылке ничего не открывают.
+// Ссылка остаётся настоящим <a href> (видна диктору, берёт фокус, адрес читается при наведении), но переход по ней
+// отменяется в Message: webview не должен уходить с экрана приложения на внешний сайт. Адрес уходит в системный браузер
+// командой `open_external_url` (слайс 1), а «Open Link» из системного меню закрывает `on_navigation` в Rust.
 // rel закрывает доступ к window.opener на случай, если переход когда-нибудь разрешат.
 const defaultLinkOpen = md.renderer.rules.link_open ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
 md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
@@ -42,7 +48,9 @@ md.core.ruler.after("inline", "kinige-task-lists", (state) => {
     if (first?.type === "text") first.content = first.content.replace(/^\[[ xX]\][ \t]+/, "");
 
     const box = new state.Token("html_inline", "", 0);
-    box.content = `<span class="task__box" role="img" aria-label="${done ? "Выполнено" : "Не выполнено"}"></span>`;
+    const labels = (state.env as RenderEnv).taskLabels;
+    const label = md.utils.escapeHtml((done ? labels?.done : labels?.todo) ?? "");
+    box.content = `<span class="task__box" role="img" aria-label="${label}"></span>`;
     inline.children?.unshift(box);
 
     item.attrJoin("class", done ? "task task--done" : "task");
@@ -101,7 +109,8 @@ export function sanitizeHtml(html: string): string {
  * Markdown сообщения -> безопасный HTML для плашки.
  * @param timeSpacer вставить в конец последней строки распорку под время (нет при состоянии «не отправилось»,
  * когда время стоит в нижней строке рядом с «Повторить»).
+ * @param taskLabels подписи квадратиков задач (переводы).
  */
-export function renderMarkdown(source: string, { timeSpacer }: { timeSpacer: boolean }): string {
-  return sanitizeHtml(md.render(source, { timeSpacer } satisfies RenderEnv));
+export function renderMarkdown(source: string, { timeSpacer, taskLabels }: { timeSpacer: boolean; taskLabels: TaskLabels }): string {
+  return sanitizeHtml(md.render(source, { timeSpacer, taskLabels } satisfies RenderEnv));
 }

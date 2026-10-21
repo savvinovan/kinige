@@ -1,0 +1,66 @@
+# Проверки (20:36 МСК, 21.10.2026)
+== cargo fmt --all --check
+OK
+== cargo clippy --workspace --all-targets -- -D warnings
+    Checking kinige v0.1.0 (/Users/alexandrsavvinov/Projects/petproject/kinige-claude/src-tauri)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.94s
+== cargo test --workspace
+     Running unittests src/lib.rs (target/debug/deps/kinige_lib-abec95aa51ca1f55)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/main.rs (target/debug/deps/kinige-b71e0efbf51792e9)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/config.rs (target/debug/deps/config-74fd86dbf362771c)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/ipc.rs (target/debug/deps/ipc-1ac5dd4b8eeb1e5f)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+     Running unittests src/lib.rs (target/debug/deps/kinige_domain-b5042627ab99036d)
+test result: ok. 69 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running unittests src/lib.rs (target/debug/deps/kinige_store-dc6c3cb9bf337dbf)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/abort.rs (target/debug/deps/abort-e4024a397ce1a6a8)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+     Running tests/latency.rs (target/debug/deps/latency-d13f922c0e8b8c1c)
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/mirror.rs (target/debug/deps/mirror-e5a6a6c33cfd9d28)
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+     Running tests/store.rs (target/debug/deps/store-54888629063bcb26)
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+== wasm32
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.94s
+== git status generated types
+== npm run tokens
+✔︎ src/ui/tokens.css
+✔︎ src/ui/themes.css
+== typecheck
+> tsc --noEmit
+
+== lint
+> kinige-web@0.1.0 lint
+> eslint .
+
+== test
+ Test Files  26 passed (26)
+      Tests  469 passed (469)
+== build-storybook
+└  Storybook build completed successfully
+
+== scripts/visual-tests.sh (Linux-контейнер, удалённый Docker)
+95 passed (снимки обычного и крупного текста всех историй + проверка встроенных шрифтов)
+
+== Задержка отправки: cargo test -p kinige-store --test latency -- --ignored --nocapture
+отправка (транзакция + fsync, synchronous=FULL + fullfsync), 200 записей: медиана 6.07 мс, p95 8.97 мс, максимум 18.29 мс (Apple M3 Pro)
+
+# После ревью (guardian и slice-reviewer), 21.10.2026
+cargo fmt --check, clippy -D warnings: чисто; cargo test --workspace: 121 прошли, 0 упали, 1 замер помечен ignore
+wasm32-сборка домена, типы TS и tokens.css без отличий; tsc, eslint чисто; vitest: 472 теста в 26 файлах
+scripts/visual-tests.sh (без --update): 95 прошли; 18 эталонов, менявшихся из-за U+00A0, возвращены к прежним байтам (U+202F в счётчике)
+scripts/build-app.sh: OK, codesign --verify проходит
+
+# После правок пользователя (тост после отправки убран; слот эмодзи в сайдбаре), 21.10.2026
+cargo fmt --check, clippy -D warnings: чисто; cargo test --workspace: 117 прошли, 0 упали, 1 замер помечен ignore
+wasm32-сборка домена, типы TS (UndoResult.ts удалён, ErrorCode.ts без message_not_found), tokens.css без отличий; tsc, eslint чисто; vitest: 470 тестов в 26 файлах
+scripts/visual-tests.sh --update: обновлены только 32 эталона (16 историй × 2): все истории сайдбара со строками чатов и все «Главное окно»; остальные 63 без изменений
+scripts/build-app.sh: OK

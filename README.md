@@ -2,7 +2,7 @@
 
 Личный журнал в формате «чата с собой». Десктоп на Tauri 2 + Rust + React/TypeScript. Нормативный документ — [`docs/plan/02-prd.md`](docs/plan/02-prd.md).
 
-Состояние: слайс 0 (каркас). Окно показывает строку «Kinige <версия>» из Rust через `KinigeApi`.
+Состояние: слайс 1 (Inbox): пишешь в Inbox, запись сохраняется в SQLite и в Markdown-копию `~/Documents/Kinige`, ссылки открываются в системном браузере, настройки (папка копии, размер текста), интерфейс на английском и русском. Приёмка пользователем — по `docs/screens/1/`.
 
 ## Требования
 
@@ -28,13 +28,15 @@
 
 ## Устройство
 
-- `crates/kinige-domain` — правила предметной области, без IO, собирается под `wasm32`.
-- `src-tauri/` — тонкий слой Tauri: окно, команды, capability главного окна (`capabilities/main.json`), CSP.
+- `crates/kinige-domain` — правила предметной области, без IO, собирается под `wasm32`: HLC, канонический JSON групп (JCS), группы новой записи, `journal_date`, проверка ссылок, формат Markdown-копии, типы API.
+- `crates/kinige-store` — SQLite (`rusqlite`): миграции, один поток-писатель, WAL, фоновая запись Markdown-копии.
+- `src-tauri/` — тонкий слой Tauri: окно, команды, плагины opener и dialog (только из Rust), `on_navigation`, capability главного окна (`capabilities/main.json`), CSP.
 - `web/` — React + TS + Vite; `src/api` (`KinigeApi`, `TauriApi`, `MockApi`, сгенерированные типы), `src/ui/tokens.css` (генерируется).
 - `design/tokens/**/*.json` — токены в формате DTCG → Style Dictionary → `web/src/ui/tokens.css` (роли, `:root`) и `web/src/ui/themes.css` (`@font-face`, Reduce Motion). Цвета, размеры и шрифты вне этих файлов в `web/src` запрещены (проверяет тест `no-raw-values`).
 - Дизайн-система D1: тёмная палитра graphite — нейтральный графит с акцентом и ошибкой из Nord (`design/tokens/palettes/graphite.json`; происхождение цветов — в `README.md` рядом) и набор шрифтов Inter + JetBrains Mono (`design/tokens/fontsets/inter.json`; файлы — `web/src/ui/fonts/`, источники и лицензии — в его `README.md`); оба выбраны пользователем (ADR-0004), `design/tokens/active.json` указывает на них. Эмодзи чатов рисует системный эмодзи-шрифт (единственное исключение из «шрифты встроенные»). Значки — Lucide через `lucide-react` (`web/src/ui/icons/README.md`).
 - Плотность и размер текста: все размеры шрифта, отступы, радиусы, высоты строк и значки в rem, где 1rem = размер текста записей (`font.root.default`, 13 px — выбран пользователем среди 13 / 14 / 15 px); смена корневого размера меняет всю плотность целиком. `data-text-scale="large"` на `<html>` умножает корневой размер (`font.scale.large`, ×1,25). Reduce Motion: `prefers-reduced-motion` или атрибут `data-reduce-motion`.
-- Экран в приложении сейчас — временное главное окно на `MockApi` (слайс D1); слайс 1 заменяет его настоящим.
+- Экран в приложении — настоящее главное окно на `TauriApi` (слайс 1); `MockApi` реализует тот же `KinigeApi` в памяти для тестов и Storybook. Строки интерфейса — `web/src/locales/{en,ru}.json` (i18next, [ADR-0005](docs/adr/0005-i18n.md)); язык выбирает Rust по языкам системы.
+- Данные: база — `~/Library/Application Support/me.savvinov.kinige/kinige.db`, Markdown-копия — `~/Documents/Kinige/<чат>/YYYY/YYYY-MM-DD.md` (папку меняют в настройках). Для проверки на чистых данных: переменные окружения `KINIGE_DATA_DIR` (каталог базы) и `KINIGE_MIRROR_DIR` (папка копии по умолчанию).
 - Типы Rust → TS: `ts-rs`, см. [ADR-0002](docs/adr/0002-ts-types-via-ts-rs.md). Ключи подписи: [ADR-0003](docs/adr/0003-signing-keys.md).
 
 ## CI (Gitea Actions, Linux)

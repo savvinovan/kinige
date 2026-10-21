@@ -64,12 +64,18 @@
 
 /* Эмодзи чата — единственное место, где интерфейс берёт системный шрифт (design/tokens/fontsets/inter.json). */
 .chat-row__emoji {
+  display: flex;
   flex: none;
-  width: var(--icon-size);
+  align-items: center;
+  justify-content: center;
+  /* Слот не уже глифа (icon.emoji.slot): иначе глиф вылезает за коробку и съедает промежуток до названия. */
+  width: var(--icon-emoji-slot);
   font-family: var(--font-family-emoji);
   font-size: var(--icon-size);
-  line-height: var(--type-small-line-height);
-  text-align: center;
+  /* Высота строки 1: у эмодзи-шрифта свои ascent и descent, а межстрочный текста сажал глиф ниже центра. */
+  line-height: var(--icon-emoji-line-height);
+  /* Оптическое, а не геометрическое центрирование относительно текста (icon.emoji.shift). */
+  transform: translateY(var(--icon-emoji-shift));
 }
 
 .chat-row__name {

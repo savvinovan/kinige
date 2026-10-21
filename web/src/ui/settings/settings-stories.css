@@ -1,0 +1,51 @@
+/* Только для историй Storybook: «главное окно» за модальным окном, чтобы подложка лежала на настоящих поверхностях. */
+.story-settings-window {
+  display: flex;
+  box-sizing: border-box;
+  min-height: var(--layout-window-height);
+  background: var(--color-surface-paper);
+}
+
+.story-settings-window__sidebar {
+  flex: none;
+  width: var(--layout-sidebar-width);
+  background: var(--color-surface-background);
+}
+
+.story-settings-window__feed {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--layout-message-gap-group);
+  padding: var(--layout-feed-padding-block) var(--layout-feed-padding-inline);
+}
+
+.story-settings-window__plate {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--layout-message-measure);
+  min-height: var(--layout-control-height);
+  align-self: flex-start;
+  border-radius: var(--radius-message);
+  background: var(--color-surface-message);
+}
+
+.story-settings-window__plate--tall {
+  min-height: var(--layout-composer-min-height);
+}
+
+/* Подложки для историй отдельных частей. */
+.story-settings-part {
+  box-sizing: border-box;
+  min-height: var(--layout-window-height);
+  padding: var(--space-5);
+  background: var(--color-surface-paper);
+}
+
+.story-settings-part__inner {
+  display: grid;
+  gap: var(--space-5);
+  max-width: var(--layout-dialog-width);
+}

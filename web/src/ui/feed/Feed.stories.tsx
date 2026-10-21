@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { demoMessages } from "../../api/demoData";
+import { demoEntry, demoMessages } from "../../api/demoData";
 import { Frame } from "../stories/Frame";
 import { Feed } from "./Feed";
 
-// «Сегодня» в историях фиксировано, чтобы метки дней и снимки были стабильны.
+// «Сегодня» в историях фиксировано (вторник, 20 октября 2026), чтобы метки дней и снимки были стабильны.
 const NOW = new Date(2026, 9, 20, 17, 0);
-const at = (hour: number, minute: number, day = 20) => new Date(2026, 9, day, hour, minute);
+const TODAY = "2026-10-20";
 
 const meta = {
   title: "Компоненты/Лента",
   component: Feed,
-  args: { now: NOW, messages: demoMessages(NOW) },
+  args: { today: TODAY, messages: demoMessages(NOW) },
   decorators: [
     (Story) => (
       <Frame bottom>
@@ -35,10 +35,10 @@ export const Пусто: Story = { args: { messages: [] } };
 export const Серия: Story = {
   args: {
     messages: [
-      { id: "a", sentAt: at(9, 12), markdown: "Первая мысль" },
-      { id: "b", sentAt: at(9, 14), markdown: "Вторая, через две минуты" },
-      { id: "c", sentAt: at(9, 17), markdown: "Третья, ещё через три" },
-      { id: "d", sentAt: at(9, 22), markdown: "Четвёртая: пауза ровно пять минут, новая серия" },
+      demoEntry("a", TODAY, "09:12", "Первая мысль"),
+      demoEntry("b", TODAY, "09:14", "Вторая, через две минуты"),
+      demoEntry("c", TODAY, "09:17", "Третья, ещё через три"),
+      demoEntry("d", TODAY, "09:22", "Четвёртая: пауза ровно пять минут, новая серия"),
     ],
   },
 };
@@ -47,10 +47,13 @@ export const Серия: Story = {
 export const МеткиДней: Story = {
   args: {
     messages: [
-      { id: "a", sentAt: new Date(2025, 2, 14, 9, 12), markdown: "Прошлый год" },
-      { id: "b", sentAt: new Date(2026, 2, 14, 9, 12), markdown: "Этот год" },
-      { id: "c", sentAt: at(8, 40, 19), markdown: "Вчера" },
-      { id: "d", sentAt: at(9, 12), markdown: "Сегодня" },
+      demoEntry("a", "2025-03-14", "09:12", "Прошлый год"),
+      demoEntry("b", "2026-03-14", "09:12", "Этот год"),
+      demoEntry("c", "2026-10-19", "08:40", "Вчера"),
+      demoEntry("d", TODAY, "09:12", "Сегодня"),
     ],
   },
 };
+
+/** Метки дней и подсказка по-английски: «March 14, 2025», «Yesterday», «Today». */
+export const Английский: Story = { globals: { language: "en" } };

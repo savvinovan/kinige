@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef } from "react";
 import { DEMO_CHATS } from "../../api/demoData";
+import { INBOX_ID } from "../../api/KinigeApi";
 import { Frame } from "../stories/Frame";
-import { Sidebar, type SidebarChat } from "./Sidebar";
+import { Sidebar, type SidebarChat, toSidebarChat } from "./Sidebar";
 
 interface DemoProps {
   chats?: readonly SidebarChat[];
@@ -11,7 +12,7 @@ interface DemoProps {
   focus?: boolean;
 }
 
-function Demo({ chats = DEMO_CHATS, selectedId = "inbox", focus = false }: DemoProps) {
+function Demo({ chats = DEMO_CHATS.map(toSidebarChat), selectedId = INBOX_ID, focus = false }: DemoProps) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (focus) host.current?.querySelector<HTMLButtonElement>("[aria-current]")?.focus();

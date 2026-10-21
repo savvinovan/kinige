@@ -1,128 +1,107 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { continuesSeries, formatDayLabel, formatTime, isSameDay } from "./dates";
+import { describe, expect, it } from "vitest";
+import { SERIES_PAUSE_MS, continuesSeries, formatDayLabel, formatTime } from "./dates";
 
-// Даты строятся конструктором в местном времени, как и в самой функции: тест не зависит от часового пояса машины.
-const at = (year: number, month: number, day: number, hour = 12, minute = 0) => new Date(year, month - 1, day, hour, minute);
+const RU = { today: "Сегодня", yesterday: "Вчера" };
+const EN = { today: "Today", yesterday: "Yesterday" };
 
 describe("formatTime", () => {
-  it("24 часа, две цифры", () => {
-    expect(formatTime(at(2026, 10, 20, 9, 12))).toBe("09:12");
-    expect(formatTime(at(2026, 10, 20, 0, 5))).toBe("00:05");
-    expect(formatTime(at(2026, 10, 20, 12, 0))).toBe("12:00");
-    expect(formatTime(at(2026, 10, 20, 23, 59))).toBe("23:59");
+  // 2026-10-21 06:12 UTC = 09:12 в Москве, 23:12 накануне в Лос-Анджелесе.
+  const moment = new Date(Date.UTC(2026, 9, 21, 6, 12));
+
+  it("24 часа, две цифры, в поясе записи", () => {
+    expect(formatTime(moment, "ru", "Europe/Moscow")).toBe("09:12");
+    expect(formatTime(moment, "en", "Europe/Moscow")).toBe("09:12");
+    expect(formatTime(moment, "ru", "America/Los_Angeles")).toBe("23:12");
+    expect(formatTime(new Date(Date.UTC(2026, 9, 21, 0, 5)), "en", "UTC")).toBe("00:05");
+    expect(formatTime(new Date(Date.UTC(2026, 9, 21, 12, 0)), "ru", "UTC")).toBe("12:00");
+    expect(formatTime(new Date(Date.UTC(2026, 9, 21, 23, 59)), "en", "UTC")).toBe("23:59");
+  });
+
+  it("переход на летнее время: пояс записи, а не пояс окна", () => {
+    // Берлин, 2026-03-29: 00:59 UTC = 01:59 (зима), 01:00 UTC = 03:00 (лето).
+    expect(formatTime(new Date(Date.UTC(2026, 2, 29, 0, 59)), "ru", "Europe/Berlin")).toBe("01:59");
+    expect(formatTime(new Date(Date.UTC(2026, 2, 29, 1, 0)), "ru", "Europe/Berlin")).toBe("03:00");
+  });
+
+  it("неизвестный пояс (повреждённые данные) не ломает ленту: время в поясе окна", () => {
+    expect(() => formatTime(moment, "ru", "Не/Пояс")).not.toThrow();
+    expect(formatTime(moment, "ru", "Не/Пояс")).toMatch(/^\d{2}:\d{2}$/);
   });
 });
 
 describe("formatDayLabel", () => {
-  const now = at(2026, 10, 20, 17, 30);
+  const today = "2026-10-20";
 
-  it("сегодня и вчера", () => {
-    expect(formatDayLabel(at(2026, 10, 20, 0, 0), now)).toBe("Сегодня");
-    expect(formatDayLabel(at(2026, 10, 20, 23, 59), now)).toBe("Сегодня");
-    expect(formatDayLabel(at(2026, 10, 19, 21, 5), now)).toBe("Вчера");
+  it("сегодня и вчера — по journal_date", () => {
+    expect(formatDayLabel("2026-10-20", today, "ru", RU)).toBe("Сегодня");
+    expect(formatDayLabel("2026-10-19", today, "ru", RU)).toBe("Вчера");
+    expect(formatDayLabel("2026-10-20", today, "en", EN)).toBe("Today");
+    expect(formatDayLabel("2026-10-19", today, "en", EN)).toBe("Yesterday");
   });
 
-  it("вчера через полночь: сообщение в 23:58, сейчас 00:03 следующего дня", () => {
-    const justAfterMidnight = at(2026, 10, 21, 0, 3);
-    expect(formatDayLabel(at(2026, 10, 20, 23, 58), justAfterMidnight)).toBe("Вчера");
-    expect(formatDayLabel(at(2026, 10, 21, 0, 1), justAfterMidnight)).toBe("Сегодня");
-    expect(formatDayLabel(at(2026, 10, 19, 23, 58), justAfterMidnight)).toBe("19 октября");
+  it("текущий год: день и месяц без года и без дня недели", () => {
+    expect(formatDayLabel("2026-03-14", today, "ru", RU)).toBe("14 марта");
+    expect(formatDayLabel("2026-01-01", today, "ru", RU)).toBe("1 января");
+    expect(formatDayLabel("2026-10-18", today, "ru", RU)).toBe("18 октября");
+    expect(formatDayLabel("2026-03-14", today, "en", EN)).toBe("March 14");
+    expect(formatDayLabel("2026-10-18", today, "en", EN)).toBe("October 18");
   });
 
-  it("текущий год: день и месяц в родительном падеже, без года и без дня недели", () => {
-    expect(formatDayLabel(at(2026, 3, 14), now)).toBe("14 марта");
-    expect(formatDayLabel(at(2026, 1, 1), now)).toBe("1 января");
-    expect(formatDayLabel(at(2026, 10, 18), now)).toBe("18 октября");
+  it("прошлые годы: с годом, без « г.»", () => {
+    expect(formatDayLabel("2025-03-14", today, "ru", RU)).toBe("14 марта 2025");
+    expect(formatDayLabel("2024-12-31", today, "ru", RU)).toBe("31 декабря 2024");
+    expect(formatDayLabel("2025-03-14", today, "en", EN)).toBe("March 14, 2025");
   });
 
-  it("прошлые годы: с годом", () => {
-    expect(formatDayLabel(at(2025, 3, 14), now)).toBe("14 марта 2025");
-    expect(formatDayLabel(at(2024, 12, 31), now)).toBe("31 декабря 2024");
+  it("граница года: 31 декабря «вчера» 1 января, на день раньше уже с годом", () => {
+    expect(formatDayLabel("2026-12-31", "2027-01-01", "ru", RU)).toBe("Вчера");
+    expect(formatDayLabel("2026-12-30", "2027-01-01", "ru", RU)).toBe("30 декабря 2026");
+    expect(formatDayLabel("2027-01-01", "2027-01-01", "ru", RU)).toBe("Сегодня");
   });
 
-  it("граница года: 31 декабря «вчера» после полуночи, на день раньше уже с годом", () => {
-    const newYear = at(2027, 1, 1, 0, 5);
-    expect(formatDayLabel(at(2026, 12, 31, 23, 59), newYear)).toBe("Вчера");
-    expect(formatDayLabel(at(2026, 12, 30, 12, 0), newYear)).toBe("30 декабря 2026");
-    expect(formatDayLabel(at(2027, 1, 1, 0, 1), newYear)).toBe("Сегодня");
-  });
-
-  it("все двенадцать месяцев в родительном падеже", () => {
-    const names = [
-      "января",
-      "февраля",
-      "марта",
-      "апреля",
-      "мая",
-      "июня",
-      "июля",
-      "августа",
-      "сентября",
-      "октября",
-      "ноября",
-      "декабря",
-    ];
-    const lateNow = at(2026, 12, 31, 23, 0);
-    names.forEach((name, index) => {
-      // 5-е число каждого месяца: ни «Сегодня», ни «Вчера».
-      expect(formatDayLabel(at(2026, index + 1, 5), lateNow)).toBe(`5 ${name}`);
+  it("все двенадцать месяцев в родительном падеже (ru) и по-английски", () => {
+    const ru = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+    const en = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    ru.forEach((name, index) => {
+      const date = `2026-${String(index + 1).padStart(2, "0")}-05`;
+      expect(formatDayLabel(date, "2026-12-31", "ru", RU)).toBe(`5 ${name}`);
+      expect(formatDayLabel(date, "2026-12-31", "en", EN)).toBe(`${en[index]} 5`);
     });
   });
 
   it("високосный день", () => {
-    expect(formatDayLabel(at(2024, 2, 29), now)).toBe("29 февраля 2024");
+    expect(formatDayLabel("2024-02-29", today, "ru", RU)).toBe("29 февраля 2024");
   });
 
-  it("месяц назад и далее считается по календарным дням, а не по часам: 24 ч назад утром — вчера", () => {
-    expect(formatDayLabel(at(2026, 10, 19, 6, 0), at(2026, 10, 20, 5, 0))).toBe("Вчера");
-    expect(formatDayLabel(at(2026, 10, 19, 6, 0), at(2026, 10, 19, 23, 0))).toBe("Сегодня");
-  });
-});
-
-describe("переход на летнее время", () => {
-  const original = process.env.TZ;
-  afterEach(() => {
-    if (original === undefined) delete process.env.TZ;
-    else process.env.TZ = original;
+  it("запись в 00:30 стоит под вчерашней меткой, когда её journal_date — вчера (граница дня 04:00 считает Rust)", () => {
+    expect(formatDayLabel("2026-10-19", "2026-10-20", "ru", RU)).toBe("Вчера");
   });
 
-  it("в сутки переключения часов «вчера» остаётся вчера (America/New_York, 8 марта 2026: 23 часа)", () => {
-    process.env.TZ = "America/New_York";
-    // Смена пояса действительно применилась: после перехода на летнее время смещение 240 минут, до него — 300.
-    expect(at(2026, 3, 8, 12).getTimezoneOffset()).toBe(240);
-    expect(at(2026, 3, 7, 12).getTimezoneOffset()).toBe(300);
-    expect(formatDayLabel(at(2026, 3, 8, 23, 30), at(2026, 3, 9, 0, 30))).toBe("Вчера");
-    expect(formatDayLabel(at(2026, 3, 7, 23, 30), at(2026, 3, 9, 0, 30))).toBe("7 марта");
-  });
-
-  it("осенью, в сутки на 25 часов (1 ноября 2026), тоже", () => {
-    process.env.TZ = "America/New_York";
-    expect(formatDayLabel(at(2026, 11, 1, 0, 30), at(2026, 11, 2, 23, 30))).toBe("Вчера");
-    expect(formatDayLabel(at(2026, 10, 31, 12, 0), at(2026, 11, 2, 0, 30))).toBe("31 октября");
+  it("не дата — строка как есть", () => {
+    expect(formatDayLabel("вчера-ish", today, "ru", RU)).toBe("вчера-ish");
+    expect(formatDayLabel("2026-10-20", "", "ru", RU)).toBe("2026-10-20");
   });
 });
 
-describe("isSameDay и continuesSeries", () => {
-  it("тот же календарный день", () => {
-    expect(isSameDay(at(2026, 10, 20, 0, 0), at(2026, 10, 20, 23, 59))).toBe(true);
-    expect(isSameDay(at(2026, 10, 20, 23, 59), at(2026, 10, 21, 0, 0))).toBe(false);
+describe("continuesSeries", () => {
+  const at = (journalDate: string, minutes: number) => ({ journalDate, createdAt: minutes * 60_000 });
+
+  it("серия: пауза меньше 5 минут в тот же день", () => {
+    expect(continuesSeries(at("2026-10-20", 0), at("2026-10-20", 2))).toBe(true);
+    expect(continuesSeries(at("2026-10-20", 0), at("2026-10-20", 4))).toBe(true);
   });
 
-  it("серия: пауза меньше 5 минут", () => {
-    expect(continuesSeries(at(2026, 10, 20, 9, 12), at(2026, 10, 20, 9, 14))).toBe(true);
-    expect(continuesSeries(at(2026, 10, 20, 9, 0), at(2026, 10, 20, 9, 4))).toBe(true);
+  it("ровно 5 минут и больше — новая серия", () => {
+    expect(SERIES_PAUSE_MS).toBe(300_000);
+    expect(continuesSeries(at("2026-10-20", 0), at("2026-10-20", 5))).toBe(false);
+    expect(continuesSeries(at("2026-10-20", 0), at("2026-10-20", 140))).toBe(false);
   });
 
-  it("ровно 5 минут и больше — уже новая серия", () => {
-    expect(continuesSeries(at(2026, 10, 20, 9, 0), at(2026, 10, 20, 9, 5))).toBe(false);
-    expect(continuesSeries(at(2026, 10, 20, 9, 0), at(2026, 10, 20, 11, 30))).toBe(false);
-  });
-
-  it("через полночь серия не продолжается, даже если пауза мала", () => {
-    expect(continuesSeries(at(2026, 10, 20, 23, 58), at(2026, 10, 21, 0, 1))).toBe(false);
+  it("другой journal_date — серия не продолжается, даже если пауза мала", () => {
+    expect(continuesSeries(at("2026-10-19", 0), at("2026-10-20", 1))).toBe(false);
   });
 
   it("сообщения не по порядку не образуют серию", () => {
-    expect(continuesSeries(at(2026, 10, 20, 9, 14), at(2026, 10, 20, 9, 12))).toBe(false);
+    expect(continuesSeries(at("2026-10-20", 5), at("2026-10-20", 3))).toBe(false);
   });
 });

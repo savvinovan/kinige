@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "../../test/render";
 import { describe, expect, it, vi } from "vitest";
 import { Message } from "./Message";
 
@@ -88,6 +88,34 @@ describe("Message", () => {
       render(<Message markdown={withLink} sentAt={sentAt} />);
       expect(fireEvent.click(screen.getByText(/и записал вывод/))).toBe(true);
     });
+
+    it("щелчок отдаёт адрес в onOpenLink (системный браузер), средняя кнопка — нет", () => {
+      const onOpenLink = vi.fn();
+      render(<Message markdown={withLink} sentAt={sentAt} onOpenLink={onOpenLink} />);
+      const link = screen.getByRole("link");
+      fireEvent.click(link);
+      expect(onOpenLink).toHaveBeenCalledExactlyOnceWith("https://fs.blog/habits");
+      fireEvent(link, new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }));
+      expect(onOpenLink).toHaveBeenCalledTimes(1);
+    });
+
+    it("Enter на ссылке (браузер превращает его в click) тоже открывает адрес, окно не уходит", () => {
+      const onOpenLink = vi.fn();
+      render(<Message markdown={"[текст](mailto:me@example.com)"} sentAt={sentAt} onOpenLink={onOpenLink} />);
+      const link = screen.getByRole("link");
+      link.focus();
+      expect(fireEvent.click(link)).toBe(false);
+      expect(onOpenLink).toHaveBeenCalledWith("mailto:me@example.com");
+    });
+  });
+
+  it("время показывается в поясе записи, а не в поясе окна; на английском тоже 24 часа", () => {
+    const moment = new Date(Date.UTC(2026, 9, 21, 6, 12));
+    const { unmount } = render(<Message markdown="x" sentAt={moment} timeZone="Europe/Moscow" />);
+    expect(screen.getByText("09:12")).toHaveAttribute("datetime", moment.toISOString());
+    unmount();
+    render(<Message markdown="x" sentAt={moment} timeZone="America/Los_Angeles" />, { language: "en" });
+    expect(screen.getByText("23:12")).toBeInTheDocument();
   });
 
   it("задачи: квадраты с подписью состояния для диктора", () => {

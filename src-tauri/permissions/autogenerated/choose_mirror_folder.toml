@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-choose-mirror-folder"
+description = "Enables the choose_mirror_folder command without any pre-configured scope."
+commands.allow = ["choose_mirror_folder"]
+
+[[permission]]
+identifier = "deny-choose-mirror-folder"
+description = "Denies the choose_mirror_folder command without any pre-configured scope."
+commands.deny = ["choose_mirror_folder"]
