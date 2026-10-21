@@ -166,6 +166,10 @@ fn open_connection(path: &Path, read_only: bool) -> Result<Connection, StoreErro
             .map_err(|e| StoreError::Write(e.to_string()))?;
         conn.pragma_update(None, "synchronous", "FULL")
             .map_err(|e| StoreError::Write(e.to_string()))?;
+        // macOS: обычный fsync не сбрасывает кэш накопителя, F_FULLFSYNC сбрасывает (иначе потеря питания может
+        // унести уже подтверждённую запись). На других ОС прагма ничего не меняет.
+        conn.pragma_update(None, "fullfsync", true)
+            .map_err(|e| StoreError::Write(e.to_string()))?;
     }
     Ok(conn)
 }

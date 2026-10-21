@@ -9,7 +9,7 @@
 - `docs/slices/<id>-<name>.md` — одностраничная спецификация слайса (§12.1a).
 - `docs/screens/<slice>/` — скриншоты настоящего окна для приёмки.
 
-Состояние: слайс 0 (каркас) реализован; дальше D1 (основа дизайн-системы) и параллельно ADR-0001 (протокол + ключи). Команды сборки и тестов — в разделе «Сборка и тесты» ниже.
+Состояние: слайс 0 (каркас), D1 (основа дизайн-системы) и ADR-0001 (протокол + ключи) готовы; слайс 1 (Inbox) реализован и ждёт приёмки. Команды сборки и тестов — в разделе «Сборка и тесты» ниже.
 
 ## Как работаем (обязательно, §12 ТЗ)
 
@@ -37,7 +37,7 @@
 
 ## Сборка и тесты
 
-Раскладка: `crates/kinige-domain` (правила, без IO, собирается под wasm32), `src-tauri/` (тонкий слой Tauri 2), `web/` (React + TS + Vite + Storybook), `design/tokens/` (DTCG), `scripts/`, `.gitea/workflows/ci.yml`. Версии Rust и Node закреплены в `rust-toolchain.toml` и `.node-version`. Подробности и методика замера старта — в `README.md`.
+Раскладка: `crates/kinige-domain` (правила, без IO, собирается под wasm32), `crates/kinige-store` (SQLite, миграции, один писатель, Markdown-копия), `src-tauri/` (тонкий слой Tauri 2), `web/` (React + TS + Vite + Storybook), `design/tokens/` (DTCG), `scripts/`, `.gitea/workflows/ci.yml`. Версии Rust и Node закреплены в `rust-toolchain.toml` и `.node-version`. Подробности и методика замера старта — в `README.md`.
 
 Rust (из корня):
 - `cargo fmt --all --check`

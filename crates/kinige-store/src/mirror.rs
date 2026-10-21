@@ -122,6 +122,12 @@ fn pass(
         }
         Err(_) => return true,
     };
+    // Пока писать нечего, папки не касаемся: на macOS первое обращение к «Документам» вызывает запрос доступа,
+    // и он должен появиться вместе с первой записью, а не при запуске пустого приложения.
+    if dirty_batch(reader).map_or(true, |batch| batch.is_empty()) {
+        shared.set_error(None);
+        return false;
+    }
     if !prepare_root(&dir) {
         shared.set_error(Some(MirrorError::FolderUnavailable));
         return true;

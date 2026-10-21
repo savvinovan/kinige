@@ -1,0 +1,44 @@
+$ ls -R ~/Documents/Kinige   # папка по умолчанию, запись «Default folder check» (проверка без KINIGE_MIRROR_DIR)
+Inbox
+
+/Users/alexandrsavvinov/Documents/Kinige/Inbox:
+2026
+
+/Users/alexandrsavvinov/Documents/Kinige/Inbox/2026:
+2026-10-21.md
+
+$ cat ~/Documents/Kinige/Inbox/2026/2026-10-21.md
+# 2026-10-21
+
+## 20:36
+
+Default folder check
+
+$ ls -R /private/tmp/claude-501/kinige-backup/Kinige   # папка, выбранная в настройках (русский прогон, 4 записи после kill -9)
+Inbox
+
+/private/tmp/claude-501/kinige-backup/Kinige/Inbox:
+2026
+
+/private/tmp/claude-501/kinige-backup/Kinige/Inbox/2026:
+2026-10-21.md
+
+$ cat .../Inbox/2026/2026-10-21.md
+# 2026-10-21
+
+## 20:26
+
+Купить **молоко**
+- [ ] позвонить маме
+
+## 20:27
+
+Вторая запись — поправить
+
+## 20:27
+
+Прочитать https://example.com/page и записать вывод
+
+## 20:27
+
+Отправлено прямо перед kill -9

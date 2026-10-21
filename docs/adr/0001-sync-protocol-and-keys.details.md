@@ -225,6 +225,12 @@ blob = header (24, init_push(blob_key))
 
 В слайсе 1 синхронизации нет, но `hlc_json`, `sv = 1`, `device_id`, часы HLC и локальные tombstones работают с первой записи.
 
+### C.1. Уточнение слайса 1 (21.10.2026)
+
+- **Константа Inbox:** `00000000-0000-4000-8000-000000000001` (UUID v4: версия 4, вариант 8). Группа `core` у Inbox — `{"created_at":0,"is_inbox":true}` (`created_at` колонки `chat` тоже 0); группы `meta` (`{"color":null,"icon":"📥","title":""}`, хранимое имя пустое — интерфейс показывает переведённое), `order` (`{"sort_key":"a0"}`), `state`, `privacy`, `deleted` создаются при первом запуске вместе с `core` под одним HLC. Идемпотентно: Inbox определяется по id.
+- **Таблицы миграции 1 — только те, в которые слайс 1 пишет:** `chat`, `message`, `sync_state` (`device_id`, `hlc_l`, `hlc_c`), а также локальные несинхронизируемые `app_setting` (`mirror_dir`, `text_size`) и `mirror_dirty(chat_id, journal_date, seq)`. Остальные таблицы этого раздела (`tombstone`, `message_revision`, `message_ext`, `attachment`, `change_outbox`, `quarantine`, `pending_unknown`) добавят свои слайсы миграциями `CREATE TABLE` без изменения существующих строк: пока в них никто не пишет, пустая таблица ничего не защищает. Колонки, от которых зависят строки (`hlc_json`, `server_known`, `groups_raw`, `schema_version`, `origin`, `ext_json`, `base`/`supersedes` у `body` и `placement`), есть у `message` с первой записи; `body_search` — слайс 4.
+- **Новая запись** создаётся со всеми пятью группами `core`, `body`, `flags`, `placement`, `deleted` под одним HLC (одно событие) и `sv = 1`; байты групп — JCS (RFC 8785, ключи по кодовым единицам UTF-16), колонки строятся из тех же значений. «Отменить» отправку пишет только группу `deleted` с новым HLC.
+
 ## D. Примитивы libsodium и профили Argon2id
 
 | Профиль | `opslimit` | `memlimit` | Пресет libsodium |

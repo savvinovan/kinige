@@ -276,3 +276,19 @@ fn without_any_folder_the_copy_is_off_and_marks_wait() {
         chosen.join("Inbox/2026/2026-10-21.md").exists()
     });
 }
+
+#[test]
+fn an_empty_journal_does_not_touch_the_copy_folder() {
+    // На macOS первое обращение к «Документам» вызывает запрос доступа; он должен появиться с первой записью.
+    let dir = tempfile::tempdir().unwrap();
+    let store = open(dir.path());
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    assert!(!mirror_dir(dir.path()).exists());
+    assert_eq!(store.get_settings().unwrap().mirror.error, None);
+
+    store.send_message(INBOX_ID, "первая", &moscow(T0)).unwrap();
+    wait_until(
+        "папка и файл после первой записи",
+        || day_file(dir.path(), "2026-10-21").exists(),
+    );
+}
