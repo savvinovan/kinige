@@ -234,7 +234,7 @@ fn feed_order_is_journal_date_created_at_id_and_pages_are_keyset() {
     let times = [
         T0 + 3 * MINUTE,
         T0,
-        T0 + 1 * MINUTE,
+        T0 + MINUTE,
         T_NIGHT,
         T0 + 2 * MINUTE,
         T0 - 3 * 24 * 60 * MINUTE,

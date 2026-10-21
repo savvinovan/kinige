@@ -1,7 +1,7 @@
 //! Типы, которыми обмениваются Rust и фронтенд (`KinigeApi`). TS-типы генерируются в `web/src/api/generated/`
 //! (`cargo test`, ADR-0002). Тексты ошибок — во фронтенде: Rust возвращает только коды.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 /// Чат в сайдбаре. У Inbox хранимое имя пустое: интерфейс показывает переведённое.
@@ -36,7 +36,7 @@ pub struct MessageView {
 }
 
 /// Позиция в ленте для постраничной загрузки (keyset): `(journal_date, created_at, id)` последней загруженной записи.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "FeedCursor.ts")]
 pub struct FeedCursor {
@@ -67,7 +67,7 @@ pub struct UndoResult {
 }
 
 /// Размер текста (ADR-0004): «Обычный» или «Крупный» ×1,25.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
 #[ts(export, export_to = "TextSize.ts")]
 pub enum TextSize {
