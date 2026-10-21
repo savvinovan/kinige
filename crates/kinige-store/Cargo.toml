@@ -1,0 +1,20 @@
+[package]
+name = "kinige-store"
+description = "Хранилище Kinige: SQLite, миграции, один писатель, Markdown-копия"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+kinige-domain = { path = "../kinige-domain" }
+rusqlite = { version = "0.40", features = ["bundled"] }
+uuid = { version = "1.28", features = ["v4"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+chrono-tz = "0.10"
+iana-time-zone = "0.1"
+
+[dev-dependencies]
+serde_json = "1"
+tempfile = "3"
