@@ -1,7 +1,22 @@
 //! Правила предметной области Kinige. Без IO; собирается и под `wasm32` (§3.2 ТЗ).
 
+pub mod api;
+pub mod groups;
+pub mod hlc;
+pub mod jcs;
+pub mod journal;
+pub mod lang;
+pub mod link;
+pub mod mirror;
+
 use serde::Serialize;
 use ts_rs::TS;
+
+pub use api::{
+    ApiError, ChatSummary, ErrorCode, FeedCursor, MessagePage, MessageView, MirrorError,
+    MirrorStatus, Settings, TextSize, UndoResult,
+};
+pub use lang::Language;
 
 /// Сведения о приложении, которые фронтенд получает через `KinigeApi`.
 ///
