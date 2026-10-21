@@ -7,8 +7,9 @@ use crate::settings::effective_mirror_dir;
 use crate::time::local_hhmm;
 use crate::writer::Writer;
 use kinige_domain::MirrorError;
+use kinige_domain::groups::INBOX_ID;
 use kinige_domain::mirror::{INBOX_FOLDER, MirrorEntry, day_file_segments, render_day_file};
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::Connection;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -120,13 +121,24 @@ fn pass(
             shared.set_error(None);
             return false;
         }
-        Err(_) => return true,
+        Err(_) => {
+            eprintln!("kinige: копия: не удалось прочитать настройку папки, повтор позже");
+            return true;
+        }
     };
     // Пока писать нечего, папки не касаемся: на macOS первое обращение к «Документам» вызывает запрос доступа,
     // и он должен появиться вместе с первой записью, а не при запуске пустого приложения.
-    if dirty_batch(reader).map_or(true, |batch| batch.is_empty()) {
-        shared.set_error(None);
-        return false;
+    match dirty_batch(reader) {
+        Ok(batch) if batch.is_empty() => {
+            shared.set_error(None);
+            return false;
+        }
+        Ok(_) => {}
+        Err(_) => {
+            // Не «писать нечего»: чтение отметок не удалось, отметки целы — повтор по таймеру.
+            eprintln!("kinige: копия: не удалось прочитать отметки дней, повтор позже");
+            return true;
+        }
     }
     if !prepare_root(&dir) {
         shared.set_error(Some(MirrorError::FolderUnavailable));
@@ -137,6 +149,7 @@ fn pass(
             return false;
         }
         let Ok(batch) = dirty_batch(reader) else {
+            eprintln!("kinige: копия: не удалось прочитать отметки дней, повтор позже");
             return true;
         };
         if batch.is_empty() {
@@ -183,7 +196,7 @@ fn write_day(
     chat_id: &str,
     journal_date: &str,
 ) -> Result<(), MirrorError> {
-    let folder = chat_folder(reader, chat_id).map_err(|_| MirrorError::WriteFailed)?;
+    let folder = chat_folder(chat_id);
     let Some(segments) = day_file_segments(&folder, journal_date) else {
         // Недопустимая дата или имя папки: файла быть не может, отметку снимаем (иначе она не сойдёт никогда).
         return Ok(());
@@ -218,7 +231,13 @@ fn write_atomically(dir: &Path, name: &str, bytes: &[u8]) -> std::io::Result<()>
         let mut file = fs::File::create(&temp)?;
         file.write_all(bytes)?;
         file.sync_all()?;
-        fs::rename(&temp, dir.join(name))
+        fs::rename(&temp, dir.join(name))?;
+        // Запись в каталоге (само переименование) тоже сбрасывается на диск: иначе после потери питания файл мог бы
+        // оказаться под прежним именем. На Windows каталог открыть нельзя, там ошибка игнорируется.
+        if let Ok(directory) = fs::File::open(dir) {
+            let _ = directory.sync_all();
+        }
+        Ok(())
     })();
     if result.is_err() {
         let _ = fs::remove_file(&temp);
@@ -227,19 +246,13 @@ fn write_atomically(dir: &Path, name: &str, bytes: &[u8]) -> std::io::Result<()>
 }
 
 /// Имя папки чата: `Inbox` у Inbox при любом языке. Имена остальных чатов — слайс 3; пока — id чата (безопасное имя).
-fn chat_folder(reader: &Connection, chat_id: &str) -> rusqlite::Result<String> {
-    let is_inbox: Option<bool> = reader
-        .query_row(
-            "SELECT is_inbox FROM chat WHERE id = ?1",
-            [chat_id],
-            |row| row.get(0),
-        )
-        .optional()?;
-    Ok(if is_inbox == Some(true) {
+/// Inbox определяется по id, а не по флагу `is_inbox` (ADR-0001 §3.6): чужая строка с флагом не займёт папку `Inbox`.
+fn chat_folder(chat_id: &str) -> String {
+    if chat_id == INBOX_ID {
         INBOX_FOLDER.to_string()
     } else {
         chat_id.to_string()
-    })
+    }
 }
 
 fn day_entries(

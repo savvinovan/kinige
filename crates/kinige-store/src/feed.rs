@@ -1,6 +1,7 @@
 //! Чтение: чаты сайдбара и страница ленты по keyset-курсору (ТЗ §4.1, §6).
 
 use crate::{Now, Store, StoreError};
+use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use kinige_domain::{ChatSummary, FeedCursor, MessagePage, MessageView};
 use rusqlite::Row;
@@ -30,13 +31,14 @@ impl Store {
         self.read(|conn| {
             let mut statement = conn
                 .prepare(
-                    "SELECT c.id, c.title, c.icon, c.is_inbox, \
+                    "SELECT c.id, c.title, c.icon, c.id = ?1, \
                      (SELECT COUNT(*) FROM message m WHERE m.chat_id = c.id AND m.deleted_at IS NULL) \
                      FROM chat c WHERE c.deleted_at IS NULL AND c.archived_at IS NULL ORDER BY c.sort_key, c.id",
                 )
                 .map_err(read_err)?;
             let rows = statement
-                .query_map([], |row| {
+                // Inbox определяется по id, а не по флагу `is_inbox` (ADR-0001 §3.6).
+                .query_map([INBOX_ID], |row| {
                     Ok(ChatSummary {
                         id: row.get(0)?,
                         title: row.get(1)?,

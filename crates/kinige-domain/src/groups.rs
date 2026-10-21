@@ -17,8 +17,10 @@ pub const INBOX_ID: &str = "00000000-0000-4000-8000-000000000001";
 pub const INBOX_ICON: &str = "📥";
 /// Ключ порядка Inbox (дробный индекс, ТЗ §4.2): первый в списке.
 pub const INBOX_SORT_KEY: &str = "a0";
-/// Предел текста одной записи: конверт ограничен 1 МиБ до выравнивания (ADR-0001 §5.3), остальное место — другим группам.
-pub const MAX_BODY_BYTES: usize = 512 * 1024;
+/// Предел группы `body` в каноничных байтах JCS: конверт ограничен 1 МиБ до выравнивания (ADR-0001 §5.3), остальное место —
+/// другим группам. Считаются именно байты группы, а не длина текста: экранирование (`"` → `\"`, перевод строки → `\n`)
+/// удваивает размер, и текст в 512 КиБ мог бы дать группу в 1 МиБ.
+pub const MAX_BODY_GROUP_BYTES: usize = 512 * 1024;
 /// Кто создал запись: интерфейс и быстрый захват (ADR-0001, «origin»).
 pub const ORIGIN_USER: &str = "user";
 
@@ -55,7 +57,7 @@ impl From<JcsError> for GroupError {
 pub enum BodyError {
     /// Только пробельные символы.
     Empty,
-    /// Длиннее [`MAX_BODY_BYTES`].
+    /// Группа `body` длиннее [`MAX_BODY_GROUP_BYTES`] в каноничных байтах.
     TooLarge,
 }
 
@@ -79,10 +81,16 @@ pub fn normalize_body(raw: &str) -> Result<String, BodyError> {
     if text.is_empty() {
         return Err(BodyError::Empty);
     }
-    if text.len() > MAX_BODY_BYTES {
+    let group = jcs::canonical_bytes(&body_group(&text)).map_err(|_| BodyError::TooLarge)?;
+    if group.len() > MAX_BODY_GROUP_BYTES {
         return Err(BodyError::TooLarge);
     }
     Ok(text)
+}
+
+/// Значение группы `body` новой записи (одно место и для проверки размера, и для байтов группы).
+fn body_group(body_md: &str) -> Value {
+    json!({"base": null, "body_md": body_md, "edited_at": null, "supersedes": []})
 }
 
 /// Исходные значения новой записи; текст уже нормализован.
@@ -137,10 +145,7 @@ pub fn new_message(input: &NewMessage<'_>, hlc: &str) -> Result<MessageRow, Grou
                 "reply_to_id": null,
             }),
         ),
-        (
-            "body",
-            json!({"base": null, "body_md": input.body_md, "edited_at": null, "supersedes": []}),
-        ),
+        ("body", body_group(input.body_md)),
         (
             "flags",
             json!({"favorite_at": null, "is_task": false, "pinned_at": null, "task_done_at": null}),
@@ -437,6 +442,28 @@ mod tests {
     }
 
     #[test]
+    fn set_deleted_keeps_unknown_groups_and_unknown_hlc_entries_verbatim() {
+        // Группа новой версии клиента (`zzz`, `sv: 2`) переживает правку чужой группы дословно, вместе с пробелами в байтах.
+        let row = sample();
+        let mut groups = row.groups_raw.clone();
+        groups.insert_str(1, r#""zzz":{ "q" : 1 },"#);
+        let mut hlcs: BTreeMap<String, Value> = serde_json::from_str(&row.hlc_json).unwrap();
+        hlcs.insert("zzz".into(), json!({"h": HLC, "sv": 2, "extra": {"q": 1}}));
+        let hlc_json = serde_json::to_string(&hlcs).unwrap();
+
+        let (groups_raw, hlc_json_after) = set_deleted(&groups, &hlc_json, 5, HLC2).unwrap();
+        let after = parse_groups_raw(&groups_raw).unwrap();
+        assert_eq!(after["zzz"].get(), r#"{ "q" : 1 }"#);
+        assert_eq!(after["deleted"].get(), r#"{"deleted_at":5}"#);
+        let hlcs_after: BTreeMap<String, Value> = serde_json::from_str(&hlc_json_after).unwrap();
+        assert_eq!(
+            hlcs_after["zzz"],
+            json!({"h": HLC, "sv": 2, "extra": {"q": 1}})
+        );
+        assert_eq!(hlcs_after["deleted"], json!({"h": HLC2, "sv": 1}));
+    }
+
+    #[test]
     fn set_deleted_rejects_corrupt_input() {
         assert!(matches!(
             set_deleted("не json", "{}", 1, HLC),
@@ -461,10 +488,32 @@ mod tests {
         );
         assert_eq!(normalize_body(""), Err(BodyError::Empty));
         assert_eq!(normalize_body(" \n\t\r\n"), Err(BodyError::Empty));
+    }
+
+    /// Каноничные байты группы `body` для текста.
+    fn body_group_len(text: &str) -> usize {
+        jcs::canonical_bytes(&body_group(text)).unwrap().len()
+    }
+
+    #[test]
+    fn body_limit_counts_canonical_group_bytes_not_text_length() {
+        // Кавычка и перевод строки в JCS занимают по два байта: 256 Ки пар `"\n` — это 512 КиБ текста,
+        // но 1 МиБ группы. По длине текста такая запись проходила бы.
+        let escaped = "\"\n".repeat(256 * 1024);
+        assert!(escaped.len() <= MAX_BODY_GROUP_BYTES);
+        assert_eq!(normalize_body(&escaped), Err(BodyError::TooLarge));
+
+        // Обычный текст: граница ровно по байтам группы (накладные — ключи и `null` вокруг текста).
+        let overhead = body_group_len("");
+        let fits = "я".repeat((MAX_BODY_GROUP_BYTES - overhead) / 2);
         assert_eq!(
-            normalize_body(&"я".repeat(MAX_BODY_BYTES / 2 + 1)),
+            body_group_len(&fits),
+            MAX_BODY_GROUP_BYTES - ((MAX_BODY_GROUP_BYTES - overhead) % 2)
+        );
+        assert!(normalize_body(&fits).is_ok());
+        assert_eq!(
+            normalize_body(&"я".repeat(fits.chars().count() + 1)),
             Err(BodyError::TooLarge)
         );
-        assert!(normalize_body(&"я".repeat(MAX_BODY_BYTES / 2)).is_ok());
     }
 }

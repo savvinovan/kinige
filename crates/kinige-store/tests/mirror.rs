@@ -292,3 +292,56 @@ fn an_empty_journal_does_not_touch_the_copy_folder() {
         || day_file(dir.path(), "2026-10-21").exists(),
     );
 }
+
+#[test]
+fn a_chat_with_the_inbox_flag_but_another_id_does_not_get_the_inbox_folder() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open(dir.path());
+    let impostor = "11111111-1111-4111-8111-111111111111";
+    insert_impostor_inbox(dir.path(), impostor);
+    store
+        .send_message(impostor, "я не Inbox", &moscow(T0))
+        .unwrap();
+    let file = mirror_dir(dir.path())
+        .join(impostor)
+        .join("2026")
+        .join("2026-10-21.md");
+    wait_until("файл в папке по id чата", || file.exists());
+    assert!(
+        !mirror_dir(dir.path()).join("Inbox").exists(),
+        "папку Inbox занимает только настоящий Inbox"
+    );
+
+    store
+        .send_message(INBOX_ID, "я настоящий", &moscow(T0 + MINUTE))
+        .unwrap();
+    wait_until("файл Inbox", || {
+        day_file(dir.path(), "2026-10-21").exists()
+    });
+}
+
+#[test]
+fn a_failed_read_of_the_marks_is_retried_not_treated_as_nothing_to_write() {
+    let dir = tempfile::tempdir().unwrap();
+    {
+        let store = open_without_mirror(dir.path());
+        store
+            .send_message(INBOX_ID, "ждёт чтения отметок", &moscow(T0))
+            .unwrap();
+    }
+    // Чтение отметок падает («нет таблицы»); копия не должна решить, что писать нечего, и забыть про день.
+    raw(dir.path())
+        .execute_batch("ALTER TABLE mirror_dirty RENAME TO mirror_dirty_away")
+        .unwrap();
+    let _store = open(dir.path());
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    assert!(!day_file(dir.path(), "2026-10-21").exists());
+
+    raw(dir.path())
+        .execute_batch("ALTER TABLE mirror_dirty_away RENAME TO mirror_dirty")
+        .unwrap();
+    wait_until(
+        "повтор после починки чтения",
+        || day_file(dir.path(), "2026-10-21").exists(),
+    );
+}

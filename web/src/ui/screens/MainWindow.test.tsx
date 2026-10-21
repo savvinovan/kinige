@@ -186,6 +186,22 @@ describe("MainWindow: настройки", () => {
     expect(screen.getByRole("menuitem", { name: "О программе" })).toHaveAttribute("aria-disabled", "true");
   });
 
+  it("окно открывается со свежим состоянием копии, а не со снимком при старте (нет ложного «Копия актуальна»)", async () => {
+    // При старте копия была в порядке, к открытию окна папка стала недоступна.
+    const broken: Settings = { ...SETTINGS, mirror: { ...SETTINGS.mirror, error: "folder_unavailable", pendingDays: 2 } };
+    setup({ settings: broken }, SETTINGS);
+    const dialog = await openSettings();
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Папка недоступна");
+    expect(within(dialog).queryByText("Копия актуальна")).toBeNull();
+  });
+
+  it("если свежие настройки прочитать не удалось, окно всё равно открывается", async () => {
+    const api = setup();
+    api.getSettings = () => Promise.reject(new Error("нет связи"));
+    const dialog = await openSettings();
+    expect(within(dialog).getByText("Копия актуальна")).toBeInTheDocument();
+  });
+
   it("окно показывает папку копии и предупреждение «открытый текст»; «Выбрать…» меняет папку", async () => {
     const api = setup({ pickedFolder: "/Volumes/Backup/Журнал" });
     const dialog = await openSettings();

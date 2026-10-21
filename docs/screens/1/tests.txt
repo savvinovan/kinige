@@ -52,3 +52,9 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 
 == Задержка отправки: cargo test -p kinige-store --test latency -- --ignored --nocapture
 отправка (транзакция + fsync, synchronous=FULL + fullfsync), 200 записей: медиана 6.07 мс, p95 8.97 мс, максимум 18.29 мс (Apple M3 Pro)
+
+# После ревью (guardian и slice-reviewer), 21.10.2026
+cargo fmt --check, clippy -D warnings: чисто; cargo test --workspace: 121 прошли, 0 упали, 1 замер помечен ignore
+wasm32-сборка домена, типы TS и tokens.css без отличий; tsc, eslint чисто; vitest: 472 теста в 26 файлах
+scripts/visual-tests.sh (без --update): 95 прошли; 18 эталонов, менявшихся из-за U+00A0, возвращены к прежним байтам (U+202F в счётчике)
+scripts/build-app.sh: OK, codesign --verify проходит

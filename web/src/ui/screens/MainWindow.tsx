@@ -86,6 +86,16 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     return () => clearInterval(timer);
   }, [api, settingsOpen]);
 
+  // Окно настроек открывается со свежим состоянием копии, а не со снимком при старте приложения: иначе ошибка папки
+  // или очередь дней показались бы как «Копия актуальна». Не удалось прочитать — открываем с тем, что есть.
+  const openSettings = () => {
+    api
+      .getSettings()
+      .then((fresh) => setSettings((old) => ({ ...old, mirror: fresh.mirror })))
+      .catch(() => undefined)
+      .finally(() => setSettingsOpen(true));
+  };
+
   const submit = () => {
     if (sending.current || draft.trim() === "") return;
     sending.current = true;
@@ -165,7 +175,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       }
       composerFocusSignal={focusSignal}
       onOpenLink={openLink}
-      onOpenSettings={() => setSettingsOpen(true)}
+      onOpenSettings={openSettings}
       overlay={
         settingsOpen ? (
           <SettingsDialog

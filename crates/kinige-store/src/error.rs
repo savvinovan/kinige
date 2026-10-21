@@ -33,6 +33,22 @@ impl StoreError {
     }
 }
 
+impl StoreError {
+    /// Категория для журнала процесса: без текста внутренней ошибки (SQLite, serde, пути, адреса) — в нём могут оказаться
+    /// куски данных пользователя.
+    pub fn category(&self) -> &'static str {
+        match self {
+            StoreError::Empty => "empty",
+            StoreError::TooLarge => "too_large",
+            StoreError::ChatNotFound => "chat_not_found",
+            StoreError::MessageNotFound => "message_not_found",
+            StoreError::Write(_) => "write",
+            StoreError::Read(_) => "read",
+            StoreError::Internal(_) => "internal",
+        }
+    }
+}
+
 impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -54,6 +70,26 @@ impl From<BodyError> for StoreError {
         match error {
             BodyError::Empty => StoreError::Empty,
             BodyError::TooLarge => StoreError::TooLarge,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_category_never_contains_the_inner_text() {
+        let secret =
+            "expected value at line 1: {\"body_md\":\"личное\"} https://example.com/?token=x";
+        for error in [
+            StoreError::Write(secret.into()),
+            StoreError::Read(secret.into()),
+            StoreError::Internal(secret.into()),
+        ] {
+            let category = error.category();
+            assert!(["write", "read", "internal"].contains(&category));
+            assert!(!category.contains("личное") && !category.contains("example"));
         }
     }
 }

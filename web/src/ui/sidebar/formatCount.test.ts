@@ -24,6 +24,12 @@ describe("formatCount (ru)", () => {
     expect(plain(formatCount(9_999, "ru"))).toBe("9 999");
   });
 
+  it("разряды отделены узким неразрывным пробелом U+202F, как в D1", () => {
+    expect(formatCount(1_000, "ru")).toBe("1 000");
+    expect(formatCount(9_999, "ru")).toBe("9 999");
+    expect(formatCount(1_234, "en")).toBe("1,234");
+  });
+
   it("от 10 000: «12 тыс.», дробная часть отбрасывается, «1000 тыс.» не бывает", () => {
     expect(plain(formatCount(10_000, "ru"))).toBe("10 тыс.");
     expect(plain(formatCount(12_345, "ru"))).toBe("12 тыс.");

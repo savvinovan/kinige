@@ -214,7 +214,7 @@ fn empty_and_oversized_entries_are_rejected_before_touching_the_database() {
         store.send_message(INBOX_ID, " \n\t", &moscow(T0)),
         Err(StoreError::Empty)
     ));
-    let huge = "я".repeat(kinige_domain::groups::MAX_BODY_BYTES);
+    let huge = "я".repeat(kinige_domain::groups::MAX_BODY_GROUP_BYTES);
     assert!(matches!(
         store.send_message(INBOX_ID, &huge, &moscow(T0)),
         Err(StoreError::TooLarge)
@@ -547,4 +547,33 @@ fn a_database_from_a_newer_app_is_refused() {
         .err()
         .expect("отказ");
     assert_eq!(error.code(), ErrorCode::Internal);
+}
+
+#[test]
+fn inbox_is_recognised_by_id_not_by_the_flag() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    let impostor = "11111111-1111-4111-8111-111111111111";
+    insert_impostor_inbox(dir.path(), impostor);
+    let chats = store.list_chats().unwrap();
+    let real = chats.iter().find(|c| c.id == INBOX_ID).unwrap();
+    let fake = chats.iter().find(|c| c.id == impostor).unwrap();
+    assert!(real.is_inbox);
+    assert!(
+        !fake.is_inbox,
+        "флаг is_inbox у чужого id не делает чат Inbox"
+    );
+}
+
+#[test]
+fn writer_connection_uses_full_synchronous_and_fullfsync() {
+    // Прагмы читаются с самого соединения-писателя, а не с отдельного читающего.
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    let (synchronous, fullfsync, journal) = store.writer_pragmas().unwrap();
+    assert_eq!(
+        (synchronous, fullfsync, journal.as_str()),
+        (2, 1, "wal"),
+        "synchronous=FULL, fullfsync=ON, WAL"
+    );
 }

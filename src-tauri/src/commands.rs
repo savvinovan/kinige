@@ -14,8 +14,8 @@ use tauri_plugin_opener::OpenerExt;
 type ApiResult<T> = Result<T, ApiError>;
 
 fn api(error: StoreError) -> ApiError {
-    // Подробности (текст ошибки SQLite) — только в журнал процесса; содержимого записей в них нет.
-    eprintln!("kinige: {error}");
+    // В журнал процесса — только категория: текст внутренней ошибки (SQLite, serde) может содержать куски данных.
+    eprintln!("kinige: ошибка хранилища: {}", error.category());
     error.code().into()
 }
 
@@ -114,10 +114,9 @@ pub fn open_external_url<R: Runtime>(app: AppHandle<R>, url: String) -> ApiResul
         eprintln!("kinige: ссылка отвергнута: {error}");
         ApiError::from(ErrorCode::LinkNotAllowed)
     })?;
-    app.opener()
-        .open_url(checked, None::<&str>)
-        .map_err(|error| {
-            eprintln!("kinige: не удалось открыть ссылку: {error}");
-            ApiError::from(ErrorCode::Internal)
-        })
+    app.opener().open_url(checked, None::<&str>).map_err(|_| {
+        // Текст ошибки opener не пишем: в нём может быть сам адрес.
+        eprintln!("kinige: не удалось открыть ссылку в системном браузере");
+        ApiError::from(ErrorCode::Internal)
+    })
 }

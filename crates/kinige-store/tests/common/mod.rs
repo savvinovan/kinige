@@ -53,3 +53,14 @@ pub fn wait_until(what: &str, mut condition: impl FnMut() -> bool) {
 pub fn raw(dir: &Path) -> rusqlite::Connection {
     rusqlite::Connection::open(db_path(dir)).unwrap()
 }
+
+/// Чат, который называет себя Inbox (`is_inbox = 1`), но id у него другой.
+pub fn insert_impostor_inbox(dir: &Path, id: &str) {
+    raw(dir)
+        .execute(
+            "INSERT INTO chat (id, title, sort_key, is_inbox, created_at, updated_at, hlc_json, schema_version, groups_raw) \
+             VALUES (?1, 'Самозванец', 'a1', 1, 0, 0, '{}', 1, '{}')",
+            [id],
+        )
+        .unwrap();
+}

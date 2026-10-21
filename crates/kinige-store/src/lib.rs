@@ -141,6 +141,22 @@ impl Store {
         groups::INBOX_ID
     }
 
+    /// Прагмы соединения-писателя `(synchronous, fullfsync, journal_mode)`: для проверки, что запись долговечна.
+    #[doc(hidden)]
+    pub fn writer_pragmas(&self) -> Result<(i64, i64, String), StoreError> {
+        self.write(|conn| {
+            let read = |e: rusqlite::Error| StoreError::Read(e.to_string());
+            Ok((
+                conn.pragma_query_value(None, "synchronous", |r| r.get(0))
+                    .map_err(read)?,
+                conn.pragma_query_value(None, "fullfsync", |r| r.get(0))
+                    .map_err(read)?,
+                conn.pragma_query_value(None, "journal_mode", |r| r.get(0))
+                    .map_err(read)?,
+            ))
+        })
+    }
+
     /// Путь файла базы нужен тестам и диагностике.
     pub fn default_mirror_dir(&self) -> Option<&Path> {
         self.inner.default_mirror_dir.as_deref()
