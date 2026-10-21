@@ -1,4 +1,20 @@
-import { ArrowUp, Check, ChevronDown, Copy, Ellipsis, Mic, Paperclip, Pencil, Search, Smile, SquareCheck, Star } from "lucide-react";
+import {
+  ArrowUp,
+  Check,
+  ChevronDown,
+  CircleAlert,
+  Copy,
+  Ellipsis,
+  Info,
+  Mic,
+  Paperclip,
+  Pencil,
+  Search,
+  Smile,
+  SquareCheck,
+  Star,
+  X,
+} from "lucide-react";
 import "./icon.css";
 
 // Линейные значки интерфейса из набора Lucide (npm lucide-react, лицензия ISC; происхождение и лицензии — icons/README.md).
@@ -16,6 +32,9 @@ const GLYPHS = {
   favorite: Star,
   more: Ellipsis,
   done: Check,
+  close: X,
+  alert: CircleAlert,
+  info: Info,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

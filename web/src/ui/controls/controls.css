@@ -24,6 +24,23 @@
   background: var(--color-surface-selected);
 }
 
+/* Кнопка с заливкой: заметна как кнопка и без акцентного цвета; в недоступном состоянии (aria-disabled) приглушена. */
+.button--secondary {
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+}
+
+.button--secondary:hover {
+  background: var(--color-surface-field-active);
+}
+
+.button--secondary[aria-disabled="true"],
+.button--secondary[aria-disabled="true"]:hover {
+  background: var(--color-surface-selected);
+  cursor: default;
+  opacity: var(--opacity-disabled);
+}
+
 /* В строке текста: высота и поля не раздвигают строку, цвет и размер наследуются, подчёркивание показывает действие. */
 .button--inline {
   min-height: 0;

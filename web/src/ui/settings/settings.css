@@ -1,0 +1,171 @@
+/* Окно «Настройки»: разделы, выбор из нескольких, строка папки, строки состояния. Только токены. */
+
+/* Разделы отделены тонкой линией, а не карточками. */
+.settings__section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+
+.settings__section + .settings__section {
+  border-top: var(--border-width-hairline) solid var(--color-border-divider);
+}
+
+.settings__heading {
+  margin: 0;
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line-height);
+}
+
+.settings__description {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+/* Выбор из нескольких: сегменты в одной заливке. */
+.segmented {
+  display: inline-flex;
+  gap: var(--space-1);
+  justify-self: start;
+  padding: var(--space-1);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-field);
+}
+
+.segmented__option {
+  box-sizing: border-box;
+  min-height: var(--layout-control-height);
+  margin: 0;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  cursor: pointer;
+  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.segmented__option:hover {
+  background: var(--color-surface-field-active);
+  color: var(--color-text-primary);
+}
+
+/* Выбранный вариант: заливка светлее и тонкая линия акцента внутри, а не только цвет текста. */
+.segmented__option[aria-checked="true"],
+.segmented__option[aria-checked="true"]:hover {
+  background: var(--color-highlight-background);
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-accent-default);
+  color: var(--color-text-primary);
+}
+
+/* Строка папки: подпись, под ней поле с путём и кнопка справа. */
+.path-row {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.path-row__label {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+.path-row__line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.path-row__field {
+  display: grid;
+  flex: 1;
+  justify-items: start;
+  gap: var(--space-1);
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: var(--layout-control-height);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-field);
+}
+
+/* Длинный путь переносится по разделителям (<wbr>), а слишком длинное имя папки — в любом месте. */
+.path-row__path {
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-family: var(--type-code-family);
+  font-size: var(--type-code-size);
+  line-height: var(--type-code-line-height);
+  overflow-wrap: anywhere;
+}
+
+.path-row__empty {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.path-row__badge {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-round);
+  /* Врезка темнее поля (как блок кода в плашке), а не рамка: рамка цвета разделителя на поле почти не видна. */
+  background: var(--color-surface-code);
+  color: var(--color-text-secondary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+.path-row__line > .button {
+  flex: none;
+}
+
+/* Строка состояния: значок и текст. Ошибка — цветом ошибки и значком, а не одним цветом. */
+.status-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.status-note__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: calc(var(--type-small-size) * var(--type-small-line-height));
+}
+
+.status-note__icon .icon {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}
+
+.status-note__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.status-note--quiet {
+  color: var(--color-text-secondary);
+}
+
+.status-note--quiet .status-note__icon {
+  color: var(--color-text-tertiary);
+}
+
+.status-note--error {
+  color: var(--color-status-error);
+}

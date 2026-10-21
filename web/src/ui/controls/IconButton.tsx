@@ -1,4 +1,5 @@
 import { useId, type ButtonHTMLAttributes, type MouseEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Icon, type IconName } from "../icons/Icon";
 import "./controls.css";
 
@@ -29,6 +30,7 @@ export function IconButton({
   onClick,
   ...rest
 }: IconButtonProps) {
+  const { t } = useTranslation();
   const noteId = useId();
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     if (unavailable) event.preventDefault();
@@ -48,7 +50,7 @@ export function IconButton({
         aria-label={label}
         aria-disabled={unavailable ? true : undefined}
         aria-describedby={unavailable ? noteId : undefined}
-        title={unavailable ? `${label}. Появится позже` : label}
+        title={unavailable ? `${label}. ${t("common.comingLater")}` : label}
         onClick={handleClick}
         {...rest}
       >
@@ -56,7 +58,7 @@ export function IconButton({
       </button>
       {unavailable ? (
         <span className="visually-hidden" id={noteId}>
-          Появится позже
+          {t("common.comingLater")}
         </span>
       ) : null}
     </>

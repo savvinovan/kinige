@@ -16,6 +16,9 @@
 | `favorite` | `star` | ISC |
 | `more` | `ellipsis` (прежнее имя `more-horizontal`) | MIT (из Feather) |
 | `done` | `check` | MIT (из Feather) |
+| `close` | `x` | MIT (из Feather) |
+| `alert` | `circle-alert` (прежнее имя `alert-circle`) | MIT (из Feather) |
+| `info` | `info` | MIT (из Feather) |
 
 Какие значки произошли от Feather, видно по списку в `LICENSE` пакета; проверено по версии 1.60.0.
 

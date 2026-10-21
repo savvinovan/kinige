@@ -2,8 +2,11 @@ import type { ButtonHTMLAttributes } from "react";
 import "./controls.css";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  /** accent — текстовая кнопка акцентным цветом («Отменить» в тосте); inline — внутри строки текста, цвет наследуется («Повторить»). */
-  variant?: "accent" | "inline";
+  /**
+   * accent — текстовая кнопка акцентным цветом («Отменить» в тосте); inline — внутри строки текста, цвет наследуется («Повторить»);
+   * secondary — кнопка с заливкой и основным цветом текста («Выбрать…» в настройках): действие в форме, а не в потоке.
+   */
+  variant?: "accent" | "inline" | "secondary";
 }
 
 /** Текстовая кнопка. Видимая подпись — содержимое; доступное имя можно уточнить через aria-label, начав его с видимого текста. */
