@@ -30,6 +30,12 @@ pub enum GroupError {
     Jcs(JcsError),
     /// `groups_raw` или `hlc_json` повреждены.
     Corrupt(String),
+    /// Группа, которую нужно переписать, имеет `sv` выше поддерживаемой (ADR-0001 §4 п. 4): запись только для чтения.
+    UnsupportedVersion,
+    /// Новый HLC не больше прежнего: перезапись группы требует строго большего (ADR-0001 §3.3).
+    HlcNotNewer,
+    /// Группа длиннее [`MAX_BODY_GROUP_BYTES`] в каноничных байтах.
+    TooLarge,
 }
 
 impl fmt::Display for GroupError {
@@ -37,6 +43,9 @@ impl fmt::Display for GroupError {
         match self {
             GroupError::Jcs(error) => write!(f, "{error}"),
             GroupError::Corrupt(why) => write!(f, "повреждены группы записи: {why}"),
+            GroupError::UnsupportedVersion => f.write_str("группа новее поддерживаемой версии"),
+            GroupError::HlcNotNewer => f.write_str("новый HLC не больше прежнего"),
+            GroupError::TooLarge => f.write_str("группа длиннее предела"),
         }
     }
 }

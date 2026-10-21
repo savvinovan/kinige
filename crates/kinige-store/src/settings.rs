@@ -2,7 +2,10 @@
 
 use crate::send::mark_all_dirty;
 use crate::{Store, StoreError};
-use kinige_domain::{MirrorStatus, Settings, TextSize};
+use kinige_domain::shortcuts::canonical_accelerator;
+use kinige_domain::{
+    MirrorStatus, Settings, ShortcutKind, ShortcutState, ShortcutStatus, TextSize,
+};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use std::path::{Path, PathBuf};
 
@@ -37,17 +40,41 @@ pub(crate) fn effective_mirror_dir(
     })
 }
 
+/// Сохранённое сочетание вида `kind`; нет записи, незнакомое или повреждённое значение — сочетание по умолчанию.
+fn stored_accelerator(conn: &Connection, kind: ShortcutKind) -> rusqlite::Result<String> {
+    Ok(get_setting(conn, kind.setting_key())?
+        .and_then(|text| canonical_accelerator(&text).ok())
+        .unwrap_or_else(|| kind.default_accelerator().to_string()))
+}
+
+fn shortcut_statuses(conn: &Connection) -> rusqlite::Result<Vec<ShortcutStatus>> {
+    ShortcutKind::ALL
+        .into_iter()
+        .map(|kind| {
+            let accelerator = stored_accelerator(conn, kind)?;
+            Ok(ShortcutStatus {
+                kind,
+                is_default: accelerator == kind.default_accelerator(),
+                accelerator,
+                state: ShortcutState::Assigned,
+            })
+        })
+        .collect()
+}
+
 impl Store {
-    /// Настройки и состояние копии для окна «Настройки».
+    /// Настройки и состояние копии для окна «Настройки». Состояние сочетаний здесь — «назначено»: занятость определяет
+    /// система при регистрации, её накладывает слой Tauri.
     pub fn get_settings(&self) -> Result<Settings, StoreError> {
         let default = self.inner.default_mirror_dir.clone();
-        let (text_size, folder, pending_days) = self.read(|conn| {
+        let (text_size, folder, pending_days, shortcuts) = self.read(|conn| {
             let text_size = get_setting(conn, KEY_TEXT_SIZE).map_err(read_err)?;
             let folder = effective_mirror_dir(conn, default.as_deref()).map_err(read_err)?;
             let pending: i64 = conn
                 .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |row| row.get(0))
                 .map_err(read_err)?;
-            Ok((text_size, folder, pending))
+            let shortcuts = shortcut_statuses(conn).map_err(read_err)?;
+            Ok((text_size, folder, pending, shortcuts))
         })?;
         Ok(Settings {
             text_size: text_size
@@ -59,7 +86,60 @@ impl Store {
                 error: self.inner.mirror.error(),
                 pending_days,
             },
-            shortcuts: Vec::new(),
+            shortcuts,
+        })
+    }
+
+    /// Проверка нового сочетания до регистрации в системе: запись разбирается и приводится к каноничной, зарезервированное
+    /// и без модификатора отвергается (`ShortcutInvalid`), совпадение с сочетанием другого действия — `ShortcutDuplicate`.
+    /// Ничего не записывает.
+    pub fn check_shortcut(
+        &self,
+        kind: ShortcutKind,
+        accelerator: &str,
+    ) -> Result<String, StoreError> {
+        let canonical =
+            canonical_accelerator(accelerator).map_err(|_| StoreError::ShortcutInvalid)?;
+        let other = self.read(|conn| {
+            ShortcutKind::ALL
+                .into_iter()
+                .filter(|other| *other != kind)
+                .map(|other| stored_accelerator(conn, other).map_err(read_err))
+                .collect::<Result<Vec<_>, _>>()
+        })?;
+        if other.contains(&canonical) {
+            return Err(StoreError::ShortcutDuplicate);
+        }
+        Ok(canonical)
+    }
+
+    /// Сочетание вида `kind` как есть сейчас (сохранённое или по умолчанию).
+    pub fn shortcut_accelerator(&self, kind: ShortcutKind) -> Result<String, StoreError> {
+        self.read(|conn| stored_accelerator(conn, kind).map_err(read_err))
+    }
+
+    /// Сохраняет сочетание, уже принятое системой. Повторяет проверку [`Store::check_shortcut`].
+    pub fn save_shortcut(&self, kind: ShortcutKind, accelerator: &str) -> Result<(), StoreError> {
+        let canonical = self.check_shortcut(kind, accelerator)?;
+        self.write(move |conn| {
+            conn.execute(
+                "INSERT INTO app_setting(key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (kind.setting_key(), canonical),
+            )
+            .map_err(write_err)?;
+            Ok(())
+        })
+    }
+
+    /// «Сбросить»: возвращает сочетание по умолчанию.
+    pub fn reset_shortcut(&self, kind: ShortcutKind) -> Result<(), StoreError> {
+        self.write(move |conn| {
+            conn.execute(
+                "DELETE FROM app_setting WHERE key = ?1",
+                [kind.setting_key()],
+            )
+            .map_err(write_err)?;
+            Ok(())
         })
     }
 

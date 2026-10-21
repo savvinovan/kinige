@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 
+use kinige_domain::hlc::Clock;
 use kinige_store::{Now, Store, StoreOptions};
+use serde_json::value::RawValue;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -61,6 +64,85 @@ pub fn insert_impostor_inbox(dir: &Path, id: &str) {
             "INSERT INTO chat (id, title, sort_key, is_inbox, created_at, updated_at, hlc_json, schema_version, groups_raw) \
              VALUES (?1, 'Самозванец', 'a1', 1, 0, 0, '{}', 1, '{}')",
             [id],
+        )
+        .unwrap();
+}
+
+/// Правка записи в обход хранилища: `f` получает разобранные `groups_raw` и `hlc_json` (значения дословно), результат
+/// пишется обратно. Колонки правит вызывающий отдельно.
+pub fn edit_raw_groups(
+    dir: &Path,
+    id: &str,
+    f: impl FnOnce(&mut BTreeMap<String, Box<RawValue>>, &mut BTreeMap<String, Box<RawValue>>),
+) {
+    let conn = raw(dir);
+    let (groups_raw, hlc_json): (String, String) = conn
+        .query_row(
+            "SELECT groups_raw, hlc_json FROM message WHERE id = ?1",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    let mut groups: BTreeMap<String, Box<RawValue>> = serde_json::from_str(&groups_raw).unwrap();
+    let mut hlcs: BTreeMap<String, Box<RawValue>> = serde_json::from_str(&hlc_json).unwrap();
+    f(&mut groups, &mut hlcs);
+    conn.execute(
+        "UPDATE message SET groups_raw = ?1, hlc_json = ?2 WHERE id = ?3",
+        (
+            serde_json::to_string(&groups).unwrap(),
+            serde_json::to_string(&hlcs).unwrap(),
+            id,
+        ),
+    )
+    .unwrap();
+}
+
+/// Следующая метка HLC устройства из `sync_state` (часы продолжаются, как при настоящей операции).
+fn tick_clock(dir: &Path, pt_ms: i64) -> String {
+    let conn = raw(dir);
+    let get = |key: &str| -> String {
+        conn.query_row("SELECT value FROM sync_state WHERE key = ?1", [key], |r| {
+            r.get(0)
+        })
+        .unwrap()
+    };
+    let clock = Clock {
+        l: get("hlc_l").parse().unwrap(),
+        c: get("hlc_c").parse().unwrap(),
+    }
+    .tick(u64::try_from(pt_ms).unwrap())
+    .unwrap();
+    for (key, value) in [
+        ("hlc_l", clock.l.to_string()),
+        ("hlc_c", clock.c.to_string()),
+    ] {
+        conn.execute(
+            "UPDATE sync_state SET value = ?1 WHERE key = ?2",
+            (value, key),
+        )
+        .unwrap();
+    }
+    clock.format(&get("device_id"))
+}
+
+/// Запись уходит в корзину: колонка, группа `deleted` и её HLC согласованы (интерфейса удаления до слайса 3 нет, поэтому
+/// тесты ставят удаление так, как его запишет настоящая операция: новая каноничная группа с новым HLC).
+pub fn mark_deleted(dir: &Path, id: &str, at_ms: i64) {
+    let hlc = tick_clock(dir, at_ms);
+    edit_raw_groups(dir, id, |groups, hlcs| {
+        let group = serde_json::json!({ "deleted_at": at_ms });
+        let bytes =
+            String::from_utf8(kinige_domain::jcs::canonical_bytes(&group).unwrap()).unwrap();
+        groups.insert("deleted".into(), RawValue::from_string(bytes).unwrap());
+        hlcs.insert(
+            "deleted".into(),
+            RawValue::from_string(serde_json::json!({"h": hlc, "sv": 1}).to_string()).unwrap(),
+        );
+    });
+    raw(dir)
+        .execute(
+            "UPDATE message SET deleted_at = ?1 WHERE id = ?2",
+            (at_ms, id),
         )
         .unwrap();
 }

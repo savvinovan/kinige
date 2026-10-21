@@ -10,6 +10,10 @@ pub enum StoreError {
     /// Текст длиннее предела.
     TooLarge,
     ChatNotFound,
+    /// Сочетание клавиш записано неверно, без модификатора или зарезервировано системой.
+    ShortcutInvalid,
+    /// Такое сочетание уже назначено другому действию Kinige.
+    ShortcutDuplicate,
     /// Запись в базу не удалась: ничего не записано (транзакция откатилась).
     Write(String),
     /// Чтение не удалось.
@@ -24,6 +28,8 @@ impl StoreError {
             StoreError::Empty => ErrorCode::EmptyMessage,
             StoreError::TooLarge => ErrorCode::MessageTooLarge,
             StoreError::ChatNotFound => ErrorCode::ChatNotFound,
+            StoreError::ShortcutInvalid => ErrorCode::ShortcutInvalid,
+            StoreError::ShortcutDuplicate => ErrorCode::ShortcutDuplicate,
             StoreError::Write(_) => ErrorCode::StoreWriteFailed,
             StoreError::Read(_) => ErrorCode::StoreReadFailed,
             StoreError::Internal(_) => ErrorCode::Internal,
@@ -39,6 +45,8 @@ impl StoreError {
             StoreError::Empty => "empty",
             StoreError::TooLarge => "too_large",
             StoreError::ChatNotFound => "chat_not_found",
+            StoreError::ShortcutInvalid => "shortcut_invalid",
+            StoreError::ShortcutDuplicate => "shortcut_duplicate",
             StoreError::Write(_) => "write",
             StoreError::Read(_) => "read",
             StoreError::Internal(_) => "internal",
@@ -52,6 +60,8 @@ impl fmt::Display for StoreError {
             StoreError::Empty => f.write_str("пустая запись"),
             StoreError::TooLarge => f.write_str("запись слишком длинная"),
             StoreError::ChatNotFound => f.write_str("чат не найден"),
+            StoreError::ShortcutInvalid => f.write_str("неверное сочетание клавиш"),
+            StoreError::ShortcutDuplicate => f.write_str("сочетание уже назначено"),
             StoreError::Write(why) => write!(f, "запись в базу не удалась: {why}"),
             StoreError::Read(why) => write!(f, "чтение базы не удалось: {why}"),
             StoreError::Internal(why) => write!(f, "внутренняя ошибка: {why}"),

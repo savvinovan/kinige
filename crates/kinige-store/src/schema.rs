@@ -1,4 +1,5 @@
-//! Схема SQLite и миграции (`PRAGMA user_version`). Миграция 1 создаёт только таблицы, в которые пишет слайс 1
+//! Схема SQLite и миграции (`PRAGMA user_version`). Миграция 2 добавляет локальную таблицу черновиков (слайс 2).
+//! Миграция 1 создаёт только таблицы, в которые пишет слайс 1
 //! (слайс 1, «Затрагивает чувствительные зоны»): остальные таблицы ADR-0001 §C добавят свои слайсы миграциями
 //! `CREATE TABLE` без изменения существующих строк. Колонки `hlc_json`, `server_known`, `groups_raw` и `schema_version`
 //! есть с первой записи: задним числом их не исправить.
@@ -71,8 +72,18 @@ CREATE TABLE mirror_dirty (
 );
 ";
 
+/// Миграция 2 (слайс 2): черновики. Локальная несинхронизируемая таблица, строки сообщений и чатов не меняются.
+/// Ключ — `capture` (окно захвата) или `chat:<id>` (поле ввода главного окна).
+const MIGRATION_2: &str = "
+CREATE TABLE draft (
+  key TEXT PRIMARY KEY,
+  body TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+";
+
 /// Миграции по порядку; номер версии — индекс + 1.
-const MIGRATIONS: &[&str] = &[MIGRATION_1];
+const MIGRATIONS: &[&str] = &[MIGRATION_1, MIGRATION_2];
 
 /// Версия схемы, которую понимает это приложение.
 pub const LATEST_VERSION: i64 = MIGRATIONS.len() as i64;

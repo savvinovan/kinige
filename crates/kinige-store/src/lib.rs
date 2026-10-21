@@ -1,6 +1,8 @@
 //! Хранилище Kinige (ТЗ §3.2): SQLite через `rusqlite`, один поток-писатель, чтение отдельным соединением (WAL),
 //! миграции, Markdown-копия. Бизнес-правила — в `kinige-domain`; здесь только транзакции и файлы.
 
+mod capture;
+mod draft;
 mod error;
 mod feed;
 mod hlc_state;
@@ -11,6 +13,8 @@ mod settings;
 mod time;
 mod writer;
 
+pub use capture::{CONTEXT_LEN, CaptureView};
+pub use draft::MAX_DRAFT_BYTES;
 pub use error::StoreError;
 pub use feed::{DEFAULT_PAGE, MAX_PAGE};
 pub use schema::LATEST_VERSION;

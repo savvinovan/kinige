@@ -25,9 +25,8 @@ fn dirty_count(dir: &Path) -> i64 {
 /// Запись уходит в корзину (интерфейс корзины — слайс 3): день помечается для перезаписи, как это сделает удаление.
 /// Копия просыпается от смены папки (на ту же самую).
 fn delete_entry(store: &kinige_store::Store, dir: &Path, id: &str, date: &str) {
+    mark_deleted(dir, id, 1);
     let conn = raw(dir);
-    conn.execute("UPDATE message SET deleted_at = 1 WHERE id = ?1", [id])
-        .unwrap();
     conn.execute(
         "INSERT INTO mirror_dirty (chat_id, journal_date, seq) \
          VALUES (?1, ?2, (SELECT COALESCE(MAX(seq), 0) + 1 FROM mirror_dirty)) \
