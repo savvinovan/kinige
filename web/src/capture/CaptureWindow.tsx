@@ -49,6 +49,13 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
           setState(fresh);
           setValue(fresh.draft);
           setError(fresh.error);
+          // Окно показали заново: страница могла считать фокус своим всё это время (события focus нет), поэтому курсор
+          // ставится в поле явно.
+          requestAnimationFrame(() => {
+            const field = document.querySelector("textarea");
+            field?.blur();
+            field?.focus();
+          });
         })
         .catch((reason: unknown) => setError(errorCode(reason)));
     };

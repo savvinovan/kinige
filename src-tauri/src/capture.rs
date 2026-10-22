@@ -19,6 +19,9 @@ const TOP_FRACTION: f64 = 0.28;
 const HIDE_GRACE: Duration = Duration::from_millis(600);
 /// Сколько после показа потеря фокуса не считается уходом пользователя.
 const BLUR_GRACE: Duration = Duration::from_millis(250);
+/// Повторы `set_focus` после показа, если окно не получило фокус, и пауза перед каждым.
+const FOCUS_RETRIES: usize = 3;
+const FOCUS_RETRY_DELAY: Duration = Duration::from_millis(150);
 
 type ApiResult<T> = Result<T, ApiError>;
 
@@ -111,8 +114,24 @@ pub fn show_capture<R: Runtime>(app: &AppHandle<R>) {
     place_on_cursor_screen(app, &window);
     let _ = window.show();
     let _ = window.set_focus();
+    // Окно создано скрытым и не сфокусированным: без этого вызова клавиатура остаётся у окна, а не у страницы (курсор в
+    // поле виден, но символы не печатаются).
+    let webview: &tauri::Webview<R> = window.as_ref();
+    let _ = webview.set_focus();
     // Страница узнаёт о показе без IPC (у окна нет права слушать события): перечитывает состояние и ставит курсор в поле.
     let _ = window.eval("window.dispatchEvent(new Event('kinige-capture-shown'))");
+    // Система может отдать фокус не сразу (macOS 14+ активирует приложения «кооперативно»): несколько повторов.
+    std::thread::spawn(move || {
+        for _ in 0..FOCUS_RETRIES {
+            std::thread::sleep(FOCUS_RETRY_DELAY);
+            if window.is_focused().unwrap_or(true) || !window.is_visible().unwrap_or(false) {
+                return;
+            }
+            let _ = window.set_focus();
+            let webview: &tauri::Webview<R> = window.as_ref();
+            let _ = webview.set_focus();
+        }
+    });
 }
 
 /// Прячет окно захвата. Если до показа активной была другая программа — приложение скрывается целиком (macOS возвращает
@@ -121,6 +140,7 @@ pub fn hide_capture<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(CAPTURE_LABEL) else {
         return;
     };
+    eprintln!("TRACE hide_capture visible={:?}", window.is_visible());
     if !window.is_visible().unwrap_or(false) {
         return;
     }
@@ -138,6 +158,7 @@ pub fn hide_capture<R: Runtime>(app: &AppHandle<R>) {
 
 /// Просит страницу окна сохранить черновик и спрятаться (`capture_hide`); если страница не ответила — прячет принудительно.
 pub fn request_hide<R: Runtime>(app: &AppHandle<R>) {
+    eprintln!("TRACE request_hide");
     let Some(window) = app.get_webview_window(CAPTURE_LABEL) else {
         return;
     };
@@ -280,5 +301,6 @@ pub fn capture_save_draft(store: State<'_, Store>, body: String) -> ApiResult<()
 /// Спрятать окно захвата (после отправки, Esc, потери фокуса).
 #[tauri::command]
 pub fn capture_hide<R: Runtime>(app: AppHandle<R>) {
+    eprintln!("TRACE capture_hide called");
     hide_capture(&app);
 }

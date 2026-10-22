@@ -151,6 +151,7 @@ fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
         }
         // Щелчок в другое окно или другую программу: окно захвата прячется, черновик сохраняется.
         (CAPTURE_LABEL, WindowEvent::Focused(false)) => {
+            eprintln!("TRACE capture blur");
             capture::on_capture_blur(window.app_handle())
         }
         _ => {}
