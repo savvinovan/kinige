@@ -29,7 +29,10 @@
   gap: var(--space-2);
   box-sizing: border-box;
   min-height: 0;
-  padding: var(--space-2);
+  /* Единый внутренний отступ со всех четырёх сторон (13 px): плашки, поле и кнопка не заходят в зону скругления. Левая линия
+     текста общая: текст плашки (padding плашки), текст поля (отступ поля) и подсказка стоят на одной вертикали, 9,75 px от
+     края плашки; подсказка и ошибка под полем получают тот же отступ снизу, что и всё остальное. */
+  padding: var(--space-4);
   overflow: hidden;
   border-radius: var(--radius-floating);
   background: var(--color-surface-paper);

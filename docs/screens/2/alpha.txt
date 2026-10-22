@@ -1,4 +1,4 @@
-docs/screens/2/40-capture-pill-empty-ru.png {"w":584,"h":109,"corners":[0,0,0,0],"center":255}
-docs/screens/2/41-capture-pill-context-hint-ru.png {"w":584,"h":268,"corners":[0,0,0,0],"center":255}
-docs/screens/2/43-capture-pill-error-ru.png {"w":584,"h":323,"corners":[0,0,0,0],"center":255}
-docs/screens/2/44-capture-pill-context-large-en.png {"w":584,"h":320,"corners":[0,0,0,0],"center":255}
+docs/screens/2/40-capture-pill-empty-ru.png {"w":584,"h":122,"corners":[0,0,0,0],"center":255}
+docs/screens/2/41-capture-pill-context-hint-ru.png {"w":584,"h":281,"corners":[0,0,0,0],"center":255}
+docs/screens/2/43-capture-pill-error-ru.png {"w":584,"h":336,"corners":[0,0,0,0],"center":255}
+docs/screens/2/44-capture-pill-context-large-en.png {"w":584,"h":336,"corners":[0,0,0,0],"center":255}

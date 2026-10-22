@@ -132,7 +132,8 @@
 .composer--floating .composer__bar,
 .composer--floating .composer__bar:has(.composer__input:focus) {
   min-height: 0;
-  padding: 0 0 0 var(--space-2);
+  /* Текст поля начинается там же, где текст плашки контекста: отступ плашки минус боковое поле самого textarea (space-1). */
+  padding: 0 0 0 calc(var(--layout-message-padding-inline) - var(--space-1));
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -150,7 +151,8 @@
 
 .composer--floating .composer__error:not(:empty),
 .composer__hint {
-  padding: var(--space-1) var(--space-2) 0;
+  /* Боковой отступ равен внутреннему отступу плашки контекста (layout.message.padding-inline): левая линия текста общая. */
+  padding: var(--space-1) var(--layout-message-padding-inline) 0;
 }
 
 .composer__hint {
