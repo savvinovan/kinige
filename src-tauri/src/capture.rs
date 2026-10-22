@@ -22,6 +22,7 @@ const HIDE_GRACE: Duration = Duration::from_millis(600);
 /// миллисекунд.
 const STABLE_KEY: Duration = Duration::from_millis(300);
 /// Сколько раз после показа возвращать панели ключевой статус, прежде чем сдаться (панель остаётся на экране, в неё можно щёлкнуть).
+#[cfg(target_os = "macos")]
 const MAX_REKEYS: u32 = 20;
 
 type ApiResult<T> = Result<T, ApiError>;
@@ -203,9 +204,14 @@ pub fn on_capture_blur<R: Runtime>(app: &AppHandle<R>) {
         .is_some_and(|since| since.elapsed() >= STABLE_KEY);
     if stable {
         request_hide(app);
-        return;
+    } else {
+        rekey(app, &shell);
     }
-    #[cfg(target_os = "macos")]
+}
+
+/// Возвращает панели ключевой статус (до `MAX_REKEYS` раз с показа); только macOS, где окно захвата — панель.
+#[cfg(target_os = "macos")]
+fn rekey<R: Runtime>(app: &AppHandle<R>, shell: &CaptureShell) {
     if shell.rekeys.fetch_add(1, Ordering::SeqCst) < MAX_REKEYS {
         let app = app.clone();
         std::thread::spawn(move || {
@@ -215,6 +221,9 @@ pub fn on_capture_blur<R: Runtime>(app: &AppHandle<R>) {
         });
     }
 }
+
+#[cfg(not(target_os = "macos"))]
+fn rekey<R: Runtime>(_app: &AppHandle<R>, _shell: &CaptureShell) {}
 
 /// Хоткей захвата: окно закрыто — показать, открыто — спрятать с сохранением черновика.
 pub fn toggle_capture<R: Runtime>(app: &AppHandle<R>) {
