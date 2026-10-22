@@ -44,6 +44,45 @@ impl Store {
         self.write_draft(None, CAPTURE_KEY.to_string(), body, now)
     }
 
+    /// Сбой хоткея буфера: текст буфера идёт в черновик окна захвата под прежним непустым черновиком
+    /// (`kinige_domain::draft::joined_draft`), ничего не затирается. Чтение и запись — в одной транзакции писателя.
+    /// Возвращает текст поля целиком и признак «записано в базу»: если результат длиннее [`MAX_DRAFT_BYTES`], база
+    /// остаётся прежней, а текст всё равно возвращается (окно покажет его из памяти).
+    pub fn merge_clipboard_into_capture_draft(
+        &self,
+        clipboard: &str,
+        now: &Now,
+    ) -> Result<(String, bool), StoreError> {
+        let clipboard = clipboard.to_string();
+        let now_ms = now.ms;
+        self.write(move |conn| {
+            let tx = conn
+                .transaction_with_behavior(TransactionBehavior::Immediate)
+                .map_err(write_err)?;
+            let existing: String = tx
+                .query_row(
+                    "SELECT body FROM draft WHERE key = ?1",
+                    [CAPTURE_KEY],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(write_err)?
+                .unwrap_or_default();
+            let joined = kinige_domain::draft::joined_draft(&existing, &clipboard);
+            if joined.len() > MAX_DRAFT_BYTES {
+                return Ok((joined, false));
+            }
+            tx.execute(
+                "INSERT INTO draft(key, body, updated_at) VALUES (?1, ?2, ?3) \
+                 ON CONFLICT(key) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at",
+                rusqlite::params![CAPTURE_KEY, joined, now_ms],
+            )
+            .map_err(write_err)?;
+            tx.commit().map_err(write_err)?;
+            Ok((joined, true))
+        })
+    }
+
     fn read_draft(&self, key: &str) -> Result<String, StoreError> {
         self.read(|conn| {
             Ok(conn

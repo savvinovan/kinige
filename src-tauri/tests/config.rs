@@ -191,5 +191,15 @@ fn two_windows_without_remote_urls_and_the_capture_window_is_a_hidden_floating_p
     assert_eq!(capture["visibleOnAllWorkspaces"], true);
     assert_eq!(capture["skipTaskbar"], true);
     assert_eq!(capture["resizable"], false);
-    assert_eq!(capture["width"], 560);
+    // Размер окна — из токенов дизайн-системы (`layout.capture.window-*`): страница рассчитана на ровно такое окно.
+    let tokens = read("../design/tokens/layout.json");
+    let px = |name: &str| -> u64 {
+        tokens["layout"]["capture"][name]["$value"]
+            .as_str()
+            .and_then(|value| value.strip_suffix("px"))
+            .and_then(|value| value.parse().ok())
+            .unwrap_or_else(|| panic!("нет токена layout.capture.{name} в px"))
+    };
+    assert_eq!(capture["width"], px("window-width"));
+    assert_eq!(capture["height"], px("window-height"));
 }

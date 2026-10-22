@@ -99,6 +99,69 @@ describe("MainWindow: черновик поля ввода (§5)", () => {
   });
 });
 
+describe("MainWindow: нажатие во время отправки и порядок сохранения черновика", () => {
+  /** Отправка, которая завершается, когда тест её отпустит. */
+  function holdSend(api: MockApi) {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const real = api.sendMessage.bind(api);
+    api.sendMessage = (chatId, body) => gate.then(() => real(chatId, body));
+    return release;
+  }
+
+  it("символ, набранный пока отправка в полёте, не возвращает отправленный текст черновиком", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const api = setup();
+    const save = vi.spyOn(api, "saveDraft");
+    await screen.findByRole("textbox", { name: "Новая заметка" });
+    const release = holdSend(api);
+    type("отправляю");
+    fireEvent.keyDown(field(), { key: "Enter" });
+    type("отправляю!");
+    expect(field().value, "ввод в полёте не принимается").toBe("отправляю");
+    release();
+    await screen.findByRole("article");
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(save).not.toHaveBeenCalled();
+    expect(await api.getDraft(INBOX_ID)).toBe("");
+    expect(field().value).toBe("");
+  });
+
+  it("уже отправленное сохранение дожидается до отправки: порядок «сохранить, потом отправить»", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const api = setup();
+    await screen.findByRole("textbox", { name: "Новая заметка" });
+    const order: string[] = [];
+    let finishSave: () => void = () => undefined;
+    const realSave = api.saveDraft.bind(api);
+    api.saveDraft = (chatId, body) =>
+      new Promise<void>((resolve) => {
+        order.push("save:start");
+        finishSave = () => {
+          void realSave(chatId, body).then(() => {
+            order.push("save:done");
+            resolve();
+          });
+        };
+      });
+    const realSend = api.sendMessage.bind(api);
+    api.sendMessage = (chatId, body) => {
+      order.push("send");
+      return realSend(chatId, body);
+    };
+    type("текст");
+    await vi.advanceTimersByTimeAsync(350);
+    expect(order).toEqual(["save:start"]);
+    fireEvent.keyDown(field(), { key: "Enter" });
+    await vi.advanceTimersByTimeAsync(50);
+    expect(order, "отправка ждёт сохранение").toEqual(["save:start"]);
+    finishSave();
+    await screen.findByRole("article");
+    expect(order).toEqual(["save:start", "save:done", "send"]);
+    expect(await api.getDraft(INBOX_ID), "отправленный текст не вернулся черновиком").toBe("");
+  });
+});
+
 describe("MainWindow: событие «записи изменились»", () => {
   const external: MessageView = {
     id: "from-capture",
@@ -116,6 +179,28 @@ describe("MainWindow: событие «записи изменились»", () 
     act(() => api.emitEntriesChanged());
     expect(await screen.findByText("записано из окна захвата")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Входящие/ })).toHaveTextContent("1");
+  });
+
+  it("событие не сбрасывает уже загруженную историю: свежая страница сливается с ней", async () => {
+    const mk = (id: string, minute: number): MessageView => ({
+      ...external,
+      id,
+      bodyMd: `запись ${id}`,
+      createdAt: Date.UTC(2026, 9, 21, 5, minute),
+    });
+    const old = [mk("a", 1), mk("b", 2)];
+    const api = new MockApi({ now: NOW });
+    // Первая загрузка: три записи и «есть более старые»; после события — страница короче (только свежие), тоже с «есть старые».
+    const pages = [
+      { messages: [...old, mk("c", 3)], older: { journalDate: "2026-10-21", createdAt: 1, id: "z" }, today: "2026-10-21" },
+      { messages: [mk("c", 3), mk("d", 4)], older: { journalDate: "2026-10-21", createdAt: 1, id: "z" }, today: "2026-10-21" },
+    ];
+    api.listMessages = () => Promise.resolve(pages.shift() ?? pages[0]!);
+    render(<MainWindow api={api} initialSettings={SETTINGS} />);
+    await screen.findByText("запись a");
+    act(() => api.emitEntriesChanged());
+    expect(await screen.findByText("запись d")).toBeInTheDocument();
+    for (const id of ["a", "b", "c"]) expect(screen.getByText(`запись ${id}`)).toBeInTheDocument();
   });
 
   it("дописанный текст виден в той же плашке, а не отдельной записью", async () => {
@@ -152,7 +237,7 @@ describe("MainWindow: сочетания клавиш в настройках", 
     const dialog = await openSettings();
     const section = within(dialog).getByRole("region", { name: "Сочетания клавиш" });
     expect(within(section).getByText("Окно быстрого захвата")).toBeInTheDocument();
-    expect(within(section).getByText("Сохранить буфер в Inbox")).toBeInTheDocument();
+    expect(within(section).getByText("Сохранить буфер во «Входящие»")).toBeInTheDocument();
     expect(within(section).queryByRole("button", { name: /Сбросить/ })).toBeNull();
   });
 
@@ -185,7 +270,7 @@ describe("MainWindow: сочетания клавиш в настройках", 
     const api = setup();
     await api.setShortcut("clipboard", "Ctrl+Alt+KeyB");
     const dialog = await openSettings();
-    fireEvent.click(await within(dialog).findByRole("button", { name: /Сбросить сочетание: Сохранить буфер в Inbox/ }));
+    fireEvent.click(await within(dialog).findByRole("button", { name: /Сбросить сочетание: Сохранить буфер во «Входящие»/ }));
     await waitFor(async () => expect((await api.getSettings()).shortcuts[1]?.accelerator).toBe("Alt+Shift+KeyV"));
   });
 

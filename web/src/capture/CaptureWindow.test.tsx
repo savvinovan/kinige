@@ -214,4 +214,93 @@ describe("CaptureWindow на MockApi: сценарий слайса 2", () => {
     await waitFor(() => expect(document.documentElement.getAttribute("data-text-scale")).toBe("large"));
     document.documentElement.removeAttribute("data-text-scale");
   });
+
+  it("подсказка показала цель, к ⌘Enter прошло больше десяти минут: получается новая запись", async () => {
+    const api = await setup({ messages: [entry("a", 3, "начало")] });
+    expect(screen.getByText("⌘Enter — дописать")).toBeInTheDocument();
+    clock.now = new Date(NOW.getTime() + 11 * 60_000);
+    type("поздно");
+    fireEvent.keyDown(field(), { key: "Enter", metaKey: true });
+    await waitFor(() => expect(api.hideCount).toBe(1));
+    const { context } = await api.captureState();
+    expect(context.map((m) => m.bodyMd)).toEqual(["начало", "поздно"]);
+  });
+
+  it("восстановленный черновик: курсор в конце текста, при первом показе и при каждом следующем", async () => {
+    const api = new MockApi({ now: () => clock.now });
+    await api.captureSaveDraft("недописанная мысль");
+    const initial = await api.captureState();
+    render(<CaptureWindow api={api} initial={initial} />);
+    expect(field().selectionStart).toBe("недописанная мысль".length);
+    expect(field().selectionEnd).toBe("недописанная мысль".length);
+
+    await api.captureSaveDraft("другой черновик");
+    act(() => {
+      window.dispatchEvent(new Event(SHOWN_EVENT));
+    });
+    await waitFor(() => expect(field().value).toBe("другой черновик"));
+    await waitFor(() => expect(field().selectionStart).toBe("другой черновик".length));
+  });
+
+  describe("нажатие во время отправки и порядок сохранения черновика", () => {
+    /** Отправка, которая завершается, когда тест её отпустит. */
+    function holdSend(api: MockApi) {
+      let release: () => void = () => undefined;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      const real = api.captureSend.bind(api);
+      api.captureSend = (body) => gate.then(() => real(body));
+      return release;
+    }
+
+    it("символ, набранный пока отправка в полёте, не возвращает отправленный текст черновиком", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const api = await setup();
+      const save = vi.spyOn(api, "captureSaveDraft");
+      const release = holdSend(api);
+      type("отправляю");
+      fireEvent.keyDown(field(), { key: "Enter" });
+      // Отправка в полёте: нажатие не принимается и ничего не планирует.
+      type("отправляю!");
+      expect(field().value).toBe("отправляю");
+      release();
+      await waitFor(() => expect(api.hideCount).toBe(1));
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(save).not.toHaveBeenCalled();
+      expect((await api.captureState()).draft).toBe("");
+      expect(field().value).toBe("");
+    });
+
+    it("уже отправленное сохранение черновика дожидается до отправки: порядок «сохранить, потом отправить»", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const api = await setup();
+      const order: string[] = [];
+      let finishSave: () => void = () => undefined;
+      const realSave = api.captureSaveDraft.bind(api);
+      api.captureSaveDraft = (body) =>
+        new Promise<void>((resolve) => {
+          order.push("save:start");
+          finishSave = () => {
+            void realSave(body).then(() => {
+              order.push("save:done");
+              resolve();
+            });
+          };
+        });
+      const realSend = api.captureSend.bind(api);
+      api.captureSend = (body) => {
+        order.push("send");
+        return realSend(body);
+      };
+      type("текст");
+      await vi.advanceTimersByTimeAsync(350); // таймер сработал: сохранение ушло и висит
+      expect(order).toEqual(["save:start"]);
+      fireEvent.keyDown(field(), { key: "Enter" });
+      await vi.advanceTimersByTimeAsync(50);
+      expect(order, "отправка ждёт сохранение").toEqual(["save:start"]);
+      finishSave();
+      await waitFor(() => expect(api.hideCount).toBe(1));
+      expect(order).toEqual(["save:start", "save:done", "send"]);
+      expect((await api.captureState()).draft, "отправленный текст не вернулся черновиком").toBe("");
+    });
+  });
 });

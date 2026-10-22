@@ -123,7 +123,7 @@ describe("SettingsDialog", () => {
       "Закрыть настройки",
       "Выбрать…",
       "Изменить сочетание: Окно быстрого захвата",
-      "Изменить сочетание: Сохранить буфер в Inbox",
+      "Изменить сочетание: Сохранить буфер во «Входящие»",
       "Обычный",
       "Закрыть настройки",
       "Выбрать…",
@@ -166,7 +166,7 @@ describe("SettingsDialog", () => {
     view();
     const region = screen.getByRole("region", { name: "Сочетания клавиш" });
     const capture = within(region).getByRole("group", { name: "Окно быстрого захвата" });
-    const clipboard = within(region).getByRole("group", { name: "Сохранить буфер в Inbox" });
+    const clipboard = within(region).getByRole("group", { name: "Сохранить буфер во «Входящие»" });
     expect(within(capture).getByRole("img", { name: "Сочетание: Option + Space" })).toBeInTheDocument();
     expect(within(clipboard).getByRole("img", { name: "Сочетание: Option + Shift + V" })).toBeInTheDocument();
     expect(within(region).queryByRole("button", { name: /Сбросить/ })).toBeNull();
@@ -182,7 +182,7 @@ describe("SettingsDialog", () => {
       { kind: "clipboard", accelerator: "Ctrl+KeyJ", isDefault: false, state: "assigned" },
     ] as const;
     view({ shortcuts, onShortcutChange, onShortcutReset, onShortcutRecording });
-    fireEvent.click(screen.getByRole("button", { name: "Сбросить сочетание: Сохранить буфер в Inbox" }));
+    fireEvent.click(screen.getByRole("button", { name: "Сбросить сочетание: Сохранить буфер во «Входящие»" }));
     expect(onShortcutReset).toHaveBeenCalledWith("clipboard");
     fireEvent.click(screen.getByRole("button", { name: "Изменить сочетание: Окно быстрого захвата" }));
     expect(onShortcutRecording).toHaveBeenLastCalledWith(true);
@@ -195,7 +195,7 @@ describe("SettingsDialog", () => {
     view({ shortcutErrors: { clipboard: "Это сочетание уже назначено другому действию." } });
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Это сочетание уже назначено другому действию.");
-    expect(screen.getByRole("group", { name: "Сохранить буфер в Inbox" })).toContainElement(alert);
+    expect(screen.getByRole("group", { name: "Сохранить буфер во «Входящие»" })).toContainElement(alert);
   });
 
   it("запись сочетания в окне: Esc выходит из записи и не закрывает окно настроек", () => {

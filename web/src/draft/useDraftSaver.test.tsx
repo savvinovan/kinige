@@ -41,12 +41,45 @@ describe("useDraftSaver", () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it("при размонтировании запланированное сохраняется", () => {
+  it("сохранения идут по одному, в порядке вызова; settle ждёт уже отправленное", async () => {
+    const events: string[] = [];
+    const releases: Array<() => void> = [];
+    const save = vi.fn(
+      (body: string) =>
+        new Promise<void>((resolve) => {
+          events.push(`start:${body}`);
+          releases.push(() => {
+            events.push(`done:${body}`);
+            resolve();
+          });
+        }),
+    );
+    const { result } = renderHook(() => useDraftSaver(save));
+    result.current.schedule("а");
+    void result.current.flush();
+    result.current.schedule("аб");
+    void result.current.flush();
+    let settled = false;
+    void result.current.settle().then(() => (settled = true));
+    await Promise.resolve();
+    expect(events).toEqual(["start:а"]);
+    releases[0]?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(events).toEqual(["start:а", "done:а", "start:аб"]);
+    expect(settled).toBe(false);
+    releases[1]?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(events.at(-1)).toBe("done:аб");
+    expect(settled).toBe(true);
+  });
+
+  it("при размонтировании запланированное сохраняется", async () => {
     vi.useFakeTimers();
     const save = vi.fn().mockResolvedValue(undefined);
     const { result, unmount } = renderHook(() => useDraftSaver(save));
     result.current.schedule("ушёл");
     unmount();
+    await vi.advanceTimersByTimeAsync(0);
     expect(save).toHaveBeenCalledWith("ушёл");
   });
 

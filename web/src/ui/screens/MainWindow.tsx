@@ -8,6 +8,7 @@ import type { ShortcutKind } from "../../api/generated/ShortcutKind";
 import type { TextSize } from "../../api/generated/TextSize";
 import { useDraftSaver } from "../../draft/useDraftSaver";
 import type { FeedMessage } from "../feed/buildFeed";
+import { mergeLatestPage } from "../feed/mergeFeed";
 import { SettingsDialog } from "../settings/SettingsDialog";
 import { toSidebarChat } from "../sidebar/Sidebar";
 import { MainWindowView } from "./MainWindowView";
@@ -68,7 +69,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       Promise.all([api.listChats(), api.listMessages(INBOX_ID, { limit: PAGE_SIZE })])
         .then(([loadedChats, page]) => {
           setChats(loadedChats);
-          setMessages(page.messages);
+          // Подгруженная история не сбрасывается: страница сливается с уже загруженным (см. `mergeLatestPage`).
+          setMessages((loaded) => mergeLatestPage(loaded, page.messages, page.older !== null));
           setToday(page.today);
         })
         .catch(() => undefined),
@@ -154,13 +156,16 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const submit = () => {
     if (sending.current || draft.trim() === "") return;
     sending.current = true;
-    // Отложенное сохранение черновика отменяется: Rust очищает черновик чата в той же транзакции, что и отправку, а поздняя
-    // запись вернула бы его.
+    // Пока идёт отправка, ввод не принимается (см. `onDraftChange`), а запланированное сохранение черновика отменено, уже
+    // отправленное — дожидаемся: Rust очищает черновик чата в той же транзакции, что и отправку, а запоздавшая запись
+    // вернула бы отправленный текст.
     draftSaver.cancel();
     const text = draft;
-    api
-      .sendMessage(INBOX_ID, text)
+    draftSaver
+      .settle()
+      .then(() => api.sendMessage(INBOX_ID, text))
       .then((sent) => {
+        draftSaver.cancel();
         setMessages((all) => [...all, sent]);
         setDraft("");
         setComposerError(null);
@@ -219,6 +224,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       today={today}
       draft={draft}
       onDraftChange={(value) => {
+        if (sending.current) return;
         typed.current = true;
         setDraft(value);
         setComposerError(null);

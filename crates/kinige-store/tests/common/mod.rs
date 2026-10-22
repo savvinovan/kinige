@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+pub mod capture;
+
 use kinige_domain::hlc::Clock;
 use kinige_store::{Now, Store, StoreOptions};
 use serde_json::value::RawValue;

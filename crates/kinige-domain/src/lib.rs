@@ -2,6 +2,7 @@
 
 pub mod api;
 pub mod append;
+pub mod draft;
 pub mod groups;
 pub mod hlc;
 pub mod jcs;

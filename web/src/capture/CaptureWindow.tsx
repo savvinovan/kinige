@@ -32,7 +32,16 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
 
   const saveDraft = useCallback((body: string) => api.captureSaveDraft(body), [api]);
   const draft = useDraftSaver(saveDraft);
+  const draftSaver = draft;
   const { flush, cancel, schedule } = draft;
+  // Счётчик показов: после каждого показа (и при первом) курсор ставится в конец текста, как в главном окне.
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const field = document.querySelector("textarea");
+    if (!field) return;
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
+  }, [shown]);
 
   /** Сохраняет черновик и прячет окно. */
   const hide = useCallback(() => {
@@ -50,8 +59,8 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
           setValue(fresh.draft);
           setError(fresh.error);
           // Окно показали заново: страница могла считать фокус своим всё это время (события focus нет), поэтому курсор
-          // ставится в поле явно.
-          requestAnimationFrame(() => document.querySelector("textarea")?.focus());
+          // ставится в поле явно — после того как значение уже в поле (эффект по счётчику).
+          setShown((n) => n + 1);
         })
         .catch((reason: unknown) => setError(errorCode(reason)));
     };
@@ -66,10 +75,16 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
   const submit = (action: (body: string) => ReturnType<KinigeApi["captureSend"]>) => {
     if (busy.current || value.trim() === "") return;
     busy.current = true;
-    // Пока идёт запись, отложенное сохранение черновика отменено: Rust очистит черновик сам, в той же транзакции.
+    const text = value;
+    // Пока идёт отправка, ввод не принимается (см. `onChange`), а черновик не сохраняется: Rust очистит его сам, в той же
+    // транзакции. Сначала отменяется запланированное и дожидается уже отправленное сохранение — иначе оно дошло бы до
+    // писателя после отправки и вернуло бы отправленный текст черновиком.
     cancel();
-    action(value)
+    draftSaver
+      .settle()
+      .then(() => action(text))
       .then(() => {
+        cancel();
         setValue("");
         setError(null);
         void api.captureHide().catch(() => undefined);
@@ -77,7 +92,7 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
       .catch((reason: unknown) => {
         // Текст остаётся в поле, над полем — ошибка; черновик возвращается в очередь сохранения.
         setError(errorCode(reason));
-        schedule(value);
+        schedule(text);
       })
       .finally(() => {
         busy.current = false;
@@ -90,6 +105,8 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
       appendTargetId={state.appendTarget}
       value={value}
       onChange={(next) => {
+        // Пока запись уходит в Rust, нажатия не принимаются: набранное в этот миг иначе вернулось бы черновиком.
+        if (busy.current) return;
         setValue(next);
         setError(null);
         schedule(next);

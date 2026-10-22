@@ -201,7 +201,8 @@ impl Store {
                         &CurrentBody {
                             groups_raw: &last.groups_raw,
                             hlc_json: &last.hlc_json,
-                            server_known: last.server_known,
+                            // Outbox появится в слайсе 11: тогда подтверждённость — и колонка, и строка outbox (ADR §3.4).
+                            body_confirmed: last.server_known,
                         },
                         &combined,
                         now.ms,

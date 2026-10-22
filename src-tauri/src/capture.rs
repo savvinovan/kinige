@@ -103,7 +103,14 @@ pub fn trace(what: &str) {
 
 /// Показывает окно захвата поверх всех окон на экране с курсором. Окно создано скрытым при старте: показ мгновенный.
 /// На macOS это панель без активации приложения (`panel`): прежняя программа остаётся активной, окно получает ввод.
+///
+/// Любой вызов AppKit (панель, окно) — только на главном потоке: функция безопасна из любого потока, показ выполняется на главном.
 pub fn show_capture<R: Runtime>(app: &AppHandle<R>) {
+    let main_app = app.clone();
+    let _ = app.run_on_main_thread(move || show_capture_on_main(&main_app));
+}
+
+fn show_capture_on_main<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(CAPTURE_LABEL) else {
         return;
     };
@@ -133,8 +140,13 @@ pub fn show_capture<R: Runtime>(app: &AppHandle<R>) {
 }
 
 /// Прячет окно захвата. Приложение не активировалось (панель), поэтому прежняя программа остаётся активной и фокус
-/// возвращается ей сам.
+/// возвращается ей сам. Безопасна из любого потока (скрытие выполняется на главном).
 pub fn hide_capture<R: Runtime>(app: &AppHandle<R>) {
+    let main_app = app.clone();
+    let _ = app.run_on_main_thread(move || hide_capture_on_main(&main_app));
+}
+
+fn hide_capture_on_main<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(CAPTURE_LABEL) else {
         return;
     };
@@ -263,14 +275,24 @@ pub fn save_clipboard<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// Сбой записи буфера: окно захвата открывается с текстом буфера в поле и ошибкой (ТЗ §1.2 п. 9). Текст кладётся и в черновик
-/// (если база пишет), и в память: черновик не должен потеряться, если окно закроют, не исправив ошибку.
+/// Сбой записи буфера: окно захвата открывается с текстом буфера в поле и ошибкой (ТЗ §1.2 п. 9). Прежний непустой черновик
+/// окна не затирается: текст буфера идёт под ним (`joined_draft`), и в черновик, и в память — черновик не должен потеряться,
+/// если окно закроют, не исправив ошибку.
 fn open_with_failed_clipboard<R: Runtime>(app: &AppHandle<R>, text: String, error: ErrorCode) {
     if let Some(shell) = app.try_state::<CaptureShell>() {
-        let _ = app
-            .state::<Store>()
-            .set_capture_draft(&text, &Now::system());
-        *shell.pending() = Some(Pending { text, error });
+        let store = app.state::<Store>();
+        let joined = match store.merge_clipboard_into_capture_draft(&text, &Now::system()) {
+            Ok((joined, _saved)) => joined,
+            // База не пишет (из-за этого, возможно, и случился сбой): поле собирается из того, что читается.
+            Err(_) => kinige_domain::draft::joined_draft(
+                &store.get_capture_draft().unwrap_or_default(),
+                &text,
+            ),
+        };
+        *shell.pending() = Some(Pending {
+            text: joined,
+            error,
+        });
     }
     show_capture(app);
 }

@@ -10,22 +10,31 @@ export interface DraftSaver {
   flush(): Promise<void>;
   /** Отменить запланированное: после отправки Rust уже очистил черновик, поздняя запись вернула бы его. */
   cancel(): void;
+  /** Дождаться сохранений, которые уже отправлены в Rust (не запланированных): после этого отправка записи не обгонит их. */
+  settle(): Promise<void>;
 }
 
 /**
  * Черновик с задержкой: пока человек печатает, в Rust не уходит ни один запрос; через `DRAFT_DELAY_MS` после последнего
  * нажатия — одно сохранение. При размонтировании запланированное сохраняется.
+ *
+ * Сохранения идут строго по одному, в порядке вызова: следующее начинается после ответа на предыдущее (команды Rust
+ * приходят к писателю в произвольном порядке, и иначе старый текст мог бы перезаписать новый). `settle()` ждёт хвост этой
+ * очереди — им пользуется отправка записи, чтобы запоздавшее сохранение не вернуло отправленный текст черновиком.
  */
 export function useDraftSaver(save: (body: string) => Promise<void>, delayMs = DRAFT_DELAY_MS): DraftSaver {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pending = useRef<string | null>(null);
+  const queue = useRef<Promise<void>>(Promise.resolve());
 
   const flush = useCallback((): Promise<void> => {
     clearTimeout(timer.current);
     timer.current = undefined;
     const body = pending.current;
     pending.current = null;
-    return body === null ? Promise.resolve() : save(body).catch(() => undefined);
+    if (body === null) return queue.current;
+    queue.current = queue.current.then(() => save(body)).catch(() => undefined);
+    return queue.current;
   }, [save]);
 
   const schedule = useCallback(
@@ -43,6 +52,8 @@ export function useDraftSaver(save: (body: string) => Promise<void>, delayMs = D
     pending.current = null;
   }, []);
 
+  const settle = useCallback(() => queue.current, []);
+
   useEffect(
     () => () => {
       void flush();
@@ -50,5 +61,5 @@ export function useDraftSaver(save: (body: string) => Promise<void>, delayMs = D
     [flush],
   );
 
-  return { schedule, flush, cancel };
+  return { schedule, flush, cancel, settle };
 }
