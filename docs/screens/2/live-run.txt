@@ -1,85 +1,115 @@
 # Прогон F (release, русский интерфейс, чужая программа — Finder)
 == 1. окно над чужой программой (Finder), пустой день
 front=Finder
-окно 73314 -> docs/screens/2/01-capture-empty-ru.png
-окно 73314 -> docs/screens/2/02-capture-typed-ru.png
+окно 73535 -> docs/screens/2/01-capture-empty-ru.png
+окно 73535 -> docs/screens/2/02-capture-typed-ru.png
 после Enter: front=Finder; окна:
-73313	layer=0	1280x800	Kinige
-идея попробовать окно захвата | 1792633443687 |  | user
+73534	layer=0	1280x800	Kinige
+идея попробовать окно захвата | 1792634191424 |  | user
 draft | 0
 == 2. контекст и подсказка «⌘Enter — дописать»
-окно 73314 -> docs/screens/2/03-capture-context-hint-ru.png
+окно 73535 -> docs/screens/2/03-capture-context-hint-ru.png
 после ⌘Enter: front=Finder
-5a3607f2-f4a9-4641-b449-2f79c697d6f8 | идея попробовать окно захвата
+4754b7c0-61cd-4bec-9cd9-faa6a22e4d60 | идея попробовать окно захвата
 
-и еще | 1792633443687 | 1792633468541 | null | ["1792633443687-00000-f8d7f080-3731-4710-9a73-3034ee1f0692"] | 1
+и еще | 1792634191424 | 1792634216118 | null | ["1792634191424-00000-53c9eb68-f23c-4bff-9df5-22a8333ce074"] | 1
 == 3. главное окно: запись дописана в той же плашке
-окно 73313 -> docs/screens/2/04-main-after-append-ru.png
+окно 73534 -> docs/screens/2/04-main-after-append-ru.png
 == 4. Esc сохраняет черновик; kill -9; черновик на месте
-окно 73314 -> docs/screens/2/05-capture-draft-typed-ru.png
+окно 73535 -> docs/screens/2/05-capture-draft-typed-ru.png
 после Esc: front=Finder; окна:
-73313	layer=0	1280x800	Kinige
+73534	layer=0	1280x800	Kinige
 capture | недописанная мысль
-окно 73345 -> docs/screens/2/06-capture-draft-after-kill9-ru.png
+окно 73574 -> docs/screens/2/06-capture-draft-after-kill9-ru.png
 == 5. хоткей буфера
 после ⌥⇧V: front=Finder
 идея попробовать окно захвата
 
 и еще | user
 Текст из буфера: проверка хоткея | user
-kinige-trace 53898 flash
+kinige-trace 01830 flash
 == 6. закрыть главное окно крестиком, второй запуск и открытие через Dock-реопен
 после закрытия: процессов 1; окна:
 
 после второго запуска: процессов 1 (ждём 1); окна:
-73344	layer=0	1280x800	Kinige
-окно 73344 -> docs/screens/2/07-main-after-second-launch-ru.png
+73573	layer=0	1280x800	Kinige
+окно 73573 -> docs/screens/2/07-main-after-second-launch-ru.png
 == 7. меню значка
-значок: {"id":73346,"x":2906,"w":34,"h":30}
-значок снят: окно 73346
-окно 73365 -> docs/screens/2/09-tray-menu-ru.png
+значок: {"id":73575,"x":2906,"w":34,"h":30}
+значок снят: окно 73575
+окно 73595 -> docs/screens/2/09-tray-menu-ru.png
 == 8. настройки
-окно 73344 -> docs/screens/2/10-settings-shortcuts-ru.png
+окно 73573 -> docs/screens/2/10-settings-shortcuts-ru.png
 == готово
 kinige-timing: page-loaded
-kinige-trace 40095 show
-kinige-trace 40108 key
-kinige-trace 43696 hide
-kinige-trace 43697 resign
-kinige-trace 66258 show
-kinige-trace 66261 key
-kinige-trace 68550 hide
-kinige-trace 68552 resign
-kinige-trace 95187 show
-kinige-trace 95189 key
-kinige-trace 97855 hide
-kinige-trace 97856 resign
+kinige-trace 87834 show
+kinige-trace 87845 key
+kinige-trace 87907 resign
+kinige-trace 87914 key
+kinige-trace 87971 resign
+kinige-trace 87972 key
+kinige-trace 91431 hide
+kinige-trace 91432 resign
+kinige-trace 13651 show
+kinige-trace 13652 key
+kinige-trace 13660 resign
+kinige-trace 13664 key
+kinige-trace 13734 resign
+kinige-trace 13739 key
+kinige-trace 16124 hide
+kinige-trace 16128 resign
+kinige-trace 42927 show
+kinige-trace 42929 key
+kinige-trace 42935 resign
+kinige-trace 42937 key
+kinige-trace 42993 resign
+kinige-trace 42998 key
+kinige-trace 43032 resign
+kinige-trace 43033 key
+kinige-trace 45882 hide
+kinige-trace 45882 resign
 kinige-timing: page-loaded
-kinige-trace 25392 show
-kinige-trace 25403 key
-kinige-trace 26660 hide
-kinige-trace 26661 resign
-kinige-trace 53898 flash
+kinige-trace 73184 show
+kinige-trace 73199 key
+kinige-trace 73235 resign
+kinige-trace 73239 key
+kinige-trace 74693 hide
+kinige-trace 74696 resign
+kinige-trace 01830 flash
+
+# Прогон I (меню значка: «Новая заметка», «Входящие», «Выйти»)
+front=Finder
+главное окно закрыто; окна:
+
+x значка: 2923
+после «Новая заметка» (пункт 1): front=Finder; окна:
+73603	layer=4	560x360	Kinige Capture
+после ⌥Space (спрятать): окна:
+
+после «Входящие» (пункт 2): front=kinige; окна:
+73602	layer=0	1280x800	Kinige
+после «Выйти»: процессов 0 (ждём 0)
+== готово
 
 # Прогон G (английский, крупный текст, смена сочетания записью нажатием)
 == настройки: размер текста Large, смена сочетания записью нажатием
-окно 73380 -> docs/screens/2/11-settings-large-en.png
-окно 73380 -> docs/screens/2/12-settings-recording-en.png
+окно 73621 -> docs/screens/2/11-settings-large-en.png
+окно 73621 -> docs/screens/2/12-settings-recording-en.png
 front=kinige (ждём kinige для записи сочетания)
-окно 73380 -> docs/screens/2/13-settings-changed-en.png
+окно 73621 -> docs/screens/2/13-settings-changed-en.png
 в базе: text_size|large shortcut_capture|Ctrl+Alt+KeyK 
 == старое сочетание больше не работает, новое открывает окно
 после ⌥Space (старое): окон захвата 0 (ждём 0)
 после ⌃⌥K (новое): окон захвата 1 (ждём 1)
-окно 73381 -> docs/screens/2/14-capture-large-en.png
+окно 73622 -> docs/screens/2/14-capture-large-en.png
 == без записи: основной экран на английском с крупным текстом
-окно 73380 -> docs/screens/2/15-main-large-en.png
+окно 73621 -> docs/screens/2/15-main-large-en.png
 == готово
 
 # Прогон H (черновик главного окна, kill -9)
 front=Finder
 черновик в базе: chat:00000000-0000-4000-8000-000000000001|черновик главного окна
-окно 73403 -> docs/screens/2/20-main-draft-typed-ru.png
+окно 73643 -> docs/screens/2/20-main-draft-typed-ru.png
 после kill -9 и запуска: chat:00000000-0000-4000-8000-000000000001|черновик главного окна
-окно 73417 -> docs/screens/2/21-main-draft-after-kill9-ru.png
+окно 73657 -> docs/screens/2/21-main-draft-after-kill9-ru.png
 == готово
