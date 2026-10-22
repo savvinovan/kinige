@@ -14,7 +14,7 @@ use kinige_domain::ShortcutKind;
 use kinige_store::{Store, StoreOptions};
 use std::path::PathBuf;
 use tauri::webview::PageLoadEvent;
-use tauri::{Manager, RunEvent, Runtime, WindowEvent};
+use tauri::{Manager, Runtime, WindowEvent};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
 
 /// Команды главного окна (capability `main`).
@@ -225,9 +225,12 @@ pub fn run() {
         .expect("не удалось собрать Kinige");
 
     app.run(|app, event| {
-        // Щелчок по значку в Dock, когда окон на экране нет, показывает главное окно.
-        if let RunEvent::Reopen { .. } = event {
+        // Щелчок по значку в Dock, когда окон на экране нет, показывает главное окно (событие есть только на macOS).
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Reopen { .. } = event {
             capture::show_main(app);
         }
+        #[cfg(not(target_os = "macos"))]
+        let _ = (app, event);
     });
 }
