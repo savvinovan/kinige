@@ -276,13 +276,13 @@ mod tests {
     #[test]
     fn both_defaults_are_registered_and_assigned() {
         let f = fixture(&[]);
-        assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Alt+Space"]);
+        assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Ctrl+Alt+KeyN"]);
         assert_eq!(
             states(&f),
             [
                 (
                     ShortcutKind::Capture,
-                    "Alt+Space".into(),
+                    "Ctrl+Alt+KeyN".into(),
                     ShortcutState::Assigned
                 ),
                 (
@@ -296,13 +296,13 @@ mod tests {
 
     #[test]
     fn a_taken_shortcut_is_reported_and_the_other_one_still_works() {
-        let f = fixture(&["Alt+Space"]);
+        let f = fixture(&["Ctrl+Alt+KeyN"]);
         assert_eq!(registered(&f), ["Alt+Shift+KeyV"]);
         let s = states(&f);
         assert_eq!(s[0].2, ShortcutState::Taken);
         assert_eq!(s[1].2, ShortcutState::Assigned);
         // Нажатие занятого сочетания ничего не вызывает, нажатие рабочего — вызывает своё действие.
-        assert_eq!(f.hotkeys.kind_for(|a| a == "Alt+Space"), None);
+        assert_eq!(f.hotkeys.kind_for(|a| a == "Ctrl+Alt+KeyN"), None);
         assert_eq!(
             f.hotkeys.kind_for(|a| a == "Alt+Shift+KeyV"),
             Some(ShortcutKind::Clipboard)
@@ -321,7 +321,7 @@ mod tests {
             f.store.shortcut_accelerator(ShortcutKind::Capture).unwrap(),
             "Alt+Cmd+KeyN"
         );
-        assert_eq!(f.hotkeys.kind_for(|a| a == "Alt+Space"), None);
+        assert_eq!(f.hotkeys.kind_for(|a| a == "Ctrl+Alt+KeyN"), None);
         assert_eq!(
             f.hotkeys.kind_for(|a| a == "Alt+Cmd+KeyN"),
             Some(ShortcutKind::Capture)
@@ -336,10 +336,10 @@ mod tests {
             .change(&f.store, ShortcutKind::Capture, "Cmd+Alt+KeyN")
             .unwrap_err();
         assert_eq!(error, ErrorCode::ShortcutTaken);
-        assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Alt+Space"]);
+        assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Ctrl+Alt+KeyN"]);
         assert_eq!(
             f.store.shortcut_accelerator(ShortcutKind::Capture).unwrap(),
-            "Alt+Space",
+            "Ctrl+Alt+KeyN",
             "не сохранено"
         );
         assert_eq!(states(&f)[0].2, ShortcutState::Assigned);
@@ -361,7 +361,7 @@ mod tests {
                 "{accelerator}"
             );
         }
-        assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Alt+Space"]);
+        assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Ctrl+Alt+KeyN"]);
     }
 
     #[test]
@@ -371,7 +371,7 @@ mod tests {
             .change(&f.store, ShortcutKind::Clipboard, "Ctrl+Alt+KeyB")
             .unwrap();
         f.hotkeys.reset(&f.store, ShortcutKind::Clipboard).unwrap();
-        assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Alt+Space"]);
+        assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Ctrl+Alt+KeyN"]);
         assert_eq!(states(&f)[1].1, "Alt+Shift+KeyV");
 
         // Умолчание занято другой программой: сброс отказывает, действующее сочетание остаётся.
@@ -393,14 +393,14 @@ mod tests {
 
     #[test]
     fn a_taken_shortcut_becomes_assigned_when_it_is_freed_and_set_again() {
-        let f = fixture(&["Alt+Space"]);
+        let f = fixture(&["Ctrl+Alt+KeyN"]);
         assert_eq!(states(&f)[0].2, ShortcutState::Taken);
         f.registrar.taken.lock().unwrap().clear();
         f.hotkeys
-            .change(&f.store, ShortcutKind::Capture, "Alt+Space")
+            .change(&f.store, ShortcutKind::Capture, "Ctrl+Alt+KeyN")
             .unwrap();
         assert_eq!(states(&f)[0].2, ShortcutState::Assigned);
-        assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Alt+Space"]);
+        assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Ctrl+Alt+KeyN"]);
     }
 
     #[test]

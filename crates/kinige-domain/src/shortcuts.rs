@@ -23,10 +23,11 @@ pub enum ShortcutKind {
 impl ShortcutKind {
     pub const ALL: [ShortcutKind; 2] = [ShortcutKind::Capture, ShortcutKind::Clipboard];
 
-    /// Сочетание по умолчанию (решение пользователя 22.10.2026): ⌥Space и ⌥⇧V.
+    /// Сочетание по умолчанию (решение пользователя 22.10.2026): ⌃⌥N и ⌥⇧V. Захват — **временно** ⌃⌥N вместо ⌥Space:
+    /// ⌥Space и ⌥⇧Space перехватывают ChatGPT и Gemini, ⌃Space и ⌃⌥Space — переключение раскладки, ⌘Space — Raycast.
     pub fn default_accelerator(self) -> &'static str {
         match self {
-            ShortcutKind::Capture => "Alt+Space",
+            ShortcutKind::Capture => "Ctrl+Alt+KeyN",
             ShortcutKind::Clipboard => "Alt+Shift+KeyV",
         }
     }
@@ -57,7 +58,7 @@ pub enum ShortcutState {
 #[ts(export, export_to = "ShortcutStatus.ts")]
 pub struct ShortcutStatus {
     pub kind: ShortcutKind,
-    /// Каноничная запись (`Alt+Space`).
+    /// Каноничная запись (`Ctrl+Alt+KeyN`).
     pub accelerator: String,
     /// Сочетание совпадает с умолчанием: «Сбросить» не нужна.
     pub is_default: bool,
@@ -195,7 +196,7 @@ mod tests {
                 Ok(kind.default_accelerator())
             );
         }
-        assert_eq!(ShortcutKind::Capture.default_accelerator(), "Alt+Space");
+        assert_eq!(ShortcutKind::Capture.default_accelerator(), "Ctrl+Alt+KeyN");
         assert_eq!(
             ShortcutKind::Clipboard.default_accelerator(),
             "Alt+Shift+KeyV"

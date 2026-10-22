@@ -24,7 +24,7 @@ export interface MockApiOptions {
 }
 
 const DEFAULT_SHORTCUTS: Record<ShortcutKind, string> = {
-  capture: "Alt+Space",
+  capture: "Ctrl+Alt+KeyN",
   clipboard: "Alt+Shift+KeyV",
 };
 

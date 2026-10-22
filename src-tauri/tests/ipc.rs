@@ -112,7 +112,7 @@ fn args_for(command: &str) -> Value {
         "open_external_url" => json!({"url": "file:///etc/passwd"}),
         "get_draft" => json!({"chatId": inbox}),
         "save_draft" => json!({"chatId": inbox, "body": "черновик"}),
-        "set_shortcut" => json!({"kind": "capture", "accelerator": "Alt+Space"}),
+        "set_shortcut" => json!({"kind": "capture", "accelerator": "Ctrl+Alt+KeyN"}),
         "reset_shortcut" => json!({"kind": "capture"}),
         "shortcut_recording" => json!({"active": false}),
         "capture_send" | "capture_append" | "capture_save_draft" => json!({"body": "из окна"}),
@@ -488,14 +488,14 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
 
 #[test]
 fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
-    let fixture = fixture_with_taken(&["Alt+Space", "Alt+Cmd+KeyN"]);
+    let fixture = fixture_with_taken(&["Ctrl+Alt+KeyN", "Alt+Cmd+KeyN"]);
     let main = window(&fixture, "main");
 
     let settings = call(&main, "get_settings", json!({})).unwrap();
     assert_eq!(
         settings["shortcuts"],
         json!([
-            {"kind": "capture", "accelerator": "Alt+Space", "isDefault": true, "state": "taken"},
+            {"kind": "capture", "accelerator": "Ctrl+Alt+KeyN", "isDefault": true, "state": "taken"},
             {"kind": "clipboard", "accelerator": "Alt+Shift+KeyV", "isDefault": true, "state": "assigned"},
         ]),
         "занятое сочетание видно в настройках, остальное работает"
@@ -530,7 +530,7 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
         );
     }
     let after = call(&main, "get_settings", json!({})).unwrap();
-    assert_eq!(after["shortcuts"][0]["accelerator"], "Alt+Space");
+    assert_eq!(after["shortcuts"][0]["accelerator"], "Ctrl+Alt+KeyN");
 
     // Свободное сочетание принято и сохранено в каноничном виде; ответ — настройки целиком.
     let changed = call(
@@ -552,7 +552,7 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
     let reset = call(&main, "reset_shortcut", json!({"kind": "capture"})).unwrap();
     assert_eq!(
         reset["shortcuts"][0],
-        json!({"kind": "capture", "accelerator": "Alt+Space", "isDefault": true, "state": "assigned"})
+        json!({"kind": "capture", "accelerator": "Ctrl+Alt+KeyN", "isDefault": true, "state": "assigned"})
     );
 
     // Режим записи включается и выключается без ошибок.

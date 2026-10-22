@@ -167,7 +167,7 @@ describe("SettingsDialog", () => {
     const region = screen.getByRole("region", { name: "Сочетания клавиш" });
     const capture = within(region).getByRole("group", { name: "Окно быстрого захвата" });
     const clipboard = within(region).getByRole("group", { name: "Сохранить буфер во «Входящие»" });
-    expect(within(capture).getByRole("img", { name: "Сочетание: Option + Space" })).toBeInTheDocument();
+    expect(within(capture).getByRole("img", { name: "Сочетание: Control + Option + N" })).toBeInTheDocument();
     expect(within(clipboard).getByRole("img", { name: "Сочетание: Option + Shift + V" })).toBeInTheDocument();
     expect(within(region).queryByRole("button", { name: /Сбросить/ })).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
@@ -178,7 +178,7 @@ describe("SettingsDialog", () => {
     const onShortcutReset = vi.fn();
     const onShortcutRecording = vi.fn();
     const shortcuts = [
-      { kind: "capture", accelerator: "Alt+Space", isDefault: true, state: "assigned" },
+      { kind: "capture", accelerator: "Ctrl+Alt+KeyN", isDefault: true, state: "assigned" },
       { kind: "clipboard", accelerator: "Ctrl+KeyJ", isDefault: false, state: "assigned" },
     ] as const;
     view({ shortcuts, onShortcutChange, onShortcutReset, onShortcutRecording });

@@ -39,7 +39,7 @@ function Demo({ status: initial, error, recording = false, focusChange = false, 
   );
 }
 
-const capture: ShortcutStatus = { kind: "capture", accelerator: "Alt+Space", isDefault: true, state: "assigned" };
+const capture: ShortcutStatus = { kind: "capture", accelerator: "Ctrl+Alt+KeyN", isDefault: true, state: "assigned" };
 
 const meta = {
   title: "Компоненты/Строка сочетания",
@@ -51,7 +51,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Назначено, по умолчанию: название, капсулы ⌥ Space, «Изменить»; ничего лишнего. */
+/** Назначено, по умолчанию: название, капсулы ⌃ ⌥ N, «Изменить»; ничего лишнего. */
 export const Назначено: Story = {};
 
 /** Не по умолчанию: все четыре модификатора, рядом «Сбросить». */

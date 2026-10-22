@@ -263,7 +263,7 @@ describe("MainWindow: сочетания клавиш в настройках", 
     fireEvent.click(within(dialog).getByRole("button", { name: /Изменить сочетание: Окно быстрого захвата/ }));
     press(document.activeElement as HTMLElement, { code: "KeyK", ctrlKey: true, altKey: true });
     expect(await within(dialog).findByText(/занято другой программой или системой/)).toBeInTheDocument();
-    expect((await api.getSettings()).shortcuts[0]?.accelerator).toBe("Alt+Space");
+    expect((await api.getSettings()).shortcuts[0]?.accelerator).toBe("Ctrl+Alt+KeyN");
   });
 
   it("«Сбросить» возвращает умолчание", async () => {

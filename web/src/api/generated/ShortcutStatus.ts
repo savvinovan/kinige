@@ -7,7 +7,7 @@ import type { ShortcutState } from "./ShortcutState";
  */
 export type ShortcutStatus = { kind: ShortcutKind, 
 /**
- * Каноничная запись (`Alt+Space`).
+ * Каноничная запись (`Ctrl+Alt+KeyN`).
  */
 accelerator: string, 
 /**

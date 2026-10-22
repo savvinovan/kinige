@@ -115,7 +115,7 @@ export const ОшибкаВыбора: Story = { args: { actionError: "Не уд
 export const ФокусНаВыборе: Story = { args: { focusChoose: true } };
 
 const TAKEN_CAPTURE: ShortcutStatus[] = [
-  { kind: "capture", accelerator: "Alt+Space", isDefault: true, state: "taken" },
+  { kind: "capture", accelerator: "Ctrl+Alt+KeyN", isDefault: true, state: "taken" },
   { kind: "clipboard", accelerator: "Alt+Shift+KeyV", isDefault: true, state: "assigned" },
 ];
 
@@ -126,7 +126,7 @@ export const СочетаниеЗанято: Story = { args: { settings: setting
 export const СвоёСочетание: Story = {
   args: {
     settings: settings({}, "normal", [
-      { kind: "capture", accelerator: "Alt+Space", isDefault: true, state: "assigned" },
+      { kind: "capture", accelerator: "Ctrl+Alt+KeyN", isDefault: true, state: "assigned" },
       { kind: "clipboard", accelerator: "Ctrl+Alt+Shift+Cmd+KeyK", isDefault: false, state: "assigned" },
     ]),
     showShortcuts: true,

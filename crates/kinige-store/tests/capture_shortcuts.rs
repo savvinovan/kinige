@@ -20,7 +20,7 @@ fn shortcuts_default_to_the_decided_combinations_and_can_be_changed_and_reset() 
         assert_eq!(
             pairs,
             [
-                (ShortcutKind::Capture, "Alt+Space", true),
+                (ShortcutKind::Capture, "Ctrl+Alt+KeyN", true),
                 (ShortcutKind::Clipboard, "Alt+Shift+KeyV", true)
             ]
         );
@@ -47,7 +47,7 @@ fn shortcuts_default_to_the_decided_combinations_and_can_be_changed_and_reset() 
 
     store.reset_shortcut(ShortcutKind::Capture).unwrap();
     let settings = store.get_settings().unwrap();
-    assert_eq!(settings.shortcuts[0].accelerator, "Alt+Space");
+    assert_eq!(settings.shortcuts[0].accelerator, "Ctrl+Alt+KeyN");
     assert!(settings.shortcuts[0].is_default);
 }
 
@@ -86,9 +86,9 @@ fn invalid_reserved_and_duplicate_shortcuts_are_refused_before_anything_is_saved
     // Своё же текущее сочетание допустимо.
     assert_eq!(
         store
-            .check_shortcut(ShortcutKind::Capture, "Alt+Space")
+            .check_shortcut(ShortcutKind::Capture, "Ctrl+Alt+KeyN")
             .unwrap(),
-        "Alt+Space"
+        "Ctrl+Alt+KeyN"
     );
     let stored: i64 = raw(dir.path())
         .query_row(
@@ -107,6 +107,6 @@ fn invalid_reserved_and_duplicate_shortcuts_are_refused_before_anything_is_saved
         .unwrap();
     assert_eq!(
         store.shortcut_accelerator(ShortcutKind::Capture).unwrap(),
-        "Alt+Space"
+        "Ctrl+Alt+KeyN"
     );
 }

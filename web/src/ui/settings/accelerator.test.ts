@@ -10,7 +10,8 @@ const press = (code: string, mods: { ctrl?: boolean; alt?: boolean; shift?: bool
 });
 
 describe("formatAccelerator", () => {
-  it("умолчания: ⌥ Space и ⌥ ⇧ V", () => {
+  it("умолчания: ⌃ ⌥ N и ⌥ ⇧ V", () => {
+    expect(formatAccelerator("Ctrl+Alt+KeyN")).toEqual(["⌃", "⌥", "N"]);
     expect(formatAccelerator("Alt+Space")).toEqual(["⌥", "Space"]);
     expect(formatAccelerator("Alt+Shift+KeyV")).toEqual(["⌥", "⇧", "V"]);
   });
