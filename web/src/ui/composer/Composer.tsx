@@ -17,12 +17,24 @@ interface ComposerProps {
   onChange: (value: string) => void;
   /** Enter без Shift (и не внутри блока кода) отправляет. В D1 отправки нет: поле показывает вид. */
   onSubmit?: () => void;
+  /**
+   * ⌘Enter (на не-macOS Ctrl+Enter) — «дописать» (окно быстрого захвата, слайс 2). Работает и внутри блока кода: перевода строки
+   * не вставляет. Не во время ввода через IME; в пустом поле ничего не делает. Без обработчика ⌘Enter ведёт себя как Enter.
+   */
+  onAppend?: () => void;
   /** Какие кнопки показывать; по умолчанию все три. В приложении кнопка появляется в слайсе, где её функция работает. */
   buttons?: ComposerButtons;
   /** Кнопки только нарисованы (D1): объявляются как недоступные («Появится позже») и ничего не делают. */
   viewOnly?: boolean;
   /** Ошибка отправки: показывается над полем, черновик остаётся. */
   error?: string;
+  /**
+   * Место под ошибку занято всегда (одна строка), даже когда ошибки нет: содержимое вокруг не прыгает, когда она появляется.
+   * Область `role="alert"` в дереве всегда, текст в неё приходит позже — так диктор объявляет ошибку надёжно.
+   */
+  reserveErrorSpace?: boolean;
+  /** Ещё один элемент, описывающий поле (id; например, подсказка «⌘Enter — дописать»): добавляется к описанию из ошибки. */
+  describedBy?: string;
   placeholder?: string;
   /** Фокус в поле при показе: после отправки и при открытии чата. */
   autoFocus?: boolean;
@@ -43,9 +55,12 @@ export function Composer({
   value,
   onChange,
   onSubmit,
+  onAppend,
   buttons = { attach: true, emoji: true, voice: true },
   viewOnly = false,
   error,
+  reserveErrorSpace = false,
+  describedBy,
   placeholder,
   autoFocus,
 }: ComposerProps) {
@@ -61,9 +76,16 @@ export function Composer({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== "Enter" || event.shiftKey || !onSubmit) return;
+    if (event.key !== "Enter" || event.shiftKey) return;
     // IME (русская раскладка, диктовка): Enter подтверждает ввод, а не отправляет.
     if (event.nativeEvent.isComposing) return;
+    // ⌘Enter / Ctrl+Enter: «дописать». Перевод строки не вставляется нигде, в том числе внутри блока кода.
+    if (onAppend && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      if (hasText) onAppend();
+      return;
+    }
+    if (!onSubmit) return;
     if (insideCodeFence(event.currentTarget.value, event.currentTarget.selectionStart)) return;
     event.preventDefault();
     if (hasText) onSubmit();
@@ -71,7 +93,7 @@ export function Composer({
 
   return (
     <div className="composer">
-      {error ? (
+      {error || reserveErrorSpace ? (
         <p className="composer__error" id={errorId} role="alert">
           {error}
         </p>
@@ -89,7 +111,7 @@ export function Composer({
             aria-label={t("composer.label")}
             autoFocus={autoFocus}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? errorId : undefined}
+            aria-describedby={[error ? errorId : null, describedBy ?? null].filter(Boolean).join(" ") || undefined}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={onKeyDown}
           />

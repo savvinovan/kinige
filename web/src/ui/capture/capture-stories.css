@@ -1,0 +1,17 @@
+/* Только для историй Storybook: окно захвата своего настоящего размера на «столе» (фон окна приложения). */
+.story-capture-desk {
+  box-sizing: border-box;
+  min-height: var(--layout-window-height);
+  padding: var(--space-5);
+  background: var(--color-surface-background);
+}
+
+.story-capture-window {
+  width: var(--layout-capture-window-width);
+  max-width: 100%;
+  height: var(--layout-capture-window-height);
+}
+
+.story-capture-window--narrow {
+  width: var(--layout-capture-window-narrow);
+}

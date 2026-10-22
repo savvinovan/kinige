@@ -21,6 +21,11 @@
   line-height: var(--type-small-line-height);
 }
 
+/* Зарезервированное место: пустая область держит высоту одной строки ошибки. */
+.composer__error:empty {
+  min-height: calc(var(--type-small-size) * var(--type-small-line-height));
+}
+
 .composer__bar {
   display: flex;
   align-items: flex-end;

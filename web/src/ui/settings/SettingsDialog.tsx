@@ -1,16 +1,29 @@
 import { useId, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import type { Settings } from "../../api/generated/Settings";
+import type { ShortcutKind } from "../../api/generated/ShortcutKind";
+import type { ShortcutStatus } from "../../api/generated/ShortcutStatus";
 import type { TextSize } from "../../api/generated/TextSize";
 import { MirrorStatusLine } from "./MirrorStatusLine";
 import { Modal } from "./Modal";
 import { PathRow } from "./PathRow";
 import { SegmentedChoice } from "./SegmentedChoice";
+import { ShortcutRow } from "./ShortcutRow";
 import { StatusNote } from "./StatusNote";
 import "./settings.css";
 
 interface SettingsDialogProps {
   settings: Settings;
+  /** Сочетания клавиш для раздела «Сочетания клавиш» (в приложении — `settings.shortcuts`), по одному на действие. */
+  shortcuts: readonly ShortcutStatus[];
+  /** Записано новое сочетание (каноничная строка, см. `accelerator.ts`). */
+  onShortcutChange: (kind: ShortcutKind, accelerator: string) => void;
+  /** «Сбросить» — вернуть сочетание по умолчанию. */
+  onShortcutReset: (kind: ShortcutKind) => void;
+  /** Запись нового сочетания началась или закончилась: Rust на это время отключает сами глобальные сочетания. */
+  onShortcutRecording: (active: boolean) => void;
+  /** Уже переведённый текст ошибки сохранения сочетания; показывается как `role="alert"` под строкой этого сочетания. */
+  shortcutErrors?: Partial<Record<ShortcutKind, string>>;
   onClose: () => void;
   /** «Выбрать…»: родитель открывает системный диалог (из Rust) и на время выбора ставит `choosing`. */
   onChooseFolder: () => void;
@@ -24,12 +37,18 @@ interface SettingsDialogProps {
 }
 
 /**
- * Окно «Настройки» (слайс 1): раздел «Копия в Markdown» (папка, предупреждение «копия — открытый текст», состояние) и раздел
- * «Размер текста». Только вид и поведение: данные и действия приходят снаружи, вызовов бэкенда здесь нет.
+ * Окно «Настройки»: раздел «Копия в Markdown» (папка, предупреждение «копия — открытый текст», состояние), раздел
+ * «Сочетания клавиш» (слайс 2: два сочетания со статусом, смена и сброс) и раздел «Размер текста».
+ * Только вид и поведение: данные и действия приходят снаружи, вызовов бэкенда здесь нет.
  * Окно модальное внутри главного (`Modal`): Esc, щелчок по подложке и кнопка закрытия вызывают `onClose`.
  */
 export function SettingsDialog({
   settings,
+  shortcuts,
+  onShortcutChange,
+  onShortcutReset,
+  onShortcutRecording,
+  shortcutErrors,
   onClose,
   onChooseFolder,
   onTextSizeChange,
@@ -39,6 +58,7 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const { t } = useTranslation();
   const mirrorTitleId = useId();
+  const shortcutsTitleId = useId();
   const textSizeTitleId = useId();
   const { mirror } = settings;
 
@@ -59,6 +79,24 @@ export function SettingsDialog({
         <StatusNote tone="quiet" icon="info">
           {t("settings.mirror.warning")}
         </StatusNote>
+      </section>
+      <section className="settings__section" aria-labelledby={shortcutsTitleId}>
+        <h3 className="settings__heading" id={shortcutsTitleId}>
+          {t("settings.shortcuts.title")}
+        </h3>
+        <p className="settings__description">{t("settings.shortcuts.description")}</p>
+        <div className="settings__rows">
+          {shortcuts.map((shortcut) => (
+            <ShortcutRow
+              key={shortcut.kind}
+              status={shortcut}
+              error={shortcutErrors?.[shortcut.kind]}
+              onChange={(accelerator) => onShortcutChange(shortcut.kind, accelerator)}
+              onReset={() => onShortcutReset(shortcut.kind)}
+              onRecording={onShortcutRecording}
+            />
+          ))}
+        </div>
       </section>
       <section className="settings__section" aria-labelledby={textSizeTitleId}>
         <h3 className="settings__heading" id={textSizeTitleId}>

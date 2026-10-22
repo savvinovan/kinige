@@ -4,7 +4,9 @@ import { INBOX_ID, type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { ChatSummary } from "../../api/generated/ChatSummary";
 import type { Settings } from "../../api/generated/Settings";
+import type { ShortcutKind } from "../../api/generated/ShortcutKind";
 import type { TextSize } from "../../api/generated/TextSize";
+import { useDraftSaver } from "../../draft/useDraftSaver";
 import type { FeedMessage } from "../feed/buildFeed";
 import { SettingsDialog } from "../settings/SettingsDialog";
 import { toSidebarChat } from "../sidebar/Sidebar";
@@ -43,13 +45,32 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [pickError, setPickError] = useState<ErrorCode | null>(null);
+  const [shortcutErrors, setShortcutErrors] = useState<Partial<Record<ShortcutKind, string>>>({});
   const sending = useRef(false);
+  // Пока человек не печатал, черновик из Rust подставляется в пустое поле; набранное до ответа не затирается.
+  const typed = useRef(false);
+
+  const saveDraft = useCallback((body: string) => api.saveDraft(INBOX_ID, body), [api]);
+  const draftSaver = useDraftSaver(saveDraft);
 
   const refreshChats = useCallback(
     () =>
       api
         .listChats()
         .then(setChats)
+        .catch(() => undefined),
+    [api],
+  );
+
+  // Свежая последняя страница и счётчик: запись пришла из окна захвата или из буфера (событие Rust «записи изменились»).
+  const reload = useCallback(
+    () =>
+      Promise.all([api.listChats(), api.listMessages(INBOX_ID, { limit: PAGE_SIZE })])
+        .then(([loadedChats, page]) => {
+          setChats(loadedChats);
+          setMessages(page.messages);
+          setToday(page.today);
+        })
         .catch(() => undefined),
     [api],
   );
@@ -64,10 +85,47 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
         setToday(page.today);
       })
       .catch((reason: unknown) => current && setLoadError(errorCode(reason)));
+    api
+      .getDraft(INBOX_ID)
+      .then((saved) => {
+        if (current && !typed.current && saved !== "") setDraft(saved);
+      })
+      .catch(() => undefined);
     return () => {
       current = false;
     };
   }, [api]);
+
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    let closed = false;
+    api
+      .onEntriesChanged(() => void reload())
+      .then((unlisten) => {
+        if (closed) unlisten();
+        else off = unlisten;
+      })
+      .catch(() => undefined);
+    return () => {
+      closed = true;
+      off?.();
+    };
+  }, [api, reload]);
+
+  // Окно скрывается или теряет фокус: черновик уходит в Rust сразу, не дожидаясь паузы в наборе (§5.1).
+  const { flush } = draftSaver;
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") void flush();
+    };
+    const onBlur = () => void flush();
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [flush]);
 
   useEffect(() => applyTextSize(settings.textSize), [settings.textSize]);
 
@@ -96,8 +154,12 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const submit = () => {
     if (sending.current || draft.trim() === "") return;
     sending.current = true;
+    // Отложенное сохранение черновика отменяется: Rust очищает черновик чата в той же транзакции, что и отправку, а поздняя
+    // запись вернула бы его.
+    draftSaver.cancel();
+    const text = draft;
     api
-      .sendMessage(INBOX_ID, draft)
+      .sendMessage(INBOX_ID, text)
       .then((sent) => {
         setMessages((all) => [...all, sent]);
         setDraft("");
@@ -105,8 +167,11 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
         void refreshChats();
       })
       // Успех: запись просто появляется в ленте, без тоста и подтверждений (как в Telegram). Ошибка: текст остаётся в поле,
-      // запись не показана (без оптимистичного показа).
-      .catch((reason: unknown) => setComposerError(errorCode(reason)))
+      // запись не показана (без оптимистичного показа); черновик возвращается в очередь сохранения.
+      .catch((reason: unknown) => {
+        setComposerError(errorCode(reason));
+        draftSaver.schedule(text);
+      })
       .finally(() => {
         sending.current = false;
       });
@@ -124,6 +189,14 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       .then(setSettings)
       .catch((reason: unknown) => setPickError(errorCode(reason)))
       .finally(() => setChoosing(false));
+  };
+
+  // Смена или сброс сочетания: Rust проверяет запись, регистрирует в системе и сохраняет; отказ — код ошибки под строкой.
+  const applyShortcut = (kind: ShortcutKind, request: Promise<Settings>) => {
+    setShortcutErrors((old) => ({ ...old, [kind]: undefined }));
+    request
+      .then(setSettings)
+      .catch((reason: unknown) => setShortcutErrors((old) => ({ ...old, [kind]: t(`error.${errorCode(reason)}`) })));
   };
 
   const changeTextSize = (size: TextSize) => {
@@ -146,8 +219,10 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       today={today}
       draft={draft}
       onDraftChange={(value) => {
+        typed.current = true;
         setDraft(value);
         setComposerError(null);
+        draftSaver.schedule(value);
       }}
       onSubmit={submit}
       composerError={composerError ? t(`error.${composerError}`) : undefined}
@@ -157,6 +232,11 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
         settingsOpen ? (
           <SettingsDialog
             settings={settings}
+            shortcuts={settings.shortcuts}
+            onShortcutChange={(kind, accelerator) => applyShortcut(kind, api.setShortcut(kind, accelerator))}
+            onShortcutReset={(kind) => applyShortcut(kind, api.resetShortcut(kind))}
+            onShortcutRecording={(active) => void api.shortcutRecording(active).catch(() => undefined)}
+            shortcutErrors={shortcutErrors}
             choosing={choosing}
             actionError={pickError ? t(`error.${pickError}`) : undefined}
             onChooseFolder={chooseFolder}
@@ -164,6 +244,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
             onClose={() => {
               setSettingsOpen(false);
               setPickError(null);
+              setShortcutErrors({});
             }}
           />
         ) : null

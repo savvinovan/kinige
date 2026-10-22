@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { MirrorStatus } from "../../api/generated/MirrorStatus";
 import type { Settings } from "../../api/generated/Settings";
 import { fireEvent, render, screen, within } from "../../test/render";
+import { DEFAULT_SHORTCUTS } from "./demoShortcuts";
 import { SettingsDialog } from "./SettingsDialog";
 
 const mirror = (patch: Partial<MirrorStatus> = {}): MirrorStatus => ({
@@ -11,18 +12,30 @@ const mirror = (patch: Partial<MirrorStatus> = {}): MirrorStatus => ({
   pendingDays: 0,
   ...patch,
 });
-const settings = (patch: Partial<MirrorStatus> = {}, textSize: Settings["textSize"] = "normal"): Settings => ({ textSize, mirror: mirror(patch) });
+const settings = (patch: Partial<MirrorStatus> = {}, textSize: Settings["textSize"] = "normal"): Settings => ({
+  textSize,
+  mirror: mirror(patch),
+  shortcuts: DEFAULT_SHORTCUTS,
+});
 
 const noop = () => {};
+const handlers = {
+  shortcuts: DEFAULT_SHORTCUTS,
+  onShortcutChange: noop,
+  onShortcutReset: noop,
+  onShortcutRecording: noop,
+};
 const view = (props: Partial<Parameters<typeof SettingsDialog>[0]> = {}, language: "ru" | "en" = "ru") =>
-  render(<SettingsDialog settings={settings()} onClose={noop} onChooseFolder={noop} onTextSizeChange={noop} {...props} />, { language });
+  render(<SettingsDialog settings={settings()} {...handlers} onClose={noop} onChooseFolder={noop} onTextSizeChange={noop} {...props} />, { language });
 
 describe("SettingsDialog", () => {
-  it("модальное окно «Настройки» с двумя разделами", () => {
+  it("модальное окно «Настройки» с тремя разделами", () => {
     view();
     const dialog = screen.getByRole("dialog", { name: "Настройки" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(screen.getAllByRole("region")).toHaveLength(3);
     expect(screen.getByRole("region", { name: "Копия в Markdown" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Сочетания клавиш" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Размер текста" })).toBeInTheDocument();
     expect(screen.getByText(/по файлу на день/)).toBeInTheDocument();
   });
@@ -77,7 +90,7 @@ describe("SettingsDialog", () => {
     const { rerender } = view({ onChooseFolder });
     fireEvent.click(screen.getByRole("button", { name: "Выбрать…" }));
     expect(onChooseFolder).toHaveBeenCalledTimes(1);
-    rerender(<SettingsDialog settings={settings()} onClose={noop} onChooseFolder={onChooseFolder} onTextSizeChange={noop} choosing />);
+    rerender(<SettingsDialog settings={settings()} {...handlers} onClose={noop} onChooseFolder={onChooseFolder} onTextSizeChange={noop} choosing />);
     const button = screen.getByRole("button", { name: "Выбрать…" });
     expect(button).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(button);
@@ -105,8 +118,16 @@ describe("SettingsDialog", () => {
       stops.push(document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent ?? "");
     };
     stops.push(document.activeElement?.getAttribute("aria-label") ?? "");
-    for (let i = 0; i < 4; i++) tab();
-    expect(stops).toEqual(["Закрыть настройки", "Выбрать…", "Обычный", "Закрыть настройки", "Выбрать…"]);
+    for (let i = 0; i < 6; i++) tab();
+    expect(stops).toEqual([
+      "Закрыть настройки",
+      "Выбрать…",
+      "Изменить сочетание: Окно быстрого захвата",
+      "Изменить сочетание: Сохранить буфер в Inbox",
+      "Обычный",
+      "Закрыть настройки",
+      "Выбрать…",
+    ]);
   });
 
   it("«Крупный» выбран по настройкам", () => {
@@ -139,6 +160,61 @@ describe("SettingsDialog", () => {
     view({ settings: settings({ pendingDays: 4 }) }, "en");
     expect(screen.getByRole("status")).toHaveTextContent("4 days are waiting to be written");
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("раздел «Сочетания клавиш»: две строки по умолчанию со своими капсулами, «Сбросить» нет", () => {
+    view();
+    const region = screen.getByRole("region", { name: "Сочетания клавиш" });
+    const capture = within(region).getByRole("group", { name: "Окно быстрого захвата" });
+    const clipboard = within(region).getByRole("group", { name: "Сохранить буфер в Inbox" });
+    expect(within(capture).getByRole("img", { name: "Сочетание: Option + Space" })).toBeInTheDocument();
+    expect(within(clipboard).getByRole("img", { name: "Сочетание: Option + Shift + V" })).toBeInTheDocument();
+    expect(within(region).queryByRole("button", { name: /Сбросить/ })).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("раздел «Сочетания клавиш»: действия приходят в родителя с видом действия", () => {
+    const onShortcutChange = vi.fn();
+    const onShortcutReset = vi.fn();
+    const onShortcutRecording = vi.fn();
+    const shortcuts = [
+      { kind: "capture", accelerator: "Alt+Space", isDefault: true, state: "assigned" },
+      { kind: "clipboard", accelerator: "Ctrl+KeyJ", isDefault: false, state: "assigned" },
+    ] as const;
+    view({ shortcuts, onShortcutChange, onShortcutReset, onShortcutRecording });
+    fireEvent.click(screen.getByRole("button", { name: "Сбросить сочетание: Сохранить буфер в Inbox" }));
+    expect(onShortcutReset).toHaveBeenCalledWith("clipboard");
+    fireEvent.click(screen.getByRole("button", { name: "Изменить сочетание: Окно быстрого захвата" }));
+    expect(onShortcutRecording).toHaveBeenLastCalledWith(true);
+    fireEvent.keyDown(document.activeElement!, { code: "KeyK", key: "k", altKey: true, metaKey: true });
+    expect(onShortcutChange).toHaveBeenCalledWith("capture", "Alt+Cmd+KeyK");
+    expect(onShortcutRecording).toHaveBeenLastCalledWith(false);
+  });
+
+  it("ошибка сохранения сочетания — role=alert под нужной строкой", () => {
+    view({ shortcutErrors: { clipboard: "Это сочетание уже назначено другому действию." } });
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Это сочетание уже назначено другому действию.");
+    expect(screen.getByRole("group", { name: "Сохранить буфер в Inbox" })).toContainElement(alert);
+  });
+
+  it("запись сочетания в окне: Esc выходит из записи и не закрывает окно настроек", () => {
+    const onClose = vi.fn();
+    view({ onClose });
+    fireEvent.click(screen.getByRole("button", { name: "Изменить сочетание: Окно быстрого захвата" }));
+    fireEvent.keyDown(document.activeElement!, { key: "Escape", code: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Изменить сочетание: Окно быстрого захвата" })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape", code: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("английский: раздел сочетаний", () => {
+    view({}, "en");
+    expect(screen.getByRole("region", { name: "Keyboard shortcuts" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Quick capture window" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Save clipboard to Inbox" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change shortcut: Quick capture window" })).toBeInTheDocument();
   });
 
   it("английский: ошибка копии", () => {

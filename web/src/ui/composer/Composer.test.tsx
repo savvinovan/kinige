@@ -113,6 +113,108 @@ describe("Composer: клавиши", () => {
   });
 });
 
+describe("Composer: ⌘Enter / Ctrl+Enter «дописать» (окно захвата, слайс 2)", () => {
+  const withAppend = (props: Partial<React.ComponentProps<typeof Composer>> = {}) => {
+    const onAppend = vi.fn();
+    return { onAppend, ...setup({ value: "и ещё", onAppend, ...props }) };
+  };
+
+  it("⌘Enter вызывает onAppend, а не onSubmit, и не вставляет перевод строки", () => {
+    const { input, onAppend, onSubmit } = withAppend();
+    expect(fireEvent.keyDown(input, { key: "Enter", metaKey: true })).toBe(false);
+    expect(onAppend).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("Ctrl+Enter (не macOS) делает то же", () => {
+    const { input, onAppend, onSubmit } = withAppend();
+    expect(fireEvent.keyDown(input, { key: "Enter", ctrlKey: true })).toBe(false);
+    expect(onAppend).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("обычный Enter по-прежнему отправляет, onAppend не вызывается", () => {
+    const { input, onAppend, onSubmit } = withAppend();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onAppend).not.toHaveBeenCalled();
+  });
+
+  it("⌘Shift+Enter — не «дописать»: Shift оставляет перевод строки", () => {
+    const { input, onAppend, onSubmit } = withAppend();
+    expect(fireEvent.keyDown(input, { key: "Enter", metaKey: true, shiftKey: true })).toBe(true);
+    expect(onAppend).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("во время ввода через IME ⌘Enter ничего не делает", () => {
+    const { input, onAppend } = withAppend();
+    fireEvent.keyDown(input, { key: "Enter", metaKey: true, isComposing: true });
+    expect(onAppend).not.toHaveBeenCalled();
+  });
+
+  it("внутри блока кода ⌘Enter тоже дописывает и не вставляет перевод строки", () => {
+    const value = "```\nfn main() {";
+    const { input, onAppend, onSubmit } = withAppend({ value });
+    input.setSelectionRange(value.length, value.length);
+    expect(fireEvent.keyDown(input, { key: "Enter", metaKey: true })).toBe(false);
+    expect(onAppend).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("в пустом или пробельном поле ⌘Enter ничего не дописывает, перевода строки нет", () => {
+    const { input, onAppend } = withAppend({ value: " \n " });
+    expect(fireEvent.keyDown(input, { key: "Enter", metaKey: true })).toBe(false);
+    expect(onAppend).not.toHaveBeenCalled();
+  });
+
+  it("без onAppend ⌘Enter и Ctrl+Enter ведут себя как обычный Enter: отправляют", () => {
+    const { input, onSubmit } = setup({ value: "текст" });
+    fireEvent.keyDown(input, { key: "Enter", metaKey: true });
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
+    expect(onSubmit).toHaveBeenCalledTimes(2);
+  });
+
+  it("onAppend работает и без onSubmit", () => {
+    const onAppend = vi.fn();
+    render(<Composer value="текст" onChange={vi.fn()} onAppend={onAppend} />);
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "Новая заметка" }), { key: "Enter", metaKey: true });
+    expect(onAppend).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Composer: место под ошибку и описание поля", () => {
+  it("reserveErrorSpace: область alert есть и без ошибки, пустая; поле не помечено недопустимым", () => {
+    const { input } = setup({ reserveErrorSpace: true });
+    const alert = screen.getByRole("alert");
+    expect(alert).toBeEmptyDOMElement();
+    expect(input).not.toHaveAttribute("aria-invalid");
+    expect(input).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("reserveErrorSpace: ошибка занимает тот же элемент, поле описано ею", () => {
+    const { rerender, input } = setup({ reserveErrorSpace: true });
+    const before = screen.getByRole("alert");
+    rerender(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} reserveErrorSpace error="Не удалось отправить." />);
+    expect(screen.getByRole("alert")).toBe(before);
+    expect(before).toHaveTextContent("Не удалось отправить.");
+    expect(input).toHaveAttribute("aria-describedby", before.id);
+  });
+
+  it("без reserveErrorSpace области alert без ошибки нет (как в D1)", () => {
+    setup();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("describedBy добавляется к описанию поля, в том числе вместе с ошибкой", () => {
+    const { input, rerender } = setup({ describedBy: "hint-1" });
+    expect(input).toHaveAttribute("aria-describedby", "hint-1");
+    rerender(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} describedBy="hint-1" error="Ошибка." />);
+    const alert = screen.getByRole("alert");
+    expect(input.getAttribute("aria-describedby")).toBe(`${alert.id} hint-1`);
+  });
+});
+
 describe("insideCodeFence", () => {
   it("нечётное число ограждений до курсора — внутри блока", () => {
     expect(insideCodeFence("```\nкод", 7)).toBe(true);

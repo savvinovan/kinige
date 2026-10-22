@@ -52,6 +52,18 @@
     "taskDone": "Done",
     "taskTodo": "Not done"
   },
+  "capture": {
+    "label": "Quick note",
+    "context": "Latest entries today",
+    "empty": "No entries yet today",
+    "appendHint": "⌘Enter — append"
+  },
+  "tray": {
+    "tooltip": "Kinige",
+    "newNote": "New note",
+    "inbox": "Inbox",
+    "quit": "Quit Kinige"
+  },
   "toast": {
     "undo": "Undo"
   },
@@ -63,6 +75,9 @@
     "store_read_failed": "Could not read your entries.",
     "link_not_allowed": "This link cannot be opened.",
     "folder_pick_failed": "Could not choose the folder.",
+    "shortcut_invalid": "This shortcut cannot be used. Try another one.",
+    "shortcut_taken": "This shortcut is already used by another app or the system.",
+    "shortcut_duplicate": "The other action already uses this shortcut.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },
@@ -83,6 +98,26 @@
       "error": {
         "folder_unavailable": "The folder is not available. Entries are kept and will be written when it works again.",
         "write_failed": "Could not write the copy. Entries are kept; Kinige will try again."
+      }
+    },
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "description": "Work in any app, even when Kinige is in the background.",
+      "capture": "Quick capture window",
+      "clipboard": "Save clipboard to Inbox",
+      "keys": "Shortcut: {{keys}}",
+      "change": "Change",
+      "changeLabel": "Change shortcut: {{name}}",
+      "reset": "Reset",
+      "resetLabel": "Reset shortcut: {{name}}",
+      "recording": "Press the new shortcut with ⌃, ⌥ or ⌘… Esc to cancel",
+      "recordingLabel": "New shortcut for {{name}}",
+      "taken": "Not assigned: already used by another app or the system",
+      "modifier": {
+        "ctrl": "Control",
+        "alt": "Option",
+        "shift": "Shift",
+        "cmd": "Command"
       }
     },
     "textSize": {
