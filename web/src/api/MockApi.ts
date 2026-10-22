@@ -1,5 +1,7 @@
 import { INBOX_ID, type KinigeApi, KinigeApiError } from "./KinigeApi";
 import type { AppInfo } from "./generated/AppInfo";
+import type { CaptureOutcome } from "./generated/CaptureOutcome";
+import type { CaptureState } from "./generated/CaptureState";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { FeedCursor } from "./generated/FeedCursor";
@@ -7,6 +9,7 @@ import type { Language } from "./generated/Language";
 import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
 import type { Settings } from "./generated/Settings";
+import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { TextSize } from "./generated/TextSize";
 
 export interface MockApiOptions {
@@ -20,12 +23,26 @@ export interface MockApiOptions {
   pickedFolder?: string | null;
 }
 
+const DEFAULT_SHORTCUTS: Record<ShortcutKind, string> = {
+  capture: "Alt+Space",
+  clipboard: "Alt+Shift+KeyV",
+};
+
 const DEFAULT_SETTINGS: Settings = {
   textSize: "normal",
   mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
+  shortcuts: [
+    { kind: "capture", accelerator: DEFAULT_SHORTCUTS.capture, isDefault: true, state: "assigned" },
+    { kind: "clipboard", accelerator: DEFAULT_SHORTCUTS.clipboard, isDefault: true, state: "assigned" },
+  ],
 };
 
 const ALLOWED_SCHEMES = ["http:", "https:", "mailto:"];
+
+/** Окно дописывания (ТЗ §2.1): запись не старше десяти минут. */
+const APPEND_WINDOW_MS = 10 * 60 * 1000;
+/** Сколько записей окно захвата показывает над полем. */
+const CONTEXT_LEN = 3;
 
 /**
  * `KinigeApi` в памяти: тот же интерфейс, что у `TauriApi`, для тестов и Storybook. Хранит записи, считает счётчик,
@@ -39,9 +56,20 @@ export class MockApi implements KinigeApi {
   failNextSend: ErrorCode | null = null;
   /** Следующий выбор папки завершится этой ошибкой. */
   failNextPick: ErrorCode | null = null;
+  /** Следующая смена или сброс сочетания завершится этой ошибкой. */
+  failNextShortcut: ErrorCode | null = null;
+  /** Следующая отправка или дописывание из окна захвата завершится этой ошибкой. */
+  failNextCapture: ErrorCode | null = null;
+  /** Окно захвата спрятано командой `captureHide` столько раз. */
+  hideCount = 0;
+  /** Записи режима записи сочетания: `true` при начале, `false` в конце. */
+  readonly recordingLog: boolean[] = [];
   pickedFolder: string | null;
 
   private messages: MessageView[];
+  private readonly drafts = new Map<string, string>();
+  private captureDraft = "";
+  private readonly listeners = new Set<() => void>();
   private settings: Settings;
   private readonly now: () => Date;
   private readonly language: Language;
@@ -99,6 +127,8 @@ export class MockApi implements KinigeApi {
       createdTz: "UTC",
     };
     this.messages.push(message);
+    // Как в Rust: отправка очищает черновик этого чата.
+    this.drafts.delete(chatId);
     return Promise.resolve(message);
   }
 
@@ -133,6 +163,136 @@ export class MockApi implements KinigeApi {
     if (!ALLOWED_SCHEMES.includes(scheme)) return Promise.reject(new KinigeApiError("link_not_allowed"));
     this.openedUrls.push(url);
     return Promise.resolve();
+  }
+
+  getDraft(chatId: string): Promise<string> {
+    return Promise.resolve(this.drafts.get(chatId) ?? "");
+  }
+
+  saveDraft(chatId: string, body: string): Promise<void> {
+    if (body === "") this.drafts.delete(chatId);
+    else this.drafts.set(chatId, body);
+    return Promise.resolve();
+  }
+
+  setShortcut(kind: ShortcutKind, accelerator: string): Promise<Settings> {
+    return this.changeShortcut(kind, accelerator);
+  }
+
+  resetShortcut(kind: ShortcutKind): Promise<Settings> {
+    return this.changeShortcut(kind, DEFAULT_SHORTCUTS[kind]);
+  }
+
+  shortcutRecording(active: boolean): Promise<void> {
+    this.recordingLog.push(active);
+    return Promise.resolve();
+  }
+
+  onEntriesChanged(handler: () => void): Promise<() => void> {
+    this.listeners.add(handler);
+    return Promise.resolve(() => {
+      this.listeners.delete(handler);
+    });
+  }
+
+  /** Как событие Rust «записи изменились» (в тестах — запись, сделанная окном захвата). */
+  emitEntriesChanged(): void {
+    for (const handler of [...this.listeners]) handler();
+  }
+
+  /** Запись, появившаяся «снаружи» (окно захвата, буфер): попадает в ленту после события. */
+  addExternalMessage(message: MessageView): void {
+    this.messages.push(message);
+  }
+
+  captureState(): Promise<CaptureState> {
+    const now = this.now();
+    const today = this.journalDate(now);
+    const inbox = this.messages.filter((m) => m.chatId === INBOX_ID).sort(compareFeed);
+    const context = inbox.filter((m) => m.journalDate === today).slice(-CONTEXT_LEN);
+    const last = inbox[inbox.length - 1];
+    return Promise.resolve({
+      language: this.language,
+      textSize: this.settings.textSize,
+      today,
+      context,
+      appendTarget: last && this.canAppend(last, now) ? last.id : null,
+      draft: this.captureDraft,
+      error: null,
+    });
+  }
+
+  captureSend(body: string): Promise<CaptureOutcome> {
+    return this.capture(body, false);
+  }
+
+  captureAppend(body: string): Promise<CaptureOutcome> {
+    return this.capture(body, true);
+  }
+
+  captureSaveDraft(body: string): Promise<void> {
+    this.captureDraft = body;
+    return Promise.resolve();
+  }
+
+  captureHide(): Promise<void> {
+    this.hideCount += 1;
+    return Promise.resolve();
+  }
+
+  private capture(body: string, append: boolean): Promise<CaptureOutcome> {
+    if (this.failNextCapture) {
+      const code = this.failNextCapture;
+      this.failNextCapture = null;
+      return Promise.reject(new KinigeApiError(code));
+    }
+    const text = body.replace(/\r\n?/g, "\n").trim();
+    if (text === "") return Promise.reject(new KinigeApiError("empty_message"));
+    const now = this.now();
+    const inbox = this.messages.filter((m) => m.chatId === INBOX_ID).sort(compareFeed);
+    const last = inbox[inbox.length - 1];
+    this.captureDraft = "";
+    if (append && last && this.canAppend(last, now)) {
+      const message: MessageView = { ...last, bodyMd: `${last.bodyMd}\n\n${text}` };
+      this.messages = this.messages.map((m) => (m.id === last.id ? message : m));
+      this.emitEntriesChanged();
+      return Promise.resolve({ action: "appended", message });
+    }
+    const message: MessageView = {
+      id: `mock-${++this.counter}`,
+      chatId: INBOX_ID,
+      bodyMd: text,
+      journalDate: this.journalDate(now),
+      createdAt: now.getTime(),
+      createdTz: "UTC",
+    };
+    this.messages.push(message);
+    this.emitEntriesChanged();
+    return Promise.resolve({ action: "created", message });
+  }
+
+  /** Правило цели дописывания, упрощённо: сегодняшняя запись не старше десяти минут (остальное решает Rust). */
+  private canAppend(message: MessageView, now: Date): boolean {
+    return message.journalDate === this.journalDate(now) && now.getTime() - message.createdAt <= APPEND_WINDOW_MS;
+  }
+
+  private changeShortcut(kind: ShortcutKind, accelerator: string): Promise<Settings> {
+    if (this.failNextShortcut) {
+      const code = this.failNextShortcut;
+      this.failNextShortcut = null;
+      return Promise.reject(new KinigeApiError(code));
+    }
+    const other = this.settings.shortcuts.find((s) => s.kind !== kind);
+    if (other?.accelerator === accelerator) return Promise.reject(new KinigeApiError("shortcut_duplicate"));
+    this.settings = {
+      ...this.settings,
+      shortcuts: this.settings.shortcuts.map((s) =>
+        s.kind === kind
+          ? { kind, accelerator, isDefault: accelerator === DEFAULT_SHORTCUTS[kind], state: "assigned" as const }
+          : s,
+      ),
+    };
+    return Promise.resolve(this.settings);
   }
 
   /** День записи с границей 04:00 (упрощённо, UTC). */
