@@ -1,64 +1,86 @@
-/* Окно быстрого захвата: панель на всё окно, бледные плашки контекста, поле ввода. Только токены. */
-.capture-panel {
+/* Окно быстрого захвата: прозрачное окно ОС, в нём плавающая панель-«пилюля» с полем под тень вокруг. Только токены. */
+
+/* Страница окна захвата прозрачная: форму панели и тень рисует CSS (атрибут ставит main.tsx). Прокрутки у страницы нет:
+   высоту окна подгоняет Rust по высоте содержимого. */
+:root[data-window="capture"],
+:root[data-window="capture"] body,
+:root[data-window="capture"] #root {
+  overflow: hidden;
+  background: transparent;
+}
+
+/* Поле под тень: окно ОС больше панели на shadow-margin с каждой стороны. Высота — по содержимому, но не выше окна:
+   дальше сжимается контекст, а поле растёт внутри себя. */
+.capture-shell {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   width: 100%;
-  height: 100%;
-  padding: var(--space-4);
-  /* Окно без заголовка и непрозрачное: отделяется от чужих окон тонкой линией по краю (тени и скругления окна задаёт ОС). */
+  max-height: var(--layout-capture-window-max-height);
+  padding: var(--layout-capture-shadow-margin);
+}
+
+/* Сама панель: заливка бумаги (на ней лежат плашки контекста), мягкая тень поверх всего, скругление «пилюлей». */
+.capture-panel {
+  position: relative;
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-height: 0;
+  padding: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-floating);
   background: var(--color-surface-paper);
-  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-border-divider);
+  box-shadow: var(--shadow-overlay);
   color: var(--color-text-primary);
 }
 
-/* Поле ввода — тот же Composer, что в главном окне; здесь он без собственных полей, панель держит отступы. */
+/* Тонкая светлая обводка: рамка цветом основного текста в долю силы (opacity.panel-edge), поверх содержимого, события не ловит. */
+.capture-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: var(--border-width-hairline) solid var(--color-text-primary);
+  border-radius: inherit;
+  opacity: var(--opacity-panel-edge);
+  pointer-events: none;
+}
+
+/* Ошибка отправки: единственный случай, когда обводка цветная и в полную силу (как рамка поля в главном окне). */
+.capture-panel:has(.composer__bar--invalid)::after {
+  border-color: var(--color-status-error);
+  opacity: 1;
+}
+
+/* Поле ввода — тот же Composer, что в главном окне, в плавающем виде: без полей, панель держит отступы. */
 .capture-panel .composer {
   flex: none;
-  padding: 0;
 }
 
-.capture-panel .composer > * {
-  max-width: none;
-}
-
-/* Поле растёт до 40% высоты окна, как в главном окне. Но окно захвата фиксированного размера, а 40vh в нём не от окна в
-   историях Storybook (там viewport выше), поэтому предел считается от высоты окна из токена: в приложении это одно и то же. */
+/* Поле растёт до 45% высоты панели при самом высоком окне, дальше прокрутка внутри. Предел от высоты окна из токена, а не 40vh:
+   в историях Storybook viewport выше окна, в приложении это одно и то же. */
 .capture-panel .composer__field {
-  max-height: calc(var(--layout-capture-window-height) * 0.4);
+  max-height: calc((var(--layout-capture-window-max-height) - 2 * var(--layout-capture-shadow-margin)) * 0.45);
 }
 
-/* Строка ошибки (место под неё занято всегда) не прилипает к строке подсказки над ней. */
-.capture-panel .composer__error {
-  margin-top: var(--space-1);
-}
-
-/* Область контекста занимает всё свободное место над полем; плашки лежат у нижнего края, ближе к полю. Если места
-   не хватает (длинный текст в поле, крупный шрифт), старые плашки уходят за верхний край, а поле не сдвигается. */
+/* Контекст занимает место над полем и первым уступает его: если места не хватает (длинный текст в поле, крупный шрифт),
+   старые плашки уходят за верхний край, а поле остаётся целым. Плашки лежат у нижнего края, ближе к полю. */
 .capture-context {
   display: flex;
-  flex: 1 1 0;
+  flex: 0 1 auto;
   flex-direction: column;
   justify-content: flex-end;
   min-height: 0;
   overflow: hidden;
 }
 
-.capture-context--empty {
-  align-items: center;
-  justify-content: center;
-}
-
-.capture-context__empty {
-  margin: 0;
-  color: var(--color-text-tertiary);
-  font-family: var(--type-small-family);
-  font-size: var(--type-small-size);
-  line-height: var(--type-small-line-height);
-}
-
 .capture-context__list {
+  display: flex;
   flex: none;
+  flex-direction: column;
+  gap: var(--space-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -145,14 +167,3 @@
   color: var(--color-text-tertiary);
 }
 
-/* Строка под плашкой: подсказка «⌘Enter — дописать». Высота строки занята всегда, поэтому подсказка ничего не двигает. */
-.capture-entry__hint {
-  box-sizing: border-box;
-  min-height: calc(var(--type-meta-size) * var(--type-meta-line-height));
-  padding: 0 var(--layout-message-padding-inline);
-  color: var(--color-text-tertiary);
-  font-family: var(--type-meta-family);
-  font-size: var(--type-meta-size);
-  font-weight: var(--type-meta-weight);
-  line-height: var(--type-meta-line-height);
-}

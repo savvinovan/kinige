@@ -43,6 +43,9 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
     field.setSelectionRange(field.value.length, field.value.length);
   }, [shown]);
 
+  /** Высота окна — по содержимому; сбой изменения размера не мешает писать (окно остаётся прежнего размера). */
+  const resize = useCallback((height: number) => void api.captureResize(height).catch(() => undefined), [api]);
+
   /** Сохраняет черновик и прячет окно. */
   const hide = useCallback(() => {
     void flush().finally(() => void api.captureHide().catch(() => undefined));
@@ -114,6 +117,7 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
       onSend={() => submit((body) => api.captureSend(body))}
       onAppend={() => submit((body) => api.captureAppend(body))}
       onHide={hide}
+      onHeight={resize}
       error={error ? t(`error.${error}`) : undefined}
     />
   );

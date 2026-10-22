@@ -149,7 +149,8 @@ describe("CaptureWindow на MockApi: сценарий слайса 2", () => {
     api.failNextCapture = "store_write_failed";
     type("важное");
     fireEvent.keyDown(field(), { key: "Enter" });
-    expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось сохранить запись. Текст остался в поле.");
+    // Область alert есть в дереве всегда (пустая), текст приходит в неё позже.
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Не удалось сохранить запись. Текст остался в поле."));
     expect(field().value).toBe("важное");
     expect(api.hideCount).toBe(0);
 
@@ -163,7 +164,7 @@ describe("CaptureWindow на MockApi: сценарий слайса 2", () => {
     api.failNextCapture = "message_too_large";
     type("ещё");
     fireEvent.keyDown(field(), { key: "Enter", metaKey: true });
-    expect(await screen.findByRole("alert")).toHaveTextContent("Запись слишком длинная.");
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Запись слишком длинная."));
     expect(field().value).toBe("ещё");
   });
 
@@ -302,5 +303,32 @@ describe("CaptureWindow на MockApi: сценарий слайса 2", () => {
       expect(order).toEqual(["save:start", "save:done", "send"]);
       expect((await api.captureState()).draft, "отправленный текст не вернулся черновиком").toBe("");
     });
+  });
+});
+
+describe("CaptureWindow: высота окна", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("высота содержимого уходит Rust командой capture_resize при показе страницы", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+    const content = 143.2;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(() => ({ height: content }) as DOMRect);
+    const api = await setup();
+    expect(api.resizeLog).toEqual([144]);
+  });
+
+  it("сбой изменения размера не ломает окно: писать можно", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+    const content = 150;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(() => ({ height: content }) as DOMRect);
+    const api = new MockApi({ now: () => clock.now });
+    api.captureResize = () => Promise.reject(new Error("нет окна"));
+    const initial = await api.captureState();
+    render(<CaptureWindow api={api} initial={initial} />);
+    type("всё работает");
+    expect(field().value).toBe("всё работает");
   });
 });

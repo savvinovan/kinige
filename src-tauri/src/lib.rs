@@ -42,6 +42,7 @@ pub const CAPTURE_COMMANDS: &[&str] = &[
     "capture_append",
     "capture_save_draft",
     "capture_hide",
+    "capture_resize",
 ];
 
 /// Все команды приложения. Список совпадает с `AppManifest::commands` в `build.rs`: сначала команды главного окна,
@@ -66,6 +67,7 @@ pub const COMMANDS: &[&str] = &[
     "capture_append",
     "capture_save_draft",
     "capture_hide",
+    "capture_resize",
 ];
 
 /// Конструктор приложения; общий для `run` и для тестов IPC (там с mock-рантаймом и своим `Store`).
@@ -96,6 +98,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             capture::capture_append,
             capture::capture_save_draft,
             capture::capture_hide,
+            capture::capture_resize,
         ])
 }
 

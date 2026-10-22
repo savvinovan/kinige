@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { demoEntry } from "../../api/demoData";
 import { fireEvent, render, screen } from "../../test/render";
 import { CapturePanel, type CapturePanelProps } from "./CapturePanel";
@@ -45,11 +45,13 @@ describe("CapturePanel: вид", () => {
     expect(screen.queryByRole("button", { name: "Записать голосовое" })).toBeNull();
   });
 
-  it("за сегодня записей нет: списка нет, одна тихая строка", () => {
-    const { container } = setup({ context: [] });
+  it("за сегодня записей нет: только поле, ни списка, ни пояснений", () => {
+    const { container, field } = setup({ context: [] });
     expect(screen.queryByRole("list")).toBeNull();
-    expect(screen.getByText("Сегодня записей ещё нет")).toBeInTheDocument();
     expect(container.querySelectorAll("article")).toHaveLength(0);
+    expect(container.querySelector(".capture-context")).toBeNull();
+    expect(field).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Быстрая заметка" })).toHaveTextContent("");
   });
 
   it("английский: подписи и подсказка", () => {
@@ -59,9 +61,9 @@ describe("CapturePanel: вид", () => {
     expect(screen.getByText("⌘Enter — append")).toBeInTheDocument();
   });
 
-  it("английский: пустое состояние", () => {
-    setup({ context: [] }, "en");
-    expect(screen.getByText("No entries yet today")).toBeInTheDocument();
+  it("английский: без записей только поле с подсказкой «Write a note…»", () => {
+    const { field } = setup({ context: [] }, "en");
+    expect(field).toHaveAttribute("placeholder", "Write a note…");
   });
 });
 
@@ -84,10 +86,11 @@ describe("CapturePanel: ссылки не открываются", () => {
 });
 
 describe("CapturePanel: подсказка «⌘Enter — дописать»", () => {
-  it("есть цель: подсказка стоит у нужной плашки и описывает поле для диктора", () => {
+  it("есть цель: подсказка стоит под полем и описывает поле для диктора", () => {
     const { field, container } = setup({ appendTargetId: "c" });
     const hint = screen.getByText("⌘Enter — дописать");
-    expect(hint.closest("li")).toBe(container.querySelectorAll(".capture-context__item")[2]);
+    expect(hint).toHaveClass("composer__hint");
+    expect(container.querySelector(".composer__bar")?.nextElementSibling).toContainElement(hint);
     expect(field).toHaveAccessibleDescription("⌘Enter — дописать");
   });
 
@@ -102,18 +105,21 @@ describe("CapturePanel: подсказка «⌘Enter — дописать»", (
     expect(screen.queryByText(/⌘Enter/)).toBeNull();
   });
 
-  it("место не прыгает: строка под плашкой есть у каждой записи и при подсказке, и без неё", () => {
+  it("поле не прыгает: плашки не зависят от подсказки, а подсказка стоит ПОД полем (окно растёт вниз)", () => {
     const { container, rerender } = setup({ appendTargetId: null });
-    const hintRows = () => container.querySelectorAll(".capture-entry__hint");
-    expect(hintRows()).toHaveLength(3);
+    const before = container.querySelector(".capture-context")?.innerHTML;
+    expect(container.querySelectorAll(".composer__hint")).toHaveLength(0);
     rerender({ appendTargetId: "b" });
-    expect(hintRows()).toHaveLength(3);
+    expect(container.querySelector(".capture-context")?.innerHTML).toBe(before);
+    expect(container.querySelectorAll(".composer__hint")).toHaveLength(1);
     expect(container.querySelectorAll(".capture-context__item")).toHaveLength(3);
+    const bar = container.querySelector(".composer__bar");
+    expect(bar?.compareDocumentPosition(container.querySelector(".composer__hint")!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });
 
 describe("CapturePanel: ошибка", () => {
-  it("место под ошибку есть всегда (пустая область alert), текст приходит в тот же элемент; текст в поле остаётся", () => {
+  it("область alert есть всегда (пустая, без высоты), текст приходит в тот же элемент и стоит под полем; текст в поле остаётся", () => {
     const { rerender, field } = setup({ value: "черновик" });
     const alert = screen.getByRole("alert");
     expect(alert).toBeEmptyDOMElement();
@@ -124,9 +130,12 @@ describe("CapturePanel: ошибка", () => {
     expect(field).toHaveAttribute("aria-invalid", "true");
   });
 
-  it("при ошибке и подсказке поле описано обеими", () => {
-    const { field } = setup({ appendTargetId: "c", error: "Ошибка." });
-    expect(field).toHaveAccessibleDescription("Ошибка. ⌘Enter — дописать");
+  it("при ошибке подсказки нет (одна строка под полем): поле описано ошибкой, подсказка возвращается после неё", () => {
+    const { field, rerender } = setup({ appendTargetId: "c", error: "Ошибка." });
+    expect(field).toHaveAccessibleDescription("Ошибка.");
+    expect(screen.queryByText("⌘Enter — дописать")).toBeNull();
+    rerender({ appendTargetId: "c", error: undefined });
+    expect(field).toHaveAccessibleDescription("⌘Enter — дописать");
   });
 });
 
@@ -193,5 +202,49 @@ describe("CapturePanel: клавиши", () => {
     expect(screen.queryAllByRole("button")).toHaveLength(0);
     expect(screen.queryByRole("status")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("CapturePanel: высота окна", () => {
+  const callbacks: (() => void)[] = [];
+  let height = 150.3;
+  beforeEach(() => {
+    callbacks.length = 0;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: () => void) {
+          callbacks.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(() => ({ height }) as DOMRect);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("высота содержимого (вверх до целого, вместе с полем под тень) уходит при показе и при каждом изменении, повторов нет", () => {
+    const onHeight = vi.fn();
+    setup({ onHeight });
+    expect(onHeight).toHaveBeenCalledTimes(1);
+    expect(onHeight).toHaveBeenLastCalledWith(151);
+    callbacks.forEach((callback) => callback());
+    expect(onHeight).toHaveBeenCalledTimes(1);
+    height = 214;
+    callbacks.forEach((callback) => callback());
+    expect(onHeight).toHaveBeenCalledTimes(2);
+    expect(onHeight).toHaveBeenLastCalledWith(214);
+  });
+
+  it("нулевая высота (страница ещё не разложена) не отправляется", () => {
+    height = 0;
+    const onHeight = vi.fn();
+    setup({ onHeight });
+    expect(onHeight).not.toHaveBeenCalled();
+    height = 150.3;
   });
 });

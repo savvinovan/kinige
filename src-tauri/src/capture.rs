@@ -13,8 +13,15 @@ pub const MAIN_LABEL: &str = "main";
 /// Событие главному окну: записи изменились (захват, дописывание, буфер). Слушает только `main`.
 pub const ENTRIES_CHANGED: &str = "entries-changed";
 
-/// Доля высоты экрана над окном захвата: окно чуть выше середины, как у быстрых панелей.
+/// Доля высоты экрана над панелью захвата: панель чуть выше середины, как у быстрых панелей. Верх панели при показе всегда
+/// здесь, какой бы высоты ни было окно: оно растёт вниз.
 const TOP_FRACTION: f64 = 0.28;
+/// Размеры окна захвата в логических px. Совпадают с токенами `layout.capture.*` (проверяет `tests/config.rs`): ширина
+/// окна = ширина панели + два поля под тень; высоту подгоняет страница командой `capture_resize` в этих пределах.
+pub const WINDOW_WIDTH: f64 = 584.0;
+pub const SHADOW_MARGIN: f64 = 32.0;
+pub const MIN_HEIGHT: f64 = 100.0;
+pub const MAX_HEIGHT: f64 = 480.0;
 /// Сколько ждать, пока окно захвата само сохранит черновик и спрячется, прежде чем спрятать его принудительно.
 const HIDE_GRACE: Duration = Duration::from_millis(600);
 
@@ -62,7 +69,17 @@ pub fn notify_entries_changed<R: Runtime>(app: &AppHandle<R>) {
     let _ = app.emit_to(MAIN_LABEL, ENTRIES_CHANGED, ());
 }
 
-/// Ставит окно на экран с курсором: по центру по горизонтали, выше середины по вертикали.
+/// Высота окна из просьбы страницы: в пределах `MIN_HEIGHT … MAX_HEIGHT`, целое число px.
+pub fn clamp_height(height: f64) -> f64 {
+    if height.is_finite() {
+        height.round().clamp(MIN_HEIGHT, MAX_HEIGHT)
+    } else {
+        MIN_HEIGHT
+    }
+}
+
+/// Ставит окно на экран с курсором: по центру по горизонтали; верх панели (не окна: над ней поле под тень) — на
+/// `TOP_FRACTION` высоты экрана.
 fn place_on_cursor_screen<R: Runtime>(app: &AppHandle<R>, window: &tauri::WebviewWindow<R>) {
     let monitor = app
         .cursor_position()
@@ -76,7 +93,8 @@ fn place_on_cursor_screen<R: Runtime>(app: &AppHandle<R>, window: &tauri::Webvie
     let origin = monitor.position();
     let area = monitor.size();
     let x = f64::from(origin.x) + (f64::from(area.width) - f64::from(size.width)) / 2.0;
-    let y = f64::from(origin.y) + (f64::from(area.height) - f64::from(size.height)) * TOP_FRACTION;
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let y = f64::from(origin.y) + f64::from(area.height) * TOP_FRACTION - SHADOW_MARGIN * scale;
     let _ = window.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
 }
 
@@ -304,4 +322,28 @@ pub fn capture_save_draft(store: State<'_, Store>, body: String) -> ApiResult<()
 #[tauri::command]
 pub fn capture_hide<R: Runtime>(app: AppHandle<R>) {
     hide_capture(&app);
+}
+
+/// Подогнать высоту окна под содержимое страницы (логические px, вместе с полем под тень). Ширина фиксирована, а верх окна
+/// остаётся на месте (окно растёт вниз), поэтому поле ввода не прыгает относительно курсора. Значение ограничивается
+/// пределами `MIN_HEIGHT … MAX_HEIGHT`; лишних просьб (та же высота) Rust не исполняет.
+#[tauri::command]
+pub fn capture_resize<R: Runtime>(app: AppHandle<R>, height: f64) {
+    let Some(window) = app.get_webview_window(CAPTURE_LABEL) else {
+        return;
+    };
+    let height = clamp_height(height);
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let current = window
+        .inner_size()
+        .map(|size| f64::from(size.height) / scale);
+    if current.is_ok_and(|current| (current - height).abs() < 0.5) {
+        return;
+    }
+    // `set_size` на macOS задаёт размер содержимого и не обещает, какой угол остаётся на месте: верх закрепляется явно.
+    let top_left = window.outer_position().ok();
+    let _ = window.set_size(tauri::LogicalSize::new(WINDOW_WIDTH, height));
+    if let Some(position) = top_left {
+        let _ = window.set_position(position);
+    }
 }

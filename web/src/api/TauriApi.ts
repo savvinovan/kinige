@@ -127,4 +127,8 @@ export class TauriApi implements KinigeApi {
   async captureHide(): Promise<void> {
     await call("capture_hide");
   }
+
+  async captureResize(height: number): Promise<void> {
+    await call("capture_resize", { height });
+  }
 }

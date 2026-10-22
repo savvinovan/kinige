@@ -8,6 +8,7 @@
     "allow-capture-send",
     "allow-capture-append",
     "allow-capture-save-draft",
-    "allow-capture-hide"
+    "allow-capture-hide",
+    "allow-capture-resize"
   ]
 }

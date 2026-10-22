@@ -69,6 +69,9 @@ describe("TauriApi: окно захвата (слайс 2)", () => {
     expect(invoke).toHaveBeenLastCalledWith("capture_save_draft", { body: "черновик" });
     await api.captureHide();
     expect(invoke).toHaveBeenLastCalledWith("capture_hide", undefined);
+    const height = 172;
+    await api.captureResize(height);
+    expect(invoke).toHaveBeenLastCalledWith("capture_resize", { height });
     const names = invoke.mock.calls.map((call) => call[0]);
     expect(names.every((name: string) => name.startsWith("capture_"))).toBe(true);
     for (const call of invoke.mock.calls) {

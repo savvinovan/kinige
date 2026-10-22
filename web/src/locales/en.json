@@ -55,7 +55,6 @@
   "capture": {
     "label": "Quick note",
     "context": "Latest entries today",
-    "empty": "No entries yet today",
     "appendHint": "⌘Enter — append"
   },
   "tray": {

@@ -116,6 +116,7 @@ fn args_for(command: &str) -> Value {
         "reset_shortcut" => json!({"kind": "capture"}),
         "shortcut_recording" => json!({"active": false}),
         "capture_send" | "capture_append" | "capture_save_draft" => json!({"body": "из окна"}),
+        "capture_resize" => json!({"height": 200.0}),
         _ => json!({}),
     }
 }
@@ -157,6 +158,24 @@ fn capture_window_can_call_every_command_of_its_set() {
 }
 
 #[test]
+fn capture_resize_takes_only_a_number_and_never_fails_on_extreme_values() {
+    let fixture = fixture();
+    let window = window(&fixture, "capture");
+    for height in [json!(0), json!(-1.0), json!(1.0e12), json!(168.5)] {
+        call(&window, "capture_resize", json!({ "height": height }))
+            .unwrap_or_else(|error| panic!("{height}: {error}"));
+    }
+    for args in [
+        json!({}),
+        json!({"height": "высокое"}),
+        json!({"height": null}),
+    ] {
+        let error = call(&window, "capture_resize", args).expect_err("не число — ошибка");
+        assert!(!is_acl_denial(&error), "{error}");
+    }
+}
+
+#[test]
 fn every_command_is_denied_to_a_window_with_another_label() {
     let fixture = fixture();
     let other = window(&fixture, "not-main");
@@ -171,7 +190,7 @@ fn every_command_is_denied_to_a_window_with_another_label() {
 }
 
 #[test]
-fn capture_window_cannot_call_anything_but_its_five_commands() {
+fn capture_window_cannot_call_anything_but_its_six_commands() {
     let fixture = fixture();
     let capture = window(&fixture, "capture");
     // Чужие команды: лента, чаты, отправка по chat_id, настройки, диалог, ссылки, черновик главного окна, сочетания.
@@ -205,6 +224,13 @@ fn capture_window_cannot_call_anything_but_its_five_commands() {
         "plugin:window|close",
         "plugin:window|hide",
         "plugin:window|show",
+        // Размер и положение окна страница меняет только своей командой `capture_resize` (высота в узких пределах).
+        "plugin:window|set_size",
+        "plugin:window|set_position",
+        "plugin:window|set_min_size",
+        "plugin:window|set_max_size",
+        "plugin:window|set_resizable",
+        "plugin:window|set_ignore_cursor_events",
         "plugin:webview|create_webview_window",
         "plugin:fs|read_file",
         "plugin:opener|open_url",

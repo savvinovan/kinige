@@ -183,35 +183,57 @@ describe("Composer: ⌘Enter / Ctrl+Enter «дописать» (окно зах�
   });
 });
 
-describe("Composer: место под ошибку и описание поля", () => {
-  it("reserveErrorSpace: область alert есть и без ошибки, пустая; поле не помечено недопустимым", () => {
-    const { input } = setup({ reserveErrorSpace: true });
+describe("Composer: обычный вид — ошибка над полем", () => {
+  it("без ошибки области alert нет (как в D1); с ошибкой она над полем, поле описано ею и помечено недопустимым", () => {
+    const { rerender, input, container } = setup();
+    expect(screen.queryByRole("alert")).toBeNull();
+    rerender(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} error="Не удалось отправить." />);
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Не удалось отправить.");
+    expect(input).toHaveAttribute("aria-describedby", alert.id);
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(container.querySelector(".composer__bar")?.previousElementSibling).toBe(alert);
+  });
+});
+
+describe("Composer: плавающий вид (окно захвата)", () => {
+  const floating = (props: Partial<React.ComponentProps<typeof Composer>> = {}) =>
+    setup({ floating: true, buttons: {}, ...props });
+
+  it("область alert есть всегда, пустая и под полем; поле не помечено недопустимым и ничем не описано", () => {
+    const { input, container } = floating();
     const alert = screen.getByRole("alert");
     expect(alert).toBeEmptyDOMElement();
+    expect(container.querySelector(".composer")).toHaveClass("composer--floating");
+    expect(container.querySelector(".composer__bar")?.nextElementSibling).toContainElement(alert);
     expect(input).not.toHaveAttribute("aria-invalid");
     expect(input).not.toHaveAttribute("aria-describedby");
   });
 
-  it("reserveErrorSpace: ошибка занимает тот же элемент, поле описано ею", () => {
-    const { rerender, input } = setup({ reserveErrorSpace: true });
+  it("ошибка приходит в тот же элемент, поле описано ею", () => {
+    const { rerender, input } = floating();
     const before = screen.getByRole("alert");
-    rerender(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} reserveErrorSpace error="Не удалось отправить." />);
+    rerender(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} floating buttons={{}} error="Не удалось отправить." />);
     expect(screen.getByRole("alert")).toBe(before);
     expect(before).toHaveTextContent("Не удалось отправить.");
     expect(input).toHaveAttribute("aria-describedby", before.id);
+    expect(input).toHaveAttribute("aria-invalid", "true");
   });
 
-  it("без reserveErrorSpace области alert без ошибки нет (как в D1)", () => {
-    setup();
-    expect(screen.queryByRole("alert")).toBeNull();
+  it("подсказка под полем описывает его; пока есть ошибка, подсказки нет, потом она возвращается", () => {
+    const { rerender, input } = floating({ hint: "⌘Enter — дописать" });
+    expect(screen.getByText("⌘Enter — дописать")).toHaveClass("composer__hint");
+    expect(input).toHaveAccessibleDescription("⌘Enter — дописать");
+    rerender(<Composer value="" onChange={vi.fn()} floating buttons={{}} hint="⌘Enter — дописать" error="Ошибка." />);
+    expect(screen.queryByText("⌘Enter — дописать")).toBeNull();
+    expect(input).toHaveAccessibleDescription("Ошибка.");
+    rerender(<Composer value="" onChange={vi.fn()} floating buttons={{}} hint="⌘Enter — дописать" />);
+    expect(input).toHaveAccessibleDescription("⌘Enter — дописать");
   });
 
-  it("describedBy добавляется к описанию поля, в том числе вместе с ошибкой", () => {
-    const { input, rerender } = setup({ describedBy: "hint-1" });
-    expect(input).toHaveAttribute("aria-describedby", "hint-1");
-    rerender(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} describedBy="hint-1" error="Ошибка." />);
-    const alert = screen.getByRole("alert");
-    expect(input.getAttribute("aria-describedby")).toBe(`${alert.id} hint-1`);
+  it("подсказка без floating не показывается (в главном окне её нет)", () => {
+    setup({ hint: "⌘Enter — дописать" });
+    expect(screen.queryByText("⌘Enter — дописать")).toBeNull();
   });
 });
 

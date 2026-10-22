@@ -6,6 +6,7 @@
     "control": { "$value": "0.5rem", "$description": "Кнопки, поля ввода, строка чата, блок кода внутри плашки." },
     "panel": { "$value": "0.75rem", "$description": "Composer, тост, контекстное меню." },
     "message": { "$value": "0.75rem", "$description": "Плашка сообщения." },
+    "floating": { "$value": "1.5rem", "$description": "Плавающая панель быстрого захвата («пилюля»): 19,5 px при корне 13 px, как у Gemini и ChatGPT (ориентир 18–22 px)." },
     "round": { "$value": "999px", "$description": "Полностью скруглённые элементы: метка дня." }
   }
 }

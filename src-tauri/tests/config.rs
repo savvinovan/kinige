@@ -202,4 +202,38 @@ fn two_windows_without_remote_urls_and_the_capture_window_is_a_hidden_floating_p
     };
     assert_eq!(capture["width"], px("window-width"));
     assert_eq!(capture["height"], px("window-height"));
+    // Окно прозрачное и без системной тени: форму панели и тень рисует CSS (поле под тень — `shadow-margin`).
+    assert_eq!(capture["transparent"], true);
+    assert_eq!(capture["shadow"], false);
+    assert_eq!(
+        px("window-width"),
+        px("panel-width") + 2 * px("shadow-margin")
+    );
+    // Константы Rust (пределы `capture_resize`, ширина, положение верха панели) совпадают с токенами.
+    assert_eq!(px("window-width"), kinige_lib::capture::WINDOW_WIDTH as u64);
+    assert_eq!(
+        px("shadow-margin"),
+        kinige_lib::capture::SHADOW_MARGIN as u64
+    );
+    assert_eq!(
+        px("window-min-height"),
+        kinige_lib::capture::MIN_HEIGHT as u64
+    );
+    assert_eq!(
+        px("window-max-height"),
+        kinige_lib::capture::MAX_HEIGHT as u64
+    );
+    let initial = px("window-height");
+    assert!((px("window-min-height")..=px("window-max-height")).contains(&initial));
+}
+
+#[test]
+fn capture_resize_clamps_the_height_into_the_token_range() {
+    use kinige_lib::capture::{MAX_HEIGHT, MIN_HEIGHT, clamp_height};
+    assert_eq!(clamp_height(172.4), 172.0);
+    assert_eq!(clamp_height(0.0), MIN_HEIGHT);
+    assert_eq!(clamp_height(-50.0), MIN_HEIGHT);
+    assert_eq!(clamp_height(1.0e9), MAX_HEIGHT);
+    assert_eq!(clamp_height(f64::NAN), MIN_HEIGHT);
+    assert_eq!(clamp_height(f64::INFINITY), MIN_HEIGHT);
 }

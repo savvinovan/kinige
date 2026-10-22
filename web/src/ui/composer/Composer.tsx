@@ -29,12 +29,14 @@ interface ComposerProps {
   /** Ошибка отправки: показывается над полем, черновик остаётся. */
   error?: string;
   /**
-   * Место под ошибку занято всегда (одна строка), даже когда ошибки нет: содержимое вокруг не прыгает, когда она появляется.
-   * Область `role="alert"` в дереве всегда, текст в неё приходит позже — так диктор объявляет ошибку надёжно.
+   * Плавающая панель (окно быстрого захвата): поле без своей заливки и рамки, полей и ограничения ширины колонки: фон, рамку
+   * и скругление задаёт панель вокруг. Ошибка и подсказка стоят строкой ПОД полем: когда они появляются, окно растёт вниз, а
+   * поле остаётся на месте. Область `role="alert"` в дереве всегда (пустая, высоты нет), текст в неё приходит позже — так
+   * диктор объявляет ошибку надёжно.
    */
-  reserveErrorSpace?: boolean;
-  /** Ещё один элемент, описывающий поле (id; например, подсказка «⌘Enter — дописать»): добавляется к описанию из ошибки. */
-  describedBy?: string;
+  floating?: boolean;
+  /** Подсказка под полем в плавающей панели («⌘Enter — дописать»): поле описано ею; пока есть ошибка, подсказки нет. */
+  hint?: string;
   placeholder?: string;
   /** Фокус в поле при показе: после отправки и при открытии чата. */
   autoFocus?: boolean;
@@ -59,13 +61,14 @@ export function Composer({
   buttons = { attach: true, emoji: true, voice: true },
   viewOnly = false,
   error,
-  reserveErrorSpace = false,
-  describedBy,
+  floating = false,
+  hint,
   placeholder,
   autoFocus,
 }: ComposerProps) {
   const { t } = useTranslation();
   const errorId = useId();
+  const hintId = useId();
   const input = useRef<HTMLTextAreaElement>(null);
   const hasText = value.trim() !== "";
 
@@ -91,13 +94,16 @@ export function Composer({
     if (hasText) onSubmit();
   };
 
+  const errorLine = (
+    <p className="composer__error" id={errorId} role="alert">
+      {error}
+    </p>
+  );
+  const hintShown = floating && !error && hint;
+
   return (
-    <div className="composer">
-      {error || reserveErrorSpace ? (
-        <p className="composer__error" id={errorId} role="alert">
-          {error}
-        </p>
-      ) : null}
+    <div className={floating ? "composer composer--floating" : "composer"}>
+      {error && !floating ? errorLine : null}
       <div className={`composer__bar${error ? " composer__bar--invalid" : ""}`}>
         {buttons.attach ? <IconButton icon="attach" label={t("composer.attach")} unavailable={viewOnly} /> : null}
         {/* Копия текста в ::after задаёт высоту поля: оно растёт без скриптов измерения. */}
@@ -111,7 +117,7 @@ export function Composer({
             aria-label={t("composer.label")}
             autoFocus={autoFocus}
             aria-invalid={error ? true : undefined}
-            aria-describedby={[error ? errorId : null, describedBy ?? null].filter(Boolean).join(" ") || undefined}
+            aria-describedby={error ? errorId : hintShown ? hintId : undefined}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={onKeyDown}
           />
@@ -128,6 +134,16 @@ export function Composer({
           </span>
         ) : null}
       </div>
+      {floating ? (
+        <div className="composer__status">
+          {errorLine}
+          {hintShown ? (
+            <p className="composer__hint" id={hintId}>
+              {hint}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

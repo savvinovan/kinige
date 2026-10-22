@@ -62,6 +62,8 @@ export class MockApi implements KinigeApi {
   failNextCapture: ErrorCode | null = null;
   /** Окно захвата спрятано командой `captureHide` столько раз. */
   hideCount = 0;
+  /** Высоты окна захвата, которые страница просила командой `captureResize`. */
+  readonly resizeLog: number[] = [];
   /** Записи режима записи сочетания: `true` при начале, `false` в конце. */
   readonly recordingLog: boolean[] = [];
   pickedFolder: string | null;
@@ -237,6 +239,11 @@ export class MockApi implements KinigeApi {
 
   captureHide(): Promise<void> {
     this.hideCount += 1;
+    return Promise.resolve();
+  }
+
+  captureResize(height: number): Promise<void> {
+    this.resizeLog.push(height);
     return Promise.resolve();
   }
 

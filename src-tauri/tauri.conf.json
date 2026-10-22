@@ -23,18 +23,19 @@
         "label": "capture",
         "title": "Kinige Capture",
         "url": "index.html#capture",
-        "width": 560,
-        "height": 360,
+        "width": 584,
+        "height": 112,
         "visible": false,
         "focus": false,
         "decorations": false,
+        "transparent": true,
         "resizable": false,
         "maximizable": false,
         "minimizable": false,
         "alwaysOnTop": true,
         "visibleOnAllWorkspaces": true,
         "skipTaskbar": true,
-        "shadow": true
+        "shadow": false
       }
     ],
     "security": {

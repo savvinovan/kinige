@@ -72,4 +72,9 @@ export interface KinigeApi {
   captureSaveDraft(body: string): Promise<void>;
   /** Спрятать окно (после отправки, Esc, потери фокуса). */
   captureHide(): Promise<void>;
+  /**
+   * Подогнать высоту окна под содержимое (логические px, вместе с прозрачным полем под тень). Rust ограничивает значение
+   * диапазоном `layout.capture.window-min-height … window-max-height`, ширина и верх окна не меняются.
+   */
+  captureResize(height: number): Promise<void>;
 }

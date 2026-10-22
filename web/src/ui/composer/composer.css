@@ -116,3 +116,47 @@
   color: var(--color-text-tertiary);
   opacity: 1;
 }
+
+/* Плавающая панель быстрого захвата (floating): заливку, рамку и скругление даёт панель вокруг, поле — только строка внутри неё.
+   Своей линии фокуса у строки нет: в окне одно поле, и оно всегда в фокусе (каретка акцентного цвета; кнопка «Отправить»
+   получает кольцо с клавиатуры, как обычно). */
+.composer--floating {
+  padding: 0;
+  background: transparent;
+}
+
+.composer--floating > * {
+  max-width: none;
+}
+
+.composer--floating .composer__bar,
+.composer--floating .composer__bar:has(.composer__input:focus) {
+  min-height: 0;
+  padding: 0 0 0 var(--space-2);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Строка под полем: пустая высоты не имеет (alert всегда в дереве), с текстом растёт вниз — поле остаётся на месте. */
+.composer--floating .composer__error:empty {
+  min-height: 0;
+}
+
+.composer--floating .composer__error,
+.composer__hint {
+  margin: 0;
+}
+
+.composer--floating .composer__error:not(:empty),
+.composer__hint {
+  padding: var(--space-1) var(--space-2) 0;
+}
+
+.composer__hint {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+  line-height: var(--type-meta-line-height);
+}

@@ -102,3 +102,12 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 # scripts/visual-tests.sh --update: 125 passed; новых эталонов 4 (истории «Окно захвата — длинное слово в поле» и «Поле ввода — длинное слово», обычный и крупный), остальные не изменились
 # Линуксовый аналог CI (Docker ubuntu:24.04, --no-cache): fmt, clippy -D warnings, test — ошибок 0
 # WebKit (Playwright 1.64.1, webkit-2370): слово без пробелов в 300 000 знаков давало scrollWidth 6173 при clientWidth 447 (горизонтальная полоса, как на снимке 30); до 100 000 знаков переполнения нет; с overflow-x: hidden полосы нет, перенос по символам прежний
+
+# Раунд 4 (22.10.2026, по приёмке: окно захвата — скруглённая плавающая панель)
+# cargo fmt --all --check: OK; cargo clippy --workspace --all-targets -- -D warnings: без замечаний
+# cargo test --workspace: все пакеты ok; в src-tauri: config 10 (в т.ч. прозрачность, shadow=false, window-width = panel-width + 2 × shadow-margin, константы Rust = токены, clamp высоты), ipc 12 (шесть команд окна захвата, отказ set_size/set_position/set_min_size/set_max_size/set_resizable, capture_resize принимает только число)
+# cargo build -p kinige-domain --target wasm32-unknown-unknown: ok
+# npm run tokens: tokens.css обновлён и закоммичен (radius.floating, opacity.panel-edge, layout.capture.*)
+# npm run typecheck, npm run lint: без ошибок; npm test: 704 passed (704) — новые тесты: Composer floating (область alert под полем, подсказка, ошибка вместо подсказки), CapturePanel (одна строка без записей, подсказка под полем, высота окна), CaptureWindow (capture_resize, сбой изменения размера)
+# npm run build-storybook: ok; scripts/visual-tests.sh --update: 126 passed; обновлены эталоны всех историй «Окно захвата» (обычный и крупный текст), добавлена «Есть цель и текст»
+# Линуксовый аналог CI (Docker ubuntu:24.04, --no-cache): fmt, clippy -D warnings, test — ошибок 0
