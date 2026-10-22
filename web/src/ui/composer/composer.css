@@ -76,6 +76,9 @@
   flex: 1;
   min-width: 0;
   max-height: var(--layout-composer-max-height);
+  /* Текст всегда переносится (`overflow-wrap: anywhere` ниже), горизонтальная прокрутка не нужна: у WebKit на очень длинном слове
+     (сотни тысяч знаков) ширина содержимого всё же выходит за поле, и внизу появлялась полоса прокрутки. */
+  overflow-x: hidden;
   overflow-y: auto;
 }
 

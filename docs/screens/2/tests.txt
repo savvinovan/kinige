@@ -93,3 +93,12 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ошибок сборки и тестов: 0
+
+# Раунд 3 (22.10.2026, после живого прогона J): удалён цикл `rekey`, `overflow-x: hidden` у поля ввода, истории «длинное слово»
+# cargo fmt --all --check: OK; cargo clippy --workspace --all-targets -- -D warnings: без замечаний
+# cargo test --workspace: все пакеты ok (13, 0, 9, 11, 96, 4, 1, 10, 6, 3, 7, 2, 2, 0 (1 ignored), 13, 17 тестов)
+# cargo build -p kinige-domain --target wasm32-unknown-unknown: ok
+# npm run typecheck, npm run lint: без ошибок; npm test: 699 passed (699); npm run build-storybook: ok
+# scripts/visual-tests.sh --update: 125 passed; новых эталонов 4 (истории «Окно захвата — длинное слово в поле» и «Поле ввода — длинное слово», обычный и крупный), остальные не изменились
+# Линуксовый аналог CI (Docker ubuntu:24.04, --no-cache): fmt, clippy -D warnings, test — ошибок 0
+# WebKit (Playwright 1.64.1, webkit-2370): слово без пробелов в 300 000 знаков давало scrollWidth 6173 при clientWidth 447 (горизонтальная полоса, как на снимке 30); до 100 000 знаков переполнения нет; с overflow-x: hidden полосы нет, перенос по символам прежний

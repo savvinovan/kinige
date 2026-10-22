@@ -4,8 +4,8 @@
 use kinige_domain::{ApiError, CaptureOutcome, CaptureState, ErrorCode};
 use kinige_store::{Now, Store, StoreError};
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
-use std::time::{Duration, Instant};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Runtime, State};
 
 pub const CAPTURE_LABEL: &str = "capture";
@@ -17,13 +17,6 @@ pub const ENTRIES_CHANGED: &str = "entries-changed";
 const TOP_FRACTION: f64 = 0.28;
 /// Сколько ждать, пока окно захвата само сохранит черновик и спрячется, прежде чем спрятать его принудительно.
 const HIDE_GRACE: Duration = Duration::from_millis(600);
-/// Сколько панель должна продержаться ключевой, чтобы следующая потеря статуса считалась уходом пользователя, а не
-/// действием системы: сразу после показа система, сообщая о смене активной программы, снимает статус через несколько
-/// миллисекунд.
-const STABLE_KEY: Duration = Duration::from_millis(300);
-/// Сколько раз после показа возвращать панели ключевой статус, прежде чем сдаться (панель остаётся на экране, в неё можно щёлкнуть).
-#[cfg(target_os = "macos")]
-const MAX_REKEYS: u32 = 20;
 
 type ApiResult<T> = Result<T, ApiError>;
 
@@ -40,10 +33,6 @@ pub struct CaptureShell {
     pending: Mutex<Option<Pending>>,
     /// Растёт при каждом показе: отложенное принудительное скрытие не должно спрятать окно, показанное заново.
     shown: AtomicU64,
-    /// Когда панель в последний раз стала ключевой (`None` — с показа не становилась).
-    key_since: Mutex<Option<Instant>>,
-    /// Сколько раз с показа панели возвращали ключевой статус.
-    rekeys: AtomicU32,
 }
 
 struct Pending {
@@ -116,11 +105,6 @@ fn show_capture_on_main<R: Runtime>(app: &AppHandle<R>) {
     };
     if let Some(shell) = app.try_state::<CaptureShell>() {
         shell.shown.fetch_add(1, Ordering::SeqCst);
-        shell.rekeys.store(0, Ordering::SeqCst);
-        *shell
-            .key_since
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
     }
     trace("show");
     place_on_cursor_screen(app, &window);
@@ -190,52 +174,17 @@ pub fn request_hide<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// Окно захвата стало ключевым.
-pub fn on_capture_key<R: Runtime>(app: &AppHandle<R>) {
+/// Окно захвата стало ключевым (только метка в журнале `KINIGE_TRACE`).
+pub fn on_capture_key<R: Runtime>(_app: &AppHandle<R>) {
     trace("key");
-    if let Some(shell) = app.try_state::<CaptureShell>() {
-        *shell
-            .key_since
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
-    }
 }
 
-/// Окно захвата потеряло ключевой статус. Если до этого оно было ключевым достаточно долго — это уход пользователя (щелчок
-/// в другое окно, другая программа): окно прячется с сохранением черновика (§5.1). Если оно не успело продержаться —
-/// статус снимает система сразу после показа (смена активной программы): статус возвращается, несколько раз.
+/// Окно захвата потеряло ключевой статус (щелчок в другое окно, другая программа): прячется с сохранением черновика
+/// (§5.1). Если окно уже спрятано, `request_hide` ничего не делает.
 pub fn on_capture_blur<R: Runtime>(app: &AppHandle<R>) {
     trace("resign");
-    let Some(shell) = app.try_state::<CaptureShell>() else {
-        return;
-    };
-    let stable = shell
-        .key_since
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .is_some_and(|since| since.elapsed() >= STABLE_KEY);
-    if stable {
-        request_hide(app);
-    } else {
-        rekey(app, &shell);
-    }
+    request_hide(app);
 }
-
-/// Возвращает панели ключевой статус (до `MAX_REKEYS` раз с показа); только macOS, где окно захвата — панель.
-#[cfg(target_os = "macos")]
-fn rekey<R: Runtime>(app: &AppHandle<R>, shell: &CaptureShell) {
-    if shell.rekeys.fetch_add(1, Ordering::SeqCst) < MAX_REKEYS {
-        let app = app.clone();
-        std::thread::spawn(move || {
-            let main_app = app.clone();
-            let _ =
-                app.run_on_main_thread(move || crate::panel::make_key(&main_app, CAPTURE_LABEL));
-        });
-    }
-}
-
-#[cfg(not(target_os = "macos"))]
-fn rekey<R: Runtime>(_app: &AppHandle<R>, _shell: &CaptureShell) {}
 
 /// Хоткей захвата: окно закрыто — показать, открыто — спрятать с сохранением черновика.
 pub fn toggle_capture<R: Runtime>(app: &AppHandle<R>) {

@@ -84,13 +84,6 @@ pub fn show<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
     })
 }
 
-/// Возвращает панели ключевой статус (система сняла его в первые мгновения после показа).
-pub fn make_key<R: Runtime>(app: &AppHandle<R>, label: &str) {
-    if let Some(panel) = panel_of(app, label) {
-        panel.make_key_window();
-    }
-}
-
 /// Прячет панель.
 pub fn hide<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
     panel_of(app, label).is_some_and(|panel| {
