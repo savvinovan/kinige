@@ -7,7 +7,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   reporter: [["list"]],
-  use: { baseURL: "http://127.0.0.1:6007" },
+  // reducedMotion: переходы дизайн-системы при Reduce Motion нулевые (themes.css), и снимок не может поймать их на середине.
+  // Без этого поле ввода в фокусе (смена заливки + линия фокуса у скруглённого угла) в ~1% прогонов давало расхождение в 2 пикселя
+  // на ±1 уровень: `animations: "disabled"` не всегда успевает довести CSS-переход до конца.
+  use: { baseURL: "http://127.0.0.1:6007", reducedMotion: "reduce" },
   // threshold: 0 — по умолчанию 0.2, и тогда заметная смена фона проходит как «то же самое».
   expect: { toHaveScreenshot: { animations: "disabled", threshold: 0 } },
   projects: [
