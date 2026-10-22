@@ -146,7 +146,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const openSettings = () => {
     api
       .getSettings()
-      .then((fresh) => setSettings((old) => ({ ...old, mirror: fresh.mirror })))
+      .then((fresh) => setSettings((old) => ({ ...old, mirror: fresh.mirror, shortcuts: fresh.shortcuts })))
       .catch(() => undefined)
       .finally(() => setSettingsOpen(true));
   };
