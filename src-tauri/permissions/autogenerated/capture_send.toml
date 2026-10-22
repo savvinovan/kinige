@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-capture-send"
+description = "Enables the capture_send command without any pre-configured scope."
+commands.allow = ["capture_send"]
+
+[[permission]]
+identifier = "deny-capture-send"
+description = "Denies the capture_send command without any pre-configured scope."
+commands.deny = ["capture_send"]

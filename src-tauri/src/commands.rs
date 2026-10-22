@@ -1,10 +1,11 @@
 //! Команды Tauri — тонкий слой над `kinige-store` и `kinige-domain` (ТЗ §3.2). Бизнес-правил здесь нет. Ошибки уходят
 //! фронтенду кодами (`ApiError`), тексты — в файлах переводов.
 
+use crate::hotkeys::Hotkeys;
 use kinige_domain::link::{LinkError, validate_external_url};
 use kinige_domain::{
     ApiError, AppInfo, ChatSummary, ErrorCode, FeedCursor, Language, MessagePage, MessageView,
-    Settings, TextSize,
+    Settings, ShortcutKind, TextSize,
 };
 use kinige_store::{DEFAULT_PAGE, Now, Store, StoreError};
 use tauri::{AppHandle, Runtime, State};
@@ -65,9 +66,62 @@ pub fn send_message(
         .map_err(api)
 }
 
+/// Настройки: размер текста, состояние копии и сочетания клавиш с их состоянием «назначено / занято» от системы.
 #[tauri::command(async)]
-pub fn get_settings(store: State<'_, Store>) -> ApiResult<Settings> {
-    store.get_settings().map_err(api)
+pub fn get_settings(store: State<'_, Store>, hotkeys: State<'_, Hotkeys>) -> ApiResult<Settings> {
+    settings_with_shortcuts(&store, &hotkeys)
+}
+
+fn settings_with_shortcuts(store: &Store, hotkeys: &Hotkeys) -> ApiResult<Settings> {
+    let mut settings = store.get_settings().map_err(api)?;
+    hotkeys.overlay(&mut settings);
+    Ok(settings)
+}
+
+/// Черновик поля ввода чата (§5): переживает перезапуск.
+#[tauri::command(async)]
+pub fn get_draft(store: State<'_, Store>, chat_id: String) -> ApiResult<String> {
+    store.get_chat_draft(&chat_id).map_err(api)
+}
+
+#[tauri::command(async)]
+pub fn save_draft(store: State<'_, Store>, chat_id: String, body: String) -> ApiResult<()> {
+    store
+        .set_chat_draft(&chat_id, &body, &Now::system())
+        .map_err(api)
+}
+
+/// Смена сочетания клавиш: проверка до сохранения, регистрация в системе, сохранение. Отказ — код ошибки, прежнее
+/// сочетание продолжает работать. Ответ — настройки целиком.
+#[tauri::command(async)]
+pub fn set_shortcut(
+    store: State<'_, Store>,
+    hotkeys: State<'_, Hotkeys>,
+    kind: ShortcutKind,
+    accelerator: String,
+) -> ApiResult<Settings> {
+    hotkeys
+        .change(&store, kind, &accelerator)
+        .map_err(ApiError::from)?;
+    settings_with_shortcuts(&store, &hotkeys)
+}
+
+/// «Сбросить»: сочетание по умолчанию с теми же проверками.
+#[tauri::command(async)]
+pub fn reset_shortcut(
+    store: State<'_, Store>,
+    hotkeys: State<'_, Hotkeys>,
+    kind: ShortcutKind,
+) -> ApiResult<Settings> {
+    hotkeys.reset(&store, kind).map_err(ApiError::from)?;
+    settings_with_shortcuts(&store, &hotkeys)
+}
+
+/// В «Настройках» началась (`true`) или закончилась запись нового сочетания: на это время хоткеи не открывают окно захвата,
+/// иначе нажать уже назначенное сочетание в поле записи было бы нельзя.
+#[tauri::command]
+pub fn shortcut_recording(hotkeys: State<'_, Hotkeys>, active: bool) {
+    hotkeys.set_recording(active);
 }
 
 #[tauri::command(async)]
@@ -81,6 +135,7 @@ pub fn set_text_size(store: State<'_, Store>, size: TextSize) -> ApiResult<()> {
 pub fn choose_mirror_folder<R: Runtime>(
     app: AppHandle<R>,
     store: State<'_, Store>,
+    hotkeys: State<'_, Hotkeys>,
 ) -> ApiResult<Settings> {
     let mut dialog = app.dialog().file();
     if let Some(current) = store.get_settings().map_err(api)?.mirror.folder {
@@ -99,7 +154,7 @@ pub fn choose_mirror_folder<R: Runtime>(
         }
         store.set_mirror_dir(&path).map_err(api)?;
     }
-    store.get_settings().map_err(api)
+    settings_with_shortcuts(&store, &hotkeys)
 }
 
 /// Открывает ссылку из записи в системном браузере. Схема проверяется в `kinige-domain`: только `http`, `https`, `mailto`.

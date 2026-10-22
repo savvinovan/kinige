@@ -17,6 +17,16 @@ fn main() {
         "set_text_size",
         "choose_mirror_folder",
         "open_external_url",
+        "get_draft",
+        "save_draft",
+        "set_shortcut",
+        "reset_shortcut",
+        "shortcut_recording",
+        "capture_state",
+        "capture_send",
+        "capture_append",
+        "capture_save_draft",
+        "capture_hide",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("не удалось выполнить tauri-build");

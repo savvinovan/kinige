@@ -159,6 +159,23 @@ impl Store {
         Ok(outcome)
     }
 
+    /// Хоткей буфера: текст из буфера обмена — новая запись в Inbox. Черновики не трогаются: сохранение буфера не отправка
+    /// набранного текста.
+    pub fn save_clipboard(&self, text: &str, now: &Now) -> Result<MessageView, StoreError> {
+        let body = groups::normalize_body(text)?;
+        let now = now.clone();
+        let message = self.write(move |conn| {
+            let tx = conn
+                .transaction_with_behavior(TransactionBehavior::Immediate)
+                .map_err(write_err)?;
+            let message = insert_new_message(&tx, INBOX_ID, &body, &now)?;
+            tx.commit().map_err(write_err)?;
+            Ok(message)
+        })?;
+        self.wake_mirror();
+        Ok(message)
+    }
+
     /// ⌘Enter в окне захвата: правило решает Rust в той же транзакции (`kinige_domain::append::can_append`). Есть цель —
     /// текст дописывается новым абзацем: первая перезапись группы `body` (ADR-0001 §3.3, §3.4); нет цели — новая запись.
     /// Ответ сообщает, что сделано. Если после склейки группа длиннее предела — `TooLarge`, ничего не записано.

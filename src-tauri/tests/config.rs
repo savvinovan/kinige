@@ -40,40 +40,97 @@ fn permission(command: &str) -> String {
     format!("allow-{}", command.replace('_', "-"))
 }
 
-#[test]
-fn main_capability_lists_exactly_the_commands_of_the_slice() {
-    let capability = read("capabilities/main.json");
-    assert_eq!(capability["windows"], serde_json::json!(["main"]));
-    let granted: Vec<String> = capability["permissions"]
+fn granted(path: &str) -> Vec<String> {
+    read(path)["permissions"]
         .as_array()
         .unwrap()
         .iter()
         .map(|p| p.as_str().unwrap().to_string())
+        .collect()
+}
+
+#[test]
+fn command_lists_are_consistent() {
+    let joined: Vec<&str> = kinige_lib::MAIN_COMMANDS
+        .iter()
+        .chain(kinige_lib::CAPTURE_COMMANDS)
+        .copied()
         .collect();
-    let expected: Vec<String> = kinige_lib::COMMANDS.iter().map(|c| permission(c)).collect();
-    assert_eq!(
-        granted, expected,
-        "главному окну выданы только команды слайса: без core:default, масок и разрешений плагинов"
-    );
-    for permission in &granted {
+    assert_eq!(joined, kinige_lib::COMMANDS);
+    for command in kinige_lib::CAPTURE_COMMANDS {
         assert!(
-            permission.starts_with("allow-") && !permission.contains(':'),
-            "{permission}: разрешения плагинов (opener:, dialog:) и core: окну не выдаются"
+            command.starts_with("capture_"),
+            "{command}: команды окна захвата — с префиксом"
+        );
+        assert!(
+            !kinige_lib::MAIN_COMMANDS.contains(command),
+            "{command} выдана и главному окну"
         );
     }
 }
 
 #[test]
-fn there_is_exactly_one_capability_file() {
+fn main_capability_lists_exactly_its_commands_and_the_event_subscription() {
+    let capability = read("capabilities/main.json");
+    assert_eq!(capability["windows"], serde_json::json!(["main"]));
+    let granted = granted("capabilities/main.json");
+    let mut expected: Vec<String> = kinige_lib::MAIN_COMMANDS
+        .iter()
+        .map(|c| permission(c))
+        .collect();
+    // Слушать событие «записи изменились» (§12.3); отправлять события и управлять окнами главному окну нельзя.
+    expected.push("core:event:allow-listen".into());
+    expected.push("core:event:allow-unlisten".into());
+    assert_eq!(
+        granted, expected,
+        "главному окну выданы только свои команды и подписка на событие: без core:default, масок и разрешений плагинов"
+    );
+    for permission in &granted {
+        assert!(
+            permission.starts_with("allow-")
+                || matches!(
+                    permission.as_str(),
+                    "core:event:allow-listen" | "core:event:allow-unlisten"
+                ),
+            "{permission}: разрешения плагинов (opener:, dialog:, global-shortcut:) и прочие core: окну не выдаются"
+        );
+        assert!(
+            !permission.contains("capture"),
+            "{permission}: команд захвата у главного окна нет"
+        );
+    }
+}
+
+#[test]
+fn capture_capability_lists_exactly_the_capture_commands() {
+    let capability = read("capabilities/capture.json");
+    assert_eq!(capability["windows"], serde_json::json!(["capture"]));
+    let granted = granted("capabilities/capture.json");
+    let expected: Vec<String> = kinige_lib::CAPTURE_COMMANDS
+        .iter()
+        .map(|c| permission(c))
+        .collect();
+    assert_eq!(granted, expected);
+    for permission in &granted {
+        assert!(
+            permission.starts_with("allow-capture-") && !permission.contains(':'),
+            "{permission}: окну захвата не выдаются ни чужие команды, ни core:, ни плагины (события в том числе)"
+        );
+    }
+}
+
+#[test]
+fn there_are_exactly_two_capability_files() {
     let dir = format!("{}/capabilities", env!("CARGO_MANIFEST_DIR"));
-    let files: Vec<String> = std::fs::read_dir(dir)
+    let mut files: Vec<String> = std::fs::read_dir(dir)
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
+    files.sort();
     assert_eq!(
         files,
-        ["main.json"],
-        "второго окна и своей capability в слайсе 1 нет"
+        ["capture.json", "main.json"],
+        "у каждого окна своя capability"
     );
 }
 
@@ -96,13 +153,32 @@ fn build_script_manifest_matches_the_command_list() {
 }
 
 #[test]
-fn only_one_window_without_remote_urls() {
+fn two_windows_without_remote_urls_and_the_capture_window_is_a_hidden_floating_panel() {
     let conf = read("tauri.conf.json");
     let windows = conf["app"]["windows"].as_array().unwrap();
-    assert_eq!(windows.len(), 1);
+    assert_eq!(windows.len(), 2);
     assert_eq!(windows[0]["label"], "main");
     assert!(
         windows[0].get("url").is_none(),
-        "окно грузит только страницу приложения"
+        "главное окно грузит только страницу приложения"
     );
+
+    let capture = &windows[1];
+    assert_eq!(capture["label"], "capture");
+    let url = capture["url"].as_str().unwrap();
+    assert!(
+        !url.contains("://") && !url.starts_with("//"),
+        "окно захвата грузит страницу приложения, а не внешний адрес: {url}"
+    );
+    assert_eq!(url, "index.html#capture");
+    assert_eq!(
+        capture["visible"], false,
+        "создаётся скрытым: показ мгновенный"
+    );
+    assert_eq!(capture["decorations"], false);
+    assert_eq!(capture["alwaysOnTop"], true);
+    assert_eq!(capture["visibleOnAllWorkspaces"], true);
+    assert_eq!(capture["skipTaskbar"], true);
+    assert_eq!(capture["resizable"], false);
+    assert_eq!(capture["width"], 560);
 }

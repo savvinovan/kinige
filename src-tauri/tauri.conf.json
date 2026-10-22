@@ -17,6 +17,23 @@
         "height": 800,
         "minWidth": 640,
         "minHeight": 400
+      },
+      {
+        "label": "capture",
+        "title": "Kinige Capture",
+        "url": "index.html#capture",
+        "width": 560,
+        "height": 360,
+        "visible": false,
+        "focus": false,
+        "decorations": false,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "alwaysOnTop": true,
+        "visibleOnAllWorkspaces": true,
+        "skipTaskbar": true,
+        "shadow": true
       }
     ],
     "security": {
