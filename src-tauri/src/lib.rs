@@ -134,16 +134,7 @@ fn on_shortcut<R: Runtime>(app: &tauri::AppHandle<R>, pressed: &Shortcut) {
             .is_ok_and(|shortcut| shortcut == *pressed)
     });
     match kind {
-        // Окно показывается не внутри обработки нажатия: пока система доставляет событие горячей клавиши, она сама снимает
-        // ключевой статус с окна, которое только что стало ключевым.
-        Some(ShortcutKind::Capture) => {
-            let app = app.clone();
-            std::thread::spawn(move || {
-                std::thread::sleep(std::time::Duration::from_millis(250));
-                let main_app = app.clone();
-                let _ = app.run_on_main_thread(move || capture::toggle_capture(&main_app));
-            });
-        }
+        Some(ShortcutKind::Capture) => capture::toggle_capture(app),
         Some(ShortcutKind::Clipboard) => capture::save_clipboard(app),
         None => {}
     }
