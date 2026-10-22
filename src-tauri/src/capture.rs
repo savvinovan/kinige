@@ -4,7 +4,7 @@
 use kinige_domain::{ApiError, CaptureOutcome, CaptureState, ErrorCode};
 use kinige_store::{Now, Store, StoreError};
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Runtime, State};
 
@@ -17,11 +17,12 @@ pub const ENTRIES_CHANGED: &str = "entries-changed";
 const TOP_FRACTION: f64 = 0.28;
 /// Сколько ждать, пока окно захвата само сохранит черновик и спрячется, прежде чем спрятать его принудительно.
 const HIDE_GRACE: Duration = Duration::from_millis(600);
-/// Сколько после показа потеря фокуса не считается уходом пользователя.
-const BLUR_GRACE: Duration = Duration::from_millis(250);
-/// Повторы `set_focus` после показа, если окно не получило фокус, и пауза перед каждым.
-const FOCUS_RETRIES: usize = 3;
-const FOCUS_RETRY_DELAY: Duration = Duration::from_millis(150);
+/// Сколько панель должна продержаться ключевой, чтобы следующая потеря статуса считалась уходом пользователя, а не
+/// действием системы: сразу после показа система, сообщая о смене активной программы, снимает статус через несколько
+/// миллисекунд.
+const STABLE_KEY: Duration = Duration::from_millis(300);
+/// Сколько раз после показа возвращать панели ключевой статус, прежде чем сдаться (панель остаётся на экране, в неё можно щёлкнуть).
+const MAX_REKEYS: u32 = 20;
 
 type ApiResult<T> = Result<T, ApiError>;
 
@@ -34,15 +35,14 @@ fn api(error: StoreError) -> ApiError {
 /// Состояние окна захвата.
 #[derive(Default)]
 pub struct CaptureShell {
-    /// Приложение было активным, когда окно захвата показали: тогда при скрытии прячется только оно, иначе приложение
-    /// скрывается целиком и фокус возвращается прежней программе.
-    app_was_active: AtomicBool,
     /// Текст буфера и ошибка при сбое записи: окно открывается с ними один раз.
     pending: Mutex<Option<Pending>>,
     /// Растёт при каждом показе: отложенное принудительное скрытие не должно спрятать окно, показанное заново.
     shown: AtomicU64,
-    /// Когда окно показано в последний раз: потеря фокуса в первые мгновения после показа — не уход пользователя.
-    shown_at: Mutex<Option<Instant>>,
+    /// Когда панель в последний раз стала ключевой (`None` — с показа не становилась).
+    key_since: Mutex<Option<Instant>>,
+    /// Сколько раз с показа панели возвращали ключевой статус.
+    rekeys: AtomicU32,
 }
 
 struct Pending {
@@ -72,6 +72,7 @@ pub fn notify_entries_changed<R: Runtime>(app: &AppHandle<R>) {
     let _ = app.emit_to(MAIN_LABEL, ENTRIES_CHANGED, ());
 }
 
+/// Приложение активно: одно из его окон — ключевое.
 fn app_is_active<R: Runtime>(app: &AppHandle<R>) -> bool {
     app.webview_windows()
         .values()
@@ -96,72 +97,85 @@ fn place_on_cursor_screen<R: Runtime>(app: &AppHandle<R>, window: &tauri::Webvie
     let _ = window.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
 }
 
+/// Журнал жизни окна захвата для проверки в живом окне: печатается только при `KINIGE_TRACE=1` (без текста записей).
+pub fn trace(what: &str) {
+    if std::env::var_os("KINIGE_TRACE").is_some() {
+        let ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() % 100_000);
+        eprintln!("kinige-trace {ms:05} {what}");
+    }
+}
+
 /// Показывает окно захвата поверх всех окон на экране с курсором. Окно создано скрытым при старте: показ мгновенный.
+/// На macOS это панель без активации приложения (`panel`): прежняя программа остаётся активной, окно получает ввод.
 pub fn show_capture<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(CAPTURE_LABEL) else {
         return;
     };
     if let Some(shell) = app.try_state::<CaptureShell>() {
-        shell
-            .app_was_active
-            .store(app_is_active(app), Ordering::SeqCst);
         shell.shown.fetch_add(1, Ordering::SeqCst);
+        shell.rekeys.store(0, Ordering::SeqCst);
         *shell
-            .shown_at
+            .key_since
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+    }
+    trace("show");
+    // Пока приложение не активно, видимое главное окно мешает панели остаться ключевой: система сразу снимает с неё ключевой
+    // статус (проверено на macOS 26). Поэтому главное окно в этот момент прячется, как после закрытия крестиком; вернуть
+    // его — Dock, меню значка или второй запуск.
+    #[cfg(target_os = "macos")]
+    if !app_is_active(app)
+        && let Some(main) = app.get_webview_window(MAIN_LABEL)
+    {
+        let _ = main.hide();
     }
     place_on_cursor_screen(app, &window);
-    let _ = window.show();
-    let _ = window.set_focus();
-    // Окно создано скрытым и не сфокусированным: без этого вызова клавиатура остаётся у окна, а не у страницы (курсор в
-    // поле виден, но символы не печатаются).
-    let webview: &tauri::Webview<R> = window.as_ref();
-    let _ = webview.set_focus();
+    #[cfg(target_os = "macos")]
+    let as_panel = crate::panel::show(app, CAPTURE_LABEL);
+    #[cfg(not(target_os = "macos"))]
+    let as_panel = false;
+    if !as_panel {
+        let _ = window.show();
+        let _ = window.set_focus();
+        // Окно создано скрытым и не сфокусированным: без этого вызова клавиатура остаётся у окна, а не у страницы.
+        let webview: &tauri::Webview<R> = window.as_ref();
+        let _ = webview.set_focus();
+    }
     // Страница узнаёт о показе без IPC (у окна нет права слушать события): перечитывает состояние и ставит курсор в поле.
     let _ = window.eval("window.dispatchEvent(new Event('kinige-capture-shown'))");
-    // Система может отдать фокус не сразу (macOS 14+ активирует приложения «кооперативно»): несколько повторов.
-    std::thread::spawn(move || {
-        for _ in 0..FOCUS_RETRIES {
-            std::thread::sleep(FOCUS_RETRY_DELAY);
-            if window.is_focused().unwrap_or(true) || !window.is_visible().unwrap_or(false) {
-                return;
-            }
-            let _ = window.set_focus();
-            let webview: &tauri::Webview<R> = window.as_ref();
-            let _ = webview.set_focus();
-        }
-    });
 }
 
-/// Прячет окно захвата. Если до показа активной была другая программа — приложение скрывается целиком (macOS возвращает
-/// фокус прежней программе); окно скрывается первым, чтобы система не вернула его при следующей активации.
+/// Прячет окно захвата. Приложение не активировалось (панель), поэтому прежняя программа остаётся активной и фокус
+/// возвращается ей сам.
 pub fn hide_capture<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window(CAPTURE_LABEL) else {
         return;
     };
-    eprintln!("TRACE hide_capture visible={:?}", window.is_visible());
     if !window.is_visible().unwrap_or(false) {
         return;
     }
-    let _ = window.hide();
-    let was_active = app
-        .try_state::<CaptureShell>()
-        .is_none_or(|shell| shell.app_was_active.load(Ordering::SeqCst));
+    trace("hide");
     #[cfg(target_os = "macos")]
-    if !was_active {
-        let _ = app.hide();
-    }
+    let as_panel = crate::panel::hide(app, CAPTURE_LABEL);
     #[cfg(not(target_os = "macos"))]
-    let _ = was_active;
+    let as_panel = false;
+    if !as_panel {
+        let _ = window.hide();
+    }
 }
 
 /// Просит страницу окна сохранить черновик и спрятаться (`capture_hide`); если страница не ответила — прячет принудительно.
 pub fn request_hide<R: Runtime>(app: &AppHandle<R>) {
-    eprintln!("TRACE request_hide");
     let Some(window) = app.get_webview_window(CAPTURE_LABEL) else {
         return;
     };
+    // Спрятанное окно прятать не нужно (в том числе когда потеря ключевого статуса — следствие самого скрытия).
+    if !window.is_visible().unwrap_or(false) {
+        return;
+    }
+    trace("request-hide");
     let _ = window.eval("window.dispatchEvent(new Event('kinige-capture-hide-request'))");
     let app = app.clone();
     let shown = app
@@ -179,18 +193,42 @@ pub fn request_hide<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// Окно захвата потеряло фокус (щелчок в другое окно, другая программа): прячется с сохранением черновика (§5.1). Потеря
-/// фокуса в первые мгновения после показа игнорируется: система может отдать фокус не сразу.
-pub fn on_capture_blur<R: Runtime>(app: &AppHandle<R>) {
-    let recently_shown = app.try_state::<CaptureShell>().is_some_and(|shell| {
-        shell
-            .shown_at
+/// Окно захвата стало ключевым.
+pub fn on_capture_key<R: Runtime>(app: &AppHandle<R>) {
+    trace("key");
+    if let Some(shell) = app.try_state::<CaptureShell>() {
+        *shell
+            .key_since
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .is_some_and(|at| at.elapsed() < BLUR_GRACE)
-    });
-    if !recently_shown {
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
+    }
+}
+
+/// Окно захвата потеряло ключевой статус. Если до этого оно было ключевым достаточно долго — это уход пользователя (щелчок
+/// в другое окно, другая программа): окно прячется с сохранением черновика (§5.1). Если оно не успело продержаться —
+/// статус снимает система сразу после показа (смена активной программы): статус возвращается, несколько раз.
+pub fn on_capture_blur<R: Runtime>(app: &AppHandle<R>) {
+    trace("resign");
+    let Some(shell) = app.try_state::<CaptureShell>() else {
+        return;
+    };
+    let stable = shell
+        .key_since
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .is_some_and(|since| since.elapsed() >= STABLE_KEY);
+    if stable {
         request_hide(app);
+        return;
+    }
+    #[cfg(target_os = "macos")]
+    if shell.rekeys.fetch_add(1, Ordering::SeqCst) < MAX_REKEYS {
+        let app = app.clone();
+        std::thread::spawn(move || {
+            let main_app = app.clone();
+            let _ =
+                app.run_on_main_thread(move || crate::panel::make_key(&main_app, CAPTURE_LABEL));
+        });
     }
 }
 
@@ -207,7 +245,7 @@ pub fn toggle_capture<R: Runtime>(app: &AppHandle<R>) {
 }
 
 /// Хоткей буфера (ТЗ §5.1): текст из буфера обмена — новая запись в Inbox, без окна. Не текст или пусто — ничего. Сбой записи
-/// — окно захвата с текстом буфера в поле и ошибкой. Успех — мигание значка в menu bar. Работает на отдельном потоке: чтение
+/// — окно захвата с текстом буфера и ошибкой. Успех — мигание значка в menu bar. Работает на отдельном потоке: чтение
 /// буфера и запись в базу не должны задерживать цикл событий.
 pub fn save_clipboard<R: Runtime>(app: &AppHandle<R>) {
     let app = app.clone();
@@ -301,6 +339,5 @@ pub fn capture_save_draft(store: State<'_, Store>, body: String) -> ApiResult<()
 /// Спрятать окно захвата (после отправки, Esc, потери фокуса).
 #[tauri::command]
 pub fn capture_hide<R: Runtime>(app: AppHandle<R>) {
-    eprintln!("TRACE capture_hide called");
     hide_capture(&app);
 }

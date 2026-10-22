@@ -4,6 +4,8 @@ pub mod capture;
 mod commands;
 pub mod guard;
 pub mod hotkeys;
+#[cfg(target_os = "macos")]
+mod panel;
 mod tray;
 
 use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
@@ -132,7 +134,16 @@ fn on_shortcut<R: Runtime>(app: &tauri::AppHandle<R>, pressed: &Shortcut) {
             .is_ok_and(|shortcut| shortcut == *pressed)
     });
     match kind {
-        Some(ShortcutKind::Capture) => capture::toggle_capture(app),
+        // Окно показывается не внутри обработки нажатия: пока система доставляет событие горячей клавиши, она сама снимает
+        // ключевой статус с окна, которое только что стало ключевым.
+        Some(ShortcutKind::Capture) => {
+            let app = app.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(250));
+                let main_app = app.clone();
+                let _ = app.run_on_main_thread(move || capture::toggle_capture(&main_app));
+            });
+        }
         Some(ShortcutKind::Clipboard) => capture::save_clipboard(app),
         None => {}
     }
@@ -151,7 +162,6 @@ fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
         }
         // Щелчок в другое окно или другую программу: окно захвата прячется, черновик сохраняется.
         (CAPTURE_LABEL, WindowEvent::Focused(false)) => {
-            eprintln!("TRACE capture blur");
             capture::on_capture_blur(window.app_handle())
         }
         _ => {}
@@ -163,7 +173,7 @@ pub fn run() {
     // Без переменной окружения ничего не выводится.
     let timing = std::env::var_os("KINIGE_TIMING").is_some();
 
-    let app = builder(
+    let configured = builder(
         tauri::Builder::default()
             // Должен идти первым: второй запуск показывает главное окно существующего экземпляра и завершается.
             .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -178,28 +188,41 @@ pub fn run() {
                     })
                     .build(),
             ),
-    )
-    .setup(|app| {
-        let store = open_store(app)?;
-        let hotkeys = Hotkeys::new(Box::new(PluginRegistrar {
-            app: app.handle().clone(),
-        }));
-        // Сочетание, которое система не приняла, остаётся «не назначено» в настройках; остальное работает.
-        hotkeys.register_saved(&store);
-        app.manage(store);
-        app.manage(hotkeys);
-        app.manage(CaptureShell::default());
-        tray::setup(app.handle(), commands::get_language())?;
-        Ok(())
-    })
-    .on_window_event(on_window_event)
-    .on_page_load(move |webview, payload| {
-        if timing && webview.label() == MAIN_LABEL && payload.event() == PageLoadEvent::Finished {
-            eprintln!("kinige-timing: page-loaded");
-        }
-    })
-    .build(tauri::generate_context!())
-    .expect("не удалось собрать Kinige");
+    );
+    // Окно захвата — панель NSPanel без активации приложения (ADR-0006).
+    #[cfg(target_os = "macos")]
+    let configured = configured.plugin(tauri_nspanel::init());
+    let app = configured
+        .setup(|app| {
+            let store = open_store(app)?;
+            let hotkeys = Hotkeys::new(Box::new(PluginRegistrar {
+                app: app.handle().clone(),
+            }));
+            // Сочетание, которое система не приняла, остаётся «не назначено» в настройках; остальное работает.
+            hotkeys.register_saved(&store);
+            app.manage(store);
+            app.manage(hotkeys);
+            app.manage(CaptureShell::default());
+            #[cfg(target_os = "macos")]
+            panel::convert(
+                app.handle(),
+                CAPTURE_LABEL,
+                capture::on_capture_key,
+                capture::on_capture_blur,
+                capture::request_hide,
+            )?;
+            tray::setup(app.handle(), commands::get_language())?;
+            Ok(())
+        })
+        .on_window_event(on_window_event)
+        .on_page_load(move |webview, payload| {
+            if timing && webview.label() == MAIN_LABEL && payload.event() == PageLoadEvent::Finished
+            {
+                eprintln!("kinige-timing: page-loaded");
+            }
+        })
+        .build(tauri::generate_context!())
+        .expect("не удалось собрать Kinige");
 
     app.run(|app, event| {
         // Щелчок по значку в Dock, когда окон на экране нет, показывает главное окно.

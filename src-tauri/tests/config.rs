@@ -153,6 +153,17 @@ fn build_script_manifest_matches_the_command_list() {
 }
 
 #[test]
+fn macos_private_api_is_on_only_for_the_capture_panel() {
+    // tauri-nspanel (окно захвата как NSPanel, ADR-0006) требует фичу `macos-private-api`; tauri-build сверяет её с конфигом.
+    let conf = read("tauri.conf.json");
+    assert_eq!(conf["app"]["macOSPrivateApi"], true);
+    let manifest =
+        std::fs::read_to_string(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"))).unwrap();
+    assert!(manifest.contains("macos-private-api"));
+    assert!(manifest.contains("tauri-nspanel"));
+}
+
+#[test]
 fn two_windows_without_remote_urls_and_the_capture_window_is_a_hidden_floating_panel() {
     let conf = read("tauri.conf.json");
     let windows = conf["app"]["windows"].as_array().unwrap();
