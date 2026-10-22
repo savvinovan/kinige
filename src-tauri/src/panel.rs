@@ -70,31 +70,31 @@ pub fn convert<R: Runtime>(
     Ok(())
 }
 
+/// Панель окна, если плагин подключён и окно уже превращено в панель (в тестах с mock-рантаймом плагина нет).
+fn panel_of<R: Runtime>(app: &AppHandle<R>, label: &str) -> Option<tauri_nspanel::PanelHandle<R>> {
+    app.try_state::<tauri_nspanel::WebviewPanelManager<R>>()?;
+    app.get_webview_panel(label).ok()
+}
+
 /// Показывает панель и делает её ключевой, не активируя приложение.
 pub fn show<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
-    match app.get_webview_panel(label) {
-        Ok(panel) => {
-            panel.show_and_make_key();
-            true
-        }
-        Err(_) => false,
-    }
+    panel_of(app, label).is_some_and(|panel| {
+        panel.show_and_make_key();
+        true
+    })
 }
 
 /// Возвращает панели ключевой статус (система сняла его в первые мгновения после показа).
 pub fn make_key<R: Runtime>(app: &AppHandle<R>, label: &str) {
-    if let Ok(panel) = app.get_webview_panel(label) {
+    if let Some(panel) = panel_of(app, label) {
         panel.make_key_window();
     }
 }
 
 /// Прячет панель.
 pub fn hide<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
-    match app.get_webview_panel(label) {
-        Ok(panel) => {
-            panel.hide();
-            true
-        }
-        Err(_) => false,
-    }
+    panel_of(app, label).is_some_and(|panel| {
+        panel.hide();
+        true
+    })
 }

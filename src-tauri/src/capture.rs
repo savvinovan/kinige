@@ -72,13 +72,6 @@ pub fn notify_entries_changed<R: Runtime>(app: &AppHandle<R>) {
     let _ = app.emit_to(MAIN_LABEL, ENTRIES_CHANGED, ());
 }
 
-/// Приложение активно: одно из его окон — ключевое.
-fn app_is_active<R: Runtime>(app: &AppHandle<R>) -> bool {
-    app.webview_windows()
-        .values()
-        .any(|window| window.is_focused().unwrap_or(false))
-}
-
 /// Ставит окно на экран с курсором: по центру по горизонтали, выше середины по вертикали.
 fn place_on_cursor_screen<R: Runtime>(app: &AppHandle<R>, window: &tauri::WebviewWindow<R>) {
     let monitor = app
@@ -122,15 +115,6 @@ pub fn show_capture<R: Runtime>(app: &AppHandle<R>) {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
     }
     trace("show");
-    // Пока приложение не активно, видимое главное окно мешает панели остаться ключевой: система сразу снимает с неё ключевой
-    // статус (проверено на macOS 26). Поэтому главное окно в этот момент прячется, как после закрытия крестиком; вернуть
-    // его — Dock, меню значка или второй запуск.
-    #[cfg(target_os = "macos")]
-    if !app_is_active(app)
-        && let Some(main) = app.get_webview_window(MAIN_LABEL)
-    {
-        let _ = main.hide();
-    }
     place_on_cursor_screen(app, &window);
     #[cfg(target_os = "macos")]
     let as_panel = crate::panel::show(app, CAPTURE_LABEL);

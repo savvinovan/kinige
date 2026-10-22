@@ -107,6 +107,7 @@ pub fn setup<R: Runtime>(app: &AppHandle<R>, language: Language) -> tauri::Resul
 
 /// Два коротких мигания значка: «буфер сохранён» без звука и без окна. Работает на отдельном потоке.
 pub fn flash<R: Runtime>(app: &AppHandle<R>) {
+    crate::capture::trace("flash");
     let app = app.clone();
     std::thread::spawn(move || {
         let Some(state) = app.try_state::<TrayFlash<R>>() else {
