@@ -140,17 +140,18 @@ fn on_shortcut<R: Runtime>(app: &tauri::AppHandle<R>, pressed: &Shortcut) {
 
 /// Закрытие главного окна прячет его, приложение живёт в menu bar; закрытие окна захвата — то же, что Esc.
 fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
-    let WindowEvent::CloseRequested { api, .. } = event else {
-        return;
-    };
-    match window.label() {
-        MAIN_LABEL => {
+    match (window.label(), event) {
+        (MAIN_LABEL, WindowEvent::CloseRequested { api, .. }) => {
             api.prevent_close();
             let _ = window.hide();
         }
-        CAPTURE_LABEL => {
+        (CAPTURE_LABEL, WindowEvent::CloseRequested { api, .. }) => {
             api.prevent_close();
             capture::request_hide(window.app_handle());
+        }
+        // Щелчок в другое окно или другую программу: окно захвата прячется, черновик сохраняется.
+        (CAPTURE_LABEL, WindowEvent::Focused(false)) => {
+            capture::on_capture_blur(window.app_handle())
         }
         _ => {}
     }

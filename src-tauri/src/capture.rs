@@ -5,7 +5,7 @@ use kinige_domain::{ApiError, CaptureOutcome, CaptureState, ErrorCode};
 use kinige_store::{Now, Store, StoreError};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Runtime, State};
 
 pub const CAPTURE_LABEL: &str = "capture";
@@ -17,6 +17,8 @@ pub const ENTRIES_CHANGED: &str = "entries-changed";
 const TOP_FRACTION: f64 = 0.28;
 /// Сколько ждать, пока окно захвата само сохранит черновик и спрячется, прежде чем спрятать его принудительно.
 const HIDE_GRACE: Duration = Duration::from_millis(600);
+/// Сколько после показа потеря фокуса не считается уходом пользователя.
+const BLUR_GRACE: Duration = Duration::from_millis(250);
 
 type ApiResult<T> = Result<T, ApiError>;
 
@@ -36,6 +38,8 @@ pub struct CaptureShell {
     pending: Mutex<Option<Pending>>,
     /// Растёт при каждом показе: отложенное принудительное скрытие не должно спрятать окно, показанное заново.
     shown: AtomicU64,
+    /// Когда окно показано в последний раз: потеря фокуса в первые мгновения после показа — не уход пользователя.
+    shown_at: Mutex<Option<Instant>>,
 }
 
 struct Pending {
@@ -99,6 +103,10 @@ pub fn show_capture<R: Runtime>(app: &AppHandle<R>) {
             .app_was_active
             .store(app_is_active(app), Ordering::SeqCst);
         shell.shown.fetch_add(1, Ordering::SeqCst);
+        *shell
+            .shown_at
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
     }
     place_on_cursor_screen(app, &window);
     let _ = window.show();
@@ -148,6 +156,21 @@ pub fn request_hide<R: Runtime>(app: &AppHandle<R>) {
             hide_capture(&app);
         }
     });
+}
+
+/// Окно захвата потеряло фокус (щелчок в другое окно, другая программа): прячется с сохранением черновика (§5.1). Потеря
+/// фокуса в первые мгновения после показа игнорируется: система может отдать фокус не сразу.
+pub fn on_capture_blur<R: Runtime>(app: &AppHandle<R>) {
+    let recently_shown = app.try_state::<CaptureShell>().is_some_and(|shell| {
+        shell
+            .shown_at
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_some_and(|at| at.elapsed() < BLUR_GRACE)
+    });
+    if !recently_shown {
+        request_hide(app);
+    }
 }
 
 /// Хоткей захвата: окно закрыто — показать, открыто — спрятать с сохранением черновика.
