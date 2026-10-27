@@ -104,6 +104,17 @@ pub fn fixture_without_store(db_path: &std::path::Path) -> Fixture {
     }
 }
 
+/// Приложение, в котором база новее приложения (§10.4): хранилище не открыто, копии не предлагаются.
+pub fn fixture_too_new(db_path: &std::path::Path) -> Fixture {
+    let app = new_app();
+    app.manage(Recovery::database_too_new(db_path.to_path_buf()));
+    Fixture {
+        app,
+        registrar: Arc::new(FakeRegistrar::default()),
+        data: tempfile::tempdir().unwrap(),
+    }
+}
+
 pub fn window(fixture: &Fixture, label: &str) -> WebviewWindow<MockRuntime> {
     WebviewWindowBuilder::new(&fixture.app, label, Default::default())
         .build()
