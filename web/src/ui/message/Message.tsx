@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
 import { Button } from "../controls/Button";
@@ -9,6 +9,7 @@ import { renderMarkdown } from "./markdown";
 import { MessageActions } from "./MessageActions";
 import { MessageEditor } from "./MessageEditor";
 import { MessageMenu } from "./MessageMenu";
+import type { MoveTarget } from "./moveTargets";
 import { selectedTextIn, useCopy } from "./useCopy";
 import { useActionsPlacement } from "./useActionsPlacement";
 import "./message.css";
@@ -67,6 +68,14 @@ export interface MessageProps {
   onToggleTaskItem?: (index: number, checked: boolean) => void;
   /** Щелчок по тегу: тег в нижнем регистре, без `#`. */
   onTagClick?: (tag: string) => void;
+  /** Решение приёмки: чаты для пункта «Переместить в чат» (текущий помечен) и перенос в выбранный. Без обработчика пункт недоступен. */
+  moveTargets?: readonly MoveTarget[];
+  onMoveTo?: (chatId: string) => void;
+  /**
+   * Нажатие кнопки мыши на плашке: родитель решает, начинать ли перетаскивание на чат (`useRecordDrag`). Плашка отдаёт
+   * событие и сам элемент (его копия — «призрак»). Не вызывается в правке, у удалённой плашки и у записи только для чтения.
+   */
+  onDragStart?: (event: PointerEvent<HTMLElement>, plate: HTMLElement) => void;
 }
 
 /**
@@ -104,6 +113,9 @@ export function Message({
   onRestore,
   onToggleTaskItem,
   onTagClick,
+  moveTargets,
+  onMoveTo,
+  onDragStart,
 }: MessageProps) {
   const { t } = useTranslation();
   const language = useLanguage();
@@ -249,7 +261,18 @@ export function Message({
         }}
         onKeyDown={handleKeyDown}
       >
-        <article className={classes.join(" ")} ref={plate} tabIndex={-1}>
+        <article
+          className={classes.join(" ")}
+          ref={plate}
+          tabIndex={-1}
+          onPointerDown={
+            onDragStart && viewing && !readOnly && !failed
+              ? (event) => {
+                  if (plate.current) onDragStart(event, plate.current);
+                }
+              : undefined
+          }
+        >
           {isTask ? (
             <button
               type="button"
@@ -338,6 +361,8 @@ export function Message({
           onToggleFavorite={toggle(onToggleFavorite, favorite)}
           onChangeDate={onChangeDate}
           onDelete={onDelete}
+          moveTargets={moveTargets}
+          onMoveTo={onMoveTo}
           onCopy={() => copyNow(menu.selection)}
           onClose={() => setMenu(null)}
         />

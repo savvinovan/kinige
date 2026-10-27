@@ -212,6 +212,14 @@
   color: var(--color-text-primary);
 }
 
+/* Цель перетаскивания записи: тихая рамка акцентного цвета и заливка активного поля (решение приёмки слайса 3). */
+.rail-button--drop,
+.chat-row--drop {
+  background: var(--color-surface-field-active);
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: calc(var(--focus-offset) * -1);
+}
+
 /* Точка «в корзине есть записи»: акцентная, в углу значка; число — в подписи для диктора. */
 .rail-button__dot {
   position: absolute;

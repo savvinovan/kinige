@@ -40,6 +40,8 @@ interface SidebarProps {
   onOpenSettings?: () => void;
   /** Поле «Поиск». В приложении его нет до слайса 4 (мёртвых полей нет, §5); в историях D1 оно нарисовано. */
   showSearch?: boolean;
+  /** Чат, над которым сейчас тащат запись (решение приёмки): подсветка цели; сами строки всегда цели (`data-chat-drop`). */
+  dropTargetId?: string | null;
 }
 
 interface OpenMenu {
@@ -70,20 +72,36 @@ export function Sidebar({
   profile,
   onOpenSettings,
   showSearch = true,
+  dropTargetId = null,
 }: SidebarProps) {
   const { t } = useTranslation();
   const language = useLanguage();
   const archiveListId = useId();
   const [menu, setMenu] = useState<OpenMenu | null>(null);
-  const [archiveOpen, setArchiveOpen] = useState(false);
   const sections = useMemo(() => partitionChats(chats), [chats]);
   const selectedInArchive = sections.archived.some((chat) => chat.id === selectedId);
-  const archiveShown = archiveOpen || selectedInArchive;
+  // «Архив» раскрывается сам, когда человек открывает архивный чат; дальше кнопка работает как обычный переключатель:
+  // свёрнутый раздел прячет все свои чаты, в том числе открытый (открытый чат остаётся в ленте).
+  const [archiveOpen, setArchiveOpen] = useState(selectedInArchive);
+  const [seenSelected, setSeenSelected] = useState(selectedId);
+  if (seenSelected !== selectedId) {
+    setSeenSelected(selectedId);
+    if (selectedInArchive) setArchiveOpen(true);
+  }
+  const archiveShown = archiveOpen;
   const openMenu = onChatAction ? (chat: SidebarChat, position: MenuPosition) => setMenu({ chat, position }) : undefined;
 
   const rows = (list: readonly SidebarChat[]) =>
     list.map((chat) => (
-      <ChatRow key={chat.id} chat={chat} selected={chat.id === selectedId} language={language} onSelect={onSelect} onOpenMenu={openMenu} />
+      <ChatRow
+        key={chat.id}
+        chat={chat}
+        selected={chat.id === selectedId}
+        dropOver={chat.id === dropTargetId}
+        language={language}
+        onSelect={onSelect}
+        onOpenMenu={openMenu}
+      />
     ));
 
   const trashCounter = formatCount(trashCount, language);
@@ -102,6 +120,7 @@ export function Sidebar({
           onOpenTrash={onOpenTrash}
           profile={profile}
           onOpenSettings={onOpenSettings}
+          dropTargetId={dropTargetId}
         />
       ) : (
         <>

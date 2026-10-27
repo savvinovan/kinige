@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, type PointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
 import { Message } from "../message/Message";
+import type { MoveTarget } from "../message/moveTargets";
 import { type FeedMessage, buildFeed } from "./buildFeed";
 import { formatDayLabel } from "./dates";
 import "./feed.css";
@@ -19,6 +20,8 @@ export interface FeedActions {
   onRestore(id: string): void;
   onToggleTaskItem(id: string, index: number, checked: boolean): void;
   onTagClick(tag: string): void;
+  /** «Переместить в чат» (меню записи и перетаскивание на чат). */
+  onMoveTo(id: string, chatId: string): void;
 }
 
 /** Состояние интерфейса записей: какая правится, какие удалены (стоят приглушёнными на месте до ухода из чата). */
@@ -40,6 +43,10 @@ interface FeedProps {
   actions?: FeedActions;
   /** Текст пустого состояния; по умолчанию — подсказка пустого чата. */
   emptyText?: string;
+  /** Чаты для пункта «Переместить в чат»; текущий помечен (`useRecordDrag` и `moveTargetsFrom`). */
+  moveTargets?: readonly MoveTarget[];
+  /** Перетаскивание плашки на чат: `begin(id)` — обработчик нажатия плашки. Без него плашки не тащатся. */
+  onDragStart?: (messageId: string) => (event: PointerEvent<HTMLElement>, plate: HTMLElement) => void;
 }
 
 /**
@@ -47,7 +54,7 @@ interface FeedProps {
  * (новое внизу): область прокрутки `column-reverse` держит нижний край на месте, даже когда после загрузки шрифтов
  * меняется высота строк; короткая лента лежит у нижнего края, над composer. Над лентой нет ни заголовка, ни названия чата (§6).
  */
-export function Feed({ messages, today, onRetry, onOpenLink, ui, actions, emptyText }: FeedProps) {
+export function Feed({ messages, today, onRetry, onOpenLink, ui, actions, emptyText, moveTargets, onDragStart }: FeedProps) {
   const { t } = useTranslation();
   const language = useLanguage();
   const items = useMemo(() => buildFeed(messages), [messages]);
@@ -84,6 +91,8 @@ export function Feed({ messages, today, onRetry, onOpenLink, ui, actions, emptyT
                     ui?.editingId === item.message.id ? "editing" : ui?.deletedIds?.has(item.message.id) ? "deleted" : "view"
                   }
                   editError={ui?.editingId === item.message.id ? ui?.editError : undefined}
+                  moveTargets={moveTargets}
+                  onDragStart={onDragStart?.(item.message.id)}
                   {...(actions ? messageHandlers(actions, item.message.id) : {})}
                 />
               </li>
@@ -109,5 +118,6 @@ function messageHandlers(actions: FeedActions, id: string) {
     onRestore: () => actions.onRestore(id),
     onToggleTaskItem: (index: number, checked: boolean) => actions.onToggleTaskItem(id, index, checked),
     onTagClick: actions.onTagClick,
+    onMoveTo: (chatId: string) => actions.onMoveTo(id, chatId),
   };
 }

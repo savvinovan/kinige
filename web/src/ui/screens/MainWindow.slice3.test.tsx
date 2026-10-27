@@ -375,6 +375,7 @@ describe("MainWindow слайс 3: английский", () => {
       "Make a task",
       "Add to favorites",
       "Change date…",
+      "Move to chat",
       "Delete",
     ]);
   });

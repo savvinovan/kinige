@@ -10,6 +10,8 @@ interface ChatRowProps {
   selected: boolean;
   language: Language;
   onSelect?: (chatId: string) => void;
+  /** Над строкой тащат запись (решение приёмки): подсветка цели. Сама строка всегда цель (`data-chat-drop`). */
+  dropOver?: boolean;
   /** Контекстное меню: правый щелчок, Shift+F10 и клавиша меню. Без обработчика меню нет (D1). */
   onOpenMenu?: (chat: SidebarChat, position: MenuPosition) => void;
 }
@@ -20,7 +22,7 @@ export function chatLabel(chat: SidebarChat, name: string, counter: string, t: T
 }
 
 /** Строка чата: эмодзи, имя (обрезается многоточием), тихий счётчик записей. Выбранный чат подсвечен и помечен `aria-current`. */
-export function ChatRow({ chat, selected, language, onSelect, onOpenMenu }: ChatRowProps) {
+export function ChatRow({ chat, selected, language, onSelect, dropOver = false, onOpenMenu }: ChatRowProps) {
   const { t } = useTranslation();
   const name = displayName(chat, t);
   const counter = formatCount(chat.count ?? 0, language);
@@ -29,7 +31,8 @@ export function ChatRow({ chat, selected, language, onSelect, onOpenMenu }: Chat
     <li>
       <button
         type="button"
-        className={`chat-row${selected ? " chat-row--selected" : ""}`}
+        className={`chat-row${selected ? " chat-row--selected" : ""}${dropOver ? " chat-row--drop" : ""}`}
+        data-chat-drop={chat.id}
         aria-current={selected ? "true" : undefined}
         aria-haspopup={onOpenMenu ? "menu" : undefined}
         title={chatLabel(chat, name, counter, t)}

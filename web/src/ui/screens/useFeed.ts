@@ -183,6 +183,17 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag }: UseF
           });
       },
       onTagClick: onTag,
+      onMoveTo: (id, targetChatId) => {
+        api
+          .moveMessage(id, targetChatId)
+          .then(() => {
+            // Запись просто исчезает из текущего чата (без тоста, лента не прыгает); счётчики берутся заново.
+            setMessages((list) => list.filter((m) => m.id !== id));
+            setEditingId((editing) => (editing === id ? null : editing));
+            return refreshChats();
+          })
+          .catch(fail);
+      },
     }),
     [api, t, replace, setFlag, refreshChats, fail, reload, onTag],
   );

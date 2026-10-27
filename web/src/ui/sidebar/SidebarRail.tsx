@@ -22,6 +22,10 @@ interface RailButtonProps {
   /** Подпись при наведении: только имя, без счётчика. */
   tip: string;
   selected: boolean;
+  /** Чат этой кнопки: цель перетаскивания записи (`data-chat-drop`). */
+  dropId?: string;
+  /** Над кнопкой сейчас тащат запись: подсветка цели. */
+  dropOver?: boolean;
   onClick?: () => void;
   onShowTip: (element: HTMLElement, label: string) => void;
   onHideTip: () => void;
@@ -30,12 +34,13 @@ interface RailButtonProps {
 }
 
 /** Квадратная кнопка полосы: имя для диктора — `aria-label`, для глаз — подсказка справа от полосы. */
-function RailButton({ label, tip, selected, onClick, onShowTip, onHideTip, onOpenMenu, children }: RailButtonProps) {
+function RailButton({ label, tip, selected, dropId, dropOver, onClick, onShowTip, onHideTip, onOpenMenu, children }: RailButtonProps) {
   const trigger = useMenuTrigger((position) => onOpenMenu?.(position));
   return (
     <button
       type="button"
-      className={`rail-button${selected ? " rail-button--selected" : ""}`}
+      className={`rail-button${selected ? " rail-button--selected" : ""}${dropOver ? " rail-button--drop" : ""}`}
+      data-chat-drop={dropId}
       aria-label={label}
       aria-current={selected ? "true" : undefined}
       aria-haspopup={onOpenMenu ? "menu" : undefined}
@@ -63,6 +68,8 @@ interface SidebarRailProps {
   onOpenTrash?: () => void;
   profile?: { name?: string; statusDot?: boolean };
   onOpenSettings?: () => void;
+  /** Чат, над которым тащат запись (подсветка цели). */
+  dropTargetId?: string | null;
 }
 
 /**
@@ -81,6 +88,7 @@ export function SidebarRail({
   onOpenTrash,
   profile,
   onOpenSettings,
+  dropTargetId = null,
 }: SidebarRailProps) {
   const { t } = useTranslation();
   const [tip, setTip] = useState<Tip | null>(null);
@@ -106,6 +114,8 @@ export function SidebarRail({
                   label={chatLabel(chat, name, counter, t)}
                   tip={name}
                   selected={chat.id === selectedId}
+                  dropId={chat.id}
+                  dropOver={chat.id === dropTargetId}
                   onClick={onSelect ? () => onSelect(chat.id) : undefined}
                   onShowTip={showTip}
                   onHideTip={hideTip}

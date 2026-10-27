@@ -71,13 +71,31 @@ describe("разделы", () => {
     expect(screen.queryByRole("button", { name: /Старый проект/ })).toBeNull();
   });
 
-  it("если выбран чат из архива, «Архив» раскрыт и свернуть его нельзя", () => {
+  it("если выбран чат из архива, «Архив» раскрыт, но кнопка работает: свёрнутый раздел прячет все свои чаты, включая открытый", () => {
     render(<Sidebar chats={LIST} selectedId="old" showSearch={false} />);
     const archive = screen.getByRole("button", { name: "Архив" });
     expect(archive).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("button", { name: /Старый проект/ })).toHaveAttribute("aria-current", "true");
     fireEvent.click(archive);
+    expect(archive).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("button", { name: /Старый проект/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Ещё старее/ })).toBeNull();
+    fireEvent.click(archive);
     expect(archive).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /Старый проект/ })).toBeInTheDocument();
+  });
+
+  it("раздел раскрывается сам, когда открывают архивный чат, и дальше слушается кнопки", () => {
+    const { rerender } = render(<Sidebar chats={LIST} selectedId="books" showSearch={false} />);
+    const archive = screen.getByRole("button", { name: "Архив" });
+    expect(archive).toHaveAttribute("aria-expanded", "false");
+    rerender(<Sidebar chats={LIST} selectedId="old" showSearch={false} />);
+    expect(archive).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(archive);
+    expect(archive).toHaveAttribute("aria-expanded", "false");
+    // Тот же выбранный чат при следующих отрисовках раздел заново не раскрывает.
+    rerender(<Sidebar chats={[...LIST]} selectedId="old" showSearch={false} />);
+    expect(archive).toHaveAttribute("aria-expanded", "false");
   });
 
   it("«+» у заголовка «Чаты» есть, пока есть onCreateChat, даже если все чаты закреплены", () => {

@@ -31,6 +31,8 @@
 | `undo` | `undo-2` | ISC |
 | `chevronRight` | `chevron-right` | MIT (из Feather) |
 | `database` | `database` | MIT (из Feather) |
+| `moveTo` | `arrow-right` | MIT (из Feather) |
+| `chevronLeft` | `chevron-left` | MIT (из Feather) |
 
 Происхождение значков слайса 3 сверено со списком Feather в `LICENSE` пакета 1.60.0: `trash-2`, `calendar`, `plus`, `chevron-right`, `database` там есть, остальные — ISC.
 

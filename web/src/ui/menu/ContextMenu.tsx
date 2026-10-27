@@ -7,6 +7,8 @@ export interface MenuItem {
   id: string;
   label: string;
   icon?: IconName;
+  /** Эмодзи вместо значка (данные пользователя: эмодзи чата в подменю «Переместить в чат»). */
+  emoji?: string;
   /** Опасное действие («Удалить»): акцентируется цветом ошибки. */
   danger?: boolean;
   /** Пункт виден, но недоступен (`aria-disabled`); стрелки его пропускают. */
@@ -28,6 +30,13 @@ interface ContextMenuProps {
   label: string;
   onSelect: (id: string) => void;
   onClose: () => void;
+  /**
+   * Подменю (два уровня в одной панели): Esc и стрелка влево возвращают на уровень выше, а не закрывают меню. Без него Esc
+   * закрывает.
+   */
+  onBack?: () => void;
+  /** Меняется, когда пункты заменены другим уровнем: фокус снова уходит на первый доступный пункт. */
+  levelKey?: string;
 }
 
 const isEnabled = (element: HTMLElement) => element.getAttribute("aria-disabled") !== "true";
@@ -37,7 +46,7 @@ const isEnabled = (element: HTMLElement) => element.getAttribute("aria-disabled"
  * щелчком, кнопкой «ещё» и с клавиатуры (`useMenuTrigger`). Стрелки, Home и End ходят по пунктам, Enter и пробел выбирают,
  * Esc закрывает и возвращает фокус туда, где он был; щелчок вне меню, прокрутка, смена размера окна и Tab закрывают.
  */
-export function ContextMenu({ items, position, label, onSelect, onClose }: ContextMenuProps) {
+export function ContextMenu({ items, position, label, onSelect, onClose, onBack, levelKey }: ContextMenuProps) {
   const panel = useRef<HTMLDivElement>(null);
   const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null));
   const [placed, setPlaced] = useState<MenuPosition>(position);
@@ -63,7 +72,7 @@ export function ContextMenu({ items, position, label, onSelect, onClose }: Conte
 
   useEffect(() => {
     enabledItems()[0]?.focus();
-  }, []);
+  }, [levelKey]);
 
   useEffect(() => {
     const close = () => onCloseRef.current();
@@ -109,10 +118,17 @@ export function ContextMenu({ items, position, label, onSelect, onClose }: Conte
         event.preventDefault();
         move(-1);
         break;
+      case "ArrowLeft":
+        if (onBack) {
+          event.preventDefault();
+          onBack();
+        }
+        break;
       case "Escape":
         event.preventDefault();
         event.stopPropagation();
-        onClose();
+        if (onBack) onBack();
+        else onClose();
         break;
       case "Tab":
         event.preventDefault();
@@ -143,8 +159,8 @@ export function ContextMenu({ items, position, label, onSelect, onClose }: Conte
               if (!item.disabled) onSelect(item.id);
             }}
           >
-            <span className="context-menu__icon" aria-hidden="true">
-              {item.icon ? <Icon name={item.icon} /> : null}
+            <span className={`context-menu__icon${item.emoji ? " context-menu__icon--emoji" : ""}`} aria-hidden="true">
+              {item.emoji ?? (item.icon ? <Icon name={item.icon} /> : null)}
             </span>
             <span className="context-menu__label">{item.label}</span>
           </button>

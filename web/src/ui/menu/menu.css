@@ -66,6 +66,17 @@
   color: var(--color-text-tertiary);
 }
 
+/* Эмодзи чата в подменю «Переместить в чат»: те же слот и шрифт, что в строке чата сайдбара. */
+.context-menu__icon--emoji {
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-emoji-slot);
+  font-family: var(--font-family-emoji);
+  font-size: var(--icon-size);
+  line-height: var(--icon-emoji-line-height);
+  transform: translateY(var(--icon-emoji-shift));
+}
+
 .context-menu__item--danger .context-menu__icon {
   color: inherit;
 }

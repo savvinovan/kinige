@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { INBOX_ID, type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { ChatList } from "../../api/generated/ChatList";
@@ -8,6 +8,8 @@ import { useDraftSaver } from "../../draft/useDraftSaver";
 import { useLanguage } from "../../i18n/I18n";
 import { CalendarDialog } from "../calendar/CalendarDialog";
 import { ChatDialog } from "../chat/ChatDialog";
+import { useRecordDrag } from "../drag/useRecordDrag";
+import { moveTargetsFrom } from "../message/moveTargets";
 import { SettingsDialog } from "../settings/SettingsDialog";
 import type { ChatAction, SidebarChat } from "../sidebar/Sidebar";
 import { MainWindowView } from "./MainWindowView";
@@ -83,6 +85,13 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onTag: setTag,
   });
   const { reload: reloadFeed } = feed;
+  const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
+  const moveTargets = useMemo(() => moveTargetsFrom(sidebarChats, selected, t), [sidebarChats, selected, t]);
+  // Перетаскивание плашки на чат: бросок на любой чат, кроме того, где запись лежит.
+  const drag = useRecordDrag({
+    canDrop: (chatId) => chatId !== selected,
+    onDrop: (messageId, chatId) => feed.actions.onMoveTo(messageId, chatId),
+  });
   const trash = useTrash({ api, open: selected === null, refreshChats });
   const { clearError: clearTrashError } = trash;
 
@@ -251,7 +260,9 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       showSearch={false}
       composerButtons={{ emoji: true }}
       emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji }}
-      chats={list.chats.map(toSidebar)}
+      chats={sidebarChats}
+      moveTargets={moveTargets}
+      drag={{ onDragStart: drag.begin, dropTargetId: drag.overChatId, ghost: drag.ghost }}
       selectedChatId={selected}
       onSelectChat={(id) => void select(id)}
       sidebar={{

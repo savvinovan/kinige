@@ -68,7 +68,7 @@ describe("контекстное меню записи", () => {
     onDelete: vi.fn(),
   });
 
-  it("правый щелчок по плашке открывает меню из шести пунктов, «Удалить» — опасное и за чертой", () => {
+  it("правый щелчок по плашке открывает меню из семи пунктов, «Удалить» — опасное и за чертой", () => {
     const { container } = render(view(handlers()));
     expect(menu()).toBeNull();
     expect(fireEvent.contextMenu(article(container), { clientX: 40, clientY: 30 })).toBe(false);
@@ -80,10 +80,13 @@ describe("контекстное меню записи", () => {
       "Сделать задачей",
       "В избранное",
       "Изменить дату…",
+      "Переместить в чат",
       "Удалить",
     ]);
-    expect(items[5]).toHaveClass("context-menu__item--danger");
-    expect(items[5]?.parentElement).toHaveClass("context-menu__group");
+    expect(items[6]).toHaveClass("context-menu__item--danger");
+    expect(items[6]?.parentElement).toHaveClass("context-menu__group");
+    // Без списка чатов и обработчика переноса пункт виден, но недоступен.
+    expect(items[5]).toHaveAttribute("aria-disabled", "true");
     // Первый пункт получает фокус: меню сразу работает с клавиатуры.
     expect(items[0]).toHaveFocus();
   });

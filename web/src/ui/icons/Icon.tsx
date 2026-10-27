@@ -1,10 +1,12 @@
 import {
   Archive,
   ArchiveRestore,
+  ArrowRight,
   ArrowUp,
   Calendar,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   CircleAlert,
   Copy,
@@ -60,6 +62,9 @@ const GLYPHS = {
   undo: Undo2,
   chevronRight: ChevronRight,
   database: Database,
+  // Решение приёмки: «Переместить в чат» (меню записи) и возврат из подменю.
+  moveTo: ArrowRight,
+  chevronLeft: ChevronLeft,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

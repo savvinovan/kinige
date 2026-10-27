@@ -177,6 +177,10 @@ export class TauriApi implements KinigeApi {
     return call("set_message_date", { id, journalDate });
   }
 
+  moveMessage(id: string, chatId: string): Promise<MessageView> {
+    return call("move_message", { id, chatId });
+  }
+
   listTrash(): Promise<TrashItem[]> {
     return call("list_trash");
   }

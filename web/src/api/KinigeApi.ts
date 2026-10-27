@@ -91,6 +91,8 @@ export interface KinigeApi {
   setMessageFlag(id: string, flag: MessageFlag, on: boolean): Promise<MessageView>;
   /** «Изменить дату»: `YYYY-MM-DD`, будущие даты разрешены. */
   setMessageDate(id: string, journalDate: string): Promise<MessageView>;
+  /** «Переместить в чат» (меню записи, перетаскивание на чат): день и текст не меняются, в корзину нельзя. */
+  moveMessage(id: string, chatId: string): Promise<MessageView>;
   /** Корзина: недавно удалённые первыми. */
   listTrash(): Promise<TrashItem[]>;
   /** «Удалить навсегда» из корзины (интерфейс просит подтверждения). */

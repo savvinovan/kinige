@@ -283,6 +283,17 @@ export class MockApi extends MockApiBase implements KinigeApi {
     });
   }
 
+  moveMessage(id: string, chatId: string): Promise<MessageView> {
+    return this.run("moveMessage", `${id} ${chatId}`, () => {
+      const row = this.row(id);
+      this.writable(row);
+      if (row.deletedAt !== null) throw new KinigeApiError("message_not_found");
+      if (!this.chats.some((chat) => chat.id === chatId)) throw new KinigeApiError("chat_not_found");
+      row.view = { ...row.view, chatId };
+      return row.view;
+    });
+  }
+
   listTrash(): Promise<TrashItem[]> {
     const now = this.now().getTime();
     return this.run("listTrash", "", () =>
