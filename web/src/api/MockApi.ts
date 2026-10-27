@@ -1,89 +1,33 @@
-import { INBOX_ID, type KinigeApi, KinigeApiError } from "./KinigeApi";
+import { type KinigeApi, KinigeApiError } from "./KinigeApi";
+import { MockApiBase } from "./MockApiBase";
+import { DAY_MS, DEFAULT_SHORTCUTS, TRASH_DAYS, compareFeed, isRealDate, mockMessage } from "./mockData";
 import type { AppInfo } from "./generated/AppInfo";
-import type { CaptureOutcome } from "./generated/CaptureOutcome";
-import type { CaptureState } from "./generated/CaptureState";
+import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
-import type { ErrorCode } from "./generated/ErrorCode";
 import type { FeedCursor } from "./generated/FeedCursor";
 import type { Language } from "./generated/Language";
+import type { MessageFlag } from "./generated/MessageFlag";
 import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
+import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { Settings } from "./generated/Settings";
 import type { ShortcutKind } from "./generated/ShortcutKind";
+import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
+import type { TrashItem } from "./generated/TrashItem";
 
-export interface MockApiOptions {
-  /** «Сейчас» для новых записей и метки «сегодня»; по умолчанию — часы окна. */
-  now?: () => Date;
-  language?: Language;
-  /** Записи, которые уже есть в Inbox. */
-  messages?: readonly MessageView[];
-  settings?: Settings;
-  /** Следующая папка, которую «выберет» системный диалог; `null` — пользователь отменил. */
-  pickedFolder?: string | null;
-}
-
-const DEFAULT_SHORTCUTS: Record<ShortcutKind, string> = {
-  capture: "Ctrl+Alt+KeyN",
-  clipboard: "Alt+Shift+KeyV",
-};
-
-const DEFAULT_SETTINGS: Settings = {
-  textSize: "normal",
-  mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
-  shortcuts: [
-    { kind: "capture", accelerator: DEFAULT_SHORTCUTS.capture, isDefault: true, state: "assigned" },
-    { kind: "clipboard", accelerator: DEFAULT_SHORTCUTS.clipboard, isDefault: true, state: "assigned" },
-  ],
-};
+export { DEFAULT_SETTINGS, type MockApiOptions, mockMessage } from "./mockData";
 
 const ALLOWED_SCHEMES = ["http:", "https:", "mailto:"];
 
-/** Окно дописывания (ТЗ §2.1): запись не старше десяти минут. */
-const APPEND_WINDOW_MS = 10 * 60 * 1000;
-/** Сколько записей окно захвата показывает над полем. */
-const CONTEXT_LEN = 3;
-
 /**
- * `KinigeApi` в памяти: тот же интерфейс, что у `TauriApi`, для тестов и Storybook. Хранит записи, считает счётчик,
- * умеет «отказ записи» (`failNextSend`) и запоминает открытые ссылки (`openedUrls`). День записи считается упрощённо
- * (UTC, граница 04:00): настоящие правила — в Rust.
+ * `KinigeApi` в памяти: тот же интерфейс, что у `TauriApi`, для тестов и Storybook. Хранит чаты и записи, считает счётчики,
+ * ведёт корзину, правки и ревизии, умеет «отказ» любой команды (`failNext`) и запоминает открытые ссылки (`openedUrls`). День
+ * записи считается упрощённо (UTC, граница 04:00): настоящие правила — в Rust. Состояние и окно захвата — в `MockApiBase`.
  */
-export class MockApi implements KinigeApi {
-  /** Ссылки, которые «открыты в системном браузере». */
-  readonly openedUrls: string[] = [];
-  /** Следующая отправка завершится этой ошибкой, ничего не записав. */
-  failNextSend: ErrorCode | null = null;
-  /** Следующий выбор папки завершится этой ошибкой. */
-  failNextPick: ErrorCode | null = null;
-  /** Следующая смена или сброс сочетания завершится этой ошибкой. */
-  failNextShortcut: ErrorCode | null = null;
-  /** Следующая отправка или дописывание из окна захвата завершится этой ошибкой. */
-  failNextCapture: ErrorCode | null = null;
-  /** Окно захвата спрятано командой `captureHide` столько раз. */
-  hideCount = 0;
-  /** Высоты окна захвата, которые страница просила командой `captureResize`. */
-  readonly resizeLog: number[] = [];
-  /** Записи режима записи сочетания: `true` при начале, `false` в конце. */
-  readonly recordingLog: boolean[] = [];
-  pickedFolder: string | null;
-
-  private messages: MessageView[];
-  private readonly drafts = new Map<string, string>();
-  private captureDraft = "";
-  private readonly listeners = new Set<() => void>();
-  private settings: Settings;
-  private readonly now: () => Date;
-  private readonly language: Language;
-  private counter = 0;
-
-  constructor(options: MockApiOptions = {}) {
-    this.now = options.now ?? (() => new Date());
-    this.language = options.language ?? "ru";
-    this.messages = [...(options.messages ?? [])];
-    this.settings = options.settings ?? DEFAULT_SETTINGS;
-    this.pickedFolder = options.pickedFolder === undefined ? "/Users/me/Notes/Kinige" : options.pickedFolder;
-  }
+export class MockApi extends MockApiBase implements KinigeApi {
+  private readonly openChatListeners = new Set<(chatId: string) => void>();
+  private readonly corruptListeners = new Set<() => void>();
 
   appInfo(): Promise<AppInfo> {
     return Promise.resolve({ title: "Kinige mock" });
@@ -93,12 +37,26 @@ export class MockApi implements KinigeApi {
     return Promise.resolve(this.language);
   }
 
-  listChats(): Promise<ChatSummary[]> {
-    return Promise.resolve([{ id: INBOX_ID, title: "", icon: "📥", isInbox: true, count: this.messages.length }]);
+  listChats(): Promise<ChatList> {
+    const rank = (chat: ChatSummary) => (chat.archivedAt !== null ? 2 : chat.pinnedAt !== null ? 0 : 1);
+    const ordered = this.chats
+      .map((chat, index) => ({ chat, index }))
+      .sort(
+        (a, b) =>
+          rank(a.chat) - rank(b.chat) ||
+          (rank(a.chat) === 0 ? (a.chat.pinnedAt ?? 0) - (b.chat.pinnedAt ?? 0) : 0) ||
+          a.index - b.index,
+      )
+      .map(({ chat }) => ({ ...chat, count: this.rows.filter((r) => r.view.chatId === chat.id && r.deletedAt === null).length }));
+    return Promise.resolve({ chats: ordered, trashCount: this.rows.filter((r) => r.deletedAt !== null).length });
   }
 
-  listMessages(chatId: string, options: { before?: FeedCursor; limit?: number } = {}): Promise<MessagePage> {
-    const all = this.messages.filter((m) => m.chatId === chatId).sort(compareFeed);
+  listMessages(chatId: string, options: { before?: FeedCursor; limit?: number; tag?: string } = {}): Promise<MessagePage> {
+    const tag = options.tag?.toLowerCase();
+    const all = this.rows
+      .filter((r) => r.view.chatId === chatId && r.deletedAt === null && (tag === undefined || r.view.tags.includes(tag)))
+      .map((r) => r.view)
+      .sort(compareFeed);
     const older = options.before ? all.filter((m) => compareFeed(m, options.before as FeedCursor) < 0) : all;
     const limit = options.limit ?? 200;
     const page = older.slice(-limit);
@@ -118,24 +76,23 @@ export class MockApi implements KinigeApi {
     }
     const text = body.replace(/\r\n?/g, "\n").trim();
     if (text === "") return Promise.reject(new KinigeApiError("empty_message"));
-    if (chatId !== INBOX_ID) return Promise.reject(new KinigeApiError("chat_not_found"));
+    if (!this.chats.some((c) => c.id === chatId)) return Promise.reject(new KinigeApiError("chat_not_found"));
     const now = this.now();
-    const message: MessageView = {
+    const message = mockMessage({
       id: `mock-${++this.counter}`,
       chatId,
       bodyMd: text,
       journalDate: this.journalDate(now),
       createdAt: now.getTime(),
-      createdTz: "UTC",
-    };
-    this.messages.push(message);
+    });
+    this.rows.push({ view: message, deletedAt: null, revisions: [] });
     // Как в Rust: отправка очищает черновик этого чата.
     this.drafts.delete(chatId);
     return Promise.resolve(message);
   }
 
   getSettings(): Promise<Settings> {
-    return Promise.resolve(this.settings);
+    return this.run("getSettings", "", () => this.settings);
   }
 
   setTextSize(size: TextSize): Promise<void> {
@@ -197,90 +154,232 @@ export class MockApi implements KinigeApi {
     });
   }
 
-  /** Как событие Rust «записи изменились» (в тестах — запись, сделанная окном захвата). */
-  emitEntriesChanged(): void {
-    for (const handler of [...this.listeners]) handler();
-  }
+  // ---- слайс 3 ----
 
-  /** Запись, появившаяся «снаружи» (окно захвата, буфер): попадает в ленту после события. */
-  addExternalMessage(message: MessageView): void {
-    this.messages.push(message);
-  }
-
-  captureState(): Promise<CaptureState> {
-    const now = this.now();
-    const today = this.journalDate(now);
-    const inbox = this.messages.filter((m) => m.chatId === INBOX_ID).sort(compareFeed);
-    const context = inbox.filter((m) => m.journalDate === today).slice(-CONTEXT_LEN);
-    const last = inbox[inbox.length - 1];
-    return Promise.resolve({
-      language: this.language,
-      textSize: this.settings.textSize,
-      today,
-      context,
-      appendTarget: last && this.canAppend(last, now) ? last.id : null,
-      draft: this.captureDraft,
-      error: null,
+  createChat(title: string, icon: string | null): Promise<ChatSummary> {
+    return this.run("createChat", `${title} ${icon}`, () => {
+      const name = title.trim();
+      if (name === "") throw new KinigeApiError("chat_title_empty");
+      if ([...name].length > 128) throw new KinigeApiError("chat_title_too_long");
+      const chat: ChatSummary = {
+        id: `chat-${++this.counter}`,
+        title: name,
+        icon: icon?.trim() ? icon.trim() : "💬",
+        isInbox: false,
+        count: 0,
+        pinnedAt: null,
+        archivedAt: null,
+      };
+      this.chats.push(chat);
+      return { ...chat };
     });
   }
 
-  captureSend(body: string): Promise<CaptureOutcome> {
-    return this.capture(body, false);
+  renameChat(id: string, title: string): Promise<ChatSummary> {
+    return this.run("renameChat", `${id} ${title}`, () => {
+      const chat = this.mutableChat(id, true);
+      const name = title.trim();
+      if (name === "") throw new KinigeApiError("chat_title_empty");
+      if ([...name].length > 128) throw new KinigeApiError("chat_title_too_long");
+      chat.title = name;
+      return { ...chat };
+    });
   }
 
-  captureAppend(body: string): Promise<CaptureOutcome> {
-    return this.capture(body, true);
+  setChatIcon(id: string, icon: string): Promise<ChatSummary> {
+    return this.run("setChatIcon", `${id} ${icon}`, () => {
+      const chat = this.mutableChat(id, true);
+      if (icon.trim() === "") throw new KinigeApiError("chat_icon_invalid");
+      chat.icon = icon.trim();
+      return { ...chat };
+    });
   }
 
-  captureSaveDraft(body: string): Promise<void> {
-    this.captureDraft = body;
+  setChatPinned(id: string, pinned: boolean): Promise<ChatSummary> {
+    return this.run("setChatPinned", `${id} ${pinned}`, () => {
+      const chat = this.mutableChat(id, false);
+      chat.pinnedAt = pinned ? (chat.pinnedAt ?? this.now().getTime()) : null;
+      return { ...chat };
+    });
+  }
+
+  setChatArchived(id: string, archived: boolean): Promise<ChatSummary> {
+    return this.run("setChatArchived", `${id} ${archived}`, () => {
+      const chat = this.mutableChat(id, archived);
+      chat.archivedAt = archived ? (chat.archivedAt ?? this.now().getTime()) : null;
+      return { ...chat };
+    });
+  }
+
+  deleteMessage(id: string): Promise<void> {
+    return this.run("deleteMessage", id, () => {
+      const row = this.row(id);
+      row.deletedAt ??= this.now().getTime();
+    });
+  }
+
+  restoreMessage(id: string): Promise<void> {
+    return this.run("restoreMessage", id, () => {
+      this.row(id).deletedAt = null;
+    });
+  }
+
+  editMessage(id: string, body: string): Promise<MessageView> {
+    return this.run("editMessage", `${id} ${body}`, () => {
+      const row = this.row(id);
+      this.writable(row);
+      const text = body.replace(/\r\n?/g, "\n").trim();
+      if (text === "") throw new KinigeApiError("empty_message");
+      return this.setBody(row, text);
+    });
+  }
+
+  toggleTaskItem(id: string, index: number, checked: boolean): Promise<MessageView> {
+    return this.run("toggleTaskItem", `${id} ${index} ${checked}`, () => {
+      const row = this.row(id);
+      this.writable(row);
+      const lines = row.view.bodyMd.split("\n");
+      let seen = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const match = /^(\s*(?:[-*+]|\d+[.)])\s+\[)([ xX])(\]\s+\S.*)$/.exec(lines[i] ?? "");
+        if (!match) continue;
+        if (seen++ !== index) continue;
+        if ((match[2] !== " ") === checked) throw new KinigeApiError("task_item_stale");
+        lines[i] = `${match[1]}${checked ? "x" : " "}${match[3]}`;
+        return this.setBody(row, lines.join("\n"));
+      }
+      throw new KinigeApiError("task_item_stale");
+    });
+  }
+
+  setMessageFlag(id: string, flag: MessageFlag, on: boolean): Promise<MessageView> {
+    return this.run("setMessageFlag", `${id} ${flag} ${on}`, () => {
+      const row = this.row(id);
+      this.writable(row);
+      const now = this.now().getTime();
+      const view = { ...row.view };
+      if (flag === "task") {
+        view.isTask = on;
+        if (!on) view.taskDoneAt = null;
+      } else if (flag === "task_done") {
+        if (!view.isTask) {
+          if (on) throw new KinigeApiError("internal");
+        } else view.taskDoneAt = on ? now : null;
+      } else {
+        view.favoriteAt = on ? now : null;
+      }
+      row.view = view;
+      return view;
+    });
+  }
+
+  setMessageDate(id: string, journalDate: string): Promise<MessageView> {
+    return this.run("setMessageDate", `${id} ${journalDate}`, () => {
+      const row = this.row(id);
+      this.writable(row);
+      if (!isRealDate(journalDate)) throw new KinigeApiError("invalid_date");
+      row.view = { ...row.view, journalDate };
+      return row.view;
+    });
+  }
+
+  moveMessage(id: string, chatId: string): Promise<MessageView> {
+    return this.run("moveMessage", `${id} ${chatId}`, () => {
+      const row = this.row(id);
+      this.writable(row);
+      if (row.deletedAt !== null) throw new KinigeApiError("message_in_trash");
+      if (!this.chats.some((chat) => chat.id === chatId)) throw new KinigeApiError("chat_not_found");
+      row.view = { ...row.view, chatId };
+      return row.view;
+    });
+  }
+
+  listTrash(): Promise<TrashItem[]> {
+    const now = this.now().getTime();
+    return this.run("listTrash", "", () =>
+      this.rows
+        .filter((r) => r.deletedAt !== null)
+        .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
+        .map((r) => {
+          const chat = this.chats.find((c) => c.id === r.view.chatId);
+          const deletedAt = r.deletedAt ?? 0;
+          return {
+            message: r.view,
+            chatTitle: chat?.title ?? "",
+            chatIcon: chat?.icon ?? null,
+            chatIsInbox: chat?.isInbox ?? false,
+            deletedAt,
+            daysLeft: Math.max(0, Math.ceil((deletedAt + TRASH_DAYS * DAY_MS - now) / DAY_MS)),
+          };
+        }),
+    );
+  }
+
+  purgeMessage(id: string): Promise<void> {
+    return this.run("purgeMessage", id, () => {
+      const row = this.row(id);
+      if (row.deletedAt === null) throw new KinigeApiError("not_in_trash");
+      this.rows = this.rows.filter((r) => r !== row);
+    });
+  }
+
+  setSidebarCollapsed(collapsed: boolean): Promise<void> {
+    return this.run("setSidebarCollapsed", String(collapsed), () => {
+      this.settings = { ...this.settings, sidebarCollapsed: collapsed };
+    });
+  }
+
+  addRecentEmoji(emoji: string): Promise<string[]> {
+    return this.run("addRecentEmoji", emoji, () => {
+      if (emoji.trim() === "") throw new KinigeApiError("chat_icon_invalid");
+      const recent = [emoji, ...this.settings.recentEmoji.filter((known) => known !== emoji)].slice(0, 24);
+      this.settings = { ...this.settings, recentEmoji: recent };
+      return recent;
+    });
+  }
+
+  onOpenChat(handler: (chatId: string) => void): Promise<() => void> {
+    this.openChatListeners.add(handler);
+    return Promise.resolve(() => {
+      this.openChatListeners.delete(handler);
+    });
+  }
+
+  /** Как событие меню значка «открыть этот чат». */
+  emitOpenChat(chatId: string): void {
+    for (const handler of [...this.openChatListeners]) handler(chatId);
+  }
+
+  startupState(): Promise<StartupState> {
+    return Promise.resolve(this.startup);
+  }
+
+  restoreBackup(name: string): Promise<RestoreOutcome> {
+    return this.run("restoreBackup", name, () => {
+      if (!this.startup.backups.some((b) => b.name === name)) throw new KinigeApiError("backup_not_found");
+      this.restoredFrom = name;
+      const folder = this.settings.mirror.folder;
+      const previousMirror = folder ? `${folder}-before-restore-20261021T061200Z` : null;
+      this.startup = { needsRecovery: false, backups: [], databaseTooNew: false, corruptionFound: false };
+      return { previousMirror };
+    });
+  }
+
+  onDatabaseCorrupt(handler: () => void): Promise<() => void> {
+    this.corruptListeners.add(handler);
+    return Promise.resolve(() => {
+      this.corruptListeners.delete(handler);
+    });
+  }
+
+  /** Как событие «проверка целостности нашла повреждение». */
+  emitDatabaseCorrupt(): void {
+    for (const handler of [...this.corruptListeners]) handler();
+  }
+
+  restartForRecovery(): Promise<void> {
+    this.restartRequested = true;
     return Promise.resolve();
-  }
-
-  captureHide(): Promise<void> {
-    this.hideCount += 1;
-    return Promise.resolve();
-  }
-
-  captureResize(height: number): Promise<void> {
-    this.resizeLog.push(height);
-    return Promise.resolve();
-  }
-
-  private capture(body: string, append: boolean): Promise<CaptureOutcome> {
-    if (this.failNextCapture) {
-      const code = this.failNextCapture;
-      this.failNextCapture = null;
-      return Promise.reject(new KinigeApiError(code));
-    }
-    const text = body.replace(/\r\n?/g, "\n").trim();
-    if (text === "") return Promise.reject(new KinigeApiError("empty_message"));
-    const now = this.now();
-    const inbox = this.messages.filter((m) => m.chatId === INBOX_ID).sort(compareFeed);
-    const last = inbox[inbox.length - 1];
-    this.captureDraft = "";
-    if (append && last && this.canAppend(last, now)) {
-      const message: MessageView = { ...last, bodyMd: `${last.bodyMd}\n\n${text}` };
-      this.messages = this.messages.map((m) => (m.id === last.id ? message : m));
-      this.emitEntriesChanged();
-      return Promise.resolve({ action: "appended", message });
-    }
-    const message: MessageView = {
-      id: `mock-${++this.counter}`,
-      chatId: INBOX_ID,
-      bodyMd: text,
-      journalDate: this.journalDate(now),
-      createdAt: now.getTime(),
-      createdTz: "UTC",
-    };
-    this.messages.push(message);
-    this.emitEntriesChanged();
-    return Promise.resolve({ action: "created", message });
-  }
-
-  /** Правило цели дописывания, упрощённо: сегодняшняя запись не старше десяти минут (остальное решает Rust). */
-  private canAppend(message: MessageView, now: Date): boolean {
-    return message.journalDate === this.journalDate(now) && now.getTime() - message.createdAt <= APPEND_WINDOW_MS;
   }
 
   private changeShortcut(kind: ShortcutKind, accelerator: string): Promise<Settings> {
@@ -301,19 +400,4 @@ export class MockApi implements KinigeApi {
     };
     return Promise.resolve(this.settings);
   }
-
-  /** День записи с границей 04:00 (упрощённо, UTC). */
-  private journalDate(date: Date): string {
-    return new Date(date.getTime() - 4 * 3_600_000).toISOString().slice(0, 10);
-  }
-}
-
-/** Порядок ленты `(journal_date, created_at, id)`. */
-function compareFeed(
-  a: { journalDate: string; createdAt: number; id: string },
-  b: { journalDate: string; createdAt: number; id: string },
-): number {
-  if (a.journalDate !== b.journalDate) return a.journalDate < b.journalDate ? -1 : 1;
-  if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }

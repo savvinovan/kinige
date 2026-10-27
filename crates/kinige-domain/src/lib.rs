@@ -2,23 +2,43 @@
 
 pub mod api;
 pub mod append;
+pub mod backup;
+pub mod chat;
 pub mod draft;
+pub mod emoji;
+pub mod folders;
 pub mod groups;
+pub mod history;
 pub mod hlc;
 pub mod jcs;
 pub mod journal;
 pub mod lang;
 pub mod link;
+pub mod message_ops;
 pub mod mirror;
+pub mod rewrite;
 pub mod shortcuts;
+pub mod tags;
+pub mod tasks;
+
+#[cfg(test)]
+mod chat_tests;
+#[cfg(test)]
+mod history_tests;
+#[cfg(test)]
+mod move_tests;
+#[cfg(test)]
+mod ops_tests;
 
 use serde::Serialize;
 use ts_rs::TS;
 
 pub use api::{
-    ApiError, CaptureAction, CaptureOutcome, CaptureState, ChatSummary, ErrorCode, FeedCursor,
-    MessagePage, MessageView, MirrorError, MirrorStatus, Settings, TextSize,
+    ApiError, CaptureAction, CaptureOutcome, CaptureState, ChatList, ChatSummary, ErrorCode,
+    FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, Settings,
+    TextSize, TrashItem,
 };
+pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, RestoreOutcome, StartupState};
 pub use lang::Language;
 pub use shortcuts::{ShortcutKind, ShortcutState, ShortcutStatus};
 

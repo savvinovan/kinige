@@ -1,7 +1,10 @@
 //! Тесты дописывания: правило цели и перезапись группы `body` (ADR-0001 §3.3, §3.4, §4).
 
 use super::*;
-use crate::groups::{INBOX_ID, NewMessage, new_message};
+use crate::groups::{INBOX_ID, NewMessage, new_message, parse_groups_raw};
+use crate::jcs;
+use serde_json::{Value, json, value::RawValue};
+use std::collections::BTreeMap;
 
 const DEVICE: &str = "5f0c3e2a-9b1d-4c7e-8a64-0d2f1b3c4e5f";
 const NOW: i64 = 1_760_000_000_000;

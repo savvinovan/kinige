@@ -1,0 +1,10 @@
+/* Только для историй Storybook: корзина занимает окно по высоте, как в приложении. */
+.story-trash {
+  display: flex;
+  flex-direction: column;
+  height: var(--layout-window-height);
+}
+
+.story-trash > .trash {
+  flex: 1;
+}

@@ -1,15 +1,17 @@
 //! Быстрый захват (ТЗ §5.1, слайс 2): контекст окна, новая запись из окна и дописывание к последней записи Inbox. Только
-//! Inbox: выбор чата в окне захвата — слайс 3.
+//! Inbox: выбор чата в окне захвата не входит ни в один слайс (§1.2 п. 1, §12.3).
 
 use crate::draft::{CAPTURE_KEY, delete_draft};
+use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
 use crate::send::{insert_new_message, mark_dirty};
+use crate::view::{VIEW_COLUMNS, view_from_row, view_from_row_at};
 use crate::{Now, Store, StoreError};
 use kinige_domain::append::{AppendCandidate, CurrentBody, can_append, joined_body, rewrite_body};
 use kinige_domain::groups::{self, GroupError, INBOX_ID};
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use kinige_domain::{CaptureAction, CaptureOutcome, MessageView};
-use rusqlite::{Connection, OptionalExtension, Row, TransactionBehavior};
+use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 
 /// Сколько записей показывает окно захвата над полем (ТЗ §5.1: две-три).
 pub const CONTEXT_LEN: usize = 3;
@@ -25,14 +27,8 @@ pub struct CaptureView {
     pub draft: String,
 }
 
-fn read_err(error: rusqlite::Error) -> StoreError {
-    StoreError::Read(error.to_string())
-}
-
-fn write_err(error: rusqlite::Error) -> StoreError {
-    StoreError::Write(error.to_string())
-}
-
+/// Ошибки домена при дописывании: слишком длинный текст — `TooLarge`, остальное (в том числе группа новее
+/// поддерживаемой, которую правило цели уже отсеяло) — внутренняя ошибка.
 fn group_err(error: GroupError) -> StoreError {
     match error {
         GroupError::TooLarge => StoreError::TooLarge,
@@ -62,24 +58,19 @@ impl LastMessage {
 
 fn last_message(conn: &Connection) -> rusqlite::Result<Option<LastMessage>> {
     conn.query_row(
-        "SELECT id, chat_id, body_md, journal_date, created_at, created_tz, origin, hlc_json, groups_raw, server_known \
-         FROM message WHERE chat_id = ?1 AND deleted_at IS NULL \
-         ORDER BY journal_date DESC, created_at DESC, id DESC LIMIT 1",
+        &format!(
+            "SELECT {VIEW_COLUMNS}, m.origin, m.hlc_json, m.groups_raw, m.server_known \
+             FROM message m WHERE m.chat_id = ?1 AND m.deleted_at IS NULL \
+             ORDER BY m.journal_date DESC, m.created_at DESC, m.id DESC LIMIT 1"
+        ),
         [INBOX_ID],
-        |row: &Row<'_>| {
+        |row| {
             Ok(LastMessage {
-                view: MessageView {
-                    id: row.get(0)?,
-                    chat_id: row.get(1)?,
-                    body_md: row.get(2)?,
-                    journal_date: row.get(3)?,
-                    created_at: row.get(4)?,
-                    created_tz: row.get(5)?,
-                },
-                origin: row.get(6)?,
-                hlc_json: row.get(7)?,
-                groups_raw: row.get(8)?,
-                server_known: row.get::<_, i64>(9)? != 0,
+                view: view_from_row_at(row, 0)?,
+                origin: row.get(10)?,
+                hlc_json: row.get(11)?,
+                groups_raw: row.get(12)?,
+                server_known: row.get::<_, i64>(13)? != 0,
             })
         },
     )
@@ -93,25 +84,16 @@ impl Store {
         let now_ms = now.ms;
         self.read(|conn| {
             let mut statement = conn
-                .prepare(
-                    "SELECT id, chat_id, body_md, journal_date, created_at, created_tz FROM message \
-                     WHERE chat_id = ?1 AND deleted_at IS NULL AND journal_date = ?2 \
-                     ORDER BY created_at DESC, id DESC LIMIT ?3",
-                )
+                .prepare(&format!(
+                    "SELECT {VIEW_COLUMNS} FROM message m \
+                     WHERE m.chat_id = ?1 AND m.deleted_at IS NULL AND m.journal_date = ?2 \
+                     ORDER BY m.created_at DESC, m.id DESC LIMIT ?3"
+                ))
                 .map_err(read_err)?;
             let mut context = statement
                 .query_map(
                     rusqlite::params![INBOX_ID, today, CONTEXT_LEN as i64],
-                    |row| {
-                        Ok(MessageView {
-                            id: row.get(0)?,
-                            chat_id: row.get(1)?,
-                            body_md: row.get(2)?,
-                            journal_date: row.get(3)?,
-                            created_at: row.get(4)?,
-                            created_tz: row.get(5)?,
-                        })
-                    },
+                    view_from_row,
                 )
                 .map_err(read_err)?
                 .collect::<Result<Vec<_>, _>>()
@@ -123,9 +105,11 @@ impl Store {
                 .filter(|last| can_append(&last.candidate(), now_ms, &today).unwrap_or(false))
                 .map(|last| last.view.id);
             let draft = conn
-                .query_row("SELECT body FROM draft WHERE key = ?1", [CAPTURE_KEY], |r| {
-                    r.get::<_, String>(0)
-                })
+                .query_row(
+                    "SELECT body FROM draft WHERE key = ?1",
+                    [CAPTURE_KEY],
+                    |r| r.get::<_, String>(0),
+                )
                 .optional()
                 .map_err(read_err)?
                 .unwrap_or_default();
@@ -228,10 +212,13 @@ impl Store {
                     if changed != 1 {
                         return Err(StoreError::Internal("запись для дописывания исчезла".into()));
                     }
+                    crate::tags::replace_tags(&tx, &last.view.id, &rewritten.body_md)
+                        .map_err(write_err)?;
                     mark_dirty(&tx, INBOX_ID, &last.view.journal_date).map_err(write_err)?;
                     CaptureOutcome {
                         action: CaptureAction::Appended,
                         message: MessageView {
+                            tags: kinige_domain::tags::parse_tags(&rewritten.body_md),
                             body_md: rewritten.body_md,
                             ..last.view
                         },

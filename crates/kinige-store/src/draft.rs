@@ -2,6 +2,7 @@
 //! (`capture`) и чат главного окна (`chat:<id>`). Черновик очищается в той же транзакции, что отправка. В Markdown-копию
 //! черновики не попадают.
 
+use crate::error::{read_err, write_err};
 use crate::{Now, Store, StoreError};
 use rusqlite::{OptionalExtension, Transaction, TransactionBehavior};
 
@@ -12,10 +13,6 @@ pub const MAX_DRAFT_BYTES: usize = 1024 * 1024;
 
 pub(crate) fn chat_key(chat_id: &str) -> String {
     format!("chat:{chat_id}")
-}
-
-fn write_err(error: rusqlite::Error) -> StoreError {
-    StoreError::Write(error.to_string())
 }
 
 pub(crate) fn delete_draft(tx: &Transaction<'_>, key: &str) -> rusqlite::Result<()> {
@@ -90,7 +87,7 @@ impl Store {
                     row.get::<_, String>(0)
                 })
                 .optional()
-                .map_err(|e| StoreError::Read(e.to_string()))?
+                .map_err(read_err)?
                 .unwrap_or_default())
         })
     }

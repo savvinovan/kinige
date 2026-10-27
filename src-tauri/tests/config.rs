@@ -242,11 +242,11 @@ fn capture_window_sits_low_centered_and_keeps_its_bottom_edge_for_any_height() {
     assert_eq!(anchor_for((0, 0, 2880, 1800), 1168, 64.0), (856, 1648)); // 1800 × 0,88 + 64
     // Нижний край один и тот же при любой высоте окна: растёт только верх (вверх).
     let bottom = 1933;
-    for height in [122_u32, 281, 333, 480] {
+    for height in [122_u32, 281, 333, 480, 640] {
         let top = top_for_bottom(bottom, height);
         assert_eq!(top + height as i32, bottom, "высота {height}");
     }
-    assert!(top_for_bottom(bottom, 480) < top_for_bottom(bottom, 122));
+    assert!(top_for_bottom(bottom, 640) < top_for_bottom(bottom, 122));
 }
 
 #[test]

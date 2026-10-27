@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-purge-message"
+description = "Enables the purge_message command without any pre-configured scope."
+commands.allow = ["purge_message"]
+
+[[permission]]
+identifier = "deny-purge-message"
+description = "Denies the purge_message command without any pre-configured scope."
+commands.deny = ["purge_message"]

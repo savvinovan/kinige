@@ -21,3 +21,22 @@ export function mergeLatestPage<M extends Keyed>(loaded: readonly M[], page: rea
   if (!hasOlder || !oldest) return [...page];
   return [...loaded.filter((message) => byFeedOrder(message, oldest) < 0), ...page];
 }
+
+/**
+ * Страница ленты плюс удалённые записи, которые ещё стоят на месте приглушёнными («Удалено · Вернуть»): в ответе Rust их
+ * уже нет, а человек из чата не уходил. Под фильтром по тегу остаются только записи с этим тегом. Порядок — лентовый.
+ */
+export function withDeleted<M extends Keyed & { tags?: readonly string[] }>(
+  loaded: readonly M[],
+  page: readonly M[],
+  deleted: ReadonlySet<string>,
+  tag: string | null,
+): M[] {
+  const kept = loaded.filter(
+    (message) =>
+      deleted.has(message.id) &&
+      !page.some((shown) => shown.id === message.id) &&
+      (tag === null || (message.tags ?? []).includes(tag)),
+  );
+  return kept.length === 0 ? [...page] : [...page, ...kept].sort(byFeedOrder);
+}

@@ -4,7 +4,9 @@ import { TauriApi } from "./api/TauriApi";
 import "./app.css";
 import { CaptureWindow } from "./capture/CaptureWindow";
 import { I18n } from "./i18n/I18n";
-import { MainWindow, applyTextSize } from "./ui/screens/MainWindow";
+import { AppRoot } from "./ui/screens/AppRoot";
+import { loadStartup } from "./ui/screens/startupSettings";
+import { applyTextSize } from "./ui/screens/textSize";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("no #root element");
@@ -28,12 +30,14 @@ const start = isCaptureWindow
         </StrictMode>,
       );
     })
-  : Promise.all([api.getLanguage(), api.getSettings()]).then(([language, settings]) => {
+  : Promise.all([api.getLanguage(), api.startupState()]).then(async ([language, first]) => {
+      // Журнал не открыт или чтение настроек само упёрлось в повреждение: окно «База повреждена» (см. `loadStartup`).
+      const { settings, startup } = await loadStartup(api, first);
       applyTextSize(settings.textSize);
       createRoot(root).render(
         <StrictMode>
           <I18n language={language}>
-            <MainWindow api={api} initialSettings={settings} />
+            <AppRoot api={api} initialSettings={settings} startup={startup} />
           </I18n>
         </StrictMode>,
       );

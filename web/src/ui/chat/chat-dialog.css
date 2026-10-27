@@ -1,0 +1,91 @@
+/* Окно чата: создание, переименование, эмодзи. Работает поверх Modal (settings/modal.css). Только токены. */
+
+/* Окно прижато к верху, а не по центру: пикер раскрывается под полем и растит окно вниз, заголовок остаётся на месте. */
+.modal:has(.chat-dialog) {
+  align-items: start;
+  padding-top: var(--layout-chat-dialog-top);
+}
+
+.modal__panel:has(.chat-dialog) {
+  max-width: var(--layout-chat-dialog-width);
+}
+
+.chat-dialog {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+.chat-dialog__field {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.chat-dialog__name {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Кнопка эмодзи слева от поля: высота поля, квадрат. Пока эмодзи не выбран, 💬 приглушён — это подсказка, а не выбор. */
+.chat-dialog__emoji {
+  display: grid;
+  flex: none;
+  place-items: center;
+  box-sizing: border-box;
+  width: var(--layout-field-height);
+  height: var(--layout-field-height);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-field);
+  font-family: var(--font-family-emoji);
+  font-size: var(--icon-size);
+  line-height: var(--icon-emoji-line-height);
+  cursor: pointer;
+  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.chat-dialog__emoji:hover,
+.chat-dialog__emoji[aria-expanded="true"] {
+  background: var(--color-surface-field-active);
+}
+
+.chat-dialog__emoji--empty {
+  opacity: var(--opacity-disabled);
+}
+
+.chat-dialog__emoji:disabled {
+  cursor: default;
+  opacity: var(--opacity-disabled);
+}
+
+/* Пикер внутри окна лежит на бумаге окна, а не на плашке меню. */
+.chat-dialog__picker .emoji-picker {
+  --emoji-surface: var(--color-surface-paper);
+}
+
+.chat-dialog__error {
+  margin: 0;
+  color: var(--color-status-error);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.chat-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* «Создать» / «Сохранить»: акцентный текст на заливке кнопки, чтобы читалась как главная. */
+.chat-dialog__submit {
+  background: var(--color-surface-selected);
+}
+
+.chat-dialog__submit:hover:not(:disabled) {
+  background: var(--color-surface-field-active);
+}

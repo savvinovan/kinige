@@ -1,0 +1,10 @@
+/* Только для историй Storybook: сайдбар во всю высоту окна и пустая лента справа (на ней видны меню и подсказки). */
+.story-sidebar {
+  display: flex;
+  height: var(--layout-window-height);
+  background: var(--color-surface-paper);
+}
+
+.story-sidebar > .sidebar {
+  height: 100%;
+}

@@ -113,4 +113,17 @@ describe("ProfileMenu", () => {
     rerender(<ProfileMenu statusDot />);
     expect(container.querySelector(".profile__dot")).not.toBeNull();
   });
+
+  it("compact (свёрнутый сайдбар): только аватар, имя и меню остаются в подписи и в дереве", () => {
+    const { container } = render(<ProfileMenu compact name="Александр" />);
+    expect(container.querySelector(".profile")).toHaveClass("profile--compact");
+    expect(container.querySelector(".profile__name")).toBeNull();
+    expect(container.querySelector(".profile__chevron")).toBeNull();
+    const button = screen.getByRole("button", { name: "Профиль: Александр" });
+    fireEvent.click(button);
+    expect(screen.getByRole("menu", { name: "Профиль" })).toBeInTheDocument();
+    expect(items()).toHaveLength(3);
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    expect(button).toHaveFocus();
+  });
 });

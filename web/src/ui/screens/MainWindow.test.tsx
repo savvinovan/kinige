@@ -1,13 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { INBOX_ID } from "../../api/KinigeApi";
-import { MockApi, type MockApiOptions } from "../../api/MockApi";
+import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../../api/MockApi";
 import type { Settings } from "../../api/generated/Settings";
 import { fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { DEFAULT_SHORTCUTS } from "../settings/demoShortcuts";
 import { MainWindow } from "./MainWindow";
 
 const SETTINGS: Settings = {
-  textSize: "normal",
+  ...DEFAULT_SETTINGS,
   mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
   shortcuts: DEFAULT_SHORTCUTS,
 };
@@ -36,7 +35,7 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
     expect(document.querySelector(".chat-row__count")).toBeNull();
     expect(screen.getByText(/Пока пусто/)).toBeInTheDocument();
     expect(field()).toHaveFocus();
-    for (const dead of ["Прикрепить файл", "Эмодзи", "Записать голосовое"]) expect(screen.queryByRole("button", { name: dead })).toBeNull();
+    for (const dead of ["Прикрепить файл", "Записать голосовое"]) expect(screen.queryByRole("button", { name: dead })).toBeNull();
     expect(screen.queryByRole("searchbox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Отправить" })).toBeNull();
   });
@@ -115,7 +114,7 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
 
   it("запись из прошлого дня: метка по journal_date, а не «Сегодня»", async () => {
     setup({
-      messages: [{ id: "old", chatId: INBOX_ID, bodyMd: "давняя", journalDate: "2025-03-14", createdAt: Date.UTC(2025, 2, 14, 9, 12), createdTz: "UTC" }],
+      messages: [mockMessage({ id: "old", bodyMd: "давняя", journalDate: "2025-03-14", createdAt: Date.UTC(2025, 2, 14, 9, 12) })],
     });
     await screen.findByText("давняя");
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("14 марта 2025");
@@ -123,7 +122,7 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
 
   it("ссылка в записи открывается в системном браузере, окно остаётся", async () => {
     const api = setup({
-      messages: [{ id: "l", chatId: INBOX_ID, bodyMd: "см. [статью](https://example.com/a)", journalDate: "2026-10-21", createdAt: Date.UTC(2026, 9, 21, 5, 0), createdTz: "UTC" }],
+      messages: [mockMessage({ id: "l", bodyMd: "см. [статью](https://example.com/a)", createdAt: Date.UTC(2026, 9, 21, 5, 0) })],
     });
     const link = await screen.findByRole("link", { name: "статью" });
     expect(fireEvent.click(link)).toBe(false);
@@ -133,7 +132,7 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
 
   it("ссылка не из списка схем: ошибка над полем, ничего не открыто", async () => {
     const api = setup({
-      messages: [{ id: "l", chatId: INBOX_ID, bodyMd: "<ftp://example.com/x>", journalDate: "2026-10-21", createdAt: Date.UTC(2026, 9, 21, 5, 0), createdTz: "UTC" }],
+      messages: [mockMessage({ id: "l", bodyMd: "<ftp://example.com/x>", createdAt: Date.UTC(2026, 9, 21, 5, 0) })],
     });
     // markdown-it не делает ссылкой ftp:, а DOMPurify убирает href: щёлкать не по чему.
     await screen.findByRole("article");
@@ -220,7 +219,10 @@ describe("MainWindow: настройки", () => {
 
   it("Esc закрывает окно, фокус возвращается на кнопку профиля", async () => {
     setup();
-    await openSettings();
+    const dialog = await openSettings();
+    // `findByRole` срабатывает сразу после вставки окна в DOM, а обработчик Esc вешает эффект окна (после отрисовки): сигнал,
+    // что эффект отработал, — фокус на кнопке закрытия. Без этого ожидания Esc иногда уходил раньше подписки (так и падал).
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Закрыть настройки" })).toHaveFocus());
     fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getByRole("button", { name: /Профиль/ })).toHaveFocus();

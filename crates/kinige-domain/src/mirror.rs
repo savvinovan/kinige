@@ -102,7 +102,7 @@ fn demote_headings(body: &str) -> String {
 }
 
 /// Начало ограждённого блока: до трёх пробелов, затем три и более «```» или «~~~» (у «`» в строке информации нет «`»).
-fn opening_fence(line: &str) -> Option<(char, usize)> {
+pub(crate) fn opening_fence(line: &str) -> Option<(char, usize)> {
     let rest = strip_indent(line)?;
     let marker = rest.chars().next().filter(|c| *c == '`' || *c == '~')?;
     let length = rest.chars().take_while(|c| *c == marker).count();
@@ -112,7 +112,7 @@ fn opening_fence(line: &str) -> Option<(char, usize)> {
     Some((marker, length))
 }
 
-fn is_closing_fence(line: &str, marker: char, length: usize) -> bool {
+pub(crate) fn is_closing_fence(line: &str, marker: char, length: usize) -> bool {
     let Some(rest) = strip_indent(line) else {
         return false;
     };

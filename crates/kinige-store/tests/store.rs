@@ -2,6 +2,7 @@
 
 mod common;
 
+use common::ops::wait_closed;
 use common::*;
 use kinige_domain::groups::{INBOX_ID, parse_groups_raw};
 use kinige_domain::{ErrorCode, FeedCursor, TextSize};
@@ -28,8 +29,12 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
             "chat",
             "draft",
             "message",
+            "message_revision",
+            "message_tag",
+            "mirror_chat",
             "mirror_dirty",
-            "sync_state"
+            "sync_state",
+            "tombstone"
         ]
     );
     let version: i64 = conn
@@ -377,7 +382,9 @@ fn deleted_entries_are_neither_shown_nor_counted() {
         .unwrap();
     assert_eq!(store.list_chats().unwrap()[0].count, 2);
 
-    mark_deleted(dir.path(), &second.id, T0 + 2000);
+    store
+        .delete_message(&second.id, &moscow(T0 + 2000))
+        .unwrap();
     let page = store
         .list_messages(INBOX_ID, None, 50, &moscow(T0 + 3000))
         .unwrap();
@@ -498,10 +505,22 @@ fn a_database_from_a_newer_app_is_refused() {
     raw(dir.path())
         .pragma_update(None, "user_version", LATEST_VERSION + 1)
         .unwrap();
+    wait_closed(dir.path());
+    let before = std::fs::read(db_path(dir.path())).unwrap();
     let error = kinige_store::Store::open_at(options(dir.path()), &Now::at(T0, "UTC"))
         .err()
         .expect("отказ");
-    assert_eq!(error.code(), ErrorCode::Internal);
+    // Отдельный код: окно просит обновить приложение (ТЗ §10.4), а не предлагает копии и не падает.
+    assert!(
+        matches!(error, kinige_store::StoreError::TooNew(found) if found == LATEST_VERSION + 1)
+    );
+    assert_eq!(error.code(), ErrorCode::DatabaseTooNew);
+    assert_eq!(
+        std::fs::read(db_path(dir.path())).unwrap(),
+        before,
+        "файл не тронут, копий и миграций нет"
+    );
+    assert!(!dir.path().join("backups").exists());
 }
 
 #[test]

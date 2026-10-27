@@ -17,6 +17,8 @@ interface ProfileMenuProps {
   defaultOpen?: boolean;
   /** «Настройки» (слайс 1). Без обработчика пункт только нарисован и объявлен недоступным, как «Экспорт» и «О программе». */
   onOpenSettings?: () => void;
+  /** Свёрнутый сайдбар: только аватар, меню открывается вправо от него, а не вверх на всю ширину. */
+  compact?: boolean;
 }
 
 /**
@@ -24,8 +26,9 @@ interface ProfileMenuProps {
  * «О программе». Работает «Настройки» (если передан обработчик); остальные пункты объявлены недоступными
  * (`aria-disabled`, «Появится позже»), но меню настоящее: открывается щелчком, Enter, пробелом или стрелкой; стрелки,
  * Home и End ходят по пунктам, Esc закрывает и возвращает фокус на кнопку, щелчок вне меню и Tab закрывают.
+ * В свёрнутом сайдбаре (`compact`) остаётся аватар; имя читается по подписи кнопки.
  */
-export function ProfileMenu({ name, statusDot = false, defaultOpen = false, onOpenSettings }: ProfileMenuProps) {
+export function ProfileMenu({ name, statusDot = false, defaultOpen = false, onOpenSettings, compact = false }: ProfileMenuProps) {
   const { t } = useTranslation();
   const displayName = name ?? t("profile.defaultName");
   const [open, setOpen] = useState(defaultOpen);
@@ -103,7 +106,7 @@ export function ProfileMenu({ name, statusDot = false, defaultOpen = false, onOp
   const itemAvailable = (item: Item) => item === "settings" && onOpenSettings !== undefined;
 
   return (
-    <div className="profile" ref={root}>
+    <div className={compact ? "profile profile--compact" : "profile"} ref={root}>
       {open ? (
         <div className="profile__menu" role="menu" id={menuId} aria-label={t("profile.menu")} ref={menu} onKeyDown={onMenuKeyDown}>
           {ITEMS.map((item) =>
@@ -162,10 +165,14 @@ export function ProfileMenu({ name, statusDot = false, defaultOpen = false, onOp
           {initials(displayName, t("profile.defaultName"))}
           {statusDot ? <span className="profile__dot" /> : null}
         </span>
-        <span className="profile__name">{displayName}</span>
-        <span className="profile__chevron" aria-hidden="true">
-          <Icon name="chevron" />
-        </span>
+        {compact ? null : (
+          <>
+            <span className="profile__name">{displayName}</span>
+            <span className="profile__chevron" aria-hidden="true">
+              <Icon name="chevron" />
+            </span>
+          </>
+        )}
       </button>
     </div>
   );

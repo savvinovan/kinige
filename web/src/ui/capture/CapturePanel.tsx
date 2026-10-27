@@ -28,6 +28,16 @@ export interface CapturePanelProps {
    * подгоняет высоту окна ОС; в историях Storybook обработчика нет.
    */
   onHeight?: (height: number) => void;
+  /**
+   * Пикер эмодзи: кнопка «эмодзи» в поле, панель в потоке над полем (окно растёт вверх). Без него кнопки нет. `open` и
+   * `onOpenChange` ведёт хозяин: Esc сначала закрывает пикер (`onOpenChange(false)`), а окно (`onHide`) — только следующим нажатием.
+   */
+  emoji?: {
+    recent: readonly string[];
+    onPicked: (emoji: string) => void;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+  };
 }
 
 /**
@@ -44,7 +54,7 @@ export interface CapturePanelProps {
  * Окно создаётся скрытым и показывается много раз, поэтому автофокуса при монтировании мало: при каждом получении фокуса
  * окном курсор снова ставится в поле. Esc скрывает окно, где бы ни стоял фокус (кроме ввода через IME).
  */
-export function CapturePanel({ context, appendTargetId, value, onChange, onSend, onAppend, onHide, error, onHeight }: CapturePanelProps) {
+export function CapturePanel({ context, appendTargetId, value, onChange, onSend, onAppend, onHide, error, onHeight, emoji }: CapturePanelProps) {
   const { t } = useTranslation();
   const language = useLanguage();
   const root = useRef<HTMLDivElement>(null);
@@ -52,15 +62,24 @@ export function CapturePanel({ context, appendTargetId, value, onChange, onSend,
   // Свежие обработчики без переподписки: родитель может передавать новые функции на каждый рендер.
   const onHideRef = useRef(onHide);
   const onHeightRef = useRef(onHeight);
+  const emojiRef = useRef(emoji);
   useEffect(() => {
     onHideRef.current = onHide;
     onHeightRef.current = onHeight;
+    emojiRef.current = emoji;
   });
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.isComposing) return;
       event.preventDefault();
+      // Открыт пикер (фокус в поле, а не в пикере: из пикера Esc до сюда не доходит): сначала закрывается он, окно остаётся.
+      const picker = emojiRef.current;
+      if (picker?.open) {
+        picker.onOpenChange(false);
+        root.current?.querySelector("textarea")?.focus();
+        return;
+      }
       onHideRef.current();
     };
     const focusField = () => root.current?.querySelector("textarea")?.focus();
@@ -121,7 +140,19 @@ export function CapturePanel({ context, appendTargetId, value, onChange, onSend,
           onChange={onChange}
           onSubmit={onSend}
           onAppend={onAppend}
-          buttons={{}}
+          buttons={emoji ? { emoji: true } : {}}
+          emoji={
+            emoji
+              ? {
+                  recent: emoji.recent,
+                  language,
+                  onPicked: emoji.onPicked,
+                  placement: "inline",
+                  open: emoji.open,
+                  onOpenChange: emoji.onOpenChange,
+                }
+              : undefined
+          }
           error={error}
           floating
           hint={hintShown ? t("capture.appendHint") : undefined}

@@ -1,0 +1,126 @@
+/* Экран «База повреждена»: окно целиком, колонка по центру. Только токены. */
+.recovery {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: var(--layout-window-height);
+  padding: var(--space-6) var(--space-5);
+  background: var(--color-surface-paper);
+  color: var(--color-text-primary);
+}
+
+.recovery__column {
+  display: grid;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--layout-recovery-width);
+}
+
+.recovery__title {
+  margin: 0;
+  font-family: var(--type-h1-family);
+  font-size: var(--type-h1-size);
+  font-weight: var(--type-h1-weight);
+  line-height: var(--type-h1-line-height);
+}
+
+.recovery__text {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+}
+
+.recovery__text--quiet {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.recovery__none {
+  margin: 0;
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line-height);
+}
+
+/* Список копий: строки с тонкими разделителями, без карточек; выбранная — заливка и линия акцента. Длинный список прокручивается. */
+.recovery__list {
+  display: grid;
+  max-height: var(--layout-recovery-list-max-height);
+  overflow-y: auto;
+  border-top: var(--border-width-hairline) solid var(--color-border-divider);
+}
+
+.recovery__backup {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  min-height: var(--layout-row-height);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border-width-hairline) solid var(--color-border-divider);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  cursor: pointer;
+}
+
+.recovery__backup:hover {
+  background: var(--color-surface-selected);
+}
+
+.recovery__backup:has(input:checked) {
+  background: var(--color-surface-selected);
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-accent-default);
+}
+
+/* Фокус с клавиатуры на радиокнопке: кольцо вокруг всей строки (сама радиокнопка скрыта визуально). */
+.recovery__backup:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: calc(var(--focus-offset) * -1);
+}
+
+.recovery__backup:has(input:disabled) {
+  cursor: default;
+  opacity: var(--opacity-disabled);
+}
+
+.recovery__when {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.recovery__kind {
+  flex: none;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  white-space: nowrap;
+}
+
+/* Главная кнопка: акцентная заливка, текст цветом фона окна (9,2:1 к акценту); подпись длинная, поэтому переносится. */
+.recovery__primary,
+.recovery__primary:hover {
+  justify-self: start;
+  height: auto;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-accent-default);
+  color: var(--color-surface-background);
+  text-align: left;
+}
+
+.recovery__primary[aria-disabled="true"],
+.recovery__primary[aria-disabled="true"]:hover {
+  background: var(--color-accent-default);
+  cursor: default;
+  opacity: var(--opacity-disabled);
+}

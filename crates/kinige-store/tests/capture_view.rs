@@ -32,7 +32,9 @@ fn context_is_up_to_three_latest_undeleted_entries_of_today_oldest_first() {
                 .id
         })
         .collect();
-    mark_deleted(dir.path(), &ids[4], T0 + 6 * MINUTE);
+    store
+        .delete_message(&ids[4], &moscow(T0 + 6 * MINUTE))
+        .unwrap();
 
     let view = store.capture_view(&moscow(T0 + 7 * MINUTE)).unwrap();
     let texts: Vec<&str> = view.context.iter().map(|m| m.body_md.as_str()).collect();

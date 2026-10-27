@@ -11,6 +11,13 @@
   background: var(--color-surface-background);
   /* Тонкая граница с лентой: поверхности фона и бумаги близки по яркости. */
   border-right: var(--border-width-hairline) solid var(--color-border-divider);
+  /* Сворачивание анимирует только ширину; при Reduce Motion длительность нулевая (themes.css). */
+  transition: width var(--motion-duration-medium) var(--motion-easing-standard);
+}
+
+/* Свёрнутый вид — «полоса эмодзи». Содержимое меняется сразу, ширина доезжает за motion.duration.medium. */
+.sidebar--rail {
+  width: var(--layout-sidebar-rail-width);
 }
 
 /* Список прокручивается только по вертикали: длинные имена обрезаются многоточием, а не раздвигают сайдбар. */
@@ -19,6 +26,71 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  /* Кольцо фокуса выступает за строку на ширину линии и зазор; поле такой же ширины с отрицательным внешним отступом
+     оставляет ему место внутри области прокрутки, и оно не обрезается краем списка. */
+  margin: calc((var(--focus-width) + var(--focus-offset)) * -1);
+  padding: calc(var(--focus-width) + var(--focus-offset));
+}
+
+/* Верхняя строка: поле «Поиск» и тихая кнопка «свернуть». Без поиска кнопка стоит справа одна. */
+.sidebar__top {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.sidebar__search {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar__section + .sidebar__section {
+  margin-top: var(--space-2);
+}
+
+/* Заголовок раздела: мелкий тихий серый, как метка, а не акцент. Высота равна мелкой кнопке «+»: строка не прыгает. */
+.sidebar__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-height: var(--layout-sidebar-heading-height);
+  margin: 0;
+  padding: 0 var(--space-2);
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--type-meta-line-height);
+}
+
+.sidebar__heading-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* «Архив» — кнопка-заголовок: шеврон справа, весь заголовок нажимается. */
+.sidebar__heading--toggle {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar__heading--toggle:hover {
+  color: var(--color-text-primary);
+}
+
+/* Мелкая кнопка «+» не раздвигает заголовок и не выступает за его поля. */
+.sidebar__heading .icon-button {
+  margin-right: calc(var(--space-1) * -1);
 }
 
 /* Колонка minmax(0, 1fr): без этого колонка grid не сжимается ниже ширины самого длинного имени (min-content). */
@@ -95,5 +167,92 @@
   font-weight: var(--type-meta-weight);
   font-variant-numeric: tabular-nums;
   line-height: var(--type-meta-line-height);
+  white-space: nowrap;
+}
+
+/* ---- Свёрнутый вид: полоса эмодзи ---- */
+
+.sidebar__rail-top {
+  display: flex;
+  flex: none;
+  justify-content: center;
+}
+
+.sidebar__rail-bottom {
+  display: grid;
+  flex: none;
+  gap: var(--space-1);
+}
+
+/* Квадратная кнопка полосы: эмодзи чата или значок корзины по центру. Размер — высота строки списка. */
+.rail-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--layout-row-height);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.rail-button:hover {
+  color: var(--color-text-primary);
+}
+
+.rail-button--selected {
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+}
+
+/* Цель перетаскивания записи: тихая рамка акцентного цвета и заливка активного поля (решение приёмки слайса 3). */
+.rail-button--drop,
+.chat-row--drop {
+  background: var(--color-surface-field-active);
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: calc(var(--focus-offset) * -1);
+}
+
+/* Точка «в корзине есть записи»: акцентная, в углу значка; число — в подписи для диктора. */
+.rail-button__dot {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: var(--layout-sidebar-dot);
+  height: var(--layout-sidebar-dot);
+  border: var(--border-width-strong) solid var(--color-surface-background);
+  border-radius: var(--radius-round);
+  box-sizing: content-box;
+  background: var(--color-accent-default);
+}
+
+/* Подсказка с именем чата справа от полосы. Рисуется поверх окна (position: fixed в body): список чатов прокручивается
+   и обрезал бы её. Появляется сразу, без задержки, и ничего не сдвигает. */
+.rail-tip {
+  position: fixed;
+  z-index: 3;
+  box-sizing: border-box;
+  max-width: var(--layout-menu-max-width);
+  margin-left: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  overflow: hidden;
+  border: var(--border-width-hairline) solid var(--color-border-divider);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-message);
+  box-shadow: var(--shadow-overlay);
+  color: var(--color-text-primary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  pointer-events: none;
+  text-overflow: ellipsis;
+  transform: translateY(-50%);
   white-space: nowrap;
 }

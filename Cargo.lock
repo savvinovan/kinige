@@ -2034,6 +2034,7 @@ dependencies = [
  "arboard",
  "kinige-domain",
  "kinige-store",
+ "rusqlite",
  "serde_json",
  "sys-locale",
  "tauri",

@@ -53,6 +53,14 @@ pub fn offset_secs(tz: &str, ms: i64) -> Option<i32> {
     )
 }
 
+/// Момент в UTC для имени файла: `YYYYMMDDTHHMMSSZ` (сортируется как строка).
+pub fn utc_stamp(ms: i64) -> String {
+    DateTime::from_timestamp_millis(ms)
+        .unwrap_or_default()
+        .format("%Y%m%dT%H%M%SZ")
+        .to_string()
+}
+
 /// Смещение пояса операционной системы на момент `ms`.
 fn local_offset_secs(ms: i64) -> i32 {
     match DateTime::from_timestamp_millis(ms) {

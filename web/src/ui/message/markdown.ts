@@ -1,5 +1,5 @@
 import createDOMPurify from "dompurify";
-import MarkdownIt from "markdown-it";
+import MarkdownIt, { type StateCore, type Token } from "markdown-it";
 
 // Безопасный рендер Markdown в ленте (ТЗ §6): сырой HTML в тексте отключён (он выводится как текст), картинки и таблицы
 // в D1 не рендерятся, ссылки только http(s) и mailto, результат дополнительно проходит DOMPurify по белому списку.
@@ -9,9 +9,19 @@ import MarkdownIt from "markdown-it";
 export interface TaskLabels {
   done: string;
   todo: string;
+  /**
+   * Имя кликабельного квадрата (`interactiveTasks`): у флажка имя не должно зависеть от состояния, состояние говорит
+   * `aria-checked`. Без него берутся `done` / `todo`.
+   */
+  item?: string;
 }
 
-type RenderEnv = { timeSpacer?: boolean; taskLabels?: TaskLabels };
+type RenderEnv = {
+  timeSpacer?: boolean;
+  taskLabels?: TaskLabels;
+  tags?: ReadonlySet<string>;
+  interactiveTasks?: boolean;
+};
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true, typographer: false });
 md.linkify.set({ fuzzyLink: false, fuzzyEmail: false });
@@ -48,9 +58,15 @@ md.core.ruler.after("inline", "kinige-task-lists", (state) => {
     if (first?.type === "text") first.content = first.content.replace(/^\[[ xX]\][ \t]+/, "");
 
     const box = new state.Token("html_inline", "", 0);
-    const labels = (state.env as RenderEnv).taskLabels;
-    const label = md.utils.escapeHtml((done ? labels?.done : labels?.todo) ?? "");
-    box.content = `<span class="task__box" role="img" aria-label="${label}"></span>`;
+    const { taskLabels: labels, interactiveTasks } = state.env as RenderEnv;
+    if (interactiveTasks) {
+      // Кликабельный квадрат (слайс 3): флажок с клавиатуры; щелчок и пробел обрабатывает Message по порядковому номеру.
+      const label = md.utils.escapeHtml(labels?.item ?? (done ? labels?.done : labels?.todo) ?? "");
+      box.content = `<span class="task__box" role="checkbox" aria-checked="${done}" aria-label="${label}" tabindex="0"></span>`;
+    } else {
+      const label = md.utils.escapeHtml((done ? labels?.done : labels?.todo) ?? "");
+      box.content = `<span class="task__box" role="img" aria-label="${label}"></span>`;
+    }
     inline.children?.unshift(box);
 
     item.attrJoin("class", done ? "task task--done" : "task");
@@ -61,6 +77,62 @@ md.core.ruler.after("inline", "kinige-task-lists", (state) => {
         break;
       }
     }
+  }
+});
+
+// Теги `#слово` (слайс 3). Какие слова — теги, решает Rust (`kinige_domain::tags`), сюда они приходят списком в `env.tags`
+// (нижний регистр, без `#`); здесь только подсветка. Правило идёт после linkify и до text_join: ссылки уже видны как
+// пары link_open / link_close (внутри них тегов нет), а экранированное `\#` ещё отдельный токен text_special.
+// Код (`code_inline`, блоки) в текстовые токены не попадает. Слово — буквы любого алфавита, цифры и `_`; перед `#`
+// нет буквы, цифры, `_`, `#`, `&` и `\`.
+const TAG_AT = /#([\p{L}\p{N}_]+)/gu;
+const NOT_BEFORE_TAG = /[\p{L}\p{N}_#&\\]$/u;
+
+/** Текстовый токен → цепочка из текста и `<span class="tag">`; без тегов возвращает `null`. */
+function splitTags(state: StateCore, token: Token, before: string, tags: ReadonlySet<string>): Token[] | null {
+  const text = token.content;
+  const parts: Token[] = [];
+  let from = 0;
+  for (const match of text.matchAll(TAG_AT)) {
+    const word = match[1] ?? "";
+    const preceding = match.index === 0 ? before : text.slice(0, match.index);
+    if (NOT_BEFORE_TAG.test(preceding) || !tags.has(word.toLowerCase())) continue;
+    if (match.index > from) {
+      const plain = new state.Token("text", "", 0);
+      plain.content = text.slice(from, match.index);
+      parts.push(plain);
+    }
+    const tag = new state.Token("html_inline", "", 0);
+    tag.content = `<span class="tag" role="button" tabindex="0">#${md.utils.escapeHtml(word)}</span>`;
+    parts.push(tag);
+    from = match.index + match[0].length;
+  }
+  if (parts.length === 0) return null;
+  if (from < text.length) {
+    const rest = new state.Token("text", "", 0);
+    rest.content = text.slice(from);
+    parts.push(rest);
+  }
+  return parts;
+}
+
+md.core.ruler.after("linkify", "kinige-tags", (state) => {
+  const tags = (state.env as RenderEnv).tags;
+  if (!tags || tags.size === 0) return;
+  for (const block of state.tokens) {
+    if (block.type !== "inline" || !block.children) continue;
+    const result: Token[] = [];
+    let linkDepth = 0;
+    let before = "";
+    for (const token of block.children) {
+      if (token.type === "link_open") linkDepth++;
+      else if (token.type === "link_close") linkDepth--;
+      const parts = token.type === "text" && linkDepth === 0 ? splitTags(state, token, before, tags) : null;
+      result.push(...(parts ?? [token]));
+      // Что стоит перед следующим токеном: последний знак соседнего текста; всё остальное (разметка, код) — «ничего».
+      before = token.type === "text" || token.type === "text_special" ? token.content : "";
+    }
+    block.children = result;
   }
 });
 
@@ -95,7 +167,7 @@ const SANITIZE = {
     "p", "br", "hr", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "blockquote", "pre", "code",
     "em", "strong", "s", "a", "span",
   ],
-  ALLOWED_ATTR: ["href", "rel", "class", "role", "aria-label", "aria-hidden", "tabindex", "start"],
+  ALLOWED_ATTR: ["href", "rel", "class", "role", "aria-label", "aria-hidden", "aria-checked", "tabindex", "start"],
   ALLOW_DATA_ATTR: false,
   ALLOW_ARIA_ATTR: false,
 };
@@ -110,7 +182,18 @@ export function sanitizeHtml(html: string): string {
  * @param timeSpacer вставить в конец последней строки распорку под время (нет при состоянии «не отправилось»,
  * когда время стоит в нижней строке рядом с «Повторить»).
  * @param taskLabels подписи квадратиков задач (переводы).
+ * @param tags теги записи (нижний регистр, без `#`), которые нужно подсветить в тексте; их определил Rust.
+ * @param interactiveTasks квадраты `- [ ]` становятся флажками (`role="checkbox"`, `aria-checked`, `tabindex="0"`).
  */
-export function renderMarkdown(source: string, { timeSpacer, taskLabels }: { timeSpacer: boolean; taskLabels: TaskLabels }): string {
-  return sanitizeHtml(md.render(source, { timeSpacer, taskLabels } satisfies RenderEnv));
+export function renderMarkdown(
+  source: string,
+  {
+    timeSpacer,
+    taskLabels,
+    tags,
+    interactiveTasks,
+  }: { timeSpacer: boolean; taskLabels: TaskLabels; tags?: readonly string[]; interactiveTasks?: boolean },
+): string {
+  const env: RenderEnv = { timeSpacer, taskLabels, tags: tags ? new Set(tags) : undefined, interactiveTasks };
+  return sanitizeHtml(md.render(source, env));
 }

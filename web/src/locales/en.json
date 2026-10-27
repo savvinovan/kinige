@@ -13,7 +13,41 @@
   "sidebar": {
     "search": "Search",
     "chats": "Chats",
-    "entriesLabel": ", entries:"
+    "entriesLabel": ", entries:",
+    "pinned": "Pinned",
+    "archive": "Archive",
+    "newChat": "New chat",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "trash": "Trash"
+  },
+  "chatMenu": {
+    "label": "Actions for chat “{{name}}”",
+    "rename": "Rename",
+    "icon": "Change emoji",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "archive": "Archive",
+    "unarchive": "Unarchive"
+  },
+  "chatDialog": {
+    "titleCreate": "New chat",
+    "titleRename": "Rename chat",
+    "titleIcon": "Chat emoji",
+    "name": "Name",
+    "emoji": "Chat emoji: {{emoji}}",
+    "emojiChoose": "Choose chat emoji",
+    "create": "Create",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "emoji": {
+    "label": "Emoji",
+    "dialog": "Emoji picker",
+    "search": "Search emoji",
+    "recent": "Recent",
+    "loading": "Loading emoji…",
+    "empty": "Nothing found"
   },
   "profile": {
     "defaultName": "Me",
@@ -50,7 +84,70 @@
     "retry": "Retry",
     "retryLabel": "Retry sending the entry",
     "taskDone": "Done",
-    "taskTodo": "Not done"
+    "taskTodo": "Not done",
+    "untask": "Remove task",
+    "unfavorite": "Remove from favorites",
+    "changeDate": "Change date…",
+    "moveTo": "Move to chat",
+    "moveBack": "Back",
+    "moveMenu": "Move to chat: choose a chat",
+    "delete": "Delete",
+    "menu": "Entry menu",
+    "taskCheck": "Task done",
+    "taskItem": "Item done",
+    "favoriteMark": "Favorite",
+    "editLabel": "Edit entry",
+    "editHint": "Enter saves, Esc cancels",
+    "deleted": "Deleted",
+    "restore": "Restore",
+    "restoreLabel": "Restore the deleted entry"
+  },
+  "tag": {
+    "filterLabel": "Tag filter",
+    "filterShown": "Showing entries with {{tag}}",
+    "clear": "Clear filter"
+  },
+  "calendar": {
+    "title": "Change date",
+    "close": "Close calendar",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "today": "Today"
+  },
+  "trash": {
+    "label": "Trash",
+    "empty": "Trash is empty",
+    "daysLeft_one": "{{count}} day left",
+    "daysLeft_other": "{{count}} days left",
+    "deletesToday": "deleted today",
+    "restore": "Restore",
+    "restoreLabel": "Restore the entry from “{{chat}}”",
+    "purge": "Delete forever",
+    "purgeLabel": "Delete forever the entry from “{{chat}}”",
+    "confirm": {
+      "title": "Delete forever?",
+      "text": "The entry cannot be brought back.",
+      "purge": "Delete forever",
+      "cancel": "Cancel"
+    }
+  },
+  "recovery": {
+    "title": "The database is damaged",
+    "startupText": "The damaged file is not deleted: Kinige moves it aside next to the database. Entries made after the last backup may not have been saved.",
+    "runningText": "A check found damage in the database. Kinige will restart and offer backups to restore it from.",
+    "backups": "Database backups",
+    "kind": {
+      "daily": "daily backup",
+      "pre_migration": "before an update"
+    },
+    "restore": "Restore from the backup of {{when}}",
+    "restoring": "Restoring…",
+    "restart": "Restart",
+    "none": "No backups",
+    "noneHint": "The backup folder is empty. Save the database file and write to the developer: entries may still be recoverable from it.",
+    "mirrorNote": "The Markdown copy folder will be renamed to “…-before-restore-…” next to it: entries made after the backup snapshot are not lost.",
+    "tooNewTitle": "The database was created by a newer version of Kinige",
+    "tooNewText": "Downgrading is not supported: update the app. Nothing has been changed or deleted."
   },
   "capture": {
     "label": "Quick note",
@@ -77,6 +174,20 @@
     "shortcut_invalid": "This shortcut cannot be used. Try another one.",
     "shortcut_taken": "This shortcut is already used by another app or the system.",
     "shortcut_duplicate": "The other action already uses this shortcut.",
+    "message_not_found": "The entry was not found. It may have been deleted for good.",
+    "message_in_trash": "The entry is in the trash: restore it first, then move it.",
+    "read_only": "This entry was written by a newer version of Kinige and is read-only. Update the app.",
+    "inbox_protected": "Inbox cannot be renamed, archived or deleted.",
+    "not_in_trash": "Only an entry from the trash can be deleted for good.",
+    "invalid_date": "That date does not exist.",
+    "chat_title_empty": "Enter a chat name.",
+    "chat_title_too_long": "A chat name is at most 128 characters.",
+    "chat_icon_invalid": "That emoji did not work. Pick another one.",
+    "task_item_stale": "The entry text has changed. The item was not toggled.",
+    "database_corrupt": "The database is damaged.",
+    "database_too_new": "The database was created by a newer version of Kinige. Update the app.",
+    "backup_not_found": "The copy was not found or cannot be opened.",
+    "mirror_folder_busy": "Could not rename the Markdown copy folder (it may be open in another program). Nothing was changed: close it and try again.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },
@@ -123,6 +234,23 @@
       "title": "Text size",
       "normal": "Normal",
       "large": "Large"
+    },
+    "backup": {
+      "title": "Database backup",
+      "description": "The 7 latest daily backups are kept, plus one taken before each update.",
+      "last": "Last backup: {{when}}",
+      "never": "Last backup: not taken yet",
+      "today": "today",
+      "yesterday": "yesterday",
+      "count_one": "{{count}} backup",
+      "count_other": "{{count}} backups",
+      "folder": "Backup folder",
+      "error": {
+        "folder_unavailable": "The backup folder is unavailable. Daily backups are not taken until it works again.",
+        "write_failed": "Could not write the backup. Kinige will try again.",
+        "integrity_failed": "A check found damage in the database. The daily backup is not taken, so a damaged copy cannot push out the good ones.",
+        "purge_failed": "Automatic trash cleanup could not remove a damaged entry; it stays in the trash. Backups and checks keep working."
+      }
     }
   }
 }

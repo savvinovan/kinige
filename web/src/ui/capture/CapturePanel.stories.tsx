@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState } from "react";
 import { demoEntry } from "../../api/demoData";
+import { EmojiStoryData } from "../emoji/EmojiStoryData";
 import type { FeedMessage } from "../feed/buildFeed";
 import { CapturePanel } from "./CapturePanel";
 import "./capture-stories.css";
@@ -41,31 +42,42 @@ interface DemoProps {
   narrow?: boolean;
   /** Фокус на кнопке «Отправить»: так история показывает кольцо фокуса с клавиатуры. */
   focusSend?: boolean;
+  /** Пикер эмодзи открыт при показе: панель в потоке над полем, окно выше. */
+  pickerOpen?: boolean;
 }
 
 /** Окно захвата своего размера на «столе»; текст в поле живой, Enter очищает его, как после отправки. */
-function Demo({ context, appendTargetId = null, value: initial = "", error, narrow = false, focusSend = false }: DemoProps) {
+function Demo({ context, appendTargetId = null, value: initial = "", error, narrow = false, focusSend = false, pickerOpen = false }: DemoProps) {
   const [value, setValue] = useState(initial);
+  const [open, setOpen] = useState(pickerOpen);
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // Родительский эффект идёт после дочернего: фокус из истории перекрывает автофокус поля.
     if (focusSend) host.current?.querySelector<HTMLButtonElement>(".icon-button--accent")?.focus();
   }, [focusSend]);
   return (
-    <div className="story-capture-desk" ref={host}>
-      <div className={`story-capture-window${narrow ? " story-capture-window--narrow" : ""}`}>
-        <CapturePanel
-          context={context}
-          appendTargetId={appendTargetId}
-          value={value}
-          onChange={setValue}
-          onSend={() => setValue("")}
-          onAppend={() => setValue("")}
-          onHide={() => undefined}
-          error={error}
-        />
+    <EmojiStoryData wait={pickerOpen}>
+      <div className="story-capture-desk" ref={host}>
+        <div className={`story-capture-window${narrow ? " story-capture-window--narrow" : ""}`}>
+          <CapturePanel
+            context={context}
+            appendTargetId={appendTargetId}
+            value={value}
+            onChange={setValue}
+            onSend={() => setValue("")}
+            onAppend={() => setValue("")}
+            onHide={() => undefined}
+            error={error}
+            emoji={{
+              recent: ["📚", "💡", "🍳", "🧭"],
+              onPicked: () => undefined,
+              open,
+              onOpenChange: setOpen,
+            }}
+          />
+        </div>
       </div>
-    </div>
+    </EmojiStoryData>
   );
 }
 
@@ -135,6 +147,27 @@ export const УзкаяШирина: Story = {
     error: "Не удалось сохранить запись. Текст остался в поле.",
   },
 };
+
+/**
+ * Пикер эмодзи открыт: панель в потоке между контекстом и полем, окно выросло вверх (нижний край и поле на месте), «Недавние»
+ * сверху. Поле при открытом пикере показывает не больше трёх строк.
+ */
+export const ПикерЭмодзи: Story = { args: { appendTargetId: "c", pickerOpen: true } };
+
+/** Пикер открыт, в поле длинный текст: поле ограничено тремя строками с прокруткой внутри, пикер цел, старые плашки уходят за край. */
+export const ПикерЭмодзиИДлинныйТекст: Story = {
+  args: {
+    appendTargetId: "c",
+    pickerOpen: true,
+    value: Array.from({ length: 8 }, (_, i) => `Строка ${i + 1}: пишешь как в мессенджере, перечитываешь как книгу.`).join("\n"),
+  },
+};
+
+/** Пикер открыт при пустом дне: только пикер и поле. */
+export const ПикерЭмодзиПустойДень: Story = { args: { context: [], pickerOpen: true } };
+
+/** Английский: пикер эмодзи открыт. */
+export const EnПикерЭмодзи: Story = { args: { context: ONE, appendTargetId: "a", pickerOpen: true }, globals: { language: "en" } };
 
 /** Английский: три записи, подсказка «⌘Enter — append». */
 export const EnЦельДописывания: Story = {

@@ -223,7 +223,9 @@ fn a_deleted_last_entry_is_skipped_and_the_previous_one_is_the_target() {
         .capture_send("вторая", &moscow(T0 + MINUTE))
         .unwrap()
         .message;
-    mark_deleted(dir.path(), &second.id, T0 + 2 * MINUTE);
+    store
+        .delete_message(&second.id, &moscow(T0 + 2 * MINUTE))
+        .unwrap();
 
     let view = store.capture_view(&moscow(T0 + 3 * MINUTE)).unwrap();
     assert_eq!(view.append_target.as_deref(), Some(first.id.as_str()));
@@ -239,7 +241,7 @@ fn a_deleted_last_entry_is_skipped_and_the_previous_one_is_the_target() {
     let dir2 = tempfile::tempdir().unwrap();
     let store2 = open_without_mirror(dir2.path());
     let only = store2.capture_send("одна", &moscow(T0)).unwrap().message;
-    mark_deleted(dir2.path(), &only.id, T0 + 1);
+    store2.delete_message(&only.id, &moscow(T0 + 1)).unwrap();
     assert_eq!(
         store2
             .capture_append("новая", &moscow(T0 + 2))

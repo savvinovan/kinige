@@ -1,6 +1,7 @@
 //! Типы, которыми обмениваются Rust и фронтенд (`KinigeApi`). TS-типы генерируются в `web/src/api/generated/`
 //! (`cargo test`, ADR-0002). Тексты ошибок — во фронтенде: Rust возвращает только коды.
 
+use crate::backup::BackupStatus;
 use crate::lang::Language;
 use crate::shortcuts::ShortcutStatus;
 use serde::{Deserialize, Serialize};
@@ -18,6 +19,24 @@ pub struct ChatSummary {
     /// Записи чата, кроме корзины.
     #[ts(type = "number")]
     pub count: i64,
+    /// Когда закреплён (мс); `null` — не закреплён. Закреплённые идут в разделе «Закреплённые» в порядке закрепления.
+    #[ts(type = "number | null")]
+    pub pinned_at: Option<i64>,
+    /// Когда отправлен в архив (мс); `null` — не в архиве.
+    #[ts(type = "number | null")]
+    pub archived_at: Option<i64>,
+}
+
+/// Чаты сайдбара в порядке показа и размер корзины.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "ChatList.ts")]
+pub struct ChatList {
+    /// Сначала закреплённые (по времени закрепления), затем остальные и архив (по `sort_key`, при равных — по `id`).
+    pub chats: Vec<ChatSummary>,
+    /// Записей в корзине.
+    #[ts(type = "number")]
+    pub trash_count: i64,
 }
 
 /// Запись в ленте.
@@ -35,6 +54,48 @@ pub struct MessageView {
     pub created_at: i64,
     /// IANA-пояс устройства в момент создания.
     pub created_tz: String,
+    /// Запись — задача (флажок у плашки).
+    pub is_task: bool,
+    /// Когда задача отмечена выполненной (мс); `null` — не выполнена.
+    #[ts(type = "number | null")]
+    pub task_done_at: Option<i64>,
+    /// Когда добавлена в избранное (мс); `null` — не в избранном.
+    #[ts(type = "number | null")]
+    pub favorite_at: Option<i64>,
+    /// Теги записи в нижнем регистре, без `#` (разбор — `kinige_domain::tags`).
+    pub tags: Vec<String>,
+    /// Одна из групп записи новее поддерживаемой версии: запись только для чтения, действия недоступны (ADR-0001 §4).
+    pub read_only: bool,
+}
+
+/// Какой флаг записи меняется командой `set_message_flag`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "MessageFlag.ts")]
+pub enum MessageFlag {
+    /// Запись — задача (флажок). Снятие обнуляет «выполнено».
+    Task,
+    /// Задача выполнена; только у задачи.
+    TaskDone,
+    /// Избранное.
+    Favorite,
+}
+
+/// Запись в корзине (ТЗ §2.1): чат, дата, сколько осталось до автоудаления.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "TrashItem.ts")]
+pub struct TrashItem {
+    pub message: MessageView,
+    pub chat_title: String,
+    pub chat_icon: Option<String>,
+    pub chat_is_inbox: bool,
+    /// Когда удалена (мс).
+    #[ts(type = "number")]
+    pub deleted_at: i64,
+    /// Сколько целых дней осталось до автоудаления (неполный день считается днём).
+    #[ts(type = "number")]
+    pub days_left: i64,
 }
 
 /// Позиция в ленте для постраничной загрузки (keyset): `(journal_date, created_at, id)` последней загруженной записи.
@@ -122,6 +183,12 @@ pub struct Settings {
     pub mirror: MirrorStatus,
     /// Глобальные сочетания клавиш (слайс 2): по одному на каждое действие.
     pub shortcuts: Vec<ShortcutStatus>,
+    /// Сайдбар свёрнут до полосы эмодзи (слайс 3).
+    pub sidebar_collapsed: bool,
+    /// Недавние эмодзи пикера, самые свежие первыми (слайс 3).
+    pub recent_emoji: Vec<String>,
+    /// Копия файла базы (слайс 3).
+    pub backup: BackupStatus,
 }
 
 /// Что сделал быстрый захват.
@@ -161,6 +228,8 @@ pub struct CaptureState {
     pub draft: String,
     /// Ошибка, с которой окно открыто (сбой записи из буфера): показывается один раз.
     pub error: Option<ErrorCode>,
+    /// «Недавние» эмодзи пикера (общий список с главным окном), свежие первыми.
+    pub recent_emoji: Vec<String>,
 }
 
 /// Код ошибки команды; текст — во фронтенде (`error.<код>` в файлах переводов).
@@ -181,6 +250,35 @@ pub enum ErrorCode {
     ShortcutTaken,
     /// Такое же сочетание уже назначено другому действию Kinige.
     ShortcutDuplicate,
+    /// Запись не найдена (удалена навсегда или id неверен).
+    MessageNotFound,
+    /// Запись в корзине: перенос в другой чат только для живых записей, сначала «Вернуть».
+    MessageInTrash,
+    /// Запись с группой в неподдерживаемой версии: только чтение (ADR-0001 §4).
+    ReadOnly,
+    /// Inbox нельзя переименовать, архивировать и удалить.
+    InboxProtected,
+    /// Действие только для записи в корзине (удалить навсегда).
+    NotInTrash,
+    /// Дата записи не существует.
+    InvalidDate,
+    /// Имя чата пустое.
+    ChatTitleEmpty,
+    /// Имя чата длиннее 128 знаков.
+    ChatTitleTooLong,
+    /// Эмодзи чата не принято.
+    ChatIconInvalid,
+    /// Пункта задачи с таким номером в тексте нет или он уже в нужном состоянии: окно показывало устаревший текст.
+    TaskItemStale,
+    /// База повреждена.
+    DatabaseCorrupt,
+    /// База создана более новой версией приложения (§10.4): откат не поддерживается, нужно обновить Kinige.
+    DatabaseTooNew,
+    /// Копия не найдена или не открывается.
+    BackupNotFound,
+    /// Папку Markdown-копии не удалось переименовать (занята другой программой, нет прав): восстановление не начато,
+    /// ничего не тронуто; закрыть папку и повторить.
+    MirrorFolderBusy,
     Internal,
 }
 
@@ -222,10 +320,15 @@ mod tests {
             journal_date: "2026-10-21".into(),
             created_at: 1,
             created_tz: "UTC".into(),
+            is_task: true,
+            task_done_at: None,
+            favorite_at: Some(5),
+            tags: vec!["идея".into()],
+            read_only: false,
         };
         assert_eq!(
             serde_json::to_string(&view).unwrap(),
-            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC"}"#
+            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false}"#
         );
     }
 

@@ -10,10 +10,12 @@ interface DemoProps {
   defaultOpen?: boolean;
   /** Ставит фокус на кнопку профиля: так история показывает кольцо фокуса без мыши. */
   focus?: boolean;
+  /** Свёрнутый сайдбар: только аватар, меню открывается вправо. */
+  compact?: boolean;
 }
 
-/** Строка профиля на фоне сайдбара, у нижнего края, как в окне: меню открывается вверх. */
-function Demo({ name, statusDot, defaultOpen, focus = false }: DemoProps) {
+/** Строка профиля на фоне сайдбара, у нижнего края, как в окне: меню открывается вверх (в свёрнутом виде — вправо). */
+function Demo({ name, statusDot, defaultOpen, focus = false, compact = false }: DemoProps) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // Открытое меню само ставит фокус на первый пункт; кнопку фокусируем только в истории «Фокус».
@@ -21,8 +23,8 @@ function Demo({ name, statusDot, defaultOpen, focus = false }: DemoProps) {
   }, [focus]);
   return (
     <Frame surface="background" bottom>
-      <div className="story-profile" ref={host}>
-        <ProfileMenu name={name} statusDot={statusDot} defaultOpen={defaultOpen} />
+      <div className={compact ? "story-profile story-profile--rail" : "story-profile"} ref={host}>
+        <ProfileMenu name={name} statusDot={statusDot} defaultOpen={defaultOpen} compact={compact} />
       </div>
     </Frame>
   );
@@ -55,3 +57,12 @@ export const СТочкойСтатуса: Story = { args: { statusDot: true } }
 
 /** Фокус с клавиатуры на кнопке профиля. */
 export const Фокус: Story = { args: { focus: true } };
+
+/** Свёрнутый сайдбар: только аватар по центру полосы; имя читается диктором по подписи кнопки. */
+export const Компактный: Story = { args: { compact: true } };
+
+/** Свёрнутый сайдбар, меню открыто: выходит вправо от аватара, на ленту. */
+export const КомпактныйМенюОткрыто: Story = { args: { compact: true, defaultOpen: true } };
+
+/** Свёрнутый сайдбар, фокус с клавиатуры на аватаре. */
+export const КомпактныйФокус: Story = { args: { compact: true, focus: true } };

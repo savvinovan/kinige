@@ -22,7 +22,7 @@ const BOTTOM_FRACTION: f64 = 0.12;
 pub const WINDOW_WIDTH: f64 = 584.0;
 pub const SHADOW_MARGIN: f64 = 32.0;
 pub const MIN_HEIGHT: f64 = 100.0;
-pub const MAX_HEIGHT: f64 = 480.0;
+pub const MAX_HEIGHT: f64 = 640.0;
 /// Сколько ждать, пока окно захвата само сохранит черновик и спрячется, прежде чем спрятать его принудительно.
 const HIDE_GRACE: Duration = Duration::from_millis(600);
 
@@ -69,9 +69,19 @@ pub fn show_main<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Сообщает главному окну, что записи изменились.
+/// Сообщает главному окну, что записи изменились, и обновляет «последние чаты» в меню значка.
 pub fn notify_entries_changed<R: Runtime>(app: &AppHandle<R>) {
     let _ = app.emit_to(MAIN_LABEL, ENTRIES_CHANGED, ());
+    crate::tray::refresh(app);
+}
+
+/// Событие главному окну: открыть чат (из меню значка). Слушает только `main`; в нагрузке — id чата.
+pub const OPEN_CHAT: &str = "open-chat";
+
+/// Показывает главное окно сразу с этим чатом (меню значка, слайс 3).
+pub fn open_chat<R: Runtime>(app: &AppHandle<R>, chat_id: &str) {
+    show_main(app);
+    let _ = app.emit_to(MAIN_LABEL, OPEN_CHAT, chat_id.to_string());
 }
 
 /// Высота окна из просьбы страницы: в пределах `MIN_HEIGHT … MAX_HEIGHT`, целое число px.
@@ -329,7 +339,15 @@ pub fn capture_state(
         append_target: view.append_target,
         draft,
         error,
+        recent_emoji: settings.recent_emoji,
     })
+}
+
+/// Выбранный в пикере эмодзи запоминается в общем списке «недавних» (тот же, что у главного окна); ответ — новый список.
+/// Команда не принимает ни чата, ни записи: меняет только этот список (слайс 3, решение приёмки 27.10.2026).
+#[tauri::command(async)]
+pub fn capture_add_recent_emoji(store: State<'_, Store>, emoji: String) -> ApiResult<Vec<String>> {
+    store.add_recent_emoji(&emoji).map_err(api)
 }
 
 /// Enter: новая запись в Inbox; главное окно получает событие.

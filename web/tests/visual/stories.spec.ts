@@ -22,6 +22,10 @@ async function settle(page: Page) {
     await document.fonts.ready;
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await document.fonts.ready;
+    // Переходы (рамка фокуса поля, появление окна), начатые при монтировании, должны закончиться: иначе снимок иногда ловил
+    // их на середине (два пикселя у скруглённых углов поля).
+    await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
   });
 }
 

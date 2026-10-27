@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-chat-pinned"
+description = "Enables the set_chat_pinned command without any pre-configured scope."
+commands.allow = ["set_chat_pinned"]
+
+[[permission]]
+identifier = "deny-set-chat-pinned"
+description = "Denies the set_chat_pinned command without any pre-configured scope."
+commands.deny = ["set_chat_pinned"]

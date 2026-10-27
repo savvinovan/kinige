@@ -39,6 +39,8 @@ url = "2"
 [dev-dependencies]
 tauri = { version = "2.12", features = ["test"] }
 tempfile = "3"
+# Только для теста «база новее приложения»: поднять `user_version` у файла базы.
+rusqlite = { version = "0.40", features = ["bundled"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Окно захвата как NSPanel без активации приложения: обычное окно не получает ввод надёжно, когда активна чужая программа.

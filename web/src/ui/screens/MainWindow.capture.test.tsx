@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { INBOX_ID } from "../../api/KinigeApi";
-import { MockApi, type MockApiOptions } from "../../api/MockApi";
+import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../../api/MockApi";
 import type { MessageView } from "../../api/generated/MessageView";
 import type { Settings } from "../../api/generated/Settings";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
@@ -8,7 +8,7 @@ import { DEFAULT_SHORTCUTS } from "../settings/demoShortcuts";
 import { MainWindow } from "./MainWindow";
 
 const SETTINGS: Settings = {
-  textSize: "normal",
+  ...DEFAULT_SETTINGS,
   mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
   shortcuts: DEFAULT_SHORTCUTS,
 };
@@ -163,14 +163,11 @@ describe("MainWindow: нажатие во время отправки и пор�
 });
 
 describe("MainWindow: событие «записи изменились»", () => {
-  const external: MessageView = {
+  const external: MessageView = mockMessage({
     id: "from-capture",
-    chatId: INBOX_ID,
     bodyMd: "записано из окна захвата",
-    journalDate: "2026-10-21",
     createdAt: Date.UTC(2026, 9, 21, 6, 10),
-    createdTz: "UTC",
-  };
+  });
 
   it("запись из окна захвата появляется в ленте сразу, счётчик растёт", async () => {
     const api = setup();

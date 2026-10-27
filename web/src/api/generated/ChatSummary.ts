@@ -7,4 +7,12 @@ export type ChatSummary = { id: string, title: string, icon: string | null, isIn
 /**
  * Записи чата, кроме корзины.
  */
-count: number, };
+count: number, 
+/**
+ * Когда закреплён (мс); `null` — не закреплён. Закреплённые идут в разделе «Закреплённые» в порядке закрепления.
+ */
+pinnedAt: number | null, 
+/**
+ * Когда отправлен в архив (мс); `null` — не в архиве.
+ */
+archivedAt: number | null, };

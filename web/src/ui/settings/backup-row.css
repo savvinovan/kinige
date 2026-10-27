@@ -1,0 +1,27 @@
+/* Строка копии базы в «Настройках». Только токены; строка папки и строки состояния — из settings.css. */
+.backup-row {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.backup-row__last {
+  margin: 0;
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.backup-row__count {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+/* Повреждение базы — заметное предупреждение: рамка цвета ошибки вокруг строки (не только цвет текста). */
+.backup-row__warning {
+  padding: var(--space-3);
+  border: var(--border-width-hairline) solid var(--color-status-error);
+  border-radius: var(--radius-control);
+}

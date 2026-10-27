@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
 import { DEMO_CHATS, DEMO_INBOX, demoEntry, demoMessages } from "../../api/demoData";
 import { INBOX_ID } from "../../api/KinigeApi";
-import { MockApi } from "../../api/MockApi";
+import { DEFAULT_SETTINGS, MockApi } from "../../api/MockApi";
 import type { Settings } from "../../api/generated/Settings";
 import { DEFAULT_SHORTCUTS } from "../settings/demoShortcuts";
 import { SettingsDialog } from "../settings/SettingsDialog";
@@ -104,7 +104,7 @@ export const НастройкиОткрыты: Story = {
     overlay: (
       <SettingsDialog
         settings={{
-          textSize: "normal",
+          ...DEFAULT_SETTINGS,
           mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
           shortcuts: DEFAULT_SHORTCUTS,
         }}
@@ -126,7 +126,7 @@ export const НаMockApi: Story = { render: () => <WindowOnMockApi /> };
 function WindowOnMockApi() {
   const api = useMemo(() => new MockApi({ now: () => new Date(Date.UTC(2026, 9, 20, 14, 0)), messages: [] }), []);
   const settings: Settings = {
-    textSize: "normal",
+    ...DEFAULT_SETTINGS,
     mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
     shortcuts: DEFAULT_SHORTCUTS,
   };

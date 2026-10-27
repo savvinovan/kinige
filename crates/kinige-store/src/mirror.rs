@@ -7,9 +7,9 @@ use crate::settings::effective_mirror_dir;
 use crate::time::local_hhmm;
 use crate::writer::Writer;
 use kinige_domain::MirrorError;
-use kinige_domain::groups::INBOX_ID;
-use kinige_domain::mirror::{INBOX_FOLDER, MirrorEntry, day_file_segments, render_day_file};
+use kinige_domain::mirror::{MirrorEntry, day_file_segments, render_day_file};
 use rusqlite::Connection;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -156,8 +156,18 @@ fn pass(
             shared.set_error(None);
             return false;
         }
+        // Папки чатов по их нынешним названиям; папки, где файлы лежат сейчас, сверяются с ними до записи дней.
+        let folders = crate::chats::folder_map(reader).unwrap_or_default();
+        let in_batch: HashSet<&str> = batch.iter().map(|(chat, _, _)| chat.as_str()).collect();
+        if !reconcile_folders(reader, writer, &dir, &folders, &in_batch) {
+            return true;
+        }
         for (chat_id, date, seq) in batch {
-            if let Err(error) = write_day(reader, &dir, &chat_id, &date) {
+            let folder = folders
+                .get(&chat_id)
+                .cloned()
+                .unwrap_or_else(|| chat_id.clone());
+            if let Err(error) = write_day(reader, &dir, &chat_id, &folder, &date) {
                 shared.set_error(Some(error));
                 return true;
             }
@@ -189,15 +199,85 @@ fn prepare_root(dir: &Path) -> bool {
     fs::create_dir_all(dir).is_ok() && dir.is_dir()
 }
 
+/// Папки чатов в копии совпадают с папками, где лежат их файлы (таблица `mirror_chat`): при переименовании (или смене
+/// владельца простого имени) папка переезжает целиком. Переезд в два шага через временные имена — так обмен именами
+/// двух чатов и смена регистра (на macOS это одна папка) не зависят от порядка. Ошибка переименования не останавливает
+/// копию: дни чата всё равно записываются в новую папку. `false` — не удалось записать сведения о папках, нужен повтор.
+fn reconcile_folders(
+    reader: &Connection,
+    writer: &Writer,
+    root: &Path,
+    folders: &BTreeMap<String, String>,
+    in_batch: &HashSet<&str>,
+) -> bool {
+    let Ok(known) = known_folders(reader) else {
+        return false;
+    };
+    let moves: Vec<(&String, &String, &String)> = folders
+        .iter()
+        .filter_map(|(chat, wanted)| {
+            let previous = known.get(chat)?;
+            (previous != wanted).then_some((chat, previous, wanted))
+        })
+        .collect();
+    // Шаг 1: уход со старых мест.
+    let mut staged: Vec<(&String, &String, PathBuf)> = Vec::new();
+    for (chat, previous, wanted) in &moves {
+        let from = root.join(previous);
+        let hop = root.join(format!(".moving-{chat}"));
+        if from.is_dir() && fs::rename(&from, &hop).is_ok() {
+            staged.push((previous, wanted, hop));
+        }
+    }
+    // Шаг 2: приход на новые; занятое место — папка возвращается, где была.
+    for (previous, wanted, hop) in staged {
+        let to = root.join(wanted);
+        if to.exists() || fs::rename(&hop, &to).is_err() {
+            let _ = fs::rename(&hop, root.join(previous));
+        }
+    }
+    let wanted_now: Vec<(String, String)> = folders
+        .iter()
+        .filter(|(chat, wanted)| {
+            known.get(*chat) != Some(*wanted)
+                && (known.contains_key(*chat) || in_batch.contains(chat.as_str()))
+        })
+        .map(|(chat, wanted)| (chat.clone(), wanted.clone()))
+        .collect();
+    if wanted_now.is_empty() {
+        return true;
+    }
+    matches!(
+        writer.run(move |conn| {
+            for (chat, folder) in &wanted_now {
+                conn.execute(
+                    "INSERT INTO mirror_chat (chat_id, folder) VALUES (?1, ?2) \
+                     ON CONFLICT(chat_id) DO UPDATE SET folder = excluded.folder",
+                    (chat, folder),
+                )?;
+            }
+            Ok::<(), rusqlite::Error>(())
+        }),
+        Ok(Ok(()))
+    )
+}
+
+fn known_folders(reader: &Connection) -> rusqlite::Result<BTreeMap<String, String>> {
+    let mut statement = reader.prepare("SELECT chat_id, folder FROM mirror_chat")?;
+    statement
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .collect()
+}
+
 /// Перезаписывает файл одного дня одного чата или удаляет его, если записей не осталось.
 fn write_day(
     reader: &Connection,
     root: &Path,
     chat_id: &str,
+    folder: &str,
     journal_date: &str,
 ) -> Result<(), MirrorError> {
-    let folder = chat_folder(chat_id);
-    let Some(segments) = day_file_segments(&folder, journal_date) else {
+    let Some(segments) = day_file_segments(folder, journal_date) else {
         // Недопустимая дата или имя папки: файла быть не может, отметку снимаем (иначе она не сойдёт никогда).
         return Ok(());
     };
@@ -243,16 +323,6 @@ fn write_atomically(dir: &Path, name: &str, bytes: &[u8]) -> std::io::Result<()>
         let _ = fs::remove_file(&temp);
     }
     result
-}
-
-/// Имя папки чата: `Inbox` у Inbox при любом языке. Имена остальных чатов — слайс 3; пока — id чата (безопасное имя).
-/// Inbox определяется по id, а не по флагу `is_inbox` (ADR-0001 §3.6): чужая строка с флагом не займёт папку `Inbox`.
-fn chat_folder(chat_id: &str) -> String {
-    if chat_id == INBOX_ID {
-        INBOX_FOLDER.to_string()
-    } else {
-        chat_id.to_string()
-    }
 }
 
 fn day_entries(

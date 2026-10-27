@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import type { BackupStatus } from "../../api/generated/BackupStatus";
 import type { MirrorStatus } from "../../api/generated/MirrorStatus";
 import type { Settings } from "../../api/generated/Settings";
 import { fireEvent, render, screen, within } from "../../test/render";
+import { BACKUP_NOW, DEFAULT_BACKUP } from "./demoBackup";
 import { DEFAULT_SHORTCUTS } from "./demoShortcuts";
 import { SettingsDialog } from "./SettingsDialog";
 
@@ -12,10 +14,13 @@ const mirror = (patch: Partial<MirrorStatus> = {}): MirrorStatus => ({
   pendingDays: 0,
   ...patch,
 });
-const settings = (patch: Partial<MirrorStatus> = {}, textSize: Settings["textSize"] = "normal"): Settings => ({
+const settings = (patch: Partial<MirrorStatus> = {}, textSize: Settings["textSize"] = "normal", backup: BackupStatus = DEFAULT_BACKUP): Settings => ({
   textSize,
   mirror: mirror(patch),
   shortcuts: DEFAULT_SHORTCUTS,
+  sidebarCollapsed: false,
+  recentEmoji: [],
+  backup,
 });
 
 const noop = () => {};
@@ -26,15 +31,19 @@ const handlers = {
   onShortcutRecording: noop,
 };
 const view = (props: Partial<Parameters<typeof SettingsDialog>[0]> = {}, language: "ru" | "en" = "ru") =>
-  render(<SettingsDialog settings={settings()} {...handlers} onClose={noop} onChooseFolder={noop} onTextSizeChange={noop} {...props} />, { language });
+  render(
+    <SettingsDialog settings={settings()} {...handlers} now={BACKUP_NOW} onClose={noop} onChooseFolder={noop} onTextSizeChange={noop} {...props} />,
+    { language },
+  );
 
 describe("SettingsDialog", () => {
-  it("модальное окно «Настройки» с тремя разделами", () => {
+  it("модальное окно «Настройки» с четырьмя разделами", () => {
     view();
     const dialog = screen.getByRole("dialog", { name: "Настройки" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
-    expect(screen.getAllByRole("region")).toHaveLength(3);
+    expect(screen.getAllByRole("region")).toHaveLength(4);
     expect(screen.getByRole("region", { name: "Копия в Markdown" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Копия базы" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Сочетания клавиш" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Размер текста" })).toBeInTheDocument();
     expect(screen.getByText(/по файлу на день/)).toBeInTheDocument();

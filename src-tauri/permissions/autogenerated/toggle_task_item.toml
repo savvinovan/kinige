@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-toggle-task-item"
+description = "Enables the toggle_task_item command without any pre-configured scope."
+commands.allow = ["toggle_task_item"]
+
+[[permission]]
+identifier = "deny-toggle-task-item"
+description = "Denies the toggle_task_item command without any pre-configured scope."
+commands.deny = ["toggle_task_item"]

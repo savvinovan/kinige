@@ -1,0 +1,28 @@
+/* Перетаскивание записи на чат (решение приёмки слайса 3). Только токены. */
+
+/* «Призрак» плашки идёт под курсором и ничего не перехватывает: цель под ним определяется по координатам. */
+.record-ghost {
+  position: fixed;
+  z-index: 4;
+  max-width: var(--layout-drag-ghost-max-width);
+  /* Правее и ниже указателя: сам чат под указателем не закрыт. */
+  margin: var(--layout-drag-ghost-offset);
+  pointer-events: none;
+  opacity: var(--opacity-drag-ghost);
+  box-shadow: var(--shadow-overlay);
+  border-radius: var(--radius-message);
+}
+
+.record-ghost > .message {
+  margin: 0;
+}
+
+/* Пока запись тащат, текст на странице не выделяется и курсор «захватывает». */
+body.is-record-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+body.is-record-dragging * {
+  cursor: grabbing;
+}

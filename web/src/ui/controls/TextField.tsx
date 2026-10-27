@@ -27,7 +27,7 @@ export function TextField({ label, icon, error, className, ...rest }: TextFieldP
         />
       </label>
       {error ? (
-        <p className="text-field__error" id={errorId}>
+        <p className="text-field__error" id={errorId} role="alert">
           {error}
         </p>
       ) : null}

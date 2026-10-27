@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState } from "react";
+import type { BackupStatus } from "../../api/generated/BackupStatus";
 import type { MirrorStatus } from "../../api/generated/MirrorStatus";
 import type { Settings } from "../../api/generated/Settings";
 import type { ShortcutKind } from "../../api/generated/ShortcutKind";
 import type { ShortcutStatus } from "../../api/generated/ShortcutStatus";
 import type { TextSize } from "../../api/generated/TextSize";
+import { BACKUP_FOLDER, BACKUP_NOW, DEFAULT_BACKUP } from "./demoBackup";
 import { DEFAULT_SHORTCUTS } from "./demoShortcuts";
 import { SettingsDialog } from "./SettingsDialog";
 import "./settings-stories.css";
@@ -16,10 +18,18 @@ const mirror = (patch: Partial<MirrorStatus> = {}): MirrorStatus => ({
   pendingDays: 0,
   ...patch,
 });
-const settings = (patch: Partial<MirrorStatus> = {}, textSize: TextSize = "normal", shortcuts: ShortcutStatus[] = DEFAULT_SHORTCUTS): Settings => ({
+const settings = (
+  patch: Partial<MirrorStatus> = {},
+  textSize: TextSize = "normal",
+  shortcuts: ShortcutStatus[] = DEFAULT_SHORTCUTS,
+  backup: BackupStatus = DEFAULT_BACKUP,
+): Settings => ({
   textSize,
   mirror: mirror(patch),
   shortcuts,
+  sidebarCollapsed: false,
+  recentEmoji: [],
+  backup,
 });
 
 interface DemoProps {
@@ -31,17 +41,29 @@ interface DemoProps {
   focusChoose?: boolean;
   /** Прокручивает содержимое окна к разделу «Сочетания клавиш»: он ниже первого экрана. */
   showShortcuts?: boolean;
+  /** Прокручивает содержимое окна к разделу «Копия базы»: он второй, ниже первого экрана на крупном тексте. */
+  showBackup?: boolean;
 }
 
 /** Окно настроек поверх «главного окна» (заглушка из поверхностей): выбор размера текста работает, остальное — без вызовов. */
-function Demo({ settings: initial, choosing, actionError, shortcutErrors, focusChoose = false, showShortcuts = false }: DemoProps) {
+function Demo({
+  settings: initial,
+  choosing,
+  actionError,
+  shortcutErrors,
+  focusChoose = false,
+  showShortcuts = false,
+  showBackup = false,
+}: DemoProps) {
   const [textSize, setTextSize] = useState(initial.textSize);
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // Родительский эффект идёт после дочернего: фокус из истории перекрывает начальный фокус окна (кнопка закрытия).
     if (focusChoose) [...(host.current?.querySelectorAll<HTMLButtonElement>(".path-row .button") ?? [])][0]?.focus();
-    if (showShortcuts) host.current?.querySelectorAll<HTMLElement>(".settings__section")[1]?.scrollIntoView({ block: "start" });
-  }, [focusChoose, showShortcuts]);
+    // Разделы окна: 0 — копия в Markdown, 1 — копия базы, 2 — сочетания клавиш, 3 — размер текста.
+    if (showBackup) host.current?.querySelectorAll<HTMLElement>(".settings__section")[1]?.scrollIntoView({ block: "start" });
+    if (showShortcuts) host.current?.querySelectorAll<HTMLElement>(".settings__section")[2]?.scrollIntoView({ block: "start" });
+  }, [focusChoose, showShortcuts, showBackup]);
   return (
     <div className="story-settings-window" ref={host}>
       <div className="story-settings-window__sidebar" />
@@ -62,6 +84,7 @@ function Demo({ settings: initial, choosing, actionError, shortcutErrors, focusC
         onTextSizeChange={setTextSize}
         choosing={choosing}
         actionError={actionError}
+        now={BACKUP_NOW}
       />
     </div>
   );
@@ -172,4 +195,62 @@ export const EnДлинныйПуть: Story = {
 export const EnОшибкаВыбора: Story = {
   args: { actionError: "Could not open the folder picker. Please try again." },
   globals: { language: "en" },
+};
+
+const backup = (patch: Partial<BackupStatus> = {}): BackupStatus => ({ ...DEFAULT_BACKUP, ...patch });
+
+/** Копия базы снята сегодня: «Последняя копия: сегодня, 09:12», «7 копий», папка копий и пояснение про хранение. */
+export const КопияБазыСегодня: Story = { args: { settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup()), showBackup: true } };
+
+/** Копия снята вчера, одна копия: метка «вчера», «1 копия». */
+export const КопияБазыВчера: Story = {
+  args: {
+    settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup({ lastAt: new Date(2026, 9, 26, 23, 40).getTime(), count: 1 })),
+    showBackup: true,
+  },
+};
+
+/** Копии ещё не снимались: «Последняя копия: ещё не снималась», числа нет. */
+export const КопияБазыНеСнималась: Story = {
+  args: { settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup({ lastAt: null, count: 0 })), showBackup: true },
+};
+
+/** Папка копий недоступна: строка ошибки со значком, `role="alert"`. */
+export const КопияБазыПапкаНедоступна: Story = {
+  args: {
+    settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup({ folder: "/Volumes/Backup/Kinige", error: "folder_unavailable" })),
+    showBackup: true,
+  },
+};
+
+/** Не удалось записать копию. */
+export const КопияБазыОшибкаЗаписи: Story = {
+  args: { settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup({ error: "write_failed" })), showBackup: true },
+};
+
+/** Проверка нашла повреждение базы: заметное предупреждение в рамке цвета ошибки; копия дня не снимается. */
+export const КопияБазыПовреждение: Story = {
+  args: { settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup({ error: "integrity_failed" })), showBackup: true },
+};
+
+/** Длинный путь к папке копий с кириллицей переносится по разделителям. */
+export const КопияБазыДлинныйПуть: Story = {
+  args: { settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup({ folder: `${LONG_PATH}/backups` })), showBackup: true },
+};
+
+/** Английский: копия снята сегодня, 1 копия. */
+export const EnКопияБазы: Story = {
+  args: { settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup({ count: 1 })), showBackup: true },
+  globals: { language: "en" },
+};
+
+/** Английский, крупный текст: предупреждение о повреждении. */
+export const EnКопияБазыПовреждениеКрупный: Story = {
+  args: { settings: settings({}, "large", DEFAULT_SHORTCUTS, backup({ error: "integrity_failed", folder: BACKUP_FOLDER })), showBackup: true },
+  globals: { language: "en" },
+};
+
+/** Автоудаление корзины не сработало: обычная строка ошибки в разделе «Копия базы». */
+export const КопияБазыАвтоудалениеНеСработало: Story = {
+  args: { settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup({ error: "purge_failed" })), showBackup: true },
 };
