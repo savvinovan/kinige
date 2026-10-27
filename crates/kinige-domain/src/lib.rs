@@ -23,6 +23,8 @@ pub mod tasks;
 #[cfg(test)]
 mod chat_tests;
 #[cfg(test)]
+mod history_tests;
+#[cfg(test)]
 mod ops_tests;
 
 use serde::Serialize;
