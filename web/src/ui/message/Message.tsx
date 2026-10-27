@@ -158,6 +158,15 @@ export function Message({
     };
   }, [mode]);
 
+  // Правка закончилась (Enter или Esc): поле исчезает, а фокус должен остаться на записи, иначе клавиатура теряет место
+  // (найдено в живой проверке). Плашка не в порядке Tab (tabIndex -1), но принимает фокус программно; Shift+F10 на ней
+  // открывает меню, Tab идёт к её кнопкам и тегам.
+  const wasEditing = useRef(false);
+  useLayoutEffect(() => {
+    if (wasEditing.current && mode !== "editing") plate.current?.focus();
+    wasEditing.current = mode === "editing";
+  }, [mode]);
+
   const openMenu = (position: MenuPosition) => {
     if (viewing) setMenu({ position, selection: selectedTextIn(plate.current) });
   };
@@ -240,7 +249,7 @@ export function Message({
         }}
         onKeyDown={handleKeyDown}
       >
-        <article className={classes.join(" ")} ref={plate}>
+        <article className={classes.join(" ")} ref={plate} tabIndex={-1}>
           {isTask ? (
             <button
               type="button"

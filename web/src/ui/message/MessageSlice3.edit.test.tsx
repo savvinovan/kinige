@@ -34,6 +34,17 @@ describe("правка в плашке", () => {
     expect(field()).toHaveAttribute("title", "Enter — сохранить, Esc — отмена");
   });
 
+  it("после правки фокус остаётся на плашке, а не пропадает вместе с полем (иначе Shift+F10 и Tab начинают с нуля)", () => {
+    const { container, rerender } = render(editing());
+    expect(field()).toHaveFocus();
+    rerender(view({ markdown: "Первая строка\nвторая", onEdit: vi.fn() }));
+    expect(article(container)).toHaveFocus();
+    // Плашка принимает фокус программно, но не стоит в порядке Tab.
+    expect(article(container)).toHaveAttribute("tabindex", "-1");
+    fireEvent.keyDown(article(container), { key: "F10", shiftKey: true });
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+
   it("Enter сохраняет изменённый текст, Esc отменяет", () => {
     const onSaveEdit = vi.fn();
     const onCancelEdit = vi.fn();
