@@ -94,6 +94,20 @@
   box-shadow: var(--shadow-overlay);
 }
 
+/* Свёрнутый сайдбар: кнопка — только аватар по центру полосы, меню открывается вправо от него, снизу вровень с аватаром. */
+.profile--compact .profile__button {
+  justify-content: center;
+  padding: 0;
+}
+
+.profile--compact .profile__menu {
+  right: auto;
+  bottom: 0;
+  left: calc(100% + var(--space-2));
+  width: max-content;
+  min-width: var(--layout-menu-min-width);
+}
+
 /* Пункты пока без функции: остаются в обходе стрелками, объявлены недоступными и приглушены. */
 .profile__item {
   display: block;

@@ -22,11 +22,11 @@ describe("ряд действий под плашкой", () => {
     ]);
   });
 
-  it("кроме «Копировать» кнопки только для вида: aria-disabled и «Появится позже»", () => {
+  it("без обработчиков (D1) «Редактировать», «Задача» и «Избранное» только нарисованы: aria-disabled и «Появится позже»; «Ещё» открывает меню", () => {
     render(<Message markdown="Купить хлеб" sentAt={sentAt} />);
-    const [copy, ...rest] = buttons() as [HTMLButtonElement, ...HTMLButtonElement[]];
-    expect(copy).not.toHaveAttribute("aria-disabled");
-    for (const button of rest) {
+    const [copy, edit, task, favorite, more] = buttons() as [HTMLButtonElement, ...HTMLButtonElement[]];
+    for (const live of [copy, more]) expect(live).not.toHaveAttribute("aria-disabled");
+    for (const button of [edit, task, favorite]) {
       expect(button).toHaveAttribute("aria-disabled", "true");
       expect(button).toHaveAccessibleDescription("Появится позже");
     }

@@ -4,3 +4,8 @@
   width: var(--layout-sidebar-width);
   padding: var(--layout-sidebar-padding);
 }
+
+/* Свёрнутый сайдбар: строка профиля шириной полосы эмодзи. */
+.story-profile--rail {
+  width: var(--layout-sidebar-rail-width);
+}

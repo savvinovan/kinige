@@ -1,0 +1,172 @@
+/* Корзина: плашки удалённых записей на месте ленты. Только токены. */
+.trash {
+  box-sizing: border-box;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--layout-feed-padding-block) var(--layout-feed-padding-inline);
+  background: var(--color-surface-paper);
+}
+
+/* Та же колонка, что у ленты. */
+.trash__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-message-gap-group);
+  box-sizing: border-box;
+  max-width: var(--layout-feed-column);
+  min-height: 100%;
+  margin: 0 auto;
+}
+
+.trash__empty {
+  margin: auto;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  text-align: center;
+}
+
+.trash__list {
+  display: grid;
+  gap: var(--layout-message-gap-group);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Плашка записи: заливка плашки сообщения, сверху чат и срок, ниже текст, внизу кнопки. */
+.trash-entry {
+  display: grid;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
+  border-radius: var(--radius-message);
+  background: var(--color-surface-message);
+  color: var(--color-text-primary);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+  overflow-wrap: anywhere;
+}
+
+.trash-entry[aria-busy="true"] {
+  opacity: var(--opacity-unavailable);
+}
+
+.trash-entry__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+/* Эмодзи и имя чата: длинное имя обрезается многоточием, срок справа не сжимается. */
+.trash-entry__chat {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+
+.trash-entry__emoji {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-emoji-slot);
+  font-family: var(--font-family-emoji);
+  font-size: var(--icon-size);
+  line-height: var(--icon-emoji-line-height);
+  transform: translateY(var(--icon-emoji-shift));
+}
+
+.trash-entry__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trash-entry__when {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Текст обрезается по числу строк (layout.trash.entry-lines): одинаковая высота строк, чтобы срез приходился на границу строки.
+   Для обычного текста и списков — многоточие, для кода и нескольких блоков — ровный срез по высоте. */
+.trash-entry__text {
+  display: -webkit-box;
+  max-height: calc(var(--layout-trash-entry-lines) * var(--type-body-size) * var(--type-body-line-height));
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--layout-trash-entry-lines);
+}
+
+.trash-entry .trash-entry__text :is(p, blockquote, ul, ol, pre, hr, h1, h2, h3, h4, h5, h6, li) {
+  margin-top: 0;
+}
+
+.trash-entry .trash-entry__text :is(h1, h2, h3, h4, h5, h6) {
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+}
+
+.trash-entry .trash-entry__text pre {
+  padding-block: 0;
+  line-height: var(--type-body-line-height);
+}
+
+/* Ссылка в корзине — просто текст: действий над записью здесь нет. */
+.trash-entry .capture-link {
+  color: var(--color-text-tertiary);
+}
+
+.trash-entry__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.trash-entry .button[aria-disabled="true"] {
+  cursor: default;
+  opacity: var(--opacity-disabled);
+}
+
+/* «Удалить навсегда»: цвет ошибки (текст ≥ 5:1 к плашке и к бумаге). */
+.trash__danger {
+  color: var(--color-status-error);
+}
+
+/* Подтверждение: окно уже обычного диалога. */
+.modal__panel:has(.trash-confirm) {
+  max-width: var(--layout-trash-confirm-width);
+}
+
+.trash-confirm {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+.trash-confirm__text {
+  margin: 0;
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+}
+
+.trash-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}

@@ -27,6 +27,25 @@
   gap: var(--space-1);
 }
 
+/* Включённые действия: «задача» акцентным цветом, «избранное» — залитая звезда (подпись для диктора тоже меняется). */
+.message-actions .message-actions__on,
+.message-actions .message-actions__on:hover {
+  color: var(--color-accent-default);
+}
+
+.message-actions__filled .icon {
+  fill: currentColor;
+}
+
+/* Запись только для чтения: кнопка видна, но приглушена и не откликается (пояснение — в подсказке). */
+.message-actions .icon-button[aria-disabled="true"]:not(.icon-button--unavailable),
+.message-actions .icon-button[aria-disabled="true"]:not(.icon-button--unavailable):hover {
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: default;
+  opacity: var(--opacity-disabled);
+}
+
 /* Узкое окно: справа нет места (ряд не помещается между краем плашки и краем колонки). Тогда ряд стоит на верхней
    границе плашки у её правого края, как плавающая панель в Slack и Telegram Desktop: бо́льшая часть над плашкой,
    в промежутке, а нижний край заходит внутрь не дальше верхнего отступа плашки, то есть текст не накрывает.
@@ -80,19 +99,164 @@
   background: var(--color-highlight-background);
 }
 
-/* Время: правый нижний угол, на одной строке с концом текста. Высота строки равна высоте строки текста, поэтому базовые линии совпадают. */
-.message__time {
+/* Содержимое плашки: текст (или поле правки) и строка «Не отправилось». У задачи слева от него флажок. */
+.message__content {
+  min-width: 0;
+}
+
+/* Правый нижний угол, на одной строке с концом текста: отметка «избранное» и время (у удалённой плашки — «Удалено · Вернуть»).
+   Высота строки равна высоте строки текста, поэтому базовые линии совпадают. */
+.message__meta {
   position: absolute;
   right: var(--layout-message-padding-inline);
   bottom: var(--layout-message-padding-block);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  line-height: calc(var(--type-body-size) * var(--type-body-line-height));
+  white-space: nowrap;
+  user-select: none;
+}
+
+.message__time {
   color: var(--color-text-tertiary);
   font-family: var(--type-meta-family);
   font-size: var(--type-meta-size);
   font-weight: var(--type-meta-weight);
   line-height: calc(var(--type-body-size) * var(--type-body-line-height));
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  user-select: none;
+}
+
+/* Тихая отметка «избранное»: залитая звезда третичного цвета левее времени. Места ей даёт распорка (ниже), поэтому текст её не накрывает. */
+.message__mark {
+  display: inline-flex;
+  color: var(--color-text-tertiary);
+}
+
+.message__mark .icon {
+  width: var(--icon-size-mark);
+  height: var(--icon-size-mark);
+  fill: currentColor;
+}
+
+.message--favorite .message__spacer {
+  width: calc(var(--layout-message-time-reserve) + var(--icon-size-mark) + var(--space-1));
+}
+
+/* Задача: перед текстом флажок размером с квадрат `- [ ]` в тексте и на уровне первой строки. */
+.message--task {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.message--task .message__content {
+  flex: 1;
+}
+
+.message__check {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: var(--layout-checkbox-size);
+  height: var(--layout-checkbox-size);
+  margin: calc((var(--type-body-size) * var(--type-body-line-height) - var(--layout-checkbox-size)) / 2) 0 0;
+  padding: 0;
+  border: var(--border-width-strong) solid var(--color-text-tertiary);
+  border-radius: var(--radius-inline);
+  background: transparent;
+  cursor: pointer;
+}
+
+.message__check[aria-checked="true"] {
+  border-color: var(--color-accent-default);
+  background: var(--color-accent-default);
+}
+
+/* Галочка та же, что у квадрата в тексте (markdown.css): размеры — токены layout.checkbox.tick-*. */
+.message__check[aria-checked="true"]::after {
+  content: "";
+  position: absolute;
+  top: var(--layout-checkbox-tick-top);
+  left: var(--layout-checkbox-tick-left);
+  box-sizing: border-box;
+  width: var(--layout-checkbox-tick-width);
+  height: var(--layout-checkbox-tick-height);
+  border: solid var(--color-surface-message);
+  border-width: 0 var(--border-width-strong) var(--border-width-strong) 0;
+  transform: rotate(45deg);
+}
+
+.message__check[aria-disabled="true"] {
+  cursor: default;
+}
+
+/* Выполненная задача: текст приглушён (третичный цвет, ≥ 5:1 к плашке); ссылки остаются акцентными. */
+.message--task-done .markdown {
+  color: var(--color-text-tertiary);
+}
+
+/* Правка в плашке: ширина закреплена той, что была до правки (--message-edit-width ставит Message), меняется только высота.
+   Поле без рамки и заливки, гарнитура и размер как у текста; высоту задаёт невидимая копия текста в той же ячейке сетки. */
+.message--editing {
+  width: var(--message-edit-width, fit-content);
+}
+
+/* Фокус в поле: тонкая линия цветом фокуса внутри плашки (как у поля ввода), без внешнего кольца. */
+.message--editing:focus-within {
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-focus-ring);
+}
+
+.message-edit {
+  display: grid;
+}
+
+.message-edit__replica,
+.message-edit__input {
+  grid-area: 1 / 1;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.message-edit__replica {
+  visibility: hidden;
+}
+
+.message-edit__input {
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  caret-color: var(--color-accent-default);
+  color: inherit;
+  outline: none;
+}
+
+/* Удалённая плашка (решение 1 слайса 3): остаётся на месте, текст приглушён, вместо времени «Удалено · Вернуть».
+   Строка длиннее времени, поэтому распорка у конца текста шире (место в правом нижнем углу). */
+.message--deleted .message__content,
+.message--deleted .message__check {
+  opacity: var(--opacity-deleted);
+}
+
+.message--deleted .message__spacer {
+  width: var(--layout-message-deleted-reserve);
+}
+
+.message__deleted {
+  color: var(--color-text-secondary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+}
+
+.message__deleted .button {
+  color: var(--color-accent-default);
 }
 
 /* Распорка в конце последней строки: резервирует место под время, чтобы текст его не накрывал. */

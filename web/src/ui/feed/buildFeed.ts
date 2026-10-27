@@ -14,6 +14,16 @@ export interface FeedMessage {
   /** «failed» — плашка «Не отправилось» (в приложении слайса 1 её нет: при ошибке текст остаётся в поле; состояние осталось в Storybook). */
   status?: "sent" | "failed";
   highlighted?: boolean;
+  /** Запись — задача (флажок у плашки). */
+  isTask?: boolean;
+  /** Когда задача выполнена (мс); `null` или нет — не выполнена. */
+  taskDoneAt?: number | null;
+  /** Когда добавлена в избранное (мс). */
+  favoriteAt?: number | null;
+  /** Теги записи в нижнем регистре, без `#` (разбирает Rust): по ним подсвечивается текст. */
+  tags?: readonly string[];
+  /** Запись новее поддерживаемой версии: только для чтения, действия недоступны. */
+  readOnly?: boolean;
 }
 
 export type FeedItem =

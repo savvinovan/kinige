@@ -4,6 +4,7 @@ import type { Settings } from "../../api/generated/Settings";
 import type { ShortcutKind } from "../../api/generated/ShortcutKind";
 import type { ShortcutStatus } from "../../api/generated/ShortcutStatus";
 import type { TextSize } from "../../api/generated/TextSize";
+import { BackupRow } from "./BackupRow";
 import { MirrorStatusLine } from "./MirrorStatusLine";
 import { Modal } from "./Modal";
 import { PathRow } from "./PathRow";
@@ -34,10 +35,13 @@ interface SettingsDialogProps {
   actionError?: string;
   /** Куда вернуть фокус при закрытии, если открывший элемент к тому времени исчез со страницы (например, пункт меню). */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /** «Сейчас» для метки дня в строке копии базы («сегодня, 09:12»); по умолчанию часы окна. В тестах и историях фиксируется. */
+  now?: Date;
 }
 
 /**
  * Окно «Настройки»: раздел «Копия в Markdown» (папка, предупреждение «копия — открытый текст», состояние), раздел
+ * «Копия базы» (слайс 3: когда снята последняя копия файла базы, сколько копий, папка, ошибки), раздел
  * «Сочетания клавиш» (слайс 2: два сочетания со статусом, смена и сброс) и раздел «Размер текста».
  * Только вид и поведение: данные и действия приходят снаружи, вызовов бэкенда здесь нет.
  * Окно модальное внутри главного (`Modal`): Esc, щелчок по подложке и кнопка закрытия вызывают `onClose`.
@@ -55,9 +59,11 @@ export function SettingsDialog({
   choosing = false,
   actionError,
   returnFocusRef,
+  now,
 }: SettingsDialogProps) {
   const { t } = useTranslation();
   const mirrorTitleId = useId();
+  const backupTitleId = useId();
   const shortcutsTitleId = useId();
   const textSizeTitleId = useId();
   const { mirror } = settings;
@@ -79,6 +85,13 @@ export function SettingsDialog({
         <StatusNote tone="quiet" icon="info">
           {t("settings.mirror.warning")}
         </StatusNote>
+      </section>
+      <section className="settings__section" aria-labelledby={backupTitleId}>
+        <h3 className="settings__heading" id={backupTitleId}>
+          {t("settings.backup.title")}
+        </h3>
+        <p className="settings__description">{t("settings.backup.description")}</p>
+        <BackupRow backup={settings.backup} now={now} />
       </section>
       <section className="settings__section" aria-labelledby={shortcutsTitleId}>
         <h3 className="settings__heading" id={shortcutsTitleId}>

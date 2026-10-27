@@ -1,7 +1,10 @@
 import { useId, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../controls/IconButton";
+import { EmojiButton, type ComposerEmoji } from "./EmojiButton";
 import "./composer.css";
+
+export type { ComposerEmoji };
 
 export interface ComposerButtons {
   /** «Прикрепить файл» (слайс 7). */
@@ -24,6 +27,12 @@ interface ComposerProps {
   onAppend?: () => void;
   /** Какие кнопки показывать; по умолчанию все три. В приложении кнопка появляется в слайсе, где её функция работает. */
   buttons?: ComposerButtons;
+  /**
+   * Пикер эмодзи. Есть вместе с `buttons.emoji` — кнопка «эмодзи» живая: открывает панель над собой, выбранный эмодзи
+   * вставляется в позицию курсора (выделение заменяется), каретка встаёт после него, значение уходит через `onChange`.
+   * Без него кнопка только нарисована и недоступна («Появится позже»), как в D1.
+   */
+  emoji?: ComposerEmoji;
   /** Кнопки только нарисованы (D1): объявляются как недоступные («Появится позже») и ничего не делают. */
   viewOnly?: boolean;
   /** Ошибка отправки: показывается над полем, черновик остаётся. */
@@ -59,6 +68,7 @@ export function Composer({
   onSubmit,
   onAppend,
   buttons = { attach: true, emoji: true, voice: true },
+  emoji,
   viewOnly = false,
   error,
   floating = false,
@@ -122,7 +132,11 @@ export function Composer({
             onKeyDown={onKeyDown}
           />
         </div>
-        {buttons.emoji ? <IconButton icon="emoji" label={t("composer.emoji")} unavailable={viewOnly} /> : null}
+        {buttons.emoji && emoji ? (
+          <EmojiButton {...emoji} field={input} value={value} onChange={onChange} />
+        ) : buttons.emoji ? (
+          <IconButton icon="emoji" label={t("composer.emoji")} unavailable={viewOnly} />
+        ) : null}
         {/* Правое место: «Отправить» при непробельном тексте, иначе «микрофон». Обе кнопки одного размера, ширина не прыгает. */}
         {hasText ? (
           <span className="composer__action" key="send">

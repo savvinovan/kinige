@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState } from "react";
+import { useLanguage } from "../../i18n/I18n";
+import { EmojiStoryData } from "../emoji/EmojiStoryData";
 import { Frame } from "../stories/Frame";
 import { Composer, type ComposerButtons } from "./Composer";
 
@@ -10,23 +12,37 @@ interface DemoProps {
   autoFocus?: boolean;
   /** Кнопки только нарисованы («Появится позже»); в D1 так везде. */
   viewOnly?: boolean;
+  /** Пикер эмодзи подключён: кнопка «эмодзи» живая (слайс 3). */
+  emoji?: boolean;
+  /** Панель пикера открыта после показа (как после щелчка по кнопке). */
+  openPicker?: boolean;
 }
 
 /** Поле у нижнего края окна с рабочим состоянием (черновик живёт в истории). */
-function Demo({ initial = "", buttons, error, autoFocus, viewOnly = true }: DemoProps) {
+function Demo({ initial = "", buttons, error, autoFocus, viewOnly = true, emoji = false, openPicker = false }: DemoProps) {
   const [value, setValue] = useState(initial);
+  const language = useLanguage();
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (openPicker) host.current?.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]')?.click();
+  }, [openPicker]);
   return (
-    <Frame bottom>
-      <Composer
-        value={value}
-        onChange={setValue}
-        onSubmit={() => setValue("")}
-        buttons={buttons}
-        error={error}
-        autoFocus={autoFocus}
-        viewOnly={viewOnly}
-      />
-    </Frame>
+    <EmojiStoryData wait={openPicker}>
+      <Frame bottom>
+        <div ref={host}>
+          <Composer
+            value={value}
+            onChange={setValue}
+            onSubmit={() => setValue("")}
+            buttons={buttons}
+            error={error}
+            autoFocus={autoFocus}
+            viewOnly={viewOnly}
+            emoji={emoji ? { recent: ["📚", "💡", "🍳", "🧭"], language } : undefined}
+          />
+        </div>
+      </Frame>
+    </EmojiStoryData>
   );
 }
 
@@ -98,6 +114,24 @@ export const СТекстом: Story = { args: { initial: "Купить биле
 export const ФокусНаОтправить: Story = {
   args: { initial: "Купить билеты на субботу" },
   render: (args) => <FocusedSend {...args} />,
+};
+
+/** Пикер подключён: кнопка «эмодзи» живая (в D1 она только нарисована), «Появится позже» с неё снято. */
+export const СЭмодзи: Story = { args: { emoji: true, viewOnly: false } };
+
+/** Панель пикера над кнопкой «эмодзи»: недавние, категории, поиск; выбранный эмодзи встаёт туда, где стоит курсор. */
+export const ПикерОткрыт: Story = { args: { emoji: true, viewOnly: false, openPicker: true, initial: "Купить билеты на субботу" } };
+
+/** Панель пикера, английский интерфейс. */
+export const ПикерОткрытАнглийский: Story = {
+  args: { emoji: true, viewOnly: false, openPicker: true, initial: "Buy tickets for Saturday" },
+  globals: { language: "en" },
+};
+
+/** Панель пикера, крупный текст. */
+export const ПикерОткрытКрупныйТекст: Story = {
+  args: { emoji: true, viewOnly: false, openPicker: true, initial: "Купить билеты на субботу" },
+  globals: { textScale: "large" },
 };
 
 /** Ставит фокус на «Отправить» после показа: так история показывает кольцо фокуса без мыши. */

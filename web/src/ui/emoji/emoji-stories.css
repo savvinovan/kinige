@@ -1,0 +1,24 @@
+/* Только для историй Storybook. */
+
+/* Пока пикер не нарисовал сетку, у истории нет размера: Playwright не считает такой элемент видимым и ждёт, а снимок не
+   ловит «загрузку». Не visibility: hidden — в скрытом элементе не работает автофокус поля поиска. */
+.story-emoji--pending {
+  height: 0;
+  overflow: hidden;
+}
+
+/* Пикер на плашке меню: так он выглядит во всплывающей панели над полем ввода. */
+.story-emoji-panel {
+  box-sizing: border-box;
+  width: var(--emoji-panel-width);
+  padding: var(--space-2);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-message);
+  box-shadow: var(--shadow-overlay);
+}
+
+/* Узкая плашка: проверка, что сетка и поиск не ломаются на ширине в 5 столбцов. */
+.story-emoji-panel--narrow {
+  width: calc(var(--emoji-panel-width) * 0.7);
+}

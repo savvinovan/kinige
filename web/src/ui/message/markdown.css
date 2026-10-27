@@ -100,6 +100,24 @@
   transform: rotate(45deg);
 }
 
+/* Квадрат в тексте, который можно нажать (слайс 3: role="checkbox", tabindex 0): указатель вместо стрелки, фокус виден кольцом. */
+.task__box[role="checkbox"] {
+  cursor: pointer;
+}
+
+/* Тег `#слово`: акцентный цвет без подчёркивания (ссылки подчёркнуты), при наведении подчёркивается. Нажимается: фильтр ленты. */
+.markdown .tag {
+  border-radius: var(--radius-inline);
+  color: var(--color-accent-default);
+  cursor: pointer;
+}
+
+.markdown .tag:hover {
+  text-decoration: underline;
+  text-decoration-thickness: var(--border-width-hairline);
+  text-underline-offset: var(--space-1);
+}
+
 /* Цитата: черта слева только у самой цитаты. */
 .markdown blockquote {
   padding-left: var(--space-3);

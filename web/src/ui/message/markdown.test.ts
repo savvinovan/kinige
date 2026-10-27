@@ -133,3 +133,102 @@ describe("renderMarkdown: распорка под время", () => {
     expect(render("Купить билеты", false).querySelector(".message__spacer")).toBeNull();
   });
 });
+
+describe("renderMarkdown: теги (слайс 3)", () => {
+  const withTags = (source: string, tags: string[]) => {
+    const host = document.createElement("div");
+    host.innerHTML = renderMarkdown(source, { timeSpacer: false, taskLabels: { done: "Выполнено", todo: "Не выполнено" }, tags });
+    return host;
+  };
+  const found = (host: HTMLElement) => [...host.querySelectorAll(".tag")].map((tag) => tag.textContent);
+
+  it("подсвечивается только тег из списка Rust; регистр не важен, текст остаётся как написан", () => {
+    const host = withTags("#Идея и #другое, потом #идея", ["идея"]);
+    expect(found(host)).toEqual(["#Идея", "#идея"]);
+    expect(host.querySelector(".tag")?.getAttribute("role")).toBe("button");
+    expect(host.querySelector(".tag")?.getAttribute("tabindex")).toBe("0");
+    expect(host.textContent?.trim()).toBe("#Идея и #другое, потом #идея");
+  });
+
+  it("без списка тегов или с пустым списком ничего не подсвечивается", () => {
+    expect(found(render("#идея"))).toEqual([]);
+    expect(found(withTags("#идея", []))).toEqual([]);
+  });
+
+  it("слово — буквы любого алфавита, цифры и подчёркивание", () => {
+    const host = withTags("#день_1 #tag2 #日本語", ["день_1", "tag2", "日本語"]);
+    expect(found(host)).toEqual(["#день_1", "#tag2", "#日本語"]);
+  });
+
+  it("тег в начале строки и после знака препинания", () => {
+    const host = withTags("(#идея) «#идея»,\n#идея", ["идея"]);
+    expect(found(host)).toHaveLength(3);
+  });
+
+  it("не тег: после буквы, цифры, подчёркивания, #, & и обратной косой", () => {
+    expect(found(withTags("a#идея 1#идея _#идея ##идея &#идея", ["идея"]))).toEqual([]);
+    expect(found(withTags("\\#идея", ["идея"]))).toEqual([]);
+  });
+
+  it("не тег: внутри кода, блока кода и ссылки", () => {
+    const source = "`#идея`\n\n```\n#идея\n```\n\n[#идея](https://example.com) https://example.com/#идея";
+    expect(found(withTags(source, ["идея"]))).toEqual([]);
+  });
+
+  it("заголовок «# слово» — заголовок, а не тег; «#слово» в заголовке — тег", () => {
+    const host = withTags("# Идея\n\n## про #идея", ["идея"]);
+    expect(host.querySelector("h1")?.textContent).toBe("Идея");
+    expect(found(host)).toEqual(["#идея"]);
+  });
+
+  it("тег внутри выделения, списка и задачи; распорка под время по-прежнему в конце", () => {
+    const host = document.createElement("div");
+    host.innerHTML = renderMarkdown("**важно #идея**\n\n- [ ] сделать #идея", {
+      timeSpacer: true,
+      taskLabels: { done: "Выполнено", todo: "Не выполнено" },
+      tags: ["идея"],
+    });
+    expect(found(host)).toEqual(["#идея", "#идея"]);
+    expect(host.querySelector("strong .tag")).not.toBeNull();
+    expect(host.querySelector("li:last-child .message__spacer")).not.toBeNull();
+  });
+
+  it("опасное в слове тега не попадает в разметку", () => {
+    const host = withTags("#идея<script>", ["идея"]);
+    expect(host.querySelector("script")).toBeNull();
+    expect(host.textContent?.trim()).toBe("#идея<script>");
+  });
+});
+
+describe("renderMarkdown: кликабельные квадраты задач (слайс 3)", () => {
+  const interactive = (source: string) => {
+    const host = document.createElement("div");
+    host.innerHTML = renderMarkdown(source, {
+      timeSpacer: false,
+      taskLabels: { done: "Выполнено", todo: "Не выполнено", item: "Пункт выполнен" },
+      interactiveTasks: true,
+    });
+    return host;
+  };
+
+  it("квадрат — флажок: role=checkbox, aria-checked, tabindex 0 и имя без состояния", () => {
+    const boxes = [...interactive("- [x] раз\n- [ ] два").querySelectorAll(".task__box")];
+    expect(boxes.map((box) => box.getAttribute("role"))).toEqual(["checkbox", "checkbox"]);
+    expect(boxes.map((box) => box.getAttribute("aria-checked"))).toEqual(["true", "false"]);
+    expect(boxes.map((box) => box.getAttribute("tabindex"))).toEqual(["0", "0"]);
+    expect(boxes.map((box) => box.getAttribute("aria-label"))).toEqual(["Пункт выполнен", "Пункт выполнен"]);
+  });
+
+  it("без interactiveTasks квадраты остаются картинками, aria-checked нет", () => {
+    expect(render("- [x] раз").querySelector(".task__box")?.getAttribute("aria-checked")).toBeNull();
+  });
+
+  it("DOMPurify оставляет aria-checked только на разрешённых тегах и не пропускает прочие aria-атрибуты", () => {
+    const host = document.createElement("div");
+    host.innerHTML = sanitizeHtml('<span class="task__box" role="checkbox" aria-checked="true" aria-live="assertive" onclick="x()"></span>');
+    const box = host.querySelector("span");
+    expect(box?.getAttribute("aria-checked")).toBe("true");
+    expect(box?.hasAttribute("aria-live")).toBe(false);
+    expect(box?.hasAttribute("onclick")).toBe(false);
+  });
+});
