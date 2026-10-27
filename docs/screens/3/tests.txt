@@ -1,16 +1,16 @@
-# Проверки слайса 3 (локально, macOS, 2026-10-27 19:12 MSK), коммит 9d8267d
+# Проверки слайса 3 (локально, macOS, 2026-10-27 20:43 MSK), коммит 0904860
 
 $ cargo fmt --all --check
 итог: чисто
 
 $ cargo clippy --workspace --all-targets -- -D warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.69s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.24s
 
 $ cargo test --workspace
-итог: passed 325, failed 0, ignored 1
+итог: passed 329, failed 0, ignored 1
 
 $ cargo build -p kinige-domain --target wasm32-unknown-unknown
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.98s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.18s
 
 $ npm run tokens
 ✔︎ src/ui/tokens.css
@@ -27,24 +27,24 @@ $ npm run lint
 
 
 $ npm test
- Test Files  54 passed (54)
-      Tests  1044 passed (1044)
+ Test Files  55 passed (55)
+      Tests  1053 passed (1053)
 
 $ npm run build-storybook
-
 └  Storybook build completed successfully
 
 # Аналог CI в Linux-контейнере (удалённый Docker ubuntu-server; образы kinige-ci-rust:s3, kinige-ci-web:s3, kinige-visual:local)
 Rust (ubuntu:24.04 + системные библиотеки Tauri + rust-toolchain.toml 1.94.0, исходники — git archive HEAD):
   cargo fmt --all --check                                  чисто
   cargo clippy --workspace --all-targets -- -D warnings    чисто
-  cargo test --workspace                                   TOTAL passed 325 failed 0
+  cargo test --workspace --no-fail-fast                    TOTAL passed 328 failed 0 (на 1 меньше, чем на macOS: `ipc_restore_e2e` только macOS)
   cargo build -p kinige-domain --target wasm32-unknown-unknown   собрано
   сгенерированные TS-типы (git status web/src/api/generated)     generated-types-clean
 Web (node:24.21.0, npm ci):
   tokens.css / themes.css актуальны                        tokens-clean
   npm run typecheck, npm run lint                          без ошибок
-  npm test                                                 Test Files 54 passed (54), Tests 1044 passed (1044)
-Визуальные тесты Storybook (scripts/visual-tests.sh, сравнение с эталонами в репозитории): 271 passed.
-  (эталон «окно-чата--переименованиеошибка» при пересъёмке даёт отличие в 2 пикселя от повторных прогонов: оставлен прежний,
-   с ним все 271 снимков стабильны)
+  npm test                                                 Test Files 55 passed (55), Tests 1053 passed (1053)
+Визуальные тесты Storybook (scripts/visual-tests.sh, сравнение с эталонами в репозитории): 271 passed, 4 прогона подряд
+  (перед снимком теперь ждём окончания переходов: история окна чата «переименование, ошибка» иначе давала 2 пикселя у углов поля).
+Прежний шаг `cargo test` в Dockerfile аналога глотал код возврата (конвейер `| tee | grep`): один раз падение теста прошло как «ok»;
+шаг исправлен (`--no-fail-fast`, итог считается по `test result`, ненулевое число упавших — отказ).
