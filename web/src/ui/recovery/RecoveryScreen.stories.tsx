@@ -57,11 +57,5 @@ export const РаботающееEn: Story = { args: { mode: "running", backups:
 /** Крупный текст. */
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };
 
-/** Папка Markdown-копии будет переименована при восстановлении: тихое пояснение над кнопкой. */
-export const СПапкойКопии: Story = { args: { mirrorFolder: "/Users/alexandr/Documents/Kinige" } };
-
-/** Папка Markdown-копии будет переименована при восстановлении: тихая строка под пояснением. */
-export const СПапкойКопииEn: Story = {
-  args: { mirrorFolder: "/Users/alexandr/Documents/Kinige", language: "en" },
-  globals: { language: "en", textScale: "large" },
-};
+/** Английский с крупным текстом: тихая строка про папку Markdown-копии под пояснением. */
+export const КрупныйТекстEn: Story = { args: { language: "en" }, globals: { language: "en", textScale: "large" } };

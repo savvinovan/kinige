@@ -146,27 +146,22 @@ describe("RecoveryScreen: running", () => {
   });
 });
 
-describe("RecoveryScreen: mirrorFolder", () => {
-  it("startup: тихая строка под пояснением; без папки и в режиме running её нет", () => {
-    const { unmount } = show({ mirrorFolder: "/Users/me/Documents/Kinige" });
+describe("RecoveryScreen: папка Markdown-копии", () => {
+  it("startup с копиями: тихая строка без пути под пояснением; в режиме running и без копий её нет", () => {
+    const { unmount } = show({});
     expect(
-      screen.getByText("Папка Markdown-копии «/Users/me/Documents/Kinige» будет переименована в «…-before-restore-…» рядом: записи после снимка копии не потеряются."),
+      screen.getByText("Папка Markdown-копии будет переименована в «…-before-restore-…» рядом: записи после снимка копии не потеряются."),
     ).toBeInTheDocument();
     unmount();
-    const second = show({ mirrorFolder: null });
+    const second = show({ backups: [] });
     expect(screen.queryByText(/Markdown-копии/)).toBeNull();
     second.unmount();
-    show({ mode: "running", mirrorFolder: "/Users/me/Documents/Kinige" });
+    show({ mode: "running" });
     expect(screen.queryByText(/Markdown-копии/)).toBeNull();
-  });
-
-  it("строка есть и когда копий нет (кнопки восстановления всё равно нет)", () => {
-    show({ backups: [], mirrorFolder: "/x" });
-    expect(screen.getByText(/Markdown-копии «\/x»/)).toBeInTheDocument();
   });
 
   it("английский", () => {
-    show({ mirrorFolder: "/Users/me/Kinige" }, "en");
-    expect(screen.getByText(/The Markdown copy folder “\/Users\/me\/Kinige” will be renamed/)).toBeInTheDocument();
+    show({}, "en");
+    expect(screen.getByText(/The Markdown copy folder will be renamed to/)).toBeInTheDocument();
   });
 });

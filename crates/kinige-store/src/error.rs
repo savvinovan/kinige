@@ -33,6 +33,8 @@ pub enum StoreError {
     Corrupt(String),
     /// Копия не найдена, не открывается или повреждена.
     BackupNotFound,
+    /// Прежнюю папку Markdown-копии не удалось переименовать перед восстановлением: ничего не тронуто.
+    MirrorFolderBusy,
     /// База создана более новой версией приложения (схема `found`): откат не поддерживается (ТЗ §10.4).
     TooNew(i64),
     /// Запись в базу не удалась: ничего не записано (транзакция откатилась).
@@ -62,6 +64,7 @@ impl StoreError {
             StoreError::ShortcutDuplicate => ErrorCode::ShortcutDuplicate,
             StoreError::Corrupt(_) => ErrorCode::DatabaseCorrupt,
             StoreError::BackupNotFound => ErrorCode::BackupNotFound,
+            StoreError::MirrorFolderBusy => ErrorCode::MirrorFolderBusy,
             StoreError::TooNew(_) => ErrorCode::DatabaseTooNew,
             StoreError::Write(_) => ErrorCode::StoreWriteFailed,
             StoreError::Read(_) => ErrorCode::StoreReadFailed,
@@ -89,6 +92,7 @@ impl StoreError {
             StoreError::ShortcutDuplicate => "shortcut_duplicate",
             StoreError::Corrupt(_) => "corrupt",
             StoreError::BackupNotFound => "backup_not_found",
+            StoreError::MirrorFolderBusy => "mirror_folder_busy",
             StoreError::TooNew(_) => "too_new",
             StoreError::Write(_) => "write",
             StoreError::Read(_) => "read",
@@ -114,6 +118,9 @@ impl fmt::Display for StoreError {
             StoreError::ShortcutDuplicate => f.write_str("сочетание уже назначено"),
             StoreError::Corrupt(why) => write!(f, "база повреждена: {why}"),
             StoreError::BackupNotFound => f.write_str("копия не найдена или повреждена"),
+            StoreError::MirrorFolderBusy => {
+                f.write_str("папку Markdown-копии не удалось переименовать")
+            }
             StoreError::TooNew(found) => {
                 write!(
                     f,

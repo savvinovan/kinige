@@ -16,6 +16,8 @@ use kinige_domain::ShortcutKind;
 use kinige_store::{Store, StoreError, StoreOptions};
 use recovery::Recovery;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, Runtime, WindowEvent};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
@@ -183,24 +185,26 @@ fn default_mirror_dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
 
 /// Открывает хранилище. Повреждение, найденное проверкой целостности в фоне, ставит отметку и сообщает главному окну
 /// (`recovery::corruption_hook`).
-fn open_store<R: Runtime>(app: &AppHandle<R>, db_path: PathBuf) -> Result<Store, StoreError> {
+fn open_store<R: Runtime>(
+    app: &AppHandle<R>,
+    db_path: PathBuf,
+    corruption: Arc<AtomicBool>,
+) -> Result<Store, StoreError> {
     let mut options = StoreOptions::new(db_path.clone(), default_mirror_dir(app));
-    options.on_corruption = Some(recovery::corruption_hook(app.clone(), db_path));
+    options.on_corruption = Some(recovery::corruption_hook(app.clone(), db_path, corruption));
     Store::open(options)
 }
 
 /// Всё, что работает поверх открытого хранилища: сочетания, окно захвата как панель, значок в menu bar. Вызывается при
 /// запуске и, если база была повреждена, сразу после восстановления из копии.
+///
+/// Хранилище (и всё остальное, что делает «журнал открыт») отдаётся приложению ПОСЛЕДНИМ, когда всё, что может упасть
+/// (панель, значок), уже удалось: иначе при сбое восстановление считалось бы неудавшимся, а хранилище уже стояло бы в
+/// состоянии приложения, и повторное «Восстановить» подменяло бы файл базы под открытым писателем.
 fn start_services<R: Runtime>(
     app: &AppHandle<R>,
     store: Store,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let hotkeys = Hotkeys::new(Box::new(PluginRegistrar { app: app.clone() }));
-    // Сочетание, которое система не приняла, остаётся «не назначено» в настройках; остальное работает.
-    hotkeys.register_saved(&store);
-    app.manage(store);
-    app.manage(hotkeys);
-    app.manage(CaptureShell::default());
     #[cfg(target_os = "macos")]
     panel::convert(
         app,
@@ -210,13 +214,25 @@ fn start_services<R: Runtime>(
         capture::request_hide,
     )?;
     tray::setup(app, commands::get_language())?;
+    let hotkeys = Hotkeys::new(Box::new(PluginRegistrar { app: app.clone() }));
+    // Сочетание, которое система не приняла, остаётся «не назначено» в настройках; остальное работает.
+    hotkeys.register_saved(&store);
+    app.manage(store);
+    app.manage(hotkeys);
+    app.manage(CaptureShell::default());
+    // Значок строился без хранилища (его ещё не было в состоянии приложения): последние чаты — теперь.
+    tray::refresh(app);
     Ok(())
 }
 
 /// После восстановления из копии: база открывается, сервисы запускаются на главном потоке (значок и панель — AppKit).
 pub(crate) fn resume_after_restore<R: Runtime>(app: &AppHandle<R>) -> Result<(), StoreError> {
     let db_path = db_path(app).map_err(|e| StoreError::Internal(e.to_string()))?;
-    let store = open_store(app, db_path)?;
+    let corruption = app
+        .try_state::<Recovery>()
+        .map(|recovery| recovery.corruption_flag())
+        .unwrap_or_default();
+    let store = open_store(app, db_path, corruption)?;
     let (tx, rx) = std::sync::mpsc::channel();
     let handle = app.clone();
     app.run_on_main_thread(move || {
@@ -302,11 +318,13 @@ pub fn run() {
             // повод предлагать копии: приложение не запускается и говорит об этом.
             let mirror = default_mirror_dir(&handle);
             let mut too_new = false;
+            // Флаг «повреждение найдено» нужен хуку проверки, которая стартует вместе с хранилищем, раньше `Recovery`.
+            let corruption = Arc::new(AtomicBool::new(false));
             let store =
                 if kinige_store::startup_check(&db_path) == kinige_store::StartupCheck::Recovery {
                     None
                 } else {
-                    match open_store(&handle, db_path.clone()) {
+                    match open_store(&handle, db_path.clone(), corruption.clone()) {
                         Ok(store) => Some(store),
                         Err(StoreError::Corrupt(_)) => {
                             eprintln!("kinige: база повреждена, предлагаем копии");
@@ -325,7 +343,11 @@ pub fn run() {
             } else {
                 Recovery::new(db_path, store.is_none())
             };
-            app.manage(recovery.with_mirror(mirror));
+            app.manage(
+                recovery
+                    .with_mirror(mirror)
+                    .with_corruption_flag(corruption),
+            );
             if let Some(store) = store {
                 start_services(&handle, store)?;
             }

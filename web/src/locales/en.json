@@ -142,7 +142,7 @@
     "restart": "Restart",
     "none": "No backups",
     "noneHint": "The backup folder is empty. Save the database file and write to the developer: entries may still be recoverable from it.",
-    "mirrorNote": "The Markdown copy folder “{{folder}}” will be renamed to “…-before-restore-…” next to it: entries made after the backup snapshot are not lost.",
+    "mirrorNote": "The Markdown copy folder will be renamed to “…-before-restore-…” next to it: entries made after the backup snapshot are not lost.",
     "tooNewTitle": "The database was created by a newer version of Kinige",
     "tooNewText": "Downgrading is not supported: update the app. Nothing has been changed or deleted."
   },
@@ -183,6 +183,7 @@
     "database_corrupt": "The database is damaged.",
     "database_too_new": "The database was created by a newer version of Kinige. Update the app.",
     "backup_not_found": "The copy was not found or cannot be opened.",
+    "mirror_folder_busy": "Could not rename the Markdown copy folder (it may be open in another program). Nothing was changed: close it and try again.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },

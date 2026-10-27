@@ -48,6 +48,7 @@ const CODES: readonly ErrorCode[] = [
   "database_corrupt",
   "database_too_new",
   "backup_not_found",
+  "mirror_folder_busy",
   "internal",
 ];
 

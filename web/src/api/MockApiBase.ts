@@ -75,7 +75,6 @@ export class MockApiBase {
       backups: [],
       databaseTooNew: false,
       corruptionFound: false,
-      mirrorFolder: null,
     };
     this.pickedFolder = options.pickedFolder === undefined ? "/Users/me/Notes/Kinige" : options.pickedFolder;
   }

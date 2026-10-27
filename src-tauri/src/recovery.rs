@@ -13,7 +13,7 @@
 //! (они из той же или более новой версии), окно просит обновить Kinige.
 
 use kinige_domain::{ApiError, ErrorCode, RestoreOutcome, StartupState};
-use kinige_store::{CorruptionHook, Now};
+use kinige_store::{CorruptionHook, Now, Store};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -28,6 +28,12 @@ type ApiResult<T> = Result<T, ApiError>;
 pub struct Recovery {
     db_path: PathBuf,
     active: AtomicBool,
+    /// Восстановление идёт прямо сейчас (между `begin_restore` и концом): `startup_state` ещё считает журнал
+    /// неоткрытым, «Перезапустить» запрещён.
+    restoring: AtomicBool,
+    /// Фоновая проверка этого процесса нашла повреждение работающей базы (ставит `corruption_hook`). Флаг процесса, а не
+    /// файл-отметка: при `Integrity::Unknown` отметки нет и флага нет, а файл от прошлого запуска мог остаться.
+    corruption: Arc<AtomicBool>,
     database_too_new: bool,
     mirror_folder: Option<PathBuf>,
 }
@@ -37,9 +43,21 @@ impl Recovery {
         Recovery {
             db_path,
             active: AtomicBool::new(active),
+            restoring: AtomicBool::new(false),
+            corruption: Arc::new(AtomicBool::new(false)),
             database_too_new: false,
             mirror_folder: None,
         }
+    }
+
+    /// Флаг «повреждение найдено», который ставит хук проверки (хранилище открывается раньше, чем создаётся `Recovery`).
+    pub fn with_corruption_flag(mut self, flag: Arc<AtomicBool>) -> Recovery {
+        self.corruption = flag;
+        self
+    }
+
+    pub fn corruption_flag(&self) -> Arc<AtomicBool> {
+        self.corruption.clone()
     }
 
     /// Папка Markdown-копии, которую восстановление переименует.
@@ -62,14 +80,41 @@ impl Recovery {
 
     /// Занимает восстановление: из двух одновременных просьб (двойной щелчок, два окна) ровно одна получает `true`.
     pub fn begin_restore(&self) -> bool {
-        self.active
+        let began = self
+            .active
             .compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok()
+            .is_ok();
+        if began {
+            self.restoring.store(true, Ordering::SeqCst);
+        }
+        began
     }
 
     /// Восстановление не удалось: можно пробовать снова.
     pub fn abort_restore(&self) {
         self.active.store(true, Ordering::SeqCst);
+        self.restoring.store(false, Ordering::SeqCst);
+    }
+
+    /// Восстановление закончено: журнал открыт.
+    pub fn finish_restore(&self) {
+        // Открыта восстановленная база: прежняя находка к ней не относится.
+        self.corruption.store(false, Ordering::SeqCst);
+        self.restoring.store(false, Ordering::SeqCst);
+    }
+
+    pub fn is_restoring(&self) -> bool {
+        self.restoring.load(Ordering::SeqCst)
+    }
+
+    /// Окно «База повреждена» нужно показывать (журнал не открыт или восстановление идёт).
+    pub fn needs_recovery(&self) -> bool {
+        self.is_active() || self.is_restoring()
+    }
+
+    /// Фоновая проверка нашла повреждение работающей базы, и ничего не восстанавливается.
+    pub fn corruption_found(&self) -> bool {
+        self.corruption.load(Ordering::SeqCst) && !self.needs_recovery() && !self.database_too_new
     }
 
     pub fn db_path(&self) -> &Path {
@@ -79,9 +124,14 @@ impl Recovery {
 
 /// Сигнал фоновой проверки: ставит отметку (следующий запуск проверит базу ещё раз и, если повреждение подтвердится,
 /// предложит копии) и сообщает окну.
-pub fn corruption_hook<R: Runtime>(app: AppHandle<R>, db_path: PathBuf) -> CorruptionHook {
+pub fn corruption_hook<R: Runtime>(
+    app: AppHandle<R>,
+    db_path: PathBuf,
+    found: Arc<AtomicBool>,
+) -> CorruptionHook {
     CorruptionHook(Arc::new(move || {
         eprintln!("kinige: проверка целостности нашла повреждение базы");
+        found.store(true, Ordering::SeqCst);
         if let Err(error) = kinige_store::mark_needs_recovery(&db_path) {
             eprintln!("kinige: не удалось поставить отметку восстановления: {error}");
         }
@@ -92,7 +142,7 @@ pub fn corruption_hook<R: Runtime>(app: AppHandle<R>, db_path: PathBuf) -> Corru
 /// Что показывать при запуске: журнал, окно «База повреждена» со списком копий или сообщение «обновите приложение».
 #[tauri::command]
 pub fn startup_state(recovery: State<'_, Recovery>) -> StartupState {
-    let needs_recovery = recovery.is_active();
+    let needs_recovery = recovery.needs_recovery();
     StartupState {
         needs_recovery,
         backups: if needs_recovery {
@@ -101,14 +151,8 @@ pub fn startup_state(recovery: State<'_, Recovery>) -> StartupState {
             Vec::new()
         },
         database_too_new: recovery.database_too_new,
-        // Журнал открыт и отметка стоит: проверка в фоне нашла повреждение работающей базы (событие страница могла пропустить).
-        corruption_found: !needs_recovery
-            && !recovery.database_too_new
-            && kinige_store::restart_for_recovery_allowed(recovery.db_path()),
-        mirror_folder: needs_recovery
-            .then(|| recovery.mirror_folder.as_ref())
-            .flatten()
-            .map(|folder| folder.to_string_lossy().into_owned()),
+        // Журнал открыт, и проверка в фоне нашла повреждение работающей базы (событие страница могла пропустить).
+        corruption_found: recovery.corruption_found(),
     }
 }
 
@@ -121,7 +165,9 @@ pub fn restore_backup<R: Runtime>(
     recovery: State<'_, Recovery>,
     name: String,
 ) -> ApiResult<RestoreOutcome> {
-    if !recovery.begin_restore() {
+    // Хранилище уже открыто в этом процессе (журнал работает или прошлая попытка успела его открыть): базу под ним
+    // подменять нельзя, даже если флаг «журнал не открыт» ошибочно стоит.
+    if app.try_state::<Store>().is_some() || !recovery.begin_restore() {
         return Err(ApiError::from(ErrorCode::Internal));
     }
     let restored = kinige_store::restore_backup(
@@ -132,11 +178,14 @@ pub fn restore_backup<R: Runtime>(
     )
     .and_then(|report| crate::resume_after_restore(&app).map(|()| report));
     match restored {
-        Ok(report) => Ok(RestoreOutcome {
-            previous_mirror: report
-                .previous_mirror
-                .map(|folder| folder.to_string_lossy().into_owned()),
-        }),
+        Ok(report) => {
+            recovery.finish_restore();
+            Ok(RestoreOutcome {
+                previous_mirror: report
+                    .previous_mirror
+                    .map(|folder| folder.to_string_lossy().into_owned()),
+            })
+        }
         Err(error) => {
             eprintln!(
                 "kinige: восстановление из копии не удалось: {}",
@@ -149,12 +198,13 @@ pub fn restore_backup<R: Runtime>(
 }
 
 /// «Перезапустить» в окне, которое появилось по событию фоновой проверки: только если повреждение действительно найдено
-/// (отметка стоит). Просьба без отметки отвергается и отметку не ставит.
+/// (повреждение нашла фоновая проверка этого процесса). Просьба без находки отвергается и отметку не ставит; пока идёт
+/// восстановление, перезапуск запрещён (посреди копирования файла базы).
 #[tauri::command]
 pub fn restart_for_recovery<R: Runtime>(app: AppHandle<R>) -> ApiResult<()> {
     let allowed = app
         .try_state::<Recovery>()
-        .is_some_and(|recovery| kinige_store::restart_for_recovery_allowed(recovery.db_path()));
+        .is_some_and(|recovery| recovery.corruption_found());
     if !allowed {
         return Err(ApiError::from(ErrorCode::Internal));
     }
@@ -181,6 +231,33 @@ mod tests {
         assert!(!recovery.is_active());
         recovery.abort_restore();
         assert!(recovery.begin_restore(), "после сбоя можно пробовать снова");
+    }
+
+    #[test]
+    fn corruption_is_reported_only_for_a_flag_and_never_while_restoring() {
+        let open = Recovery::new(PathBuf::from("x.db"), false);
+        assert!(
+            !open.corruption_found(),
+            "флага нет (в том числе `Unknown`)"
+        );
+        open.corruption_flag().store(true, Ordering::SeqCst);
+        assert!(open.corruption_found());
+        assert!(!open.needs_recovery());
+
+        let closed = Recovery::new(PathBuf::from("x.db"), true);
+        closed.corruption_flag().store(true, Ordering::SeqCst);
+        assert!(!closed.corruption_found(), "журнал не открыт: другое окно");
+        assert!(closed.begin_restore());
+        assert!(
+            closed.needs_recovery() && !closed.corruption_found(),
+            "пока идёт восстановление окно остаётся, перезапуск запрещён"
+        );
+        closed.finish_restore();
+        assert!(!closed.needs_recovery());
+        assert!(
+            !closed.corruption_found(),
+            "открыта восстановленная база: старая находка сброшена"
+        );
     }
 
     #[test]

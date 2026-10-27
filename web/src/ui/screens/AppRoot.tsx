@@ -90,7 +90,6 @@ export function AppRoot({ api, initialSettings, startup }: AppRootProps) {
     <RecoveryScreen
       mode={recovery.mode}
       backups={recovery.backups}
-      mirrorFolder={startup.mirrorFolder}
       language={language}
       busy={busy}
       error={error ? t(`error.${error}`) : undefined}

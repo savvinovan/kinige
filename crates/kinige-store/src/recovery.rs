@@ -130,13 +130,27 @@ pub struct RestoreReport {
 /// Восстанавливает базу из копии `name` (имя файла из [`backups`]). Повреждённая база (если файл есть) уходит в
 /// `corrupt-<now_ms>.db` вместе с `-wal` и `-shm`; копия встаёт на место; `device_id` создаётся новый. Прежняя папка
 /// Markdown-копии (`default_mirror` — папка по умолчанию на случай, когда пользователь её не менял) переименовывается в
-/// `<имя>-before-restore-<метка>`, все дни помечаются для перезаписи. Отметка «нужно восстановление» снимается в конце.
-/// Копия не найдена или не проходит проверку — `BackupNotFound`, ничего не тронуто.
+/// `<имя>-before-restore-<метка>` (имя уникально) ПЕРВЫМ делом, до любого переноса базы; все дни помечаются для перезаписи.
+/// Отметка «нужно восстановление» снимается в конце. Копия не найдена или не проходит проверку — `BackupNotFound`, папку
+/// переименовать не удалось — `MirrorFolderBusy`; в обоих случаях ничего не тронуто.
 pub fn restore_backup(
     db_path: &Path,
     name: &str,
     now_ms: i64,
     default_mirror: Option<&Path>,
+) -> Result<RestoreReport, StoreError> {
+    restore_backup_with(db_path, name, now_ms, default_mirror, &|| Ok(()))
+}
+
+/// То же с проверочным шагом `before_place`: он выполняется после копирования и до первого `rename` базы (в нём тесты
+/// имитируют сбой копирования или записи на диск). Не часть API приложения.
+#[doc(hidden)]
+pub fn restore_backup_with(
+    db_path: &Path,
+    name: &str,
+    now_ms: i64,
+    default_mirror: Option<&Path>,
+    before_place: &dyn Fn() -> Result<(), StoreError>,
 ) -> Result<RestoreReport, StoreError> {
     if classify(name).is_none() {
         return Err(StoreError::BackupNotFound);
@@ -151,16 +165,47 @@ pub fn restore_backup(
     let io = |error: std::io::Error| StoreError::Write(error.to_string());
     let dir = db_path.parent().unwrap_or_else(|| Path::new("."));
 
-    // С этого момента и до конца база в неопределённом состоянии: упасть можно, а пустую базу молча создать — нет.
-    fs::write(marker_path(db_path), RESTORING).map_err(io)?;
+    // 1. Папка Markdown-копии уходит в сторону ПЕРВОЙ, пока ничего больше не тронуто: не удалось переименовать (занята,
+    // нет прав) — `MirrorFolderBusy`, всё на месте, человек закрывает папку и повторяет. Путь берётся из самой копии: именно
+    // её настройка станет настройкой восстановленной базы.
+    let moved = match mirror_folder_in(&source, default_mirror) {
+        Some(folder) if folder.is_dir() => {
+            let target = move_aside(&folder, now_ms)?;
+            Some((folder, target))
+        }
+        _ => None,
+    };
+    let undo_move = || {
+        if let Some((from, to)) = &moved {
+            let _ = fs::rename(to, from);
+        }
+    };
 
-    // Копия сначала целиком рядом с базой (имя уникально), и только потом занимает её место.
+    // 2. С этого момента база в неопределённом состоянии: упасть можно, а пустую базу молча создать — нет. Прежняя отметка
+    // (например, «нужно восстановление» от фоновой проверки) запоминается: если до первого `rename` что-то не удалось,
+    // база цела и отметка возвращается как была.
+    let prior_marker = fs::read(marker_path(db_path)).ok();
+    let restore_marker = || match &prior_marker {
+        Some(content) => {
+            let _ = fs::write(marker_path(db_path), content);
+        }
+        None => clear_needs_recovery(db_path),
+    };
+    if let Err(error) = fs::write(marker_path(db_path), RESTORING) {
+        restore_marker();
+        undo_move();
+        return Err(io(error));
+    }
+
+    // 3. Копия сначала целиком рядом с базой (имя уникально), и только потом занимает её место.
     let staged = dir.join(format!(".restore-{}.tmp", Uuid::new_v4()));
+    let mut base_touched = false;
     let placed = (|| -> Result<(), StoreError> {
         fs::copy(&source, &staged).map_err(io)?;
         fs::File::open(&staged)
             .and_then(|f| f.sync_all())
             .map_err(io)?;
+        before_place()?;
         let corrupt = |suffix: &str| dir.join(format!("corrupt-{now_ms}.db{suffix}"));
         for (from, to) in [
             (db_path.to_path_buf(), corrupt("")),
@@ -169,6 +214,7 @@ pub fn restore_backup(
         ] {
             if from.exists() {
                 fs::rename(&from, &to).map_err(io)?;
+                base_touched = true;
             }
         }
         fs::rename(&staged, db_path).map_err(io)?;
@@ -179,12 +225,18 @@ pub fn restore_backup(
     })();
     if let Err(error) = placed {
         let _ = fs::remove_file(&staged);
+        // Сбой до первого `rename` (копирование, сброс на диск): база и папка на месте, всё возвращается как было. После
+        // первого `rename` отметка `restoring` остаётся: при запуске окно предложит копии.
+        if !base_touched {
+            restore_marker();
+            undo_move();
+        }
         return Err(error);
     }
 
     let mut conn = Connection::open(db_path).map_err(write_err)?;
-    // Новый `device_id` и прежняя папка копии — в одной транзакции с отметкой «все дни на перезапись».
-    let previous_mirror = {
+    // Новый `device_id` — в одной транзакции с отметкой «все дни на перезапись».
+    {
         let tx = conn
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(write_err)?;
@@ -194,37 +246,48 @@ pub fn restore_backup(
             [Uuid::new_v4().to_string()],
         )
         .map_err(write_err)?;
-        let mirror = effective_mirror_dir(&tx, default_mirror)
-            .map_err(read_err)?
-            .0;
         mark_all_dirty(&tx).map_err(write_err)?;
         tx.commit().map_err(write_err)?;
-        mirror
-    };
+    }
     // Контроль: после замены база читается.
     conn.query_row("SELECT COUNT(*) FROM chat", [], |row| row.get::<_, i64>(0))
         .map_err(read_err)?;
     drop(conn);
-    let moved = previous_mirror.and_then(|folder| move_aside(&folder, now_ms));
     clear_needs_recovery(db_path);
     Ok(RestoreReport {
-        previous_mirror: moved,
+        previous_mirror: moved.map(|(_, target)| target),
     })
 }
 
-/// Папка копии → `<имя>-before-restore-<метка>` рядом. Нет папки или переименование не удалось — `None`: восстановление
-/// из-за этого не отменяется (копия в новой базе пишется заново, а прежние файлы остаются на месте).
-fn move_aside(folder: &Path, now_ms: i64) -> Option<PathBuf> {
-    if !folder.is_dir() {
-        return None;
-    }
-    let name = folder.file_name()?.to_string_lossy().into_owned();
-    let target = folder.with_file_name(format!("{name}-before-restore-{}", utc_stamp(now_ms)));
-    if target.exists() {
-        return None;
-    }
-    fs::rename(folder, &target).ok()?;
-    Some(target)
+/// Папка Markdown-копии по настройке самой копии (или по умолчанию, если пользователь её не менял); `None` — копия
+/// выключена или настройка не читается (тогда ничего не переносится).
+fn mirror_folder_in(backup: &Path, default_mirror: Option<&Path>) -> Option<PathBuf> {
+    let conn = Connection::open_with_flags(backup, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
+    effective_mirror_dir(&conn, default_mirror).ok()?.0
+}
+
+/// Папка копии → `<имя>-before-restore-<метка>` рядом; если такое имя занято (два восстановления в одну секунду) —
+/// `…-2`, `…-3`. Переименовать не удалось — [`StoreError::MirrorFolderBusy`].
+fn move_aside(folder: &Path, now_ms: i64) -> Result<PathBuf, StoreError> {
+    let name = folder
+        .file_name()
+        .ok_or(StoreError::MirrorFolderBusy)?
+        .to_string_lossy()
+        .into_owned();
+    let stamp = utc_stamp(now_ms);
+    let target = (1..=999)
+        .map(|n| {
+            let suffix = if n == 1 {
+                String::new()
+            } else {
+                format!("-{n}")
+            };
+            folder.with_file_name(format!("{name}-before-restore-{stamp}{suffix}"))
+        })
+        .find(|candidate| !candidate.exists())
+        .ok_or(StoreError::MirrorFolderBusy)?;
+    fs::rename(folder, &target).map_err(|_| StoreError::MirrorFolderBusy)?;
+    Ok(target)
 }
 
 fn sidecar(db_path: &Path, suffix: &str) -> PathBuf {

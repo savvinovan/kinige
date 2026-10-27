@@ -12,7 +12,6 @@ const NORMAL: StartupState = {
   backups: [],
   databaseTooNew: false,
   corruptionFound: false,
-  mirrorFolder: null,
 };
 
 function setup(startup: StartupState) {
@@ -29,11 +28,11 @@ describe("AppRoot: запуск и восстановление (слайс 3)",
   });
 
   it("база повреждена при запуске: окно с копиями вместо журнала; восстановление открывает журнал", async () => {
-    const api = setup({ ...NORMAL, needsRecovery: true, backups: [BACKUP], mirrorFolder: "/Users/me/Kinige" });
+    const api = setup({ ...NORMAL, needsRecovery: true, backups: [BACKUP] });
     expect(await screen.findByRole("main", { name: "База повреждена" })).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Новая заметка" })).toBeNull();
     // Папка Markdown-копии будет отложена в сторону: человек видит это до нажатия.
-    expect(screen.getByText(/Kinige.*before-restore/)).toBeInTheDocument();
+    expect(screen.getByText(/Папка Markdown-копии будет переименована в «…-before-restore-…»/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Восстановить из копии/ }));
     expect(await screen.findByRole("textbox", { name: "Новая заметка" })).toBeInTheDocument();
     expect(api.restoredFrom).toBe(BACKUP.name);

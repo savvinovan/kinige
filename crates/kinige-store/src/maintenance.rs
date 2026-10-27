@@ -98,20 +98,19 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) {
 impl Store {
     /// Один проход обслуживания (поток вызывает его при старте и раз в сутки; тесты — с заданным «сейчас»).
     pub fn run_maintenance(&self, now: &Now) -> Result<MaintenanceReport, StoreError> {
-        // Одна повреждённая запись в корзине не должна навсегда лишать базу проверки и копии: ошибка автоудаления
-        // записывается (видна в «Настройках») и проход идёт дальше.
-        let (purged, purge_error) = self.purge_expired_report(now);
-        if let Some(error) = &purge_error {
-            eprintln!("kinige: автоудаление корзины: {}", error.category());
-        }
-        self.inner.backup.set_purge_failed(purge_error.is_some());
         let db_path = &self.inner.db_path;
-        let reader = open_connection(db_path, true)?;
         let mut report = MaintenanceReport {
-            purged,
+            purged: 0,
             integrity_ok: true,
             backup_made: false,
         };
+        // Повреждение уже найдено: в такую базу больше ничего не пишется (ни автоудаление, ни копия), пока человек не
+        // восстановит её из копии.
+        if self.inner.maintenance.reported.load(Ordering::SeqCst) {
+            report.integrity_ok = false;
+            return Ok(report);
+        }
+        let reader = open_connection(db_path, true)?;
         let dir = backups_dir(db_path);
         let today = journal_date(now.ms, now.utc_offset_secs, 0);
         // Проверка целостности — раз в локальные сутки (не каждый час), если она уже прошла успешно.
@@ -137,6 +136,15 @@ impl Store {
                 }
             }
         }
+        // Автоудаление идёт только после вердикта «цела» (или после успешной проверки сегодня): писать в базу, которую ещё
+        // не проверили, нельзя. Одна повреждённая запись в корзине не должна навсегда лишать базу копии: ошибка
+        // автоудаления записывается (видна в «Настройках») и проход идёт дальше.
+        let (purged, purge_error) = self.purge_expired_report(now);
+        if let Some(error) = &purge_error {
+            eprintln!("kinige: автоудаление корзины: {}", error.category());
+        }
+        self.inner.backup.set_purge_failed(purge_error.is_some());
+        report.purged = purged;
         if has_daily(&dir, &today) {
             self.inner.backup.set_error(None);
             return Ok(report);

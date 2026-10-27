@@ -20,11 +20,6 @@ interface RecoveryScreenProps {
   /** «Восстановить из копии от …»: имя файла выбранной копии. */
   onRestore: (name: string) => void;
   onRestart: () => void;
-  /**
-   * Папка Markdown-копии (`StartupState.mirrorFolder`): при восстановлении её переименуют рядом (`…-before-restore-…`), чтобы
-   * не потерять записи после снимка копии. Только в режиме startup: тихая строка под пояснением; `null` или нет — строки нет.
-   */
-  mirrorFolder?: string | null;
 }
 
 /** «27 октября 2026, 09:12»: день и время копии в часовом поясе окна (русское « г.» после года отброшено). */
@@ -52,7 +47,6 @@ export function RecoveryScreen({
   error,
   onRestore,
   onRestart,
-  mirrorFolder = null,
 }: RecoveryScreenProps) {
   const { t } = useTranslation();
   const sorted = [...backups].sort((a, b) => b.createdAt - a.createdAt);
@@ -68,8 +62,9 @@ export function RecoveryScreen({
           {t("recovery.title")}
         </h1>
         <p className="recovery__text">{mode === "running" ? t("recovery.runningText") : t("recovery.startupText")}</p>
-        {mode === "startup" && mirrorFolder !== null ? (
-          <p className="recovery__text recovery__text--quiet">{t("recovery.mirrorNote", { folder: mirrorFolder })}</p>
+        {/* Папка Markdown-копии: путь зависит от выбранной копии (его хранит она), поэтому строка без пути. */}
+        {mode === "startup" && newest !== undefined ? (
+          <p className="recovery__text recovery__text--quiet">{t("recovery.mirrorNote")}</p>
         ) : null}
 
         {mode === "startup" && newest === undefined ? (

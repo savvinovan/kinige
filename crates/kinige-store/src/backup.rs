@@ -8,7 +8,7 @@
 use crate::StoreError;
 use kinige_domain::backup::{self, BackupInfo};
 use kinige_domain::{BackupError, BackupStatus};
-use rusqlite::{Connection, backup::Backup};
+use rusqlite::{Connection, OpenFlags, backup::Backup};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -54,11 +54,21 @@ pub fn verify_database(db_path: &Path) -> Integrity {
     if !db_path.exists() {
         return Integrity::Corrupt;
     }
-    match crate::open_connection(db_path, true) {
-        Ok(conn) => check_integrity(&conn),
-        Err(StoreError::Corrupt(_)) => Integrity::Corrupt,
-        Err(_) => Integrity::Unknown,
+    // Только чтение и без `CREATE`: проверка не должна ни создать файл, ни изменить его (ни `-wal`, ни режим журнала).
+    let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    let conn = match Connection::open_with_flags(db_path, flags) {
+        Ok(conn) => conn,
+        Err(error) => {
+            return match crate::error::read_err(error) {
+                StoreError::Corrupt(_) => Integrity::Corrupt,
+                _ => Integrity::Unknown,
+            };
+        }
+    };
+    if conn.busy_timeout(Duration::from_secs(5)).is_err() {
+        return Integrity::Unknown;
     }
+    check_integrity(&conn)
 }
 
 /// Снимает копию `source` в `dir/name`. Существующий файл с тем же именем заменяется целиком.
