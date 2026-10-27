@@ -36,6 +36,8 @@ pub enum GroupError {
     HlcNotNewer,
     /// Группа длиннее [`MAX_BODY_GROUP_BYTES`] в каноничных байтах.
     TooLarge,
+    /// Запрос не имеет смысла для этой записи или чата (дата не существует, имя пустое, «выполнено» у не-задачи).
+    Invalid(&'static str),
 }
 
 impl fmt::Display for GroupError {
@@ -46,6 +48,7 @@ impl fmt::Display for GroupError {
             GroupError::UnsupportedVersion => f.write_str("группа новее поддерживаемой версии"),
             GroupError::HlcNotNewer => f.write_str("новый HLC не больше прежнего"),
             GroupError::TooLarge => f.write_str("группа длиннее предела"),
+            GroupError::Invalid(why) => write!(f, "недопустимый запрос: {why}"),
         }
     }
 }
@@ -249,7 +252,10 @@ pub fn parse_groups_raw(groups_raw: &str) -> Result<BTreeMap<String, Box<RawValu
 }
 
 /// Собирает `groups_raw` (каноничные байты групп дословно) и `hlc_json` (один HLC на все группы события).
-fn assemble(groups: &[(&str, Value)], hlc: &str) -> Result<(String, String), GroupError> {
+pub(crate) fn assemble(
+    groups: &[(&str, Value)],
+    hlc: &str,
+) -> Result<(String, String), GroupError> {
     let mut raw: BTreeMap<String, Box<RawValue>> = BTreeMap::new();
     let mut hlcs: BTreeMap<&str, Value> = BTreeMap::new();
     for (name, value) in groups {

@@ -1,18 +1,15 @@
-//! Дописывание к последней записи (ТЗ §5.1, §9.3, слайс 2): правило «куда дописывать» и первая перезапись группы
-//! `body` (ADR-0001 §3.3, §3.4, §4). Без IO: записи и часов здесь нет, вызывающий передаёт строки из базы и новый HLC.
+//! Дописывание к последней записи (ТЗ §5.1, §9.3, слайс 2): правило «куда дописывать» и перезапись группы `body`
+//! (ADR-0001 §3.3, §3.4, §4). Без IO: записи и часов здесь нет, вызывающий передаёт строки из базы и новый HLC.
+//! Перезапись `body` используют и дописывание, и правка из ленты (слайс 3); общий движок — `rewrite`.
 
-use crate::groups::{
-    GroupError, MAX_BODY_GROUP_BYTES, ORIGIN_USER, SCHEMA_VERSION, parse_groups_raw,
-};
-use crate::hlc;
-use crate::jcs;
-use serde_json::{Map, Value, json, value::RawValue};
+use crate::groups::{GroupError, MAX_BODY_GROUP_BYTES, ORIGIN_USER, SCHEMA_VERSION};
+pub use crate::rewrite::MAX_SUPERSEDES;
+use crate::rewrite::{Groups, chain_fields, rewrite_group, set_chain};
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 /// Окно дописывания: запись не старше десяти минут (ТЗ §2.1, §9.3).
 pub const APPEND_WINDOW_MS: i64 = 10 * 60 * 1000;
-/// Предел `supersedes` в группе `body` (ADR-0001 §3.4): старейшие отбрасываются.
-pub const MAX_SUPERSEDES: usize = 64;
 
 /// Что нужно знать о последней неудалённой записи Inbox, чтобы решить, можно ли дописывать.
 #[derive(Debug, Clone, Copy)]
@@ -82,10 +79,6 @@ pub struct RewrittenBody {
     pub schema_version: u32,
 }
 
-fn corrupt(why: impl ToString) -> GroupError {
-    GroupError::Corrupt(why.to_string())
-}
-
 /// Перезаписывает группу `body` с новым HLC (ADR-0001 §3.3: клиент пишет каноничные байты только для группы, которую сам
 /// правит). Остальные группы — известные и неизвестные — и неизвестные поля самой `body` сохраняются дословно.
 ///
@@ -102,103 +95,32 @@ pub fn rewrite_body(
     edited_at: i64,
     new_hlc: &str,
 ) -> Result<RewrittenBody, GroupError> {
-    let mut groups = parse_groups_raw(current.groups_raw)?;
-    let mut hlcs: BTreeMap<String, Box<RawValue>> =
-        serde_json::from_str(current.hlc_json).map_err(corrupt)?;
-
-    let old_group = groups
-        .get("body")
-        .ok_or_else(|| corrupt("нет группы body"))?;
-    let Value::Object(mut body) = serde_json::from_str(old_group.get()).map_err(corrupt)? else {
-        return Err(corrupt("группа body не объект"));
-    };
-    let old_entry: Value = serde_json::from_str(
-        hlcs.get("body")
-            .ok_or_else(|| corrupt("нет HLC группы body"))?
-            .get(),
-    )
-    .map_err(corrupt)?;
-    let old_hlc = old_entry["h"]
-        .as_str()
-        .ok_or_else(|| corrupt("нет h у группы body"))?
-        .to_string();
-    let old_sv = old_entry["sv"]
-        .as_u64()
-        .ok_or_else(|| corrupt("нет sv у группы body"))?;
-    if old_sv > u64::from(SCHEMA_VERSION) {
-        return Err(GroupError::UnsupportedVersion);
-    }
-    // Метки сравниваются как строки только после строгого разбора: повреждённая метка — ошибка, а не «больше» или «меньше».
-    hlc::parse(&old_hlc).map_err(|e| corrupt(format!("HLC группы body: {e}")))?;
-    hlc::parse(new_hlc).map_err(|e| corrupt(format!("новый HLC: {e}")))?;
-    if new_hlc <= old_hlc.as_str() {
-        return Err(GroupError::HlcNotNewer);
-    }
-
-    let (base, supersedes) = if current.body_confirmed {
-        (Some(old_hlc), Vec::new())
-    } else {
-        let base = match body.get("base") {
-            Some(Value::String(h)) => Some(h.clone()),
-            Some(Value::Null) | None => None,
-            Some(_) => return Err(corrupt("base группы body")),
-        };
-        let mut list: Vec<String> = match body.get("supersedes") {
-            Some(Value::Array(items)) => items
-                .iter()
-                .map(|item| item.as_str().map(str::to_string))
-                .collect::<Option<_>>()
-                .ok_or_else(|| corrupt("supersedes группы body"))?,
-            None => Vec::new(),
-            Some(_) => return Err(corrupt("supersedes группы body")),
-        };
-        if !list.contains(&old_hlc) {
-            list.push(old_hlc);
-        }
-        if list.len() > MAX_SUPERSEDES {
-            list.drain(..list.len() - MAX_SUPERSEDES);
-        }
-        (base, list)
-    };
-
-    body.insert("body_md".into(), json!(body_md));
-    body.insert("edited_at".into(), json!(edited_at));
-    body.insert("base".into(), json!(base));
-    body.insert("supersedes".into(), json!(supersedes));
-    let bytes = jcs::canonical_bytes(&Value::Object(body))?;
-    if bytes.len() > MAX_BODY_GROUP_BYTES {
-        return Err(GroupError::TooLarge);
-    }
-    let text = String::from_utf8(bytes).expect("JCS выдаёт UTF-8");
-    groups.insert("body".into(), RawValue::from_string(text).map_err(corrupt)?);
-    let entry =
-        serde_json::to_string(&json!({"h": new_hlc, "sv": SCHEMA_VERSION})).map_err(corrupt)?;
-    hlcs.insert(
-        "body".into(),
-        RawValue::from_string(entry).map_err(corrupt)?,
-    );
-
-    let schema_version = hlcs
-        .values()
-        .filter_map(|entry| {
-            serde_json::from_str::<Map<String, Value>>(entry.get())
-                .ok()?
-                .get("sv")?
-                .as_u64()
-        })
-        .max()
-        .map_or(SCHEMA_VERSION, |max| {
-            u32::try_from(max).unwrap_or(u32::MAX).max(SCHEMA_VERSION)
-        });
-
+    let mut chain = (None, Vec::new());
+    let rewritten = rewrite_group(
+        &Groups {
+            groups_raw: current.groups_raw,
+            hlc_json: current.hlc_json,
+        },
+        "body",
+        new_hlc,
+        Some(MAX_BODY_GROUP_BYTES),
+        |body, old_hlc| {
+            chain = chain_fields(body, old_hlc, current.body_confirmed)?;
+            body.insert("body_md".into(), json!(body_md));
+            body.insert("edited_at".into(), json!(edited_at));
+            set_chain(body, &chain.0, &chain.1);
+            Ok(())
+        },
+    )?;
     Ok(RewrittenBody {
         body_md: body_md.to_string(),
         edited_at,
-        body_supersedes: serde_json::to_string(&supersedes).map_err(corrupt)?,
-        body_base: base,
-        groups_raw: serde_json::to_string(&groups).map_err(corrupt)?,
-        hlc_json: serde_json::to_string(&hlcs).map_err(corrupt)?,
-        schema_version,
+        body_supersedes: serde_json::to_string(&chain.1)
+            .map_err(|e| GroupError::Corrupt(e.to_string()))?,
+        body_base: chain.0,
+        groups_raw: rewritten.groups_raw,
+        hlc_json: rewritten.hlc_json,
+        schema_version: rewritten.schema_version,
     })
 }
 

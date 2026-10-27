@@ -42,6 +42,27 @@ pub fn is_journal_date(text: &str) -> bool {
     (1..=12).contains(&month) && (1..=31).contains(&day)
 }
 
+/// Настоящая дата `YYYY-MM-DD`: формат, месяц 01–12, день в пределах месяца (с високосными годами). Будущие даты
+/// допустимы (ADR-0001 §2): `journal_date` — содержимое записи, а не часы. Год — не раньше 1000 и не позже 9999, чтобы
+/// запись не уезжала в «год 0000», где календарь не определён.
+pub fn is_valid_journal_date(text: &str) -> bool {
+    if !is_journal_date(text) {
+        return false;
+    }
+    let year: i32 = text[..4].parse().unwrap_or(0);
+    let month: u32 = text[5..7].parse().unwrap_or(0);
+    let day: u32 = text[8..10].parse().unwrap_or(0);
+    let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+    let days = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap => 29,
+        2 => 28,
+        _ => return false,
+    };
+    year >= 1000 && (1..=days).contains(&day)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
