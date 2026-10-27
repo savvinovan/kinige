@@ -99,6 +99,10 @@ impl Store {
     /// Повреждение найдено (проверкой целостности или командой, прочитавшей битую страницу): сигнал подаётся один раз за
     /// запуск, после него в базу больше ничего не пишется (`run_maintenance`).
     pub(crate) fn report_corruption(&self) {
+        // Строка в «Настройках» совпадает с окном «База повреждена», в том числе когда находка пришла от команды.
+        self.inner
+            .backup
+            .set_error(Some(BackupError::IntegrityFailed));
         let first_time = !self.inner.maintenance.reported.swap(true, Ordering::SeqCst);
         if let (true, Some(hook)) = (first_time, &self.inner.on_corruption) {
             (hook.0)();

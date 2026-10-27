@@ -352,3 +352,46 @@ fn a_restored_copy_with_a_damaged_index_passes_quick_check_and_the_first_pass_ra
     );
     assert_eq!(calls.load(Ordering::SeqCst), 1);
 }
+
+#[test]
+fn a_command_that_finds_corruption_also_shows_it_in_the_settings_row() {
+    let dir = tempfile::tempdir().unwrap();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let store = Store::open_at(counting_options(dir.path(), &calls), &at(T0)).unwrap();
+    for i in 0..5 {
+        store
+            .send_message(INBOX_ID, &format!("запись {i}"), &at(T0 + i))
+            .unwrap();
+    }
+    wait_closed_keep_open(dir.path());
+    // Портится только корневая страница таблицы `message`: настройки читаются, записи — нет.
+    let root: i64 = raw(dir.path())
+        .query_row(
+            "SELECT rootpage FROM sqlite_master WHERE name = 'message'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let mut bytes = fs::read(db_path(dir.path())).unwrap();
+    let page = (root as usize - 1) * 4096;
+    for byte in &mut bytes[page..page + 4096] {
+        *byte = 0xFF;
+    }
+    fs::write(db_path(dir.path()), bytes).unwrap();
+
+    let error = store
+        .list_messages(INBOX_ID, None, 50, &at(T0))
+        .unwrap_err();
+    assert!(
+        matches!(error, kinige_store::StoreError::Corrupt(_)),
+        "{error}"
+    );
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+
+    let settings = store.get_settings().unwrap();
+    assert_eq!(
+        settings.backup.error,
+        Some(kinige_domain::BackupError::IntegrityFailed),
+        "строка в «Настройках» совпадает с окном «База повреждена»"
+    );
+}
