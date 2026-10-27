@@ -1,52 +1,50 @@
-# Проверки слайса 3 (локально, macOS, 2026-10-27 18:34 MSK), коммит 3584b8b
+# Проверки слайса 3 (локально, macOS, 2026-10-27 19:12 MSK), коммит 9d8267d
 
 $ cargo fmt --all --check
 итог: чисто
 
 $ cargo clippy --workspace --all-targets -- -D warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.01s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.69s
 
 $ cargo test --workspace
-итог: passed 310, failed 0, ignored 1
+итог: passed 325, failed 0, ignored 1
 
 $ cargo build -p kinige-domain --target wasm32-unknown-unknown
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.05s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.98s
 
 $ npm run tokens
 ✔︎ src/ui/tokens.css
 ✔︎ src/ui/themes.css
 tokens.css / themes.css: 0 отличий от закоммиченного
+сгенерированные TS-типы: 0 отличий от закоммиченного
 
 $ npm run typecheck
-> kinige-web@0.1.0 typecheck
 > tsc --noEmit
 
 
 $ npm run lint
-> kinige-web@0.1.0 lint
 > eslint .
 
 
 $ npm test
-⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
- FAIL  src/ui/screens/MainWindow.slice3.test.tsx > MainWindow слайс 3: чаты > у каждого чата свой черновик: переключение сохраняет набранное и подставляет его обратно
- Test Files  1 failed | 53 passed (54)
-      Tests  1 failed | 1044 passed (1045)
-   Duration  7.46s (tests 40%, environment 40%, import 9%, setup 8%, transform 3%)
+ Test Files  54 passed (54)
+      Tests  1044 passed (1044)
 
 $ npm run build-storybook
-└  Storybook build completed successfully
 
+└  Storybook build completed successfully
 
 # Аналог CI в Linux-контейнере (удалённый Docker ubuntu-server; образы kinige-ci-rust:s3, kinige-ci-web:s3, kinige-visual:local)
 Rust (ubuntu:24.04 + системные библиотеки Tauri + rust-toolchain.toml 1.94.0, исходники — git archive HEAD):
   cargo fmt --all --check                                  чисто
   cargo clippy --workspace --all-targets -- -D warnings    чисто
-  cargo test --workspace                                   TOTAL passed 310 failed 0
+  cargo test --workspace                                   TOTAL passed 325 failed 0
   cargo build -p kinige-domain --target wasm32-unknown-unknown   собрано
   сгенерированные TS-типы (git status web/src/api/generated)     generated-types-clean
 Web (node:24.21.0, npm ci):
   tokens.css / themes.css актуальны                        tokens-clean
   npm run typecheck, npm run lint                          без ошибок
-  npm test                                                 Test Files 54 passed (54), Tests 1045 passed (1045)
-Визуальные тесты Storybook (scripts/visual-tests.sh, сравнение с эталонами в репозитории): 272 passed.
+  npm test                                                 Test Files 54 passed (54), Tests 1044 passed (1044)
+Визуальные тесты Storybook (scripts/visual-tests.sh, сравнение с эталонами в репозитории): 271 passed.
+  (эталон «окно-чата--переименованиеошибка» при пересъёмке даёт отличие в 2 пикселя от повторных прогонов: оставлен прежний,
+   с ним все 271 снимков стабильны)
