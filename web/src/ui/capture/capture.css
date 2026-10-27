@@ -72,10 +72,10 @@
   flex: none;
 }
 
-/* Поле растёт до 45% высоты панели при самом высоком окне, дальше прокрутка внутри. Предел от высоты окна из токена, а не 40vh:
+/* Поле растёт до доли высоты панели (layout.capture.field-max-share) при самом высоком окне, дальше прокрутка внутри. Предел от высоты окна из токена, а не 40vh:
    в историях Storybook viewport выше окна, в приложении это одно и то же. */
 .capture-panel .composer__field {
-  max-height: calc((var(--layout-capture-window-max-height) - 2 * var(--layout-capture-shadow-margin)) * 0.45);
+  max-height: calc((var(--layout-capture-window-max-height) - 2 * var(--layout-capture-shadow-margin)) * var(--layout-capture-field-max-share));
 }
 
 /* Контекст занимает место над полем и первым уступает его: если места не хватает (длинный текст в поле, крупный шрифт),
