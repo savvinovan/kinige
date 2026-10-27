@@ -1,20 +1,23 @@
 //! Тонкий слой Tauri: окна и команды. Бизнес-логика живёт в `kinige-domain`, хранение — в `kinige-store`.
 
+mod actions;
 pub mod capture;
 mod commands;
 pub mod guard;
 pub mod hotkeys;
 #[cfg(target_os = "macos")]
 mod panel;
-mod tray;
+pub mod recovery;
+pub mod tray;
 
 use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
 use hotkeys::{Hotkeys, PluginRegistrar};
 use kinige_domain::ShortcutKind;
-use kinige_store::{Store, StoreOptions};
+use kinige_store::{Store, StoreError, StoreOptions};
+use recovery::Recovery;
 use std::path::PathBuf;
 use tauri::webview::PageLoadEvent;
-use tauri::{Manager, Runtime, WindowEvent};
+use tauri::{AppHandle, Manager, Runtime, WindowEvent};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
 
 /// Команды главного окна (capability `main`).
@@ -33,6 +36,24 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "set_shortcut",
     "reset_shortcut",
     "shortcut_recording",
+    "create_chat",
+    "rename_chat",
+    "set_chat_icon",
+    "set_chat_pinned",
+    "set_chat_archived",
+    "delete_message",
+    "restore_message",
+    "edit_message",
+    "toggle_task_item",
+    "set_message_flag",
+    "set_message_date",
+    "list_trash",
+    "purge_message",
+    "set_sidebar_collapsed",
+    "add_recent_emoji",
+    "startup_state",
+    "restore_backup",
+    "restart_for_recovery",
 ];
 
 /// Команды окна захвата (capability `capture`): только Inbox, без `chat_id` (§12.3).
@@ -62,6 +83,24 @@ pub const COMMANDS: &[&str] = &[
     "set_shortcut",
     "reset_shortcut",
     "shortcut_recording",
+    "create_chat",
+    "rename_chat",
+    "set_chat_icon",
+    "set_chat_pinned",
+    "set_chat_archived",
+    "delete_message",
+    "restore_message",
+    "edit_message",
+    "toggle_task_item",
+    "set_message_flag",
+    "set_message_date",
+    "list_trash",
+    "purge_message",
+    "set_sidebar_collapsed",
+    "add_recent_emoji",
+    "startup_state",
+    "restore_backup",
+    "restart_for_recovery",
     "capture_state",
     "capture_send",
     "capture_append",
@@ -93,6 +132,24 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             commands::set_shortcut,
             commands::reset_shortcut,
             commands::shortcut_recording,
+            actions::create_chat,
+            actions::rename_chat,
+            actions::set_chat_icon,
+            actions::set_chat_pinned,
+            actions::set_chat_archived,
+            actions::delete_message,
+            actions::restore_message,
+            actions::edit_message,
+            actions::toggle_task_item,
+            actions::set_message_flag,
+            actions::set_message_date,
+            actions::list_trash,
+            actions::purge_message,
+            actions::set_sidebar_collapsed,
+            actions::add_recent_emoji,
+            recovery::startup_state,
+            recovery::restore_backup,
+            recovery::restart_for_recovery,
             capture::capture_state,
             capture::capture_send,
             capture::capture_append,
@@ -104,11 +161,17 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
 
 /// Где лежат данные. `KINIGE_DATA_DIR` и `KINIGE_MIRROR_DIR` — для проверки на чистой машине и для автотестов; обычный
 /// запуск их не задаёт: база — в каталоге данных приложения, копия — в `~/Documents/Kinige`.
-fn open_store<R: Runtime>(app: &tauri::App<R>) -> Result<Store, Box<dyn std::error::Error>> {
+fn db_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let data_dir = match std::env::var_os("KINIGE_DATA_DIR") {
         Some(dir) => PathBuf::from(dir),
         None => app.path().app_data_dir()?,
     };
+    Ok(data_dir.join("kinige.db"))
+}
+
+/// Открывает хранилище. Повреждение, найденное проверкой целостности в фоне, ставит отметку и сообщает главному окну
+/// (`recovery::corruption_hook`).
+fn open_store<R: Runtime>(app: &AppHandle<R>, db_path: PathBuf) -> Result<Store, StoreError> {
     let mirror_dir = match std::env::var_os("KINIGE_MIRROR_DIR") {
         Some(dir) => Some(PathBuf::from(dir)),
         None => app
@@ -117,10 +180,48 @@ fn open_store<R: Runtime>(app: &tauri::App<R>) -> Result<Store, Box<dyn std::err
             .ok()
             .map(|documents| documents.join("Kinige")),
     };
-    Ok(Store::open(StoreOptions::new(
-        data_dir.join("kinige.db"),
-        mirror_dir,
-    ))?)
+    let mut options = StoreOptions::new(db_path.clone(), mirror_dir);
+    options.on_corruption = Some(recovery::corruption_hook(app.clone(), db_path));
+    Store::open(options)
+}
+
+/// Всё, что работает поверх открытого хранилища: сочетания, окно захвата как панель, значок в menu bar. Вызывается при
+/// запуске и, если база была повреждена, сразу после восстановления из копии.
+fn start_services<R: Runtime>(
+    app: &AppHandle<R>,
+    store: Store,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let hotkeys = Hotkeys::new(Box::new(PluginRegistrar { app: app.clone() }));
+    // Сочетание, которое система не приняла, остаётся «не назначено» в настройках; остальное работает.
+    hotkeys.register_saved(&store);
+    app.manage(store);
+    app.manage(hotkeys);
+    app.manage(CaptureShell::default());
+    #[cfg(target_os = "macos")]
+    panel::convert(
+        app,
+        CAPTURE_LABEL,
+        capture::on_capture_key,
+        capture::on_capture_blur,
+        capture::request_hide,
+    )?;
+    tray::setup(app, commands::get_language())?;
+    Ok(())
+}
+
+/// После восстановления из копии: база открывается, сервисы запускаются на главном потоке (значок и панель — AppKit).
+pub(crate) fn resume_after_restore<R: Runtime>(app: &AppHandle<R>) -> Result<(), StoreError> {
+    let db_path = db_path(app).map_err(|e| StoreError::Internal(e.to_string()))?;
+    let store = open_store(app, db_path)?;
+    let (tx, rx) = std::sync::mpsc::channel();
+    let handle = app.clone();
+    app.run_on_main_thread(move || {
+        let _ = tx.send(start_services(&handle, store).map_err(|e| e.to_string()));
+    })
+    .map_err(|e| StoreError::Internal(e.to_string()))?;
+    rx.recv()
+        .map_err(|e| StoreError::Internal(e.to_string()))?
+        .map_err(StoreError::Internal)
 }
 
 /// Нажатие глобального сочетания. В режиме записи нового сочетания («Настройки») нажатия игнорируются.
@@ -188,24 +289,27 @@ pub fn run() {
     let configured = configured.plugin(tauri_nspanel::init());
     let app = configured
         .setup(|app| {
-            let store = open_store(app)?;
-            let hotkeys = Hotkeys::new(Box::new(PluginRegistrar {
-                app: app.handle().clone(),
-            }));
-            // Сочетание, которое система не приняла, остаётся «не назначено» в настройках; остальное работает.
-            hotkeys.register_saved(&store);
-            app.manage(store);
-            app.manage(hotkeys);
-            app.manage(CaptureShell::default());
-            #[cfg(target_os = "macos")]
-            panel::convert(
-                app.handle(),
-                CAPTURE_LABEL,
-                capture::on_capture_key,
-                capture::on_capture_blur,
-                capture::request_hide,
-            )?;
-            tray::setup(app.handle(), commands::get_language())?;
+            let handle = app.handle().clone();
+            let db_path = db_path(&handle)?;
+            // Отметка «нужно восстановление» (фоновая проверка нашла повреждение) или база, которая не открывается:
+            // журнал не открывается, окно показывает копии (`recovery`). Любая другая ошибка открытия — не повод
+            // предлагать копии: приложение не запускается и говорит об этом.
+            let store = if kinige_store::needs_recovery(&db_path) {
+                None
+            } else {
+                match open_store(&handle, db_path.clone()) {
+                    Ok(store) => Some(store),
+                    Err(StoreError::Corrupt(_)) => {
+                        eprintln!("kinige: база повреждена, предлагаем копии");
+                        None
+                    }
+                    Err(error) => return Err(Box::new(error)),
+                }
+            };
+            app.manage(Recovery::new(db_path, store.is_none()));
+            if let Some(store) = store {
+                start_services(&handle, store)?;
+            }
             Ok(())
         })
         .on_window_event(on_window_event)

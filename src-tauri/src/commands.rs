@@ -4,7 +4,7 @@
 use crate::hotkeys::Hotkeys;
 use kinige_domain::link::{LinkError, validate_external_url};
 use kinige_domain::{
-    ApiError, AppInfo, ChatSummary, ErrorCode, FeedCursor, Language, MessagePage, MessageView,
+    ApiError, AppInfo, ChatList, ErrorCode, FeedCursor, Language, MessagePage, MessageView,
     Settings, ShortcutKind, TextSize,
 };
 use kinige_store::{DEFAULT_PAGE, Now, Store, StoreError};
@@ -33,37 +33,44 @@ pub fn get_language() -> Language {
     kinige_domain::lang::pick_language(&preferred)
 }
 
+/// Чаты сайдбара в порядке показа (закреплённые, чаты, архив) и размер корзины.
 #[tauri::command(async)]
-pub fn list_chats(store: State<'_, Store>) -> ApiResult<Vec<ChatSummary>> {
-    store.list_chats().map_err(api)
+pub fn list_chats(store: State<'_, Store>) -> ApiResult<ChatList> {
+    store.sidebar().map_err(api)
 }
 
+/// Страница ленты чата; `tag` оставляет только записи с этим тегом (щелчок по `#тегу`).
 #[tauri::command(async)]
 pub fn list_messages(
     store: State<'_, Store>,
     chat_id: String,
     before: Option<FeedCursor>,
     limit: Option<usize>,
+    tag: Option<String>,
 ) -> ApiResult<MessagePage> {
     store
-        .list_messages(
+        .list_messages_tagged(
             &chat_id,
             before.as_ref(),
             limit.unwrap_or(DEFAULT_PAGE),
+            tag.as_deref(),
             &Now::system(),
         )
         .map_err(api)
 }
 
 #[tauri::command(async)]
-pub fn send_message(
+pub fn send_message<R: Runtime>(
+    app: AppHandle<R>,
     store: State<'_, Store>,
     chat_id: String,
     body: String,
 ) -> ApiResult<MessageView> {
-    store
+    let message = store
         .send_message(&chat_id, &body, &Now::system())
-        .map_err(api)
+        .map_err(api)?;
+    crate::tray::refresh(&app);
+    Ok(message)
 }
 
 /// Настройки: размер текста, состояние копии и сочетания клавиш с их состоянием «назначено / занято» от системы.

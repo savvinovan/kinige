@@ -69,9 +69,19 @@ pub fn show_main<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Сообщает главному окну, что записи изменились.
+/// Сообщает главному окну, что записи изменились, и обновляет «последние чаты» в меню значка.
 pub fn notify_entries_changed<R: Runtime>(app: &AppHandle<R>) {
     let _ = app.emit_to(MAIN_LABEL, ENTRIES_CHANGED, ());
+    crate::tray::refresh(app);
+}
+
+/// Событие главному окну: открыть чат (из меню значка). Слушает только `main`; в нагрузке — id чата.
+pub const OPEN_CHAT: &str = "open-chat";
+
+/// Показывает главное окно сразу с этим чатом (меню значка, слайс 3).
+pub fn open_chat<R: Runtime>(app: &AppHandle<R>, chat_id: &str) {
+    show_main(app);
+    let _ = app.emit_to(MAIN_LABEL, OPEN_CHAT, chat_id.to_string());
 }
 
 /// Высота окна из просьбы страницы: в пределах `MIN_HEIGHT … MAX_HEIGHT`, целое число px.
