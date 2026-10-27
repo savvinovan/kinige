@@ -92,12 +92,6 @@ pub fn startup_check(db_path: &Path) -> StartupCheck {
     }
 }
 
-/// Можно ли по просьбе окна перезапустить приложение для восстановления: только если повреждение действительно найдено
-/// (отметка стоит). Просьба без отметки отвергается — отметку она не ставит.
-pub fn restart_for_recovery_allowed(db_path: &Path) -> bool {
-    needs_recovery(db_path)
-}
-
 /// Файла базы нет, а копии в папке есть: так выглядит прерванное восстановление (или потерянный файл). Молча создать
 /// пустую базу рядом с копиями нельзя — предлагаются копии.
 pub fn database_missing_but_backups_exist(db_path: &Path) -> bool {
@@ -139,11 +133,19 @@ pub fn restore_backup(
     now_ms: i64,
     default_mirror: Option<&Path>,
 ) -> Result<RestoreReport, StoreError> {
-    restore_backup_with(db_path, name, now_ms, default_mirror, &|| Ok(()))
+    restore_backup_with(
+        db_path,
+        name,
+        now_ms,
+        default_mirror,
+        &|| Ok(()),
+        &|| Ok(()),
+    )
 }
 
-/// То же с проверочным шагом `before_place`: он выполняется после копирования и до первого `rename` базы (в нём тесты
-/// имитируют сбой копирования или записи на диск). Не часть API приложения.
+/// То же с проверочными шагами: `before_place` выполняется после копирования и до первого `rename` базы, `after_first_rename`
+/// — сразу после первого `rename` (в них тесты имитируют сбой копирования, записи на диск или переименования). Не часть
+/// API приложения.
 #[doc(hidden)]
 pub fn restore_backup_with(
     db_path: &Path,
@@ -151,6 +153,7 @@ pub fn restore_backup_with(
     now_ms: i64,
     default_mirror: Option<&Path>,
     before_place: &dyn Fn() -> Result<(), StoreError>,
+    after_first_rename: &dyn Fn() -> Result<(), StoreError>,
 ) -> Result<RestoreReport, StoreError> {
     if classify(name).is_none() {
         return Err(StoreError::BackupNotFound);
@@ -168,7 +171,15 @@ pub fn restore_backup_with(
     // 1. Папка Markdown-копии уходит в сторону ПЕРВОЙ, пока ничего больше не тронуто: не удалось переименовать (занята,
     // нет прав) — `MirrorFolderBusy`, всё на месте, человек закрывает папку и повторяет. Путь берётся из самой копии: именно
     // её настройка станет настройкой восстановленной базы.
-    let moved = match mirror_folder_in(&source, default_mirror) {
+    let mirror = mirror_folder_in(&source, default_mirror);
+    // Повтор после сбоя восстановления (отметка `restoring`): папка уже переехала в прошлой попытке — окно должно узнать
+    // про `…-before-restore-…`, поэтому берётся самая поздняя такая папка рядом.
+    let earlier = if restore_interrupted(db_path) {
+        mirror.as_deref().and_then(latest_before_restore)
+    } else {
+        None
+    };
+    let moved = match mirror {
         Some(folder) if folder.is_dir() => {
             let target = move_aside(&folder, now_ms)?;
             Some((folder, target))
@@ -215,6 +226,7 @@ pub fn restore_backup_with(
             if from.exists() {
                 fs::rename(&from, &to).map_err(io)?;
                 base_touched = true;
+                after_first_rename()?;
             }
         }
         fs::rename(&staged, db_path).map_err(io)?;
@@ -255,8 +267,24 @@ pub fn restore_backup_with(
     drop(conn);
     clear_needs_recovery(db_path);
     Ok(RestoreReport {
-        previous_mirror: moved.map(|(_, target)| target),
+        previous_mirror: moved.map(|(_, target)| target).or(earlier),
     })
+}
+
+/// Самая поздняя папка `<имя>-before-restore-…` рядом с `folder` (имена с меткой UTC сортируются по времени, суффикс
+/// `-2` идёт позже того же момента). Папки самой `folder` может не быть: прошлая попытка её уже переименовала.
+fn latest_before_restore(folder: &Path) -> Option<PathBuf> {
+    let name = folder.file_name()?.to_string_lossy().into_owned();
+    let prefix = format!("{name}-before-restore-");
+    let parent = folder.parent().unwrap_or_else(|| Path::new("."));
+    fs::read_dir(parent)
+        .ok()?
+        .flatten()
+        .filter(|entry| {
+            entry.path().is_dir() && entry.file_name().to_string_lossy().starts_with(&prefix)
+        })
+        .map(|entry| entry.path())
+        .max()
 }
 
 /// Папка Markdown-копии по настройке самой копии (или по умолчанию, если пользователь её не менял); `None` — копия

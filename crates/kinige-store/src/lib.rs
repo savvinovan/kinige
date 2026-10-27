@@ -30,8 +30,7 @@ pub use feed::{DEFAULT_PAGE, MAX_PAGE};
 pub use maintenance::MaintenanceReport;
 pub use recovery::{
     RestoreReport, StartupCheck, backups, clear_needs_recovery, database_missing_but_backups_exist,
-    mark_needs_recovery, needs_recovery, restart_for_recovery_allowed, restore_backup,
-    restore_backup_with, startup_check,
+    mark_needs_recovery, needs_recovery, restore_backup, restore_backup_with, startup_check,
 };
 pub use schema::LATEST_VERSION;
 pub use time::{Now, local_hhmm, offset_secs, utc_stamp};

@@ -92,6 +92,7 @@ fn a_failure_before_the_first_rename_puts_everything_back() {
             T0,
             Some(&mirror),
             &|| Err(StoreError::Write("диск полон".into())),
+            &|| Ok(()),
         )
         .unwrap_err();
 
@@ -118,6 +119,79 @@ fn a_failure_before_the_first_rename_puts_everything_back() {
         // И повторная попытка проходит.
         kinige_store::restore_backup(&db_path(dir.path()), &name, T0, Some(&mirror)).unwrap();
     }
+}
+
+#[test]
+fn a_failure_after_the_first_rename_keeps_the_mark_and_the_retry_reports_the_folder_moved_before() {
+    let dir = tempfile::tempdir().unwrap();
+    let name = database_with_copy(dir.path());
+    let mirror = mirror_dir(dir.path());
+    fs::create_dir_all(mirror.join("Inbox")).unwrap();
+    fs::write(mirror.join("Inbox/keep.md"), "моё").unwrap();
+
+    // Сбой сразу после того, как файл базы ушёл в `corrupt-…`: папка уже переехала, базы на месте нет.
+    let error = kinige_store::restore_backup_with(
+        &db_path(dir.path()),
+        &name,
+        T0,
+        Some(&mirror),
+        &|| Ok(()),
+        &|| Err(StoreError::Write("сбой посреди переименования".into())),
+    )
+    .unwrap_err();
+    assert!(matches!(error, StoreError::Write(_)), "{error}");
+    assert_eq!(
+        marker(dir.path()),
+        Some(b"restoring".to_vec()),
+        "отметка осталась"
+    );
+    assert!(!db_path(dir.path()).exists(), "базы на месте нет");
+    assert!(!mirror.exists(), "папка уже переехала");
+    let moved: Vec<String> = fs::read_dir(dir.path())
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().into_string().unwrap())
+        .filter(|n| n.contains("before-restore"))
+        .collect();
+    assert_eq!(moved.len(), 1, "{moved:?}");
+    // При таком состоянии запуск предлагает копии, а не создаёт пустую базу.
+    assert_eq!(
+        kinige_store::startup_check(&db_path(dir.path())),
+        kinige_store::StartupCheck::Recovery
+    );
+
+    // Повтор: проходит, папку второй раз не переносит, но окно узнаёт про ту, что переехала в прошлой попытке.
+    let report =
+        kinige_store::restore_backup(&db_path(dir.path()), &name, T0 + MINUTE, Some(&mirror))
+            .unwrap();
+    assert_eq!(
+        report.previous_mirror.as_deref(),
+        Some(dir.path().join(&moved[0]).as_path())
+    );
+    let after: Vec<String> = fs::read_dir(dir.path())
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().into_string().unwrap())
+        .filter(|n| n.contains("before-restore"))
+        .collect();
+    assert_eq!(after, moved, "второй папки не появилось");
+    assert!(dir.path().join(&moved[0]).join("Inbox/keep.md").exists());
+    assert_eq!(marker(dir.path()), None, "отметка снята");
+    assert_eq!(count_rows(dir.path(), "message"), 1, "база восстановлена");
+}
+
+#[test]
+fn a_restore_that_was_not_interrupted_does_not_borrow_an_old_before_restore_folder() {
+    let dir = tempfile::tempdir().unwrap();
+    let name = database_with_copy(dir.path());
+    let mirror = mirror_dir(dir.path());
+    // Папка от давнего восстановления лежит рядом, а самой папки копии нет (копия выключена или пуста).
+    fs::create_dir_all(dir.path().join("mirror-before-restore-20200101T000000Z")).unwrap();
+
+    let report =
+        kinige_store::restore_backup(&db_path(dir.path()), &name, T0, Some(&mirror)).unwrap();
+
+    assert_eq!(report.previous_mirror, None);
 }
 
 #[test]

@@ -80,6 +80,25 @@ fn during_a_restore_the_recovery_window_stays_and_restart_is_refused() {
 }
 
 #[test]
+fn a_finding_made_by_the_restored_database_survives_the_end_of_the_restore() {
+    // `resume_after_restore` открывает хранилище, и обслуживание сразу проверяет целостность: если копия оказалась с
+    // порчей, которую не видит `quick_check`, хук ставит флаг ДО `finish_restore`. «Перезапустить» не должна стать мёртвой.
+    let dir = tempfile::tempdir().unwrap();
+    let fixture = fixture_without_store(&dir.path().join("kinige.db"));
+    let main = window(&fixture, "main");
+    assert!(recovery(&fixture).begin_restore());
+
+    recovery(&fixture)
+        .corruption_flag()
+        .store(true, Ordering::SeqCst); // хук между `open_store` и `finish_restore`
+    recovery(&fixture).finish_restore();
+
+    let state = call(&main, "startup_state", json!({})).unwrap();
+    assert_eq!(state["corruptionFound"], true);
+    assert_eq!(state["needsRecovery"], false);
+}
+
+#[test]
 fn restore_is_refused_while_a_store_is_open_even_if_the_flag_says_otherwise() {
     // Сбой после того, как хранилище уже отдано приложению, оставил бы флаг «журнал не открыт»: повторное «Восстановить»
     // переименовало бы файл базы под открытым писателем. Команда отказывает по самому наличию хранилища.

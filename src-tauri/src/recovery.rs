@@ -98,8 +98,10 @@ impl Recovery {
 
     /// Восстановление закончено: журнал открыт.
     pub fn finish_restore(&self) {
-        // Открыта восстановленная база: прежняя находка к ней не относится.
-        self.corruption.store(false, Ordering::SeqCst);
+        // Флаг повреждения НЕ сбрасывается: восстановленная база уже открыта, и её обслуживание успело проверить целостность
+        // (`resume_after_restore` открывает хранилище до этого вызова). Если копия оказалась с порчей, которую не видит
+        // `quick_check`, находка этой проверки должна дожить до окна. Прежней находки в режиме восстановления быть не
+        // может: хранилище не было открыто, проверка не шла.
         self.restoring.store(false, Ordering::SeqCst);
     }
 
@@ -252,11 +254,13 @@ mod tests {
             closed.needs_recovery() && !closed.corruption_found(),
             "пока идёт восстановление окно остаётся, перезапуск запрещён"
         );
+        // Хранилище открыто, обслуживание нашло порчу в копии (хук) до конца восстановления: находка доживает до окна.
+        closed.corruption_flag().store(true, Ordering::SeqCst);
         closed.finish_restore();
         assert!(!closed.needs_recovery());
         assert!(
-            !closed.corruption_found(),
-            "открыта восстановленная база: старая находка сброшена"
+            closed.corruption_found(),
+            "находка между открытием базы и `finish_restore` не теряется"
         );
     }
 
@@ -268,11 +272,17 @@ mod tests {
     }
 
     #[test]
-    fn restart_needs_a_mark() {
+    fn a_leftover_marker_file_alone_never_allows_a_restart() {
         let dir = tempfile::tempdir().unwrap();
         let db = dir.path().join("kinige.db");
-        assert!(!kinige_store::restart_for_recovery_allowed(&db));
+        let recovery = Recovery::new(db.clone(), false);
         kinige_store::mark_needs_recovery(&db).unwrap();
-        assert!(kinige_store::restart_for_recovery_allowed(&db));
+        assert!(kinige_store::needs_recovery(&db));
+        assert!(
+            !recovery.corruption_found(),
+            "перезапуск разрешает только флаг процесса"
+        );
+        kinige_store::clear_needs_recovery(&db);
+        assert!(!kinige_store::needs_recovery(&db));
     }
 }
