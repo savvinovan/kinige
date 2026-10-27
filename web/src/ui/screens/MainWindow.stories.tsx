@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { DEMO_CHATS, DEMO_INBOX, demoEntry, demoMessages } from "../../api/demoData";
 import { INBOX_ID } from "../../api/KinigeApi";
 import { MockApi } from "../../api/MockApi";
+import type { Settings } from "../../api/generated/Settings";
+import { DEFAULT_SHORTCUTS } from "../settings/demoShortcuts";
 import { SettingsDialog } from "../settings/SettingsDialog";
 import { toSidebarChat } from "../sidebar/Sidebar";
 import { MainWindow } from "./MainWindow";
@@ -104,7 +106,12 @@ export const НастройкиОткрыты: Story = {
         settings={{
           textSize: "normal",
           mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
+          shortcuts: DEFAULT_SHORTCUTS,
         }}
+        shortcuts={DEFAULT_SHORTCUTS}
+        onShortcutChange={() => undefined}
+        onShortcutReset={() => undefined}
+        onShortcutRecording={() => undefined}
         onClose={() => undefined}
         onChooseFolder={() => undefined}
         onTextSizeChange={() => undefined}
@@ -118,6 +125,10 @@ export const НаMockApi: Story = { render: () => <WindowOnMockApi /> };
 
 function WindowOnMockApi() {
   const api = useMemo(() => new MockApi({ now: () => new Date(Date.UTC(2026, 9, 20, 14, 0)), messages: [] }), []);
-  const settings = { textSize: "normal", mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 } } as const;
+  const settings: Settings = {
+    textSize: "normal",
+    mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
+    shortcuts: DEFAULT_SHORTCUTS,
+  };
   return <MainWindow api={api} initialSettings={settings} />;
 }

@@ -26,6 +26,7 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
         [
             "app_setting",
             "chat",
+            "draft",
             "message",
             "mirror_dirty",
             "sync_state"
@@ -376,12 +377,7 @@ fn deleted_entries_are_neither_shown_nor_counted() {
         .unwrap();
     assert_eq!(store.list_chats().unwrap()[0].count, 2);
 
-    raw(dir.path())
-        .execute(
-            "UPDATE message SET deleted_at = ?1 WHERE id = ?2",
-            (T0 + 2000, &second.id),
-        )
-        .unwrap();
+    mark_deleted(dir.path(), &second.id, T0 + 2000);
     let page = store
         .list_messages(INBOX_ID, None, 50, &moscow(T0 + 3000))
         .unwrap();

@@ -17,16 +17,29 @@ tauri-build = { version = "2.7", features = [] }
 [dependencies]
 kinige-domain = { path = "../crates/kinige-domain" }
 kinige-store = { path = "../crates/kinige-store" }
-tauri = { version = "2.12", features = [] }
+# tray-icon: значок в menu bar (ядро Tauri); image-png: иконка трея из PNG, вшитого в бинарник; macos-private-api: нужна
+# tauri-nspanel (окно захвата — неактивирующая панель NSPanel, ADR-0006) и включается флагом `macOSPrivateApi` в tauri.conf.json.
+tauri = { version = "2.12", features = ["tray-icon", "image-png", "macos-private-api"] }
+# Глобальные сочетания клавиш (захват и буфер) — только из Rust; JS-разрешений у окон нет.
+tauri-plugin-global-shortcut = "2.4"
+# Второй запуск показывает существующее главное окно (ТЗ §5.1).
+tauri-plugin-single-instance = "2.5"
+# Текст из буфера обмена — только из Rust (хоткей буфера).
+arboard = { version = "3.7", default-features = false }
 # Открытие ссылок в системном браузере и системный диалог выбора папки — только из Rust (JS-разрешений у окна нет, §12.3).
 tauri-plugin-opener = "2.7"
 tauri-plugin-dialog = "2.8"
 # Предпочитаемые языки системы: язык интерфейса выбирает Rust, а не navigator.language (ADR-0005).
 sys-locale = "0.3"
+# Строки меню трея читаются из файлов переводов интерфейса.
+serde_json = "1"
 # Тот же `Url`, что у tauri (предикат навигации).
 url = "2"
 
 [dev-dependencies]
 tauri = { version = "2.12", features = ["test"] }
-serde_json = "1"
 tempfile = "3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Окно захвата как NSPanel без активации приложения: обычное окно не получает ввод надёжно, когда активна чужая программа.
+tauri-nspanel = "2.1.1"

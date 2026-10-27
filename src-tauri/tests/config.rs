@@ -40,40 +40,97 @@ fn permission(command: &str) -> String {
     format!("allow-{}", command.replace('_', "-"))
 }
 
-#[test]
-fn main_capability_lists_exactly_the_commands_of_the_slice() {
-    let capability = read("capabilities/main.json");
-    assert_eq!(capability["windows"], serde_json::json!(["main"]));
-    let granted: Vec<String> = capability["permissions"]
+fn granted(path: &str) -> Vec<String> {
+    read(path)["permissions"]
         .as_array()
         .unwrap()
         .iter()
         .map(|p| p.as_str().unwrap().to_string())
+        .collect()
+}
+
+#[test]
+fn command_lists_are_consistent() {
+    let joined: Vec<&str> = kinige_lib::MAIN_COMMANDS
+        .iter()
+        .chain(kinige_lib::CAPTURE_COMMANDS)
+        .copied()
         .collect();
-    let expected: Vec<String> = kinige_lib::COMMANDS.iter().map(|c| permission(c)).collect();
-    assert_eq!(
-        granted, expected,
-        "главному окну выданы только команды слайса: без core:default, масок и разрешений плагинов"
-    );
-    for permission in &granted {
+    assert_eq!(joined, kinige_lib::COMMANDS);
+    for command in kinige_lib::CAPTURE_COMMANDS {
         assert!(
-            permission.starts_with("allow-") && !permission.contains(':'),
-            "{permission}: разрешения плагинов (opener:, dialog:) и core: окну не выдаются"
+            command.starts_with("capture_"),
+            "{command}: команды окна захвата — с префиксом"
+        );
+        assert!(
+            !kinige_lib::MAIN_COMMANDS.contains(command),
+            "{command} выдана и главному окну"
         );
     }
 }
 
 #[test]
-fn there_is_exactly_one_capability_file() {
+fn main_capability_lists_exactly_its_commands_and_the_event_subscription() {
+    let capability = read("capabilities/main.json");
+    assert_eq!(capability["windows"], serde_json::json!(["main"]));
+    let granted = granted("capabilities/main.json");
+    let mut expected: Vec<String> = kinige_lib::MAIN_COMMANDS
+        .iter()
+        .map(|c| permission(c))
+        .collect();
+    // Слушать событие «записи изменились» (§12.3); отправлять события и управлять окнами главному окну нельзя.
+    expected.push("core:event:allow-listen".into());
+    expected.push("core:event:allow-unlisten".into());
+    assert_eq!(
+        granted, expected,
+        "главному окну выданы только свои команды и подписка на событие: без core:default, масок и разрешений плагинов"
+    );
+    for permission in &granted {
+        assert!(
+            permission.starts_with("allow-")
+                || matches!(
+                    permission.as_str(),
+                    "core:event:allow-listen" | "core:event:allow-unlisten"
+                ),
+            "{permission}: разрешения плагинов (opener:, dialog:, global-shortcut:) и прочие core: окну не выдаются"
+        );
+        assert!(
+            !permission.contains("capture"),
+            "{permission}: команд захвата у главного окна нет"
+        );
+    }
+}
+
+#[test]
+fn capture_capability_lists_exactly_the_capture_commands() {
+    let capability = read("capabilities/capture.json");
+    assert_eq!(capability["windows"], serde_json::json!(["capture"]));
+    let granted = granted("capabilities/capture.json");
+    let expected: Vec<String> = kinige_lib::CAPTURE_COMMANDS
+        .iter()
+        .map(|c| permission(c))
+        .collect();
+    assert_eq!(granted, expected);
+    for permission in &granted {
+        assert!(
+            permission.starts_with("allow-capture-") && !permission.contains(':'),
+            "{permission}: окну захвата не выдаются ни чужие команды, ни core:, ни плагины (события в том числе)"
+        );
+    }
+}
+
+#[test]
+fn there_are_exactly_two_capability_files() {
     let dir = format!("{}/capabilities", env!("CARGO_MANIFEST_DIR"));
-    let files: Vec<String> = std::fs::read_dir(dir)
+    let mut files: Vec<String> = std::fs::read_dir(dir)
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
+    files.sort();
     assert_eq!(
         files,
-        ["main.json"],
-        "второго окна и своей capability в слайсе 1 нет"
+        ["capture.json", "main.json"],
+        "у каждого окна своя capability"
     );
 }
 
@@ -96,13 +153,109 @@ fn build_script_manifest_matches_the_command_list() {
 }
 
 #[test]
-fn only_one_window_without_remote_urls() {
+fn macos_private_api_is_on_only_for_the_capture_panel() {
+    // tauri-nspanel (окно захвата как NSPanel, ADR-0006) требует фичу `macos-private-api`; tauri-build сверяет её с конфигом.
+    let conf = read("tauri.conf.json");
+    assert_eq!(conf["app"]["macOSPrivateApi"], true);
+    let manifest =
+        std::fs::read_to_string(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"))).unwrap();
+    assert!(manifest.contains("macos-private-api"));
+    assert!(manifest.contains("tauri-nspanel"));
+}
+
+#[test]
+fn two_windows_without_remote_urls_and_the_capture_window_is_a_hidden_floating_panel() {
     let conf = read("tauri.conf.json");
     let windows = conf["app"]["windows"].as_array().unwrap();
-    assert_eq!(windows.len(), 1);
+    assert_eq!(windows.len(), 2);
     assert_eq!(windows[0]["label"], "main");
     assert!(
         windows[0].get("url").is_none(),
-        "окно грузит только страницу приложения"
+        "главное окно грузит только страницу приложения"
     );
+
+    let capture = &windows[1];
+    assert_eq!(capture["label"], "capture");
+    let url = capture["url"].as_str().unwrap();
+    assert!(
+        !url.contains("://") && !url.starts_with("//"),
+        "окно захвата грузит страницу приложения, а не внешний адрес: {url}"
+    );
+    assert_eq!(url, "index.html#capture");
+    assert_eq!(
+        capture["visible"], false,
+        "создаётся скрытым: показ мгновенный"
+    );
+    assert_eq!(capture["decorations"], false);
+    assert_eq!(capture["alwaysOnTop"], true);
+    assert_eq!(capture["visibleOnAllWorkspaces"], true);
+    assert_eq!(capture["skipTaskbar"], true);
+    assert_eq!(capture["resizable"], false);
+    // Размер окна — из токенов дизайн-системы (`layout.capture.window-*`): страница рассчитана на ровно такое окно.
+    let tokens = read("../design/tokens/layout.json");
+    let px = |name: &str| -> u64 {
+        tokens["layout"]["capture"][name]["$value"]
+            .as_str()
+            .and_then(|value| value.strip_suffix("px"))
+            .and_then(|value| value.parse().ok())
+            .unwrap_or_else(|| panic!("нет токена layout.capture.{name} в px"))
+    };
+    assert_eq!(capture["width"], px("window-width"));
+    assert_eq!(capture["height"], px("window-height"));
+    // Окно прозрачное и без системной тени: форму панели и тень рисует CSS (поле под тень — `shadow-margin`).
+    assert_eq!(capture["transparent"], true);
+    assert_eq!(capture["shadow"], false);
+    assert_eq!(
+        px("window-width"),
+        px("panel-width") + 2 * px("shadow-margin")
+    );
+    // Константы Rust (пределы `capture_resize`, ширина, положение верха панели) совпадают с токенами.
+    assert_eq!(px("window-width"), kinige_lib::capture::WINDOW_WIDTH as u64);
+    assert_eq!(
+        px("shadow-margin"),
+        kinige_lib::capture::SHADOW_MARGIN as u64
+    );
+    assert_eq!(
+        px("window-min-height"),
+        kinige_lib::capture::MIN_HEIGHT as u64
+    );
+    assert_eq!(
+        px("window-max-height"),
+        kinige_lib::capture::MAX_HEIGHT as u64
+    );
+    let initial = px("window-height");
+    assert!((px("window-min-height")..=px("window-max-height")).contains(&initial));
+}
+
+#[test]
+fn capture_window_sits_low_centered_and_keeps_its_bottom_edge_for_any_height() {
+    use kinige_lib::capture::{anchor_for, top_for_bottom};
+    // Рабочая область 3840 × 2160 без Dock: панель по центру, её низ на 12% высоты выше низа, окно ниже панели на 32 px.
+    let (x, bottom) = anchor_for((0, 0, 3840, 2160), 584, 32.0);
+    assert_eq!(x, 1628);
+    assert_eq!(bottom, 1933); // 2160 × 0,88 + 32 = 1932,8
+    // Рабочая область со смещением (menu bar сверху, Dock снизу) и второй монитор справа: считается от неё, а не от экрана.
+    let (x, bottom) = anchor_for((1440, 30, 1440, 800), 584, 32.0);
+    assert_eq!(x, 1440 + 428);
+    assert_eq!(bottom, 766); // 30 + 800 × 0,88 + 32
+    // Retina: поле под тень 64 физических px.
+    assert_eq!(anchor_for((0, 0, 2880, 1800), 1168, 64.0), (856, 1648)); // 1800 × 0,88 + 64
+    // Нижний край один и тот же при любой высоте окна: растёт только верх (вверх).
+    let bottom = 1933;
+    for height in [122_u32, 281, 333, 480] {
+        let top = top_for_bottom(bottom, height);
+        assert_eq!(top + height as i32, bottom, "высота {height}");
+    }
+    assert!(top_for_bottom(bottom, 480) < top_for_bottom(bottom, 122));
+}
+
+#[test]
+fn capture_resize_clamps_the_height_into_the_token_range() {
+    use kinige_lib::capture::{MAX_HEIGHT, MIN_HEIGHT, clamp_height};
+    assert_eq!(clamp_height(172.4), 172.0);
+    assert_eq!(clamp_height(0.0), MIN_HEIGHT);
+    assert_eq!(clamp_height(-50.0), MIN_HEIGHT);
+    assert_eq!(clamp_height(1.0e9), MAX_HEIGHT);
+    assert_eq!(clamp_height(f64::NAN), MIN_HEIGHT);
+    assert_eq!(clamp_height(f64::INFINITY), MIN_HEIGHT);
 }

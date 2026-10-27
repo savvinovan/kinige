@@ -1,0 +1,17 @@
+/* Только для историй Storybook: окно захвата своей ширины на «столе» (фон окна приложения); высота — по содержимому, как у
+   настоящего окна, где её подгоняет Rust. Прозрачные поля под тень видны как стол. */
+.story-capture-desk {
+  box-sizing: border-box;
+  min-height: var(--layout-window-height);
+  padding: var(--space-5);
+  background: var(--color-surface-background);
+}
+
+.story-capture-window {
+  width: var(--layout-capture-window-width);
+  max-width: 100%;
+}
+
+.story-capture-window--narrow {
+  width: var(--layout-capture-window-narrow);
+}

@@ -33,8 +33,16 @@ const withLanguage: Decorator = (Story, context) => {
   );
 };
 
+// Шрифты грузятся лениво, когда текст уже разложен, и догрузка посреди первой отрисовки меняет сглаживание скруглённых
+// краёв в уже растрированных плитках: снимок окна захвата (там блок кода в JetBrains Mono) то совпадал с эталоном, то
+// расходился на ±1 уровень в углах. Все начертания из @font-face загружаются до отрисовки истории.
+const loadFonts = async () => {
+  await Promise.all([...document.fonts].map((face) => face.load()));
+};
+
 const preview: Preview = {
   parameters: { layout: "fullscreen" },
+  loaders: [loadFonts],
   decorators: [withLanguage, withDesignSystem],
   initialGlobals: { textScale: "", reduceMotion: "", language: "ru" },
   globalTypes: {

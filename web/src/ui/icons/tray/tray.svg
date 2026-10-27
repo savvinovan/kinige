@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
+  <!-- Обычная иконка menu bar: страница журнала с буквой K, контур. Чёрное с альфа-каналом: macOS перекрашивает template-изображение сама. -->
+  <rect x="4.25" y="2.75" width="13.5" height="16.5" rx="3" fill="none" stroke="#000" stroke-width="1.6"/>
+  <path d="M8.7 7v8M8.7 11.2 13.3 7M10.3 10.2 13.5 15" fill="none" stroke="#000" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

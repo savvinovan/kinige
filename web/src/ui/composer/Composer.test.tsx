@@ -113,6 +113,130 @@ describe("Composer: клавиши", () => {
   });
 });
 
+describe("Composer: ⌘Enter / Ctrl+Enter «дописать» (окно захвата, слайс 2)", () => {
+  const withAppend = (props: Partial<React.ComponentProps<typeof Composer>> = {}) => {
+    const onAppend = vi.fn();
+    return { onAppend, ...setup({ value: "и ещё", onAppend, ...props }) };
+  };
+
+  it("⌘Enter вызывает onAppend, а не onSubmit, и не вставляет перевод строки", () => {
+    const { input, onAppend, onSubmit } = withAppend();
+    expect(fireEvent.keyDown(input, { key: "Enter", metaKey: true })).toBe(false);
+    expect(onAppend).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("Ctrl+Enter (не macOS) делает то же", () => {
+    const { input, onAppend, onSubmit } = withAppend();
+    expect(fireEvent.keyDown(input, { key: "Enter", ctrlKey: true })).toBe(false);
+    expect(onAppend).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("обычный Enter по-прежнему отправляет, onAppend не вызывается", () => {
+    const { input, onAppend, onSubmit } = withAppend();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onAppend).not.toHaveBeenCalled();
+  });
+
+  it("⌘Shift+Enter — не «дописать»: Shift оставляет перевод строки", () => {
+    const { input, onAppend, onSubmit } = withAppend();
+    expect(fireEvent.keyDown(input, { key: "Enter", metaKey: true, shiftKey: true })).toBe(true);
+    expect(onAppend).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("во время ввода через IME ⌘Enter ничего не делает", () => {
+    const { input, onAppend } = withAppend();
+    fireEvent.keyDown(input, { key: "Enter", metaKey: true, isComposing: true });
+    expect(onAppend).not.toHaveBeenCalled();
+  });
+
+  it("внутри блока кода ⌘Enter тоже дописывает и не вставляет перевод строки", () => {
+    const value = "```\nfn main() {";
+    const { input, onAppend, onSubmit } = withAppend({ value });
+    input.setSelectionRange(value.length, value.length);
+    expect(fireEvent.keyDown(input, { key: "Enter", metaKey: true })).toBe(false);
+    expect(onAppend).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("в пустом или пробельном поле ⌘Enter ничего не дописывает, перевода строки нет", () => {
+    const { input, onAppend } = withAppend({ value: " \n " });
+    expect(fireEvent.keyDown(input, { key: "Enter", metaKey: true })).toBe(false);
+    expect(onAppend).not.toHaveBeenCalled();
+  });
+
+  it("без onAppend ⌘Enter и Ctrl+Enter ведут себя как обычный Enter: отправляют", () => {
+    const { input, onSubmit } = setup({ value: "текст" });
+    fireEvent.keyDown(input, { key: "Enter", metaKey: true });
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
+    expect(onSubmit).toHaveBeenCalledTimes(2);
+  });
+
+  it("onAppend работает и без onSubmit", () => {
+    const onAppend = vi.fn();
+    render(<Composer value="текст" onChange={vi.fn()} onAppend={onAppend} />);
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "Новая заметка" }), { key: "Enter", metaKey: true });
+    expect(onAppend).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Composer: обычный вид — ошибка над полем", () => {
+  it("без ошибки области alert нет (как в D1); с ошибкой она над полем, поле описано ею и помечено недопустимым", () => {
+    const { rerender, input, container } = setup();
+    expect(screen.queryByRole("alert")).toBeNull();
+    rerender(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} error="Не удалось отправить." />);
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Не удалось отправить.");
+    expect(input).toHaveAttribute("aria-describedby", alert.id);
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(container.querySelector(".composer__bar")?.previousElementSibling).toBe(alert);
+  });
+});
+
+describe("Composer: плавающий вид (окно захвата)", () => {
+  const floating = (props: Partial<React.ComponentProps<typeof Composer>> = {}) =>
+    setup({ floating: true, buttons: {}, ...props });
+
+  it("область alert есть всегда, пустая и под полем; поле не помечено недопустимым и ничем не описано", () => {
+    const { input, container } = floating();
+    const alert = screen.getByRole("alert");
+    expect(alert).toBeEmptyDOMElement();
+    expect(container.querySelector(".composer")).toHaveClass("composer--floating");
+    expect(container.querySelector(".composer__bar")?.nextElementSibling).toContainElement(alert);
+    expect(input).not.toHaveAttribute("aria-invalid");
+    expect(input).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("ошибка приходит в тот же элемент, поле описано ею", () => {
+    const { rerender, input } = floating();
+    const before = screen.getByRole("alert");
+    rerender(<Composer value="" onChange={vi.fn()} onSubmit={vi.fn()} floating buttons={{}} error="Не удалось отправить." />);
+    expect(screen.getByRole("alert")).toBe(before);
+    expect(before).toHaveTextContent("Не удалось отправить.");
+    expect(input).toHaveAttribute("aria-describedby", before.id);
+    expect(input).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("подсказка под полем описывает его; пока есть ошибка, подсказки нет, потом она возвращается", () => {
+    const { rerender, input } = floating({ hint: "⌘Enter — дописать" });
+    expect(screen.getByText("⌘Enter — дописать")).toHaveClass("composer__hint");
+    expect(input).toHaveAccessibleDescription("⌘Enter — дописать");
+    rerender(<Composer value="" onChange={vi.fn()} floating buttons={{}} hint="⌘Enter — дописать" error="Ошибка." />);
+    expect(screen.queryByText("⌘Enter — дописать")).toBeNull();
+    expect(input).toHaveAccessibleDescription("Ошибка.");
+    rerender(<Composer value="" onChange={vi.fn()} floating buttons={{}} hint="⌘Enter — дописать" />);
+    expect(input).toHaveAccessibleDescription("⌘Enter — дописать");
+  });
+
+  it("подсказка без floating не показывается (в главном окне её нет)", () => {
+    setup({ hint: "⌘Enter — дописать" });
+    expect(screen.queryByText("⌘Enter — дописать")).toBeNull();
+  });
+});
+
 describe("insideCodeFence", () => {
   it("нечётное число ограждений до курсора — внутри блока", () => {
     expect(insideCodeFence("```\nкод", 7)).toBe(true);

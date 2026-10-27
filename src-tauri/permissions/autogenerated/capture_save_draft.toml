@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-capture-save-draft"
+description = "Enables the capture_save_draft command without any pre-configured scope."
+commands.allow = ["capture_save_draft"]
+
+[[permission]]
+identifier = "deny-capture-save-draft"
+description = "Denies the capture_save_draft command without any pre-configured scope."
+commands.deny = ["capture_save_draft"]

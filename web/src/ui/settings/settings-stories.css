@@ -49,3 +49,8 @@
   gap: var(--space-5);
   max-width: var(--layout-dialog-width);
 }
+
+/* Узкая колонка: проверка, что строки с длинными подписями переносятся, а не вылезают. */
+.story-settings-part__inner--narrow {
+  max-width: var(--layout-measure-column);
+}

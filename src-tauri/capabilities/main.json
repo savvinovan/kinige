@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Главное окно: только команды слайса 1, без core:default и без JS-разрешений плагинов opener и dialog",
+  "description": "Главное окно: свои команды без core:default, плюс подписка на событие «записи изменились»; без JS-разрешений плагинов opener, dialog и global-shortcut",
   "windows": ["main"],
   "permissions": [
     "allow-app-info",
@@ -12,6 +12,13 @@
     "allow-get-settings",
     "allow-set-text-size",
     "allow-choose-mirror-folder",
-    "allow-open-external-url"
+    "allow-open-external-url",
+    "allow-get-draft",
+    "allow-save-draft",
+    "allow-set-shortcut",
+    "allow-reset-shortcut",
+    "allow-shortcut-recording",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
   ]
 }

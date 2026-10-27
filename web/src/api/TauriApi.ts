@@ -1,7 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { type KinigeApi, KinigeApiError } from "./KinigeApi";
 import type { ApiError } from "./generated/ApiError";
 import type { AppInfo } from "./generated/AppInfo";
+import type { CaptureOutcome } from "./generated/CaptureOutcome";
+import type { CaptureState } from "./generated/CaptureState";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { FeedCursor } from "./generated/FeedCursor";
@@ -9,7 +12,11 @@ import type { Language } from "./generated/Language";
 import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
 import type { Settings } from "./generated/Settings";
+import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { TextSize } from "./generated/TextSize";
+
+/** Событие Rust → главное окно: записи изменились (имя совпадает с `capture::ENTRIES_CHANGED`). */
+const ENTRIES_CHANGED = "entries-changed";
 
 const CODES: readonly ErrorCode[] = [
   "empty_message",
@@ -19,6 +26,9 @@ const CODES: readonly ErrorCode[] = [
   "store_read_failed",
   "link_not_allowed",
   "folder_pick_failed",
+  "shortcut_invalid",
+  "shortcut_taken",
+  "shortcut_duplicate",
   "internal",
 ];
 
@@ -72,5 +82,53 @@ export class TauriApi implements KinigeApi {
 
   async openExternalUrl(url: string): Promise<void> {
     await call("open_external_url", { url });
+  }
+
+  getDraft(chatId: string): Promise<string> {
+    return call("get_draft", { chatId });
+  }
+
+  async saveDraft(chatId: string, body: string): Promise<void> {
+    await call("save_draft", { chatId, body });
+  }
+
+  setShortcut(kind: ShortcutKind, accelerator: string): Promise<Settings> {
+    return call("set_shortcut", { kind, accelerator });
+  }
+
+  resetShortcut(kind: ShortcutKind): Promise<Settings> {
+    return call("reset_shortcut", { kind });
+  }
+
+  async shortcutRecording(active: boolean): Promise<void> {
+    await call("shortcut_recording", { active });
+  }
+
+  onEntriesChanged(handler: () => void): Promise<() => void> {
+    return listen(ENTRIES_CHANGED, () => handler());
+  }
+
+  captureState(): Promise<CaptureState> {
+    return call("capture_state");
+  }
+
+  captureSend(body: string): Promise<CaptureOutcome> {
+    return call("capture_send", { body });
+  }
+
+  captureAppend(body: string): Promise<CaptureOutcome> {
+    return call("capture_append", { body });
+  }
+
+  async captureSaveDraft(body: string): Promise<void> {
+    await call("capture_save_draft", { body });
+  }
+
+  async captureHide(): Promise<void> {
+    await call("capture_hide");
+  }
+
+  async captureResize(height: number): Promise<void> {
+    await call("capture_resize", { height });
   }
 }

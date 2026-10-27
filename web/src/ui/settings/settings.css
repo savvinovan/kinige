@@ -27,6 +27,12 @@
   line-height: var(--type-small-line-height);
 }
 
+/* Строки одного раздела (сочетания клавиш) с промежутком больше, чем между элементами строки. */
+.settings__rows {
+  display: grid;
+  gap: var(--space-4);
+}
+
 /* Выбор из нескольких: сегменты в одной заливке. */
 .segmented {
   display: inline-flex;

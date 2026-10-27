@@ -119,9 +119,54 @@ pub(crate) fn mark_dirty(
     Ok(())
 }
 
+/// Новая запись в открытой транзакции: проверка чата, HLC, запись со всеми пятью группами, отметка копии. Фиксирует
+/// транзакцию вызывающий; тот же путь у отправки из главного окна и из окна захвата.
+pub(crate) fn insert_new_message(
+    tx: &Transaction<'_>,
+    chat_id: &str,
+    body: &str,
+    now: &Now,
+) -> Result<MessageView, StoreError> {
+    let chat_exists: bool = tx
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM chat WHERE id = ?1 AND deleted_at IS NULL)",
+            [chat_id],
+            |row| row.get(0),
+        )
+        .map_err(write_err)?;
+    if !chat_exists {
+        return Err(StoreError::ChatNotFound);
+    }
+    let id = Uuid::new_v4().to_string();
+    let hlc = next_hlc(tx, now.ms)?;
+    let date = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
+    let row = groups::new_message(
+        &NewMessage {
+            id: &id,
+            chat_id,
+            body_md: body,
+            created_at: now.ms,
+            created_tz: &now.tz,
+            journal_date: &date,
+        },
+        &hlc,
+    )
+    .map_err(|e| StoreError::Internal(e.to_string()))?;
+    insert_message(tx, &row).map_err(write_err)?;
+    mark_dirty(tx, chat_id, &date).map_err(write_err)?;
+    Ok(MessageView {
+        id: row.id,
+        chat_id: row.chat_id,
+        body_md: row.body_md,
+        journal_date: row.journal_date,
+        created_at: row.created_at,
+        created_tz: row.created_tz,
+    })
+}
+
 impl Store {
-    /// Отправка (ТЗ §5): текст нормализуется, затем одна транзакция: запись со всеми пятью группами, HLC, отметка копии.
-    /// Ответ — сохранённая запись; без оптимистичного показа: при ошибке ничего не записано.
+    /// Отправка (ТЗ §5): текст нормализуется, затем одна транзакция: запись со всеми пятью группами, HLC, отметка копии,
+    /// очистка черновика этого чата. Ответ — сохранённая запись; без оптимистичного показа: при ошибке ничего не записано.
     pub fn send_message(
         &self,
         chat_id: &str,
@@ -130,47 +175,16 @@ impl Store {
     ) -> Result<MessageView, StoreError> {
         let body = groups::normalize_body(body)?;
         let chat_id = chat_id.to_string();
-        let id = Uuid::new_v4().to_string();
         let now = now.clone();
         let view = self.write(move |conn| {
             let tx = conn
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(write_err)?;
-            let chat_exists: bool = tx
-                .query_row(
-                    "SELECT EXISTS(SELECT 1 FROM chat WHERE id = ?1 AND deleted_at IS NULL)",
-                    [&chat_id],
-                    |row| row.get(0),
-                )
+            let view = insert_new_message(&tx, &chat_id, &body, &now)?;
+            crate::draft::delete_draft(&tx, &crate::draft::chat_key(&chat_id))
                 .map_err(write_err)?;
-            if !chat_exists {
-                return Err(StoreError::ChatNotFound);
-            }
-            let hlc = next_hlc(&tx, now.ms)?;
-            let date = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
-            let row = groups::new_message(
-                &NewMessage {
-                    id: &id,
-                    chat_id: &chat_id,
-                    body_md: &body,
-                    created_at: now.ms,
-                    created_tz: &now.tz,
-                    journal_date: &date,
-                },
-                &hlc,
-            )
-            .map_err(|e| StoreError::Internal(e.to_string()))?;
-            insert_message(&tx, &row).map_err(write_err)?;
-            mark_dirty(&tx, &chat_id, &date).map_err(write_err)?;
             tx.commit().map_err(write_err)?;
-            Ok(MessageView {
-                id: row.id,
-                chat_id: row.chat_id,
-                body_md: row.body_md,
-                journal_date: row.journal_date,
-                created_at: row.created_at,
-                created_tz: row.created_tz,
-            })
+            Ok(view)
         })?;
         self.wake_mirror();
         Ok(view)

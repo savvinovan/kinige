@@ -21,6 +21,11 @@
   line-height: var(--type-small-line-height);
 }
 
+/* Зарезервированное место: пустая область держит высоту одной строки ошибки. */
+.composer__error:empty {
+  min-height: calc(var(--type-small-size) * var(--type-small-line-height));
+}
+
 .composer__bar {
   display: flex;
   align-items: flex-end;
@@ -71,7 +76,13 @@
   flex: 1;
   min-width: 0;
   max-height: var(--layout-composer-max-height);
+  /* Текст всегда переносится (`overflow-wrap: anywhere` ниже), горизонтальная прокрутка не нужна: у WebKit на очень длинном слове
+     (сотни тысяч знаков) ширина содержимого всё же выходит за поле, и внизу появлялась полоса прокрутки. */
+  overflow-x: hidden;
   overflow-y: auto;
+  /* Тема приложения тёмная: полоса прокрутки поля рисуется системой в тёмном варианте (светлый бегунок на тёмном фоне,
+     а не тёмный «ползунок» светлой темы, как на снимках окна захвата). Системные полосы macOS и так видны только при прокрутке. */
+  color-scheme: dark;
 }
 
 .composer__field::after,
@@ -107,4 +118,50 @@
 .composer__input::placeholder {
   color: var(--color-text-tertiary);
   opacity: 1;
+}
+
+/* Плавающая панель быстрого захвата (floating): заливку, рамку и скругление даёт панель вокруг, поле — только строка внутри неё.
+   Своей линии фокуса у строки нет: в окне одно поле, и оно всегда в фокусе (каретка акцентного цвета; кнопка «Отправить»
+   получает кольцо с клавиатуры, как обычно). */
+.composer--floating {
+  padding: 0;
+  background: transparent;
+}
+
+.composer--floating > * {
+  max-width: none;
+}
+
+.composer--floating .composer__bar,
+.composer--floating .composer__bar:has(.composer__input:focus) {
+  min-height: 0;
+  /* Текст поля начинается там же, где текст плашки контекста: отступ плашки минус боковое поле самого textarea (space-1). */
+  padding: 0 0 0 calc(var(--layout-message-padding-inline) - var(--space-1));
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Строка под полем: пустая высоты не имеет (alert всегда в дереве), с текстом растёт вниз — поле остаётся на месте. */
+.composer--floating .composer__error:empty {
+  min-height: 0;
+}
+
+.composer--floating .composer__error,
+.composer__hint {
+  margin: 0;
+}
+
+.composer--floating .composer__error:not(:empty),
+.composer__hint {
+  /* Боковой отступ равен внутреннему отступу плашки контекста (layout.message.padding-inline): левая линия текста общая. */
+  padding: var(--space-1) var(--layout-message-padding-inline) 0;
+}
+
+.composer__hint {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+  line-height: var(--type-meta-line-height);
 }

@@ -3,11 +3,13 @@ import { INBOX_ID } from "../../api/KinigeApi";
 import { MockApi, type MockApiOptions } from "../../api/MockApi";
 import type { Settings } from "../../api/generated/Settings";
 import { fireEvent, render, screen, waitFor, within } from "../../test/render";
+import { DEFAULT_SHORTCUTS } from "../settings/demoShortcuts";
 import { MainWindow } from "./MainWindow";
 
 const SETTINGS: Settings = {
   textSize: "normal",
   mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
+  shortcuts: DEFAULT_SHORTCUTS,
 };
 // 2026-10-21 06:12 UTC; запись создаётся в поясе UTC, время в ленте — «06:12».
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));

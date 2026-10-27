@@ -9,6 +9,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 RUNS="${1:-10}"
+# Замер идёт на чистых данных (свой временный каталог): настоящую базу и Markdown-копию пользователя он не открывает и не мигрирует.
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+export KINIGE_DATA_DIR="${KINIGE_DATA_DIR:-$TMP/data}" KINIGE_MIRROR_DIR="${KINIGE_MIRROR_DIR:-$TMP/mirror}"
 BIN="target/release/kinige"
 [ -x "$BIN" ] || { echo "нет $BIN: сначала scripts/build-app.sh" >&2; exit 1; }
 

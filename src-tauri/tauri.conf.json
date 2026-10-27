@@ -9,6 +9,7 @@
     "frontendDist": "../web/dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",
@@ -17,6 +18,24 @@
         "height": 800,
         "minWidth": 640,
         "minHeight": 400
+      },
+      {
+        "label": "capture",
+        "title": "Kinige Capture",
+        "url": "index.html#capture",
+        "width": 584,
+        "height": 122,
+        "visible": false,
+        "focus": false,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "alwaysOnTop": true,
+        "visibleOnAllWorkspaces": true,
+        "skipTaskbar": true,
+        "shadow": false
       }
     ],
     "security": {
