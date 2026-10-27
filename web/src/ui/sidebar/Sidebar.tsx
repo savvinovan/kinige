@@ -92,7 +92,7 @@ export function Sidebar({
     <aside className={collapsed ? "sidebar sidebar--rail" : "sidebar"}>
       {collapsed ? (
         <SidebarRail
-          chats={[...sections.pinned, ...sections.chats]}
+          chats={[...sections.pinned, ...sections.chats, ...sections.archived.filter((chat) => chat.id === selectedId)]}
           selectedId={selectedId}
           language={language}
           onSelect={onSelect}

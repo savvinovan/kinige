@@ -52,7 +52,7 @@ function RailButton({ label, tip, selected, onClick, onShowTip, onHideTip, onOpe
 }
 
 interface SidebarRailProps {
-  /** Чаты полосы: без архивных, в порядке показа. */
+  /** Чаты полосы: без архивных, в порядке показа; открытый архивный чат стоит последним (иначе у открытого чата нет значка). */
   chats: readonly SidebarChat[];
   selectedId: string | null;
   language: Language;

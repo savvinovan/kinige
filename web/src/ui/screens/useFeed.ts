@@ -6,7 +6,7 @@ import type { MessageFlag } from "../../api/generated/MessageFlag";
 import type { MessageView } from "../../api/generated/MessageView";
 import type { FeedMessage } from "../feed/buildFeed";
 import type { FeedActions, FeedUiState } from "../feed/Feed";
-import { mergeLatestPage } from "../feed/mergeFeed";
+import { mergeLatestPage, withDeleted } from "../feed/mergeFeed";
 
 /** Сколько записей грузит первая страница ленты; более старые (дозагрузка) — слайс 8. */
 export const PAGE_SIZE = 200;
@@ -47,15 +47,24 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag }: UseF
   });
 
   // Смена чата или фильтра: состояние плашек сбрасывается прямо при отрисовке (так React советует «подстраивать состояние»).
-  const feedKey = `${chatId ?? ""}\u0000${tag ?? ""}`;
+  // Удалённые записи («Удалено · Вернуть») живут, пока человек не уйдёт из чата; смена тега-фильтра чат не меняет.
+  const chatKey = chatId ?? "";
+  const feedKey = `${chatKey}\u0000${tag ?? ""}`;
+  const [shownChat, setShownChat] = useState(chatKey);
   const [shownKey, setShownKey] = useState(feedKey);
   if (shownKey !== feedKey) {
     setShownKey(feedKey);
     setEditingId(null);
     setEditError(undefined);
-    setDeletedIds(new Set());
     setDateFor(null);
-    setMessages([]);
+    if (shownChat !== chatKey) {
+      setShownChat(chatKey);
+      setDeletedIds(new Set());
+      setMessages([]);
+    } else {
+      // Тот же чат, другой фильтр: на месте остаются только удалённые записи, подходящие под новый фильтр.
+      setMessages((shown) => withDeleted(shown, [], deletedIds, tag));
+    }
   }
 
   // Смена чата или фильтра: лента перечитывается.
@@ -66,7 +75,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag }: UseF
       .listMessages(chatId, { limit: PAGE_SIZE, tag: tag ?? undefined })
       .then((page) => {
         if (!live) return;
-        setMessages(page.messages);
+        setMessages((shown) => withDeleted(shown, page.messages, deleted.current, tag));
         setToday(page.today);
         setLoadError(null);
       })
@@ -86,8 +95,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag }: UseF
       if (current.current.chatId !== id || current.current.tag !== filter) return;
       setMessages((loaded) => {
         const merged = mergeLatestPage(loaded, page.messages, page.older !== null);
-        const kept = loaded.filter((m) => deleted.current.has(m.id) && !merged.some((x) => x.id === m.id));
-        return kept.length === 0 ? merged : [...merged, ...kept];
+        return withDeleted(loaded, merged, deleted.current, filter);
       });
       setToday(page.today);
     } catch {

@@ -131,7 +131,7 @@
   "recovery": {
     "title": "The database is damaged",
     "startupText": "The damaged file is not deleted: Kinige moves it aside next to the database. Entries made after the last backup may not have been saved.",
-    "runningText": "A check found damage in the running database. Kinige will restart and offer backups.",
+    "runningText": "A check found damage in the database. Kinige will restart and offer backups to restore it from.",
     "backups": "Database backups",
     "kind": {
       "daily": "daily backup",
@@ -234,8 +234,8 @@
     "backup": {
       "title": "Database backup",
       "description": "The 7 latest daily backups are kept, plus one taken before each update.",
-      "last": "Database backup: {{when}}",
-      "never": "Database backup: not taken yet",
+      "last": "Last backup: {{when}}",
+      "never": "Last backup: not taken yet",
       "today": "today",
       "yesterday": "yesterday",
       "count_one": "{{count}} backup",

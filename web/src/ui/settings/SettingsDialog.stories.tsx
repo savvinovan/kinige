@@ -199,7 +199,7 @@ export const EnОшибкаВыбора: Story = {
 
 const backup = (patch: Partial<BackupStatus> = {}): BackupStatus => ({ ...DEFAULT_BACKUP, ...patch });
 
-/** Копия базы снята сегодня: «Копия базы: сегодня, 09:12», «7 копий», папка копий и пояснение про хранение. */
+/** Копия базы снята сегодня: «Последняя копия: сегодня, 09:12», «7 копий», папка копий и пояснение про хранение. */
 export const КопияБазыСегодня: Story = { args: { settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup()), showBackup: true } };
 
 /** Копия снята вчера, одна копия: метка «вчера», «1 копия». */
@@ -210,7 +210,7 @@ export const КопияБазыВчера: Story = {
   },
 };
 
-/** Копии ещё не снимались: «Копия базы: ещё не снималась», числа нет. */
+/** Копии ещё не снимались: «Последняя копия: ещё не снималась», числа нет. */
 export const КопияБазыНеСнималась: Story = {
   args: { settings: settings({}, "normal", DEFAULT_SHORTCUTS, backup({ lastAt: null, count: 0 })), showBackup: true },
 };

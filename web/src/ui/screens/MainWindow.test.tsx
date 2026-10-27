@@ -219,7 +219,10 @@ describe("MainWindow: настройки", () => {
 
   it("Esc закрывает окно, фокус возвращается на кнопку профиля", async () => {
     setup();
-    await openSettings();
+    const dialog = await openSettings();
+    // `findByRole` срабатывает сразу после вставки окна в DOM, а обработчик Esc вешает эффект окна (после отрисовки): сигнал,
+    // что эффект отработал, — фокус на кнопке закрытия. Без этого ожидания Esc иногда уходил раньше подписки (так и падал).
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Закрыть настройки" })).toHaveFocus());
     fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getByRole("button", { name: /Профиль/ })).toHaveFocus();

@@ -287,6 +287,33 @@ describe("MainWindow слайс 3: теги и корзина", () => {
     expect(screen.queryByRole("region", { name: "Фильтр по тегу" })).toBeNull();
   });
 
+  it("смена тега-фильтра не убирает плашку «Удалено · Вернуть»: чат человек не покидал; фильтр без её тега — убирает", async () => {
+    setup({
+      messages: [
+        mockMessage({ id: "a", bodyMd: "купить хлеб #еда", createdAt: TODAY_AT }),
+        mockMessage({ id: "b", bodyMd: "идея про сайт #идеи", createdAt: TODAY_AT + 1000 }),
+        mockMessage({ id: "c", bodyMd: "молоко #еда", createdAt: TODAY_AT + 2000 }),
+      ],
+    });
+    await screen.findByText("молоко");
+    fireEvent.contextMenu(article("купить хлеб"));
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Удалить" }));
+    await screen.findByRole("button", { name: "Вернуть удалённую запись" });
+
+    // Фильтр по тому же тегу: удалённая запись подходит под него и остаётся на месте.
+    fireEvent.click(within(plate("молоко")).getByText("#еда"));
+    await waitFor(() => expect(screen.queryByText("идея про сайт")).toBeNull());
+    expect(screen.getByRole("button", { name: "Вернуть удалённую запись" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Сбросить фильтр" }));
+    await screen.findByText("идея про сайт");
+    expect(screen.getByRole("button", { name: "Вернуть удалённую запись" })).toBeInTheDocument();
+
+    // Фильтр по другому тегу: удалённая запись под него не подходит.
+    fireEvent.click(within(plate("идея про сайт")).getByText("#идеи"));
+    await waitFor(() => expect(screen.queryByText("молоко")).toBeNull());
+    expect(screen.queryByRole("button", { name: "Вернуть удалённую запись" })).toBeNull();
+  });
+
   it("корзина: список, «Восстановить» возвращает запись в чат, «Удалить навсегда» только после подтверждения", async () => {
     const api = setup({
       messages: [

@@ -8,9 +8,9 @@ const show = (patch: Partial<BackupStatus> = {}, language: "ru" | "en" = "ru", n
   render(<BackupRow backup={{ ...DEFAULT_BACKUP, ...patch }} now={now} />, { language });
 
 describe("BackupRow", () => {
-  it("«Копия базы: сегодня, 09:12», число копий и папка", () => {
+  it("«Последняя копия: сегодня, 09:12», число копий и папка", () => {
     show();
-    expect(screen.getByText("Копия базы: сегодня, 09:12")).toBeInTheDocument();
+    expect(screen.getByText("Последняя копия: сегодня, 09:12")).toBeInTheDocument();
     expect(screen.getByText("7 копий")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Папка копий" })).toHaveTextContent(BACKUP_FOLDER);
     expect(screen.getByTitle(BACKUP_FOLDER)).toBeInTheDocument();
@@ -21,20 +21,20 @@ describe("BackupRow", () => {
 
   it("вчера и более ранняя дата: метка дня как в ленте", () => {
     show({ lastAt: new Date(2026, 9, 26, 23, 40).getTime() });
-    expect(screen.getByText("Копия базы: вчера, 23:40")).toBeInTheDocument();
+    expect(screen.getByText("Последняя копия: вчера, 23:40")).toBeInTheDocument();
   });
 
   it("копия давнее вчерашней: «14 марта, 08:05» и с годом для другого года", () => {
     const { unmount } = show({ lastAt: new Date(2026, 2, 14, 8, 5).getTime() });
-    expect(screen.getByText("Копия базы: 14 марта, 08:05")).toBeInTheDocument();
+    expect(screen.getByText("Последняя копия: 14 марта, 08:05")).toBeInTheDocument();
     unmount();
     show({ lastAt: new Date(2025, 2, 14, 8, 5).getTime() });
-    expect(screen.getByText("Копия базы: 14 марта 2025, 08:05")).toBeInTheDocument();
+    expect(screen.getByText("Последняя копия: 14 марта 2025, 08:05")).toBeInTheDocument();
   });
 
   it("копий ещё нет: «ещё не снималась», числа нет", () => {
     show({ lastAt: null, count: 0 });
-    expect(screen.getByText("Копия базы: ещё не снималась")).toBeInTheDocument();
+    expect(screen.getByText("Последняя копия: ещё не снималась")).toBeInTheDocument();
     expect(screen.queryByText(/^\d+ копи(я|и|й)$/)).toBeNull();
   });
 
@@ -51,17 +51,17 @@ describe("BackupRow", () => {
 
   it("английский: метка, число, папка", () => {
     show({ count: 1 }, "en");
-    expect(screen.getByText("Database backup: today, 09:12")).toBeInTheDocument();
+    expect(screen.getByText("Last backup: today, 09:12")).toBeInTheDocument();
     expect(screen.getByText("1 backup")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Backup folder" })).toBeInTheDocument();
   });
 
   it("английский: вчера и дата", () => {
     const { unmount } = show({ lastAt: new Date(2026, 9, 26, 7, 5).getTime() }, "en");
-    expect(screen.getByText("Database backup: yesterday, 07:05")).toBeInTheDocument();
+    expect(screen.getByText("Last backup: yesterday, 07:05")).toBeInTheDocument();
     unmount();
     show({ lastAt: new Date(2026, 2, 14, 7, 5).getTime(), count: 3 }, "en");
-    expect(screen.getByText("Database backup: March 14, 07:05")).toBeInTheDocument();
+    expect(screen.getByText("Last backup: March 14, 07:05")).toBeInTheDocument();
     expect(screen.getByText("3 backups")).toBeInTheDocument();
   });
 
@@ -93,7 +93,7 @@ describe("BackupRow", () => {
 
   it("без now берутся часы окна: не падает", () => {
     render(<BackupRow backup={DEFAULT_BACKUP} />);
-    expect(screen.getByText(/^Копия базы: /)).toBeInTheDocument();
+    expect(screen.getByText(/^Последняя копия: /)).toBeInTheDocument();
   });
 });
 

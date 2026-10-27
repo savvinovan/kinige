@@ -153,3 +153,17 @@ describe("верхняя строка и «Корзина»", () => {
     expect(screen.queryByRole("button", { name: /Корзина/ })).toBeNull();
   });
 });
+
+describe("свёрнутая полоса и архивный чат", () => {
+  it("открытый архивный чат есть в полосе и подсвечен; закрытый архивный в полосе по-прежнему не показывается", () => {
+    const { rerender } = render(<Sidebar chats={LIST} selectedId="old" collapsed showSearch={false} />);
+    const open = screen.getByRole("button", { name: /^Старый проект/ });
+    expect(open).toHaveAttribute("aria-current", "true");
+    expect(open).toHaveClass("rail-button--selected");
+    expect(screen.queryByRole("button", { name: /^Ещё старее/ })).toBeNull();
+
+    rerender(<Sidebar chats={LIST} selectedId="books" collapsed showSearch={false} />);
+    expect(screen.queryByRole("button", { name: /^Старый проект/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /^Книги/ })).toHaveAttribute("aria-current", "true");
+  });
+});
