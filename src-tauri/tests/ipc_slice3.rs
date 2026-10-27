@@ -348,7 +348,7 @@ fn startup_state_reports_recovery_and_refuses_restore_when_the_journal_is_open()
     let main = window(&fixture, "main");
     assert_eq!(
         call(&main, "startup_state", json!({})).unwrap(),
-        json!({"needsRecovery": false, "backups": [], "databaseTooNew": false, "mirrorFolder": null})
+        json!({"needsRecovery": false, "backups": [], "databaseTooNew": false, "corruptionFound": false, "mirrorFolder": null})
     );
     // «Перезапустить для восстановления» без найденного повреждения (отметки нет) отвергается и отметку не ставит.
     assert_eq!(
@@ -357,6 +357,17 @@ fn startup_state_reports_recovery_and_refuses_restore_when_the_journal_is_open()
     );
     let db_path = fixture.app.state::<Store>().db_path().to_path_buf();
     assert!(!kinige_store::needs_recovery(&db_path));
+    // Фоновая проверка поставила отметку, а страница пропустила событие: состояние запуска сообщает о повреждении, окно
+    // «База повреждена» (режим «работающая база») появляется и без события.
+    kinige_store::mark_needs_recovery(&db_path).unwrap();
+    let found = call(&main, "startup_state", json!({})).unwrap();
+    assert_eq!(found["corruptionFound"], true);
+    assert_eq!(found["needsRecovery"], false, "журнал по-прежнему открыт");
+    kinige_store::clear_needs_recovery(&db_path);
+    assert_eq!(
+        call(&main, "startup_state", json!({})).unwrap()["corruptionFound"],
+        false
+    );
     assert_eq!(
         call(
             &main,

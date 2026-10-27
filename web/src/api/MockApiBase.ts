@@ -70,7 +70,13 @@ export class MockApiBase {
       })),
     ];
     this.settings = options.settings ?? DEFAULT_SETTINGS;
-    this.startup = options.startup ?? { needsRecovery: false, backups: [], databaseTooNew: false, mirrorFolder: null };
+    this.startup = options.startup ?? {
+      needsRecovery: false,
+      backups: [],
+      databaseTooNew: false,
+      corruptionFound: false,
+      mirrorFolder: null,
+    };
     this.pickedFolder = options.pickedFolder === undefined ? "/Users/me/Notes/Kinige" : options.pickedFolder;
   }
 

@@ -47,11 +47,18 @@ export function AppRoot({ api, initialSettings, startup }: AppRootProps) {
   useEffect(() => {
     let off: (() => void) | undefined;
     let closed = false;
+    const found = () => setRecovery((old) => old ?? { mode: "running", backups: [] });
     api
-      .onDatabaseCorrupt(() => setRecovery({ mode: "running", backups: [] }))
+      .onDatabaseCorrupt(found)
       .then((unlisten) => {
         if (closed) unlisten();
         else off = unlisten;
+        // Проверка целостности идёт сразу при старте и могла найти повреждение раньше, чем страница подписалась на событие
+        // (найдено в живой проверке): состояние запуска хранит отметку, спрашиваем его ещё раз уже после подписки.
+        return api.startupState();
+      })
+      .then((state) => {
+        if (!closed && state.corruptionFound) found();
       })
       .catch(() => undefined);
     return () => {

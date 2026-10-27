@@ -7,7 +7,13 @@ import { AppRoot } from "./AppRoot";
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 const BACKUP = { name: "kinige-2026-10-20.db", kind: "daily" as const, createdAt: Date.UTC(2026, 9, 20, 6, 5) };
 
-const NORMAL: StartupState = { needsRecovery: false, backups: [], databaseTooNew: false, mirrorFolder: null };
+const NORMAL: StartupState = {
+  needsRecovery: false,
+  backups: [],
+  databaseTooNew: false,
+  corruptionFound: false,
+  mirrorFolder: null,
+};
 
 function setup(startup: StartupState) {
   const api = new MockApi({ now: NOW, startup });
@@ -51,6 +57,15 @@ describe("AppRoot: запуск и восстановление (слайс 3)",
     });
     fireEvent.click(screen.getByRole("button", { name: "Перезапустить" }));
     await waitFor(() => expect(api.restartRequested).toBe(true));
+  });
+
+  it("повреждение найдено до подписки страницы на событие: отметка в состоянии запуска открывает окно без события", async () => {
+    const api = new MockApi({ now: NOW });
+    // Страница получила состояние до проверки, а к моменту подписки Rust уже поставил отметку.
+    api.startupState = () => Promise.resolve({ ...NORMAL, corruptionFound: true });
+    render(<AppRoot api={api} initialSettings={DEFAULT_SETTINGS} startup={NORMAL} />);
+    expect(await screen.findByRole("main", { name: "База повреждена" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Перезапустить" })).toBeInTheDocument();
   });
 
   it("база создана более новой версией: сообщение без кнопок, журнал не открыт", async () => {

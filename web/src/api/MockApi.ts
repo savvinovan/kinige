@@ -348,7 +348,7 @@ export class MockApi extends MockApiBase implements KinigeApi {
       if (!this.startup.backups.some((b) => b.name === name)) throw new KinigeApiError("backup_not_found");
       this.restoredFrom = name;
       const previousMirror = this.startup.mirrorFolder ? `${this.startup.mirrorFolder}-before-restore-20261021T061200Z` : null;
-      this.startup = { needsRecovery: false, backups: [], databaseTooNew: false, mirrorFolder: null };
+      this.startup = { needsRecovery: false, backups: [], databaseTooNew: false, corruptionFound: false, mirrorFolder: null };
       return { previousMirror };
     });
   }

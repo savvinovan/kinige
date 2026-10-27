@@ -101,6 +101,10 @@ pub fn startup_state(recovery: State<'_, Recovery>) -> StartupState {
             Vec::new()
         },
         database_too_new: recovery.database_too_new,
+        // Журнал открыт и отметка стоит: проверка в фоне нашла повреждение работающей базы (событие страница могла пропустить).
+        corruption_found: !needs_recovery
+            && !recovery.database_too_new
+            && kinige_store::restart_for_recovery_allowed(recovery.db_path()),
         mirror_folder: needs_recovery
             .then(|| recovery.mirror_folder.as_ref())
             .flatten()
