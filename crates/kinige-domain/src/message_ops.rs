@@ -2,6 +2,7 @@
 //! `placement` (день записи) и разбор колонок из групп. Байты групп каноничные, HLC растёт строго, неизвестное сохраняется
 //! дословно — общий движок в [`crate::rewrite`]. Правка текста — [`crate::append::rewrite_body`].
 
+use crate::chat::is_chat_id;
 use crate::groups::GroupError;
 use crate::journal::is_valid_journal_date;
 use crate::rewrite::{
@@ -150,14 +151,14 @@ pub fn set_journal_date(
 
 /// Перезаписывает группу `placement`: запись переезжает в чат `chat_id`; `journal_date` не меняется (запись остаётся в тот
 /// же день нового чата). `base`/`supersedes` — по ADR-0001 §3.4, та же логика, что у смены дня. Существование чата проверяет
-/// вызывающий (хранилище): домен знает только, что id непустой и без управляющих знаков.
+/// вызывающий (хранилище): домен знает только формат id — Inbox или UUID v4 в нижнем регистре (ADR-0001 §1).
 pub fn move_to_chat(
     current: &Groups<'_>,
     chat_id: &str,
     confirmed: bool,
     new_hlc: &str,
 ) -> Result<Rewritten, GroupError> {
-    if chat_id.is_empty() || chat_id.len() > 64 || chat_id.chars().any(char::is_control) {
+    if !is_chat_id(chat_id) {
         return Err(GroupError::Invalid("чат записи"));
     }
     rewrite_group(current, "placement", new_hlc, None, |group, old_hlc| {

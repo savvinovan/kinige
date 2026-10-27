@@ -154,9 +154,12 @@ fn chat_input_rules() {
         Err(ChatInputError::IconInvalid)
     );
     assert_eq!(
-        chat::normalize_icon(Some(&"😀".repeat(9))),
+        chat::normalize_icon(Some(&"😀".repeat(11))),
         Err(ChatInputError::IconInvalid)
     );
+    // Самая длинная последовательность пикера (поцелуй с разными тонами кожи, 35 байт) помещается.
+    let kiss = "👩\u{1F3FB}\u{200D}\u{2764}\u{FE0F}\u{200D}💋\u{200D}👨\u{1F3FF}";
+    assert_eq!(chat::normalize_icon(Some(kiss)), Ok(kiss.to_string()));
 }
 
 #[test]

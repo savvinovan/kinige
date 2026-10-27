@@ -12,8 +12,9 @@ use std::fmt;
 pub const DEFAULT_ICON: &str = "💬";
 /// Длина имени чата в знаках (слайс 3: от 1 до 128).
 pub const MAX_TITLE_CHARS: usize = 128;
-/// Предел записи эмодзи в байтах: один знак с вариантами и ZWJ-последовательностью (семья, флаг, оттенок кожи) помещается.
-pub const MAX_ICON_BYTES: usize = 32;
+/// Предел записи эмодзи в байтах: помещается любая последовательность пикера. Самая длинная в `emojibase-data` 17.0.0 —
+/// поцелуй пары с разными тонами кожи, 35 байт (прежний предел в 32 такие эмодзи отвергал).
+pub const MAX_ICON_BYTES: usize = 40;
 
 /// Почему введённые имя или эмодзи не приняты.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -229,4 +230,9 @@ pub fn set_state(
 /// Это Inbox (по id, а не по флагу, ADR-0001 §3.6).
 pub fn is_inbox(chat_id: &str) -> bool {
     chat_id == INBOX_ID
+}
+
+/// Допустимый формат id чата: Inbox (константа) или UUID v4 в нижнем регистре (ADR-0001 §1). Существование чата — забота хранилища.
+pub fn is_chat_id(chat_id: &str) -> bool {
+    is_inbox(chat_id) || crate::hlc::is_uuid_v4(chat_id)
 }

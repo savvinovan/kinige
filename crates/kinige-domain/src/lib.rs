@@ -5,6 +5,7 @@ pub mod append;
 pub mod backup;
 pub mod chat;
 pub mod draft;
+pub mod emoji;
 pub mod folders;
 pub mod groups;
 pub mod history;

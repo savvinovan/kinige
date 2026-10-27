@@ -4,7 +4,7 @@
 use crate::groups::{GroupError, INBOX_ID, MessageRow, NewMessage, new_message, parse_groups_raw};
 use crate::message_ops::{self, message_columns};
 use crate::rewrite::{Groups, is_read_only};
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 const DEVICE: &str = "5f0c3e2a-9b1d-4c7e-8a64-0d2f1b3c4e5f";
@@ -114,13 +114,31 @@ fn only_placement_changes_and_its_hlc_grows() {
 #[test]
 fn a_bad_chat_id_is_refused_and_a_newer_group_makes_the_record_read_only() {
     let row = message();
-    for bad in ["", "с\nпереводом", &"я".repeat(65)] {
+    // Допустимо только Inbox или UUID v4 в нижнем регистре (ADR-0001 §1).
+    let bad_ids = [
+        "",
+        "с\nпереводом",
+        &"я".repeat(65),
+        "books",
+        "7D6E5F40-3B2A-4C19-8E07-6A5B4C3D2E1F", // верхний регистр
+        "7d6e5f40-3b2a-1c19-8e07-6a5b4c3d2e1f", // версия 1
+        "7d6e5f40-3b2a-4c19-ce07-6a5b4c3d2e1f", // вариант не RFC 4122
+        "7d6e5f403b2a4c198e076a5b4c3d2e1f",     // без дефисов
+        " 7d6e5f40-3b2a-4c19-8e07-6a5b4c3d2e1f",
+    ];
+    for bad in bad_ids {
         assert!(
             matches!(
                 message_ops::move_to_chat(&groups(&row), bad, true, &hlc(NOW as u64 + 1)),
                 Err(GroupError::Invalid(_))
             ),
             "{bad:?}"
+        );
+    }
+    for good in [BOOKS, INBOX_ID] {
+        assert!(
+            message_ops::move_to_chat(&groups(&row), good, true, &hlc(NOW as u64 + 1)).is_ok(),
+            "{good}"
         );
     }
     // Группа из будущей версии: запись только для чтения, перенос не предлагается (проверяет вызывающий через is_read_only).
@@ -132,4 +150,59 @@ fn a_bad_chat_id_is_refused_and_a_newer_group_makes_the_record_read_only() {
     let newer = serde_json::to_string(&hlc_map).unwrap();
     assert!(is_read_only(&newer).unwrap());
     assert!(!is_read_only(&row.hlc_json).unwrap());
+}
+
+/// Запись, у которой в `placement` (sv = 1) есть поле, неизвестное этой версии: перезапись группы его не теряет.
+fn with_unknown_placement_field(row: &MessageRow) -> MessageRow {
+    let mut raw = parse_groups_raw(&row.groups_raw).unwrap();
+    let mut placement: serde_json::Map<String, Value> =
+        serde_json::from_str(raw["placement"].get()).unwrap();
+    placement.insert("zz_future".into(), json!({"a": "ё", "z": [1, 2]}));
+    raw.insert(
+        "placement".into(),
+        serde_json::value::RawValue::from_string(serde_json::to_string(&placement).unwrap())
+            .unwrap(),
+    );
+    MessageRow {
+        groups_raw: serde_json::to_string(&raw).unwrap(),
+        ..row.clone()
+    }
+}
+
+fn placement_of(groups_raw: &str) -> serde_json::Map<String, Value> {
+    serde_json::from_str(parse_groups_raw(groups_raw).unwrap()["placement"].get()).unwrap()
+}
+
+#[test]
+fn unknown_fields_inside_placement_survive_a_move_and_a_date_change() {
+    let row = with_unknown_placement_field(&message());
+    let unknown = json!({"a": "ё", "z": [1, 2]});
+
+    let moved =
+        message_ops::move_to_chat(&groups(&row), BOOKS, false, &hlc(NOW as u64 + 1)).unwrap();
+    let placement = placement_of(&moved.groups_raw);
+    assert_eq!(placement["zz_future"], unknown, "перенос");
+    assert_eq!(placement["chat_id"], BOOKS);
+    assert_eq!(placement["journal_date"], "2026-10-09");
+
+    // Смена дня поверх переноса, в ту же цепочку: неизвестное поле всё ещё на месте, чат не потерян.
+    let moved_row = MessageRow {
+        groups_raw: moved.groups_raw,
+        hlc_json: moved.hlc_json,
+        ..row.clone()
+    };
+    let dated = message_ops::set_journal_date(
+        &groups(&moved_row),
+        "2026-10-12",
+        false,
+        &hlc(NOW as u64 + 2),
+    )
+    .unwrap();
+    let placement = placement_of(&dated.groups_raw);
+    assert_eq!(placement["zz_future"], unknown, "смена дня");
+    assert_eq!(placement["chat_id"], BOOKS);
+    assert_eq!(placement["journal_date"], "2026-10-12");
+    // Колонки по-прежнему собираются из группы с лишним полем.
+    let columns = message_columns(&dated.groups_raw).unwrap();
+    assert_eq!(columns.chat_id, BOOKS);
 }

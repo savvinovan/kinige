@@ -104,6 +104,12 @@ pub fn is_uuid(text: &str) -> bool {
         })
 }
 
+/// UUID версии 4 в нижнем регистре: 36 символов, `4` в начале третьей группы, вариант `8`, `9`, `a` или `b` в начале четвёртой.
+pub fn is_uuid_v4(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    is_uuid(text) && bytes[14] == b'4' && matches!(bytes[19], b'8' | b'9' | b'a' | b'b')
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
