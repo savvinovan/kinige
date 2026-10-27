@@ -335,9 +335,7 @@ fn make_database_with_copy(dir: &Path) -> (String, PathBuf) {
         )
         .unwrap();
     drop(store);
-    // Поток-писатель закрывает соединение уже после `drop`: файл полностью записан, когда `-wal` исчез.
-    let wal = dir.join("kinige.db-wal");
-    wait_until("база закрыта", || !wal.exists());
+    wait_closed(dir);
     (device, backups_dir(&db_path(dir)))
 }
 
