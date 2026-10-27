@@ -25,7 +25,8 @@ pub struct FolderChat<'a> {
 /// Имя из названия чата: недопустимые знаки (`/ \ : * ? " < > |` и управляющие) заменяются на `_`, пробелы и точки по краям
 /// убираются, длина ограничена. Пустое — [`FALLBACK_FOLDER`].
 pub fn sanitize_folder_name(title: &str) -> String {
-    let replaced: String = title
+    let outer = title.trim_matches(|c: char| c.is_whitespace() || c == '.');
+    let replaced: String = outer
         .chars()
         .map(|c| {
             if c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') {
@@ -60,14 +61,17 @@ pub fn chat_folders(chats: &[FolderChat<'_>]) -> BTreeMap<String, String> {
     for chat in others {
         let base = sanitize_folder_name(chat.title);
         let mut name = base.clone();
-        let mut suffix = SUFFIX_CHARS;
+        let id_len = chat.id.chars().count();
+        let (mut suffix, mut number, mut whole_id_tried) = (SUFFIX_CHARS, 1, false);
         while taken.contains(&name.to_lowercase()) {
             let id_start: String = chat.id.chars().take(suffix).collect();
             name = format!("{base} ({id_start})");
-            if suffix >= chat.id.chars().count() {
-                // Id исчерпан (одинаковые id в одной базе невозможны): просто различаем номером.
-                name = format!("{name} {}", taken.len());
+            if whole_id_tried {
+                // Id исчерпан (одинаковые id в одной базе невозможны): различаем номером.
+                name = format!("{name} {number}");
+                number += 1;
             }
+            whole_id_tried |= suffix >= id_len;
             suffix += SUFFIX_CHARS;
         }
         taken.insert(name.to_lowercase());

@@ -111,10 +111,9 @@ impl Store {
             self.inner
                 .backup
                 .set_error(Some(BackupError::IntegrityFailed));
-            if !self.inner.maintenance.reported.swap(true, Ordering::SeqCst) {
-                if let Some(hook) = &self.inner.on_corruption {
-                    (hook.0)();
-                }
+            let first_time = !self.inner.maintenance.reported.swap(true, Ordering::SeqCst);
+            if let (true, Some(hook)) = (first_time, &self.inner.on_corruption) {
+                (hook.0)();
             }
             return Ok(report);
         }

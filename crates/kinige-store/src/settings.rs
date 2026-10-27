@@ -187,6 +187,10 @@ impl Store {
     /// Выбранный в пикере эмодзи встаёт первым в «недавних»; повтор переезжает вперёд, список ограничен
     /// [`MAX_RECENT_EMOJI`]. Ответ — список целиком. Чтение и запись — в одной транзакции писателя.
     pub fn add_recent_emoji(&self, emoji: &str) -> Result<Vec<String>, StoreError> {
+        // Пустое значение — не эмодзи, а не «эмодзи по умолчанию».
+        if emoji.trim().is_empty() {
+            return Err(kinige_domain::chat::ChatInputError::IconInvalid.into());
+        }
         let emoji = kinige_domain::chat::normalize_icon(Some(emoji))?;
         self.write(move |conn| {
             let tx = conn

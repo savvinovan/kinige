@@ -301,9 +301,9 @@ fn delete_and_restore_move_the_counter_and_the_feed_and_are_idempotent() {
     assert_eq!(
         page.messages
             .iter()
-            .map(|m| m.id.clone())
+            .map(|m| m.id.as_str())
             .collect::<Vec<_>>(),
-        [other.id.clone()]
+        [other.id.as_str()]
     );
     let clock_after_delete = clock(dir.path());
     store.delete_message(&id, &at(9)).unwrap();

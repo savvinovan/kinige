@@ -201,6 +201,13 @@ pub fn assert_columns_match_groups(dir: &Path, id: &str) {
     }
 }
 
+/// Хранилище закрыто, и файл базы записан целиком: поток-писатель закрывает соединение уже после `drop(store)`, и пока
+/// рядом лежит `-wal`, часть записей ещё не в основном файле.
+pub fn wait_closed(dir: &Path) {
+    let wal = dir.join("kinige.db-wal");
+    super::wait_until("база закрыта", || !wal.exists());
+}
+
 /// Число ревизий записи.
 pub fn revisions(dir: &Path, message_id: &str) -> i64 {
     raw(dir)
