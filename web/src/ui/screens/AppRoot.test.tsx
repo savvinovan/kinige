@@ -38,6 +38,22 @@ describe("AppRoot: запуск и восстановление (слайс 3)",
     expect(api.restoredFrom).toBe(BACKUP.name);
   });
 
+  it("повреждение найдено во время восстановления: после него окно «перезапустить», а не журнал на повреждённой базе", async () => {
+    const api = setup({ ...NORMAL, needsRecovery: true, backups: [BACKUP] });
+    await screen.findByRole("main", { name: "База повреждена" });
+    // Событие приходит в окно «startup» и игнорируется; к концу восстановления Rust уже знает о находке.
+    const restoreBackup = api.restoreBackup.bind(api);
+    api.restoreBackup = async (name) => {
+      const outcome = await restoreBackup(name);
+      act(() => api.emitDatabaseCorrupt());
+      api.startupState = () => Promise.resolve({ ...NORMAL, corruptionFound: true });
+      return outcome;
+    };
+    fireEvent.click(screen.getByRole("button", { name: /^Восстановить из копии/ }));
+    expect(await screen.findByRole("button", { name: "Перезапустить" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Новая заметка" })).toBeNull();
+  });
+
   it("ошибка восстановления: окно остаётся, текст ошибки виден", async () => {
     const api = setup({ ...NORMAL, needsRecovery: true, backups: [BACKUP] });
     await screen.findByRole("main", { name: "База повреждена" });

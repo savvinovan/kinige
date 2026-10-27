@@ -70,11 +70,13 @@ export function AppRoot({ api, initialSettings, startup }: AppRootProps) {
     setError(null);
     api
       .restoreBackup(name)
-      // Rust открыл базу из копии и запустил сервисы: настройки читаются уже по-настоящему.
-      .then(() => api.getSettings())
-      .then((fresh) => {
+      // Rust открыл базу из копии и запустил сервисы: настройки читаются уже по-настоящему. Обслуживание восстановленной
+      // базы могло найти в ней повреждение ещё во время восстановления: событие тогда пришло в окно «startup» и было
+      // проигнорировано, поэтому состояние спрашивается заново (иначе журнал открылся бы на базе, объявленной повреждённой).
+      .then(() => Promise.all([api.getSettings(), api.startupState()]))
+      .then(([fresh, state]) => {
         setSettings(fresh);
-        setRecovery(null);
+        setRecovery(state.corruptionFound ? { mode: "running", backups: [] } : null);
       })
       .catch((reason: unknown) => setError(errorCode(reason)))
       .finally(() => setBusy(false));
