@@ -1,13 +1,13 @@
-# Проверки слайса 3 (локально, macOS, 2026-10-27 21:06 MSK), коммит 1284b40
+# Проверки слайса 3 (локально, macOS, 2026-10-27 21:22 MSK), коммит 57fe2df
 
 $ cargo fmt --all --check
 итог: чисто
 
 $ cargo clippy --workspace --all-targets -- -D warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.75s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.85s
 
 $ cargo test --workspace
-итог: passed 333, failed 0, ignored 1
+итог: passed 334, failed 0, ignored 1
 
 $ cargo build -p kinige-domain --target wasm32-unknown-unknown
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
@@ -28,21 +28,17 @@ $ npm run lint
 
 $ npm test
  Test Files  55 passed (55)
-      Tests  1054 passed (1054)
+      Tests  1055 passed (1055)
 
 $ npm run build-storybook
 └  Storybook build completed successfully
 
-# Аналог CI в Linux-контейнере (удалённый Docker ubuntu-server; образы kinige-ci-rust:s3, kinige-ci-web:s3, kinige-visual:local)
-Rust (ubuntu:24.04 + системные библиотеки Tauri + rust-toolchain.toml 1.94.0, исходники — git archive HEAD):
-  cargo fmt --all --check                                  чисто
-  cargo clippy --workspace --all-targets -- -D warnings    чисто
-  cargo test --workspace --no-fail-fast                    TOTAL passed 332 failed 0 (на 1 меньше, чем на macOS: `ipc_restore_e2e` только macOS)
-  cargo build -p kinige-domain --target wasm32-unknown-unknown   собрано
-  сгенерированные TS-типы (git status web/src/api/generated)     generated-types-clean
-Web (node:24.21.0, npm ci):
-  tokens.css / themes.css актуальны                        tokens-clean
-  npm run typecheck, npm run lint                          без ошибок
-  npm test                                                 Test Files 55 passed (55), Tests 1054 passed (1054)
-Визуальные тесты Storybook (scripts/visual-tests.sh): истории и эталоны в этом проходе не менялись; последний прогон — 271 passed, 4 раза подряд.
-Шаг `cargo test` в Dockerfile аналога считает итог по `test result` и падает при ненулевом числе упавших (прежний конвейер `| tee | grep` глотал код возврата).
+# Аналог CI в Linux-контейнере (удалённый Docker ubuntu-server)
+Последний полный прогон — на коммите 1284b40 (после него менялись два комментария, одна строка `backup.error`, ветка `.catch` в AppRoot и тесты к ним;
+Linux-прогон этого последнего шага не повторялся):
+  Rust (ubuntu:24.04 + системные библиотеки Tauri + rust-toolchain.toml 1.94.0, git archive HEAD): fmt, clippy -D warnings чисто;
+    cargo test --workspace --no-fail-fast — TOTAL passed 332 failed 0 (на 1 меньше, чем на macOS: `ipc_restore_e2e` только macOS);
+    wasm32 собран; сгенерированные TS-типы актуальны.
+  Web (node:24.21.0, npm ci): токены актуальны, typecheck, lint, vitest — 55 файлов, 1054 теста.
+  Визуальные тесты Storybook: 271 passed, 4 раза подряд (истории и эталоны с тех пор не менялись).
+Шаг `cargo test` в Dockerfile аналога считает итог по `test result` и падает при ненулевом числе упавших.
