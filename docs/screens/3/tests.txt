@@ -37,3 +37,16 @@ $ npm test
 $ npm run build-storybook
 └  Storybook build completed successfully
 
+
+# Аналог CI в Linux-контейнере (удалённый Docker ubuntu-server; образы kinige-ci-rust:s3, kinige-ci-web:s3, kinige-visual:local)
+Rust (ubuntu:24.04 + системные библиотеки Tauri + rust-toolchain.toml 1.94.0, исходники — git archive HEAD):
+  cargo fmt --all --check                                  чисто
+  cargo clippy --workspace --all-targets -- -D warnings    чисто
+  cargo test --workspace                                   TOTAL passed 310 failed 0
+  cargo build -p kinige-domain --target wasm32-unknown-unknown   собрано
+  сгенерированные TS-типы (git status web/src/api/generated)     generated-types-clean
+Web (node:24.21.0, npm ci):
+  tokens.css / themes.css актуальны                        tokens-clean
+  npm run typecheck, npm run lint                          без ошибок
+  npm test                                                 Test Files 54 passed (54), Tests 1045 passed (1045)
+Визуальные тесты Storybook (scripts/visual-tests.sh, сравнение с эталонами в репозитории): 272 passed.
