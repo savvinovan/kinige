@@ -9,9 +9,19 @@
   background: transparent;
 }
 
+/* Панель прижата к нижнему краю окна: окно растёт вверх, а пока размер окна догоняет содержимое (один кадр), поле ввода
+   остаётся на месте и не дёргается. */
+:root[data-window="capture"] #root {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
 /* Поле под тень: окно ОС больше панели на shadow-margin с каждой стороны. Высота — по содержимому, но не выше окна:
    дальше сжимается контекст, а поле растёт внутри себя. */
 .capture-shell {
+  /* Не сжимается вместе с окном: измеряется собственная высота содержимого (по ней Rust подгоняет окно). */
+  flex: none;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;

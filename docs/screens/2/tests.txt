@@ -116,3 +116,9 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 # cargo fmt --check, clippy -D warnings, cargo test --workspace (196 тестов, 0 ошибок), wasm, typecheck, lint, build-storybook: чисто; npm test: 704 passed (704)
 # scripts/visual-tests.sh --update: 126 passed; обновлены эталоны историй «Окно захвата» (обычный и крупный текст)
 # Линуксовый аналог CI (Docker ubuntu:24.04): fmt, clippy -D warnings, test — ошибок 0 (первые попытки упали на сети при apt-get, повтор прошёл)
+
+# Раунд 6 (27.10.2026, окно захвата внизу экрана, закреплён нижний край)
+# cargo fmt --check, clippy -D warnings: чисто; cargo test --workspace: 197 тестов, 0 ошибок (новый: capture_window_sits_low_centered_and_keeps_its_bottom_edge_for_any_height — якорь по рабочей области, смещённая рабочая область, retina, один нижний край для высот 122…480)
+# cargo build -p kinige-domain --target wasm32-unknown-unknown: ok; typecheck, lint, build-storybook: чисто; npm test: 704 passed (704)
+# scripts/visual-tests.sh --update: 126 passed, эталоны не изменились (правки CSS касаются только страницы окна захвата)
+# Линуксовый аналог CI (Docker ubuntu:24.04): fmt, clippy -D warnings, test — ошибок 0 (первые попытки упали на сети при apt-get, повтор прошёл)

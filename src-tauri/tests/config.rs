@@ -228,6 +228,28 @@ fn two_windows_without_remote_urls_and_the_capture_window_is_a_hidden_floating_p
 }
 
 #[test]
+fn capture_window_sits_low_centered_and_keeps_its_bottom_edge_for_any_height() {
+    use kinige_lib::capture::{anchor_for, top_for_bottom};
+    // Рабочая область 3840 × 2160 без Dock: панель по центру, её низ на 12% высоты выше низа, окно ниже панели на 32 px.
+    let (x, bottom) = anchor_for((0, 0, 3840, 2160), 584, 32.0);
+    assert_eq!(x, 1628);
+    assert_eq!(bottom, 1933); // 2160 × 0,88 + 32 = 1932,8
+    // Рабочая область со смещением (menu bar сверху, Dock снизу) и второй монитор справа: считается от неё, а не от экрана.
+    let (x, bottom) = anchor_for((1440, 30, 1440, 800), 584, 32.0);
+    assert_eq!(x, 1440 + 428);
+    assert_eq!(bottom, 766); // 30 + 800 × 0,88 + 32
+    // Retina: поле под тень 64 физических px.
+    assert_eq!(anchor_for((0, 0, 2880, 1800), 1168, 64.0), (856, 1648)); // 1800 × 0,88 + 64
+    // Нижний край один и тот же при любой высоте окна: растёт только верх (вверх).
+    let bottom = 1933;
+    for height in [122_u32, 281, 333, 480] {
+        let top = top_for_bottom(bottom, height);
+        assert_eq!(top + height as i32, bottom, "высота {height}");
+    }
+    assert!(top_for_bottom(bottom, 480) < top_for_bottom(bottom, 122));
+}
+
+#[test]
 fn capture_resize_clamps_the_height_into_the_token_range() {
     use kinige_lib::capture::{MAX_HEIGHT, MIN_HEIGHT, clamp_height};
     assert_eq!(clamp_height(172.4), 172.0);

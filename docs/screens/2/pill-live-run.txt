@@ -1,79 +1,93 @@
-# Вид окна захвата после приёмки, раунд 2 (отступы 13 px; 22.10.2026, scenL.sh: проверочная копия приложения kinige-shot, мышь + AX, без клавиатуры; владелец значка сверяется по AX-положению у процесса kinige-shot)
+# Положение окна захвата внизу экрана, нижний край закреплён (27.10.2026, scenL.sh: проверочная копия приложения kinige-shot, мышь + AX, без клавиатуры; владелец значка сверяется по AX-положению у процесса kinige-shot)
 == empty (режим empty, язык ru )
-pid=87399 (до запуска front=Spotify)
-front после возврата: Spotify
-(замечание: idle=238, возможно пользователь вернулся)
+pid=90685 (до запуска front=zen)
+front после возврата: zen
 button 1 of window Kinige of application process kinige-shot
-x значка: 2927 (окна слоя 25 до запуска: 11496,11500,11501,11504,11505,24471,40573,57844,58386,62441,74145,76091,76200; после: 11496,11500,11501,11504,11505,24471,40573,57844,58386,62441,74145,76091,76200,76864)
-значок по AX у kinige-shot: x=2927; по окнам: x=2927; pid владельца: 87399
+значок по AX у kinige-shot: x=2932; по окнам Control Center: x=2932; pid владельца: 90685
 окон процесса после щелчка по значку: 1
 окна процесса:
-76863	layer=4	584x122	x=1628 y=573	Kinige Capture
-front с окном захвата: Spotify (ждём Spotify)
-окно 76863 -> docs/screens/2/40-capture-pill-empty-ru.png
-след: 2 строк; последние:
-kinige-trace 14921 show
-kinige-trace 14928 key
-после выхода: front=Spotify; процессов моего экземпляра 0
-экземпляр пользователя жив: 1
+87620	layer=4	584x122	x=1628 y=1739	Kinige Capture
+front с окном захвата: zen (ждём zen)
+окно 87620 -> docs/screens/2/40-capture-pill-empty-ru.png
+след: 
+kinige-trace 97271 show
+kinige-trace 97271 place x=1628 bottom=1861 height=122
+kinige-trace 97274 key
+после выхода: front=zen; процессов моего экземпляра 0
 == context (режим three, язык ru )
-pid=88299 (до запуска front=Spotify)
-front после возврата: Spotify
-(замечание: idle=48, возможно пользователь вернулся)
+pid=91211 (до запуска front=zen)
+front после возврата: zen
 button 1 of window Kinige of application process kinige-shot
-x значка: 2927 (окна слоя 25 до запуска: 11496,11500,11501,11504,11505,24471,40573,57844,58386,62441,74145,76091,76200; после: 11496,11500,11501,11504,11505,24471,40573,57844,58386,62441,74145,76091,76200,76872)
-значок по AX у kinige-shot: x=2927; по окнам: x=2927; pid владельца: 88299
+значок по AX у kinige-shot: x=2932; по окнам Control Center: x=2932; pid владельца: 91211
 окон процесса после щелчка по значку: 1
 окна процесса:
-76871	layer=4	584x281	x=1628 y=573	Kinige Capture
-front с окном захвата: Spotify (ждём Spotify)
-окно 76871 -> docs/screens/2/41-capture-pill-context-hint-ru.png
-след: 2 строк; последние:
-kinige-trace 66894 show
-kinige-trace 66896 key
-после выхода: front=Spotify; процессов моего экземпляра 0
-экземпляр пользователя жив: 1
+87630	layer=4	584x281	x=1628 y=1580	Kinige Capture
+front с окном захвата: zen (ждём zen)
+окно 87630 -> docs/screens/2/41-capture-pill-context-hint-ru.png
+--- повторный показ с другой высотой: черновик из 6 строк посеян в ту же базу
+значок по AX у kinige-shot: x=2932; по окнам Control Center: x=2932; pid владельца: 91211
+окон процесса после щелчка по значку: 2
+окна после повторного показа:
+87630	layer=4	584x370	x=1628 y=1491	Kinige Capture
+front: zen (ждём zen)
+окно 87630 -> docs/screens/2/47-capture-pill-reshow-taller-ru.png
+след: 
+kinige-trace 56986 show
+kinige-trace 56987 place x=1628 bottom=1861 height=281
+kinige-trace 56989 key
+kinige-trace 60760 show
+kinige-trace 60760 place x=1628 bottom=1861 height=281
+kinige-trace 60782 resize height=370 bottom=1861
+после выхода: front=zen; процессов моего экземпляра 0
 == error (режим long-draft, язык ru )
-pid=88839 (до запуска front=Spotify)
-front после возврата: Spotify
-(замечание: idle=47, возможно пользователь вернулся)
+pid=93595 (до запуска front=Telegram)
+front после возврата: Telegram
 button 1 of window Kinige of application process kinige-shot
-x значка: 2927 (окна слоя 25 до запуска: 11496,11500,11501,11504,11505,24471,40573,57844,58386,62441,74145,76091,76200; после: 11496,11500,11501,11504,11505,24471,40573,57844,58386,62441,74145,76091,76200,76882)
-значок по AX у kinige-shot: x=2927; по окнам: x=2927; pid владельца: 88839
+значок по AX у kinige-shot: x=2932; по окнам Control Center: x=2932; pid владельца: 93595
 окон процесса после щелчка по значку: 1
 окна процесса:
-76881	layer=4	584x333	x=1628 y=573	Kinige Capture
-front с окном захвата: Spotify (ждём Spotify)
-окно 76881 -> docs/screens/2/42-capture-pill-long-text-ru.png
+87643	layer=4	584x333	x=1628 y=1528	Kinige Capture
+front с окном захвата: Telegram (ждём Telegram)
+окно 87643 -> docs/screens/2/42-capture-pill-long-text-ru.png
 AX: нажатие кнопки Отправить в окне захвата
 нажата
-окно 76881 -> docs/screens/2/43-capture-pill-error-ru.png
-след: 2 строк; последние:
-kinige-trace 18054 show
-kinige-trace 18059 key
-после выхода: front=Spotify; процессов моего экземпляра 0
-экземпляр пользователя жив: 1
+окна после ошибки:
+87643	layer=4	584x336	x=1628 y=1525	Kinige Capture
+окно 87643 -> docs/screens/2/43-capture-pill-error-ru.png
+след: 
+kinige-trace 61071 show
+kinige-trace 61072 place x=1628 bottom=1861 height=333
+kinige-trace 61079 key
+kinige-trace 63474 resize height=336 bottom=1861
+после выхода: front=Telegram; процессов моего экземпляра 0
 == enlarge (режим three, язык en large)
-pid=90261 (до запуска front=Spotify)
-front после возврата: Spotify
-(замечание: idle=50, возможно пользователь вернулся)
+pid=95429 (до запуска front=Telegram)
+front после возврата: Telegram
 button 1 of window Kinige of application process kinige-shot
-x значка: 2927 (окна слоя 25 до запуска: 11496,11500,11501,11504,11505,24471,40573,57844,58386,62441,74145,76091,76200; после: 11496,11500,11501,11504,11505,24471,40573,57844,58386,62441,74145,76091,76200,76892)
-значок по AX у kinige-shot: x=2927; по окнам: x=2927; pid владельца: 90261
+значок по AX у kinige-shot: x=2932; по окнам Control Center: x=2932; pid владельца: 95429
 окон процесса после щелчка по значку: 1
 окна процесса:
-76891	layer=4	584x336	x=1628 y=573	Kinige Capture
-front с окном захвата: Spotify (ждём Spotify)
-окно 76891 -> docs/screens/2/44-capture-pill-context-large-en.png
-след: 2 строк; последние:
-kinige-trace 71665 show
-kinige-trace 71672 key
-после выхода: front=Spotify; процессов моего экземпляра 0
-экземпляр пользователя жив: 1
+87653	layer=4	584x336	x=1628 y=1525	Kinige Capture
+front с окном захвата: Telegram (ждём Telegram)
+окно 87653 -> docs/screens/2/44-capture-pill-context-large-en.png
+след: 
+kinige-trace 14824 show
+kinige-trace 14824 place x=1628 bottom=1861 height=336
+kinige-trace 14825 key
+после выхода: front=Telegram; процессов моего экземпляра 0
 == готово
+
+# Нижний край окна (y + высота) во всех показах и пересчётах:
+высота 122, y=1739, нижний край 1861
+высота 281, y=1580, нижний край 1861
+высота 370, y=1491, нижний край 1861
+высота 333, y=1528, нижний край 1861
+высота 336, y=1525, нижний край 1861
+высота 336, y=1525, нижний край 1861
 
 # Прозрачность углов:
 docs/screens/2/40-capture-pill-empty-ru.png {"w":584,"h":122,"corners":[0,0,0,0],"center":255}
 docs/screens/2/41-capture-pill-context-hint-ru.png {"w":584,"h":281,"corners":[0,0,0,0],"center":255}
 docs/screens/2/43-capture-pill-error-ru.png {"w":584,"h":336,"corners":[0,0,0,0],"center":255}
 docs/screens/2/44-capture-pill-context-large-en.png {"w":584,"h":336,"corners":[0,0,0,0],"center":255}
+docs/screens/2/47-capture-pill-reshow-taller-ru.png {"w":584,"h":370,"corners":[0,0,0,0],"center":255}

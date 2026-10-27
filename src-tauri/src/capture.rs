@@ -13,9 +13,10 @@ pub const MAIN_LABEL: &str = "main";
 /// Событие главному окну: записи изменились (захват, дописывание, буфер). Слушает только `main`.
 pub const ENTRIES_CHANGED: &str = "entries-changed";
 
-/// Доля высоты экрана над панелью захвата: панель чуть выше середины, как у быстрых панелей. Верх панели при показе всегда
-/// здесь, какой бы высоты ни было окно: оно растёт вниз.
-const TOP_FRACTION: f64 = 0.28;
+/// Нижний край панели захвата стоит выше низа рабочей области монитора (без Dock и menu bar) на эту долю её высоты. Панель
+/// внизу экрана, как поле чата: она не закрывает то, о чём человек хочет записать, а поле ввода всегда на одном месте. Нижний
+/// край закреплён при любой высоте окна: контекст и многострочный текст растут вверх.
+const BOTTOM_FRACTION: f64 = 0.12;
 /// Размеры окна захвата в логических px. Совпадают с токенами `layout.capture.*` (проверяет `tests/config.rs`): ширина
 /// окна = ширина панели + два поля под тень; высоту подгоняет страница командой `capture_resize` в этих пределах.
 pub const WINDOW_WIDTH: f64 = 584.0;
@@ -40,6 +41,10 @@ pub struct CaptureShell {
     pending: Mutex<Option<Pending>>,
     /// Растёт при каждом показе: отложенное принудительное скрытие не должно спрятать окно, показанное заново.
     shown: AtomicU64,
+    /// Якорь окна на экране при последнем показе: `(x левого края, y нижнего края окна)` в физических px. Нижний край
+    /// остаётся на месте при любой высоте: и при показе, и при `capture_resize` (размер на главном потоке ставится
+    /// отложенно, поэтому положение считается от якоря, а не от прочитанного размера окна).
+    anchor: Mutex<Option<(i32, i32)>>,
 }
 
 struct Pending {
@@ -78,8 +83,26 @@ pub fn clamp_height(height: f64) -> f64 {
     }
 }
 
-/// Ставит окно на экран с курсором: по центру по горизонтали; верх панели (не окна: над ней поле под тень) — на
-/// `TOP_FRACTION` высоты экрана.
+/// Якорь окна для рабочей области монитора `(x, y, ширина, высота)` (физические px): `(x левого края, y нижнего края окна)`.
+/// По центру по горизонтали (`window_width` — ширина окна); нижний край панели выше низа рабочей области на `BOTTOM_FRACTION`
+/// её высоты, а окно ниже панели на поле под тень `shadow_margin`.
+pub fn anchor_for(work: (i32, i32, u32, u32), window_width: u32, shadow_margin: f64) -> (i32, i32) {
+    let (work_x, work_y, work_width, work_height) = work;
+    let x = f64::from(work_x) + (f64::from(work_width) - f64::from(window_width)) / 2.0;
+    let panel_bottom = f64::from(work_y) + f64::from(work_height) * (1.0 - BOTTOM_FRACTION);
+    (
+        x.round() as i32,
+        (panel_bottom + shadow_margin).round() as i32,
+    )
+}
+
+/// Верх окна (физические px) при высоте `height`, если нижний край окна стоит на `bottom`: нижний край закреплён.
+pub fn top_for_bottom(bottom: i32, height: u32) -> i32 {
+    bottom.saturating_sub(i32::try_from(height).unwrap_or(i32::MAX))
+}
+
+/// Ставит окно на экран с курсором внизу рабочей области (без Dock и menu bar) по центру и запоминает якорь. Высота окна
+/// влияет только на верх окна: нижний край панели всегда на одном месте.
 fn place_on_cursor_screen<R: Runtime>(app: &AppHandle<R>, window: &tauri::WebviewWindow<R>) {
     let monitor = app
         .cursor_position()
@@ -90,12 +113,32 @@ fn place_on_cursor_screen<R: Runtime>(app: &AppHandle<R>, window: &tauri::Webvie
         let _ = window.center();
         return;
     };
-    let origin = monitor.position();
-    let area = monitor.size();
-    let x = f64::from(origin.x) + (f64::from(area.width) - f64::from(size.width)) / 2.0;
+    let work = monitor.work_area();
     let scale = window.scale_factor().unwrap_or(1.0);
-    let y = f64::from(origin.y) + f64::from(area.height) * TOP_FRACTION - SHADOW_MARGIN * scale;
-    let _ = window.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
+    let (x, bottom) = anchor_for(
+        (
+            work.position.x,
+            work.position.y,
+            work.size.width,
+            work.size.height,
+        ),
+        size.width,
+        SHADOW_MARGIN * scale,
+    );
+    if let Some(shell) = app.try_state::<CaptureShell>() {
+        *shell
+            .anchor
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some((x, bottom));
+    }
+    trace(&format!(
+        "place x={x} bottom={bottom} height={}",
+        size.height
+    ));
+    let _ = window.set_position(PhysicalPosition::new(
+        x,
+        top_for_bottom(bottom, size.height),
+    ));
 }
 
 /// Журнал жизни окна захвата для проверки в живом окне: печатается только при `KINIGE_TRACE=1` (без текста записей).
@@ -324,9 +367,9 @@ pub fn capture_hide<R: Runtime>(app: AppHandle<R>) {
     hide_capture(&app);
 }
 
-/// Подогнать высоту окна под содержимое страницы (логические px, вместе с полем под тень). Ширина фиксирована, а верх окна
-/// остаётся на месте (окно растёт вниз), поэтому поле ввода не прыгает относительно курсора. Значение ограничивается
-/// пределами `MIN_HEIGHT … MAX_HEIGHT`; лишних просьб (та же высота) Rust не исполняет.
+/// Подогнать высоту окна под содержимое страницы (логические px, вместе с полем под тень). Ширина фиксирована, а **нижний
+/// край окна остаётся на месте** (окно растёт вверх, как чат: поле внизу, записи над ним), поэтому поле ввода всегда на одном
+/// месте. Значение ограничивается пределами `MIN_HEIGHT … MAX_HEIGHT`; лишних просьб (та же высота) Rust не исполняет.
 #[tauri::command]
 pub fn capture_resize<R: Runtime>(app: AppHandle<R>, height: f64) {
     let Some(window) = app.get_webview_window(CAPTURE_LABEL) else {
@@ -340,10 +383,18 @@ pub fn capture_resize<R: Runtime>(app: AppHandle<R>, height: f64) {
     if current.is_ok_and(|current| (current - height).abs() < 0.5) {
         return;
     }
-    // `set_size` на macOS задаёт размер содержимого и не обещает, какой угол остаётся на месте: верх закрепляется явно.
-    let top_left = window.outer_position().ok();
     let _ = window.set_size(tauri::LogicalSize::new(WINDOW_WIDTH, height));
-    if let Some(position) = top_left {
-        let _ = window.set_position(position);
+    // `set_size` на macOS задаёт размер содержимого и не обещает, какой угол остаётся на месте: положение пересчитывается
+    // явно от якоря показа (нижний край окна и x). Якоря нет (окно ещё не показывали) — позицию поставит показ.
+    let anchor = app.try_state::<CaptureShell>().and_then(|shell| {
+        *shell
+            .anchor
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    });
+    if let Some((x, bottom)) = anchor {
+        let new_height = (height * scale).round() as u32;
+        trace(&format!("resize height={height} bottom={bottom}"));
+        let _ = window.set_position(PhysicalPosition::new(x, top_for_bottom(bottom, new_height)));
     }
 }
