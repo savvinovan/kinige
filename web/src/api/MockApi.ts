@@ -92,7 +92,7 @@ export class MockApi extends MockApiBase implements KinigeApi {
   }
 
   getSettings(): Promise<Settings> {
-    return Promise.resolve(this.settings);
+    return this.run("getSettings", "", () => this.settings);
   }
 
   setTextSize(size: TextSize): Promise<void> {

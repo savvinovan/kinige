@@ -10,16 +10,6 @@ import { RecoveryScreen } from "../recovery/RecoveryScreen";
 import { TooNewScreen } from "../recovery/TooNewScreen";
 import { MainWindow } from "./MainWindow";
 
-/** Настройки, пока журнал не открыт (база повреждена): читать их не из чего, окно «База повреждена» от них не зависит. */
-export const RECOVERY_SETTINGS: Settings = {
-  textSize: "normal",
-  mirror: { folder: null, isDefault: true, error: null, pendingDays: 0 },
-  shortcuts: [],
-  sidebarCollapsed: false,
-  recentEmoji: [],
-  backup: { folder: null, lastAt: null, count: 0, error: null },
-};
-
 interface AppRootProps {
   api: KinigeApi;
   initialSettings: Settings;
@@ -38,7 +28,11 @@ export function AppRoot({ api, initialSettings, startup }: AppRootProps) {
   const { t } = useTranslation();
   const language = useLanguage();
   const [recovery, setRecovery] = useState<Recovery | null>(
-    startup.needsRecovery ? { mode: "startup", backups: startup.backups } : null,
+    startup.needsRecovery
+      ? { mode: "startup", backups: startup.backups }
+      : startup.corruptionFound
+        ? { mode: "running", backups: [] }
+        : null,
   );
   const [settings, setSettings] = useState(initialSettings);
   const [busy, setBusy] = useState(false);
