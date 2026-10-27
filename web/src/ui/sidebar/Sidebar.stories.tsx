@@ -26,6 +26,8 @@ interface DemoProps {
   /** Открывает контекстное меню строки, имя (или его начало) которой передано: как правый щелчок. */
   menuFor?: string;
   showSearch?: boolean;
+  /** Чат под перетаскиваемой записью (слайс 3, перенос записи): подсвечен как цель. */
+  dropTargetId?: string | null;
 }
 
 /** Сайдбар во всю высоту окна на фоне пустой ленты; выбор, «свернуть» и «+» работают на состоянии истории. */
@@ -37,6 +39,7 @@ function Demo({
   focus = false,
   menuFor,
   showSearch = false,
+  dropTargetId = null,
 }: DemoProps) {
   const [chats, setChats] = useState(initialChats);
   const [selectedId, setSelectedId] = useState<string | null>(initialSelected);
@@ -82,6 +85,7 @@ function Demo({
         trashCount={trashCount}
         onOpenTrash={() => setSelectedId(null)}
         showSearch={showSearch}
+        dropTargetId={dropTargetId}
         onOpenSettings={() => {}}
       />
     </div>
@@ -190,6 +194,21 @@ export const СвёрнутыйМногоЧатов: Story = {
 };
 
 /** Английский интерфейс: «Pinned», «Chats», «Archive», «Trash» (названия чатов — данные пользователя, не переводятся). */
+/** Запись тащат на чат «Книги»: строка подсвечена как цель переноса (заливка и тонкая линия акцентом), текущий чат остаётся выбранным. */
+export const ЦельПереноса: Story = { args: { dropTargetId: "books" } };
+
+/** Цель переноса — закреплённый чат. */
+export const ЦельПереносаЗакреплённый: Story = { args: { dropTargetId: "ideas" } };
+
+/** Цель переноса в свёрнутой полосе: значок чата подсвечен. */
+export const СвёрнутыйЦельПереноса: Story = { args: { collapsed: true, dropTargetId: "books" } };
+
+/** Цель переноса — чат из раскрытого архива. */
+export const ЦельПереносаАрхив: Story = { args: { selectedId: "trip", dropTargetId: "old" } };
+
+/** Цель переноса при крупном тексте. */
+export const ЦельПереносаКрупныйТекст: Story = { args: { dropTargetId: "books" }, globals: { textScale: "large" } };
+
 export const Английский: Story = { args: { menuFor: "Книги" }, globals: { language: "en" } };
 
 /** Английский, свёрнутый. */

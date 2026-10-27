@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import "../drag/drag.css";
+import "../drag/drag-stories.css";
 import "../feed/feed.css";
 import { Frame } from "../stories/Frame";
 import { Message } from "./Message";
+import type { MoveTarget } from "./moveTargets";
 
 // Слайс 3: ряд действий, контекстное меню, правка в плашке, удалённая плашка, задача, избранное, теги, кликабельные квадраты,
 // запись только для чтения. Первые истории «Компоненты/Сообщение» (D1) — в Message.stories.tsx.
@@ -123,6 +126,80 @@ export const МенюКрупныйТекст: Story = {
     <OpenMenu>
       <Message markdown="Купить хлеб" sentAt={at(9, 12)} {...live} />
     </OpenMenu>
+  ),
+};
+
+const MOVE_TARGETS: MoveTarget[] = [
+  { id: "ideas", name: "Идеи", emoji: "💡", group: "pinned", current: false },
+  { id: "inbox", name: "Входящие", emoji: "📥", group: "chats", current: true },
+  { id: "books", name: "Книги", emoji: "📚", group: "chats", current: false },
+  { id: "recipes", name: "Рецепты на каждый день недели, которые не помещаются в меню", emoji: "🍳", group: "chats", current: false },
+  { id: "trip", name: "Отпуск 2025", emoji: "🏖️", group: "archive", current: false },
+];
+const MOVE_TARGETS_EN: MoveTarget[] = [
+  { id: "ideas", name: "Ideas", emoji: "💡", group: "pinned", current: false },
+  { id: "inbox", name: "Inbox", emoji: "📥", group: "chats", current: true },
+  { id: "books", name: "Books", emoji: "📚", group: "chats", current: false },
+  { id: "trip", name: "Trip 2025", emoji: "🏖️", group: "archive", current: false },
+];
+const movable = { ...live, onMoveTo: noop };
+
+/** Открывает меню записи и переходит на второй уровень: «Переместить в чат» (шестой пункт). */
+function OpenMoveMenu({ children }: { children: ReactNode }) {
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const plate = host.current?.querySelector("article");
+    if (!plate) return;
+    const rect = plate.getBoundingClientRect();
+    plate.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: rect.left + rect.width / 2, clientY: rect.bottom }),
+    );
+    document.querySelectorAll<HTMLElement>('[role="menuitem"]')[5]?.click();
+  }, []);
+  return (
+    <div className="story-column" ref={host}>
+      {children}
+    </div>
+  );
+}
+
+/** «Переместить в чат»: второй уровень меню. «Назад», закреплённые, обычные и архивные чаты тонкими чертами; текущий чат приглушён, длинное имя обрезано многоточием. */
+export const МенюПеремещения: Story = {
+  render: () => (
+    <OpenMoveMenu>
+      <Message markdown="Купить хлеб" sentAt={at(9, 12)} moveTargets={MOVE_TARGETS} {...movable} />
+    </OpenMoveMenu>
+  ),
+};
+
+/** То же на английском. */
+export const МенюПеремещенияEn: Story = {
+  globals: { language: "en" },
+  render: () => (
+    <OpenMoveMenu>
+      <Message markdown="Buy bread" sentAt={at(9, 12)} moveTargets={MOVE_TARGETS_EN} {...movable} />
+    </OpenMoveMenu>
+  ),
+};
+
+/** То же при крупном тексте. */
+export const МенюПеремещенияКрупныйТекст: Story = {
+  globals: { textScale: "large" },
+  render: () => (
+    <OpenMoveMenu>
+      <Message markdown="Купить хлеб" sentAt={at(9, 12)} moveTargets={MOVE_TARGETS} {...movable} />
+    </OpenMoveMenu>
+  ),
+};
+
+/** «Призрак» плашки под курсором при перетаскивании на чат: та же плашка, чуть прозрачнее, с тенью; сам курсор не рисуется. */
+export const ПризракПеретаскивания: Story = {
+  render: () => (
+    <div className="story-column story-ghost">
+      <div className="record-ghost" aria-hidden="true">
+        <Message markdown="Купить хлеб" sentAt={at(9, 12)} />
+      </div>
+    </div>
   ),
 };
 

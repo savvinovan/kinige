@@ -1,0 +1,4 @@
+/* Только для историй Storybook: «призрак» перетаскивания лежит в потоке, а не прибит к окну (в приложении он fixed). */
+.story-ghost .record-ghost {
+  position: static;
+}
