@@ -325,4 +325,54 @@ impl Store {
         self.wake_mirror();
         Ok(view)
     }
+
+    /// «Переместить в чат»: запись переезжает в другой чат (группа `placement`, `chat_id`; `journal_date` не меняется;
+    /// первая перезапись пишет `base`/`supersedes` по ADR-0001 §3.4). Ревизия `edit` не пишется: текст не менялся. День
+    /// записи в старом и в новом чате помечается для перезаписи в Markdown-копии. Целевой чат может быть архивным;
+    /// нет такого чата — `ChatNotFound`; запись в корзине — `MessageNotFound` (перенос только для живых записей); запись с
+    /// группой в неподдерживаемой `sv` — `ReadOnly`. Тот же чат — ничего не пишется.
+    pub fn move_message(
+        &self,
+        id: &str,
+        chat_id: &str,
+        now: &Now,
+    ) -> Result<MessageView, StoreError> {
+        let (id, chat_id, now) = (id.to_string(), chat_id.to_string(), now.clone());
+        let view = self.write(move |conn| {
+            let tx = begin(conn)?;
+            let loaded = load(&tx, &id)?;
+            loaded.ensure_writable()?;
+            if loaded.columns.deleted_at.is_some() {
+                return Err(StoreError::MessageNotFound);
+            }
+            let chat_exists: bool = tx
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM chat WHERE id = ?1 AND deleted_at IS NULL)",
+                    [&chat_id],
+                    |row| row.get(0),
+                )
+                .map_err(write_err)?;
+            if !chat_exists {
+                return Err(StoreError::ChatNotFound);
+            }
+            if loaded.columns.chat_id != chat_id {
+                let hlc = next_hlc(&tx, now.ms)?;
+                let rewritten = message_ops::move_to_chat(
+                    &loaded.groups(),
+                    &chat_id,
+                    loaded.server_known,
+                    &hlc,
+                )?;
+                apply(&tx, &id, &rewritten)?;
+                let day = &loaded.columns.journal_date;
+                mark_dirty(&tx, &loaded.columns.chat_id, day).map_err(write_err)?;
+                mark_dirty(&tx, &chat_id, day).map_err(write_err)?;
+            }
+            let view = load_view(&tx, &id)?;
+            tx.commit().map_err(write_err)?;
+            Ok(view)
+        })?;
+        self.wake_mirror();
+        Ok(view)
+    }
 }

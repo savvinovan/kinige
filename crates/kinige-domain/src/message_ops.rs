@@ -147,3 +147,23 @@ pub fn set_journal_date(
         Ok(())
     })
 }
+
+/// Перезаписывает группу `placement`: запись переезжает в чат `chat_id`; `journal_date` не меняется (запись остаётся в тот
+/// же день нового чата). `base`/`supersedes` — по ADR-0001 §3.4, та же логика, что у смены дня. Существование чата проверяет
+/// вызывающий (хранилище): домен знает только, что id непустой и без управляющих знаков.
+pub fn move_to_chat(
+    current: &Groups<'_>,
+    chat_id: &str,
+    confirmed: bool,
+    new_hlc: &str,
+) -> Result<Rewritten, GroupError> {
+    if chat_id.is_empty() || chat_id.len() > 64 || chat_id.chars().any(char::is_control) {
+        return Err(GroupError::Invalid("чат записи"));
+    }
+    rewrite_group(current, "placement", new_hlc, None, |group, old_hlc| {
+        let (base, supersedes) = chain_fields(group, old_hlc, confirmed)?;
+        group.insert("chat_id".into(), json!(chat_id));
+        set_chain(group, &base, &supersedes);
+        Ok(())
+    })
+}
