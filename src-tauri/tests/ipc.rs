@@ -127,10 +127,10 @@ fn every_slice_three_command_is_main_only_and_the_capture_set_is_unchanged() {
             is_acl_denial(&error),
             "{command}: ожидали отказ ACL, получили: {error}"
         );
-        if !NEEDS_NATIVE_UI.contains(command) {
-            if let Err(error) = call(&main, command, args_for(command)) {
-                assert!(!is_acl_denial(&error), "{command}: {error}");
-            }
+        if !NEEDS_NATIVE_UI.contains(command)
+            && let Err(error) = call(&main, command, args_for(command))
+        {
+            assert!(!is_acl_denial(&error), "{command}: {error}");
         }
     }
 }
