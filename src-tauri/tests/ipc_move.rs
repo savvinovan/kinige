@@ -67,6 +67,13 @@ fn move_over_ipc_updates_counters_and_the_tag_filter_and_errors_come_back_by_cod
             json!({"code": code})
         );
     }
+
+    // Запись в корзине: свой код, не «не найдена».
+    call(&main, "delete_message", json!({"id": id})).unwrap();
+    assert_eq!(
+        call(&main, "move_message", json!({"id": id, "chatId": INBOX})).unwrap_err(),
+        json!({"code": "message_in_trash"})
+    );
 }
 
 #[test]

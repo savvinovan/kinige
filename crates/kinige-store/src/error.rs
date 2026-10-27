@@ -13,6 +13,8 @@ pub enum StoreError {
     ChatNotFound,
     /// Записи нет (удалена навсегда или id неверен).
     MessageNotFound,
+    /// Запись в корзине: перенос в другой чат только для живых записей (сначала «Вернуть»).
+    MessageInTrash,
     /// Запись с группой в неподдерживаемой версии: только чтение (ADR-0001 §4).
     ReadOnly,
     /// Inbox нельзя переименовать, архивировать и удалить.
@@ -52,6 +54,7 @@ impl StoreError {
             StoreError::TooLarge => ErrorCode::MessageTooLarge,
             StoreError::ChatNotFound => ErrorCode::ChatNotFound,
             StoreError::MessageNotFound => ErrorCode::MessageNotFound,
+            StoreError::MessageInTrash => ErrorCode::MessageInTrash,
             StoreError::ReadOnly => ErrorCode::ReadOnly,
             StoreError::InboxProtected => ErrorCode::InboxProtected,
             StoreError::NotInTrash => ErrorCode::NotInTrash,
@@ -82,6 +85,7 @@ impl StoreError {
             StoreError::TooLarge => "too_large",
             StoreError::ChatNotFound => "chat_not_found",
             StoreError::MessageNotFound => "message_not_found",
+            StoreError::MessageInTrash => "message_in_trash",
             StoreError::ReadOnly => "read_only",
             StoreError::InboxProtected => "inbox_protected",
             StoreError::NotInTrash => "not_in_trash",
@@ -108,6 +112,7 @@ impl fmt::Display for StoreError {
             StoreError::TooLarge => f.write_str("запись слишком длинная"),
             StoreError::ChatNotFound => f.write_str("чат не найден"),
             StoreError::MessageNotFound => f.write_str("запись не найдена"),
+            StoreError::MessageInTrash => f.write_str("запись в корзине"),
             StoreError::ReadOnly => f.write_str("запись только для чтения"),
             StoreError::InboxProtected => f.write_str("Inbox нельзя изменить так"),
             StoreError::NotInTrash => f.write_str("запись не в корзине"),

@@ -37,6 +37,7 @@ const CODES: readonly ErrorCode[] = [
   "shortcut_taken",
   "shortcut_duplicate",
   "message_not_found",
+  "message_in_trash",
   "read_only",
   "inbox_protected",
   "not_in_trash",

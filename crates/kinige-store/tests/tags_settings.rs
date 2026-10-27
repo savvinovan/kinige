@@ -157,6 +157,22 @@ fn the_sidebar_state_and_recent_emoji_persist() {
         );
         assert!(store.add_recent_emoji("").is_err());
         assert!(store.add_recent_emoji("два слова").is_err());
+        // Только последовательности эмодзи: текст, разметка, пробелы, управляющие знаки, несколько эмодзи, слишком длинное.
+        for bad in [
+            "abc",
+            "<b>abc",
+            "<b>📚",
+            "📚 🎬",
+            " 📚",
+            "📚\n",
+            "📚\u{7}",
+            "📚🎬",
+            &"a".repeat(33),
+            &"📚".repeat(11),
+        ] {
+            assert!(store.add_recent_emoji(bad).is_err(), "{bad:?}");
+        }
+        assert_eq!(store.get_settings().unwrap().recent_emoji, ["📚", "🎬"]);
     }
     wait_closed(dir.path());
     let store = open_without_mirror(dir.path());
@@ -168,6 +184,24 @@ fn the_sidebar_state_and_recent_emoji_persist() {
     assert_eq!(settings.recent_emoji, ["📚", "🎬"]);
     store.set_sidebar_collapsed(false).unwrap();
     assert!(!store.get_settings().unwrap().sidebar_collapsed);
+}
+
+#[test]
+fn composite_emoji_sequences_of_the_picker_are_accepted() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    // Флаг, семья, тон кожи, самый длинный поцелуй пикера (35 байт).
+    let all = [
+        "🇷🇺",
+        "👨\u{200D}👩\u{200D}👧\u{200D}👦",
+        "👍\u{1F3FD}",
+        "👩\u{1F3FB}\u{200D}\u{2764}\u{FE0F}\u{200D}💋\u{200D}👨\u{1F3FF}",
+    ];
+    for emoji in all {
+        store.add_recent_emoji(emoji).unwrap();
+    }
+    let recent = store.get_settings().unwrap().recent_emoji;
+    assert_eq!(recent, all.iter().rev().copied().collect::<Vec<_>>());
 }
 
 #[test]

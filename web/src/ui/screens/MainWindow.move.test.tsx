@@ -103,6 +103,23 @@ describe("«Переместить в чат»: меню записи", () => {
     expect(screen.getByText("Купить хлеб")).toBeInTheDocument();
   });
 
+  it("запись, ушедшая в корзину (например, из другого окна), даёт отдельный текст, а не «не найдена»", async () => {
+    const api = setup();
+    await openMoveMenu();
+    api.failNext("moveMessage", "message_in_trash");
+    fireEvent.click(item(/Книги/));
+    expect(await screen.findByText("Запись в корзине: сначала верните её, потом переносите.")).toBeInTheDocument();
+    expect(screen.queryByText(/удалили навсегда/)).toBeNull();
+  });
+
+  it("MockApi: перенос записи из корзины — message_in_trash, не message_not_found", async () => {
+    const api = setup();
+    await screen.findByText("Купить хлеб");
+    await api.deleteMessage("m1");
+    await expect(api.moveMessage("m1", "books")).rejects.toMatchObject({ code: "message_in_trash" });
+    await expect(api.moveMessage("нет-такой", "books")).rejects.toMatchObject({ code: "message_not_found" });
+  });
+
   it("запись только для чтения не переносится: пункт недоступен", async () => {
     setup({ messages: [mockMessage({ id: "m1", bodyMd: "Купить хлеб", createdAt: TODAY_AT, readOnly: true })] });
     await screen.findByText("Купить хлеб");

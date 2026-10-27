@@ -155,12 +155,16 @@ fn refusals_leave_the_record_untouched() {
         store.move_message("нет-такой-записи", &books, &at(2)),
         Err(StoreError::MessageNotFound)
     ));
-    // Запись в корзине не переносится.
+    // Запись в корзине не переносится: отдельный код, а не «не найдена» (запись есть, её можно вернуть).
     store.delete_message(&id, &at(3)).unwrap();
     assert!(matches!(
         store.move_message(&id, &books, &at(4)),
-        Err(StoreError::MessageNotFound)
+        Err(StoreError::MessageInTrash)
     ));
+    assert_eq!(
+        StoreError::MessageInTrash.code(),
+        kinige_domain::ErrorCode::MessageInTrash
+    );
     store.restore_message(&id, &at(5)).unwrap();
     // Запись с группой из будущей версии — только для чтения.
     make_read_only(dir.path(), &id);
@@ -170,4 +174,107 @@ fn refusals_leave_the_record_untouched() {
     ));
     let after = columns(dir.path(), &id);
     assert_eq!(after["chat_id"], before["chat_id"]);
+}
+
+#[test]
+fn unknown_fields_inside_placement_survive_a_move_and_a_date_change_in_the_store() {
+    let dir = tempfile::tempdir().unwrap();
+    let (store, id, books) = setup(dir.path());
+    edit_raw_groups(dir.path(), &id, |groups, _| {
+        let mut placement: serde_json::Map<String, serde_json::Value> =
+            serde_json::from_str(groups["placement"].get()).unwrap();
+        placement.insert("zz_future".into(), json!({"a": "ё", "z": [1, 2]}));
+        groups.insert(
+            "placement".into(),
+            serde_json::value::RawValue::from_string(serde_json::to_string(&placement).unwrap())
+                .unwrap(),
+        );
+    });
+    let unknown = |dir: &Path| -> serde_json::Value {
+        let placement: serde_json::Value =
+            serde_json::from_str(&groups(dir, "message", &id)["placement"]).unwrap();
+        placement["zz_future"].clone()
+    };
+
+    store.move_message(&id, &books, &at(2)).unwrap();
+    assert_eq!(unknown(dir.path()), json!({"a": "ё", "z": [1, 2]}));
+    store.set_message_date(&id, "2026-10-12", &at(3)).unwrap();
+    assert_eq!(unknown(dir.path()), json!({"a": "ё", "z": [1, 2]}));
+    let c = columns(dir.path(), &id);
+    assert_eq!(
+        (c["chat_id"].clone(), c["journal_date"].clone()),
+        (json!(books), json!("2026-10-12"))
+    );
+    assert_columns_match_groups(dir.path(), &id);
+}
+
+#[test]
+fn a_moved_record_is_still_live_so_purge_refuses_it_and_a_purged_record_cannot_be_moved() {
+    let dir = tempfile::tempdir().unwrap();
+    let (store, id, books) = setup(dir.path());
+
+    // Перенос, затем purge источника: запись жива (не в корзине), навсегда её удалить нельзя.
+    store.move_message(&id, &books, &at(2)).unwrap();
+    assert!(matches!(
+        store.purge_message(&id, &at(3)),
+        Err(StoreError::NotInTrash)
+    ));
+    assert_eq!(columns(dir.path(), &id)["chat_id"], json!(books));
+    assert_eq!(
+        count_rows(dir.path(), "tombstone"),
+        0,
+        "tombstone не создан"
+    );
+
+    // Purge, затем перенос: записи больше нет.
+    store.delete_message(&id, &at(4)).unwrap();
+    store.purge_message(&id, &at(5)).unwrap();
+    assert!(matches!(
+        store.move_message(&id, INBOX_ID, &at(6)),
+        Err(StoreError::MessageNotFound)
+    ));
+    assert_eq!(count_rows(dir.path(), "message"), 0);
+    assert_eq!(count_rows(dir.path(), "tombstone"), 1);
+}
+
+#[test]
+fn moving_out_of_an_archived_source_chat_works_and_marks_both_days() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    let old = store.create_chat("Старое", None, &at(0)).unwrap();
+    let sent = store
+        .send_message(&old.id, "лежит в архиве", &at(1))
+        .unwrap();
+    store.set_chat_archived(&old.id, true, &at(2)).unwrap();
+    raw(dir.path())
+        .execute("DELETE FROM mirror_dirty", [])
+        .unwrap();
+
+    let moved = store.move_message(&sent.id, INBOX_ID, &at(3)).unwrap();
+    assert_eq!(moved.chat_id, INBOX_ID);
+    let chats = store.list_chats().unwrap();
+    let count = |chat: &str| chats.iter().find(|c| c.id == chat).unwrap().count;
+    assert_eq!((count(&old.id), count(INBOX_ID)), (0, 1));
+    assert!(
+        chats
+            .iter()
+            .find(|c| c.id == old.id)
+            .unwrap()
+            .archived_at
+            .is_some(),
+        "источник остаётся в архиве"
+    );
+    assert_eq!(
+        dirty(dir.path()),
+        {
+            let mut expected = vec![
+                (INBOX_ID.to_string(), "2026-10-21".to_string()),
+                (old.id.clone(), "2026-10-21".to_string()),
+            ];
+            expected.sort();
+            expected
+        },
+        "оба дня помечены, в том числе день архивного чата-источника"
+    );
+    assert_columns_match_groups(dir.path(), &sent.id);
 }

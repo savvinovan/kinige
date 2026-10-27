@@ -197,10 +197,29 @@ fn capture_window_shares_the_recent_emoji_list_with_the_main_window() {
     // Повтор переезжает вперёд; пустое значение отказано (те же правила, что у команды главного окна), список не меняется.
     let list = call(&capture, "capture_add_recent_emoji", json!({"emoji": "🎬"})).unwrap();
     assert_eq!(list, json!(["🎬", "📚"]));
-    for bad in ["", "  "] {
-        let error = call(&capture, "capture_add_recent_emoji", json!({"emoji": bad}))
-            .expect_err("не эмодзи");
-        assert_eq!(error["code"], "chat_icon_invalid", "{bad:?}");
+    // Принимаются только последовательности эмодзи; обе команды (окна захвата и главного) отвечают одинаково.
+    let too_long_ascii = "a".repeat(33);
+    let too_long_emoji = "📚".repeat(11);
+    for bad in [
+        "",
+        "  ",
+        "a b",
+        "📚 🎬",
+        "<b>abc",
+        "<b>📚",
+        "abc",
+        "📚\u{7}",
+        "📚\n",
+        too_long_ascii.as_str(),
+        too_long_emoji.as_str(),
+    ] {
+        for (window, command) in [
+            (&capture, "capture_add_recent_emoji"),
+            (&main, "add_recent_emoji"),
+        ] {
+            let error = call(window, command, json!({"emoji": bad})).expect_err("не эмодзи");
+            assert_eq!(error["code"], "chat_icon_invalid", "{command} {bad:?}");
+        }
     }
     assert_eq!(
         call(&main, "get_settings", json!({})).unwrap()["recentEmoji"],

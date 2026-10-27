@@ -310,6 +310,7 @@ impl Store {
                 let rewritten = message_ops::set_journal_date(
                     &loaded.groups(),
                     &journal_date,
+                    // Outbox появится в слайсе 11: тогда подтверждённость — и колонка, и строка outbox (ADR-0001 §3.4).
                     loaded.server_known,
                     &hlc,
                 )?;
@@ -329,7 +330,7 @@ impl Store {
     /// «Переместить в чат»: запись переезжает в другой чат (группа `placement`, `chat_id`; `journal_date` не меняется;
     /// первая перезапись пишет `base`/`supersedes` по ADR-0001 §3.4). Ревизия `edit` не пишется: текст не менялся. День
     /// записи в старом и в новом чате помечается для перезаписи в Markdown-копии. Целевой чат может быть архивным;
-    /// нет такого чата — `ChatNotFound`; запись в корзине — `MessageNotFound` (перенос только для живых записей); запись с
+    /// нет такого чата — `ChatNotFound`; запись в корзине — `MessageInTrash` (перенос только для живых записей); запись с
     /// группой в неподдерживаемой `sv` — `ReadOnly`. Тот же чат — ничего не пишется.
     pub fn move_message(
         &self,
@@ -343,7 +344,7 @@ impl Store {
             let loaded = load(&tx, &id)?;
             loaded.ensure_writable()?;
             if loaded.columns.deleted_at.is_some() {
-                return Err(StoreError::MessageNotFound);
+                return Err(StoreError::MessageInTrash);
             }
             let chat_exists: bool = tx
                 .query_row(
@@ -360,6 +361,7 @@ impl Store {
                 let rewritten = message_ops::move_to_chat(
                     &loaded.groups(),
                     &chat_id,
+                    // Outbox появится в слайсе 11: тогда подтверждённость — и колонка, и строка outbox (ADR-0001 §3.4).
                     loaded.server_known,
                     &hlc,
                 )?;

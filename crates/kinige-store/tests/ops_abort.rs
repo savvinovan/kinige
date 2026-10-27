@@ -68,6 +68,103 @@ fn child(dir: &std::path::Path, mode: &str) -> ! {
     std::process::abort();
 }
 
+const MOVE_CHILD_ENV: &str = "KINIGE_OPS_ABORT_MOVE_DIR";
+
+/// Дочерний процесс: перенос записи застревает внутри транзакции (триггер на `mirror_dirty` нового чата считает долго,
+/// когда запись и день старого чата уже изменены), а главный поток убивает процесс `abort` до `COMMIT`.
+fn child_in_the_middle_of_a_move(dir: &std::path::Path) -> ! {
+    let store = open_without_mirror(dir);
+    let sent = store
+        .send_message(INBOX_ID, "переезд", &moscow(T0))
+        .unwrap();
+    let books = store.create_chat("Книги", Some("📚"), &moscow(T0)).unwrap();
+    raw(dir)
+        .execute_batch(&format!(
+            "CREATE TRIGGER stall_move BEFORE INSERT ON mirror_dirty WHEN NEW.chat_id = '{}' BEGIN \
+             SELECT count(*) FROM (WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < 4000000000) \
+             SELECT x FROM c); END;",
+            books.id
+        ))
+        .unwrap();
+    let (id, chat) = (sent.id, books.id);
+    let when = moscow(T0 + DAY_MS);
+    std::thread::spawn(move || {
+        let _ = store.move_message(&id, &chat, &when);
+    });
+    // Писатель входит в транзакцию за миллисекунды и до конца «считает»: через секунду он гарантированно посередине.
+    std::thread::sleep(std::time::Duration::from_millis(1000));
+    std::process::abort();
+}
+
+#[test]
+fn abort_in_the_middle_of_a_move_rolls_the_whole_move_back() {
+    if let Ok(dir) = std::env::var(MOVE_CHILD_ENV) {
+        child_in_the_middle_of_a_move(dir.as_ref());
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let status = Command::new(std::env::current_exe().unwrap())
+        .args([
+            "abort_in_the_middle_of_a_move_rolls_the_whole_move_back",
+            "--exact",
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env(MOVE_CHILD_ENV, dir.path())
+        .status()
+        .unwrap();
+    assert!(!status.success(), "дочерний процесс должен был упасть");
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        assert_eq!(status.signal(), Some(6), "SIGABRT");
+    }
+
+    // После перезапуска (журнал WAL разбирается при открытии) записи как до переноса: ни чата, ни групп, ни отметок копии
+    // нового чата, ни ревизий; база цела.
+    let id: String = raw(dir.path())
+        .query_row("SELECT id FROM message", [], |r| r.get(0))
+        .unwrap();
+    let before_hlc = group_hlc(dir.path(), "message", &id, "placement");
+    let store = open_without_mirror(dir.path());
+    let cols = columns(dir.path(), &id);
+    assert_eq!(cols["chat_id"], serde_json::json!(INBOX_ID));
+    assert_eq!(cols["placement_supersedes"], serde_json::json!("[]"));
+    assert_eq!(
+        group_hlc(dir.path(), "message", &id, "placement"),
+        before_hlc
+    );
+    assert_eq!(revisions(dir.path(), &id), 0);
+    let dirty_chats: Vec<String> = raw(dir.path())
+        .prepare("SELECT chat_id FROM mirror_dirty")
+        .unwrap()
+        .query_map([], |r| r.get(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert_eq!(
+        dirty_chats,
+        [INBOX_ID],
+        "отметка только у дня Inbox, от отправки"
+    );
+    let integrity: String = raw(dir.path())
+        .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(integrity, "ok");
+    assert_columns_match_groups(dir.path(), &id);
+    let chats = store.list_chats().unwrap();
+    assert_eq!(chats.iter().map(|c| c.count).sum::<i64>(), 1);
+
+    // Сняв «застревание», перенос выполняется как обычно.
+    raw(dir.path())
+        .execute_batch("DROP TRIGGER stall_move;")
+        .unwrap();
+    let books = chats.iter().find(|c| c.title == "Книги").unwrap();
+    let moved = store
+        .move_message(&id, &books.id, &moscow(T0 + 2 * DAY_MS))
+        .unwrap();
+    assert_eq!(moved.chat_id, books.id);
+}
+
 #[test]
 fn abort_right_after_commit_keeps_every_operation() {
     if let Ok(dir) = std::env::var(CHILD_ENV) {

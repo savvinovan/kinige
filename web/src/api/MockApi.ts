@@ -287,7 +287,7 @@ export class MockApi extends MockApiBase implements KinigeApi {
     return this.run("moveMessage", `${id} ${chatId}`, () => {
       const row = this.row(id);
       this.writable(row);
-      if (row.deletedAt !== null) throw new KinigeApiError("message_not_found");
+      if (row.deletedAt !== null) throw new KinigeApiError("message_in_trash");
       if (!this.chats.some((chat) => chat.id === chatId)) throw new KinigeApiError("chat_not_found");
       row.view = { ...row.view, chatId };
       return row.view;
