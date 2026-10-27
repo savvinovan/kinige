@@ -1,44 +1,49 @@
-# Проверки слайса 3 (локально, macOS, 2026-10-27 21:22 MSK), коммит 57fe2df
+# Проверки слайса 3 после доработок приёмки (перенос записи, эмодзи в окне захвата, свёртка «Архива»)
+# Локально, macOS, 2026-10-27 (ночь), HEAD ветки wip/slice-3 на момент прогона — см. отчёт; Rust не менялся после коммита 14790fb.
 
 $ cargo fmt --all --check
 итог: чисто
 
 $ cargo clippy --workspace --all-targets -- -D warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.85s
+итог: без предупреждений
 
 $ cargo test --workspace
-итог: passed 334, failed 0, ignored 1
+итог: passed 344, failed 0, ignored 1
 
 $ cargo build -p kinige-domain --target wasm32-unknown-unknown
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.21s
+    Finished `dev` profile [unoptimized + debuginfo] target(s)
 
 $ npm run tokens
-✔︎ src/ui/tokens.css
-✔︎ src/ui/themes.css
 tokens.css / themes.css: 0 отличий от закоммиченного
-сгенерированные TS-типы: 0 отличий от закоммиченного
+сгенерированные TS-типы: 0 отличий от закоммиченного (CaptureState.ts получил recentEmoji)
 
 $ npm run typecheck
 > tsc --noEmit
 
-
 $ npm run lint
 > eslint .
 
-
 $ npm test
- Test Files  55 passed (55)
-      Tests  1055 passed (1055)
+ Test Files  59 passed (59)
+      Tests  1095 passed (1095)
 
 $ npm run build-storybook
 └  Storybook build completed successfully
 
+# Новые тесты этой доработки
+Rust: crates/kinige-domain/src/move_tests.rs; crates/kinige-store/tests/ops_move.rs (4); src-tauri/tests/ipc_move.rs (IPC-сценарий переноса,
+  отказ окну захвата); src-tauri/tests/ipc.rs (матрица: окно захвата — ровно семь команд, остальное отказано); src-tauri/tests/ipc_flows.rs
+  (общий список «недавних» эмодзи между окнами); src-tauri/tests/config.rs (предел высоты окна 640).
+Web: ui/drag/useRecordDrag.test.tsx (6); ui/screens/MainWindow.move.test.tsx (10: подменю, клавиатура, ошибка, перетаскивание, свёрнутая
+  полоса, бросок мимо/Esc/в тот же чат, правка и «только чтение» не тащатся); ui/message/moveTargets.test.ts; capture/CaptureWindow.emoji.test.tsx (11);
+  ui/sidebar/Sidebar.sections.test.tsx (архив: свёрнутый раздел прячет открытый чат).
+
 # Аналог CI в Linux-контейнере (удалённый Docker ubuntu-server)
-Последний полный прогон — на коммите 1284b40 (после него менялись два комментария, одна строка `backup.error`, ветка `.catch` в AppRoot и тесты к ним;
-Linux-прогон этого последнего шага не повторялся):
-  Rust (ubuntu:24.04 + системные библиотеки Tauri + rust-toolchain.toml 1.94.0, git archive HEAD): fmt, clippy -D warnings чисто;
-    cargo test --workspace --no-fail-fast — TOTAL passed 332 failed 0 (на 1 меньше, чем на macOS: `ipc_restore_e2e` только macOS);
-    wasm32 собран; сгенерированные TS-типы актуальны.
-  Web (node:24.21.0, npm ci): токены актуальны, typecheck, lint, vitest — 55 файлов, 1054 теста.
-  Визуальные тесты Storybook: 271 passed, 4 раза подряд (истории и эталоны с тех пор не менялись).
+  Rust (ubuntu:24.04 + системные библиотеки Tauri + rust-toolchain.toml 1.94.0, git archive 14790fb): fmt, clippy -D warnings чисто;
+    cargo test --workspace --no-fail-fast — TOTAL passed 343 failed 0 (на 1 меньше, чем на macOS: `ipc_restore_e2e` только macOS);
+    wasm32 собран; сгенерированные TS-типы актуальны. Первая попытка сборки образа упала на сети (apt), вторая прошла.
+  Web (node:24.21.0, npm ci, git archive 14790fb): токены актуальны, typecheck, lint, vitest — 59 файлов, 1095 тестов.
+  Визуальные тесты Storybook (на финальном HEAD): 284 passed, три сравнения подряд после обновления эталонов.
+    Один из промежуточных прогонов дал «283 passed» (один снимок не прошёл, какой — не записано; на загруженном сервере, 3,4 мин
+    вместо ~1 мин); семь следующих прогонов подряд — 284 passed.
 Шаг `cargo test` в Dockerfile аналога считает итог по `test result` и падает при ненулевом числе упавших.
