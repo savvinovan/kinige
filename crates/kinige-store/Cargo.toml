@@ -9,12 +9,13 @@ publish.workspace = true
 
 [dependencies]
 kinige-domain = { path = "../kinige-domain" }
-rusqlite = { version = "0.40", features = ["bundled"] }
+# backup: копия файла базы через backup API SQLite (`rusqlite::backup`), а не `fs::copy` (при WAL файл без `-wal` не согласован).
+rusqlite = { version = "0.40", features = ["bundled", "backup"] }
+serde_json = "1"
 uuid = { version = "1.28", features = ["v4"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 chrono-tz = "0.10"
 iana-time-zone = "0.1"
 
 [dev-dependencies]
-serde_json = "1"
 tempfile = "3"

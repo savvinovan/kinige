@@ -1,5 +1,6 @@
 //! Отправка записи (ТЗ §5): одна транзакция — запись, HLC в `sync_state`, отметка для Markdown-копии.
 
+use crate::error::write_err;
 use crate::hlc_state::{get_state, load_clock, next_hlc, save_clock, set_state};
 use crate::{Now, Store, StoreError};
 use kinige_domain::MessageView;
@@ -8,10 +9,6 @@ use kinige_domain::hlc::Clock;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
 use uuid::Uuid;
-
-fn write_err(error: rusqlite::Error) -> StoreError {
-    StoreError::Write(error.to_string())
-}
 
 /// Первый запуск: `device_id`, часы HLC и Inbox. Повторный запуск ничего не меняет, кроме часов (они продолжаются, ADR §2).
 pub(crate) fn ensure_initialized(conn: &mut Connection, now: &Now) -> Result<(), StoreError> {
@@ -43,7 +40,7 @@ pub(crate) fn ensure_initialized(conn: &mut Connection, now: &Now) -> Result<(),
     tx.commit().map_err(write_err)
 }
 
-fn insert_chat(tx: &Transaction<'_>, chat: &ChatRow) -> rusqlite::Result<()> {
+pub(crate) fn insert_chat(tx: &Transaction<'_>, chat: &ChatRow) -> rusqlite::Result<()> {
     tx.execute(
         "INSERT INTO chat (id, title, icon, color, sort_key, is_inbox, ai_excluded, pinned_at, archived_at, created_at, \
          updated_at, deleted_at, hlc_json, server_known, schema_version, groups_raw) \
@@ -153,14 +150,20 @@ pub(crate) fn insert_new_message(
     )
     .map_err(|e| StoreError::Internal(e.to_string()))?;
     insert_message(tx, &row).map_err(write_err)?;
+    crate::tags::replace_tags(tx, &row.id, &row.body_md).map_err(write_err)?;
     mark_dirty(tx, chat_id, &date).map_err(write_err)?;
     Ok(MessageView {
+        tags: kinige_domain::tags::parse_tags(&row.body_md),
         id: row.id,
         chat_id: row.chat_id,
         body_md: row.body_md,
         journal_date: row.journal_date,
         created_at: row.created_at,
         created_tz: row.created_tz,
+        is_task: false,
+        task_done_at: None,
+        favorite_at: None,
+        read_only: false,
     })
 }
 

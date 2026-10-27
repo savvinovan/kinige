@@ -28,8 +28,12 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
             "chat",
             "draft",
             "message",
+            "message_revision",
+            "message_tag",
+            "mirror_chat",
             "mirror_dirty",
-            "sync_state"
+            "sync_state",
+            "tombstone"
         ]
     );
     let version: i64 = conn
@@ -377,7 +381,9 @@ fn deleted_entries_are_neither_shown_nor_counted() {
         .unwrap();
     assert_eq!(store.list_chats().unwrap()[0].count, 2);
 
-    mark_deleted(dir.path(), &second.id, T0 + 2000);
+    store
+        .delete_message(&second.id, &moscow(T0 + 2000))
+        .unwrap();
     let page = store
         .list_messages(INBOX_ID, None, 50, &moscow(T0 + 3000))
         .unwrap();

@@ -22,7 +22,11 @@ fn migration_two_adds_only_the_draft_table_and_keeps_every_existing_row() {
     // Возвращаем базу в состояние слайса 1: без таблицы черновиков и с `user_version = 1`.
     {
         let conn = raw(dir.path());
-        conn.execute_batch("DROP TABLE draft;").unwrap();
+        conn.execute_batch(
+            "DROP TABLE draft; DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; \
+             DROP TABLE message_tag; DROP TABLE mirror_chat;",
+        )
+        .unwrap();
         conn.pragma_update(None, "user_version", 1).unwrap();
     }
     let store = open_without_mirror(dir.path());
@@ -31,7 +35,7 @@ fn migration_two_adds_only_the_draft_table_and_keeps_every_existing_row() {
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .unwrap();
     assert_eq!(version, LATEST_VERSION);
-    assert_eq!(LATEST_VERSION, 2);
+    assert_eq!(LATEST_VERSION, 3);
     let columns: Vec<(String, String)> = conn
         .prepare("SELECT name, type FROM pragma_table_info('draft') ORDER BY cid")
         .unwrap()

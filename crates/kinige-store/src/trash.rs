@@ -1,0 +1,176 @@
+//! Корзина (слайс 3, ТЗ §2.1, §4.1, §16; ADR-0001 §3.5): список, «Удалить навсегда» и автоудаление через 30 дней.
+//!
+//! Физическое удаление (purge) локальное, пока нет аккаунта: запись и её ревизии уходят из таблиц, а в `tombstone`
+//! остаются следы со снимком `purged_of` — HLC **всех** групп, включая неизвестные. У ревизий `cascade_of` — id записи,
+//! `held` — `NULL`. Следы хранятся до первой привязки к аккаунту и не меньше 180 дней; в слайсах 1–10 их никто не стирает.
+//! Корзина в Markdown-копию не попадает.
+
+use crate::error::{read_err, write_err};
+use crate::messages::{Loaded, load};
+use crate::view::{VIEW_COLUMNS, view_from_row_at};
+use crate::{Now, Store, StoreError};
+use kinige_domain::TrashItem;
+use kinige_domain::groups::INBOX_ID;
+use kinige_domain::history::{DAY_MS, TRASH_DAYS, days_left, purged_of};
+use rusqlite::{Connection, TransactionBehavior};
+
+/// Сколько записей удаляется за одну транзакцию при автоудалении.
+const PURGE_BATCH: i64 = 200;
+/// Наибольшее число записей в списке корзины.
+const TRASH_LIMIT: i64 = 1000;
+
+/// Физически удаляет запись из корзины вместе с ревизиями и пишет tombstones. Вызывающий открыл транзакцию.
+fn purge(tx: &Connection, loaded: &Loaded, now_ms: i64) -> Result<(), StoreError> {
+    let message_snapshot = purged_of(&loaded.hlc_json)?;
+    tx.execute(
+        "INSERT OR REPLACE INTO tombstone (entity, id, purged_of, purged_at, cascade_of, held) \
+         VALUES ('message', ?1, ?2, ?3, NULL, NULL)",
+        (&loaded.id, message_snapshot, now_ms),
+    )
+    .map_err(write_err)?;
+    let revisions: Vec<(String, String)> = {
+        let mut statement = tx
+            .prepare("SELECT id, hlc_json FROM message_revision WHERE message_id = ?1")
+            .map_err(write_err)?;
+        let rows = statement
+            .query_map([&loaded.id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(write_err)?;
+        rows.collect::<Result<_, _>>().map_err(write_err)?
+    };
+    for (revision_id, hlc_json) in &revisions {
+        tx.execute(
+            "INSERT OR REPLACE INTO tombstone (entity, id, purged_of, purged_at, cascade_of, held) \
+             VALUES ('message_revision', ?1, ?2, ?3, ?4, NULL)",
+            (revision_id, purged_of(hlc_json)?, now_ms, &loaded.id),
+        )
+        .map_err(write_err)?;
+    }
+    tx.execute(
+        "DELETE FROM message_revision WHERE message_id = ?1",
+        [&loaded.id],
+    )
+    .map_err(write_err)?;
+    tx.execute(
+        "DELETE FROM message_tag WHERE message_id = ?1",
+        [&loaded.id],
+    )
+    .map_err(write_err)?;
+    tx.execute("DELETE FROM message WHERE id = ?1", [&loaded.id])
+        .map_err(write_err)?;
+    Ok(())
+}
+
+impl Store {
+    /// Записи из корзины, самые недавно удалённые первыми: чат, дата, сколько осталось до автоудаления.
+    pub fn list_trash(&self, now: &Now) -> Result<Vec<TrashItem>, StoreError> {
+        let now_ms = now.ms;
+        self.read(|conn| {
+            let mut statement = conn
+                .prepare(&format!(
+                    "SELECT {VIEW_COLUMNS}, m.deleted_at, c.title, c.icon, c.id = ?1 \
+                     FROM message m LEFT JOIN chat c ON c.id = m.chat_id \
+                     WHERE m.deleted_at IS NOT NULL \
+                     ORDER BY m.deleted_at DESC, m.id DESC LIMIT ?2"
+                ))
+                .map_err(read_err)?;
+            let rows = statement
+                .query_map(rusqlite::params![INBOX_ID, TRASH_LIMIT], |row| {
+                    let deleted_at: i64 = row.get(10)?;
+                    Ok(TrashItem {
+                        message: view_from_row_at(row, 0)?,
+                        chat_title: row.get::<_, Option<String>>(11)?.unwrap_or_default(),
+                        chat_icon: row.get(12)?,
+                        chat_is_inbox: row.get::<_, Option<bool>>(13)?.unwrap_or(false),
+                        deleted_at,
+                        days_left: days_left(deleted_at, now_ms),
+                    })
+                })
+                .map_err(read_err)?;
+            rows.collect::<Result<Vec<_>, _>>().map_err(read_err)
+        })
+    }
+
+    /// «Удалить навсегда» у записи в корзине: то же, что автоудаление через 30 дней. Записи нет — `MessageNotFound`,
+    /// запись не в корзине — `NotInTrash`: живую запись так не удалить.
+    pub fn purge_message(&self, id: &str, now: &Now) -> Result<(), StoreError> {
+        let (id, now_ms) = (id.to_string(), now.ms);
+        self.write(move |conn| {
+            let tx = conn
+                .transaction_with_behavior(TransactionBehavior::Immediate)
+                .map_err(write_err)?;
+            let loaded = load(&tx, &id)?;
+            if loaded.columns.deleted_at.is_none() {
+                return Err(StoreError::NotInTrash);
+            }
+            purge(&tx, &loaded, now_ms)?;
+            tx.commit().map_err(write_err)
+        })
+    }
+
+    /// Автоудаление: записи, пролежавшие в корзине 30 суток, удаляются физически (при старте и раз в сутки). Возвращает,
+    /// сколько удалено. Повреждённая запись не останавливает остальные: она остаётся в корзине и считается в `Err`
+    /// последней ошибкой после обработки остальных.
+    pub fn purge_expired(&self, now: &Now) -> Result<usize, StoreError> {
+        let border = now.ms.saturating_sub(TRASH_DAYS * DAY_MS);
+        let now_ms = now.ms;
+        let mut purged = 0usize;
+        let mut skip: Vec<String> = Vec::new();
+        let mut last_error = None;
+        loop {
+            let skipped = skip.clone();
+            let outcome = self.write(move |conn| {
+                let mut tx = conn
+                    .transaction_with_behavior(TransactionBehavior::Immediate)
+                    .map_err(write_err)?;
+                let ids: Vec<String> = {
+                    let mut statement = tx
+                        .prepare(
+                            "SELECT id FROM message WHERE deleted_at IS NOT NULL AND deleted_at <= ?1 \
+                             ORDER BY deleted_at, id LIMIT ?2",
+                        )
+                        .map_err(write_err)?;
+                    let rows = statement
+                        .query_map(rusqlite::params![border, PURGE_BATCH + skipped.len() as i64], |row| {
+                            row.get::<_, String>(0)
+                        })
+                        .map_err(write_err)?;
+                    rows.collect::<Result<Vec<_>, _>>().map_err(write_err)?
+                };
+                let mut done = 0usize;
+                let mut bad = Vec::new();
+                let mut error = None;
+                for id in ids.into_iter().filter(|id| !skipped.contains(id)) {
+                    // Точка сохранения на запись: повреждённая откатывается одна, уже удалённые остаются.
+                    let step = tx.savepoint().map_err(write_err)?;
+                    let result = load(&step, &id).and_then(|loaded| purge(&step, &loaded, now_ms));
+                    match result {
+                        Ok(()) => {
+                            step.commit().map_err(write_err)?;
+                            done += 1;
+                        }
+                        Err(e) => {
+                            drop(step);
+                            bad.push(id);
+                            error = Some(e);
+                        }
+                    }
+                }
+                tx.commit().map_err(write_err)?;
+                Ok((done, bad, error))
+            });
+            let (done, bad, error) = outcome?;
+            purged += done;
+            skip.extend(bad);
+            if error.is_some() {
+                last_error = error;
+            }
+            if done == 0 {
+                break;
+            }
+        }
+        match last_error {
+            Some(error) => Err(error),
+            None => Ok(purged),
+        }
+    }
+}

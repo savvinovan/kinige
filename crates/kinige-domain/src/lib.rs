@@ -5,6 +5,7 @@ pub mod append;
 pub mod backup;
 pub mod chat;
 pub mod draft;
+pub mod folders;
 pub mod groups;
 pub mod history;
 pub mod hlc;
@@ -27,7 +28,8 @@ use ts_rs::TS;
 
 pub use api::{
     ApiError, CaptureAction, CaptureOutcome, CaptureState, ChatList, ChatSummary, ErrorCode,
-    FeedCursor, MessagePage, MessageView, MirrorError, MirrorStatus, Settings, TextSize, TrashItem,
+    FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, Settings,
+    TextSize, TrashItem,
 };
 pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, StartupState};
 pub use lang::Language;

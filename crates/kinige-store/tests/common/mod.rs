@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 pub mod capture;
+pub mod ops;
 
-use kinige_domain::hlc::Clock;
 use kinige_store::{Now, Store, StoreOptions};
 use serde_json::value::RawValue;
 use std::collections::BTreeMap;
@@ -30,6 +30,8 @@ pub fn mirror_dir(dir: &Path) -> PathBuf {
 pub fn options(dir: &Path) -> StoreOptions {
     let mut options = StoreOptions::new(db_path(dir), Some(mirror_dir(dir)));
     options.mirror_retry = Duration::from_millis(40);
+    // Фоновое обслуживание (корзина, проверка целостности, копия дня) тесты запускают сами, с заданным временем.
+    options.start_maintenance = false;
     options
 }
 
@@ -97,54 +99,4 @@ pub fn edit_raw_groups(
         ),
     )
     .unwrap();
-}
-
-/// Следующая метка HLC устройства из `sync_state` (часы продолжаются, как при настоящей операции).
-fn tick_clock(dir: &Path, pt_ms: i64) -> String {
-    let conn = raw(dir);
-    let get = |key: &str| -> String {
-        conn.query_row("SELECT value FROM sync_state WHERE key = ?1", [key], |r| {
-            r.get(0)
-        })
-        .unwrap()
-    };
-    let clock = Clock {
-        l: get("hlc_l").parse().unwrap(),
-        c: get("hlc_c").parse().unwrap(),
-    }
-    .tick(u64::try_from(pt_ms).unwrap())
-    .unwrap();
-    for (key, value) in [
-        ("hlc_l", clock.l.to_string()),
-        ("hlc_c", clock.c.to_string()),
-    ] {
-        conn.execute(
-            "UPDATE sync_state SET value = ?1 WHERE key = ?2",
-            (value, key),
-        )
-        .unwrap();
-    }
-    clock.format(&get("device_id"))
-}
-
-/// Запись уходит в корзину: колонка, группа `deleted` и её HLC согласованы (интерфейса удаления до слайса 3 нет, поэтому
-/// тесты ставят удаление так, как его запишет настоящая операция: новая каноничная группа с новым HLC).
-pub fn mark_deleted(dir: &Path, id: &str, at_ms: i64) {
-    let hlc = tick_clock(dir, at_ms);
-    edit_raw_groups(dir, id, |groups, hlcs| {
-        let group = serde_json::json!({ "deleted_at": at_ms });
-        let bytes =
-            String::from_utf8(kinige_domain::jcs::canonical_bytes(&group).unwrap()).unwrap();
-        groups.insert("deleted".into(), RawValue::from_string(bytes).unwrap());
-        hlcs.insert(
-            "deleted".into(),
-            RawValue::from_string(serde_json::json!({"h": hlc, "sv": 1}).to_string()).unwrap(),
-        );
-    });
-    raw(dir)
-        .execute(
-            "UPDATE message SET deleted_at = ?1 WHERE id = ?2",
-            (at_ms, id),
-        )
-        .unwrap();
 }

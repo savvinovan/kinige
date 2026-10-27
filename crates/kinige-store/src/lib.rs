@@ -1,32 +1,59 @@
 //! Хранилище Kinige (ТЗ §3.2): SQLite через `rusqlite`, один поток-писатель, чтение отдельным соединением (WAL),
-//! миграции, Markdown-копия. Бизнес-правила — в `kinige-domain`; здесь только транзакции и файлы.
+//! миграции, Markdown-копия, копия файла базы. Бизнес-правила — в `kinige-domain`; здесь только транзакции и файлы.
 
+mod backup;
 mod capture;
+mod chats;
 mod draft;
 mod error;
 mod feed;
 mod hlc_state;
+mod maintenance;
+mod messages;
 mod mirror;
+mod recovery;
 mod schema;
 mod send;
 mod settings;
+mod tags;
 mod time;
+mod trash;
+mod view;
 mod writer;
 
+pub use backup::{backups_dir, list_backups};
 pub use capture::{CONTEXT_LEN, CaptureView};
+pub use chats::RecentChat;
 pub use draft::MAX_DRAFT_BYTES;
 pub use error::StoreError;
 pub use feed::{DEFAULT_PAGE, MAX_PAGE};
+pub use maintenance::MaintenanceReport;
+pub use recovery::{backups, mark_needs_recovery, needs_recovery, restore_backup};
 pub use schema::LATEST_VERSION;
-pub use time::{Now, local_hhmm, offset_secs};
+pub use time::{Now, local_hhmm, offset_secs, utc_stamp};
 
+use backup::BackupShared;
+use error::{read_err, write_err};
 use kinige_domain::groups;
+use maintenance::MaintenanceShared;
 use mirror::MirrorShared;
 use rusqlite::{Connection, OpenFlags};
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use writer::Writer;
+
+/// Сигнал о повреждении базы, найденном проверкой целостности в фоне: вызывается один раз за запуск, из потока
+/// обслуживания. Слой Tauri по нему ставит отметку «нужно восстановление» и сообщает окну.
+#[derive(Clone)]
+pub struct CorruptionHook(pub Arc<dyn Fn() + Send + Sync>);
+
+impl fmt::Debug for CorruptionHook {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("CorruptionHook")
+    }
+}
 
 /// Параметры открытия хранилища.
 #[derive(Debug, Clone)]
@@ -39,6 +66,11 @@ pub struct StoreOptions {
     pub start_mirror: bool,
     /// Через сколько повторять запись копии после ошибки.
     pub mirror_retry: Duration,
+    /// Запускать ли фоновое обслуживание: автоудаление корзины, проверка целостности, копия дня (тесты выключают и зовут
+    /// [`Store::run_maintenance`] сами).
+    pub start_maintenance: bool,
+    /// Что сделать, когда проверка целостности нашла повреждение.
+    pub on_corruption: Option<CorruptionHook>,
 }
 
 impl StoreOptions {
@@ -48,20 +80,27 @@ impl StoreOptions {
             default_mirror_dir,
             start_mirror: true,
             mirror_retry: Duration::from_secs(10),
+            start_maintenance: true,
+            on_corruption: None,
         }
     }
 }
 
-struct Inner {
+pub(crate) struct Inner {
     writer: Writer,
     reader: Mutex<Connection>,
     mirror: Arc<MirrorShared>,
     default_mirror_dir: Option<PathBuf>,
+    db_path: PathBuf,
+    backup: BackupShared,
+    maintenance: Arc<MaintenanceShared>,
+    on_corruption: Option<CorruptionHook>,
 }
 
 impl Drop for Inner {
     fn drop(&mut self) {
         self.mirror.stop();
+        self.maintenance.stop();
     }
 }
 
@@ -71,9 +110,33 @@ pub struct Store {
     inner: Arc<Inner>,
 }
 
+/// Перед миграцией существующей базы: проверка целостности (синхронно) и копия. Свежая база (файла нет или пустой, версия
+/// схемы 0) и база текущей версии копии не требуют.
+fn prepare_migration(db_path: &Path, now: &Now) -> Result<(), StoreError> {
+    let exists = std::fs::metadata(db_path).is_ok_and(|m| m.len() > 0);
+    if !exists {
+        return Ok(());
+    }
+    let conn = open_connection(db_path, true)?;
+    let current: i64 = conn
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .map_err(read_err)?;
+    if current == 0 || current >= schema::LATEST_VERSION {
+        return Ok(());
+    }
+    if !backup::integrity_ok(&conn) {
+        return Err(StoreError::Corrupt(
+            "проверка целостности перед миграцией".into(),
+        ));
+    }
+    // Нет копии — нет миграции: откат приложения после миграции не поддерживается (ТЗ §10.4).
+    backup::before_migration(&conn, db_path, current, &time::utc_stamp(now.ms))
+        .map_err(|error| StoreError::Write(format!("копия перед миграцией: {error:?}")))
+}
+
 impl Store {
-    /// Открывает базу, применяет миграции, при первом запуске создаёт `device_id`, часы HLC и Inbox (идемпотентно),
-    /// запускает писателя и фоновую запись копии.
+    /// Открывает базу, применяет миграции (перед миграцией существующей базы снимается копия), при первом запуске создаёт
+    /// `device_id`, часы HLC и Inbox (идемпотентно), запускает писателя, фоновую запись копии и обслуживание.
     pub fn open(options: StoreOptions) -> Result<Store, StoreError> {
         Store::open_at(options, &Now::system())
     }
@@ -83,24 +146,30 @@ impl Store {
         if let Some(parent) = options.db_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| StoreError::Internal(e.to_string()))?;
         }
+        prepare_migration(&options.db_path, now)?;
         let mut conn = open_connection(&options.db_path, false)?;
         schema::migrate(&mut conn).map_err(|e| match e {
             schema::MigrateError::TooNew { found } => {
                 StoreError::Internal(format!("база создана более новой версией (схема {found})"))
             }
-            schema::MigrateError::Sqlite(e) => StoreError::Write(e.to_string()),
+            schema::MigrateError::Sqlite(e) => write_err(e),
         })?;
         send::ensure_initialized(&mut conn, now)?;
 
         let reader = open_connection(&options.db_path, true)?;
         let writer = Writer::spawn(conn);
         let mirror = MirrorShared::new(options.mirror_retry);
+        let maintenance = MaintenanceShared::new();
         let store = Store {
             inner: Arc::new(Inner {
                 writer,
                 reader: Mutex::new(reader),
                 mirror: mirror.clone(),
                 default_mirror_dir: options.default_mirror_dir.clone(),
+                db_path: options.db_path.clone(),
+                backup: BackupShared::default(),
+                maintenance: maintenance.clone(),
+                on_corruption: options.on_corruption.clone(),
             }),
         };
         if options.start_mirror {
@@ -111,6 +180,9 @@ impl Store {
                 store.inner.writer.clone(),
                 options.default_mirror_dir,
             );
+        }
+        if options.start_maintenance {
+            maintenance::spawn(maintenance, Arc::downgrade(&store.inner));
         }
         Ok(store)
     }
@@ -145,51 +217,54 @@ impl Store {
         groups::INBOX_ID
     }
 
+    /// Файл базы: нужен слою Tauri для восстановления и диагностики.
+    pub fn db_path(&self) -> &Path {
+        &self.inner.db_path
+    }
+
     /// Прагмы соединения-писателя `(synchronous, fullfsync, journal_mode)`: для проверки, что запись долговечна.
     #[doc(hidden)]
     pub fn writer_pragmas(&self) -> Result<(i64, i64, String), StoreError> {
         self.write(|conn| {
-            let read = |e: rusqlite::Error| StoreError::Read(e.to_string());
             Ok((
                 conn.pragma_query_value(None, "synchronous", |r| r.get(0))
-                    .map_err(read)?,
+                    .map_err(read_err)?,
                 conn.pragma_query_value(None, "fullfsync", |r| r.get(0))
-                    .map_err(read)?,
+                    .map_err(read_err)?,
                 conn.pragma_query_value(None, "journal_mode", |r| r.get(0))
-                    .map_err(read)?,
+                    .map_err(read_err)?,
             ))
         })
     }
 
-    /// Путь файла базы нужен тестам и диагностике.
+    /// Путь папки Markdown-копии по умолчанию нужен тестам и диагностике.
     pub fn default_mirror_dir(&self) -> Option<&Path> {
         self.inner.default_mirror_dir.as_deref()
     }
 }
 
 /// Соединение с общими настройками. Для чтения — `query_only`.
-fn open_connection(path: &Path, read_only: bool) -> Result<Connection, StoreError> {
+pub(crate) fn open_connection(path: &Path, read_only: bool) -> Result<Connection, StoreError> {
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
         | OpenFlags::SQLITE_OPEN_CREATE
         | OpenFlags::SQLITE_OPEN_NO_MUTEX;
-    let conn =
-        Connection::open_with_flags(path, flags).map_err(|e| StoreError::Write(e.to_string()))?;
+    let conn = Connection::open_with_flags(path, flags).map_err(write_err)?;
     conn.busy_timeout(Duration::from_secs(5))
-        .map_err(|e| StoreError::Write(e.to_string()))?;
+        .map_err(write_err)?;
     if read_only {
         conn.pragma_update(None, "query_only", true)
-            .map_err(|e| StoreError::Read(e.to_string()))?;
+            .map_err(read_err)?;
     } else {
         // WAL: читатели не блокируют писателя. FULL: запись фиксируется на диске до ответа (переживает и убийство процесса,
         // и потерю питания, ТЗ §12.3).
         conn.pragma_update(None, "journal_mode", "WAL")
-            .map_err(|e| StoreError::Write(e.to_string()))?;
+            .map_err(write_err)?;
         conn.pragma_update(None, "synchronous", "FULL")
-            .map_err(|e| StoreError::Write(e.to_string()))?;
+            .map_err(write_err)?;
         // macOS: обычный fsync не сбрасывает кэш накопителя, F_FULLFSYNC сбрасывает (иначе потеря питания может
         // унести уже подтверждённую запись). На других ОС прагма ничего не меняет.
         conn.pragma_update(None, "fullfsync", true)
-            .map_err(|e| StoreError::Write(e.to_string()))?;
+            .map_err(write_err)?;
     }
     Ok(conn)
 }

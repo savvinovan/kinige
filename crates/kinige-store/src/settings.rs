@@ -11,6 +11,17 @@ use std::path::{Path, PathBuf};
 
 const KEY_MIRROR_DIR: &str = "mirror_dir";
 const KEY_TEXT_SIZE: &str = "text_size";
+const KEY_SIDEBAR_COLLAPSED: &str = "sidebar_collapsed";
+const KEY_RECENT_EMOJI: &str = "recent_emoji";
+/// Сколько недавних эмодзи помнит пикер.
+pub const MAX_RECENT_EMOJI: usize = 24;
+
+/// Недавние эмодзи, самые свежие первыми. Повреждённое значение — пустой список: недавние не стоят ошибки.
+fn recent_emoji(conn: &Connection) -> rusqlite::Result<Vec<String>> {
+    Ok(get_setting(conn, KEY_RECENT_EMOJI)?
+        .and_then(|text| serde_json::from_str::<Vec<String>>(&text).ok())
+        .unwrap_or_default())
+}
 
 fn read_err(error: rusqlite::Error) -> StoreError {
     StoreError::Read(error.to_string())
@@ -67,16 +78,22 @@ impl Store {
     /// система при регистрации, её накладывает слой Tauri.
     pub fn get_settings(&self) -> Result<Settings, StoreError> {
         let default = self.inner.default_mirror_dir.clone();
-        let (text_size, folder, pending_days, shortcuts) = self.read(|conn| {
-            let text_size = get_setting(conn, KEY_TEXT_SIZE).map_err(read_err)?;
-            let folder = effective_mirror_dir(conn, default.as_deref()).map_err(read_err)?;
-            let pending: i64 = conn
-                .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |row| row.get(0))
-                .map_err(read_err)?;
-            let shortcuts = shortcut_statuses(conn).map_err(read_err)?;
-            Ok((text_size, folder, pending, shortcuts))
-        })?;
+        let (text_size, folder, pending_days, shortcuts, collapsed, recent) =
+            self.read(|conn| {
+                let text_size = get_setting(conn, KEY_TEXT_SIZE).map_err(read_err)?;
+                let folder = effective_mirror_dir(conn, default.as_deref()).map_err(read_err)?;
+                let pending: i64 = conn
+                    .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |row| row.get(0))
+                    .map_err(read_err)?;
+                let shortcuts = shortcut_statuses(conn).map_err(read_err)?;
+                let collapsed = get_setting(conn, KEY_SIDEBAR_COLLAPSED).map_err(read_err)?;
+                let recent = recent_emoji(conn).map_err(read_err)?;
+                Ok((text_size, folder, pending, shortcuts, collapsed, recent))
+            })?;
         Ok(Settings {
+            sidebar_collapsed: collapsed.as_deref() == Some("1"),
+            recent_emoji: recent,
+            backup: self.inner.backup.status(&self.inner.db_path),
             text_size: text_size
                 .as_deref()
                 .map_or(TextSize::Normal, TextSize::from_setting),
@@ -152,6 +169,42 @@ impl Store {
             )
             .map_err(write_err)?;
             Ok(())
+        })
+    }
+
+    /// Сайдбар свёрнут до полосы эмодзи или развёрнут: хранится, переживает перезапуск.
+    pub fn set_sidebar_collapsed(&self, collapsed: bool) -> Result<(), StoreError> {
+        self.write(move |conn| {
+            conn.execute(
+                "INSERT INTO app_setting(key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (KEY_SIDEBAR_COLLAPSED, if collapsed { "1" } else { "0" }),
+            )
+            .map_err(write_err)?;
+            Ok(())
+        })
+    }
+
+    /// Выбранный в пикере эмодзи встаёт первым в «недавних»; повтор переезжает вперёд, список ограничен
+    /// [`MAX_RECENT_EMOJI`]. Ответ — список целиком. Чтение и запись — в одной транзакции писателя.
+    pub fn add_recent_emoji(&self, emoji: &str) -> Result<Vec<String>, StoreError> {
+        let emoji = kinige_domain::chat::normalize_icon(Some(emoji))?;
+        self.write(move |conn| {
+            let tx = conn
+                .transaction_with_behavior(TransactionBehavior::Immediate)
+                .map_err(write_err)?;
+            let mut list = recent_emoji(&tx).map_err(read_err)?;
+            list.retain(|known| *known != emoji);
+            list.insert(0, emoji);
+            list.truncate(MAX_RECENT_EMOJI);
+            let text = serde_json::to_string(&list)
+                .map_err(|error| StoreError::Internal(error.to_string()))?;
+            tx.execute(
+                "INSERT INTO app_setting(key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (KEY_RECENT_EMOJI, text),
+            )
+            .map_err(write_err)?;
+            tx.commit().map_err(write_err)?;
+            Ok(list)
         })
     }
 

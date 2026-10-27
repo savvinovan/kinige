@@ -7,9 +7,9 @@ use crate::settings::effective_mirror_dir;
 use crate::time::local_hhmm;
 use crate::writer::Writer;
 use kinige_domain::MirrorError;
-use kinige_domain::groups::INBOX_ID;
-use kinige_domain::mirror::{INBOX_FOLDER, MirrorEntry, day_file_segments, render_day_file};
-use rusqlite::Connection;
+use kinige_domain::mirror::{MirrorEntry, day_file_segments, render_day_file};
+use rusqlite::{Connection, OptionalExtension};
+use std::collections::HashSet;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -156,8 +156,20 @@ fn pass(
             shared.set_error(None);
             return false;
         }
+        // Папки чатов по их нынешним названиям; чат уже сверен с папкой, где лежат его файлы, — раз за проход.
+        let folders = crate::chats::folder_map(reader).unwrap_or_default();
+        let mut reconciled: HashSet<String> = HashSet::new();
         for (chat_id, date, seq) in batch {
-            if let Err(error) = write_day(reader, &dir, &chat_id, &date) {
+            let folder = folders
+                .get(&chat_id)
+                .cloned()
+                .unwrap_or_else(|| chat_id.clone());
+            if reconciled.insert(chat_id.clone())
+                && !reconcile_folder(reader, writer, &dir, &chat_id, &folder)
+            {
+                return true;
+            }
+            if let Err(error) = write_day(reader, &dir, &chat_id, &folder, &date) {
                 shared.set_error(Some(error));
                 return true;
             }
@@ -189,15 +201,62 @@ fn prepare_root(dir: &Path) -> bool {
     fs::create_dir_all(dir).is_ok() && dir.is_dir()
 }
 
+/// Папка чата в копии совпадает с папкой, где лежат его файлы: при переименовании (или смене владельца простого имени)
+/// старая папка переезжает целиком. Ошибка переименования не останавливает копию: дни чата всё равно записываются в
+/// новую папку. `false` — не удалось записать сведения о папке, нужен повтор.
+fn reconcile_folder(
+    reader: &Connection,
+    writer: &Writer,
+    root: &Path,
+    chat_id: &str,
+    folder: &str,
+) -> bool {
+    let known: Option<String> = reader
+        .query_row(
+            "SELECT folder FROM mirror_chat WHERE chat_id = ?1",
+            [chat_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .unwrap_or(None);
+    if known.as_deref() == Some(folder) {
+        return true;
+    }
+    if let Some(previous) = known.as_deref() {
+        let (from, to) = (root.join(previous), root.join(folder));
+        if from.is_dir() {
+            // Имена, отличающиеся регистром, на macOS — одна папка: переезд через промежуточное имя.
+            let same_folder = previous.to_lowercase() == folder.to_lowercase();
+            if same_folder {
+                let hop = root.join(format!(".{folder}.rename"));
+                if fs::rename(&from, &hop).is_ok() && fs::rename(&hop, &to).is_err() {
+                    let _ = fs::rename(&hop, &from);
+                }
+            } else if !to.exists() {
+                let _ = fs::rename(&from, &to);
+            }
+        }
+    }
+    let (chat_id, folder) = (chat_id.to_string(), folder.to_string());
+    matches!(
+        writer.run(move |conn| conn.execute(
+            "INSERT INTO mirror_chat (chat_id, folder) VALUES (?1, ?2) \
+             ON CONFLICT(chat_id) DO UPDATE SET folder = excluded.folder",
+            (chat_id, folder),
+        )),
+        Ok(Ok(_))
+    )
+}
+
 /// Перезаписывает файл одного дня одного чата или удаляет его, если записей не осталось.
 fn write_day(
     reader: &Connection,
     root: &Path,
     chat_id: &str,
+    folder: &str,
     journal_date: &str,
 ) -> Result<(), MirrorError> {
-    let folder = chat_folder(chat_id);
-    let Some(segments) = day_file_segments(&folder, journal_date) else {
+    let Some(segments) = day_file_segments(folder, journal_date) else {
         // Недопустимая дата или имя папки: файла быть не может, отметку снимаем (иначе она не сойдёт никогда).
         return Ok(());
     };
@@ -243,16 +302,6 @@ fn write_atomically(dir: &Path, name: &str, bytes: &[u8]) -> std::io::Result<()>
         let _ = fs::remove_file(&temp);
     }
     result
-}
-
-/// Имя папки чата: `Inbox` у Inbox при любом языке. Имена остальных чатов — слайс 3; пока — id чата (безопасное имя).
-/// Inbox определяется по id, а не по флагу `is_inbox` (ADR-0001 §3.6): чужая строка с флагом не займёт папку `Inbox`.
-fn chat_folder(chat_id: &str) -> String {
-    if chat_id == INBOX_ID {
-        INBOX_FOLDER.to_string()
-    } else {
-        chat_id.to_string()
-    }
 }
 
 fn day_entries(

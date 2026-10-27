@@ -22,19 +22,9 @@ fn dirty_count(dir: &Path) -> i64 {
         .unwrap()
 }
 
-/// Запись уходит в корзину (интерфейс корзины — слайс 3): день помечается для перезаписи, как это сделает удаление.
-/// Копия просыпается от смены папки (на ту же самую).
-fn delete_entry(store: &kinige_store::Store, dir: &Path, id: &str, date: &str) {
-    mark_deleted(dir, id, 1);
-    let conn = raw(dir);
-    conn.execute(
-        "INSERT INTO mirror_dirty (chat_id, journal_date, seq) \
-         VALUES (?1, ?2, (SELECT COALESCE(MAX(seq), 0) + 1 FROM mirror_dirty)) \
-         ON CONFLICT(chat_id, journal_date) DO UPDATE SET seq = excluded.seq",
-        (INBOX_ID, date),
-    )
-    .unwrap();
-    store.set_mirror_dir(&mirror_dir(dir)).unwrap();
+/// Запись уходит в корзину настоящей операцией: день помечается для перезаписи в той же транзакции.
+fn delete_entry(store: &kinige_store::Store, _dir: &Path, id: &str, _date: &str) {
+    store.delete_message(id, &moscow(T0 + 10 * MINUTE)).unwrap();
 }
 
 #[test]
@@ -315,11 +305,14 @@ fn a_chat_with_the_inbox_flag_but_another_id_does_not_get_the_inbox_folder() {
     store
         .send_message(impostor, "я не Inbox", &moscow(T0))
         .unwrap();
+    // Самозванец получает папку по своему имени, как любой другой чат; `Inbox` остаётся за настоящим Inbox.
     let file = mirror_dir(dir.path())
-        .join(impostor)
+        .join("Самозванец")
         .join("2026")
         .join("2026-10-21.md");
-    wait_until("файл в папке по id чата", || file.exists());
+    wait_until("файл в папке по имени чата", || {
+        file.exists()
+    });
     assert!(
         !mirror_dir(dir.path()).join("Inbox").exists(),
         "папку Inbox занимает только настоящий Inbox"

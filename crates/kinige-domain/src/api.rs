@@ -68,6 +68,19 @@ pub struct MessageView {
     pub read_only: bool,
 }
 
+/// Какой флаг записи меняется командой `set_message_flag`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "MessageFlag.ts")]
+pub enum MessageFlag {
+    /// Запись — задача (флажок). Снятие обнуляет «выполнено».
+    Task,
+    /// Задача выполнена; только у задачи.
+    TaskDone,
+    /// Избранное.
+    Favorite,
+}
+
 /// Запись в корзине (ТЗ §2.1): чат, дата, сколько осталось до автоудаления.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
