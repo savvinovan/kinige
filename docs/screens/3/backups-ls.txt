@@ -1,0 +1,32 @@
+$ ls -la data/ data/backups/   (временная база проверки после сценария восстановления)
+data:
+total 600
+drwxr-xr-x@ 7 alexandrsavvinov  wheel     224 Oct 27 18:36 .
+drwxr-xr-x@ 9 alexandrsavvinov  wheel     288 Oct 27 18:23 ..
+drwxr-xr-x@ 3 alexandrsavvinov  wheel      96 Oct 27 18:22 backups
+-rw-r--r--@ 1 alexandrsavvinov  wheel  139264 Oct 27 18:22 corrupt-1793114580347.db
+-rw-r--r--@ 1 alexandrsavvinov  wheel  126976 Oct 27 18:36 kinige.db
+-rw-r--r--@ 1 alexandrsavvinov  wheel   32768 Oct 27 18:36 kinige.db-shm
+-rw-r--r--@ 1 alexandrsavvinov  wheel    4152 Oct 27 18:36 kinige.db-wal
+
+data/backups:
+total 248
+drwxr-xr-x@ 3 alexandrsavvinov  wheel      96 Oct 27 18:22 .
+drwxr-xr-x@ 7 alexandrsavvinov  wheel     224 Oct 27 18:36 ..
+-rw-r--r--@ 1 alexandrsavvinov  wheel  126976 Oct 27 18:22 daily-2026-10-27.db
+
+$ ls mirror/ (папки чатов Markdown-копии) и mirror-before-restore-*/
+Inbox
+Идеи
+Книги
+Работа
+Старые заметки
+mirror-before-restore-20261027T152300Z
+
+$ sqlite3 data-good/kinige.db  (до порчи; сводка таблиц слайса 3)
+message: 12
+message_revision: 2
+tombstone: 1
+message_tag: 5
+chat: 6
+mirror_chat: 5

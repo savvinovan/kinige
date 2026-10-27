@@ -1,0 +1,39 @@
+# Проверки слайса 3 (локально, macOS, 2026-10-27 18:34 MSK), коммит 3584b8b
+
+$ cargo fmt --all --check
+итог: чисто
+
+$ cargo clippy --workspace --all-targets -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.01s
+
+$ cargo test --workspace
+итог: passed 310, failed 0, ignored 1
+
+$ cargo build -p kinige-domain --target wasm32-unknown-unknown
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.05s
+
+$ npm run tokens
+✔︎ src/ui/tokens.css
+✔︎ src/ui/themes.css
+tokens.css / themes.css: 0 отличий от закоммиченного
+
+$ npm run typecheck
+> kinige-web@0.1.0 typecheck
+> tsc --noEmit
+
+
+$ npm run lint
+> kinige-web@0.1.0 lint
+> eslint .
+
+
+$ npm test
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/ui/screens/MainWindow.slice3.test.tsx > MainWindow слайс 3: чаты > у каждого чата свой черновик: переключение сохраняет набранное и подставляет его обратно
+ Test Files  1 failed | 53 passed (54)
+      Tests  1 failed | 1044 passed (1045)
+   Duration  7.46s (tests 40%, environment 40%, import 9%, setup 8%, transform 3%)
+
+$ npm run build-storybook
+└  Storybook build completed successfully
+
