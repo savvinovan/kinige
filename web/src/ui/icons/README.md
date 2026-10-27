@@ -19,6 +19,20 @@
 | `close` | `x` | MIT (из Feather) |
 | `alert` | `circle-alert` (прежнее имя `alert-circle`) | MIT (из Feather) |
 | `info` | `info` | MIT (из Feather) |
+| `trash` | `trash-2` | MIT (из Feather) |
+| `calendar` | `calendar` | MIT (из Feather) |
+| `pin` | `pin` | ISC |
+| `unpin` | `pin-off` | ISC |
+| `archive` | `archive` | ISC |
+| `unarchive` | `archive-restore` | ISC |
+| `plus` | `plus` | MIT (из Feather) |
+| `collapse` | `panel-left-close` | ISC |
+| `expand` | `panel-left-open` | ISC |
+| `undo` | `undo-2` | ISC |
+| `chevronRight` | `chevron-right` | MIT (из Feather) |
+| `database` | `database` | MIT (из Feather) |
+
+Происхождение значков слайса 3 сверено со списком Feather в `LICENSE` пакета 1.60.0: `trash-2`, `calendar`, `plus`, `chevron-right`, `database` там есть, остальные — ISC.
 
 Какие значки произошли от Feather, видно по списку в `LICENSE` пакета; проверено по версии 1.60.0.
 
