@@ -99,6 +99,35 @@ pub fn purged_of(hlc_json: &str) -> Result<String, GroupError> {
     Ok(String::from_utf8(bytes).expect("JCS выдаёт UTF-8"))
 }
 
+/// То же, что [`purged_of`], но для записи с частично повреждённым `hlc_json`: в снимок попадает всё, что удалось прочитать
+/// (группы с разбираемой меткой `h`). Группа, которой нет в снимке, считается новее его (ADR-0001 §3.5), поэтому неполный
+/// снимок только делает будущий серверный purge осторожнее, но запись можно удалить локально. Не объект JSON и пустой
+/// результат — ошибка: снимка нет вовсе.
+pub fn purged_of_best_effort(hlc_json: &str) -> Result<String, GroupError> {
+    let hlcs: BTreeMap<String, Value> = serde_json::from_str(hlc_json).map_err(corrupt)?;
+    let mut snapshot = serde_json::Map::new();
+    for (name, entry) in &hlcs {
+        if let Some(h) = entry.get("h").and_then(Value::as_str) {
+            snapshot.insert(name.clone(), json!(h));
+        }
+    }
+    if snapshot.is_empty() {
+        return Err(corrupt("в hlc_json нет ни одной читаемой группы"));
+    }
+    let bytes = jcs::canonical_bytes(&Value::Object(snapshot))?;
+    Ok(String::from_utf8(bytes).expect("JCS выдаёт UTF-8"))
+}
+
+/// Группа `deleted` записи в поддерживаемой `sv`: purge (локальный и серверный) создавать можно только так (ADR-0001 §4 п. 4).
+/// Нет записи о группе или она не читается — «можно»: решить, что запись новее, нечем, а удалить повреждённую человек
+/// вправе.
+pub fn deleted_group_supported(hlc_json: &str) -> bool {
+    serde_json::from_str::<BTreeMap<String, Value>>(hlc_json)
+        .ok()
+        .and_then(|hlcs| hlcs.get("deleted")?.get("sv")?.as_u64())
+        .is_none_or(|sv| sv <= u64::from(SCHEMA_VERSION))
+}
+
 /// Через сколько целых дней запись из корзины удалится сама: от 30 в день удаления до 0 в последний день; не меньше 0.
 pub fn days_left(deleted_at_ms: i64, now_ms: i64) -> i64 {
     let expires = deleted_at_ms.saturating_add(TRASH_DAYS * DAY_MS);

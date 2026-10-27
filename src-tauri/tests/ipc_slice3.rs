@@ -348,8 +348,15 @@ fn startup_state_reports_recovery_and_refuses_restore_when_the_journal_is_open()
     let main = window(&fixture, "main");
     assert_eq!(
         call(&main, "startup_state", json!({})).unwrap(),
-        json!({"needsRecovery": false, "backups": []})
+        json!({"needsRecovery": false, "backups": [], "databaseTooNew": false, "mirrorFolder": null})
     );
+    // «Перезапустить для восстановления» без найденного повреждения (отметки нет) отвергается и отметку не ставит.
+    assert_eq!(
+        call(&main, "restart_for_recovery", json!({})).unwrap_err(),
+        json!({"code": "internal"})
+    );
+    let db_path = fixture.app.state::<Store>().db_path().to_path_buf();
+    assert!(!kinige_store::needs_recovery(&db_path));
     assert_eq!(
         call(
             &main,

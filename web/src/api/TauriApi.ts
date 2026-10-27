@@ -13,6 +13,7 @@ import type { Language } from "./generated/Language";
 import type { MessageFlag } from "./generated/MessageFlag";
 import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
+import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { Settings } from "./generated/Settings";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
@@ -45,6 +46,7 @@ const CODES: readonly ErrorCode[] = [
   "chat_icon_invalid",
   "task_item_stale",
   "database_corrupt",
+  "database_too_new",
   "backup_not_found",
   "internal",
 ];
@@ -198,8 +200,8 @@ export class TauriApi implements KinigeApi {
     return call("startup_state");
   }
 
-  async restoreBackup(name: string): Promise<void> {
-    await call("restore_backup", { name });
+  restoreBackup(name: string): Promise<RestoreOutcome> {
+    return call("restore_backup", { name });
   }
 
   onDatabaseCorrupt(handler: () => void): Promise<() => void> {

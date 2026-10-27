@@ -31,7 +31,7 @@ pub use api::{
     FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, Settings,
     TextSize, TrashItem,
 };
-pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, StartupState};
+pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, RestoreOutcome, StartupState};
 pub use lang::Language;
 pub use shortcuts::{ShortcutKind, ShortcutState, ShortcutStatus};
 

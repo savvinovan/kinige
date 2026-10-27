@@ -53,6 +53,8 @@ pub enum BackupError {
     WriteFailed,
     /// Проверка целостности нашла повреждение: копия дня не снимается, чтобы испорченная не вытеснила хорошие.
     IntegrityFailed,
+    /// Автоудаление корзины не смогло убрать запись (повреждена): запись остаётся в корзине, проверка и копия идут дальше.
+    PurgeFailed,
 }
 
 /// Состояние копий для «Настроек».
@@ -80,6 +82,20 @@ pub struct StartupState {
     pub needs_recovery: bool,
     /// Копии, из которых можно восстановить, новые первыми.
     pub backups: Vec<BackupInfo>,
+    /// База создана более новой версией Kinige (§10.4): журнал не открыт, копии не помогут, нужно обновить приложение.
+    pub database_too_new: bool,
+    /// Папка Markdown-копии, которая при восстановлении будет переименована в `<имя>-before-restore-<метка>` рядом с ней
+    /// (записи после снимка копии иначе были бы затёрты); `null` — копия выключена.
+    pub mirror_folder: Option<String>,
+}
+
+/// Итог восстановления из копии.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "RestoreOutcome.ts")]
+pub struct RestoreOutcome {
+    /// Куда переехала прежняя папка Markdown-копии (`<имя>-before-restore-<метка>`); `null` — папки не было.
+    pub previous_mirror: Option<String>,
 }
 
 /// Имя копии дня за локальную дату `YYYY-MM-DD`.

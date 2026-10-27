@@ -9,6 +9,7 @@ import type { Language } from "./generated/Language";
 import type { MessageFlag } from "./generated/MessageFlag";
 import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
+import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { Settings } from "./generated/Settings";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
@@ -103,8 +104,11 @@ export interface KinigeApi {
   // ---- запуск и копии базы (слайс 3) ----
   /** Журнал или окно «База повреждена» со списком копий. */
   startupState(): Promise<StartupState>;
-  /** Восстановить из копии `name` (только когда журнал не открыт). */
-  restoreBackup(name: string): Promise<void>;
+  /**
+   * Восстановить из копии `name` (только когда журнал не открыт; повторный вызов во время восстановления — ошибка).
+   * Ответ — куда переехала прежняя папка Markdown-копии.
+   */
+  restoreBackup(name: string): Promise<RestoreOutcome>;
   /** Проверка целостности нашла повреждение работающей базы. Возвращает отписку. */
   onDatabaseCorrupt(handler: () => void): Promise<() => void>;
   /** Перезапустить приложение для восстановления (после события `onDatabaseCorrupt`). */

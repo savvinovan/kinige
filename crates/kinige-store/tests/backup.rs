@@ -364,7 +364,8 @@ fn restoring_keeps_the_broken_file_beside_and_creates_a_new_device_id() {
     assert_eq!(list[0].name, daily_name("2026-10-21"));
     assert_eq!(list[0].kind, BackupKind::Daily);
 
-    kinige_store::restore_backup(&db_path(dir.path()), &list[0].name, 1_700_000_000_000).unwrap();
+    kinige_store::restore_backup(&db_path(dir.path()), &list[0].name, 1_700_000_000_000, None)
+        .unwrap();
 
     // Повреждённый файл сохранён рядом, не удалён.
     let kept = dir.path().join("corrupt-1700000000000.db");
@@ -421,7 +422,7 @@ fn restoring_from_a_missing_foreign_or_broken_copy_touches_nothing() {
         "",
         "daily-2026-10-21.db/../../kinige.db",
     ] {
-        let error = kinige_store::restore_backup(&db_path(dir.path()), name, 1).unwrap_err();
+        let error = kinige_store::restore_backup(&db_path(dir.path()), name, 1, None).unwrap_err();
         assert!(
             matches!(error, StoreError::BackupNotFound),
             "{name}: {error}"

@@ -11,6 +11,7 @@ import type { Language } from "./generated/Language";
 import type { MessageFlag } from "./generated/MessageFlag";
 import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
+import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { Settings } from "./generated/Settings";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
@@ -144,7 +145,7 @@ export class MockApi implements KinigeApi {
       })),
     ];
     this.settings = options.settings ?? DEFAULT_SETTINGS;
-    this.startup = options.startup ?? { needsRecovery: false, backups: [] };
+    this.startup = options.startup ?? { needsRecovery: false, backups: [], databaseTooNew: false, mirrorFolder: null };
     this.pickedFolder = options.pickedFolder === undefined ? "/Users/me/Notes/Kinige" : options.pickedFolder;
   }
 
@@ -477,11 +478,13 @@ export class MockApi implements KinigeApi {
     return Promise.resolve(this.startup);
   }
 
-  restoreBackup(name: string): Promise<void> {
+  restoreBackup(name: string): Promise<RestoreOutcome> {
     return this.run("restoreBackup", name, () => {
       if (!this.startup.backups.some((b) => b.name === name)) throw new KinigeApiError("backup_not_found");
       this.restoredFrom = name;
-      this.startup = { needsRecovery: false, backups: [] };
+      const previousMirror = this.startup.mirrorFolder ? `${this.startup.mirrorFolder}-before-restore-20261021T061200Z` : null;
+      this.startup = { needsRecovery: false, backups: [], databaseTooNew: false, mirrorFolder: null };
+      return { previousMirror };
     });
   }
 

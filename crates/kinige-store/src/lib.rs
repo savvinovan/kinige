@@ -21,14 +21,18 @@ mod trash;
 mod view;
 mod writer;
 
-pub use backup::{backups_dir, list_backups};
+pub use backup::{Integrity, backups_dir, list_backups, verify_database};
 pub use capture::{CONTEXT_LEN, CaptureView};
 pub use chats::RecentChat;
 pub use draft::MAX_DRAFT_BYTES;
 pub use error::StoreError;
 pub use feed::{DEFAULT_PAGE, MAX_PAGE};
 pub use maintenance::MaintenanceReport;
-pub use recovery::{backups, mark_needs_recovery, needs_recovery, restore_backup};
+pub use recovery::{
+    RestoreReport, StartupCheck, backups, clear_needs_recovery, database_missing_but_backups_exist,
+    mark_needs_recovery, needs_recovery, restart_for_recovery_allowed, restore_backup,
+    startup_check,
+};
 pub use schema::LATEST_VERSION;
 pub use time::{Now, local_hhmm, offset_secs, utc_stamp};
 
@@ -124,10 +128,20 @@ fn prepare_migration(db_path: &Path, now: &Now) -> Result<(), StoreError> {
     if current == 0 || current >= schema::LATEST_VERSION {
         return Ok(());
     }
-    if !backup::integrity_ok(&conn) {
-        return Err(StoreError::Corrupt(
-            "проверка целостности перед миграцией".into(),
-        ));
+    match backup::check_integrity(&conn) {
+        backup::Integrity::Ok => {}
+        backup::Integrity::Corrupt => {
+            return Err(StoreError::Corrupt(
+                "проверка целостности перед миграцией".into(),
+            ));
+        }
+        // Не повреждение: база занята или ввод-вывод не удался. Мигрировать без вердикта нельзя, а предлагать копии
+        // здоровой базе — тем более.
+        backup::Integrity::Unknown => {
+            return Err(StoreError::Read(
+                "не удалось проверить целостность перед миграцией".into(),
+            ));
+        }
     }
     // Нет копии — нет миграции: откат приложения после миграции не поддерживается (ТЗ §10.4).
     backup::before_migration(&conn, db_path, current, &time::utc_stamp(now.ms))
@@ -149,9 +163,7 @@ impl Store {
         prepare_migration(&options.db_path, now)?;
         let mut conn = open_connection(&options.db_path, false)?;
         schema::migrate(&mut conn).map_err(|e| match e {
-            schema::MigrateError::TooNew { found } => {
-                StoreError::Internal(format!("база создана более новой версией (схема {found})"))
-            }
+            schema::MigrateError::TooNew { found } => StoreError::TooNew(found),
             schema::MigrateError::Sqlite(e) => write_err(e),
         })?;
         send::ensure_initialized(&mut conn, now)?;

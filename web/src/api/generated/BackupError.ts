@@ -3,4 +3,4 @@
 /**
  * Почему копия не снимается.
  */
-export type BackupError = "folder_unavailable" | "write_failed" | "integrity_failed";
+export type BackupError = "folder_unavailable" | "write_failed" | "integrity_failed" | "purge_failed";

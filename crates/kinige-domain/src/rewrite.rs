@@ -66,6 +66,9 @@ pub fn chain_fields(
         list.push(old_hlc.to_string());
     }
     if list.len() > MAX_SUPERSEDES {
+        // Отбрасываются наименьшие HLC (старейшие версии), а не первые по позиции: чужая запись могла записать список
+        // не по порядку. Метки фиксированной ширины сравниваются как строки (ADR-0001 §2).
+        list.sort();
         list.drain(..list.len() - MAX_SUPERSEDES);
     }
     Ok((base, list))
@@ -215,5 +218,49 @@ pub fn flag(object: &Map<String, Value>, key: &str) -> Result<bool, GroupError> 
         Some(Value::Bool(b)) => Ok(*b),
         Some(Value::Null) | None => Ok(false),
         Some(_) => Err(corrupt(format!("поле {key}"))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn hlc(l: u64) -> String {
+        format!("{l:013}-00000-5f0c3e2a-9b1d-4c7e-8a64-0d2f1b3c4e5f")
+    }
+
+    #[test]
+    fn overflowing_supersedes_drops_the_smallest_hlc_not_the_first_by_position() {
+        // Список, записанный чужим клиентом не по порядку: меньшие метки в середине и в конце.
+        let mut list: Vec<String> = (0..MAX_SUPERSEDES as u64)
+            .map(|i| hlc(10_000 - i))
+            .collect();
+        list.push(hlc(5)); // самая старая стоит в конце
+        let object: Map<String, Value> = serde_json::from_value(json!({
+            "base": null,
+            "supersedes": list,
+        }))
+        .unwrap();
+        let (base, chain) = chain_fields(&object, &hlc(20_000), false).unwrap();
+        assert_eq!(base, None);
+        assert_eq!(chain.len(), MAX_SUPERSEDES);
+        assert!(!chain.contains(&hlc(5)), "наименьшая метка отброшена");
+        assert!(
+            !chain.contains(&hlc(10_000 - 63)),
+            "и следующая за ней по возрасту"
+        );
+        assert!(chain.contains(&hlc(20_000)), "новая метка на месте");
+        assert!(
+            chain.contains(&hlc(10_000)),
+            "самая свежая из старых осталась"
+        );
+    }
+
+    #[test]
+    fn a_short_chain_keeps_its_order() {
+        let object: Map<String, Value> =
+            serde_json::from_value(json!({"base": null, "supersedes": [hlc(9), hlc(3)]})).unwrap();
+        let (_, chain) = chain_fields(&object, &hlc(20), false).unwrap();
+        assert_eq!(chain, [hlc(9), hlc(3), hlc(20)]);
     }
 }

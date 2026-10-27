@@ -2,6 +2,7 @@
 
 mod common;
 
+use common::ops::wait_closed;
 use common::*;
 use kinige_domain::groups::{INBOX_ID, parse_groups_raw};
 use kinige_domain::{ErrorCode, FeedCursor, TextSize};
@@ -504,10 +505,22 @@ fn a_database_from_a_newer_app_is_refused() {
     raw(dir.path())
         .pragma_update(None, "user_version", LATEST_VERSION + 1)
         .unwrap();
+    wait_closed(dir.path());
+    let before = std::fs::read(db_path(dir.path())).unwrap();
     let error = kinige_store::Store::open_at(options(dir.path()), &Now::at(T0, "UTC"))
         .err()
         .expect("отказ");
-    assert_eq!(error.code(), ErrorCode::Internal);
+    // Отдельный код: окно просит обновить приложение (ТЗ §10.4), а не предлагает копии и не падает.
+    assert!(
+        matches!(error, kinige_store::StoreError::TooNew(found) if found == LATEST_VERSION + 1)
+    );
+    assert_eq!(error.code(), ErrorCode::DatabaseTooNew);
+    assert_eq!(
+        std::fs::read(db_path(dir.path())).unwrap(),
+        before,
+        "файл не тронут, копий и миграций нет"
+    );
+    assert!(!dir.path().join("backups").exists());
 }
 
 #[test]

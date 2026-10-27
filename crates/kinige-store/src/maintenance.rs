@@ -5,7 +5,7 @@
 //! Проверка нашла повреждение — копия не снимается, ошибка видна в «Настройках», вызывающему слою приходит сигнал
 //! (`StoreOptions::on_corruption`): он предложит восстановление из копии.
 
-use crate::backup::{backups_dir, has_daily, integrity_ok, rotate, snapshot};
+use crate::backup::{Integrity, backups_dir, check_integrity, has_daily, rotate, snapshot};
 use crate::{Inner, Now, Store, StoreError, open_connection};
 use kinige_domain::BackupError;
 use kinige_domain::backup::daily_name;
@@ -98,7 +98,13 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) {
 impl Store {
     /// Один проход обслуживания (поток вызывает его при старте и раз в сутки; тесты — с заданным «сейчас»).
     pub fn run_maintenance(&self, now: &Now) -> Result<MaintenanceReport, StoreError> {
-        let purged = self.purge_expired(now)?;
+        // Одна повреждённая запись в корзине не должна навсегда лишать базу проверки и копии: ошибка автоудаления
+        // записывается (видна в «Настройках») и проход идёт дальше.
+        let (purged, purge_error) = self.purge_expired_report(now);
+        if let Some(error) = &purge_error {
+            eprintln!("kinige: автоудаление корзины: {}", error.category());
+        }
+        self.inner.backup.set_purge_failed(purge_error.is_some());
         let db_path = &self.inner.db_path;
         let reader = open_connection(db_path, true)?;
         let mut report = MaintenanceReport {
@@ -106,19 +112,31 @@ impl Store {
             integrity_ok: true,
             backup_made: false,
         };
-        if !integrity_ok(&reader) {
-            report.integrity_ok = false;
-            self.inner
-                .backup
-                .set_error(Some(BackupError::IntegrityFailed));
-            let first_time = !self.inner.maintenance.reported.swap(true, Ordering::SeqCst);
-            if let (true, Some(hook)) = (first_time, &self.inner.on_corruption) {
-                (hook.0)();
-            }
-            return Ok(report);
-        }
         let dir = backups_dir(db_path);
         let today = journal_date(now.ms, now.utc_offset_secs, 0);
+        // Проверка целостности — раз в локальные сутки (не каждый час), если она уже прошла успешно.
+        if self.inner.backup.checked_on().as_deref() != Some(today.as_str()) {
+            match check_integrity(&reader) {
+                Integrity::Ok => self.inner.backup.set_checked_on(Some(today.clone())),
+                Integrity::Corrupt => {
+                    report.integrity_ok = false;
+                    self.inner
+                        .backup
+                        .set_error(Some(BackupError::IntegrityFailed));
+                    let first_time = !self.inner.maintenance.reported.swap(true, Ordering::SeqCst);
+                    if let (true, Some(hook)) = (first_time, &self.inner.on_corruption) {
+                        (hook.0)();
+                    }
+                    return Ok(report);
+                }
+                // Проверка не состоялась (база занята, ошибка ввода-вывода): это не повреждение. Отметку не ставим,
+                // копию не снимаем без вердикта, следующий проход повторит.
+                Integrity::Unknown => {
+                    eprintln!("kinige: проверка целостности не состоялась, повтор позже");
+                    return Ok(report);
+                }
+            }
+        }
         if has_daily(&dir, &today) {
             self.inner.backup.set_error(None);
             return Ok(report);

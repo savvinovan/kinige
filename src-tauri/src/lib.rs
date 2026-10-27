@@ -169,18 +169,22 @@ fn db_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, Box<dyn std::error
     Ok(data_dir.join("kinige.db"))
 }
 
-/// Открывает хранилище. Повреждение, найденное проверкой целостности в фоне, ставит отметку и сообщает главному окну
-/// (`recovery::corruption_hook`).
-fn open_store<R: Runtime>(app: &AppHandle<R>, db_path: PathBuf) -> Result<Store, StoreError> {
-    let mirror_dir = match std::env::var_os("KINIGE_MIRROR_DIR") {
+/// Папка Markdown-копии по умолчанию: `~/Documents/Kinige` (или `KINIGE_MIRROR_DIR`).
+fn default_mirror_dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
+    match std::env::var_os("KINIGE_MIRROR_DIR") {
         Some(dir) => Some(PathBuf::from(dir)),
         None => app
             .path()
             .document_dir()
             .ok()
             .map(|documents| documents.join("Kinige")),
-    };
-    let mut options = StoreOptions::new(db_path.clone(), mirror_dir);
+    }
+}
+
+/// Открывает хранилище. Повреждение, найденное проверкой целостности в фоне, ставит отметку и сообщает главному окну
+/// (`recovery::corruption_hook`).
+fn open_store<R: Runtime>(app: &AppHandle<R>, db_path: PathBuf) -> Result<Store, StoreError> {
+    let mut options = StoreOptions::new(db_path.clone(), default_mirror_dir(app));
     options.on_corruption = Some(recovery::corruption_hook(app.clone(), db_path));
     Store::open(options)
 }
@@ -291,22 +295,37 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
             let db_path = db_path(&handle)?;
-            // Отметка «нужно восстановление» (фоновая проверка нашла повреждение) или база, которая не открывается:
-            // журнал не открывается, окно показывает копии (`recovery`). Любая другая ошибка открытия — не повод
-            // предлагать копии: приложение не запускается и говорит об этом.
-            let store = if kinige_store::needs_recovery(&db_path) {
-                None
-            } else {
-                match open_store(&handle, db_path.clone()) {
-                    Ok(store) => Some(store),
-                    Err(StoreError::Corrupt(_)) => {
-                        eprintln!("kinige: база повреждена, предлагаем копии");
-                        None
+            // Журнал не открывается, и окно показывает копии (`recovery`), если: восстановление прошлого запуска не
+            // закончено; отметка фоновой проверки подтвердилась повторной синхронной проверкой (не подтвердилась —
+            // отметка снимается и база открывается как обычно); файла базы нет, а копии есть; база не открывается как
+            // повреждённая. База новее приложения (§10.4) — отдельное сообщение. Любая другая ошибка открытия — не
+            // повод предлагать копии: приложение не запускается и говорит об этом.
+            let mirror = default_mirror_dir(&handle);
+            let mut too_new = false;
+            let store =
+                if kinige_store::startup_check(&db_path) == kinige_store::StartupCheck::Recovery {
+                    None
+                } else {
+                    match open_store(&handle, db_path.clone()) {
+                        Ok(store) => Some(store),
+                        Err(StoreError::Corrupt(_)) => {
+                            eprintln!("kinige: база повреждена, предлагаем копии");
+                            None
+                        }
+                        Err(StoreError::TooNew(found)) => {
+                            eprintln!("kinige: база создана более новой версией (схема {found})");
+                            too_new = true;
+                            None
+                        }
+                        Err(error) => return Err(Box::new(error)),
                     }
-                    Err(error) => return Err(Box::new(error)),
-                }
+                };
+            let recovery = if too_new {
+                Recovery::database_too_new(db_path)
+            } else {
+                Recovery::new(db_path, store.is_none())
             };
-            app.manage(Recovery::new(db_path, store.is_none()));
+            app.manage(recovery.with_mirror(mirror));
             if let Some(store) = store {
                 start_services(&handle, store)?;
             }

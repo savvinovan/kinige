@@ -4,28 +4,57 @@
 //! остаются следы со снимком `purged_of` — HLC **всех** групп, включая неизвестные. У ревизий `cascade_of` — id записи,
 //! `held` — `NULL`. Следы хранятся до первой привязки к аккаунту и не меньше 180 дней; в слайсах 1–10 их никто не стирает.
 //! Корзина в Markdown-копию не попадает.
+//!
+//! Purge читает только колонки `hlc_json` и `deleted_at`, не `groups_raw`: запись с повреждёнными байтами групп всё равно
+//! можно удалить навсегда (в снимок попадает то, что читается). Запись, у которой группа `deleted` в неподдерживаемой `sv`,
+//! не удаляется ни вручную, ни автоматически (ADR-0001 §4 п. 4: `purged` создаётся, только если `deleted` поддерживается).
 
 use crate::error::{read_err, write_err};
-use crate::messages::{Loaded, load};
 use crate::view::{VIEW_COLUMNS, view_from_row_at};
 use crate::{Now, Store, StoreError};
 use kinige_domain::TrashItem;
 use kinige_domain::groups::INBOX_ID;
-use kinige_domain::history::{DAY_MS, TRASH_DAYS, days_left, purged_of};
-use rusqlite::{Connection, TransactionBehavior};
+use kinige_domain::history::{
+    DAY_MS, TRASH_DAYS, days_left, deleted_group_supported, purged_of_best_effort,
+};
+use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 
 /// Сколько записей удаляется за одну транзакцию при автоудалении.
 const PURGE_BATCH: i64 = 200;
 /// Наибольшее число записей в списке корзины.
 const TRASH_LIMIT: i64 = 1000;
 
+/// Запись, как её видит purge: без разбора групп.
+struct PurgeTarget {
+    id: String,
+    hlc_json: String,
+    deleted_at: Option<i64>,
+}
+
+fn load_target(conn: &Connection, id: &str) -> Result<PurgeTarget, StoreError> {
+    conn.query_row(
+        "SELECT hlc_json, deleted_at FROM message WHERE id = ?1",
+        [id],
+        |row| {
+            Ok(PurgeTarget {
+                id: id.to_string(),
+                hlc_json: row.get(0)?,
+                deleted_at: row.get(1)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(read_err)?
+    .ok_or(StoreError::MessageNotFound)
+}
+
 /// Физически удаляет запись из корзины вместе с ревизиями и пишет tombstones. Вызывающий открыл транзакцию.
-fn purge(tx: &Connection, loaded: &Loaded, now_ms: i64) -> Result<(), StoreError> {
-    let message_snapshot = purged_of(&loaded.hlc_json)?;
+fn purge(tx: &Connection, target: &PurgeTarget, now_ms: i64) -> Result<(), StoreError> {
+    let message_snapshot = purged_of_best_effort(&target.hlc_json)?;
     tx.execute(
         "INSERT OR REPLACE INTO tombstone (entity, id, purged_of, purged_at, cascade_of, held) \
          VALUES ('message', ?1, ?2, ?3, NULL, NULL)",
-        (&loaded.id, message_snapshot, now_ms),
+        (&target.id, message_snapshot, now_ms),
     )
     .map_err(write_err)?;
     let revisions: Vec<(String, String)> = {
@@ -33,7 +62,7 @@ fn purge(tx: &Connection, loaded: &Loaded, now_ms: i64) -> Result<(), StoreError
             .prepare("SELECT id, hlc_json FROM message_revision WHERE message_id = ?1")
             .map_err(write_err)?;
         let rows = statement
-            .query_map([&loaded.id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .query_map([&target.id], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(write_err)?;
         rows.collect::<Result<_, _>>().map_err(write_err)?
     };
@@ -41,21 +70,26 @@ fn purge(tx: &Connection, loaded: &Loaded, now_ms: i64) -> Result<(), StoreError
         tx.execute(
             "INSERT OR REPLACE INTO tombstone (entity, id, purged_of, purged_at, cascade_of, held) \
              VALUES ('message_revision', ?1, ?2, ?3, ?4, NULL)",
-            (revision_id, purged_of(hlc_json)?, now_ms, &loaded.id),
+            (
+                revision_id,
+                purged_of_best_effort(hlc_json)?,
+                now_ms,
+                &target.id,
+            ),
         )
         .map_err(write_err)?;
     }
     tx.execute(
         "DELETE FROM message_revision WHERE message_id = ?1",
-        [&loaded.id],
+        [&target.id],
     )
     .map_err(write_err)?;
     tx.execute(
         "DELETE FROM message_tag WHERE message_id = ?1",
-        [&loaded.id],
+        [&target.id],
     )
     .map_err(write_err)?;
-    tx.execute("DELETE FROM message WHERE id = ?1", [&loaded.id])
+    tx.execute("DELETE FROM message WHERE id = ?1", [&target.id])
         .map_err(write_err)?;
     Ok(())
 }
@@ -91,26 +125,37 @@ impl Store {
     }
 
     /// «Удалить навсегда» у записи в корзине: то же, что автоудаление через 30 дней. Записи нет — `MessageNotFound`,
-    /// запись не в корзине — `NotInTrash`: живую запись так не удалить.
+    /// запись не в корзине — `NotInTrash`: живую запись так не удалить. Группа `deleted` новее поддерживаемой — `ReadOnly`.
     pub fn purge_message(&self, id: &str, now: &Now) -> Result<(), StoreError> {
         let (id, now_ms) = (id.to_string(), now.ms);
         self.write(move |conn| {
             let tx = conn
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(write_err)?;
-            let loaded = load(&tx, &id)?;
-            if loaded.columns.deleted_at.is_none() {
+            let target = load_target(&tx, &id)?;
+            if target.deleted_at.is_none() {
                 return Err(StoreError::NotInTrash);
             }
-            purge(&tx, &loaded, now_ms)?;
+            if !deleted_group_supported(&target.hlc_json) {
+                return Err(StoreError::ReadOnly);
+            }
+            purge(&tx, &target, now_ms)?;
             tx.commit().map_err(write_err)
         })
     }
 
     /// Автоудаление: записи, пролежавшие в корзине 30 суток, удаляются физически (при старте и раз в сутки). Возвращает,
-    /// сколько удалено. Повреждённая запись не останавливает остальные: она остаётся в корзине и считается в `Err`
-    /// последней ошибкой после обработки остальных.
+    /// сколько удалено. Повреждённая запись не останавливает остальные: она остаётся в корзине, а последняя ошибка
+    /// возвращается после обработки остальных. Записи с группой `deleted` в неподдерживаемой `sv` пропускаются молча.
     pub fn purge_expired(&self, now: &Now) -> Result<usize, StoreError> {
+        match self.purge_expired_report(now) {
+            (purged, None) => Ok(purged),
+            (_, Some(error)) => Err(error),
+        }
+    }
+
+    /// То же, но результат частичный и ошибка не прерывает вызывающего: сколько удалено и последняя ошибка (если была).
+    pub(crate) fn purge_expired_report(&self, now: &Now) -> (usize, Option<StoreError>) {
         let border = now.ms.saturating_sub(TRASH_DAYS * DAY_MS);
         let now_ms = now.ms;
         let mut purged = 0usize;
@@ -130,9 +175,10 @@ impl Store {
                         )
                         .map_err(write_err)?;
                     let rows = statement
-                        .query_map(rusqlite::params![border, PURGE_BATCH + skipped.len() as i64], |row| {
-                            row.get::<_, String>(0)
-                        })
+                        .query_map(
+                            rusqlite::params![border, PURGE_BATCH + skipped.len() as i64],
+                            |row| row.get::<_, String>(0),
+                        )
                         .map_err(write_err)?;
                     rows.collect::<Result<Vec<_>, _>>().map_err(write_err)?
                 };
@@ -142,11 +188,21 @@ impl Store {
                 for id in ids.into_iter().filter(|id| !skipped.contains(id)) {
                     // Точка сохранения на запись: повреждённая откатывается одна, уже удалённые остаются.
                     let step = tx.savepoint().map_err(write_err)?;
-                    let result = load(&step, &id).and_then(|loaded| purge(&step, &loaded, now_ms));
+                    let result = load_target(&step, &id).and_then(|target| {
+                        if deleted_group_supported(&target.hlc_json) {
+                            purge(&step, &target, now_ms).map(|()| true)
+                        } else {
+                            Ok(false)
+                        }
+                    });
                     match result {
-                        Ok(()) => {
+                        Ok(true) => {
                             step.commit().map_err(write_err)?;
                             done += 1;
+                        }
+                        Ok(false) => {
+                            drop(step);
+                            bad.push(id);
                         }
                         Err(e) => {
                             drop(step);
@@ -158,7 +214,13 @@ impl Store {
                 tx.commit().map_err(write_err)?;
                 Ok((done, bad, error))
             });
-            let (done, bad, error) = outcome?;
+            let (done, bad, error) = match outcome {
+                Ok(found) => found,
+                Err(error) => {
+                    last_error = Some(error);
+                    break;
+                }
+            };
             purged += done;
             skip.extend(bad);
             if error.is_some() {
@@ -168,9 +230,6 @@ impl Store {
                 break;
             }
         }
-        match last_error {
-            Some(error) => Err(error),
-            None => Ok(purged),
-        }
+        (purged, last_error)
     }
 }

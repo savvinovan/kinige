@@ -268,6 +268,8 @@ pub enum ErrorCode {
     TaskItemStale,
     /// База повреждена.
     DatabaseCorrupt,
+    /// База создана более новой версией приложения (§10.4): откат не поддерживается, нужно обновить Kinige.
+    DatabaseTooNew,
     /// Копия не найдена или не открывается.
     BackupNotFound,
     Internal,

@@ -5,6 +5,7 @@
 //! проверяется (`PRAGMA quick_check`), переводится в режим журнала `DELETE` (один файл, без `-wal`), сбрасывается на диск и
 //! переименовывается: читатель папки видит либо целую копию, либо ничего. Имена и ротация — `kinige_domain::backup`.
 
+use crate::StoreError;
 use kinige_domain::backup::{self, BackupInfo};
 use kinige_domain::{BackupError, BackupStatus};
 use rusqlite::{Connection, backup::Backup};
@@ -21,10 +22,43 @@ pub fn backups_dir(db_path: &Path) -> PathBuf {
         .join("backups")
 }
 
-/// `PRAGMA integrity_check` дал `ok`. Ошибка самой проверки (страницы настолько повреждены, что SQLite отказывает) — не `ok`.
-pub(crate) fn integrity_ok(conn: &Connection) -> bool {
-    conn.query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0))
-        .is_ok_and(|first| first == "ok")
+/// Итог проверки целостности. «Не удалось проверить» (база занята, ошибка ввода-вывода, пропавший том) — не повреждение:
+/// ложное «база повреждена» отправило бы человека восстанавливать здоровую базу.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Integrity {
+    /// `PRAGMA integrity_check` дал `ok`.
+    Ok,
+    /// Вердикт не `ok`, либо SQLite отвечает «база повреждена» / «это не база данных».
+    Corrupt,
+    /// Проверка не состоялась по другой причине: повторить позже, отметку не ставить.
+    Unknown,
+}
+
+/// Вердикт `PRAGMA integrity_check`.
+pub(crate) fn check_integrity(conn: &Connection) -> Integrity {
+    match conn.query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0)) {
+        Ok(first) if first == "ok" => Integrity::Ok,
+        Ok(_) => Integrity::Corrupt,
+        Err(error) => match error.sqlite_error_code() {
+            Some(rusqlite::ErrorCode::DatabaseCorrupt | rusqlite::ErrorCode::NotADatabase) => {
+                Integrity::Corrupt
+            }
+            _ => Integrity::Unknown,
+        },
+    }
+}
+
+/// Проверка целостности файла базы отдельным соединением (при старте с отметкой «нужно восстановление» и перед миграцией).
+pub fn verify_database(db_path: &Path) -> Integrity {
+    // Файла нет — это не «проверка не удалась»: открытие создало бы пустую базу, а проверять нечего.
+    if !db_path.exists() {
+        return Integrity::Corrupt;
+    }
+    match crate::open_connection(db_path, true) {
+        Ok(conn) => check_integrity(&conn),
+        Err(StoreError::Corrupt(_)) => Integrity::Corrupt,
+        Err(_) => Integrity::Unknown,
+    }
 }
 
 /// Снимает копию `source` в `dir/name`. Существующий файл с тем же именем заменяется целиком.
@@ -50,10 +84,7 @@ fn write_snapshot(source: &Connection, temp: &Path) -> Result<(), BackupError> {
     let failed = |_: rusqlite::Error| BackupError::WriteFailed;
     {
         let mut target = Connection::open(temp).map_err(failed)?;
-        Backup::new(source, &mut target)
-            .map_err(failed)?
-            .run_to_completion(256, Duration::from_millis(2), None)
-            .map_err(failed)?;
+        copy_all_pages(source, &mut target)?;
         // Копия — один файл: режим журнала WAL остался бы в её заголовке и требовал бы `-wal` рядом.
         target
             .pragma_update(None, "journal_mode", "DELETE")
@@ -68,6 +99,22 @@ fn write_snapshot(source: &Connection, temp: &Path) -> Result<(), BackupError> {
     fs::File::open(temp)
         .and_then(|file| file.sync_all())
         .map_err(|_| BackupError::WriteFailed)
+}
+
+/// Все страницы одним шагом. Постраничное копирование (`run_to_completion(256, …)`) при непрерывной записи в базу
+/// перезапускалось бы с первой страницы после каждого изменения и могло не закончиться; один шаг держит согласованный
+/// снимок под блокировкой чтения (в WAL писатель при этом не ждёт). Занятость (`Busy`/`Locked`) — несколько повторов.
+fn copy_all_pages(source: &Connection, target: &mut Connection) -> Result<(), BackupError> {
+    use rusqlite::backup::StepResult;
+    let failed = |_: rusqlite::Error| BackupError::WriteFailed;
+    let backup = Backup::new(source, target).map_err(failed)?;
+    for _ in 0..50 {
+        match backup.step(-1).map_err(failed)? {
+            StepResult::Done => return Ok(()),
+            _ => std::thread::sleep(Duration::from_millis(100)),
+        }
+    }
+    Err(BackupError::WriteFailed)
 }
 
 /// Копии в папке, новые первыми (по времени изменения файла). Чужие и временные файлы не показываются.
@@ -133,6 +180,10 @@ pub(crate) fn before_migration(
 #[derive(Default)]
 pub(crate) struct BackupShared {
     error: Mutex<Option<BackupError>>,
+    /// Автоудаление корзины не смогло убрать запись: видно в «Настройках», но проверку и копию не отменяет.
+    purge_failed: std::sync::atomic::AtomicBool,
+    /// Локальная дата последней успешной проверки целостности: проверка раз в сутки, а не каждый час.
+    checked_on: Mutex<Option<String>>,
 }
 
 impl BackupShared {
@@ -142,8 +193,29 @@ impl BackupShared {
         }
     }
 
+    /// Ошибка для окна: сбой копии или проверки важнее сбоя автоудаления.
     pub(crate) fn error(&self) -> Option<BackupError> {
-        self.error.lock().ok().and_then(|slot| *slot)
+        let main = self.error.lock().ok().and_then(|slot| *slot);
+        main.or_else(|| {
+            self.purge_failed
+                .load(std::sync::atomic::Ordering::SeqCst)
+                .then_some(BackupError::PurgeFailed)
+        })
+    }
+
+    pub(crate) fn set_purge_failed(&self, failed: bool) {
+        self.purge_failed
+            .store(failed, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    pub(crate) fn checked_on(&self) -> Option<String> {
+        self.checked_on.lock().ok().and_then(|slot| slot.clone())
+    }
+
+    pub(crate) fn set_checked_on(&self, date: Option<String>) {
+        if let Ok(mut slot) = self.checked_on.lock() {
+            *slot = date;
+        }
     }
 
     pub(crate) fn status(&self, db_path: &Path) -> BackupStatus {
