@@ -148,6 +148,22 @@ pub fn set_message_date(
         .map_err(api)
 }
 
+/// «Переместить в чат»: запись переезжает в другой чат (день и текст не меняются, ревизии нет).
+#[tauri::command(async)]
+pub fn move_message<R: Runtime>(
+    app: AppHandle<R>,
+    store: State<'_, Store>,
+    id: String,
+    chat_id: String,
+) -> ApiResult<MessageView> {
+    let view = store
+        .move_message(&id, &chat_id, &Now::system())
+        .map_err(api)?;
+    // «Последние чаты» в меню значка зависят от последней записи чата.
+    crate::tray::refresh(&app);
+    Ok(view)
+}
+
 #[tauri::command(async)]
 pub fn list_trash(store: State<'_, Store>) -> ApiResult<Vec<TrashItem>> {
     store.list_trash(&Now::system()).map_err(api)

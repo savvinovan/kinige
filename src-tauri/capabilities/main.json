@@ -29,6 +29,7 @@
     "allow-toggle-task-item",
     "allow-set-message-flag",
     "allow-set-message-date",
+    "allow-move-message",
     "allow-list-trash",
     "allow-purge-message",
     "allow-set-sidebar-collapsed",

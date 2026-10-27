@@ -33,6 +33,7 @@ fn main() {
         "toggle_task_item",
         "set_message_flag",
         "set_message_date",
+        "move_message",
         "list_trash",
         "purge_message",
         "set_sidebar_collapsed",

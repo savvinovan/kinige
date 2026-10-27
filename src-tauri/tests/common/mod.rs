@@ -182,6 +182,7 @@ pub fn args_for(command: &str) -> Value {
         "delete_message" | "restore_message" | "purge_message" => json!({"id": "нет-такой"}),
         "edit_message" => json!({"id": "нет-такой", "body": "правка"}),
         "toggle_task_item" => json!({"id": "нет-такой", "index": 0, "checked": true}),
+        "move_message" => json!({"id": "нет-такой", "chatId": inbox}),
         "set_message_flag" => json!({"id": "нет-такой", "flag": "task", "on": true}),
         "set_message_date" => json!({"id": "нет-такой", "journalDate": "2026-10-01"}),
         "set_sidebar_collapsed" => json!({"collapsed": true}),
