@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-capture-add-recent-emoji"
+description = "Enables the capture_add_recent_emoji command without any pre-configured scope."
+commands.allow = ["capture_add_recent_emoji"]
+
+[[permission]]
+identifier = "deny-capture-add-recent-emoji"
+description = "Denies the capture_add_recent_emoji command without any pre-configured scope."
+commands.deny = ["capture_add_recent_emoji"]

@@ -175,6 +175,43 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
 }
 
 #[test]
+fn capture_window_shares_the_recent_emoji_list_with_the_main_window() {
+    let fixture = fixture();
+    let main = window(&fixture, "main");
+    let capture = window(&fixture, "capture");
+    let state = call(&capture, "capture_state", json!({})).unwrap();
+    assert_eq!(state["recentEmoji"], json!([]));
+
+    // Выбор в пикере главного окна виден окну захвата при следующем показе, выбор в окне захвата — главному.
+    call(&main, "add_recent_emoji", json!({"emoji": "🎬"})).unwrap();
+    assert_eq!(
+        call(&capture, "capture_state", json!({})).unwrap()["recentEmoji"],
+        json!(["🎬"])
+    );
+    let list = call(&capture, "capture_add_recent_emoji", json!({"emoji": "📚"})).unwrap();
+    assert_eq!(list, json!(["📚", "🎬"]));
+    assert_eq!(
+        call(&main, "get_settings", json!({})).unwrap()["recentEmoji"],
+        json!(["📚", "🎬"])
+    );
+    // Повтор переезжает вперёд; пустое значение отказано (те же правила, что у команды главного окна), список не меняется.
+    let list = call(&capture, "capture_add_recent_emoji", json!({"emoji": "🎬"})).unwrap();
+    assert_eq!(list, json!(["🎬", "📚"]));
+    for bad in ["", "  "] {
+        let error = call(&capture, "capture_add_recent_emoji", json!({"emoji": bad}))
+            .expect_err("не эмодзи");
+        assert_eq!(error["code"], "chat_icon_invalid", "{bad:?}");
+    }
+    assert_eq!(
+        call(&main, "get_settings", json!({})).unwrap()["recentEmoji"],
+        json!(["🎬", "📚"])
+    );
+    // Команда главного окна окну захвата по-прежнему отказана.
+    let error = call(&capture, "add_recent_emoji", json!({"emoji": "📚"})).unwrap_err();
+    assert!(is_acl_denial(&error));
+}
+
+#[test]
 fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
     let fixture = fixture_with_taken(&["Ctrl+Alt+KeyN", "Alt+Cmd+KeyN"]);
     let main = window(&fixture, "main");

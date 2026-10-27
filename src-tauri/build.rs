@@ -47,6 +47,7 @@ fn main() {
         "capture_save_draft",
         "capture_hide",
         "capture_resize",
+        "capture_add_recent_emoji",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("не удалось выполнить tauri-build");

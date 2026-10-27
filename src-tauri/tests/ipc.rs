@@ -76,7 +76,7 @@ fn every_command_is_denied_to_a_window_with_another_label() {
 }
 
 /// Команды слайса 3: чаты, действия с записью, корзина, настройки сайдбара, восстановление. Окну захвата — отказ на
-/// каждую; его набор остаётся шестью командами (§12.3).
+/// каждую; его набор — шесть команд слайса 2 и `capture_add_recent_emoji` (§12.3).
 const SLICE_THREE: &[&str] = &[
     "create_chat",
     "rename_chat",
@@ -109,9 +109,10 @@ fn every_slice_three_command_is_main_only_and_the_capture_set_is_unchanged() {
             "capture_append",
             "capture_save_draft",
             "capture_hide",
-            "capture_resize"
+            "capture_resize",
+            "capture_add_recent_emoji"
         ],
-        "набор окна захвата не меняется"
+        "набор окна захвата: шесть команд слайса 2 и одна из решений приёмки слайса 3 (недавние эмодзи)"
     );
     let fixture = fixture();
     let main = window(&fixture, "main");
@@ -137,7 +138,7 @@ fn every_slice_three_command_is_main_only_and_the_capture_set_is_unchanged() {
 }
 
 #[test]
-fn capture_window_cannot_call_anything_but_its_six_commands() {
+fn capture_window_cannot_call_anything_but_its_own_commands() {
     let fixture = fixture();
     let capture = window(&fixture, "capture");
     // Чужие команды: лента, чаты, отправка по chat_id, настройки, диалог, ссылки, черновик главного окна, сочетания,

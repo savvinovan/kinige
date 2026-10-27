@@ -9,6 +9,7 @@
     "allow-capture-append",
     "allow-capture-save-draft",
     "allow-capture-hide",
-    "allow-capture-resize"
+    "allow-capture-resize",
+    "allow-capture-add-recent-emoji"
   ]
 }
