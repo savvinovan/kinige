@@ -78,7 +78,12 @@ export function AppRoot({ api, initialSettings, startup }: AppRootProps) {
         setSettings(fresh);
         setRecovery(state.corruptionFound ? { mode: "running", backups: [] } : null);
       })
-      .catch((reason: unknown) => setError(errorCode(reason)))
+      .catch((reason: unknown) => {
+        // Восстановленная копия повреждена там, куда `quick_check` не заглядывает (страница настроек): хранилище уже отдано
+        // приложению, снова «Восстановить» нельзя — как и при чтении первых настроек (`loadStartup`), окно «перезапустить».
+        if (errorCode(reason) === "database_corrupt") setRecovery({ mode: "running", backups: [] });
+        else setError(errorCode(reason));
+      })
       .finally(() => setBusy(false));
   };
 

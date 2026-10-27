@@ -54,6 +54,17 @@ describe("AppRoot: запуск и восстановление (слайс 3)",
     expect(screen.queryByRole("textbox", { name: "Новая заметка" })).toBeNull();
   });
 
+  it("восстановленная копия повреждена в странице настроек: окно «перезапустить», а не застрявшее «startup»", async () => {
+    const api = setup({ ...NORMAL, needsRecovery: true, backups: [BACKUP] });
+    await screen.findByRole("main", { name: "База повреждена" });
+    api.failNext("getSettings", "database_corrupt");
+    fireEvent.click(screen.getByRole("button", { name: /^Восстановить из копии/ }));
+    expect(await screen.findByRole("button", { name: "Перезапустить" })).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(api.restoredFrom).toBe(BACKUP.name);
+  });
+
   it("ошибка восстановления: окно остаётся, текст ошибки виден", async () => {
     const api = setup({ ...NORMAL, needsRecovery: true, backups: [BACKUP] });
     await screen.findByRole("main", { name: "База повреждена" });
