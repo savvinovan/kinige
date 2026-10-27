@@ -3,6 +3,8 @@
   position: fixed;
   z-index: 3;
   display: grid;
+  /* Единственный столбец не шире меню: длинное название обрезается многоточием, а не растягивает строки за панель. */
+  grid-template-columns: minmax(0, 1fr);
   box-sizing: border-box;
   min-width: var(--layout-menu-min-width);
   max-width: var(--layout-menu-max-width);

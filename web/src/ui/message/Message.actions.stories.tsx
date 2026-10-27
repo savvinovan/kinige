@@ -154,7 +154,9 @@ function OpenMoveMenu({ children }: { children: ReactNode }) {
     plate.dispatchEvent(
       new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: rect.left + rect.width / 2, clientY: rect.bottom }),
     );
-    document.querySelectorAll<HTMLElement>('[role="menuitem"]')[5]?.click();
+    // Меню появляется после отрисовки: второй уровень открывается следующим кадром.
+    const frame = requestAnimationFrame(() => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[5]?.click());
+    return () => cancelAnimationFrame(frame);
   }, []);
   return (
     <div className="story-column" ref={host}>
