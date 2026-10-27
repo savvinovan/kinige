@@ -29,6 +29,8 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
   const [value, setValue] = useState(initial.draft);
   const [error, setError] = useState<ErrorCode | null>(initial.error);
   const busy = useRef(false);
+  // Пикер эмодзи открыт: панель растёт вверх (окно подгоняется командой `capture_resize`). Закрывается при каждом скрытии окна.
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const saveDraft = useCallback((body: string) => api.captureSaveDraft(body), [api]);
   const draft = useDraftSaver(saveDraft);
@@ -48,6 +50,7 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
 
   /** Сохраняет черновик и прячет окно. */
   const hide = useCallback(() => {
+    setPickerOpen(false);
     void flush().finally(() => void api.captureHide().catch(() => undefined));
   }, [api, flush]);
 
@@ -59,6 +62,7 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
         .then((fresh) => {
           applyTextSize(fresh.textSize);
           setState(fresh);
+          setPickerOpen(false);
           setValue(fresh.draft);
           setError(fresh.error);
           // Окно показали заново: страница могла считать фокус своим всё это время (события focus нет), поэтому курсор
@@ -90,6 +94,7 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
         cancel();
         setValue("");
         setError(null);
+        setPickerOpen(false);
         void api.captureHide().catch(() => undefined);
       })
       .catch((reason: unknown) => {
@@ -119,6 +124,17 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
       onHide={hide}
       onHeight={resize}
       error={error ? t(`error.${error}`) : undefined}
+      emoji={{
+        recent: state.recentEmoji,
+        // Выбор вставлен в поле; в «недавние» (общие с главным окном) он попадает отдельной командой, сбой её не мешает писать.
+        onPicked: (emoji) =>
+          void api
+            .captureAddRecentEmoji(emoji)
+            .then((recentEmoji) => setState((old) => ({ ...old, recentEmoji })))
+            .catch(() => undefined),
+        open: pickerOpen,
+        onOpenChange: setPickerOpen,
+      }}
     />
   );
 }

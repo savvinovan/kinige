@@ -1,4 +1,4 @@
-import { useId, useRef, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../controls/IconButton";
 import { EmojiButton, type ComposerEmoji } from "./EmojiButton";
@@ -80,6 +80,7 @@ export function Composer({
   const errorId = useId();
   const hintId = useId();
   const input = useRef<HTMLTextAreaElement>(null);
+  const [emojiHost, setEmojiHost] = useState<HTMLDivElement | null>(null);
   const hasText = value.trim() !== "";
 
   // Кнопка «Отправить» делает то же, что Enter. После щелчка фокус возвращается в поле: сама кнопка исчезает, как только поле пустеет.
@@ -114,6 +115,8 @@ export function Composer({
   return (
     <div className={floating ? "composer composer--floating" : "composer"}>
       {error && !floating ? errorLine : null}
+      {/* Место пикера эмодзи «в потоке» (окно захвата): пустое высоты не имеет, с панелью раздвигает поле вверх. */}
+      {floating && emoji?.placement === "inline" ? <div className="composer__emoji-host" ref={setEmojiHost} /> : null}
       <div className={`composer__bar${error ? " composer__bar--invalid" : ""}`}>
         {buttons.attach ? <IconButton icon="attach" label={t("composer.attach")} unavailable={viewOnly} /> : null}
         {/* Копия текста в ::after задаёт высоту поля: оно растёт без скриптов измерения. */}
@@ -133,7 +136,7 @@ export function Composer({
           />
         </div>
         {buttons.emoji && emoji ? (
-          <EmojiButton {...emoji} field={input} value={value} onChange={onChange} />
+          <EmojiButton {...emoji} field={input} value={value} onChange={onChange} host={emojiHost} />
         ) : buttons.emoji ? (
           <IconButton icon="emoji" label={t("composer.emoji")} unavailable={viewOnly} />
         ) : null}

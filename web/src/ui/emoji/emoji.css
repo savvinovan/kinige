@@ -168,3 +168,16 @@
     opacity: 0;
   }
 }
+
+/* Пикер «в потоке» (окно быстрого захвата): занимает место над строкой поля и раздвигает панель, ничего не накладывает.
+   Заливка той же поверхности, что у всплывающей панели; тени и появления нет: окно само растёт вверх. */
+.emoji-inline {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-2);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-message);
+}

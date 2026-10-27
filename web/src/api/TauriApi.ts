@@ -240,4 +240,8 @@ export class TauriApi implements KinigeApi {
   async captureResize(height: number): Promise<void> {
     await call("capture_resize", { height });
   }
+
+  captureAddRecentEmoji(emoji: string): Promise<string[]> {
+    return call("capture_add_recent_emoji", { emoji });
+  }
 }

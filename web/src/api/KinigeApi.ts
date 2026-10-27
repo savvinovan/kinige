@@ -131,4 +131,6 @@ export interface KinigeApi {
    * диапазоном `layout.capture.window-min-height … window-max-height`, ширина и верх окна не меняются.
    */
   captureResize(height: number): Promise<void>;
+  /** Эмодзи, выбранный в пикере окна захвата, встаёт первым в общем списке «недавних»; ответ — список целиком. */
+  captureAddRecentEmoji(emoji: string): Promise<string[]>;
 }

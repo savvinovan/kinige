@@ -78,6 +78,16 @@
   max-height: calc((var(--layout-capture-window-max-height) - 2 * var(--layout-capture-shadow-margin)) * var(--layout-capture-field-max-share));
 }
 
+/* Пока открыт пикер эмодзи (351 px высоты), поле показывает не больше нескольких строк (layout.capture.field-lines-with-picker),
+   дальше прокрутка внутри: пикер и поле вместе помещаются в самое высокое окно. Строка занимает высоту line-height, а первая
+   ещё и вертикальные поля textarea, то есть высоту кнопки (layout.control-height). */
+.capture-panel:has(.emoji-inline) .composer__field {
+  max-height: calc(
+    var(--layout-control-height) + (var(--layout-capture-field-lines-with-picker) - 1) * var(--type-body-size) *
+      var(--type-body-line-height)
+  );
+}
+
 /* Контекст занимает место над полем и первым уступает его: если места не хватает (длинный текст в поле, крупный шрифт),
    старые плашки уходят за верхний край, а поле остаётся целым. Плашки лежат у нижнего края, ближе к полю. */
 .capture-context {

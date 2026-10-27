@@ -118,7 +118,16 @@ export class MockApiBase {
       appendTarget: last && this.canAppend(last, now) ? last.id : null,
       draft: this.captureDraft,
       error: null,
+      recentEmoji: this.settings.recentEmoji,
     });
+  }
+
+  /** Эмодзи, выбранный в пикере окна захвата: общий список «недавних» (тот же, что у главного окна). */
+  captureAddRecentEmoji(emoji: string): Promise<string[]> {
+    if (emoji.trim() === "") return Promise.reject(new KinigeApiError("chat_icon_invalid"));
+    const recent = [emoji, ...this.settings.recentEmoji.filter((known) => known !== emoji)].slice(0, 24);
+    this.settings = { ...this.settings, recentEmoji: recent };
+    return Promise.resolve(recent);
   }
 
   captureSend(body: string): Promise<CaptureOutcome> {

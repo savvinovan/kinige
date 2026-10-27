@@ -148,6 +148,11 @@
   box-shadow: none;
 }
 
+/* Пикер эмодзи «в потоке» (окно захвата): над строкой поля; пока пикер закрыт, места не занимает. */
+.composer__emoji-host:not(:empty) {
+  margin-bottom: var(--space-2);
+}
+
 /* Строка под полем: пустая высоты не имеет (alert всегда в дереве), с текстом растёт вниз — поле остаётся на месте. */
 .composer--floating .composer__error:empty {
   min-height: 0;
