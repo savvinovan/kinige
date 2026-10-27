@@ -59,12 +59,20 @@ export function demoMessages(now: Date): FeedMessage[] {
 
 // Числа записей — демонстрационные, чтобы увидеть бейдж в разных видах (42, «1 234», «12 тыс.»); у «Входящих» — настоящее
 // число демо-записей из ленты, чтобы счётчик совпадал с тем, что на экране.
-export const DEMO_INBOX: ChatSummary = { id: INBOX_ID, title: "", icon: "📥", isInbox: true, count: demoMessages(new Date(0)).length };
+export const DEMO_INBOX: ChatSummary = {
+  id: INBOX_ID,
+  title: "",
+  icon: "📥",
+  isInbox: true,
+  count: demoMessages(new Date(0)).length,
+  pinnedAt: null,
+  archivedAt: null,
+};
 
 export const DEMO_CHATS: ChatSummary[] = [
   DEMO_INBOX,
-  { id: "ideas", title: "Идеи", icon: "💡", isInbox: false, count: 42 },
-  { id: "books", title: "Книги", icon: "📚", isInbox: false, count: 1234 },
-  { id: "work", title: "Работа", icon: "💼", isInbox: false, count: 987 },
-  { id: "recipes", title: "Рецепты", icon: "🍳", isInbox: false, count: 12345 },
+  { id: "ideas", title: "Идеи", icon: "💡", isInbox: false, count: 42, pinnedAt: null, archivedAt: null },
+  { id: "books", title: "Книги", icon: "📚", isInbox: false, count: 1234, pinnedAt: null, archivedAt: null },
+  { id: "work", title: "Работа", icon: "💼", isInbox: false, count: 987, pinnedAt: null, archivedAt: null },
+  { id: "recipes", title: "Рецепты", icon: "🍳", isInbox: false, count: 12345, pinnedAt: null, archivedAt: null },
 ];

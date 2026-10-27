@@ -1,11 +1,9 @@
-import { INBOX_ID, type KinigeApi, KinigeApiError } from "./KinigeApi";
-import { mockTags } from "./mockTags";
+import { type KinigeApi, KinigeApiError } from "./KinigeApi";
+import { MockApiBase } from "./MockApiBase";
+import { DAY_MS, DEFAULT_SHORTCUTS, TRASH_DAYS, compareFeed, isRealDate, mockMessage } from "./mockData";
 import type { AppInfo } from "./generated/AppInfo";
-import type { CaptureOutcome } from "./generated/CaptureOutcome";
-import type { CaptureState } from "./generated/CaptureState";
 import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
-import type { ErrorCode } from "./generated/ErrorCode";
 import type { FeedCursor } from "./generated/FeedCursor";
 import type { Language } from "./generated/Language";
 import type { MessageFlag } from "./generated/MessageFlag";
@@ -18,141 +16,18 @@ import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
 
-export interface MockApiOptions {
-  /** «Сейчас» для новых записей и метки «сегодня»; по умолчанию — часы окна. */
-  now?: () => Date;
-  language?: Language;
-  /** Записи, которые уже есть в Inbox (и, если у них другой `chatId`, в соответствующих чатах). */
-  messages?: readonly MessageView[];
-  /** Чаты кроме Inbox, в порядке раздела «Чаты». */
-  chats?: readonly Partial<ChatSummary>[];
-  settings?: Settings;
-  /** Следующая папка, которую «выберет» системный диалог; `null` — пользователь отменил. */
-  pickedFolder?: string | null;
-  /** Состояние запуска; по умолчанию журнал открыт. */
-  startup?: StartupState;
-}
-
-const DEFAULT_SHORTCUTS: Record<ShortcutKind, string> = {
-  capture: "Ctrl+Alt+KeyN",
-  clipboard: "Alt+Shift+KeyV",
-};
-
-const DEFAULT_SETTINGS: Settings = {
-  textSize: "normal",
-  mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
-  shortcuts: [
-    { kind: "capture", accelerator: DEFAULT_SHORTCUTS.capture, isDefault: true, state: "assigned" },
-    { kind: "clipboard", accelerator: DEFAULT_SHORTCUTS.clipboard, isDefault: true, state: "assigned" },
-  ],
-  sidebarCollapsed: false,
-  recentEmoji: [],
-  backup: { folder: "/Users/me/Library/Application Support/me.savvinov.kinige/backups", lastAt: null, count: 0, error: null },
-};
+export { DEFAULT_SETTINGS, type MockApiOptions, mockMessage } from "./mockData";
 
 const ALLOWED_SCHEMES = ["http:", "https:", "mailto:"];
-
-/** Окно дописывания (ТЗ §2.1): запись не старше десяти минут. */
-const APPEND_WINDOW_MS = 10 * 60 * 1000;
-/** Сколько записей окно захвата показывает над полем. */
-const CONTEXT_LEN = 3;
-const DAY_MS = 24 * 3_600_000;
-const TRASH_DAYS = 30;
-
-/** Запись для тестов и историй: все поля `MessageView` с разумными значениями по умолчанию. */
-export function mockMessage(part: Partial<MessageView> & Pick<MessageView, "id" | "bodyMd">): MessageView {
-  return {
-    chatId: INBOX_ID,
-    journalDate: "2026-10-21",
-    createdAt: Date.UTC(2026, 9, 21, 6, 12),
-    createdTz: "UTC",
-    isTask: false,
-    taskDoneAt: null,
-    favoriteAt: null,
-    tags: mockTags(part.bodyMd),
-    readOnly: false,
-    ...part,
-  };
-}
-
-interface Row {
-  view: MessageView;
-  deletedAt: number | null;
-  /** Тексты до каждой правки (ревизии `edit`). */
-  revisions: string[];
-}
-
-type MockMethod = keyof KinigeApi;
 
 /**
  * `KinigeApi` в памяти: тот же интерфейс, что у `TauriApi`, для тестов и Storybook. Хранит чаты и записи, считает счётчики,
  * ведёт корзину, правки и ревизии, умеет «отказ» любой команды (`failNext`) и запоминает открытые ссылки (`openedUrls`). День
- * записи считается упрощённо (UTC, граница 04:00): настоящие правила — в Rust.
+ * записи считается упрощённо (UTC, граница 04:00): настоящие правила — в Rust. Состояние и окно захвата — в `MockApiBase`.
  */
-export class MockApi implements KinigeApi {
-  /** Ссылки, которые «открыты в системном браузере». */
-  readonly openedUrls: string[] = [];
-  /** Следующая отправка завершится этой ошибкой, ничего не записав. */
-  failNextSend: ErrorCode | null = null;
-  /** Следующий выбор папки завершится этой ошибкой. */
-  failNextPick: ErrorCode | null = null;
-  /** Следующая смена или сброс сочетания завершится этой ошибкой. */
-  failNextShortcut: ErrorCode | null = null;
-  /** Следующая отправка или дописывание из окна захвата завершится этой ошибкой. */
-  failNextCapture: ErrorCode | null = null;
-  /** Окно захвата спрятано командой `captureHide` столько раз. */
-  hideCount = 0;
-  /** Высоты окна захвата, которые страница просила командой `captureResize`. */
-  readonly resizeLog: number[] = [];
-  /** Записи режима записи сочетания: `true` при начале, `false` в конце. */
-  readonly recordingLog: boolean[] = [];
-  /** Журнал вызовов команд слайса 3: `метод аргументы` — для проверок порядка и числа вызовов. */
-  readonly calls: string[] = [];
-  /** Восстановление из копии запрошено: имя копии. */
-  restoredFrom: string | null = null;
-  /** Перезапуск для восстановления запрошен. */
-  restartRequested = false;
-  pickedFolder: string | null;
-
-  private rows: Row[];
-  private chats: ChatSummary[];
-  private readonly drafts = new Map<string, string>();
-  private captureDraft = "";
-  private readonly listeners = new Set<() => void>();
+export class MockApi extends MockApiBase implements KinigeApi {
   private readonly openChatListeners = new Set<(chatId: string) => void>();
   private readonly corruptListeners = new Set<() => void>();
-  private readonly failures = new Map<MockMethod, ErrorCode>();
-  private settings: Settings;
-  private startup: StartupState;
-  private readonly now: () => Date;
-  private readonly language: Language;
-  private counter = 0;
-
-  constructor(options: MockApiOptions = {}) {
-    this.now = options.now ?? (() => new Date());
-    this.language = options.language ?? "ru";
-    this.rows = (options.messages ?? []).map((view) => ({ view, deletedAt: null, revisions: [] }));
-    this.chats = [
-      { id: INBOX_ID, title: "", icon: "📥", isInbox: true, count: 0, pinnedAt: null, archivedAt: null },
-      ...(options.chats ?? []).map((chat, index) => ({
-        id: chat.id ?? `chat-${index + 1}`,
-        title: chat.title ?? `Чат ${index + 1}`,
-        icon: chat.icon === undefined ? "💬" : chat.icon,
-        isInbox: false,
-        count: 0,
-        pinnedAt: chat.pinnedAt ?? null,
-        archivedAt: chat.archivedAt ?? null,
-      })),
-    ];
-    this.settings = options.settings ?? DEFAULT_SETTINGS;
-    this.startup = options.startup ?? { needsRecovery: false, backups: [], databaseTooNew: false, mirrorFolder: null };
-    this.pickedFolder = options.pickedFolder === undefined ? "/Users/me/Notes/Kinige" : options.pickedFolder;
-  }
-
-  /** Следующий вызов этой команды завершится ошибкой (один раз). */
-  failNext(method: MockMethod, code: ErrorCode): void {
-    this.failures.set(method, code);
-  }
 
   appInfo(): Promise<AppInfo> {
     return Promise.resolve({ title: "Kinige mock" });
@@ -277,16 +152,6 @@ export class MockApi implements KinigeApi {
     return Promise.resolve(() => {
       this.listeners.delete(handler);
     });
-  }
-
-  /** Как событие Rust «записи изменились» (в тестах — запись, сделанная окном захвата). */
-  emitEntriesChanged(): void {
-    for (const handler of [...this.listeners]) handler();
-  }
-
-  /** Запись, появившаяся «снаружи» (окно захвата, буфер): попадает в ленту после события. */
-  addExternalMessage(message: MessageView): void {
-    this.rows.push({ view: message, deletedAt: null, revisions: [] });
   }
 
   // ---- слайс 3 ----
@@ -505,136 +370,6 @@ export class MockApi implements KinigeApi {
     return Promise.resolve();
   }
 
-  /** Тексты до каждой правки записи (ревизии `edit`), старые первыми. */
-  revisionsOf(id: string): string[] {
-    return this.rows.find((r) => r.view.id === id)?.revisions ?? [];
-  }
-
-  /** Запись как она сейчас в «базе» (в том числе из корзины). */
-  messageById(id: string): MessageView | undefined {
-    return this.rows.find((r) => r.view.id === id)?.view;
-  }
-
-  captureState(): Promise<CaptureState> {
-    const now = this.now();
-    const today = this.journalDate(now);
-    const inbox = this.live(INBOX_ID);
-    const context = inbox.filter((m) => m.journalDate === today).slice(-CONTEXT_LEN);
-    const last = inbox[inbox.length - 1];
-    return Promise.resolve({
-      language: this.language,
-      textSize: this.settings.textSize,
-      today,
-      context,
-      appendTarget: last && this.canAppend(last, now) ? last.id : null,
-      draft: this.captureDraft,
-      error: null,
-    });
-  }
-
-  captureSend(body: string): Promise<CaptureOutcome> {
-    return this.capture(body, false);
-  }
-
-  captureAppend(body: string): Promise<CaptureOutcome> {
-    return this.capture(body, true);
-  }
-
-  captureSaveDraft(body: string): Promise<void> {
-    this.captureDraft = body;
-    return Promise.resolve();
-  }
-
-  captureHide(): Promise<void> {
-    this.hideCount += 1;
-    return Promise.resolve();
-  }
-
-  captureResize(height: number): Promise<void> {
-    this.resizeLog.push(height);
-    return Promise.resolve();
-  }
-
-  /** Живые (не из корзины) записи чата по порядку ленты. */
-  private live(chatId: string): MessageView[] {
-    return this.rows
-      .filter((r) => r.view.chatId === chatId && r.deletedAt === null)
-      .map((r) => r.view)
-      .sort(compareFeed);
-  }
-
-  private run<T>(method: MockMethod, args: string, action: () => T): Promise<T> {
-    this.calls.push(`${method} ${args}`.trim());
-    const code = this.failures.get(method);
-    if (code) {
-      this.failures.delete(method);
-      return Promise.reject(new KinigeApiError(code));
-    }
-    try {
-      return Promise.resolve(action());
-    } catch (error) {
-      return Promise.reject(error);
-    }
-  }
-
-  private row(id: string): Row {
-    const row = this.rows.find((r) => r.view.id === id);
-    if (!row) throw new KinigeApiError("message_not_found");
-    return row;
-  }
-
-  private writable(row: Row): void {
-    if (row.view.readOnly) throw new KinigeApiError("read_only");
-  }
-
-  private mutableChat(id: string, notInbox: boolean): ChatSummary {
-    const chat = this.chats.find((c) => c.id === id);
-    if (!chat) throw new KinigeApiError("chat_not_found");
-    if (notInbox && chat.isInbox) throw new KinigeApiError("inbox_protected");
-    return chat;
-  }
-
-  private setBody(row: Row, text: string): MessageView {
-    if (text === row.view.bodyMd) return row.view;
-    row.revisions.push(row.view.bodyMd);
-    row.view = { ...row.view, bodyMd: text, tags: mockTags(text) };
-    return row.view;
-  }
-
-  private capture(body: string, append: boolean): Promise<CaptureOutcome> {
-    if (this.failNextCapture) {
-      const code = this.failNextCapture;
-      this.failNextCapture = null;
-      return Promise.reject(new KinigeApiError(code));
-    }
-    const text = body.replace(/\r\n?/g, "\n").trim();
-    if (text === "") return Promise.reject(new KinigeApiError("empty_message"));
-    const now = this.now();
-    const inbox = this.live(INBOX_ID);
-    const last = inbox[inbox.length - 1];
-    this.captureDraft = "";
-    if (append && last && this.canAppend(last, now)) {
-      const message = this.setBody(this.row(last.id), `${last.bodyMd}\n\n${text}`);
-      this.emitEntriesChanged();
-      return Promise.resolve({ action: "appended", message });
-    }
-    const message = mockMessage({
-      id: `mock-${++this.counter}`,
-      chatId: INBOX_ID,
-      bodyMd: text,
-      journalDate: this.journalDate(now),
-      createdAt: now.getTime(),
-    });
-    this.rows.push({ view: message, deletedAt: null, revisions: [] });
-    this.emitEntriesChanged();
-    return Promise.resolve({ action: "created", message });
-  }
-
-  /** Правило цели дописывания, упрощённо: сегодняшняя запись не старше десяти минут (остальное решает Rust). */
-  private canAppend(message: MessageView, now: Date): boolean {
-    return message.journalDate === this.journalDate(now) && now.getTime() - message.createdAt <= APPEND_WINDOW_MS;
-  }
-
   private changeShortcut(kind: ShortcutKind, accelerator: string): Promise<Settings> {
     if (this.failNextShortcut) {
       const code = this.failNextShortcut;
@@ -653,28 +388,4 @@ export class MockApi implements KinigeApi {
     };
     return Promise.resolve(this.settings);
   }
-
-  /** День записи с границей 04:00 (упрощённо, UTC). */
-  private journalDate(date: Date): string {
-    return new Date(date.getTime() - 4 * 3_600_000).toISOString().slice(0, 10);
-  }
-}
-
-/** `YYYY-MM-DD` — существующая дата (как в Rust: будущие разрешены). */
-function isRealDate(text: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
-  const [year, month, day] = text.split("-").map(Number);
-  if ((year ?? 0) < 1000) return false;
-  const date = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1));
-  return date.getUTCFullYear() === year && date.getUTCMonth() === (month ?? 1) - 1 && date.getUTCDate() === day;
-}
-
-/** Порядок ленты `(journal_date, created_at, id)`. */
-function compareFeed(
-  a: { journalDate: string; createdAt: number; id: string },
-  b: { journalDate: string; createdAt: number; id: string },
-): number {
-  if (a.journalDate !== b.journalDate) return a.journalDate < b.journalDate ? -1 : 1;
-  if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }

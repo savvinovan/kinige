@@ -15,7 +15,7 @@ describe("TauriApi", () => {
   it("команды и аргументы: camelCase, курсор и лимит по умолчанию — null", async () => {
     invoke.mockResolvedValue({ messages: [], older: null, today: "2026-10-21" });
     await new TauriApi().listMessages("chat-1");
-    expect(invoke).toHaveBeenCalledWith("list_messages", { chatId: "chat-1", before: null, limit: null });
+    expect(invoke).toHaveBeenCalledWith("list_messages", { chatId: "chat-1", before: null, limit: null, tag: null });
 
     invoke.mockResolvedValue({ id: "m" });
     await new TauriApi().sendMessage("chat-1", "текст");

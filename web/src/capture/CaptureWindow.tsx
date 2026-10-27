@@ -4,7 +4,7 @@ import { type KinigeApi, errorCode } from "../api/KinigeApi";
 import type { CaptureState } from "../api/generated/CaptureState";
 import type { ErrorCode } from "../api/generated/ErrorCode";
 import { useDraftSaver } from "../draft/useDraftSaver";
-import { applyTextSize } from "../ui/screens/MainWindow";
+import { applyTextSize } from "../ui/screens/textSize";
 import { CapturePanel } from "../ui/capture/CapturePanel";
 
 /** Rust показал окно (см. `capture::show_capture`): страница перечитывает состояние. Без IPC-события: у окна нет права слушать. */

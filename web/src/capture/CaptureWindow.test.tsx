@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { INBOX_ID } from "../api/KinigeApi";
-import { MockApi, type MockApiOptions } from "../api/MockApi";
+import { MockApi, type MockApiOptions, mockMessage } from "../api/MockApi";
 import type { MessageView } from "../api/generated/MessageView";
 import { act, fireEvent, render, screen, waitFor } from "../test/render";
 import { CaptureWindow, HIDE_REQUEST_EVENT, SHOWN_EVENT } from "./CaptureWindow";
@@ -11,7 +10,7 @@ const clock = { now: NOW };
 
 function entry(id: string, minutesAgo: number, bodyMd: string): MessageView {
   const createdAt = NOW.getTime() - minutesAgo * 60_000;
-  return { id, chatId: INBOX_ID, bodyMd, journalDate: "2026-10-21", createdAt, createdTz: "UTC" };
+  return mockMessage({ id, bodyMd, createdAt });
 }
 
 async function setup(options: MockApiOptions = {}, language: "ru" | "en" = "ru") {
