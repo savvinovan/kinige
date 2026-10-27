@@ -26,9 +26,6 @@ interface Ghost {
 interface Session {
   messageId: string;
   plate: HTMLElement;
-  /** Где в плашке взялись за неё: «призрак» держится за ту же точку. */
-  grabX: number;
-  grabY: number;
   pointerId: number;
   started: boolean;
 }
@@ -78,12 +75,9 @@ export function useRecordDrag({ canDrop, onDrop }: DragOptions): {
     (messageId: string) => (event: ReactPointerEvent<HTMLElement>, plate: HTMLElement) => {
       if (session.current || event.button !== 0 || event.pointerType === "touch") return;
       if (event.target instanceof Element && event.target.closest(INTERACTIVE)) return;
-      const rect = plate.getBoundingClientRect();
       const current: Session = {
         messageId,
         plate,
-        grabX: event.clientX - rect.left,
-        grabY: event.clientY - rect.top,
         pointerId: event.pointerId,
         started: false,
       };
@@ -108,8 +102,9 @@ export function useRecordDrag({ canDrop, onDrop }: DragOptions): {
         }
         const box = current.plate.getBoundingClientRect();
         setGhost({
-          x: move.clientX - current.grabX,
-          y: move.clientY - current.grabY,
+          // «Призрак» стоит правее и ниже указателя (отступ — токен в CSS): чат под указателем остаётся виден.
+          x: move.clientX,
+          y: move.clientY,
           width: box.width,
           className: current.plate.className,
           html: current.plate.innerHTML,
