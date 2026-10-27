@@ -42,7 +42,7 @@ Web: ui/drag/useRecordDrag.test.tsx (6); ui/screens/MainWindow.move.test.tsx (10
   Rust (ubuntu:24.04 + системные библиотеки Tauri + rust-toolchain.toml 1.94.0, git archive 14790fb): fmt, clippy -D warnings чисто;
     cargo test --workspace --no-fail-fast — TOTAL passed 343 failed 0 (на 1 меньше, чем на macOS: `ipc_restore_e2e` только macOS);
     wasm32 собран; сгенерированные TS-типы актуальны. Первая попытка сборки образа упала на сети (apt), вторая прошла.
-  Web (node:24.21.0, npm ci, git archive 14790fb): токены актуальны, typecheck, lint, vitest — 59 файлов, 1095 тестов.
+  Web (node:24.21.0, npm ci, git archive 951fad0, финальный HEAD кода): токены актуальны, typecheck, lint, vitest — 59 файлов, 1095 тестов.
   Визуальные тесты Storybook (на финальном HEAD): 284 passed, три сравнения подряд после обновления эталонов.
     Один из промежуточных прогонов дал «283 passed» (один снимок не прошёл, какой — не записано; на загруженном сервере, 3,4 мин
     вместо ~1 мин); семь следующих прогонов подряд — 284 passed.
