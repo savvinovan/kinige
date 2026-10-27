@@ -182,6 +182,11 @@ fn chats_over_ipc_create_rename_pin_archive_and_protect_inbox() {
     )
     .unwrap();
     assert!(archived["archivedAt"].is_number());
+    assert_eq!(
+        chat_titles(&window),
+        ["Проза", "", "Фильмы"],
+        "архивный чат уходит в конец списка"
+    );
     call(
         &window,
         "set_chat_archived",
