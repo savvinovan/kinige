@@ -251,3 +251,104 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
             >= 1
     );
 }
+
+// ---------- повреждение, найденное командой, и копия с порчей, которой не видит `quick_check` ----------
+
+fn counting_options(dir: &Path, calls: &Arc<AtomicUsize>) -> kinige_store::StoreOptions {
+    let mut opts = options(dir);
+    opts.start_mirror = false;
+    let counter = calls.clone();
+    opts.on_corruption = Some(CorruptionHook(Arc::new(move || {
+        counter.fetch_add(1, Ordering::SeqCst);
+    })));
+    opts
+}
+
+#[test]
+fn a_read_that_hits_a_damaged_page_raises_the_hook_once_and_stops_the_maintenance_writes() {
+    let dir = tempfile::tempdir().unwrap();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let store = Store::open_at(counting_options(dir.path(), &calls), &at(T0)).unwrap();
+    let sent = store.send_message(INBOX_ID, "в корзину", &at(T0)).unwrap();
+    store.delete_message(&sent.id, &at(T0 + 1)).unwrap();
+    wait_closed_keep_open(dir.path());
+    let mut bytes = fs::read(db_path(dir.path())).unwrap();
+    for byte in &mut bytes[4096..] {
+        *byte = 0xFF;
+    }
+    fs::write(db_path(dir.path()), bytes).unwrap();
+
+    let error = store.get_settings().unwrap_err();
+    assert!(
+        matches!(error, kinige_store::StoreError::Corrupt(_)),
+        "{error}"
+    );
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "тот же сигнал, что у фоновой проверки"
+    );
+    assert!(store.get_settings().is_err());
+    assert_eq!(calls.load(Ordering::SeqCst), 1, "один раз за запуск");
+    // После находки обслуживание в базу ничего не пишет (автоудаление корзины, копия дня).
+    let report = store.run_maintenance(&at(T0 + 40 * DAY_MS)).unwrap();
+    assert!(!report.integrity_ok && report.purged == 0 && !report.backup_made);
+}
+
+#[test]
+fn a_restored_copy_with_a_damaged_index_passes_quick_check_and_the_first_pass_raises_the_hook() {
+    let dir = tempfile::tempdir().unwrap();
+    {
+        let store = open_without_mirror(dir.path());
+        for i in 0..5 {
+            store
+                .send_message(INBOX_ID, &format!("запись {i}"), &at(T0 + i))
+                .unwrap();
+        }
+        store.run_maintenance(&at(T0)).unwrap();
+    }
+    wait_closed(dir.path());
+    let name = backups(&db_path(dir.path()))[0].name.clone();
+    // Порча индекса `message_day` прямо в файле копии: ключ индекса расходится с таблицей. `quick_check` индексы
+    // с таблицей не сверяет и проходит, `integrity_check` — нет.
+    let copy = backups_dir(&db_path(dir.path())).join(&name);
+    let root: i64 = rusqlite::Connection::open(&copy)
+        .unwrap()
+        .query_row(
+            "SELECT rootpage FROM sqlite_master WHERE name = 'message_day'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let mut bytes = fs::read(&copy).unwrap();
+    let page = (root as usize - 1) * 4096;
+    let at_key = bytes[page..page + 4096]
+        .windows(8)
+        .position(|w| w == b"2026-10-")
+        .expect("ключ дня в странице индекса");
+    bytes[page + at_key + 9] = b'9';
+    fs::write(&copy, bytes).unwrap();
+    let verdict: String = rusqlite::Connection::open(&copy)
+        .unwrap()
+        .query_row("PRAGMA quick_check", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(verdict, "ok", "копия проходит быструю проверку");
+    fs::write(db_path(dir.path()), b"broken").unwrap();
+
+    kinige_store::restore_backup(&db_path(dir.path()), &name, T0 + MINUTE, None).unwrap();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let store = Store::open_at(counting_options(dir.path(), &calls), &at(T0 + MINUTE)).unwrap();
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        0,
+        "при открытии порчи не видно"
+    );
+
+    let report = store.run_maintenance(&at(T0 + MINUTE)).unwrap();
+
+    assert!(
+        !report.integrity_ok,
+        "первый проход обслуживания находит порчу"
+    );
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+}

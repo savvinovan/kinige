@@ -1,5 +1,6 @@
 //! Настройки (`app_setting`, не синхронизируются): папка Markdown-копии и размер текста (ADR-0004).
 
+use crate::error::{read_err, write_err};
 use crate::send::mark_all_dirty;
 use crate::{Store, StoreError};
 use kinige_domain::shortcuts::canonical_accelerator;
@@ -21,14 +22,6 @@ fn recent_emoji(conn: &Connection) -> rusqlite::Result<Vec<String>> {
     Ok(get_setting(conn, KEY_RECENT_EMOJI)?
         .and_then(|text| serde_json::from_str::<Vec<String>>(&text).ok())
         .unwrap_or_default())
-}
-
-fn read_err(error: rusqlite::Error) -> StoreError {
-    StoreError::Read(error.to_string())
-}
-
-fn write_err(error: rusqlite::Error) -> StoreError {
-    StoreError::Write(error.to_string())
 }
 
 pub(crate) fn get_setting(conn: &Connection, key: &str) -> rusqlite::Result<Option<String>> {

@@ -93,6 +93,36 @@ pub fn fixture_with_taken(taken: &[&str]) -> Fixture {
     }
 }
 
+/// Как `fixture`, но хранилище открыто с настоящим хуком повреждения приложения (флаг, отметка, событие окну): так, как его
+/// открывает `open_store`.
+pub fn fixture_with_corruption_hook() -> Fixture {
+    let data = tempfile::tempdir().unwrap();
+    let db_path = data.path().join("kinige.db");
+    let app = new_app();
+    let flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let mut options = StoreOptions::new(&db_path, Some(data.path().join("mirror")));
+    options.start_mirror = false;
+    options.start_maintenance = false;
+    options.on_corruption = Some(kinige_lib::recovery::corruption_hook(
+        app.handle().clone(),
+        db_path.clone(),
+        flag.clone(),
+    ));
+    let store = Store::open(options).unwrap();
+    let registrar = Arc::new(FakeRegistrar::default());
+    let hotkeys = Hotkeys::new(Box::new(Shared(registrar.clone())));
+    hotkeys.register_saved(&store);
+    app.manage(store);
+    app.manage(hotkeys);
+    app.manage(CaptureShell::default());
+    app.manage(Recovery::new(db_path, false).with_corruption_flag(flag));
+    Fixture {
+        app,
+        registrar,
+        data,
+    }
+}
+
 /// Приложение, в котором хранилище не открыто (база повреждена): управляемо только состояние восстановления.
 pub fn fixture_without_store(db_path: &std::path::Path) -> Fixture {
     let app = new_app();

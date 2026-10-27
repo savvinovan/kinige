@@ -96,6 +96,15 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) {
 }
 
 impl Store {
+    /// Повреждение найдено (проверкой целостности или командой, прочитавшей битую страницу): сигнал подаётся один раз за
+    /// запуск, после него в базу больше ничего не пишется (`run_maintenance`).
+    pub(crate) fn report_corruption(&self) {
+        let first_time = !self.inner.maintenance.reported.swap(true, Ordering::SeqCst);
+        if let (true, Some(hook)) = (first_time, &self.inner.on_corruption) {
+            (hook.0)();
+        }
+    }
+
     /// Один проход обслуживания (поток вызывает его при старте и раз в сутки; тесты — с заданным «сейчас»).
     pub fn run_maintenance(&self, now: &Now) -> Result<MaintenanceReport, StoreError> {
         let db_path = &self.inner.db_path;
@@ -122,10 +131,7 @@ impl Store {
                     self.inner
                         .backup
                         .set_error(Some(BackupError::IntegrityFailed));
-                    let first_time = !self.inner.maintenance.reported.swap(true, Ordering::SeqCst);
-                    if let (true, Some(hook)) = (first_time, &self.inner.on_corruption) {
-                        (hook.0)();
-                    }
+                    self.report_corruption();
                     return Ok(report);
                 }
                 // Проверка не состоялась (база занята, ошибка ввода-вывода): это не повреждение. Отметку не ставим,

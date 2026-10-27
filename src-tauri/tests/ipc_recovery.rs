@@ -44,6 +44,42 @@ fn corruption_found_is_a_process_flag_not_a_leftover_marker_file() {
 }
 
 #[test]
+fn a_command_that_hits_a_damaged_page_raises_the_same_signal_as_the_background_check() {
+    // Порча в страницах, которой открытие не видит: первая же команда, прочитавшая битую страницу, отвечает
+    // `database_corrupt` и ставит флаг, отметку и событие. Иначе «Перезапустить» в окне, открытом по этой ошибке, была бы
+    // мёртвой кнопкой (перезапуск разрешает только флаг).
+    let fixture = fixture_with_corruption_hook();
+    let main = window(&fixture, "main");
+    let db = fixture.app.state::<Store>().db_path().to_path_buf();
+    assert_eq!(
+        call(&main, "startup_state", json!({})).unwrap()["corruptionFound"],
+        false
+    );
+    // Все страницы после первой портятся: чтение настроек дойдёт до битой.
+    let conn = rusqlite::Connection::open(&db).unwrap();
+    let _ = conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
+    drop(conn);
+    let mut bytes = std::fs::read(&db).unwrap();
+    for byte in &mut bytes[4096..] {
+        *byte = 0xFF;
+    }
+    std::fs::write(&db, bytes).unwrap();
+
+    let error = call(&main, "get_settings", json!({})).unwrap_err();
+
+    assert_eq!(error, json!({"code": "database_corrupt"}));
+    assert!(kinige_store::needs_recovery(&db), "отметка поставлена");
+    assert_eq!(
+        call(&main, "startup_state", json!({})).unwrap()["corruptionFound"],
+        true,
+        "«Перезапустить» разрешена"
+    );
+    // Повторные ошибки того же запуска сигнал не повторяют (флаг уже стоит, событие одно).
+    let again = call(&main, "get_settings", json!({})).unwrap_err();
+    assert_eq!(again, json!({"code": "database_corrupt"}));
+}
+
+#[test]
 fn during_a_restore_the_recovery_window_stays_and_restart_is_refused() {
     let dir = tempfile::tempdir().unwrap();
     let db = dir.path().join("kinige.db");

@@ -203,7 +203,9 @@ impl Store {
         &self,
         job: impl FnOnce(&mut Connection) -> Result<T, StoreError> + Send + 'static,
     ) -> Result<T, StoreError> {
-        self.inner.writer.run(job)?
+        let result = self.inner.writer.run(job)?;
+        self.note_if_corrupt(&result);
+        result
     }
 
     /// Выполняет чтение на отдельном соединении.
@@ -216,7 +218,19 @@ impl Store {
             .reader
             .lock()
             .map_err(|_| StoreError::Internal("соединение чтения отравлено".into()))?;
-        job(&conn)
+        let result = job(&conn);
+        drop(conn);
+        self.note_if_corrupt(&result);
+        result
+    }
+
+    /// Любая команда, наткнувшаяся на повреждение (`SQLITE_CORRUPT`, `SQLITE_NOTADB`), проходит тот же путь, что и
+    /// фоновая проверка: один сигнал на запуск (отметка, флаг, событие окну) — иначе «Перезапустить» после такой ошибки
+    /// осталась бы мёртвой кнопкой, пока обслуживание не дойдёт до своей проверки.
+    fn note_if_corrupt<T>(&self, result: &Result<T, StoreError>) {
+        if matches!(result, Err(StoreError::Corrupt(_))) {
+            self.report_corruption();
+        }
     }
 
     fn wake_mirror(&self) {

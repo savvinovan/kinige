@@ -85,6 +85,9 @@ impl Recovery {
             .compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok();
         if began {
+            // Находка прошлой попытки (хранилище успело открыться, хук поставил флаг, а сервисы упали) к новой не относится:
+            // флаг сбрасывается ДО открытия базы, и дальше его ставит только обслуживание открытой теперь базы.
+            self.corruption.store(false, Ordering::SeqCst);
             self.restoring.store(true, Ordering::SeqCst);
         }
         began
@@ -100,8 +103,7 @@ impl Recovery {
     pub fn finish_restore(&self) {
         // Флаг повреждения НЕ сбрасывается: восстановленная база уже открыта, и её обслуживание успело проверить целостность
         // (`resume_after_restore` открывает хранилище до этого вызова). Если копия оказалась с порчей, которую не видит
-        // `quick_check`, находка этой проверки должна дожить до окна. Прежней находки в режиме восстановления быть не
-        // может: хранилище не было открыто, проверка не шла.
+        // `quick_check`, находка этой проверки должна дожить до окна. Находки прошлых попыток сброшены в `begin_restore`.
         self.restoring.store(false, Ordering::SeqCst);
     }
 
@@ -262,6 +264,28 @@ mod tests {
             closed.corruption_found(),
             "находка между открытием базы и `finish_restore` не теряется"
         );
+    }
+
+    #[test]
+    fn a_finding_of_a_failed_attempt_does_not_leak_into_the_next_one() {
+        let recovery = Recovery::new(PathBuf::from("x.db"), true);
+        // Попытка 1: хранилище открылось, хук поставил флаг, сервисы упали.
+        assert!(recovery.begin_restore());
+        recovery.corruption_flag().store(true, Ordering::SeqCst);
+        recovery.abort_restore();
+        // Попытка 2 со здоровой копией: флаг сброшен до открытия базы, хук молчит.
+        assert!(recovery.begin_restore());
+        recovery.finish_restore();
+        assert!(
+            !recovery.corruption_found(),
+            "прежняя находка не должна пережить новую попытку"
+        );
+        // Попытка 3: хук сработал уже после начала — находка настоящая.
+        recovery.abort_restore();
+        assert!(recovery.begin_restore());
+        recovery.corruption_flag().store(true, Ordering::SeqCst);
+        recovery.finish_restore();
+        assert!(recovery.corruption_found());
     }
 
     #[test]
