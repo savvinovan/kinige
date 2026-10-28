@@ -352,43 +352,47 @@ fn a_first_message_that_only_starts_like_the_marker_is_served_normally() {
     assert!(log_tools(&mcp).iter().any(|(_, tool, _)| tool == "connect"));
 }
 
-/// Версия протокола 2026-07-28 разрешает первый запрос без `initialize`: такой сеанс шёл бы без «подключения» и без имени
-/// клиента. Сервер объявляет только версии с `initialize`, поэтому запрос отвергается, сеанс не начат.
+/// Встроенный жизненный цикл `rmcp` (`_meta.protocolVersion` в самом запросе) пропускает `tools/call` и `tools/list` мимо
+/// `initialize`, причём не только для версии 2026-07-28, но и для 2025-11-25. Такой сеанс шёл бы без «подключения» и без
+/// имени клиента, а `add_entry` записал бы данные. Сервер сам требует `initialize`: вызов не выполняется, в базе и журнале
+/// ничего нет, сеанс не начат.
 #[test]
-fn a_first_request_that_skips_initialize_by_inline_version_is_refused_and_no_session_starts() {
+fn a_request_that_skips_initialize_by_inline_version_is_refused_and_leaves_no_trace() {
     let mcp = mcp(AgentMode::ReadWrite, &[INBOX_ID]);
-    let mut client = mcp.client();
-    let before = log_tools(&mcp).len();
-    let reply = client.request(
-        "tools/call",
-        json!({
-            "name": "add_entry",
-            "arguments": {"text": "в обход рукопожатия"},
-            "_meta": {
-                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-                "io.modelcontextprotocol/clientCapabilities": {},
-                "io.modelcontextprotocol/clientInfo": {"name": "Sneaky", "version": "1"}
-            }
-        }),
-    );
-    assert!(reply["error"].is_object(), "{reply}");
-    assert_eq!(
-        log_tools(&mcp).len(),
-        before,
-        "ни подключения, ни вызова в журнале"
-    );
-    assert_eq!(
-        mcp.store()
-            .list_messages(INBOX_ID, None, 10, &Now::system())
-            .unwrap()
-            .messages
-            .len(),
-        0,
-        "запись не создана"
-    );
-    // Обычное рукопожатие после этого работает.
-    client.handshake("Honest");
-    assert!(!client.call("list_chats", json!({})).0);
+    for version in ["2026-07-28", "2025-11-25"] {
+        let mut client = mcp.client();
+        let before = log_tools(&mcp).len();
+        let meta = json!({
+            "io.modelcontextprotocol/protocolVersion": version,
+            "io.modelcontextprotocol/clientCapabilities": {},
+            "io.modelcontextprotocol/clientInfo": {"name": "Sneaky", "version": "1"}
+        });
+        let call = client.request(
+            "tools/call",
+            json!({"name": "add_entry", "arguments": {"text": "в обход рукопожатия"}, "_meta": meta}),
+        );
+        assert!(call["error"].is_object(), "{version}: {call}");
+        assert!(call["result"].is_null(), "{version}: {call}");
+        let list = client.request("tools/list", json!({"_meta": meta}));
+        assert!(list["error"].is_object(), "{version}: {list}");
+        assert_eq!(
+            log_tools(&mcp).len(),
+            before,
+            "{version}: ни подключения, ни вызова в журнале"
+        );
+        assert_eq!(
+            mcp.store()
+                .list_messages(INBOX_ID, None, 10, &Now::system())
+                .unwrap()
+                .messages
+                .len(),
+            0,
+            "{version}: запись не создана"
+        );
+        // Обычное рукопожатие после этого работает.
+        client.handshake("Honest");
+        assert!(!client.call("list_chats", json!({})).0);
+    }
 }
 
 /// Если строку подключения записать не удалось (база в восстановлении), она пишется перед первым вызовом.

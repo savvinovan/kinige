@@ -31,6 +31,15 @@ pub struct ConnectionInfo {
 }
 
 impl ConnectionInfo {
+    /// Был ли `initialize` на этом соединении (клиент назвал себя). Без него вызовы не выполняются: встроенный жизненный
+    /// цикл `rmcp` (`_meta.protocolVersion` в запросе) пропускает `tools/call` мимо рукопожатия, а сервер ему не верит.
+    pub fn initialized(&self) -> bool {
+        match self.client.lock() {
+            Ok(client) => client.is_some(),
+            Err(poisoned) => poisoned.into_inner().is_some(),
+        }
+    }
+
     pub fn client(&self) -> String {
         match self.client.lock() {
             Ok(client) => client.clone().unwrap_or_default(),
@@ -103,6 +112,17 @@ impl<R: Runtime> McpServer<R> {
         }
     }
 
+    fn require_initialize(&self) -> Result<(), ErrorData> {
+        if self.info.initialized() {
+            Ok(())
+        } else {
+            Err(ErrorData::invalid_request(
+                "initialize is required before any other request",
+                None,
+            ))
+        }
+    }
+
     fn config() -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("kinige", env!("CARGO_PKG_VERSION")))
@@ -130,7 +150,9 @@ impl<R: Runtime> ServerHandler for McpServer<R> {
     }
 
     /// Только версии протокола с `initialize` (до 2025-11-25). Версия 2026-07-28 разрешает первый запрос без рукопожатия
-    /// (`_meta.protocolVersion`): сеанс шёл бы без строки «подключение» и без имени клиента.
+    /// (`_meta.protocolVersion`): сеанс шёл бы без строки «подключение» и без имени клиента. Одного списка мало: `rmcp`
+    /// пропускает запрос с `_meta.protocolVersion = 2025-11-25` тоже, поэтому `list_tools` и `call_tool` сами требуют
+    /// `initialize` (`ConnectionInfo::initialized`). `server/discover` отдаёт только `get_info` (имя, `instructions`), данных нет.
     fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]> {
         Cow::Borrowed(ProtocolVersion::known_up_to(&ProtocolVersion::V_2025_11_25))
     }
@@ -140,6 +162,7 @@ impl<R: Runtime> ServerHandler for McpServer<R> {
         _request: Option<PaginatedRequestParams>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
+        self.require_initialize()?;
         // Режим берётся из настроек при каждом запросе; список виден и при выключенном доступе (данных в нём нет).
         let mode = blocking(&self.app, |store| store.agent_mode())
             .await
@@ -157,6 +180,8 @@ impl<R: Runtime> ServerHandler for McpServer<R> {
         request: CallToolRequestParams,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, ErrorData> {
+        // Без `initialize` вызов не доходит ни до базы, ни до журнала.
+        self.require_initialize()?;
         self.record_connection().await;
         let client = self.info.client();
         let name = request.name.to_string();
