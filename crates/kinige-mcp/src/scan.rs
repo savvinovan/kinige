@@ -23,11 +23,27 @@ impl Scan {
 }
 
 pub fn scan(line: &[u8]) -> Scan {
-    scan_object(line).unwrap_or_default()
+    let mut found = Scan::default();
+    match scan_object(line, &mut found) {
+        Some(()) => found,
+        None => Scan::default(),
+    }
 }
 
-fn scan_object(line: &[u8]) -> Option<Scan> {
+/// Разбирает только начало слишком длинной строки: `id`, если он стоит раньше места обрыва. Нужен, чтобы ответить на
+/// отвергнутый кадр ошибкой с настоящим `id`, а не с `null`.
+pub fn scan_prefix(prefix: &[u8]) -> Scan {
     let mut found = Scan::default();
+    let _ = scan_object(prefix, &mut found);
+    found
+}
+
+/// Строка — целый JSON-объект верхнего уровня (по структуре; значения не проверяются).
+pub fn is_object(line: &[u8]) -> bool {
+    scan_object(line, &mut Scan::default()).is_some()
+}
+
+fn scan_object(line: &[u8], found: &mut Scan) -> Option<()> {
     let mut i = skip_space(line, 0);
     if *line.get(i)? != b'{' {
         return None;
@@ -36,7 +52,7 @@ fn scan_object(line: &[u8]) -> Option<Scan> {
     loop {
         i = skip_space(line, i);
         match *line.get(i)? {
-            b'}' => return Some(found),
+            b'}' => return Some(()),
             b',' => {
                 i += 1;
                 continue;
@@ -178,6 +194,24 @@ mod tests {
             r#"{"id":true,"method":"x"}"#,
         ] {
             assert_eq!(s(text).id, None, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_cut_prefix_still_gives_an_id_that_precedes_the_cut() {
+        let cut = br#"{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"text":"aaaa"#;
+        assert_eq!(scan_prefix(cut).id.as_deref(), Some("42"));
+        // Обычный разбор целой строки по такому обрубку ничего не даёт.
+        assert_eq!(scan(cut), Scan::default());
+        // id после обрыва достать нельзя.
+        assert_eq!(scan_prefix(br#"{"params":{"text":"aaaa"#).id, None);
+    }
+
+    #[test]
+    fn is_object_tells_json_objects_from_the_rest() {
+        assert!(is_object(br#" {"a":1} "#));
+        for text in [&b"{not json"[..], b"[1]", b"", b"plain", b"{\"a\":"] {
+            assert!(!is_object(text), "{text:?}");
         }
     }
 

@@ -364,6 +364,56 @@ fn a_cut_before_initialize_repeats_nothing() {
     );
 }
 
+/// Сервер, который принял соединение, но не отвечает на повторный `initialize`: вызов клиента не уходит, клиент получает
+/// ошибку со своим `id`, а не молчание.
+#[test]
+fn a_server_that_never_answers_the_repeated_initialize_gives_the_call_an_error_and_receives_no_call()
+ {
+    let env = Env::new();
+    let server = Server::bind(&env.socket());
+    let mut bridge = env.bridge("present");
+    bridge.say(INIT);
+    let mut first = server.accept(LONG).unwrap();
+    assert_eq!(first.next(LONG).as_deref(), Some(INIT));
+    first.send(&result(1));
+    bridge.hear(LONG).unwrap();
+    bridge.say(INITIALIZED);
+    assert_eq!(first.next(LONG).as_deref(), Some(INITIALIZED));
+    first.close();
+    bridge.say(&call(3, "never-delivered"));
+    let mut second = server.accept(LONG).unwrap();
+    assert_eq!(second.next(LONG).as_deref(), Some(MARKER));
+    assert_eq!(second.next(LONG).as_deref(), Some(INIT));
+    // Ответа на initialize нет.
+    let line = bridge.hear(LONG).expect("ошибка вместо молчания");
+    assert!(
+        line.contains(r#""id":3"#) && line.contains("journal_unavailable"),
+        "{line}"
+    );
+    assert!(
+        second.next(SHORT).is_none(),
+        "вызов на сервер, не прошедший рукопожатие, не уходит"
+    );
+    second.send("");
+}
+
+#[test]
+fn text_that_is_not_json_is_answered_with_a_parse_error_and_id_null_and_nothing_is_forwarded() {
+    let env = Env::new();
+    let mut bridge = env.bridge("absent");
+    bridge.say("{not json");
+    let line = bridge.hear(LONG).expect("ошибка разбора");
+    assert!(
+        line.contains(r#""id":null"#) && line.contains("-32700"),
+        "{line}"
+    );
+    assert_eq!(env.opens(), 0, "мусор не запускает приложение");
+    // Мост жив и работает дальше.
+    bridge.say(&call(2, "after-garbage"));
+    let line = bridge.hear(LONG).expect("ошибка недоступности");
+    assert!(line.contains(r#""id":2"#), "{line}");
+}
+
 #[test]
 fn a_client_answer_to_a_server_request_is_not_an_unanswered_request() {
     let env = Env::new();
@@ -396,12 +446,23 @@ fn a_frame_over_4_mib_is_rejected_on_both_sides() {
     conn.next(LONG).unwrap();
     conn.send(&result(1));
     bridge.hear(LONG).unwrap();
-    // От клиента: ошибка с id null, на сервер ничего не уходит, мост жив.
+    // От клиента: ошибка с настоящим id (он стоит раньше места обрыва), на сервер ничего не уходит, мост жив.
     let huge = format!(
         r#"{{"jsonrpc":"2.0","id":2,"method":"x","params":"{}"}}"#,
         "z".repeat(4 * 1024 * 1024 + 10)
     );
     bridge.say(&huge);
+    let line = bridge.hear(LONG).expect("ошибка");
+    assert!(
+        line.contains(r#""id":2"#) && line.contains("4 MiB"),
+        "{line}"
+    );
+    // id после длинного значения не достать из сохранённого начала: тогда null.
+    let late_id = format!(
+        r#"{{"jsonrpc":"2.0","method":"x","params":"{}","id":9}}"#,
+        "z".repeat(4 * 1024 * 1024 + 10)
+    );
+    bridge.say(&late_id);
     let line = bridge.hear(LONG).expect("ошибка");
     assert!(
         line.contains(r#""id":null"#) && line.contains("4 MiB"),

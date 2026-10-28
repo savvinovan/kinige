@@ -5,7 +5,7 @@
 use crate::frames::{FRAME_LIMIT, Frame, read_frame};
 use crate::host::Host;
 use crate::log::note;
-use crate::scan::{Scan, scan};
+use crate::scan::{Scan, is_object, scan, scan_prefix};
 use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
@@ -23,6 +23,9 @@ const LOST: &str = "Соединение с Kinige потеряно, прове�
 const NOT_RUNNING: &str = "Откройте Kinige (Open Kinige: the app is not running)";
 const UNAVAILABLE: &str =
     "journal_unavailable: Kinige is starting or recovering, try again in a moment";
+/// Коды JSON-RPC: разбор не удался; ошибка сервера (обрыв, нет приложения).
+const PARSE_ERROR: i32 = -32700;
+const SERVER_ERROR: i32 = -32000;
 const TOO_LONG: &str = "invalid_argument: the message is larger than 4 MiB";
 
 pub struct Config {
@@ -97,8 +100,11 @@ impl Bridge {
                     }
                 }
                 Ok(Frame::TooLong) => {
-                    note("client_frame_too_long", None);
-                    self.send_to_client(error_line("null", TOO_LONG));
+                    // `id` ищется в сохранённом начале строки; нет — `null`, как велит JSON-RPC для неразобранного запроса.
+                    let found = scan_prefix(&line);
+                    let id = found.id.as_deref();
+                    note("client_frame_too_long", id);
+                    self.send_to_client(error_line(id.unwrap_or("null"), TOO_LONG));
                 }
                 Ok(Frame::Eof) | Err(_) => return,
             }
@@ -106,6 +112,12 @@ impl Bridge {
     }
 
     fn client_line(self: &Arc<Self>, line: &[u8]) {
+        // Не JSON-объект (`{not json`): ответ −32700 с `id: null` и ничего серверу; приложение из-за мусора не запускается.
+        if !is_object(line) {
+            note("parse_error", None);
+            self.send_to_client(error_with_code("null", PARSE_ERROR, "Parse error"));
+            return;
+        }
         let scanned = scan(line);
         let connected = self.connect();
         let id = scanned.id.as_deref();
@@ -365,8 +377,12 @@ fn scan_id(line: Option<&[u8]>) -> Option<String> {
 
 /// Ответ-ошибка JSON-RPC с заданным `id` (дословно). Тексты — константы моста, экранировать в них нечего, кроме кавычек.
 pub fn error_line(id: &str, message: &str) -> String {
+    error_with_code(id, SERVER_ERROR, message)
+}
+
+fn error_with_code(id: &str, code: i32, message: &str) -> String {
     let message = message.replace('\\', "\\\\").replace('"', "\\\"");
-    format!(r#"{{"jsonrpc":"2.0","id":{id},"error":{{"code":-32000,"message":"{message}"}}}}"#)
+    format!(r#"{{"jsonrpc":"2.0","id":{id},"error":{{"code":{code},"message":"{message}"}}}}"#)
 }
 
 #[cfg(test)]

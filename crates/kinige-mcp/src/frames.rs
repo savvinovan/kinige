@@ -4,12 +4,14 @@ use std::io::{self, BufRead};
 
 /// Предел одного кадра: 4 МиБ.
 pub const FRAME_LIMIT: usize = 4 * 1024 * 1024;
+/// Сколько начала отвергнутой строки сохраняется для поиска `id`.
+pub const PREFIX_KEEP: usize = 64 * 1024;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Frame {
     /// Строка без завершающего перевода строки лежит в буфере.
     Line,
-    /// Строка длиннее предела: прочитана до конца и выброшена, в буфере ничего нет.
+    /// Строка длиннее предела: прочитана до конца и выброшена; в буфере — только её начало (до [`PREFIX_KEEP`] байт).
     TooLong,
     /// Поток закончился.
     Eof,
@@ -44,8 +46,9 @@ pub fn read_frame<R: BufRead>(
         if !too_long {
             if buf.len() + take > limit {
                 too_long = true;
-                buf.clear();
-                buf.shrink_to(0);
+                // Остаётся только начало строки: по нему ищется `id` для ответа-ошибки.
+                buf.truncate(PREFIX_KEEP);
+                buf.shrink_to(PREFIX_KEEP);
             } else {
                 buf.extend_from_slice(&chunk[..take]);
             }
@@ -94,7 +97,8 @@ mod tests {
         let mut input = vec![b'x'; 50];
         input.extend_from_slice(b"\nok\n");
         let got = frames(&input, 10);
-        assert_eq!(got[0], (Frame::TooLong, Vec::new()));
+        assert_eq!(got[0].0, Frame::TooLong);
+        assert!(got[0].1.len() <= 10 && got[0].1.iter().all(|b| *b == b'x'));
         assert_eq!(got[1], (Frame::Line, b"ok".to_vec()));
         // Ровно предел проходит.
         assert_eq!(frames(&[b'y'; 10], 10)[0].0, Frame::Line);
