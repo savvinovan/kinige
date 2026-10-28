@@ -142,18 +142,47 @@ pub struct MessageRow {
     pub groups_raw: String,
 }
 
+/// Происхождение записи — то, чем группа `core` отличается у записи пользователя и импортированной (слайс 4).
+pub(crate) struct Provenance<'a> {
+    pub origin: &'a str,
+    pub reply_to_id: Option<&'a str>,
+    /// Внешний id импорта (`ext`), необязательное неизменяемое поле `core`.
+    pub ext: Option<Value>,
+}
+
 /// Новая запись сразу со всеми пятью группами (`core`, `body`, `flags`, `placement`, `deleted`) под одним HLC: она создаётся одним событием.
 pub fn new_message(input: &NewMessage<'_>, hlc: &str) -> Result<MessageRow, GroupError> {
+    let user = Provenance {
+        origin: ORIGIN_USER,
+        reply_to_id: None,
+        ext: None,
+    };
+    build_message(input, &user, hlc)
+}
+
+/// Общая сборка новой записи: пять групп под одним HLC и колонки из тех же значений. `new_message` и
+/// `import::new_imported_message` различаются только [`Provenance`].
+pub(crate) fn build_message(
+    input: &NewMessage<'_>,
+    provenance: &Provenance<'_>,
+    hlc: &str,
+) -> Result<MessageRow, GroupError> {
+    let mut core = json!({
+        "created_at": input.created_at,
+        "created_tz": input.created_tz,
+        "origin": provenance.origin,
+        "reply_to_id": provenance.reply_to_id,
+    });
+    let ext_json = match &provenance.ext {
+        Some(ext) => {
+            core["ext"] = ext.clone();
+            let bytes = jcs::canonical_bytes(ext)?;
+            Some(String::from_utf8(bytes).expect("JCS выдаёт UTF-8"))
+        }
+        None => None,
+    };
     let groups: [(&str, Value); 5] = [
-        (
-            "core",
-            json!({
-                "created_at": input.created_at,
-                "created_tz": input.created_tz,
-                "origin": ORIGIN_USER,
-                "reply_to_id": null,
-            }),
-        ),
+        ("core", core),
         ("body", body_group(input.body_md)),
         (
             "flags",
@@ -178,9 +207,9 @@ pub fn new_message(input: &NewMessage<'_>, hlc: &str) -> Result<MessageRow, Grou
         task_done_at: None,
         favorite_at: None,
         pinned_at: None,
-        reply_to_id: None,
-        origin: ORIGIN_USER.to_string(),
-        ext_json: None,
+        reply_to_id: provenance.reply_to_id.map(str::to_string),
+        origin: provenance.origin.to_string(),
+        ext_json,
         deleted_at: None,
         body_base: None,
         body_supersedes: "[]".to_string(),

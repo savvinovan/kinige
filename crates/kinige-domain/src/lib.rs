@@ -10,6 +10,7 @@ pub mod folders;
 pub mod groups;
 pub mod history;
 pub mod hlc;
+pub mod import;
 pub mod jcs;
 pub mod journal;
 pub mod lang;
