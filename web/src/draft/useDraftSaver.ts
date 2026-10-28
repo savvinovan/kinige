@@ -21,29 +21,33 @@ export interface DraftSaver {
  * Сохранения идут строго по одному, в порядке вызова: следующее начинается после ответа на предыдущее (команды Rust
  * приходят к писателю в произвольном порядке, и иначе старый текст мог бы перезаписать новый). `settle()` ждёт хвост этой
  * очереди — им пользуется отправка записи, чтобы запоздавшее сохранение не вернуло отправленный текст черновиком.
+ *
+ * Запланированный текст хранит ту функцию `save`, с которой его запланировали (у `MainWindow` она привязана к чату).
+ * `flush` берёт её оттуда, а не из своего замыкания: после смены чата React сбрасывает эффекты предыдущей отрисовки с
+ * задержкой, и «старый» `flush` успевал сохранить набранный в новом чате текст в черновик прежнего чата.
  */
 export function useDraftSaver(save: (body: string) => Promise<void>, delayMs = DRAFT_DELAY_MS): DraftSaver {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const pending = useRef<string | null>(null);
+  const pending = useRef<{ body: string; save: (body: string) => Promise<void> } | null>(null);
   const queue = useRef<Promise<void>>(Promise.resolve());
 
   const flush = useCallback((): Promise<void> => {
     clearTimeout(timer.current);
     timer.current = undefined;
-    const body = pending.current;
+    const item = pending.current;
     pending.current = null;
-    if (body === null) return queue.current;
-    queue.current = queue.current.then(() => save(body)).catch(() => undefined);
+    if (item === null) return queue.current;
+    queue.current = queue.current.then(() => item.save(item.body)).catch(() => undefined);
     return queue.current;
-  }, [save]);
+  }, []);
 
   const schedule = useCallback(
     (body: string) => {
-      pending.current = body;
+      pending.current = { body, save };
       clearTimeout(timer.current);
       timer.current = setTimeout(() => void flush(), delayMs);
     },
-    [flush, delayMs],
+    [flush, save, delayMs],
   );
 
   const cancel = useCallback(() => {

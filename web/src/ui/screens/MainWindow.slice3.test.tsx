@@ -33,6 +33,21 @@ async function openChat(name: string) {
   await waitFor(() => expect(screen.getByRole("button", { name: new RegExp(`^${name}`) })).toHaveAttribute("aria-current", "true"));
 }
 
+/** Печатает в поле в тот самый момент, когда чат `name` стал открытым (колбэк MutationObserver идёт сразу после отрисовки). */
+function typeWhenOpened(name: string, value: string) {
+  return new Promise<void>((resolve) => {
+    const check = () => {
+      const row = screen.queryByRole("button", { name: new RegExp(`^${name}`) });
+      if (row?.getAttribute("aria-current") !== "true") return;
+      observer.disconnect();
+      type(value);
+      resolve();
+    };
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { subtree: true, attributes: true, childList: true });
+  });
+}
+
 describe("MainWindow слайс 3: чаты", () => {
   it("чаты по разделам: закреплённые, обычные, архив; переключение показывает записи своего чата", async () => {
     setup({
@@ -66,6 +81,40 @@ describe("MainWindow слайс 3: чаты", () => {
     await openChat("Входящие");
     await waitFor(() => expect(field().value).toBe("недописанное во входящих"));
     expect(await api.getDraft("books")).toBe("про книги");
+  });
+
+  it("набор в ту же долю секунды, когда чат открылся, остаётся черновиком этого чата, а не прежнего", async () => {
+    const api = setup({ chats: [BOOKS] });
+    await screen.findByText(/Пока пусто/);
+    type("недописанное во входящих");
+    // Колбэк MutationObserver идёт сразу после отрисовки, раньше, чем React сбросит эффекты предыдущего чата.
+    const opened = typeWhenOpened("Книги", "про книги");
+    fireEvent.click(await chatRow("Книги"));
+    await opened;
+    await openChat("Входящие");
+    await waitFor(() => expect(field().value).toBe("недописанное во входящих"));
+    expect(await api.getDraft("books")).toBe("про книги");
+    expect(await api.getDraft(INBOX_ID)).toBe("недописанное во входящих");
+  });
+
+  it("запоздавший ответ с черновиком прежнего чата не попадает в поле нового", async () => {
+    const api = new MockApi({ now: NOW, language: "ru", chats: [BOOKS] });
+    await api.saveDraft(INBOX_ID, "старый черновик");
+    // Ответ на первый запрос черновика Inbox задерживается, пока человек не переключится на другой чат.
+    const answer = api.getDraft.bind(api);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    api.getDraft = (chatId) => (chatId === INBOX_ID ? held.then(() => answer(chatId)) : answer(chatId));
+    render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />, { language: "ru" });
+    await screen.findByText(/Пока пусто/);
+
+    fireEvent.click(await chatRow("Книги"));
+    // Микрозадачи: переключение дошло до `setSelected`, а отрисовка и сброс эффектов прежнего чата — отдельные задачи.
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    release();
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Книги/ })).toHaveAttribute("aria-current", "true"));
+    await act(async () => void (await Promise.resolve()));
+    expect(field().value).toBe("");
   });
 
   it("новый чат: диалог, имя, «Создать» — чат появляется и открывается, фокус в поле ввода", async () => {

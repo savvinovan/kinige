@@ -48,6 +48,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const sending = useRef(false);
   // Пока человек не печатал, черновик из Rust подставляется в пустое поле; набранное до ответа не затирается.
   const typed = useRef(false);
+  // Открытый чат без ожидания отрисовки: ответ на `getDraft` прежнего чата, пришедший после переключения, в поле нового не попадает.
+  const opened = useRef<string | null>(INBOX_ID);
   const chatId = selected ?? INBOX_ID;
 
   const saveDraft = useCallback((body: string) => api.saveDraft(chatId, body), [api, chatId]);
@@ -92,6 +94,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       await draftSaver.flush();
       // Поле нового чата пустое, пока не подгрузится его черновик (эффект ниже).
       typed.current = false;
+      opened.current = next;
       setDraft("");
       setSelected(next);
       setTag(null);
@@ -126,10 +129,11 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   useEffect(() => {
     if (selected === null) return;
     let live = true;
+    // Эффект прежнего чата React сбрасывает после отрисовки, а `select` обнуляет поле раньше: одного `live` мало.
     api
       .getDraft(selected)
       .then((saved) => {
-        if (live && !typed.current && saved !== "") setDraft(saved);
+        if (live && opened.current === selected && !typed.current && saved !== "") setDraft(saved);
       })
       .catch(() => undefined);
     return () => {
