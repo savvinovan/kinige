@@ -10,6 +10,7 @@ use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::is_valid_journal_date;
 use kinige_domain::search::{fts_query, highlight_terms, snippet, title_matches};
 use kinige_domain::{FeedCursor, SearchFilters, SearchHit, SearchPage};
+use rusqlite::Connection;
 
 /// Длина фрагмента в знаках.
 const SNIPPET_CHARS: usize = 200;
@@ -38,7 +39,7 @@ impl Store {
             }
         }
         let limit = limit.clamp(1, MAX_PAGE);
-        self.read(|conn| {
+        let run = |conn: &Connection| -> Result<SearchPage, StoreError> {
             let mut sql = format!(
                 "SELECT {VIEW_COLUMNS}, c.title, c.icon, c.id = ?1 \
                  FROM search_fts f \
@@ -48,7 +49,7 @@ impl Store {
                  WHERE search_fts MATCH ?2 AND m.deleted_at IS NULL AND c.deleted_at IS NULL"
             );
             let mut params: Vec<rusqlite::types::Value> =
-                vec![INBOX_ID.to_string().into(), query.into()];
+                vec![INBOX_ID.to_string().into(), query.clone().into()];
             if filters.favorite {
                 sql.push_str(" AND m.favorite_at IS NOT NULL");
             }
@@ -129,6 +130,17 @@ impl Store {
                 Vec::new()
             };
             Ok(SearchPage { chats, hits, older })
-        })
+        };
+        // Индекс поиска — производная таблица: его повреждение лечится перестройкой из записей, а не экраном «база
+        // повреждена». Если после перестройки ошибка осталась, повреждена сама база: сигнал уходит как обычно.
+        let result = match self.read_unnoted(&run) {
+            Err(StoreError::Corrupt(_)) => match self.write(crate::search::heal) {
+                Ok(()) => self.read_unnoted(&run),
+                Err(error) => Err(error),
+            },
+            other => other,
+        };
+        self.note_if_corrupt(&result);
+        result
     }
 }

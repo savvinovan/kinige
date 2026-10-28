@@ -222,15 +222,22 @@ impl Store {
         &self,
         job: impl FnOnce(&Connection) -> Result<T, StoreError>,
     ) -> Result<T, StoreError> {
+        let result = self.read_unnoted(job);
+        self.note_if_corrupt(&result);
+        result
+    }
+
+    /// Чтение без сигнала о повреждении: для запроса, который сам решает, что делать с `Corrupt` (поиск лечит свой индекс).
+    fn read_unnoted<T>(
+        &self,
+        job: impl FnOnce(&Connection) -> Result<T, StoreError>,
+    ) -> Result<T, StoreError> {
         let conn = self
             .inner
             .reader
             .lock()
             .map_err(|_| StoreError::Internal("соединение чтения отравлено".into()))?;
-        let result = job(&conn);
-        drop(conn);
-        self.note_if_corrupt(&result);
-        result
+        job(&conn)
     }
 
     /// Любая команда, наткнувшаяся на повреждение (`SQLITE_CORRUPT`, `SQLITE_NOTADB`), проходит тот же путь, что и

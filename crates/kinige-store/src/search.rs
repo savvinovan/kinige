@@ -76,6 +76,15 @@ pub(crate) fn rebuild_all(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// Лечение повреждённого индекса (ошибка `Corrupt` от запроса поиска): версия правил сбрасывается отдельной фиксацией,
+/// затем индекс перестраивается заново из `body_md`. Если перестройка не дошла до конца, версии нет, и индекс
+/// перестроится при следующем открытии. Повреждение самой базы проявится здесь же как `Corrupt` писателя.
+pub(crate) fn heal(conn: &mut Connection) -> Result<(), StoreError> {
+    conn.execute("DELETE FROM app_setting WHERE key = ?1", [VERSION_KEY])
+        .map_err(write_err)?;
+    rebuild_if_stale(conn)
+}
+
 /// При открытии базы: версия правил в базе не совпала с версией приложения — индекс перестраивается одной транзакцией.
 pub(crate) fn rebuild_if_stale(conn: &mut Connection) -> Result<(), StoreError> {
     let stored = get_setting(conn, VERSION_KEY).map_err(write_err)?;
