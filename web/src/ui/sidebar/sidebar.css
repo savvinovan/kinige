@@ -46,6 +46,11 @@
   min-width: 0;
 }
 
+/* Своя кнопка очистки WebKit в поле поиска не нужна: запрос стирается Backspace, а Esc очищает поле и возвращает ленту. */
+.sidebar__search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
 .sidebar__section + .sidebar__section {
   margin-top: var(--space-2);
 }

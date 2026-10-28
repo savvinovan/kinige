@@ -4,6 +4,8 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  /* Место под полосу прокрутки занято всегда: строка фильтров не сдвигается, когда результатов мало или нет. */
+  scrollbar-gutter: stable;
   padding: var(--layout-feed-padding-block) var(--layout-feed-padding-inline);
   background: var(--color-surface-paper);
 }
