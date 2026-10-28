@@ -1,0 +1,25 @@
+# Codecov (https://app.codecov.io/gh/savvinovan/kinige): отчёты приходят из задания `coverage` в .github/workflows/ci.yml.
+# Пока информационно: статусы не блокируют PR, порогов нет — сначала смотрим, где мы.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+flags:
+  rust:
+    paths:
+      - crates/
+      - src-tauri/
+    carryforward: true
+  web:
+    paths:
+      - web/src/
+    carryforward: true
+
+comment:
+  layout: "condensed_header, diff, flags, condensed_files"
+  require_changes: false

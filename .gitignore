@@ -6,5 +6,7 @@ dist/
 storybook-static/
 test-results/
 playwright-report/
+coverage/
+lcov*.info
 src-tauri/gen/
 .claude/worktrees/
