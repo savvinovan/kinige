@@ -123,6 +123,50 @@ pub struct MessagePage {
     pub today: String,
 }
 
+/// Фильтры поиска (слайс 4, §9.1): все необязательные и соединяются через «и».
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export, export_to = "SearchFilters.ts")]
+pub struct SearchFilters {
+    /// Только записи этого чата; `null` — везде.
+    pub chat_id: Option<String>,
+    /// Только избранное.
+    pub favorite: bool,
+    /// Только задачи.
+    pub tasks: bool,
+    /// С этого `journal_date` включительно (`YYYY-MM-DD`).
+    pub from: Option<String>,
+    /// По этот `journal_date` включительно.
+    pub to: Option<String>,
+}
+
+/// Найденная запись: сама запись, её чат и то, что показывает строка результата.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "SearchHit.ts")]
+pub struct SearchHit {
+    pub message: MessageView,
+    pub chat_title: String,
+    pub chat_icon: Option<String>,
+    pub chat_is_inbox: bool,
+    /// Простой текст вокруг первого совпадения, до 200 знаков, с «…» по обрезанным краям.
+    pub snippet: String,
+    /// Слова записи, которые совпали с запросом, как они в ней написаны: фронтенд подсвечивает их целиком.
+    pub terms: Vec<String>,
+}
+
+/// Страница результатов поиска: новые записи сверху (порядок ленты, самые новые первыми).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "SearchPage.ts")]
+pub struct SearchPage {
+    /// Чаты, чьё название совпало с запросом; только на первой странице. У Inbox название переводит фронтенд.
+    pub chats: Vec<ChatSummary>,
+    pub hits: Vec<SearchHit>,
+    /// Позиция для следующей страницы (последняя запись этой); `null` — больше нет.
+    pub older: Option<FeedCursor>,
+}
+
 /// Размер текста (ADR-0004): «Обычный» или «Крупный» ×1,25.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]

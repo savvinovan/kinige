@@ -38,8 +38,8 @@ use ts_rs::TS;
 
 pub use api::{
     ApiError, CaptureAction, CaptureOutcome, CaptureState, ChatList, ChatSummary, ErrorCode,
-    FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, Settings,
-    TextSize, TrashItem,
+    FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters,
+    SearchHit, SearchPage, Settings, TextSize, TrashItem,
 };
 pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, RestoreOutcome, StartupState};
 pub use lang::Language;

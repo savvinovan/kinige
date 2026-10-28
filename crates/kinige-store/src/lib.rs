@@ -18,6 +18,7 @@ mod mirror;
 mod recovery;
 mod schema;
 mod search;
+mod search_query;
 mod send;
 mod settings;
 mod tags;

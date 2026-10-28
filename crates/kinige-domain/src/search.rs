@@ -107,6 +107,26 @@ impl Query {
     }
 }
 
+/// Совпадает ли название чата с запросом: каждому терму находится слово названия с той же основой (у последнего терма —
+/// с этим началом основы, пока слово не закончено). Названия чатов в индексе не лежат: их не больше сотни, они
+/// сверяются здесь. Пустой запрос ничему не соответствует.
+pub fn title_matches(title: &str, input: &str) -> bool {
+    let Some(query) = Query::parse(input) else {
+        return false;
+    };
+    let stems: Vec<String> = words(title).map(|(_, word)| stem(&word)).collect();
+    let last = query.terms.len() - 1;
+    query.terms.iter().enumerate().all(|(i, term)| {
+        stems.iter().any(|s| {
+            if i == last && query.prefix_last {
+                s.starts_with(term.as_str())
+            } else {
+                s == term
+            }
+        })
+    })
+}
+
 /// Запрос FTS5 по вводу пользователя: термы в кавычках через пробел (то есть «и»); последний — префикс `"основа"*`, если
 /// слово не закончено (ADR-0008). В кавычки попадают только буквы и цифры, поэтому синтаксис FTS5 из ввода пройти не
 /// может. Без слов (пусто, одни знаки) — `None`.
