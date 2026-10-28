@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Снимки историй Storybook. Эталоны снимаются в Linux-контейнере (scripts/visual-tests.sh),
+// Снимки историй Storybook. Эталоны снимаются на GitHub (.github/workflows/visual-update.yml)
 // тем же образом, что и в CI, поэтому `*-linux.png` — единственные эталоны в репозитории.
 export default defineConfig({
   testDir: "tests/visual",
