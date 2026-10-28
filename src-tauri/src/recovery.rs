@@ -136,10 +136,14 @@ pub fn corruption_hook<R: Runtime>(
     found: Arc<AtomicBool>,
 ) -> CorruptionHook {
     CorruptionHook(Arc::new(move || {
-        eprintln!("kinige: проверка целостности нашла повреждение базы");
+        log::error!("проверка целостности нашла повреждение базы");
         found.store(true, Ordering::SeqCst);
         if let Err(error) = kinige_store::mark_needs_recovery(&db_path) {
-            eprintln!("kinige: не удалось поставить отметку восстановления: {error}");
+            // Только вид ошибки ввода-вывода: текст ошибки ОС может содержать путь.
+            log::error!(
+                "не удалось поставить отметку восстановления: {:?}",
+                error.kind()
+            );
         }
         let _ = app.emit_to(crate::capture::MAIN_LABEL, DATABASE_CORRUPT, ());
     }))
@@ -193,10 +197,7 @@ pub fn restore_backup<R: Runtime>(
             })
         }
         Err(error) => {
-            eprintln!(
-                "kinige: восстановление из копии не удалось: {}",
-                error.category()
-            );
+            log::error!("восстановление из копии не удалось: {}", error.category());
             recovery.abort_restore();
             Err(ApiError::from(error.code()))
         }

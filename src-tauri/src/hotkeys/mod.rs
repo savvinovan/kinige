@@ -35,7 +35,7 @@ pub struct Hotkeys {
 
 fn code(error: StoreError) -> ErrorCode {
     // В журнал — категория без текста внутренней ошибки.
-    eprintln!("kinige: ошибка хранилища: {}", error.category());
+    log::error!("ошибка хранилища: {}", error.category());
     error.code()
 }
 
@@ -64,7 +64,7 @@ impl Hotkeys {
             let state = match self.registrar.register(&accelerator) {
                 Ok(()) => ShortcutState::Assigned,
                 Err(Refused) => {
-                    eprintln!("kinige: сочетание {kind:?} не назначено: занято");
+                    log::warn!("сочетание {kind:?} не назначено: занято");
                     ShortcutState::Taken
                 }
             };

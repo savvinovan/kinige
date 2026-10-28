@@ -7,8 +7,13 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 kinige-domain = { path = "../kinige-domain" }
+# Только фасад: приёмник логов выбирает приложение (src-tauri). В записях лога никогда нет текстов пользователя.
+log = "0.4.34"
 # backup: копия файла базы через backup API SQLite (`rusqlite::backup`), а не `fs::copy` (при WAL файл без `-wal` не согласован).
 rusqlite = { version = "0.40", features = ["bundled", "backup"] }
 serde_json = "1"

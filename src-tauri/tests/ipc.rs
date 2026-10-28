@@ -190,6 +190,8 @@ fn capture_window_cannot_call_anything_but_its_own_commands() {
         "plugin:global-shortcut|register",
         "plugin:global-shortcut|unregister_all",
         "plugin:shell|open",
+        // Журнал пишет только Rust: страница не может засорять файл лога.
+        "plugin:log|log",
         "no_such_command",
     ] {
         let error = call(

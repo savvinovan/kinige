@@ -36,7 +36,8 @@
 - Дизайн-система D1: тёмная палитра graphite — нейтральный графит с акцентом и ошибкой из Nord (`design/tokens/palettes/graphite.json`; происхождение цветов — в `README.md` рядом) и набор шрифтов Inter + JetBrains Mono (`design/tokens/fontsets/inter.json`; файлы — `web/src/ui/fonts/`, источники и лицензии — в его `README.md`); оба выбраны пользователем (ADR-0004), `design/tokens/active.json` указывает на них. Эмодзи чатов рисует системный эмодзи-шрифт (единственное исключение из «шрифты встроенные»). Значки — Lucide через `lucide-react` (`web/src/ui/icons/README.md`).
 - Плотность и размер текста: все размеры шрифта, отступы, радиусы, высоты строк и значки в rem, где 1rem = размер текста записей (`font.root.default`, 13 px — выбран пользователем среди 13 / 14 / 15 px); смена корневого размера меняет всю плотность целиком. `data-text-scale="large"` на `<html>` умножает корневой размер (`font.scale.large`, ×1,25). Reduce Motion: `prefers-reduced-motion` или атрибут `data-reduce-motion`.
 - Экран в приложении — настоящее главное окно на `TauriApi` (слайс 1); `MockApi` реализует тот же `KinigeApi` в памяти для тестов и Storybook. Строки интерфейса — `web/src/locales/{en,ru}.json` (i18next, [ADR-0005](docs/adr/0005-i18n.md)); язык выбирает Rust по языкам системы.
-- Данные: база — `~/Library/Application Support/me.savvinov.kinige/kinige.db`, Markdown-копия — `~/Documents/Kinige/<чат>/YYYY/YYYY-MM-DD.md` (папку меняют в настройках). Для проверки на чистых данных: переменные окружения `KINIGE_DATA_DIR` (каталог базы) и `KINIGE_MIRROR_DIR` (папка копии по умолчанию). `KINIGE_TRACE=1` печатает в stderr жизнь окна захвата (`show`, `key`, `resign`, `hide`, `flash`; без текста записей) — для проверки в живом окне.
+- Данные: база — `~/Library/Application Support/me.savvinov.kinige/kinige.db`, Markdown-копия — `~/Documents/Kinige/<чат>/YYYY/YYYY-MM-DD.md` (папку меняют в настройках). Для проверки на чистых данных: переменные окружения `KINIGE_DATA_DIR` (каталог базы) и `KINIGE_MIRROR_DIR` (папка копии по умолчанию). `KINIGE_TRACE=1` пишет в stderr жизнь окна захвата (`show`, `key`, `resign`, `hide`, `flash`; без текста записей) — для проверки в живом окне.
+- Лог приложения: macOS — `~/Library/Logs/me.savvinov.kinige/kinige.log` (Windows — `%LOCALAPPDATA%\me.savvinov.kinige\logs`, Linux — `~/.local/share/me.savvinov.kinige/logs`; по документации `tauri-plugin-log`, на этих ОС не проверялось). Ротация по размеру: файл до 1 МБ, хранится до 5 файлов (текущий и архивные с датой в имени). Уровень по умолчанию `info`; `KINIGE_LOG=debug` (или `trace`, `warn`, `error`, `off`) меняет уровень для кода Kinige, чужие крейты пишут только `warn` и выше. В dev-сборке и при заданных `KINIGE_LOG`, `KINIGE_TIMING`, `KINIGE_TRACE` лог дублируется в stderr. В лог не попадают тексты записей, названия чатов, пути пользователя и содержимое импорта — только виды событий и категории ошибок. Метки `KINIGE_TIMING` и `KINIGE_TRACE` идут только в stderr, в файл не пишутся.
 - Типы Rust → TS: `ts-rs`, см. [ADR-0002](docs/adr/0002-ts-types-via-ts-rs.md). Ключи подписи: [ADR-0003](docs/adr/0003-signing-keys.md).
 
 ## CI (GitHub Actions, Linux)
@@ -46,14 +47,14 @@ Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml): `rust` (fmt
 
 ## Лицензия
 
-[MIT](LICENSE).
+[MIT](LICENSE). Сторонние шрифты, значки, данные и палитры, их авторы и лицензии — в [`ATTRIBUTION.md`](ATTRIBUTION.md).
 
 ## Методика замера холодного старта
 
 Цель — < 1,5 с (§15 ТЗ). Замер: `scripts/measure-cold-start.sh 10` после `scripts/build-app.sh`.
 - Машина и ОС выводятся скриптом; результаты фиксируются вместе с ними.
 - Только release-сборка (`target/release/kinige`), 10 прогонов, каждый — новый процесс, между прогонами пауза 1 с.
-- Измеряется время от запуска процесса до события загрузки страницы в WebView (Rust печатает метку при `KINIGE_TIMING=1`). Это верхняя граница времени до первого кадра с содержимым. Кэши ОС не сбрасываются (для сброса нужен `sudo purge`); поэтому отдельно указывается первый прогон, а решающая цифра — медиана.
+- Измеряется время от запуска процесса до события загрузки страницы в WebView (Rust пишет метку в stderr через `log` при `KINIGE_TIMING=1`). Это верхняя граница времени до первого кадра с содержимым. Кэши ОС не сбрасываются (для сброса нужен `sudo purge`); поэтому отдельно указывается первый прогон, а решающая цифра — медиана.
 - Результат слайса 0: [`docs/screens/0/cold-start.txt`](docs/screens/0/cold-start.txt).
 
 ## Правила

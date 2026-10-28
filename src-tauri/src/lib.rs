@@ -6,6 +6,7 @@ mod commands;
 pub mod guard;
 pub mod hotkeys;
 pub mod import;
+pub mod logging;
 #[cfg(target_os = "macos")]
 mod panel;
 pub mod recovery;
@@ -308,16 +309,14 @@ fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
 }
 
 pub fn run() {
-    // Замер холодного старта (`scripts/measure-cold-start.sh`): печатаем метку, когда страница главного окна загружена.
-    // Без переменной окружения ничего не выводится.
-    let timing = std::env::var_os("KINIGE_TIMING").is_some();
-
     let configured = builder(
         tauri::Builder::default()
             // Должен идти первым: второй запуск показывает главное окно существующего экземпляра и завершается.
             .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
                 capture::show_main(app);
             }))
+            // После single-instance: второй экземпляр завершается, не открыв файл журнала.
+            .plugin(logging::plugin())
             .plugin(
                 tauri_plugin_global_shortcut::Builder::new()
                     .with_handler(|app, shortcut, event| {
@@ -333,6 +332,7 @@ pub fn run() {
     let configured = configured.plugin(tauri_nspanel::init());
     let app = configured
         .setup(|app| {
+            log::info!("запуск Kinige {}", env!("CARGO_PKG_VERSION"));
             let handle = app.handle().clone();
             let db_path = db_path(&handle)?;
             // Журнал не открывается, и окно показывает копии (`recovery`), если: восстановление прошлого запуска не
@@ -351,11 +351,11 @@ pub fn run() {
                     match open_store(&handle, db_path.clone(), corruption.clone()) {
                         Ok(store) => Some(store),
                         Err(StoreError::Corrupt(_)) => {
-                            eprintln!("kinige: база повреждена, предлагаем копии");
+                            log::error!("база повреждена, предлагаем копии");
                             None
                         }
                         Err(StoreError::TooNew(found)) => {
-                            eprintln!("kinige: база создана более новой версией (схема {found})");
+                            log::warn!("база создана более новой версией (схема {found})");
                             too_new = true;
                             None
                         }
@@ -378,10 +378,11 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(on_window_event)
-        .on_page_load(move |webview, payload| {
-            if timing && webview.label() == MAIN_LABEL && payload.event() == PageLoadEvent::Finished
-            {
-                eprintln!("kinige-timing: page-loaded");
+        .on_page_load(|webview, payload| {
+            // Замер холодного старта (`scripts/measure-cold-start.sh`): метка, когда страница главного окна загружена.
+            // Без `KINIGE_TIMING=1` уровень цели `kinige-timing` выключен, и ничего не пишется.
+            if webview.label() == MAIN_LABEL && payload.event() == PageLoadEvent::Finished {
+                log::info!(target: logging::TIMING_TARGET, "page-loaded");
             }
         })
         .build(tauri::generate_context!())

@@ -5,6 +5,9 @@
 //! `cargo run --release -p kinige-store --example import_bench -- <каталог данных> synthetic <N>`
 //! `cargo run --release -p kinige-store --example import_bench -- <каталог данных> file <result.json>`
 
+// Пример — консольная утилита: печать в stdout разрешена (правило «только через log» — для кода приложения).
+#![allow(clippy::print_stdout)]
+
 use kinige_domain::Language;
 use kinige_domain::SearchFilters;
 use kinige_domain::telegram::{TgExport, parse_export};

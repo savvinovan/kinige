@@ -3,6 +3,9 @@
 //!
 //! Использование: `cargo run -p kinige-store --example seed_demo -- <каталог данных> [<папка Markdown-копии>]`
 
+// Пример — консольная утилита: печать в stdout разрешена (правило «только через log» — для кода приложения).
+#![allow(clippy::print_stdout)]
+
 use kinige_domain::MessageFlag;
 use kinige_domain::groups::INBOX_ID;
 use kinige_store::{Now, Store, StoreOptions};

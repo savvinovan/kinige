@@ -83,7 +83,7 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) {
                 };
                 let store = Store { inner };
                 if let Err(error) = store.run_maintenance(&Now::system()) {
-                    eprintln!("kinige: обслуживание: {}", error.category());
+                    log::warn!("обслуживание: {}", error.category());
                 }
                 drop(store);
                 if shared.stopped.load(Ordering::SeqCst) {
@@ -149,7 +149,7 @@ impl Store {
                 // Проверка не состоялась (база занята, ошибка ввода-вывода): это не повреждение. Отметку не ставим,
                 // копию не снимаем без вердикта, следующий проход повторит.
                 Integrity::Unknown | Integrity::SearchIndex => {
-                    eprintln!("kinige: проверка целостности не состоялась, повтор позже");
+                    log::warn!("проверка целостности не состоялась, повтор позже");
                     return Ok(report);
                 }
             }
@@ -159,7 +159,7 @@ impl Store {
         // автоудаления записывается (видна в «Настройках») и проход идёт дальше.
         let (purged, purge_error) = self.purge_expired_report(now);
         if let Some(error) = &purge_error {
-            eprintln!("kinige: автоудаление корзины: {}", error.category());
+            log::warn!("автоудаление корзины: {}", error.category());
         }
         self.inner.backup.set_purge_failed(purge_error.is_some());
         report.purged = purged;

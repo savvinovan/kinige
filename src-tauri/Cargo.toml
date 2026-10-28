@@ -7,6 +7,9 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[lints]
+workspace = true
+
 [lib]
 name = "kinige_lib"
 crate-type = ["rlib"]
@@ -33,6 +36,9 @@ tauri-plugin-dialog = "2.8"
 sys-locale = "0.3"
 # Строки меню трея читаются из файлов переводов интерфейса.
 serde_json = "1"
+# Файл лога приложения (ротация, каталог логов ОС) и stderr в dev. JS-разрешений у окон нет: команда `log` плагина не выдана.
+tauri-plugin-log = "2.10.1"
+log = "0.4.34"
 # Тот же `Url`, что у tauri (предикат навигации).
 url = "2"
 

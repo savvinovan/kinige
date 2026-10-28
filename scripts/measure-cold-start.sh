@@ -3,7 +3,7 @@
 # Использование: scripts/measure-cold-start.sh [число прогонов, по умолчанию 10]
 #
 # Один прогон = новый процесс release-сборки; время от запуска процесса до события
-# «страница загружена» (Rust печатает метку при KINIGE_TIMING=1). Это не «первый
+# «страница загружена» (Rust пишет метку в stderr через `log` при KINIGE_TIMING=1). Это не «первый
 # отрисованный кадр», а близкая к нему верхняя граница: React рисует после загрузки.
 set -euo pipefail
 
@@ -32,7 +32,8 @@ for i in range(runs):
     )
     elapsed = None
     for line in proc.stderr:
-        if line.startswith("kinige-timing: page-loaded"):
+        # Строка журнала: `[дата][время][INFO][kinige-timing] page-loaded` (см. src-tauri/src/logging.rs).
+        if "[kinige-timing]" in line and line.rstrip().endswith("page-loaded"):
             elapsed = (time.perf_counter() - started) * 1000
             break
     proc.kill()
