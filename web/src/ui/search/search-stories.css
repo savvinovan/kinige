@@ -1,0 +1,15 @@
+/* Только для историй Storybook: результаты поиска занимают окно по высоте, как в приложении. */
+.story-search {
+  display: flex;
+  flex-direction: column;
+  height: var(--layout-window-height);
+}
+
+.story-search > .story-frame {
+  flex: 1;
+  min-height: 0;
+}
+
+.story-search .search {
+  height: 100%;
+}

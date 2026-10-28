@@ -82,7 +82,7 @@ describe("Импорт: выбор чатов", () => {
     expect(saved).toBeChecked();
     expect(peter).not.toBeChecked();
     // Разряды в русском числе разделены неразрывным пробелом (Intl).
-    expect(saved).toHaveAccessibleDescription("Избранное · 1 682 записи");
+    expect(saved).toHaveAccessibleDescription("1 682 записи");
     expect(peter).toHaveAccessibleDescription("Личный чат · 240 записей · 40 уже есть");
     // Чат без записей нельзя отметить.
     const empty = within(dialog).getByRole("checkbox", { name: "Пустой" });

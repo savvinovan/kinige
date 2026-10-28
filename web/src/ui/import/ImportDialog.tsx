@@ -95,13 +95,15 @@ function ChooseStep({ error, preview, selected, opening, onToggle, onRun, onPick
             const name = chat.kind === "saved" ? t("import.savedName") : (chat.name ?? chat.id);
             const entries = chat.total === 0 ? t("import.noEntries") : t("count.entries", { count: chat.total });
             const existing = chat.existing > 0 ? ` · ${t("import.existing", { count: chat.existing })}` : "";
+            // У «Избранного» имя и есть тип: второй раз его не повторяем.
+            const kind = chat.kind === "saved" ? "" : `${t(`import.kind.${chat.kind}`)} · `;
             return (
               <li key={chat.id} className="import__chat">
                 <Checkbox
                   checked={chosen.has(chat.id) && chat.total > 0}
                   disabled={chat.total === 0}
                   onChange={(event) => onToggle(chat.id, event.target.checked)}
-                  description={`${t(`import.kind.${chat.kind}`)} · ${entries}${existing}`}
+                  description={`${kind}${entries}${existing}`}
                 >
                   {name}
                 </Checkbox>
