@@ -100,10 +100,13 @@ struct Prepared {
 
 /// Что вернула пачка.
 struct BatchOutcome {
-    chat_id: String,
+    /// Чат-адресат; `None` — личный чат так и не создан (все ключи пачки оказались заняты).
+    chat_id: Option<String>,
     created_chat: bool,
     /// Записи, чей внешний id оказался занят в самой транзакции: не вставлены.
     skipped: i64,
+    /// Подготовленный id пропущенной записи → id записи, которая владеет её внешним id: ответы на пропущенную идут к ней.
+    replaced: HashMap<String, String>,
 }
 
 impl Store {
@@ -220,12 +223,18 @@ impl Store {
                     let pt_ms = now.ms.saturating_add(started.elapsed().as_millis() as i64);
                     let outcome =
                         self.write_batch(chat, dest.clone(), rows, pt_ms, now.tz.clone())?;
-                    dest = Some(outcome.chat_id);
+                    dest = outcome.chat_id;
                     report.chats_created += i64::from(outcome.created_chat);
                     report.imported += count - outcome.skipped;
                     report.skipped_existing += outcome.skipped;
                     report.media_placeholders += media;
                     existing.extend(new_ids);
+                    // Ответы следующих пачек на пропущенную запись идут к настоящему владельцу её внешнего id.
+                    for id in existing.values_mut() {
+                        if let Some(owner) = outcome.replaced.get(id.as_str()) {
+                            id.clone_from(owner);
+                        }
+                    }
                 }
                 done += batch.len() as i64;
                 progress(ImportProgress { done, total });
@@ -249,6 +258,36 @@ impl Store {
             let tx = conn
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(write_err)?;
+            // Ключи внешних id первыми: занятый ключ (запись появилась после чтения `existing`) — записи не будет, а
+            // ответы на неё должны идти к настоящему владельцу ключа, иначе в неизменяемый `core` ляжет id несуществующей
+            // записи. Если не осталось ни одной новой, личный чат не создаётся: пустого чата-дубля не будет.
+            let mut fresh: Vec<&Prepared> = Vec::new();
+            let mut replaced: HashMap<String, String> = HashMap::new();
+            for row in &rows {
+                if crate::ext::insert(&tx, EXT_SRC_TELEGRAM, &ext_chat, &row.ext_msg, &row.id)
+                    .map_err(write_err)?
+                {
+                    fresh.push(row);
+                } else {
+                    let owner: String = tx
+                        .query_row(
+                            "SELECT message_id FROM message_ext WHERE src = ?1 AND ext_chat = ?2 AND ext_msg = ?3",
+                            (EXT_SRC_TELEGRAM, &ext_chat, &row.ext_msg),
+                            |r| r.get(0),
+                        )
+                        .map_err(write_err)?;
+                    replaced.insert(row.id.clone(), owner);
+                }
+            }
+            let skipped = replaced.len() as i64;
+            if fresh.is_empty() {
+                return Ok(BatchOutcome {
+                    chat_id: dest,
+                    created_chat: false,
+                    skipped,
+                    replaced,
+                });
+            }
             let (chat_id, created_chat) = match dest {
                 Some(id) => {
                     let alive: bool = tx
@@ -272,15 +311,11 @@ impl Store {
             let mut clock = load_clock(&tx)?
                 .ok_or_else(|| StoreError::Internal("нет состояния часов".into()))?;
             let mut days: BTreeSet<String> = BTreeSet::new();
-            let mut skipped = 0i64;
-            for row in &rows {
-                // Ключ внешнего id первым: он уже занят (запись появилась после чтения `existing`) — записи не будет.
-                if !crate::ext::insert(&tx, EXT_SRC_TELEGRAM, &ext_chat, &row.ext_msg, &row.id)
-                    .map_err(write_err)?
-                {
-                    skipped += 1;
-                    continue;
-                }
+            for row in fresh {
+                let reply_to_id = row
+                    .reply_to_id
+                    .as_deref()
+                    .map(|target| replaced.get(target).map_or(target, String::as_str));
                 clock = clock
                     .tick(u64::try_from(pt_ms).unwrap_or(0))
                     .map_err(|e| StoreError::Internal(e.to_string()))?;
@@ -294,7 +329,7 @@ impl Store {
                         journal_date: &row.journal_date,
                         ext_chat: &ext_chat,
                         ext_msg: &row.ext_msg,
-                        reply_to_id: row.reply_to_id.as_deref(),
+                        reply_to_id,
                     },
                     &clock.format(&device),
                 )?;
@@ -309,9 +344,10 @@ impl Store {
             }
             tx.commit().map_err(write_err)?;
             Ok(BatchOutcome {
-                chat_id,
+                chat_id: Some(chat_id),
                 created_chat,
                 skipped,
+                replaced,
             })
         })
     }

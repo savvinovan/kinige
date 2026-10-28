@@ -170,3 +170,100 @@ fn hlc_stays_strictly_increasing_when_the_device_clock_lags_behind_the_stored_on
         "«стенка» не откатывается к часам устройства"
     );
 }
+
+/// Запись, которая уже владеет внешним id «1» (UUID v4: `reply_to_id` проверяется).
+const OWNER_ID: &str = "7b2c9d10-1111-4222-8333-444455556666";
+
+fn reply_of(store: &Store, id: &str) -> Option<String> {
+    store
+        .read(|conn| {
+            conn.query_row("SELECT reply_to_id FROM message WHERE id = ?1", [id], |r| {
+                r.get(0)
+            })
+            .map_err(read_err)
+        })
+        .unwrap()
+}
+
+#[test]
+fn a_reply_to_a_skipped_record_points_to_the_real_owner_of_its_external_id() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open(dir.path());
+    let export = parse_export(r#"{"type":"saved_messages","id":1000001,"messages":[]}"#).unwrap();
+    // Запись «1» уже появилась (например, импортом на другом устройстве) после чтения `existing`.
+    store
+        .write(|conn| {
+            conn.execute(
+                "INSERT INTO message (id, chat_id, body_md, journal_date, created_at, created_tz, origin, hlc_json, schema_version, groups_raw) \
+                 SELECT '7b2c9d10-1111-4222-8333-444455556666', id, 'уже есть', '2019-03-08', 1, 'UTC', 'import_telegram', '{}', 1, '{}' FROM chat LIMIT 1",
+                [],
+            )
+            .map_err(write_err)?;
+            crate::ext::insert(conn, EXT_SRC_TELEGRAM, "1000001", "1", OWNER_ID).map_err(write_err)
+        })
+        .unwrap();
+    let first = prepared("1", "пропускается");
+    let mut reply = prepared("2", "ответ на первую");
+    reply.reply_to_id = Some(first.id.clone());
+    let (skipped_id, reply_id) = (first.id.clone(), reply.id.clone());
+    let outcome = store
+        .write_batch(
+            &export.chats[0],
+            Some(INBOX_ID.to_string()),
+            vec![first, reply],
+            1_800_000_000_000,
+            "UTC".into(),
+        )
+        .unwrap();
+    assert_eq!(outcome.skipped, 1);
+    assert_eq!(
+        outcome.replaced.get(&skipped_id).map(String::as_str),
+        Some(OWNER_ID)
+    );
+    assert_eq!(
+        reply_of(&store, &reply_id).as_deref(),
+        Some(OWNER_ID),
+        "ответ идёт к настоящему владельцу, а не к id несуществующей записи"
+    );
+}
+
+#[test]
+fn a_personal_chat_whose_first_batch_is_all_taken_is_not_created_empty() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open(dir.path());
+    let export =
+        parse_export(r#"{"name":"Пётр","type":"personal_chat","id":2000002,"messages":[]}"#)
+            .unwrap();
+    for ext in ["1", "2"] {
+        store
+            .write(move |conn| {
+                crate::ext::insert(conn, EXT_SRC_TELEGRAM, "2000002", ext, "someone")
+                    .map_err(write_err)
+            })
+            .unwrap();
+    }
+    let count = |store: &Store| -> i64 {
+        store
+            .read(|conn| {
+                conn.query_row("SELECT COUNT(*) FROM chat", [], |r| r.get(0))
+                    .map_err(read_err)
+            })
+            .unwrap()
+    };
+    let before = count(&store);
+    let outcome = store
+        .write_batch(
+            &export.chats[0],
+            None,
+            vec![prepared("1", "а"), prepared("2", "б")],
+            1_800_000_000_000,
+            "UTC".into(),
+        )
+        .unwrap();
+    assert_eq!((outcome.skipped, outcome.created_chat), (2, false));
+    assert_eq!(
+        outcome.chat_id, None,
+        "чата-адресата нет: следующая пачка создаст его, если будет что писать"
+    );
+    assert_eq!(count(&store), before, "пустой чат не создан");
+}
