@@ -1,0 +1,48 @@
+# Новые эталоны визуальных тестов Storybook. Снимаются в том же контейнере Playwright, что и проверка в ci.yml,
+# и коммитятся в ветку, с которой запущен workflow:
+#   gh workflow run visual-update.yml --ref <ветка>
+# Коммит от GITHUB_TOKEN не запускает CI сам — после него: gh workflow run ci.yml --ref <ветка>.
+name: Visual baselines
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    # Эталоны меняются только через ветку и PR.
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+    steps:
+      # Без git в контейнере checkout скачивает архив без .git, и закоммитить было бы нечего.
+      - name: git
+        run: apt-get update && apt-get install -y --no-install-recommends git
+
+      - uses: actions/checkout@v7
+
+      - name: Снять эталоны
+        working-directory: web
+        run: |
+          npm ci
+          npm run build-storybook
+          # Каталог снимается целиком заново: так уходят и эталоны удалённых историй.
+          rm -rf tests/visual/stories.spec.ts-snapshots
+          npx playwright test --update-snapshots=all
+
+      - name: Закоммитить
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A web/tests/visual/stories.spec.ts-snapshots
+          if git diff --cached --quiet; then
+            echo "эталоны не изменились"
+            exit 0
+          fi
+          git diff --cached --stat | tail -1
+          git commit -m "Visual baselines from CI"
+          git push
