@@ -10,6 +10,13 @@
 
 use std::fmt;
 
+pub use markdown::render_body;
+
+mod markdown;
+#[cfg(test)]
+mod markdown_tests;
+#[cfg(test)]
+mod markdown_tests_media;
 mod raw;
 #[cfg(test)]
 mod tests;
