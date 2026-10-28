@@ -2098,6 +2098,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "kinige-mcp"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+]
+
+[[package]]
 name = "kinige-store"
 version = "0.1.0"
 dependencies = [

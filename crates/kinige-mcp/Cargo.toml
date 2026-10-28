@@ -1,0 +1,18 @@
+[package]
+name = "kinige-mcp"
+description = "Мост MCP: stdio клиента <-> Unix-сокет Kinige (ADR-0009). Только std, базу не открывает"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# Намеренно без зависимостей: мост запускает MCP-клиент, он не должен тянуть ни Tauri, ни SQLite, ни доменный код.
+[dependencies]
+
+# Только для тестов (временные каталоги); в бинарник не попадает.
+[dev-dependencies]
+tempfile = "3"
