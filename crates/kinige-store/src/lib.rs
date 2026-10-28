@@ -6,6 +6,7 @@ mod capture;
 mod chats;
 mod draft;
 mod error;
+mod ext;
 mod feed;
 mod feed_page;
 mod hlc_state;
@@ -14,6 +15,7 @@ mod messages;
 mod mirror;
 mod recovery;
 mod schema;
+mod search;
 mod send;
 mod settings;
 mod tags;
@@ -168,6 +170,7 @@ impl Store {
             schema::MigrateError::Sqlite(e) => write_err(e),
         })?;
         send::ensure_initialized(&mut conn, now)?;
+        search::rebuild_if_stale(&mut conn)?;
 
         let reader = open_connection(&options.db_path, true)?;
         let writer = Writer::spawn(conn);

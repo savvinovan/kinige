@@ -44,7 +44,8 @@ fn downgrade_to_two(dir: &Path) {
     let conn = raw(dir);
     conn.execute_batch(
         "DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; DROP TABLE message_tag; \
-         DROP TABLE mirror_chat;",
+         DROP TABLE mirror_chat; DROP TABLE message_ext; DROP TABLE search_fts; DROP TABLE search_map; \
+         DELETE FROM app_setting WHERE key = 'search_index_version';",
     )
     .unwrap();
     conn.pragma_update(None, "user_version", 2).unwrap();
@@ -96,7 +97,10 @@ fn migration_three_takes_a_copy_first_and_the_copy_still_has_schema_two() {
     assert_eq!(mode, "delete", "копия — один файл без -wal");
 
     // База мигрирована: теги пересчитаны из текстов, записи на месте.
-    assert_eq!(user_version(&db_path(dir.path())), 3);
+    assert_eq!(
+        user_version(&db_path(dir.path())),
+        kinige_store::LATEST_VERSION
+    );
     assert_eq!(count_rows(dir.path(), "message"), 2);
     let tags: Vec<String> = raw(dir.path())
         .prepare("SELECT tag FROM message_tag")

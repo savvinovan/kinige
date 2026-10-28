@@ -214,6 +214,8 @@ impl Store {
                     }
                     crate::tags::replace_tags(&tx, &last.view.id, &rewritten.body_md)
                         .map_err(write_err)?;
+                    crate::search::reindex(&tx, &last.view.id, &rewritten.body_md)
+                        .map_err(write_err)?;
                     mark_dirty(&tx, INBOX_ID, &last.view.journal_date).map_err(write_err)?;
                     CaptureOutcome {
                         action: CaptureAction::Appended,

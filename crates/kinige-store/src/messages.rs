@@ -164,6 +164,7 @@ fn edit_body(
     )
     .map_err(write_err)?;
     crate::tags::replace_tags(tx, &loaded.id, body_md).map_err(write_err)?;
+    crate::search::reindex(tx, &loaded.id, body_md).map_err(write_err)?;
     mark_dirty(tx, &loaded.columns.chat_id, &loaded.columns.journal_date).map_err(write_err)?;
     Ok(())
 }

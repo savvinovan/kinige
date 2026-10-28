@@ -151,6 +151,7 @@ pub(crate) fn insert_new_message(
     .map_err(|e| StoreError::Internal(e.to_string()))?;
     insert_message(tx, &row).map_err(write_err)?;
     crate::tags::replace_tags(tx, &row.id, &row.body_md).map_err(write_err)?;
+    crate::search::reindex(tx, &row.id, &row.body_md).map_err(write_err)?;
     mark_dirty(tx, chat_id, &date).map_err(write_err)?;
     Ok(MessageView {
         tags: kinige_domain::tags::parse_tags(&row.body_md),

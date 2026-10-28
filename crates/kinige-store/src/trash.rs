@@ -89,6 +89,8 @@ fn purge(tx: &Connection, target: &PurgeTarget, now_ms: i64) -> Result<(), Store
         [&target.id],
     )
     .map_err(write_err)?;
+    crate::search::remove(tx, &target.id).map_err(write_err)?;
+    crate::ext::remove(tx, &target.id).map_err(write_err)?;
     tx.execute("DELETE FROM message WHERE id = ?1", [&target.id])
         .map_err(write_err)?;
     Ok(())
