@@ -30,15 +30,30 @@ pub enum Integrity {
     Ok,
     /// Вердикт не `ok`, либо SQLite отвечает «база повреждена» / «это не база данных».
     Corrupt,
+    /// Повреждена только таблица поиска `search_fts` (все строки вердикта — `fts5:` про неё, либо она не открывается):
+    /// база цела, индекс — производная таблица, лечится перестройкой, а не восстановлением из копии.
+    SearchIndex,
     /// Проверка не состоялась по другой причине: повторить позже, отметку не ставить.
     Unknown,
 }
 
-/// Вердикт `PRAGMA integrity_check`.
+/// Вердикт `PRAGMA integrity_check`. В SQLite 3.53 проверка заходит и в FTS5: порча индекса поиска приходит строками
+/// `fts5: …` (или ошибкой, если таблица не открывается) — это [`Integrity::SearchIndex`], а не `Corrupt`.
 pub(crate) fn check_integrity(conn: &Connection) -> Integrity {
-    match conn.query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0)) {
-        Ok(first) if first == "ok" => Integrity::Ok,
+    let rows: rusqlite::Result<Vec<String>> =
+        conn.prepare("PRAGMA integrity_check")
+            .and_then(|mut statement| {
+                statement
+                    .query_map([], |row| row.get::<_, String>(0))?
+                    .collect()
+            });
+    match rows {
+        Ok(rows) if rows.first().is_some_and(|first| first == "ok") => Integrity::Ok,
+        Ok(rows) if !rows.is_empty() && rows.iter().all(|row| is_search_index_row(row)) => {
+            Integrity::SearchIndex
+        }
         Ok(_) => Integrity::Corrupt,
+        Err(error) if crate::error::is_search_index_error(&error) => Integrity::SearchIndex,
         Err(error) => match error.sqlite_error_code() {
             Some(rusqlite::ErrorCode::DatabaseCorrupt | rusqlite::ErrorCode::NotADatabase) => {
                 Integrity::Corrupt
@@ -46,6 +61,25 @@ pub(crate) fn check_integrity(conn: &Connection) -> Integrity {
             _ => Integrity::Unknown,
         },
     }
+}
+
+/// `PRAGMA quick_check` цел: `ok` или только строки про таблицу поиска (или она не открывается): для копии и для
+/// восстановления этого достаточно — индекс производный и перестроится.
+pub(crate) fn quick_check_fine(conn: &Connection) -> rusqlite::Result<bool> {
+    let verdict: rusqlite::Result<Vec<String>> = conn
+        .prepare("PRAGMA quick_check")
+        .and_then(|mut statement| statement.query_map([], |row| row.get(0))?.collect());
+    match verdict {
+        Ok(rows) => Ok(rows.first().is_some_and(|first| first == "ok")
+            || (!rows.is_empty() && rows.iter().all(|row| is_search_index_row(row)))),
+        Err(error) if crate::error::is_search_index_error(&error) => Ok(true),
+        Err(error) => Err(error),
+    }
+}
+
+/// Строка вердикта про таблицу поиска: `fts5: … "search_fts"`.
+fn is_search_index_row(row: &str) -> bool {
+    row.starts_with("fts5:") && row.contains("\"search_fts\"")
 }
 
 /// Проверка целостности файла базы отдельным соединением (при старте с отметкой «нужно восстановление» и перед миграцией).
@@ -99,10 +133,9 @@ fn write_snapshot(source: &Connection, temp: &Path) -> Result<(), BackupError> {
         target
             .pragma_update(None, "journal_mode", "DELETE")
             .map_err(failed)?;
-        let verdict: String = target
-            .query_row("PRAGMA quick_check", [], |row| row.get(0))
-            .map_err(failed)?;
-        if verdict != "ok" {
+        // Копия с повреждённым индексом поиска годится: он производный и перестроится (при восстановлении из неё или при
+        // первом запросе). Отказ копировать здесь оставил бы человека без копии из-за таблицы, которую можно пересоздать.
+        if !quick_check_fine(&target).map_err(failed)? {
             return Err(BackupError::WriteFailed);
         }
     }

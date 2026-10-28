@@ -128,7 +128,15 @@ impl Store {
         let today = journal_date(now.ms, now.utc_offset_secs, 0);
         // Проверка целостности — раз в локальные сутки (не каждый час), если она уже прошла успешно.
         if self.inner.backup.checked_on().as_deref() != Some(today.as_str()) {
-            match check_integrity(&reader) {
+            let seen = self.search_generation();
+            let mut verdict = check_integrity(&reader);
+            if verdict == Integrity::SearchIndex {
+                // Цела база, повреждён только индекс поиска: перестройка, затем повторная проверка (настоящая порча не
+                // скроется, а перестройка в повреждённой базе сама сообщит `Corrupt`).
+                self.heal_search_index(seen)?;
+                verdict = check_integrity(&open_connection(db_path, true)?);
+            }
+            match verdict {
                 Integrity::Ok => self.inner.backup.set_checked_on(Some(today.clone())),
                 Integrity::Corrupt => {
                     report.integrity_ok = false;
@@ -140,7 +148,7 @@ impl Store {
                 }
                 // Проверка не состоялась (база занята, ошибка ввода-вывода): это не повреждение. Отметку не ставим,
                 // копию не снимаем без вердикта, следующий проход повторит.
-                Integrity::Unknown => {
+                Integrity::Unknown | Integrity::SearchIndex => {
                     eprintln!("kinige: проверка целостности не состоялась, повтор позже");
                     return Ok(report);
                 }

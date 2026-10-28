@@ -139,7 +139,7 @@ CREATE INDEX message_deleted ON message(deleted_at) WHERE deleted_at IS NOT NULL
 ///
 /// Обе таблицы заполняет `after_migration(4)` кодом Rust и SQL из существующих записей. Колонки `message.body_search`
 /// из черновика ТЗ §4.2 нет: производное не меняет строки синхронизируемой таблицы.
-const MIGRATION_4: &str = "
+pub(crate) const MIGRATION_4: &str = "
 CREATE TABLE message_ext (
   src TEXT NOT NULL,
   ext_chat TEXT NOT NULL,

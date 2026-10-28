@@ -106,6 +106,8 @@ pub(crate) struct Inner {
     backup: BackupShared,
     maintenance: Arc<MaintenanceShared>,
     on_corruption: Option<CorruptionHook>,
+    /// Сколько раз за запуск лечили индекс поиска (`search::heal_search_index`).
+    search_heals: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl Drop for Inner {
@@ -136,7 +138,8 @@ fn prepare_migration(db_path: &Path, now: &Now) -> Result<(), StoreError> {
         return Ok(());
     }
     match backup::check_integrity(&conn) {
-        backup::Integrity::Ok => {}
+        // Индекс поиска производный: его порча миграции не мешает (перестраивается при открытии или первом запросе).
+        backup::Integrity::Ok | backup::Integrity::SearchIndex => {}
         backup::Integrity::Corrupt => {
             return Err(StoreError::Corrupt(
                 "проверка целостности перед миграцией".into(),
@@ -190,6 +193,7 @@ impl Store {
                 backup: BackupShared::default(),
                 maintenance: maintenance.clone(),
                 on_corruption: options.on_corruption.clone(),
+                search_heals: Arc::default(),
             }),
         };
         if options.start_mirror {
