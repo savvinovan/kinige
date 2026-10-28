@@ -58,6 +58,7 @@ pub fn new_imported_message(
             "msg": input.ext_msg,
             "src": EXT_SRC_TELEGRAM,
         })),
+        is_task: false,
     };
     let base = NewMessage {
         id: input.id,

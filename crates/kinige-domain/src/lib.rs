@@ -1,5 +1,6 @@
 //! Правила предметной области Kinige. Без IO; собирается и под `wasm32` (§3.2 ТЗ).
 
+pub mod agent;
 pub mod api;
 pub mod append;
 pub mod backup;

@@ -30,6 +30,17 @@ pub fn can_append(
     now_ms: i64,
     today: &str,
 ) -> Result<bool, GroupError> {
+    can_append_origin(candidate, ORIGIN_USER, now_ms, today)
+}
+
+/// То же правило для записи с заданным происхождением: агент (ADR-0009) дописывает только к записи `origin = 'agent'`,
+/// пользователь — только к `origin = 'user'`. «Своя» запись определяется по `origin`, а не по имени клиента MCP.
+pub fn can_append_origin(
+    candidate: &AppendCandidate<'_>,
+    expected_origin: &str,
+    now_ms: i64,
+    today: &str,
+) -> Result<bool, GroupError> {
     let entries = serde_json::from_str::<BTreeMap<String, Value>>(candidate.hlc_json)
         .map_err(|e| GroupError::Corrupt(e.to_string()))?;
     if !entries.contains_key("body") {
@@ -43,7 +54,7 @@ pub fn can_append(
         supported &= sv <= u64::from(SCHEMA_VERSION);
     }
     Ok(supported
-        && candidate.origin == ORIGIN_USER
+        && candidate.origin == expected_origin
         && candidate.journal_date == today
         && now_ms.saturating_sub(candidate.created_at) <= APPEND_WINDOW_MS)
 }

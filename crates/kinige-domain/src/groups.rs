@@ -24,6 +24,8 @@ pub const INBOX_SORT_KEY: &str = "a0";
 pub const MAX_BODY_GROUP_BYTES: usize = 512 * 1024;
 /// Кто создал запись: интерфейс и быстрый захват (ADR-0001, «origin»).
 pub const ORIGIN_USER: &str = "user";
+/// Кто создал запись: ИИ-агент через MCP (ADR-0009). Новое значение неизменяемого `core.origin`, аддитивное, `sv` не растёт.
+pub const ORIGIN_AGENT: &str = "agent";
 
 /// Ошибки сборки групп.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,6 +151,8 @@ pub(crate) struct Provenance<'a> {
     pub reply_to_id: Option<&'a str>,
     /// Внешний id импорта (`ext`), необязательное неизменяемое поле `core`.
     pub ext: Option<Value>,
+    /// Запись создаётся сразу задачей: группа `flags` с `is_task = true` (только агент, ADR-0009).
+    pub is_task: bool,
 }
 
 /// Новая запись сразу со всеми пятью группами (`core`, `body`, `flags`, `placement`, `deleted`) под одним HLC: она создаётся одним событием.
@@ -157,8 +161,25 @@ pub fn new_message(input: &NewMessage<'_>, hlc: &str) -> Result<MessageRow, Grou
         origin: ORIGIN_USER,
         reply_to_id: None,
         ext: None,
+        is_task: false,
     };
     build_message(input, &user, hlc)
+}
+
+/// Новая запись агента (ADR-0009): те же пять групп под одним HLC, `origin = 'agent'`, без `ext`. С `task = true` группа
+/// `flags` создаётся сразу с `is_task = true` — иначе агенту пришлось бы переписывать группу сразу после создания.
+pub fn new_agent_message(
+    input: &NewMessage<'_>,
+    task: bool,
+    hlc: &str,
+) -> Result<MessageRow, GroupError> {
+    let agent = Provenance {
+        origin: ORIGIN_AGENT,
+        reply_to_id: None,
+        ext: None,
+        is_task: task,
+    };
+    build_message(input, &agent, hlc)
 }
 
 /// Общая сборка новой записи: пять групп под одним HLC и колонки из тех же значений. `new_message` и
@@ -191,7 +212,7 @@ pub(crate) fn build_message(
         ("body", body_group(input.body_md)),
         (
             "flags",
-            json!({"favorite_at": null, "is_task": false, "pinned_at": null, "task_done_at": null}),
+            json!({"favorite_at": null, "is_task": provenance.is_task, "pinned_at": null, "task_done_at": null}),
         ),
         (
             "placement",
@@ -208,7 +229,7 @@ pub(crate) fn build_message(
         created_at: input.created_at,
         created_tz: input.created_tz.to_string(),
         edited_at: None,
-        is_task: false,
+        is_task: provenance.is_task,
         task_done_at: None,
         favorite_at: None,
         pinned_at: None,
