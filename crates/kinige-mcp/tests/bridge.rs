@@ -85,7 +85,7 @@ struct Bridge {
 
 impl Bridge {
     fn start(socket: &Path, process: &str, open_log: &Path) -> Bridge {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_kinige-mcp"))
+        let mut child = Command::new(env!("CARGO_BIN_EXE_kinige-mcp-bridge"))
             .arg("--socket")
             .arg(socket)
             .env("KINIGE_MCP_TEST_WAIT_MS", WAIT_MS)
@@ -438,7 +438,7 @@ fn stderr_holds_only_categories_and_never_contents() {
 
 #[test]
 fn without_socket_argument_the_bridge_exits_with_usage() {
-    let output = Command::new(env!("CARGO_BIN_EXE_kinige-mcp"))
+    let output = Command::new(env!("CARGO_BIN_EXE_kinige-mcp-bridge"))
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(2));

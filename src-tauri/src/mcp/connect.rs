@@ -14,7 +14,9 @@ const BRIDGE_NAME: &str = "kinige-mcp";
 fn bridge_path() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let bridge = exe.parent()?.join(BRIDGE_NAME);
-    bridge.is_file().then_some(bridge)
+    // Пустой файл — заглушка из build.rs (сборка без настоящего моста): считается, что моста нет.
+    let real = std::fs::metadata(&bridge).is_ok_and(|meta| meta.is_file() && meta.len() > 0);
+    real.then_some(bridge)
 }
 
 pub fn socket_info<R: Runtime>(app: &AppHandle<R>) -> AgentSocket {

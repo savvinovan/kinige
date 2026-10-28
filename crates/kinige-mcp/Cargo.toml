@@ -10,6 +10,13 @@ publish.workspace = true
 [lints]
 workspace = true
 
+# Исполняемый файл моста собирается как `kinige-mcp-bridge`, а в бандл попадает как `Contents/MacOS/kinige-mcp`
+# (`bundle.externalBin` копирует `binaries/kinige-mcp-<triple>` в каталог сборки под именем `kinige-mcp`): при одинаковом
+# имени tauri-build затирал бы артефакт cargo.
+[[bin]]
+name = "kinige-mcp-bridge"
+path = "src/main.rs"
+
 # Намеренно без зависимостей: мост запускает MCP-клиент, он не должен тянуть ни Tauri, ни SQLite, ни доменный код.
 [dependencies]
 

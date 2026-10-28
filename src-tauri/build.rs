@@ -4,6 +4,16 @@ fn main() {
     // настоящее содержимое кладёт `npm run build` (`beforeBuildCommand`).
     std::fs::create_dir_all("../web/dist").expect("не удалось создать web/dist");
 
+    // `bundle.externalBin` требует файл `binaries/kinige-mcp-<triple>` при любой сборке, в том числе `cargo clippy` и
+    // `cargo test` на чистом клоне. Пустая заглушка (она в .gitignore) не даёт сборке упасть; настоящий мост кладут туда
+    // `scripts/build-app.sh` и `scripts/run-app.sh`. Приложение считает пустой файл «мост не найден».
+    let target = std::env::var("TARGET").expect("cargo не передал TARGET");
+    let sidecar = std::path::Path::new("binaries").join(format!("kinige-mcp-{target}"));
+    if !sidecar.exists() {
+        std::fs::create_dir_all("binaries").expect("не удалось создать src-tauri/binaries");
+        std::fs::write(&sidecar, []).expect("не удалось создать заглушку моста");
+    }
+
     // Собственные команды получают разрешения `allow-<имя>` и по умолчанию никому не выданы:
     // окно может вызвать только то, что перечислено в его capability. Список совпадает с `kinige_lib::COMMANDS`
     // (это проверяет тест `tests/config.rs`).

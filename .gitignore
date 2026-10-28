@@ -7,4 +7,6 @@ storybook-static/
 test-results/
 playwright-report/
 src-tauri/gen/
+# Мост MCP как sidecar (`bundle.externalBin`): кладёт scripts/build-app.sh и scripts/run-app.sh, в build.rs — пустая заглушка.
+src-tauri/binaries/
 .claude/worktrees/
