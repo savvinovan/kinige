@@ -392,6 +392,13 @@ fn a_request_that_skips_initialize_by_inline_version_is_refused_and_leaves_no_tr
         // Обычное рукопожатие после этого работает.
         client.handshake("Honest");
         assert!(!client.call("list_chats", json!({})).0);
+        // Закрытое соединение пишет «отключение» позже: дожидаемся, чтобы оно не попало в счёт следующего круга.
+        drop(client);
+        wait_for("строка отключения", || {
+            log_tools(&mcp)
+                .last()
+                .is_some_and(|row| row.1 == "disconnect")
+        });
     }
 }
 
