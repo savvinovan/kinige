@@ -16,7 +16,7 @@ type ApiResult<T> = Result<T, ApiError>;
 
 fn api(error: StoreError) -> ApiError {
     // В журнал процесса — только категория: текст внутренней ошибки (SQLite, serde) может содержать куски данных.
-    eprintln!("kinige: ошибка хранилища: {}", error.category());
+    log::error!("ошибка хранилища: {}", error.category());
     error.code().into()
 }
 
@@ -178,12 +178,12 @@ pub fn choose_mirror_folder<R: Runtime>(
 #[tauri::command(async)]
 pub fn open_external_url<R: Runtime>(app: AppHandle<R>, url: String) -> ApiResult<()> {
     let checked = validate_external_url(&url).map_err(|error: LinkError| {
-        eprintln!("kinige: ссылка отвергнута: {error}");
+        log::warn!("ссылка отвергнута: {error}");
         ApiError::from(ErrorCode::LinkNotAllowed)
     })?;
     app.opener().open_url(checked, None::<&str>).map_err(|_| {
         // Текст ошибки opener не пишем: в нём может быть сам адрес.
-        eprintln!("kinige: не удалось открыть ссылку в системном браузере");
+        log::warn!("не удалось открыть ссылку в системном браузере");
         ApiError::from(ErrorCode::Internal)
     })
 }

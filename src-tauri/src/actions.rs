@@ -9,7 +9,7 @@ type ApiResult<T> = Result<T, ApiError>;
 
 fn api(error: StoreError) -> ApiError {
     // В журнал процесса — только категория: текст внутренней ошибки может содержать куски данных.
-    eprintln!("kinige: ошибка хранилища: {}", error.category());
+    log::error!("ошибка хранилища: {}", error.category());
     error.code().into()
 }
 

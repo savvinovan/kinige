@@ -30,7 +30,7 @@ type ApiResult<T> = Result<T, ApiError>;
 
 fn api(error: StoreError) -> ApiError {
     // В журнал процесса — только категория: текст внутренней ошибки может содержать куски данных.
-    eprintln!("kinige: ошибка хранилища: {}", error.category());
+    log::error!("ошибка хранилища: {}", error.category());
     error.code().into()
 }
 
@@ -151,13 +151,13 @@ fn place_on_cursor_screen<R: Runtime>(app: &AppHandle<R>, window: &tauri::Webvie
     ));
 }
 
-/// Журнал жизни окна захвата для проверки в живом окне: печатается только при `KINIGE_TRACE=1` (без текста записей).
+/// Журнал жизни окна захвата для проверки в живом окне: пишется в stderr только при `KINIGE_TRACE=1` (без текста записей).
 pub fn trace(what: &str) {
-    if std::env::var_os("KINIGE_TRACE").is_some() {
+    if log::log_enabled!(target: crate::logging::TRACE_TARGET, log::Level::Debug) {
         let ms = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_millis() % 100_000);
-        eprintln!("kinige-trace {ms:05} {what}");
+        log::debug!(target: crate::logging::TRACE_TARGET, "{ms:05} {what}");
     }
 }
 
@@ -288,7 +288,7 @@ pub fn save_clipboard<R: Runtime>(app: &AppHandle<R>) {
             }
             Err(StoreError::Empty) => {}
             Err(error) => {
-                eprintln!("kinige: сохранение буфера не удалось: {}", error.category());
+                log::error!("сохранение буфера не удалось: {}", error.category());
                 open_with_failed_clipboard(&app, text, error.code());
             }
         }

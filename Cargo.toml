@@ -9,6 +9,12 @@ rust-version = "1.94"
 license = "UNLICENSED"
 publish = false
 
+# Вывод только через крейт `log` (файл лога пишет tauri-plugin-log): в .app из Finder stderr никуда не попадает.
+# В тестах и примерах печать разрешена (`clippy.toml`, `#![allow]` в examples).
+[workspace.lints.clippy]
+print_stdout = "deny"
+print_stderr = "deny"
+
 [profile.release]
 lto = true
 codegen-units = 1

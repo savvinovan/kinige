@@ -27,7 +27,7 @@ pub const MAX_IMPORT_FILE_BYTES: u64 = 1 << 30;
 
 fn api(error: StoreError) -> ApiError {
     // В журнал процесса — только категория: текст внутренней ошибки может содержать куски данных.
-    eprintln!("kinige: ошибка хранилища: {}", error.category());
+    log::error!("ошибка хранилища: {}", error.category());
     error.code().into()
 }
 
@@ -126,7 +126,7 @@ pub fn read_export(path: &std::path::Path) -> Result<TgExport, ErrorCode> {
             TgParseError::NotTelegramExport => "not_telegram",
             TgParseError::Malformed(_) => "malformed",
         };
-        eprintln!("kinige: файл импорта отвергнут: {kind}");
+        log::warn!("файл импорта отвергнут: {kind}");
         ErrorCode::ImportNotTelegram
     })
 }
