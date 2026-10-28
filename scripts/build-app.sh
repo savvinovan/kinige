@@ -12,7 +12,8 @@ cd "$(dirname "$0")/.."
 TRIPLE="$(rustc -vV | awk '/^host:/ {print $2}')"
 cargo build --release -p kinige-mcp
 mkdir -p src-tauri/binaries
-cp "${CARGO_TARGET_DIR:-target}/release/kinige-mcp-bridge" "src-tauri/binaries/kinige-mcp-${TRIPLE}"
+# `install -m 755`, а не `cp`: `cp` поверх пустой заглушки из build.rs оставляет её права 0644, и мост в бандле не запускается.
+install -m 755 "${CARGO_TARGET_DIR:-target}/release/kinige-mcp-bridge" "src-tauri/binaries/kinige-mcp-${TRIPLE}"
 
 # signingIdentity "-" в tauri.conf.json = ad-hoc подпись. `KINIGE_IDENTIFIER` — сборка с другим identifier для приёмки
 # (отдельные данные и отдельный single-instance, настоящее приложение пользователя не затрагивается).

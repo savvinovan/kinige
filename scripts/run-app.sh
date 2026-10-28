@@ -8,5 +8,5 @@ cd "$(dirname "$0")/.."
 TRIPLE="$(rustc -vV | awk '/^host:/ {print $2}')"
 cargo build -p kinige-mcp
 mkdir -p src-tauri/binaries
-cp "${CARGO_TARGET_DIR:-target}/debug/kinige-mcp-bridge" "src-tauri/binaries/kinige-mcp-${TRIPLE}"
+install -m 755 "${CARGO_TARGET_DIR:-target}/debug/kinige-mcp-bridge" "src-tauri/binaries/kinige-mcp-${TRIPLE}"
 cd src-tauri && exec ../web/node_modules/.bin/tauri dev
