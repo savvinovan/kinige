@@ -11,9 +11,10 @@ import { ChatDialog } from "../chat/ChatDialog";
 import { useRecordDrag } from "../drag/useRecordDrag";
 import { moveTargetsFrom } from "../message/moveTargets";
 import { SettingsDialog } from "../settings/SettingsDialog";
-import type { ChatAction, SidebarChat } from "../sidebar/Sidebar";
+import type { ChatAction } from "../sidebar/Sidebar";
 import { ImportDialog } from "../import/ImportDialog";
 import { SearchResults } from "../search/SearchResults";
+import { type ChatDialogState, EMPTY_LIST, focusComposer, toSidebar } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
 import { type FocusTarget, useFeed } from "./useFeed";
 import { useImport } from "./useImport";
@@ -25,23 +26,6 @@ interface MainWindowProps {
   api: KinigeApi;
   /** Настройки, прочитанные до первого кадра (размер текста применяется без мигания). */
   initialSettings: Settings;
-}
-
-type ChatDialogState = { mode: "create" } | { mode: "rename" | "icon"; chatId: string };
-
-const EMPTY_LIST: ChatList = { chats: [], trashCount: 0 };
-
-/** Чат из ответа Rust → строка сайдбара. Чат без эмодзи получает нейтральный значок. */
-function toSidebar(chat: ChatList["chats"][number]): SidebarChat {
-  return {
-    id: chat.id,
-    name: chat.title,
-    isInbox: chat.isInbox,
-    emoji: chat.icon ?? "💬",
-    count: chat.count,
-    pinned: chat.pinnedAt !== null && chat.archivedAt === null,
-    archived: chat.archivedAt !== null,
-  };
 }
 
 /**
@@ -217,11 +201,6 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       .finally(() => {
         sending.current = false;
       });
-  };
-
-  const focusComposer = () => {
-    // Диалог возвращает фокус тому, кто его открыл, уже после закрытия: поле ввода берёт его следом.
-    setTimeout(() => document.querySelector<HTMLTextAreaElement>("textarea.composer__input")?.focus(), 0);
   };
 
   const closeChatDialog = () => {
