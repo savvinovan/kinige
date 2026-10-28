@@ -91,7 +91,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onTag: setTag,
     focus,
   });
-  const { reload: reloadFeed } = feed;
+  const { reload: reloadFeed, restart: restartFeed } = feed;
   const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
   const moveTargets = useMemo(() => moveTargetsFrom(sidebarChats, selected, t), [sidebarChats, selected, t]);
   // Перетаскивание плашки на чат: бросок на любой чат, кроме того, где запись лежит.
@@ -127,7 +127,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   });
   const importer = useImport({
     api,
-    onChanged: () => void Promise.all([refreshChats(), reloadFeed()]),
+    // Импорт кладёт записи в середину истории: открытая лента перечитывается с нуля вместе с курсорами.
+    onChanged: () => void Promise.all([refreshChats(), restartFeed()]),
     // «Готово»: открывается «Избранное» (Inbox), куда легли записи.
     onDone: () => void select(INBOX_ID),
   });

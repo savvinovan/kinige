@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, MockApi, mockMessage } from "../../api/MockApi";
+import { FakeObserver, edges, showEdge } from "../../test/fakeObserver";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
@@ -20,46 +21,6 @@ const make = (count: number) =>
     return mockMessage({ id: `m${i}`, bodyMd: `запись ${i} слово${i}`, createdAt, journalDate: journalDate(createdAt) });
   });
 const MANY = make(2000);
-
-/** Подмена IntersectionObserver: тест сам «показывает» край списка. */
-class FakeObserver {
-  static all: FakeObserver[] = [];
-  private readonly targets = new Set<Element>();
-  constructor(private readonly callback: IntersectionObserverCallback) {
-    FakeObserver.all.push(this);
-  }
-  observe(target: Element) {
-    this.targets.add(target);
-  }
-  unobserve(target: Element) {
-    this.targets.delete(target);
-  }
-  disconnect() {
-    this.targets.clear();
-    FakeObserver.all = FakeObserver.all.filter((o) => o !== this);
-  }
-  takeRecords() {
-    return [];
-  }
-  fire(target: Element) {
-    this.callback([{ isIntersecting: true, target } as IntersectionObserverEntry], this as unknown as IntersectionObserver);
-  }
-  has(target: Element) {
-    return this.targets.has(target);
-  }
-}
-
-/** В `column-reverse` первый в разметке край стоит внизу (новое), последний — вверху (старое). */
-const edges = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>(".feed__edge")];
-
-/** Край списка показался в области прокрутки. */
-function showEdge(container: HTMLElement, which: "older" | "newer") {
-  const list = edges(container);
-  const edge = which === "older" ? list.at(-1) : list[0];
-  const observer = FakeObserver.all.find((o) => edge && o.has(edge));
-  if (!edge || !observer) throw new Error(`нет края «${which}»`);
-  act(() => observer.fire(edge));
-}
 
 beforeEach(() => {
   FakeObserver.all = [];

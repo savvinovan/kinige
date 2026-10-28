@@ -181,6 +181,27 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     }
   }, [api]);
 
+  /**
+   * Лента с нуля: последняя страница заменяет всё загруженное, оба курсора пересчитываются. Нужна, когда записи легли в
+   * середину уже загруженной истории (импорт): курсор «старше» прежней ленты указывал бы мимо новых записей, а страницы
+   * между ними остались бы незагруженными. Удалённые плашки, не ушедшие из чата, остаются на месте.
+   */
+  const restart = useCallback(async () => {
+    const { chatId: id, tag: filter } = current.current;
+    if (id === null) return;
+    try {
+      const page = await api.listMessages(id, { limit: PAGE_SIZE, tag: filter ?? undefined });
+      if (current.current.chatId !== id || current.current.tag !== filter) return;
+      setMessages((shown) => withDeleted(shown, page.messages, deleted.current, filter));
+      setOlder(page.older);
+      setNewer(page.newer);
+      setToday(page.today);
+      setMark(null);
+    } catch {
+      // Лента остаётся прежней: следующее событие или «Готово» перечитает.
+    }
+  }, [api]);
+
   const replace = useCallback((view: MessageView) => {
     setMessages((list) => list.map((m) => (m.id === view.id ? view : m)));
   }, []);
@@ -304,6 +325,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     scrollTo,
     clearMark: useCallback(() => setMark(null), []),
     reload,
+    restart,
     appendSent,
     dateTarget,
     closeDate: () => setDateFor(null),
