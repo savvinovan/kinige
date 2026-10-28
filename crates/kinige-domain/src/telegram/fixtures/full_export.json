@@ -1,0 +1,31 @@
+{
+ "about": "Here is the data you requested. Handle with care!",
+ "personal_information": {"user_id": 1000001, "first_name": "Ivan", "last_name": "Test", "phone_number": "+70000000000", "username": "@ivan_test", "bio": ""},
+ "contacts": {"about": "x", "list": []},
+ "chats": {
+  "about": "This page lists all chats from this export.",
+  "list": [
+   {"name": "Saved Messages", "type": "saved_messages", "id": 1000001,
+    "messages": [
+     {"id": 100, "type": "message", "date": "2024-04-01T23:59:59", "date_unixtime": "1712005199", "from": "Ivan Test", "from_id": "user1000001",
+      "text": ["Ссылка ", {"type": "text_link", "text": "сайт", "href": "https://example.org/a_(b)"}, " ", {"type": "hashtag", "text": "#дела"}],
+      "text_entities": [
+       {"type": "plain", "text": "Ссылка "}, {"type": "text_link", "text": "сайт", "href": "https://example.org/a_(b)"},
+       {"type": "plain", "text": " "}, {"type": "hashtag", "text": "#дела"}]},
+     {"id": 101, "type": "message", "date": "2024-04-02T00:00:01", "date_unixtime": "1712005201", "from": "Ivan Test", "from_id": "user1000001",
+      "text": "", "text_entities": [{"type": "strikethrough", "text": "зачёркнуто"}, {"type": "blockquote", "text": "цитата"},
+       {"type": "bank_card", "text": "4111 1111 1111 1111"}, {"type": "custom_emoji", "text": "🙂", "document_id": "5000000000000000001"}]}
+    ]},
+   {"name": "Пётр Тестов", "type": "personal_chat", "id": 2000002,
+    "messages": [
+     {"id": 1, "type": "message", "date": "2024-04-03T10:00:00", "date_unixtime": "1712124000", "from": "Пётр Тестов", "from_id": "user2000002",
+      "text": "Привет!", "text_entities": [{"type": "plain", "text": "Привет!"}]},
+     {"id": 2, "type": "message", "date": "2024-04-03T10:00:30", "date_unixtime": "1712124030", "from": "Ivan Test", "from_id": "user1000001",
+      "reply_to_message_id": 1, "text": "Привет", "text_entities": [{"type": "plain", "text": "Привет"}]}
+    ]},
+   {"name": "Рабочая группа", "type": "private_group", "id": -1001234567890,
+    "messages": [{"id": 5, "type": "message", "date": "2024-04-03T11:00:00", "date_unixtime": "1712127600", "from": "Пётр Тестов", "from_id": "user2000002", "text": "Тест", "text_entities": [{"type": "plain", "text": "Тест"}]}]}
+  ]
+ },
+ "left_chats": {"about": "x", "list": []}
+}

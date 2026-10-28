@@ -20,6 +20,7 @@ pub mod rewrite;
 pub mod shortcuts;
 pub mod tags;
 pub mod tasks;
+pub mod telegram;
 
 #[cfg(test)]
 mod chat_tests;
