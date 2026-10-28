@@ -1,6 +1,6 @@
 //! Разбор анонимизированного настоящего экспорта «Избранного» (`fixtures/real-saved.json`, слайс 4, 28.10.2026): 50
-//! сообщений, покрывающих все формы настоящего файла, с вымышленными строками. Файл кладётся в папку фикстур после
-//! просмотра пользователем; пока его нет, тест молча проходит.
+//! сообщений, покрывающих все формы настоящего файла; строки и числа вымышленные (ничего из настоящего экспорта не
+//! осталось, кроме перечислений вроде типов и MIME и одно-двузначных чисел).
 
 use super::*;
 use crate::lang::Language;
@@ -15,10 +15,7 @@ fn fixture() -> Option<String> {
 
 #[test]
 fn real_shaped_export_parses_and_every_message_renders() {
-    let Some(json) = fixture() else {
-        eprintln!("fixtures/real-saved.json нет: тест пропущен");
-        return;
-    };
+    let json = fixture().expect("fixtures/real-saved.json лежит в репозитории");
     let export = parse_export(&json).unwrap();
     assert_eq!(export.chats.len(), 1);
     let chat = &export.chats[0];
