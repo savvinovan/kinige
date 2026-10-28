@@ -1,11 +1,10 @@
 //! Чтение: чаты сайдбара и страница ленты по keyset-курсору (ТЗ §4.1, §6).
 
 use crate::error::read_err;
-use crate::view::{VIEW_COLUMNS, view_from_row};
+use crate::feed_page::PageAt;
 use crate::{Now, Store, StoreError};
 use kinige_domain::groups::INBOX_ID;
-use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
-use kinige_domain::{ChatList, ChatSummary, FeedCursor, MessagePage, MessageView};
+use kinige_domain::{ChatList, ChatSummary, FeedCursor, MessagePage};
 use rusqlite::Connection;
 
 /// Сколько записей в странице, если вызывающий не просил иначе, и наибольшая страница.
@@ -110,61 +109,10 @@ impl Store {
         tag: Option<&str>,
         now: &Now,
     ) -> Result<MessagePage, StoreError> {
-        let limit = limit.clamp(1, MAX_PAGE);
-        let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
-        self.read(|conn| {
-            let fetch = limit as i64 + 1; // одна лишняя запись говорит, что есть более старые
-            let mut sql = format!(
-                "SELECT {VIEW_COLUMNS} FROM message m WHERE m.chat_id = ?1 AND m.deleted_at IS NULL"
-            );
-            let mut params: Vec<rusqlite::types::Value> = vec![chat_id.to_string().into()];
-            if let Some(tag) = tag {
-                params.push(tag.to_lowercase().into());
-                sql.push_str(&format!(
-                    " AND EXISTS (SELECT 1 FROM message_tag t WHERE t.message_id = m.id AND t.tag = ?{})",
-                    params.len()
-                ));
-            }
-            if let Some(cursor) = before {
-                params.push(cursor.journal_date.clone().into());
-                params.push(cursor.created_at.into());
-                params.push(cursor.id.clone().into());
-                let n = params.len();
-                sql.push_str(&format!(
-                    " AND (m.journal_date, m.created_at, m.id) < (?{}, ?{}, ?{})",
-                    n - 2,
-                    n - 1,
-                    n
-                ));
-            }
-            params.push(fetch.into());
-            sql.push_str(&format!(
-                " ORDER BY m.journal_date DESC, m.created_at DESC, m.id DESC LIMIT ?{}",
-                params.len()
-            ));
-            let mut statement = conn.prepare(&sql).map_err(read_err)?;
-            let rows = statement
-                .query_map(rusqlite::params_from_iter(params), view_from_row)
-                .map_err(read_err)?;
-            let mut messages: Vec<MessageView> =
-                rows.collect::<Result<Vec<_>, _>>().map_err(read_err)?;
-            let has_more = messages.len() > limit;
-            messages.truncate(limit);
-            messages.reverse();
-            let older = if has_more {
-                messages.first().map(|m| FeedCursor {
-                    journal_date: m.journal_date.clone(),
-                    created_at: m.created_at,
-                    id: m.id.clone(),
-                })
-            } else {
-                None
-            };
-            Ok(MessagePage {
-                messages,
-                older,
-                today,
-            })
-        })
+        let at = match before {
+            Some(cursor) => PageAt::Before(cursor),
+            None => PageAt::Latest,
+        };
+        self.list_messages_page(chat_id, at, limit, tag, now)
     }
 }

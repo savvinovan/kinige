@@ -7,6 +7,7 @@ mod chats;
 mod draft;
 mod error;
 mod feed;
+mod feed_page;
 mod hlc_state;
 mod maintenance;
 mod messages;
@@ -27,6 +28,7 @@ pub use chats::RecentChat;
 pub use draft::MAX_DRAFT_BYTES;
 pub use error::StoreError;
 pub use feed::{DEFAULT_PAGE, MAX_PAGE};
+pub use feed_page::PageAt;
 pub use maintenance::MaintenanceReport;
 pub use recovery::{
     RestoreReport, StartupCheck, backups, clear_needs_recovery, database_missing_but_backups_exist,

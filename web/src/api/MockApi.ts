@@ -64,6 +64,7 @@ export class MockApi extends MockApiBase implements KinigeApi {
     return Promise.resolve({
       messages: page,
       older: older.length > page.length && first ? { journalDate: first.journalDate, createdAt: first.createdAt, id: first.id } : null,
+      newer: null,
       today: this.journalDate(this.now()),
     });
   }

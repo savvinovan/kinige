@@ -189,8 +189,8 @@ describe("MainWindow: событие «записи изменились»", () 
     const api = new MockApi({ now: NOW });
     // Первая загрузка: три записи и «есть более старые»; после события — страница короче (только свежие), тоже с «есть старые».
     const pages = [
-      { messages: [...old, mk("c", 3)], older: { journalDate: "2026-10-21", createdAt: 1, id: "z" }, today: "2026-10-21" },
-      { messages: [mk("c", 3), mk("d", 4)], older: { journalDate: "2026-10-21", createdAt: 1, id: "z" }, today: "2026-10-21" },
+      { messages: [...old, mk("c", 3)], older: { journalDate: "2026-10-21", createdAt: 1, id: "z" }, newer: null, today: "2026-10-21" },
+      { messages: [mk("c", 3), mk("d", 4)], older: { journalDate: "2026-10-21", createdAt: 1, id: "z" }, newer: null, today: "2026-10-21" },
     ];
     api.listMessages = () => Promise.resolve(pages.shift() ?? pages[0]!);
     render(<MainWindow api={api} initialSettings={SETTINGS} />);

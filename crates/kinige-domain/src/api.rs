@@ -117,6 +117,8 @@ pub struct MessagePage {
     pub messages: Vec<MessageView>,
     /// Позиция для следующей (более старой) страницы; `null` — больше записей нет.
     pub older: Option<FeedCursor>,
+    /// Позиция для следующей (более новой) страницы: последняя запись этой; `null` — новее ничего нет (слайс 4).
+    pub newer: Option<FeedCursor>,
     /// Сегодняшний `journal_date` (с границей дня 04:00): от него считаются метки «Сегодня» и «Вчера».
     pub today: String,
 }
