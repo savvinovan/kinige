@@ -65,13 +65,7 @@ impl Store {
         ctx: &ReadCtx<'_>,
         args: &ToolArgs,
     ) -> Result<ReadOutput, ReadFail> {
-        let run = |conn: &Connection| -> Result<ReadOutput, ReadFail> {
-            catch_unwind(AssertUnwindSafe(|| run_read(conn, args, ctx))).unwrap_or_else(|_| {
-                Err(ReadFail::Store(StoreError::Internal(
-                    "паника в запросе агента".into(),
-                )))
-            })
-        };
+        let run = |conn: &Connection| run_read(conn, args, ctx);
         let seen = self.search_generation();
         let result = match self.with_reader(run) {
             Err(ReadFail::Store(StoreError::SearchIndex(_))) => {
@@ -92,10 +86,40 @@ impl Store {
         &self,
         job: impl FnOnce(&Connection) -> Result<T, ReadFail>,
     ) -> Result<T, ReadFail> {
-        let conn = self.inner.reader.lock().map_err(|_| {
-            ReadFail::Store(StoreError::Internal("соединение чтения отравлено".into()))
-        })?;
-        job(&conn)
+        // Как в `read_unnoted`: паника внутри чтения (профиль release с размоткой стека) ловится здесь, вызов получает
+        // `Internal`; если замок всё же отравлен, он берётся как есть — соединение чтения (`query_only`, без транзакции)
+        // после размотки согласовано. Иначе одна паника ломала бы все чтения агента до перезапуска.
+        let conn = self
+            .inner
+            .reader
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        catch_unwind(AssertUnwindSafe(|| job(&conn))).unwrap_or_else(|_| {
+            log::error!("паника в чтении агента, вызов отменён");
+            Err(ReadFail::Store(StoreError::Internal(
+                "паника в запросе агента".into(),
+            )))
+        })
+    }
+
+    /// Только для тестов: паника внутри `query_map` на соединении чтения агента. Следующие чтения агента должны работать.
+    #[doc(hidden)]
+    pub fn panic_in_agent_read_for_test(&self) -> Result<(), StoreError> {
+        let result = self.with_reader(|conn| -> Result<(), ReadFail> {
+            let mut statement = conn.prepare("SELECT id FROM chat")?;
+            let rows = statement.query_map([], |_| -> rusqlite::Result<()> {
+                panic!("проверка: паника в запросе агента")
+            })?;
+            for row in rows {
+                row?;
+            }
+            Ok(())
+        });
+        match result {
+            Ok(()) => Ok(()),
+            Err(ReadFail::Store(error)) => Err(error),
+            Err(ReadFail::NotFound) => Err(StoreError::Internal("не найдено".into())),
+        }
     }
 }
 

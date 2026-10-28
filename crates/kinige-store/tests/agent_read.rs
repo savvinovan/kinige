@@ -363,3 +363,23 @@ fn list_chats_shows_visible_chats_with_counts_and_archive() {
     // Корзина не раскрывается: ни размера, ни содержимого.
     assert!(!chats.to_string().contains("trash"));
 }
+
+/// Паника внутри запроса чтения агента (внутри `query_map`) — ошибка этого вызова; соединение чтения живо, следующие
+/// вызовы агента (в том числе после повторной паники) проходят.
+#[test]
+fn a_panic_inside_an_agent_read_fails_that_call_only_and_later_agent_calls_work() {
+    let a = agent(AgentMode::Read, true);
+    a.store
+        .send_message(&a.work, "до паники", &moscow(MARCH))
+        .unwrap();
+    for _ in 0..2 {
+        assert!(matches!(
+            a.store.panic_in_agent_read_for_test(),
+            Err(kinige_store::StoreError::Internal(_))
+        ));
+        let chats = call(&a.store, "list_chats", json!({}), MARCH).unwrap();
+        assert!(chats.to_string().contains("Работа"));
+        let found = call(&a.store, "search", json!({"query": "паники"}), MARCH).unwrap();
+        assert_eq!(entry_ids(&found).len(), 1);
+    }
+}
