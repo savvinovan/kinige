@@ -54,6 +54,12 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { foreground: "surface.field", background: "surface.background", kind: "decorative" },
   { foreground: "surface.selected", background: "surface.background", kind: "decorative" },
   { foreground: "highlight.background", background: "surface.message", kind: "decorative" },
+  // Найденное слово (слайс 4): заливка заметна и на плашке, и на подсвеченной плашке; на ней стоит только основной и
+  // вторичный текст (третичный и акцент на неё не попадают: слова в ссылках и тегах не подсвечиваются).
+  { foreground: "highlight.mark", background: "surface.message", kind: "decorative" },
+  { foreground: "highlight.mark", background: "highlight.background", kind: "decorative" },
+  { foreground: "text.primary", background: "highlight.mark", kind: "text" },
+  { foreground: "text.secondary", background: "highlight.mark", kind: "text" },
   { foreground: "surface.message", background: "surface.code", kind: "decorative" },
   // Пустой чекбокс задачи (граница компонента, WCAG 1.4.11) нарисован цветом третичного текста на плашке.
   { foreground: "text.tertiary", background: "surface.message", kind: "ui" },

@@ -1,13 +1,11 @@
 import { type KinigeApi, KinigeApiError } from "./KinigeApi";
-import { MockApiBase } from "./MockApiBase";
-import { DAY_MS, DEFAULT_SHORTCUTS, TRASH_DAYS, compareFeed, isRealDate, mockMessage } from "./mockData";
+import { MockApiSlice4 } from "./MockApiSlice4";
+import { DAY_MS, DEFAULT_SHORTCUTS, TRASH_DAYS, isRealDate, mockMessage } from "./mockData";
 import type { AppInfo } from "./generated/AppInfo";
 import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
-import type { FeedCursor } from "./generated/FeedCursor";
 import type { Language } from "./generated/Language";
 import type { MessageFlag } from "./generated/MessageFlag";
-import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
 import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { Settings } from "./generated/Settings";
@@ -25,7 +23,7 @@ const ALLOWED_SCHEMES = ["http:", "https:", "mailto:"];
  * ведёт корзину, правки и ревизии, умеет «отказ» любой команды (`failNext`) и запоминает открытые ссылки (`openedUrls`). День
  * записи считается упрощённо (UTC, граница 04:00): настоящие правила — в Rust. Состояние и окно захвата — в `MockApiBase`.
  */
-export class MockApi extends MockApiBase implements KinigeApi {
+export class MockApi extends MockApiSlice4 implements KinigeApi {
   private readonly openChatListeners = new Set<(chatId: string) => void>();
   private readonly corruptListeners = new Set<() => void>();
 
@@ -49,24 +47,6 @@ export class MockApi extends MockApiBase implements KinigeApi {
       )
       .map(({ chat }) => ({ ...chat, count: this.rows.filter((r) => r.view.chatId === chat.id && r.deletedAt === null).length }));
     return Promise.resolve({ chats: ordered, trashCount: this.rows.filter((r) => r.deletedAt !== null).length });
-  }
-
-  listMessages(chatId: string, options: { before?: FeedCursor; limit?: number; tag?: string } = {}): Promise<MessagePage> {
-    const tag = options.tag?.toLowerCase();
-    const all = this.rows
-      .filter((r) => r.view.chatId === chatId && r.deletedAt === null && (tag === undefined || r.view.tags.includes(tag)))
-      .map((r) => r.view)
-      .sort(compareFeed);
-    const older = options.before ? all.filter((m) => compareFeed(m, options.before as FeedCursor) < 0) : all;
-    const limit = options.limit ?? 200;
-    const page = older.slice(-limit);
-    const first = page[0];
-    return Promise.resolve({
-      messages: page,
-      older: older.length > page.length && first ? { journalDate: first.journalDate, createdAt: first.createdAt, id: first.id } : null,
-      newer: null,
-      today: this.journalDate(this.now()),
-    });
   }
 
   sendMessage(chatId: string, body: string): Promise<MessageView> {

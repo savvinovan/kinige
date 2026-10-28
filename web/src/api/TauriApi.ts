@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { type KinigeApi, KinigeApiError } from "./KinigeApi";
+import { type KinigeApi, KinigeApiError, type ListMessagesOptions } from "./KinigeApi";
 import type { ApiError } from "./generated/ApiError";
 import type { AppInfo } from "./generated/AppInfo";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
@@ -9,11 +9,16 @@ import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { FeedCursor } from "./generated/FeedCursor";
+import type { ImportOpened } from "./generated/ImportOpened";
+import type { ImportProgress } from "./generated/ImportProgress";
+import type { ImportReport } from "./generated/ImportReport";
 import type { Language } from "./generated/Language";
 import type { MessageFlag } from "./generated/MessageFlag";
 import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
 import type { RestoreOutcome } from "./generated/RestoreOutcome";
+import type { SearchFilters } from "./generated/SearchFilters";
+import type { SearchPage } from "./generated/SearchPage";
 import type { Settings } from "./generated/Settings";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
@@ -24,6 +29,8 @@ import type { TrashItem } from "./generated/TrashItem";
 const ENTRIES_CHANGED = "entries-changed";
 const OPEN_CHAT = "open-chat";
 const DATABASE_CORRUPT = "database-corrupt";
+/** Прогресс импорта (`import::IMPORT_PROGRESS`); приходит только главному окну. */
+const IMPORT_PROGRESS = "import-progress";
 
 const CODES: readonly ErrorCode[] = [
   "empty_message",
@@ -87,10 +94,12 @@ export class TauriApi implements KinigeApi {
     return call("list_chats");
   }
 
-  listMessages(chatId: string, options: { before?: FeedCursor; limit?: number; tag?: string } = {}): Promise<MessagePage> {
+  listMessages(chatId: string, options: ListMessagesOptions = {}): Promise<MessagePage> {
     return call("list_messages", {
       chatId,
       before: options.before ?? null,
+      after: options.after ?? null,
+      around: options.around ?? null,
       limit: options.limit ?? null,
       tag: options.tag ?? null,
     });
@@ -222,6 +231,38 @@ export class TauriApi implements KinigeApi {
 
   async restartForRecovery(): Promise<void> {
     await call("restart_for_recovery");
+  }
+
+  importTelegramOpen(): Promise<ImportOpened | null> {
+    return call("import_telegram_open");
+  }
+
+  importTelegramRun(session: number, chatIds: readonly string[]): Promise<ImportReport> {
+    return call("import_telegram_run", { session, chatIds });
+  }
+
+  async importTelegramStop(): Promise<void> {
+    await call("import_telegram_stop");
+  }
+
+  async importTelegramClose(): Promise<void> {
+    await call("import_telegram_close");
+  }
+
+  onImportProgress(handler: (progress: ImportProgress) => void): Promise<() => void> {
+    return listen<ImportProgress>(IMPORT_PROGRESS, (event) => handler(event.payload));
+  }
+
+  searchMessages(
+    query: string,
+    options: { filters?: SearchFilters; before?: FeedCursor; limit?: number } = {},
+  ): Promise<SearchPage> {
+    return call("search_messages", {
+      query,
+      filters: options.filters ?? null,
+      before: options.before ?? null,
+      limit: options.limit ?? null,
+    });
   }
 
   captureState(): Promise<CaptureState> {
