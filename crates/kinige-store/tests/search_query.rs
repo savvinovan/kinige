@@ -173,12 +173,6 @@ fn each_filter_alone_and_all_together() {
             .map(|h| h.message.id)
             .collect()
     };
-    let date = |ms: i64| {
-        let page = store
-            .list_messages(INBOX_ID, None, 100, &moscow(ms))
-            .unwrap();
-        page.today
-    };
     assert_eq!(ids(any()).len(), 5);
     assert_eq!(
         ids(SearchFilters {
@@ -238,7 +232,7 @@ fn each_filter_alone_and_all_together() {
             from: Some(from),
             to: Some(to),
         }),
-        [d.clone()]
+        vec![d.clone()]
     );
     assert_eq!(
         ids(SearchFilters {
@@ -257,7 +251,7 @@ fn each_filter_alone_and_all_together() {
         })
         .is_empty()
     );
-    let _ = (a, date(T0));
+    assert_eq!(ids(any()).last(), Some(&a), "самая старая запись последней");
 }
 
 fn journal_of(store: &Store, id: &str) -> String {
@@ -372,7 +366,7 @@ fn chats_whose_title_matches_come_only_on_the_first_page() {
     let first = store.search("книга", &any(), None, 3).unwrap();
     assert_eq!(
         first.chats.iter().map(|c| c.id.clone()).collect::<Vec<_>>(),
-        [books.id.clone()]
+        vec![books.id.clone()]
     );
     assert_eq!(first.hits.len(), 3);
     let second = store
