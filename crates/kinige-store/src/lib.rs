@@ -211,8 +211,32 @@ impl Store {
         Ok(store)
     }
 
-    /// Выполняет запись на потоке-писателе.
+    /// Выполняет запись на потоке-писателе. Если запись сама перестроила индекс поиска (порча всплыла под `guarded`),
+    /// число лечений растёт: запрос со старым `seen` не станет перестраивать здоровый индекс ещё раз. Если порча
+    /// индекса всплыла там, где `guarded` не стоит (например, на `COMMIT`), индекс лечится по возможности сразу, чтобы
+    /// повтор записи прошёл; сама ошибка возвращается как есть.
     fn write<T: Send + 'static>(
+        &self,
+        job: impl FnOnce(&mut Connection) -> Result<T, StoreError> + Send + 'static,
+    ) -> Result<T, StoreError> {
+        let seen = self.search_generation();
+        let heals = self.inner.search_heals.clone();
+        let result = self.write_raw(move |conn| {
+            let _ = search::take_rebuilt();
+            let result = job(conn);
+            if search::take_rebuilt() && result.is_ok() {
+                heals.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            }
+            result
+        });
+        if matches!(result, Err(StoreError::SearchIndex(_))) {
+            let _ = self.heal_search_index(seen);
+        }
+        result
+    }
+
+    /// Запись без лечения индекса и без подсчёта: ею лечит сам индекс.
+    fn write_raw<T: Send + 'static>(
         &self,
         job: impl FnOnce(&mut Connection) -> Result<T, StoreError> + Send + 'static,
     ) -> Result<T, StoreError> {

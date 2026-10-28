@@ -39,14 +39,33 @@ fn guarded(
     match operation() {
         Ok(()) => conn.execute_batch("RELEASE search_index"),
         Err(error) => {
-            conn.execute_batch("ROLLBACK TO search_index; RELEASE search_index")?;
+            // Откат не удался (точки уже нет после тяжёлого сбоя: полный диск, ввод-вывод, память): наружу идёт исходная
+            // ошибка, а не ошибка отката, которая скрыла бы настоящую причину.
+            if conn
+                .execute_batch("ROLLBACK TO search_index; RELEASE search_index")
+                .is_err()
+            {
+                return Err(error);
+            }
             if is_search_index_error(&error) {
-                rebuild_all(conn)
+                rebuild_all(conn)?;
+                REBUILT.with(|flag| flag.set(true));
+                Ok(())
             } else {
                 Err(error)
             }
         }
     }
+}
+
+thread_local! {
+    /// Запись перестроила индекс сама (поток-писатель один; `Store::write` забирает флаг после задания).
+    static REBUILT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Был ли индекс перестроен записью с прошлого вызова; флаг сбрасывается.
+pub(crate) fn take_rebuilt() -> bool {
+    REBUILT.with(|flag| flag.replace(false))
 }
 
 fn put_row(conn: &Connection, message_id: &str, body_md: &str) -> rusqlite::Result<()> {
@@ -171,7 +190,7 @@ impl Store {
     /// несколько одновременных запросов, упавших на одной порче, дают одну перестройку, а не по одной на запрос.
     pub(crate) fn heal_search_index(&self, seen: u64) -> Result<(), StoreError> {
         let heals = self.inner.search_heals.clone();
-        self.write(move |conn| {
+        self.write_raw(move |conn| {
             if heals.load(Ordering::SeqCst) != seen {
                 return Ok(());
             }
@@ -185,10 +204,121 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::FTS_DDL;
+    use crate::StoreError;
 
     /// Перестройка создаёт ровно ту таблицу, что миграция 4: иначе после лечения индекс устроен иначе.
     #[test]
     fn rebuild_creates_the_table_migration_four_creates() {
         assert!(crate::schema::MIGRATION_4.contains(&format!("{FTS_DDL};")));
+    }
+
+    /// Порча индекса, всплывшая вне `guarded` (например, на `COMMIT`): запись возвращает ошибку, но индекс лечится сразу,
+    /// чтобы повтор прошёл.
+    #[test]
+    fn an_index_error_outside_guarded_heals_the_index_for_the_retry() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut options = crate::StoreOptions::new(dir.path().join("kinige.db"), None);
+        options.start_maintenance = false;
+        let store = crate::Store::open(options).unwrap();
+        store
+            .send_message(
+                kinige_domain::groups::INBOX_ID,
+                "книга",
+                &crate::Now::at(1_800_000_000_000, "UTC"),
+            )
+            .unwrap();
+        store
+            .write(|conn| {
+                conn.execute(
+                    "UPDATE search_fts_data SET block = X'FFFFFFFFFFFF' WHERE id = 10",
+                    [],
+                )
+                .map_err(crate::error::write_err)?;
+                Ok(())
+            })
+            .unwrap();
+        let failed: Result<(), _> =
+            store.write(|_| Err(StoreError::SearchIndex("ошибка на COMMIT".into())));
+        assert!(matches!(failed, Err(StoreError::SearchIndex(_))));
+        assert_eq!(store.search_heal_count(), 1);
+        let found = store
+            .search("книга", &Default::default(), None, 10)
+            .unwrap()
+            .hits;
+        assert_eq!(found.len(), 1, "повтор проходит: индекс уже вылечен");
+        assert_eq!(
+            store.search_heal_count(),
+            1,
+            "запрос не перестраивал заново"
+        );
+    }
+
+    /// Лечение живёт в той же транзакции, что и запись: откат записи возвращает и повреждённый индекс, а следующая запись
+    /// лечит его снова и уже фиксирует.
+    #[test]
+    fn a_rebuild_inside_a_rolled_back_transaction_is_rolled_back_with_it() {
+        use super::reindex;
+        let dir = tempfile::tempdir().unwrap();
+        let mut options = crate::StoreOptions::new(dir.path().join("kinige.db"), None);
+        options.start_maintenance = false;
+        let store = crate::Store::open(options).unwrap();
+        let sent = store
+            .send_message(
+                kinige_domain::groups::INBOX_ID,
+                "книга",
+                &crate::Now::at(1_800_000_000_000, "UTC"),
+            )
+            .unwrap();
+        let id = sent.id.clone();
+        fn broken(conn: &rusqlite::Connection) -> rusqlite::Result<i64> {
+            conn.query_row(
+                "SELECT COUNT(*) FROM search_fts WHERE search_fts MATCH 'книг*'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+        }
+        store
+            .write(|conn| {
+                conn.execute(
+                    "UPDATE search_fts_data SET block = X'FFFFFFFFFFFF' WHERE id = 10",
+                    [],
+                )
+                .map_err(crate::error::write_err)?;
+                assert!(broken(conn).is_err(), "индекс повреждён");
+                Ok(())
+            })
+            .unwrap();
+        let again = id.clone();
+        store
+            .write(move |conn| {
+                conn.execute_batch("BEGIN")
+                    .map_err(crate::error::write_err)?;
+                reindex(conn, &again, "новая книга").map_err(crate::error::write_err)?;
+                assert_eq!(broken(conn).unwrap(), 1, "внутри транзакции индекс вылечен");
+                conn.execute_batch("ROLLBACK")
+                    .map_err(crate::error::write_err)?;
+                assert!(broken(conn).is_err(), "после отката индекс снова повреждён");
+                Ok(())
+            })
+            .unwrap();
+        // Следующая запись (своя транзакция) лечит индекс и фиксирует его.
+        let last = id.clone();
+        store
+            .write(move |conn| {
+                reindex(conn, &last, "ещё книга").map_err(crate::error::write_err)?;
+                assert_eq!(broken(conn).unwrap(), 1);
+                Ok(())
+            })
+            .unwrap();
+        let found = store
+            .search("книга", &Default::default(), None, 10)
+            .unwrap()
+            .hits;
+        assert_eq!(found.len(), 1);
+        assert_eq!(
+            store.search_heal_count(),
+            2,
+            "обе перестройки записи учтены"
+        );
     }
 }
