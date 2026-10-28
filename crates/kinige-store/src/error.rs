@@ -33,10 +33,14 @@ pub enum StoreError {
     ShortcutDuplicate,
     /// База повреждена: журнал не открыт, нужна копия.
     Corrupt(String),
+    /// Повреждена только таблица поиска (производная): лечится перестройкой из записей, база цела.
+    SearchIndex(String),
     /// Копия не найдена, не открывается или повреждена.
     BackupNotFound,
     /// Прежнюю папку Markdown-копии не удалось переименовать перед восстановлением: ничего не тронуто.
     MirrorFolderBusy,
+    /// Копия базы перед импортом не снялась: импорт не начат, ничего не записано.
+    ImportBackupFailed,
     /// База создана более новой версией приложения (схема `found`): откат не поддерживается (ТЗ §10.4).
     TooNew(i64),
     /// Запись в базу не удалась: ничего не записано (транзакция откатилась).
@@ -66,8 +70,10 @@ impl StoreError {
             StoreError::ShortcutInvalid => ErrorCode::ShortcutInvalid,
             StoreError::ShortcutDuplicate => ErrorCode::ShortcutDuplicate,
             StoreError::Corrupt(_) => ErrorCode::DatabaseCorrupt,
+            StoreError::SearchIndex(_) => ErrorCode::Internal,
             StoreError::BackupNotFound => ErrorCode::BackupNotFound,
             StoreError::MirrorFolderBusy => ErrorCode::MirrorFolderBusy,
+            StoreError::ImportBackupFailed => ErrorCode::ImportBackupFailed,
             StoreError::TooNew(_) => ErrorCode::DatabaseTooNew,
             StoreError::Write(_) => ErrorCode::StoreWriteFailed,
             StoreError::Read(_) => ErrorCode::StoreReadFailed,
@@ -95,8 +101,10 @@ impl StoreError {
             StoreError::ShortcutInvalid => "shortcut_invalid",
             StoreError::ShortcutDuplicate => "shortcut_duplicate",
             StoreError::Corrupt(_) => "corrupt",
+            StoreError::SearchIndex(_) => "search_index",
             StoreError::BackupNotFound => "backup_not_found",
             StoreError::MirrorFolderBusy => "mirror_folder_busy",
+            StoreError::ImportBackupFailed => "import_backup_failed",
             StoreError::TooNew(_) => "too_new",
             StoreError::Write(_) => "write",
             StoreError::Read(_) => "read",
@@ -122,10 +130,12 @@ impl fmt::Display for StoreError {
             StoreError::ShortcutInvalid => f.write_str("неверное сочетание клавиш"),
             StoreError::ShortcutDuplicate => f.write_str("сочетание уже назначено"),
             StoreError::Corrupt(why) => write!(f, "база повреждена: {why}"),
+            StoreError::SearchIndex(why) => write!(f, "индекс поиска повреждён: {why}"),
             StoreError::BackupNotFound => f.write_str("копия не найдена или повреждена"),
             StoreError::MirrorFolderBusy => {
                 f.write_str("папку Markdown-копии не удалось переименовать")
             }
+            StoreError::ImportBackupFailed => f.write_str("копия базы перед импортом не снялась"),
             StoreError::TooNew(found) => {
                 write!(
                     f,
@@ -169,6 +179,9 @@ impl From<GroupError> for StoreError {
 
 /// Ошибка SQLite при записи; «не база данных» и «база повреждена» — это `Corrupt`, а не сбой записи.
 pub(crate) fn write_err(error: rusqlite::Error) -> StoreError {
+    if is_search_index_error(&error) {
+        return StoreError::SearchIndex(error.to_string());
+    }
     if is_corruption(&error) {
         return StoreError::Corrupt(error.to_string());
     }
@@ -177,10 +190,28 @@ pub(crate) fn write_err(error: rusqlite::Error) -> StoreError {
 
 /// Ошибка SQLite при чтении.
 pub(crate) fn read_err(error: rusqlite::Error) -> StoreError {
+    if is_search_index_error(&error) {
+        return StoreError::SearchIndex(error.to_string());
+    }
     if is_corruption(&error) {
         return StoreError::Corrupt(error.to_string());
     }
     StoreError::Read(error.to_string())
+}
+
+/// Ошибка самой таблицы поиска `search_fts`, а не базы: `SQLITE_CORRUPT_VTAB` (расширенный код 267, так FTS5 сообщает о
+/// порче своих данных) и «invalid fts5 file format … run 'rebuild'» (`SQLITE_ERROR`, порча настроек индекса). Таблица —
+/// производная от `message.body_md`: лечится перестройкой, а не восстановлением из копии.
+pub(crate) fn is_search_index_error(error: &rusqlite::Error) -> bool {
+    const SQLITE_CORRUPT_VTAB: i32 = 267;
+    match error {
+        rusqlite::Error::SqliteFailure(failure, message) => {
+            failure.extended_code == SQLITE_CORRUPT_VTAB
+                || (failure.code == rusqlite::ErrorCode::Unknown
+                    && message.as_deref().is_some_and(|m| m.contains("fts5")))
+        }
+        _ => false,
+    }
 }
 
 fn is_corruption(error: &rusqlite::Error) -> bool {

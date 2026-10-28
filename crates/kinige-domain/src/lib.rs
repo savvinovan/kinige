@@ -10,6 +10,7 @@ pub mod folders;
 pub mod groups;
 pub mod history;
 pub mod hlc;
+pub mod import;
 pub mod jcs;
 pub mod journal;
 pub mod lang;
@@ -17,9 +18,11 @@ pub mod link;
 pub mod message_ops;
 pub mod mirror;
 pub mod rewrite;
+pub mod search;
 pub mod shortcuts;
 pub mod tags;
 pub mod tasks;
+pub mod telegram;
 
 #[cfg(test)]
 mod chat_tests;
@@ -35,10 +38,13 @@ use ts_rs::TS;
 
 pub use api::{
     ApiError, CaptureAction, CaptureOutcome, CaptureState, ChatList, ChatSummary, ErrorCode,
-    FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, Settings,
-    TextSize, TrashItem,
+    FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters,
+    SearchHit, SearchPage, Settings, TextSize, TrashItem,
 };
 pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, RestoreOutcome, StartupState};
+pub use import::{
+    ImportChatKind, ImportChatPreview, ImportOpened, ImportPreview, ImportProgress, ImportReport,
+};
 pub use lang::Language;
 pub use shortcuts::{ShortcutKind, ShortcutState, ShortcutStatus};
 

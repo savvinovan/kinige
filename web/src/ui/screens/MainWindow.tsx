@@ -11,9 +11,14 @@ import { ChatDialog } from "../chat/ChatDialog";
 import { useRecordDrag } from "../drag/useRecordDrag";
 import { moveTargetsFrom } from "../message/moveTargets";
 import { SettingsDialog } from "../settings/SettingsDialog";
-import type { ChatAction, SidebarChat } from "../sidebar/Sidebar";
+import type { ChatAction } from "../sidebar/Sidebar";
+import { ImportDialog } from "../import/ImportDialog";
+import { SearchResults } from "../search/SearchResults";
+import { type ChatDialogState, EMPTY_LIST, focusComposer, toSidebar } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
-import { useFeed } from "./useFeed";
+import { type FocusTarget, useFeed } from "./useFeed";
+import { useImport } from "./useImport";
+import { useMainSearch } from "./useMainSearch";
 import { useSettingsState } from "./useSettingsState";
 import { useTrash } from "./useTrash";
 
@@ -21,23 +26,6 @@ interface MainWindowProps {
   api: KinigeApi;
   /** Настройки, прочитанные до первого кадра (размер текста применяется без мигания). */
   initialSettings: Settings;
-}
-
-type ChatDialogState = { mode: "create" } | { mode: "rename" | "icon"; chatId: string };
-
-const EMPTY_LIST: ChatList = { chats: [], trashCount: 0 };
-
-/** Чат из ответа Rust → строка сайдбара. Чат без эмодзи получает нейтральный значок. */
-function toSidebar(chat: ChatList["chats"][number]): SidebarChat {
-  return {
-    id: chat.id,
-    name: chat.title,
-    isInbox: chat.isInbox,
-    emoji: chat.icon ?? "💬",
-    count: chat.count,
-    pinned: chat.pinnedAt !== null && chat.archivedAt === null,
-    archived: chat.archivedAt !== null,
-  };
 }
 
 /**
@@ -76,6 +64,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     [api],
   );
 
+  // Переход к записи из поиска: лента открывает чат на ней (страница вокруг, найденные слова выделены).
+  const [focus, setFocus] = useState<FocusTarget | null>(null);
   const feed = useFeed({
     api,
     chatId: selected,
@@ -83,8 +73,9 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     refreshChats,
     onError: setComposerError,
     onTag: setTag,
+    focus,
   });
-  const { reload: reloadFeed } = feed;
+  const { reload: reloadFeed, restart: restartFeed } = feed;
   const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
   const moveTargets = useMemo(() => moveTargetsFrom(sidebarChats, selected, t), [sidebarChats, selected, t]);
   // Перетаскивание плашки на чат: бросок на любой чат, кроме того, где запись лежит.
@@ -109,6 +100,23 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     },
     [draftSaver, clearTrashError],
   );
+
+  const { search, sidebarSearch, datePick, setDatePick } = useMainSearch({
+    api,
+    selected,
+    select,
+    sidebarCollapsed: settings.sidebarCollapsed,
+    toggleCollapsed: prefs.toggleCollapsed,
+    onFocus: setFocus,
+    inbox: { chat: list.chats.find((c) => c.isInbox), name: t("chat.inbox") },
+  });
+  const importer = useImport({
+    api,
+    // Импорт кладёт записи в середину истории: открытая лента перечитывается с нуля вместе с курсорами.
+    onChanged: () => void Promise.all([refreshChats(), restartFeed()]),
+    // «Готово»: открывается «Избранное» (Inbox), куда легли записи.
+    onDone: () => void select(INBOX_ID),
+  });
 
   useEffect(() => {
     void refreshChats();
@@ -195,11 +203,6 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       });
   };
 
-  const focusComposer = () => {
-    // Диалог возвращает фокус тому, кто его открыл, уже после закрытия: поле ввода берёт его следом.
-    setTimeout(() => document.querySelector<HTMLTextAreaElement>("textarea.composer__input")?.focus(), 0);
-  };
-
   const closeChatDialog = () => {
     setChatDialog(null);
     setDialogError(null);
@@ -258,6 +261,33 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     <MainWindowView
       interactive
       showSearch={false}
+      search={sidebarSearch}
+      searchResults={
+        search.open ? (
+          <SearchResults
+            listId={search.listId}
+            query={search.query}
+            chats={search.results.chats}
+            hits={search.results.hits}
+            hasMore={search.results.hasMore}
+            loading={search.results.loading}
+            searched={search.results.searched}
+            error={search.results.error}
+            today={feed.today}
+            language={language}
+            filters={search.filters}
+            onFiltersChange={search.setFilters}
+            canScopeChat={selected !== null}
+            onPickDate={setDatePick}
+            activeIndex={search.results.activeIndex}
+            onActiveChange={search.results.setActiveIndex}
+            onOpenChat={search.openChat}
+            onOpenHit={search.openHit}
+            onLoadMore={search.loadMore}
+          />
+        ) : undefined
+      }
+      onOpenImport={importer.start}
       composerButtons={{ emoji: true }}
       emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji }}
       chats={sidebarChats}
@@ -277,6 +307,9 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       today={feed.today}
       feedUi={feed.ui}
       feedActions={feed.actions}
+      feedPaging={feed.paging}
+      feedScrollTo={feed.scrollTo}
+      onFeedPointerDown={feed.clearMark}
       tagFilter={tag === null ? undefined : { tag, onClear: () => setTag(null) }}
       trash={{
         items: trash.items,
@@ -325,6 +358,20 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
               error={dialogError ? t(`error.${dialogError}`) : undefined}
               onSubmit={submitChatDialog}
               onClose={closeChatDialog}
+            />
+          ) : null}
+          {importer.dialog ? <ImportDialog {...importer.dialog} /> : null}
+          {datePick ? (
+            <CalendarDialog
+              value={search.filters[datePick] ?? feed.today}
+              today={feed.today}
+              language={language}
+              title={t(datePick === "from" ? "search.fromTitle" : "search.toTitle")}
+              onPick={(date) => {
+                search.setFilters({ ...search.filters, [datePick]: date });
+                setDatePick(null);
+              }}
+              onClose={() => setDatePick(null)}
             />
           ) : null}
           {dateTarget ? (

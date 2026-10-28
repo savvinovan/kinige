@@ -4,7 +4,8 @@
 //! Копии лежат в папке `backups` рядом с базой:
 //! - `daily-YYYY-MM-DD.db` — копия дня (локальная дата), хранятся 7 последних;
 //! - `pre-migration-v<схема>-YYYYMMDDTHHMMSSZ.db` — копия перед миграцией существующей базы, где `<схема>` — версия, из
-//!   которой мигрируем; хранятся 3 последних.
+//!   которой мигрируем; хранятся 3 последних;
+//! - `pre-import-YYYYMMDDTHHMMSSZ.db` — копия перед импортом из Telegram (слайс 4); хранятся 3 последних.
 
 use serde::Serialize;
 use ts_rs::TS;
@@ -13,9 +14,12 @@ use ts_rs::TS;
 pub const KEEP_DAILY: usize = 7;
 /// Сколько копий перед миграцией хранится.
 pub const KEEP_PRE_MIGRATION: usize = 3;
+/// Сколько копий перед импортом хранится.
+pub const KEEP_PRE_IMPORT: usize = 3;
 
 const DAILY_PREFIX: &str = "daily-";
 const PRE_PREFIX: &str = "pre-migration-v";
+const IMPORT_PREFIX: &str = "pre-import-";
 const SUFFIX: &str = ".db";
 
 /// Вид копии.
@@ -27,6 +31,8 @@ pub enum BackupKind {
     Daily,
     /// Копия перед миграцией базы.
     PreMigration,
+    /// Копия перед импортом из Telegram.
+    PreImport,
 }
 
 /// Копия в списке окна «База повреждена».
@@ -109,31 +115,45 @@ pub fn pre_migration_name(from_version: i64, utc_stamp: &str) -> String {
     format!("{PRE_PREFIX}{from_version}-{utc_stamp}{SUFFIX}")
 }
 
+/// Имя копии перед импортом: момент (UTC, `YYYYMMDDTHHMMSSZ`).
+pub fn pre_import_name(utc_stamp: &str) -> String {
+    format!("{IMPORT_PREFIX}{utc_stamp}{SUFFIX}")
+}
+
+/// `YYYYMMDDTHHMMSSZ`.
+fn is_utc_stamp(stamp: &str) -> bool {
+    stamp.len() == 16
+        && stamp.ends_with('Z')
+        && stamp.as_bytes()[8] == b'T'
+        && stamp[..8].bytes().all(|b| b.is_ascii_digit())
+        && stamp[9..15].bytes().all(|b| b.is_ascii_digit())
+}
+
 /// Вид копии по имени файла; чужие имена (в том числе временные `.tmp` и `corrupt-…`) — `None`.
 pub fn classify(name: &str) -> Option<BackupKind> {
     let stem = name.strip_suffix(SUFFIX)?;
     if let Some(date) = stem.strip_prefix(DAILY_PREFIX) {
         return crate::journal::is_valid_journal_date(date).then_some(BackupKind::Daily);
     }
+    if let Some(stamp) = stem.strip_prefix(IMPORT_PREFIX) {
+        return is_utc_stamp(stamp).then_some(BackupKind::PreImport);
+    }
     let rest = stem.strip_prefix(PRE_PREFIX)?;
     let (version, stamp) = rest.split_once('-')?;
-    let valid = !version.is_empty()
-        && version.bytes().all(|b| b.is_ascii_digit())
-        && stamp.len() == 16
-        && stamp.ends_with('Z')
-        && stamp.as_bytes()[8] == b'T'
-        && stamp[..8].bytes().all(|b| b.is_ascii_digit())
-        && stamp[9..15].bytes().all(|b| b.is_ascii_digit());
+    let valid =
+        !version.is_empty() && version.bytes().all(|b| b.is_ascii_digit()) && is_utc_stamp(stamp);
     valid.then_some(BackupKind::PreMigration)
 }
 
-/// Что удалить после снятия новой копии: старше [`KEEP_DAILY`] копий дня и [`KEEP_PRE_MIGRATION`] копий перед миграцией.
-/// Порядок — по имени (дата и метка времени в имени сортируются как строки); чужие файлы не трогаются.
+/// Что удалить после снятия новой копии: старше [`KEEP_DAILY`] копий дня, [`KEEP_PRE_MIGRATION`] копий перед миграцией и
+/// [`KEEP_PRE_IMPORT`] копий перед импортом. Порядок — по имени (дата и метка времени в имени сортируются как строки);
+/// чужие файлы не трогаются.
 pub fn expired(names: &[String]) -> Vec<String> {
     let mut stale = Vec::new();
     for (kind, keep) in [
         (BackupKind::Daily, KEEP_DAILY),
         (BackupKind::PreMigration, KEEP_PRE_MIGRATION),
+        (BackupKind::PreImport, KEEP_PRE_IMPORT),
     ] {
         let mut of_kind: Vec<&String> = names
             .iter()
@@ -157,11 +177,41 @@ mod tests {
             classify(&pre_migration_name(2, "20261027T131500Z")),
             Some(BackupKind::PreMigration)
         );
+        assert_eq!(
+            pre_import_name("20261028T125000Z"),
+            "pre-import-20261028T125000Z.db"
+        );
+        assert_eq!(
+            classify(&pre_import_name("20261028T125000Z")),
+            Some(BackupKind::PreImport)
+        );
+    }
+
+    #[test]
+    fn rotation_keeps_three_pre_import_copies_apart_from_other_kinds() {
+        let mut names: Vec<String> = (0..5)
+            .map(|i| pre_import_name(&format!("2026102{i}T000000Z")))
+            .collect();
+        names.push(daily_name("2026-10-01"));
+        names.push(pre_migration_name(2, "20261001T000000Z"));
+        let mut stale = expired(&names);
+        stale.sort();
+        assert_eq!(
+            stale,
+            [
+                pre_import_name("20261020T000000Z"),
+                pre_import_name("20261021T000000Z")
+            ]
+        );
     }
 
     #[test]
     fn foreign_files_are_not_backups() {
         for name in [
+            "pre-import-.db",
+            "pre-import-20261028125000Z.db",
+            "pre-import-20261028T125000Z.db.tmp",
+            ".pre-import-20261028T125000Z.db.tmp",
             "daily-2026-10-27.db.tmp",
             ".daily-2026-10-27.db.tmp",
             "daily-2026-13-27.db",

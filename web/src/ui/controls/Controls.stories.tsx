@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { Frame, FrameLabel } from "../stories/Frame";
 import { Button } from "./Button";
+import { Checkbox } from "./Checkbox";
 import { IconButton } from "./IconButton";
+import { ProgressBar } from "./ProgressBar";
 import { TextField } from "./TextField";
 
 function Controls() {
@@ -58,6 +60,40 @@ export const Фокус: Story = {
       </div>
       <FrameLabel>Фокус в поле (рамка поля)</FrameLabel>
       <TextField label="Поиск" icon="search" placeholder="Поиск" autoFocus />
+    </Frame>
+  ),
+};
+
+/** Флажок (слайс 4): пустой, отмеченный, недоступный, с описанием и с длинным именем; полоса прогресса. */
+export const ФлажокИПрогресс: Story = {
+  render: () => (
+    <Frame>
+      <FrameLabel>Флажок: пустой, отмеченный, недоступный</FrameLabel>
+      <Checkbox defaultChecked={false}>Личный чат</Checkbox>
+      <Checkbox defaultChecked>Избранное</Checkbox>
+      <Checkbox disabled>Недоступный</Checkbox>
+      <FrameLabel>Флажок с описанием и длинным именем</FrameLabel>
+      <Checkbox defaultChecked description="1 682 записи · 1 000 уже есть">
+        Избранное
+      </Checkbox>
+      <Checkbox description="12 записей">
+        Очень длинное имя собеседника, которое не помещается в одну строку окна импорта вместе с описанием
+      </Checkbox>
+      <FrameLabel>Полоса прогресса: 0, 3 200 из 15 000, готово</FrameLabel>
+      <ProgressBar value={0} max={15000} label="Импорт" valueText="0 из 15 000" />
+      <ProgressBar value={3200} max={15000} label="Импорт" valueText="3 200 из 15 000" />
+      <ProgressBar value={15000} max={15000} label="Импорт" valueText="15 000 из 15 000" />
+    </Frame>
+  ),
+};
+
+/** Фокус с клавиатуры на флажке: кольцо вокруг квадрата. */
+export const ФокусНаФлажке: Story = {
+  render: () => (
+    <Frame>
+      <Checkbox autoFocus defaultChecked>
+        Избранное
+      </Checkbox>
     </Frame>
   ),
 };

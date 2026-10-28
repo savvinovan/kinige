@@ -33,6 +33,8 @@ interface CalendarDialogProps {
   /** Выбор дня (щелчок, Enter, пробел) или «Сегодня»: сразу, без кнопки подтверждения. */
   onPick: (date: string) => void;
   onClose: () => void;
+  /** Заголовок окна; по умолчанию «Изменить дату» (дата записи). Поиск ставит свой. */
+  title?: string;
 }
 
 /** Если и `value`, и `today` испорчены — первая календарная дата: сетка всё равно рисуется. */
@@ -46,7 +48,7 @@ const FALLBACK: Ymd = { year: 1970, month: 1, day: 1 };
  * Клавиатура (сетка `role="grid"`, одна остановка Tab): стрелки — день и неделя, Home / End — начало и конец недели,
  * PageUp / PageDown — месяц (с Shift — год), Enter и пробел выбирают, Esc закрывает (Modal).
  */
-export function CalendarDialog({ value, today, language, error, busy = false, onPick, onClose }: CalendarDialogProps) {
+export function CalendarDialog({ value, today, language, error, busy = false, onPick, onClose, title }: CalendarDialogProps) {
   const { t } = useTranslation();
   const titleId = useId();
   const selected = parseDate(value);
@@ -103,7 +105,7 @@ export function CalendarDialog({ value, today, language, error, busy = false, on
   };
 
   return (
-    <Modal title={t("calendar.title")} closeLabel={t("calendar.close")} onClose={onClose}>
+    <Modal title={title ?? t("calendar.title")} closeLabel={t("calendar.close")} onClose={onClose}>
       <div className="calendar">
         <div className="calendar__header">
           <IconButton

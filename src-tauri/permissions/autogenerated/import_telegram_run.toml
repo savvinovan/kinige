@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-import-telegram-run"
+description = "Enables the import_telegram_run command without any pre-configured scope."
+commands.allow = ["import_telegram_run"]
+
+[[permission]]
+identifier = "deny-import-telegram-run"
+description = "Denies the import_telegram_run command without any pre-configured scope."
+commands.deny = ["import_telegram_run"]

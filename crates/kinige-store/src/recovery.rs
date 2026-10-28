@@ -77,7 +77,9 @@ pub fn startup_check(db_path: &Path) -> StartupCheck {
     }
     if needs_recovery(db_path) {
         return match crate::backup::verify_database(db_path) {
-            crate::backup::Integrity::Ok => {
+            // Порча только индекса поиска — не повод к восстановлению: отметка снимается, индекс вылечит первый запрос
+            // или проход обслуживания.
+            crate::backup::Integrity::Ok | crate::backup::Integrity::SearchIndex => {
                 clear_needs_recovery(db_path);
                 StartupCheck::Normal
             }
@@ -109,9 +111,9 @@ fn usable(path: &Path) -> bool {
         return false;
     };
     let version: Result<i64, _> = conn.pragma_query_value(None, "user_version", |row| row.get(0));
-    let verdict: Result<String, _> = conn.query_row("PRAGMA quick_check", [], |row| row.get(0));
+    // Копия с повреждённым индексом поиска годится: он производный и перестроится при первом же запросе или записи.
     matches!(version, Ok(v) if (1..=LATEST_VERSION).contains(&v))
-        && matches!(verdict, Ok(v) if v == "ok")
+        && matches!(crate::backup::quick_check_fine(&conn), Ok(true))
 }
 
 /// Что сделало восстановление.

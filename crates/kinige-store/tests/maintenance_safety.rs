@@ -220,7 +220,8 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
     let conn = raw(dir.path());
     conn.execute_batch(
         "DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; DROP TABLE message_tag; \
-         DROP TABLE mirror_chat;",
+         DROP TABLE mirror_chat; DROP TABLE message_ext; DROP TABLE search_fts; DROP TABLE search_map; \
+         DELETE FROM app_setting WHERE key = 'search_index_version';",
     )
     .unwrap();
     conn.pragma_update(None, "user_version", 2).unwrap();
@@ -233,14 +234,15 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
     fs::write(db_path(dir.path()), b"broken").unwrap();
 
     kinige_store::restore_backup(&db_path(dir.path()), &copy, T0 + 10 * MINUTE, None).unwrap();
-    // Что делает `resume_after_restore`: открывает восстановленную базу (схема 2) — она мигрирует до 3.
+    // Что делает `resume_after_restore`: открывает восстановленную базу (схема 2) — она мигрирует до последней.
     let store = Store::open_at(options(dir.path()), &at(T0 + 10 * MINUTE)).unwrap();
 
     let version: i64 = raw(dir.path())
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .unwrap();
-    assert_eq!(version, 3);
+    assert_eq!(version, kinige_store::LATEST_VERSION);
     assert_eq!(count_rows(dir.path(), "message"), 1);
+    assert_eq!(count_rows(dir.path(), "search_map"), 1, "индекс построен");
     assert_eq!(count_rows(dir.path(), "message_tag"), 1, "теги пересчитаны");
     assert_eq!(store.list_chats().unwrap()[0].count, 1);
     assert!(

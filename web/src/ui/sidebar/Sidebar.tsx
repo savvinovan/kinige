@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type KeyboardEvent, type ReactNode, type Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
 import { IconButton } from "../controls/IconButton";
@@ -14,6 +14,20 @@ import "./sidebar.css";
 
 export { toSidebarChat } from "./chats";
 export type { ChatAction, SidebarChat } from "./chats";
+
+/** Рабочее поле «Поиск» (слайс 4): значение, клавиши и связь с результатами (combobox: `aria-activedescendant`). */
+export interface SidebarSearch {
+  value: string;
+  onChange: (value: string) => void;
+  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
+  inputRef?: Ref<HTMLInputElement>;
+  /** Результаты показаны на месте ленты: поле — combobox, `aria-controls` указывает на список. */
+  resultsId?: string;
+  /** Id выбранной стрелками строки результатов. */
+  activeDescendant?: string;
+  /** Значок поиска в свёрнутом сайдбаре: разворачивает сайдбар и ставит фокус в поле. */
+  onRailClick?: () => void;
+}
 
 interface SidebarProps {
   /** Чаты в порядке показа. Разделы выводятся по флагам: `archived` — «Архив», иначе `pinned` — «Закреплённые», иначе «Чаты». */
@@ -38,8 +52,12 @@ interface SidebarProps {
   profile?: { name?: string; statusDot?: boolean };
   /** «Настройки» в меню профиля (слайс 1). */
   onOpenSettings?: () => void;
-  /** Поле «Поиск». В приложении его нет до слайса 4 (мёртвых полей нет, §5); в историях D1 оно нарисовано. */
+  /** Поле «Поиск». В историях D1 оно только нарисовано; рабочее поле — `search`. */
   showSearch?: boolean;
+  /** Рабочий поиск (слайс 4): поле управляется снаружи. Без него поле только нарисовано (если `showSearch`). */
+  search?: SidebarSearch;
+  /** «Импорт из Telegram…» в меню профиля (слайс 4). */
+  onOpenImport?: () => void;
   /** Чат, над которым сейчас тащат запись (решение приёмки): подсветка цели; сами строки всегда цели (`data-chat-drop`). */
   dropTargetId?: string | null;
 }
@@ -72,6 +90,8 @@ export function Sidebar({
   profile,
   onOpenSettings,
   showSearch = true,
+  search,
+  onOpenImport,
   dropTargetId = null,
 }: SidebarProps) {
   const { t } = useTranslation();
@@ -120,13 +140,35 @@ export function Sidebar({
           onOpenTrash={onOpenTrash}
           profile={profile}
           onOpenSettings={onOpenSettings}
+          onOpenImport={onOpenImport}
+          onSearch={search?.onRailClick}
           dropTargetId={dropTargetId}
         />
       ) : (
         <>
-          {showSearch || onToggleCollapsed ? (
+          {showSearch || search || onToggleCollapsed ? (
             <div className="sidebar__top">
-              {showSearch ? <TextField className="sidebar__search" label={t("sidebar.search")} icon="search" type="search" placeholder={t("sidebar.search")} /> : null}
+              {search ? (
+                <TextField
+                  className="sidebar__search"
+                  label={t("sidebar.search")}
+                  icon="search"
+                  type="search"
+                  placeholder={t("sidebar.search")}
+                  value={search.value}
+                  onChange={(event) => search.onChange(event.target.value)}
+                  onKeyDown={search.onKeyDown}
+                  inputRef={search.inputRef}
+                  role="combobox"
+                  aria-expanded={search.resultsId !== undefined}
+                  aria-controls={search.resultsId}
+                  aria-activedescendant={search.activeDescendant}
+                  aria-autocomplete="list"
+                  autoComplete="off"
+                />
+              ) : showSearch ? (
+                <TextField className="sidebar__search" label={t("sidebar.search")} icon="search" type="search" placeholder={t("sidebar.search")} />
+              ) : null}
               {onToggleCollapsed ? <IconButton icon="collapse" label={t("sidebar.collapse")} onClick={onToggleCollapsed} /> : null}
             </div>
           ) : null}
@@ -178,7 +220,7 @@ export function Sidebar({
               ) : null}
             </button>
           ) : null}
-          <ProfileMenu name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} />
+          <ProfileMenu name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} onOpenImport={onOpenImport} />
         </>
       )}
       {menu && onChatAction ? (

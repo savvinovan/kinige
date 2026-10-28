@@ -1,0 +1,169 @@
+/* Результаты поиска на месте ленты: фильтры, строка «Чаты», записи с фрагментом и подсвеченными словами. Только токены. */
+.search {
+  box-sizing: border-box;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* Место под полосу прокрутки занято всегда: строка фильтров не сдвигается, когда результатов мало или нет. */
+  scrollbar-gutter: stable;
+  padding: var(--layout-feed-padding-block) var(--layout-feed-padding-inline);
+  background: var(--color-surface-paper);
+}
+
+/* Та же колонка, что у ленты. */
+.search__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-message-gap-group);
+  box-sizing: border-box;
+  max-width: var(--layout-feed-column);
+  min-height: 100%;
+  margin: 0 auto;
+}
+
+.search__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--layout-search-filters-gap);
+}
+
+.search__date {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.search__empty {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  text-align: center;
+}
+
+.search__list {
+  display: grid;
+  gap: var(--layout-message-gap-group);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search__heading {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+.search__end {
+  height: var(--border-width-hairline);
+}
+
+.search__more {
+  display: flex;
+  justify-content: center;
+}
+
+/* Строка результата: заливка плашки сообщения; выбранная стрелками светлее и с тонкой линией акцента внутри. */
+.search-hit,
+.search-chat {
+  box-sizing: border-box;
+  padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
+  border-radius: var(--radius-message);
+  background: var(--color-surface-message);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.search-hit {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.search-chat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.search-row--active {
+  background: var(--color-highlight-background);
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-accent-default);
+}
+
+.search-hit__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+/* Эмодзи и имя чата: длинное имя обрезается многоточием, день справа не сжимается. */
+.search-row__chat {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--color-text-secondary);
+}
+
+.search-row__emoji {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.search-row__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-chat .search-row__name {
+  flex: 1;
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.search-row__count {
+  flex: none;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+.search-hit__when {
+  flex: none;
+}
+
+/* Фрагмент: до трёх строк, остальное многоточием. */
+.search-hit__snippet {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--layout-search-snippet-lines);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+  overflow-wrap: anywhere;
+}
+
+/* Найденное слово: заливка highlight.mark, цвет текста не меняется. */
+.search-mark {
+  padding: 0;
+  border-radius: var(--radius-inline);
+  background: var(--color-highlight-mark);
+  color: inherit;
+}

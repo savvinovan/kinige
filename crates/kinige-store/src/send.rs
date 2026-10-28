@@ -66,7 +66,7 @@ pub(crate) fn insert_chat(tx: &Transaction<'_>, chat: &ChatRow) -> rusqlite::Res
     Ok(())
 }
 
-fn insert_message(tx: &Transaction<'_>, m: &MessageRow) -> rusqlite::Result<()> {
+pub(crate) fn insert_message(tx: &Transaction<'_>, m: &MessageRow) -> rusqlite::Result<()> {
     tx.execute(
         "INSERT INTO message (id, chat_id, body_md, journal_date, created_at, created_tz, edited_at, is_task, \
          task_done_at, favorite_at, pinned_at, reply_to_id, origin, ext_json, deleted_at, body_base, body_supersedes, \
@@ -151,6 +151,7 @@ pub(crate) fn insert_new_message(
     .map_err(|e| StoreError::Internal(e.to_string()))?;
     insert_message(tx, &row).map_err(write_err)?;
     crate::tags::replace_tags(tx, &row.id, &row.body_md).map_err(write_err)?;
+    crate::search::reindex(tx, &row.id, &row.body_md).map_err(write_err)?;
     mark_dirty(tx, chat_id, &date).map_err(write_err)?;
     Ok(MessageView {
         tags: kinige_domain::tags::parse_tags(&row.body_md),

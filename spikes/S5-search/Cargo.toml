@@ -1,0 +1,15 @@
+[package]
+name = "s5-search"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# Отдельный крейт вне workspace: спайк не входит в сборку проекта.
+[workspace]
+
+[dependencies]
+rust-stemmers = "1.2"
+rusqlite = { version = "0.40", features = ["bundled"] }
+
+[profile.release]
+debug = false

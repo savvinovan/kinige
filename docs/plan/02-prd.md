@@ -1,4 +1,4 @@
-# Kinige v2 (Project Forest) — ТЗ v0.10
+# Kinige v2 (Project Forest) — ТЗ v0.11
 
 **Тип:** личный журнал и заметки в формате «чата с собой», local-first.
 **Платформы:** десктоп — macOS первым, затем Windows и Linux (Tauri 2). Потом веб-клиент (расшифровывает данные в браузере) и телефон, если основное приложение приживётся.
@@ -8,6 +8,10 @@
 Разбор, на котором основана эта версия: [`01-review.md`](01-review.md). Исследования: [`research/`](research/). Макеты: [`references/`](references/) — **референс настроения, а не спецификация**.
 
 ## История версий
+
+- **v0.11 (28.10.2026)** — по слайсу 4 (`docs/slices/4-telegram-import.md`), spike S5 и ADR-0008:
+  - колонки `message.body_search` и таблицы `message_fts` нет: индекс поиска — локальные несинхронизируемые таблицы `search_fts` (FTS5 без хранения текста, только основы слов) и `search_map`; вторая локальная таблица миграции 4 — `message_ext` (внешние id импорта) (§4.2, §9.1; приложение ADR-0001 §C.3);
+  - импорт из Telegram: «Избранное» → Inbox, личные чаты → новые чаты 💬, оригинальное время записи сохраняется (`created_at`, `journal_date`), метка HLC — момент импорта (§5, §9).
 
 - **v0.10 (22.10.2026)** — по решениям пользователя к слайсу 2 (`docs/slices/2-quick-capture.md`) и ADR-0006:
   - сочетания по умолчанию: окно захвата — **временно ⌃⌥N** вместо ⌥Space (на машине автора ⌥Space и ⌥⇧Space перехватывают ChatGPT и Gemini, ⌃Space и ⌃⌥Space — переключение раскладки, ⌘Space — Raycast; 22.10.2026), сохранение буфера — ⌥⇧V; свои сочетания задаются в «Настройках», занятое видно там же (§5.1);
@@ -249,7 +253,7 @@ message (
   id TEXT PRIMARY KEY,
   chat_id TEXT NOT NULL,
   body_md TEXT NOT NULL DEFAULT '',   -- CommonMark + GFM task lists, без сырого HTML
-  body_search TEXT NOT NULL DEFAULT '', -- нормализованный и стеммированный текст для FTS
+  -- body_search: колонки нет (решено в слайсе 4, ADR-0008, приложение ADR-0001 §C.3): индекс — отдельные локальные таблицы search_fts и search_map
   journal_date TEXT NOT NULL,
   created_at INTEGER NOT NULL, created_tz TEXT NOT NULL, edited_at INTEGER,
   is_task INTEGER NOT NULL DEFAULT 0, task_done_at INTEGER,
@@ -298,7 +302,8 @@ change_outbox (                       -- неизменяемые подгото
 );
 sync_state (key TEXT PRIMARY KEY, value TEXT);          -- курсор, поколение сервера, device_id, состояние HLC
 
-message_fts USING fts5(body_search, extra_search, ...); -- extra: имена файлов, заголовки ссылок, название чата
+-- message_fts(body_search, extra_search) заменён в слайсе 4 (ADR-0008, §C.3): search_fts (FTS5 без хранения текста, только основы слов) + search_map(rowid → message_id);
+-- имена файлов и заголовки ссылок добавит слайс 7 по той же раскладке, названия чатов сверяются в Rust
 ```
 
 Производное (view или кэш-таблица, обновляется в той же транзакции):
@@ -423,6 +428,7 @@ day_activity(journal_date, note_count, media_count, weight)
 
 - SQLite FTS5 по `body_search`, именам файлов, заголовкам ссылок, названиям чатов.
 - **Русский язык:** при записи сообщения Rust нормализует текст и стеммирует (Snowball для русского и английского) в `body_search`; запрос стеммируется так же. Префиксный поиск — для незаконченных слов. Альтернативы (триграммы, свой токенизатор) — в spike S5.
+- **Решено в слайсе 4 (spike S5, ADR-0008):** колонки `message.body_search` и таблицы `message_fts(body_search, extra_search)` нет. Индекс — отдельная локальная таблица FTS5 без хранения текста (`search_fts`) с таблицей `rowid → message_id` (`search_map`); в ней только основы слов записи, названия чатов сверяются в Rust. Имена файлов и заголовки ссылок попадут в индекс в слайсе 7 по той же раскладке. Приложение ADR-0001, §C.3.
 - Фильтры: тип, чат, диапазон дат, избранное, задачи. Результат открывается в ленте с подсветкой.
 
 ### 9.2. Семантический поиск через OpenRouter (P1, онлайн)

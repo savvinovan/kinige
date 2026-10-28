@@ -11,6 +11,10 @@ export type MessagePage = { messages: Array<MessageView>,
  */
 older: FeedCursor | null, 
 /**
+ * Позиция для следующей (более новой) страницы: последняя запись этой; `null` — новее ничего нет (слайс 4).
+ */
+newer: FeedCursor | null, 
+/**
  * Сегодняшний `journal_date` (с границей дня 04:00): от него считаются метки «Сегодня» и «Вчера».
  */
 today: string, };

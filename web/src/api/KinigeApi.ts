@@ -5,16 +5,31 @@ import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { FeedCursor } from "./generated/FeedCursor";
+import type { ImportOpened } from "./generated/ImportOpened";
+import type { ImportProgress } from "./generated/ImportProgress";
+import type { ImportReport } from "./generated/ImportReport";
 import type { Language } from "./generated/Language";
 import type { MessageFlag } from "./generated/MessageFlag";
 import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
 import type { RestoreOutcome } from "./generated/RestoreOutcome";
+import type { SearchFilters } from "./generated/SearchFilters";
+import type { SearchPage } from "./generated/SearchPage";
 import type { Settings } from "./generated/Settings";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
+
+/** Позиция и размер страницы ленты (`KinigeApi.listMessages`). */
+export interface ListMessagesOptions {
+  before?: FeedCursor;
+  after?: FeedCursor;
+  /** Id записи, вокруг которой нужна страница. */
+  around?: string;
+  limit?: number;
+  tag?: string;
+}
 
 /** Id Inbox: константа протокола, одна на все аккаунты (ADR-0001, §3.6). */
 export const INBOX_ID = "00000000-0000-4000-8000-000000000001";
@@ -44,10 +59,12 @@ export interface KinigeApi {
   /** Чаты в порядке показа (закреплённые, чаты, архив) и размер корзины. */
   listChats(): Promise<ChatList>;
   /**
-   * Страница ленты: без `before` — самая новая; записи по возрастанию, самая новая последней. `tag` (без `#`, любой регистр)
-   * оставляет только записи с этим тегом.
+   * Страница ленты: без позиции — самая новая; записи по возрастанию, самая новая последней. `before` — более старая
+   * страница после курсора, `after` — более новая (слайс 4), `around` — страница вокруг записи (переход из поиска); если
+   * указаны несколько позиций, `around` главнее `after`, а `after` — `before`. `tag` (без `#`, любой регистр) оставляет
+   * только записи с этим тегом.
    */
-  listMessages(chatId: string, options?: { before?: FeedCursor; limit?: number; tag?: string }): Promise<MessagePage>;
+  listMessages(chatId: string, options?: ListMessagesOptions): Promise<MessagePage>;
   /** Отправка: ответ — сохранённая запись; без оптимистичного показа. */
   sendMessage(chatId: string, body: string): Promise<MessageView>;
   getSettings(): Promise<Settings>;
@@ -115,6 +132,30 @@ export interface KinigeApi {
   onDatabaseCorrupt(handler: () => void): Promise<() => void>;
   /** Перезапустить приложение для восстановления (после события `onDatabaseCorrupt`). */
   restartForRecovery(): Promise<void>;
+
+  // ---- импорт из Telegram и поиск (слайс 4) ----
+  /**
+   * «Выбрать result.json…»: системный диалог (вызывается из Rust, путь во фронтенд не приходит), чтение и разбор файла.
+   * Отмена диалога — `null`. Не тот файл — `import_not_telegram`, не прочитался — `import_file_unreadable`, больше 1 ГБ —
+   * `import_file_too_large`; ничего не записано.
+   */
+  importTelegramOpen(): Promise<ImportOpened | null>;
+  /**
+   * «Импортировать»: выбранные чаты (id Telegram) разобранного файла. Ответ приходит в конце; прогресс — событие
+   * `onImportProgress`. Чужая или забытая сессия — `import_session_expired`, второй импорт — `import_in_progress`.
+   */
+  importTelegramRun(session: number, chatIds: readonly string[]): Promise<ImportReport>;
+  /** «Остановить»: идущий импорт дописывает текущую пачку и останавливается. */
+  importTelegramStop(): Promise<void>;
+  /** Окно импорта закрыто: разобранный файл забывается. */
+  importTelegramClose(): Promise<void>;
+  /** Прогресс идущего импорта после каждой пачки. Возвращает отписку. */
+  onImportProgress(handler: (progress: ImportProgress) => void): Promise<() => void>;
+  /**
+   * Поиск по записям: ввод как есть (словоформы и префикс решает Rust). Новые записи сверху; `before` — следующая страница;
+   * чаты с совпавшим названием приходят на первой. Пустой запрос — пустая страница.
+   */
+  searchMessages(query: string, options?: { filters?: SearchFilters; before?: FeedCursor; limit?: number }): Promise<SearchPage>;
 
   // ---- окно захвата (слайс 2): отдельный набор команд, только Inbox ----
   /** Всё, что нужно окну при показе: язык, размер текста, контекст за сегодня, цель дописывания, черновик, ошибка. */

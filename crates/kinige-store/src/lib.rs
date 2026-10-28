@@ -6,13 +6,19 @@ mod capture;
 mod chats;
 mod draft;
 mod error;
+mod ext;
 mod feed;
+mod feed_page;
 mod hlc_state;
+mod import;
+mod import_time;
 mod maintenance;
 mod messages;
 mod mirror;
 mod recovery;
 mod schema;
+mod search;
+mod search_query;
 mod send;
 mod settings;
 mod tags;
@@ -27,6 +33,8 @@ pub use chats::RecentChat;
 pub use draft::MAX_DRAFT_BYTES;
 pub use error::StoreError;
 pub use feed::{DEFAULT_PAGE, MAX_PAGE};
+pub use feed_page::PageAt;
+pub use import::IMPORT_BATCH;
 pub use maintenance::MaintenanceReport;
 pub use recovery::{
     RestoreReport, StartupCheck, backups, clear_needs_recovery, database_missing_but_backups_exist,
@@ -98,6 +106,8 @@ pub(crate) struct Inner {
     backup: BackupShared,
     maintenance: Arc<MaintenanceShared>,
     on_corruption: Option<CorruptionHook>,
+    /// Сколько раз за запуск лечили индекс поиска (`search::heal_search_index`).
+    search_heals: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl Drop for Inner {
@@ -128,7 +138,8 @@ fn prepare_migration(db_path: &Path, now: &Now) -> Result<(), StoreError> {
         return Ok(());
     }
     match backup::check_integrity(&conn) {
-        backup::Integrity::Ok => {}
+        // Индекс поиска производный: его порча миграции не мешает (перестраивается при открытии или первом запросе).
+        backup::Integrity::Ok | backup::Integrity::SearchIndex => {}
         backup::Integrity::Corrupt => {
             return Err(StoreError::Corrupt(
                 "проверка целостности перед миграцией".into(),
@@ -166,6 +177,7 @@ impl Store {
             schema::MigrateError::Sqlite(e) => write_err(e),
         })?;
         send::ensure_initialized(&mut conn, now)?;
+        search::rebuild_if_stale(&mut conn)?;
 
         let reader = open_connection(&options.db_path, true)?;
         let writer = Writer::spawn(conn);
@@ -181,6 +193,7 @@ impl Store {
                 backup: BackupShared::default(),
                 maintenance: maintenance.clone(),
                 on_corruption: options.on_corruption.clone(),
+                search_heals: Arc::default(),
             }),
         };
         if options.start_mirror {
@@ -198,8 +211,32 @@ impl Store {
         Ok(store)
     }
 
-    /// Выполняет запись на потоке-писателе.
+    /// Выполняет запись на потоке-писателе. Если запись сама перестроила индекс поиска (порча всплыла под `guarded`),
+    /// число лечений растёт: запрос со старым `seen` не станет перестраивать здоровый индекс ещё раз. Если порча
+    /// индекса всплыла там, где `guarded` не стоит (например, на `COMMIT`), индекс лечится по возможности сразу, чтобы
+    /// повтор записи прошёл; сама ошибка возвращается как есть.
     fn write<T: Send + 'static>(
+        &self,
+        job: impl FnOnce(&mut Connection) -> Result<T, StoreError> + Send + 'static,
+    ) -> Result<T, StoreError> {
+        let seen = self.search_generation();
+        let heals = self.inner.search_heals.clone();
+        let result = self.write_raw(move |conn| {
+            let _ = search::take_rebuilt();
+            let result = job(conn);
+            if search::take_rebuilt() && result.is_ok() {
+                heals.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            }
+            result
+        });
+        if matches!(result, Err(StoreError::SearchIndex(_))) {
+            let _ = self.heal_search_index(seen);
+        }
+        result
+    }
+
+    /// Запись без лечения индекса и без подсчёта: ею лечит сам индекс.
+    fn write_raw<T: Send + 'static>(
         &self,
         job: impl FnOnce(&mut Connection) -> Result<T, StoreError> + Send + 'static,
     ) -> Result<T, StoreError> {
@@ -213,15 +250,22 @@ impl Store {
         &self,
         job: impl FnOnce(&Connection) -> Result<T, StoreError>,
     ) -> Result<T, StoreError> {
+        let result = self.read_unnoted(job);
+        self.note_if_corrupt(&result);
+        result
+    }
+
+    /// Чтение без сигнала о повреждении: для запроса, который сам решает, что делать с `Corrupt` (поиск лечит свой индекс).
+    fn read_unnoted<T>(
+        &self,
+        job: impl FnOnce(&Connection) -> Result<T, StoreError>,
+    ) -> Result<T, StoreError> {
         let conn = self
             .inner
             .reader
             .lock()
             .map_err(|_| StoreError::Internal("соединение чтения отравлено".into()))?;
-        let result = job(&conn);
-        drop(conn);
-        self.note_if_corrupt(&result);
-        result
+        job(&conn)
     }
 
     /// Любая команда, наткнувшаяся на повреждение (`SQLITE_CORRUPT`, `SQLITE_NOTADB`), проходит тот же путь, что и

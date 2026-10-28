@@ -23,6 +23,17 @@ export function mergeLatestPage<M extends Keyed>(loaded: readonly M[], page: rea
 }
 
 /**
+ * Присоединяет к загруженной ленте страницу, пришедшую сверху (старые записи) или снизу (новые, после перехода к записи):
+ * записи, которые уже есть, не повторяются (ответ Rust свежее и заменяет загруженную копию), порядок — лентовый.
+ */
+export function mergeOlder<M extends Keyed>(loaded: readonly M[], page: readonly M[]): M[] {
+  const fresh = new Map(page.map((message) => [message.id, message]));
+  const kept = loaded.map((message) => fresh.get(message.id) ?? message);
+  const known = new Set(loaded.map((message) => message.id));
+  return [...kept, ...page.filter((message) => !known.has(message.id))].sort(byFeedOrder);
+}
+
+/**
  * Страница ленты плюс удалённые записи, которые ещё стоят на месте приглушёнными («Удалено · Вернуть»): в ответе Rust их
  * уже нет, а человек из чата не уходил. Под фильтром по тегу остаются только записи с этим тегом. Порядок — лентовый.
  */

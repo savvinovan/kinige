@@ -37,6 +37,11 @@
     "allow-startup-state",
     "allow-restore-backup",
     "allow-restart-for-recovery",
+    "allow-import-telegram-open",
+    "allow-import-telegram-run",
+    "allow-import-telegram-stop",
+    "allow-import-telegram-close",
+    "allow-search-messages",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

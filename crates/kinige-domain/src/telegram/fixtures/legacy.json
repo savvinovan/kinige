@@ -1,0 +1,12 @@
+{
+ "name": "Избранное",
+ "type": "saved_messages",
+ "id": "777",
+ "messages": [
+  {"id": 1, "type": "message", "date": "2019-12-31T21:30:00", "from": "Ivan Test", "from_id": 1000001, "text": "Старый экспорт, текст строкой"},
+  {"id": 2, "type": "message", "date": "2019-12-31T21:31:00", "from": "Ivan Test", "from_id": 1000001,
+   "text": ["Смесь ", {"type": "italic", "text": "курсива"}, " и ", {"type": "link", "text": "https://example.org"}, {"type": "pre", "text": "x = 1"}]},
+  {"id": 3, "type": "message", "date": "2019-12-31T21:32:00", "from": "Ivan Test", "from_id": 1000001, "text": ""},
+  {"id": 4, "type": "service", "date": "2019-12-31T21:33:00", "actor": "Ivan Test", "action": "phone_call", "text": ""}
+ ]
+}

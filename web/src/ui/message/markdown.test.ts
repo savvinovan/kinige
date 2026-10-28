@@ -232,3 +232,38 @@ describe("renderMarkdown: кликабельные квадраты задач (
     expect(box?.hasAttribute("onclick")).toBe(false);
   });
 });
+
+describe("renderMarkdown: найденные слова (поиск, слайс 4)", () => {
+  const marked = (source: string, marks: string[]) => {
+    const host = document.createElement("div");
+    host.innerHTML = renderMarkdown(source, {
+      timeSpacer: false,
+      taskLabels: { done: "Выполнено", todo: "Не выполнено" },
+      tags: ["книга"],
+      marks,
+    });
+    return host;
+  };
+
+  it("целые слова с тем же регистром оборачиваются в mark; части слов и чужой регистр — нет", () => {
+    const host = marked("Книга про книгу, книгами и Книга", ["книгу", "Книга"]);
+    expect([...host.querySelectorAll("mark")].map((m) => m.textContent)).toEqual(["Книга", "книгу", "Книга"]);
+    expect(host.textContent?.trim()).toBe("Книга про книгу, книгами и Книга");
+  });
+
+  it("внутри ссылок, кода и тегов подсветки нет; слова в жирном выделяются", () => {
+    const host = marked("[книга](https://example.org/k) `книга` #книга **книга**", ["книга"]);
+    expect([...host.querySelectorAll("mark")].map((m) => m.parentElement?.tagName)).toEqual(["STRONG"]);
+  });
+
+  it("html слов экранируется: спецзнаки в тексте остаются текстом", () => {
+    const host = marked("a<b> слово & слово", ["слово"]);
+    expect(host.querySelectorAll("mark")).toHaveLength(2);
+    expect(host.textContent?.trim()).toBe("a<b> слово & слово");
+    expect(host.querySelector("b")).toBeNull();
+  });
+
+  it("санитайзер пропускает mark, но не его атрибуты", () => {
+    expect(sanitizeHtml('<mark onclick="x()" class="y">слово</mark>')).toBe('<mark class="y">слово</mark>');
+  });
+});

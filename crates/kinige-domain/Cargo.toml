@@ -13,3 +13,5 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
 ts-rs = "12"
 url = "2"
+# Snowball для русского и английского (ADR-0008); MIT/BSD-3-Clause, собирается под wasm32.
+rust-stemmers = "1.2"

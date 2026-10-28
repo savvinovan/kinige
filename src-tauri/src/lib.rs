@@ -5,6 +5,7 @@ pub mod capture;
 mod commands;
 pub mod guard;
 pub mod hotkeys;
+pub mod import;
 #[cfg(target_os = "macos")]
 mod panel;
 pub mod recovery;
@@ -57,6 +58,11 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "startup_state",
     "restore_backup",
     "restart_for_recovery",
+    "import_telegram_open",
+    "import_telegram_run",
+    "import_telegram_stop",
+    "import_telegram_close",
+    "search_messages",
 ];
 
 /// Команды окна захвата (capability `capture`): только Inbox, без `chat_id` (§12.3).
@@ -106,6 +112,11 @@ pub const COMMANDS: &[&str] = &[
     "startup_state",
     "restore_backup",
     "restart_for_recovery",
+    "import_telegram_open",
+    "import_telegram_run",
+    "import_telegram_stop",
+    "import_telegram_close",
+    "search_messages",
     "capture_state",
     "capture_send",
     "capture_append",
@@ -157,6 +168,11 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             recovery::startup_state,
             recovery::restore_backup,
             recovery::restart_for_recovery,
+            import::import_telegram_open,
+            import::import_telegram_run,
+            import::import_telegram_stop,
+            import::import_telegram_close,
+            import::search_messages,
             capture::capture_state,
             capture::capture_send,
             capture::capture_append,
@@ -227,6 +243,7 @@ fn start_services<R: Runtime>(
     app.manage(store);
     app.manage(hotkeys);
     app.manage(CaptureShell::default());
+    app.manage(import::ImportState::default());
     // Значок строился без хранилища (его ещё не было в состоянии приложения): последние чаты — теперь.
     tray::refresh(app);
     Ok(())

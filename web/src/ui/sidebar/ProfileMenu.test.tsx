@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "../../test/render";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ProfileMenu } from "./ProfileMenu";
 
 const open = () => {
@@ -25,13 +25,26 @@ describe("ProfileMenu", () => {
     expect(screen.getByRole("button")).toHaveAccessibleName("Профиль: Александр Саввинов-Очень-Длинная-Фамилия");
   });
 
-  it("щелчок открывает меню «Настройки», «Экспорт», «О программе»; фокус на первом пункте", () => {
+  it("щелчок открывает меню «Настройки», «Импорт из Telegram…», «Экспорт», «О программе»; фокус на первом пункте", () => {
     render(<ProfileMenu />);
     const button = open();
     expect(button).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("menu", { name: "Профиль" })).toBeInTheDocument();
-    expect(items().map((item) => item.textContent)).toEqual(["Настройки", "Экспорт", "О программе"]);
+    expect(items().map((item) => item.textContent)).toEqual(["Настройки", "Импорт из Telegram…", "Экспорт", "О программе"]);
     expect(items()[0]).toHaveFocus();
+  });
+
+  it("«Импорт из Telegram…» работает, когда передан обработчик: меню закрывается, обработчик вызван", () => {
+    const onOpenImport = vi.fn();
+    render(<ProfileMenu onOpenImport={onOpenImport} />);
+    const button = open();
+    const [settings, importItem] = items() as [HTMLElement, HTMLElement];
+    expect(settings).toHaveAttribute("aria-disabled", "true");
+    expect(importItem).not.toHaveAttribute("aria-disabled");
+    fireEvent.click(importItem);
+    expect(onOpenImport).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(button).toHaveFocus();
   });
 
   it("пункты только для вида: aria-disabled, пояснение «Появится позже», нажатие ничего не делает", () => {
@@ -48,8 +61,10 @@ describe("ProfileMenu", () => {
   it("стрелки ходят по кругу, Home и End — к краям", () => {
     render(<ProfileMenu />);
     open();
-    const [settings, exportItem, about] = items() as [HTMLElement, HTMLElement, HTMLElement];
+    const [settings, importItem, exportItem, about] = items() as [HTMLElement, HTMLElement, HTMLElement, HTMLElement];
     const menu = screen.getByRole("menu");
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(importItem).toHaveFocus();
     fireEvent.keyDown(menu, { key: "ArrowDown" });
     expect(exportItem).toHaveFocus();
     fireEvent.keyDown(menu, { key: "ArrowDown" });
@@ -85,7 +100,7 @@ describe("ProfileMenu", () => {
     const again = screen.getByRole("button");
     again.focus();
     fireEvent.keyDown(again, { key: "ArrowUp" });
-    expect(items()[2]).toHaveFocus();
+    expect(items()[3]).toHaveFocus();
   });
 
   it("Tab и щелчок вне меню закрывают его", () => {
@@ -122,7 +137,7 @@ describe("ProfileMenu", () => {
     const button = screen.getByRole("button", { name: "Профиль: Александр" });
     fireEvent.click(button);
     expect(screen.getByRole("menu", { name: "Профиль" })).toBeInTheDocument();
-    expect(items()).toHaveLength(3);
+    expect(items()).toHaveLength(4);
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     expect(button).toHaveFocus();
   });

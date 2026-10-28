@@ -1,5 +1,6 @@
-//! Схема SQLite и миграции (`PRAGMA user_version`). Миграция 3 (слайс 3) добавляет ревизии, tombstones и производные
-//! локальные таблицы; миграция 2 — локальную таблицу черновиков (слайс 2).
+//! Схема SQLite и миграции (`PRAGMA user_version`). Миграция 4 (слайс 4) добавляет индекс внешних id импорта и индекс
+//! поиска; миграция 3 (слайс 3) — ревизии, tombstones и производные локальные таблицы; миграция 2 — локальную таблицу
+//! черновиков (слайс 2).
 //! Миграция 1 создаёт только таблицы, в которые пишет слайс 1
 //! (слайс 1, «Затрагивает чувствительные зоны»): остальные таблицы ADR-0001 §C добавят свои слайсы миграциями
 //! `CREATE TABLE` без изменения существующих строк. Колонки `hlc_json`, `server_known`, `groups_raw` и `schema_version`
@@ -130,8 +131,35 @@ CREATE TABLE mirror_chat (
 CREATE INDEX message_deleted ON message(deleted_at) WHERE deleted_at IS NOT NULL;
 ";
 
+/// Миграция 4 (слайс 4): `CREATE TABLE` без изменения строк синхронизируемых таблиц (ADR-0001, приложение §C.3).
+/// - `message_ext(src, ext_chat, ext_msg, message_id)` — локальный несинхронизируемый индекс внешних id импорта,
+///   производный от `message.ext_json`; дедупликация повторного импорта;
+/// - `search_fts` — FTS5 без хранения текста (`contentless_delete`) по основам слов, `search_map` — `rowid → message_id`
+///   (ADR-0008); локальная производная от `message.body_md`.
+///
+/// Обе таблицы заполняет `after_migration(4)` кодом Rust и SQL из существующих записей. Колонки `message.body_search`
+/// из черновика ТЗ §4.2 нет: производное не меняет строки синхронизируемой таблицы.
+pub(crate) const MIGRATION_4: &str = "
+CREATE TABLE message_ext (
+  src TEXT NOT NULL,
+  ext_chat TEXT NOT NULL,
+  ext_msg TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+  PRIMARY KEY (src, ext_chat, ext_msg)
+) WITHOUT ROWID;
+CREATE INDEX message_ext_message ON message_ext(message_id);
+
+CREATE TABLE search_map (
+  rowid INTEGER PRIMARY KEY,
+  message_id TEXT NOT NULL UNIQUE
+);
+CREATE VIRTUAL TABLE search_fts USING fts5(
+  t, content='', contentless_delete=1, tokenize='unicode61 remove_diacritics 0'
+);
+";
+
 /// Миграции по порядку; номер версии — индекс + 1.
-const MIGRATIONS: &[&str] = &[MIGRATION_1, MIGRATION_2, MIGRATION_3];
+const MIGRATIONS: &[&str] = &[MIGRATION_1, MIGRATION_2, MIGRATION_3, MIGRATION_4];
 
 /// Версия схемы, которую понимает это приложение.
 pub const LATEST_VERSION: i64 = MIGRATIONS.len() as i64;
@@ -140,6 +168,10 @@ pub const LATEST_VERSION: i64 = MIGRATIONS.len() as i64;
 fn after_migration(tx: &rusqlite::Transaction<'_>, version: i64) -> rusqlite::Result<()> {
     if version == 3 {
         crate::tags::rebuild_all(tx)?;
+    }
+    if version == 4 {
+        crate::ext::rebuild_all(tx)?;
+        crate::search::rebuild_all(tx)?;
     }
     Ok(())
 }
