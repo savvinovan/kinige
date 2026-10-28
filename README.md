@@ -1,5 +1,11 @@
 # Kinige v2
 
+[![CI](https://github.com/savvinovan/kinige/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/savvinovan/kinige/actions/workflows/ci.yml)
+[![Coverage Rust](https://codecov.io/gh/savvinovan/kinige/branch/main/graph/badge.svg?flag=rust)](https://app.codecov.io/gh/savvinovan/kinige?flags%5B0%5D=rust)
+[![Coverage Web](https://codecov.io/gh/savvinovan/kinige/branch/main/graph/badge.svg?flag=web)](https://app.codecov.io/gh/savvinovan/kinige?flags%5B0%5D=web)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Rust 1.94](https://img.shields.io/badge/rust-1.94-orange.svg)](rust-toolchain.toml)
+
 Личный журнал в формате «чата с собой». Десктоп на Tauri 2 + Rust + React/TypeScript. Нормативный документ — [`docs/plan/02-prd.md`](docs/plan/02-prd.md).
 
 Состояние: слайс 1 (Inbox): пишешь в Inbox, запись сохраняется в SQLite и в Markdown-копию `~/Documents/Kinige`, ссылки открываются в системном браузере, настройки (папка копии, размер текста), интерфейс на английском и русском. Приёмка пользователем — по `docs/screens/1/`.
@@ -42,7 +48,7 @@
 
 ## CI (GitHub Actions, Linux)
 
-Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml): `rust` (fmt, clippy, test, wasm32, актуальность TS-типов), `web` (актуальность `tokens.css` и `themes.css`, tsc, ESLint, vitest), `visual` (снимки Storybook в контейнере Playwright).
+Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml): `rust` (fmt, clippy, test, wasm32, актуальность TS-типов), `web` (актуальность `tokens.css` и `themes.css`, tsc, ESLint, vitest), `visual` (снимки Storybook в контейнере Playwright), `coverage` (`cargo llvm-cov` и `npm run test:coverage` → [Codecov](https://app.codecov.io/gh/savvinovan/kinige), флаги `rust` и `web`; пока информационно, PR не блокирует).
 `.app` собирается и подписывается локально; macOS-раннер — не раньше слайса 10.
 
 ## Лицензия

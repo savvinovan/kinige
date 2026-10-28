@@ -43,6 +43,60 @@ jobs:
             exit 1
           fi
 
+  # Покрытие тестами → Codecov (бейджи в README, комментарий в PR). Информационно: порог не валит CI (codecov.yml).
+  coverage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Системные зависимости Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential curl pkg-config libssl-dev \
+            libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install
+          rustup component add llvm-tools-preview
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2.87.28
+        with:
+          tool: cargo-llvm-cov@0.9.1
+
+      - name: Покрытие Rust
+        run: cargo llvm-cov --workspace --lcov --output-path lcov-rust.info
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Покрытие web
+        working-directory: web
+        run: |
+          npm ci
+          npm run test:coverage
+
+      - uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov-rust.info
+          flags: rust
+          disable_search: true
+          fail_ci_if_error: false
+
+      - uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: web/coverage/lcov.info
+          flags: web
+          disable_search: true
+          fail_ci_if_error: false
+
   web:
     runs-on: ubuntu-24.04
     defaults:
