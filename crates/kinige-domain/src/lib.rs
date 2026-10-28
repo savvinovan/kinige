@@ -18,6 +18,7 @@ pub mod link;
 pub mod message_ops;
 pub mod mirror;
 pub mod rewrite;
+pub mod search;
 pub mod shortcuts;
 pub mod tags;
 pub mod tasks;
