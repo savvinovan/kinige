@@ -29,10 +29,18 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
             "chat",
             "draft",
             "message",
+            "message_ext",
             "message_revision",
             "message_tag",
             "mirror_chat",
             "mirror_dirty",
+            // Индекс поиска (миграция 4): виртуальная таблица FTS5 и её служебные таблицы.
+            "search_fts",
+            "search_fts_config",
+            "search_fts_data",
+            "search_fts_docsize",
+            "search_fts_idx",
+            "search_map",
             "sync_state",
             "tombstone"
         ]
