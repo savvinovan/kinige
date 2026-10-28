@@ -50,7 +50,7 @@ Rust (из корня):
 - `npm run typecheck`, `npm run lint`, `npm test` (vitest; включает проверку «нет сырых цветов и размеров вне tokens.css / themes.css», контраст всех пар «цвет / фон» палитры и проверку шрифтов по самим woff2-файлам)
 - `npm run build-storybook`
 
-Визуальные тесты Storybook идут только в Linux-контейнере: `scripts/visual-tests.sh` (сравнение), `scripts/visual-tests.sh --update` (новые эталоны). Эталоны на macOS не снимаются.
+Визуальные тесты Storybook идут только на GitHub, в контейнере Playwright: сравнение — задание `visual` в CI; новые эталоны — `gh workflow run visual-update.yml --ref <ветка>` (снимает и коммитит в ветку; в `main` нельзя), после него `gh workflow run ci.yml --ref <ветка>` (коммит бота CI сам не запускает). Эталоны на macOS и на ubuntu-server не снимаются.
 
 Приложение: `scripts/run-app.sh` (dev), `scripts/storybook.sh`, `scripts/build-app.sh` (release `.app` + ad-hoc подпись + `codesign --verify`), `scripts/screenshot-window.sh <out.png>` (окно Kinige, `screencapture -x -o -l`; нужен доступ терминала к записи экрана; на скриншот не должно попадать ничего, кроме окна), `scripts/measure-cold-start.sh`.
 

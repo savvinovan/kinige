@@ -5,6 +5,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Ручной запуск: коммит эталонов из visual-update.yml идёт от GITHUB_TOKEN и сам CI не запускает.
+  workflow_dispatch:
 
 # Раннер закреплён: ubuntu-latest переезжает на Ubuntu 26, а там имена пакетов WebKitGTK не проверены.
 jobs:
@@ -68,7 +70,7 @@ jobs:
 
   visual:
     runs-on: ubuntu-24.04
-    # Тот же образ, что в docker/visual.Dockerfile: эталоны снимаются в такой же среде.
+    # Тот же образ, что в visual-update.yml: эталоны снимаются в такой же среде.
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
     defaults:
