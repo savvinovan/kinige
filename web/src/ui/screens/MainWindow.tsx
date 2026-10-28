@@ -385,6 +385,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
               value={search.filters[datePick] ?? feed.today}
               today={feed.today}
               language={language}
+              title={t(datePick === "from" ? "search.fromTitle" : "search.toTitle")}
               onPick={(date) => {
                 search.setFilters({ ...search.filters, [datePick]: date });
                 setDatePick(null);

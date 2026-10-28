@@ -85,8 +85,15 @@ export function SearchResults(props: SearchResultsProps) {
     document.getElementById(searchRowId(listId, activeIndex))?.scrollIntoView?.({ block: "nearest" });
   }, [listId, activeIndex]);
 
+  // На кнопке фильтра дата всегда полная («21 октября 2026»), а не «Сегодня»: «с Сегодня» не прочитать.
+  const longDate = (value: string) => {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Intl.DateTimeFormat(language, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(
+      new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1)),
+    );
+  };
   const dateLabel = (kind: "from" | "to", value: string | null) =>
-    value === null ? t(`search.${kind}`) : t(kind === "from" ? "search.fromValue" : "search.toValue", { date: formatDayLabel(value, today, language, labels) });
+    value === null ? t(`search.${kind}`) : t(kind === "from" ? "search.fromValue" : "search.toValue", { date: longDate(value) });
 
   const empty = searched && !loading && !error && chats.length === 0 && hits.length === 0;
   return (
