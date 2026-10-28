@@ -58,6 +58,21 @@
   white-space: pre;
 }
 
+/* Однострочная команда: только горизонтальная прокрутка, полоса не наезжает на текст и не рождает вертикальную. */
+.agent-code__text--line {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: var(--space-3);
+}
+
+.agent-code__hint {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
 .agent-code__text:focus-visible {
   outline: var(--border-width-strong) solid var(--color-focus-ring);
   outline-offset: var(--border-width-hairline);

@@ -284,6 +284,7 @@
     "connect": {
       "title": "How to connect",
       "desktopTitle": "Claude Desktop: add this to claude_desktop_config.json and restart the app",
+      "desktopHint": "If the config already has mcpServers, add kinige inside it.",
       "codeTitle": "Claude Code: run this in a terminal",
       "copy": "Copy",
       "copied": "Copied",

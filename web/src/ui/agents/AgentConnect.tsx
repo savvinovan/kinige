@@ -32,7 +32,12 @@ export function AgentConnect({ socket }: { socket: AgentSocket }) {
   return (
     <div className="agent-connect">
       {socket.desktopConfig ? (
-        <CodeBlock title={t("agent.connect.desktopTitle")} text={socket.desktopConfig} copyLabel={t("agent.connect.copyDesktop")} />
+        <CodeBlock
+          title={t("agent.connect.desktopTitle")}
+          text={socket.desktopConfig}
+          copyLabel={t("agent.connect.copyDesktop")}
+          hint={t("agent.connect.desktopHint")}
+        />
       ) : null}
       {socket.codeCommand ? (
         <CodeBlock title={t("agent.connect.codeTitle")} text={socket.codeCommand} copyLabel={t("agent.connect.copyCode")} />
@@ -41,7 +46,7 @@ export function AgentConnect({ socket }: { socket: AgentSocket }) {
   );
 }
 
-function CodeBlock({ title, text, copyLabel }: { title: string; text: string; copyLabel: string }) {
+function CodeBlock({ title, text, copyLabel, hint }: { title: string; text: string; copyLabel: string; hint?: string }) {
   const { t } = useTranslation();
   const { state, copy } = useCopy();
   const label = state === "copied" ? t("agent.connect.copied") : state === "failed" ? t("agent.connect.copyFailed") : t("agent.connect.copy");
@@ -53,9 +58,10 @@ function CodeBlock({ title, text, copyLabel }: { title: string; text: string; co
           {label}
         </Button>
       </div>
-      <pre className="agent-code__text" tabIndex={0}>
+      <pre className={text.includes("\n") ? "agent-code__text" : "agent-code__text agent-code__text--line"} tabIndex={0}>
         <code>{text}</code>
       </pre>
+      {hint ? <p className="agent-code__hint">{hint}</p> : null}
     </div>
   );
 }

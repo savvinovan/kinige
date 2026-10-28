@@ -128,6 +128,11 @@ describe("Доступ ИИ-агентов: настройки и предупр
     fireEvent.click(within(dialog).getByRole("button", { name: "Копировать команду для Claude Code" }));
     await waitFor(() => expect(writeText).toHaveBeenLastCalledWith(api.agentSocket.codeCommand));
     expect(within(dialog).getByText(/claude mcp add --scope user kinige/)).toBeInTheDocument();
+    // Подсказка под фрагментом для Desktop; однострочная команда — в блоке без вертикальной прокрутки.
+    expect(within(dialog).getByText("Если в конфиге уже есть mcpServers, добавьте kinige внутрь него.")).toBeInTheDocument();
+    const command = within(dialog).getByText(/claude mcp add --scope user kinige/).closest("pre");
+    expect(command).toHaveClass("agent-code__text--line");
+    expect(within(dialog).getByText(/"mcpServers"/).closest("pre")).not.toHaveClass("agent-code__text--line");
   });
 
   it.each([

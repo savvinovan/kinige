@@ -288,6 +288,7 @@
     "connect": {
       "title": "Как подключить",
       "desktopTitle": "Claude Desktop: добавьте в claude_desktop_config.json и перезапустите приложение",
+      "desktopHint": "Если в конфиге уже есть mcpServers, добавьте kinige внутрь него.",
       "codeTitle": "Claude Code: выполните в терминале",
       "copy": "Копировать",
       "copied": "Скопировано",
