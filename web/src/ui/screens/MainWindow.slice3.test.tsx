@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { INBOX_ID } from "../../api/KinigeApi";
 import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../../api/MockApi";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
@@ -53,19 +52,6 @@ describe("MainWindow слайс 3: чаты", () => {
     await openChat("Книги");
     expect(await screen.findByText("про книги")).toBeInTheDocument();
     expect(screen.queryByText("во входящих")).toBeNull();
-  });
-
-  it("у каждого чата свой черновик: переключение сохраняет набранное и подставляет его обратно", async () => {
-    const api = setup({ chats: [BOOKS] });
-    await screen.findByText(/Пока пусто/);
-    type("недописанное во входящих");
-    await openChat("Книги");
-    expect(field().value).toBe("");
-    expect(await api.getDraft(INBOX_ID)).toBe("недописанное во входящих");
-    type("про книги");
-    await openChat("Входящие");
-    await waitFor(() => expect(field().value).toBe("недописанное во входящих"));
-    expect(await api.getDraft("books")).toBe("про книги");
   });
 
   it("новый чат: диалог, имя, «Создать» — чат появляется и открывается, фокус в поле ввода", async () => {

@@ -21,29 +21,38 @@ export interface DraftSaver {
  * Сохранения идут строго по одному, в порядке вызова: следующее начинается после ответа на предыдущее (команды Rust
  * приходят к писателю в произвольном порядке, и иначе старый текст мог бы перезаписать новый). `settle()` ждёт хвост этой
  * очереди — им пользуется отправка записи, чтобы запоздавшее сохранение не вернуло отправленный текст черновиком.
+ *
+ * Запланированный текст хранит ту функцию `save`, с которой его запланировали (у `MainWindow` она привязана к чату).
+ * `flush` берёт её оттуда, а не из своего замыкания: после смены чата React сбрасывает эффекты предыдущей отрисовки с
+ * задержкой, и «старый» `flush` успевал сохранить набранный в новом чате текст в черновик прежнего чата.
  */
 export function useDraftSaver(save: (body: string) => Promise<void>, delayMs = DRAFT_DELAY_MS): DraftSaver {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const pending = useRef<string | null>(null);
+  const pending = useRef<{ body: string; save: (body: string) => Promise<void> } | null>(null);
   const queue = useRef<Promise<void>>(Promise.resolve());
+
+  const enqueue = useCallback((item: { body: string; save: (body: string) => Promise<void> }) => {
+    queue.current = queue.current.then(() => item.save(item.body)).catch(() => undefined);
+  }, []);
 
   const flush = useCallback((): Promise<void> => {
     clearTimeout(timer.current);
     timer.current = undefined;
-    const body = pending.current;
+    const item = pending.current;
     pending.current = null;
-    if (body === null) return queue.current;
-    queue.current = queue.current.then(() => save(body)).catch(() => undefined);
+    if (item !== null) enqueue(item);
     return queue.current;
-  }, [save]);
+  }, [enqueue]);
 
   const schedule = useCallback(
     (body: string) => {
-      pending.current = body;
+      // Запланированный текст другого чата (набран до переключения, который ещё не отрисован) не затирается: он уходит в очередь.
+      if (pending.current !== null && pending.current.save !== save) enqueue(pending.current);
+      pending.current = { body, save };
       clearTimeout(timer.current);
       timer.current = setTimeout(() => void flush(), delayMs);
     },
-    [flush, delayMs],
+    [enqueue, flush, save, delayMs],
   );
 
   const cancel = useCallback(() => {

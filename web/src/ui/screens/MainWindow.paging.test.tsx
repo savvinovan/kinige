@@ -1,14 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, MockApi, mockMessage } from "../../api/MockApi";
 import { FakeObserver, edges, showEdge } from "../../test/fakeObserver";
-import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
+import { act, configure, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
 // Лента на 2 000 записях (слайс 4, задача 4.14): подгрузка вверх без скачка, переход к записи из середины, подгрузка вниз,
 // возврат в обычный режим, удалённая плашка переживает подгрузку, прокрутка без плавности. Плашки в jsdom рисуются долго,
 // поэтому до конца всей истории интерфейс идёт на 450 записях, а 2 000 проверяют переход и цепочку страниц.
-// Сотни плашек в jsdom рисуются долго: на загруженном CI запас больше обычных пяти секунд.
+// Сотни плашек в jsdom рисуются долго: на загруженном CI запас больше обычных пяти секунд. Ожидания состояния (`waitFor`,
+// `findBy*`) получают тот же запас, что и сам тест: они ждут отрисовки страницы, а не времени.
 vi.setConfig({ testTimeout: 30_000 });
+configure({ asyncUtilTimeout: 20_000 });
 
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 const HOUR = 3_600_000;
@@ -50,12 +52,12 @@ describe("Лента: старые страницы", () => {
     expect(screen.queryByText("запись 249 слово249")).toBeNull();
     expect(screen.getByText("запись 250 слово250")).toBeInTheDocument();
     expect(edges(container)).toHaveLength(1);
-    showEdge(container, "older");
+    await showEdge(container, "older");
     await screen.findByText("запись 50 слово50");
     // Нижняя запись на месте: лента добавляет записи СВЕРХУ, а область `column-reverse` держит нижний край.
     expect(screen.getByText("запись 449 слово449")).toBeInTheDocument();
     expect(edges(container)).toHaveLength(1);
-    showEdge(container, "older");
+    await showEdge(container, "older");
     await screen.findByText("запись 0 слово0");
     await waitFor(() => expect(edges(container)).toHaveLength(0));
     expect(container.querySelectorAll("article")).toHaveLength(450);
@@ -67,7 +69,7 @@ describe("Лента: старые страницы", () => {
     fireEvent.contextMenu(plateOf(container, "m440") as HTMLElement);
     fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Удалить" }));
     await screen.findByRole("button", { name: "Вернуть удалённую запись" });
-    showEdge(container, "older");
+    await showEdge(container, "older");
     await screen.findByText("запись 50 слово50");
     expect(screen.getAllByRole("button", { name: "Вернуть удалённую запись" })).toHaveLength(1);
     expect(api.messageById("m440")).toBeDefined();
@@ -96,9 +98,9 @@ describe("Лента: переход к записи из поиска", () => {
       expect(scrolled.at(-1)).toEqual({ block: "center" });
       expect(edges(container)).toHaveLength(2);
 
-      showEdge(container, "older");
+      await showEdge(container, "older");
       await waitFor(() => expect(plateOf(container, "m399")).not.toBeNull());
-      showEdge(container, "newer");
+      await showEdge(container, "newer");
       await waitFor(() => expect(plateOf(container, "m600")).not.toBeNull());
       expect(plateOf(container, "m500")).toHaveClass("message--highlighted");
     } finally {
@@ -121,10 +123,10 @@ describe("Лента: переход к записи из поиска", () => {
     // Вниз до конца истории: две страницы. Нижний край — первый в разметке области (`column-reverse`), до списка.
     const hasNewerEdge = () => container.querySelector(".feed-scroll")?.firstElementChild?.classList.contains("feed__edge") === true;
     expect(hasNewerEdge()).toBe(true);
-    showEdge(container, "newer");
+    await showEdge(container, "newer");
     await waitFor(() => expect(plateOf(container, "m300")).not.toBeNull());
     expect(hasNewerEdge()).toBe(true);
-    showEdge(container, "newer");
+    await showEdge(container, "newer");
     await waitFor(() => expect(plateOf(container, "m449")).not.toBeNull());
     await waitFor(() => expect(hasNewerEdge()).toBe(false));
     act(() => api.emitEntriesChanged());
@@ -142,7 +144,7 @@ describe("Лента: переход к записи из поиска", () => {
       await waitFor(() => expect(plateOf(container, "m500")).not.toBeNull());
       const scroller = container.querySelector(".feed-scroll") as HTMLElement;
       scroller.scrollTop = -300;
-      showEdge(container, "newer");
+      await showEdge(container, "newer");
       // К моменту отрисовки новых записей область стала выше на 700.
       height.value = 1700;
       await waitFor(() => expect(plateOf(container, "m600")).not.toBeNull());
