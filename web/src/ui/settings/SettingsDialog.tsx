@@ -4,6 +4,7 @@ import type { Settings } from "../../api/generated/Settings";
 import type { ShortcutKind } from "../../api/generated/ShortcutKind";
 import type { ShortcutStatus } from "../../api/generated/ShortcutStatus";
 import type { TextSize } from "../../api/generated/TextSize";
+import { Button } from "../controls/Button";
 import { BackupRow } from "./BackupRow";
 import { MirrorStatusLine } from "./MirrorStatusLine";
 import { Modal } from "./Modal";
@@ -37,6 +38,8 @@ interface SettingsDialogProps {
   returnFocusRef?: RefObject<HTMLElement | null>;
   /** «Сейчас» для метки дня в строке копии базы («сегодня, 09:12»); по умолчанию часы окна. В тестах и историях фиксируется. */
   now?: Date;
+  /** Строка «Доступ ИИ-агентов: выключен · Настроить…» (слайс 4a): `enabled` — `null`, пока состояние не прочитано. Без неё раздела нет. */
+  agent?: { enabled: boolean | null; onConfigure: () => void };
 }
 
 /**
@@ -60,12 +63,14 @@ export function SettingsDialog({
   actionError,
   returnFocusRef,
   now,
+  agent,
 }: SettingsDialogProps) {
   const { t } = useTranslation();
   const mirrorTitleId = useId();
   const backupTitleId = useId();
   const shortcutsTitleId = useId();
   const textSizeTitleId = useId();
+  const agentTitleId = useId();
   const { mirror } = settings;
 
   return (
@@ -111,6 +116,22 @@ export function SettingsDialog({
           ))}
         </div>
       </section>
+      {agent ? (
+        <section className="settings__section" aria-labelledby={agentTitleId}>
+          <h3 className="settings__heading" id={agentTitleId}>
+            {t("settings.agent.title")}
+          </h3>
+          <p className="settings__description">{t("settings.agent.description")}</p>
+          <div className="settings__agent-row">
+            <span className="settings__agent-state">
+              {agent.enabled === null ? "" : agent.enabled ? t("settings.agent.on") : t("settings.agent.off")}
+            </span>
+            <Button variant="secondary" onClick={agent.onConfigure}>
+              {t("settings.agent.configure")}
+            </Button>
+          </div>
+        </section>
+      ) : null}
       <section className="settings__section" aria-labelledby={textSizeTitleId}>
         <h3 className="settings__heading" id={textSizeTitleId}>
           {t("settings.textSize.title")}

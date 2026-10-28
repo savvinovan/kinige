@@ -77,6 +77,27 @@ describe("TauriApi", () => {
     expect((error as KinigeApiError).code).toBe("store_write_failed");
   });
 
+  it("доступ ИИ-агентов: команды слайса 4a и аргументы camelCase", async () => {
+    invoke.mockResolvedValue({ enabled: false });
+    await new TauriApi().getAgentAccess();
+    expect(invoke).toHaveBeenLastCalledWith("get_agent_access", undefined);
+    invoke.mockResolvedValue(undefined);
+    await new TauriApi().setAgentEnabled(true);
+    expect(invoke).toHaveBeenLastCalledWith("set_agent_enabled", { enabled: true });
+    await new TauriApi().setAgentMode("read_write");
+    expect(invoke).toHaveBeenLastCalledWith("set_agent_mode", { mode: "read_write" });
+    await new TauriApi().setAgentChats(["a", "b"]);
+    expect(invoke).toHaveBeenLastCalledWith("set_agent_chats", { chatIds: ["a", "b"] });
+    invoke.mockResolvedValue({ rows: [], older: null });
+    await new TauriApi().listAgentLog();
+    expect(invoke).toHaveBeenLastCalledWith("list_agent_log", { before: null });
+    await new TauriApi().listAgentLog(41);
+    expect(invoke).toHaveBeenLastCalledWith("list_agent_log", { before: 41 });
+    invoke.mockResolvedValue([]);
+    await new TauriApi().listAgentLogEntries(7);
+    expect(invoke).toHaveBeenLastCalledWith("list_agent_log_entries", { logId: 7 });
+  });
+
   it("всё чужое (отказ ACL строкой, неизвестный код, не объект) — internal", async () => {
     for (const reason of ["Command send_message not allowed by ACL", { code: "unknown_code" }, null, undefined, 42]) {
       invoke.mockImplementation(() => Promise.reject(reason));

@@ -1,0 +1,209 @@
+/* Окно «Доступ ИИ-агентов»: список чатов, блоки кода, журнал обращений, предупреждение. Только токены. */
+
+/* Список чатов: высота ограничена токеном, прокрутка внутри списка. */
+.agent-chats {
+  display: grid;
+  gap: var(--space-2);
+  max-height: var(--layout-agent-chat-list-max-height);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.agent-chats__item {
+  min-width: 0;
+}
+
+.agent-connect {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.agent-code {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.agent-code__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.agent-code__title {
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+/* Моноширинный блок: JetBrains Mono, прокрутка внутри; длинная команда не растягивает окно. */
+.agent-code__text {
+  box-sizing: border-box;
+  max-height: var(--layout-agent-code-max-height);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow: auto;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-code);
+  color: var(--color-text-primary);
+  font-family: var(--type-code-family);
+  font-size: var(--type-code-size);
+  font-weight: var(--type-code-weight);
+  line-height: var(--type-code-line-height);
+  white-space: pre;
+}
+
+.agent-code__text:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus-ring);
+  outline-offset: var(--border-width-hairline);
+}
+
+/* Журнал: тихие строки, новые сверху, прокрутка внутри. */
+.agent-log {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.agent-log__list {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: var(--layout-agent-log-max-height);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.agent-log__empty {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.agent-log__line {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-1) 0;
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.agent-log__line--button {
+  border: 0;
+  border-radius: var(--radius-inline);
+  background: transparent;
+  text-align: start;
+  cursor: pointer;
+}
+
+.agent-log__line--button:hover {
+  color: var(--color-text-primary);
+}
+
+.agent-log__line--button:focus-visible,
+.agent-log__entry-button:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus-ring);
+  outline-offset: var(--border-width-hairline);
+}
+
+.agent-log__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.agent-log__chevron {
+  display: inline-flex;
+  flex: none;
+  color: var(--color-text-tertiary);
+}
+
+.agent-log__entries {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  padding: 0 0 0 var(--space-4);
+  list-style: none;
+}
+
+.agent-log__entry-button {
+  display: grid;
+  gap: 0;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-field);
+  color: var(--color-text-primary);
+  text-align: start;
+  cursor: pointer;
+}
+
+.agent-log__entry-button:hover {
+  background: var(--color-surface-field-active);
+}
+
+.agent-log__where {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+/* Начало текста записи: одна строка с многоточием. */
+.agent-log__snippet {
+  overflow: hidden;
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-log__entry--gone {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+/* Предупреждение при включении: окно уже обычного диалога, как подтверждение в корзине. */
+.modal__panel:has(.agent-warning) {
+  max-width: var(--layout-agent-warning-width);
+}
+
+.agent-warning {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+.agent-warning__text {
+  margin: 0;
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+}
+
+.agent-warning__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}

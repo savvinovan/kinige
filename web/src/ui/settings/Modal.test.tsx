@@ -152,6 +152,31 @@ describe("Modal", () => {
     expect(screen.getByRole("button", { name: "Цель" })).toHaveFocus();
   });
 
+  it("окно над окном: клавиатуру и фокус ведёт только верхнее, Esc закрывает верхнее", () => {
+    const closeUnder = vi.fn();
+    const closeOver = vi.fn();
+    render(
+      <>
+        <Modal title="Нижнее" closeLabel="Закрыть нижнее" onClose={closeUnder}>
+          <button>Нижняя кнопка</button>
+        </Modal>
+        <Modal title="Верхнее" closeLabel="Закрыть верхнее" onClose={closeOver}>
+          <button>Верхняя кнопка</button>
+        </Modal>
+      </>,
+    );
+    const over = screen.getByRole("dialog", { name: "Верхнее" });
+    expect(over.contains(document.activeElement)).toBe(true);
+    // Tab ходит по кругу внутри верхнего и не уходит в нижнее.
+    tab();
+    tab();
+    tab();
+    expect(over.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(closeOver).toHaveBeenCalledTimes(1);
+    expect(closeUnder).not.toHaveBeenCalled();
+  });
+
   it("если в окне одна кнопка (закрытие), Tab остаётся на ней", () => {
     render(
       <Modal title="Окно" closeLabel="Закрыть окно" onClose={() => {}}>

@@ -59,7 +59,14 @@ export function Modal({ title, closeLabel, onClose, returnFocusRef, closable = t
     if (!root) return;
     (focusablesIn(root)[0] ?? root).focus();
 
+    // Окно над окном (предупреждение над «Доступом ИИ-агентов»): клавиатуру и фокус ведёт только верхнее.
+    const isTopmost = () => {
+      const panels = document.querySelectorAll(".modal__panel");
+      return panels[panels.length - 1] === root;
+    };
+
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!isTopmost()) return;
       if (event.key === "Escape") {
         if (event.defaultPrevented) return;
         event.preventDefault();
@@ -79,7 +86,7 @@ export function Modal({ title, closeLabel, onClose, returnFocusRef, closable = t
     };
     // Фокус не должен уйти за окно ни щелчком, ни программно.
     const onFocusIn = (event: FocusEvent) => {
-      if (event.target instanceof Node && !root.contains(event.target)) (focusablesIn(root)[0] ?? root).focus();
+      if (isTopmost() && event.target instanceof Node && !root.contains(event.target)) (focusablesIn(root)[0] ?? root).focus();
     };
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("focusin", onFocusIn);

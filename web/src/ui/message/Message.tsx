@@ -39,6 +39,8 @@ export interface MessageProps {
   taskDone?: boolean;
   /** В избранном: тихая звезда рядом со временем. */
   favorite?: boolean;
+  /** Запись добавил ИИ-агент (`origin = 'agent'`, слайс 4a): в строке времени тихая пометка «добавлено агентом». */
+  byAgent?: boolean;
   /** Запись создана более новой версией (группа в неподдерживаемой `sv`): действия недоступны, копировать можно. */
   readOnly?: boolean;
   /** Теги записи (нижний регистр, без `#`), их определил Rust: в тексте они подсвечиваются и нажимаются. */
@@ -100,6 +102,7 @@ export function Message({
   isTask = false,
   taskDone = false,
   favorite = false,
+  byAgent = false,
   readOnly = false,
   tags,
   markTerms,
@@ -245,6 +248,7 @@ export function Message({
   if (isTask) classes.push("message--task");
   if (isTask && taskDone) classes.push("message--task-done");
   if (favorite && mode !== "deleted") classes.push("message--favorite");
+  if (byAgent && mode !== "deleted") classes.push("message--agent");
   if (mode === "editing") classes.push("message--editing");
   if (mode === "deleted") classes.push("message--deleted");
 
@@ -333,6 +337,7 @@ export function Message({
                     <Icon name="favorite" />
                   </span>
                 ) : null}
+                {byAgent ? <span className="message__origin">{t("message.byAgent")} · </span> : null}
                 <time className="message__time" dateTime={sentAt.toISOString()}>
                   {formatTime(sentAt, language, timeZone)}
                 </time>

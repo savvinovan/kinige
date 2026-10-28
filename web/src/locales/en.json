@@ -155,6 +155,7 @@
     "taskCheck": "Task done",
     "taskItem": "Item done",
     "favoriteMark": "Favorite",
+    "byAgent": "added by an agent",
     "editLabel": "Edit entry",
     "editHint": "Enter saves, Esc cancels",
     "deleted": "Deleted",
@@ -257,9 +258,90 @@
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },
+  "agent": {
+    "title": "AI agent access",
+    "close": "Close AI agent access",
+    "enable": {
+      "label": "Allow agents to access the journal",
+      "description": "An agent you connect can read the chats you mark below and, if you allow it, write entries.",
+      "warningTitle": "Turn on agent access?",
+      "warning": "The text an agent reads goes to the provider of its model. Kinige's end-to-end encryption does not cover it.",
+      "confirm": "Turn on",
+      "cancel": "Cancel"
+    },
+    "mode": {
+      "title": "Mode",
+      "read": "Read only",
+      "readWrite": "Read and write",
+      "hint": "After changing the mode, reconnect the agent."
+    },
+    "chats": {
+      "title": "Chats visible to the agent",
+      "description": "Nothing is marked at first: until you mark chats, the agent sees an empty journal.",
+      "excluded": "excluded from AI",
+      "inbox": "Inbox"
+    },
+    "connect": {
+      "title": "How to connect",
+      "desktopTitle": "Claude Desktop: add this to claude_desktop_config.json and restart the app",
+      "codeTitle": "Claude Code: run this in a terminal",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Could not copy",
+      "copyDesktop": "Copy the Claude Desktop config",
+      "copyCode": "Copy the Claude Code command",
+      "error": {
+        "dir_unsafe": "The folder for the agent socket belongs to someone else or is a link, so agent access is unavailable.",
+        "second_instance": "Another Kinige is already running on this data, so agent access is unavailable here.",
+        "bind_failed": "Kinige could not open the agent socket, so agent access is unavailable.",
+        "bridge_missing": "The connector file is not next to the app (a development build), so there is nothing to connect."
+      }
+    },
+    "log": {
+      "title": "Access log",
+      "empty": "No requests yet",
+      "more": "Show more",
+      "deleted": "Entry deleted",
+      "expand": "Show entries of this request",
+      "collapse": "Hide entries of this request",
+      "unknownClient": "unknown client",
+      "withQuery": "{{tool}} “{{query}}”",
+      "tool": {
+        "connect": "connected",
+        "disconnect": "disconnected",
+        "list_chats": "chat list",
+        "search": "search",
+        "get_entries": "read entries",
+        "on_this_day": "this day",
+        "get_entry": "read entry",
+        "add_entry": "add entry",
+        "append_to_last_entry": "append to entry",
+        "set_task_done": "mark task",
+        "unknown": "unknown request"
+      },
+      "outcome": {
+        "disabled": "denied: access is off",
+        "read_only": "denied: read only",
+        "not_found": "denied: not found",
+        "no_agent_entry": "denied: nothing to append to",
+        "not_a_task": "denied: not a task",
+        "invalid_argument": "denied: invalid request",
+        "error": "failed"
+      },
+      "entries_one": "{{count, number}} entry",
+      "entries_other": "{{count, number}} entries"
+    }
+  },
   "settings": {
     "title": "Settings",
     "close": "Close settings",
+    "agent": {
+      "title": "AI agent access",
+      "description": "Let an AI agent such as Claude read and write your journal.",
+      "off": "Off",
+      "on": "On",
+      "configure": "Configure…"
+    },
     "mirror": {
       "title": "Markdown copy",
       "description": "Every entry is also written to a plain Markdown file, one file per day, so you can read your journal without Kinige.",

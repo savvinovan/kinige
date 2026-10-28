@@ -21,6 +21,7 @@ const entry = (id: string, body: string, patch: Partial<TrashItem> = {}, journal
     favoriteAt: null,
     tags: [],
     readOnly: false,
+    origin: "user",
   },
   chatTitle: "Входящие",
   chatIcon: "📥",

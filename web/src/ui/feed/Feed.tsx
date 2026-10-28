@@ -189,6 +189,7 @@ export function Feed({
                   isTask={item.message.isTask}
                   taskDone={item.message.taskDoneAt != null}
                   favorite={item.message.favoriteAt != null}
+                  byAgent={item.message.origin === "agent"}
                   readOnly={item.message.readOnly}
                   tags={item.message.tags}
                   mode={

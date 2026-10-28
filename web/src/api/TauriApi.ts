@@ -1,6 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { type KinigeApi, KinigeApiError, type ListMessagesOptions } from "./KinigeApi";
+import type { AgentAccess } from "./generated/AgentAccess";
+import type { AgentLogEntry } from "./generated/AgentLogEntry";
+import type { AgentLogPage } from "./generated/AgentLogPage";
+import type { AgentMode } from "./generated/AgentMode";
 import type { ApiError } from "./generated/ApiError";
 import type { AppInfo } from "./generated/AppInfo";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
@@ -263,6 +267,30 @@ export class TauriApi implements KinigeApi {
       before: options.before ?? null,
       limit: options.limit ?? null,
     });
+  }
+
+  getAgentAccess(): Promise<AgentAccess> {
+    return call("get_agent_access");
+  }
+
+  async setAgentEnabled(enabled: boolean): Promise<void> {
+    await call("set_agent_enabled", { enabled });
+  }
+
+  async setAgentMode(mode: AgentMode): Promise<void> {
+    await call("set_agent_mode", { mode });
+  }
+
+  async setAgentChats(chatIds: readonly string[]): Promise<void> {
+    await call("set_agent_chats", { chatIds });
+  }
+
+  listAgentLog(before?: number): Promise<AgentLogPage> {
+    return call("list_agent_log", { before: before ?? null });
+  }
+
+  listAgentLogEntries(logId: number): Promise<AgentLogEntry[]> {
+    return call("list_agent_log_entries", { logId });
   }
 
   captureState(): Promise<CaptureState> {
