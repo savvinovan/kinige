@@ -63,6 +63,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use writer::Writer;
 
+/// Фоновый поток хранилища (для тестов паники).
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy)]
+pub enum BackgroundThread {
+    Mirror,
+    Maintenance,
+}
+
 /// Сигнал о повреждении базы, найденном проверкой целостности в фоне: вызывается один раз за запуск, из потока
 /// обслуживания. Слой Tauri по нему ставит отметку «нужно восстановление» и сообщает окну.
 #[derive(Clone)]
@@ -268,12 +276,43 @@ impl Store {
         &self,
         job: impl FnOnce(&Connection) -> Result<T, StoreError>,
     ) -> Result<T, StoreError> {
+        // Паника внутри чтения (профиль release теперь с размоткой стека) не должна ломать все следующие чтения: она ловится
+        // здесь, вызов получает `Internal`, а замок, если его всё же отравили, берётся как есть — соединение чтения
+        // (`query_only`, без транзакции) после размотки согласовано.
         let conn = self
             .inner
             .reader
             .lock()
-            .map_err(|_| StoreError::Internal("соединение чтения отравлено".into()))?;
-        job(&conn)
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job(&conn))).unwrap_or_else(|_| {
+            log::error!("паника в чтении, вызов отменён");
+            Err(StoreError::Internal("паника при чтении".into()))
+        })
+    }
+
+    /// Только для тестов: паника внутри чтения. Следующие чтения должны работать.
+    #[doc(hidden)]
+    pub fn panic_in_read_for_test(&self) -> Result<(), StoreError> {
+        self.read(|_| -> Result<(), StoreError> {
+            panic!("проверка: паника в чтении")
+        })
+    }
+
+    /// Только для тестов: следующий проход фоновой копии (`mirror`) или обслуживания (`maintenance`) паникует один раз.
+    #[doc(hidden)]
+    pub fn inject_background_panic_for_test(&self, thread: BackgroundThread) {
+        match thread {
+            BackgroundThread::Mirror => self.inner.mirror.inject_panic(),
+            BackgroundThread::Maintenance => self.inner.maintenance.inject_panic(),
+        }
+        self.wake_mirror();
+        self.inner.maintenance.wake_now();
+    }
+
+    /// Только для тестов: разбудить поток обслуживания сейчас.
+    #[doc(hidden)]
+    pub fn wake_maintenance_for_test(&self) {
+        self.inner.maintenance.wake_now();
     }
 
     /// Любая команда, наткнувшаяся на повреждение (`SQLITE_CORRUPT`, `SQLITE_NOTADB`), проходит тот же путь, что и
