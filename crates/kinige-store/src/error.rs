@@ -37,6 +37,8 @@ pub enum StoreError {
     BackupNotFound,
     /// Прежнюю папку Markdown-копии не удалось переименовать перед восстановлением: ничего не тронуто.
     MirrorFolderBusy,
+    /// Копия базы перед импортом не снялась: импорт не начат, ничего не записано.
+    ImportBackupFailed,
     /// База создана более новой версией приложения (схема `found`): откат не поддерживается (ТЗ §10.4).
     TooNew(i64),
     /// Запись в базу не удалась: ничего не записано (транзакция откатилась).
@@ -68,6 +70,7 @@ impl StoreError {
             StoreError::Corrupt(_) => ErrorCode::DatabaseCorrupt,
             StoreError::BackupNotFound => ErrorCode::BackupNotFound,
             StoreError::MirrorFolderBusy => ErrorCode::MirrorFolderBusy,
+            StoreError::ImportBackupFailed => ErrorCode::ImportBackupFailed,
             StoreError::TooNew(_) => ErrorCode::DatabaseTooNew,
             StoreError::Write(_) => ErrorCode::StoreWriteFailed,
             StoreError::Read(_) => ErrorCode::StoreReadFailed,
@@ -97,6 +100,7 @@ impl StoreError {
             StoreError::Corrupt(_) => "corrupt",
             StoreError::BackupNotFound => "backup_not_found",
             StoreError::MirrorFolderBusy => "mirror_folder_busy",
+            StoreError::ImportBackupFailed => "import_backup_failed",
             StoreError::TooNew(_) => "too_new",
             StoreError::Write(_) => "write",
             StoreError::Read(_) => "read",
@@ -126,6 +130,7 @@ impl fmt::Display for StoreError {
             StoreError::MirrorFolderBusy => {
                 f.write_str("папку Markdown-копии не удалось переименовать")
             }
+            StoreError::ImportBackupFailed => f.write_str("копия базы перед импортом не снялась"),
             StoreError::TooNew(found) => {
                 write!(
                     f,

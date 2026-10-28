@@ -186,6 +186,22 @@ pub(crate) fn before_migration(
     Ok(())
 }
 
+impl crate::Store {
+    /// Копия перед импортом из Telegram (слайс 4): `backups/pre-import-<UTC>.db`, хранятся 3 последних. Снимается тем же
+    /// способом, что копия дня: отдельное соединение чтения, согласованный снимок при работающем писателе. Возвращает имя
+    /// файла. Ошибка (папка недоступна, не записалось) — [`StoreError::ImportBackupFailed`]: импорт не начинается.
+    pub fn backup_before_import(&self, now: &crate::Now) -> Result<String, StoreError> {
+        let db_path = &self.inner.db_path;
+        let reader =
+            crate::open_connection(db_path, true).map_err(|_| StoreError::ImportBackupFailed)?;
+        let dir = backups_dir(db_path);
+        let name = backup::pre_import_name(&crate::time::utc_stamp(now.ms));
+        snapshot(&reader, &dir, &name).map_err(|_| StoreError::ImportBackupFailed)?;
+        rotate(&dir);
+        Ok(name)
+    }
+}
+
 /// Состояние копий для «Настроек» и последняя ошибка (общая для потока обслуживания и окна).
 #[derive(Default)]
 pub(crate) struct BackupShared {

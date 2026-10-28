@@ -50,6 +50,12 @@ const CODES: readonly ErrorCode[] = [
   "database_too_new",
   "backup_not_found",
   "mirror_folder_busy",
+  "import_not_telegram",
+  "import_file_unreadable",
+  "import_file_too_large",
+  "import_in_progress",
+  "import_session_expired",
+  "import_backup_failed",
   "internal",
 ];
 

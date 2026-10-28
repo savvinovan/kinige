@@ -3,4 +3,4 @@
 /**
  * Вид копии.
  */
-export type BackupKind = "daily" | "pre_migration";
+export type BackupKind = "daily" | "pre_migration" | "pre_import";

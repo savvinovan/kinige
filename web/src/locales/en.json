@@ -138,7 +138,8 @@
     "backups": "Database backups",
     "kind": {
       "daily": "daily backup",
-      "pre_migration": "before an update"
+      "pre_migration": "before an update",
+      "pre_import": "before an import"
     },
     "restore": "Restore from the backup of {{when}}",
     "restoring": "Restoring…",
@@ -188,6 +189,12 @@
     "database_too_new": "The database was created by a newer version of Kinige. Update the app.",
     "backup_not_found": "The copy was not found or cannot be opened.",
     "mirror_folder_busy": "Could not rename the Markdown copy folder (it may be open in another program). Nothing was changed: close it and try again.",
+    "import_not_telegram": "This is not a Telegram export. You need the result.json file from Telegram Desktop in JSON format. Nothing was written.",
+    "import_file_unreadable": "The file could not be read. Nothing was written.",
+    "import_file_too_large": "The file is larger than 1 GB. Export without media or only the chat you need.",
+    "import_in_progress": "An import is already running.",
+    "import_session_expired": "The chosen file was forgotten. Choose it again.",
+    "import_backup_failed": "Could not take a copy of the database before the import. Nothing was written.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },
