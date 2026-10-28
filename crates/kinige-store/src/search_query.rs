@@ -133,9 +133,9 @@ impl Store {
         };
         // Индекс поиска — производная таблица: его повреждение лечится перестройкой из записей, а не экраном «база
         // повреждена». Если после перестройки ошибка осталась, повреждена сама база: сигнал уходит как обычно.
-        let result = match self.read_unnoted(&run) {
+        let result = match self.read_unnoted(run) {
             Err(StoreError::Corrupt(_)) => match self.write(crate::search::heal) {
-                Ok(()) => self.read_unnoted(&run),
+                Ok(()) => self.read_unnoted(run),
                 Err(error) => Err(error),
             },
             other => other,
