@@ -6,11 +6,12 @@ on:
   push:
     branches: [main]
 
+# Раннер закреплён: ubuntu-latest переезжает на Ubuntu 26, а там имена пакетов WebKitGTK не проверены.
 jobs:
   rust:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Системные библиотеки Tauri на Linux (wry/WebKitGTK).
       - name: Системные зависимости Tauri
@@ -41,15 +42,17 @@ jobs:
           fi
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - run: npm ci
       - name: tokens.css и themes.css актуальны
         run: |
@@ -64,7 +67,7 @@ jobs:
       - run: npm test
 
   visual:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Тот же образ, что в docker/visual.Dockerfile: эталоны снимаются в такой же среде.
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
@@ -72,7 +75,7 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: npm ci
       - run: npm run build-storybook
       - run: npx playwright test
