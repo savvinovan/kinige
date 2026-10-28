@@ -201,6 +201,27 @@ describe("Поиск: клавиатура и переход к записи", (
     expect(api.calls).toContain("setSidebarCollapsed false".trim());
   });
 
+  it("стёр запрос — фокус остаётся в поле поиска, следующий запрос с Enter не уходит записью; Esc отдаёт фокус полю заметки", async () => {
+    const api = setup();
+    await screen.findByText("Читаю книгу про море");
+    field().focus();
+    type("к");
+    await waitFor(() => expect(options().length).toBeGreaterThan(0));
+    type("");
+    // Лента и поле заметки вернулись, но фокус остался там, где печатает человек.
+    const note = await screen.findByRole("textbox", { name: "Новая заметка" });
+    expect(field()).toHaveFocus();
+    expect(note).not.toHaveFocus();
+    type("моло");
+    await waitFor(() => expect(options().length).toBeGreaterThan(0));
+    expect(field()).toHaveFocus();
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(api.calls.some((c) => c.startsWith("sendMessage"))).toBe(false);
+    // Esc — человек сам уходит из поля: фокус у поля заметки.
+    fireEvent.keyDown(field(), { key: "Escape" });
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Новая заметка" })).toHaveFocus());
+  });
+
   it("по-английски: подписи и пустой результат", async () => {
     setup({}, "en");
     await screen.findByText("Читаю книгу про море");

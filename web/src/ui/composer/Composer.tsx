@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../controls/IconButton";
 import { EmojiButton, type ComposerEmoji } from "./EmojiButton";
@@ -83,6 +83,15 @@ export function Composer({
   const [emojiHost, setEmojiHost] = useState<HTMLDivElement | null>(null);
   const hasText = value.trim() !== "";
 
+  // Фокус в поле при появлении, но только если он ни у кого другого: лента с полем заново монтируется, когда результаты
+  // поиска закрываются (стёрли запрос), а человек всё ещё печатает в поле поиска — отбирать у него фокус нельзя.
+  useEffect(() => {
+    if (!autoFocus) return;
+    const active = document.activeElement;
+    const elsewhere = active && active !== document.body && active !== document.documentElement && active.closest("input, textarea, select, [contenteditable]");
+    if (!elsewhere) input.current?.focus();
+  }, [autoFocus]);
+
   // Кнопка «Отправить» делает то же, что Enter. После щелчка фокус возвращается в поле: сама кнопка исчезает, как только поле пустеет.
   const send = () => {
     onSubmit?.();
@@ -128,7 +137,6 @@ export function Composer({
             value={value}
             placeholder={placeholder ?? t("composer.placeholder")}
             aria-label={t("composer.label")}
-            autoFocus={autoFocus}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : hintShown ? hintId : undefined}
             onChange={(event) => onChange(event.target.value)}

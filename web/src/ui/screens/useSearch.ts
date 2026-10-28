@@ -135,6 +135,8 @@ export function useSearch({ api, chatId, onOpenHit, onOpenChat }: UseSearchOptio
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape" && (open || query !== "")) {
       event.preventDefault();
+      // Esc — человек сам уходит из поля: фокус отдаётся полю заметки, которое вернётся вместе с лентой.
+      event.currentTarget.blur();
       clear();
       return;
     }
