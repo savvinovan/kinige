@@ -294,6 +294,13 @@ impl Store {
         groups::INBOX_ID
     }
 
+    /// Сколько владельцев у хранилища (сам `Store`, его клоны, фоновые потоки через `Weak` не считаются): тест сервера MCP
+    /// проверяет, что подключённый клиент не держит клон `Store` (восстановление из копии не должно застать живой писатель).
+    #[doc(hidden)]
+    pub fn handle_count(&self) -> usize {
+        Arc::strong_count(&self.inner)
+    }
+
     /// Файл базы: нужен слою Tauri для восстановления и диагностики.
     pub fn db_path(&self) -> &Path {
         &self.inner.db_path

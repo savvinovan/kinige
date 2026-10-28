@@ -1,12 +1,14 @@
 //! Тонкий слой Tauri: окна и команды. Бизнес-логика живёт в `kinige-domain`, хранение — в `kinige-store`.
 
 mod actions;
+mod agent_access;
 pub mod capture;
 mod commands;
 pub mod guard;
 pub mod hotkeys;
 pub mod import;
 pub mod logging;
+pub mod mcp;
 #[cfg(target_os = "macos")]
 mod panel;
 pub mod recovery;
@@ -23,6 +25,9 @@ use std::sync::atomic::AtomicBool;
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, Runtime, WindowEvent};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
+
+/// Аргумент запуска мостом MCP: окно не показывается, приложение живёт в menu bar.
+pub const BACKGROUND_FLAG: &str = "--background";
 
 /// Команды главного окна (capability `main`).
 pub const MAIN_COMMANDS: &[&str] = &[
@@ -64,6 +69,12 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "import_telegram_stop",
     "import_telegram_close",
     "search_messages",
+    "get_agent_access",
+    "set_agent_enabled",
+    "set_agent_mode",
+    "set_agent_chats",
+    "list_agent_log",
+    "list_agent_log_entries",
 ];
 
 /// Команды окна захвата (capability `capture`): только Inbox, без `chat_id` (§12.3).
@@ -118,6 +129,12 @@ pub const COMMANDS: &[&str] = &[
     "import_telegram_stop",
     "import_telegram_close",
     "search_messages",
+    "get_agent_access",
+    "set_agent_enabled",
+    "set_agent_mode",
+    "set_agent_chats",
+    "list_agent_log",
+    "list_agent_log_entries",
     "capture_state",
     "capture_send",
     "capture_append",
@@ -174,6 +191,12 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             import::import_telegram_stop,
             import::import_telegram_close,
             import::search_messages,
+            agent_access::get_agent_access,
+            agent_access::set_agent_enabled,
+            agent_access::set_agent_mode,
+            agent_access::set_agent_chats,
+            agent_access::list_agent_log,
+            agent_access::list_agent_log_entries,
             capture::capture_state,
             capture::capture_send,
             capture::capture_append,
@@ -247,6 +270,12 @@ fn start_services<R: Runtime>(
     app.manage(import::ImportState::default());
     // Значок строился без хранилища (его ещё не было в состоянии приложения): последние чаты — теперь.
     tray::refresh(app);
+    // Сервер MCP — последним, после `app.manage(store)`: сбой сокета журнал не останавливает (ошибка видна в настройках).
+    if let Ok(db_path) = db_path(app)
+        && let Some(data_dir) = db_path.parent()
+    {
+        mcp::start(app, data_dir);
+    }
     Ok(())
 }
 
@@ -312,8 +341,11 @@ pub fn run() {
     let configured = builder(
         tauri::Builder::default()
             // Должен идти первым: второй запуск показывает главное окно существующего экземпляра и завершается.
-            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-                capture::show_main(app);
+            .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+                // Мост MCP запускает приложение с `--background`: уже запущенному окно показывать не нужно.
+                if !args.iter().any(|arg| arg == BACKGROUND_FLAG) {
+                    capture::show_main(app);
+                }
             }))
             // После single-instance: второй экземпляр завершается, не открыв файл журнала.
             .plugin(logging::plugin())
@@ -375,6 +407,11 @@ pub fn run() {
             if let Some(store) = store {
                 start_services(&handle, store)?;
             }
+            // Главное окно создаётся скрытым (`visible: false`), чтобы запуск в фоне не мигал окном: показываем его здесь,
+            // если приложение запущено не мостом MCP (`--background`, значок в menu bar без окна).
+            if !std::env::args().any(|arg| arg == BACKGROUND_FLAG) {
+                capture::show_main(&handle);
+            }
             Ok(())
         })
         .on_window_event(on_window_event)
@@ -389,6 +426,10 @@ pub fn run() {
         .expect("не удалось собрать Kinige");
 
     app.run(|app, event| {
+        // Файл сокета MCP не должен пережить приложение.
+        if let tauri::RunEvent::Exit = event {
+            mcp::shutdown(app);
+        }
         // Щелчок по значку в Dock, когда окон на экране нет, показывает главное окно (событие есть только на macOS).
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Reopen { .. } = event {

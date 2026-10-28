@@ -56,6 +56,11 @@ impl Store {
         })
     }
 
+    /// Режим доступа (для списка инструментов: в режиме «только чтение» инструментов записи в списке нет).
+    pub fn agent_mode(&self) -> Result<AgentMode, StoreError> {
+        self.read(load_settings).map(|settings| settings.mode)
+    }
+
     /// Выключатель доступа. Выключенный доступ отказывает каждому вызову инструмента (`mcp_disabled`).
     pub fn set_agent_enabled(&self, enabled: bool) -> Result<(), StoreError> {
         self.write(move |conn| {

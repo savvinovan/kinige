@@ -18,6 +18,7 @@ print_stderr = "deny"
 [profile.release]
 lto = true
 codegen-units = 1
-panic = "abort"
+# Без `panic = "abort"` (было до слайса 4a): паника в задаче писателя и в вызове инструмента MCP превращается в ошибку
+# ответа через `catch_unwind` и приложение продолжает работать (ADR-0009). С abort это не работало бы.
 strip = true
 opt-level = "s"

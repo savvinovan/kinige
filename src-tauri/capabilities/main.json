@@ -42,6 +42,12 @@
     "allow-import-telegram-stop",
     "allow-import-telegram-close",
     "allow-search-messages",
+    "allow-get-agent-access",
+    "allow-set-agent-enabled",
+    "allow-set-agent-mode",
+    "allow-set-agent-chats",
+    "allow-list-agent-log",
+    "allow-list-agent-log-entries",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

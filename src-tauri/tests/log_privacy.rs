@@ -29,10 +29,45 @@ impl Log for Capture {
     fn flush(&self) {}
 }
 
+/// Логгер один на весь тестовый бинарник; оба теста идут в одном процессе и ставят его через `Once`.
+fn install_logger() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        log::set_logger(&Capture).expect("логгер ставится один раз");
+        log::set_max_level(LevelFilter::Trace);
+    });
+}
+
+/// Сервер MCP (слайс 4a): тексты записей, поисковые запросы, id и имена чатов из вызовов агента в журнал процесса не
+/// попадают, ни при успехе, ни при отказе, ни при мусоре на проводе.
+#[test]
+fn the_mcp_server_logs_no_texts_queries_or_arguments() {
+    use common::mcp::mcp;
+    use kinige_domain::AgentMode;
+    use kinige_domain::groups::INBOX_ID;
+    install_logger();
+    let mcp = mcp(AgentMode::ReadWrite, &[INBOX_ID]);
+    let mut client = mcp.client();
+    client.handshake(&format!("{MARK}-client"));
+    client.call("add_entry", json!({"text": format!("{MARK} текст записи")}));
+    client.call("search", json!({"query": format!("{MARK} запрос")}));
+    client.call("get_entry", json!({"id": format!("{MARK}-id")}));
+    client.call("add_entry", json!({"text": format!("{MARK} в чужой чат"), "chat_id": "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"}));
+    client.send_raw(format!("{MARK} \u{0}мусор").as_bytes());
+    drop(client);
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    let lines = CAPTURED.lock().unwrap().clone();
+    for line in &lines {
+        assert!(
+            !line.to_uppercase().contains(MARK),
+            "в журнале процесса пользовательский ввод: {line}"
+        );
+    }
+}
+
 #[test]
 fn failed_commands_log_only_categories_never_user_input() {
-    log::set_logger(&Capture).expect("в этом тестовом бинарнике логгер ставится один раз");
-    log::set_max_level(LevelFilter::Trace);
+    install_logger();
     let fixture = fixture();
     let window = window(&fixture, "main");
 
