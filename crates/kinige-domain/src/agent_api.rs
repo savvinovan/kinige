@@ -92,7 +92,7 @@ pub struct AgentLogRow {
     pub at: i64,
     /// Имя клиента с его слов: не проверено.
     pub client: String,
-    /// Имя инструмента, `connect` или `disconnect`.
+    /// Имя инструмента или служебная строка сеанса: `connect`, `reconnect` (мост переподключился), `disconnect`.
     pub tool: String,
     /// Поисковый запрос (до 128 знаков).
     pub query: Option<String>,

@@ -298,7 +298,7 @@ fn a_connected_client_holds_no_store_clone() {
 }
 
 #[test]
-fn the_reconnect_marker_from_the_bridge_suppresses_a_second_connect_row() {
+fn the_reconnect_marker_from_the_bridge_is_its_own_log_row_not_a_second_connect() {
     let mcp = mcp(AgentMode::Read, &[INBOX_ID]);
     let mut plain = mcp.client();
     plain.handshake("Claude");
@@ -306,28 +306,107 @@ fn the_reconnect_marker_from_the_bridge_suppresses_a_second_connect_row() {
     replayed.send_raw(br#"{"jsonrpc":"2.0","method":"kinige/reconnect"}"#);
     replayed.handshake("Claude");
     assert!(!replayed.call("list_chats", json!({})).0);
-    let connects = log_tools(&mcp)
-        .into_iter()
-        .filter(|(_, tool, _)| tool == "connect")
-        .count();
-    assert_eq!(connects, 1, "повторный initialize от моста строки не даёт");
-    drop((plain, replayed));
-    wait_for(
-        "отключение обычного соединения",
-        || {
-            log_tools(&mcp)
-                .iter()
-                .filter(|(_, tool, _)| tool == "disconnect")
-                .count()
-                == 1
-        },
-    );
-    std::thread::sleep(Duration::from_millis(300));
+    let count = |tool: &str| log_tools(&mcp).iter().filter(|(_, t, _)| t == tool).count();
     assert_eq!(
+        count("connect"),
+        1,
+        "повторный initialize от моста не «подключение»"
+    );
+    assert_eq!(
+        count("reconnect"),
+        1,
+        "немых путей нет: переподключение — строка журнала"
+    );
+    drop((plain, replayed));
+    wait_for("отключения обоих соединений", || count("disconnect") >= 2);
+}
+
+/// Маркер приходит частями (мост пишет его одним `write`, но сокет не обещает этого): всё равно «переподключение».
+#[test]
+fn the_reconnect_marker_arriving_in_pieces_is_still_recognised() {
+    let mcp = mcp(AgentMode::Read, &[INBOX_ID]);
+    let mut client = mcp.client();
+    let marker = br#"{"jsonrpc":"2.0","method":"kinige/reconnect"}"#;
+    client.send_partial(&marker[..11]);
+    std::thread::sleep(Duration::from_millis(150));
+    client.send_partial(&marker[11..30]);
+    std::thread::sleep(Duration::from_millis(150));
+    client.send_raw(&marker[30..]);
+    client.handshake("Piecewise");
+    assert!(!client.call("list_chats", json!({})).0);
+    assert!(
         log_tools(&mcp)
             .iter()
-            .filter(|(_, tool, _)| tool == "disconnect")
-            .count(),
-        1
+            .any(|(_, tool, _)| tool == "reconnect")
     );
+    assert!(!log_tools(&mcp).iter().any(|(_, tool, _)| tool == "connect"));
+}
+
+/// Обычное первое сообщение, которое только начинается как маркер, маркером не считается и не теряется.
+#[test]
+fn a_first_message_that_only_starts_like_the_marker_is_served_normally() {
+    let mcp = mcp(AgentMode::Read, &[INBOX_ID]);
+    let mut client = mcp.client();
+    let hello = client.handshake("Normal");
+    assert_eq!(hello["result"]["serverInfo"]["name"], "kinige");
+    assert!(log_tools(&mcp).iter().any(|(_, tool, _)| tool == "connect"));
+}
+
+/// Версия протокола 2026-07-28 разрешает первый запрос без `initialize`: такой сеанс шёл бы без «подключения» и без имени
+/// клиента. Сервер объявляет только версии с `initialize`, поэтому запрос отвергается, сеанс не начат.
+#[test]
+fn a_first_request_that_skips_initialize_by_inline_version_is_refused_and_no_session_starts() {
+    let mcp = mcp(AgentMode::ReadWrite, &[INBOX_ID]);
+    let mut client = mcp.client();
+    let before = log_tools(&mcp).len();
+    let reply = client.request(
+        "tools/call",
+        json!({
+            "name": "add_entry",
+            "arguments": {"text": "в обход рукопожатия"},
+            "_meta": {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {},
+                "io.modelcontextprotocol/clientInfo": {"name": "Sneaky", "version": "1"}
+            }
+        }),
+    );
+    assert!(reply["error"].is_object(), "{reply}");
+    assert_eq!(
+        log_tools(&mcp).len(),
+        before,
+        "ни подключения, ни вызова в журнале"
+    );
+    assert_eq!(
+        mcp.store()
+            .list_messages(INBOX_ID, None, 10, &Now::system())
+            .unwrap()
+            .messages
+            .len(),
+        0,
+        "запись не создана"
+    );
+    // Обычное рукопожатие после этого работает.
+    client.handshake("Honest");
+    assert!(!client.call("list_chats", json!({})).0);
+}
+
+/// Если строку подключения записать не удалось (база в восстановлении), она пишется перед первым вызовом.
+#[test]
+fn a_connection_row_that_failed_at_initialize_is_written_before_the_first_call() {
+    let mcp = mcp(AgentMode::Read, &[INBOX_ID]);
+    let flag = mcp.fixture.app.state::<Recovery>().corruption_flag();
+    flag.store(true, Ordering::SeqCst);
+    let mut client = mcp.client();
+    client.handshake("Late");
+    flag.store(false, Ordering::SeqCst);
+    assert!(
+        log_tools(&mcp).is_empty(),
+        "пока база недоступна, строки нет"
+    );
+    assert!(!client.call("list_chats", json!({})).0);
+    let rows = log_tools(&mcp);
+    let tools: Vec<&str> = rows.iter().map(|(_, tool, _)| tool.as_str()).collect();
+    assert_eq!(tools, ["connect", "list_chats"]);
+    assert_eq!(rows[0].0, "Late");
 }

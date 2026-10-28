@@ -70,6 +70,39 @@ pub(crate) fn log_only(
         .map_err(AgentError::from)
 }
 
+/// Строка подключения (`connect`) или переподключения моста (`reconnect`). При переподключении прежний сеанс клиента,
+/// если его последняя строка — подключение (не «отключение»), закрывается строкой «отключение» в той же транзакции.
+pub(crate) fn log_connection(
+    store: &Store,
+    client: &str,
+    reconnect: bool,
+    now: &Now,
+) -> Result<(), StoreError> {
+    let (client, ms) = (client.to_string(), now.ms);
+    store.write(move |conn| {
+        let tx = conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(write_err)?;
+        if reconnect {
+            let last: Option<String> = tx
+                .query_row(
+                    "SELECT tool FROM mcp_log WHERE client = ?1 AND tool IN ('connect', 'reconnect', 'disconnect') \
+                     ORDER BY id DESC LIMIT 1",
+                    [&client],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(write_err)?;
+            if matches!(last.as_deref(), Some("connect" | "reconnect")) {
+                insert_log(&tx, ms, &client, "disconnect", "{}", "ok", &[]).map_err(write_err)?;
+            }
+        }
+        let tool = if reconnect { "reconnect" } else { "connect" };
+        insert_log(&tx, ms, &client, tool, "{}", "ok", &[]).map_err(write_err)?;
+        tx.commit().map_err(write_err)
+    })
+}
+
 /// Удаление записи навсегда убирает и её следы в журнале; сама строка обращения остаётся.
 pub(crate) fn delete_log_messages(conn: &Connection, message_id: &str) -> rusqlite::Result<()> {
     conn.execute(

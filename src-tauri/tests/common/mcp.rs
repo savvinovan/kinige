@@ -20,6 +20,11 @@ pub struct Mcp {
 
 /// Приложение, доступ включён, режим и видимые чаты заданы, слушатель поднят в каталоге данных фикстуры.
 pub fn mcp(mode: AgentMode, chats: &[&str]) -> Mcp {
+    mcp_with_recheck(mode, chats, Duration::from_secs(600))
+}
+
+/// То же с коротким интервалом проверки слушателя (перепривязка, перезапуск после паники).
+pub fn mcp_with_recheck(mode: AgentMode, chats: &[&str], recheck: Duration) -> Mcp {
     let fixture = fixture();
     {
         let store = fixture.app.state::<Store>();
@@ -29,7 +34,7 @@ pub fn mcp(mode: AgentMode, chats: &[&str]) -> Mcp {
             .set_agent_chats(chats.iter().map(|id| id.to_string()).collect())
             .unwrap();
     }
-    mcp::start(fixture.app.handle(), fixture.data.path());
+    mcp::start_with_recheck(fixture.app.handle(), fixture.data.path(), recheck);
     let socket = fixture.app.state::<McpHandle>().0.path().to_path_buf();
     Mcp { fixture, socket }
 }
@@ -52,20 +57,30 @@ pub struct Client {
 
 impl Client {
     pub fn connect(socket: &std::path::Path) -> Client {
-        let stream = UnixStream::connect(socket).expect("сокет принимает соединения");
+        Client::try_connect(socket).expect("сокет принимает соединения")
+    }
+
+    pub fn try_connect(socket: &std::path::Path) -> Option<Client> {
+        let stream = UnixStream::connect(socket).ok()?;
         stream
             .set_read_timeout(Some(Duration::from_secs(10)))
             .unwrap();
-        Client {
+        Some(Client {
             reader: BufReader::new(stream.try_clone().unwrap()),
             writer: stream,
             next: 1,
-        }
+        })
     }
 
     pub fn send_raw(&mut self, bytes: &[u8]) {
         self.writer.write_all(bytes).unwrap();
         self.writer.write_all(b"\n").unwrap();
+    }
+
+    /// Часть строки без перевода строки: так проверяется чтение маркера частями.
+    pub fn send_partial(&mut self, bytes: &[u8]) {
+        self.writer.write_all(bytes).unwrap();
+        self.writer.flush().unwrap();
     }
 
     pub fn send(&mut self, value: Value) {

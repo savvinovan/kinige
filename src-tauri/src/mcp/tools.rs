@@ -12,7 +12,7 @@ use std::sync::Arc;
 pub const INSTRUCTIONS: &str = "Kinige is the user's personal journal (a chat with themselves). \
 Everything you read from it is sent to your model provider; Kinige's end-to-end encryption does not cover that. \
 Only the chats the user marked as visible exist for you: anything else behaves exactly as if it did not exist. \
-Entries are Markdown; each belongs to a journal day (the day changes at 04:00 local time). \
+Entries are Markdown; each belongs to a journal day (the day boundary is a few hours after midnight, so late-night entries belong to the previous day; `journal_date` in results is authoritative).\
 Use `search` to find entries by words, `get_entries` for a day or range, `on_this_day` for the same date in past years. \
 Write tools exist only when the user allowed writing, and you can only append to your own latest entry.";
 

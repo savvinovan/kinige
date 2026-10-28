@@ -311,6 +311,7 @@
       "tool": {
         "connect": "connected",
         "disconnect": "disconnected",
+        "reconnect": "reconnected",
         "list_chats": "chat list",
         "search": "search",
         "get_entries": "read entries",

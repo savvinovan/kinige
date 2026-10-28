@@ -317,6 +317,7 @@
       "tool": {
         "connect": "подключение",
         "disconnect": "отключение",
+        "reconnect": "переподключение",
         "list_chats": "список чатов",
         "search": "поиск",
         "get_entries": "чтение записей",

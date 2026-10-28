@@ -162,9 +162,7 @@ fn a_long_data_dir_falls_back_to_a_short_path_in_the_temp_dir() {
 
 #[test]
 fn a_socket_file_removed_from_outside_is_rebound_on_the_next_check() {
-    // Укороченный интервал проверки; значение одно на весь процесс тестов этого файла.
-    unsafe { std::env::set_var("KINIGE_MCP_RECHECK_MS", "150") };
-    let mcp = mcp(AgentMode::Read, &[INBOX_ID]);
+    let mcp = mcp_with_recheck(AgentMode::Read, &[INBOX_ID], Duration::from_millis(150));
     assert!(UnixStream::connect(&mcp.socket).is_ok());
     std::fs::remove_file(&mcp.socket).unwrap();
     let deadline = Instant::now() + Duration::from_secs(10);
@@ -179,6 +177,70 @@ fn a_socket_file_removed_from_outside_is_rebound_on_the_next_check() {
     let mut client = mcp.client();
     client.handshake("Claude");
     assert!(!client.call("list_chats", json!({})).0);
+}
+
+/// Подключается, повторяя попытки: слушателя могли только что перезапустить.
+fn connect_when_ready(socket: &Path) -> UnixStream {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        match UnixStream::connect(socket) {
+            Ok(stream) => return stream,
+            Err(error) if Instant::now() >= deadline => panic!("слушатель не вернулся: {error}"),
+            Err(_) => std::thread::sleep(Duration::from_millis(30)),
+        }
+    }
+}
+
+#[test]
+fn a_panic_in_the_listener_is_caught_and_the_listener_comes_back() {
+    let mcp = mcp_with_recheck(AgentMode::Read, &[INBOX_ID], Duration::from_millis(200));
+    let state = mcp.fixture.app.state::<McpHandle>().0.clone();
+    state.inject_listener_panic_for_test();
+    // Это соединение роняет слушатель; оно само не обслуживается и закрывается.
+    let mut doomed = common::mcp::Client::connect(&mcp.socket);
+    assert!(doomed.recv().is_none(), "соединение закрыто, не обслужено");
+    // Слушатель перезапускается: пока старый не закрыт, соединения могут попасть в него и оборваться, поэтому пробуем,
+    // пока кто-то не ответит на `initialize`.
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        if let Some(mut probe) = common::mcp::Client::try_connect(&mcp.socket) {
+            probe.send(json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+                "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "Probe", "version": "1"}}}));
+            if probe.recv().is_some() {
+                break;
+            }
+        }
+        assert!(Instant::now() < deadline, "слушатель не вернулся");
+        std::thread::sleep(Duration::from_millis(30));
+    }
+    let mut client = mcp.client();
+    client.handshake("Claude");
+    assert!(!client.call("list_chats", json!({})).0);
+    assert_eq!(state.error(), None);
+}
+
+#[test]
+fn a_failed_first_bind_is_retried_and_the_listener_appears_when_the_folder_is_fixed() {
+    let fixture = fixture();
+    let elsewhere = tempfile::tempdir().unwrap();
+    let link = fixture.data.path().join("mcp");
+    symlink(elsewhere.path(), &link).unwrap();
+    mcp::start_with_recheck(
+        fixture.app.handle(),
+        fixture.data.path(),
+        Duration::from_millis(150),
+    );
+    assert_eq!(error_of(&fixture), Some(SocketError::DirUnsafe));
+    // Папку исправили (симлинк убрали): следующая проверка поднимает слушатель и снимает ошибку.
+    std::fs::remove_file(&link).unwrap();
+    let path = fixture.app.state::<McpHandle>().0.path().to_path_buf();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while error_of(&fixture).is_some() && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(30));
+    }
+    assert_eq!(error_of(&fixture), None, "ошибка снята");
+    assert_eq!(mode(&path), 0o600);
+    drop(connect_when_ready(&path));
 }
 
 #[test]

@@ -74,7 +74,7 @@ fn client_name_is_cut_and_cleaned_in_the_log() {
 fn connection_and_disconnection_are_one_row_each() {
     let a = agent(AgentMode::Read, false);
     a.store
-        .agent_connected("Claude Desktop", &moscow(T0))
+        .agent_connected("Claude Desktop", false, &moscow(T0))
         .unwrap();
     call_as(&a.store, "Claude Desktop", "list_chats", json!({}), T0).unwrap();
     a.store
@@ -84,6 +84,44 @@ fn connection_and_disconnection_are_one_row_each() {
     let tools: Vec<&str> = rows.iter().map(|r| r.1.as_str()).collect();
     assert_eq!(tools, ["connect", "list_chats", "disconnect"]);
     assert!(rows.iter().all(|r| r.0 == "Claude Desktop" && r.3 == "ok"));
+}
+
+#[test]
+fn a_reconnect_is_its_own_row_and_closes_the_previous_open_session_of_that_client() {
+    let a = agent(AgentMode::Read, false);
+    let tools =
+        |dir: &std::path::Path| -> Vec<String> { log_rows(dir).into_iter().map(|r| r.1).collect() };
+    a.store
+        .agent_connected("Claude Desktop", false, &moscow(T0))
+        .unwrap();
+    // Приложение перезапустилось, строки «отключение» не было: мост переподключился.
+    a.store
+        .agent_connected("Claude Desktop", true, &moscow(T0 + MINUTE))
+        .unwrap();
+    assert_eq!(tools(a.dir.path()), ["connect", "disconnect", "reconnect"]);
+    // Прежний сеанс уже закрыт «отключением»: лишней строки нет.
+    a.store
+        .agent_disconnected("Claude Desktop", &moscow(T0 + 2 * MINUTE))
+        .unwrap();
+    a.store
+        .agent_connected("Claude Desktop", true, &moscow(T0 + 3 * MINUTE))
+        .unwrap();
+    assert_eq!(
+        tools(a.dir.path()),
+        [
+            "connect",
+            "disconnect",
+            "reconnect",
+            "disconnect",
+            "reconnect"
+        ]
+    );
+    // Другой клиент своего сеанса не теряет и чужого не закрывает.
+    a.store
+        .agent_connected("Other", true, &moscow(T0 + 4 * MINUTE))
+        .unwrap();
+    assert_eq!(log_rows(a.dir.path()).last().unwrap().1, "reconnect");
+    assert_eq!(count(a.dir.path(), "mcp_log"), 6);
 }
 
 #[test]

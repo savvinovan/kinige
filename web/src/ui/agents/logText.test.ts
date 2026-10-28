@@ -37,6 +37,13 @@ describe("строка журнала", () => {
     expect(logLine(row({ tool: "drop_tables", query: null, client: "" }), NOW, "ru", tr("ru"))).toBe("14:02 · неизвестный клиент · неизвестный запрос · 3 записи");
   });
 
+  it("служебные строки сеанса: подключение, переподключение, отключение — без записей и без слова «сбой»", () => {
+    const session = { query: null, count: 0 };
+    expect(logLine(row({ tool: "reconnect", ...session }), NOW, "ru", tr("ru"))).toBe("14:02 · Claude Desktop · переподключение");
+    expect(logLine(row({ tool: "reconnect", ...session }), NOW, "en", tr("en"))).toBe("14:02 · Claude Desktop · reconnected");
+    expect(logLine(row({ tool: "disconnect", ...session }), NOW, "en", tr("en"))).toBe("14:02 · Claude Desktop · disconnected");
+  });
+
   it("запрос с угловыми скобками и кавычками выводится как есть, без экранирования HTML", () => {
     expect(logLine(row({ query: "<b>&\"x\"</b>" }), NOW, "ru", tr("ru"))).toContain("«<b>&\"x\"</b>»");
   });

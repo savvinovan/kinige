@@ -4,7 +4,7 @@
 //! чатов (`VISIBLE`) входит в каждый оператор чтения и в транзакцию записи, каждый вызов оставляет ровно одну строку
 //! журнала (`agent_log`), а текст записей в журнал не попадает. Клиентам и мосту не доверяем.
 
-use crate::agent_log::{insert_log, log_only};
+use crate::agent_log::{insert_log, log_connection, log_only};
 use crate::agent_read::{ReadCtx, ReadFail};
 use crate::agent_write::run_write_job;
 use crate::error::{read_err, write_err};
@@ -232,10 +232,17 @@ impl Store {
         Ok(reply)
     }
 
-    /// Подключение клиента (`initialize`): одна строка журнала с очищенным именем клиента.
-    pub fn agent_connected(&self, client: &str, now: &Now) -> Result<(), StoreError> {
-        log_only(self, &clean_client(client), "connect", "{}", "ok", now).map_err(|error| {
-            log::warn!("агент: журнал подключения: {}", error.code());
+    /// Подключение клиента (`initialize`): одна строка журнала с очищенным именем клиента. `reconnect` — соединение открыто
+    /// мостом после обрыва: строка `reconnect`, а прежний сеанс этого клиента, если он остался открытым (приложение
+    /// перезапускалось), закрывается строкой «отключение» в той же транзакции. Немых путей нет: каждое соединение — строка.
+    pub fn agent_connected(
+        &self,
+        client: &str,
+        reconnect: bool,
+        now: &Now,
+    ) -> Result<(), StoreError> {
+        log_connection(self, &clean_client(client), reconnect, now).map_err(|error| {
+            log::warn!("агент: журнал подключения: {}", error.category());
             StoreError::Write("журнал подключения".into())
         })
     }

@@ -8,6 +8,7 @@ const SEPARATOR = " · ";
 const TOOLS = {
   connect: "agent.log.tool.connect",
   disconnect: "agent.log.tool.disconnect",
+  reconnect: "agent.log.tool.reconnect",
   list_chats: "agent.log.tool.list_chats",
   search: "agent.log.tool.search",
   get_entries: "agent.log.tool.get_entries",
