@@ -47,6 +47,28 @@ fn copy_is_named_listed_and_consistent_with_the_database() {
 }
 
 #[test]
+fn two_copies_in_the_same_second_keep_both_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    store.send_message(INBOX_ID, "до", &moscow(T0)).unwrap();
+    let now = moscow(T0 + MINUTE);
+    let first = store.backup_before_import(&now).unwrap();
+    store
+        .send_message(INBOX_ID, "между", &moscow(T0 + MINUTE))
+        .unwrap();
+    let second = store.backup_before_import(&now).unwrap();
+    assert_ne!(first, second, "вторая копия не затирает первую");
+    assert_eq!(classify(&second), Some(BackupKind::PreImport));
+    let count = |name: &str| -> i64 {
+        rusqlite::Connection::open(backups_dir(&db_path(dir.path())).join(name))
+            .unwrap()
+            .query_row("SELECT count(*) FROM message", [], |r| r.get(0))
+            .unwrap()
+    };
+    assert_eq!((count(&first), count(&second)), (1, 2));
+}
+
+#[test]
 fn copy_is_taken_while_the_writer_keeps_writing() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());

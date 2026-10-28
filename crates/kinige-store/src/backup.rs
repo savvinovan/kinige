@@ -195,7 +195,12 @@ impl crate::Store {
         let reader =
             crate::open_connection(db_path, true).map_err(|_| StoreError::ImportBackupFailed)?;
         let dir = backups_dir(db_path);
-        let name = backup::pre_import_name(&crate::time::utc_stamp(now.ms));
+        // Имя с секундами: два импорта в одну секунду не должны затереть первую копию, поэтому занятое имя сдвигается
+        // на секунду вперёд (метка остаётся порядком копий для ротации).
+        let name = (0..60)
+            .map(|k| backup::pre_import_name(&crate::time::utc_stamp(now.ms + k * 1000)))
+            .find(|name| !dir.join(name).exists())
+            .ok_or(StoreError::ImportBackupFailed)?;
         snapshot(&reader, &dir, &name).map_err(|_| StoreError::ImportBackupFailed)?;
         rotate(&dir);
         Ok(name)

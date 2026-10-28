@@ -153,6 +153,37 @@ fn query_with_digits_yo_and_mixed_text() {
 }
 
 #[test]
+fn query_of_a_lone_yo_digits_or_emoji_is_well_formed() {
+    // «ё» сворачивается в «е»; основа в один знак — не префикс (меньше двух знаков).
+    assert_eq!(fts_query("ё").as_deref(), Some("\"е\""));
+    assert_eq!(fts_query("Ёё").as_deref(), Some("\"е\""));
+    // Цифры: число целиком и его начало.
+    assert_eq!(fts_query("2026").as_deref(), Some("\"2026\"*"));
+    assert_eq!(fts_query("7").as_deref(), Some("\"7\""));
+    // Эмодзи — не слова: чистые эмодзи дают запрос без слов, рядом со словом не мешают.
+    for input in ["😀", "🎉🎉 ", "👨‍👩‍👧", "❤\u{fe0f}"] {
+        assert_eq!(fts_query(input), None, "{input:?}");
+        assert!(!title_matches("Дом 🏠", input), "{input:?}");
+    }
+    assert_eq!(
+        fts_query("книга 📚 2026").as_deref(),
+        Some("\"книг\" \"2026\"*")
+    );
+}
+
+#[test]
+fn chat_titles_match_by_stem_with_yo_digits_and_emoji() {
+    assert!(title_matches("Ёлка", "елка"));
+    assert!(title_matches("Елка", "ёлка"));
+    assert!(title_matches("Планы 2026", "2026"));
+    assert!(title_matches("Планы 2026", "план 20"));
+    assert!(!title_matches("Планы 2026", "2027"));
+    assert!(title_matches("📚 Книги", "книга"));
+    assert!(!title_matches("📚 Книги", "📚"));
+    assert!(!title_matches("Книги", ""));
+}
+
+#[test]
 fn highlight_finds_the_forms_that_are_in_the_text() {
     let text = "Книга на столе. Я читаю книгу, а книжка рядом. Книга!";
     assert_eq!(highlight_terms(text, "книги "), ["Книга", "книгу"]);
