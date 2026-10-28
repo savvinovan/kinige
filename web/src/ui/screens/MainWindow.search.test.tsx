@@ -222,6 +222,30 @@ describe("Поиск: клавиатура и переход к записи", (
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Новая заметка" })).toHaveFocus());
   });
 
+  it("Inbox находится по переведённому имени: «входящ» — строка «Чаты», выбор открывает Inbox", async () => {
+    setup();
+    fireEvent.click(await screen.findByRole("button", { name: /^Книги/ }));
+    await screen.findByText("Книга о Раст");
+    type("входящ");
+    await waitFor(() => expect(options().length).toBeGreaterThan(0));
+    const row = within(results()).getByRole("option", { name: /Входящие/ });
+    expect(row).toHaveClass("search-chat");
+    expect(within(results()).getByText("Чаты")).toBeInTheDocument();
+    fireEvent.click(row);
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Входящие/ })).toHaveAttribute("aria-current", "true"));
+    // Запрос, которому имя не соответствует, строки Inbox не даёт.
+    type("книг");
+    await waitFor(() => expect(options().length).toBeGreaterThan(0));
+    expect(options().filter((o) => o.classList.contains("search-chat") && /Входящие/.test(o.textContent ?? ""))).toHaveLength(0);
+  });
+
+  it("по-английски Inbox ищется по «inb»", async () => {
+    setup({}, "en");
+    await screen.findByText("Читаю книгу про море");
+    fireEvent.change(screen.getByRole("combobox", { name: "Search" }), { target: { value: "inb" } });
+    expect(await screen.findByRole("option", { name: /Inbox/ })).toHaveClass("search-chat");
+  });
+
   it("по-английски: подписи и пустой результат", async () => {
     setup({}, "en");
     await screen.findByText("Читаю книгу про море");

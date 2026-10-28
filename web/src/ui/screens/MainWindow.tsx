@@ -124,6 +124,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     sidebarCollapsed: settings.sidebarCollapsed,
     toggleCollapsed: prefs.toggleCollapsed,
     onFocus: setFocus,
+    inbox: { chat: list.chats.find((c) => c.isInbox), name: t("chat.inbox") },
   });
   const importer = useImport({
     api,

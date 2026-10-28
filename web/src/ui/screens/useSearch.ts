@@ -4,6 +4,7 @@ import type { ChatSummary } from "../../api/generated/ChatSummary";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { FeedCursor } from "../../api/generated/FeedCursor";
 import type { SearchHit } from "../../api/generated/SearchHit";
+import { inboxMatches } from "../search/inboxMatch";
 import { NO_FILTERS, type SearchUiFilters, searchRowId } from "../search/SearchResults";
 
 /** Пауза после последней клавиши до запроса (спецификация слайса 4, задача 4.13). */
@@ -18,6 +19,8 @@ interface UseSearchOptions {
   /** Результат выбран (щелчок или Enter): открыть чат на записи. */
   onOpenHit: (hit: SearchHit, query: string) => void;
   onOpenChat: (chat: ChatSummary) => void;
+  /** Inbox и его переведённое имя: Rust Inbox среди «Чатов» не отдаёт, строку добавляет интерфейс (задача 4.9). */
+  inbox?: { chat: ChatSummary | undefined; name: string };
 }
 
 /**
@@ -26,8 +29,13 @@ interface UseSearchOptions {
  * Esc очищает поле и возвращает ленту. Фокус остаётся в поле: выбранная строка передаётся диктору через
  * `aria-activedescendant`.
  */
-export function useSearch({ api, chatId, onOpenHit, onOpenChat }: UseSearchOptions) {
+export function useSearch({ api, chatId, onOpenHit, onOpenChat, inbox }: UseSearchOptions) {
   const listId = useId();
+  // Inbox читается в момент прихода ответа: смена счётчика чата не должна перезапускать поиск.
+  const inboxRef = useRef(inbox);
+  useEffect(() => {
+    inboxRef.current = inbox;
+  });
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<SearchUiFilters>(NO_FILTERS);
   const [chats, setChats] = useState<ChatSummary[]>([]);
@@ -72,7 +80,10 @@ export function useSearch({ api, chatId, onOpenHit, onOpenChat }: UseSearchOptio
         .searchMessages(trimmed, { filters: { chatId: scopedChat, favorite, tasks, from: dateFrom, to: dateTo }, limit: PAGE })
         .then((page) => {
           if (generation.current !== mine) return;
-          setChats(page.chats);
+          const home = inboxRef.current;
+          const withInbox =
+            home?.chat && !page.chats.some((c) => c.isInbox) && inboxMatches(home.name, trimmed) ? [home.chat, ...page.chats] : page.chats;
+          setChats(withInbox);
           setHits(page.hits);
           setOlder(page.older);
           setError(null);

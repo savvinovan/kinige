@@ -158,7 +158,7 @@ export function SearchResults(props: SearchResultsProps) {
               <span className="search-row__emoji" aria-hidden="true">
                 {chat.icon ?? "\u{1F4AC}"}
               </span>
-              <span className="search-row__name">{chat.title}</span>
+              <span className="search-row__name">{chat.isInbox ? t("chat.inbox") : chat.title}</span>
               <span className="search-row__count">{t("count.entries", { count: chat.count })}</span>
             </li>
           ))}

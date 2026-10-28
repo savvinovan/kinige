@@ -16,6 +16,8 @@ interface UseMainSearchOptions {
   toggleCollapsed: () => void;
   /** Лента открывает чат на записи: страница вокруг неё и подсветка найденных слов (`useFeed`). */
   onFocus: (target: FocusTarget) => void;
+  /** Inbox и его переведённое имя для строки «Чаты». */
+  inbox: { chat: ChatSummary | undefined; name: string };
 }
 
 /** Мак: там поиск по ⌘F, на других системах — по Ctrl+F. */
@@ -25,7 +27,7 @@ const isMac = () => typeof navigator !== "undefined" && /Mac/i.test(navigator.pl
  * Поиск в главном окне (слайс 4): поле сайдбара, результаты на месте ленты, ⌘F, значок поиска в свёрнутом сайдбаре и выбор
  * дат фильтра. Выбор результата открывает чат на записи (`focus` для ленты) и закрывает поиск.
  */
-export function useMainSearch({ api, selected, select, sidebarCollapsed, toggleCollapsed, onFocus }: UseMainSearchOptions) {
+export function useMainSearch({ api, selected, select, sidebarCollapsed, toggleCollapsed, onFocus, inbox }: UseMainSearchOptions) {
   const input = useRef<HTMLInputElement>(null);
   const wantFocus = useRef(false);
   const counter = useRef(0);
@@ -50,7 +52,7 @@ export function useMainSearch({ api, selected, select, sidebarCollapsed, toggleC
     },
     [select],
   );
-  const search = useSearch({ api, chatId: selected, onOpenHit: openHit, onOpenChat: openChat });
+  const search = useSearch({ api, chatId: selected, onOpenHit: openHit, onOpenChat: openChat, inbox });
   const { clear } = search;
   useEffect(() => {
     clearSearch.current = clear;
