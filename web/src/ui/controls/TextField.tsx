@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type Ref } from "react";
 import { Icon, type IconName } from "../icons/Icon";
 import "./controls.css";
 
@@ -9,16 +9,19 @@ interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "ar
   icon?: IconName;
   /** Текст ошибки: показывается под полем, поле помечается недопустимым. */
   error?: string;
+  /** Ссылка на `<input>` (⌘F ставит в поле фокус). */
+  inputRef?: Ref<HTMLInputElement>;
 }
 
 /** Однострочное поле ввода (поиск и подобное). Без обводки: тёмная заливка, фокус — курсор и более светлая заливка; рамка только у ошибки. */
-export function TextField({ label, icon, error, className, ...rest }: TextFieldProps) {
+export function TextField({ label, icon, error, className, inputRef, ...rest }: TextFieldProps) {
   const errorId = useId();
   return (
     <div className={`text-field${className ? ` ${className}` : ""}`}>
       <label className={`text-field__box${error ? " text-field__box--invalid" : ""}`}>
         {icon ? <Icon name={icon} /> : null}
         <input
+          ref={inputRef}
           className="text-field__input"
           aria-label={label}
           aria-invalid={error ? true : undefined}

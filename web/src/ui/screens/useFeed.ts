@@ -4,12 +4,21 @@ import { type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { MessageFlag } from "../../api/generated/MessageFlag";
 import type { MessageView } from "../../api/generated/MessageView";
+import type { FeedCursor } from "../../api/generated/FeedCursor";
 import type { FeedMessage } from "../feed/buildFeed";
-import type { FeedActions, FeedUiState } from "../feed/Feed";
-import { mergeLatestPage, withDeleted } from "../feed/mergeFeed";
+import type { FeedActions, FeedPaging, FeedUiState, ScrollRequest } from "../feed/Feed";
+import { mergeLatestPage, mergeOlder, withDeleted } from "../feed/mergeFeed";
 
-/** Сколько записей грузит первая страница ленты; более старые (дозагрузка) — слайс 8. */
+/** Сколько записей грузит страница ленты. Старые страницы подгружаются при прокрутке к верху (слайс 4), без виртуализации. */
 export const PAGE_SIZE = 200;
+
+/** Переход к записи (из поиска): чат, запись и слова, которые нужно выделить. Новый `nonce` — новый переход. */
+export interface FocusTarget {
+  chatId: string;
+  messageId: string;
+  terms: readonly string[];
+  nonce: number;
+}
 
 interface UseFeedOptions {
   api: KinigeApi;
@@ -23,6 +32,8 @@ interface UseFeedOptions {
   onError: (code: ErrorCode) => void;
   /** Щелчок по `#тегу`. */
   onTag: (tag: string) => void;
+  /** Открыть чат на записи: страница вокруг неё, дальше подгрузка вверх и вниз. Используется один раз на `nonce`. */
+  focus?: FocusTarget | null;
 }
 
 /**
@@ -30,10 +41,22 @@ interface UseFeedOptions {
  * Без оптимистичного показа: запись меняется после ответа Rust. Удалённая запись стоит на месте приглушённой («Удалено ·
  * Вернуть»), пока человек не уйдёт из чата (решение пользователя 1).
  */
-export function useFeed({ api, chatId, tag, refreshChats, onError, onTag }: UseFeedOptions) {
+export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus = null }: UseFeedOptions) {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<FeedMessage[]>([]);
   const [today, setToday] = useState("");
+  // Края загруженной ленты: курсор следующей старой страницы и следующей новой; `newer === null` — лента дошла до конца.
+  const [older, setOlder] = useState<FeedCursor | null>(null);
+  const [newer, setNewer] = useState<FeedCursor | null>(null);
+  const [mark, setMark] = useState<{ id: string; terms: readonly string[] } | null>(null);
+  const [scrollTo, setScrollTo] = useState<ScrollRequest | null>(null);
+  // Переход уже выполнен: тот же `nonce` второй раз (возврат в чат) ленту к записи не уводит.
+  const usedFocus = useRef(0);
+  const paging = useRef({ older, newer });
+  useEffect(() => {
+    paging.current = { older, newer };
+  });
+  const loadingEdge = useRef(false);
   const [loadError, setLoadError] = useState<ErrorCode | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | undefined>(undefined);
@@ -61,35 +84,88 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag }: UseF
       setShownChat(chatKey);
       setDeletedIds(new Set());
       setMessages([]);
+      setOlder(null);
+      setNewer(null);
+      setMark(null);
     } else {
       // Тот же чат, другой фильтр: на месте остаются только удалённые записи, подходящие под новый фильтр.
       setMessages((shown) => withDeleted(shown, [], deletedIds, tag));
     }
   }
 
-  // Смена чата или фильтра: лента перечитывается.
+  // Смена чата, фильтра или переход к записи: лента перечитывается. Переход — страница вокруг записи; найденные слова
+  // выделяются в ней, запись подсвечена до следующего щелчка (`clearMark`).
+  const focusNonce = focus?.nonce ?? 0;
   useEffect(() => {
     if (chatId === null) return;
     let live = true;
+    const target = focus && focus.chatId === chatId && focus.nonce > usedFocus.current ? focus : null;
+    if (target) usedFocus.current = target.nonce;
     api
-      .listMessages(chatId, { limit: PAGE_SIZE, tag: tag ?? undefined })
+      .listMessages(chatId, { limit: PAGE_SIZE, tag: tag ?? undefined, around: target?.messageId })
       .then((page) => {
         if (!live) return;
         setMessages((shown) => withDeleted(shown, page.messages, deleted.current, tag));
+        setOlder(page.older);
+        setNewer(page.newer);
         setToday(page.today);
         setLoadError(null);
+        if (target) {
+          setMark({ id: target.messageId, terms: target.terms });
+          setScrollTo({ id: target.messageId, nonce: target.nonce });
+        }
       })
       .catch((reason: unknown) => live && setLoadError(errorCode(reason)));
     return () => {
       live = false;
     };
-  }, [api, chatId, tag]);
+    // `focus` читается один раз на `nonce`: сам объект в зависимости не нужен.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, chatId, tag, focusNonce]);
+
+  /** Старая страница сверху: курсор `older`, записи встают перед загруженными. Прокрутка при этом не прыгает. */
+  const loadOlder = useCallback(async () => {
+    const { older: cursor } = paging.current;
+    const { chatId: id, tag: filter } = current.current;
+    if (cursor === null || id === null || loadingEdge.current) return;
+    loadingEdge.current = true;
+    try {
+      const page = await api.listMessages(id, { before: cursor, limit: PAGE_SIZE, tag: filter ?? undefined });
+      if (current.current.chatId !== id || current.current.tag !== filter) return;
+      setMessages((loaded) => mergeOlder(loaded, page.messages));
+      setOlder(page.older);
+    } catch (reason) {
+      onError(errorCode(reason));
+    } finally {
+      loadingEdge.current = false;
+    }
+  }, [api, onError]);
+
+  /** Новая страница снизу (только после перехода к записи из середины истории); дойдя до конца, лента снова «живая». */
+  const loadNewer = useCallback(async () => {
+    const { newer: cursor } = paging.current;
+    const { chatId: id, tag: filter } = current.current;
+    if (cursor === null || id === null || loadingEdge.current) return;
+    loadingEdge.current = true;
+    try {
+      const page = await api.listMessages(id, { after: cursor, limit: PAGE_SIZE, tag: filter ?? undefined });
+      if (current.current.chatId !== id || current.current.tag !== filter) return;
+      setMessages((loaded) => mergeOlder(loaded, page.messages));
+      setNewer(page.newer);
+    } catch (reason) {
+      onError(errorCode(reason));
+    } finally {
+      loadingEdge.current = false;
+    }
+  }, [api, onError]);
 
   // Свежая последняя страница: запись пришла из окна захвата или из буфера (событие Rust «записи изменились»). Подгруженная
   // история не сбрасывается; удалённые записи, которые ещё стоят на месте, не исчезают вместе со страницей.
   const reload = useCallback(async () => {
     const { chatId: id, tag: filter } = current.current;
     if (id === null) return;
+    // Лента открыта в середине истории (переход из поиска): новые записи снизу появятся, когда до них дойдёт подгрузка.
+    if (paging.current.newer !== null) return;
     try {
       const page = await api.listMessages(id, { limit: PAGE_SIZE, tag: filter ?? undefined });
       if (current.current.chatId !== id || current.current.tag !== filter) return;
@@ -97,6 +173,8 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag }: UseF
         const merged = mergeLatestPage(loaded, page.messages, page.older !== null);
         return withDeleted(loaded, merged, deleted.current, filter);
       });
+      // Подгруженная история остаётся; если старше страницы ничего нет, курсора больше нет.
+      if (page.older === null) setOlder(null);
       setToday(page.today);
     } catch {
       // Лента остаётся прежней: следующее событие перечитает.
@@ -213,7 +291,8 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag }: UseF
     [api, dateFor, replace],
   );
 
-  const ui: FeedUiState = { editingId, deletedIds, editError };
+  const ui: FeedUiState = { editingId, deletedIds, editError, markedId: mark?.id ?? null, markTerms: mark?.terms };
+  const feedPaging: FeedPaging = { hasOlder: older !== null, hasNewer: newer !== null, onLoadOlder: loadOlder, onLoadNewer: loadNewer };
   const dateTarget = dateFor === null ? undefined : messages.find((m) => m.id === dateFor);
   return {
     messages,
@@ -221,6 +300,9 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag }: UseF
     loadError,
     ui,
     actions,
+    paging: feedPaging,
+    scrollTo,
+    clearMark: useCallback(() => setMark(null), []),
     reload,
     appendSent,
     dateTarget,

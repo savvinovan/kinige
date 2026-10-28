@@ -5,7 +5,7 @@ import { Icon } from "../icons/Icon";
 import { initials } from "./initials";
 import "./profile.css";
 
-const ITEMS = ["settings", "export", "about"] as const;
+const ITEMS = ["settings", "import", "export", "about"] as const;
 type Item = (typeof ITEMS)[number];
 
 interface ProfileMenuProps {
@@ -17,18 +17,27 @@ interface ProfileMenuProps {
   defaultOpen?: boolean;
   /** «Настройки» (слайс 1). Без обработчика пункт только нарисован и объявлен недоступным, как «Экспорт» и «О программе». */
   onOpenSettings?: () => void;
+  /** «Импорт из Telegram…» (слайс 4). Без обработчика пункт нарисован и объявлен недоступным. */
+  onOpenImport?: () => void;
   /** Свёрнутый сайдбар: только аватар, меню открывается вправо от него, а не вверх на всю ширину. */
   compact?: boolean;
 }
 
 /**
- * Строка профиля внизу сайдбара, как в Notion: аватар с инициалами, имя, шеврон и меню «Настройки», «Экспорт»,
- * «О программе». Работает «Настройки» (если передан обработчик); остальные пункты объявлены недоступными
+ * Строка профиля внизу сайдбара, как в Notion: аватар с инициалами, имя, шеврон и меню «Настройки», «Импорт из
+ * Telegram…», «Экспорт», «О программе». Работают «Настройки» и «Импорт» (если переданы обработчики); остальные пункты объявлены недоступными
  * (`aria-disabled`, «Появится позже»), но меню настоящее: открывается щелчком, Enter, пробелом или стрелкой; стрелки,
  * Home и End ходят по пунктам, Esc закрывает и возвращает фокус на кнопку, щелчок вне меню и Tab закрывают.
  * В свёрнутом сайдбаре (`compact`) остаётся аватар; имя читается по подписи кнопки.
  */
-export function ProfileMenu({ name, statusDot = false, defaultOpen = false, onOpenSettings, compact = false }: ProfileMenuProps) {
+export function ProfileMenu({
+  name,
+  statusDot = false,
+  defaultOpen = false,
+  onOpenSettings,
+  onOpenImport,
+  compact = false,
+}: ProfileMenuProps) {
   const { t } = useTranslation();
   const displayName = name ?? t("profile.defaultName");
   const [open, setOpen] = useState(defaultOpen);
@@ -103,7 +112,8 @@ export function ProfileMenu({ name, statusDot = false, defaultOpen = false, onOp
     }
   };
 
-  const itemAvailable = (item: Item) => item === "settings" && onOpenSettings !== undefined;
+  const handlers: Partial<Record<Item, () => void>> = { settings: onOpenSettings, import: onOpenImport };
+  const itemAvailable = (item: Item) => handlers[item] !== undefined;
 
   return (
     <div className={compact ? "profile profile--compact" : "profile"} ref={root}>
@@ -121,7 +131,7 @@ export function ProfileMenu({ name, statusDot = false, defaultOpen = false, onOp
                   // Фокус сначала возвращается на кнопку профиля (пункт меню исчезнет): окно настроек запомнит её
                   // и вернёт фокус на неё при закрытии.
                   close(true);
-                  onOpenSettings?.();
+                  handlers[item]?.();
                 }}
               >
                 {t(`profile.${item}`)}

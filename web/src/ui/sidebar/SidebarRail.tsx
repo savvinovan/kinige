@@ -68,6 +68,9 @@ interface SidebarRailProps {
   onOpenTrash?: () => void;
   profile?: { name?: string; statusDot?: boolean };
   onOpenSettings?: () => void;
+  onOpenImport?: () => void;
+  /** Значок поиска: разворачивает сайдбар и ставит фокус в поле (слайс 4). */
+  onSearch?: () => void;
   /** Чат, над которым тащат запись (подсветка цели). */
   dropTargetId?: string | null;
 }
@@ -88,6 +91,8 @@ export function SidebarRail({
   onOpenTrash,
   profile,
   onOpenSettings,
+  onOpenImport,
+  onSearch,
   dropTargetId = null,
 }: SidebarRailProps) {
   const { t } = useTranslation();
@@ -102,6 +107,7 @@ export function SidebarRail({
     <>
       <div className="sidebar__rail-top">
         {onToggleCollapsed ? <IconButton icon="expand" label={t("sidebar.expand")} onClick={onToggleCollapsed} /> : null}
+        {onSearch ? <IconButton icon="search" label={t("sidebar.search")} onClick={onSearch} /> : null}
       </div>
       <nav aria-label={t("sidebar.chats")} className="sidebar__nav" onScroll={hideTip}>
         <ul className="sidebar__list">
@@ -151,7 +157,7 @@ export function SidebarRail({
             {trashCount > 0 ? <span className="rail-button__dot" aria-hidden="true" /> : null}
           </RailButton>
         ) : null}
-        <ProfileMenu compact name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} />
+        <ProfileMenu compact name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} onOpenImport={onOpenImport} />
       </div>
       {tip
         ? createPortal(

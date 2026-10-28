@@ -191,3 +191,107 @@
   font-size: var(--type-small-size);
   line-height: var(--type-small-line-height);
 }
+
+/* Флажок (слайс 4): тот же квадрат, что у задачи в ленте; настоящий input скрыт визуально, но остаётся в порядке Tab. */
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.checkbox__input {
+  position: absolute;
+  width: var(--border-width-hairline);
+  height: var(--border-width-hairline);
+  margin: 0;
+  opacity: 0;
+}
+
+.checkbox__box {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: var(--layout-checkbox-size);
+  height: var(--layout-checkbox-size);
+  margin-top: calc((var(--type-small-line-height) * var(--type-small-size) - var(--layout-checkbox-size)) / 2);
+  border: var(--border-width-strong) solid var(--color-text-tertiary);
+  border-radius: var(--radius-inline);
+  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.checkbox__input:checked + .checkbox__box {
+  border-color: var(--color-accent-default);
+  background: var(--color-accent-default);
+}
+
+/* Галочка из двух сторон повёрнутого прямоугольника, цвет — фон окна (9,2:1 к акценту), как у задачи в ленте. */
+.checkbox__input:checked + .checkbox__box::after {
+  content: "";
+  position: absolute;
+  top: var(--layout-checkbox-tick-top);
+  left: var(--layout-checkbox-tick-left);
+  box-sizing: border-box;
+  width: var(--layout-checkbox-tick-width);
+  height: var(--layout-checkbox-tick-height);
+  border: solid var(--color-surface-background);
+  border-width: 0 var(--border-width-strong) var(--border-width-strong) 0;
+  transform: rotate(45deg);
+}
+
+.checkbox__input:focus-visible + .checkbox__box {
+  outline: var(--border-width-strong) solid var(--color-focus-ring);
+  outline-offset: var(--border-width-hairline);
+}
+
+.checkbox__input:disabled + .checkbox__box,
+.checkbox__input:disabled ~ .checkbox__text {
+  opacity: var(--opacity-disabled);
+}
+
+.checkbox:has(.checkbox__input:disabled) {
+  cursor: default;
+}
+
+.checkbox__text {
+  display: grid;
+  min-width: 0;
+}
+
+.checkbox__label {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkbox__description {
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Полоса прогресса: тихая линия на заливке поля, акцентная заливка слева направо. */
+.progress {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--layout-progress-height);
+  overflow: hidden;
+  border-radius: var(--radius-round);
+  background: var(--color-surface-field);
+}
+
+.progress__fill {
+  height: 100%;
+  border-radius: var(--radius-round);
+  background: var(--color-accent-default);
+  transition: width var(--motion-duration-medium) var(--motion-easing-standard);
+}

@@ -43,6 +43,8 @@ export interface MessageProps {
   readOnly?: boolean;
   /** Теги записи (нижний регистр, без `#`), их определил Rust: в тексте они подсвечиваются и нажимаются. */
   tags?: readonly string[];
+  /** Найденные поиском слова записи, как они в ней написаны (их отдаёт Rust): подсвечиваются целиком (слайс 4). */
+  markTerms?: readonly string[];
   /**
    * view — обычная; editing — текст заменён полем правки; deleted — приглушена, вместо времени «Удалено · Вернуть»,
    * ряда действий и меню нет (решение 1 слайса 3).
@@ -100,6 +102,7 @@ export function Message({
   favorite = false,
   readOnly = false,
   tags,
+  markTerms,
   mode = "view",
   onEdit,
   onSaveEdit,
@@ -126,6 +129,8 @@ export function Message({
   const labelItem = t("message.taskItem");
   const interactiveTasks = viewing && !readOnly && onToggleTaskItem !== undefined;
   const tagsKey = (tags ?? []).join(" ");
+  // Слова из поиска разделены пробелом: слово — серия букв и цифр, пробела в нём нет.
+  const markKey = (markTerms ?? []).join(" ");
   const html = useMemo(
     () =>
       renderMarkdown(markdown, {
@@ -133,8 +138,9 @@ export function Message({
         taskLabels: { done: labelDone, todo: labelTodo, item: labelItem },
         tags: tagsKey === "" ? undefined : tagsKey.split(" "),
         interactiveTasks,
+        marks: markKey === "" ? undefined : markKey.split(" "),
       }),
-    [markdown, failed, labelDone, labelTodo, labelItem, tagsKey, interactiveTasks],
+    [markdown, failed, labelDone, labelTodo, labelItem, tagsKey, interactiveTasks, markKey],
   );
   // Сообщение кончается блоком (код): распорки у последней строки нет, время стоит под блоком.
   const timeBelow = !failed && !html.includes("message__spacer");

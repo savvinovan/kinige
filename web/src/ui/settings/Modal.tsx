@@ -16,6 +16,11 @@ interface ModalProps {
    * убрали со страницы (пункт закрывшегося меню), вернуть фокус некуда, и родителю стоит передать триггер здесь.
    */
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /**
+   * Окно можно закрыть: крестик, Esc и щелчок по подложке. Без этого (идущий импорт) закрыть окно нечем, кроме кнопок
+   * внутри него; Tab ходит по кругу как обычно.
+   */
+  closable?: boolean;
   children: ReactNode;
 }
 
@@ -36,15 +41,17 @@ const focusablesIn = (root: HTMLElement) =>
  *
  * Появление — короткое затухание и сдвиг; при Reduce Motion длительности нулевые (themes.css), окно появляется сразу.
  */
-export function Modal({ title, closeLabel, onClose, returnFocusRef, children }: ModalProps) {
+export function Modal({ title, closeLabel, onClose, returnFocusRef, closable = true, children }: ModalProps) {
   const titleId = useId();
   const panel = useRef<HTMLDivElement>(null);
   // Открывший элемент запоминается до первой отрисовки панели, пока фокус ещё на нём.
   const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null));
   // Свежий обработчик без переподписки на события: родитель может передавать новую функцию на каждый рендер.
   const onCloseRef = useRef(onClose);
+  const closableRef = useRef(closable);
   useEffect(() => {
     onCloseRef.current = onClose;
+    closableRef.current = closable;
   });
 
   useEffect(() => {
@@ -56,7 +63,7 @@ export function Modal({ title, closeLabel, onClose, returnFocusRef, children }: 
       if (event.key === "Escape") {
         if (event.defaultPrevented) return;
         event.preventDefault();
-        onCloseRef.current();
+        if (closableRef.current) onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -88,13 +95,13 @@ export function Modal({ title, closeLabel, onClose, returnFocusRef, children }: 
 
   return (
     <div className="modal">
-      <div className="modal__scrim" aria-hidden="true" onClick={onClose} />
+      <div className="modal__scrim" aria-hidden="true" onClick={closable ? onClose : undefined} />
       <div className="modal__panel" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} ref={panel}>
         <header className="modal__header">
           <h2 className="modal__title" id={titleId}>
             {title}
           </h2>
-          <IconButton icon="close" label={closeLabel} onClick={onClose} />
+          {closable ? <IconButton icon="close" label={closeLabel} onClick={onClose} /> : null}
         </header>
         <div className="modal__body">{children}</div>
       </div>

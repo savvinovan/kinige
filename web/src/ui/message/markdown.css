@@ -118,6 +118,14 @@
   text-underline-offset: var(--space-1);
 }
 
+/* Найденное слово в открытой из поиска записи (слайс 4): заливка highlight.mark, цвет текста не меняется. */
+.markdown mark {
+  padding: 0;
+  border-radius: var(--radius-inline);
+  background: var(--color-highlight-mark);
+  color: inherit;
+}
+
 /* Цитата: черта слева только у самой цитаты. */
 .markdown blockquote {
   padding-left: var(--space-3);

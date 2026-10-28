@@ -21,6 +21,8 @@ type RenderEnv = {
   taskLabels?: TaskLabels;
   tags?: ReadonlySet<string>;
   interactiveTasks?: boolean;
+  /** Найденные поиском слова (как они написаны в записи): подсвечиваются в обычном тексте целыми словами. */
+  marks?: ReadonlySet<string>;
 };
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true, typographer: false });
@@ -136,6 +138,53 @@ md.core.ruler.after("linkify", "kinige-tags", (state) => {
   }
 });
 
+// Найденные поиском слова (слайс 4): слова записи, которые вернул Rust, в обычном тексте оборачиваются в `<mark>`. Совпадают
+// только целые слова и с тем же регистром, как слово написано в записи; в ссылках, коде и тегах подсветки нет (после
+// «kinige-tags» теги уже html_inline-токены, текст ссылок пропускается по глубине).
+const MARK_WORD = /[\p{L}\p{N}]+/gu;
+
+function splitMarks(state: StateCore, token: Token, marks: ReadonlySet<string>): Token[] | null {
+  const text = token.content;
+  const parts: Token[] = [];
+  let from = 0;
+  for (const match of text.matchAll(MARK_WORD)) {
+    if (!marks.has(match[0])) continue;
+    if (match.index > from) {
+      const plain = new state.Token("text", "", 0);
+      plain.content = text.slice(from, match.index);
+      parts.push(plain);
+    }
+    const mark = new state.Token("html_inline", "", 0);
+    mark.content = `<mark>${md.utils.escapeHtml(match[0])}</mark>`;
+    parts.push(mark);
+    from = match.index + match[0].length;
+  }
+  if (parts.length === 0) return null;
+  if (from < text.length) {
+    const rest = new state.Token("text", "", 0);
+    rest.content = text.slice(from);
+    parts.push(rest);
+  }
+  return parts;
+}
+
+md.core.ruler.after("kinige-tags", "kinige-marks", (state) => {
+  const marks = (state.env as RenderEnv).marks;
+  if (!marks || marks.size === 0) return;
+  for (const block of state.tokens) {
+    if (block.type !== "inline" || !block.children) continue;
+    const result: Token[] = [];
+    let linkDepth = 0;
+    for (const token of block.children) {
+      if (token.type === "link_open") linkDepth++;
+      else if (token.type === "link_close") linkDepth--;
+      const parts = token.type === "text" && linkDepth === 0 ? splitMarks(state, token, marks) : null;
+      result.push(...(parts ?? [token]));
+    }
+    block.children = result;
+  }
+});
+
 // Время стоит в правом нижнем углу плашки на одной строке с концом текста: в конец последней строки вставляется
 // невидимая распорка по ширине времени, чтобы текст его не накрывал. Если сообщение кончается блоком кода,
 // распорки нет: время стоит под блоком.
@@ -165,7 +214,7 @@ purify.addHook("afterSanitizeAttributes", (node) => {
 const SANITIZE = {
   ALLOWED_TAGS: [
     "p", "br", "hr", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "blockquote", "pre", "code",
-    "em", "strong", "s", "a", "span",
+    "em", "strong", "s", "a", "span", "mark",
   ],
   ALLOWED_ATTR: ["href", "rel", "class", "role", "aria-label", "aria-hidden", "aria-checked", "tabindex", "start"],
   ALLOW_DATA_ATTR: false,
@@ -192,8 +241,21 @@ export function renderMarkdown(
     taskLabels,
     tags,
     interactiveTasks,
-  }: { timeSpacer: boolean; taskLabels: TaskLabels; tags?: readonly string[]; interactiveTasks?: boolean },
+    marks,
+  }: {
+    timeSpacer: boolean;
+    taskLabels: TaskLabels;
+    tags?: readonly string[];
+    interactiveTasks?: boolean;
+    marks?: readonly string[];
+  },
 ): string {
-  const env: RenderEnv = { timeSpacer, taskLabels, tags: tags ? new Set(tags) : undefined, interactiveTasks };
+  const env: RenderEnv = {
+    timeSpacer,
+    taskLabels,
+    tags: tags ? new Set(tags) : undefined,
+    interactiveTasks,
+    marks: marks ? new Set(marks) : undefined,
+  };
   return sanitizeHtml(md.render(source, env));
 }
