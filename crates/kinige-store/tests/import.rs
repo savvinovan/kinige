@@ -220,10 +220,26 @@ fn impossible_dates_do_not_break_the_batch_and_land_on_the_import_day() {
         if message.body_md.starts_with("хорошая") {
             assert_eq!(message.journal_date, "2019-03-08");
         } else {
-            assert_eq!(message.created_at, T0, "{}", message.body_md);
+            assert!(
+                (T0..T0 + 3).contains(&message.created_at),
+                "{}",
+                message.body_md
+            );
             assert_eq!(message.journal_date, today);
         }
     }
+    // Записи без настоящей даты стоят в порядке файла, а не в порядке случайных id.
+    let texts: Vec<&str> = all.iter().map(|m| m.body_md.as_str()).collect();
+    assert_eq!(
+        texts,
+        [
+            "хорошая до",
+            "хорошая после",
+            "за пределом двойной точности",
+            "далёкое будущее",
+            "отрицательная",
+        ]
+    );
 }
 
 #[test]

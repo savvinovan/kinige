@@ -19,6 +19,8 @@ const MAX_FUTURE_MS: i64 = 24 * 3_600_000;
 #[derive(Default)]
 pub(crate) struct Timeline {
     seen_in_second: HashMap<i64, u32>,
+    /// Сколько сообщений уже получили «момент импорта» (без даты или с датой вне окна).
+    undated: u32,
 }
 
 impl Timeline {
@@ -33,7 +35,11 @@ impl Timeline {
             .or_else(|| local_to_unix(message, &now.tz))
             .filter(|second| (0..=latest).contains(second))
         else {
-            return now.ms;
+            // Все такие сообщения получают «момент импорта»: порядок файла сохраняется тем же +k мс, иначе случайный `id`
+            // записи расставил бы их в ленте как попало.
+            let k = self.undated.min(MAX_SUB_SECOND_MS);
+            self.undated += 1;
+            return now.ms.saturating_add(i64::from(k));
         };
         let seen = self.seen_in_second.entry(second).or_insert(0);
         let k = (*seen).min(MAX_SUB_SECOND_MS);
@@ -107,8 +113,20 @@ mod tests {
         let all = messages(r#"{"id":1},{"id":2,"date":"не дата"}"#);
         let now = Now::at(1_800_000_000_123, "UTC");
         let mut timeline = Timeline::default();
+        // Момент импорта, но порядок файла сохранён: +k мс.
         assert_eq!(timeline.created_at(&all[0], &now), 1_800_000_000_123);
-        assert_eq!(timeline.created_at(&all[1], &now), 1_800_000_000_123);
+        assert_eq!(timeline.created_at(&all[1], &now), 1_800_000_000_124);
+    }
+
+    #[test]
+    fn dates_outside_the_window_keep_the_file_order_among_themselves() {
+        let all = messages(
+            r#"{"id":1,"date_unixtime":"9999999999999999"},{"id":2},{"id":3,"date_unixtime":"-5"}"#,
+        );
+        let now = Now::at(1_800_000_000_000, "UTC");
+        let mut timeline = Timeline::default();
+        let times: Vec<i64> = all.iter().map(|m| timeline.created_at(m, &now)).collect();
+        assert_eq!(times, [now.ms, now.ms + 1, now.ms + 2]);
     }
 
     #[test]

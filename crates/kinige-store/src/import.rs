@@ -159,7 +159,12 @@ impl Store {
             .iter()
             .filter(|chat| supported_kind(chat).is_some() && chats.contains(&chat.id))
             .collect();
-        let total: i64 = selected.iter().map(|c| c.messages.len() as i64).sum();
+        // Как в предпросмотре: служебные и пустые сообщения в «N из M» не входят (иначе M больше числа в списке чатов).
+        let total: i64 = selected
+            .iter()
+            .flat_map(|c| c.messages.iter())
+            .filter(|m| !m.service && render_body(m, None, language).is_some())
+            .count() as i64;
         let started = Instant::now();
         let mut report = ImportReport::default();
         let mut done = 0i64;
@@ -179,6 +184,8 @@ impl Store {
                 let mut rows: Vec<Prepared> = Vec::new();
                 let mut new_ids: HashMap<String, String> = HashMap::new();
                 let mut media = 0;
+                // Сколько сообщений пачки входит в «N из M»: не служебные и не пустые.
+                let mut counted = 0i64;
                 for message in batch {
                     let created_at = timeline.created_at(message, now);
                     if message.service {
@@ -187,9 +194,11 @@ impl Store {
                         || new_ids.contains_key(&message.id)
                     {
                         report.skipped_existing += 1;
+                        counted += 1;
                     } else if let Some(body) =
                         render_body(message, author_of(chat, message), language)
                     {
+                        counted += 1;
                         let id = uuid::Uuid::new_v4().to_string();
                         let reply_to_id = message
                             .reply_to
@@ -236,7 +245,7 @@ impl Store {
                         }
                     }
                 }
-                done += batch.len() as i64;
+                done += counted;
                 progress(ImportProgress { done, total });
             }
         }
