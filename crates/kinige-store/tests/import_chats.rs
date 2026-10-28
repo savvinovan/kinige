@@ -212,3 +212,63 @@ fn progress_total_counts_only_importable_messages_like_the_chat_list() {
         "«N из M» считает те же три, а не пять сообщений файла"
     );
 }
+
+#[test]
+fn a_reply_across_batches_goes_to_the_owner_of_a_key_taken_between_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_plain(dir.path());
+    let own = format!("user{OWNER}");
+    let batch = kinige_store::IMPORT_BATCH as u64;
+    // Четыре пачки: ключ «1100» в третьей, ответ на него — первое сообщение четвёртой.
+    let target = 2 * batch + 100;
+    let reply_id = 3 * batch + 1;
+    let mut messages: Vec<String> = (1..=4 * batch)
+        .map(|i| msg(i, SAVED_T + i as i64, &format!("запись {i}"), &own))
+        .collect();
+    messages[reply_id as usize - 1] = format!(
+        r#"{{"id":{reply_id},"type":"message","date_unixtime":"{}","from":"Я","from_id":"{own}","reply_to_message_id":{target},"text":"ответ","text_entities":[{{"type":"plain","text":"ответ"}}]}}"#,
+        SAVED_T + reply_id as i64
+    );
+    let export = parse(&single("saved_messages", OWNER, None, &messages));
+    // После второй пачки (до записи третьей) ключ «1100» занимает чужая запись, например с другого устройства.
+    let path = dir.path().to_path_buf();
+    let owner_id = "7b2c9d10-1111-4222-8333-444455556666".to_string();
+    let taken = owner_id.clone();
+    let progress = move |p: kinige_domain::import::ImportProgress| {
+        if p.done == 2 * batch as i64 {
+            let conn = raw(&path);
+            conn.busy_timeout(std::time::Duration::from_secs(5))
+                .unwrap();
+            conn.execute(
+                "INSERT INTO message_ext (src, ext_chat, ext_msg, message_id) VALUES ('telegram', ?1, ?2, ?3)",
+                (OWNER, target.to_string(), &taken),
+            )
+            .unwrap();
+        }
+    };
+    let report = store
+        .import_telegram(
+            export.clone(),
+            all_chats(&export),
+            kinige_domain::Language::Ru,
+            &now(),
+            progress,
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        )
+        .unwrap();
+    assert_eq!(report.skipped_existing, 1, "{report:?}");
+    assert_eq!(report.imported, 4 * batch as i64 - 1);
+    let reply_to: Option<String> = raw(dir.path())
+        .query_row(
+            "SELECT m.reply_to_id FROM message m JOIN message_ext e ON e.message_id = m.id \
+             WHERE e.ext_msg = ?1",
+            [reply_id.to_string()],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        reply_to.as_deref(),
+        Some(owner_id.as_str()),
+        "ответ из четвёртой пачки указывает на владельца ключа, а не на id пропущенной записи третьей"
+    );
+}
