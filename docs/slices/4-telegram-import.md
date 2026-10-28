@@ -79,7 +79,7 @@
 3. **`core`.** Поля `{"created_at","created_tz","ext":{"chat","msg","src":"telegram"},"origin":"import_telegram","reply_to_id"}`, id в `ext` записаны строками. `reply_to_id` — id записи Kinige, если сообщение-адресат того же Telegram-чата уже импортировано, иначе `null`. Сейчас поле в интерфейсе не используется, но `core` неизменяема, и позже его не заполнить.
 4. **Дедупликация.** Ключ — `message_ext(src, ext_chat, ext_msg)`. Запись в корзине тоже считается импортированной. После удаления навсегда строка `message_ext` удаляется вместе с записью, поэтому повторный импорт вернёт такую запись: в отчёте она будет «новой». Хранить след только на этом устройстве было бы неверно, потому что второе устройство его не увидит.
 5. **Чат личной переписки** при повторном импорте — чат самой свежей живой импортированной записи этого Telegram-чата. Если такой записи нет, создаётся новый чат, но только когда есть что импортировать. Пустых дублей чатов не бывает. Имя чата — из экспорта; если его нет, `Telegram <id>`. Эмодзи — 💬.
-6. **Свои и чужие сообщения.** Чужое сообщение личного чата — то, у которого `from_id` = `user<id чата>` (не проверено на настоящем экспорте). В «Избранном» все сообщения свои.
+6. **Свои и чужие сообщения.** Чужое сообщение личного чата — то, у которого `from_id` = `user<id чата>` (для личного чата не проверено на настоящем экспорте). В «Избранном» все сообщения свои: на настоящем экспорте `id` «Избранного» — это id владельца, и у всех сообщений `from_id` = `user<id чата>`.
 7. **Заглушки и строки «Переслано от»** пишутся в текст записи на языке интерфейса в момент импорта: это данные, а не интерфейс. Сообщение без текста и без медиа пропускается (`normalize_body` = `Empty`).
 8. **Копия базы:** `backups/pre-import-<UTC>.db`, хранятся 3 последних, новый `BackupKind::PreImport`. Снимается так же, как копия дня (`backup::snapshot`).
 9. **Индекс поиска** — только производная таблица FTS5. Колонки `message.body_search` из черновика §4.2 нет: менять строки синхронизируемой таблицы ради производного не нужно. Версия правил нормализации лежит в `app_setting.search_index_version`; если версия не совпала, индекс при старте перестраивается. Ревизии в индекс не попадают. Корзина отсекается в запросе.
@@ -93,7 +93,21 @@
 4. **Где показывать результаты поиска.** А — на месте ленты, как корзину. Б — в сайдбаре вместо списка чатов, как в Telegram; сайдбар узкий для фрагментов. **Рекомендую А.**
 
 ## Нужно от пользователя: настоящая фикстура
-Формат экспорта описан по памяти об исходнике Telegram Desktop (`export_output_json.cpp`). **Не проверено:** ни исходник, ни документация в этой сессии не открывались. Задача 4.1 начинается на синтетических фикстурах; тест на настоящей добавляется, когда она будет.
+Формат экспорта описан по памяти об исходнике Telegram Desktop (`export_output_json.cpp`). Исходник и документация в этой сессии не открывались.
+
+**Проверено 28.10.2026 на настоящем экспорте «Избранного»** («Экспорт истории чата», с медиа, 1682 сообщения за 2016–2026, 1,1 МБ). Смотрелась только структура, тексты не читались.
+- Верхний уровень — только `type`, `id`, `messages`. Ключа `name` у «Избранного» нет. Тип — `saved_messages`.
+- `id` чата равен id владельца: у всех 1680 сообщений `from_id` = `user<id чата>`.
+- У каждого сообщения есть `date_unixtime` (строка) и `text_entities`. `date` имеет вид `ГГГГ-ММ-ДДTЧЧ:ММ:СС`. `text` бывает строкой (1209) и массивом (473); склейка `text_entities` всегда совпадает с `text`.
+- В одну секунду приходит до 9 сообщений: 54 секунды с повторами.
+- Типы сущностей: все из списка 4.1 встретились, кроме `mention_name` и `bot_command`. У `custom_emoji` есть ещё `document_id`, у `blockquote` — `collapsed`.
+- Медиа: `photo` (путь `photos/…`), `media_type` (`video_file`, `audio_file`, `voice_message`, `video_message`, `sticker`, `animation`), `file` без `media_type`, `location_information` (`latitude`, `longitude`), `place_name` и `address` на верхнем уровне сообщения, `contact_information` (`first_name`, `last_name`, `phone_number`). Опросов не было.
+- `forwarded_from` бывает `null` (9 раз, скрытый аккаунт); тогда есть `saved_from`, но однажды и он `null`.
+- Служебные — только `send_star_gift`. 5 сообщений без текста и без медиа.
+- Ещё встречаются `via_bot`, `inline_bot_buttons`, `reactions`, `edited`, `width`/`height`, `duration_seconds`, `performer`, `title`. Разбор их игнорирует.
+- Реализация 4.1 от Sonnet (ветка `bench/4.1-sonnet`) разобрала файл без ошибок, и все счётчики видов медиа и сущностей совпали с подсчётом по сырому JSON.
+
+**Не проверено:** полный экспорт («Экспорт данных») и тип личного чата `personal_chat`. Для этого нужен второй экспорт.
 - **Как собрать.** В «Избранном» тестового аккаунта нужны сообщения такого состава:
   - простой текст;
   - жирный, курсив, зачёркнутый, подчёркнутый, спойлер, моноширинный;
@@ -141,7 +155,8 @@
 - **Зависит от:** нет.
 
 **4.1. Разбор `result.json` в доменные структуры** — S, guardian: нет. ★
-- **Что сделать:** `parse_export(json)` распознаёт обе формы: одного чата (`name`, `type`, `id`, `messages`) и полную (`personal_information.user_id`, `chats.list[]`).
+- **Что сделать:** `parse_export(json)` распознаёт обе формы: одного чата (`type`, `id`, `messages`, необязательный `name`) и полную (`personal_information.user_id`, `chats.list[]`).
+  - В форме одного чата с типом `saved_messages` `owner_id` = `id` чата (проверено на настоящем экспорте).
   - id чатов и сообщений принимаются и числом, и строкой и хранятся строкой без потери точности; 2⁶³−1 обязан пережить разбор.
   - Текст берётся из `text_entities`, если поле есть. Иначе — из `text`: строка или массив из строк и объектов `{type, text, href?, language?}`.
   - Медиа: ключ `photo` → `Photo`. `media_type` (`sticker`, `animation`, `video_file`, `video_message`, `voice_message`, `audio_file`) → свой вид. `file` без `media_type` → `File { name: file_name }`. `location_information` → `Location`, а с `place_name` → `Venue`. `contact_information` → `Contact`. `poll` → `Poll { question, answers[].text }`. Прочее → `Other(ключ)`.
@@ -154,12 +169,12 @@
   - `pub fn parse_export(json: &str) -> Result<TgExport, TgParseError>`;
   - `TgExport { owner_id: Option<String>, chats: Vec<TgChat> }`;
   - `TgChat { id: String, name: Option<String>, kind: TgChatKind /* Saved | Personal | Other(String) */, messages: Vec<TgMessage> }`;
-  - `TgMessage { id: String, service: bool, unix: Option<i64>, local: Option<String>, from: Option<String>, from_id: Option<String>, reply_to: Option<String>, forwarded_from: Option<String>, saved_from: Option<String>, text: Vec<TgSpan>, media: Option<TgMedia> }`;
+  - `TgMessage { id: String, service: bool, unix: Option<i64>, local: Option<String>, from: Option<String>, from_id: Option<String>, reply_to: Option<String>, forwarded: bool, forwarded_from: Option<String>, saved_from: Option<String>, text: Vec<TgSpan>, media: Option<TgMedia> }`; `forwarded` — есть ключ `forwarded_from` или `saved_from`, даже со значением `null`;
   - `TgSpan { kind: TgSpanKind, text: String }`;
   - `TgSpanKind`: `Plain`, `Bold`, `Italic`, `Underline`, `Strike`, `Spoiler`, `Code`, `Pre { language: Option<String> }`, `TextLink { href: String }`, `Link`, `Email`, `Phone`, `Mention`, `MentionName`, `Hashtag`, `Cashtag`, `BotCommand`, `BankCard`, `Blockquote`, `CustomEmoji`, `Other(String)`;
   - `TgParseError`: `NotJson(String)` и `NotTelegramExport`.
 
-  Строки типов: `saved_messages` → `Saved`, `personal_chat` → `Personal` (не проверено).
+  Строки типов: `saved_messages` → `Saved` (проверено), `personal_chat` → `Personal` (не проверено).
 - **Готово, когда:**
   - проходят тесты `cargo test -p kinige-domain telegram`: обе формы; legacy без `date_unixtime` и `text_entities`; `text` строкой и массивом; служебное сообщение; фото без файла («File not included…») — это всё равно `Photo`; каждый вид медиа; большой id без потери; незнакомая сущность; пустой файл, массив, чужой JSON → ошибки;
   - собирается `cargo build -p kinige-domain --target wasm32-unknown-unknown`.
@@ -168,7 +183,7 @@
 **4.2. Telegram-сообщение → Markdown записи** — S, guardian: нет.
 - **Что сделать:** `render_body` собирает текст записи по правилам.
   - **Строка автора** (если передана): `**Имя**` и перевод строки.
-  - **Строка пересылки:** `_Переслано от X_` / `_Forwarded from X_`. Берётся `forwarded_from`, если его нет — `saved_from`.
+  - **Строка пересылки:** `_Переслано от X_` / `_Forwarded from X_`. Берётся `forwarded_from`, если его нет — `saved_from`. Если ключ пересылки есть, но оба имени `null` (скрытый аккаунт), строка — `_Переслано_` / `_Forwarded_` без имени.
   - **Сущности:**
     - `Bold` → `**…**`, `Italic` → `_…_`, `Strike` → `~~…~~`;
     - `Code` → обратные кавычки, их на одну больше, чем самая длинная серия внутри;
