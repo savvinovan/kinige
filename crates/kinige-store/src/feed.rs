@@ -24,11 +24,17 @@ fn section_rank(chat: &ChatSummary) -> u8 {
 }
 
 /// Чаты со счётчиками, в порядке показа, и размер корзины.
+///
+/// Счётчик чата — все записи минус корзина. Все записи считаются по покрывающему индексу `message_feed`, корзина — по
+/// частичному индексу `message_deleted`; условие `deleted_at IS NULL` само читало бы строки таблицы (на 100 000 записей
+/// импорта счётчик стоил около 150 мс против 5 мс).
 pub(crate) fn chat_list(conn: &Connection) -> Result<ChatList, StoreError> {
     let mut statement = conn
         .prepare(
             "SELECT c.id, c.title, c.icon, c.id = ?1, \
-             (SELECT COUNT(*) FROM message m WHERE m.chat_id = c.id AND m.deleted_at IS NULL), \
+             (SELECT COUNT(*) FROM message m WHERE m.chat_id = c.id) \
+             - (SELECT COUNT(*) FROM message m INDEXED BY message_deleted \
+                WHERE m.chat_id = c.id AND m.deleted_at IS NOT NULL), \
              c.pinned_at, c.archived_at, c.sort_key \
              FROM chat c WHERE c.deleted_at IS NULL",
         )
