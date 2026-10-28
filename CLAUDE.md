@@ -37,7 +37,7 @@
 
 ## Сборка и тесты
 
-Раскладка: `crates/kinige-domain` (правила, без IO, собирается под wasm32), `crates/kinige-store` (SQLite, миграции, один писатель, Markdown-копия), `src-tauri/` (тонкий слой Tauri 2), `web/` (React + TS + Vite + Storybook), `design/tokens/` (DTCG), `scripts/`, `.gitea/workflows/ci.yml`. Версии Rust и Node закреплены в `rust-toolchain.toml` и `.node-version`. Подробности и методика замера старта — в `README.md`.
+Раскладка: `crates/kinige-domain` (правила, без IO, собирается под wasm32), `crates/kinige-store` (SQLite, миграции, один писатель, Markdown-копия), `src-tauri/` (тонкий слой Tauri 2), `web/` (React + TS + Vite + Storybook), `design/tokens/` (DTCG), `scripts/`, `.github/workflows/ci.yml`. Версии Rust и Node закреплены в `rust-toolchain.toml` и `.node-version`. Подробности и методика замера старта — в `README.md`.
 
 Rust (из корня):
 - `cargo fmt --all --check`
@@ -54,7 +54,7 @@ Rust (из корня):
 
 Приложение: `scripts/run-app.sh` (dev), `scripts/storybook.sh`, `scripts/build-app.sh` (release `.app` + ad-hoc подпись + `codesign --verify`), `scripts/screenshot-window.sh <out.png>` (окно Kinige, `screencapture -x -o -l`; нужен доступ терминала к записи экрана; на скриншот не должно попадать ничего, кроме окна), `scripts/measure-cold-start.sh`.
 
-CI (Gitea Actions) повторяет всё перечисленное, кроме сборки `.app`. Локально проверить «зелёный CI» нельзя; ближайший аналог — команды выше.
+CI (GitHub Actions, `.github/workflows/ci.yml`; статус и перезапуск — `gh run list`, `gh run rerun`) повторяет всё перечисленное, кроме сборки `.app`. Локально проверить «зелёный CI» нельзя; ближайший аналог — команды выше.
 
 ## Окружение
 

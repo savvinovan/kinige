@@ -1,4 +1,4 @@
-# CI на каждый PR (Gitea Actions, Linux-раннер). Сборка и подпись .app — локально: scripts/build-app.sh.
+# CI на каждый PR (GitHub Actions, Linux-раннер). Сборка и подпись .app — локально: scripts/build-app.sh.
 name: CI
 
 on:
@@ -15,16 +15,15 @@ jobs:
       # Системные библиотеки Tauri на Linux (wry/WebKitGTK).
       - name: Системные зависимости Tauri
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends build-essential curl pkg-config libssl-dev \
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential curl pkg-config libssl-dev \
             libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
 
-      # Версия и компоненты берутся из rust-toolchain.toml.
+      # Версия и компоненты берутся из rust-toolchain.toml; rustup на раннере GitHub уже есть.
       - name: Rust toolchain
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          "$HOME/.cargo/bin/rustup" toolchain install
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
 
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings

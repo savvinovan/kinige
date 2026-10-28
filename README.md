@@ -39,16 +39,14 @@
 - Данные: база — `~/Library/Application Support/me.savvinov.kinige/kinige.db`, Markdown-копия — `~/Documents/Kinige/<чат>/YYYY/YYYY-MM-DD.md` (папку меняют в настройках). Для проверки на чистых данных: переменные окружения `KINIGE_DATA_DIR` (каталог базы) и `KINIGE_MIRROR_DIR` (папка копии по умолчанию). `KINIGE_TRACE=1` печатает в stderr жизнь окна захвата (`show`, `key`, `resign`, `hide`, `flash`; без текста записей) — для проверки в живом окне.
 - Типы Rust → TS: `ts-rs`, см. [ADR-0002](docs/adr/0002-ts-types-via-ts-rs.md). Ключи подписи: [ADR-0003](docs/adr/0003-signing-keys.md).
 
-## CI (Gitea Actions, Linux)
+## CI (GitHub Actions, Linux)
 
-Workflow — [`.gitea/workflows/ci.yml`](.gitea/workflows/ci.yml): `rust` (fmt, clippy, test, wasm32, актуальность TS-типов), `web` (актуальность `tokens.css` и `themes.css`, tsc, ESLint, vitest), `visual` (снимки Storybook в контейнере Playwright).
+Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml): `rust` (fmt, clippy, test, wasm32, актуальность TS-типов), `web` (актуальность `tokens.css` и `themes.css`, tsc, ESLint, vitest), `visual` (снимки Storybook в контейнере Playwright).
 `.app` собирается и подписывается локально; macOS-раннер — не раньше слайса 10.
 
-Раннер: постоянный контейнер `kinige-act-runner` (act_runner 0.6.1) на ubuntu-server, зарегистрирован на репозиторий. Поднять или пересоздать (токен регистрации — в Gitea: Настройки → Actions → Раннеры; в репозиторий не кладётся):
+## Лицензия
 
-```sh
-GITEA_RUNNER_REGISTRATION_TOKEN=<токен> docker compose -f ci/act-runner/compose.yaml -p kinige-act-runner up -d
-```
+[MIT](LICENSE).
 
 ## Методика замера холодного старта
 
