@@ -20,7 +20,9 @@ export type MockImportFile = ImportPreview | ErrorCode | null;
 export const MOCK_BACKUP_NAME = "pre-import-20261028T125000Z.db";
 
 // «ё» → «е» (кириллицы в коде нет: строки интерфейса живут в locales).
-const normalize = (text: string) => text.toLowerCase().replaceAll("ё", "е");
+const YO = String.fromCharCode(0x451);
+const YE = String.fromCharCode(0x435);
+const normalize = (text: string) => text.toLowerCase().replaceAll(YO, YE);
 const cursorOf = (m: { journalDate: string; createdAt: number; id: string }): FeedCursor => ({
   journalDate: m.journalDate,
   createdAt: m.createdAt,
