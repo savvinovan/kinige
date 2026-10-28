@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "../../test/render";
 import { Checkbox } from "./Checkbox";
@@ -19,6 +21,14 @@ describe("Checkbox", () => {
     expect(box).toBeChecked();
     fireEvent.click(screen.getByText("Избранное"));
     expect(box).not.toBeChecked();
+  });
+
+  it("описание переносится по словам, а не обрезается многоточием (длинное русское пояснение не теряет смысл)", () => {
+    const css = readFileSync(resolve(__dirname, "controls.css"), "utf8");
+    const rule = /\.checkbox__description \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(rule).not.toBe("");
+    expect(rule).not.toMatch(/white-space:\s*nowrap|text-overflow|overflow:\s*hidden/);
+    expect(rule).toMatch(/overflow-wrap:\s*anywhere/);
   });
 
   it("попадает в порядок Tab и берёт фокус", () => {

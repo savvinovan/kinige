@@ -269,14 +269,13 @@
   white-space: nowrap;
 }
 
+/* Пояснение переносится по словам: в русском оно длиннее строки окна, обрезка прятала бы смысл (слайс 4a). */
 .checkbox__description {
-  overflow: hidden;
   color: var(--color-text-tertiary);
   font-family: var(--type-meta-family);
   font-size: var(--type-meta-size);
   line-height: var(--type-meta-line-height);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 /* Полоса прогресса: тихая линия на заливке поля, акцентная заливка слева направо. */
