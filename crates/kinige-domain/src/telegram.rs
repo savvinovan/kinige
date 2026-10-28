@@ -22,6 +22,8 @@ mod raw;
 mod tests;
 #[cfg(test)]
 mod tests_cases;
+#[cfg(test)]
+mod tests_real;
 
 /// Разобранный экспорт: одного чата или всех чатов сразу.
 #[derive(Debug, Clone, PartialEq, Eq)]
