@@ -122,11 +122,11 @@ fn migration_four_takes_a_copy_and_builds_the_index_and_ext_from_old_records() {
 
     // Индекс полон: живые и удалённая запись (корзину отсекает запрос, а не индекс).
     assert_eq!(count(dir.path(), "search_map"), 4);
-    assert_eq!(found(dir.path(), "молоко "), [first.clone()]);
-    assert_eq!(found(dir.path(), "книги "), [second.clone()]);
-    assert_eq!(found(dir.path(), "елка "), [second]);
-    assert_eq!(found(dir.path(), "удалённая"), [third]);
-    assert_eq!(found(dir.path(), "моло"), [first]);
+    assert_eq!(found(dir.path(), "молоко "), vec![first.clone()]);
+    assert_eq!(found(dir.path(), "книги "), vec![second.clone()]);
+    assert_eq!(found(dir.path(), "елка "), vec![second]);
+    assert_eq!(found(dir.path(), "удалённая"), vec![third]);
+    assert_eq!(found(dir.path(), "моло"), vec![first]);
     assert_eq!(
         raw(dir.path())
             .query_row(
@@ -168,8 +168,8 @@ fn index_follows_send_append_edit_toggle_and_purge() {
             &moscow(T0),
         )
         .unwrap();
-    assert_eq!(found(dir.path(), "аксолотль "), [sent.id.clone()]);
-    assert_eq!(found(dir.path(), "позвонить мама "), [sent.id.clone()]);
+    assert_eq!(found(dir.path(), "аксолотль "), vec![sent.id.clone()]);
+    assert_eq!(found(dir.path(), "позвонить мама "), vec![sent.id.clone()]);
     // Правка: старое слово ушло, новое нашлось.
     store
         .edit_message(
@@ -179,25 +179,25 @@ fn index_follows_send_append_edit_toggle_and_purge() {
         )
         .unwrap();
     assert!(found(dir.path(), "аксолотль ").is_empty());
-    assert_eq!(found(dir.path(), "бегемотик "), [sent.id.clone()]);
+    assert_eq!(found(dir.path(), "бегемотик "), vec![sent.id.clone()]);
     // Галочка `- [ ]`: слова те же, индекс не ломается и не двоится.
     store
         .toggle_task_item(&sent.id, 0, true, &moscow(T0 + 2 * MINUTE))
         .unwrap();
-    assert_eq!(found(dir.path(), "бегемотик "), [sent.id.clone()]);
+    assert_eq!(found(dir.path(), "бегемотик "), vec![sent.id.clone()]);
     assert_eq!(count(dir.path(), "search_map"), 1);
     // Дописывание из окна захвата (запись создана пользователем, не старше десяти минут).
     let outcome = store
         .capture_append("и ещё фламинго", &moscow(T0 + 3 * MINUTE))
         .unwrap();
     assert_eq!(outcome.message.id, sent.id, "дописано к той же записи");
-    assert_eq!(found(dir.path(), "фламинго "), [sent.id.clone()]);
-    assert_eq!(found(dir.path(), "бегемотик "), [sent.id.clone()]);
+    assert_eq!(found(dir.path(), "фламинго "), vec![sent.id.clone()]);
+    assert_eq!(found(dir.path(), "бегемотик "), vec![sent.id.clone()]);
     // Корзина: индекс на месте (запись можно вернуть), удаление навсегда убирает.
     store
         .delete_message(&sent.id, &moscow(T0 + 4 * MINUTE))
         .unwrap();
-    assert_eq!(found(dir.path(), "бегемотик "), [sent.id.clone()]);
+    assert_eq!(found(dir.path(), "бегемотик "), vec![sent.id.clone()]);
     store
         .purge_message(&sent.id, &moscow(T0 + 5 * MINUTE))
         .unwrap();
@@ -259,7 +259,7 @@ fn changing_the_version_rebuilds_the_index_on_open() {
     }
     assert!(found(dir.path(), "вермишель ").is_empty());
     let _store = open_without_mirror(dir.path());
-    assert_eq!(found(dir.path(), "вермишель "), [id.clone()]);
+    assert_eq!(found(dir.path(), "вермишель "), vec![id.clone()]);
     assert_eq!(found(dir.path(), "мармелад "), [id]);
     // Версия совпала — повторное открытие индекс не трогает (метка id строки соответствия не меняется).
     let before: i64 = raw(dir.path())

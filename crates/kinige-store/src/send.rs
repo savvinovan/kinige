@@ -66,7 +66,7 @@ pub(crate) fn insert_chat(tx: &Transaction<'_>, chat: &ChatRow) -> rusqlite::Res
     Ok(())
 }
 
-fn insert_message(tx: &Transaction<'_>, m: &MessageRow) -> rusqlite::Result<()> {
+pub(crate) fn insert_message(tx: &Transaction<'_>, m: &MessageRow) -> rusqlite::Result<()> {
     tx.execute(
         "INSERT INTO message (id, chat_id, body_md, journal_date, created_at, created_tz, edited_at, is_task, \
          task_done_at, favorite_at, pinned_at, reply_to_id, origin, ext_json, deleted_at, body_base, body_supersedes, \

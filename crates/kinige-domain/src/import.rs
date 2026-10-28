@@ -5,7 +5,9 @@
 
 use crate::groups::{GroupError, MessageRow, NewMessage, Provenance, build_message};
 use crate::hlc::is_uuid_v4;
+use serde::Serialize;
 use serde_json::json;
+use ts_rs::TS;
 
 /// `origin` импортированной записи из Telegram: неизменяемо, `origin = 'import_telegram'` ⇔ `ext.src = 'telegram'`.
 pub const ORIGIN_IMPORT_TELEGRAM: &str = "import_telegram";
@@ -66,6 +68,84 @@ pub fn new_imported_message(
         journal_date: input.journal_date,
     };
     build_message(&base, &provenance, hlc)
+}
+
+/// Вид чата Telegram, который импортируется (группы и каналы не импортируются).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ImportChatKind.ts")]
+pub enum ImportChatKind {
+    /// «Избранное»: записи идут в Inbox.
+    Saved,
+    /// Личный чат: свой чат Kinige.
+    Personal,
+}
+
+/// Чат экспорта в окне выбора.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "ImportChatPreview.ts")]
+pub struct ImportChatPreview {
+    /// Id чата Telegram (строка: 64-битное число).
+    pub id: String,
+    /// Имя из экспорта; у «Избранного» его нет.
+    pub name: Option<String>,
+    pub kind: ImportChatKind,
+    /// Сколько записей получится: сообщения без служебных и без пустых.
+    #[ts(type = "number")]
+    pub total: i64,
+    /// Из них уже импортировано (есть в `message_ext`).
+    #[ts(type = "number")]
+    pub existing: i64,
+}
+
+/// Что нашлось в экспорте: чаты для выбора и сколько чатов пропущено (группы, каналы, боты).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "ImportPreview.ts")]
+pub struct ImportPreview {
+    pub chats: Vec<ImportChatPreview>,
+    #[ts(type = "number")]
+    pub skipped_chats: i64,
+}
+
+/// Прогресс импорта после каждой зафиксированной пачки: обработано сообщений из скольких.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "ImportProgress.ts")]
+pub struct ImportProgress {
+    #[ts(type = "number")]
+    pub done: i64,
+    #[ts(type = "number")]
+    pub total: i64,
+}
+
+/// Итог импорта.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "ImportReport.ts")]
+pub struct ImportReport {
+    #[ts(type = "number")]
+    pub imported: i64,
+    /// Уже были импортированы раньше (в том числе лежат в корзине).
+    #[ts(type = "number")]
+    pub skipped_existing: i64,
+    /// Служебные сообщения (вступил, закрепил…).
+    #[ts(type = "number")]
+    pub skipped_service: i64,
+    /// Без текста и без вложения.
+    #[ts(type = "number")]
+    pub skipped_empty: i64,
+    /// У скольких импортированных записей вместо вложения осталась заглушка.
+    #[ts(type = "number")]
+    pub media_placeholders: i64,
+    /// Создано чатов Kinige (для личных чатов).
+    #[ts(type = "number")]
+    pub chats_created: i64,
+    /// Файл копии базы, снятой перед импортом; `null` — писать было нечего и копия не снималась.
+    pub backup_name: Option<String>,
+    /// Импорт остановлен пользователем; всё, что записано до остановки, осталось.
+    pub stopped: bool,
 }
 
 #[cfg(test)]

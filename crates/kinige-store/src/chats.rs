@@ -163,6 +163,38 @@ fn summary(conn: &Connection, id: &str) -> Result<ChatSummary, StoreError> {
         .ok_or(StoreError::ChatNotFound)
 }
 
+/// Новый чат в конце раздела, всеми шестью группами под одним HLC, в открытой транзакции вызывающего. `title` и `icon`
+/// уже нормализованы (`normalize_title`, `normalize_icon`). Тот же путь у «+» и у импорта личного чата.
+pub(crate) fn insert_new_chat(
+    tx: &Transaction<'_>,
+    title: &str,
+    icon: &str,
+    now_ms: i64,
+) -> Result<String, StoreError> {
+    let before = folder_map(tx)?;
+    let max_key: Option<String> = tx
+        .query_row("SELECT MAX(sort_key) FROM chat", [], |row| row.get(0))
+        .map_err(read_err)?;
+    let id = Uuid::new_v4().to_string();
+    let sort_key = key_after(max_key.as_deref());
+    let hlc = next_hlc(tx, now_ms)?;
+    let chat = new_chat(
+        &NewChat {
+            id: &id,
+            title,
+            icon,
+            sort_key: &sort_key,
+            created_at: now_ms,
+        },
+        &hlc,
+    )?;
+    insert_chat(tx, &chat).map_err(write_err)?;
+    // Новый чат с именем уже существующего занимает суффикс, а чужие папки при этом не меняются; но на случай
+    // смены владельца простого имени всё равно сверяем.
+    mark_folder_changes(tx, &before, &folder_map(tx)?)?;
+    Ok(id)
+}
+
 impl Store {
     /// «+» у раздела «Чаты»: новый чат в конце раздела. Имя — от 1 до 128 знаков, эмодзи — из пикера, без эмодзи — 💬.
     pub fn create_chat(
@@ -176,27 +208,7 @@ impl Store {
         let now = now.clone();
         let summary = self.write(move |conn| {
             let tx = begin(conn)?;
-            let before = folder_map(&tx)?;
-            let max_key: Option<String> = tx
-                .query_row("SELECT MAX(sort_key) FROM chat", [], |row| row.get(0))
-                .map_err(read_err)?;
-            let id = Uuid::new_v4().to_string();
-            let sort_key = key_after(max_key.as_deref());
-            let hlc = next_hlc(&tx, now.ms)?;
-            let chat = new_chat(
-                &NewChat {
-                    id: &id,
-                    title: &title,
-                    icon: &icon,
-                    sort_key: &sort_key,
-                    created_at: now.ms,
-                },
-                &hlc,
-            )?;
-            insert_chat(&tx, &chat).map_err(write_err)?;
-            // Новый чат с именем уже существующего занимает суффикс, а чужие папки при этом не меняются; но на случай
-            // смены владельца простого имени всё равно сверяем.
-            mark_folder_changes(&tx, &before, &folder_map(&tx)?)?;
+            let id = insert_new_chat(&tx, &title, &icon, now.ms)?;
             let summary = summary(&tx, &id)?;
             tx.commit().map_err(write_err)?;
             Ok(summary)
