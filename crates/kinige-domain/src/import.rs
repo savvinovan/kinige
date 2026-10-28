@@ -109,6 +109,17 @@ pub struct ImportPreview {
     pub skipped_chats: i64,
 }
 
+/// Ответ на выбор файла: номер сессии (разобранный экспорт ждёт в Rust) и то, что в нём нашлось. Путь к файлу во
+/// фронтенд не приходит.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "ImportOpened.ts")]
+pub struct ImportOpened {
+    #[ts(type = "number")]
+    pub session: u64,
+    pub preview: ImportPreview,
+}
+
 /// Прогресс импорта после каждой зафиксированной пачки: обработано сообщений из скольких.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]

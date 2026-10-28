@@ -38,7 +38,10 @@ fn real_shaped_export_parses_and_every_message_renders() {
         .filter(|m| render_body(m, None, Language::Ru).is_some())
         .count();
     let not_service = chat.messages.iter().filter(|m| !m.service).count();
-    assert!(rendered * 10 >= not_service * 8, "{rendered} из {not_service}");
+    assert!(
+        rendered * 10 >= not_service * 8,
+        "{rendered} из {not_service}"
+    );
     // Встретились виды, которые есть в настоящем файле.
     assert!(chat.messages.iter().any(|m| m.forwarded));
     assert!(chat.messages.iter().any(|m| m.reply_to.is_some()));

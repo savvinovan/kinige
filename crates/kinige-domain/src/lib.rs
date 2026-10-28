@@ -42,6 +42,9 @@ pub use api::{
     SearchHit, SearchPage, Settings, TextSize, TrashItem,
 };
 pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, RestoreOutcome, StartupState};
+pub use import::{
+    ImportChatKind, ImportChatPreview, ImportOpened, ImportPreview, ImportProgress, ImportReport,
+};
 pub use lang::Language;
 pub use shortcuts::{ShortcutKind, ShortcutState, ShortcutStatus};
 

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-import-telegram-close"
+description = "Enables the import_telegram_close command without any pre-configured scope."
+commands.allow = ["import_telegram_close"]
+
+[[permission]]
+identifier = "deny-import-telegram-close"
+description = "Denies the import_telegram_close command without any pre-configured scope."
+commands.deny = ["import_telegram_close"]

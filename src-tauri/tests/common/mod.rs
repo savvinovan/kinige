@@ -85,6 +85,7 @@ pub fn fixture_with_taken(taken: &[&str]) -> Fixture {
     app.manage(store);
     app.manage(hotkeys);
     app.manage(CaptureShell::default());
+    app.manage(kinige_lib::import::ImportState::default());
     app.manage(Recovery::new(db_path, false));
     Fixture {
         app,
@@ -115,6 +116,7 @@ pub fn fixture_with_corruption_hook() -> Fixture {
     app.manage(store);
     app.manage(hotkeys);
     app.manage(CaptureShell::default());
+    app.manage(kinige_lib::import::ImportState::default());
     app.manage(Recovery::new(db_path, false).with_corruption_flag(flag));
     Fixture {
         app,
@@ -188,9 +190,15 @@ pub fn args_for(command: &str) -> Value {
         "set_sidebar_collapsed" => json!({"collapsed": true}),
         "add_recent_emoji" | "capture_add_recent_emoji" => json!({"emoji": "📚"}),
         "restore_backup" => json!({"name": "daily-2026-10-21.db"}),
+        "import_telegram_run" => json!({"session": 1, "chatIds": []}),
+        "search_messages" => json!({"query": "проверка"}),
         _ => json!({}),
     }
 }
 
 /// Эти команды нельзя вызвать в mock-рантайме по-настоящему: диалог ждёт главный поток ОС, перезапуск завершает процесс.
-pub const NEEDS_NATIVE_UI: &[&str] = &["choose_mirror_folder", "restart_for_recovery"];
+pub const NEEDS_NATIVE_UI: &[&str] = &[
+    "choose_mirror_folder",
+    "restart_for_recovery",
+    "import_telegram_open",
+];
