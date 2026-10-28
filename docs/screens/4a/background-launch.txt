@@ -1,5 +1,16 @@
-# Запуск в фоне (мост при закрытом приложении), AX-проверка процесса 14560
-menubar: Apple, Kinige, File, Edit, View, Window, Help
-menubar: 
-windows=0 frontmost=false
-командная строка: .../Contents/MacOS/kinige --background
+# Запуск в фоне (`open -g -a Kinige.app --args --background`, как это делает мост) на синтетическом каталоге данных
+# /private/tmp/claude-501/kinige-4a/data (сборка release, identifier me.savvinov.kinige.accept, ad-hoc подпись).
+# Сняты на доработке слайса 4a (29.10.2026); экран в этот момент был заблокирован, поэтому окон нет — только сведения системы.
+
+## 1. После запуска с --background: тип приложения (lsappinfo info -only ApplicationType)
+"ApplicationType"="UIElement"        # политика Accessory: значка в Dock нет, окон нет
+командная строка процесса: .../Contents/MacOS/kinige --background
+
+## 2. Основной путь сокета (не запасной в $TMPDIR)
+drwx------  .../kinige-4a/data/mcp
+srw-------  .../kinige-4a/data/mcp/kinige.sock
+Сеанс scripts/mcp-session.py через мост из бандла (Contents/MacOS/kinige-mcp) по этому сокету: initialize и tools/list отвечают,
+tools/call при выключенном доступе -> isError: "mcp_disabled: ... AI agent access is turned off in Kinige".
+
+## 3. После `open -g -a Kinige.app` (без аргументов; для работающего приложения это Reopen -> capture::show_main)
+"ApplicationType"="Foreground"       # политика Regular: значок в Dock появился, главное окно показано
