@@ -13,7 +13,7 @@ at: number,
  */
 client: string, 
 /**
- * Имя инструмента, `connect` или `disconnect`.
+ * Имя инструмента или служебная строка сеанса: `connect`, `reconnect` (мост переподключился), `disconnect`.
  */
 tool: string, 
 /**

@@ -4,6 +4,7 @@ pub mod agent;
 pub mod agent_api;
 pub mod agent_reply;
 pub mod api;
+pub mod api_error;
 pub mod append;
 pub mod backup;
 pub mod chat;
@@ -43,10 +44,11 @@ pub use agent_api::{
     AgentAccess, AgentChatChoice, AgentLogEntry, AgentLogPage, AgentLogRow, AgentMode, AgentSocket,
 };
 pub use api::{
-    ApiError, CaptureAction, CaptureOutcome, CaptureState, ChatList, ChatSummary, ErrorCode,
-    FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters,
-    SearchHit, SearchPage, Settings, TextSize, TrashItem,
+    CaptureAction, CaptureOutcome, CaptureState, ChatList, ChatSummary, FeedCursor, MessageFlag,
+    MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters, SearchHit, SearchPage,
+    Settings, TextSize, TrashItem,
 };
+pub use api_error::{ApiError, ErrorCode};
 pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, RestoreOutcome, StartupState};
 pub use import::{
     ImportChatKind, ImportChatPreview, ImportOpened, ImportPreview, ImportProgress, ImportReport,

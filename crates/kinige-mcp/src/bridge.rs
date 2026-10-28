@@ -1,6 +1,6 @@
-//! Мост stdio <-> Unix-сокет Kinige (ADR-0009). Базу не открывает. Запросы не переотправляет: при обрыве каждый
-//! неотвеченный запрос получает ошибку JSON-RPC, потому что `add_entry` в полёте мог уже записаться. После переподключения
-//! повторяет `initialize` и `notifications/initialized` клиента; ответ на повторный `initialize` клиенту не уходит.
+//! Мост stdio <-> Unix-сокет Kinige (ADR-0009). Базу не открывает. Запросы не переотправляет: при обрыве неотвеченный
+//! запрос получает ошибку JSON-RPC (`add_entry` в полёте мог уже записаться). После переподключения повторяет
+//! `initialize` и `notifications/initialized`; ответ на повторный `initialize` клиенту не уходит.
 
 use crate::frames::{FRAME_LIMIT, Frame, read_frame};
 use crate::host::Host;
@@ -16,7 +16,6 @@ use std::time::{Duration, Instant};
 
 /// Первая строка соединения после обрыва: сервер не пишет в журнал второе «подключение» за тот же сеанс клиента.
 pub const RECONNECT_MARKER: &str = r#"{"jsonrpc":"2.0","method":"kinige/reconnect"}"#;
-
 const CONNECT_RETRY: Duration = Duration::from_millis(100);
 
 const LOST: &str = "Соединение с Kinige потеряно, проверьте журнал обращений (connection to Kinige lost; check the access log)";

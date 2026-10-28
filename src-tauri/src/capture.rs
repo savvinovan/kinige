@@ -61,7 +61,13 @@ impl CaptureShell {
 }
 
 /// Показывает главное окно (меню трея, значок в Dock, второй запуск).
+///
+/// Запущенное мостом MCP приложение живёт без значка в Dock (политика Accessory): когда окно нужно показать, политика
+/// становится обычной (на macOS), и значок появляется. Скрытие окна политику не трогает: значок остаётся, как и было
+/// у приложения, запущенного обычно (слайсы 2 и 3).
 pub fn show_main<R: Runtime>(app: &AppHandle<R>) {
+    #[cfg(target_os = "macos")]
+    let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
     if let Some(window) = app.get_webview_window(MAIN_LABEL) {
         let _ = window.unminimize();
         let _ = window.show();
