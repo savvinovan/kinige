@@ -163,6 +163,10 @@ impl Store {
         }
         self.inner.backup.set_purge_failed(purge_error.is_some());
         report.purged = purged;
+        // Журнал обращений агентов: 90 дней и не больше 20 000 строк; ошибка ротации копию дня не отменяет.
+        if let Err(error) = self.rotate_agent_log(now) {
+            log::warn!("ротация журнала агентов: {}", error.category());
+        }
         if has_daily(&dir, &today) {
             self.inner.backup.set_error(None);
             return Ok(report);

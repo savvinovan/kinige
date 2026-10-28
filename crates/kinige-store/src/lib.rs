@@ -1,6 +1,12 @@
 //! Хранилище Kinige (ТЗ §3.2): SQLite через `rusqlite`, один поток-писатель, чтение отдельным соединением (WAL),
 //! миграции, Markdown-копия, копия файла базы. Бизнес-правила — в `kinige-domain`; здесь только транзакции и файлы.
 
+mod agent;
+mod agent_entry;
+mod agent_log;
+mod agent_read;
+mod agent_settings;
+mod agent_write;
 mod backup;
 mod capture;
 mod chats;
@@ -27,6 +33,8 @@ mod trash;
 mod view;
 mod writer;
 
+pub use agent::{AgentError, AgentReply, AgentRequest, AgentSettings};
+pub use agent_log::{LOG_DAYS, LOG_MAX_ROWS, LOG_PAGE};
 pub use backup::{Integrity, backups_dir, list_backups, verify_database};
 pub use capture::{CONTEXT_LEN, CaptureView};
 pub use chats::RecentChat;

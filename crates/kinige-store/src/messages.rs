@@ -49,7 +49,7 @@ pub(crate) fn load(conn: &Connection, id: &str) -> Result<Loaded, StoreError> {
 }
 
 impl Loaded {
-    fn groups(&self) -> Groups<'_> {
+    pub(crate) fn groups(&self) -> Groups<'_> {
         Groups {
             groups_raw: &self.groups_raw,
             hlc_json: &self.hlc_json,
@@ -57,7 +57,7 @@ impl Loaded {
     }
 
     /// Запись с группой в неподдерживаемой `sv` — только для чтения (ADR-0001 §4 п. 4).
-    fn ensure_writable(&self) -> Result<(), StoreError> {
+    pub(crate) fn ensure_writable(&self) -> Result<(), StoreError> {
         if is_read_only(&self.hlc_json)? {
             return Err(StoreError::ReadOnly);
         }
@@ -67,7 +67,7 @@ impl Loaded {
 
 /// Записывает новые байты групп и все колонки, которые из них строятся. Неизменяемые колонки (`created_*`, `origin`,
 /// `ext_json`, `reply_to_id`) не трогаются: их группа `core` не переписывается.
-fn apply(
+pub(crate) fn apply(
     tx: &Transaction<'_>,
     id: &str,
     rewritten: &Rewritten,
@@ -113,7 +113,7 @@ fn begin(conn: &mut Connection) -> Result<Transaction<'_>, StoreError> {
 
 /// Правка текста внутри открытой транзакции: ревизия `edit` (снимок до правки), новая группа `body`, теги, отметка копии.
 /// Тот же текст — ничего не пишется.
-fn edit_body(
+pub(crate) fn edit_body(
     tx: &Transaction<'_>,
     loaded: &Loaded,
     body_md: &str,

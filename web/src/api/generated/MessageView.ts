@@ -35,4 +35,8 @@ tags: Array<string>,
 /**
  * Одна из групп записи новее поддерживаемой версии: запись только для чтения, действия недоступны (ADR-0001 §4).
  */
-readOnly: boolean, };
+readOnly: boolean, 
+/**
+ * Кто создал запись (`core.origin`): `user`, `import_telegram`, `agent`. Лента помечает записи агента.
+ */
+origin: string, };

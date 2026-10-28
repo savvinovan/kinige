@@ -4,7 +4,7 @@ use crate::error::write_err;
 use crate::hlc_state::{get_state, load_clock, next_hlc, save_clock, set_state};
 use crate::{Now, Store, StoreError};
 use kinige_domain::MessageView;
-use kinige_domain::groups::{self, ChatRow, MessageRow, NewMessage};
+use kinige_domain::groups::{self, ChatRow, GroupError, MessageRow, NewMessage};
 use kinige_domain::hlc::Clock;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
@@ -124,6 +124,30 @@ pub(crate) fn insert_new_message(
     body: &str,
     now: &Now,
 ) -> Result<MessageView, StoreError> {
+    insert_built_message(tx, chat_id, body, now, groups::new_message)
+}
+
+/// Новая запись агента (ADR-0009): тот же путь, `origin = 'agent'`, с `task` группа `flags` создаётся сразу задачей.
+/// Чат уже проверен вызывающим (видимое агенту множество), здесь только существование.
+pub(crate) fn insert_agent_message(
+    tx: &Transaction<'_>,
+    chat_id: &str,
+    body: &str,
+    task: bool,
+    now: &Now,
+) -> Result<MessageView, StoreError> {
+    insert_built_message(tx, chat_id, body, now, |input, hlc| {
+        groups::new_agent_message(input, task, hlc)
+    })
+}
+
+fn insert_built_message(
+    tx: &Transaction<'_>,
+    chat_id: &str,
+    body: &str,
+    now: &Now,
+    build: impl FnOnce(&NewMessage<'_>, &str) -> Result<MessageRow, GroupError>,
+) -> Result<MessageView, StoreError> {
     let chat_exists: bool = tx
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM chat WHERE id = ?1 AND deleted_at IS NULL)",
@@ -137,7 +161,7 @@ pub(crate) fn insert_new_message(
     let id = Uuid::new_v4().to_string();
     let hlc = next_hlc(tx, now.ms)?;
     let date = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
-    let row = groups::new_message(
+    let row = build(
         &NewMessage {
             id: &id,
             chat_id,
@@ -161,10 +185,11 @@ pub(crate) fn insert_new_message(
         journal_date: row.journal_date,
         created_at: row.created_at,
         created_tz: row.created_tz,
-        is_task: false,
+        is_task: row.is_task,
         task_done_at: None,
         favorite_at: None,
         read_only: false,
+        origin: row.origin,
     })
 }
 

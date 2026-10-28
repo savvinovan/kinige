@@ -2,6 +2,7 @@
 //! аргументов, property-тест «журнал без содержимого» (ADR-0009, слайс 4a).
 
 use super::*;
+use crate::agent_reply::{AgentEntry, fit_entries, month_day};
 use crate::append::{AppendCandidate, can_append, can_append_origin};
 use crate::groups::{INBOX_ID, NewMessage, ORIGIN_AGENT, new_agent_message, parse_groups_raw};
 use serde_json::json;
@@ -283,7 +284,7 @@ fn log_args_never_contain_entry_text() {
     for round in 0..400 {
         let marker = format!("SECRETMARKER{round}Z");
         let text = random.text(&marker);
-        let chat = (random.next() % 2 == 0).then(|| ID.to_string());
+        let chat = random.next().is_multiple_of(2).then(|| ID.to_string());
         for args in [
             ToolArgs::AddEntry {
                 text: text.clone(),

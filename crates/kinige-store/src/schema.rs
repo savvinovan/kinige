@@ -1,4 +1,4 @@
-//! Схема SQLite и миграции (`PRAGMA user_version`). Миграция 4 (слайс 4) добавляет индекс внешних id импорта и индекс
+//! Схема SQLite и миграции (`PRAGMA user_version`). Миграция 5 (слайс 4a) добавляет журнал обращений агентов; миграция 4 (слайс 4) добавляет индекс внешних id импорта и индекс
 //! поиска; миграция 3 (слайс 3) — ревизии, tombstones и производные локальные таблицы; миграция 2 — локальную таблицу
 //! черновиков (слайс 2).
 //! Миграция 1 создаёт только таблицы, в которые пишет слайс 1
@@ -158,8 +158,37 @@ CREATE VIRTUAL TABLE search_fts USING fts5(
 );
 ";
 
+/// Миграция 5 (слайс 4a): журнал обращений ИИ-агентов через MCP (ADR-0009, приложение ADR-0001 §C.4). Локальные
+/// несинхронизируемые таблицы, строки синхронизируемых таблиц не меняются.
+/// - `mcp_log` — одна строка на обращение (вызов инструмента, подключение, отключение): время, имя клиента с его слов,
+///   инструмент, `args_json` (только белый список полей, **без текста записей**) и исход;
+/// - `mcp_log_message` — id записей, которые затронуло обращение; `purge` записи и ротация журнала удаляют эти строки
+///   в той же транзакции, сирот не остаётся.
+pub(crate) const MIGRATION_5: &str = "
+CREATE TABLE mcp_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at INTEGER NOT NULL,
+  client TEXT NOT NULL,
+  tool TEXT NOT NULL,
+  args_json TEXT NOT NULL,
+  outcome TEXT NOT NULL
+);
+CREATE TABLE mcp_log_message (
+  log_id INTEGER NOT NULL,
+  message_id TEXT NOT NULL,
+  PRIMARY KEY (log_id, message_id)
+) WITHOUT ROWID;
+CREATE INDEX mcp_log_message_message ON mcp_log_message(message_id);
+";
+
 /// Миграции по порядку; номер версии — индекс + 1.
-const MIGRATIONS: &[&str] = &[MIGRATION_1, MIGRATION_2, MIGRATION_3, MIGRATION_4];
+const MIGRATIONS: &[&str] = &[
+    MIGRATION_1,
+    MIGRATION_2,
+    MIGRATION_3,
+    MIGRATION_4,
+    MIGRATION_5,
+];
 
 /// Версия схемы, которую понимает это приложение.
 pub const LATEST_VERSION: i64 = MIGRATIONS.len() as i64;

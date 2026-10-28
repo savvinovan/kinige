@@ -10,7 +10,7 @@
 //! не удаляется ни вручную, ни автоматически (ADR-0001 §4 п. 4: `purged` создаётся, только если `deleted` поддерживается).
 
 use crate::error::{read_err, write_err};
-use crate::view::{VIEW_COLUMNS, view_from_row_at};
+use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row_at};
 use crate::{Now, Store, StoreError};
 use kinige_domain::TrashItem;
 use kinige_domain::groups::INBOX_ID;
@@ -90,6 +90,8 @@ fn purge(tx: &Connection, target: &PurgeTarget, now_ms: i64) -> Result<(), Store
     )
     .map_err(write_err)?;
     crate::ext::remove(tx, &target.id).map_err(write_err)?;
+    // Следы записи в журнале обращений агентов уходят вместе с ней; сама строка обращения остаётся (ADR-0009).
+    crate::agent_log::delete_log_messages(tx, &target.id).map_err(write_err)?;
     tx.execute("DELETE FROM message WHERE id = ?1", [&target.id])
         .map_err(write_err)?;
     // После удаления строки `message`: повреждённый индекс перестраивается из оставшихся записей, и удалённая в него не вернётся.
@@ -112,12 +114,14 @@ impl Store {
                 .map_err(read_err)?;
             let rows = statement
                 .query_map(rusqlite::params![INBOX_ID, TRASH_LIMIT], |row| {
-                    let deleted_at: i64 = row.get(10)?;
+                    let deleted_at: i64 = row.get(VIEW_LEN)?;
                     Ok(TrashItem {
                         message: view_from_row_at(row, 0)?,
-                        chat_title: row.get::<_, Option<String>>(11)?.unwrap_or_default(),
-                        chat_icon: row.get(12)?,
-                        chat_is_inbox: row.get::<_, Option<bool>>(13)?.unwrap_or(false),
+                        chat_title: row
+                            .get::<_, Option<String>>(VIEW_LEN + 1)?
+                            .unwrap_or_default(),
+                        chat_icon: row.get(VIEW_LEN + 2)?,
+                        chat_is_inbox: row.get::<_, Option<bool>>(VIEW_LEN + 3)?.unwrap_or(false),
                         deleted_at,
                         days_left: days_left(deleted_at, now_ms),
                     })

@@ -66,6 +66,8 @@ pub struct MessageView {
     pub tags: Vec<String>,
     /// Одна из групп записи новее поддерживаемой версии: запись только для чтения, действия недоступны (ADR-0001 §4).
     pub read_only: bool,
+    /// Кто создал запись (`core.origin`): `user`, `import_telegram`, `agent`. Лента помечает записи агента.
+    pub origin: String,
 }
 
 /// Какой флаг записи меняется командой `set_message_flag`.
@@ -383,10 +385,11 @@ mod tests {
             favorite_at: Some(5),
             tags: vec!["идея".into()],
             read_only: false,
+            origin: "agent".into(),
         };
         assert_eq!(
             serde_json::to_string(&view).unwrap(),
-            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false}"#
+            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false,"origin":"agent"}"#
         );
     }
 

@@ -1,6 +1,8 @@
 //! Правила предметной области Kinige. Без IO; собирается и под `wasm32` (§3.2 ТЗ).
 
 pub mod agent;
+pub mod agent_api;
+pub mod agent_reply;
 pub mod api;
 pub mod append;
 pub mod backup;
@@ -37,6 +39,9 @@ mod ops_tests;
 use serde::Serialize;
 use ts_rs::TS;
 
+pub use agent_api::{
+    AgentAccess, AgentChatChoice, AgentLogEntry, AgentLogPage, AgentLogRow, AgentMode, AgentSocket,
+};
 pub use api::{
     ApiError, CaptureAction, CaptureOutcome, CaptureState, ChatList, ChatSummary, ErrorCode,
     FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters,

@@ -4,7 +4,7 @@
 
 use crate::error::read_err;
 use crate::feed::{MAX_PAGE, chat_list};
-use crate::view::{VIEW_COLUMNS, view_from_row_at};
+use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row_at};
 use crate::{Store, StoreError};
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::is_valid_journal_date;
@@ -88,9 +88,9 @@ impl Store {
                 .query_map(rusqlite::params_from_iter(params), |row| {
                     Ok((
                         view_from_row_at(row, 0)?,
-                        row.get::<_, String>(10)?,
-                        row.get::<_, Option<String>>(11)?,
-                        row.get::<_, bool>(12)?,
+                        row.get::<_, String>(VIEW_LEN)?,
+                        row.get::<_, Option<String>>(VIEW_LEN + 1)?,
+                        row.get::<_, bool>(VIEW_LEN + 2)?,
                     ))
                 })
                 .map_err(read_err)?;
