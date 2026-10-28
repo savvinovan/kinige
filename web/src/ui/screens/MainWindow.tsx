@@ -4,7 +4,6 @@ import { INBOX_ID, type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { ChatList } from "../../api/generated/ChatList";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { Settings } from "../../api/generated/Settings";
-import { useDraftSaver } from "../../draft/useDraftSaver";
 import { useLanguage } from "../../i18n/I18n";
 import { CalendarDialog } from "../calendar/CalendarDialog";
 import { ChatDialog } from "../chat/ChatDialog";
@@ -16,6 +15,7 @@ import { ImportDialog } from "../import/ImportDialog";
 import { SearchResults } from "../search/SearchResults";
 import { type ChatDialogState, EMPTY_LIST, focusComposer, toSidebar } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
+import { useComposerDraft } from "./useComposerDraft";
 import { type FocusTarget, useFeed } from "./useFeed";
 import { useImport } from "./useImport";
 import { useMainSearch } from "./useMainSearch";
@@ -40,20 +40,12 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   /** Открытый чат; `null` — корзина. */
   const [selected, setSelected] = useState<string | null>(INBOX_ID);
   const [tag, setTag] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
   const [composerError, setComposerError] = useState<ErrorCode | null>(null);
   const [chatDialog, setChatDialog] = useState<ChatDialogState | null>(null);
   const [dialogError, setDialogError] = useState<ErrorCode | null>(null);
   const [dateError, setDateError] = useState<ErrorCode | null>(null);
   const sending = useRef(false);
-  // Пока человек не печатал, черновик из Rust подставляется в пустое поле; набранное до ответа не затирается.
-  const typed = useRef(false);
-  // Открытый чат без ожидания отрисовки: ответ на `getDraft` прежнего чата, пришедший после переключения, в поле нового не попадает.
-  const opened = useRef<string | null>(INBOX_ID);
-  const chatId = selected ?? INBOX_ID;
-
-  const saveDraft = useCallback((body: string) => api.saveDraft(chatId, body), [api, chatId]);
-  const draftSaver = useDraftSaver(saveDraft);
+  const { draft, setDraft, saver: draftSaver, switchChat, type: typeDraft } = useComposerDraft(api, selected);
   const prefs = useSettingsState(api, initialSettings);
   const { settings } = prefs;
 
@@ -92,16 +84,13 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const select = useCallback(
     async (next: string | null) => {
       await draftSaver.flush();
-      // Поле нового чата пустое, пока не подгрузится его черновик (эффект ниже).
-      typed.current = false;
-      opened.current = next;
-      setDraft("");
+      switchChat(next);
       setSelected(next);
       setTag(null);
       setComposerError(null);
       clearTrashError();
     },
-    [draftSaver, clearTrashError],
+    [draftSaver, switchChat, clearTrashError],
   );
 
   const { search, sidebarSearch, datePick, setDatePick } = useMainSearch({
@@ -125,22 +114,6 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     void refreshChats();
   }, [refreshChats]);
 
-  // Черновик открытого чата: пока человек не печатал, подставляется в пустое поле.
-  useEffect(() => {
-    if (selected === null) return;
-    let live = true;
-    // Эффект прежнего чата React сбрасывает после отрисовки, а `select` обнуляет поле раньше: одного `live` мало.
-    api
-      .getDraft(selected)
-      .then((saved) => {
-        if (live && opened.current === selected && !typed.current && saved !== "") setDraft(saved);
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, [api, selected]);
-
   useEffect(() => {
     const offs: (() => void)[] = [];
     let closed = false;
@@ -162,21 +135,6 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       for (const off of offs) off();
     };
   }, [api, refreshChats, reloadFeed, select]);
-
-  // Окно скрывается или теряет фокус: черновик уходит в Rust сразу, не дожидаясь паузы в наборе (§5.1).
-  const { flush } = draftSaver;
-  useEffect(() => {
-    const onHide = () => {
-      if (document.visibilityState === "hidden") void flush();
-    };
-    const onBlur = () => void flush();
-    document.addEventListener("visibilitychange", onHide);
-    window.addEventListener("blur", onBlur);
-    return () => {
-      document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("blur", onBlur);
-    };
-  }, [flush]);
 
   const submit = () => {
     if (sending.current || draft.trim() === "" || selected === null) return;
@@ -326,10 +284,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       draft={draft}
       onDraftChange={(value) => {
         if (sending.current) return;
-        typed.current = true;
-        setDraft(value);
+        typeDraft(value);
         setComposerError(null);
-        draftSaver.schedule(value);
       }}
       onSubmit={submit}
       composerError={composerError ? t(`error.${composerError}`) : undefined}

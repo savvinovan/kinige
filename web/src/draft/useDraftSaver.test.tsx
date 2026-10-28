@@ -97,6 +97,19 @@ describe("useDraftSaver", () => {
     expect(saveInbox).not.toHaveBeenCalled();
   });
 
+  it("запланированный текст прежнего чата не затирается набором в новом: он уходит в очередь", async () => {
+    const saveInbox = vi.fn().mockResolvedValue(undefined);
+    const saveBooks = vi.fn().mockResolvedValue(undefined);
+    const { result, rerender } = renderHook(({ save }) => useDraftSaver(save), { initialProps: { save: saveInbox } });
+    result.current.schedule("недописанное во входящих");
+    // Чат переключён, но запланированное ещё не сохранено; в новом чате начался набор.
+    rerender({ save: saveBooks });
+    result.current.schedule("про книги");
+    await result.current.flush();
+    expect(saveInbox).toHaveBeenCalledWith("недописанное во входящих");
+    expect(saveBooks).toHaveBeenCalledWith("про книги");
+  });
+
   it("ошибка сохранения молча проглатывается: черновик — удобство", async () => {
     const save = vi.fn().mockRejectedValue(new Error("нет связи"));
     const { result } = renderHook(() => useDraftSaver(save));

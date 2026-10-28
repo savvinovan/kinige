@@ -31,23 +31,28 @@ export function useDraftSaver(save: (body: string) => Promise<void>, delayMs = D
   const pending = useRef<{ body: string; save: (body: string) => Promise<void> } | null>(null);
   const queue = useRef<Promise<void>>(Promise.resolve());
 
+  const enqueue = useCallback((item: { body: string; save: (body: string) => Promise<void> }) => {
+    queue.current = queue.current.then(() => item.save(item.body)).catch(() => undefined);
+  }, []);
+
   const flush = useCallback((): Promise<void> => {
     clearTimeout(timer.current);
     timer.current = undefined;
     const item = pending.current;
     pending.current = null;
-    if (item === null) return queue.current;
-    queue.current = queue.current.then(() => item.save(item.body)).catch(() => undefined);
+    if (item !== null) enqueue(item);
     return queue.current;
-  }, []);
+  }, [enqueue]);
 
   const schedule = useCallback(
     (body: string) => {
+      // Запланированный текст другого чата (набран до переключения, который ещё не отрисован) не затирается: он уходит в очередь.
+      if (pending.current !== null && pending.current.save !== save) enqueue(pending.current);
       pending.current = { body, save };
       clearTimeout(timer.current);
       timer.current = setTimeout(() => void flush(), delayMs);
     },
-    [flush, save, delayMs],
+    [enqueue, flush, save, delayMs],
   );
 
   const cancel = useCallback(() => {
