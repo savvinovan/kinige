@@ -120,19 +120,58 @@ fn purging_an_entry_removes_its_log_traces_but_not_the_call_itself() {
         .collect();
     assert_eq!(rows, [other]);
     assert_eq!(count(a.dir.path(), "mcp_log"), 2, "обращение остаётся");
-    // Окно: удалённая навсегда запись — «удалена» (message = None), живая — запись.
+    // `purge` не переписывает историю: у обеих строк число записей прежнее (1), раскрытие показывает только оставшуюся запись,
+    // окно считает «удалено навсегда» как число строки минус число показанных.
     let page = a.store.agent_log_page(None).unwrap();
-    let first_call = page
-        .rows
-        .iter()
-        .find(|r| r.tool == "add_entry" && r.count == 0)
-        .unwrap();
-    assert!(a.store.agent_log_entries(first_call.id).unwrap().is_empty());
-    let with_entry = page.rows.iter().find(|r| r.count == 1).unwrap();
-    let entries = a.store.agent_log_entries(with_entry.id).unwrap();
+    let calls: Vec<_> = page.rows.iter().filter(|r| r.tool == "add_entry").collect();
+    assert_eq!(calls.len(), 2);
+    assert!(calls.iter().all(|r| r.count == 1), "{calls:?}");
+    let (purged_call, kept_call) = (calls[1], calls[0]);
+    assert!(
+        a.store
+            .agent_log_entries(purged_call.id)
+            .unwrap()
+            .is_empty()
+    );
+    let entries = a.store.agent_log_entries(kept_call.id).unwrap();
+    assert_eq!(entries.len() as i64, kept_call.count);
     assert_eq!(entries[0].message.as_ref().unwrap().body_md, "остаётся");
     assert_eq!(entries[0].message.as_ref().unwrap().origin, "agent");
     assert!(entries[0].chat_is_inbox);
+}
+
+#[test]
+fn the_row_count_is_written_with_the_row_and_search_rows_keep_it_after_purge() {
+    let a = agent(AgentMode::ReadWrite, true);
+    let now = moscow(T0);
+    let one = a.store.send_message(INBOX_ID, "Raft раз", &now).unwrap().id;
+    a.store.send_message(INBOX_ID, "Raft два", &now).unwrap();
+    call(&a.store, "search", json!({"query": "Raft"}), T0).unwrap();
+    call(&a.store, "list_chats", json!({}), T0).unwrap();
+    let counts = |store: &kinige_store::Store| -> Vec<(String, i64)> {
+        store
+            .agent_log_page(None)
+            .unwrap()
+            .rows
+            .into_iter()
+            .map(|r| (r.tool, r.count))
+            .collect()
+    };
+    assert_eq!(
+        counts(&a.store),
+        [("list_chats".into(), 0), ("search".into(), 2)]
+    );
+    a.store.delete_message(&one, &moscow(T0 + MINUTE)).unwrap();
+    a.store
+        .purge_message(&one, &moscow(T0 + 2 * MINUTE))
+        .unwrap();
+    // Число в строке то же, а раскрытие находит одну запись из двух.
+    assert_eq!(
+        counts(&a.store),
+        [("list_chats".into(), 0), ("search".into(), 2)]
+    );
+    let search = a.store.agent_log_page(None).unwrap().rows.remove(1);
+    assert_eq!(a.store.agent_log_entries(search.id).unwrap().len(), 1);
 }
 
 #[test]

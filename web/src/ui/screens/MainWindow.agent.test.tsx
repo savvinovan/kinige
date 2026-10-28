@@ -170,9 +170,11 @@ describe("Журнал обращений", () => {
     const log = within(dialog).getByRole("region", { name: "Журнал обращений" });
     const rows = within(log).getAllByRole("listitem").filter((li) => li.className.includes("agent-log__row"));
     expect(rows).toHaveLength(3);
-    expect(rows[0]).toHaveTextContent(/^\d{2}:\d{2} · Evil <b>Client<\/b> · подключение$/);
-    expect(rows[1]).toHaveTextContent(/^\d{2}:\d{2} · Claude Desktop · добавить запись · отказано: только чтение$/);
-    expect(rows[2]).toHaveTextContent(/^\d{2}:\d{2} · Claude Desktop · поиск «Raft» · 3 записи$/);
+    // Часы окна настоящие: строка вчерашнего дня начинается с даты («28 окт., 14:06»), сегодняшнего — со времени.
+    const when = String.raw`^(\d+ [^,]+, )?\d{2}:\d{2}`;
+    expect(rows[0]).toHaveTextContent(new RegExp(`${when} · Evil <b>Client</b> · подключение$`));
+    expect(rows[1]).toHaveTextContent(new RegExp(`${when} · Claude Desktop · добавить запись · отказано: только чтение$`));
+    expect(rows[2]).toHaveTextContent(new RegExp(`${when} · Claude Desktop · поиск «Raft» · 3 записи$`));
     expect(within(log).queryByText(/проверено|verified/i)).toBeNull();
     // Содержимого записей в журнале нет, пока строку не раскрыли.
     expect(within(log).queryByText("Итоги встречи")).toBeNull();
@@ -192,6 +194,24 @@ describe("Журнал обращений", () => {
     expect(within(dialog).getByText("Запись удалена")).toBeInTheDocument();
     fireEvent.click(row);
     await waitFor(() => expect(within(dialog).queryByText("Итоги встречи по Raft")).toBeNull());
+  });
+
+  it("после «Удалить навсегда» число в строке прежнее, раскрытие говорит, сколько записей удалено", async () => {
+    const api = setup();
+    const kept = mockMessage({ id: "m1", chatId: "work", bodyMd: "Осталась", journalDate: "2026-03-14" });
+    api.addAgentLog({ tool: "search", query: "Raft", at: AT, count: 3 }, [entry({ messageId: "m1", message: kept })]);
+    api.addAgentLog({ tool: "add_entry", at: AT + 60_000, count: 1 }, []);
+    const dialog = await openAgentDialog();
+    const log = within(dialog).getByRole("region", { name: "Журнал обращений" });
+    const rows = within(log).getAllByRole("listitem").filter((li) => li.className.includes("agent-log__row"));
+    expect(rows[0]).toHaveTextContent(/добавить запись · 1 запись$/);
+    expect(rows[1]).toHaveTextContent(/поиск «Raft» · 3 записи$/);
+    fireEvent.click(within(rows[1] as HTMLElement).getByRole("button"));
+    expect(await within(dialog).findByText("Осталась")).toBeInTheDocument();
+    expect(within(dialog).getByText("ещё 2 записи удалены навсегда")).toBeInTheDocument();
+    // Строка, у которой не осталось ни одной записи, всё равно раскрывается.
+    fireEvent.click(within(rows[0] as HTMLElement).getByRole("button"));
+    expect(await within(dialog).findByText("ещё 1 запись удалена навсегда")).toBeInTheDocument();
   });
 
   it("щелчок по записи открывает её в ленте: окна закрываются, чат выбран, запись найдена", async () => {

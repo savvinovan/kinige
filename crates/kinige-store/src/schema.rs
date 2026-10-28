@@ -162,6 +162,8 @@ CREATE VIRTUAL TABLE search_fts USING fts5(
 /// несинхронизируемые таблицы, строки синхронизируемых таблиц не меняются.
 /// - `mcp_log` — одна строка на обращение (вызов инструмента, подключение, отключение): время, имя клиента с его слов,
 ///   инструмент, `args_json` (только белый список полей, **без текста записей**) и исход;
+/// - `entry_count` — сколько записей затронуло обращение; пишется в той же транзакции, что строка, и **не меняется** после
+///   `purge` записи: история обращений не переписывается удалением (окно показывает число отсюда);
 /// - `mcp_log_message` — id записей, которые затронуло обращение; `purge` записи и ротация журнала удаляют эти строки
 ///   в той же транзакции, сирот не остаётся.
 pub(crate) const MIGRATION_5: &str = "
@@ -171,7 +173,8 @@ CREATE TABLE mcp_log (
   client TEXT NOT NULL,
   tool TEXT NOT NULL,
   args_json TEXT NOT NULL,
-  outcome TEXT NOT NULL
+  outcome TEXT NOT NULL,
+  entry_count INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE mcp_log_message (
   log_id INTEGER NOT NULL,

@@ -302,6 +302,8 @@
       "empty": "No requests yet",
       "more": "Show more",
       "deleted": "Entry deleted",
+      "purged_one": "{{count, number}} more entry deleted forever",
+      "purged_other": "{{count, number}} more entries deleted forever",
       "expand": "Show entries of this request",
       "collapse": "Hide entries of this request",
       "unknownClient": "unknown client",

@@ -98,7 +98,8 @@ pub struct AgentLogRow {
     pub query: Option<String>,
     /// `ok`, `disabled`, `read_only`, `not_found`, `no_agent_entry`, `not_a_task`, `invalid_argument`, `error`.
     pub outcome: String,
-    /// Сколько записей затронуло обращение.
+    /// Сколько записей затронуло обращение. Пишется вместе со строкой и не меняется после «Удалить навсегда» (раскрытие
+    /// покажет меньше записей, окно скажет, сколько удалено).
     #[ts(type = "number")]
     pub count: i64,
 }

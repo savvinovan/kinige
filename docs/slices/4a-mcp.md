@@ -248,7 +248,7 @@
 
    Даты агент не задаёт.
 6. **Журнал.** Миграция 5:
-   - `mcp_log(id, at, client, tool, args_json, outcome)`;
+   - `mcp_log(id, at, client, tool, args_json, outcome, entry_count)` — `entry_count` пишется вместе со строкой и не меняется при `purge` (окно показывает число из него, раскрытие — «ещё N удалены навсегда»);
    - `mcp_log_message(log_id, message_id)` с индексом по `message_id`.
 
    Правила:

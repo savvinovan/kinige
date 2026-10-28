@@ -73,6 +73,11 @@ export function AgentLog({ log, language, now, onToggleRow, onOpenEntry, onMore 
                   {entries.map((entry) => (
                     <LogEntry key={entry.messageId} entry={entry} gone={log.gone.has(entry.messageId)} language={language} now={now} onOpen={() => onOpenEntry(row.id, entry)} />
                   ))}
+                  {row.count > entries.length ? (
+                    <li className="agent-log__entry agent-log__entry--gone">
+                      <span>{t("agent.log.purged", { count: row.count - entries.length })}</span>
+                    </li>
+                  ) : null}
                 </ul>
               ) : null}
             </li>

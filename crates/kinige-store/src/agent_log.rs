@@ -28,12 +28,13 @@ pub(crate) fn insert_log(
     outcome: &str,
     message_ids: &[String],
 ) -> rusqlite::Result<()> {
+    let unique: std::collections::BTreeSet<&String> = message_ids.iter().collect();
     conn.execute(
-        "INSERT INTO mcp_log (at, client, tool, args_json, outcome) VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![at_ms, client, tool, args_json, outcome],
+        "INSERT INTO mcp_log (at, client, tool, args_json, outcome, entry_count) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        rusqlite::params![at_ms, client, tool, args_json, outcome, unique.len() as i64],
     )?;
     let log_id = conn.last_insert_rowid();
-    for id in message_ids {
+    for id in unique {
         conn.execute(
             "INSERT OR IGNORE INTO mcp_log_message (log_id, message_id) VALUES (?1, ?2)",
             rusqlite::params![log_id, id],
@@ -101,8 +102,7 @@ impl Store {
         self.read(|conn| {
             let mut statement = conn
                 .prepare(
-                    "SELECT l.id, l.at, l.client, l.tool, json_extract(l.args_json, '$.query'), l.outcome, \
-                     (SELECT COUNT(*) FROM mcp_log_message x WHERE x.log_id = l.id) \
+                    "SELECT l.id, l.at, l.client, l.tool, json_extract(l.args_json, '$.query'), l.outcome, l.entry_count \
                      FROM mcp_log l WHERE l.id < COALESCE(?1, 9223372036854775807) \
                      ORDER BY l.id DESC LIMIT ?2",
                 )

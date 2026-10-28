@@ -138,6 +138,19 @@ export const ЗаписьУдалена: Story = {
   args: { log: { rows: ROWS, hasMore: false, expandedId: 3, entries: EXPANDED_ENTRIES, gone: new Set(["m1"]) } },
 };
 
+/** Часть записей обращения удалена навсегда: число в строке прежнее, под записями — «ещё N удалены навсегда». */
+export const ЧастьЗаписейУдалена: Story = {
+  args: {
+    log: {
+      rows: [row(3, { tool: "search", at: at(14, 2), query: "Raft", count: 3 })],
+      hasMore: false,
+      expandedId: 3,
+      entries: { 3: [EXPANDED_ENTRIES[3]![0]!] },
+      gone: new Set(),
+    },
+  },
+};
+
 /** Ошибка: папка сокета чужая; вместо «Как подключить» одна строка ошибки. */
 export const ОшибкаПапкаСокета: Story = {
   args: { access: access({ socket: { ...MOCK_AGENT_SOCKET, listening: false, error: "dir_unsafe", desktopConfig: null, codeCommand: null } }) },
