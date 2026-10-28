@@ -39,7 +39,7 @@ async function runImport() {
 async function loadAllOlder(container: HTMLElement) {
   for (let step = 0; step < 6 && edges(container).length > 0; step++) {
     const before = container.querySelectorAll("article").length;
-    showEdge(container, "older");
+    await showEdge(container, "older");
     await waitFor(() => expect(container.querySelectorAll("article").length).toBeGreaterThan(before));
   }
 }

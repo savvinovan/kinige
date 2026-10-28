@@ -1,4 +1,4 @@
-import { act } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 
 /** Подмена IntersectionObserver для тестов ленты: тест сам «показывает» край списка. */
 export class FakeObserver {
@@ -31,11 +31,19 @@ export class FakeObserver {
 /** В `column-reverse` первый в разметке край стоит внизу (новое), последний — вверху (старое). */
 export const edges = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>(".feed__edge")];
 
-/** Край списка показался в области прокрутки. */
-export function showEdge(container: HTMLElement, which: "older" | "newer") {
-  const list = edges(container);
-  const edge = which === "older" ? list.at(-1) : list[0];
-  const observer = FakeObserver.all.find((o) => edge && o.has(edge));
-  if (!edge || !observer) throw new Error(`нет края «${which}»`);
+/**
+ * Край списка показался в области прокрутки. Ленту наблюдатель ставит эффектом после отрисовки страницы (при смене числа
+ * записей прежний наблюдатель снимается): ждём, пока он увидит край, как настоящий браузер сообщил бы о нём не раньше.
+ */
+export async function showEdge(container: HTMLElement, which: "older" | "newer") {
+  const watched = () => {
+    const list = edges(container);
+    const edge = which === "older" ? list.at(-1) : list[0];
+    const observer = FakeObserver.all.find((o) => edge && o.has(edge));
+    if (!edge || !observer) throw new Error(`нет края «${which}»`);
+    return { edge, observer };
+  };
+  await waitFor(watched);
+  const { edge, observer } = watched();
   act(() => observer.fire(edge));
 }
