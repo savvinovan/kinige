@@ -191,6 +191,42 @@ fn messages_of_one_second_keep_the_file_order() {
 }
 
 #[test]
+fn impossible_dates_do_not_break_the_batch_and_land_on_the_import_day() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_plain(dir.path());
+    let own = format!("user{OWNER}");
+    let messages: Vec<String> = [
+        (SAVED_T, "хорошая до"),
+        (9_999_999_999_999_999, "за пределом двойной точности"),
+        (9_007_199_254_740, "далёкое будущее"),
+        (-7, "отрицательная"),
+        (SAVED_T + 60, "хорошая после"),
+    ]
+    .iter()
+    .enumerate()
+    .map(|(i, (unix, text))| msg(i as u64 + 1, *unix, text, &own))
+    .collect();
+    let report = run(
+        &store,
+        &parse(&single("saved_messages", OWNER, None, &messages)),
+        &[],
+    )
+    .unwrap();
+    assert_eq!(report.imported, 5, "{report:?}");
+    let all = feed(&store, INBOX_ID);
+    assert_eq!(all.len(), 5);
+    let today = kinige_domain::journal::journal_date(T0, 3 * 3600, 240);
+    for message in &all {
+        if message.body_md.starts_with("хорошая") {
+            assert_eq!(message.journal_date, "2019-03-08");
+        } else {
+            assert_eq!(message.created_at, T0, "{}", message.body_md);
+            assert_eq!(message.journal_date, today);
+        }
+    }
+}
+
+#[test]
 fn reply_to_an_imported_message_is_stored_and_unknown_target_is_null() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_plain(dir.path());

@@ -11,6 +11,9 @@ use std::collections::HashMap;
 /// Наибольшая поправка: в одну секунду помещается до 999 сообщений.
 const MAX_SUB_SECOND_MS: u32 = 999;
 
+/// Насколько вперёд от момента импорта время сообщения ещё считается настоящим (запас на разницу часов).
+const MAX_FUTURE_MS: i64 = 24 * 3_600_000;
+
 /// Время сообщений одного чата Telegram по порядку файла. Если в одну секунду пришло несколько сообщений, k-е по порядку
 /// получает +k мс (не больше 999): иначе случайный `id` записи перемешал бы их в ленте.
 #[derive(Default)]
@@ -20,9 +23,16 @@ pub(crate) struct Timeline {
 
 impl Timeline {
     /// `created_at`, мс. Сообщения учитываются в порядке файла, все (в том числе пропускаемые): результат не зависит от
-    /// того, что уже импортировано. Нет ни `date_unixtime`, ни разбираемой `date` — момент импорта.
+    /// того, что уже импортировано. Нет ни `date_unixtime`, ни разбираемой `date`, либо время вне окна
+    /// `1970-01-01 … сейчас + сутки` — момент импорта: невозможная дата не должна ни ломать каноничные байты (числа JCS
+    /// не выходят за ±2^53), ни давать запись в году 287396.
     pub(crate) fn created_at(&mut self, message: &TgMessage, now: &Now) -> i64 {
-        let Some(second) = message.unix.or_else(|| local_to_unix(message, &now.tz)) else {
+        let latest = now.ms.saturating_add(MAX_FUTURE_MS) / 1000;
+        let Some(second) = message
+            .unix
+            .or_else(|| local_to_unix(message, &now.tz))
+            .filter(|second| (0..=latest).contains(second))
+        else {
             return now.ms;
         };
         let seen = self.seen_in_second.entry(second).or_insert(0);
@@ -99,6 +109,35 @@ mod tests {
         let mut timeline = Timeline::default();
         assert_eq!(timeline.created_at(&all[0], &now), 1_800_000_000_123);
         assert_eq!(timeline.created_at(&all[1], &now), 1_800_000_000_123);
+    }
+
+    #[test]
+    fn times_outside_the_window_fall_back_to_the_import_moment() {
+        let now = Now::at(1_800_000_000_000, "UTC");
+        // За ±2^53, далёкое будущее (287396-й год), больше суток вперёд, отрицательное, до 1970.
+        let wild = [
+            "9999999999999999",
+            "9007199254740",
+            "-9999999999999999",
+            "1800172801",
+            "-1",
+        ];
+        for unix in wild {
+            let all = messages(&format!(r#"{{"id":1,"date_unixtime":"{unix}"}}"#));
+            let at = Timeline::default().created_at(&all[0], &now);
+            assert_eq!(at, now.ms, "{unix}");
+            assert!(kinige_domain::journal::is_valid_journal_date(
+                &journal_date_of(at, &now)
+            ));
+        }
+        // Границы окна: 1970-01-01 и ровно сутки вперёд принимаются.
+        for (unix, expected) in [("0", 0), ("1800086400", 1_800_086_400_000)] {
+            let all = messages(&format!(r#"{{"id":1,"date_unixtime":"{unix}"}}"#));
+            assert_eq!(Timeline::default().created_at(&all[0], &now), expected);
+        }
+        // Окно действует и на `date` без `date_unixtime`.
+        let all = messages(r#"{"id":1,"date":"9999-12-31T23:59:59"}"#);
+        assert_eq!(Timeline::default().created_at(&all[0], &now), now.ms);
     }
 
     #[test]

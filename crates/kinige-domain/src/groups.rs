@@ -3,6 +3,7 @@
 //! расхождения между ними не бывает (инвариант `canonical(колонки) == groups_raw[g]`, приложение §B п. 38).
 
 use crate::jcs::{self, JcsError};
+use crate::journal::is_valid_journal_date;
 use serde_json::{Value, json, value::RawValue};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -167,6 +168,10 @@ pub(crate) fn build_message(
     provenance: &Provenance<'_>,
     hlc: &str,
 ) -> Result<MessageRow, GroupError> {
+    // `journal_date` попадает в группу `placement` и в индексы: невозможная дата не должна дойти до байтов синхронизации.
+    if !is_valid_journal_date(input.journal_date) {
+        return Err(GroupError::Invalid("journal_date"));
+    }
     let mut core = json!({
         "created_at": input.created_at,
         "created_tz": input.created_tz,

@@ -102,6 +102,8 @@ struct Prepared {
 struct BatchOutcome {
     chat_id: String,
     created_chat: bool,
+    /// Записи, чей внешний id оказался занят в самой транзакции: не вставлены.
+    skipped: i64,
 }
 
 impl Store {
@@ -220,7 +222,8 @@ impl Store {
                         self.write_batch(chat, dest.clone(), rows, pt_ms, now.tz.clone())?;
                     dest = Some(outcome.chat_id);
                     report.chats_created += i64::from(outcome.created_chat);
-                    report.imported += count;
+                    report.imported += count - outcome.skipped;
+                    report.skipped_existing += outcome.skipped;
                     report.media_placeholders += media;
                     existing.extend(new_ids);
                 }
@@ -269,7 +272,15 @@ impl Store {
             let mut clock = load_clock(&tx)?
                 .ok_or_else(|| StoreError::Internal("нет состояния часов".into()))?;
             let mut days: BTreeSet<String> = BTreeSet::new();
+            let mut skipped = 0i64;
             for row in &rows {
+                // Ключ внешнего id первым: он уже занят (запись появилась после чтения `existing`) — записи не будет.
+                if !crate::ext::insert(&tx, EXT_SRC_TELEGRAM, &ext_chat, &row.ext_msg, &row.id)
+                    .map_err(write_err)?
+                {
+                    skipped += 1;
+                    continue;
+                }
                 clock = clock
                     .tick(u64::try_from(pt_ms).unwrap_or(0))
                     .map_err(|e| StoreError::Internal(e.to_string()))?;
@@ -288,8 +299,6 @@ impl Store {
                     &clock.format(&device),
                 )?;
                 insert_message(&tx, &message).map_err(write_err)?;
-                crate::ext::insert(&tx, EXT_SRC_TELEGRAM, &ext_chat, &row.ext_msg, &row.id)
-                    .map_err(write_err)?;
                 crate::tags::replace_tags(&tx, &row.id, &row.body).map_err(write_err)?;
                 crate::search::reindex(&tx, &row.id, &row.body).map_err(write_err)?;
                 days.insert(row.journal_date.clone());
@@ -302,7 +311,11 @@ impl Store {
             Ok(BatchOutcome {
                 chat_id,
                 created_chat,
+                skipped,
             })
         })
     }
 }
+
+#[cfg(test)]
+mod tests;

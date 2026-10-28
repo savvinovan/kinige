@@ -184,3 +184,27 @@ fn invalid_reply_to_id_is_rejected() {
         );
     }
 }
+
+#[test]
+fn impossible_journal_dates_never_reach_the_bytes() {
+    for bad in [
+        "",
+        "287396-10-12",
+        "10000-01-01",
+        "0999-12-31",
+        "2024-02-30",
+        "2024-13-01",
+        "-001-01-01",
+        "2024-1-1",
+    ] {
+        let mut msg = input();
+        msg.journal_date = bad;
+        assert!(
+            matches!(new_imported_message(&msg, HLC), Err(GroupError::Invalid(_))),
+            "{bad:?}"
+        );
+    }
+    let mut ok = input();
+    ok.journal_date = "2024-02-29";
+    assert!(new_imported_message(&ok, HLC).is_ok());
+}
