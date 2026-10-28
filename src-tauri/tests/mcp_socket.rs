@@ -145,10 +145,10 @@ fn a_failed_chmod_after_bind_removes_the_socket_file() {
 #[test]
 fn a_long_data_dir_falls_back_to_a_short_path_in_the_temp_dir() {
     let fixture = fixture();
-    let long = fixture
-        .data
-        .path()
-        .join("очень-длинное-имя-папки".repeat(6));
+    // Много вложенных папок, а не одно длинное имя: имя компонента пути ограничено 255 байтами (NAME_MAX на Linux).
+    let long = (0..6).fold(fixture.data.path().to_path_buf(), |path, _| {
+        path.join("очень-длинное-имя-папки")
+    });
     std::fs::create_dir_all(&long).unwrap();
     let expected = mcp::socket_path(&long, &std::env::temp_dir());
     assert!(expected.starts_with(std::env::temp_dir().join("kinige-mcp")));

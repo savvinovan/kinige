@@ -1,0 +1,14 @@
+машина: Apple M3 Pro, Mac15,6, macOS 26.5.2
+сборка: release (/private/tmp/claude-501/-Users-alexandrsavvinov-Projects-petproject-kinige-claude/bf8dd3ac-307c-48a9-8129-18ec343b1f9f/scratchpad/slice4a-target/release/kinige), прогонов: 10
+  прогон  1:  1348.4 мс
+  прогон  2:   617.0 мс
+  прогон  3:   536.0 мс
+  прогон  4:   613.2 мс
+  прогон  5:   531.1 мс
+  прогон  6:   671.3 мс
+  прогон  7:   584.1 мс
+  прогон  8:   519.6 мс
+  прогон  9:   558.0 мс
+  прогон 10:   570.4 мс
+первый: 1348 мс; min 520, медиана 577, max 1348 мс
+цель §15: < 1500 мс — выполнена

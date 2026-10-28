@@ -159,21 +159,30 @@ impl Bridge {
         if self.lock().connection.is_some() {
             return Ok(());
         }
-        let running = self.host.process_running();
-        if !running {
-            self.host.launch();
-        }
         let deadline = Instant::now() + self.config.wait;
+        // Сначала просто подключаемся: если сокет отвечает, приложение работает, и проверять процесс (а тем более запускать
+        // `open`, который запущенному приложению пришёл бы как Reopen и показал бы окно) незачем.
+        let mut running: Option<bool> = None;
         let stream = loop {
             match UnixStream::connect(&self.config.socket) {
                 Ok(stream) => break stream,
-                Err(_) if Instant::now() < deadline => thread::sleep(CONNECT_RETRY),
                 Err(_) => {
-                    return Err(if running {
-                        Unreachable::Unavailable
-                    } else {
-                        Unreachable::NotRunning
+                    // Не ответил: процесс есть — ждём сокет (приложение стартует); процесса нет — один раз запускаем.
+                    let running = *running.get_or_insert_with(|| {
+                        let alive = self.host.process_running();
+                        if !alive {
+                            self.host.launch();
+                        }
+                        alive
                     });
+                    if Instant::now() >= deadline {
+                        return Err(if running {
+                            Unreachable::Unavailable
+                        } else {
+                            Unreachable::NotRunning
+                        });
+                    }
+                    thread::sleep(CONNECT_RETRY);
                 }
             }
         };

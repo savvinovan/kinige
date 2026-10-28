@@ -224,6 +224,21 @@ fn no_socket_and_no_process_opens_the_app_once_then_answers_with_an_error_and_th
     assert!(bridge.hear(SHORT).is_none() || env.opens() >= 1);
 }
 
+/// Регрессия приёмки 4a: ошибка проверки процесса (путь с `..`, симлинк) запускала `open` поверх работающего приложения, а
+/// это Reopen и окно на экране. Отвечающий сокет значит, что приложение работает, и `open` не нужен, что бы ни сказала проверка.
+#[test]
+fn a_listening_socket_never_triggers_open_even_if_the_process_check_says_absent() {
+    let env = Env::new();
+    let server = Server::bind(&env.socket());
+    let mut bridge = env.bridge("absent");
+    bridge.say(&call(8, "m"));
+    let mut conn = server.accept(LONG).expect("мост подключился");
+    assert!(conn.next(LONG).unwrap().contains(r#""id":8"#));
+    conn.send(&result(8));
+    assert_eq!(bridge.hear(LONG).as_deref(), Some(result(8).as_str()));
+    assert_eq!(env.opens(), 0);
+}
+
 #[test]
 fn process_present_but_no_socket_gives_journal_unavailable_and_never_opens() {
     let env = Env::new();

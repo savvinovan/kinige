@@ -1,0 +1,5 @@
+# Запуск в фоне (мост при закрытом приложении), AX-проверка процесса 14560
+menubar: Apple, Kinige, File, Edit, View, Window, Help
+menubar: 
+windows=0 frontmost=false
+командная строка: .../Contents/MacOS/kinige --background

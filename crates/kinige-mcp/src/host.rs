@@ -23,7 +23,8 @@ pub struct Host {
 
 impl Host {
     pub fn locate() -> Host {
-        let bundle = env::current_exe().ok().and_then(|exe| bundle_of(&exe));
+        let exe = env::current_exe().and_then(std::fs::canonicalize);
+        let bundle = exe.ok().and_then(|exe| bundle_of(&exe));
         Host { bundle }
     }
 
@@ -36,14 +37,21 @@ impl Host {
         let Some(bundle) = &self.bundle else {
             return false;
         };
-        let main = bundle.join("Contents/MacOS").join(MAIN_BINARY);
+        // Пути сравниваются после `canonicalize`: `current_exe` на macOS отдаёт путь как запущено (с `..`, симлинками, `/tmp`
+        // вместо `/private/tmp`), а `ps` — путь, как запустила система. Ошибка здесь запустила бы `open` поверх работающего
+        // приложения, а это Reopen и окно на экране.
+        let Ok(main) = std::fs::canonicalize(bundle.join("Contents/MacOS").join(MAIN_BINARY))
+        else {
+            return false;
+        };
         let Ok(output) = Command::new("ps").args(["-axo", "comm="]).output() else {
             return false;
         };
-        let main = main.to_string_lossy();
         String::from_utf8_lossy(&output.stdout)
             .lines()
-            .any(|line| line.trim_end() == main)
+            .map(str::trim_end)
+            .filter(|line| line.ends_with(MAIN_BINARY))
+            .any(|line| std::fs::canonicalize(line).is_ok_and(|path| path == main))
     }
 
     /// Запускает приложение в фоне: без вывода окна на передний план и без окна вовсе (`--background`).
