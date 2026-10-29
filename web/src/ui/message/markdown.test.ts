@@ -55,10 +55,10 @@ describe("renderMarkdown: разметка", () => {
     expect(paragraphs.at(-1)?.textContent).toBe("Записал, чтобы перечитать.");
   });
 
-  it("блок кода: текст сохраняется как есть, фокусируется с клавиатуры, внутри нет разметки", () => {
+  it("блок кода: текст сохраняется как есть, прокрутки нет (в порядок Tab не входит), внутри нет разметки", () => {
     const host = render("```rust\nfn main() {\n    println!(\"<b>\");\n}\n```");
     const pre = host.querySelector("pre");
-    expect(pre?.getAttribute("tabindex")).toBe("0");
+    expect(pre?.hasAttribute("tabindex")).toBe(false);
     expect(pre?.textContent).toBe('fn main() {\n    println!("<b>");\n}\n');
     expect(pre?.querySelector("b")).toBeNull();
   });

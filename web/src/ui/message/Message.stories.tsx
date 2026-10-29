@@ -9,6 +9,9 @@ const at = (hour: number, minute: number) => new Date(2026, 9, 20, hour, minute)
 
 const CODE = "```\nfn main() {\n    let today = Day::new(2026, 10, 20);\n    println!(\"Записей: {}\", today.count());\n}\n```";
 
+const LONG_CODE =
+  "```\ncargo build --release --workspace --all-targets --features sync,encryption,import-telegram,search-morphology,markdown-copy --target-dir /var/tmp/kinige-build-output/release-candidate\n```";
+
 const meta = {
   title: "Компоненты/Сообщение",
   component: Message,
@@ -68,6 +71,14 @@ export const Код: Story = {
   },
 };
 
+/** Код с длинной строкой и абзац после него (KINIG-40): строка переносится, под блоком нет полосы прокрутки, и первая строка абзаца ничем не закрыта, даже если ОС показывает полосы всегда. */
+export const КодСДлиннойСтрокой: Story = {
+  args: {
+    markdown: `Вот команда сборки:\n\n${LONG_CODE}\n\nПосле неё запускаю проверки и жду зелёного результата.`,
+    sentAt: at(14, 10),
+  },
+};
+
 /** Длинный текст: плашка упирается в ширину ~80 знаков и переносит строки; время остаётся у конца последней. */
 export const ДлинныйТекст: Story = {
   args: {
@@ -77,7 +88,7 @@ export const ДлинныйТекст: Story = {
   },
 };
 
-/** Длинная строка без пробелов и длинная строка кода: первая переносится, вторая прокручивается внутри блока. */
+/** Длинная строка без пробелов и длинная строка кода: обе переносятся, прокрутки нет. */
 export const ДлиннаяСтрокаБезПробелов: Story = {
   render: () => (
     <>
