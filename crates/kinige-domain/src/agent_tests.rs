@@ -301,11 +301,13 @@ fn log_args_never_contain_entry_text() {
                 id: ID.into(),
                 done: true,
                 item: None,
+                item_text: None,
             },
             ToolArgs::SetTaskDone {
                 id: ID.into(),
                 done: false,
                 item: Some(3),
+                item_text: Some(text.clone()),
             },
         ] {
             let json = args_json(&args);
@@ -409,11 +411,62 @@ fn item_numbers_are_whole_non_negative_numbers_and_the_log_keeps_only_the_number
         ToolArgs::SetTaskDone {
             id: ID.into(),
             done: true,
-            item: None
+            item: None,
+            item_text: None
         }
     );
     let with_item = parse(json!(4)).unwrap();
     assert_eq!(args_json(&with_item), r#"{"done":true,"item":4}"#);
+}
+
+#[test]
+fn item_text_is_a_trimmed_non_empty_string_tied_to_item_and_never_reaches_the_log() {
+    let parse = |value: Value| {
+        parse_args(
+            AgentTool::SetTaskDone,
+            Some(&map(
+                json!({"id": ID, "done": true, "item": 1, "item_text": value}),
+            )),
+        )
+    };
+    let parsed = parse(json!("  Почитать книгу \n")).unwrap();
+    assert_eq!(
+        parsed,
+        ToolArgs::SetTaskDone {
+            id: ID.into(),
+            done: true,
+            item: Some(1),
+            item_text: Some("Почитать книгу".into())
+        }
+    );
+    // Текст пункта — только в памяти вызова; в журнал идёт номер и больше ничего.
+    assert_eq!(args_json(&parsed), r#"{"done":true,"item":1}"#);
+    for bad in [
+        json!(""),
+        json!("   "),
+        json!(5),
+        json!(true),
+        json!(["a"]),
+        json!("я".repeat(MAX_ITEM_TEXT_CHARS + 1)),
+    ] {
+        assert!(parse(bad.clone()).is_err(), "{bad}");
+    }
+    assert!(parse(json!("я".repeat(MAX_ITEM_TEXT_CHARS))).is_ok());
+    // `null` — «нет поля»; без `item` текст пункта не принимается.
+    assert!(matches!(
+        parse(Value::Null).unwrap(),
+        ToolArgs::SetTaskDone {
+            item_text: None,
+            ..
+        }
+    ));
+    assert!(
+        parse_args(
+            AgentTool::SetTaskDone,
+            Some(&map(json!({"id": ID, "done": true, "item_text": "текст"})))
+        )
+        .is_err()
+    );
 }
 
 #[test]

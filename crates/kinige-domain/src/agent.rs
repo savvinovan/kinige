@@ -19,6 +19,8 @@ pub const ENTRIES_PAGE: usize = 200;
 pub const LIST_TEXT_CHARS: usize = 2000;
 /// Наибольший номер пункта `- [ ]` в `set_task_done(item)`: дальше запрос явно мусорный (пунктов в записи столько нет).
 pub const MAX_TASK_ITEM: u64 = 1_000_000;
+/// Наибольшая длина `item_text` в знаках: пункт длиннее строки записи не бывает, а мусор отсекается сразу.
+pub const MAX_ITEM_TEXT_CHARS: usize = 100_000;
 /// Ответ не больше этого размера: страница обрывается на последней целой записи, которая помещается.
 pub const RESPONSE_BYTES: usize = 1024 * 1024;
 
@@ -145,10 +147,15 @@ pub enum ToolArgs {
     },
     /// Без `item` — отметка задачи-записи целиком; с `item` — один пункт `- [ ]` внутри записи (номер с нуля, как в
     /// `tasks::task_items`).
+    ///
+    /// `item_text` — страховка от сдвинувшихся номеров (пользователь добавил пункт выше после чтения): текст пункта так,
+    /// как его отдаёт `tasks`; не совпал с текстом найденного пункта — отказ, ничего не записано. Без `item_text` номер
+    /// принимается как есть.
     SetTaskDone {
         id: String,
         done: bool,
         item: Option<usize>,
+        item_text: Option<String>,
     },
 }
 
@@ -208,6 +215,7 @@ pub fn parse_args(
             id: uuid_field(args, "id")?.ok_or_else(|| bad("id is required"))?,
             done: bool_field(args, "done")?.ok_or_else(|| bad("done is required"))?,
             item: item_field(args)?,
+            item_text: item_text_field(args)?,
         },
     })
 }
@@ -281,6 +289,25 @@ fn item_field(args: &Map<String, Value>) -> Result<Option<usize>, ArgError> {
             .ok_or_else(|| bad("item must be a whole number from 0 to 1000000")),
         Some(_) => Err(bad("item must be a whole number from 0 to 1000000")),
     }
+}
+
+/// Текст пункта для сверки: строка, без пробелов по краям (так же обрезан `text` в `tasks`), не пустая и не длиннее
+/// [`MAX_ITEM_TEXT_CHARS`]; без `item` не имеет смысла.
+fn item_text_field(args: &Map<String, Value>) -> Result<Option<String>, ArgError> {
+    let Some(text) = text_field(args, "item_text")? else {
+        return Ok(None);
+    };
+    if field(args, "item").is_none() {
+        return Err(bad("item_text needs item"));
+    }
+    let text = text.trim();
+    if text.is_empty() {
+        return Err(bad("item_text must not be empty"));
+    }
+    if text.chars().take(MAX_ITEM_TEXT_CHARS + 1).count() > MAX_ITEM_TEXT_CHARS {
+        return Err(bad("item_text is too long"));
+    }
+    Ok(Some(text.to_string()))
 }
 
 fn cursor_field(args: &Map<String, Value>) -> Result<Option<AgentCursor>, ArgError> {

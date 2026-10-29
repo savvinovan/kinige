@@ -33,6 +33,17 @@ fn an_agent_can_mark_one_checklist_item_by_the_number_it_read() {
         .clone();
     assert_eq!(tool["inputSchema"]["properties"]["item"]["type"], "integer");
     assert_eq!(tool["inputSchema"]["properties"]["item"]["minimum"], 0);
+    assert_eq!(
+        tool["inputSchema"]["properties"]["item"]["maximum"],
+        1_000_000
+    );
+    assert_eq!(
+        tool["inputSchema"]["properties"]["item_text"]["type"],
+        "string"
+    );
+    // Описание просит передавать текст пункта вместе с номером и говорит, что будет при расхождении.
+    let description = tool["description"].as_str().unwrap();
+    assert!(description.contains("`item_text`") && description.contains("numbers then shift"));
     assert!(
         tool["description"]
             .as_str()
@@ -63,7 +74,7 @@ fn an_agent_can_mark_one_checklist_item_by_the_number_it_read() {
     // Отмечает ровно его.
     let (error, text) = client.call(
         "set_task_done",
-        json!({"id": id, "done": true, "item": book["item"]}),
+        json!({"id": id, "done": true, "item": book["item"], "item_text": book["text"]}),
     );
     assert!(!error, "{text}");
     let body = mcp

@@ -2,7 +2,7 @@
 //! Описания и `readOnlyHint` — не гарантия (клиент может их не показать); гарантия — предупреждение в Kinige при включении.
 
 use kinige_domain::AgentMode;
-use kinige_domain::agent::{AgentTool, ENTRIES_PAGE, LIST_TEXT_CHARS, SEARCH_PAGE};
+use kinige_domain::agent::{AgentTool, ENTRIES_PAGE, LIST_TEXT_CHARS, MAX_TASK_ITEM, SEARCH_PAGE};
 use kinige_store::AgentError;
 use rmcp::model::{JsonObject, Tool, ToolAnnotations};
 use serde_json::{Value, json};
@@ -92,7 +92,10 @@ fn describe(tool: AgentTool) -> (String, Value, Vec<&'static str>) {
                 "Read the entries of one journal day (`date`) or of a range (`from` and `to`, inclusive), oldest first, up \
                  to {ENTRIES_PAGE} per page. Long texts are cut at {LIST_TEXT_CHARS} characters (`truncated`); use \
                  `get_entry` for the whole text. An entry that contains checklist items (`- [ ] ...`) also has `tasks`: \
-                 `[{{item, done, text}}]`; the item numbers are what `set_task_done` takes as `item`."
+                 `[{{item, done, text}}]`; the item numbers are what `set_task_done` takes as `item`. In a list the texts of \
+                 the items count toward the same {LIST_TEXT_CHARS}-character limit as the entry text: when they are cut, \
+                 `tasks` holds only the first items (their numbers stay valid) and the entry is marked `truncated`; use \
+                 `get_entry` for all of them."
             ),
             json!({
                 "date": {"type": "string", "description": DATE},
@@ -146,8 +149,11 @@ fn describe(tool: AgentTool) -> (String, Value, Vec<&'static str>) {
             "Mark a task done or not done. Without `item` it marks the whole entry (a task entry); it fails with \
              `not_a_task` for other entries. With `item` it marks a single checklist item (`- [ ] ...`) inside the entry, \
              which does not have to be a task; the numbers start at 0 and are the `item` values of `tasks` in the result \
-             of `get_entry` and `get_entries`. A wrong item number fails with `invalid_argument`; an item that is already \
-             in the requested state is a success. Works in any visible chat."
+             of `get_entry` and `get_entries`. Always pass `item_text` (the `text` of that item) together with `item`: the \
+             user may edit the entry after you read it and the numbers then shift; if the text differs, nothing is \
+             written and the call fails with `invalid_argument` (re-read the entry and try again). A wrong item number \
+             fails with `invalid_argument` too; an item that is already in the requested state is a success. Works in any \
+             visible chat."
                 .into(),
             json!({
                 "id": {"type": "string", "description": ID},
@@ -155,7 +161,12 @@ fn describe(tool: AgentTool) -> (String, Value, Vec<&'static str>) {
                 "item": {
                     "type": "integer",
                     "minimum": 0,
+                    "maximum": MAX_TASK_ITEM,
                     "description": "Number of one checklist item inside the entry (0-based, from `tasks` of `get_entry`). Leave it out to mark the whole entry.",
+                },
+                "item_text": {
+                    "type": "string",
+                    "description": "The `text` of that item as `tasks` gave it; required in practice together with `item`, protects against shifted numbers. Take it from `get_entry`: in lists long texts are cut.",
                 },
             }),
             vec!["id", "done"],
@@ -208,6 +219,12 @@ mod tests {
                 assert!(text.contains(must), "{name}: нет «{must}»: {text}");
             }
         }
+        // Списки: пункты в `tasks` режутся тем же пределом, агенту сказано, что это видно по `truncated`.
+        let entries = all.iter().find(|tool| tool.name == "get_entries").unwrap();
+        let text = entries.description.as_deref().unwrap_or_default();
+        assert!(
+            text.contains("`tasks` holds only the first items") && text.contains("`truncated`")
+        );
         for must in ["does NOT render tables", "Use a list instead of a table"] {
             assert!(INSTRUCTIONS.contains(must), "instructions: нет «{must}»");
         }

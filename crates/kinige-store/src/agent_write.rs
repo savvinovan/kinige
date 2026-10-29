@@ -12,11 +12,12 @@ use crate::send::insert_agent_message;
 use crate::view::load_view;
 use crate::{Now, StoreError};
 use kinige_domain::agent::ToolArgs;
+use kinige_domain::agent_reply::fit_entries;
 use kinige_domain::append::{AppendCandidate, can_append_origin, joined_body};
 use kinige_domain::groups::{BodyError, INBOX_ID, ORIGIN_AGENT, normalize_body};
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use kinige_domain::message_ops::{self, FlagChange};
-use kinige_domain::tasks::{TaskItemError, set_task_item};
+use kinige_domain::tasks::{TaskItemError, set_task_item, task_items};
 use kinige_domain::{AgentMode, MessageView};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
 use serde_json::{Value, json};
@@ -117,7 +118,12 @@ fn execute(tx: &Transaction<'_>, call: &Call, args: &ToolArgs) -> Result<Done, F
         ToolArgs::AppendToLastEntry { text, chat_id } => {
             append_to_last_entry(tx, call, text, chat_id.as_deref())
         }
-        ToolArgs::SetTaskDone { id, done, item } => set_task_done(tx, call, id, *done, *item),
+        ToolArgs::SetTaskDone {
+            id,
+            done,
+            item,
+            item_text,
+        } => set_task_done(tx, call, id, *done, *item, item_text.as_deref()),
         _ => Err(StoreError::Internal("чтение в записи".into()).into()),
     }
 }
@@ -214,13 +220,16 @@ fn append_to_last_entry(
 /// Без `item` — задача-запись целиком. С `item` — один пункт `- [ ]` внутри записи (она не обязана быть задачей): текст
 /// правится тем же `set_task_item`, что и щелчок в ленте, и пишется той же ревизией `edit`. Нет такого пункта — отказ
 /// `invalid_argument` (запись агенту уже видна, это ошибка его номера, а не скрытая запись); пункт уже в нужном состоянии —
-/// успех без записи.
+/// успех без записи. Номера пунктов сдвигаются, если пользователь правит запись между чтением и отметкой: с `item_text`
+/// (текст пункта, как его отдал `tasks`) найденный по номеру пункт сверяется, при расхождении — `invalid_argument` и
+/// ничего не записано; без `item_text` номер принимается как есть.
 fn set_task_done(
     tx: &Transaction<'_>,
     call: &Call,
     id: &str,
     done_flag: bool,
     item: Option<usize>,
+    item_text: Option<&str>,
 ) -> Result<Done, Fail> {
     let visible: bool = tx.query_row(
         &format!(
@@ -240,6 +249,17 @@ fn set_task_done(
         )));
     }
     if let Some(index) = item {
+        let items = task_items(&loaded.columns.body_md);
+        let Some(found) = items.get(index) else {
+            return Err(Fail::Refused(AgentError::Invalid(
+                "no such checklist item in this entry".into(),
+            )));
+        };
+        if item_text.is_some_and(|expected| expected != found.text) {
+            return Err(Fail::Refused(AgentError::Invalid(
+                "checklist item changed; re-read the entry".into(),
+            )));
+        }
         match set_task_item(&loaded.columns.body_md, index, done_flag) {
             Ok(body) => match edit_body(tx, &loaded, &body, &call.now) {
                 Ok(()) => {}
@@ -294,9 +314,12 @@ fn done(
         )
         .map_err(write_err)?
     };
+    // Ответ записи тоже не больше `RESPONSE_BYTES`, как у `get_entry`: запись с десятками тысяч пунктов отдаёт `tasks`
+    // вдвое больше самого текста. Запись в базе при этом целая, режется только ответ (признак `truncated`).
+    let (entries, _) = fit_entries(vec![to_entry(view, &title)]);
     Ok(Done {
         message_id: view.id.clone(),
-        reply: json!({ "action": action, "entry": to_entry(view, &title) }),
+        reply: json!({ "action": action, "entry": entries.first() }),
     })
 }
 
