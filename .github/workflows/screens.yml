@@ -15,10 +15,6 @@ on:
         description: Сценарий scripts/screens/<слайс>.sh и каталог docs/screens/<слайс> (только 0-9, a-z и дефис)
         default: 4a
         required: true
-  # ВРЕМЕННО, на один прогон: файла нет в main, `gh workflow run` его не находит (404). Убрать следующим коммитом.
-  push:
-    branches: [slice/4a-mcp]
-    paths: [.github/workflows/screens.yml, scripts/screens/**]
 
 # Права по умолчанию — только чтение; запись только у задачи commit.
 permissions:
@@ -82,7 +78,7 @@ jobs:
 
       # Снимки и тексты проверок — то, что попадёт в ветку; отладочные дампы дерева окна — отдельно, в репозиторий не идут.
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: success()
         with:
           name: screens-${{ env.SLICE }}
           path: docs/screens/${{ env.SLICE }}

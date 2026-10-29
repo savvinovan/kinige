@@ -72,10 +72,6 @@ scroll_to "Access log"
 has "denied: access is off" || fail "в журнале при выключенном доступе нет строк отказа"
 shoot 02b-access-off-log
 scroll_to "Allow agents to access the journal"
-# ПРОБА (временно): второй «язычок» — случайный кадр после открытия окна или состояние «выключено»? Тот же вид позже
-# (после правки `data-covered` у нижнего окна «Настроек» его на снимках быть не должно).
-sleep 8
-shoot zz-probe-1-off-later
 has "$SOCKET" && echo "путь основного сокета виден в окне" || fail "основного пути сокета нет в тексте окна ($SOCKET)"
 
 # ---- 3. Включение: предупреждение, режим, чаты ----
@@ -86,13 +82,6 @@ press "Read and write"
 press "Работа" CheckBox
 press "Inbox" CheckBox
 shoot 04-access-on
-# ПРОБА (временно): «выключено» второй раз, уже после включения.
-press "Allow agents to access the journal" CheckBox
-scroll_to "Allow agents to access the journal"
-sleep 3
-shoot zz-probe-2-off-again
-press "Allow agents to access the journal" CheckBox
-press "Turn on"
 
 # ---- 4. Сеанс агента через мост из бандла: чтение, запись, закрытый чат ----
 limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session.txt" --chat "$WORK" --closed-chat "$BOOKS" || fail "сеанс агента"
