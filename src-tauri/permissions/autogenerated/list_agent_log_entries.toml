@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-list-agent-log-entries"
+description = "Enables the list_agent_log_entries command without any pre-configured scope."
+commands.allow = ["list_agent_log_entries"]
+
+[[permission]]
+identifier = "deny-list-agent-log-entries"
+description = "Denies the list_agent_log_entries command without any pre-configured scope."
+commands.deny = ["list_agent_log_entries"]

@@ -13,7 +13,7 @@ RUNS="${1:-10}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export KINIGE_DATA_DIR="${KINIGE_DATA_DIR:-$TMP/data}" KINIGE_MIRROR_DIR="${KINIGE_MIRROR_DIR:-$TMP/mirror}"
-BIN="target/release/kinige"
+BIN="${KINIGE_BIN:-${CARGO_TARGET_DIR:-target}/release/kinige}"
 [ -x "$BIN" ] || { echo "нет $BIN: сначала scripts/build-app.sh" >&2; exit 1; }
 
 echo "машина: $(sysctl -n machdep.cpu.brand_string), $(sysctl -n hw.model), macOS $(sw_vers -productVersion)"

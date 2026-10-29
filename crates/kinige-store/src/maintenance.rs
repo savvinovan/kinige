@@ -10,6 +10,7 @@ use crate::{Inner, Now, Store, StoreError, open_connection};
 use kinige_domain::BackupError;
 use kinige_domain::backup::daily_name;
 use kinige_domain::journal::journal_date;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, Weak};
 use std::thread;
@@ -35,6 +36,8 @@ pub(crate) struct MaintenanceShared {
     stopped: AtomicBool,
     /// Сигнал о повреждении уже подан: повторять его каждый час незачем.
     reported: AtomicBool,
+    /// Только для тестов: следующий проход паникует.
+    panic_next: AtomicBool,
 }
 
 impl MaintenanceShared {
@@ -44,7 +47,20 @@ impl MaintenanceShared {
             signal: Condvar::new(),
             stopped: AtomicBool::new(false),
             reported: AtomicBool::new(false),
+            panic_next: AtomicBool::new(false),
         })
+    }
+
+    pub(crate) fn inject_panic(&self) {
+        self.panic_next.store(true, Ordering::SeqCst);
+    }
+
+    /// Разбудить поток сейчас (тест): следующий проход без ожидания часа.
+    pub(crate) fn wake_now(&self) {
+        if let Ok(mut flag) = self.wake.lock() {
+            *flag = true;
+            self.signal.notify_all();
+        }
     }
 
     pub(crate) fn stop(&self) {
@@ -82,8 +98,22 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) {
                     return;
                 };
                 let store = Store { inner };
-                if let Err(error) = store.run_maintenance(&Now::system()) {
-                    log::warn!("обслуживание: {}", error.category());
+                // Паника в проходе не должна молча убить поток обслуживания (проверка целостности, корзина, копии, ротация
+                // журнала): она ловится, в статусе копий «Не удалось записать», следующий проход — через час.
+                let outcome = catch_unwind(AssertUnwindSafe(|| {
+                    assert!(
+                        !shared.panic_next.swap(false, Ordering::SeqCst),
+                        "проверка: паника в проходе обслуживания"
+                    );
+                    store.run_maintenance(&Now::system())
+                }));
+                match outcome {
+                    Ok(Ok(_)) => {}
+                    Ok(Err(error)) => log::warn!("обслуживание: {}", error.category()),
+                    Err(_) => {
+                        log::error!("обслуживание: паника в проходе, повтор позже");
+                        store.inner.backup.set_error(Some(BackupError::WriteFailed));
+                    }
                 }
                 drop(store);
                 if shared.stopped.load(Ordering::SeqCst) {
@@ -163,6 +193,10 @@ impl Store {
         }
         self.inner.backup.set_purge_failed(purge_error.is_some());
         report.purged = purged;
+        // Журнал обращений агентов: 90 дней и не больше 20 000 строк; ошибка ротации копию дня не отменяет.
+        if let Err(error) = self.rotate_agent_log(now) {
+            log::warn!("ротация журнала агентов: {}", error.category());
+        }
         if has_daily(&dir, &today) {
             self.inner.backup.set_error(None);
             return Ok(report);

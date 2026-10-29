@@ -143,6 +143,23 @@
   width: calc(var(--layout-message-time-reserve) + var(--icon-size-mark) + var(--space-1));
 }
 
+/* Запись агента (слайс 4a): тихая пометка «добавлено агентом ·» стилем метки времени, левее неё; плашка не меняется. */
+.message__origin {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+  line-height: calc(var(--type-body-size) * var(--type-body-line-height));
+}
+
+.message--agent .message__spacer {
+  width: calc(var(--layout-message-time-reserve) + var(--layout-message-agent-mark-reserve));
+}
+
+.message--agent.message--favorite .message__spacer {
+  width: calc(var(--layout-message-time-reserve) + var(--layout-message-agent-mark-reserve) + var(--icon-size-mark) + var(--space-1));
+}
+
 /* Задача: перед текстом флажок размером с квадрат `- [ ]` в тексте и на уровне первой строки. */
 .message--task {
   display: flex;

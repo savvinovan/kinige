@@ -1,0 +1,7 @@
+{
+  "layout": {
+    "agent": {
+      "warning-width": { "$type": "dimension", "$value": "30rem", "$description": "Ширина окна предупреждения при включении доступа (390 px при корне 13 px)." }
+    }
+  }
+}

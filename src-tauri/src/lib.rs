@@ -1,12 +1,15 @@
 //! Тонкий слой Tauri: окна и команды. Бизнес-логика живёт в `kinige-domain`, хранение — в `kinige-store`.
 
 mod actions;
+mod agent_access;
 pub mod capture;
+mod command_names;
 mod commands;
 pub mod guard;
 pub mod hotkeys;
 pub mod import;
 pub mod logging;
+pub mod mcp;
 #[cfg(target_os = "macos")]
 mod panel;
 pub mod recovery;
@@ -24,108 +27,16 @@ use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, Runtime, WindowEvent};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
 
-/// Команды главного окна (capability `main`).
-pub const MAIN_COMMANDS: &[&str] = &[
-    "app_info",
-    "get_language",
-    "list_chats",
-    "list_messages",
-    "send_message",
-    "get_settings",
-    "set_text_size",
-    "choose_mirror_folder",
-    "open_external_url",
-    "get_draft",
-    "save_draft",
-    "set_shortcut",
-    "reset_shortcut",
-    "shortcut_recording",
-    "create_chat",
-    "rename_chat",
-    "set_chat_icon",
-    "set_chat_pinned",
-    "set_chat_archived",
-    "delete_message",
-    "restore_message",
-    "edit_message",
-    "toggle_task_item",
-    "set_message_flag",
-    "set_message_date",
-    "move_message",
-    "list_trash",
-    "purge_message",
-    "set_sidebar_collapsed",
-    "add_recent_emoji",
-    "startup_state",
-    "restore_backup",
-    "restart_for_recovery",
-    "import_telegram_open",
-    "import_telegram_run",
-    "import_telegram_stop",
-    "import_telegram_close",
-    "search_messages",
-];
+/// Аргумент запуска мостом MCP: окно не показывается, приложение живёт в menu bar.
+pub const BACKGROUND_FLAG: &str = "--background";
 
-/// Команды окна захвата (capability `capture`): только Inbox, без `chat_id` (§12.3).
-pub const CAPTURE_COMMANDS: &[&str] = &[
-    "capture_state",
-    "capture_send",
-    "capture_append",
-    "capture_save_draft",
-    "capture_hide",
-    "capture_resize",
-    "capture_add_recent_emoji",
-];
+/// Запущено мостом MCP (`--background`)? Тогда нет ни окна, ни значка в Dock: приложение живёт в menu bar (политика
+/// активации Accessory); первое же показанное окно возвращает обычную политику (`capture::show_main`).
+pub fn is_background_launch<I: IntoIterator<Item = String>>(args: I) -> bool {
+    args.into_iter().any(|arg| arg == BACKGROUND_FLAG)
+}
 
-/// Все команды приложения. Список совпадает с `AppManifest::commands` в `build.rs`: сначала команды главного окна,
-/// затем окна захвата (это проверяют тесты).
-pub const COMMANDS: &[&str] = &[
-    "app_info",
-    "get_language",
-    "list_chats",
-    "list_messages",
-    "send_message",
-    "get_settings",
-    "set_text_size",
-    "choose_mirror_folder",
-    "open_external_url",
-    "get_draft",
-    "save_draft",
-    "set_shortcut",
-    "reset_shortcut",
-    "shortcut_recording",
-    "create_chat",
-    "rename_chat",
-    "set_chat_icon",
-    "set_chat_pinned",
-    "set_chat_archived",
-    "delete_message",
-    "restore_message",
-    "edit_message",
-    "toggle_task_item",
-    "set_message_flag",
-    "set_message_date",
-    "move_message",
-    "list_trash",
-    "purge_message",
-    "set_sidebar_collapsed",
-    "add_recent_emoji",
-    "startup_state",
-    "restore_backup",
-    "restart_for_recovery",
-    "import_telegram_open",
-    "import_telegram_run",
-    "import_telegram_stop",
-    "import_telegram_close",
-    "search_messages",
-    "capture_state",
-    "capture_send",
-    "capture_append",
-    "capture_save_draft",
-    "capture_hide",
-    "capture_resize",
-    "capture_add_recent_emoji",
-];
+pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS};
 
 /// Конструктор приложения; общий для `run` и для тестов IPC (там с mock-рантаймом и своим `Store`).
 /// Плагины opener и dialog подключены только ради Rust-API: JS-разрешений на них у окна нет (capability их не выдаёт).
@@ -174,6 +85,12 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             import::import_telegram_stop,
             import::import_telegram_close,
             import::search_messages,
+            agent_access::get_agent_access,
+            agent_access::set_agent_enabled,
+            agent_access::set_agent_mode,
+            agent_access::set_agent_chats,
+            agent_access::list_agent_log,
+            agent_access::list_agent_log_entries,
             capture::capture_state,
             capture::capture_send,
             capture::capture_append,
@@ -247,6 +164,12 @@ fn start_services<R: Runtime>(
     app.manage(import::ImportState::default());
     // Значок строился без хранилища (его ещё не было в состоянии приложения): последние чаты — теперь.
     tray::refresh(app);
+    // Сервер MCP — последним, после `app.manage(store)`: сбой сокета журнал не останавливает (ошибка видна в настройках).
+    if let Ok(db_path) = db_path(app)
+        && let Some(data_dir) = db_path.parent()
+    {
+        mcp::start(app, data_dir);
+    }
     Ok(())
 }
 
@@ -312,8 +235,11 @@ pub fn run() {
     let configured = builder(
         tauri::Builder::default()
             // Должен идти первым: второй запуск показывает главное окно существующего экземпляра и завершается.
-            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-                capture::show_main(app);
+            .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+                // Мост MCP запускает приложение с `--background`: уже запущенному окно показывать не нужно.
+                if !is_background_launch(args) {
+                    capture::show_main(app);
+                }
             }))
             // После single-instance: второй экземпляр завершается, не открыв файл журнала.
             .plugin(logging::plugin())
@@ -330,7 +256,7 @@ pub fn run() {
     // Окно захвата — панель NSPanel без активации приложения (ADR-0006).
     #[cfg(target_os = "macos")]
     let configured = configured.plugin(tauri_nspanel::init());
-    let app = configured
+    let mut app = configured
         .setup(|app| {
             log::info!("запуск Kinige {}", env!("CARGO_PKG_VERSION"));
             let handle = app.handle().clone();
@@ -375,6 +301,11 @@ pub fn run() {
             if let Some(store) = store {
                 start_services(&handle, store)?;
             }
+            // Главное окно создаётся скрытым (`visible: false`), чтобы запуск в фоне не мигал окном: показываем его здесь,
+            // если приложение запущено не мостом MCP (`--background`, значок в menu bar без окна).
+            if !is_background_launch(std::env::args()) {
+                capture::show_main(&handle);
+            }
             Ok(())
         })
         .on_window_event(on_window_event)
@@ -388,7 +319,18 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("не удалось собрать Kinige");
 
+    // Запуск мостом: без значка в Dock, пока нет окна (политика меняется на обычную в `capture::show_main`).
+    #[cfg(target_os = "macos")]
+    if is_background_launch(std::env::args()) {
+        app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = &mut app;
     app.run(|app, event| {
+        // Файл сокета MCP не должен пережить приложение.
+        if let tauri::RunEvent::Exit = event {
+            mcp::shutdown(app);
+        }
         // Щелчок по значку в Dock, когда окон на экране нет, показывает главное окно (событие есть только на macOS).
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Reopen { .. } = event {
@@ -397,4 +339,24 @@ pub fn run() {
         #[cfg(not(target_os = "macos"))]
         let _ = (app, event);
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_background_launch;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|arg| arg.to_string()).collect()
+    }
+
+    #[test]
+    fn only_the_exact_flag_marks_a_background_launch() {
+        assert!(is_background_launch(args(&["kinige", "--background"])));
+        assert!(!is_background_launch(args(&["kinige"])));
+        assert!(!is_background_launch(args(&[
+            "kinige",
+            "--background=1",
+            "background"
+        ])));
+    }
 }

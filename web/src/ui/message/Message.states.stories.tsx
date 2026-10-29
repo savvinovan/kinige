@@ -130,6 +130,19 @@ export const Избранное: Story = {
   ),
 };
 
+/** Запись агента (слайс 4a): тихая пометка «добавлено агентом ·» стилем метки времени левее неё; плашка не меняется, длинный текст и избранное тоже. */
+export const ЗаписьАгента: Story = {
+  render: () => (
+    <div className="story-column">
+      <Message markdown="Итоги встречи: договорились про Raft" sentAt={at(9, 12)} byAgent />
+      <Message markdown={LONG} sentAt={at(9, 14)} byAgent />
+      <Message markdown="Записано агентом и добавлено в избранное" sentAt={at(9, 16)} byAgent favorite />
+      <Message markdown="Задача от агента" sentAt={at(9, 18)} byAgent isTask />
+      <Message markdown={`Вот код:\n\n${CODE}`} sentAt={at(9, 20)} byAgent />
+    </div>
+  ),
+};
+
 /** Теги: подсвечены только те, что определил Rust; регистр сохраняется; тег в ссылке и в коде не подсвечен. */
 export const Теги: Story = {
   render: () => (

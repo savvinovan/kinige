@@ -41,6 +41,11 @@ tauri-plugin-log = "2.10.1"
 log = "0.4.34"
 # Тот же `Url`, что у tauri (предикат навигации).
 url = "2"
+# Сервер MCP внутри приложения (ADR-0009): официальный Rust SDK. Версия 3.5.1: последний релиз 3.8.0 младше двух недель.
+# Только фича `server` (без макросов и HTTP): инструменты описаны вручную, сетевых транспортов нет (§12.3).
+rmcp = { version = "=3.5.1", default-features = false, features = ["server"] }
+# Unix-сокет и таймеры сервера MCP (tokio уже в дереве через tauri).
+tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros", "rt"] }
 
 [dev-dependencies]
 tauri = { version = "2.12", features = ["test"] }

@@ -1,3 +1,7 @@
+import type { AgentAccess } from "./generated/AgentAccess";
+import type { AgentLogEntry } from "./generated/AgentLogEntry";
+import type { AgentLogPage } from "./generated/AgentLogPage";
+import type { AgentMode } from "./generated/AgentMode";
 import type { AppInfo } from "./generated/AppInfo";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
@@ -156,6 +160,19 @@ export interface KinigeApi {
    * чаты с совпавшим названием приходят на первой. Пустой запрос — пустая страница.
    */
   searchMessages(query: string, options?: { filters?: SearchFilters; before?: FeedCursor; limit?: number }): Promise<SearchPage>;
+
+  // ---- доступ ИИ-агентов (слайс 4a, ADR-0009): только главное окно ----
+  /** Флажок, режим, чаты с отметкой «видно агенту», состояние сокета и фрагменты подключения. */
+  getAgentAccess(): Promise<AgentAccess>;
+  /** Включить или выключить доступ. Предупреждение при включении показывает окно до вызова. */
+  setAgentEnabled(enabled: boolean): Promise<void>;
+  setAgentMode(mode: AgentMode): Promise<void>;
+  /** Чаты, видимые агенту (целиком). Чат с `aiExcluded` и несуществующий не принимаются (`chat_not_found`). */
+  setAgentChats(chatIds: readonly string[]): Promise<void>;
+  /** Журнал обращений, новые сверху; `before` — `id` последней строки предыдущей страницы. */
+  listAgentLog(before?: number): Promise<AgentLogPage>;
+  /** Записи, которые затронуло обращение; удалённая навсегда приходит с `message: null`. */
+  listAgentLogEntries(logId: number): Promise<AgentLogEntry[]>;
 
   // ---- окно захвата (слайс 2): отдельный набор команд, только Inbox ----
   /** Всё, что нужно окну при показе: язык, размер текста, контекст за сегодня, цель дописывания, черновик, ошибка. */

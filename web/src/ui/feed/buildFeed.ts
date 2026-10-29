@@ -24,6 +24,8 @@ export interface FeedMessage {
   tags?: readonly string[];
   /** Запись новее поддерживаемой версии: только для чтения, действия недоступны. */
   readOnly?: boolean;
+  /** Кто создал запись (`core.origin`): `agent` — тихая пометка «добавлено агентом» в строке времени. */
+  origin?: string;
 }
 
 export type FeedItem =

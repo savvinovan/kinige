@@ -70,7 +70,7 @@ Rust (из корня):
 
 Визуальные тесты Storybook идут только на GitHub, в контейнере Playwright: сравнение — задание `visual` в CI; новые эталоны — `gh workflow run visual-update.yml --ref <ветка>` (снимает и коммитит в ветку; в `main` нельзя), после него `gh workflow run ci.yml --ref <ветка>` (коммит бота CI сам не запускает). Эталоны на macOS и на ubuntu-server не снимаются.
 
-Приложение: `scripts/run-app.sh` (dev), `scripts/storybook.sh`, `scripts/build-app.sh` (release `.app` + ad-hoc подпись + `codesign --verify`), `scripts/screenshot-window.sh <out.png>` (окно Kinige, `screencapture -x -o -l`; нужен доступ терминала к записи экрана; на скриншот не должно попадать ничего, кроме окна), `scripts/measure-cold-start.sh`.
+Приложение: `scripts/run-app.sh` (dev), `scripts/storybook.sh`, `scripts/build-app.sh` (release `.app` + ad-hoc подпись + `codesign --verify`), `scripts/screenshot-window.sh <out.png>` (окно Kinige, `screencapture -x -o -l`; нужен доступ терминала к записи экрана; на скриншот не должно попадать ничего, кроме окна), `scripts/measure-cold-start.sh`, `scripts/mcp-session.py <kinige-mcp> <сокет> <файл протокола>` (сеанс MCP через мост своим клиентом, для приёмки слайса 4a; конфиги Claude не трогаются). Сборка и запуск кладут мост в `src-tauri/binaries/kinige-mcp-<triple>` (sidecar, `bundle.externalBin`); при `cargo clippy`/`cargo test` на чистом клоне там пустая заглушка из `build.rs`.
 
 CI (GitHub Actions, `.github/workflows/ci.yml`; статус и перезапуск — `gh run list`, `gh run rerun`) повторяет всё перечисленное, кроме сборки `.app`. Локально проверить «зелёный CI» нельзя; ближайший аналог — команды выше.
 

@@ -22,6 +22,7 @@ const hit = (id: string, snippet: string, terms: string[], patch: Partial<Search
     favoriteAt: null,
     tags: [],
     readOnly: false,
+    origin: "user",
   },
   chatTitle: "",
   chatIcon: "📥",

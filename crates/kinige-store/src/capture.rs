@@ -5,7 +5,7 @@ use crate::draft::{CAPTURE_KEY, delete_draft};
 use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
 use crate::send::{insert_new_message, mark_dirty};
-use crate::view::{VIEW_COLUMNS, view_from_row, view_from_row_at};
+use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row, view_from_row_at};
 use crate::{Now, Store, StoreError};
 use kinige_domain::append::{AppendCandidate, CurrentBody, can_append, joined_body, rewrite_body};
 use kinige_domain::groups::{self, GroupError, INBOX_ID};
@@ -59,18 +59,19 @@ impl LastMessage {
 fn last_message(conn: &Connection) -> rusqlite::Result<Option<LastMessage>> {
     conn.query_row(
         &format!(
-            "SELECT {VIEW_COLUMNS}, m.origin, m.hlc_json, m.groups_raw, m.server_known \
+            "SELECT {VIEW_COLUMNS}, m.hlc_json, m.groups_raw, m.server_known \
              FROM message m WHERE m.chat_id = ?1 AND m.deleted_at IS NULL \
              ORDER BY m.journal_date DESC, m.created_at DESC, m.id DESC LIMIT 1"
         ),
         [INBOX_ID],
         |row| {
+            let view = view_from_row_at(row, 0)?;
             Ok(LastMessage {
-                view: view_from_row_at(row, 0)?,
-                origin: row.get(10)?,
-                hlc_json: row.get(11)?,
-                groups_raw: row.get(12)?,
-                server_known: row.get::<_, i64>(13)? != 0,
+                origin: view.origin.clone(),
+                view,
+                hlc_json: row.get(VIEW_LEN)?,
+                groups_raw: row.get(VIEW_LEN + 1)?,
+                server_known: row.get::<_, i64>(VIEW_LEN + 2)? != 0,
             })
         },
     )

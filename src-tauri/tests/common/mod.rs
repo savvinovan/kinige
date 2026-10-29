@@ -3,6 +3,8 @@
 
 #![allow(dead_code)]
 
+pub mod mcp;
+
 use kinige_lib::builder;
 use kinige_lib::capture::CaptureShell;
 use kinige_lib::hotkeys::{Hotkeys, Refused, Registrar};
@@ -192,6 +194,10 @@ pub fn args_for(command: &str) -> Value {
         "restore_backup" => json!({"name": "daily-2026-10-21.db"}),
         "import_telegram_run" => json!({"session": 1, "chatIds": []}),
         "search_messages" => json!({"query": "проверка"}),
+        "set_agent_enabled" => json!({"enabled": false}),
+        "set_agent_mode" => json!({"mode": "read"}),
+        "set_agent_chats" => json!({"chatIds": []}),
+        "list_agent_log_entries" => json!({"logId": 1}),
         _ => json!({}),
     }
 }

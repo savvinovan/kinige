@@ -9,7 +9,9 @@ use rusqlite::{Connection, Row};
 
 /// Колонки `message`, из которых строится [`MessageView`]; таблица в запросе называется `m`.
 pub(crate) const VIEW_COLUMNS: &str = "m.id, m.chat_id, m.body_md, m.journal_date, m.created_at, m.created_tz, \
-     m.is_task, m.task_done_at, m.favorite_at, m.schema_version";
+     m.is_task, m.task_done_at, m.favorite_at, m.schema_version, m.origin";
+/// Сколько колонок в [`VIEW_COLUMNS`]: дополнительные колонки запроса идут с этого номера.
+pub(crate) const VIEW_LEN: usize = 11;
 
 /// Запись из строки с колонками [`VIEW_COLUMNS`], начиная с `first`. Теги разбираются из текста, а не читаются из
 /// `message_tag`: ответ не зависит от производной таблицы. Запись «только для чтения», если какая-то её группа новее
@@ -26,6 +28,7 @@ pub(crate) fn view_from_row_at(row: &Row<'_>, first: usize) -> rusqlite::Result<
         task_done_at: row.get(first + 7)?,
         favorite_at: row.get(first + 8)?,
         read_only: row.get::<_, i64>(first + 9)? > i64::from(SCHEMA_VERSION),
+        origin: row.get(first + 10)?,
         tags: parse_tags(&body_md),
         body_md,
     })

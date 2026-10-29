@@ -59,6 +59,7 @@ export function mockMessage(part: Partial<MessageView> & Pick<MessageView, "id" 
     favoriteAt: null,
     tags: mockTags(part.bodyMd),
     readOnly: false,
+    origin: "user",
     ...part,
   };
 }

@@ -12,6 +12,7 @@ use rusqlite::Connection;
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::io::Write;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -25,6 +26,8 @@ pub(crate) struct MirrorShared {
     stopped: AtomicBool,
     error: Mutex<Option<MirrorError>>,
     retry: Duration,
+    /// Только для тестов: следующий проход паникует.
+    panic_next: AtomicBool,
 }
 
 impl MirrorShared {
@@ -35,7 +38,12 @@ impl MirrorShared {
             stopped: AtomicBool::new(false),
             error: Mutex::new(None),
             retry,
+            panic_next: AtomicBool::new(false),
         })
+    }
+
+    pub(crate) fn inject_panic(&self) {
+        self.panic_next.store(true, Ordering::SeqCst);
     }
 
     pub(crate) fn wake(&self) {
@@ -97,7 +105,20 @@ pub(crate) fn spawn(
                 if shared.stopped.load(Ordering::SeqCst) {
                     return;
                 }
-                let retry_soon = pass(&shared, &reader, &writer, default_dir.as_deref());
+                // Паника в проходе не должна молча убить поток копии: она ловится, в статусе «Настроек» ошибка записи, повтор
+                // через `retry`, цикл продолжается.
+                let retry_soon = catch_unwind(AssertUnwindSafe(|| {
+                    assert!(
+                        !shared.panic_next.swap(false, Ordering::SeqCst),
+                        "проверка: паника в проходе копии"
+                    );
+                    pass(&shared, &reader, &writer, default_dir.as_deref())
+                }))
+                .unwrap_or_else(|_| {
+                    log::error!("копия: паника в проходе, повтор позже");
+                    shared.set_error(Some(MirrorError::WriteFailed));
+                    true
+                });
                 if shared.stopped.load(Ordering::SeqCst) {
                     return;
                 }

@@ -5,6 +5,7 @@ import type { ChatList } from "../../api/generated/ChatList";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { Settings } from "../../api/generated/Settings";
 import { useLanguage } from "../../i18n/I18n";
+import { AgentAccessDialog } from "../agents/AgentAccessDialog";
 import { CalendarDialog } from "../calendar/CalendarDialog";
 import { ChatDialog } from "../chat/ChatDialog";
 import { useRecordDrag } from "../drag/useRecordDrag";
@@ -15,6 +16,7 @@ import { ImportDialog } from "../import/ImportDialog";
 import { SearchResults } from "../search/SearchResults";
 import { type ChatDialogState, EMPTY_LIST, focusComposer, toSidebar } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
+import { useAgentAccess } from "./useAgentAccess";
 import { useComposerDraft } from "./useComposerDraft";
 import { type FocusTarget, useFeed } from "./useFeed";
 import { useImport } from "./useImport";
@@ -102,6 +104,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onFocus: setFocus,
     inbox: { chat: list.chats.find((c) => c.isInbox), name: t("chat.inbox") },
   });
+  const agent = useAgentAccess({ api, select, onFocus: setFocus, settingsOpen: prefs.open, onNavigated: prefs.closeDialog });
   const importer = useImport({
     api,
     // Импорт кладёт записи в середину истории: открытая лента перечитывается с нуля вместе с курсорами.
@@ -306,8 +309,10 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
               onChooseFolder={prefs.chooseFolder}
               onTextSizeChange={prefs.changeTextSize}
               onClose={prefs.closeDialog}
+              agent={{ enabled: agent.enabled, onConfigure: agent.openDialog }}
             />
           ) : null}
+          {agent.dialog ? <AgentAccessDialog {...agent.dialog} /> : null}
           {chatDialog ? (
             <ChatDialog
               mode={chatDialog.mode}

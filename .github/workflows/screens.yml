@@ -1,0 +1,136 @@
+# Снимки настоящего окна Kinige на macOS-раннере GitHub для приёмки слайса. Две задачи:
+#   shots  — собирает .app и запускает scripts/screens/<слайс>.sh на синтетических данных (временные KINIGE_DATA_DIR и
+#            KINIGE_MIRROR_DIR); права только на чтение, токен после checkout не сохраняется; результат — артефакт;
+#   commit — короткая: скачивает артефакт и коммитит docs/screens/<слайс>/ в ветку (единственное место с правом записи,
+#            без npm, cargo и сторонних кэшей).
+# Запуск: gh workflow run screens.yml --ref <ветка> -f slice=4a   (в main и на тегах не работает).
+# Коммит от GITHUB_TOKEN не запускает CI сам — после него: gh workflow run ci.yml --ref <ветка>.
+# Ввод — только действия доступности (scripts/screens/ax.js): раннер выдаёт osascript право Accessibility (проверено пробой).
+name: Screens
+
+on:
+  workflow_dispatch:
+    inputs:
+      slice:
+        description: Сценарий scripts/screens/<слайс>.sh и каталог docs/screens/<слайс> (только 0-9, a-z и дефис)
+        default: 4a
+        required: true
+
+# Права по умолчанию — только чтение; запись только у задачи commit.
+permissions:
+  contents: read
+
+concurrency:
+  group: screens-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    # Снимки меняют ветку и PR: только ветки, не main.
+    if: startsWith(github.ref, 'refs/heads/') && github.ref != 'refs/heads/main'
+    runs-on: macos-15
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      SLICE: ${{ inputs.slice || '4a' }}
+    steps:
+      - name: Проверить имя слайса
+        run: |
+          if ! [[ "$SLICE" =~ ^[0-9a-z-]+$ ]]; then
+            echo "slice должен соответствовать ^[0-9a-z-]+$"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Rust toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      # Тёмная тема системы, как у пользователя: заголовок окна на снимке тёмный. `defaults write` без перезапуска сеанса
+      # не подействовал (проверено прогоном), поэтому переключаем через System Events.
+      - name: Тёмная тема
+        run: |
+          osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to true'
+          sleep 3
+          defaults read -g AppleInterfaceStyle || true
+
+      - name: Собрать приложение
+        env:
+          KINIGE_IDENTIFIER: me.savvinov.kinige.accept
+        run: scripts/build-app.sh
+
+      - name: Сценарий снимков
+        timeout-minutes: 20
+        run: |
+          mkdir -p "$RUNNER_TEMP/kinige-screens"
+          K="$RUNNER_TEMP/kinige-screens" scripts/screens/${SLICE}.sh "$PWD/target/release/bundle/macos/Kinige.app"
+
+      # Снимки и тексты проверок — то, что попадёт в ветку; отладочные дампы дерева окна — отдельно, в репозиторий не идут.
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: screens-${{ env.SLICE }}
+          path: docs/screens/${{ env.SLICE }}
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screens-${{ env.SLICE }}-debug
+          path: ${{ runner.temp }}/kinige-screens/debug
+          if-no-files-found: warn
+
+  commit:
+    needs: shots
+    if: needs.shots.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      SLICE: ${{ inputs.slice || '4a' }}
+    steps:
+      - name: Проверить имя слайса
+        run: |
+          if ! [[ "$SLICE" =~ ^[0-9a-z-]+$ ]]; then
+            echo "slice должен соответствовать ^[0-9a-z-]+$"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: screens-${{ env.SLICE }}
+          path: ${{ runner.temp }}/screens
+
+      # Каталог снимков заменяется целиком (уходят и снимки с прежними именами); трогается только docs/screens/<слайс>/.
+      - name: Закоммитить снимки в ветку
+        run: |
+          rm -rf "docs/screens/${SLICE}"
+          mkdir -p "docs/screens/${SLICE}"
+          cp -R "$RUNNER_TEMP/screens/." "docs/screens/${SLICE}/"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- "docs/screens/${SLICE}"
+          if git diff --cached --quiet; then
+            echo "снимки не изменились"
+            exit 0
+          fi
+          git diff --cached --stat | tail -1
+          git commit -m "Screens ${SLICE} from CI (macOS runner)"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

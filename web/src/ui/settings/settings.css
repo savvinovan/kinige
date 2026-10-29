@@ -33,6 +33,21 @@
   gap: var(--space-4);
 }
 
+/* Строка «Доступ ИИ-агентов»: состояние слева, кнопка справа. */
+.settings__agent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.settings__agent-state {
+  color: var(--color-text-primary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
 /* Выбор из нескольких: сегменты в одной заливке. */
 .segmented {
   display: inline-flex;
@@ -62,6 +77,14 @@
 .segmented__option:hover {
   background: var(--color-surface-field-active);
   color: var(--color-text-primary);
+}
+
+.segmented__option:disabled,
+.segmented__option:disabled:hover {
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: default;
+  opacity: var(--opacity-disabled);
 }
 
 /* Выбранный вариант: заливка светлее и тонкая линия акцента внутри, а не только цвет текста. */

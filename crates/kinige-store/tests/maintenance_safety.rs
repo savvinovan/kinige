@@ -221,6 +221,7 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
     conn.execute_batch(
         "DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; DROP TABLE message_tag; \
          DROP TABLE mirror_chat; DROP TABLE message_ext; DROP TABLE search_fts; DROP TABLE search_map; \
+         DROP TABLE mcp_log; DROP TABLE mcp_log_message; \
          DELETE FROM app_setting WHERE key = 'search_index_version';",
     )
     .unwrap();

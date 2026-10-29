@@ -13,6 +13,8 @@ interface SegmentedChoiceProps<T extends string> {
   /** Подпись группы для диктора: id видимого заголовка (предпочтительно) или текст. Нужна одна из двух. */
   labelledBy?: string;
   label?: string;
+  /** Выбор недоступен (например, доступ агентов выключен): варианты приглушены и вне обхода Tab. */
+  disabled?: boolean;
 }
 
 /**
@@ -20,7 +22,7 @@ interface SegmentedChoiceProps<T extends string> {
  * В обходе Tab участвует один вариант, выбранный (roving tabindex); стрелки, Home и End переносят фокус и сразу выбирают,
  * как у обычных радиокнопок. Выбранный вариант отмечен заливкой и тонкой линией цвета акцента, а не только цветом.
  */
-export function SegmentedChoice<T extends string>({ options, value, onChange, labelledBy, label }: SegmentedChoiceProps<T>) {
+export function SegmentedChoice<T extends string>({ options, value, onChange, labelledBy, label, disabled = false }: SegmentedChoiceProps<T>) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 
   const select = (index: number) => {
@@ -63,6 +65,7 @@ export function SegmentedChoice<T extends string>({ options, value, onChange, la
           role="radio"
           className="segmented__option"
           aria-checked={option.value === value}
+          disabled={disabled}
           tabIndex={option.value === value ? 0 : -1}
           ref={(element) => {
             buttons.current[index] = element;

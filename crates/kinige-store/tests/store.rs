@@ -28,6 +28,9 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
             "app_setting",
             "chat",
             "draft",
+            // Журнал обращений ИИ-агентов (миграция 5).
+            "mcp_log",
+            "mcp_log_message",
             "message",
             "message_ext",
             "message_revision",

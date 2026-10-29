@@ -6,6 +6,7 @@
 //! ограждённых блоков кода не считаются. Номер пункта — порядковый в тексте с нуля.
 
 use crate::mirror::{is_closing_fence, opening_fence};
+use serde::Serialize;
 
 /// Почему пункт не переключён.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,8 +35,39 @@ pub fn set_task_item(body_md: &str, index: usize, checked: bool) -> Result<Strin
     Ok(text)
 }
 
-/// Байтовое смещение символа внутри скобок пункта `index` и его состояние.
-fn find_item(body_md: &str, index: usize) -> Option<(usize, bool)> {
+/// Пункт задачи в списке для агента (ADR-0009, слайс 4a): номер — тот же, что у [`set_task_item`], текст — остаток строки
+/// после `[ ]` без пробелов по краям.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TaskItem {
+    pub item: usize,
+    pub done: bool,
+    pub text: String,
+}
+
+/// Все пункты записи по порядку, с теми же правилами, что у [`task_item_state`] (код не считается, цитата считается).
+pub fn task_items(body_md: &str) -> Vec<TaskItem> {
+    let mut items = Vec::new();
+    scan_items(body_md, |found| {
+        items.push(TaskItem {
+            item: found.index,
+            done: found.checked,
+            text: found.text.to_string(),
+        });
+        false
+    });
+    items
+}
+
+/// Найденный пункт: порядковый номер, байтовое смещение символа в скобках, состояние и текст.
+struct Found<'a> {
+    index: usize,
+    mark: usize,
+    checked: bool,
+    text: &'a str,
+}
+
+/// Обходит пункты по порядку; `visit` возвращает `true`, чтобы остановиться.
+fn scan_items(body_md: &str, mut visit: impl FnMut(&Found<'_>) -> bool) {
     let mut seen = 0usize;
     let mut fence: Option<(char, usize)> = None;
     let mut offset = 0usize;
@@ -53,13 +85,33 @@ fn find_item(body_md: &str, index: usize) -> Option<(usize, bool)> {
             continue;
         }
         if let Some((inside, checked)) = marker_in_line(line) {
-            if seen == index {
-                return Some((line_start + inside, checked));
+            let found = Found {
+                index: seen,
+                mark: line_start + inside,
+                checked,
+                // `inside` — символ в скобках, дальше `]`; оба однобайтовые.
+                text: line[inside + 2..].trim(),
+            };
+            if visit(&found) {
+                return;
             }
             seen += 1;
         }
     }
-    None
+}
+
+/// Байтовое смещение символа внутри скобок пункта `index` и его состояние.
+fn find_item(body_md: &str, index: usize) -> Option<(usize, bool)> {
+    let mut result = None;
+    scan_items(body_md, |found| {
+        if found.index == index {
+            result = Some((found.mark, found.checked));
+            true
+        } else {
+            false
+        }
+    });
+    result
 }
 
 /// Смещение символа в скобках и состояние, если строка — пункт задачи.
@@ -169,6 +221,31 @@ mod tests {
         ] {
             assert_eq!(task_item_state(body, 0), None, "{body:?}");
         }
+    }
+
+    #[test]
+    fn the_item_list_uses_the_same_numbers_text_and_rules_as_the_toggle() {
+        let body = "Планы:\n- [ ] первый  \n- [x] второй\n```\n- [ ] в коде\n```\n> 1. [X]\tцитата\n  * [ ] вложенный";
+        let items = task_items(body);
+        let got: Vec<(usize, bool, &str)> = items
+            .iter()
+            .map(|i| (i.item, i.done, i.text.as_str()))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                (0, false, "первый"),
+                (1, true, "второй"),
+                (2, true, "цитата"),
+                (3, false, "вложенный"),
+            ]
+        );
+        // Каждый номер из списка переключается ровно этой функцией и ничем другим.
+        for item in &items {
+            assert_eq!(task_item_state(body, item.item), Some(item.done));
+        }
+        assert_eq!(task_item_state(body, items.len()), None);
+        assert!(task_items("без пунктов\n- обычный").is_empty());
     }
 
     #[test]
