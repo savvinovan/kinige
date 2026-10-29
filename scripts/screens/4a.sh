@@ -25,7 +25,7 @@ BOOKS="$(chat_id 'Книги')"
 INBOX="00000000-0000-4000-8000-000000000001"
 
 dock_has_kinige() {
-  osascript -e 'tell application "System Events" to get name of every UI element of list 1 of process "Dock"' 2>&1 | grep -qw Kinige
+  limit 30 osascript -e 'tell application "System Events" to get name of every UI element of list 1 of process "Dock"' 2>&1 | grep -qw Kinige
 }
 app_type() { lsappinfo info -only ApplicationType "$(lsappinfo find pid="$(app_pid)")" 2>&1 | sed 's/.*=//'; }
 
@@ -41,7 +41,7 @@ app_type() { lsappinfo info -only ApplicationType "$(lsappinfo find pid="$(app_p
   echo "основной сокет (не запасной в TMPDIR):"
   stat -f '%Sp  %N' "$K/data/mcp" "$SOCKET"
   [ "$(stat -f %Lp "$SOCKET")" = "600" ] && [ "$(stat -f %Lp "$K/data/mcp")" = "700" ] || fail "права сокета"
-  python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$K/debug/session-disabled.txt" || fail "сеанс по основному сокету"
+  limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$K/debug/session-disabled.txt" || fail "сеанс по основному сокету"
   grep -o 'mcp_disabled[^"]*' "$K/debug/session-disabled.txt" | head -1 | sed 's/^/вызов при выключенном доступе: /'
   echo "процесс: $(ps -o command= -p "$(app_pid)" | sed 's#.*/Contents#.../Contents#')"
   launch_window
@@ -71,7 +71,7 @@ press "Inbox" CheckBox
 shoot 04-access-on
 
 # ---- 4. Сеанс агента через мост из бандла: чтение, запись, закрытый чат ----
-python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session.txt" --chat "$WORK" --closed-chat "$BOOKS" || fail "сеанс агента"
+limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session.txt" --chat "$WORK" --closed-chat "$BOOKS" || fail "сеанс агента"
 sleep 4
 scroll_to "Chats visible to the agent"
 shoot 05-dialog-after-agent
@@ -83,7 +83,7 @@ shoot 07-access-log-expanded
 # ---- 5. Режим «только чтение»: вызовы записи отклонены ----
 scroll_to "Mode"
 press "Read only"
-python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session-read-only.txt" --chat "$WORK" || fail "сеанс только чтение"
+limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session-read-only.txt" --chat "$WORK" || fail "сеанс только чтение"
 sleep 4
 scroll_to "Access log"
 shoot 08-access-log-denied

@@ -9,7 +9,13 @@ PAUSE="${PAUSE:-1.5}"
 mkdir -p "$OUT" "$K/debug"
 
 app_pid() { pgrep -f "$APP/Contents/MacOS/kinige( |\$)" | head -1; }
-ax() { osascript -l JavaScript "$REPO/scripts/screens/ax.js" "$@"; }
+# Команда с предельным временем (в macOS нет `timeout`): зависший osascript или сеанс не должен держать задачу до конца часа.
+limit() {
+  local seconds="$1"
+  shift
+  perl -e 'alarm shift; exec @ARGV' "$seconds" "$@"
+}
+ax() { limit 30 osascript -l JavaScript "$REPO/scripts/screens/ax.js" "$@"; }
 
 # Приложение со временными каталогами данных: LSEnvironment в копии бандла, ad-hoc подпись заново.
 prepare_app() {
@@ -26,7 +32,7 @@ launch_window() { open -a "$APP"; }
 
 wait_for_window() {
   for _ in $(seq 1 40); do
-    if KINIGE_PID="$(app_pid)" "$REPO/scripts/screenshot-window.sh" /dev/null kinige list 2>/dev/null | grep -q 'layer=0'; then
+    if KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list 2>/dev/null | grep -q 'layer=0'; then
       return 0
     fi
     sleep 1
@@ -85,7 +91,7 @@ shoot() {
   if grep -E '/Users/[^r]|/Users/r[^u]|/private/tmp|/var/folders|alexandr|savvinovan' "$K/debug/shot-$name.txt" > "$K/debug/shot-$name.private" 2>&1; then
     fail "в тексте окна $name личные пути или имена: $(head -c 300 "$K/debug/shot-$name.private")"
   fi
-  KINIGE_PID="$(app_pid)" "$REPO/scripts/screenshot-window.sh" "$OUT/$name.png" kinige main || fail "нет снимка $name"
+  KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" "$OUT/$name.png" kinige main || fail "нет снимка $name"
 }
 
 sql() { sqlite3 "$K/data/kinige.db" "$@"; }

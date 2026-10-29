@@ -57,6 +57,7 @@ jobs:
         run: scripts/build-app.sh
 
       - name: Сценарий снимков
+        timeout-minutes: 20
         run: |
           mkdir -p "$RUNNER_TEMP/kinige-screens"
           K="$RUNNER_TEMP/kinige-screens" scripts/screens/${SLICE}.sh "$PWD/target/release/bundle/macos/Kinige.app"
