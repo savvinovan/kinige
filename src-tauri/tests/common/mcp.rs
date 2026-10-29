@@ -74,6 +74,10 @@ impl Client {
         stream
             .set_read_timeout(Some(Duration::from_secs(10)))
             .unwrap();
+        // Запись большого кадра в сокет, который сервер перестал читать, не должна вешать тест.
+        stream
+            .set_write_timeout(Some(Duration::from_secs(10)))
+            .unwrap();
         Some(Client {
             reader: BufReader::new(stream.try_clone().unwrap()),
             writer: stream,
