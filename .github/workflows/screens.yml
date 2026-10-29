@@ -1,0 +1,85 @@
+# Снимки настоящего окна Kinige на macOS-раннере GitHub для приёмки слайса: собирает .app, запускает сценарий
+# scripts/screens/<слайс>.sh на синтетических данных (временные KINIGE_DATA_DIR и KINIGE_MIRROR_DIR) и коммитит PNG в
+# docs/screens/<слайс>/ той ветки, с которой запущено:
+#   gh workflow run screens.yml --ref <ветка> -f slice=4a
+# В main коммитить нельзя. Коммит от GITHUB_TOKEN не запускает CI сам — после него: gh workflow run ci.yml --ref <ветка>.
+# Ввод — только действия доступности (scripts/screens/ax.js): раннер выдаёт osascript право Accessibility (проверено пробой).
+name: Screens
+
+on:
+  workflow_dispatch:
+    inputs:
+      slice:
+        description: Сценарий scripts/screens/<слайс>.sh и каталог docs/screens/<слайс>
+        default: 4a
+        required: true
+  # Пока workflow нет в main, `gh workflow run` его не находит: сценарий запускается пушем в ветку слайса.
+  push:
+    branches: [slice/4a-mcp]
+    paths: [.github/workflows/screens.yml, scripts/screens/**]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screens-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screens:
+    # Снимки меняют ветку и PR, не main.
+    if: github.ref != 'refs/heads/main'
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      SLICE: ${{ inputs.slice || '4a' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Rust toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      # Тёмная тема системы, как у пользователя: заголовок окна на снимке тёмный. Действует на приложения, запущенные позже.
+      - name: Тёмная тема
+        run: defaults write -g AppleInterfaceStyle Dark
+
+      - name: Собрать приложение
+        env:
+          KINIGE_IDENTIFIER: me.savvinov.kinige.accept
+        run: scripts/build-app.sh
+
+      - name: Сценарий снимков
+        run: |
+          mkdir -p "$RUNNER_TEMP/kinige-screens"
+          K="$RUNNER_TEMP/kinige-screens" scripts/screens/${SLICE}.sh "$PWD/target/release/bundle/macos/Kinige.app"
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screens-${{ env.SLICE }}
+          path: |
+            docs/screens/${{ env.SLICE }}
+            ${{ runner.temp }}/kinige-screens/debug
+          if-no-files-found: warn
+
+      - name: Закоммитить снимки в ветку
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A "docs/screens/${SLICE}"
+          if git diff --cached --quiet; then
+            echo "снимки не изменились"
+            exit 0
+          fi
+          git diff --cached --stat | tail -1
+          git commit -m "Screens ${SLICE} from CI (macOS runner)"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
