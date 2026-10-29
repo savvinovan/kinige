@@ -380,6 +380,9 @@ fn a_server_that_never_answers_the_repeated_initialize_gives_the_call_an_error_a
     bridge.say(INITIALIZED);
     assert_eq!(first.next(LONG).as_deref(), Some(INITIALIZED));
     first.close();
+    // Мосту нужно заметить обрыв (читающий поток увидит конец): иначе вызов уйдёт в уже закрытое соединение и получит
+    // ошибку «потеряно», а не повторное подключение (на нагруженной машине так и бывало).
+    thread::sleep(Duration::from_millis(500));
     bridge.say(&call(3, "never-delivered"));
     let mut second = server.accept(LONG).unwrap();
     assert_eq!(second.next(LONG).as_deref(), Some(MARKER));
