@@ -146,8 +146,13 @@ shoot 14-access-log-large-text
 # ПРОБА (временно): второй «язычок» на 02 при выключенном доступе. Выключаем доступ, снимаем с Settings под окном и без него.
 scroll_to "Allow agents to access the journal"
 press "Allow agents to access the journal" CheckBox
-shoot zz-probe-1-off-settings-open
-press "Close settings"
-shoot zz-probe-2-off-settings-closed
+shoot zz-probe-1-off
+sleep 8
+shoot zz-probe-1b-off-later
+press "Allow agents to access the journal" CheckBox
+press "Turn on"
+shoot zz-probe-2-on
+press "Allow agents to access the journal" CheckBox
+shoot zz-probe-3-off-again
 
 finish

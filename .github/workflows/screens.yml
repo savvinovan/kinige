@@ -82,7 +82,7 @@ jobs:
 
       # Снимки и тексты проверок — то, что попадёт в ветку; отладочные дампы дерева окна — отдельно, в репозиторий не идут.
       - uses: actions/upload-artifact@v7
-        if: success()
+        if: always()
         with:
           name: screens-${{ env.SLICE }}
           path: docs/screens/${{ env.SLICE }}
