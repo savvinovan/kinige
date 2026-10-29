@@ -47,9 +47,13 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      # Тёмная тема системы, как у пользователя: заголовок окна на снимке тёмный. Действует на приложения, запущенные позже.
+      # Тёмная тема системы, как у пользователя: заголовок окна и полосы прокрутки на снимке тёмные. `defaults write`
+      # без перезапуска сеанса не подействовал (проверено прогоном), поэтому переключаем через System Events.
       - name: Тёмная тема
-        run: defaults write -g AppleInterfaceStyle Dark
+        run: |
+          osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to true'
+          sleep 3
+          defaults read -g AppleInterfaceStyle || true
 
       - name: Собрать приложение
         env:

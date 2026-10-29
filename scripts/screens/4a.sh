@@ -93,7 +93,8 @@ press "Read and write"
 # ---- 6. Лента: запись агента ----
 press "Close"
 press "Close"
-press "Работа" Button
+# Чаты в сайдбаре — AXPopUpButton с названием и числом записей («Работа , entries: 2»).
+press "Работа , entries" PopUpButton
 shoot 09-feed-agent-entry
 
 # ---- 7. kill -9 и перезапуск: данные на месте, старый сокет заменяется ----
@@ -102,7 +103,7 @@ sleep 2
 launch_window
 wait_for_window
 sleep 2
-press "Работа" Button
+press "Работа , entries" PopUpButton
 shoot 10-after-kill9-restart
 press "Profile"
 press "Settings"
