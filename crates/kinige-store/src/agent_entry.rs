@@ -7,6 +7,7 @@ use kinige_domain::MessageView;
 use kinige_domain::agent::{AgentCursor, LIST_TEXT_CHARS};
 use kinige_domain::agent_reply::{AgentChat, AgentEntry, AgentPage, fit_entries};
 use kinige_domain::groups::INBOX_ID;
+use kinige_domain::tasks::task_items;
 
 /// Страница записей: текст в списке обрезается, ответ ограничивается по размеру целыми записями, курсор указывает на
 /// следующую запись. В журнал идут только записи, которые вошли в ответ.
@@ -71,6 +72,7 @@ pub(crate) fn to_entry(view: &MessageView, chat_title: &str) -> AgentEntry {
         done: view.task_done_at.is_some(),
         favorite: view.favorite_at.is_some(),
         text: view.body_md.clone(),
+        tasks: task_items(&view.body_md),
         truncated: false,
     }
 }

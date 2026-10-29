@@ -5,6 +5,7 @@ use super::*;
 use crate::agent_reply::{AgentEntry, fit_entries, month_day};
 use crate::append::{AppendCandidate, can_append, can_append_origin};
 use crate::groups::{INBOX_ID, NewMessage, ORIGIN_AGENT, new_agent_message, parse_groups_raw};
+use crate::tasks::TaskItem;
 use serde_json::json;
 
 const HLC: &str = "1760000000000-00000-5f0c3e2a-9b1d-4c7e-8a64-0d2f1b3c4e5f";
@@ -299,6 +300,12 @@ fn log_args_never_contain_entry_text() {
             ToolArgs::SetTaskDone {
                 id: ID.into(),
                 done: true,
+                item: None,
+            },
+            ToolArgs::SetTaskDone {
+                id: ID.into(),
+                done: false,
+                item: Some(3),
             },
         ] {
             let json = args_json(&args);
@@ -357,7 +364,97 @@ fn entry(text: &str) -> AgentEntry {
         done: false,
         favorite: false,
         text: text.into(),
+        tasks: Vec::new(),
         truncated: false,
+    }
+}
+
+fn items(count: usize, text: &str) -> Vec<TaskItem> {
+    (0..count)
+        .map(|item| TaskItem {
+            item,
+            done: item % 2 == 0,
+            text: text.into(),
+        })
+        .collect()
+}
+
+#[test]
+fn item_numbers_are_whole_non_negative_numbers_and_the_log_keeps_only_the_number() {
+    let parse = |item: Value| {
+        parse_args(
+            AgentTool::SetTaskDone,
+            Some(&map(json!({"id": ID, "done": true, "item": item}))),
+        )
+    };
+    for good in [json!(0), json!(7), json!(1_000_000)] {
+        assert!(parse(good).is_ok());
+    }
+    for bad in [
+        json!(-1),
+        json!(1_000_001),
+        json!(u64::MAX),
+        json!(1.5),
+        json!(2.0),
+        json!("1"),
+        json!(true),
+        json!([1]),
+        json!({"item": 1}),
+    ] {
+        assert!(parse(bad.clone()).is_err(), "{bad}");
+    }
+    // `null` — «нет поля»: отметка записи целиком.
+    assert_eq!(
+        parse(Value::Null).unwrap(),
+        ToolArgs::SetTaskDone {
+            id: ID.into(),
+            done: true,
+            item: None
+        }
+    );
+    let with_item = parse(json!(4)).unwrap();
+    assert_eq!(args_json(&with_item), r#"{"done":true,"item":4}"#);
+}
+
+#[test]
+fn list_entries_cut_item_texts_by_the_same_limit_and_keep_the_list_start() {
+    let mut entry = entry("тело");
+    entry.tasks = items(5, &"я".repeat(900));
+    let short = entry.shorten(LIST_TEXT_CHARS);
+    // 900 + 900 + 200 из третьего; остальные отброшены, номера оставшихся прежние.
+    assert!(short.truncated);
+    assert_eq!(short.tasks.len(), 3);
+    assert_eq!(short.tasks[2].item, 2);
+    assert_eq!(short.tasks[2].text.chars().count(), 200);
+    // Помещающиеся пункты не режутся; без пунктов поле не выводится.
+    let small = entry_with("тело", items(3, "пункт")).shorten(LIST_TEXT_CHARS);
+    assert!(!small.truncated);
+    assert_eq!(small.tasks.len(), 3);
+    let json = serde_json::to_string(&small).unwrap();
+    assert!(json.contains(r#""tasks":[{"item":0,"done":true,"text":"пункт"}"#));
+    assert!(
+        !serde_json::to_string(&entry_with("тело", Vec::new()))
+            .unwrap()
+            .contains("tasks")
+    );
+}
+
+#[test]
+fn an_oversized_single_entry_loses_items_too_and_fits() {
+    let huge = entry_with(&"я".repeat(900_000), items(30_000, &"ю".repeat(30)));
+    let (fitted, cut) = fit_entries(vec![huge]);
+    assert!(cut && fitted[0].truncated);
+    assert!(serde_json::to_string(&fitted[0]).unwrap().len() <= RESPONSE_BYTES);
+    // Остаётся начало списка: номера идут подряд с нуля.
+    for (position, task) in fitted[0].tasks.iter().enumerate() {
+        assert_eq!(task.item, position);
+    }
+}
+
+fn entry_with(text: &str, tasks: Vec<TaskItem>) -> AgentEntry {
+    AgentEntry {
+        tasks,
+        ..entry(text)
     }
 }
 

@@ -17,6 +17,8 @@ pub const SEARCH_PAGE: usize = 50;
 pub const ENTRIES_PAGE: usize = 200;
 /// Текст записи в списке: дальше обрезается с признаком `truncated`, целиком — в `get_entry`.
 pub const LIST_TEXT_CHARS: usize = 2000;
+/// Наибольший номер пункта `- [ ]` в `set_task_done(item)`: дальше запрос явно мусорный (пунктов в записи столько нет).
+pub const MAX_TASK_ITEM: u64 = 1_000_000;
 /// Ответ не больше этого размера: страница обрывается на последней целой записи, которая помещается.
 pub const RESPONSE_BYTES: usize = 1024 * 1024;
 
@@ -141,9 +143,12 @@ pub enum ToolArgs {
         text: String,
         chat_id: Option<String>,
     },
+    /// Без `item` — отметка задачи-записи целиком; с `item` — один пункт `- [ ]` внутри записи (номер с нуля, как в
+    /// `tasks::task_items`).
     SetTaskDone {
         id: String,
         done: bool,
+        item: Option<usize>,
     },
 }
 
@@ -202,6 +207,7 @@ pub fn parse_args(
         AgentTool::SetTaskDone => ToolArgs::SetTaskDone {
             id: uuid_field(args, "id")?.ok_or_else(|| bad("id is required"))?,
             done: bool_field(args, "done")?.ok_or_else(|| bad("done is required"))?,
+            item: item_field(args)?,
         },
     })
 }
@@ -263,6 +269,20 @@ fn bool_field(args: &Map<String, Value>, key: &str) -> Result<Option<bool>, ArgE
     }
 }
 
+/// Номер пункта: целое неотрицательное число (не строка, не дробное, не больше [`MAX_TASK_ITEM`]).
+fn item_field(args: &Map<String, Value>) -> Result<Option<usize>, ArgError> {
+    match field(args, "item") {
+        None => Ok(None),
+        Some(Value::Number(number)) => number
+            .as_u64()
+            .filter(|value| *value <= MAX_TASK_ITEM)
+            .and_then(|value| usize::try_from(value).ok())
+            .map(Some)
+            .ok_or_else(|| bad("item must be a whole number from 0 to 1000000")),
+        Some(_) => Err(bad("item must be a whole number from 0 to 1000000")),
+    }
+}
+
 fn cursor_field(args: &Map<String, Value>) -> Result<Option<AgentCursor>, ArgError> {
     match text_field(args, "cursor")? {
         None => Ok(None),
@@ -303,8 +323,12 @@ pub fn args_json(args: &ToolArgs) -> String {
             flag(&mut out, "task", *task);
         }
         ToolArgs::AppendToLastEntry { chat_id, .. } => put(&mut out, "chat_id", chat_id.as_ref()),
-        ToolArgs::SetTaskDone { done, .. } => {
+        ToolArgs::SetTaskDone { done, item, .. } => {
             out.insert("done".into(), Value::Bool(*done));
+            // Только номер пункта: его текст в журнал не попадает никогда.
+            if let Some(item) = item {
+                out.insert("item".into(), Value::from(*item));
+            }
         }
     }
     Value::Object(out).to_string()

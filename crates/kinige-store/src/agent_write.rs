@@ -16,6 +16,7 @@ use kinige_domain::append::{AppendCandidate, can_append_origin, joined_body};
 use kinige_domain::groups::{BodyError, INBOX_ID, ORIGIN_AGENT, normalize_body};
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use kinige_domain::message_ops::{self, FlagChange};
+use kinige_domain::tasks::{TaskItemError, set_task_item};
 use kinige_domain::{AgentMode, MessageView};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
 use serde_json::{Value, json};
@@ -116,7 +117,7 @@ fn execute(tx: &Transaction<'_>, call: &Call, args: &ToolArgs) -> Result<Done, F
         ToolArgs::AppendToLastEntry { text, chat_id } => {
             append_to_last_entry(tx, call, text, chat_id.as_deref())
         }
-        ToolArgs::SetTaskDone { id, done } => set_task_done(tx, call, id, *done),
+        ToolArgs::SetTaskDone { id, done, item } => set_task_done(tx, call, id, *done, *item),
         _ => Err(StoreError::Internal("чтение в записи".into()).into()),
     }
 }
@@ -210,11 +211,16 @@ fn append_to_last_entry(
     Ok(done("appended", &view, tx, call)?)
 }
 
+/// Без `item` — задача-запись целиком. С `item` — один пункт `- [ ]` внутри записи (она не обязана быть задачей): текст
+/// правится тем же `set_task_item`, что и щелчок в ленте, и пишется той же ревизией `edit`. Нет такого пункта — отказ
+/// `invalid_argument` (запись агенту уже видна, это ошибка его номера, а не скрытая запись); пункт уже в нужном состоянии —
+/// успех без записи.
 fn set_task_done(
     tx: &Transaction<'_>,
     call: &Call,
     id: &str,
     done_flag: bool,
+    item: Option<usize>,
 ) -> Result<Done, Fail> {
     let visible: bool = tx.query_row(
         &format!(
@@ -232,6 +238,27 @@ fn set_task_done(
         return Err(Fail::Refused(AgentError::Invalid(
             "the entry is read-only".into(),
         )));
+    }
+    if let Some(index) = item {
+        match set_task_item(&loaded.columns.body_md, index, done_flag) {
+            Ok(body) => match edit_body(tx, &loaded, &body, &call.now) {
+                Ok(()) => {}
+                Err(StoreError::TooLarge) => {
+                    return Err(Fail::Refused(AgentError::Invalid(
+                        "the entry would become too long".into(),
+                    )));
+                }
+                Err(error) => return Err(error.into()),
+            },
+            Err(TaskItemError::AlreadyThere) => {}
+            Err(TaskItemError::NotFound) => {
+                return Err(Fail::Refused(AgentError::Invalid(
+                    "no such checklist item in this entry".into(),
+                )));
+            }
+        }
+        let view = load_view(tx, id)?;
+        return Ok(done("updated", &view, tx, call)?);
     }
     if !loaded.columns.is_task {
         return Err(Fail::Refused(AgentError::NotATask));

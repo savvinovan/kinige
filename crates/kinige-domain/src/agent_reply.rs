@@ -3,6 +3,7 @@
 
 use crate::agent::{RESPONSE_BYTES, truncate_chars};
 use crate::journal::is_valid_journal_date;
+use crate::tasks::TaskItem;
 use serde::Serialize;
 
 /// Запас на обёртку ответа (курсор, чаты): записи делят остальное.
@@ -37,15 +38,37 @@ pub struct AgentEntry {
     pub done: bool,
     pub favorite: bool,
     pub text: String,
+    /// Пункты `- [ ]` внутри записи с номерами для `set_task_done(item)`; поля нет, если пунктов нет.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tasks: Vec<TaskItem>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub truncated: bool,
 }
 
 impl AgentEntry {
-    /// Текст в списках обрезается до [`crate::agent::LIST_TEXT_CHARS`].
+    /// Текст в списках обрезается до [`crate::agent::LIST_TEXT_CHARS`]. Тексты пунктов считаются тем же пределом (все
+    /// вместе): пункты остаются началом списка, поэтому их номера прежние; не поместившиеся отбрасываются, последний
+    /// поместившийся режется.
     pub fn shorten(mut self, max: usize) -> AgentEntry {
         if self.text.chars().take(max + 1).count() > max {
             self.text = truncate_chars(&self.text, max);
+            self.truncated = true;
+        }
+        let mut left = max;
+        let mut kept = 0usize;
+        for task in &mut self.tasks {
+            let chars = task.text.chars().count();
+            if chars > left {
+                task.text = truncate_chars(&task.text, left);
+                self.truncated = true;
+                kept += 1;
+                break;
+            }
+            left -= chars;
+            kept += 1;
+        }
+        if kept < self.tasks.len() {
+            self.tasks.truncate(kept);
             self.truncated = true;
         }
         self
@@ -93,11 +116,13 @@ pub fn fit_entries(mut entries: Vec<AgentEntry>) -> (Vec<AgentEntry>, bool) {
         // Первая запись одна больше предела: режем текст, пока не поместится.
         let mut first = entries.swap_remove(0);
         let mut chars = first.text.chars().count();
-        while chars > 1
+        // Пункты режутся вместе с текстом (оставляется начало списка: номера прежние).
+        while (chars > 1 || !first.tasks.is_empty())
             && serde_json::to_string(&first).map_or(usize::MAX, |json| json.len()) > budget
         {
-            chars /= 2;
+            chars = (chars / 2).max(1);
             first.text = truncate_chars(&first.text, chars);
+            first.tasks.truncate(first.tasks.len() / 2);
             first.truncated = true;
         }
         return (vec![first], true);
