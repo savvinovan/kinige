@@ -14,6 +14,17 @@ fn main() {
     let store = Store::open(options).expect("хранилище открывается");
     let now = Now::system();
     let body = "Вот команда сборки:\n\n```\ncargo build --release --workspace --all-targets --features sync,encryption,import-telegram,search-morphology,markdown-copy --target-dir /var/tmp/kinige-build-output/release-candidate\n```\n\nПосле неё запускаю проверки и жду зелёного результата.";
-    store.send_message(INBOX_ID, body, &now).expect("запись");
+    // Лента длиннее окна: появляется вертикальная полоса прокрутки ленты (тёмная ли она).
+    for index in 0..8 {
+        let filler = format!(
+            "Заполнитель ленты номер {index}: нужен, чтобы лента не помещалась в окно и прокручивалась."
+        );
+        store
+            .send_message(INBOX_ID, &filler, &Now::at(now.ms + index, &now.tz))
+            .expect("запись");
+    }
+    store
+        .send_message(INBOX_ID, body, &Now::at(now.ms + 100, &now.tz))
+        .expect("запись");
     println!("ok");
 }
