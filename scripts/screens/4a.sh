@@ -37,7 +37,15 @@ app_type() { lsappinfo info -only ApplicationType "$(lsappinfo find pid="$(app_p
   sleep 4
   echo "после --background: ApplicationType=$(app_type)  (UIElement = политика Accessory, значка в Dock нет)"
   if dock_has_kinige; then echo "Dock: значок Kinige ЕСТЬ"; fail "в фоне значок Kinige в Dock"; else echo "Dock: значка Kinige нет"; fi
-  KINIGE_PID="$(app_pid)" "$REPO/scripts/screenshot-window.sh" /dev/null kinige list | grep -c 'layer=0' | sed 's/^/окон обычного слоя: /'
+  KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list | grep -c 'layer=0' | sed 's/^/окон обычного слоя: /'
+  # Значок в menu bar: второе меню-бар процесса (status items) через System Events и окно значка (слой 25) среди окон процесса.
+  items="$(limit 30 osascript -e "tell application \"System Events\" to tell (first process whose unix id is $(app_pid)) to get count of menu bar items of menu bar 2" 2>&1)"
+  windows="$(KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list | grep -c 'layer=25')"
+  echo "значок в menu bar: элементов во втором меню-баре процесса: $items; окон значка (слой 25): $windows"
+  case "$items" in
+    '' | *[!0-9]*) items=0 ;;
+  esac
+  if [ "$items" -ge 1 ] || [ "$windows" -ge 1 ]; then echo "значок в menu bar есть"; else fail "в фоне нет значка в menu bar"; fi
   echo "основной сокет (не запасной в TMPDIR):"
   stat -f '%Sp  %N' "$K/data/mcp" "$SOCKET"
   [ "$(stat -f %Lp "$SOCKET")" = "600" ] && [ "$(stat -f %Lp "$K/data/mcp")" = "700" ] || fail "права сокета"
@@ -59,6 +67,11 @@ scroll_to "AI agent access"
 shoot 01-settings-agent-row
 press "Configure"
 shoot 02-access-off
+# Доступ выключен, а журнал виден: пустое состояние.
+scroll_to "Access log"
+has "No requests yet" || fail "нет надписи пустого журнала"
+shoot 02b-access-off-log-empty
+scroll_to "Allow agents to access the journal"
 has "$SOCKET" && echo "путь основного сокета виден в окне" || fail "основного пути сокета нет в тексте окна ($SOCKET)"
 
 # ---- 3. Включение: предупреждение, режим, чаты ----
