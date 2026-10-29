@@ -18,6 +18,8 @@
 
 html {
   font-size: var(--text-root-resolved);
+  /* Тема одна, тёмная: системные элементы (полосы прокрутки, поля, меню) рисуются в тёмном варианте, а не светлом (KINIG-38). */
+  color-scheme: var(--color-scheme);
 }
 
 body {

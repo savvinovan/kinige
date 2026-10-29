@@ -9,6 +9,9 @@ const at = (hour: number, minute: number) => new Date(2026, 9, 20, hour, minute)
 
 const CODE = "```\nfn main() {\n    let today = Day::new(2026, 10, 20);\n    println!(\"Записей: {}\", today.count());\n}\n```";
 
+const LONG_CODE =
+  "```\ncargo build --release --workspace --all-targets --features sync,encryption,import-telegram,search-morphology,markdown-copy --target-dir /var/tmp/kinige-build-output/release-candidate\n```";
+
 const meta = {
   title: "Компоненты/Сообщение",
   component: Message,
@@ -65,6 +68,14 @@ export const Код: Story = {
   args: {
     markdown: `Починил историю командой \`git rebase --onto main\`, вот что получилось:\n\n${CODE}`,
     sentAt: at(13, 45),
+  },
+};
+
+/** Код с длинной строкой и абзац после него (KINIG-40): под блоком полоса прокрутки (если ОС показывает её всегда) занимает своё место и не закрывает первую строку абзаца. */
+export const КодСДлиннойСтрокой: Story = {
+  args: {
+    markdown: `Вот команда сборки:\n\n${LONG_CODE}\n\nПосле неё запускаю проверки и жду зелёного результата.`,
+    sentAt: at(14, 10),
   },
 };
 

@@ -156,18 +156,20 @@
   line-height: var(--type-code-line-height);
 }
 
+/* Блок кода переносит длинные строки, как в Telegram, и не прокручивается: у блока нет полос прокрутки, закрывать ими
+   следующий абзац нечему (KINIG-40: при настройке macOS «Всегда показывать полосы прокрутки» полоса блока ложилась на первую
+   строку абзаца под ним). Отступы и пробелы в начале строк сохраняются (pre-wrap). Overflow не задан намеренно: тест
+   markdown.css.test.ts следит, чтобы блок не получил ни прокрутки, ни обрезки, ни фиксированной высоты. */
 .markdown pre {
   box-sizing: border-box;
-  overflow-x: auto;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-control);
   background: var(--color-surface-code);
   font-family: var(--type-code-family);
   font-size: var(--type-code-size);
   line-height: var(--type-code-line-height);
-  /* Блок кода не переносит строки: длинная строка прокручивается. */
-  white-space: pre;
-  overflow-wrap: normal;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .markdown pre code {
