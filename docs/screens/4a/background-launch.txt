@@ -2,6 +2,8 @@
 после --background: ApplicationType="UIElement"  (UIElement = политика Accessory, значка в Dock нет)
 Dock: значка Kinige нет
 окон обычного слоя: 0
+значок в menu bar: элементов во втором меню-баре процесса: 1; окон значка (слой 25): 1
+значок в menu bar есть
 основной сокет (не запасной в TMPDIR):
 drwx------  /Users/runner/work/_temp/kinige-screens/data/mcp
 srw-------  /Users/runner/work/_temp/kinige-screens/data/mcp/kinige.sock
