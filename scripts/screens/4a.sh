@@ -67,10 +67,10 @@ scroll_to "AI agent access"
 shoot 01-settings-agent-row
 press "Configure"
 shoot 02-access-off
-# Доступ выключен, а журнал виден: пустое состояние.
+# Доступ выключен, а журнал виден: в нём отказы на пробный сеанс из первого шага («denied: access is off»).
 scroll_to "Access log"
-has "No requests yet" || fail "нет надписи пустого журнала"
-shoot 02b-access-off-log-empty
+has "denied: access is off" || fail "в журнале при выключенном доступе нет строк отказа"
+shoot 02b-access-off-log
 scroll_to "Allow agents to access the journal"
 has "$SOCKET" && echo "путь основного сокета виден в окне" || fail "основного пути сокета нет в тексте окна ($SOCKET)"
 
