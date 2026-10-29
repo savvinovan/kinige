@@ -219,7 +219,8 @@ fn a_frame_over_4_mib_closes_the_connection_and_the_server_lives_on() {
         r#"{{"jsonrpc":"2.0","id":99,"method":"tools/call","params":{{"name":"{}"}}}}"#,
         "x".repeat(4 * 1024 * 1024 + 100)
     );
-    client.send_raw(huge.as_bytes());
+    // Сервер закрывает соединение, не дочитав кадр: запись может оборваться, чтение — закончиться RST.
+    client.send_raw_lossy(huge.as_bytes());
     assert!(client.closed_by_server());
     let mut again = mcp.client();
     again.handshake("Next");

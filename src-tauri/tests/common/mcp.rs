@@ -49,6 +49,15 @@ impl Mcp {
     }
 }
 
+fn is_closed_by_peer(error: &std::io::Error) -> bool {
+    matches!(
+        error.kind(),
+        std::io::ErrorKind::ConnectionReset
+            | std::io::ErrorKind::BrokenPipe
+            | std::io::ErrorKind::ConnectionAborted
+    )
+}
+
 pub struct Client {
     reader: BufReader<UnixStream>,
     writer: UnixStream,
@@ -141,8 +150,27 @@ impl Client {
         )
     }
 
+    /// Сервер закрыл соединение. Если он закрыл его, не дочитав присланное (кадр больше предела), ядро шлёт RST, и чтение
+    /// возвращает `ConnectionReset` вместо конца потока: это тоже «закрыто сервером». Таймаут чтения — нет.
     pub fn closed_by_server(&mut self) -> bool {
         let mut rest = Vec::new();
-        self.reader.read_to_end(&mut rest).is_ok() && self.recv().is_none()
+        match self.reader.read_to_end(&mut rest) {
+            Ok(_) => self.recv().is_none(),
+            Err(error) => is_closed_by_peer(&error),
+        }
+    }
+
+    /// Строка без `unwrap`: сервер мог закрыть соединение посреди большой записи (`BrokenPipe`, `ConnectionReset`).
+    /// Возвращает, дошла ли строка целиком.
+    pub fn send_raw_lossy(&mut self, bytes: &[u8]) -> bool {
+        match self
+            .writer
+            .write_all(bytes)
+            .and_then(|()| self.writer.write_all(b"\n"))
+        {
+            Ok(()) => true,
+            Err(error) if is_closed_by_peer(&error) => false,
+            Err(error) => panic!("запись в сокет: {error}"),
+        }
     }
 }
