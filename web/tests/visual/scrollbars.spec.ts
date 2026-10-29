@@ -85,6 +85,8 @@ for (const story of AGENT_STORIES) {
     await open(page, `компоненты-доступ-ии-агентов--${story}`);
     const scrollers = await page.evaluate(() =>
       [...document.querySelectorAll<HTMLElement>("#storybook-root *")]
+        // У строчных элементов (`code`, `span`) размеры блока не определены: offset и client дают мусор.
+        .filter((element) => getComputedStyle(element).display !== "inline")
         .map((element) => {
           const style = getComputedStyle(element);
           const border = (side: string) => parseFloat(style.getPropertyValue(`border-${side}-width`)) || 0;

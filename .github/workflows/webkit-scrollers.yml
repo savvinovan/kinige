@@ -1,0 +1,37 @@
+# Прокручиваемые блоки окна «Доступ ИИ-агентов» в настоящем WebKit на macOS-раннере (слайс 4a, KINIG-11): Chromium в CI
+# второго «язычка» прокрутки не видел, а на macOS он был. Тест — `web/tests/visual/scrollbars.spec.ts`, конфиг —
+# `web/playwright.webkit.config.ts`. Ничего не коммитит. Временный: запускается пушем в ветку слайса.
+name: WebKit scrollers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [slice/4a-mcp]
+    paths: [.github/workflows/webkit-scrollers.yml, web/playwright.webkit.config.ts]
+
+permissions:
+  contents: read
+
+jobs:
+  webkit:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build-storybook
+      - run: npx playwright install webkit
+      - name: Прокручиваемые блоки в WebKit
+        run: |
+          defaults read -g AppleShowScrollBars || true
+          npx playwright test -c playwright.webkit.config.ts
