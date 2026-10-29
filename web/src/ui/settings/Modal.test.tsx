@@ -177,6 +177,30 @@ describe("Modal", () => {
     expect(closeUnder).not.toHaveBeenCalled();
   });
 
+  it("нижнее окно под верхним помечено data-covered (без прокрутки), после закрытия верхнего пометка снимается", async () => {
+    function Stack({ over }: { over: boolean }) {
+      return (
+        <>
+          <Modal title="Нижнее" closeLabel="Закрыть нижнее" onClose={() => {}}>
+            <button>Нижняя кнопка</button>
+          </Modal>
+          {over ? (
+            <Modal title="Верхнее" closeLabel="Закрыть верхнее" onClose={() => {}}>
+              <button>Верхняя кнопка</button>
+            </Modal>
+          ) : null}
+        </>
+      );
+    }
+    const { container, rerender } = render(<Stack over />);
+    const [under, over] = [...container.querySelectorAll(".modal")];
+    expect(under).toHaveAttribute("data-covered");
+    expect(over).not.toHaveAttribute("data-covered");
+    rerender(<Stack over={false} />);
+    await Promise.resolve();
+    expect(container.querySelector(".modal")).not.toHaveAttribute("data-covered");
+  });
+
   it("если в окне одна кнопка (закрытие), Tab остаётся на ней", () => {
     render(
       <Modal title="Окно" closeLabel="Закрыть окно" onClose={() => {}}>

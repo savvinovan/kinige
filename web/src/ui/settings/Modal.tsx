@@ -29,6 +29,12 @@ interface ModalProps {
 const focusablesIn = (root: HTMLElement) =>
   [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((element) => element.getAttribute("tabindex") !== "-1");
 
+/** Все окна, кроме верхнего (последнего в DOM), получают `data-covered`; у верхнего его нет. */
+function markCovered() {
+  const modals = [...document.querySelectorAll<HTMLElement>(".modal")];
+  modals.forEach((modal, index) => modal.toggleAttribute("data-covered", index < modals.length - 1));
+}
+
 /**
  * Модальное окно внутри главного окна приложения (не второе окно ОС): подложка, панель по центру, заголовок и кнопка
  * закрытия, прокручиваемое содержимое. Без нативного `<dialog>`: `showModal` есть не везде (в jsdom нет), а нам нужна
@@ -90,9 +96,14 @@ export function Modal({ title, closeLabel, onClose, returnFocusRef, closable = t
     };
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("focusin", onFocusIn);
+    // Нижнее окно под верхним отмечается `data-covered`: его полоса прокрутки в WebKit проступала сквозь верхнее окно
+    // (второй «язычок» рядом с основной полосой, слайс 4a); CSS убирает у закрытого окна прокрутку.
+    markCovered();
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("focusin", onFocusIn);
+      // Верхнее окно уходит из DOM после эффекта: пометка пересчитывается, когда его там уже нет.
+      queueMicrotask(markCovered);
       // Ref родителя читается именно в момент закрытия: нужен элемент, который стоит там сейчас, а не при открытии.
       // eslint-disable-next-line react-hooks/exhaustive-deps
       const target = returnFocusRef?.current ?? opener;

@@ -38,6 +38,12 @@ describe("прокрутка в окне «Доступ ИИ-агентов»", 
     expect(rules(modalCss).get(".modal__body")).toMatch(/overflow-y\s*:\s*auto/);
   });
 
+  // Окно «Доступ ИИ-агентов» открывается поверх «Настроек». Полоса прокрутки нижнего окна в WebKit проступала сквозь верхнее
+  // (на снимке 02 второй короткий «язычок» рядом с основной полосой): у окна под другим окном прокрутки быть не должно.
+  it("у окна под другим окном нет прокрутки (data-covered)", () => {
+    expect(rules(modalCss).get(".modal[data-covered] .modal__body")).toMatch(/overflow-y\s*:\s*hidden/);
+  });
+
   it("блок кода переносит длинную строку (путь к сокету, команда), а не прокручивает", () => {
     const body = rules(css).get(".agent-code__text") ?? "";
     expect(body).toMatch(/white-space\s*:\s*pre-wrap/);
