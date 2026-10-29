@@ -4,6 +4,10 @@ name: Screens probe
 
 on:
   workflow_dispatch:
+  # Файла ещё нет в main, а `gh workflow run` его там не найдёт: проба стартует от правки самого файла в ветке.
+  push:
+    branches: [slice/4a-mcp]
+    paths: [.github/workflows/screens-probe.yml]
 
 permissions:
   contents: read
