@@ -1,0 +1,67 @@
+macOS 26 runner:
+dark-capture.png: 584x299
+  (0,0)      RGBA=(0, 0, 0, 0)
+  (w-1,0)    RGBA=(0, 0, 0, 0)
+  (0,h-1)    RGBA=(0, 0, 0, 0)
+  (w-1,h-1)  RGBA=(0, 0, 0, 0)
+  (4,h/2)    RGBA=(0, 0, 0, 1)
+  (w/2,2)    RGBA=(0, 0, 0, 0)
+  corner 8x8 alpha: min=0 max=0
+  edge pixels: 1766, opaque dark: 0
+dark-main.png: 1024x674
+  (0,0)      RGBA=(0, 0, 0, 0)
+  (w-1,0)    RGBA=(0, 0, 0, 0)
+  (0,h-1)    RGBA=(0, 0, 0, 0)
+  (w-1,h-1)  RGBA=(0, 0, 0, 0)
+  (4,h/2)    RGBA=(20, 20, 20, 255)
+  (w/2,2)    RGBA=(20, 20, 20, 255)
+light-capture.png: 584x299
+  (0,0)      RGBA=(0, 0, 0, 0)
+  (w-1,0)    RGBA=(0, 0, 0, 0)
+  (0,h-1)    RGBA=(0, 0, 0, 0)
+  (w-1,h-1)  RGBA=(0, 0, 0, 0)
+  (4,h/2)    RGBA=(0, 0, 0, 1)
+  (w/2,2)    RGBA=(0, 0, 0, 0)
+  corner 8x8 alpha: min=0 max=0
+  edge pixels: 1766, opaque dark: 0
+light-main.png: 1024x674
+  (0,0)      RGBA=(0, 0, 0, 0)
+  (w-1,0)    RGBA=(0, 0, 0, 0)
+  (0,h-1)    RGBA=(0, 0, 0, 0)
+  (w-1,h-1)  RGBA=(0, 0, 0, 0)
+  (4,h/2)    RGBA=(20, 20, 20, 255)
+  (w/2,2)    RGBA=(20, 20, 20, 255)
+
+macOS 15 runner:
+dark-capture.png: 584x299
+  (0,0)      RGBA=(0, 0, 0, 0)
+  (w-1,0)    RGBA=(0, 0, 0, 0)
+  (0,h-1)    RGBA=(0, 0, 0, 0)
+  (w-1,h-1)  RGBA=(0, 0, 0, 0)
+  (4,h/2)    RGBA=(0, 0, 0, 1)
+  (w/2,2)    RGBA=(0, 0, 0, 0)
+  corner 8x8 alpha: min=0 max=0
+  edge pixels: 1766, opaque dark: 0
+dark-main.png: 1024x681
+  (0,0)      RGBA=(0, 0, 0, 0)
+  (w-1,0)    RGBA=(0, 0, 0, 0)
+  (0,h-1)    RGBA=(0, 0, 0, 0)
+  (w-1,h-1)  RGBA=(0, 0, 0, 0)
+  (4,h/2)    RGBA=(20, 20, 20, 255)
+  (w/2,2)    RGBA=(38, 38, 38, 255)
+light-capture.png: 584x299
+  (0,0)      RGBA=(0, 0, 0, 0)
+  (w-1,0)    RGBA=(0, 0, 0, 0)
+  (0,h-1)    RGBA=(0, 0, 0, 0)
+  (w-1,h-1)  RGBA=(0, 0, 0, 0)
+  (4,h/2)    RGBA=(0, 0, 0, 1)
+  (w/2,2)    RGBA=(0, 0, 0, 0)
+  corner 8x8 alpha: min=0 max=0
+  edge pixels: 1766, opaque dark: 0
+light-main.png: 1024x681
+  (0,0)      RGBA=(0, 0, 0, 0)
+  (w-1,0)    RGBA=(0, 0, 0, 0)
+  (0,h-1)    RGBA=(0, 0, 0, 0)
+  (w-1,h-1)  RGBA=(0, 0, 0, 0)
+  (4,h/2)    RGBA=(20, 20, 20, 255)
+  (w/2,2)    RGBA=(255, 255, 255, 255)
