@@ -72,6 +72,9 @@ scroll_to "Access log"
 has "denied: access is off" || fail "в журнале при выключенном доступе нет строк отказа"
 shoot 02b-access-off-log
 scroll_to "Allow agents to access the journal"
+# ПРОБА (временно): второй «язычок» — случайный кадр после открытия окна или состояние «выключено»? Тот же вид позже.
+sleep 8
+shoot zz-probe-1-off-later
 has "$SOCKET" && echo "путь основного сокета виден в окне" || fail "основного пути сокета нет в тексте окна ($SOCKET)"
 
 # ---- 3. Включение: предупреждение, режим, чаты ----
@@ -82,6 +85,13 @@ press "Read and write"
 press "Работа" CheckBox
 press "Inbox" CheckBox
 shoot 04-access-on
+# ПРОБА (временно): «выключено» второй раз, уже после включения.
+press "Allow agents to access the journal" CheckBox
+scroll_to "Allow agents to access the journal"
+sleep 3
+shoot zz-probe-2-off-again
+press "Allow agents to access the journal" CheckBox
+press "Turn on"
 
 # ---- 4. Сеанс агента через мост из бандла: чтение, запись, закрытый чат ----
 limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session.txt" --chat "$WORK" --closed-chat "$BOOKS" || fail "сеанс агента"
@@ -142,17 +152,5 @@ scroll_to "Chats visible to the agent"
 shoot 13-access-large-text
 scroll_to "Access log"
 shoot 14-access-log-large-text
-
-# ПРОБА (временно): второй «язычок» на 02 при выключенном доступе. Выключаем доступ, снимаем с Settings под окном и без него.
-scroll_to "Allow agents to access the journal"
-press "Allow agents to access the journal" CheckBox
-shoot zz-probe-1-off
-sleep 8
-shoot zz-probe-1b-off-later
-press "Allow agents to access the journal" CheckBox
-press "Turn on"
-shoot zz-probe-2-on
-press "Allow agents to access the journal" CheckBox
-shoot zz-probe-3-off-again
 
 finish
