@@ -7,7 +7,11 @@ permissions:
   contents: read
 jobs:
   shots:
-    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
@@ -32,6 +36,6 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: canvas-out
+          name: canvas-out-${{ matrix.os }}
           path: canvas-out
           if-no-files-found: warn
