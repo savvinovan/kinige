@@ -15,7 +15,7 @@ mkdir -p "$K/data" "$K/mirror"
 cargo run --release -q -p kinige-store --example seed_demo -- "$K/data" "$K/mirror"
 cargo run --release -q -p kinige-store --example seed_code -- "$K/data" "$K/mirror"
 cp -R "$SRC_APP" "$APP"
-plutil -insert LSEnvironment -json "{\"KINIGE_DATA_DIR\":\"$K/data\",\"KINIGE_MIRROR_DIR\":\"$K/mirror\"}" "$APP/Contents/Info.plist"
+plutil -insert LSEnvironment -json "{\"KINIGE_DATA_DIR\":\"$K/data\",\"KINIGE_MIRROR_DIR\":\"$K/mirror\",\"KINIGE_TMP_SHOW_CAPTURE\":\"1\"}" "$APP/Contents/Info.plist"
 codesign --force --deep -s - "$APP"
 
 python3 -m venv "$K/venv" && "$K/venv/bin/pip" install -q pillow
@@ -33,51 +33,15 @@ shoot_run() {
   osascript -e "tell application \"System Events\" to set frontmost of (first process whose unix id is $(app_pid)) to true" || true
   sleep 1
   KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" "$OUT/$tag-main.png" kinige main || echo "нет снимка main"
-  # Меню значка -> первый пункт («Новая заметка» / «New note»): окно захвата без глобального сочетания.
+  # Окно захвата показывает временный код приложения (KINIGE_TMP_SHOW_CAPTURE, через 12 с после запуска): меню значка по AX и
+  # щелчок по нему на раннере меню не открыли (прогон 40861738106), а глобальное сочетание не используется.
   PID="$(app_pid)"
-  have_capture() {
+  for _ in $(seq 1 40); do
     KINIGE_PID="$PID" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list 2>/dev/null \
-      | awk -F'\t' '$2 != "layer=0" && $2 != "layer=25" { found = 1 } END { exit !found }'
-  }
-  echo "-- стратегия 1: AXPress значка, затем первый пункт меню"
-  limit 40 osascript <<OSA 2>&1
-tell application "System Events"
-  tell (first process whose unix id is $PID)
-    log "menu bars: " & (count of menu bars)
-    log "items in bar 2: " & (count of menu bar items of menu bar 2)
-    perform action "AXPress" of menu bar item 1 of menu bar 2
-    delay 1.5
-    log "menus of item: " & (count of menus of menu bar item 1 of menu bar 2)
-    log (name of every menu item of menu 1 of menu bar item 1 of menu bar 2) as string
-    click menu item 1 of menu 1 of menu bar item 1 of menu bar 2
-  end tell
-end tell
-OSA
-  sleep 3
-  if ! have_capture; then
-    echo "-- стратегия 2: AXShowMenu"
-    limit 40 osascript <<OSA 2>&1
-tell application "System Events"
-  tell (first process whose unix id is $PID)
-    perform action "AXShowMenu" of menu bar item 1 of menu bar 2
-    delay 1.5
-    log (name of every menu item of menu 1 of menu bar item 1 of menu bar 2) as string
-    click menu item 1 of menu 1 of menu bar item 1 of menu bar 2
-  end tell
-end tell
-OSA
-    sleep 3
-  fi
-  if ! have_capture; then
-    echo "-- стратегия 3: щелчок мышью по значку и по первому пункту (раннер, не Mac пользователя)"
-    X="$(KINIGE_PID="$PID" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list | awk -F'\t' '/layer=25/ {print $4}' | sed 's/x=\([0-9]*\).*/\1/' | head -1)"
-    echo "x значка: $X"
-    limit 30 osascript -e "tell application \"System Events\" to click at {$((X + 17)), 12}"
-    sleep 1.5
-    KINIGE_PID="$PID" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list
-    limit 30 osascript -e "tell application \"System Events\" to click at {$((X + 17)), 36}"
-    sleep 3
-  fi
+      | awk -F'\t' '$2 != "layer=0" && $2 != "layer=25" { found = 1 } END { exit !found }' && break
+    sleep 1
+  done
+  sleep 2
   KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list > "$OUT/$tag-windows.txt" 2>&1
   cat "$OUT/$tag-windows.txt"
   KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" "$OUT/$tag-capture.png" kinige capture || echo "нет снимка capture"

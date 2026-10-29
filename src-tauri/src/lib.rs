@@ -238,6 +238,14 @@ fn start_services<R: Runtime>(
         capture::request_hide,
     )?;
     tray::setup(app, commands::get_language())?;
+    // ВРЕМЕННО (KINIG-40/38): показать окно захвата через 12 с после запуска для снимка на раннере. Удаляется следующим коммитом.
+    if std::env::var_os("KINIGE_TMP_SHOW_CAPTURE").is_some() {
+        let tmp_app = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(12));
+            capture::show_capture(&tmp_app);
+        });
+    }
     let hotkeys = Hotkeys::new(Box::new(PluginRegistrar { app: app.clone() }));
     // Сочетание, которое система не приняла, остаётся «не назначено» в настройках; остальное работает.
     hotkeys.register_saved(&store);
