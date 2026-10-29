@@ -29,9 +29,9 @@ const md = new MarkdownIt({ html: false, linkify: true, breaks: true, typographe
 md.linkify.set({ fuzzyLink: false, fuzzyEmail: false });
 md.disable(["image", "table"]);
 
-// Блок кода: без подсветки синтаксиса, фокусируется с клавиатуры (длинные строки прокручиваются по горизонтали).
+// Блок кода: без подсветки синтаксиса; длинные строки переносятся (markdown.css), прокрутки нет, поэтому и фокус не нужен.
 md.renderer.rules.fence = (tokens, idx) =>
-  `<pre class="code-block" tabindex="0"><code>${md.utils.escapeHtml(tokens[idx]?.content ?? "")}</code></pre>\n`;
+  `<pre class="code-block"><code>${md.utils.escapeHtml(tokens[idx]?.content ?? "")}</code></pre>\n`;
 
 // Ссылка остаётся настоящим <a href> (видна диктору, берёт фокус, адрес читается при наведении), но переход по ней
 // отменяется в Message: webview не должен уходить с экрана приложения на внешний сайт. Адрес уходит в системный браузер

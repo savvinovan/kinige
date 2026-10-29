@@ -6,7 +6,7 @@ members = ["crates/kinige-domain", "crates/kinige-store", "crates/kinige-mcp", "
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.94"
-license = "UNLICENSED"
+license = "MIT"
 publish = false
 
 # Вывод только через крейт `log` (файл лога пишет tauri-plugin-log): в .app из Finder stderr никуда не попадает.
