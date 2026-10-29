@@ -58,7 +58,7 @@ function CodeBlock({ title, text, copyLabel, hint }: { title: string; text: stri
           {label}
         </Button>
       </div>
-      <pre className={text.includes("\n") ? "agent-code__text" : "agent-code__text agent-code__text--line"} tabIndex={0}>
+      <pre className="agent-code__text">
         <code>{text}</code>
       </pre>
       {hint ? <p className="agent-code__hint">{hint}</p> : null}

@@ -1,9 +1,6 @@
 {
   "layout": {
     "agent": {
-      "chat-list-max-height": { "$type": "dimension", "$value": "14rem", "$description": "Высота списка чатов «видно агенту» в окне «Доступ ИИ-агентов»: длиннее — прокрутка внутри списка, окно не растёт (182 px при корне 13 px)." },
-      "log-max-height": { "$type": "dimension", "$value": "20rem", "$description": "Высота журнала обращений в том же окне: прокрутка внутри журнала (260 px)." },
-      "code-max-height": { "$type": "dimension", "$value": "10rem", "$description": "Высота блока кода (фрагмент для Claude Desktop, команда для Claude Code): длиннее — прокрутка внутри блока (130 px)." },
       "warning-width": { "$type": "dimension", "$value": "30rem", "$description": "Ширина окна предупреждения при включении доступа (390 px при корне 13 px)." }
     }
   }

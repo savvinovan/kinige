@@ -188,5 +188,31 @@ export const ДлинныеИмена: Story = {
   },
 };
 
+/** Длинный путь сокета (запасной путь в `$TMPDIR`, длинное имя каталога): строки в блоках кода переносятся, прокруток внутри нет. */
+export const ДлинныйПутьСокета: Story = {
+  args: {
+    access: access({
+      socket: {
+        ...MOCK_AGENT_SOCKET,
+        socketPath: "/var/folders/z2/vk5752wx4h16q8rbx_5v6n300000gn/T/kinige-mcp/0123456789abcdef.sock",
+        desktopConfig: JSON.stringify(
+          {
+            mcpServers: {
+              kinige: {
+                command: "/Applications/Kinige.app/Contents/MacOS/kinige-mcp",
+                args: ["--socket", "/var/folders/z2/vk5752wx4h16q8rbx_5v6n300000gn/T/kinige-mcp/0123456789abcdef.sock"],
+              },
+            },
+          },
+          null,
+          2,
+        ),
+        codeCommand:
+          "claude mcp add --scope user kinige -- /Applications/Kinige.app/Contents/MacOS/kinige-mcp --socket '/var/folders/z2/vk5752wx4h16q8rbx_5v6n300000gn/T/kinige-mcp/0123456789abcdef.sock'",
+      },
+    }),
+  },
+};
+
 /** English. */
 export const English: Story = { args: { language: "en" }, globals: { language: "en" } };

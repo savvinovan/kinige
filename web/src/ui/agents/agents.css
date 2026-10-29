@@ -1,13 +1,14 @@
 /* Окно «Доступ ИИ-агентов»: список чатов, блоки кода, журнал обращений, предупреждение. Только токены. */
 
-/* Список чатов: высота ограничена токеном, прокрутка внутри списка. */
+/* В окне одна прокрутка — у самой панели (modal.css). Ни список чатов, ни блоки кода, ни журнал своей прокрутки и своей
+   предельной высоты не имеют: при постоянных полосах прокрутки (системная настройка) вложенные полосы наезжали на текст. */
+
+/* Список чатов показывается целиком. */
 .agent-chats {
   display: grid;
   gap: var(--space-2);
-  max-height: var(--layout-agent-chat-list-max-height);
   margin: 0;
   padding: 0;
-  overflow-y: auto;
   list-style: none;
 }
 
@@ -41,13 +42,13 @@
   line-height: var(--type-meta-line-height);
 }
 
-/* Моноширинный блок: JetBrains Mono, прокрутка внутри; длинная команда не растягивает окно. */
+/* Моноширинный блок: JetBrains Mono. Длинные строки (путь к сокету, команда) переносятся, а не прокручиваются; текст
+   целиком остаётся в разметке и копируется кнопкой «Копировать». */
 .agent-code__text {
   box-sizing: border-box;
-  max-height: var(--layout-agent-code-max-height);
+  min-width: 0;
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  overflow: auto;
   border-radius: var(--radius-control);
   background: var(--color-surface-code);
   color: var(--color-text-primary);
@@ -55,14 +56,8 @@
   font-size: var(--type-code-size);
   font-weight: var(--type-code-weight);
   line-height: var(--type-code-line-height);
-  white-space: pre;
-}
-
-/* Однострочная команда: только горизонтальная прокрутка, полоса не наезжает на текст и не рождает вертикальную. */
-.agent-code__text--line {
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: var(--space-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .agent-code__hint {
@@ -73,12 +68,7 @@
   line-height: var(--type-meta-line-height);
 }
 
-.agent-code__text:focus-visible {
-  outline: var(--border-width-strong) solid var(--color-focus-ring);
-  outline-offset: var(--border-width-hairline);
-}
-
-/* Журнал: тихие строки, новые сверху, прокрутка внутри. */
+/* Журнал: тихие строки, новые сверху; длиннее страницы — «Показать ещё», без своей прокрутки. */
 .agent-log {
   display: grid;
   gap: var(--space-2);
@@ -88,10 +78,8 @@
 .agent-log__list {
   box-sizing: border-box;
   width: 100%;
-  max-height: var(--layout-agent-log-max-height);
   margin: 0;
   padding: 0;
-  overflow-y: auto;
   list-style: none;
 }
 
