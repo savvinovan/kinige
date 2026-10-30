@@ -99,13 +99,18 @@ press "AI agent access"
 shoot_settings 04-access-off
 
 # ---- 3. Включение: предупреждение поверх окна, содержимое под ним не сдвигается ----
+# Пока предупреждение открыто (aria-modal), WebKit прячет остальную страницу от доступности, поэтому рамки под ним
+# не читаются. Здесь сверяются рамки до показа и после закрытия предупреждения; во время показа геометрию (в том числе с
+# постоянными полосами прокрутки) проверяет tests/visual/scrollbars.spec.ts, а на снимке 05 страница под подложкой видна.
 {
-  echo "# Рамки (x y ширина высота) до и после показа предупреждения, в пикселях экрана."
+  echo "# Рамки (x y ширина высота, пиксели экрана) до показа предупреждения и после его закрытия («Отмена»)."
   echo "флажок доступа до:    $(ax frame "$(app_pid)" "Allow agents to access the journal")"
   echo "пункт дерева до:      $(ax frame "$(app_pid)" "Copies")"
 } > "$OUT/no-shift.txt"
 press "Allow agents to access the journal"
+has "Turn on access" || has "Turn on" || fail "предупреждение не показано"
 shoot_settings 05-warning
+press "Cancel"
 {
   echo "флажок доступа после: $(ax frame "$(app_pid)" "Allow agents to access the journal")"
   echo "пункт дерева после:   $(ax frame "$(app_pid)" "Copies")"
@@ -114,6 +119,7 @@ cat "$OUT/no-shift.txt"
 before_box="$(sed -n 's/^флажок доступа до: *//p' "$OUT/no-shift.txt")"
 after_box="$(sed -n 's/^флажок доступа после: *//p' "$OUT/no-shift.txt")"
 [ -n "$before_box" ] && [ "$before_box" = "$after_box" ] || fail "флажок сдвинулся при предупреждении ($before_box -> $after_box)"
+press "Allow agents to access the journal"
 press "Turn on"
 press "Read and write"
 
