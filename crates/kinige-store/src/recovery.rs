@@ -13,6 +13,7 @@ use crate::error::{read_err, write_err};
 use crate::schema::LATEST_VERSION;
 use crate::send::mark_all_dirty;
 use crate::settings::effective_mirror_dir;
+use crate::settings_file;
 use crate::{StoreError, time::utc_stamp};
 use kinige_domain::BackupInfo;
 use kinige_domain::backup::classify;
@@ -181,18 +182,30 @@ pub fn restore_backup_with(
     } else {
         None
     };
-    let moved = match mirror {
-        Some(folder) if folder.is_dir() => {
-            let target = move_aside(&folder, now_ms)?;
-            Some((folder, target))
-        }
-        _ => None,
-    };
-    let undo_move = || {
-        if let Some((from, to)) = &moved {
+    // Папка из `settings.json` (ADR-0010) тоже уходит в сторону, если она другая: файл применится поверх восстановленной
+    // базы, поставит эту папку копией и пометит все дни на перезапись, а писатель копии удаляет в папке файлы дней, которых
+    // нет в базе, то есть дни, появившиеся после снимка. Файл читается только как чтение, с теми же проверками безопасности.
+    let from_file = db_path
+        .parent()
+        .and_then(settings_file::mirror_folder_from_file);
+    let mut moved: Vec<(PathBuf, PathBuf)> = Vec::new();
+    let undo_move = |moved: &[(PathBuf, PathBuf)]| {
+        for (from, to) in moved.iter().rev() {
             let _ = fs::rename(to, from);
         }
     };
+    for folder in mirror.iter().chain(from_file.iter()) {
+        if !folder.is_dir() || moved.iter().any(|(from, _)| from == folder) {
+            continue;
+        }
+        match move_aside(folder, now_ms) {
+            Ok(target) => moved.push((folder.clone(), target)),
+            Err(error) => {
+                undo_move(&moved);
+                return Err(error);
+            }
+        }
+    }
 
     // 2. С этого момента база в неопределённом состоянии: упасть можно, а пустую базу молча создать — нет. Прежняя отметка
     // (например, «нужно восстановление» от фоновой проверки) запоминается: если до первого `rename` что-то не удалось,
@@ -206,7 +219,7 @@ pub fn restore_backup_with(
     };
     if let Err(error) = fs::write(marker_path(db_path), RESTORING) {
         restore_marker();
-        undo_move();
+        undo_move(&moved);
         return Err(io(error));
     }
 
@@ -243,7 +256,7 @@ pub fn restore_backup_with(
         // первого `rename` отметка `restoring` остаётся: при запуске окно предложит копии.
         if !base_touched {
             restore_marker();
-            undo_move();
+            undo_move(&moved);
         }
         return Err(error);
     }
@@ -261,6 +274,9 @@ pub fn restore_backup_with(
         )
         .map_err(write_err)?;
         mark_all_dirty(&tx).map_err(write_err)?;
+        // Доступ агентов из копии не переносится (ADR-0010): итог — ровно как в файле настроек, а если файл небезопасен или
+        // не разобран — выключено. Хэша файла в копии нет: файл применится как внешняя правка.
+        settings_file::reset_access_after_restore(&tx).map_err(write_err)?;
         tx.commit().map_err(write_err)?;
     }
     // Контроль: после замены база читается.
@@ -269,7 +285,11 @@ pub fn restore_backup_with(
     drop(conn);
     clear_needs_recovery(db_path);
     Ok(RestoreReport {
-        previous_mirror: moved.map(|(_, target)| target).or(earlier),
+        previous_mirror: moved
+            .into_iter()
+            .next()
+            .map(|(_, target)| target)
+            .or(earlier),
     })
 }
 

@@ -2131,9 +2131,11 @@ dependencies = [
  "chrono-tz",
  "iana-time-zone",
  "kinige-domain",
+ "libc",
  "log",
  "rusqlite",
  "serde_json",
+ "sha2",
  "tempfile",
  "uuid",
 ]

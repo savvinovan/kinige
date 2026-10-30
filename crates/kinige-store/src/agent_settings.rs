@@ -9,7 +9,7 @@ use kinige_domain::{AgentAccess, AgentChatChoice, AgentMode, AgentSocket};
 use rusqlite::{Connection, TransactionBehavior};
 use std::collections::HashSet;
 
-fn put(conn: &Connection, key: &str, value: &str) -> rusqlite::Result<()> {
+pub(crate) fn put(conn: &Connection, key: &str, value: &str) -> rusqlite::Result<()> {
     conn.execute(
         "INSERT INTO app_setting (key, value) VALUES (?1, ?2) \
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",

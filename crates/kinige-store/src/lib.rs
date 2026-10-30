@@ -27,6 +27,7 @@ mod search;
 mod search_query;
 mod send;
 mod settings;
+mod settings_file;
 mod tags;
 mod time;
 mod trash;
@@ -49,6 +50,11 @@ pub use recovery::{
     mark_needs_recovery, needs_recovery, restore_backup, restore_backup_with, startup_check,
 };
 pub use schema::LATEST_VERSION;
+pub use settings_file::{
+    FILE_NAME as SETTINGS_FILE_NAME, FileError, LOG_CLIENT as SETTINGS_LOG_CLIENT,
+    LOG_TOOL as SETTINGS_LOG_TOOL, MAX_BYTES as SETTINGS_FILE_MAX_BYTES, SettingsFile,
+    SettingsFileOptions, ShortcutApplier, ShortcutRefusal, file_path as settings_file_path,
+};
 pub use time::{Now, local_hhmm, offset_secs, utc_stamp};
 
 use backup::BackupShared;
@@ -184,7 +190,7 @@ impl Store {
     /// То же, что [`Store::open`], но с заданным «сейчас» (тесты).
     pub fn open_at(options: StoreOptions, now: &Now) -> Result<Store, StoreError> {
         if let Some(parent) = options.db_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| StoreError::Internal(e.to_string()))?;
+            create_data_dir(parent).map_err(|e| StoreError::Internal(e.to_string()))?;
         }
         prepare_migration(&options.db_path, now)?;
         let mut conn = open_connection(&options.db_path, false)?;
@@ -364,6 +370,16 @@ impl Store {
     pub fn default_mirror_dir(&self) -> Option<&Path> {
         self.inner.default_mirror_dir.as_deref()
     }
+}
+
+/// Каталог данных создаётся с режимом 0700 (как `mcp/`, ADR-0010): при umask 002 каталог с режимом 0775 считался бы
+/// небезопасным, и ключи доступа ИИ-агентов из файла настроек не применялись бы никогда. Существующий каталог не меняется.
+fn create_data_dir(dir: &Path) -> std::io::Result<()> {
+    let mut builder = std::fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
+    builder.create(dir)
 }
 
 /// Соединение с общими настройками. Для чтения — `query_only`.

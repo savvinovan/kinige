@@ -4,6 +4,7 @@ pub mod agent;
 pub mod capture;
 pub mod import;
 pub mod ops;
+pub mod settings_file;
 
 use kinige_store::{Now, Store, StoreOptions};
 use serde_json::value::RawValue;

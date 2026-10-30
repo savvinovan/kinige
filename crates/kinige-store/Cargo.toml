@@ -21,6 +21,11 @@ uuid = { version = "1.28", features = ["v4"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 chrono-tz = "0.10"
 iana-time-zone = "0.1"
+# Файл настроек (ADR-0010): хэш записанных байтов; права, владелец и O_NOFOLLOW. Оба крейта уже стоят в Cargo.lock.
+sha2 = "0.10"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 tempfile = "3"
