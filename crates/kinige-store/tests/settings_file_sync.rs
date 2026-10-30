@@ -445,3 +445,42 @@ fn a_duplicate_key_takes_the_last_value() {
     rig.write(r#"{"text_size":"normal","text_size":"large"}"#);
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
 }
+
+#[test]
+fn an_mcp_client_cannot_forge_the_settings_file_log_row_by_name_or_by_tool() {
+    // Строку «доступ изменён» подписывает инструмент `settings_file`, который пишет только поток файла: клиент MCP может
+    // назвать себя `settings.json` сколько угодно, а неизвестный инструмент в журнале всегда `unknown`.
+    use common::agent::{agent, call_as};
+    use kinige_domain::AgentMode;
+    let agent = agent(AgentMode::Read, true);
+    let _ = call_as(
+        &agent.store,
+        "settings.json",
+        "search",
+        json!({"query": "x"}),
+        T0,
+    );
+    let _ = call_as(
+        &agent.store,
+        "settings.json",
+        "settings_file",
+        json!({}),
+        T0,
+    );
+    let conn = raw(agent.dir.path());
+    let mut statement = conn
+        .prepare("SELECT client, tool FROM mcp_log ORDER BY id")
+        .unwrap();
+    let rows: Vec<(String, String)> = statement
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    assert!(!rows.is_empty());
+    assert!(
+        rows.iter()
+            .all(|(client, tool)| client == "settings.json" && tool != "settings_file"),
+        "{rows:?}"
+    );
+    assert!(rows.iter().any(|(_, tool)| tool == "unknown"));
+}

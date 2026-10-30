@@ -20,6 +20,7 @@ import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { SearchFilters } from "./generated/SearchFilters";
 import type { SearchPage } from "./generated/SearchPage";
 import type { Settings } from "./generated/Settings";
+import type { SettingsFileState } from "./generated/SettingsFileState";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
@@ -173,6 +174,21 @@ export interface KinigeApi {
   listAgentLog(before?: number): Promise<AgentLogPage>;
   /** Записи, которые затронуло обращение; удалённая навсегда приходит с `message: null`. */
   listAgentLogEntries(logId: number): Promise<AgentLogEntry[]>;
+
+  // ---- окно настроек и файл settings.json (слайс 4b, ADR-0010) ----
+  /** Открыть окно настроек из главного окна (повторное открытие поднимает то же окно). */
+  openSettings(): Promise<void>;
+  /** Путь файла `settings.json`, что с ним не так и какие ключи с ошибками; для окна настроек. */
+  getSettingsFile(): Promise<SettingsFileState>;
+  /**
+   * Открыть запись из журнала обращений в ленте главного окна. Rust проверяет запись: удалена навсегда или в корзине —
+   * `message_not_found`; содержимое окну настроек не отдаётся.
+   */
+  settingsOpenEntry(id: string): Promise<void>;
+  /** Настройки изменились: окном, другим окном или файлом (чужие правки видны за секунды). Возвращает отписку. */
+  onSettingsChanged(handler: () => void): Promise<() => void>;
+  /** Окно настроек просит открыть запись: главное окно открывает чат на этой записи. Возвращает отписку. */
+  onOpenMessage(handler: (target: { chatId: string; messageId: string }) => void): Promise<() => void>;
 
   // ---- окно захвата (слайс 2): отдельный набор команд, только Inbox ----
   /** Всё, что нужно окну при показе: язык, размер текста, контекст за сегодня, цель дописывания, черновик, ошибка. */

@@ -17,6 +17,8 @@ const TOOLS = {
   add_entry: "agent.log.tool.add_entry",
   append_to_last_entry: "agent.log.tool.append_to_last_entry",
   set_task_done: "agent.log.tool.set_task_done",
+  // Доступ изменён через settings.json (слайс 4b): подпись по инструменту, а не по имени клиента — клиент называет себя сам.
+  settings_file: "agent.log.tool.settings_file",
 } as const;
 
 const OUTCOMES = {

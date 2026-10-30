@@ -1,5 +1,5 @@
 import { type KinigeApi, KinigeApiError } from "./KinigeApi";
-import { MockApiSlice4a } from "./MockApiSlice4a";
+import { MockApiSlice4b } from "./MockApiSlice4b";
 import { DAY_MS, DEFAULT_SHORTCUTS, TRASH_DAYS, isRealDate, mockMessage } from "./mockData";
 import type { AppInfo } from "./generated/AppInfo";
 import type { ChatList } from "./generated/ChatList";
@@ -23,7 +23,7 @@ const ALLOWED_SCHEMES = ["http:", "https:", "mailto:"];
  * ведёт корзину, правки и ревизии, умеет «отказ» любой команды (`failNext`) и запоминает открытые ссылки (`openedUrls`). День
  * записи считается упрощённо (UTC, граница 04:00): настоящие правила — в Rust. Состояние и окно захвата — в `MockApiBase`.
  */
-export class MockApi extends MockApiSlice4a implements KinigeApi {
+export class MockApi extends MockApiSlice4b implements KinigeApi {
   private readonly openChatListeners = new Set<(chatId: string) => void>();
   private readonly corruptListeners = new Set<() => void>();
 
@@ -77,8 +77,10 @@ export class MockApi extends MockApiSlice4a implements KinigeApi {
   }
 
   setTextSize(size: TextSize): Promise<void> {
-    this.settings = { ...this.settings, textSize: size };
-    return Promise.resolve();
+    return this.run("setTextSize", size, () => {
+      this.settings = { ...this.settings, textSize: size };
+      this.emitSettingsChanged();
+    });
   }
 
   chooseMirrorFolder(): Promise<Settings> {
@@ -89,6 +91,7 @@ export class MockApi extends MockApiSlice4a implements KinigeApi {
     }
     if (this.pickedFolder) {
       this.settings = { ...this.settings, mirror: { folder: this.pickedFolder, isDefault: false, error: null, pendingDays: 0 } };
+      this.emitSettingsChanged();
     }
     return Promise.resolve(this.settings);
   }
@@ -379,6 +382,7 @@ export class MockApi extends MockApiSlice4a implements KinigeApi {
           : s,
       ),
     };
+    this.emitSettingsChanged();
     return Promise.resolve(this.settings);
   }
 }

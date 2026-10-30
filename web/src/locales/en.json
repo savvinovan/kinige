@@ -261,7 +261,6 @@
   },
   "agent": {
     "title": "AI agent access",
-    "close": "Close AI agent access",
     "enable": {
       "label": "Allow agents to access the journal",
       "description": "An agent you connect can read the chats you mark below and, if you allow it, write entries.",
@@ -322,6 +321,7 @@
         "add_entry": "add entry",
         "append_to_last_entry": "append to entry",
         "set_task_done": "mark task",
+        "settings_file": "access changed",
         "unknown": "unknown request"
       },
       "outcome": {
@@ -337,16 +337,74 @@
       "entries_other": "{{count, number}} entries"
     }
   },
+  "prefs": {
+    "treeLabel": "Settings sections",
+    "errorMark": "has problems",
+    "backTo": "Back to {{section}}",
+    "configure": "Configure",
+    "changedByFile": "Changed via settings.json · {{time}}",
+    "section": {
+      "appearance": "Appearance",
+      "shortcuts": "Keyboard shortcuts",
+      "mirror": "Copies",
+      "access": "AI agent access",
+      "accessChats": "Visible chats",
+      "accessLog": "Access log",
+      "file": "Settings file"
+    },
+    "appearance": {
+      "description": "How large the text is throughout Kinige."
+    },
+    "access": {
+      "chatsRow": "Visible chats",
+      "chatsValue": "{{visible}} of {{total}}",
+      "logRow": "Access log",
+      "logValue": "What agents asked for and wrote"
+    },
+    "file": {
+      "description": "All settings live in one plain text file. You, or an AI agent, can edit it: Kinige notices the change within a couple of seconds.",
+      "pathLabel": "File",
+      "copyPath": "Copy path",
+      "copyPathLabel": "Copy the path of the settings file",
+      "copied": "Copied",
+      "copyFailed": "Could not copy",
+      "ok": "The file has no errors",
+      "problemsTitle": "Problems",
+      "unknownTitle": "Unknown keys",
+      "unknownKey": "{{key}}: Kinige does not know this key, ignores it and keeps it in the file",
+      "problem": {
+        "parse": "The file could not be read: line {{line}}, column {{column}}. Nothing was changed.",
+        "not_object": "The file must be a JSON object. Nothing was changed.",
+        "not_utf8": "The file is not UTF-8 text. Nothing was changed.",
+        "bom": "The file starts with a byte order mark: save it as UTF-8 without BOM. Nothing was changed.",
+        "too_large": "The file is larger than 1 MiB. Nothing was changed.",
+        "io": "Kinige could not read or write the file."
+      },
+      "unsafe": {
+        "symlink": "The file is a symbolic link, so access and folder keys from it are ignored.",
+        "not_regular": "This is not a regular file, so it is not read.",
+        "owner": "The file belongs to another user, so access and folder keys from it are ignored.",
+        "permissions": "Other users can write to the file, so access and folder keys from it are ignored. Make it writable only by you (chmod 600).",
+        "directory": "Other users can write to the data folder, so access and folder keys from the file are ignored."
+      },
+      "issue": {
+        "type": "{{key}}: wrong type of value",
+        "value": "{{key}}: this value is not allowed",
+        "shortcut_invalid": "{{key}}: this shortcut cannot be used",
+        "shortcut_duplicate": "{{key}}: the other action already uses this shortcut",
+        "shortcut_taken": "{{key}}: the shortcut is used by another app or the system",
+        "folder_not_absolute": "{{key}}: the folder path must be absolute",
+        "folder_missing": "{{key}}: the folder does not exist",
+        "folder_inside_data": "{{key}}: the folder must not be inside Kinige's data folder",
+        "unsafe_ignored": "{{key}}: ignored because the file is not safe",
+        "chat_not_found": "{{key}}: no such chat",
+        "chat_ambiguous": "{{key}}: several chats have this name, use the id",
+        "chat_excluded": "{{key}}: this chat is excluded from AI"
+      }
+    }
+  },
   "settings": {
     "title": "Settings",
-    "close": "Close settings",
-    "agent": {
-      "title": "AI agent access",
-      "description": "Let an AI agent such as Claude read and write your journal.",
-      "off": "Off",
-      "on": "On",
-      "configure": "Configure…"
-    },
     "mirror": {
       "title": "Markdown copy",
       "description": "Every entry is also written to a plain Markdown file, one file per day, so you can read your journal without Kinige.",

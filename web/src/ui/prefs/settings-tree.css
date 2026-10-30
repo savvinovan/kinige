@@ -1,0 +1,69 @@
+/* Дерево разделов окна «Настройки»: колонка слева, выбранный пункт залит, вложенные пункты с отступом. Только токены. */
+.settings-tree {
+  box-sizing: border-box;
+  width: var(--layout-settings-tree-width);
+  height: 100%;
+  padding: var(--space-3) var(--space-2);
+  border-right: var(--border-width-hairline) solid var(--color-border-divider);
+}
+
+.settings-tree__list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-tree__button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--layout-control-height);
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  text-align: start;
+  cursor: pointer;
+}
+
+.settings-tree__button:hover {
+  background: var(--color-surface-field);
+  color: var(--color-text-primary);
+}
+
+/* Выбранный пункт: заливка светлее и тонкая линия акцента внутри, а не только цвет текста. */
+.settings-tree__button[aria-current="page"] {
+  background: var(--color-highlight-background);
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-accent-default);
+  color: var(--color-text-primary);
+}
+
+.settings-tree__button--nested {
+  padding-inline-start: var(--space-6);
+}
+
+.settings-tree__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-tree__mark {
+  display: inline-flex;
+  flex: none;
+  color: var(--color-status-error);
+}
+
+.settings-tree__mark .icon {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}

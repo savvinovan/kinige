@@ -27,7 +27,10 @@ export const MOCK_AGENT_SOCKET: AgentSocket = {
  * Доступ ИИ-агентов в `MockApi` (слайс 4a): флажок, режим, видимые чаты (`ai_excluded` не принимаются, как в Rust), журнал
  * обращений страницами и записи строки. Журнал и записи строк тест наполняет через `addAgentLog`.
  */
-export class MockApiSlice4a extends MockApiSlice4 {
+export abstract class MockApiSlice4a extends MockApiSlice4 {
+  /** Событие «настройки изменились» (правка окна): его слушают окна, реализация — в `MockApiSlice4b`. */
+  abstract emitSettingsChanged(): void;
+
   agentEnabled = false;
   agentMode: AgentMode = "read";
   /** Id чатов, отмеченных «видно агенту». */
@@ -80,12 +83,14 @@ export class MockApiSlice4a extends MockApiSlice4 {
   setAgentEnabled(enabled: boolean): Promise<void> {
     return this.run("setAgentEnabled", String(enabled), () => {
       this.agentEnabled = enabled;
+      this.emitSettingsChanged();
     });
   }
 
   setAgentMode(mode: AgentMode): Promise<void> {
     return this.run("setAgentMode", mode, () => {
       this.agentMode = mode;
+      this.emitSettingsChanged();
     });
   }
 
@@ -95,6 +100,7 @@ export class MockApiSlice4a extends MockApiSlice4 {
         if (this.agentExcluded.has(id) || !this.chats.some((chat) => chat.id === id)) throw new KinigeApiError("chat_not_found");
       }
       this.agentChats = [...new Set(chatIds)];
+      this.emitSettingsChanged();
     });
   }
 

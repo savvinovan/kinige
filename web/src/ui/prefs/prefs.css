@@ -1,0 +1,208 @@
+/* Окно «Настройки» (слайс 4b): рамка окна, страница раздела, подэкраны, строка «Настроить ›», файл настроек. Только токены.
+   Единственная прокручиваемая область окна — `.prefs__page`; остальное (дерево, списки, журнал, блоки кода) показывается
+   целиком, без своей прокрутки и предельной высоты. Предупреждение при включении доступа — `Modal` поверх окна: страница
+   под ним свой `overflow` не меняет, и её содержимое не сдвигается даже при «Всегда показывать полосы прокрутки». */
+
+.prefs {
+  display: grid;
+  grid-template-columns: var(--layout-settings-tree-width) minmax(0, 1fr);
+  box-sizing: border-box;
+  height: 100%;
+  background: var(--color-surface-paper);
+  color: var(--color-text-primary);
+}
+
+.prefs__page {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.prefs__column {
+  display: grid;
+  gap: var(--space-5);
+  box-sizing: border-box;
+  max-width: var(--layout-settings-page-width);
+  padding: var(--space-5);
+}
+
+.prefs-page {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.prefs-page__title {
+  margin: 0;
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line-height);
+  overflow-wrap: anywhere;
+}
+
+.prefs-block {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.prefs-block + .prefs-block {
+  padding-top: var(--space-5);
+  border-top: var(--border-width-hairline) solid var(--color-border-divider);
+}
+
+/* «Изменено через settings.json · 14:02»: тихая строка рядом с разделом; место под неё не резервируется заранее и ничего не двигает, потому что стоит последней в блоке. */
+.prefs-changed {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+/* Заголовок подэкрана: стрелка назад и «Раздел › Название». */
+.prefs-subscreen {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.prefs-subscreen__back {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--layout-control-height);
+  height: var(--layout-control-height);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.prefs-subscreen__back:hover {
+  background: var(--color-surface-field);
+  color: var(--color-text-primary);
+}
+
+.prefs-subscreen__back .icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.prefs-subscreen__path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.prefs-subscreen__parent {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  overflow-wrap: anywhere;
+}
+
+.prefs-subscreen__arrow {
+  display: inline-flex;
+  color: var(--color-text-tertiary);
+}
+
+.prefs-subscreen__arrow .icon {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}
+
+.prefs-subscreen__title {
+  margin: 0;
+  font-family: var(--type-h2-family);
+  font-size: var(--type-h2-size);
+  font-weight: var(--type-h2-weight);
+  line-height: var(--type-h2-line-height);
+  overflow-wrap: anywhere;
+}
+
+/* Строка «Настроить ›»: название и состояние слева, действие справа; вся строка — кнопка. */
+.configure-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--layout-row-height);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-field);
+  color: var(--color-text-primary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  text-align: start;
+  cursor: pointer;
+}
+
+.configure-row:hover {
+  background: var(--color-surface-field-active);
+}
+
+.configure-row__text {
+  display: grid;
+  min-width: 0;
+}
+
+.configure-row__label {
+  overflow-wrap: anywhere;
+}
+
+.configure-row__value {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  overflow-wrap: anywhere;
+}
+
+.configure-row__action {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-secondary);
+}
+
+.configure-row__action .icon {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}
+
+/* Файл настроек: путь, состояние, список проблем. */
+.prefs-file {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prefs-file__item {
+  min-width: 0;
+}
+
+.prefs-file__heading {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
