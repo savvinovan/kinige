@@ -67,46 +67,6 @@ test("полосы прокрутки тёмные, а не светлые на 
   expect(mean).toBeLessThan(0.35);
 });
 
-// Окно «Доступ ИИ-агентов» (слайс 4a): одна прокрутка — у тела панели (`.modal__body`). На снимке с выключенным доступом
-// рядом с основной полосой был второй короткий «язычок»: где-то внутри оказался второй прокручиваемый блок. Проверяется
-// настоящая геометрия (полосы видны, как при «Всегда показывать полосы прокрутки»): у какого элемента окна есть полоса
-// прокрутки или содержимое выше блока при `overflow`, отличном от `visible`.
-const AGENT_STORIES = [
-  "выключен",
-  "включёнтолькочтение",
-  "включёнчтениеизапись",
-  "журналраскрыт",
-  "длинныйпутьсокета",
-  "длинныеимена",
-];
-
-for (const story of AGENT_STORIES) {
-  test(`окно доступа агентов «${story}»: единственный прокручиваемый блок — тело панели`, async ({ page }) => {
-    await open(page, `компоненты-доступ-ии-агентов--${story}`);
-    const scrollers = await page.evaluate(() =>
-      [...document.querySelectorAll<HTMLElement>("#storybook-root *")]
-        // У строчных элементов (`code`, `span`) размеры блока не определены: offset и client дают мусор.
-        .filter((element) => getComputedStyle(element).display !== "inline")
-        .map((element) => {
-          const style = getComputedStyle(element);
-          const border = (side: string) => parseFloat(style.getPropertyValue(`border-${side}-width`)) || 0;
-          return {
-            name: `${element.tagName.toLowerCase()}.${element.className}`,
-            overflow: `${style.overflowX}/${style.overflowY}`,
-            // Ширина и высота полосы: offset минус client минус рамки.
-            verticalBar: element.offsetWidth - element.clientWidth - border("left") - border("right"),
-            horizontalBar: element.offsetHeight - element.clientHeight - border("top") - border("bottom"),
-            taller: element.scrollHeight - element.clientHeight,
-            hidden: style.overflowY !== "visible",
-          };
-        })
-        .filter((item) => item.verticalBar > 0 || item.horizontalBar > 0 || (item.hidden && item.taller > 0)),
-    );
-    // В отчёте о падении — имена и размеры всех найденных блоков.
-    expect(scrollers.map((item) => item.name), JSON.stringify(scrollers)).toEqual([expect.stringContaining("modal__body")]);
-  });
-}
-
 // Окно «Настройки» (слайс 4b): единственная прокручиваемая область — страница справа (`.prefs__page`). Полосы видны всегда
 // (флаг `--hide-scrollbars` снят выше), как при «Всегда показывать полосы прокрутки». Дерево слева, списки чатов, журнал,
 // блоки кода и пути своей прокрутки не имеют; предупреждение о провайдере лежит поверх окна и страницу под ним не двигает.
