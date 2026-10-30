@@ -58,6 +58,20 @@ fn new_app() -> App<MockRuntime> {
         .expect("не удалось собрать приложение")
 }
 
+/// Поток файла настроек для тестов: опрос редкий, события окнам не нужны.
+pub fn settings_file(
+    app: &tauri::AppHandle<MockRuntime>,
+    store: &Store,
+    dir: &std::path::Path,
+) -> kinige_store::SettingsFile {
+    let handle = app.clone();
+    let mut options = kinige_store::SettingsFileOptions::new(Arc::new(move || {
+        kinige_lib::settings_window::notify_changed(&handle)
+    }));
+    options.poll = std::time::Duration::from_secs(3600);
+    kinige_store::SettingsFile::start(store.clone(), dir.to_path_buf(), options)
+}
+
 pub struct Fixture {
     pub app: App<MockRuntime>,
     pub registrar: Arc<FakeRegistrar>,
@@ -84,6 +98,7 @@ pub fn fixture_with_taken(taken: &[&str]) -> Fixture {
     let hotkeys = Hotkeys::new(Box::new(Shared(registrar.clone())));
     hotkeys.register_saved(&store);
     let app = new_app();
+    app.manage(settings_file(app.handle(), &store, data.path()));
     app.manage(store);
     app.manage(hotkeys);
     app.manage(CaptureShell::default());
@@ -115,6 +130,7 @@ pub fn fixture_with_corruption_hook() -> Fixture {
     let registrar = Arc::new(FakeRegistrar::default());
     let hotkeys = Hotkeys::new(Box::new(Shared(registrar.clone())));
     hotkeys.register_saved(&store);
+    app.manage(settings_file(app.handle(), &store, data.path()));
     app.manage(store);
     app.manage(hotkeys);
     app.manage(CaptureShell::default());
@@ -170,6 +186,7 @@ pub fn args_for(command: &str) -> Value {
         "list_messages" => json!({"chatId": inbox}),
         "send_message" => json!({"chatId": inbox, "body": "проверка"}),
         "set_text_size" => json!({"size": "normal"}),
+        "settings_open_entry" => json!({"id": "нет-такой"}),
         "open_external_url" => json!({"url": "file:///etc/passwd"}),
         "get_draft" => json!({"chatId": inbox}),
         "save_draft" => json!({"chatId": inbox, "body": "черновик"}),

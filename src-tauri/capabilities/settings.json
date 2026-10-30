@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "settings-window",
+  "description": "Окно настроек (слайс 4b, ADR-0010): настройки, сочетания, доступ ИИ-агентов, файл настроек и журнал обращений; без ленты, поиска, записи, импорта и восстановления",
+  "windows": [
+    "settings"
+  ],
+  "permissions": [
+    "allow-get-language",
+    "allow-get-settings",
+    "allow-set-text-size",
+    "allow-choose-mirror-folder",
+    "allow-set-shortcut",
+    "allow-reset-shortcut",
+    "allow-shortcut-recording",
+    "allow-get-agent-access",
+    "allow-set-agent-enabled",
+    "allow-set-agent-mode",
+    "allow-set-agent-chats",
+    "allow-list-agent-log",
+    "allow-list-agent-log-entries",
+    "allow-get-settings-file",
+    "allow-settings-open-entry",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}

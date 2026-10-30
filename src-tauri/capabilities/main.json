@@ -1,8 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Главное окно: свои команды без core:default, плюс подписка на событие «записи изменились»; без JS-разрешений плагинов opener, dialog и global-shortcut",
-  "windows": ["main"],
+  "description": "Главное окно: свои команды без core:default, плюс подписка на события приложения («записи изменились», «открыть чат», «настройки изменились», «открыть запись»); без JS-разрешений плагинов opener, dialog и global-shortcut. Команды окна настроек у него отозваны (слайс 4b)",
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "allow-app-info",
     "allow-get-language",
@@ -10,14 +12,9 @@
     "allow-list-messages",
     "allow-send-message",
     "allow-get-settings",
-    "allow-set-text-size",
-    "allow-choose-mirror-folder",
     "allow-open-external-url",
     "allow-get-draft",
     "allow-save-draft",
-    "allow-set-shortcut",
-    "allow-reset-shortcut",
-    "allow-shortcut-recording",
     "allow-create-chat",
     "allow-rename-chat",
     "allow-set-chat-icon",
@@ -42,12 +39,7 @@
     "allow-import-telegram-stop",
     "allow-import-telegram-close",
     "allow-search-messages",
-    "allow-get-agent-access",
-    "allow-set-agent-enabled",
-    "allow-set-agent-mode",
-    "allow-set-agent-chats",
-    "allow-list-agent-log",
-    "allow-list-agent-log-entries",
+    "allow-open-settings",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

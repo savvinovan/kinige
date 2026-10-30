@@ -9,14 +9,9 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "list_messages",
     "send_message",
     "get_settings",
-    "set_text_size",
-    "choose_mirror_folder",
     "open_external_url",
     "get_draft",
     "save_draft",
-    "set_shortcut",
-    "reset_shortcut",
-    "shortcut_recording",
     "create_chat",
     "rename_chat",
     "set_chat_icon",
@@ -41,12 +36,27 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "import_telegram_stop",
     "import_telegram_close",
     "search_messages",
+    "open_settings",
+];
+
+/// Команды окна настроек (capability `settings`, слайс 4b, ADR-0010): настройки, сочетания, доступ ИИ-агентов, файл
+/// настроек и «открыть запись из журнала». Ленты, поиска, записи, импорта и восстановления у окна нет.
+pub const SETTINGS_COMMANDS: &[&str] = &[
+    "get_language",
+    "get_settings",
+    "set_text_size",
+    "choose_mirror_folder",
+    "set_shortcut",
+    "reset_shortcut",
+    "shortcut_recording",
     "get_agent_access",
     "set_agent_enabled",
     "set_agent_mode",
     "set_agent_chats",
     "list_agent_log",
     "list_agent_log_entries",
+    "get_settings_file",
+    "settings_open_entry",
 ];
 
 /// Команды окна захвата (capability `capture`): только Inbox, без `chat_id` (§12.3).
@@ -60,8 +70,8 @@ pub const CAPTURE_COMMANDS: &[&str] = &[
     "capture_add_recent_emoji",
 ];
 
-/// Все команды приложения. Список совпадает с `AppManifest::commands` в `build.rs`: сначала команды главного окна,
-/// затем окна захвата (это проверяют тесты).
+/// Все команды приложения. Список совпадает с `AppManifest::commands` в `build.rs`: сначала команды главного окна, затем
+/// команды только окна настроек, затем окна захвата (это проверяют тесты).
 pub const COMMANDS: &[&str] = &[
     "app_info",
     "get_language",
@@ -69,14 +79,9 @@ pub const COMMANDS: &[&str] = &[
     "list_messages",
     "send_message",
     "get_settings",
-    "set_text_size",
-    "choose_mirror_folder",
     "open_external_url",
     "get_draft",
     "save_draft",
-    "set_shortcut",
-    "reset_shortcut",
-    "shortcut_recording",
     "create_chat",
     "rename_chat",
     "set_chat_icon",
@@ -101,12 +106,20 @@ pub const COMMANDS: &[&str] = &[
     "import_telegram_stop",
     "import_telegram_close",
     "search_messages",
+    "open_settings",
+    "set_text_size",
+    "choose_mirror_folder",
+    "set_shortcut",
+    "reset_shortcut",
+    "shortcut_recording",
     "get_agent_access",
     "set_agent_enabled",
     "set_agent_mode",
     "set_agent_chats",
     "list_agent_log",
     "list_agent_log_entries",
+    "get_settings_file",
+    "settings_open_entry",
     "capture_state",
     "capture_send",
     "capture_append",

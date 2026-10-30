@@ -107,3 +107,59 @@ fn failed_commands_log_only_categories_never_user_input() {
         );
     }
 }
+
+/// Файл настроек (слайс 4b, ADR-0010): метка в неизвестном ключе, названии чата, недопустимом значении, пути папки и в
+/// битом файле не попадает в журнал процесса ни при применении, ни при ошибке разбора, ни при небезопасных правах.
+#[test]
+fn the_settings_file_logs_only_categories_never_keys_titles_values_or_paths() {
+    use kinige_store::SettingsFile;
+    use std::os::unix::fs::PermissionsExt;
+    use tauri::Manager;
+    install_logger();
+    let fixture = fixture();
+    let file = fixture.app.state::<SettingsFile>();
+    let path = fixture.data.path().join("settings.json");
+    let write = |text: String, mode: u32| {
+        std::fs::write(&path, text).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).unwrap();
+        file.sync_now();
+    };
+    write(
+        json!({
+            format!("{MARK}-unknown-key"): 1,
+            "shortcuts": {format!("{MARK}-nested"): 2, "capture": format!("{MARK}-bad-shortcut")},
+            "text_size": format!("{MARK}-huge"),
+            "mirror": {"folder": format!("/{MARK}/no/such/folder")},
+            "agent_access": {
+                "enabled": true,
+                "mode": format!("{MARK}-mode"),
+                "chats": [{"id": format!("{MARK}-id"), "title": format!("{MARK} название")}, {"title": format!("{MARK} другое")}],
+            },
+        })
+        .to_string(),
+        0o600,
+    );
+    // Небезопасные права, битый файл, не-UTF-8.
+    write(
+        json!({"agent_access": {"enabled": true}, format!("{MARK}-x"): 1}).to_string(),
+        0o666,
+    );
+    write(format!("{{\"{MARK}\": "), 0o600);
+    std::fs::write(&path, [0xFF, 0xFE, b'{']).unwrap();
+    file.sync_now();
+    let lines = CAPTURED.lock().unwrap().clone();
+    assert!(
+        lines.iter().any(|line| line.contains("файл настроек")),
+        "события файла попадают в журнал категориями: {lines:?}"
+    );
+    for line in &lines {
+        assert!(
+            !line.to_uppercase().contains(MARK),
+            "в журнале пользовательский ввод из файла настроек: {line}"
+        );
+        assert!(
+            !line.contains("settings.json") || !line.contains('/'),
+            "путь в журнале: {line}"
+        );
+    }
+}

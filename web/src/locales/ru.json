@@ -223,6 +223,7 @@
     "tooltip": "Kinige",
     "newNote": "Новая заметка",
     "inbox": "Входящие",
+    "settings": "Настройки…",
     "quit": "Выйти из Kinige"
   },
   "toast": {

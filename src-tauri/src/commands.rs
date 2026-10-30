@@ -7,8 +7,8 @@ use kinige_domain::{
     ApiError, AppInfo, ChatList, ErrorCode, FeedCursor, Language, MessagePage, MessageView,
     Settings, ShortcutKind, TextSize,
 };
-use kinige_store::{DEFAULT_PAGE, Now, PageAt, Store, StoreError};
-use tauri::{AppHandle, Runtime, State};
+use kinige_store::{DEFAULT_PAGE, Now, PageAt, SettingsFile, Store, StoreError};
+use tauri::{AppHandle, Manager, Runtime, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -18,6 +18,21 @@ fn api(error: StoreError) -> ApiError {
     // В журнал процесса — только категория: текст внутренней ошибки (SQLite, serde) может содержать куски данных.
     log::error!("ошибка хранилища: {}", error.category());
     error.code().into()
+}
+
+fn code(error: StoreError) -> ErrorCode {
+    api(error).code
+}
+
+/// Правка настроек через поток файла (ADR-0010): он применяет внешнюю правку, если файл изменился, выполняет правку и
+/// записывает файл. Остановка потока — `internal`.
+pub(crate) fn edit<T: Send + 'static>(
+    file: &SettingsFile,
+    change: impl FnOnce(&Store) -> Result<T, ErrorCode> + Send + 'static,
+) -> ApiResult<T> {
+    file.edit(change)
+        .unwrap_or(Err(ErrorCode::Internal))
+        .map_err(ApiError::from)
 }
 
 /// Сведения о приложении для `KinigeApi.appInfo()`.
@@ -111,26 +126,35 @@ pub fn save_draft(store: State<'_, Store>, chat_id: String, body: String) -> Api
 /// Смена сочетания клавиш: проверка до сохранения, регистрация в системе, сохранение. Отказ — код ошибки, прежнее
 /// сочетание продолжает работать. Ответ — настройки целиком.
 #[tauri::command(async)]
-pub fn set_shortcut(
+pub fn set_shortcut<R: Runtime>(
+    app: AppHandle<R>,
     store: State<'_, Store>,
     hotkeys: State<'_, Hotkeys>,
+    file: State<'_, SettingsFile>,
     kind: ShortcutKind,
     accelerator: String,
 ) -> ApiResult<Settings> {
-    hotkeys
-        .change(&store, kind, &accelerator)
-        .map_err(ApiError::from)?;
+    // Правка идёт через поток файла: он применит внешнюю правку, если она есть, и запишет файл (ADR-0010).
+    edit(&file, move |store| {
+        let hotkeys = app.try_state::<Hotkeys>().ok_or(ErrorCode::Internal)?;
+        hotkeys.change(store, kind, &accelerator)
+    })?;
     settings_with_shortcuts(&store, &hotkeys)
 }
 
 /// «Сбросить»: сочетание по умолчанию с теми же проверками.
 #[tauri::command(async)]
-pub fn reset_shortcut(
+pub fn reset_shortcut<R: Runtime>(
+    app: AppHandle<R>,
     store: State<'_, Store>,
     hotkeys: State<'_, Hotkeys>,
+    file: State<'_, SettingsFile>,
     kind: ShortcutKind,
 ) -> ApiResult<Settings> {
-    hotkeys.reset(&store, kind).map_err(ApiError::from)?;
+    edit(&file, move |store| {
+        let hotkeys = app.try_state::<Hotkeys>().ok_or(ErrorCode::Internal)?;
+        hotkeys.reset(store, kind)
+    })?;
     settings_with_shortcuts(&store, &hotkeys)
 }
 
@@ -142,8 +166,8 @@ pub fn shortcut_recording(hotkeys: State<'_, Hotkeys>, active: bool) {
 }
 
 #[tauri::command(async)]
-pub fn set_text_size(store: State<'_, Store>, size: TextSize) -> ApiResult<()> {
-    store.set_text_size(size).map_err(api)
+pub fn set_text_size(file: State<'_, SettingsFile>, size: TextSize) -> ApiResult<()> {
+    edit(&file, move |store| store.set_text_size(size).map_err(code))
 }
 
 /// Системный диалог выбора папки Markdown-копии. Диалог вызывается здесь, из Rust: у окна нет JS-разрешений на диалоги,
@@ -153,6 +177,7 @@ pub fn choose_mirror_folder<R: Runtime>(
     app: AppHandle<R>,
     store: State<'_, Store>,
     hotkeys: State<'_, Hotkeys>,
+    file: State<'_, SettingsFile>,
 ) -> ApiResult<Settings> {
     let mut dialog = app.dialog().file();
     if let Some(current) = store.get_settings().map_err(api)?.mirror.folder {
@@ -169,7 +194,9 @@ pub fn choose_mirror_folder<R: Runtime>(
         if !path.is_dir() {
             return Err(ErrorCode::FolderPickFailed.into());
         }
-        store.set_mirror_dir(&path).map_err(api)?;
+        edit(&file, move |store| {
+            store.set_mirror_dir(&path).map_err(code)
+        })?;
     }
     settings_with_shortcuts(&store, &hotkeys)
 }

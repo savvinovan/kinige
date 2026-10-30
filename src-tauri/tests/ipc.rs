@@ -7,7 +7,8 @@ mod common;
 use common::*;
 use kinige_lib::capture::{ENTRIES_CHANGED, OPEN_CHAT};
 use kinige_lib::recovery::DATABASE_CORRUPT;
-use kinige_lib::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS};
+use kinige_lib::settings_window::{OPEN_MESSAGE, SETTINGS_CHANGED};
+use kinige_lib::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS};
 use serde_json::json;
 
 #[test]
@@ -143,7 +144,7 @@ fn capture_window_cannot_call_anything_but_its_own_commands() {
     let capture = window(&fixture, "capture");
     // Чужие команды: лента, чаты, отправка по chat_id, настройки, диалог, ссылки, черновик главного окна, сочетания,
     // действия слайса 3.
-    for command in MAIN_COMMANDS {
+    for command in MAIN_COMMANDS.iter().chain(SETTINGS_COMMANDS) {
         let error = call(&capture, command, args_for(command))
             .expect_err(&format!("{command} недоступна окну захвата"));
         assert!(
@@ -161,7 +162,10 @@ fn capture_window_cannot_call_anything_but_its_own_commands() {
         "get_draft",
         "save_draft",
     ] {
-        assert!(MAIN_COMMANDS.contains(&command), "{command}");
+        assert!(
+            MAIN_COMMANDS.contains(&command) || SETTINGS_COMMANDS.contains(&command),
+            "{command}"
+        );
     }
     // События и плагины: ни подписки, ни отправки событий, ни окон, ни ссылок, ни диалогов, ни сочетаний.
     for cmd in [
@@ -274,7 +278,13 @@ fn main_window_may_subscribe_to_its_events() {
     let fixture = fixture();
     let window = window(&fixture, "main");
     // Подписка на события приложения: записи изменились, открыть чат, база повреждена.
-    for event in [ENTRIES_CHANGED, OPEN_CHAT, DATABASE_CORRUPT] {
+    for event in [
+        ENTRIES_CHANGED,
+        OPEN_CHAT,
+        DATABASE_CORRUPT,
+        SETTINGS_CHANGED,
+        OPEN_MESSAGE,
+    ] {
         for cmd in ["plugin:event|listen", "plugin:event|unlisten"] {
             let result = call(
                 &window,

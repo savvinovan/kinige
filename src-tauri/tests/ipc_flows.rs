@@ -54,7 +54,8 @@ fn send_and_settings_work_end_to_end_over_ipc() {
     .unwrap_err();
     assert_eq!(empty, json!({"code": "empty_message"}));
 
-    call(&window, "set_text_size", json!({"size": "large"})).unwrap();
+    let settings_window = self::window(&fixture, "settings");
+    call(&settings_window, "set_text_size", json!({"size": "large"})).unwrap();
     let settings = call(&window, "get_settings", json!({})).unwrap();
     assert_eq!(settings["textSize"], "large");
     assert_eq!(settings["mirror"]["isDefault"], true);
@@ -234,6 +235,7 @@ fn capture_window_shares_the_recent_emoji_list_with_the_main_window() {
 fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
     let fixture = fixture_with_taken(&["Ctrl+Alt+KeyN", "Alt+Cmd+KeyN"]);
     let main = window(&fixture, "main");
+    let prefs = window(&fixture, "settings");
 
     let settings = call(&main, "get_settings", json!({})).unwrap();
     assert_eq!(
@@ -248,7 +250,7 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
     // Занято — отказ до сохранения, в настройках прежнее.
     assert_eq!(
         call(
-            &main,
+            &prefs,
             "set_shortcut",
             json!({"kind": "capture", "accelerator": "Cmd+Alt+KeyN"})
         )
@@ -264,7 +266,7 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
     ] {
         assert_eq!(
             call(
-                &main,
+                &prefs,
                 "set_shortcut",
                 json!({"kind": "capture", "accelerator": accelerator})
             )
@@ -278,7 +280,7 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
 
     // Свободное сочетание принято и сохранено в каноничном виде; ответ — настройки целиком.
     let changed = call(
-        &main,
+        &prefs,
         "set_shortcut",
         json!({"kind": "capture", "accelerator": "Ctrl+Alt+KeyK"}),
     )
@@ -289,17 +291,17 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
     );
     // Сброс: умолчание занято другой программой — отказ, действующее остаётся.
     assert_eq!(
-        call(&main, "reset_shortcut", json!({"kind": "capture"})).unwrap_err(),
+        call(&prefs, "reset_shortcut", json!({"kind": "capture"})).unwrap_err(),
         json!({"code": "shortcut_taken"})
     );
     fixture.registrar.taken.lock().unwrap().clear();
-    let reset = call(&main, "reset_shortcut", json!({"kind": "capture"})).unwrap();
+    let reset = call(&prefs, "reset_shortcut", json!({"kind": "capture"})).unwrap();
     assert_eq!(
         reset["shortcuts"][0],
         json!({"kind": "capture", "accelerator": "Ctrl+Alt+KeyN", "isDefault": true, "state": "assigned"})
     );
 
     // Режим записи включается и выключается без ошибок.
-    call(&main, "shortcut_recording", json!({"active": true})).unwrap();
-    call(&main, "shortcut_recording", json!({"active": false})).unwrap();
+    call(&prefs, "shortcut_recording", json!({"active": true})).unwrap();
+    call(&prefs, "shortcut_recording", json!({"active": false})).unwrap();
 }

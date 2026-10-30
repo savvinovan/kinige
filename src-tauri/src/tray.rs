@@ -17,6 +17,7 @@ const RU: &str = include_str!("../../web/src/locales/ru.json");
 
 const ID_NEW_NOTE: &str = "tray-new-note";
 const ID_INBOX: &str = "tray-inbox";
+const ID_SETTINGS: &str = "tray-settings";
 const ID_QUIT: &str = "tray-quit";
 /// Пункт чата: `tray-chat:<id чата>`.
 const ID_CHAT_PREFIX: &str = "tray-chat:";
@@ -31,6 +32,7 @@ const FLASH_OFF: Duration = Duration::from_millis(110);
 pub struct Labels {
     pub new_note: String,
     pub inbox: String,
+    pub settings: String,
     pub quit: String,
     pub tooltip: String,
 }
@@ -51,9 +53,23 @@ pub fn labels(language: Language) -> Labels {
     Labels {
         new_note: text("newNote"),
         inbox: text("inbox"),
+        settings: text("settings"),
         quit: text("quit"),
         tooltip: text("tooltip"),
     }
+}
+
+/// Заголовок окна «Настройки» на языке интерфейса (`settings.title` в файлах переводов).
+pub fn window_title(language: Language) -> String {
+    let source = match language {
+        Language::En => EN,
+        Language::Ru => RU,
+    };
+    let json: Value = serde_json::from_str(source).expect("файл переводов — корректный JSON");
+    json["settings"]["title"]
+        .as_str()
+        .expect("в переводах нет settings.title")
+        .to_string()
 }
 
 /// Значки: обычный (template, macOS перекрашивает под светлую и тёмную строку меню) и «вспышка».
@@ -81,6 +97,7 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
     match event.id().as_ref() {
         ID_NEW_NOTE => crate::capture::show_capture(app),
         ID_INBOX => crate::capture::open_chat(app, INBOX_ID),
+        ID_SETTINGS => crate::settings_window::open(app),
         ID_QUIT => app.exit(0),
         other => {
             if let Some(chat_id) = other.strip_prefix(ID_CHAT_PREFIX) {
@@ -140,6 +157,14 @@ fn build_menu<R: Runtime>(
         )?)?;
     }
     menu.append(&PredefinedMenuItem::separator(app)?)?;
+    // При запуске в фоне окна нет и ⌘, недоступно: «Настройки…» открывают отсюда. Пока журнал не открыт — недоступно.
+    menu.append(&MenuItem::with_id(
+        app,
+        ID_SETTINGS,
+        &labels.settings,
+        app.try_state::<Store>().is_some(),
+        None::<&str>,
+    )?)?;
     menu.append(&MenuItem::with_id(
         app,
         ID_QUIT,
@@ -229,10 +254,12 @@ mod tests {
         for text in [
             &en.new_note,
             &en.inbox,
+            &en.settings,
             &en.quit,
             &en.tooltip,
             &ru.new_note,
             &ru.inbox,
+            &ru.settings,
             &ru.quit,
             &ru.tooltip,
         ] {
