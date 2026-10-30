@@ -161,6 +161,23 @@ fn settings_capability_lists_exactly_its_commands_and_the_event_subscription() {
 }
 
 #[test]
+fn settings_window_sizes_match_the_design_tokens() {
+    use kinige_lib::settings_window::{HEIGHT, MIN_HEIGHT, MIN_WIDTH, WIDTH};
+    let tokens = read("../design/tokens/layout.json");
+    let px = |name: &str| -> f64 {
+        tokens["layout"]["settings"][name]["$value"]
+            .as_str()
+            .and_then(|value| value.strip_suffix("px"))
+            .and_then(|value| value.parse().ok())
+            .unwrap_or_else(|| panic!("нет токена layout.settings.{name} в px"))
+    };
+    assert_eq!(px("window-width"), WIDTH);
+    assert_eq!(px("window-height"), HEIGHT);
+    assert_eq!(px("window-min-width"), MIN_WIDTH);
+    assert_eq!(px("window-min-height"), MIN_HEIGHT);
+}
+
+#[test]
 fn the_settings_window_is_not_in_the_static_window_list() {
     // Окно создаётся при первом открытии (холодный старт не меняется), capability привязана к его имени.
     let conf = read("tauri.conf.json");

@@ -58,7 +58,7 @@
   - новые `get_settings_file` (путь, состояние, ошибки) и `settings_open_entry`;
   - `core:event:allow-listen` и `allow-unlisten`.
 
-  У `main` перенесённые команды отзываются, остаются `get_settings` и событие `settings-changed`. У окна захвата ровно семь команд.
+  У `main` перенесённые команды отзываются, остаются `get_settings` и событие `settings-changed`; добавляется `open_settings` (профиль → «Настройки») и подписка на событие `open-message`. У окна захвата ровно семь команд.
 - **Документы:**
   - ADR-0010. Что в нём:
     - где лежит файл, формат и ключи;

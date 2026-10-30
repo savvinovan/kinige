@@ -15,11 +15,12 @@ pub const SETTINGS_CHANGED: &str = "settings-changed";
 /// Событие главному окну: открыть запись в ленте (из журнала обращений в окне настроек).
 pub const OPEN_MESSAGE: &str = "open-message";
 
-/// Размеры окна: по умолчанию и наименьший (логические px, ТЗ «Как выглядит готово»).
-const WIDTH: f64 = 860.0;
-const HEIGHT: f64 = 600.0;
-const MIN_WIDTH: f64 = 640.0;
-const MIN_HEIGHT: f64 = 440.0;
+/// Размеры окна: по умолчанию и наименьший (логические px). Совпадают с токенами `layout.settings.window-*` (проверяет
+/// `tests/config.rs`): страница рассчитана на ровно такие окна.
+pub const WIDTH: f64 = 860.0;
+pub const HEIGHT: f64 = 600.0;
+pub const MIN_WIDTH: f64 = 640.0;
+pub const MIN_HEIGHT: f64 = 440.0;
 
 /// Не дать двум быстрым нажатиям создать два окна.
 static OPEN_LOCK: Mutex<()> = Mutex::new(());

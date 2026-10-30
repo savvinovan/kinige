@@ -248,6 +248,27 @@ fn opening_an_entry_checks_it_and_tells_only_the_main_window() {
 }
 
 #[test]
+fn closing_the_settings_window_ends_the_shortcut_recording() {
+    // Закрытие окна во время записи сочетания снимает режим записи: иначе глобальные сочетания остались бы выключенными.
+    let fixture = fixture();
+    let settings = window(&fixture, "settings");
+    call(&settings, "shortcut_recording", json!({"active": true})).unwrap();
+    assert!(
+        fixture
+            .app
+            .state::<kinige_lib::hotkeys::Hotkeys>()
+            .is_recording()
+    );
+    kinige_lib::settings_window::on_destroyed(fixture.app.handle());
+    assert!(
+        !fixture
+            .app
+            .state::<kinige_lib::hotkeys::Hotkeys>()
+            .is_recording()
+    );
+}
+
+#[test]
 fn opening_the_settings_window_twice_gives_one_window() {
     let fixture = fixture();
     let main = window(&fixture, "main");
@@ -260,4 +281,14 @@ fn opening_the_settings_window_twice_gives_one_window() {
         .filter(|label| label.as_str() == "settings")
         .count();
     assert_eq!(count, 1);
+}
+
+#[test]
+fn no_settings_window_is_created_while_the_journal_is_not_open() {
+    // Восстановление и «база новее»: журнал не открыт, пункт «Настройки…» недоступен, а команда ничего не создаёт.
+    let dir = tempfile::tempdir().unwrap();
+    let fixture = fixture_without_store(&dir.path().join("kinige.db"));
+    let main = window(&fixture, "main");
+    let _ = call(&main, "open_settings", json!({}));
+    assert!(fixture.app.get_webview_window("settings").is_none());
 }

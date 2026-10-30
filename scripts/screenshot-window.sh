@@ -5,6 +5,7 @@
 # Режимы (какое окно процесса снимать):
 #   main     — самое большое окно обычного слоя 0 (главное окно; по умолчанию);
 #   capture  — окно быстрого захвата: без заголовка, поверх остальных (слой выше 0), шириной до 700 px;
+#   settings — окно «Настройки» (слайс 4b): обычный слой 0, заголовок «Settings» или «Настройки»;
 #   menu     — выпавшее меню значка в menu bar (слой выше 0, окно без заголовка уже 400 px и ниже 400 px);
 #   list     — только напечатать окна процесса (id, слой, размеры, имя) и выйти.
 # Если запущено несколько экземпляров (например, рабочий и проверочный), `KINIGE_PID=<pid>` оставляет окна одного процесса.
@@ -13,7 +14,7 @@
 # Терминалу нужно разрешение «Запись экрана» (Системные настройки → Конфиденциальность).
 set -euo pipefail
 
-OUT="${1:?использование: $0 <out.png> [имя процесса] [main|capture|menu|list]}"
+OUT="${1:?использование: $0 <out.png> [имя процесса] [main|capture|settings|menu|list]}"
 OWNER="${2:-kinige}"
 MODE="${3:-main}"
 
@@ -38,6 +39,8 @@ function run(argv) {
   let found;
   if (mode === "capture") {
     found = mine.filter((w) => w.kCGWindowLayer > 0 && w.kCGWindowBounds.Width <= 700 && w.kCGWindowBounds.Height >= 90);
+  } else if (mode === "settings") {
+    found = mine.filter((w) => w.kCGWindowLayer === 0 && /^(Settings|Настройки)$/.test(String(w.kCGWindowName || "")));
   } else if (mode === "menu") {
     found = mine.filter((w) => w.kCGWindowLayer > 0 && w.kCGWindowBounds.Width < 400 && w.kCGWindowBounds.Height < 400 && w.kCGWindowBounds.Height > 40);
   } else {
