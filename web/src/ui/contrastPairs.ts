@@ -54,6 +54,11 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { foreground: "surface.field", background: "surface.background", kind: "decorative" },
   { foreground: "surface.selected", background: "surface.background", kind: "decorative" },
   { foreground: "highlight.background", background: "surface.message", kind: "decorative" },
+  // Выбранное без рамки, одной заливкой: вариант переключателя на поле (surface.field), выбранная копия и найденная строка
+  // поиска на бумаге и на заливке наведения (surface.selected).
+  { foreground: "highlight.background", background: "surface.field", kind: "decorative" },
+  { foreground: "highlight.background", background: "surface.paper", kind: "decorative" },
+  { foreground: "highlight.background", background: "surface.selected", kind: "decorative" },
   // Найденное слово (слайс 4): заливка заметна и на плашке, и на подсвеченной плашке; на ней стоит только основной и
   // вторичный текст (третичный и акцент на неё не попадают: слова в ссылках и тегах не подсвечиваются).
   { foreground: "highlight.mark", background: "surface.message", kind: "decorative" },

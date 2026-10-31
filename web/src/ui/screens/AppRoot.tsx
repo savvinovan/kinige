@@ -8,6 +8,7 @@ import type { StartupState } from "../../api/generated/StartupState";
 import { useLanguage } from "../../i18n/I18n";
 import { RecoveryScreen } from "../recovery/RecoveryScreen";
 import { TooNewScreen } from "../recovery/TooNewScreen";
+import { useInputModality } from "../useInputModality";
 import { MainWindow } from "./MainWindow";
 
 interface AppRootProps {
@@ -27,6 +28,7 @@ type Recovery = { mode: "startup" | "running"; backups: readonly BackupInfo[] };
 export function AppRoot({ api, initialSettings, startup }: AppRootProps) {
   const { t } = useTranslation();
   const language = useLanguage();
+  useInputModality();
   const [recovery, setRecovery] = useState<Recovery | null>(
     startup.needsRecovery
       ? { mode: "startup", backups: startup.backups }

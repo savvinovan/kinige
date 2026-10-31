@@ -68,18 +68,9 @@ describe("прокрутка в окне «Настройки»", () => {
     expect(css.get(".prefs")).toMatch(/height\s*:\s*100%/);
   });
 
-  it("кольцо фокуса в окне настроек гасится, пока последним был не ввод с клавиатуры", () => {
-    const css = rules(read("prefs.css"));
-    expect(css.get('html[data-window="settings"]:not([data-input="keyboard"]) :focus-visible')).toMatch(/outline\s*:\s*none/);
-  });
-
-  it("кольцо флажка (рисуется на .checkbox__box, а не на поле) гасится так же и остаётся для клавиатуры", () => {
-    const quiet = 'html[data-window="settings"]:not([data-input="keyboard"]) .checkbox__input:focus-visible + .checkbox__box';
-    expect(rules(read("prefs.css")).get(quiet)).toMatch(/outline\s*:\s*none/);
-    // Само кольцо в дизайн-системе на месте: без клавиатурного ввода его гасит правило выше, с клавиатурой оно видно.
-    expect(rules(read("../controls/controls.css")).get(".checkbox__input:focus-visible + .checkbox__box")).toMatch(
-      /outline\s*:[^;]*var\(--color-focus-ring\)/,
-    );
+  it("кольцо фокуса гасит общее правило дизайн-системы, в prefs.css своей копии нет", () => {
+    expect(read("prefs.css")).not.toMatch(/data-input/);
+    expect(rules(read("../base.css")).get('html[data-input="pointer"] :focus-visible')).toMatch(/outline\s*:\s*none/);
   });
 
   it("предупреждение не двигает страницу: подложка и панель закреплены (position: fixed), страница не получает overflow", () => {

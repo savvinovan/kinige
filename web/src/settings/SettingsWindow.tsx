@@ -1,6 +1,6 @@
 import type { KinigeApi } from "../api/KinigeApi";
-import { useInputModality } from "./useInputModality";
 import { SettingsWindowView } from "../ui/prefs/SettingsWindowView";
+import { useInputModality } from "../ui/useInputModality";
 import { type PreferencesInitial, usePreferences } from "./usePreferences";
 
 interface SettingsWindowProps {
