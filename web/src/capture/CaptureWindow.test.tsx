@@ -34,6 +34,19 @@ afterEach(() => {
 });
 
 describe("CaptureWindow на MockApi: сценарий слайса 2", () => {
+  it("режим ввода (`data-input`) ведёт и окно захвата: после мыши «pointer», после клавиши «keyboard», при закрытии атрибут снимается", async () => {
+    const api = new MockApi({ now: () => clock.now });
+    const initial = await api.captureState();
+    const { unmount } = render(<CaptureWindow api={api} initial={initial} />);
+    expect(document.documentElement.dataset.input).toBe("pointer");
+    fireEvent.keyDown(field(), { key: "Tab" });
+    expect(document.documentElement.dataset.input).toBe("keyboard");
+    fireEvent.mouseDown(field());
+    expect(document.documentElement.dataset.input).toBe("pointer");
+    unmount();
+    expect(document.documentElement.dataset.input).toBeUndefined();
+  });
+
   it("показывает контекст за сегодня и подсказку «⌘Enter — дописать» у последней записи", async () => {
     await setup({ messages: [entry("a", 8, "первая"), entry("b", 3, "вторая")] });
     expect(screen.getByText("первая")).toBeInTheDocument();

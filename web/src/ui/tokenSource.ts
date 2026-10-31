@@ -36,6 +36,7 @@ export const PALETTE_ROLES = [
   "accent.default",
   "border.divider",
   "highlight.background",
+  "highlight.row",
   "highlight.mark",
   "focus.ring",
   "status.error",

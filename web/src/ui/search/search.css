@@ -67,7 +67,7 @@
   justify-content: center;
 }
 
-/* Строка результата: заливка плашки сообщения; выбранная стрелками светлее и с тонкой линией акцента внутри. */
+/* Строка результата: заливка плашки сообщения; выбранная стрелками — заметно светлее (`highlight.row`, 1,5:1 к плашке), без рамки. */
 .search-hit,
 .search-chat {
   box-sizing: border-box;
@@ -89,8 +89,15 @@
   gap: var(--space-2);
 }
 
+/* Фокус остаётся в поле поиска, поэтому заливка — единственный знак, что откроет Enter. Третичный текст на этой заливке ниже 4,5:1,
+   поэтому подпись, день и счётчик в выбранной строке вторичные. */
 .search-row--active {
-  background: var(--color-highlight-background);
+  background: var(--color-highlight-row);
+}
+
+.search-row--active .search-hit__head,
+.search-row--active .search-row__count {
+  color: var(--color-text-secondary);
 }
 
 .search-hit__head {
