@@ -161,7 +161,11 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
                   aria-expanded={children ? open : undefined}
                   aria-label={problem ? `${t(item.label)}, ${t("prefs.errorMark")}` : undefined}
                   tabIndex={item.route === tabStop ? 0 : -1}
-                  onClick={() => onNavigate(item.route)}
+                  onClick={() => {
+                    // Название и открывает раздел, и разворачивает группу — в том числе когда страница уже открыта (маршрут не меняется).
+                    if (children) toggle(item.route, true);
+                    onNavigate(item.route);
+                  }}
                 >
                   <span className="settings-tree__label">{t(item.label)}</span>
                   {problem ? (

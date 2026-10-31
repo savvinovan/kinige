@@ -48,6 +48,23 @@ describe("Дерево настроек: сворачивание", () => {
     expect(access()).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("щелчок и Enter по названию свёрнутой группы, чья страница уже открыта, разворачивают группу", () => {
+    render(<Host start="access" />);
+    fireEvent.click(chevron());
+    expect(names()).not.toContain("Журнал обращений");
+    fireEvent.click(access());
+    expect(names()).toContain("Журнал обращений");
+    expect(access()).toHaveAttribute("aria-expanded", "true");
+    // Enter на кнопке в браузере — то же нажатие (см. тест ниже).
+    fireEvent.click(chevron());
+    expect(access()).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(access());
+    expect(access()).toHaveAttribute("aria-expanded", "true");
+    // Название уже развёрнутой группы её не сворачивает.
+    fireEvent.click(access());
+    expect(access()).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("страница внутри группы при открытии: группа развёрнута сама, выбранный подпункт отмечен", () => {
     render(<Host start="access/log" />);
     expect(names()).toContain("Журнал обращений");

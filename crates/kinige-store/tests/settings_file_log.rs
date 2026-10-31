@@ -8,6 +8,7 @@ use common::{raw, wait_until};
 use kinige_domain::TextSize;
 use log::{LevelFilter, Log, Metadata, Record};
 use std::sync::Mutex;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 static CAPTURED: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -99,6 +100,28 @@ fn an_unsafe_file_and_a_fifo_do_not_flood_the_log_either() {
         .unwrap();
     std::thread::sleep(Duration::from_millis(400));
     assert!(file_lines().len() - before <= 1, "{:?}", file_lines());
+}
+
+#[test]
+fn a_dropped_handle_stops_the_thread_nothing_is_applied_and_nothing_is_logged() {
+    let _guard = install();
+    let rig = rig_with(|options| options.poll = Duration::from_millis(10));
+    let applied = rig.changes.load(Ordering::SeqCst);
+    let Rig {
+        file,
+        dir,
+        store,
+        changes,
+    } = rig;
+    // `Drop` ждёт остановки потока: после него опросов нет, дальше всё детерминировано.
+    drop(file);
+    write_file(dir.path(), br#"{"text_size": "large"}"#, 0o600);
+    std::thread::sleep(Duration::from_millis(150));
+    write_file(dir.path(), br#"{"text_size": "#, 0o600);
+    std::thread::sleep(Duration::from_millis(150));
+    assert_eq!(store.get_settings().unwrap().text_size, TextSize::Normal);
+    assert_eq!(changes.load(Ordering::SeqCst), applied);
+    assert!(file_lines().is_empty(), "{:?}", file_lines());
 }
 
 fn count(needle: &str) -> usize {

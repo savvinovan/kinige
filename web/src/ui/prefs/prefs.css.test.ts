@@ -73,6 +73,15 @@ describe("прокрутка в окне «Настройки»", () => {
     expect(css.get('html[data-window="settings"]:not([data-input="keyboard"]) :focus-visible')).toMatch(/outline\s*:\s*none/);
   });
 
+  it("кольцо флажка (рисуется на .checkbox__box, а не на поле) гасится так же и остаётся для клавиатуры", () => {
+    const quiet = 'html[data-window="settings"]:not([data-input="keyboard"]) .checkbox__input:focus-visible + .checkbox__box';
+    expect(rules(read("prefs.css")).get(quiet)).toMatch(/outline\s*:\s*none/);
+    // Само кольцо в дизайн-системе на месте: без клавиатурного ввода его гасит правило выше, с клавиатурой оно видно.
+    expect(rules(read("../controls/controls.css")).get(".checkbox__input:focus-visible + .checkbox__box")).toMatch(
+      /outline\s*:[^;]*var\(--color-focus-ring\)/,
+    );
+  });
+
   it("предупреждение не двигает страницу: подложка и панель закреплены (position: fixed), страница не получает overflow", () => {
     expect(rules(read("../settings/modal.css")).get(".modal")).toMatch(/position\s*:\s*fixed/);
     expect(rules(read("prefs.css")).get(".prefs__page")).not.toMatch(/overflow-y\s*:\s*(hidden|scroll)/);
