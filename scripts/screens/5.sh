@@ -87,9 +87,9 @@ restart_app() {
 
 TODAY="$(python3 -c 'import datetime as d; print((d.datetime.now() - d.timedelta(hours=4)).strftime("%Y-%m-%d"))')"
 OLD_ID="$(sqlw "select id from message where body_md like 'Так будет лучше%' and deleted_at is null")"
-OLD_DATE="$(sqlw "select journal_date from message where id = '$OLD_ID'")"
-[ -n "$OLD_ID" ] || fail "в базе нет записи трёхлетней давности"
-echo "сегодня по журналу: $TODAY; старая запись: $OLD_DATE"
+OLD_DATE="$(sqlw "select journal_date from message where id = '${OLD_ID}'")"
+[ -n "${OLD_ID}" ] || fail "в базе нет записи трёхлетней давности"
+echo "сегодня по журналу: ${TODAY}; старая запись: ${OLD_DATE}"
 
 # ---- 1. Inbox с карточкой ----
 set_language ru
@@ -97,34 +97,34 @@ launch_window
 wait_for_window
 sleep 3
 detect_language
-OLD_LABEL="$(long_date "$OLD_DATE")"
-has "$L_HIDE" || fail "в окне нет карточки «В этот день» (кнопки «$L_HIDE»)"
+OLD_LABEL="$(long_date "${OLD_DATE}")"
+has "${L_HIDE}" || fail "в окне нет карточки «В этот день» (кнопки «${L_HIDE}»)"
 shoot 01-inbox-card
 
 # ---- 2. «Ответить» у записи трёхлетней давности: строка над полем ----
-press "$L_REPLY $OLD_LABEL"
-has "$L_STRIP" || fail "нет строки «Ответ на запись» над полем"
+press "${L_REPLY} ${OLD_LABEL}"
+has "${L_STRIP}" || fail "нет строки «Ответ на запись» над полем"
 sleep 2
-[ "$(sqlw "select reply_to_id from draft where key = 'chat:$INBOX'")" = "$OLD_ID" ] || fail "черновик с ответом не сохранён в базе"
+[ "$(sqlw "select reply_to_id from draft where key = 'chat:$INBOX'")" = "${OLD_ID}" ] || fail "черновик с ответом не сохранён в базе"
 shoot 02-reply-line
 
 # ---- 3. Текст ответа кладёт в черновик сценарий; kill -9 и запуск: текст и строка на месте ----
 sqlw "update draft set body = 'До сих пор так думаю' where key = 'chat:$INBOX'"
 restart_app
 detect_language
-has "$L_STRIP" || fail "после kill -9 нет строки «Ответ на запись»"
+has "${L_STRIP}" || fail "после kill -9 нет строки «Ответ на запись»"
 shoot 03-draft-after-restart
 
 # ---- 4. «Отправить»: ответ в ленте с цитатой ----
-press "$L_SEND"
+press "${L_SEND}"
 sleep 2
-has "$L_QUOTE $OLD_LABEL" || fail "у ответа нет цитаты"
-[ "$(sqlw "select reply_to_id from message where body_md = 'До сих пор так думаю'")" = "$OLD_ID" ] || fail "в базе у ответа нет reply_to_id"
+has "${L_QUOTE} ${OLD_LABEL}" || fail "у ответа нет цитаты"
+[ "$(sqlw "select reply_to_id from message where body_md = 'До сих пор так думаю'")" = "${OLD_ID}" ] || fail "в базе у ответа нет reply_to_id"
 [ -z "$(sqlw "select 1 from draft where key = 'chat:$INBOX'")" ] || fail "черновик не очищен отправкой"
 shoot 04-reply-sent
 # Markdown-копия: под заголовком времени ответа строка со ссылкой на файл дня старой записи.
 sleep 3
-MIRROR_FILE="$K/mirror/Inbox/${TODAY%%-*}/$TODAY.md"
+MIRROR_FILE="$K/mirror/Inbox/${TODAY%%-*}/${TODAY}.md"
 if [ -f "$MIRROR_FILE" ]; then
   cp "$MIRROR_FILE" "$OUT/mirror-reply.md"
   grep -q '↩ \[' "$OUT/mirror-reply.md" || fail "в файле дня нет строки ↩"
@@ -133,64 +133,64 @@ else
 fi
 
 # ---- 5. Щелчок по цитате: старая запись в контексте ----
-press "$L_QUOTE $OLD_LABEL"
+press "${L_QUOTE} ${OLD_LABEL}"
 sleep 2
 shoot 05-old-entry-from-quote
 
 # ---- 6. Старая запись ушла в корзину (правка базы снаружи): цитата «Запись в корзине» ----
-sqlw "update message set deleted_at = $(python3 -c 'import time; print(int(time.time()*1000))') where id = '$OLD_ID'"
-press "$L_BOOKS"
-press "$L_INBOX"
+sqlw "update message set deleted_at = $(python3 -c 'import time; print(int(time.time()*1000))') where id = '${OLD_ID}'"
+press "${L_BOOKS}"
+press "${L_INBOX}"
 sleep 2
-has "$L_TRASH" || fail "цитата не говорит «$L_TRASH»"
+has "${L_TRASH}" || fail "цитата не говорит «${L_TRASH}»"
 shoot 06-quote-in-trash
-sqlw "update message set deleted_at = NULL where id = '$OLD_ID'"
+sqlw "update message set deleted_at = NULL where id = '${OLD_ID}'"
 
 # ---- 7. Крестик карточки ----
-press "$L_HIDE"
+press "${L_HIDE}"
 sleep 2
-has "$L_HIDE" && fail "карточка осталась после крестика"
-[ "$(sqlw "select value from app_setting where key = 'on_this_day_dismissed'")" = "$TODAY" ] || fail "скрытие не записано на сегодняшний день журнала"
+has "${L_HIDE}" && fail "карточка осталась после крестика"
+[ "$(sqlw "select value from app_setting where key = 'on_this_day_dismissed'")" = "${TODAY}" ] || fail "скрытие не записано на сегодняшний день журнала"
 shoot 07-card-dismissed
 
 # ---- 8. kill -9: карточки нет, ответ с цитатой на месте ----
 restart_app
 detect_language
-has "$L_HIDE" && fail "после перезапуска карточка вернулась"
-has "$L_QUOTE $OLD_LABEL" || fail "после kill -9 у ответа нет цитаты"
+has "${L_HIDE}" && fail "после перезапуска карточка вернулась"
+has "${L_QUOTE} ${OLD_LABEL}" || fail "после kill -9 у ответа нет цитаты"
 shoot 08-after-kill9
 
 # ---- 9. Чат «Книги»: карточки нет ----
-press "$L_BOOKS"
-has "$L_HIDE" && fail "карточка показана в чате «Книги»"
+press "${L_BOOKS}"
+has "${L_HIDE}" && fail "карточка показана в чате «Книги»"
 shoot 09-books-chat
 
 # ---- 11. Крупный текст (скрытие снято, возврат в Inbox читает карточку заново) ----
 sqlw "delete from app_setting where key = 'on_this_day_dismissed'"
 edit_settings 'd["text_size"] = "large"'
-press "$L_INBOX"
+press "${L_INBOX}"
 sleep 2
-has "$L_HIDE" || fail "после снятия скрытия карточки нет"
+has "${L_HIDE}" || fail "после снятия скрытия карточки нет"
 shoot 11-large-text
 edit_settings 'd["text_size"] = "normal"'
 
 # ---- 12–13. Импортированный личный чат Telegram: цитаты без подписи «N лет спустя» ----
-press "$L_ANNA"
+press "${L_ANNA}"
 sleep 2
-has "$L_PLAIN_QUOTE $(long_date 2023-03-14)" || fail "в импортированном чате нет цитаты"
+has "${L_PLAIN_QUOTE} $(long_date 2023-03-14)" || fail "в импортированном чате нет цитаты"
 shoot 12-telegram-chat-quotes
-press "$L_PLAIN_QUOTE $(long_date 2023-03-14)"
+press "${L_PLAIN_QUOTE} $(long_date 2023-03-14)"
 sleep 2
 shoot 13-telegram-quote-opened
 
 # ---- 10. Английский ----
-press "$L_INBOX"
+press "${L_INBOX}"
 sleep 1
 sqlw "delete from app_setting where key = 'on_this_day_dismissed'"
 set_language en
 restart_app
 detect_language
-has "$L_HIDE" || fail "в английском окне нет карточки"
+has "${L_HIDE}" || fail "в английском окне нет карточки"
 shoot 10-en
 
 # ---- Замеры на 100 000 синтетических записей: карточка в import_bench, холодный старт приложения ----
