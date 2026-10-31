@@ -15,6 +15,12 @@ SOURCE_APP="${1:?использование: $0 <путь к собранном�
 # shellcheck source=lib.sh
 . "$REPO/scripts/screens/lib.sh"
 
+# Обход дерева окна с лентой, карточкой и сайдбаром занимает больше минуты (каждое свойство элемента — отдельный запрос к
+# System Events), поэтому нажатия и поиск ждут долго; проверка личных путей в дампе (вся она по синтетическим данным
+# раннера) ограничена коротко, иначе каждый снимок тянул бы минуты.
+export AX_TIMEOUT=150
+dump() { AX_TIMEOUT=15 ax dump "$(app_pid)" > "$K/debug/$1.txt" 2>&1; }
+
 INBOX="00000000-0000-4000-8000-000000000001"
 SETTINGS_FILE="$K/data/settings.json"
 
@@ -115,8 +121,7 @@ detect_language
 shoot 03-draft-after-restart
 
 # ---- 4. «Отправить»: ответ в ленте с цитатой ----
-# Кнопка «Отправить» стоит в конце дерева окна: обход долгий, предел ожидания больше обычного.
-AX_TIMEOUT=120 press "${L_SEND}"
+press "${L_SEND}"
 sleep 2
 [ "$(sqlw "select reply_to_id from message where body_md = 'До сих пор так думаю'")" = "${OLD_ID}" ] || fail "в базе у ответа нет reply_to_id"
 [ -z "$(sqlw "select 1 from draft where key = 'chat:$INBOX'")" ] || fail "черновик не очищен отправкой"
