@@ -10,8 +10,8 @@ use kinige_domain::{
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use std::path::{Path, PathBuf};
 
-const KEY_MIRROR_DIR: &str = "mirror_dir";
-const KEY_TEXT_SIZE: &str = "text_size";
+pub(crate) const KEY_MIRROR_DIR: &str = "mirror_dir";
+pub(crate) const KEY_TEXT_SIZE: &str = "text_size";
 const KEY_SIDEBAR_COLLAPSED: &str = "sidebar_collapsed";
 const KEY_RECENT_EMOJI: &str = "recent_emoji";
 /// Сколько недавних эмодзи помнит пикер.
@@ -45,7 +45,10 @@ pub(crate) fn effective_mirror_dir(
 }
 
 /// Сохранённое сочетание вида `kind`; нет записи, незнакомое или повреждённое значение — сочетание по умолчанию.
-fn stored_accelerator(conn: &Connection, kind: ShortcutKind) -> rusqlite::Result<String> {
+pub(crate) fn stored_accelerator(
+    conn: &Connection,
+    kind: ShortcutKind,
+) -> rusqlite::Result<String> {
     Ok(get_setting(conn, kind.setting_key())?
         .and_then(|text| canonical_accelerator(&text).ok())
         .unwrap_or_else(|| kind.default_accelerator().to_string()))
@@ -223,8 +226,14 @@ impl Store {
             mark_all_dirty(&tx).map_err(write_err)?;
             tx.commit().map_err(write_err)
         })?;
+        self.mirror_dir_changed();
+        Ok(())
+    }
+
+    /// Папка копии сменилась (окном или файлом настроек): прошлая ошибка копии снимается, писатель просыпается и пишет дни
+    /// в новую папку сразу, а не после следующей записи или перезапуска.
+    pub(crate) fn mirror_dir_changed(&self) {
         self.inner.mirror.clear_error();
         self.wake_mirror();
-        Ok(())
     }
 }

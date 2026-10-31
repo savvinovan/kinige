@@ -3,7 +3,7 @@ import { INBOX_ID } from "../../api/KinigeApi";
 import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../../api/MockApi";
 import type { MessageView } from "../../api/generated/MessageView";
 import type { Settings } from "../../api/generated/Settings";
-import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
+import { act, fireEvent, render, screen, waitFor } from "../../test/render";
 import { DEFAULT_SHORTCUTS } from "../settings/demoShortcuts";
 import { MainWindow } from "./MainWindow";
 
@@ -217,69 +217,5 @@ describe("MainWindow: событие «записи изменились»", () 
     await waitFor(() => expect(api.onEntriesChanged).toHaveBeenCalled());
     unmount();
     expect(off).toHaveBeenCalled();
-  });
-});
-
-describe("MainWindow: сочетания клавиш в настройках", () => {
-  async function openSettings() {
-    fireEvent.click(await screen.findByRole("button", { name: /Профиль/ }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Настройки" }));
-    return screen.findByRole("dialog", { name: "Настройки" });
-  }
-
-  const press = (target: HTMLElement, init: KeyboardEventInit) => fireEvent.keyDown(target, init);
-
-  it("раздел показывает оба сочетания по умолчанию", async () => {
-    setup();
-    const dialog = await openSettings();
-    const section = within(dialog).getByRole("region", { name: "Сочетания клавиш" });
-    expect(within(section).getByText("Окно быстрого захвата")).toBeInTheDocument();
-    expect(within(section).getByText("Сохранить буфер во «Входящие»")).toBeInTheDocument();
-    expect(within(section).queryByRole("button", { name: /Сбросить/ })).toBeNull();
-  });
-
-  it("смена: запись нового сочетания нажатием уходит в Rust, строка обновляется, «Сбросить» появляется", async () => {
-    const api = setup();
-    const dialog = await openSettings();
-    fireEvent.click(within(dialog).getByRole("button", { name: /Изменить сочетание: Окно быстрого захвата/ }));
-    await waitFor(() => expect(api.recordingLog).toEqual([true]));
-    const recorder = await within(dialog).findByRole("group", { name: /Новое сочетание/ }).catch(() => document.activeElement as HTMLElement);
-    press(recorder ?? (document.activeElement as HTMLElement), { code: "KeyK", ctrlKey: true, altKey: true });
-    await waitFor(async () => {
-      const shortcuts = (await api.getSettings()).shortcuts;
-      expect(shortcuts[0]).toMatchObject({ kind: "capture", accelerator: "Ctrl+Alt+KeyK", isDefault: false });
-    });
-    expect(await within(dialog).findByRole("button", { name: /Сбросить сочетание: Окно быстрого захвата/ })).toBeInTheDocument();
-    await waitFor(() => expect(api.recordingLog.at(-1)).toBe(false));
-  });
-
-  it("отказ (занято / совпадает с другим): ошибка под строкой, прежнее сочетание остаётся", async () => {
-    const api = setup();
-    const dialog = await openSettings();
-    api.failNextShortcut = "shortcut_taken";
-    fireEvent.click(within(dialog).getByRole("button", { name: /Изменить сочетание: Окно быстрого захвата/ }));
-    press(document.activeElement as HTMLElement, { code: "KeyK", ctrlKey: true, altKey: true });
-    expect(await within(dialog).findByText(/занято другой программой или системой/)).toBeInTheDocument();
-    expect((await api.getSettings()).shortcuts[0]?.accelerator).toBe("Ctrl+Alt+KeyN");
-  });
-
-  it("«Сбросить» возвращает умолчание", async () => {
-    const api = setup();
-    await api.setShortcut("clipboard", "Ctrl+Alt+KeyB");
-    const dialog = await openSettings();
-    fireEvent.click(await within(dialog).findByRole("button", { name: /Сбросить сочетание: Сохранить буфер во «Входящие»/ }));
-    await waitFor(async () => expect((await api.getSettings()).shortcuts[1]?.accelerator).toBe("Alt+Shift+KeyV"));
-  });
-
-  it("закрытие окна настроек убирает ошибки сочетаний", async () => {
-    const api = setup();
-    let dialog = await openSettings();
-    api.failNextShortcut = "shortcut_invalid";
-    fireEvent.click(within(dialog).getByRole("button", { name: /Изменить сочетание: Окно быстрого захвата/ }));
-    press(document.activeElement as HTMLElement, { code: "KeyK", ctrlKey: true });
-    await within(dialog).findByText(/использовать нельзя/);
-    fireEvent.click(within(dialog).getByRole("button", { name: "Закрыть настройки" }));
-    dialog = await openSettings();
-    expect(within(dialog).queryByText(/использовать нельзя/)).toBeNull();
   });
 });

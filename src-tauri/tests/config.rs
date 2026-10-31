@@ -51,12 +51,23 @@ fn granted(path: &str) -> Vec<String> {
 
 #[test]
 fn command_lists_are_consistent() {
+    // Сначала команды главного окна, затем только окна настроек, затем окна захвата.
+    let settings_only = kinige_lib::SETTINGS_COMMANDS
+        .iter()
+        .filter(|c| !kinige_lib::MAIN_COMMANDS.contains(c));
     let joined: Vec<&str> = kinige_lib::MAIN_COMMANDS
         .iter()
+        .chain(settings_only)
         .chain(kinige_lib::CAPTURE_COMMANDS)
         .copied()
         .collect();
     assert_eq!(joined, kinige_lib::COMMANDS);
+    for command in kinige_lib::SETTINGS_COMMANDS {
+        assert!(
+            !kinige_lib::CAPTURE_COMMANDS.contains(command),
+            "{command} выдана и окну захвата"
+        );
+    }
     for command in kinige_lib::CAPTURE_COMMANDS {
         assert!(
             command.starts_with("capture_"),
@@ -120,7 +131,67 @@ fn capture_capability_lists_exactly_the_capture_commands() {
 }
 
 #[test]
-fn there_are_exactly_two_capability_files() {
+fn settings_capability_lists_exactly_its_commands_and_the_event_subscription() {
+    let capability = read("capabilities/settings.json");
+    assert_eq!(capability["windows"], serde_json::json!(["settings"]));
+    let granted = granted("capabilities/settings.json");
+    let mut expected: Vec<String> = kinige_lib::SETTINGS_COMMANDS
+        .iter()
+        .map(|c| permission(c))
+        .collect();
+    expected.push("core:event:allow-listen".into());
+    expected.push("core:event:allow-unlisten".into());
+    assert_eq!(
+        granted, expected,
+        "окну настроек выданы только свои команды и подписка на события: без core:default, масок и плагинов"
+    );
+    for forbidden in [
+        "list-messages",
+        "search-messages",
+        "send-message",
+        "restore-backup",
+        "import",
+        "capture",
+    ] {
+        assert!(
+            !granted.iter().any(|p| p.contains(forbidden)),
+            "{forbidden}: у окна настроек этого нет"
+        );
+    }
+}
+
+#[test]
+fn settings_window_sizes_match_the_design_tokens() {
+    use kinige_lib::settings_window::{HEIGHT, MIN_HEIGHT, MIN_WIDTH, WIDTH};
+    let tokens = read("../design/tokens/layout.json");
+    let px = |name: &str| -> f64 {
+        tokens["layout"]["settings"][name]["$value"]
+            .as_str()
+            .and_then(|value| value.strip_suffix("px"))
+            .and_then(|value| value.parse().ok())
+            .unwrap_or_else(|| panic!("нет токена layout.settings.{name} в px"))
+    };
+    assert_eq!(px("window-width"), WIDTH);
+    assert_eq!(px("window-height"), HEIGHT);
+    assert_eq!(px("window-min-width"), MIN_WIDTH);
+    assert_eq!(px("window-min-height"), MIN_HEIGHT);
+}
+
+#[test]
+fn the_settings_window_is_not_in_the_static_window_list() {
+    // Окно создаётся при первом открытии (холодный старт не меняется), capability привязана к его имени.
+    let conf = read("tauri.conf.json");
+    let labels: Vec<&str> = conf["app"]["windows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w["label"].as_str().unwrap())
+        .collect();
+    assert_eq!(labels, ["main", "capture"]);
+}
+
+#[test]
+fn there_are_exactly_three_capability_files() {
     let dir = format!("{}/capabilities", env!("CARGO_MANIFEST_DIR"));
     let mut files: Vec<String> = std::fs::read_dir(dir)
         .unwrap()
@@ -129,7 +200,7 @@ fn there_are_exactly_two_capability_files() {
     files.sort();
     assert_eq!(
         files,
-        ["capture.json", "main.json"],
+        ["capture.json", "main.json", "settings.json"],
         "у каждого окна своя capability"
     );
 }

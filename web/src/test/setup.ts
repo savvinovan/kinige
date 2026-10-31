@@ -6,4 +6,12 @@ import { afterEach } from "vitest";
 // главного окна иногда не укладывались: запас не делает зелёные тесты медленнее.
 configure({ asyncUtilTimeout: 4000 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  // Состояние дерева настроек и подобное не должно переходить из теста в тест.
+  try {
+    localStorage.clear();
+  } catch {
+    // нет хранилища — нечего чистить
+  }
+});

@@ -18,7 +18,7 @@ export function selectedTextIn(root: Element | null): string | null {
 }
 
 /** Запись в буфер обмена и состояние подписи кнопки: «Скопировано» или честное «Не удалось скопировать». */
-export function useCopy() {
+export function useCopy(resetAfterMs: number = COPIED_MS) {
   const [state, setState] = useState<CopyState>("idle");
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -34,7 +34,7 @@ export function useCopy() {
     }
     setState(next);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setState("idle"), COPIED_MS);
+    timer.current = setTimeout(() => setState("idle"), resetAfterMs);
   };
 
   return { state, copy };

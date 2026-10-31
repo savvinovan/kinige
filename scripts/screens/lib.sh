@@ -83,15 +83,18 @@ scroll_to() {
 has() { [ "$(ax has "$(app_pid)" "$1" 2>&1)" = "yes" ]; }
 
 # Снимок только окна Kinige. Перед ним проверяется, что в тексте окна нет чужих путей и имён (личные данные не попадут в репозиторий).
+# Второй аргумент — режим scripts/screenshot-window.sh (main по умолчанию, settings — окно «Настройки»); какое окно читают
+# действия доступности, задаёт переменная AX_WINDOW (часть заголовка окна; пусто — первое окно).
 shoot() {
   local name="$1"
+  local mode="${2:-main}"
   ax front "$(app_pid)" > /dev/null 2>&1
   sleep 1
   dump "shot-$name"
   if grep -E '/Users/[^r]|/Users/r[^u]|/private/tmp|/var/folders|alexandr|savvinovan' "$K/debug/shot-$name.txt" > "$K/debug/shot-$name.private" 2>&1; then
     fail "в тексте окна $name личные пути или имена: $(head -c 300 "$K/debug/shot-$name.private")"
   fi
-  KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" "$OUT/$name.png" kinige main || fail "нет снимка $name"
+  KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" "$OUT/$name.png" kinige "$mode" || fail "нет снимка $name"
 }
 
 sql() { sqlite3 "$K/data/kinige.db" "$@"; }

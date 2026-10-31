@@ -170,6 +170,22 @@ pub(crate) fn edit_body(
 }
 
 impl Store {
+    /// Чат живой записи (не в корзине) — чтобы открыть её в ленте из окна, у которого самой ленты нет. Записи нет, она
+    /// удалена навсегда или лежит в корзине — `MessageNotFound`. Текст записи не читается.
+    pub fn live_message_chat(&self, id: &str) -> Result<String, StoreError> {
+        self.read(|conn| {
+            match conn.query_row(
+                "SELECT chat_id FROM message WHERE id = ?1 AND deleted_at IS NULL",
+                [id],
+                |row| row.get(0),
+            ) {
+                Ok(chat_id) => Ok(chat_id),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Err(StoreError::MessageNotFound),
+                Err(error) => Err(read_err(error)),
+            }
+        })
+    }
+
     /// «Удалить»: запись уходит в корзину (группа `deleted`), счётчик чата уменьшается, из Markdown-копии она пропадает.
     /// Повторное удаление ничего не меняет.
     pub fn delete_message(&self, id: &str, now: &Now) -> Result<(), StoreError> {

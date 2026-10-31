@@ -24,6 +24,7 @@ import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { SearchFilters } from "./generated/SearchFilters";
 import type { SearchPage } from "./generated/SearchPage";
 import type { Settings } from "./generated/Settings";
+import type { SettingsFileState } from "./generated/SettingsFileState";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
@@ -33,6 +34,9 @@ import type { TrashItem } from "./generated/TrashItem";
 const ENTRIES_CHANGED = "entries-changed";
 const OPEN_CHAT = "open-chat";
 const DATABASE_CORRUPT = "database-corrupt";
+/** Настройки изменились и запись просят открыть (`settings_window::SETTINGS_CHANGED`, `OPEN_MESSAGE`). */
+const SETTINGS_CHANGED = "settings-changed";
+const OPEN_MESSAGE = "open-message";
 /** Прогресс импорта (`import::IMPORT_PROGRESS`); приходит только главному окну. */
 const IMPORT_PROGRESS = "import-progress";
 
@@ -291,6 +295,26 @@ export class TauriApi implements KinigeApi {
 
   listAgentLogEntries(logId: number): Promise<AgentLogEntry[]> {
     return call("list_agent_log_entries", { logId });
+  }
+
+  async openSettings(): Promise<void> {
+    await call("open_settings");
+  }
+
+  getSettingsFile(): Promise<SettingsFileState> {
+    return call("get_settings_file");
+  }
+
+  async settingsOpenEntry(id: string): Promise<void> {
+    await call("settings_open_entry", { id });
+  }
+
+  onSettingsChanged(handler: () => void): Promise<() => void> {
+    return listen(SETTINGS_CHANGED, () => handler());
+  }
+
+  onOpenMessage(handler: (target: { chatId: string; messageId: string }) => void): Promise<() => void> {
+    return listen<{ chatId: string; messageId: string }>(OPEN_MESSAGE, (event) => handler(event.payload));
   }
 
   captureState(): Promise<CaptureState> {

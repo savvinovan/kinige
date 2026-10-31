@@ -1,10 +1,10 @@
-//! Команды окна «Доступ ИИ-агентов» (слайс 4a) через IPC на mock-рантайме с настоящими capabilities: только главное окно,
-//! окну захвата — отказ на каждую, набор окна захвата не изменился (§12.3).
+//! Команды окна «Доступ ИИ-агентов» (слайс 4a) через IPC на mock-рантайме с настоящими capabilities. С слайса 4b они
+//! живут в окне настроек (`settings`): главному окну и окну захвата — отказ на каждую, набор окна захвата не изменился (§12.3).
 
 mod common;
 
 use common::*;
-use kinige_lib::{CAPTURE_COMMANDS, MAIN_COMMANDS};
+use kinige_lib::{CAPTURE_COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS};
 use kinige_store::Store;
 use serde_json::json;
 use tauri::Manager;
@@ -19,25 +19,27 @@ const SLICE_FOUR_A: &[&str] = &[
 ];
 
 #[test]
-fn agent_commands_are_main_only_and_the_capture_window_still_has_seven() {
+fn agent_commands_are_settings_only_and_the_capture_window_still_has_seven() {
     assert_eq!(
         CAPTURE_COMMANDS.len(),
         7,
         "у окна захвата по-прежнему семь команд"
     );
     let fixture = fixture();
+    let settings = window(&fixture, "settings");
     let main = window(&fixture, "main");
     let capture = window(&fixture, "capture");
     let other = window(&fixture, "not-main");
     for command in SLICE_FOUR_A {
-        assert!(MAIN_COMMANDS.contains(command), "{command}");
+        assert!(SETTINGS_COMMANDS.contains(command), "{command}");
+        assert!(!MAIN_COMMANDS.contains(command), "{command}");
         assert!(!CAPTURE_COMMANDS.contains(command), "{command}");
-        for denied in [&capture, &other] {
+        for denied in [&main, &capture, &other] {
             let error = call(denied, command, args_for(command))
                 .expect_err(&format!("{command}: окну без права нельзя"));
             assert!(is_acl_denial(&error), "{command}: {error}");
         }
-        let result = call(&main, command, args_for(command));
+        let result = call(&settings, command, args_for(command));
         if let Err(error) = &result {
             assert!(!is_acl_denial(error), "{command}: {error}");
         }
@@ -60,9 +62,9 @@ fn a_denied_window_changes_nothing_in_the_settings() {
 }
 
 #[test]
-fn the_main_window_drives_the_settings_and_sees_the_socket_state() {
+fn the_settings_window_drives_the_settings_and_sees_the_socket_state() {
     let fixture = fixture();
-    let main = window(&fixture, "main");
+    let main = window(&fixture, "settings");
     call(&main, "set_agent_enabled", json!({"enabled": true})).unwrap();
     call(&main, "set_agent_mode", json!({"mode": "read_write"})).unwrap();
     call(

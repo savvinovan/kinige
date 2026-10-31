@@ -6,6 +6,7 @@ import type { ErrorCode } from "../api/generated/ErrorCode";
 import { useDraftSaver } from "../draft/useDraftSaver";
 import { applyTextSize } from "../ui/screens/textSize";
 import { CapturePanel } from "../ui/capture/CapturePanel";
+import { useInputModality } from "../ui/useInputModality";
 
 /** Rust показал окно (см. `capture::show_capture`): страница перечитывает состояние. Без IPC-события: у окна нет права слушать. */
 export const SHOWN_EVENT = "kinige-capture-shown";
@@ -25,6 +26,7 @@ interface CaptureWindowProps {
  */
 export function CaptureWindow({ api, initial }: CaptureWindowProps) {
   const { t } = useTranslation();
+  useInputModality();
   const [state, setState] = useState(initial);
   const [value, setValue] = useState(initial.draft);
   const [error, setError] = useState<ErrorCode | null>(initial.error);

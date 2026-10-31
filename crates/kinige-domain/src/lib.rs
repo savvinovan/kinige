@@ -23,6 +23,7 @@ pub mod message_ops;
 pub mod mirror;
 pub mod rewrite;
 pub mod search;
+pub mod settings_file;
 pub mod shortcuts;
 pub mod tags;
 pub mod tasks;
@@ -54,6 +55,10 @@ pub use import::{
     ImportChatKind, ImportChatPreview, ImportOpened, ImportPreview, ImportProgress, ImportReport,
 };
 pub use lang::Language;
+pub use settings_file::{
+    FileChanges, FileProblem, FileProblemKind, KeyIssue, KeyIssueKind, SettingsFileState,
+    UnsafeReason,
+};
 pub use shortcuts::{ShortcutKind, ShortcutState, ShortcutStatus};
 
 /// Сведения о приложении, которые фронтенд получает через `KinigeApi`.

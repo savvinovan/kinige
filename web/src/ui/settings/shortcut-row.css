@@ -1,31 +1,49 @@
-/* Строка сочетания в «Настройках»: название, клавиши-«капсулы», кнопки, состояние. Только токены. */
+/* Строка сочетания в «Настройках»: название слева, справа клавиши-«капсулы» и кнопки, под ними состояние. Только токены. */
 .shortcut-row {
   display: grid;
   gap: var(--space-1);
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3);
 }
 
-.shortcut-row__name {
-  color: var(--color-text-tertiary);
-  font-family: var(--type-meta-family);
-  font-size: var(--type-meta-size);
-  line-height: var(--type-meta-line-height);
-}
-
-/* Сочетание слева, кнопки справа; в узком окне и при длинных подписях кнопки переходят на следующую строку. */
+/* Название слева, справа в одной группе клавиши и кнопки, по вертикальному центру. В узком окне переносится само название
+   (оно сжимается до `row-label`); группа уходит под название (flex-wrap) только когда не помещается и при такой ширине. */
 .shortcut-row__line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-2) var(--space-3);
 }
 
+.shortcut-row__name {
+  flex: 1 1 var(--layout-settings-row-label);
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  overflow-wrap: anywhere;
+}
+
+.shortcut-row__controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+  margin-inline-start: auto;
+}
+
+/* Наименьшее место под клавиши и под поле записи одинаковое. Поле записи шире места расширяется влево (группа прижата
+   вправо); высота строки и положение кнопок не меняются. */
 .shortcut-row__keys {
   display: flex;
-  flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-1);
-  min-width: 0;
+  box-sizing: border-box;
+  min-width: var(--layout-settings-shortcut-slot);
   min-height: var(--layout-control-height);
 }
 
@@ -66,10 +84,10 @@
 /* Поле записи: как поле ввода в фокусе (светлая заливка, тонкая линия цветом фокуса), на месте капсул. */
 .shortcut-row__recorder {
   display: flex;
-  flex: 1 1 auto;
   align-items: center;
+  justify-content: center;
   box-sizing: border-box;
-  min-width: 0;
+  min-width: var(--layout-settings-shortcut-slot);
   min-height: var(--layout-control-height);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-control);
@@ -80,5 +98,5 @@
   font-size: var(--type-small-size);
   line-height: var(--type-small-line-height);
   outline: none;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }

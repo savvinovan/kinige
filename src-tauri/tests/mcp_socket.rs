@@ -63,7 +63,7 @@ fn a_symlinked_or_loose_folder_makes_mcp_unavailable_but_the_journal_keeps_worki
         "в чужую папку ничего не положено"
     );
     // Журнал работает, ошибка сокета видна окну.
-    let main = window(&fixture, "main");
+    let main = window(&fixture, "settings");
     let access = call(&main, "get_agent_access", json!({})).unwrap();
     assert_eq!(access["socket"]["error"], "dir_unsafe");
     assert_eq!(access["socket"]["listening"], false);

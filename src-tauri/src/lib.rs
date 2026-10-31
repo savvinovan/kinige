@@ -13,6 +13,7 @@ pub mod mcp;
 #[cfg(target_os = "macos")]
 mod panel;
 pub mod recovery;
+pub mod settings_window;
 pub mod tray;
 
 use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
@@ -36,7 +37,7 @@ pub fn is_background_launch<I: IntoIterator<Item = String>>(args: I) -> bool {
     args.into_iter().any(|arg| arg == BACKGROUND_FLAG)
 }
 
-pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS};
+pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS};
 
 /// Конструктор приложения; общий для `run` и для тестов IPC (там с mock-рантаймом и своим `Store`).
 /// Плагины opener и dialog подключены только ради Rust-API: JS-разрешений на них у окна нет (capability их не выдаёт).
@@ -61,6 +62,9 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             commands::set_shortcut,
             commands::reset_shortcut,
             commands::shortcut_recording,
+            settings_window::open_settings,
+            settings_window::get_settings_file,
+            settings_window::settings_open_entry,
             actions::create_chat,
             actions::rename_chat,
             actions::set_chat_icon,
@@ -155,11 +159,17 @@ fn start_services<R: Runtime>(
         capture::request_hide,
     )?;
     tray::setup(app, commands::get_language())?;
+    // Файл настроек применяется первым (ADR-0010): до регистрации сочетаний и до слушателя MCP.
+    let db = db_path(app)?;
+    let data_dir = db.parent().ok_or("нет каталога данных")?.to_path_buf();
+    let settings_file = settings_window::start_file(app, &store, data_dir);
     let hotkeys = Hotkeys::new(Box::new(PluginRegistrar { app: app.clone() }));
     // Сочетание, которое система не приняла, остаётся «не назначено» в настройках; остальное работает.
     hotkeys.register_saved(&store);
     app.manage(store);
     app.manage(hotkeys);
+    app.manage(settings_file);
+    settings_window::set_available(app, true);
     app.manage(CaptureShell::default());
     app.manage(import::ImportState::default());
     // Значок строился без хранилища (его ещё не было в состоянии приложения): последние чаты — теперь.
@@ -227,6 +237,10 @@ fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
         (CAPTURE_LABEL, WindowEvent::Focused(false)) => {
             capture::on_capture_blur(window.app_handle())
         }
+        // Окно настроек закрывается совсем; запись сочетания, если шла, снимается.
+        (settings_window::SETTINGS_LABEL, WindowEvent::Destroyed) => {
+            settings_window::on_destroyed(window.app_handle())
+        }
         _ => {}
     }
 }
@@ -256,6 +270,15 @@ pub fn run() {
     // Окно захвата — панель NSPanel без активации приложения (ADR-0006).
     #[cfg(target_os = "macos")]
     let configured = configured.plugin(tauri_nspanel::init());
+    // Меню приложения с «Настройки…» (⌘,), слайс 4b.
+    #[cfg(target_os = "macos")]
+    let configured = configured
+        .menu(settings_window::app_menu)
+        .on_menu_event(|app, event| {
+            if event.id().as_ref() == settings_window::ID_APP_SETTINGS {
+                settings_window::open(app);
+            }
+        });
     let mut app = configured
         .setup(|app| {
             log::info!("запуск Kinige {}", env!("CARGO_PKG_VERSION"));

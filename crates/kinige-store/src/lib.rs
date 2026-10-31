@@ -10,6 +10,7 @@ mod agent_write;
 mod backup;
 mod capture;
 mod chats;
+mod data_dir;
 mod draft;
 mod error;
 mod ext;
@@ -27,6 +28,7 @@ mod search;
 mod search_query;
 mod send;
 mod settings;
+mod settings_file;
 mod tags;
 mod time;
 mod trash;
@@ -49,6 +51,11 @@ pub use recovery::{
     mark_needs_recovery, needs_recovery, restore_backup, restore_backup_with, startup_check,
 };
 pub use schema::LATEST_VERSION;
+pub use settings_file::{
+    FILE_NAME as SETTINGS_FILE_NAME, FileError, LOG_CLIENT as SETTINGS_LOG_CLIENT,
+    LOG_TOOL as SETTINGS_LOG_TOOL, MAX_BYTES as SETTINGS_FILE_MAX_BYTES, SettingsFile,
+    SettingsFileOptions, ShortcutApplier, ShortcutRefusal, file_path as settings_file_path,
+};
 pub use time::{Now, local_hhmm, offset_secs, utc_stamp};
 
 use backup::BackupShared;
@@ -184,7 +191,7 @@ impl Store {
     /// То же, что [`Store::open`], но с заданным «сейчас» (тесты).
     pub fn open_at(options: StoreOptions, now: &Now) -> Result<Store, StoreError> {
         if let Some(parent) = options.db_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| StoreError::Internal(e.to_string()))?;
+            data_dir::create(parent).map_err(|e| StoreError::Internal(e.to_string()))?;
         }
         prepare_migration(&options.db_path, now)?;
         let mut conn = open_connection(&options.db_path, false)?;
@@ -296,6 +303,13 @@ impl Store {
         self.read(|_| -> Result<(), StoreError> {
             panic!("проверка: паника в чтении")
         })
+    }
+
+    /// Только для тестов: шаг в проходе Markdown-копии после чтения пачки отметок и до проверки папки; `None` снимает его.
+    /// В шаге тест меняет папку копии посреди пачки (проход должен начаться заново с новой папкой).
+    #[doc(hidden)]
+    pub fn set_mirror_batch_hook_for_test(&self, hook: Option<Arc<dyn Fn() + Send + Sync>>) {
+        self.inner.mirror.set_batch_hook(hook);
     }
 
     /// Только для тестов: следующий проход фоновой копии (`mirror`) или обслуживания (`maintenance`) паникует один раз.

@@ -1,0 +1,118 @@
+# settings.json: синтетический файл на раннере. Права файла (ls -l) и содержимое.
+== как записало приложение ==
+-rw-------  1 runner  staff  342 Oct 31 12:34 /Users/runner/work/_temp/kinige-screens/data/settings.json
+{
+  "agent_access": {
+    "chats": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "title": "Inbox"
+      }
+    ],
+    "enabled": true,
+    "mode": "read_write"
+  },
+  "mirror": {
+    "folder": null
+  },
+  "shortcuts": {
+    "capture": "Ctrl+Alt+KeyN",
+    "clipboard": "Alt+Shift+KeyV"
+  },
+  "text_size": "normal"
+}
+
+== в файл дописан чужой ключ x_my_note; в окне выбран «Large» ==
+-rw-------  1 runner  staff  367 Oct 31 12:35 /Users/runner/work/_temp/kinige-screens/data/settings.json
+{
+  "agent_access": {
+    "chats": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "title": "Inbox"
+      }
+    ],
+    "enabled": true,
+    "mode": "read_write"
+  },
+  "mirror": {
+    "folder": null
+  },
+  "shortcuts": {
+    "capture": "Ctrl+Alt+KeyN",
+    "clipboard": "Alt+Shift+KeyV"
+  },
+  "text_size": "large",
+  "x_my_note": "keep me"
+}
+
+== внешняя правка: text_size = large, в agent_access.chats добавлен чат «Работа» (по названию) ==
+{
+  "agent_access": {
+    "chats": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "title": "Inbox"
+      },
+      {
+        "title": "Работа"
+      }
+    ],
+    "enabled": true,
+    "mode": "read_write"
+  },
+  "mirror": {
+    "folder": null
+  },
+  "shortcuts": {
+    "capture": "Ctrl+Alt+KeyN",
+    "clipboard": "Alt+Shift+KeyV"
+  },
+  "text_size": "large"
+}
+
+== kill -9 после правки в окне (Normal) и правки файла (large) ==
+{
+  "agent_access": {
+    "chats": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "title": "Inbox"
+      }
+    ],
+    "enabled": true,
+    "mode": "read_write"
+  },
+  "mirror": {
+    "folder": null
+  },
+  "shortcuts": {
+    "capture": "Ctrl+Alt+KeyN",
+    "clipboard": "Alt+Shift+KeyV"
+  },
+  "text_size": "large"
+}
+
+== после перезапуска ==
+{
+  "agent_access": {
+    "chats": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "title": "Inbox"
+      }
+    ],
+    "enabled": true,
+    "mode": "read_write"
+  },
+  "mirror": {
+    "folder": null
+  },
+  "shortcuts": {
+    "capture": "Ctrl+Alt+KeyN",
+    "clipboard": "Alt+Shift+KeyV"
+  },
+  "text_size": "large"
+}
+text_size в базе: large
+доступ агента: 1, режим: read_write, чатов: 1

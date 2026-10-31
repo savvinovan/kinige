@@ -19,8 +19,8 @@ interface ShortcutRowProps {
 }
 
 /**
- * Строка «Сочетание»: название действия, сочетание клавишами-«капсулами» (⌥ Space), кнопки «Изменить» и «Сбросить»,
- * под ними состояние: «Не назначено: занято…» или ошибка сохранения.
+ * Строка «Сочетание» внутри карточки-группы: слева название действия, справа в одной группе сочетание клавишами-«капсулами» (⌥ Space)
+ * и кнопки «Изменить» и «Сбросить» (по вертикальному центру; в узком окне группа переходит под название), под строкой состояние: «Не назначено: занято…» или ошибка сохранения.
  *
  * Запись нового сочетания: «Изменить» → вместо капсул поле «Нажмите новое сочетание…», фокус в нём, слушается `keydown`
  * с отменой действия браузера. Принимаются только клавиши из списка (`acceleratorFromEvent`); остальное, включая Tab,
@@ -90,44 +90,47 @@ export function ShortcutRow({ status, error, onChange, onReset, onRecording }: S
 
   return (
     <div className="shortcut-row" role="group" aria-labelledby={nameId}>
-      <span className="shortcut-row__name" id={nameId}>
-        {name}
-      </span>
       <div className="shortcut-row__line">
-        {recording ? (
-          <div
-            className="shortcut-row__recorder"
-            ref={recorder}
-            tabIndex={0}
-            role="group"
-            aria-label={t("settings.shortcuts.recordingLabel", { name })}
-            onKeyDown={onKeyDown}
-            onBlur={() => stop(false)}
-          >
-            <span aria-hidden="true">{t("settings.shortcuts.recording")}</span>
-          </div>
-        ) : (
-          <span
-            className={`shortcut-row__keys${taken ? " shortcut-row__keys--taken" : ""}`}
-            role="img"
-            aria-label={t("settings.shortcuts.keys", { keys: spoken })}
-          >
-            {formatAccelerator(status.accelerator).map((cap, index) => (
-              <kbd className="keycap" key={`${index}-${cap}`} aria-hidden="true">
-                {cap}
-              </kbd>
-            ))}
-          </span>
-        )}
-        <div className={`shortcut-row__actions${recording ? " shortcut-row__actions--hidden" : ""}`} ref={actions}>
-          <Button variant="secondary" aria-label={t("settings.shortcuts.changeLabel", { name })} onClick={start}>
-            {t("settings.shortcuts.change")}
-          </Button>
-          {!status.isDefault || taken ? (
-            <Button variant="accent" aria-label={t("settings.shortcuts.resetLabel", { name })} onClick={onReset}>
-              {t("settings.shortcuts.reset")}
+        <span className="shortcut-row__name" id={nameId}>
+          {name}
+        </span>
+        <div className="shortcut-row__controls">
+          {recording ? (
+            <div
+              className="shortcut-row__recorder"
+              ref={recorder}
+              tabIndex={0}
+              role="group"
+              aria-label={t("settings.shortcuts.recordingLabel", { name })}
+              title={t("settings.shortcuts.recording")}
+              onKeyDown={onKeyDown}
+              onBlur={() => stop(false)}
+            >
+              <span aria-hidden="true">{t("settings.shortcuts.recordingShort")}</span>
+            </div>
+          ) : (
+            <span
+              className={`shortcut-row__keys${taken ? " shortcut-row__keys--taken" : ""}`}
+              role="img"
+              aria-label={t("settings.shortcuts.keys", { keys: spoken })}
+            >
+              {formatAccelerator(status.accelerator).map((cap, index) => (
+                <kbd className="keycap" key={`${index}-${cap}`} aria-hidden="true">
+                  {cap}
+                </kbd>
+              ))}
+            </span>
+          )}
+          <div className={`shortcut-row__actions${recording ? " shortcut-row__actions--hidden" : ""}`} ref={actions}>
+            <Button variant="secondary" aria-label={t("settings.shortcuts.changeLabel", { name })} onClick={start}>
+              {t("settings.shortcuts.change")}
             </Button>
-          ) : null}
+            {!status.isDefault || taken ? (
+              <Button variant="accent" aria-label={t("settings.shortcuts.resetLabel", { name })} onClick={onReset}>
+                {t("settings.shortcuts.reset")}
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
       {/* Объявление режима записи: область есть всегда, а текст появляется с началом записи, иначе диктор его не услышит.

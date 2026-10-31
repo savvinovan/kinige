@@ -74,8 +74,9 @@
   transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
+/* Наведение на невыбранный вариант меняет только цвет текста: заливка поля-активного почти не отличается от заливки выбранного
+   (1,07:1), и невыбранный вариант под мышью выглядел бы выбранным. */
 .segmented__option:hover {
-  background: var(--color-surface-field-active);
   color: var(--color-text-primary);
 }
 
@@ -87,11 +88,11 @@
   opacity: var(--opacity-disabled);
 }
 
-/* Выбранный вариант: заливка светлее и тонкая линия акцента внутри, а не только цвет текста. */
+/* Выбранный вариант: только заливка светлее поля (1,24:1, проверяет тест контраста палитры) и основной цвет текста, без рамки;
+   так же отмечены выбранный пункт дерева настроек, выбранная копия в окне восстановления и найденная строка поиска. */
 .segmented__option[aria-checked="true"],
 .segmented__option[aria-checked="true"]:hover {
   background: var(--color-highlight-background);
-  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-accent-default);
   color: var(--color-text-primary);
 }
 

@@ -103,6 +103,8 @@ pub struct StartupState {
 pub struct RestoreOutcome {
     /// Куда переехала прежняя папка Markdown-копии (`<имя>-before-restore-<метка>`); `null` — папки не было.
     pub previous_mirror: Option<String>,
+    /// Куда переехала папка копии, названная в `settings.json`, если она другая (слайс 4b); `null` — такой папки не было.
+    pub settings_file_mirror: Option<String>,
 }
 
 /// Имя копии дня за локальную дату `YYYY-MM-DD`.

@@ -5,7 +5,6 @@ import { INBOX_ID } from "../../api/KinigeApi";
 import { DEFAULT_SETTINGS, MockApi } from "../../api/MockApi";
 import type { Settings } from "../../api/generated/Settings";
 import { DEFAULT_SHORTCUTS } from "../settings/demoShortcuts";
-import { SettingsDialog } from "../settings/SettingsDialog";
 import { toSidebarChat } from "../sidebar/Sidebar";
 import { MainWindow } from "./MainWindow";
 import { MainWindowView } from "./MainWindowView";
@@ -97,30 +96,7 @@ export const ОшибкаОтправки: Story = {
   },
 };
 
-/** Окно настроек поверх главного окна (русский). */
-export const НастройкиОткрыты: Story = {
-  args: {
-    ...ПослеОтправки.args,
-    overlay: (
-      <SettingsDialog
-        settings={{
-          ...DEFAULT_SETTINGS,
-          mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
-          shortcuts: DEFAULT_SHORTCUTS,
-        }}
-        shortcuts={DEFAULT_SHORTCUTS}
-        onShortcutChange={() => undefined}
-        onShortcutReset={() => undefined}
-        onShortcutRecording={() => undefined}
-        onClose={() => undefined}
-        onChooseFolder={() => undefined}
-        onTextSizeChange={() => undefined}
-      />
-    ),
-  },
-};
-
-/** Настоящий `MainWindow` на `MockApi` (как в приложении, но в памяти): можно писать, отменять и открывать настройки. */
+/** Настоящий `MainWindow` на `MockApi` (как в приложении, но в памяти): можно писать и отменять. */
 export const НаMockApi: Story = { render: () => <WindowOnMockApi /> };
 
 function WindowOnMockApi() {

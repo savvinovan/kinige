@@ -1,9 +1,10 @@
 //! Команды окна «Доступ ИИ-агентов» (слайс 4a, ADR-0009): флажок, режим, видимые чаты, состояние сокета, журнал обращений.
 //! Только главное окно. Бизнес-правил здесь нет: они в `kinige-store`; сервер MCP проверяет настройки при каждом вызове.
 
+use crate::commands::edit;
 use crate::mcp;
-use kinige_domain::{AgentAccess, AgentLogEntry, AgentLogPage, AgentMode, ApiError};
-use kinige_store::{Store, StoreError};
+use kinige_domain::{AgentAccess, AgentLogEntry, AgentLogPage, AgentMode, ApiError, ErrorCode};
+use kinige_store::{SettingsFile, Store, StoreError};
 use tauri::{AppHandle, Runtime, State};
 
 type ApiResult<T> = Result<T, ApiError>;
@@ -12,6 +13,10 @@ fn api(error: StoreError) -> ApiError {
     // В журнал процесса — только категория: текст внутренней ошибки может содержать куски данных.
     log::error!("ошибка хранилища: {}", error.category());
     error.code().into()
+}
+
+fn code(error: StoreError) -> ErrorCode {
+    api(error).code
 }
 
 /// Окно «Доступ ИИ-агентов»: флажок, режим, чаты с отметкой «видно агенту», состояние сокета и фрагменты подключения.
@@ -27,20 +32,24 @@ pub fn get_agent_access<R: Runtime>(
 
 /// Выключатель доступа. Предупреждение при включении показывает окно до вызова.
 #[tauri::command(async)]
-pub fn set_agent_enabled(store: State<'_, Store>, enabled: bool) -> ApiResult<()> {
-    store.set_agent_enabled(enabled).map_err(api)
+pub fn set_agent_enabled(file: State<'_, SettingsFile>, enabled: bool) -> ApiResult<()> {
+    edit(&file, move |store| {
+        store.set_agent_enabled(enabled).map_err(code)
+    })
 }
 
 /// Режим «Только чтение» / «Чтение и запись».
 #[tauri::command(async)]
-pub fn set_agent_mode(store: State<'_, Store>, mode: AgentMode) -> ApiResult<()> {
-    store.set_agent_mode(mode).map_err(api)
+pub fn set_agent_mode(file: State<'_, SettingsFile>, mode: AgentMode) -> ApiResult<()> {
+    edit(&file, move |store| store.set_agent_mode(mode).map_err(code))
 }
 
 /// Чаты, видимые агенту. Принимаются только существующие чаты без `ai_excluded`.
 #[tauri::command(async)]
-pub fn set_agent_chats(store: State<'_, Store>, chat_ids: Vec<String>) -> ApiResult<()> {
-    store.set_agent_chats(chat_ids).map_err(api)
+pub fn set_agent_chats(file: State<'_, SettingsFile>, chat_ids: Vec<String>) -> ApiResult<()> {
+    edit(&file, move |store| {
+        store.set_agent_chats(chat_ids).map_err(code)
+    })
 }
 
 /// Журнал обращений, новые сверху. `before` — `id` последней строки предыдущей страницы.

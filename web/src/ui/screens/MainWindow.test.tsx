@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../../api/MockApi";
 import type { Settings } from "../../api/generated/Settings";
 import { fireEvent, render, screen, waitFor, within } from "../../test/render";
@@ -141,11 +141,10 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
   });
 });
 
-describe("MainWindow: настройки", () => {
-  async function openSettings() {
+describe("MainWindow: настройки живут в отдельном окне (слайс 4b)", () => {
+  async function chooseSettingsInMenu() {
     fireEvent.click(await screen.findByRole("button", { name: /Профиль/ }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Настройки" }));
-    return screen.findByRole("dialog", { name: "Настройки" });
   }
 
   it("меню профиля: «Настройки» работают, «Экспорт» и «О программе» — «Появится позже»", async () => {
@@ -156,75 +155,52 @@ describe("MainWindow: настройки", () => {
     expect(screen.getByRole("menuitem", { name: "О программе" })).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("окно открывается со свежим состоянием копии, а не со снимком при старте (нет ложного «Копия актуальна»)", async () => {
-    // При старте копия была в порядке, к открытию окна папка стала недоступна.
-    const broken: Settings = { ...SETTINGS, mirror: { ...SETTINGS.mirror, error: "folder_unavailable", pendingDays: 2 } };
-    setup({ settings: broken }, SETTINGS);
-    const dialog = await openSettings();
-    expect(within(dialog).getByRole("alert")).toHaveTextContent("Папка недоступна");
-    expect(within(dialog).queryByText("Копия актуальна")).toBeNull();
-  });
-
-  it("если свежие настройки прочитать не удалось, окно всё равно открывается", async () => {
+  it("«Настройки» просят у Rust открыть отдельное окно; в главном окне диалога нет", async () => {
     const api = setup();
-    api.getSettings = () => Promise.reject(new Error("нет связи"));
-    const dialog = await openSettings();
-    expect(within(dialog).getByText("Копия актуальна")).toBeInTheDocument();
+    await chooseSettingsInMenu();
+    await waitFor(() => expect(api.openSettingsCount).toBe(1));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // Повторный выбор — снова просьба (Rust поднимет то же окно), диалога в этом окне по-прежнему нет.
+    await chooseSettingsInMenu();
+    await waitFor(() => expect(api.openSettingsCount).toBe(2));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("окно показывает папку копии и предупреждение «открытый текст»; «Выбрать…» меняет папку", async () => {
-    const api = setup({ pickedFolder: "/Volumes/Backup/Журнал" });
-    const dialog = await openSettings();
-    expect(within(dialog).getByText("/Users/me/Documents/Kinige")).toBeInTheDocument();
-    expect(within(dialog).getByText(/открытый текст/)).toBeInTheDocument();
-
-    fireEvent.click(within(dialog).getByRole("button", { name: "Выбрать…" }));
-    expect(await within(dialog).findByText("/Volumes/Backup/Журнал")).toBeInTheDocument();
-    expect((await api.getSettings()).mirror.folder).toBe("/Volumes/Backup/Журнал");
-    expect(within(dialog).queryByText("/Users/me/Documents/Kinige")).toBeNull();
-  });
-
-  it("отмена системного диалога оставляет прежнюю папку", async () => {
-    setup({ pickedFolder: null });
-    const dialog = await openSettings();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Выбрать…" }));
-    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Выбрать…" })).not.toHaveAttribute("aria-disabled", "true"));
-    expect(within(dialog).getByText("/Users/me/Documents/Kinige")).toBeInTheDocument();
-  });
-
-  it("ошибка выбора папки видна в окне", async () => {
+  it("событие «настройки изменились»: размер текста применяется сразу, без перезапуска", async () => {
     const api = setup();
-    api.failNextPick = "folder_pick_failed";
-    const dialog = await openSettings();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Выбрать…" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Не удалось выбрать папку.");
-  });
-
-  it("«Размер текста» → «Крупный»: атрибут на <html> сразу и сохранён в настройках", async () => {
-    const api = setup();
-    const dialog = await openSettings();
+    await screen.findByRole("button", { name: /^Входящие/ });
     expect(document.documentElement).not.toHaveAttribute("data-text-scale");
-    fireEvent.click(within(dialog).getByRole("radio", { name: "Крупный" }));
+    await api.setTextSize("large");
     await waitFor(() => expect(document.documentElement).toHaveAttribute("data-text-scale", "large"));
-    expect((await api.getSettings()).textSize).toBe("large");
-    fireEvent.click(within(dialog).getByRole("radio", { name: "Обычный" }));
+    await api.setTextSize("normal");
     await waitFor(() => expect(document.documentElement).not.toHaveAttribute("data-text-scale"));
+  });
+
+  it("после закрытия окна подписка на «настройки изменились» снята", async () => {
+    const api = new MockApi({ now: NOW });
+    const off = vi.fn();
+    vi.spyOn(api, "onSettingsChanged").mockResolvedValue(off);
+    const { unmount } = render(<MainWindow api={api} initialSettings={SETTINGS} />);
+    await screen.findByRole("button", { name: /^Входящие/ });
+    await waitFor(() => expect(api.onSettingsChanged).toHaveBeenCalled());
+    unmount();
+    expect(off).toHaveBeenCalled();
+  });
+
+  it("запись из журнала обращений (окно настроек) открывается в ленте этого окна", async () => {
+    const api = setup({
+      chats: [{ id: "work", title: "Работа", icon: "💼" }],
+      messages: [mockMessage({ id: "a", chatId: "work", bodyMd: "запись из чата Работа", createdAt: Date.UTC(2026, 9, 21, 5, 0) })],
+    });
+    await screen.findByRole("button", { name: /^Входящие/ });
+    await api.settingsOpenEntry("a");
+    expect(await screen.findByText("запись из чата Работа")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Работа/ })).toHaveAttribute("aria-current", "true");
   });
 
   it("крупный размер из сохранённых настроек применяется при старте (после перезапуска)", async () => {
     setup({}, { ...SETTINGS, textSize: "large" });
     await screen.findByRole("button", { name: /^Входящие/ });
     expect(document.documentElement).toHaveAttribute("data-text-scale", "large");
-  });
-
-  it("Esc закрывает окно, фокус возвращается на кнопку профиля", async () => {
-    setup();
-    const dialog = await openSettings();
-    // `findByRole` срабатывает сразу после вставки окна в DOM, а обработчик Esc вешает эффект окна (после отрисовки): сигнал,
-    // что эффект отработал, — фокус на кнопке закрытия. Без этого ожидания Esc иногда уходил раньше подписки (так и падал).
-    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Закрыть настройки" })).toHaveFocus());
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(screen.getByRole("button", { name: /Профиль/ })).toHaveFocus();
   });
 });

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState } from "react";
 import type { ShortcutStatus } from "../../api/generated/ShortcutStatus";
+import { SettingsGroup } from "../prefs/SettingsGroup";
 import { ShortcutRow } from "./ShortcutRow";
 import "./settings-stories.css";
 
@@ -27,13 +28,15 @@ function Demo({ status: initial, error, recording = false, focusChange = false, 
   return (
     <div className="story-settings-part" ref={host}>
       <div className={`story-settings-part__inner${narrow ? " story-settings-part__inner--narrow" : ""}`}>
-        <ShortcutRow
-          status={status}
-          error={error}
-          onChange={(accelerator) => setStatus({ ...status, accelerator, isDefault: false, state: "assigned" })}
-          onReset={() => setStatus(initial)}
-          onRecording={() => undefined}
-        />
+        <SettingsGroup>
+          <ShortcutRow
+            status={status}
+            error={error}
+            onChange={(accelerator) => setStatus({ ...status, accelerator, isDefault: false, state: "assigned" })}
+            onReset={() => setStatus(initial)}
+            onRecording={() => undefined}
+          />
+        </SettingsGroup>
       </div>
     </div>
   );

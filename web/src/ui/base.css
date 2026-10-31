@@ -37,3 +37,18 @@ body {
   outline: var(--focus-width) solid var(--color-focus-ring);
   outline-offset: var(--focus-offset);
 }
+
+/* Кольцо фокуса — только после клавиши. `data-input` ставит `useInputModality` (все окна): `pointer` после мыши и пока ничего не
+   нажато. Так нет «рамки» у кнопки, на которую фокус вернулся после закрытия меню или который поставила система при открытии
+   окна; сам фокус остаётся (доступность). Без хука (истории Storybook) атрибута нет и кольца рисуются как прежде. Поля ввода
+   этим не затронуты: их фокус — тонкая линия по `:focus` в своих стилях. Компоненты с собственным кольцом перечислены здесь,
+   чтобы правило оставалось одним (их селекторы не слабее базового; `ui/focus-ring.test.ts` следит, чтобы список был полным). */
+html[data-input="pointer"] :focus-visible,
+html[data-input="pointer"] .checkbox__input:focus-visible + .checkbox__box,
+html[data-input="pointer"] .recovery__backup:has(input:focus-visible),
+html[data-input="pointer"] .context-menu__item:focus-visible,
+html[data-input="pointer"] .emoji-picker__recent-item:focus-visible,
+html[data-input="pointer"] .agent-log__line--button:focus-visible,
+html[data-input="pointer"] .agent-log__entry-button:focus-visible {
+  outline: none;
+}

@@ -49,7 +49,7 @@
   line-height: var(--type-h3-line-height);
 }
 
-/* Список копий: строки с тонкими разделителями, без карточек; выбранная — заливка и линия акцента. Длинный список прокручивается. */
+/* Список копий: строки с тонкими разделителями, без карточек; выбранная — заливка без рамки. Длинный список прокручивается. */
 .recovery__list {
   display: grid;
   max-height: var(--layout-recovery-list-max-height);
@@ -76,9 +76,9 @@
   background: var(--color-surface-selected);
 }
 
+/* Выбранная копия — заливка светлее, чем при наведении (там `surface-selected`), без рамки. */
 .recovery__backup:has(input:checked) {
-  background: var(--color-surface-selected);
-  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-accent-default);
+  background: var(--color-highlight-background);
 }
 
 /* Фокус с клавиатуры на радиокнопке: кольцо вокруг всей строки (сама радиокнопка скрыта визуально). */

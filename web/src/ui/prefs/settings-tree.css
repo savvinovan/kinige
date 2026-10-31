@@ -1,0 +1,113 @@
+/* Дерево разделов окна «Настройки»: колонка слева; строка пункта — шеврон и название; выбранный пункт залит (без рамки),
+   вложенные пункты с отступом; группы сворачиваются без анимации. Только токены. */
+.settings-tree {
+  box-sizing: border-box;
+  width: var(--layout-settings-tree-width);
+  height: 100%;
+  padding: var(--space-3) var(--space-2);
+  border-right: var(--border-width-hairline) solid var(--color-border-divider);
+}
+
+.settings-tree__list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-tree__row {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: var(--layout-control-height);
+  padding-inline-start: var(--space-1);
+  border-radius: var(--radius-control);
+  color: var(--color-text-secondary);
+}
+
+.settings-tree__row:hover {
+  background: var(--color-surface-field);
+  color: var(--color-text-primary);
+}
+
+/* Выбранный пункт — только заливка; свёрнутая группа с текущим подпунктом подсвечена так же. */
+.settings-tree__row[data-current],
+.settings-tree__row[data-contains-current] {
+  background: var(--color-highlight-background);
+  color: var(--color-text-primary);
+}
+
+.settings-tree__row--nested {
+  padding-inline-start: var(--space-5);
+}
+
+/* Шеврон: щелчок по нему сворачивает и разворачивает группу; у пункта без вложенных — пустое место того же размера,
+   чтобы названия стояли на одной линии. */
+.settings-tree__chevron {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: var(--icon-size);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.settings-tree__chevron:empty {
+  cursor: default;
+}
+
+.settings-tree__chevron .icon {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}
+
+.settings-tree__button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: var(--layout-control-height);
+  margin: 0;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  text-align: start;
+  cursor: pointer;
+}
+
+/* Кольцо фокуса — вокруг всего ряда (шеврон и название), а не одной кнопки, и только при вводе с клавиатуры. */
+.settings-tree__button:focus-visible {
+  outline: none;
+}
+
+html[data-input="keyboard"] .settings-tree__row:has(.settings-tree__button:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: calc(var(--focus-offset) * -1);
+}
+
+.settings-tree__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-tree__mark {
+  display: inline-flex;
+  flex: none;
+  color: var(--color-status-error);
+}
+
+.settings-tree__mark .icon {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}

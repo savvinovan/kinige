@@ -351,3 +351,52 @@ fn a_failed_read_of_the_marks_is_retried_not_treated_as_nothing_to_write() {
         || day_file(dir.path(), "2026-10-21").exists(),
     );
 }
+
+#[test]
+fn a_folder_changed_in_the_middle_of_a_batch_restarts_the_pass_and_fills_the_new_folder() {
+    // Две записи в разные дни. Пока проход держит прочитанную пачку (шаг после `dirty_batch`), папку меняют: прежний код
+    // дописал бы пачку в старую папку и снял отметки, а новая папка осталась бы пустой.
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let dir = tempfile::tempdir().unwrap();
+    let store = open(dir.path());
+    let target = tempfile::tempdir().unwrap();
+    let new_root = target.path().join("Kinige-B");
+    fs::create_dir(&new_root).unwrap();
+
+    let done = Arc::new(AtomicBool::new(false));
+    let hook_store = store.clone();
+    let hook_dir = dir.path().to_path_buf();
+    let hook_root = new_root.clone();
+    let hook_done = done.clone();
+    store.set_mirror_batch_hook_for_test(Some(Arc::new(move || {
+        if hook_done.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        // Ждём вторую запись (её отправляет тест), затем меняем папку посреди пачки.
+        wait_until("вторая отметка дня", || {
+            dirty_count(&hook_dir) >= 2
+        });
+        hook_store.set_mirror_dir(&hook_root).unwrap();
+    })));
+    store
+        .send_message(INBOX_ID, "первый день", &moscow(T0))
+        .unwrap();
+    store
+        .send_message(INBOX_ID, "второй день", &moscow(T0 + 2 * 24 * 60 * MINUTE))
+        .unwrap();
+
+    let in_new = |date: &str| {
+        new_root
+            .join("Inbox")
+            .join(&date[..4])
+            .join(format!("{date}.md"))
+    };
+    wait_until("оба дня в новой папке", || {
+        in_new("2026-10-21").exists() && in_new("2026-10-23").exists()
+    });
+    wait_until("отметок не осталось", || {
+        dirty_count(dir.path()) == 0
+    });
+    store.set_mirror_batch_hook_for_test(None);
+}

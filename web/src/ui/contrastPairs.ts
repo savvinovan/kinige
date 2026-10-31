@@ -1,10 +1,13 @@
 // Пары «цвет / фон», которые обязаны проходить проверку в каждой палитре.
 // Порог выбирается по роли пары. Текст проверяется строже всего (4,5:1), поэтому крупный текст (порог 3:1) проходит заведомо.
 
-export type PairKind = "text" | "ui" | "decorative";
+export type PairKind = "text" | "ui" | "selection" | "decorative";
 
-/** Минимальный контраст по виду пары. decorative — порог проекта, не WCAG: граница или заливка заметна, но тонка. */
-export const MIN_RATIO: Record<PairKind, number> = { text: 4.5, ui: 3, decorative: 1.2 };
+/**
+ * Минимальный контраст по виду пары. decorative — порог проекта, не WCAG: граница или заливка заметна, но тонка. selection — тоже
+ * порог проекта: выбранное одной заливкой, без рамки, и это единственный знак выбора (строка поиска под стрелками).
+ */
+export const MIN_RATIO: Record<PairKind, number> = { text: 4.5, ui: 3, selection: 1.5, decorative: 1.2 };
 
 export interface ContrastPair {
   foreground: string;
@@ -54,6 +57,18 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { foreground: "surface.field", background: "surface.background", kind: "decorative" },
   { foreground: "surface.selected", background: "surface.background", kind: "decorative" },
   { foreground: "highlight.background", background: "surface.message", kind: "decorative" },
+  // Выбранное без рамки, одной заливкой: вариант переключателя на поле (surface.field), выбранная копия и найденная строка
+  // поиска на бумаге и на заливке наведения (surface.selected).
+  { foreground: "highlight.background", background: "surface.field", kind: "decorative" },
+  { foreground: "highlight.background", background: "surface.paper", kind: "decorative" },
+  { foreground: "highlight.background", background: "surface.selected", kind: "decorative" },
+  // Строка поиска под стрелками: фокус в поле, заливка — единственный знак. Заметно сильнее обычной плашки (1,5:1), на ней
+  // читаются основной и вторичный текст (третичный в выбранной строке заменён вторичным) и найденное слово.
+  { foreground: "highlight.row", background: "surface.message", kind: "selection" },
+  { foreground: "highlight.row", background: "surface.paper", kind: "selection" },
+  { foreground: "text.primary", background: "highlight.row", kind: "text" },
+  { foreground: "text.secondary", background: "highlight.row", kind: "text" },
+  { foreground: "highlight.mark", background: "highlight.row", kind: "decorative" },
   // Найденное слово (слайс 4): заливка заметна и на плашке, и на подсвеченной плашке; на ней стоит только основной и
   // вторичный текст (третичный и акцент на неё не попадают: слова в ссылках и тегах не подсвечиваются).
   { foreground: "highlight.mark", background: "surface.message", kind: "decorative" },

@@ -3,9 +3,15 @@
 //   osascript -l JavaScript scripts/screens/ax.js press  <pid> <текст в названии/описании> [роль: Button|CheckBox|RadioButton|PopUpButton|MenuItem]
 //   osascript -l JavaScript scripts/screens/ax.js scroll <pid> <текст>      (AXScrollToVisible)
 //   osascript -l JavaScript scripts/screens/ax.js has    <pid> <текст>      (печатает yes/no)
+//   osascript -l JavaScript scripts/screens/ax.js frame  <pid> <текст>      (печатает «x y ширина высота» первого найденного)
+//   osascript -l JavaScript scripts/screens/ax.js resize <pid> <ширина> <высота>  (меняет размер окна; печатает итоговый размер)
+// Окно процесса: по умолчанию первое; переменная AX_WINDOW=<часть заголовка> выбирает окно «Settings» или «Kinige».
 // Текст ищется как подстрока в «роль, название, описание, значение» элемента, первый найденный в порядке обхода.
+ObjC.import("Foundation");
+
 function run(argv) {
   const [mode, pid, want = "", roleWant = ""] = argv;
+  const windowWant = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("AX_WINDOW")) || "";
   const se = Application("System Events");
   const proc = se.processes.whose({ unixId: Number(pid) })[0];
   const pressable = roleWant
@@ -41,6 +47,13 @@ function run(argv) {
         out.push(" ".repeat(depth) + p.role + " " + label.slice(0, 400));
       } else if (label.includes(want)) {
         if (mode === "has") return "yes";
+        if (mode === "frame") {
+          try {
+            const at = k.position();
+            const size = k.size();
+            return at[0] + " " + at[1] + " " + size[0] + " " + size[1];
+          } catch (e) {}
+        }
         if (mode === "scroll") {
           try {
             k.actions.byName("AXScrollToVisible").perform();
@@ -63,7 +76,28 @@ function run(argv) {
     proc.frontmost = true;
     return "frontmost";
   }
-  const found = walk(proc.windows[0], 0);
+  let win = proc.windows[0];
+  if (windowWant) {
+    win = null;
+    const count = proc.windows().length;
+    for (let i = 0; i < count; i++) {
+      let title = "";
+      try {
+        title = String(proc.windows[i].name());
+      } catch (e) {}
+      if (title.includes(windowWant)) {
+        win = proc.windows[i];
+        break;
+      }
+    }
+    if (!win) return "no window: " + windowWant;
+  }
+  if (mode === "resize") {
+    win.size = [Number(want), Number(roleWant)];
+    const size = win.size();
+    return size[0] + " " + size[1];
+  }
+  const found = walk(win, 0);
   if (mode === "dump") return out.join("\n");
   if (mode === "has") return found || "no";
   return found || "not found: " + want;
