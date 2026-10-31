@@ -97,6 +97,20 @@ press "Copies"
 shoot_settings 03-mirror
 press "AI agent access"
 shoot_settings 04-access-off
+# Улика про второй «язычок» прокрутки на странице «Доступ»: тот же вид после ухода на другой раздел и возврата и после
+# перерисовки (размер окна на пиксель больше и обратно). Если язычок остаточный (старый слой WebKit), он пропадёт.
+press "Appearance"
+press "AI agent access"
+shoot_settings 04b-access-after-return
+{
+  echo "# Размер окна «Настройки» при перерисовке для снимка 04c (запрос 861 x 600, затем 860 x 600)."
+  echo "после +1 px: $(ax resize "$(app_pid)" 861 600)"
+  sleep 2
+  echo "после возврата: $(ax resize "$(app_pid)" 860 600)"
+} > "$OUT/repaint.txt"
+cat "$OUT/repaint.txt"
+sleep 2
+shoot_settings 04c-access-after-resize
 
 # ---- 3. Включение: предупреждение поверх окна, содержимое под ним не сдвигается ----
 # Пока предупреждение открыто (aria-modal), WebKit прячет остальную страницу от доступности, поэтому рамки под ним
