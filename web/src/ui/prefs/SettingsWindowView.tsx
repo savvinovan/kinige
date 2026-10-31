@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import type { AgentAccess } from "../../api/generated/AgentAccess";
 import type { AgentLogEntry } from "../../api/generated/AgentLogEntry";
 import type { AgentMode } from "../../api/generated/AgentMode";
@@ -61,12 +62,17 @@ export function SettingsWindowView(props: SettingsWindowViewProps) {
   const changed = file.changed;
   const problems: Route[] = file.problem || file.unsafeReason || file.issues.length > 0 ? ["file"] : [];
   const back = () => onNavigate(parentOf(route));
+  // Один прокручиваемый блок на все страницы: при каждом переходе (дерево, «Настроить ›», «назад») страница открывается
+  // сверху, а не с места, где остановилась предыдущая. (Пересоздание блока по `key` маршрута проверено снимками на раннере:
+  // остаточный «язычок» полосы WebKit это не убирает, поэтому прокрутка сбрасывается явно.)
+  const page = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    if (page.current) page.current.scrollTop = 0;
+  }, [route]);
   return (
     <div className="prefs">
       <SettingsTree route={route} onNavigate={onNavigate} withProblems={problems} />
-      {/* `key` по маршруту: при переходе (дерево, «Настроить ›», «назад») прокручиваемый элемент создаётся заново, и страница
-            открывается сверху, а не с места прошлой прокрутки. */}
-      <main className="prefs__page" key={route}>
+      <main className="prefs__page" ref={page}>
         <div className="prefs__column">
           {route === "appearance" ? (
             <AppearancePage textSize={props.settings.textSize} onTextSizeChange={props.onTextSizeChange} changedAt={changed.appearance} now={now} />
