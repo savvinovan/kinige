@@ -14,9 +14,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tempfile::TempDir;
 
 pub struct Rig {
+    /// Первым в списке: поле сбрасывается раньше каталога, поток файла успевает остановиться.
+    pub file: SettingsFile,
     pub dir: TempDir,
     pub store: Store,
-    pub file: SettingsFile,
     pub changes: Arc<AtomicUsize>,
 }
 

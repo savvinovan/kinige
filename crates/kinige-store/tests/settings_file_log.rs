@@ -82,14 +82,16 @@ fn an_unsafe_file_and_a_fifo_do_not_flood_the_log_either() {
     let before = file_lines().len();
     let rig = rig_with(|options| options.poll = Duration::from_millis(20));
     let path = rig.path();
-    std::fs::remove_file(&path).unwrap();
+    // Подмена одним rename: опрос раз в 20 мс не должен увидеть «файла нет» и пересоздавать его.
+    let fifo = rig.dir.path().join("fifo.swap");
     assert!(
         std::process::Command::new("mkfifo")
-            .arg(&path)
+            .arg(&fifo)
             .status()
             .unwrap()
             .success()
     );
+    std::fs::rename(&fifo, &path).unwrap();
     rig.file.sync_now();
     rig.file
         .edit(|store| store.set_text_size(TextSize::Large))

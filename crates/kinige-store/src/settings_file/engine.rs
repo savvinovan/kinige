@@ -12,6 +12,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex, PoisonError};
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 /// Как часто поток смотрит на файл.
@@ -60,9 +61,11 @@ impl SettingsFileOptions {
 
 type Job = Box<dyn FnOnce(&mut Engine) + Send>;
 
-/// Дескриптор потока файла. Поток живёт, пока жив дескриптор.
+/// Дескриптор потока файла. Поток живёт, пока жив дескриптор; при сбросе дескриптора поток останавливается и ждётся,
+/// чтобы он не успел сделать ещё один опрос по уже убранному каталогу.
 pub struct SettingsFile {
-    jobs: Sender<Job>,
+    jobs: Option<Sender<Job>>,
+    thread: Option<JoinHandle<()>>,
     status: Arc<Mutex<SettingsFileState>>,
 }
 
@@ -99,11 +102,15 @@ impl SettingsFile {
         guarded(&mut engine, Engine::reconcile);
         engine.initial = false;
         let (jobs, inbox) = mpsc::channel::<Job>();
-        std::thread::Builder::new()
+        let thread = std::thread::Builder::new()
             .name("kinige-settings-file".into())
             .spawn(move || run(engine, inbox))
             .ok();
-        SettingsFile { jobs, status }
+        SettingsFile {
+            jobs: Some(jobs),
+            thread,
+            status,
+        }
     }
 
     /// Состояние файла для окна.
@@ -129,7 +136,7 @@ impl SettingsFile {
             }
             let _ = reply.send(result);
         });
-        self.jobs.send(job).ok()?;
+        self.jobs.as_ref()?.send(job).ok()?;
         answer.recv().ok()
     }
 
@@ -141,8 +148,23 @@ impl SettingsFile {
             engine.reconcile();
             let _ = reply.send(());
         });
-        if self.jobs.send(job).is_ok() {
+        if self
+            .jobs
+            .as_ref()
+            .is_some_and(|jobs| jobs.send(job).is_ok())
+        {
             let _ = answer.recv();
+        }
+    }
+}
+
+impl Drop for SettingsFile {
+    fn drop(&mut self) {
+        self.jobs = None;
+        if let Some(thread) = self.thread.take()
+            && thread.thread().id() != std::thread::current().id()
+        {
+            let _ = thread.join();
         }
     }
 }
