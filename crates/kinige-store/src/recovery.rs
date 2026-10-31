@@ -189,7 +189,7 @@ pub fn restore_backup_with(
     // нет в базе, то есть дни, появившиеся после снимка. Файл читается только как чтение, с теми же проверками безопасности.
     let from_file = db_path
         .parent()
-        .and_then(settings_file::mirror_folder_from_file);
+        .and_then(|data_dir| settings_file::mirror_folder_from_file(data_dir, default_mirror));
     let mut moved: Vec<(PathBuf, PathBuf)> = Vec::new();
     let undo_move = |moved: &[(PathBuf, PathBuf)]| {
         for (from, to) in moved.iter().rev() {

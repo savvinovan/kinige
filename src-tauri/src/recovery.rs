@@ -13,7 +13,7 @@
 //! (они из той же или более новой версии), окно просит обновить Kinige.
 
 use kinige_domain::{ApiError, ErrorCode, RestoreOutcome, StartupState};
-use kinige_store::{CorruptionHook, Now, Store};
+use kinige_store::{CorruptionHook, Now, RestoreReport, Store};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -190,14 +190,7 @@ pub fn restore_backup<R: Runtime>(
     match restored {
         Ok(report) => {
             recovery.finish_restore();
-            Ok(RestoreOutcome {
-                previous_mirror: report
-                    .previous_mirror
-                    .map(|folder| folder.to_string_lossy().into_owned()),
-                settings_file_mirror: report
-                    .settings_file_mirror
-                    .map(|folder| folder.to_string_lossy().into_owned()),
-            })
+            Ok(outcome_of(report))
         }
         Err(error) => {
             log::error!("восстановление из копии не удалось: {}", error.category());
@@ -221,9 +214,39 @@ pub fn restart_for_recovery<R: Runtime>(app: AppHandle<R>) -> ApiResult<()> {
     app.restart();
 }
 
+/// Итог восстановления для окна: куда переехали папка копии из базы-копии и папка, названная в `settings.json`.
+fn outcome_of(report: RestoreReport) -> RestoreOutcome {
+    let text = |folder: PathBuf| folder.to_string_lossy().into_owned();
+    RestoreOutcome {
+        previous_mirror: report.previous_mirror.map(text),
+        settings_file_mirror: report.settings_file_mirror.map(text),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_outcome_names_the_folder_moved_aside_for_the_settings_file_only_when_there_is_one() {
+        let both = outcome_of(RestoreReport {
+            previous_mirror: Some(PathBuf::from("/a/Kinige-before-restore-1")),
+            settings_file_mirror: Some(PathBuf::from("/b/Kinige-B-before-restore-1")),
+        });
+        assert_eq!(
+            both.previous_mirror.as_deref(),
+            Some("/a/Kinige-before-restore-1")
+        );
+        assert_eq!(
+            both.settings_file_mirror.as_deref(),
+            Some("/b/Kinige-B-before-restore-1")
+        );
+        let same = outcome_of(RestoreReport {
+            previous_mirror: Some(PathBuf::from("/a/Kinige-before-restore-1")),
+            settings_file_mirror: None,
+        });
+        assert_eq!(same.settings_file_mirror, None);
+    }
 
     #[test]
     fn exactly_one_of_two_simultaneous_restores_begins() {

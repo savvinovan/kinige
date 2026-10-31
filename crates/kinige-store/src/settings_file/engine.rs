@@ -7,6 +7,7 @@ use crate::Store;
 use crate::settings::get_setting;
 use kinige_domain::{SettingsFileState, ShortcutKind};
 use serde_json::{Map, Value};
+use std::collections::HashSet;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
@@ -91,7 +92,7 @@ impl SettingsFile {
             writable: false,
             base: None,
             initial: true,
-            logged: None,
+            logged: HashSet::new(),
             write_failures: 0,
             retry_at: None,
         };
@@ -182,8 +183,8 @@ pub(super) struct Engine {
     pub(super) base: Option<Map<String, Value>>,
     /// Запуск приложения: окон ещё нет, сочетания идут прямо в базу, событий нет.
     pub(super) initial: bool,
-    /// Последнее записанное в журнал процесса предупреждение (вид и категория): повтор не пишется.
-    pub(super) logged: Option<String>,
+    /// Предупреждения, уже записанные в журнал процесса (вид и категория): повтор не пишется, пока тот же вид не отработал успешно.
+    pub(super) logged: HashSet<String>,
     /// Подряд неудачных записей файла и когда пробовать снова (с 2^n секунд, не реже раза в минуту).
     pub(super) write_failures: u32,
     pub(super) retry_at: Option<Instant>,

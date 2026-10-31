@@ -172,3 +172,57 @@ fn after_restore_a_safe_file_is_applied_over_the_restored_database() {
     );
     assert!(rig.store.agent_access().unwrap().enabled);
 }
+
+#[test]
+fn a_null_folder_in_the_file_means_the_default_folder_and_it_is_moved_aside_too() {
+    // В копии выбрана своя папка C, в файле `mirror.folder: null`: после применения файла копия пойдёт в папку по умолчанию,
+    // где лежит день, появившийся после снимка. Её нужно увести так же, как папку из файла с путём.
+    let dir = tempfile::tempdir().unwrap();
+    let chosen = tempfile::tempdir().unwrap();
+    let chosen_folder = chosen.path().join("Kinige-C");
+    fs::create_dir(&chosen_folder).unwrap();
+    let name = database_with_copy(dir.path(), |store| {
+        store.set_mirror_dir(&chosen_folder).unwrap()
+    });
+    let default_folder = mirror_dir(dir.path());
+    let day = default_folder.join("Inbox/2026/2026-10-22.md");
+    fs::create_dir_all(day.parent().unwrap()).unwrap();
+    fs::write(&day, "после снимка").unwrap();
+    write_file(dir.path(), br#"{"mirror":{"folder":null}}"#, 0o600);
+    restore(dir.path(), &name);
+    assert!(
+        !default_folder.exists(),
+        "папка по умолчанию уведена в сторону"
+    );
+    let moved = aside(&default_folder);
+    assert_eq!(moved.len(), 1);
+    assert_eq!(
+        fs::read_to_string(moved[0].join("Inbox/2026/2026-10-22.md")).unwrap(),
+        "после снимка"
+    );
+    assert_eq!(
+        aside(&chosen_folder).len(),
+        1,
+        "папка из копии тоже уведена"
+    );
+}
+
+#[test]
+fn a_null_folder_equal_to_the_copys_own_folder_is_moved_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let name = database_with_copy(dir.path(), |_| {});
+    let default_folder = mirror_dir(dir.path());
+    fs::create_dir_all(default_folder.join("Inbox")).unwrap();
+    write_file(dir.path(), br#"{"mirror":{"folder":null}}"#, 0o600);
+    let report = restore_backup(
+        &db_path(dir.path()),
+        &name,
+        BACKUP_MS,
+        Some(&mirror_dir(dir.path())),
+    )
+    .unwrap();
+    assert_eq!(aside(&default_folder).len(), 1);
+    // Папка из файла совпала с папкой копии: уведена один раз и названа один раз, второй строки в отчёте нет.
+    assert!(report.previous_mirror.is_some());
+    assert_eq!(report.settings_file_mirror, None);
+}

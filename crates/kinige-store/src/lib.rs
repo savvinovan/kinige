@@ -305,6 +305,13 @@ impl Store {
         })
     }
 
+    /// Только для тестов: шаг в проходе Markdown-копии после чтения пачки отметок и до проверки папки; `None` снимает его.
+    /// В шаге тест меняет папку копии посреди пачки (проход должен начаться заново с новой папкой).
+    #[doc(hidden)]
+    pub fn set_mirror_batch_hook_for_test(&self, hook: Option<Arc<dyn Fn() + Send + Sync>>) {
+        self.inner.mirror.set_batch_hook(hook);
+    }
+
     /// Только для тестов: следующий проход фоновой копии (`mirror`) или обслуживания (`maintenance`) паникует один раз.
     #[doc(hidden)]
     pub fn inject_background_panic_for_test(&self, thread: BackgroundThread) {

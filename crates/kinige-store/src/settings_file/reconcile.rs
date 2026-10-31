@@ -36,13 +36,18 @@ impl Engine {
         self.retry_at = Some(Instant::now() + Duration::from_secs(wait));
     }
 
-    /// Предупреждение в журнал процесса один раз на смену состояния: тот же вид ошибки при повторных проходах молчит
-    /// (иначе битый файл давал бы строку на каждый опрос). Только категории, без данных.
+    /// Предупреждение в журнал процесса один раз, пока тот же вид ошибки не отработал успешно (`forget`): повторные проходы
+    /// молчат (иначе битый файл или занятая база давали бы строку на каждый опрос). Виды независимы: чередование двух
+    /// ошибок строк не добавляет. Только категории, без данных.
     fn warn_once(&mut self, key: String, text: &str) {
-        if self.logged.as_deref() != Some(key.as_str()) {
+        if self.logged.insert(key.clone()) {
             log::warn!("{text}: {key}");
-            self.logged = Some(key);
         }
+    }
+
+    /// Вид ошибки (приставка ключа) отработал успешно: следующий сбой снова попадёт в журнал.
+    fn forget(&mut self, prefix: &str) {
+        self.logged.retain(|key| !key.starts_with(prefix));
     }
 
     /// Читает файл и приводит его и базу в согласие. Хэш совпал с последним синхронизированным — внешней правки нет, база
@@ -50,6 +55,9 @@ impl Engine {
     pub(super) fn reconcile(&mut self) {
         match io::read_file(&self.path, &self.dir) {
             ReadOutcome::Missing => {
+                self.forget("read");
+                self.forget("parse");
+                self.forget("unsafe");
                 self.last_sig = None;
                 self.base = None;
                 self.writable = true;
@@ -109,7 +117,9 @@ impl Engine {
                         });
                     }
                     Ok(parsed) => {
-                        self.logged = None;
+                        self.forget("read");
+                        self.forget("parse");
+                        self.forget("unsafe");
                         self.writable = unsafe_reason.is_none();
                         self.base = Some(parsed.raw.clone());
                         let hash = sha256_hex(&bytes);
@@ -153,6 +163,7 @@ impl Engine {
             }
         };
         self.stored_hash = Some(hash);
+        self.forget("apply");
         if outcome.mirror {
             // Папка копии сменилась: писатель копии просыпается и пишет дни в новую папку сразу.
             self.store.mirror_dir_changed();
@@ -213,7 +224,10 @@ impl Engine {
     /// до файла: обрыв, небезопасное состояние), он переписывается из базы.
     fn settle(&mut self, parsed: Parsed, unsafe_reason: Option<UnsafeReason>) {
         let in_sync = match self.store.effective_state() {
-            Ok(state) => state.matches(&parsed),
+            Ok(state) => {
+                self.forget("state");
+                state.matches(&parsed)
+            }
             Err(error) => {
                 self.warn_once(
                     format!("state {}", error.category()),
@@ -265,6 +279,7 @@ impl Engine {
                 return;
             }
         };
+        self.forget("write-state");
         let bytes = state.render(self.base.as_ref());
         let hash = sha256_hex(&bytes);
         if let Err(error) = io::write_atomic(&self.path, &self.dir, &bytes) {
@@ -282,6 +297,7 @@ impl Engine {
             });
             return;
         }
+        self.forget("write-io");
         // Признак — сразу после `rename`, до шага хэша: если файл подменят позже, признак изменится и опрос его заметит.
         self.last_sig = io::signature(&self.path);
         if let Some(step) = &self.options.after_rename {
@@ -298,11 +314,11 @@ impl Engine {
             );
         } else {
             self.stored_hash = Some(hash.clone());
+            self.forget("hash");
         }
         self.pending_write = false;
         self.write_failures = 0;
         self.retry_at = None;
-        self.logged = None;
         // Если на диске уже не то, что записано (агент успел заменить файл), он будет прочитан и применён следующим опросом.
         // Читается тем же безопасным чтением (без перехода по ссылке, канал и устройство не читаются).
         let same = matches!(

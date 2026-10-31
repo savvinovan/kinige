@@ -28,7 +28,12 @@ pub(crate) struct MirrorShared {
     retry: Duration,
     /// Только для тестов: следующий проход паникует.
     panic_next: AtomicBool,
+    /// Только для тестов: шаг после чтения пачки отметок и до проверки папки (в нём тест меняет папку посреди пачки).
+    batch_hook: Mutex<Option<BatchHook>>,
 }
+
+/// Шаг теста внутри прохода копии.
+pub(crate) type BatchHook = Arc<dyn Fn() + Send + Sync>;
 
 impl MirrorShared {
     pub(crate) fn new(retry: Duration) -> Arc<MirrorShared> {
@@ -39,7 +44,21 @@ impl MirrorShared {
             error: Mutex::new(None),
             retry,
             panic_next: AtomicBool::new(false),
+            batch_hook: Mutex::new(None),
         })
+    }
+
+    pub(crate) fn set_batch_hook(&self, hook: Option<BatchHook>) {
+        if let Ok(mut slot) = self.batch_hook.lock() {
+            *slot = hook;
+        }
+    }
+
+    fn run_batch_hook(&self) {
+        let hook = self.batch_hook.lock().ok().and_then(|slot| slot.clone());
+        if let Some(hook) = hook {
+            hook();
+        }
     }
 
     pub(crate) fn inject_panic(&self) {
@@ -177,6 +196,7 @@ fn pass(
             shared.set_error(None);
             return false;
         }
+        shared.run_batch_hook();
         // Папку могли сменить, пока шёл проход (окно или `settings.json`): смена помечает все дни заново, а писать дни,
         // отмеченные этим проходом, в прежнюю папку и снимать отметки нельзя — новая папка осталась бы пустой.
         // Проход начинается заново с новой папкой; отметки целы.
