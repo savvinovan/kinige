@@ -22,3 +22,14 @@ export const TREE: readonly TreeItem[] = [
 
 /** Раздел, к которому относится подэкран; для раздела — он сам. */
 export const parentOf = (route: Route): Route => (route === "access/chats" || route === "access/log" ? "access" : route);
+
+/** Раздел с вложенными пунктами и его подэкраны: такие пункты дерева сворачиваются. */
+export const GROUPS: Readonly<Partial<Record<Route, readonly Route[]>>> = {
+  access: ["access/chats", "access/log"],
+};
+
+/** Группа, в которой лежит страница: сам раздел с вложенными пунктами или один из его подэкранов; иначе `undefined`. */
+export function groupOf(route: Route): Route | undefined {
+  const parent = parentOf(route);
+  return GROUPS[parent] ? parent : undefined;
+}

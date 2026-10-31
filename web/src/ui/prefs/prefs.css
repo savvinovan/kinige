@@ -140,7 +140,20 @@ html[data-window="settings"] body {
   overflow-wrap: anywhere;
 }
 
-/* Строка «Настроить ›»: название и состояние слева, действие справа; вся строка — кнопка. */
+/* Карточка-группа строк (системные настройки macOS, Zed): одна заливка, тонкие разделители между строками. Так оформлены
+   сочетания клавиш и строки «Видимые чаты» / «Журнал обращений». */
+.settings-group {
+  display: grid;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-field);
+  overflow: clip;
+}
+
+.settings-group > * + * {
+  border-top: var(--border-width-hairline) solid var(--color-border-divider);
+}
+
+/* Строка «Настроить ›»: название и состояние слева, действие справа; вся строка — кнопка внутри группы. */
 .configure-row {
   display: flex;
   align-items: center;
@@ -152,8 +165,8 @@ html[data-window="settings"] body {
   margin: 0;
   padding: var(--space-2) var(--space-3);
   border: 0;
-  border-radius: var(--radius-control);
-  background: var(--color-surface-field);
+  border-radius: 0;
+  background: transparent;
   color: var(--color-text-primary);
   font-family: var(--type-small-family);
   font-size: var(--type-small-size);

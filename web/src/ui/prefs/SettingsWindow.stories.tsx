@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { INBOX_ID } from "../../api/KinigeApi";
 import { MOCK_SETTINGS_FILE } from "../../api/MockApiSlice4b";
 import { MOCK_AGENT_SOCKET } from "../../api/MockApiSlice4a";
@@ -100,6 +100,8 @@ const BASE: SettingsWindowViewProps = {
   log: LOG,
   language: "ru",
   now: NOW,
+  // Дерево в историях не читает localStorage: развёрнута только группа текущей страницы (если она внутри группы).
+  treeExpanded: [],
   warning: false,
   onTextSizeChange: noop,
   onChooseFolder: noop,
@@ -119,14 +121,20 @@ const BASE: SettingsWindowViewProps = {
 interface DemoProps extends Partial<SettingsWindowViewProps> {
   /** Наименьшее окно (640 × 440). */
   min?: boolean;
+  /** Сразу включает запись нового сочетания в первой строке («Изменить» нажимается в истории: мыши нет). */
+  record?: boolean;
 }
 
 /** Окно с настоящей навигацией по дереву; остальное — без вызовов. */
-function Demo({ min = false, route: initial = "appearance", warning: initialWarning = false, ...rest }: DemoProps) {
+function Demo({ min = false, record = false, route: initial = "appearance", warning: initialWarning = false, ...rest }: DemoProps) {
   const [route, setRoute] = useState<Route>(initial);
   const [warning, setWarning] = useState(initialWarning);
+  const frame = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (record) frame.current?.querySelector<HTMLButtonElement>(".shortcut-row__actions button")?.click();
+  }, [record]);
   return (
-    <div className={`story-prefs-frame${min ? " story-prefs-frame--min" : ""}`}>
+    <div className={`story-prefs-frame${min ? " story-prefs-frame--min" : ""}`} ref={frame}>
       <SettingsWindowView
         {...BASE}
         {...rest}
@@ -158,6 +166,18 @@ export const Оформление: Story = {};
 
 /** Сочетания клавиш: оба назначены. */
 export const Сочетания: Story = { args: { route: "shortcuts" } };
+
+/** Запись нового сочетания: поле записи на месте клавиш, кнопки скрыты, раскладка строки не меняется. */
+export const СочетанияЗапись: Story = { args: { route: "shortcuts", record: true } };
+
+/** Дерево: группа «Доступ ИИ-агентов» свёрнута (по умолчанию), шеврон ›. */
+export const ДеревоСвёрнуто: Story = {};
+
+/** Дерево: группа развёрнута, шеврон ⌄ и вложенные пункты. */
+export const ДеревоРазвёрнуто: Story = { args: { treeExpanded: ["access"] } };
+
+/** Узкое окно: клавиши и кнопки переходят под название. */
+export const НаименьшийРазмерСочетания: Story = { args: { min: true, route: "shortcuts", record: true } };
 
 /** Сочетание занято другой программой («не назначено»), у второго ошибка сохранения. */
 export const СочетаниеЗанято: Story = {
@@ -300,3 +320,7 @@ export const EnglishUnsafe: Story = en(ФайлНебезопасен);
 export const EnglishLongNames: Story = en(ДлинныеПутиИНазвания);
 export const EnglishMinSize: Story = en(НаименьшийРазмер);
 export const EnglishMinSizeSubscreen: Story = en(НаименьшийРазмерПодэкран);
+export const EnglishShortcutsRecording: Story = en(СочетанияЗапись);
+export const EnglishTreeCollapsed: Story = en(ДеревоСвёрнуто);
+export const EnglishTreeExpanded: Story = en(ДеревоРазвёрнуто);
+export const EnglishMinSizeShortcuts: Story = en(НаименьшийРазмерСочетания);

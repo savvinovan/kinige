@@ -4,6 +4,7 @@ import type { ShortcutKind } from "../../../api/generated/ShortcutKind";
 import type { ShortcutStatus } from "../../../api/generated/ShortcutStatus";
 import { ShortcutRow } from "../../settings/ShortcutRow";
 import { ChangedByFile } from "../ChangedByFile";
+import { SettingsGroup } from "../SettingsGroup";
 import "../../settings/settings.css";
 
 interface ShortcutsPageProps {
@@ -29,7 +30,7 @@ export function ShortcutsPage({ shortcuts, errors, onChange, onReset, onRecordin
       </h2>
       <div className="prefs-block">
         <p className="settings__description">{t("settings.shortcuts.description")}</p>
-        <div className="settings__rows">
+        <SettingsGroup>
           {shortcuts.map((shortcut) => (
             <ShortcutRow
               key={shortcut.kind}
@@ -40,7 +41,7 @@ export function ShortcutsPage({ shortcuts, errors, onChange, onReset, onRecordin
               onRecording={onRecording}
             />
           ))}
-        </div>
+        </SettingsGroup>
         <ChangedByFile at={changedAt} now={now} />
       </div>
     </section>

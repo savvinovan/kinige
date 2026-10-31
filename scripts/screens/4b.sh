@@ -93,6 +93,9 @@ in_settings
 shoot_settings 01-appearance
 press "Keyboard shortcuts"
 shoot_settings 02-shortcuts
+# Запись нового сочетания: поле записи на месте клавиш, строка не меняет раскладку (мыши и клавиш нет: нажатие AX на «Change»).
+press "Change shortcut: Quick capture window"
+shoot_settings 02b-shortcuts-recording
 press "Copies"
 shoot_settings 03-mirror
 press "AI agent access"

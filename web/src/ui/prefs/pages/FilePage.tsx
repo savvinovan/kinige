@@ -1,8 +1,7 @@
 import { Fragment, useId } from "react";
 import { useTranslation } from "react-i18next";
 import type { SettingsFileState } from "../../../api/generated/SettingsFileState";
-import { Button } from "../../controls/Button";
-import { useCopy } from "../../message/useCopy";
+import { CopyButton } from "../../controls/CopyButton";
 import { StatusNote } from "../../settings/StatusNote";
 import "../prefs.css";
 import "../../settings/settings.css";
@@ -20,8 +19,6 @@ export function FilePage({ file }: { file: SettingsFileState }) {
   const { t } = useTranslation();
   const titleId = useId();
   const pathId = useId();
-  const { state, copy } = useCopy();
-  const copyLabel = state === "copied" ? t("prefs.file.copied") : state === "failed" ? t("prefs.file.copyFailed") : t("prefs.file.copyPath");
   const { problem, unsafeReason } = file;
   const clean = !problem && !unsafeReason && file.issues.length === 0;
   return (
@@ -46,14 +43,13 @@ export function FilePage({ file }: { file: SettingsFileState }) {
                 ))}
               </code>
             </div>
-            <Button
-              variant="secondary"
-              aria-label={state === "idle" ? t("prefs.file.copyPathLabel") : undefined}
-              aria-describedby={pathId}
-              onClick={() => void copy(file.path)}
-            >
-              {copyLabel}
-            </Button>
+            <CopyButton
+              text={file.path}
+              label={t("prefs.file.copyPath")}
+              copiedLabel={t("prefs.file.copied")}
+              failedLabel={t("prefs.file.copyFailed")}
+              describedBy={pathId}
+            />
           </div>
         </div>
         {problem ? (

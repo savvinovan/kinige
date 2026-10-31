@@ -99,56 +99,100 @@ fn an_unsafe_file_and_a_fifo_do_not_flood_the_log_either() {
     assert!(file_lines().len() - before <= 1, "{:?}", file_lines());
 }
 
-#[test]
-fn a_busy_database_does_not_log_the_apply_error_on_every_poll() {
-    let _guard = install();
-    let rig = rig_with(|options| options.poll = Duration::from_millis(20));
-    // База «занята»: таблицы настроек нет, запись из применения файла падает, признак файла сбрасывается и опрос идёт снова.
-    raw(rig.dir.path())
-        .execute_batch("ALTER TABLE app_setting RENAME TO app_setting_away")
-        .unwrap();
-    write_file(rig.dir.path(), br#"{"text_size":"large"}"#, 0o600);
-    std::thread::sleep(Duration::from_millis(500));
-    let lines: Vec<String> = file_lines()
-        .into_iter()
-        .filter(|l| l.contains("не применён"))
-        .collect();
-    assert_eq!(lines.len(), 1, "{lines:?}");
-    // Починили: применяется, и новый сбой снова попадёт в журнал.
-    raw(rig.dir.path())
-        .execute_batch("ALTER TABLE app_setting_away RENAME TO app_setting")
-        .unwrap();
-    wait_until("применено после починки", || {
-        rig.store.get_settings().unwrap().text_size == TextSize::Large
-    });
+fn count(needle: &str) -> usize {
+    file_lines()
+        .iter()
+        .filter(|line| line.contains(needle))
+        .count()
 }
 
 #[test]
-fn a_failing_hash_write_and_the_apply_error_that_follows_are_each_logged_once() {
+fn a_busy_database_logs_the_apply_error_once_and_again_after_a_success() {
     let _guard = install();
     let rig = rig_with(|options| options.poll = Duration::from_millis(20));
-    // Хэш файла записать нельзя (триггер), сам файл пишется: каждая правка окна упирается в ту же ошибку.
-    raw(rig.dir.path())
-        .execute_batch(
-            "CREATE TRIGGER no_hash_insert BEFORE INSERT ON app_setting WHEN NEW.key = 'settings_file_hash' \
-             BEGIN SELECT RAISE(ABORT, 'нельзя'); END; \
-             CREATE TRIGGER no_hash_update BEFORE UPDATE ON app_setting WHEN NEW.key = 'settings_file_hash' \
-             BEGIN SELECT RAISE(ABORT, 'нельзя'); END;",
-        )
-        .unwrap();
-    for size in [TextSize::Large, TextSize::Normal, TextSize::Large] {
+    let hide = |name: &str, to: &str| {
+        raw(rig.dir.path())
+            .execute_batch(&format!("ALTER TABLE {name} RENAME TO {to}"))
+            .unwrap();
+    };
+    // База «занята»: таблицы настроек нет, запись из применения файла падает, признак файла сбрасывается и опрос идёт снова.
+    hide("app_setting", "app_setting_away");
+    write_file(rig.dir.path(), br#"{"text_size":"large"}"#, 0o600);
+    std::thread::sleep(Duration::from_millis(500));
+    assert_eq!(count("не применён"), 1, "{:?}", file_lines());
+    // Починили: применяется (успех сбрасывает вид «apply»).
+    hide("app_setting_away", "app_setting");
+    wait_until("применено после починки", || {
+        rig.store.get_settings().unwrap().text_size == TextSize::Large
+    });
+    // Снова сбой: вторая строка, а не молчание и не поток.
+    hide("app_setting", "app_setting_away");
+    write_file(rig.dir.path(), br#"{"text_size":"normal"}"#, 0o600);
+    std::thread::sleep(Duration::from_millis(500));
+    assert_eq!(count("не применён"), 2, "{:?}", file_lines());
+}
+
+#[test]
+fn a_failing_hash_write_and_the_apply_error_that_follows_are_each_logged_once_and_again_after_a_success()
+ {
+    let _guard = install();
+    let rig = rig_with(|options| options.poll = Duration::from_millis(20));
+    let block_hash = || {
+        raw(rig.dir.path())
+            .execute_batch(
+                "CREATE TRIGGER no_hash_insert BEFORE INSERT ON app_setting WHEN NEW.key = 'settings_file_hash' \
+                 BEGIN SELECT RAISE(ABORT, 'нельзя'); END; \
+                 CREATE TRIGGER no_hash_update BEFORE UPDATE ON app_setting WHEN NEW.key = 'settings_file_hash' \
+                 BEGIN SELECT RAISE(ABORT, 'нельзя'); END;",
+            )
+            .unwrap();
+    };
+    let allow_hash = || {
+        raw(rig.dir.path())
+            .execute_batch("DROP TRIGGER no_hash_insert; DROP TRIGGER no_hash_update;")
+            .unwrap();
+    };
+    let edit = |size: TextSize| {
         rig.file
             .edit(move |store| store.set_text_size(size))
             .unwrap()
             .unwrap();
+    };
+    // Хэш записать нельзя: первая правка пишет файл и упирается в запись хэша; вторая находит файл «чужим» (хэш не сошёлся),
+    // применяет его и упирается в ту же запись внутри транзакции применения. Каждый вид — одна строка, сколько бы правок ни было.
+    block_hash();
+    for size in [
+        TextSize::Large,
+        TextSize::Normal,
+        TextSize::Large,
+        TextSize::Normal,
+    ] {
+        edit(size);
     }
     std::thread::sleep(Duration::from_millis(300));
-    let count = |needle: &str| file_lines().iter().filter(|l| l.contains(needle)).count();
     assert_eq!(
         count("хэш файла настроек не записан"),
         1,
         "{:?}",
         file_lines()
     );
-    assert!(count("не применён") <= 1, "{:?}", file_lines());
+    assert_eq!(count("не применён"), 1, "{:?}", file_lines());
+    // Починили: правки проходят, оба вида сбрасываются успехом.
+    allow_hash();
+    // Внешняя правка (другие байты файла) применяется успешно: вид «apply» сброшен; правка окна пишет хэш: вид «hash» сброшен.
+    rig.write(r#"{"text_size":"large"}"#);
+    edit(TextSize::Normal);
+    // Снова сбой: по второй строке на каждый вид.
+    block_hash();
+    for size in [TextSize::Large, TextSize::Normal, TextSize::Large] {
+        edit(size);
+    }
+    std::thread::sleep(Duration::from_millis(300));
+    assert_eq!(
+        count("хэш файла настроек не записан"),
+        2,
+        "{:?}",
+        file_lines()
+    );
+    assert_eq!(count("не применён"), 2, "{:?}", file_lines());
 }

@@ -81,7 +81,9 @@ describe("ShortcutRow: запись нового сочетания", () => {
     expect(live).toBeEmptyDOMElement();
     startRecording();
     expect(recorder()).toHaveFocus();
-    expect(recorder()).toHaveTextContent("Нажмите новое сочетание с ⌃, ⌥ или ⌘… Esc — отмена");
+    // В поле записи — короткая подсказка (раскладка строки не прыгает), полная — во всплывающей подсказке и в объявлении диктору.
+    expect(recorder()).toHaveTextContent("Нажмите клавиши…");
+    expect(recorder()).toHaveAttribute("title", "Нажмите новое сочетание с ⌃, ⌥ или ⌘… Esc — отмена");
     expect(onRecording).toHaveBeenCalledTimes(1);
     expect(onRecording).toHaveBeenLastCalledWith(true);
     // Область status есть всегда, текст в ней появился с началом записи.
@@ -190,6 +192,8 @@ describe("ShortcutRow: запись нового сочетания", () => {
   it("английский: подсказка записи", () => {
     setup({}, {}, "en");
     fireEvent.click(screen.getByRole("button", { name: "Change shortcut: Quick capture window" }));
-    expect(screen.getByRole("group", { name: "New shortcut for Quick capture window" })).toHaveTextContent("Press the new shortcut with ⌃, ⌥ or ⌘… Esc to cancel");
+    const recording = screen.getByRole("group", { name: "New shortcut for Quick capture window" });
+    expect(recording).toHaveTextContent("Press keys…");
+    expect(recording).toHaveAttribute("title", "Press the new shortcut with ⌃, ⌥ or ⌘… Esc to cancel");
   });
 });

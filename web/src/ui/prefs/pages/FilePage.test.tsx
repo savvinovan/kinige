@@ -15,7 +15,7 @@ describe("Файл настроек", () => {
     expect(screen.getByTitle(MOCK_SETTINGS_FILE.path)).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Файл без ошибок");
     expect(screen.queryByRole("alert")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Скопировать путь файла настроек" }));
+    fireEvent.click(screen.getByRole("button", { name: "Копировать путь" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(MOCK_SETTINGS_FILE.path));
     expect(await screen.findByRole("button", { name: "Скопировано" })).toBeInTheDocument();
   });
@@ -23,7 +23,7 @@ describe("Файл настроек", () => {
   it("буфер недоступен: честное «Не удалось скопировать»", async () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn().mockRejectedValue(new Error("нет")) }, configurable: true });
     render(<FilePage file={file()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Скопировать путь файла настроек" }));
+    fireEvent.click(screen.getByRole("button", { name: "Копировать путь" }));
     expect(await screen.findByRole("button", { name: "Не удалось скопировать" })).toBeInTheDocument();
   });
 
@@ -95,6 +95,6 @@ describe("Файл настроек", () => {
   it("английский", () => {
     render(<FilePage file={file({ problem: { kind: "parse", line: 3, column: 9 } })} />, { language: "en" });
     expect(screen.getByRole("alert")).toHaveTextContent("The file could not be read: line 3, column 9. Nothing was changed.");
-    expect(screen.getByRole("button", { name: "Copy the path of the settings file" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy path" })).toBeInTheDocument();
   });
 });

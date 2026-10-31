@@ -1,4 +1,5 @@
-/* Дерево разделов окна «Настройки»: колонка слева, выбранный пункт залит, вложенные пункты с отступом. Только токены. */
+/* Дерево разделов окна «Настройки»: колонка слева; строка пункта — шеврон и название; выбранный пункт залит (без рамки),
+   вложенные пункты с отступом; группы сворачиваются без анимации. Только токены. */
 .settings-tree {
   box-sizing: border-box;
   width: var(--layout-settings-tree-width);
@@ -15,41 +16,74 @@
   list-style: none;
 }
 
+.settings-tree__row {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: var(--layout-control-height);
+  padding-inline-start: var(--space-1);
+  border-radius: var(--radius-control);
+  color: var(--color-text-secondary);
+}
+
+.settings-tree__row:hover {
+  background: var(--color-surface-field);
+  color: var(--color-text-primary);
+}
+
+/* Выбранный пункт — только заливка; свёрнутая группа с текущим подпунктом подсвечена так же. */
+.settings-tree__row[data-current],
+.settings-tree__row[data-contains-current] {
+  background: var(--color-highlight-background);
+  color: var(--color-text-primary);
+}
+
+.settings-tree__row--nested {
+  padding-inline-start: var(--space-5);
+}
+
+/* Шеврон: щелчок по нему сворачивает и разворачивает группу; у пункта без вложенных — пустое место того же размера,
+   чтобы названия стояли на одной линии. */
+.settings-tree__chevron {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: var(--icon-size);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.settings-tree__chevron:empty {
+  cursor: default;
+}
+
+.settings-tree__chevron .icon {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
+}
+
 .settings-tree__button {
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
   box-sizing: border-box;
-  width: 100%;
+  min-width: 0;
   min-height: var(--layout-control-height);
   margin: 0;
-  padding: var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
-  color: var(--color-text-secondary);
+  color: inherit;
   font-family: var(--type-small-family);
   font-size: var(--type-small-size);
   line-height: var(--type-small-line-height);
   text-align: start;
   cursor: pointer;
-}
-
-.settings-tree__button:hover {
-  background: var(--color-surface-field);
-  color: var(--color-text-primary);
-}
-
-/* Выбранный пункт: заливка светлее и тонкая линия акцента внутри, а не только цвет текста. */
-.settings-tree__button[aria-current="page"] {
-  background: var(--color-highlight-background);
-  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-accent-default);
-  color: var(--color-text-primary);
-}
-
-.settings-tree__button--nested {
-  padding-inline-start: var(--space-6);
 }
 
 .settings-tree__label {

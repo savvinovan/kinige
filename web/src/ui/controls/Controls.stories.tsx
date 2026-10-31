@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Frame, FrameLabel } from "../stories/Frame";
 import { Button } from "./Button";
 import { Checkbox } from "./Checkbox";
+import { CopyButton } from "./CopyButton";
 import { IconButton } from "./IconButton";
 import { ProgressBar } from "./ProgressBar";
 import { TextField } from "./TextField";
@@ -26,6 +27,12 @@ function Controls() {
         <IconButton icon="voice" label="Записать голосовое" />
         <IconButton icon="search" label="Поиск" />
         <IconButton icon="voice" label="Записать голосовое (недоступно)" disabled />
+      </div>
+
+      <FrameLabel>Копировать значком: путь файла, конфиг подключения (после нажатия на полторы секунды галочка)</FrameLabel>
+      <div>
+        <CopyButton text="/Users/me/settings.json" label="Копировать путь" copiedLabel="Скопировано" failedLabel="Не удалось скопировать" />
+        <CopyButton text="claude mcp add kinige" label="Копировать команду для Claude Code" copiedLabel="Скопировано" failedLabel="Не удалось скопировать" />
       </div>
 
       <FrameLabel>Поле: пустое, с текстом, ошибка</FrameLabel>

@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { AgentSocket } from "../../api/generated/AgentSocket";
-import { Button } from "../controls/Button";
-import { useCopy } from "../message/useCopy";
+import { CopyButton } from "../controls/CopyButton";
 import { StatusNote } from "../settings/StatusNote";
 
 type SocketErrorCode = "dir_unsafe" | "second_instance" | "bind_failed" | "bridge_missing";
@@ -48,15 +47,11 @@ export function AgentConnect({ socket }: { socket: AgentSocket }) {
 
 function CodeBlock({ title, text, copyLabel, hint }: { title: string; text: string; copyLabel: string; hint?: string }) {
   const { t } = useTranslation();
-  const { state, copy } = useCopy();
-  const label = state === "copied" ? t("agent.connect.copied") : state === "failed" ? t("agent.connect.copyFailed") : t("agent.connect.copy");
   return (
     <div className="agent-code">
       <div className="agent-code__head">
         <span className="agent-code__title">{title}</span>
-        <Button variant="secondary" aria-label={state === "idle" ? copyLabel : undefined} onClick={() => void copy(text)}>
-          {label}
-        </Button>
+        <CopyButton text={text} label={copyLabel} copiedLabel={t("agent.connect.copied")} failedLabel={t("agent.connect.copyFailed")} />
       </div>
       <pre className="agent-code__text">
         <code>{text}</code>

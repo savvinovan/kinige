@@ -286,7 +286,6 @@
       "desktopTitle": "Claude Desktop: add this to claude_desktop_config.json and restart the app",
       "desktopHint": "If the config already has mcpServers, add kinige inside it.",
       "codeTitle": "Claude Code: run this in a terminal",
-      "copy": "Copy",
       "copied": "Copied",
       "copyFailed": "Could not copy",
       "copyDesktop": "Copy the Claude Desktop config",
@@ -365,7 +364,6 @@
       "description": "All settings live in one plain text file. You, or an AI agent, can edit it: Kinige notices the change within a couple of seconds.",
       "pathLabel": "File",
       "copyPath": "Copy path",
-      "copyPathLabel": "Copy the path of the settings file",
       "copied": "Copied",
       "copyFailed": "Could not copy",
       "ok": "The file has no errors",
@@ -434,6 +432,7 @@
       "reset": "Reset",
       "resetLabel": "Reset shortcut: {{name}}",
       "recording": "Press the new shortcut with ⌃, ⌥ or ⌘… Esc to cancel",
+      "recordingShort": "Press keys…",
       "recordingLabel": "New shortcut for {{name}}",
       "taken": "Not assigned: already used by another app or the system",
       "modifier": {

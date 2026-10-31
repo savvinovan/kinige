@@ -8,6 +8,7 @@ import { SegmentedChoice } from "../../settings/SegmentedChoice";
 import { StatusNote } from "../../settings/StatusNote";
 import { ChangedByFile } from "../ChangedByFile";
 import { ConfigureRow } from "../ConfigureRow";
+import { SettingsGroup } from "../SettingsGroup";
 import type { Route } from "../routes";
 import "../../agents/agents.css";
 import "../../settings/settings.css";
@@ -73,12 +74,14 @@ export function AccessPage({ access, error, onEnabledChange, onModeChange, onOpe
       </div>
       <div className="prefs-block">
         {visible === 0 ? <p className="settings__description">{t("agent.chats.description")}</p> : null}
-        <ConfigureRow
-          label={t("prefs.access.chatsRow")}
-          value={t("prefs.access.chatsValue", { visible, total: access.chats.length })}
-          onOpen={() => onOpen("access/chats")}
-        />
-        <ConfigureRow label={t("prefs.access.logRow")} value={t("prefs.access.logValue")} onOpen={() => onOpen("access/log")} />
+        <SettingsGroup>
+          <ConfigureRow
+            label={t("prefs.access.chatsRow")}
+            value={t("prefs.access.chatsValue", { visible, total: access.chats.length })}
+            onOpen={() => onOpen("access/chats")}
+          />
+          <ConfigureRow label={t("prefs.access.logRow")} value={t("prefs.access.logValue")} onOpen={() => onOpen("access/log")} />
+        </SettingsGroup>
       </div>
       <div className="prefs-block" role="group" aria-labelledby={connectId}>
         <h3 className="settings__heading" id={connectId}>

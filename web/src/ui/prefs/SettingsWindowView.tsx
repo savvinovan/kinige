@@ -30,6 +30,8 @@ export interface SettingsWindowViewProps {
   language: Language;
   /** «Сейчас» для меток времени; по умолчанию часы окна. В тестах и историях фиксируется. */
   now?: Date;
+  /** Развёрнутые группы дерева при открытии (истории Storybook); без него берётся сохранённое состояние окна. */
+  treeExpanded?: readonly Route[];
   /** Показано предупреждение «текст уйдёт провайдеру модели»: `Modal` поверх окна. */
   warning: boolean;
   choosing?: boolean;
@@ -71,7 +73,7 @@ export function SettingsWindowView(props: SettingsWindowViewProps) {
   }, [route]);
   return (
     <div className="prefs">
-      <SettingsTree route={route} onNavigate={onNavigate} withProblems={problems} />
+      <SettingsTree route={route} onNavigate={onNavigate} withProblems={problems} defaultExpanded={props.treeExpanded} />
       <main className="prefs__page" ref={page}>
         <div className="prefs__column">
           {route === "appearance" ? (

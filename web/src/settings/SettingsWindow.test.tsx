@@ -17,7 +17,15 @@ describe("Окно «Настройки»: дерево разделов", () =>
     const names = within(tree())
       .getAllByRole("button")
       .map((button) => button.textContent);
-    expect(names).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов", "Видимые чаты", "Журнал обращений", "Файл настроек"]);
+    // Группы по умолчанию свёрнуты: вложенных пунктов не видно, пока не открыт «Доступ ИИ-агентов» или не нажат шеврон.
+    expect(names).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов", "Файл настроек"]);
+    fireEvent.click(within(tree()).getByRole("button", { name: "Доступ ИИ-агентов" }));
+    expect(
+      within(tree())
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов", "Видимые чаты", "Журнал обращений", "Файл настроек"]);
+    fireEvent.click(within(tree()).getByRole("button", { name: "Оформление" }));
     expect(current()).toHaveTextContent("Оформление");
     expect(within(tree()).getAllByRole("button", { current: "page" })).toHaveLength(1);
     // Содержимое справа — страница выбранного раздела.
@@ -206,7 +214,11 @@ describe("Окно «Настройки»: английский", () => {
     const names = within(screen.getByRole("navigation", { name: "Settings sections" }))
       .getAllByRole("button")
       .map((button) => button.textContent);
-    expect(names).toEqual(["Appearance", "Keyboard shortcuts", "Copies", "AI agent access", "Visible chats", "Access log", "Settings file"]);
+    // Группа по умолчанию свёрнута; раскрывается шевроном.
+    expect(names).toEqual(["Appearance", "Keyboard shortcuts", "Copies", "AI agent access", "Settings file"]);
+    fireEvent.click(screen.getByTestId("tree-chevron-access"));
+    expect(screen.getByRole("button", { name: "Visible chats" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Access log" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Large" })).toBeInTheDocument();
   });
 });
