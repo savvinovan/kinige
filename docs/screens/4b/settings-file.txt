@@ -1,6 +1,6 @@
 # settings.json: синтетический файл на раннере. Права файла (ls -l) и содержимое.
 == как записало приложение ==
--rw-------  1 runner  staff  342 Oct 30 23:30 /Users/runner/work/_temp/kinige-screens/data/settings.json
+-rw-------  1 runner  staff  342 Oct 31 00:19 /Users/runner/work/_temp/kinige-screens/data/settings.json
 {
   "agent_access": {
     "chats": [
@@ -23,7 +23,7 @@
 }
 
 == в файл дописан чужой ключ x_my_note; в окне выбран «Large» ==
--rw-------  1 runner  staff  367 Oct 30 23:31 /Users/runner/work/_temp/kinige-screens/data/settings.json
+-rw-------  1 runner  staff  367 Oct 31 00:20 /Users/runner/work/_temp/kinige-screens/data/settings.json
 {
   "agent_access": {
     "chats": [
