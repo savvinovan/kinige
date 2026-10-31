@@ -1,15 +1,23 @@
-//! Демо-данные для проверки слайса 3 в настоящем окне (скриншоты, ручная проверка): чаты, записи, теги, задачи, корзина.
-//! Только для разработки: пишет во временный каталог, который передан аргументом, и ничего не делает с настоящей базой.
+//! Демо-данные для проверки слайсов 3–5 в настоящем окне (скриншоты, ручная проверка): чаты, записи, теги, задачи, корзина;
+//! слайс 5 — записи Inbox на сегодняшний день журнала 1, 3, 4, 6 и 9 лет назад («В этот день») и синтетический личный чат
+//! Telegram с ответами. Только для разработки: пишет во временный каталог, который передан аргументом, и ничего не делает с
+//! настоящей базой. Все тексты синтетические.
 //!
 //! Использование: `cargo run -p kinige-store --example seed_demo -- <каталог данных> [<папка Markdown-копии>]`
 
 // Пример — консольная утилита: печать в stdout разрешена (правило «только через log» — для кода приложения).
 #![allow(clippy::print_stdout)]
 
-use kinige_domain::MessageFlag;
+use chrono::{NaiveDate, TimeZone};
+use chrono_tz::Tz;
 use kinige_domain::groups::INBOX_ID;
+use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
+use kinige_domain::telegram::parse_export;
+use kinige_domain::{Language, MessageFlag};
 use kinige_store::{Now, Store, StoreOptions};
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 const MINUTE: i64 = 60_000;
 const DAY: i64 = 24 * 60 * MINUTE;
@@ -103,7 +111,144 @@ fn main() {
     store.delete_message(&in_trash, &at(-3 * DAY)).unwrap();
     store.set_chat_pinned(&work.id, true, &at(-DAY)).unwrap();
     store.set_chat_archived(&old.id, true, &at(-DAY)).unwrap();
+    seed_on_this_day(&store, &now);
+    seed_telegram_chat(&store, &now);
     // Копия дня для строки в «Настройках».
     store.run_maintenance(&at(0)).unwrap();
     println!("готово: {}", data.display());
+}
+
+/// Сколько лет назад лежат записи «В этот день» (слайс 5): три новых года показываются подробно, остальные — строкой.
+const PAST_YEARS: [i32; 7] = [1, 3, 4, 6, 9, 12, 16];
+
+/// Записи Inbox на сегодняшний день журнала в прошлые годы. «Сегодня» считается от `journal_date` запуска (граница 04:00),
+/// а не от календарного дня UTC; 29 февраля совпадает только с 29 февраля, поэтому недостающие годы берутся из запасных.
+fn seed_on_this_day(store: &Store, now: &Now) {
+    let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
+    let today = NaiveDate::parse_from_str(&today, "%Y-%m-%d").expect("день журнала");
+    let tz: Tz = now.tz.parse().unwrap_or(chrono_tz::UTC);
+    let years: Vec<NaiveDate> = PAST_YEARS
+        .iter()
+        .filter_map(|ago| {
+            use chrono::Datelike;
+            NaiveDate::from_ymd_opt(today.year() - ago, today.month(), today.day())
+        })
+        .take(5)
+        .collect();
+    let long = "Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям, \
+        разобрать, чем консенсус отличается от двухфазной фиксации, и записать вопросы, которые остались после чтения. \
+        Потом вернуться к этой записи через неделю и проверить, на сколько удалось ответить. Ещё раз пройтись по конспекту \
+        и выписать то, что осталось непонятным.";
+    let texts: [&[&str]; 5] = [
+        &[
+            "Проснулся рано, до завтрака записал мысль про журнал.",
+            "Купил билеты на субботу.",
+            "Позвонил маме, договорились на воскресенье.",
+        ],
+        &[
+            "Так будет лучше: перестать откладывать и написать первую страницу.",
+            "Эта запись уйдёт в корзину",
+        ],
+        &[
+            "Первый день на новой работе. Всё незнакомое, но люди приятные.",
+            long,
+        ],
+        &["Дочитал «Конец вечности». Сильная концовка."],
+        &[
+            "Записи за этот день из старого архива.",
+            "Вечером разбирал фотографии.",
+            "Составил список дел на неделю #планы",
+            "Забыл ключи, ждал соседку.",
+            "Сходил в кино, фильм средний.",
+        ],
+    ];
+    for (year, (date, bodies)) in years.iter().zip(texts).enumerate() {
+        for (n, body) in bodies.iter().enumerate() {
+            let local = date.and_hms_opt(9 + 2 * n as u32, 12, 0).expect("время");
+            let ms = tz
+                .from_local_datetime(&local)
+                .earliest()
+                .expect("местное время существует")
+                .timestamp_millis();
+            let when = Now::at(ms, &now.tz);
+            let id = store
+                .send_message(INBOX_ID, body, &when)
+                .expect("запись прошлого года")
+                .id;
+            // Вторая запись третьего года (3 года назад) уходит в корзину: в карточке её нет.
+            if (year, n) == (1, 1) {
+                store.delete_message(&id, now).expect("в корзину");
+            }
+        }
+    }
+}
+
+/// Синтетический личный чат Telegram «Анна» с ответами: на свою и чужую реплику, чужая реплика на мою и ответ на реплику,
+/// которой нет в файле. JSON строится здесь и идёт через `parse_export` и импорт хранилища, как настоящий файл.
+fn seed_telegram_chat(store: &Store, now: &Now) {
+    const ME: &str = "user1000001";
+    const ANNA: &str = "user2000002";
+    let base = 1_678_787_400i64; // 2023-03-14 10:30 UTC
+    let message = |id: u64, from: &str, name: &str, text: &str, reply: Option<u64>, at: i64| {
+        let text = serde_json::to_string(text).expect("текст");
+        let reply = reply
+            .map(|r| format!(r#""reply_to_message_id":{r},"#))
+            .unwrap_or_default();
+        format!(
+            r#"{{"id":{id},"type":"message","date":"x","date_unixtime":"{at}","from":"{name}","from_id":"{from}",{reply}"text":{text},"text_entities":[{{"type":"plain","text":{text}}}]}}"#
+        )
+    };
+    let messages = [
+        message(
+            1,
+            ANNA,
+            "Анна К.",
+            "Привет! Ты вчера забыл у меня книгу",
+            None,
+            base,
+        ),
+        message(2, ME, "Я", "Ой, заберу в субботу", None, base + 60),
+        message(
+            3,
+            ANNA,
+            "Анна К.",
+            "Ну что, едем в субботу?",
+            None,
+            base + 3_600,
+        ),
+        message(4, ME, "Я", "Едем! Бери зонт", Some(3), base + 3_700),
+        message(5, ME, "Я", "Спасибо, что сохранила", Some(1), base + 3_800),
+        message(
+            6,
+            ANNA,
+            "Анна К.",
+            "Не за что, я рада",
+            Some(5),
+            base + 3_900,
+        ),
+        message(
+            7,
+            ME,
+            "Я",
+            "Это ответ на сообщение, которого нет в файле",
+            Some(999),
+            base + 4_000,
+        ),
+    ];
+    let json = format!(
+        r#"{{"personal_information":{{"user_id":1000001}},"chats":{{"list":[{{"name":"Анна","type":"personal_chat","id":2000002,"messages":[{}]}}]}}}}"#,
+        messages.join(",")
+    );
+    let export = Arc::new(parse_export(&json).expect("синтетический экспорт разбирается"));
+    let ids = export.chats.iter().map(|c| c.id.clone()).collect();
+    store
+        .import_telegram(
+            export,
+            ids,
+            Language::Ru,
+            now,
+            |_| {},
+            Arc::new(AtomicBool::new(false)),
+        )
+        .expect("импорт синтетического чата");
 }

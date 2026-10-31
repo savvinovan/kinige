@@ -122,6 +122,42 @@ fn main() {
         ms(t)
     );
 
+    // «В этот день» (слайс 5): карточка на 200 разных «сегодня» 2023 года, позади пять лет записей (2018–2022). Открытие Inbox =
+    // первая страница ленты + карточка; цель слайса — p95 и открытие меньше 300 мс.
+    let mut card_times = Vec::new();
+    let mut card_entries = 0usize;
+    for day in 0..200i64 {
+        let when = Now::at(
+            1_672_567_200_000 + day * 365 * 86_400_000 / 200,
+            "Europe/Moscow",
+        );
+        let t = Instant::now();
+        let card = store.get_on_this_day(&when).unwrap();
+        card_times.push(ms(t));
+        card_entries += card.map_or(0, |c| {
+            c.years.iter().map(|y| y.entries.len()).sum::<usize>()
+        });
+    }
+    card_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    println!(
+        "«В этот день» на 200 днях: p50 {:.1} мс, p95 {:.1} мс, max {:.1} мс; записей в карточке в среднем {:.1}",
+        card_times[card_times.len() / 2],
+        card_times[(card_times.len() * 95).div_ceil(100) - 1],
+        card_times[card_times.len() - 1],
+        card_entries as f64 / card_times.len() as f64
+    );
+    let t = Instant::now();
+    let page = store
+        .list_messages(kinige_domain::groups::INBOX_ID, None, 200, &Now::system())
+        .unwrap();
+    let card = store.get_on_this_day(&Now::system()).unwrap();
+    println!(
+        "открытие Inbox (страница из {} записей + карточка, {} лет): {:.0} мс",
+        page.messages.len(),
+        card.map_or(0, |c| c.years.len()),
+        ms(t)
+    );
+
     // Поиск: слова берутся из самих записей, не печатаются.
     let words = sample_words(&data, 200);
     let mut times = Vec::new();
