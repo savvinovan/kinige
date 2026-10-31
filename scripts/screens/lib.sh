@@ -15,7 +15,7 @@ limit() {
   shift
   perl -e 'alarm shift; exec @ARGV' "$seconds" "$@"
 }
-ax() { limit 30 osascript -l JavaScript "$REPO/scripts/screens/ax.js" "$@"; }
+ax() { limit "${AX_TIMEOUT:-30}" osascript -l JavaScript "$REPO/scripts/screens/ax.js" "$@"; }
 
 # Приложение со временными каталогами данных: LSEnvironment в копии бандла, ad-hoc подпись заново.
 prepare_app() {
