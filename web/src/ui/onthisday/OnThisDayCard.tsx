@@ -32,9 +32,9 @@ export function OnThisDayCard({ card, onOpen, onReply, onDismiss }: OnThisDayCar
   return (
     <section className="on-this-day" aria-labelledby={titleId}>
       <header className="on-this-day__head">
-        <h2 className="on-this-day__title" id={titleId}>
+        <h3 className="on-this-day__title" id={titleId}>
           {t("onThisDay.label")}
-        </h2>
+        </h3>
         <IconButton small icon="close" label={t("onThisDay.hide")} onClick={onDismiss} />
       </header>
       {card.years.map((year) => (
@@ -71,7 +71,7 @@ function Year({
   const rest = year.total - year.entries.length;
   return (
     <div className="on-this-day__year">
-      <h3 className="on-this-day__year-title">{`${t("onThisDay.yearsAgo", { count: year.yearsAgo })} · ${date}`}</h3>
+      <h4 className="on-this-day__year-title">{`${t("onThisDay.yearsAgo", { count: year.yearsAgo })} · ${date}`}</h4>
       <ul className="on-this-day__entries">
         {year.entries.map((entry) => {
           const time = formatTime(new Date(entry.message.createdAt), language, entry.message.createdTz);
