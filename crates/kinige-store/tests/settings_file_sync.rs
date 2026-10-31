@@ -5,7 +5,7 @@ mod common;
 
 use common::settings_file::*;
 use common::*;
-use kinige_domain::{AgentMode, KeyIssueKind, ShortcutKind, TextSize};
+use kinige_domain::{KeyIssueKind, ShortcutKind, TextSize};
 use serde_json::json;
 use std::fs;
 use std::sync::Arc;
@@ -308,133 +308,6 @@ fn the_mirror_folder_must_be_absolute_existing_and_outside_the_data_directory() 
 }
 
 #[test]
-fn agent_access_from_the_file_resolves_chats_logs_one_row_and_never_logs_titles() {
-    let rig = rig();
-    let (work, diary) = chats(&rig.store, rig.dir.path());
-    rig.write(
-        &json!({"agent_access": {"enabled": true, "mode": "read_write", "chats": [
-            {"id": work, "title": "Старое название"},
-            {"title": "  Inbox  "},
-            {"title": "Дневник"},
-            {"id": diary}
-        ]}})
-        .to_string(),
-    );
-    let access = rig.store.agent_access().unwrap();
-    assert!(access.enabled);
-    assert_eq!(access.mode, AgentMode::ReadWrite);
-    let mut visible: Vec<&str> = access
-        .chats
-        .iter()
-        .filter(|c| c.visible)
-        .map(|c| c.id.as_str())
-        .collect();
-    visible.sort();
-    let mut expected = vec![work.as_str(), kinige_domain::groups::INBOX_ID];
-    expected.sort();
-    assert_eq!(visible, expected);
-    let issues = rig.file.state().issues;
-    assert_eq!(
-        issues
-            .iter()
-            .map(|i| (i.key.as_str(), i.kind))
-            .collect::<Vec<_>>(),
-        vec![
-            ("agent_access.chats[2]", KeyIssueKind::ChatExcluded),
-            ("agent_access.chats[3]", KeyIssueKind::ChatExcluded)
-        ]
-    );
-    assert!(rig.file.state().changed.access.is_some());
-
-    let rows = rig.log_rows();
-    assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0].0, "settings.json");
-    assert_eq!(rows[0].1, "settings_file");
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&rows[0].2).unwrap(),
-        json!({"enabled": true, "mode": "read_write", "chats": 2})
-    );
-    assert!(!rows[0].2.contains("Работа") && !rows[0].2.contains("Inbox"));
-
-    // Тот же доступ, другой ключ файла: строки журнала не прибавляется.
-    let mut doc = rig.json();
-    doc["text_size"] = json!("large");
-    rig.write(&doc.to_string());
-    assert_eq!(rig.log_rows().len(), 1);
-    // Окно меняет доступ — строки «settings_file» нет.
-    rig.file
-        .edit(|store| store.set_agent_enabled(false))
-        .unwrap()
-        .unwrap();
-    assert_eq!(rig.log_rows().len(), 1);
-    assert_eq!(rig.json()["agent_access"]["enabled"], false);
-}
-
-#[test]
-fn inbox_is_matched_by_title_in_any_language_and_a_user_chat_named_inbox_makes_it_ambiguous() {
-    let rig = rig();
-    rig.write(r#"{"agent_access":{"chats":[{"title":"Inbox"}]}}"#);
-    assert!(
-        rig.store
-            .agent_access()
-            .unwrap()
-            .chats
-            .iter()
-            .any(|c| c.is_inbox && c.visible)
-    );
-    // Файл, который записало приложение, называет Inbox так же.
-    rig.file
-        .edit(|store| store.set_agent_enabled(true))
-        .unwrap()
-        .unwrap();
-    assert_eq!(
-        rig.json()["agent_access"]["chats"],
-        json!([{"id": kinige_domain::groups::INBOX_ID, "title": "Inbox"}])
-    );
-    let twin = rig
-        .store
-        .create_chat("Inbox", None, &moscow(T0))
-        .unwrap()
-        .id;
-    rig.write(r#"{"agent_access":{"chats":[{"title":"Inbox"}]}}"#);
-    let issues = rig.file.state().issues;
-    assert_eq!(issues.len(), 1);
-    assert_eq!(issues[0].kind, KeyIssueKind::ChatAmbiguous);
-    // Элемент с id не зависит от названия.
-    rig.write(&json!({"agent_access":{"chats":[{"id": twin}]}}).to_string());
-    assert!(rig.file.state().issues.is_empty());
-}
-
-#[test]
-fn a_missing_id_is_an_error_even_when_the_title_exists_and_archived_chats_take_part() {
-    let rig = rig();
-    let (work, _) = chats(&rig.store, rig.dir.path());
-    rig.write(r#"{"agent_access":{"chats":[{"id":"no-such-id","title":"Работа"}]}}"#);
-    assert_eq!(rig.file.state().issues[0].kind, KeyIssueKind::ChatNotFound);
-    assert!(
-        rig.store
-            .agent_access()
-            .unwrap()
-            .chats
-            .iter()
-            .all(|c| !c.visible)
-    );
-    rig.store
-        .set_chat_archived(&work, true, &moscow(T0))
-        .unwrap();
-    rig.write(r#"{"agent_access":{"chats":[{"title":"Работа"}]}}"#);
-    assert!(rig.file.state().issues.is_empty());
-    assert!(
-        rig.store
-            .agent_access()
-            .unwrap()
-            .chats
-            .iter()
-            .any(|c| c.id == work && c.visible)
-    );
-}
-
-#[test]
 fn a_duplicate_key_takes_the_last_value() {
     let rig = rig();
     rig.write(r#"{"text_size":"large","text_size":"normal"}"#);
@@ -446,41 +319,58 @@ fn a_duplicate_key_takes_the_last_value() {
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
 }
 
+/// Есть ли в каталоге (рекурсивно) файл дня `.md`.
+fn has_day_file(dir: &std::path::Path) -> bool {
+    std::fs::read_dir(dir).is_ok_and(|entries| {
+        entries.flatten().any(|entry| {
+            let path = entry.path();
+            if path.is_dir() {
+                has_day_file(&path)
+            } else {
+                path.extension().is_some_and(|ext| ext == "md")
+            }
+        })
+    })
+}
+
 #[test]
-fn an_mcp_client_cannot_forge_the_settings_file_log_row_by_name_or_by_tool() {
-    // Строку «доступ изменён» подписывает инструмент `settings_file`, который пишет только поток файла: клиент MCP может
-    // назвать себя `settings.json` сколько угодно, а неизвестный инструмент в журнале всегда `unknown`.
-    use common::agent::{agent, call_as};
-    use kinige_domain::AgentMode;
-    let agent = agent(AgentMode::Read, true);
-    let _ = call_as(
-        &agent.store,
-        "settings.json",
-        "search",
-        json!({"query": "x"}),
-        T0,
-    );
-    let _ = call_as(
-        &agent.store,
-        "settings.json",
-        "settings_file",
-        json!({}),
-        T0,
-    );
-    let conn = raw(agent.dir.path());
-    let mut statement = conn
-        .prepare("SELECT client, tool FROM mcp_log ORDER BY id")
+fn a_mirror_folder_from_the_file_wakes_the_copy_writer_at_once() {
+    // Без пробуждения писатель копии спал бы до следующей записи или перезапуска, и в новой папке дней не было бы.
+    let dir = tempfile::tempdir().unwrap();
+    let store = open(dir.path());
+    store
+        .send_message(
+            kinige_domain::groups::INBOX_ID,
+            "запись для копии",
+            &moscow(T0),
+        )
         .unwrap();
-    let rows: Vec<(String, String)> = statement
-        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
-        .unwrap()
-        .map(Result::unwrap)
+    let rig = start_in(dir, store, |_| {});
+    let target = tempfile::tempdir().unwrap();
+    assert!(!has_day_file(target.path()));
+    rig.write(&json!({"mirror": {"folder": target.path()}}).to_string());
+    wait_until("файл дня в новой папке", || {
+        has_day_file(target.path())
+    });
+}
+
+#[test]
+fn caps_keep_the_error_and_unknown_key_lists_short_whatever_the_file_holds() {
+    let rig = rig();
+    let junk: Vec<serde_json::Value> = (0..5000)
+        .map(|i| json!({"id": format!("ghost-{i}")}))
         .collect();
-    assert!(!rows.is_empty());
-    assert!(
-        rows.iter()
-            .all(|(client, tool)| client == "settings.json" && tool != "settings_file"),
-        "{rows:?}"
+    let mut doc = serde_json::Map::new();
+    for i in 0..5000 {
+        doc.insert(format!("unknown_key_{i}"), json!(i));
+    }
+    doc.insert(
+        "agent_access".into(),
+        json!({"enabled": true, "chats": junk}),
     );
-    assert!(rows.iter().any(|(_, tool)| tool == "unknown"));
+    rig.write(&serde_json::Value::Object(doc).to_string());
+    let state = rig.file.state();
+    assert!(state.issues.len() <= 100, "{}", state.issues.len());
+    assert_eq!(state.unknown_keys.len(), 100);
+    assert_eq!(state.unknown_more, 4900);
 }

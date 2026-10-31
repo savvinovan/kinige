@@ -6,7 +6,7 @@ use crate::hotkeys::Hotkeys;
 use kinige_domain::{ApiError, ErrorCode, SettingsFileState, ShortcutKind};
 use kinige_store::{SettingsFile, SettingsFileOptions, ShortcutApplier, ShortcutRefusal, Store};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder};
 
 pub const SETTINGS_LABEL: &str = "settings";
@@ -21,12 +21,10 @@ pub const WIDTH: f64 = 860.0;
 pub const HEIGHT: f64 = 600.0;
 pub const MIN_WIDTH: f64 = 640.0;
 pub const MIN_HEIGHT: f64 = 440.0;
-
-/// Не дать двум быстрым нажатиям создать два окна.
-static OPEN_LOCK: Mutex<()> = Mutex::new(());
-
 /// Идентификатор пункта «Настройки…» в меню приложения.
 pub const ID_APP_SETTINGS: &str = "app-settings";
+/// Не дать двум быстрым нажатиям создать два окна.
+static OPEN_LOCK: Mutex<()> = Mutex::new(());
 
 /// Пункт «Настройки…» меню приложения: включается, когда журнал открыт.
 pub struct AppSettingsItem<R: Runtime>(pub tauri::menu::MenuItem<R>);
@@ -61,9 +59,7 @@ pub fn open<R: Runtime>(app: &AppHandle<R>) {
     if app.try_state::<Store>().is_none() {
         return;
     }
-    let _guard = OPEN_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = OPEN_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
     #[cfg(target_os = "macos")]
     let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
     if let Some(window) = app.get_webview_window(SETTINGS_LABEL) {

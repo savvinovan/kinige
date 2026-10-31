@@ -273,18 +273,30 @@ export const НаименьшийРазмер: Story = { args: { min: true, rout
 /** Наименьшее окно, подэкран. */
 export const НаименьшийРазмерПодэкран: Story = { args: { min: true, route: "access/chats" } };
 
+/** Английская версия истории: язык интерфейса и подписи переключаются, данные те же. */
+const en = (story: Story, args: Partial<DemoProps> = {}): Story => ({
+  ...story,
+  args: { ...story.args, language: "en", ...args },
+  globals: { language: "en" },
+});
+
 /** English: оформление. */
-export const English: Story = { args: { language: "en" }, globals: { language: "en" } };
-
-/** English: доступ включён. */
-export const EnglishAccess: Story = {
-  args: { language: "en", route: "access", access: access({ mode: "read_write" }) },
-  globals: { language: "en" },
-};
-
-/** English: файл не разобран. */
-export const EnglishFile: Story = {
-  args: { language: "en", route: "file", file: file({ problem: { kind: "parse", line: 3, column: 9 }, issues: [{ key: "text_size", kind: "value" }] }) },
-  globals: { language: "en" },
-};
-
+export const English: Story = en(Оформление);
+export const EnglishShortcuts: Story = en(Сочетания);
+export const EnglishShortcutTaken: Story = en(СочетаниеЗанято, { shortcutErrors: { clipboard: "The other action already uses this shortcut." } });
+export const EnglishMirror: Story = en(Копии);
+export const EnglishMirrorError: Story = en(КопииОшибка, { pickError: "Could not choose the folder." });
+/** English: доступ выключен, предупреждение, включён. */
+export const EnglishAccessOff: Story = en(ДоступВыключен);
+export const EnglishWarning: Story = en(ПредупреждениеПриВключении);
+export const EnglishAccess: Story = en(ДоступВключён);
+export const EnglishVisibleChats: Story = en(ВидимыеЧаты);
+export const EnglishLogEmpty: Story = en(ЖурналПуст);
+export const EnglishLogLong: Story = en(ЖурналДлинный);
+export const EnglishFileOk: Story = en(ФайлБезОшибок);
+export const EnglishFile: Story = en(ФайлНеРазобран, { file: file({ problem: { kind: "parse", line: 3, column: 9 }, issues: [{ key: "text_size", kind: "value" }] }) });
+export const EnglishKeyErrors: Story = en(ОшибкиКлючей);
+export const EnglishUnsafe: Story = en(ФайлНебезопасен);
+export const EnglishLongNames: Story = en(ДлинныеПутиИНазвания);
+export const EnglishMinSize: Story = en(НаименьшийРазмер);
+export const EnglishMinSizeSubscreen: Story = en(НаименьшийРазмерПодэкран);

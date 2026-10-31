@@ -7,4 +7,8 @@ export type RestoreOutcome = {
 /**
  * Куда переехала прежняя папка Markdown-копии (`<имя>-before-restore-<метка>`); `null` — папки не было.
  */
-previousMirror: string | null, };
+previousMirror: string | null, 
+/**
+ * Куда переехала папка копии, названная в `settings.json`, если она другая (слайс 4b); `null` — такой папки не было.
+ */
+settingsFileMirror: string | null, };

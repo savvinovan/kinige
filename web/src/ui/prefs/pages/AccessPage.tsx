@@ -72,7 +72,7 @@ export function AccessPage({ access, error, onEnabledChange, onModeChange, onOpe
         <p className="settings__description">{t("agent.mode.hint")}</p>
       </div>
       <div className="prefs-block">
-        <p className="settings__description">{t("agent.chats.description")}</p>
+        {visible === 0 ? <p className="settings__description">{t("agent.chats.description")}</p> : null}
         <ConfigureRow
           label={t("prefs.access.chatsRow")}
           value={t("prefs.access.chatsValue", { visible, total: access.chats.length })}

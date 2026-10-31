@@ -19,6 +19,8 @@ pub struct SettingsFileState {
     pub issues: Vec<KeyIssue>,
     /// Неизвестные ключи: предупреждение, в файле они сохраняются.
     pub unknown_keys: Vec<String>,
+    /// Сколько неизвестных ключей не поместилось в список («и ещё N»).
+    pub unknown_more: u32,
     /// Когда раздел менялся через файл.
     pub changed: FileChanges,
 }

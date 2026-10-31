@@ -122,6 +122,8 @@ fn usable(path: &Path) -> bool {
 pub struct RestoreReport {
     /// Куда переехала прежняя папка Markdown-копии; `None` — копия выключена или папки не было.
     pub previous_mirror: Option<PathBuf>,
+    /// Куда переехала папка копии, названная в `settings.json` (ADR-0010), если она другая; `None` — такой папки не было.
+    pub settings_file_mirror: Option<PathBuf>,
 }
 
 /// Восстанавливает базу из копии `name` (имя файла из [`backups`]). Повреждённая база (если файл есть) уходит в
@@ -284,12 +286,22 @@ pub fn restore_backup_with(
         .map_err(read_err)?;
     drop(conn);
     clear_needs_recovery(db_path);
+    let target_of = |folder: &Option<PathBuf>| {
+        let folder = folder.as_ref()?;
+        moved
+            .iter()
+            .find(|(from, _)| from == folder)
+            .map(|(_, target)| target.clone())
+    };
+    let previous_mirror = target_of(&mirror).or(earlier);
+    let settings_file_mirror = if from_file == mirror {
+        None
+    } else {
+        target_of(&from_file)
+    };
     Ok(RestoreReport {
-        previous_mirror: moved
-            .into_iter()
-            .next()
-            .map(|(_, target)| target)
-            .or(earlier),
+        previous_mirror,
+        settings_file_mirror,
     })
 }
 

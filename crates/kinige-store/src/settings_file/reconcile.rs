@@ -13,13 +13,36 @@ use kinige_domain::{
     UnsafeReason,
 };
 use sha2::{Digest, Sha256};
+use std::sync::PoisonError;
+use std::time::{Duration, Instant};
 
 impl Engine {
     pub(super) fn tick(&mut self) {
-        if io::signature(&self.path) == self.last_sig && !self.pending_write {
+        // Отложенная запись что-то значит, только пока файл можно перезаписывать: битый, небезопасный или нечитаемый файл
+        // перечитывается лишь когда он изменился (признак), а не на каждом опросе.
+        let due = self.retry_at.is_none_or(|at| Instant::now() >= at);
+        let retry_write = self.pending_write && self.writable && due;
+        if io::signature(&self.path) == self.last_sig && !retry_write {
             return;
         }
         self.reconcile();
+    }
+
+    /// Запись файла не удалась: следующая попытка позже (2, 4, … 60 секунд), а не на каждом опросе.
+    fn write_failed(&mut self) {
+        self.pending_write = true;
+        self.write_failures = self.write_failures.saturating_add(1);
+        let wait = 2u64.saturating_pow(self.write_failures.min(6)).min(60);
+        self.retry_at = Some(Instant::now() + Duration::from_secs(wait));
+    }
+
+    /// Предупреждение в журнал процесса один раз на смену состояния: тот же вид ошибки при повторных проходах молчит
+    /// (иначе битый файл давал бы строку на каждый опрос). Только категории, без данных.
+    fn warn_once(&mut self, key: String, text: &str) {
+        if self.logged.as_deref() != Some(key.as_str()) {
+            log::warn!("{text}: {key}");
+            self.logged = Some(key);
+        }
     }
 
     /// Читает файл и приводит его и базу в согласие. Хэш совпал с последним синхронизированным — внешней правки нет, база
@@ -30,16 +53,21 @@ impl Engine {
                 self.last_sig = None;
                 self.base = None;
                 self.writable = true;
+                let directory = io::unsafe_directory(&self.dir);
                 self.update(|state| {
                     state.problem = None;
-                    state.unsafe_reason = None;
+                    state.unsafe_reason = directory;
                     state.issues.clear();
                     state.unknown_keys.clear();
+                    state.unknown_more = 0;
                 });
                 self.write_from_state();
             }
             ReadOutcome::Failed(error) => {
-                log::warn!("файл настроек не прочитан: {}", error.category());
+                self.warn_once(
+                    format!("read {}", error.category()),
+                    "файл настроек не прочитан",
+                );
                 self.last_sig = io::signature(&self.path);
                 self.writable = false;
                 self.base = None;
@@ -49,7 +77,7 @@ impl Engine {
                 });
             }
             ReadOutcome::NotRegular => {
-                log::warn!("файл настроек: категория unsafe");
+                self.warn_once("unsafe".into(), "файл настроек не обычный файл");
                 self.last_sig = io::signature(&self.path);
                 self.writable = false;
                 self.base = None;
@@ -66,7 +94,10 @@ impl Engine {
                 self.last_sig = sig;
                 match parse(&bytes) {
                     Err(error) => {
-                        log::warn!("файл настроек не разобран: {}", error.category());
+                        self.warn_once(
+                            format!("parse {}", error.category()),
+                            "файл настроек не разобран",
+                        );
                         self.writable = false;
                         self.base = None;
                         self.update(|state| {
@@ -74,9 +105,11 @@ impl Engine {
                             state.unsafe_reason = unsafe_reason;
                             state.issues.clear();
                             state.unknown_keys.clear();
+                            state.unknown_more = 0;
                         });
                     }
                     Ok(parsed) => {
+                        self.logged = None;
                         self.writable = unsafe_reason.is_none();
                         self.base = Some(parsed.raw.clone());
                         let hash = sha256_hex(&bytes);
@@ -99,6 +132,7 @@ impl Engine {
         unsafe_reason: Option<UnsafeReason>,
     ) {
         let unknown = parsed.unknown.clone();
+        let unknown_more = parsed.unknown_more as u32;
         let input = ApplyInput {
             parsed,
             trusted: unsafe_reason.is_none(),
@@ -110,12 +144,19 @@ impl Engine {
             Ok(outcome) => outcome,
             Err(error) => {
                 // Ничего не применено: хэш не сдвинут, следующий опрос попробует снова.
-                log::warn!("файл настроек не применён: {}", error.category());
+                self.warn_once(
+                    format!("apply {}", error.category()),
+                    "файл настроек не применён",
+                );
                 self.last_sig = None;
                 return;
             }
         };
         self.stored_hash = Some(hash);
+        if outcome.mirror {
+            // Папка копии сменилась: писатель копии просыпается и пишет дни в новую папку сразу.
+            self.store.mirror_dir_changed();
+        }
         // Правка из файла новее отложенной правки окна: побеждает последняя.
         self.pending_write = false;
         let mut issues = outcome.issues;
@@ -139,6 +180,7 @@ impl Engine {
             state.unsafe_reason = unsafe_reason;
             state.issues = issues;
             state.unknown_keys = unknown;
+            state.unknown_more = unknown_more;
             let stamp = |flag: bool, slot: &mut Option<i64>| {
                 if flag {
                     *slot = Some(now);
@@ -173,7 +215,10 @@ impl Engine {
         let in_sync = match self.store.effective_state() {
             Ok(state) => state.matches(&parsed),
             Err(error) => {
-                log::warn!("состояние настроек не прочитано: {}", error.category());
+                self.warn_once(
+                    format!("state {}", error.category()),
+                    "состояние настроек не прочитано",
+                );
                 true
             }
         };
@@ -190,6 +235,7 @@ impl Engine {
                     }
                 }
                 state.unknown_keys = parsed.unknown;
+                state.unknown_more = parsed.unknown_more as u32;
             });
             return;
         }
@@ -211,16 +257,22 @@ impl Engine {
         let state = match self.store.effective_state() {
             Ok(state) => state,
             Err(error) => {
-                log::warn!("файл настроек не записан: {}", error.category());
-                self.pending_write = true;
+                self.warn_once(
+                    format!("write-state {}", error.category()),
+                    "файл настроек не записан",
+                );
+                self.write_failed();
                 return;
             }
         };
         let bytes = state.render(self.base.as_ref());
         let hash = sha256_hex(&bytes);
         if let Err(error) = io::write_atomic(&self.path, &self.dir, &bytes) {
-            log::warn!("файл настроек не записан: io {:?}", error.kind());
-            self.pending_write = true;
+            self.warn_once(
+                format!("write-io {:?}", error.kind()),
+                "файл настроек не записан",
+            );
+            self.write_failed();
             self.update(|state| {
                 state.problem = Some(FileProblem {
                     kind: FileProblemKind::Io,
@@ -240,36 +292,42 @@ impl Engine {
             .store
             .write(move |conn| put(conn, KEY_FILE_HASH, &stored).map_err(write_err));
         if let Err(error) = saved {
-            log::warn!("хэш файла настроек не записан: {}", error.category());
+            self.warn_once(
+                format!("hash {}", error.category()),
+                "хэш файла настроек не записан",
+            );
         } else {
             self.stored_hash = Some(hash.clone());
         }
         self.pending_write = false;
+        self.write_failures = 0;
+        self.retry_at = None;
+        self.logged = None;
         // Если на диске уже не то, что записано (агент успел заменить файл), он будет прочитан и применён следующим опросом.
-        if std::fs::read(&self.path)
-            .map(|on_disk| sha256_hex(&on_disk))
-            .ok()
-            .as_deref()
-            != Some(hash.as_str())
-        {
+        // Читается тем же безопасным чтением (без перехода по ссылке, канал и устройство не читаются).
+        let same = matches!(
+            io::read_file(&self.path, &self.dir),
+            ReadOutcome::Content { bytes, .. } if sha256_hex(&bytes) == hash
+        );
+        if !same {
             self.last_sig = None;
         }
-        let unknown = parse(&bytes)
-            .map(|parsed| parsed.unknown)
+        let (unknown, unknown_more) = parse(&bytes)
+            .map(|parsed| (parsed.unknown, parsed.unknown_more as u32))
             .unwrap_or_default();
+        // Каталог данных мог оказаться небезопасным при самом файле в порядке: причина остаётся видна.
+        let directory = io::unsafe_directory(&self.dir);
         self.update(|state| {
             state.problem = None;
-            state.unsafe_reason = None;
+            state.unsafe_reason = directory;
             state.issues.clear();
             state.unknown_keys = unknown;
+            state.unknown_more = unknown_more;
         });
     }
 
     fn update(&self, change: impl FnOnce(&mut SettingsFileState)) {
-        let mut state = self
-            .status
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut state = self.status.lock().unwrap_or_else(PoisonError::into_inner);
         change(&mut state);
     }
 

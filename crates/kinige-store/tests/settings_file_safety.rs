@@ -160,6 +160,56 @@ fn content_written_while_the_file_was_unsafe_is_not_applied_after_chmod() {
 }
 
 #[test]
+fn after_chmod_a_fresh_save_applies_the_keys_that_were_ignored() {
+    // Подсказка в окне: «сделайте файл доступным на запись только вам (chmod 600), затем сохраните файл ещё раз».
+    let rig = rig();
+    rig.write_mode(ACCESS_ON, 0o666);
+    fs::set_permissions(rig.path(), fs::Permissions::from_mode(0o600)).unwrap();
+    rig.file.sync_now();
+    assert!(!rig.store.agent_access().unwrap().enabled);
+    // Повторное сохранение (файл другой по байтам) при безопасных правах применяется целиком.
+    rig.write(&format!("{ACCESS_ON}\n"));
+    assert!(rig.store.agent_access().unwrap().enabled);
+    assert!(rig.file.state().unsafe_reason.is_none());
+}
+
+#[test]
+fn an_edit_of_the_symlink_target_is_seen_by_the_poll() {
+    let rig = rig_with(fast_poll);
+    let elsewhere = tempfile::tempdir().unwrap();
+    let real = elsewhere.path().join("real.json");
+    fs::write(&real, r#"{"text_size":"normal"}"#).unwrap();
+    fs::set_permissions(&real, fs::Permissions::from_mode(0o600)).unwrap();
+    fs::remove_file(rig.path()).unwrap();
+    std::os::unix::fs::symlink(&real, rig.path()).unwrap();
+    wait_until("ссылка замечена", || {
+        rig.file.state().unsafe_reason == Some(UnsafeReason::Symlink)
+    });
+    fs::write(&real, r#"{"text_size":"large","pad":"x"}"#).unwrap();
+    wait_until(
+        "правка цели ссылки применена",
+        || rig.store.get_settings().unwrap().text_size == TextSize::Large,
+    );
+}
+
+#[test]
+fn a_missing_file_in_a_loose_directory_is_created_and_the_directory_is_reported() {
+    let root = tempfile::tempdir().unwrap();
+    let loose = root.path().join("loose");
+    fs::create_dir(&loose).unwrap();
+    fs::set_permissions(&loose, fs::Permissions::from_mode(0o775)).unwrap();
+    let store = kinige_store::Store::open_at(
+        kinige_store::StoreOptions::new(loose.join("kinige.db"), None),
+        &moscow(T0),
+    )
+    .unwrap();
+    let changes = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let file = kinige_store::SettingsFile::start(store, loose.clone(), options_for(&changes));
+    assert!(loose.join("settings.json").exists());
+    assert_eq!(file.state().unsafe_reason, Some(UnsafeReason::Directory));
+}
+
+#[test]
 fn a_fifo_in_place_of_the_file_is_unsafe_and_never_blocks_or_reads() {
     let rig = rig();
     fs::remove_file(rig.path()).unwrap();

@@ -190,6 +190,12 @@ shoot_settings 11-file-unreadable
 
 # ---- 9. Ошибки нескольких ключей ----
 write_settings '{"text_size":"huge","shortcuts":{"capture":"???"},"mirror":{"folder":"relative/path"},"agent_access":{"mode":"write","chats":[{"id":"no-such-chat"}]},"surprise":1}'
+has "text_size: this value is not allowed" || fail "нет ошибки text_size"
+has "shortcuts.capture: this shortcut cannot be used" || fail "нет ошибки сочетания"
+has "mirror.folder: the folder path must be absolute" || fail "нет ошибки папки копии"
+has "agent_access.mode: this value is not allowed" || fail "нет ошибки режима"
+has "agent_access.chats[0]: no such chat" || fail "нет ошибки чата"
+has "surprise" || fail "нет предупреждения о неизвестном ключе"
 shoot_settings 12-file-key-errors
 [ "$(setting text_size)" = "large" ] || fail "ошибки ключей изменили настройки"
 write_settings "$(cat "$K/debug/settings-good.json" | python3 -c 'import json,sys; d=json.load(sys.stdin); d["text_size"]="large"; print(json.dumps(d))')"

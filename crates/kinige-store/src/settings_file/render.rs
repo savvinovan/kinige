@@ -10,7 +10,8 @@ use crate::{Store, StoreError};
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::{AgentMode, ShortcutKind, TextSize};
 use serde_json::{Map, Value, json};
-use std::path::PathBuf;
+use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
 
 /// Действующее состояние настроек, как оно попадает в файл.
 #[derive(Debug, Clone)]
@@ -119,7 +120,7 @@ impl EffectiveState {
             Field::Value(path) => self
                 .mirror_effective
                 .as_deref()
-                .is_some_and(|current| current == std::path::Path::new(path)),
+                .is_some_and(|current| current == Path::new(path)),
         };
         let enabled_ok = match parsed.agent_enabled {
             Field::Absent => true,
@@ -135,9 +136,9 @@ impl EffectiveState {
             Field::Absent => true,
             Field::Default => self.visible.is_empty(),
             Field::Value(refs) => {
-                let wanted: std::collections::BTreeSet<String> =
+                let wanted: BTreeSet<String> =
                     resolve_chats(&self.chats, refs).0.into_iter().collect();
-                let current: std::collections::BTreeSet<String> =
+                let current: BTreeSet<String> =
                     self.visible.iter().map(|chat| chat.id.clone()).collect();
                 wanted == current
             }

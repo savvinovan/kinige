@@ -29,6 +29,10 @@ issues: Array<KeyIssue>,
  */
 unknownKeys: Array<string>, 
 /**
+ * Сколько неизвестных ключей не поместилось в список («и ещё N»).
+ */
+unknownMore: number, 
+/**
  * Когда раздел менялся через файл.
  */
 changed: FileChanges, };

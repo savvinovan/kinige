@@ -140,3 +140,18 @@ test("окно настроек: предупреждение не сдвига�
   const withWarning = await measure();
   expect(withWarning).toEqual(without);
 });
+
+test("окно настроек: переход по дереву и «назад» открывают страницу сверху, а не с места прошлой прокрутки", async ({ page }) => {
+  await open(page, PREFS("доступвыключен"));
+  await page.evaluate(() => document.documentElement.setAttribute("data-text-scale", "large"));
+  const top = () => page.evaluate(() => document.querySelector<HTMLElement>(".prefs__page")!.scrollTop);
+  const scrollBy300 = () => page.evaluate(() => (document.querySelector<HTMLElement>(".prefs__page")!.scrollTop = 300));
+  await scrollBy300();
+  expect(await top()).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "Копии" }).click();
+  expect(await top()).toBe(0);
+  await page.getByRole("button", { name: "Доступ ИИ-агентов" }).click();
+  await scrollBy300();
+  await page.getByRole("button", { name: /Журнал обращений.*Настроить/ }).click();
+  expect(await top()).toBe(0);
+});

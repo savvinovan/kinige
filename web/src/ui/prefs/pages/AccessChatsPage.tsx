@@ -23,7 +23,7 @@ export function AccessChatsPage({ chats, disabled, onToggle, onBack, changedAt, 
     <section className="prefs-page" aria-label={t("prefs.section.accessChats")}>
       <SubscreenHeader parent={t("prefs.section.access")} title={t("prefs.section.accessChats")} onBack={onBack} />
       <div className="prefs-block">
-        <p className="settings__description">{t("agent.chats.description")}</p>
+        {chats.every((chat) => !chat.visible) ? <p className="settings__description">{t("agent.chats.description")}</p> : null}
         <AgentChats chats={chats} disabled={disabled} onToggle={onToggle} />
         <ChangedByFile at={changedAt} now={now} />
       </div>

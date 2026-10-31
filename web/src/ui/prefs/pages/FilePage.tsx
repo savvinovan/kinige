@@ -76,8 +76,8 @@ export function FilePage({ file }: { file: SettingsFileState }) {
         <div className="prefs-block">
           <h3 className="prefs-file__heading">{t("prefs.file.problemsTitle")}</h3>
           <ul className="prefs-file" aria-label={t("prefs.file.problemsTitle")}>
-            {file.issues.map((issue) => (
-              <li key={`${issue.key}:${issue.kind}`} className="prefs-file__item">
+            {file.issues.map((issue, index) => (
+              <li key={`${index}:${issue.key}:${issue.kind}`} className="prefs-file__item">
                 <StatusNote tone="error" icon="alert">
                   {t(`prefs.file.issue.${issue.kind}`, { key: issue.key })}
                 </StatusNote>
@@ -90,13 +90,20 @@ export function FilePage({ file }: { file: SettingsFileState }) {
         <div className="prefs-block">
           <h3 className="prefs-file__heading">{t("prefs.file.unknownTitle")}</h3>
           <ul className="prefs-file" aria-label={t("prefs.file.unknownTitle")}>
-            {file.unknownKeys.map((key) => (
-              <li key={key} className="prefs-file__item">
+            {file.unknownKeys.map((key, index) => (
+              <li key={`${index}:${key}`} className="prefs-file__item">
                 <StatusNote tone="quiet" icon="info">
                   {t("prefs.file.unknownKey", { key })}
                 </StatusNote>
               </li>
             ))}
+            {file.unknownMore > 0 ? (
+              <li className="prefs-file__item">
+                <StatusNote tone="quiet" icon="info">
+                  {t("prefs.file.unknownMore", { count: file.unknownMore })}
+                </StatusNote>
+              </li>
+            ) : null}
           </ul>
         </div>
       ) : null}

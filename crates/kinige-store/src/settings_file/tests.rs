@@ -246,3 +246,26 @@ fn random_bytes_and_mutated_documents_never_panic() {
         let _ = parse(&doc);
     }
 }
+
+#[test]
+fn a_file_replaced_while_it_is_read_leaves_no_signature_so_the_next_poll_reads_it_again() {
+    use super::io::{ReadOutcome, file_path, read_file, read_file_with};
+    let dir = tempfile::tempdir().unwrap();
+    let path = file_path(dir.path());
+    std::fs::write(&path, br#"{"text_size":"normal"}"#).unwrap();
+    // Спокойное чтение даёт признак.
+    assert!(matches!(
+        read_file(&path, dir.path()),
+        ReadOutcome::Content { sig: Some(_), .. }
+    ));
+    // Файл подменили между чтением и снятием признака (агент сохранил через rename): признака нет.
+    let swapped = read_file_with(&path, dir.path(), &|| {
+        let other = dir.path().join(".other");
+        std::fs::write(&other, br#"{"text_size":"large"}"#).unwrap();
+        std::fs::rename(&other, &path).unwrap();
+    });
+    assert!(
+        matches!(swapped, ReadOutcome::Content { sig: None, .. }),
+        "{swapped:?}"
+    );
+}

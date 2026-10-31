@@ -21,6 +21,8 @@ const isCaptureWindow = window.location.hash === "#capture";
 const isSettingsWindow = window.location.hash === "#settings";
 // Окно захвата прозрачное (форму и тень панели рисует CSS): странице нужна метка, чтобы убрать фон (ui/capture/capture.css).
 if (isCaptureWindow) document.documentElement.dataset.window = "capture";
+// Окно настроек: документ не прокручивается, прокручивается только страница справа (ui/prefs/prefs.css).
+if (isSettingsWindow) document.documentElement.dataset.window = "settings";
 
 // Язык и размер текста читаются до первого кадра: окно не мигает чужим языком и размером. Язык выбирает Rust по языкам системы.
 const start = isSettingsWindow

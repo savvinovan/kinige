@@ -83,6 +83,45 @@ describe("Окно «Настройки»: дерево разделов", () =>
   });
 });
 
+describe("Окно «Настройки»: прокрутка страницы", () => {
+  // Один прокручиваемый блок на все страницы: переход (дерево, «Настроить ›», «назад») открывает страницу сверху.
+  const scroller = () => document.querySelector<HTMLElement>(".prefs__page") as HTMLElement;
+  const scrollTo300 = () => {
+    // jsdom не считает вёрстку: положение прокрутки хранится в свойстве, как у настоящего элемента.
+    let top = 300;
+    Object.defineProperty(scroller(), "scrollTop", { configurable: true, get: () => top, set: (value: number) => (top = value) });
+  };
+
+  it("дерево: страница, на которую перешли, открывается сверху", async () => {
+    await openWindow();
+    fireEvent.click(within(tree()).getByRole("button", { name: "Доступ ИИ-агентов" }));
+    scrollTo300();
+    expect(scroller().scrollTop).toBe(300);
+    fireEvent.click(within(tree()).getByRole("button", { name: "Копии" }));
+    expect(scroller().scrollTop).toBe(0);
+  });
+
+  it("«Настроить ›» и «назад»: подэкран и возврат тоже сверху", async () => {
+    await openWindow();
+    fireEvent.click(within(tree()).getByRole("button", { name: "Доступ ИИ-агентов" }));
+    scrollTo300();
+    fireEvent.click(await screen.findByRole("button", { name: /Журнал обращений.*Настроить/ }));
+    expect(scroller().scrollTop).toBe(0);
+    scrollTo300();
+    fireEvent.click(screen.getByRole("button", { name: "Назад: Доступ ИИ-агентов" }));
+    expect(scroller().scrollTop).toBe(0);
+  });
+
+  it("правка данных на странице (событие «настройки изменились») прокрутку не сбрасывает", async () => {
+    const api = await openWindow();
+    fireEvent.click(within(tree()).getByRole("button", { name: "Доступ ИИ-агентов" }));
+    scrollTo300();
+    act(() => api.emitSettingsChanged());
+    await waitFor(() => expect(api.calls.filter((call) => call.startsWith("getSettingsFile")).length).toBeGreaterThan(1));
+    expect(scroller().scrollTop).toBe(300);
+  });
+});
+
 describe("Окно «Настройки»: оформление и копии", () => {
   it("«Размер текста» → «Крупный»: атрибут на <html> сразу и сохранён в настройках", async () => {
     const api = await openWindow();

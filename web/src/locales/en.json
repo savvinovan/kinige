@@ -372,6 +372,8 @@
       "problemsTitle": "Problems",
       "unknownTitle": "Unknown keys",
       "unknownKey": "{{key}}: Kinige does not know this key, ignores it and keeps it in the file",
+      "unknownMore_one": "and {{count}} more unknown key",
+      "unknownMore_other": "and {{count}} more unknown keys",
       "problem": {
         "parse": "The file could not be read: line {{line}}, column {{column}}. Nothing was changed.",
         "not_object": "The file must be a JSON object. Nothing was changed.",
@@ -384,7 +386,7 @@
         "symlink": "The file is a symbolic link, so access and folder keys from it are ignored.",
         "not_regular": "This is not a regular file, so it is not read.",
         "owner": "The file belongs to another user, so access and folder keys from it are ignored.",
-        "permissions": "Other users can write to the file, so access and folder keys from it are ignored. Make it writable only by you (chmod 600).",
+        "permissions": "Other users can write to the file, so access and folder keys from it are ignored. Make it writable only by you (chmod 600), then save the file again.",
         "directory": "Other users can write to the data folder, so access and folder keys from the file are ignored."
       },
       "issue": {

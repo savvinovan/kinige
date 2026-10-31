@@ -111,9 +111,14 @@ fn the_applied_file_after_restore_cannot_wipe_days_written_after_the_snapshot() 
         0o600,
     );
     restore(dir.path(), &name);
+    // Пользователь создал папку B заново (пустую): файл ставит её копией, писатель копии пишет туда дни из базы.
+    fs::create_dir_all(&folder_b).unwrap();
     let store = open(dir.path());
     let rig = start_in(dir, store, |_| {});
-    std::thread::sleep(std::time::Duration::from_millis(300));
+    let today = folder_b.join("Inbox/2026/2026-10-21.md");
+    wait_until("день из базы в новой папке", || {
+        today.exists()
+    });
     let moved = aside(&folder_b);
     assert_eq!(
         fs::read_to_string(moved[0].join("Inbox/2026/2026-10-22.md")).unwrap(),

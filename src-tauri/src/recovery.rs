@@ -194,6 +194,9 @@ pub fn restore_backup<R: Runtime>(
                 previous_mirror: report
                     .previous_mirror
                     .map(|folder| folder.to_string_lossy().into_owned()),
+                settings_file_mirror: report
+                    .settings_file_mirror
+                    .map(|folder| folder.to_string_lossy().into_owned()),
             })
         }
         Err(error) => {

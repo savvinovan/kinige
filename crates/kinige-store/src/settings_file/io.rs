@@ -21,22 +21,33 @@ pub struct Sig {
     mode: u32,
     inode: u64,
     symlink: bool,
+    /// У ссылки — время изменения и размер цели: правка цели опросом видна (сама ссылка при этом не меняется).
+    target: Option<(u128, u64)>,
 }
 
 /// Признак файла по пути (без перехода по ссылке); `None` — файла нет или он не виден.
 pub fn signature(path: &Path) -> Option<Sig> {
     let meta = fs::symlink_metadata(path).ok()?;
     Some(Sig {
-        mtime_ns: meta
-            .modified()
-            .ok()
-            .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-            .map_or(0, |duration| duration.as_nanos()),
+        mtime_ns: nanos(&meta),
         len: meta.len(),
         mode: mode_of(&meta),
         inode: inode_of(&meta),
         symlink: meta.file_type().is_symlink(),
+        target: meta
+            .file_type()
+            .is_symlink()
+            .then(|| fs::metadata(path).ok())
+            .flatten()
+            .map(|target| (nanos(&target), target.len())),
     })
+}
+
+fn nanos(meta: &fs::Metadata) -> u128 {
+    meta.modified()
+        .ok()
+        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+        .map_or(0, |duration| duration.as_nanos())
 }
 
 #[cfg(unix)]
@@ -76,6 +87,14 @@ pub enum ReadOutcome {
 /// дескриптору, а не по пути: между проверкой и чтением файл подменить нельзя. Ссылка читается по цели, но помечается
 /// небезопасной; канал и устройство не читаются вовсе. Читается не больше `MAX_BYTES + 1` байт.
 pub fn read_file(path: &Path, dir: &Path) -> ReadOutcome {
+    read_file_with(path, dir, &|| ())
+}
+
+/// То же с шагом `between` после чтения и до снятия признака: в нём тесты подменяют файл. Признак снимается до `open` и
+/// после чтения; не совпали — файл менялся во время чтения, признак пустой, и следующий опрос прочитает файл заново.
+#[doc(hidden)]
+pub fn read_file_with(path: &Path, dir: &Path, between: &dyn Fn()) -> ReadOutcome {
+    let sig_before = signature(path);
     let (file, via_symlink) = match open(path) {
         Ok(opened) => opened,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return ReadOutcome::Missing,
@@ -102,10 +121,16 @@ pub fn read_file(path: &Path, dir: &Path) -> ReadOutcome {
     } else {
         unsafe_file(&meta).or_else(|| unsafe_directory(dir))
     };
+    between();
+    let sig_after = signature(path);
     ReadOutcome::Content {
         bytes,
         unsafe_reason,
-        sig: signature(path),
+        sig: if sig_before == sig_after {
+            sig_after
+        } else {
+            None
+        },
     }
 }
 

@@ -2,7 +2,7 @@
 //! и регистрирует слой Tauri). В той же транзакции: сравнение «до / после» доступа агента, ключи `mcp_*`, хэш файла и
 //! строка журнала обращений.
 
-use super::parse::{ChatRef, Field, Parsed};
+use super::parse::{ChatRef, Field, MAX_ISSUES, Parsed};
 use crate::agent::{KEY_CHATS, KEY_ENABLED, KEY_MODE, load_settings};
 use crate::agent_log::insert_log;
 use crate::agent_settings::put;
@@ -16,7 +16,7 @@ use kinige_domain::chat::normalize_title;
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::{AgentMode, KeyIssue, KeyIssueKind, ShortcutKind, TextSize};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 /// Хэш последнего синхронизированного файла (`app_setting`, в файл не идёт).
@@ -86,17 +86,21 @@ pub(crate) fn resolve_chats(chats: &[ChatInfo], refs: &[ChatRef]) -> (Vec<String
             },
             (None, None) => Err(KeyIssueKind::Value),
         };
-        match found {
-            Ok(chat) if chat.ai_excluded => issues.push(KeyIssue {
-                key,
-                kind: KeyIssueKind::ChatExcluded,
-            }),
+        let issue = match found {
+            Ok(chat) if chat.ai_excluded => Some(KeyIssueKind::ChatExcluded),
             Ok(chat) => {
                 if !ids.contains(&chat.id) {
                     ids.push(chat.id.clone());
                 }
+                None
             }
-            Err(kind) => issues.push(KeyIssue { key, kind }),
+            Err(kind) => Some(kind),
+        };
+        // Потолок, как у разбора: массив из тысяч негодных элементов не раздувает окно.
+        if let Some(kind) = issue
+            && issues.len() < MAX_ISSUES
+        {
+            issues.push(KeyIssue { key, kind });
         }
     }
     (ids, issues)
@@ -273,7 +277,15 @@ fn apply_agent(
     out: &mut ApplyOutcome,
 ) -> Result<(), StoreError> {
     let parsed = &input.parsed;
-    let before = agent_state(conn);
+    let mut before = agent_state(conn);
+    // Чаты, которых уже нет или которые исключены из AI, агент не видит: сравнение «до / после» их не считает, иначе лишняя
+    // строка журнала появилась бы без изменения доступа.
+    let visible: HashSet<String> = load_chats(conn)?
+        .into_iter()
+        .filter(|chat| !chat.ai_excluded)
+        .map(|chat| chat.id)
+        .collect();
+    before.chats.retain(|id| visible.contains(id));
     let mut after = before.clone();
     match parsed.agent_enabled {
         Field::Absent => {}
@@ -290,7 +302,8 @@ fn apply_agent(
         Field::Default => after.chats = Vec::new(),
         Field::Value(refs) => {
             let (ids, issues) = resolve_chats(&load_chats(conn)?, refs);
-            out.issues.extend(issues);
+            let room = MAX_ISSUES.saturating_sub(out.issues.len());
+            out.issues.extend(issues.into_iter().take(room));
             after.chats = ids;
         }
     }

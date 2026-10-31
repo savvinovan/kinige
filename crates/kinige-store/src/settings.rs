@@ -226,8 +226,14 @@ impl Store {
             mark_all_dirty(&tx).map_err(write_err)?;
             tx.commit().map_err(write_err)
         })?;
+        self.mirror_dir_changed();
+        Ok(())
+    }
+
+    /// Папка копии сменилась (окном или файлом настроек): прошлая ошибка копии снимается, писатель просыпается и пишет дни
+    /// в новую папку сразу, а не после следующей записи или перезапуска.
+    pub(crate) fn mirror_dir_changed(&self) {
         self.inner.mirror.clear_error();
         self.wake_mirror();
-        Ok(())
     }
 }

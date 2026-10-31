@@ -9,8 +9,8 @@ use serde_json::{Map, Value};
 
 /// Наибольший размер файла.
 pub const MAX_BYTES: u64 = 1024 * 1024;
-/// Сколько ошибок ключей хранится самое большее: файл из мусора не должен раздувать окно.
-const MAX_ISSUES: usize = 100;
+/// Сколько ошибок ключей и неизвестных ключей хранится самое большее: файл из мусора не должен раздувать окно.
+pub(crate) const MAX_ISSUES: usize = 100;
 /// Сколько знаков имени неизвестного ключа показывается.
 const KEY_SHOWN_CHARS: usize = 64;
 
@@ -76,6 +76,8 @@ pub(crate) struct Parsed {
     pub chats: Field<Vec<ChatRef>>,
     pub issues: Vec<KeyIssue>,
     pub unknown: Vec<String>,
+    /// Сколько неизвестных ключей не поместилось в `unknown` («и ещё N»).
+    pub unknown_more: usize,
 }
 
 pub(crate) fn parse(bytes: &[u8]) -> Result<Parsed, FileError> {
@@ -104,6 +106,7 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<Parsed, FileError> {
         chats: Field::Absent,
         issues: Vec::new(),
         unknown: Vec::new(),
+        unknown_more: 0,
         raw: Map::new(),
     };
     for (key, value) in &raw {
@@ -112,7 +115,7 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<Parsed, FileError> {
             "shortcuts" => parsed.shortcuts(value),
             "mirror" => parsed.mirror(value),
             "agent_access" => parsed.agent_access(value),
-            other => parsed.unknown.push(shorten(other)),
+            other => parsed.note_unknown(other),
         }
     }
     parsed.raw = raw;
@@ -128,6 +131,14 @@ fn shorten(key: &str) -> String {
 }
 
 impl Parsed {
+    fn note_unknown(&mut self, name: &str) {
+        if self.unknown.len() < MAX_ISSUES {
+            self.unknown.push(shorten(name));
+        } else {
+            self.unknown_more += 1;
+        }
+    }
+
     fn issue(&mut self, key: &str, kind: KeyIssueKind) {
         if self.issues.len() < MAX_ISSUES {
             self.issues.push(KeyIssue {
@@ -165,7 +176,7 @@ impl Parsed {
 
     fn unknown_in(&mut self, section: &str, map: &Map<String, Value>, known: &[&str]) {
         for key in map.keys().filter(|key| !known.contains(&key.as_str())) {
-            self.unknown.push(shorten(&format!("{section}.{key}")));
+            self.note_unknown(&format!("{section}.{key}"));
         }
     }
 

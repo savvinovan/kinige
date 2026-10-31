@@ -9,6 +9,7 @@ export const MOCK_SETTINGS_FILE: SettingsFileState = {
   unsafeReason: null,
   issues: [],
   unknownKeys: [],
+  unknownMore: 0,
   changed: { appearance: null, shortcuts: null, mirror: null, access: null },
 };
 

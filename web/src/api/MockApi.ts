@@ -345,7 +345,7 @@ export class MockApi extends MockApiSlice4b implements KinigeApi {
       const folder = this.settings.mirror.folder;
       const previousMirror = folder ? `${folder}-before-restore-20261021T061200Z` : null;
       this.startup = { needsRecovery: false, backups: [], databaseTooNew: false, corruptionFound: false };
-      return { previousMirror };
+      return { previousMirror, settingsFileMirror: null };
     });
   }
 

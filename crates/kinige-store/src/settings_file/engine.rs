@@ -10,8 +10,8 @@ use serde_json::{Map, Value};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, Instant};
 
 /// Как часто поток смотрит на файл.
 pub const POLL: Duration = Duration::from_secs(1);
@@ -91,6 +91,9 @@ impl SettingsFile {
             writable: false,
             base: None,
             initial: true,
+            logged: None,
+            write_failures: 0,
+            retry_at: None,
         };
         guarded(&mut engine, Engine::reconcile);
         engine.initial = false;
@@ -106,7 +109,7 @@ impl SettingsFile {
     pub fn state(&self) -> SettingsFileState {
         self.status
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .unwrap_or_else(PoisonError::into_inner)
             .clone()
     }
 
@@ -179,4 +182,9 @@ pub(super) struct Engine {
     pub(super) base: Option<Map<String, Value>>,
     /// Запуск приложения: окон ещё нет, сочетания идут прямо в базу, событий нет.
     pub(super) initial: bool,
+    /// Последнее записанное в журнал процесса предупреждение (вид и категория): повтор не пишется.
+    pub(super) logged: Option<String>,
+    /// Подряд неудачных записей файла и когда пробовать снова (с 2^n секунд, не реже раза в минуту).
+    pub(super) write_failures: u32,
+    pub(super) retry_at: Option<Instant>,
 }

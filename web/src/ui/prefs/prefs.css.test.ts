@@ -60,6 +60,14 @@ describe("прокрутка в окне «Настройки»", () => {
     expect(rules(read("prefs.css")).get(".prefs")).toMatch(/grid-template-columns\s*:\s*var\(--layout-settings-tree-width\)/);
   });
 
+  it("документ окна не прокручивается: строка сетки ровно высота окна, у html окна настроек overflow: hidden", () => {
+    const css = rules(read("prefs.css"));
+    expect(css.get(".prefs")).toMatch(/grid-template-rows\s*:\s*minmax\(0,\s*1fr\)/);
+    expect(css.get('html[data-window="settings"]')).toMatch(/overflow\s*:\s*hidden/);
+    expect(css.get('html[data-window="settings"] body')).toMatch(/overflow\s*:\s*hidden/);
+    expect(css.get(".prefs")).toMatch(/height\s*:\s*100%/);
+  });
+
   it("предупреждение не двигает страницу: подложка и панель закреплены (position: fixed), страница не получает overflow", () => {
     expect(rules(read("../settings/modal.css")).get(".modal")).toMatch(/position\s*:\s*fixed/);
     expect(rules(read("prefs.css")).get(".prefs__page")).not.toMatch(/overflow-y\s*:\s*(hidden|scroll)/);

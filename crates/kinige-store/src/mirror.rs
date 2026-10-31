@@ -177,6 +177,12 @@ fn pass(
             shared.set_error(None);
             return false;
         }
+        // Папку могли сменить, пока шёл проход (окно или `settings.json`): смена помечает все дни заново, а писать дни,
+        // отмеченные этим проходом, в прежнюю папку и снимать отметки нельзя — новая папка осталась бы пустой.
+        // Проход начинается заново с новой папкой; отметки целы.
+        if !matches!(effective_mirror_dir(reader, default_dir), Ok((Some(now), _)) if now == dir) {
+            return true;
+        }
         // Папки чатов по их нынешним названиям; папки, где файлы лежат сейчас, сверяются с ними до записи дней.
         let folders = crate::chats::folder_map(reader).unwrap_or_default();
         let in_batch: HashSet<&str> = batch.iter().map(|(chat, _, _)| chat.as_str()).collect();
