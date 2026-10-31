@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Главное окно: свои команды без core:default, плюс подписка на события приложения («записи изменились», «открыть чат», «настройки изменились», «открыть запись»); без JS-разрешений плагинов opener, dialog и global-shortcut. Команды окна настроек у него отозваны (слайс 4b)",
+  "description": "Главное окно: свои команды без core:default, плюс подписка на события приложения («записи изменились», «открыть чат», «настройки изменились», «открыть запись»); команды «В этот день» (слайс 5); без JS-разрешений плагинов opener, dialog и global-shortcut. Команды окна настроек у него отозваны (слайс 4b)",
   "windows": [
     "main"
   ],
@@ -40,6 +40,8 @@
     "allow-import-telegram-close",
     "allow-search-messages",
     "allow-open-settings",
+    "allow-get-on-this-day",
+    "allow-dismiss-on-this-day",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

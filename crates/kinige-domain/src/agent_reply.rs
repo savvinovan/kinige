@@ -24,7 +24,7 @@ pub fn month_day(date: &str) -> Option<MonthDay> {
     })
 }
 
-/// Запись в ответе агента. `reply_to_id` не отдаётся (ответов в интерфейсе ещё нет).
+/// Запись в ответе агента. `reply_to_id` не отдаётся и в слайсе 5, когда ответы появились в интерфейсе (ADR-0009).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AgentEntry {
     pub id: String,

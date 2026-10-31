@@ -22,6 +22,8 @@ mod import_time;
 mod maintenance;
 mod messages;
 mod mirror;
+mod mirror_day;
+mod on_this_day;
 mod recovery;
 mod schema;
 mod search;

@@ -105,10 +105,13 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
         call(&capture, "capture_state", json!({})).unwrap()["draft"],
         "недописано"
     );
-    assert_eq!(call(&main, "get_draft", args_for("get_draft")).unwrap(), "");
+    assert_eq!(
+        call(&main, "get_draft", args_for("get_draft")).unwrap()["body"],
+        ""
+    );
     call(&main, "save_draft", args_for("save_draft")).unwrap();
     assert_eq!(
-        call(&main, "get_draft", args_for("get_draft")).unwrap(),
+        call(&main, "get_draft", args_for("get_draft")).unwrap()["body"],
         "черновик"
     );
     assert_eq!(
@@ -135,7 +138,7 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
     let page = call(&main, "list_messages", args_for("list_messages")).unwrap();
     assert_eq!(page["messages"].as_array().unwrap().len(), 1);
     assert_eq!(
-        call(&main, "get_draft", args_for("get_draft")).unwrap(),
+        call(&main, "get_draft", args_for("get_draft")).unwrap()["body"],
         "черновик"
     );
 

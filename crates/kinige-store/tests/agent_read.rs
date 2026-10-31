@@ -383,3 +383,35 @@ fn a_panic_inside_an_agent_read_fails_that_call_only_and_later_agent_calls_work(
         assert_eq!(entry_ids(&found).len(), 1);
     }
 }
+
+#[test]
+fn a_reply_reaches_the_agent_without_reply_to_id_or_the_quoted_text() {
+    // Слайс 5: ответ пользователя читается агентом как обычная запись; ссылка и цитата ему не отдаются (ADR-0009).
+    let a = agent(AgentMode::Read, true);
+    let old = a
+        .store
+        .send_message(
+            INBOX_ID,
+            "СТАРЫЙ-ТЕКСТ-ЦИТАТЫ",
+            &moscow(MARCH - 3 * 365 * DAY),
+        )
+        .unwrap();
+    a.store
+        .send_reply(INBOX_ID, "новый ответ", Some(&old.id), &moscow(MARCH))
+        .unwrap();
+    let reply = call(
+        &a.store,
+        "get_entries",
+        json!({"date": "2026-03-14"}),
+        MARCH,
+    )
+    .unwrap();
+    let text = reply.to_string();
+    assert!(text.contains("новый ответ"), "{text}");
+    assert!(
+        !text.contains(&old.id),
+        "id старой записи не отдаётся: {text}"
+    );
+    assert!(!text.contains("reply"), "{text}");
+    assert!(!text.contains("СТАРЫЙ-ТЕКСТ-ЦИТАТЫ"), "{text}");
+}

@@ -52,6 +52,8 @@ fn main() {
         "import_telegram_close",
         "search_messages",
         "open_settings",
+        "get_on_this_day",
+        "dismiss_on_this_day",
         "set_text_size",
         "choose_mirror_folder",
         "set_shortcut",

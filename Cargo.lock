@@ -2109,6 +2109,7 @@ dependencies = [
 name = "kinige-domain"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "rust-stemmers",
  "serde",
  "serde_json",

@@ -45,7 +45,7 @@ fn downgrade_to_two(dir: &Path) {
     conn.execute_batch(
         "DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; DROP TABLE message_tag; \
          DROP TABLE mirror_chat; DROP TABLE message_ext; DROP TABLE search_fts; DROP TABLE search_map; \
-         DROP TABLE mcp_log; DROP TABLE mcp_log_message; \
+         DROP TABLE mcp_log; DROP TABLE mcp_log_message; ALTER TABLE draft DROP COLUMN reply_to_id; \
          DELETE FROM app_setting WHERE key = 'search_index_version';",
     )
     .unwrap();

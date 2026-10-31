@@ -37,6 +37,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "import_telegram_close",
     "search_messages",
     "open_settings",
+    "get_on_this_day",
+    "dismiss_on_this_day",
 ];
 
 /// Команды окна настроек (capability `settings`, слайс 4b, ADR-0010): настройки, сочетания, доступ ИИ-агентов, файл
@@ -107,6 +109,8 @@ pub const COMMANDS: &[&str] = &[
     "import_telegram_close",
     "search_messages",
     "open_settings",
+    "get_on_this_day",
+    "dismiss_on_this_day",
     "set_text_size",
     "choose_mirror_folder",
     "set_shortcut",

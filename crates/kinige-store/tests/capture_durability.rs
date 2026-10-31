@@ -37,7 +37,7 @@ fn migration_two_adds_only_the_draft_table_and_keeps_every_existing_row() {
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .unwrap();
     assert_eq!(version, LATEST_VERSION);
-    assert_eq!(LATEST_VERSION, 5);
+    assert_eq!(LATEST_VERSION, 6);
     let columns: Vec<(String, String)> = conn
         .prepare("SELECT name, type FROM pragma_table_info('draft') ORDER BY cid")
         .unwrap()
@@ -50,7 +50,8 @@ fn migration_two_adds_only_the_draft_table_and_keeps_every_existing_row() {
         [
             ("key".to_string(), "TEXT".to_string()),
             ("body".to_string(), "TEXT".to_string()),
-            ("updated_at".to_string(), "INTEGER".to_string())
+            ("updated_at".to_string(), "INTEGER".to_string()),
+            ("reply_to_id".to_string(), "TEXT".to_string())
         ]
     );
     let after = row(dir.path(), &sent.id);

@@ -291,7 +291,7 @@ fn migration_four_to_five_takes_a_copy_keeps_the_data_and_creates_the_log_tables
     };
     {
         let conn = raw(dir.path());
-        conn.execute_batch("DROP TABLE mcp_log; DROP TABLE mcp_log_message;")
+        conn.execute_batch("DROP TABLE mcp_log; DROP TABLE mcp_log_message; ALTER TABLE draft DROP COLUMN reply_to_id;")
             .unwrap();
         conn.pragma_update(None, "user_version", 4).unwrap();
     }
@@ -303,7 +303,7 @@ fn migration_four_to_five_takes_a_copy_keeps_the_data_and_creates_the_log_tables
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .unwrap();
     assert_eq!(version, LATEST_VERSION);
-    assert_eq!(LATEST_VERSION, 5);
+    assert_eq!(LATEST_VERSION, 6);
     let copies: Vec<String> =
         std::fs::read_dir(db_path(dir.path()).parent().unwrap().join("backups"))
             .unwrap()

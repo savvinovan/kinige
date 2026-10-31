@@ -4,8 +4,8 @@
 use crate::hotkeys::Hotkeys;
 use kinige_domain::link::{LinkError, validate_external_url};
 use kinige_domain::{
-    ApiError, AppInfo, ChatList, ErrorCode, FeedCursor, Language, MessagePage, MessageView,
-    Settings, ShortcutKind, TextSize,
+    ApiError, AppInfo, ChatDraft, ChatList, ErrorCode, FeedCursor, Language, MessagePage,
+    MessageView, OnThisDay, Settings, ShortcutKind, TextSize,
 };
 use kinige_store::{DEFAULT_PAGE, Now, PageAt, SettingsFile, Store, StoreError};
 use tauri::{AppHandle, Manager, Runtime, State};
@@ -84,15 +84,18 @@ pub fn list_messages(
         .map_err(api)
 }
 
+/// Отправка; с `reply_to_id` (слайс 5) — ответ на запись этого же чата. Нет такой записи, она в корзине или id неверен —
+/// `reply_target_not_found`, ничего не записано.
 #[tauri::command(async)]
 pub fn send_message<R: Runtime>(
     app: AppHandle<R>,
     store: State<'_, Store>,
     chat_id: String,
     body: String,
+    reply_to_id: Option<String>,
 ) -> ApiResult<MessageView> {
     let message = store
-        .send_message(&chat_id, &body, &Now::system())
+        .send_reply(&chat_id, &body, reply_to_id.as_deref(), &Now::system())
         .map_err(api)?;
     crate::tray::refresh(&app);
     Ok(message)
@@ -110,17 +113,34 @@ fn settings_with_shortcuts(store: &Store, hotkeys: &Hotkeys) -> ApiResult<Settin
     Ok(settings)
 }
 
-/// Черновик поля ввода чата (§5): переживает перезапуск.
+/// Черновик поля ввода чата (§5): переживает перезапуск; несёт и запись, на которую пишется ответ (слайс 5).
 #[tauri::command(async)]
-pub fn get_draft(store: State<'_, Store>, chat_id: String) -> ApiResult<String> {
-    store.get_chat_draft(&chat_id).map_err(api)
+pub fn get_draft(store: State<'_, Store>, chat_id: String) -> ApiResult<ChatDraft> {
+    store.chat_draft(&chat_id, &Now::system()).map_err(api)
 }
 
 #[tauri::command(async)]
-pub fn save_draft(store: State<'_, Store>, chat_id: String, body: String) -> ApiResult<()> {
+pub fn save_draft(
+    store: State<'_, Store>,
+    chat_id: String,
+    body: String,
+    reply_to_id: Option<String>,
+) -> ApiResult<()> {
     store
-        .set_chat_draft(&chat_id, &body, &Now::system())
+        .save_chat_draft(&chat_id, &body, reply_to_id.as_deref(), &Now::system())
         .map_err(api)
+}
+
+/// Карточка «В этот день» Inbox (слайс 5); `null` — записей этого числа в прошлые годы нет или карточку скрыли на сегодня.
+#[tauri::command(async)]
+pub fn get_on_this_day(store: State<'_, Store>) -> ApiResult<Option<OnThisDay>> {
+    store.get_on_this_day(&Now::system()).map_err(api)
+}
+
+/// «Скрыть до завтра»: до конца дня журнала `date` карточка не показывается. Состояние локальное (`app_setting`).
+#[tauri::command(async)]
+pub fn dismiss_on_this_day(store: State<'_, Store>, date: String) -> ApiResult<()> {
+    store.dismiss_on_this_day(&date).map_err(api)
 }
 
 /// Смена сочетания клавиш: проверка до сохранения, регистрация в системе, сохранение. Отказ — код ошибки, прежнее

@@ -241,11 +241,11 @@ fn chats_over_ipc_create_rename_pin_archive_and_protect_inbox() {
     )
     .unwrap();
     assert_eq!(
-        call(&window, "get_draft", json!({"chatId": INBOX})).unwrap(),
+        call(&window, "get_draft", json!({"chatId": INBOX})).unwrap()["body"],
         ""
     );
     assert_eq!(
-        call(&window, "get_draft", json!({"chatId": id})).unwrap(),
+        call(&window, "get_draft", json!({"chatId": id})).unwrap()["body"],
         "черновик книг"
     );
 
