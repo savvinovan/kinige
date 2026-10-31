@@ -68,6 +68,11 @@ describe("прокрутка в окне «Настройки»", () => {
     expect(css.get(".prefs")).toMatch(/height\s*:\s*100%/);
   });
 
+  it("кольцо фокуса в окне настроек гасится, пока последним был не ввод с клавиатуры", () => {
+    const css = rules(read("prefs.css"));
+    expect(css.get('html[data-window="settings"]:not([data-input="keyboard"]) :focus-visible')).toMatch(/outline\s*:\s*none/);
+  });
+
   it("предупреждение не двигает страницу: подложка и панель закреплены (position: fixed), страница не получает overflow", () => {
     expect(rules(read("../settings/modal.css")).get(".modal")).toMatch(/position\s*:\s*fixed/);
     expect(rules(read("prefs.css")).get(".prefs__page")).not.toMatch(/overflow-y\s*:\s*(hidden|scroll)/);

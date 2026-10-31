@@ -12,6 +12,12 @@ html[data-window="settings"] body {
   overflow: hidden;
 }
 
+/* Кольцо фокуса в окне настроек — только после клавиши (`data-input="keyboard"` ставит `useInputModality`): ни после щелчка,
+   ни при фокусе, который поставила система или программа при открытии окна. */
+html[data-window="settings"]:not([data-input="keyboard"]) :focus-visible {
+  outline: none;
+}
+
 .prefs {
   display: grid;
   grid-template-columns: var(--layout-settings-tree-width) minmax(0, 1fr);

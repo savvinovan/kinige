@@ -86,6 +86,16 @@
   cursor: pointer;
 }
 
+/* Кольцо фокуса — вокруг всего ряда (шеврон и название), а не одной кнопки, и только при вводе с клавиатуры. */
+.settings-tree__button:focus-visible {
+  outline: none;
+}
+
+html[data-input="keyboard"] .settings-tree__row:has(.settings-tree__button:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus-ring);
+  outline-offset: calc(var(--focus-offset) * -1);
+}
+
 .settings-tree__label {
   min-width: 0;
   overflow-wrap: anywhere;

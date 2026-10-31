@@ -86,7 +86,10 @@ describe("Дерево настроек: сворачивание", () => {
   it("выбранный пункт — только заливка: в стилях дерева нет рамки, контура и тени", () => {
     const css = readFileSync(resolve(__dirname, "settings-tree.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
     expect(css).not.toMatch(/box-shadow\s*:/);
-    expect(css).not.toMatch(/(^|[;{\s])outline\s*:/);
+    // Кольцо фокуса — только в правилах `:focus-visible` (и только при вводе с клавиатуры), никогда у выбранного пункта.
+    const outlined = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, , body]) => /(^|[;{\s])outline\s*:/.test(body ?? ""));
+    expect(outlined.length).toBeGreaterThan(0);
+    for (const [, selector] of outlined) expect(selector, "outline только у :focus-visible").toContain(":focus-visible");
     // Единственная линия — разделитель правого края колонки (`border-right` у `.settings-tree`), не обводка пункта.
     const borders = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
       .filter(([, , body]) => /\bborder(?:-(?:top|right|bottom|left|width|style|color))*\s*:(?!\s*0\s*;)[^;]+;/.test(body ?? ""))
