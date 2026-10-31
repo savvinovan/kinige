@@ -1,5 +1,5 @@
 import { INBOX_ID, type KinigeApi, KinigeApiError } from "./KinigeApi";
-import { APPEND_WINDOW_MS, CONTEXT_LEN, DEFAULT_SETTINGS, type MockApiOptions, type Row, compareFeed, mockMessage } from "./mockData";
+import { APPEND_WINDOW_MS, CONTEXT_LEN, DEFAULT_SETTINGS, type MockApiOptions, type Row, compareFeed, mockMessage, yearsLater } from "./mockData";
 import { mockTags } from "./mockTags";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
@@ -7,6 +7,7 @@ import type { ChatSummary } from "./generated/ChatSummary";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { Language } from "./generated/Language";
 import type { MessageView } from "./generated/MessageView";
+import type { ReplyTo } from "./generated/ReplyTo";
 import type { Settings } from "./generated/Settings";
 import type { StartupState } from "./generated/StartupState";
 
@@ -44,6 +45,8 @@ export class MockApiBase {
   protected rows: Row[];
   protected chats: ChatSummary[];
   protected readonly drafts = new Map<string, string>();
+  /** Запись, на которую пишется ответ, у черновика чата (слайс 5). */
+  protected readonly replyDrafts = new Map<string, string>();
   protected captureDraft = "";
   protected readonly listeners = new Set<() => void>();
   protected readonly failures = new Map<MockMethod, ErrorCode>();
@@ -157,8 +160,28 @@ export class MockApiBase {
   protected live(chatId: string): MessageView[] {
     return this.rows
       .filter((r) => r.view.chatId === chatId && r.deletedAt === null)
-      .map((r) => r.view)
+      .map((r) => this.viewOf(r))
       .sort(compareFeed);
+  }
+
+  /** Запись с цитатой ответа, как её отдаёт Rust: состояние старой записи считается при каждом чтении (слайс 5). */
+  protected viewOf(row: Row): MessageView {
+    return row.replyToId === undefined ? row.view : { ...row.view, replyTo: this.replyTo(row.replyToId, row.view.journalDate) };
+  }
+
+  /** Цитата для записи-адресата `targetId` в день `replyDate`: живая, в корзине или «удалена». */
+  protected replyTo(targetId: string, replyDate: string): ReplyTo {
+    const target = this.rows.find((r) => r.view.id === targetId);
+    if (!target) return { id: targetId, chatId: null, journalDate: null, excerpt: "", state: "missing", yearsLater: 0 };
+    const text = target.view.bodyMd.replace(/[*_`#>~]|\[[ xX]\]/g, "").replace(/\s+/g, " ").trim();
+    return {
+      id: targetId,
+      chatId: target.view.chatId,
+      journalDate: target.view.journalDate,
+      excerpt: [...text].length > 120 ? `${[...text].slice(0, 119).join("").trimEnd()}…` : text,
+      state: target.deletedAt === null ? "live" : "trash",
+      yearsLater: yearsLater(target.view.journalDate, replyDate),
+    };
   }
 
   protected run<T>(method: MockMethod, args: string, action: () => T): Promise<T> {

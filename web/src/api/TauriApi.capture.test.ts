@@ -15,7 +15,7 @@ describe("TauriApi: главное окно (слайс 2)", () => {
   });
 
   it("черновик и сочетания: имена команд и аргументы", async () => {
-    invoke.mockResolvedValue("");
+    invoke.mockResolvedValue({ body: "", replyTo: null });
     await new TauriApi().getDraft("chat-1");
     expect(invoke).toHaveBeenLastCalledWith("get_draft", { chatId: "chat-1" });
     await new TauriApi().saveDraft("chat-1", "текст");

@@ -16,7 +16,7 @@ describe("buildFeed", () => {
       msg("b", "2026-10-19", "08:40"),
       msg("d", "2026-10-20", "11:30"),
     ]);
-    expect(items.map((i) => (i.kind === "day" ? `# ${i.journalDate}` : i.message.id))).toEqual([
+    expect(items.map((i) => (i.kind === "day" ? `# ${i.journalDate}` : i.kind === "card" ? "card" : i.message.id))).toEqual([
       "# 2025-03-14",
       "a",
       "# 2026-10-19",
@@ -31,7 +31,7 @@ describe("buildFeed", () => {
     // 00:30 по часам, но журнальный день — 19-е: идёт сразу за вечерними записями 19-го.
     const night = { ...msg("night", "2026-10-19", "21:30"), createdAt: Date.UTC(2026, 9, 20, 0, 30) };
     const items = buildFeed([msg("evening", "2026-10-19", "21:00"), night, msg("morning", "2026-10-20", "09:00")]);
-    expect(items.map((i) => (i.kind === "day" ? `# ${i.journalDate}` : i.message.id))).toEqual([
+    expect(items.map((i) => (i.kind === "day" ? `# ${i.journalDate}` : i.kind === "card" ? "card" : i.message.id))).toEqual([
       "# 2026-10-19",
       "evening",
       "night",

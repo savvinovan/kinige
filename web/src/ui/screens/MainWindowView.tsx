@@ -1,5 +1,6 @@
 import { useState, type PointerEvent, type ReactNode } from "react";
 import type { Language } from "../../api/generated/Language";
+import type { ReplyTo } from "../../api/generated/ReplyTo";
 import type { TrashItem } from "../../api/generated/TrashItem";
 import { useLanguage } from "../../i18n/I18n";
 import { Composer, type ComposerButtons } from "../composer/Composer";
@@ -69,6 +70,11 @@ interface MainWindowViewProps {
   feedPaging?: FeedPaging;
   feedScrollTo?: ScrollRequest | null;
   onFeedPointerDown?: () => void;
+  /** Слайс 5: карточка «В этот день» в ленте, щелчок по цитате ответа, лента ждёт первого кадра и строка «Ответ на запись» над полем. */
+  onThisDay?: { journalDate: string; node: ReactNode };
+  onOpenReply?: (quote: ReplyTo) => void;
+  feedLoading?: boolean;
+  replyStrip?: ReactNode;
   /** Фильтр ленты по тегу: строка «#тег ×» над лентой. */
   tagFilter?: { tag: string; onClear: () => void };
   trash?: TrashControls;
@@ -114,6 +120,10 @@ export function MainWindowView({
   feedPaging,
   feedScrollTo,
   onFeedPointerDown,
+  onThisDay,
+  onOpenReply,
+  feedLoading,
+  replyStrip,
   tagFilter,
   trash,
   moveTargets,
@@ -168,6 +178,9 @@ export function MainWindowView({
               paging={feedPaging}
               scrollTo={feedScrollTo}
               onPointerDownFeed={onFeedPointerDown}
+              card={onThisDay}
+              onOpenReply={onOpenReply}
+              loading={feedLoading}
             />
             <Composer
               key={selectedChatId ?? "trash"}
@@ -179,6 +192,7 @@ export function MainWindowView({
               error={composerError}
               autoFocus={interactive}
               emoji={emoji}
+              replyStrip={replyStrip}
             />
           </>
         )}

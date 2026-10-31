@@ -9,7 +9,8 @@ use crate::{Now, Store, StoreError};
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, is_valid_journal_date, journal_date};
 use kinige_domain::on_this_day::{
-    DETAILED_YEARS, ENTRIES_PER_YEAR, OnThisDay, OnThisDayYear, past_dates, year_of, years_ago,
+    DETAILED_YEARS, ENTRIES_PER_YEAR, OnThisDay, OnThisDayEntry, OnThisDayYear, past_dates,
+    year_of, years_ago,
 };
 use rusqlite::{Connection, OptionalExtension};
 
@@ -113,6 +114,10 @@ fn load_year(
         years_ago,
         total,
         first_id,
-        messages: if detailed { first } else { Vec::new() },
+        entries: if detailed {
+            first.into_iter().map(OnThisDayEntry::new).collect()
+        } else {
+            Vec::new()
+        },
     }))
 }

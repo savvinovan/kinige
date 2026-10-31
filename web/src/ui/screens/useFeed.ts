@@ -45,6 +45,8 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
   const { t } = useTranslation();
   const [messages, setMessages] = useState<FeedMessage[]>([]);
   const [today, setToday] = useState("");
+  // Первая страница открытого чата получена: до этого лента может ничего не рисовать (первый кадр с карточкой «В этот день»).
+  const [loaded, setLoaded] = useState(false);
   // Края загруженной ленты: курсор следующей старой страницы и следующей новой; `newer === null` — лента дошла до конца.
   const [older, setOlder] = useState<FeedCursor | null>(null);
   const [newer, setNewer] = useState<FeedCursor | null>(null);
@@ -86,6 +88,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     setDateFor(null);
     if (shownChat !== chatKey) {
       setShownChat(chatKey);
+      setLoaded(false);
       setDeletedIds(new Set());
       setMessages([]);
       setOlder(null);
@@ -119,6 +122,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
         setCursor("older", page.older);
         setCursor("newer", page.newer);
         setToday(page.today);
+        setLoaded(true);
         setLoadError(null);
         if (target) {
           setMark({ id: target.messageId, terms: target.terms });
@@ -328,6 +332,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
   return {
     messages,
     today,
+    loaded,
     loadError,
     ui,
     actions,

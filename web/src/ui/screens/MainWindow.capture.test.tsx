@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { INBOX_ID } from "../../api/KinigeApi";
 import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../../api/MockApi";
+import type { ChatDraft } from "../../api/generated/ChatDraft";
 import type { MessageView } from "../../api/generated/MessageView";
 import type { Settings } from "../../api/generated/Settings";
 import { act, fireEvent, render, screen, waitFor } from "../../test/render";
@@ -40,7 +41,7 @@ describe("MainWindow: черновик поля ввода (§5)", () => {
     const api = new MockApi({ now: NOW });
     await api.saveDraft(INBOX_ID, "старый");
     let release: (value: string) => void = () => undefined;
-    api.getDraft = () => new Promise<string>((resolve) => (release = resolve));
+    api.getDraft = () => new Promise<ChatDraft>((resolve) => (release = (body) => resolve({ body, replyTo: null })));
     render(<MainWindow api={api} initialSettings={SETTINGS} />);
     await screen.findByRole("textbox", { name: "Новая заметка" });
     type("уже печатаю");
@@ -60,17 +61,17 @@ describe("MainWindow: черновик поля ввода (§5)", () => {
     expect(save).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(100);
     expect(save).toHaveBeenCalledTimes(1);
-    expect(save).toHaveBeenCalledWith(INBOX_ID, "аб");
-    expect(await api.getDraft(INBOX_ID)).toBe("аб");
+    expect(save).toHaveBeenCalledWith(INBOX_ID, "аб", null);
+    expect((await api.getDraft(INBOX_ID)).body).toBe("аб");
   });
 
   it("потеря фокуса окном сохраняет черновик сразу", async () => {
     const api = setup();
     await screen.findByRole("textbox", { name: "Новая заметка" });
     type("не успел дописать");
-    expect(await api.getDraft(INBOX_ID)).toBe("");
+    expect((await api.getDraft(INBOX_ID)).body).toBe("");
     fireEvent.blur(window);
-    await waitFor(async () => expect(await api.getDraft(INBOX_ID)).toBe("не успел дописать"));
+    await waitFor(async () => expect((await api.getDraft(INBOX_ID)).body).toBe("не успел дописать"));
   });
 
   it("отправка очищает черновик, и запоздавшее сохранение его не возвращает", async () => {
@@ -81,7 +82,7 @@ describe("MainWindow: черновик поля ввода (§5)", () => {
     fireEvent.keyDown(field(), { key: "Enter" });
     await screen.findByRole("article");
     await vi.advanceTimersByTimeAsync(1000);
-    expect(await api.getDraft(INBOX_ID)).toBe("");
+    expect((await api.getDraft(INBOX_ID)).body).toBe("");
     expect(field().value).toBe("");
   });
 
@@ -95,7 +96,7 @@ describe("MainWindow: черновик поля ввода (§5)", () => {
     await screen.findByRole("alert");
     await vi.advanceTimersByTimeAsync(500);
     expect(field().value).toBe("не отправится");
-    expect(await api.getDraft(INBOX_ID)).toBe("не отправится");
+    expect((await api.getDraft(INBOX_ID)).body).toBe("не отправится");
   });
 });
 
@@ -123,7 +124,7 @@ describe("MainWindow: нажатие во время отправки и пор�
     await screen.findByRole("article");
     await vi.advanceTimersByTimeAsync(2000);
     expect(save).not.toHaveBeenCalled();
-    expect(await api.getDraft(INBOX_ID)).toBe("");
+    expect((await api.getDraft(INBOX_ID)).body).toBe("");
     expect(field().value).toBe("");
   });
 
@@ -158,7 +159,7 @@ describe("MainWindow: нажатие во время отправки и пор�
     finishSave();
     await screen.findByRole("article");
     expect(order).toEqual(["save:start", "save:done", "send"]);
-    expect(await api.getDraft(INBOX_ID), "отправленный текст не вернулся черновиком").toBe("");
+    expect((await api.getDraft(INBOX_ID)).body, "отправленный текст не вернулся черновиком").toBe("");
   });
 });
 

@@ -42,7 +42,7 @@
 | `surface.paper` | `#1b1b1b` | авторский, 10,6 % |
 | `surface.message` | `#2b2b2b` | авторский, 16,9 %; светлее бумаги в 1,22 раза |
 | `surface.code` | `#171717` | авторский, 9 %; темнее плашки в 1,27 раза |
-| `surface.day`, `surface.selected`, `surface.field` | `#2b2b2b` | авторский: то же значение, что `surface.message` |
+| `surface.day`, `surface.selected`, `surface.card`, `surface.field` | `#2b2b2b` | авторский: то же значение, что `surface.message`; `surface.card` — карточка «В этот день» (слайс 5) |
 | `surface.field-active` | `#343434` | авторский, 20,4 %; светлее поля в 1,14 раза |
 | `text.primary` | `#f5f5f5` | авторский, 96 % |
 | `text.secondary` | `#dedede` | авторский, 87 % |

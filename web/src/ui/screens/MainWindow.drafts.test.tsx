@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { INBOX_ID } from "../../api/KinigeApi";
 import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../../api/MockApi";
+import type { ChatDraft } from "../../api/generated/ChatDraft";
 import type { ImportPreview } from "../../api/generated/ImportPreview";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
@@ -22,11 +23,11 @@ describe("MainWindow: черновик у каждого чата", () => {
     type("недописанное во входящих");
     await openChat("Книги");
     expect(field().value).toBe("");
-    expect(await api.getDraft(INBOX_ID)).toBe("недописанное во входящих");
+    expect((await api.getDraft(INBOX_ID)).body).toBe("недописанное во входящих");
     type("про книги");
     await openChat("Входящие");
     await waitFor(() => expect(field().value).toBe("недописанное во входящих"));
-    expect(await api.getDraft("books")).toBe("про книги");
+    expect((await api.getDraft("books")).body).toBe("про книги");
   });
 
   it("набор в ту же долю секунды, когда чат открылся, остаётся черновиком этого чата, а не прежнего", async () => {
@@ -38,8 +39,8 @@ describe("MainWindow: черновик у каждого чата", () => {
     await typed;
     await openChat("Входящие");
     await waitFor(() => expect(field().value).toBe("недописанное во входящих"));
-    expect(await api.getDraft("books")).toBe("про книги");
-    expect(await api.getDraft(INBOX_ID)).toBe("недописанное во входящих");
+    expect((await api.getDraft("books")).body).toBe("про книги");
+    expect((await api.getDraft(INBOX_ID)).body).toBe("недописанное во входящих");
   });
 
   it("запоздавший ответ с черновиком прежнего чата не попадает в поле нового", async () => {
@@ -49,7 +50,7 @@ describe("MainWindow: черновик у каждого чата", () => {
     const answer = api.getDraft.bind(api);
     let release: () => void = () => undefined;
     const held = new Promise<void>((resolve) => (release = resolve));
-    let reply: Promise<string> = held.then(() => "");
+    let reply: Promise<ChatDraft> = held.then(() => ({ body: "", replyTo: null }));
     api.getDraft = (chatId) => {
       if (chatId !== INBOX_ID) return answer(chatId);
       reply = held.then(() => answer(chatId));
@@ -149,7 +150,7 @@ function setup(options: MockApiOptions = {}) {
 
 /** Черновик дошёл до Rust (сохранение идёт с паузой после набора). */
 const savedDraft = (api: MockApi, chatId: string, text: string) =>
-  waitFor(async () => expect(await api.getDraft(chatId)).toBe(text));
+  waitFor(async () => expect((await api.getDraft(chatId)).body).toBe(text));
 
 const field = () => screen.getByRole("textbox", { name: "Новая заметка" }) as HTMLTextAreaElement;
 const chatRow = (name: string) => screen.findByRole("button", { name: new RegExp(`^${name}`) });

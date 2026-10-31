@@ -9,6 +9,7 @@ import type { ApiError } from "./generated/ApiError";
 import type { AppInfo } from "./generated/AppInfo";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
+import type { ChatDraft } from "./generated/ChatDraft";
 import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { ErrorCode } from "./generated/ErrorCode";
@@ -20,6 +21,7 @@ import type { Language } from "./generated/Language";
 import type { MessageFlag } from "./generated/MessageFlag";
 import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
+import type { OnThisDay } from "./generated/OnThisDay";
 import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { SearchFilters } from "./generated/SearchFilters";
 import type { SearchPage } from "./generated/SearchPage";
@@ -53,6 +55,7 @@ const CODES: readonly ErrorCode[] = [
   "shortcut_duplicate",
   "message_not_found",
   "message_in_trash",
+  "reply_target_not_found",
   "read_only",
   "inbox_protected",
   "not_in_trash",
@@ -113,8 +116,8 @@ export class TauriApi implements KinigeApi {
     });
   }
 
-  sendMessage(chatId: string, body: string): Promise<MessageView> {
-    return call("send_message", { chatId, body });
+  sendMessage(chatId: string, body: string, replyToId?: string | null): Promise<MessageView> {
+    return call("send_message", replyToId ? { chatId, body, replyToId } : { chatId, body });
   }
 
   getSettings(): Promise<Settings> {
@@ -133,12 +136,20 @@ export class TauriApi implements KinigeApi {
     await call("open_external_url", { url });
   }
 
-  getDraft(chatId: string): Promise<string> {
+  getDraft(chatId: string): Promise<ChatDraft> {
     return call("get_draft", { chatId });
   }
 
-  async saveDraft(chatId: string, body: string): Promise<void> {
-    await call("save_draft", { chatId, body });
+  async saveDraft(chatId: string, body: string, replyToId?: string | null): Promise<void> {
+    await call("save_draft", replyToId ? { chatId, body, replyToId } : { chatId, body });
+  }
+
+  getOnThisDay(): Promise<OnThisDay | null> {
+    return call("get_on_this_day");
+  }
+
+  async dismissOnThisDay(date: string): Promise<void> {
+    await call("dismiss_on_this_day", { date });
   }
 
   setShortcut(kind: ShortcutKind, accelerator: string): Promise<Settings> {

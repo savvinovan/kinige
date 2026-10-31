@@ -3,6 +3,7 @@
 
 use crate::api::MessageView;
 use crate::journal::is_valid_journal_date;
+use crate::search::snippet;
 use chrono::{Datelike, NaiveDate};
 use serde::Serialize;
 use ts_rs::TS;
@@ -11,6 +12,9 @@ use ts_rs::TS;
 pub const DETAILED_YEARS: usize = 3;
 /// Сколько записей года показывается подробно; про остальные — «ещё N записей этого дня ›».
 pub const ENTRIES_PER_YEAR: usize = 2;
+
+/// Сколько знаков простого текста записи отдаёт карточка: плашка показывает до трёх строк, остальное обрезает CSS.
+pub const PREVIEW_CHARS: usize = 300;
 
 /// Карточка «В этот день».
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
@@ -39,7 +43,24 @@ pub struct OnThisDayYear {
     /// Первая запись дня: на неё открывается лента по «ещё N записей этого дня ›» и по строке старого года.
     pub first_id: String,
     /// Первые записи дня (до [`ENTRIES_PER_YEAR`]) у подробных лет; у остальных пусто.
-    pub messages: Vec<MessageView>,
+    pub entries: Vec<OnThisDayEntry>,
+}
+
+/// Запись в карточке: сама запись и её текст простым текстом в одну строку (без разметки Markdown, до [`PREVIEW_CHARS`]
+/// знаков с «…» в конце) для компактной строки с обрезкой по трём строкам.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "OnThisDayEntry.ts")]
+pub struct OnThisDayEntry {
+    pub message: MessageView,
+    pub text: String,
+}
+
+impl OnThisDayEntry {
+    pub fn new(message: MessageView) -> OnThisDayEntry {
+        let text = snippet(&message.body_md, &[], PREVIEW_CHARS);
+        OnThisDayEntry { message, text }
+    }
 }
 
 /// Даты прошлых лет для `today` (`YYYY-MM-DD`): тот же месяц и день, годы от `oldest_year` до года перед сегодняшним,

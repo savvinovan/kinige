@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { INBOX_ID, type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { ChatList } from "../../api/generated/ChatList";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
+import type { OnThisDayEntry } from "../../api/generated/OnThisDayEntry";
+import type { ReplyTo } from "../../api/generated/ReplyTo";
 import type { Settings } from "../../api/generated/Settings";
 import { useLanguage } from "../../i18n/I18n";
 import { CalendarDialog } from "../calendar/CalendarDialog";
@@ -11,6 +13,8 @@ import { useRecordDrag } from "../drag/useRecordDrag";
 import { moveTargetsFrom } from "../message/moveTargets";
 import type { ChatAction } from "../sidebar/Sidebar";
 import { ImportDialog } from "../import/ImportDialog";
+import { OnThisDayCard } from "../onthisday/OnThisDayCard";
+import { ReplyStrip } from "../reply/ReplyStrip";
 import { SearchResults } from "../search/SearchResults";
 import { type ChatDialogState, EMPTY_LIST, focusComposer, toSidebar } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
@@ -18,6 +22,7 @@ import { useComposerDraft } from "./useComposerDraft";
 import { type FocusTarget, useFeed } from "./useFeed";
 import { useImport } from "./useImport";
 import { useMainSearch } from "./useMainSearch";
+import { useOnThisDay } from "./useOnThisDay";
 import { useOpenMessage } from "./useOpenMessage";
 import { useSettingsState } from "./useSettingsState";
 import { useTrash } from "./useTrash";
@@ -45,7 +50,12 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const [dialogError, setDialogError] = useState<ErrorCode | null>(null);
   const [dateError, setDateError] = useState<ErrorCode | null>(null);
   const sending = useRef(false);
-  const { draft, setDraft, saver: draftSaver, switchChat, type: typeDraft } = useComposerDraft(api, selected);
+  const selectedRef = useRef(selected);
+  useEffect(() => {
+    selectedRef.current = selected;
+  });
+  const { draft, reply, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
+    useComposerDraft(api, selected);
   const prefs = useSettingsState(api, initialSettings);
   const { settings } = prefs;
 
@@ -60,6 +70,12 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
 
   // Переход к записи из поиска: лента открывает чат на ней (страница вокруг, найденные слова выделены).
   const [focus, setFocus] = useState<FocusTarget | null>(null);
+  // Переходы к записи идут из поиска, окна «Настройки», карточки и цитат: `nonce` общий и растёт, иначе второй источник со
+  // своим счётчиком получил бы номер меньше уже отработанного и лента его бы пропустила.
+  const focusOn = useCallback(
+    (target: FocusTarget) => setFocus((previous) => ({ ...target, nonce: (previous?.nonce ?? 0) + 1 })),
+    [],
+  );
   const feed = useFeed({
     api,
     chatId: selected,
@@ -70,6 +86,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     focus,
   });
   const { reload: reloadFeed, restart: restartFeed } = feed;
+  const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null, onNewDay: () => void reloadFeed() });
   const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
   const moveTargets = useMemo(() => moveTargetsFrom(sidebarChats, selected, t), [sidebarChats, selected, t]);
   // Перетаскивание плашки на чат: бросок на любой чат, кроме того, где запись лежит.
@@ -99,11 +116,11 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     select,
     sidebarCollapsed: settings.sidebarCollapsed,
     toggleCollapsed: prefs.toggleCollapsed,
-    onFocus: setFocus,
+    onFocus: focusOn,
     inbox: { chat: list.chats.find((c) => c.isInbox), name: t("chat.inbox") },
   });
   // Запись из журнала обращений (окно «Настройки») открывается в ленте этого окна.
-  useOpenMessage({ api, select, onFocus: setFocus });
+  useOpenMessage({ api, select, onFocus: focusOn });
   const importer = useImport({
     api,
     // Импорт кладёт записи в середину истории: открытая лента перечитывается с нуля вместе с курсорами.
@@ -146,25 +163,59 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     // вернула бы отправленный текст.
     draftSaver.cancel();
     const text = draft;
+    const replyTo = reply;
     draftSaver
       .settle()
-      .then(() => api.sendMessage(selected, text))
+      .then(() => api.sendMessage(selected, text, replyTo?.id ?? null))
       .then((sent) => {
         draftSaver.cancel();
         feed.appendSent(sent);
-        setDraft("");
+        clearDraft();
         setComposerError(null);
         void refreshChats();
       })
       // Успех: запись просто появляется в ленте, без тоста и подтверждений (как в Telegram). Ошибка: текст остаётся в поле,
-      // запись не показана (без оптимистичного показа); черновик возвращается в очередь сохранения.
+      // запись не показана (без оптимистичного показа); черновик возвращается в очередь сохранения. Если Rust сказал, что
+      // записи, на которую отвечают, нет, строка над полем перечитывается: она покажет «в корзине» или «удалена».
       .catch((reason: unknown) => {
-        setComposerError(errorCode(reason));
-        draftSaver.schedule(text);
+        const code = errorCode(reason);
+        setComposerError(code);
+        planDraft(text, replyTo);
+        if (code === "reply_target_not_found") void confirmReplyState(selected);
       })
       .finally(() => {
         sending.current = false;
       });
+  };
+
+  /** Черновик с ответом уходит в Rust, и строка над полем берёт состояние записи оттуда. */
+  const confirmReplyState = async (chatId: string) => {
+    await draftSaver.flush();
+    const saved = await api.getDraft(chatId).catch(() => null);
+    if (saved !== null && selectedRef.current === chatId) refreshReply(saved.replyTo);
+  };
+
+  /** Открыть запись в ленте в контексте (чат и запись): как переход из поиска, запись подсвечена заливкой. */
+  const openEntry = (chatId: string, messageId: string) => {
+    void select(chatId).then(() => focusOn({ chatId, messageId, terms: [], nonce: 0 }));
+  };
+
+  /** «Ответить» у записи карточки: строка над полем и курсор в поле. */
+  const startReply = (entry: OnThisDayEntry) => {
+    const quote: ReplyTo = {
+      id: entry.message.id,
+      chatId: entry.message.chatId,
+      journalDate: entry.message.journalDate,
+      excerpt: entry.text,
+      state: "live",
+      yearsLater: 0,
+    };
+    changeReply(quote);
+    focusComposer();
+  };
+
+  const dismissCard = () => {
+    void onThisDay.dismiss().then(focusComposer);
   };
 
   const closeChatDialog = () => {
@@ -273,6 +324,27 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       feedActions={feed.actions}
       feedPaging={feed.paging}
       feedScrollTo={feed.scrollTo}
+      feedLoading={selected === INBOX_ID && tag === null && !(feed.loaded && onThisDay.ready)}
+      // Карточка стоит в конце живой ленты: не в середине истории (после перехода к записи из поиска).
+      onThisDay={
+        onThisDay.card !== null && !feed.paging.hasNewer
+          ? {
+              journalDate: onThisDay.card.today,
+              node: (
+                <OnThisDayCard
+                  card={onThisDay.card}
+                  onOpen={(messageId) => openEntry(INBOX_ID, messageId)}
+                  onReply={startReply}
+                  onDismiss={dismissCard}
+                />
+              ),
+            }
+          : undefined
+      }
+      onOpenReply={(quote) => {
+        if (quote.chatId !== null) openEntry(quote.chatId, quote.id);
+      }}
+      replyStrip={reply ? <ReplyStrip quote={reply} onCancel={() => changeReply(null)} /> : undefined}
       onFeedPointerDown={feed.clearMark}
       tagFilter={tag === null ? undefined : { tag, onClear: () => setTag(null) }}
       trash={{

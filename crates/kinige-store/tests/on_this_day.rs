@@ -49,7 +49,10 @@ fn only_inbox_entries_of_past_years_with_the_same_month_and_day_are_selected() {
     assert_eq!(year_dates(&found), ["2023-10-21"]);
     assert_eq!(found.years[0].years_ago, 3);
     assert_eq!(found.years[0].total, 1);
-    assert_eq!(found.years[0].messages[0].body_md, "в тот же день, 2023");
+    assert_eq!(
+        found.years[0].entries[0].message.body_md,
+        "в тот же день, 2023"
+    );
 }
 
 #[test]
@@ -113,12 +116,16 @@ fn years_go_from_new_to_old_three_are_detailed_with_two_entries_and_the_rest_are
             .1;
         assert_eq!(&year.first_id, id, "первая запись дня");
         if index < DETAILED_YEARS {
-            assert_eq!(year.messages.len(), ENTRIES_PER_YEAR);
-            let texts: Vec<&str> = year.messages.iter().map(|m| m.body_md.as_str()).collect();
+            assert_eq!(year.entries.len(), ENTRIES_PER_YEAR);
+            let texts: Vec<&str> = year
+                .entries
+                .iter()
+                .map(|e| e.message.body_md.as_str())
+                .collect();
             assert_eq!(texts[0], format!("{} запись 0", &year.journal_date[..4]));
             assert_eq!(texts[1], format!("{} запись 1", &year.journal_date[..4]));
         } else {
-            assert!(year.messages.is_empty(), "старые годы — строкой");
+            assert!(year.entries.is_empty(), "старые годы — строкой");
         }
     }
 }
@@ -134,7 +141,7 @@ fn the_card_counts_only_years_with_entries_when_choosing_the_detailed_ones() {
     let detailed: Vec<&OnThisDayYear> = found
         .years
         .iter()
-        .filter(|y| !y.messages.is_empty())
+        .filter(|y| !y.entries.is_empty())
         .collect();
     assert_eq!(
         detailed.len(),
@@ -299,10 +306,34 @@ fn the_card_entries_carry_their_reply_quote() {
         )
         .unwrap();
     let found = card(&store, &at(2026, 10, 21, 12, 0)).unwrap();
-    let reply = &found.years[0].messages[0];
+    let reply = &found.years[0].entries[0].message;
     let quote = reply.reply_to.as_ref().expect("цитата");
     assert_eq!(
         (quote.years_later, quote.excerpt.as_str()),
         (3, "старая мысль")
     );
+}
+
+#[test]
+fn card_entries_carry_plain_text_for_a_three_line_preview() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    put(
+        &store,
+        INBOX_ID,
+        "# Итоги\n\n**жирное** и `код`\n- [ ] пункт",
+        ms(2025, 10, 21, 9, 0),
+    );
+    put(
+        &store,
+        INBOX_ID,
+        &"длинное слово ".repeat(100),
+        ms(2025, 10, 21, 10, 0),
+    );
+    let found = card(&store, &at(2026, 10, 21, 12, 0)).unwrap();
+    let entries = &found.years[0].entries;
+    assert_eq!(entries[0].text, "Итоги жирное и код пункт");
+    assert!(entries[1].text.chars().count() <= kinige_domain::on_this_day::PREVIEW_CHARS);
+    assert!(entries[1].text.ends_with('…'));
+    assert_eq!(found.years[0].total, 2);
 }

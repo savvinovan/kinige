@@ -23,6 +23,7 @@ const SURFACES = [
   "surface.code",
   "surface.day",
   "surface.selected",
+  "surface.card",
   "surface.field",
   "surface.field-active",
   "highlight.background",
@@ -53,6 +54,7 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   // подсвеченная плашка от обычной, блок кода от плашки.
   { foreground: "surface.message", background: "surface.paper", kind: "decorative" },
   { foreground: "surface.day", background: "surface.paper", kind: "decorative" },
+  { foreground: "surface.card", background: "surface.paper", kind: "decorative" },
   { foreground: "surface.field", background: "surface.paper", kind: "decorative" },
   { foreground: "surface.field", background: "surface.background", kind: "decorative" },
   { foreground: "surface.selected", background: "surface.background", kind: "decorative" },

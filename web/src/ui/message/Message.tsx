@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
 import { Button } from "../controls/Button";
@@ -43,6 +43,8 @@ export interface MessageProps {
   byAgent?: boolean;
   /** Запись создана более новой версией (группа в неподдерживаемой `sv`): действия недоступны, копировать можно. */
   readOnly?: boolean;
+  /** Цитата ответа (слайс 5, `ReplyQuote`): стоит вверху плашки, над текстом. Только в обычном режиме. */
+  quote?: ReactNode;
   /** Теги записи (нижний регистр, без `#`), их определил Rust: в тексте они подсвечиваются и нажимаются. */
   tags?: readonly string[];
   /** Найденные поиском слова записи, как они в ней написаны (их отдаёт Rust): подсвечиваются целиком (слайс 4). */
@@ -104,6 +106,7 @@ export function Message({
   favorite = false,
   byAgent = false,
   readOnly = false,
+  quote,
   tags,
   markTerms,
   mode = "view",
@@ -297,6 +300,7 @@ export function Message({
             />
           ) : null}
           <div className="message__content">
+            {mode === "view" ? quote : null}
             {mode === "editing" ? (
               <MessageEditor initial={markdown} onSave={(text) => onSaveEdit?.(text)} onCancel={() => onCancelEdit?.()} />
             ) : (

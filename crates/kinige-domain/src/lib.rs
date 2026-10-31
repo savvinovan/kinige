@@ -57,7 +57,7 @@ pub use import::{
     ImportChatKind, ImportChatPreview, ImportOpened, ImportPreview, ImportProgress, ImportReport,
 };
 pub use lang::Language;
-pub use on_this_day::{OnThisDay, OnThisDayYear};
+pub use on_this_day::{OnThisDay, OnThisDayEntry, OnThisDayYear};
 pub use reply::{ReplyState, ReplyTo};
 pub use settings_file::{
     FileChanges, FileProblem, FileProblemKind, KeyIssue, KeyIssueKind, SettingsFileState,

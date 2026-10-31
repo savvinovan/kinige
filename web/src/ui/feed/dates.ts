@@ -68,6 +68,21 @@ export function formatDayLabel(journalDate: string, todayJournalDate: string, la
   return parts.map((part) => part.value).join("");
 }
 
+/**
+ * Полная дата для карточки «В этот день» и цитат ответов: «31 октября 2023» / «October 31, 2023» (всегда с годом, без «г.»).
+ * Не дата — строка как есть.
+ */
+export function formatLongDate(journalDate: string, language: Language): string {
+  const day = dayNumber(journalDate);
+  if (day === null) return journalDate;
+  const parts = new Intl.DateTimeFormat(language, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).formatToParts(
+    new Date(day * 86_400_000),
+  );
+  const last = parts.at(-1);
+  if (last?.type === "literal" && /^\s*г\.?$/.test(last.value)) parts.pop();
+  return parts.map((part) => part.value).join("");
+}
+
 /** Следующее сообщение продолжает серию: тот же день записей (`journal_date`) и пауза меньше 5 минут. */
 export function continuesSeries(
   previous: { createdAt: number; journalDate: string },
