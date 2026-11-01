@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { MessageFlag } from "../../api/generated/MessageFlag";
+import type { MessagePage } from "../../api/generated/MessagePage";
 import type { MessageView } from "../../api/generated/MessageView";
 import type { FeedCursor } from "../../api/generated/FeedCursor";
 import type { FeedMessage } from "../feed/buildFeed";
@@ -69,11 +70,12 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
   const [deletedIds, setDeletedIds] = useState<ReadonlySet<string>>(new Set());
   const [dateFor, setDateFor] = useState<string | null>(null);
   const deleted = useRef(deletedIds);
-  const current = useRef({ chatId, tag });
+  // Последние значения для обработчиков, которые живут дольше одной отрисовки (ответы Rust, события, отправка записи).
+  const current = useRef({ chatId, tag, loaded, messages, onError });
   const shownToday = useRef(today);
   useEffect(() => {
     deleted.current = deletedIds;
-    current.current = { chatId, tag };
+    current.current = { chatId, tag, loaded, messages, onError };
     shownToday.current = today;
   });
 
@@ -110,34 +112,71 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     paging.current = { older: null, newer: null };
   }, [chatKey]);
 
+  /**
+   * Переход к записи не удался (её нет на месте: в корзине, удалена): загруженные копии записей устарели, прежде всего цитаты
+   * ответов (у них осталось `state: "live"`). Свежие копии встают на место загруженных; ничего не добавляется и не убирается.
+   * Окно: последняя страница, а в середине истории — страница вокруг середины загруженного (прокрутка не прыгает).
+   */
+  const refreshLoaded = useCallback(async () => {
+    const { chatId: id, tag: filter, messages: shown } = current.current;
+    if (id === null) return;
+    const atEdge = paging.current.newer === null;
+    const middle = shown.at(Math.floor(shown.length / 2));
+    if (!atEdge && !middle) return;
+    try {
+      const page = await api.listMessages(id, {
+        limit: PAGE_SIZE,
+        tag: filter ?? undefined,
+        around: atEdge ? undefined : middle?.id,
+      });
+      if (current.current.chatId !== id || current.current.tag !== filter) return;
+      setMessages((loaded) => mergeOlder(loaded, page.messages));
+    } catch {
+      // Цитаты обновятся при следующем чтении ленты.
+    }
+  }, [api]);
+
   // Смена чата, фильтра или переход к записи: лента перечитывается. Переход — страница вокруг записи; найденные слова
-  // выделяются в ней, запись подсвечена до следующего щелчка (`clearMark`).
+  // выделяются в ней, запись подсвечена до следующего щелчка (`clearMark`). Не удавшийся переход — не ошибка загрузки: лента
+  // остаётся, ошибка уходит в `onError`; в чате, где ничего ещё не загружено, показывается его последняя страница.
   const focusNonce = focus?.nonce ?? 0;
   useEffect(() => {
     if (chatId === null) return;
     let live = true;
     const target = focus && focus.chatId === chatId && focus.nonce > usedFocus.current ? focus : null;
     if (target) usedFocus.current = target.nonce;
+    const show = (page: MessagePage, to: FocusTarget | null) => {
+      if (!live) return;
+      setMessages((shown) => withDeleted(shown, page.messages, deleted.current, tag));
+      setCursor("older", page.older);
+      setCursor("newer", page.newer);
+      setToday(page.today);
+      setLoaded(true);
+      setLoadError(null);
+      if (to) {
+        setMark({ id: to.messageId, terms: to.terms });
+        setScrollTo({ id: to.messageId, nonce: to.nonce });
+      }
+    };
+    const failed = (reason: unknown) => live && setLoadError(errorCode(reason));
+    const options = { limit: PAGE_SIZE, tag: tag ?? undefined };
     api
-      .listMessages(chatId, { limit: PAGE_SIZE, tag: tag ?? undefined, around: target?.messageId })
-      .then((page) => {
+      .listMessages(chatId, { ...options, around: target?.messageId })
+      .then((page) => show(page, target))
+      .catch((reason: unknown) => {
         if (!live) return;
-        setMessages((shown) => withDeleted(shown, page.messages, deleted.current, tag));
-        setCursor("older", page.older);
-        setCursor("newer", page.newer);
-        setToday(page.today);
-        setLoaded(true);
-        setLoadError(null);
-        if (target) {
-          setMark({ id: target.messageId, terms: target.terms });
-          setScrollTo({ id: target.messageId, nonce: target.nonce });
+        if (!target) return failed(reason);
+        current.current.onError(errorCode(reason));
+        if (current.current.loaded) {
+          void refreshLoaded();
+          return;
         }
-      })
-      .catch((reason: unknown) => live && setLoadError(errorCode(reason)));
+        api.listMessages(chatId, options).then((page) => show(page, null)).catch(failed);
+      });
     return () => {
       live = false;
     };
-    // `focus` читается один раз на `nonce`: сам объект в зависимости не нужен; `setCursor` стабилен.
+    // `focus` читается один раз на `nonce`: сам объект в зависимости не нужен; `setCursor` и `refreshLoaded` стабильны.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, chatId, tag, focusNonce]);
 
@@ -240,13 +279,25 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     setMessages((list) => list.map((m) => (m.id === view.id ? view : m)));
   }, []);
 
+  /**
+   * Отправленная запись встаёт в конец ленты. Вызывается из ответа на отправку, который мог прийти после смены чата или
+   * фильтра, поэтому чат и тег читаются из `current`, а не из замыкания. Запись другого чата в ленту не попадает; под
+   * фильтром по тегу она видна, только если в ней есть этот тег; лента в середине истории (после перехода к записи)
+   * открывается заново у живого края, иначе запись встала бы сразу после старых.
+   */
   const appendSent = useCallback(
     (sent: MessageView) => {
-      // Под фильтром по тегу новая запись видна, только если в ней есть этот тег.
-      if (tag !== null && !sent.tags.includes(tag)) return;
+      const { chatId: id, tag: filter } = current.current;
+      if (sent.chatId !== id) return;
+      if (filter !== null && !sent.tags.includes(filter)) return;
+      if (paging.current.newer !== null) {
+        // Лента встаёт у живого края, отправленная запись — в центре кадра, как после перехода к записи.
+        void restart().then(() => setScrollTo({ id: sent.id, nonce: 0 }));
+        return;
+      }
       setMessages((all) => [...all, sent]);
     },
-    [tag],
+    [restart],
   );
 
   const fail = useCallback((reason: unknown) => onError(errorCode(reason)), [onError]);

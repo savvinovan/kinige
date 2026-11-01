@@ -50,7 +50,11 @@ wait_for_process() {
   FAILS=$((FAILS + 1))
 }
 
-dump() { ax dump "$(app_pid)" > "$K/debug/$1.txt" 2>&1; }
+# Дамп дерева окна длиннее обычного действия (лента, карточка и сайдбар слайса 5 — тысячи элементов), поэтому свой предел.
+dump() { AX_TIMEOUT="${DUMP_TIMEOUT:-120}" ax dump "$(app_pid)" > "$K/debug/$1.txt" 2>&1; }
+
+# Дамп получился настоящий: не пуст, есть строки элементов (`AXGroup …`) и нет следа оборванного по времени обхода.
+dump_complete() { [ -s "$1" ] && grep -q '^ *AX' "$1" && ! grep -q 'Alarm clock' "$1"; }
 
 fail() {
   echo "ОШИБКА: $*"
@@ -91,6 +95,9 @@ shoot() {
   ax front "$(app_pid)" > /dev/null 2>&1
   sleep 1
   dump "shot-$name"
+  # Пустой дамп (обход не уложился в предел, `Alarm clock`) или без строк элементов: grep по нему ничего не найдёт, и проверка
+  # молча прошла бы. Это ошибка сценария, а не «чисто».
+  dump_complete "$K/debug/shot-$name.txt" || fail "дамп окна $name пуст или оборван (проверка личных путей не выполнена)"
   if grep -E '/Users/[^r]|/Users/r[^u]|/private/tmp|/var/folders|alexandr|savvinovan' "$K/debug/shot-$name.txt" > "$K/debug/shot-$name.private" 2>&1; then
     fail "в тексте окна $name личные пути или имена: $(head -c 300 "$K/debug/shot-$name.private")"
   fi

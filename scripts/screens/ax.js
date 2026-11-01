@@ -32,6 +32,45 @@ function run(argv) {
     return p;
   }
 
+  // Столбец свойства у всех детей элемента одним запросом к System Events (обход по одному свойству за запрос занимал больше
+  // минуты); не вышло — по одному ребёнку.
+  function column(el, key, count) {
+    try {
+      const values = el.uiElements[key]();
+      if (values.length === count) return values;
+    } catch (e) {}
+    const values = [];
+    for (let i = 0; i < count; i++) {
+      try {
+        values.push(el.uiElements[i][key]());
+      } catch (e) {
+        values.push("");
+      }
+    }
+    return values;
+  }
+
+  // Дамп дерева (тот же вид строк, что и раньше: отступ по глубине, роль, название | описание | значение | имя).
+  function dumpTree(el, depth) {
+    if (depth > 30) return;
+    let roles = [];
+    try {
+      roles = el.uiElements.role();
+    } catch (e) {
+      return;
+    }
+    if (!roles || roles.length === 0) return;
+    const columns = ["title", "description", "value", "name"].map((key) => column(el, key, roles.length));
+    for (let i = 0; i < roles.length; i++) {
+      const label = columns
+        .map((values) => (values[i] === null || values[i] === undefined ? "" : String(values[i])))
+        .filter(Boolean)
+        .join(" | ");
+      out.push(" ".repeat(depth) + String(roles[i]) + " " + label.slice(0, 400));
+      dumpTree(el.uiElements[i], depth + 1);
+    }
+  }
+
   function walk(el, depth) {
     if (depth > 30) return null;
     let kids = [];
@@ -43,9 +82,7 @@ function run(argv) {
     for (const k of kids) {
       const p = parts(k);
       const label = [p.title, p.description, p.value, p.name].filter(Boolean).join(" | ");
-      if (mode === "dump") {
-        out.push(" ".repeat(depth) + p.role + " " + label.slice(0, 400));
-      } else if (label.includes(want)) {
+      if (label.includes(want)) {
         if (mode === "has") return "yes";
         if (mode === "frame") {
           try {
@@ -97,8 +134,11 @@ function run(argv) {
     const size = win.size();
     return size[0] + " " + size[1];
   }
+  if (mode === "dump") {
+    dumpTree(win, 0);
+    return out.join("\n");
+  }
   const found = walk(win, 0);
-  if (mode === "dump") return out.join("\n");
   if (mode === "has") return found || "no";
   return found || "not found: " + want;
 }

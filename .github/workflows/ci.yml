@@ -135,6 +135,9 @@ jobs:
             echo "$changed"
             exit 1
           fi
+      - name: Помощники сценариев снимков (пустой дамп окна — ошибка)
+        working-directory: .
+        run: bash scripts/screens/lib.test.sh
       - run: npm run typecheck
       - run: npm run lint
       # Тесты и покрытие одним прогоном vitest; отчёт уходит в Codecov (флаг web), сбой отправки CI не валит.

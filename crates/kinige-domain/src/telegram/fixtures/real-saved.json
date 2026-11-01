@@ -1,73 +1,73 @@
 {
  "type": "saved_messages",
- "id": 1000001,
+ "id": 7700123,
  "messages": [
   {
    "id": 1,
    "type": "message",
-   "date": "2024-03-05T09:00:00",
-   "date_unixtime": "1709618400",
-   "from": "Имя1",
-   "from_id": "user1000001",
-   "photo": "photos/file_2.jpg",
-   "photo_file_size": 52445,
-   "width": 254,
-   "height": 766,
+   "date": "2025-02-11T08:30:00",
+   "date_unixtime": "1739251800",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "photo": "photos/IMG_0001.jpg",
+   "photo_file_size": 184320,
+   "width": 1280,
+   "height": 960,
    "text": "",
    "text_entities": []
   },
   {
    "id": 2,
    "type": "message",
-   "date": "2024-03-05T09:07:00",
-   "date_unixtime": "1709618820",
-   "from": "Имя3",
-   "from_id": "user1000001",
-   "file": "files/file_4.zip",
-   "file_name": "город мост пр",
-   "file_size": 1810111,
+   "date": "2025-02-11T08:41:00",
+   "date_unixtime": "1739252460",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/archive_lectures.zip",
+   "file_name": "lectures_week6.zip",
+   "file_size": 4718592,
    "mime_type": "application/zip",
    "text": [
     {
      "type": "hashtag",
-     "text": "#тег_6"
+     "text": "#идеи_недели"
     }
    ],
    "text_entities": [
     {
      "type": "hashtag",
-     "text": "#тег_6"
+     "text": "#идеи_недели"
     }
    ]
   },
   {
    "id": 3,
    "type": "message",
-   "date": "2024-03-05T09:14:00",
-   "date_unixtime": "1709619240",
-   "from": "Имя7",
-   "from_id": "user1000001",
-   "file": "files/file_8.png",
-   "file_name": "камень город сад мост книга с",
-   "file_size": 2215279,
-   "thumbnail": "files/file_10.jpg",
-   "thumbnail_file_size": 9779,
+   "date": "2025-02-11T08:50:00",
+   "date_unixtime": "1739253000",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/diagram_flow.png",
+   "file_name": "diagram_flow.png",
+   "file_size": 612345,
+   "thumbnail": "files/diagram_flow_thumb.jpg",
+   "thumbnail_file_size": 14336,
    "mime_type": "image/png",
-   "width": 2542,
-   "height": 6991,
+   "width": 1600,
+   "height": 900,
    "text": "",
    "text_entities": []
   },
   {
    "id": 4,
    "type": "message",
-   "date": "2024-03-05T09:21:00",
-   "date_unixtime": "1709619660",
-   "from": "Имя11",
-   "from_id": "user1000001",
-   "file": "files/file_12.pdf",
-   "file_name": "мост чай тум",
-   "file_size": 86387,
+   "date": "2025-02-11T09:04:00",
+   "date_unixtime": "1739253840",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/menu_spring.pdf",
+   "file_name": "menu_spring.pdf",
+   "file_size": 265001,
    "mime_type": "application/pdf",
    "text": "",
    "text_entities": []
@@ -75,13 +75,13 @@
   {
    "id": 5,
    "type": "message",
-   "date": "2024-03-05T09:28:00",
-   "date_unixtime": "1709620080",
-   "from": "Имя14",
-   "from_id": "user1000001",
-   "file": "files/file_15.apk",
-   "file_name": "сад тетрадь т",
-   "file_size": 1973060,
+   "date": "2025-02-11T09:10:00",
+   "date_unixtime": "1739254200",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/sample_app.apk",
+   "file_name": "sample_app.apk",
+   "file_size": 9437184,
    "mime_type": "application/octet-stream",
    "text": "",
    "text_entities": []
@@ -89,13 +89,13 @@
   {
    "id": 6,
    "type": "message",
-   "date": "2024-03-05T09:35:00",
-   "date_unixtime": "1709620500",
-   "from": "Имя17",
-   "from_id": "user1000001",
-   "file": "files/file_18.txt",
-   "file_name": "туман река",
-   "file_size": 76510,
+   "date": "2025-02-11T09:27:00",
+   "date_unixtime": "1739255220",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/shopping_list.txt",
+   "file_name": "shopping_list.txt",
+   "file_size": 1280,
    "mime_type": "text/plain",
    "text": "",
    "text_entities": []
@@ -103,31 +103,31 @@
   {
    "id": 7,
    "type": "message",
-   "date": "2024-03-05T09:42:00",
-   "date_unixtime": "1709620920",
-   "from": "Имя20",
-   "from_id": "user1000001",
-   "file": "files/file_21.jpg",
-   "file_name": "книга песок лампа город камень стол пись",
-   "file_size": 325127,
-   "thumbnail": "files/file_23.jpg",
-   "thumbnail_file_size": 1614,
+   "date": "2025-02-11T09:35:00",
+   "date_unixtime": "1739255700",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/embankment.jpg",
+   "file_name": "embankment.jpg",
+   "file_size": 734003,
+   "thumbnail": "files/embankment_thumb.jpg",
+   "thumbnail_file_size": 9216,
    "mime_type": "image/jpeg",
-   "width": 188,
-   "height": 544,
+   "width": 2048,
+   "height": 1365,
    "text": "",
    "text_entities": []
   },
   {
    "id": 8,
    "type": "message",
-   "date": "2024-03-05T09:49:00",
-   "date_unixtime": "1709621340",
-   "from": "Имя24",
-   "from_id": "user1000001",
-   "file": "files/file_25.doc",
-   "file_name": "пруд облако туман о",
-   "file_size": 64810,
+   "date": "2025-02-11T09:47:00",
+   "date_unixtime": "1739256420",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/letter_draft.doc",
+   "file_name": "letter_draft.doc",
+   "file_size": 51200,
    "mime_type": "application/msword",
    "text": "",
    "text_entities": []
@@ -135,13 +135,13 @@
   {
    "id": 9,
    "type": "message",
-   "date": "2024-03-05T09:56:00",
-   "date_unixtime": "1709621760",
-   "from": "Имя27",
-   "from_id": "user1000001",
-   "file": "files/file_28.csv",
-   "file_name": "лодка доро",
-   "file_size": 19156,
+   "date": "2025-02-11T09:57:00",
+   "date_unixtime": "1739257020",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/expenses_jan.csv",
+   "file_name": "expenses_jan.csv",
+   "file_size": 8192,
    "mime_type": "text/csv",
    "text": "",
    "text_entities": []
@@ -149,13 +149,13 @@
   {
    "id": 10,
    "type": "message",
-   "date": "2024-03-05T10:03:00",
-   "date_unixtime": "1709622180",
-   "from": "Имя30",
-   "from_id": "user1000001",
-   "file": "files/file_31.xml",
-   "file_name": "дорога обл",
-   "file_size": 352353,
+   "date": "2025-02-11T10:12:00",
+   "date_unixtime": "1739257920",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/feed_export.xml",
+   "file_name": "feed_export.xml",
+   "file_size": 30720,
    "mime_type": "application/xml",
    "text": "",
    "text_entities": []
@@ -163,24 +163,24 @@
   {
    "id": 11,
    "type": "message",
-   "date": "2024-03-05T10:10:00",
-   "date_unixtime": "1709622600",
-   "from": "Имя33",
-   "from_id": "user1000001",
-   "photo": "photos/file_34.jpg",
-   "photo_file_size": 195119,
-   "width": 664,
-   "height": 7955,
+   "date": "2025-02-11T10:19:00",
+   "date_unixtime": "1739258340",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "photo": "photos/IMG_0002.jpg",
+   "photo_file_size": 96256,
+   "width": 800,
+   "height": 1066,
    "text": "",
    "text_entities": []
   },
   {
    "id": 12,
    "type": "message",
-   "date": "2024-03-05T10:17:00",
-   "date_unixtime": "1709623020",
-   "from": "Имя35",
-   "from_id": "user1000001",
+   "date": "2025-02-11T10:30:00",
+   "date_unixtime": "1739259000",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
    "text": [
     {
      "type": "bank_card",
@@ -197,13 +197,13 @@
   {
    "id": 13,
    "type": "message",
-   "date": "2024-03-05T10:24:00",
-   "date_unixtime": "1709623440",
-   "from": "Имя37",
-   "from_id": "user1000001",
-   "file": "files/file_38.json",
-   "file_name": "облако мост поле лампа облак",
-   "file_size": 161981,
+   "date": "2025-02-11T10:39:00",
+   "date_unixtime": "1739259540",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/settings_backup.json",
+   "file_name": "settings_backup.json",
+   "file_size": 2150,
    "mime_type": "application/json",
    "text": "",
    "text_entities": []
@@ -211,232 +211,219 @@
   {
    "id": 14,
    "type": "message",
-   "date": "2024-03-05T10:31:00",
-   "date_unixtime": "1709623860",
-   "from": "Имя40",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя41",
-   "forwarded_from_id": "холм ветер лампа",
-   "saved_from": "Имя43",
+   "date": "2025-02-11T10:53:00",
+   "date_unixtime": "1739260380",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "forwarded_from": "Канал Образцов",
+   "forwarded_from_id": "channel5500101",
+   "saved_from": "Канал Образцов",
+   "inline_bot_buttons": [
+    [
+     {
+      "type": "url",
+      "text": "Открыть",
+      "data": "https://example.org/open/1"
+     },
+     {
+      "type": "url",
+      "text": "Подписаться",
+      "data": "https://example.org/follow/1"
+     }
+    ]
+   ],
    "text": [
     {
      "type": "bold",
-     "text": "лодка окно книга лод"
+     "text": "Новости недели"
     },
-    "дорога сад звезда ветер окн",
+    " — коротко о главном: ",
     {
      "type": "bold",
-     "text": "тетра"
+     "text": "обновление"
     },
-    "пес",
+    " вышло, ",
     {
      "type": "link",
-     "text": "https://example.org/l/52"
+     "text": "https://example.org/news/101"
     },
-    "гор",
+    " подробности тут, ",
     {
      "type": "bold",
-     "text": "книга кам"
+     "text": "что дальше"
     },
-    "дор",
+    " читайте на ",
     {
      "type": "link",
-     "text": "https://example.org/l/56"
+     "text": "https://example.org/news/102"
     }
    ],
    "text_entities": [
     {
      "type": "bold",
-     "text": "лодка окно книга лод"
+     "text": "Новости недели"
     },
     {
      "type": "plain",
-     "text": "дорога сад звезда ветер окн"
+     "text": " — коротко о главном: "
     },
     {
      "type": "bold",
-     "text": "тетра"
+     "text": "обновление"
     },
     {
      "type": "plain",
-     "text": "пес"
+     "text": " вышло, "
     },
     {
      "type": "link",
-     "text": "https://example.org/l/52"
+     "text": "https://example.org/news/101"
     },
     {
      "type": "plain",
-     "text": "гор"
+     "text": " подробности тут, "
     },
     {
      "type": "bold",
-     "text": "книга кам"
+     "text": "что дальше"
     },
     {
      "type": "plain",
-     "text": "дор"
+     "text": " читайте на "
     },
     {
      "type": "link",
-     "text": "https://example.org/l/56"
+     "text": "https://example.org/news/102"
     }
-   ],
-   "inline_bot_buttons": [
-    [
-     {
-      "type": "url",
-      "text": "звез",
-      "data": "мост звезда тетрадь мост дорога чай окно лампа дорога"
-     },
-     {
-      "type": "url",
-      "text": "дорога поле",
-      "data": "сад дорога звезда лодка камень ключ окно мост"
-     }
-    ]
    ]
   },
   {
    "id": 15,
    "type": "message",
-   "date": "2024-03-05T10:38:00",
-   "date_unixtime": "1709624280",
-   "from": "Имя57",
-   "from_id": "user1000001",
-   "via_bot": "Имя58",
-   "file": "files/file_59.mp3",
-   "file_name": "чай чай ключ книга мост песок тетра",
-   "file_size": 3077052,
+   "date": "2025-02-11T10:59:00",
+   "date_unixtime": "1739260740",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/track_07.mp3",
+   "file_name": "track_07.mp3",
+   "file_size": 5242880,
    "media_type": "audio_file",
-   "performer": "Имя61",
-   "title": "ключ стол",
    "mime_type": "audio/mpeg",
-   "duration_seconds": 328,
+   "duration_seconds": 214,
+   "title": "Утренний прибой",
+   "performer": "Дуэт Примера",
+   "via_bot": "music_sample_bot",
    "text": "",
    "text_entities": []
   },
   {
    "id": 16,
    "type": "message",
-   "date": "2024-03-05T10:45:00",
-   "date_unixtime": "1709624700",
-   "from": "Имя63",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя64",
-   "forwarded_from_id": "звезда чай ча",
-   "saved_from": "Имя66",
+   "date": "2025-02-11T11:16:00",
+   "date_unixtime": "1739261760",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "forwarded_from": "Блог Образцов",
+   "forwarded_from_id": "channel5500102",
+   "saved_from": "Блог Образцов",
    "text": [
-    "дорога ветер звезда камень звезда мост город звезда тетрадь город мост облако холм река туман стол чай река стол камень стол ветер туман ветер тетрадь чай песок поле пруд ключ лампа поле холм огонь пруд письмо стол книга сад огонь лампа письмо камень пруд песок холм туман туман поле река сад стол звезда лодка лампа город камень сад песок лампа книга город лампа стол город песок пруд туман камень дорога поле лампа мост ключ тетрадь книга пруд облако огонь лодка лампа письмо холм холм звезда чай лодка ветер письмо поле дорога чай камень поле песок лампа книга огонь камень тетрадь песок окно ветер тетрадь чай чай ключ огонь письмо поле туман огонь пруд сад река холм ветер мост дорога огонь туман песок камень ветер книга город чай чай туман песок лодка река камень город лодка лампа письмо холм мост огонь город чай река письмо песок стол книга камень лампа камень огонь сад книга ветер туман сад туман город туман дорога город сад город туман",
+    "Заметки к неделе: разобрать почту до обеда, дописать черновик письма в типографию, проверить, что резервная копия журнала легла на внешний диск, и купить лампочки для коридора. Вечером прогулка до набережной, если не будет дождя. В четверг созвониться с Олегом насчёт переезда архива, в пятницу отдат",
     {
      "type": "text_link",
-     "text": "пруд камень письмо пруд",
-     "href": "https://example.org/t/70"
+     "text": "расписание",
+     "href": "https://example.org/schedule"
     },
-    "окно огонь город лампа мост книга облако мо",
+    "ь книги в библиотеку. Пока писала список, вспомнила про давнюю идею: вести отдельную тетрадь только для мелочей, которые",
     {
      "type": "underline",
-     "text": "дорога"
+     "text": "подчёркнуто"
     },
-    "мост ветер огонь тетрадь ключ стол камень чай ключ дорога тетрадь поле огонь огонь облако камень ветер лампа мост звезда лампа звезда сад лодка звезда тетрадь лодка звезда стол река мост ключ город облако письмо дорога камень письмо сад чай книга песок лампа",
-    {
-     "type": "link",
-     "text": "https://example.org/l/74"
-    },
-    "камень ключ звезда камень река пруд огонь туман туман тетрадь туман туман письмо сад ветер письмо окно дорога мост мост тетрадь пруд туман сад город туман тетрадь мост звезда лампа поле лодка ключ туман камень туман облако книга облако книга чай тетрадь город стол камень лампа чай город письмо река дорога река мост окно облако река дорога звезда ветер чай сад ого",
+    " иначе забываются, вроде номера подъезда у друзей или названия сорта яблок с рынка. Если получится, завести такой раздел и в журнале, с тегами по темам и с редкими пересмотрами раз в месяц.",
+    "\n",
     {
      "type": "pre",
-     "text": "код 76",
+     "text": "echo ok",
      "language": ""
-    },
-    "мост окно облако песок о"
+    }
    ],
    "text_entities": [
     {
      "type": "plain",
-     "text": "дорога ветер звезда камень звезда мост город звезда тетрадь город мост облако холм река туман стол чай река стол камень стол ветер туман ветер тетрадь чай песок поле пруд ключ лампа поле холм огонь пруд письмо стол книга сад огонь лампа письмо камень пруд песок холм туман туман поле река сад стол звезда лодка лампа город камень сад песок лампа книга город лампа стол город песок пруд туман камень дорога поле лампа мост ключ тетрадь книга пруд облако огонь лодка лампа письмо холм холм звезда чай лодка ветер письмо поле дорога чай камень поле песок лампа книга огонь камень тетрадь песок окно ветер тетрадь чай чай ключ огонь письмо поле туман огонь пруд сад река холм ветер мост дорога огонь туман песок камень ветер книга город чай чай туман песок лодка река камень город лодка лампа письмо холм мост огонь город чай река письмо песок стол книга камень лампа камень огонь сад книга ветер туман сад туман город туман дорога город сад город туман"
+     "text": "Заметки к неделе: разобрать почту до обеда, дописать черновик письма в типографию, проверить, что резервная копия журнала легла на внешний диск, и купить лампочки для коридора. Вечером прогулка до набережной, если не будет дождя. В четверг созвониться с Олегом насчёт переезда архива, в пятницу отдат"
     },
     {
      "type": "text_link",
-     "text": "пруд камень письмо пруд",
-     "href": "https://example.org/t/70"
+     "text": "расписание",
+     "href": "https://example.org/schedule"
     },
     {
      "type": "plain",
-     "text": "окно огонь город лампа мост книга облако мо"
+     "text": "ь книги в библиотеку. Пока писала список, вспомнила про давнюю идею: вести отдельную тетрадь только для мелочей, которые"
     },
     {
      "type": "underline",
-     "text": "дорога"
+     "text": "подчёркнуто"
     },
     {
      "type": "plain",
-     "text": "мост ветер огонь тетрадь ключ стол камень чай ключ дорога тетрадь поле огонь огонь облако камень ветер лампа мост звезда лампа звезда сад лодка звезда тетрадь лодка звезда стол река мост ключ город облако письмо дорога камень письмо сад чай книга песок лампа"
-    },
-    {
-     "type": "link",
-     "text": "https://example.org/l/74"
+     "text": " иначе забываются, вроде номера подъезда у друзей или названия сорта яблок с рынка. Если получится, завести такой раздел и в журнале, с тегами по темам и с редкими пересмотрами раз в месяц."
     },
     {
      "type": "plain",
-     "text": "камень ключ звезда камень река пруд огонь туман туман тетрадь туман туман письмо сад ветер письмо окно дорога мост мост тетрадь пруд туман сад город туман тетрадь мост звезда лампа поле лодка ключ туман камень туман облако книга облако книга чай тетрадь город стол камень лампа чай город письмо река дорога река мост окно облако река дорога звезда ветер чай сад ого"
+     "text": "\n"
     },
     {
      "type": "pre",
-     "text": "код 76",
+     "text": "echo ok",
      "language": ""
-    },
-    {
-     "type": "plain",
-     "text": "мост окно облако песок о"
     }
    ]
   },
   {
    "id": 17,
    "type": "message",
-   "date": "2024-03-05T10:52:00",
-   "date_unixtime": "1709625120",
-   "from": "Имя78",
-   "from_id": "user1000001",
-   "file": "voice_messages/file_79.ogg",
-   "file_size": 92657,
+   "date": "2025-02-11T11:24:00",
+   "date_unixtime": "1739262240",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "voice_messages/audio_1.ogg",
+   "file_size": 48128,
    "media_type": "voice_message",
    "mime_type": "audio/ogg",
-   "duration_seconds": 4,
+   "duration_seconds": 7,
    "text": "",
    "text_entities": []
   },
   {
    "id": 18,
    "type": "message",
-   "date": "2024-03-05T10:59:00",
-   "date_unixtime": "1709625540",
-   "from": "Имя80",
-   "from_id": "user1000001",
-   "file": "stickers/file_81.webp",
-   "file_name": "книга тетрад",
-   "file_size": 92238,
-   "thumbnail": "stickers/file_83.jpg",
-   "thumbnail_file_size": 2013,
+   "date": "2025-02-11T11:36:00",
+   "date_unixtime": "1739262960",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "stickers/sticker_cat.webp",
+   "file_name": "sticker_cat.webp",
+   "file_size": 31744,
+   "thumbnail": "stickers/sticker_cat_thumb.jpg",
+   "thumbnail_file_size": 1536,
    "media_type": "sticker",
-   "sticker_emoji": "🙂",
+   "sticker_emoji": "😺",
    "mime_type": "image/webp",
-   "width": 690,
-   "height": 699,
+   "width": 512,
+   "height": 512,
    "text": "",
    "text_entities": []
   },
   {
    "id": 19,
    "type": "message",
-   "date": "2024-03-05T11:06:00",
-   "date_unixtime": "1709625960",
-   "from": "Имя85",
-   "from_id": "user1000001",
-   "file": "files/file_86.zip",
-   "file_name": "книга пруд облако лодка ветер мост о",
-   "file_size": 515949,
+   "date": "2025-02-11T11:46:00",
+   "date_unixtime": "1739263560",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/photos_pack.zip",
+   "file_name": "photos_pack.zip",
+   "file_size": 15728640,
    "mime_type": "multipart/x-zip",
    "text": "",
    "text_entities": []
@@ -444,155 +431,155 @@
   {
    "id": 20,
    "type": "message",
-   "date": "2024-03-05T11:13:00",
-   "date_unixtime": "1709626380",
-   "from": "Имя88",
-   "from_id": "user1000001",
-   "photo": "photos/file_89.jpg",
-   "photo_file_size": 1812,
-   "width": 326,
-   "height": 147,
+   "date": "2025-02-11T12:01:00",
+   "date_unixtime": "1739264460",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "photo": "photos/IMG_0003.jpg",
+   "photo_file_size": 210944,
+   "width": 1024,
+   "height": 1024,
    "text": "",
    "text_entities": []
   },
   {
    "id": 21,
    "type": "message",
-   "date": "2024-03-05T11:20:00",
-   "date_unixtime": "1709626800",
-   "from": "Имя90",
-   "from_id": "user1000001",
+   "date": "2025-02-11T12:08:00",
+   "date_unixtime": "1739264880",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
    "text": [
-    "дорога ключ стол туман туман стол поле камень пруд камень камень камень мост песок облако город сад тетрадь облако облако поле дорога дорога туман камень",
+    "Позвонить в сервис по номеру ",
     {
      "type": "phone",
-     "text": "+7 000 000-00-00"
+     "text": "+7 495 555-01-02"
     },
-    "тетрадь ключ пруд сад ветер дорога сад книга стол поле ветер стол ключ река город лодка ветер туман город сад поле ветер холм дорога холм облако песок хо",
+    ", а если не ответят, то по запасному ",
     {
      "type": "phone",
-     "text": "+7 000 000-00-00"
+     "text": "+7 495 555-03-04"
     },
-    "лодка огонь пруд лодка книга тетр"
+    " после обеда."
    ],
    "text_entities": [
     {
      "type": "plain",
-     "text": "дорога ключ стол туман туман стол поле камень пруд камень камень камень мост песок облако город сад тетрадь облако облако поле дорога дорога туман камень"
+     "text": "Позвонить в сервис по номеру "
     },
     {
      "type": "phone",
-     "text": "+7 000 000-00-00"
+     "text": "+7 495 555-01-02"
     },
     {
      "type": "plain",
-     "text": "тетрадь ключ пруд сад ветер дорога сад книга стол поле ветер стол ключ река город лодка ветер туман город сад поле ветер холм дорога холм облако песок хо"
+     "text": ", а если не ответят, то по запасному "
     },
     {
      "type": "phone",
-     "text": "+7 000 000-00-00"
+     "text": "+7 495 555-03-04"
     },
     {
      "type": "plain",
-     "text": "лодка огонь пруд лодка книга тетр"
+     "text": " после обеда."
     }
    ]
   },
   {
    "id": 22,
    "type": "message",
-   "date": "2024-03-05T11:27:00",
-   "date_unixtime": "1709627220",
-   "from": "Имя96",
-   "from_id": "user1000001",
-   "via_bot": "Имя97",
-   "file": "video_files/file_98.mp4",
-   "file_name": "поле поле облако город ст",
-   "file_size": 82963,
-   "thumbnail": "video_files/file_100.jpg",
-   "thumbnail_file_size": 3181,
+   "date": "2025-02-11T12:19:00",
+   "date_unixtime": "1739265540",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "video_files/loop_sea.mp4",
+   "file_name": "loop_sea.mp4",
+   "file_size": 1153434,
+   "thumbnail": "video_files/loop_sea_thumb.jpg",
+   "thumbnail_file_size": 4096,
    "media_type": "animation",
    "mime_type": "video/mp4",
-   "duration_seconds": 12,
-   "width": 396,
-   "height": 82,
+   "duration_seconds": 5,
+   "width": 480,
+   "height": 270,
+   "via_bot": "gif_sample_bot",
    "text": "",
    "text_entities": []
   },
   {
    "id": 23,
    "type": "message",
-   "date": "2024-03-05T11:34:00",
-   "date_unixtime": "1709627640",
-   "from": "Имя101",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя102",
-   "file": "round_video_messages/file_103.mp4",
-   "file_name": "лампа обл",
-   "file_size": 8031986,
-   "thumbnail": "round_video_messages/file_105.jpg",
-   "thumbnail_file_size": 28907,
+   "date": "2025-02-11T12:28:00",
+   "date_unixtime": "1739266080",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "round_video_messages/round_1.mp4",
+   "file_name": "round_1.mp4",
+   "file_size": 2097152,
+   "thumbnail": "round_video_messages/round_1_thumb.jpg",
+   "thumbnail_file_size": 12288,
    "media_type": "video_message",
    "mime_type": "video/mp4",
-   "duration_seconds": 12,
-   "width": 220,
-   "height": 415,
+   "duration_seconds": 21,
+   "width": 400,
+   "height": 400,
+   "forwarded_from": "Олег Примеров",
    "text": "",
    "text_entities": []
   },
   {
    "id": 24,
    "type": "message",
-   "date": "2024-03-05T11:41:00",
-   "date_unixtime": "1709628060",
-   "from": "Имя106",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя107",
-   "forwarded_from_id": "книга письмо",
-   "saved_from": "Имя109",
-   "file": "files/file_110.djvu",
-   "file_name": "облако окно тетрадь облако поле звезда г",
-   "file_size": 85196458,
+   "date": "2025-02-11T12:42:00",
+   "date_unixtime": "1739266920",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/contract_scan.djvu",
+   "file_name": "contract_scan.djvu",
+   "file_size": 3145728,
    "mime_type": "image/vnd.djvu+multipage",
-   "text": "тетрадь туман ключ город чай письмо к",
+   "forwarded_from": "Олег Примеров",
+   "forwarded_from_id": "user5500103",
+   "saved_from": "Олег Примеров",
+   "text": "Скан договора аренды, страницы 1–6.",
    "text_entities": [
     {
      "type": "plain",
-     "text": "тетрадь туман ключ город чай письмо к"
+     "text": "Скан договора аренды, страницы 1–6."
     }
    ]
   },
   {
    "id": 25,
    "type": "message",
-   "date": "2024-03-05T11:48:00",
-   "date_unixtime": "1709628480",
-   "from": "Имя113",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя114",
-   "forwarded_from_id": "чай облако в",
-   "saved_from": "Имя116",
-   "file": "files/file_117.HEIC",
-   "file_name": "письмо холм с",
-   "file_size": 4032085,
-   "thumbnail": "files/file_119.jpg",
-   "thumbnail_file_size": 23507,
+   "date": "2025-02-11T12:48:00",
+   "date_unixtime": "1739267280",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/camera_roll_44.HEIC",
+   "file_name": "camera_roll_44.HEIC",
+   "file_size": 2621440,
+   "thumbnail": "files/camera_roll_44_thumb.jpg",
+   "thumbnail_file_size": 7168,
    "mime_type": "image/heic",
-   "width": 4078,
-   "height": 7101,
+   "width": 3024,
+   "height": 4032,
+   "forwarded_from": "Ирина Тестова",
+   "forwarded_from_id": "user5500104",
+   "saved_from": "Ирина Тестова",
    "text": "",
    "text_entities": []
   },
   {
    "id": 26,
    "type": "message",
-   "date": "2024-03-05T11:55:00",
-   "date_unixtime": "1709628900",
-   "from": "Имя120",
-   "from_id": "user1000001",
-   "file": "files/file_121.docx",
-   "file_name": "огонь облако город чай дор",
-   "file_size": 22770,
+   "date": "2025-02-11T13:05:00",
+   "date_unixtime": "1739268300",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/report_q1.docx",
+   "file_name": "report_q1.docx",
+   "file_size": 72704,
    "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
    "text": "",
    "text_entities": []
@@ -600,224 +587,198 @@
   {
    "id": 27,
    "type": "message",
-   "date": "2024-03-05T12:02:00",
-   "date_unixtime": "1709629320",
-   "from": "Имя123",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя124",
-   "forwarded_from_id": "песок песок город",
-   "saved_from": "Имя126",
-   "file": "video_files/file_127.mp4",
-   "file_name": "песок поле огонь сад кн",
-   "file_size": 2053424,
-   "thumbnail": "video_files/file_129.jpg",
-   "thumbnail_file_size": 677,
+   "date": "2025-02-11T13:13:00",
+   "date_unixtime": "1739268780",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "video_files/walk_clip.mp4",
+   "file_name": "walk_clip.mp4",
+   "file_size": 6291456,
+   "thumbnail": "video_files/walk_clip_thumb.jpg",
+   "thumbnail_file_size": 18432,
    "media_type": "video_file",
    "mime_type": "video/mp4",
-   "duration_seconds": 48,
-   "width": 161,
-   "height": 310,
+   "duration_seconds": 18,
+   "width": 1080,
+   "height": 1920,
+   "forwarded_from": "Ирина Тестова",
+   "forwarded_from_id": "user5500104",
+   "saved_from": "Ирина Тестова",
    "text": [
     {
      "type": "bold",
-     "text": "огонь звезда мост пруд туман ка"
+     "text": "Сегодня на прогулке"
     },
-    "окн",
+    " нашла ",
     {
      "type": "custom_emoji",
-     "text": "🥹"
+     "text": "🍂",
+     "document_id": "5100000000000000011"
     },
-    "тет",
+    " целую аллею, ",
     {
      "type": "italic",
-     "text": "туман сад холм холм ключ мост тетрадь чай письмо ветер камень чай лампа ключ книга сад холм"
+     "text": "очень тихую"
     },
-    "ключ звезда огонь река звезда тетрадь облако звезда письмо книга стол холм тетрадь река стол река письмо город река облако облако город мост горо",
+    ", и подумала, что надо вернуться туда с камерой. Маршрут сохранила ",
     {
      "type": "text_link",
-     "text": "дорога ст",
-     "href": "https://example.org/t/139"
+     "text": "здесь",
+     "href": "https://example.org/route/27"
     },
-    "ветер лампа мост лампа лодка пруд река туман пруд песок лампа огонь облако письм",
+    ", а после заглянула в кофейню ",
     {
      "type": "custom_emoji",
-     "text": "😅"
+     "text": "☕",
+     "document_id": "5100000000000000012"
     },
-    "сто",
+    " ",
     {
      "type": "hashtag",
-     "text": "#тег_144"
+     "text": "#прогулки"
     },
-    "зве",
+    " ",
     {
      "type": "hashtag",
-     "text": "#тег_146"
-    },
-    "гор",
-    {
-     "type": "hashtag",
-     "text": "#тег_148"
-    },
-    "дор"
+     "text": "#осень"
+    }
    ],
    "text_entities": [
     {
      "type": "bold",
-     "text": "огонь звезда мост пруд туман ка"
+     "text": "Сегодня на прогулке"
     },
     {
      "type": "plain",
-     "text": "окн"
+     "text": " нашла "
     },
     {
      "type": "custom_emoji",
-     "text": "🥹",
-     "document_id": "5000000000000000133"
+     "text": "🍂",
+     "document_id": "5100000000000000011"
     },
     {
      "type": "plain",
-     "text": "тет"
+     "text": " целую аллею, "
     },
     {
      "type": "italic",
-     "text": "туман сад холм холм ключ мост тетрадь чай письмо ветер камень чай лампа ключ книга сад холм"
+     "text": "очень тихую"
     },
     {
      "type": "plain",
-     "text": "ключ звезда огонь река звезда тетрадь облако звезда письмо книга стол холм тетрадь река стол река письмо город река облако облако город мост горо"
+     "text": ", и подумала, что надо вернуться туда с камерой. Маршрут сохранила "
     },
     {
      "type": "text_link",
-     "text": "дорога ст",
-     "href": "https://example.org/t/139"
+     "text": "здесь",
+     "href": "https://example.org/route/27"
     },
     {
      "type": "plain",
-     "text": "ветер лампа мост лампа лодка пруд река туман пруд песок лампа огонь облако письм"
+     "text": ", а после заглянула в кофейню "
     },
     {
      "type": "custom_emoji",
-     "text": "😅",
-     "document_id": "5000000000000000142"
+     "text": "☕",
+     "document_id": "5100000000000000012"
     },
     {
      "type": "plain",
-     "text": "сто"
+     "text": " "
     },
     {
      "type": "hashtag",
-     "text": "#тег_144"
+     "text": "#прогулки"
     },
     {
      "type": "plain",
-     "text": "зве"
+     "text": " "
     },
     {
      "type": "hashtag",
-     "text": "#тег_146"
-    },
-    {
-     "type": "plain",
-     "text": "гор"
-    },
-    {
-     "type": "hashtag",
-     "text": "#тег_148"
-    },
-    {
-     "type": "plain",
-     "text": "дор"
+     "text": "#осень"
     }
    ]
   },
   {
    "id": 28,
    "type": "message",
-   "date": "2024-03-05T12:09:00",
-   "date_unixtime": "1709629740",
-   "from": "Имя150",
-   "from_id": "user1000001",
+   "date": "2025-02-11T13:25:00",
+   "date_unixtime": "1739269500",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
    "text": [
-    "письмо звезда пи",
+    "Переписка с поддержкой: пишите на ",
     {
      "type": "email",
-     "text": "user152@example.org"
+     "text": "support.demo@example.org"
     },
-    "тетрадь дорога река мост письмо зв",
+    ", документация на ",
     {
      "type": "link",
-     "text": "https://example.org/l/154"
+     "text": "https://example.org/docs/start"
     },
-    "ключ огонь лодка",
+    " и ",
     {
      "type": "link",
-     "text": "https://example.org/l/156"
+     "text": "https://example.org/docs/faq"
     },
-    "город тетрадь песок стол лампа лампа сад сад песок окно книга дорога стол песок пруд ветер лампа ветер письмо пруд поле звезда пол",
+    ". Курсы на сегодня: ",
     {
      "type": "cashtag",
      "text": "$USD"
     },
-    "поле",
+    " и ",
     {
      "type": "cashtag",
-     "text": "$USD"
+     "text": "$EUR"
     },
-    "огонь облако лодка стол песок холм ключ тетрадь река письмо пруд тетрадь т",
+    ", справочно ",
     {
      "type": "link",
-     "text": "https://example.org/l/162"
+     "text": "https://example.org/rates"
     },
-    "лод",
+    ", а также ",
     {
      "type": "cashtag",
-     "text": "$USD"
+     "text": "$GBP"
     },
-    "лампа",
+    " и ",
     {
      "type": "cashtag",
-     "text": "$USD"
+     "text": "$CHF"
     },
-    "песок дорога ок",
-    {
-     "type": "cashtag",
-     "text": "$USD"
-    },
-    "мост огонь г",
-    {
-     "type": "cashtag",
-     "text": "$USD"
-    },
-    "лодка поле звезда ветер ключ камень туман стол поле чай окно стол стол стол книга песок книга"
+    "."
    ],
    "text_entities": [
     {
      "type": "plain",
-     "text": "письмо звезда пи"
+     "text": "Переписка с поддержкой: пишите на "
     },
     {
      "type": "email",
-     "text": "user152@example.org"
+     "text": "support.demo@example.org"
     },
     {
      "type": "plain",
-     "text": "тетрадь дорога река мост письмо зв"
+     "text": ", документация на "
     },
     {
      "type": "link",
-     "text": "https://example.org/l/154"
+     "text": "https://example.org/docs/start"
     },
     {
      "type": "plain",
-     "text": "ключ огонь лодка"
+     "text": " и "
     },
     {
      "type": "link",
-     "text": "https://example.org/l/156"
+     "text": "https://example.org/docs/faq"
     },
     {
      "type": "plain",
-     "text": "город тетрадь песок стол лампа лампа сад сад песок окно книга дорога стол песок пруд ветер лампа ветер письмо пруд поле звезда пол"
+     "text": ". Курсы на сегодня: "
     },
     {
      "type": "cashtag",
@@ -825,70 +786,54 @@
     },
     {
      "type": "plain",
-     "text": "поле"
+     "text": " и "
     },
     {
      "type": "cashtag",
-     "text": "$USD"
+     "text": "$EUR"
     },
     {
      "type": "plain",
-     "text": "огонь облако лодка стол песок холм ключ тетрадь река письмо пруд тетрадь т"
+     "text": ", справочно "
     },
     {
      "type": "link",
-     "text": "https://example.org/l/162"
+     "text": "https://example.org/rates"
     },
     {
      "type": "plain",
-     "text": "лод"
+     "text": ", а также "
     },
     {
      "type": "cashtag",
-     "text": "$USD"
+     "text": "$GBP"
     },
     {
      "type": "plain",
-     "text": "лампа"
+     "text": " и "
     },
     {
      "type": "cashtag",
-     "text": "$USD"
+     "text": "$CHF"
     },
     {
      "type": "plain",
-     "text": "песок дорога ок"
-    },
-    {
-     "type": "cashtag",
-     "text": "$USD"
-    },
-    {
-     "type": "plain",
-     "text": "мост огонь г"
-    },
-    {
-     "type": "cashtag",
-     "text": "$USD"
-    },
-    {
-     "type": "plain",
-     "text": "лодка поле звезда ветер ключ камень туман стол поле чай окно стол стол стол книга песок книга"
+     "text": "."
     }
    ]
   },
   {
    "id": 29,
    "type": "message",
-   "date": "2024-03-05T12:16:00",
-   "date_unixtime": "1709630160",
-   "from": "Имя172",
-   "from_id": "user1000001",
-   "file": "files/file_173.bin",
-   "file_name": "лампа камень лампа",
-   "file_size": 75066,
-   "thumbnail": "files/file_175.jpg",
-   "thumbnail_file_size": 99181,
+   "date": "2025-02-11T13:35:00",
+   "date_unixtime": "1739270100",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/night_theme.tdesktop-theme",
+   "file_name": "night_theme.tdesktop-theme",
+   "file_size": 20480,
+   "thumbnail": "files/night_theme_thumb.jpg",
+   "thumbnail_file_size": 3072,
    "mime_type": "application/x-tdesktop-theme",
    "text": "",
    "text_entities": []
@@ -896,70 +841,70 @@
   {
    "id": 30,
    "type": "message",
-   "date": "2024-03-05T12:23:00",
-   "date_unixtime": "1709630580",
-   "from": "Имя176",
-   "from_id": "user1000001",
-   "file": "video_files/file_177.mp4",
-   "file_name": "ветер лодка камень холм песок окно пруд",
-   "file_size": 9920785,
-   "thumbnail": "video_files/file_179.jpg",
-   "thumbnail_file_size": 66045,
+   "date": "2025-02-11T13:50:00",
+   "date_unixtime": "1739271000",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "video_files/recording_demo.mp4",
+   "file_name": "recording_demo.mp4",
+   "file_size": 8388608,
+   "thumbnail": "video_files/recording_demo_thumb.jpg",
+   "thumbnail_file_size": 22528,
    "media_type": "video_file",
    "mime_type": "video/mp4",
-   "duration_seconds": 8,
-   "width": 6146,
-   "height": 8628,
+   "duration_seconds": 42,
+   "width": 1280,
+   "height": 720,
    "text": "",
    "text_entities": []
   },
   {
    "id": 31,
    "type": "message",
-   "date": "2024-03-05T12:30:00",
-   "date_unixtime": "1709631000",
-   "from": "Имя180",
-   "from_id": "user1000001",
-   "file": "video_files/file_181.webm",
-   "file_name": "камень сад п",
-   "file_size": 714006,
-   "thumbnail": "video_files/file_183.jpg",
-   "thumbnail_file_size": 8424,
+   "date": "2025-02-11T13:57:00",
+   "date_unixtime": "1739271420",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "video_files/sticker_wave.webm",
+   "file_name": "sticker_wave.webm",
+   "file_size": 204800,
+   "thumbnail": "video_files/sticker_wave_thumb.jpg",
+   "thumbnail_file_size": 2048,
    "media_type": "sticker",
-   "sticker_emoji": "🙂",
+   "sticker_emoji": "👋",
    "mime_type": "video/webm",
    "duration_seconds": 3,
-   "width": 470,
-   "height": 354,
+   "width": 512,
+   "height": 512,
    "text": "",
    "text_entities": []
   },
   {
    "id": 32,
    "type": "message",
-   "date": "2024-03-05T12:37:00",
-   "date_unixtime": "1709631420",
-   "from": "Имя185",
-   "from_id": "user1000001",
-   "reply_to_message_id": 99999,
-   "text": "окно туман з",
+   "date": "2025-02-11T14:08:00",
+   "date_unixtime": "1739272080",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "reply_to_message_id": 88801,
+   "text": "Да, согласна, отвечу завтра.",
    "text_entities": [
     {
      "type": "plain",
-     "text": "окно туман з"
+     "text": "Да, согласна, отвечу завтра."
     }
    ]
   },
   {
    "id": 33,
    "type": "message",
-   "date": "2024-03-05T12:44:00",
-   "date_unixtime": "1709631840",
-   "from": "Имя187",
-   "from_id": "user1000001",
-   "file": "files/file_188.gpx",
-   "file_name": "тетрадь пруд мост книга",
-   "file_size": 932967,
+   "date": "2025-02-11T14:17:00",
+   "date_unixtime": "1739272620",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/route_river.gpx",
+   "file_name": "route_river.gpx",
+   "file_size": 40960,
    "mime_type": "application/gpx+xml",
    "text": "",
    "text_entities": []
@@ -967,234 +912,222 @@
   {
    "id": 34,
    "type": "message",
-   "date": "2024-03-05T12:51:00",
-   "date_unixtime": "1709632260",
-   "from": "Имя190",
-   "from_id": "user1000001",
+   "date": "2025-02-11T14:31:00",
+   "date_unixtime": "1739273460",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
    "forwarded_from": null,
-   "forwarded_from_id": "огонь лодка ог",
+   "forwarded_from_id": "channel5500105",
    "saved_from": null,
    "text": [
-    "сад чай дорога камень чай звезда окно звезда мост туман песок сад стол книга поле стол пруд стол мост камень облако холм мост окно туман чай тетрадь письмо поле холм песок",
+    "Рецепт запомнить: тесто месить десять минут, дать отдохнуть час, затем раскатать тонко и сразу в духовку. Подробности и таблица температур на ",
     {
      "type": "link",
-     "text": "https://example.org/l/193"
+     "text": "https://example.org/recipes/bread"
     },
-    "гор"
+    " — ссылка рабочая."
    ],
    "text_entities": [
     {
      "type": "plain",
-     "text": "сад чай дорога камень чай звезда окно звезда мост туман песок сад стол книга поле стол пруд стол мост камень облако холм мост окно туман чай тетрадь письмо поле холм песок"
+     "text": "Рецепт запомнить: тесто месить десять минут, дать отдохнуть час, затем раскатать тонко и сразу в духовку. Подробности и таблица температур на "
     },
     {
      "type": "link",
-     "text": "https://example.org/l/193"
+     "text": "https://example.org/recipes/bread"
     },
     {
      "type": "plain",
-     "text": "гор"
+     "text": " — ссылка рабочая."
     }
    ]
   },
   {
    "id": 35,
    "type": "message",
-   "date": "2024-03-05T12:58:00",
-   "date_unixtime": "1709632680",
-   "from": "Имя195",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя196",
-   "forwarded_from_id": "лодка лампа книга",
-   "saved_from": "Имя198",
-   "photo": "photos/file_199.jpg",
-   "photo_file_size": 288499,
-   "width": 4999,
-   "height": 183,
+   "date": "2025-02-11T14:37:00",
+   "date_unixtime": "1739273820",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "photo": "photos/exhibition_hall.jpg",
+   "photo_file_size": 327680,
+   "width": 1600,
+   "height": 1067,
+   "forwarded_from": "Галерея Примера",
+   "forwarded_from_id": "channel5500106",
+   "saved_from": "Галерея Примера",
    "text": [
     {
      "type": "custom_emoji",
-     "text": "⚡️"
+     "text": "✨",
+     "document_id": "5100000000000000021"
     },
-    "пол",
+    " Итоги выставки: ",
     {
      "type": "bold",
-     "text": "дорога река тетра"
+     "text": "главный зал"
     },
-    "поле дорога ключ облако книга звезда тетрад",
+    " оказался самым светлым, дальше шли ",
     {
      "type": "bold",
-     "text": "звезда"
+     "text": "малые залы"
     },
-    "лам",
-    {
-     "type": "bold",
-     "text": "огонь туман туман г"
-    },
-    "мост огонь облако река ключ",
-    {
-     "type": "code",
-     "text": "код 209"
-    },
-    "поле лампа туман пруд поле стол письмо лампа холм чай песок река холм книга ветер лодка туман тетрадь пруд ветер лодка дорога камень книга холм звезда книга окно ключ дорога дорога чай город мост окно дорога чай река окно огонь лампа холм холм огонь мост холм песок",
-    {
-     "type": "bold",
-     "text": "ключ сад пруд песок лампа окно хол"
-    },
-    "поле город река письмо ключ река чай лодка книга книга река чай стол огонь окно холм книга дорога звезда чай поле дорога чай река стол река камень чай река мост облако окно окно ключ огонь камень чай лампа лодка огонь город ключ стол мост лодка река ветер туман холм облако ключ ключ лодка письмо туман река река дорога мост песок город тетрадь облако ключ сад облако чай песок мост п",
+    " с графикой. Каталог — ",
     {
      "type": "text_link",
-     "text": "книга",
-     "href": "https://example.org/t/215"
+     "text": "онлайн-версия",
+     "href": "https://example.org/catalog/35"
     },
-    "обл",
+    ", код стенда ",
+    {
+     "type": "code",
+     "text": "A-35"
+    },
+    ". Отдельно отметить ",
+    {
+     "type": "bold",
+     "text": "мастерскую керамики"
+    },
+    " и ",
     {
      "type": "mention",
-     "text": "@user_217"
+     "text": "@sample_curator"
     },
-    "чай"
+    "."
    ],
    "text_entities": [
     {
      "type": "custom_emoji",
-     "text": "⚡️",
-     "document_id": "5000000000000000201"
+     "text": "✨",
+     "document_id": "5100000000000000021"
     },
     {
      "type": "plain",
-     "text": "пол"
+     "text": " Итоги выставки: "
     },
     {
      "type": "bold",
-     "text": "дорога река тетра"
+     "text": "главный зал"
     },
     {
      "type": "plain",
-     "text": "поле дорога ключ облако книга звезда тетрад"
+     "text": " оказался самым светлым, дальше шли "
     },
     {
      "type": "bold",
-     "text": "звезда"
+     "text": "малые залы"
     },
     {
      "type": "plain",
-     "text": "лам"
-    },
-    {
-     "type": "bold",
-     "text": "огонь туман туман г"
-    },
-    {
-     "type": "plain",
-     "text": "мост огонь облако река ключ"
-    },
-    {
-     "type": "code",
-     "text": "код 209"
-    },
-    {
-     "type": "plain",
-     "text": "поле лампа туман пруд поле стол письмо лампа холм чай песок река холм книга ветер лодка туман тетрадь пруд ветер лодка дорога камень книга холм звезда книга окно ключ дорога дорога чай город мост окно дорога чай река окно огонь лампа холм холм огонь мост холм песок"
-    },
-    {
-     "type": "bold",
-     "text": "ключ сад пруд песок лампа окно хол"
-    },
-    {
-     "type": "plain",
-     "text": "поле город река письмо ключ река чай лодка книга книга река чай стол огонь окно холм книга дорога звезда чай поле дорога чай река стол река камень чай река мост облако окно окно ключ огонь камень чай лампа лодка огонь город ключ стол мост лодка река ветер туман холм облако ключ ключ лодка письмо туман река река дорога мост песок город тетрадь облако ключ сад облако чай песок мост п"
+     "text": " с графикой. Каталог — "
     },
     {
      "type": "text_link",
-     "text": "книга",
-     "href": "https://example.org/t/215"
+     "text": "онлайн-версия",
+     "href": "https://example.org/catalog/35"
     },
     {
      "type": "plain",
-     "text": "обл"
+     "text": ", код стенда "
+    },
+    {
+     "type": "code",
+     "text": "A-35"
+    },
+    {
+     "type": "plain",
+     "text": ". Отдельно отметить "
+    },
+    {
+     "type": "bold",
+     "text": "мастерскую керамики"
+    },
+    {
+     "type": "plain",
+     "text": " и "
     },
     {
      "type": "mention",
-     "text": "@user_217"
+     "text": "@sample_curator"
     },
     {
      "type": "plain",
-     "text": "чай"
+     "text": "."
     }
    ]
   },
   {
    "id": 36,
    "type": "message",
-   "date": "2024-03-05T13:05:00",
-   "date_unixtime": "1709633100",
-   "edited": "2024-03-05T13:05:00",
-   "edited_unixtime": "1709633100",
-   "from": "Имя219",
-   "from_id": "user1000001",
-   "text": "дорога облако камень дорога лодка песок в",
-   "text_entities": [
-    {
-     "type": "plain",
-     "text": "дорога облако камень дорога лодка песок в"
-    }
-   ],
+   "date": "2025-02-11T14:54:00",
+   "date_unixtime": "1739274840",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "edited": "2025-02-11T14:58:00",
+   "edited_unixtime": "1739275080",
    "reactions": [
     {
      "type": "custom_emoji",
      "count": 1,
-     "document_id": "5000000000000000220",
+     "document_id": "5100000000000000031",
      "recent": [
       {
-       "from": "Имя221",
-       "from_id": "user1000001",
-       "date": "2024-03-06T11:01:00"
+       "from": "Мария Образцова",
+       "from_id": "user7700123",
+       "date": "2025-02-11T15:54:00"
       }
      ]
+    }
+   ],
+   "text": "Записать в журнал: сегодня впервые за месяц выспалась.",
+   "text_entities": [
+    {
+     "type": "plain",
+     "text": "Записать в журнал: сегодня впервые за месяц выспалась."
     }
    ]
   },
   {
    "id": 37,
    "type": "message",
-   "date": "2024-03-05T13:12:00",
-   "date_unixtime": "1709633520",
-   "from": "Имя225",
-   "from_id": "user1000001",
-   "text": "тетрадь река хо",
+   "date": "2025-02-11T15:02:00",
+   "date_unixtime": "1739275320",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "text": "Проверить градусник на балконе.",
    "text_entities": [
     {
      "type": "plain",
-     "text": "тетрадь река хо"
+     "text": "Проверить градусник на балконе."
     }
    ]
   },
   {
    "id": 38,
    "type": "message",
-   "date": "2024-03-05T13:19:00",
-   "date_unixtime": "1709633940",
-   "from": "Имя227",
-   "from_id": "user1000001",
-   "place_name": "письмо туман пе",
-   "address": "огонь книг",
+   "date": "2025-02-11T15:14:00",
+   "date_unixtime": "1739276040",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
    "location_information": {
-    "latitude": 55.75,
-    "longitude": 37.61
+    "latitude": 59.93,
+    "longitude": 30.31
    },
+   "place_name": "Кофейня на набережной",
+   "address": "набережная Примерная, 5",
    "text": "",
    "text_entities": []
   },
   {
    "id": 39,
    "type": "message",
-   "date": "2024-03-05T13:26:00",
-   "date_unixtime": "1709634360",
-   "from": "Имя230",
-   "from_id": "user1000001",
-   "file": "files/file_231.epub",
-   "file_name": "мост ветер песок дорога дорога мост мост",
-   "file_size": 6037344,
+   "date": "2025-02-11T15:24:00",
+   "date_unixtime": "1739276640",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/novel_sample.epub",
+   "file_name": "novel_sample.epub",
+   "file_size": 1048576,
    "mime_type": "application/epub+zip",
    "text": "",
    "text_entities": []
@@ -1202,13 +1135,13 @@
   {
    "id": 40,
    "type": "message",
-   "date": "2024-03-05T13:33:00",
-   "date_unixtime": "1709634780",
-   "from": "Имя233",
-   "from_id": "user1000001",
-   "file": "files/file_234.mobi",
-   "file_name": "сад пруд огонь река песок дорога дорога",
-   "file_size": 9811335,
+   "date": "2025-02-11T15:39:00",
+   "date_unixtime": "1739277540",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/essays_sample.mobi",
+   "file_name": "essays_sample.mobi",
+   "file_size": 917504,
    "mime_type": "application/x-mobipocket-ebook",
    "text": "",
    "text_entities": []
@@ -1216,13 +1149,13 @@
   {
    "id": 41,
    "type": "message",
-   "date": "2024-03-05T13:40:00",
-   "date_unixtime": "1709635200",
-   "from": "Имя236",
-   "from_id": "user1000001",
-   "file": "files/file_237.fb2",
-   "file_name": "сад дорога звезда пруд холм дорога дорог",
-   "file_size": 9306674,
+   "date": "2025-02-11T15:46:00",
+   "date_unixtime": "1739277960",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/tales_sample.fb2",
+   "file_name": "tales_sample.fb2",
+   "file_size": 409600,
    "mime_type": "application/x-fictionbook+xml",
    "text": "",
    "text_entities": []
@@ -1230,51 +1163,51 @@
   {
    "id": 42,
    "type": "message",
-   "date": "2024-03-05T13:47:00",
-   "date_unixtime": "1709635620",
-   "from": "Имя239",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя240",
-   "forwarded_from_id": "письмо лодка вете",
-   "saved_from": "Имя242",
-   "file": "video_files/file_243.mp4",
-   "file_name": "туман звезда поле ключ камень дорога сад",
-   "file_size": 460160,
-   "thumbnail": "video_files/file_245.jpg",
-   "thumbnail_file_size": 8353,
+   "date": "2025-02-11T15:57:00",
+   "date_unixtime": "1739278620",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "video_files/trailer_cut.mp4",
+   "file_name": "trailer_cut.mp4",
+   "file_size": 3670016,
    "media_type": "video_file",
+   "thumbnail": "video_files/trailer_cut_thumb.jpg",
+   "thumbnail_file_size": 11264,
+   "width": 960,
+   "height": 540,
    "mime_type": "video/mp4",
-   "duration_seconds": 8,
-   "width": 394,
-   "height": 723,
+   "duration_seconds": 36,
+   "forwarded_from": "Кинозал Образцов",
+   "forwarded_from_id": "channel5500107",
+   "saved_from": "Кинозал Образцов",
    "text": [
     {
      "type": "spoiler",
-     "text": "река огонь поле пруд сад дорога пруд камень стол ключ стол окно лодка туман пруд ветер письмо сад облако огонь тум"
+     "text": "концовка сериала: все остаются живы и уезжают к морю"
     },
-    "кам"
+    " ну вот"
    ],
    "text_entities": [
     {
      "type": "spoiler",
-     "text": "река огонь поле пруд сад дорога пруд камень стол ключ стол окно лодка туман пруд ветер письмо сад облако огонь тум"
+     "text": "концовка сериала: все остаются живы и уезжают к морю"
     },
     {
      "type": "plain",
-     "text": "кам"
+     "text": " ну вот"
     }
    ]
   },
   {
    "id": 43,
    "type": "message",
-   "date": "2024-03-05T13:54:00",
-   "date_unixtime": "1709636040",
-   "from": "Имя248",
-   "from_id": "user1000001",
-   "file": "files/file_249.sh",
-   "file_name": "поле поле с",
-   "file_size": 174,
+   "date": "2025-02-11T16:06:00",
+   "date_unixtime": "1739279160",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/backup_notes.sh",
+   "file_name": "backup_notes.sh",
+   "file_size": 640,
    "mime_type": "text/x-script.sh",
    "text": "",
    "text_entities": []
@@ -1282,13 +1215,13 @@
   {
    "id": 44,
    "type": "message",
-   "date": "2024-03-05T14:01:00",
-   "date_unixtime": "1709636460",
-   "from": "Имя251",
-   "from_id": "user1000001",
-   "file": "files/file_252.docx",
-   "file_name": "лодка лодка поле звезда книга холм холм",
-   "file_size": 25475,
+   "date": "2025-02-11T16:20:00",
+   "date_unixtime": "1739280000",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/cv_draft.docx",
+   "file_name": "cv_draft.docx",
+   "file_size": 36864,
    "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
    "text": "",
    "text_entities": []
@@ -1296,13 +1229,13 @@
   {
    "id": 45,
    "type": "message",
-   "date": "2024-03-05T14:08:00",
-   "date_unixtime": "1709636880",
-   "from": "Имя254",
-   "from_id": "user1000001",
-   "file": "files/file_255.wav",
-   "file_name": "тетрадь чай звезда сад п",
-   "file_size": 78710461,
+   "date": "2025-02-11T16:26:00",
+   "date_unixtime": "1739280360",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "file": "files/voice_note.wav",
+   "file_name": "voice_note.wav",
+   "file_size": 1572864,
    "mime_type": "audio/x-wav",
    "text": "",
    "text_entities": []
@@ -1310,157 +1243,153 @@
   {
    "id": 46,
    "type": "service",
-   "date": "2024-03-05T14:15:00",
-   "date_unixtime": "1709637300",
-   "actor": "Имя257",
-   "actor_id": "user1000001",
+   "date": "2025-02-11T16:43:00",
+   "date_unixtime": "1739281380",
+   "actor": "Мария Образцова",
+   "actor_id": "user7700123",
    "action": "send_star_gift",
-   "gift_id": 2521506846602041576,
-   "stars": 875,
+   "gift_id": 6123456789012345678,
+   "stars": 150,
    "is_limited": true,
    "is_anonymous": true,
-   "gift_text": "рек",
+   "gift_text": "С днём рождения",
    "text": "",
    "text_entities": []
   },
   {
    "id": 47,
    "type": "message",
-   "date": "2024-03-05T14:22:00",
-   "date_unixtime": "1709637720",
-   "from": "Имя260",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя261",
+   "date": "2025-02-11T16:51:00",
+   "date_unixtime": "1739281860",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
    "contact_information": {
-    "first_name": "Имя262",
-    "last_name": "Имя263",
-    "phone_number": "+7 000 000-00-00"
+    "first_name": "Павел",
+    "last_name": "Тестов",
+    "phone_number": "+7 495 555-07-08"
    },
+   "forwarded_from": "Павел Тестов",
    "text": "",
    "text_entities": []
   },
   {
    "id": 48,
    "type": "message",
-   "date": "2024-03-05T14:29:00",
-   "date_unixtime": "1709638140",
-   "from": "Имя265",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя266",
-   "forwarded_from_id": "облако лампа каме",
-   "saved_from": "Имя268",
+   "date": "2025-02-11T17:03:00",
+   "date_unixtime": "1739282580",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "forwarded_from": "Ирина Тестова",
+   "forwarded_from_id": "user5500104",
+   "saved_from": "Ирина Тестова",
    "text": [
-    "река лампа дорога город",
+    "Список на пятницу: ",
     {
      "type": "strikethrough",
-     "text": "стол"
+     "text": "сдать книги"
     },
-    "тетрадь холм сад окно туман стол сад огонь лодка туман тетрадь ветер дорога туман звезда ветер звезда холм пруд ветер сад зве",
+    " (уже сдала), оставить за собой разбор шкафа, затем заглянуть на рынок за яблоками и обязательно посмотреть ",
     {
      "type": "link",
-     "text": "https://example.org/l/272"
+     "text": "https://example.org/market"
     },
-    "обл"
+    " — вдруг закрыто."
    ],
    "text_entities": [
     {
      "type": "plain",
-     "text": "река лампа дорога город"
+     "text": "Список на пятницу: "
     },
     {
      "type": "strikethrough",
-     "text": "стол"
+     "text": "сдать книги"
     },
     {
      "type": "plain",
-     "text": "тетрадь холм сад окно туман стол сад огонь лодка туман тетрадь ветер дорога туман звезда ветер звезда холм пруд ветер сад зве"
+     "text": " (уже сдала), оставить за собой разбор шкафа, затем заглянуть на рынок за яблоками и обязательно посмотреть "
     },
     {
      "type": "link",
-     "text": "https://example.org/l/272"
+     "text": "https://example.org/market"
     },
     {
      "type": "plain",
-     "text": "обл"
+     "text": " — вдруг закрыто."
     }
    ]
   },
   {
    "id": 49,
    "type": "message",
-   "date": "2024-03-05T14:36:00",
-   "date_unixtime": "1709638560",
-   "from": "Имя274",
-   "from_id": "user1000001",
-   "forwarded_from": "Имя275",
-   "forwarded_from_id": "сад дорога облако",
-   "saved_from": "Имя277",
-   "photo": "photos/file_278.jpg",
-   "photo_file_size": 458671,
-   "width": 3490,
-   "height": 9011,
+   "date": "2025-02-11T17:13:00",
+   "date_unixtime": "1739283180",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
+   "photo": "photos/lake_morning.jpg",
+   "photo_file_size": 288768,
+   "width": 1500,
+   "height": 1000,
+   "forwarded_from": "Дневники Образцов",
+   "forwarded_from_id": "channel5500108",
+   "saved_from": "Дневники Образцов",
    "text": [
     {
      "type": "bold",
-     "text": "звезда сад река тетрадь стол стол окно дорога чай ключ книга облако тетрадь ветер письмо стол поле окно лампа стол огонь мост письмо пруд"
+     "text": "Выписки из дневника путешественника"
     },
-    "чай",
+    ": утро началось с тумана над озером, лодки стояли у причала. ",
     {
      "type": "bold",
-     "text": "лампа чай мост ветер камень камень огонь песо"
+     "text": "Главное"
     },
-    "тум",
+    " — не торопиться. ",
     {
      "type": "blockquote",
-     "text": "пруд лампа книга огонь мост камень пруд холм поле звезда песок письмо ключ книга ключ облако лампа лодка стол тетрадь звезда звезда тетрадь облако чай огонь сад звезда облако книга поле лодка дорога облако ветер тетрадь стол ветер окно пруд облако облако лодка стол тетрадь облако лодка река окно мост окно поле город ветер лодка облако пруд туман сад сад песок стол облако сад песок сад сад книга пруд ключ книга холм сад окно лампа огонь река туман стол книга лодка холм облако дорога лодка облако город пруд звезда мост холм звезда чай лодка дорога туман стол ветер чай сад чай лампа холм дорога чай стол огонь лампа сад стол огонь мост книга лампа книга огонь книга камень туман тетрадь ветер книга дорога поле пруд ветер поле звезда чай лампа дорога звезда пруд туман тетрадь песок книга ветер огонь сад книга пруд холм холм стол холм звезда холм тетрадь стол поле туман огонь камень песок огонь лампа мост дорога камень город ключ облако стол город чай огонь чай туман стол холм город огонь окно дорога песок мост облако звезда песок холм письмо облако окно река пруд камень стол мост холм лодка холм лодка облако огонь мост пруд дорога лампа пруд холм книга мост окно дорога книга письмо камень пруд звезда книга мост мост река звезда дорога лампа дорога огонь огонь поле мост книга чай ветер туман стол звезда звезда тетрадь пруд письмо книга тетрадь ключ письмо холм холм поле река туман поле город чай туман мост тетрадь лодка пруд облако камень ключ ключ песок звезда сад поле ключ сад письмо ключ лампа тетрадь огонь тетрадь песок поле лампа поле тетрадь ветер облако лодка дорога река стол туман письмо окно облако мост поле книга ветер мост ключ река чай книга чай пруд поле чай холм лодка холм книга город тетрадь река книга пруд чай туман город чай письмо облако лампа облако пруд чай холм огонь река пруд ветер стол ветер пруд облако песок облако ключ стол песок облако чай звезда камень окно книга облако сад сад облако мост поле письмо мост огонь поле облако окно чай город река поле сад холм стол сад река чай дорога стол лодка огонь тетрадь пруд дорога облако облако чай окно поле пруд письмо дорога окно чай ключ туман холм город книга чай лампа дорога поле книга лампа песок ветер письмо облако дорога тетрадь звезда огонь книга огонь облако ключ песок песок поле чай туман мост тетрадь письмо окно письмо холм мост поле стол сад холм чай письмо мост камень дорога письмо река огонь ветер звезда город ключ облако звезда ключ поле тетрадь дорога дорога лодка огонь звезда лодка дорога стол книга река огонь тетрадь дорога огонь чай туман огонь песок песок письмо поле ветер ключ ключ ключ поле сад лампа лампа сад поле тетрадь тетрадь лодка город лодка сад пруд книга мост дорога тетрадь туман облако туман сад лодка туман река звезда чай лампа лодка ключ облако звезда окно стол лампа ключ сад звезда лампа песок река поле книга дорога река холм город туман ветер мост мост огонь ключ сад чай тетрадь облако город река лампа лампа дорога чай лампа чай книга стол река холм стол лодка пруд звезда ветер мост стол огонь холм дорога туман дорога город камень стол город звезда стол туман тетрадь туман ветер поле песок звезда холм ключ лодка тетрадь камень песок огонь облако холм лампа холм камень камень стол холм звезда лодка лодка чай песок письмо город ключ холм лампа лампа книга туман сад огонь город мост ветер стол чай мост лампа туман письмо книга книга пруд звезда пруд камень поле поле река туман город звезда огонь песок письмо река холм письмо облако поле ключ поле стол звезда дорога сад дорога поле холм звезда холм окно поле песок ка"
-    },
-    "река мост сад ветер камень"
+     "text": "Лучшие дороги те, по которым возвращаются, потому что в первый раз смотришь вперёд, а во второй замечаешь, что осталось по сторонам.",
+     "collapsed": true
+    }
    ],
    "text_entities": [
     {
      "type": "bold",
-     "text": "звезда сад река тетрадь стол стол окно дорога чай ключ книга облако тетрадь ветер письмо стол поле окно лампа стол огонь мост письмо пруд"
+     "text": "Выписки из дневника путешественника"
     },
     {
      "type": "plain",
-     "text": "чай"
+     "text": ": утро началось с тумана над озером, лодки стояли у причала. "
     },
     {
      "type": "bold",
-     "text": "лампа чай мост ветер камень камень огонь песо"
+     "text": "Главное"
     },
     {
      "type": "plain",
-     "text": "тум"
+     "text": " — не торопиться. "
     },
     {
      "type": "blockquote",
-     "text": "пруд лампа книга огонь мост камень пруд холм поле звезда песок письмо ключ книга ключ облако лампа лодка стол тетрадь звезда звезда тетрадь облако чай огонь сад звезда облако книга поле лодка дорога облако ветер тетрадь стол ветер окно пруд облако облако лодка стол тетрадь облако лодка река окно мост окно поле город ветер лодка облако пруд туман сад сад песок стол облако сад песок сад сад книга пруд ключ книга холм сад окно лампа огонь река туман стол книга лодка холм облако дорога лодка облако город пруд звезда мост холм звезда чай лодка дорога туман стол ветер чай сад чай лампа холм дорога чай стол огонь лампа сад стол огонь мост книга лампа книга огонь книга камень туман тетрадь ветер книга дорога поле пруд ветер поле звезда чай лампа дорога звезда пруд туман тетрадь песок книга ветер огонь сад книга пруд холм холм стол холм звезда холм тетрадь стол поле туман огонь камень песок огонь лампа мост дорога камень город ключ облако стол город чай огонь чай туман стол холм город огонь окно дорога песок мост облако звезда песок холм письмо облако окно река пруд камень стол мост холм лодка холм лодка облако огонь мост пруд дорога лампа пруд холм книга мост окно дорога книга письмо камень пруд звезда книга мост мост река звезда дорога лампа дорога огонь огонь поле мост книга чай ветер туман стол звезда звезда тетрадь пруд письмо книга тетрадь ключ письмо холм холм поле река туман поле город чай туман мост тетрадь лодка пруд облако камень ключ ключ песок звезда сад поле ключ сад письмо ключ лампа тетрадь огонь тетрадь песок поле лампа поле тетрадь ветер облако лодка дорога река стол туман письмо окно облако мост поле книга ветер мост ключ река чай книга чай пруд поле чай холм лодка холм книга город тетрадь река книга пруд чай туман город чай письмо облако лампа облако пруд чай холм огонь река пруд ветер стол ветер пруд облако песок облако ключ стол песок облако чай звезда камень окно книга облако сад сад облако мост поле письмо мост огонь поле облако окно чай город река поле сад холм стол сад река чай дорога стол лодка огонь тетрадь пруд дорога облако облако чай окно поле пруд письмо дорога окно чай ключ туман холм город книга чай лампа дорога поле книга лампа песок ветер письмо облако дорога тетрадь звезда огонь книга огонь облако ключ песок песок поле чай туман мост тетрадь письмо окно письмо холм мост поле стол сад холм чай письмо мост камень дорога письмо река огонь ветер звезда город ключ облако звезда ключ поле тетрадь дорога дорога лодка огонь звезда лодка дорога стол книга река огонь тетрадь дорога огонь чай туман огонь песок песок письмо поле ветер ключ ключ ключ поле сад лампа лампа сад поле тетрадь тетрадь лодка город лодка сад пруд книга мост дорога тетрадь туман облако туман сад лодка туман река звезда чай лампа лодка ключ облако звезда окно стол лампа ключ сад звезда лампа песок река поле книга дорога река холм город туман ветер мост мост огонь ключ сад чай тетрадь облако город река лампа лампа дорога чай лампа чай книга стол река холм стол лодка пруд звезда ветер мост стол огонь холм дорога туман дорога город камень стол город звезда стол туман тетрадь туман ветер поле песок звезда холм ключ лодка тетрадь камень песок огонь облако холм лампа холм камень камень стол холм звезда лодка лодка чай песок письмо город ключ холм лампа лампа книга туман сад огонь город мост ветер стол чай мост лампа туман письмо книга книга пруд звезда пруд камень поле поле река туман город звезда огонь песок письмо река холм письмо облако поле ключ поле стол звезда дорога сад дорога поле холм звезда холм окно поле песок ка",
+     "text": "Лучшие дороги те, по которым возвращаются, потому что в первый раз смотришь вперёд, а во второй замечаешь, что осталось по сторонам.",
      "collapsed": true
-    },
-    {
-     "type": "plain",
-     "text": "река мост сад ветер камень"
     }
    ]
   },
   {
    "id": 50,
    "type": "message",
-   "date": "2024-03-05T14:43:00",
-   "date_unixtime": "1709638980",
-   "from": "Имя285",
-   "from_id": "user1000001",
+   "date": "2025-02-11T17:28:00",
+   "date_unixtime": "1739284080",
+   "from": "Мария Образцова",
+   "from_id": "user7700123",
    "text": [
     {
      "type": "link",
-     "text": "https://example.org/l/286"
+     "text": "https://example.org/read/later/50"
     }
    ],
    "text_entities": [
     {
      "type": "link",
-     "text": "https://example.org/l/286"
+     "text": "https://example.org/read/later/50"
     }
    ]
   }

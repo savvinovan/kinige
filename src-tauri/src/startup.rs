@@ -20,6 +20,13 @@ pub fn is_background_launch<I: IntoIterator<Item = String>>(args: I) -> bool {
     args.into_iter().any(|arg| arg == BACKGROUND_FLAG)
 }
 
+/// Показывать ли главное окно при запуске. Обычный запуск показывает всегда. Запуск мостом MCP (`--background`) живёт в
+/// menu bar без окна, но только если журнал открыт: при повреждённой или более новой базе (`store_open = false`) в menu bar
+/// сидел бы невидимый процесс, а экран восстановления (`recovery`) — единственное место, где человек видит, что случилось.
+pub fn should_show_main_on_launch(background: bool, store_open: bool) -> bool {
+    !background || !store_open
+}
+
 /// Аргументы процесса строками. `std::env::args()` паникует на аргументе не в UTF-8 (его может подсунуть любая программа,
 /// запустившая приложение): такой аргумент приходит с заменой нечитаемых байтов, флаги от этого не меняются.
 pub fn launch_args() -> Vec<String> {
@@ -90,8 +97,25 @@ fn startup_error_category(error: &(dyn std::error::Error + 'static)) -> &'static
 
 #[cfg(test)]
 mod tests {
-    use super::{is_background_launch, startup_error_category};
+    use super::{is_background_launch, should_show_main_on_launch, startup_error_category};
     use kinige_store::StoreError;
+
+    #[test]
+    fn a_background_launch_with_a_broken_database_still_shows_the_recovery_window() {
+        // Мост MCP запустил приложение, база повреждена или новее приложения: без окна процесс невидим.
+        assert!(should_show_main_on_launch(true, false));
+    }
+
+    #[test]
+    fn a_background_launch_with_an_open_store_stays_in_the_menu_bar() {
+        assert!(!should_show_main_on_launch(true, true));
+    }
+
+    #[test]
+    fn an_ordinary_launch_always_shows_the_window() {
+        assert!(should_show_main_on_launch(false, true));
+        assert!(should_show_main_on_launch(false, false));
+    }
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|arg| arg.to_string()).collect()
