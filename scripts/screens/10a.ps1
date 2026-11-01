@@ -122,10 +122,10 @@ $PatternExpand = [System.Windows.Automation.ExpandCollapsePattern]::Pattern
 
 # ---- Helpers ----------------------------------------------------------------------------------------------------------
 
-function Say([string]$text) { Write-Host $text }
+function Say([string]$text) { Write-Host ((Get-Date).ToString('HH:mm:ss') + ' ' + $text) }
 
 function Fail([string]$text) {
-  Write-Host "ERROR: $text"
+  Write-Host ((Get-Date).ToString('HH:mm:ss') + " ERROR: $text")
   $script:Fails++
 }
 
@@ -162,7 +162,7 @@ function Get-Elements($root) {
   $cache.Add($AE::ControlTypeProperty)
   $cache.TreeScope = $Scope::Element
   # The first queries to a freshly started web view can time out (the page is still building its accessibility tree): retry.
-  for ($attempt = 1; $attempt -le 4; $attempt++) {
+  for ($attempt = 1; $attempt -le 2; $attempt++) {
     $activation = $cache.Activate()
     try { return $root.FindAll($Scope::Descendants, [System.Windows.Automation.Condition]::TrueCondition) }
     catch { Say "UI Automation query failed (attempt $attempt): $($_.Exception.Message)"; Start-Sleep -Seconds 3 }
@@ -225,7 +225,7 @@ function Press([string]$windowTitle, [string]$name) {
       }
     }
     return $false
-  } 20 "press '$name' in '$windowTitle'"
+  } 12 "press '$name' in '$windowTitle'"
   if (-not $done) { Dump-Failure "press-$name" $windowTitle }
   Start-Sleep -Milliseconds 1500
 }
@@ -255,7 +255,7 @@ function Shoot([string]$name, [string]$title, [int]$minLines = 30) {
   $handle = New-Object System.IntPtr($window.Current.NativeWindowHandle)
   [Win]::Raise($handle)
   $lines = @()
-  $deadline = (Get-Date).AddSeconds(40)
+  $deadline = (Get-Date).AddSeconds(25)
   do {
     Start-Sleep -Seconds 1
     $window = Get-AppWindow $title
@@ -272,6 +272,9 @@ function Shoot([string]$name, [string]$title, [int]$minLines = 30) {
 }
 
 function Start-App([string]$exe, [bool]$overrides) {
+  # Chromium builds its accessibility tree lazily, on the first UI Automation query, and a query that arrives while it is
+  # being built can hang for minutes. With this flag the tree is built from the start of the page.
+  $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--force-renderer-accessibility'
   if ($overrides) {
     $env:KINIGE_DATA_DIR = $Data
     $env:KINIGE_MIRROR_DIR = $Mirror
