@@ -1,0 +1,41 @@
+# cargo-deny: лицензии зависимостей, известные уязвимости (RustSec) и источники крейтов. Запуск: задание `deny` в ci.yml.
+# Локально: cargo install cargo-deny && cargo deny check advisories licenses sources
+
+[graph]
+all-features = true
+
+[advisories]
+# Только «не поддерживается» для транзитивных зависимостей Tauri на Linux: заменить их можно лишь обновлением Tauri
+# и его плагинов. Каждая запись пересматривается при обновлении Tauri; уязвимости (не «unmaintained») сюда не добавляются.
+ignore = [
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error: через glib-macros -> gtk3-rs -> tray-icon/wry (Tauri, только Linux)" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant: через zbus -> tauri-plugin-opener и tauri-plugin-single-instance (только Linux)" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names: через zbus (тот же путь, что у zvariant)" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: через zbus (тот же путь, что у zvariant)" },
+]
+
+[licenses]
+# Разрешены только лицензии, допускающие распространение в бинарнике (правило 10 CLAUDE.md для ассетов — то же и для кода).
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+    "MPL-2.0",
+    # target-lexicon (через tauri-build/tauri-utils): Apache-2.0 с исключением LLVM — не накладывает условий на бинарник.
+    "Apache-2.0 WITH LLVM-exception",
+    # clipboard-win, error-code (arboard, только Windows): Boost Software License — разрешительная, без копилефта.
+    "BSL-1.0",
+]
+confidence-threshold = 0.8
+# Список общий для всех платформ; лишнее в нём не ошибка.
+unused-allowed-license = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
