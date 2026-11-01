@@ -73,3 +73,15 @@
 - Папка копии, смена которой пришла во время прохода писателя копии, не теряется: проход начинается заново с новой папкой (`mirror.rs`), все дни помечены заново.
 - Изменения за пределами 1–2 с применяются с задержкой опроса; правка и откат в пределах той же секунды с тем же размером и `mtime` теоретически не видны. Принято.
 - Для `sync-crypto-guardian`: порядок применения при старте и после восстановления, проверки небезопасного файла, строка `mcp_log` с новым значением `tool` (без миграции), матрица IPC нового окна. Схема SQLite, протокол синхронизации и шифрование не меняются.
+
+## Windows note (slice 10a, KINIG-61)
+
+The checks of an unsafe file and an unsafe directory are POSIX checks (owner, group/world write bits, `O_NOFOLLOW`, FIFOs). They do not exist in the Windows build: `settings_file/io.rs` has `cfg(not(unix))` branches that open the file normally, never report `owner`, `permissions`, `symlink` or `directory` as the reason for ignoring a file, and the single `unsafe` (`geteuid`) is compiled for Unix only. What stays: the 1 MiB limit, strict UTF-8 without BOM, the strict JSON parse, the "hash matches, the database wins" rule, the atomic write (temporary file, `fsync`, `rename`).
+
+Why this is acceptable for now:
+- The file lives in `%APPDATA%\me.savvinov.kinige`, which Windows creates with an ACL that gives access to the user, SYSTEM and administrators only; a new subfolder inherits it. The group/world-writable case the POSIX check guards against does not arise in the default setup.
+- On Windows the only thing the file can switch on that the window cannot is AI-agent access, and the Windows build has no MCP server at all (ADR-0009, slice 10a): `agent_access.enabled` in the file is stored but nothing listens, and the commands that change it answer `unsupported`.
+
+What this does not cover: a user who moves the data directory (`KINIGE_DATA_DIR` is for tests only) or an administrator who changes the ACL. When MCP comes to Windows (named pipes, slice 10) the check has to be replaced by an ACL check (owner SID and no write access for other principals) before the file may switch agent access on; `sync-crypto-guardian` reviews that change.
+
+Tests: the mode, symlink and FIFO tests are `#[cfg(unix)]`; the hash, parse, size, encoding and atomic-write tests run on Windows in the `windows` CI job.

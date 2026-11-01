@@ -13,6 +13,8 @@
 - **The workspace compiles and passes tests on Windows (`x86_64-pc-windows-msvc`).**
   - `src-tauri/src/mcp` exists only under `cfg(unix)` (Unix socket, `peer_cred`, `own_uid`). On other platforms a small stub module with the same public surface: `start` and `shutdown` do nothing, `socket_info` answers `error = "unsupported"`.
   - `crates/kinige-mcp` (the bridge): the Unix code is under `cfg(unix)`; on Windows the binary compiles and exits with code 2 and one line on stderr ("unsupported on this platform"), without touching the network or the disk. It is not part of the Windows bundle (`tauri.windows.conf.json` empties `externalBin`; `build.rs` makes no stub there).
+  - Mirror folder names: Windows device names (`CON`, `NUL`, `COM1`, …) get a `_` suffix, on Windows only.
+  - Test executables of the app crate get the Common Controls v6 manifest on Windows (`build.rs`), otherwise they do not start (`TaskDialogIndirect` from the dialog plugin).
   - `kinige-store`: `settings_file/io.rs` already has `cfg(not(unix))` branches (no owner and mode checks, no `O_NOFOLLOW`, no `libc`). The weaker check is documented in ADR-0010 as a Windows note. The one `unsafe` (`geteuid`) stays unix-only.
   - Durability code that opens a directory or a read-only handle to `sync_all` is fixed for Windows (the call fails there): a regression test where the behaviour is observable.
   - Non-macOS paths of the capture window, tray, activation and global shortcuts compile and behave: the capture window is a normal window, `Focused(false)` hides it.
@@ -35,7 +37,7 @@
 - `windows` job in CI is green; macOS and Linux jobs unchanged and green.
 - `release.yml` run in dry-run mode (build and upload the artifact, no Release) on a branch: the installer exists, size is reported, `SHA256SUMS` lists macOS and Windows files, the versions match.
 - Screenshots of the real window from the Windows runner in `docs/screens/10a/` (normal and large text), plus the text checks.
-- Data survives killing the process: store tests on Windows (the existing `abort` tests are Unix-only because they use signals; a Windows variant kills the child with `TerminateProcess`).
+- Data survive killing the process: the existing `abort` tests of the store (the child calls `abort()`, the parent reads the database) run in the `windows` job too (only the `SIGABRT` assertion is Unix-only), and in the real window the scenario kills the process with `TerminateProcess` and counts the entries before and after (`survival.txt`).
 
 ## Screenshots (`docs/screens/10a/`)
 1. `01-inbox.png`: main window, Inbox with the "On this day" card.
@@ -44,7 +46,7 @@
 4. `04-settings-access-unavailable.png`: "AI agent access" with "Not available on Windows yet."
 5. `05-large-text-inbox.png`, `06-large-text-settings.png`: large text.
 6. `07-after-kill.png`: after killing the process and starting again, entries are in place.
-Texts: `install.txt` (installer size, SHA256, install directory, version of the installed exe), `data-location.txt` (names of files in `%APPDATA%` and the mirror folder, no content).
+Texts: `install.txt` (installer size, SHA256, installed files, version of the installed exe), `survival.txt` (entry counts around the kill), `data-location.txt` (names of files in the default `%APPDATA%\me.savvinov.kinige` and `Documents\Kinige`, from a start without the data overrides, no content).
 
 ## Touches sensitive zones
 Only the settings-file safety checks on Windows (ADR-0010): ownership and mode checks do not exist there, the data directory is protected by the per-user ACL of `%APPDATA%`. `sync-crypto-guardian` reviews the Windows note in ADR-0010 before merge. Schema, protocol, envelope and keys do not change.

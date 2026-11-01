@@ -1,4 +1,5 @@
 # CI на каждый PR и push в main (GitHub Actions): Linux-раннеры, а код приложения под macOS — на macos-15 (задание `macos`).
+# Windows (слайс 10a) — на windows-2025 (задание `windows`).
 # Сборка и подпись .app — локально: scripts/build-app.sh; снимки настоящего окна — screens.yml (macOS-раннер).
 name: CI
 

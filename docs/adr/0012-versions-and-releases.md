@@ -24,3 +24,19 @@
 - Intel-сборки нет (раннер arm64); universal-сборка — отдельное решение, если понадобится.
 - Сгенерированные GitHub заметки перечисляют PR, а не коммиты; у первого релиза (0.5.0) это все PR с начала истории, список можно вычистить вручную.
 - Исключение из правила 15 CLAUDE.md: релизный коммит и PR `Release vX.Y.Z` создаёт скрипт и идёт без номера задачи Huly (номер KINIG-54 к ним не подходит: релизов будет много, а задача одна).
+
+## Windows artifacts (slice 10a, KINIG-61)
+
+Decided by the user on 1.11.2026: the Windows build comes before the rest of slice 10, without signing and without MCP.
+
+- **Runner and target.** `release.yml` has a second build job on `windows-2025` (x64, `x86_64-pc-windows-msvc`); `build` was renamed `build-macos`. Both jobs run the same checks of the tag (`vX.Y.Z`, equal to the version in `Cargo.toml`, the commit is in `main`) and build from scratch without caches.
+- **Format.** An unsigned NSIS installer (`tauri build --bundles nsis`, `scripts/build-windows.sh`), per-user (`installMode: currentUser`): no administrator rights, installed under `%LOCALAPPDATA%`. WebView2 is downloaded by the installer if the machine lacks it (`downloadBootstrapper`, the default; an offline installer would add ~127 MB). MSI was not chosen: it needs elevation by default and gives nothing for a single-user app.
+- **Name.** `Kinige-X.Y.Z-windows-x64-setup.exe`. The script checks that the installer name and `ProductVersion` in `kinige.exe` carry the version from `Cargo.toml` (the same single source as on macOS: `tauri-build` writes it into the exe resources).
+- **No bridge.** `src-tauri/tauri.windows.conf.json` empties `bundle.externalBin`, so the MCP bridge is neither built nor bundled; `build.rs` makes no sidecar stub on Windows. The bridge crate still compiles there and exits with code 2 and "unsupported". The simpler option (build the bridge and ship a binary that only says "unsupported") would put a useless executable next to the app and invite a connection snippet that cannot work.
+- **Checksums.** Each build job writes its own `SHA256SUMS.<os>`; `publish` merges them into the single `SHA256SUMS`, runs `sha256sum -c` over every file and only then creates the Release with the `.dmg`, `.zip` and `.exe`. The release notes (`.github/release-notes.md`) have a Windows section: SmartScreen ("More info" -> "Run anyway"), data locations (`%APPDATA%\me.savvinov.kinige`, `Documents\Kinige`), AI-agent access not available yet.
+- **Dry run.** A push to a branch (when the workflow file lists it) runs both build jobs without the tag checks and without `publish`; this is how the workflow was checked before the first tag.
+
+Consequences:
+- SmartScreen warns on every download until Authenticode signing (slice 10); reputation builds only after signing.
+- No auto-update on Windows until the updater (slice 10); updates are manual, the installer upgrades in place.
+- ARM64 Windows is not built (x64 runs there under emulation).
