@@ -40,7 +40,7 @@ export function ChatRow({ chat, selected, language, onSelect, dropOver = false, 
         onClick={onSelect ? () => onSelect(chat.id) : undefined}
         {...(onOpenMenu ? trigger : {})}
       >
-        <ChatTile chat={chat} />
+        <ChatTile chat={chat} name={name} />
         <span className="chat-row__name">{name}</span>
         {counter ? (
           // Диктору читается «Рецепты, записей: 12 тыс.»: запятая и подпись скрыты визуально, число видно.

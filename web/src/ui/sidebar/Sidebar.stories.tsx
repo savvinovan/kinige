@@ -5,15 +5,18 @@ import "./sidebar-stories.css";
 
 const INBOX: SidebarChat = { id: "inbox", name: "", isInbox: true, emoji: "📥", count: 42 };
 const CHATS: SidebarChat[] = [
-  { id: "diary", name: "Дневник", emoji: "📔", count: 318, pinned: true, tint: "amber" },
-  { id: "ideas", name: "Идеи", emoji: "💡", count: 87, pinned: true, tint: "violet" },
+  { id: "diary", name: "Дневник", emoji: "📔", count: 318, pinned: true },
+  { id: "ideas", name: "Идеи", emoji: "💡", count: 87, pinned: true },
   INBOX,
-  { id: "work", name: "Работа", emoji: "💼", count: 1234, tint: "blue" },
-  { id: "books", name: "Книги", emoji: "📚", count: 9, tint: "green" },
-  { id: "recipes", name: "Рецепты", emoji: "🍳", count: 12345, tint: "red" },
-  { id: "reading", name: "Reading list", emoji: "📖" },
-  { id: "trip", name: "Отпуск 2025", emoji: "🏖️", count: 61, archived: true, tint: "teal" },
-  { id: "old", name: "Старый проект", emoji: "🗄️", count: 4, archived: true },
+  { id: "work", name: "Работа", emoji: "💼", count: 1234 },
+  { id: "books", name: "Книги", emoji: "📚", count: 9 },
+  { id: "recipes", name: "Рецепты", emoji: "🍳", count: 12345 },
+  // Без эмодзи: Rust хранит «💬» по умолчанию, сайдбар показывает плитку с буквой (цвет из идентификатора).
+  { id: "projects", name: "Проекты", emoji: "💬", count: 18 },
+  { id: "linux", name: "Linux notes", emoji: "💬", count: 55 },
+  { id: "mom", name: "Мама", emoji: "💬", count: 214 },
+  { id: "trip", name: "Отпуск 2025", emoji: "🏖️", count: 61, archived: true },
+  { id: "old", name: "Старый проект", emoji: "💬", count: 4, archived: true },
 ];
 
 interface DemoProps {
@@ -143,21 +146,54 @@ export const ДлинныеИмена: Story = {
   },
 };
 
-/** Плитки всех цветов чата и нейтральная (чат без цвета): выбран чат с цветной плиткой, остальные на фоне и рядом с выбранным. */
+/** Плитки с буквой всех шести цветов (цвет задан явно); выбрана зелёная, остальные на фоне и рядом с выбранной. */
 export const ЦветаПлиток: Story = {
   args: {
     chats: [
-      { id: "n", name: "Без цвета", emoji: "💬", count: 3 },
-      { id: "b", name: "Синий", emoji: "🌊", count: 4, tint: "blue" },
-      { id: "t", name: "Бирюзовый", emoji: "🧊", count: 5, tint: "teal" },
-      { id: "g", name: "Зелёный", emoji: "🌿", count: 6, tint: "green" },
-      { id: "a", name: "Янтарный", emoji: "🍯", count: 7, tint: "amber" },
-      { id: "r", name: "Красный", emoji: "🍎", count: 8, tint: "red" },
-      { id: "v", name: "Фиолетовый", emoji: "🔮", count: 9, tint: "violet" },
+      { id: "b", name: "Синий", emoji: "💬", count: 4, tint: "blue" },
+      { id: "t", name: "Бирюзовый", emoji: "💬", count: 5, tint: "teal" },
+      { id: "g", name: "Зелёный", emoji: "💬", count: 6, tint: "green" },
+      { id: "o", name: "Оранжевый", emoji: "💬", count: 7, tint: "orange" },
+      { id: "p", name: "Розовый", emoji: "💬", count: 8, tint: "pink" },
+      { id: "v", name: "Фиолетовый", emoji: "💬", count: 9, tint: "violet" },
     ],
     selectedId: "g",
     trashCount: 0,
   },
+};
+
+/** Эмодзи без плитки и плитки с буквой рядом: названия стоят на одной вертикали; буква — первая графема («Ёлка», «Linux», «A» после эмодзи). */
+export const ЭмодзиИБуквы: Story = {
+  args: {
+    chats: [
+      { id: "e1", name: "Идеи", emoji: "💡", count: 87 },
+      { id: "l1", name: "Ёлка", emoji: "💬", count: 3 },
+      { id: "e2", name: "Книги", emoji: "📚", count: 9 },
+      { id: "l2", name: "Linux notes", emoji: "💬", count: 55 },
+      { id: "l3", name: "  «мама» и папа", emoji: "💬", count: 214 },
+      { id: "l4", name: "🎉 Party plans", emoji: "💬", count: 2 },
+      { id: "l5", name: "!!!", emoji: "💬", count: 1 },
+    ],
+    selectedId: "l2",
+    trashCount: 0,
+  },
+};
+
+/** Те же чаты в английском интерфейсе (названия — данные пользователя). */
+export const ЭмодзиИБуквыАнглийский: Story = {
+  args: { ...ЭмодзиИБуквы.args },
+  globals: { language: "en" },
+};
+
+/** Крупный текст: плитка с буквой и эмодзи растут вместе с текстом. */
+export const ЭмодзиИБуквыКрупныйТекст: Story = {
+  args: { ...ЭмодзиИБуквы.args },
+  globals: { textScale: "large" },
+};
+
+/** Свёрнутая полоса: эмодзи без плитки и плитки с буквой. */
+export const ЭмодзиИБуквыСвёрнутый: Story = {
+  args: { ...ЭмодзиИБуквы.args, collapsed: true },
 };
 
 /** Счётчик записей справа: нет у пустого чата, 7, «1 234», «9 999», «12 тыс.», «1,2 млн»; тихий серый, не акцент. */

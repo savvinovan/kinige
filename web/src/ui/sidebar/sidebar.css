@@ -145,25 +145,41 @@
   color: var(--color-text-primary);
 }
 
-/* Плитка чата: эмодзи в мягком скруглённом квадрате, подкрашенном цветом чата; без цвета — нейтральная.
-   Эмодзи чата — единственное место, где интерфейс берёт системный шрифт (design/tokens/fontsets/inter.json). */
-.chat-tile {
+/* Эмодзи чата: как есть, без фона, в слоте размера плитки (названия стоят ровно). Эмодзи чата — единственное место, где
+   интерфейс берёт системный шрифт (design/tokens/fontsets/inter.json). */
+.chat-emoji {
   display: grid;
   flex: none;
   place-items: center;
   width: var(--layout-tile-size);
   height: var(--layout-tile-size);
-  border-radius: var(--radius-tile);
-  background: var(--color-tile-neutral);
   font-family: var(--font-family-emoji);
-  font-size: var(--icon-emoji-in-tile);
+  font-size: var(--icon-emoji-row);
   /* Высота строки 1: у эмодзи-шрифта свои ascent и descent, а межстрочный текста сажал глиф ниже центра. */
   line-height: var(--icon-emoji-line-height);
 }
 
-.chat-tile__glyph {
+.chat-emoji__glyph {
   /* Оптическое, а не геометрическое центрирование (icon.emoji.shift). */
   transform: translateY(var(--icon-emoji-shift));
+}
+
+/* Плитка с буквой у чата без эмодзи: скруглённый квадрат цвета чата, первая буква названия белым (text.primary). */
+.chat-tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  box-sizing: border-box;
+  width: var(--layout-tile-size);
+  height: var(--layout-tile-size);
+  border-radius: var(--radius-tile);
+  background: var(--color-tile-blue);
+  color: var(--color-text-primary);
+  font-family: var(--type-section-family);
+  font-size: var(--type-section-size);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--type-section-line-height);
+  user-select: none;
 }
 
 .chat-tile--blue {
@@ -178,12 +194,12 @@
   background: var(--color-tile-green);
 }
 
-.chat-tile--amber {
-  background: var(--color-tile-amber);
+.chat-tile--orange {
+  background: var(--color-tile-orange);
 }
 
-.chat-tile--red {
-  background: var(--color-tile-red);
+.chat-tile--pink {
+  background: var(--color-tile-pink);
 }
 
 .chat-tile--violet {

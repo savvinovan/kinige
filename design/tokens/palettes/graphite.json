@@ -118,41 +118,36 @@
         }
       },
       "tile": {
-        "$description": "Плитки чатов в сайдбаре (D2): мягкая подкраска цветом чата, тёмная и приглушённая, чтобы цветной эмодзи читался на ней, а сайдбар оставался спокойным. Эмодзи чата — не текст, контраст эмодзи к плитке не проверяется; плитка отличима от фона окна, подсветки наведения и выбранной строки не меньше чем в 1,2:1.",
-        "neutral": {
-          "$value": "#3e3e3e",
-          "$description": "Плитка чата без цвета: нейтральный серый, светлее выбранной строки (1,22:1) и фона окна (1,72:1).",
-          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 24,3 %" } }
-        },
+        "$description": "Letter tiles of chats without an emoji (D2): a rounded square with the first letter of the title in text.primary. Saturated but muted colors; the lightness of each is picked so that text.primary on it is at least 5:1 (the tests require 4.5:1). Every tile is at least 1.2:1 apart from the window background, the hover fill and the selected row.",
         "blue": {
-          "$value": "#374d67",
-          "$description": "Плитка чата цвета «синий».",
-          "$extensions": { "kinige": { "origin": "авторский: тон 212°, насыщенность 30 %, светлота 31 %" } }
+          "$value": "#3c6a9f",
+          "$description": "Tile color \"blue\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 212°, насыщенность 45 %, светлота 43 %" } }
         },
         "teal": {
-          "$value": "#376764",
-          "$description": "Плитка чата цвета «бирюзовый».",
-          "$extensions": { "kinige": { "origin": "авторский: тон 176°, насыщенность 30 %, светлота 31 %" } }
+          "$value": "#2b736e",
+          "$description": "Tile color \"teal\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 176°, насыщенность 45 %, светлота 31 %" } }
         },
         "green": {
-          "$value": "#376747",
-          "$description": "Плитка чата цвета «зелёный».",
-          "$extensions": { "kinige": { "origin": "авторский: тон 140°, насыщенность 30 %, светлота 31 %" } }
+          "$value": "#2d7645",
+          "$description": "Tile color \"green\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 140°, насыщенность 45 %, светлота 32 %" } }
         },
-        "amber": {
-          "$value": "#675537",
-          "$description": "Плитка чата цвета «янтарный».",
-          "$extensions": { "kinige": { "origin": "авторский: тон 38°, насыщенность 30 %, светлота 31 %" } }
+        "orange": {
+          "$value": "#945a38",
+          "$description": "Tile color \"orange\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 22°, насыщенность 45 %, светлота 40 %" } }
         },
-        "red": {
-          "$value": "#67373e",
-          "$description": "Плитка чата цвета «красный».",
-          "$extensions": { "kinige": { "origin": "авторский: тон 352°, насыщенность 30 %, светлота 31 %" } }
+        "pink": {
+          "$value": "#a63f6f",
+          "$description": "Tile color \"pink\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 332°, насыщенность 45 %, светлота 45 %" } }
         },
         "violet": {
-          "$value": "#493767",
-          "$description": "Плитка чата цвета «фиолетовый».",
-          "$extensions": { "kinige": { "origin": "авторский: тон 262°, насыщенность 30 %, светлота 31 %" } }
+          "$value": "#653fa6",
+          "$description": "Tile color \"violet\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 262°, насыщенность 45 %, светлота 45 %" } }
         }
       }
     }

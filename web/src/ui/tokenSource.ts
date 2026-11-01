@@ -20,8 +20,8 @@ const paletteFiles = import.meta.glob("../../../design/tokens/palettes/*.json", 
 const fontsetFiles = import.meta.glob("../../../design/tokens/fontsets/*.json", { eager: true, import: "default" });
 const activeFile = import.meta.glob("../../../design/tokens/active.json", { eager: true, import: "default" });
 
-/** Плитки чатов (D2): без цвета и по цвету чата. Подкрашены, а не нейтральный серый (кроме `tile.neutral`). */
-export const TILE_ROLES = ["tile.neutral", "tile.blue", "tile.teal", "tile.green", "tile.amber", "tile.red", "tile.violet"] as const;
+/** Плитки с буквой у чатов без эмодзи (D2): насыщенные приглушённые цвета, на них текст `text.primary`. */
+export const TILE_ROLES = ["tile.blue", "tile.teal", "tile.green", "tile.orange", "tile.pink", "tile.violet"] as const;
 
 /** Роли цвета, которые должна задавать палитра. */
 export const PALETTE_ROLES = [

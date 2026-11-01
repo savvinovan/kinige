@@ -26,10 +26,10 @@
         "$value": "-0.08rem",
         "$description": "Оптическая поправка по вертикали для эмодзи в строке чата: у системного эмодзи-шрифта свои ascent и descent, и глиф в геометрическом центре строки сидит ниже центра текста; поправка поднимает его (-1 px). Подобрана по скриншоту настоящего окна (WKWebView)."
       },
-      "in-tile": {
+      "row": {
         "$type": "dimension",
-        "$value": "1.05rem",
-        "$description": "Размер глифа эмодзи внутри плитки чата: 13,65 px (D2). Глиф Apple Color Emoji шире em примерно в 1,2 раза, поэтому в плитке 22,75 px он занимает около 16 px и оставляет поле."
+        "$value": "1.25rem",
+        "$description": "Size of a chat emoji in a sidebar row: 16.25 px (D2; it was `in-tile` before the emoji lost its tile). The Apple Color Emoji glyph is about 1.2 times wider than the em, so it takes about 19.5 px in the 22.75 px slot (layout.tile.size) and leaves a small margin."
       }
     },
     "stroke": {

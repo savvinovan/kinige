@@ -137,7 +137,7 @@ export function SidebarRail({
                       : undefined
                   }
                 >
-                  <ChatTile chat={chat} />
+                  <ChatTile chat={chat} name={name} />
                 </RailButton>
               </li>
             );

@@ -2,8 +2,8 @@ import type { TFunction } from "i18next";
 import type { ChatSummary } from "../../api/generated/ChatSummary";
 import type { MenuItem } from "../menu/ContextMenu";
 
-/** Цвет плитки чата (D2). Совпадает с ролями `tile.*` палитры; чат без цвета — нейтральная плитка. */
-export type ChatTint = "blue" | "teal" | "green" | "amber" | "red" | "violet";
+/** Цвет плитки с буквой (D2). Совпадает с ролями `tile.*` палитры. */
+export type ChatTint = "blue" | "teal" | "green" | "orange" | "pink" | "violet";
 
 export interface SidebarChat {
   id: string;
@@ -14,8 +14,8 @@ export interface SidebarChat {
   /** Эмодзи чата — данные пользователя; рисует системный эмодзи-шрифт. */
   emoji: string;
   /**
-   * Цвет плитки. Колонка `chat.color` в базе пока всегда пустая и в `ChatSummary` не отдаётся (D2 Rust не меняет),
-   * поэтому `toSidebarChat` его не задаёт и в приложении плитки нейтральные; цветные видны в историях.
+   * Цвет плитки с буквой. Колонка `chat.color` в базе пока всегда пустая и в `ChatSummary` не отдаётся (D2 Rust не меняет),
+   * поэтому `toSidebarChat` его не задаёт, а цвет выводится из идентификатора (`tintOf`); хранимый цвет придёт с KINIG-59.
    */
   tint?: ChatTint;
   /** Сколько записей в чате, кроме корзины. 0 или не задано — счётчик скрыт. */
@@ -31,7 +31,7 @@ export type ChatAction = "rename" | "icon" | "pin" | "unpin" | "archive" | "unar
 
 const isSet = (time: number | null | undefined) => time !== null && time !== undefined;
 
-/** Чат из ответа Rust → строка сайдбара. Чат без эмодзи получает нейтральный значок. */
+/** Чат из ответа Rust → строка сайдбара. Чат без эмодзи хранится с «💬»: сайдбар показывает для него плитку с буквой. */
 export function toSidebarChat(chat: ChatSummary): SidebarChat {
   return {
     id: chat.id,

@@ -62,6 +62,8 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { foreground: "surface.field", background: "surface.background", kind: "decorative" },
   { foreground: "surface.selected", background: "surface.background", kind: "decorative" },
   { foreground: "highlight.background", background: "surface.message", kind: "decorative" },
+  // Плитка с буквой (D2): белая буква на плитке читается как обычный текст (≥ 4,5:1) на каждом цвете плитки.
+  ...TILE_ROLES.map((tile) => ({ foreground: "text.primary", background: tile, kind: "text" as const })),
   // Сайдбар (D2): подсветка под мышью заметна на фоне окна; плитка чата заметна и на фоне, и под мышью, и на выбранной строке.
   { foreground: "surface.hover", background: "surface.background", kind: "hover" },
   // Выбранная строка заметно отличается от строки под мышью (и от фона: пара selected / background выше).

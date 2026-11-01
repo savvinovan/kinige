@@ -50,16 +50,17 @@ describe("происхождение цветов палитры graphite", () =
           expect(origin.startsWith(`${match?.[0]} `), `«${origin}» должно начинаться с «${match?.[0]} »`).toBe(true);
         });
       }
-    } else if ((TILE_ROLES as readonly string[]).includes(role) && role !== "tile.neutral") {
-      // Плитки подкрашены (D2): тон, насыщенность 30 % и светлота 31 % записаны в происхождении и совпадают с цветом.
-      it(`${role}: авторская подкраска, не выданная за Nord, тон и светлота как в описании`, () => {
+    } else if ((TILE_ROLES as readonly string[]).includes(role)) {
+      // Плитки подкрашены (D2): тон, насыщенность и светлота записаны в происхождении и совпадают с цветом.
+      it(`${role}: авторская подкраска, не выданная за Nord, тон, насыщенность и светлота как в описании`, () => {
         expect(origin.startsWith(OWN), origin).toBe(true);
         expect(nord.map(([, value]) => value)).not.toContain(hex);
-        const { hue, lightness } = hueAndLightness(hex);
-        const stated = /тон (\d+)°, насыщенность 30 %, светлота 31 %/.exec(origin);
+        const { hue, saturation, lightness } = toHueSaturationLightness(hex);
+        const stated = /тон (\d+)°, насыщенность (\d+) %, светлота (\d+) %/.exec(origin);
         expect(stated, origin).not.toBeNull();
         expect(Math.abs(hue - Number(stated?.[1]))).toBeLessThanOrEqual(2);
-        expect(Math.abs(lightness - 31)).toBeLessThanOrEqual(1);
+        expect(Math.abs(saturation - Number(stated?.[2]))).toBeLessThanOrEqual(1.5);
+        expect(Math.abs(lightness - Number(stated?.[3]))).toBeLessThanOrEqual(1);
       });
     } else {
       it(`${role}: авторский нейтральный серый (насыщенность 0), не выданный за Nord`, () => {
@@ -72,14 +73,15 @@ describe("происхождение цветов палитры graphite", () =
   }
 });
 
-/** Тон (градусы) и светлота HSL (проценты) цвета «#rrggbb». */
-function hueAndLightness(hex: string): { hue: number; lightness: number } {
+/** Тон (градусы), насыщенность и светлота HSL (проценты) цвета «#rrggbb». */
+function toHueSaturationLightness(hex: string): { hue: number; saturation: number; lightness: number } {
   const [r = 0, g = 0, b = 0] = [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16) / 255);
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const delta = max - min;
-  const lightness = ((max + min) / 2) * 100;
-  if (delta === 0) return { hue: 0, lightness };
+  const lightness = (max + min) / 2;
+  if (delta === 0) return { hue: 0, saturation: 0, lightness: lightness * 100 };
+  const saturation = delta / (1 - Math.abs(2 * lightness - 1));
   const sector = max === r ? ((g - b) / delta + 6) % 6 : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4;
-  return { hue: sector * 60, lightness };
+  return { hue: sector * 60, saturation: saturation * 100, lightness: lightness * 100 };
 }
