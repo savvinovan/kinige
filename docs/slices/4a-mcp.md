@@ -62,7 +62,7 @@ The slice is not split, one PR. Work order follows "Tasks": if the budget runs o
 - **The “AI agent access” window** and a row in “Settings”. New commands — only for the main window.
 - **Background start** (`--background`): `main` — `visible: false`, shown in `setup`.
 
-## NOT included
+## Not included
 - **MCP:**
   - semantic search (P1);
   - MCP resources and prompts, `structuredContent`, `tools/list_changed` (the window asks to reconnect the agent);
@@ -79,7 +79,7 @@ The slice is not split, one PR. Work order follows "Tasks": if the budget runs o
 - **The system request for access to "Documents"** on the first background write of the copy — known behavior (ADR-0009).
 - **Windows and Linux** — slice 10.
 
-## What "done" looks like
+## What “done” looks like
 **The “AI agent access” window** — the D1 `Modal` over the main window, 1280 × 800. Top to bottom:
 - the access checkbox (`Checkbox` from slice 4) and one line of explanation;
 - the mode (`SegmentedChoice`) and a quiet hint about reconnecting;
