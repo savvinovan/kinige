@@ -5,8 +5,10 @@
 # Data are synthetic (`seed_demo`) in a temporary directory; the real profile is not touched, except in the last phase, which
 # starts the app once WITHOUT the data overrides on the fresh runner to prove the documented default locations.
 # The page is driven over the WebView2 DevTools channel (scripts/screens/cdp.mjs, Playwright connectOverCDP): the scenario
-# starts the app with WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=<port> (localhost only, set only here;
-# the app has no code for it). UI Automation was tried first and hangs on the WebView2 tree. Each screenshot is the
+# opens a DevTools port (--remote-debugging-port, localhost only, only while the scenario runs; the app has no code for it).
+# The runner account is an administrator, so the app runs elevated and WebView2 ignores WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
+# and HKCU for it (Microsoft Learn, "Develop secure WebView2 apps"); the HKLM policy key AdditionalBrowserArguments is
+# honored and is what the scenario sets and removes. UI Automation was tried first and hangs on the WebView2 tree. Each screenshot is the
 # rectangle of one Kinige window (the real title bar included), taken with CopyFromScreen after the window is raised; before
 # it, the text and accessible names of that page are checked for personal paths and names (see Test-Private).
 # The result goes to -Out (docs/screens/10a); debug dumps go to $Work\debug and never into the repository.
@@ -212,8 +214,8 @@ function Shoot([string]$name, [string]$which) {
 }
 
 function Start-App([string]$exe, [bool]$overrides) {
-  # The DevTools port of the web view: localhost only (Chromium's default), exists only while the scenario runs the app.
-  $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=$Port"
+  # The DevTools port of the web view: localhost only (Chromium's default), exists only while the scenario runs.
+  Set-DevToolsPolicy
   if ($overrides) {
     $env:KINIGE_DATA_DIR = $Data
     $env:KINIGE_MIRROR_DIR = $Mirror
@@ -229,7 +231,8 @@ function Start-App([string]$exe, [bool]$overrides) {
     Focus-Window 'Kinige'
     Start-Sleep -Seconds 2
   }
-  Remove-Item Env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS -ErrorAction SilentlyContinue
+  $browsers = Get-CimInstance Win32_Process -Filter "Name = 'msedgewebview2.exe'" | Where-Object { $_.CommandLine -match 'remote-debugging-port' }
+  Say ("web view processes with the DevTools port: " + @($browsers).Count)
   return $window
 }
 
@@ -257,6 +260,14 @@ function Send-Note([string]$text) {
   Start-Sleep -Seconds 2
   return $true
 }
+
+# The policy key WebView2 reads for AdditionalBrowserArguments; the value name is the exe name of the host app.
+$PolicyKey = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+function Set-DevToolsPolicy {
+  New-Item -Path $PolicyKey -Force | Out-Null
+  Set-ItemProperty -Path $PolicyKey -Name $script:ExeName -Value "--remote-debugging-port=$Port" -Type String
+}
+function Clear-DevToolsPolicy { Remove-Item -Path $PolicyKey -Recurse -Force -ErrorAction SilentlyContinue }
 
 function Set-Dark {
   $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
@@ -292,6 +303,7 @@ $install.WaitForExit(600000) | Out-Null
 if ($install.ExitCode -ne 0) { Fail "the installer exited with $($install.ExitCode)" }
 $exe = Get-ChildItem -Path $AppDir -Filter *.exe -File | Where-Object { $_.Name -notmatch '^uninstall' } | Select-Object -First 1
 if (-not $exe) { Fail "no application exe in the install directory"; Get-ChildItem $AppDir -Recurse | Out-String | Write-Host; exit 1 }
+$script:ExeName = $exe.Name
 $version = $exe.VersionInfo.ProductVersion
 @(
   "installer: $($installerFile.Name)",
@@ -380,5 +392,6 @@ if (-not (Test-Path (Join-Path $appData 'kinige.db'))) { Fail 'kinige.db is not 
 if ($sent -and -not (Test-Path $documents)) { Fail 'the Markdown copy folder Documents\Kinige does not exist after an entry was saved' }
 Stop-App
 
+Clear-DevToolsPolicy
 Say "scenario errors: $script:Fails"
 if ($script:Fails -ne 0) { exit 1 }
