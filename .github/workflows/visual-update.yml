@@ -3,6 +3,8 @@
 #   gh workflow run visual-update.yml --ref <ветка>
 # Коммит от GITHUB_TOKEN CI сам не запускает (push-событие), но запуск через workflow_dispatch от GITHUB_TOKEN разрешён:
 # после коммита задача ci запускает ci.yml на ветке (право actions: write только у неё).
+# Коммитятся только изменившиеся и новые эталоны (--update-snapshots=changed); эталоны удалённых историй убирает
+# scripts/prune-visual-baselines.mjs. Эталоны, которые прошли сравнение, не перезаписываются: репозиторий не раздувается.
 name: Visual baselines
 
 on:
@@ -35,9 +37,9 @@ jobs:
         run: |
           npm ci
           npm run build-storybook
-          # Каталог снимается целиком заново: так уходят и эталоны удалённых историй.
-          rm -rf tests/visual/stories.spec.ts-snapshots
-          npx playwright test --update-snapshots=all
+          # Перезаписываются только эталоны, не прошедшие сравнение (порог тот же, что в проверке), и создаются недостающие.
+          npx playwright test --update-snapshots=changed
+          node ../scripts/prune-visual-baselines.mjs
 
       - name: Закоммитить
         id: commit
