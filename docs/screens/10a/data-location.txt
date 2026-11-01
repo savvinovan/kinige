@@ -1,0 +1,7 @@
+﻿# Names only, no contents. Data directory: %APPDATA%\me.savvinov.kinige
+backups, kinige.db, kinige.db-shm, kinige.db-wal, settings.json
+# Markdown copy: Documents\Kinige (created with the first saved entry; Documents is the shell known folder)
+exists: True
+Inbox, 2026, 2026-11-01.md
+default database rows: 
+1

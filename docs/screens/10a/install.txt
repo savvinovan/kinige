@@ -1,0 +1,9 @@
+﻿installer: Kinige_0.5.0_x64-setup.exe
+installer size: 4178511 bytes (3.98 MiB)
+installer sha256: f84b39c59c64c20b80922e6bf7ba641c554f48645afcae23113b1bbbd0e2e911
+installed exe: kinige.exe
+installed exe ProductVersion: 0.5.0
+installed files: 
+kinige.exe, uninstall.exe
+installs per-user without administrator rights: True
+seeded messages: 30

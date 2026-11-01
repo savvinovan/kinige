@@ -1,0 +1,4 @@
+﻿seeded messages: 30
+messages before the typed note: 30
+messages after it, before the kill: 31
+messages after the kill and the restart: 31
