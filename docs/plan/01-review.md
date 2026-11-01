@@ -1,165 +1,165 @@
-# Разбор ТЗ v0.1 «Project Forest»
+# Review of PRD v0.1 "Project Forest"
 
-Дата: 19 октября 2026. Что разобрано: ТЗ v0.1, два макета (`references/`), история старого Kinige (Rust/egui), исследование конкурентов (`research/competitors.md`), проверка десктопного стека (`research/tauri-stack.md`) и технологий Apple (`research/apple-tech.md` — пригодится для мобильной версии). Источники и пометки «подтверждено / не подтверждено» — в файлах исследований.
+Date: 19 October 2026. What was reviewed: PRD v0.1, two mockups (`references/`), the history of the old Kinige (Rust/egui), competitor research (`research/competitors.md`), a check of the desktop stack (`research/tauri-stack.md`) and of Apple technologies (`research/apple-tech.md`, useful for the mobile version). Sources and "confirmed / not confirmed" notes are in the research files.
 
-> **Нормативный документ — `02-prd.md` (v0.6).** Советы Fable по улучшению — `research/advice-fable.md`.
+> **The normative document is `02-prd.md` (v0.6).** Fable's improvement advice: `research/advice-fable.md`.
 >
-> **Ранее:** Если разбор расходится с ТЗ, прав ТЗ. Независимые ревью ТЗ v0.4 — `research/review-fable.md` и `research/review-codex.md`, их итог учтён в ТЗ v0.5.
+> **Earlier:** If the review disagrees with the PRD, the PRD is right. Independent reviews of PRD v0.4: `research/review-fable.md` and `research/review-codex.md`; their outcome is reflected in PRD v0.5.
 >
-> **Обновление v0.4.** По заметкам пользователя: дизайн-систему делаем сами (без Claude Design), сквозное шифрование с удалением ключей вместо удаления данных, self-hosted продукт с бесплатным ядром и платной версией, одна тёмная тема в MVP, импорт из Obsidian/Notion/Telegram, эмбеддинги на клиенте.
+> **Update v0.4.** Per the user's notes: we build the design system ourselves (without Claude Design), end-to-end encryption with key deletion instead of data deletion, a self-hosted product with a free core and a paid tier, a single dark theme in the MVP, import from Obsidian/Notion/Telegram, embeddings on the client.
 >
-> **Обновление того же дня.** После первой версии разбора пользователь выбрал: десктоп первым на Rust + Tauri 2 + React, синхронизацию через свой сервер на homelab, эмбеддинги через OpenRouter вместо on-device AI Apple, «бумажный» стиль, концепты в Codex (дизайн-систему в Claude Design — потом отменено в v0.4). Разделы ниже обновлены под эти решения.
+> **Same-day update.** After the first version of the review the user chose: desktop first on Rust + Tauri 2 + React, sync through our own server on the homelab, embeddings via OpenRouter instead of Apple's on-device AI, a "paper" style, concepts in Codex (the design system in Claude Design, later cancelled in v0.4). The sections below are updated for these decisions.
 
-Доработанное ТЗ, которое можно передать агенту: [`02-prd.md`](02-prd.md).
+The revised PRD that can be handed to an agent: [`02-prd.md`](02-prd.md).
 
-## 0. Коротко
+## 0. In short
 
-**Идея сильная, план — слишком широкий.** У ТЗ правильные инстинкты: spikes до кода, вертикальные срезы, local-first, AI опционален, геймификация без наказаний. Но объём больше, чем у старого Kinige, который провалился именно из-за ширины, неудачного стека для самой трудной части и отсутствия визуальной приёмки.
+**The idea is strong, the plan is too broad.** The PRD has the right instincts: spikes before code, vertical slices, local-first, AI optional, gamification without punishment. But the scope is larger than that of the old Kinige, which failed precisely because of breadth, an ill-suited stack for the hardest part and the absence of visual acceptance.
 
-Шесть изменений, без которых я бы не начинал:
+Six changes without which I would not start:
 
-1. **Тело сообщения — это Markdown-текст.** Никакого дерева блоков и WYSIWYG. Это главное архитектурное решение, и оно убирает основную боль старого Kinige.
-2. **Сначала macOS, один компьютер, без синхронизации.** Модель данных при этом с первого дня готова к синхронизации: UUID, HLC, tombstones, outbox. Windows/Linux и сервер — сразу после MVP.
-3. **Сетку леса выбирает прототип, а не картинка.** Макет показывает 12 × 31 (месяц × число), ТЗ — 7 × 53. Оба варианта проверяются в spike.
-4. **Арт-пайплайн леса — отдельный риск №1.** Дорого здесь не написать код, а нарисовать согласованные деревья: 7 стадий × 4 сезона × варианты.
-5. **Визуальная приёмка входит в Definition of Done.** Агент сам снимает скриншоты настоящего окна и прогоняет визуальные тесты каталога компонентов в браузере, а пользователь принимает срез. В старом Kinige этого не было, и все визуальные баги находил пользователь.
-6. **Дизайн-система — источник правды.** Codex рисует концепты, а токены и компоненты мы разрабатываем сами в репозитории (Storybook — живая документация). Это прямой ответ на урок L4.
+1. **The message body is Markdown text.** No block tree and no WYSIWYG. This is the main architectural decision, and it removes the main pain of the old Kinige.
+2. **macOS first, one computer, no sync.** The data model is ready for sync from day one, though: UUID, HLC, tombstones, outbox. Windows/Linux and the server come right after the MVP.
+3. **The forest grid is chosen by a prototype, not by a picture.** The mockup shows 12 × 31 (month × day), the PRD 7 × 53. Both options are tested in a spike.
+4. **The forest art pipeline is a separate risk #1.** The expensive part here is not writing the code but drawing consistent trees: 7 stages × 4 seasons × variants.
+5. **Visual acceptance is part of the Definition of Done.** The agent itself takes screenshots of the real window and runs the component catalog's visual tests in a browser, and the user accepts the slice. The old Kinige had none of this, and the user found all the visual bugs.
+6. **The design system is the source of truth.** Codex draws concepts, while the tokens and components we develop ourselves in the repository (Storybook is the living documentation). This is the direct answer to lesson L4.
 
-## 1. Уроки Kinige
+## 1. Lessons from Kinige
 
-Что пошло не так в Kinige (по истории сессий GLM и Codex и по состоянию кода) и чем ТЗ v0.1 рискует повторить это:
+What went wrong in Kinige (based on the GLM and Codex session history and the state of the code) and how PRD v0.1 risks repeating it:
 
-| # | Ошибка Kinige | Как проявилась | Риск повторения в v0.1 | Правило для нового проекта |
-|---|---|---|---|---|
-| L1 | Начали с копирования чужого продукта | `docs/01–10` — разбор Notion; модель блоков, `recordMap`, `saveTransactions` взяты оттуда. Получился сложный блочный редактор, который никто не просил | Средний: «как в Notion», «как в Telegram», «как в Photos» — 9 референсов в разделе 8.1 | Модель данных выводится из своих сценариев, референсы — только для визуала и жестов |
-| L2 | Стек выбран без проверки на самой трудной части | egui хорош для панелей, но плох для редактирования форматированного текста; это было написано в собственном `docs/11`, но проигнорировано | Высокий: composer с Markdown, лента на 100k сообщений и лес — три трудные части сразу | Spike трудной части **до** основного кода, с заранее записанными критериями отказа |
-| L3 | «Готово, 67 тестов зелёные», но живое окно никто не смотрел | Исчезающая ручка, кривая иконка, «элементы огромные» нашёл пользователь | Высокий: в DoD ТЗ нет визуальной приёмки | Каждый срез принимается по скриншотам настоящего окна рядом с эталоном + визуальные тесты каталога + подпись пользователя |
-| L4 | Сгенерированный макет считали спецификацией | Макет с жирным serif и аккуратными чекбоксами → реализация с regular-шрифтом и стандартным чекбоксом | Высокий: присланные картинки противоречат ТЗ (см. 4.1) | Картинка = настроение. Спецификация = токены + каталог компонентов + геометрия |
-| L5 | Дизайн-направление менялось без фиксации | Notion-синий + Arial → зелёный + serif; `DESIGN_REVIEW.md` ссылается на устаревшую спеку | Средний | Решения фиксируются ADR; устаревший документ удаляется или помечается, а не лежит рядом |
-| L6 | Нет git, правки скриптами `str.replace` разными агентами | Три прохода (GLM → Codex → правки) нельзя сравнить и откатить | Высокий при работе через агентов | git с первого коммита, маленькие PR, CI (build + тесты + lint) обязателен до первой фичи |
-| L7 | Всё сразу | Kinige пытался быть Notion: блоки, DnD, корзина, undo, импорт, поиск, темы — за одну ночь | **Очень высокий**: v0.1 — iOS + macOS + лес + питомец + AI + sync + медиа + экспорт | MVP режется до одного вертикального сценария на одной платформе |
-| L8 | Бумажный объём вместо работающего | 20 документов в `docs/`, половина про другой продукт | Высокий: фаза 7 требует 14 документов до первой строки кода | 3 живых документа + ADR. Документ пишется, когда принимается решение, а не «на будущее» |
-| L9 | Простые сценарии были сломаны при сложной архитектуре | Переключение страницы не меняло документ, чекбокс писал обратное значение | Средний | Сначала сквозной сценарий «создал → перезапустил → увидел», потом всё остальное (в ТЗ это уже есть — сохранить) |
-| L10 | God-file | `kinige-app/src/main.rs` — 1331 строка | Низкий | Модули по фичам; но не 13 модулей заранее (см. 4.6) |
+| #   | Kinige mistake                                                    | How it showed up                                                                                                                                                       | Risk of repeating it in v0.1                                                                   | Rule for the new project                                                                                                    |
+|-----|-------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| L1  | Started by copying someone else's product                         | `docs/01–10` are an analysis of Notion; the block model, `recordMap`, `saveTransactions` were taken from there. The result was a complex block editor nobody asked for | Medium: "like Notion", "like Telegram", "like Photos": 9 references in section 8.1             | The data model is derived from our own scenarios; references are only for visuals and gestures                              |
+| L2  | The stack was chosen without testing it on the hardest part       | egui is good for panels but bad for editing formatted text; this was written in the project's own `docs/11` but ignored                                                | High: a Markdown composer, a feed of 100k messages and the forest are three hard parts at once | A spike of the hard part **before** the main code, with failure criteria written down in advance                            |
+| L3  | "Done, 67 tests green", but nobody looked at the live window      | The disappearing handle, the crooked icon, "the elements are huge" were found by the user                                                                              | High: the PRD's DoD has no visual acceptance                                                   | Every slice is accepted by screenshots of the real window next to the baseline + catalog visual tests + the user's sign-off |
+| L4  | A generated mockup was treated as the specification               | Mockup with a bold serif and neat checkboxes → implementation with a regular font and a standard checkbox                                                              | High: the images sent contradict the PRD (see 4.1)                                             | Image = mood. Specification = tokens + component catalog + geometry                                                         |
+| L5  | The design direction changed without being recorded               | Notion blue + Arial → green + serif; `DESIGN_REVIEW.md` refers to an outdated spec                                                                                     | Medium                                                                                         | Decisions are recorded in ADRs; an outdated document is deleted or marked as such, not left lying next to the current one   |
+| L6  | No git, edits made with `str.replace` scripts by different agents | Three passes (GLM → Codex → edits) cannot be compared or rolled back                                                                                                   | High when working through agents                                                               | git from the first commit, small PRs, CI (build + tests + lint) mandatory before the first feature                          |
+| L7  | Everything at once                                                | Kinige tried to be Notion: blocks, DnD, trash, undo, import, search, themes, all in one night                                                                          | **Very high**: v0.1 is iOS + macOS + forest + pet + AI + sync + media + export                 | The MVP is cut down to one vertical scenario on one platform                                                                |
+| L8  | Volume on paper instead of working software                       | 20 documents in `docs/`, half of them about a different product                                                                                                        | High: phase 7 requires 14 documents before the first line of code                              | 3 living documents + ADRs. A document is written when a decision is made, not "for the future"                              |
+| L9  | Simple scenarios were broken under a complex architecture         | Switching pages did not change the document, the checkbox wrote the opposite value                                                                                     | Medium                                                                                         | First the end-to-end scenario "created → restarted → saw it", then everything else (the PRD already has this; keep it)      |
+| L10 | God-file                                                          | `kinige-app/src/main.rs`: 1331 lines                                                                                                                                   | Low                                                                                            | Modules by feature, but not 13 modules up front (see 4.6)                                                                   |
 
-**Главный вывод.** Kinige провалился не из-за кода, а из-за процесса: не та технология под самую трудную задачу, отсутствие визуальной приёмки и слишком широкий объём. ТЗ v0.1 хорошо закрывает часть рисков (spikes, вертикальные срезы, «не реализуй всё»), но объём у него ещё шире, чем у Kinige.
+**Main conclusion.** Kinige failed not because of the code but because of the process: the wrong technology for the hardest task, no visual acceptance and too broad a scope. PRD v0.1 covers part of the risks well (spikes, vertical slices, "don't implement everything"), but its scope is even broader than Kinige's.
 
-## 2. Что говорит рынок
+## 2. What the market says
 
-Подробности и источники — в `research/competitors.md`. Найденное агентом:
+Details and sources are in `research/competitors.md`. What the agent found:
 
-- **«Чат с собой» — уже товар, а не отличие.** Ниш-клонов много (tetrify, Luckynote, Hey Me, SelfChatNote, Chat Notes…), у большинства 1–60 оценок, почти все рисуют **пузырьки**. Ближайший по духу — **mynd**: iOS + Mac, Markdown-файлы, локально, iCloud за деньги, «без AI и без стриков». Он подтверждает нишу, но и показывает, что одной «чат-формы» мало.
-- **Реальный разрыв:** ввод как в чате + **типографская лента вместо пузырьков** + local-first с синхронизацией + открытый Markdown-экспорт + мягкая геймификация, привязанная к заметкам. Такой комбинации агент не нашёл.
-- **Rediscovery важнее capture.** Day One и Apple Journal держат пользователей «В этот день» и воспоминаниями. В ТЗ «Memories» стоят в v1.4 — я переношу простую карточку «В этот день» в P1.
-- **«Дерево в день» не уникально:** One Year, Garden of You, DailyLeft, MoodForest и Daylio (Year in Pixels). Изометрической календарной сетки, связанной с лентой заметок, агент не нашёл — отличие в исполнении, а не в идее.
-- **Геймификация:** в Forest (Seekrtech) дерево **умирает**, если выйти из приложения; Habitica отнимает здоровье и уровни; Duolingo сам признаёт, что давит на страх потери, и добавил Streak Freeze. Finch не наказывает, но собирает жалобы на **потерю прогресса**. Вывод: прогресс питомца нельзя потерять ни при удалении заметок, ни при сбое синхронизации.
-- **Название:** «Forest» — известное приложение (~50K оценок) с той же метафорой. Продукт называется Kinige, это нормально, но саму фичу в маркетинге лучше не называть «Forest». Проверку товарных знаков агент не делал.
-- **Шифрование:** у Bear заголовки и теги не шифруются даже с Advanced Data Protection; у Day One даты записей не шифруются. Что шифровать, нужно решить заранее.
+- **"Chat with yourself" is already a commodity, not a differentiator.** There are many niche clones (tetrify, Luckynote, Hey Me, SelfChatNote, Chat Notes…), most with 1–60 ratings, almost all of them draw **bubbles**. The closest in spirit is **mynd**: iOS + Mac, Markdown files, local, iCloud for money, "no AI and no streaks". It confirms the niche, but also shows that a "chat form" alone is not enough.
+- **The real gap:** chat-style input + **a typographic feed instead of bubbles** + local-first with sync + open Markdown export + gentle gamification tied to notes. The agent did not find this combination.
+- **Rediscovery matters more than capture.** Day One and Apple Journal retain users with "On this day" and memories. In the PRD "Memories" sit in v1.4; I move a simple "On this day" card to P1.
+- **"A tree per day" is not unique:** One Year, Garden of You, DailyLeft, MoodForest and Daylio (Year in Pixels). The agent did not find an isometric calendar grid tied to a feed of notes; the difference is in the execution, not the idea.
+- **Gamification:** in Forest (Seekrtech) the tree **dies** if you leave the app; Habitica takes away health and levels; Duolingo itself admits it plays on loss aversion and added Streak Freeze. Finch does not punish, but collects complaints about **lost progress**. Conclusion: the pet's progress must not be lost either when notes are deleted or when sync fails.
+- **Name:** "Forest" is a well-known app (~50K ratings) with the same metaphor. The product is called Kinige, which is fine, but it is better not to call the feature itself "Forest" in marketing. The agent did not run a trademark check.
+- **Encryption:** in Bear, titles and tags are not encrypted even with Advanced Data Protection; in Day One, entry dates are not encrypted. What to encrypt has to be decided up front.
 
-## 3. Что говорят технологии
+## 3. What the technology says
 
-Подробности и источники — в `research/tauri-stack.md` (десктопный стек) и `research/apple-tech.md` (Apple-стек — понадобится, если мобильная версия будет нативной). Выводы, которые влияют на план:
+Details and sources are in `research/tauri-stack.md` (the desktop stack) and `research/apple-tech.md` (the Apple stack, needed if the mobile version is native). Conclusions that affect the plan:
 
-| Вопрос | Вывод | Уверенность |
-|---|---|---|
-| Tauri | Стабильная ветка 2.12.x. Tauri v3 в alpha (с CEF-рантаймом) — не трогать. Мобильная часть Tauri 2 сырая по словам самой команды; Share Extension и виджеты — ручная работа в Xcode | Подтверждено |
-| Linux | WebKitGTK: падения на NVIDIA (DMABUF), WebGL может быть «тихо» программным. Tauri сам советует путь без WebGL. Трей на Linux не отдаёт события мыши | Подтверждено |
-| БД | `rusqlite` (bundled) с FTS5 — в Rust-ядре. `tauri-plugin-sql` не нужен | Подтверждено |
-| Русский поиск | Встроенный `porter` — только английский, своих FTS5-токенизаторов `rusqlite` не умеет. Решение: колонка с заранее стеммированным текстом (Snowball) + `unicode61`. Trigram ищет подстроки, но не короче 3 символов | Подтверждено; качество `rust-stemmers` — проверить |
-| Composer | CodeMirror 6 (на нём построен Obsidian). Риск: баги IME в Safari/WKWebView рядом с widget-декорациями | Подтверждено |
-| Лента | TanStack Virtual (`anchorTo: 'end'` для чата) или virtua (MIT). У react-virtuoso платный только `VirtuosoMessageList` | Подтверждено |
-| Лес | Canvas 2D как база, PixiJS v8 как улучшение; путь без WebGL обязателен из-за Linux | Подтверждено |
-| Синхронизация | Свой журнал изменений с HLC (`uhlc`) + LWW на сообщение + ревизии. ElectricSQL/PowerSync требуют Postgres как источник, Turso Sync — Turso Cloud, Automerge/Loro избыточны | Подтверждено |
-| Эмбеддинги | OpenRouter `POST /api/v1/embeddings`, 33 модели; `bge-m3`, `multilingual-e5-large`, `qwen3-embedding-8b` — $0,01 / 1M токенов, `text-embedding-3-small` — $0,02. Есть мультимодальные. ZDR — `provider.zdr: true` | Подтверждено |
-| Память векторов | 100k × 1024 измерения ≈ 0,4 ГБ — заметно при лимите homelab в 1 ГиБ. Брать 512 измерений или int8 (с v0.4 векторы на клиенте) | Расчёт; скорость надо мерить |
-| Claude Design | Релиз 17.04.2026, бета. Дизайн-система хранится как артефакт, в код — через `/design` в Claude Code, из кода обратно — `/design-sync`. **Экспорта файлом нет, истории версий нет**, отдельный claude.ai/design закрывается 14.12.2026 | Подтверждено |
-| Токены | DTCG 2025.10 — отчёт рабочей группы, не стандарт W3C. Style Dictionary 5.7, поддержка 2025.10 дорабатывается | Подтверждено |
-| Codex imagegen | Реальная функция (`$imagegen`, `gpt-image-2`), тратит лимиты в 3–5 раз быстрее, согласованность серии не гарантирована | Подтверждено |
+| Question       | Conclusion                                                                                                                                                                                                                                     | Confidence                                                |
+|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
+| Tauri          | Stable branch 2.12.x. Tauri v3 is in alpha (with a CEF runtime): don't touch it. The mobile part of Tauri 2 is raw, by the team's own account; Share Extension and widgets are manual work in Xcode                                            | Confirmed                                                 |
+| Linux          | WebKitGTK: crashes on NVIDIA (DMABUF), WebGL may "silently" run in software. Tauri itself recommends a path without WebGL. The tray on Linux does not deliver mouse events                                                                     | Confirmed                                                 |
+| DB             | `rusqlite` (bundled) with FTS5, in the Rust core. `tauri-plugin-sql` is not needed                                                                                                                                                             | Confirmed                                                 |
+| Russian search | The built-in `porter` is English only, and `rusqlite` cannot register custom FTS5 tokenizers. Solution: a column with pre-stemmed text (Snowball) + `unicode61`. Trigram finds substrings, but none shorter than 3 characters                  | Confirmed; quality of `rust-stemmers` still to be checked |
+| Composer       | CodeMirror 6 (Obsidian is built on it). Risk: IME bugs in Safari/WKWebView next to widget decorations                                                                                                                                          | Confirmed                                                 |
+| Feed           | TanStack Virtual (`anchorTo: 'end'` for chat) or virtua (MIT). In react-virtuoso only `VirtuosoMessageList` is paid                                                                                                                            | Confirmed                                                 |
+| Forest         | Canvas 2D as the base, PixiJS v8 as an enhancement; a path without WebGL is mandatory because of Linux                                                                                                                                         | Confirmed                                                 |
+| Sync           | Own change log with HLC (`uhlc`) + LWW per message + revisions. ElectricSQL/PowerSync require Postgres as the source, Turso Sync requires Turso Cloud, Automerge/Loro are overkill                                                             | Confirmed                                                 |
+| Embeddings     | OpenRouter `POST /api/v1/embeddings`, 33 models; `bge-m3`, `multilingual-e5-large`, `qwen3-embedding-8b` cost $0.01 / 1M tokens, `text-embedding-3-small` $0.02. Multimodal ones exist. ZDR: `provider.zdr: true`                              | Confirmed                                                 |
+| Vector memory  | 100k × 1024 dimensions ≈ 0.4 GB, noticeable with the homelab limit of 1 GiB. Use 512 dimensions or int8 (since v0.4 the vectors live on the client)                                                                                            | Calculation; speed needs to be measured                   |
+| Claude Design  | Released 17.04.2026, beta. The design system is stored as an artifact; into code via `/design` in Claude Code, from code back via `/design-sync`. **No file export, no version history**; the standalone claude.ai/design closes on 14.12.2026 | Confirmed                                                 |
+| Tokens         | DTCG 2025.10 is a working group report, not a W3C standard. Style Dictionary 5.7, support for 2025.10 is still being finished                                                                                                                  | Confirmed                                                 |
+| Codex imagegen | A real feature (`$imagegen`, `gpt-image-2`); it burns through limits 3–5 times faster, consistency across a series is not guaranteed                                                                                                           | Confirmed                                                 |
 
-**Следствия для плана:**
+**Consequences for the plan:**
 
-- **Linux — отдельный риск.** Лес и анимации проверяются на Linux в spike, а не в конце.
-- **Claude Design отклонён:** нет экспорта и истории версий, отдельный сайт закрывается 14.12.2026. Дизайн-система живёт в репозитории.
-- **Codex — только концепты.** Финальные спрайты — Blender, где серия согласована по построению.
-- **Семантический поиск живёт на клиенте.** Со сквозным шифрованием сервер не видит текст, поэтому эмбеддинги считает и ищет клиент; векторы синхронизируются зашифрованными.
+- **Linux is a separate risk.** The forest and animations are tested on Linux in a spike, not at the end.
+- **Claude Design rejected:** no export and no version history, the standalone site closes on 14.12.2026. The design system lives in the repository.
+- **Codex is for concepts only.** The final sprites come from Blender, where a series is consistent by construction.
+- **Semantic search lives on the client.** With end-to-end encryption the server does not see the text, so the client computes the embeddings and searches; the vectors sync encrypted.
 
-**Почему Tauri, а не SwiftUI, хотя в первой версии разбора я предлагал SwiftUI.** SwiftUI был ответом на ТЗ v0.1 (iOS + macOS + CloudKit). Решение «десктоп на трёх ОС + свой сервер + веб потом» меняет приоритеты: один код на трёх ОС и общий фронтенд для веба важнее нативных жестов iPhone. Цена: телефон позже будет либо на Tauri 2 mobile (сырой), либо нативным клиентом к тому же серверу. Второе реалистичнее, и свой протокол синхронизации это позволяет.
+**Why Tauri and not SwiftUI, even though I proposed SwiftUI in the first version of the review.** SwiftUI was the answer to PRD v0.1 (iOS + macOS + CloudKit). The decision "desktop on three OSes + our own server + web later" changes the priorities: one codebase on three OSes and a shared frontend for the web matter more than native iPhone gestures. The price: the phone will later be either on Tauri 2 mobile (raw) or a native client to the same server. The second is more realistic, and our own sync protocol makes it possible.
 
-## 4. Противоречия и дыры в ТЗ v0.1
+## 4. Contradictions and gaps in PRD v0.1
 
-### 4.1. Макеты противоречат ТЗ
+### 4.1. The mockups contradict the PRD
 
-- **Сетка леса.** ТЗ: 7 × 53 (день недели × неделя, как GitHub). Макет 2: строки «Янв…Дек», колонки «1…31» — это 12 × 31 (месяц × число). Макет 1 (экран 4) — вообще пейзаж без сетки.
-  - 7 × 53 в изометрии — полоса с пропорцией ≈ 1 : 7,5. В окне ноутбука плитки получаются мелкими, а на будущем телефоне в портрете год не читается вовсе: либо крошечные плитки, либо постоянный pan.
-  - 12 × 31 — почти квадратный ромб, дата читается без подсказки («строка Октябрь, колонка 16»), месяцы сезонно группируются полосами. Цена: 372 позиции, 7 из них несуществующие даты (30–31 февраля и т. п.) — их показывать пустой землёй/камнями; не видно дня недели.
-  - **Решение:** сделать оба варианта в spike S3 и выбрать по читаемости в окне 1280 × 800 и в узком окне. Предварительная рекомендация — 12 × 31 для леса, 7 × 53 оставить для плоского «heatmap»-вида, если он нужен.
-- **Визуальный стиль.** Макеты смешивают три стиля: плоский тёмный UI с фиолетовым акцентом, фотореалистичные фото, 3D-«пиксаровские» лес и котёнка. ТЗ (8.5) прямо запрещает смешивать дизайн-системы. Нужно выбрать одно направление и сделать из него токены — урок L4.
-- **Лес в макете — иллюстрация, а не ассеты.** Каждое дерево там уникально. В реальности это набор спрайтов: 7 стадий × 4 сезона × 3–5 вариантов = 84–140 картинок, плюс земля, декор, подсветка, анимации роста. **Это главная скрытая стоимость продукта — не код, а арт-пайплайн.** В ТЗ про него ни слова.
-- Счётчик «3 голосовых» на hover-карточке и экраны питомца/отчёта показывают функции, которых нет в MVP. Макеты MVP должны показывать только MVP.
+- **The forest grid.** PRD: 7 × 53 (weekday × week, like GitHub). Mockup 2: rows "Янв…Дек" (Jan…Dec), columns "1…31", that is 12 × 31 (month × day). Mockup 1 (screen 4) is a landscape with no grid at all.
+  - 7 × 53 in isometric view is a strip with an aspect ratio of ≈ 1 : 7.5. In a laptop window the tiles come out small, and on a future phone in portrait the year is not readable at all: either tiny tiles or constant panning.
+  - 12 × 31 is an almost square rhombus, the date is readable without a hint ("row October, column 16"), the months group seasonally into bands. The price: 372 positions, 7 of them nonexistent dates (30–31 February, etc.), which are shown as empty ground/stones; the weekday is not visible.
+  - **Decision:** build both options in spike S3 and choose by readability in a 1280 × 800 window and in a narrow window. Preliminary recommendation: 12 × 31 for the forest, keep 7 × 53 for a flat "heatmap" view if one is needed.
+- **Visual style.** The mockups mix three styles: a flat dark UI with a purple accent, photorealistic photos, a 3D "Pixar-like" forest and kitten. The PRD (8.5) explicitly forbids mixing design systems. One direction has to be chosen and turned into tokens; lesson L4.
+- **The forest in the mockup is an illustration, not assets.** Every tree there is unique. In reality it is a set of sprites: 7 stages × 4 seasons × 3–5 variants = 84–140 images, plus ground, decor, highlighting, growth animations. **This is the main hidden cost of the product: not the code but the art pipeline.** The PRD does not say a word about it.
+- The "3 voice notes" counter on the hover card and the pet/report screens show features that are not in the MVP. MVP mockups should show only the MVP.
 
-### 4.2. Геймификация
+### 4.2. Gamification
 
-- **XP vs производные данные.** ТЗ (9.1) делает DailyActivity/ForestTile производными от сообщений — правильно. Но если XP питомца тоже считать из сообщений, удаление заметок понизит уровень → это наказание (нарушение принципа 6). **Решение:** лес — производный (может уменьшиться при удалении), XP — отдельный append-only журнал начислений, ничего не отнимается.
-- **Лес поощряет спам.** Размер дерева = число заметок → 30 сообщений «.» дают секвойю. Для питомца ТЗ ставит дневной лимит, для леса — нет. Варианты: считать «вес дня» (`log` от числа заметок + бонус за медиа/длину), ограничить вклад пустых/коротких сообщений. Решить в forest-spec.
-- **Сезоны в годовом виде.** На одной доске одновременно зима (янв–фев, дек), весна, лето, осень. Это и красиво, и правильно, но ТЗ одновременно предлагает переключатель «Зима/Весна/Лето/Осень» (макеты) — смысл переключателя не определён (фильтр? приближение к кварталу?). Для 12 × 31 сезон = группа строк, переключатель = быстрый зум к группе.
-- Южное полушарие: настройка «сдвиг сезонов на 6 месяцев» — дёшево, сделать сразу как параметр.
+- **XP vs derived data.** The PRD (9.1) makes DailyActivity/ForestTile derived from messages, which is right. But if the pet's XP is also computed from messages, deleting notes will lower the level → that is a punishment (a violation of principle 6). **Decision:** the forest is derived (it can shrink on deletion), XP is a separate append-only log of awards, nothing is taken away.
+- **The forest rewards spam.** Tree size = number of notes → 30 messages "." produce a sequoia. The PRD sets a daily limit for the pet, but not for the forest. Options: compute a "day weight" (`log` of the number of notes + a bonus for media/length), cap the contribution of empty/short messages. Decide in forest-spec.
+- **Seasons in the year view.** One board shows winter (Jan–Feb, Dec), spring, summer and autumn at the same time. This is both beautiful and correct, but the PRD at the same time proposes a "Зима/Весна/Лето/Осень" (Winter/Spring/Summer/Autumn) switcher (in the mockups), and the switcher's meaning is not defined (a filter? zooming in to a quarter?). For 12 × 31 a season = a group of rows, the switcher = a quick zoom to the group.
+- Southern hemisphere: a "shift seasons by 6 months" setting is cheap; do it right away as a parameter.
 
-### 4.3. Ввод и формат контента
+### 4.3. Input and content format
 
-- **Markdown в P0, «форматирование текста» в P1, расширенный composer с превью — где-то посередине.** Не определено, что хранится. **Решение (ключевое для модели данных):** тело сообщения — это **текст Markdown (CommonMark + GFM task lists)**. Composer редактирует обычный текст с живой подсветкой синтаксиса (как Bear), лента рендерит его. Никакого WYSIWYG и никакого дерева блоков (урок Kinige). Кнопки «B / I / список» просто вставляют синтаксис.
-- Checklist внутри Markdown: нажатие на чекбокс в ленте меняет текст (`[ ]` → `[x]`) — это правка сообщения, она должна идти через ту же историю версий и sync.
-- **«Convert to Task / Reminder / Quote / Bookmark»** смешивает разные вещи: Task/Pin/Favorite — это **свойства** сообщения (флаги), Quote — это **форматирование** текста, Reminder — это **интеграция** (EventKit или локальное уведомление), Bookmark — это **тип вложения** (ссылка с превью). Каждое — отдельное решение.
-- Enter — отправить, Shift+Enter — новая строка (десктоп). Записать явно; для будущего мобильного клиента — отдельно.
-- **Нет системных точек захвата.** «Zero-friction» — это не только окно приложения. На десктопе — глобальный хоткей с маленьким окном ввода и трей / menu bar; позже — расширение браузера, на телефоне — Share Extension и виджеты. Это сильнее всего отличает «чат с собой» от Telegram Saved Messages.
+- **Markdown in P0, "text formatting" in P1, an extended composer with preview somewhere in between.** What is stored is not defined. **Decision (key for the data model):** the message body is **Markdown text (CommonMark + GFM task lists)**. The composer edits plain text with live syntax highlighting (like Bear), the feed renders it. No WYSIWYG and no block tree (the Kinige lesson). The "B / I / list" buttons simply insert syntax.
+- A checklist inside Markdown: clicking a checkbox in the feed changes the text (`[ ]` → `[x]`); this is an edit of the message, and it must go through the same version history and sync.
+- **"Convert to Task / Reminder / Quote / Bookmark"** mixes different things: Task/Pin/Favorite are **properties** of a message (flags), Quote is text **formatting**, Reminder is an **integration** (EventKit or a local notification), Bookmark is an **attachment type** (a link with a preview). Each is a separate decision.
+- Enter sends, Shift+Enter inserts a new line (desktop). Write this down explicitly; for the future mobile client, separately.
+- **No system-level capture points.** "Zero-friction" is not just the app window. On the desktop: a global hotkey with a small input window and a tray / menu bar; later a browser extension; on the phone, a Share Extension and widgets. This is what most distinguishes "chat with yourself" from Telegram Saved Messages.
 
-### 4.4. Платформы и синхронизация
+### 4.4. Platforms and sync
 
-- ТЗ v0.1: «iOS, macOS; потенциально Android, Web» + «CloudKit» — противоречие: CloudKit закрыт для Android и неудобен для web. Решение пользователя снимает его: **десктоп на Tauri 2 + свой сервер на homelab**. Транспорт свой — значит, и Android, и web потом подключаются к тому же протоколу.
-- **Tauri не даёт веб-версию автоматически.** Он собирает десктоп (и мобильные приложения в версии 2), а Rust-бэкенда в браузере нет. Поэтому фронтенд с первого дня ходит в бэкенд через интерфейс `KinigeApi`; веб-клиент потом — это `HttpApi` к серверу.
-- **Свой сервер — это ответственность:** бэкапы Postgres, доступ извне дома, аутентификация устройств, обновления. Плюс: тот же сервер даёт веб-клиент и считает эмбеддинги один раз для всех устройств.
-- Ограничение homelab-деплоера: постоянный том — 1 ГиБ, память — до 1 ГиБ. Для медиатеки этого мало — вложения нужно хранить на NFS/MinIO кластера.
-- Конфликты: создание бесконфликтно (UUID); правка одного сообщения на двух устройствах → побеждает больший HLC, проигравшая версия — в историю версий с индикатором «есть другая версия»; удаление — tombstone + 30-дневная корзина. CRDT для коротких сообщений избыточен.
-- ~~Сервер хранит данные в открытом виде~~ → v0.4: сквозное шифрование. Веб-клиент расшифровывает данные в браузере, поиск и эмбеддинги — на клиентах.
+- PRD v0.1: "iOS, macOS; potentially Android, Web" + "CloudKit" is a contradiction: CloudKit is closed to Android and awkward for the web. The user's decision removes it: **desktop on Tauri 2 + our own server on the homelab**. The transport is our own, which means both Android and the web can later connect to the same protocol.
+- **Tauri does not give a web version automatically.** It builds the desktop app (and mobile apps in version 2), and there is no Rust backend in the browser. So the frontend talks to the backend through the `KinigeApi` interface from day one; the web client later is an `HttpApi` to the server.
+- **Our own server is a responsibility:** Postgres backups, access from outside the home, device authentication, updates. The upside: the same server provides the web client and computes embeddings once for all devices.
+- A limitation of the homelab deployer: the persistent volume is 1 GiB, memory up to 1 GiB. That is too little for a media library; attachments have to be stored on the cluster's NFS/MinIO.
+- Conflicts: creation is conflict-free (UUID); editing the same message on two devices → the larger HLC wins, the losing version goes into the version history with a "there is another version" indicator; deletion is a tombstone + a 30-day trash. A CRDT for short messages is overkill.
+- ~~The server stores data in plaintext~~ → v0.4: end-to-end encryption. The web client decrypts data in the browser, search and embeddings run on the clients.
 
 ### 4.5. AI
 
-- **Решение пользователя: эмбеддинги через OpenRouter**, а не on-device модели Apple. Это правильно для кроссплатформенности и снимает проблему русского языка: Apple Intelligence по данным на сентябрь 2026 русский не поддерживает.
-- Цена решения: **приватность.** Текст заметок уходит в OpenRouter и к провайдеру модели. Нужны явное включение, оценка объёма и стоимости до первой индексации, исключение отдельных чатов (например, «Личное») и честная формулировка в интерфейсе.
-- Запрос пользователя тоже нужно превратить в вектор через API, значит семантический поиск — онлайн-функция по определению. ~~Логично считать эмбеддинги на сервере~~ → v0.4: на клиенте, сервер не видит текст.
-- Поиск «фото чёрной собаки» требует мультимодальных эмбеддингов; дешевле — подписать картинку vision-моделью и проиндексировать подпись. Отложить до реального спроса.
-- Сначала FTS5 с учётом русской морфологии: `unicode61` не делает стемминг — «книги» не найдёт «книга». Решение — стеммированная колонка (Snowball для русского) + префиксный поиск. Это реальная проблема P0, в ТЗ v0.1 не упомянута.
+- **The user's decision: embeddings via OpenRouter**, not Apple's on-device models. This is right for cross-platform support and removes the Russian-language problem: according to data as of September 2026, Apple Intelligence does not support Russian.
+- The price of the decision: **privacy.** The text of notes goes to OpenRouter and to the model provider. We need an explicit opt-in, an estimate of volume and cost before the first indexing, the exclusion of individual chats (for example, "Personal") and honest wording in the interface.
+- The user's query also has to be turned into a vector through the API, so semantic search is an online feature by definition. ~~It makes sense to compute embeddings on the server~~ → v0.4: on the client, the server does not see the text.
+- A search for "photo of a black dog" requires multimodal embeddings; cheaper is to caption the image with a vision model and index the caption. Postpone until there is real demand.
+- First FTS5 with Russian morphology taken into account: `unicode61` does not stem, so "книги" will not find "книга" (two forms of "book"). The solution is a stemmed column (Snowball for Russian) + prefix search. This is a real P0 problem, not mentioned in PRD v0.1.
 
-### 4.6. Архитектура и процесс
+### 4.6. Architecture and process
 
-- **13 модулей в разделе 9** — преждевременная структура (урок L10 наоборот). На старте: `App`, `Feed+Composer`, `Storage`, `Forest`. Остальное появляется, когда появляется фича.
-- **14 документов до кода** (фаза 7) — урок L8. Достаточно: `vision-and-scope.md`, `architecture.md` + `adr/`, `roadmap.md`, `forest-spec.md`. Остальное — разделы этих файлов.
-- **Метрики (часть XV)** противоречат privacy-first и бессмысленны для pet-проекта с одним пользователем. Пока продукт для себя — метрика одна: «я сам пользуюсь им каждый день 4 недели подряд». Аналитику — только после решения о публичном релизе.
-- **Нет визуальной приёмки в DoD** — урок L3.
-- **Не было решения «для кого».** Решено: для себя, вопрос о выпуске — после 4 недель ежедневного использования.
-- **Название.** Продукт — Kinige, «Project Forest» — рабочее имя. Публично фичу лучше не называть «Forest»: так называется известное приложение (Seekrtech) с той же метафорой выращивания деревьев.
+- **13 modules in section 9** is premature structure (lesson L10 in reverse). At the start: `App`, `Feed+Composer`, `Storage`, `Forest`. Everything else appears when a feature appears.
+- **14 documents before code** (phase 7): lesson L8. Enough: `vision-and-scope.md`, `architecture.md` + `adr/`, `roadmap.md`, `forest-spec.md`. The rest are sections of these files.
+- **Metrics (part XV)** contradict privacy-first and are meaningless for a pet project with one user. While the product is for myself, there is one metric: "I use it myself every day for 4 weeks in a row". Analytics only after a decision on a public release.
+- **No visual acceptance in the DoD**: lesson L3.
+- **There was no decision on "who it is for".** Decided: for myself; the question of releasing it comes after 4 weeks of daily use.
+- **Name.** The product is Kinige, "Project Forest" is a working name. Publicly it is better not to call the feature "Forest": that is the name of a well-known app (Seekrtech) with the same metaphor of growing trees.
 
-## 5. Сводка решений
+## 5. Summary of decisions
 
-| # | Решение | Статус |
-|---|---|---|
-| D1 | Тело сообщения — Markdown (CommonMark + GFM task lists, без сырого HTML); вложения отдельно | Принято |
-| D2 | Десктоп первым: macOS → Windows/Linux на Tauri 2; веб (тонкий клиент) и телефон — позже | Решено пользователем |
-| D3 | Rust-ядро (`kinige-domain`, `kinige-store`) + React/TypeScript; фронтенд ходит в бэкенд только через `KinigeApi` | Решено пользователем |
-| D4 | SQLite (rusqlite) + FTS5 со стеммированной колонкой для русского | Принято, spike S5 |
-| D5 | Синхронизация: свой сервер на homelab (axum + Postgres), outbox + HLC, «последний побеждает + ревизии» | Решено пользователем, spike S4 |
-| D6 | Composer — CodeMirror 6 с живой подсветкой Markdown | Spike S1 |
-| D7 | Лента — виртуализированный список с ячейками переменной высоты | Spike S2 |
-| D8 | Сетка леса 12 × 31 или 7 × 53; рендер PixiJS или Canvas 2D | Spike S3 |
-| D9 | Лес — производные данные; питомец и XP вырезаны (v0.6) | Решено пользователем (v0.6) |
-| D10 | `journal_date` фиксируется при создании в локальной зоне; можно изменить вручную | Принято |
-| D11 | Быстрый захват: глобальный хоткей + трей | Принято |
-| D12 | Стиль: спокойный «бумажный» журнал | Решено пользователем |
-| D13 | Дизайн-система — своя, в репозитории: токены DTCG → CSS → React-компоненты → Storybook; концепты — Codex | Решено пользователем (v0.4) |
-| D14 | Арт: Codex — концепты, Blender — спрайты | Решено пользователем |
-| D15 | AI: эмбеддинги OpenRouter, считаются на клиенте, явное включение, исключение чатов | Решено пользователем, spike S6 |
-| D16 | Сначала для себя, цель — self-hosted продукт: бесплатное ядро + платная расширенная версия | Решено пользователем (v0.4) |
-| D17 | Сквозное шифрование: сервер и админ не видят данные; удаление аккаунта = удаление ключей | Решено пользователем (v0.4), spike S4 |
-| D18 | Одна тема в MVP (тёмная); темы — наборы токенов, визуальные тесты на одной теме | Решено пользователем (v0.4) |
-| D19 | Импорт: только Telegram, до начала ежедневного использования; Obsidian и Notion убраны (v0.6) | Решено пользователем (v0.6) |
-| D20 | Свой сервер сохранён; альтернатива «журналы устройств в S3/папке» отклонена | Решено пользователем (v0.6) |
-| D21 | Порядок: каркас → дизайн-система → слайсы; «В этот день», теги, Markdown-копия, захват с дописыванием — в MVP | Решено пользователем (v0.6) |
+| #   | Decision                                                                                                                   | Status                               |
+|-----|----------------------------------------------------------------------------------------------------------------------------|--------------------------------------|
+| D1  | The message body is Markdown (CommonMark + GFM task lists, no raw HTML); attachments are separate                          | Accepted                             |
+| D2  | Desktop first: macOS → Windows/Linux on Tauri 2; web (thin client) and phone later                                         | Decided by the user                  |
+| D3  | Rust core (`kinige-domain`, `kinige-store`) + React/TypeScript; the frontend talks to the backend only through `KinigeApi` | Decided by the user                  |
+| D4  | SQLite (rusqlite) + FTS5 with a stemmed column for Russian                                                                 | Accepted, spike S5                   |
+| D5  | Sync: own server on the homelab (axum + Postgres), outbox + HLC, "last one wins + revisions"                               | Decided by the user, spike S4        |
+| D6  | Composer: CodeMirror 6 with live Markdown highlighting                                                                     | Spike S1                             |
+| D7  | Feed: a virtualized list with variable-height cells                                                                        | Spike S2                             |
+| D8  | Forest grid 12 × 31 or 7 × 53; rendering with PixiJS or Canvas 2D                                                          | Spike S3                             |
+| D9  | The forest is derived data; the pet and XP are cut (v0.6)                                                                  | Decided by the user (v0.6)           |
+| D10 | `journal_date` is fixed at creation in the local time zone; it can be changed manually                                     | Accepted                             |
+| D11 | Quick capture: global hotkey + tray                                                                                        | Accepted                             |
+| D12 | Style: a calm "paper" journal                                                                                              | Decided by the user                  |
+| D13 | The design system is our own, in the repository: DTCG tokens → CSS → React components → Storybook; concepts from Codex     | Decided by the user (v0.4)           |
+| D14 | Art: Codex for concepts, Blender for sprites                                                                               | Decided by the user                  |
+| D15 | AI: OpenRouter embeddings, computed on the client, explicit opt-in, chat exclusion                                         | Decided by the user, spike S6        |
+| D16 | For myself first; the goal is a self-hosted product: free core + paid extended tier                                        | Decided by the user (v0.4)           |
+| D17 | End-to-end encryption: the server and the admin do not see the data; account deletion = key deletion                       | Decided by the user (v0.4), spike S4 |
+| D18 | One theme in the MVP (dark); themes are token sets, visual tests on one theme                                              | Decided by the user (v0.4)           |
+| D19 | Import: Telegram only, before daily use begins; Obsidian and Notion removed (v0.6)                                         | Decided by the user (v0.6)           |
+| D20 | Own server kept; the alternative "device logs in S3/a folder" rejected                                                     | Decided by the user (v0.6)           |
+| D21 | Order: skeleton → design system → slices; "On this day", tags, Markdown copy, capture with appending: in the MVP           | Decided by the user (v0.6)           |
