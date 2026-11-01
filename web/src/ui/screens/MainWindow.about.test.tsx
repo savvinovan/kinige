@@ -22,8 +22,11 @@ describe("О программе", () => {
     const dialog = await screen.findByRole("dialog", { name: "О программе" });
     expect(within(dialog).getByText("Kinige mock")).toBeInTheDocument();
     expect(within(dialog).getByText(/Личный журнал/)).toBeInTheDocument();
+    // Окно появляется после ответа `appInfo` вне act: DOM уже есть, а эффект Modal (фокус на крестик и подписка на Esc
+    // в `document`) ещё может не отработать, и ранний Esc пропадал (KINIG-48). Фокус на крестике — признак, что подписка есть.
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Закрыть" })).toHaveFocus());
     fireEvent.keyDown(document, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("на английском: заголовок About и английская строка", async () => {
