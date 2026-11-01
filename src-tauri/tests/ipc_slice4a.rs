@@ -107,8 +107,8 @@ fn the_settings_window_drives_the_settings_and_sees_the_socket_state() {
     assert_eq!(page["rows"], json!([]));
 }
 
-/// Windows (слайс 10a): сервера MCP нет, команды, которые что-то меняют, отвечают `unsupported`, настройка не меняется, а окно
-/// получает от `get_agent_access` код `unsupported` вместо состояния сокета.
+/// Windows (slice 10a): there is no MCP server, the commands that change something answer `unsupported`, the setting does
+/// not change, and `get_agent_access` gives the window the code `unsupported` instead of a socket state.
 #[cfg(not(unix))]
 #[test]
 fn without_an_mcp_server_the_settings_window_gets_unsupported_and_nothing_changes() {
@@ -132,7 +132,7 @@ fn without_an_mcp_server_the_settings_window_gets_unsupported_and_nothing_change
         .unwrap_err(),
         unsupported
     );
-    // Мусор вместо аргументов — по-прежнему ошибка разбора, а не паника.
+    // Garbage instead of arguments is still a parse error, not a panic.
     assert!(call(&settings, "set_agent_mode", json!({"mode": "root"})).is_err());
     let access = call(&settings, "get_agent_access", json!({})).unwrap();
     assert_eq!(access["enabled"], false);
@@ -141,7 +141,7 @@ fn without_an_mcp_server_the_settings_window_gets_unsupported_and_nothing_change
     assert_eq!(access["socket"]["error"], "unsupported");
     assert!(access["socket"]["socketPath"].is_null());
     assert!(access["socket"]["codeCommand"].is_null());
-    // Журнал обращений доступен (пустой): страница журнала не ломается.
+    // The access log is available (empty): the log page does not break.
     let page = call(&settings, "list_agent_log", json!({})).unwrap();
     assert_eq!(page["rows"], json!([]));
 }

@@ -12,7 +12,7 @@ use common::settings_file::*;
 use common::*;
 use kinige_domain::{FileProblemKind, TextSize};
 use std::fs;
-// Остальное нужно только тестам про симлинки, каналы и режимы (Unix).
+// The rest is needed only by the symlink, FIFO and mode tests (Unix).
 #[cfg(unix)]
 use kinige_domain::UnsafeReason;
 #[cfg(unix)]
@@ -28,7 +28,7 @@ use std::time::Duration;
 const ACCESS_ON: &str =
     r#"{"text_size":"large","agent_access":{"enabled":true,"mode":"read_write"}}"#;
 
-// Симлинки, каналы и режимы каталога — Unix; на Windows этих проверок нет (ADR-0010, заметка про Windows).
+// Symlinks, FIFOs and directory modes are Unix; these checks do not exist on Windows (ADR-0010, Windows note).
 #[cfg(unix)]
 #[test]
 fn a_symlink_is_unsafe_it_is_read_through_but_never_overwritten() {

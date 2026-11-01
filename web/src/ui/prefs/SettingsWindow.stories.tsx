@@ -209,7 +209,7 @@ export const КопииОшибка: Story = {
 /** Доступ выключен: режим недоступен, чаты и журнал открываются строками «Настроить ›». */
 export const ДоступВыключен: Story = { args: { route: "access", access: OFF } };
 
-/** Windows до именованных каналов (слайс 10a): сервера MCP нет, вместо выключателя — одна тихая строка. */
+/** Windows until named pipes (slice 10a): there is no MCP server, so one quiet line stands in for the switch. */
 export const ДоступНедоступен: Story = {
   args: {
     route: "access",

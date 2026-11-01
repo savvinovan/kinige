@@ -3,7 +3,7 @@
 
 #![allow(dead_code)]
 
-// Клиент сервера MCP по Unix-сокету; на Windows сервера нет (слайс 10a).
+// The client of the MCP server over the Unix socket; there is no server on Windows (slice 10a).
 #[cfg(unix)]
 pub mod mcp;
 
@@ -19,8 +19,8 @@ use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
 use tauri::webview::InvokeRequest;
 use tauri::{App, Manager, WebviewWindow, WebviewWindowBuilder, ipc::CallbackFn, ipc::InvokeBody};
 
-/// Адрес страницы приложения для Tauri: на Windows это `http://tauri.localhost`, на остальных системах `tauri://localhost`;
-/// по нему рантайм решает, что вызов пришёл из собственной страницы (capability с `local`).
+/// The address of the app page for Tauri: `http://tauri.localhost` on Windows, `tauri://localhost` elsewhere; the runtime
+/// uses it to decide that a call comes from the app's own page (a capability with `local`).
 #[cfg(windows)]
 const APP_ORIGIN: &str = "http://tauri.localhost";
 #[cfg(not(windows))]

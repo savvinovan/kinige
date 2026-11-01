@@ -1,16 +1,16 @@
-# Релиз Kinige (ADR-0012): тег vX.Y.Z -> сборка на macOS- и Windows-раннерах -> GitHub Release с .dmg, .zip,
-# Windows-установщиком .exe и одним SHA256SUMS. Три задачи:
-#   build-macos   — права только на чтение, токен после checkout не сохраняется; проверяет тег, собирает .app и .dmg
-#                   (scripts/build-app.sh, ad-hoc подпись, ADR-0003), проверяет подпись и версию, считает суммы; результат — артефакт.
-#                   Кэшей нет: релиз собирается с нуля, чтобы в него не попало ничего из кэша ветки;
-#   build-windows — то же на windows-2025 (слайс 10a): неподписанный установщик NSIS (scripts/build-windows.sh), версия в exe и в
-#                   имени установщика сверяется с тегом; результат — свой артефакт и свой кусок сумм;
-#   publish       — короткая: скачивает оба артефакта, склеивает куски в один SHA256SUMS, проверяет его и создаёт Release
-#                   (единственное место с правом записи, без npm и cargo).
-# Тег ставит `scripts/release.sh --tag X.Y.Z` после мержа PR «Release vX.Y.Z». Повтор по готовому тегу (сборка упала):
-#   gh workflow run release.yml -f tag=vX.Y.Z            (publish=false — собрать и выложить артефакты, Release не создавать)
-# Проверки тега, версии и main выполняются только для тега или ввода `tag`: сборка по push в ветку (временный запуск для
-# проверки workflow) их пропускает и Release не создаёт.
+# Kinige release (ADR-0012): tag vX.Y.Z -> builds on a macOS and a Windows runner -> GitHub Release with the .dmg, .zip, the
+# Windows installer .exe and one SHA256SUMS. Three jobs:
+#   build-macos   - read-only permissions, the token is not kept after checkout; checks the tag, builds the .app and .dmg
+#                   (scripts/build-app.sh, ad-hoc signature, ADR-0003), checks the signature and the version, computes the
+#                   sums; the result is an artifact. No caches: the release is built from scratch so that nothing from a
+#                   branch cache gets into it;
+#   build-windows - the same on windows-2025 (slice 10a): an unsigned per-user NSIS installer (scripts/build-windows.sh); the
+#                   version in the exe and in the installer name is checked against the tag; the result is its own artifact
+#                   and its own part of the sums;
+#   publish       - short: downloads both artifacts, merges the parts into one SHA256SUMS, checks it and creates the Release
+#                   (the only place with write permission, no npm and no cargo).
+# `scripts/release.sh --tag X.Y.Z` sets the tag after the "Release vX.Y.Z" PR is merged. Re-run for an existing tag (the build failed):
+#   gh workflow run release.yml -f tag=vX.Y.Z            (publish=false: build and upload the artifacts, do not create a Release)
 name: Release
 
 on:
@@ -34,7 +34,6 @@ concurrency:
   group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
-
 jobs:
   build-macos:
     runs-on: macos-15
@@ -43,11 +42,8 @@ jobs:
       contents: read
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
-      # 'true' for a tag push or a re-run by tag; 'false' for a branch push (workflow check, nothing is published).
-      RELEASE_RUN: ${{ github.ref_type == 'tag' || inputs.tag != '' }}
     steps:
       - name: Проверить имя тега
-        if: env.RELEASE_RUN == 'true'
         run: |
           if ! [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "тег должен быть vX.Y.Z (семвер без приставок), а не $TAG"
@@ -73,7 +69,7 @@ jobs:
         run: |
           PKGID="$(cargo pkgid -p kinige --offline)"
           VERSION="${PKGID##*[#@]}"
-          if [ "$RELEASE_RUN" = true ] && [ "$TAG" != "v$VERSION" ]; then
+          if [ "$TAG" != "v$VERSION" ]; then
             echo "тег $TAG не совпадает с версией $VERSION в Cargo.toml"
             exit 1
           fi
@@ -81,7 +77,7 @@ jobs:
 
       # Релиз собирается только из main: тег на коммите чужой ветки не соберётся.
       - name: Проверить, что коммит тега в main
-        if: env.RELEASE_RUN == 'true'
+        if: github.ref_type == 'tag' || inputs.tag
         run: |
           if ! git merge-base --is-ancestor HEAD origin/main; then
             echo "коммит тега $TAG не входит в main"
@@ -125,7 +121,7 @@ jobs:
           ditto -x -k "$DIST/$NAME.zip" "$UNZ"
           codesign --verify --deep --strict --verbose=2 "$UNZ/Kinige.app"
 
-          # Суммы этой платформы; в один SHA256SUMS их склеивает publish.
+          # The sums of this platform; `publish` merges them into one SHA256SUMS.
           (cd "$DIST" && shasum -a 256 "$NAME.dmg" "$NAME.zip" > SHA256SUMS.macos && cat SHA256SUMS.macos && ls -l)
 
       - uses: actions/upload-artifact@v7
@@ -145,10 +141,8 @@ jobs:
         shell: bash
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
-      RELEASE_RUN: ${{ github.ref_type == 'tag' || inputs.tag != '' }}
     steps:
       - name: Check the tag name
-        if: env.RELEASE_RUN == 'true'
         run: |
           if ! [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "the tag must be vX.Y.Z (semver without suffixes), not $TAG"
@@ -173,14 +167,14 @@ jobs:
         run: |
           PKGID="$(cargo pkgid -p kinige --offline)"
           VERSION="${PKGID##*[#@]}"
-          if [ "$RELEASE_RUN" = true ] && [ "$TAG" != "v$VERSION" ]; then
+          if [ "$TAG" != "v$VERSION" ]; then
             echo "the tag $TAG does not match the version $VERSION in Cargo.toml"
             exit 1
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Check that the tag commit is in main
-        if: env.RELEASE_RUN == 'true'
+        if: github.ref_type == 'tag' || inputs.tag
         run: |
           if ! git merge-base --is-ancestor HEAD origin/main; then
             echo "the commit of $TAG is not in main"
@@ -198,7 +192,8 @@ jobs:
           DIST="$RUNNER_TEMP/dist"
           NAME="Kinige-$VERSION-windows-x64-setup.exe"
           mkdir -p "$DIST"
-          cp target/release/bundle/nsis/*-setup.exe "$DIST/$NAME"
+          # scripts/build-windows.sh already gave the installer this name.
+          cp "target/release/bundle/nsis/$NAME" "$DIST/$NAME"
           (cd "$DIST" && sha256sum "$NAME" > SHA256SUMS.windows && cat SHA256SUMS.windows && ls -l)
 
       - uses: actions/upload-artifact@v7

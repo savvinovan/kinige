@@ -1,20 +1,21 @@
-//! Сервер MCP на платформах без Unix-сокетов (Windows, слайс 10a): его нет. Доступ ИИ-агентов появится вместе с именованными
-//! каналами (слайс 10). Модуль повторяет ту часть `mcp`, которую зовёт остальное приложение, но ничего не слушает, не создаёт
-//! файлов и не запускает потоков: окно «Доступ ИИ-агентов» видит ошибку `unsupported` и показывает «пока недоступно».
+//! The MCP server on platforms without Unix sockets (Windows, slice 10a): there is none. AI-agent access comes with
+//! named pipes (slice 10). The module repeats the part of `mcp` that the rest of the app calls, but listens on nothing,
+//! creates no files and starts no threads: the "AI agent access" page sees the error `unsupported` and says "not
+//! available yet".
 
 use kinige_domain::AgentSocket;
 use std::path::Path;
 use tauri::{AppHandle, Runtime};
 
-/// Код в `AgentSocket::error`: окно показывает вместо выключателя строку «Недоступно на этой платформе».
+/// The code in `AgentSocket::error`: instead of the switch the page shows a line saying the feature is not available here.
 pub const UNSUPPORTED: &str = "unsupported";
 
-/// Ничего не запускает; в журнал процесса — одна строка без путей.
+/// Starts nothing; one line without paths goes to the process log.
 pub fn start<R: Runtime>(_app: &AppHandle<R>, _data_dir: &Path) {
-    log::info!("mcp: на этой платформе недоступен");
+    log::info!("mcp: not available on this platform");
 }
 
-/// Удалять нечего: сокета не было.
+/// Nothing to remove: there was no socket.
 pub fn shutdown<R: Runtime>(_app: &AppHandle<R>) {}
 
 pub fn socket_info<R: Runtime>(_app: &AppHandle<R>) -> AgentSocket {

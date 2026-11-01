@@ -144,16 +144,16 @@ pub fn start_file<R: Runtime>(
     SettingsFile::start(store.clone(), data_dir, options)
 }
 
-/// Открыть окно настроек из главного окна (профиль → «Настройки»). На Windows команда `async`: окно, созданное на главном
-/// потоке из обработчика, остаётся белым (взаимная блокировка создания WebView2, документация `WebviewWindowBuilder`).
-/// На остальных системах всё как раньше.
+/// Opens the settings window from the main window (profile -> "Settings"). On Windows the command is `async`: a window
+/// created on the main thread from a handler stays white (a deadlock in WebView2 creation, see the `WebviewWindowBuilder`
+/// documentation). Elsewhere nothing changes.
 #[cfg_attr(windows, tauri::command(async))]
 #[cfg_attr(not(windows), tauri::command)]
 pub fn open_settings<R: Runtime>(app: AppHandle<R>) {
     open(&app);
 }
 
-/// То же из обработчиков событий меню и значка: они идут на главном потоке, поэтому на Windows окно создаётся в другом потоке.
+/// The same from menu and tray event handlers: they run on the main thread, so on Windows the window is created on another thread.
 pub fn open_from_event<R: Runtime>(app: &AppHandle<R>) {
     #[cfg(windows)]
     {

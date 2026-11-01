@@ -12,8 +12,8 @@ function page(value: AgentAccess, language: "ru" | "en") {
   return screen.getByRole("region", { name: /Доступ ИИ-агентов|AI agent access/ });
 }
 
-describe("Доступ ИИ-агентов: платформа без сервера MCP (Windows, слайс 10a)", () => {
-  it("вместо выключателя, режима и списков — одна тихая строка, на двух языках", () => {
+describe("AI agent access: a platform without an MCP server (Windows, slice 10a)", () => {
+  it("one quiet line instead of the switch, the mode and the lists, in both languages", () => {
     const ru = page(unsupported, "ru");
     expect(within(ru).getByText("Пока недоступно в Windows.")).toBeInTheDocument();
     expect(within(ru).queryByRole("checkbox")).toBeNull();
@@ -22,14 +22,14 @@ describe("Доступ ИИ-агентов: платформа без серве
     expect(within(ru).queryByRole("alert")).toBeNull();
   });
 
-  it("английский текст", () => {
+  it("the English text", () => {
     const en = page(unsupported, "en");
     expect(within(en).getByRole("heading", { level: 2, name: "AI agent access" })).toBeInTheDocument();
     expect(within(en).getByText("Not available on Windows yet.")).toBeInTheDocument();
     expect(within(en).queryByRole("checkbox")).toBeNull();
   });
 
-  it("обычное состояние сокета страницу не меняет: выключатель на месте", () => {
+  it("an ordinary socket state leaves the page as it was: the switch is there", () => {
     const ru = page(access(), "ru");
     expect(within(ru).getByRole("checkbox", { name: "Разрешить агентам доступ к журналу" })).toBeInTheDocument();
     expect(within(ru).queryByText("Пока недоступно в Windows.")).toBeNull();

@@ -126,8 +126,8 @@ impl Rig {
     }
 }
 
-/// Правка файла «снаружи»: временный файл и `rename`, как делают редакторы. Режим — только на Unix; на Windows прав в стиле
-/// POSIX нет (ADR-0010, заметка про Windows), и аргумент игнорируется.
+/// An edit of the file "from outside": a temporary file and `rename`, as editors do. The mode applies on Unix only; Windows
+/// has no POSIX permissions (ADR-0010, Windows note), so the argument is ignored there.
 pub fn write_file(dir: &Path, bytes: &[u8], mode: u32) {
     let tmp = dir.join(".editor.tmp");
     fs::write(&tmp, bytes).unwrap();

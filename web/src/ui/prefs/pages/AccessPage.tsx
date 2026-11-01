@@ -36,7 +36,7 @@ export function AccessPage({ access, error, onEnabledChange, onModeChange, onOpe
   const connectId = useId();
   const off = !access.enabled;
   const visible = access.chats.filter((chat) => chat.visible).length;
-  // Платформа без сервера MCP (Windows до именованных каналов, слайс 10a): ни выключателя, ни режима, ни списков.
+  // A platform without an MCP server (Windows until named pipes, slice 10a): no switch, no mode, no lists.
   if (access.socket.error === "unsupported") {
     return (
       <section className="prefs-page" aria-labelledby={titleId}>

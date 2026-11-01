@@ -19,8 +19,8 @@ fn code(error: StoreError) -> ErrorCode {
     api(error).code
 }
 
-/// Доступ ИИ-агентов есть не везде: на Windows сервера MCP нет до именованных каналов (слайс 10), и менять его настройки
-/// незачем. Настройка в базе и в файле при этом не трогается.
+/// AI-agent access does not exist everywhere: Windows has no MCP server until named pipes (slice 10), so there is nothing
+/// to change. The settings in the database and in the file are not touched.
 fn ensure_supported() -> ApiResult<()> {
     if cfg!(unix) {
         Ok(())

@@ -32,6 +32,8 @@ interface SettingsTreeProps {
   withProblems?: readonly Route[];
   /** Развёрнутые группы при открытии (истории Storybook); без него берётся сохранённое состояние. */
   defaultExpanded?: readonly Route[];
+  /** Routes that are not offered at all (Windows has no AI-agent access yet: no "Visible chats" and "Access log"). */
+  without?: readonly Route[];
 }
 
 /**
@@ -46,8 +48,13 @@ interface SettingsTreeProps {
  * страницу. `aria-expanded` стоит на разделе с вложенными пунктами. В обходе Tab один пункт — выбранный, а если он скрыт в
  * свёрнутой группе, то её раздел. Кольцо фокуса — только `:focus-visible` (с клавиатуры). Движения нет.
  */
-export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpanded }: SettingsTreeProps) {
+export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpanded, without = [] }: SettingsTreeProps) {
   const { t } = useTranslation();
+  // The nested items that are offered; a group left without any is an ordinary item.
+  const childrenOf = (item: Route): readonly Route[] | undefined => {
+    const offered = GROUPS[item]?.filter((child) => !without.includes(child));
+    return offered && offered.length > 0 ? offered : undefined;
+  };
   const list = useRef<HTMLUListElement>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<Route>>(() => {
     const open = new Set<Route>(defaultExpanded ?? loadExpanded());
@@ -86,7 +93,7 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
     const current = items[index];
     if (!current) return;
     const at = current.dataset.route as Route;
-    const children = GROUPS[at];
+    const children = childrenOf(at);
     const open = expanded.has(at);
     let handled = true;
     switch (event.key) {
@@ -126,8 +133,8 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
   return (
     <nav className="settings-tree" aria-label={t("prefs.treeLabel")}>
       <ul className="settings-tree__list" ref={list} onKeyDown={onKeyDown}>
-        {TREE.filter((item) => !hidden(item.route)).map((item) => {
-          const children = GROUPS[item.route];
+        {TREE.filter((item) => !without.includes(item.route) && !hidden(item.route)).map((item) => {
+          const children = childrenOf(item.route);
           const open = expanded.has(item.route);
           const current = item.route === route;
           // Свёрнутая группа с текущим подпунктом подсвечена; метка ошибки подпункта видна на разделе, пока группа свёрнута.

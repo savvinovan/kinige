@@ -1,5 +1,6 @@
-//! Мост на платформе без Unix-сокетов (Windows, слайс 10a): бинарник собирается и на запуске говорит, что доступа ИИ-агентов
-//! нет, одной строкой в stderr и кодом 2. Ничего не читает из stdin и не открывает сеть и диск.
+//! The bridge on a platform without Unix sockets (Windows, slice 10a): the binary builds and, when started, says in one
+//! stderr line that there is no AI-agent access and exits with code 2. It reads nothing from stdin and touches neither
+//! the network nor the disk.
 
 #![cfg(test)]
 #![cfg(not(unix))]

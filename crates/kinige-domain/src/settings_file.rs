@@ -104,6 +104,8 @@ pub enum KeyIssueKind {
     ChatAmbiguous,
     /// Чат исключён из AI.
     ChatExcluded,
+    /// The key is not available on this platform (`agent_access` on Windows until named pipes, slice 10a): not applied.
+    Unsupported,
 }
 
 /// Когда раздел менялся через файл (UTC, мс); `null` — не менялся в этом запуске.

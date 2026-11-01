@@ -77,7 +77,7 @@ fn the_mirror_folder_named_in_the_file_is_moved_aside_with_its_extra_day() {
     );
 }
 
-// «Небезопасный» здесь — файл с режимом 0666: на Windows режимов нет (ADR-0010, заметка про Windows).
+// "Unsafe" here means a file with mode 0666: Windows has no modes (ADR-0010, Windows note).
 #[cfg(unix)]
 #[test]
 fn an_unsafe_file_does_not_make_restore_move_its_mirror_folder() {
@@ -155,6 +155,8 @@ fn access_from_the_copy_is_switched_off_and_an_unsafe_file_cannot_bring_it_back(
     assert!(!rig.store.agent_access().unwrap().enabled);
 }
 
+// The file carries AI-agent access, which is applied on Unix only (ADR-0010, Windows note).
+#[cfg(unix)]
 #[test]
 fn after_restore_a_safe_file_is_applied_over_the_restored_database() {
     let dir = tempfile::tempdir().unwrap();

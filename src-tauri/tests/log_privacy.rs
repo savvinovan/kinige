@@ -125,7 +125,7 @@ fn the_settings_file_logs_only_categories_never_keys_titles_values_or_paths() {
     let path = fixture.data.path().join("settings.json");
     let write = |text: String, mode: u32| {
         std::fs::write(&path, text).unwrap();
-        // Режим файла — только на Unix; на Windows он игнорируется (ADR-0010, заметка про Windows).
+        // The file mode applies on Unix only; Windows ignores it (ADR-0010, Windows note).
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;

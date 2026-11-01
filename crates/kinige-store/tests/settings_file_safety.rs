@@ -9,7 +9,7 @@ mod common;
 use common::settings_file::*;
 use common::*;
 use kinige_domain::TextSize;
-// Остальное нужно только тестам про режим файла (Unix).
+// The rest is needed only by the file-mode tests (Unix).
 #[cfg(unix)]
 use kinige_domain::{KeyIssueKind, UnsafeReason};
 #[cfg(unix)]
@@ -24,7 +24,7 @@ use std::sync::{Arc, Mutex};
 const ACCESS_ON: &str =
     r#"{"text_size":"large","agent_access":{"enabled":true,"mode":"read_write"}}"#;
 
-// Шесть тестов ниже — про режим файла (0664, 0600): на Windows режимов в стиле POSIX нет (ADR-0010, заметка про Windows).
+// The six tests below are about the file mode (0664, 0600): Windows has no POSIX modes (ADR-0010, Windows note).
 #[cfg(unix)]
 #[test]
 fn a_group_writable_file_does_not_switch_agent_access_on_but_the_rest_applies() {

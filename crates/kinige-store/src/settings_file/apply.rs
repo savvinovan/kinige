@@ -213,7 +213,17 @@ fn apply_in(
     );
     if input.trusted {
         apply_mirror(conn, input, default_mirror, &mut out)?;
-        apply_agent(conn, input, &mut out)?;
+        // Windows has no MCP server (slice 10a) and no owner and mode checks of the file (ADR-0010, Windows note), so the
+        // file must not store AI-agent access there: it would switch access on, with write access, at the upgrade that
+        // brings MCP to Windows, without the warning. The key is reported and nothing is written.
+        if cfg!(unix) {
+            apply_agent(conn, input, &mut out)?;
+        } else if wants_agent {
+            out.issues.push(KeyIssue {
+                key: "agent_access".to_string(),
+                kind: KeyIssueKind::Unsupported,
+            });
+        }
     } else {
         if wants_mirror {
             out.issues.push(unsafe_ignored("mirror.folder"));

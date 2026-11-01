@@ -1,8 +1,8 @@
 //! `kinige-mcp --socket <путь>` — мост MCP: строки JSON-RPC из stdin идут в Unix-сокет Kinige, ответы — в stdout
 //! (ADR-0009, слайс 4a). Запускает его MCP-клиент (Claude Desktop, Claude Code). Базу мост не открывает.
 //!
-//! Только Unix. На Windows (слайс 10a) доступа ИИ-агентов нет до именованных каналов (слайс 10): бинарник собирается, но на
-//! первом же запуске говорит об этом одной строкой и завершается с кодом 2.
+//! Unix only. On Windows (slice 10a) there is no AI-agent access until named pipes (slice 10): the binary builds, but
+//! on its first run it says so in one line and exits with code 2.
 
 #[cfg(unix)]
 mod bridge;
@@ -32,7 +32,7 @@ const WAIT: Duration = Duration::from_secs(10);
 #[cfg(unix)]
 const TEST_WAIT_MS: &str = "KINIGE_MCP_TEST_WAIT_MS";
 
-/// Что мост говорит там, где ему нечем соединяться с приложением.
+/// What the bridge says where it has nothing to connect to the app with.
 #[cfg(not(unix))]
 const UNSUPPORTED: &str = "unsupported: AI agent access is not available on this platform yet";
 

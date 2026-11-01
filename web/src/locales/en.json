@@ -434,7 +434,8 @@
         "unsafe_ignored": "{{key}}: ignored because the file is not safe",
         "chat_not_found": "{{key}}: no such chat",
         "chat_ambiguous": "{{key}}: several chats have this name, use the id",
-        "chat_excluded": "{{key}}: this chat is excluded from AI"
+        "chat_excluded": "{{key}}: this chat is excluded from AI",
+        "unsupported": "{{key}}: not available on this system yet, ignored"
       }
     }
   },

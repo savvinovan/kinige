@@ -224,6 +224,35 @@ fn an_os_refusal_to_rename_the_mirror_folder_is_the_same_error() {
     assert!(mirror.join("Inbox").is_dir());
 }
 
+/// Windows (slice 10a): a folder held open without `FILE_SHARE_DELETE` (an editor or an indexer has it open) cannot be
+/// renamed; the restore stops before it touches anything, with the same `MirrorFolderBusy` as on Unix.
+#[cfg(windows)]
+#[test]
+fn a_mirror_folder_held_open_on_windows_is_the_same_error() {
+    use std::os::windows::fs::OpenOptionsExt;
+    const FILE_SHARE_READ_WRITE: u32 = 0x1 | 0x2;
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    let dir = tempfile::tempdir().unwrap();
+    let name = database_with_copy(dir.path());
+    let mirror = dir.path().join("mirrors").join("Kinige");
+    fs::create_dir_all(mirror.join("Inbox")).unwrap();
+    let before = fs::read(db_path(dir.path())).unwrap();
+    let held = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(FILE_SHARE_READ_WRITE)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(&mirror)
+        .unwrap();
+
+    let result = kinige_store::restore_backup(&db_path(dir.path()), &name, T0, Some(&mirror));
+
+    drop(held);
+    assert!(matches!(result, Err(StoreError::MirrorFolderBusy)));
+    assert_eq!(fs::read(db_path(dir.path())).unwrap(), before);
+    assert_eq!(marker(dir.path()), None);
+    assert!(mirror.join("Inbox").is_dir());
+}
+
 #[test]
 fn two_restores_in_one_second_get_different_folder_names() {
     let dir = tempfile::tempdir().unwrap();

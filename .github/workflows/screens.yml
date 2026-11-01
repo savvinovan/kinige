@@ -4,8 +4,9 @@
 #   commit — короткая: скачивает артефакт и коммитит docs/screens/<слайс>/ в ветку (единственное место с правом записи,
 #            без npm, cargo и сторонних кэшей).
 # Запуск: gh workflow run screens.yml --ref <ветка> -f slice=4a   (в main и на тегах не работает).
-# Windows (слайс 10a): -f os=windows -f slice=10a — задача shots-windows на windows-2025: собирает установщик NSIS, ставит его
-# тихо и запускает scripts/screens/<слайс>.ps1 (ввод — клавиши через SendKeys на одноразовой ВМ раннера); коммит тот же.
+# Windows (slice 10a): -f os=windows -f slice=10a runs the job shots-windows on windows-2025: it builds the NSIS installer,
+# installs it silently and runs scripts/screens/<slice>.ps1 (input is keys sent with SendKeys on the disposable runner VM);
+# the commit job is the same.
 # Коммит от GITHUB_TOKEN CI сам не запускает (push-событие), но запуск через workflow_dispatch от GITHUB_TOKEN разрешён:
 # последний шаг задачи commit запускает ci.yml на ветке (нужно право actions: write, оно только у этой задачи).
 # Ввод — только действия доступности (scripts/screens/ax.js): раннер выдаёт osascript право Accessibility (проверено пробой).
@@ -19,7 +20,7 @@ on:
         default: 4a
         required: true
       os:
-        description: Раннер снимков — macos (scripts/screens/<слайс>.sh) или windows (scripts/screens/<слайс>.ps1)
+        description: Screenshot runner - macos (scripts/screens/<slice>.sh) or windows (scripts/screens/<slice>.ps1)
         type: choice
         options: [macos, windows]
         default: macos

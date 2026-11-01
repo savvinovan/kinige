@@ -139,7 +139,7 @@ fn write_snapshot(source: &Connection, temp: &Path) -> Result<(), BackupError> {
             return Err(BackupError::WriteFailed);
         }
     }
-    // Для записи, а не только для чтения: на Windows `FlushFileBuffers` отказывает дескриптору без права записи.
+    // Opened for writing, not only for reading: on Windows `FlushFileBuffers` refuses a handle without write access.
     fs::OpenOptions::new()
         .write(true)
         .open(temp)

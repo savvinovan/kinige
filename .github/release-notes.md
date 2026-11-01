@@ -23,4 +23,5 @@ AI agent access (MCP) is not available on Windows yet: the "AI agent access" pag
 ## Data
 
 - macOS: the database is in `~/Library/Application Support/me.savvinov.kinige/`, the Markdown copy of the entries in `~/Documents/Kinige`.
-- Windows: the database is in `%APPDATA%\me.savvinov.kinige`, the Markdown copy of the entries in `Documents\Kinige` (your Documents folder).
+- Windows: the database is in `%LOCALAPPDATA%\me.savvinov.kinige`, the Markdown copy of the entries in `Documents\Kinige` (your Documents folder). On Windows 11 the Documents folder may be redirected to OneDrive, so the plain-text Markdown copy can end up in the cloud; choose another folder in Settings -> Copies if you do not want that.
+- Windows uninstaller: the uninstall page has an unchecked option "Delete the application data". Leave it unchecked unless you want your journal database deleted: ticking it removes the database. The Markdown copy is never removed.

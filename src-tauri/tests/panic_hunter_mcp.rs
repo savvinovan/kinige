@@ -3,8 +3,9 @@
 //! обычный вызов.
 
 // Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/. Сервер MCP — Unix-сокет; на Windows его нет (слайс 10a).
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
 #![cfg(test)]
+// The MCP server is a Unix socket; there is none on Windows (slice 10a).
 #![cfg(unix)]
 
 mod common;

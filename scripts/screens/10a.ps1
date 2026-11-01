@@ -58,7 +58,9 @@ public static class Win {
   [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
   [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+  [DllImport("user32.dll")] static extern bool AttachThreadInput(uint attach, uint to, bool on);
+  [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr h);
+  [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
   [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
   [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
@@ -109,10 +111,15 @@ public static class Win {
     ShowWindow(h, 9); // SW_RESTORE
     SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040); // HWND_TOPMOST, NOSIZE|NOMOVE|SHOWWINDOW
     SetWindowPos(h, new IntPtr(-2), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040); // HWND_NOTOPMOST
-    // A background process may not take the foreground; a tap on Alt lifts that restriction for the next call.
-    keybd_event(0x12, 0, 0, UIntPtr.Zero);
-    keybd_event(0x12, 0, 2, UIntPtr.Zero);
+    // A background process may not take the foreground: attach to the input queue of the current foreground window for the
+    // call. (An Alt tap, the other known trick, puts the window into menu mode and the first typed keys are lost.)
+    uint ignored;
+    uint foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), out ignored);
+    uint thisThread = GetCurrentThreadId();
+    AttachThreadInput(thisThread, foregroundThread, true);
+    BringWindowToTop(h);
     SetForegroundWindow(h);
+    AttachThreadInput(thisThread, foregroundThread, false);
   }
 
   public static bool IsForeground(IntPtr h) { return GetForegroundWindow() == h; }
@@ -128,7 +135,9 @@ public static class Win {
   }
 
   public static string Capture(IntPtr h, string path) {
-    Rectangle b = Bounds(h);
+    // One pixel in from every side: the outermost row and column of the frame bounds belong to whatever is behind the window.
+    Rectangle full = Bounds(h);
+    Rectangle b = new Rectangle(full.Left + 1, full.Top + 1, full.Width - 2, full.Height - 2);
     using (Bitmap bmp = new Bitmap(b.Width, b.Height, PixelFormat.Format32bppArgb)) {
       using (Graphics g = Graphics.FromImage(bmp)) { g.CopyFromScreen(b.Left, b.Top, 0, 0, b.Size, CopyPixelOperation.SourceCopy); }
       bmp.Save(path, ImageFormat.Png);
@@ -235,26 +244,21 @@ function Send-Note([string]$text) {
   Start-Sleep -Seconds 3
 }
 
-# Opens the profile menu and "Settings" by keys: Ctrl+K focuses the search field (the first stop of the sidebar), then Tab
-# walks Collapse, the chats of the synthetic data, Archive, Trash and Profile. `$stops` is the number of Tab presses; the
-# count depends on the sidebar of the synthetic data, so a few neighbours are tried when the window does not appear.
+# Opens the profile menu and "Settings" by keys: Ctrl+K focuses the search field, then Tab walks the sidebar to the profile
+# button (13 presses with the synthetic data, found on the runner; the count depends on the sidebar of the data). One
+# attempt only: a blind retry would press Enter on whatever has the focus (it once left a reply bar in a draft). The focus
+# position is captured before Enter for diagnosis (never committed).
 function Open-Settings {
-  foreach ($stops in 11, 12, 10, 13) {
-    Send-Keys 'Kinige' '{ESC}'
-    Send-Keys 'Kinige' '^k' $false
-    Press-Tab 'Kinige' $stops
-    # Where the focus is after the Tab stops (kept for diagnosis, never committed).
-    [Win]::Capture((Get-AppWindow 'Kinige'), (Join-Path $Debug "tabs-$stops.png")) | Out-Null
-    Send-Keys 'Kinige' '{ENTER}' $false
-    Start-Sleep -Milliseconds 800
-    Send-Keys 'Kinige' '{ENTER}' $false
-    $window = $null
-    for ($i = 0; $i -lt 10 -and -not $window; $i++) { Start-Sleep -Milliseconds 700; $window = Get-AppWindow 'Settings' }
-    if ($window) { Say "settings opened with $stops Tab stops"; return $window }
-    Say "no settings window after $stops Tab stops"
-  }
-  Fail 'the settings window did not open'
-  return $null
+  Send-Keys 'Kinige' '{ESC}'
+  Send-Keys 'Kinige' '^k' $false
+  Press-Tab 'Kinige' 13
+  [Win]::Capture((Get-AppWindow 'Kinige'), (Join-Path $Debug 'before-open-settings.png')) | Out-Null
+  Send-Keys 'Kinige' '{ENTER}' $false
+  Start-Sleep -Milliseconds 800
+  Send-Keys 'Kinige' '{ENTER}' $false
+  $window = Wait-For { Get-AppWindow 'Settings' } 10 'the settings window'
+  if (-not $window) { Fail 'the settings window did not open'; return $null }
+  return $window
 }
 
 function Set-Dark {
@@ -293,6 +297,7 @@ $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Installer).Hash.ToLower()
 $install = Start-Process -FilePath $Installer -ArgumentList '/S', "/D=$AppDir" -PassThru
 $install.WaitForExit(600000) | Out-Null
 if ($install.ExitCode -ne 0) { Fail "the installer exited with $($install.ExitCode)" }
+$installMode = (Get-Content -Raw (Join-Path $Repo 'src-tauri\tauri.windows.conf.json') | ConvertFrom-Json).bundle.windows.nsis.installMode
 $exe = Get-ChildItem -Path $AppDir -Filter *.exe -File | Where-Object { $_.Name -notmatch '^uninstall' } | Select-Object -First 1
 if (-not $exe) { Fail "no application exe in the install directory"; Get-ChildItem $AppDir -Recurse | Out-String | Write-Host; exit 1 }
 @(
@@ -302,7 +307,8 @@ if (-not $exe) { Fail "no application exe in the install directory"; Get-ChildIt
   "installed exe: $($exe.Name)",
   "installed exe ProductVersion: $($exe.VersionInfo.ProductVersion)",
   "installed files: " + ((Get-ChildItem $AppDir -Recurse -File | ForEach-Object { $_.FullName.Substring($AppDir.Length + 1) }) -join ', '),
-  "installs per-user without administrator rights: $((Test-Path (Join-Path $AppDir 'uninstall.exe')))",
+  "install mode: $installMode (bundle.windows.nsis.installMode in src-tauri/tauri.windows.conf.json; the runner account is an administrator, so no prompt can be shown here)",
+  "uninstaller present: $((Test-Path (Join-Path $AppDir 'uninstall.exe')))",
   "seeded messages: $seeded"
 ) | Set-Content -Path (Join-Path $Out 'install.txt') -Encoding UTF8
 Say (Get-Content (Join-Path $Out 'install.txt') -Raw)
@@ -359,7 +365,7 @@ if ($main) { Shoot '05-after-kill' 'Kinige' }
 $withNote = @()
 for ($i = 0; $i -lt 40 -and $withNote.Count -eq 0; $i++) {
   $mdFiles = @(Get-ChildItem -Path $Mirror -Recurse -Filter *.md -ErrorAction SilentlyContinue)
-  $withNote = @($mdFiles | ForEach-Object { if ((Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8) -match 'note written just before the process is killed') { $_ } })
+  $withNote = @($mdFiles | ForEach-Object { if ((Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8) -like "*$noteText*") { $_ } })
   if ($withNote.Count -eq 0) { Start-Sleep -Seconds 1 }
 }
 @(
@@ -376,21 +382,25 @@ Stop-App
 # ---- 6. Default locations (no overrides) ----------------------------------------------------------------------------------
 
 $main = Start-App $exe.FullName $false
-$appData = Join-Path $env:APPDATA 'me.savvinov.kinige'
+$appData = Join-Path $env:LOCALAPPDATA 'me.savvinov.kinige'
 $documents = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Kinige'
 # The Markdown folder appears with the first saved entry, so write one into this fresh default profile.
 if ($main) { Send-Note 'A synthetic note for the default location check' }
 Wait-For { Test-Path $documents } 30 'the Markdown copy folder Documents\Kinige' | Out-Null
 @(
-  '# Names only, no contents. Data directory: %APPDATA%\me.savvinov.kinige',
+  '# Names only, no contents. Data directory: %LOCALAPPDATA%\me.savvinov.kinige (local, not roaming)',
   ((Get-ChildItem $appData -Force -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) -join ', '),
   '# Markdown copy: Documents\Kinige (created with the first saved entry; Documents is the shell known folder)',
   "exists: $(Test-Path $documents)",
   ((Get-ChildItem $documents -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) -join ', '),
-  "default database rows: " + (Get-Scalar 'select count(*) from message' (Join-Path $appData 'kinige.db'))
+  "default database rows: " + (Get-Scalar 'select count(*) from message' (Join-Path $appData 'kinige.db')),
+  '# ACL of the data directory (icacls; accounts and rights only)',
+  ((& icacls.exe $appData 2>&1 | ForEach-Object { ([string]$_).Replace($appData, '<data dir>') } | Where-Object { $_.Trim() }) -join "`n"),
+  '# Roaming copy must not exist',
+  "exists in %APPDATA%: $(Test-Path (Join-Path $env:APPDATA 'me.savvinov.kinige'))"
 ) | Set-Content -Path (Join-Path $Out 'data-location.txt') -Encoding UTF8
 Say (Get-Content (Join-Path $Out 'data-location.txt') -Raw)
-if (-not (Test-Path (Join-Path $appData 'kinige.db'))) { Fail 'kinige.db is not in %APPDATA%\me.savvinov.kinige' }
+if (-not (Test-Path (Join-Path $appData 'kinige.db'))) { Fail 'kinige.db is not in %LOCALAPPDATA%\me.savvinov.kinige' }
 if (-not (Test-Path $documents)) { Fail 'the Markdown copy folder Documents\Kinige does not exist after an entry was sent' }
 Stop-App
 
