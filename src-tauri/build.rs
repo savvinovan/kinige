@@ -96,6 +96,9 @@ fn main() {
             .windows_attributes(windows_attributes),
     )
     .expect("не удалось выполнить tauri-build");
+    if windows {
+        link_resources_into_tests();
+    }
 }
 
 /// Манифест с Common Controls v6 для всех исполняемых файлов крейта на Windows (слайс 10a): приложения, тестов в `tests/` и
@@ -117,4 +120,13 @@ fn embed_manifest() {
     std::fs::write(&manifest, COMMON_CONTROLS_V6).expect("не удалось записать манифест");
     println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
     println!("cargo:rustc-link-arg=/MANIFESTINPUT:{}", manifest.display());
+}
+
+/// Ресурсы приложения (значок окна, сведения о версии) для интеграционных тестов на Windows. `tauri-build` линкует их только в
+/// бинарники, а `generate_context!` берёт значок окна по умолчанию из ресурса самого исполняемого файла: в тесте без ресурса
+/// контекст не создаётся ("failed to load the default window icon"). Файл `resource.lib` лежит в `OUT_DIR` после `tauri-build`.
+fn link_resources_into_tests() {
+    let out_dir = std::env::var_os("OUT_DIR").expect("cargo не передал OUT_DIR");
+    let resources = std::path::Path::new(&out_dir).join("resource.lib");
+    println!("cargo:rustc-link-arg-tests={}", resources.display());
 }
