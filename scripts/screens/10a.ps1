@@ -236,10 +236,12 @@ function Send-Note([string]$text) {
 # walks Collapse, the chats of the synthetic data, Archive, Trash and Profile. `$stops` is the number of Tab presses; the
 # count depends on the sidebar of the synthetic data, so a few neighbours are tried when the window does not appear.
 function Open-Settings {
-  foreach ($stops in 11, 12, 10, 13) {
+  foreach ($stops in 11, 12, 10, 13, 9, 14, 8, 15, 16) {
     Send-Keys 'Kinige' '{ESC}'
     Send-Keys 'Kinige' '^k'
     Press-Tab 'Kinige' $stops
+    # Where the focus is after the Tab stops (kept for diagnosis, never committed).
+    [Win]::Capture((Get-AppWindow 'Kinige'), (Join-Path $Debug "tabs-$stops.png")) | Out-Null
     Send-Keys 'Kinige' '{ENTER}'
     Start-Sleep -Milliseconds 800
     Send-Keys 'Kinige' '{ENTER}'
@@ -350,11 +352,17 @@ if ($main) { Shoot '05-after-kill' 'Kinige' }
 
 # ---- 5. The Markdown copy of the scenario (KINIGE_MIRROR_DIR) ------------------------------------------------------------
 
-$mdFiles = @(Get-ChildItem -Path $Mirror -Recurse -Filter *.md -ErrorAction SilentlyContinue)
-$withNote = @($mdFiles | Select-String -SimpleMatch 'A synthetic note written just before' -List)
+# The copy is written by a background writer; after a kill the pending days are written at the next start.
+$withNote = @()
+for ($i = 0; $i -lt 40 -and $withNote.Count -eq 0; $i++) {
+  $mdFiles = @(Get-ChildItem -Path $Mirror -Recurse -Filter *.md -ErrorAction SilentlyContinue)
+  $withNote = @($mdFiles | ForEach-Object { if ((Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8) -match 'A synthetic note written just before') { $_ } })
+  if ($withNote.Count -eq 0) { Start-Sleep -Seconds 1 }
+}
 @(
   "markdown files in the copy folder: $($mdFiles.Count)",
   "files that contain the typed note: $($withNote.Count)",
+  "days still waiting for the copy (mirror_dirty): " + (Get-Scalar 'select count(*) from mirror_dirty'),
   "folders: " + ((Get-ChildItem $Mirror -Directory -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) -join ', ')
 ) | Set-Content -Path (Join-Path $Out 'mirror.txt') -Encoding UTF8
 Say (Get-Content (Join-Path $Out 'mirror.txt') -Raw)
