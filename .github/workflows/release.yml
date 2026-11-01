@@ -10,6 +10,7 @@ name: Release
 on:
   push:
     tags: ["v*.*.*"]
+    branches: [chore/kinig-54-releases] # ВРЕМЕННО (проверка сборки до тега), удалить
   workflow_dispatch:
     inputs:
       tag:
@@ -35,7 +36,7 @@ jobs:
     permissions:
       contents: read
     env:
-      TAG: ${{ inputs.tag || github.ref_name }}
+      TAG: v0.5.0 # ВРЕМЕННО, вернуть ${{ inputs.tag || github.ref_name }}
     steps:
       - name: Проверить имя тега
         run: |
