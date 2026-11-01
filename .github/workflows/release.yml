@@ -1,0 +1,160 @@
+# Релиз Kinige (ADR-0012): тег vX.Y.Z -> сборка на macOS-раннере -> GitHub Release с .dmg, .zip и SHA256SUMS. Две задачи:
+#   build   — права только на чтение, токен после checkout не сохраняется; проверяет тег, собирает .app и .dmg
+#             (scripts/build-app.sh, ad-hoc подпись, ADR-0003), проверяет подпись и версию, считает суммы; результат — артефакт.
+#             Кэшей нет: релиз собирается с нуля, чтобы в него не попало ничего из кэша ветки;
+#   publish — короткая: скачивает артефакт и создаёт Release (единственное место с правом записи, без npm и cargo).
+# Тег ставит `scripts/release.sh --tag X.Y.Z` после мержа PR «Release vX.Y.Z». Повтор по готовому тегу (сборка упала):
+#   gh workflow run release.yml -f tag=vX.Y.Z            (publish=false — собрать и выложить артефакт, Release не создавать)
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Готовый тег vX.Y.Z (собирается он, а не ветка, с которой запущен workflow)
+        required: true
+      publish:
+        description: Создать GitHub Release (выключить — только собрать и положить артефакт)
+        type: boolean
+        default: true
+
+# Права по умолчанию — только чтение; запись только у задачи publish.
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Проверить имя тега
+        run: |
+          if ! [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "тег должен быть vX.Y.Z (семвер без приставок), а не $TAG"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          # Повтор по тегу собирает сам тег, а не ветку, с которой запущен workflow.
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+
+      - name: Rust toolchain
+        run: rustup toolchain install
+
+      # Тег = «v» + версия из Cargo.toml (единственный источник, ADR-0012).
+      - name: Проверить тег и версию
+        run: |
+          PKGID="$(cargo pkgid -p kinige --offline)"
+          VERSION="${PKGID##*[#@]}"
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "тег $TAG не совпадает с версией $VERSION в Cargo.toml"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      # Релиз собирается только из main: тег на коммите чужой ветки не соберётся.
+      - name: Проверить, что коммит тега в main
+        if: github.ref_type == 'tag' || inputs.tag
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "коммит тега $TAG не входит в main"
+            exit 1
+          fi
+
+      - run: npm --prefix web ci
+
+      # `CI=true` на раннере заставляет bundle_dmg пропустить оформление окна образа через Finder (AppleScript).
+      - name: Собрать .app и .dmg
+        env:
+          KINIGE_BUNDLES: app,dmg
+        run: scripts/build-app.sh
+
+      - name: Файлы релиза и проверка подписи
+        run: |
+          BUNDLE=target/release/bundle
+          DIST="$RUNNER_TEMP/dist"
+          NAME="Kinige-$VERSION-macos-arm64"
+          mkdir -p "$DIST"
+
+          DMGS=("$BUNDLE"/dmg/*.dmg)
+          [ "${#DMGS[@]}" -eq 1 ] || { echo "ожидался один .dmg, найдено ${#DMGS[@]}"; exit 1; }
+          cp "${DMGS[0]}" "$DIST/$NAME.dmg"
+          ditto -c -k --keepParent "$BUNDLE/macos/Kinige.app" "$DIST/$NAME.zip"
+
+          # Подпись проверяется у того, что получит пользователь: приложение внутри образа и распакованный архив.
+          MNT="$(mktemp -d)"
+          hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$DIST/$NAME.dmg"
+          codesign --verify --deep --strict --verbose=2 "$MNT/Kinige.app"
+          MAIN="$(plutil -extract CFBundleExecutable raw "$MNT/Kinige.app/Contents/Info.plist")"
+          for BIN in "$MAIN" kinige-mcp; do
+            ARCHS="$(lipo -archs "$MNT/Kinige.app/Contents/MacOS/$BIN")"
+            if [ "$ARCHS" != "arm64" ]; then
+              echo "$BIN: архитектуры «$ARCHS», ожидалась arm64"
+              exit 1
+            fi
+          done
+          hdiutil detach "$MNT"
+          UNZ="$(mktemp -d)"
+          ditto -x -k "$DIST/$NAME.zip" "$UNZ"
+          codesign --verify --deep --strict --verbose=2 "$UNZ/Kinige.app"
+
+          (cd "$DIST" && shasum -a 256 "$NAME.dmg" "$NAME.zip" > SHA256SUMS && cat SHA256SUMS && ls -l)
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-dist
+          path: ${{ runner.temp }}/dist
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      # Нужен только .github/release-notes.md из коммита тега; токен после checkout не сохраняется.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.sha }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-dist
+          path: ${{ runner.temp }}/dist
+
+      - name: Создать Release
+        run: |
+          cd "$RUNNER_TEMP/dist"
+          sha256sum -c SHA256SUMS
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG уже существует: удалите его вручную, если сборку нужно заменить"
+            exit 1
+          fi
+          # Шаблон (установка с ad-hoc подписью, где лежат данные) идёт перед сгенерированным списком изменений.
+          gh release create "$TAG" --verify-tag --title "Kinige ${TAG#v}" \
+            --notes-file "$GITHUB_WORKSPACE/.github/release-notes.md" --generate-notes \
+            ./*.dmg ./*.zip ./SHA256SUMS

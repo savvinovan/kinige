@@ -5,6 +5,7 @@ import type { ChatList } from "../../api/generated/ChatList";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { Settings } from "../../api/generated/Settings";
 import { useLanguage } from "../../i18n/I18n";
+import { AboutDialog } from "../about/AboutDialog";
 import { CalendarDialog } from "../calendar/CalendarDialog";
 import { ChatDialog } from "../chat/ChatDialog";
 import { useRecordDrag } from "../drag/useRecordDrag";
@@ -48,6 +49,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const [chatDialog, setChatDialog] = useState<ChatDialogState | null>(null);
   const [dialogError, setDialogError] = useState<ErrorCode | null>(null);
   const [dateError, setDateError] = useState<ErrorCode | null>(null);
+  // «О программе»: строка сборки от Rust («Kinige 0.5.0»); `null` — окно закрыто.
+  const [about, setAbout] = useState<string | null>(null);
   // Номер просьбы «к нижнему краю ленты»: растёт после скрытия карточки «В этот день».
   const [toBottom, setToBottom] = useState(0);
   const { draft, reply, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
@@ -262,6 +265,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
         ) : undefined
       }
       onOpenImport={importer.start}
+      // Версию не получили: окно всё равно открывается, вместо версии прочерк (отдельного канала в лог из окна нет).
+      onOpenAbout={() => void api.appInfo().then((info) => setAbout(info.title), () => setAbout(t("about.unknown")))}
       composerButtons={{ emoji: true }}
       emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji }}
       chats={sidebarChats}
@@ -340,6 +345,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
             />
           ) : null}
           {importer.dialog ? <ImportDialog {...importer.dialog} /> : null}
+          {about !== null ? <AboutDialog title={about} onClose={() => setAbout(null)} /> : null}
           {datePick ? (
             <CalendarDialog
               value={search.filters[datePick] ?? feed.today}

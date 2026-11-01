@@ -58,6 +58,10 @@
     "export": "Export",
     "about": "About"
   },
+  "about": {
+    "unknown": "—",
+    "tagline": "A personal journal in the form of a chat with yourself. Entries are stored on this computer."
+  },
   "import": {
     "title": "Import from Telegram",
     "instruction": "Export your data in Telegram Desktop: “Export Telegram data” or “Export chat history”, in JSON format. You do not need to export files, photos or voice messages: they are not imported yet, and a note stays in the entry in their place.",

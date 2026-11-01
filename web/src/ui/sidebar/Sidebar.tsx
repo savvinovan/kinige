@@ -58,6 +58,8 @@ interface SidebarProps {
   search?: SidebarSearch;
   /** «Импорт из Telegram…» в меню профиля (слайс 4). */
   onOpenImport?: () => void;
+  /** «О программе» в меню профиля (KINIG-54). */
+  onOpenAbout?: () => void;
   /** Чат, над которым сейчас тащат запись (решение приёмки): подсветка цели; сами строки всегда цели (`data-chat-drop`). */
   dropTargetId?: string | null;
 }
@@ -92,6 +94,7 @@ export function Sidebar({
   showSearch = true,
   search,
   onOpenImport,
+  onOpenAbout,
   dropTargetId = null,
 }: SidebarProps) {
   const { t } = useTranslation();
@@ -141,6 +144,7 @@ export function Sidebar({
           profile={profile}
           onOpenSettings={onOpenSettings}
           onOpenImport={onOpenImport}
+          onOpenAbout={onOpenAbout}
           onSearch={search?.onRailClick}
           dropTargetId={dropTargetId}
         />
@@ -220,7 +224,7 @@ export function Sidebar({
               ) : null}
             </button>
           ) : null}
-          <ProfileMenu name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} onOpenImport={onOpenImport} />
+          <ProfileMenu name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} onOpenImport={onOpenImport} onOpenAbout={onOpenAbout} />
         </>
       )}
       {menu && onChatAction ? (
