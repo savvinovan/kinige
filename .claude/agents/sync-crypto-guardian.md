@@ -57,4 +57,4 @@ No tests for:
 - …
 ```
 
-Write in Russian. Separate what is proven from assumptions ("not sure"). Don't invent library APIs — check them. Don't change files.
+Write in English. Separate what is proven from assumptions ("not sure"). Don't invent library APIs — check them. Don't change files.

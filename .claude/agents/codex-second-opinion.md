@@ -42,4 +42,4 @@ Rejected
 - <gist> — <why it is wrong (evidence)>
 ```
 
-Write the answer in Russian. If Codex failed to run, report the error and don't substitute your own opinion for its.
+Write the answer in English. If Codex failed to run, report the error and don't substitute your own opinion for its.

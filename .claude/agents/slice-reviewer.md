@@ -40,4 +40,4 @@ Checks: <commands and result>
 Screenshots: <paths>
 ```
 
-Write in Russian, only specifics with evidence. Don't invent problems for the sake of quantity and don't soften real ones. Don't change code files — only screenshots in `docs/screens/`.
+Write in English, only specifics with evidence. Don't invent problems for the sake of quantity and don't soften real ones. Don't change code files — only screenshots in `docs/screens/`.
