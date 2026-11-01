@@ -1,11 +1,15 @@
 # Обновления зависимостей раз в неделю; минорные и патч-обновления идут одним PR на экосистему, мажорные — отдельными.
 # Версии actions закреплены SHA с комментарием «# vX.Y.Z»: Dependabot обновляет и SHA, и комментарий.
+# Every ecosystem has `cooldown.default-days: 14`: Dependabot does not offer a version younger than two weeks
+# (project rule from ADR-0007 and ADR-0009, recorded in ADR-0012). Cooldown applies to version updates only, not security updates.
 version: 2
 updates:
   - package-ecosystem: cargo
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     groups:
       cargo-minor-patch:
         update-types: [minor, patch]
@@ -14,6 +18,8 @@ updates:
     directory: /web
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     # @playwright/test должен совпадать с версией образа mcr.microsoft.com/playwright:vX-noble в ci.yml и visual-update.yml,
     # а Dependabot образ в workflow не обновит: версию меняют вручную, вместе с образом.
     ignore:
@@ -26,6 +32,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # github-actions supports only default-days (no semver-*-days keys).
+    cooldown:
+      default-days: 14
     groups:
       actions-minor-patch:
         update-types: [minor, patch]
