@@ -25,7 +25,7 @@ $script:Fails = 0
 $WorkChat = -join ([char[]](0x0420, 0x0430, 0x0431, 0x043E, 0x0442, 0x0430))
 $script:AppProcess = $null
 
-Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing, System.Windows.Forms
 
 # C# 5 only (Windows PowerShell compiles with the .NET Framework compiler).
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
@@ -184,26 +184,33 @@ function Find-Elements($root, [string]$name) {
 
 function Test-Has($root, [string]$text) { return @(Find-Elements $root $text).Count -gt 0 }
 
-# Tries the patterns a web control can offer, in order. Returns the pattern used or $null.
-function Invoke-Element($element) {
+# Uses one pattern a web control can offer. Returns the pattern used or $null.
+function Invoke-Element($element, [string]$kind) {
   $pattern = $null
-  if ($element.TryGetCurrentPattern($PatternInvoke, [ref]$pattern)) { $pattern.Invoke(); return 'invoke' }
-  if ($element.TryGetCurrentPattern($PatternToggle, [ref]$pattern)) { $pattern.Toggle(); return 'toggle' }
-  if ($element.TryGetCurrentPattern($PatternSelect, [ref]$pattern)) { $pattern.Select(); return 'select' }
-  if ($element.TryGetCurrentPattern($PatternExpand, [ref]$pattern)) { $pattern.Expand(); return 'expand' }
+  switch ($kind) {
+    'invoke' { if ($element.TryGetCurrentPattern($PatternInvoke, [ref]$pattern)) { $pattern.Invoke(); return 'invoke' } }
+    'toggle' { if ($element.TryGetCurrentPattern($PatternToggle, [ref]$pattern)) { $pattern.Toggle(); return 'toggle' } }
+    'select' { if ($element.TryGetCurrentPattern($PatternSelect, [ref]$pattern)) { $pattern.Select(); return 'select' } }
+    'expand' { if ($element.TryGetCurrentPattern($PatternExpand, [ref]$pattern)) { $pattern.Expand(); return 'expand' } }
+  }
   return $null
 }
 
 # Presses the first element whose name is (or contains) `name` and supports a pattern. Waits for it to appear.
 function Press([string]$windowTitle, [string]$name) {
+  Focus-Window $windowTitle
   $done = Wait-For {
     $window = Get-AppWindow $windowTitle
     if (-not $window) { return $false }
-    foreach ($candidate in (Find-Elements $window $name)) {
-      try {
-        $used = Invoke-Element $candidate
-        if ($used) { Say "press '$name' in '$windowTitle': $used"; return $true }
-      } catch { }
+    # The most direct pattern over all matches first: a list item that merely wraps the button can expose "expand" too.
+    $candidates = @(Find-Elements $window $name)
+    foreach ($kind in 'invoke', 'toggle', 'select', 'expand') {
+      foreach ($candidate in $candidates) {
+        try {
+          $used = Invoke-Element $candidate $kind
+          if ($used) { Say "press '$name' in '$windowTitle': $used"; return $true }
+        } catch { }
+      }
     }
     return $false
   } 20 "press '$name' in '$windowTitle'"
@@ -224,16 +231,32 @@ function Test-Private([string[]]$lines, [string]$label) {
   if ($hits.Count -gt 0) { Fail "personal paths or names in the text of $label : $($hits[0])" }
 }
 
-function Shoot([string]$name, [string]$title) {
+function Focus-Window([string]$title) {
+  $window = Get-AppWindow $title
+  if ($window) { [Win]::Raise((New-Object System.IntPtr($window.Current.NativeWindowHandle))) }
+}
+
+# The accessibility tree of a web window fills in a moment after the window appears: wait until it has real content.
+function Shoot([string]$name, [string]$title, [int]$minLines = 30) {
   $window = Get-AppWindow $title
   if (-not $window) { Fail "no window '$title' for $name"; return }
   $handle = New-Object System.IntPtr($window.Current.NativeWindowHandle)
   [Win]::Raise($handle)
-  Start-Sleep -Seconds 1
-  $lines = Dump-Tree $window (Join-Path $Debug "shot-$name.txt")
-  if ($lines.Count -lt 5) { Fail "the UI tree of $name is empty or truncated, so the private-path check did not run"; return }
+  $lines = @()
+  $deadline = (Get-Date).AddSeconds(40)
+  do {
+    Start-Sleep -Seconds 1
+    $window = Get-AppWindow $title
+    $lines = Dump-Tree $window (Join-Path $Debug "shot-$name.txt")
+  } while ($lines.Count -lt $minLines -and (Get-Date) -lt $deadline)
+  $copy = Join-Path $Out "$name.png"
+  Say ("shot ${name}: " + [Win]::Capture($handle, $copy))
+  if ($lines.Count -lt $minLines) {
+    # The picture is kept for diagnosis, but a screenshot whose text could not be checked must not be accepted.
+    Fail "the UI tree of $name has $($lines.Count) lines (< $minLines), so the private-path check could not run"
+    return
+  }
   Test-Private $lines $name
-  Say ("shot ${name}: " + [Win]::Capture($handle, (Join-Path $Out "$name.png")))
 }
 
 function Start-App([string]$exe, [bool]$overrides) {
@@ -260,11 +283,28 @@ function Stop-App {
 }
 
 # Number of rows in a table of the database, read by another process (python is on the runner image).
-function Get-Count([string]$table) {
-  $db = Join-Path $Data 'kinige.db'
+function Get-Count([string]$table, [string]$db = (Join-Path $Data 'kinige.db')) {
   $code = "import sqlite3,sys,pathlib; c=sqlite3.connect(pathlib.Path(sys.argv[1]).as_uri()+'?mode=ro',uri=True); print(c.execute('select count(*) from ' + sys.argv[2]).fetchone()[0])"
   try { return ((& python -I -c $code $db $table 2>&1) | Out-String).Trim() }
   catch { return "n/a: $($_.Exception.Message)" }
+}
+
+# Types a note with real key events into the composer (the runner has an interactive desktop and nobody else on it) and
+# presses "Send" through UI Automation. Value patterns do not work here: the page does not see a value set from outside.
+function Send-Note([string]$text) {
+  Focus-Window 'Kinige'
+  $composer = Wait-For {
+    $found = Find-Elements (Get-AppWindow 'Kinige') 'New note' | Where-Object { $_.Current.ControlType.ProgrammaticName -match 'Edit' }
+    $found | Select-Object -First 1
+  } 20 'the composer'
+  if (-not $composer) { return $false }
+  $composer.SetFocus()
+  Start-Sleep -Milliseconds 800
+  [System.Windows.Forms.SendKeys]::SendWait($text)
+  Start-Sleep -Milliseconds 800
+  Press 'Kinige' 'Send'
+  Start-Sleep -Seconds 2
+  return $true
 }
 
 function Set-Dark {
@@ -356,33 +396,28 @@ if ($settings) {
 # ---- 4. Kill the process, start again: the entries are in place ---------------------------------------------------------
 
 $before = Get-Count 'message'
-$typed = $false
-$composer = (Find-Elements (Get-AppWindow 'Kinige') 'New note') | Where-Object { $_.Current.ControlType.ProgrammaticName -match 'Edit|Document' } | Select-Object -First 1
-if ($composer) {
-  $pattern = $null
-  if ($composer.TryGetCurrentPattern($PatternValue, [ref]$pattern)) {
-    try { $pattern.SetValue('A synthetic note written just before the process is killed'); Start-Sleep -Seconds 1; Press 'Kinige' 'Send'; $typed = $true } catch { Say "the composer refused the value: $($_.Exception.Message)" }
-  }
-}
-Start-Sleep -Seconds 3
+$typed = Send-Note 'A synthetic note written just before the process is killed'
 $written = Get-Count 'message'
+if ($typed -and $written -eq $before) { Fail "the note typed into the composer was not saved ($before entries before, $written after)" }
 Stop-App
 $main = Start-App $exe.FullName $true
 $after = Get-Count 'message'
 @(
   "entries before the new note: $before",
-  "a note was entered through UI Automation: $typed",
+  "a note was typed into the composer and sent: $typed",
   "entries before the kill: $written",
   "entries after the kill and the restart: $after"
 ) | Set-Content -Path (Join-Path $Out 'survival.txt') -Encoding UTF8
 Say (Get-Content (Join-Path $Out 'survival.txt') -Raw)
 if ($after -ne $written) { Fail "entries before the kill ($written) and after ($after) differ" }
-if ($main) { Shoot '07-after-kill' 'Kinige' }
+if ($main) { Shoot '07-after-kill' 'Kinige' 100 }
 Stop-App
 
 # ---- 5. Default locations (no overrides) ----------------------------------------------------------------------------------
 
 $main = Start-App $exe.FullName $false
+# The Markdown folder appears with the first saved entry, so write one into this fresh default profile.
+$sent = Send-Note 'A synthetic note for the default location check'
 $appData = Join-Path $env:APPDATA 'me.savvinov.kinige'
 $documents = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Kinige'
 Start-Sleep -Seconds 3
@@ -395,7 +430,7 @@ Start-Sleep -Seconds 3
 ) | Set-Content -Path (Join-Path $Out 'data-location.txt') -Encoding UTF8
 Say (Get-Content (Join-Path $Out 'data-location.txt') -Raw)
 if (-not (Test-Path (Join-Path $appData 'kinige.db'))) { Fail 'kinige.db is not in %APPDATA%\me.savvinov.kinige' }
-if (-not (Test-Path $documents)) { Fail 'the Markdown copy folder Documents\Kinige does not exist' }
+if ($sent -and -not (Test-Path $documents)) { Fail 'the Markdown copy folder Documents\Kinige does not exist after an entry was saved' }
 Stop-App
 
 Say "scenario errors: $script:Fails"

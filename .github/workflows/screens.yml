@@ -154,6 +154,14 @@ jobs:
           path: docs/screens/${{ env.SLICE }}
           if-no-files-found: error
 
+      # A failed scenario keeps its pictures for diagnosis; they are never committed (the commit job needs the artifact above).
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: screens-${{ env.SLICE }}-partial
+          path: docs/screens/${{ env.SLICE }}
+          if-no-files-found: warn
+
       - uses: actions/upload-artifact@v7
         if: always()
         with:
