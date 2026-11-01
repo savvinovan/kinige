@@ -4,7 +4,8 @@
 #   commit — короткая: скачивает артефакт и коммитит docs/screens/<слайс>/ в ветку (единственное место с правом записи,
 #            без npm, cargo и сторонних кэшей).
 # Запуск: gh workflow run screens.yml --ref <ветка> -f slice=4a   (в main и на тегах не работает).
-# Коммит от GITHUB_TOKEN не запускает CI сам — после него: gh workflow run ci.yml --ref <ветка>.
+# Коммит от GITHUB_TOKEN CI сам не запускает (push-событие), но запуск через workflow_dispatch от GITHUB_TOKEN разрешён:
+# последний шаг задачи commit запускает ci.yml на ветке (нужно право actions: write, оно только у этой задачи).
 # Ввод — только действия доступности (scripts/screens/ax.js): раннер выдаёт osascript право Accessibility (проверено пробой).
 name: Screens
 
@@ -98,6 +99,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      actions: write
     env:
       SLICE: ${{ inputs.slice || '4a' }}
     steps:
@@ -119,6 +121,7 @@ jobs:
 
       # Каталог снимков заменяется целиком (уходят и снимки с прежними именами); трогается только docs/screens/<слайс>/.
       - name: Закоммитить снимки в ветку
+        id: commit
         run: |
           rm -rf "docs/screens/${SLICE}"
           mkdir -p "docs/screens/${SLICE}"
@@ -134,3 +137,11 @@ jobs:
           git commit -m "Screens ${SLICE} from CI (macOS runner)"
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # Коммит бота CI не запускает; workflow_dispatch от GITHUB_TOKEN — запускает (документация GitHub, «Triggering a workflow»).
+      - name: Запустить CI на ветке
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref "$GITHUB_REF_NAME"

@@ -27,7 +27,7 @@
 | Снять скриншот окна Kinige | `scripts/screenshot-window.sh docs/screens/0/window.png` (окно захвата — третий аргумент `capture`, меню значка — `menu`, список окон — `list`) |
 | Замерить холодный старт | `scripts/measure-cold-start.sh [прогонов]` |
 | Визуальные тесты Storybook | задание `visual` в CI на GitHub |
-| Обновить эталоны снимков (в ветке, не в `main`) | `gh workflow run visual-update.yml --ref <ветка>`, затем `gh workflow run ci.yml --ref <ветка>` |
+| Обновить эталоны снимков (в ветке, не в `main`) | `gh workflow run visual-update.yml --ref <ветка>` (CI на ветке запускается сам) |
 | Пересобрать `tokens.css` и `themes.css` из `design/tokens/**/*.json` | `npm --prefix web run tokens` |
 
 Остальные проверки (те же, что в CI) — в разделе «Сборка и тесты» файла [`CLAUDE.md`](CLAUDE.md).
