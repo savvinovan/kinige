@@ -1,46 +1,46 @@
-# Значки
+# Icons
 
-Линейные SVG из набора [Lucide](https://lucide.dev) через npm-пакет `lucide-react` (версия закреплена в `web/package.json`, на момент подключения 1.60.0). Лицензия пакета — ISC; значки, унаследованные от проекта Feather, — MIT (текст обеих лицензий лежит в `node_modules/lucide-react/LICENSE`, копия в репозиторий не кладётся: пакет — зависимость).
+Line SVGs from the [Lucide](https://lucide.dev) set via the npm package `lucide-react` (the version is pinned in `web/package.json`; 1.60.0 at the time it was added). The package license is ISC; icons inherited from the Feather project are MIT (the text of both licenses is in `node_modules/lucide-react/LICENSE`; no copy is put in the repository: the package is a dependency).
 
-| Значок в `Icon` | Lucide | Лицензия значка |
-|---|---|---|
-| `attach` | `paperclip` | ISC |
-| `emoji` | `smile` | MIT (из Feather) |
-| `voice` | `mic` | ISC |
-| `search` | `search` | MIT (из Feather) |
-| `chevron` | `chevron-down` | MIT (из Feather) |
-| `send` | `arrow-up` | MIT (из Feather) |
-| `copy` | `copy` | ISC |
-| `edit` | `pencil` | ISC |
-| `task` | `square-check` | ISC |
-| `favorite` | `star` | ISC |
-| `more` | `ellipsis` (прежнее имя `more-horizontal`) | MIT (из Feather) |
-| `done` | `check` | MIT (из Feather) |
-| `close` | `x` | MIT (из Feather) |
-| `alert` | `circle-alert` (прежнее имя `alert-circle`) | MIT (из Feather) |
-| `info` | `info` | MIT (из Feather) |
-| `trash` | `trash-2` | MIT (из Feather) |
-| `calendar` | `calendar` | MIT (из Feather) |
-| `pin` | `pin` | ISC |
-| `unpin` | `pin-off` | ISC |
-| `archive` | `archive` | ISC |
-| `unarchive` | `archive-restore` | ISC |
-| `plus` | `plus` | MIT (из Feather) |
-| `collapse` | `panel-left-close` | ISC |
-| `expand` | `panel-left-open` | ISC |
-| `undo` | `undo-2` | ISC |
-| `chevronRight` | `chevron-right` | MIT (из Feather) |
-| `database` | `database` | MIT (из Feather) |
-| `moveTo` | `arrow-right` | MIT (из Feather) |
-| `chevronLeft` | `chevron-left` | MIT (из Feather) |
-| `reply` | `reply` | ISC |
+| Icon in `Icon` | Lucide                                      | Icon license       |
+|----------------|---------------------------------------------|--------------------|
+| `attach`       | `paperclip`                                 | ISC                |
+| `emoji`        | `smile`                                     | MIT (from Feather) |
+| `voice`        | `mic`                                       | ISC                |
+| `search`       | `search`                                    | MIT (from Feather) |
+| `chevron`      | `chevron-down`                              | MIT (from Feather) |
+| `send`         | `arrow-up`                                  | MIT (from Feather) |
+| `copy`         | `copy`                                      | ISC                |
+| `edit`         | `pencil`                                    | ISC                |
+| `task`         | `square-check`                              | ISC                |
+| `favorite`     | `star`                                      | ISC                |
+| `more`         | `ellipsis` (former name `more-horizontal`)  | MIT (from Feather) |
+| `done`         | `check`                                     | MIT (from Feather) |
+| `close`        | `x`                                         | MIT (from Feather) |
+| `alert`        | `circle-alert` (former name `alert-circle`) | MIT (from Feather) |
+| `info`         | `info`                                      | MIT (from Feather) |
+| `trash`        | `trash-2`                                   | MIT (from Feather) |
+| `calendar`     | `calendar`                                  | MIT (from Feather) |
+| `pin`          | `pin`                                       | ISC                |
+| `unpin`        | `pin-off`                                   | ISC                |
+| `archive`      | `archive`                                   | ISC                |
+| `unarchive`    | `archive-restore`                           | ISC                |
+| `plus`         | `plus`                                      | MIT (from Feather) |
+| `collapse`     | `panel-left-close`                          | ISC                |
+| `expand`       | `panel-left-open`                           | ISC                |
+| `undo`         | `undo-2`                                    | ISC                |
+| `chevronRight` | `chevron-right`                             | MIT (from Feather) |
+| `database`     | `database`                                  | MIT (from Feather) |
+| `moveTo`       | `arrow-right`                               | MIT (from Feather) |
+| `chevronLeft`  | `chevron-left`                              | MIT (from Feather) |
+| `reply`        | `reply`                                     | ISC                |
 
-Происхождение значков слайса 3 сверено со списком Feather в `LICENSE` пакета 1.60.0: `trash-2`, `calendar`, `plus`, `chevron-right`, `database` там есть, остальные — ISC.
+The origin of the slice 3 icons was checked against the Feather list in the `LICENSE` of package 1.60.0: `trash-2`, `calendar`, `plus`, `chevron-right`, `database` are there, the rest are ISC.
 
-Какие значки произошли от Feather, видно по списку в `LICENSE` пакета; проверено по версии 1.60.0.
+Which icons came from Feather can be seen in the list in the package's `LICENSE`; checked against version 1.60.0.
 
-Правила: размер — токен `icon.size`, толщина линии — `icon.stroke`, цвет — `currentColor`; значок всегда декоративный (`aria-hidden`), подпись для диктора ставится на кнопку или поле. Эмодзи как декор интерфейса запрещены (§11.2 ТЗ); эмодзи чатов — данные пользователя, их рисует системный эмодзи-шрифт (исключение описано в `design/tokens/fontsets/inter.json`).
+Rules: the size is the `icon.size` token, the stroke width is `icon.stroke`, the color is `currentColor`; an icon is always decorative (`aria-hidden`), the screen reader label goes on the button or field. Emoji as interface decoration are forbidden (PRD §11.2); chat emoji are user data and are drawn by the system emoji font (the exception is described in `design/tokens/fontsets/inter.json`).
 
-## Значки menu bar (трей)
+## Menu bar (tray) icons
 
-Знак Kinige для menu bar macOS — страница журнала с буквой K, рисованный вручную (без шрифтов и сторонних лицензий): `tray/tray.svg` (контур, обычная иконка) и `tray/tray-flash.svg` (залитая страница с вырезанной буквой, короткое мигание при успешном сохранении буфера). Это template-изображения: только чёрное с альфа-каналом, macOS сама перекрашивает их под светлую и тёмную строку меню. PNG в `src-tauri/icons/` (`tray.png` 22×22, `tray@2x.png` 44×44, `tray-flash.png`, `tray-flash@2x.png`) получены из SVG командой `rsvg-convert -w <22|44> -h <22|44> tray/<имя>.svg -o <файл>.png` (librsvg 2.60.0, из Homebrew). Иконка приложения в `src-tauri/icons/` пока заглушка (сплошной тёмный квадрат), поэтому знак нарисован отдельно; когда появится настоящая иконка, глиф трея стоит свести с ней.
+The Kinige mark for the macOS menu bar is a journal page with the letter K, drawn by hand (no fonts and no third-party licenses): `tray/tray.svg` (outline, the normal icon) and `tray/tray-flash.svg` (a filled page with the letter cut out, a short flash when the clipboard is saved successfully). These are template images: black with an alpha channel only, macOS recolors them itself for the light and dark menu bar. The PNGs in `src-tauri/icons/` (`tray.png` 22×22, `tray@2x.png` 44×44, `tray-flash.png`, `tray-flash@2x.png`) were produced from the SVGs with `rsvg-convert -w <22|44> -h <22|44> tray/<name>.svg -o <file>.png` (librsvg 2.60.0, from Homebrew). The app icon in `src-tauri/icons/` is still a placeholder (a solid dark square), so the mark is drawn separately; when a real icon appears, the tray glyph should be brought in line with it.

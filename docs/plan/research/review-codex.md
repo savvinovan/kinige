@@ -1,100 +1,100 @@
-План стал существенно лучше в части процесса: вертикальные срезы, визуальная приёмка, Markdown и разделение UI/хранилища снижают риски прошлой версии. Но **синхронизацию и шифрование пока нельзя считать достаточно определёнными для реализации**.
+The plan has become substantially better on the process side: vertical slices, visual acceptance, Markdown and the separation of UI and storage reduce the risks of the previous version. But **sync and encryption cannot yet be considered defined well enough for implementation**.
 
-Прочитал ТЗ, разбор и три исследования. Ниже «факт» означает проверенное содержание документов либо первичного источника; «риск» — сценарий возможной ошибки реализации. Решения D1–D19 по вкусу не пересматриваю. Файлы не менял.
+I read the PRD, the review and the three research documents. Below, "fact" means verified content of the documents or of a primary source; "risk" means a scenario of a possible implementation error. I do not revisit decisions D1–D19 on taste. I did not change any files.
 
-1. **Критично — §10.3: crypto-shredding не работает в заявленном виде.**  
-   **Факт:** DEK, зашифрованный ключом из пароля, хранится на сервере; удаление этой записи обещает сделать нечитаемыми даже бэкапы. Однако старый бэкап сохраняет обёрнутый DEK: пароль или сохранённые клиентские ключи по-прежнему позволяют расшифровать данные.  
-   **Предложение:** убрать гарантию уничтожения всех резервных копий через удаление строки. Отдельно определить сроки удаления серверных бэкапов, судьбу ключей на устройствах и экспорта. Если требуется именно криптографическое уничтожение бэкапов, нужна отдельная архитектура ключей, а не текущая схема.
+1. **Critical — §10.3: crypto-shredding does not work as stated.**  
+   **Fact:** the DEK, encrypted with a password-derived key, is stored on the server; deleting this record is promised to make even backups unreadable. However, an old backup keeps the wrapped DEK: the password or the stored client keys still allow the data to be decrypted.  
+   **Proposal:** remove the guarantee that all backups are destroyed by deleting a row. Separately define retention periods for server backups and what happens to keys on devices and to exports. If cryptographic destruction of backups is really required, a separate key architecture is needed, not the current scheme.
 
-2. **Критично — §10.1, §10.3, Q12: жизненный цикл ключей и аутентификация не определены.**  
-   **Факт:** перечислены пароль, мастер-ключ, DEK, recovery key и подтверждение устройством, но не описаны связи между ними. Неясно, что происходит при смене/сбросе пароля, потере устройства, отзыве токена и восстановлении аккаунта.  
-   **Риск:** обычная серверная проверка пароля может передавать серверу секрет, из которого выводится ключ расшифрования. Отзыв токена также не отнимает уже скопированный DEK.  
-   **Предложение:** до S4 описать регистрацию, вход, восстановление, смену пароля, присоединение и отзыв устройства; разделить секреты аутентификации и шифрования. DEK генерировать случайно и оборачивать отдельными ключами для предусмотренных способов восстановления.
+2. **Critical — §10.1, §10.3, Q12: the key lifecycle and authentication are not defined.**  
+   **Fact:** the password, master key, DEK, recovery key and device confirmation are listed, but the relationships between them are not described. It is unclear what happens on password change/reset, device loss, token revocation and account recovery.  
+   **Risk:** an ordinary server-side password check may hand the server a secret from which the decryption key is derived. Token revocation also does not take back a DEK that has already been copied.  
+   **Proposal:** before S4, describe registration, login, recovery, password change, device joining and revocation; separate authentication secrets from encryption secrets. Generate the DEK randomly and wrap it with separate keys for the intended recovery methods.
 
-3. **Критично — §3.2, §9.2, §10.3: веб-клиент нарушает безусловное обещание защиты от администратора.**  
-   **Факт:** веб-клиент расшифровывает данные в браузере. **Риск:** если код страницы отдаёт тот же администратор, от которого защищаются данные, он может подменить JavaScript и получить пароль, ключ или открытый текст. Серверное шифрование этого не предотвращает.  
-   **Предложение:** явно разграничить защиту от чтения серверной БД и защиту от злонамеренного поставщика клиента. Для веба определить доверенный канал доставки; для десктопа — независимую проверку подписи обновлений. Не обещать одинаковую модель доверия этим клиентам.
+3. **Critical — §3.2, §9.2, §10.3: the web client breaks the unconditional promise of protection from the administrator.**  
+   **Fact:** the web client decrypts data in the browser. **Risk:** if the page code is served by the same administrator the data is being protected from, they can substitute the JavaScript and obtain the password, the key or the plaintext. Server-side encryption does not prevent this.  
+   **Proposal:** explicitly distinguish protection against reading the server DB from protection against a malicious client provider. For the web, define a trusted delivery channel; for the desktop, independent verification of update signatures. Do not promise the same trust model for these clients.
 
-4. **Критично — §10.2–10.3: не определён аутентифицированный формат зашифрованной операции.**  
-   **Факт:** указан алгоритм, но отсутствуют формат nonce, версия шифрования, идентификатор ключа и привязка открытых метаданных к ciphertext.  
-   **Риск:** без такой привязки сервер сможет изменять HLC/флаг удаления или переставлять шифротексты между объектами, не изменяя зашифрованное тело.  
-   **Предложение:** специфицировать конверт операции и включить в AEAD associated data аккаунт, тип, id, идентификатор операции, HLC, удаление, версии формата и ключа. Проверять подлинность **до** применения метаданных. Назначение associated data подтверждается [документацией libsodium](https://doc.libsodium.org/secret-key_cryptography/aead).
+4. **Critical — §10.2–10.3: the authenticated format of an encrypted operation is not defined.**  
+   **Fact:** the algorithm is specified, but the nonce format, encryption version, key identifier and binding of plaintext metadata to the ciphertext are missing.  
+   **Risk:** without such a binding the server will be able to change the HLC/deletion flag or swap ciphertexts between objects without changing the encrypted body.  
+   **Proposal:** specify the operation envelope and include in the AEAD associated data the account, type, id, operation identifier, HLC, deletion, and format and key versions. Verify authenticity **before** applying the metadata. The purpose of associated data is confirmed by the [libsodium documentation](https://doc.libsodium.org/secret-key_cryptography/aead).
 
-5. **Критично — §4.2, §10.2: LWW не обеспечивает обещанную сохранность ревизий.**  
-   **Факт:** сервер сливает зашифрованные снимки по метаданным; проигравшая версия должна стать `message_revision`. Но доставка проигравших снимков и синхронизация самих ревизий не описаны. В таблице ревизий сохраняется только `body_md`.  
-   **Риск:** сервер отбросит проигравшую запись до её получения другим клиентом; изменения чата, даты, флагов или вложений нельзя будет восстановить из текстовой ревизии.  
-   **Предложение:** хранить и доставлять неизменяемые зашифрованные версии с уникальными id; LWW использовать для выбора текущего состояния. Определить состав восстанавливаемой версии, дедупликацию ревизий и правила сокращения истории.
+5. **Critical — §4.2, §10.2: LWW does not provide the promised preservation of revisions.**  
+   **Fact:** the server merges encrypted snapshots by metadata; the losing version is supposed to become a `message_revision`. But delivery of losing snapshots and sync of the revisions themselves are not described. The revisions table stores only `body_md`.  
+   **Risk:** the server will discard the losing entry before another client receives it; changes to the chat, date, flags or attachments cannot be restored from a text revision.  
+   **Proposal:** store and deliver immutable encrypted versions with unique ids; use LWW to pick the current state. Define what a restorable version contains, revision deduplication and history pruning rules.
 
-6. **Важно — §4.1–4.2, §10.2: HLC пока обозначение, а не протокол.**  
-   **Факт:** `hlc TEXT` и выбор большего значения не задают кодирование, полный порядок, обработку равенства и сохранение состояния часов.  
-   **Риск:** разные устройства получают одинаковые метки, строковое сравнение расходится с числовым, часы после восстановления БД откатываются; устройство с датой далеко в будущем подавляет последующие правки.  
-   **Предложение:** определить каноническое представление, tie-breaker, алгоритмы local/receive, сохранение часов и политику допустимого дрейфа. Убрать формулировку «свой — 50 строк»: сложность здесь в инвариантах и проверках сходимости.
+6. **Important — §4.1–4.2, §10.2: HLC is so far a label, not a protocol.**  
+   **Fact:** `hlc TEXT` and choosing the larger value do not define the encoding, a total order, tie handling or persistence of the clock state.  
+   **Risk:** different devices get identical timestamps, string comparison diverges from numeric comparison, the clock rolls back after a DB restore; a device with a date far in the future suppresses subsequent edits.  
+   **Proposal:** define the canonical representation, the tie-breaker, the local/receive algorithms, clock persistence and an allowed drift policy. Remove the phrase "a homegrown one is 50 lines": the complexity here is in the invariants and convergence checks.
 
-7. **Важно — §4.2, §10.2: outbox не фиксирует содержимое отправляемой версии.**  
-   **Факт:** строка содержит только ссылку на объект и HLC.  
-   **Риск:** после двух быстрых правок фоновой отправитель прочитает уже новое тело, но отправит его со старой меткой. Подтверждение первой отправки может ошибочно удалить более свежую ожидающую правку.  
-   **Предложение:** выбрать явно: неизменяемый payload каждой операции либо очередь актуального состояния с атомарным чтением и условным подтверждением конкретной версии. Для идемпотентности задать поведение повторного id с другим содержимым; повторная попытка должна переиспользовать подготовленный конверт.
+7. **Important — §4.2, §10.2: the outbox does not capture the content of the version being sent.**  
+   **Fact:** a row contains only a reference to the object and the HLC.  
+   **Risk:** after two quick edits the background sender will read the already-new body but send it with the old timestamp. The acknowledgement of the first send may mistakenly delete a fresher pending edit.  
+   **Proposal:** choose explicitly: an immutable payload per operation, or a current-state queue with atomic reads and conditional acknowledgement of a specific version. For idempotency, define the behavior for a repeated id with different content; a retry must reuse the prepared envelope.
 
-8. **Важно — §10.2: монотонный серверный номер ещё не гарантирует безопасный pull.**  
-   **Риск:** если номер — обычный PostgreSQL sequence, транзакция A получает 10, B получает 11 и коммитится первой. Клиент видит 11 и продвигает курсор; позднее закоммиченная 10 пропускается. Это сценарий возможной реализации, не утверждение о существующем коде. Sequence не обеспечивает порядок коммитов — см. [PostgreSQL](https://www.postgresql.org/docs/current/functions-sequence.html).  
-   **Предложение:** определить механизм публикации без таких пропусков, например сериализацию выдачи номеров и коммитов внутри аккаунта. На клиенте применять страницу изменений и сохранять курсор одной транзакцией; описать начальную загрузку и истечение курсора.
+8. **Important — §10.2: a monotonic server number does not yet guarantee a safe pull.**  
+   **Risk:** if the number is an ordinary PostgreSQL sequence, transaction A gets 10, B gets 11 and commits first. The client sees 11 and advances its cursor; the later-committed 10 is skipped. This is a scenario of a possible implementation, not a statement about existing code. A sequence does not guarantee commit order — see [PostgreSQL](https://www.postgresql.org/docs/current/functions-sequence.html).  
+   **Proposal:** define a publication mechanism without such gaps, for example serializing number assignment and commits within an account. On the client, apply a page of changes and save the cursor in one transaction; describe the initial load and cursor expiry.
 
-9. **Важно — §4.1, §10.2: корзина, tombstone и восстановление противоречат безусловному delete-wins.**  
-   **Факт:** есть восстановление/отмена удаления и правило «удаление побеждает правку», но отсутствует отдельная семантика восстановления. Не задан срок хранения tombstones.  
-   **Риск:** восстановленная запись снова удалится; давно отключённый клиент воскресит физически удалённые данные.  
-   **Предложение:** разделить операции удаления и восстановления, задать их порядок. Не связывать срок жизни tombstone с 30 днями корзины. После удаления старых tombstones требовать от слишком старых устройств полную пересинхронизацию без автоматического возврата старых записей.
+9. **Important — §4.1, §10.2: trash, tombstones and restore contradict unconditional delete-wins.**  
+   **Fact:** there is restore/undo of deletion and the rule "deletion beats an edit", but there are no separate restore semantics. The tombstone retention period is not set.  
+   **Risk:** a restored entry gets deleted again; a long-disconnected client resurrects physically deleted data.  
+   **Proposal:** separate the delete and restore operations and define their ordering. Do not tie the tombstone lifetime to the 30 days of the trash. After old tombstones are removed, require devices that are too old to do a full resync without automatically bringing back old entries.
 
-10. **Важно — §4.3, §10.2–10.3: протокол вложений не определён.**  
-    **Факт:** §10.2 использует `sha256`, §10.3 — HMAC от хэша; снимок attachment включает локальное состояние `blob_state`. Не определены ключи/nonce файлов и повторные загрузки одинакового содержимого.  
-    **Риски:** повреждение blob при конкурирующей загрузке, вечные потерянные файлы, удаление blob, ещё нужного ревизии или другому сообщению.  
-    **Предложение:** разделить локальный hash, удалённый blob id и состояние загрузки устройства. Задать неизменяемую публикацию blob, проверку целостности, возобновление и лимиты загрузки; сборщик мусора должен учитывать живые записи, корзину, ревизии и незавершённые операции.
+10. **Important — §4.3, §10.2–10.3: the attachment protocol is not defined.**  
+    **Fact:** §10.2 uses `sha256`, §10.3 an HMAC of the hash; the attachment snapshot includes the local state `blob_state`. Keys/nonces for files and repeated uploads of identical content are not defined.  
+    **Risks:** blob corruption on a concurrent upload, permanently orphaned files, deletion of a blob still needed by a revision or another message.  
+    **Proposal:** separate the local hash, the remote blob id and the device's upload state. Define immutable blob publication, integrity checks, resumption and upload limits; the garbage collector must account for live entries, the trash, revisions and unfinished operations.
 
-11. **Важно — §4.1–4.2, §10.2: не заданы межобъектные инварианты.**  
-    **Риски:** два независимо установленных клиента создадут разные Inbox; сообщение придёт раньше чата; attachment — раньше сообщения; LWW сообщения оставит вложения от другой версии. UUID решает уникальность объектов, но не эти ситуации.  
-    **Предложение:** закрепить идентичность Inbox внутри аккаунта, порядок/буферизацию зависимостей и границы атомарного изменения. При первом подключении локальной базы к аккаунту явно определить объединение Inbox, сохранение ссылок и разрешение существующих данных.
+11. **Important — §4.1–4.2, §10.2: cross-object invariants are not defined.**  
+    **Risks:** two independently installed clients will create different Inboxes; a message arrives before its chat; an attachment before its message; LWW of a message will keep attachments from another version. UUIDs solve object uniqueness, but not these situations.  
+    **Proposal:** fix the identity of the Inbox within an account, the ordering/buffering of dependencies and the boundaries of an atomic change. When a local database is first connected to an account, explicitly define how Inboxes are merged, how references are preserved and how existing data is resolved.
 
-12. **Важно — §3.2, §10.1, §12, §15: обновления и совместимость версий выпали из плана.**  
-    **Факт:** миграции сервера запускаются автоматически, но версии wire-формата, зашифрованного payload и минимального клиента отсутствуют.  
-    **Риск:** старый клиент получает снимок с новым полем, редактирует его и затирает неизвестные данные; обновлённый клиент мигрирует SQLite, после чего откат приложения невозможен.  
-    **Предложение:** до синхронизации определить матрицу совместимости, сохранение неизвестных полей либо запрет несовместимой записи, резервную копию перед миграцией и сценарий сбоя обновления. Включить подписанные обновления и хранение ключа подписи в roadmap; механизм подписи есть в [Tauri updater](https://v2.tauri.app/plugin/updater/).
+12. **Important — §3.2, §10.1, §12, §15: updates and version compatibility have dropped out of the plan.**  
+    **Fact:** server migrations run automatically, but versions of the wire format, the encrypted payload and the minimum client are missing.  
+    **Risk:** an old client receives a snapshot with a new field, edits it and overwrites the unknown data; an updated client migrates SQLite, after which rolling back the application is impossible.  
+    **Proposal:** before sync, define a compatibility matrix, preservation of unknown fields or a ban on incompatible writes, a backup before migration and an update-failure scenario. Include signed updates and storage of the signing key in the roadmap; a signing mechanism exists in the [Tauri updater](https://v2.tauri.app/plugin/updater/).
 
-13. **Важно — §10.1, §16: бэкап описан как набор файлов, без гарантии восстановления.**  
-    **Факт:** предлагается дамп Postgres плюс папка вложений, но не согласованный момент снимка и процедура restore. Локальная автоматическая резервная копия также не запланирована.  
-    **Риск:** дамп содержит ссылку на отсутствующий blob; восстановленный сервер имеет старый курсор, а клиенты продолжают с нового. Синхронизация сама по себе бэкапом не является.  
-    **Предложение:** задать порядок создания/удаления blob относительно бэкапа, проверку ссылок и идентификатор поколения сервера после restore. Обязательная проверка — восстановить ключи, историю и вложения в чистую установку. Экспорт явно обозначить как открытый текст и отдельно определить его защиту.
+13. **Important — §10.1, §16: backup is described as a set of files, without a restore guarantee.**  
+    **Fact:** a Postgres dump plus an attachments folder is proposed, but not a consistent snapshot point or a restore procedure. A local automatic backup is not planned either.  
+    **Risk:** the dump contains a reference to a missing blob; the restored server has an old cursor while the clients continue from a newer one. Sync by itself is not a backup.  
+    **Proposal:** define the order of blob creation/deletion relative to the backup, reference checks and a server generation identifier after a restore. The mandatory check is restoring keys, history and attachments into a clean installation. Explicitly label the export as plaintext and define its protection separately.
 
-14. **Важно — §3.2, §6: capabilities и санитайзер ещё не закрывают поверхность Tauri.**  
-    **Факт:** ТЗ требует capabilities по окнам, но не переносит из исследования необходимость ограничить собственные команды через `AppManifest::commands`. По документации зарегистрированные команды приложения по умолчанию доступны всем окнам — [Tauri](https://v2.tauri.app/security/capabilities/).  
-    **Предложение:** сделать проверяемую матрицу «окно → команда → разрешённые аргументы» и отрицательные IPC-тесты. Дополнительно задать допустимые схемы ссылок, scope локальных файлов и политику внешних картинок/превью: их загрузка раскрывает сетевые метаданные, а неограниченный Rust-загрузчик URL может обращаться к локальным сервисам.
+14. **Important — §3.2, §6: capabilities and the sanitizer do not yet close the Tauri surface.**  
+    **Fact:** the PRD requires per-window capabilities, but does not carry over from the research the need to restrict the app's own commands via `AppManifest::commands`. According to the documentation, registered application commands are available to all windows by default — [Tauri](https://v2.tauri.app/security/capabilities/).  
+    **Proposal:** make a verifiable matrix "window → command → allowed arguments" and negative IPC tests. Additionally define allowed link schemes, the local file scope and a policy for external images/previews: loading them reveals network metadata, and an unrestricted Rust URL loader can reach local services.
 
-15. **Важно — §3.1–3.2, §9.2, §10.3: `HttpApi` не заменяет Rust-ядро для веба.**  
-    **Факт:** вся бизнес-логика находится в Rust, сервер не видит текст, но веб предполагается получить заменой реализации API. Сервер не сможет выполнить поиск, вычисление леса и другие операции над открытым содержимым.  
-    **Предложение:** до обещания общего фронтенда выбрать клиентскую архитектуру веба: Rust/WASM с браузерным хранилищем либо отдельную реализацию с общими контрактными тестами. `KinigeApi` полезен, но сам по себе не решает размещение логики и локальных данных.
+15. **Important — §3.1–3.2, §9.2, §10.3: `HttpApi` does not replace the Rust core for the web.**  
+    **Fact:** all business logic is in Rust and the server does not see the text, yet the web is expected to be obtained by swapping the API implementation. The server will not be able to perform search, forest computation and other operations on plaintext content.  
+    **Proposal:** before promising a shared frontend, choose the web client architecture: Rust/WASM with browser storage, or a separate implementation with shared contract tests. `KinigeApi` is useful, but by itself does not settle where the logic and local data live.
 
-16. **Важно — §4.1, §10.3: обещание скрыть даты не соответствует открытым идентификаторам и HLC.**  
-    **Факт:** UUID v7 содержит Unix timestamp, а HLC раскрывает временную информацию об изменениях. Структура UUID v7 описана в [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562.html#name-uuid-version-7).  
-    **Вывод:** зашифрованный `journal_date` скрывает выбранную дату дневника, но сервер всё равно видит примерное время создания объектов, активность, размеры и повторное использование blob.  
-    **Предложение:** составить точный перечень раскрываемых метаданных. Если скрытие времени создания существенно — использовать непрозрачные внешние id; скрытие активности потребует значительно более сложного протокола.
+16. **Important — §4.1, §10.3: the promise to hide dates does not match the plaintext identifiers and HLC.**  
+    **Fact:** UUID v7 contains a Unix timestamp, and the HLC reveals timing information about changes. The structure of UUID v7 is described in [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562.html#name-uuid-version-7).  
+    **Conclusion:** an encrypted `journal_date` hides the chosen diary date, but the server still sees the approximate creation time of objects, activity, sizes and blob reuse.  
+    **Proposal:** compile an exact list of the metadata that is revealed. If hiding the creation time matters, use opaque external ids; hiding activity would require a much more complex protocol.
 
-17. **Важно — §9.2: синхронизируемые эмбеддинги не имеют модели актуальности.**  
-    **Факт:** векторы должны синхронизироваться, но их схема и связь с версией текста отсутствуют.  
-    **Риск:** ответ API для старого текста завершится после редактирования и заместит свежий вектор; устройства смешают модели или повторно оплатят индексацию. Исключение чата во время работы очереди также не описано.  
-    **Предложение:** хранить версию источника/хэш содержимого, модель, размерность и версию обработки. Принимать результат только для актуальной версии; повторно проверять разрешение AI непосредственно перед отправкой. Зафиксировать допустимость повторных расходов и поведение при выключении AI, смене модели и удалении заметки.
+17. **Important — §9.2: synced embeddings have no freshness model.**  
+    **Fact:** vectors are supposed to be synced, but their schema and their link to the text version are missing.  
+    **Risk:** an API response for an old text will complete after an edit and replace a fresh vector; devices will mix models or pay for indexing again. Excluding a chat while the queue is running is not described either.  
+    **Proposal:** store the source version/content hash, the model, the dimensionality and the processing version. Accept a result only for the current version; re-check the AI permission right before sending. Record whether repeated costs are acceptable and the behavior when AI is turned off, the model changes and a note is deleted.
 
-18. **Важно — §3.2, §4.2–4.3, §5, §12.2: локальная надёжность сформулирована слишком оптимистично.**  
-    **Факт:** «один процесс, WAL, поэтому гонок нет» неверно: задачи из нескольких окон, sync и фоновые обработчики могут конкурировать внутри процесса. WAL допускает только одного писателя и не исключает `SQLITE_BUSY` — [SQLite](https://www.sqlite.org/wal.html).  
-    **Предложение:** определить владельца записи и транзакционные границы. Описать атомарный импорт файлов через staging/rename, уборку сирот, сохранение черновиков и их вложений. Различить гарантии при убийстве процесса и потере питания; проверять их отдельно.
+18. **Important — §3.2, §4.2–4.3, §5, §12.2: local reliability is stated too optimistically.**  
+    **Fact:** "one process, WAL, so there are no races" is wrong: tasks from several windows, sync and background handlers can compete within the process. WAL allows only one writer and does not rule out `SQLITE_BUSY` — [SQLite](https://www.sqlite.org/wal.html).  
+    **Proposal:** define the write owner and transaction boundaries. Describe atomic file import via staging/rename, cleanup of orphans, and saving of drafts and their attachments. Distinguish the guarantees for a killed process and for a power loss; test them separately.
 
-19. **Важно — §2, §11, §14–15: проверка полезности продукта начинается слишком поздно.**  
-    **Оценка:** полная дизайн-система с ключевыми экранами, девять срезов, 100k-лента и финальный арт до начала четырёх недель использования повторяют риск широкого объёма. Семь дней S4 разумны для проверки гипотезы, но не являются оценкой готовности надёжного sync/E2EE.  
-    **Предложение:** начать ежедневное использование после устойчивого ввода, минимальных чатов, редактирования и проверенного экспорта; быстрый захват перенести раньше. Дизайн-систему развивать по компонентам среза, сохранив визуальную приёмку; лес сначала принять с простыми ассетами. Короткий S4 по конверту и жизненному циклу данных провести до фиксации схемы, полную сетевую проверку — перед срезом 11.
+19. **Important — §2, §11, §14–15: validation of the product's usefulness starts too late.**  
+    **Assessment:** a full design system with the key screens, nine slices, a 100k feed and final art before the four weeks of use start repeat the risk of a broad scope. Seven days of S4 are reasonable for testing a hypothesis, but are not an estimate of readiness for reliable sync/E2EE.  
+    **Proposal:** start daily use after stable input, minimal chats, editing and a verified export; move quick capture earlier. Grow the design system component by component per slice, keeping visual acceptance; accept the forest with simple assets first. Run a short S4 on the envelope and the data lifecycle before the schema is fixed, and the full network check before slice 11.
 
-20. **Важно — §2.4, §4.1, §8, §16–17 и `01-review.md`: документы допускают несовместимые трактовки агентом.**  
-    **Факты:** E2EE одновременно стоит в P2 и требуется для MVP+; эмбеддинги в §4.1 ещё «на сервере»; разбор сохраняет старые рекомендации серверного AI; XP `hash(day, reason)` не объясняет пять отдельных бонусов; импорт по UUID не определяет конфликт с уже изменённой записью.  
-    **Предложение:** объявить v0.4 единственным нормативным документом, старые рекомендации явно пометить устаревшими. Задать id каждого XP-начисления и режимы импорта «восстановить / объединить / создать копию». До первого публичного выпуска добавить проверку лицензий кода, шрифтов и арта; юридическую совместимость AGPL и платной части текущие документы не устанавливают.
+20. **Important — §2.4, §4.1, §8, §16–17 and `01-review.md`: the documents allow incompatible interpretations by an agent.**  
+    **Facts:** E2EE is both in P2 and required for MVP+; embeddings in §4.1 are still "on the server"; the review keeps the old recommendations for server-side AI; XP `hash(day, reason)` does not explain five separate bonuses; import by UUID does not define the conflict with an already modified entry.  
+    **Proposal:** declare v0.4 the only normative document and explicitly mark the old recommendations as obsolete. Define an id for each XP award and the import modes "restore / merge / create a copy". Before the first public release, add a license check for code, fonts and art; the current documents do not establish the legal compatibility of AGPL and the paid part.
 
-**Три главных вывода:**
+**Three main conclusions:**
 
-1. **Crypto-shredding сейчас обещает больше, чем обеспечивает схема.** Сначала нужны модель угроз и полный жизненный цикл ключей.
-2. **Outbox + HLC + LWW — направление, но ещё не спецификация синхронизации.** Главные пробелы: сохранение версий, курсоры, восстановления и жизненный цикл вложений.
-3. **Начать пользоваться нужно раньше.** Сохранить выбранный стек и визуальную приёмку, но сократить путь до ежедневного журнала; полную дизайн-систему и арт развивать по мере подтверждения пользы.
+1. **Crypto-shredding currently promises more than the scheme provides.** A threat model and the full key lifecycle are needed first.
+2. **Outbox + HLC + LWW is a direction, but not yet a sync specification.** The main gaps: version preservation, cursors, restores and the attachment lifecycle.
+3. **Usage needs to start earlier.** Keep the chosen stack and visual acceptance, but shorten the path to a daily journal; grow the full design system and art as usefulness is confirmed.

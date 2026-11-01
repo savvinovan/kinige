@@ -1,214 +1,214 @@
-# Kinige v2 — что бы я сделал иначе
+# Kinige v2 — what I would do differently
 
-Прочитано: `02-prd.md` (v0.5), `01-review.md`, `research/*.md` (включая оба ревью). Файлы не менялись. Это не ревью на ошибки — ревью уже два, и v0.5 их учло. Это «будь это мой проект». Где это вкус — так и помечено; где сильный аргумент — тоже. Факты из веба — с URL; то, что не проверял, помечено «не уверен».
+Read: `02-prd.md` (v0.5), `01-review.md`, `research/*.md` (including both reviews). No files were changed. This is not a review for errors — there are already two reviews, and v0.5 took them into account. This is "if this were my project". Where it is taste, it is marked as such; where it is a strong argument, that is marked too. Facts from the web come with URLs; what I did not check is marked "not sure".
 
-Главная мысль, из которой растёт почти всё ниже: **в ТЗ v0.5 самое дорогое — сервер + аккаунты + Postgres + ключевая схема с двумя обёртками — построено ради сервиса, который по собственному определению ТЗ «не видит и не сливает содержимое».** Такой сервис не обязан быть сервером. А на продуктовой стороне самый важный факт, которого в ТЗ нет: **лес и «В этот день» у нового пользователя пусты первые месяцы** — значит, импорт прошлого это не P1-удобство, а условие, при котором опора Rediscover вообще существует.
-
----
-
-## Топ-10 по убыванию ценности
-
-### 1. Заменить сервер на «тупое хранилище»: per-device append-only журналы в S3/WebDAV/папке
-
-**Что изменить.** Убрать из MVP+ `server/` (axum + Postgres + аккаунты + квоты + `seq` под блокировкой + бэкапы сервера + поколения + docker compose). Вместо него — бэкенд синхронизации «объектное хранилище»: каждое устройство пишет **свой** append-only журнал зашифрованных конвертов (`log/<device_id>/<n>.bin`), читает чужие журналы по курсору на каждое устройство (вектор курсоров вместо одного `seq`), blob'ы — `blobs/<hmac>`. Хранилище — любое, где есть PUT/GET/LIST: S3-совместимое (своё на homelab, Backblaze B2, Cloudflare R2), WebDAV (Nextcloud), или просто папка (iCloud Drive / Syncthing / Dropbox — тогда «sync» = копирование файлов, а слияние всё равно делает клиент).
-
-**Почему (сильный аргумент).**
-- Всё, что в §10.1–10.2 делает сервер, это (а) выдать монотонный `seq`, (б) проверить `op_id` на идемпотентность, (в) хранить. Если каждое устройство владеет своим журналом, (а) исчезает (порядок внутри журнала — порядок записи одного писателя, между журналами — HLC, как и сейчас), (б) исчезает (повтор записи того же файла с `If-None-Match: *` просто отбрасывается — S3 это поддерживает с августа 2024: [AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html), [анонс](https://aws.amazon.com/about-aws/whats-new/2024/08/amazon-s3-conditional-writes)), (в) делает хранилище.
-- Исчезает целый пласт ТЗ: аккаунты и `auth_key`, разделение пароля входа и KEK, «сервер объявляет минимальную версию протокола», «поколение сервера после restore», «сервер хранит purged ≥ 180 дней» (устройство само держит свой журнал и само его сжимает), квоты, многопользовательность, «хостинг для других = оператор ПД». Схема ключей сжимается до одной: passphrase → Argon2id → KEK → обёртка DEK лежит рядом с данными в бакете; ключ восстановления — вторая обёртка. Доступ к хранилищу (S3-ключи) — это и есть «вход», он никак не связан с шифрованием.
-- Это ровно модель Obsidian Sync с точки зрения пользователя (пароль E2EE отдельно от аккаунта, потеря = потеря данных; [obsidian.md](https://obsidian.md/blog/verify-obsidian-sync-encryption/)) и модель «папка Markdown + iCloud/Git» у Reflect Open и mynd из вашего же `competitors.md`. Пользователи self-hosted уже умеют поднимать S3/Nextcloud; «ещё один docker compose с Postgres» — лишний барьер.
-- Веб-клиент (если он когда-нибудь будет) ходит в S3 напрямую с CORS; никакого серверного кода, значит и «злонамеренный админ подменил JS» исчезает как класс — страницу можно раздавать с любого статического хостинга.
-- Обновляется в будущем без ломки: если позже понадобится «умный» сервер (push-уведомления, веб-хуки, платный хостинг), он реализует тот же интерфейс `SyncBackend { put, get, list }` и может добавлять поверх, а формат журналов не меняется.
-
-**Как.** `crates/kinige-sync` получает trait `SyncBackend` с тремя операциями и двумя реализациями: `FsBackend` (папка — для тестов и Syncthing/iCloud Drive) и `S3Backend`. Курсор — `HashMap<device_id, (file_n, offset)>`. Сжатие журнала: устройство переписывает свои старые файлы в один снимок и удаляет перекрытые — другие устройства видят это через LIST. «Старое устройство вернулось через 200 дней» — то же правило карантина, что в §10.2, оно и так клиентское. S4a (симуляция в процессе) остаётся как есть; S4c заменяется на «S3 на homelab + FsBackend».
-
-**Цена/риск.** Нет realtime (polling раз в N секунд или при фокусе окна — для личного журнала нормально). LIST на S3 стоит денег при частом опросе — решается манифестом `manifest.json`, который каждое устройство обновляет после push, и ETag-проверкой. Сборщик мусора blob'ов — на клиенте, под lock-файлом с `If-None-Match` (или просто «удаляет только то устройство, которое последним писало»). MinIO как рекомендация в §10.1 — **уже нельзя**: community-репозиторий в maintenance mode с декабря 2025 и архивирован в феврале 2026 ([ayedo.de](https://ayedo.de/en/posts/minio-im-maintenance-mode/), [glukhov.org](https://glukhov.org/data-infrastructure/object-storage/minio-dead/), [InfoQ про альтернативы](https://infoq.com/news/2025/12/minio-s3-api-alternatives/)); образы на Docker Hub перестали публиковаться. Брать Garage, SeaweedFS или RustFS — не проверял их состояние на октябрь 2026, нужен spike в полдня. Для первых недель достаточно Backblaze B2 или просто папки в iCloud Drive.
-
-Я бы пересмотрел «свой сервер» именно потому, что он не даёт ни одной гарантии, которой не даёт бакет, а стоит 3 из 7 spike-ов и слайс 11 целиком.
-
-### 2. Импорт прошлого — до начала ежедневного использования, а не в P1
-
-**Что изменить.** Поднять импорт Telegram («Избранное» + личные чаты) и импорт фото по EXIF-дате из папки в блок «до начала 4 недель» (между слайсами 3 и 4). Notion/Obsidian оставить в P1.
-
-**Почему (сильный аргумент).** Опора № 2 («Rediscover») и лес — это функции от истории. У пустой базы «В этот день» молчит год, лес — голая земля. Четырёхнедельная проверка «на себе» без прошлого проверит только Capture, а решение «делать ли продукт» вы будете принимать по урезанной картине. Telegram-экспорт — документированный JSON (`result.json` с `messages[]`, `date`, `text_entities`, медиа по относительным путям: [core.telegram.org/import-export](https://core.telegram.org/import-export)); импорт — 1–2 дня работы агента. Фото из Photos/папки по дате — «медиа-вложение дня» заполняют лес вторым слоем (их вес 0,5 в формуле уже есть). Для онбординга чужих пользователей это же станет «первым вау»: вставил экспорт — и за минуту видишь свои 5 лет лесом.
-
-**Как.** Импортёр — чистая функция `export → Vec<Message>` в `kinige-domain` с тестом на реальном экспорте; дедуп по `(source, source_message_id)` в `unknown_json`/отдельной колонке `origin`. `journal_date` — из даты сообщения в зоне устройства.
-
-**Цена.** +2–3 дня до «дня 1». Риск — формат экспорта Telegram меняется; нужен фикстурный файл в репозитории.
-
-### 3. Питомца вырезать, лес — сделать навигацией и «почтальоном», а не украшением
-
-**Что изменить.** Питомец (XP-журнал, уровни, аксессуары, детерминированные id для слияния) — вырезать целиком, вместе с `xp_ledger`. Лес — не отдельная вкладка «посмотреть», а (а) главный способ двигаться по времени и (б) источник ежедневной «доставки» старого.
-
-**Почему.** У питомца в ТЗ нет ни одной связи с заметками, кроме «+10 за день». Это отдельная игра, которая тянет к себе (аксессуары, уровни), а не к записям, — и это ровно то, что mynd/One Year продают как отсутствие («no streaks», ваш `competitors.md` § 3.8). Сильный аргумент: вся «награда» должна быть **самим прошлым**. Лес уже может это дать:
-
-- **Утро начинается с письма из леса.** При первом открытии дня в Inbox появляется системная карточка «В этот день: 2023, 2021» (1–3 заметки, фото, сколько лет назад) с кнопкой «ответить». Ответ — обычное сообщение с `reply_to_id` на старую запись, с пометкой «2 года спустя». Так появляются нити через годы, а старая заметка получает «новый слой». Это Day One «On This Day» (у них нет даже «случайной записи» — только просьбы на форуме: [forums.dayoneapp.com](https://forums.dayoneapp.com/forums/topic/feature-request-random-entry/)), но встроенное в чат-поток, которого у Day One нет.
-- **Дерево растёт и от перечитывания** (вкус, но мне нравится): крона — от записей дня, «подлесок/цветы» у подножия — от того, сколько раз к этому дню возвращались (ответили, добавили в избранное, нашли поиском и открыли). Это единственная механика, которая вознаграждает Rediscover, а не Capture. Без наказаний, производно, не требует отдельного журнала.
-- **Лес как скраббер.** Кликнул в дерево — лента прокручивается к этому дню (без смены экрана, лес сворачивается в полоску сверху или в боковую панель). Hover по ленте подсвечивает дерево. Тогда лес — это «карта» ленты, а не галерея.
-
-Если питомца всё же хочется (вкус): сделать его тем, кто **приносит** карточку «в этот день» — одно существо, одна анимация, ноль прогрессии. Тогда он функционален.
-
-**Цена.** Теряется «косметика» как кандидат в платное — см. п. 9, там замена лучше. Выигрыш — минус одна синхронизируемая сущность, минус правила слияния, минус арт для аксессуаров.
-
-### 4. Начать пользоваться на 3-й неделе, а не после 4 слайсов + D + spike-ов
-
-**Что изменить.** Перед слайсом 0 — одна неделя «ходячего скелета»: Tauri-окно, textarea без CodeMirror, SQLite, лента на обычном `div` (без виртуализации), один чат Inbox, глобальный хоткей (plugin уже готовый), экспорт в Markdown. Без Storybook, без токенов, без CI-подписи. Со второй недели — вы в нём пишете. Параллельно — всё, что в ТЗ названо слайсом 0 и D, но уже под живые данные.
-
-**Почему (сильный аргумент).** ТЗ v0.5 уже признало, что «пользоваться надо раньше» (оба ревью), но по дорожной карте до первой записи всё ещё: слайс 0 (CI, подпись, wasm32, Storybook, визуальные тесты, скрипт скриншотов) + D (токены, шрифты, компоненты) + S1 (3 дня) + S3 (4 дня) + слайсы 1–4. Это 4–6 недель для одного человека с агентами, и это урок L7/L8 ещё раз. Правило 11.1 «пока дизайн-система v1 не собрана в Storybook, слайсы с UI не начинаются» — ровно та бюрократия, которая в старом Kinige родила 20 документов. Визуальная приёмка нужна, Storybook для неё — не обязательно: скриншот настоящего окна достаточен, Storybook подключается, когда компонентов станет >10.
-
-**Как.** См. раздел «первые 4 недели» в конце. Ключевое: данные скелета **не выбрасываются** — схема SQLite с первого дня та, что в §4.2 (UUID, `journal_date`, `hlc_json`, `deleted_at`), поэтому всё написанное за «скелетные» недели живёт дальше.
-
-**Цена.** Первые две недели интерфейс некрасивый. Это осознанно: красота — это слайс, а не предусловие.
-
-### 5. Markdown-зеркало на диске вместо «ежедневного снимка базы»
-
-**Что изменить.** SQLite остаётся первичным хранилищем (поиск, лес, sync — всё на нём). Но вместо «ежедневный снимок базы в папку» — **непрерывное одностороннее зеркало** в папку `Kinige/<chat>/YYYY/YYYY-MM-DD.md` (формат как в §16 экспорта, запись — в той же транзакции или в очереди после commit, с debounce). Не двустороннее.
-
-**Почему.** Сильный аргумент: (а) бэкап, который человек может прочитать без приложения, — это доверие к local-first в самом буквальном смысле; Time Machine и любой облачный диск подхватывают его бесплатно; (б) Obsidian/iA Writer/grep работают с этой папкой сразу — ответ на «а если проект умрёт»; (в) «экспорт» перестаёт быть отдельной функцией — он всегда уже есть; (г) весь тренд рынка из вашего `competitors.md` — Markdown-файлы (mynd, Reflect Open, Obsidian). Почему не двустороннее: двусторонний файловый sync — это второй протокол слияния с конфликтами на ровном месте (у mynd для этого пришлось делать «поиск конфликтующих заметок»). Папка — выход, не вход; вход — импорт (п. 2).
-
-**Как.** Таблица `mirror_dirty(journal_date, chat_id)`, фоновая задача переписывает файл дня целиком (атомарно через temp + rename). Вложения — симлинки/копии в `attachments/`. Настройка «куда» с дефолтом в `~/Documents/Kinige`.
-
-**Цена.** Открытый текст на диске (но и SQLite сейчас открытый — §4.1). Двойная запись при массовом импорте — отложить зеркало до конца импорта.
-
-### 6. Упростить криптосхему до одной passphrase и одного конверта; аудит — не «перед релизом», а «в формате»
-
-**Что изменить.** Вместе с п. 1: один секрет — passphrase (или только 24 слова, если passphrase ≥ 12 символов не хочется) → Argon2id → KEK; DEK случайный; две обёртки (passphrase, recovery) лежат в `keys.json` в бакете; `auth_key` исчезает. Конверт — как в §10.3 (XChaCha20-Poly1305, AAD с метаданными), это правильно и остаётся. Ротации DEK, отзыва устройств, QR-передачи — нет и в P2: «отзыв» = сменить S3-ключи и перешифровать бакет командой «перенести в новое хранилище».
-
-**Почему.** Каждая сущность в схеме ключей — это экран онбординга, сценарий восстановления и тест. Сейчас их пять (пароль, auth_key, KEK, DEK, recovery). Для одного пользователя на 2–3 машинах достаточно двух. Day One живёт с «ключ в Keychain, потерял — потерял» ([dayoneapp.com](https://dayoneapp.com/guides/security/end-to-end-encryption/) из `competitors.md`), Obsidian — с одним паролем. Сильный аргумент: меньше примитивов — меньше мест, где самодельная логика вокруг libsodium ошибётся.
-
-**Как.** Формат `keys.json` и конверта — отдельный короткий ADR с тест-векторами (fixed nonce/key → ожидаемые байты), чтобы веб/мобильный клиент потом проверялись одной таблицей.
-
-**Цена.** Без аккаунта нет «удалить аккаунт» — есть «удалить бакет», и это честнее, чем §10.3 про бэкапы сервера.
-
-### 7. Быстрый захват — с контекстом и дописыванием, а не «одно поле»
-
-**Что изменить.** Окно хоткея показывает последние 2–3 записи сегодняшнего дня бледным текстом над полем ввода и умеет два действия: Enter — новая запись, ⌘Enter (или `+` в начале) — **дописать к последней записи** (если ей < 10 минут). Плюс: вставка из буфера по второму хоткею (⌥⇧Space — «сохранить буфер в Inbox», без окна), и «Esc сохраняет черновик» уже есть.
-
-**Почему.** Сильный аргумент из собственного опыта с «Избранным» в Telegram: мысли приходят каскадом, через 40 секунд после первой; без контекста человек либо делает 4 сообщения-обрывка (лес это поощряет — спам), либо открывает основное окно. «Дописать» убирает обе проблемы и делает ленту читаемее (абзацы вместо осколков). Это и есть отличие от Raycast-поля и от Telegram.
-
-**Как.** Окно захвата получает право читать «последние N сообщений Inbox за сегодня» — это ломает матрицу IPC из §12.3 («только создать сообщение»), и это нормально: правка матрицы — «создать + дописать к последнему + прочитать последние 3 за сегодня». Отрицательный тест остаётся: не может читать произвольные сообщения и поиск.
-
-**Цена.** Полдня. Второй хоткей на Linux/Wayland — та же оговорка, что уже есть.
-
-### 8. Срезать «редакторские» и «перфоманс»-амбиции P0 до того, что реально нужно одному человеку
-
-**Что изменить (конкретный список).**
-- **Лента на 100k и spike S2** — из P0 в «когда база перевалит за 20k». Ваш собственный объём после импорта Telegram — скорее тысячи, не сотни тысяч. Пагинация keyset по `(journal_date, created_at, id)` нужна с первого дня (это модель данных), виртуализация — нет: до ~5k сообщений обычный DOM с «подгрузить ещё» работает. Нагрузочный скрипт оставить, порог — замерить.
-- **Три уровня детализации леса** — один спрайт + точка (уже сказано в ревью, но в §7.1 всё ещё три).
-- **История версий с UI** — хранить ревизии (нужно для conflict и «отменить»), UI «посмотреть версии» — P1.
-- **Перемещение между чатами, изменение даты, закрепление сообщения** — P1. Чаты у вас — Inbox + 2–3 тематических; «переместить» нужно раз в неделю.
-- **Фильтры «медиа/задачи/избранное» в ленте** — только «избранное» и «задачи»; «медиа» — вместе с галереей дня в P1.
-- **Reduce Motion, экранные дикторы «базово»** — оставить клавиатуру и контраст, диктор — на этапе продукта.
-- **wasm32 в CI для `kinige-domain`** — убрать до решения про веб (п. 10). Это бесплатно, пока домен без зависимостей, и перестаёт быть бесплатным в первый же день, когда захочется `rusqlite` или `tokio` в домене.
-
-**Почему.** Каждый пункт — отдельный слайс с приёмкой. ТЗ v0.5 уже короче v0.4, но P0 всё ещё ≈ 12 функций × 3 состояния. Опор три; пусть в P0 будет по одной ударной функции на опору: Capture = хоткей с дописыванием; Rediscover = «в этот день»-карточка + лес-скраббер; Grow = дерево. Остальное — после 4 недель.
-
-**Цена.** Вкус в деталях (кому-то «переместить в чат» нужен ежедневно). Аргумент сильный только для порядка, не для вырезания навсегда.
-
-### 9. Бизнес: продавать хостинг-бакет, мобильный клиент и арт-наборы леса, а не «AI и питомца»
-
-**Что изменить.** Платное (кандидаты в §2.6) заменить на:
-1. **Kinige Cloud** — тот самый бакет (п. 1) «под ключ»: зашифрованное хранилище + бэкапы с версиями + статус «все устройства в сети». Вы храните только шифртекст, значит обязанности оператора ПД минимальны (это всё равно нужно проверить юридически — не уверен по 152-ФЗ/GDPR для шифртекста). Ориентиры цен из вашего `competitors.md`: Obsidian Sync $4/мес, mynd $9.99/год, Day One $49.99/год — ниша $2–4/мес реалистична.
-2. **Мобильное приложение** — платное в сторе (или бесплатное с платным sync). Магазин — естественный пейволл: форкнуть открытый клиент и опубликовать под своим именем в App Store — отдельная работа с подписью и ревью, которую «форкеры» обычно не делают.
-3. **Арт-наборы леса** («хвойный», «японский сад», «пустыня», зимние декорации) — это единственное, где Blender-пайплайн из §7.5 окупается как актив: один раз настроенный скрипт рендера → новые наборы дёшево, а продавать их можно по $3–5. Косметика, которая не ломает «без наказаний».
-4. **AI** — не продавать, а BYOK (свой ключ OpenRouter) в бесплатной версии; в Cloud — «включённые кредиты». Продавать AI как фичу — значит оплачивать чужие токены из маржи (урок Mem из `competitors.md`).
-
-Лицензия: при такой модели ядро клиента может быть и MIT/Apache (меньше трения для self-hosted людей), потому что платное — не в клиенте. AGPL имеет смысл только если платное — серверный код, которого по п. 1 нет.
-
-**Почему.** Open-core «платные функции внутри открытого клиента» ТЗ само называет легко форкаемым (§2.6). Всё, что я перечислил, либо физически не в репозитории (бакет, стор), либо ассеты.
-
-**Цена.** Для хостинга нужен хотя бы один «умный» компонент — выдача S3-ключей и биллинг. Это маленький сервис, но он появляется. Делать — после первых 100 self-hosted пользователей, не раньше.
-
-### 10. Процесс с агентами: «один слайс = один документ на страницу + один скриншот», владелец вкуса — человек
-
-**Что изменить (поверх §12, который хорош).**
-- **Спека слайса — одна страница до начала**, с тремя разделами: «сценарий словами», «что НЕ входит», «как выглядит готово (скриншот-референс или текстовое описание окна)». Агент не начинает без неё; вы не принимаете без неё. Это защита от L7 внутри слайса.
-- **Два агента, две роли, не три прохода одного.** Один пишет, второй (в чистом контексте, без истории первого) делает ревью PR по спеке слайса и чеклисту DoD, и обязательно *запускает* приложение и снимает скриншот сам. Одному и тому же агенту «проверь себя» бесполезен — он подтвердит свою гипотезу.
-- **Вы смотрите только скриншоты и живое окно; код — выборочно.** Ваш дефицитный ресурс — вкус и приёмка, не чтение diff'ов. Правило: PR без скриншота настоящего окна (и «до/после» для визуальных правок) не открывается на приёмку.
-- **Журнал проекта ведите в Kinige** с недели 2 — это и dogfooding, и способ заметить, где захват неудобен. Запись «что сломалось / что хочу» каждый вечер — ваш бэклог.
-- **Бюджет на слайс — в календарных днях, не в токенах**, и слайс, вышедший за 2× — останавливается и режется, а не дотягивается. Старый Kinige умер от «ещё чуть-чуть».
-- **Ни один spike не открывается, пока его результат не нужен следующему слайсу.** S3 (лес) и S6 (эмбеддинги) — через месяц, не сейчас; S1 (CodeMirror) — только когда textarea начнёт мешать (п. 4).
-- **ADR — да, но ADR пишется после решения, за 10 минут, и не более 1 в неделю в среднем.** Если их больше — вы проектируете, а не делаете.
-
-**Почему.** Провал v1 — процесс. ТЗ v0.5 чинит его правилами для агента; я бы добавил правила для *вас*: что вы смотрите, что нет, когда останавливаете. Агентная работа ломается в двух местах: агент уверенно расширяет объём, и человек устаёт принимать. Одностраничная спека лечит первое, «только скриншоты» — второе.
-
-**Цена.** Два агента — вдвое дороже по токенам на слайс. Окупается первым пойманным «готово, 67 тестов зелёные».
+The main thought from which almost everything below grows: **in PRD v0.5 the most expensive part — server + accounts + Postgres + a key scheme with two wrappings — is built for a service that, by the PRD's own definition, "does not see and does not merge the content".** Such a service does not have to be a server. And on the product side, the most important fact that is missing from the PRD: **for a new user the forest and "On this day" are empty for the first months** — which means importing the past is not a P1 convenience but the condition under which the Rediscover pillar exists at all.
 
 ---
 
-## Остальные идеи коротко
+## Top 10 in descending order of value
 
-**Продукт и UX**
-- **Автослияние абзацев в ленте.** Сообщения одного дня с паузой < 5 минут рендерить как абзацы одной «страницы» без времени между ними, время — только у первой. §6 это уже называет «сливаются в страницу»; я бы сделал это правилом по времени, а не визуальным приёмом, и показывал время по hover.
-- **«Случайная запись»** (⌘R или кнопка в пустом Inbox) — самая дешёвая Rediscover-функция; Day One её так и не сделал (см. ссылку в п. 3). Вес выбора — в пользу дней с фото и «избранного».
-- **Дневная «обложка».** Первое фото дня — фон/тонкая полоса у разделителя дня в ленте и текстура дерева в hover-карточке. Это то, что делает ленту «журналом», а не чатом, почти без кода.
-- **Поиск — одно поле для всего:** `#тег`, `@чат`, `2023-10`, `октябрь 2023`, `фото`, «на этой неделе». Фильтры-чипы появляются после ввода, а не до. Переход по Enter — в ленту с подсветкой (уже есть). Семантический поиск позже просто добавляет второй источник в ту же выдачу (RRF уже описан).
-- **Теги `#тег` — в P0, а не P1.** Это нулевая стоимость (regex при записи + таблица `message_tag`), а это главный инструмент структуры у пользователей Telegram-«Избранного» (ваш `competitors.md`, Telegram). Без тегов импортированный архив Telegram потеряет единственную структуру, которая в нём была.
-- **Голосовые заметки** — не записывать самим в P1, а полагаться на системную диктовку macOS в поле ввода (бесплатно, офлайн на Apple Silicon — не проверял точные ограничения, не уверен). Собственная запись + файл — P2.
-- **Лес: 12×31 — да**, но добавить третью «сетку»: **линейная полоса-год** (365 деревьев в один ряд с прокруткой) как режим-скраббер над лентой. Изометрия для «посмотреть год», полоса — для навигации. Это один и тот же набор спрайтов.
-- **Сезон как настроение леса, не только дата.** Вкус: у дня с «избранным» — цветение; у дня, куда вы вернулись спустя год — фонарь. Декор как сигнал, а не как случайный набор.
-- **«Год в обзоре»** (P2 в ТЗ) — дёшево ещё до AI: «самый длинный день», «больше всего фото», «первое упоминание #тега», «дни, к которым вы возвращались». Всё из SQL.
+### 1. Replace the server with "dumb storage": per-device append-only logs in S3/WebDAV/a folder
 
-**Архитектура и стек**
-- **CodeMirror 6 — только если textarea провалилась.** Подсветка Markdown в textarea не нужна для чата: 90% записей — 1–3 строки. CM6 оправдан для «развёрнутого режима». Я бы начал с textarea + превью по ⌘P и ставил CM6 в полноэкранный режим слайсом позже. Снимает S1 и весь IME-риск с критического пути (вкус с аргументом).
-- **Один писатель SQLite** — правильно; добавил бы: все команды Tauri — это `enqueue(Command) → Result`, фронт никогда не ждёт IO на UI-потоке, а подписывается на события `MessageAdded`. Это одновременно и модель для sync (пришедшие конверты — те же команды).
-- **`ts-rs`/`tauri-specta`** — specta, потому что он генерирует и команды, не только типы; не проверял его состояние на 2026 — не уверен.
-- **Light theme первым, dark вторым** — вкус, но аргумент есть: «бумажный журнал» и референсы (Bear, Day One, Apple Journal) — светлые; тёмная «бумага» — редкий зверь, который легко уйти в «тёмный UI с фиолетовым», от которого вы отказались. Если тёмная — то именно тёплая, с проверкой на реальном экране днём. Не оспариваю решение, предупреждаю о сносе.
-- **Веб-клиент** я бы вычеркнул из P1 совсем (п. 1 делает его технически возможным, но ценность для вас — нулевая, пока нет телефона). Телефон — нативный клиент (SwiftUI) к тому же бакету, протокол это позволяет; `apple-tech.md` уже на руках.
-- **Вложения: не дедуплицировать по sha256 в P0.** Экономия места ничтожна для личного журнала, а правила «удалять, только если никто не ссылается, включая корзину и ревизии» — это GC, который легко ошибается. Файл принадлежит сообщению; сообщение удалили физически — файл удалили. Дедуп — когда появится импорт фотобиблиотеки.
-- **`unknown_json` round-trip** — хорошо; добавил бы `feature flags` в манифесте бакета: устройство, не понимающее флаг, переходит в read-only. Проще, чем «минимальная версия протокола».
-- **Локальные автобэкапы** при наличии зеркала (п. 5) — копия `.sqlite` раз в день в ту же папку, 7 последних. Достаточно.
+**What to change.** Remove `server/` from MVP+ (axum + Postgres + accounts + quotas + `seq` under a lock + server backups + generations + docker compose). Instead — an "object storage" sync backend: each device writes **its own** append-only log of encrypted envelopes (`log/<device_id>/<n>.bin`), reads the other devices' logs by a per-device cursor (a vector of cursors instead of a single `seq`), blobs go to `blobs/<hmac>`. The storage can be anything with PUT/GET/LIST: S3-compatible (your own on the homelab, Backblaze B2, Cloudflare R2), WebDAV (Nextcloud), or just a folder (iCloud Drive / Syncthing / Dropbox — then "sync" = copying files, and the merge is still done by the client).
 
-**Процесс и продукт**
-- **Название фичи** — не «Forest»/«Лес» в маркетинге, а что-то своё («роща», «год», «поляна»); ТЗ это уже знает, добавлю: проверьте имя Kinige в App Store/USPTO сейчас, а не «до релиза» — переименование после 4 недель дешевле, чем после года.
-- **Один публичный артефакт с первой недели** — скриншот дня в закрытом канале/треде. Не для маркетинга, для дисциплины «готово = видно».
-- **Метрика одна: сколько дней подряд вы писали ≥ 1 запись** — и она же нарисована лесом. Если через 4 недели в лесу меньше 20 деревьев — продукт не нужен даже вам, и это тоже результат.
+**Why (strong argument).**
+- Everything the server does in §10.1–10.2 is (a) hand out a monotonic `seq`, (b) check `op_id` for idempotency, (c) store. If each device owns its own log, (a) disappears (the order within a log is the write order of a single writer, between logs it is HLC, as now), (b) disappears (a repeated write of the same file with `If-None-Match: *` is simply rejected — S3 has supported this since August 2024: [AWS docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html), [announcement](https://aws.amazon.com/about-aws/whats-new/2024/08/amazon-s3-conditional-writes)), (c) is done by the storage.
+- A whole layer of the PRD disappears: accounts and `auth_key`, separating the login password from the KEK, "the server announces the minimum protocol version", "server generation after restore", "the server keeps purged ≥ 180 days" (the device keeps its own log itself and compacts it itself), quotas, multi-tenancy, "hosting for others = personal data operator". The key scheme shrinks to one: passphrase → Argon2id → KEK → the DEK wrapping sits next to the data in the bucket; the recovery key is a second wrapping. Access to the storage (S3 keys) is the "login", and it is in no way tied to encryption.
+- From the user's point of view this is exactly the Obsidian Sync model (E2EE password separate from the account, loss = data loss; [obsidian.md](https://obsidian.md/blog/verify-obsidian-sync-encryption/)) and the "Markdown folder + iCloud/Git" model of Reflect Open and mynd from your own `competitors.md`. Self-hosted users already know how to set up S3/Nextcloud; "yet another docker compose with Postgres" is an extra barrier.
+- The web client (if there ever is one) talks to S3 directly with CORS; no server code, so "a malicious admin swapped the JS" disappears as a class too — the page can be served from any static hosting.
+- It can be upgraded later without breakage: if a "smart" server is needed later (push notifications, webhooks, paid hosting), it implements the same `SyncBackend { put, get, list }` interface and can add things on top, while the log format does not change.
+
+**How.** `crates/kinige-sync` gets a `SyncBackend` trait with three operations and two implementations: `FsBackend` (a folder — for tests and Syncthing/iCloud Drive) and `S3Backend`. The cursor is `HashMap<device_id, (file_n, offset)>`. Log compaction: a device rewrites its old files into a single snapshot and deletes the superseded ones — other devices see this via LIST. "An old device came back after 200 days" — the same quarantine rule as in §10.2, it is client-side anyway. S4a (in-process simulation) stays as is; S4c is replaced with "S3 on the homelab + FsBackend".
+
+**Cost/risk.** No realtime (polling every N seconds or on window focus — fine for a personal journal). LIST on S3 costs money with frequent polling — solved by a `manifest.json` that each device updates after a push, plus an ETag check. The blob garbage collector runs on the client, under a lock file with `If-None-Match` (or simply "only the device that wrote last deletes"). MinIO as the recommendation in §10.1 — **no longer an option**: the community repository has been in maintenance mode since December 2025 and was archived in February 2026 ([ayedo.de](https://ayedo.de/en/posts/minio-im-maintenance-mode/), [glukhov.org](https://glukhov.org/data-infrastructure/object-storage/minio-dead/), [InfoQ on alternatives](https://infoq.com/news/2025/12/minio-s3-api-alternatives/)); images on Docker Hub are no longer published. Take Garage, SeaweedFS or RustFS — I did not check their state as of October 2026, a half-day spike is needed. For the first weeks Backblaze B2 or just a folder in iCloud Drive is enough.
+
+I would reconsider "our own server" precisely because it gives no guarantee that a bucket does not give, yet it costs 3 of the 7 spikes and all of slice 11.
+
+### 2. Import the past — before daily use starts, not in P1
+
+**What to change.** Move the Telegram import ("Избранное" (Saved Messages) + personal chats) and importing photos from a folder by EXIF date into the "before the 4 weeks start" block (between slices 3 and 4). Leave Notion/Obsidian in P1.
+
+**Why (strong argument).** Pillar No. 2 ("Rediscover") and the forest are functions of history. With an empty database "On this day" stays silent for a year, and the forest is bare ground. A four-week "on yourself" trial without the past will only test Capture, and you will make the "should this be a product" decision based on a truncated picture. The Telegram export is documented JSON (`result.json` with `messages[]`, `date`, `text_entities`, media by relative paths: [core.telegram.org/import-export](https://core.telegram.org/import-export)); the import is 1–2 days of agent work. Photos from Photos/a folder by date — "the day's media attachment" fills the forest with a second layer (their weight of 0.5 is already in the formula). For onboarding other users this becomes the "first wow": paste the export — and within a minute you see your 5 years as a forest.
+
+**How.** The importer is a pure function `export → Vec<Message>` in `kinige-domain` with a test on a real export; dedup by `(source, source_message_id)` in `unknown_json`/a separate `origin` column. `journal_date` comes from the message date in the device's time zone.
+
+**Cost.** +2–3 days before "day 1". Risk — the Telegram export format changes; a fixture file in the repository is needed.
+
+### 3. Cut the pet; make the forest navigation and a "mail carrier", not decoration
+
+**What to change.** The pet (XP ledger, levels, accessories, deterministic ids for merging) — cut it entirely, together with `xp_ledger`. The forest is not a separate "take a look" tab but (a) the main way to move through time and (b) the source of the daily "delivery" of old material.
+
+**Why.** In the PRD the pet has no connection to notes at all except "+10 per day". It is a separate game that pulls toward itself (accessories, levels) rather than toward entries — and that is exactly what mynd/One Year sell as an absence ("no streaks", your `competitors.md` § 3.8). Strong argument: the whole "reward" should be **the past itself**. The forest can already provide that:
+
+- **The morning starts with a letter from the forest.** On the first open of the day, a system card "On this day: 2023, 2021" appears in the Inbox (1–3 notes, photos, how many years ago) with a "reply" button. The reply is an ordinary message with `reply_to_id` pointing at the old entry, marked "2 years later". That is how threads across years appear, and the old note gets a "new layer". This is Day One's "On This Day" (they do not even have a "random entry" — only forum requests: [forums.dayoneapp.com](https://forums.dayoneapp.com/forums/topic/feature-request-random-entry/)), but built into the chat stream, which Day One does not have.
+- **The tree also grows from rereading** (taste, but I like it): the crown comes from the day's entries, the "undergrowth/flowers" at the foot from how many times you came back to that day (replied, added to favorites, found via search and opened). This is the only mechanic that rewards Rediscover rather than Capture. No penalties, derived, needs no separate ledger.
+- **The forest as a scrubber.** Click a tree — the feed scrolls to that day (without switching screens, the forest collapses into a strip at the top or into a side panel). Hovering over the feed highlights the tree. Then the forest is a "map" of the feed, not a gallery.
+
+If you still want the pet (taste): make it the one who **brings** the "On this day" card — one creature, one animation, zero progression. Then it is functional.
+
+**Cost.** "Cosmetics" is lost as a paid candidate — see item 9, the replacement there is better. The gain — one less synced entity, no merge rules for it, no art for accessories.
+
+### 4. Start using it in week 3, not after 4 slices + D + spikes
+
+**What to change.** Before slice 0 — one week of a "walking skeleton": a Tauri window, a textarea without CodeMirror, SQLite, a feed on a plain `div` (no virtualization), one Inbox chat, a global hotkey (the plugin is ready-made), export to Markdown. No Storybook, no tokens, no CI signing. From week two — you are writing in it. In parallel — everything the PRD calls slice 0 and D, but now against live data.
+
+**Why (strong argument).** PRD v0.5 has already admitted that "you need to start using it earlier" (both reviews), but according to the roadmap, before the first entry there is still: slice 0 (CI, signing, wasm32, Storybook, visual tests, screenshot script) + D (tokens, fonts, components) + S1 (3 days) + S3 (4 days) + slices 1–4. That is 4–6 weeks for one person with agents, and it is lesson L7/L8 once again. Rule 11.1 "until design system v1 is assembled in Storybook, slices with UI do not start" is exactly the bureaucracy that produced 20 documents in the old Kinige. Visual acceptance is needed, but Storybook is not required for it: a screenshot of the real window is enough, and Storybook gets wired in when there are >10 components.
+
+**How.** See the "first 4 weeks" section at the end. Key point: the skeleton's data **is not thrown away** — the SQLite schema from day one is the one in §4.2 (UUID, `journal_date`, `hlc_json`, `deleted_at`), so everything written during the "skeleton" weeks lives on.
+
+**Cost.** For the first two weeks the interface is ugly. That is deliberate: beauty is a slice, not a precondition.
+
+### 5. A Markdown mirror on disk instead of a "daily database snapshot"
+
+**What to change.** SQLite stays the primary storage (search, forest, sync — all of it runs on it). But instead of "a daily database snapshot into a folder" — a **continuous one-way mirror** into the folder `Kinige/<chat>/YYYY/YYYY-MM-DD.md` (format as in the §16 export; written in the same transaction or in a queue after commit, with debounce). Not two-way.
+
+**Why.** Strong argument: (a) a backup a person can read without the app is trust in local-first in the most literal sense; Time Machine and any cloud drive pick it up for free; (b) Obsidian/iA Writer/grep work with this folder right away — the answer to "what if the project dies"; (c) "export" stops being a separate feature — it always already exists; (d) the whole market trend in your `competitors.md` is Markdown files (mynd, Reflect Open, Obsidian). Why not two-way: two-way file sync is a second merge protocol with conflicts out of nowhere (mynd had to build a "find conflicting notes" feature for this). The folder is an output, not an input; the input is import (item 2).
+
+**How.** A `mirror_dirty(journal_date, chat_id)` table; a background task rewrites the day's file in full (atomically via temp + rename). Attachments — symlinks/copies in `attachments/`. A "where" setting defaulting to `~/Documents/Kinige`.
+
+**Cost.** Plaintext on disk (but SQLite is currently plaintext too — §4.1). Double writes during a bulk import — postpone the mirror until the import finishes.
+
+### 6. Simplify the crypto scheme to one passphrase and one envelope; audit not "before release" but "in the format"
+
+**What to change.** Together with item 1: one secret — a passphrase (or only the 24 words, if a passphrase of ≥ 12 characters is unwanted) → Argon2id → KEK; the DEK is random; two wrappings (passphrase, recovery) are stored in `keys.json` in the bucket; `auth_key` disappears. The envelope is as in §10.3 (XChaCha20-Poly1305, AAD with metadata); that is right and stays. DEK rotation, device revocation, QR transfer — not even in P2: "revocation" = change the S3 keys and re-encrypt the bucket with a "move to new storage" command.
+
+**Why.** Every entity in the key scheme is an onboarding screen, a recovery scenario and a test. Right now there are five (password, auth_key, KEK, DEK, recovery). For one user on 2–3 machines, two are enough. Day One lives with "the key is in Keychain, lose it and it's lost" ([dayoneapp.com](https://dayoneapp.com/guides/security/end-to-end-encryption/) from `competitors.md`), Obsidian with a single password. Strong argument: fewer primitives — fewer places where home-grown logic around libsodium will get something wrong.
+
+**How.** The format of `keys.json` and of the envelope — a separate short ADR with test vectors (fixed nonce/key → expected bytes), so that a web/mobile client can later be checked against one table.
+
+**Cost.** Without an account there is no "delete account" — there is "delete the bucket", and that is more honest than §10.3 about server backups.
+
+### 7. Quick capture — with context and appending, not "a single field"
+
+**What to change.** The hotkey window shows the last 2–3 entries of today in faint text above the input field and supports two actions: Enter — a new entry, ⌘Enter (or `+` at the start) — **append to the last entry** (if it is < 10 minutes old). Plus: pasting from the clipboard via a second hotkey (⌥⇧Space — "save clipboard to Inbox", no window), and "Esc saves a draft" already exists.
+
+**Why.** A strong argument from personal experience with "Избранное" (Saved Messages) in Telegram: thoughts come in a cascade, 40 seconds after the first one; without context a person either makes 4 fragment messages (the forest encourages this — spam) or opens the main window. "Append" removes both problems and makes the feed more readable (paragraphs instead of shards). That is exactly what sets it apart from a Raycast field and from Telegram.
+
+**How.** The capture window gets permission to read "the last N Inbox messages for today" — this breaks the IPC matrix from §12.3 ("only create a message"), and that is fine: the matrix change is "create + append to the last one + read the last 3 for today". The negative test stays: it cannot read arbitrary messages or search.
+
+**Cost.** Half a day. A second hotkey on Linux/Wayland — the same caveat that already exists.
+
+### 8. Cut the "editorial" and "performance" ambitions of P0 down to what one person actually needs
+
+**What to change (concrete list).**
+- **A feed for 100k and spike S2** — from P0 to "when the database passes 20k". Your own volume after the Telegram import is more likely thousands, not hundreds of thousands. Keyset pagination by `(journal_date, created_at, id)` is needed from day one (it is the data model), virtualization is not: up to ~5k messages a plain DOM with "load more" works. Keep the load script, measure the threshold.
+- **Three levels of forest detail** — one sprite + a dot (already said in the review, but §7.1 still has three).
+- **Version history with UI** — store revisions (needed for conflict and "undo"), the "view versions" UI — P1.
+- **Moving between chats, changing the date, pinning a message** — P1. Your chats are Inbox + 2–3 topical ones; "move" is needed once a week.
+- **"Media/tasks/favorites" filters in the feed** — only "favorites" and "tasks"; "media" goes with the day gallery in P1.
+- **Reduce Motion, screen readers "at a basic level"** — keep keyboard and contrast, screen readers at the product stage.
+- **wasm32 in CI for `kinige-domain`** — remove until the web decision (item 10). It is free while the domain has no dependencies, and stops being free the very first day you want `rusqlite` or `tokio` in the domain.
+
+**Why.** Each item is a separate slice with acceptance. PRD v0.5 is already shorter than v0.4, but P0 is still ≈ 12 features × 3 states. There are three pillars; let P0 have one flagship feature per pillar: Capture = hotkey with appending; Rediscover = the "On this day" card + forest scrubber; Grow = the tree. Everything else — after the 4 weeks.
+
+**Cost.** Taste in the details (someone needs "move to chat" daily). The argument is strong only for ordering, not for cutting forever.
+
+### 9. Business: sell a hosted bucket, a mobile client and forest art packs, not "AI and the pet"
+
+**What to change.** Replace the paid features (candidates in §2.6) with:
+1. **Kinige Cloud** — that same bucket (item 1) "turnkey": encrypted storage + versioned backups + an "all devices online" status. You store only ciphertext, so the personal data operator obligations are minimal (this still needs a legal check — not sure about 152-FZ/GDPR for ciphertext). Price benchmarks from your `competitors.md`: Obsidian Sync $4/month, mynd $9.99/year, Day One $49.99/year — a $2–4/month niche is realistic.
+2. **Mobile app** — paid in the store (or free with paid sync). The store is a natural paywall: forking the open client and publishing it under your own name in the App Store is separate work with signing and review that "forkers" usually do not do.
+3. **Forest art packs** ("coniferous", "Japanese garden", "desert", winter decorations) — this is the only place where the Blender pipeline from §7.5 pays off as an asset: a render script set up once → new packs are cheap, and they can be sold for $3–5. Cosmetics that do not break "no penalties".
+4. **AI** — do not sell it; BYOK (your own OpenRouter key) in the free version; in Cloud — "included credits". Selling AI as a feature means paying for other people's tokens out of the margin (the Mem lesson from `competitors.md`).
+
+License: with this model the client core can even be MIT/Apache (less friction for self-hosted people), because the paid part is not in the client. AGPL makes sense only if the paid part is server code, which per item 1 does not exist.
+
+**Why.** The PRD itself calls open-core "paid features inside an open client" easy to fork (§2.6). Everything I listed is either physically not in the repository (bucket, store) or is assets.
+
+**Cost.** Hosting needs at least one "smart" component — issuing S3 keys and billing. It is a small service, but it does appear. Build it after the first 100 self-hosted users, not earlier.
+
+### 10. Process with agents: "one slice = one one-page document + one screenshot", the owner of taste is the human
+
+**What to change (on top of §12, which is good).**
+- **The slice spec is one page before starting**, with three sections: "scenario in words", "what is NOT included", "what done looks like (a reference screenshot or a text description of the window)". The agent does not start without it; you do not accept without it. This is protection against L7 inside a slice.
+- **Two agents, two roles, not three passes by one.** One writes, the second (in a clean context, without the first one's history) reviews the PR against the slice spec and the DoD checklist, and must *launch* the app and take a screenshot itself. "Check yourself" is useless for the same agent — it will confirm its own hypothesis.
+- **You look only at screenshots and the live window; code — selectively.** Your scarce resource is taste and acceptance, not reading diffs. Rule: a PR without a screenshot of the real window (and "before/after" for visual changes) is not opened for acceptance.
+- **Keep the project journal in Kinige** from week 2 — it is both dogfooding and a way to notice where capture is awkward. An entry "what broke / what I want" every evening is your backlog.
+- **The slice budget is in calendar days, not tokens**, and a slice that goes over 2× is stopped and cut, not stretched to completion. The old Kinige died of "just a little more".
+- **No spike is opened until its result is needed by the next slice.** S3 (forest) and S6 (embeddings) — in a month, not now; S1 (CodeMirror) — only when the textarea starts getting in the way (item 4).
+- **ADRs — yes, but an ADR is written after the decision, in 10 minutes, and no more than 1 per week on average.** If there are more, you are designing, not building.
+
+**Why.** The failure of v1 was the process. PRD v0.5 fixes it with rules for the agent; I would add rules for *you*: what you look at, what you don't, when you stop. Agent work breaks in two places: the agent confidently expands the scope, and the human gets tired of accepting. The one-page spec cures the first, "screenshots only" the second.
+
+**Cost.** Two agents — twice the tokens per slice. It pays for itself with the first caught "done, 67 tests green".
 
 ---
 
-## Что бы я вырезал целиком
+## Other ideas in brief
 
-1. **Сервер (`server/`, axum, Postgres, аккаунты, квоты, поколения, бэкапы сервера, docker compose)** — заменяется бакетом (п. 1).
-2. **Питомец и `xp_ledger`** — (п. 3).
-3. **Веб-клиент** и вместе с ним wasm32-требование к домену и «SQLite в OPFS — отдельное решение».
-4. **Три варианта ленты в Storybook** — выбор по статичным картинкам уже принят в v0.5; я бы и Storybook отложил до >10 компонентов.
-5. **`auth_key`/разделение пароля входа и KEK, отзыв устройств, ротация DEK, QR-передача ключа** — нет аккаунта, нет и этого.
-6. **Превью ссылок** в любой форме до P2 (уже P1 — я бы дальше: это сеть, приватность и парсер чужого HTML ради косметики).
-7. **Многоуровневая детализация леса и PixiJS-ветка** — Canvas 2D и один спрайт; 372 тайла не требуют WebGL (ваш `tauri-stack.md` § 4 говорит то же).
-8. **Импорт Notion** — Notion-экспорт плохо ложится в чат-формат (страницы, не записи); Obsidian — ближе, но тоже не «сообщения». Telegram и Day One/Apple Journal (у них есть даты и короткие записи) — да, Notion — нет.
-9. **Дедуп вложений по sha256 и глобальный GC** в P0.
-10. **Глобальная аналитика/метрики** — ТЗ уже вычеркнуло, подтверждаю.
+**Product and UX**
+- **Auto-merging paragraphs in the feed.** Render messages of one day with a pause of < 5 minutes as paragraphs of a single "page" without times between them, the time only on the first. §6 already calls this "merge into a page"; I would make it a time-based rule rather than a visual trick, and show the time on hover.
+- **"Random entry"** (⌘R or a button in an empty Inbox) — the cheapest Rediscover feature; Day One never built it (see the link in item 3). Weight the choice toward days with photos and "favorites".
+- **A daily "cover".** The day's first photo as a background/thin strip at the day separator in the feed and as the tree texture in the hover card. This is what makes the feed a "journal" rather than a chat, with almost no code.
+- **Search — one field for everything:** `#тег` (#tag), `@чат` (@chat), `2023-10`, `октябрь 2023` (October 2023), `фото` (photo), "на этой неделе" (this week). Filter chips appear after typing, not before. Enter navigates into the feed with highlighting (already exists). Semantic search later simply adds a second source to the same results (RRF is already described).
+- **`#тег` (#tag) tags — in P0, not P1.** They cost nothing (a regex on write + a `message_tag` table), and they are the main structuring tool for users of Telegram "Избранное" (Saved Messages) (your `competitors.md`, Telegram). Without tags the imported Telegram archive will lose the only structure it had.
+- **Voice notes** — do not record them ourselves in P1, rely instead on macOS system dictation in the input field (free, offline on Apple Silicon — I did not check the exact limitations, not sure). Our own recording + file — P2.
+- **Forest: 12×31 — yes**, but add a third "grid": a **linear year strip** (365 trees in a single row with scrolling) as a scrubber mode above the feed. Isometric for "looking at the year", the strip for navigation. It is the same set of sprites.
+- **Season as the forest's mood, not just the date.** Taste: a day with "favorites" blossoms; a day you came back to a year later gets a lantern. Decor as a signal, not as a random set.
+- **"Year in review"** (P2 in the PRD) — cheap even before AI: "the longest day", "the most photos", "first mention of a #tag", "days you came back to". All from SQL.
+
+**Architecture and stack**
+- **CodeMirror 6 — only if the textarea has failed.** Markdown highlighting in a textarea is not needed for a chat: 90% of entries are 1–3 lines. CM6 is justified for an "expanded mode". I would start with a textarea + preview on ⌘P and put CM6 into a full-screen mode in a later slice. That takes S1 and the whole IME risk off the critical path (taste with an argument).
+- **A single SQLite writer** — right; I would add: all Tauri commands are `enqueue(Command) → Result`, the frontend never waits for IO on the UI thread, and instead subscribes to `MessageAdded` events. This is at the same time the model for sync (incoming envelopes are the same commands).
+- **`ts-rs`/`tauri-specta`** — specta, because it generates commands too, not only types; I did not check its state as of 2026 — not sure.
+- **Light theme first, dark second** — taste, but there is an argument: the "paper journal" and the references (Bear, Day One, Apple Journal) are light; dark "paper" is a rare beast that easily drifts into the "dark UI with purple" you rejected. If dark, then specifically warm, checked on a real screen in daylight. I am not challenging the decision, I am warning about the drift.
+- **The web client** I would strike from P1 entirely (item 1 makes it technically possible, but its value for you is zero until there is a phone). The phone — a native client (SwiftUI) for the same bucket, the protocol allows this; `apple-tech.md` is already at hand.
+- **Attachments: do not deduplicate by sha256 in P0.** The space savings are negligible for a personal journal, and the rules "delete only if nothing references it, including the trash and revisions" are a GC that is easy to get wrong. A file belongs to a message; the message is physically deleted — the file is deleted. Dedup — when importing a photo library appears.
+- **`unknown_json` round-trip** — good; I would add `feature flags` in the bucket manifest: a device that does not understand a flag switches to read-only. Simpler than a "minimum protocol version".
+- **Local auto-backups** given the mirror (item 5) — a copy of the `.sqlite` once a day into the same folder, the last 7. That is enough.
+
+**Process and product**
+- **Feature name** — not "Forest"/"Лес" in marketing but something of its own ("роща" (grove), "год" (year), "поляна" (glade)); the PRD already knows this, I will add: check the name Kinige in the App Store/USPTO now, not "before release" — renaming after 4 weeks is cheaper than after a year.
+- **One public artifact from the first week** — a screenshot of the day in a private channel/thread. Not for marketing, for the "done = visible" discipline.
+- **One metric: how many days in a row you wrote ≥ 1 entry** — and it is the same thing the forest draws. If after 4 weeks there are fewer than 20 trees in the forest, the product is not needed even by you, and that is also a result.
 
 ---
 
-## Если бы делал сам: первые 4 недели
+## What I would cut entirely
 
-Предпосылка: один человек, вечера + выходные ≈ 20 ч/нед, два агента (пишущий и проверяющий). Репозиторий новый (`kinige-v2`), git с первого коммита, CI = `cargo test` + `tsc` + сборка `.app` без подписи — на это полдня, не больше.
+1. **The server (`server/`, axum, Postgres, accounts, quotas, generations, server backups, docker compose)** — replaced by a bucket (item 1).
+2. **The pet and `xp_ledger`** — (item 3).
+3. **The web client**, and together with it the wasm32 requirement for the domain and "SQLite in OPFS — a separate decision".
+4. **Three feed variants in Storybook** — choosing from static images was already adopted in v0.5; I would postpone Storybook too until >10 components.
+5. **`auth_key`/separating the login password and the KEK, device revocation, DEK rotation, QR key transfer** — no account, so none of this either.
+6. **Link previews** in any form until P2 (already P1 — I would go further: it is network, privacy and a parser of other people's HTML for the sake of cosmetics).
+7. **Multi-level forest detail and the PixiJS branch** — Canvas 2D and one sprite; 372 tiles do not require WebGL (your `tauri-stack.md` § 4 says the same).
+8. **Notion import** — a Notion export maps poorly to a chat format (pages, not entries); Obsidian is closer, but also not "messages". Telegram and Day One/Apple Journal (they have dates and short entries) — yes, Notion — no.
+9. **Attachment dedup by sha256 and a global GC** in P0.
+10. **Global analytics/metrics** — the PRD already struck it, I confirm.
 
-**Неделя 1 — ходячий скелет (ничего красивого).**
-- День 1–2: Tauri 2 + React + Vite; `crates/kinige-store` с rusqlite, миграция v1 по схеме §4.2 (чат, сообщение, вложение, ревизия, `hlc_json`, `deleted_at`; без `change_outbox` — пока пустая таблица); команда `send_message`, событие `message_added`; `KinigeApi` + `MockApi` (тонкий, без Storybook).
-- День 3: лента на обычном DOM, группировка по дням, textarea с Enter/Shift+Enter, черновик в localStorage. Один чат Inbox.
-- День 4: глобальный хоткей (`tauri-plugin-global-shortcut`) + маленькое окно с полем; трей. Матрица IPC для второго окна — сразу, это 20 строк capabilities.
-- День 5: Markdown-зеркало в `~/Documents/Kinige/Inbox/2026/2026-10-25.md` (п. 5); убийство процесса → перезапуск → всё на месте; `integrity_check`.
-- Приёмка: скриншот главного окна и окна захвата, выложен в тред. **С вечера пятницы пишу в него.**
+---
 
-**Неделя 2 — прошлое и структура.**
-- Импорт Telegram-экспорта (`result.json` → Inbox или отдельный чат «Telegram»), дедуп по `source_id`; импорт папки фото по EXIF-дате (вложения без дедупа).
-- Теги `#тег` (парсинг при записи, таблица, фильтр по клику).
-- Редактирование (ревизии в хранилище, без UI), удаление с «Отменить» и корзиной (только `deleted_at`, без физического удаления пока).
-- Поиск: FTS5 по стеммированной колонке (S5 — это и есть один день, делаю его прямо здесь на своих данных).
-- Приёмка: нашёл свою заметку из 2022 по словоформе; лента с 5 годами истории не тормозит (если тормозит — вот тогда виртуализация).
+## If I were doing it myself: the first 4 weeks
 
-**Неделя 3 — Rediscover.**
-- Карточка «В этот день» в Inbox утром + «ответить спустя N лет» (`reply_to_id` + визуальная нить).
-- «Случайная запись».
-- Лес v0: 12×31 на Canvas 2D, кружки/простые формы вместо деревьев, стадии по формуле §7.2, hover-карточка, клик → лента прокручивается к дню (лес в верхней панели, не отдельный экран). Hit-test по сетке. Это половина S3; второй половины (Pixi, Linux без GPU) пока нет.
-- Первая порция токенов: `tokens.json` → `tokens.css` только для цветов/типографики/отступов, которые уже используются; шрифт с кириллицей (woff2) встроен. Без Storybook.
-- Приёмка: утром открыл — увидел себя трёхлетней давности, ответил, дерево того дня получило «подлесок».
+Premise: one person, evenings + weekends ≈ 20 h/week, two agents (a writer and a checker). A new repository (`kinige-v2`), git from the first commit, CI = `cargo test` + `tsc` + building the `.app` without signing — half a day for that, no more.
 
-**Неделя 4 — надёжность и вторая машина.**
-- `change_outbox` с конвертами (XChaCha20-Poly1305, AAD по §10.3), passphrase → Argon2id → KEK, `keys.json`; симуляция двух клиентов в одном процессе с property-тестами (S4a — именно сейчас, когда формат уже прожил три недели на реальных данных).
-- `SyncBackend::Fs` (папка) → проверка на двух Mac через iCloud Drive или Syncthing; `S3Backend` — если останется время (Backblaze B2 или бакет на homelab).
-- Светлая/тёмная — что выбрали; первая полировка ленты (типографика, отступы, «страница дня») — первый слайс, где агент-проверяющий сравнивает скриншот с описанием из одностраничной спеки.
-- Ретро: 28 деревьев в лесу? Если да — пишется v0.6 ТЗ, в котором из P1 остаётся то, чего не хватило за месяц, а не то, что было придумано до него. Если нет — честный разговор, почему, и это тоже успех планирования.
+**Week 1 — walking skeleton (nothing pretty).**
+- Day 1–2: Tauri 2 + React + Vite; `crates/kinige-store` with rusqlite, migration v1 per the §4.2 schema (chat, message, attachment, revision, `hlc_json`, `deleted_at`; without `change_outbox` — an empty table for now); a `send_message` command, a `message_added` event; `KinigeApi` + `MockApi` (thin, no Storybook).
+- Day 3: the feed on a plain DOM, grouping by days, a textarea with Enter/Shift+Enter, the draft in localStorage. One Inbox chat.
+- Day 4: a global hotkey (`tauri-plugin-global-shortcut`) + a small window with a field; tray. The IPC matrix for the second window — right away, it is 20 lines of capabilities.
+- Day 5: the Markdown mirror in `~/Documents/Kinige/Inbox/2026/2026-10-25.md` (item 5); kill the process → restart → everything is in place; `integrity_check`.
+- Acceptance: a screenshot of the main window and the capture window, posted to the thread. **From Friday evening I write in it.**
 
-Что сознательно не вошло в 4 недели: CodeMirror, виртуализация, Blender-арт, Windows/Linux, подпись/нотаризация/updater, эмбеддинги, Storybook. Всё это — слайсы 5+, и каждый из них теперь стартует с месяцем ваших собственных данных и привычек, которые покажут, нужен ли он вообще.
+**Week 2 — the past and structure.**
+- Import of the Telegram export (`result.json` → Inbox or a separate "Telegram" chat), dedup by `source_id`; import of a photo folder by EXIF date (attachments without dedup).
+- `#тег` (#tag) tags (parsing on write, a table, filter on click).
+- Editing (revisions in storage, no UI), deletion with "Undo" and a trash (only `deleted_at`, no physical deletion yet).
+- Search: FTS5 over a stemmed column (S5 is exactly one day, I do it right here on my own data).
+- Acceptance: found my note from 2022 by a word form; the feed with 5 years of history does not lag (if it lags — that is when virtualization comes in).
+
+**Week 3 — Rediscover.**
+- The "On this day" card in the Inbox in the morning + "reply N years later" (`reply_to_id` + a visual thread).
+- "Random entry".
+- Forest v0: 12×31 on Canvas 2D, circles/simple shapes instead of trees, stages per the §7.2 formula, hover card, click → the feed scrolls to the day (the forest in the top panel, not a separate screen). Hit-test on the grid. That is half of S3; the second half (Pixi, Linux without a GPU) is not there yet.
+- The first batch of tokens: `tokens.json` → `tokens.css` only for the colors/typography/spacing already in use; a font with Cyrillic (woff2) embedded. No Storybook.
+- Acceptance: opened it in the morning — saw myself from three years ago, replied, and that day's tree got "undergrowth".
+
+**Week 4 — reliability and the second machine.**
+- `change_outbox` with envelopes (XChaCha20-Poly1305, AAD per §10.3), passphrase → Argon2id → KEK, `keys.json`; a simulation of two clients in one process with property tests (S4a — exactly now, when the format has already lived three weeks on real data).
+- `SyncBackend::Fs` (a folder) → a check on two Macs via iCloud Drive or Syncthing; `S3Backend` — if there is time left (Backblaze B2 or a bucket on the homelab).
+- Light/dark — whichever was chosen; the first polish of the feed (typography, spacing, "the day's page") — the first slice where the checking agent compares the screenshot with the description from the one-page spec.
+- Retro: 28 trees in the forest? If yes — PRD v0.6 gets written, in which what remains from P1 is what was missing during the month, not what was invented before it. If not — an honest conversation about why, and that is also a planning success.
+
+What was deliberately left out of the 4 weeks: CodeMirror, virtualization, Blender art, Windows/Linux, signing/notarization/updater, embeddings, Storybook. All of that is slices 5+, and each of them now starts with a month of your own data and habits, which will show whether it is needed at all.

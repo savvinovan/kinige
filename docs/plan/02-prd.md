@@ -1,299 +1,301 @@
-# Kinige v2 (Project Forest) — ТЗ v0.14
+# Kinige v2 (Project Forest) — PRD v0.15
 
-**Тип:** личный журнал и заметки в формате «чата с собой», local-first.
-**Платформы:** десктоп — macOS первым, затем Windows и Linux (Tauri 2). Потом веб-клиент (расшифровывает данные в браузере) и телефон, если основное приложение приживётся.
-**Для кого:** сначала для автора (4 недели ежедневного использования), цель — продукт: self-hosted, бесплатное ядро со всеми основными функциями и платная версия с расширенными (§2.6).
-**Стадия:** планирование → spikes → MVP.
+**Type:** a personal journal and notes in the form of a "chat with yourself", local-first.
+**Platforms:** desktop — macOS first, then Windows and Linux (Tauri 2). Later a web client (decrypts data in the browser) and a phone, if the main app catches on.
+**For whom:** at first for the author (4 weeks of daily use); the goal is a product: self-hosted, a free core with all the main features and a paid tier with extended ones (§2.6).
+**Stage:** planning → spikes → MVP.
 
-Разбор, на котором основана эта версия: [`01-review.md`](01-review.md). Исследования: [`research/`](research/). Макеты: [`references/`](references/) — **референс настроения, а не спецификация**.
+The review this version is based on: [`01-review.md`](01-review.md). Research: [`research/`](research/). Mockups: [`references/`](references/) — **a mood reference, not a specification**.
 
-## История версий
+## Version history
 
-- **v0.14 (01.11.2026)** — по задаче «CI и процесс» (KINIG-46), только §12 и дорожная карта:
-  - CI — GitHub Actions (не Gitea): Linux-раннеры, задание `macos` (clippy и тесты крейта приложения на `macos-15`), `gitleaks`, `cargo-deny`, Dependabot (§12.1, п. 2);
-  - скриншоты настоящего окна снимает macOS-раннер GitHub по `screens.yml`, а не `screencapture` на Mac пользователя; ревьюер приложение на Mac пользователя не запускает (§12.1, п. 3; §12.1a);
-  - перечень «живых» документов приведён к существующим (§12.1, п. 6).
+- **v0.15 (01.11.2026)** — translated to English (KINIG-62); no content changes.
 
-- **v0.13 (31.10.2026)** — по слайсу 5 (`docs/slices/5-on-this-day.md`):
-  - «В этот день» и ответ: `message.reply_to_id` пишется в группу `core` записи пользователя (UUID v4 записи того же чата, неизменяемо), проверяется в Rust, ссылка без внешнего ключа; состояния старой записи `live` / `trash` / `missing`; цитата показывается и у ответов, импортированных из Telegram (§4.2, §6, приложение ADR-0001 §C.5);
-  - карточка «В этот день»: Inbox, три новых года подробно (до двух записей), остальные строкой; скрытие «до следующего дня журнала» хранится локально в `app_setting`, не синхронизируется и в `settings.json` не пишется (§2.1);
-  - миграция 6: в локальную таблицу `draft` добавлена колонка `reply_to_id` (черновик несёт запись, на которую пишется ответ) (§4.2);
-  - Markdown-копия: строка `↩ [ГГГГ-ММ-ДД ЧЧ:ММ](<путь>)` под заголовком времени ответа (§2.1);
-  - компоненты: карточка «В этот день», строка года, компактная запись с «Ответить», строка «Ответ на запись» над полем, цитата в плашке (§11.3);
-  - матрица IPC: главному окну добавлены `get_on_this_day`, `dismiss_on_this_day`, `send_message` и черновики несут `reply_to_id`; окну захвата по-прежнему ровно семь команд, окну `settings` новые команды отказаны (§12.3);
-  - слайс 5 в дорожной карте (§15).
+- **v0.14 (01.11.2026)** — for the task "CI and process" (KINIG-46), only §12 and the roadmap:
+  - CI is GitHub Actions (not Gitea): Linux runners, a `macos` job (clippy and the app crate's tests on `macos-15`), `gitleaks`, `cargo-deny`, Dependabot (§12.1, item 2);
+  - screenshots of the real window are taken by a GitHub macOS runner via `screens.yml`, not by `screencapture` on the user's Mac; the reviewer does not launch the app on the user's Mac (§12.1, item 3; §12.1a);
+  - the list of "living" documents is brought in line with the ones that exist (§12.1, item 6).
 
-- **v0.12 (30.10.2026)** — по слайсу 4b (`docs/slices/4b-settings.md`) и ADR-0010:
-  - настройки — отдельное окно с деревом разделов («Оформление», «Сочетания клавиш», «Копии», «Доступ ИИ-агентов» с подэкранами «Видимые чаты» и «Журнал обращений», «Файл настроек»), ⌘, и пункт в меню значка; главное окно настроек больше не показывает (§2.1, §11.3);
-  - файл `settings.json` в каталоге данных — вход для настроек (текст, сочетания, папка копии, доступ ИИ-агентов): приложение и человек или агент правят его, изменения подхватываются за 1–2 с; действующее состояние остаётся в `app_setting` (§5.1, §9.3, ADR-0010);
-  - доступ агента можно включить файлом: небезопасный файл (симлинк, запись группе или всем) такие ключи не применяет, каждое изменение из файла — строка журнала обращений (§9.3);
-  - матрица IPC: окно `settings` со своей capability, у главного окна перенесённые команды отозваны (§12.3);
-  - слайс 4b в дорожной карте (§15).
+- **v0.13 (31.10.2026)** — for slice 5 (`docs/slices/5-on-this-day.md`):
+  - "On this day" and replies: `message.reply_to_id` is written into the `core` group of a user entry (UUID v4 of an entry in the same chat, immutable), checked in Rust, a reference without a foreign key; states of the old entry `live` / `trash` / `missing`; the quote is also shown on replies imported from Telegram (§4.2, §6, ADR-0001 appendix §C.5);
+  - the "On this day" card: Inbox, the three most recent years in detail (up to two entries), the rest as one line; hiding "until the next journal day" is stored locally in `app_setting`, is not synced and is not written to `settings.json` (§2.1);
+  - migration 6: a `reply_to_id` column added to the local `draft` table (the draft carries the entry being replied to) (§4.2);
+  - Markdown copy: a line `↩ [YYYY-MM-DD HH:MM](<path>)` under the time heading of a reply (§2.1);
+  - components: the "On this day" card, a year row, a compact entry with "Reply", a "Reply to entry" row above the input field, a quote inside the bubble (§11.3);
+  - IPC matrix: `get_on_this_day`, `dismiss_on_this_day` added to the main window, `send_message` and drafts carry `reply_to_id`; the capture window still has exactly seven commands, the `settings` window is denied the new commands (§12.3);
+  - slice 5 in the roadmap (§15).
 
-- **v0.11 (28.10.2026)** — по слайсу 4 (`docs/slices/4-telegram-import.md`), spike S5 и ADR-0008:
-  - колонки `message.body_search` и таблицы `message_fts` нет: индекс поиска — локальные несинхронизируемые таблицы `search_fts` (FTS5 без хранения текста, только основы слов) и `search_map`; вторая локальная таблица миграции 4 — `message_ext` (внешние id импорта) (§4.2, §9.1; приложение ADR-0001 §C.3);
-  - импорт из Telegram: «Избранное» → Inbox, личные чаты → новые чаты 💬, оригинальное время записи сохраняется (`created_at`, `journal_date`), метка HLC — момент импорта (§5, §9).
+- **v0.12 (30.10.2026)** — for slice 4b (`docs/slices/4b-settings.md`) and ADR-0010:
+  - settings are a separate window with a tree of sections ("Appearance", "Keyboard shortcuts", "Copies", "AI agent access" with the sub-screens "Visible chats" and "Access log", "Settings file"), ⌘, and an item in the tray icon menu; the main window no longer shows settings (§2.1, §11.3);
+  - the `settings.json` file in the data directory is an input for settings (text, shortcuts, copy folder, AI agent access): the app and a human or an agent edit it, changes are picked up within 1–2 s; the effective state stays in `app_setting` (§5.1, §9.3, ADR-0010);
+  - agent access can be turned on through the file: an unsafe file (a symlink, writable by group or everyone) does not apply such keys, every change from the file is a line in the access log (§9.3);
+  - IPC matrix: the `settings` window with its own capability, the moved commands are revoked from the main window (§12.3);
+  - slice 4b in the roadmap (§15).
 
-- **v0.10 (22.10.2026)** — по решениям пользователя к слайсу 2 (`docs/slices/2-quick-capture.md`) и ADR-0006:
-  - сочетания по умолчанию: окно захвата — **временно ⌃⌥N** вместо ⌥Space (на машине автора ⌥Space и ⌥⇧Space перехватывают ChatGPT и Gemini, ⌃Space и ⌃⌥Space — переключение раскладки, ⌘Space — Raycast; 22.10.2026), сохранение буфера — ⌥⇧V; свои сочетания задаются в «Настройках», занятое видно там же (§5.1);
-  - хоткей буфера при успехе мигает значком в menu bar, при сбое открывает окно захвата с текстом буфера и ошибкой (§5.1);
-  - дописывание (⌘Enter) — первая перезапись группы `body` без ревизии `edit`; правило цели: `origin = 'user'`, не старше 10 минут, сегодняшний день журнала (§5.1, §9.3, ADR-0006);
-  - черновики — локальная таблица `draft` (§5, §5.1); у окна захвата своя capability (§12.3).
-- **v0.9 (21.10.2026)** — по решениям пользователя к слайсу 1 (`docs/slices/1-inbox.md`) и ADR-0005:
-  - Markdown-копия включена по умолчанию, папка по умолчанию — `~/Documents/Kinige` (§2.1);
-  - после отправки запись просто появляется в ленте, без тоста; отмена — удалением (слайс 3) (§5; решение «Отменить после отправки возвращает текст в поле» **отменено пользователем 21.10.2026**: тост после отправки убран, он двигал ленту);
-  - библиотека переводов — i18next + react-i18next (ADR-0005); константа Inbox и уточнение набора таблиц миграции 1 — в приложении ADR-0001, §C.1.
-- **v0.8 (21.10.2026)** — по решениям пользователя к ADR-0001 (протокол и ключи):
-  - Inbox — фиксированный id, одинаковый во всех аккаунтах, вместо «детерминированного от аккаунта» (§4.2, §10.2);
-  - `remote_blob_id` — UUID v7, созданный клиентом, вместо HMAC от хэша (§4.1, §4.2, §10.2);
-  - ревизия `conflict` хранит только проигравшую группу (`body` или `placement`); конфликт переноса показывается, как конфликт текста; `flags` — без следа (§4.2, §10.2);
-  - карантин при пересинхронизации — по признаку «сервер знал запись», а не по возрасту HLC; в интерфейсе — «Найденные старые записи» (§10.2);
-  - сообщение без чата после полного pull показывается в Inbox, а не скрывается навсегда (§10.2);
-  - ключ восстановления: кнопка «Сохранить» (PDF / печать) вместо проверки вводом, сильное предупреждение (§10.3);
-  - полный экспорт включает корзину (§16);
-  - поле `origin` у сообщения — кто создал: пользователь, агент, импорт (§4.2, §9.3);
-  - интерфейс многоязычный с первого слайса: английский, затем русский (§2.1, §15);
-  - `unknown_json` → `groups_raw` (сырые байты групп, ADR-0001) (§4.2, §10.4);
-  - правки по ревью guardian (ADR-0001 rev 5 и 6): `purged` несёт снимок HLC всех групп, дети удаляются после родителя; purge чата — сначала чат, потом сообщения; внешний id импорта Telegram — поле `ext` и локальный индекс, а не id записи; повреждённый blob — новый `remote_blob_id`; импорт «как копию» перевыпускает id и ключи blob'ов; агент дописывает только к своей записи; без `REFERENCES` в схеме; открытый заголовок в конверте (§2.1, §4.2, §9.3, §10.2, §10.3, §16).
-- **v0.7 (20.10.2026)** — по отзыву пользователя на концепты ленты (слайс D1, ADR-0004):
-  - направление «тёплая тёмная бумага» отменено (коричневый не нравится): тёмная тема в холодной палитре Nord; запасные варианты — тёмно-синий как в Telegram или нейтральный графит (§11.2);
-  - плотность как в Telegram: основной текст 13 px, дни — маленькие метки, «компактно» по умолчанию (§6);
-  - без дублей: над лентой нет названия чата (он выделен в сайдбаре), у дня одна метка без повторения даты (§6);
-  - поле ввода с кнопками «файл», «эмодзи», «микрофон» (§5); эмодзи-пикер — MVP; голосовые с записью — из P2 в MVP, сразу после вложений; стикеры и GIF — P1 (GIF был в P2) (§2, §15);
-  - у каждого чата свой эмодзи, сайдбар сворачивается до полосы эмодзи (§2.1, §11.2);
-  - по второму кругу концептов: каждое сообщение — плашка без хвоста (раньше «никаких пузырьков», §1.2 п. 2); время у каждого сообщения сразу после текста; слияние в «страницу» отменено (§2.1, §6);
-  - по живому окну: текст записей гротеском (Inter) вместо Literata; фон и плашки темнее, текст почти белый; у поля ввода нет обводки (тонкая линия — только в фокусе); счётчик записей у каждого чата в сайдбаре; строка профиля внизу сайдбара; лента — колонка ~720 px по центру, плашка до ~65 знаков; вкладок нет (§2.1, §5, §6, §11.2);
-  - по ChatGPT и Claude: фон — нейтральный графит вместо сине-графитового Nord, акцент голубой; кнопка «Отправить» вместо микрофона, когда есть текст; действия по наведению справа от сообщения; разделы в сайдбаре (§2.1, §5, §6, §11.2, §15);
-  - журнал готов для ИИ-агентов: MCP-сервер `kinige-mcp` в MVP, слайс 4a (§1.2 п. 8, §2.1, §9.3, §12.3, §15); ИИ-помощник внутри приложения остаётся в P2.
-- **v0.6 (19.10.2026)** — по советам Fable (`research/advice-fable.md`) и решениям пользователя:
-  - питомец вырезан целиком; «рост» — только лес, и он вознаграждает возвращение к записям;
-  - «В этот день» и ответ на старую запись — в MVP; лес — навигация по ленте;
-  - импорт Telegram — до начала ежедневного использования; импорт Obsidian и Notion убран из плана;
-  - непрерывная Markdown-копия в папке вместо ежедневного снимка базы;
-  - быстрый захват с контекстом и дописыванием к последней записи;
-  - теги `#тег` — в MVP;
-  - composer начинается с обычного поля ввода, CodeMirror — когда понадобится;
-  - бизнес-модель: платное — хостинг сервера, мобильный клиент, наборы арта для леса; AI — на своём ключе;
-  - правила работы с агентами: спецификация слайса на страницу, пишущий и проверяющий агенты, бюджет слайса;
-  - свой сервер **сохранён** (Fable предлагал заменить его хранилищем — отклонено пользователем).
-- **v0.5 (19.10.2026)** — по независимым ревью Fable и Codex (`research/review-fable.md`, `research/review-codex.md`):
-  - переписан протокол синхронизации (§10.2): сервер не сливает, клиенты сливают по группам полей; удаление — обычное поле, восстановление работает; неизменяемые конверты операций; курсор без пропусков;
-  - переписана схема ключей (§10.3): пароль входа отделён от ключа шифрования, две обёртки DEK, честная формулировка про бэкапы и метаданные, слабее гарантия для веба;
-  - версионирование формата и совместимость клиентов разных версий (§10.4);
-  - идентификаторы — случайные UUID v4 (UUID v7 раскрывает время создания);
-  - обновления, подпись, нотаризация, локальные автобэкапы, матрица IPC-доступа (§12.3);
-  - раньше начинаем пользоваться: быстрый захват сразу после первых слайсов, дизайн-система растёт по слайсам, S4 разбит на три части (§14–15);
-  - исправлены противоречия, оставшиеся от v0.3.
-- **v0.4 (19.10.2026)** — по заметкам пользователя:
-  - дизайн-систему разрабатываем сами в репозитории, Claude Design не используем;
-  - сквозное шифрование: сервер и администраторы не видят данные, удаление аккаунта = удаление ключей;
-  - продукт self-hosted: бесплатное ядро + платная расширенная версия;
-  - одна тема в MVP (тёмная), тесты не дублируются по темам;
-  - импорт из Obsidian, Notion, Telegram;
-  - семантический поиск считается на клиенте (сервер не видит текст).
-- **v0.3 (19.10.2026)** — решения пользователя:
-  - десктоп первым на Rust + Tauri 2 + React/TypeScript;
-  - синхронизация через свой сервер на homelab;
-  - веб — позже, тонкий клиент;
-  - AI — эмбеддинги через OpenRouter вместо on-device моделей Apple;
-  - стиль — спокойный «бумажный» журнал;
-  - дизайн-система делается в Claude Design, иллюстрации и макеты — в Codex, спрайты леса — в Blender.
-  - CloudKit, SwiftUI, GRDB и Apple-специфичные точки захвата убраны.
-- **v0.2** — Markdown как формат контента, spikes, вертикальные срезы, правила для агента, XP как append-only журнал.
-- **v0.1** — исходное ТЗ.
+- **v0.11 (28.10.2026)** — for slice 4 (`docs/slices/4-telegram-import.md`), spike S5 and ADR-0008:
+  - there is no `message.body_search` column and no `message_fts` table: the search index is the local, non-synced tables `search_fts` (FTS5 without storing the text, only word stems) and `search_map`; the second local table of migration 4 is `message_ext` (external import ids) (§4.2, §9.1; ADR-0001 appendix §C.3);
+  - import from Telegram: "Saved Messages" → Inbox, private chats → new chats 💬, the original entry time is kept (`created_at`, `journal_date`), the HLC stamp is the moment of import (§5, §9).
 
----
-
-## 1. Видение
-
-### 1.1. Суть
-
-Записывать так же быстро, как сообщение в мессенджере. Перечитывать как красиво свёрстанный журнал. Видеть свой год как лес, где каждый день — дерево.
-
-Три опоры, в порядке важности:
-
-1. **Capture** — мысль сохранена за ≤ 3 действия, в том числе из любого места системы по глобальному хоткею.
-2. **Rediscover** — к старым записям легко и приятно возвращаться: лента, поиск, «В этот день», лес.
-3. **Grow** — лес отражает накопленную историю, растёт и от записей, и от возвращения к ним, и никогда не наказывает.
-
-### 1.2. Принципы
-
-1. **Zero-friction capture.** Не нужно выбирать документ, заголовок, шаблон. По умолчанию всё летит в Inbox.
-2. **Beautiful by default.** Оформление идёт от типографики, а не от действий пользователя. Сообщение — плашка без хвоста, без аватаров и без деления на «своё / чужое» (v0.7).
-3. **Content over interface.** Интерфейс тише контента.
-4. **Local-first.** Без сети и без сервера всё, кроме AI-функций, работает полностью. Сервер — для синхронизации, а не для работы.
-5. **Данные пользователя.** Полный экспорт в Markdown + JSON; сервер — свой (self-hosted).
-6. **Сквозное шифрование.** Данные шифруются на устройстве; сервер и его администратор видят только зашифрованные записи и метаданные (§10.3). Удаление аккаунта стирает с сервера ключи и данные.
-7. **Без наказаний.** Никаких стриков и потерь: пропущенный день — просто пустая клетка леса.
-8. **AI опционален, но журнал готов для агентов.** Ни одна функция MVP не зависит от модели. Отправка текста в OpenRouter и доступ внешних ИИ-агентов через MCP (§9.3) — только после явного включения.
-9. **Ничего не теряется молча.** Конфликт, ошибка записи, нехватка места — всегда видимы и обратимы.
-10. **Проверено глазами.** Функция не готова, пока её не увидели в настоящем окне приложения (см. §11).
-11. **Дизайн-система — источник правды для визуала.** Код реализует токены и компоненты из неё и не придумывает свои.
+- **v0.10 (22.10.2026)** — for the user's decisions on slice 2 (`docs/slices/2-quick-capture.md`) and ADR-0006:
+  - default shortcuts: the capture window — **temporarily ⌃⌥N** instead of ⌥Space (on the author's machine ⌥Space and ⌥⇧Space are taken by ChatGPT and Gemini, ⌃Space and ⌃⌥Space by keyboard layout switching, ⌘Space by Raycast; 22.10.2026), saving the clipboard — ⌥⇧V; custom shortcuts are set in "Settings", a taken shortcut is shown there too (§5.1);
+  - on success the clipboard hotkey blinks the menu bar icon, on failure it opens the capture window with the clipboard text and the error (§5.1);
+  - appending (⌘Enter) is the first rewrite of the `body` group without an `edit` revision; the target rule: `origin = 'user'`, not older than 10 minutes, today's journal day (§5.1, §9.3, ADR-0006);
+  - drafts are the local `draft` table (§5, §5.1); the capture window has its own capability (§12.3).
+- **v0.9 (21.10.2026)** — for the user's decisions on slice 1 (`docs/slices/1-inbox.md`) and ADR-0005:
+  - the Markdown copy is on by default, the default folder is `~/Documents/Kinige` (§2.1);
+  - after sending, the entry simply appears in the feed, without a toast; undo is by deleting (slice 3) (§5; the decision "Undo after sending returns the text to the field" was **revoked by the user on 21.10.2026**: the toast after sending was removed, it shifted the feed);
+  - the translation library is i18next + react-i18next (ADR-0005); the Inbox constant and the clarified set of migration 1 tables are in the ADR-0001 appendix, §C.1.
+- **v0.8 (21.10.2026)** — for the user's decisions on ADR-0001 (protocol and keys):
+  - Inbox has a fixed id, the same in all accounts, instead of "deterministic from the account" (§4.2, §10.2);
+  - `remote_blob_id` is a client-generated UUID v7 instead of an HMAC of the hash (§4.1, §4.2, §10.2);
+  - a `conflict` revision stores only the losing group (`body` or `placement`); a move conflict is shown like a text conflict; `flags` leaves no trace (§4.2, §10.2);
+  - quarantine on resync is by the "the server knew the entry" criterion, not by HLC age; in the UI it is "Found old entries" (§10.2);
+  - a message without a chat after a full pull is shown in Inbox instead of being hidden forever (§10.2);
+  - recovery key: a "Save" button (PDF / print) instead of verification by typing, a strong warning (§10.3);
+  - a full export includes the trash (§16);
+  - the message field `origin` says who created it: the user, an agent, an import (§4.2, §9.3);
+  - the UI is multilingual from the first slice: English, then Russian (§2.1, §15);
+  - `unknown_json` → `groups_raw` (raw bytes of groups, ADR-0001) (§4.2, §10.4);
+  - fixes from the guardian review (ADR-0001 rev 5 and 6): `purged` carries an HLC snapshot of all groups, children are deleted after the parent; purging a chat — first the chat, then the messages; the external Telegram import id is the `ext` field and a local index, not the entry id; a corrupted blob gets a new `remote_blob_id`; import "as a copy" reissues ids and blob keys; an agent appends only to its own entry; no `REFERENCES` in the schema; an open header in the envelope (§2.1, §4.2, §9.3, §10.2, §10.3, §16).
+- **v0.7 (20.10.2026)** — for the user's feedback on the feed concepts (slice D1, ADR-0004):
+  - the "warm dark paper" direction is canceled (the user does not like brown): a dark theme in the cool Nord palette; fallback options are dark blue as in Telegram or a neutral graphite (§11.2);
+  - density as in Telegram: body text 13 px, days are small labels, "compact" by default (§6);
+  - no duplicates: there is no chat name above the feed (it is highlighted in the sidebar), a day has one label without repeating the date (§6);
+  - an input field with "file", "emoji", "microphone" buttons (§5); the emoji picker is MVP; voice notes with recording move from P2 to MVP, right after attachments; stickers and GIFs are P1 (GIF was in P2) (§2, §15);
+  - every chat has its own emoji, the sidebar collapses to a strip of emoji (§2.1, §11.2);
+  - from the second round of concepts: every message is a bubble without a tail (previously "no bubbles at all", §1.2 item 2); the time on every message right after the text; merging into a "page" is canceled (§2.1, §6);
+  - from the live window: entry text in a grotesque (Inter) instead of Literata; the background and bubbles are darker, the text is almost white; the input field has no outline (a thin line only in focus); an entry counter on every chat in the sidebar; a profile row at the bottom of the sidebar; the feed is a ~720 px column in the center, a bubble up to ~65 characters; no tabs (§2.1, §5, §6, §11.2);
+  - from ChatGPT and Claude: the background is a neutral graphite instead of the blue-graphite Nord, the accent is light blue; a "Send" button instead of the microphone when there is text; hover actions to the right of a message; sections in the sidebar (§2.1, §5, §6, §11.2, §15);
+  - the journal is ready for AI agents: the MCP server `kinige-mcp` in MVP, slice 4a (§1.2 item 8, §2.1, §9.3, §12.3, §15); an AI assistant inside the app stays in P2.
+- **v0.6 (19.10.2026)** — from Fable's advice (`research/advice-fable.md`) and the user's decisions:
+  - the pet is cut entirely; "growth" is only the forest, and it rewards returning to entries;
+  - "On this day" and replying to an old entry are in MVP; the forest is navigation through the feed;
+  - Telegram import comes before daily use starts; Obsidian and Notion import is removed from the plan;
+  - a continuous Markdown copy in a folder instead of a daily database snapshot;
+  - quick capture with context and appending to the last entry;
+  - `#tag` tags are in MVP;
+  - the composer starts as a plain input field, CodeMirror when it is needed;
+  - business model: paid — server hosting, the mobile client, art packs for the forest; AI on your own key;
+  - rules for working with agents: a one-page slice specification, writing and checking agents, a slice budget;
+  - the own server is **kept** (Fable suggested replacing it with storage — rejected by the user).
+- **v0.5 (19.10.2026)** — from the independent reviews by Fable and Codex (`research/review-fable.md`, `research/review-codex.md`):
+  - the sync protocol is rewritten (§10.2): the server does not merge, clients merge by field groups; deletion is an ordinary field, restore works; immutable operation envelopes; a cursor without gaps;
+  - the key scheme is rewritten (§10.3): the login password is separated from the encryption key, two DEK wrappings, an honest statement about backups and metadata, a weaker guarantee for the web;
+  - format versioning and compatibility of clients of different versions (§10.4);
+  - identifiers are random UUID v4 (UUID v7 reveals the creation time);
+  - updates, signing, notarization, local auto-backups, the IPC access matrix (§12.3);
+  - we start using it earlier: quick capture right after the first slices, the design system grows slice by slice, S4 is split into three parts (§14–15);
+  - contradictions left over from v0.3 are fixed.
+- **v0.4 (19.10.2026)** — from the user's notes:
+  - we develop the design system ourselves in the repository, we do not use Claude Design;
+  - end-to-end encryption: the server and administrators do not see the data, deleting the account = deleting the keys;
+  - the product is self-hosted: a free core + a paid extended tier;
+  - one theme in MVP (dark), tests are not duplicated per theme;
+  - import from Obsidian, Notion, Telegram;
+  - semantic search is computed on the client (the server does not see the text).
+- **v0.3 (19.10.2026)** — the user's decisions:
+  - desktop first on Rust + Tauri 2 + React/TypeScript;
+  - sync through our own server on the homelab;
+  - web later, as a thin client;
+  - AI: embeddings via OpenRouter instead of Apple's on-device models;
+  - style: a calm "paper" journal;
+  - the design system is made in Claude Design, illustrations and mockups in Codex, forest sprites in Blender.
+  - CloudKit, SwiftUI, GRDB and Apple-specific capture points are removed.
+- **v0.2** — Markdown as the content format, spikes, vertical slices, rules for the agent, XP as an append-only log.
+- **v0.1** — the original PRD.
 
 ---
 
-## 2. Объём
+## 1. Vision
+
+### 1.1. Essence
+
+Write as fast as a message in a messenger. Reread it as a beautifully typeset journal. See your year as a forest where every day is a tree.
+
+Three pillars, in order of importance:
+
+1. **Capture** — a thought is saved in ≤ 3 actions, including from anywhere in the system via a global hotkey.
+2. **Rediscover** — returning to old entries is easy and pleasant: the feed, search, "On this day", the forest.
+3. **Grow** — the forest reflects the accumulated history, grows both from entries and from returning to them, and never punishes.
+
+### 1.2. Principles
+
+1. **Zero-friction capture.** No need to choose a document, a title, a template. By default everything goes to Inbox.
+2. **Beautiful by default.** The look comes from typography, not from the user's actions. A message is a bubble without a tail, without avatars and without a split into "mine / theirs" (v0.7).
+3. **Content over interface.** The interface is quieter than the content.
+4. **Local-first.** Without a network and without a server everything except AI features works fully. The server is for sync, not for work.
+5. **The user's data.** Full export to Markdown + JSON; the server is your own (self-hosted).
+6. **End-to-end encryption.** Data is encrypted on the device; the server and its administrator see only encrypted records and metadata (§10.3). Deleting the account erases the keys and the data from the server.
+7. **No punishments.** No streaks and no losses: a skipped day is just an empty cell of the forest.
+8. **AI is optional, but the journal is ready for agents.** No MVP feature depends on a model. Sending text to OpenRouter and access by external AI agents via MCP (§9.3) happen only after they are explicitly turned on.
+9. **Nothing is lost silently.** A conflict, a write error, running out of space — always visible and reversible.
+10. **Checked by eye.** A feature is not done until it has been seen in the real app window (see §11).
+11. **The design system is the source of truth for visuals.** Code implements the tokens and components from it and does not invent its own.
+
+---
+
+## 2. Scope
 
 ### 2.1. MVP (P0) — macOS
 
-- Чаты: Inbox (создаётся автоматически, не удаляется), создание, переименование, эмодзи чата (выбирает пользователь; хранится в `chats.icon`, §4.2) и цвет, закрепление, архив. В сайдбаре — эмодзи, имя и счётчик записей чата (все записи, кроме корзины; тихий серый, не акцент — это не «непрочитанное»; от 10 000 — «12 тыс.»); сайдбар сворачивается до полосы эмодзи, имя — при наведении. Чаты сгруппированы по разделам с мелкими серыми заголовками: «Закреплённые», «Чаты», «Архив» (свёрнут) — вместе с закреплением и архивом в слайсе 3. Внизу сайдбара — строка профиля (аватар с инициалами + имя, по умолчанию «Я», как в Notion) с меню «Настройки» (отдельное окно, ⌘,), «Экспорт», «О программе»; с синхронизацией (слайс 11) — «Аккаунт и синхронизация» и точка статуса синхронизации у аватара.
-- Сообщения: отправка текста (Markdown), редактирование (ревизии хранятся, интерфейс истории — P1), удаление с отменой и корзиной на 30 дней, флаги «задача / избранное», изменение даты, теги `#тег`.
-- **«В этот день»:** при первом открытии дня в Inbox появляется карточка с записями этого же дня прошлых лет (три новых года подробно — до двух записей на год, остальные одной строкой с числом записей); на запись из карточки можно ответить — ответ получает цитату старой записи и подпись «N лет спустя» (если прошло не меньше года) и ссылку на неё; в Markdown-копии у ответа строка `↩ [ГГГГ-ММ-ДД ЧЧ:ММ](<путь к файлу дня старой записи>)`. Карточку можно скрыть до следующего дня журнала (локально, не синхронизируется).
-- **Импорт Telegram** (JSON-экспорт «Избранного» и личных чатов) — до начала ежедневного использования, чтобы лес и «В этот день» сразу были наполнены. Дедупликация по id сообщения Telegram: он хранится в зашифрованном поле `ext` записи, повторный импорт пропускает уже импортированное (ADR-0001, «внешний id импорта»).
-- Эмодзи-пикер в поле ввода (§5).
-- Вложения: изображения и файлы (вставка из буфера, drag & drop), ссылки (без превью — превью в P1).
-- Голосовые заметки: запись с микрофона кнопкой в поле ввода, воспроизведение в ленте (хранятся как вложение; транскрипция — P2). Идут сразу после вложений (§15).
-- Лента: группировка по дням, время у каждого сообщения, переход к дате, восстановление позиции; сообщения с паузой меньше 5 минут стоят ближе друг к другу, но остаются отдельными (§6). Плавность на больших объёмах — по факту замера (§15).
-- **Markdown-копия:** приложение непрерывно и в одну сторону пишет `Kinige/<чат>/YYYY/YYYY-MM-DD.md` (+ вложения) в выбранную папку; **по умолчанию копия включена** и пишется в `~/Documents/Kinige` с первой записи (папку меняют в настройках или ключом `mirror.folder` файла `settings.json`; в настройках же — предупреждение «копия — открытый текст»). Папка Inbox — `Inbox` при любом языке интерфейса. Это бэкап, который читается без приложения (Time Machine, Obsidian, grep), и экспорт, который «всегда уже есть». Плюс ежедневная копия файла базы (7 последних) и проверка целостности при старте.
-- Поиск: полнотекстовый с учётом русских словоформ, фильтры по типу, чату, дате; переход к сообщению в контексте.
-- Лес: годовой вид, стадии роста, сезоны; клик по дереву прокручивает ленту к этому дню (лес — навигация, а не отдельная галерея); альтернатива-календарь.
-- Быстрый захват: в любой программе нажимаешь сочетание клавиш (например, ⌃⌥N; в первоначальной редакции — ⌥Space) → поверх всех окон появляется маленькое поле ввода, над ним бледно — последние 2–3 записи за сегодня → пишешь мысль → Enter, и она в Inbox; ⌘Enter **дописывает** к последней записи (если ей меньше 10 минут). Второе сочетание сохраняет содержимое буфера обмена в Inbox без окна. Плюс иконка в трее / menu bar.
-- Тема: **одна, тёмная** (нейтральный графит с голубым акцентом, §11.2). Все цвета — семантические токены, поэтому светлая тема позже добавляется как второй набор значений без правки компонентов и без дублирования тестов. Масштаб текста, навигация с клавиатуры, Reduce Motion, экранные дикторы (базово).
-- Экспорт и импорт всех данных.
-- **Языки интерфейса:** все строки — в файлах переводов с первого слайса; первый язык — английский, второй — русский; даты и числа форматируются через `Intl` по языку системы.
-- **MCP-сервер для ИИ-агентов** (§9.3): Claude Desktop, Claude Code и другие MCP-клиенты читают журнал и добавляют записи; выключен по умолчанию, доступ по чатам.
+- Chats: Inbox (created automatically, cannot be deleted), creating, renaming, a chat emoji (chosen by the user; stored in `chats.icon`, §4.2) and color, pinning, archive. In the sidebar: the emoji, the name and the chat's entry counter (all entries except the trash; a quiet gray, not the accent — this is not "unread"; from 10 000 on — "12K" (Russian: "12 тыс.")); the sidebar collapses to a strip of emoji, the name on hover. Chats are grouped into sections with small gray headings: "Pinned", "Chats", "Archive" (collapsed) — together with pinning and archive in slice 3. At the bottom of the sidebar is a profile row (an avatar with initials + a name, by default "Me", as in Notion) with a menu: "Settings" (a separate window, ⌘,), "Export", "About"; with sync (slice 11) — "Account and sync" and a sync status dot on the avatar.
+- Messages: sending text (Markdown), editing (revisions are stored, the history UI is P1), deletion with undo and a trash for 30 days, the "task / favorite" flags, changing the date, `#tag` tags.
+- **"On this day":** when a day is opened for the first time, a card with entries from the same day of past years appears in Inbox (the three most recent years in detail — up to two entries per year, the rest as one line with the number of entries); an entry from the card can be replied to — the reply gets a quote of the old entry, the caption "N years later" (if at least a year has passed) and a link to it; in the Markdown copy the reply has a line `↩ [YYYY-MM-DD HH:MM](<path to the day file of the old entry>)`. The card can be hidden until the next journal day (locally, not synced).
+- **Telegram import** (the JSON export of "Saved Messages" and private chats) — before daily use starts, so that the forest and "On this day" are filled right away. Deduplication by the Telegram message id: it is stored in the entry's encrypted `ext` field, a repeated import skips what was already imported (ADR-0001, "external import id").
+- An emoji picker in the input field (§5).
+- Attachments: images and files (paste from the clipboard, drag & drop), links (without previews — previews are P1).
+- Voice notes: recording from the microphone with a button in the input field, playback in the feed (stored as an attachment; transcription is P2). They come right after attachments (§15).
+- Feed: grouping by days, the time on every message, jump to a date, restoring the position; messages with a pause of less than 5 minutes stand closer to each other but stay separate (§6). Smoothness at large volumes — according to the actual measurement (§15).
+- **Markdown copy:** the app continuously and one-way writes `Kinige/<chat>/YYYY/YYYY-MM-DD.md` (+ attachments) into the chosen folder; **by default the copy is on** and is written to `~/Documents/Kinige` from the first entry (the folder is changed in settings or with the `mirror.folder` key of the `settings.json` file; settings also carry the warning "the copy is plain text"). The Inbox folder is `Inbox` in any UI language. This is a backup readable without the app (Time Machine, Obsidian, grep), and an export that "is always already there". Plus a daily copy of the database file (the last 7) and an integrity check at startup.
+- Search: full-text, aware of Russian word forms, filters by type, chat, date; jump to the message in context.
+- Forest: the year view, growth stages, seasons; clicking a tree scrolls the feed to that day (the forest is navigation, not a separate gallery); a calendar alternative.
+- Quick capture: in any program you press a keyboard shortcut (for example, ⌃⌥N; in the original version — ⌥Space) → a small input field appears on top of all windows, with the last 2–3 entries of today faintly above it → you write the thought → Enter, and it is in Inbox; ⌘Enter **appends** to the last entry (if it is less than 10 minutes old). A second shortcut saves the clipboard contents to Inbox without a window. Plus an icon in the tray / menu bar.
+- Theme: **one, dark** (a neutral graphite with a light blue accent, §11.2). All colors are semantic tokens, so a light theme is added later as a second set of values without changing components and without duplicating tests. Text scaling, keyboard navigation, Reduce Motion, screen readers (basic).
+- Export and import of all data.
+- **UI languages:** all strings are in translation files from the first slice; the first language is English, the second is Russian; dates and numbers are formatted via `Intl` according to the system language.
+- **MCP server for AI agents** (§9.3): Claude Desktop, Claude Code and other MCP clients read the journal and add entries; off by default, access per chat.
 
-### 2.2. MVP+ — сразу после MVP
+### 2.2. MVP+ — right after MVP
 
-- Сборки и приёмка на **Windows и Linux**.
-- **Синхронизация** через свой сервер на homelab (2+ компьютера).
+- Builds and acceptance on **Windows and Linux**.
+- **Sync** through our own server on the homelab (2+ computers).
 
 ### 2.3. P1
 
-- Семантический поиск и «похожие заметки» через эмбеддинги OpenRouter (§9).
-- Лес растёт и от перечитывания: у дерева появляется «подлесок», когда к дню возвращаются (ответ, избранное, открытие из поиска).
-- «Случайная запись» (⌘R) — с перевесом в пользу дней с фото и избранным.
-- Интерфейс истории версий; перемещение между чатами; закрепление.
-- Превью ссылок — только на клиенте и по включённой настройке.
-- Стикеры: свои картинки и импорт наборов из Telegram.
-- GIF: свои файлы и поиск. **Внешний поиск GIF (Giphy, Tenor и т. п.) раскрывает поисковые запросы и IP третьей стороне** — включается только явной настройкой, как AI (§1.2 п. 8); без неё доступны только свои GIF.
-- Светлая тема.
-- Веб-клиент к серверу (расшифровывает данные в браузере).
+- Semantic search and "similar notes" via OpenRouter embeddings (§9).
+- The forest also grows from rereading: a tree gets "undergrowth" when a day is returned to (a reply, a favorite, opening from search).
+- "Random entry" (⌘R) — weighted toward days with photos and favorites.
+- Version history UI; moving between chats; pinning.
+- Link previews — only on the client and with the setting turned on.
+- Stickers: your own images and importing packs from Telegram.
+- GIF: your own files and search. **External GIF search (Giphy, Tenor, etc.) reveals search queries and the IP to a third party** — it is turned on only by an explicit setting, like AI (§1.2 item 8); without it only your own GIFs are available.
+- Light theme.
+- A web client for the server (decrypts data in the browser).
 
-### 2.4. P2 и позже
+### 2.4. P2 and later
 
-Мобильное приложение (Tauri 2 mobile или нативное — отдельное решение), импорт из Day One и Apple Journal, видео, таблицы, рисунки, месячный вид леса, Year in Review, транскрипция, поиск по изображениям, вопросы к базе (RAG) и суммаризация через OpenRouter — ИИ-помощник внутри приложения (до него эту роль играет внешний агент через MCP, §9.3), расширение для браузера «Сохранить в Kinige», передача ключа с устройства на устройство (QR), отдельный ключ на чат, шифрование локальной базы (SQLCipher).
+A mobile app (Tauri 2 mobile or native — a separate decision), import from Day One and Apple Journal, video, tables, drawings, a monthly forest view, Year in Review, transcription, image search, questions to the database (RAG) and summarization via OpenRouter — an AI assistant inside the app (until then this role is played by an external agent via MCP, §9.3), a browser extension "Save to Kinige", key transfer from device to device (QR), a separate key per chat, encryption of the local database (SQLCipher).
 
-### 2.5. Вне рамок
+### 2.5. Out of scope
 
-Совместная работа, публичные ссылки, аналитика, хостинг серверов для других людей до публичного релиза (это обязанности оператора персональных данных).
+Collaboration, public links, analytics, hosting servers for other people before a public release (these are the obligations of a personal data operator).
 
-### 2.6. Модель продукта
+### 2.6. Product model
 
-- **Self-hosted:** любой может поднять свой сервер одной командой (`docker compose up`: сервер + Postgres).
-- **Бесплатно:** все основные функции — запись, лента, поиск, лес, синхронизация через свой сервер, экспорт, шифрование; AI — на своём ключе OpenRouter.
-- **Платно — то, чего нет в открытом коде клиента:**
-  - **Kinige Cloud** — хостинг сервера «под ключ»: зашифрованное хранение, бэкапы с версиями (ориентир рынка — $2–4/мес; Obsidian Sync $4/мес);
-  - **мобильное приложение** в сторе (или бесплатное с платной синхронизацией);
-  - **наборы арта для леса** (сезоны, стили) — Blender-пайплайн окупается как актив; косметика без влияния на функции.
-- Платные функции внутри открытого клиента не делаем — их легко форкнуть. Лицензия (например, AGPL для сервера, MIT/Apache для клиента) — Q13. До публикации — проверка товарного знака (название «Forest» занято; имя Kinige — проверить сейчас).
-- Хостинг для других — только после юридической проверки (сервер хранит шифртекст, но аккаунты — персональные данные).
+- **Self-hosted:** anyone can bring up their own server with one command (`docker compose up`: server + Postgres).
+- **Free:** all the main features — writing, the feed, search, the forest, sync through your own server, export, encryption; AI on your own OpenRouter key.
+- **Paid — what is not in the client's open source code:**
+  - **Kinige Cloud** — turnkey server hosting: encrypted storage, versioned backups (market benchmark — $2–4/month; Obsidian Sync $4/month);
+  - **the mobile app** in the store (or free with paid sync);
+  - **art packs for the forest** (seasons, styles) — the Blender pipeline pays off as an asset; cosmetics without any effect on features.
+- We do not make paid features inside the open client — they are easy to fork. The license (for example, AGPL for the server, MIT/Apache for the client) is Q13. Before publishing — a trademark check (the name "Forest" is taken; the name Kinige — check now).
+- Hosting for others — only after a legal review (the server stores ciphertext, but accounts are personal data).
 
 ---
 
-## 3. Архитектура
+## 3. Architecture
 
-### 3.1. Схема
+### 3.1. Diagram
 
 ```text
 ┌──────────────────────── Tauri app (macOS / Windows / Linux) ───────────────────────┐
 │  web/ (React + TS)                                                                  │
 │    features/ chats · feed · composer · search · forest · settings                   │
-│    ui/       компоненты дизайн-системы  ←  design/tokens (DTCG → CSS variables)      │
-│    api/      KinigeApi (интерфейс) ── TauriApi (invoke)  │ MockApi (тесты, каталог)  │
-│                                                          │ HttpApi (веб, P1)         │
-│  src-tauri/  тонкий слой команд, окна, хоткей, трей                                 │
+│    ui/       design system components  ←  design/tokens (DTCG → CSS variables)      │
+│    api/      KinigeApi (interface) ── TauriApi (invoke)  │ MockApi (tests, catalog)  │
+│                                                          │ HttpApi (web, P1)         │
+│  src-tauri/  thin layer of commands, windows, hotkey, tray                          │
 └──────────────┬──────────────────────────────────────────────────────────────────────┘
                ▼
-   crates/kinige-domain   правила: journal_date, вес дня, стадии леса, слияние — без IO, компилируется в WASM
-   crates/kinige-store    rusqlite: миграции, FTS5, outbox, ревизии, файлы вложений
-   crates/kinige-sync     протокол (типы) + клиент push/pull
+   crates/kinige-domain   rules: journal_date, day weight, forest stages, merging — no IO, compiles to WASM
+   crates/kinige-store    rusqlite: migrations, FTS5, outbox, revisions, attachment files
+   crates/kinige-sync     protocol (types) + push/pull client
                │  HTTPS
                ▼
-   server/ (self-hosted)  axum + Postgres + хранилище вложений; хранит только зашифрованные записи
+   server/ (self-hosted)  axum + Postgres + attachment storage; stores only encrypted records
 ```
 
-### 3.2. Правила границ
+### 3.2. Boundary rules
 
-- **Фронтенд не знает о Tauri.** Все вызовы — через интерфейс `KinigeApi`. Это даёт:
-  - каталог компонентов и UI-тесты работают в обычном браузере на `MockApi`;
-  - Playwright-тесты не зависят от WebDriver для WKWebView, которого на macOS нет.
-- Типы Rust → TypeScript генерируются автоматически (`ts-rs` или `tauri-specta` — выбрать в слайсе 0), а не пишутся руками.
-- `kinige-domain` не зависит ни от SQLite, ни от Tauri. Сервер переиспользует только типы протокола из `kinige-sync` — содержимое он не видит и не сливает.
-- **Веб-клиент — не просто `HttpApi`.** Из-за шифрования логика (слияние, поиск, лес) должна работать в браузере. Поэтому `kinige-domain` с первого дня собирается под `wasm32` (проверка в CI); хранилище для веба (SQLite в OPFS или IndexedDB) — отдельное решение перед веб-клиентом.
-- Вся бизнес-логика — в Rust. Во фронтенде — только представление и состояние экрана.
-- **Где какая БД.** SQLite — только на клиенте (десктоп), на сервере — **Postgres** (много пользователей, одновременные запросы). На клиенте конкуренция всё же есть — окна, синхронизация, фоновые задачи. Поэтому **один писатель**: все записи идут через один поток-владелец соединения в Rust, чтение — через отдельные соединения (WAL), `SQLITE_BUSY` обрабатывается.
-- **Файлы вложений** импортируются атомарно: копия во временную папку → проверка хэша → переименование → запись в БД; при старте убираются «сироты».
-- SQLite — через свой `rusqlite` в Rust-ядре, **не** через `tauri-plugin-sql` (он на sqlx и выносит SQL во фронтенд).
-- Безопасность IPC: по умолчанию команды Tauri доступны всем окнам. Для каждого окна — свой набор capabilities (окно быстрого захвата умеет только «создать сообщение»).
-- Tauri 2.12.x (стабильная ветка на октябрь 2026). Tauri v3 (alpha, с CEF-рантаймом) — не трогаем до стабильного релиза.
+- **The frontend does not know about Tauri.** All calls go through the `KinigeApi` interface. This gives:
+  - the component catalog and UI tests run in an ordinary browser on `MockApi`;
+  - Playwright tests do not depend on WebDriver for WKWebView, which does not exist on macOS.
+- Rust → TypeScript types are generated automatically (`ts-rs` or `tauri-specta` — choose in slice 0), not written by hand.
+- `kinige-domain` depends neither on SQLite nor on Tauri. The server reuses only the protocol types from `kinige-sync` — it does not see and does not merge the content.
+- **The web client is not just `HttpApi`.** Because of encryption the logic (merging, search, forest) must work in the browser. So `kinige-domain` is built for `wasm32` from day one (checked in CI); storage for the web (SQLite in OPFS or IndexedDB) is a separate decision before the web client.
+- All business logic is in Rust. The frontend has only presentation and screen state.
+- **Which DB where.** SQLite only on the client (desktop), on the server — **Postgres** (many users, concurrent requests). There is still concurrency on the client — windows, sync, background tasks. Hence **a single writer**: all writes go through one thread that owns the connection in Rust, reads go through separate connections (WAL), `SQLITE_BUSY` is handled.
+- **Attachment files** are imported atomically: copy to a temporary folder → hash check → rename → write to the DB; "orphans" are cleaned up at startup.
+- SQLite goes through our own `rusqlite` in the Rust core, **not** through `tauri-plugin-sql` (it is built on sqlx and moves SQL into the frontend).
+- IPC security: by default Tauri commands are available to all windows. Each window has its own set of capabilities (the quick capture window can only "create a message").
+- Tauri 2.12.x (the stable branch as of October 2026). Tauri v3 (alpha, with a CEF runtime) — we do not touch it until a stable release.
 
-### 3.3. Что взять из старого Kinige
+### 3.3. What to take from the old Kinige
 
-Того же языка достаточно, чтобы перенести **приёмы**, но не модель:
+The same language is enough to carry over the **techniques**, but not the model:
 
-- транзакционное применение изменений: «запись в БД → commit → только потом состояние в памяти»;
-- тест с инъекцией отказа записи;
-- синхронизация FTS в той же транзакции.
+- transactional application of changes: "write to the DB → commit → only then the in-memory state";
+- a test with injection of a write failure;
+- FTS sync in the same transaction.
 
-Блочная модель, egui-код и `docs/01–10` не переносятся. Новый проект — **новый git-репозиторий** (Q8); старый код остаётся архивом.
+The block model, the egui code and `docs/01–10` are not carried over. The new project is a **new git repository** (Q8); the old code stays as an archive.
 
 ---
 
-## 4. Модель данных
+## 4. Data model
 
-### 4.1. Правила
+### 4.1. Rules
 
-- Идентификаторы — **случайные UUID v4**, генерируются на устройстве (UUID v7 раскрывает серверу время создания). Исключение — `remote_blob_id`: UUID v7, время в нём почти совпадает со временем загрузки, которое сервер и так видит (ADR-0001).
-- Время — UTC в миллисекундах + IANA-зона устройства в момент создания.
-- `journal_date` (`YYYY-MM-DD`) фиксируется при создании по локальной дате с учётом настройки «день заканчивается в HH:MM» (по умолчанию 04:00: запись в 00:30 относится ко вчера); не меняется при смене часового пояса; пользователь может изменить её вручную.
-- Лента, переход к дате, лес и `day_activity` используют **одно и то же**: порядок `(journal_date, created_at, id)`.
-- Удаление — обычное поле `deleted_at` (корзина 30 дней, восстановление снимает поле); через 30 дней — физическое удаление и служебная запись `purged` для остальных устройств (§10.2).
-- Каждая синхронизируемая запись хранит HLC **по группам полей** (§10.2) и `schema_version`.
-- Производное (активность дня, лес, теги, Markdown-копия, эмбеддинги) кэшируется, но всегда пересчитывается из сообщений.
-- На устройстве данные лежат в SQLite открытым текстом (их защищает шифрование диска ОС: FileVault, BitLocker, LUKS); шифрование локальной базы — P2. На сервер уходят только зашифрованные конверты (§10.3).
+- Identifiers are **random UUID v4**, generated on the device (UUID v7 reveals the creation time to the server). The exception is `remote_blob_id`: a UUID v7, the time in it almost coincides with the upload time, which the server sees anyway (ADR-0001).
+- Time is UTC in milliseconds + the device's IANA zone at the moment of creation.
+- `journal_date` (`YYYY-MM-DD`) is fixed at creation from the local date, taking into account the setting "the day ends at HH:MM" (default 04:00: an entry at 00:30 belongs to yesterday); it does not change when the time zone changes; the user can change it manually.
+- The feed, jump to a date, the forest and `day_activity` use **the same thing**: the order `(journal_date, created_at, id)`.
+- Deletion is an ordinary `deleted_at` field (trash for 30 days, restoring clears the field); after 30 days — physical deletion and a service record `purged` for the other devices (§10.2).
+- Every synced record stores HLC **per field group** (§10.2) and `schema_version`.
+- Derived data (day activity, forest, tags, Markdown copy, embeddings) is cached but always recomputed from messages.
+- On the device the data lies in SQLite as plain text (it is protected by the OS disk encryption: FileVault, BitLocker, LUKS); encryption of the local database is P2. Only encrypted envelopes go to the server (§10.3).
 
-### 4.2. Схема (SQLite, черновик для ADR)
+### 4.2. Schema (SQLite, draft for the ADR)
 
-Служебные поля синхронизации (`hlc_json` с `sv` по группам, `server_known`, `groups_raw`, таблицы `tombstone`, `quarantine`, `pending_unknown`, `change_outbox.acked_seq`) — в ADR-0001, приложение §C; там же группы полей.
+Sync service fields (`hlc_json` with `sv` per group, `server_known`, `groups_raw`, the tables `tombstone`, `quarantine`, `pending_unknown`, `change_outbox.acked_seq`) are in ADR-0001, appendix §C; the field groups are there too.
 
 ```sql
 chat (
-  id TEXT PRIMARY KEY,                -- UUID v4; у Inbox — фиксированный id, одинаковый во всех аккаунтах (§10.2)
+  id TEXT PRIMARY KEY,                -- UUID v4; Inbox has a fixed id, the same in all accounts (§10.2)
   title TEXT NOT NULL, icon TEXT, color TEXT,
-  sort_key TEXT NOT NULL,             -- дробный индекс для ручного порядка
+  sort_key TEXT NOT NULL,             -- fractional index for manual ordering
   is_inbox INTEGER NOT NULL DEFAULT 0,
-  ai_excluded INTEGER NOT NULL DEFAULT 0,   -- не отправлять содержимое в AI
+  ai_excluded INTEGER NOT NULL DEFAULT 0,   -- do not send the content to AI
   pinned_at INTEGER, archived_at INTEGER,
   created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER,
-  hlc_json TEXT NOT NULL,             -- HLC по группам полей
-  schema_version INTEGER NOT NULL, groups_raw TEXT NOT NULL  -- сырые байты групп, вкл. неизвестные поля и группы новых клиентов
+  hlc_json TEXT NOT NULL,             -- HLC per field group
+  schema_version INTEGER NOT NULL, groups_raw TEXT NOT NULL  -- raw bytes of the groups, incl. unknown fields and groups of newer clients
 );
 
 message (
   id TEXT PRIMARY KEY,
   chat_id TEXT NOT NULL,
-  body_md TEXT NOT NULL DEFAULT '',   -- CommonMark + GFM task lists, без сырого HTML
-  -- body_search: колонки нет (решено в слайсе 4, ADR-0008, приложение ADR-0001 §C.3): индекс — отдельные локальные таблицы search_fts и search_map
+  body_md TEXT NOT NULL DEFAULT '',   -- CommonMark + GFM task lists, no raw HTML
+  -- body_search: there is no such column (decided in slice 4, ADR-0008, ADR-0001 appendix §C.3): the index is the separate local tables search_fts and search_map
   journal_date TEXT NOT NULL,
   created_at INTEGER NOT NULL, created_tz TEXT NOT NULL, edited_at INTEGER,
   is_task INTEGER NOT NULL DEFAULT 0, task_done_at INTEGER,
   favorite_at INTEGER, pinned_at INTEGER,
-  reply_to_id TEXT,                   -- слайс 5: id записи, на которую ответ (UUID v4, того же чата); пишется в core, неизменяемо; без FK — старая запись может быть в корзине, удалена навсегда или ещё не пришла (приложение ADR-0001 §C.5)
-  origin TEXT NOT NULL DEFAULT 'user', -- кто создал: 'user' | 'agent' (MCP, §9.3) | 'import_telegram'; не меняется
-  ext_json TEXT,                      -- внешний id импорта {"src","chat","msg"}, не меняется; дедупликация — локальный индекс message_ext (ADR-0001)
+  reply_to_id TEXT,                   -- slice 5: id of the entry being replied to (UUID v4, same chat); written into core, immutable; no FK — the old entry may be in the trash, deleted forever or not yet arrived (ADR-0001 appendix §C.5)
+  origin TEXT NOT NULL DEFAULT 'user', -- who created it: 'user' | 'agent' (MCP, §9.3) | 'import_telegram'; does not change
+  ext_json TEXT,                      -- external import id {"src","chat","msg"}, does not change; deduplication is the local index message_ext (ADR-0001)
   deleted_at INTEGER,
-  hlc_json TEXT NOT NULL,             -- группы: core, body, flags, placement (chat_id, journal_date), deleted
+  hlc_json TEXT NOT NULL,             -- groups: core, body, flags, placement (chat_id, journal_date), deleted
   schema_version INTEGER NOT NULL, groups_raw TEXT NOT NULL
 );
--- без FK на синхронизируемых таблицах: при pull сообщение может прийти раньше чата
+-- no FKs on synced tables: on pull a message may arrive before its chat
 CREATE INDEX message_feed ON message(chat_id, journal_date, created_at, id);
 CREATE INDEX message_day ON message(journal_date);
 
-message_revision (                    -- синхронизируемая, append-only
+message_revision (                    -- synced, append-only
   id TEXT PRIMARY KEY,
   message_id TEXT NOT NULL,
-  snapshot_json TEXT NOT NULL,        -- 'edit': полный снимок сообщения; 'conflict': только проигравшая группа (body или placement), ADR-0001 §3.4
+  snapshot_json TEXT NOT NULL,        -- 'edit': a full snapshot of the message; 'conflict': only the losing group (body or placement), ADR-0001 §3.4
   saved_at INTEGER NOT NULL,
   reason TEXT NOT NULL                -- 'edit' | 'conflict' | 'restore'
 );
@@ -304,478 +306,478 @@ attachment (
   kind TEXT NOT NULL,                 -- 'image' | 'file' | 'link' | 'audio' | 'video'
   sort_index INTEGER NOT NULL,
   sha256 TEXT, filename TEXT, mime TEXT, byte_size INTEGER,
-  width INTEGER, height INTEGER,      -- известны до загрузки → лента не прыгает
+  width INTEGER, height INTEGER,      -- known before loading → the feed does not jump
   duration_ms INTEGER,
   url TEXT, link_title TEXT, link_site TEXT,
-  remote_blob_id TEXT,                -- id зашифрованного blob на сервере: UUID v7, создаётся вместе с вложением; повторная загрузка — новый id (ADR-0001 §7)
+  remote_blob_id TEXT,                -- id of the encrypted blob on the server: UUID v7, created together with the attachment; a re-upload gets a new id (ADR-0001 §7)
   deleted_at INTEGER, hlc_json TEXT NOT NULL, schema_version INTEGER NOT NULL
 );
 
-attachment_local (                    -- НЕ синхронизируется: состояние файла на этом устройстве
+attachment_local (                    -- NOT synced: the state of the file on this device
   attachment_id TEXT PRIMARY KEY,
   state TEXT NOT NULL                 -- 'local' | 'uploading' | 'synced' | 'remote_only' | 'missing'
 );
 
-change_outbox (                       -- неизменяемые подготовленные конверты операций
+change_outbox (                       -- immutable prepared operation envelopes
   op_id TEXT PRIMARY KEY, entity TEXT, entity_id TEXT,
-  envelope BLOB NOT NULL,             -- зашифрован в момент постановки в очередь; повтор отправляет его же
+  envelope BLOB NOT NULL,             -- encrypted at the moment it is queued; a retry sends the same one
   created_at INTEGER NOT NULL
 );
-sync_state (key TEXT PRIMARY KEY, value TEXT);          -- курсор, поколение сервера, device_id, состояние HLC
+sync_state (key TEXT PRIMARY KEY, value TEXT);          -- cursor, server generation, device_id, HLC state
 
--- message_fts(body_search, extra_search) заменён в слайсе 4 (ADR-0008, §C.3): search_fts (FTS5 без хранения текста, только основы слов) + search_map(rowid → message_id);
--- имена файлов и заголовки ссылок добавит слайс 7 по той же раскладке, названия чатов сверяются в Rust
+-- message_fts(body_search, extra_search) was replaced in slice 4 (ADR-0008, §C.3): search_fts (FTS5 without storing the text, only word stems) + search_map(rowid → message_id);
+-- file names and link titles will be added by slice 7 with the same layout, chat titles are matched in Rust
 ```
 
-Производное (view или кэш-таблица, обновляется в той же транзакции):
+Derived data (a view or a cache table, updated in the same transaction):
 
 ```text
 day_activity(journal_date, note_count, media_count, weight)
 ```
 
-### 4.3. Файлы
+### 4.3. Files
 
-- Вложения лежат в каталоге данных приложения: `attachments/<attachment_id>.<ext>`. **Без дедупликации в MVP:** файл принадлежит одному вложению и удаляется вместе с ним после корзины (дедупликация и сборщик мусора — когда появится массовый импорт фото).
-- Миниатюры — в кэше, их можно потерять и пересоздать.
-- Размеры изображения пишутся при импорте.
-
----
-
-## 5. Ввод (Composer)
-
-- Внизу ленты, растёт до ~40% высоты окна, дальше — кнопка «развернуть» в полноэкранный режим. **Один редактор и один формат** в обоих режимах.
-- **Начинаем с обычного поля ввода** (90% записей — 1–3 строки); Markdown рендерится в ленте. CodeMirror 6 подключается для развёрнутого режима и живой подсветки, когда поле начнёт мешать — тогда же spike S1. Целевая реализация — CodeMirror 6 с Markdown и живой подсветкой: заголовки крупнее, `**жирный**` жирным, синтаксис приглушён (подход Obsidian Live Preview — Obsidian сам построен на CM6 — и Bear). Кнопки форматирования вставляют синтаксис. Известный риск: баги IME в Safari/WKWebView рядом с widget-декорациями — поэтому в живой подсветке использовать mark-декорации, а widget-декорации (картинки, чекбоксы) — только вне строки с курсором. Проверяется в spike S1.
-- **Кнопки как в Telegram:** слева «прикрепить файл», справа «эмодзи» и «микрофон» (запись голосовой). Дизайн с первого дня рисует все три; в приложении кнопка появляется в слайсе, где её функция работает (эмодзи — слайс 3, файл — 7, микрофон — 7a, §15), — мёртвых кнопок нет. Стикеры и GIF (P1) открываются из того же окна, что эмодзи. Когда в поле есть текст, «микрофон» сменяется круглой акцентной кнопкой «Отправить» со стрелкой (как в Telegram и ChatGPT); Enter по-прежнему отправляет. Поле — тёмная заливка **без обводки**; в фокусе — одна тонкая линия внутри поля цветом фокуса (видимость фокуса, WCAG 2.4.7).
-- Enter — отправить, Shift+Enter — новая строка; в блоке кода Enter — новая строка.
-- Вставка картинки или файла из буфера и drag & drop → вложения к ещё не отправленному сообщению.
-- Отправка: команда в Rust → одна транзакция → сообщение в ленте < 100 мс → запись просто появляется в ленте: без тоста и без другого подтверждения (как в Telegram). При ошибке записи текст остаётся в поле, над ним ошибка. Отмена — удалением и редактированием из действий по наведению (слайс 3).
-- Черновик хранится для каждого чата и переживает перезапуск.
-
-### 5.1. Быстрый захват
-
-| Где | Как | Результат |
-|---|---|---|
-| Глобальный хоткей (по умолчанию ⌃⌥N — временно, вместо ⌥Space, см. v0.10) | Окно ввода поверх всех окон на экране с курсором, над полем — последние 2–3 записи за сегодня; Enter — новая запись, ⌘Enter — дописать к последней (если это запись пользователя не старше 10 минут за сегодня; иначе — новая запись), Esc или щелчок в другое окно — закрыть с сохранением черновика | Запись в основную БД |
-| Второй хоткей (по умолчанию ⌥⇧V) | Сохранить текст из буфера обмена в Inbox без окна; успех — короткое мигание значка в menu bar, сбой — окно захвата с текстом буфера и ошибкой | То же |
-| Трей / menu bar | «Новая заметка», последние чаты (на Linux трей не отдаёт события мыши — только меню) | То же |
-| Drag & drop на иконку в Dock (macOS) | Файл → новое сообщение в Inbox | Проверить в spike |
-| Расширение браузера | «Сохранить в Kinige» | P2 |
-
-Приложение — single-instance: второе открытие активирует существующее окно. Закрытие главного окна прячет его, приложение остаётся в menu bar; выход — ⌘Q или «Выйти» в меню значка. Оба сочетания меняются в «Настройках» (запись нажатием, проверка «занято» до сохранения, сброс к умолчанию) или ключами `shortcuts.*` файла `settings.json` (ADR-0010); не принятое системой сочетание показывается как «не назначено», остальное работает.
+- Attachments lie in the app data directory: `attachments/<attachment_id>.<ext>`. **No deduplication in MVP:** a file belongs to one attachment and is deleted together with it after the trash (deduplication and a garbage collector — when mass photo import appears).
+- Thumbnails are in a cache; they can be lost and recreated.
+- Image dimensions are written at import.
 
 ---
 
-## 6. Лента
+## 5. Input (Composer)
 
-- **Каждое сообщение — отдельная плашка** (лёгкая заливка, скругление, без хвоста и аватара), все прижаты влево: сразу видно, что записи написаны в разное время и в разном контексте. Плашка по ширине текста, не шире ~65 знаков (удобная длина строки 45–75 знаков).
-- **Лента — колонка по центру** шириной ~720 px, сообщения внутри прижаты к её левому краю; поле ввода — по ширине той же колонки (как колонка сообщений Telegram в широком окне). В узком окне колонка занимает всю ширину.
-- **Открыт один чат, вкладок нет.** Каждая запись сохраняется сразу одной транзакцией, черновик хранится у каждого чата (§5), поэтому держать несколько чатов открытыми незачем: переключение — щелчком в сайдбаре, как в Telegram. Вкладки и несколько чатов в одном окне — вне рамок; если понадобится, то «открыть чат в отдельном окне».
-- **Время — у каждого сообщения**, мелко третичным цветом сразу после текста, на его последней строке, внутри плашки (как в Telegram), а не у правого края ленты: текст первичен, время рядом с ним.
-- Метка дня — маленькая «таблетка» по центру ленты.
-- **Плотность как в Telegram:** основной текст 13 px (ADR-0004), на экран помещается много записей. Плотность «компактно» (по умолчанию) и «просторно»; фильтры: всё / медиа / избранное / задачи.
-- **Без дублей.** Над лентой нет ни заголовка, ни строки с названием чата: выбранный чат и так выделен в сайдбаре (в свёрнутом — подсвечен его эмодзи). Строка над лентой появляется, только если в ней будет что-то полезное (например, меню действий чата); пока действия чата — в контекстном меню чата в сайдбаре. У дня одна маленькая метка: «Сегодня», «Вчера», «14 марта» (текущий год), «14 марта 2025» (прошлые годы) — без второй строки с той же датой.
-- Сообщения с паузой меньше 5 минут образуют серию: промежуток между ними меньше, чем между сериями. В «страницу» они не сливаются (отменено в v0.7); у каждого своё меню.
-- **Ответ и цитата (слайс 5).** Ответ пишется из карточки «В этот день»: над полем ввода появляется строка «Ответ на запись · <дата>» с первой строкой старой записи; у ответа в плашке сверху цитата в одну строку — заливка без рамки, подпись «N лет спустя · <дата>» (при разнице меньше года — «Ответ на запись · <дата>»), щелчок открывает старую запись в ленте. Если старая запись в корзине — «Запись в корзине», удалена навсегда — «Исходная запись удалена»; сам ответ остаётся. То же у ответов, импортированных из Telegram.
-- Контекстное меню (правый клик): копировать, редактировать, ответить (P1; в слайсе 5 «Ответить» есть только у записей карточки «В этот день»), задача ✓, избранное, закрепить, переместить в чат, изменить дату, удалить.
-- **Действия по наведению** (как в ChatGPT и Claude): при наведении или фокусе справа от плашки, на уровне её нижней строки, — ряд маленьких линейных значков (ничего не накрывает и не съедает плотность; в узком окне — чуть выше плашки у её правого края, не накрывая её текст): копировать, редактировать, задача, избранное, «ещё» (открывает то же контекстное меню). Зона наведения — вся строка ленты, ряд не гаснет по пути к нему. В D1 работает «Копировать», остальное — со слайса 3.
-- Нажатие на чекбокс `- [ ]` в ленте правит текст сообщения (создаёт ревизию).
-- Быстрый скролл показывает плавающую дату; есть переход к дате.
-- Позиция прокрутки сохраняется для каждого чата.
-- Данные подгружаются страницами по курсору (keyset) из Rust; во фронтенде — виртуализированный список с ячейками переменной высоты, ключ элемента — id сообщения (spike S2). Платный `VirtuosoMessageList` не используем.
-- **Рендер Markdown безопасен:** сырой HTML отключён (markdown-it или remark без raw HTML), результат проходит DOMPurify, ссылки открываются в системном браузере, CSP запрещает inline-скрипты. Заметки — пользовательские данные, а webview имеет доступ к командам Tauri.
+- At the bottom of the feed, grows up to ~40% of the window height, beyond that — an "expand" button into full-screen mode. **One editor and one format** in both modes.
+- **We start with a plain input field** (90% of entries are 1–3 lines); Markdown is rendered in the feed. CodeMirror 6 is brought in for the expanded mode and live highlighting when the field starts getting in the way — spike S1 happens then too. The target implementation is CodeMirror 6 with Markdown and live highlighting: headings larger, `**bold**` in bold, syntax dimmed (the approach of Obsidian Live Preview — Obsidian itself is built on CM6 — and Bear). Formatting buttons insert syntax. A known risk: IME bugs in Safari/WKWebView next to widget decorations — so live highlighting should use mark decorations, and widget decorations (images, checkboxes) only outside the line with the cursor. Checked in spike S1.
+- **Buttons as in Telegram:** on the left "attach file", on the right "emoji" and "microphone" (recording a voice note). The design draws all three from day one; in the app a button appears in the slice where its function works (emoji — slice 3, file — 7, microphone — 7a, §15) — there are no dead buttons. Stickers and GIFs (P1) open from the same window as emoji. When there is text in the field, the "microphone" is replaced by a round accent "Send" button with an arrow (as in Telegram and ChatGPT); Enter still sends. The field is a dark fill **without an outline**; in focus — a single thin line inside the field in the focus color (focus visibility, WCAG 2.4.7).
+- Enter — send, Shift+Enter — new line; inside a code block Enter is a new line.
+- Pasting an image or a file from the clipboard and drag & drop → attachments to the not yet sent message.
+- Sending: a command in Rust → one transaction → the message in the feed < 100 ms → the entry simply appears in the feed: without a toast and without any other confirmation (as in Telegram). On a write error the text stays in the field, with the error above it. Undo is by deleting and editing from the hover actions (slice 3).
+- A draft is stored for each chat and survives a restart.
 
----
+### 5.1. Quick capture
 
-## 7. Лес
+| Where                                                                   | How                                                                                                                                                                                                                                                                                                                           | Result                  |
+|-------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| Global hotkey (default ⌃⌥N — temporarily, instead of ⌥Space, see v0.10) | An input window on top of all windows on the screen with the cursor, the last 2–3 entries of today above the field; Enter — a new entry, ⌘Enter — append to the last one (if it is the user's entry from today not older than 10 minutes; otherwise a new entry), Esc or a click in another window — close, keeping the draft | An entry in the main DB |
+| Second hotkey (default ⌥⇧V)                                             | Save the clipboard text to Inbox without a window; success — a short blink of the menu bar icon, failure — the capture window with the clipboard text and the error                                                                                                                                                           | Same                    |
+| Tray / menu bar                                                         | "New note", recent chats (on Linux the tray does not deliver mouse events — menu only)                                                                                                                                                                                                                                        | Same                    |
+| Drag & drop onto the Dock icon (macOS)                                  | File → a new message in Inbox                                                                                                                                                                                                                                                                                                 | Check in a spike        |
+| Browser extension                                                       | "Save to Kinige"                                                                                                                                                                                                                                                                                                              | P2                      |
 
-### 7.1. Сетка
-
-Два кандидата, выбор — по spike S3 в окне 1280 × 800 и в узком окне:
-
-| | A. 12 × 31 (месяц × число) | B. 7 × 53 (день недели × неделя) |
-|---|---|---|
-| Форма в изометрии | почти квадратный ромб | длинная полоса ≈ 1 : 7,5 |
-| Чтение даты | «Октябрь, 16» — без подсказки | нужна подсказка |
-| Сезоны | полосами по 3 строки | полосами по ~13 колонок |
-| Несуществующие даты | 7 ячеек — пустая земля без взаимодействия | нет |
-| Дни недели | не видны | видны |
-| Ближе к | макету | GitHub |
-
-Общие требования:
-
-- Позиция дня — чистая функция в `kinige-domain`: `(year, date, first_weekday) → (row, col)`, покрыта тестами на високосные годы и границы года.
-- **Hit-test по сетке, а не по спрайтам:** точка → обратное изометрическое преобразование → ячейка. Высокое дерево перекрывает соседей визуально, но не перехватывает клик.
-- Выбранная ячейка подсвечивается, деревья перед ней становятся полупрозрачными.
-- Три уровня детализации: точка/символ → упрощённый спрайт → детальный спрайт. Сетка неизменна.
-- Жесты: колесо и pinch на трекпаде — масштаб, перетаскивание — pan, двойной клик — приблизить, кнопка «весь год», стрелки клавиатуры — перемещение по дням.
-- Рендер: **Canvas 2D как база**, PixiJS v8 (WebGL) — как улучшение, если Canvas не держит 60 FPS. На Linux WebKitGTK WebGL бывает «тихо» программным (контекст создаётся, но без GPU) и падает на NVIDIA с DMABUF — поэтому путь без WebGL обязателен. Выбор — spike S3.
-
-### 7.2. Рост
-
-- Вес дня: `w = Σ по сообщениям дня min(1, len/200) + 0,5 × вложения`. Сообщения короче 3 символов без вложений не считаются. Формула — в `kinige-domain`, константы настраиваются.
-- Стадия: `stage = clamp(round(6 × ln(1+w) / ln(1+w_max)), 0, 6)`, по умолчанию `w_max = 30` → 7 стадий.
-- Лес производный: удалил заметки — дерево уменьшилось. Анимация роста — только при увеличении стадии сегодня.
-
-### 7.3. Сезоны
-
-- Сезон определяется датой ячейки: на годовой доске одновременно видны все четыре.
-- Настройка «Южное полушарие» сдвигает сезоны на 6 месяцев.
-- Переключатель сезонов — быстрый зум к соответствующей части доски, а не фильтр.
-
-### 7.4. Взаимодействие
-
-- Hover → карточка дня: дата, число заметок, фото, первая строка. Клик → лента прокручивается к этому дню; при прокрутке ленты подсвечивается дерево текущего дня. Лес можно свернуть в полосу над лентой.
-- Карточка показывает только то, что есть в MVP.
-- **Доступная альтернатива:** переключатель «Лес / Календарь» — обычный календарь с теми же данными; экранный диктор объявляет «16 октября, 5 заметок, большое дерево».
-
-### 7.5. Арт-пайплайн (риск №1)
-
-1. **Codex (генерация изображений, `$imagegen`):** концепты стиля — палитра сезонов, силуэты 7 стадий, земля, декор. Результат — `design/concepts/forest/` и утверждённый лист стиля. Генерация расходует лимиты Codex в 3–5 раз быстрее обычных запросов, а согласованность серии между генерациями не гарантирована — поэтому финальные спрайты делаются не здесь.
-2. **Blender:** low-poly модели по концептам. Скрипт рендера (`bpy`) с фиксированной изометрической камерой, светом и масштабом выводит все комбинации «стадия × сезон × вариант» и собирает атласы. Повторный рендер — одна команда.
-3. **Приложение** грузит атласы и ничего не знает о Blender.
-
-Нужно: земля, 7 стадий × 4 сезона × 3 варианта деревьев, 5–10 декоров, подсветка; позже — «подлесок» (P1) и платные наборы арта в той же проекции. Для spike S3 — простые формы или CC0-заглушки.
+The app is single-instance: opening it a second time activates the existing window. Closing the main window hides it, the app stays in the menu bar; quitting is ⌘Q or "Quit" in the tray icon menu. Both shortcuts are changed in "Settings" (recording by pressing, a "taken" check before saving, reset to default) or with the `shortcuts.*` keys of the `settings.json` file (ADR-0010); a shortcut the system does not accept is shown as "not assigned", everything else works.
 
 ---
 
-## 8. Питомец
+## 6. Feed
 
-Вырезан в v0.6: не связан с заметками и тянет внимание к себе, а не к записям. Наградой служит само прошлое — лес, «В этот день», нити ответов через годы.
-
----
-
-## 9. Поиск и AI
-
-### 9.1. Полнотекстовый поиск (P0, офлайн)
-
-- SQLite FTS5 по `body_search`, именам файлов, заголовкам ссылок, названиям чатов.
-- **Русский язык:** при записи сообщения Rust нормализует текст и стеммирует (Snowball для русского и английского) в `body_search`; запрос стеммируется так же. Префиксный поиск — для незаконченных слов. Альтернативы (триграммы, свой токенизатор) — в spike S5.
-- **Решено в слайсе 4 (spike S5, ADR-0008):** колонки `message.body_search` и таблицы `message_fts(body_search, extra_search)` нет. Индекс — отдельная локальная таблица FTS5 без хранения текста (`search_fts`) с таблицей `rowid → message_id` (`search_map`); в ней только основы слов записи, названия чатов сверяются в Rust. Имена файлов и заголовки ссылок попадут в индекс в слайсе 7 по той же раскладке. Приложение ADR-0001, §C.3.
-- Фильтры: тип, чат, диапазон дат, избранное, задачи. Результат открывается в ленте с подсветкой.
-
-### 9.2. Семантический поиск через OpenRouter (P1, онлайн)
-
-- **Включается явно**, ключ OpenRouter хранится в системном хранилище секретов (Keychain / Credential Manager / Secret Service), не в БД и не в git.
-- **Эмбеддинги считает клиент**, а не сервер: сервер не видит текст (§10.3). Векторы хранятся локально и в P1 **не синхронизируются** (каждое устройство индексирует само — это центы, зато нет проблем с актуальностью).
-- Вектор хранится с хэшем исходного текста, моделью и размерностью; результат API принимается, только если текст не изменился за время запроса. Перед каждой отправкой заново проверяется, что AI включён и чат не исключён.
-- Перед первой индексацией показываются: объём (сообщений, токенов), оценка стоимости, какие чаты исключены (`ai_excluded`), куда уходят данные.
-- API: `POST https://openrouter.ai/api/v1/embeddings`. Индексация 100k коротких заметок стоит центы; выбор модели — по качеству на русском в spike S6. Кандидаты (цены на октябрь 2026, $ за 1M токенов): `bge-m3` 0,01, `multilingual-e5-large` 0,01, `qwen3-embedding-8b` 0,01, `text-embedding-3-small` 0,02, `text-embedding-3-large` 0,13.
-- Поиск — локально, полный перебор: 100k векторов × 512 измерений ≈ 0,2 ГБ во float32 или ≈ 50 МБ в int8. Гибридный: FTS (BM25) + косинусная близость, слияние через Reciprocal Rank Fusion. Смена модели → фоновый пересчёт.
-- Запрос пользователя тоже уходит в API, поэтому семантический поиск — онлайн-функция; офлайн работает FTS.
-- Изображения (P2): мультимодальные эмбеддинги OpenRouter (`google/gemini-embedding-2`, `voyage-multimodal-3.5` и др.) или подпись vision-моделью.
-- Приватность: Zero Data Retention (`provider.zdr: true`). Но **сквозное шифрование не распространяется на AI**: включив AI, пользователь отправляет текст в OpenRouter и провайдеру модели — так и написать в интерфейсе.
-
-### 9.3. MCP-сервер для ИИ-агентов (P0, слайс 4a)
-
-Kinige готов для агентов: внешний ИИ-агент (Claude Desktop, Claude Code, Cursor и любой MCP-клиент) работает с журналом через Model Context Protocol — «что я писал про Raft в марте?», «запиши итоги встречи в Kinige». ИИ-помощник внутри приложения при этом не нужен до P2.
-
-- **Локально:** отдельный бинарник `kinige-mcp`, транспорт stdio — его запускает сам MCP-клиент на том же компьютере; сетевого порта нет, сервер синхронизации не участвует.
-- **Инструменты:** чтение — поиск (FTS, §9.1; семантический — когда будет P1), записи за день и диапазон, «в этот день», список чатов, запись по id; запись — новая запись в Inbox или чат, дописать к своей последней записи (`origin = 'agent'`; к записям пользователя агент не дописывает — пометка «добавлено агентом» относится ко всей записи), отметить задачу.
-- **Через те же правила:** чтение и запись идут через `kinige-domain` и те же операции, что у интерфейса (одна транзакция, ревизии, отмена, Markdown-копия). Записи агента помечены «добавлено агентом» в ленте (поле `origin = 'agent'`, §4.2). Как бинарник и запущенное приложение делят базу и какую библиотеку MCP брать — решено в ADR-0009: сервер MCP (`rmcp`) работает внутри приложения, `kinige-mcp` — тонкий мост stdio ↔ Unix-сокет, базу он не открывает; дописывание агента пишет ревизию `edit` (исключение из ⌘Enter, приложение ADR-0001 §C.4); если приложение не запущено, мост сам запускает его в фоне (значок в menu bar, окна нет).
-- **Приватность и права:**
-  - выключен по умолчанию, включается в настройках с предупреждением: **прочитанный агентом текст уходит провайдеру его модели**, сквозное шифрование на это не распространяется (как AI, §9.2). Включить доступ можно и ключами `agent_access.*` файла `settings.json` (ADR-0010): тогда предупреждения нет, поэтому каждое такое изменение пишется в журнал обращений («settings.json · доступ изменён») и помечено в окне; файл, доступный на запись группе или всем, или симлинк эти ключи не применяет;
-  - доступ по чатам (список разрешённых; `ai_excluded` чаты агенту не видны никогда);
-  - режимы «только чтение» и «чтение и запись» включаются отдельно;
-  - журнал обращений агента: когда, какой инструмент, какие записи — виден в настройках (подэкран «Журнал обращений»);
-  - удалять, переносить и редактировать чужие записи агент в MVP не может.
+- **Every message is a separate bubble** (a light fill, rounded corners, no tail and no avatar), all aligned to the left: it is immediately visible that the entries were written at different times and in different contexts. The bubble is as wide as the text, no wider than ~65 characters (a comfortable line length is 45–75 characters).
+- **The feed is a column in the center** ~720 px wide, the messages inside it are aligned to its left edge; the input field is as wide as the same column (like the Telegram message column in a wide window). In a narrow window the column takes the full width.
+- **One chat is open, there are no tabs.** Every entry is saved immediately in one transaction, a draft is stored for each chat (§5), so there is no reason to keep several chats open: switching is a click in the sidebar, as in Telegram. Tabs and several chats in one window are out of scope; if it is ever needed, then "open chat in a separate window".
+- **The time is on every message**, small, in the tertiary color right after the text, on its last line, inside the bubble (as in Telegram), and not at the right edge of the feed: the text comes first, the time is next to it.
+- The day label is a small "pill" in the center of the feed.
+- **Density as in Telegram:** body text 13 px (ADR-0004), many entries fit on the screen. Density "compact" (default) and "spacious"; filters: all / media / favorites / tasks.
+- **No duplicates.** Above the feed there is neither a heading nor a row with the chat name: the selected chat is highlighted in the sidebar anyway (in the collapsed one its emoji is highlighted). A row above the feed appears only if there is something useful in it (for example, a chat actions menu); for now the chat actions are in the chat's context menu in the sidebar. A day has one small label: "Today", "Yesterday", "March 14" (current year), "March 14, 2025" (past years) — without a second row with the same date.
+- Messages with a pause of less than 5 minutes form a series: the gap between them is smaller than between series. They do not merge into a "page" (canceled in v0.7); each has its own menu.
+- **Reply and quote (slice 5).** A reply is written from the "On this day" card: above the input field a row "Replying to the entry of <date>" appears with the first line of the old entry; in the reply's bubble there is a one-line quote at the top — a fill without a border, the caption "N years later · <date>" (if the difference is less than a year — "Reply to the entry of <date>"), a click opens the old entry in the feed. If the old entry is in the trash — "Entry in the trash", deleted forever — "The original entry was deleted"; the reply itself stays. The same for replies imported from Telegram.
+- Context menu (right click): copy, edit, reply (P1; in slice 5 "Reply" exists only on the entries of the "On this day" card), task ✓, favorite, pin, move to chat, change date, delete.
+- **Hover actions** (as in ChatGPT and Claude): on hover or focus, to the right of the bubble, at the level of its bottom line — a row of small line icons (it covers nothing and does not eat the density; in a narrow window — slightly above the bubble at its right edge, without covering its text): copy, edit, task, favorite, "more" (opens the same context menu). The hover zone is the whole row of the feed, the row does not fade on the way to it. In D1 "Copy" works, the rest — from slice 3.
+- Clicking a `- [ ]` checkbox in the feed edits the message text (creates a revision).
+- Fast scrolling shows a floating date; there is a jump to a date.
+- The scroll position is saved for each chat.
+- Data is loaded in pages by a cursor (keyset) from Rust; the frontend has a virtualized list with variable-height cells, the item key is the message id (spike S2). We do not use the paid `VirtuosoMessageList`.
+- **Markdown rendering is safe:** raw HTML is turned off (markdown-it or remark without raw HTML), the result goes through DOMPurify, links open in the system browser, the CSP forbids inline scripts. Notes are user data, and the webview has access to Tauri commands.
 
 ---
 
-## 10. Синхронизация (MVP+)
+## 7. Forest
 
-### 10.1. Сервер
+### 7.1. Grid
 
-- `server/` — Rust (axum) + **Postgres** + хранилище зашифрованных blob'ов (диск или S3-совместимое). MinIO по данным Fable с конца 2025 в режиме поддержки — альтернативы (Garage, SeaweedFS) проверить в S4c.
-- **Self-hosted одной командой:** образ Docker и `docker-compose.yml` (сервер + Postgres), миграции при старте.
-- Многопользовательский: аккаунты, привязка устройств, квоты на место.
-- **Сервер не видит и не сливает содержимое.** Он хранит журнал зашифрованных конвертов и раздаёт их; вся семантика конфликтов — на клиентах.
-- **Бэкап и восстановление:** согласованный снимок Postgres + blob'ов (blob удаляется только после того, как на него не ссылается ни одна запись в бэкапах в пределах срока хранения). После восстановления у сервера новое «поколение» — клиенты видят его и делают полную пересинхронизацию, а не продолжают со старого курсора. Обязательная проверка — восстановление в чистую установку.
-- Первая инсталляция — свой homelab: том homelab-деплоера 1 ГиБ мал для медиа → blob'ы на NFS или S3-совместимом хранилище кластера k3s (Q9).
+Two candidates, the choice is by spike S3 in a 1280 × 800 window and in a narrow window:
 
-### 10.2. Протокол синхронизации
+|                    | A. 12 × 31 (month × day)                   | B. 7 × 53 (weekday × week) |
+|--------------------|--------------------------------------------|----------------------------|
+| Shape in isometry  | an almost square rhombus                   | a long strip ≈ 1 : 7.5     |
+| Reading the date   | "October, 16" — without a hint             | needs a hint               |
+| Seasons            | bands of 3 rows                            | bands of ~13 columns       |
+| Non-existent dates | 7 cells — empty ground without interaction | none                       |
+| Weekdays           | not visible                                | visible                    |
+| Closer to          | the mockup                                 | GitHub                     |
 
-**Сущности и группы полей.** Каждая синхронизируемая запись (чат, сообщение, ревизия, вложение) — набор групп полей, у каждой группы свой HLC. У сообщения: `core` (пишется при создании; `origin` и `ext` неизменяемы), `body`, `flags` (задача, избранное, закрепление), `placement` (чат, дата), `deleted`. Одновременные правки разных групп на двух устройствах не теряются.
+Common requirements:
 
-**HLC.** Формат фиксированной ширины, сортируемый как строка: `{wall_ms:013}-{counter:05}-{device_id}`; при равенстве решает `device_id`. Состояние часов сохраняется в `sync_state`. Если пришедшая метка опережает локальные часы больше чем на 10 минут — предупреждение пользователю, работа не блокируется. Реализация — ADR со всеми правилами и property-тестами сходимости (это не «50 строк»).
+- The position of a day is a pure function in `kinige-domain`: `(year, date, first_weekday) → (row, col)`, covered by tests for leap years and year boundaries.
+- **Hit-test by the grid, not by sprites:** point → inverse isometric transform → cell. A tall tree overlaps its neighbors visually but does not intercept the click.
+- The selected cell is highlighted, the trees in front of it become semi-transparent.
+- Three levels of detail: dot/symbol → simplified sprite → detailed sprite. The grid does not change.
+- Gestures: the wheel and pinch on the trackpad — zoom, dragging — pan, double click — zoom in, a "whole year" button, the keyboard arrows — moving between days.
+- Rendering: **Canvas 2D as the base**, PixiJS v8 (WebGL) as an enhancement if Canvas does not hold 60 FPS. On Linux, WebKitGTK WebGL is sometimes "silently" software-rendered (the context is created, but without the GPU) and crashes on NVIDIA with DMABUF — so a path without WebGL is mandatory. The choice is spike S3.
 
-**Операции.** Каждое изменение пишется в `change_outbox` как неизменяемый конверт с уникальным `op_id`, зашифрованный в момент постановки в очередь, в той же транзакции, что и изменение. Повторная отправка шлёт тот же конверт.
+### 7.2. Growth
 
-**Push.** Сервер принимает конверты идемпотентно по `op_id`; тот же `op_id` с другим содержимым — ошибка. Сервер присваивает номер `seq` под блокировкой аккаунта: номера выдаются и коммитятся по порядку (обычная последовательность Postgres этого не гарантирует — курсор мог бы перескочить незакоммиченную запись).
+- Day weight: `w = Σ over the day's messages min(1, len/200) + 0.5 × attachments`. Messages shorter than 3 characters without attachments do not count. The formula is in `kinige-domain`, the constants are configurable.
+- Stage: `stage = clamp(round(6 × ln(1+w) / ln(1+w_max)), 0, 6)`, by default `w_max = 30` → 7 stages.
+- The forest is derived: you deleted notes — the tree got smaller. The growth animation plays only when today's stage increases.
 
-**Pull.** Клиент получает конверты после своего курсора, проверяет подлинность (AEAD) **до** применения, применяет страницу и сохраняет курсор в одной транзакции. Свои собственные операции узнаёт по `op_id` и пропускает.
+### 7.3. Seasons
 
-**Слияние (на клиенте, в `kinige-domain`):**
-- создание — бесконфликтно;
-- по каждой группе полей побеждает больший HLC;
-- если одновременное изменение `body` или `placement` (перенос в другой чат или на другую дату) проиграло, проигравшая группа сохраняется как `message_revision(reason='conflict')`, у сообщения — отметка «есть другая версия» с выбором, какую оставить; одновременные правки `flags` решаются без следа (правила одновременности — ADR-0001 §3.4);
-- **удаление — обычная группа `deleted`:** восстановление из корзины с более новым HLC побеждает старое удаление;
-- **Inbox:** фиксированный id, одинаковый во всех аккаунтах; при первой привязке локальной базы к аккаунту локальный Inbox сливается с серверным без конфликта, ссылки сохраняются.
+- The season is determined by the cell's date: all four are visible on the year board at the same time.
+- The "Southern Hemisphere" setting shifts the seasons by 6 months.
+- The season switcher is a quick zoom to the corresponding part of the board, not a filter.
 
-**Порядок зависимостей.** Сообщение может прийти раньше чата, вложение — раньше сообщения: страница применяется в одной транзакции, без FK на синхронизируемых таблицах; запись без родителя ждёт его и не показывается, пока pull не дошёл до головы журнала. После этого сообщение без чата (чат удалён или недоступен) показывается в Inbox с пометкой — производно, без правки самого сообщения. Исключение — старые сообщения окончательно удаляемого чата: purge идёт «сначала чат, потом его сообщения», и между ними они скрыты (ADR-0001 §3.6).
+### 7.4. Interaction
 
-**Tombstones и старые устройства.** Через 30 дней после удаления запись физически удаляется, а в журнал пишется операция `purged`. Она несёт снимок HLC всех групп записи, какими их видело удалившее устройство; сервер отвергает её, если знает более новую группу (запись восстановили или правили), а клиент при более новой своей группе уносит запись в карантин, а не удаляет молча. Дети (вложения, ревизии, сообщения удаляемого чата) удаляются только после подтверждения родителя (ADR-0001 §3.5, §3.6). Сервер хранит `purged` не меньше 180 дней. Устройство с курсором старше этого срока получает «курсор устарел» и делает полную пересинхронизацию. Локальная запись, которой нет на сервере: если сервер её никогда не видел — отправляется; если видел (значит, её удалили, а tombstone истёк) — уходит в карантин «Найденные старые записи» на ручное решение, без воскрешения удалённого (таблица — ADR-0001 §6.3).
+- Hover → a day card: the date, the number of notes, photos, the first line. Click → the feed scrolls to that day; while the feed scrolls, the tree of the current day is highlighted. The forest can be collapsed into a strip above the feed.
+- The card shows only what exists in MVP.
+- **An accessible alternative:** a "Forest / Calendar" switcher — an ordinary calendar with the same data; a screen reader announces "October 16, 5 notes, a large tree".
 
-**Сжатие журнала.** Сервер может удалять конверты, перекрытые более новыми по всем группам полей (это видно по открытым метаданным: id сущности, группа, HLC), но не раньше срока хранения tombstones.
+### 7.5. Art pipeline (risk #1)
 
-**Вложения.** Blob шифруется потоково (libsodium `secretstream`, чанки по 1 МБ), неизменяем после публикации, загрузка возобновляемая, целостность проверяется. Id на сервере — UUID v7, созданный клиентом вместе с вложением (лежит в зашифрованных данных вложения); повреждённый на сервере blob загружается заново под новым id. Blob удаляется вместе со своим вложением после корзины; ревизии на вложения не ссылаются.
+1. **Codex (image generation, `$imagegen`):** style concepts — the season palette, silhouettes of the 7 stages, ground, decor. The result is `design/concepts/forest/` and an approved style sheet. Generation uses up Codex limits 3–5 times faster than ordinary requests, and consistency of a series across generations is not guaranteed — so the final sprites are not made here.
+2. **Blender:** low-poly models based on the concepts. A render script (`bpy`) with a fixed isometric camera, lighting and scale outputs all "stage × season × variant" combinations and assembles atlases. A re-render is one command.
+3. **The app** loads the atlases and knows nothing about Blender.
 
-**Готовые движки** (ElectricSQL, PowerSync, Turso Sync) требуют, чтобы сервер видел данные, — с шифрованием не подходят. CRDT для текста не нужен: сообщения короткие и редко правятся.
-
-**Критерии (S4a):** два и три клиента в симуляции со случайными задержками, дубликатами и обрывами сходятся к одному состоянию; конфликт текста сохраняет обе версии; восстановление из корзины доходит до другого устройства; устройство, вернувшееся через 200 дней, не воскрешает удалённое; повтор push идемпотентен.
-
-### 10.3. Сквозное шифрование
-
-**Ключи:**
-- **DEK** (ключ данных) — случайный, генерируется при регистрации; им шифруются все конверты и blob'ы.
-- Из пароля через Argon2id выводятся **два независимых ключа**: `auth_key` для входа (сервер хранит только его хэш и никогда не видит пароль) и `KEK` для шифрования DEK. Соль и параметры Argon2 хранятся на сервере открыто.
-- **Ключ восстановления** (24 слова, английский список BIP-39) показывается при регистрации, восстановлении и перевыпуске с кнопкой «Сохранить» (PDF или печать); проверки вводом нет. Дальше нельзя, пока слова не сохранены, и на сервер они уходят только после сохранения. Предупреждение крупно: без слов и пароля доступ к записям на сервере потерян навсегда, восстановить его не может никто, включая разработчиков. На сервере лежат две обёртки DEK: паролем (KEK) и ключом восстановления.
-- **Смена пароля** = новая обёртка DEK, данные не перешифровываются.
-- **Новое устройство** в MVP+ — только по паролю; передача ключа с привязанного устройства (QR) — P2.
-- **Отзыв устройства** отзывает доступ к серверу, но не может «забрать» DEK, уже скопированный на устройство; ротация DEK — P2.
-
-**Конверт операции:** `{format_version, key_id, header, nonce, ciphertext}`, шифр XChaCha20-Poly1305; `header` — открытый JSON с типом, id, `op_id` и группами с HLC (байты — ADR-0001 §5, приложение §A.1). В associated data (AEAD) входят: аккаунт, тип сущности, id, `op_id`, группы и HLC, флаг `purged`, `schema_version`. Поэтому сервер не может незаметно поменять HLC, флаг удаления или переставить конверт к другой записи.
-
-**Что видит сервер** (честно, как у Day One): аккаунт, тип записи, id (случайные UUID), время изменений (через HLC), размер конвертов и blob'ов, факт удаления. **Не видит:** текст, названия чатов, `journal_date`, теги, вложения. Размеры выравниваются до 1 КБ. Скрыть сам ритм активности — отдельный сложный протокол, не планируется.
-
-**Удаление аккаунта:** с сервера удаляются ключи, конверты и blob'ы. Старые бэкапы сервера содержат обёрнутый DEK, поэтому обещание звучит так: «бэкапы хранятся N дней и затем ротируются; до ротации данные в них защищены вашим паролем». Настоящее криптографическое уничтожение бэкапов (серверный ключ аккаунта вне дампа) — P2.
-
-**Модель угроз:**
-- **Десктоп:** администратор сервера не может прочитать данные — при условии, что обновления клиента подписаны и проверяются (§12.3).
-- **Веб-клиент — гарантия слабее:** код страницы отдаёт сервер, и злонамеренный администратор может подменить JavaScript. Это прямо пишется в интерфейсе веб-клиента. Смягчение (отдельный origin, воспроизводимая сборка, SRI) — P2.
-- **AI** не входит в защиту: включив его, пользователь отправляет текст в OpenRouter.
-
-**Цена решения:** потеря пароля и ключа восстановления = потеря данных на сервере (локальные копии остаются); поиск и эмбеддинги — только на клиенте.
-
-Только известные примитивы (libsodium / RustCrypto), без самописной криптографии; перед публичным релизом — внешний аудит.
-
-### 10.4. Версии и совместимость
-
-- В каждом конверте — `schema_version` (по группам, ADR-0001 §4). Клиент **сохраняет неизвестные поля и группы** (сырые байты групп, `groups_raw`) и возвращает их при переотправке, поэтому старый клиент не стирает данные нового.
-- Запись с `schema_version` новее, чем клиент умеет понимать, показывается только для чтения с предложением обновиться.
-- Сервер объявляет минимальную версию протокола; слишком старый клиент получает понятную ошибку.
-- Перед миграцией локальной базы клиент делает её копию; откат приложения после миграции не поддерживается — об этом предупреждение.
-- Формат конверта и протокол — публичный контракт для self-hosted пользователей: меняется только через ADR и версию.
+Needed: ground, 7 stages × 4 seasons × 3 tree variants, 5–10 decor items, highlighting; later — "undergrowth" (P1) and paid art packs in the same projection. For spike S3 — simple shapes or CC0 placeholders.
 
 ---
 
-## 11. Дизайн
+## 8. Pet
 
-### 11.1. Процесс и инструменты
+Cut in v0.6: it is not connected to notes and pulls attention to itself rather than to the entries. The reward is the past itself — the forest, "On this day", reply threads across the years.
 
-Дизайн-систему разрабатываем сами, в репозитории — Claude Design не используем. Так у неё есть история в git, она сразу в коде и переносится на другие платформы через токены.
+---
+
+## 9. Search and AI
+
+### 9.1. Full-text search (P0, offline)
+
+- SQLite FTS5 over `body_search`, file names, link titles, chat titles.
+- **Russian language:** when a message is written, Rust normalizes the text and stems it (Snowball for Russian and English) into `body_search`; the query is stemmed the same way. Prefix search for unfinished words. Alternatives (trigrams, a custom tokenizer) are in spike S5.
+- **Decided in slice 4 (spike S5, ADR-0008):** there is no `message.body_search` column and no `message_fts(body_search, extra_search)` table. The index is a separate local FTS5 table without storing the text (`search_fts`) with a `rowid → message_id` table (`search_map`); it contains only the word stems of the entry, chat titles are matched in Rust. File names and link titles will get into the index in slice 7 with the same layout. ADR-0001 appendix, §C.3.
+- Filters: type, chat, date range, favorites, tasks. A result opens in the feed with highlighting.
+
+### 9.2. Semantic search via OpenRouter (P1, online)
+
+- **Turned on explicitly**, the OpenRouter key is stored in the system secret store (Keychain / Credential Manager / Secret Service), not in the DB and not in git.
+- **Embeddings are computed by the client**, not the server: the server does not see the text (§10.3). Vectors are stored locally and in P1 are **not synced** (each device indexes by itself — it costs cents, but there are no freshness problems).
+- A vector is stored with the hash of the source text, the model and the dimensionality; an API result is accepted only if the text did not change during the request. Before every send it is checked again that AI is on and the chat is not excluded.
+- Before the first indexing the following are shown: the volume (messages, tokens), a cost estimate, which chats are excluded (`ai_excluded`), where the data goes.
+- API: `POST https://openrouter.ai/api/v1/embeddings`. Indexing 100k short notes costs cents; the model is chosen by quality on Russian in spike S6. Candidates (prices as of October 2026, $ per 1M tokens): `bge-m3` 0.01, `multilingual-e5-large` 0.01, `qwen3-embedding-8b` 0.01, `text-embedding-3-small` 0.02, `text-embedding-3-large` 0.13.
+- Search is local, brute force: 100k vectors × 512 dimensions ≈ 0.2 GB in float32 or ≈ 50 MB in int8. Hybrid: FTS (BM25) + cosine similarity, merged via Reciprocal Rank Fusion. A model change → recomputation in the background.
+- The user's query also goes to the API, so semantic search is an online feature; offline, FTS works.
+- Images (P2): OpenRouter multimodal embeddings (`google/gemini-embedding-2`, `voyage-multimodal-3.5`, etc.) or a caption by a vision model.
+- Privacy: Zero Data Retention (`provider.zdr: true`). But **end-to-end encryption does not extend to AI**: by turning AI on, the user sends text to OpenRouter and to the model provider — say exactly that in the UI.
+
+### 9.3. MCP server for AI agents (P0, slice 4a)
+
+Kinige is ready for agents: an external AI agent (Claude Desktop, Claude Code, Cursor and any MCP client) works with the journal via the Model Context Protocol — "what did I write about Raft in March?", "write the meeting summary into Kinige". An AI assistant inside the app is then not needed until P2.
+
+- **Locally:** a separate binary `kinige-mcp`, stdio transport — the MCP client itself launches it on the same computer; there is no network port, the sync server is not involved.
+- **Tools:** read — search (FTS, §9.1; semantic — once P1 exists), entries for a day and a range, "on this day", the list of chats, an entry by id; write — a new entry in Inbox or a chat, append to its own last entry (`origin = 'agent'`; the agent does not append to the user's entries — the "added by an agent" mark applies to the whole entry), mark a task.
+- **Through the same rules:** reads and writes go through `kinige-domain` and the same operations as the UI (one transaction, revisions, undo, Markdown copy). The agent's entries are marked "added by an agent" in the feed (the field `origin = 'agent'`, §4.2). How the binary and the running app share the database and which MCP library to take is decided in ADR-0009: the MCP server (`rmcp`) runs inside the app, `kinige-mcp` is a thin stdio ↔ Unix socket bridge, it does not open the database; an agent's appending writes an `edit` revision (an exception from ⌘Enter, ADR-0001 appendix §C.4); if the app is not running, the bridge itself launches it in the background (an icon in the menu bar, no window).
+- **Privacy and permissions:**
+  - off by default, turned on in settings with a warning: **text read by the agent goes to the provider of its model**, end-to-end encryption does not extend to it (like AI, §9.2). Access can also be turned on with the `agent_access.*` keys of the `settings.json` file (ADR-0010): then there is no warning, so every such change is written to the access log ("settings.json · access changed") and is marked in the window; a file writable by group or everyone, or a symlink, does not apply these keys;
+  - access per chat (a list of allowed ones; `ai_excluded` chats are never visible to the agent);
+  - the "read only" and "read and write" modes are turned on separately;
+  - the agent's access log: when, which tool, which entries — visible in settings (the "Access log" sub-screen);
+  - in MVP the agent cannot delete, move or edit other people's entries.
+
+---
+
+## 10. Sync (MVP+)
+
+### 10.1. Server
+
+- `server/` — Rust (axum) + **Postgres** + storage for encrypted blobs (disk or S3-compatible). According to Fable, MinIO has been in maintenance mode since late 2025 — check alternatives (Garage, SeaweedFS) in S4c.
+- **Self-hosted with one command:** a Docker image and `docker-compose.yml` (server + Postgres), migrations at startup.
+- Multi-user: accounts, device binding, storage quotas.
+- **The server does not see and does not merge the content.** It stores a log of encrypted envelopes and hands them out; all conflict semantics are on the clients.
+- **Backup and restore:** a consistent snapshot of Postgres + blobs (a blob is deleted only after no record in the backups within the retention period refers to it). After a restore the server has a new "generation" — clients see it and do a full resync instead of continuing from the old cursor. A mandatory check is restoring into a clean installation.
+- The first installation is our own homelab: the homelab deployer's 1 GiB volume is too small for media → blobs on NFS or the S3-compatible storage of the k3s cluster (Q9).
+
+### 10.2. Sync protocol
+
+**Entities and field groups.** Every synced record (chat, message, revision, attachment) is a set of field groups, each group has its own HLC. A message has: `core` (written at creation; `origin` and `ext` are immutable), `body`, `flags` (task, favorite, pin), `placement` (chat, date), `deleted`. Concurrent edits of different groups on two devices are not lost.
+
+**HLC.** A fixed-width format, sortable as a string: `{wall_ms:013}-{counter:05}-{device_id}`; on a tie `device_id` decides. The clock state is saved in `sync_state`. If an incoming stamp is ahead of the local clock by more than 10 minutes — a warning to the user, work is not blocked. The implementation is an ADR with all the rules and convergence property tests (this is not "50 lines").
+
+**Operations.** Every change is written to `change_outbox` as an immutable envelope with a unique `op_id`, encrypted at the moment it is queued, in the same transaction as the change. A retry sends the same envelope.
+
+**Push.** The server accepts envelopes idempotently by `op_id`; the same `op_id` with different content is an error. The server assigns the `seq` number under an account lock: numbers are issued and committed in order (an ordinary Postgres sequence does not guarantee this — the cursor could skip an uncommitted record).
+
+**Pull.** The client receives the envelopes after its cursor, verifies authenticity (AEAD) **before** applying, applies the page and saves the cursor in one transaction. It recognizes its own operations by `op_id` and skips them.
+
+**Merging (on the client, in `kinige-domain`):**
+- creation is conflict-free;
+- for each field group the larger HLC wins;
+- if a concurrent change of `body` or `placement` (a move to another chat or to another date) lost, the losing group is saved as `message_revision(reason='conflict')`, the message gets a "there is another version" mark with a choice of which one to keep; concurrent edits of `flags` are resolved without a trace (concurrency rules — ADR-0001 §3.4);
+- **deletion is an ordinary `deleted` group:** a restore from the trash with a newer HLC wins over an older deletion;
+- **Inbox:** a fixed id, the same in all accounts; when a local database is first bound to an account, the local Inbox merges with the server's one without a conflict, references are preserved.
+
+**Dependency order.** A message may arrive before its chat, an attachment before its message: a page is applied in one transaction, without FKs on synced tables; a record without a parent waits for it and is not shown until pull has reached the head of the log. After that a message without a chat (the chat is deleted or unavailable) is shown in Inbox with a mark — derived, without changing the message itself. The exception is old messages of a chat being finally deleted: purge goes "first the chat, then its messages", and between the two they are hidden (ADR-0001 §3.6).
+
+**Tombstones and old devices.** 30 days after deletion a record is physically deleted, and a `purged` operation is written to the log. It carries an HLC snapshot of all groups of the record as the deleting device saw them; the server rejects it if it knows a newer group (the record was restored or edited), and a client with a newer group of its own moves the record to quarantine instead of deleting it silently. Children (attachments, revisions, messages of a chat being deleted) are deleted only after the parent is confirmed (ADR-0001 §3.5, §3.6). The server keeps `purged` for at least 180 days. A device with a cursor older than that period gets "cursor is outdated" and does a full resync. A local record that does not exist on the server: if the server has never seen it — it is sent; if it has seen it (meaning it was deleted and the tombstone expired) — it goes to the "Found old entries" quarantine for a manual decision, without resurrecting what was deleted (the table is in ADR-0001 §6.3).
+
+**Log compaction.** The server may delete envelopes superseded by newer ones in all field groups (this is visible from the open metadata: entity id, group, HLC), but not earlier than the tombstone retention period.
+
+**Attachments.** A blob is encrypted as a stream (libsodium `secretstream`, 1 MB chunks), immutable after publication, the upload is resumable, integrity is verified. The id on the server is a UUID v7 created by the client together with the attachment (it lies in the attachment's encrypted data); a blob corrupted on the server is uploaded again under a new id. A blob is deleted together with its attachment after the trash; revisions do not refer to attachments.
+
+**Off-the-shelf engines** (ElectricSQL, PowerSync, Turso Sync) require the server to see the data — they do not fit with encryption. A CRDT for text is not needed: messages are short and rarely edited.
+
+**Criteria (S4a):** two and three clients in a simulation with random delays, duplicates and disconnects converge to the same state; a text conflict keeps both versions; a restore from the trash reaches another device; a device that comes back after 200 days does not resurrect what was deleted; a repeated push is idempotent.
+
+### 10.3. End-to-end encryption
+
+**Keys:**
+- **DEK** (data encryption key) — random, generated at registration; all envelopes and blobs are encrypted with it.
+- **Two independent keys** are derived from the password via Argon2id: `auth_key` for login (the server stores only its hash and never sees the password) and `KEK` for encrypting the DEK. The salt and the Argon2 parameters are stored on the server in the open.
+- **The recovery key** (24 words, the English BIP-39 list) is shown at registration, recovery and reissue with a "Save" button (PDF or print); there is no verification by typing. You cannot proceed until the words are saved, and they go to the server only after saving. The warning is large: without the words and the password, access to the entries on the server is lost forever, nobody can restore it, including the developers. The server holds two DEK wrappings: by the password (KEK) and by the recovery key.
+- **Changing the password** = a new DEK wrapping, the data is not re-encrypted.
+- **A new device** in MVP+ — only by password; key transfer from a bound device (QR) is P2.
+- **Revoking a device** revokes access to the server but cannot "take back" a DEK already copied to the device; DEK rotation is P2.
+
+**Operation envelope:** `{format_version, key_id, header, nonce, ciphertext}`, the cipher is XChaCha20-Poly1305; `header` is an open JSON with the type, id, `op_id` and groups with HLC (bytes — ADR-0001 §5, appendix §A.1). The associated data (AEAD) includes: the account, entity type, id, `op_id`, groups and HLC, the `purged` flag, `schema_version`. Therefore the server cannot silently change the HLC, the deletion flag or move an envelope to another record.
+
+**What the server sees** (honestly, as with Day One): the account, the record type, ids (random UUIDs), the time of changes (via HLC), the size of envelopes and blobs, the fact of deletion. **It does not see:** text, chat titles, `journal_date`, tags, attachments. Sizes are padded to 1 KB. Hiding the activity rhythm itself is a separate complex protocol, not planned.
+
+**Account deletion:** keys, envelopes and blobs are deleted from the server. Old server backups contain the wrapped DEK, so the promise reads: "backups are kept for N days and then rotated; until rotation the data in them is protected by your password". Real cryptographic erasure of backups (a server-side account key outside the dump) is P2.
+
+**Threat model:**
+- **Desktop:** the server administrator cannot read the data — provided that client updates are signed and verified (§12.3).
+- **Web client — a weaker guarantee:** the server serves the page code, and a malicious administrator can swap the JavaScript. This is stated directly in the web client's UI. Mitigation (a separate origin, a reproducible build, SRI) is P2.
+- **AI** is not covered by the protection: by turning it on, the user sends text to OpenRouter.
+
+**The cost of the decision:** losing the password and the recovery key = losing the data on the server (local copies remain); search and embeddings are only on the client.
+
+Only well-known primitives (libsodium / RustCrypto), no home-made cryptography; before a public release — an external audit.
+
+### 10.4. Versions and compatibility
+
+- Every envelope has `schema_version` (per group, ADR-0001 §4). The client **keeps unknown fields and groups** (raw bytes of the groups, `groups_raw`) and returns them on re-sending, so an old client does not erase a new client's data.
+- A record with a `schema_version` newer than the client can understand is shown read-only with an offer to update.
+- The server announces the minimum protocol version; a client that is too old gets a clear error.
+- Before migrating the local database the client makes a copy of it; rolling back the app after a migration is not supported — there is a warning about this.
+- The envelope format and the protocol are a public contract for self-hosted users: they change only through an ADR and a version.
+
+---
+
+## 11. Design
+
+### 11.1. Process and tools
+
+We develop the design system ourselves, in the repository — we do not use Claude Design. This way it has a history in git, it is in the code right away and it carries over to other platforms through tokens.
 
 ```text
-Codex ($imagegen)        →  настроение, концепты экранов, концепт-арт леса (только референсы)
-        ↓  выбор пользователя
-design/tokens/*.json      →  токены (формат DTCG): цвета, типографика, отступы, радиусы, тени, анимации
+Codex ($imagegen)        →  mood, screen concepts, forest concept art (references only)
+        ↓  the user's choice
+design/tokens/*.json      →  tokens (DTCG format): colors, typography, spacing, radii, shadows, animations
         ↓  Style Dictionary
-web/src/ui/tokens.css     →  CSS-переменные (позже — Swift / Kotlin для нативного мобильного)
+web/src/ui/tokens.css     →  CSS variables (later — Swift / Kotlin for a native mobile app)
         ↓
-web/src/ui/*              →  React-компоненты
+web/src/ui/*              →  React components
         ↓
-Storybook (или Ladle)     →  живая документация дизайн-системы: все компоненты, состояния, экраны,
-                             три варианта ленты; визуальные тесты снимают именно её
+Storybook (or Ladle)      →  living documentation of the design system: all components, states, screens,
+                             three feed variants; visual tests capture exactly this
 ```
 
-Правила:
+Rules:
 
-- **Картинки из Codex — не спецификация.** Это урок старого Kinige: макет жил своей жизнью, реализация — своей.
-- **Визуал меняется только через токены и компоненты** в репозитории; новый цвет или отступ сначала появляется в токенах.
-- Токены именуются по ролям (`color.text.primary`, `space.4`, `radius.card`), а не по значениям — так тема и платформа меняются заменой значений.
-- **Темы без дублирования тестов:** компоненты знают только семантические токены. Визуальные тесты компонентов идут на одной теме; для каждой темы отдельно проверяется лишь набор токенов (контраст пар «текст / фон», все токены заданы) и делается несколько скриншотов ключевых экранов.
-- Пока основа дизайн-системы (D1) не собрана в Storybook, слайсы с UI не начинаются; дальше компоненты добавляются в своих слайсах.
+- **Images from Codex are not a specification.** This is a lesson from the old Kinige: the mockup lived its own life, the implementation its own.
+- **Visuals change only through tokens and components** in the repository; a new color or spacing first appears in the tokens.
+- Tokens are named by role (`color.text.primary`, `space.4`, `radius.card`), not by value — so a theme and a platform change by replacing values.
+- **Themes without duplicating tests:** components know only semantic tokens. Component visual tests run on one theme; for each theme only the token set is checked separately (contrast of "text / background" pairs, all tokens are defined) and a few screenshots of key screens are taken.
+- Until the design system foundation (D1) is assembled in Storybook, slices with UI do not start; after that, components are added in their own slices.
 
-### 11.2. Направление
+### 11.2. Direction
 
-**Спокойный журнал с плотностью мессенджера:**
+**A calm journal with the density of a messenger:**
 
-- MVP — **тёмная тема: нейтральный графит** (серый без цветового оттенка, как тёмные темы ChatGPT и Claude), почти белый текст, один голубой акцент (nord8 `#88c0d0`). «Тёплая тёмная бумага» с коричневым подтоном отменена в v0.7 (коричневый пользователю не нравится); сине-графитовый Nord попробован в живом окне и заменён графитом (ADR-0004). Светлая тема — второй набор токенов в P1;
-- гротеск без засечек с хорошей кириллицей и для текста записей, и для интерфейса (Inter), моноширинный для кода (JetBrains Mono). Антиква (Literata) отменена: на 13–15 px засечки добавляют шума;
-- **высокий контраст:** тёмные фон и плашки, почти белый текст (основной текст на плашке ≥ 12:1, а не «около AA»);
-- плотность как в Telegram (§6): компактный текст, маленькие метки дней, минимум пустого места;
-- приглушённый акцент;
-- плашки сообщений без хвостов и теней, тонкие разделители;
-- минимум хрома вокруг текста, без дублирования (§6).
-- **Эмодзи:** у каждого чата свой эмодзи — это данные пользователя, а не декор. Эмодзи как украшение интерфейса (в кнопках, заголовках, пустых состояниях) не используем; значки интерфейса — линейные иконки.
+- MVP — **a dark theme: neutral graphite** (gray without a color tint, like the dark themes of ChatGPT and Claude), almost white text, a single light blue accent (nord8 `#88c0d0`). The "warm dark paper" with a brown undertone was canceled in v0.7 (the user does not like brown); the blue-graphite Nord was tried in the live window and replaced with graphite (ADR-0004). The light theme is a second token set in P1;
+- a sans-serif grotesque with good Cyrillic both for entry text and for the UI (Inter), a monospace for code (JetBrains Mono). The serif (Literata) is canceled: at 13–15 px serifs add noise;
+- **high contrast:** dark background and bubbles, almost white text (body text on a bubble ≥ 12:1, not "around AA");
+- density as in Telegram (§6): compact text, small day labels, a minimum of empty space;
+- a muted accent;
+- message bubbles without tails and shadows, thin dividers;
+- a minimum of chrome around the text, no duplication (§6).
+- **Emoji:** every chat has its own emoji — this is user data, not decoration. We do not use emoji as UI decoration (in buttons, headings, empty states); UI icons are line icons.
 
-Референсы — Telegram (плотность, поле ввода, сайдбар), Bear, Apple Journal, Day One, Things. Тёмно-фиолетовый стиль присланных макетов **не используется**. Из макетов берём структуру экранов, но не стиль.
+References: Telegram (density, input field, sidebar), Bear, Apple Journal, Day One, Things. The dark purple style of the mockups that were sent **is not used**. From the mockups we take the screen structure, but not the style.
 
-### 11.3. Состав дизайн-системы
+### 11.3. Contents of the design system
 
-- **Основа:**
-  - цвета (роли: фон, бумага, текст ×3, акцент, разделитель, выделение, сезоны леса; значения для тёмной темы, светлая — позже);
-  - типографическая шкала (заголовок дня, H1–H3, текст, мелкий, код, метаданные — с размерами и межстрочными);
-  - отступы, радиусы, тени, длительности и кривые анимаций.
-- **Шрифты:** встраиваются в приложение (woff2, лицензия OFL), с кириллицей и **всеми нужными начертаниями** (regular, italic, semibold/bold — в старом Kinige не было bold). Системные шрифты на трёх ОС разные, поэтому полагаться на них нельзя.
-- **Компоненты:**
-  - сообщение во всех вариантах контента (текст, заголовки, списки, задачи, код, цитата, изображение, файл, ссылка);
-  - разделитель дня, метка времени;
-  - composer (пустой, многострочный, с вложениями, развёрнутый) с кнопками «файл», «эмодзи», «микрофон»; эмодзи-пикер; запись голосовой;
-  - элемент списка чатов (эмодзи + имя + счётчик записей), свёрнутый сайдбар (полоса эмодзи), строка профиля с меню, поиск и результаты;
-  - окно настроек (слайс 4b): дерево разделов слева (выбранный пункт подсвечен, метка ошибки), справа единственная прокручиваемая область, подэкраны с заголовком «назад», строка «Настроить ›»; предупреждения — поверх окна, содержимое не сдвигают;
-  - контекстное меню, тост «Отменить» (только для обратимых действий вроде «Запись удалена»; накладывается поверх и никогда не сдвигает контент ленты; подтверждений рутинных действий — отправки, сохранения — нет);
-  - карточка «В этот день» (слайс 5: заливка бумаги без рамки и тени, строка года, компактная запись с «Ответить»), строка «Ответ на запись» над полем и цитата в плашке (заливка, без рамки);
-  - карточка дня леса, окно быстрого захвата, кнопки и поля.
-- **Ключевые экраны:** главное окно (сайдбар + лента + composer), поиск, лес, окно быстрого захвата.
-- **Варианты ленты** — статичные концепты Codex на одних и тех же данных; пользователь выбирает один, в Storybook реализуется только он. Первый круг: Editorial / Conversational / Immersive; после отзыва (v0.7) остались компактный Editorial и компактный Conversational (ADR-0004).
-
----
-
-## 12. Процесс, качество и правила для агента
-
-### 12.1. Обязательные правила
-
-1. **git с первого коммита.** Один слайс = одна ветка = один PR. Никаких правок исходников скриптами `str.replace`.
-2. **CI до первой фичи** (GitHub Actions, `.github/workflows/ci.yml`: Linux-раннеры, плюс `macos-15` для кода под `cfg(target_os = "macos")`; `.app` собирается и подписывается локально скриптом `scripts/build-app.sh`, подписанная сборка в CI — слайс 10): `cargo test`, `clippy -D warnings`, `rustfmt`, `tsc`, ESLint, тесты фронтенда, визуальные тесты Storybook, поиск секретов (gitleaks), лицензии и уязвимости зависимостей (cargo-deny).
-3. **«Готово» только с доказательствами:**
-   - вывод тестов;
-   - скриншоты **настоящего окна** приложения, обычный и крупный текст: их снимает macOS-раннер GitHub (`gh workflow run screens.yml --ref <ветка> -f slice=<id>`, сценарий `scripts/screens/<слайс>.sh`, синтетические данные, ввод только через доступность) и коммитит в ветку; на Mac пользователя приложение для этого не запускается;
-   - всё это — в `docs/screens/<slice>/`.
-4. **Визуальная приёмка — человеком.** Слайс закрыт, когда пользователь посмотрел скриншоты или сборку и согласился. Следующий слайс не начинается до приёмки.
-5. **Решение = ADR** (`docs/adr/NNNN-*.md`, полстраницы). Новая зависимость (crate или npm) — только через ADR или явное упоминание в PR.
-6. **Документов мало, и они живые:** `README.md`, `CLAUDE.md`, ТЗ (`docs/plan/`), `docs/adr/`, `docs/slices/`. Отдельные `architecture.md`, `roadmap.md` и `forest-spec.md` не заводились: их содержание — в §3, §7 и §15 ТЗ. Устаревшее удаляется в том же PR.
-7. **Код по фичам**, без абстракций под будущие фичи. Файл больше 400 строк — сигнал разделить (кроме миграций и сгенерированных типов).
-8. **Не выдумывать факты** о библиотеках и бенчмарках — проверять или помечать «не проверено».
-9. **Визуал — только из дизайн-системы:** новые цвета, размеры и тени появляются сначала в токенах.
-
-### 12.1a. Как работать одному с агентами
-
-- **Спецификация слайса — одна страница до начала:** сценарий словами, что НЕ входит, как выглядит «готово» (скриншот-референс или описание окна). Без неё агент не начинает, а ты не принимаешь.
-- **Два агента, две роли:** один пишет, второй — в чистом контексте, без истории первого — проверяет PR по спецификации и DoD, **сам собирает приложение и проверяет сценарий** на тестовых данных, но не запускает его окно на Mac пользователя: снимки настоящего окна берутся с macOS-раннера (`screens.yml`). «Проверь себя» одному агенту бесполезно.
-- **Ты смотришь скриншоты и живое окно**, код — выборочно. PR без скриншота настоящего окна на приёмку не идёт.
-- **Бюджет слайса — в днях.** Слайс, вышедший за двойной срок, останавливается и режется, а не дотягивается.
-- **Spike открывается, только когда его результат нужен следующему слайсу.**
-- **ADR пишется после решения, за 10 минут**; если их больше одного в неделю — ты проектируешь, а не делаешь.
-- С начала ежедневного использования журнал проекта («что сломалось / что хочу») ведётся в самом Kinige — это и бэклог, и проверка захвата.
-
-### 12.2. Definition of Done для слайса
-
-- [ ] Сценарий слайса работает в собранном приложении на macOS (с MVP+ — и на Windows и Linux).
-- [ ] Данные переживают убийство процесса и перезапуск.
-- [ ] Тесты: Rust unit + интеграционные на SQLite, тесты фронтенда на `MockApi`, визуальные снимки новых компонентов в Storybook (обычный и крупный текст, одна тема).
-- [ ] Скриншоты настоящего окна в `docs/screens/<slice>/`, сравнение с историями Storybook.
-- [ ] Клавиатурная навигация и подписи для экранного диктора на новых элементах, Reduce Motion учтён.
-- [ ] Обновлены README / roadmap / ADR, если менялись решения.
-- [ ] Пользователь принял.
-
-### 12.3. Эксплуатация и безопасность
-
-- **Подпись и обновления:** CI подписывает сборки с первого слайса (сначала ad-hoc). ADR «где живут ключи подписи, нотаризации и updater» — в слайсе 0. Updater (`tauri-plugin-updater`, подпись обязательна) с сервером обновлений на homelab — в слайсе 10. В рисках и затратах — Apple Developer ID и сертификат для Windows.
-- **IPC:** собственные команды Tauri по умолчанию доступны всем окнам. Нужна матрица «окно → команды → допустимые аргументы» (`AppManifest::commands` + capabilities) и отрицательные тесты: окно быстрого захвата может только создать запись, дописать к последней и прочитать последние 3 записи за сегодня — но не поиск и не произвольные заметки. Добавлено в слайсе 2 (ADR-0006): окну захвата — свой черновик, «скрыть своё окно» и «подогнать высоту своего окна под содержимое» (`capture_save_draft`, `capture_hide`, `capture_resize`: принимает только число, Rust ограничивает диапазон и закрепляет нижний край; размер и положение окна иначе менять нельзя); главному — черновик своего чата, смена сочетаний и подписка на событие «записи изменились» (`core:event:allow-listen`); ни одно окно не получает права плагинов буфера, диалогов, ссылок и сочетаний — всё идёт через команды приложения. Добавлено в слайсе 3: главному окну — команды чатов, действий с записью, корзины, недавних эмодзи, копий базы и восстановления (`restore_backup` и `restart_for_recovery` работают, только пока журнал не открыт или стоит отметка повреждения), событие «открыть чат» из меню значка (`open-chat`) и событие «база повреждена»; окно захвата получает ровно свои семь команд — шесть слайса 2 и `capture_add_recent_emoji` (выбор в пикере эмодзи окна захвата попадает в общий список «недавних»; команда не принимает ни чата, ни записи), остальные ему отказаны (отрицательные тесты `src-tauri/tests/ipc.rs`). Перенос записи в другой чат (`move_message`, решение приёмки слайса 3) — только главному окну; верхний предел высоты окна захвата поднят до 640 px ради пикера эмодзи. Добавлено в слайсе 4b (ADR-0010): окно `settings` со своей capability — `get_language`, `get_settings`, `set_text_size`, `choose_mirror_folder`, сочетания (`set_shortcut`, `reset_shortcut`, `shortcut_recording`), шесть команд доступа 4a, `get_settings_file`, `settings_open_entry` и подписка на события; ленты, поиска, записи, импорта и восстановления у него нет (через `list_agent_log_entries` оно видит тексты записей, затронутых агентом, — осознанно, как раздел «Журнал обращений»). У главного окна перенесённые команды отозваны (остаются `get_settings` и событие `settings-changed`); окну захвата по-прежнему ровно семь команд. Добавлено в слайсе 5: главному окну — `get_on_this_day` и `dismiss_on_this_day(date)`; `send_message`, `get_draft` и `save_draft` несут `reply_to_id` (Rust принимает только UUID v4 живой записи того же чата, иначе `reply_target_not_found`, ничего не записано); окно захвата ответов не пишет (`capture_send` не принимает `reply_to_id`), окну `settings` новые команды отказаны (отрицательные тесты `src-tauri/tests/ipc_slice5.rs`).
-- **MCP (§9.3):** только stdio, без сетевого порта; инструменты агента — отдельная матрица «инструмент → чаты → чтение/запись» с отрицательными тестами (запрещённый чат не виден ни в поиске, ни по id); каждое обращение пишется в журнал.
-- **Ссылки и сеть:** открываются только `http`, `https`, `mailto` и только в системном браузере; внешние картинки в ленте не грузятся; загрузчик превью (P1) не ходит на локальные адреса (защита от SSRF).
-- **Локальные бэкапы:** Markdown-копия + ежедневная копия файла базы (слайс 3), `PRAGMA integrity_check` при старте; Markdown-копия и экспорт — открытый текст, в интерфейсе так и написано.
-- **Linux:** глобальный хоткей на Wayland может не работать — запасной вариант «трей + хоткей внутри окна»; если нет Secret Service — ключ OpenRouter в файле с правами 0600 и предупреждением.
-- **Надёжность записи:** проверяется отдельно убийство процесса и потеря питания (на тестовой машине — выдёргивание виртуальной машины).
+- **Foundation:**
+  - colors (roles: background, paper, text ×3, accent, divider, selection, forest seasons; values for the dark theme, the light one later);
+  - the type scale (day heading, H1–H3, text, small, code, metadata — with sizes and line heights);
+  - spacing, radii, shadows, animation durations and curves.
+- **Fonts:** embedded in the app (woff2, OFL license), with Cyrillic and **all the needed styles** (regular, italic, semibold/bold — the old Kinige had no bold). System fonts differ across the three OSes, so we cannot rely on them.
+- **Components:**
+  - a message in all content variants (text, headings, lists, tasks, code, quote, image, file, link);
+  - the day divider, the time label;
+  - the composer (empty, multi-line, with attachments, expanded) with the "file", "emoji", "microphone" buttons; the emoji picker; voice note recording;
+  - a chat list item (emoji + name + entry counter), the collapsed sidebar (a strip of emoji), the profile row with a menu, search and results;
+  - the settings window (slice 4b): a tree of sections on the left (the selected item is highlighted, an error mark), a single scrollable area on the right, sub-screens with a "back" heading, a "Configure ›" row; warnings are on top of the window and do not shift the content;
+  - the context menu, the "Undo" toast (only for reversible actions like "Entry deleted"; it overlays and never shifts the feed content; there are no confirmations of routine actions — sending, saving);
+  - the "On this day" card (slice 5: a paper fill without a border and shadow, a year row, a compact entry with "Reply"), the "Reply to entry" row above the field and the quote in the bubble (a fill, no border);
+  - the forest day card, the quick capture window, buttons and fields.
+- **Key screens:** the main window (sidebar + feed + composer), search, the forest, the quick capture window.
+- **Feed variants** are static Codex concepts on the same data; the user chooses one, only that one is implemented in Storybook. First round: Editorial / Conversational / Immersive; after the feedback (v0.7) the compact Editorial and the compact Conversational remained (ADR-0004).
 
 ---
 
-## 13. Открытые вопросы
+## 12. Process, quality and rules for the agent
 
-| # | Вопрос | Статус |
-|---|---|---|
-| Q1 | Для кого продукт | **Решено:** сначала для себя, цель — self-hosted продукт с бесплатным ядром и платной версией |
-| Q2 | Платформы | **Решено:** десктоп (macOS → Windows/Linux) на Tauri 2; веб и телефон позже |
-| Q3 | Синхронизация | **Решено:** свой self-hosted сервер со сквозным шифрованием; первая инсталляция — homelab. Альтернатива Fable (журналы устройств в S3/папке без сервера) рассмотрена и отклонена в v0.6 |
-| Q4 | Сетка леса | Spike S3; ожидание — 12 × 31 |
-| Q5 | Визуальное направление | **Решено (v0.7):** тёмная тема, нейтральный графит с голубым акцентом, плотность как в Telegram (§11.2, ADR-0004); «тёплая бумага» и сине-графитовый Nord отменены |
-| Q6 | Арт | **Решено:** Codex — концепты, Blender — спрайты |
-| Q6a | Питомец | **Решено (v0.6):** вырезан |
-| Q7 | Фронтенд | **Решено:** React + TypeScript |
-| Q8 | Где новый репозиторий | **Решено:** `petproject/kinige-claude`, план — в `docs/plan/`; старый `kinige` — архив |
-| Q9 | Где хранить вложения на сервере (NFS, MinIO) и как выставить API наружу (Cloudflare, токены устройств) | Spike S4 |
-| Q10 | Модель эмбеддингов OpenRouter | Spike S6 |
-| Q11 | Шрифты (пары serif + sans с кириллицей) | **Решено (D1):** Inter (текст и интерфейс) + JetBrains Mono (код); Literata отменена (ADR-0004) |
-| Q12 | Пароль и ключ восстановления: как выглядит онбординг, чтобы не потерять данные | Spike S4 |
-| Q13 | Что именно платное и какая лицензия (например, AGPL + коммерческая); проверка товарного знака | Решить до публичного релиза |
-| Q14 | Срок хранения серверных бэкапов (N дней) для формулировки об удалении аккаунта | Spike S4c |
+### 12.1. Mandatory rules
+
+1. **git from the first commit.** One slice = one branch = one PR. No edits of source files with `str.replace` scripts.
+2. **CI before the first feature** (GitHub Actions, `.github/workflows/ci.yml`: Linux runners, plus `macos-15` for code under `cfg(target_os = "macos")`; the `.app` is built and signed locally by the `scripts/build-app.sh` script, a signed build in CI is slice 10): `cargo test`, `clippy -D warnings`, `rustfmt`, `tsc`, ESLint, frontend tests, Storybook visual tests, secret scanning (gitleaks), dependency licenses and vulnerabilities (cargo-deny).
+3. **"Done" only with evidence:**
+   - test output;
+   - screenshots of the app's **real window**, normal and large text: they are taken by a GitHub macOS runner (`gh workflow run screens.yml --ref <branch> -f slice=<id>`, the scenario `scripts/screens/<slice>.sh`, synthetic data, input only through accessibility) and committed to the branch; the app is not launched on the user's Mac for this;
+   - all of it in `docs/screens/<slice>/`.
+4. **Visual acceptance is by a human.** A slice is closed when the user has looked at the screenshots or the build and agreed. The next slice does not start before acceptance.
+5. **A decision = an ADR** (`docs/adr/NNNN-*.md`, half a page). A new dependency (crate or npm) only through an ADR or an explicit mention in the PR.
+6. **There are few documents, and they are living:** `README.md`, `CLAUDE.md`, the PRD (`docs/plan/`), `docs/adr/`, `docs/slices/`. Separate `architecture.md`, `roadmap.md` and `forest-spec.md` were not created: their content is in §3, §7 and §15 of the PRD. Outdated material is deleted in the same PR.
+7. **Code by feature**, no abstractions for future features. A file over 400 lines is a signal to split it (except migrations and generated types).
+8. **Do not make up facts** about libraries and benchmarks — verify them or mark them "not verified".
+9. **Visuals only from the design system:** new colors, sizes and shadows first appear in the tokens.
+
+### 12.1a. How to work alone with agents
+
+- **A one-page slice specification before starting:** the scenario in words, what is NOT included, what "done" looks like (a reference screenshot or a description of the window). Without it the agent does not start, and you do not accept.
+- **Two agents, two roles:** one writes, the second — in a clean context, without the first one's history — checks the PR against the specification and the DoD, **builds the app itself and checks the scenario** on test data, but does not launch its window on the user's Mac: the screenshots of the real window come from the macOS runner (`screens.yml`). "Check yourself" is useless for a single agent.
+- **You look at the screenshots and the live window**, the code selectively. A PR without a screenshot of the real window does not go to acceptance.
+- **The slice budget is in days.** A slice that has run past double its estimate is stopped and cut down, not pushed through.
+- **A spike is opened only when its result is needed by the next slice.**
+- **An ADR is written after the decision, in 10 minutes**; if there is more than one a week, you are designing, not doing.
+- From the start of daily use the project log ("what broke / what I want") is kept in Kinige itself — it is both the backlog and a test of capture.
+
+### 12.2. Definition of Done for a slice
+
+- [ ] The slice scenario works in the built app on macOS (from MVP+ on — also on Windows and Linux).
+- [ ] Data survives killing the process and a restart.
+- [ ] Tests: Rust unit + integration tests on SQLite, frontend tests on `MockApi`, visual snapshots of new components in Storybook (normal and large text, one theme).
+- [ ] Screenshots of the real window in `docs/screens/<slice>/`, compared with the Storybook stories.
+- [ ] Keyboard navigation and screen reader labels on new elements, Reduce Motion taken into account.
+- [ ] README / roadmap / ADR updated if decisions changed.
+- [ ] Accepted by the user.
+
+### 12.3. Operations and security
+
+- **Signing and updates:** CI signs builds from the first slice (ad-hoc at first). The ADR "where the signing, notarization and updater keys live" is in slice 0. The updater (`tauri-plugin-updater`, signing is mandatory) with an update server on the homelab is in slice 10. Risks and costs include an Apple Developer ID and a certificate for Windows.
+- **IPC:** the app's own Tauri commands are available to all windows by default. A matrix "window → commands → allowed arguments" (`AppManifest::commands` + capabilities) and negative tests are needed: the quick capture window can only create an entry, append to the last one and read the last 3 entries of today — but not search and not arbitrary notes. Added in slice 2 (ADR-0006): the capture window gets its own draft, "hide its own window" and "fit its own window's height to the content" (`capture_save_draft`, `capture_hide`, `capture_resize`: it accepts only a number, Rust clamps the range and pins the bottom edge; the window's size and position cannot be changed otherwise); the main window gets the draft of its chat, changing shortcuts and a subscription to the "entries changed" event (`core:event:allow-listen`); no window gets the permissions of the clipboard, dialog, opener and shortcut plugins — everything goes through the app's commands. Added in slice 3: the main window gets the commands for chats, entry actions, the trash, recent emoji, database backups and recovery (`restore_backup` and `restart_for_recovery` work only while the journal is not open or the corruption mark is set), the "open chat" event from the tray icon menu (`open-chat`) and the "database corrupted" event; the capture window gets exactly its seven commands — the six from slice 2 and `capture_add_recent_emoji` (a choice in the capture window's emoji picker goes into the shared "recent" list; the command accepts neither a chat nor an entry), the rest are denied to it (negative tests `src-tauri/tests/ipc.rs`). Moving an entry to another chat (`move_message`, a decision from slice 3 acceptance) is for the main window only; the upper limit of the capture window height is raised to 640 px for the sake of the emoji picker. Added in slice 4b (ADR-0010): the `settings` window with its own capability — `get_language`, `get_settings`, `set_text_size`, `choose_mirror_folder`, shortcuts (`set_shortcut`, `reset_shortcut`, `shortcut_recording`), the six access commands of 4a, `get_settings_file`, `settings_open_entry` and a subscription to events; it has no feed, search, writing, import or recovery (through `list_agent_log_entries` it sees the texts of entries touched by the agent — deliberately, like the "Access log" section). The moved commands are revoked from the main window (`get_settings` and the `settings-changed` event remain); the capture window still has exactly seven commands. Added in slice 5: the main window gets `get_on_this_day` and `dismiss_on_this_day(date)`; `send_message`, `get_draft` and `save_draft` carry `reply_to_id` (Rust accepts only a UUID v4 of a live entry of the same chat, otherwise `reply_target_not_found`, nothing is written); the capture window does not write replies (`capture_send` does not accept `reply_to_id`), the `settings` window is denied the new commands (negative tests `src-tauri/tests/ipc_slice5.rs`).
+- **MCP (§9.3):** stdio only, no network port; the agent's tools have a separate matrix "tool → chats → read/write" with negative tests (a forbidden chat is visible neither in search nor by id); every access is written to the log.
+- **Links and network:** only `http`, `https`, `mailto` are opened and only in the system browser; external images in the feed are not loaded; the preview loader (P1) does not go to local addresses (SSRF protection).
+- **Local backups:** the Markdown copy + a daily copy of the database file (slice 3), `PRAGMA integrity_check` at startup; the Markdown copy and the export are plain text, and the UI says exactly that.
+- **Linux:** the global hotkey on Wayland may not work — the fallback is "tray + a hotkey inside the window"; if there is no Secret Service, the OpenRouter key goes into a file with 0600 permissions and a warning.
+- **Write reliability:** killing the process and power loss are tested separately (on a test machine — pulling the plug on a virtual machine).
+
+---
+
+## 13. Open questions
+
+| #   | Question                                                                                                                   | Status                                                                                                                                                                                                           |
+|-----|----------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Q1  | Who the product is for                                                                                                     | **Decided:** first for myself, the goal is a self-hosted product with a free core and a paid tier                                                                                                                |
+| Q2  | Platforms                                                                                                                  | **Decided:** desktop (macOS → Windows/Linux) on Tauri 2; web and phone later                                                                                                                                     |
+| Q3  | Sync                                                                                                                       | **Decided:** our own self-hosted server with end-to-end encryption; the first installation is the homelab. Fable's alternative (device logs in S3/a folder without a server) was considered and rejected in v0.6 |
+| Q4  | Forest grid                                                                                                                | Spike S3; expectation — 12 × 31                                                                                                                                                                                  |
+| Q5  | Visual direction                                                                                                           | **Decided (v0.7):** a dark theme, neutral graphite with a light blue accent, density as in Telegram (§11.2, ADR-0004); "warm paper" and the blue-graphite Nord are canceled                                      |
+| Q6  | Art                                                                                                                        | **Decided:** Codex — concepts, Blender — sprites                                                                                                                                                                 |
+| Q6a | Pet                                                                                                                        | **Decided (v0.6):** cut                                                                                                                                                                                          |
+| Q7  | Frontend                                                                                                                   | **Decided:** React + TypeScript                                                                                                                                                                                  |
+| Q8  | Where the new repository lives                                                                                             | **Decided:** `petproject/kinige-claude`, the plan is in `docs/plan/`; the old `kinige` is an archive                                                                                                             |
+| Q9  | Where to store attachments on the server (NFS, MinIO) and how to expose the API to the outside (Cloudflare, device tokens) | Spike S4                                                                                                                                                                                                         |
+| Q10 | OpenRouter embedding model                                                                                                 | Spike S6                                                                                                                                                                                                         |
+| Q11 | Fonts (serif + sans pairs with Cyrillic)                                                                                   | **Decided (D1):** Inter (text and UI) + JetBrains Mono (code); Literata is canceled (ADR-0004)                                                                                                                   |
+| Q12 | Password and recovery key: what the onboarding looks like so that data is not lost                                         | Spike S4                                                                                                                                                                                                         |
+| Q13 | What exactly is paid and which license (for example, AGPL + commercial); trademark check                                   | Decide before the public release                                                                                                                                                                                 |
+| Q14 | Retention period of server backups (N days) for the wording about account deletion                                         | Spike S4c                                                                                                                                                                                                        |
 
 ---
 
 ## 14. Spikes
 
-Каждый spike — отдельная папка `spikes/Sx-*`, ограничение по времени, результат — короткий отчёт + ADR. Критерии отказа записываются **до** начала.
+Each spike is a separate folder `spikes/Sx-*`, time-boxed, the result is a short report + an ADR. Failure criteria are written down **before** starting.
 
-| # | Что проверяем | Варианты | Критерии успеха / отказа | Лимит |
-|---|---|---|---|---|
-| S1 | Composer с живым Markdown | CodeMirror 6 (основной) vs Milkdown или другой | Русская раскладка, IME и автозамена macOS, undo/redo, вставка картинки, 5 000 символов без задержки, курсор не прыгает при подсветке, одинаково в WKWebView / WebView2 / WebKitGTK | 3 дня |
-| S2 | Лента на 100k | TanStack Virtual (`anchorTo: 'end'`, ключи по id) vs virtua vs бесплатный `Virtuoso` | Нет рывков при быстром скролле, переход к дате < 300 мс, нет прыжков при загрузке изображений и дозагрузке вверх, память в норме | 3 дня |
-| S3 | Лес | Canvas 2D vs PixiJS v8; сетка 12 × 31 vs 7 × 53 | 60 FPS при pan/zoom на macOS **и Linux (включая машину без GPU-ускорения WebGL)**, верный hit-test всех дней, читаемость года в окне 1280 × 800, анимация роста | 4 дня |
-| S4a | Протокол синхронизации | Симуляция 2–3 клиентов в одном процессе, без сети и сервера; property-тесты | Критерии из §10.2 | 5 дней |
-| S4b | Конверт и ключи | libsodium / RustCrypto; Argon2id; онбординг пароля и ключа восстановления | Подделка HLC/флага/перестановка конверта обнаруживаются; смена пароля без перешифровки; восстановление по 24 словам | 4 дня |
-| S4c | Сервер и self-host | axum + Postgres, `seq` под блокировкой аккаунта, blob'ы, `docker compose`, бэкап и восстановление | В базе сервера нет открытого текста; курсор не пропускает записи при параллельных push; восстановление из бэкапа → клиенты делают полную пересинхронизацию | 5 дней |
-| S5 | Поиск по-русски | Стеммированная колонка + FTS5, триграммы, свой токенизатор | Словоформы находятся, 100k сообщений < 300 мс, размер индекса приемлем | 1 день |
-| S6 | Эмбеддинги OpenRouter | `bge-m3`, `text-embedding-3-small` (512/1536), `qwen3-embedding-8b`; float32 vs int8 | Качество на 50 своих запросах по-русски, стоимость индексации 100k, задержка запроса, память на клиенте | 2 дня |
+| #   | What we check               | Options                                                                                    | Success / failure criteria                                                                                                                                                                            | Limit  |
+|-----|-----------------------------|--------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|
+| S1  | Composer with live Markdown | CodeMirror 6 (main) vs Milkdown or another                                                 | Russian keyboard layout, IME and macOS autocorrect, undo/redo, pasting an image, 5 000 characters without lag, the cursor does not jump on highlighting, the same in WKWebView / WebView2 / WebKitGTK | 3 days |
+| S2  | Feed with 100k              | TanStack Virtual (`anchorTo: 'end'`, keys by id) vs virtua vs the free `Virtuoso`          | No jank on fast scrolling, jump to a date < 300 ms, no jumps when images load and when loading more upward, memory is normal                                                                          | 3 days |
+| S3  | Forest                      | Canvas 2D vs PixiJS v8; grid 12 × 31 vs 7 × 53                                             | 60 FPS on pan/zoom on macOS **and Linux (including a machine without GPU-accelerated WebGL)**, correct hit-test of all days, readability of the year in a 1280 × 800 window, growth animation         | 4 days |
+| S4a | Sync protocol               | A simulation of 2–3 clients in one process, without a network and a server; property tests | Criteria from §10.2                                                                                                                                                                                   | 5 days |
+| S4b | Envelope and keys           | libsodium / RustCrypto; Argon2id; onboarding of the password and the recovery key          | Forging the HLC/flag/moving an envelope is detected; password change without re-encryption; recovery from 24 words                                                                                    | 4 days |
+| S4c | Server and self-host        | axum + Postgres, `seq` under an account lock, blobs, `docker compose`, backup and restore  | No plain text in the server database; the cursor does not skip records with parallel pushes; restore from a backup → clients do a full resync                                                         | 5 days |
+| S5  | Search in Russian           | A stemmed column + FTS5, trigrams, a custom tokenizer                                      | Word forms are found, 100k messages < 300 ms, index size is acceptable                                                                                                                                | 1 day  |
+| S6  | OpenRouter embeddings       | `bge-m3`, `text-embedding-3-small` (512/1536), `qwen3-embedding-8b`; float32 vs int8       | Quality on 50 of my own queries in Russian, the cost of indexing 100k, query latency, memory on the client                                                                                            | 2 days |
 
-Порядок: S3 (лес) и S5 (поиск) — когда до них дойдут слайсы; S1 (CodeMirror) — когда обычное поле ввода начнёт мешать; S2 (лента) — когда объём после импорта Telegram покажет тормоза. **До слайса 1** — ADR-0001 «протокол + ключи» на бумаге (отдельная задача параллельно с D1) (группы полей, HLC, `schema_version`, id): от него зависит локальная схема. S4a/S4b — до слайса 9, S4c — перед слайсом 11, S6 — перед AI.
-
----
-
-## 15. Дорожная карта (вертикальные срезы)
-
-| Слайс | Сценарий, который работает целиком | Зависит от |
-|---|---|---|
-| 0 | Репозиторий на GitHub (сначала Gitea на homelab), CI на Linux-раннере (тесты, линтеры, `kinige-domain` под wasm32, визуальные тесты), локальная сборка и ad-hoc подпись `.app`, Tauri + React каркас, `KinigeApi` + `MockApi`, Storybook, токены → CSS, скрипт скриншотов окна; ADR «ключи подписи» | Q8 |
-| ADR-0001 | Протокол синхронизации + ключи (§10) — параллельно с D1; ревью `sync-crypto-guardian` и `codex-second-opinion` | 0 |
-| D1 | Основа дизайн-системы: токены тёмной темы (графит, компактная плотность), шрифты, компоненты слайса 1 (сообщение, разделитель дня, composer с кнопками — только вид, тост), главное окно с сайдбаром «эмодзи + имя» в Storybook; вариант ленты выбран по статичным концептам. Остальные компоненты — в слайсах 2, 3, 5, 7, 7a | 0, концепты Codex |
-| 1 | Открыл → написал в Inbox (обычное поле, Markdown в ленте) → отправил → убил процесс → открыл → запись на месте; Markdown-копия в папке; строки интерфейса (включая строки D1) — в файлах переводов, английский и русский, библиотека выбирается в спецификации слайса | D1, ADR-0001 |
-| 2 | Глобальный хоткей → окно захвата с контекстом → новая запись или дописать к последней; хоткей буфера; трей | 1 |
-| 3 | Чаты с эмодзи (выбор эмодзи, свёрнутый сайдбар, разделы «Закреплённые / Чаты / Архив»), эмодзи-пикер в поле ввода, контекстное меню и действия по наведению, теги, редактирование (ревизии), удаление → отмена → корзина, смена даты; копия базы и проверка целостности | 1 |
-| 4 | Импорт Telegram → архив прошлых лет в ленте; FTS с русскими словоформами | 3, S5 |
-| 4a | MCP-сервер `kinige-mcp` (§9.3): агент ищет и читает записи, добавляет в Inbox; включение, доступ по чатам, режимы, журнал обращений; ADR «MCP» перед началом, ревью `sync-crypto-guardian` (доступ к данным) | 4 |
-| 4b | Окно настроек (дерево разделов, подэкраны) и файл `settings.json` как вход: текст, сочетания, папка копии, доступ ИИ-агентов; синхронизация файла в обе стороны; ADR-0010 и ревью `sync-crypto-guardian` до кода | 4a |
-| 5 | «В этот день» в Inbox + ответ «N лет спустя» | 4 |
-| — | **Начало ежедневного использования на macOS (4 недели), параллельно идут следующие слайсы** | 1–5 |
-| 6 | Лес года (простые ассеты, одна детализация + точка), клик → лента к дню; календарь как альтернатива | 5, S3 |
-| 7 | Вложения: фото и файлы (кнопка «файл», вставка, drag & drop), лента не прыгает | 3 |
-| 7a | Голосовые: запись кнопкой «микрофон», воспроизведение в ленте, файл — как вложение; доступ к микрофону запрашивается при первой записи | 7 |
-| 8 | Лента на больших объёмах — если замер после импорта показал тормоза | 4, S2 |
-| 9 | Финальный арт леса из Blender | 6 |
-| 10 | Сборка и приёмка на Windows и Linux; updater с подписью | 5 |
-| 11 | Self-hosted сервер (`docker compose`), аккаунт, шифрование, синхронизация двух машин; первая инсталляция — homelab | 10, S4a–c |
-| 12+ | P1: семантический поиск (S6), «подлесок» леса, случайная запись, история версий, превью ссылок, стикеры и GIF, светлая тема, веб-клиент | 11 |
-
-Дизайн-система растёт вместе со слайсами: компоненты добавляются, когда они нужны срезу, и проходят ту же визуальную приёмку.
-
-Нефункциональные цели (методика, машина и скрипт замера фиксируются в слайсе 0; приёмка слайса 5 ссылается на этот скрипт): отправка < 100 мс до появления в ленте, открытие чата < 300 мс, поиск < 300 мс на 100k, прокрутка и лес без рывков, холодный старт < 1,5 с. Нагрузочные данные генерирует скрипт: 100 чатов, 100k сообщений, 10k изображений-заглушек, 5 лет.
+Order: S3 (forest) and S5 (search) — when the slices get to them; S1 (CodeMirror) — when the plain input field starts getting in the way; S2 (feed) — when the volume after the Telegram import shows lag. **Before slice 1** — ADR-0001 "protocol + keys" on paper (a separate task in parallel with D1) (field groups, HLC, `schema_version`, id): the local schema depends on it. S4a/S4b — before slice 9, S4c — before slice 11, S6 — before AI.
 
 ---
 
-## 16. Экспорт
+## 15. Roadmap (vertical slices)
 
-Markdown-копия (§2.1) — постоянная читаемая версия; полный экспорт ниже нужен для переноса со всеми метаданными.
+| Slice    | Scenario that works end to end                                                                                                                                                                                                                                                                                                             | Depends on        |
+|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|
+| 0        | Repository on GitHub (Gitea on the homelab at first), CI on a Linux runner (tests, linters, `kinige-domain` for wasm32, visual tests), a local build and ad-hoc signing of the `.app`, Tauri + React skeleton, `KinigeApi` + `MockApi`, Storybook, tokens → CSS, a window screenshot script; ADR "signing keys"                            | Q8                |
+| ADR-0001 | Sync protocol + keys (§10) — in parallel with D1; review by `sync-crypto-guardian` and `codex-second-opinion`                                                                                                                                                                                                                              | 0                 |
+| D1       | Design system foundation: dark theme tokens (graphite, compact density), fonts, slice 1 components (message, day divider, composer with buttons — appearance only, toast), the main window with an "emoji + name" sidebar in Storybook; the feed variant is chosen from static concepts. The other components are in slices 2, 3, 5, 7, 7a | 0, Codex concepts |
+| 1        | Opened → wrote in Inbox (a plain field, Markdown in the feed) → sent → killed the process → opened → the entry is in place; Markdown copy in a folder; UI strings (including the D1 strings) are in translation files, English and Russian, the library is chosen in the slice specification                                               | D1, ADR-0001      |
+| 2        | Global hotkey → capture window with context → a new entry or append to the last one; clipboard hotkey; tray                                                                                                                                                                                                                                | 1                 |
+| 3        | Chats with emoji (emoji choice, collapsed sidebar, "Pinned / Chats / Archive" sections), emoji picker in the input field, context menu and hover actions, tags, editing (revisions), delete → undo → trash, changing the date; database backup and integrity check                                                                         | 1                 |
+| 4        | Telegram import → an archive of past years in the feed; FTS with Russian word forms                                                                                                                                                                                                                                                        | 3, S5             |
+| 4a       | MCP server `kinige-mcp` (§9.3): the agent searches and reads entries, adds to Inbox; turning on, access per chat, modes, access log; ADR "MCP" before starting, review by `sync-crypto-guardian` (data access)                                                                                                                             | 4                 |
+| 4b       | The settings window (tree of sections, sub-screens) and the `settings.json` file as an input: text, shortcuts, copy folder, AI agent access; two-way sync of the file; ADR-0010 and review by `sync-crypto-guardian` before the code                                                                                                       | 4a                |
+| 5        | "On this day" in Inbox + a "N years later" reply                                                                                                                                                                                                                                                                                           | 4                 |
+| —        | **Start of daily use on macOS (4 weeks), the next slices go on in parallel**                                                                                                                                                                                                                                                               | 1–5               |
+| 6        | The year's forest (simple assets, one level of detail + dot), click → feed to the day; a calendar as an alternative                                                                                                                                                                                                                        | 5, S3             |
+| 7        | Attachments: photos and files ("file" button, paste, drag & drop), the feed does not jump                                                                                                                                                                                                                                                  | 3                 |
+| 7a       | Voice notes: recording with the "microphone" button, playback in the feed, the file is an attachment; microphone access is requested at the first recording                                                                                                                                                                                | 7                 |
+| 8        | Feed at large volumes — if the measurement after the import showed lag                                                                                                                                                                                                                                                                     | 4, S2             |
+| 9        | Final forest art from Blender                                                                                                                                                                                                                                                                                                              | 6                 |
+| 10       | Build and acceptance on Windows and Linux; updater with signing                                                                                                                                                                                                                                                                            | 5                 |
+| 11       | Self-hosted server (`docker compose`), account, encryption, sync of two machines; the first installation is the homelab                                                                                                                                                                                                                    | 10, S4a–c         |
+| 12+      | P1: semantic search (S6), forest "undergrowth", random entry, version history, link previews, stickers and GIFs, light theme, web client                                                                                                                                                                                                   | 11                |
 
-Корзина: в `data/*.jsonl` записи из корзины попадают с `deleted_at` (иначе перенос теряет 30 дней на восстановление); в читаемый Markdown экспорта и в Markdown-копию — нет. Окончательно удалённых (purged) записей нет нигде.
+The design system grows together with the slices: components are added when a slice needs them and go through the same visual acceptance.
+
+Non-functional targets (the method, the machine and the measurement script are fixed in slice 0; the acceptance of slice 5 refers to this script): sending < 100 ms until it appears in the feed, opening a chat < 300 ms, search < 300 ms over 100k, scrolling and the forest without jank, cold start < 1.5 s. Load data is generated by a script: 100 chats, 100k messages, 10k placeholder images, 5 years.
+
+---
+
+## 16. Export
+
+The Markdown copy (§2.1) is the permanent readable version; the full export below is needed for migration with all the metadata.
+
+Trash: entries from the trash get into `data/*.jsonl` with `deleted_at` (otherwise a migration loses the 30 days for restoring); into the export's readable Markdown and into the Markdown copy — no. Finally deleted (purged) entries are nowhere.
 
 
 ```text
 kinige-export-2026-10-19/
-├── manifest.json                   # версия формата, счётчики, хэши
-├── data/*.jsonl                    # полные данные построчно: chats, messages, attachments, revisions
-├── chats/<chat-slug>/YYYY-MM.md    # читаемый Markdown по месяцам, с датой и временем
+├── manifest.json                   # format version, counters, hashes
+├── data/*.jsonl                    # full data line by line: chats, messages, attachments, revisions
+├── chats/<chat-slug>/YYYY-MM.md    # readable Markdown by month, with date and time
 └── attachments/<sha256>.<ext>
 ```
 
-Импорт: проверка версии формата и хэшей; режимы «восстановить» (в пустую базу), «объединить» (по id, конфликт — как при синхронизации, проигравшее в ревизии; до привязки к аккаунту id такой ревизии случайный, ADR-0001 §3.4) и «как копию» (новые id, в том числе новые `remote_blob_id` и `blob_key` у вложений — один blob принадлежит одному вложению); отчёт о пропущенном. Экспорт — открытый текст, об этом предупреждение.
+Import: checking the format version and the hashes; the modes "restore" (into an empty database), "merge" (by id, a conflict is handled as in sync, the loser goes into a revision; before binding to an account the id of such a revision is random, ADR-0001 §3.4) and "as a copy" (new ids, including new `remote_blob_id` and `blob_key` for attachments — one blob belongs to one attachment); a report on what was skipped. The export is plain text, there is a warning about it.
 
 ---
 
-## 17. Стартовый промпт для агента
+## 17. Starting prompt for the agent
 
-> Ты — senior Rust/TypeScript-инженер и технический лид проекта Kinige v2. Прочитай `docs/plan/02-prd.md` (единственный нормативный документ) и `docs/plan/01-review.md` целиком, а также `docs/plan/research/`. Если разбор или исследования расходятся с ТЗ — прав ТЗ.
+> You are a senior Rust/TypeScript engineer and the tech lead of the Kinige v2 project. Read `docs/plan/02-prd.md` (the only normative document) and `docs/plan/01-review.md` in full, as well as `docs/plan/research/`. If the review or the research disagrees with the PRD, the PRD is right.
 >
-> Твоя задача сейчас — **не писать приложение**, а:
-> 1. Найти в ТЗ противоречия и пробелы, которые мы пропустили, и задать вопросы.
-> 2. Написать ADR «протокол синхронизации + ключи» по §10 и одностраничные спецификации слайсов 0, D и 1 (§12.1a).
-> 3. После ответа на Q8 — сделать слайс 0, затем дизайн-систему (слайс D).
+> Your task right now is **not to write the app**, but to:
+> 1. Find contradictions and gaps in the PRD that we missed, and ask questions.
+> 2. Write the ADR "sync protocol + keys" per §10 and one-page specifications for slices 0, D and 1 (§12.1a).
+> 3. After the answer to Q8 — do slice 0, then the design system (slice D).
 >
-> Правила из §12 обязательны. Главное:
-> - git и CI с первого коммита;
-> - один слайс за раз;
-> - «готово» только со скриншотами настоящего окна и выводом тестов;
-> - следующий слайс — только после приёмки пользователем;
-> - визуал — только из токенов дизайн-системы;
-> - факты о библиотеках — проверять или помечать как непроверенные;
-> - не создавать модули и документы «на будущее».
+> The rules from §12 are mandatory. The main ones:
+> - git and CI from the first commit;
+> - one slice at a time;
+> - "done" only with screenshots of the real window and test output;
+> - the next slice only after acceptance by the user;
+> - visuals only from the design system tokens;
+> - facts about libraries — verify them or mark them as not verified;
+> - do not create modules and documents "for the future".
 >
-> Помни, почему провалилась прошлая версия Kinige: стек выбрали без проверки на самой трудной части, «готово» объявляли без взгляда на реальное окно, а макет и реализация жили каждый своей жизнью. Не повторяй этого.
+> Remember why the previous version of Kinige failed: the stack was chosen without testing it on the hardest part, "done" was declared without looking at the real window, and the mockup and the implementation each lived their own life. Do not repeat this.
