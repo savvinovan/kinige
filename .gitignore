@@ -12,3 +12,6 @@ src-tauri/gen/
 # Мост MCP как sidecar (`bundle.externalBin`): кладёт scripts/build-app.sh и scripts/run-app.sh, в build.rs — пустая заглушка.
 src-tauri/binaries/
 .claude/worktrees/
+
+# Снимки ревью (review-*.png): рабочие, в репозиторий не идут. Снимки приёмки (без префикса review-) коммитятся.
+docs/screens/**/review-*.png

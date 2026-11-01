@@ -50,4 +50,4 @@
 - JS-плагин буфера обмена и JS-плагин сочетаний: окна не получают прав на плагины, всё идёт через наши команды (§12.3).
 
 ## Последствия
-Для `sync-crypto-guardian`: миграция 2 (`draft`), перезапись `body` с `base`/`supersedes`, сохранение неизвестных групп и полей. Тесты, отложенные из слайса 1 (неизвестная группа, лишние поля `hlc_json`, строго растущий HLC, повреждённый JSON, отказ записи), возвращены: `crates/kinige-domain/src/append.rs`, `crates/kinige-store/tests/capture.rs`; тестовые хелперы удаления (`mark_deleted`) ставят `deleted_at` вместе с согласованными группой `deleted` и её HLC, а не прямым `UPDATE` колонки.
+Для `sync-crypto-guardian`: миграция 2 (`draft`), перезапись `body` с `base`/`supersedes`, сохранение неизвестных групп и полей. Тесты, отложенные из слайса 1 (неизвестная группа, лишние поля `hlc_json`, строго растущий HLC, повреждённый JSON, отказ записи), возвращены: `crates/kinige-domain/src/append.rs`, `crates/kinige-store/tests/capture_*.rs` (файл `capture.rs` позже разделён); тестовые хелперы удаления (`mark_deleted`) ставят `deleted_at` вместе с согласованными группой `deleted` и её HLC, а не прямым `UPDATE` колонки.

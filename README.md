@@ -8,14 +8,14 @@
 
 Личный журнал в формате «чата с собой». Десктоп на Tauri 2 + Rust + React/TypeScript. Нормативный документ — [`docs/plan/02-prd.md`](docs/plan/02-prd.md).
 
-Состояние: слайс 1 (Inbox): пишешь в Inbox, запись сохраняется в SQLite и в Markdown-копию `~/Documents/Kinige`, ссылки открываются в системном браузере, настройки (папка копии, размер текста), интерфейс на английском и русском. Приёмка пользователем — по `docs/screens/1/`.
+Состояние: приняты слайсы 0–5 и 4a/4b — запись в чаты (SQLite и Markdown-копия `~/Documents/Kinige`), быстрый захват глобальным хоткеем, действия с записью и корзина, импорт из Telegram и поиск, MCP-сервер для ИИ-агентов, окно настроек, карточка «В этот день» и ответы; интерфейс на английском и русском. Перечень и статусы слайсов — в `CLAUDE.md` и `docs/slices/`, снимки приёмки — в `docs/screens/<слайс>/`.
 
 ## Требования
 
 - macOS с Xcode Command Line Tools (`xcode-select --install`).
 - Rust: версия закреплена в [`rust-toolchain.toml`](rust-toolchain.toml); `rustup` поставит её сам.
 - Node: версия в [`.node-version`](.node-version) (в CI и в контейнере визуальных тестов — она же; локально проверялось также на Node 26.8.1).
-- Python 3 (для замера холодного старта), Docker (для визуальных тестов; Docker на этой машине удалённый).
+- Python 3 (для замера холодного старта). Визуальные тесты Storybook на этой машине не запускаются: они идут на GitHub (задание `visual`), Docker не нужен.
 
 ## Команды
 
@@ -24,7 +24,8 @@
 | Запустить приложение (dev) | `scripts/run-app.sh` |
 | Открыть Storybook (http://localhost:6006) | `scripts/storybook.sh` |
 | Собрать `Kinige.app` (release, ad-hoc подпись, `codesign --verify`) | `scripts/build-app.sh` |
-| Снять скриншот окна Kinige | `scripts/screenshot-window.sh docs/screens/0/window.png` (окно захвата — третий аргумент `capture`, меню значка — `menu`, список окон — `list`) |
+| Снимки настоящего окна для приёмки слайса | `gh workflow run screens.yml --ref <ветка> -f slice=<id>` (macOS-раннер GitHub, синтетические данные; CI на ветке запускается сам) |
+| Снять скриншот окна Kinige вручную | `scripts/screenshot-window.sh docs/screens/0/window.png` (окно захвата — третий аргумент `capture`, меню значка — `menu`, список окон — `list`) |
 | Замерить холодный старт | `scripts/measure-cold-start.sh [прогонов]` |
 | Визуальные тесты Storybook | задание `visual` в CI на GitHub |
 | Обновить эталоны снимков (в ветке, не в `main`) | `gh workflow run visual-update.yml --ref <ветка>` (CI на ветке запускается сам) |
@@ -46,10 +47,10 @@
 - Лог приложения: macOS — `~/Library/Logs/me.savvinov.kinige/kinige.log` (Windows — `%LOCALAPPDATA%\me.savvinov.kinige\logs`, Linux — `~/.local/share/me.savvinov.kinige/logs`; по документации `tauri-plugin-log`, на этих ОС не проверялось). Ротация по размеру: файл до 1 МБ, хранится до 5 файлов (текущий и архивные с датой в имени). Уровень по умолчанию `info`; `KINIGE_LOG=debug` (или `trace`, `warn`, `error`, `off`) меняет уровень для кода Kinige, чужие крейты пишут только `warn` и выше. В dev-сборке и при заданных `KINIGE_LOG`, `KINIGE_TIMING`, `KINIGE_TRACE` лог дублируется в stderr. В лог не попадают тексты записей, названия чатов, пути пользователя и содержимое импорта — только виды событий и категории ошибок. Метки `KINIGE_TIMING` и `KINIGE_TRACE` идут только в stderr, в файл не пишутся.
 - Типы Rust → TS: `ts-rs`, см. [ADR-0002](docs/adr/0002-ts-types-via-ts-rs.md). Ключи подписи: [ADR-0003](docs/adr/0003-signing-keys.md).
 
-## CI (GitHub Actions, Linux)
+## CI (GitHub Actions)
 
-Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml): `rust` (fmt, clippy, test, wasm32, актуальность TS-типов), `web` (актуальность `tokens.css` и `themes.css`, tsc, ESLint, vitest), `visual` (снимки Storybook в контейнере Playwright), `coverage` (`cargo llvm-cov` и `npm run test:coverage` → [Codecov](https://app.codecov.io/gh/savvinovan/kinige), флаги `rust` и `web`; пока информационно, PR не блокирует).
-`.app` собирается и подписывается локально; macOS-раннер — не раньше слайса 10.
+Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml): `rust` (fmt, clippy, test, wasm32, актуальность TS-типов), `web` (актуальность `tokens.css` и `themes.css`, tsc, ESLint, vitest с покрытием → Codecov, флаг `web`), `macos` (clippy и тесты крейта приложения на `macos-15`), `visual` (снимки Storybook в контейнере Playwright), `gitleaks` (поиск секретов, `.gitleaksignore`), `deny` (`cargo-deny`: лицензии, уязвимости RustSec, источники, `deny.toml`), `coverage` (`cargo llvm-cov` → [Codecov](https://app.codecov.io/gh/savvinovan/kinige), флаг `rust`; пока информационно, PR не блокирует).
+`.app` собирается и подписывается локально (`scripts/build-app.sh`); подписанная сборка в CI — слайс 10. macOS-раннер уже используется: задание `macos` (clippy и тесты крейта приложения), снимки окна — `screens.yml`.
 
 ## Лицензия
 
