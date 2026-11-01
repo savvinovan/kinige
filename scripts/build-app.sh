@@ -21,12 +21,22 @@ CONFIG_ARGS=()
 if [ -n "${KINIGE_IDENTIFIER:-}" ]; then
   CONFIG_ARGS=(--config "{\"identifier\":\"${KINIGE_IDENTIFIER}\"}")
 fi
-(cd src-tauri && ../web/node_modules/.bin/tauri build --bundles app ${CONFIG_ARGS[@]+"${CONFIG_ARGS[@]}"})
+# `KINIGE_BUNDLES` — что собирать: по умолчанию `app`; релиз (.github/workflows/release.yml) просит `app,dmg`.
+(cd src-tauri && ../web/node_modules/.bin/tauri build --bundles "${KINIGE_BUNDLES:-app}" ${CONFIG_ARGS[@]+"${CONFIG_ARGS[@]}"})
 
 APP="${CARGO_TARGET_DIR:-target}/release/bundle/macos/Kinige.app"
 [ -d "$APP" ] || { echo "не найден $APP" >&2; exit 1; }
 [ -x "$APP/Contents/MacOS/kinige-mcp" ] || { echo "в бандле нет моста kinige-mcp" >&2; exit 1; }
 
+# Версия бандла = версия из Cargo.toml (ADR-0012): tauri.conf.json своей версии не имеет, Tauri берёт её из крейта.
+# `cargo pkgid` выдаёт «…#kinige@0.5.0»; сеть не нужна.
+PKGID="$(cargo pkgid -p kinige --offline)"
+VERSION="${PKGID##*[#@]}"
+for KEY in CFBundleShortVersionString CFBundleVersion; do
+  GOT="$(plutil -extract "$KEY" raw "$APP/Contents/Info.plist")"
+  [ "$GOT" = "$VERSION" ] || { echo "$KEY в бандле = $GOT, а в Cargo.toml $VERSION" >&2; exit 1; }
+done
+
 codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature|Format"
-echo "OK: $APP"
+echo "OK: $APP ($VERSION)"
