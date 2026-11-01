@@ -26,7 +26,11 @@ jobs:
       - name: Rust toolchain
         run: rustup toolchain install
 
-      - uses: Swatinem/rust-cache@v2
+      # Кэш сохраняется только на main: ветки и PR его читают (восстановление из кэша main), но не пишут,
+      # иначе каждый PR занимает место в лимите 10 ГБ и вытесняет кэш main.
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
@@ -43,7 +47,9 @@ jobs:
             exit 1
           fi
 
-  # Покрытие тестами → Codecov (бейджи в README, комментарий в PR). Информационно: порог не валит CI (codecov.yml).
+  # Покрытие Rust → Codecov (бейджи в README, комментарий в PR). Информационно: порог не валит CI (codecov.yml).
+  # Отдельное задание: сборка с инструментированием (cargo llvm-cov) не делит артефакты с `rust` и идёт параллельно ему.
+  # Покрытие web снимается в задании `web` тем же прогоном vitest, что и проверка.
   coverage:
     runs-on: ubuntu-24.04
     steps:
@@ -60,9 +66,13 @@ jobs:
           rustup toolchain install
           rustup component add llvm-tools-preview
 
-      - uses: Swatinem/rust-cache@v2
+      # Кэш сохраняется только на main: ветки и PR его читают (восстановление из кэша main), но не пишут,
+      # иначе каждый PR занимает место в лимите 10 ГБ и вытесняет кэш main.
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - uses: taiki-e/install-action@v2.87.28
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: cargo-llvm-cov@0.9.1
 
@@ -72,31 +82,11 @@ jobs:
           cargo llvm-cov --workspace --lcov --output-path lcov-rust.info
           --ignore-filename-regex '(^|/)(tests|[a-z0-9_]+_tests|tests_[a-z0-9_]+|[a-z0-9_]+_tests_[a-z0-9_]+)\.rs$'
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .node-version
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      - name: Покрытие web
-        working-directory: web
-        run: |
-          npm ci
-          npm run test:coverage
-
-      - uses: codecov/codecov-action@v7
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov-rust.info
           flags: rust
-          disable_search: true
-          fail_ci_if_error: false
-
-      - uses: codecov/codecov-action@v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: web/coverage/lcov.info
-          flags: web
           disable_search: true
           fail_ci_if_error: false
 
@@ -123,7 +113,15 @@ jobs:
           fi
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
+      # Тесты и покрытие одним прогоном vitest; отчёт уходит в Codecov (флаг web), сбой отправки CI не валит.
+      - run: npm run test:coverage
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: web/coverage/lcov.info
+          flags: web
+          disable_search: true
+          fail_ci_if_error: false
 
   visual:
     runs-on: ubuntu-24.04
