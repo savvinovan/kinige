@@ -10,6 +10,7 @@ use kinige_domain::groups::INBOX_ID;
 use serde_json::json;
 
 const MARCH: i64 = 1_773_468_000_000;
+const DAY: i64 = 24 * 60 * MINUTE;
 
 #[test]
 fn a_reply_reaches_the_agent_without_reply_to_id_or_the_quoted_text() {

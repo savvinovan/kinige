@@ -50,10 +50,10 @@ export class MockApiSlice5 extends MockApiSlice4b {
 
   getDraft(chatId: string): Promise<ChatDraft> {
     const target = this.replyDrafts.get(chatId);
-    return Promise.resolve({
-      body: this.drafts.get(chatId) ?? "",
-      replyTo: target === undefined ? null : this.replyTo(target, this.journalDate(this.now())),
-    });
+    let replyTo = target === undefined ? null : this.replyTo(target, this.journalDate(this.now()));
+    // Как в Rust: запись жива, но в другом чате — «перенесена» (ответ на неё не принимается).
+    if (replyTo !== null && replyTo.state === "live" && replyTo.chatId !== chatId) replyTo = { ...replyTo, state: "moved" };
+    return Promise.resolve({ body: this.drafts.get(chatId) ?? "", replyTo });
   }
 
   saveDraft(chatId: string, body: string, replyToId: string | null = null): Promise<void> {

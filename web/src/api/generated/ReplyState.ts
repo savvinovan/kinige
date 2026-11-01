@@ -3,4 +3,4 @@
 /**
  * В каком состоянии запись, на которую ответили.
  */
-export type ReplyState = "live" | "trash" | "missing";
+export type ReplyState = "live" | "trash" | "missing" | "moved";

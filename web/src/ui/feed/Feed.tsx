@@ -152,14 +152,19 @@ export function Feed({
   }, [messages]);
 
   // Переход из поиска: запись по центру области. Мгновенно, без плавной прокрутки (тихий интерфейс, Reduce Motion).
+  // Один раз на просьбу (`nonce`): запись могла ещё не попасть в ленту, тогда прокрутка ждёт её появления, но, найдя запись,
+  // больше не возвращается. Иначе отправка ответа, подгрузка страниц и появление карточки каждый раз уводили бы ленту назад.
   const scrollKey = scrollTo ? `${scrollTo.id}:${scrollTo.nonce}` : "";
+  const scrolledKey = useRef("");
   useLayoutEffect(() => {
-    if (!scrollTo) return;
+    if (!scrollTo || scrolledKey.current === scrollKey) return;
     const plate = [...(scroller.current?.querySelectorAll<HTMLElement>("[data-message-id]") ?? [])].find(
       (element) => element.dataset.messageId === scrollTo.id,
     );
-    plate?.scrollIntoView?.({ block: "center" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- прокрутка только по новой просьбе или появлению записи
+    if (!plate) return;
+    scrolledKey.current = scrollKey;
+    plate.scrollIntoView?.({ block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- по новой просьбе или появлению записи в ленте
   }, [scrollKey, items.length]);
 
   return (

@@ -6,6 +6,9 @@ import { formatLongDate } from "../feed/dates";
 import { Icon } from "../icons/Icon";
 import "./reply.css";
 
+/** Подпись строки, когда записи, на которую отвечают, нет на месте. */
+const NOT_LIVE_LABEL = { trash: "reply.trash", missing: "reply.gone", moved: "reply.moved", live: "reply.strip" } as const;
+
 interface ReplyStripProps {
   quote: ReplyTo;
   /** Крестик: ответ отменяется, остаётся обычная запись (текст не трогается). */
@@ -22,7 +25,7 @@ export function ReplyStrip({ quote, onCancel }: ReplyStripProps) {
   const language = useLanguage();
   const date = quote.journalDate === null ? "" : formatLongDate(quote.journalDate, language);
   const live = quote.state === "live";
-  const label = !live ? t(quote.state === "trash" ? "reply.trash" : "reply.gone") : t("reply.strip", { date });
+  const label = !live ? t(NOT_LIVE_LABEL[quote.state]) : t("reply.strip", { date });
   return (
     <div className="reply-strip" role="group" aria-label={live ? t("reply.stripLabel", { date }) : label}>
       <span className="reply-strip__icon">

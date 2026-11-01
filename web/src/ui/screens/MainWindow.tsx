@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { INBOX_ID, type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { ChatList } from "../../api/generated/ChatList";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
-import type { OnThisDayEntry } from "../../api/generated/OnThisDayEntry";
-import type { ReplyTo } from "../../api/generated/ReplyTo";
 import type { Settings } from "../../api/generated/Settings";
 import { useLanguage } from "../../i18n/I18n";
 import { CalendarDialog } from "../calendar/CalendarDialog";
@@ -24,6 +22,7 @@ import { useImport } from "./useImport";
 import { useMainSearch } from "./useMainSearch";
 import { useOnThisDay } from "./useOnThisDay";
 import { useOpenMessage } from "./useOpenMessage";
+import { useReplyActions } from "./useReplyActions";
 import { useSettingsState } from "./useSettingsState";
 import { useTrash } from "./useTrash";
 
@@ -49,11 +48,6 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const [chatDialog, setChatDialog] = useState<ChatDialogState | null>(null);
   const [dialogError, setDialogError] = useState<ErrorCode | null>(null);
   const [dateError, setDateError] = useState<ErrorCode | null>(null);
-  const sending = useRef(false);
-  const selectedRef = useRef(selected);
-  useEffect(() => {
-    selectedRef.current = selected;
-  });
   const { draft, reply, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
     useComposerDraft(api, selected);
   const prefs = useSettingsState(api, initialSettings);
@@ -86,7 +80,14 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     focus,
   });
   const { reload: reloadFeed, restart: restartFeed } = feed;
-  const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null, onNewDay: () => void reloadFeed() });
+  const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
+  // Фокус окна: не наступил ли новый день журнала (метки «Сегодня» и «Вчера» в ленте; карточка перечитывается сама).
+  const { checkDay } = feed;
+  useEffect(() => {
+    const onFocus = () => void checkDay();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [checkDay]);
   const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
   const moveTargets = useMemo(() => moveTargetsFrom(sidebarChats, selected, t), [sidebarChats, selected, t]);
   // Перетаскивание плашки на чат: бросок на любой чат, кроме того, где запись лежит.
@@ -155,68 +156,23 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     };
   }, [api, refreshChats, reloadFeed, select]);
 
-  const submit = () => {
-    if (sending.current || draft.trim() === "" || selected === null) return;
-    sending.current = true;
-    // Пока идёт отправка, ввод не принимается (см. `onDraftChange`), а запланированное сохранение черновика отменено, уже
-    // отправленное — дожидаемся: Rust очищает черновик чата в той же транзакции, что и отправку, а запоздавшая запись
-    // вернула бы отправленный текст.
-    draftSaver.cancel();
-    const text = draft;
-    const replyTo = reply;
-    draftSaver
-      .settle()
-      .then(() => api.sendMessage(selected, text, replyTo?.id ?? null))
-      .then((sent) => {
-        draftSaver.cancel();
-        feed.appendSent(sent);
-        clearDraft();
-        setComposerError(null);
-        void refreshChats();
-      })
-      // Успех: запись просто появляется в ленте, без тоста и подтверждений (как в Telegram). Ошибка: текст остаётся в поле,
-      // запись не показана (без оптимистичного показа); черновик возвращается в очередь сохранения. Если Rust сказал, что
-      // записи, на которую отвечают, нет, строка над полем перечитывается: она покажет «в корзине» или «удалена».
-      .catch((reason: unknown) => {
-        const code = errorCode(reason);
-        setComposerError(code);
-        planDraft(text, replyTo);
-        if (code === "reply_target_not_found") void confirmReplyState(selected);
-      })
-      .finally(() => {
-        sending.current = false;
-      });
-  };
-
-  /** Черновик с ответом уходит в Rust, и строка над полем берёт состояние записи оттуда. */
-  const confirmReplyState = async (chatId: string) => {
-    await draftSaver.flush();
-    const saved = await api.getDraft(chatId).catch(() => null);
-    if (saved !== null && selectedRef.current === chatId) refreshReply(saved.replyTo);
-  };
-
-  /** Открыть запись в ленте в контексте (чат и запись): как переход из поиска, запись подсвечена заливкой. */
-  const openEntry = (chatId: string, messageId: string) => {
-    void select(chatId).then(() => focusOn({ chatId, messageId, terms: [], nonce: 0 }));
-  };
-
-  /** «Ответить» у записи карточки: строка над полем и курсор в поле. */
-  const startReply = (entry: OnThisDayEntry) => {
-    const quote: ReplyTo = {
-      id: entry.message.id,
-      chatId: entry.message.chatId,
-      journalDate: entry.message.journalDate,
-      excerpt: entry.text,
-      state: "live",
-      yearsLater: 0,
-    };
-    changeReply(quote);
-    focusComposer();
-  };
-
-  const dismissCard = () => {
-    void onThisDay.dismiss().then(focusComposer);
-  };
+  const { sending, submit, openEntry, startReply, hideCard } = useReplyActions({
+    api,
+    selected,
+    select,
+    focusOn,
+    draft,
+    reply,
+    saver: draftSaver,
+    changeReply,
+    refreshReply,
+    clearDraft,
+    planDraft,
+    appendSent: feed.appendSent,
+    refreshChats,
+    setComposerError,
+    dismissCard: onThisDay.dismiss,
+  });
 
   const closeChatDialog = () => {
     setChatDialog(null);
@@ -335,7 +291,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
                   card={onThisDay.card}
                   onOpen={(messageId) => openEntry(INBOX_ID, messageId)}
                   onReply={startReply}
-                  onDismiss={dismissCard}
+                  onDismiss={hideCard}
                 />
               ),
             }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { KinigeApi } from "../../api/KinigeApi";
 import type { OnThisDay } from "../../api/generated/OnThisDay";
 
@@ -6,8 +6,6 @@ interface UseOnThisDayOptions {
   api: KinigeApi;
   /** Карточка нужна: открыт Inbox, без фильтра по тегу. */
   enabled: boolean;
-  /** День журнала изменился, пока окно было открыто: ленту нужно перечитать (метки «Сегодня» и «Вчера»). */
-  onNewDay: () => void;
 }
 
 /**
@@ -16,24 +14,14 @@ interface UseOnThisDayOptions {
  * ошибкой): лента показывается, только когда карточка уже известна, и в первом кадре ничего не прыгает. Ошибка чтения —
  * карточки просто нет: это украшение, а не данные.
  */
-export function useOnThisDay({ api, enabled, onNewDay }: UseOnThisDayOptions) {
+export function useOnThisDay({ api, enabled }: UseOnThisDayOptions) {
   const [card, setCard] = useState<OnThisDay | null>(null);
   const [ready, setReady] = useState(false);
-  const shownDay = useRef<string | null>(null);
-  const newDay = useRef(onNewDay);
-  useEffect(() => {
-    newDay.current = onNewDay;
-  });
 
   const refresh = useCallback(() => {
     return api
       .getOnThisDay()
-      .then((next) => {
-        setCard(next);
-        const day = next?.today ?? null;
-        if (day !== null && shownDay.current !== null && shownDay.current !== day) newDay.current();
-        if (day !== null) shownDay.current = day;
-      })
+      .then(setCard)
       .catch(() => setCard(null))
       .finally(() => setReady(true));
   }, [api]);

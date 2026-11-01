@@ -24,7 +24,7 @@ export function ReplyQuote({ quote, onOpen }: ReplyQuoteProps) {
   const years = quote.yearsLater;
   const live = quote.state === "live";
   const label = !live
-    ? t(quote.state === "trash" ? "reply.trash" : "reply.gone")
+    ? t(quote.state === "trash" ? "reply.trash" : quote.state === "moved" ? "reply.moved" : "reply.gone")
     : years > 0
       ? t("reply.quoteYears", { count: years, date })
       : t("reply.quotePlain", { date });

@@ -155,7 +155,8 @@
     "quoteYearsLabel_one": "{{count}} year later, reply to the entry of {{date}}",
     "quoteYearsLabel_other": "{{count}} years later, reply to the entry of {{date}}",
     "trash": "Entry in the trash",
-    "gone": "The original entry was deleted"
+    "gone": "The original entry was deleted",
+    "moved": "The entry was moved to another chat"
   },
   "message": {
     "actions": "Entry actions",
