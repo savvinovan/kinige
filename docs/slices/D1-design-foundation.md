@@ -1,71 +1,71 @@
-# Слайс D1: Основа дизайн-системы
+# Slice D1: Design system foundation
 
-Бюджет: 3 дня. Зависит от: слайса 0 (Storybook, токены JSON → CSS, визуальные тесты, скрипт скриншотов окна, `MockApi`), концептов Codex (ниже). Источники: ТЗ §11, §15, §2.1, §5, §6, §1.2.
+Budget: 3 days. Depends on: slice 0 (Storybook, tokens JSON → CSS, visual tests, the window screenshot script, `MockApi`), Codex concepts (below). Sources: PRD §11, §15, §2.1, §5, §6, §1.2.
 
-Остальные компоненты добавляются в своих слайсах, когда понадобятся: окно быстрого захвата — слайс 2; интерактивный список чатов (выбор эмодзи, сворачивание сайдбара) и тег — слайс 3; карточка «В этот день» — слайс 5 (§15: дизайн-система растёт со слайсами).
+The other components are added in their own slices when they are needed: the quick capture window in slice 2; the interactive chat list (emoji choice, collapsing the sidebar) and the tag in slice 3; the “On this day” card in slice 5 (§15: the design system grows with the slices).
 
-## Сценарий
-1. До старта D1 Codex (`$imagegen`) по утверждённому пользователем брифу рисует статичные концепты по §11.2 на одних и тех же записях (кириллица, разные дни, задача, цитата, код): главное окно в трёх вариантах ленты — Editorial, Conversational, Immersive. Файлы — `design/concepts/feed/`. Это референс настроения, не спецификация.
-2. День 1: пользователь смотрит концепты и выбирает вариант ленты. Выбор записывается в ADR. Без выбора компоненты ленты не начинаются; токены и шрифты можно делать параллельно.
-3. Пользователь открывает Storybook и видит экран «Главное окно» на данных `MockApi`: сайдбар с чатами «эмодзи + имя» (без заголовка чата над лентой), лента выбранного варианта с метками дней и временем, composer с кнопками «файл», «эмодзи», «микрофон» внизу. Палитра — нейтральный графит, плотность как в Telegram, приглушённый акцент, сообщения — плашки без хвостов (ТЗ v0.7, ADR-0004).
-4. Включает крупный текст — ничего не обрезается и не налезает. Проходит экран клавиатурой — фокус виден на каждом интерактивном элементе.
-5. Открывает историю «Типографика»: все начертания (regular, italic, semibold/bold, моно) на русском и английском, жирный действительно жирный.
-6. Запускает тест токенов: видит таблицу пар «текст / фон» с коэффициентами контраста, все проходят WCAG AA.
-7. Запускает приложение: во временном экране на `MockApi` в настоящем окне Tauri (WKWebView) тот же экран выглядит так же, шрифты — встроенные, не системные.
+## Scenario
+1. Before D1 starts, Codex (`$imagegen`), following a brief approved by the user, draws static concepts per §11.2 on the same entries (Cyrillic, different days, a task, a quote, code): the main window in three feed variants: Editorial, Conversational, Immersive. Files go in `design/concepts/feed/`. This is a mood reference, not a spec.
+2. Day 1: the user looks at the concepts and chooses a feed variant. The choice is recorded in an ADR. Without the choice the feed components do not start; tokens and fonts can be done in parallel.
+3. The user opens Storybook and sees the «Главное окно» (“Main window”) screen on `MockApi` data: a sidebar with chats as “emoji + name” (no chat title above the feed), the feed in the chosen variant with day labels and times, a composer with the “file”, “emoji”, “microphone” buttons at the bottom. The palette is neutral graphite, the density is like Telegram, the accent is muted, messages are bubbles without tails (PRD v0.7, ADR-0004).
+4. They turn on large text: nothing is cut off and nothing overlaps. They go through the screen with the keyboard: focus is visible on every interactive element.
+5. They open the «Типографика» (“Typography”) story: all styles (regular, italic, semibold/bold, mono) in Russian and English, and bold is really bold.
+6. They run the token test: they see a table of “text / background” pairs with contrast ratios, all passing WCAG AA.
+7. They launch the app: on a temporary screen on `MockApi` in the real Tauri window (WKWebView) the same screen looks the same, and the fonts are embedded, not system ones.
 
-## Входит
-- **Токены тёмной темы** (`design/tokens/*.json`, имена по ролям): цвета — фон, бумага, текст ×3, акцент, разделитель, выделение, фокус, ошибка (состояние «не отправилось», §1.2 п. 9); типографическая шкала — заголовок дня, H1–H3, текст, мелкий, код, метаданные (размер + межстрочный); отступы, радиусы, тени, длительности и кривые анимаций с вариантом для Reduce Motion. Механизм масштаба текста — через токены.
-- **Шрифты:** гротеск (Inter) и моноширинный (JetBrains Mono), woff2, OFL, кириллица, regular / italic / semibold или bold; лицензии рядом с файлами.
-- **Компоненты** (`web/src/ui/`, только семантические токены):
-  - сообщение: текст, H1–H3, списки, задача `- [ ]` / `- [x]`, код (строчный и блок), цитата, ссылка; плашка без хвоста, время у каждого сообщения сразу после текста; серия (пауза < 5 мин) — меньший промежуток; состояние «подсвечено»;
-  - метка дня — одна, без повтора даты (сегодня, вчера, дата, дата с годом для прошлых лет), метка времени;
-  - composer — обычное поле ввода с кнопками «файл», «эмодзи», «микрофон» (только вид; функции — слайсы 3, 7, 7a): пустой, многострочный до ~40% высоты и дальше со скроллом, с черновиком, ошибка отправки;
-  - тост «Отменить» (5 с, `aria-live`, кнопка доступна с клавиатуры);
-  - кнопка и поле ввода — в том объёме, что используют компоненты выше.
-- **Экран в Storybook:** главное окно (сайдбар с чатами «эмодзи + имя» из `MockApi` — без выбора эмодзи и сворачивания, они в слайсе 3; лента; composer).
-- **Временный экран в приложении** на `MockApi` — для скриншота настоящего окна до слайса 1; слайс 1 заменяет его настоящим.
-- **Тест токенов:** все роли заданы, контраст текст / фон ≥ 4,5:1, крупный текст и UI ≥ 3:1.
-- ADR: выбранный вариант ленты, пара шрифтов, акцентный цвет.
+## Included
+- **Dark theme tokens** (`design/tokens/*.json`, role-based names): colors: background, paper, text ×3, accent, divider, selection, focus, error (the “not sent” state, §1.2 item 9); type scale: day heading, H1–H3, body, small, code, metadata (size + line height); spacing, radii, shadows, animation durations and curves with a variant for Reduce Motion. The text scale mechanism goes through tokens.
+- **Fonts:** a grotesque (Inter) and a monospace (JetBrains Mono), woff2, OFL, Cyrillic, regular / italic / semibold or bold; licenses next to the files.
+- **Components** (`web/src/ui/`, semantic tokens only):
+  - message: text, H1–H3, lists, task `- [ ]` / `- [x]`, code (inline and block), quote, link; a bubble without a tail, the time on every message right after the text; a series (pause < 5 min) gets a smaller gap; the “highlighted” state;
+  - day label: one, without repeating the date (today, yesterday, a date, a date with the year for past years), time label;
+  - composer: a plain input field with the “file”, “emoji”, “microphone” buttons (look only; the functions come in slices 3, 7, 7a): empty, multi-line up to ~40% of the height and scrolling beyond that, with a draft, send error;
+  - the “Undo” toast (5 s, `aria-live`, the button is reachable from the keyboard);
+  - button and input field, to the extent the components above use them.
+- **A screen in Storybook:** the main window (a sidebar with “emoji + name” chats from `MockApi`, without emoji choice and collapsing, which are in slice 3; the feed; the composer).
+- **A temporary screen in the app** on `MockApi`, for a screenshot of the real window before slice 1; slice 1 replaces it with the real one.
+- **Token test:** all roles are set, text / background contrast ≥ 4.5:1, large text and UI ≥ 3:1.
+- ADR: the chosen feed variant, the pair of fonts, the accent color.
 
-## НЕ входит
-- Окно быстрого захвата (слайс 2), выбор эмодзи чата, сворачивание сайдбара, эмодзи-пикер и тег (слайс 3), карточка «В этот день» и ответ «N лет спустя» (слайс 5).
-- Лес, карточка дня леса, цвета сезонов — слайс 6.
-- Изображения и файлы в сообщении, composer с вложениями — слайс 7.
-- Развёрнутый composer и живая подсветка Markdown (CodeMirror, spike S1).
-- Контекстное меню (слайс 3); поиск (слайс 4); переход к дате, плавающая дата, фильтры, переключатель плотности (в D1 — только «компактно»).
-- Невыбранные варианты ленты в Storybook — только выбранный.
-- Светлая тема (P1), проверка рендера шрифтов на Windows и Linux (слайс 10).
-- Подключение компонентов к Rust и реальным данным (слайс 1).
+## Not included
+- The quick capture window (slice 2), choosing a chat emoji, collapsing the sidebar, the emoji picker and the tag (slice 3), the “On this day” card and the “N years later” reply (slice 5).
+- The forest, the forest day card, season colors: slice 6.
+- Images and files in a message, a composer with attachments: slice 7.
+- An expanded composer and live Markdown highlighting (CodeMirror, spike S1).
+- The context menu (slice 3); search (slice 4); jump to date, the floating date, filters, a density switch (D1 has only “compact”).
+- Feed variants that were not chosen in Storybook: only the chosen one.
+- The light theme (P1), checking font rendering on Windows and Linux (slice 10).
+- Connecting the components to Rust and real data (slice 1).
 
-## Как выглядит «готово»
-Storybook: раздел «Основа» (цвета, типографика, отступы, анимации), «Компоненты», «Экраны». У каждого компонента истории состояний: пусто, обычное, длинный текст и длинная строка без пробелов, кириллица + латиница, ошибка (где применимо), фокус с клавиатуры, крупный текст. Главное окно 1280 × 800 и узкое окно. Сравнивается с выбранным концептом из `design/concepts/feed/` по настроению, не попиксельно.
+## What “done” looks like
+Storybook: the sections «Основа» (“Foundation”: colors, typography, spacing, animations), «Компоненты» (“Components”), «Экраны» (“Screens”). Each component has state stories: empty, normal, long text and a long line without spaces, Cyrillic + Latin, error (where applicable), keyboard focus, large text. The main window at 1280 × 800 and a narrow window. Compared with the chosen concept from `design/concepts/feed/` by mood, not pixel by pixel.
 
-## Проверки
-- Автотесты: тест токенов (роли, контраст AA); проверка шрифтов — каждый файл из токенов существует и содержит кириллицу (U+0400–U+04FF) и нужное начертание; визуальные снимки каждой истории (обычный и крупный текст, одна тема); правило ESLint или тест на отсутствие сырых цветов и размеров в `web/src/ui/`.
-- Доступность в историях: роли и подписи для диктора, видимый фокус, анимации отключаются при `prefers-reduced-motion`.
-- Скриншоты в `docs/screens/D1/`: «Главное окно» (обычный и крупный текст), «Типографика», настоящее окно Tauri с временным экраном (скриптом из слайса 0). Вывод теста токенов.
-- Данные: слайс данных не пишет.
+## Checks
+- Automated tests: the token test (roles, AA contrast); a font check: each file from the tokens exists and contains Cyrillic (U+0400–U+04FF) and the required style; visual snapshots of every story (normal and large text, one theme); an ESLint rule or a test that there are no raw colors and sizes in `web/src/ui/`.
+- Accessibility in the stories: roles and screen reader labels, visible focus, animations turn off under `prefers-reduced-motion`.
+- Screenshots in `docs/screens/D1/`: «Главное окно» (“Main window”, normal and large text), «Типографика» (“Typography”), the real Tauri window with the temporary screen (with the script from slice 0). The output of the token test.
+- Data: the slice does not write data.
 
-## Затрагивает чувствительные зоны
-Нет: схемы данных, синхронизации, шифрования и новых команд IPC нет. Новые npm-зависимости — упомянуть в PR или ADR (§12.1 п. 5).
+## Touches sensitive areas
+No: there is no data schema, sync, encryption and no new IPC commands. New npm dependencies are mentioned in the PR or in an ADR (§12.1 item 5).
 
-## Решения (19.10.2026)
-- Объём — D1 (это слайс), остальные компоненты — в слайсах 2, 3, 5.
-- В Storybook — только выбранный вариант ленты (§15; противоречие с §11.3 устранено в ТЗ).
-- Временный экран на `MockApi` в приложении — допустим.
-- Бриф для Codex о различиях Editorial / Conversational / Immersive готовит Claude, утверждает пользователь.
+## Decisions (19.10.2026)
+- The scope is D1 (this slice); the other components go into slices 2, 3, 5.
+- Storybook has only the chosen feed variant (§15; the contradiction with §11.3 is resolved in the PRD).
+- A temporary screen on `MockApi` in the app is acceptable.
+- Claude prepares the brief for Codex on the differences between Editorial / Conversational / Immersive; the user approves it.
 
-## Решения (20.10.2026, ADR-0004)
-- Шрифты: Inter (текст и интерфейс) + JetBrains Mono (код); Literata отменена по живому окну.
-- Фон и плашки темнее, текст почти белый; поле ввода без обводки (тонкая линия только в фокусе); счётчик записей у чата в сайдбаре (вид на демо-данных).
-- Строка профиля внизу сайдбара (только вид); лента — колонка ~720 px по центру, плашка до ~65 знаков; вкладок нет.
-- Фон — нейтральный графит вместо сине-графитового Nord, акцент голубой; кнопка «Отправить» вместо микрофона, когда в поле есть текст; действия по наведению справа от плашки («Копировать» работает, остальное — только вид). Разделы сайдбара — слайс 3.
-- Ссылки в записях: в D1 щелчок не уводит webview со страницы (переход отменяется); открытие в системном браузере — слайс 1 (нужна команда/плагин Tauri и capability).
-- Палитра: Nord; «тёплая тёмная бумага» отменена.
-- Плотность как в Telegram, «компактно» по умолчанию: текст 13 px (выбран на живом экране).
-- Без дублей названия чата и даты.
-- Кнопки в поле ввода, эмодзи у чатов.
+## Decisions (20.10.2026, ADR-0004)
+- Fonts: Inter (text and UI) + JetBrains Mono (code); Literata was dropped after looking at the live window.
+- Darker background and bubbles, near-white text; the input field has no outline (a thin line only in focus); an entry counter next to the chat in the sidebar (look on demo data).
+- A profile row at the bottom of the sidebar (look only); the feed is a centered ~720 px column, a bubble up to ~65 characters; no tabs.
+- The background is neutral graphite instead of the blue-graphite Nord, the accent is light blue; a “Send” button instead of the microphone when the field has text; hover actions to the right of the bubble (“Copy” works, the rest is look only). Sidebar sections are slice 3.
+- Links in entries: in D1 a click does not take the webview away from the page (the navigation is canceled); opening in the system browser is slice 1 (it needs a Tauri command/plugin and a capability).
+- Palette: Nord; “warm dark paper” is dropped.
+- Density like Telegram, “compact” by default: 13 px text (chosen on the live screen).
+- No duplicated chat name and date.
+- Buttons in the input field, emoji on chats.
 
-## Открытые вопросы (по вкусу, решает пользователь во время слайса)
-1. ~~Вариант ленты~~ — решено: компактный Conversational (`design/concepts/feed-v2/conversational-compact-2.png`). Размер текста — на живом экране, переключатель 13 / 14 / 15 px.
-2. Nord в живом окне: бледно-розовая ошибка, синеватая рамка полей; если Nord не подойдёт — тёмно-синий как в Telegram или графит.
+## Open questions (a matter of taste, the user decides during the slice)
+1. ~~Feed variant~~: decided: compact Conversational (`design/concepts/feed-v2/conversational-compact-2.png`). Text size on the live screen, a 13 / 14 / 15 px switch.
+2. Nord in the live window: a pale pink error, a bluish border on fields; if Nord does not work, dark blue as in Telegram or graphite.
