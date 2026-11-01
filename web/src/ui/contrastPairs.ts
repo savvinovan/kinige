@@ -1,13 +1,15 @@
 // Пары «цвет / фон», которые обязаны проходить проверку в каждой палитре.
 // Порог выбирается по роли пары. Текст проверяется строже всего (4,5:1), поэтому крупный текст (порог 3:1) проходит заведомо.
+import { TILE_ROLES } from "./tokenSource";
 
-export type PairKind = "text" | "ui" | "selection" | "decorative";
+export type PairKind = "text" | "ui" | "selection" | "decorative" | "hover";
 
 /**
  * Минимальный контраст по виду пары. decorative — порог проекта, не WCAG: граница или заливка заметна, но тонка. selection — тоже
- * порог проекта: выбранное одной заливкой, без рамки, и это единственный знак выбора (строка поиска под стрелками).
+ * порог проекта: выбранное одной заливкой, без рамки, и это единственный знак выбора (строка поиска под стрелками). hover —
+ * подсветка под мышью, тише всех заливок: она временная, а выбранная строка рядом остаётся заметнее (decorative, 1,2:1).
  */
-export const MIN_RATIO: Record<PairKind, number> = { text: 4.5, ui: 3, selection: 1.5, decorative: 1.2 };
+export const MIN_RATIO: Record<PairKind, number> = { text: 4.5, ui: 3, selection: 1.5, decorative: 1.2, hover: 1.15 };
 
 export interface ContrastPair {
   foreground: string;
@@ -23,6 +25,7 @@ const SURFACES = [
   "surface.code",
   "surface.day",
   "surface.selected",
+  "surface.hover",
   "surface.card",
   "surface.field",
   "surface.field-active",
@@ -59,6 +62,15 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { foreground: "surface.field", background: "surface.background", kind: "decorative" },
   { foreground: "surface.selected", background: "surface.background", kind: "decorative" },
   { foreground: "highlight.background", background: "surface.message", kind: "decorative" },
+  // Плитка с буквой (D2): белая буква на плитке читается как обычный текст (≥ 4,5:1) на каждом цвете плитки.
+  ...TILE_ROLES.map((tile) => ({ foreground: "text.primary", background: tile, kind: "text" as const })),
+  // Сайдбар (D2): подсветка под мышью заметна на фоне окна; плитка чата заметна и на фоне, и под мышью, и на выбранной строке.
+  { foreground: "surface.hover", background: "surface.background", kind: "hover" },
+  // Выбранная строка заметно отличается от строки под мышью (и от фона: пара selected / background выше).
+  { foreground: "surface.selected", background: "surface.hover", kind: "decorative" },
+  ...TILE_ROLES.flatMap((tile) =>
+    ["surface.background", "surface.hover", "surface.selected"].map((background) => ({ foreground: tile, background, kind: "decorative" as const })),
+  ),
   // Выбранное без рамки, одной заливкой: вариант переключателя на поле (surface.field), выбранная копия и найденная строка
   // поиска на бумаге и на заливке наведения (surface.selected).
   { foreground: "highlight.background", background: "surface.field", kind: "decorative" },

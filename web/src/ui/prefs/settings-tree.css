@@ -4,13 +4,15 @@
   box-sizing: border-box;
   width: var(--layout-settings-tree-width);
   height: 100%;
-  padding: var(--space-3) var(--space-2);
+  padding: var(--layout-sidebar-padding);
+  /* Колонка на том же фоне, что сайдбар главного окна (D2): те же строки, подсветка и выбранный пункт. */
+  background: var(--color-surface-background);
   border-right: var(--border-width-hairline) solid var(--color-border-divider);
 }
 
 .settings-tree__list {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--layout-sidebar-row-gap);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -20,26 +22,28 @@
   display: flex;
   align-items: center;
   box-sizing: border-box;
-  min-height: var(--layout-control-height);
-  padding-inline-start: var(--space-1);
+  min-height: var(--layout-sidebar-row-height);
+  padding-inline-start: var(--space-2);
   border-radius: var(--radius-control);
   color: var(--color-text-secondary);
 }
 
 .settings-tree__row:hover {
-  background: var(--color-surface-field);
+  background: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
 
 /* Выбранный пункт — только заливка; свёрнутая группа с текущим подпунктом подсвечена так же. */
 .settings-tree__row[data-current],
-.settings-tree__row[data-contains-current] {
-  background: var(--color-highlight-background);
+.settings-tree__row[data-contains-current],
+.settings-tree__row[data-current]:hover,
+.settings-tree__row[data-contains-current]:hover {
+  background: var(--color-surface-selected);
   color: var(--color-text-primary);
 }
 
 .settings-tree__row--nested {
-  padding-inline-start: var(--space-5);
+  padding-inline-start: var(--space-6);
 }
 
 /* Шеврон: щелчок по нему сворачивает и разворачивает группу; у пункта без вложенных — пустое место того же размера,
@@ -72,16 +76,17 @@
   gap: var(--space-2);
   box-sizing: border-box;
   min-width: 0;
-  min-height: var(--layout-control-height);
+  min-height: var(--layout-sidebar-row-height);
   margin: 0;
   padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
   color: inherit;
-  font-family: var(--type-small-family);
-  font-size: var(--type-small-size);
-  line-height: var(--type-small-line-height);
+  font-family: var(--type-nav-family);
+  font-size: var(--type-nav-size);
+  font-weight: var(--type-nav-weight);
+  line-height: var(--type-nav-line-height);
   text-align: start;
   cursor: pointer;
 }

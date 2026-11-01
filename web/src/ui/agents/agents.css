@@ -6,7 +6,7 @@
 /* Список чатов показывается целиком. */
 .agent-chats {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -18,7 +18,7 @@
 
 .agent-connect {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .agent-code {
@@ -48,7 +48,7 @@
   box-sizing: border-box;
   min-width: 0;
   margin: 0;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-control);
   background: var(--color-surface-code);
   color: var(--color-text-primary);
@@ -71,7 +71,7 @@
 /* Журнал: тихие строки, новые сверху; длиннее страницы — «Показать ещё», без своей прокрутки. */
 .agent-log {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-3);
   justify-items: start;
 }
 
@@ -99,7 +99,7 @@
   box-sizing: border-box;
   width: 100%;
   margin: 0;
-  padding: var(--space-1) 0;
+  padding: var(--space-2) 0;
   color: var(--color-text-secondary);
   font-family: var(--type-small-family);
   font-size: var(--type-small-size);
@@ -137,9 +137,9 @@
 
 .agent-log__entries {
   display: grid;
-  gap: var(--space-1);
-  margin: 0 0 var(--space-2);
-  padding: 0 0 0 var(--space-4);
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0 0 0 var(--space-5);
   list-style: none;
 }
 
@@ -149,7 +149,7 @@
   box-sizing: border-box;
   width: 100%;
   margin: 0;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border: 0;
   border-radius: var(--radius-control);
   background: var(--color-surface-field);
@@ -193,8 +193,8 @@
 
 .agent-warning {
   display: grid;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-5) var(--space-5);
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6) var(--space-6);
 }
 
 .agent-warning__text {

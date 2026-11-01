@@ -4,7 +4,7 @@
   box-sizing: border-box;
   min-height: var(--layout-control-height);
   margin: 0;
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-3);
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
@@ -142,16 +142,22 @@
 .text-field__box {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   box-sizing: border-box;
   min-height: var(--layout-field-height);
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-3);
   /* Рамки у поля нет, только заливка (как в Telegram); прозрачная рамка нужна, чтобы ошибка не сдвигала содержимое. */
   border: var(--border-width-hairline) solid transparent;
   border-radius: var(--radius-control);
   background: var(--color-surface-field);
   color: var(--color-text-tertiary);
   transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+/* Значок слева в поле («Поиск») тоньше по размеру, чем значки кнопок: в одной колонке со значками нижних пунктов сайдбара. */
+.text-field__box > .icon {
+  width: var(--icon-size-nav);
+  height: var(--icon-size-nav);
 }
 
 /* Фокус: курсор (акцентный), чуть более светлая заливка и одна тонкая линия внутри поля цветом фокуса; снаружи кольца нет. */
@@ -267,6 +273,15 @@
   line-height: var(--type-small-line-height);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Длинная подпись переносится, а не обрезается (`checkbox--wrap`): в окне наименьшего размера и при крупном тексте смысл
+   фразы «Разрешить агентам доступ к журналу» нельзя прятать за многоточием. Названия чатов в списках остаются в одну строку. */
+.checkbox--wrap .checkbox__label {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 /* Пояснение переносится по словам: в русском оно длиннее строки окна, обрезка прятала бы смысл (слайс 4a). */

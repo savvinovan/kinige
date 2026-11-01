@@ -23,7 +23,7 @@ describe("палитры", () => {
 
   afterAll(() => {
     // Таблица пар «цвет / фон» для приёмки: видна в выводе `npm test`.
-    console.log(`\nКонтраст пар (WCAG 2.x; порог: text 4,5, ui 3, decorative 1,2)\n${rows.join("\n")}`);
+    console.log(`\nКонтраст пар (WCAG 2.x; порог: text 4,5, ui 3, decorative 1,2, hover 1,15)\n${rows.join("\n")}`);
   });
 
   it("палитра одна: graphite, она же активная (ADR-0004)", () => {
@@ -98,7 +98,7 @@ describe("шкалы", () => {
   const tokens = css("tokens.css");
 
   it("типографическая шкала: у каждой роли размер, межстрочный, вес и семейство", () => {
-    for (const role of ["day", "h1", "h2", "h3", "body", "small", "code", "meta"]) {
+    for (const role of ["day", "h1", "h2", "h3", "body", "small", "code", "meta", "nav", "section", "title"]) {
       for (const part of ["size", "line-height", "weight", "family"]) {
         expect(tokens, `type.${role}.${part}`).toMatch(new RegExp(`--type-${role}-${part}:`));
       }

@@ -1,11 +1,12 @@
 {
   "radius": {
     "$type": "dimension",
-    "$description": "Радиусы в rem: растут вместе с размером текста, как и отступы (при корне 13 px: inline 3,25 px, control 6,5 px, panel и message 9,75 px).",
+    "$description": "Радиусы в rem: растут вместе с размером текста, как и отступы (при корне 13 px: inline 3,25 px, control 8,45 px, tile 5,85 px, panel и message 11,7 px). D2: control, panel и message мягче (было 6,5 / 9,75 / 9,75 px).",
     "inline": { "$value": "0.25rem", "$description": "Строчный код, тег." },
-    "control": { "$value": "0.5rem", "$description": "Кнопки, поля ввода, строка чата, блок кода внутри плашки." },
-    "panel": { "$value": "0.75rem", "$description": "Composer, тост, контекстное меню." },
-    "message": { "$value": "0.75rem", "$description": "Плашка сообщения." },
+    "tile": { "$value": "0.45rem", "$description": "Плитка чата в сайдбаре (D2): квадрат 22,75 px с мягкими углами." },
+    "control": { "$value": "0.65rem", "$description": "Кнопки, поля ввода, строка чата, пункт меню, блок кода внутри плашки." },
+    "panel": { "$value": "0.9rem", "$description": "Composer, тост, контекстное меню, диалог." },
+    "message": { "$value": "0.9rem", "$description": "Плашка сообщения и карточка «В этот день»." },
     "floating": { "$value": "1.5rem", "$description": "Плавающая панель быстрого захвата («пилюля»): 19,5 px при корне 13 px, как у Gemini и ChatGPT (ориентир 18–22 px)." },
     "round": { "$value": "999px", "$description": "Полностью скруглённые элементы: метка дня." }
   }

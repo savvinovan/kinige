@@ -66,6 +66,12 @@ fn main() {
             &at(-26 * DAY),
         )
         .unwrap();
+    // Чаты без эмодзи (хранятся с «💬» по умолчанию): сайдбар показывает для них плитку с первой буквой названия (слайс D2).
+    for (days_ago, title) in [(25, "Проекты"), (24, "Linux notes"), (23, "Мама")] {
+        store
+            .create_chat(title, None, &at(-days_ago * DAY))
+            .unwrap();
+    }
 
     send(
         INBOX_ID,

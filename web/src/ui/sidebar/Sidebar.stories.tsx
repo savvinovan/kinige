@@ -11,9 +11,12 @@ const CHATS: SidebarChat[] = [
   { id: "work", name: "Работа", emoji: "💼", count: 1234 },
   { id: "books", name: "Книги", emoji: "📚", count: 9 },
   { id: "recipes", name: "Рецепты", emoji: "🍳", count: 12345 },
-  { id: "reading", name: "Reading list", emoji: "📖" },
+  // Без эмодзи: Rust хранит «💬» по умолчанию, сайдбар показывает плитку с буквой (цвет из идентификатора).
+  { id: "projects", name: "Проекты", emoji: "💬", count: 18 },
+  { id: "linux", name: "Linux notes", emoji: "💬", count: 55 },
+  { id: "mom", name: "Мама", emoji: "💬", count: 214 },
   { id: "trip", name: "Отпуск 2025", emoji: "🏖️", count: 61, archived: true },
-  { id: "old", name: "Старый проект", emoji: "🗄️", count: 4, archived: true },
+  { id: "old", name: "Старый проект", emoji: "💬", count: 4, archived: true },
 ];
 
 interface DemoProps {
@@ -25,6 +28,8 @@ interface DemoProps {
   focus?: boolean;
   /** Открывает контекстное меню строки, имя (или его начало) которой передано: как правый щелчок. */
   menuFor?: string;
+  /** Показывает наведение на строку, имя (или его начало) которой передано: `:hover` в историю не поставить, ставится атрибут. */
+  hoverFor?: string;
   showSearch?: boolean;
   /** Чат под перетаскиваемой записью (слайс 3, перенос записи): подсвечен как цель. */
   dropTargetId?: string | null;
@@ -38,6 +43,7 @@ function Demo({
   trashCount = 3,
   focus = false,
   menuFor,
+  hoverFor,
   showSearch = false,
   dropTargetId = null,
 }: DemoProps) {
@@ -51,6 +57,10 @@ function Demo({
     // Строка списка подписана в title («Книги, 9 записей»), кнопка полосы — в aria-label.
     const label = (button: HTMLButtonElement) => button.getAttribute("title") ?? button.getAttribute("aria-label") ?? "";
     if (focus) host.current?.querySelector<HTMLButtonElement>("[aria-current]")?.focus();
+    // У строки «Корзина» нет ни `title`, ни `aria-label`: имя берётся из текста кнопки.
+    if (hoverFor) {
+      buttons.find((button) => (label(button) || (button.textContent ?? "")).startsWith(hoverFor))?.setAttribute("data-story-hover", "");
+    }
     if (menuFor) {
       const row = buttons.find((button) => label(button).startsWith(menuFor));
       const rect = row?.getBoundingClientRect();
@@ -60,7 +70,7 @@ function Demo({
         );
       }
     }
-  }, [focus, menuFor]);
+  }, [focus, menuFor, hoverFor]);
 
   const act = (id: string, action: ChatAction) =>
     setChats((list) =>
@@ -136,6 +146,56 @@ export const ДлинныеИмена: Story = {
   },
 };
 
+/** Плитки с буквой всех шести цветов (цвет задан явно); выбрана зелёная, остальные на фоне и рядом с выбранной. */
+export const ЦветаПлиток: Story = {
+  args: {
+    chats: [
+      { id: "b", name: "Синий", emoji: "💬", count: 4, tint: "blue" },
+      { id: "t", name: "Бирюзовый", emoji: "💬", count: 5, tint: "teal" },
+      { id: "g", name: "Зелёный", emoji: "💬", count: 6, tint: "green" },
+      { id: "o", name: "Оранжевый", emoji: "💬", count: 7, tint: "orange" },
+      { id: "p", name: "Розовый", emoji: "💬", count: 8, tint: "pink" },
+      { id: "v", name: "Фиолетовый", emoji: "💬", count: 9, tint: "violet" },
+    ],
+    selectedId: "g",
+    trashCount: 0,
+  },
+};
+
+/** Эмодзи без плитки и плитки с буквой рядом: названия стоят на одной вертикали; буква — первая графема («Ёлка», «Linux», «A» после эмодзи). */
+export const ЭмодзиИБуквы: Story = {
+  args: {
+    chats: [
+      { id: "e1", name: "Идеи", emoji: "💡", count: 87 },
+      { id: "l1", name: "Ёлка", emoji: "💬", count: 3 },
+      { id: "e2", name: "Книги", emoji: "📚", count: 9 },
+      { id: "l2", name: "Linux notes", emoji: "💬", count: 55 },
+      { id: "l3", name: "  «мама» и папа", emoji: "💬", count: 214 },
+      { id: "l4", name: "🎉 Party plans", emoji: "💬", count: 2 },
+      { id: "l5", name: "!!!", emoji: "💬", count: 1 },
+    ],
+    selectedId: "l2",
+    trashCount: 0,
+  },
+};
+
+/** Те же чаты в английском интерфейсе (названия — данные пользователя). */
+export const ЭмодзиИБуквыАнглийский: Story = {
+  args: { ...ЭмодзиИБуквы.args },
+  globals: { language: "en" },
+};
+
+/** Крупный текст: плитка с буквой и эмодзи растут вместе с текстом. */
+export const ЭмодзиИБуквыКрупныйТекст: Story = {
+  args: { ...ЭмодзиИБуквы.args },
+  globals: { textScale: "large" },
+};
+
+/** Свёрнутая полоса: эмодзи без плитки и плитки с буквой. */
+export const ЭмодзиИБуквыСвёрнутый: Story = {
+  args: { ...ЭмодзиИБуквы.args, collapsed: true },
+};
+
 /** Счётчик записей справа: нет у пустого чата, 7, «1 234», «9 999», «12 тыс.», «1,2 млн»; тихий серый, не акцент. */
 export const Счётчики: Story = {
   args: {
@@ -156,6 +216,12 @@ export const Счётчики: Story = {
 export const МногоЧатов: Story = {
   args: { chats: Array.from({ length: 40 }, (_, i) => ({ id: `c${i}`, name: `Чат ${i + 1}`, emoji: "📌", count: (i + 1) * 3 })), selectedId: "c0" },
 };
+
+/** Наведение: строка «Книги» подсвечена под мышью (тихая заливка), выбранная «Работа» залита плотнее и читается рядом с ней. */
+export const Наведение: Story = { args: { hoverFor: "Книги" } };
+
+/** Наведение на «Корзину» внизу и крупный текст. */
+export const НаведениеКрупныйТекст: Story = { args: { hoverFor: "Корзина" }, globals: { textScale: "large" } };
 
 /** Фокус с клавиатуры на строке выбранного чата. */
 export const Фокус: Story = { args: { focus: true } };

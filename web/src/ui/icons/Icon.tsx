@@ -11,6 +11,7 @@ import {
   CircleAlert,
   Copy,
   Database,
+  Download,
   Ellipsis,
   Info,
   Mic,
@@ -23,11 +24,13 @@ import {
   Plus,
   Reply,
   Search,
+  Settings,
   Smile,
   SquareCheck,
   Star,
   Trash2,
   Undo2,
+  Upload,
   X,
 } from "lucide-react";
 import "./icon.css";
@@ -68,6 +71,10 @@ const GLYPHS = {
   chevronLeft: ChevronLeft,
   // Слайс 5: «Ответить» в карточке «В этот день» и строка ответа.
   reply: Reply,
+  // D2: значки у пунктов меню профиля.
+  settings: Settings,
+  download: Download,
+  upload: Upload,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;
