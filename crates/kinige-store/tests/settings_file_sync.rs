@@ -275,7 +275,13 @@ fn the_mirror_folder_must_be_absolute_existing_and_outside_the_data_directory() 
         ("relative/path".to_string(), KeyIssueKind::FolderNotAbsolute),
         ("".to_string(), KeyIssueKind::FolderNotAbsolute),
         (
-            "/definitely/not/here-4b".to_string(),
+            // Абсолютный путь, которого нет: на Windows `/definitely/…` без буквы диска не абсолютный.
+            target
+                .path()
+                .join("definitely")
+                .join("not-here-4b")
+                .to_string_lossy()
+                .into_owned(),
             KeyIssueKind::FolderMissing,
         ),
         (

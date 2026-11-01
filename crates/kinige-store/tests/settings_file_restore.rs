@@ -77,6 +77,8 @@ fn the_mirror_folder_named_in_the_file_is_moved_aside_with_its_extra_day() {
     );
 }
 
+// «Небезопасный» здесь — файл с режимом 0666: на Windows режимов нет (ADR-0010, заметка про Windows).
+#[cfg(unix)]
 #[test]
 fn an_unsafe_file_does_not_make_restore_move_its_mirror_folder() {
     let dir = tempfile::tempdir().unwrap();
