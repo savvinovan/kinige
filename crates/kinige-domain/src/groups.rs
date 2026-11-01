@@ -222,8 +222,7 @@ pub(crate) fn build_message(
     let ext_json = match &provenance.ext {
         Some(ext) => {
             core["ext"] = ext.clone();
-            let bytes = jcs::canonical_bytes(ext)?;
-            Some(String::from_utf8(bytes).expect("JCS выдаёт UTF-8"))
+            Some(jcs::canonical_string(ext)?)
         }
         None => None,
     };
@@ -334,8 +333,7 @@ pub(crate) fn assemble(
     let mut raw: BTreeMap<String, Box<RawValue>> = BTreeMap::new();
     let mut hlcs: BTreeMap<&str, Value> = BTreeMap::new();
     for (name, value) in groups {
-        let bytes = jcs::canonical_bytes(value)?;
-        let text = String::from_utf8(bytes).expect("JCS выдаёт UTF-8");
+        let text = jcs::canonical_string(value)?;
         raw.insert(
             (*name).to_string(),
             RawValue::from_string(text).map_err(|e| GroupError::Corrupt(e.to_string()))?,

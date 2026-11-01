@@ -1,6 +1,10 @@
 //! Импорт из Telegram (слайс 4, задача 4.8): запись, повтор, копия, время, ответы, ход импорта, Markdown-копия. Личные чаты,
 //! выбор чатов и корзина — `import_chats.rs`, неизменяемость `origin` и `ext` — `import_immutable.rs`.
 
+// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+#![cfg(test)]
+
 mod common;
 
 use common::import::*;

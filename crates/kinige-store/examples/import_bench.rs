@@ -5,8 +5,14 @@
 //! `cargo run --release -p kinige-store --example import_bench -- <каталог данных> synthetic <N>`
 //! `cargo run --release -p kinige-store --example import_bench -- <каталог данных> file <result.json>`
 
-// Пример — консольная утилита: печать в stdout разрешена (правило «только через log» — для кода приложения).
-#![allow(clippy::print_stdout)]
+// Пример — консольная утилита: печать в stdout и падение на любой ошибке разрешены (правила «только через log» и
+// «никогда не падать» — для кода приложения).
+#![allow(
+    clippy::print_stdout,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 
 use kinige_domain::Language;
 use kinige_domain::SearchFilters;

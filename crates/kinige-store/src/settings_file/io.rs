@@ -161,11 +161,20 @@ fn open(path: &Path) -> io::Result<(File, bool)> {
 #[cfg(unix)]
 fn unsafe_file(meta: &fs::Metadata) -> Option<UnsafeReason> {
     use std::os::unix::fs::MetadataExt;
-    // SAFETY: `geteuid` ничего не читает и не пишет, ошибок не возвращает.
-    if meta.uid() != unsafe { libc::geteuid() } {
+    if meta.uid() != effective_uid() {
         return Some(UnsafeReason::Owner);
     }
     (meta.mode() & 0o022 != 0).then_some(UnsafeReason::Permissions)
+}
+
+/// Единственный `unsafe` в проекте (`unsafe_code = "deny"` в workspace): в `std` нет безопасного `geteuid`, а лишняя
+/// зависимость ради одного вызова хуже одной строки с обоснованием.
+#[cfg(unix)]
+#[allow(unsafe_code)]
+fn effective_uid() -> u32 {
+    // SAFETY: `geteuid` (POSIX) ничего не читает и не пишет по указателям, не принимает аргументов и по стандарту
+    // всегда успешна.
+    unsafe { libc::geteuid() }
 }
 #[cfg(not(unix))]
 fn unsafe_file(_: &fs::Metadata) -> Option<UnsafeReason> {
@@ -179,8 +188,7 @@ pub fn unsafe_directory(dir: &Path) -> Option<UnsafeReason> {
     let Ok(meta) = fs::symlink_metadata(dir) else {
         return Some(UnsafeReason::Directory);
     };
-    // SAFETY: см. `unsafe_file`.
-    let own = meta.uid() == unsafe { libc::geteuid() };
+    let own = meta.uid() == effective_uid();
     (!meta.is_dir() || !own || meta.mode() & 0o022 != 0).then_some(UnsafeReason::Directory)
 }
 #[cfg(not(unix))]

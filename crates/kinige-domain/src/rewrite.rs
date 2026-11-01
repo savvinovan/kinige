@@ -124,11 +124,10 @@ pub fn rewrite_group(
 
     edit(&mut object, &old_hlc)?;
 
-    let bytes = jcs::canonical_bytes(&Value::Object(object))?;
-    if max_bytes.is_some_and(|max| bytes.len() > max) {
+    let text = jcs::canonical_string(&Value::Object(object))?;
+    if max_bytes.is_some_and(|max| text.len() > max) {
         return Err(GroupError::TooLarge);
     }
-    let text = String::from_utf8(bytes).expect("JCS выдаёт UTF-8");
     groups.insert(
         group.to_string(),
         RawValue::from_string(text).map_err(corrupt)?,

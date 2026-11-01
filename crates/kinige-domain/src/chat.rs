@@ -99,7 +99,9 @@ pub fn key_after(max: Option<&str>) -> String {
         }
         *slot = KEY_DIGITS[0];
     }
-    format!("a{}", String::from_utf8(next).expect("цифры ASCII"))
+    // Все байты — цифры ASCII (проверено выше), поэтому `char::from(u8)` совпадает с UTF-8.
+    let digits: String = next.into_iter().map(char::from).collect();
+    format!("a{digits}")
 }
 
 /// Исходные значения нового чата; имя и эмодзи уже нормализованы.

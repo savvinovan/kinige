@@ -1,1 +1,7 @@
+# Печать и «падающие» вызовы разрешены только в тестах (unit-тесты в `src/` и корни `tests/` с `#![cfg(test)]`), где
+# падение теста и есть сообщение об ошибке. Для `unreachable`, `todo` и `unimplemented` такой настройки у clippy нет.
 allow-print-in-tests = true
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
