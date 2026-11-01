@@ -139,7 +139,10 @@ fn write_snapshot(source: &Connection, temp: &Path) -> Result<(), BackupError> {
             return Err(BackupError::WriteFailed);
         }
     }
-    fs::File::open(temp)
+    // Opened for writing, not only for reading: on Windows `FlushFileBuffers` refuses a handle without write access.
+    fs::OpenOptions::new()
+        .write(true)
+        .open(temp)
         .and_then(|file| file.sync_all())
         .map_err(|_| BackupError::WriteFailed)
 }

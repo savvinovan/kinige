@@ -64,6 +64,8 @@ pub enum ErrorCode {
     ImportSessionExpired,
     /// Копия базы перед импортом не снялась: ни одной записи не добавлено.
     ImportBackupFailed,
+    /// The action is not available on this platform: AI-agent access (MCP) on Windows until named pipes (slice 10a).
+    Unsupported,
     Internal,
 }
 

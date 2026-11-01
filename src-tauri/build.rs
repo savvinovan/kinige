@@ -10,9 +10,14 @@ fn main() {
     // `bundle.externalBin` требует файл `binaries/kinige-mcp-<triple>` при любой сборке, в том числе `cargo clippy` и
     // `cargo test` на чистом клоне. Пустая заглушка (она в .gitignore) не даёт сборке упасть; настоящий мост кладут туда
     // `scripts/build-app.sh` и `scripts/run-app.sh`. Приложение считает пустой файл «мост не найден».
+    // On Windows there is no bridge in the bundle (`tauri.windows.conf.json` empties `externalBin`, slice 10a): no stub needed.
     let target = std::env::var("TARGET").expect("cargo не передал TARGET");
+    let windows = std::env::var("CARGO_CFG_TARGET_OS").is_ok_and(|os| os == "windows");
+    if windows {
+        embed_manifest();
+    }
     let sidecar = std::path::Path::new("binaries").join(format!("kinige-mcp-{target}"));
-    if !sidecar.exists() {
+    if !windows && !sidecar.exists() {
         std::fs::create_dir_all("binaries").expect("не удалось создать src-tauri/binaries");
         std::fs::write(&sidecar, []).expect("не удалось создать заглушку моста");
     }
@@ -78,6 +83,51 @@ fn main() {
         "capture_resize",
         "capture_add_recent_emoji",
     ]);
-    tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
-        .expect("не удалось выполнить tauri-build");
+    // On Windows `embed_manifest` puts the manifest (Common Controls v6) into every executable at once, so `tauri-build`
+    // does not add its own: the linker does not accept two manifests in one file.
+    let windows_attributes = if windows {
+        tauri_build::WindowsAttributes::new_without_app_manifest()
+    } else {
+        tauri_build::WindowsAttributes::new()
+    };
+    tauri_build::try_build(
+        tauri_build::Attributes::new()
+            .app_manifest(manifest)
+            .windows_attributes(windows_attributes),
+    )
+    .expect("tauri-build failed");
+    if windows {
+        link_resources_into_tests();
+    }
+}
+
+/// A manifest with Common Controls v6 for every executable of the crate on Windows (slice 10a): the app, the tests in
+/// `tests/` and the library tests. The folder dialog (`rfd` through `tauri-plugin-dialog`) calls `TaskDialogIndirect`,
+/// which comctl32 version 5 does not have: without this dependency in the manifest any executable linked with the app
+/// does not start (`STATUS_ENTRYPOINT_NOT_FOUND`). The default manifest of `tauri-build` is the same, but it goes into
+/// binaries only; so the linker embeds the manifest and `tauri-build` adds none (`new_without_app_manifest`).
+fn embed_manifest() {
+    const COMMON_CONTROLS_V6: &str = r#"<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*" />
+    </dependentAssembly>
+  </dependency>
+</assembly>
+"#;
+    let out_dir = std::env::var_os("OUT_DIR").expect("cargo did not pass OUT_DIR");
+    let manifest = std::path::Path::new(&out_dir).join("app.manifest");
+    std::fs::write(&manifest, COMMON_CONTROLS_V6).expect("could not write the manifest");
+    println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
+    println!("cargo:rustc-link-arg=/MANIFESTINPUT:{}", manifest.display());
+}
+
+/// The app resources (window icon, version info) for integration tests on Windows. `tauri-build` links them into binaries
+/// only, while `generate_context!` takes the default window icon from the resource of the executable itself: in a test
+/// without the resource the context cannot be created ("failed to load the default window icon"). The file
+/// `resource.lib` is in `OUT_DIR` after `tauri-build`.
+fn link_resources_into_tests() {
+    let out_dir = std::env::var_os("OUT_DIR").expect("cargo did not pass OUT_DIR");
+    let resources = std::path::Path::new(&out_dir).join("resource.lib");
+    println!("cargo:rustc-link-arg-tests={}", resources.display());
 }

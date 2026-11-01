@@ -10,16 +10,26 @@ mod common;
 
 use common::settings_file::*;
 use common::*;
-use kinige_domain::{FileProblemKind, TextSize, UnsafeReason};
+use kinige_domain::{FileProblemKind, TextSize};
 use std::fs;
+// The rest is needed only by the symlink, FIFO and mode tests (Unix).
+#[cfg(unix)]
+use kinige_domain::UnsafeReason;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+#[cfg(unix)]
 use std::process::Command;
+#[cfg(unix)]
 use std::sync::Arc;
+#[cfg(unix)]
 use std::time::Duration;
 
+#[cfg(unix)]
 const ACCESS_ON: &str =
     r#"{"text_size":"large","agent_access":{"enabled":true,"mode":"read_write"}}"#;
 
+// Symlinks, FIFOs and directory modes are Unix; these checks do not exist on Windows (ADR-0010, Windows note).
+#[cfg(unix)]
 #[test]
 fn a_symlink_is_unsafe_it_is_read_through_but_never_overwritten() {
     let rig = rig();
@@ -47,6 +57,7 @@ fn a_symlink_is_unsafe_it_is_read_through_but_never_overwritten() {
     assert_eq!(fs::read_to_string(&real).unwrap(), ACCESS_ON);
 }
 
+#[cfg(unix)]
 #[test]
 fn an_edit_of_the_symlink_target_is_applied_by_a_sync_pass() {
     // Шаги ведёт сам тест (`sync_now` — тот же проход, что делает опрос), а не фоновый опрос с ожиданием по часам: под нагрузкой
@@ -65,6 +76,7 @@ fn an_edit_of_the_symlink_target_is_applied_by_a_sync_pass() {
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
 }
 
+#[cfg(unix)]
 #[test]
 fn a_missing_file_in_a_loose_directory_is_created_and_the_directory_is_reported() {
     let root = tempfile::tempdir().unwrap();
@@ -82,6 +94,7 @@ fn a_missing_file_in_a_loose_directory_is_created_and_the_directory_is_reported(
     assert_eq!(file.state().unsafe_reason, Some(UnsafeReason::Directory));
 }
 
+#[cfg(unix)]
 #[test]
 fn a_fifo_in_place_of_the_file_is_unsafe_and_never_blocks_or_reads() {
     let rig = rig();
@@ -162,6 +175,7 @@ fn abandoned_temp_files_are_removed_at_start() {
     drop(rig);
 }
 
+#[cfg(unix)]
 #[test]
 fn a_new_data_directory_is_private_and_an_existing_one_is_left_alone() {
     let root = tempfile::tempdir().unwrap();

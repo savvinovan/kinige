@@ -9,6 +9,12 @@ pub mod guard;
 pub mod hotkeys;
 pub mod import;
 pub mod logging;
+// The MCP server is a Unix socket (ADR-0009). Without Unix (Windows, slice 10a) a stub with the same surface stands in:
+// there is no socket and the "AI agent access" page sees `unsupported`.
+#[cfg(unix)]
+pub mod mcp;
+#[cfg(not(unix))]
+#[path = "mcp_unsupported.rs"]
 pub mod mcp;
 #[cfg(target_os = "macos")]
 mod panel;
@@ -109,9 +115,20 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
 fn db_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let data_dir = match std::env::var_os("KINIGE_DATA_DIR") {
         Some(dir) => PathBuf::from(dir),
-        None => app.path().app_data_dir()?,
+        None => default_data_dir(app)?,
     };
     Ok(data_dir.join("kinige.db"))
+}
+
+/// The default data directory. On Windows it is the local one (`%LOCALAPPDATA%\me.savvinov.kinige`): a SQLite database
+/// with its journal and WAL does not belong in the roaming profile (`%APPDATA%`), which is synced and copied around.
+/// Elsewhere it is the app data directory as before (macOS: `~/Library/Application Support/me.savvinov.kinige`).
+fn default_data_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, tauri::Error> {
+    if cfg!(windows) {
+        app.path().app_local_data_dir()
+    } else {
+        app.path().app_data_dir()
+    }
 }
 
 /// Папка Markdown-копии по умолчанию: `~/Documents/Kinige` (или `KINIGE_MIRROR_DIR`).

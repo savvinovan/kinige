@@ -42,7 +42,7 @@ const OPEN_MESSAGE = "open-message";
 /** Прогресс импорта (`import::IMPORT_PROGRESS`); приходит только главному окну. */
 const IMPORT_PROGRESS = "import-progress";
 
-const CODES: readonly ErrorCode[] = [
+const CODES = [
   "empty_message",
   "message_too_large",
   "chat_not_found",
@@ -74,8 +74,13 @@ const CODES: readonly ErrorCode[] = [
   "import_in_progress",
   "import_session_expired",
   "import_backup_failed",
+  "unsupported",
   "internal",
-];
+] as const satisfies readonly ErrorCode[];
+
+// Every `ErrorCode` of the generated type must be listed above: a missing one makes this line fail to compile.
+const allCodesListed: [Exclude<ErrorCode, (typeof CODES)[number]>] extends [never] ? true : never = true;
+void allCodesListed;
 
 /** Отказ команды → `KinigeApiError`. Не наш формат (например, отказ ACL — строка) — `internal`. */
 function toApiError(reason: unknown): KinigeApiError {

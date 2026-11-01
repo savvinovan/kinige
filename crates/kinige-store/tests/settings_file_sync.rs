@@ -18,6 +18,7 @@ use std::time::Duration;
 #[test]
 fn a_missing_file_is_created_from_the_state_with_all_keys_and_private_mode() {
     let rig = rig();
+    #[cfg(unix)]
     assert_eq!(mode_of(&rig.path()), 0o600);
     assert_eq!(
         rig.json(),
@@ -145,6 +146,8 @@ fn a_deleted_file_is_recreated_from_the_state_and_settings_are_not_reset() {
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
 }
 
+// Includes the chat resolution of `agent_access`, which is applied on Unix only (ADR-0010, Windows note).
+#[cfg(unix)]
 #[test]
 fn each_key_with_a_wrong_type_or_value_is_an_error_of_that_key_and_the_rest_is_applied() {
     let rig = rig();
@@ -274,7 +277,13 @@ fn the_mirror_folder_must_be_absolute_existing_and_outside_the_data_directory() 
         ("relative/path".to_string(), KeyIssueKind::FolderNotAbsolute),
         ("".to_string(), KeyIssueKind::FolderNotAbsolute),
         (
-            "/definitely/not/here-4b".to_string(),
+            // An absolute path that does not exist: on Windows `/definitely/…` without a drive letter is not absolute.
+            target
+                .path()
+                .join("definitely")
+                .join("not-here-4b")
+                .to_string_lossy()
+                .into_owned(),
             KeyIssueKind::FolderMissing,
         ),
         (
@@ -377,4 +386,73 @@ fn caps_keep_the_error_and_unknown_key_lists_short_whatever_the_file_holds() {
     assert!(state.issues.len() <= 100, "{}", state.issues.len());
     assert_eq!(state.unknown_keys.len(), 100);
     assert_eq!(state.unknown_more, 4900);
+}
+
+/// Windows (slice 10a): the file must not store AI-agent access. There is no MCP server yet and no owner and mode check
+/// of the file, so a stored `enabled: true` would switch access on, with write access, at the upgrade that brings MCP to
+/// Windows. The key is reported as unsupported, the database keeps its defaults, and the rest of the file is applied.
+#[cfg(windows)]
+#[test]
+fn on_windows_agent_access_in_the_file_is_reported_and_never_stored() {
+    let rig = rig();
+    rig.write(
+        r#"{"text_size":"large","agent_access":{"enabled":true,"mode":"read_write","chats":[{"title":"Inbox"}]}}"#,
+    );
+    let state = rig.file.state();
+    let issues: Vec<_> = state
+        .issues
+        .iter()
+        .map(|issue| (issue.key.as_str(), issue.kind))
+        .collect();
+    assert_eq!(issues, [("agent_access", KeyIssueKind::Unsupported)]);
+    let access = rig.store.agent_access().unwrap();
+    assert!(!access.enabled);
+    assert_eq!(access.mode, kinige_domain::AgentMode::Read);
+    assert!(access.chats.iter().all(|chat| !chat.visible));
+    assert_eq!(rig.setting("mcp_enabled"), None);
+    assert_eq!(rig.setting("mcp_chats"), None);
+    // The rest of the file is applied as usual.
+    assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
+}
+
+/// Windows (slice 10a): the settings file is held open without `FILE_SHARE_DELETE` (an editor or a sync client), so the
+/// `rename` of the atomic write fails. The window edit itself is kept (the database wins), the file problem is `Io`, the
+/// writer backs off, and the file is written once the holder lets go.
+#[cfg(windows)]
+#[test]
+fn on_windows_a_held_settings_file_gives_an_io_problem_and_is_written_after_the_holder_lets_go() {
+    use kinige_domain::FileProblemKind;
+    use std::os::windows::fs::OpenOptionsExt;
+    const FILE_SHARE_READ_WRITE: u32 = 0x1 | 0x2;
+    let rig = rig();
+    let held = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(FILE_SHARE_READ_WRITE)
+        .open(rig.path())
+        .unwrap();
+
+    rig.file
+        .edit(|store| store.set_text_size(TextSize::Large))
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
+    assert_eq!(
+        rig.file.state().problem.map(|problem| problem.kind),
+        Some(FileProblemKind::Io)
+    );
+    assert!(
+        !fs::read_to_string(rig.path())
+            .unwrap()
+            .contains("\"large\"")
+    );
+
+    drop(held);
+    let written = (0..20).any(|_| {
+        std::thread::sleep(Duration::from_millis(500));
+        rig.file.sync_now();
+        fs::read_to_string(rig.path()).is_ok_and(|text| text.contains("\"large\""))
+    });
+    assert!(written, "the file is written after the holder lets go");
+    assert!(rig.file.state().problem.is_none());
 }

@@ -4,7 +4,7 @@
 #   scripts/release.sh X.Y.Z          поднять версию, ветка release/vX.Y.Z, коммит «Release vX.Y.Z», push и PR
 #   scripts/release.sh --tag X.Y.Z    после мержа PR и зелёного ci.yml на main: аннотированный тег vX.Y.Z на origin/main и его push
 #
-# Тег запускает .github/workflows/release.yml: сборка на macOS-раннере и GitHub Release с .dmg, .zip и SHA256SUMS.
+# The tag starts .github/workflows/release.yml: builds on a macOS and a Windows runner and a GitHub Release with the .dmg, .zip, the Windows installer .exe and one SHA256SUMS.
 # Ключи: --dry-run (с первым шагом: всё, кроме push и PR; показывает коммит, worktree и ветка удаляются).
 # Первый шаг работает во временном git worktree от origin/main: текущая ветка и неотправленные правки не затрагиваются.
 set -euo pipefail

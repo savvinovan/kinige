@@ -229,10 +229,14 @@ pub fn restore_backup_with(
     let staged = dir.join(format!(".restore-{}.tmp", Uuid::new_v4()));
     let mut base_touched = false;
     let placed = (|| -> Result<(), StoreError> {
-        fs::copy(&source, &staged).map_err(io)?;
-        fs::File::open(&staged)
-            .and_then(|f| f.sync_all())
-            .map_err(io)?;
+        // A fresh writable file, not `fs::copy`: `fs::copy` carries the permission bits (the read-only attribute) of the
+        // source over, so a read-only backup would give a read-only database, and on Windows `FlushFileBuffers` refuses
+        // a handle without write access.
+        let mut copy = fs::File::create(&staged).map_err(io)?;
+        let mut original = fs::File::open(&source).map_err(io)?;
+        std::io::copy(&mut original, &mut copy).map_err(io)?;
+        copy.sync_all().map_err(io)?;
+        drop(copy);
         before_place()?;
         let corrupt = |suffix: &str| dir.join(format!("corrupt-{now_ms}.db{suffix}"));
         for (from, to) in [

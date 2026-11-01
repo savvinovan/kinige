@@ -209,6 +209,14 @@ export const КопииОшибка: Story = {
 /** Доступ выключен: режим недоступен, чаты и журнал открываются строками «Настроить ›». */
 export const ДоступВыключен: Story = { args: { route: "access", access: OFF } };
 
+/** Windows until named pipes (slice 10a): there is no MCP server, so one quiet line stands in for the switch. */
+export const ДоступНедоступен: Story = {
+  args: {
+    route: "access",
+    access: access({ socket: { listening: false, error: "unsupported", bridgePath: null, socketPath: null, desktopConfig: null, codeCommand: null } }),
+  },
+};
+
 /** Предупреждение о провайдере модели — один Modal поверх окна; страница под ним на месте. */
 export const ПредупреждениеПриВключении: Story = { args: { route: "access", access: OFF, warning: true } };
 
@@ -309,6 +317,7 @@ export const EnglishMirrorError: Story = en(КопииОшибка, { pickError:
 /** English: доступ выключен, предупреждение, включён. */
 export const EnglishAccessOff: Story = en(ДоступВыключен);
 export const EnglishWarning: Story = en(ПредупреждениеПриВключении);
+export const EnglishAccessUnavailable: Story = en(ДоступНедоступен);
 export const EnglishAccess: Story = en(ДоступВключён);
 export const EnglishVisibleChats: Story = en(ВидимыеЧаты);
 export const EnglishLogEmpty: Story = en(ЖурналПуст);

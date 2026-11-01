@@ -126,14 +126,22 @@ impl Rig {
     }
 }
 
+/// An edit of the file "from outside": a temporary file and `rename`, as editors do. The mode applies on Unix only; Windows
+/// has no POSIX permissions (ADR-0010, Windows note), so the argument is ignored there.
 pub fn write_file(dir: &Path, bytes: &[u8], mode: u32) {
-    use std::os::unix::fs::PermissionsExt;
     let tmp = dir.join(".editor.tmp");
     fs::write(&tmp, bytes).unwrap();
-    fs::set_permissions(&tmp, fs::Permissions::from_mode(mode)).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&tmp, fs::Permissions::from_mode(mode)).unwrap();
+    }
+    #[cfg(not(unix))]
+    let _ = mode;
     fs::rename(&tmp, file_path(dir)).unwrap();
 }
 
+#[cfg(unix)]
 pub fn mode_of(path: &Path) -> u32 {
     use std::os::unix::fs::PermissionsExt;
     fs::metadata(path).unwrap().permissions().mode() & 0o777

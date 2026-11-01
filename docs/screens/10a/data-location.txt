@@ -1,0 +1,14 @@
+﻿# Names only, no contents. Data directory: %LOCALAPPDATA%\me.savvinov.kinige (local, not roaming)
+backups, EBWebView, logs, kinige.db, kinige.db-shm, kinige.db-wal, settings.json
+# Markdown copy: Documents\Kinige (created with the first saved entry; Documents is the shell known folder)
+exists: True
+Inbox, 2026, 2026-11-01.md
+default database rows: 
+1
+# ACL of the data directory (icacls; accounts and rights only)
+<data dir> NT AUTHORITY\SYSTEM:(OI)(CI)(F)
+                                                      BUILTIN\Administrators:(OI)(CI)(F)
+                                                      runnervmdaln5\runneradmin:(OI)(CI)(F)
+Successfully processed 1 files; Failed processing 0 files
+# Roaming copy must not exist
+exists in %APPDATA%: False

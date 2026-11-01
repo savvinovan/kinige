@@ -73,3 +73,19 @@ The file contains chat titles (`agent_access.chats`), so it must not be shared b
 - A copy folder change that arrived during a pass of the copy writer is not lost: the pass starts over with the new folder (`mirror.rs`), and all days are marked again.
 - Changes beyond 1–2 s are applied with the polling delay; an edit and a revert within the same second with the same size and `mtime` are theoretically invisible. Accepted.
 - For `sync-crypto-guardian`: the order of applying at startup and after a restore, the unsafe-file checks, the `mcp_log` row with a new `tool` value (without a migration), the IPC matrix of the new window. The SQLite schema, the sync protocol and the encryption do not change.
+
+## Windows note (slice 10a, KINIG-61)
+
+The checks of an unsafe file and an unsafe directory are POSIX checks (owner, group/world write bits, `O_NOFOLLOW`, FIFOs). They do not exist in the Windows build: `settings_file/io.rs` has `cfg(not(unix))` branches that open the file normally, never report `owner`, `permissions`, `symlink` or `directory` as the reason for ignoring a file, and the single `unsafe` (`geteuid`) is compiled for Unix only. What stays: the 1 MiB limit, strict UTF-8 without BOM, the strict JSON parse, the "hash matches, the database wins" rule, the atomic write (temporary file, `fsync`, `rename`).
+
+**`agent_access` is not stored from the file on Windows.** The build has no MCP server (ADR-0009), and because the file is always treated as trusted there, a stored `agent_access.enabled: true` (with `mode` and `chats`) would be written to `app_setting` and would switch AI-agent access on, with write access, at the upgrade that brings MCP to Windows, without the warning of the window. So in `apply_in` the `agent_access` block is skipped on `cfg(not(unix))`: the key is reported as `KeyIssueKind::Unsupported` ("not available on this system yet, ignored"), nothing is written (`mcp_enabled`, `mcp_mode`, `mcp_chats` and `mcp_log` stay untouched), and the rest of the file is applied. The commands that change it answer `unsupported` too. The rule goes away when named pipes arrive (slice 10) together with the ACL check below.
+
+**`mirror.folder` is applied without owner and mode checks on Windows.** Accepted: the file lives in `%LOCALAPPDATA%\me.savvinov.kinige\settings.json`, whose ACL (inherited from the user profile) gives access to the user, SYSTEM and administrators only, so those are the writers of the file; other processes of the same user are outside the threat model, as they are on Unix. The folder itself is still checked as before (absolute, existing, outside the data directory).
+
+What this does not cover:
+- Volumes without ACLs (FAT/exFAT, some removable and network volumes) and a profile that is redirected or roamed: the ACL assumption may not hold there. `KINIGE_DATA_DIR` is for tests only.
+- An administrator who changes the ACL.
+- Durability: Windows cannot open a directory to `fsync` it, so after the `rename` of the atomic write the directory entry is not flushed (the same is true for the database backups and the Markdown copy); a crash right after a write can lose the last write, never leave a half-written file.
+- When MCP comes to Windows (named pipes, slice 10) the check has to be replaced by an ACL check (owner SID and no write access for other principals) before the file may switch agent access on; `sync-crypto-guardian` reviews that change.
+
+Tests: the mode, symlink and FIFO tests and the tests that apply `agent_access` from the file are `#[cfg(unix)]`; the Windows tests check that `agent_access` is reported and never stored, that a held file gives an `Io` problem and is written after the holder lets go, and that a held mirror folder gives `MirrorFolderBusy`; the hash, parse, size, encoding and atomic-write tests run in the `windows` CI job.

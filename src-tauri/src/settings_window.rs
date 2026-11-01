@@ -144,10 +144,24 @@ pub fn start_file<R: Runtime>(
     SettingsFile::start(store.clone(), data_dir, options)
 }
 
-/// Открыть окно настроек из главного окна (профиль → «Настройки»).
-#[tauri::command]
+/// Opens the settings window from the main window (profile -> "Settings"). On Windows the command is `async`: a window
+/// created on the main thread from a handler stays white (a deadlock in WebView2 creation, see the `WebviewWindowBuilder`
+/// documentation). Elsewhere nothing changes.
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn open_settings<R: Runtime>(app: AppHandle<R>) {
     open(&app);
+}
+
+/// The same from menu and tray event handlers: they run on the main thread, so on Windows the window is created on another thread.
+pub fn open_from_event<R: Runtime>(app: &AppHandle<R>) {
+    #[cfg(windows)]
+    {
+        let app = app.clone();
+        tauri::async_runtime::spawn_blocking(move || open(&app));
+    }
+    #[cfg(not(windows))]
+    open(app);
 }
 
 /// Путь файла, его состояние и ошибки ключей. Команда не `async`, то есть идёт на главном потоке: она только читает

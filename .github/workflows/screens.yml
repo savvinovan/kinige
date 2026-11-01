@@ -4,6 +4,9 @@
 #   commit — короткая: скачивает артефакт и коммитит docs/screens/<слайс>/ в ветку (единственное место с правом записи,
 #            без npm, cargo и сторонних кэшей).
 # Запуск: gh workflow run screens.yml --ref <ветка> -f slice=4a   (в main и на тегах не работает).
+# Windows (slice 10a): -f os=windows -f slice=10a runs the job shots-windows on windows-2025: it builds the NSIS installer,
+# installs it silently and runs scripts/screens/<slice>.ps1 (input is keys sent with SendKeys on the disposable runner VM);
+# the commit job is the same.
 # Коммит от GITHUB_TOKEN CI сам не запускает (push-событие), но запуск через workflow_dispatch от GITHUB_TOKEN разрешён:
 # последний шаг задачи commit запускает ci.yml на ветке (нужно право actions: write, оно только у этой задачи).
 # Ввод — только действия доступности (scripts/screens/ax.js): раннер выдаёт osascript право Accessibility (проверено пробой).
@@ -16,6 +19,11 @@ on:
         description: Сценарий scripts/screens/<слайс>.sh и каталог docs/screens/<слайс> (только 0-9, a-z и дефис)
         default: 4a
         required: true
+      os:
+        description: Screenshot runner - macos (scripts/screens/<slice>.sh) or windows (scripts/screens/<slice>.ps1)
+        type: choice
+        options: [macos, windows]
+        default: macos
 
 # Права по умолчанию — только чтение; запись только у задачи commit.
 permissions:
@@ -28,7 +36,7 @@ concurrency:
 jobs:
   shots:
     # Снимки меняют ветку и PR: только ветки, не main.
-    if: startsWith(github.ref, 'refs/heads/') && github.ref != 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/heads/') && github.ref != 'refs/heads/main' && inputs.os != 'windows'
     runs-on: macos-15
     timeout-minutes: 60
     permissions:
@@ -92,9 +100,79 @@ jobs:
           path: ${{ runner.temp }}/kinige-screens/debug
           if-no-files-found: warn
 
+  # Windows (slice 10a): the same contract as `shots`: read-only token, the result is an artifact, nothing is committed here.
+  shots-windows:
+    if: startsWith(github.ref, 'refs/heads/') && github.ref != 'refs/heads/main' && inputs.os == 'windows'
+    runs-on: windows-2025
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      SLICE: ${{ inputs.slice || '4a' }}
+    steps:
+      - name: Check the slice name
+        shell: bash
+        run: |
+          if ! [[ "$SLICE" =~ ^[0-9a-z-]+$ ]]; then
+            echo "slice must match ^[0-9a-z-]+$"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Rust toolchain
+        shell: bash
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      - name: Build the installer
+        shell: bash
+        run: scripts/build-windows.sh
+
+      # Windows PowerShell 5.1 (`shell: powershell`); keys are injected with SendKeys, the data checks read the database and the disk.
+      - name: Screens scenario
+        shell: powershell
+        timeout-minutes: 25
+        run: |
+          $installer = (Get-ChildItem "target\release\bundle\nsis\*-setup.exe" | Select-Object -First 1).FullName
+          & "scripts\screens\$env:SLICE.ps1" -Installer $installer
+          exit $LASTEXITCODE
+
+      # The screenshots and the check texts are what reaches the branch; the UI tree dumps are separate and never committed.
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: screens-${{ env.SLICE }}
+          path: docs/screens/${{ env.SLICE }}
+          if-no-files-found: error
+
+      # A failed scenario keeps its pictures for diagnosis; they are never committed (the commit job needs the artifact above).
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: screens-${{ env.SLICE }}-partial
+          path: docs/screens/${{ env.SLICE }}
+          if-no-files-found: warn
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screens-${{ env.SLICE }}-debug
+          path: ${{ runner.temp }}/kinige-screens/debug
+          if-no-files-found: warn
+
   commit:
-    needs: shots
-    if: needs.shots.result == 'success'
+    needs: [shots, shots-windows]
+    if: always() && (needs.shots.result == 'success' || needs.shots-windows.result == 'success')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -102,6 +180,7 @@ jobs:
       actions: write
     env:
       SLICE: ${{ inputs.slice || '4a' }}
+      RUNNER_OS_NAME: ${{ inputs.os == 'windows' && 'Windows' || 'macOS' }}
     steps:
       - name: Проверить имя слайса
         run: |
@@ -134,7 +213,7 @@ jobs:
             exit 0
           fi
           git diff --cached --stat | tail -1
-          git commit -m "Screens ${SLICE} from CI (macOS runner)"
+          git commit -m "Screens ${SLICE} from CI (${RUNNER_OS_NAME} runner)"
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"

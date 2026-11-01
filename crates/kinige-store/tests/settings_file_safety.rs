@@ -8,15 +8,24 @@ mod common;
 
 use common::settings_file::*;
 use common::*;
-use kinige_domain::{KeyIssueKind, TextSize, UnsafeReason};
+use kinige_domain::TextSize;
+// The rest is needed only by the file-mode tests (Unix).
+#[cfg(unix)]
+use kinige_domain::{KeyIssueKind, UnsafeReason};
+#[cfg(unix)]
 use serde_json::json;
+#[cfg(unix)]
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::sync::{Arc, Mutex};
 
+#[cfg(unix)]
 const ACCESS_ON: &str =
     r#"{"text_size":"large","agent_access":{"enabled":true,"mode":"read_write"}}"#;
 
+// The six tests below are about the file mode (0664, 0600): Windows has no POSIX modes (ADR-0010, Windows note).
+#[cfg(unix)]
 #[test]
 fn a_group_writable_file_does_not_switch_agent_access_on_but_the_rest_applies() {
     let rig = rig();
@@ -39,6 +48,7 @@ fn a_group_writable_file_does_not_switch_agent_access_on_but_the_rest_applies() 
     );
 }
 
+#[cfg(unix)]
 #[test]
 fn a_world_writable_file_is_unsafe_too_and_the_mirror_folder_is_ignored() {
     let rig = rig();
@@ -61,6 +71,7 @@ fn a_world_writable_file_is_unsafe_too_and_the_mirror_folder_is_ignored() {
     );
 }
 
+#[cfg(unix)]
 #[test]
 fn an_unsafe_file_is_not_overwritten_by_a_window_edit() {
     let rig = rig();
@@ -76,6 +87,7 @@ fn an_unsafe_file_is_not_overwritten_by_a_window_edit() {
     );
 }
 
+#[cfg(unix)]
 #[test]
 fn a_stale_enabled_in_an_unsafe_period_never_comes_back_when_permissions_are_fixed() {
     // Последовательность из ревью guardian: файл синхронизирован с enabled=true, chmod 664, в окне выключили доступ
@@ -117,6 +129,7 @@ fn a_stale_enabled_in_an_unsafe_period_never_comes_back_when_permissions_are_fix
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
 }
 
+#[cfg(unix)]
 #[test]
 fn content_written_while_the_file_was_unsafe_is_not_applied_after_chmod() {
     let rig = rig();
@@ -134,6 +147,7 @@ fn content_written_while_the_file_was_unsafe_is_not_applied_after_chmod() {
     );
 }
 
+#[cfg(unix)]
 #[test]
 fn after_chmod_a_fresh_save_applies_the_keys_that_were_ignored() {
     // Подсказка в окне: «сделайте файл доступным на запись только вам (chmod 600), затем сохраните файл ещё раз».
@@ -185,8 +199,10 @@ fn an_external_edit_made_while_the_app_was_off_is_applied_at_start_before_anythi
         again.store.get_settings().unwrap().text_size,
         TextSize::Large
     );
-    assert!(again.store.agent_access().unwrap().enabled);
-    assert_eq!(again.log_rows().len(), 1);
+    // AI-agent access from the file is applied on Unix only; on Windows it is reported and not stored (ADR-0010).
+    let agent_applied = cfg!(unix);
+    assert_eq!(again.store.agent_access().unwrap().enabled, agent_applied);
+    assert_eq!(again.log_rows().len(), usize::from(agent_applied));
 }
 
 #[test]

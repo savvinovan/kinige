@@ -19,6 +19,16 @@ fn code(error: StoreError) -> ErrorCode {
     api(error).code
 }
 
+/// AI-agent access does not exist everywhere: Windows has no MCP server until named pipes (slice 10), so there is nothing
+/// to change. The settings in the database and in the file are not touched.
+fn ensure_supported() -> ApiResult<()> {
+    if cfg!(unix) {
+        Ok(())
+    } else {
+        Err(ErrorCode::Unsupported.into())
+    }
+}
+
 /// Окно «Доступ ИИ-агентов»: флажок, режим, чаты с отметкой «видно агенту», состояние сокета и фрагменты подключения.
 #[tauri::command(async)]
 pub fn get_agent_access<R: Runtime>(
@@ -33,6 +43,7 @@ pub fn get_agent_access<R: Runtime>(
 /// Выключатель доступа. Предупреждение при включении показывает окно до вызова.
 #[tauri::command(async)]
 pub fn set_agent_enabled(file: State<'_, SettingsFile>, enabled: bool) -> ApiResult<()> {
+    ensure_supported()?;
     edit(&file, move |store| {
         store.set_agent_enabled(enabled).map_err(code)
     })
@@ -41,12 +52,14 @@ pub fn set_agent_enabled(file: State<'_, SettingsFile>, enabled: bool) -> ApiRes
 /// Режим «Только чтение» / «Чтение и запись».
 #[tauri::command(async)]
 pub fn set_agent_mode(file: State<'_, SettingsFile>, mode: AgentMode) -> ApiResult<()> {
+    ensure_supported()?;
     edit(&file, move |store| store.set_agent_mode(mode).map_err(code))
 }
 
 /// Чаты, видимые агенту. Принимаются только существующие чаты без `ai_excluded`.
 #[tauri::command(async)]
 pub fn set_agent_chats(file: State<'_, SettingsFile>, chat_ids: Vec<String>) -> ApiResult<()> {
+    ensure_supported()?;
     edit(&file, move |store| {
         store.set_agent_chats(chat_ids).map_err(code)
     })

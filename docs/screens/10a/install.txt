@@ -1,0 +1,10 @@
+﻿installer: Kinige-0.5.0-windows-x64-setup.exe
+installer size: 4176834 bytes (3.98 MiB)
+installer sha256: 0eb552109a80d264f4d1dd9d3e28d631a0467bb2b0d9012ff2cf6ba6e4faa32f
+installed exe: kinige.exe
+installed exe ProductVersion: 0.5.0
+installed files: 
+kinige.exe, uninstall.exe
+install mode: currentUser (bundle.windows.nsis.installMode in src-tauri/tauri.windows.conf.json; the runner account is an administrator, so no prompt can be shown here)
+uninstaller present: True
+seeded messages: 30

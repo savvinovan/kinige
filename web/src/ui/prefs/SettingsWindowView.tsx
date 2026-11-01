@@ -60,7 +60,11 @@ export interface SettingsWindowViewProps {
  * окна. Подэкраны («Видимые чаты», «Журнал обращений») открываются из «Доступа ИИ-агентов» и подсвечены в дереве.
  */
 export function SettingsWindowView(props: SettingsWindowViewProps) {
-  const { route, onNavigate, file, access, now } = props;
+  const { onNavigate, file, access, now } = props;
+  // Windows has no AI-agent access yet: the access page stands alone, without "Visible chats" and "Access log".
+  const accessUnavailable = access.socket.error === "unsupported";
+  const route: Route = accessUnavailable && parentOf(props.route) === "access" ? "access" : props.route;
+  const without: Route[] = accessUnavailable ? ["access/chats", "access/log"] : [];
   const changed = file.changed;
   const problems: Route[] = file.problem || file.unsafeReason || file.issues.length > 0 ? ["file"] : [];
   const back = () => onNavigate(parentOf(route));
@@ -73,7 +77,7 @@ export function SettingsWindowView(props: SettingsWindowViewProps) {
   }, [route]);
   return (
     <div className="prefs">
-      <SettingsTree route={route} onNavigate={onNavigate} withProblems={problems} defaultExpanded={props.treeExpanded} />
+      <SettingsTree route={route} onNavigate={onNavigate} withProblems={problems} defaultExpanded={props.treeExpanded} without={without} />
       <main className="prefs__page" ref={page}>
         <div className="prefs__column">
           {route === "appearance" ? (

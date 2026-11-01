@@ -1,0 +1,6 @@
+﻿markdown files in the copy folder: 12
+files that contain the typed note: 1
+days still waiting for the copy (mirror_dirty): 
+0
+folders: 
+Inbox, Анна, Идеи, Книги, Работа, Старые заметки

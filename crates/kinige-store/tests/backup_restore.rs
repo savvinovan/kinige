@@ -133,3 +133,37 @@ fn restoring_from_a_missing_foreign_or_broken_copy_touches_nothing() {
     assert_eq!(fs::read(db_path(dir.path())).unwrap(), before);
     assert!(!dir.path().join("corrupt-1.db").exists());
 }
+
+/// Regression (slice 10a): the restored copy must not inherit the read-only attribute or mode of a read-only backup.
+/// `fs::copy` carries it over, which made a restore of a 0444 backup produce a read-only database (and, on Windows, fail
+/// at `FlushFileBuffers`).
+#[test]
+fn a_read_only_backup_restores_into_a_writable_database() {
+    let dir = tempfile::tempdir().unwrap();
+    make_database_with_copy(dir.path());
+    let list = backups_list(dir.path());
+    let backup_file = backups_dir(&db_path(dir.path())).join(&list[0].name);
+    let mut permissions = fs::metadata(&backup_file).unwrap().permissions();
+    permissions.set_readonly(true);
+    fs::set_permissions(&backup_file, permissions).unwrap();
+
+    kinige_store::restore_backup(&db_path(dir.path()), &list[0].name, 1_700_000_000_000, None)
+        .unwrap();
+
+    assert!(
+        !fs::metadata(db_path(dir.path()))
+            .unwrap()
+            .permissions()
+            .readonly(),
+        "the restored database is writable"
+    );
+    let store = open_without_mirror(dir.path());
+    store
+        .send_message(INBOX_ID, "after the restore", &at(T0 + 3 * MINUTE))
+        .unwrap();
+    // Leave the backup deletable for the temporary directory cleanup.
+    let mut permissions = fs::metadata(&backup_file).unwrap().permissions();
+    #[allow(clippy::permissions_set_readonly_false)]
+    permissions.set_readonly(false);
+    fs::set_permissions(&backup_file, permissions).unwrap();
+}

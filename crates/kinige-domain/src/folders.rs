@@ -41,8 +41,40 @@ pub fn sanitize_folder_name(title: &str) -> String {
     let limited = limited.trim_end_matches(|c: char| c.is_whitespace() || c == '.');
     if limited.is_empty() {
         FALLBACK_FOLDER.to_string()
+    } else if cfg!(windows) {
+        avoid_windows_device_name(limited)
     } else {
         limited.to_string()
+    }
+}
+
+/// Windows does not create files and folders named like devices (`CON`, `NUL`, `COM1`, `COM¹`, ...), and an extension
+/// does not help: `NUL.txt` is the same device. The `_` goes after the stem (the part before the first dot): `CON` ->
+/// `CON_`, `con.txt` -> `con_.txt`, `Nul.tar.gz` -> `Nul_.tar.gz`. Only on Windows: elsewhere the name stays as it is,
+/// so the folders of existing copies are not renamed.
+fn avoid_windows_device_name(name: &str) -> String {
+    const DEVICES: [&str; 4] = ["CON", "PRN", "AUX", "NUL"];
+    let (stem, tail) = match name.split_once('.') {
+        Some((stem, tail)) => (stem, Some(tail)),
+        None => (name, None),
+    };
+    let upper = stem.trim_end().to_ascii_uppercase();
+    // COM0-COM9 and LPT0-LPT9, with the superscript digits 1-3 too.
+    let numbered = |prefix: &str| {
+        upper.strip_prefix(prefix).is_some_and(|rest| {
+            let mut chars = rest.chars();
+            matches!(
+                (chars.next(), chars.next()),
+                (Some('0'..='9' | '¹' | '²' | '³'), None)
+            )
+        })
+    };
+    if !(DEVICES.contains(&upper.as_str()) || numbered("COM") || numbered("LPT")) {
+        return name.to_string();
+    }
+    match tail {
+        Some(tail) => format!("{stem}_.{tail}"),
+        None => format!("{stem}_"),
     }
 }
 
@@ -110,6 +142,53 @@ mod tests {
             MAX_FOLDER_CHARS
         );
         assert_eq!(sanitize_folder_name("😀 Смайлы"), "😀 Смайлы");
+    }
+
+    #[test]
+    fn windows_device_names_get_an_underscore_after_the_stem_and_ordinary_names_do_not() {
+        for (device, safe) in [
+            ("con", "con_"),
+            ("CON", "CON_"),
+            ("Aux", "Aux_"),
+            ("nul", "nul_"),
+            ("PRN", "PRN_"),
+            ("com1", "com1_"),
+            ("LPT9", "LPT9_"),
+            ("COM\u{b9}", "COM\u{b9}_"),
+            ("lpt\u{b3}", "lpt\u{b3}_"),
+            ("con.txt", "con_.txt"),
+            ("Nul.tar.gz", "Nul_.tar.gz"),
+            ("COM\u{b2}.log", "COM\u{b2}_.log"),
+        ] {
+            assert_eq!(avoid_windows_device_name(device), safe, "{device}");
+        }
+        for fine in [
+            "Console",
+            "COM",
+            "COM10",
+            "LPT",
+            "com1a",
+            "Книги",
+            "a.con",
+            "Inbox",
+            "Cons",
+        ] {
+            assert_eq!(avoid_windows_device_name(fine), fine, "{fine}");
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn on_windows_a_chat_named_like_a_device_gets_a_usable_folder_name() {
+        assert_eq!(sanitize_folder_name("CON"), "CON_");
+        assert_eq!(sanitize_folder_name("con.txt"), "con_.txt");
+        assert_eq!(sanitize_folder_name("Console"), "Console");
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn off_windows_a_chat_named_like_a_device_keeps_its_folder_name() {
+        assert_eq!(sanitize_folder_name("CON"), "CON");
     }
 
     #[test]

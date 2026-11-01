@@ -81,6 +81,8 @@ fn a_broken_file_after_a_window_edit_is_logged_once_not_on_every_poll() {
     assert_eq!(file_lines().len(), 2);
 }
 
+// A FIFO (`mkfifo`) exists on Unix only.
+#[cfg(unix)]
 #[test]
 fn an_unsafe_file_and_a_fifo_do_not_flood_the_log_either() {
     let _guard = install();

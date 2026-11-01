@@ -3,6 +3,9 @@
 // Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
 // clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
 #![cfg(test)]
+// AI-agent access from the file is applied on Unix only: Windows has no MCP server yet and reports the key as unsupported
+// instead (ADR-0010, Windows note; the Windows test is in `settings_file_sync.rs`).
+#![cfg(unix)]
 
 mod common;
 

@@ -107,7 +107,7 @@ fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
     match event.id().as_ref() {
         ID_NEW_NOTE => crate::capture::show_capture(app),
         ID_INBOX => crate::capture::open_chat(app, INBOX_ID),
-        ID_SETTINGS => crate::settings_window::open(app),
+        ID_SETTINGS => crate::settings_window::open_from_event(app),
         ID_QUIT => app.exit(0),
         other => {
             if let Some(chat_id) = other.strip_prefix(ID_CHAT_PREFIX) {
