@@ -68,6 +68,20 @@ describe("Прокрутка к записи", () => {
   });
 });
 
+describe("Скрытие карточки", () => {
+  it("после крестика лента возвращается к нижнему краю (область column-reverse: scrollTop = 0), а не остаётся на карточке", async () => {
+    setup();
+    await screen.findByRole("region", { name: "В этот день" });
+    // Читатель прокрутил ленту вверх, к карточке (в column-reverse это отрицательный scrollTop).
+    const scroller = document.querySelector(".feed-scroll") as HTMLElement;
+    let top = -300;
+    Object.defineProperty(scroller, "scrollTop", { configurable: true, get: () => top, set: (value: number) => (top = value) });
+    fireEvent.click(screen.getByRole("button", { name: "Скрыть до завтра" }));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "В этот день" })).toBeNull());
+    await waitFor(() => expect(top).toBe(0));
+  });
+});
+
 describe("Адресат ответа перенесён в другой чат", () => {
   it("отправка снимает ответ: ошибка один раз, строка говорит «перенесена», вторая отправка уходит обычной записью", async () => {
     const { api } = setup();

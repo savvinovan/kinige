@@ -76,6 +76,8 @@ interface FeedProps {
   card?: { journalDate: string; node: ReactNode };
   /** Щелчок по цитате ответа: открыть старую запись в контексте. Без обработчика цитата не нажимается. */
   onOpenReply?: (quote: ReplyTo) => void;
+  /** Новый номер — прокрутить ленту к нижнему краю (после скрытия карточки читатель остаётся у самых новых записей). */
+  toBottom?: number;
   /** Лента ещё не получила всё нужное для первого кадра: не рисует ничего, даже подсказку пустого чата (ничего не прыгает). */
   loading?: boolean;
 }
@@ -100,6 +102,7 @@ export function Feed({
   onPointerDownFeed,
   card,
   onOpenReply,
+  toBottom = 0,
   loading = false,
 }: FeedProps) {
   const { t } = useTranslation();
@@ -152,6 +155,14 @@ export function Feed({
   }, [messages]);
 
   // Переход из поиска: запись по центру области. Мгновенно, без плавной прокрутки (тихий интерфейс, Reduce Motion).
+  // Область `column-reverse`: нижний край — `scrollTop = 0`. Прокрутка по просьбе родителя, не при первом показе.
+  const bottomSeen = useRef(toBottom);
+  useLayoutEffect(() => {
+    if (bottomSeen.current === toBottom) return;
+    bottomSeen.current = toBottom;
+    if (scroller.current) scroller.current.scrollTop = 0;
+  }, [toBottom]);
+
   // Один раз на просьбу (`nonce`): запись могла ещё не попасть в ленту, тогда прокрутка ждёт её появления, но, найдя запись,
   // больше не возвращается. Иначе отправка ответа, подгрузка страниц и появление карточки каждый раз уводили бы ленту назад.
   const scrollKey = scrollTo ? `${scrollTo.id}:${scrollTo.nonce}` : "";

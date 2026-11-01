@@ -73,6 +73,8 @@ interface MainWindowViewProps {
   /** Слайс 5: карточка «В этот день» в ленте, щелчок по цитате ответа, лента ждёт первого кадра и строка «Ответ на запись» над полем. */
   onThisDay?: { journalDate: string; node: ReactNode };
   onOpenReply?: (quote: ReplyTo) => void;
+  /** Новый номер — лента прокручивается к нижнему краю (после скрытия карточки). */
+  feedToBottom?: number;
   feedLoading?: boolean;
   replyStrip?: ReactNode;
   /** Фильтр ленты по тегу: строка «#тег ×» над лентой. */
@@ -122,6 +124,7 @@ export function MainWindowView({
   onFeedPointerDown,
   onThisDay,
   onOpenReply,
+  feedToBottom,
   feedLoading,
   replyStrip,
   tagFilter,
@@ -180,6 +183,7 @@ export function MainWindowView({
               onPointerDownFeed={onFeedPointerDown}
               card={onThisDay}
               onOpenReply={onOpenReply}
+              toBottom={feedToBottom}
               loading={feedLoading}
             />
             <Composer

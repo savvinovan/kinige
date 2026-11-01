@@ -48,6 +48,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const [chatDialog, setChatDialog] = useState<ChatDialogState | null>(null);
   const [dialogError, setDialogError] = useState<ErrorCode | null>(null);
   const [dateError, setDateError] = useState<ErrorCode | null>(null);
+  // Номер просьбы «к нижнему краю ленты»: растёт после скрытия карточки «В этот день».
+  const [toBottom, setToBottom] = useState(0);
   const { draft, reply, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
     useComposerDraft(api, selected);
   const prefs = useSettingsState(api, initialSettings);
@@ -172,6 +174,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     refreshChats,
     setComposerError,
     dismissCard: onThisDay.dismiss,
+    onDismissed: () => setToBottom((count) => count + 1),
   });
 
   const closeChatDialog = () => {
@@ -280,6 +283,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       feedActions={feed.actions}
       feedPaging={feed.paging}
       feedScrollTo={feed.scrollTo}
+      feedToBottom={toBottom}
       feedLoading={selected === INBOX_ID && tag === null && !(feed.loaded && onThisDay.ready)}
       // Карточка стоит в конце живой ленты: не в середине истории (после перехода к записи из поиска).
       onThisDay={

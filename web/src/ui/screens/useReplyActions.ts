@@ -25,6 +25,8 @@ interface UseReplyActionsOptions {
   refreshChats: () => Promise<void>;
   setComposerError: (code: ErrorCode | null) => void;
   dismissCard: () => Promise<void>;
+  /** Карточка скрыта: лента возвращается к нижнему краю. */
+  onDismissed: () => void;
 }
 
 /**
@@ -34,7 +36,7 @@ interface UseReplyActionsOptions {
  */
 export function useReplyActions(options: UseReplyActionsOptions) {
   const { api, selected, select, focusOn, draft, reply, saver, changeReply, refreshReply, clearDraft, planDraft, refreshChats } = options;
-  const { appendSent, setComposerError, dismissCard } = options;
+  const { appendSent, setComposerError, dismissCard, onDismissed } = options;
   const sending = useRef(false);
   const selectedRef = useRef(selected);
   useEffect(() => {
@@ -106,7 +108,10 @@ export function useReplyActions(options: UseReplyActionsOptions) {
   };
 
   const hideCard = () => {
-    void dismissCard().then(focusComposer);
+    void dismissCard().then(() => {
+      focusComposer();
+      onDismissed();
+    });
   };
 
   return { sending, submit, openEntry, startReply, hideCard };
