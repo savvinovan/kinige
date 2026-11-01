@@ -173,14 +173,16 @@ function Focus-Window([string]$title) {
 }
 
 # Keys go to the foreground window: bring the Kinige window up first. `$keys` is SendKeys syntax.
-function Send-Keys([string]$title, [string]$keys) {
-  Focus-Window $title
+function Send-Keys([string]$title, [string]$keys, [bool]$raise = $true) {
+  # Raising the window makes the page put the focus back into the composer, which would undo the Tab stops of a sequence:
+  # a sequence raises the window once and sends the rest without raising.
+  if ($raise) { Focus-Window $title; Start-Sleep -Milliseconds 1500 }
   [System.Windows.Forms.SendKeys]::SendWait($keys)
   Start-Sleep -Milliseconds 400
 }
 
 function Press-Tab([string]$title, [int]$times) {
-  for ($i = 0; $i -lt $times; $i++) { Send-Keys $title '{TAB}' }
+  for ($i = 0; $i -lt $times; $i++) { Send-Keys $title '{TAB}' $false }
 }
 
 function Shoot([string]$name, [string]$title) {
@@ -229,8 +231,6 @@ function Get-Scalar([string]$sql, [string]$db = (Join-Path $Data 'kinige.db')) {
 # Types a note into the composer (it has the focus when the window opens) and sends it with Enter.
 function Send-Note([string]$text) {
   # The first keys sent right after the window is raised were lost ("A " of the first note): wait for the focus to settle.
-  Focus-Window 'Kinige'
-  Start-Sleep -Seconds 2
   Send-Keys 'Kinige' ($text + '{ENTER}')
   Start-Sleep -Seconds 3
 }
@@ -239,15 +239,15 @@ function Send-Note([string]$text) {
 # walks Collapse, the chats of the synthetic data, Archive, Trash and Profile. `$stops` is the number of Tab presses; the
 # count depends on the sidebar of the synthetic data, so a few neighbours are tried when the window does not appear.
 function Open-Settings {
-  foreach ($stops in 11, 12, 10, 13, 9, 14, 8, 15, 16) {
+  foreach ($stops in 11, 12, 10, 13) {
     Send-Keys 'Kinige' '{ESC}'
-    Send-Keys 'Kinige' '^k'
+    Send-Keys 'Kinige' '^k' $false
     Press-Tab 'Kinige' $stops
     # Where the focus is after the Tab stops (kept for diagnosis, never committed).
     [Win]::Capture((Get-AppWindow 'Kinige'), (Join-Path $Debug "tabs-$stops.png")) | Out-Null
-    Send-Keys 'Kinige' '{ENTER}'
+    Send-Keys 'Kinige' '{ENTER}' $false
     Start-Sleep -Milliseconds 800
-    Send-Keys 'Kinige' '{ENTER}'
+    Send-Keys 'Kinige' '{ENTER}' $false
     $window = $null
     for ($i = 0; $i -lt 10 -and -not $window; $i++) { Start-Sleep -Milliseconds 700; $window = Get-AppWindow 'Settings' }
     if ($window) { Say "settings opened with $stops Tab stops"; return $window }
@@ -332,8 +332,8 @@ if ($settings) {
   Shoot '03-settings' 'Settings'
   # The tree is one tab stop (the open section); Down moves along Appearance, Keyboard shortcuts, Copies to AI agent access.
   Send-Keys 'Settings' '{TAB}'
-  for ($i = 0; $i -lt 3; $i++) { Send-Keys 'Settings' '{DOWN}' }
-  Send-Keys 'Settings' '{ENTER}'
+  for ($i = 0; $i -lt 3; $i++) { Send-Keys 'Settings' '{DOWN}' $false }
+  Send-Keys 'Settings' '{ENTER}' $false
   Start-Sleep -Seconds 2
   Shoot '04-settings-access-unavailable' 'Settings'
 }
