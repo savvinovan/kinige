@@ -1,10 +1,16 @@
-# Релиз Kinige (ADR-0012): тег vX.Y.Z -> сборка на macOS-раннере -> GitHub Release с .dmg, .zip и SHA256SUMS. Две задачи:
-#   build   — права только на чтение, токен после checkout не сохраняется; проверяет тег, собирает .app и .dmg
-#             (scripts/build-app.sh, ad-hoc подпись, ADR-0003), проверяет подпись и версию, считает суммы; результат — артефакт.
-#             Кэшей нет: релиз собирается с нуля, чтобы в него не попало ничего из кэша ветки;
-#   publish — короткая: скачивает артефакт и создаёт Release (единственное место с правом записи, без npm и cargo).
+# Релиз Kinige (ADR-0012): тег vX.Y.Z -> сборка на macOS- и Windows-раннерах -> GitHub Release с .dmg, .zip,
+# Windows-установщиком .exe и одним SHA256SUMS. Три задачи:
+#   build-macos   — права только на чтение, токен после checkout не сохраняется; проверяет тег, собирает .app и .dmg
+#                   (scripts/build-app.sh, ad-hoc подпись, ADR-0003), проверяет подпись и версию, считает суммы; результат — артефакт.
+#                   Кэшей нет: релиз собирается с нуля, чтобы в него не попало ничего из кэша ветки;
+#   build-windows — то же на windows-2025 (слайс 10a): неподписанный установщик NSIS (scripts/build-windows.sh), версия в exe и в
+#                   имени установщика сверяется с тегом; результат — свой артефакт и свой кусок сумм;
+#   publish       — короткая: скачивает оба артефакта, склеивает куски в один SHA256SUMS, проверяет его и создаёт Release
+#                   (единственное место с правом записи, без npm и cargo).
 # Тег ставит `scripts/release.sh --tag X.Y.Z` после мержа PR «Release vX.Y.Z». Повтор по готовому тегу (сборка упала):
-#   gh workflow run release.yml -f tag=vX.Y.Z            (publish=false — собрать и выложить артефакт, Release не создавать)
+#   gh workflow run release.yml -f tag=vX.Y.Z            (publish=false — собрать и выложить артефакты, Release не создавать)
+# Проверки тега, версии и main выполняются только для тега или ввода `tag`: сборка по push в ветку (временный запуск для
+# проверки workflow) их пропускает и Release не создаёт.
 name: Release
 
 on:
@@ -28,16 +34,20 @@ concurrency:
   group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
+
 jobs:
-  build:
+  build-macos:
     runs-on: macos-15
     timeout-minutes: 60
     permissions:
       contents: read
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
+      # 'true' for a tag push or a re-run by tag; 'false' for a branch push (workflow check, nothing is published).
+      RELEASE_RUN: ${{ github.ref_type == 'tag' || inputs.tag != '' }}
     steps:
       - name: Проверить имя тега
+        if: env.RELEASE_RUN == 'true'
         run: |
           if ! [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "тег должен быть vX.Y.Z (семвер без приставок), а не $TAG"
@@ -63,7 +73,7 @@ jobs:
         run: |
           PKGID="$(cargo pkgid -p kinige --offline)"
           VERSION="${PKGID##*[#@]}"
-          if [ "$TAG" != "v$VERSION" ]; then
+          if [ "$RELEASE_RUN" = true ] && [ "$TAG" != "v$VERSION" ]; then
             echo "тег $TAG не совпадает с версией $VERSION в Cargo.toml"
             exit 1
           fi
@@ -71,7 +81,7 @@ jobs:
 
       # Релиз собирается только из main: тег на коммите чужой ветки не соберётся.
       - name: Проверить, что коммит тега в main
-        if: github.ref_type == 'tag' || inputs.tag
+        if: env.RELEASE_RUN == 'true'
         run: |
           if ! git merge-base --is-ancestor HEAD origin/main; then
             echo "коммит тега $TAG не входит в main"
@@ -115,16 +125,90 @@ jobs:
           ditto -x -k "$DIST/$NAME.zip" "$UNZ"
           codesign --verify --deep --strict --verbose=2 "$UNZ/Kinige.app"
 
-          (cd "$DIST" && shasum -a 256 "$NAME.dmg" "$NAME.zip" > SHA256SUMS && cat SHA256SUMS && ls -l)
+          # Суммы этой платформы; в один SHA256SUMS их склеивает publish.
+          (cd "$DIST" && shasum -a 256 "$NAME.dmg" "$NAME.zip" > SHA256SUMS.macos && cat SHA256SUMS.macos && ls -l)
 
       - uses: actions/upload-artifact@v7
         with:
-          name: release-dist
+          name: dist-macos
+          path: ${{ runner.temp }}/dist
+          if-no-files-found: error
+
+  # Windows (slice 10a): unsigned NSIS installer, per-user, no administrator rights. The MCP bridge is not part of it.
+  build-windows:
+    runs-on: windows-2025
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      RELEASE_RUN: ${{ github.ref_type == 'tag' || inputs.tag != '' }}
+    steps:
+      - name: Check the tag name
+        if: env.RELEASE_RUN == 'true'
+        run: |
+          if ! [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "the tag must be vX.Y.Z (semver without suffixes), not $TAG"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+
+      - name: Rust toolchain
+        run: rustup toolchain install
+
+      # Tag = "v" + the version in Cargo.toml (the only source, ADR-0012).
+      - name: Check the tag and the version
+        run: |
+          PKGID="$(cargo pkgid -p kinige --offline)"
+          VERSION="${PKGID##*[#@]}"
+          if [ "$RELEASE_RUN" = true ] && [ "$TAG" != "v$VERSION" ]; then
+            echo "the tag $TAG does not match the version $VERSION in Cargo.toml"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Check that the tag commit is in main
+        if: env.RELEASE_RUN == 'true'
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "the commit of $TAG is not in main"
+            exit 1
+          fi
+
+      - run: npm --prefix web ci
+
+      # Builds the installer and checks that the version in kinige.exe and in the installer name equals Cargo.toml.
+      - name: Build the installer
+        run: scripts/build-windows.sh
+
+      - name: Release files
+        run: |
+          DIST="$RUNNER_TEMP/dist"
+          NAME="Kinige-$VERSION-windows-x64-setup.exe"
+          mkdir -p "$DIST"
+          cp target/release/bundle/nsis/*-setup.exe "$DIST/$NAME"
+          (cd "$DIST" && sha256sum "$NAME" > SHA256SUMS.windows && cat SHA256SUMS.windows && ls -l)
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-windows
           path: ${{ runner.temp }}/dist
           if-no-files-found: error
 
   publish:
-    needs: build
+    needs: [build-macos, build-windows]
     if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -141,14 +225,20 @@ jobs:
           ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.sha }}
           persist-credentials: false
 
+      # Both artifacts into one directory: the file names are distinct, the per-platform sums are merged below.
       - uses: actions/download-artifact@v8
         with:
-          name: release-dist
+          pattern: dist-*
+          merge-multiple: true
           path: ${{ runner.temp }}/dist
 
       - name: Создать Release
         run: |
           cd "$RUNNER_TEMP/dist"
+          # One SHA256SUMS for every file of the release; checked before anything is published.
+          cat SHA256SUMS.macos SHA256SUMS.windows > SHA256SUMS
+          rm SHA256SUMS.macos SHA256SUMS.windows
+          cat SHA256SUMS
           sha256sum -c SHA256SUMS
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG уже существует: удалите его вручную, если сборку нужно заменить"
@@ -157,4 +247,4 @@ jobs:
           # Шаблон (установка с ad-hoc подписью, где лежат данные) идёт перед сгенерированным списком изменений.
           gh release create "$TAG" --verify-tag --title "Kinige ${TAG#v}" \
             --notes-file "$GITHUB_WORKSPACE/.github/release-notes.md" --generate-notes \
-            ./*.dmg ./*.zip ./SHA256SUMS
+            ./*.dmg ./*.zip ./*.exe ./SHA256SUMS

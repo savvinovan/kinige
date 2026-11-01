@@ -10,7 +10,17 @@ The build is signed ad-hoc, without a Developer ID and Apple notarization (this 
 
 File check: `shasum -a 256 -c --ignore-missing SHA256SUMS` next to the downloaded files.
 
+## Installation (Windows 10 and 11, x64)
+
+Download `Kinige-*-windows-x64-setup.exe` and run it. The installer is per-user: it does not ask for administrator rights and puts Kinige into your user profile. If the Microsoft WebView2 runtime is missing (Windows 11 and updated Windows 10 already have it), the installer downloads it.
+
+The installer is not signed (code signing comes in slice 10), so SmartScreen shows "Windows protected your PC". Click "More info" -> "Run anyway".
+
+File check, in PowerShell next to the downloaded files: `Get-FileHash -Algorithm SHA256 .\Kinige-*-windows-x64-setup.exe` and compare the hash with the line in `SHA256SUMS`.
+
+AI agent access (MCP) is not available on Windows yet: the "AI agent access" page in Settings says so. It comes with the next Windows step (slice 10).
+
 ## Data
 
-- Database: `~/Library/Application Support/me.savvinov.kinige/`.
-- Markdown copy of the entries: `~/Documents/Kinige`.
+- macOS: the database is in `~/Library/Application Support/me.savvinov.kinige/`, the Markdown copy of the entries in `~/Documents/Kinige`.
+- Windows: the database is in `%APPDATA%\me.savvinov.kinige`, the Markdown copy of the entries in `Documents\Kinige` (your Documents folder).
