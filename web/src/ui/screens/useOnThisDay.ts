@@ -34,14 +34,18 @@ export function useOnThisDay({ api, enabled }: UseOnThisDayOptions) {
     return () => window.removeEventListener("focus", onFocus);
   }, [enabled, refresh]);
 
-  /** Крестик: скрыть до следующего дня журнала. Карточка уходит после ответа Rust. */
-  const dismiss = useCallback(async () => {
-    if (card === null) return;
+  /**
+   * Крестик: скрыть до следующего дня журнала. Карточка уходит после ответа Rust. `true` — скрыта; `false` — карточки нет или
+   * Rust отказал: она остаётся на месте, нажать можно ещё раз (вызывающий ничего не двигает).
+   */
+  const dismiss = useCallback(async (): Promise<boolean> => {
+    if (card === null) return false;
     try {
       await api.dismissOnThisDay(card.today);
       setCard(null);
+      return true;
     } catch {
-      // Карточка остаётся на месте: нажать можно ещё раз.
+      return false;
     }
   }, [api, card]);
 

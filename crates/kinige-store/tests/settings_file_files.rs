@@ -43,7 +43,7 @@ fn a_symlink_is_unsafe_it_is_read_through_but_never_overwritten() {
 }
 
 #[test]
-fn an_edit_of_the_symlink_target_is_seen_by_the_poll() {
+fn an_edit_of_the_symlink_target_is_applied_by_a_sync_pass() {
     // Шаги ведёт сам тест (`sync_now` — тот же проход, что делает опрос), а не фоновый опрос с ожиданием по часам: под нагрузкой
     // опрос мог прийтись между усечением файла и записью нового текста, и тест мигал.
     let rig = rig();

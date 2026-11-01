@@ -54,6 +54,19 @@ describe("Прокрутка к записи", () => {
     expect(scrollSpy, "после скрытия карточки лента остаётся внизу").toHaveBeenCalledTimes(1);
   });
 
+  it("запрос прокрутки не переживает уход из ленты: после корзины и возврата лента открывается внизу", async () => {
+    setup();
+    const region = await screen.findByRole("region", { name: "В этот день" });
+    fireEvent.click(within(region).getByRole("button", { name: /^Открыть запись 31 октября 2023/ }));
+    await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
+    // Корзина заменяет ленту целиком (лента размонтируется): запрос не должен ждать в состоянии и сработать на новой ленте.
+    fireEvent.click(await screen.findByRole("button", { name: /^Корзина/ }));
+    await waitFor(() => expect(document.querySelector(".feed-scroll")).toBeNull());
+    fireEvent.click(await screen.findByRole("button", { name: /^Входящие/ }));
+    await screen.findByText("Сегодняшняя запись");
+    expect(scrollSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("запись, которой ещё нет в ленте, ждёт её появления, найдя — прокручивает один раз; смена чата просьбу сбрасывает", async () => {
     const { api } = setup();
     const region = await screen.findByRole("region", { name: "В этот день" });
@@ -69,6 +82,21 @@ describe("Прокрутка к записи", () => {
 });
 
 describe("Скрытие карточки", () => {
+  it("отказ Rust: карточка остаётся, лента никуда не едет", async () => {
+    const { api } = setup();
+    await screen.findByRole("region", { name: "В этот день" });
+    const scroller = document.querySelector(".feed-scroll") as HTMLElement;
+    let top = -300;
+    Object.defineProperty(scroller, "scrollTop", { configurable: true, get: () => top, set: (value: number) => (top = value) });
+    api.failNext("dismissOnThisDay", "store_write_failed");
+    fireEvent.click(screen.getByRole("button", { name: "Скрыть до завтра" }));
+    await waitFor(() => expect(api.calls).toContain("dismissOnThisDay 2026-10-31"));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.getByRole("region", { name: "В этот день" })).toBeInTheDocument();
+    expect(top).toBe(-300);
+    expect(api.dismissedOnThisDay).toBeNull();
+  });
+
   it("после крестика лента возвращается к нижнему краю (область column-reverse: scrollTop = 0), а не остаётся на карточке", async () => {
     setup();
     await screen.findByRole("region", { name: "В этот день" });
@@ -100,6 +128,20 @@ describe("Адресат ответа перенесён в другой чат"
     expect(screen.queryByText("Запись перенесена в другой чат")).toBeNull();
     expect(screen.queryByRole("button", { name: /спустя/ })).toBeNull();
     expect((await api.getDraft(INBOX_ID)).replyTo).toBeNull();
+  });
+
+  it("запись вернули в тот же чат: при фокусе окна строка снова обычная", async () => {
+    const api = new MockApi({ now: NOW, chats: [{ id: "books", title: "Книги", icon: "📚" }], messages: MESSAGES });
+    await api.saveDraft(INBOX_ID, "ответ", "old2023");
+    await api.moveMessage("old2023", "books");
+    render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />);
+    await screen.findByText("Запись перенесена в другой чат");
+    await api.moveMessage("old2023", INBOX_ID);
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(await screen.findByRole("group", { name: "Ответ на запись 31 октября 2023" })).toBeInTheDocument();
+    expect(screen.queryByText("Запись перенесена в другой чат")).toBeNull();
   });
 
   it("черновик, открытый заново, сразу показывает «перенесена»", async () => {

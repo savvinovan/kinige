@@ -24,7 +24,7 @@ interface UseReplyActionsOptions {
   appendSent: (sent: MessageView) => void;
   refreshChats: () => Promise<void>;
   setComposerError: (code: ErrorCode | null) => void;
-  dismissCard: () => Promise<void>;
+  dismissCard: () => Promise<boolean>;
   /** Карточка скрыта: лента возвращается к нижнему краю. */
   onDismissed: () => void;
 }
@@ -52,6 +52,16 @@ export function useReplyActions(options: UseReplyActionsOptions) {
     },
     [api, saver, refreshReply],
   );
+
+  // Строка ответа показывает «в корзине», «удалена» или «перенесена», а запись могли вернуть (из корзины, в тот же чат): при
+  // фокусе окна состояние перечитывается. При смене чата черновик читается заново сам (`useComposerDraft`).
+  const staleReply = reply !== null && reply.state !== "live";
+  useEffect(() => {
+    if (!staleReply || selected === null) return;
+    const onFocus = () => void confirmReplyState(selected);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [staleReply, selected, confirmReplyState]);
 
   const submit = () => {
     if (sending.current || draft.trim() === "" || selected === null) return;
@@ -108,7 +118,8 @@ export function useReplyActions(options: UseReplyActionsOptions) {
   };
 
   const hideCard = () => {
-    void dismissCard().then(() => {
+    void dismissCard().then((hidden) => {
+      if (!hidden) return;
       focusComposer();
       onDismissed();
     });
