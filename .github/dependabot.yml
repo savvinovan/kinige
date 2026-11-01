@@ -1,0 +1,27 @@
+# Обновления зависимостей раз в неделю; минорные и патч-обновления идут одним PR на экосистему, мажорные — отдельными.
+# Версии actions закреплены SHA с комментарием «# vX.Y.Z»: Dependabot обновляет и SHA, и комментарий.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      cargo-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]

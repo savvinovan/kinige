@@ -8,6 +8,10 @@ on:
   # Ручной запуск: коммит эталонов из visual-update.yml идёт от GITHUB_TOKEN и сам CI не запускает.
   workflow_dispatch:
 
+# Права по умолчанию — только чтение; шире не нужно ни одному заданию.
+permissions:
+  contents: read
+
 # Раннер закреплён: ubuntu-latest переезжает на Ubuntu 26, а там имена пакетов WebKitGTK не проверены.
 jobs:
   rust:
@@ -90,7 +94,7 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+      - uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2.88.1
         with:
           tool: cargo-llvm-cov@0.9.1
 
@@ -161,3 +165,41 @@ jobs:
           name: visual-test-results
           path: web/test-results
           if-no-files-found: ignore
+
+  # Лицензии, известные уязвимости (RustSec) и источники крейтов — deny.toml.
+  deny:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # cargo-deny вызывает `cargo metadata`: версия Rust берётся из rust-toolchain.toml.
+      - name: Rust toolchain
+        run: rustup toolchain install
+
+      - uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2.88.1
+        with:
+          tool: cargo-deny@0.20.2
+
+      - run: cargo deny check advisories licenses sources
+
+  # Секреты в истории git. Ложные срабатывания — в .gitleaksignore (отпечаток и причина). Бинарник закреплён версией и sha256.
+  gitleaks:
+    runs-on: ubuntu-24.04
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Установить gitleaks
+        run: |
+          curl -sSfL -A kinige-dev -o "$RUNNER_TEMP/gitleaks.tgz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
+
+      # --redact: найденное значение в лог не попадает.
+      - name: Поиск секретов
+        run: '"$RUNNER_TEMP/gitleaks" git . --redact --no-banner'
