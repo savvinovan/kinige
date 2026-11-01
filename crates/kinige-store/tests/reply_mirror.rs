@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 fn day_file(dir: &Path, chat: &str, date: &str) -> PathBuf {
     mirror_dir(dir)
         .join(chat)
-        .join(&date[..4])
+        .join(date.get(..4).unwrap())
         .join(format!("{date}.md"))
 }
 

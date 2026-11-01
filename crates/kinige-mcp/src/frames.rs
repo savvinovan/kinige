@@ -44,13 +44,14 @@ pub fn read_frame<R: BufRead>(
             None => (chunk.len(), false),
         };
         if !too_long {
-            if buf.len() + take > limit {
+            if buf.len().saturating_add(take) > limit {
                 too_long = true;
                 // Остаётся только начало строки: по нему ищется `id` для ответа-ошибки.
                 buf.truncate(PREFIX_KEEP);
                 buf.shrink_to(PREFIX_KEEP);
             } else {
-                buf.extend_from_slice(&chunk[..take]);
+                // `take` не больше длины куска: позиция перевода строки или вся длина.
+                buf.extend_from_slice(chunk.get(..take).unwrap_or_default());
             }
         }
         reader.consume(take + usize::from(found));

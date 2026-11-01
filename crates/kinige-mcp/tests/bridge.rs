@@ -491,7 +491,7 @@ fn a_frame_over_4_mib_is_rejected_on_both_sides() {
     assert!(
         line.contains(r#""id":3"#) && line.contains("потеряно"),
         "{}",
-        &line[..line.len().min(200)]
+        line.chars().take(200).collect::<String>()
     );
 }
 

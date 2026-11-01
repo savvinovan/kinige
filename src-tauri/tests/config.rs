@@ -334,3 +334,37 @@ fn capture_resize_clamps_the_height_into_the_token_range() {
     assert_eq!(clamp_height(f64::NAN), MIN_HEIGHT);
     assert_eq!(clamp_height(f64::INFINITY), MIN_HEIGHT);
 }
+
+/// Страховка «никогда не падать» (KINIG-28, ADR-0009) держится на размотке стека: `catch_unwind` вокруг задач писателя,
+/// чтения, обслуживания и MCP, хук паники и перезапуск слушателя не работают с `panic = "abort"` ни в одном профиле.
+#[test]
+fn no_profile_aborts_on_panic_and_the_never_panic_lints_are_on() {
+    let manifest =
+        std::fs::read_to_string(format!("{}/../Cargo.toml", env!("CARGO_MANIFEST_DIR"))).unwrap();
+    let code: Vec<&str> = manifest
+        .lines()
+        .map(|line| line.split('#').next().unwrap_or_default().trim())
+        .collect();
+    assert!(
+        !code
+            .iter()
+            .any(|line| line.replace(' ', "").starts_with("panic=\"abort\"")),
+        "panic = \"abort\" отключает перехват паник"
+    );
+    for lint in [
+        "unwrap_used",
+        "expect_used",
+        "panic",
+        "unreachable",
+        "todo",
+        "unimplemented",
+        "indexing_slicing",
+        "string_slice",
+    ] {
+        assert!(
+            code.contains(&format!("{lint} = \"deny\"").as_str()),
+            "{lint}"
+        );
+    }
+    assert!(code.contains(&"unsafe_code = \"deny\""));
+}

@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 fn day_file(dir: &Path, date: &str) -> PathBuf {
     mirror_dir(dir)
         .join("Inbox")
-        .join(&date[..4])
+        .join(date.get(..4).unwrap())
         .join(format!("{date}.md"))
 }
 
@@ -393,7 +393,7 @@ fn a_folder_changed_in_the_middle_of_a_batch_restarts_the_pass_and_fills_the_new
     let in_new = |date: &str| {
         new_root
             .join("Inbox")
-            .join(&date[..4])
+            .join(date.get(..4).unwrap())
             .join(format!("{date}.md"))
     };
     wait_until("оба дня в новой папке", || {

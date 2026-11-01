@@ -151,7 +151,7 @@ impl<R: AsyncRead + Unpin> AsyncRead for Limited<R> {
         if let Poll::Ready(Ok(())) = &polled {
             let limit = self.limit;
             let mut run = self.since_newline;
-            for byte in &buf.filled()[before..] {
+            for byte in buf.filled().get(before..).unwrap_or_default() {
                 if *byte == b'\n' {
                     run = 0;
                 } else {

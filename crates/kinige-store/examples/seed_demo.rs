@@ -11,7 +11,9 @@
     clippy::print_stdout,
     clippy::unwrap_used,
     clippy::expect_used,
-    clippy::panic
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::string_slice
 )]
 
 use chrono::{NaiveDate, TimeZone};

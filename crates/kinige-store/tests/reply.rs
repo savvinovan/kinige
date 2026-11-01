@@ -122,7 +122,7 @@ fn garbage_reply_targets_are_refused_and_nothing_is_written() {
         assert!(
             matches!(result, Err(StoreError::ReplyTargetNotFound)),
             "{}: {result:?}",
-            &bad[..bad.len().min(30)]
+            bad.chars().take(30).collect::<String>()
         );
     }
     assert_eq!(message_count(dir.path()), before, "ничего не записано");

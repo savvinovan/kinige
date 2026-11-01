@@ -20,7 +20,7 @@ fn supersedes_stays_at_64_through_the_store_and_the_oldest_is_dropped() {
     let h0 = body_hlc(&row(dir.path(), &first.id));
     // Запись с 63 прежними метками (HLC из прошлого, строго меньше текущей): после правки их ровно 64.
     let old: Vec<String> = (0..63)
-        .map(|i| format!("{:013}-00000-{}", 1_000 + i, &h0[20..]))
+        .map(|i| format!("{:013}-00000-{}", 1_000 + i, h0.get(20..).unwrap()))
         .collect();
     edit_raw_groups(dir.path(), &first.id, |groups, _| {
         let body = json!({"base": null, "body_md": "a", "edited_at": null, "supersedes": old});

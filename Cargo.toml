@@ -29,6 +29,12 @@ panic = "deny"
 unreachable = "deny"
 todo = "deny"
 unimplemented = "deny"
+# Индексы и границы срезов приходят из чужих данных: `get()` вместо `[i]` и `[a..b]`, срезы строк только по границам
+# символов. В тестах индексация разрешена, срезы строк — нет (у `string_slice` такой настройки нет).
+# `arithmetic_side_effects` не включён: 199 срабатываний на счётчики и итераторы без входных данных; длины и смещения из
+# ввода проверены вручную (`checked_*`, `saturating_*`), см. KINIG-28.
+indexing_slicing = "deny"
+string_slice = "deny"
 
 [profile.release]
 lto = true

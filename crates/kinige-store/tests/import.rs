@@ -94,7 +94,7 @@ fn saved_messages_go_to_inbox_with_original_time_core_and_one_hlc_per_record() {
         .unwrap();
     assert!(group_hlc(dir.path(), "message", &local.id, "core") > hlcs[2]);
     // Стена HLC — момент импорта (заданное «сейчас» плюс прошедшие миллисекунды), а не 2019 год из Telegram.
-    let wall: i64 = hlcs[0][..13].parse().unwrap();
+    let wall: i64 = hlcs[0].get(..13).unwrap().parse().unwrap();
     assert!((T0..T0 + 60_000).contains(&wall), "{}", hlcs[0]);
     // Счётчик в сайдбаре вырос.
     assert_eq!(store.list_chats().unwrap()[0].count, 4);
