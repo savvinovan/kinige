@@ -6,7 +6,7 @@
 //! Таблица `Extended_Pictographic` — из `emoji-data.txt` (Unicode Emoji 16.0, диапазоны неназначенных кодов внутри блоков
 //! эмодзи включены намеренно, как в самом файле: так будущие эмодзи проходят без обновления). Список написан вручную, а не
 //! подключён из крейта: зависимость ради одной проверки не нужна. Таблица записана по памяти, поэтому сверена со всеми
-//! последовательностями `emojibase-data` 17.0.0 (en, ru, с вариантами тонов кожи): отвергаются только «компоненты», которых
+//! последовательностями `emojibase-data` 17.0.0 и 18.0.0 (en, ru, с вариантами тонов кожи): отвергаются только «компоненты», которых
 //! пикер не выдаёт, — одиночные региональные индикаторы и одиночные тона кожи (разовая проверка при разработке, в
 //! репозиторий не входит).
 
@@ -179,9 +179,26 @@ pub fn is_emoji_sequence(text: &str) -> bool {
     }
 }
 
+/// Ключ сравнения эмодзи: последовательность без `VS16`. `emojibase-data` 18 убрала лишний `VS16` у 152 эмодзи (`✅\u{FE0F}`
+/// стало `✅`), а в базе «недавние» лежат в старой записи; для пользователя это один и тот же эмодзи.
+pub fn emoji_identity(emoji: &str) -> String {
+    emoji.chars().filter(|c| *c != VS16).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identity_ignores_variation_selectors_only() {
+        assert_eq!(emoji_identity("✅\u{FE0F}"), emoji_identity("✅"));
+        assert_eq!(emoji_identity("❤\u{FE0F}"), "❤");
+        assert_eq!(emoji_identity("🏳\u{FE0F}\u{200D}🌈"), "🏳\u{200D}🌈");
+        assert_eq!(emoji_identity("1\u{FE0F}\u{20E3}"), "1\u{20E3}");
+        assert_ne!(emoji_identity("📚"), emoji_identity("🎬"));
+        assert_eq!(emoji_identity(""), "");
+        assert_eq!(emoji_identity("\u{FE0F}\u{FE0F}"), "");
+    }
 
     #[test]
     fn the_table_is_sorted_and_without_overlaps() {
