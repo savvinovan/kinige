@@ -3,6 +3,7 @@
 //! Отметки (`mirror_dirty`) лежат в базе, поэтому переживают убийство процесса: оставшиеся обрабатываются при старте.
 //! Корзина в копию не попадает (ТЗ §16).
 
+use crate::StoreError;
 use crate::mirror_day::write_day;
 use crate::settings::effective_mirror_dir;
 use crate::writer::Writer;
@@ -114,7 +115,7 @@ pub(crate) fn spawn(
     reader: Connection,
     writer: Writer,
     default_dir: Option<PathBuf>,
-) {
+) -> Result<(), StoreError> {
     thread::Builder::new()
         .name("kinige-mirror".into())
         .spawn(move || {
@@ -142,7 +143,8 @@ pub(crate) fn spawn(
                 shared.wait(retry_soon);
             }
         })
-        .expect("не удалось запустить поток Markdown-копии");
+        .map(drop)
+        .map_err(|_| StoreError::Internal("не удалось запустить поток Markdown-копии".into()))
 }
 
 /// Один проход по отметкам. Возвращает `true`, если нужен повтор (ошибка или остались отметки).

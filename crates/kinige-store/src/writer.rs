@@ -15,7 +15,7 @@ pub(crate) struct Writer {
 }
 
 impl Writer {
-    pub(crate) fn spawn(mut conn: Connection) -> Writer {
+    pub(crate) fn spawn(mut conn: Connection) -> Result<Writer, StoreError> {
         let (jobs, queue) = mpsc::channel::<Job>();
         thread::Builder::new()
             .name("kinige-writer".into())
@@ -26,8 +26,8 @@ impl Writer {
                     let _ = catch_unwind(AssertUnwindSafe(|| job(&mut conn)));
                 }
             })
-            .expect("не удалось запустить поток-писатель");
-        Writer { jobs }
+            .map_err(|_| StoreError::Internal("не удалось запустить поток-писатель".into()))?;
+        Ok(Writer { jobs })
     }
 
     /// Выполняет задачу на потоке-писателе и ждёт результат.

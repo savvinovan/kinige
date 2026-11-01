@@ -85,7 +85,7 @@ impl MaintenanceShared {
     }
 }
 
-pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) {
+pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) -> Result<(), StoreError> {
     thread::Builder::new()
         .name("kinige-maintenance".into())
         .spawn(move || {
@@ -122,7 +122,8 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) {
                 shared.wait();
             }
         })
-        .expect("не удалось запустить поток обслуживания");
+        .map(drop)
+        .map_err(|_| StoreError::Internal("не удалось запустить поток обслуживания".into()))
 }
 
 impl Store {
