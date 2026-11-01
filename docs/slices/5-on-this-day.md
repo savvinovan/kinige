@@ -1,101 +1,101 @@
-# Слайс 5: «В этот день» в Inbox и ответ «N лет спустя»
+# Slice 5: “On this day” in Inbox and the “N years later” reply
 
-**Бюджет:** ~3,5 ч на код, ~7 ч до готовности к приёмке. Если через 14 ч слайс не готов к приёмке — стоп и доклад (§12.1a). **Зависит от:** 4 (импорт наполнил прошлые годы), 4b (принят 31.10.2026). Huly: **KINIG-12**; ветка `slice/5-on-this-day`, PR и первый коммит — `KINIG-12: …`. **Источники:** ТЗ §1.1, §2.1, §4.1, §4.2, §5, §6, §8, §11.3, §12.2, §12.3, §15 (строка 5, нефункциональные цели); ADR-0001 (группа `core`, приложение §C), ADR-0009; решение пользователя 1 слайса 4 («Избранное» в Inbox, «туда же смотрит „В этот день“»).
+**Budget:** ~3.5 h for the code, ~7 h until ready for acceptance. If the slice is not ready for acceptance after 14 h, stop and report (§12.1a). **Depends on:** 4 (the import filled the past years), 4b (accepted 31.10.2026). Huly: **KINIG-12**; branch `slice/5-on-this-day`, the PR and the first commit are `KINIG-12: …`. **Sources:** PRD §1.1, §2.1, §4.1, §4.2, §5, §6, §8, §11.3, §12.2, §12.3, §15 (line 5, non-functional targets); ADR-0001 (the `core` group, appendix §C), ADR-0009; user decision 1 of slice 4 (“Saved Messages” goes to Inbox, “‘On this day’ looks there too”).
 
-## Сценарий
-1. Утром открываю Inbox. Под меткой «Сегодня», перед сегодняшними записями, стоит карточка «В этот день». В ней по годам, от новых к старым: «1 год назад · 31 октября 2025», «3 года назад · 31 октября 2023». Под каждым годом мои записи из Inbox за этот день. Лента при этом не прыгает: карточка есть уже в первом кадре.
-2. Щёлкаю запись в карточке. Лента открывается на ней (как переход из поиска), запись подсвечена заливкой. Возвращаюсь вниз, к сегодняшним записям, прокруткой.
-3. Навожу на запись 2023 года и нажимаю «Ответить». Над полем ввода появляется строка «Ответ на запись · 31 октября 2023» и первая строка той записи, справа крестик. Курсор в поле.
-4. Пишу «До сих пор так думаю» и жму Enter. Запись появляется в ленте. Вверху её плашки — цитата: «3 года спустя · 31 октября 2023» и первая строка старой записи. Щелчок по цитате открывает старую запись в контексте.
-5. Начинаю ответ, убиваю процесс (`kill -9`) и запускаю снова. Текст и строка «Ответ на запись…» на месте. Отправленный ответ на месте вместе с цитатой.
-6. Нажимаю крестик карточки. Карточка исчезает до следующего дня журнала: перезапуск её не возвращает. После 04:00 следующего дня карточка нового дня появляется при следующем открытии Inbox.
-7. Если в прошлые годы в этот день записей нет, карточки нет. В других чатах карточки нет никогда.
-8. Удаляю старую запись в корзину. Цитата в ответе показывает «Запись в корзине». После удаления навсегда — «Исходная запись удалена». Сам ответ остаётся.
-9. Открываю личный чат, импортированный из Telegram. У сообщений, которые в Telegram были ответами, вверху плашки та же цитата: «Ответ на запись · 14 марта 2023» и начало исходной реплики. Подписи «N лет спустя» нет, потому что разница меньше года. Щелчок по цитате открывает исходную реплику в контексте.
+## Scenario
+1. In the morning I open Inbox. Under the “Today” label, before today's entries, there is an “On this day” card. In it, by year, from newest to oldest: “1 year ago · October 31, 2025”, “3 years ago · October 31, 2023”. Under each year, my Inbox entries from that day. The feed does not jump: the card is there from the first frame.
+2. I click an entry in the card. The feed opens on it (like a jump from search), and the entry is highlighted with a fill. I scroll back down to today's entries.
+3. I hover over the 2023 entry and press “Reply”. Above the input field appears the line “Replying to the entry of October 31, 2023” and the first line of that entry, with a cross on the right. The cursor is in the field.
+4. I type «До сих пор так думаю» (“I still think so”) and press Enter. The entry appears in the feed. At the top of its bubble is a quote: “3 years later · October 31, 2023” and the first line of the old entry. A click on the quote opens the old entry in context.
+5. I start a reply, kill the process (`kill -9`) and launch again. The text and the line “Replying to the entry of…” are in place. A sent reply is in place together with its quote.
+6. I press the card's cross. The card disappears until the next journal day: a restart does not bring it back. After 04:00 of the next day, the card for the new day appears the next time Inbox is opened.
+7. If there are no entries on this day in past years, there is no card. Other chats never have the card.
+8. I delete the old entry to the trash. The quote in the reply shows “Entry in the trash”. After deleting it forever: “The original entry was deleted”. The reply itself stays.
+9. I open a personal chat imported from Telegram. Messages that were replies in Telegram have the same quote at the top of the bubble: “Reply to the entry of March 14, 2023” and the start of the original message. There is no “N years later” label, because the difference is less than a year. A click on the quote opens the original message in context.
 
-## Входит
-- **Отбор (Rust, `kinige-domain` + `kinige-store`).** Сегодня — это `journal_date` с границей 04:00 (`DAY_BOUNDARY_MINUTES`). В карточку идут записи Inbox, не из корзины, с тем же месяцем и днём, год меньше текущего. 29 февраля совпадает только с 29 февраля, как у `on_this_day` в MCP: функция в домене общая. Запрос перечисляет даты `YYYY-MM-DD` прошлых лет (от года самой старой записи Inbox) и идёт по индексу `message_feed`. `substr` по всей таблице не используется.
-- **Состав карточки** (решение пользователя 3; при необходимости поправить на приёмке на настоящем Inbox 2016–2026). Три самых новых года показываются подробно, до двух записей на год (текст до трёх строк, время). Ниже — «ещё N записей этого дня ›», ссылка открывает день в ленте. Остальные годы — по одной строке: «31 октября 2019 · 5 записей ›». Подпись «N лет назад» — с множественными формами i18next (ru: 1 год, 2 года, 5 лет, 11 лет, 21 год).
-- **Скрытие:** `app_setting.on_this_day_dismissed = <journal_date>`, локально, не синхронизируется. В `settings.json` ключ не пишется: это не настройка. Пока окно открыто, смена дня проверяется при открытии Inbox и при фокусе окна.
-- **Ответ.** У `send_message` появляется необязательный `reply_to_id`. Rust проверяет: UUID v4, запись существует, она не в корзине. Иначе ошибка `reply_target_not_found`, ничего не записано, текст остаётся в поле, над ним ошибка (§5). `reply_to_id` пишется в группу `core`, как у импорта: байты `{"created_at","created_tz","origin":"user","reply_to_id":"<id>"}`. Группа неизменяема, ссылку не правят и не снимают. Ответ уходит в текущий чат, то есть в Inbox. «Ответить» есть только у записей карточки.
-- **Показ ответа** — у любой записи с `reply_to_id`: у новых ответов и у импортированных из Telegram (решение пользователя 1). `MessageView` получает `reply_to: { id, chat_id, journal_date, excerpt, state: live | trash | missing, years_later }`. Rust собирает его тем же запросом страницы ленты через `LEFT JOIN` по id, без FK. `years_later` — полные годы между `journal_date` старой записи и ответа (`chrono`). При значении 0 подпись «N лет спустя» не показывается, остаётся «Ответ на запись · дата». `excerpt` — простой текст записи, переводы строк заменены пробелами, обрезан до 120 знаков. У чужой реплики из импорта первая строка — имя автора жирным, поэтому в цитату попадают имя и начало текста.
-- **Черновик с ответом.** Миграция 6: `ALTER TABLE draft ADD COLUMN reply_to_id TEXT`. Таблица локальная, синхронизируемые таблицы не меняются. `get_draft` и `save_draft` несут `reply_to_id`. Черновик удаляется, только когда пусты и текст, и ответ. Отправка чистит черновик в той же транзакции, как сейчас.
-- **Markdown-копия.** Под заголовком `## ЧЧ:ММ` ответа ставится строка `↩ [ГГГГ-ММ-ДД ЧЧ:ММ](<относительный путь к файлу дня старой записи>)`. Формат не зависит от языка интерфейса. Если старой записи нет, строка остаётся без ссылки. Файл ответа пересчитывается только при правке своего дня: ссылка может устареть после переноса старой записи, это принято.
-- **IPC (§12.3):** только у `main` — `get_on_this_day`, `dismiss_on_this_day(date)`, расширенные `send_message` и черновики. Окну захвата по-прежнему ровно семь команд. Окну `settings` новые команды отказаны.
-- **Компоненты** (через `design-system`, только токены; новый цвет сначала появляется в `design/tokens/`):
-  - карточка «В этот день»: заливка `surface.card` (новая роль палитры, значение как у плашки: «бумага» — фон самой ленты, карточка с той же заливкой растворилась бы), без рамки и тени;
-  - строка года;
-  - компактная запись с действием «Ответить» (значок `Reply` из Lucide, ISC, уже в `icons/README.md`);
-  - строка «Ответ на запись» над полем ввода;
-  - цитата в плашке: заливка, без рамки.
-- **Документы:**
-  - `CLAUDE.md` в первом коммите: в «Состояние» — «слайс 4b (окно настроек, settings.json) принят 31.10.2026»;
-  - ТЗ v0.13: §4.2 — комментарий `reply_to_id` («слайс 5»), §11.3 — компоненты, §12.3 — матрица, история версий;
-  - приложение ADR-0001 §C.5: миграция 6, байты `core` ответа пользователя, состояния `missing`/`trash`.
+## Included
+- **Selection (Rust, `kinige-domain` + `kinige-store`).** Today is the `journal_date` with the 04:00 boundary (`DAY_BOUNDARY_MINUTES`). The card takes Inbox entries that are not in the trash, with the same month and day and a year less than the current one. February 29 matches only February 29, as in `on_this_day` in MCP: the domain function is shared. The query lists the `YYYY-MM-DD` dates of past years (from the year of the oldest Inbox entry) and goes through the `message_feed` index. `substr` over the whole table is not used.
+- **Card contents** (user decision 3; adjust at acceptance on the real Inbox of 2016–2026 if needed). The three newest years are shown in detail, up to two entries per year (text up to three lines, time). Below them, “N more entries on this day ›”; the link opens the day in the feed. The other years are one line each: “October 31, 2019 · 5 entries ›”. The “N years ago” label uses i18next plural forms (ru: 1 год, 2 года, 5 лет, 11 лет, 21 год).
+- **Hiding:** `app_setting.on_this_day_dismissed = <journal_date>`, local, not synced. The key is not written to `settings.json`: it is not a setting. While the window is open, the day change is checked when Inbox is opened and when the window gets focus.
+- **Reply.** `send_message` gets an optional `reply_to_id`. Rust checks: a UUID v4, the entry exists, it is not in the trash. Otherwise the error `reply_target_not_found`, nothing written, the text stays in the field with an error above it (§5). `reply_to_id` is written into the `core` group, as for the import: the bytes `{"created_at","created_tz","origin":"user","reply_to_id":"<id>"}`. The group is immutable; the link is neither edited nor removed. The reply goes to the current chat, that is, Inbox. Only the card's entries have “Reply”.
+- **Showing a reply**: for any entry with `reply_to_id`: new replies and those imported from Telegram (user decision 1). `MessageView` gets `reply_to: { id, chat_id, journal_date, excerpt, state: live | trash | missing, years_later }`. Rust builds it in the same feed page query through a `LEFT JOIN` by id, without an FK. `years_later` is the number of full years between the `journal_date` of the old entry and of the reply (`chrono`). When it is 0, the “N years later” label is not shown, leaving “Reply to the entry of · date”. `excerpt` is the plain text of the entry, line breaks replaced with spaces, cut to 120 characters. For someone else's message from the import, the first line is the author's name in bold, so the quote gets the name and the start of the text.
+- **A draft with a reply.** Migration 6: `ALTER TABLE draft ADD COLUMN reply_to_id TEXT`. The table is local; the synced tables do not change. `get_draft` and `save_draft` carry `reply_to_id`. The draft is deleted only when both the text and the reply are empty. Sending clears the draft in the same transaction, as now.
+- **Markdown copy.** Under the reply's `## HH:MM` heading, the line `↩ [YYYY-MM-DD HH:MM](<relative path to the day file of the old entry>)` is placed. The format does not depend on the UI language. If the old entry does not exist, the line stays without a link. The reply's file is recomputed only when its own day is edited: the link can go stale after the old entry is moved, and this is accepted.
+- **IPC (§12.3):** `main` only: `get_on_this_day`, `dismiss_on_this_day(date)`, the extended `send_message` and drafts. The capture window still has exactly seven commands. The `settings` window is denied the new commands.
+- **Components** (through `design-system`, tokens only; a new color first appears in `design/tokens/`):
+  - the “On this day” card: fill `surface.card` (a new palette role, the same value as the bubble: “paper” is the background of the feed itself, and a card with the same fill would dissolve), no border and no shadow;
+  - the year row;
+  - a compact entry with the “Reply” action (the `Reply` icon from Lucide, ISC, already in `icons/README.md`);
+  - the “Replying to the entry” line above the input field;
+  - the quote in the bubble: a fill, no border.
+- **Documents:**
+  - `CLAUDE.md` in the first commit: in “State”, “slice 4b (settings window, settings.json) accepted 31.10.2026”;
+  - PRD v0.13: §4.2, the `reply_to_id` comment (“slice 5”), §11.3, components, §12.3, matrix, version history;
+  - ADR-0001 appendix §C.5: migration 6, the `core` bytes of a user reply, the `missing`/`trash` states.
 
-## НЕ входит
-- «Ответить» у любой записи в контекстном меню и по наведению (§6, P1).
-- Обратная отметка у старой записи («↪ ответ 31 октября 2026», переход к ответам) и нить ответов. По решению пользователя 2 к этому возвращаемся вместе с «подлеском» леса (P1).
-- Записи других чатов в карточке. Ответы из окна захвата и от агента.
-- Изменения MCP: `reply_to_id` агенту по-прежнему не отдаётся и не принимается (ADR-0009, `agent_reply.rs`).
-- «Подлесок» леса от ответов (P1), «Случайная запись» (P1), уведомления о «В этот день», настройка границы дня и «Южное полушарие».
-- Переход к дате и виртуализация ленты (слайс 8). Полный экспорт (§16).
+## Not included
+- “Reply” on any entry in the context menu and on hover (§6, P1).
+- A back-mark on the old entry (“↪ reply October 31, 2026”, jumping to the replies) and a reply thread. Per user decision 2, we come back to this together with the forest “undergrowth” (P1).
+- Entries from other chats in the card. Replies from the capture window and from an agent.
+- MCP changes: `reply_to_id` is still neither given to nor accepted from an agent (ADR-0009, `agent_reply.rs`).
+- Forest “undergrowth” from replies (P1), “Random entry” (P1), notifications about “On this day”, a day boundary setting and “Southern hemisphere”.
+- Jump to date and feed virtualization (slice 8). Full export (§16).
 
-## Как выглядит «готово»
-Окно 1280 × 800, колонка ленты ~720 px.
-- **Карточка** стоит в потоке ленты в начале сегодняшнего дня. Если сегодня записей нет — внизу ленты, над полем ввода. Вверху мелкий вторичный заголовок «В этот день» и крестик (`IconButton`, подпись «Скрыть до завтра»).
-- **Строки годов** — третичным цветом. Длинная запись обрезается многоточием на третьей строке.
-- **Без движения:** без анимации появления, тостов, обводки выбранного. Кольцо фокуса — только после клавиши (`useInputModality`).
-- **Клавиатура:** Tab проходит записи карточки, «Ответить», «ещё N» и крестик; Enter открывает запись. Подписи для диктора: «Ответить на запись 31 октября 2023», «3 года спустя, ответ на запись 31 октября 2023».
-- **Цитата** — одна строка, по ширине плашки (не шире ~65 знаков).
-- **Истории Storybook** (en и ru, обычный и крупный текст):
-  - карточка: один год; три года и строки старых лет; длинный текст;
-  - строка ответа: обычная; запись удалена;
-  - цитата: `live`, `trash`, `missing`, `years_later = 0`, импортированный ответ на чужую реплику (имя автора в цитате).
-- Узкое окно — всё доступно, компромиссы допустимы.
+## What “done” looks like
+A 1280 × 800 window, a feed column of ~720 px.
+- **The card** sits in the feed flow at the start of today. If there are no entries today, at the bottom of the feed, above the input field. At the top, a small secondary header “On this day” and a cross (`IconButton`, label “Hide until tomorrow”).
+- **Year rows** in the tertiary color. A long entry is truncated with an ellipsis on the third line.
+- **No motion:** no appearance animation, no toasts, no outline on the selected item. The focus ring only after a key press (`useInputModality`).
+- **Keyboard:** Tab goes through the card's entries, “Reply”, “N more” and the cross; Enter opens an entry. Screen reader labels: “Reply to the entry of October 31, 2023”, “3 years later, reply to the entry of October 31, 2023”.
+- **The quote** is one line, as wide as the bubble (no wider than ~65 characters).
+- **Storybook stories** (en and ru, normal and large text):
+  - card: one year; three years and the rows of older years; long text;
+  - reply line: normal; entry deleted;
+  - quote: `live`, `trash`, `missing`, `years_later = 0`, an imported reply to someone else's message (the author's name in the quote).
+- Narrow window: everything is reachable, compromises are acceptable.
 
-## Проверки
+## Checks
 - **Rust (domain):**
-  - даты прошлых лет: 29 февраля, границы года, год самой старой записи;
-  - `years_later`: високосные даты, разница меньше года, ответ раньше оригинала (смена даты) даёт 0;
-  - `excerpt`: Markdown, пустые строки, длинные строки, эмодзи, жирное имя автора первой строкой;
-  - байты `core` ответа совпадают с эталоном.
+  - past-year dates: February 29, year boundaries, the year of the oldest entry;
+  - `years_later`: leap dates, a difference of less than a year, a reply earlier than the original (date change) gives 0;
+  - `excerpt`: Markdown, empty lines, long lines, emoji, the author's bold name as the first line;
+  - the `core` bytes of a reply match the reference.
 - **Rust (SQLite):**
-  - отбор: только Inbox; корзина, текущий год и другие чаты исключены; порядок и лимиты карточки, счётчик «ещё N»;
-  - мусорный `reply_to_id`: не UUID, пустая строка, 1 МиБ, чужая запись, запись в корзине. Ошибка, ничего не записано;
-  - `reply_to_id` переживает правку, перенос, смену даты и дописывание;
-  - удаление навсегда старой записи даёт `missing`;
-  - импорт личного чата с ответами: у ответа `reply_to` с `state = live` и `years_later = 0`, у ответа на непереданную реплику (`reply_to_id = null`) цитаты нет;
-  - миграция 5 → 6 сохраняет черновики;
-  - `abort` с черновиком-ответом: черновик на месте;
-  - скрытие переживает перезапуск;
-  - строка `↩` в Markdown-копии;
-  - замер: 100k записей за 5 лет (`import_bench synthetic 100000`), `get_on_this_day` p95 и открытие Inbox < 300 мс.
-- **IPC (mock):** новые команды разрешены `main` и отказаны `capture` и `settings`; `capture_send` не принимает `reply_to_id`.
-- **Фронтенд на `MockApi`:**
-  - карточка и её отсутствие; крестик; смена дня при фокусе;
-  - ответ целиком: строка, отмена, ошибка `reply_target_not_found`;
-  - щелчок по цитате (в том числе в импортированном чате) и по записи карточки открывает запись в контексте;
-  - клавиатура и подписи; ключи en и ru совпадают, множественные формы ru;
-  - визуальные эталоны через `visual-update.yml`.
-- **Снимки `docs/screens/5/`:** `scripts/screens/5.sh` на macOS-раннере (`gh workflow run screens.yml --ref slice/5-on-this-day -f slice=5`), ввод только AX.
-  - Данные: `seed_demo` дополняется записями Inbox на сегодняшний `journal_date` 1, 3, 4, 6 и 9 лет назад (по несколько записей, одна длинная, одна в корзине). Даты считаются через `chrono` от `journal_date` запуска, а не от UTC. Черновик-ответ кладёт сценарий через `sql`, потому что ввода с клавиатуры нет. Ещё `seed_demo` импортирует синтетический личный чат Telegram (JSON строится в коде, как в `import_bench`, и идёт через `parse_export` и импорт хранилища). В чате есть свои и чужие реплики и несколько ответов, в том числе на чужую реплику.
-  - Снимки: 01 Inbox с карточкой; 02 после «Ответить» (строка над полем); 03 черновик-ответ после перезапуска; 04 после «Отправить» — ответ с цитатой; 05 старая запись, открытая из цитаты; 06 цитата «Запись в корзине»; 07 после крестика; 08 после `kill -9` (карточки нет, ответ с цитатой на месте); 09 чат «Книги» без карточки; 10 en; 11 крупный текст; 12 импортированный личный чат с цитатами; 13 исходная реплика, открытая из цитаты в этом чате.
-  - Тексты: `mirror-reply.md` (файл дня с ответом из синтетической копии); `cold-start.txt` — `scripts/measure-cold-start.sh 10` с `KINIGE_DATA_DIR` на синтетических 100k (цель < 1,5 с, §15); замер `get_on_this_day` и открытия Inbox — в `bench.txt` (`import_bench synthetic 100000`).
+  - selection: Inbox only; the trash, the current year and other chats are excluded; the card's order and limits, the “N more” counter;
+  - garbage `reply_to_id`: not a UUID, an empty string, 1 MiB, an entry of another chat, an entry in the trash. Error, nothing written;
+  - `reply_to_id` survives an edit, a move, a date change and an append;
+  - deleting the old entry forever gives `missing`;
+  - importing a personal chat with replies: a reply has `reply_to` with `state = live` and `years_later = 0`, and a reply to a message that was not imported (`reply_to_id = null`) has no quote;
+  - migration 5 → 6 keeps the drafts;
+  - `abort` with a reply draft: the draft is in place;
+  - hiding survives a restart;
+  - the `↩` line in the Markdown copy;
+  - measurement: 100k entries over 5 years (`import_bench synthetic 100000`), `get_on_this_day` p95 and opening Inbox < 300 ms.
+- **IPC (mock):** the new commands are allowed for `main` and denied for `capture` and `settings`; `capture_send` does not accept `reply_to_id`.
+- **Frontend on `MockApi`:**
+  - the card and its absence; the cross; the day change on focus;
+  - the whole reply: the line, cancel, the `reply_target_not_found` error;
+  - a click on a quote (including in an imported chat) and on a card entry opens the entry in context;
+  - keyboard and labels; en and ru keys match, Russian plural forms;
+  - visual baselines through `visual-update.yml`.
+- **Screenshots in `docs/screens/5/`:** `scripts/screens/5.sh` on the macOS runner (`gh workflow run screens.yml --ref slice/5-on-this-day -f slice=5`), input through AX only.
+  - Data: `seed_demo` is extended with Inbox entries on today's `journal_date` 1, 3, 4, 6 and 9 years ago (several entries each, one long, one in the trash). The dates are computed with `chrono` from the `journal_date` of the run, not from UTC. The scenario puts the reply draft in place through `sql`, because there is no keyboard input. `seed_demo` also imports a synthetic personal Telegram chat (the JSON is built in code, as in `import_bench`, and goes through `parse_export` and the store import). The chat has own and other people's messages and several replies, including a reply to someone else's message.
+  - Screenshots: 01 Inbox with the card; 02 after “Reply” (the line above the field); 03 the reply draft after a restart; 04 after “Send”: the reply with a quote; 05 the old entry opened from the quote; 06 the quote “Entry in the trash”; 07 after the cross; 08 after `kill -9` (no card, the reply with the quote is in place); 09 the chat «Книги» (“Books”) without the card; 10 en; 11 large text; 12 the imported personal chat with quotes; 13 the original message opened from a quote in this chat.
+  - Texts: `mirror-reply.md` (the day file with a reply from a synthetic copy); `cold-start.txt`: `scripts/measure-cold-start.sh 10` with `KINIGE_DATA_DIR` on a synthetic 100k (target < 1.5 s, §15); the measurement of `get_on_this_day` and of opening Inbox goes into `bench.txt` (`import_bench synthetic 100000`).
 
-## Затрагивает чувствительные зоны
-**Да, `sync-crypto-guardian` до мержа:**
-- первое ненулевое `reply_to_id` в `core` записи пользователя и его проверка;
-- миграция 6 (локальная таблица `draft`);
-- `reply_to` без FK: ссылка на запись, которая ещё не пришла при pull, удалена навсегда или лежит в чате `ai_excluded`;
-- новые команды IPC.
+## Touches sensitive areas
+**Yes, `sync-crypto-guardian` before merge:**
+- the first non-null `reply_to_id` in the `core` of a user entry, and its check;
+- migration 6 (the local `draft` table);
+- `reply_to` without an FK: a link to an entry that has not arrived yet during pull, was deleted forever or lives in an `ai_excluded` chat;
+- new IPC commands.
 
-Протокол, конверт, HLC и шифрование не меняются: `reply_to_id` уже есть в группе `core` (ADR-0001, приложение), сервер его не видит. MCP не меняется. Новых крейтов и npm-пакетов нет.
+The protocol, the envelope, HLC and encryption do not change: `reply_to_id` is already in the `core` group (ADR-0001, appendix), and the server does not see it. MCP does not change. No new crates or npm packages.
 
-## Решения пользователя (31.10.2026)
-1. Цитаты у ответов, импортированных из Telegram, показываются так же, как у новых ответов. Если разница меньше года, подписи «N лет спустя» нет.
-2. Обратной отметки у старой записи в слайсе 5 нет. Возвращаемся к ней вместе с «подлеском» (P1).
-3. Подробно показываются три новых года, остальные — строкой. При необходимости поправить на приёмке.
+## User decisions (31.10.2026)
+1. Quotes on replies imported from Telegram are shown the same way as on new replies. If the difference is less than a year, there is no “N years later” label.
+2. There is no back-mark on the old entry in slice 5. We come back to it together with the “undergrowth” (P1).
+3. The three newest years are shown in detail, the rest as a line. Adjust at acceptance if needed.
 
-## Открытые вопросы
-Нет.
+## Open questions
+None.

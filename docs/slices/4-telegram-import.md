@@ -1,458 +1,458 @@
-# Слайс 4: Импорт Telegram, архив прошлых лет в ленте, поиск с русскими словоформами
+# Slice 4: Telegram import, past years' archive in the feed, search with Russian word forms
 
-Бюджет: **spike S5 — до 3 ч** (лимит ТЗ — 1 день). **Слайс — ~12 ч до готовности к приёмке, ~18 ч до влития.** Если через 24 ч готовности к приёмке нет — стоп и доклад (§12.1a). Сумма оценок задач ниже — около 23 ч работы агентов. Калибровка: слайс 3 сделан в 3,5 раза быстрее своего бюджета (2 ч 20 мин при бюджете 8 ч). Объём здесь примерно вдвое больше. Прогоны одной задачи несколькими агентами для сравнения в бюджет не входят. Слайс не режется, PR один. Порядок работы — как в «Задачах»: если бюджет кончится, недоделанным останется поиск, а не данные. Зависит от: слайс 3 (принят 28.10.2026), S5. Источники: ТЗ §2.1, §4, §6, §9.1, §10.2, §10.4, §11.3, §12.3, §15, §16; ADR-0001 §2, §3.2, §10, «Внешний id импорта», приложение §A.0, §B п. 39 и 46, §C; `research/tauri-stack.md` §5; «Заметки для следующих слайсов» в `3-chats-and-editing.md`.
+Budget: **spike S5 — up to 3 h** (PRD limit — 1 day). **Slice — ~12 h to ready-for-acceptance, ~18 h to merge.** If it is not ready for acceptance after 24 h — stop and report (§12.1a). The task estimates below add up to about 23 h of agent work. Calibration: slice 3 was done 3.5 times faster than its budget (2 h 20 min against a budget of 8 h). The scope here is roughly twice as large. Runs of one task by several agents for comparison are not counted in the budget. The slice is not split, one PR. Work order is as in "Tasks": if the budget runs out, what remains unfinished is search, not data. Depends on: slice 3 (accepted 28.10.2026), S5. Sources: PRD §2.1, §4, §6, §9.1, §10.2, §10.4, §11.3, §12.3, §15, §16; ADR-0001 §2, §3.2, §10, "External import id", appendix §A.0, §B items 39 and 46, §C; `research/tauri-stack.md` §5; "Notes for the next slices" in `3-chats-and-editing.md`.
 
-## Сценарий
-1. Профиль → «Импорт из Telegram…». В окне короткая инструкция: Telegram Desktop → «Экспорт данных» или «Экспорт истории чата», формат JSON. Кнопка «Выбрать result.json…» открывает системный диалог. Если выбран не тот файл, окно показывает понятную ошибку, ничего не записано.
-2. Kinige показывает найденные чаты: «Избранное» и личные чаты. У каждого чата видно число записей и сколько из них уже импортировано. Группы и каналы не импортируются, для них одна строка «пропущено: N». Отмечаю нужные чаты флажками и нажимаю «Импортировать».
-3. Перед первой записью снимается копия базы. Дальше идёт прогресс «3 200 из 15 000», и его можно остановить. В это время быстрый захват и главное окно работают.
-4. В конце — отчёт: сколько импортировано, сколько пропущено (уже были, служебные, пустые) и у скольких записей не перенесены вложения. Записи «Избранного» стоят в Inbox, у каждого личного чата свой чат с 💬. Счётчики в сайдбаре выросли.
-5. Прокручиваю ленту вверх: старые страницы подгружаются, лента не прыгает. Под метками «14 марта 2023» стоят записи с исходным временем. Форматирование сохранено: жирный, курсив, код, ссылки. `#хэштеги` из Telegram стали тегами. Вместо фото — строка «[Фото не импортировано]».
-6. Импортирую тот же файл ещё раз: новых записей 0, «пропущено, уже импортировано: 15 000». Прерываю импорт `kill -9` на середине, запускаю Kinige и импортирую снова: доносится остаток, дублей нет.
-7. В Finder в папке Markdown-копии появились файлы импортированных дней.
-8. ⌘F или щелчок в поле «Поиск» вверху сайдбара. Ввожу «книги»: находятся «книга», «книгу», «книгой». Ввожу «моло»: находится «молоко». Результаты на месте ленты показывают эмодзи и имя чата, дату, фрагмент с подсвеченными словами. Фильтры: «везде / этот чат», «избранное», «задачи», «с даты / по дату».
-9. Щелчок или Enter по результату открывает чат на этой записи. Запись подсвечена, найденные слова выделены, выше и ниже подгружаются соседние записи. Esc в поиске возвращает туда, где я был.
-10. Правлю найденную запись, удаляю другую и снова ищу: правка находится, удалённой в результатах нет. После `kill -9` поиск находит то же самое.
+## Scenario
+1. Profile → “Import from Telegram…”. The window shows a short instruction: Telegram Desktop → “Export Telegram data” or “Export chat history”, JSON format. The “Choose result.json…” button opens the system dialog. If the wrong file is chosen, the window shows a clear error, and nothing is written.
+2. Kinige shows the chats it found: Saved Messages and personal chats. Each chat shows its number of entries and how many of them are already imported. Groups and channels are not imported; for them there is one line "skipped: N". I tick the chats I want and press “Import”.
+3. A database backup is taken before the first write. Then progress "3,200 of 15,000" runs, and it can be stopped. Meanwhile quick capture and the main window keep working.
+4. At the end — a report: how many were imported, how many skipped (already there, service, empty) and how many entries did not get their attachments. Saved Messages entries go to Inbox; each personal chat gets its own chat with 💬. The counters in the sidebar went up.
+5. I scroll the feed up: older pages load, the feed does not jump. Under the labels "14 March 2023" are entries with their original time. Formatting is kept: bold, italic, code, links. `#hashtags` from Telegram became tags. Instead of a photo — the line “[Photo not imported]”.
+6. I import the same file again: 0 new entries, “Skipped, already imported: 15,000”. I interrupt the import with `kill -9` halfway, start Kinige and import again: the remainder arrives, no duplicates.
+7. In Finder, files for the imported days appeared in the Markdown copy folder.
+8. ⌘F or a click in the “Search” field at the top of the sidebar. I type «книги» ("books"): «книга», «книгу», «книгой» (other forms of "book") are found. I type «моло»: «молоко» ("milk") is found. Results, in place of the feed, show the chat emoji and name, the date, and a fragment with highlighted words. Filters: “Everywhere / This chat”, “Favorites”, “Tasks”, “From date / To date”.
+9. A click or Enter on a result opens the chat at that entry. The entry is highlighted, the found words are marked, neighbouring entries load above and below. Esc in search returns me to where I was.
+10. I edit a found entry, delete another and search again: the edit is found, the deleted one is not in the results. After `kill -9` search finds the same.
 
-## Входит
-- **S5 → ADR-0008** «Поиск по-русски» (раздел ниже). Делается первым, от него зависит схема индекса.
-- **Разбор экспорта** (`kinige-domain`, без IO). Поддерживаются обе формы `result.json`: экспорт одного чата и полный экспорт. Импортируются чаты двух типов: «Избранное» и личные. Форматирование `text_entities` переводится в Markdown. Ответы ставятся по `reply_to_message_id`. Пересылка показывается строкой «Переслано от …». Служебные сообщения пропускаются. Медиа заменяются строкой-заглушкой. Формат экспорта — **не проверено** (см. «Нужно от пользователя»).
-- **Запись импорта** (`kinige-store`). Перед импортом снимается копия базы. Дальше импорт идёт пачками по 500 сообщений, каждая пачка — одна транзакция писателя. В транзакцию пачки входят записи, `message_ext`, теги, индекс поиска, `mirror_dirty` и HLC. Между пачками писатель свободен для других записей. Повторный импорт идемпотентен через `message_ext`. Остановка и `kill -9` теряют не больше одной незафиксированной пачки, и её дописывает следующий запуск.
-- **Миграция 4:** `message_ext` (ADR-0001 §C) и таблицы поиска по ADR-0008. Индекс строится из существующих записей в той же миграции. Индекс поиска обновляется в той же транзакции, что и любая правка текста: отправка, дописывание, правка, галочка `- [ ]`, импорт. Удаление навсегда убирает запись из индекса.
-- **Поиск:** поле в сайдбаре из D1 (сейчас `showSearch={false}`) и экран результатов. Фильтры: чат, избранное, задачи, диапазон дат (календарь слайса 3). Корзина и удалённые чаты в результаты не попадают. Чаты, чьё имя совпало с запросом, показываются отдельной строкой над записями. Названия чатов не индексируются: их не больше сотни, они сверяются в Rust.
-- **Лента:** подгрузка старых страниц при прокрутке вверх, без виртуализации. Открытие на записи из поиска: страница вокруг записи, дальше подгрузка вверх и вниз. Без этого «архив прошлых лет в ленте» не увидеть. Виртуализация и переход к дате остаются в слайсе 8 (§15). Если на импортированном объёме лента заметно тормозит — замер в PR, решение в слайсе 8.
-- **IPC (§12.3):** новые команды только у главного окна. Путь к файлу выбирается диалогом в Rust и в JS не приходит. Окно захвата получает отказ на каждую новую команду, его набор из семи команд не меняется.
-- **Компоненты** (агент `design-system`, только токены): окно импорта (инструкция и ошибка, выбор чатов, прогресс, отчёт), флажок, полоса прогресса, поле поиска с фильтрами, строка результата, пустой результат, подсветка слова. Для подсветки записи уже есть токен `color.highlight.background`.
+## Included
+- **S5 → ADR-0008** "Search in Russian" (section below). Done first: the index schema depends on it.
+- **Export parsing** (`kinige-domain`, no IO). Both forms of `result.json` are supported: a single-chat export and a full export. Two chat types are imported: Saved Messages and personal chats. `text_entities` formatting is converted to Markdown. Replies are set via `reply_to_message_id`. A forward is shown as a line “Forwarded from …”. Service messages are skipped. Media are replaced by a placeholder line. The export format is **not verified** (see "Needed from the user").
+- **Import writing** (`kinige-store`). A database backup is taken before the import. Then the import runs in batches of 500 messages, each batch being one writer transaction. The batch transaction covers the entries, `message_ext`, tags, the search index, `mirror_dirty` and the HLC. Between batches the writer is free for other writes. Re-import is idempotent through `message_ext`. Stopping and `kill -9` lose at most one uncommitted batch, and the next run writes it.
+- **Migration 4:** `message_ext` (ADR-0001 §C) and the search tables per ADR-0008. The index is built from existing entries in the same migration. The search index is updated in the same transaction as any text change: send, append, edit, the `- [ ]` checkbox, import. Delete forever removes the entry from the index.
+- **Search:** the sidebar field from D1 (currently `showSearch={false}`) and the results screen. Filters: chat, favorites, tasks, date range (the slice 3 calendar). Trash and deleted chats do not appear in results. Chats whose name matched the query are shown in a separate row above the entries. Chat names are not indexed: there are no more than a hundred of them, and they are matched in Rust.
+- **Feed:** loading older pages when scrolling up, without virtualization. Opening at an entry from search: the page around the entry, then loading up and down. Without this the "past years' archive in the feed" cannot be seen. Virtualization and jump to date stay in slice 8 (§15). If the feed is noticeably slow on the imported volume — a measurement in the PR, the decision in slice 8.
+- **IPC (§12.3):** new commands only for the main window. The file path is chosen by a dialog in Rust and never reaches JS. The capture window gets a denial on every new command; its set of seven commands does not change.
+- **Components** (`design-system` agent, tokens only): the import window (instruction and error, chat selection, progress, report), checkbox, progress bar, search field with filters, result row, empty result, word highlight. For highlighting an entry the token `color.highlight.background` already exists.
 
-## НЕ входит
-- Вложения из экспорта: файлы, фото, голосовые (слайсы 7 и 7a). Слайс 7 может прикрепить их к уже импортированным записям по `ext`, потому что вложение — отдельная запись. Группы, каналы, боты. Импорт из других программ (§2.4). Реакции, кнопки ботов, история правок из Telegram.
-- Фильтр по типу (§9.1): пока нет вложений, тип у всех записей один. Семантический поиск (P1). Поиск по именам файлов и заголовкам ссылок (слайс 7).
-- Показ ответов: `reply_to_id` пишется (см. решения), а цитата и переход по ответу — P1 и слайс 5. Пометка «из Telegram» в ленте (см. решения).
-- Виртуализация, плавающая дата, переход к дате, позиция прокрутки (слайс 8). MCP (слайс 4a).
+## Not included
+- Attachments from the export: files, photos, voice messages (slices 7 and 7a). Slice 7 can attach them to already imported entries via `ext`, because an attachment is a separate record. Groups, channels, bots. Import from other apps (§2.4). Reactions, bot buttons, Telegram edit history.
+- Filter by type (§9.1): until there are attachments, all entries have the same type. Semantic search (P1). Search by file names and link titles (slice 7).
+- Showing replies: `reply_to_id` is written (see decisions), but the quote and jumping to the reply are P1 and slice 5. A "from Telegram" mark in the feed (see decisions).
+- Virtualization, floating date, jump to date, scroll position (slice 8). MCP (slice 4a).
 
-## Как выглядит «готово»
-Окно 1280 × 800. Импорт открывается модальным окном D1 (`web/src/ui/settings/Modal.tsx`) поверх главного и закрывается крестиком на любом шаге, кроме прогресса: там только «Остановить». В списке чатов — флажок, имя (длинное обрезается многоточием), тип, «N записей · M уже есть». Отчёт состоит из тихих строк без цветных плашек и называет файл копии базы. Тостов и анимаций нет. Полоса прогресса подчиняется Reduce Motion.
-Поиск: поле вверху сайдбара, результаты на месте ленты (решение пользователя 4). Строка результата: эмодзи и имя чата, дата, до трёх строк фрагмента со словами, подсвеченными токеном. Пустой результат — одна тихая строка. Ошибка чтения — строка ошибки D1. В свёрнутом сайдбаре значок 🔍 разворачивает сайдбар и ставит фокус в поле.
-Найденная запись в ленте подсвечена заливкой `color.highlight.background` до следующего щелчка, без анимации. Истории Storybook: каждый шаг импорта, пустые и ошибочные состояния, en и ru, обычный и крупный текст. В узком окне всё доступно, мелкие недочёты допустимы.
+## What “done” looks like
+Window 1280 × 800. Import opens as the D1 modal window (`web/src/ui/settings/Modal.tsx`) over the main window and closes with the cross at any step except progress: there, only “Stop”. In the chat list — a checkbox, the name (a long one is truncated with an ellipsis), the type, "N entries · M already here". The report consists of quiet lines without colored badges and names the database backup file. No toasts or animations. The progress bar obeys Reduce Motion.
+Search: a field at the top of the sidebar, results in place of the feed (user decision 4). A result row: chat emoji and name, date, up to three lines of fragment with words highlighted via a token. An empty result — one quiet line. A read error — the D1 error line. In the collapsed sidebar the 🔍 icon expands the sidebar and puts focus in the field.
+The found entry in the feed is highlighted with the `color.highlight.background` fill until the next click, without animation. Storybook stories: each import step, empty and error states, en and ru, normal and large text. In a narrow window everything is reachable; small flaws are acceptable.
 
-## Проверки
-- **Rust (domain):** разбор на фикстурах (синтетические сейчас, настоящая — когда будет); таблица «сущность → Markdown»; байты `core` с `origin`, `ext`, `reply_to_id`; словоформы и префикс; запрос не пропускает синтаксис FTS5; подсветка и фрагмент.
+## Checks
+- **Rust (domain):** parsing on fixtures (synthetic now, a real one when available); the "entity → Markdown" table; `core` bytes with `origin`, `ext`, `reply_to_id`; word forms and prefix; the query does not let FTS5 syntax through; highlight and fragment.
 - **Rust (SQLite):**
-  - миграция 3 → 4 с копией: индекс построен по старым записям;
-  - индекс совпадает с текстом после отправки, дописывания, правки, галочки, удаления навсегда и импорта;
-  - повторный импорт добавляет 0 записей (ADR §B п. 46);
-  - `abort` между пачками: после перезапуска нет полупачек, `integrity_check` = ok, повтор доносит остаток;
-  - инъекция отказа записи пачки — пачка не записана;
-  - копия снимается до первой записи, а сбой копии отменяет импорт;
-  - `origin` и `ext` переживают правку, перенос и смену даты (ADR §B п. 39);
-  - дописывание из окна захвата не цепляет импортированную запись;
-  - удаление навсегда убирает строку `message_ext`;
-  - сообщения в одну секунду сохраняют порядок файла;
-  - файлы Markdown-копии появились для импортированных дней;
-  - поиск: фильтры, keyset, корзина исключена.
-- **Замеры** (в PR, на Mac автора, генератором S5): импорт 100k сообщений; поиск p95 на 100k (цель ТЗ < 300 мс); холодный старт после импорта (< 1,5 с); размер базы до и после.
-- **IPC (mock):** каждая новая команда работает у `main` и отказана `capture`; путь файла из JS не принимается.
-- **Фронтенд на `MockApi`:** все шаги импорта и остановка; поиск с фильтрами и клавиатурой; открытие в контексте; подгрузка старых страниц без скачка прокрутки; ключи en и ru совпадают; визуальные эталоны новых компонентов в Linux-контейнере.
-- **Скриншоты `docs/screens/4/`** (агент-ревьюер, **временная база**, тестовый экспорт): все шаги импорта; отчёт повторного импорта; лента прошлого года; сайдбар с новыми чатами; результаты поиска по словоформам; запись, открытая из поиска; пустой поиск; en и крупный текст; после `kill -9` в середине импорта. Рядом — `ls` папки копий и папки Markdown-копии, вывод тестов, замеры.
+  - migration 3 → 4 with a backup: the index is built over old entries;
+  - the index matches the text after send, append, edit, checkbox, delete forever and import;
+  - re-import adds 0 entries (ADR §B item 46);
+  - `abort` between batches: after restart there are no half-batches, `integrity_check` = ok, a repeat brings the remainder;
+  - injected failure of a batch write — the batch is not written;
+  - the backup is taken before the first write, and a backup failure cancels the import;
+  - `origin` and `ext` survive edit, move and date change (ADR §B item 39);
+  - append from the capture window does not hook onto an imported entry;
+  - delete forever removes the `message_ext` row;
+  - messages within one second keep the file order;
+  - Markdown copy files appeared for the imported days;
+  - search: filters, keyset, trash excluded.
+- **Measurements** (in the PR, on the author's Mac, with the S5 generator): importing 100k messages; search p95 on 100k (PRD target < 300 ms); cold start after import (< 1.5 s); database size before and after.
+- **IPC (mock):** each new command works for `main` and is denied for `capture`; a file path from JS is not accepted.
+- **Frontend on `MockApi`:** all import steps and stopping; search with filters and keyboard; opening in context; loading older pages without a scroll jump; en and ru keys match; visual baselines of the new components in the Linux container.
+- **Screenshots `docs/screens/4/`** (reviewer agent, **temporary database**, test export): all import steps; the re-import report; last year's feed; the sidebar with new chats; search results by word forms; an entry opened from search; empty search; en and large text; after `kill -9` in the middle of an import. Alongside — `ls` of the backup folder and the Markdown copy folder, test output, measurements.
 
-## Затрагивает чувствительные зоны
-- **Схема и данные — да, `sync-crypto-guardian` до мержа:**
-  - миграция 4 и копия перед ней;
-  - байты `core` импортированной записи (`origin = 'import_telegram'`, `ext`, `reply_to_id`);
-  - HLC при массовой записи;
-  - копия перед импортом как новый вид в окне восстановления;
-  - удаление навсегда убирает `message_ext` и индекс;
-  - отступление от черновика ТЗ §4.2: колонки `message.body_search` нет (см. решения).
+## Touches sensitive areas
+- **Schema and data — yes, `sync-crypto-guardian` before merge:**
+  - migration 4 and the backup before it;
+  - `core` bytes of an imported entry (`origin = 'import_telegram'`, `ext`, `reply_to_id`);
+  - HLC during bulk writes;
+  - the pre-import backup as a new kind in the restore window;
+  - delete forever removes `message_ext` and the index entry;
+  - deviation from the PRD §4.2 draft: there is no `message.body_search` column (see decisions).
 
-  Это дописывается в приложение ADR-0001 как §C.3.
-- **IPC — да.** Шифрование и протокол — нет: outbox появится в слайсе 11, при первой привязке импорт даст порядка N конвертов (ADR §6.2 п. 4).
-- **Зависимости:** крейт стеммера (выбирается в S5, ADR-0008). Новых npm-пакетов не ожидается.
+  This is added to the ADR-0001 appendix as §C.3.
+- **IPC — yes.** Encryption and protocol — no: the outbox appears in slice 11; on first binding the import will produce on the order of N envelopes (ADR §6.2 item 4).
+- **Dependencies:** a stemmer crate (chosen in S5, ADR-0008). No new npm packages are expected.
 
-## Технические решения (приняты здесь; возразить можно при приёмке спецификации)
-1. **HLC.** Каждая импортированная запись получает новый HLC момента импорта (`next_hlc`): один на все пять групп, `sv = 1`, `server_known = 0`. Исходная дата из Telegram идёт в `created_at` и `journal_date`, а не в HLC. Об этом исключении и говорит ADR §10 («кроме импорта»).
-2. **Время.**
-   - `created_at` = `date_unixtime` × 1000. Если в одну секунду пришло несколько сообщений, k-е по порядку файла получает +k мс (не больше 999), иначе случайный `id` перемешал бы их в ленте.
-   - Если `date_unixtime` нет, берётся `date` как местное время пояса устройства.
-   - Время принимается только из окна «1970-01-01 … момент импорта + сутки». Нет даты или она вне окна (за ±2^53, год 287396, отрицательная, больше чем на сутки в будущем) — запись получает момент импорта и сохраняет порядок файла тем же +k мс. Следствие: если часы устройства отстают больше чем на сутки, правильные даты свежих сообщений тоже окажутся «в будущем» и заменятся моментом импорта (решение guardian, п. 5).
-   - `created_tz` — пояс устройства при импорте: в экспорте пояса нет.
-   - `journal_date` — граница 04:00 со смещением пояса на тот исторический момент (`kinige_store::offset_secs`).
-   - Метка правки Telegram (`edited`) не переносится.
-3. **`core`.** Поля `{"created_at","created_tz","ext":{"chat","msg","src":"telegram"},"origin":"import_telegram","reply_to_id"}`, id в `ext` записаны строками. `reply_to_id` — id записи Kinige, если сообщение-адресат того же Telegram-чата уже импортировано, иначе `null`. Сейчас поле в интерфейсе не используется, но `core` неизменяема, и позже его не заполнить.
-4. **Дедупликация.** Ключ — `message_ext(src, ext_chat, ext_msg)`. Запись в корзине тоже считается импортированной. После удаления навсегда строка `message_ext` удаляется вместе с записью, поэтому повторный импорт вернёт такую запись: в отчёте она будет «новой». Хранить след только на этом устройстве было бы неверно, потому что второе устройство его не увидит.
-5. **Чат личной переписки** при повторном импорте — чат самой свежей живой импортированной записи этого Telegram-чата. Если такой записи нет, создаётся новый чат, но только когда есть что импортировать. Пустых дублей чатов не бывает. Имя чата — из экспорта; если его нет, `Telegram <id>`. Эмодзи — 💬.
-6. **Свои и чужие сообщения.** Чужое сообщение личного чата — то, у которого `from_id` = `user<id чата>` (для личного чата не проверено на настоящем экспорте). В «Избранном» все сообщения свои: на настоящем экспорте `id` «Избранного» — это id владельца, и у всех сообщений `from_id` = `user<id чата>`.
-7. **Заглушки и строки «Переслано от»** пишутся в текст записи на языке интерфейса в момент импорта: это данные, а не интерфейс. Сообщение без текста и без медиа пропускается (`normalize_body` = `Empty`).
-8. **Копия базы:** `backups/pre-import-<UTC>.db`, хранятся 3 последних, новый `BackupKind::PreImport`. Снимается так же, как копия дня (`backup::snapshot`).
-9. **Индекс поиска** — только производная таблица FTS5. Колонки `message.body_search` из черновика §4.2 нет: менять строки синхронизируемой таблицы ради производного не нужно. Версия правил нормализации лежит в `app_setting.search_index_version`; если версия не совпала, индекс при старте перестраивается. Ревизии в индекс не попадают. Корзина отсекается в запросе.
-10. **Результаты поиска** — новые сверху (порядок ленты), страницы по keyset. Пометки «из Telegram» в ленте нет: принцип «контент важнее интерфейса», а `origin` хранится, и показать его можно позже.
-11. **Файл импорта** читается целиком в Rust. Предел — 1 ГиБ, больше — ошибка `import_file_too_large`. Разобранный экспорт живёт в состоянии Tauri до запуска или закрытия окна. Одновременно идёт один импорт.
+## Technical decisions (made here; can be challenged when the spec is accepted)
+1. **HLC.** Each imported entry gets a new HLC of the import moment (`next_hlc`): one for all five groups, `sv = 1`, `server_known = 0`. The original Telegram date goes into `created_at` and `journal_date`, not into the HLC. This is the exception ADR §10 refers to ("except import").
+2. **Time.**
+   - `created_at` = `date_unixtime` × 1000. If several messages fall in one second, the k-th in file order gets +k ms (at most 999); otherwise the random `id` would shuffle them in the feed.
+   - If there is no `date_unixtime`, `date` is taken as local time in the device's time zone.
+   - Time is accepted only within the window "1970-01-01 … import moment + one day". No date, or a date outside the window (beyond ±2^53, year 287396, negative, more than a day in the future) — the entry gets the import moment and keeps the file order with the same +k ms. Consequence: if the device clock is behind by more than a day, correct dates of recent messages will also end up "in the future" and be replaced by the import moment (guardian decision, item 5).
+   - `created_tz` — the device time zone at import: the export has no time zone.
+   - `journal_date` — the 04:00 boundary with the zone offset at that historical moment (`kinige_store::offset_secs`).
+   - The Telegram edit mark (`edited`) is not carried over.
+3. **`core`.** Fields `{"created_at","created_tz","ext":{"chat","msg","src":"telegram"},"origin":"import_telegram","reply_to_id"}`; the ids in `ext` are written as strings. `reply_to_id` — the id of the Kinige entry if the replied-to message of the same Telegram chat is already imported, otherwise `null`. The field is not used in the UI now, but `core` is immutable and it cannot be filled in later.
+4. **Deduplication.** The key is `message_ext(src, ext_chat, ext_msg)`. An entry in the trash also counts as imported. After delete forever, the `message_ext` row is deleted together with the entry, so a re-import brings that entry back: in the report it will be "new". Keeping a trace only on this device would be wrong, because a second device would not see it.
+5. **The chat for a personal conversation** on re-import — the chat of the most recent live imported entry of that Telegram chat. If there is no such entry, a new chat is created, but only when there is something to import. Empty duplicate chats never appear. The chat name comes from the export; if missing, `Telegram <id>`. Emoji — 💬.
+6. **Own and others' messages.** Another person's message in a personal chat is one whose `from_id` = `user<chat id>` (for a personal chat not verified on a real export). In Saved Messages all messages are one's own: on a real export the Saved Messages `id` is the owner's id, and all messages have `from_id` = `user<chat id>`.
+7. **Placeholders and “Forwarded from” lines** are written into the entry text in the UI language at the moment of import: this is data, not UI. A message with no text and no media is skipped (`normalize_body` = `Empty`).
+8. **Database backup:** `backups/pre-import-<UTC>.db`, the 3 latest are kept, new `BackupKind::PreImport`. Taken the same way as the daily backup (`backup::snapshot`).
+9. **Search index** — only a derived FTS5 table. There is no `message.body_search` column from the §4.2 draft: there is no need to change rows of a synced table for something derived. The version of the normalization rules lives in `app_setting.search_index_version`; if the version does not match, the index is rebuilt at startup. Revisions do not go into the index. The trash is cut off in the query.
+10. **Search results** — newest first (feed order), pages by keyset. There is no "from Telegram" mark in the feed: the principle "content over UI", and `origin` is stored, so it can be shown later.
+11. **The import file** is read whole in Rust. The limit is 1 GiB; larger — error `import_file_too_large`. The parsed export lives in Tauri state until the run or until the window closes. One import runs at a time.
 
-## Решения пользователя (28.10.2026)
-1. **«Избранное» — в Inbox:** это и был «чат с собой», и туда же смотрит «В этот день».
-2. **Чужие сообщения в личных чатах импортируются все.** У чужих первая строка — имя автора жирным: без реплик собеседника мои ответы теряют смысл, а имя в тексте видно и в Markdown-копии.
-3. **Выбор чатов — список с флажками.** «Избранное» отмечено, личные чаты нет. Полный экспорт может содержать сотни личных чатов.
-4. **Результаты поиска — на месте ленты**, как корзина.
-5. **Медиа сейчас не переносятся:** в записи остаётся заглушка, а в отчёте — счётчик. Файлы подцепит повторный импорт после слайса 7 (по `ext`). Настоящий экспорт «Избранного» весит 6,8 ГБ, из них 6,7 ГБ — файлы и видео.
+## User decisions (28.10.2026)
+1. **Saved Messages go to Inbox:** that was the "chat with yourself", and "On this day" looks there too.
+2. **Others' messages in personal chats are all imported.** For others' messages the first line is the author's name in bold: without the other person's lines my replies lose their meaning, and a name in the text is visible in the Markdown copy too.
+3. **Chat selection — a list with checkboxes.** Saved Messages is ticked, personal chats are not. A full export may contain hundreds of personal chats.
+4. **Search results — in place of the feed**, like the trash.
+5. **Media are not carried over for now:** a placeholder stays in the entry and a counter in the report. Files will be picked up by a re-import after slice 7 (via `ext`). The real Saved Messages export weighs 6.8 GB, of which 6.7 GB are files and video.
 
-## Нужно от пользователя: настоящая фикстура
-Формат экспорта описан по памяти об исходнике Telegram Desktop (`export_output_json.cpp`). Исходник и документация в этой сессии не открывались.
+## Needed from the user: a real fixture
+The export format is described from memory of the Telegram Desktop source (`export_output_json.cpp`). The source and documentation were not opened in this session.
 
-**Проверено 28.10.2026 на настоящем экспорте «Избранного»** («Экспорт истории чата», с медиа, 1682 сообщения за 2016–2026, 1,1 МБ). Смотрелась только структура, тексты не читались.
-- Верхний уровень — только `type`, `id`, `messages`. Ключа `name` у «Избранного» нет. Тип — `saved_messages`.
-- `id` чата равен id владельца: у всех 1680 сообщений `from_id` = `user<id чата>`.
-- У каждого сообщения есть `date_unixtime` (строка) и `text_entities`. `date` имеет вид `ГГГГ-ММ-ДДTЧЧ:ММ:СС`. `text` бывает строкой (1209) и массивом (473); склейка `text_entities` всегда совпадает с `text`.
-- В одну секунду приходит до 9 сообщений: 54 секунды с повторами.
-- Типы сущностей: все из списка 4.1 встретились, кроме `mention_name` и `bot_command`. У `custom_emoji` есть ещё `document_id`, у `blockquote` — `collapsed`.
-- Медиа: `photo` (путь `photos/…`), `media_type` (`video_file`, `audio_file`, `voice_message`, `video_message`, `sticker`, `animation`), `file` без `media_type`, `location_information` (`latitude`, `longitude`), `place_name` и `address` на верхнем уровне сообщения, `contact_information` (`first_name`, `last_name`, `phone_number`). Опросов не было.
-- `forwarded_from` бывает `null` (9 раз, скрытый аккаунт); тогда есть `saved_from`, но однажды и он `null`.
-- Служебные — только `send_star_gift`. 5 сообщений без текста и без медиа.
-- Ещё встречаются `via_bot`, `inline_bot_buttons`, `reactions`, `edited`, `width`/`height`, `duration_seconds`, `performer`, `title`. Разбор их игнорирует.
-- Реализация 4.1 от Sonnet (ветка `bench/4.1-sonnet`) разобрала файл без ошибок, и все счётчики видов медиа и сущностей совпали с подсчётом по сырому JSON.
+**Verified 28.10.2026 on a real Saved Messages export** (“Export chat history”, with media, 1682 messages over 2016–2026, 1.1 MB). Only the structure was examined; texts were not read.
+- The top level has only `type`, `id`, `messages`. Saved Messages has no `name` key. The type is `saved_messages`.
+- The chat `id` equals the owner's id: all 1680 messages have `from_id` = `user<chat id>`.
+- Every message has `date_unixtime` (a string) and `text_entities`. `date` has the form `YYYY-MM-DDTHH:MM:SS`. `text` is sometimes a string (1209) and sometimes an array (473); the concatenation of `text_entities` always matches `text`.
+- Up to 9 messages arrive in one second: 54 seconds with repeats.
+- Entity types: everything from the 4.1 list occurred except `mention_name` and `bot_command`. `custom_emoji` also has `document_id`, `blockquote` has `collapsed`.
+- Media: `photo` (path `photos/…`), `media_type` (`video_file`, `audio_file`, `voice_message`, `video_message`, `sticker`, `animation`), `file` without `media_type`, `location_information` (`latitude`, `longitude`), `place_name` and `address` at the top level of the message, `contact_information` (`first_name`, `last_name`, `phone_number`). There were no polls.
+- `forwarded_from` is sometimes `null` (9 times, hidden account); then `saved_from` is present, but once it is `null` too.
+- Service messages — only `send_star_gift`. 5 messages with no text and no media.
+- Also present: `via_bot`, `inline_bot_buttons`, `reactions`, `edited`, `width`/`height`, `duration_seconds`, `performer`, `title`. The parser ignores them.
+- Sonnet's implementation of 4.1 (branch `bench/4.1-sonnet`) parsed the file without errors, and all counters of media kinds and entities matched a count over the raw JSON.
 
-**Не проверено:** полный экспорт («Экспорт данных») и тип личного чата `personal_chat`. Для этого нужен второй экспорт.
-- **Как собрать.** В «Избранном» тестового аккаунта нужны сообщения такого состава:
-  - простой текст;
-  - жирный, курсив, зачёркнутый, подчёркнутый, спойлер, моноширинный;
-  - блок кода с языком;
-  - текстовая ссылка и голая ссылка;
-  - @упоминание, #хэштег, e-mail, телефон;
-  - цитата;
-  - ответ на своё сообщение;
-  - пересылка из канала и от человека;
-  - фото, голосовое, стикер, файл, опрос, геопозиция;
-  - отредактированное и закреплённое сообщение.
+**Not verified:** a full export (“Export Telegram data”) and the personal chat type `personal_chat`. That needs a second export.
+- **How to assemble it.** The test account's Saved Messages need messages of this composition:
+  - plain text;
+  - bold, italic, strikethrough, underline, spoiler, monospace;
+  - a code block with a language;
+  - a text link and a bare link;
+  - an @mention, a #hashtag, an e-mail, a phone number;
+  - a quote;
+  - a reply to one's own message;
+  - a forward from a channel and from a person;
+  - a photo, a voice message, a sticker, a file, a poll, a location;
+  - an edited and a pinned message.
 
-  Плюс личный чат с тестовым собеседником, в котором есть сообщения обоих. Из этого нужны два экспорта в JSON без медиа: «Экспорт истории чата» и «Экспорт данных Telegram» (только «Избранное» и этот чат). Имена, id и телефоны заменить на вымышленные, сохранив структуру. Положить в `crates/kinige-domain/src/telegram/fixtures/real-*.json`.
-- **Что сверить на ней:**
-  - одинаков ли `id` одного чата в обоих экспортах;
-  - строку типа «Избранного»;
-  - есть ли `date_unixtime` и `text_entities`;
-  - где id владельца;
-  - совпадает ли `from_id` собеседника с `user<id чата>`.
+  Plus a personal chat with a test contact containing messages from both. From this, two JSON exports without media are needed: “Export chat history” and “Export Telegram data” (only Saved Messages and that chat). Replace names, ids and phone numbers with fictional ones, keeping the structure. Put them in `crates/kinige-domain/src/telegram/fixtures/real-*.json`.
+- **What to check against it:**
+  - whether the `id` of one chat is the same in both exports;
+  - the Saved Messages type string;
+  - whether `date_unixtime` and `text_entities` are present;
+  - where the owner's id is;
+  - whether the other person's `from_id` matches `user<chat id>`.
 
-## Spike S5 — что проверить (папка `spikes/S5-search/`, отчёт + ADR-0008)
-Критерии отказа записаны до начала:
-- **Стеммер.** Кандидат — `rust-stemmers` (Snowball ru и en). Версия, лицензия, дата последнего релиза — не проверены. Отказ — если `kinige-domain` с ним не собирается под `wasm32-unknown-unknown`.
-- **Словоформы.** 40 пар, включая «книга/книги/книгу/книгой», «ёлка/елка», «длинный/длиннее» и английские. Промахи записываются в отчёт: например, «бежал/бегу» стеммер не свяжет.
-- **Префикс незаконченного слова.** «моло» → «молоко», «длинн» → «длинный». Snowball удваивает-сокращает «нн», поэтому стемм не всегда префикс слова: решить, индексировать ли рядом и исходные слова. Минимальная длина префикса — 2 знака.
-- **Раскладка FTS5.** Сравнить три варианта: без хранения текста (`content=''`, `contentless_delete=1`, по памяти нужна SQLite ≥ 3.43, в бандле 3.53.2) с таблицей соответствия `rowid → message_id`; external content; обычную таблицу с `message_id UNINDEXED`. Мерить размер индекса и время вставки и удаления. У `rowid` таблицы `message` после `VACUUM` номер может смениться, поэтому опираться на него нельзя.
-- **Токенизатор.** `unicode61 remove_diacritics 0`: «йод» и «иод» не должны слиться. Нормализация — нижний регистр и «ё» → «е» в Rust.
-- **Скорость** на 100k сообщений за 5 лет (генератор лежит в папке spike). Запросы: редкое слово, частое (в 30 % записей) с сортировкой по дате и `LIMIT 50`, два слова, префикс. **Успех:** p95 < 300 мс, индекс не больше 1,5 × объёма текста, вставка < 1 мс на запись. Отказ по скорости — ADR с альтернативой из ТЗ (триграммы, свой токенизатор) и стоп для решения.
-- **Триграммы** — только размер индекса и поиск по 1–2 буквам, для вывода «нужны или нет».
+## Spike S5 — what to check (folder `spikes/S5-search/`, report + ADR-0008)
+Rejection criteria are written down before starting:
+- **Stemmer.** Candidate — `rust-stemmers` (Snowball ru and en). Version, license, date of the last release — not verified. Rejection — if `kinige-domain` does not build with it for `wasm32-unknown-unknown`.
+- **Word forms.** 40 pairs, including «книга/книги/книгу/книгой» (forms of "book"), «ёлка/елка» ("fir tree" with and without ё), «длинный/длиннее» ("long/longer") and English ones. Misses are recorded in the report: for example, the stemmer will not link «бежал/бегу» ("ran/run").
+- **Prefix of an unfinished word.** «моло» → «молоко» ("milk"), «длинн» → «длинный» ("long"). Snowball doubles/shortens «нн», so the stem is not always a prefix of the word: decide whether to index the original words alongside. The minimum prefix length is 2 characters.
+- **FTS5 layout.** Compare three variants: contentless (`content=''`, `contentless_delete=1`, from memory requires SQLite ≥ 3.43, bundled is 3.53.2) with a mapping table `rowid → message_id`; external content; a regular table with `message_id UNINDEXED`. Measure index size and insert and delete time. The `rowid` of the `message` table may change after `VACUUM`, so it cannot be relied on.
+- **Tokenizer.** `unicode61 remove_diacritics 0`: «йод» and «иод» (two spellings of "iodine") must not merge. Normalization — lowercase and «ё» → «е» in Rust.
+- **Speed** on 100k messages over 5 years (the generator lives in the spike folder). Queries: a rare word, a frequent one (in 30 % of entries) with date sorting and `LIMIT 50`, two words, a prefix. **Success:** p95 < 300 ms, index no larger than 1.5 × the text volume, insert < 1 ms per entry. Rejection on speed — an ADR with an alternative from the PRD (trigrams, a custom tokenizer) and a stop for a decision.
+- **Trigrams** — only index size and search by 1–2 letters, for a conclusion "needed or not".
 
-## Задачи
-Общее для всех задач:
-- проверки — `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, а для `web/` ещё `npm run typecheck && npm run lint && npm test`;
-- правки только точечные (Edit/Write), без скриптов замены;
-- файл не длиннее 400 строк;
-- строки интерфейса — только в `web/src/locales/{en,ru}.json`;
-- визуал — только из токенов.
+## Tasks
+Common to all tasks:
+- checks — `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, and for `web/` also `npm run typecheck && npm run lint && npm test`;
+- only targeted edits (Edit/Write), no replacement scripts;
+- a file no longer than 400 lines;
+- UI strings — only in `web/src/locales/{en,ru}.json`;
+- visuals — only from tokens.
 
-**Для первого сравнения агентов:** **4.1** (основная) и **4.3**. Обе — чистый Rust в `kinige-domain`, без IO, детерминированные, проверяются тестами, схему БД не меняют и друг от друга не зависят. 4.3 трогает байты синхронизации, поэтому guardian смотрит только победителя.
+**For the first agent comparison:** **4.1** (main) and **4.3**. Both are pure Rust in `kinige-domain`, no IO, deterministic, verified by tests, they do not change the DB schema and do not depend on each other. 4.3 touches sync bytes, so guardian reviews only the winner.
 
-**S5. Spike поиска** — M, guardian: нет (ADR-0008 потом читает при 4.6).
-- **Что сделать:** всё из раздела S5 выше; генератор 100k записей; отчёт с цифрами; ADR-0008 (полстраницы): стеммер, раскладка FTS5, правило префикса, константа версии.
-- **Файлы:** `spikes/S5-search/` (отдельный крейт вне workspace), `docs/adr/0008-search.md`. Не трогает `crates/`, `web/`.
-- **Готово, когда:** в отчёте таблица замеров на машине автора и вывод `cargo build --target wasm32-unknown-unknown` крейта с выбранным стеммером.
-- **Зависит от:** нет.
+**S5. Search spike** — M, guardian: no (reads ADR-0008 later, at 4.6).
+- **What to do:** everything from the S5 section above; a generator of 100k entries; a report with numbers; ADR-0008 (half a page): stemmer, FTS5 layout, prefix rule, version constant.
+- **Files:** `spikes/S5-search/` (a separate crate outside the workspace), `docs/adr/0008-search.md`. Does not touch `crates/`, `web/`.
+- **Done when:** the report has a table of measurements on the author's machine and the output of `cargo build --target wasm32-unknown-unknown` for a crate with the chosen stemmer.
+- **Depends on:** none.
 
-**4.1. Разбор `result.json` в доменные структуры** — S, guardian: нет. ★
-- **Что сделать:** `parse_export(json)` распознаёт обе формы: одного чата (`type`, `id`, `messages`, необязательный `name`) и полную (`personal_information.user_id`, `chats.list[]`).
-  - В форме одного чата с типом `saved_messages` `owner_id` = `id` чата (проверено на настоящем экспорте).
-  - id чатов и сообщений принимаются и числом, и строкой и хранятся строкой без потери точности; 2⁶³−1 обязан пережить разбор.
-  - Текст берётся из `text_entities`, если поле есть. Иначе — из `text`: строка или массив из строк и объектов `{type, text, href?, language?}`.
-  - Медиа: ключ `photo` → `Photo`. `media_type` (`sticker`, `animation`, `video_file`, `video_message`, `voice_message`, `audio_file`) → свой вид. `file` без `media_type` → `File { name: file_name }`. `location_information` → `Location`, а с `place_name` → `Venue`. `contact_information` → `Contact`. `poll` → `Poll { question, answers[].text }`. Прочее → `Other(ключ)`.
-  - Незнакомые поля игнорируются. Незнакомый тип сущности → `Other(тип)` с текстом.
-- **Файлы:**
-  - новые: `crates/kinige-domain/src/telegram.rs`, `crates/kinige-domain/src/telegram/tests.rs`, `crates/kinige-domain/src/telegram/fixtures/{single_saved,full_export,legacy}.json`;
-  - правит `crates/kinige-domain/src/lib.rs` (строка `pub mod telegram;`);
-  - не трогает `Cargo.toml` (хватает `serde` и `serde_json`), `kinige-store`, `src-tauri`, `web`.
-- **Вход и выход:**
+**4.1. Parsing `result.json` into domain structures** — S, guardian: no. ★
+- **What to do:** `parse_export(json)` recognizes both forms: single chat (`type`, `id`, `messages`, optional `name`) and full (`personal_information.user_id`, `chats.list[]`).
+  - In the single-chat form with type `saved_messages`, `owner_id` = the chat `id` (verified on a real export).
+  - Chat and message ids are accepted both as a number and as a string and stored as a string without loss of precision; 2⁶³−1 must survive parsing.
+  - The text is taken from `text_entities` if the field is present. Otherwise from `text`: a string or an array of strings and objects `{type, text, href?, language?}`.
+  - Media: key `photo` → `Photo`. `media_type` (`sticker`, `animation`, `video_file`, `video_message`, `voice_message`, `audio_file`) → its own kind. `file` without `media_type` → `File { name: file_name }`. `location_information` → `Location`, and with `place_name` → `Venue`. `contact_information` → `Contact`. `poll` → `Poll { question, answers[].text }`. Anything else → `Other(key)`.
+  - Unknown fields are ignored. An unknown entity type → `Other(type)` with text.
+- **Files:**
+  - new: `crates/kinige-domain/src/telegram.rs`, `crates/kinige-domain/src/telegram/tests.rs`, `crates/kinige-domain/src/telegram/fixtures/{single_saved,full_export,legacy}.json`;
+  - edits `crates/kinige-domain/src/lib.rs` (the line `pub mod telegram;`);
+  - does not touch `Cargo.toml` (`serde` and `serde_json` suffice), `kinige-store`, `src-tauri`, `web`.
+- **Input and output:**
   - `pub fn parse_export(json: &str) -> Result<TgExport, TgParseError>`;
   - `TgExport { owner_id: Option<String>, chats: Vec<TgChat> }`;
   - `TgChat { id: String, name: Option<String>, kind: TgChatKind /* Saved | Personal | Other(String) */, messages: Vec<TgMessage> }`;
-  - `TgMessage { id: String, service: bool, unix: Option<i64>, local: Option<String>, from: Option<String>, from_id: Option<String>, reply_to: Option<String>, forwarded: bool, forwarded_from: Option<String>, saved_from: Option<String>, text: Vec<TgSpan>, media: Option<TgMedia> }`; `forwarded` — есть ключ `forwarded_from` или `saved_from`, даже со значением `null`;
+  - `TgMessage { id: String, service: bool, unix: Option<i64>, local: Option<String>, from: Option<String>, from_id: Option<String>, reply_to: Option<String>, forwarded: bool, forwarded_from: Option<String>, saved_from: Option<String>, text: Vec<TgSpan>, media: Option<TgMedia> }`; `forwarded` — the key `forwarded_from` or `saved_from` is present, even with the value `null`;
   - `TgSpan { kind: TgSpanKind, text: String }`;
   - `TgSpanKind`: `Plain`, `Bold`, `Italic`, `Underline`, `Strike`, `Spoiler`, `Code`, `Pre { language: Option<String> }`, `TextLink { href: String }`, `Link`, `Email`, `Phone`, `Mention`, `MentionName`, `Hashtag`, `Cashtag`, `BotCommand`, `BankCard`, `Blockquote`, `CustomEmoji`, `Other(String)`;
-  - `TgParseError`: `NotJson(String)` и `NotTelegramExport`.
+  - `TgParseError`: `NotJson(String)` and `NotTelegramExport`.
 
-  Строки типов: `saved_messages` → `Saved` (проверено), `personal_chat` → `Personal` (не проверено).
-- **Готово, когда:**
-  - проходят тесты `cargo test -p kinige-domain telegram`: обе формы; legacy без `date_unixtime` и `text_entities`; `text` строкой и массивом; служебное сообщение; фото без файла («File not included…») — это всё равно `Photo`; каждый вид медиа; большой id без потери; незнакомая сущность; пустой файл, массив, чужой JSON → ошибки;
-  - собирается `cargo build -p kinige-domain --target wasm32-unknown-unknown`.
-- **Зависит от:** нет.
+  Type strings: `saved_messages` → `Saved` (verified), `personal_chat` → `Personal` (not verified).
+- **Done when:**
+  - the `cargo test -p kinige-domain telegram` tests pass: both forms; legacy without `date_unixtime` and `text_entities`; `text` as a string and as an array; a service message; a photo without a file ("File not included…") is still `Photo`; each media kind; a large id without loss; an unknown entity; an empty file, an array, foreign JSON → errors;
+  - `cargo build -p kinige-domain --target wasm32-unknown-unknown` builds.
+- **Depends on:** none.
 
-**4.2. Telegram-сообщение → Markdown записи** — S, guardian: нет.
-- **Что сделать:** `render_body` собирает текст записи по правилам.
-  - **Строка автора** (если передана): `**Имя**` и перевод строки.
-  - **Строка пересылки:** `_Переслано от X_` / `_Forwarded from X_`. Берётся `forwarded_from`, если его нет — `saved_from`. Если ключ пересылки есть, но оба имени `null` (скрытый аккаунт), строка — `_Переслано_` / `_Forwarded_` без имени.
-  - **Сущности:**
+**4.2. Telegram message → entry Markdown** — S, guardian: no.
+- **What to do:** `render_body` assembles the entry text by these rules.
+  - **Author line** (if passed): `**Name**` and a line break.
+  - **Forward line:** `_Переслано от X_` / `_Forwarded from X_`. `forwarded_from` is taken; if it is missing — `saved_from`. If the forward key is present but both names are `null` (hidden account), the line is `_Переслано_` / `_Forwarded_` without a name.
+  - **Entities:**
     - `Bold` → `**…**`, `Italic` → `_…_`, `Strike` → `~~…~~`;
-    - `Code` → обратные кавычки, их на одну больше, чем самая длинная серия внутри;
-    - `Pre` → ограждённый блок на отдельных строках, с языком;
-    - `TextLink` → `[текст](href)`;
-    - `Blockquote` → каждая строка с `> `;
-    - `Link`, `Email`, `Phone`, `Mention`, `Hashtag`, `Cashtag`, `BotCommand` — дословно: `#тег` остаётся тегом;
-    - остальные — как обычный текст;
-    - пробелы по краям выносятся за маркеры, пустые сущности пропускаются.
-  - **Экранирование обычного текста:** экранируются `\ * _ \` [ ] < ~`. В начале строки — `# `, `>`, `- `, `+ `, `* `, `N. `, `N) `, строки из одних `-` или `=`.
-  - **Медиа:** строка `_[Фото не импортировано]_` и аналоги для каждого вида. У файла — имя, у стикера — эмодзи. Опрос — `**Опрос:** вопрос` и пункты `- ответ`.
-  - Результат проходит `groups::normalize_body`. `Empty` → `None`.
-- **Файлы:** новые `crates/kinige-domain/src/telegram/markdown.rs`, `…/telegram/markdown_tests.rs`; правит `telegram.rs` (объявление модуля). Не трогает остальное.
-- **Вход и выход:** `pub fn render_body(message: &TgMessage, author: Option<&str>, language: Language) -> Option<String>`. `Language` — `crates/kinige-domain/src/lang.rs`.
-- **Готово, когда:**
-  - табличные тесты en и ru на каждую сущность, вложенные пробелы, экранирование, обратные кавычки в коде, хэштег, ссылку с `)`, каждую заглушку, пересылку, строку автора, пустое сообщение → `None`;
-  - отрисованный текст разбирается `kinige_domain::tags::parse_tags` с ожидаемыми тегами;
-  - `cargo test -p kinige-domain telegram::markdown` и сборка под wasm32 проходят.
-- **Зависит от:** 4.1.
+    - `Code` → backticks, one more than the longest run inside;
+    - `Pre` → a fenced block on separate lines, with the language;
+    - `TextLink` → `[text](href)`;
+    - `Blockquote` → each line with `> `;
+    - `Link`, `Email`, `Phone`, `Mention`, `Hashtag`, `Cashtag`, `BotCommand` — verbatim: `#tag` stays a tag;
+    - the rest — as plain text;
+    - edge spaces are moved outside the markers, empty entities are skipped.
+  - **Escaping plain text:** `\ * _ \` [ ] < ~` are escaped. At the start of a line — `# `, `>`, `- `, `+ `, `* `, `N. `, `N) `, lines made only of `-` or `=`.
+  - **Media:** the line `_[Фото не импортировано]_` (in English, `_[Photo not imported]_`) and equivalents for each kind. A file gets its name, a sticker its emoji. A poll — `**Опрос:** вопрос` (in English, "Poll:" and the question) and items `- answer`.
+  - The result goes through `groups::normalize_body`. `Empty` → `None`.
+- **Files:** new `crates/kinige-domain/src/telegram/markdown.rs`, `…/telegram/markdown_tests.rs`; edits `telegram.rs` (module declaration). Does not touch anything else.
+- **Input and output:** `pub fn render_body(message: &TgMessage, author: Option<&str>, language: Language) -> Option<String>`. `Language` — `crates/kinige-domain/src/lang.rs`.
+- **Done when:**
+  - table tests in en and ru for each entity, nested spaces, escaping, backticks in code, a hashtag, a link with `)`, each placeholder, a forward, the author line, an empty message → `None`;
+  - the rendered text is parsed by `kinige_domain::tags::parse_tags` with the expected tags;
+  - `cargo test -p kinige-domain telegram::markdown` and the wasm32 build pass.
+- **Depends on:** 4.1.
 
-**4.3. Строка импортированной записи** — S, guardian: **да**. ★
-- **Что сделать:** собрать `MessageRow` так же, как `groups::new_message` (`crates/kinige-domain/src/groups.rs`), но с другой `core`:
+**4.3. The row of an imported entry** — S, guardian: **yes**. ★
+- **What to do:** build a `MessageRow` the same way as `groups::new_message` (`crates/kinige-domain/src/groups.rs`), but with a different `core`:
   - `origin = "import_telegram"`;
-  - `ext = {"chat","msg","src":"telegram"}`, значения строками;
-  - `reply_to_id` — `null` или UUID v4 (`hlc::is_uuid_v4`);
-  - `ext_json` — те же каноничные байты, что `core.ext`.
+  - `ext = {"chat","msg","src":"telegram"}`, values as strings;
+  - `reply_to_id` — `null` or a UUID v4 (`hlc::is_uuid_v4`);
+  - `ext_json` — the same canonical bytes as `core.ext`.
 
-  Общую сборку `body`, `flags`, `placement`, `deleted` вынести, не дублируя: байты `new_message` не меняются, это охраняют существующие тесты `groups/tests.rs`. Проверка входа: `ext_chat` и `ext_msg` по `^-?[0-9]{1,20}$`, иначе `GroupError::Invalid`. Дописать §C.3 в `docs/adr/0001-sync-protocol-and-keys.details.md` (байты `core` импорта).
-- **Файлы:** новый `crates/kinige-domain/src/import.rs` (+ `import/tests.rs`); правит `groups.rs` (вынос общих групп, `assemble` уже `pub(crate)`), `lib.rs`. Не трогает `kinige-store`, `web`.
-- **Вход и выход:**
+  Extract the shared assembly of `body`, `flags`, `placement`, `deleted` without duplicating it: the bytes of `new_message` do not change; the existing tests in `groups/tests.rs` guard this. Input check: `ext_chat` and `ext_msg` match `^-?[0-9]{1,20}$`, otherwise `GroupError::Invalid`. Add §C.3 to `docs/adr/0001-sync-protocol-and-keys.details.md` (the import `core` bytes).
+- **Files:** new `crates/kinige-domain/src/import.rs` (+ `import/tests.rs`); edits `groups.rs` (extracting the shared groups, `assemble` is already `pub(crate)`), `lib.rs`. Does not touch `kinige-store`, `web`.
+- **Input and output:**
   - `pub struct NewImportedMessage<'a> { id, chat_id, body_md, created_at: i64, created_tz, journal_date, ext_chat, ext_msg: &'a str, reply_to_id: Option<&'a str> }`;
   - `pub fn new_imported_message(input: &NewImportedMessage<'_>, hlc: &str) -> Result<MessageRow, GroupError>`;
-  - константы `ORIGIN_IMPORT_TELEGRAM` и `EXT_SRC_TELEGRAM`.
-- **Готово, когда:**
-  - точные байты `core`: ключи по JCS, id 2⁶³−1 строкой;
-  - `message_ops::message_columns(row.groups_raw)` возвращает те же `origin`, `ext_json`, `reply_to_id`, что в строке;
-  - инвариант `canonical(колонки) == groups_raw[g]`;
-  - все группы под одним HLC и с `sv = 1`;
-  - неверный `ext` и `reply_to_id` дают ошибку;
-  - тесты `new_message` не изменились и проходят; wasm32 собирается.
-- **Зависит от:** нет.
+  - constants `ORIGIN_IMPORT_TELEGRAM` and `EXT_SRC_TELEGRAM`.
+- **Done when:**
+  - exact `core` bytes: keys per JCS, id 2⁶³−1 as a string;
+  - `message_ops::message_columns(row.groups_raw)` returns the same `origin`, `ext_json`, `reply_to_id` as in the row;
+  - the invariant `canonical(columns) == groups_raw[g]`;
+  - all groups under one HLC and with `sv = 1`;
+  - an invalid `ext` and `reply_to_id` give an error;
+  - the `new_message` tests are unchanged and pass; wasm32 builds.
+- **Depends on:** none.
 
-**4.4. Нормализация для поиска и запрос FTS5** — S, guardian: нет.
-- **Что сделать:**
-  - `index_text`: слова — непрерывные серии `char::is_alphanumeric`, нижний регистр, «ё» → «е»; кириллица идёт в русский стеммер, латиница в английский, остальное как есть; результат — стеммы через пробел (плюс исходные слова, если так решил S5).
-  - `fts_query`: те же правила; каждый терм в кавычках. Последний терм, если ввод не кончается пробелом, становится префиксом по правилу ADR-0008. Термы соединяются через И. Без термов — `None`. Синтаксис FTS5 из ввода пройти не может.
-- **Файлы:** новый `crates/kinige-domain/src/search.rs` (+ `search/tests.rs`); `crates/kinige-domain/Cargo.toml` (стеммер из ADR-0008); `lib.rs`.
-- **Вход и выход:** `pub const SEARCH_INDEX_VERSION: u32`, `pub fn index_text(body_md: &str) -> String`, `pub fn fts_query(input: &str) -> Option<String>`.
-- **Готово, когда:**
-  - проходят пары словоформ из отчёта S5;
-  - ввод `" OR * NEAR( ^ - :col` даёт только кавычечные термы;
-  - пустой ввод и одни знаки → `None`;
-  - смешанный текст ru и en, цифры, «ё»;
-  - `cargo test -p kinige-domain search` и wasm32 проходят.
-- **Зависит от:** S5.
+**4.4. Normalization for search and the FTS5 query** — S, guardian: no.
+- **What to do:**
+  - `index_text`: words are continuous runs of `char::is_alphanumeric`, lowercase, «ё» → «е»; Cyrillic goes to the Russian stemmer, Latin to the English one, the rest as is; the result is stems separated by spaces (plus the original words, if S5 decides so).
+  - `fts_query`: the same rules; each term in quotes. The last term, if the input does not end with a space, becomes a prefix per the ADR-0008 rule. Terms are joined with AND. No terms — `None`. FTS5 syntax from the input cannot get through.
+- **Files:** new `crates/kinige-domain/src/search.rs` (+ `search/tests.rs`); `crates/kinige-domain/Cargo.toml` (the stemmer from ADR-0008); `lib.rs`.
+- **Input and output:** `pub const SEARCH_INDEX_VERSION: u32`, `pub fn index_text(body_md: &str) -> String`, `pub fn fts_query(input: &str) -> Option<String>`.
+- **Done when:**
+  - the word-form pairs from the S5 report pass;
+  - the input `" OR * NEAR( ^ - :col` gives only quoted terms;
+  - empty input and punctuation only → `None`;
+  - mixed ru and en text, digits, «ё»;
+  - `cargo test -p kinige-domain search` and wasm32 pass.
+- **Depends on:** S5.
 
-**4.5. Подсветка и фрагмент** — S, guardian: нет.
-- **Что сделать:**
-  - `highlight_terms` — различные словоформы из текста записи, совпавшие с запросом по тем же правилам, что 4.4 (префикс для последнего терма). Фронтенд подсвечивает их как целые слова.
-  - `snippet` — простой текст вокруг первого совпадения, до `max_chars` знаков, с «…» по обрезанным краям. Резать только по границе слова и знака UTF-8.
-- **Файлы:** `crates/kinige-domain/src/search.rs` (или `search/highlight.rs`, если файл подходит к 400 строкам).
-- **Вход и выход:** `pub fn highlight_terms(body_md: &str, input: &str) -> Vec<String>`, `pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String`.
-- **Готово, когда:** тесты на «книги» → [«книгу», «Книга»]; префикс; эмодзи и кириллицу у края фрагмента; совпадение в конце длинного текста; отсутствие совпадения (начало текста).
-- **Зависит от:** 4.4.
+**4.5. Highlight and fragment** — S, guardian: no.
+- **What to do:**
+  - `highlight_terms` — the distinct word forms from the entry text that matched the query by the same rules as 4.4 (prefix for the last term). The frontend highlights them as whole words.
+  - `snippet` — plain text around the first match, up to `max_chars` characters, with "…" at truncated edges. Cut only at a word boundary and a UTF-8 character boundary.
+- **Files:** `crates/kinige-domain/src/search.rs` (or `search/highlight.rs` if the file approaches 400 lines).
+- **Input and output:** `pub fn highlight_terms(body_md: &str, input: &str) -> Vec<String>`, `pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String`.
+- **Done when:** tests for «книги» → [«книгу», «Книга»]; prefix; emoji and Cyrillic at the fragment edge; a match at the end of a long text; no match (start of the text).
+- **Depends on:** 4.4.
 
-**4.6. Миграция 4 и обслуживание индекса** — M, guardian: **да**.
-- **Что сделать:**
-  - `MIGRATION_4` в `crates/kinige-store/src/schema.rs`: `message_ext(src, ext_chat, ext_msg, message_id)`, первичный ключ `(src, ext_chat, ext_msg)`, индекс по `message_id`; таблицы поиска по ADR-0008.
-  - `after_migration(4)`: `message_ext` из `message.ext_json`, вставка `INSERT OR IGNORE`; индекс из `body_md` всех записей.
-  - Модуль `search.rs` с `reindex(tx, id, body_md)` и `remove(tx, id)`. Вызовы — рядом с каждым `crate::tags::replace_tags`: `send.rs::insert_new_message`, `capture.rs` (дописывание), `messages.rs::edit_body` (правка и галочка). `trash.rs::purge` удаляет из индекса и из `message_ext`.
-  - Если `app_setting.search_index_version` ≠ `SEARCH_INDEX_VERSION`, при открытии индекс перестраивается в транзакции писателя.
-  - Дописать §C.3 (таблицы) в приложение ADR-0001.
-- **Файлы:** `schema.rs`, новый `crates/kinige-store/src/search.rs`, `send.rs`, `capture.rs`, `messages.rs`, `trash.rs`, `lib.rs`; тесты `crates/kinige-store/tests/search_index.rs`. Не трогает домен (кроме вызова 4.4), `src-tauri`, `web`.
-- **Готово, когда:**
-  - миграция 3 → 4 на базе с записями: копия снята, индекс полный;
-  - для каждой операции (отправка, дописывание, правка, галочка, удаление навсегда) уникальное слово находится или пропадает;
-  - смена версии перестраивает индекс;
-  - инъекция отказа (триггер, как в `ops_abort.rs`) откатывает и индекс;
-  - `abort` сразу после commit — индекс на месте.
-- **Зависит от:** 4.4.
+**4.6. Migration 4 and index maintenance** — M, guardian: **yes**.
+- **What to do:**
+  - `MIGRATION_4` in `crates/kinige-store/src/schema.rs`: `message_ext(src, ext_chat, ext_msg, message_id)`, primary key `(src, ext_chat, ext_msg)`, an index on `message_id`; search tables per ADR-0008.
+  - `after_migration(4)`: `message_ext` from `message.ext_json`, inserted with `INSERT OR IGNORE`; the index from `body_md` of all entries.
+  - Module `search.rs` with `reindex(tx, id, body_md)` and `remove(tx, id)`. Calls go next to each `crate::tags::replace_tags`: `send.rs::insert_new_message`, `capture.rs` (append), `messages.rs::edit_body` (edit and checkbox). `trash.rs::purge` removes from the index and from `message_ext`.
+  - If `app_setting.search_index_version` ≠ `SEARCH_INDEX_VERSION`, the index is rebuilt on open in a writer transaction.
+  - Add §C.3 (tables) to the ADR-0001 appendix.
+- **Files:** `schema.rs`, new `crates/kinige-store/src/search.rs`, `send.rs`, `capture.rs`, `messages.rs`, `trash.rs`, `lib.rs`; tests `crates/kinige-store/tests/search_index.rs`. Does not touch the domain (except the call to 4.4), `src-tauri`, `web`.
+- **Done when:**
+  - migration 3 → 4 on a database with entries: backup taken, index complete;
+  - for each operation (send, append, edit, checkbox, delete forever) a unique word is found or disappears;
+  - a version change rebuilds the index;
+  - injected failure (a trigger, as in `ops_abort.rs`) rolls back the index too;
+  - `abort` right after commit — the index is in place.
+- **Depends on:** 4.4.
 
-**4.7. Копия перед импортом** — S, guardian: **да**.
-- **Что сделать:** вид `BackupKind::PreImport`, имя `pre-import-YYYYMMDDTHHMMSSZ.db` в `classify`/`expired` (хранить 3), `KEEP_PRE_IMPORT`. В хранилище — `Store::backup_before_import(now) -> Result<String /* имя */, StoreError>` через `backup::snapshot` и `rotate`. Копия видна в окне «База повреждена» и в статусе копий.
-- **Файлы:** `crates/kinige-domain/src/backup.rs`, `crates/kinige-store/src/backup.rs`; сгенерированный `web/src/api/generated/BackupKind.ts`; подписи вида копии в `web/src/locales/*` и месте, где показывается вид (`grep pre_migration web/src`).
-- **Готово, когда:** тесты имён и ротации в домене; копия при работающем писателе согласована (`integrity_check` копии); недоступная папка → ошибка, база не тронута; `npm test` проходит.
-- **Зависит от:** нет.
+**4.7. Pre-import backup** — S, guardian: **yes**.
+- **What to do:** kind `BackupKind::PreImport`, name `pre-import-YYYYMMDDTHHMMSSZ.db` in `classify`/`expired` (keep 3), `KEEP_PRE_IMPORT`. In the store — `Store::backup_before_import(now) -> Result<String /* name */, StoreError>` via `backup::snapshot` and `rotate`. The backup is visible in the “The database is damaged” window and in the backup status.
+- **Files:** `crates/kinige-domain/src/backup.rs`, `crates/kinige-store/src/backup.rs`; generated `web/src/api/generated/BackupKind.ts`; labels for the backup kind in `web/src/locales/*` and in the place where the kind is shown (`grep pre_migration web/src`).
+- **Done when:** name and rotation tests in the domain; a backup taken while the writer is running is consistent (`integrity_check` of the backup); an unavailable folder → error, the database untouched; `npm test` passes.
+- **Depends on:** none.
 
-**4.8. Операция импорта** — M, guardian: **да**.
-- **Что сделать:**
-  - **Предпросмотр:** поддерживаемые чаты, число сообщений, «уже есть» по `message_ext`, число неподдерживаемых.
-  - **Запуск:**
-    - копия (4.7), её сбой → `ImportBackupFailed`;
-    - для каждого выбранного чата — чат-адресат (Inbox для «Избранного»; решение 5);
-    - пачки по 500 в одной транзакции: пропуск служебных и уже импортированных; время (решение 2); автор (чужие — жирным именем; решение 6); `render_body` (4.2); `reply_to_id` через `message_ext`; `new_imported_message` (4.3); вставка (сделать `send.rs::insert_message` `pub(crate)`); `message_ext`; теги; `search::reindex`; `mark_dirty`;
-    - прогресс после каждого commit; флаг остановки проверяется между пачками; в конце `wake_mirror`.
-- **Файлы:** новые `crates/kinige-store/src/import.rs` (+ `import_time.rs` при росте), тесты `crates/kinige-store/tests/import*.rs`; типы `ImportPreview`, `ImportChatPreview`, `ImportReport`, `ImportProgress` с ts-rs в `crates/kinige-domain/src/import.rs`; новые варианты `StoreError` и `ErrorCode`. Не трогает `src-tauri`, `web` (кроме сгенерированных типов).
-- **Вход и выход:**
+**4.8. The import operation** — M, guardian: **yes**.
+- **What to do:**
+  - **Preview:** supported chats, number of messages, "already here" via `message_ext`, number of unsupported ones.
+  - **Run:**
+    - backup (4.7); its failure → `ImportBackupFailed`;
+    - for each selected chat — the target chat (Inbox for Saved Messages; decision 5);
+    - batches of 500 in one transaction: skip service and already imported messages; time (decision 2); author (others — with the name in bold; decision 6); `render_body` (4.2); `reply_to_id` via `message_ext`; `new_imported_message` (4.3); insert (make `send.rs::insert_message` `pub(crate)`); `message_ext`; tags; `search::reindex`; `mark_dirty`;
+    - progress after each commit; the stop flag is checked between batches; at the end `wake_mirror`.
+- **Files:** new `crates/kinige-store/src/import.rs` (+ `import_time.rs` if it grows), tests `crates/kinige-store/tests/import*.rs`; types `ImportPreview`, `ImportChatPreview`, `ImportReport`, `ImportProgress` with ts-rs in `crates/kinige-domain/src/import.rs`; new variants of `StoreError` and `ErrorCode`. Does not touch `src-tauri`, `web` (except generated types).
+- **Input and output:**
   - `Store::import_preview(&self, export: &TgExport) -> Result<ImportPreview, StoreError>`;
   - `Store::import_telegram(&self, export: Arc<TgExport>, chats: Vec<String>, lang: Language, now: &Now, progress: impl Fn(ImportProgress) + Send + 'static, stop: Arc<AtomicBool>) -> Result<ImportReport, StoreError>`;
   - `ImportReport { imported, skipped_existing, skipped_service, skipped_empty, media_placeholders, chats_created, backup_name, stopped }`.
-- **Готово, когда:**
-  - повторный импорт → 0 новых;
-  - остановка после первой пачки и повтор → без дублей;
-  - `abort` в середине (как `tests/abort.rs`) → нет полупачек;
-  - сообщения одной секунды — в порядке файла;
-  - ответ на импортированное → `reply_to_id`;
-  - `origin` и `ext` переживают правку, перенос и смену даты;
-  - дописывание окна захвата не цепляет импорт;
-  - Markdown-копия — файлы дней;
-  - запись из корзины не импортируется повторно, удалённая навсегда — импортируется;
-  - чат личной переписки не дублируется при повторе;
-  - сбой копии → ни одной записи;
-  - замер 100k в отчёте PR.
-- **Зависит от:** 4.2, 4.3, 4.6, 4.7.
+- **Done when:**
+  - re-import → 0 new;
+  - stop after the first batch and repeat → no duplicates;
+  - `abort` in the middle (as in `tests/abort.rs`) → no half-batches;
+  - messages of one second — in file order;
+  - a reply to an imported message → `reply_to_id`;
+  - `origin` and `ext` survive edit, move and date change;
+  - append from the capture window does not hook onto an import;
+  - Markdown copy — day files;
+  - an entry in the trash is not imported again; one deleted forever is imported;
+  - the personal conversation chat is not duplicated on repeat;
+  - backup failure → not a single entry;
+  - the 100k measurement in the PR report.
+- **Depends on:** 4.2, 4.3, 4.6, 4.7.
 
-**4.9. Запрос поиска в хранилище** — M, guardian: нет.
-- **Что сделать:**
-  - `Store::search`: `fts_query` → `MATCH` по таблицам ADR-0008, `JOIN message` и `chat`; `deleted_at IS NULL` у обоих.
-  - Фильтры: чат, избранное, задачи, `journal_date` от и до.
-  - Порядок `(journal_date, created_at, id)` по убыванию, keyset `before`.
-  - Для каждой записи — `highlight_terms` и `snippet` (4.5).
-  - Чаты, чьё имя совпало (`index_text(title)` против термов), — только на первой странице. Inbox — по переведённому имени во фронтенде, в Rust не сравнивается.
-- **Файлы:** `crates/kinige-store/src/search.rs` (или `search_query.rs`); типы `SearchFilters`, `SearchHit { message: MessageView, chat_title, chat_icon, chat_is_inbox, snippet, terms }`, `SearchPage { chats: Vec<ChatSummary>, hits, older: Option<FeedCursor> }` в `crates/kinige-domain/src/api.rs` (ts-rs); тесты `crates/kinige-store/tests/search_query.rs`.
-- **Готово, когда:**
-  - словоформы находятся;
-  - корзина, удалённый чат и ревизии не находятся;
-  - каждый фильтр отдельно и вместе;
-  - keyset без пропусков и повторов;
-  - пустой запрос → пустая страница без ошибки;
-  - замер p95 на 100k генератором S5 в отчёте PR.
-- **Зависит от:** 4.5, 4.6.
+**4.9. The search query in the store** — M, guardian: no.
+- **What to do:**
+  - `Store::search`: `fts_query` → `MATCH` against the ADR-0008 tables, `JOIN message` and `chat`; `deleted_at IS NULL` on both.
+  - Filters: chat, favorites, tasks, `journal_date` from and to.
+  - Order `(journal_date, created_at, id)` descending, keyset `before`.
+  - For each entry — `highlight_terms` and `snippet` (4.5).
+  - Chats whose name matched (`index_text(title)` against the terms) — only on the first page. Inbox — by its translated name in the frontend; it is not compared in Rust.
+- **Files:** `crates/kinige-store/src/search.rs` (or `search_query.rs`); types `SearchFilters`, `SearchHit { message: MessageView, chat_title, chat_icon, chat_is_inbox, snippet, terms }`, `SearchPage { chats: Vec<ChatSummary>, hits, older: Option<FeedCursor> }` in `crates/kinige-domain/src/api.rs` (ts-rs); tests `crates/kinige-store/tests/search_query.rs`.
+- **Done when:**
+  - word forms are found;
+  - trash, a deleted chat and revisions are not found;
+  - each filter separately and together;
+  - keyset without gaps or repeats;
+  - an empty query → an empty page without an error;
+  - the p95 measurement on 100k with the S5 generator in the PR report.
+- **Depends on:** 4.5, 4.6.
 
-**4.10. Страницы ленты вокруг записи и новее** — S, guardian: нет.
-- **Что сделать:** в `crates/kinige-store/src/feed.rs`:
+**4.10. Feed pages around an entry and newer** — S, guardian: no.
+- **What to do:** in `crates/kinige-store/src/feed.rs`:
   - `list_messages_page(chat_id, PageAt::{Latest, Before(c), After(c), Around(id)}, limit, tag, now)`;
-  - `Around` отдаёт половину до и половину после записи;
-  - в `MessagePage` (`crates/kinige-domain/src/api.rs`) добавить `newer: Option<FeedCursor>`;
-  - существующие `list_messages` и `list_messages_tagged` — обёртки над новой функцией;
-  - запись не в этом чате или в корзине → `MessageNotFound`.
-- **Файлы:** `feed.rs`, `api.rs`, сгенерированный `MessagePage.ts`; в `web/` только `MockApi.ts`: `newer: null`, чтобы `typecheck` прошёл; тесты `crates/kinige-store/tests/feed_pages.rs`.
-- **Готово, когда:** обход всех страниц вверх и вниз от середины даёт каждую запись ровно один раз; границы (первая и последняя запись); фильтр по тегу с `Around`; существующие тесты ленты не изменились.
-- **Зависит от:** нет.
+  - `Around` returns half before and half after the entry;
+  - add `newer: Option<FeedCursor>` to `MessagePage` (`crates/kinige-domain/src/api.rs`);
+  - the existing `list_messages` and `list_messages_tagged` become wrappers over the new function;
+  - an entry not in this chat or in the trash → `MessageNotFound`.
+- **Files:** `feed.rs`, `api.rs`, generated `MessagePage.ts`; in `web/` only `MockApi.ts`: `newer: null`, so that `typecheck` passes; tests `crates/kinige-store/tests/feed_pages.rs`.
+- **Done when:** walking all pages up and down from the middle yields each entry exactly once; boundaries (first and last entry); the tag filter with `Around`; the existing feed tests are unchanged.
+- **Depends on:** none.
 
-**4.11. Команды Tauri, IPC, `KinigeApi`** — M, guardian: нет (отрицательные тесты обязательны).
-- **Что сделать:**
-  - `import_telegram_open`: диалог `blocking_pick_file` с фильтром `json`, вызывается из Rust, как `choose_mirror_folder` в `src-tauri/src/commands.rs`. Наличие метода в `tauri-plugin-dialog` — не проверено, сверить на docs.rs. Дальше чтение, предел 1 ГиБ, `parse_export`, сохранение в состояние, ответ — `ImportPreview` или `null` при отмене.
-  - `import_telegram_run(session, chatIds)` → `ImportReport`; прогресс — событием `import-progress` только окну `main`.
+**4.11. Tauri commands, IPC, `KinigeApi`** — M, guardian: no (negative tests are mandatory).
+- **What to do:**
+  - `import_telegram_open`: a `blocking_pick_file` dialog with a `json` filter, called from Rust, like `choose_mirror_folder` in `src-tauri/src/commands.rs`. Whether the method exists in `tauri-plugin-dialog` — not verified, check on docs.rs. Then reading, the 1 GiB limit, `parse_export`, saving into state; the response is `ImportPreview`, or `null` on cancel.
+  - `import_telegram_run(session, chatIds)` → `ImportReport`; progress — via the `import-progress` event to the `main` window only.
   - `import_telegram_stop`.
   - `search_messages(query, filters, before)`.
-  - `list_messages` с `after` и `around`.
-  - Новые коды ошибок: `import_not_telegram`, `import_file_unreadable`, `import_file_too_large`, `import_in_progress`, `import_session_expired`, `import_backup_failed`.
-  - Методы в `web/src/api/KinigeApi.ts`, `TauriApi.ts`, `MockApi.ts` (поиск в моке — подстрока без стемминга, это в моке допустимо).
-- **Файлы:** новый `src-tauri/src/import.rs`; `src-tauri/src/lib.rs` (`MAIN_COMMANDS`, `COMMANDS`), `src-tauri/build.rs`, `src-tauri/capabilities/main.json`, `src-tauri/src/commands.rs`; тесты `src-tauri/tests/ipc_slice4.rs`, правка `args_for` и `NEEDS_NATIVE_UI` в `src-tauri/tests/ipc.rs`; `web/src/api/*`. Не трогает `capabilities/capture.json`.
-- **Готово, когда:**
-  - `cargo test -p kinige` (тесты `config.rs`, `ipc*.rs`): каждая новая команда разрешена `main` и отказана `capture`; у окна захвата ровно семь команд;
-  - событие прогресса не уходит окну захвата;
-  - `run` с чужой или устаревшей сессией → `import_session_expired`;
-  - второй `run` во время первого → `import_in_progress`;
-  - тесты `TauriApi.test.ts` на новые вызовы.
-- **Зависит от:** 4.8, 4.9, 4.10.
+  - `list_messages` with `after` and `around`.
+  - New error codes: `import_not_telegram`, `import_file_unreadable`, `import_file_too_large`, `import_in_progress`, `import_session_expired`, `import_backup_failed`.
+  - Methods in `web/src/api/KinigeApi.ts`, `TauriApi.ts`, `MockApi.ts` (search in the mock is a substring match without stemming; that is acceptable in the mock).
+- **Files:** new `src-tauri/src/import.rs`; `src-tauri/src/lib.rs` (`MAIN_COMMANDS`, `COMMANDS`), `src-tauri/build.rs`, `src-tauri/capabilities/main.json`, `src-tauri/src/commands.rs`; tests `src-tauri/tests/ipc_slice4.rs`, edits to `args_for` and `NEEDS_NATIVE_UI` in `src-tauri/tests/ipc.rs`; `web/src/api/*`. Does not touch `capabilities/capture.json`.
+- **Done when:**
+  - `cargo test -p kinige` (tests `config.rs`, `ipc*.rs`): each new command is allowed for `main` and denied for `capture`; the capture window has exactly seven commands;
+  - the progress event does not go to the capture window;
+  - `run` with a foreign or expired session → `import_session_expired`;
+  - a second `run` during the first → `import_in_progress`;
+  - `TauriApi.test.ts` tests for the new calls.
+- **Depends on:** 4.8, 4.9, 4.10.
 
-**4.12. Окно импорта** — M, guardian: нет.
-- **Что сделать:**
-  - пункт «Импорт из Telegram…» в `web/src/ui/sidebar/ProfileMenu.tsx` (`ITEMS`);
-  - `ImportDialog` на `Modal` с шагами: инструкция и ошибка → список чатов с флажками («уже есть N»; строка «группы и каналы пропущены: N»; одна тихая строка про дубли при импорте на двух устройствах до синхронизации, ADR «Внешний id») → прогресс с «Остановить» → отчёт;
-  - после «Готово» открывается чат «Избранного»;
-  - через агента `design-system` — флажок и полоса прогресса с токенами.
-- **Файлы:** новые `web/src/ui/import/*` (компонент, `*.stories.tsx`, `*.test.tsx`), `web/src/ui/controls/{Checkbox,ProgressBar}.tsx`, `web/src/ui/screens/useImport.ts`; правит `MainWindow.tsx`, `ProfileMenu.tsx`, `locales`, `design/tokens/` (если нужен новый токен).
-- **Готово, когда:**
-  - vitest на `MockApi`: каждый шаг; отмена диалога выбора; ошибки по коду; остановка; клавиатура (Tab, пробел по флажку, Esc закрывает везде, кроме прогресса);
-  - истории en и ru, обычный и крупный текст, длинные имена, ноль поддерживаемых чатов;
-  - эталоны `scripts/visual-tests.sh --update` в Linux.
-- **Зависит от:** 4.11 (API).
+**4.12. The import window** — M, guardian: no.
+- **What to do:**
+  - the “Import from Telegram…” item in `web/src/ui/sidebar/ProfileMenu.tsx` (`ITEMS`);
+  - `ImportDialog` on `Modal` with steps: instruction and error → the chat list with checkboxes ("N already here"; the line "groups and channels skipped: N"; one quiet line about duplicates when importing on two devices before sync, ADR "External id") → progress with “Stop” → report;
+  - after “Done” the Saved Messages chat opens;
+  - via the `design-system` agent — checkbox and progress bar with tokens.
+- **Files:** new `web/src/ui/import/*` (component, `*.stories.tsx`, `*.test.tsx`), `web/src/ui/controls/{Checkbox,ProgressBar}.tsx`, `web/src/ui/screens/useImport.ts`; edits `MainWindow.tsx`, `ProfileMenu.tsx`, `locales`, `design/tokens/` (if a new token is needed).
+- **Done when:**
+  - vitest on `MockApi`: each step; cancelling the picker dialog; errors by code; stopping; keyboard (Tab, Space on a checkbox, Esc closes everywhere except progress);
+  - stories in en and ru, normal and large text, long names, zero supported chats;
+  - baselines via `scripts/visual-tests.sh --update` in Linux.
+- **Depends on:** 4.11 (API).
 
-**4.13. Экран поиска** — M, guardian: нет.
-- **Что сделать:**
-  - `showSearch` в `web/src/ui/screens/MainWindow.tsx` включается; ⌘F ставит фокус в поле;
-  - ввод с задержкой 150 мс, устаревшие ответы отбрасываются;
-  - `SearchResults` на месте ленты (образец — как открывается `web/src/ui/trash/TrashView.tsx`): строка «Чаты», строки результатов с `snippet` и подсветкой `terms` (`<mark>` с новым токеном цвета), подгрузка следующей страницы, пустое состояние;
-  - фильтры: «везде / этот чат», «избранное», «задачи», «с / по» (календарь `web/src/ui/calendar/CalendarDialog.tsx`);
-  - ↑↓ и Enter, Esc очищает и возвращает чат;
-  - в свёрнутом сайдбаре значок поиска.
-- **Файлы:** новые `web/src/ui/search/*`, `web/src/ui/screens/useSearch.ts`; правит `Sidebar.tsx`, `SidebarRail.tsx`, `MainWindow.tsx`, `MainWindowView.tsx`, `locales`, `design/tokens/`.
-- **Готово, когда:** vitest — ввод, фильтры, клавиатура, гонка ответов, пустой результат, ошибка; истории и эталоны (en и ru, крупный текст).
-- **Зависит от:** 4.11.
+**4.13. The search screen** — M, guardian: no.
+- **What to do:**
+  - `showSearch` in `web/src/ui/screens/MainWindow.tsx` is turned on; ⌘F puts focus in the field;
+  - input with a 150 ms delay, stale responses are discarded;
+  - `SearchResults` in place of the feed (the model is how `web/src/ui/trash/TrashView.tsx` opens): the “Chats” row, result rows with `snippet` and highlighted `terms` (`<mark>` with a new color token), loading the next page, the empty state;
+  - filters: “Everywhere / This chat”, “Favorites”, “Tasks”, “From / To” (calendar `web/src/ui/calendar/CalendarDialog.tsx`);
+  - ↑↓ and Enter; Esc clears and returns to the chat;
+  - a search icon in the collapsed sidebar.
+- **Files:** new `web/src/ui/search/*`, `web/src/ui/screens/useSearch.ts`; edits `Sidebar.tsx`, `SidebarRail.tsx`, `MainWindow.tsx`, `MainWindowView.tsx`, `locales`, `design/tokens/`.
+- **Done when:** vitest — input, filters, keyboard, response race, empty result, error; stories and baselines (en and ru, large text).
+- **Depends on:** 4.11.
 
-**4.14. Лента: старые страницы и открытие на записи** — M, guardian: нет.
-- **Что сделать:** в `web/src/ui/screens/useFeed.ts` (`PAGE_SIZE`, сейчас грузит только последнюю страницу):
-  - подгрузка `older` при прокрутке к верху (наблюдатель-«часовой»), без скачка позиции;
-  - режим «вокруг записи» для перехода из поиска: `around`, затем `older` вверх и `newer` вниз; при `newer === null` — обычный режим;
-  - целевая плашка прокручена к центру, подсвечена `color.highlight.background` до следующего щелчка, слова `terms` выделены;
-  - `reload` по событию «записи изменились» в режиме «вокруг» не прыгает к низу.
-- **Файлы:** `useFeed.ts`, `web/src/ui/feed/{Feed.tsx,mergeFeed.ts}`, тесты рядом; не трогает Rust.
-- **Готово, когда:** vitest на `MockApi` с 2 000 записей: подгрузка вверх сохраняет видимую запись; переход к записи из середины, затем прокрутка до низа возвращает обычный режим; удалённая плашка «Удалено · Вернуть» переживает подгрузку; Reduce Motion — без плавной прокрутки.
-- **Зависит от:** 4.10, 4.11; с 4.13 стыкуется через `onOpenMessage(chatId, messageId, terms)`.
+**4.14. Feed: older pages and opening at an entry** — M, guardian: no.
+- **What to do:** in `web/src/ui/screens/useFeed.ts` (`PAGE_SIZE`, currently loads only the latest page):
+  - load `older` when scrolling to the top (a "sentinel" observer), without a position jump;
+  - an "around the entry" mode for jumping from search: `around`, then `older` upward and `newer` downward; when `newer === null` — normal mode;
+  - the target bubble is scrolled to the centre, highlighted with `color.highlight.background` until the next click, the `terms` words are marked;
+  - `reload` on the "entries changed" event in "around" mode does not jump to the bottom.
+- **Files:** `useFeed.ts`, `web/src/ui/feed/{Feed.tsx,mergeFeed.ts}`, tests alongside; does not touch Rust.
+- **Done when:** vitest on `MockApi` with 2,000 entries: loading upward keeps the visible entry; jumping to an entry from the middle and then scrolling to the bottom returns to normal mode; a deleted bubble “Deleted · Restore” survives loading; Reduce Motion — no smooth scrolling.
+- **Depends on:** 4.10, 4.11; joins 4.13 via `onOpenMessage(chatId, messageId, terms)`.
 
-## Факт (28.10.2026)
-Старт 28.10 12:50 МСК; все 14 задач и spike S5 сделаны к 15:00 МСК (≈ 2 ч 10 мин активной работы при бюджете ~10 ч), приёмка в настоящем окне и исправления по ревью guardian — к 15:50 МСК (всего ≈ 3 ч по часам, из них около часа ожидания, пока пользователь отойдёт от компьютера). Работа шла в копии `scratchpad/slice4` (ветка `slice/4-telegram-import`); рабочее дерево и данные пользователя не открывались. Исполнитель — Sonnet 5.5; ядро разбора (4.1) взято из сравнения агентов и доведено до этой спецификации. Guardian проверил `main..1b84c4a` (зоны: миграция 4, байты `core` импортированной записи, HLC при пакетной записи, индекс поиска): «принять», блокирующих нет; его замечания исправлены отдельными коммитами (ниже).
+## Actuals (28.10.2026)
+Start 28.10 12:50 MSK; all 14 tasks and spike S5 were done by 15:00 MSK (≈ 2 h 10 min of active work against a budget of ~10 h); acceptance in the real window and fixes after the guardian review — by 15:50 MSK (≈ 3 h in total by the clock, of which about an hour was waiting for the user to step away from the computer). The work was done in the working copy `scratchpad/slice4` (branch `slice/4-telegram-import`); the user's working tree and data were not opened. Implementer — Sonnet 5.5; the parsing core (4.1) was taken from the agent comparison and brought up to this spec. Guardian reviewed `main..1b84c4a` (areas: migration 4, `core` bytes of an imported entry, HLC during batch writes, the search index): "accept", no blockers; its remarks were fixed in separate commits (below).
 
-**Исправления по ревью guardian (после `1b84c4a`):**
-1. `f2ab43c` — `Timeline::created_at` принимает время только из окна `1970-01-01 … момент импорта + сутки`; вне окна (за ±2^53, год 287396, отрицательное, далёкое будущее) сообщение получает момент импорта, как «без даты», остальные сообщения пачки пишутся (раньше `date_unixtime:"9999999999999999"` ломало JCS и всю пачку, `"9007199254740"` давало `journal_date = "287396-10-12"`). `groups::build_message` отвергает `journal_date`, не прошедшую `is_valid_journal_date` (`GroupError::Invalid`). Тесты: окно (`import_time`), домен (`impossible_journal_dates_never_reach_the_bytes`), сквозной (`impossible_dates_do_not_break_the_batch_and_land_on_the_import_day`).
-2. `7fcc453` (первый заход, только поиск) и `2cb7755` (второй заход, весь контур) — порча таблицы `search_fts` не равна порче базы. Различение: `error::is_search_index_error` (расширенный код 267 `SQLITE_CORRUPT_VTAB` либо `SQLITE_ERROR` с «fts5», то есть порча настроек: «invalid fts5 file format … run 'rebuild'») → отдельный вариант `StoreError::SearchIndex`, он не доходит до `report_corruption`. Лечение: `search::rebuild_all` (`DROP` + `CREATE` по `FTS_DDL`, как в миграции 4, затем все записи из `message` и версия правил; у таблицы с испорченными настройками `DROP` не проходит, и номер формата в `search_fts_config` чинится вручную). Где работает:
-   - запись (`send`/`edit`/дописывание/импорт/удаление навсегда): `search::reindex`/`remove` идут под `SAVEPOINT`; упала таблица — откат к точке и перестройка в той же транзакции, запись не теряется, экран «база повреждена» не вызывается;
-   - запрос: `Store::search` читает без сигнала, на `SearchIndex` вызывает `heal_search_index(seen)` и повторяет запрос один раз; счётчик лечений (`search_heals`) делает перестройку одной на любое число одновременных запросов, упавших на одной порче;
-   - проход обслуживания: `PRAGMA integrity_check` разбирается построчно; если все строки — `fts5:` про `"search_fts"` (или проверка сама падает ошибкой индекса), вердикт `Integrity::SearchIndex` → `heal_search_index` и повторная проверка; настоящая порча по-прежнему сигналит;
-   - копии: `quick_check_fine` пропускает строки про `search_fts` (копия дня, копия перед импортом, выбор копии для восстановления); восстановление из такой копии открывается, индекс перестраивается при первом запросе или записи; `verify_database` и проверка при запуске/миграции отдают `Integrity::SearchIndex` и не ведут на восстановление.
-   Тесты `search_heal.rs` (8): порча данных (структура индекса `id = 10`) и порча настроек — запрос, запись и правка, обслуживание, вердикты, копия + восстановление, восемь одновременных запросов = одно лечение.
-3. `f2ab43c` — результат `ext::insert` больше не игнорируется: ключ вставляется до записи; занят (запись появилась после чтения `existing`) — записи нет, `skipped_existing += 1`, HLC не тратится. Тест `import/tests.rs` (занятый ключ в пачке из трёх). Счётчик `media_placeholders` пачки при этом не уменьшается (граничный случай, не исправлялся).
-4. `872553a` — ТЗ §4.2 (колонка `body_search`, `message_fts`) помечены отступлением со ссылкой на ADR-0008 и §C.3, строка в «Истории версий» (v0.11); приложение ADR-0001 §C.1 согласовано с §C.3.
-5. Мелочи: `c9dd5b2` — имя `pre-import-<UTC>` сдвигается на секунду вперёд, если занято (две копии в одну секунду сохраняются обе); `f2ab43c` — тест монотонности HLC при отстающих часах (сохранённая «стенка» впереди часов устройства: метки строго возрастают, «стенка» не откатывается); `c9dd5b2` — тесты `fts_query`/`title_matches` на «ё», цифры, чистые эмодзи (замечено: одиночное «ёё» стеммируется в основу «е»).
-6. Известное, не исправлялось (по замечаниям guardian): `ext_json` не пропускается через JCS при записи колонки; ротация копий идёт по имени, а не по времени изменения файла; удаление чата-адресата между пачками прерывает импорт ошибкой `ChatNotFound` (прежние пачки остаются); перестройка индекса при смене версии идёт синхронно при старте; поиск соединяет `chat` через `INNER JOIN` (запись в несуществующем чате не находится); `reply_to_id` может указывать на запись, чья вставка пропущена п. 3.
+**Fixes after the guardian review (after `1b84c4a`):**
+1. `f2ab43c` — `Timeline::created_at` accepts time only from the window `1970-01-01 … import moment + one day`; outside the window (beyond ±2^53, year 287396, negative, far future) the message gets the import moment, as "no date", and the other messages of the batch are written (previously `date_unixtime:"9999999999999999"` broke JCS and the whole batch, and `"9007199254740"` gave `journal_date = "287396-10-12"`). `groups::build_message` rejects a `journal_date` that fails `is_valid_journal_date` (`GroupError::Invalid`). Tests: window (`import_time`), domain (`impossible_journal_dates_never_reach_the_bytes`), end-to-end (`impossible_dates_do_not_break_the_batch_and_land_on_the_import_day`).
+2. `7fcc453` (first pass, search only) and `2cb7755` (second pass, the whole circuit) — corruption of the `search_fts` table is not corruption of the database. Distinguishing: `error::is_search_index_error` (extended code 267 `SQLITE_CORRUPT_VTAB`, or `SQLITE_ERROR` with "fts5", i.e. config corruption: "invalid fts5 file format … run 'rebuild'") → a separate variant `StoreError::SearchIndex`, which does not reach `report_corruption`. Healing: `search::rebuild_all` (`DROP` + `CREATE` from `FTS_DDL`, as in migration 4, then all entries from `message` and the rules version; on a table with corrupted config `DROP` fails, and the format number in `search_fts_config` is repaired by hand). Where it works:
+   - write (`send`/`edit`/append/import/delete forever): `search::reindex`/`remove` run under a `SAVEPOINT`; if the table fails — rollback to the savepoint and rebuild in the same transaction; the write is not lost, the "database damaged" screen is not triggered;
+   - query: `Store::search` reads without a signal, on `SearchIndex` calls `heal_search_index(seen)` and repeats the query once; the heal counter (`search_heals`) makes it one rebuild for any number of concurrent queries that failed on the same corruption;
+   - maintenance pass: `PRAGMA integrity_check` is parsed line by line; if all lines are `fts5:` about `"search_fts"` (or the check itself fails with an index error), the verdict is `Integrity::SearchIndex` → `heal_search_index` and a repeated check; real corruption still signals;
+   - backups: `quick_check_fine` skips lines about `search_fts` (daily backup, pre-import backup, choosing a backup to restore); a restore from such a backup opens, and the index is rebuilt on the first query or write; `verify_database` and the check at startup/migration return `Integrity::SearchIndex` and do not lead to a restore.
+   Tests `search_heal.rs` (8): data corruption (index structure `id = 10`) and config corruption — query, write and edit, maintenance, verdicts, backup + restore, eight concurrent queries = one heal.
+3. `f2ab43c` — the result of `ext::insert` is no longer ignored: the key is inserted before the entry; if taken (the entry appeared after `existing` was read) — no entry, `skipped_existing += 1`, no HLC is spent. Test `import/tests.rs` (a taken key in a batch of three). The batch's `media_placeholders` counter is not decreased in this case (an edge case, not fixed).
+4. `872553a` — PRD §4.2 (column `body_search`, `message_fts`) marked as a deviation with a reference to ADR-0008 and §C.3, a line in "Version history" (v0.11); ADR-0001 appendix §C.1 brought in line with §C.3.
+5. Small things: `c9dd5b2` — the name `pre-import-<UTC>` is shifted one second forward if taken (two backups within one second are both kept); `f2ab43c` — a test of HLC monotonicity with a lagging clock (a stored "wall" ahead of the device clock: timestamps strictly increase, the "wall" does not roll back); `c9dd5b2` — tests of `fts_query`/`title_matches` on «ё», digits, pure emoji (noted: a lone «ёё» stems to the base «е»).
+6. Known, not fixed (per guardian remarks): `ext_json` is not passed through JCS when the column is written; backup rotation goes by name, not by file modification time; deleting the target chat between batches aborts the import with a `ChatNotFound` error (earlier batches remain); the index rebuild on a version change runs synchronously at startup; search joins `chat` with `INNER JOIN` (an entry in a non-existent chat is not found); `reply_to_id` may point to an entry whose insert was skipped by item 3.
 
-**Что сделано (по задачам).** 4.1–4.3 — `crates/kinige-domain/src/{telegram,import}.rs` (+`telegram/*`); 4.4–4.5 — `crates/kinige-domain/src/search.rs`; 4.6 — миграция 4 и `crates/kinige-store/src/{schema,search,ext}.rs`; 4.7 — `backup.rs` (`pre-import-<UTC>.db`, хранится 3); 4.8 — `crates/kinige-store/src/{import,import_time}.rs`; 4.9 — `search_query.rs`; 4.10 — `feed_page.rs`; 4.11 — `src-tauri/src/import.rs`, `commands.rs`, `KinigeApi`/`TauriApi`/`MockApi`; 4.12–4.14 — `web/src/ui/{import,search}`, `screens/{useImport,useSearch,useMainSearch,useFeed}`, `feed/*`. Spike S5 — `spikes/S5-search/` (отдельный крейт со своим `[workspace]`), отчёт в `spikes/S5-search/README.md`, решение — `docs/adr/0008-search.md`, раскладка внешнего id — `docs/adr/0001-sync-protocol-and-keys.details.md` §C.3, пометка в ТЗ §9.1.
+**What was done (by task).** 4.1–4.3 — `crates/kinige-domain/src/{telegram,import}.rs` (+`telegram/*`); 4.4–4.5 — `crates/kinige-domain/src/search.rs`; 4.6 — migration 4 and `crates/kinige-store/src/{schema,search,ext}.rs`; 4.7 — `backup.rs` (`pre-import-<UTC>.db`, 3 kept); 4.8 — `crates/kinige-store/src/{import,import_time}.rs`; 4.9 — `search_query.rs`; 4.10 — `feed_page.rs`; 4.11 — `src-tauri/src/import.rs`, `commands.rs`, `KinigeApi`/`TauriApi`/`MockApi`; 4.12–4.14 — `web/src/ui/{import,search}`, `screens/{useImport,useSearch,useMainSearch,useFeed}`, `feed/*`. Spike S5 — `spikes/S5-search/` (a separate crate with its own `[workspace]`), report in `spikes/S5-search/README.md`, decision — `docs/adr/0008-search.md`, the external id layout — `docs/adr/0001-sync-protocol-and-keys.details.md` §C.3, a note in PRD §9.1.
 
-**Отступления от спецификации (все малые):**
-1. `TgParseError` получил вариант `Malformed(String)`: ошибки данных `serde` (неверный тип поля) отделены от «это не экспорт Telegram». Сообщения чатов других типов (`messages`) не разбираются вовсе (`&RawValue`, лениво только для «Избранного» и личных чатов): на экспорте 6 ГБ с группами это быстрее и не тратит память.
-2. Файлы сверх списка: `telegram/{raw.rs,tests_cases.rs,tests_real.rs,markdown_tests_media.rs}` (файл больше 400 строк делится), `web/src/ui/screens/useMainSearch.ts`, `api/MockApiSlice4.ts`, `search/{HighlightedText.tsx,search-stories.css}`.
-3. Лишняя команда `import_telegram_close` (снимает сеанс при отмене/закрытии окна, чтобы не держать разобранный файл в памяти); `import-progress` уходит только окну `main`; окно захвата по-прежнему имеет 7 команд.
-4. `ImportReport.backup_name` — `Option`: копия не делается, если писать нечего. Нулевые строки отчёта не показываются (кроме «Импортировано»).
-5. Правка кода слайса 3: счётчики в `chat_list` считаются как «всего минус корзина» через `INDEXED BY message_deleted` (на 100 000 записей было ≈ 150 мс, стало ≈ 5 мс; без этого список чатов тормозил после импорта).
-6. Небольшие дополнения дизайн-системы: роль палитры `highlight.mark` (#555555: тест происхождения палитры требует нейтральных серых), токены `layout.progress.height`, `layout.import.list-max-height`, `layout.search.snippet-lines`, `layout.search.filters-gap`; `Modal.closable`, `CalendarDialog.title`, `Button` с `ref`, `TextField.inputRef`.
+**Deviations from the spec (all minor):**
+1. `TgParseError` got a variant `Malformed(String)`: `serde` data errors (wrong field type) are separated from "this is not a Telegram export". Messages of chats of other types (`messages`) are not parsed at all (`&RawValue`, lazily only for Saved Messages and personal chats): on a 6 GB export with groups this is faster and does not use memory.
+2. Files beyond the list: `telegram/{raw.rs,tests_cases.rs,tests_real.rs,markdown_tests_media.rs}` (a file over 400 lines is split), `web/src/ui/screens/useMainSearch.ts`, `api/MockApiSlice4.ts`, `search/{HighlightedText.tsx,search-stories.css}`.
+3. An extra command `import_telegram_close` (drops the session on cancel/window close, so the parsed file is not held in memory); `import-progress` goes only to the `main` window; the capture window still has 7 commands.
+4. `ImportReport.backup_name` is an `Option`: no backup is taken if there is nothing to write. Zero report lines are not shown (except “Imported”).
+5. A change to slice 3 code: the counters in `chat_list` are computed as "total minus trash" via `INDEXED BY message_deleted` (on 100,000 entries it was ≈ 150 ms, now ≈ 5 ms; without this the chat list was slow after an import).
+6. Small design system additions: palette role `highlight.mark` (#555555: the palette provenance test requires neutral greys), tokens `layout.progress.height`, `layout.import.list-max-height`, `layout.search.snippet-lines`, `layout.search.filters-gap`; `Modal.closable`, `CalendarDialog.title`, `Button` with `ref`, `TextField.inputRef`.
 
-**Измерения.**
-- **S5** (M3 Pro, SQLite 3.53.2, 100 000 сгенерированных записей, 48,9 МБ текста): стеммер `rust-stemmers` 1.2.0 (MIT/BSD-3, выпуск 2019-11-17, 39,8 млн загрузок, собирается под `wasm32`); 50/50 пар «форма слова → основа» из ожиданий; полнота префиксного поиска по индексу только из основ 99,0 % (100 % при хранении исходных слов, но индекс 0,70× вместо 0,53× от текста); раскладка v1 (contentless + карта) 25,7 МБ (0,53×), вставка 13 мкс в пакете / 244 мкс одиночная, удаление 87 мкс; v2 (внешний контент) 1,52× — отброшена; v3 (`UNINDEXED`-колонка) удаление 22 мс, скан — отброшена; триграммы 1,98× — отброшены; запрос p95 ≤ 70 мс; `index_text` 12,9 мкс на запись; первый холодный запрос ≈ 357 мс один раз (кэш ОС), далее 45 мс.
-- **Синтетический импорт 100 000 записей** (release, `crates/kinige-store/examples/import_bench.rs`): импорт 26,8 с (≈ 268 мкс на запись), повторный 179 мс (все пропущены), база 390 МБ (была 0,2 МБ), холодный старт: открытие 4 мс + первая страница 21 мс; поиск (200 префиксных слов) p50 19,5 / p95 142 / max 244 мс.
-- **Настоящий экспорт** (1682 сообщений, 1,1 МБ; только счётчики): разбор 10 мс, в предпросмотре 1675 записей, импорт 149 мс (89 мкс на запись): импортировано 1675, служебных 2, пустых 5, заглушек вместо медиа 785, чатов создано 0, повторный импорт 1 мс (1675 пропущено); база 7,6 МБ; поиск p50 1,8 / p95 2,6 мс. Временные базы удалены; тексты, имена и пути не печатались и не читались.
+**Measurements.**
+- **S5** (M3 Pro, SQLite 3.53.2, 100,000 generated entries, 48.9 MB of text): stemmer `rust-stemmers` 1.2.0 (MIT/BSD-3, released 2019-11-17, 39.8 million downloads, builds for `wasm32`); 50/50 "word form → stem" pairs as expected; prefix search recall on a stems-only index 99.0 % (100 % when storing original words, but the index is 0.70× instead of 0.53× of the text); layout v1 (contentless + map) 25.7 MB (0.53×), insert 13 µs in a batch / 244 µs single, delete 87 µs; v2 (external content) 1.52× — discarded; v3 (`UNINDEXED` column) delete 22 ms, scan — discarded; trigrams 1.98× — discarded; query p95 ≤ 70 ms; `index_text` 12.9 µs per entry; the first cold query ≈ 357 ms once (OS cache), then 45 ms.
+- **Synthetic import of 100,000 entries** (release, `crates/kinige-store/examples/import_bench.rs`): import 26.8 s (≈ 268 µs per entry), re-import 179 ms (all skipped), database 390 MB (was 0.2 MB), cold start: open 4 ms + first page 21 ms; search (200 prefix words) p50 19.5 / p95 142 / max 244 ms.
+- **Real export** (1682 messages, 1.1 MB; counters only): parsing 10 ms, 1675 entries in the preview, import 149 ms (89 µs per entry): imported 1675, service 2, empty 5, media placeholders 785, chats created 0, re-import 1 ms (1675 skipped); database 7.6 MB; search p50 1.8 / p95 2.6 ms. The temporary databases were deleted; texts, names and paths were neither printed nor read.
 
-**Вторая волна правок (ревьюер: «доработать», guardian повторно), отдельными коммитами:**
-- **B1** `a0bd7de` — после импорта лента открытого чата перечитывается с нуля (`useFeed.restart`: последняя страница заменяет загруженное, курсоры `older`/`newer` пересчитываются); раньше `reload` только сбрасывал курсор и никогда не ставил, и лента застревала на последней странице до импорта, а импорт в несколько приёмов оставлял дыру. Тесты `MainWindow.importfeed.test.tsx` (оба падают без правки): импорт → «Готово» → подгрузка вверх страница за страницей до самой старой записи; два приёма подряд без перезапуска — ни одна запись не потеряна. Общий `FakeObserver` вынесен в `web/src/test/fakeObserver.ts`.
-- **B2** `2c2d940` — фокус остаётся в поле поиска, когда запрос стёрт и лента с полем заметки вернулась: поле заметки берёт фокус при появлении, только если фокус ни у какого другого поля (`Composer`: эффект вместо `autoFocus`); Esc сам уводит фокус из поля (`blur()`), и поле заметки получает его. Тест в `MainWindow.search.test.tsx`: ⌘F-подобный фокус, «к», стирание, «моло», Enter — `sendMessage` не вызван, фокус в поле поиска; Esc — фокус в поле заметки.
-- **I1, I2, I4** `2cb7755` — см. п. 2 выше.
-- **I3** `82ce858` — пропуск занятого ключа: ответы на пропущенную запись получают настоящего владельца ключа (`BatchOutcome.replaced`, `existing` в следующих пачках тоже подменяется); если в первой пачке личного чата все ключи заняты, чат не создаётся (`BatchOutcome.chat_id: Option`). Тесты в `import/tests.rs`.
-- **I5** `9bcde59`, `e6ce61e` — файлы разделены без скриптов (только Edit/Write): `tests/import.rs` 611 → 371 (+ `import_chats.rs`, `import_immutable.rs`), `tests/search_query.rs` 406 → 335 (+ `search_query_edges.rs`), `MainWindow.tsx` 418 → 397 (+ `mainWindowParts.ts`).
-- **I6** `f4db119` — Inbox находится по переведённому имени: Rust его по-прежнему не отдаёт (в базе имени нет), строку «Чаты» добавляет интерфейс (`inboxMatches`: каждое слово запроса — начало слова имени; основ слов в интерфейсе нет, поэтому «входящ» находит, «входящих» — нет). Строка в `SearchResults` показывает переведённое имя, а не пустую строку.
-- **Мелочи** `6c5019e`, `0991c53` — полоса «N из M» считает те же сообщения, что список чатов (служебные и пустые не входят); записи без пригодной даты получают момент импорта с +k мс по порядку файла, а не порядок случайных id; у поля поиска нет родной кнопки очистки WebKit, у области результатов `scrollbar-gutter: stable` (строка фильтров не прыгает на 8 px); тест читает сами правила CSS (`searchCss.test.ts`).
-- Известное, не исправлялось: поиск Inbox по словоформам («входящих»); ход импорта по-прежнему показывает `done` по пачкам, а не по сообщениям.
+**Second wave of fixes (reviewer: "needs work", guardian again), in separate commits:**
+- **B1** `a0bd7de` — after an import the feed of the open chat is re-read from scratch (`useFeed.restart`: the latest page replaces what was loaded, the `older`/`newer` cursors are recomputed); previously `reload` only reset the cursor and never set it, and the feed got stuck on the latest page from before the import, while an import in several runs left a gap. Tests `MainWindow.importfeed.test.tsx` (both fail without the fix): import → “Done” → loading upward page by page to the oldest entry; two runs in a row without a restart — not a single entry lost. A shared `FakeObserver` was moved to `web/src/test/fakeObserver.ts`.
+- **B2** `2c2d940` — focus stays in the search field when the query is erased and the feed with the note field comes back: the note field takes focus on appearing only if no other field has focus (`Composer`: an effect instead of `autoFocus`); Esc itself moves focus out of the field (`blur()`), and the note field gets it. Test in `MainWindow.search.test.tsx`: ⌘F-like focus, «к», erase, «моло», Enter — `sendMessage` not called, focus in the search field; Esc — focus in the note field.
+- **I1, I2, I4** `2cb7755` — see item 2 above.
+- **I3** `82ce858` — skipping a taken key: replies to the skipped entry get the real owner of the key (`BatchOutcome.replaced`; `existing` is also substituted in the following batches); if in the first batch of a personal chat all keys are taken, the chat is not created (`BatchOutcome.chat_id: Option`). Tests in `import/tests.rs`.
+- **I5** `9bcde59`, `e6ce61e` — files split without scripts (Edit/Write only): `tests/import.rs` 611 → 371 (+ `import_chats.rs`, `import_immutable.rs`), `tests/search_query.rs` 406 → 335 (+ `search_query_edges.rs`), `MainWindow.tsx` 418 → 397 (+ `mainWindowParts.ts`).
+- **I6** `f4db119` — Inbox is found by its translated name: Rust still does not return it (the database has no name), the UI adds the “Chats” row (`inboxMatches`: each word of the query is the start of a word of the name; the UI has no word stems, so «входящ» finds it, «входящих» does not — both are forms of the Russian name «Входящие», "Inbox"). The row in `SearchResults` shows the translated name, not an empty string.
+- **Small things** `6c5019e`, `0991c53` — the "N of M" bar counts the same messages as the chat list (service and empty ones are not included); entries without a usable date get the import moment with +k ms in file order, not the order of random ids; the search field has no native WebKit clear button, the results area has `scrollbar-gutter: stable` (the filter row does not jump by 8 px); a test reads the CSS rules themselves (`searchCss.test.ts`).
+- Known, not fixed: searching Inbox by word forms («входящих»); import progress still shows `done` by batches, not by messages.
 
-**Третья волна (guardian, `c1f5469..515ad00`: принять; без UI-изменений):**
-- `Store::write` разделён на `write` и `write_raw` (им лечит сам индекс): на `Err(SearchIndex)` вне `guarded` (например, 267 на `COMMIT`) индекс лечится сразу, ошибка возвращается как есть, повтор проходит. Перестройка в пути записи тоже увеличивает `search_heals` (флаг `search::take_rebuilt` забирается после задания, только если задание успешно): запрос со старым `seen` не делает лишней перестройки. Если `ROLLBACK TO search_index` падает, наружу идёт исходная ошибка.
-- Тесты: `search_heal_guard.rs` — смешанный вердикт (порча `search_fts_data` и корневой страницы `message`) через `verify_database` и `run_maintenance` с хуком → `Corrupt`, хук один раз, `search_heal_count() == 0`; порча корневой страницы `search_fts_data` (b-tree, код 11) → `Corrupt` и сигнал, без лечения; юниты в `search.rs` — `BEGIN; reindex (лечит); ROLLBACK` → индекс снова повреждён, следующая запись лечит и фиксирует, обе перестройки учтены; ошибка индекса вне `guarded` лечит индекс; `import_chats.rs` — ответ через границу пачек (четыре пачки, ключ из третьей занят колбэком `progress`, ответ из четвёртой указывает на владельца).
-- Известное, не исправлялось: порча при удалённой `search_fts_config` нелечима («vtable constructor failed», журнал только для чтения, без сигнала; достижима лишь внешним вмешательством или ошибкой миграции); если после лечения в `run_maintenance` снова `SearchIndex`, проход пишет «повтор позже» каждый час и сигнала нет; классификатор `SQLITE_ERROR` шире формулировки порчи настроек (любая подстрока `fts5` в сообщении; ложных срабатываний из пользовательского ввода нет — текст запроса в `MATCH` приходит только как цитированные термы).
+**Third wave (guardian, `c1f5469..515ad00`: accept; no UI changes):**
+- `Store::write` is split into `write` and `write_raw` (the index heals itself with the latter): on `Err(SearchIndex)` outside `guarded` (for example, 267 on `COMMIT`) the index is healed right away, the error is returned as is, and a repeat succeeds. A rebuild in the write path also increments `search_heals` (the flag `search::take_rebuilt` is taken after the job, only if the job succeeded): a query with an old `seen` does no extra rebuild. If `ROLLBACK TO search_index` fails, the original error goes out.
+- Tests: `search_heal_guard.rs` — a mixed verdict (corruption of `search_fts_data` and of the `message` root page) via `verify_database` and `run_maintenance` with a hook → `Corrupt`, the hook once, `search_heal_count() == 0`; corruption of the `search_fts_data` root page (b-tree, code 11) → `Corrupt` and a signal, no healing; units in `search.rs` — `BEGIN; reindex (heals); ROLLBACK` → the index is damaged again, the next write heals and commits, both rebuilds are counted; an index error outside `guarded` heals the index; `import_chats.rs` — a reply across a batch boundary (four batches, a key from the third is taken by the `progress` callback, a reply from the fourth points to the owner).
+- Known, not fixed: corruption with a deleted `search_fts_config` cannot be healed ("vtable constructor failed", the log is read-only, no signal; reachable only through outside interference or a migration bug); if `SearchIndex` occurs again after healing in `run_maintenance`, the pass writes "retry later" every hour and there is no signal; the `SQLITE_ERROR` classifier is broader than the wording of config corruption (any `fts5` substring in the message; there are no false positives from user input — the query text reaches `MATCH` only as quoted terms).
 
-**Снимки второй волны пересняты** на сборке `accept7` (release `.app` из `a623662`+вторая волна; UI с `515ad00` не менялся), демо-данные — свежий `seed_demo` в `scratchpad/accept8`, синтетический экспорт, английский интерфейс; ввод — только при простое ≥ 60 с (дважды останавливался, когда пользователь возвращался к машине). Заменены: `03`–`06` (импорт и лента после него), `09`–`11` (поиск «книги», выбор стрелками, открытие записи из поиска), `12` (теперь **после «Готово» без поиска**: PageUp от «Сегодня» до 8 марта 2019 через все подгруженные страницы — это и есть проверка B1 в настоящем окне), `15`–`18` (крупный текст; `text_size = large` записан в `app_setting` временной базы при закрытом приложении). Новые: `19`–`21` (B2: ⌘F, «к», Backspace — фокус остался в поле поиска, лента с полем заметки вернулась; «моло» + Enter — запись не создана, `select count(*) from message` = 410 до и после, а Enter открыл найденную запись «молоко» в ленте), `22` (русское слово «входящ» в английском интерфейсе ничего не находит — так и задумано: Inbox ищется по переведённому имени «Inbox»; строка «Чаты» для Inbox проверена тестами интерфейса, латиницу в окне ввести не удалось: клавиатура пользователя русская). Без пересъёмки остались `00`–`02`, `07`–`08`, `13`–`14` (сняты на сборке до второй волны; соответствующий UI не менялся).
+**Second-wave screenshots were retaken** on the `accept7` build (release `.app` from `a623662` + the second wave; the UI has not changed since `515ad00`), demo data — a fresh `seed_demo` in `scratchpad/accept8`, a synthetic export, English UI; input — only when idle ≥ 60 s (it stopped twice when the user came back to the machine). Replaced: `03`–`06` (import and the feed after it), `09`–`11` (search «книги», selection with arrows, opening an entry from search), `12` (now **after “Done” without search**: PageUp from “Today” to 8 March 2019 through all loaded pages — this is the B1 check in the real window), `15`–`18` (large text; `text_size = large` written to `app_setting` of the temporary database while the app was closed). New: `19`–`21` (B2: ⌘F, «к», Backspace — focus stayed in the search field, the feed with the note field came back; «моло» + Enter — no entry created, `select count(*) from message` = 410 before and after, and Enter opened the found «молоко» entry in the feed), `22` (the Russian word «входящ» finds nothing in the English UI — that is intended: Inbox is searched by the translated name “Inbox”; the “Chats” row for Inbox is verified by UI tests; Latin could not be typed in the window: the user's keyboard is Russian). Not retaken: `00`–`02`, `07`–`08`, `13`–`14` (taken on the build before the second wave; the corresponding UI did not change).
 
-**Проверки в настоящем окне** (release-сборка `.app` с identifier `me.savvinov.kinige.accept`, данные — `seed_demo` и синтетический экспорт в `scratchpad/accept6`, настоящая база и папка `~/Documents/Kinige` не открывались; английский язык интерфейса; скриншоты — `docs/screens/4/`, окно снимается `scripts/screenshot-window.sh`). Сборка сделана с `a623662`, то есть уже с исправлениями guardian. Ввод — AX-нажатия и клавиши только при простое ≥ 60 с, разблокированном экране и Kinige впереди.
-- Пункт профиля → «Импорт из Telegram…» → родной диалог выбора файла (`02`, `03-import-choose`; снимок самого диалога `03-file-picker` убран перед публикацией: на нём был боковой список Finder пользователя) → чаты с флажками, «групп пропущено: 1», строка про два устройства (`04`) → отчёт: импортировано 400, служебных 8, вложений 14, создан 1 чат, копия `pre-import-…Z.db` (`05`); после «Готово» лента Inbox с записями 2019–2026, метками дней, заглушкой «[Photo not imported]», пересланным и жирным автором (`06`, `12`); сайдбар с чатом «Пётр Тестов» 💬 (60).
-- Повторный импорт: «340 записей · 340 уже есть» (`07`), отчёт «Импортировано: 0, пропущено 340, служебных 8», новой копии нет (`08`).
-- Поиск (⌘F, ввод «книги»): находит «книгу», «книги», «Книги», «#книги», подсветка форм; сверху строка «Чаты» с найденным чатом; ↑↓ двигают выделение (`09`, `10`); Enter открывает запись в ленте на месте, запись подсвечена, слово выделено (`11`); пустой результат «Ничего не найдено» (`17`), Esc возвращает ленту (`18`).
-- Лента: PageUp до самого верха (первая запись 8 марта 2019, `12`) и PageDown обратно до «Сегодня» (`13`) без остановок и потери записей (шесть сообщений одной секунды шли по порядку файла, отдельного снимка нет).
-- Крупный текст (значение `text_size = large` записано прямо в `app_setting` временной базы, потому что вызов «Настроек» через AX на ленте в 344 записи слишком медленный): лента (`15`) и результаты поиска (`16`, `17`).
-- `kill -9` приложения после импорта и перезапуск (`14`): 410 записей, 400 строк `message_ext`, 410 в `search_map`, `integrity_check = ok`. Прерывание посреди импорта в живом приложении не снималось: 400 записей пишутся за ~50 мс, пачка одна; обрыв посреди импорта покрыт тестами `import_abort.rs` (процесс убивается между пачками и внутри).
-- Списки папок после импорта: `backups-after-import.txt` (`daily-…`, `pre-import-…`), `mirror-after-import.txt` (папки чатов, в том числе «Пётр Тестов»).
-- Неудачи инструмента, не приложения: колёсико мыши (`CGEventPost`) окно не прокручивает (прокрутка проверена клавишей PageUp), AX-обход ленты в 344 записи занимает минуты (кнопки диалога стали находиться обходом с конца DOM, но «Настройки» остались недоступны). Обнаружено: один AX-запрос по описанию `button` нажал неопознанную кнопку в боковом списке родного диалога выбора файла (облачко рядом с «Рабочим столом», видимых изменений нет).
-- Не снято в настоящем окне: шаг «ход импорта» с полосой прогресса (импорт слишком быстрый, остаётся история Storybook), диалог импорта и «Настройки» при крупном тексте (истории Storybook, `en`/`large`), сворачивание сайдбара со значком поиска.
+**Checks in the real window** (release `.app` build with identifier `me.savvinov.kinige.accept`, data — `seed_demo` and a synthetic export in `scratchpad/accept6`; the real database and the `~/Documents/Kinige` folder were not opened; English UI language; screenshots — `docs/screens/4/`, the window is captured with `scripts/screenshot-window.sh`). The build was made from `a623662`, i.e. already with the guardian fixes. Input — AX presses and keys only when idle ≥ 60 s, with the screen unlocked and Kinige in front.
+- Profile item → “Import from Telegram…” → the native file picker (`02`, `03-import-choose`; the screenshot of the dialog itself, `03-file-picker`, was removed before publishing: it showed the user's Finder sidebar) → chats with checkboxes, "groups skipped: 1", the line about two devices (`04`) → report: imported 400, service 8, attachments 14, 1 chat created, backup `pre-import-…Z.db` (`05`); after “Done” the Inbox feed with entries from 2019–2026, day labels, the placeholder “[Photo not imported]”, a forward and a bold author (`06`, `12`); the sidebar with the chat «Пётр Тестов» 💬 (60).
+- Re-import: "340 entries · 340 already here" (`07`), report "Imported: 0, skipped 340, service 8", no new backup (`08`).
+- Search (⌘F, typing «книги»): finds «книгу», «книги», «Книги», «#книги», forms highlighted; on top the “Chats” row with the found chat; ↑↓ move the selection (`09`, `10`); Enter opens the entry in place in the feed, the entry highlighted, the word marked (`11`); empty result “Nothing found” (`17`), Esc returns the feed (`18`).
+- Feed: PageUp to the very top (the first entry 8 March 2019, `12`) and PageDown back to “Today” (`13`) without stops or lost entries (six messages of one second came in file order; no separate screenshot).
+- Large text (the value `text_size = large` written directly to `app_setting` of the temporary database, because opening “Settings” via AX with a feed of 344 entries is too slow): the feed (`15`) and search results (`16`, `17`).
+- `kill -9` of the app after the import and a restart (`14`): 410 entries, 400 `message_ext` rows, 410 in `search_map`, `integrity_check = ok`. Interruption in the middle of an import in the live app was not captured: 400 entries are written in ~50 ms, a single batch; an interruption mid-import is covered by the `import_abort.rs` tests (the process is killed between and inside batches).
+- Folder listings after the import: `backups-after-import.txt` (`daily-…`, `pre-import-…`), `mirror-after-import.txt` (chat folders, including «Пётр Тестов»).
+- Failures of the tooling, not the app: the mouse wheel (`CGEventPost`) does not scroll the window (scrolling was verified with PageUp); an AX walk over a feed of 344 entries takes minutes (dialog buttons were found by walking from the end of the DOM, but “Settings” remained unreachable). Found: one AX query by the description `button` pressed an unidentified button in the sidebar of the native file picker (a cloud next to "Desktop"; no visible changes).
+- Not captured in the real window: the "import progress" step with the progress bar (the import is too fast; the Storybook story remains), the import dialog and “Settings” with large text (Storybook stories, `en`/`large`), collapsing the sidebar with the search icon.
 
-**Проверки (последний полный прогон):** `cargo fmt --all --check` — чисто; `cargo clippy --workspace --all-targets -- -D warnings` — чисто; `cargo test --workspace` — 500 прошло, 0 упало, 1 пропущен (`latency.rs`, замер вручную); `cargo build -p kinige-domain --target wasm32-unknown-unknown` — собралось; `npm run typecheck`, `npm run lint` — чисто; `npm test` — 63 файла, 1162 теста; `scripts/visual-tests.sh --update` — 321 история (эталоны обновлены после правки описания флажка `ImportDialog`, закоммичены в `6279108`).
+**Checks (last full run):** `cargo fmt --all --check` — clean; `cargo clippy --workspace --all-targets -- -D warnings` — clean; `cargo test --workspace` — 500 passed, 0 failed, 1 ignored (`latency.rs`, a manual measurement); `cargo build -p kinige-domain --target wasm32-unknown-unknown` — built; `npm run typecheck`, `npm run lint` — clean; `npm test` — 63 files, 1162 tests; `scripts/visual-tests.sh --update` — 321 stories (baselines updated after a change to the `ImportDialog` checkbox description, committed in `6279108`).
 
-**Нарушения правил (честно).** Правило 8 («без правок исходников скриптами») нарушено в мелочах: (1) `sed -i.bak` в `spikes/S5-search/src/words.rs` (три флага пар) и (2) `sed -i.bak` в `crates/kinige-store/src/lib.rs` (строка `mod search_query;`); (3) файл `telegram/markdown_tests.rs` разделён на два через `head`/`tail`; (4) `cat >>` — дописывание в конец `web/src/ui/message/markdown.test.ts` и в `src/bench.rs`, `src/main.rs` спайка; (5) новые файлы спайка созданы heredoc-ами `cat > … <<EOF`; (7) в тот же заход случайный пустой вызов `sed -i.NOPE 's/x/x/' /dev/null` (файл исходников не затронут, ничего не изменил); (6) при исправлениях по ревью дописан хвост `crates/kinige-store/src/import/tests.rs` через `cat >>` (второй тест, монотонность HLC). Эти правки не массовые, результат прочитан и проверен тестами. Кроме того, по ошибке была добавлена строка в `.git/info/exclude` основного репозитория и сразу удалена (файл возвращён к исходному содержимому). Python использовался только для чтения и копирования PNG и для генерации данных (синтетический экспорт, анонимизация), не для правок исходников.
+**Rule violations (honestly).** Rule 8 ("no source edits by scripts") was violated in small ways: (1) `sed -i.bak` in `spikes/S5-search/src/words.rs` (three pair flags) and (2) `sed -i.bak` in `crates/kinige-store/src/lib.rs` (the line `mod search_query;`); (3) the file `telegram/markdown_tests.rs` was split in two via `head`/`tail`; (4) `cat >>` — appending to the end of `web/src/ui/message/markdown.test.ts` and to `src/bench.rs`, `src/main.rs` of the spike; (5) new spike files were created with heredocs `cat > … <<EOF`; (7) in the same pass an accidental empty call `sed -i.NOPE 's/x/x/' /dev/null` (no source file was touched, nothing changed); (6) during the review fixes the tail of `crates/kinige-store/src/import/tests.rs` was appended via `cat >>` (the second test, HLC monotonicity). These edits are not bulk, the result was read and verified by tests. In addition, a line was mistakenly added to `.git/info/exclude` of the main repository and removed right away (the file was returned to its original content). Python was used only for reading and copying PNGs and for data generation (synthetic export, anonymization), not for source edits.
 
-**Данные пользователя в приёмочной сборке.** Пользователь по ходу работы сам импортировал свою настоящую историю в первую приёмочную сборку (`scratchpad/accept4/{data,mirror}`); окно и каталоги не снимались и не читались, процесс закрыт по решению пользователя, каталоги удаляет он после приёмки. Скриншоты сняты на отдельных свежих каталогах (`accept5` и `accept6`); снимки `00` и `01` сняты на демо-данных `accept4` до импорта пользователя, остальные — на `accept6`.
+**User data in the acceptance build.** During the work the user themselves imported their real history into the first acceptance build (`scratchpad/accept4/{data,mirror}`); the window and directories were neither captured nor read, the process was closed at the user's decision, and the user deletes the directories after acceptance. Screenshots were taken on separate fresh directories (`accept5` and `accept6`); screenshots `00` and `01` were taken on the `accept4` demo data before the user's import, the rest on `accept6`.
 
-**Фикстура настоящего экспорта.** `crates/kinige-domain/src/telegram/fixtures/real-saved.json` добавлена (50 из 1682 сообщений, покрыты все 161 разновидностей сущностей и форм; строки вымышленные; числа ≥ 3 знаков — `file_size`, `photo_file_size`, `thumbnail_file_size`, `width`, `height`, `duration_seconds`, `gift_id`, `stars` и прочие — заменены случайными той же разрядности, пересечений с числами оригинала нет; одно- и двузначные числа оставлены). Тест `tests_real.rs` теперь не пропускается молча, а требует файл. Генератор лежит вне репозитория. **KINIG-45 (01.11.2026):** фикстура заменена полностью синтетической, написанной с нуля (те же 50 сообщений, те же 23 набора полей, те же виды сущностей, MIME и `media_type`; имена, тексты, id, даты, размеры, габариты выдуманы, пересечений длинных строк и чисел ≥ 3 знаков со старым файлом нет); проверки теста те же.
+**Real export fixture.** `crates/kinige-domain/src/telegram/fixtures/real-saved.json` was added (50 of 1682 messages, covering all 161 varieties of entities and forms; strings are fictional; numbers of ≥ 3 digits — `file_size`, `photo_file_size`, `thumbnail_file_size`, `width`, `height`, `duration_seconds`, `gift_id`, `stars` and others — replaced with random ones of the same number of digits, no overlap with the original numbers; one- and two-digit numbers were left). The `tests_real.rs` test now does not skip silently but requires the file. The generator lives outside the repository. **KINIG-45 (01.11.2026):** the fixture was replaced with a fully synthetic one written from scratch (the same 50 messages, the same 23 field sets, the same entity kinds, MIME types and `media_type`; names, texts, ids, dates, sizes, dimensions made up; no overlap of long strings or numbers of ≥ 3 digits with the old file); the test checks are the same.
 
-**Не проверено / сомнения.** Прерывание посреди импорта в живом приложении (см. выше). Вызов «Настроек» и диалога импорта при крупном тексте в настоящем окне. Плавность подгрузки в `column-reverse` по пикселям (проверено только, что верх и низ ленты достижимы и записи не теряются; скачок позиции при подгрузке глазами не оценивался). Личные чаты проверены только на синтетическом экспорте: настоящий экспорт личного чата не видели. Сборка `.app` для скриншотов — от `a623662`; после неё менялась только эта спецификация.
+**Not verified / doubts.** Interruption in the middle of an import in the live app (see above). Opening “Settings” and the import dialog with large text in the real window. Pixel-level smoothness of loading in `column-reverse` (only verified that the top and bottom of the feed are reachable and entries are not lost; a position jump on loading was not judged by eye). Personal chats were verified only on a synthetic export: a real personal chat export has not been seen. The `.app` build for the screenshots is from `a623662`; after it only this spec changed.
 
-## Приёмка (28.10.2026)
-Пользователь импортировал свой настоящий экспорт «Избранного» в приёмочную сборку `accept4` (отдельная база в scratchpad, удаляется после приёмки), затем проверил сборку `accept7` со всеми правками на демо-данных: «все хорошо». Мерж — по слову пользователя «мерж» при красном CI: задания rust и web падали на сети раннера (`sh.rustup.rs` недоступен с ubuntu-server, `github.com` — «no route to host»), код до тестов не дошёл. На предыдущих прогонах rust (`515ad00`), web (`515ad00`, `ba49cea`) и visual (`ba49cea`, `ffba4cd`) были зелёными. Локально всё зелёное: 517 тестов Rust, 1174 теста web, fmt, clippy, wasm. Время: старт 12:50, первая готовность к приёмке 14:35, приёмка ~17:40.
+## Acceptance (28.10.2026)
+The user imported their real Saved Messages export into the acceptance build `accept4` (a separate database in scratchpad, deleted after acceptance), then checked the `accept7` build with all fixes on demo data: "all good". Merge — on the user's word "merge" with red CI: the rust and web jobs failed on the runner's network (`sh.rustup.rs` unreachable from ubuntu-server, `github.com` — "no route to host"), the code never reached the tests. On the previous runs rust (`515ad00`), web (`515ad00`, `ba49cea`) and visual (`ba49cea`, `ffba4cd`) were green. Locally everything is green: 517 Rust tests, 1174 web tests, fmt, clippy, wasm. Time: start 12:50, first ready-for-acceptance 14:35, acceptance ~17:40.
 
-## Открытые вопросы
-Продуктовые вопросы решены 28.10.2026. Не проверены полный экспорт и тип `personal_chat` («Нужно от пользователя»): до второго экспорта личные чаты разбираются по синтетической фикстуре. Остальное решено в разделе «Технические решения».
+## Open questions
+Product questions were resolved on 28.10.2026. The full export and the `personal_chat` type are not verified ("Needed from the user"): until a second export, personal chats are parsed against the synthetic fixture. Everything else is resolved in "Technical decisions".

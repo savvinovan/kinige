@@ -1,85 +1,85 @@
-# ADR-0004: Основа дизайн-системы (D1)
+# ADR-0004: Design system foundation (D1)
 
-Дата: 2026-10-20. Статус: **принято** 20.10.2026. ТЗ v0.7 (§2, §5, §6, §11.2, §15) приведено в соответствие.
+Date: 2026-10-20. Status: **accepted** on 20.10.2026. PRD v0.7 (§2, §5, §6, §11.2, §15) was brought in line.
 
-## Контекст
-Слайс D1 (`docs/slices/D1-design-foundation.md`): токены тёмной темы, шрифты, компоненты слайса 1 и выбор варианта ленты по концептам Codex. Первый круг концептов (`design/concepts/feed/`, три варианта в «тёплой тёмной бумаге» по §11.2 v0.6) пользователь посмотрел и отверг направление: коричневый «как старая мебель», шрифты слишком крупные, название чата и даты дублируются.
+## Context
+Slice D1 (`docs/slices/D1-design-foundation.md`): dark theme tokens, fonts, slice 1 components, and choosing a feed variant from the Codex concepts. The user looked at the first round of concepts (`design/concepts/feed/`, three variants in "warm dark paper" per §11.2 v0.6) and rejected the direction: brown "like old furniture", fonts too large, the chat name and the dates duplicated.
 
-## Решения
+## Decisions
 
-**Палитра — нейтральный графит с голубым акцентом** (решение 20.10.2026 по тёмным темам ChatGPT и Claude, которые пользователю нравятся). Поверхности — серые без цветового оттенка; акцент nord8 `#88c0d0` и ошибка `#d89fa4` остаются; цели контраста — те же (ниже). Сине-графитовый Nord, описанный ниже, был промежуточным шагом: он заменён графитом после живого окна.
+**Palette — neutral graphite with a light-blue accent** (decision of 20.10.2026, based on the dark themes of ChatGPT and Claude, which the user likes). Surfaces are gray without a color tint; the nord8 accent `#88c0d0` and the error `#d89fa4` stay; the contrast targets are the same (below). The blue-graphite Nord described below was an intermediate step: it was replaced by graphite after the live window.
 
-*История:* **Палитра — Nord** (файл `nord.json` заменён `design/tokens/palettes/graphite.json`; источники и подгонки — `design/tokens/palettes/README.md`).
-- Принцип «тёплая тёмная бумага» (§11.2 и §2.1 v0.6) отменён. От официального Nord остались оттенок, акцент (nord8) и ошибка (подогнанный nord11, `#d89fa4`); поверхности и текст подогнаны (ниже, «Пересмотр»), подробности — в `palettes/README.md`.
-- Запасные варианты, если Nord не подойдёт в живом окне: тёмно-синий как в Telegram или нейтральный графит. Сейчас таких палитр нет; делаются только по запросу.
-- **Пересмотр по живому окну (20.10.2026): темнее и контрастнее.** Пользователю показалось, что фон слишком светлый, а текст серый. По цифрам основной текст на плашке был 8,7:1, но плашка `#3b4252` светлая. Решение:
-  - фон и плашки заметно темнее, оттенок Nord сохраняется, официальные значения Nord для поверхностей больше не совпадают;
-  - текст почти белый: основной текст на плашке ≥ 12:1, время и ошибка на плашке ≥ 5:1 (раньше запас был в сотых);
-  - точные значения подбираются в токенах, отступления помечаются в `palettes/README.md`.
+*History:* **Palette — Nord** (the file `nord.json` was replaced by `design/tokens/palettes/graphite.json`; sources and adjustments — `design/tokens/palettes/README.md`).
+- The "warm dark paper" principle (§11.2 and §2.1 v0.6) is canceled. From the official Nord, what remained is the tint, the accent (nord8) and the error (an adjusted nord11, `#d89fa4`); the surfaces and text are adjusted (below, "Revision"), details are in `palettes/README.md`.
+- Fallbacks if Nord does not work in the live window: dark blue as in Telegram, or neutral graphite. There are no such palettes right now; they are made only on request.
+- **Revision based on the live window (20.10.2026): darker and more contrast.** The user felt that the background was too light and the text gray. By the numbers, the body text on a bubble was 8.7:1, but the bubble `#3b4252` is light. Decision:
+  - the background and bubbles are noticeably darker, the Nord tint is kept, and the official Nord values for surfaces no longer match;
+  - the text is almost white: body text on a bubble ≥ 12:1, time and error on a bubble ≥ 5:1 (previously the margin was in hundredths);
+  - exact values are tuned in the tokens, and deviations are noted in `palettes/README.md`.
 
-**Шрифты — Inter** (текст записей и интерфейс) + **JetBrains Mono** (код), woff2 с OFL в `web/src/ui/fonts/`.
-- Literata (выбрана раньше для журнальной вёрстки 17 px) отменена по живому окну: на 14 px засечки шумят, читать труднее. Ориентир — Telegram, Notion, Zed, все с гротеском.
-- Файлы Literata удаляются.
+**Fonts — Inter** (entry text and the UI) + **JetBrains Mono** (code), woff2 under the OFL in `web/src/ui/fonts/`.
+- Literata (chosen earlier for a 17 px editorial layout) is canceled based on the live window: at 14 px the serifs are noisy and reading is harder. The reference is Telegram, Notion, Zed — all sans-serif.
+- The Literata files are deleted.
 
-**Плотность как в Telegram.** «Компактно» — по умолчанию (§6).
-- Основной текст 13 px (ниже, «Размер текста») вместо утверждённых ранее 17 px / 1,65. Межстрочный пересчитывается под новый размер; точные значения — в токенах `type.json` при реализации, утверждаются по снимку.
-- Время и метки дней — маленькие (~12 px).
-- Остаются в силе: множитель крупного текста ×1,25 и порог заметности разделителя 1,2:1.
+**Density as in Telegram.** "Compact" is the default (§6).
+- Body text is 13 px (below, "Text size") instead of the previously approved 17 px / 1.65. Line height is recalculated for the new size; exact values go into the `type.json` tokens during implementation and are approved from a screenshot.
+- Time and day labels are small (~12 px).
+- Still in force: the large-text multiplier ×1.25 and the separator visibility threshold of 1.2:1.
 
-**Без дублей** (§6):
-- над лентой нет ни заголовка, ни строки с названием чата: выбранный чат выделен в сайдбаре. Строка вернётся, только если в ней появится что-то полезное (например, меню действий чата);
-- у дня одна метка («Сегодня», «Вчера», «14 марта», «14 марта 2025»), без второй строки с той же датой.
+**No duplicates** (§6):
+- above the feed there is neither a heading nor a line with the chat name: the selected chat is highlighted in the sidebar. The line will come back only if something useful appears in it (for example, a chat actions menu);
+- a day has one label ("Today", "Yesterday", "March 14", "March 14, 2025"), without a second line with the same date.
 
-**Поле ввода с кнопками** «файл», «эмодзи», «микрофон», как в Telegram (§5). В D1 кнопки только нарисованы. В приложении каждая появляется в слайсе, где работает её функция:
-- эмодзи-пикер — слайс 3;
-- вложения — слайс 7;
-- голосовые с записью — новый слайс 7a, сразу после вложений: из P2 в MVP.
-- Поле — тёмная заливка без обводки (по живому окну: обводка с кольцом фокуса выглядела двойной голубой линией). В фокусе — одна тонкая линия внутри поля цветом фокуса: одной смены заливки (1,15:1) и мигающего курсора мало для видимости фокуса (WCAG 2.4.7, ревью D1). Так же у поиска.
-- Стикеры (свои картинки, импорт из Telegram) и GIF — P1; GIF из P2 переведён в P1. Внешний поиск GIF раскрывает запросы третьей стороне и включается только явной настройкой (§2.3).
+**Input field with buttons** "file", "emoji", "microphone", as in Telegram (§5). In D1 the buttons are only drawn. In the app, each one appears in the slice where its function works:
+- emoji picker — slice 3;
+- attachments — slice 7;
+- voice notes with recording — a new slice 7a, right after attachments: moved from P2 to the MVP.
+- The field is a dark fill without an outline (based on the live window: an outline with a focus ring looked like a double light-blue line). In focus — one thin line inside the field in the focus color: a fill change alone (1.15:1) and a blinking cursor are not enough for focus visibility (WCAG 2.4.7, D1 review). The same for search.
+- Stickers (custom images, import from Telegram) and GIFs — P1; GIFs moved from P2 to P1. External GIF search reveals queries to a third party and is turned on only by an explicit setting (§2.3).
 
-**Эмодзи чата.**
-- У каждого чата свой эмодзи; пользователь выбирает его в слайсе 3. Хранится в `chats.icon`, схема не меняется.
-- Сайдбар по умолчанию — эмодзи + имя; сворачивается до полосы эмодзи, имя видно при наведении.
-- Эмодзи как декор интерфейса по-прежнему не используются; значки — линейные иконки.
-- **Счётчик записей** справа в строке чата, по идее пользователя (как счётчик непрочитанных в Telegram, но прочитанных):
-  - считаются все записи чата, кроме корзины;
-  - цвет тихий серый, не акцент: это не «непрочитанное, разберись» (§1.2 п. 7);
-  - от 10 000 сокращается: «12 тыс.»;
-  - в D1 только вид на демо-данных, настоящие числа появляются в слайсах 1 (Inbox) и 3 (чаты).
+**Chat emoji.**
+- Each chat has its own emoji; the user chooses it in slice 3. Stored in `chats.icon`; the schema does not change.
+- The sidebar by default is emoji + name; it collapses to a strip of emoji, and the name is visible on hover.
+- Emoji as UI decoration are still not used; icons are line icons.
+- **Entry counter** on the right of a chat row, the user's idea (like Telegram's unread counter, but for read ones):
+  - all of the chat's entries are counted, except the trash;
+  - the color is a quiet gray, not the accent: it does not mean "unread, deal with it" (§1.2 item 7);
+  - from 10,000 it is abbreviated: «12 тыс.» ("12K");
+  - in D1 it is only the look on demo data; real numbers appear in slices 1 (Inbox) and 3 (chats).
 
-**Строка профиля** внизу сайдбара, как в Notion: аватар с инициалами + имя (по умолчанию «Я») ▾, меню «Настройки», «Экспорт», «О программе». В D1 — только вид; настройки — слайс 1 (папка Markdown-копии, размер текста), «Аккаунт и синхронизация» и точка статуса у аватара — слайс 11.
+**Profile row** at the bottom of the sidebar, as in Notion: an avatar with initials + a name (by default "Me") ▾, a menu "Settings", "Export", "About". In D1 it is only the look; settings — slice 1 (Markdown copy folder, text size), "Account and sync" and the status dot on the avatar — slice 11.
 
-**Лента — колонка по центру**, ~720 px, плашка не шире ~65 знаков (было ~80), поле ввода по ширине колонки; в узком окне — на всю ширину. Так держит колонку сообщений Telegram в широком окне; удобная длина строки — 45–75 знаков.
+**The feed is a centered column**, ~720 px, a bubble no wider than ~65 characters (was ~80), the input field the width of the column; in a narrow window — full width. This is how Telegram holds its message column in a wide window; a comfortable line length is 45–75 characters.
 
-**Из ChatGPT и Claude** (выбор пользователя 20.10.2026):
-- когда в поле есть текст, «микрофон» сменяется круглой акцентной кнопкой «Отправить» со стрелкой; Enter по-прежнему отправляет;
-- действия по наведению или фокусу: копировать, редактировать, задача, избранное, «ещё»; в D1 работает только «Копировать», остальное со слайса 3. Ряд стоит **справа от плашки** на уровне её нижней строки, в узком окне — чуть выше плашки у её правого края (на верхней границе, как в Slack): текст плашки не накрывается, а мышь обычно и так у верхней части сообщения. Вариант «под плашкой» накрывал текст следующего сообщения, а запас места под каждым съедал бы плотность;
-- разделы в сайдбаре с мелкими серыми заголовками («Закреплённые», «Чаты», «Архив») — слайс 3, вместе с закреплением и архивом;
-- поле ввода «таблеткой», парящее над низом окна, не взято.
+**From ChatGPT and Claude** (the user's choice, 20.10.2026):
+- when the field has text, the "microphone" is replaced by a round accent "Send" button with an arrow; Enter still sends;
+- actions on hover or focus: copy, edit, task, favorite, "more"; in D1 only "Copy" works, the rest from slice 3. The row sits **to the right of the bubble** at the level of its bottom line, and in a narrow window slightly above the bubble at its right edge (on the top border, as in Slack): the bubble's text is not covered, and the mouse is usually near the top of the message anyway. The "below the bubble" option covered the text of the next message, and reserving space below each one would eat into the density;
+- sidebar sections with small gray headings ("Pinned", "Chats", "Archive") — slice 3, together with pinning and archiving;
+- a "pill" input field floating above the bottom of the window was not taken.
 
-**Вкладок нет.** Открыт один чат; запись сохраняется сразу, черновик — у каждого чата, переключение — щелчком в сайдбаре.
+**There are no tabs.** One chat is open; an entry is saved immediately, each chat has a draft, and switching is a click in the sidebar.
 
-**Сообщения — плашки, время у каждого** (по второму кругу концептов, 20.10.2026):
-- В сплошном потоке без разделения непонятно, что записи написаны в разное время и в разном контексте. Поэтому каждое сообщение — плашка с лёгкой заливкой и скруглением, без хвоста и аватара, все прижаты влево. Принцип «никаких пузырьков» (§1.2 п. 2) смягчён до «без хвостов, аватаров и деления на своё / чужое».
-- Время мелко сразу после текста, на последней строке, внутри плашки, как в Telegram. Не у правого края: текст первичен.
-- Слияние сообщений с паузой < 5 мин в «страницу» отменено. Такие сообщения стоят ближе друг к другу, но у каждого своё время.
-- Метка дня — маленькая «таблетка» по центру.
+**Messages are bubbles, each with its time** (from the second round of concepts, 20.10.2026):
+- In a continuous stream without separation, it is unclear that the entries were written at different times and in different contexts. So each message is a bubble with a light fill and rounded corners, without a tail or an avatar, all aligned left. The "no bubbles" principle (§1.2 item 2) is softened to "no tails, no avatars, and no split into mine / theirs".
+- The time is small, right after the text, on the last line, inside the bubble, as in Telegram. Not at the right edge: the text comes first.
+- Merging messages with a pause < 5 min into a "page" is canceled. Such messages stand closer to each other, but each has its own time.
+- The day label is a small "pill" in the center.
 
-**Вариант ленты — компактный Conversational** (`design/concepts/feed-v2/conversational-compact-2.png`), утверждён пользователем 20.10.2026.
-- Во второй круг вошли компактный Editorial и компактный Conversational; Immersive пользователь не взял.
-- По первому Conversational: таблетка дня понравилась, время у правого края и сплошной поток — нет; отсюда решения о плашках выше.
-- Концепт — референс раскладки, не размеров. Генератор не держит размеры, а картинка 1586 px изображает окно 1280 px, поэтому в Preview всё выглядит крупнее.
+**Feed variant — compact Conversational** (`design/concepts/feed-v2/conversational-compact-2.png`), approved by the user on 20.10.2026.
+- The second round included compact Editorial and compact Conversational; the user did not take Immersive.
+- About the first Conversational: the day pill was liked, the time at the right edge and the continuous stream were not; hence the bubble decisions above.
+- The concept is a reference for the layout, not the sizes. The generator does not hold sizes, and the 1586 px image depicts a 1280 px window, so in Preview everything looks larger.
 
-**Размер текста — 13 px** (выбор пользователя 20.10.2026 на живом экране в Storybook из 13 / 14 / 15; на втором месте 14). Корень 1rem = 13 px, вся плотность (интерфейс, время, отступы, значки) пропорциональна ему — ровно как в кандидате «13» в Storybook. Кандидаты 14 и 15 удалены; «Крупный текст» ×1,25 остаётся.
+**Text size — 13 px** (the user's choice on 20.10.2026 on a live screen in Storybook out of 13 / 14 / 15; 14 came second). The root 1rem = 13 px, and all density (UI, time, spacing, icons) is proportional to it — exactly as in the "13" candidate in Storybook. Candidates 14 and 15 are removed; "Large text" ×1.25 stays.
 
-**Действия по наведению не гаснут по пути к ним:** зона наведения — вся строка ленты по высоте плашки, а не только плашка, плюс короткая задержка скрытия; иначе ряд исчезал, пока мышь шла от плашки к значкам (замечание пользователя).
+**Hover actions do not fade on the way to them:** the hover zone is the whole feed row at the height of the bubble, not only the bubble, plus a short hide delay; otherwise the row disappeared while the mouse moved from the bubble to the icons (the user's remark).
 
-## Последствия
-- В `active.json` ставится `nord`. Палитры umber, moss, dusk, catppuccin-* удаляются вместе с тестами и историями, которые их перечисляют.
-- Пересчитывается `type.json`; визуальные эталоны снимаются заново.
-- Дальше D1 доделывает:
-  - сообщение, метку дня, время;
-  - composer с кнопками;
-  - тост;
-  - главное окно с сайдбаром «эмодзи + имя».
-- Первый круг концептов остаётся в `design/concepts/feed/` как история отказа от тёплой палитры.
+## Consequences
+- `active.json` is set to `nord`. The palettes umber, moss, dusk, catppuccin-* are deleted together with the tests and stories that list them.
+- `type.json` is recalculated; the visual baselines are taken again.
+- Next, D1 finishes:
+  - the message, the day label, the time;
+  - the composer with buttons;
+  - the toast;
+  - the main window with the "emoji + name" sidebar.
+- The first round of concepts stays in `design/concepts/feed/` as the history of abandoning the warm palette.

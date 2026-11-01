@@ -1,25 +1,25 @@
-# ADR-0008: Поиск по-русски — Snowball, FTS5 без хранения текста, префикс по основе
+# ADR-0008: Search in Russian — Snowball, FTS5 without stored text, prefix on the stem
 
-Дата: 2026-10-28. Статус: **принято** (слайс 4, spike S5). ТЗ §9.1, §16 (S5); ADR-0001 §C; цифры и методика — `spikes/S5-search/README.md`.
+Date: 2026-10-28. Status: **accepted** (slice 4, spike S5). PRD §9.1, §16 (S5); ADR-0001 §C; numbers and methodology — `spikes/S5-search/README.md`.
 
-## Контекст
-Поиск должен находить «книги», «книгу», «книгой» по запросу «книга», находить «молоко» по «моло» и укладываться в 300 мс на 100 000 записей. Индекс — производная таблица на устройстве, не синхронизируется.
+## Context
+Search must find «книги», «книгу», «книгой» (forms of "book") for the query «книга» ("book"), find «молоко» ("milk") for «моло», and fit into 300 ms on 100,000 entries. The index is a derived table on the device and is not synchronized.
 
-## Решение
-- **Стеммер: `rust-stemmers` 1.2.0** (Snowball, русский и английский; MIT/BSD-3-Clause; релиз 2019, не развивается, но алгоритм стабилен; тянет `serde`, `serde_derive`; собирается под `wasm32-unknown-unknown`).
-- **Нормализация (Rust, `kinige_domain::search`):** слово — серия `char::is_alphanumeric`; нижний регистр; «ё» → «е»; слово с кириллицей идёт в русский стеммер, из ASCII-букв — в английский, с цифрами и прочее — как есть. «ё» нормализует Rust, потому что `unicode61` её не склеивает с «е».
-- **Раскладка FTS5 (вариант v1):** `fts5(t, content='', contentless_delete=1, tokenize='unicode61 remove_diacritics 0')` — текст не хранится — и таблица `rowid → message_id` (`message_id` уникален). Опираться на `rowid` записи нельзя (после `VACUUM` он меняется), поэтому соответствие своё. `remove_diacritics 0` записан явно, чтобы «йод» и «иод» не слились. Нужна SQLite ≥ 3.43; в бандле 3.53.2.
-- **В индексе только основы**, без исходных слов: 0,53 × объёма текста против 0,70 со словами; разница в полноте префикса 1 % (обрыв посреди неузнанного окончания, исправляется следующей буквой).
-- **Запрос:** термы в кавычках, соединены «И». Последний терм, если ввод не кончается пробелом и его основа не короче двух знаков, — префикс `"основа"*` (не `слово*`: основа «длинного» — `длин`, и в ней нет «нн»). Иначе терм точный. Ничего из FTS5-синтаксиса ввода в запрос не попадает.
-- **Порядок и выборка:** форма A — от FTS к `message` с сортировкой найденных по `(journal_date, created_at, id)` по убыванию; индекса по датам не добавляем.
-- **Версия:** `SEARCH_INDEX_VERSION = 1` в `kinige_domain::search`; хранится в `app_setting.search_index_version`. Смена стеммера, правил слов или `tokenize` требует нового числа: индекс перестраивается при старте.
-- **Триграммы и свой токенизатор не нужны.**
+## Decision
+- **Stemmer: `rust-stemmers` 1.2.0** (Snowball, Russian and English; MIT/BSD-3-Clause; released in 2019, not developed further, but the algorithm is stable; pulls in `serde`, `serde_derive`; builds for `wasm32-unknown-unknown`).
+- **Normalization (Rust, `kinige_domain::search`):** a word is a run of `char::is_alphanumeric`; lowercase; «ё» → «е»; a word with Cyrillic goes to the Russian stemmer, one of ASCII letters to the English stemmer, words with digits and everything else as is. Rust normalizes «ё» because `unicode61` does not fold it into «е».
+- **FTS5 layout (variant v1):** `fts5(t, content='', contentless_delete=1, tokenize='unicode61 remove_diacritics 0')` — the text is not stored — and a `rowid → message_id` table (`message_id` is unique). One cannot rely on the entry's `rowid` (it changes after `VACUUM`), so the mapping is our own. `remove_diacritics 0` is written explicitly so that «йод» and «иод» (two spellings of "iodine") do not merge. SQLite ≥ 3.43 is needed; the bundle has 3.53.2.
+- **The index holds only stems**, without the original words: 0.53 × the text volume versus 0.70 with the words; the difference in prefix recall is 1% (a cut in the middle of an unrecognized ending, fixed by the next letter).
+- **Query:** the terms in quotes, joined with AND. The last term, if the input does not end with a space and its stem is at least two characters long, is a prefix `"stem"*` (not `word*`: the stem of «длинного» ("long", genitive) is `длин`, and it has no «нн»). Otherwise the term is exact. Nothing of the FTS5 syntax from the input gets into the query.
+- **Order and selection:** form A — from FTS to `message`, sorting the found entries by `(journal_date, created_at, id)` descending; we do not add an index on dates.
+- **Version:** `SEARCH_INDEX_VERSION = 1` in `kinige_domain::search`; stored in `app_setting.search_index_version`. Changing the stemmer, the word rules or `tokenize` requires a new number: the index is rebuilt at startup.
+- **Trigrams and a custom tokenizer are not needed.**
 
-## Замеры (100 000 записей, 48,9 МБ текста, M3 Pro, SQLite 3.53.2)
-Индекс 25,7 МБ (0,53 ×); вставка 13 мкс пачкой, 244 мкс одной записью в своей транзакции; удаление 87 мкс; p95 запроса — не больше 70 мс (слово в 30 % записей, два слова, префикс); `index_text` — 12,9 мкс на запись. Отвергнуто: external content (1,52 ×, дублирует текст основ), обычная таблица с `UNINDEXED` (удаление по `message_id` — полный просмотр, 22 мс на запись), триграммы (1,98 ×, не находят словоформы, 1–2 знака не ищут).
+## Measurements (100,000 entries, 48.9 MB of text, M3 Pro, SQLite 3.53.2)
+Index 25.7 MB (0.53 ×); insertion 13 µs in a batch, 244 µs for one entry in its own transaction; deletion 87 µs; query p95 — no more than 70 ms (a word in 30% of entries, two words, a prefix); `index_text` — 12.9 µs per entry. Rejected: external content (1.52 ×, duplicates the stem text), an ordinary table with `UNINDEXED` (deletion by `message_id` is a full scan, 22 ms per entry), trigrams (1.98 ×, do not find word forms, do not search 1–2 characters).
 
-## Последствия
-- Стеммер не связывает: бежал/бегу, человек/люди, день/дня (беглая гласная), идти/шёл, нерегулярные английские. Принимается; для этого нужен словарный морфологический анализатор, вне слайса.
-- Contentless-таблица не умеет `snippet()` и `highlight()` и не перестраивается командой `rebuild`: фрагмент и подсветку делает Rust по `body_md`, перестроение — удалить таблицы и пересчитать из `message.body_md`.
-- Колонки `message.body_search` из черновика ТЗ §4.2 нет (спецификация слайса 4, решение 9).
-- Замеры сделаны на сгенерированном корпусе; на настоящем тексте цифры иные. Замер на 100 000 записях приложения — в PR.
+## Consequences
+- The stemmer does not connect: бежал/бегу ("ran"/"run"), человек/люди ("person"/"people"), день/дня ("day", with a fleeting vowel), идти/шёл ("go"/"went"), irregular English forms. This is accepted; it needs a dictionary-based morphological analyzer, outside the slice.
+- A contentless table cannot do `snippet()` and `highlight()` and cannot be rebuilt with the `rebuild` command: Rust makes the snippet and the highlighting from `body_md`, and rebuilding means deleting the tables and recomputing from `message.body_md`.
+- There is no `message.body_search` column from the PRD §4.2 draft (slice 4 spec, decision 9).
+- The measurements were made on a generated corpus; on real text the numbers differ. The measurement on 100,000 entries of the app is in the PR.
