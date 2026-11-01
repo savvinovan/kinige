@@ -5,14 +5,14 @@ import "./sidebar-stories.css";
 
 const INBOX: SidebarChat = { id: "inbox", name: "", isInbox: true, emoji: "📥", count: 42 };
 const CHATS: SidebarChat[] = [
-  { id: "diary", name: "Дневник", emoji: "📔", count: 318, pinned: true },
-  { id: "ideas", name: "Идеи", emoji: "💡", count: 87, pinned: true },
+  { id: "diary", name: "Дневник", emoji: "📔", count: 318, pinned: true, tint: "amber" },
+  { id: "ideas", name: "Идеи", emoji: "💡", count: 87, pinned: true, tint: "violet" },
   INBOX,
-  { id: "work", name: "Работа", emoji: "💼", count: 1234 },
-  { id: "books", name: "Книги", emoji: "📚", count: 9 },
-  { id: "recipes", name: "Рецепты", emoji: "🍳", count: 12345 },
+  { id: "work", name: "Работа", emoji: "💼", count: 1234, tint: "blue" },
+  { id: "books", name: "Книги", emoji: "📚", count: 9, tint: "green" },
+  { id: "recipes", name: "Рецепты", emoji: "🍳", count: 12345, tint: "red" },
   { id: "reading", name: "Reading list", emoji: "📖" },
-  { id: "trip", name: "Отпуск 2025", emoji: "🏖️", count: 61, archived: true },
+  { id: "trip", name: "Отпуск 2025", emoji: "🏖️", count: 61, archived: true, tint: "teal" },
   { id: "old", name: "Старый проект", emoji: "🗄️", count: 4, archived: true },
 ];
 
@@ -133,6 +133,23 @@ export const ДлинныеИмена: Story = {
       { id: "d", name: "Архив поездок: Лиссабон, Порту, Мадейра and the Azores", emoji: "🧳", count: 9999, archived: true },
     ],
     selectedId: "a",
+  },
+};
+
+/** Плитки всех цветов чата и нейтральная (чат без цвета): выбран чат с цветной плиткой, остальные на фоне и рядом с выбранным. */
+export const ЦветаПлиток: Story = {
+  args: {
+    chats: [
+      { id: "n", name: "Без цвета", emoji: "💬", count: 3 },
+      { id: "b", name: "Синий", emoji: "🌊", count: 4, tint: "blue" },
+      { id: "t", name: "Бирюзовый", emoji: "🧊", count: 5, tint: "teal" },
+      { id: "g", name: "Зелёный", emoji: "🌿", count: 6, tint: "green" },
+      { id: "a", name: "Янтарный", emoji: "🍯", count: 7, tint: "amber" },
+      { id: "r", name: "Красный", emoji: "🍎", count: 8, tint: "red" },
+      { id: "v", name: "Фиолетовый", emoji: "🔮", count: 9, tint: "violet" },
+    ],
+    selectedId: "g",
+    trashCount: 0,
   },
 };
 

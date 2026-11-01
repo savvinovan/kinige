@@ -1,7 +1,7 @@
 /* Composer: поле ввода с кнопками. Только токены. */
 .composer {
   box-sizing: border-box;
-  padding: var(--space-2) var(--layout-feed-padding-inline) var(--layout-feed-padding-block);
+  padding: var(--space-3) var(--layout-feed-padding-inline) var(--layout-feed-padding-block);
   background: var(--color-surface-paper);
 }
 
@@ -32,7 +32,7 @@
   gap: var(--space-1);
   box-sizing: border-box;
   min-height: var(--layout-composer-min-height);
-  padding: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   /* Рамки у поля нет, только тёмная заливка (как в Telegram); прозрачная рамка нужна, чтобы ошибка не сдвигала содержимое. */
   border: var(--border-width-hairline) solid transparent;
   border-radius: var(--radius-panel);

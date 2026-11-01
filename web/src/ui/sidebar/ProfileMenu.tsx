@@ -1,12 +1,15 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import "../controls/controls.css";
-import { Icon } from "../icons/Icon";
+import { Icon, type IconName } from "../icons/Icon";
+import { NavSlot } from "./ChatTile";
 import { initials } from "./initials";
 import "./profile.css";
 
 const ITEMS = ["settings", "import", "export", "about"] as const;
 type Item = (typeof ITEMS)[number];
+
+const ITEM_ICON: Record<Item, IconName> = { settings: "settings", import: "download", export: "upload", about: "info" };
 
 interface ProfileMenuProps {
   /** Имя в строке профиля; по умолчанию «Я» / «Me» из переводов. Из него берутся инициалы аватара. */
@@ -137,7 +140,10 @@ export function ProfileMenu({
                   handlers[item]?.();
                 }}
               >
-                {t(`profile.${item}`)}
+                <NavSlot>
+                  <Icon name={ITEM_ICON[item]} />
+                </NavSlot>
+                <span className="profile__item-label">{t(`profile.${item}`)}</span>
               </button>
             ) : (
               <button
@@ -151,7 +157,10 @@ export function ProfileMenu({
                 title={`${t(`profile.${item}`)}. ${t("common.comingLater")}`}
                 onClick={(event) => event.preventDefault()}
               >
-                {t(`profile.${item}`)}
+                <NavSlot>
+                  <Icon name={ITEM_ICON[item]} />
+                </NavSlot>
+                <span className="profile__item-label">{t(`profile.${item}`)}</span>
               </button>
             ),
           )}

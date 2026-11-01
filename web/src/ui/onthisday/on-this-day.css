@@ -2,7 +2,7 @@
 .on-this-day {
   box-sizing: border-box;
   width: 100%;
-  padding: var(--space-2) var(--space-3) var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
   border-radius: var(--radius-message);
   background: var(--color-surface-card);
   color: var(--color-text-primary);
@@ -19,19 +19,19 @@
   gap: var(--space-2);
 }
 
-/* Мелкий вторичный заголовок. */
+/* Тихий заголовок раздела, как заголовки сайдбара. */
 .on-this-day__title {
   margin: 0;
   color: var(--color-text-secondary);
-  font-family: var(--type-meta-family);
-  font-size: var(--type-meta-size);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--type-meta-line-height);
+  font-family: var(--type-section-family);
+  font-size: var(--type-section-size);
+  font-weight: var(--type-section-weight);
+  line-height: var(--type-section-line-height);
 }
 
-/* «1 год назад · 31 октября 2025» — третичным цветом. */
+/* «1 год назад · 31 октября 2025» — третичным цветом, с воздухом сверху. */
 .on-this-day__year-title {
-  margin: var(--space-2) 0 var(--space-1);
+  margin: var(--space-4) 0 var(--space-1);
   color: var(--color-text-tertiary);
   font-family: var(--type-meta-family);
   font-size: var(--type-meta-size);
@@ -41,7 +41,7 @@
 
 .on-this-day__entries {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -60,9 +60,9 @@
   box-sizing: border-box;
   min-width: 0;
   margin: 0;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-3);
   border: 0;
-  border-radius: var(--radius-inline);
+  border-radius: var(--radius-control);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -101,7 +101,7 @@
 
 .on-this-day .on-this-day__more {
   display: block;
-  margin: var(--space-1) var(--space-2) 0;
+  margin: var(--space-2) var(--space-3) 0;
   color: var(--color-text-secondary);
   font-family: var(--type-meta-family);
   font-size: var(--type-meta-size);
@@ -111,12 +111,12 @@
 
 /* Старый год одной строкой: «31 октября 2019 · 5 записей ›». */
 .on-this-day__year-row {
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .on-this-day__link {
   margin: 0;
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-3);
   border: 0;
   background: transparent;
   color: var(--color-text-tertiary);

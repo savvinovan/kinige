@@ -2,6 +2,9 @@ import type { TFunction } from "i18next";
 import type { ChatSummary } from "../../api/generated/ChatSummary";
 import type { MenuItem } from "../menu/ContextMenu";
 
+/** Цвет плитки чата (D2). Совпадает с ролями `tile.*` палитры; чат без цвета — нейтральная плитка. */
+export type ChatTint = "blue" | "teal" | "green" | "amber" | "red" | "violet";
+
 export interface SidebarChat {
   id: string;
   /** Название чата — данные пользователя. У Inbox (`isInbox`) хранимое имя пустое, интерфейс показывает переведённое. */
@@ -10,6 +13,11 @@ export interface SidebarChat {
   isInbox?: boolean;
   /** Эмодзи чата — данные пользователя; рисует системный эмодзи-шрифт. */
   emoji: string;
+  /**
+   * Цвет плитки. Колонка `chat.color` в базе пока всегда пустая и в `ChatSummary` не отдаётся (D2 Rust не меняет),
+   * поэтому `toSidebarChat` его не задаёт и в приложении плитки нейтральные; цветные видны в историях.
+   */
+  tint?: ChatTint;
   /** Сколько записей в чате, кроме корзины. 0 или не задано — счётчик скрыт. */
   count?: number;
   /** Закреплён: строка в разделе «Закреплённые». Если чат ещё и в архиве, архив главнее. */

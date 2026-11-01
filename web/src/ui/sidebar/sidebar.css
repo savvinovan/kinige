@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   flex: none;
-  gap: var(--space-2);
+  gap: var(--space-3);
   box-sizing: border-box;
   width: var(--layout-sidebar-width);
   min-height: 0;
@@ -51,11 +51,13 @@
   appearance: none;
 }
 
+/* Воздух над заголовком раздела: разделы отделяются пустым местом, а не линиями. */
 .sidebar__section + .sidebar__section {
-  margin-top: var(--space-2);
+  margin-top: var(--layout-sidebar-section-gap);
 }
 
-/* Заголовок раздела: мелкий тихий серый, как метка, а не акцент. Высота равна мелкой кнопке «+»: строка не прыгает. */
+/* Заголовок раздела: мелкий тихий серый, как метка, а не акцент. Левый край на одной вертикали с плиткой чата.
+   Высота больше мелкой кнопки «+»: строка не прыгает, когда кнопка есть. */
 .sidebar__heading {
   display: flex;
   align-items: center;
@@ -63,13 +65,13 @@
   gap: var(--space-2);
   box-sizing: border-box;
   min-height: var(--layout-sidebar-heading-height);
-  margin: 0;
-  padding: 0 var(--space-2);
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--layout-sidebar-row-padding);
   color: var(--color-text-tertiary);
-  font-family: var(--type-meta-family);
-  font-size: var(--type-meta-size);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--type-meta-line-height);
+  font-family: var(--type-section-family);
+  font-size: var(--type-section-size);
+  font-weight: var(--type-section-weight);
+  line-height: var(--type-section-line-height);
 }
 
 .sidebar__heading-text {
@@ -90,69 +92,131 @@
 }
 
 .sidebar__heading--toggle:hover {
+  background: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
 
 /* Мелкая кнопка «+» не раздвигает заголовок и не выступает за его поля. */
 .sidebar__heading .icon-button {
-  margin-right: calc(var(--space-1) * -1);
+  margin-right: calc(var(--layout-sidebar-row-padding) / -2);
 }
 
 /* Колонка minmax(0, 1fr): без этого колонка grid не сжимается ниже ширины самого длинного имени (min-content). */
 .sidebar__list {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-1);
+  gap: var(--layout-sidebar-row-gap);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* Строка сайдбара (D2): плитка слева, имя, тихий счётчик. Под мышью — мягкая заливка, выбранная — заливка плотнее, без обводки. */
 .chat-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--layout-sidebar-row-content-gap);
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  height: var(--layout-row-height);
+  height: var(--layout-sidebar-row-height);
   margin: 0;
-  padding: 0 var(--space-2);
+  padding: 0 var(--layout-sidebar-row-padding);
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--color-text-secondary);
-  font-family: var(--type-small-family);
-  font-size: var(--type-small-size);
-  line-height: var(--type-small-line-height);
+  font-family: var(--type-nav-family);
+  font-size: var(--type-nav-size);
+  font-weight: var(--type-nav-weight);
+  line-height: var(--type-nav-line-height);
   text-align: left;
   cursor: pointer;
-  transition: color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
 .chat-row:hover {
+  background: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
 
-.chat-row--selected {
+.chat-row--selected,
+.chat-row--selected:hover {
   background: var(--color-surface-selected);
   color: var(--color-text-primary);
 }
 
-/* Эмодзи чата — единственное место, где интерфейс берёт системный шрифт (design/tokens/fontsets/inter.json). */
-.chat-row__emoji {
-  display: flex;
+/* Плитка чата: эмодзи в мягком скруглённом квадрате, подкрашенном цветом чата; без цвета — нейтральная.
+   Эмодзи чата — единственное место, где интерфейс берёт системный шрифт (design/tokens/fontsets/inter.json). */
+.chat-tile {
+  display: grid;
   flex: none;
-  align-items: center;
-  justify-content: center;
-  /* Слот не уже глифа (icon.emoji.slot): иначе глиф вылезает за коробку и съедает промежуток до названия. */
-  width: var(--icon-emoji-slot);
+  place-items: center;
+  width: var(--layout-tile-size);
+  height: var(--layout-tile-size);
+  border-radius: var(--radius-tile);
+  background: var(--color-tile-neutral);
   font-family: var(--font-family-emoji);
-  font-size: var(--icon-size);
+  font-size: var(--icon-emoji-in-tile);
   /* Высота строки 1: у эмодзи-шрифта свои ascent и descent, а межстрочный текста сажал глиф ниже центра. */
   line-height: var(--icon-emoji-line-height);
-  /* Оптическое, а не геометрическое центрирование относительно текста (icon.emoji.shift). */
+}
+
+.chat-tile__glyph {
+  /* Оптическое, а не геометрическое центрирование (icon.emoji.shift). */
   transform: translateY(var(--icon-emoji-shift));
+}
+
+.chat-tile--blue {
+  background: var(--color-tile-blue);
+}
+
+.chat-tile--teal {
+  background: var(--color-tile-teal);
+}
+
+.chat-tile--green {
+  background: var(--color-tile-green);
+}
+
+.chat-tile--amber {
+  background: var(--color-tile-amber);
+}
+
+.chat-tile--red {
+  background: var(--color-tile-red);
+}
+
+.chat-tile--violet {
+  background: var(--color-tile-violet);
+}
+
+/* Слот значка у нижних пунктов: того же размера, что плитка, без заливки; значок по центру, тихим серым. */
+.nav-slot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--layout-tile-size);
+  height: var(--layout-tile-size);
+  color: var(--color-text-tertiary);
+}
+
+.nav-slot .icon {
+  width: var(--icon-size-nav);
+  height: var(--icon-size-nav);
+}
+
+.chat-row:hover .nav-slot,
+.chat-row--selected .nav-slot {
+  color: var(--color-text-secondary);
+}
+
+/* Нижняя группа сайдбара («Корзина», профиль): тонкая линия сверху, как разделитель, а не карточка. */
+.sidebar__bottom {
+  display: grid;
+  flex: none;
+  gap: var(--layout-sidebar-row-gap);
+  padding-top: var(--space-2);
+  border-top: var(--border-width-hairline) solid var(--color-border-divider);
 }
 
 .chat-row__name {
@@ -185,13 +249,7 @@
   gap: var(--space-1);
 }
 
-.sidebar__rail-bottom {
-  display: grid;
-  flex: none;
-  gap: var(--space-1);
-}
-
-/* Квадратная кнопка полосы: эмодзи чата или значок корзины по центру. Размер — высота строки списка. */
+/* Квадратная кнопка полосы: плитка чата или значок корзины по центру. Размер — высота строки сайдбара. */
 .rail-button {
   position: relative;
   display: flex;
@@ -199,7 +257,7 @@
   justify-content: center;
   box-sizing: border-box;
   width: 100%;
-  height: var(--layout-row-height);
+  height: var(--layout-sidebar-row-height);
   margin: 0;
   padding: 0;
   border: 0;
@@ -207,16 +265,22 @@
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
 .rail-button:hover {
+  background: var(--color-surface-hover);
   color: var(--color-text-primary);
 }
 
-.rail-button--selected {
+.rail-button--selected,
+.rail-button--selected:hover {
   background: var(--color-surface-selected);
   color: var(--color-text-primary);
+}
+
+.rail-button:hover .nav-slot,
+.rail-button--selected .nav-slot {
+  color: var(--color-text-secondary);
 }
 
 /* Цель перетаскивания записи: тихая рамка акцентного цвета и заливка активного поля (решение приёмки слайса 3). */

@@ -6,6 +6,7 @@ import { IconButton } from "../controls/IconButton";
 import { Icon } from "../icons/Icon";
 import { useMenuTrigger, type MenuPosition } from "../menu/ContextMenu";
 import { chatLabel } from "./ChatRow";
+import { ChatTile, NavSlot } from "./ChatTile";
 import { displayName, type SidebarChat } from "./chats";
 import { formatCount } from "./formatCount";
 import { ProfileMenu } from "./ProfileMenu";
@@ -136,16 +137,14 @@ export function SidebarRail({
                       : undefined
                   }
                 >
-                  <span className="chat-row__emoji" aria-hidden="true">
-                    {chat.emoji}
-                  </span>
+                  <ChatTile chat={chat} />
                 </RailButton>
               </li>
             );
           })}
         </ul>
       </nav>
-      <div className="sidebar__rail-bottom">
+      <div className="sidebar__bottom">
         {onOpenTrash ? (
           <RailButton
             label={trashCount > 0 ? `${t("sidebar.trash")}, ${t("count.entries", { count: trashCount })}` : t("sidebar.trash")}
@@ -155,7 +154,9 @@ export function SidebarRail({
             onShowTip={showTip}
             onHideTip={hideTip}
           >
-            <Icon name="trash" />
+            <NavSlot>
+              <Icon name="trash" />
+            </NavSlot>
             {trashCount > 0 ? <span className="rail-button__dot" aria-hidden="true" /> : null}
           </RailButton>
         ) : null}

@@ -1,8 +1,8 @@
 /* Окно «Импорт из Telegram»: инструкция, список чатов с флажками, прогресс, отчёт. Только токены. */
 .import {
   display: grid;
-  gap: var(--space-4);
-  padding: var(--space-5);
+  gap: var(--space-5);
+  padding: var(--space-6);
 }
 
 .import__heading {
