@@ -54,6 +54,7 @@ export function AccessPage({ access, error, onEnabledChange, onModeChange, onOpe
       </h2>
       <div className="prefs-block">
         <Checkbox
+          className="checkbox--wrap"
           checked={access.enabled}
           onChange={(event) => onEnabledChange(event.target.checked)}
           description={t("agent.enable.description")}

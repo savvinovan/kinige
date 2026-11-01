@@ -31,33 +31,33 @@ html[data-window="settings"] body {
 
 .prefs__column {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-6);
   box-sizing: border-box;
   max-width: var(--layout-settings-page-width);
-  padding: var(--space-5);
+  padding: var(--space-6);
 }
 
 .prefs-page {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .prefs-page__title {
   margin: 0;
-  font-family: var(--type-h2-family);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
-  line-height: var(--type-h2-line-height);
+  font-family: var(--type-title-family);
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  line-height: var(--type-title-line-height);
   overflow-wrap: anywhere;
 }
 
 .prefs-block {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .prefs-block + .prefs-block {
-  padding-top: var(--space-5);
+  padding-top: var(--space-6);
   border-top: var(--border-width-hairline) solid var(--color-border-divider);
 }
 
@@ -133,10 +133,10 @@ html[data-window="settings"] body {
 
 .prefs-subscreen__title {
   margin: 0;
-  font-family: var(--type-h2-family);
-  font-size: var(--type-h2-size);
-  font-weight: var(--type-h2-weight);
-  line-height: var(--type-h2-line-height);
+  font-family: var(--type-title-family);
+  font-size: var(--type-title-size);
+  font-weight: var(--type-title-weight);
+  line-height: var(--type-title-line-height);
   overflow-wrap: anywhere;
 }
 
@@ -144,7 +144,7 @@ html[data-window="settings"] body {
    сочетания клавиш и строки «Видимые чаты» / «Журнал обращений». */
 .settings-group {
   display: grid;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-panel);
   background: var(--color-surface-field);
   overflow: clip;
 }
@@ -163,7 +163,7 @@ html[data-window="settings"] body {
   width: 100%;
   min-height: var(--layout-row-height);
   margin: 0;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border: 0;
   border-radius: 0;
   background: transparent;

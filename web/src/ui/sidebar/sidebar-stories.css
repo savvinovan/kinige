@@ -8,3 +8,10 @@
 .story-sidebar > .sidebar {
   height: 100%;
 }
+
+/* Наведение в историях: `:hover` из CSS задать нельзя, поэтому история ставит атрибут на строку, а здесь повторены заливка и
+   цвет из правил `.chat-row:hover` и `.rail-button:hover` (sidebar.css). Выбранная строка остаётся выбранной. */
+.story-sidebar :is(.chat-row, .rail-button)[data-story-hover]:not([aria-current]) {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}

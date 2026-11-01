@@ -30,9 +30,14 @@
           "$extensions": { "kinige": { "origin": "авторский: то же значение, что surface.message" } }
         },
         "selected": {
-          "$value": "#2b2b2b",
-          "$description": "Выбранный чат в сайдбаре.",
-          "$extensions": { "kinige": { "origin": "авторский: то же значение, что surface.message" } }
+          "$value": "#313131",
+          "$description": "Выбранный чат в сайдбаре, выбранный пункт дерева настроек, заливка кнопки и наведения на значок (D2: было #2b2b2b). Светлее фона окна в 1,42:1 и светлее наведения в 1,21:1, поэтому выбранное читается рядом с подсвеченным под мышью.",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 19,2 %" } }
+        },
+        "hover": {
+          "$value": "#232323",
+          "$description": "Подсветка строки под мышью (сайдбар, дерево настроек): тихая, светлее фона окна в 1,17:1 и темнее выбранной строки (surface.selected светлее её в 1,21:1). Выбранное — surface.selected, наведение — это (D2).",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 13,7 %" } }
         },
         "card": {
           "$value": "#2b2b2b",
@@ -83,9 +88,9 @@
       },
       "highlight": {
         "background": {
-          "$value": "#3a3a3a",
-          "$description": "Заливка подсвеченного сообщения (найдено поиском, переход по ссылке): заметно светлее плашки (1,25:1). Время, ошибка и акцент на ней остаются ≥ 4,9:1.",
-          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 22,7 %" } }
+          "$value": "#3e3e3e",
+          "$description": "Заливка подсвеченного сообщения (найдено поиском, переход по ссылке): заметно светлее плашки (1,32:1; D2: было #3a3a3a) и светлее выбранной строки (1,22:1). Время, ошибка и акцент на ней остаются ≥ 4,6:1.",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 24,3 %" } }
         },
         "row": {
           "$value": "#474747",
@@ -110,6 +115,39 @@
           "$value": "#d89fa4",
           "$description": "Состояние «не отправилось» и ошибки (§1.2 п. 9).",
           "$extensions": { "kinige": { "origin": "подгонка: nord11 (красный Aurora), HSL-светлота 56,5 % → 73,5 % при том же тоне и насыщенности" } }
+        }
+      },
+      "tile": {
+        "$description": "Letter tiles of chats without an emoji (D2): a rounded square with the first letter of the title in text.primary. Saturated but muted colors; the lightness of each is picked so that text.primary on it is at least 5:1 (the tests require 4.5:1). Every tile is at least 1.2:1 apart from the window background, the hover fill and the selected row.",
+        "blue": {
+          "$value": "#3c6a9f",
+          "$description": "Tile color \"blue\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 212°, насыщенность 45 %, светлота 43 %" } }
+        },
+        "teal": {
+          "$value": "#2b736e",
+          "$description": "Tile color \"teal\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 176°, насыщенность 45 %, светлота 31 %" } }
+        },
+        "green": {
+          "$value": "#2d7645",
+          "$description": "Tile color \"green\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 140°, насыщенность 45 %, светлота 32 %" } }
+        },
+        "orange": {
+          "$value": "#945a38",
+          "$description": "Tile color \"orange\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 22°, насыщенность 45 %, светлота 40 %" } }
+        },
+        "pink": {
+          "$value": "#a63f6f",
+          "$description": "Tile color \"pink\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 332°, насыщенность 45 %, светлота 45 %" } }
+        },
+        "violet": {
+          "$value": "#653fa6",
+          "$description": "Tile color \"violet\".",
+          "$extensions": { "kinige": { "origin": "авторский: тон 262°, насыщенность 45 %, светлота 45 %" } }
         }
       }
     }

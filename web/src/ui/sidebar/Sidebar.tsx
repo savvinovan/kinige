@@ -6,6 +6,7 @@ import { TextField } from "../controls/TextField";
 import { Icon } from "../icons/Icon";
 import { ContextMenu, type MenuPosition } from "../menu/ContextMenu";
 import { ChatRow } from "./ChatRow";
+import { NavSlot } from "./ChatTile";
 import { chatMenuItems, displayName, partitionChats, type ChatAction, type SidebarChat } from "./chats";
 import { formatCount } from "./formatCount";
 import { ProfileMenu } from "./ProfileMenu";
@@ -13,7 +14,7 @@ import { SidebarRail } from "./SidebarRail";
 import "./sidebar.css";
 
 export { toSidebarChat } from "./chats";
-export type { ChatAction, SidebarChat } from "./chats";
+export type { ChatAction, ChatTint, SidebarChat } from "./chats";
 
 /** Рабочее поле «Поиск» (слайс 4): значение, клавиши и связь с результатами (combobox: `aria-activedescendant`). */
 export interface SidebarSearch {
@@ -206,25 +207,27 @@ export function Sidebar({
               </div>
             ) : null}
           </nav>
-          {onOpenTrash ? (
-            <button
-              type="button"
-              className={`chat-row${selectedId === null ? " chat-row--selected" : ""}`}
-              aria-current={selectedId === null ? "true" : undefined}
-              onClick={onOpenTrash}
-            >
-              <span className="chat-row__emoji" aria-hidden="true">
-                <Icon name="trash" />
-              </span>
-              <span className="chat-row__name">{t("sidebar.trash")}</span>
-              {trashCounter ? (
-                <span className="chat-row__count">
-                  <span className="visually-hidden">{t("sidebar.entriesLabel")}</span> {trashCounter}
-                </span>
-              ) : null}
-            </button>
-          ) : null}
-          <ProfileMenu name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} onOpenImport={onOpenImport} onOpenAbout={onOpenAbout} />
+          <div className="sidebar__bottom">
+            {onOpenTrash ? (
+              <button
+                type="button"
+                className={`chat-row${selectedId === null ? " chat-row--selected" : ""}`}
+                aria-current={selectedId === null ? "true" : undefined}
+                onClick={onOpenTrash}
+              >
+                <NavSlot>
+                  <Icon name="trash" />
+                </NavSlot>
+                <span className="chat-row__name">{t("sidebar.trash")}</span>
+                {trashCounter ? (
+                  <span className="chat-row__count">
+                    <span className="visually-hidden">{t("sidebar.entriesLabel")}</span> {trashCounter}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
+            <ProfileMenu name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} onOpenImport={onOpenImport} onOpenAbout={onOpenAbout} />
+          </div>
         </>
       )}
       {menu && onChatAction ? (

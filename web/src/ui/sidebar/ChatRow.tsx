@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import type { Language } from "../../i18n";
 import { useMenuTrigger, type MenuPosition } from "../menu/ContextMenu";
+import { ChatTile } from "./ChatTile";
 import { displayName, type SidebarChat } from "./chats";
 import { formatCount } from "./formatCount";
 
@@ -39,9 +40,7 @@ export function ChatRow({ chat, selected, language, onSelect, dropOver = false, 
         onClick={onSelect ? () => onSelect(chat.id) : undefined}
         {...(onOpenMenu ? trigger : {})}
       >
-        <span className="chat-row__emoji" aria-hidden="true">
-          {chat.emoji}
-        </span>
+        <ChatTile chat={chat} name={name} />
         <span className="chat-row__name">{name}</span>
         {counter ? (
           // Диктору читается «Рецепты, записей: 12 тыс.»: запятая и подпись скрыты визуально, число видно.

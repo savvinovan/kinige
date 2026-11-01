@@ -7,26 +7,29 @@
 .profile__button {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--layout-sidebar-row-content-gap);
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  height: var(--layout-row-height);
+  height: var(--layout-sidebar-row-height);
   margin: 0;
-  padding: 0 var(--space-2);
+  padding: 0 var(--layout-sidebar-row-padding);
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--color-text-primary);
-  font-family: var(--type-small-family);
-  font-size: var(--type-small-size);
-  line-height: var(--type-small-line-height);
+  font-family: var(--type-nav-family);
+  font-size: var(--type-nav-size);
+  font-weight: var(--type-nav-weight);
+  line-height: var(--type-nav-line-height);
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
-.profile__button:hover,
+.profile__button:hover {
+  background: var(--color-surface-hover);
+}
+
 .profile__button[aria-expanded="true"] {
   background: var(--color-surface-selected);
 }
@@ -85,9 +88,9 @@
   left: 0;
   z-index: 1;
   display: grid;
-  gap: var(--space-1);
+  gap: var(--layout-sidebar-row-gap);
   box-sizing: border-box;
-  padding: var(--space-1);
+  padding: var(--space-2);
   border: var(--border-width-hairline) solid var(--color-border-divider);
   border-radius: var(--radius-panel);
   background: var(--color-surface-message);
@@ -110,26 +113,42 @@
 
 /* Пункты пока без функции: остаются в обходе стрелками, объявлены недоступными и приглушены. */
 .profile__item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--layout-sidebar-row-content-gap);
   box-sizing: border-box;
   width: 100%;
-  height: var(--layout-row-height);
+  height: var(--layout-sidebar-row-height);
   margin: 0;
-  padding: 0 var(--space-2);
+  padding: 0 var(--layout-sidebar-row-padding);
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--color-text-secondary);
-  font-family: var(--type-small-family);
-  font-size: var(--type-small-size);
-  line-height: var(--type-small-line-height);
+  font-family: var(--type-nav-family);
+  font-size: var(--type-nav-size);
+  font-weight: var(--type-nav-weight);
+  line-height: var(--type-nav-line-height);
   text-align: left;
   cursor: default;
   opacity: var(--opacity-unavailable);
 }
 
+.profile__item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Меню лежит на `surface.message`: заливка наведения светлее панели, а не темнее, как строки сайдбара на фоне окна. */
 .profile__item:hover,
 .profile__item:focus {
   background: var(--color-surface-field-active);
   color: var(--color-text-primary);
+}
+
+.profile__item:hover .nav-slot,
+.profile__item:focus .nav-slot {
+  color: var(--color-text-secondary);
 }
