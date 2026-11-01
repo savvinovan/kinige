@@ -14,7 +14,7 @@ fn main() {
     let target = std::env::var("TARGET").expect("cargo не передал TARGET");
     let windows = std::env::var("CARGO_CFG_TARGET_OS").is_ok_and(|os| os == "windows");
     if windows {
-        embed_manifest_in_tests();
+        embed_manifest();
     }
     let sidecar = std::path::Path::new("binaries").join(format!("kinige-mcp-{target}"));
     if !windows && !sidecar.exists() {
@@ -83,15 +83,27 @@ fn main() {
         "capture_resize",
         "capture_add_recent_emoji",
     ]);
-    tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
-        .expect("не удалось выполнить tauri-build");
+    // На Windows манифест (Common Controls v6) кладёт `embed_manifest` для всех исполняемых файлов сразу, поэтому свой манифест
+    // `tauri-build` не вставляет: два манифеста в одном файле линкер не принимает.
+    let windows_attributes = if windows {
+        tauri_build::WindowsAttributes::new_without_app_manifest()
+    } else {
+        tauri_build::WindowsAttributes::new()
+    };
+    tauri_build::try_build(
+        tauri_build::Attributes::new()
+            .app_manifest(manifest)
+            .windows_attributes(windows_attributes),
+    )
+    .expect("не удалось выполнить tauri-build");
 }
 
-/// Common Controls v6 для тестовых исполняемых файлов на Windows (слайс 10a). Диалог выбора папки (`rfd` через
-/// `tauri-plugin-dialog`) вызывает `TaskDialogIndirect`, которой нет в comctl32 версии 5: без этой зависимости в манифесте
-/// любой тест, слинкованный с приложением, не запускается (`STATUS_ENTRYPOINT_NOT_FOUND`). Для самого приложения манифест
-/// кладёт `tauri-build`, но только в бинарники, поэтому для тестов он вставляется здесь.
-fn embed_manifest_in_tests() {
+/// Манифест с Common Controls v6 для всех исполняемых файлов крейта на Windows (слайс 10a): приложения, тестов в `tests/` и
+/// тестов библиотеки. Диалог выбора папки (`rfd` через `tauri-plugin-dialog`) вызывает `TaskDialogIndirect`, которой нет в
+/// comctl32 версии 5: без этой зависимости в манифесте любой исполняемый файл, слинкованный с приложением, не запускается
+/// (`STATUS_ENTRYPOINT_NOT_FOUND`). Манифест по умолчанию у `tauri-build` тот же, но он попадает только в бинарники; поэтому
+/// манифест вставляет линкер, а `tauri-build` свой не добавляет (`new_without_app_manifest`).
+fn embed_manifest() {
     const COMMON_CONTROLS_V6: &str = r#"<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <dependency>
     <dependentAssembly>
@@ -101,11 +113,8 @@ fn embed_manifest_in_tests() {
 </assembly>
 "#;
     let out_dir = std::env::var_os("OUT_DIR").expect("cargo не передал OUT_DIR");
-    let manifest = std::path::Path::new(&out_dir).join("tests.manifest");
-    std::fs::write(&manifest, COMMON_CONTROLS_V6).expect("не удалось записать манифест тестов");
-    println!("cargo:rustc-link-arg-tests=/MANIFEST:EMBED");
-    println!(
-        "cargo:rustc-link-arg-tests=/MANIFESTINPUT:{}",
-        manifest.display()
-    );
+    let manifest = std::path::Path::new(&out_dir).join("app.manifest");
+    std::fs::write(&manifest, COMMON_CONTROLS_V6).expect("не удалось записать манифест");
+    println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
+    println!("cargo:rustc-link-arg=/MANIFESTINPUT:{}", manifest.display());
 }
