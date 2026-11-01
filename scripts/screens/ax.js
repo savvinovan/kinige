@@ -50,6 +50,17 @@ function run(argv) {
     return values;
   }
 
+  // Значение свойства в строку. У группы радиокнопок и вкладок значение — ссылка на выбранный элемент, и String() на ней
+  // падает с «Can't convert types (-1700)» уже вне try колонки; такой обход рвал весь дамп окна «Настройки».
+  function text(v) {
+    if (v === null || v === undefined) return "";
+    try {
+      return String(v);
+    } catch (e) {
+      return "";
+    }
+  }
+
   // Дамп дерева (тот же вид строк, что и раньше: отступ по глубине, роль, название | описание | значение | имя).
   function dumpTree(el, depth) {
     if (depth > 30) return;
@@ -63,10 +74,10 @@ function run(argv) {
     const columns = ["title", "description", "value", "name"].map((key) => column(el, key, roles.length));
     for (let i = 0; i < roles.length; i++) {
       const label = columns
-        .map((values) => (values[i] === null || values[i] === undefined ? "" : String(values[i])))
+        .map((values) => text(values[i]))
         .filter(Boolean)
         .join(" | ");
-      out.push(" ".repeat(depth) + String(roles[i]) + " " + label.slice(0, 400));
+      out.push(" ".repeat(depth) + text(roles[i]) + " " + label.slice(0, 400));
       dumpTree(el.uiElements[i], depth + 1);
     }
   }
