@@ -13,5 +13,6 @@ src-tauri/gen/
 src-tauri/binaries/
 .claude/worktrees/
 
-# Снимки ревью (review-*.png): рабочие, в репозиторий не идут. Снимки приёмки (без префикса review-) коммитятся.
+# Новые снимки ревью (review-*.png) не коммитятся. Уже отслеживаемые в docs/screens/1 и docs/screens/D1 остаются в git.
+# Снимки приёмки (без префикса review-) коммитятся.
 docs/screens/**/review-*.png

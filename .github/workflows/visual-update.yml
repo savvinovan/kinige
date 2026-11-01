@@ -1,36 +1,37 @@
 # Новые эталоны визуальных тестов Storybook. Снимаются в том же контейнере Playwright, что и проверка в ci.yml,
 # и коммитятся в ветку, с которой запущен workflow:
 #   gh workflow run visual-update.yml --ref <ветка>
-# Коммит от GITHUB_TOKEN CI сам не запускает (push-событие), но запуск через workflow_dispatch от GITHUB_TOKEN разрешён:
-# после коммита задача ci запускает ci.yml на ветке (право actions: write только у неё).
+# Три задачи, как в screens.yml:
+#   shots  — npm ci, сборка Storybook и снимки; права только на чтение, токен после checkout не сохраняется
+#            (скрипты установки пакетов его не видят); результат — артефакт;
+#   commit — короткая: коммитит изменённые эталоны в ветку (единственное место с правом записи, без npm и сборки);
+#   ci     — запускает ci.yml на ветке (право actions: write только у неё).
 # Коммитятся только изменившиеся и новые эталоны (--update-snapshots=changed); эталоны удалённых историй убирает
 # scripts/prune-visual-baselines.mjs. Эталоны, которые прошли сравнение, не перезаписываются: репозиторий не раздувается.
+# Коммит от GITHUB_TOKEN CI сам не запускает (push-событие), но запуск через workflow_dispatch от GITHUB_TOKEN разрешён.
+# Версия образа Playwright здесь и в ci.yml должна совпадать с @playwright/test в web/package.json (меняется вручную).
 name: Visual baselines
 
 on:
   workflow_dispatch:
 
-# Права по умолчанию — только чтение; запись только у задачи update, запуск CI — только у задачи ci.
+# Права по умолчанию — только чтение; запись только у задачи commit, запуск CI — только у задачи ci.
 permissions:
   contents: read
 
 jobs:
-  update:
+  shots:
     # Эталоны меняются только через ветку и PR.
     if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
-    outputs:
-      pushed: ${{ steps.commit.outputs.pushed }}
+      contents: read
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
     steps:
-      # Без git в контейнере checkout скачивает архив без .git, и закоммитить было бы нечего.
-      - name: git
-        run: apt-get update && apt-get install -y --no-install-recommends git
-
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Снять эталоны
         working-directory: web
@@ -41,10 +42,40 @@ jobs:
           npx playwright test --update-snapshots=changed
           node ../scripts/prune-visual-baselines.mjs
 
+      # Каталог эталонов целиком одним архивом (имена файлов кириллические, архив надёжнее для артефакта).
+      - name: Упаковать эталоны
+        run: tar -czf "$RUNNER_TEMP/baselines.tgz" -C web/tests/visual stories.spec.ts-snapshots
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: visual-baselines
+          path: ${{ runner.temp }}/baselines.tgz
+          if-no-files-found: error
+
+  commit:
+    needs: shots
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      pushed: ${{ steps.commit.outputs.pushed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: visual-baselines
+          path: ${{ runner.temp }}/baselines
+
+      # Архив содержит каталог целиком (уже без эталонов удалённых историй); в коммит попадают только отличия от ветки.
       - name: Закоммитить
         id: commit
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          rm -rf web/tests/visual/stories.spec.ts-snapshots
+          tar -xzf "$RUNNER_TEMP/baselines/baselines.tgz" -C web/tests/visual
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A web/tests/visual/stories.spec.ts-snapshots
@@ -54,13 +85,14 @@ jobs:
           fi
           git diff --cached --stat | tail -1
           git commit -m "Visual baselines from CI"
-          git push
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-  # Отдельная задача: в контейнере Playwright нет gh, а право actions: write не нужно задаче с записью в репозиторий.
+  # Отдельная задача: право actions: write не нужно задаче с записью в репозиторий.
   ci:
-    needs: update
-    if: needs.update.outputs.pushed == 'true'
+    needs: commit
+    if: needs.commit.outputs.pushed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

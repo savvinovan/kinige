@@ -14,6 +14,10 @@ updates:
     directory: /web
     schedule:
       interval: weekly
+    # @playwright/test должен совпадать с версией образа mcr.microsoft.com/playwright:vX-noble в ci.yml и visual-update.yml,
+    # а Dependabot образ в workflow не обновит: версию меняют вручную, вместе с образом.
+    ignore:
+      - dependency-name: "@playwright/test"
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
