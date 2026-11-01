@@ -205,7 +205,7 @@ impl Store {
         search::rebuild_if_stale(&mut conn)?;
 
         let reader = open_connection(&options.db_path, true)?;
-        let writer = Writer::spawn(conn);
+        let writer = Writer::spawn(conn)?;
         let mirror = MirrorShared::new(options.mirror_retry);
         let maintenance = MaintenanceShared::new();
         let store = Store {
@@ -228,10 +228,10 @@ impl Store {
                 reader,
                 store.inner.writer.clone(),
                 options.default_mirror_dir,
-            );
+            )?;
         }
         if options.start_maintenance {
-            maintenance::spawn(maintenance, Arc::downgrade(&store.inner));
+            maintenance::spawn(maintenance, Arc::downgrade(&store.inner))?;
         }
         Ok(store)
     }
@@ -301,6 +301,7 @@ impl Store {
 
     /// Только для тестов: паника внутри чтения. Следующие чтения должны работать.
     #[doc(hidden)]
+    #[allow(clippy::panic)] // крючок для интеграционных тестов страховки от паники: паника здесь и есть его назначение
     pub fn panic_in_read_for_test(&self) -> Result<(), StoreError> {
         self.read(|_| -> Result<(), StoreError> {
             panic!("проверка: паника в чтении")

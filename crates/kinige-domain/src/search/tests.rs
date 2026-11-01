@@ -122,7 +122,10 @@ fn query_cannot_carry_fts5_syntax() {
                 term.starts_with('"') && term.ends_with('"') && term.len() >= 3,
                 "{input} -> {query}"
             );
-            let inner = &term[1..term.len() - 1];
+            let inner = term
+                .strip_prefix('"')
+                .and_then(|t| t.strip_suffix('"'))
+                .unwrap();
             assert!(
                 inner.chars().all(char::is_alphanumeric),
                 "{input} -> {query}"
@@ -330,4 +333,33 @@ fn snippet_matches_terms_regardless_of_case_and_yo() {
     let text = format!("{} Ёлка {}", long_text(), long_text());
     let out = snippet(&text, &terms(&["елка"]), 50);
     assert!(out.contains("Ёлка"), "{out}");
+}
+
+#[test]
+fn a_pathological_line_gets_a_snippet_in_linear_time() {
+    // Раньше `[a](` ×20 000 и `<` ×50 000 разбирались около 3 с каждое: закрытие искалось от каждой скобки до конца строки.
+    for line in [
+        "[a](".repeat(40_000),
+        "<".repeat(100_000),
+        "<a ".repeat(60_000),
+        format!("{}слово", "[[".repeat(50_000)),
+    ] {
+        let started = std::time::Instant::now();
+        let _ = snippet(&line, &["слово".to_string()], 80);
+        let _ = highlight_terms(&line, "слово");
+        assert!(
+            started.elapsed().as_secs_f64() < 2.0,
+            "{:?}",
+            started.elapsed()
+        );
+    }
+}
+
+#[test]
+fn links_and_autolinks_still_lose_their_markup_in_a_snippet() {
+    assert_eq!(
+        snippet("[текст](https://x.y/a_b) и <https://x.y>", &[], 80),
+        "текст и https://x.y"
+    );
+    assert_eq!(snippet("a <b c> d <> e", &[], 80), "a <b c> d e");
 }

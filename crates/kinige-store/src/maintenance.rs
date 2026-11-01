@@ -12,7 +12,7 @@ use kinige_domain::backup::daily_name;
 use kinige_domain::journal::journal_date;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Condvar, Mutex, Weak};
+use std::sync::{Arc, Condvar, Mutex, PoisonError, Weak};
 use std::thread;
 use std::time::Duration;
 
@@ -57,35 +57,30 @@ impl MaintenanceShared {
 
     /// Разбудить поток сейчас (тест): следующий проход без ожидания часа.
     pub(crate) fn wake_now(&self) {
-        if let Ok(mut flag) = self.wake.lock() {
-            *flag = true;
-            self.signal.notify_all();
-        }
+        *self.wake.lock().unwrap_or_else(PoisonError::into_inner) = true;
+        self.signal.notify_all();
     }
 
     pub(crate) fn stop(&self) {
         self.stopped.store(true, Ordering::SeqCst);
-        if let Ok(mut flag) = self.wake.lock() {
-            *flag = true;
-            self.signal.notify_all();
-        }
+        *self.wake.lock().unwrap_or_else(PoisonError::into_inner) = true;
+        self.signal.notify_all();
     }
 
     fn wait(&self) {
-        let Ok(mut flag) = self.wake.lock() else {
-            return;
-        };
+        let mut flag = self.wake.lock().unwrap_or_else(PoisonError::into_inner);
         if !*flag {
-            flag = match self.signal.wait_timeout(flag, TICK) {
-                Ok((flag, _)) => flag,
-                Err(_) => return,
-            };
+            flag = self
+                .signal
+                .wait_timeout(flag, TICK)
+                .unwrap_or_else(PoisonError::into_inner)
+                .0;
         }
         *flag = false;
     }
 }
 
-pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) {
+pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) -> Result<(), StoreError> {
     thread::Builder::new()
         .name("kinige-maintenance".into())
         .spawn(move || {
@@ -101,8 +96,10 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) {
                 // Паника в проходе не должна молча убить поток обслуживания (проверка целостности, корзина, копии, ротация
                 // журнала): она ловится, в статусе копий «Не удалось записать», следующий проход — через час.
                 let outcome = catch_unwind(AssertUnwindSafe(|| {
+                    // Крючок тестов страховки; в релизной сборке (`debug_assertions` выключены) его нет.
                     assert!(
-                        !shared.panic_next.swap(false, Ordering::SeqCst),
+                        !(cfg!(debug_assertions)
+                            && shared.panic_next.swap(false, Ordering::SeqCst)),
                         "проверка: паника в проходе обслуживания"
                     );
                     store.run_maintenance(&Now::system())
@@ -122,7 +119,8 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) {
                 shared.wait();
             }
         })
-        .expect("не удалось запустить поток обслуживания");
+        .map(drop)
+        .map_err(|_| StoreError::Internal("не удалось запустить поток обслуживания".into()))
 }
 
 impl Store {

@@ -1,5 +1,9 @@
 //! «В этот день» (слайс 5): отбор записей Inbox прошлых лет, состав карточки, скрытие до следующего дня журнала.
 
+// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+#![cfg(test)]
+
 mod common;
 
 use common::days::{at, ms};
@@ -122,8 +126,14 @@ fn years_go_from_new_to_old_three_are_detailed_with_two_entries_and_the_rest_are
                 .iter()
                 .map(|e| e.message.body_md.as_str())
                 .collect();
-            assert_eq!(texts[0], format!("{} запись 0", &year.journal_date[..4]));
-            assert_eq!(texts[1], format!("{} запись 1", &year.journal_date[..4]));
+            assert_eq!(
+                texts[0],
+                format!("{} запись 0", year.journal_date.get(..4).unwrap())
+            );
+            assert_eq!(
+                texts[1],
+                format!("{} запись 1", year.journal_date.get(..4).unwrap())
+            );
         } else {
             assert!(year.entries.is_empty(), "старые годы — строкой");
         }
@@ -279,7 +289,7 @@ fn dismissing_garbage_dates_is_refused_and_writes_nothing() {
                 Err(StoreError::InvalidDate)
             ),
             "{}",
-            &garbage[..garbage.len().min(30)]
+            garbage.chars().take(30).collect::<String>()
         );
     }
     let count: i64 = raw(dir.path())

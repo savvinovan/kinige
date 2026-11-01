@@ -214,7 +214,13 @@ impl Bridge {
             (generation, replay)
         };
         let me = Arc::clone(self);
-        thread::spawn(move || me.read_server(generation, reader));
+        let reading = thread::Builder::new()
+            .name("kinige-mcp-reader".into())
+            .spawn(move || me.read_server(generation, reader));
+        if reading.is_err() {
+            self.lost(generation);
+            return Err(Unreachable::Unavailable);
+        }
         let Some((initialize, _)) = replay else {
             return Ok(());
         };

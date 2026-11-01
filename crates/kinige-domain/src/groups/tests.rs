@@ -22,9 +22,9 @@ fn sample() -> MessageRow {
 #[test]
 fn inbox_id_is_a_valid_v4_uuid() {
     assert!(crate::hlc::is_uuid(INBOX_ID));
-    assert_eq!(&INBOX_ID[14..15], "4", "версия");
+    assert_eq!(INBOX_ID.get(14..15), Some("4"), "версия");
     assert!(
-        matches!(&INBOX_ID[19..20], "8" | "9" | "a" | "b"),
+        matches!(INBOX_ID.get(19..20), Some("8" | "9" | "a" | "b")),
         "вариант"
     );
 }
@@ -223,7 +223,7 @@ fn reply_rejects_ids_that_are_not_a_lowercase_v4_uuid() {
             new_reply_message(&input, bad, HLC).unwrap_err(),
             GroupError::Invalid("reply_to_id не UUID v4"),
             "{}",
-            &bad[..bad.len().min(40)]
+            bad.chars().take(40).collect::<String>()
         );
     }
 }

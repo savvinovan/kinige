@@ -191,7 +191,7 @@ impl Parsed {
                 ShortcutKind::Clipboard => ("clipboard", 1),
             };
             let key = format!("shortcuts.{name}");
-            self.shortcuts[slot] = match map.get(name) {
+            let field = match map.get(name) {
                 None => Field::Absent,
                 Some(Value::Null) => Field::Default,
                 Some(Value::String(text)) => match canonical_accelerator(text) {
@@ -200,6 +200,9 @@ impl Parsed {
                 },
                 Some(_) => self.bad(&key, KeyIssueKind::Type),
             };
+            if let Some(target) = self.shortcuts.get_mut(slot) {
+                *target = field;
+            }
         }
     }
 

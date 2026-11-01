@@ -10,64 +10,86 @@ use std::fmt;
 /// Наибольшее безопасное целое: ±2⁵³ (ADR-0001 §3.3).
 pub const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_992;
 
+/// Предел вложенности равен пределу разбора serde_json (`remaining_depth` = 128 в `de.rs`): что записали — то прочитаем.
+/// Счёт у serde_json такой: контейнер, при входе в который остаток дошёл до 0, — ошибка, поэтому читается не больше
+/// `MAX_DEPTH - 1` = 127 вложенных массивов и объектов, а 128-й — `TooDeep`. Значение глубже не пишется, и рекурсия записи
+/// не переполняет стек от чужих данных (ADR-0001 §A: глубина значения группы ≤ 127 контейнеров, глубже — `malformed`).
+pub const MAX_DEPTH: usize = 128;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JcsError {
     /// Число с дробной частью или вне ±2⁵³.
     UnsupportedNumber,
+    /// Вложенность глубже [`MAX_DEPTH`].
+    TooDeep,
 }
 
 impl fmt::Display for JcsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("в группе допустимы только целые числа в пределах ±2^53")
+        match self {
+            JcsError::UnsupportedNumber => {
+                f.write_str("в группе допустимы только целые числа в пределах ±2^53")
+            }
+            JcsError::TooDeep => f.write_str("в группе слишком глубокая вложенность"),
+        }
     }
 }
 
 impl std::error::Error for JcsError {}
 
-/// Канонические байты значения группы.
-pub fn canonical_bytes(value: &Value) -> Result<Vec<u8>, JcsError> {
-    let mut out = Vec::new();
-    write_value(value, &mut out)?;
+/// Каноническая запись значения группы. Пишется сразу в `String`, поэтому UTF-8 гарантирован типом, а не проверкой.
+pub fn canonical_string(value: &Value) -> Result<String, JcsError> {
+    let mut out = String::new();
+    write_value(value, &mut out, 0)?;
     Ok(out)
 }
 
-fn write_value(value: &Value, out: &mut Vec<u8>) -> Result<(), JcsError> {
+/// Канонические байты значения группы (те же, что у [`canonical_string`]).
+pub fn canonical_bytes(value: &Value) -> Result<Vec<u8>, JcsError> {
+    canonical_string(value).map(String::into_bytes)
+}
+
+/// `depth` — сколько контейнеров уже открыто вокруг `value`.
+fn write_value(value: &Value, out: &mut String, depth: usize) -> Result<(), JcsError> {
+    if matches!(value, Value::Array(_) | Value::Object(_)) && depth + 1 >= MAX_DEPTH {
+        return Err(JcsError::TooDeep);
+    }
     match value {
-        Value::Null => out.extend_from_slice(b"null"),
-        Value::Bool(true) => out.extend_from_slice(b"true"),
-        Value::Bool(false) => out.extend_from_slice(b"false"),
+        Value::Null => out.push_str("null"),
+        Value::Bool(true) => out.push_str("true"),
+        Value::Bool(false) => out.push_str("false"),
         Value::Number(number) => {
             let integer = number
                 .as_i64()
                 .filter(|n| n.unsigned_abs() <= MAX_SAFE_INTEGER as u64)
                 .ok_or(JcsError::UnsupportedNumber)?;
-            out.extend_from_slice(integer.to_string().as_bytes());
+            out.push_str(&integer.to_string());
         }
         Value::String(text) => write_string(text, out),
         Value::Array(items) => {
-            out.push(b'[');
+            out.push('[');
             for (i, item) in items.iter().enumerate() {
                 if i > 0 {
-                    out.push(b',');
+                    out.push(',');
                 }
-                write_value(item, out)?;
+                write_value(item, out, depth + 1)?;
             }
-            out.push(b']');
+            out.push(']');
         }
         Value::Object(map) => {
             // Порядок ключей — по кодовым единицам UTF-16, а не по байтам UTF-8 (они расходятся за пределами BMP).
             let mut entries: Vec<(&String, &Value)> = map.iter().collect();
             entries.sort_by(|a, b| a.0.encode_utf16().cmp(b.0.encode_utf16()));
-            out.push(b'{');
+            out.push('{');
             for (i, (key, item)) in entries.into_iter().enumerate() {
                 if i > 0 {
-                    out.push(b',');
+                    out.push(',');
                 }
                 write_string(key, out);
-                out.push(b':');
-                write_value(item, out)?;
+                out.push(':');
+                write_value(item, out, depth + 1)?;
             }
-            out.push(b'}');
+            out.push('}');
         }
     }
     Ok(())
@@ -75,27 +97,22 @@ fn write_value(value: &Value, out: &mut Vec<u8>) -> Result<(), JcsError> {
 
 /// Минимальное экранирование: `"` и `\`, управляющие символы короткими формами `\b \t \n \f \r`, остальные — `\u00xx`
 /// строчными буквами; всё прочее (в том числе U+007F и символы вне ASCII) — как есть, в UTF-8.
-fn write_string(text: &str, out: &mut Vec<u8>) {
-    out.push(b'"');
+fn write_string(text: &str, out: &mut String) {
+    out.push('"');
     for ch in text.chars() {
         match ch {
-            '"' => out.extend_from_slice(b"\\\""),
-            '\\' => out.extend_from_slice(b"\\\\"),
-            '\u{8}' => out.extend_from_slice(b"\\b"),
-            '\t' => out.extend_from_slice(b"\\t"),
-            '\n' => out.extend_from_slice(b"\\n"),
-            '\u{c}' => out.extend_from_slice(b"\\f"),
-            '\r' => out.extend_from_slice(b"\\r"),
-            c if (c as u32) < 0x20 => {
-                out.extend_from_slice(format!("\\u{:04x}", c as u32).as_bytes())
-            }
-            c => {
-                let mut buffer = [0u8; 4];
-                out.extend_from_slice(c.encode_utf8(&mut buffer).as_bytes());
-            }
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\u{8}' => out.push_str("\\b"),
+            '\t' => out.push_str("\\t"),
+            '\n' => out.push_str("\\n"),
+            '\u{c}' => out.push_str("\\f"),
+            '\r' => out.push_str("\\r"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
         }
     }
-    out.push(b'"');
+    out.push('"');
 }
 
 #[cfg(test)]
@@ -184,6 +201,43 @@ mod tests {
             canonical_bytes(&json!(u64::MAX)),
             Err(JcsError::UnsupportedNumber)
         );
+    }
+
+    #[test]
+    fn nesting_beyond_the_limit_is_an_error_not_a_stack_overflow() {
+        let nested = |levels: usize| {
+            let mut value = json!(1);
+            for _ in 0..levels {
+                value = Value::Array(vec![value]);
+            }
+            value
+        };
+        assert!(canonical_string(&nested(MAX_DEPTH - 1)).is_ok());
+        assert_eq!(canonical_string(&nested(MAX_DEPTH)), Err(JcsError::TooDeep));
+        assert_eq!(
+            canonical_string(&nested(MAX_DEPTH + 50)),
+            Err(JcsError::TooDeep)
+        );
+    }
+
+    #[test]
+    fn what_is_written_is_read_back_by_serde_json_at_every_depth() {
+        // Предел совпадает с пределом разбора serde_json: записанное читается, а не записанное и не читалось бы.
+        for levels in (MAX_DEPTH - 5)..=(MAX_DEPTH + 5) {
+            let arrays = format!("{}1{}", "[".repeat(levels), "]".repeat(levels));
+            let objects = format!("{}1{}", "{\"a\":".repeat(levels), "}".repeat(levels));
+            for text in [arrays, objects] {
+                let parsed: Result<Value, _> = serde_json::from_str(&text);
+                let written = parsed.as_ref().ok().map(canonical_string);
+                match written {
+                    Some(result) => assert_eq!(result.as_deref(), Ok(text.as_str()), "{levels}"),
+                    None => assert!(
+                        levels >= MAX_DEPTH,
+                        "{levels}: serde_json отказал раньше предела"
+                    ),
+                }
+            }
+        }
     }
 
     #[test]

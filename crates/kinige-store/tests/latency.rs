@@ -1,6 +1,10 @@
 //! Замер задержки отправки (ТЗ §5: запись в ленте < 100 мс). Зависит от диска, поэтому в обычный прогон не входит:
 //! `cargo test -p kinige-store --test latency -- --ignored --nocapture`.
 
+// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+#![cfg(test)]
+
 mod common;
 
 use common::*;

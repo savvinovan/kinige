@@ -92,10 +92,10 @@ impl std::error::Error for ShortcutError {}
 fn is_known_key(key: &str) -> bool {
     let letter = key
         .strip_prefix("Key")
-        .is_some_and(|rest| rest.len() == 1 && rest.as_bytes()[0].is_ascii_uppercase());
+        .is_some_and(|rest| matches!(rest.as_bytes(), [byte] if byte.is_ascii_uppercase()));
     let digit = key
         .strip_prefix("Digit")
-        .is_some_and(|rest| rest.len() == 1 && rest.as_bytes()[0].is_ascii_digit());
+        .is_some_and(|rest| matches!(rest.as_bytes(), [byte] if byte.is_ascii_digit()));
     let function = key
         .strip_prefix('F')
         .and_then(|rest| rest.parse::<u8>().ok())

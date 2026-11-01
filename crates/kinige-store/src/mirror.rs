@@ -3,6 +3,7 @@
 //! Отметки (`mirror_dirty`) лежат в базе, поэтому переживают убийство процесса: оставшиеся обрабатываются при старте.
 //! Корзина в копию не попадает (ТЗ §16).
 
+use crate::StoreError;
 use crate::mirror_day::write_day;
 use crate::settings::effective_mirror_dir;
 use crate::writer::Writer;
@@ -13,7 +14,7 @@ use std::fs;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::thread;
 use std::time::Duration;
 
@@ -47,13 +48,18 @@ impl MirrorShared {
     }
 
     pub(crate) fn set_batch_hook(&self, hook: Option<BatchHook>) {
-        if let Ok(mut slot) = self.batch_hook.lock() {
-            *slot = hook;
-        }
+        *self
+            .batch_hook
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = hook;
     }
 
     fn run_batch_hook(&self) {
-        let hook = self.batch_hook.lock().ok().and_then(|slot| slot.clone());
+        let hook = self
+            .batch_hook
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
         if let Some(hook) = hook {
             hook();
         }
@@ -64,10 +70,8 @@ impl MirrorShared {
     }
 
     pub(crate) fn wake(&self) {
-        if let Ok(mut flag) = self.wake.lock() {
-            *flag = true;
-            self.signal.notify_all();
-        }
+        *self.wake.lock().unwrap_or_else(PoisonError::into_inner) = true;
+        self.signal.notify_all();
     }
 
     pub(crate) fn stop(&self) {
@@ -76,7 +80,7 @@ impl MirrorShared {
     }
 
     pub(crate) fn error(&self) -> Option<MirrorError> {
-        self.error.lock().ok().and_then(|e| *e)
+        *self.error.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     pub(crate) fn clear_error(&self) {
@@ -84,26 +88,23 @@ impl MirrorShared {
     }
 
     fn set_error(&self, error: Option<MirrorError>) {
-        if let Ok(mut slot) = self.error.lock() {
-            *slot = error;
-        }
+        *self.error.lock().unwrap_or_else(PoisonError::into_inner) = error;
     }
 
     /// Ждёт сигнала; после ошибки или с остатком отметок — не дольше `retry`.
     fn wait(&self, retry_soon: bool) {
-        let Ok(mut flag) = self.wake.lock() else {
-            return;
-        };
+        let mut flag = self.wake.lock().unwrap_or_else(PoisonError::into_inner);
         if !*flag {
             let timeout = if retry_soon {
                 self.retry
             } else {
                 Duration::from_secs(3600)
             };
-            flag = match self.signal.wait_timeout(flag, timeout) {
-                Ok((flag, _)) => flag,
-                Err(_) => return,
-            };
+            flag = self
+                .signal
+                .wait_timeout(flag, timeout)
+                .unwrap_or_else(PoisonError::into_inner)
+                .0;
         }
         *flag = false;
     }
@@ -114,7 +115,7 @@ pub(crate) fn spawn(
     reader: Connection,
     writer: Writer,
     default_dir: Option<PathBuf>,
-) {
+) -> Result<(), StoreError> {
     thread::Builder::new()
         .name("kinige-mirror".into())
         .spawn(move || {
@@ -125,8 +126,10 @@ pub(crate) fn spawn(
                 // Паника в проходе не должна молча убить поток копии: она ловится, в статусе «Настроек» ошибка записи, повтор
                 // через `retry`, цикл продолжается.
                 let retry_soon = catch_unwind(AssertUnwindSafe(|| {
+                    // Крючок тестов страховки; в релизной сборке (`debug_assertions` выключены) его нет.
                     assert!(
-                        !shared.panic_next.swap(false, Ordering::SeqCst),
+                        !(cfg!(debug_assertions)
+                            && shared.panic_next.swap(false, Ordering::SeqCst)),
                         "проверка: паника в проходе копии"
                     );
                     pass(&shared, &reader, &writer, default_dir.as_deref())
@@ -142,7 +145,8 @@ pub(crate) fn spawn(
                 shared.wait(retry_soon);
             }
         })
-        .expect("не удалось запустить поток Markdown-копии");
+        .map(drop)
+        .map_err(|_| StoreError::Internal("не удалось запустить поток Markdown-копии".into()))
 }
 
 /// Один проход по отметкам. Возвращает `true`, если нужен повтор (ошибка или остались отметки).

@@ -1,1 +1,13 @@
+# Печать и «падающие» вызовы разрешены только в тестах (unit-тесты в `src/` и корни `tests/` с `#![cfg(test)]`), где
+# падение теста и есть сообщение об ошибке. Для `unreachable`, `todo` и `unimplemented` такой настройки у clippy нет.
 allow-print-in-tests = true
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+
+# `std::thread::spawn` паникует, если ОС не дала поток: потоки запускаются через `thread::Builder::spawn` с обработкой отказа.
+# В тестах — `#[allow(clippy::disallowed_methods)]` на тесте или в корне файла (настройки «в тестах» у clippy для него нет).
+disallowed-methods = [
+    { path = "std::thread::spawn", reason = "паникует при отказе ОС: используйте `thread::Builder::spawn` и обработайте ошибку" },
+]

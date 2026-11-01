@@ -5,8 +5,16 @@
 //!
 //! Использование: `cargo run -p kinige-store --example seed_demo -- <каталог данных> [<папка Markdown-копии>]`
 
-// Пример — консольная утилита: печать в stdout разрешена (правило «только через log» — для кода приложения).
-#![allow(clippy::print_stdout)]
+// Пример — консольная утилита: печать в stdout и падение на любой ошибке разрешены (правила «только через log» и
+// «никогда не падать» — для кода приложения).
+#![allow(
+    clippy::print_stdout,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    clippy::string_slice
+)]
 
 use chrono::{NaiveDate, TimeZone};
 use chrono_tz::Tz;

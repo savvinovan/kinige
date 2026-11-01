@@ -163,8 +163,9 @@ async fn run_listener<R: Runtime>(
         tokio::select! {
             accepted = listener.accept() => match accepted {
                 Ok((stream, _)) => {
+                    // Крючок тестов страховки; в релизной сборке (`debug_assertions` выключены) его нет.
                     assert!(
-                        !state.panic_next.swap(false, Ordering::SeqCst),
+                        !(cfg!(debug_assertions) && state.panic_next.swap(false, Ordering::SeqCst)),
                         "проверка: паника слушателя"
                     );
                     tauri::async_runtime::spawn(serve_connection(app.clone(), stream, uid));
@@ -197,14 +198,12 @@ async fn run_listener<R: Runtime>(
 async fn read_marker<R: AsyncReadExt + Unpin>(read: &mut R) -> std::io::Result<(bool, Vec<u8>)> {
     let mut head: Vec<u8> = Vec::with_capacity(RECONNECT_MARKER.len());
     let mut chunk = [0u8; 256];
-    while head.len() < RECONNECT_MARKER.len()
-        && RECONNECT_MARKER.starts_with(&head[..head.len().min(RECONNECT_MARKER.len())])
-    {
+    while head.len() < RECONNECT_MARKER.len() && RECONNECT_MARKER.starts_with(&head) {
         let n = read.read(&mut chunk).await?;
         if n == 0 {
             break;
         }
-        head.extend_from_slice(&chunk[..n]);
+        head.extend_from_slice(chunk.get(..n).unwrap_or_default());
     }
     if head.starts_with(RECONNECT_MARKER) {
         Ok((true, head.split_off(RECONNECT_MARKER.len())))

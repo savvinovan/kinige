@@ -75,11 +75,13 @@ impl Clock {
 /// Строгий разбор метки: 56 символов, цифры, `device_id` — UUID в нижнем регистре.
 pub fn parse(hlc: &str) -> Result<(Clock, &str), HlcError> {
     let bytes = hlc.as_bytes();
-    if bytes.len() != HLC_LEN || bytes[13] != b'-' || bytes[19] != b'-' {
+    if bytes.len() != HLC_LEN || bytes.get(13) != Some(&b'-') || bytes.get(19) != Some(&b'-') {
         return Err(HlcError::Format);
     }
     let digits = |range: std::ops::Range<usize>| -> Result<u64, HlcError> {
-        let part = &hlc[range];
+        // Длина 56 байт и ASCII-дефисы на 13 и 19 уже проверены, поэтому границы 0, 13, 14, 19 и 20 лежат на границах
+        // символов и `get` не отказывает; он здесь вместо среза `[..]`, чтобы нарушение этого было ошибкой, а не паникой.
+        let part = hlc.get(range).ok_or(HlcError::Format)?;
         if !part.bytes().all(|b| b.is_ascii_digit()) {
             return Err(HlcError::Format);
         }
@@ -87,7 +89,7 @@ pub fn parse(hlc: &str) -> Result<(Clock, &str), HlcError> {
     };
     let l = digits(0..13)?;
     let c = u32::try_from(digits(14..19)?).map_err(|_| HlcError::Format)?;
-    let device = &hlc[20..];
+    let device = hlc.get(20..).ok_or(HlcError::Format)?;
     if !is_uuid(device) {
         return Err(HlcError::Format);
     }
@@ -107,7 +109,9 @@ pub fn is_uuid(text: &str) -> bool {
 /// UUID версии 4 в нижнем регистре: 36 символов, `4` в начале третьей группы, вариант `8`, `9`, `a` или `b` в начале четвёртой.
 pub fn is_uuid_v4(text: &str) -> bool {
     let bytes = text.as_bytes();
-    is_uuid(text) && bytes[14] == b'4' && matches!(bytes[19], b'8' | b'9' | b'a' | b'b')
+    is_uuid(text)
+        && bytes.get(14) == Some(&b'4')
+        && matches!(bytes.get(19), Some(b'8' | b'9' | b'a' | b'b'))
 }
 
 #[cfg(test)]
@@ -245,7 +249,7 @@ mod tests {
         assert!(parse(&ok).is_ok());
         for bad in [
             "",
-            &ok[..55],
+            ok.get(..55).unwrap(),
             &format!("{ok}0"),
             &ok.replace("0000000000001-", "00000000000001-"),
             &ok.replacen('-', "_", 1),

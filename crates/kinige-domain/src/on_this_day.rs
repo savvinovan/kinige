@@ -2,7 +2,7 @@
 //! Здесь — даты прошлых лет, состав карточки и типы ответа. Отбор записей — в `kinige-store`. Без IO.
 
 use crate::api::MessageView;
-use crate::journal::is_valid_journal_date;
+use crate::journal::{date_parts, is_valid_journal_date};
 use crate::search::snippet;
 use chrono::{Datelike, NaiveDate};
 use serde::Serialize;
@@ -82,7 +82,7 @@ pub fn past_dates(today: &str, oldest_year: i32) -> Vec<NaiveDate> {
 /// Год из `journal_date` (`YYYY-MM-DD`); `None`, если это не дата.
 pub fn year_of(journal_date: &str) -> Option<i32> {
     is_valid_journal_date(journal_date)
-        .then(|| journal_date[..4].parse().ok())
+        .then(|| date_parts(journal_date).map(|(year, _, _)| year))
         .flatten()
 }
 

@@ -124,11 +124,13 @@ pub fn pre_import_name(utc_stamp: &str) -> String {
 
 /// `YYYYMMDDTHHMMSSZ`.
 fn is_utc_stamp(stamp: &str) -> bool {
-    stamp.len() == 16
-        && stamp.ends_with('Z')
-        && stamp.as_bytes()[8] == b'T'
-        && stamp[..8].bytes().all(|b| b.is_ascii_digit())
-        && stamp[9..15].bytes().all(|b| b.is_ascii_digit())
+    let all_digits = |part: Option<&[u8]>| part.is_some_and(|p| p.iter().all(u8::is_ascii_digit));
+    let bytes = stamp.as_bytes();
+    bytes.len() == 16
+        && bytes.last() == Some(&b'Z')
+        && bytes.get(8) == Some(&b'T')
+        && all_digits(bytes.get(..8))
+        && all_digits(bytes.get(9..15))
 }
 
 /// Вид копии по имени файла; чужие имена (в том числе временные `.tmp` и `corrupt-…`) — `None`.

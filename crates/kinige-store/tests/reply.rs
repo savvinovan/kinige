@@ -1,5 +1,9 @@
 //! Ответ на запись (слайс 5): проверка `reply_to_id`, байты `core`, цитата в ленте и её состояния, неизменяемость ссылки.
 
+// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+#![cfg(test)]
+
 mod common;
 
 use common::days::at;
@@ -118,7 +122,7 @@ fn garbage_reply_targets_are_refused_and_nothing_is_written() {
         assert!(
             matches!(result, Err(StoreError::ReplyTargetNotFound)),
             "{}: {result:?}",
-            &bad[..bad.len().min(30)]
+            bad.chars().take(30).collect::<String>()
         );
     }
     assert_eq!(message_count(dir.path()), before, "ничего не записано");

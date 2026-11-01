@@ -105,6 +105,7 @@ impl Store {
 
     /// Только для тестов: паника внутри `query_map` на соединении чтения агента. Следующие чтения агента должны работать.
     #[doc(hidden)]
+    #[allow(clippy::panic)] // крючок для интеграционных тестов страховки от паники: паника здесь и есть его назначение
     pub fn panic_in_agent_read_for_test(&self) -> Result<(), StoreError> {
         let result = self.with_reader(|conn| -> Result<(), ReadFail> {
             let mut statement = conn.prepare("SELECT id FROM chat")?;

@@ -2,7 +2,7 @@
 //! Без IO. Ответ не больше [`RESPONSE_BYTES`]; текст записи в списках обрезается.
 
 use crate::agent::{RESPONSE_BYTES, truncate_chars};
-use crate::journal::is_valid_journal_date;
+use crate::journal::{date_parts, is_valid_journal_date};
 use crate::tasks::TaskItem;
 use serde::Serialize;
 
@@ -18,9 +18,12 @@ pub struct MonthDay {
 }
 
 pub fn month_day(date: &str) -> Option<MonthDay> {
-    is_valid_journal_date(date).then(|| MonthDay {
-        month_day: date[5..].to_string(),
-        year: date[..4].parse().unwrap_or(0),
+    if !is_valid_journal_date(date) {
+        return None;
+    }
+    Some(MonthDay {
+        month_day: date.get(5..)?.to_string(),
+        year: date_parts(date)?.0,
     })
 }
 

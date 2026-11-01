@@ -1,5 +1,9 @@
 //! Markdown-копия и ответ (слайс 5): под заголовком времени ответа стоит строка `↩` со ссылкой на файл дня старой записи.
 
+// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+#![cfg(test)]
+
 mod common;
 
 use common::days::at;
@@ -11,7 +15,7 @@ use std::path::{Path, PathBuf};
 fn day_file(dir: &Path, chat: &str, date: &str) -> PathBuf {
     mirror_dir(dir)
         .join(chat)
-        .join(&date[..4])
+        .join(date.get(..4).unwrap())
         .join(format!("{date}.md"))
 }
 

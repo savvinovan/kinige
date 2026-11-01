@@ -37,7 +37,8 @@ pub(crate) fn page(
             entries
                 .len()
                 .checked_sub(1)
-                .map(|last| positions[last].encode())
+                .and_then(|last| positions.get(last))
+                .map(AgentCursor::encode)
         })
         .flatten();
     let ids = entries.iter().map(|entry| entry.id.clone()).collect();

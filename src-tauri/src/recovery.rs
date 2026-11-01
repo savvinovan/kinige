@@ -249,6 +249,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::disallowed_methods)] // `thread::spawn` запрещён в коде приложения (clippy.toml), тесту нужны 8 потоков
     fn exactly_one_of_two_simultaneous_restores_begins() {
         let recovery = Arc::new(Recovery::new(PathBuf::from("kinige.db"), true));
         let wins: usize = (0..8)

@@ -1,5 +1,9 @@
 //! Папки Markdown-копии по чатам (слайс 3): имя папки по названию чата, суффикс при совпадении, переименование и архив.
 
+// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+#![cfg(test)]
+
 mod common;
 
 use common::ops::*;
@@ -16,7 +20,7 @@ fn at(minutes: i64) -> Now {
 fn folder(dir: &std::path::Path, name: &str, date: &str) -> std::path::PathBuf {
     mirror_dir(dir)
         .join(name)
-        .join(&date[..4])
+        .join(date.get(..4).unwrap())
         .join(format!("{date}.md"))
 }
 
@@ -50,7 +54,7 @@ fn chats_with_the_same_name_get_an_id_suffix_and_the_oldest_keeps_the_plain_name
     let second = store.create_chat("книги", None, &at(2)).unwrap();
     store.send_message(&first.id, "первая", &at(3)).unwrap();
     store.send_message(&second.id, "вторая", &at(4)).unwrap();
-    let suffixed = format!("книги ({})", &second.id[..8]);
+    let suffixed = format!("книги ({})", second.id.get(..8).unwrap());
     wait_until("обе папки", || {
         folder(dir.path(), "Книги", "2026-10-21").exists()
             && folder(dir.path(), &suffixed, "2026-10-21").exists()
@@ -121,7 +125,7 @@ fn renaming_the_oldest_of_two_same_named_chats_hands_the_plain_folder_to_the_oth
     let second = store.create_chat("Книги", None, &at(2)).unwrap();
     store.send_message(&first.id, "первая", &at(3)).unwrap();
     store.send_message(&second.id, "вторая", &at(4)).unwrap();
-    let suffixed = format!("Книги ({})", &second.id[..8]);
+    let suffixed = format!("Книги ({})", second.id.get(..8).unwrap());
     wait_until("две папки", || {
         folder(dir.path(), &suffixed, "2026-10-21").exists()
     });

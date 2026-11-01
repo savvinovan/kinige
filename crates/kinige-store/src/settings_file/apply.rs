@@ -192,7 +192,10 @@ fn apply_in(
 
     // Сочетания: принимает система, поэтому здесь только список отличий.
     for kind in ShortcutKind::ALL {
-        let wanted = match &parsed.shortcuts[shortcut_slot(kind)] {
+        let Some(field) = parsed.shortcuts.get(shortcut_slot(kind)) else {
+            continue;
+        };
+        let wanted = match field {
             Field::Absent => continue,
             Field::Default => kind.default_accelerator().to_string(),
             Field::Value(accelerator) => accelerator.clone(),

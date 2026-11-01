@@ -108,10 +108,16 @@ impl EffectiveState {
             Field::Value(size) => *size == self.text_size,
         };
         let shortcuts_ok = ShortcutKind::ALL.into_iter().all(|kind| {
-            match &parsed.shortcuts[shortcut_slot(kind)] {
+            let slot = shortcut_slot(kind);
+            let (Some(wanted), Some(current)) =
+                (parsed.shortcuts.get(slot), self.shortcuts.get(slot))
+            else {
+                return false;
+            };
+            match wanted {
                 Field::Absent => true,
-                Field::Default => self.shortcuts[shortcut_slot(kind)] == kind.default_accelerator(),
-                Field::Value(accelerator) => *accelerator == self.shortcuts[shortcut_slot(kind)],
+                Field::Default => current == kind.default_accelerator(),
+                Field::Value(accelerator) => accelerator == current,
             }
         });
         let mirror_ok = match &parsed.mirror_folder {

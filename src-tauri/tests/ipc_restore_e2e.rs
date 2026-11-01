@@ -8,6 +8,9 @@
 //! (хранилище отдаётся приложению последним) и окно с копиями остаётся. Успешный проход (хранилище управляется,
 //! `active = false`, `restoring = false`) подтверждён в живом окне собранного приложения (`docs/screens/3/live-run.txt`).
 
+// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+#![cfg(test)]
 #![cfg(target_os = "macos")]
 
 mod common;
@@ -19,6 +22,7 @@ use serde_json::json;
 use tauri::Manager;
 
 #[test]
+#[allow(unsafe_code)] // `set_var` в 2024 — unsafe; обоснование ниже
 fn a_failure_of_the_services_after_restore_leaves_the_recovery_window_and_no_store() {
     let dir = tempfile::tempdir().unwrap();
     let db = dir.path().join("kinige.db");

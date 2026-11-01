@@ -12,8 +12,10 @@ pub mod logging;
 pub mod mcp;
 #[cfg(target_os = "macos")]
 mod panel;
+pub mod panic_hook;
 pub mod recovery;
 pub mod settings_window;
+pub mod startup;
 pub mod tray;
 
 use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
@@ -21,21 +23,13 @@ use hotkeys::{Hotkeys, PluginRegistrar};
 use kinige_domain::ShortcutKind;
 use kinige_store::{Store, StoreError, StoreOptions};
 use recovery::Recovery;
+use startup::{exit_after_failure, fail_fast, guarded, is_background_launch, launch_args};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, Runtime, WindowEvent};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
-
-/// Аргумент запуска мостом MCP: окно не показывается, приложение живёт в menu bar.
-pub const BACKGROUND_FLAG: &str = "--background";
-
-/// Запущено мостом MCP (`--background`)? Тогда нет ни окна, ни значка в Dock: приложение живёт в menu bar (политика
-/// активации Accessory); первое же показанное окно возвращает обычную политику (`capture::show_main`).
-pub fn is_background_launch<I: IntoIterator<Item = String>>(args: I) -> bool {
-    args.into_iter().any(|arg| arg == BACKGROUND_FLAG)
-}
 
 pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS};
 
@@ -47,7 +41,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler(guarded::<R>(tauri::generate_handler![
             commands::app_info,
             commands::get_language,
             commands::list_chats,
@@ -104,7 +98,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             capture::capture_hide,
             capture::capture_resize,
             capture::capture_add_recent_emoji,
-        ])
+        ]))
 }
 
 /// Где лежат данные. `KINIGE_DATA_DIR` и `KINIGE_MIRROR_DIR` — для проверки на чистой машине и для автотестов; обычный
@@ -248,6 +242,7 @@ fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
 }
 
 pub fn run() {
+    panic_hook::install();
     let configured = builder(
         tauri::Builder::default()
             // Должен идти первым: второй запуск показывает главное окно существующего экземпляра и завершается.
@@ -281,58 +276,59 @@ pub fn run() {
                 settings_window::open(app);
             }
         });
-    let mut app = configured
-        .setup(|app| {
-            log::info!("запуск Kinige {}", env!("CARGO_PKG_VERSION"));
-            let handle = app.handle().clone();
-            let db_path = db_path(&handle)?;
-            // Журнал не открывается, и окно показывает копии (`recovery`), если: восстановление прошлого запуска не
-            // закончено; отметка фоновой проверки подтвердилась повторной синхронной проверкой (не подтвердилась —
-            // отметка снимается и база открывается как обычно); файла базы нет, а копии есть; база не открывается как
-            // повреждённая. База новее приложения (§10.4) — отдельное сообщение. Любая другая ошибка открытия — не
-            // повод предлагать копии: приложение не запускается и говорит об этом.
-            let mirror = default_mirror_dir(&handle);
-            let mut too_new = false;
-            // Флаг «повреждение найдено» нужен хуку проверки, которая стартует вместе с хранилищем, раньше `Recovery`.
-            let corruption = Arc::new(AtomicBool::new(false));
-            let store =
-                if kinige_store::startup_check(&db_path) == kinige_store::StartupCheck::Recovery {
+    let setup = |app: &mut tauri::App| -> Result<(), Box<dyn std::error::Error>> {
+        log::info!("запуск Kinige {}", env!("CARGO_PKG_VERSION"));
+        let handle = app.handle().clone();
+        let db_path = db_path(&handle)?;
+        // Журнал не открывается, и окно показывает копии (`recovery`), если: восстановление прошлого запуска не
+        // закончено; отметка фоновой проверки подтвердилась повторной синхронной проверкой (не подтвердилась —
+        // отметка снимается и база открывается как обычно); файла базы нет, а копии есть; база не открывается как
+        // повреждённая. База новее приложения (§10.4) — отдельное сообщение. Любая другая ошибка открытия — не
+        // повод предлагать копии: приложение не запускается и говорит об этом.
+        let mirror = default_mirror_dir(&handle);
+        let mut too_new = false;
+        // Флаг «повреждение найдено» нужен хуку проверки, которая стартует вместе с хранилищем, раньше `Recovery`.
+        let corruption = Arc::new(AtomicBool::new(false));
+        let store = if kinige_store::startup_check(&db_path) == kinige_store::StartupCheck::Recovery
+        {
+            None
+        } else {
+            match open_store(&handle, db_path.clone(), corruption.clone()) {
+                Ok(store) => Some(store),
+                Err(StoreError::Corrupt(_)) => {
+                    log::error!("база повреждена, предлагаем копии");
                     None
-                } else {
-                    match open_store(&handle, db_path.clone(), corruption.clone()) {
-                        Ok(store) => Some(store),
-                        Err(StoreError::Corrupt(_)) => {
-                            log::error!("база повреждена, предлагаем копии");
-                            None
-                        }
-                        Err(StoreError::TooNew(found)) => {
-                            log::warn!("база создана более новой версией (схема {found})");
-                            too_new = true;
-                            None
-                        }
-                        Err(error) => return Err(Box::new(error)),
-                    }
-                };
-            let recovery = if too_new {
-                Recovery::database_too_new(db_path)
-            } else {
-                Recovery::new(db_path, store.is_none())
-            };
-            app.manage(
-                recovery
-                    .with_mirror(mirror)
-                    .with_corruption_flag(corruption),
-            );
-            if let Some(store) = store {
-                start_services(&handle, store)?;
+                }
+                Err(StoreError::TooNew(found)) => {
+                    log::warn!("база создана более новой версией (схема {found})");
+                    too_new = true;
+                    None
+                }
+                Err(error) => return Err(Box::new(error)),
             }
-            // Главное окно создаётся скрытым (`visible: false`), чтобы запуск в фоне не мигал окном: показываем его здесь,
-            // если приложение запущено не мостом MCP (`--background`, значок в menu bar без окна).
-            if !is_background_launch(std::env::args()) {
-                capture::show_main(&handle);
-            }
-            Ok(())
-        })
+        };
+        let recovery = if too_new {
+            Recovery::database_too_new(db_path)
+        } else {
+            Recovery::new(db_path, store.is_none())
+        };
+        app.manage(
+            recovery
+                .with_mirror(mirror)
+                .with_corruption_flag(corruption),
+        );
+        if let Some(store) = store {
+            start_services(&handle, store)?;
+        }
+        // Главное окно создаётся скрытым (`visible: false`), чтобы запуск в фоне не мигал окном: показываем его здесь,
+        // если приложение запущено не мостом MCP (`--background`, значок в menu bar без окна).
+        if !is_background_launch(launch_args()) {
+            capture::show_main(&handle);
+        }
+        Ok(())
+    };
+    let built = configured
+        .setup(move |app| fail_fast(setup(app)))
         .on_window_event(on_window_event)
         .on_page_load(|webview, payload| {
             // Замер холодного старта (`scripts/measure-cold-start.sh`): метка, когда страница главного окна загружена.
@@ -341,12 +337,18 @@ pub fn run() {
                 log::info!(target: logging::TIMING_TARGET, "page-loaded");
             }
         })
-        .build(tauri::generate_context!())
-        .expect("не удалось собрать Kinige");
+        .build(tauri::generate_context!());
+    let mut app = match built {
+        Ok(app) => app,
+        Err(_) => {
+            log::error!("сборка приложения не удалась");
+            exit_after_failure()
+        }
+    };
 
     // Запуск мостом: без значка в Dock, пока нет окна (политика меняется на обычную в `capture::show_main`).
     #[cfg(target_os = "macos")]
-    if is_background_launch(std::env::args()) {
+    if is_background_launch(launch_args()) {
         app.set_activation_policy(tauri::ActivationPolicy::Accessory);
     }
     #[cfg(not(target_os = "macos"))]
@@ -364,24 +366,4 @@ pub fn run() {
         #[cfg(not(target_os = "macos"))]
         let _ = (app, event);
     });
-}
-
-#[cfg(test)]
-mod tests {
-    use super::is_background_launch;
-
-    fn args(list: &[&str]) -> Vec<String> {
-        list.iter().map(|arg| arg.to_string()).collect()
-    }
-
-    #[test]
-    fn only_the_exact_flag_marks_a_background_launch() {
-        assert!(is_background_launch(args(&["kinige", "--background"])));
-        assert!(!is_background_launch(args(&["kinige"])));
-        assert!(!is_background_launch(args(&[
-            "kinige",
-            "--background=1",
-            "background"
-        ])));
-    }
 }

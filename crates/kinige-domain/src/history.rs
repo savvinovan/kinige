@@ -47,8 +47,7 @@ pub fn edit_snapshot(groups_raw: &str, hlc_json: &str) -> Result<String, GroupEr
             .ok_or_else(|| corrupt(format!("нет sv у группы {name}")))?;
         entries.push(json!({"g": name, "h": h, "sv": sv, "raw": raw.get()}));
     }
-    let bytes = jcs::canonical_bytes(&json!({ "groups": entries }))?;
-    Ok(String::from_utf8(bytes).expect("JCS выдаёт UTF-8"))
+    Ok(jcs::canonical_string(&json!({ "groups": entries }))?)
 }
 
 /// Ревизия `edit` со снимком записи до правки. `hlc` — метка события правки (та же, что у новой версии `body`).
@@ -95,8 +94,7 @@ pub fn purged_of(hlc_json: &str) -> Result<String, GroupError> {
             .ok_or_else(|| corrupt(format!("нет h у группы {name}")))?;
         snapshot.insert(name.clone(), json!(h));
     }
-    let bytes = jcs::canonical_bytes(&Value::Object(snapshot))?;
-    Ok(String::from_utf8(bytes).expect("JCS выдаёт UTF-8"))
+    Ok(jcs::canonical_string(&Value::Object(snapshot))?)
 }
 
 /// То же, что [`purged_of`], но для записи с частично повреждённым `hlc_json`: в снимок попадает всё, что удалось прочитать
@@ -114,8 +112,7 @@ pub fn purged_of_best_effort(hlc_json: &str) -> Result<String, GroupError> {
     if snapshot.is_empty() {
         return Err(corrupt("в hlc_json нет ни одной читаемой группы"));
     }
-    let bytes = jcs::canonical_bytes(&Value::Object(snapshot))?;
-    Ok(String::from_utf8(bytes).expect("JCS выдаёт UTF-8"))
+    Ok(jcs::canonical_string(&Value::Object(snapshot))?)
 }
 
 /// Группа `deleted` записи в поддерживаемой `sv`: purge (локальный и серверный) создавать можно только так (ADR-0001 §4 п. 4).

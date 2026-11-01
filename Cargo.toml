@@ -9,11 +9,32 @@ rust-version = "1.94"
 license = "MIT"
 publish = false
 
+# `unsafe` — только в одной функции `effective_uid` (kinige-store, `geteuid`), с `#[allow]` и обоснованием (KINIG-28).
+# `forbid` нельзя переопределить точечным `allow`, поэтому `deny`.
+[workspace.lints.rust]
+unsafe_code = "deny"
+
 # Вывод только через крейт `log` (файл лога пишет tauri-plugin-log): в .app из Finder stderr никуда не попадает.
 # В тестах и примерах печать разрешена (`clippy.toml`, `#![allow]` в examples).
+#
+# «Никогда не падать» (KINIG-28): ни одно из этих мест не должно попадать в код приложения. Исключение — доказуемо
+# безошибочный литерал: `#[allow(clippy::expect_used)]` и `.expect("почему не может упасть")`. В тестах (unit в `src/`,
+# корни `tests/` с `#![cfg(test)]`) и примерах разрешено (`clippy.toml`).
 [workspace.lints.clippy]
 print_stdout = "deny"
 print_stderr = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+unreachable = "deny"
+todo = "deny"
+unimplemented = "deny"
+# Индексы и границы срезов приходят из чужих данных: `get()` вместо `[i]` и `[a..b]`, срезы строк только по границам
+# символов. В тестах индексация разрешена, срезы строк — нет (у `string_slice` такой настройки нет).
+# `arithmetic_side_effects` не включён: 199 срабатываний на счётчики и итераторы без входных данных; длины и смещения из
+# ввода проверены вручную (`checked_*`, `saturating_*`), см. KINIG-28.
+indexing_slicing = "deny"
+string_slice = "deny"
 
 [profile.release]
 lto = true

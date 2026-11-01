@@ -239,7 +239,10 @@ fn map_lines(text: &str, f: impl Fn(&str) -> String) -> String {
             }
             let start = line.len() - line.trim_start().len();
             let end = line.trim_end().len();
-            format!("{}{}{}", &line[..start], f(core), &line[end..])
+            // Границы взяты из `trim_*`, то есть лежат на границах символов.
+            let head = line.get(..start).unwrap_or_default();
+            let tail = line.get(end..).unwrap_or_default();
+            format!("{head}{}{tail}", f(core))
         })
         .collect::<Vec<_>>()
         .join("\n")
@@ -330,7 +333,7 @@ fn line_marker(line: &str) -> Option<usize> {
     let trimmed = line.trim_start_matches([' ', '\t']);
     let lead = line.len() - trimmed.len();
     let first = trimmed.chars().next()?;
-    let after = |len: usize| trimmed[len..].chars().next();
+    let after = |len: usize| trimmed.get(len..).and_then(|rest| rest.chars().next());
     let boundary = |c: Option<char>| c.is_none_or(|c| c == ' ' || c == '\t');
     match first {
         '#' => {
@@ -342,7 +345,7 @@ fn line_marker(line: &str) -> Option<usize> {
         '-' | '=' if trimmed.chars().all(|c| c == first) => Some(lead),
         '0'..='9' => {
             let digits = trimmed.chars().take_while(char::is_ascii_digit).count();
-            let mark = trimmed[digits..].chars().next();
+            let mark = after(digits);
             (digits <= 9 && matches!(mark, Some('.' | ')')) && boundary(after(digits + 1)))
                 .then_some(lead + digits)
         }

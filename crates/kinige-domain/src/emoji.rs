@@ -165,7 +165,10 @@ pub fn is_emoji_sequence(text: &str) -> bool {
                 if used == 0 {
                     return false;
                 }
-                rest = &rest[used..];
+                let Some(after) = rest.get(used..) else {
+                    return false;
+                };
+                rest = after;
                 match rest {
                     [] => return true,
                     [joiner, tail @ ..] if *joiner == ZWJ => rest = tail,

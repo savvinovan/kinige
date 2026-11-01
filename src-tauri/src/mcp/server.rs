@@ -20,7 +20,7 @@ use rmcp::service::RequestContext;
 use rmcp::{RoleServer, ServerHandler};
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 use tauri::{AppHandle, Manager, Runtime};
 
 /// Что соединение сообщило о себе и записано ли подключение в журнал (отключение пишется, только если писалось подключение).
@@ -141,9 +141,11 @@ impl<R: Runtime> ServerHandler for McpServer<R> {
         context: RequestContext<RoleServer>,
     ) -> Result<InitializeResult, ErrorData> {
         let client = request.client_info.name.clone();
-        if let Ok(mut slot) = self.info.client.lock() {
-            *slot = Some(client.clone());
-        }
+        *self
+            .info
+            .client
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(client.clone());
         context.peer.set_peer_info(request.clone());
         self.record_connection().await;
         self.negotiate_initialize(&request)

@@ -1,6 +1,11 @@
 //! Мост `kinige-mcp` как собранный бинарник с подставным сервером на временном сокете (ADR-0009, слайс 4a): пересылка,
 //! обрыв без повторной отправки, повтор рукопожатия, запуск приложения только когда процесса нет, предел кадра, stderr.
 
+// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+#![cfg(test)]
+#![allow(clippy::disallowed_methods)] // `thread::spawn` запрещён в коде приложения (clippy.toml), тесту поток нужен без обработки отказа
+
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
@@ -487,7 +492,7 @@ fn a_frame_over_4_mib_is_rejected_on_both_sides() {
     assert!(
         line.contains(r#""id":3"#) && line.contains("потеряно"),
         "{}",
-        &line[..line.len().min(200)]
+        line.chars().take(200).collect::<String>()
     );
 }
 

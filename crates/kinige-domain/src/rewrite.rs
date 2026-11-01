@@ -105,12 +105,14 @@ pub fn rewrite_group(
             .get(),
     )
     .map_err(corrupt)?;
-    let old_hlc = old_entry["h"]
-        .as_str()
+    let old_hlc = old_entry
+        .get("h")
+        .and_then(Value::as_str)
         .ok_or_else(|| corrupt(format!("нет h у группы {group}")))?
         .to_string();
-    let old_sv = old_entry["sv"]
-        .as_u64()
+    let old_sv = old_entry
+        .get("sv")
+        .and_then(Value::as_u64)
         .ok_or_else(|| corrupt(format!("нет sv у группы {group}")))?;
     if old_sv > u64::from(SCHEMA_VERSION) {
         return Err(GroupError::UnsupportedVersion);
@@ -124,11 +126,10 @@ pub fn rewrite_group(
 
     edit(&mut object, &old_hlc)?;
 
-    let bytes = jcs::canonical_bytes(&Value::Object(object))?;
-    if max_bytes.is_some_and(|max| bytes.len() > max) {
+    let text = jcs::canonical_string(&Value::Object(object))?;
+    if max_bytes.is_some_and(|max| text.len() > max) {
         return Err(GroupError::TooLarge);
     }
-    let text = String::from_utf8(bytes).expect("JCS выдаёт UTF-8");
     groups.insert(
         group.to_string(),
         RawValue::from_string(text).map_err(corrupt)?,
