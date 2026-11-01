@@ -79,19 +79,25 @@ export function useReplyActions(options: UseReplyActionsOptions) {
       .settle()
       .then(() => api.sendMessage(selected, text, replyId))
       .then((sent) => {
-        saver.cancel();
         appendSent(sent);
+        void refreshChats();
+        // Человек мог открыть другой чат, пока шла отправка: Rust уже очистил черновик того, откуда отправляли, а поле, очередь
+        // сохранения и ошибка принадлежат теперь новому чату и остаются как были.
+        if (selectedRef.current !== selected) return;
+        saver.cancel();
         clearDraft();
         setComposerError(null);
-        void refreshChats();
       })
       // Успех: запись просто появляется в ленте, без тоста и подтверждений (как в Telegram). Ошибка: текст остаётся в поле,
       // запись не показана; черновик возвращается в очередь сохранения. Если Rust сказал, что записи, на которую отвечают,
       // нет, строка над полем перечитывается: она покажет «в корзине», «удалена» или «перенесена».
       .catch((reason: unknown) => {
         const code = errorCode(reason);
-        setComposerError(code);
+        // Текст возвращается в очередь сохранения прежнего чата (она привязана к нему); строка ошибки и перечитывание строки
+        // ответа нужны только тому чату, который открыт.
         planDraft(text, replyTo);
+        if (selectedRef.current !== selected) return;
+        setComposerError(code);
         if (code === "reply_target_not_found") void confirmReplyState(selected);
       })
       .finally(() => {
