@@ -29,7 +29,7 @@ The Russian original used several words for some of these concepts; this transla
 | recovery                | regaining account access with the 24 recovery words (§8.6)                                                                                          |
 | restore from a backup   | replacing the local database with a backup file (§1); not to be confused with recovery                                                              |
 | database copy           | another instance of the same database file (a restored backup or a cloned profile), §1                                                              |
-| server log, app log     | server log: the server's per-account envelope log, numbered by `seq`; app log: the client's log file (§8.8); neither is the journal                  |
+| server log, app log     | server log: the server's per-account envelope log, numbered by `seq`; app log: the client's log file (§8.8); neither is the journal                 |
 
 ## Context
 
