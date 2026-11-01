@@ -1,89 +1,91 @@
-# Слайс D2: визуальное обновление приложения
+# Slice D2: visual refresh of the app
 
-Huly: KINIG-55. Зависит от: D1 (ADR-0004), слайсов 1–5. Бюджет: 2 дня. Пользователю нравится ритм боковой панели стороннего приложения (личный скриншот, в репозиторий не кладётся): просторные поля и отступы, крупнее шрифт, скруглённый выбранный пункт с мягкой заливкой, тихие мелкие серые заголовки разделов с воздухом сверху, плитки у пунктов, значки у нижних пунктов, подсветка при наведении. Переносим принципы ритма, размеров и иерархии; ни логотипа, ни названия, ни цветов бренда.
+Huly: KINIG-55. Depends on: D1 (ADR-0004), slices 1-5. Budget: 2 days. The user likes the rhythm of the sidebar of another app (a personal screenshot, not stored in the repository): roomy margins and paddings, a larger font, a rounded selected row with a soft fill, quiet small gray section headings with space above, tiles next to items, icons on the bottom items, a highlight on hover. We carry over the principles of rhythm, sizes and hierarchy; no logo, no name, no brand colors.
 
-## Сценарий
-Пользователь открывает приложение и видит те же экраны, что раньше, но спокойнее и просторнее: сайдбар шире, строки выше, у каждого чата слева мягкая плитка с эмодзи, заголовки «Закреплённые» / «Чаты» / «Архив» тихие и с воздухом сверху, выбранный чат залит скруглённой плашкой, строка под мышью подсвечивается. Внизу «Корзина» и профиль со значками в том же ритме. Лента, плашки, метки дней, карточка «В этот день», цитаты, поле ввода, окно настроек, диалоги, окно захвата, поиск, корзина, восстановление и импорт стали крупнее и свободнее по тем же правилам. Функций и текстов не прибавилось.
+## Scenario
+The user opens the app and sees the same screens as before, only calmer and roomier: the sidebar is wider, rows are taller, each chat has a soft tile with its emoji on the left, the "Pinned" / "Chats" / "Archive" headings are quiet with space above, the selected chat is filled with a rounded plate, the row under the mouse is highlighted. At the bottom, "Trash" and the profile carry icons in the same rhythm. The feed, plates, day labels, the "On this day" card, quotes, the input field, the settings window, dialogs, the capture window, search, trash, recovery and import became larger and roomier by the same rules. No functions or texts were added.
 
-## Входит
-- **Токены** (`design/tokens/`, затем `npm run tokens`): новые и изменённые размеры шрифтов, радиусы, раскладка, цвета заливок и плиток (таблица ниже). Компоненты берут только токены.
-- **Сайдбар:** строки «плитка + имя + счётчик» высотой 36 px, поле и внутренние отступы шире, заголовки разделов 12 px серым с отступом сверху 19,5 px, подсветка наведения (`surface.hover`), выбранный чат заливкой `surface.selected` без обводки. Свёрнутая полоса — те же плитки.
-- **Плитка чата:** эмодзи в скруглённом квадрате 22,75 px (`layout.tile.size`), цвет плитки по цвету чата; без цвета нейтральная. Inbox тоже в плитке. «Корзина» и профиль — значок или аватар в слоте того же размера, что плитка (значок без заливки); меню профиля — пункты со значками.
-- **Лента и плашки, метки дней, карточка «В этот день», цитата и строка ответа, поле ввода:** поля ленты, внутренние отступы плашек, промежутки, радиусы, размер шрифта интерфейса.
-- **Окно настроек:** дерево разделов (строки 36 px, скруглённая заливка, наведение), страница (поля, заголовок, группы и строки просторнее), сегменты, строки сочетаний, путь, флажки.
-- **Диалоги и окна:** модальное окно, «Новый чат / Переименовать / Эмодзи», подтверждения корзины, контекстное меню, импорт, восстановление («База повреждена»), корзина, поиск (поле сверху остаётся, меняются размеры и отступы), окно быстрого захвата (плашки контекста и кнопка берут новые токены плашки, шрифта и высоты кнопки; отступы самой панели остались прежними, ширина окна ОС не менялась, начальная высота 122 → 123 px под округление вверх, как у `capture_resize`), цитата в плашке записи и «Видимые чаты» с журналом обращений (отступы нового ритма).
-- **Истории Storybook** к изменённым компонентам: русский и английский, обычный и крупный текст, длинное имя, плитки всех цветов, фокус с клавиатуры, перенос длинной подписи флажка. Наведение показано историями сайдбара через атрибут `data-story-hover` и правило в `sidebar-stories.css` (`:hover` в историю не поставить); наведения в дереве настроек и в меню отдельной историей нет. Эталоны снимков — на GitHub (`visual-update.yml`).
-- **Тест токенов:** новые роли палитры (`surface.hover`, плитки) заданы и проходят пары «цвет / фон» (`contrastPairs.ts`).
+## Included
+- **Tokens** (`design/tokens/`, then `npm run tokens`): new and changed font sizes, radii, layout, fill and tile colors (table below). Components use only tokens.
+- **Sidebar:** rows "tile + name + counter" 36 px high, wider field and inner paddings, section headings 12 px gray with 19.5 px above, hover highlight (`surface.hover`), the selected chat filled with `surface.selected` and no outline. The collapsed rail uses the same tiles.
+- **Chat tile:** the emoji in a rounded 22.75 px square (`layout.tile.size`), tinted by the chat color; neutral without a color. Inbox is in a tile too. "Trash" and the profile use an icon or an avatar in a slot the size of the tile (the icon has no fill); the profile menu items carry icons.
+- **Feed and plates, day labels, the "On this day" card, the quote and the reply line, the input field:** feed margins, plate paddings, gaps, radii, the interface font size.
+- **Settings window:** the section tree (36 px rows, rounded fill, hover), the page (margins, title, groups and rows roomier), segments, shortcut rows, path, checkboxes.
+- **Dialogs and windows:** the modal, "New chat / Rename / Emoji", trash confirmations, the context menu, import, recovery ("Database is damaged"), trash, search (the field stays on top, only sizes and paddings change), the quick capture window (context plates and the button take the new plate, font and button-height tokens; the panel's own padding is unchanged, the OS window width is unchanged, the initial height goes 122 → 123 px to match rounding up in `capture_resize`), the quote in an entry plate, and "Visible chats" with the access log (paddings in the new rhythm).
+- **Storybook stories** for the changed components: Russian and English, normal and large text, a long name, tiles of all colors, keyboard focus, wrapping of a long checkbox label. Hover is shown by the sidebar stories through the `data-story-hover` attribute and a rule in `sidebar-stories.css` (`:hover` cannot be set in a story); there is no separate hover story for the settings tree or the menu. Baselines are taken on GitHub (`visual-update.yml`).
+- **Token test:** the new palette roles (`surface.hover`, tiles) are set and pass the "color / background" pairs (`contrastPairs.ts`).
 
-## НЕ входит
-- Новые функции, тексты, экраны, анимации и тосты; светлая тема.
-- Выбор цвета чата и вывод `color` в `ChatSummary` (Rust и схема не меняются; сейчас `chat.color` в базе всегда пустой, см. «Открытые вопросы»). В приложении плитки нейтральные, цветные видны в историях через поле `SidebarChat.tint`.
-- Окно ОС быстрого захвата: ширина окна и пределы высоты (`layout.capture.*`) совпадают с Rust и не меняются; начальная высота в `tauri.conf.json` 122 → 123 (значение конфигурации, не код Rust).
-- Размеры окна «Настройки» (`layout.settings.window-*`): их задаёт Rust.
-- Размеры заголовков H1–H3 внутри записи (плотность текста записи выбрана пользователем, ADR-0004) и размер текста записи (13 px).
-- Плитки в результатах поиска, в плашке корзины и в подменю «Переместить в чат»: там остаётся эмодзи без плитки.
-- Новые значки вне Lucide; шрифты и палитра поверхностей остаются.
+## Not included
+- New functions, texts, screens, animations and toasts; a light theme.
+- Choosing a chat color and exposing `color` in `ChatSummary` (Rust and the schema do not change; today `chat.color` in the database is always empty, see "Open questions"). In the app the tiles are neutral; colored ones show in stories through the `SidebarChat.tint` field.
+- The OS window of quick capture: its width and height limits (`layout.capture.*`) match Rust and do not change; the initial height in `tauri.conf.json` goes 122 → 123 (a configuration value, not Rust code).
+- The size of the "Settings" window (`layout.settings.window-*`): Rust sets it.
+- The sizes of H1-H3 headings inside an entry (the density of entry text was chosen by the user, ADR-0004) and the entry text size (13 px).
+- Tiles in search results, in the trash plate and in the "Move to chat" submenu: they keep the plain emoji.
+- New icons outside Lucide; fonts and the surface palette stay.
 
-## Токены: было → стало
-Размеры в rem; px при корне 13 px.
+## Tokens: before → after
+Sizes in rem; px at a 13 px root.
 
-| Токен                                                           | Было                | Стало                                                                           | Зачем                                                                   |
-|-----------------------------------------------------------------|---------------------|---------------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| `type.small.size`                                               | 0,93rem (12,1 px)   | 1rem (13 px)                                                                    | интерфейс крупнее                                                       |
-| `type.meta.size`                                                | 0,8rem (10,4 px)    | 0,85rem (11 px)                                                                 | время, счётчики                                                         |
-| `type.day.size`                                                 | 0,86rem (11,2 px)   | 0,9rem (11,7 px)                                                                | метка дня                                                               |
-| `type.nav` (новый)                                              | нет                 | 1,08rem (14 px), 1,3                                                            | строки сайдбара и дерева настроек                                       |
-| `type.section` (новый)                                          | нет                 | 0,92rem (12 px), medium                                                         | заголовки разделов                                                      |
-| `type.title` (новый)                                            | нет                 | 1,23rem (16 px), 600                                                            | заголовки окон, диалогов, страниц настроек                              |
-| `radius.control`                                                | 0,5rem (6,5 px)     | 0,65rem (8,5 px)                                                                | строки, поля, кнопки                                                    |
-| `radius.panel`                                                  | 0,75rem (9,75 px)   | 0,9rem (11,7 px)                                                                | поле ввода, меню, диалог                                                |
-| `radius.message`                                                | 0,75rem (9,75 px)   | 0,9rem (11,7 px)                                                                | плашка записи, карточка                                                 |
-| `radius.tile` (новый)                                           | нет                 | 0,45rem (5,9 px)                                                                | плитка чата                                                             |
-| `layout.sidebar.width`                                          | 18,5rem (240 px)    | 20,5rem (266 px)                                                                | шире                                                                    |
-| `layout.sidebar.padding`                                        | space.2 (6,5 px)    | space.3 (9,75 px)                                                               | поля сайдбара                                                           |
-| `layout.sidebar.rail-width`                                     | 4rem (52 px)        | 4,4rem (57 px)                                                                  | полоса вмещает новую высоту строки                                      |
-| `layout.sidebar.heading-height`                                 | 1,6rem (21 px)      | 1,9rem (24,7 px)                                                                | заголовок раздела                                                       |
-| `layout.sidebar.row-height` (н)                                 | нет (row.height)    | 2,8rem (36,4 px)                                                                | строка чата, корзина, профиль                                           |
-| `layout.sidebar.row-gap` (н)                                    | space.1 (3,25 px)   | 0,15rem (2 px)                                                                  | между строками                                                          |
-| `layout.sidebar.row-padding`(н)                                 | space.2 (6,5 px)    | 0,7rem (9,1 px)                                                                 | слева и справа внутри строки                                            |
-| `layout.sidebar.row-content-gap`(н)                             | space.2             | 0,8rem (10,4 px)                                                                | плитка → имя                                                            |
-| `layout.sidebar.section-gap`(н)                                 | space.2 (6,5 px)    | 1,5rem (19,5 px)                                                                | воздух над заголовком раздела                                           |
-| `layout.tile.size` (новый)                                      | нет                 | 1,75rem (22,75 px)                                                              | плитка, слот значка, аватар                                             |
-| `icon.size-nav` (новый)                                         | icon.size (17,5 px) | 1,2rem (15,6 px)                                                                | значки нижних пунктов                                                   |
-| `icon.emoji.in-tile` (новый)                                    | icon.size           | 1,05rem (13,65 px)                                                              | эмодзи внутри плитки                                                    |
-| `layout.row.height`                                             | 2,5rem (32,5 px)    | 2,6rem (33,8 px)                                                                | строки меню, списков                                                    |
-| `layout.control.height`                                         | 2,3rem (30 px)      | 2,5rem (32,5 px)                                                                | кнопки                                                                  |
-| `layout.field.height`                                           | 2,3rem (30 px)      | 2,7rem (35 px)                                                                  | поле поиска, поля ввода                                                 |
-| `layout.composer.min-height`                                    | 3,5rem (45,5 px)    | 4rem (52 px)                                                                    | поле ввода                                                              |
-| `layout.feed.padding-inline`                                    | space.5 (19,5 px)   | space.6 (26 px)                                                                 | поля ленты                                                              |
-| `layout.feed.padding-block`                                     | space.3 (9,75 px)   | space.5 (19,5 px)                                                               | поля ленты                                                              |
-| `layout.message.padding-block`                                  | space.2 (6,5 px)    | 0,6rem (7,8 px)                                                                 | плашка                                                                  |
-| `layout.message.padding-inline`                                 | space.3 (9,75 px)   | 0,95rem (12,35 px)                                                              | плашка                                                                  |
-| `layout.message.gap-series`                                     | space.1 (3,25 px)   | 0,35rem (4,55 px)                                                               | между плашками серии                                                    |
-| `layout.message.gap-group`                                      | space.3 (9,75 px)   | space.4 (13 px)                                                                 | между сериями и вокруг метки дня                                        |
-| `layout.message.time-reserve`                                   | 2,9rem (37,7 px)    | 3,1rem (40,3 px)                                                                | место под время (шрифт времени крупнее)                                 |
-| `layout.message.agent-mark-reserve`                             | 9,5rem (123,5 px)   | 10,1rem (131,3 px)                                                              | то же, пометка агента                                                   |
-| `layout.settings.tree-width`                                    | 15rem (195 px)      | 17rem (221 px)                                                                  | дерево разделов                                                         |
-| `layout.settings.page-width`                                    | 40rem (520 px)      | 42rem (546 px)                                                                  | страница раздела                                                        |
-| `color.surface.hover` (новый)                                   | нет                 | `#232323`                                                                       | подсветка наведения; 1,17:1 к фону окна, выбранное светлее неё в 1,21:1 |
-| `color.surface.selected`                                        | `#2b2b2b`           | `#313131`                                                                       | выбранное заметнее наведения (было 1,07:1)                              |
-| `color.highlight.background`                                    | `#3a3a3a`           | `#3e3e3e`                                                                       | осталась светлее выбранной строки (1,22:1)                              |
-| `color.tile.neutral` (новый)                                    | нет                 | `#3e3e3e`                                                                       | плитка без цвета                                                        |
-| `color.tile.blue / teal / green / amber / red / violet` (новые) | нет                 | приглушённые тона светлоты 31 %, насыщенность 30 % (значения в `graphite.json`) | плитка по цвету чата                                                    |
-| `layout.capture.window-height`                                  | 122 px              | 123 px                                                                          | начальная высота окна захвата = содержимое 122,5 px, округлённое вверх  |
+| Token                                                         | Before              | After                                                                    | Why                                                                                      |
+|---------------------------------------------------------------|---------------------|--------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
+| `type.small.size`                                             | 0.93rem (12.1 px)   | 1rem (13 px)                                                             | larger interface                                                                         |
+| `type.meta.size`                                              | 0.8rem (10.4 px)    | 0.85rem (11 px)                                                          | time, counters                                                                           |
+| `type.day.size`                                               | 0.86rem (11.2 px)   | 0.9rem (11.7 px)                                                         | day label                                                                                |
+| `type.nav` (new)                                              | none                | 1.08rem (14 px), 1.3                                                     | sidebar and settings tree rows                                                           |
+| `type.section` (new)                                          | none                | 0.92rem (12 px), medium                                                  | section headings                                                                         |
+| `type.title` (new)                                            | none                | 1.23rem (16 px), 600                                                     | titles of windows, dialogs, settings pages                                               |
+| `radius.control`                                              | 0.5rem (6.5 px)     | 0.65rem (8.5 px)                                                         | rows, fields, buttons                                                                    |
+| `radius.panel`                                                | 0.75rem (9.75 px)   | 0.9rem (11.7 px)                                                         | input field, menu, dialog                                                                |
+| `radius.message`                                              | 0.75rem (9.75 px)   | 0.9rem (11.7 px)                                                         | entry plate, card                                                                        |
+| `radius.tile` (new)                                           | none                | 0.45rem (5.9 px)                                                         | chat tile                                                                                |
+| `layout.sidebar.width`                                        | 18.5rem (240 px)    | 20.5rem (266 px)                                                         | wider                                                                                    |
+| `layout.sidebar.padding`                                      | space.2 (6.5 px)    | space.3 (9.75 px)                                                        | sidebar margins                                                                          |
+| `layout.sidebar.rail-width`                                   | 4rem (52 px)        | 4.4rem (57 px)                                                           | the rail fits the new row height                                                         |
+| `layout.sidebar.heading-height`                               | 1.6rem (21 px)      | 1.9rem (24.7 px)                                                         | section heading                                                                          |
+| `layout.sidebar.row-height` (new)                             | none (row.height)   | 2.8rem (36.4 px)                                                         | chat, trash, profile row                                                                 |
+| `layout.sidebar.row-gap` (new)                                | space.1 (3.25 px)   | 0.15rem (2 px)                                                           | between rows                                                                             |
+| `layout.sidebar.row-padding` (new)                            | space.2 (6.5 px)    | 0.7rem (9.1 px)                                                          | left and right inside a row                                                              |
+| `layout.sidebar.row-content-gap` (new)                        | space.2             | 0.8rem (10.4 px)                                                         | tile → name                                                                              |
+| `layout.sidebar.section-gap` (new)                            | space.2 (6.5 px)    | 1.5rem (19.5 px)                                                         | space above a section heading                                                            |
+| `layout.tile.size` (new)                                      | none                | 1.75rem (22.75 px)                                                       | tile, icon slot, avatar                                                                  |
+| `icon.size-nav` (new)                                         | icon.size (17.5 px) | 1.2rem (15.6 px)                                                         | icons of the bottom items                                                                |
+| `icon.emoji.in-tile` (new)                                    | icon.size           | 1.05rem (13.65 px)                                                       | emoji inside a tile                                                                      |
+| `layout.row.height`                                           | 2.5rem (32.5 px)    | 2.6rem (33.8 px)                                                         | menu and list rows                                                                       |
+| `layout.control.height`                                       | 2.3rem (30 px)      | 2.5rem (32.5 px)                                                         | buttons                                                                                  |
+| `layout.field.height`                                         | 2.3rem (30 px)      | 2.7rem (35 px)                                                           | search field, input fields                                                               |
+| `layout.composer.min-height`                                  | 3.5rem (45.5 px)    | 4rem (52 px)                                                             | input field                                                                              |
+| `layout.feed.padding-inline`                                  | space.5 (19.5 px)   | space.6 (26 px)                                                          | feed margins                                                                             |
+| `layout.feed.padding-block`                                   | space.3 (9.75 px)   | space.5 (19.5 px)                                                        | feed margins                                                                             |
+| `layout.message.padding-block`                                | space.2 (6.5 px)    | 0.6rem (7.8 px)                                                          | plate                                                                                    |
+| `layout.message.padding-inline`                               | space.3 (9.75 px)   | 0.95rem (12.35 px)                                                       | plate                                                                                    |
+| `layout.message.gap-series`                                   | space.1 (3.25 px)   | 0.35rem (4.55 px)                                                        | between plates of a series                                                               |
+| `layout.message.gap-group`                                    | space.3 (9.75 px)   | space.4 (13 px)                                                          | between series and around a day label                                                    |
+| `layout.message.time-reserve`                                 | 2.9rem (37.7 px)    | 3.1rem (40.3 px)                                                         | room for the time (larger time font)                                                     |
+| `layout.message.agent-mark-reserve`                           | 9.5rem (123.5 px)   | 10.1rem (131.3 px)                                                       | the same, agent mark                                                                     |
+| `layout.settings.tree-width`                                  | 15rem (195 px)      | 17rem (221 px)                                                           | section tree                                                                             |
+| `layout.settings.page-width`                                  | 40rem (520 px)      | 42rem (546 px)                                                           | section page                                                                             |
+| `color.surface.hover` (new)                                   | none                | `#232323`                                                                | hover highlight; 1.17:1 to the window background, the selected row is 1.21 times lighter |
+| `color.surface.selected`                                      | `#2b2b2b`           | `#313131`                                                                | the selected row is more visible than hover (was 1.07:1)                                 |
+| `color.highlight.background`                                  | `#3a3a3a`           | `#3e3e3e`                                                                | stays lighter than the selected row (1.22:1)                                             |
+| `color.tile.neutral` (new)                                    | none                | `#3e3e3e`                                                                | tile without a color                                                                     |
+| `color.tile.blue / teal / green / amber / red / violet` (new) | none                | muted tones, lightness 31 %, saturation 30 % (values in `graphite.json`) | tile by chat color                                                                       |
+| `layout.capture.window-height`                                | 122 px              | 123 px                                                                   | initial capture window height = content 122.5 px rounded up                              |
 
-## Как выглядит «готово»
-- Сайдбар главного окна на снимке ближе к образцу по ритму: строки 36 px, плитки, тихие заголовки с воздухом, залитый скруглённый выбранный пункт, значки внизу. Узкое окно ничего не теряет (хуже допустимо).
-- Все остальные области выровнены по тем же значениям: нет места, где остались старые тесные отступы или мелкий шрифт.
-- Проверки в `web/`: `npm ci && npm run tokens && npm run typecheck && npm run lint && npm test && npm run build-storybook` зелёные; контраст новых пар проходит; «нет сырых значений» зелёный; файлы ≤ 400 строк.
-- CI на ветке зелёный, эталоны Storybook обновлены ботом.
+## What "done" looks like
+- The main window sidebar on a screenshot is closer to the reference in rhythm: 36 px rows, tiles, quiet headings with space, a filled rounded selected item, icons at the bottom. The narrow window loses nothing (worse is acceptable).
+- Every other area follows the same values: nowhere are the old tight paddings or the small font left.
+- The selected row is clearly more visible than the row under the mouse; a record dragged onto a chat under the pointer keeps the drop-target fill.
+- Hover is shown in sidebar stories; a long checkbox label wraps instead of being cut off.
 
-## Снимки
-- Storybook (эталоны `visual-update.yml`, на одной теме): все истории, затронутые токенами; новые истории плиток и сайдбара (обычный и крупный текст, ru/en).
-- Настоящее окно (`screens.yml`, существующие сценарии): `docs/screens/5/` (главное окно: сайдбар, лента, карточка «В этот день», ответ, крупный текст, английский) и `docs/screens/4b/` (окно «Настройки»: разделы, сочетания, крупный текст, минимальный размер). Старые версии остаются в `main` для сравнения «до / после».
+## Checks
+- In `web/`: `npm ci && npm run tokens && npm run typecheck && npm run lint && npm test && npm run build-storybook` are green; the contrast of the new pairs passes (hover 1.15:1, other fills 1.2:1); "no raw values" is green; files ≤ 400 lines; a CSS test keeps the drop-target fill above the hover fill.
+- CI on the branch is green; the Storybook baselines are updated by the bot (one theme).
+- Real-window screenshots (`screens.yml`, existing scenarios): `docs/screens/5/` (main window: sidebar, feed, "On this day" card, reply, large text, English) and `docs/screens/4b/` (the "Settings" window: sections, shortcuts, large text, minimum size). Older versions stay in `main` for before / after comparison.
 
-## Открытые вопросы
-- Цвет чата: колонка `chat.color` есть, но всегда пустая и не отдаётся в `ChatSummary`; цвета выбрать негде. Нужен ли выбор цвета (в меню чата) и автоподбор цвета по чату — решает пользователь; это отдельная задача с правкой Rust.
+## Touches sensitive areas
+No: no schema, sync, encryption or IPC changes, Rust code does not change. No new dependencies.
 
-## Затрагивает чувствительные зоны
-Нет: схем, синхронизации, шифрования и IPC нет, Rust не меняется. Новых зависимостей нет.
+## Open questions
+- Chat color: the `chat.color` column exists but is always empty and is not returned in `ChatSummary`, so there is nowhere to choose a color. The user chose "automatic + change in the menu"; it is a separate task after D2 and needs a Rust change.
+
