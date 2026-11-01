@@ -53,6 +53,8 @@ public static class Win {
   [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
   [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
   [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
@@ -81,8 +83,13 @@ public static class Win {
     ShowWindow(h, 9); // SW_RESTORE
     SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040); // HWND_TOPMOST, NOSIZE|NOMOVE|SHOWWINDOW
     SetWindowPos(h, new IntPtr(-2), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040); // HWND_NOTOPMOST
+    // A background process may not take the foreground; a tap on Alt lifts that restriction for the next call.
+    keybd_event(0x12, 0, 0, UIntPtr.Zero);
+    keybd_event(0x12, 0, 2, UIntPtr.Zero);
     SetForegroundWindow(h);
   }
+
+  public static bool IsForeground(IntPtr h) { return GetForegroundWindow() == h; }
 
   // Fits the window into the screen (the runner screen may be smaller than the window).
   public static void MoveTo(IntPtr h, int x, int y, int w, int hgt) { SetWindowPos(h, IntPtr.Zero, x, y, w, hgt, 0x0004 | 0x0040); }
@@ -300,8 +307,12 @@ function Send-Note([string]$text) {
   if (-not $composer) { return $false }
   $composer.SetFocus()
   Start-Sleep -Milliseconds 800
+  $window = Get-AppWindow 'Kinige'
+  Say ("composer: foreground=" + [Win]::IsForeground((New-Object System.IntPtr($window.Current.NativeWindowHandle))) + ' focused=' + $composer.Current.HasKeyboardFocus)
   [System.Windows.Forms.SendKeys]::SendWait($text)
   Start-Sleep -Milliseconds 800
+  $value = $null
+  if ($composer.TryGetCurrentPattern($PatternValue, [ref]$value)) { Say ("composer value length after typing: " + $value.Current.Value.Length) }
   Press 'Kinige' 'Send'
   Start-Sleep -Seconds 2
   return $true
@@ -362,7 +373,7 @@ $handle = New-Object System.IntPtr($main.Current.NativeWindowHandle)
 [Win]::MoveTo($handle, 20, 20, 1280, 800)
 Start-Sleep -Seconds 2
 Dump-Tree $main (Join-Path $Debug 'main-start.txt') | Out-Null
-if (-not (Test-Has (Get-AppWindow 'Kinige') 'On this day')) { Fail 'the "On this day" card is not in the Inbox' }
+if (-not (Wait-For { Test-Has (Get-AppWindow 'Kinige') 'On this day' } 30 'the "On this day" card')) { Fail 'the "On this day" card is not in the Inbox' }
 Shoot '01-inbox' 'Kinige'
 
 Press 'Kinige' $WorkChat
@@ -401,6 +412,7 @@ $written = Get-Count 'message'
 if ($typed -and $written -eq $before) { Fail "the note typed into the composer was not saved ($before entries before, $written after)" }
 Stop-App
 $main = Start-App $exe.FullName $true
+if ($main) { [Win]::MoveTo((New-Object System.IntPtr($main.Current.NativeWindowHandle)), 20, 20, 1280, 800) }
 $after = Get-Count 'message'
 @(
   "entries before the new note: $before",

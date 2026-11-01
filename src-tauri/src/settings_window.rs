@@ -144,10 +144,24 @@ pub fn start_file<R: Runtime>(
     SettingsFile::start(store.clone(), data_dir, options)
 }
 
-/// Открыть окно настроек из главного окна (профиль → «Настройки»).
-#[tauri::command]
+/// Открыть окно настроек из главного окна (профиль → «Настройки»). На Windows команда `async`: окно, созданное на главном
+/// потоке из обработчика, остаётся белым (взаимная блокировка создания WebView2, документация `WebviewWindowBuilder`).
+/// На остальных системах всё как раньше.
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn open_settings<R: Runtime>(app: AppHandle<R>) {
     open(&app);
+}
+
+/// То же из обработчиков событий меню и значка: они идут на главном потоке, поэтому на Windows окно создаётся в другом потоке.
+pub fn open_from_event<R: Runtime>(app: &AppHandle<R>) {
+    #[cfg(windows)]
+    {
+        let app = app.clone();
+        tauri::async_runtime::spawn_blocking(move || open(&app));
+    }
+    #[cfg(not(windows))]
+    open(app);
 }
 
 /// Путь файла, его состояние и ошибки ключей. Команда не `async`, то есть идёт на главном потоке: она только читает
