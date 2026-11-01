@@ -47,6 +47,24 @@ jobs:
             exit 1
           fi
 
+  # Код под `#[cfg(target_os = "macos")]` (панель NSPanel, трей, окно настроек) и тесты IPC src-tauri на настоящей macOS:
+  # на Linux этот код не компилируется. Только крейт приложения; остальное проверяет `rust`.
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Rust toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - run: cargo clippy -p kinige --all-targets -- -D warnings
+      - run: cargo test -p kinige
+
   # Покрытие Rust → Codecov (бейджи в README, комментарий в PR). Информационно: порог не валит CI (codecov.yml).
   # Отдельное задание: сборка с инструментированием (cargo llvm-cov) не делит артефакты с `rust` и идёт параллельно ему.
   # Покрытие web снимается в задании `web` тем же прогоном vitest, что и проверка.
