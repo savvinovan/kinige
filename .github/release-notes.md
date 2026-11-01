@@ -1,16 +1,16 @@
-## Установка (macOS, Apple Silicon)
+## Installation (macOS, Apple Silicon)
 
-Скачайте `Kinige-*-macos-arm64.dmg` (или `.zip`) и перетащите **Kinige** в «Программы».
+Download `Kinige-*-macos-arm64.dmg` (or the `.zip`) and drag **Kinige** into "Applications".
 
-Сборка подписана ad-hoc, без Developer ID и нотаризации Apple (так будет до слайса 10), поэтому macOS при первом запуске остановит её. Любой из способов:
+The build is signed ad-hoc, without a Developer ID and Apple notarization (this stays so until slice 10), so macOS stops it on first launch. Use any of these ways:
 
-- macOS 15 и новее: запустите `Kinige.app` один раз, затем «Системные настройки» -> «Конфиденциальность и безопасность» -> внизу «Всё равно открыть» у Kinige;
-- macOS 13-14: правый клик по `Kinige.app` -> «Открыть» -> «Открыть» (на macOS 15 и новее это больше не обходит проверку);
-- на любой версии, в Терминале: `xattr -dr com.apple.quarantine /Applications/Kinige.app`.
+- macOS 15 and later: launch `Kinige.app` once, then "System Settings" -> "Privacy & Security" -> at the bottom, "Open Anyway" for Kinige;
+- macOS 13-14: right-click `Kinige.app` -> "Open" -> "Open" (on macOS 15 and later this no longer bypasses the check);
+- on any version, in Terminal: `xattr -dr com.apple.quarantine /Applications/Kinige.app`.
 
-Проверка файла: `shasum -a 256 -c --ignore-missing SHA256SUMS` рядом со скачанными файлами.
+File check: `shasum -a 256 -c --ignore-missing SHA256SUMS` next to the downloaded files.
 
-## Данные
+## Data
 
-- База: `~/Library/Application Support/me.savvinov.kinige/`.
-- Копия записей в Markdown: `~/Documents/Kinige`.
+- Database: `~/Library/Application Support/me.savvinov.kinige/`.
+- Markdown copy of the entries: `~/Documents/Kinige`.
