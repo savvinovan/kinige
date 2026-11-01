@@ -91,7 +91,8 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - run: cargo clippy -p kinige -p kinige-store -p kinige-domain -p kinige-mcp --all-targets -- -D warnings
-      - run: cargo test -p kinige -p kinige-store -p kinige-domain -p kinige-mcp
+      # --no-fail-fast: one run lists every failing test binary, a Windows run is too slow to find them one by one.
+      - run: cargo test --no-fail-fast -p kinige -p kinige-store -p kinige-domain -p kinige-mcp
 
   # Покрытие Rust → Codecov (бейджи в README, комментарий в PR). Информационно: порог не валит CI (codecov.yml).
   # Отдельное задание: сборка с инструментированием (cargo llvm-cov) не делит артефакты с `rust` и идёт параллельно ему.

@@ -19,12 +19,19 @@ use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
 use tauri::webview::InvokeRequest;
 use tauri::{App, Manager, WebviewWindow, WebviewWindowBuilder, ipc::CallbackFn, ipc::InvokeBody};
 
+/// Адрес страницы приложения для Tauri: на Windows это `http://tauri.localhost`, на остальных системах `tauri://localhost`;
+/// по нему рантайм решает, что вызов пришёл из собственной страницы (capability с `local`).
+#[cfg(windows)]
+const APP_ORIGIN: &str = "http://tauri.localhost";
+#[cfg(not(windows))]
+const APP_ORIGIN: &str = "tauri://localhost";
+
 pub fn request(cmd: &str, args: Value) -> InvokeRequest {
     InvokeRequest {
         cmd: cmd.into(),
         callback: CallbackFn(0),
         error: CallbackFn(1),
-        url: "tauri://localhost".parse().unwrap(),
+        url: APP_ORIGIN.parse().unwrap(),
         body: InvokeBody::Json(args),
         headers: Default::default(),
         invoke_key: INVOKE_KEY.to_string(),
