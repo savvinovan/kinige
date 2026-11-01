@@ -5,7 +5,7 @@ members = ["crates/kinige-domain", "crates/kinige-store", "crates/kinige-mcp", "
 [workspace.package]
 # Единственный источник версии приложения (ADR-0012): tauri.conf.json своей версии не имеет, Tauri берёт эту.
 # web/package.json и lock-файлы повторяют её; расхождение ловит web/src/version.test.ts. Меняется `scripts/release.sh`.
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT"
