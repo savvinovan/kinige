@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { PALETTE_ROLES, palettes } from "./tokenSource";
+import { PALETTE_ROLES, TILE_ROLES, palettes } from "./tokenSource";
 
 // Происхождение цветов палитры размечено честно: у каждой роли указано, откуда цвет.
 //  - «авторский: …» — наш собственный нейтральный серый (поверхности, текст, разделитель); в Nord таких нет;
@@ -50,6 +50,17 @@ describe("происхождение цветов палитры graphite", () =
           expect(origin.startsWith(`${match?.[0]} `), `«${origin}» должно начинаться с «${match?.[0]} »`).toBe(true);
         });
       }
+    } else if ((TILE_ROLES as readonly string[]).includes(role) && role !== "tile.neutral") {
+      // Плитки подкрашены (D2): тон, насыщенность 30 % и светлота 28 % записаны в происхождении и совпадают с цветом.
+      it(`${role}: авторская подкраска, не выданная за Nord, тон и светлота как в описании`, () => {
+        expect(origin.startsWith(OWN), origin).toBe(true);
+        expect(nord.map(([, value]) => value)).not.toContain(hex);
+        const { hue, lightness } = hueAndLightness(hex);
+        const stated = /тон (\d+)°, насыщенность 30 %, светлота 28 %/.exec(origin);
+        expect(stated, origin).not.toBeNull();
+        expect(Math.abs(hue - Number(stated?.[1]))).toBeLessThanOrEqual(2);
+        expect(Math.abs(lightness - 28)).toBeLessThanOrEqual(1);
+      });
     } else {
       it(`${role}: авторский нейтральный серый (насыщенность 0), не выданный за Nord`, () => {
         expect(origin.startsWith(OWN), origin).toBe(true);
@@ -60,3 +71,15 @@ describe("происхождение цветов палитры graphite", () =
     }
   }
 });
+
+/** Тон (градусы) и светлота HSL (проценты) цвета «#rrggbb». */
+function hueAndLightness(hex: string): { hue: number; lightness: number } {
+  const [r = 0, g = 0, b = 0] = [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  const lightness = ((max + min) / 2) * 100;
+  if (delta === 0) return { hue: 0, lightness };
+  const sector = max === r ? ((g - b) / delta + 6) % 6 : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4;
+  return { hue: sector * 60, lightness };
+}

@@ -98,7 +98,7 @@ describe("шкалы", () => {
   const tokens = css("tokens.css");
 
   it("типографическая шкала: у каждой роли размер, межстрочный, вес и семейство", () => {
-    for (const role of ["day", "h1", "h2", "h3", "body", "small", "code", "meta"]) {
+    for (const role of ["day", "h1", "h2", "h3", "body", "small", "code", "meta", "nav", "section", "title"]) {
       for (const part of ["size", "line-height", "weight", "family"]) {
         expect(tokens, `type.${role}.${part}`).toMatch(new RegExp(`--type-${role}-${part}:`));
       }

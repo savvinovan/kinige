@@ -1,5 +1,6 @@
 // Пары «цвет / фон», которые обязаны проходить проверку в каждой палитре.
 // Порог выбирается по роли пары. Текст проверяется строже всего (4,5:1), поэтому крупный текст (порог 3:1) проходит заведомо.
+import { TILE_ROLES } from "./tokenSource";
 
 export type PairKind = "text" | "ui" | "selection" | "decorative";
 
@@ -23,6 +24,7 @@ const SURFACES = [
   "surface.code",
   "surface.day",
   "surface.selected",
+  "surface.hover",
   "surface.card",
   "surface.field",
   "surface.field-active",
@@ -59,6 +61,11 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { foreground: "surface.field", background: "surface.background", kind: "decorative" },
   { foreground: "surface.selected", background: "surface.background", kind: "decorative" },
   { foreground: "highlight.background", background: "surface.message", kind: "decorative" },
+  // Сайдбар (D2): подсветка под мышью заметна на фоне окна; плитка чата заметна и на фоне, и под мышью, и на выбранной строке.
+  { foreground: "surface.hover", background: "surface.background", kind: "decorative" },
+  ...TILE_ROLES.flatMap((tile) =>
+    ["surface.background", "surface.hover", "surface.selected"].map((background) => ({ foreground: tile, background, kind: "decorative" as const })),
+  ),
   // Выбранное без рамки, одной заливкой: вариант переключателя на поле (surface.field), выбранная копия и найденная строка
   // поиска на бумаге и на заливке наведения (surface.selected).
   { foreground: "highlight.background", background: "surface.field", kind: "decorative" },

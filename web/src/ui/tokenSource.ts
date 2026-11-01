@@ -20,6 +20,9 @@ const paletteFiles = import.meta.glob("../../../design/tokens/palettes/*.json", 
 const fontsetFiles = import.meta.glob("../../../design/tokens/fontsets/*.json", { eager: true, import: "default" });
 const activeFile = import.meta.glob("../../../design/tokens/active.json", { eager: true, import: "default" });
 
+/** Плитки чатов (D2): без цвета и по цвету чата. Подкрашены, а не нейтральный серый (кроме `tile.neutral`). */
+export const TILE_ROLES = ["tile.neutral", "tile.blue", "tile.teal", "tile.green", "tile.amber", "tile.red", "tile.violet"] as const;
+
 /** Роли цвета, которые должна задавать палитра. */
 export const PALETTE_ROLES = [
   "surface.background",
@@ -28,6 +31,7 @@ export const PALETTE_ROLES = [
   "surface.code",
   "surface.day",
   "surface.selected",
+  "surface.hover",
   "surface.card",
   "surface.field",
   "surface.field-active",
@@ -41,6 +45,7 @@ export const PALETTE_ROLES = [
   "highlight.mark",
   "focus.ring",
   "status.error",
+  ...TILE_ROLES,
 ] as const;
 
 function collectLeaves(node: unknown, path: string[], into: Map<string, Leaf>): void {
