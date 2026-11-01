@@ -29,7 +29,7 @@ The Russian original used several words for some of these concepts; this transla
 | recovery                | regaining account access with the 24 recovery words (§8.6)                                                                                          |
 | restore from a backup   | replacing the local database with a backup file (§1); not to be confused with recovery                                                              |
 | database copy           | another instance of the same database file (a restored backup or a cloned profile), §1                                                              |
-| log                     | the server's per-account envelope log, numbered by `seq`; not the journal and not the app's log file                                                |
+| server log, app log     | server log: the server's per-account envelope log, numbered by `seq`; app log: the client's log file (§8.8); neither is the journal                  |
 
 ## Context
 
@@ -117,7 +117,7 @@ Derived data is not synchronized (§4.1).
 **An equal HLC with different bytes** is an integrity error. It is only possible with a database copy that has the same `device_id` (§1). Then:
 - the lexicographically larger bytes win;
 - for a message's `body` and `placement`, the losing group goes into a `conflict` revision (§3.4); for other groups and entities there is no revision;
-- the event is written to the log without content.
+- the event is written to the app log without content.
 
 **3.4. Text and move conflicts, `conflict` revisions.**
 
@@ -163,13 +163,13 @@ Concurrent `flags` edits are resolved by LWW without a trace, as in the PRD (dec
   - a repeated `purged` is a no-op.
 - **A `purged` response to a push, or a pull of `purged(X)`.** If X has **any** group known to the device that is newer than the `purged_of` snapshot — the device's own unconfirmed one (in the outbox, or `server_known = 0` at the first binding) or a confirmed one (with an honest server such a purge would have got `stale_purge`) — then X **with its children** leaves the live tables and moves entirely to quarantine, and a tombstone is written. Otherwise X is deleted silently: a copy without edits loses nothing. No "I have it in my feed, others don't" divergence remains. A `purged` response to a push carries no snapshot: if there is no tombstone for X yet (the server accepted someone else's `purged(X)` between my pull and push), X goes to quarantine — the safe side — and the tombstone's snapshot is refined when a pull brings `purged(X)`.
 - **Tombstones** are kept for at least 180 days. An envelope for an id from a tombstone:
-  - with an HLC of **any** group greater than in the `purged_of` snapshot — the purge was stale: the envelope is applied, the tombstone is **lifted** together with the tombstones of this cascade's children (`cascade_of`, recursively over the tree; only for unconfirmed children), and the children are recreated from the held snapshots (below). A lifted tombstone removes its not-yet-sent `purged` from the outbox. This is protection against a server that reordered the log: the client applies the same rules itself; the server is not a trusted party;
+  - with an HLC of **any** group greater than in the `purged_of` snapshot — the purge was stale: the envelope is applied, the tombstone is **lifted** together with the tombstones of this cascade's children (`cascade_of`, recursively over the tree; only for unconfirmed children), and the children are recreated from the held snapshots (below). A lifted tombstone removes its not-yet-sent `purged` from the outbox. This is protection against a server that reordered the server log: the client applies the same rules itself; the server is not a trusted party;
   - otherwise it is dropped. The exception is a cascade child (a tombstone with `cascade_of`): its groups are merged into the held snapshot `tombstone.held`, so that the child comes back if the parent's tombstone is lifted later (§6.2, §6.3).
 - **An attachment or revision that arrives after the `purged` of its message** is deleted locally, and the device enqueues `purged(child)`: otherwise the envelope and the blob would stay on the server forever. A repeat is a no-op. Messages of a purged chat do not fall under this rule — §3.6 applies to them.
 - **The cycle is always "pull first, then push".**
 
 **3.6. Dependencies and Inbox.**
-- There are no foreign keys. A record without a parent is kept hidden until the parent arrives (§10.2) — but **only until pull has reached the head of the log**. After a complete pull, a message with an unresolvable `chat_id` (the chat is neither among live ones nor in tombstones) is shown in Inbox marked "chat unavailable" (derived, as below). Otherwise a late message of a purged chat would vanish without a signal when the chat's tombstone expires, and on a new device after compaction of the server's `purged(chat)` — from the first pull. Attachments and revisions without a message stay hidden.
+- There are no foreign keys. A record without a parent is kept hidden until the parent arrives (§10.2) — but **only until pull has reached the head of the server log**. After a complete pull, a message with an unresolvable `chat_id` (the chat is neither among live ones nor in tombstones) is shown in Inbox marked "chat unavailable" (derived, as below). Otherwise a late message of a purged chat would vanish without a signal when the chat's tombstone expires, and on a new device after compaction of the server's `purged(chat)` — from the first pull. Attachments and revisions without a message stay hidden.
 - Inbox is identified **by id**, not by a flag. Its `core` is a constant, so two Inboxes created before binding merge without a conflict. Merge ignores `deleted` of Inbox.
 - **Children of chat C** — one definition for the ack, for quarantine and for the `purged` response (§3.5): messages with `chat_id = C` and a `placement` HLC **less** than the HLC of the chat's deletion (`deleted` in the chat's `purged_of` snapshot), with their attachments and revisions. Messages with a greater `placement` HLC are live (moved into the chat after the deletion): they do not go to quarantine and are not deleted on the ack.
 - A message whose `chat_id` points to a chat in tombstones is not deleted. A live message of such a chat **is shown in Inbox marked "chat deleted"**; the chat's children are hidden — their `purged` follows. This is a derived display: `placement` does not change and no envelopes arise. A synchronized move happens only through an explicit user action.
@@ -243,7 +243,7 @@ There are three version numbers.
 1. Log in or register (§8), then a full pull from `seq = 0` and an ordinary merge. Inbox is merged by its constant id (§3.6).
 2. For **every** local record that is newer than the server's in at least one group, or is absent from the server and has `server_known = 0`, an envelope is created **regardless of the HLC's age**. These are records that never left the device. Order: chats, messages, revisions, attachments (blobs before their envelopes, §7).
 3. Local tombstones go out as `purged` with their `purged_of` snapshot, **parent first**: tombstones with `cascade_of` only after the parent's `ok(seq)`, as in the live path (§3.5, §3.6). If the server answers `stale_purge` to the parent — pull: the parent's new envelope lifts its tombstone together with the children's tombstones, and the children are recreated from `held` (§3.5) — their envelopes came through in the full pull of step 1. Otherwise a child's purge would delete an attachment or message of a record restored on another device.
-4. Generation goes in batches with progress. A Telegram import is on the order of 100k envelopes (measured in S4a).
+4. Generation goes in batches with progress. A Telegram import is on the order of 100k envelopes (to be measured in S4a).
 5. **Binding is resumable.** The "bound" flag is set only after a complete pull. After a restart, envelopes are created for records with `server_known = 0` that have no outbox row yet: no duplicates and no gaps.
 6. A `purged` that arrived in step 1 is handled by the rule of §3.5: if the record was edited on the database copy, it goes to quarantine.
 
@@ -261,7 +261,7 @@ There are three version numbers.
   - local tombstones are resent as `purged` in the order of §6.2 step 3 (parent first);
   - a purge made after the backup was taken, on devices without a tombstone, may bring records back to the trash — an honest limitation of restoring.
 
-Compaction of the log on the server follows §10.2: only envelopes older than the tombstone retention period, covered in all groups.
+Compaction of the server log follows §10.2: only envelopes older than the tombstone retention period, covered in all groups.
 
 ### 7. Attachments
 
