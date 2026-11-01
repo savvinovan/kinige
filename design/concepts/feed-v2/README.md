@@ -1,311 +1,311 @@
-# Концепты компактной ленты Nord
+# Compact Nord feed concepts
 
-Дата: 20 октября 2026.
-Инструмент: встроенный image_gen (image_gen.imagegen), без CLI и без референсных изображений.
-Модель: точный идентификатор инструмент не сообщает; конкретная версия неизвестна.
-Выполнено ровно два вызова — один на каждый файл. Перегенераций и редактирования изображений не было. PNG скопированы без преобразования из каталога generated_images.
-Размер обоих изображений: 1586 × 992 px, практически 16:10 (не математически точное соотношение). Логический размер в промпте — 1280 × 800; максимальный доступный размер запрошен, отдельного параметра размера встроенный инструмент не предоставляет.
+Date: 20 October 2026.
+Tool: the built-in image_gen (image_gen.imagegen), without the CLI and without reference images.
+Model: the tool does not report the exact identifier; the specific version is unknown.
+Exactly two calls were made, one per file. There were no regenerations and no image edits. The PNGs were copied without conversion from the generated_images directory.
+Size of both images: 1586 × 992 px, practically 16:10 (not a mathematically exact ratio). The logical size in the prompt is 1280 × 800; the maximum available size was requested; the built-in tool does not provide a separate size parameter.
 
-## Проверка и честные замечания
+## Check and honest notes
 
-Проверка визуальная. Точное совпадение hex-кодов и размеров шрифтов не подтверждено инструментальным измерением; считать изображения точной реализацией палитры нельзя.
+The check is visual. An exact match of the hex codes and font sizes has not been confirmed by instrumental measurement; the images must not be treated as an exact implementation of the palette.
 
 ### editorial-compact.png
 
-- Все три метки присутствуют по одному разу в правильном порядке: «14 марта 2025», «Вчера», «Сегодня». Лишних календарных меток и крупного заголовка нет.
-- Все записи, код, ошибка отправки и поле ввода видны. Время второй слитой записи отсутствует правильно. Явных искажений кириллицы при визуальном просмотре не обнаружено.
-- Фоны неоднородные: присутствуют градиент/виньетка и мягкая фактура вместо строго плоских Nord-заливок. Точные hex не гарантированы. Подсветка кода добавляет жёлтый и зелёный оттенки вне заданной палитры; цвет ошибки выглядит более насыщенным.
-- Сайдбар несколько шире заданных ~260 логических px; строки чатов около 41 px вместо ~36. Основной текст местами крупнее/шире заданной колонки 65–70 знаков. Вертикальные промежутки около меток дней слишком просторные для плотности Telegram.
-- Поле ввода и его верхняя линия растянуты почти на всю область ленты, хотя должны ограничиваться шириной журнальной колонки.
-- Эмодзи стоят только в разрешённых местах, но «📥» заменён похожим значком входящего лотка, а «🍳» — значком сковороды другого вида. Буквального совпадения всех эмодзи нет.
-- Inline-команда показана с видимыми обратными кавычками (включая искажённую закрывающую), вместо чистого форматирования inline-кода. Вертикальная линия цитаты охватывает и следующий абзац.
-- Скрепка, линейный смайлик и микрофон присутствуют. Подсказки Enter нет.
+- All three labels are present, once each, in the correct order: "14 марта 2025" (14 March 2025), "Вчера" (Yesterday), "Сегодня" (Today). There are no extra calendar labels and no large heading.
+- All entries, the code, the send error and the input field are visible. The time of the second, merged entry is correctly absent. No obvious Cyrillic distortions were found on visual inspection.
+- The backgrounds are uneven: there is a gradient/vignette and a soft texture instead of strictly flat Nord fills. Exact hex values are not guaranteed. The code highlighting adds yellow and green tints outside the specified palette; the error color looks more saturated.
+- The sidebar is somewhat wider than the specified ~260 logical px; chat rows are about 41 px instead of ~36. The main text is in places larger/wider than the specified 65–70-character column. The vertical gaps around the day labels are too spacious for Telegram density.
+- The input field and its top rule stretch across almost the whole feed area, although they should be limited to the width of the magazine column.
+- Emoji appear only in the allowed places, but "📥" was replaced by a similar inbox tray icon, and "🍳" by a frying pan icon of a different kind. Not all emoji match literally.
+- The inline command is shown with visible backticks (including a distorted closing one) instead of clean inline-code formatting. The vertical quote bar also spans the next paragraph.
+- The paperclip, the line smiley and the microphone are present. There is no Enter hint.
 
 ### conversational-compact.png
 
-- Все три метки правильные, по одной на день, без дополнительных дат; выполнены таблетками по центру. Лишнего крупного заголовка нет.
-- Все записи и код поместились, время находится справа, слитая запись без повторного времени. Явных искажений кириллицы при визуальном просмотре не обнаружено.
-- Фоны содержат градиент/виньетку и фактуру вместо плоских заливок; точные Nord hex не подтверждены. Блок кода заметно темнее требуемого #3b4252. Подсветка кода содержит фиолетовый, жёлтый и зелёный вне палитры, несмотря на запрет фиолетового.
-- Колонка шире требуемых ~80 знаков; часть первых строк слишком длинная. Шрифты и интервалы визуально крупнее/просторнее Telegram; строки сайдбара примерно 41 px вместо ~36.
-- Эмодзи только у чатов и в строке чата, но входящий лоток и сковорода отличаются от заданных эмодзи.
-- Inline-команда содержит видимые лишние/искажённые обратные кавычки и не выглядит корректно выделенным моноширинным inline-кодом. Вертикальная линия цитаты захватывает следующий абзац.
-- Поле ввода со скруглением, скрепкой, линейным смайликом и микрофоном присутствует. Подсказка заканчивается тремя точками вместо символа «…». Подсказки Enter нет.
+- All three labels are correct, one per day, with no extra dates; they are rendered as pills in the center. There is no extra large heading.
+- All entries and the code fit, the time is on the right, the merged entry has no repeated time. No obvious Cyrillic distortions were found on visual inspection.
+- The backgrounds contain a gradient/vignette and texture instead of flat fills; the exact Nord hex values are not confirmed. The code block is noticeably darker than the required #3b4252. The code highlighting contains purple, yellow and green outside the palette, despite the ban on purple.
+- The column is wider than the required ~80 characters; some of the first lines are too long. The fonts and spacing look larger/roomier than Telegram; the sidebar rows are about 41 px instead of ~36.
+- Emoji appear only on chats and in the chat bar, but the inbox tray and the frying pan differ from the specified emoji.
+- The inline command contains visible extra/distorted backticks and does not look like properly highlighted monospaced inline code. The vertical quote bar captures the next paragraph.
+- The input field with rounded corners, a paperclip, a line smiley and a microphone is present. The placeholder ends with three dots instead of the "…" character. There is no Enter hint.
 
-## Полные промпты
+## Full prompts
 
 ### editorial-compact.png
 
 ```text
 Use case: ui-mockup
-Создай одну высокоточную растровую концепцию интерфейса приложения заметок. Это референс настроения для выбора ритма ленты. Один вариант на всей картинке, без коллажа и без подписей концепта. Референсных изображений нет. PNG, 16:10, наибольший доступный размер. Логический размер интерфейса 1280 × 800, сохраняй маленькую типографику и плотность Telegram Desktop при масштабировании.
+Create one high-fidelity raster concept of a notes app interface. This is a mood reference for choosing the feed rhythm. One variant on the whole image, no collage and no concept captions. There are no reference images. PNG, 16:10, the largest available size. Logical interface size 1280 × 800; keep the small typography and the Telegram Desktop density when scaling.
 
-## Общее для обоих
+## Common to both
 
-**Окно** macOS 1280 × 800 (логические точки), без рамки окна, теней, подписей и водяных знаков. Одна картинка — один вариант, не коллаж.
+**Window**: macOS, 1280 × 800 (logical points), without the window frame, shadows, captions or watermarks. One image is one variant, not a collage.
 
-**Палитра Nord** — одна на обеих картинках, точные значения:
+**Nord palette**: the same on both images, exact values:
 
-| Что | Цвет |
-|---|---|
-| Фон сайдбара | `#252a34` |
-| Фон ленты, строки чата и поля ввода | `#2e3440` |
-| Выбранный чат, блок кода, метка дня-«таблетка» | `#3b4252` |
-| Основной текст | `#eceff4` |
-| Вторичный текст (подписи, имена чатов) | `#d8dee9` |
-| Время, подсказки, иконки | `#a7aebd` |
-| Акцент: ссылки, отмеченные чекбоксы, курсор | `#88c0d0` |
-| Тонкие разделители | `#4c566a` |
-| Ошибка «не отправилось» | `#d89fa4` |
+| What                                        | Color     |
+|---------------------------------------------|-----------|
+| Sidebar background                          | `#252a34` |
+| Feed, chat bar and input field background   | `#2e3440` |
+| Selected chat, code block, "pill" day label | `#3b4252` |
+| Primary text                                | `#eceff4` |
+| Secondary text (captions, chat names)       | `#d8dee9` |
+| Time, placeholders, icons                   | `#a7aebd` |
+| Accent: links, checked checkboxes, cursor   | `#88c0d0` |
+| Thin dividers                               | `#4c566a` |
+| "Not sent" error                            | `#d89fa4` |
 
-Никакого коричневого, охры, бежевого, тёплой бумаги. Плоские заливки, без градиентов, виньетки, свечения, стекла, теней.
+No brown, ochre, beige or warm paper. Flat fills, no gradients, vignette, glow, glass or shadows.
 
-**Плотность как в Telegram Desktop.** Шрифты маленькие, на экран помещается много записей:
-- текст записей — книжная антиква с кириллицей (как Literata), **15 px**, межстрочный ~1,45;
-- интерфейс (сайдбар, строка чата, поле ввода) — гротеск (как Inter), 13–14 px;
-- время и метки дней — **12 px**;
-- код — моноширинный (как JetBrains Mono), 13 px.
+**Density as in Telegram Desktop.** The fonts are small, many entries fit on the screen:
+- entry text: a book serif with Cyrillic (like Literata), **15 px**, line height ~1.45;
+- interface (sidebar, chat bar, input field): a sans-serif (like Inter), 13–14 px;
+- time and day labels: **12 px**;
+- code: monospaced (like JetBrains Mono), 13 px.
 
-**Сайдбар** слева, ширина ~260 px: сверху поле «Поиск» (линейная иконка лупы), ниже список чатов строками по ~36 px, у каждого чата **эмодзи слева от имени**:
-- 📥 Входящие (выбран: заливка `#3b4252`)
-- 💡 Идеи
-- 📚 Книги
-- 💼 Работа
-- 🍳 Рецепты
+**Sidebar** on the left, ~260 px wide: at the top a "Поиск" (Search) field (a line magnifier icon), below it a list of chats in rows of ~36 px each, with **an emoji to the left of the name** for every chat:
+- 📥 Входящие (Inbox) (selected: fill `#3b4252`)
+- 💡 Идеи (Ideas)
+- 📚 Книги (Books)
+- 💼 Работа (Work)
+- 🍳 Рецепты (Recipes)
 
-Эмодзи — только у чатов. Больше нигде в интерфейсе эмодзи нет.
+Emoji only on chats. There are no emoji anywhere else in the interface.
 
-**Строка чата** над лентой: одна тонкая строка высотой ~44 px — «📥 Входящие» гротеском 14 px, полужирным, слева; под строкой тонкий разделитель. **Никакого крупного заголовка «Входящие» над лентой** — название чата на экране только в сайдбаре и в этой строке.
+**Chat bar** above the feed: one thin bar ~44 px high, "📥 Входящие" (Inbox) in a 14 px sans-serif, semibold, on the left; a thin divider under the bar. **No large "Входящие" (Inbox) heading above the feed**: the chat name appears on screen only in the sidebar and in this bar.
 
-**Поле ввода** внизу ленты, как в Telegram: высота ~52 px. Слева линейная иконка скрепки («прикрепить файл»), дальше поле с подсказкой «Написать заметку…», справа две линейные иконки: смайлик («эмодзи») и микрофон («голосовая»). Иконки 20 px, цвет `#a7aebd`, тонкая линия, без заливки. Подсказку про Enter не писать.
+**Input field** at the bottom of the feed, as in Telegram: ~52 px high. On the left a line paperclip icon ("attach a file"), then the field with the placeholder "Написать заметку…" (Write a note…), on the right two line icons: a smiley ("emoji") and a microphone ("voice note"). Icons 20 px, color `#a7aebd`, thin line, no fill. Do not write the Enter hint.
 
-**Время** — 24 часа, `09:12`. Соседние записи с паузой меньше 5 минут сливаются в «страницу»: время только у первой.
+**Time**: 24-hour, `09:12`. Adjacent entries less than 5 minutes apart merge into a "page": only the first one shows its time.
 
-**Метки дней — одна маленькая метка на день, без второй строки с датой.** Сегодня — вторник, 20 октября 2026. Метки ровно три, сверху вниз, от старого к новому:
-1. «14 марта 2025»
-2. «Вчера»
-3. «Сегодня»
+**Day labels: one small label per day, with no second line with a date.** Today is Tuesday, 20 October 2026. There are exactly three labels, from top to bottom, from oldest to newest:
+1. "14 марта 2025" (14 March 2025)
+2. "Вчера" (Yesterday)
+3. "Сегодня" (Today)
 
-Других дат на экране нет (ни «13 марта», ни дня недели, ни «пятница»).
+There are no other dates on the screen (no "13 марта" (13 March), no weekday, no "пятница" (Friday)).
 
-**Запрещено:** пузырьки сообщений, аватары, карточки с тенями вокруг записей, эмодзи вне сайдбара и строки чата, иллюстрации, лес, питомец, фиолетовый и неон.
+**Forbidden:** message bubbles, avatars, shadowed cards around entries, emoji outside the sidebar and the chat bar, illustrations, the forest, the pet, purple and neon.
 
-## Записи (одинаковые на обеих картинках, сверху вниз)
+## Entries (the same on both images, from top to bottom)
 
-Лента прокручена к самому низу; всё ниже должно поместиться.
+The feed is scrolled to the very bottom; everything below must fit.
 
-Метка **«14 марта 2025»**
-- `09:12` «Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям.»
+Label **"14 марта 2025"** (14 March 2025)
+- `09:12` "Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям." (I need to start preparing for system design. Look at materials on Raft and distributed transactions.)
 
-Метка **«Вчера»**
-- `08:40` заголовок «Планы на неделю» (чуть крупнее текста, полужирный, не огромный) и абзац «Закончить основу дизайн-системы, выбрать шрифты, не открывать почту до обеда.»
-- `21:05` цитата «Лучше сделано, чем идеально.» (тонкая вертикальная черта слева) и абзац «Записал, чтобы перечитать, когда начну полировать пятый день подряд.»
+Label **"Вчера"** (Yesterday)
+- `08:40` heading "Планы на неделю" (Plans for the week) (slightly larger than the text, semibold, not huge) and the paragraph "Закончить основу дизайн-системы, выбрать шрифты, не открывать почту до обеда." (Finish the design system foundation, pick the fonts, don't open email before lunch.)
+- `21:05` the quote "Лучше сделано, чем идеально." (Done is better than perfect.) (a thin vertical bar on the left) and the paragraph "Записал, чтобы перечитать, когда начну полировать пятый день подряд." (Wrote it down to reread when I start polishing for the fifth day in a row.)
 
-Метка **«Сегодня»**
-- `09:12` «Проснулся рано и до завтрака записал мысль про журнал: _пишешь как в мессенджере, перечитываешь как книгу_. Главное — **не выбирать**, куда писать.» (курсив и полужирный)
-- без времени (слита с предыдущей): «Ещё: позвонить маме и купить хлеб.»
-- `11:30` «Планы на выходные» и список задач: ☑ Поход в горы, ☐ Разобрать фотографии, ☑ Почитать книгу (чекбоксы — квадраты, отмеченные — акцентом)
-- `13:45` «Починил историю командой `git rebase --onto main`, вот что получилось:» и блок кода:
+Label **"Сегодня"** (Today)
+- `09:12` "Проснулся рано и до завтрака записал мысль про журнал: _пишешь как в мессенджере, перечитываешь как книгу_. Главное — **не выбирать**, куда писать." (Woke up early and before breakfast wrote down a thought about the journal: _you write as in a messenger, you reread as a book_. The main thing is **not to choose** where to write.) (italic and bold)
+- no time (merged with the previous one): "Ещё: позвонить маме и купить хлеб." (Also: call mom and buy bread.)
+- `11:30` "Планы на выходные" (Plans for the weekend) and a task list: ☑ Поход в горы (Hiking in the mountains), ☐ Разобрать фотографии (Sort the photos), ☑ Почитать книгу (Read a book) (checkboxes are squares, checked ones in the accent color)
+- `13:45` "Починил историю командой `git rebase --onto main`, вот что получилось:" (Fixed the history with `git rebase --onto main`, here is the result:) and a code block:
   ```
   fn main() {
       let today = Day::new(2026, 10, 20);
       println!("Записей: {}", today.count());
   }
   ```
-- `16:10` «Купить билеты на субботу» и под ней мелко цветом ошибки «Не отправилось. Повторить»
+- `16:10` "Купить билеты на субботу" (Buy tickets for Saturday) and below it, small, in the error color, "Не отправилось. Повторить" (Not sent. Retry)
 
-Поле ввода — пустое, с подсказкой.
-
-
-
-Описание единственного варианта для этой картинки:
-### 1. Компактный Editorial — `editorial-compact.png`
-
-Журнальная колонка, но плотная.
-- Колонка текста ~65–70 знаков, по центру области ленты; по бокам поля.
-- Время — мелко в левом поле колонки, напротив первой строки записи, не в строке с текстом.
-- Метка дня — маленькая, слева по краю колонки, гротеском 12 px, вторичным цветом, чуть разрядкой; после неё тонкая линия до правого края колонки.
-- Записи идут сплошным потоком: между записями только межабзацный интервал, без линий.
-- Поле ввода — по ширине колонки, без заливки, сверху тонкая линия.
+The input field is empty, with the placeholder.
 
 
 
-Обязательная финальная проверка композиции: метки дней ровно три: «14 марта 2025», «Вчера», «Сегодня», сверху вниз; других дат нет. Дата внутри дословного блока кода — часть кода, не дополнительная метка дня. Все записи полностью видны над полем ввода. Эмодзи только перед именами пяти чатов сайдбара и перед «Входящие» в тонкой верхней строке чата. Скрепка, смайлик и микрофон в поле ввода — линейные UI-иконки, не эмодзи. Не рисуй большой заголовок, дополнительные даты, пояснения, названия концептов или hex-коды на изображении. Все тексты записей воспроизведи дословно.
+Description of the only variant for this image:
+### 1. Compact Editorial: `editorial-compact.png`
+
+A magazine column, but dense.
+- A text column of ~65–70 characters, centered in the feed area; margins on both sides.
+- Time is small in the left margin of the column, opposite the first line of the entry, not on the line with the text.
+- The day label is small, on the left at the column edge, in a 12 px sans-serif, in the secondary color, slightly letter-spaced; after it a thin rule to the right edge of the column.
+- Entries go in a continuous flow: only paragraph spacing between entries, no rules.
+- The input field spans the column width, no fill, a thin rule on top.
+
+
+
+Mandatory final composition check: exactly three day labels: "14 марта 2025" (14 March 2025), "Вчера" (Yesterday), "Сегодня" (Today), from top to bottom; no other dates. The date inside the verbatim code block is part of the code, not an extra day label. All entries are fully visible above the input field. Emoji only before the names of the five sidebar chats and before "Входящие" (Inbox) in the thin top chat bar. The paperclip, the smiley and the microphone in the input field are line UI icons, not emoji. Do not draw a large heading, extra dates, explanations, concept names or hex codes on the image. Reproduce all entry texts verbatim.
 ```
 
 ### conversational-compact.png
 
 ```text
 Use case: ui-mockup
-Создай одну высокоточную растровую концепцию интерфейса приложения заметок. Это референс настроения для выбора ритма ленты. Один вариант на всей картинке, без коллажа и без подписей концепта. Референсных изображений нет. PNG, 16:10, наибольший доступный размер. Логический размер интерфейса 1280 × 800, сохраняй маленькую типографику и плотность Telegram Desktop при масштабировании.
+Create one high-fidelity raster concept of a notes app interface. This is a mood reference for choosing the feed rhythm. One variant on the whole image, no collage and no concept captions. There are no reference images. PNG, 16:10, the largest available size. Logical interface size 1280 × 800; keep the small typography and the Telegram Desktop density when scaling.
 
-## Общее для обоих
+## Common to both
 
-**Окно** macOS 1280 × 800 (логические точки), без рамки окна, теней, подписей и водяных знаков. Одна картинка — один вариант, не коллаж.
+**Window**: macOS, 1280 × 800 (logical points), without the window frame, shadows, captions or watermarks. One image is one variant, not a collage.
 
-**Палитра Nord** — одна на обеих картинках, точные значения:
+**Nord palette**: the same on both images, exact values:
 
-| Что | Цвет |
-|---|---|
-| Фон сайдбара | `#252a34` |
-| Фон ленты, строки чата и поля ввода | `#2e3440` |
-| Выбранный чат, блок кода, метка дня-«таблетка» | `#3b4252` |
-| Основной текст | `#eceff4` |
-| Вторичный текст (подписи, имена чатов) | `#d8dee9` |
-| Время, подсказки, иконки | `#a7aebd` |
-| Акцент: ссылки, отмеченные чекбоксы, курсор | `#88c0d0` |
-| Тонкие разделители | `#4c566a` |
-| Ошибка «не отправилось» | `#d89fa4` |
+| What                                        | Color     |
+|---------------------------------------------|-----------|
+| Sidebar background                          | `#252a34` |
+| Feed, chat bar and input field background   | `#2e3440` |
+| Selected chat, code block, "pill" day label | `#3b4252` |
+| Primary text                                | `#eceff4` |
+| Secondary text (captions, chat names)       | `#d8dee9` |
+| Time, placeholders, icons                   | `#a7aebd` |
+| Accent: links, checked checkboxes, cursor   | `#88c0d0` |
+| Thin dividers                               | `#4c566a` |
+| "Not sent" error                            | `#d89fa4` |
 
-Никакого коричневого, охры, бежевого, тёплой бумаги. Плоские заливки, без градиентов, виньетки, свечения, стекла, теней.
+No brown, ochre, beige or warm paper. Flat fills, no gradients, vignette, glow, glass or shadows.
 
-**Плотность как в Telegram Desktop.** Шрифты маленькие, на экран помещается много записей:
-- текст записей — книжная антиква с кириллицей (как Literata), **15 px**, межстрочный ~1,45;
-- интерфейс (сайдбар, строка чата, поле ввода) — гротеск (как Inter), 13–14 px;
-- время и метки дней — **12 px**;
-- код — моноширинный (как JetBrains Mono), 13 px.
+**Density as in Telegram Desktop.** The fonts are small, many entries fit on the screen:
+- entry text: a book serif with Cyrillic (like Literata), **15 px**, line height ~1.45;
+- interface (sidebar, chat bar, input field): a sans-serif (like Inter), 13–14 px;
+- time and day labels: **12 px**;
+- code: monospaced (like JetBrains Mono), 13 px.
 
-**Сайдбар** слева, ширина ~260 px: сверху поле «Поиск» (линейная иконка лупы), ниже список чатов строками по ~36 px, у каждого чата **эмодзи слева от имени**:
-- 📥 Входящие (выбран: заливка `#3b4252`)
-- 💡 Идеи
-- 📚 Книги
-- 💼 Работа
-- 🍳 Рецепты
+**Sidebar** on the left, ~260 px wide: at the top a "Поиск" (Search) field (a line magnifier icon), below it a list of chats in rows of ~36 px each, with **an emoji to the left of the name** for every chat:
+- 📥 Входящие (Inbox) (selected: fill `#3b4252`)
+- 💡 Идеи (Ideas)
+- 📚 Книги (Books)
+- 💼 Работа (Work)
+- 🍳 Рецепты (Recipes)
 
-Эмодзи — только у чатов. Больше нигде в интерфейсе эмодзи нет.
+Emoji only on chats. There are no emoji anywhere else in the interface.
 
-**Строка чата** над лентой: одна тонкая строка высотой ~44 px — «📥 Входящие» гротеском 14 px, полужирным, слева; под строкой тонкий разделитель. **Никакого крупного заголовка «Входящие» над лентой** — название чата на экране только в сайдбаре и в этой строке.
+**Chat bar** above the feed: one thin bar ~44 px high, "📥 Входящие" (Inbox) in a 14 px sans-serif, semibold, on the left; a thin divider under the bar. **No large "Входящие" (Inbox) heading above the feed**: the chat name appears on screen only in the sidebar and in this bar.
 
-**Поле ввода** внизу ленты, как в Telegram: высота ~52 px. Слева линейная иконка скрепки («прикрепить файл»), дальше поле с подсказкой «Написать заметку…», справа две линейные иконки: смайлик («эмодзи») и микрофон («голосовая»). Иконки 20 px, цвет `#a7aebd`, тонкая линия, без заливки. Подсказку про Enter не писать.
+**Input field** at the bottom of the feed, as in Telegram: ~52 px high. On the left a line paperclip icon ("attach a file"), then the field with the placeholder "Написать заметку…" (Write a note…), on the right two line icons: a smiley ("emoji") and a microphone ("voice note"). Icons 20 px, color `#a7aebd`, thin line, no fill. Do not write the Enter hint.
 
-**Время** — 24 часа, `09:12`. Соседние записи с паузой меньше 5 минут сливаются в «страницу»: время только у первой.
+**Time**: 24-hour, `09:12`. Adjacent entries less than 5 minutes apart merge into a "page": only the first one shows its time.
 
-**Метки дней — одна маленькая метка на день, без второй строки с датой.** Сегодня — вторник, 20 октября 2026. Метки ровно три, сверху вниз, от старого к новому:
-1. «14 марта 2025»
-2. «Вчера»
-3. «Сегодня»
+**Day labels: one small label per day, with no second line with a date.** Today is Tuesday, 20 October 2026. There are exactly three labels, from top to bottom, from oldest to newest:
+1. "14 марта 2025" (14 March 2025)
+2. "Вчера" (Yesterday)
+3. "Сегодня" (Today)
 
-Других дат на экране нет (ни «13 марта», ни дня недели, ни «пятница»).
+There are no other dates on the screen (no "13 марта" (13 March), no weekday, no "пятница" (Friday)).
 
-**Запрещено:** пузырьки сообщений, аватары, карточки с тенями вокруг записей, эмодзи вне сайдбара и строки чата, иллюстрации, лес, питомец, фиолетовый и неон.
+**Forbidden:** message bubbles, avatars, shadowed cards around entries, emoji outside the sidebar and the chat bar, illustrations, the forest, the pet, purple and neon.
 
-## Записи (одинаковые на обеих картинках, сверху вниз)
+## Entries (the same on both images, from top to bottom)
 
-Лента прокручена к самому низу; всё ниже должно поместиться.
+The feed is scrolled to the very bottom; everything below must fit.
 
-Метка **«14 марта 2025»**
-- `09:12` «Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям.»
+Label **"14 марта 2025"** (14 March 2025)
+- `09:12` "Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям." (I need to start preparing for system design. Look at materials on Raft and distributed transactions.)
 
-Метка **«Вчера»**
-- `08:40` заголовок «Планы на неделю» (чуть крупнее текста, полужирный, не огромный) и абзац «Закончить основу дизайн-системы, выбрать шрифты, не открывать почту до обеда.»
-- `21:05` цитата «Лучше сделано, чем идеально.» (тонкая вертикальная черта слева) и абзац «Записал, чтобы перечитать, когда начну полировать пятый день подряд.»
+Label **"Вчера"** (Yesterday)
+- `08:40` heading "Планы на неделю" (Plans for the week) (slightly larger than the text, semibold, not huge) and the paragraph "Закончить основу дизайн-системы, выбрать шрифты, не открывать почту до обеда." (Finish the design system foundation, pick the fonts, don't open email before lunch.)
+- `21:05` the quote "Лучше сделано, чем идеально." (Done is better than perfect.) (a thin vertical bar on the left) and the paragraph "Записал, чтобы перечитать, когда начну полировать пятый день подряд." (Wrote it down to reread when I start polishing for the fifth day in a row.)
 
-Метка **«Сегодня»**
-- `09:12` «Проснулся рано и до завтрака записал мысль про журнал: _пишешь как в мессенджере, перечитываешь как книгу_. Главное — **не выбирать**, куда писать.» (курсив и полужирный)
-- без времени (слита с предыдущей): «Ещё: позвонить маме и купить хлеб.»
-- `11:30` «Планы на выходные» и список задач: ☑ Поход в горы, ☐ Разобрать фотографии, ☑ Почитать книгу (чекбоксы — квадраты, отмеченные — акцентом)
-- `13:45` «Починил историю командой `git rebase --onto main`, вот что получилось:» и блок кода:
+Label **"Сегодня"** (Today)
+- `09:12` "Проснулся рано и до завтрака записал мысль про журнал: _пишешь как в мессенджере, перечитываешь как книгу_. Главное — **не выбирать**, куда писать." (Woke up early and before breakfast wrote down a thought about the journal: _you write as in a messenger, you reread as a book_. The main thing is **not to choose** where to write.) (italic and bold)
+- no time (merged with the previous one): "Ещё: позвонить маме и купить хлеб." (Also: call mom and buy bread.)
+- `11:30` "Планы на выходные" (Plans for the weekend) and a task list: ☑ Поход в горы (Hiking in the mountains), ☐ Разобрать фотографии (Sort the photos), ☑ Почитать книгу (Read a book) (checkboxes are squares, checked ones in the accent color)
+- `13:45` "Починил историю командой `git rebase --onto main`, вот что получилось:" (Fixed the history with `git rebase --onto main`, here is the result:) and a code block:
   ```
   fn main() {
       let today = Day::new(2026, 10, 20);
       println!("Записей: {}", today.count());
   }
   ```
-- `16:10` «Купить билеты на субботу» и под ней мелко цветом ошибки «Не отправилось. Повторить»
+- `16:10` "Купить билеты на субботу" (Buy tickets for Saturday) and below it, small, in the error color, "Не отправилось. Повторить" (Not sent. Retry)
 
-Поле ввода — пустое, с подсказкой.
-
-
-
-Описание единственного варианта для этой картинки:
-### 2. Компактный Conversational — `conversational-compact.png`
-
-Ритм Telegram без пузырьков.
-- Колонка шире (~80 знаков), прижата к левому краю ленты с небольшим отступом.
-- Метка дня — маленькая «таблетка» по центру ленты: текст 12 px на заливке `#3b4252`, скругление, без линий.
-- Время — мелко справа в конце первой строки записи (как в Telegram), цветом `#a7aebd`.
-- Записи отделены небольшим промежутком (~8 px), без линий.
-- Поле ввода — на всю ширину ленты, поле со скруглением на заливке `#3b4252`, иконки внутри и по бокам.
+The input field is empty, with the placeholder.
 
 
 
-Обязательная финальная проверка композиции: метки дней ровно три: «14 марта 2025», «Вчера», «Сегодня», сверху вниз; других дат нет. Дата внутри дословного блока кода — часть кода, не дополнительная метка дня. Все записи полностью видны над полем ввода. Эмодзи только перед именами пяти чатов сайдбара и перед «Входящие» в тонкой верхней строке чата. Скрепка, смайлик и микрофон в поле ввода — линейные UI-иконки, не эмодзи. Не рисуй большой заголовок, дополнительные даты, пояснения, названия концептов или hex-коды на изображении. Все тексты записей воспроизведи дословно.
+Description of the only variant for this image:
+### 2. Compact Conversational: `conversational-compact.png`
+
+The Telegram rhythm without bubbles.
+- A wider column (~80 characters), aligned to the left edge of the feed with a small indent.
+- The day label is a small "pill" centered in the feed: 12 px text on a `#3b4252` fill, rounded corners, no rules.
+- Time is small on the right, at the end of the first line of the entry (as in Telegram), in `#a7aebd`.
+- Entries are separated by a small gap (~8 px), no rules.
+- The input field spans the full feed width: a rounded field on a `#3b4252` fill, icons inside and on the sides.
+
+
+
+Mandatory final composition check: exactly three day labels: "14 марта 2025" (14 March 2025), "Вчера" (Yesterday), "Сегодня" (Today), from top to bottom; no other dates. The date inside the verbatim code block is part of the code, not an extra day label. All entries are fully visible above the input field. Emoji only before the names of the five sidebar chats and before "Входящие" (Inbox) in the thin top chat bar. The paperclip, the smiley and the microphone in the input field are line UI icons, not emoji. Do not draw a large heading, extra dates, explanations, concept names or hex codes on the image. Reproduce all entry texts verbatim.
 ```
 
 
-## Перегенерация Conversational — conversational-compact-2.png
+## Conversational regeneration: conversational-compact-2.png
 
-Дата: 20 октября 2026. Инструмент: встроенный image_gen, ровно один вызов для этой перегенерации, без CLI. Единственный референс: ../previous-conversational.png, передан только для сайдбара, таблеток дней и поля ввода. Размер: 1586 × 992 px (практически 16:10). PNG скопирован без преобразований. Предыдущие сведения в начале README описывают исходные два файла; этот раздел описывает дополнительную единственную перегенерацию.
+Date: 20 October 2026. Tool: the built-in image_gen, exactly one call for this regeneration, without the CLI. The only reference: ../previous-conversational.png, passed only for the sidebar, the day pills and the input field. Size: 1586 × 992 px (practically 16:10). The PNG was copied without conversion. The earlier information at the top of this README describes the original two files; this section describes the additional single regeneration.
 
-### Проверка и честные замечания
+### Check and honest notes
 
-- Верхняя строка чата и её разделитель убраны; название чата осталось только в сайдбаре.
-- Ровно три метки «14 марта 2025», «Вчера», «Сегодня» в правильном порядке. Восемь отдельных плашек, все прижаты влево, без хвостов и аватаров. У каждой есть время внутри, включая 09:14. У правого края самой ленты времени нет.
-- Все записи, код, ошибка и поле ввода помещаются. При визуальной проверке явных ошибок в тексте записей не обнаружено. Inline-команда выделена без видимых обратных кавычек.
-- НЕ выполнено ограничение черты цитаты: она охватывает также следующий абзац.
-- Длинные плашки шире максимальных ~620 логических px: самые широкие около 780 px при пересчёте к 1280×800. Левый отступ от сайдбара около 48 вместо ~24 логических px. Сайдбар около 259 px, близко к заданию.
-- Время находится внутри справа внизу, но у длинных записей 09:12 остаётся далеко от конца текста. У списка и кода время также заметно отделено от последнего содержимого. Требование «сразу после текста» выполнено не везде.
-- Плотность ниже требуемой: строки сайдбара около 40 вместо ~36 логических px; вертикальные промежутки около дней велики. Между 09:12 и 09:14 примерно 6 вместо ~4 логических px.
-- Фоны неоднородны, видны градиенты/виньетка и мягкая фактура вместо строго плоских заливок. Точное соответствие hex-кодам и размерам шрифтов инструментально не подтверждено. Подсветка кода содержит фиолетовый, жёлтый и зелёный вне заданной палитры.
-- Эмодзи расположены только в сайдбаре, но входящий лоток и сковорода визуально отличаются от заданных 📥 и 🍳.
-- Скрепка, линейные смайлик и микрофон есть; подсказки Enter нет. Подсказка ввода выглядит как «Написать заметку...» с тремя точками вместо одного символа «…».
-- Дополнительная генерация и ручная правка растра не выполнялись.
+- The top chat bar and its divider are removed; the chat name remains only in the sidebar.
+- Exactly three labels, "14 марта 2025" (14 March 2025), "Вчера" (Yesterday), "Сегодня" (Today), in the correct order. Eight separate plates, all aligned left, no tails or avatars. Each one has its time inside, including 09:14. There is no time at the right edge of the feed itself.
+- All entries, the code, the error and the input field fit. On visual inspection, no obvious errors in the entry texts were found. The inline command is highlighted without visible backticks.
+- The quote bar constraint is NOT met: the bar also spans the next paragraph.
+- Long plates are wider than the maximum ~620 logical px: the widest are about 780 px when scaled to 1280×800. The left indent from the sidebar is about 48 instead of ~24 logical px. The sidebar is about 259 px, close to the spec.
+- The time is inside, at the bottom right, but on the long entries the 09:12 time stays far from the end of the text. On the list and the code, the time is also noticeably separated from the last content. The "right after the text" requirement is not met everywhere.
+- The density is lower than required: sidebar rows are about 40 instead of ~36 logical px; the vertical gaps around the days are large. Between 09:12 and 09:14 there are roughly 6 instead of ~4 logical px.
+- The backgrounds are uneven: gradients/vignette and a soft texture are visible instead of strictly flat fills. An exact match of the hex codes and font sizes has not been confirmed instrumentally. The code highlighting contains purple, yellow and green outside the specified palette.
+- Emoji are only in the sidebar, but the inbox tray and the frying pan look different from the specified 📥 and 🍳.
+- The paperclip, the line smiley and the microphone are present; there is no Enter hint. The input placeholder looks like "Написать заметку..." (Write a note...) with three dots instead of a single "…" character.
+- No additional generation and no manual raster editing were done.
 
-### Полный промпт
+### Full prompt
 
 ```text
 Use case: ui-mockup
-Создай одну высокоточную растровую концепцию приложения заметок Conversational, PNG 16:10, максимально доступного разрешения. Логический размер 1280×800. Вся картинка — только плоский интерфейс без рамки macOS, теней, подписей, водяных знаков, коллажа.
-Input image 1: previous-conversational.png — РЕФЕРЕНС ТОЛЬКО ДЛЯ сайдбара, формы маленьких таблеток дней и нижнего поля ввода. НЕ копируй раскладку записей, верхнюю строку, время у правого края, градиенты и крупную типографику референса. Построй ленту заново по правилам ниже.
+Create one high-fidelity raster concept of the Conversational notes app, PNG 16:10, at the maximum available resolution. Logical size 1280×800. The whole image is only a flat interface, without the macOS frame, shadows, captions, watermarks or a collage.
+Input image 1: previous-conversational.png — A REFERENCE ONLY FOR the sidebar, the shape of the small day pills and the bottom input field. DO NOT copy the reference's entry layout, top bar, time at the right edge, gradients or large typography. Build the feed anew according to the rules below.
 
-ОБЯЗАТЕЛЬНО: никакой строки «📥 Входящие» над лентой, никакого разделителя под такой строкой. Лента начинается сразу у верхнего края. «Входящие» присутствует ТОЛЬКО один раз, в сайдбаре. Все 8 сообщений — отдельные компактные скруглённые плашки #3b4252, ширина по тексту, максимум 620 логических px (~80 знаков), левый край у всех x≈284 (24 px после сайдбара). Без хвостов, без аватаров, без теней. Радиус 10 px, padding 8×12 px. Короткая запись имеет короткую плашку. Время каждого сообщения ВНУТРИ его плашки справа внизу СРАЗУ РЯДОМ С КОНЦОМ ТЕКСТА, на его последней строке, как Telegram. Не выноси время к правому краю ленты. Все восемь времён: 09:12, 08:40, 21:05, 09:12, 09:14, 11:30, 13:45, 16:10.
+MANDATORY: no "📥 Входящие" (Inbox) bar above the feed, no divider under such a bar. The feed starts right at the top edge. "Входящие" (Inbox) appears ONLY once, in the sidebar. All 8 messages are separate compact rounded #3b4252 plates, width following the text, at most 620 logical px (~80 characters), the left edge of all of them at x≈284 (24 px after the sidebar). No tails, no avatars, no shadows. Radius 10 px, padding 8×12 px. A short entry has a short plate. The time of each message is INSIDE its plate at the bottom right, RIGHT NEXT TO THE END OF THE TEXT, on its last line, as in Telegram. Do not move the time to the right edge of the feed. All eight times: 09:12, 08:40, 21:05, 09:12, 09:14, 11:30, 13:45, 16:10.
 
-Точная палитра Nord, плоские сплошные заливки:
-сайдбар #252a34; фон ленты #2e3440; плашки сообщений, выбранный чат, таблетки дней и скруглённое поле ввода #3b4252; основной текст #eceff4; вторичный текст и названия чатов #d8dee9; время, подсказки, линейные иконки #a7aebd; акцент и отмеченные чекбоксы #88c0d0; тонкие разделители #4c566a; ошибка #d89fa4. Блок кода и inline-код внутри плашки на #2e3440. Без коричневого, охры, бежевого, фиолетового, неона, градиентов, свечения, стекла, текстур и виньетки.
+Exact Nord palette, flat solid fills:
+sidebar #252a34; feed background #2e3440; message plates, the selected chat, day pills and the rounded input field #3b4252; primary text #eceff4; secondary text and chat names #d8dee9; time, placeholders, line icons #a7aebd; accent and checked checkboxes #88c0d0; thin dividers #4c566a; error #d89fa4. The code block and inline code inside the plate on #2e3440. No brown, ochre, beige, purple, neon, gradients, glow, glass, textures or vignette.
 
-Плотность Telegram Desktop: текст записей книжная антиква с кириллицей наподобие Literata 15 px, межстрочный ~1.45; интерфейс Inter 13–14 px; время и дни 12 px; код JetBrains Mono 13 px. Сохрани эту мелкую типографику при масштабировании. Все записи полностью помещаются над полем ввода; не обрезай низ. Между обычными плашками ~10 px, между сегодняшними 09:12 и 09:14 только 4 px.
+Telegram Desktop density: entry text in a book serif with Cyrillic like Literata 15 px, line height ~1.45; interface Inter 13–14 px; time and days 12 px; code JetBrains Mono 13 px. Keep this small typography when scaling. All entries fit fully above the input field; do not crop the bottom. ~10 px between ordinary plates, only 4 px between today's 09:12 and 09:14.
 
-Сайдбар 260 px шириной на всю высоту. Сверху поле «Поиск» с линейной лупой. Затем пять строк высотой ~36 px с точными эмодзи:
-📥 Входящие
-💡 Идеи
-📚 Книги
-💼 Работа
-🍳 Рецепты
-Выбран только «📥 Входящие» заливкой #3b4252. Эмодзи ТОЛЬКО здесь. Не заменяй 📥 другим лотком или 🍳 другой иконкой.
+Sidebar 260 px wide, full height. At the top a "Поиск" (Search) field with a line magnifier. Then five rows ~36 px high with the exact emoji:
+📥 Входящие (Inbox)
+💡 Идеи (Ideas)
+📚 Книги (Books)
+💼 Работа (Work)
+🍳 Рецепты (Recipes)
+Only "📥 Входящие" (Inbox) is selected, with a #3b4252 fill. Emoji ONLY here. Do not replace 📥 with another tray or 🍳 with another icon.
 
-Ровно ТРИ маленькие скруглённые таблетки дней по центру всей области ленты, текст 12 px, заливка #3b4252, без линий и второй строки. Сверху вниз ровно «14 марта 2025», «Вчера», «Сегодня». Никаких иных меток дат, дней недели или повторов. Числа в коде — только содержимое кода.
+Exactly THREE small rounded day pills centered in the whole feed area, 12 px text, #3b4252 fill, no lines and no second line. From top to bottom, exactly "14 марта 2025" (14 March 2025), "Вчера" (Yesterday), "Сегодня" (Today). No other date labels, weekdays or repeats. Numbers in the code are only the code's content.
 
-ТЕКСТЫ ДОСЛОВНО, в этом порядке. Служебные пояснения в скобках не рисуй.
-Таблетка «14 марта 2025» у самого верха ленты.
-Сообщение 1: «Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям.» Внутри в конце 09:12.
+TEXTS VERBATIM, in this order. Do not draw the service notes in parentheses.
+The "14 марта 2025" (14 March 2025) pill at the very top of the feed.
+Message 1: "Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям." (I need to start preparing for system design. Look at materials on Raft and distributed transactions.) Inside, at the end, 09:12.
 
-Таблетка «Вчера».
-Сообщение 2: полужирный небольшой заголовок «Планы на неделю»
-следующий абзац «Закончить основу дизайн-системы, выбрать шрифты, не открывать почту до обеда.» В конце внутри 08:40.
-Сообщение 3: строка цитаты «Лучше сделано, чем идеально.» с тонкой вертикальной чертой СЛЕВА ТОЛЬКО У ЭТОЙ СТРОКИ.
-Следующий абзац БЕЗ черты: «Записал, чтобы перечитать, когда начну полировать пятый день подряд.» В конце внутри 21:05.
+The "Вчера" (Yesterday) pill.
+Message 2: a small semibold heading "Планы на неделю" (Plans for the week)
+the next paragraph "Закончить основу дизайн-системы, выбрать шрифты, не открывать почту до обеда." (Finish the design system foundation, pick the fonts, don't open email before lunch.) At the end, inside, 08:40.
+Message 3: the quote line "Лучше сделано, чем идеально." (Done is better than perfect.) with a thin vertical bar ON THE LEFT, ONLY ON THIS LINE.
+The next paragraph WITHOUT the bar: "Записал, чтобы перечитать, когда начну полировать пятый день подряд." (Wrote it down to reread when I start polishing for the fifth day in a row.) At the end, inside, 21:05.
 
-Таблетка «Сегодня».
-Сообщение 4: «Проснулся рано и до завтрака записал мысль про журнал: пишешь как в мессенджере, перечитываешь как книгу. Главное — не выбирать, куда писать.» Фраза «пишешь как в мессенджере, перечитываешь как книгу» курсивом; «не выбирать» полужирным. Без видимых markdown-символов. В конце внутри 09:12.
-Сообщение 5, ОТДЕЛЬНАЯ КОРОТКАЯ ПЛАШКА: «Ещё: позвонить маме и купить хлеб.» В конце внутри 09:14, обязательно.
-Сообщение 6: небольшой полужирный заголовок «Планы на выходные»
-три строки с квадратными UI-чекбоксами (не эмодзи):
-отмечен «Поход в горы»
-пустой «Разобрать фотографии»
-отмечен «Почитать книгу»
-В конце внутри плашки 11:30.
-Сообщение 7: «Починил историю командой git rebase --onto main, вот что получилось:»
-Фрагмент git rebase --onto main моноширинный, на #2e3440, БЕЗ видимых обратных кавычек или иных лишних кавычек.
-Ниже внутри той же плашки блок кода на #2e3440, радиус 6 px, дословно:
+The "Сегодня" (Today) pill.
+Message 4: "Проснулся рано и до завтрака записал мысль про журнал: пишешь как в мессенджере, перечитываешь как книгу. Главное — не выбирать, куда писать." (Woke up early and before breakfast wrote down a thought about the journal: you write as in a messenger, you reread as a book. The main thing is not to choose where to write.) The phrase "пишешь как в мессенджере, перечитываешь как книгу" (you write as in a messenger, you reread as a book) in italics; "не выбирать" (not to choose) in bold. No visible markdown symbols. At the end, inside, 09:12.
+Message 5, A SEPARATE SHORT PLATE: "Ещё: позвонить маме и купить хлеб." (Also: call mom and buy bread.) At the end, inside, 09:14, mandatory.
+Message 6: a small semibold heading "Планы на выходные" (Plans for the weekend)
+three lines with square UI checkboxes (not emoji):
+checked "Поход в горы" (Hiking in the mountains)
+empty "Разобрать фотографии" (Sort the photos)
+checked "Почитать книгу" (Read a book)
+At the end, inside the plate, 11:30.
+Message 7: "Починил историю командой git rebase --onto main, вот что получилось:" (Fixed the history with git rebase --onto main, here is the result:)
+The git rebase --onto main fragment is monospaced, on #2e3440, WITHOUT visible backticks or any other extra quotes.
+Below, inside the same plate, a code block on #2e3440, radius 6 px, verbatim:
 fn main() {
     let today = Day::new(2026, 10, 20);
     println!("Записей: {}", today.count());
 }
-Время 13:45 внутри нижнего правого угла сообщения рядом с концом содержимого, НЕ справа у края ленты.
-Сообщение 8: «Купить билеты на субботу»
-Под ним мелко #d89fa4 «Не отправилось. Повторить», ВНУТРИ той же плашки. Время 16:10 рядом внутри справа внизу.
+Time 13:45 inside the bottom right corner of the message, next to the end of the content, NOT on the right at the feed edge.
+Message 8: "Купить билеты на субботу" (Buy tickets for Saturday)
+Below it, small, in #d89fa4, "Не отправилось. Повторить" (Not sent. Retry), INSIDE the same plate. Time 16:10 next to it, inside, at the bottom right.
 
-Нижнее поле ввода на всю ширину ленты, область высотой ~52 px; скруглённая заливка #3b4252 как в референсе. Пустое, подсказка «Написать заметку…» именно с символом многоточия. Слева скрепка, справа смайлик и микрофон: тонкие линейные UI-иконки 20 px #a7aebd, без заливки, не эмодзи. Подсказки Enter нет.
+The bottom input field spans the full feed width, an area ~52 px high; a rounded #3b4252 fill as in the reference. Empty, the placeholder "Написать заметку…" (Write a note…) with exactly the ellipsis character. On the left a paperclip, on the right a smiley and a microphone: thin line UI icons, 20 px, #a7aebd, no fill, not emoji. There is no Enter hint.
 
-Финальная проверка: нет верхнего заголовка или его разделителя; ровно три правильные таблетки дней; ровно восемь отдельных плашек по ширине содержимого, все слева; восемь времён внутри, включая 09:14; нет времён у правого края ленты; цитатная черта не переходит на следующий абзац; inline-код без обратных кавычек; все тексты и код полностью видны. Не рисуй пояснения, названия концептов и hex-коды.
+Final check: no top heading or its divider; exactly three correct day pills; exactly eight separate plates sized to their content, all on the left; eight times inside, including 09:14; no times at the right edge of the feed; the quote bar does not carry over to the next paragraph; inline code without backticks; all texts and code fully visible. Do not draw explanations, concept names or hex codes.
 ```
 

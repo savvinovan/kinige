@@ -1,132 +1,132 @@
-# Бриф для Codex, круг 2: компактная лента в Nord (слайс D1)
+# Brief for Codex, round 2: a compact feed in Nord (slice D1)
 
-Статус: по отзыву пользователя на первый круг (`brief.md`, `feed/`), 20.10.2026. Решения — ТЗ v0.7 (§5, §6, §11.2) и ADR-0004. Результат — `design/concepts/feed-v2/`.
+Status: based on the user's feedback on the first round (`brief.md`, `feed/`), 20.10.2026. The decisions are PRD v0.7 (§5, §6, §11.2) and ADR-0004. The result is `design/concepts/feed-v2/`.
 
-## Что это за картинки
+## What these images are
 
-- **Референс настроения, а не спецификация** (§11.1). Задача: выбрать один из двух вариантов ленты — компактный Editorial или компактный Conversational.
-- Модель рисует кириллицу с ошибками — это ожидаемо. Тексты ниже подставляются дословно.
-- **Бюджет: 2 картинки** (по одной на вариант) плюс не больше одной перегенерации на вариант.
+- **A mood reference, not a specification** (§11.1). The goal: pick one of two feed variants, compact Editorial or compact Conversational.
+- The model draws Cyrillic with mistakes; this is expected. The texts below are used verbatim.
+- **Budget: 2 images** (one per variant) plus no more than one regeneration per variant.
 
-## Общее для обоих
+## Common to both
 
-**Окно** macOS 1280 × 800 (логические точки), без рамки окна, теней, подписей и водяных знаков. Одна картинка — один вариант, не коллаж.
+**Window**: macOS, 1280 × 800 (logical points), without the window frame, shadows, captions or watermarks. One image is one variant, not a collage.
 
-**Палитра Nord** — одна на обеих картинках, точные значения:
+**Nord palette**: the same on both images, exact values:
 
-| Что | Цвет |
-|---|---|
-| Фон сайдбара | `#252a34` |
-| Фон ленты, строки чата и поля ввода | `#2e3440` |
-| Выбранный чат, блок кода, метка дня-«таблетка» | `#3b4252` |
-| Основной текст | `#eceff4` |
-| Вторичный текст (подписи, имена чатов) | `#d8dee9` |
-| Время, подсказки, иконки | `#a7aebd` |
-| Акцент: ссылки, отмеченные чекбоксы, курсор | `#88c0d0` |
-| Тонкие разделители | `#4c566a` |
-| Ошибка «не отправилось» | `#d89fa4` |
+| What                                        | Color     |
+|---------------------------------------------|-----------|
+| Sidebar background                          | `#252a34` |
+| Feed, chat bar and input field background   | `#2e3440` |
+| Selected chat, code block, "pill" day label | `#3b4252` |
+| Primary text                                | `#eceff4` |
+| Secondary text (captions, chat names)       | `#d8dee9` |
+| Time, placeholders, icons                   | `#a7aebd` |
+| Accent: links, checked checkboxes, cursor   | `#88c0d0` |
+| Thin dividers                               | `#4c566a` |
+| "Not sent" error                            | `#d89fa4` |
 
-Никакого коричневого, охры, бежевого, тёплой бумаги. Плоские заливки, без градиентов, виньетки, свечения, стекла, теней.
+No brown, ochre, beige or warm paper. Flat fills, no gradients, vignette, glow, glass or shadows.
 
-**Плотность как в Telegram Desktop.** Шрифты маленькие, на экран помещается много записей:
-- текст записей — книжная антиква с кириллицей (как Literata), **15 px**, межстрочный ~1,45;
-- интерфейс (сайдбар, строка чата, поле ввода) — гротеск (как Inter), 13–14 px;
-- время и метки дней — **12 px**;
-- код — моноширинный (как JetBrains Mono), 13 px.
+**Density as in Telegram Desktop.** The fonts are small, many entries fit on the screen:
+- entry text: a book serif with Cyrillic (like Literata), **15 px**, line height ~1.45;
+- interface (sidebar, chat bar, input field): a sans-serif (like Inter), 13–14 px;
+- time and day labels: **12 px**;
+- code: monospaced (like JetBrains Mono), 13 px.
 
-**Сайдбар** слева, ширина ~260 px: сверху поле «Поиск» (линейная иконка лупы), ниже список чатов строками по ~36 px, у каждого чата **эмодзи слева от имени**:
-- 📥 Входящие (выбран: заливка `#3b4252`)
-- 💡 Идеи
-- 📚 Книги
-- 💼 Работа
-- 🍳 Рецепты
+**Sidebar** on the left, ~260 px wide: at the top a "Поиск" (Search) field (a line magnifier icon), below it a list of chats in rows of ~36 px each, with **an emoji to the left of the name** for every chat:
+- 📥 Входящие (Inbox) (selected: fill `#3b4252`)
+- 💡 Идеи (Ideas)
+- 📚 Книги (Books)
+- 💼 Работа (Work)
+- 🍳 Рецепты (Recipes)
 
-Эмодзи — только у чатов. Больше нигде в интерфейсе эмодзи нет.
+Emoji only on chats. There are no emoji anywhere else in the interface.
 
-**Строка чата** над лентой: одна тонкая строка высотой ~44 px — «📥 Входящие» гротеском 14 px, полужирным, слева; под строкой тонкий разделитель. **Никакого крупного заголовка «Входящие» над лентой** — название чата на экране только в сайдбаре и в этой строке.
+**Chat bar** above the feed: one thin bar ~44 px high, "📥 Входящие" (Inbox) in a 14 px sans-serif, semibold, on the left; a thin divider under the bar. **No large "Входящие" (Inbox) heading above the feed**: the chat name appears on screen only in the sidebar and in this bar.
 
-**Поле ввода** внизу ленты, как в Telegram: высота ~52 px. Слева линейная иконка скрепки («прикрепить файл»), дальше поле с подсказкой «Написать заметку…», справа две линейные иконки: смайлик («эмодзи») и микрофон («голосовая»). Иконки 20 px, цвет `#a7aebd`, тонкая линия, без заливки. Подсказку про Enter не писать.
+**Input field** at the bottom of the feed, as in Telegram: ~52 px high. On the left a line paperclip icon ("attach a file"), then the field with the placeholder "Написать заметку…" (Write a note…), on the right two line icons: a smiley ("emoji") and a microphone ("voice note"). Icons 20 px, color `#a7aebd`, thin line, no fill. Do not write the Enter hint.
 
-**Время** — 24 часа, `09:12`. Соседние записи с паузой меньше 5 минут сливаются в «страницу»: время только у первой.
+**Time**: 24-hour, `09:12`. Adjacent entries less than 5 minutes apart merge into a "page": only the first one shows its time.
 
-**Метки дней — одна маленькая метка на день, без второй строки с датой.** Сегодня — вторник, 20 октября 2026. Метки ровно три, сверху вниз, от старого к новому:
-1. «14 марта 2025»
-2. «Вчера»
-3. «Сегодня»
+**Day labels: one small label per day, with no second line with a date.** Today is Tuesday, 20 October 2026. There are exactly three labels, from top to bottom, from oldest to newest:
+1. "14 марта 2025" (14 March 2025)
+2. "Вчера" (Yesterday)
+3. "Сегодня" (Today)
 
-Других дат на экране нет (ни «13 марта», ни дня недели, ни «пятница»).
+There are no other dates on the screen (no "13 марта" (13 March), no weekday, no "пятница" (Friday)).
 
-**Запрещено:** пузырьки сообщений, аватары, карточки с тенями вокруг записей, эмодзи вне сайдбара и строки чата, иллюстрации, лес, питомец, фиолетовый и неон.
+**Forbidden:** message bubbles, avatars, shadowed cards around entries, emoji outside the sidebar and the chat bar, illustrations, the forest, the pet, purple and neon.
 
-## Записи (одинаковые на обеих картинках, сверху вниз)
+## Entries (the same on both images, from top to bottom)
 
-Лента прокручена к самому низу; всё ниже должно поместиться.
+The feed is scrolled to the very bottom; everything below must fit.
 
-Метка **«14 марта 2025»**
-- `09:12` «Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям.»
+Label **"14 марта 2025"** (14 March 2025)
+- `09:12` "Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям." (I need to start preparing for system design. Look at materials on Raft and distributed transactions.)
 
-Метка **«Вчера»**
-- `08:40` заголовок «Планы на неделю» (чуть крупнее текста, полужирный, не огромный) и абзац «Закончить основу дизайн-системы, выбрать шрифты, не открывать почту до обеда.»
-- `21:05` цитата «Лучше сделано, чем идеально.» (тонкая вертикальная черта слева) и абзац «Записал, чтобы перечитать, когда начну полировать пятый день подряд.»
+Label **"Вчера"** (Yesterday)
+- `08:40` heading "Планы на неделю" (Plans for the week) (slightly larger than the text, semibold, not huge) and the paragraph "Закончить основу дизайн-системы, выбрать шрифты, не открывать почту до обеда." (Finish the design system foundation, pick the fonts, don't open email before lunch.)
+- `21:05` the quote "Лучше сделано, чем идеально." (Done is better than perfect.) (a thin vertical bar on the left) and the paragraph "Записал, чтобы перечитать, когда начну полировать пятый день подряд." (Wrote it down to reread when I start polishing for the fifth day in a row.)
 
-Метка **«Сегодня»**
-- `09:12` «Проснулся рано и до завтрака записал мысль про журнал: _пишешь как в мессенджере, перечитываешь как книгу_. Главное — **не выбирать**, куда писать.» (курсив и полужирный)
-- без времени (слита с предыдущей): «Ещё: позвонить маме и купить хлеб.»
-- `11:30` «Планы на выходные» и список задач: ☑ Поход в горы, ☐ Разобрать фотографии, ☑ Почитать книгу (чекбоксы — квадраты, отмеченные — акцентом)
-- `13:45` «Починил историю командой `git rebase --onto main`, вот что получилось:» и блок кода:
+Label **"Сегодня"** (Today)
+- `09:12` "Проснулся рано и до завтрака записал мысль про журнал: _пишешь как в мессенджере, перечитываешь как книгу_. Главное — **не выбирать**, куда писать." (Woke up early and before breakfast wrote down a thought about the journal: _you write as in a messenger, you reread as a book_. The main thing is **not to choose** where to write.) (italic and bold)
+- no time (merged with the previous one): "Ещё: позвонить маме и купить хлеб." (Also: call mom and buy bread.)
+- `11:30` "Планы на выходные" (Plans for the weekend) and a task list: ☑ Поход в горы (Hiking in the mountains), ☐ Разобрать фотографии (Sort the photos), ☑ Почитать книгу (Read a book) (checkboxes are squares, checked ones in the accent color)
+- `13:45` "Починил историю командой `git rebase --onto main`, вот что получилось:" (Fixed the history with `git rebase --onto main`, here is the result:) and a code block:
   ```
   fn main() {
       let today = Day::new(2026, 10, 20);
       println!("Записей: {}", today.count());
   }
   ```
-- `16:10` «Купить билеты на субботу» и под ней мелко цветом ошибки «Не отправилось. Повторить»
+- `16:10` "Купить билеты на субботу" (Buy tickets for Saturday) and below it, small, in the error color, "Не отправилось. Повторить" (Not sent. Retry)
 
-Поле ввода — пустое, с подсказкой.
+The input field is empty, with the placeholder.
 
-## Варианты
+## Variants
 
-### 1. Компактный Editorial — `editorial-compact.png`
+### 1. Compact Editorial: `editorial-compact.png`
 
-Журнальная колонка, но плотная.
-- Колонка текста ~65–70 знаков, по центру области ленты; по бокам поля.
-- Время — мелко в левом поле колонки, напротив первой строки записи, не в строке с текстом.
-- Метка дня — маленькая, слева по краю колонки, гротеском 12 px, вторичным цветом, чуть разрядкой; после неё тонкая линия до правого края колонки.
-- Записи идут сплошным потоком: между записями только межабзацный интервал, без линий.
-- Поле ввода — по ширине колонки, без заливки, сверху тонкая линия.
+A magazine column, but dense.
+- A text column of ~65–70 characters, centered in the feed area; margins on both sides.
+- Time is small in the left margin of the column, opposite the first line of the entry, not on the line with the text.
+- The day label is small, on the left at the column edge, in a 12 px sans-serif, in the secondary color, slightly letter-spaced; after it a thin rule to the right edge of the column.
+- Entries go in a continuous flow: only paragraph spacing between entries, no rules.
+- The input field spans the column width, no fill, a thin rule on top.
 
-### 2. Компактный Conversational — `conversational-compact.png`
+### 2. Compact Conversational: `conversational-compact.png`
 
-Ритм Telegram без пузырьков.
-- Колонка шире (~80 знаков), прижата к левому краю ленты с небольшим отступом.
-- Метка дня — маленькая «таблетка» по центру ленты: текст 12 px на заливке `#3b4252`, скругление, без линий.
-- Время — мелко справа в конце первой строки записи (как в Telegram), цветом `#a7aebd`.
-- Записи отделены небольшим промежутком (~8 px), без линий.
-- Поле ввода — на всю ширину ленты, поле со скруглением на заливке `#3b4252`, иконки внутри и по бокам.
+The Telegram rhythm without bubbles.
+- A wider column (~80 characters), aligned to the left edge of the feed with a small indent.
+- The day label is a small "pill" centered in the feed: 12 px text on a `#3b4252` fill, rounded corners, no rules.
+- Time is small on the right, at the end of the first line of the entry (as in Telegram), in `#a7aebd`.
+- Entries are separated by a small gap (~8 px), no rules.
+- The input field spans the full feed width: a rounded field on a `#3b4252` fill, icons inside and on the sides.
 
-## Формат и пути
+## Format and paths
 
-- PNG, 16:10, наибольший доступный размер (в круге 1 было 1586 × 992).
+- PNG, 16:10, the largest available size (in round 1 it was 1586 × 992).
 - `design/concepts/feed-v2/editorial-compact.png`, `design/concepts/feed-v2/conversational-compact.png`.
-- `design/concepts/feed-v2/README.md`: дата, инструмент, полный промпт каждого файла, что не получилось, были ли перегенерации.
+- `design/concepts/feed-v2/README.md`: the date, the tool, the full prompt for each file, what did not work, whether there were regenerations.
 
-## Как проверяем
+## How we check
 
-Пользователь выбирает вариант: какой ритм приятнее, хватает ли плотности, не давит ли интерфейс. Выбор — в ADR-0004.
+The user picks a variant: which rhythm is more pleasant, whether the density is enough, whether the interface weighs on the text. The choice goes into ADR-0004.
 
-## Перегенерация Conversational — `conversational-compact-2.png`
+## Conversational regeneration: `conversational-compact-2.png`
 
-По отзыву пользователя на `conversational-compact.png` (ADR-0004). Это единственная перегенерация Conversational. Всё общее выше остаётся в силе (палитра, сайдбар, поле ввода, записи, три метки дней), кроме того, что перечислено ниже.
+Based on the user's feedback on `conversational-compact.png` (ADR-0004). This is the only regeneration of Conversational. Everything common above stays in force (palette, sidebar, input field, entries, three day labels), except what is listed below.
 
-- **Строки чата над лентой нет** (пользователь: это дубль выбранного пункта сайдбара и съедает место). Лента начинается сразу сверху; «Входящие» есть только в сайдбаре. Эмодзи — только в сайдбаре.
+- **There is no chat bar above the feed** (the user: it duplicates the selected sidebar item and takes up space). The feed starts right at the top; "Входящие" (Inbox) appears only in the sidebar. Emoji only in the sidebar.
 
-- Метка дня — как была: маленькая «таблетка» по центру ленты, текст 12 px на `#3b4252`, скругление. Пользователю нравится.
-- **Каждое сообщение — отдельная плашка**: заливка `#3b4252` на фоне ленты `#2e3440`, скругление ~10 px, внутренние отступы ~8 × 12 px, без хвоста, без тени, без аватара. Все плашки прижаты к левому краю ленты (отступ ~24 px).
-- **Ширина плашки — по тексту**: короткое сообщение — короткая плашка, длинное — не шире ~80 знаков (около 620 px).
-- **Время внутри плашки, сразу после текста**: мелко (12 px, `#a7aebd`), в правом нижнем углу плашки на одной строке с концом текста. Так время стоит рядом с текстом, как в Telegram. **Никакого времени у правого края ленты.**
-- **Время у каждого сообщения**, слияния нет: у «Ещё: позвонить маме и купить хлеб.» своё время `09:14`.
-- Промежутки: между плашками одной серии (09:12 и 09:14 «Сегодня») ~4 px, между остальными ~10 px.
-- Блок кода — внутри плашки своего сообщения, на заливке `#2e3440`, скругление ~6 px. Строчный код `git rebase --onto main` — моноширинным на заливке `#2e3440`, **без видимых обратных кавычек**.
-- Цитата: тонкая вертикальная черта слева только у строки «Лучше сделано, чем идеально.»; следующий абзац — без черты.
-- Ошибка: «Не отправилось. Повторить» — внутри плашки под текстом, цветом `#d89fa4`; время этого сообщения рядом.
-- Поле ввода — как было в `conversational-compact.png` (скрепка, поле со скруглением, смайлик, микрофон).
+- The day label stays as it was: a small "pill" centered in the feed, 12 px text on `#3b4252`, rounded corners. The user likes it.
+- **Each message is a separate plate**: a `#3b4252` fill on the `#2e3440` feed background, ~10 px corner radius, ~8 × 12 px inner padding, no tail, no shadow, no avatar. All plates are aligned to the left edge of the feed (indent ~24 px).
+- **Plate width follows the text**: a short message gets a short plate, a long one is no wider than ~80 characters (about 620 px).
+- **Time inside the plate, right after the text**: small (12 px, `#a7aebd`), in the bottom right corner of the plate, on the same line as the end of the text. This way the time sits next to the text, as in Telegram. **No time at the right edge of the feed.**
+- **Time on every message**, no merging: "Ещё: позвонить маме и купить хлеб." (Also: call mom and buy bread.) gets its own time `09:14`.
+- Gaps: ~4 px between the plates of one series (09:12 and 09:14 under "Сегодня" (Today)), ~10 px between the others.
+- The code block is inside the plate of its message, on a `#2e3440` fill, ~6 px corner radius. The inline code `git rebase --onto main` is monospaced on a `#2e3440` fill, **with no visible backticks**.
+- Quote: a thin vertical bar on the left only on the line "Лучше сделано, чем идеально." (Done is better than perfect.); the next paragraph has no bar.
+- Error: "Не отправилось. Повторить" (Not sent. Retry) inside the plate below the text, in `#d89fa4`; the time of this message next to it.
+- The input field stays as it was in `conversational-compact.png` (paperclip, rounded field, smiley, microphone).
