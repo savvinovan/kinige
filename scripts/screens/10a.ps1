@@ -284,6 +284,9 @@ function Start-App([string]$exe, [bool]$overrides) {
   }
   $script:AppProcess = Start-Process -FilePath $exe -PassThru
   $window = Wait-For { Get-AppWindow 'Kinige' } 90 'the main window'
+  # A web view that is not the foreground window does not answer UI Automation queries about its content (they hang for
+  # minutes): bring the window up before the first query.
+  Focus-Window 'Kinige'
   Start-Sleep -Seconds 4
   return $window
 }
@@ -380,8 +383,9 @@ if (-not $main) { exit 1 }
 $handle = New-Object System.IntPtr($main.Current.NativeWindowHandle)
 [Win]::MoveTo($handle, 20, 20, 1280, 800)
 Start-Sleep -Seconds 2
-Dump-Tree $main (Join-Path $Debug 'main-start.txt') | Out-Null
-if (-not (Wait-For { Test-Has (Get-AppWindow 'Kinige') 'On this day' } 30 'the "On this day" card')) { Fail 'the "On this day" card is not in the Inbox' }
+Focus-Window 'Kinige'
+Dump-Tree (Get-AppWindow 'Kinige') (Join-Path $Debug 'main-start.txt') | Out-Null
+if (-not (Wait-For { Focus-Window 'Kinige'; Test-Has (Get-AppWindow 'Kinige') 'On this day' } 30 'the "On this day" card')) { Fail 'the "On this day" card is not in the Inbox' }
 Shoot '01-inbox' 'Kinige'
 
 Press 'Kinige' $WorkChat

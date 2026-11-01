@@ -140,7 +140,7 @@ jobs:
       # Windows PowerShell 5.1 (`shell: powershell`): the UI Automation client assemblies are not in pwsh 7.
       - name: Screens scenario
         shell: powershell
-        timeout-minutes: 40
+        timeout-minutes: 25
         run: |
           $installer = (Get-ChildItem "target\release\bundle\nsis\*-setup.exe" | Select-Object -First 1).FullName
           & "scripts\screens\$env:SLICE.ps1" -Installer $installer
