@@ -32,7 +32,8 @@ pub(crate) fn words(text: &str) -> impl Iterator<Item = (&str, String)> {
                     end = i + c.len_utf8();
                     chars.next();
                 }
-                let original = &text[start..end];
+                // Границы взяты из `char_indices`: `get` здесь не отказывает, но и не паникует.
+                let original = text.get(start..end).unwrap_or_default();
                 return Some((original, normalize(original)));
             }
             chars.next();

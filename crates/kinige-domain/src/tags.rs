@@ -38,22 +38,22 @@ pub fn parse_tags(body_md: &str) -> Vec<String> {
 
 fn scan_line(line: &str, tags: &mut Vec<String>) {
     let chars: Vec<char> = line.chars().collect();
+    // Последний `>` строки: без него `<` не открывает адрес или тег, и искать закрытие у каждой `<` не нужно (иначе строка из
+    // `<a<a<a…` без `>` читалась бы за время, квадратичное по длине).
+    let last_gt = chars.iter().rposition(|c| *c == '>');
     let mut i = 0;
-    while i < chars.len() {
-        let c = chars[i];
+    while let Some(&c) = chars.get(i) {
         match c {
             '`' => i = skip_code_span(&chars, i),
             '[' => i = skip_link(&chars, i),
-            '<' => i = skip_angle(&chars, i),
+            '<' => i = skip_angle(&chars, i, last_gt),
             '\\' => i += 2,
             '#' => {
-                let before = if i == 0 { None } else { Some(chars[i - 1]) };
+                let before = i.checked_sub(1).and_then(|p| chars.get(p).copied());
                 let allowed = before.is_none_or(|b| !(is_tag_char(b) || matches!(b, '#' | '&')));
-                let len = chars[i + 1..]
-                    .iter()
-                    .take_while(|c| is_tag_char(**c))
-                    .count();
-                let word = &chars[i + 1..i + 1 + len];
+                let after = chars.get(i + 1..).unwrap_or_default();
+                let len = after.iter().take_while(|c| is_tag_char(**c)).count();
+                let word = after.get(..len).unwrap_or_default();
                 if allowed
                     && len > 0
                     && len <= MAX_TAG_CHARS
@@ -67,7 +67,7 @@ fn scan_line(line: &str, tags: &mut Vec<String>) {
                 i += 1 + len;
             }
             _ if starts_url(&chars, i) => {
-                while i < chars.len() && !chars[i].is_whitespace() {
+                while chars.get(i).is_some_and(|c| !c.is_whitespace()) {
                     i += 1;
                 }
             }
@@ -78,10 +78,15 @@ fn scan_line(line: &str, tags: &mut Vec<String>) {
 
 /// Голый адрес начинается на границе слова: `https://…`, `http://…`, `mailto:…`, `www.…`.
 fn starts_url(chars: &[char], i: usize) -> bool {
-    if i > 0 && is_tag_char(chars[i - 1]) {
+    if i.checked_sub(1)
+        .and_then(|p| chars.get(p))
+        .is_some_and(|c| is_tag_char(*c))
+    {
         return false;
     }
-    let rest: String = chars[i..chars.len().min(i + 8)]
+    let rest: String = chars
+        .get(i..chars.len().min(i + 8))
+        .unwrap_or_default()
         .iter()
         .collect::<String>()
         .to_lowercase();
@@ -92,11 +97,21 @@ fn starts_url(chars: &[char], i: usize) -> bool {
 
 /// Строка в обратных кавычках: серия из n кавычек и закрывающая серия той же длины. Не закрыта — кавычки обычный текст.
 fn skip_code_span(chars: &[char], start: usize) -> usize {
-    let run = chars[start..].iter().take_while(|c| **c == '`').count();
+    let run = chars
+        .get(start..)
+        .unwrap_or_default()
+        .iter()
+        .take_while(|c| **c == '`')
+        .count();
     let mut i = start + run;
-    while i < chars.len() {
-        if chars[i] == '`' {
-            let close = chars[i..].iter().take_while(|c| **c == '`').count();
+    while let Some(&c) = chars.get(i) {
+        if c == '`' {
+            let close = chars
+                .get(i..)
+                .unwrap_or_default()
+                .iter()
+                .take_while(|c| **c == '`')
+                .count();
             if close == run {
                 return i + close;
             }
@@ -120,33 +135,41 @@ fn skip_link(chars: &[char], start: usize) -> usize {
 }
 
 /// `<https://…>` и HTML-теги: пропускаются до `>`, если после `<` буква, `/` или `!`.
-fn skip_angle(chars: &[char], start: usize) -> usize {
+fn skip_angle(chars: &[char], start: usize, last_gt: Option<usize>) -> usize {
     let looks_like_tag = chars
         .get(start + 1)
         .is_some_and(|c| c.is_alphabetic() || matches!(c, '/' | '!'));
-    if !looks_like_tag {
+    if !looks_like_tag || last_gt.is_none_or(|last| last < start) {
         return start + 1;
     }
-    chars[start..]
+    chars
+        .get(start..)
+        .unwrap_or_default()
         .iter()
         .position(|c| *c == '>')
         .map_or(start + 1, |offset| start + offset + 1)
 }
 
-/// Индекс скобки, закрывающей `open` в `start`, с учётом вложенности; в пределах строки.
+/// Глубже скобки не считаются: иначе строка из `[a]([a](…` читалась бы за квадратичное время (каждая `(` ищет закрытие до
+/// конца строки). Настоящие ссылки так глубоко не вложены.
+const MAX_NESTING: usize = 64;
+
+/// Индекс скобки, закрывающей `open` в `start`, с учётом вложенности; в пределах строки и не глубже [`MAX_NESTING`].
 fn matching(chars: &[char], start: usize, open: char, close: char) -> Option<usize> {
     let mut depth = 0usize;
     let mut i = start;
-    while i < chars.len() {
-        let c = chars[i];
+    while let Some(&c) = chars.get(i) {
         if c == '\\' {
             i += 2;
             continue;
         }
         if c == open {
             depth += 1;
+            if depth > MAX_NESTING {
+                return None;
+            }
         } else if c == close {
-            depth -= 1;
+            depth = depth.saturating_sub(1);
             if depth == 0 {
                 return Some(i);
             }
@@ -162,6 +185,29 @@ mod tests {
 
     fn tags(text: &str) -> Vec<String> {
         parse_tags(text)
+    }
+
+    #[test]
+    fn a_pathological_line_is_read_in_linear_time() {
+        // Раньше `[a](` ×40 000 читалось около 12 с, `<a` ×100 000 без `>` — столько же: закрытие искалось от каждой скобки.
+        for line in [
+            "[a](".repeat(40_000),
+            "<a".repeat(100_000),
+            "(".repeat(100_000),
+            format!("{}#тег", "[[".repeat(50_000)),
+        ] {
+            let started = std::time::Instant::now();
+            let _ = parse_tags(&line);
+            assert!(
+                started.elapsed().as_secs_f64() < 2.0,
+                "{:?}",
+                started.elapsed()
+            );
+        }
+        assert_eq!(
+            parse_tags(&format!("{} #тег", "[a](".repeat(40_000))),
+            ["тег"]
+        );
     }
 
     #[test]

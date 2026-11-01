@@ -45,17 +45,18 @@ pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String {
     let first_match = words(&text)
         .find(|(_, word)| wanted.contains(word))
         .map(|(original, _)| {
-            text[..original.as_ptr() as usize - text.as_ptr() as usize]
-                .chars()
-                .count()
+            // Слово — срез `text`: его смещение — разность адресов.
+            let offset = (original.as_ptr() as usize).saturating_sub(text.as_ptr() as usize);
+            text.get(..offset).map_or(0, |head| head.chars().count())
         });
     let hit = first_match.unwrap_or(0);
+    let is_alnum = |at: usize| chars.get(at).is_some_and(|c| c.is_alphanumeric());
 
     // Начало окна: треть окна контекста до совпадения, сдвинутая вперёд к началу слова.
     let mut start = hit.saturating_sub(max_chars / 3);
     while start > 0
         && start < hit
-        && (chars[start - 1].is_alphanumeric() || chars[start].is_whitespace())
+        && (is_alnum(start - 1) || chars.get(start).is_some_and(|c| c.is_whitespace()))
     {
         start += 1;
     }
@@ -67,7 +68,7 @@ pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String {
     }
     if end < chars.len() {
         let mut cut = end;
-        while cut > start && chars[cut - 1].is_alphanumeric() && chars[cut].is_alphanumeric() {
+        while cut > start && is_alnum(cut - 1) && is_alnum(cut) {
             cut -= 1;
         }
         // Одно слово длиннее окна: режем по знаку.
@@ -76,7 +77,7 @@ pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String {
         }
     }
     let trail = end < chars.len();
-    let body: String = chars[start..end].iter().collect();
+    let body: String = chars.get(start..end).unwrap_or_default().iter().collect();
     format!(
         "{}{}{}",
         if lead == 1 { "…" } else { "" },
@@ -119,8 +120,9 @@ fn strip_line_markers(line: &str) -> &str {
         rest = after.trim_start();
     }
     let hashes = rest.chars().take_while(|c| *c == '#').count();
-    if (1..=6).contains(&hashes) && rest[hashes..].starts_with([' ', '\t']) {
-        rest = rest[hashes..].trim_start();
+    let after_hashes = rest.get(hashes..).unwrap_or_default();
+    if (1..=6).contains(&hashes) && after_hashes.starts_with([' ', '\t']) {
+        rest = after_hashes.trim_start();
     }
     if let Some(after) = rest
         .strip_prefix(['-', '+', '*'])
@@ -129,11 +131,13 @@ fn strip_line_markers(line: &str) -> &str {
         rest = after.trim_start();
     } else {
         let digits = rest.chars().take_while(char::is_ascii_digit).count();
+        let after_digits = rest.get(digits..).unwrap_or_default();
+        let after_dot = rest.get(digits + 1..).unwrap_or_default();
         if (1..=9).contains(&digits)
-            && rest[digits..].starts_with(['.', ')'])
-            && rest[digits + 1..].starts_with([' ', '\t'])
+            && after_digits.starts_with(['.', ')'])
+            && after_dot.starts_with([' ', '\t'])
         {
-            rest = rest[digits + 1..].trim_start();
+            rest = after_dot.trim_start();
         }
     }
     for task in ["[ ] ", "[x] ", "[X] "] {
@@ -149,14 +153,14 @@ fn strip_line_markers(line: &str) -> &str {
 fn inline(line: &str) -> String {
     let chars: Vec<char> = line.chars().collect();
     let mut out = String::with_capacity(line.len());
+    let stops = next_stops(&chars);
     let mut i = 0;
-    while i < chars.len() {
-        let c = chars[i];
-        let prev = if i == 0 { None } else { Some(chars[i - 1]) };
+    while let Some(&c) = chars.get(i) {
+        let prev = i.checked_sub(1).and_then(|p| chars.get(p).copied());
         let next = chars.get(i + 1).copied();
         match c {
             '\\' if next.is_some_and(|n| n.is_ascii_punctuation()) => {
-                out.push(chars[i + 1]);
+                out.extend(next);
                 i += 2;
                 continue;
             }
@@ -165,7 +169,7 @@ fn inline(line: &str) -> String {
                     && chars.get(close + 1) == Some(&'(')
                     && let Some(end) = matching(&chars, close + 1, '(', ')')
                 {
-                    let text: String = chars[i + 1..close].iter().collect();
+                    let text: String = chars.get(i + 1..close).unwrap_or_default().iter().collect();
                     out.push_str(&inline(&text));
                     i = end + 1;
                     continue;
@@ -173,15 +177,12 @@ fn inline(line: &str) -> String {
                 out.push(c);
             }
             '<' => {
-                // `<https://…>` — адрес без скобок.
-                let close = chars[i + 1..]
-                    .iter()
-                    .position(|x| *x == '>')
-                    .map(|p| i + 1 + p);
-                match close {
-                    Some(close) if chars[i + 1..close].iter().all(|x| !x.is_whitespace()) => {
-                        out.extend(&chars[i + 1..close]);
-                        i = close + 1;
+                // `<https://…>` — адрес без скобок и пробелов: первый `>` или пробел после `<` должен оказаться `>`.
+                let end = stops.get(i + 1).copied().unwrap_or(chars.len());
+                match chars.get(i + 1..end) {
+                    Some(address) if chars.get(end) == Some(&'>') => {
+                        out.extend(address);
+                        i = end + 1;
                         continue;
                     }
                     _ => out.push(c),
@@ -202,16 +203,42 @@ fn inline(line: &str) -> String {
     out
 }
 
-/// Индекс скобки, закрывающей `open` в `start`, с учётом вложенности и экранирования.
+/// Для каждой позиции — индекс ближайшего с неё `>` или пробельного знака (длина строки, если их нет). Считается один раз
+/// за строку, чтобы поиск закрытия у каждой `<` не делал разбор квадратичным по длине.
+fn next_stops(chars: &[char]) -> Vec<usize> {
+    let mut stops = vec![chars.len(); chars.len() + 1];
+    for (i, c) in chars.iter().enumerate().rev() {
+        let following = stops.get(i + 1).copied().unwrap_or(chars.len());
+        if let Some(slot) = stops.get_mut(i) {
+            *slot = if *c == '>' || c.is_whitespace() {
+                i
+            } else {
+                following
+            };
+        }
+    }
+    stops
+}
+
+/// Скобки глубже не считаются: иначе строка из `[a](` ×N читалась бы за квадратичное время, а рекурсия `inline` по тексту
+/// ссылки была бы ограничена только длиной строки. Настоящие ссылки так глубоко не вложены.
+const MAX_NESTING: usize = 64;
+
+/// Индекс скобки, закрывающей `open` в `start`, с учётом вложенности и экранирования; не глубже [`MAX_NESTING`].
 fn matching(chars: &[char], start: usize, open: char, close: char) -> Option<usize> {
     let mut depth = 0usize;
     let mut i = start;
-    while i < chars.len() {
-        match chars[i] {
+    while let Some(&current) = chars.get(i) {
+        match current {
             '\\' => i += 1,
-            c if c == open => depth += 1,
+            c if c == open => {
+                depth += 1;
+                if depth > MAX_NESTING {
+                    return None;
+                }
+            }
             c if c == close => {
-                depth -= 1;
+                depth = depth.saturating_sub(1);
                 if depth == 0 {
                     return Some(i);
                 }

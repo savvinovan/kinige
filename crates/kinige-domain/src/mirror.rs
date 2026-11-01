@@ -64,7 +64,7 @@ pub fn day_file_segments(chat_folder: &str, journal_date: &str) -> Option<[Strin
     }
     Some([
         chat_folder.to_string(),
-        journal_date[..4].to_string(),
+        journal_date.get(..4)?.to_string(),
         format!("{journal_date}.md"),
     ])
 }
@@ -119,8 +119,7 @@ fn demote_headings(body: &str) -> String {
     let mut out: Vec<String> = Vec::with_capacity(lines.len());
     let mut fence: Option<(char, usize)> = None;
     let mut i = 0;
-    while i < lines.len() {
-        let line = lines[i];
+    while let Some(&line) = lines.get(i) {
         if let Some((marker, length)) = fence {
             if is_closing_fence(line, marker, length) {
                 fence = None;
@@ -158,7 +157,7 @@ pub(crate) fn opening_fence(line: &str) -> Option<(char, usize)> {
     let rest = strip_indent(line)?;
     let marker = rest.chars().next().filter(|c| *c == '`' || *c == '~')?;
     let length = rest.chars().take_while(|c| *c == marker).count();
-    if length < 3 || (marker == '`' && rest[length..].contains('`')) {
+    if length < 3 || (marker == '`' && rest.get(length..).unwrap_or_default().contains('`')) {
         return None;
     }
     Some((marker, length))
@@ -169,13 +168,16 @@ pub(crate) fn is_closing_fence(line: &str, marker: char, length: usize) -> bool 
         return false;
     };
     let run = rest.chars().take_while(|c| *c == marker).count();
-    run >= length && rest[run..].trim().is_empty()
+    run >= length && rest.get(run..).unwrap_or_default().trim().is_empty()
 }
 
 /// Строка без отступа в 0–3 пробела; `None`, если отступ больше (это блок кода, не разметка).
 fn strip_indent(line: &str) -> Option<&str> {
     let spaces = line.bytes().take_while(|b| *b == b' ').count();
-    (spaces <= 3).then(|| &line[spaces..])
+    if spaces > 3 {
+        return None;
+    }
+    line.get(spaces..)
 }
 
 /// ATX-заголовок `#`…`######` + пробел или конец строки → тот же заголовок на два уровня глубже (не глубже шестого).
@@ -185,11 +187,11 @@ fn demote_atx(line: &str) -> Option<String> {
     if !(1..=6).contains(&hashes) {
         return None;
     }
-    let after = &rest[hashes..];
+    let after = rest.get(hashes..)?;
     if !(after.is_empty() || after.starts_with(' ') || after.starts_with('\t')) {
         return None;
     }
-    let indent = &line[..line.len() - rest.len()];
+    let indent = line.get(..line.len().saturating_sub(rest.len()))?;
     Some(format!(
         "{indent}{}{after}",
         "#".repeat((hashes + 2).min(6))
@@ -225,7 +227,11 @@ fn is_plain_paragraph_line(line: &str) -> bool {
         return false;
     }
     let digits = rest.bytes().take_while(u8::is_ascii_digit).count();
-    !(digits > 0 && matches!(rest[digits..].chars().next(), Some('.' | ')')))
+    !(digits > 0
+        && matches!(
+            rest.get(digits..).unwrap_or_default().chars().next(),
+            Some('.' | ')')
+        ))
 }
 
 #[cfg(test)]

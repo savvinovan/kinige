@@ -221,7 +221,9 @@ pub(crate) fn build_message(
     });
     let ext_json = match &provenance.ext {
         Some(ext) => {
-            core["ext"] = ext.clone();
+            if let Some(object) = core.as_object_mut() {
+                object.insert("ext".to_string(), ext.clone());
+            }
             Some(jcs::canonical_string(ext)?)
         }
         None => None,

@@ -93,11 +93,11 @@ pub fn key_after(max: Option<&str>) -> String {
             .iter()
             .position(|d| d == slot)
             .unwrap_or_default();
-        if at + 1 < KEY_DIGITS.len() {
-            *slot = KEY_DIGITS[at + 1];
+        if let Some(&digit) = KEY_DIGITS.get(at + 1) {
+            *slot = digit;
             break;
         }
-        *slot = KEY_DIGITS[0];
+        *slot = b'0';
     }
     // Все байты — цифры ASCII (проверено выше), поэтому `char::from(u8)` совпадает с UTF-8.
     let digits: String = next.into_iter().map(char::from).collect();

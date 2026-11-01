@@ -28,10 +28,15 @@ pub fn set_task_item(body_md: &str, index: usize, checked: bool) -> Result<Strin
     if current == checked {
         return Err(TaskItemError::AlreadyThere);
     }
+    // `at` — смещение однобайтового символа в скобках, найденное `find_item`; `get` не отказывает, но и не паникует.
+    let (head, tail) = body_md
+        .get(..at)
+        .zip(body_md.get(at + 1..))
+        .ok_or(TaskItemError::NotFound)?;
     let mut text = String::with_capacity(body_md.len());
-    text.push_str(&body_md[..at]);
+    text.push_str(head);
     text.push(if checked { 'x' } else { ' ' });
-    text.push_str(&body_md[at + 1..]);
+    text.push_str(tail);
     Ok(text)
 }
 
@@ -90,7 +95,7 @@ fn scan_items(body_md: &str, mut visit: impl FnMut(&Found<'_>) -> bool) {
                 mark: line_start + inside,
                 checked,
                 // `inside` — символ в скобках, дальше `]`; оба однобайтовые.
-                text: line[inside + 2..].trim(),
+                text: line.get(inside + 2..).unwrap_or_default().trim(),
             };
             if visit(&found) {
                 return;
@@ -119,14 +124,19 @@ fn marker_in_line(line: &str) -> Option<(usize, bool)> {
     let bytes = line.as_bytes();
     let mut i = 0;
     // Отступ и знаки цитаты.
-    while i < bytes.len() && matches!(bytes[i], b' ' | b'\t' | b'>') {
+    while matches!(bytes.get(i), Some(b' ' | b'\t' | b'>')) {
         i += 1;
     }
     // Маркер списка.
     match bytes.get(i)? {
         b'-' | b'*' | b'+' => i += 1,
         b'0'..=b'9' => {
-            let digits = bytes[i..].iter().take_while(|b| b.is_ascii_digit()).count();
+            let digits = bytes
+                .get(i..)
+                .unwrap_or_default()
+                .iter()
+                .take_while(|b| b.is_ascii_digit())
+                .count();
             if digits > 9 || !matches!(bytes.get(i + digits), Some(b'.' | b')')) {
                 return None;
             }
@@ -135,7 +145,9 @@ fn marker_in_line(line: &str) -> Option<(usize, bool)> {
         _ => return None,
     }
     // Пробел после маркера, затем `[ ]`, пробел и непустой текст.
-    let gap = bytes[i..]
+    let gap = bytes
+        .get(i..)
+        .unwrap_or_default()
         .iter()
         .take_while(|b| matches!(**b, b' ' | b'\t'))
         .count();
@@ -151,12 +163,12 @@ fn marker_in_line(line: &str) -> Option<(usize, bool)> {
         b'x' | b'X' => true,
         _ => return None,
     };
-    let tail = &line[i + 3..];
+    let tail = line.get(i + 3..)?;
     let spaces = tail
         .bytes()
         .take_while(|b| matches!(*b, b' ' | b'\t'))
         .count();
-    if spaces == 0 || tail[spaces..].trim().is_empty() {
+    if spaces == 0 || tail.get(spaces..)?.trim().is_empty() {
         return None;
     }
     Some((i + 1, checked))

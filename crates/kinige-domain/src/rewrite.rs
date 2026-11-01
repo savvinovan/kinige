@@ -105,12 +105,14 @@ pub fn rewrite_group(
             .get(),
     )
     .map_err(corrupt)?;
-    let old_hlc = old_entry["h"]
-        .as_str()
+    let old_hlc = old_entry
+        .get("h")
+        .and_then(Value::as_str)
         .ok_or_else(|| corrupt(format!("нет h у группы {group}")))?
         .to_string();
-    let old_sv = old_entry["sv"]
-        .as_u64()
+    let old_sv = old_entry
+        .get("sv")
+        .and_then(Value::as_u64)
         .ok_or_else(|| corrupt(format!("нет sv у группы {group}")))?;
     if old_sv > u64::from(SCHEMA_VERSION) {
         return Err(GroupError::UnsupportedVersion);

@@ -29,29 +29,34 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 
 /// `YYYY-MM-DD` с настоящими цифрами и месяцем 01–12, днём 01–31 (проверка формата; существование даты не проверяется).
 pub fn is_journal_date(text: &str) -> bool {
-    let bytes = text.as_bytes();
-    if bytes.len() != 10 || bytes[4] != b'-' || bytes[7] != b'-' {
-        return false;
-    }
-    let digits = |range: std::ops::Range<usize>| bytes[range].iter().all(u8::is_ascii_digit);
-    if !(digits(0..4) && digits(5..7) && digits(8..10)) {
-        return false;
-    }
-    let month: u32 = text[5..7].parse().unwrap_or(0);
-    let day: u32 = text[8..10].parse().unwrap_or(0);
-    (1..=12).contains(&month) && (1..=31).contains(&day)
+    date_parts(text)
+        .is_some_and(|(_, month, day)| (1..=12).contains(&month) && (1..=31).contains(&day))
+}
+
+/// Год, месяц и день из `YYYY-MM-DD`: ровно 10 байт ASCII, разделители на местах, остальное — цифры. Диапазоны не
+/// проверяются. Работает по байтам, поэтому на любой строке (в том числе не ASCII) отвечает `None`, а не паникой.
+pub fn date_parts(text: &str) -> Option<(i32, u32, u32)> {
+    let [y1, y2, y3, y4, b'-', m1, m2, b'-', d1, d2] = *text.as_bytes() else {
+        return None;
+    };
+    let number = |digits: &[u8]| -> Option<u32> {
+        digits.iter().try_fold(0u32, |acc, &digit| {
+            digit
+                .is_ascii_digit()
+                .then(|| acc * 10 + u32::from(digit - b'0'))
+        })
+    };
+    let year = i32::try_from(number(&[y1, y2, y3, y4])?).ok()?;
+    Some((year, number(&[m1, m2])?, number(&[d1, d2])?))
 }
 
 /// Настоящая дата `YYYY-MM-DD`: формат, месяц 01–12, день в пределах месяца (с високосными годами). Будущие даты
 /// допустимы (ADR-0001 §2): `journal_date` — содержимое записи, а не часы. Год — не раньше 1000 и не позже 9999, чтобы
 /// запись не уезжала в «год 0000», где календарь не определён.
 pub fn is_valid_journal_date(text: &str) -> bool {
-    if !is_journal_date(text) {
+    let Some((year, month, day)) = date_parts(text) else {
         return false;
-    }
-    let year: i32 = text[..4].parse().unwrap_or(0);
-    let month: u32 = text[5..7].parse().unwrap_or(0);
-    let day: u32 = text[8..10].parse().unwrap_or(0);
+    };
     let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
     let days = match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
