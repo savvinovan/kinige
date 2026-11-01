@@ -1,17 +1,17 @@
-# ADR-0007: Эмодзи-пикер — frimousse и данные emojibase в бандле
+# ADR-0007: Emoji picker — frimousse and emojibase data in the bundle
 
-Дата: 2026-10-27. Статус: **принято** (слайс 3). ТЗ §2.1, §5, §16; ADR-0004 (токены), ADR-0005 (i18n).
+Date: 2026-10-27. Status: **accepted** (slice 3). PRD §2.1, §5, §16; ADR-0004 (tokens), ADR-0005 (i18n).
 
-## Контекст
-Слайс 3: один пикер для поля ввода и для окна чата; поиск по названию на русском и английском; «недавние»; без сети (local-first, CSP не расширяется); вид только из токенов.
+## Context
+Slice 3: one picker for the input field and for the chat window; search by name in Russian and English; "recent"; no network (local-first, the CSP is not widened); the look only from tokens.
 
-## Решение
-- **`frimousse` 0.4.0** (MIT, безголовая библиотека: список, поиск, клавиатура, виртуальные строки; вид — наш CSS на токенах). Peer-зависимость — React 18 или 19 (у нас 19). Проверено по `package.json` пакета и его исходникам (`resolveEmojiData`: данные можно подать своей функцией, а не с CDN). Версия выбрана как старше двух недель.
-- **`emojibase-data` 17.0.0** (MIT): `en` и `ru` в бандле, подгружаются динамическим `import()` при первом открытии пикера (два чанка, ≈ 96 и 110 КБ после gzip). Поиск идёт по обоим языкам сразу, поэтому на русском интерфейсе находится и «собака», и `dog`. Версия 18.0.0 отвергнута: опубликована меньше двух недель назад. Типы JSON подтягиваются из `emojibase` как peer-зависимость, напрямую пакет не импортируется.
-- «Недавние» — до 24 эмодзи в `app_setting` (Rust); в `localStorage` и кэш библиотеки ничего не пишется.
-- Какие версии Unicode Emoji система умеет рисовать, пикер определяет через canvas (как в самой библиотеке); запасной порог без canvas — 15.1, **из памяти, не проверен**.
+## Decision
+- **`frimousse` 0.4.0** (MIT, a headless library: list, search, keyboard, virtual rows; the look is our CSS on tokens). The peer dependency is React 18 or 19 (we have 19). Verified from the package's `package.json` and its sources (`resolveEmojiData`: the data can be supplied by our own function rather than from a CDN). The version was chosen as being older than two weeks.
+- **`emojibase-data` 18.0.0** (MIT): `en` and `ru` in the bundle, loaded with a dynamic `import()` on the first opening of the picker (two chunks, ≈ 96 and 110 KB after gzip). Search covers both languages at once, so with the Russian UI both «собака» ("dog") and `dog` are found. It started on 17.0.0 (18.0.0 was younger than two weeks); updated to 18.0.0 (published 2026-10-16, KINIG-64). The chunk sizes above were measured on 17.0.0. Version 18 removed a redundant `U+FE0F` from the `emoji` field of 152 emoji (`✅\u{FE0F}` became `✅`), so the recent emoji are compared without `U+FE0F` (`kinige_domain::emoji::emoji_identity`, `add_recent_emoji`). The JSON types are pulled in from `emojibase` as a peer dependency; the package is not imported directly.
+- "Recent" is up to 24 emoji in `app_setting` (Rust); nothing is written to `localStorage` or the library's cache.
+- Which Unicode Emoji versions the system can draw, the picker determines via canvas (as the library itself does); the fallback threshold without canvas is 15.1, **from memory, not verified**.
 
-## Последствия
-- Новые зависимости веб-части: `frimousse`, `emojibase-data` (+ `emojibase` как peer). Сети нет, CSP не менялась (`script-src 'self'` разрешает чанки).
-- jsdom не раскладывает виртуальный список, поэтому тесты подставляют размеры и `ResizeObserver` (`web/src/test/emoji.tsx`); раскладку показывают истории Storybook и живое окно.
-- Названия категорий в русских данных местами корявые («тело людей»); при необходимости — свои подписи в `emoji.*`.
+## Consequences
+- New dependencies of the web part: `frimousse`, `emojibase-data` (+ `emojibase` as a peer). No network; the CSP did not change (`script-src 'self'` allows the chunks).
+- jsdom does not lay out a virtual list, so the tests substitute sizes and `ResizeObserver` (`web/src/test/emoji.tsx`); the layout is shown by Storybook stories and the live window.
+- Category names in the Russian data are clumsy in places («тело людей», literally "body of people"); if needed — our own labels in `emoji.*`.

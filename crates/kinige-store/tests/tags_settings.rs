@@ -209,6 +209,39 @@ fn composite_emoji_sequences_of_the_picker_are_accepted() {
 }
 
 #[test]
+fn recent_emoji_ignore_a_redundant_variation_selector() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    // emojibase-data 18 выдаёт `✅` там, где 17 выдавала `✅\u{FE0F}`; в базе лежит старая запись.
+    store.add_recent_emoji("✅\u{FE0F}").unwrap();
+    store.add_recent_emoji("🎬").unwrap();
+    assert_eq!(
+        store.add_recent_emoji("✅").unwrap(),
+        ["✅", "🎬"],
+        "новая запись заменяет старую, а не дублирует её"
+    );
+    assert_eq!(
+        store.add_recent_emoji("✅\u{FE0F}").unwrap(),
+        ["✅\u{FE0F}", "🎬"],
+        "и наоборот: остаётся самая свежая форма"
+    );
+    // Дубликаты, уже лежащие в базе (записаны до исправления), схлопываются при чтении: остаётся первый, самый свежий.
+    raw(dir.path())
+        .execute(
+            "UPDATE app_setting SET value = ?1 WHERE key = 'recent_emoji'",
+            ["[\"✅\",\"🎬\",\"✅\\uFE0F\",\"❤\\uFE0F\",\"❤\"]"],
+        )
+        .unwrap();
+    assert_eq!(
+        store.get_settings().unwrap().recent_emoji,
+        ["✅", "🎬", "❤\u{FE0F}"]
+    );
+    // Мусор по-прежнему ошибка: один `VS16` не последовательность эмодзи.
+    assert!(store.add_recent_emoji("\u{FE0F}").is_err());
+    assert!(store.add_recent_emoji("a\u{FE0F}").is_err());
+}
+
+#[test]
 fn recent_emoji_are_limited_and_survive_a_broken_stored_value() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());

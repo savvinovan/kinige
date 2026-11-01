@@ -1,60 +1,60 @@
-# Слайс 0: Каркас
+# Slice 0: Skeleton
 
-Бюджет: 4 дня. Зависит от: Q8 (решено: `kinige-claude`), репозитория на Gitea homelab (создаёт пользователь).
+Budget: 4 days. Depends on: Q8 (decided: `kinige-claude`), a repository on the homelab Gitea (created by the user).
 
-## Сценарий
-Здесь нет пользовательского сценария, есть сценарий разработчика. Он и служит критерием приёмки:
-1. Клонирую репозиторий на чистый Mac с Rust, Node и Xcode CLT (версии закреплены в `rust-toolchain.toml` и в файле версии Node) и запускаю одну команду из README.
-2. Зависимости ставятся, приложение собирается, открывается одно окно Kinige: фон и текст из токенов, строка «Kinige <версия>», полученная из Rust через `KinigeApi`.
-3. Второй командой открываю Storybook в браузере и вижу историю «Каркас / Пустое окно» на `MockApi`, которая выглядит как это окно.
-4. Меняю значение токена в `design/tokens/*.json`, пересобираю: цвет меняется и в окне, и в Storybook.
-5. Запускаю скрипт скриншота: в указанную папку ложится PNG настоящего окна, а не всего экрана.
-6. Открываю PR на Gitea: CI (Gitea Actions, Linux) зелёный.
-7. Локально запускаю `scripts/build-app.sh`: собирается `.app`, подписывается ad-hoc, `codesign --verify` проходит.
+## Scenario
+There is no user scenario here; there is a developer scenario. It also serves as the acceptance criterion:
+1. I clone the repository onto a clean Mac with Rust, Node and Xcode CLT (versions pinned in `rust-toolchain.toml` and in the Node version file) and run one command from the README.
+2. Dependencies install, the app builds, and one Kinige window opens: background and text from tokens, the line “Kinige <version>” obtained from Rust through `KinigeApi`.
+3. With a second command I open Storybook in a browser and see the story «Каркас / Пустое окно» (“Skeleton / Empty window”) on `MockApi`, which looks like this window.
+4. I change a token value in `design/tokens/*.json` and rebuild: the color changes both in the window and in Storybook.
+5. I run the screenshot script: a PNG of the real window, not of the whole screen, lands in the given folder.
+6. I open a PR on Gitea: CI (Gitea Actions, Linux) is green.
+7. Locally I run `scripts/build-app.sh`: a `.app` is built and signed ad-hoc, and `codesign --verify` passes.
 
-## Входит
-- Git-ветка `slice/0-skeleton`, remote — репозиторий на Gitea homelab. Cargo workspace: `crates/kinige-domain` (одна функция, нужная команде, без IO) и `src-tauri/` (Tauri 2.12.x, одна команда); фронтенд `web/` (React + TS + Vite).
-- `KinigeApi` (интерфейс), `TauriApi` (invoke) и `MockApi` с одним методом. Генерация TS-типов из Rust: выбрать `ts-rs` или `tauri-specta` и записать ADR. CI проверяет, что сгенерированные типы актуальны.
-- Capability главного окна с явным списком команд (не «все команды»). CSP без inline-скриптов (§6).
-- Пайплайн токенов: `design/tokens/*.json` (DTCG) → Style Dictionary 5.x → `web/src/ui/tokens.css`. Два-три временных токена по ролям (`color.surface.background`, `color.text.primary`, `font.size.body`). Их значения заменит слайс D.
-- Storybook с одной историей на `MockApi`. Визуальный снимок этой истории в CI.
-- **CI — Gitea Actions на Linux-раннере** (на каждый PR): `cargo test`, `clippy -D warnings`, `rustfmt --check`, `cargo build -p kinige-domain --target wasm32-unknown-unknown`, `tsc`, ESLint, тесты фронтенда, визуальные тесты Storybook (headless-браузер в Linux — эталоны снимков снимаются там же), проверка актуальности `tokens.css` и сгенерированных типов. Проверить, есть ли на homelab `act_runner`; если нет — поднять его в Docker на ubuntu-server (контейнер `kinige-act-runner`) и описать в README.
-- **Сборка `.app` — локально** скриптом `scripts/build-app.sh`: release-сборка, ad-hoc подпись, `codesign --verify`. macOS-раннер — не раньше слайса 10.
-- Локальный запуск визуальных тестов делается в том же Linux-контейнере, что и в CI (Docker удалённый — файлы через build context или `docker cp`), чтобы эталоны совпадали.
-- `scripts/screenshot-window.sh <out.png>` находит окно Kinige и снимает его через `screencapture -l <windowid>`.
-- Методика замеров (машина, release-сборка, число прогонов) в README и скрипт замера холодного старта (цель < 1,5 с, §15).
-- ADR «Ключи подписи, нотаризации и updater» (§12.3): где лежат, кто имеет доступ, как отозвать.
-- README (требования, команды) и раздел команд сборки и тестов в `CLAUDE.md`.
+## Included
+- Git branch `slice/0-skeleton`, remote is the repository on the homelab Gitea. Cargo workspace: `crates/kinige-domain` (one function, needed by the command, no IO) and `src-tauri/` (Tauri 2.12.x, one command); frontend `web/` (React + TS + Vite).
+- `KinigeApi` (interface), `TauriApi` (invoke) and `MockApi` with one method. Generating TS types from Rust: choose `ts-rs` or `tauri-specta` and write an ADR. CI checks that the generated types are up to date.
+- A capability for the main window with an explicit list of commands (not “all commands”). CSP without inline scripts (§6).
+- Token pipeline: `design/tokens/*.json` (DTCG) → Style Dictionary 5.x → `web/src/ui/tokens.css`. Two or three temporary role-based tokens (`color.surface.background`, `color.text.primary`, `font.size.body`). Slice D will replace their values.
+- Storybook with one story on `MockApi`. A visual snapshot of this story in CI.
+- **CI is Gitea Actions on a Linux runner** (on every PR): `cargo test`, `clippy -D warnings`, `rustfmt --check`, `cargo build -p kinige-domain --target wasm32-unknown-unknown`, `tsc`, ESLint, frontend tests, Storybook visual tests (headless browser on Linux; the snapshot baselines are taken there too), a check that `tokens.css` and the generated types are up to date. Check whether the homelab has an `act_runner`; if not, bring one up in Docker on ubuntu-server (container `kinige-act-runner`) and describe it in the README.
+- **The `.app` build is local**, with the script `scripts/build-app.sh`: release build, ad-hoc signature, `codesign --verify`. A macOS runner comes no earlier than slice 10.
+- Visual tests run locally in the same Linux container as in CI (Docker is remote: files go through the build context or `docker cp`), so that the baselines match.
+- `scripts/screenshot-window.sh <out.png>` finds the Kinige window and captures it with `screencapture -l <windowid>`.
+- Measurement method (machine, release build, number of runs) in the README, and a script that measures cold start (target < 1.5 s, §15).
+- ADR “Signing, notarization and updater keys” (§12.3): where they live, who has access, how to revoke them.
+- README (requirements, commands) and the build and test commands section in `CLAUDE.md`.
 
-## НЕ входит
-- **ADR «протокол + ключи»** — отдельная задача ADR-0001 после приёмки слайса 0, параллельно со слайсом D1, до слайса 1 (решение пользователя).
-- `kinige-store`, SQLite, миграции, `kinige-sync`, `server/` (слайсы 1 и 11). Генератор нагрузочных данных: ему нужна схема.
-- Настоящая дизайн-система: палитра, шрифты (Q11), типографическая шкала, компоненты, механизм крупного текста, три варианта ленты (слайс D).
-- Сайдбар, лента, composer, Inbox (слайс 1). Окно захвата, хоткеи, трей, single-instance (слайс 2).
-- Матрица IPC «окно → команды» с отрицательными тестами (§12.3) появится со вторым окном в слайсе 2.
-- Developer ID, нотаризация, updater (слайс 10), сборки под Windows и Linux (MVP+). `docs/architecture.md` и `docs/roadmap.md`: пока нечего добавить к §3 и §15 ТЗ.
+## Not included
+- **ADR “protocol + keys”**: a separate task, ADR-0001, after slice 0 is accepted, in parallel with slice D1, before slice 1 (user decision).
+- `kinige-store`, SQLite, migrations, `kinige-sync`, `server/` (slices 1 and 11). The load data generator: it needs the schema.
+- The real design system: palette, fonts (Q11), type scale, components, the large-text mechanism, three feed variants (slice D).
+- Sidebar, feed, composer, Inbox (slice 1). Capture window, hotkeys, tray, single-instance (slice 2).
+- The IPC matrix “window → commands” with negative tests (§12.3) arrives with the second window in slice 2.
+- Developer ID, notarization, updater (slice 10), Windows and Linux builds (MVP+). `docs/architecture.md` and `docs/roadmap.md`: nothing to add to §3 and §15 of the PRD yet.
 
-## Как выглядит «готово»
-Одно главное окно со стандартной рамкой macOS. Всё поле залито `color.surface.background`. Слева сверху одна строка «Kinige 0.1.0» цветом `color.text.primary` размера `font.size.body`. Других элементов нет, состояние одно. Компонентов дизайн-системы ещё нет. История Storybook «Каркас / Пустое окно» совпадает с окном, кроме строки версии: в ней «mock». Цвета, размеры и шрифты вне `tokens.css` не встречаются ни в одном файле `web/src`.
+## What “done” looks like
+One main window with the standard macOS frame. The whole area is filled with `color.surface.background`. At the top left, a single line “Kinige 0.1.0” in `color.text.primary` at size `font.size.body`. There are no other elements and only one state. There are no design system components yet. The Storybook story «Каркас / Пустое окно» (“Skeleton / Empty window”) matches the window except for the version line, which reads “mock”. Colors, sizes and fonts outside `tokens.css` do not appear in any file under `web/src`.
 
-## Проверки
-- Rust: unit-тест функции `kinige-domain`, тест команды. Сборка под wasm32 в CI.
-- Фронтенд: тест на `MockApi`, что каркас рендерит строку версии. Визуальный снимок истории в одной теме и обычном тексте (крупный текст — с D).
-- CI: ссылка на зелёный прогон в PR на Gitea. Шаг с намеренно сломанным токеном или типом краснеет: проверить один раз и описать в PR.
-- Скриншоты: `docs/screens/0/window.png` снят скриптом, рядом `storybook.png` и вывод замера холодного старта.
-- Данные не пишутся: проверка убийством процесса не нужна.
-- Docker удалённый (ubuntu-server): без bind-mount путей Mac (файлы через build context или `docker cp`), префикс `kinige-`, временные контейнеры убирать за собой; `kinige-act-runner` — постоянный.
+## Checks
+- Rust: unit test of the `kinige-domain` function, test of the command. wasm32 build in CI.
+- Frontend: a test on `MockApi` that the skeleton renders the version line. A visual snapshot of the story in one theme and normal text (large text comes with D).
+- CI: a link to a green run in the Gitea PR. A step with a deliberately broken token or type turns red: check this once and describe it in the PR.
+- Screenshots: `docs/screens/0/window.png` taken by the script, next to it `storybook.png` and the output of the cold start measurement.
+- No data is written: a kill-the-process check is not needed.
+- Docker is remote (ubuntu-server): no bind mounts of Mac paths (files through the build context or `docker cp`), prefix `kinige-`, temporary containers are cleaned up afterwards; `kinige-act-runner` is permanent.
 
-## Затрагивает чувствительные зоны
-- IPC: да, первая capability и CSP. Достаточно ревью `slice-reviewer`.
-- Схема, синхронизация, шифрование: нет (ADR-0001 — отдельная задача).
-- ADR о ключах подписи касается секретов CI. Секреты не попадают в репозиторий и `.env` (по `research/tauri-stack.md`, ключ updater через `.env` не работает).
+## Touches sensitive areas
+- IPC: yes, the first capability and the CSP. A `slice-reviewer` review is enough.
+- Schema, sync, encryption: no (ADR-0001 is a separate task).
+- The signing keys ADR concerns CI secrets. Secrets do not go into the repository or `.env` (per `research/tauri-stack.md`, the updater key does not work through `.env`).
 
-## Решения (19.10.2026)
-1. ADR «протокол + ключи» — отдельная задача ADR-0001, параллельно со слайсом D1, до слайса 1; ревью `sync-crypto-guardian` и `codex-second-opinion`.
-2. Репозиторий и CI — Gitea на homelab, проверки на Linux-раннере; `.app` собирается и подписывается локально. ADR «ключи подписи» исходит из этого: секретов подписи в CI пока нет.
-3. Бюджет — 4 дня.
-4. Крупный текст в снимках — со слайса D1.
+## Decisions (19.10.2026)
+1. ADR “protocol + keys” is a separate task, ADR-0001, in parallel with slice D1, before slice 1; reviewed by `sync-crypto-guardian` and `codex-second-opinion`.
+2. Repository and CI: Gitea on the homelab, checks on a Linux runner; the `.app` is built and signed locally. The “signing keys” ADR starts from this: there are no signing secrets in CI yet.
+3. Budget: 4 days.
+4. Large text in snapshots starts with slice D1.
 
-## Открытые вопросы
-Нет. Предусловие: пользователь создаёт пустой репозиторий `kinige-claude` на Gitea и даёт адрес remote.
+## Open questions
+None. Precondition: the user creates an empty `kinige-claude` repository on Gitea and provides the remote address.

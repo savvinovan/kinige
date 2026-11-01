@@ -1,29 +1,29 @@
-# ADR-0003: Ключи подписи, нотаризации и updater
+# ADR-0003: Signing, notarization and updater keys
 
-Дата: 2026-10-19. Статус: предложено (слайс 0), ждёт подтверждения пользователя в части «где лежат» — это решение о его секретах.
-Источники: §12.3 ТЗ, `docs/plan/research/tauri-stack.md`, решения слайса 0 (п. 2).
+Date: 2026-10-19. Status: proposed (slice 0), awaiting the user's confirmation of the "where they live" part — this is a decision about the user's own secrets.
+Sources: PRD §12.3, `docs/plan/research/tauri-stack.md`, slice 0 decisions (item 2).
 
-## Контекст
-В слайсе 0 `.app` собирается и подписывается локально ad-hoc; macOS-раннера и секретов подписи в CI нет.
-Developer ID, нотаризация и updater — слайс 10. Решение нужно сейчас, чтобы к слайсу 10 не оказалось, что ключ лежит где попало.
+## Context
+In slice 0 the `.app` is built and signed locally ad hoc; there is no macOS runner and no signing secrets in CI.
+Developer ID, notarization and the updater are slice 10. The decision is needed now, so that by slice 10 the key does not turn out to be lying just anywhere.
 
-## Решение
-| Ключ | Появляется | Где лежит | Кто имеет доступ |
-|---|---|---|---|
-| Ad-hoc подпись (`signingIdentity: "-"`) | слайс 0 | ключа нет | любая локальная сборка |
-| Сертификат Developer ID Application (+ закрытый ключ) | слайс 10 | Keychain на Mac владельца; резервная копия `.p12` с паролем — в менеджере паролей владельца | владелец проекта |
-| Данные нотаризации (Apple ID / app-specific password или API-ключ) | слайс 10 | менеджер паролей владельца; в сборку — через переменные окружения процесса, не через файл | владелец |
-| Закрытый ключ updater (`tauri signer generate`) | слайс 10 | менеджер паролей владельца + офлайн-копия; в сборку — через `TAURI_SIGNING_PRIVATE_KEY` в окружении процесса | владелец |
-| Публичный ключ updater | слайс 10 | `tauri.conf.json` (публичный) | все |
+## Decision
+| Key                                                                       | Appears  | Where it lives                                                                                                                 | Who has access    |
+|---------------------------------------------------------------------------|----------|--------------------------------------------------------------------------------------------------------------------------------|-------------------|
+| Ad-hoc signature (`signingIdentity: "-"`)                                 | slice 0  | there is no key                                                                                                                | any local build   |
+| Developer ID Application certificate (+ private key)                      | slice 10 | Keychain on the owner's Mac; a password-protected `.p12` backup in the owner's password manager                                | the project owner |
+| Notarization credentials (Apple ID / app-specific password or an API key) | slice 10 | the owner's password manager; passed to the build via process environment variables, not via a file                            | the owner         |
+| Updater private key (`tauri signer generate`)                             | slice 10 | the owner's password manager + an offline copy; passed to the build via `TAURI_SIGNING_PRIVATE_KEY` in the process environment | the owner         |
+| Updater public key                                                        | slice 10 | `tauri.conf.json` (public)                                                                                                     | everyone          |
 
-Правила:
-- Секреты не попадают в репозиторий, `.env`, логи и образы Docker. По `research/tauri-stack.md` ключ updater через `.env` не читается — только через окружение процесса.
-- Пока сборка локальная, CI (GitHub Actions) секретов подписи не получает: macOS-раннер уже есть, но только для снимков окна (`screens.yml`) и проверки кода macOS (`ci.yml`), без подписи. Когда появится подписанная сборка (не раньше слайса 10), секреты подписи кладутся в секреты GitHub Actions только для защищённой ветки/тегов релиза.
-- Подпись обновлений обязательна и отключить её нельзя (Tauri updater), поэтому потеря закрытого ключа updater означает невозможность выпустить обновление для установленных копий.
+Rules:
+- Secrets do not go into the repository, `.env`, logs or Docker images. According to `research/tauri-stack.md`, the updater key is not read from `.env` — only from the process environment.
+- While the build is local, CI (GitHub Actions) gets no signing secrets: a macOS runner already exists, but only for window screenshots (`screens.yml`) and macOS code checks (`ci.yml`), without signing. When a signed build appears (not earlier than slice 10), the signing secrets go into GitHub Actions secrets only for the protected release branch/tags.
+- Update signing is mandatory and cannot be turned off (Tauri updater), so losing the updater private key means being unable to release an update for installed copies.
 
-## Отзыв и компрометация
-- Developer ID: отозвать сертификат в кабинете Apple Developer, выпустить новый, пересобрать и переподписать релизы. Как именно Gatekeeper обращается с уже нотаризованными старыми сборками — не проверено, уточнить в слайсе 10.
-- Ключ updater: установленные приложения доверяют только публичному ключу, зашитому в них. При компрометации нужен релиз, подписанный **старым** ключом и содержащий **новый** публичный ключ, после чего старый ключ уничтожается. Если старый ключ утрачен, остаётся только ручная переустановка. Не проверено на практике: проверить в слайсе 10 на тестовом канале до первого релиза.
+## Revocation and compromise
+- Developer ID: revoke the certificate in the Apple Developer account, issue a new one, rebuild and re-sign the releases. How exactly Gatekeeper treats old builds that were already notarized is not verified; to be clarified in slice 10.
+- Updater key: installed apps trust only the public key built into them. On compromise, a release is needed that is signed with the **old** key and contains the **new** public key, after which the old key is destroyed. If the old key is lost, only a manual reinstall remains. Not verified in practice: verify in slice 10 on a test channel before the first release.
 
-## Не решено
-Использовать ли отдельный ключ updater для тестового канала — решается в слайсе 10.
+## Not settled
+Whether to use a separate updater key for the test channel is decided in slice 10.
