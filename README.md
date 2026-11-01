@@ -3,12 +3,17 @@
 [![CI](https://github.com/savvinovan/kinige/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/savvinovan/kinige/actions/workflows/ci.yml)
 [![Coverage Rust](https://codecov.io/gh/savvinovan/kinige/branch/main/graph/badge.svg?flag=rust)](https://app.codecov.io/gh/savvinovan/kinige?flags%5B0%5D=rust)
 [![Coverage Web](https://codecov.io/gh/savvinovan/kinige/branch/main/graph/badge.svg?flag=web)](https://app.codecov.io/gh/savvinovan/kinige?flags%5B0%5D=web)
+[![Release](https://img.shields.io/github/v/release/savvinovan/kinige?include_prereleases)](https://github.com/savvinovan/kinige/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust 1.94](https://img.shields.io/badge/rust-1.94-orange.svg)](rust-toolchain.toml)
 
 Личный журнал в формате «чата с собой». Десктоп на Tauri 2 + Rust + React/TypeScript. Нормативный документ — [`docs/plan/02-prd.md`](docs/plan/02-prd.md).
 
 Состояние: приняты слайсы 0–5 и 4a/4b — запись в чаты (SQLite и Markdown-копия `~/Documents/Kinige`), быстрый захват глобальным хоткеем, действия с записью и корзина, импорт из Telegram и поиск, MCP-сервер для ИИ-агентов, окно настроек, карточка «В этот день» и ответы; интерфейс на английском и русском. Перечень и статусы слайсов — в `CLAUDE.md` и `docs/slices/`, снимки приёмки — в `docs/screens/<слайс>/`.
+
+## Скачать
+
+Готовые сборки для macOS (Apple Silicon) — на странице [Releases](https://github.com/savvinovan/kinige/releases): `.dmg`, `.zip` и `SHA256SUMS`. Сборка подписана ad-hoc (Developer ID и нотаризация — слайс 10), поэтому при первом запуске macOS её остановит: правый клик по `Kinige.app` -> «Открыть», либо `xattr -dr com.apple.quarantine /Applications/Kinige.app`. Версии — семвер, минор = номер слайса ([ADR-0012](docs/adr/0012-versions-and-releases.md)); текущая версия видна в приложении: «Профиль» -> «О программе».
 
 ## Требования
 
@@ -24,6 +29,7 @@
 | Запустить приложение (dev) | `scripts/run-app.sh` |
 | Открыть Storybook (http://localhost:6006) | `scripts/storybook.sh` |
 | Собрать `Kinige.app` (release, ad-hoc подпись, `codesign --verify`) | `scripts/build-app.sh` |
+| Выпустить версию (владелец: PR с новой версией, затем тег) | `scripts/release.sh X.Y.Z`, после мержа `scripts/release.sh --tag X.Y.Z` (сборку и Release делает `release.yml`) |
 | Снимки настоящего окна для приёмки слайса | `gh workflow run screens.yml --ref <ветка> -f slice=<id>` (macOS-раннер GitHub, синтетические данные; CI на ветке запускается сам) |
 | Снять скриншот окна Kinige вручную | `scripts/screenshot-window.sh docs/screens/0/window.png` (окно захвата — третий аргумент `capture`, меню значка — `menu`, список окон — `list`) |
 | Замерить холодный старт | `scripts/measure-cold-start.sh [прогонов]` |
@@ -50,7 +56,7 @@
 ## CI (GitHub Actions)
 
 Workflow — [`.github/workflows/ci.yml`](.github/workflows/ci.yml): `rust` (fmt, clippy, test, wasm32, актуальность TS-типов), `web` (актуальность `tokens.css` и `themes.css`, tsc, ESLint, vitest с покрытием → Codecov, флаг `web`), `macos` (clippy и тесты крейта приложения на `macos-15`), `visual` (снимки Storybook в контейнере Playwright), `gitleaks` (поиск секретов, `.gitleaksignore`), `deny` (`cargo-deny`: лицензии, уязвимости RustSec, источники, `deny.toml`), `coverage` (`cargo llvm-cov` → [Codecov](https://app.codecov.io/gh/savvinovan/kinige), флаг `rust`; пока информационно, PR не блокирует).
-`.app` собирается и подписывается локально (`scripts/build-app.sh`); подписанная сборка в CI — слайс 10. macOS-раннер уже используется: задание `macos` (clippy и тесты крейта приложения), снимки окна — `screens.yml`.
+`.app` собирается и подписывается ad-hoc локально (`scripts/build-app.sh`); сборка релиза по тегу — `release.yml` (`.dmg`, `.zip`, `SHA256SUMS`, GitHub Release, ADR-0012); Developer ID и нотаризация — слайс 10. macOS-раннер уже используется: задание `macos` (clippy и тесты крейта приложения), снимки окна — `screens.yml`.
 
 ## Лицензия
 
