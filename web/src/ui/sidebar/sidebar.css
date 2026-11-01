@@ -283,9 +283,13 @@
   color: var(--color-text-secondary);
 }
 
-/* Цель перетаскивания записи: тихая рамка акцентного цвета и заливка активного поля (решение приёмки слайса 3). */
+/* Цель перетаскивания записи: тихая рамка акцентного цвета и заливка активного поля (решение приёмки слайса 3).
+   `:hover` в списке обязателен: у правил наведения (`.chat-row:hover`) специфичность выше, и без него цель под указателем
+   получала бы заливку наведения вместо заливки цели (регрессия D2). */
 .rail-button--drop,
-.chat-row--drop {
+.rail-button--drop:hover,
+.chat-row--drop,
+.chat-row--drop:hover {
   background: var(--color-surface-field-active);
   outline: var(--focus-width) solid var(--color-focus-ring);
   outline-offset: calc(var(--focus-offset) * -1);

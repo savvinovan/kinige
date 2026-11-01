@@ -51,15 +51,15 @@ describe("происхождение цветов палитры graphite", () =
         });
       }
     } else if ((TILE_ROLES as readonly string[]).includes(role) && role !== "tile.neutral") {
-      // Плитки подкрашены (D2): тон, насыщенность 30 % и светлота 28 % записаны в происхождении и совпадают с цветом.
+      // Плитки подкрашены (D2): тон, насыщенность 30 % и светлота 31 % записаны в происхождении и совпадают с цветом.
       it(`${role}: авторская подкраска, не выданная за Nord, тон и светлота как в описании`, () => {
         expect(origin.startsWith(OWN), origin).toBe(true);
         expect(nord.map(([, value]) => value)).not.toContain(hex);
         const { hue, lightness } = hueAndLightness(hex);
-        const stated = /тон (\d+)°, насыщенность 30 %, светлота 28 %/.exec(origin);
+        const stated = /тон (\d+)°, насыщенность 30 %, светлота 31 %/.exec(origin);
         expect(stated, origin).not.toBeNull();
         expect(Math.abs(hue - Number(stated?.[1]))).toBeLessThanOrEqual(2);
-        expect(Math.abs(lightness - 28)).toBeLessThanOrEqual(1);
+        expect(Math.abs(lightness - 31)).toBeLessThanOrEqual(1);
       });
     } else {
       it(`${role}: авторский нейтральный серый (насыщенность 0), не выданный за Nord`, () => {

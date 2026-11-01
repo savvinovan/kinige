@@ -23,7 +23,7 @@ describe("палитры", () => {
 
   afterAll(() => {
     // Таблица пар «цвет / фон» для приёмки: видна в выводе `npm test`.
-    console.log(`\nКонтраст пар (WCAG 2.x; порог: text 4,5, ui 3, decorative 1,2)\n${rows.join("\n")}`);
+    console.log(`\nКонтраст пар (WCAG 2.x; порог: text 4,5, ui 3, decorative 1,2, hover 1,15)\n${rows.join("\n")}`);
   });
 
   it("палитра одна: graphite, она же активная (ADR-0004)", () => {

@@ -25,6 +25,8 @@ interface DemoProps {
   focus?: boolean;
   /** Открывает контекстное меню строки, имя (или его начало) которой передано: как правый щелчок. */
   menuFor?: string;
+  /** Показывает наведение на строку, имя (или его начало) которой передано: `:hover` в историю не поставить, ставится атрибут. */
+  hoverFor?: string;
   showSearch?: boolean;
   /** Чат под перетаскиваемой записью (слайс 3, перенос записи): подсвечен как цель. */
   dropTargetId?: string | null;
@@ -38,6 +40,7 @@ function Demo({
   trashCount = 3,
   focus = false,
   menuFor,
+  hoverFor,
   showSearch = false,
   dropTargetId = null,
 }: DemoProps) {
@@ -51,6 +54,10 @@ function Demo({
     // Строка списка подписана в title («Книги, 9 записей»), кнопка полосы — в aria-label.
     const label = (button: HTMLButtonElement) => button.getAttribute("title") ?? button.getAttribute("aria-label") ?? "";
     if (focus) host.current?.querySelector<HTMLButtonElement>("[aria-current]")?.focus();
+    // У строки «Корзина» нет ни `title`, ни `aria-label`: имя берётся из текста кнопки.
+    if (hoverFor) {
+      buttons.find((button) => (label(button) || (button.textContent ?? "")).startsWith(hoverFor))?.setAttribute("data-story-hover", "");
+    }
     if (menuFor) {
       const row = buttons.find((button) => label(button).startsWith(menuFor));
       const rect = row?.getBoundingClientRect();
@@ -60,7 +67,7 @@ function Demo({
         );
       }
     }
-  }, [focus, menuFor]);
+  }, [focus, menuFor, hoverFor]);
 
   const act = (id: string, action: ChatAction) =>
     setChats((list) =>
@@ -173,6 +180,12 @@ export const Счётчики: Story = {
 export const МногоЧатов: Story = {
   args: { chats: Array.from({ length: 40 }, (_, i) => ({ id: `c${i}`, name: `Чат ${i + 1}`, emoji: "📌", count: (i + 1) * 3 })), selectedId: "c0" },
 };
+
+/** Наведение: строка «Книги» подсвечена под мышью (тихая заливка), выбранная «Работа» залита плотнее и читается рядом с ней. */
+export const Наведение: Story = { args: { hoverFor: "Книги" } };
+
+/** Наведение на «Корзину» внизу и крупный текст. */
+export const НаведениеКрупныйТекст: Story = { args: { hoverFor: "Корзина" }, globals: { textScale: "large" } };
 
 /** Фокус с клавиатуры на строке выбранного чата. */
 export const Фокус: Story = { args: { focus: true } };

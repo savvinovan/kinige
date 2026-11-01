@@ -2,13 +2,14 @@
 // Порог выбирается по роли пары. Текст проверяется строже всего (4,5:1), поэтому крупный текст (порог 3:1) проходит заведомо.
 import { TILE_ROLES } from "./tokenSource";
 
-export type PairKind = "text" | "ui" | "selection" | "decorative";
+export type PairKind = "text" | "ui" | "selection" | "decorative" | "hover";
 
 /**
  * Минимальный контраст по виду пары. decorative — порог проекта, не WCAG: граница или заливка заметна, но тонка. selection — тоже
- * порог проекта: выбранное одной заливкой, без рамки, и это единственный знак выбора (строка поиска под стрелками).
+ * порог проекта: выбранное одной заливкой, без рамки, и это единственный знак выбора (строка поиска под стрелками). hover —
+ * подсветка под мышью, тише всех заливок: она временная, а выбранная строка рядом остаётся заметнее (decorative, 1,2:1).
  */
-export const MIN_RATIO: Record<PairKind, number> = { text: 4.5, ui: 3, selection: 1.5, decorative: 1.2 };
+export const MIN_RATIO: Record<PairKind, number> = { text: 4.5, ui: 3, selection: 1.5, decorative: 1.2, hover: 1.15 };
 
 export interface ContrastPair {
   foreground: string;
@@ -62,7 +63,9 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { foreground: "surface.selected", background: "surface.background", kind: "decorative" },
   { foreground: "highlight.background", background: "surface.message", kind: "decorative" },
   // Сайдбар (D2): подсветка под мышью заметна на фоне окна; плитка чата заметна и на фоне, и под мышью, и на выбранной строке.
-  { foreground: "surface.hover", background: "surface.background", kind: "decorative" },
+  { foreground: "surface.hover", background: "surface.background", kind: "hover" },
+  // Выбранная строка заметно отличается от строки под мышью (и от фона: пара selected / background выше).
+  { foreground: "surface.selected", background: "surface.hover", kind: "decorative" },
   ...TILE_ROLES.flatMap((tile) =>
     ["surface.background", "surface.hover", "surface.selected"].map((background) => ({ foreground: tile, background, kind: "decorative" as const })),
   ),

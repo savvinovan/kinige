@@ -275,6 +275,15 @@
   white-space: nowrap;
 }
 
+/* Длинная подпись переносится, а не обрезается (`checkbox--wrap`): в окне наименьшего размера и при крупном тексте смысл
+   фразы «Разрешить агентам доступ к журналу» нельзя прятать за многоточием. Названия чатов в списках остаются в одну строку. */
+.checkbox--wrap .checkbox__label {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 /* Пояснение переносится по словам: в русском оно длиннее строки окна, обрезка прятала бы смысл (слайс 4a). */
 .checkbox__description {
   color: var(--color-text-tertiary);
