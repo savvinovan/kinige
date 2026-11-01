@@ -1,85 +1,86 @@
 # Kinige v2
 
-Личный журнал в формате «чата с собой»: пишешь как в мессенджере, перечитываешь как свёрстанный журнал, год виден как изометрический лес. Десктоп первым (macOS → Windows/Linux) на Tauri 2 + Rust + React/TypeScript, SQLite на клиенте, свой self-hosted сервер (axum + Postgres) со сквозным шифрованием.
+A personal journal shaped like a "chat with yourself": you write as in a messenger, reread it as a typeset journal, and see the year as an isometric forest. Desktop first (macOS → Windows/Linux) on Tauri 2 + Rust + React/TypeScript, SQLite on the client, its own self-hosted server (axum + Postgres) with end-to-end encryption.
 
-## Источник правды
+## Source of truth
 
-- **`docs/plan/02-prd.md` — единственный нормативный документ.** Если код, разбор (`01-review.md`) или исследования (`research/`) расходятся с ТЗ — прав ТЗ. Решения меняются только через правку ТЗ или ADR.
-- `docs/adr/NNNN-*.md` — решения (полстраницы, пишется после решения).
-- `docs/slices/<id>-<name>.md` — одностраничная спецификация слайса (§12.1a).
-- `docs/screens/<slice>/` — скриншоты настоящего окна для приёмки.
+- **`docs/plan/02-prd.md` is the only normative document.** If the code, the review (`01-review.md`) or the research (`research/`) disagree with the PRD, the PRD wins. Decisions change only through an edit to the PRD or an ADR.
+- `docs/adr/NNNN-*.md` — decisions (half a page, written after the decision is made).
+- `docs/slices/<id>-<name>.md` — one-page slice specification (§12.1a).
+- `docs/screens/<slice>/` — screenshots of the real window for acceptance.
 
-Состояние: слайс 0 (каркас), D1 (основа дизайн-системы) и ADR-0001 (протокол + ключи) готовы; слайс 1 (Inbox) влит; слайс 2 (быстрый захват: окно, хоткеи, трей, дописывание) принят пользователем 27.10.2026; слайс 3 (чаты, действия с записью, корзина, копия базы) и слайс 4 (импорт из Telegram, архив, поиск со словоформами) приняты 28.10.2026; слайс 4a (MCP-сервер для ИИ-агентов) принят 29.10.2026; слайс 4b (окно настроек, settings.json) принят 31.10.2026; слайс 5 («В этот день», ответы) принят 01.11.2026. Команды сборки и тестов — в разделе «Сборка и тесты» ниже.
+Status: slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol + keys) are done; slice 1 (Inbox) is merged; slice 2 (quick capture: window, hotkeys, tray, appending) was accepted by the user on 27.10.2026; slice 3 (chats, entry actions, trash, database backup) and slice 4 (import from Telegram, archive, search with word forms) were accepted on 28.10.2026; slice 4a (MCP server for AI agents) was accepted on 29.10.2026; slice 4b (settings window, settings.json) was accepted on 31.10.2026; slice 5 ("On this day", replies) was accepted on 01.11.2026. Build and test commands are in the "Build and tests" section below.
 
-## Как работаем (обязательно, §12 ТЗ)
+## How we work (mandatory, PRD §12)
 
-1. **Один слайс = одна ветка = один PR.** Перед началом — спецификация слайса на одну страницу: сценарий словами, что НЕ входит, как выглядит «готово». Без неё не начинаем.
-2. **Роли агентов** (`.claude/agents/`):
-   - `slice-spec` — пишет спецификацию слайса по ТЗ;
-   - `slice-implementer` — реализует слайс по спецификации;
-   - `slice-reviewer` — проверяет в чистом контексте: сам запускает проверки и собирает приложение, но не запускает его окно на Mac пользователя; снимки настоящего окна берёт с macOS-раннера (`screens.yml`);
-   - `design-system` — токены, компоненты, Storybook;
-   - `sync-crypto-guardian` — ревью всего, что касается схемы данных, синхронизации и шифрования;
-   - `codex-second-opinion` — второе мнение от Codex CLI, каждый совет проверяется.
-   Пишущий агент никогда не проверяет сам себя.
-3. **«Готово» только с доказательствами:** вывод тестов + скриншоты настоящего окна в `docs/screens/<slice>/`. Следующий слайс — только после приёмки пользователем.
-4. **Визуал — только из токенов дизайн-системы.** Новый цвет, отступ или тень сначала появляется в `design/tokens/`.
-5. **Не выдумывать факты** о библиотеках, API и цифрах: проверять (документация, исходники) или писать «не проверено».
-6. **Без абстракций и документов «на будущее».** Файл больше 400 строк — сигнал разделить (кроме миграций и сгенерированных типов).
-7. **Бюджет слайса — в днях.** Вышел за двойной срок — остановиться и сообщить, а не дотягивать.
-8. **Никаких правок исходников скриптами замены строк.** Только точечные правки.
-9. **Репозиторий публичный.** Демо- и тестовые данные только синтетические; никаких личных записей, экспортов, путей и скриншотов с данными пользователя.
-10. **Любой ассет** (шрифт, иконка, картинка, данные эмодзи, палитра) — только с лицензией, разрешающей распространение, и со строкой в `ATTRIBUTION.md`. Происхождение неясно — не добавлять.
-11. **Программные вызовы** (MCP, автоматизация, тесты IPC) никогда не открывают диалоги и окна — только возвращают результат или ошибку.
-12. **Каждое исправление падения или потери данных — с регрессионным тестом.** Новый парсер или команда IPC — с тестом на мусорный ввод.
-13. **Параллельные агенты:** свой worktree и свой `CARGO_TARGET_DIR`, правят только свои файлы, после работы удаляют свой target (диск мал). Чужие правки, ломающие сборку, не чинить: подождать или сообщить. `Cargo.toml` и другие манифесты переписывать атомарно (временный файл вне `crates/`, потом `mv`), чтобы сломанный манифест не ломал сборку соседям.
-14. **Сетевые запросы** из кода, скриптов и агентов (скачивание ассетов, API) — с обезличенным User-Agent `kinige-dev`. Имя, e-mail и другие личные данные никогда не попадают в заголовки, URL и тела запросов.
-15. **В заголовке PR и в сообщении первого коммита ветки — номер задачи Huly** (`KINIG-N: …`), чтобы Huly связал PR с задачей. Исключение — релизные коммит и PR `Release vX.Y.Z` из `scripts/release.sh` (ADR-0012): без номера.
+1. **One slice = one branch = one PR.** Before starting: a one-page slice specification — the scenario in words, what is NOT included, what "done" looks like. We don't start without it.
+2. **Agent roles** (`.claude/agents/`):
+   - `slice-spec` — writes the slice specification from the PRD;
+   - `slice-implementer` — implements the slice from the specification;
+   - `slice-reviewer` — reviews in a clean context: runs the checks and builds the app itself, but does not launch its window on the user's Mac; takes the screenshots of the real window from the macOS runner (`screens.yml`);
+   - `design-system` — tokens, components, Storybook;
+   - `sync-crypto-guardian` — review of everything that touches the data schema, sync and encryption;
+   - `codex-second-opinion` — a second opinion from Codex CLI; every piece of advice is verified.
+   The agent that writes the code never reviews itself.
+3. **"Done" only with evidence:** test output + screenshots of the real window in `docs/screens/<slice>/`. The next slice starts only after acceptance by the user.
+4. **Visuals come only from design system tokens.** A new color, spacing or shadow first appears in `design/tokens/`.
+5. **Don't invent facts** about libraries, APIs and numbers: verify them (documentation, source code) or write "not verified".
+6. **No abstractions or documents "for the future".** A file over 400 lines is a signal to split it (except migrations and generated types).
+7. **A slice's budget is in days.** If you exceed twice the estimate, stop and report instead of pushing on.
+8. **No edits to source files with string-replacement scripts.** Only targeted edits.
+9. **The repository is public.** Demo and test data are synthetic only; no personal entries, exports, paths or screenshots with the user's data.
+10. **Any asset** (font, icon, image, emoji data, palette) only with a license that permits redistribution, and with a line in `ATTRIBUTION.md`. If the origin is unclear, don't add it.
+11. **Programmatic calls** (MCP, automation, IPC tests) never open dialogs or windows — they only return a result or an error.
+12. **Every fix for a crash or data loss comes with a regression test.** A new parser or IPC command comes with a test on garbage input.
+13. **Parallel agents:** each has its own worktree and its own `CARGO_TARGET_DIR`, edits only its own files, and deletes its target after the work (the disk is small). Don't fix someone else's edits that break the build: wait or report. Rewrite `Cargo.toml` and other manifests atomically (a temporary file outside `crates/`, then `mv`), so that a broken manifest doesn't break the neighbors' build.
+14. **Network requests** from code, scripts and agents (downloading assets, APIs) use the anonymized User-Agent `kinige-dev`. A name, e-mail or other personal data never goes into headers, URLs or request bodies.
+15. **The PR title and the message of the branch's first commit carry the Huly task number** (`KINIG-N: …`), so that Huly links the PR to the task. Exception: the release commit and PR `Release vX.Y.Z` from `scripts/release.sh` (ADR-0012) go without a number.
+16. **Repository language is English:** docs, specs, ADRs, code comments, log messages, commits and PRs. UI strings are bilingual (ru/en) via i18n.
 
-## Стиль кода
+## Code style
 
-Относится к новому и правимому коду; существующее массово не переписывать.
+Applies to new and edited code; don't rewrite existing code en masse.
 
-1. **Логирование — только через `log`** (`log::{error,warn,info,debug}!`). `println!`/`eprintln!` вне тестов, примеров и spikes запрещены (workspace-линты `clippy::print_stdout` и `clippy::print_stderr` = `deny`). Файл лога — в каталоге логов ОС (macOS: `~/Library/Logs/me.savvinov.kinige/kinige.log`, ротация 5 × 1 МБ); уровень по умолчанию `info`, `KINIGE_LOG=debug` включает подробности для кода Kinige. **В лог никогда не пишутся тексты записей, названия чатов, пути к файлам пользователя и содержимое импорта** — только виды событий и категории ошибок (`StoreError::category`).
-2. **Порядок в файле — сверху важное, ниже детали.** Константы после импортов; затем типы (внешние структуры выше вложенных; API-типы в порядке запрос → ответ → ошибка); в `impl` — конструкторы, публичные методы, приватные помощники ниже методов, которые их вызывают; в тестовых модулях — константы, тесты, помощники в конце.
-3. **Импорты через `use`, а не полные пути в коде.** Полный путь — только для разового случая или при столкновении со `std`. Если два крейта экспортируют одно имя — псевдоним с суффиксом крейта: `use foo::Bar as BarFoo;`.
-4. **Таблицы в Markdown выравниваются пробелами по ширине колонок:** их часто читают в сыром виде (терминал, diff). Относится к новым и правимым таблицам; старые массово не переформатировать.
-5. **Неотслеживаемые и игнорируемые файлы пользователя не удалять.** Чистить можно только то, что создал сам; кэши — только с согласия.
-6. **Время и даты — через `chrono`,** без ручной календарной арифметики.
-7. **Никогда не падать** (ADR-0011): `unwrap`, `expect`, `panic!`, `unreachable!`, индексация и срезы строк в коде приложения запрещены линтами workspace (`clippy.toml` разрешает их только в тестах); исключение — доказуемый литерал с `#[allow]` и причиной. Числа из ввода — через `get()`/`checked_*`; мьютексы — `unwrap_or_else(PoisonError::into_inner)`.
+1. **Logging only through `log`** (`log::{error,warn,info,debug}!`). `println!`/`eprintln!` outside tests, examples and spikes are forbidden (workspace lints `clippy::print_stdout` and `clippy::print_stderr` = `deny`). The log file is in the OS log directory (macOS: `~/Library/Logs/me.savvinov.kinige/kinige.log`, rotation 5 × 1 MB); the default level is `info`, `KINIGE_LOG=debug` turns on details for Kinige code. **Entry texts, chat names, paths to the user's files and import contents are never written to the log** — only event kinds and error categories (`StoreError::category`).
+2. **Order within a file: important things on top, details below.** Constants after imports; then types (outer structs above nested ones; API types in the order request → response → error); in an `impl` — constructors, public methods, private helpers below the methods that call them; in test modules — constants, tests, helpers at the end.
+3. **Imports through `use`, not full paths in code.** A full path only for a one-off case or on a clash with `std`. If two crates export the same name, use an alias with the crate suffix: `use foo::Bar as BarFoo;`.
+4. **Markdown tables are aligned with spaces to the column width:** they are often read raw (terminal, diff). Applies to new and edited tables; don't reformat old ones en masse.
+5. **Don't delete the user's untracked and ignored files.** You may clean up only what you created yourself; caches only with consent.
+6. **Time and dates through `chrono`,** without hand-written calendar arithmetic.
+7. **Never panic** (ADR-0011): `unwrap`, `expect`, `panic!`, `unreachable!`, indexing and string slicing in app code are forbidden by workspace lints (`clippy.toml` allows them only in tests); the exception is a provable literal with `#[allow]` and a reason. Numbers from input go through `get()`/`checked_*`; mutexes through `unwrap_or_else(PoisonError::into_inner)`.
 
-## Чувствительные зоны
+## Sensitive areas
 
-- Схема SQLite, протокол синхронизации, формат конверта, ключи — §4 и §10 ТЗ. Любое изменение здесь проходит через `sync-crypto-guardian` до мержа.
-- Своя криптография запрещена: только libsodium / RustCrypto и описанная в ТЗ схема.
-- Команды Tauri: у каждого окна свой набор разрешённых команд (§12.3), с отрицательными тестами.
+- SQLite schema, sync protocol, envelope format, keys — PRD §4 and §10. Any change here goes through `sync-crypto-guardian` before merge.
+- Home-made cryptography is forbidden: only libsodium / RustCrypto and the scheme described in the PRD.
+- Tauri commands: each window has its own set of allowed commands (§12.3), with negative tests.
 
-## Сборка и тесты
+## Build and tests
 
-Раскладка: `crates/kinige-domain` (правила, без IO, собирается под wasm32), `crates/kinige-store` (SQLite, миграции, один писатель, Markdown-копия), `src-tauri/` (тонкий слой Tauri 2), `web/` (React + TS + Vite + Storybook), `design/tokens/` (DTCG), `scripts/`, `.github/workflows/ci.yml`. Версии Rust и Node закреплены в `rust-toolchain.toml` и `.node-version`. Подробности и методика замера старта — в `README.md`.
+Layout: `crates/kinige-domain` (rules, no IO, builds for wasm32), `crates/kinige-store` (SQLite, migrations, single writer, Markdown copy), `src-tauri/` (thin Tauri 2 layer), `web/` (React + TS + Vite + Storybook), `design/tokens/` (DTCG), `scripts/`, `.github/workflows/ci.yml`. Rust and Node versions are pinned in `rust-toolchain.toml` and `.node-version`. Details and the startup measurement method are in `README.md`.
 
-Rust (из корня):
+Rust (from the root):
 - `cargo fmt --all --check`
 - `cargo clippy --workspace --all-targets -- -D warnings`
-- `cargo test --workspace` — заодно перегенерирует TS-типы в `web/src/api/generated/` (ts-rs, ADR-0002); после изменения типов в Rust закоммитить результат
+- `cargo test --workspace` — also regenerates the TS types in `web/src/api/generated/` (ts-rs, ADR-0002); after changing types in Rust, commit the result
 - `cargo build -p kinige-domain --target wasm32-unknown-unknown`
 
-Фронтенд (из `web/`, после `npm ci`):
-- `npm run tokens` — пересобрать `src/ui/tokens.css` и `src/ui/themes.css` из `design/tokens/**/*.json` (запускается само перед `dev`, `build`, `storybook`); результат коммитится
-- `npm run typecheck`, `npm run lint`, `npm test` (vitest; включает проверку «нет сырых цветов и размеров вне tokens.css / themes.css», контраст всех пар «цвет / фон» палитры и проверку шрифтов по самим woff2-файлам)
+Frontend (from `web/`, after `npm ci`):
+- `npm run tokens` — rebuild `src/ui/tokens.css` and `src/ui/themes.css` from `design/tokens/**/*.json` (runs by itself before `dev`, `build`, `storybook`); the result is committed
+- `npm run typecheck`, `npm run lint`, `npm test` (vitest; includes the check "no raw colors and sizes outside tokens.css / themes.css", the contrast of all "color / background" pairs of the palette, and the font check against the woff2 files themselves)
 - `npm run build-storybook`
 
-Визуальные тесты Storybook идут только на GitHub, в контейнере Playwright: сравнение — задание `visual` в CI; новые эталоны — `gh workflow run visual-update.yml --ref <ветка>` (снимает и коммитит в ветку; в `main` нельзя; после коммита сам запускает CI на ветке). Эталоны на macOS и на ubuntu-server не снимаются.
+Storybook visual tests run only on GitHub, in a Playwright container: the comparison is the `visual` job in CI; new baselines via `gh workflow run visual-update.yml --ref <branch>` (captures them and commits to the branch; not allowed in `main`; after the commit it starts CI on the branch by itself). Baselines are not captured on macOS or on ubuntu-server.
 
-Приложение: `scripts/run-app.sh` (dev), `scripts/storybook.sh`, `scripts/build-app.sh` (release `.app` + ad-hoc подпись + `codesign --verify` + сверка версии бандла с `Cargo.toml`; `KINIGE_BUNDLES=app,dmg` добавляет `.dmg`), `scripts/screenshot-window.sh <out.png>` (окно Kinige, `screencapture -x -o -l`; ручная отладка и сам `screens.yml`; агенты на Mac пользователя его не запускают; на скриншот не должно попадать ничего, кроме окна), `scripts/measure-cold-start.sh`, `scripts/mcp-session.py <kinige-mcp> <сокет> <файл протокола>` (сеанс MCP через мост своим клиентом, для приёмки слайса 4a; конфиги Claude не трогаются). Сборка и запуск кладут мост в `src-tauri/binaries/kinige-mcp-<triple>` (sidecar, `bundle.externalBin`); при `cargo clippy`/`cargo test` на чистом клоне там пустая заглушка из `build.rs`.
+App: `scripts/run-app.sh` (dev), `scripts/storybook.sh`, `scripts/build-app.sh` (release `.app` + ad-hoc signature + `codesign --verify` + check of the bundle version against `Cargo.toml`; `KINIGE_BUNDLES=app,dmg` adds a `.dmg`), `scripts/screenshot-window.sh <out.png>` (the Kinige window, `screencapture -x -o -l`; for manual debugging and for `screens.yml` itself; agents don't run it on the user's Mac; nothing but the window may get into the screenshot), `scripts/measure-cold-start.sh`, `scripts/mcp-session.py <kinige-mcp> <socket> <protocol file>` (an MCP session through the bridge with our own client, for the acceptance of slice 4a; Claude configs are not touched). Build and run put the bridge into `src-tauri/binaries/kinige-mcp-<triple>` (sidecar, `bundle.externalBin`); on `cargo clippy`/`cargo test` on a clean clone, an empty stub from `build.rs` sits there.
 
-Версии и релизы (ADR-0012): семвер, минор = номер слайса (0.5.0 — слайсы 0–5), патч — исправления между слайсами, 1.0.0 — после синхронизации. Версия живёт в `[workspace.package]` `Cargo.toml` (`tauri.conf.json` своей не имеет), остальные файлы и `web/src/version.test.ts` её повторяют и проверяют — руками не менять. Релиз режет только координатор, после приёмки слайса или пачки исправлений: `scripts/release.sh X.Y.Z` (ветка `release/vX.Y.Z`, коммит, PR) -> CI и мерж -> `scripts/release.sh --tag X.Y.Z` (тег `vX.Y.Z` на `main`, только при зелёном `ci.yml` на этом коммите) -> workflow `release.yml` собирает `.dmg` и `.zip` на macOS-раннере и создаёт GitHub Release; ход — `gh run list --workflow release.yml`. Повтор по тегу: `gh workflow run release.yml -f tag=vX.Y.Z` (`-f publish=false` — только собрать). Тег не переносится и не удаляется: ошибочный релиз исправляет следующий патч.
+Versions and releases (ADR-0012): semver, minor = slice number (0.5.0 — slices 0–5), patch — fixes between slices, 1.0.0 — after sync. The version lives in `[workspace.package]` of `Cargo.toml` (`tauri.conf.json` has none of its own); the other files and `web/src/version.test.ts` repeat and check it — don't change them by hand. Only the coordinator cuts a release, after acceptance of a slice or a batch of fixes: `scripts/release.sh X.Y.Z` (branch `release/vX.Y.Z`, commit, PR) -> CI and merge -> `scripts/release.sh --tag X.Y.Z` (tag `vX.Y.Z` on `main`, only with a green `ci.yml` on that commit) -> the `release.yml` workflow builds the `.dmg` and `.zip` on a macOS runner and creates a GitHub Release; progress: `gh run list --workflow release.yml`. Rerun for a tag: `gh workflow run release.yml -f tag=vX.Y.Z` (`-f publish=false` — build only). A tag is never moved or deleted: a faulty release is fixed by the next patch.
 
-Снимки настоящего окна для приёмки снимает не этот Mac, а macOS-раннер GitHub: `gh workflow run screens.yml --ref <ветка> -f slice=<id>` собирает `.app`, запускает `scripts/screens/<слайс>.sh` на синтетических данных (временные `KINIGE_DATA_DIR` и `KINIGE_MIRROR_DIR`) и коммитит `docs/screens/<слайс>/` в ветку (после этого `git pull`; CI на ветке workflow запускает сам). Ввод в сценарии — только действия доступности (`scripts/screens/ax.js`, общие функции — `scripts/screens/lib.sh`), клавиш и мыши нет; в `main` workflow не работает.
+Screenshots of the real window for acceptance are captured not by this Mac but by a GitHub macOS runner: `gh workflow run screens.yml --ref <branch> -f slice=<id>` builds the `.app`, runs `scripts/screens/<slice>.sh` on synthetic data (temporary `KINIGE_DATA_DIR` and `KINIGE_MIRROR_DIR`) and commits `docs/screens/<slice>/` to the branch (after that, `git pull`; the workflow starts CI on the branch by itself). Input in the scenarios is accessibility actions only (`scripts/screens/ax.js`, shared functions in `scripts/screens/lib.sh`), no keys or mouse; the workflow doesn't run in `main`.
 
-CI (GitHub Actions, `.github/workflows/ci.yml`; статус и перезапуск — `gh run list`, `gh run rerun`) повторяет всё перечисленное, кроме сборки `.app`, и добавляет: задание `macos` (`cargo clippy -p kinige --all-targets -- -D warnings` и `cargo test -p kinige` на `macos-15`: код под `cfg(target_os = "macos")`), `gitleaks` (ложные срабатывания — `.gitleaksignore`) и `deny` (`cargo-deny`: лицензии, RustSec, источники — `deny.toml`). Зависимости обновляет Dependabot (раз в неделю, минорные группой); сторонние actions закреплены SHA с комментарием версии. Локально проверить «зелёный CI» нельзя; ближайший аналог — команды выше.
+CI (GitHub Actions, `.github/workflows/ci.yml`; status and rerun via `gh run list`, `gh run rerun`) repeats everything listed above except building the `.app`, and adds: the `macos` job (`cargo clippy -p kinige --all-targets -- -D warnings` and `cargo test -p kinige` on `macos-15`: code under `cfg(target_os = "macos")`), `gitleaks` (false positives go to `.gitleaksignore`) and `deny` (`cargo-deny`: licenses, RustSec, sources — `deny.toml`). Dependencies are updated by Dependabot (weekly, minor updates as a group); third-party actions are pinned by SHA with a version comment. A "green CI" can't be checked locally; the closest equivalent is the commands above.
 
-## Окружение
+## Environment
 
-- Docker на этом Mac удалённый (ubuntu-server, `DOCKER_HOST` уже настроен): bind-mount путей Mac не работает, порты доступны на `192.168.1.61:<port>`. Свои контейнеры называть с префиксом `kinige-` и убирать за собой.
-- Codex CLI: `codex exec --skip-git-repo-check --ephemeral -s read-only -C <dir> -o <file> -` (промпт через stdin).
+- Docker on this Mac is remote (ubuntu-server, `DOCKER_HOST` is already set): bind mounts of Mac paths don't work, ports are reachable at `192.168.1.61:<port>`. Name your containers with the `kinige-` prefix and clean up after yourself.
+- Codex CLI: `codex exec --skip-git-repo-check --ephemeral -s read-only -C <dir> -o <file> -` (prompt via stdin).
