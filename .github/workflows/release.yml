@@ -9,7 +9,8 @@ name: Release
 
 on:
   push:
-    tags: ["v*.*.*"]  workflow_dispatch:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
     inputs:
       tag:
         description: Готовый тег vX.Y.Z (собирается он, а не ветка, с которой запущен workflow)
