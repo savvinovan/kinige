@@ -1,17 +1,17 @@
-# Kinige v2 — планирование
+# Kinige v2 — planning
 
-| Файл | Что внутри |
-|---|---|
-| [01-review.md](01-review.md) | Разбор ТЗ v0.1: уроки старого Kinige, рынок, технологии, противоречия, сводка решений |
-| [02-prd.md](02-prd.md) | Доработанное ТЗ (v0.14), единственный нормативный документ; в «Истории версий» — что менялось и почему |
-| [research/competitors.md](research/competitors.md) | Конкуренты и референсы, с источниками (19.10.2026) |
-| [research/tauri-stack.md](research/tauri-stack.md) | Проверка десктопного стека: Tauri, CM6, лента, лес, SQLite, OpenRouter, синхронизация, Claude Design (19.10.2026) |
-| [research/apple-tech.md](research/apple-tech.md) | Проверка технологий Apple — для будущей мобильной версии (19.10.2026) |
-| [research/sync-build-vs-buy.md](research/sync-build-vs-buy.md) | Синхронизация: свой протокол или готовое решение |
-| [research/review-fable.md](research/review-fable.md), [research/review-codex.md](research/review-codex.md) | Независимые ревью ТЗ v0.4 |
-| [research/advice-fable.md](research/advice-fable.md) | Советы Fable «что бы я сделал иначе» (к v0.5) |
-| [references/](references/) | Макеты — референс настроения, не спецификация |
+| File                                                                                                       | What's inside                                                                                                   |
+|------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| [01-review.md](01-review.md)                                                                               | Review of PRD v0.1: lessons from the old Kinige, the market, technologies, contradictions, summary of decisions |
+| [02-prd.md](02-prd.md)                                                                                     | The refined PRD (v0.15), the only normative document; "Version history" says what changed and why               |
+| [research/competitors.md](research/competitors.md)                                                         | Competitors and references, with sources (19.10.2026)                                                           |
+| [research/tauri-stack.md](research/tauri-stack.md)                                                         | Check of the desktop stack: Tauri, CM6, feed, forest, SQLite, OpenRouter, sync, Claude Design (19.10.2026)      |
+| [research/apple-tech.md](research/apple-tech.md)                                                           | Check of Apple technologies, for the future mobile version (19.10.2026)                                         |
+| [research/sync-build-vs-buy.md](research/sync-build-vs-buy.md)                                             | Sync: our own protocol or an off-the-shelf solution                                                             |
+| [research/review-fable.md](research/review-fable.md), [research/review-codex.md](research/review-codex.md) | Independent reviews of PRD v0.4                                                                                 |
+| [research/advice-fable.md](research/advice-fable.md)                                                       | Fable's advice "what I would do differently" (for v0.5)                                                         |
+| [references/](references/)                                                                                 | Mockups: a mood reference, not a specification                                                                  |
 
-Старый Kinige (Rust/egui) в этом репозитории не хранится. Модель и UI не переносятся; приёмы хранилища (транзакции, тесты отказа записи) — переносятся.
+The old Kinige (Rust/egui) is not kept in this repository. The model and the UI are not carried over; the storage techniques (transactions, write-failure tests) are.
 
-Слайсы, решения и снимки приёмки: [`../slices/`](../slices/), [`../adr/`](../adr/), [`../screens/`](../screens/).
+Slices, decisions and acceptance screenshots: [`../slices/`](../slices/), [`../adr/`](../adr/), [`../screens/`](../screens/).
