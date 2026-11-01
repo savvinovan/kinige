@@ -2135,7 +2135,7 @@ dependencies = [
 
 [[package]]
 name = "kinige"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "arboard",
  "kinige-domain",
@@ -2160,7 +2160,7 @@ dependencies = [
 
 [[package]]
 name = "kinige-domain"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "chrono",
  "rust-stemmers",
@@ -2172,14 +2172,14 @@ dependencies = [
 
 [[package]]
 name = "kinige-mcp"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "tempfile",
 ]
 
 [[package]]
 name = "kinige-store"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "chrono",
  "chrono-tz",
