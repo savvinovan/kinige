@@ -22,6 +22,7 @@ use hotkeys::{Hotkeys, PluginRegistrar};
 use kinige_domain::ShortcutKind;
 use kinige_store::{Store, StoreError, StoreOptions};
 use recovery::Recovery;
+use std::ffi::OsString;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -37,6 +38,18 @@ pub const BACKGROUND_FLAG: &str = "--background";
 /// активации Accessory); первое же показанное окно возвращает обычную политику (`capture::show_main`).
 pub fn is_background_launch<I: IntoIterator<Item = String>>(args: I) -> bool {
     args.into_iter().any(|arg| arg == BACKGROUND_FLAG)
+}
+
+/// Аргументы процесса строками. `std::env::args()` паникует на аргументе не в UTF-8 (его может подсунуть любая программа,
+/// запустившая приложение): такой аргумент приходит с заменой нечитаемых байтов, флаги от этого не меняются.
+pub fn launch_args() -> Vec<String> {
+    lossy_args(std::env::args_os())
+}
+
+fn lossy_args<I: IntoIterator<Item = OsString>>(args: I) -> Vec<String> {
+    args.into_iter()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect()
 }
 
 pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS};
@@ -376,7 +389,7 @@ pub fn run() {
         }
         // Главное окно создаётся скрытым (`visible: false`), чтобы запуск в фоне не мигал окном: показываем его здесь,
         // если приложение запущено не мостом MCP (`--background`, значок в menu bar без окна).
-        if !is_background_launch(std::env::args()) {
+        if !is_background_launch(launch_args()) {
             capture::show_main(&handle);
         }
         Ok(())
@@ -402,7 +415,7 @@ pub fn run() {
 
     // Запуск мостом: без значка в Dock, пока нет окна (политика меняется на обычную в `capture::show_main`).
     #[cfg(target_os = "macos")]
-    if is_background_launch(std::env::args()) {
+    if is_background_launch(launch_args()) {
         app.set_activation_policy(tauri::ActivationPolicy::Accessory);
     }
     #[cfg(not(target_os = "macos"))]
@@ -424,11 +437,25 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{guarded, is_background_launch, startup_error_category};
+    use super::{guarded, is_background_launch, lossy_args, startup_error_category};
     use kinige_store::StoreError;
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|arg| arg.to_string()).collect()
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_argument_that_is_not_utf8_does_not_panic_and_flags_still_work() {
+        use std::ffi::OsString;
+        use std::os::unix::ffi::OsStringExt;
+        // `std::env::args()` паниковал бы на втором аргументе.
+        let args = lossy_args([
+            OsString::from("kinige"),
+            OsString::from_vec(vec![b'-', 0xff, 0xfe, b'x']),
+            OsString::from("--background"),
+        ]);
+        assert!(is_background_launch(args));
     }
 
     #[test]

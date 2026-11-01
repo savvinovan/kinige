@@ -12,7 +12,7 @@ use kinige_domain::backup::daily_name;
 use kinige_domain::journal::journal_date;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Condvar, Mutex, Weak};
+use std::sync::{Arc, Condvar, Mutex, PoisonError, Weak};
 use std::thread;
 use std::time::Duration;
 
@@ -57,29 +57,24 @@ impl MaintenanceShared {
 
     /// Разбудить поток сейчас (тест): следующий проход без ожидания часа.
     pub(crate) fn wake_now(&self) {
-        if let Ok(mut flag) = self.wake.lock() {
-            *flag = true;
-            self.signal.notify_all();
-        }
+        *self.wake.lock().unwrap_or_else(PoisonError::into_inner) = true;
+        self.signal.notify_all();
     }
 
     pub(crate) fn stop(&self) {
         self.stopped.store(true, Ordering::SeqCst);
-        if let Ok(mut flag) = self.wake.lock() {
-            *flag = true;
-            self.signal.notify_all();
-        }
+        *self.wake.lock().unwrap_or_else(PoisonError::into_inner) = true;
+        self.signal.notify_all();
     }
 
     fn wait(&self) {
-        let Ok(mut flag) = self.wake.lock() else {
-            return;
-        };
+        let mut flag = self.wake.lock().unwrap_or_else(PoisonError::into_inner);
         if !*flag {
-            flag = match self.signal.wait_timeout(flag, TICK) {
-                Ok((flag, _)) => flag,
-                Err(_) => return,
-            };
+            flag = self
+                .signal
+                .wait_timeout(flag, TICK)
+                .unwrap_or_else(PoisonError::into_inner)
+                .0;
         }
         *flag = false;
     }

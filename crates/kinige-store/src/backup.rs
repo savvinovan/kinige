@@ -11,7 +11,7 @@ use kinige_domain::{BackupError, BackupStatus};
 use rusqlite::{Connection, OpenFlags, backup::Backup};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, UNIX_EPOCH};
 
 /// Папка копий рядом с файлом базы.
@@ -252,14 +252,12 @@ pub(crate) struct BackupShared {
 
 impl BackupShared {
     pub(crate) fn set_error(&self, error: Option<BackupError>) {
-        if let Ok(mut slot) = self.error.lock() {
-            *slot = error;
-        }
+        *self.error.lock().unwrap_or_else(PoisonError::into_inner) = error;
     }
 
     /// Ошибка для окна: сбой копии или проверки важнее сбоя автоудаления.
     pub(crate) fn error(&self) -> Option<BackupError> {
-        let main = self.error.lock().ok().and_then(|slot| *slot);
+        let main = *self.error.lock().unwrap_or_else(PoisonError::into_inner);
         main.or_else(|| {
             self.purge_failed
                 .load(std::sync::atomic::Ordering::SeqCst)
@@ -273,13 +271,17 @@ impl BackupShared {
     }
 
     pub(crate) fn checked_on(&self) -> Option<String> {
-        self.checked_on.lock().ok().and_then(|slot| slot.clone())
+        self.checked_on
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
     }
 
     pub(crate) fn set_checked_on(&self, date: Option<String>) {
-        if let Ok(mut slot) = self.checked_on.lock() {
-            *slot = date;
-        }
+        *self
+            .checked_on
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = date;
     }
 
     pub(crate) fn status(&self, db_path: &Path) -> BackupStatus {
