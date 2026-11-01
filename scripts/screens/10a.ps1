@@ -228,6 +228,9 @@ function Get-Scalar([string]$sql, [string]$db = (Join-Path $Data 'kinige.db')) {
 
 # Types a note into the composer (it has the focus when the window opens) and sends it with Enter.
 function Send-Note([string]$text) {
+  # The first keys sent right after the window is raised were lost ("A " of the first note): wait for the focus to settle.
+  Focus-Window 'Kinige'
+  Start-Sleep -Seconds 2
   Send-Keys 'Kinige' ($text + '{ENTER}')
   Start-Sleep -Seconds 3
 }
@@ -356,7 +359,7 @@ if ($main) { Shoot '05-after-kill' 'Kinige' }
 $withNote = @()
 for ($i = 0; $i -lt 40 -and $withNote.Count -eq 0; $i++) {
   $mdFiles = @(Get-ChildItem -Path $Mirror -Recurse -Filter *.md -ErrorAction SilentlyContinue)
-  $withNote = @($mdFiles | ForEach-Object { if ((Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8) -match 'A synthetic note written just before') { $_ } })
+  $withNote = @($mdFiles | ForEach-Object { if ((Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8) -match 'note written just before the process is killed') { $_ } })
   if ($withNote.Count -eq 0) { Start-Sleep -Seconds 1 }
 }
 @(
