@@ -2,10 +2,11 @@
 
 use crate::error::write_err;
 use crate::hlc_state::{get_state, load_clock, next_hlc, save_clock, set_state};
+use crate::view::load_reply_to;
 use crate::{Now, Store, StoreError};
 use kinige_domain::MessageView;
 use kinige_domain::groups::{self, ChatRow, GroupError, MessageRow, NewMessage};
-use kinige_domain::hlc::Clock;
+use kinige_domain::hlc::{Clock, is_uuid_v4};
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
 use uuid::Uuid;
@@ -127,6 +128,44 @@ pub(crate) fn insert_new_message(
     insert_built_message(tx, chat_id, body, now, groups::new_message)
 }
 
+/// Ответ на запись (слайс 5): тот же путь, `core.reply_to_id` = id записи-адресата. Адресат проверяется здесь же, в
+/// транзакции писателя: нет такой записи в этом чате, она в корзине или id не UUID v4 — `ReplyTargetNotFound`, ничего не записано.
+pub(crate) fn insert_reply_message(
+    tx: &Transaction<'_>,
+    chat_id: &str,
+    body: &str,
+    reply_to_id: &str,
+    now: &Now,
+) -> Result<MessageView, StoreError> {
+    check_reply_target(tx, chat_id, reply_to_id)?;
+    insert_built_message(tx, chat_id, body, now, |input, hlc| {
+        groups::new_reply_message(input, reply_to_id, hlc)
+    })
+}
+
+/// Адресат ответа жив и лежит в том же чате, что и ответ. Ответ из окна захвата и от агента адресата не имеет.
+fn check_reply_target(
+    tx: &Transaction<'_>,
+    chat_id: &str,
+    reply_to_id: &str,
+) -> Result<(), StoreError> {
+    if !is_uuid_v4(reply_to_id) {
+        return Err(StoreError::ReplyTargetNotFound);
+    }
+    let alive: bool = tx
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM message WHERE id = ?1 AND chat_id = ?2 AND deleted_at IS NULL)",
+            (reply_to_id, chat_id),
+            |row| row.get(0),
+        )
+        .map_err(write_err)?;
+    if alive {
+        Ok(())
+    } else {
+        Err(StoreError::ReplyTargetNotFound)
+    }
+}
+
 /// Новая запись агента (ADR-0009): тот же путь, `origin = 'agent'`, с `task` группа `flags` создаётся сразу задачей.
 /// Чат уже проверен вызывающим (видимое агенту множество), здесь только существование.
 pub(crate) fn insert_agent_message(
@@ -177,7 +216,12 @@ fn insert_built_message(
     crate::tags::replace_tags(tx, &row.id, &row.body_md).map_err(write_err)?;
     crate::search::reindex(tx, &row.id, &row.body_md).map_err(write_err)?;
     mark_dirty(tx, chat_id, &date).map_err(write_err)?;
+    let reply_to = match row.reply_to_id.as_deref() {
+        Some(id) => Some(load_reply_to(tx, id, &date)?),
+        None => None,
+    };
     Ok(MessageView {
+        reply_to,
         tags: kinige_domain::tags::parse_tags(&row.body_md),
         id: row.id,
         chat_id: row.chat_id,
@@ -202,14 +246,30 @@ impl Store {
         body: &str,
         now: &Now,
     ) -> Result<MessageView, StoreError> {
+        self.send_reply(chat_id, body, None, now)
+    }
+
+    /// Отправка, возможно ответом на запись (слайс 5): с `reply_to_id` адресат проверяется в той же транзакции
+    /// (`ReplyTargetNotFound`, если его нет). Черновик чата, в том числе строка «Ответ на запись», очищается там же.
+    pub fn send_reply(
+        &self,
+        chat_id: &str,
+        body: &str,
+        reply_to_id: Option<&str>,
+        now: &Now,
+    ) -> Result<MessageView, StoreError> {
         let body = groups::normalize_body(body)?;
         let chat_id = chat_id.to_string();
+        let reply_to_id = reply_to_id.map(str::to_string);
         let now = now.clone();
         let view = self.write(move |conn| {
             let tx = conn
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(write_err)?;
-            let view = insert_new_message(&tx, &chat_id, &body, &now)?;
+            let view = match &reply_to_id {
+                Some(target) => insert_reply_message(&tx, &chat_id, &body, target, &now)?,
+                None => insert_new_message(&tx, &chat_id, &body, &now)?,
+            };
             crate::draft::delete_draft(&tx, &crate::draft::chat_key(&chat_id))
                 .map_err(write_err)?;
             tx.commit().map_err(write_err)?;

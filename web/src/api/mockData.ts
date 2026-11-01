@@ -60,6 +60,7 @@ export function mockMessage(part: Partial<MessageView> & Pick<MessageView, "id" 
     tags: mockTags(part.bodyMd),
     readOnly: false,
     origin: "user",
+    replyTo: null,
     ...part,
   };
 }
@@ -69,6 +70,17 @@ export interface Row {
   deletedAt: number | null;
   /** Тексты до каждой правки (ревизии `edit`). */
   revisions: string[];
+  /** Запись — ответ (слайс 5): id записи-адресата; цитата `view.replyTo` собирается при чтении (`MockApiBase.viewOf`). */
+  replyToId?: string;
+}
+
+/** Полные годы между днём старой записи и днём ответа; 0, если меньше года или ответ раньше (как `reply::years_later` в Rust). */
+export function yearsLater(old: string, reply: string): number {
+  if (!isRealDate(old) || !isRealDate(reply)) return 0;
+  const [oy, om, od] = old.split("-").map(Number) as [number, number, number];
+  const [ry, rm, rd] = reply.split("-").map(Number) as [number, number, number];
+  const years = ry - oy - (rm * 32 + rd < om * 32 + od ? 1 : 0);
+  return Math.max(0, years);
 }
 
 /** `YYYY-MM-DD` — существующая дата (как в Rust: будущие разрешены). */

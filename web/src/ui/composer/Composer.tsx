@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../controls/IconButton";
 import { EmojiButton, type ComposerEmoji } from "./EmojiButton";
@@ -49,6 +49,8 @@ interface ComposerProps {
   placeholder?: string;
   /** Фокус в поле при показе: после отправки и при открытии чата. */
   autoFocus?: boolean;
+  /** Строка «Ответ на запись» над полем (слайс 5, `ReplyStrip`); только в главном окне. */
+  replyStrip?: ReactNode;
 }
 
 /** Внутри блока кода (открыто нечётное число ограждений ```) Enter — новая строка, а не отправка (ТЗ §5). */
@@ -75,6 +77,7 @@ export function Composer({
   hint,
   placeholder,
   autoFocus,
+  replyStrip,
 }: ComposerProps) {
   const { t } = useTranslation();
   const errorId = useId();
@@ -124,6 +127,7 @@ export function Composer({
   return (
     <div className={floating ? "composer composer--floating" : "composer"}>
       {error && !floating ? errorLine : null}
+      {replyStrip}
       {/* Место пикера эмодзи «в потоке» (окно захвата): пустое высоты не имеет, с панелью раздвигает поле вверх. */}
       {floating && emoji?.placement === "inline" ? <div className="composer__emoji-host" ref={setEmojiHost} /> : null}
       <div className={`composer__bar${error ? " composer__bar--invalid" : ""}`}>

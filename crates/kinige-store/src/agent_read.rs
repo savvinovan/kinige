@@ -13,6 +13,7 @@ use kinige_domain::agent::{
 use kinige_domain::agent_reply::{AgentChat, fit_entries, month_day};
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
+use kinige_domain::on_this_day::{past_dates, year_of};
 use kinige_domain::search::{fts_query, title_matches};
 use rusqlite::types::Value;
 use rusqlite::{Connection, params_from_iter};
@@ -167,6 +168,19 @@ impl Sql {
         self.params.push(value.into());
         self.text
             .push_str(&format!(" AND {condition} ?{}", self.params.len()));
+    }
+
+    /// Добавляет условие `<left> IN (?N, …)`.
+    fn and_in(&mut self, left: &str, values: Vec<String>) {
+        let marks: Vec<String> = values
+            .into_iter()
+            .map(|value| {
+                self.params.push(value.into());
+                format!("?{}", self.params.len())
+            })
+            .collect();
+        self.text
+            .push_str(&format!(" AND {left} IN ({})", marks.join(", ")));
     }
 
     fn rows(&self, conn: &Connection) -> Result<Vec<(MessageView, String)>, ReadFail> {
@@ -326,15 +340,31 @@ fn on_this_day(
     let Some(day) = month_day(date.unwrap_or(&ctx.today)) else {
         return Err(StoreError::Internal("дата «в этот день» не разобрана".into()).into());
     };
+    // Даты прошлых лет считает домен (одна функция с карточкой «В этот день»; 29 февраля — только 29 февраля): запрос идёт по
+    // индексу дат, а не по `substr` всей таблицы. Начало — год самой старой записи, видимой агенту.
+    let oldest: Option<String> = conn
+        .query_row(
+            &format!(
+                "SELECT MIN(m.journal_date) FROM message m JOIN chat c ON c.id = m.chat_id \
+                 WHERE {VISIBLE} AND m.deleted_at IS NULL"
+            ),
+            [],
+            |row| row.get(0),
+        )
+        .map_err(read_err)?;
+    let oldest_year = oldest.as_deref().and_then(year_of).unwrap_or(day.year);
+    let dates: Vec<String> = past_dates(date.unwrap_or(&ctx.today), oldest_year)
+        .iter()
+        .map(|date| date.format("%Y-%m-%d").to_string())
+        .collect();
+    if dates.is_empty() {
+        return page(Vec::new(), false, Vec::new(), ctx);
+    }
     let mut sql = Sql::new(format!(
         "SELECT {VIEW_COLUMNS}, c.title FROM message m JOIN chat c ON c.id = m.chat_id \
          WHERE {VISIBLE} AND m.deleted_at IS NULL"
     ));
-    sql.and("substr(m.journal_date, 6, 5) =", day.month_day);
-    sql.and(
-        "CAST(substr(m.journal_date, 1, 4) AS INTEGER) <",
-        i64::from(day.year),
-    );
+    sql.and_in("m.journal_date", dates);
     sql.text.push_str(&format!(
         " ORDER BY m.journal_date DESC, m.created_at DESC, m.id DESC LIMIT {}",
         ENTRIES_PAGE + 1

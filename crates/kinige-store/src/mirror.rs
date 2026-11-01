@@ -3,15 +3,13 @@
 //! Отметки (`mirror_dirty`) лежат в базе, поэтому переживают убийство процесса: оставшиеся обрабатываются при старте.
 //! Корзина в копию не попадает (ТЗ §16).
 
+use crate::mirror_day::write_day;
 use crate::settings::effective_mirror_dir;
-use crate::time::local_hhmm;
 use crate::writer::Writer;
 use kinige_domain::MirrorError;
-use kinige_domain::mirror::{MirrorEntry, day_file_segments, render_day_file};
 use rusqlite::Connection;
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
-use std::io::Write;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -214,7 +212,7 @@ fn pass(
                 .get(&chat_id)
                 .cloned()
                 .unwrap_or_else(|| chat_id.clone());
-            if let Err(error) = write_day(reader, &dir, &chat_id, &folder, &date) {
+            if let Err(error) = write_day(reader, &dir, &chat_id, &folder, &folders, &date) {
                 shared.set_error(Some(error));
                 return true;
             }
@@ -313,82 +311,5 @@ fn known_folders(reader: &Connection) -> rusqlite::Result<BTreeMap<String, Strin
     let mut statement = reader.prepare("SELECT chat_id, folder FROM mirror_chat")?;
     statement
         .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
-        .collect()
-}
-
-/// Перезаписывает файл одного дня одного чата или удаляет его, если записей не осталось.
-fn write_day(
-    reader: &Connection,
-    root: &Path,
-    chat_id: &str,
-    folder: &str,
-    journal_date: &str,
-) -> Result<(), MirrorError> {
-    let Some(segments) = day_file_segments(folder, journal_date) else {
-        // Недопустимая дата или имя папки: файла быть не может, отметку снимаем (иначе она не сойдёт никогда).
-        return Ok(());
-    };
-    let entries =
-        day_entries(reader, chat_id, journal_date).map_err(|_| MirrorError::WriteFailed)?;
-    let [chat_dir, year_dir, file_name] = segments;
-    let year_path = root.join(&chat_dir).join(&year_dir);
-    let file_path = year_path.join(&file_name);
-
-    if entries.is_empty() {
-        match fs::remove_file(&file_path) {
-            Ok(()) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-            Err(_) => return Err(MirrorError::WriteFailed),
-        }
-        // Пустые папки года и чата убираем, если они опустели; корень копии не трогаем.
-        let _ = fs::remove_dir(&year_path);
-        let _ = fs::remove_dir(root.join(&chat_dir));
-        return Ok(());
-    }
-
-    let text = render_day_file(journal_date, &entries);
-    write_atomically(&year_path, &file_name, text.as_bytes()).map_err(|_| MirrorError::WriteFailed)
-}
-
-/// Временный файл рядом с целевым → запись → `fsync` → переименование: читатель видит либо старый, либо новый файл целиком.
-fn write_atomically(dir: &Path, name: &str, bytes: &[u8]) -> std::io::Result<()> {
-    fs::create_dir_all(dir)?;
-    let temp = dir.join(format!(".{name}.tmp"));
-    let result = (|| {
-        let mut file = fs::File::create(&temp)?;
-        file.write_all(bytes)?;
-        file.sync_all()?;
-        fs::rename(&temp, dir.join(name))?;
-        // Запись в каталоге (само переименование) тоже сбрасывается на диск: иначе после потери питания файл мог бы
-        // оказаться под прежним именем. На Windows каталог открыть нельзя, там ошибка игнорируется.
-        if let Ok(directory) = fs::File::open(dir) {
-            let _ = directory.sync_all();
-        }
-        Ok(())
-    })();
-    if result.is_err() {
-        let _ = fs::remove_file(&temp);
-    }
-    result
-}
-
-fn day_entries(
-    reader: &Connection,
-    chat_id: &str,
-    journal_date: &str,
-) -> rusqlite::Result<Vec<MirrorEntry>> {
-    let mut statement = reader.prepare(
-        "SELECT body_md, created_at, created_tz FROM message \
-         WHERE chat_id = ?1 AND journal_date = ?2 AND deleted_at IS NULL ORDER BY created_at, id",
-    )?;
-    statement
-        .query_map((chat_id, journal_date), |row| {
-            let created_at: i64 = row.get(1)?;
-            let tz: String = row.get(2)?;
-            Ok(MirrorEntry {
-                time: local_hhmm(created_at, &tz),
-                body_md: row.get(0)?,
-            })
-        })?
         .collect()
 }

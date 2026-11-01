@@ -190,6 +190,7 @@ pub fn args_for(command: &str) -> Value {
         "open_external_url" => json!({"url": "file:///etc/passwd"}),
         "get_draft" => json!({"chatId": inbox}),
         "save_draft" => json!({"chatId": inbox, "body": "черновик"}),
+        "dismiss_on_this_day" => json!({"date": "2026-10-01"}),
         "set_shortcut" => json!({"kind": "capture", "accelerator": "Ctrl+Alt+KeyN"}),
         "reset_shortcut" => json!({"kind": "capture"}),
         "shortcut_recording" => json!({"active": false}),

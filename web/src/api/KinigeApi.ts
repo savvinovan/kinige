@@ -5,6 +5,7 @@ import type { AgentMode } from "./generated/AgentMode";
 import type { AppInfo } from "./generated/AppInfo";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
+import type { ChatDraft } from "./generated/ChatDraft";
 import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { ErrorCode } from "./generated/ErrorCode";
@@ -16,6 +17,7 @@ import type { Language } from "./generated/Language";
 import type { MessageFlag } from "./generated/MessageFlag";
 import type { MessagePage } from "./generated/MessagePage";
 import type { MessageView } from "./generated/MessageView";
+import type { OnThisDay } from "./generated/OnThisDay";
 import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { SearchFilters } from "./generated/SearchFilters";
 import type { SearchPage } from "./generated/SearchPage";
@@ -70,8 +72,11 @@ export interface KinigeApi {
    * только записи с этим тегом.
    */
   listMessages(chatId: string, options?: ListMessagesOptions): Promise<MessagePage>;
-  /** Отправка: ответ — сохранённая запись; без оптимистичного показа. */
-  sendMessage(chatId: string, body: string): Promise<MessageView>;
+  /**
+   * Отправка: ответ — сохранённая запись; без оптимистичного показа. С `replyToId` (слайс 5) это ответ на запись того же
+   * чата; нет такой записи, она в корзине или id неверен — `reply_target_not_found`, ничего не записано.
+   */
+  sendMessage(chatId: string, body: string, replyToId?: string | null): Promise<MessageView>;
   getSettings(): Promise<Settings>;
   setTextSize(size: TextSize): Promise<void>;
   /** Системный диалог выбора папки Markdown-копии (вызывается из Rust). Отмена возвращает прежние настройки. */
@@ -80,10 +85,13 @@ export interface KinigeApi {
   openExternalUrl(url: string): Promise<void>;
 
   // ---- главное окно (слайс 2) ----
-  /** Черновик поля ввода чата (§5): пустая строка, если его нет. */
-  getDraft(chatId: string): Promise<string>;
-  /** Сохраняет черновик; пустой текст удаляет его. Отправка очищает черновик в Rust, в той же транзакции. */
-  saveDraft(chatId: string, body: string): Promise<void>;
+  /** Черновик поля ввода чата (§5): пустой текст без ответа, если его нет. Несёт и запись, на которую пишется ответ. */
+  getDraft(chatId: string): Promise<ChatDraft>;
+  /**
+   * Сохраняет черновик; удаляется он, только когда пусты и текст, и ответ (`replyToId`). Отправка очищает черновик в Rust,
+   * в той же транзакции.
+   */
+  saveDraft(chatId: string, body: string, replyToId?: string | null): Promise<void>;
   /** Смена своего сочетания: Rust проверяет запись, регистрирует в системе и сохраняет. Ответ — настройки целиком. */
   setShortcut(kind: ShortcutKind, accelerator: string): Promise<Settings>;
   /** «Сбросить»: сочетание по умолчанию, те же проверки. */
@@ -189,6 +197,12 @@ export interface KinigeApi {
   onSettingsChanged(handler: () => void): Promise<() => void>;
   /** Окно настроек просит открыть запись: главное окно открывает чат на этой записи. Возвращает отписку. */
   onOpenMessage(handler: (target: { chatId: string; messageId: string }) => void): Promise<() => void>;
+
+  // ---- «В этот день» (слайс 5) ----
+  /** Карточка «В этот день» Inbox; `null` — записей этого числа в прошлые годы нет или карточку скрыли на сегодня. */
+  getOnThisDay(): Promise<OnThisDay | null>;
+  /** «Скрыть до завтра»: `date` — `today` карточки; до конца этого дня журнала карточка не показывается (локально). */
+  dismissOnThisDay(date: string): Promise<void>;
 
   // ---- окно захвата (слайс 2): отдельный набор команд, только Inbox ----
   /** Всё, что нужно окну при показе: язык, размер текста, контекст за сегодня, цель дописывания, черновик, ошибка. */

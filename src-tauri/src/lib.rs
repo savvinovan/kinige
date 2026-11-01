@@ -59,6 +59,8 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             commands::open_external_url,
             commands::get_draft,
             commands::save_draft,
+            commands::get_on_this_day,
+            commands::dismiss_on_this_day,
             commands::set_shortcut,
             commands::reset_shortcut,
             commands::shortcut_recording,

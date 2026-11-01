@@ -171,3 +171,59 @@ fn body_limit_counts_canonical_group_bytes_not_text_length() {
         Err(BodyError::TooLarge)
     );
 }
+
+#[test]
+fn reply_core_bytes_are_exact_and_other_groups_match_a_plain_message() {
+    // Эталон слайса 5 (приложение ADR-0001 §C.5): `reply_to_id` — id старой записи, остальное как у записи пользователя.
+    let input = NewMessage {
+        id: MSG_ID,
+        chat_id: INBOX_ID,
+        body_md: "До сих пор так думаю",
+        created_at: 1_793_000_000_000,
+        created_tz: "Europe/Moscow",
+        journal_date: "2026-10-31",
+    };
+    let old_id = "5b1c0d9e-3f2a-4a7b-9c8d-1e2f3a4b5c6d";
+    let reply = new_reply_message(&input, old_id, HLC).unwrap();
+    let plain = new_message(&input, HLC).unwrap();
+    let groups = parse_groups_raw(&reply.groups_raw).unwrap();
+    assert_eq!(
+        groups["core"].get(),
+        r#"{"created_at":1793000000000,"created_tz":"Europe/Moscow","origin":"user","reply_to_id":"5b1c0d9e-3f2a-4a7b-9c8d-1e2f3a4b5c6d"}"#
+    );
+    assert_eq!(reply.reply_to_id.as_deref(), Some(old_id));
+    assert_eq!(reply.origin, "user");
+    let plain_groups = parse_groups_raw(&plain.groups_raw).unwrap();
+    for name in ["body", "flags", "placement", "deleted"] {
+        assert_eq!(groups[name].get(), plain_groups[name].get(), "{name}");
+    }
+}
+
+#[test]
+fn reply_rejects_ids_that_are_not_a_lowercase_v4_uuid() {
+    let input = NewMessage {
+        id: MSG_ID,
+        chat_id: INBOX_ID,
+        body_md: "текст",
+        created_at: 1,
+        created_tz: "UTC",
+        journal_date: "2026-10-31",
+    };
+    let long = "a".repeat(1 << 20);
+    for bad in [
+        "",
+        "not-a-uuid",
+        "5B1C0D9E-3F2A-4A7B-9C8D-1E2F3A4B5C6D",
+        "5b1c0d9e-3f2a-1a7b-9c8d-1e2f3a4b5c6d",
+        "5b1c0d9e-3f2a-4a7b-7c8d-1e2f3a4b5c6d",
+        "5b1c0d9e3f2a4a7b9c8d1e2f3a4b5c6d",
+        &long,
+    ] {
+        assert_eq!(
+            new_reply_message(&input, bad, HLC).unwrap_err(),
+            GroupError::Invalid("reply_to_id не UUID v4"),
+            "{}",
+            &bad[..bad.len().min(40)]
+        );
+    }
+}

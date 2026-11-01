@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-get-on-this-day"
+description = "Enables the get_on_this_day command without any pre-configured scope."
+commands.allow = ["get_on_this_day"]
+
+[[permission]]
+identifier = "deny-get-on-this-day"
+description = "Denies the get_on_this_day command without any pre-configured scope."
+commands.deny = ["get_on_this_day"]

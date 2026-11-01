@@ -1,3 +1,4 @@
+import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { continuesSeries } from "./dates";
 
 /** Сообщение для ленты: поля настоящего ответа Rust (`MessageView`) плюс два состояния вида из D1. */
@@ -26,10 +27,14 @@ export interface FeedMessage {
   readOnly?: boolean;
   /** Кто создал запись (`core.origin`): `agent` — тихая пометка «добавлено агентом» в строке времени. */
   origin?: string;
+  /** Запись, на которую это ответ (слайс 5): цитата в плашке. */
+  replyTo?: ReplyTo | null;
 }
 
 export type FeedItem =
   | { kind: "day"; key: string; journalDate: string }
+  /** Карточка «В этот день» (слайс 5): стоит под меткой своего дня, перед записями этого дня. */
+  | { kind: "card"; key: "card" }
   | { kind: "message"; key: string; message: FeedMessage; /** Продолжает серию: промежуток сверху меньше. */ inSeries: boolean };
 
 /** Порядок ленты и курсора (§4.1 ТЗ): `(journal_date, created_at, id)`. */
@@ -43,13 +48,24 @@ function byFeedOrder(a: FeedMessage, b: FeedMessage): number {
  * Лента: метка дня перед первым сообщением каждого `journal_date`, у каждого сообщения признак серии (пауза < 5 минут,
  * тот же день). Порядок — `(journal_date, created_at, id)`, как у Rust; слияния в «страницы» нет, у каждого своё время (ТЗ §6).
  */
-export function buildFeed(messages: readonly FeedMessage[]): FeedItem[] {
+export function buildFeed(messages: readonly FeedMessage[], cardDate?: string): FeedItem[] {
   const sorted = [...messages].sort(byFeedOrder);
   const items: FeedItem[] = [];
   let previous: FeedMessage | undefined;
+  let cardPlaced = cardDate === undefined;
+  const placeCard = (date: string) => {
+    items.push({ kind: "day", key: `day-${date}`, journalDate: date }, { kind: "card", key: "card" });
+    cardPlaced = true;
+  };
   for (const message of sorted) {
     if (!previous || previous.journalDate !== message.journalDate) {
+      // Карточка стоит под меткой своего дня перед его записями; нет записей этого дня — на своём месте по дате.
+      if (!cardPlaced && cardDate !== undefined && message.journalDate > cardDate) placeCard(cardDate);
       items.push({ kind: "day", key: `day-${message.journalDate}`, journalDate: message.journalDate });
+      if (!cardPlaced && message.journalDate === cardDate) {
+        items.push({ kind: "card", key: "card" });
+        cardPlaced = true;
+      }
     }
     items.push({
       kind: "message",
@@ -59,5 +75,6 @@ export function buildFeed(messages: readonly FeedMessage[]): FeedItem[] {
     });
     previous = message;
   }
+  if (!cardPlaced && cardDate !== undefined) placeCard(cardDate);
   return items;
 }

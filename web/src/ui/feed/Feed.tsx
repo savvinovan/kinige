@@ -1,8 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, type PointerEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
+import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { Message } from "../message/Message";
 import type { MoveTarget } from "../message/moveTargets";
+import { ReplyQuote } from "../reply/ReplyQuote";
 import { type FeedMessage, buildFeed } from "./buildFeed";
 import { formatDayLabel } from "./dates";
 import "./feed.css";
@@ -70,6 +72,14 @@ interface FeedProps {
   scrollTo?: ScrollRequest | null;
   /** Нажатие в ленте (любое): снимает подсветку записи, открытой из поиска. */
   onPointerDownFeed?: () => void;
+  /** Карточка «В этот день» (слайс 5): стоит под меткой дня `journalDate` перед его записями; нет записей этого дня — на своём месте по дате. */
+  card?: { journalDate: string; node: ReactNode };
+  /** Щелчок по цитате ответа: открыть старую запись в контексте. Без обработчика цитата не нажимается. */
+  onOpenReply?: (quote: ReplyTo) => void;
+  /** Новый номер — прокрутить ленту к нижнему краю (после скрытия карточки читатель остаётся у самых новых записей). */
+  toBottom?: number;
+  /** Лента ещё не получила всё нужное для первого кадра: не рисует ничего, даже подсказку пустого чата (ничего не прыгает). */
+  loading?: boolean;
 }
 
 /**
@@ -90,10 +100,15 @@ export function Feed({
   paging,
   scrollTo,
   onPointerDownFeed,
+  card,
+  onOpenReply,
+  toBottom = 0,
+  loading = false,
 }: FeedProps) {
   const { t } = useTranslation();
   const language = useLanguage();
-  const items = useMemo(() => buildFeed(messages), [messages]);
+  const cardDate = card?.journalDate;
+  const items = useMemo(() => buildFeed(messages, cardDate), [messages, cardDate]);
   const labels = { today: t("feed.today"), yesterday: t("feed.yesterday") };
   const scroller = useRef<HTMLDivElement>(null);
   const olderEdge = useRef<HTMLDivElement>(null);
@@ -140,14 +155,27 @@ export function Feed({
   }, [messages]);
 
   // Переход из поиска: запись по центру области. Мгновенно, без плавной прокрутки (тихий интерфейс, Reduce Motion).
-  const scrollKey = scrollTo ? `${scrollTo.id}:${scrollTo.nonce}` : "";
+  // Область `column-reverse`: нижний край — `scrollTop = 0`. Прокрутка по просьбе родителя, не при первом показе.
+  const bottomSeen = useRef(toBottom);
   useLayoutEffect(() => {
-    if (!scrollTo) return;
+    if (bottomSeen.current === toBottom) return;
+    bottomSeen.current = toBottom;
+    if (scroller.current) scroller.current.scrollTop = 0;
+  }, [toBottom]);
+
+  // Один раз на просьбу (`nonce`): запись могла ещё не попасть в ленту, тогда прокрутка ждёт её появления, но, найдя запись,
+  // больше не возвращается. Иначе отправка ответа, подгрузка страниц и появление карточки каждый раз уводили бы ленту назад.
+  const scrollKey = scrollTo ? `${scrollTo.id}:${scrollTo.nonce}` : "";
+  const scrolledKey = useRef("");
+  useLayoutEffect(() => {
+    if (!scrollTo || scrolledKey.current === scrollKey) return;
     const plate = [...(scroller.current?.querySelectorAll<HTMLElement>("[data-message-id]") ?? [])].find(
       (element) => element.dataset.messageId === scrollTo.id,
     );
-    plate?.scrollIntoView?.({ block: "center" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- прокрутка только по новой просьбе или появлению записи
+    if (!plate) return;
+    scrolledKey.current = scrollKey;
+    plate.scrollIntoView?.({ block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- по новой просьбе или появлению записи в ленте
   }, [scrollKey, items.length]);
 
   return (
@@ -162,7 +190,7 @@ export function Feed({
     >
       {/* В `column-reverse` первый в разметке стоит внизу: нижний край (новое) идёт перед списком, верхний (старое) — после. */}
       {hasNewer ? <div className="feed__edge" ref={newerEdge} aria-hidden="true" /> : null}
-      {items.length === 0 ? (
+      {loading ? null : items.length === 0 ? (
         <p className="feed__empty">{emptyText ?? t("feed.empty")}</p>
       ) : (
         <ol className="feed">
@@ -170,6 +198,10 @@ export function Feed({
             item.kind === "day" ? (
               <li className="feed__item feed__item--day" key={item.key}>
                 <h2 className="day-label">{formatDayLabel(item.journalDate, today, language, labels)}</h2>
+              </li>
+            ) : item.kind === "card" ? (
+              <li className="feed__item feed__item--card" key={item.key}>
+                {card?.node}
               </li>
             ) : (
               <li
@@ -191,6 +223,7 @@ export function Feed({
                   favorite={item.message.favoriteAt != null}
                   byAgent={item.message.origin === "agent"}
                   readOnly={item.message.readOnly}
+                  quote={item.message.replyTo ? <ReplyQuote quote={item.message.replyTo} onOpen={onOpenReply} /> : undefined}
                   tags={item.message.tags}
                   mode={
                     ui?.editingId === item.message.id ? "editing" : ui?.deletedIds?.has(item.message.id) ? "deleted" : "view"

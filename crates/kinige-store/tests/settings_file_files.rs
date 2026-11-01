@@ -43,22 +43,21 @@ fn a_symlink_is_unsafe_it_is_read_through_but_never_overwritten() {
 }
 
 #[test]
-fn an_edit_of_the_symlink_target_is_seen_by_the_poll() {
-    let rig = rig_with(fast_poll);
+fn an_edit_of_the_symlink_target_is_applied_by_a_sync_pass() {
+    // Шаги ведёт сам тест (`sync_now` — тот же проход, что делает опрос), а не фоновый опрос с ожиданием по часам: под нагрузкой
+    // опрос мог прийтись между усечением файла и записью нового текста, и тест мигал.
+    let rig = rig();
     let elsewhere = tempfile::tempdir().unwrap();
     let real = elsewhere.path().join("real.json");
     fs::write(&real, r#"{"text_size":"normal"}"#).unwrap();
     fs::set_permissions(&real, fs::Permissions::from_mode(0o600)).unwrap();
     fs::remove_file(rig.path()).unwrap();
     std::os::unix::fs::symlink(&real, rig.path()).unwrap();
-    wait_until("ссылка замечена", || {
-        rig.file.state().unsafe_reason == Some(UnsafeReason::Symlink)
-    });
+    rig.file.sync_now();
+    assert_eq!(rig.file.state().unsafe_reason, Some(UnsafeReason::Symlink));
     fs::write(&real, r#"{"text_size":"large","pad":"x"}"#).unwrap();
-    wait_until(
-        "правка цели ссылки применена",
-        || rig.store.get_settings().unwrap().text_size == TextSize::Large,
-    );
+    rig.file.sync_now();
+    assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
 }
 
 #[test]

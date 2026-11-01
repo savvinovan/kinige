@@ -13,6 +13,9 @@
 //! …
 //! ```
 //!
+//! Ответ на запись (слайс 5) отмечен строкой `↩` под заголовком времени: `↩ [ГГГГ-ММ-ДД ЧЧ:ММ](<путь к файлу дня старой
+//! записи>)`. Формат не зависит от языка интерфейса.
+//!
 //! Структура файла держится на заголовках первого и второго уровня. Заголовки внутри записей (ATX `# …` и
 //! подчёркнутые `===` / `---`) сдвигаются на два уровня вниз (не глубже шестого), чтобы запись не разрывала файл на «записи»;
 //! код в ограждениях ``` и ~~~ остаётся как есть.
@@ -25,6 +28,24 @@ pub struct MirrorEntry {
     /// `HH:MM`, 24 часа.
     pub time: String,
     pub body_md: String,
+    /// Запись — ответ: на что (слайс 5).
+    pub reply: Option<MirrorReply>,
+}
+
+/// Запись, на которую ответили, как её видно в файле дня.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MirrorReply {
+    /// Старой записи нет (удалена навсегда или ещё не пришла): строка `↩` без даты и ссылки.
+    Gone,
+    /// Старая запись есть: её день, время и путь к файлу её дня относительно файла ответа. Пути нет, если файла в копии
+    /// нет (запись в корзине): строка остаётся без ссылки.
+    Original {
+        /// `YYYY-MM-DD`.
+        date: String,
+        /// `HH:MM`.
+        time: String,
+        link: Option<String>,
+    },
 }
 
 /// Имя папки чата: у Inbox — `Inbox` при любом языке интерфейса (путь не меняется от языка).
@@ -48,15 +69,46 @@ pub fn day_file_segments(chat_folder: &str, journal_date: &str) -> Option<[Strin
     ])
 }
 
+/// Путь к файлу дня `to` из файла дня чата `from_chat_folder` (оба — `day_file_segments`), для ссылки `↩`: тот же чат —
+/// `../<год>/<файл>`, другой — `../../<чат>/<год>/<файл>`. Файл ответа лежит в `<чат>/<год>/`.
+pub fn relative_day_link(from_chat_folder: &str, to: &[String; 3]) -> String {
+    if to[0] == from_chat_folder {
+        format!("../{}/{}", to[1], to[2])
+    } else {
+        format!("../../{}/{}/{}", to[0], to[1], to[2])
+    }
+}
+
 /// Содержимое файла дня. Записи — в порядке `(created_at, id)`, как в ленте.
 pub fn render_day_file(journal_date: &str, entries: &[MirrorEntry]) -> String {
     let mut out = format!("# {journal_date}\n");
     for entry in entries {
         out.push_str(&format!("\n## {}\n\n", entry.time));
+        if let Some(reply) = &entry.reply {
+            out.push_str(&reply_line(reply));
+            out.push_str("\n\n");
+        }
         out.push_str(&demote_headings(&entry.body_md));
         out.push('\n');
     }
     out
+}
+
+/// Строка `↩` ответа. Адрес в угловых скобках: в имени папки чата бывают пробелы и скобки (`<`, `>` и `/` в именах уже вычищены).
+fn reply_line(reply: &MirrorReply) -> String {
+    match reply {
+        MirrorReply::Gone => "↩".to_string(),
+        MirrorReply::Original {
+            date,
+            time,
+            link: Some(link),
+        } => format!("↩ [{date} {time}](<{link}>)"),
+        MirrorReply::Original {
+            date,
+            time,
+            link: None,
+        } => format!("↩ {date} {time}"),
+    }
 }
 
 /// Сдвигает заголовки внутри записи на два уровня вниз (ATX) и превращает подчёркнутые в ATX (уровни 3 и 4).
@@ -177,137 +229,4 @@ fn is_plain_paragraph_line(line: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn entry(time: &str, body: &str) -> MirrorEntry {
-        MirrorEntry {
-            time: time.to_string(),
-            body_md: body.to_string(),
-        }
-    }
-
-    #[test]
-    fn day_file_has_iso_date_and_24_hour_time_headings() {
-        let text = render_day_file(
-            "2026-10-21",
-            &[
-                entry("09:12", "Купить **молоко**\n- [ ] позвонить маме"),
-                entry("21:05", "Вечером: код"),
-            ],
-        );
-        assert_eq!(
-            text,
-            "# 2026-10-21\n\n## 09:12\n\nКупить **молоко**\n- [ ] позвонить маме\n\n## 21:05\n\nВечером: код\n"
-        );
-    }
-
-    #[test]
-    fn empty_day_has_only_the_date_heading() {
-        assert_eq!(render_day_file("2026-10-21", &[]), "# 2026-10-21\n");
-    }
-
-    #[test]
-    fn atx_headings_inside_entries_are_demoted_below_the_entry_level() {
-        let body = "# Заголовок\nтекст\n## Второй\n### Третий\n#### Четвёртый\n##### Пятый\n###### Шестой\n#не заголовок\n#";
-        assert_eq!(
-            demote_headings(body),
-            "### Заголовок\nтекст\n#### Второй\n##### Третий\n###### Четвёртый\n###### Пятый\n###### Шестой\n#не заголовок\n###"
-        );
-    }
-
-    #[test]
-    fn entry_cannot_fake_another_entry() {
-        let text = render_day_file(
-            "2026-10-21",
-            &[entry("09:12", "## 10:00\nподделка\n# 2026-01-01")],
-        );
-        let headings: Vec<&str> = text
-            .lines()
-            .filter(|l| l.starts_with("# ") || l.starts_with("## "))
-            .collect();
-        assert_eq!(headings, ["# 2026-10-21", "## 09:12"]);
-    }
-
-    #[test]
-    fn setext_headings_become_atx_below_the_entry_level() {
-        assert_eq!(
-            demote_headings("Название\n=======\nтекст"),
-            "### Название\nтекст"
-        );
-        assert_eq!(
-            demote_headings("Название\n---\nтекст"),
-            "#### Название\nтекст"
-        );
-        let text = render_day_file("2026-10-21", &[entry("09:12", "Название\n===\nтекст")]);
-        assert!(text.lines().all(|l| !l.starts_with("===")));
-        assert_eq!(
-            text.lines()
-                .filter(|l| l.starts_with("# ") || l.starts_with("## "))
-                .count(),
-            2
-        );
-    }
-
-    #[test]
-    fn thematic_break_and_lists_are_not_mistaken_for_setext() {
-        assert_eq!(
-            demote_headings("абзац\n\n---\nещё"),
-            "абзац\n\n---\nещё",
-            "после пустой строки это разделитель"
-        );
-        assert_eq!(demote_headings("- пункт\n---"), "- пункт\n---");
-        assert_eq!(demote_headings("1. пункт\n---"), "1. пункт\n---");
-        assert_eq!(demote_headings("> цитата\n==="), "> цитата\n===");
-    }
-
-    #[test]
-    fn fenced_code_is_left_untouched() {
-        let body = "до\n```sh\n# комментарий\nТитул\n===\n```\n# после";
-        assert_eq!(
-            demote_headings(body),
-            "до\n```sh\n# комментарий\nТитул\n===\n```\n### после"
-        );
-        let tilde = "~~~\n# внутри\n~~~\n# снаружи";
-        assert_eq!(demote_headings(tilde), "~~~\n# внутри\n~~~\n### снаружи");
-    }
-
-    #[test]
-    fn fence_closes_only_with_a_long_enough_matching_marker() {
-        let body = "````\n```\n# всё ещё внутри\n````\n# снаружи";
-        assert_eq!(
-            demote_headings(body),
-            "````\n```\n# всё ещё внутри\n````\n### снаружи"
-        );
-        // Незакрытое ограждение до конца записи: заголовки внутри не трогаем (как делает рендерер Markdown).
-        assert_eq!(demote_headings("```\n# внутри"), "```\n# внутри");
-    }
-
-    #[test]
-    fn indented_code_is_not_a_heading() {
-        assert_eq!(demote_headings("    # код"), "    # код");
-        assert_eq!(demote_headings("   # заголовок"), "   ### заголовок");
-    }
-
-    #[test]
-    fn paths_use_chat_folder_year_and_date() {
-        assert_eq!(
-            day_file_segments(INBOX_FOLDER, "2026-10-21"),
-            Some([
-                "Inbox".to_string(),
-                "2026".to_string(),
-                "2026-10-21.md".to_string()
-            ])
-        );
-    }
-
-    #[test]
-    fn paths_reject_anything_but_a_plain_date_and_folder() {
-        for date in ["", "../../x", "2026-10-21/../..", "2026-1-1"] {
-            assert_eq!(day_file_segments("Inbox", date), None, "{date}");
-        }
-        for folder in ["", "..", ".", "a/b", "a\\b"] {
-            assert_eq!(day_file_segments(folder, "2026-10-21"), None, "{folder}");
-        }
-    }
-}
+mod tests;

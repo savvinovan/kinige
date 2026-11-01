@@ -106,3 +106,35 @@ describe("TauriApi", () => {
     }
   });
 });
+
+describe("TauriApi: слайс 5 (ответ и «В этот день»)", () => {
+  beforeEach(() => {
+    invoke.mockReset();
+  });
+
+  it("ответ: replyToId уходит в send_message и save_draft только если он есть", async () => {
+    invoke.mockResolvedValue({ id: "m" });
+    await new TauriApi().sendMessage("chat-1", "текст", "old-id");
+    expect(invoke).toHaveBeenLastCalledWith("send_message", { chatId: "chat-1", body: "текст", replyToId: "old-id" });
+    await new TauriApi().sendMessage("chat-1", "текст", null);
+    expect(invoke).toHaveBeenLastCalledWith("send_message", { chatId: "chat-1", body: "текст" });
+    invoke.mockResolvedValue(undefined);
+    await new TauriApi().saveDraft("chat-1", "", "old-id");
+    expect(invoke).toHaveBeenLastCalledWith("save_draft", { chatId: "chat-1", body: "", replyToId: "old-id" });
+  });
+
+  it("«В этот день»: команды без аргументов и с датой", async () => {
+    invoke.mockResolvedValue(null);
+    expect(await new TauriApi().getOnThisDay()).toBeNull();
+    expect(invoke).toHaveBeenLastCalledWith("get_on_this_day", undefined);
+    await new TauriApi().dismissOnThisDay("2026-10-31");
+    expect(invoke).toHaveBeenLastCalledWith("dismiss_on_this_day", { date: "2026-10-31" });
+  });
+
+  it("отказ Rust reply_target_not_found становится KinigeApiError с этим кодом", async () => {
+    invoke.mockImplementation(() => Promise.reject({ code: "reply_target_not_found" }));
+    const error = await new TauriApi().sendMessage("c", "x", "old").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(KinigeApiError);
+    expect((error as KinigeApiError).code).toBe("reply_target_not_found");
+  });
+});

@@ -4,6 +4,7 @@
 use crate::api_error::ErrorCode;
 use crate::backup::BackupStatus;
 use crate::lang::Language;
+use crate::reply::ReplyTo;
 use crate::shortcuts::ShortcutStatus;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -69,6 +70,18 @@ pub struct MessageView {
     pub read_only: bool,
     /// Кто создал запись (`core.origin`): `user`, `import_telegram`, `agent`. Лента помечает записи агента.
     pub origin: String,
+    /// Запись, на которую это ответ (слайс 5): у новых ответов и у ответов, импортированных из Telegram; `null` — не ответ.
+    pub reply_to: Option<ReplyTo>,
+}
+
+/// Черновик поля ввода чата (слайс 5): текст и запись, на которую пишется ответ.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "ChatDraft.ts")]
+pub struct ChatDraft {
+    pub body: String,
+    /// Строка «Ответ на запись» над полем; `null` — обычная запись. Если записи уже нет, `state = missing`.
+    pub reply_to: Option<ReplyTo>,
 }
 
 /// Какой флаг записи меняется командой `set_message_flag`.
@@ -300,10 +313,11 @@ mod tests {
             tags: vec!["идея".into()],
             read_only: false,
             origin: "agent".into(),
+            reply_to: None,
         };
         assert_eq!(
             serde_json::to_string(&view).unwrap(),
-            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false,"origin":"agent"}"#
+            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false,"origin":"agent","replyTo":null}"#
         );
     }
 

@@ -28,6 +28,7 @@ export const PALETTE_ROLES = [
   "surface.code",
   "surface.day",
   "surface.selected",
+  "surface.card",
   "surface.field",
   "surface.field-active",
   "text.primary",

@@ -1,6 +1,6 @@
 import { type KinigeApi, KinigeApiError } from "./KinigeApi";
-import { MockApiSlice4b } from "./MockApiSlice4b";
-import { DAY_MS, DEFAULT_SHORTCUTS, TRASH_DAYS, isRealDate, mockMessage } from "./mockData";
+import { MockApiSlice5 } from "./MockApiSlice5";
+import { DAY_MS, DEFAULT_SHORTCUTS, TRASH_DAYS, isRealDate } from "./mockData";
 import type { AppInfo } from "./generated/AppInfo";
 import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
@@ -23,7 +23,7 @@ const ALLOWED_SCHEMES = ["http:", "https:", "mailto:"];
  * ведёт корзину, правки и ревизии, умеет «отказ» любой команды (`failNext`) и запоминает открытые ссылки (`openedUrls`). День
  * записи считается упрощённо (UTC, граница 04:00): настоящие правила — в Rust. Состояние и окно захвата — в `MockApiBase`.
  */
-export class MockApi extends MockApiSlice4b implements KinigeApi {
+export class MockApi extends MockApiSlice5 implements KinigeApi {
   private readonly openChatListeners = new Set<(chatId: string) => void>();
   private readonly corruptListeners = new Set<() => void>();
 
@@ -47,29 +47,6 @@ export class MockApi extends MockApiSlice4b implements KinigeApi {
       )
       .map(({ chat }) => ({ ...chat, count: this.rows.filter((r) => r.view.chatId === chat.id && r.deletedAt === null).length }));
     return Promise.resolve({ chats: ordered, trashCount: this.rows.filter((r) => r.deletedAt !== null).length });
-  }
-
-  sendMessage(chatId: string, body: string): Promise<MessageView> {
-    if (this.failNextSend) {
-      const code = this.failNextSend;
-      this.failNextSend = null;
-      return Promise.reject(new KinigeApiError(code));
-    }
-    const text = body.replace(/\r\n?/g, "\n").trim();
-    if (text === "") return Promise.reject(new KinigeApiError("empty_message"));
-    if (!this.chats.some((c) => c.id === chatId)) return Promise.reject(new KinigeApiError("chat_not_found"));
-    const now = this.now();
-    const message = mockMessage({
-      id: `mock-${++this.counter}`,
-      chatId,
-      bodyMd: text,
-      journalDate: this.journalDate(now),
-      createdAt: now.getTime(),
-    });
-    this.rows.push({ view: message, deletedAt: null, revisions: [] });
-    // Как в Rust: отправка очищает черновик этого чата.
-    this.drafts.delete(chatId);
-    return Promise.resolve(message);
   }
 
   getSettings(): Promise<Settings> {
@@ -105,16 +82,6 @@ export class MockApi extends MockApiSlice4b implements KinigeApi {
     }
     if (!ALLOWED_SCHEMES.includes(scheme)) return Promise.reject(new KinigeApiError("link_not_allowed"));
     this.openedUrls.push(url);
-    return Promise.resolve();
-  }
-
-  getDraft(chatId: string): Promise<string> {
-    return Promise.resolve(this.drafts.get(chatId) ?? "");
-  }
-
-  saveDraft(chatId: string, body: string): Promise<void> {
-    if (body === "") this.drafts.delete(chatId);
-    else this.drafts.set(chatId, body);
     return Promise.resolve();
   }
 

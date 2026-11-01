@@ -46,7 +46,7 @@ fn downgrade_to_three(dir: &Path) {
     let conn = raw(dir);
     conn.execute_batch(
         "DROP TABLE message_ext; DROP TABLE search_fts; DROP TABLE search_map; \
-         DROP TABLE mcp_log; DROP TABLE mcp_log_message; \
+         DROP TABLE mcp_log; DROP TABLE mcp_log_message; ALTER TABLE draft DROP COLUMN reply_to_id; \
          DELETE FROM app_setting WHERE key = 'search_index_version';",
     )
     .unwrap();

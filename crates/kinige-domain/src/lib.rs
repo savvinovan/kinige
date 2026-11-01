@@ -21,6 +21,8 @@ pub mod lang;
 pub mod link;
 pub mod message_ops;
 pub mod mirror;
+pub mod on_this_day;
+pub mod reply;
 pub mod rewrite;
 pub mod search;
 pub mod settings_file;
@@ -45,9 +47,9 @@ pub use agent_api::{
     AgentAccess, AgentChatChoice, AgentLogEntry, AgentLogPage, AgentLogRow, AgentMode, AgentSocket,
 };
 pub use api::{
-    CaptureAction, CaptureOutcome, CaptureState, ChatList, ChatSummary, FeedCursor, MessageFlag,
-    MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters, SearchHit, SearchPage,
-    Settings, TextSize, TrashItem,
+    CaptureAction, CaptureOutcome, CaptureState, ChatDraft, ChatList, ChatSummary, FeedCursor,
+    MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters, SearchHit,
+    SearchPage, Settings, TextSize, TrashItem,
 };
 pub use api_error::{ApiError, ErrorCode};
 pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, RestoreOutcome, StartupState};
@@ -55,6 +57,8 @@ pub use import::{
     ImportChatKind, ImportChatPreview, ImportOpened, ImportPreview, ImportProgress, ImportReport,
 };
 pub use lang::Language;
+pub use on_this_day::{OnThisDay, OnThisDayEntry, OnThisDayYear};
+pub use reply::{ReplyState, ReplyTo};
 pub use settings_file::{
     FileChanges, FileProblem, FileProblemKind, KeyIssue, KeyIssueKind, SettingsFileState,
     UnsafeReason,

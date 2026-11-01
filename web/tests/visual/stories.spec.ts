@@ -27,6 +27,15 @@ async function settle(page: Page) {
     await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
     await new Promise((resolve) => requestAnimationFrame(resolve));
   });
+  // Окна с автофокусом (чат, импорт) переносят фокус из эффекта React уже после первой отрисовки: Modal ставит фокус на «закрыть»,
+  // поле берёт его следом. На нагруженном раннере снимок иногда приходился между двумя состояниями (2 пикселя у скруглённого
+  // поля, эталон и прогон расходились то в одну, то в другую сторону). Короткая пауза и ещё один круг ожидания переходов
+  // делают момент снимка одним и тем же. Порог сравнения не менялся.
+  await page.waitForTimeout(150);
+  await page.evaluate(async () => {
+    await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  });
 }
 
 test("есть истории для снимков", () => {

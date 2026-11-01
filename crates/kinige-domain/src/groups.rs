@@ -2,6 +2,7 @@
 //! у каждой свой HLC и `sv = 1`. Колонки таблиц и каноничные байты групп строятся из одних и тех же значений, поэтому
 //! расхождения между ними не бывает (инвариант `canonical(колонки) == groups_raw[g]`, приложение §B п. 38).
 
+use crate::hlc::is_uuid_v4;
 use crate::jcs::{self, JcsError};
 use crate::journal::is_valid_journal_date;
 use serde_json::{Value, json, value::RawValue};
@@ -164,6 +165,25 @@ pub fn new_message(input: &NewMessage<'_>, hlc: &str) -> Result<MessageRow, Grou
         is_task: false,
     };
     build_message(input, &user, hlc)
+}
+
+/// Ответ пользователя на запись (слайс 5): те же пять групп под одним HLC, `core.reply_to_id` — id старой записи. Группа
+/// `core` неизменяема: ссылку не правят и не снимают. `reply_to_id` обязан быть UUID v4 в нижнем регистре.
+pub fn new_reply_message(
+    input: &NewMessage<'_>,
+    reply_to_id: &str,
+    hlc: &str,
+) -> Result<MessageRow, GroupError> {
+    if !is_uuid_v4(reply_to_id) {
+        return Err(GroupError::Invalid("reply_to_id не UUID v4"));
+    }
+    let reply = Provenance {
+        origin: ORIGIN_USER,
+        reply_to_id: Some(reply_to_id),
+        ext: None,
+        is_task: false,
+    };
+    build_message(input, &reply, hlc)
 }
 
 /// Новая запись агента (ADR-0009): те же пять групп под одним HLC, `origin = 'agent'`, без `ext`. С `task = true` группа

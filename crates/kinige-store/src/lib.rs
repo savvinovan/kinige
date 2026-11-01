@@ -22,6 +22,8 @@ mod import_time;
 mod maintenance;
 mod messages;
 mod mirror;
+mod mirror_day;
+mod on_this_day;
 mod recovery;
 mod schema;
 mod search;
@@ -285,7 +287,7 @@ impl Store {
     ) -> Result<T, StoreError> {
         // Паника внутри чтения (профиль release теперь с размоткой стека) не должна ломать все следующие чтения: она ловится
         // здесь, вызов получает `Internal`, а замок, если его всё же отравили, берётся как есть — соединение чтения
-        // (`query_only`, без транзакции) после размотки согласовано.
+        // (`query_only`; транзакцию чтения, если нужна, открывает и закрывает сам запрос) после размотки согласовано.
         let conn = self
             .inner
             .reader

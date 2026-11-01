@@ -2,6 +2,7 @@
 
 pub mod agent;
 pub mod capture;
+pub mod days;
 pub mod import;
 pub mod ops;
 pub mod settings_file;

@@ -45,6 +45,8 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
   const { t } = useTranslation();
   const [messages, setMessages] = useState<FeedMessage[]>([]);
   const [today, setToday] = useState("");
+  // Первая страница открытого чата получена: до этого лента может ничего не рисовать (первый кадр с карточкой «В этот день»).
+  const [loaded, setLoaded] = useState(false);
   // Края загруженной ленты: курсор следующей старой страницы и следующей новой; `newer === null` — лента дошла до конца.
   const [older, setOlder] = useState<FeedCursor | null>(null);
   const [newer, setNewer] = useState<FeedCursor | null>(null);
@@ -68,9 +70,11 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
   const [dateFor, setDateFor] = useState<string | null>(null);
   const deleted = useRef(deletedIds);
   const current = useRef({ chatId, tag });
+  const shownToday = useRef(today);
   useEffect(() => {
     deleted.current = deletedIds;
     current.current = { chatId, tag };
+    shownToday.current = today;
   });
 
   // Смена чата или фильтра: состояние плашек сбрасывается прямо при отрисовке (так React советует «подстраивать состояние»).
@@ -86,11 +90,14 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     setDateFor(null);
     if (shownChat !== chatKey) {
       setShownChat(chatKey);
+      setLoaded(false);
       setDeletedIds(new Set());
       setMessages([]);
       setOlder(null);
       setNewer(null);
       setMark(null);
+      // Просьба прокрутить к записи относилась к прежнему чату: вернувшись, лента открывается внизу, а не у старой записи.
+      setScrollTo(null);
     } else {
       // Тот же чат, другой фильтр: на месте остаются только удалённые записи, подходящие под новый фильтр.
       setMessages((shown) => withDeleted(shown, [], deletedIds, tag));
@@ -119,6 +126,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
         setCursor("older", page.older);
         setCursor("newer", page.newer);
         setToday(page.today);
+        setLoaded(true);
         setLoadError(null);
         if (target) {
           setMark({ id: target.messageId, terms: target.terms });
@@ -190,6 +198,22 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
       // Лента остаётся прежней: следующее событие перечитает.
     }
   }, [api, setCursor]);
+
+  /**
+   * Наступил новый день журнала (после 04:00), пока окно было открыто: лента перечитывается, метки «Сегодня» и «Вчера» встают
+   * правильно. Вызывается при фокусе окна; день спрашивается у Rust самым дешёвым запросом (одна запись), независимо от того,
+   * есть ли карточка «В этот день».
+   */
+  const checkDay = useCallback(async () => {
+    const { chatId: id, tag: filter } = current.current;
+    if (id === null) return;
+    try {
+      const page = await api.listMessages(id, { limit: 1, tag: filter ?? undefined });
+      if (shownToday.current !== "" && page.today !== shownToday.current) await reload();
+    } catch {
+      // Следующий фокус проверит снова.
+    }
+  }, [api, reload]);
 
   /**
    * Лента с нуля: последняя страница заменяет всё загруженное, оба курсора пересчитываются. Нужна, когда записи легли в
@@ -328,6 +352,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
   return {
     messages,
     today,
+    loaded,
     loadError,
     ui,
     actions,
@@ -335,6 +360,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     scrollTo,
     clearMark: useCallback(() => setMark(null), []),
     reload,
+    checkDay,
     restart,
     appendSent,
     dateTarget,

@@ -21,6 +21,7 @@ import {
   Pin,
   PinOff,
   Plus,
+  Reply,
   Search,
   Smile,
   SquareCheck,
@@ -65,6 +66,8 @@ const GLYPHS = {
   // Решение приёмки: «Переместить в чат» (меню записи) и возврат из подменю.
   moveTo: ArrowRight,
   chevronLeft: ChevronLeft,
+  // Слайс 5: «Ответить» в карточке «В этот день» и строка ответа.
+  reply: Reply,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

@@ -16,7 +16,7 @@ describe("buildFeed", () => {
       msg("b", "2026-10-19", "08:40"),
       msg("d", "2026-10-20", "11:30"),
     ]);
-    expect(items.map((i) => (i.kind === "day" ? `# ${i.journalDate}` : i.message.id))).toEqual([
+    expect(items.map((i) => (i.kind === "day" ? `# ${i.journalDate}` : i.kind === "card" ? "card" : i.message.id))).toEqual([
       "# 2025-03-14",
       "a",
       "# 2026-10-19",
@@ -31,7 +31,7 @@ describe("buildFeed", () => {
     // 00:30 по часам, но журнальный день — 19-е: идёт сразу за вечерними записями 19-го.
     const night = { ...msg("night", "2026-10-19", "21:30"), createdAt: Date.UTC(2026, 9, 20, 0, 30) };
     const items = buildFeed([msg("evening", "2026-10-19", "21:00"), night, msg("morning", "2026-10-20", "09:00")]);
-    expect(items.map((i) => (i.kind === "day" ? `# ${i.journalDate}` : i.message.id))).toEqual([
+    expect(items.map((i) => (i.kind === "day" ? `# ${i.journalDate}` : i.kind === "card" ? "card" : i.message.id))).toEqual([
       "# 2026-10-19",
       "evening",
       "night",
@@ -73,5 +73,36 @@ describe("buildFeed", () => {
     const input = [msg("b", "2026-10-20", "10:00"), msg("a", "2026-10-20", "09:00")];
     buildFeed(input);
     expect(input.map((m) => m.id)).toEqual(["b", "a"]);
+  });
+});
+
+describe("buildFeed: карточка «В этот день» (слайс 5)", () => {
+  const shape = (items: ReturnType<typeof buildFeed>) =>
+    items.map((i) => (i.kind === "day" ? `# ${i.journalDate}` : i.kind === "card" ? "card" : i.message.id));
+
+  it("карточка стоит под меткой сегодняшнего дня, перед его записями", () => {
+    const items = buildFeed([msg("y", "2026-10-30", "21:00"), msg("a", "2026-10-31", "09:00"), msg("b", "2026-10-31", "09:30")], "2026-10-31");
+    expect(shape(items)).toEqual(["# 2026-10-30", "y", "# 2026-10-31", "card", "a", "b"]);
+  });
+
+  it("сегодня записей нет: карточка в конце ленты под своей меткой «сегодня»", () => {
+    const items = buildFeed([msg("y", "2026-10-30", "21:00")], "2026-10-31");
+    expect(shape(items)).toEqual(["# 2026-10-30", "y", "# 2026-10-31", "card"]);
+  });
+
+  it("лента пуста: карточка одна под меткой дня", () => {
+    expect(shape(buildFeed([], "2026-10-31"))).toEqual(["# 2026-10-31", "card"]);
+  });
+
+  it("записи с будущей датой идут после карточки сегодняшнего дня", () => {
+    const items = buildFeed([msg("y", "2026-10-30", "21:00"), msg("f", "2026-11-05", "10:00")], "2026-10-31");
+    expect(shape(items)).toEqual(["# 2026-10-30", "y", "# 2026-10-31", "card", "# 2026-11-05", "f"]);
+  });
+
+  it("без карточки лента прежняя; запись после карточки не считается продолжением серии", () => {
+    const messages = [msg("y", "2026-10-30", "21:00"), msg("a", "2026-10-31", "09:00")];
+    expect(shape(buildFeed(messages))).toEqual(["# 2026-10-30", "y", "# 2026-10-31", "a"]);
+    const after = buildFeed(messages, "2026-10-31").find((i) => i.kind === "message" && i.message.id === "a");
+    expect(after?.kind === "message" && after.inSeries).toBe(false);
   });
 });

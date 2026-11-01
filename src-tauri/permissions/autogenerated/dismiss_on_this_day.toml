@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-dismiss-on-this-day"
+description = "Enables the dismiss_on_this_day command without any pre-configured scope."
+commands.allow = ["dismiss_on_this_day"]
+
+[[permission]]
+identifier = "deny-dismiss-on-this-day"
+description = "Denies the dismiss_on_this_day command without any pre-configured scope."
+commands.deny = ["dismiss_on_this_day"]

@@ -224,13 +224,17 @@ fn log_entry(conn: &Connection, message_id: String) -> Result<AgentLogEntry, Sto
         .optional()
         .map_err(read_err)?;
     Ok(match found {
-        Some((message, title, icon)) => AgentLogEntry {
-            chat_is_inbox: message.chat_id == INBOX_ID,
-            chat_title: title.unwrap_or_default(),
-            chat_icon: icon,
-            message: Some(message),
-            message_id,
-        },
+        Some((mut message, title, icon)) => {
+            // Журнал показывает то, что видел агент, а ему `reply_to_id` и цитата не отдаются (ADR-0009).
+            message.reply_to = None;
+            AgentLogEntry {
+                chat_is_inbox: message.chat_id == INBOX_ID,
+                chat_title: title.unwrap_or_default(),
+                chat_icon: icon,
+                message: Some(message),
+                message_id,
+            }
+        }
         None => AgentLogEntry {
             message_id,
             message: None,

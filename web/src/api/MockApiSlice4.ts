@@ -67,7 +67,7 @@ export class MockApiSlice4 extends MockApiBase {
     const tag = options.tag?.toLowerCase();
     const all = this.rows
       .filter((r) => r.view.chatId === chatId && r.deletedAt === null && (tag === undefined || r.view.tags.includes(tag)))
-      .map((r) => r.view)
+      .map((r) => this.viewOf(r))
       .sort(compareFeed);
     const limit = options.limit ?? 200;
     let start: number;

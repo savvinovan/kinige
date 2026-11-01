@@ -3,9 +3,9 @@ import { useCallback, useEffect, useRef } from "react";
 /** Через сколько после последнего нажатия клавиши черновик уходит в Rust (§5.1: ~300 мс). */
 export const DRAFT_DELAY_MS = 300;
 
-export interface DraftSaver {
-  /** Запланировать сохранение текста: для того же `save` последний вызов побеждает, текст другого `save` (другого чата) уходит в очередь. */
-  schedule(body: string): void;
+export interface DraftSaver<T = string> {
+  /** Запланировать сохранение черновика: для того же `save` последний вызов побеждает, значение другого `save` (другого чата) уходит в очередь. */
+  schedule(body: T): void;
   /** Сохранить сейчас то, что запланировано (при скрытии окна, потере фокуса, закрытии). Ошибки молча глотаются: черновик — удобство, не данные. */
   flush(): Promise<void>;
   /** Отменить запланированное: после отправки Rust уже очистил черновик, поздняя запись вернула бы его. */
@@ -26,12 +26,12 @@ export interface DraftSaver {
  * `flush` берёт её оттуда, а не из своего замыкания: после смены чата React сбрасывает эффекты предыдущей отрисовки с
  * задержкой, и «старый» `flush` успевал сохранить набранный в новом чате текст в черновик прежнего чата.
  */
-export function useDraftSaver(save: (body: string) => Promise<void>, delayMs = DRAFT_DELAY_MS): DraftSaver {
+export function useDraftSaver<T = string>(save: (body: T) => Promise<void>, delayMs = DRAFT_DELAY_MS): DraftSaver<T> {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const pending = useRef<{ body: string; save: (body: string) => Promise<void> } | null>(null);
+  const pending = useRef<{ body: T; save: (body: T) => Promise<void> } | null>(null);
   const queue = useRef<Promise<void>>(Promise.resolve());
 
-  const enqueue = useCallback((item: { body: string; save: (body: string) => Promise<void> }) => {
+  const enqueue = useCallback((item: { body: T; save: (body: T) => Promise<void> }) => {
     queue.current = queue.current.then(() => item.save(item.body)).catch(() => undefined);
   }, []);
 
@@ -45,7 +45,7 @@ export function useDraftSaver(save: (body: string) => Promise<void>, delayMs = D
   }, [enqueue]);
 
   const schedule = useCallback(
-    (body: string) => {
+    (body: T) => {
       // Запланированный текст другого чата (набран до переключения, который ещё не отрисован) не затирается: он уходит в очередь.
       if (pending.current !== null && pending.current.save !== save) enqueue(pending.current);
       pending.current = { body, save };

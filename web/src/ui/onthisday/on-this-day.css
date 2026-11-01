@@ -1,0 +1,128 @@
+/* Карточка «В этот день» в ленте (слайс 5). Только токены; рамок, теней и движения нет. */
+.on-this-day {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-radius: var(--radius-message);
+  background: var(--color-surface-card);
+  color: var(--color-text-primary);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line-height);
+}
+
+.on-this-day__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* Мелкий вторичный заголовок. */
+.on-this-day__title {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--type-meta-line-height);
+}
+
+/* «1 год назад · 31 октября 2025» — третичным цветом. */
+.on-this-day__year-title {
+  margin: var(--space-2) 0 var(--space-1);
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+  line-height: var(--type-meta-line-height);
+}
+
+.on-this-day__entries {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.on-this-day__entry {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+/* Запись: кнопка во всю ширину — текст до трёх строк и время. Заливки наведения нет (тихий интерфейс). */
+.on-this-day__open {
+  display: block;
+  flex: 1;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-inline);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Обрезка по числу строк (layout.on-this-day.entry-lines): многоточие на последней строке. */
+.on-this-day__text {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--layout-on-this-day-entry-lines);
+}
+
+.on-this-day__time {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  font-variant-numeric: tabular-nums;
+}
+
+/* «Ответить» проявляется при наведении на запись и при фокусе внутри; место под кнопку занято всегда, строка не прыгает. */
+.on-this-day__reply {
+  opacity: 0;
+}
+
+.on-this-day__entry:hover .on-this-day__reply,
+.on-this-day__entry:focus-within .on-this-day__reply {
+  opacity: 1;
+}
+
+.on-this-day .on-this-day__more {
+  display: block;
+  margin: var(--space-1) var(--space-2) 0;
+  color: var(--color-text-secondary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+  text-decoration: none;
+}
+
+/* Старый год одной строкой: «31 октября 2019 · 5 записей ›». */
+.on-this-day__year-row {
+  margin-top: var(--space-2);
+}
+
+.on-this-day__link {
+  margin: 0;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  text-align: left;
+  cursor: pointer;
+}

@@ -42,6 +42,7 @@ const hit = (id: string, snippet: string, terms: string[], chatTitle: string, ch
     tags: [],
     readOnly: false,
     origin: "user",
+    replyTo: null,
   },
   chatTitle,
   chatIcon,
