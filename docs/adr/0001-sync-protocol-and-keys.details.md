@@ -1,330 +1,330 @@
-# ADR-0001, приложение: форматы, проверки, схема, тест-план
+# ADR-0001, appendix: formats, checks, schema, test plan
 
-Приложение к [`0001-sync-protocol-and-keys.md`](0001-sync-protocol-and-keys.md), статус тот же — «предложено», ревизия 6. Нормативна связка «ТЗ → ADR → это приложение». Ссылки вида «§3.5» указывают на разделы ADR, если не сказано «ТЗ».
+Appendix to [`0001-sync-protocol-and-keys.md`](0001-sync-protocol-and-keys.md), same status — "proposed", revision 6. The chain "PRD → ADR → this appendix" is normative. References like "§3.5" point to sections of the ADR unless "PRD" is stated. Terms follow the "Terminology" table of the ADR.
 
-## A. Форматы и протокольные таблицы
+## A. Formats and protocol tables
 
-### A.0. Группы полей
+### A.0. Field groups
 
-Группа `core` пишется при создании. Производное (`body_search`, `day_activity`, `updated_at` чата, теги) не синхронизируется (ТЗ §4.1). `attachment_local` не синхронизируется (ТЗ §4.2).
+The `core` group is written at creation. Derived data (`body_search`, `day_activity`, a chat's `updated_at`, tags) is not synchronized (PRD §4.1). `attachment_local` is not synchronized (PRD §4.2).
 
-| Сущность | Группа | Поля |
-|---|---|---|
-| message | `core` | `created_at`, `created_tz`, `reply_to_id`, `origin` (`user` \| `agent` \| `import_telegram`, неизменяемо), `ext` (необязательно, неизменяемо: `{"src","chat","msg"}`, значения строками; внешний id импорта, ADR «Решения пользователя») |
-| | `body` | `body_md`, `edited_at`, `base`, `supersedes` (до 64 HLC) (§3.4) |
-| | `flags` | `is_task`, `task_done_at`, `favorite_at`, `pinned_at` |
-| | `placement` | `chat_id`, `journal_date`, `base`, `supersedes` (§3.4; сообщение удалённого или недоступного чата показывается в Inbox производно, §3.6) |
-| | `deleted` | `deleted_at` |
-| chat | `core` | `created_at`, `is_inbox` (у Inbox `core` — константа) |
-| | `meta` | `title`, `icon`, `color` |
-| | `order` | `sort_key` (при равных ключах порядок решает `id`) |
-| | `state` | `pinned_at`, `archived_at` |
-| | `privacy` | `ai_excluded` — отдельно, чтобы не потеряться при одновременном переименовании |
-| | `deleted` | `deleted_at` |
-| attachment | `core` | `message_id`, `kind`, `sha256`, `filename`, `mime`, `byte_size`, `width`, `height`, `duration_ms`, `url`, `link_title`, `link_site`, `remote_blob_id`, `blob_key` |
-| | `order` | `sort_index` |
-| | `deleted` | `deleted_at` |
-| message_revision | `core` | `message_id`, `snapshot_json` (для `conflict` — `{"g", "h", "sv", "raw"}` группы `body` или `placement` версии P, `raw` — JSON-строка с точными байтами группы, §3.4), `saved_at`, `reason` |
+| Entity           | Group       | Fields                                                                                                                                                                                                                    |
+|------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| message          | `core`      | `created_at`, `created_tz`, `reply_to_id`, `origin` (`user` \| `agent` \| `import_telegram`, immutable), `ext` (optional, immutable: `{"src","chat","msg"}`, values as strings; external import id, ADR "User decisions") |
+|                  | `body`      | `body_md`, `edited_at`, `base`, `supersedes` (up to 64 HLCs) (§3.4)                                                                                                                                                       |
+|                  | `flags`     | `is_task`, `task_done_at`, `favorite_at`, `pinned_at`                                                                                                                                                                     |
+|                  | `placement` | `chat_id`, `journal_date`, `base`, `supersedes` (§3.4; a message of a deleted or unavailable chat is shown in Inbox as derived state, §3.6)                                                                               |
+|                  | `deleted`   | `deleted_at`                                                                                                                                                                                                              |
+| chat             | `core`      | `created_at`, `is_inbox` (Inbox's `core` is a constant)                                                                                                                                                                   |
+|                  | `meta`      | `title`, `icon`, `color`                                                                                                                                                                                                  |
+|                  | `order`     | `sort_key` (on equal keys, `id` decides the order)                                                                                                                                                                        |
+|                  | `state`     | `pinned_at`, `archived_at`                                                                                                                                                                                                |
+|                  | `privacy`   | `ai_excluded` — separate, so that it is not lost on a concurrent rename                                                                                                                                                   |
+|                  | `deleted`   | `deleted_at`                                                                                                                                                                                                              |
+| attachment       | `core`      | `message_id`, `kind`, `sha256`, `filename`, `mime`, `byte_size`, `width`, `height`, `duration_ms`, `url`, `link_title`, `link_site`, `remote_blob_id`, `blob_key`                                                         |
+|                  | `order`     | `sort_index`                                                                                                                                                                                                              |
+|                  | `deleted`   | `deleted_at`                                                                                                                                                                                                              |
+| message_revision | `core`      | `message_id`, `snapshot_json` (for `conflict`: `{"g", "h", "sv", "raw"}` of the `body` or `placement` group of version P, `raw` is a JSON string with the exact bytes of the group, §3.4), `saved_at`, `reason`           |
 
-Значение каждой группы — канонический JSON (RFC 8785, ограниченный: строки, булевы, `null`, объекты, массивы, целые в пределах ±2⁵³). Чужие группы хранятся и переотправляются дословно (§3.3).
+Each group's value is canonical JSON (RFC 8785, restricted: strings, booleans, `null`, objects, arrays, integers within ±2⁵³). Other clients' groups are stored and resent verbatim (§3.3).
 
-**Конвенции (по факту реализации слайса 1).**
-- **Необязательное поле:** у «пустого» значения поле присутствует со значением `null` (`reply_to_id`, `edited_at`, `base`, `task_done_at`, `favorite_at`, `pinned_at`, `deleted_at`, `color`, `archived_at`); поле отсутствует только там, где так сказано в таблице — `ext` в `core` сообщения без внешнего id. Пустой список — `[]` (`supersedes`). Разбор обязан принимать оба вида, запись — как здесь.
-- **`is_inbox` в `core` чата информационное; клиент определяет Inbox по id** (§3.6): флаг у чата с другим id не делает его Inbox ни в интерфейсе, ни в папке Markdown-копии.
-- **Лимит группы** `body` — в каноничных байтах JCS, а не в длине текста (слайс 1: 512 КиБ): экранирование удваивает размер, а конверт ограничен 1 МиБ (§5.3).
-- **Первая перезапись группы (слайс 2, дописывание, ADR-0006):** `kinige_domain::append::rewrite_body` пишет каноничные байты только `body`, новый HLC строго больше прежнего (иначе ошибка), `edited_at = now`; `base`/`supersedes` — по §3.4 (подтверждённая версия — **по определению §3.4: нет строки outbox без `acked_seq` и `server_known = 1`**; в слайсах 1–10 outbox нет, поэтому признак `CurrentBody::body_confirmed` вызывающий берёт из колонки `server_known`, а в слайсе 11 обязан учесть и outbox: `base = hlc(V)`, `supersedes = []`; собственная неподтверждённая: `base = V.base`, `supersedes = V.supersedes ∪ {hlc(V)}`, ≤ 64, старейшие отбрасываются). Метки HLC разбираются строго (`hlc::parse`), повреждённая — `Corrupt`. Остальные группы, неизвестные группы, неизвестные поля `body` и **лишние поля записей `hlc_json` других групп** сохраняются дословно (запись `hlc_json` самой `body` пересобирается: `{"h": новый HLC, "sv": 1}`); `schema_version` — максимум `sv` по группам. Запись с группой в `sv` выше поддерживаемой и с повреждённым `hlc_json` не дописывается (первая — только для чтения, второе — ошибка).
-- **Перезапись любой группы (слайс 3):** `kinige_domain::rewrite::rewrite_group` — тот же порядок для `deleted`, `flags`, `placement`, `body` сообщения и `meta`, `state` чата. Группа переписывается с новым HLC строго больше прежнего; остальные группы, неизвестные группы, неизвестные поля группы и лишние поля записей `hlc_json` других групп сохраняются дословно; отсутствие группы или её записи в `hlc_json` — ошибка (не пересоздание). Колонки таблицы после перезаписи строятся из новых байтов групп (`message_columns`, `chat_columns`), а не наоборот. Первая перезапись `placement` (смена дня) — `base`/`supersedes` по §3.4 как у `body` (`chain_fields`). **Только для чтения** — запись, у которой хоть одна группа (в том числе неизвестная) имеет `sv` выше поддерживаемой; любое действие над ней — ошибка `read_only`, байты не меняются. Каноничные значения: `deleted` — `{"deleted_at":мс|null}`; `flags` — `is_task`, `task_done_at`, `favorite_at`, `pinned_at`; снятие задачи обнуляет `task_done_at`.
-- **Ревизия `edit` (слайс 3):** при каждой правке `body` (в том числе галочка `- [ ]` в тексте) в той же транзакции пишется строка `message_revision` — запись только с группой `core`: `{"message_id", "reason":"edit", "saved_at", "snapshot_json"}`, где `snapshot_json` — **объект** `{"groups":[{"g":"<имя>","h":"<HLC>","sv":<u32>,"raw":"<точные байты группы строкой>"}, …]}` — **полный снимок записи до правки**, все группы (известные и неизвестные), массив отсортирован по имени группы, весь объект каноничен (JCS). `raw` — JSON-строка, как у `conflict` (§3.4): переканонизация на другом клиенте не меняет байты. HLC группы `core` ревизии равен HLC новой версии `body` (одно событие), `sv = 1`; id — случайный v4; колонки `snapshot_json`, `saved_at`, `reason`, `message_id` — разбор этой группы. Дописывание через ⌘Enter ревизию не пишет (старый текст — префикс нового, ADR-0006); `toggle_task_item` (галочка в тексте) пишет. Правки `flags`, `placement`, `deleted` ревизий не создают.
-  - **Порядок групп в снимке** — по имени, побайтово в UTF-8 (имена групп — ASCII, порядок совпадает с порядком по кодовым единицам UTF-16). Колонка `snapshot_json` содержит тот же JCS-текст, что лежит в поле `snapshot_json` группы `core`.
-  - **Purge:** при физическом удалении записи ревизия получает tombstone с `cascade_of = id записи` (см. следующий пункт). **Выход из `clock_skew` (§2):** ревизия — часть события правки, поэтому она перештамповывается вместе с `body` (её `core` получает новый HLC, равный новому HLC `body`).
-  - **Размер:** ревизия, чей конверт превысил бы лимит 1 МиБ (§5.3), остаётся локальной и не уходит на сервер; решение для слайса 11 (правка не блокируется, ревизия локальна). **Чем «локальная» отличается в слайсе 11:** в слайсе 3 признака нет — любая ревизия имеет `server_known = 0` и, как только появится outbox, была бы кандидатом на отправку. Слайс 11 при постановке в очередь строит конверт и сверяет его размер; если он больше лимита, строку outbox не создаёт и записывает отметку «не отправляется: размер» (колонка или таблица миграции слайса 11; в слайсе 3 их нет, строки `message_revision` не меняются). Ревизия остаётся `server_known = 0` без строки outbox и больше не перепроверяется при каждой синхронизации; на сервере её нет и на других устройствах нет, это допустимо: ревизия — страховка автора правки, а не часть состояния записи.
-- **Purge и tombstones (слайс 3):** запись из корзины (`deleted_at` не `null`) удаляется физически — «Удалить навсегда» или автоматически через 30 суток (`deleted_at ≤ now − 30 дней`, при старте и раз в сутки). В одной транзакции: `tombstone('message', id, purged_of, purged_at, NULL, NULL)` со снимком HLC **всех** групп записи (включая неизвестные) в каноничном JSON `{"<группа>":"HLC"}`; для каждой ревизии записи `tombstone('message_revision', id, {"core":"HLC"}, purged_at, cascade_of = id записи, held = NULL)`; затем удаляются строки ревизий, `message_tag` и самой записи. Tombstones в слайсах 1–10 никто не удаляет (хранятся до привязки и не меньше 180 дней, §3.5).
-  - **Частичный снимок `purged_of`.** Если `hlc_json` записи читается не целиком (повреждённая группа, нечитаемая метка), снимок собирается по возможности: нечитаемые группы в него не попадают, tombstone пишется. Запись, чей `hlc_json` не читается совсем, не удаляется: она остаётся в корзине и показывает ошибку, проход автоудаления идёт дальше (в «Настройках» виден флаг `purge_failed`); запись с группой `deleted` в неподдерживаемой `sv` автоудалением не трогается, вручную — `read_only`. **Следствие для слайса 11:** группа, которой в снимке нет, считается **новее** снимка (таблица ответов на push в §A.3: `stale_purge` — «сервер знает группу новее снимка или группу, которой в снимке нет»; для `purged` — «любая известная группа новее снимка → запись с детьми в карантин»). Значит, частичный снимок безопасен: худший исход — запись уходит в карантин, а не удаляется молча, и решает человек. Но снимок нельзя считать полным: клиент слайса 11 не должен делать из него вывод «на сервере записи не осталось ни в одной группе».
+**Conventions (as implemented in slice 1).**
+- **Optional field:** for an "empty" value the field is present with the value `null` (`reply_to_id`, `edited_at`, `base`, `task_done_at`, `favorite_at`, `pinned_at`, `deleted_at`, `color`, `archived_at`); the field is absent only where the table says so — `ext` in the `core` of a message without an external id. An empty list is `[]` (`supersedes`). Parsing must accept both forms; writing is as described here.
+- **`is_inbox` in a chat's `core` is informational; the client identifies Inbox by id** (§3.6): the flag on a chat with a different id does not make it Inbox, either in the UI or in the Markdown copy folder.
+- **The group limit** of `body` is in canonical JCS bytes, not in text length (slice 1: 512 KiB): escaping doubles the size, and the envelope is limited to 1 MiB (§5.3).
+- **The first group rewrite (slice 2, append, ADR-0006):** `kinige_domain::append::rewrite_body` writes canonical bytes of `body` only, the new HLC is strictly greater than the previous one (otherwise an error), `edited_at = now`; `base`/`supersedes` per §3.4 (a confirmed version — **by the definition of §3.4: there is no outbox row without `acked_seq`, and `server_known = 1`**; slices 1–10 have no outbox, so the caller takes the `CurrentBody::body_confirmed` flag from the `server_known` column, and in slice 11 it must also take the outbox into account: `base = hlc(V)`, `supersedes = []`; the device's own unconfirmed version: `base = V.base`, `supersedes = V.supersedes ∪ {hlc(V)}`, ≤ 64, the oldest are dropped). HLC timestamps are parsed strictly (`hlc::parse`); a damaged one is `Corrupt`. Other groups, unknown groups, unknown fields of `body` and **extra fields of the `hlc_json` entries of other groups** are preserved verbatim (the `hlc_json` entry of `body` itself is rebuilt: `{"h": new HLC, "sv": 1}`); `schema_version` is the maximum `sv` over groups. A record with a group in an `sv` higher than supported, or with a damaged `hlc_json`, is not appended to (the first is read-only, the second is an error).
+- **Rewriting any group (slice 3):** `kinige_domain::rewrite::rewrite_group` — the same procedure for a message's `deleted`, `flags`, `placement`, `body` and a chat's `meta`, `state`. The group is rewritten with a new HLC strictly greater than the previous one; other groups, unknown groups, unknown fields of the group and extra fields of the `hlc_json` entries of other groups are preserved verbatim; a missing group, or a missing `hlc_json` entry for it, is an error (not a re-creation). The table columns after a rewrite are built from the new group bytes (`message_columns`, `chat_columns`), not the other way round. The first rewrite of `placement` (a day change) sets `base`/`supersedes` per §3.4 as for `body` (`chain_fields`). **Read-only** is a record in which at least one group (including an unknown one) has an `sv` higher than supported; any action on it is a `read_only` error, and the bytes do not change. Canonical values: `deleted` — `{"deleted_at":ms|null}`; `flags` — `is_task`, `task_done_at`, `favorite_at`, `pinned_at`; removing a task clears `task_done_at`.
+- **An `edit` revision (slice 3):** on every edit of `body` (including a `- [ ]` checkbox in the text), a `message_revision` row is written in the same transaction — a record with only the `core` group: `{"message_id", "reason":"edit", "saved_at", "snapshot_json"}`, where `snapshot_json` is an **object** `{"groups":[{"g":"<name>","h":"<HLC>","sv":<u32>,"raw":"<exact bytes of the group as a string>"}, …]}` — **a full snapshot of the record before the edit**, all groups (known and unknown), the array sorted by group name, the whole object canonical (JCS). `raw` is a JSON string, as in `conflict` (§3.4): re-canonicalization on another client does not change the bytes. The HLC of the revision's `core` group equals the HLC of the new `body` version (one event), `sv = 1`; the id is a random v4; the columns `snapshot_json`, `saved_at`, `reason`, `message_id` are a parse of this group. Appending with ⌘Enter does not write a revision (the old text is a prefix of the new one, ADR-0006); `toggle_task_item` (a checkbox in the text) does. Edits of `flags`, `placement`, `deleted` do not create revisions.
+  - **Group order in the snapshot** — by name, byte-wise in UTF-8 (group names are ASCII, so the order matches the order by UTF-16 code units). The `snapshot_json` column contains the same JCS text as the `snapshot_json` field of the `core` group.
+  - **Purge:** when a record is physically deleted, the revision gets a tombstone with `cascade_of = the record's id` (see the next item). **Leaving `clock_skew` (§2):** a revision is part of the edit event, so it is restamped together with `body` (its `core` gets a new HLC equal to the new HLC of `body`).
+  - **Size:** a revision whose envelope would exceed the 1 MiB limit (§5.3) stays local and does not go to the server; a decision for slice 11 (the edit is not blocked, the revision is local). **How "local" differs in slice 11:** in slice 3 there is no such flag — every revision has `server_known = 0` and, as soon as the outbox appears, would be a candidate for sending. When enqueuing, slice 11 builds the envelope and checks its size; if it is over the limit, it does not create an outbox row and records a "not sent: size" mark (a column or table in slice 11's migration; slice 3 has neither, and `message_revision` rows do not change). The revision stays `server_known = 0` without an outbox row and is not rechecked on every sync; it is not on the server and not on other devices, and that is acceptable: a revision is insurance for the author of the edit, not part of the record's state.
+- **Purge and tombstones (slice 3):** a record from the trash (`deleted_at` is not `null`) is physically deleted — "Delete forever", or automatically after 30 days (`deleted_at ≤ now − 30 days`, at startup and once a day). In one transaction: `tombstone('message', id, purged_of, purged_at, NULL, NULL)` with a snapshot of the HLCs of **all** the record's groups (including unknown ones) in canonical JSON `{"<group>":"HLC"}`; for each revision of the record `tombstone('message_revision', id, {"core":"HLC"}, purged_at, cascade_of = the record's id, held = NULL)`; then the rows of the revisions, `message_tag` and the record itself are deleted. Nobody deletes tombstones in slices 1–10 (they are kept until binding and for no less than 180 days, §3.5).
+  - **A partial `purged_of` snapshot.** If a record's `hlc_json` cannot be read entirely (a damaged group, an unreadable timestamp), the snapshot is built as far as possible: unreadable groups do not go into it, and the tombstone is written. A record whose `hlc_json` cannot be read at all is not deleted: it stays in the trash and shows an error, and the automatic purge pass moves on (the `purge_failed` flag is visible in "Settings"); a record whose `deleted` group is in an unsupported `sv` is not touched by automatic purge, and manually it gets `read_only`. **Consequence for slice 11:** a group missing from the snapshot is considered **newer** than the snapshot (the table of push responses in §A.3: `stale_purge` — "the server knows a group newer than the snapshot or a group missing from the snapshot"; for `purged` — "any known group newer than the snapshot → the record with its children goes to quarantine"). So a partial snapshot is safe: the worst outcome is that the record goes to quarantine rather than being silently deleted, and a human decides. But the snapshot must not be considered complete: the slice 11 client must not conclude from it that "no group of the record is left on the server".
 
-### A.1. Конверт и обёртки DEK — байты
+### A.1. Envelope and DEK wraps — bytes
 
-Все целые — big-endian. Строки-метки — ASCII без завершающего нуля. `account_id` и прочие UUID в AD — 16 сырых байт.
+All integers are big-endian. Label strings are ASCII without a terminating zero. `account_id` and other UUIDs in the AD are 16 raw bytes.
 
-**Конверт** (`format_version = 1`). В таком же виде он лежит в `change_outbox.envelope` и хранится на сервере.
+**Envelope** (`format_version = 1`). It is stored in this same form in `change_outbox.envelope` and on the server.
 
 ```text
-off    len     поле
+off    len     field
 0      1       format_version = 0x01
-1      4       key_id (u32), 1 = первый DEK
+1      4       key_id (u32), 1 = first DEK
 5      4       header_len H (u32), 1 ≤ H ≤ 4096
 9      H       header: UTF-8 JSON (§5.2)
 9+H    24      nonce = randombytes_buf(24)
 33+H   N+16    crypto_aead_xchacha20poly1305_ietf_encrypt(
-                 m  = sodium_pad(payload, 1024), N кратно 1024, 1024 ≤ N ≤ 1 МиБ + 1024,
+                 m  = sodium_pad(payload, 1024), N is a multiple of 1024, 1024 ≤ N ≤ 1 MiB + 1024,
                  ad = AD_env, npub = nonce, k = K_env[key_id])
-AD_env = "kinige.env.v1" (13 байт) ‖ account_id (16) ‖ bytes[0 .. 9+H)
+AD_env = "kinige.env.v1" (13 bytes) ‖ account_id (16) ‖ bytes[0 .. 9+H)
 ```
 
-**Обёртка DEK** (`wrap_pw`, `wrap_rc`):
+**DEK wrap** (`wrap_pw`, `wrap_rc`):
 
 ```text
-off  len  поле
+off  len  field
 0    1    wrap_version = 0x01
 1    24   nonce = randombytes_buf(24)
 25   48   crypto_aead_xchacha20poly1305_ietf_encrypt(m = DEK (32), ad = AD_wrap, npub = nonce, k = KEK_pw | KEK_rc)
-итого 73 байта
-AD_wrap = "kinige.wrap.v1" (14) ‖ wrap_version (1) ‖ account_id (16) ‖ key_id (u32, 4) ‖ kind (u8: 1 = пароль, 2 = восстановление)
-          ‖ при kind = 1: salt (16) ‖ kdf_profile (u8)
+total 73 bytes
+AD_wrap = "kinige.wrap.v1" (14) ‖ wrap_version (1) ‖ account_id (16) ‖ key_id (u32, 4) ‖ kind (u8: 1 = password, 2 = recovery)
+          ‖ if kind = 1: salt (16) ‖ kdf_profile (u8)
 ```
 
-Профиль и соль входят в AD: если сервер подменит их без смены пароля, обёртка не расшифруется.
+The profile and the salt are part of the AD: if the server substitutes them without a password change, the wrap will not decrypt.
 
-**Ограничения на разбор** — проверяются **до** выделения памяти по длинам:
+**Parsing limits** — checked **before** allocating memory based on lengths:
 - `H ≤ 4096`;
-- длина шифротекста кратна 1024 плюс 16 и не больше `1 МиБ + 1024 + 16`;
-- общая длина совпадает с длиной, объявленной транспортом.
+- the ciphertext length is a multiple of 1024 plus 16 and no more than `1 MiB + 1024 + 16`;
+- the total length matches the length declared by the transport.
 
-### A.2. Blob вложения
+### A.2. Attachment blob
 
 ```text
-P = sodium_pad(file, 1024)            # всегда ≥ 1 байта добавки → |P| ≥ 1024, пустой файл = 1024 байта
-chunks = P, нарезанный по 1 048 576 байт; последний чанк короче или равен, пустым не бывает
+P = sodium_pad(file, 1024)            # always ≥ 1 byte of padding → |P| ≥ 1024, an empty file = 1024 bytes
+chunks = P cut into 1 048 576-byte pieces; the last chunk is shorter or equal, never empty
 blob = header (24, init_push(blob_key))
-     ‖ для каждого чанка: push(chunk, ad = пусто, tag = MESSAGE | FINAL для последнего) → |chunk| + 17
+     ‖ for each chunk: push(chunk, ad = empty, tag = MESSAGE | FINAL for the last one) → |chunk| + 17
 ```
 
-Чтение:
-- `pull` по чанкам того же размера плюс 17;
-- конец файла до `TAG_FINAL` — ошибка; байты после `TAG_FINAL` — ошибка;
-- затем `sodium_unpad`, сверка `sha256` и `byte_size` с группой `core`.
+Reading:
+- `pull` by chunks of the same size plus 17;
+- end of file before `TAG_FINAL` is an error; bytes after `TAG_FINAL` are an error;
+- then `sodium_unpad`, and `sha256` and `byte_size` are checked against the `core` group.
 
-Повторная публикация того же `remote_blob_id` — ответ «уже есть», это успех. Незавершённую загрузку можно перезаписать, завершённый blob неизменяем. Поэтому повреждённый blob заменяется только под новым `remote_blob_id` (§7).
+Publishing the same `remote_blob_id` again gets the "already exists" response, which is a success. An unfinished upload can be overwritten; a finished blob is immutable. So a damaged blob is replaced only under a new `remote_blob_id` (§7).
 
-### A.3. Ответы на push по каждому `op_id`
+### A.3. Push responses per `op_id`
 
-| Ответ | Когда | Клиент |
-|---|---|---|
-| `ok(seq)` | принят | `acked_seq`, `server_known = 1` |
-| `duplicate(seq)` | тот же `op_id`, те же байты | как `ok` |
-| `op_conflict` | тот же `op_id`, другие байты | ошибка клиента, синхронизация остановлена, отчёт пользователю |
-| `purged` | сущность уже удалена | по условию §3.5: любая известная группа новее снимка `purged_of` — запись с детьми в карантин; иначе тихое удаление; без локального tombstone (снимка нет) — карантин; tombstone во всех случаях |
-| `stale_purge` | сервер знает группу сущности новее снимка `purged_of` (или группу, которой в снимке нет) | pull, переоценка; tombstones детей этого каскада не отправляются |
-| `clock_skew` | `wall_ms` в любом HLC заголовка больше `server_now + SKEW_MAX` | выход из `clock_skew` (§2) |
-| `too_old` | версия протокола ниже минимальной | «обновите клиент» |
+| Response         | When                                                                                                              | Client                                                                                                                                                                                                                               |
+|------------------|-------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ok(seq)`        | accepted                                                                                                          | `acked_seq`, `server_known = 1`                                                                                                                                                                                                      |
+| `duplicate(seq)` | same `op_id`, same bytes                                                                                          | same as `ok`                                                                                                                                                                                                                         |
+| `op_conflict`    | same `op_id`, different bytes                                                                                     | client error, sync stopped, report to the user                                                                                                                                                                                       |
+| `purged`         | the entity is already purged                                                                                      | by the condition in §3.5: any known group newer than the `purged_of` snapshot — the record with its children goes to quarantine; otherwise silent deletion; no local tombstone (no snapshot) — quarantine; a tombstone in every case |
+| `stale_purge`    | the server knows a group of the entity newer than the `purged_of` snapshot (or a group missing from the snapshot) | pull, re-evaluate; the tombstones of this cascade's children are not sent                                                                                                                                                            |
+| `clock_skew`     | `wall_ms` in any HLC of the header is greater than `server_now + SKEW_MAX`                                        | leaving `clock_skew` (§2)                                                                                                                                                                                                            |
+| `too_old`        | protocol version below the minimum                                                                                | "update the client"                                                                                                                                                                                                                  |
 
-### A.4. Порядок проверок
+### A.4. Check order
 
-**Сервер, push:**
-1. Длины (§A.1) и разбор заголовка; ошибка → 400.
-2. Сессия и аккаунт.
-3. Дедупликация `op_id` (`duplicate` или `op_conflict`) — **раньше** всех правил purge, чтобы повтор принятого конверта не получил `purged`.
+**Server, push:**
+1. Lengths (§A.1) and header parsing; error → 400.
+2. Session and account.
+3. `op_id` deduplication (`duplicate` or `op_conflict`) — **before** all purge rules, so that a repeat of an accepted envelope does not get `purged`.
 4. `too_old`.
 5. `clock_skew`.
-6. Сущность уже удалена (`purged`) — для любого `kind`, кроме повторного `purged`, который даёт no-op `ok`.
-7. Для `purged`: проверка `stale_purge` — по каждой группе снимка `purged_of` против максимума HLC этой группы из заголовков сущности.
-8. Присвоение `seq` под блокировкой аккаунта, запись.
+6. The entity is already purged (`purged`) — for any `kind` except a repeated `purged`, which gives a no-op `ok`.
+7. For `purged`: the `stale_purge` check — each group of the `purged_of` snapshot against the maximum HLC of that group from the entity's headers.
+8. Assigning `seq` under the account lock, writing.
 
-**Клиент, pull:**
-1. Длины.
-2. `format_version` и `key_id`; неизвестные → `pending_unknown` с `entity` и `id` от транспорта, курсор двигается. При пересинхронизации такая запись считается «есть на сервере».
-3. AEAD; ошибка → страница не применяется, курсор стоит, ошибка видна пользователю.
-4. Сверка `op` и `id` заголовка с объявленными транспортом.
-5. Строгий разбор: HLC, `sodium_unpad`, JSON без повторяющихся ключей, набор групп нагрузки равен `header.groups`, вложенность значения группы — не больше 127 вложенных массивов и объектов (предел разбора `serde_json`, `remaining_depth` = 128; писатель Rust тоже не пишет глубже, `jcs::MAX_DEPTH`; веб-клиент на `JSON.parse` предела не имеет и обязан проверять глубину сам). Ошибка → карантин с причиной `malformed`, курсор двигается, ошибка видна.
-6. Часы получают все HLC заголовка (§2).
-7. Tombstone и правила purge (§3.5).
-8. Слияние, страница и курсор — одной транзакцией.
+**Client, pull:**
+1. Lengths.
+2. `format_version` and `key_id`; unknown ones → `pending_unknown` with `entity` and `id` from the transport, the cursor moves. On a full resync such a record counts as "is on the server".
+3. AEAD; error → the page is not applied, the cursor stays, the error is visible to the user.
+4. Matching the header's `op` and `id` against those declared by the transport.
+5. Strict parsing: HLC, `sodium_unpad`, JSON without duplicate keys, the payload's set of groups equals `header.groups`, the nesting of a group's value is no more than 127 nested arrays and objects (the `serde_json` parsing limit, `remaining_depth` = 128; the Rust writer does not write deeper either, `jcs::MAX_DEPTH`; a web client on `JSON.parse` has no limit and must check the depth itself). Error → quarantine with the reason `malformed`, the cursor moves, the error is visible.
+6. The clock receives all HLCs of the header (§2).
+7. Tombstone and the purge rules (§3.5).
+8. Merge, the page and the cursor — in one transaction.
 
-**Логи** (§8.8): тела запросов регистрации, входа, восстановления и смены пароля не логируются; токены и `auth_key` — никогда, хэши — допустимо.
+**Logs** (§8.8): the request bodies of registration, login, recovery and password change are not logged; tokens and `auth_key` — never, hashes are allowed.
 
-### A.5. Повтор регистрации и восстановления (§8.3, §8.6)
+### A.5. Repeating registration and recovery (§8.3, §8.6)
 
-Без проверки вводом опасен не только сбой до запроса, но и потерянный ответ: клиент перезапустился, собрал новые ключи и слова, и сохранённый PDF оказался ничьим. Поэтому:
-- клиент сохраняет **подготовленный пакет** (`account_id`, логин, `salt`, профиль, `auth_key`, `rc_auth_key`, `wrap_pw`, `wrap_rc` и DEK; без пароля и энтропии слов) в системном хранилище секретов **до** показа слов и после перезапуска повторяет тот же запрос, пока не получит определённый ответ. DEK в пакете нужен, чтобы после перезапуска работать без повторного ввода пароля; лежит там же, где обычно (§8.8);
-- сервер идемпотентен:
-  - регистрация — сначала проверка `account_id`: тот же пакет → успех, `account_id` занят другим пакетом → отдельная ошибка (клиент создаёт новый `account_id` и пересобирает обёртки, §1, слова прежние); только потом занятость логина — иначе повтор после потерянного ответа получил бы «логин занят»;
-  - восстановление — по новому `rc_auth_key` **и равенству остального пакета**: замена уже сделана тем же пакетом → успех, другим пакетом → отдельная ошибка;
-- при неопределённом исходе восстановления после перезапуска (старого `rc_auth_key` в памяти уже нет) клиент пробует вход новым паролем: успех = замена прошла; отказ = нужно заново ввести старые слова;
-- «Сохранить» засчитывается только после успешной записи файла или отправки на печать; отмена диалога — нет;
-- при занятом логине пользователь выбирает другой логин, а `account_id`, ключи и **слова не меняются** (`rc_root` от логина не зависит);
-- после определённого ответа пакет удаляется из хранилища.
+Without a typed-back check, not only a failure before the request is dangerous but also a lost response: the client restarted, built new keys and words, and the saved PDF belongs to nobody. Therefore:
+- the client saves the **prepared package** (`account_id`, login, `salt`, profile, `auth_key`, `rc_auth_key`, `wrap_pw`, `wrap_rc` and the DEK; without the password and the words' entropy) in the OS secret store **before** showing the words, and after a restart repeats the same request until it gets a definite answer. The DEK is in the package so that after a restart the client can work without entering the password again; it lives where it normally does (§8.8);
+- the server is idempotent:
+  - registration — first the `account_id` check: the same package → success, `account_id` taken by another package → a separate error (the client creates a new `account_id` and rebuilds the wraps, §1, the words stay the same); only then whether the login is taken — otherwise a repeat after a lost response would get "login taken";
+  - recovery — by the new `rc_auth_key` **and equality of the rest of the package**: the replacement was already made by the same package → success, by another package → a separate error;
+- if the outcome of a recovery is uncertain after a restart (the old `rc_auth_key` is no longer in memory), the client tries to log in with the new password: success = the replacement went through; refusal = the old words have to be entered again;
+- "Save" counts only after a successful file write or sending to print; cancelling the dialog does not count;
+- if the login is taken, the user picks another login, while `account_id`, the keys and **the words do not change** (`rc_root` does not depend on the login);
+- after a definite answer, the package is deleted from the store.
 
-## B. Тест-план (S4a — протокол, S4b — конверт и ключи)
+## B. Test plan (S4a — protocol, S4b — envelope and keys)
 
-Всё, кроме тест-векторов, — property-тесты: 2–3 клиента в одном процессе, со случайными задержками, дубликатами, перестановками и обрывами (ТЗ §14). Критерии ТЗ §10.2 S4a входят сюда без повторения.
+Everything except the test vectors is property tests: 2–3 clients in one process, with random delays, duplicates, reorderings and disconnects (PRD §14). The criteria of PRD §10.2 S4a are included here without repetition.
 
-**S4a — синхронизация**
+**S4a — sync**
 
-1. Сходимость состояния записей при любом порядке доставки; повтор push идемпотентен.
-2. Сравнение строк HLC совпадает со сравнением кортежей; переполнение счётчика монотонно.
-3. Перезапуск после приёма «будущей» метки не выдаёт повторных HLC.
-4. Часы тикают от конвертов, отброшенных по `op_id` или tombstone: следующая локальная метка больше.
-5. Две правки офлайн на одном устройстве (с сжатием outbox и без), затем синхронизация — ревизии `conflict` **не** создаются. То же для двух переносов офлайн (`placement`).
-6. Настоящая одновременная правка — ровно одна ревизия `conflict` с одинаковым id и содержимым на всех устройствах. То же для одновременного переноса в разные чаты (`group = 2`); одновременная правка `flags` ревизий не даёт.
-7. Конфликт текста сохраняет обе версии (ТЗ).
-8. Первая привязка двух баз с записями старше 180 дней, обе с Inbox — всё уходит на push, карантин пуст, Inbox один.
-9. Purge без аккаунта, затем привязка копии базы — `purged` уходит, запись не воскресает.
-10. Восстановление против purge в обоих порядках `seq`, плюс нечестный порядок сервера (purge принят после восстановления) — клиент не теряет запись и детей, расхождения нет.
-11. Ack purge при одновременном локальном восстановлении — запись не удаляется молча, уходит в карантин.
-12. Ответ `purged` на push живой правки — запись с детьми в карантине у автора, у остальных её нет, ленты совпадают.
-13. Ребёнок приходит после `purged` родителя — удалён локально, `purged(child)` отправлен, повтор — no-op.
-14. Устройство вернулось через 200 дней с правкой удалённой записи — карантин, без воскрешения (ТЗ).
-15. Восстановление сервера из бэкапа (`generation`) с неподтверждённым outbox — всё дошло, `server_known`-записи вернулись на сервер.
-16. `pending_unknown` → обновление клиента → применение даёт то же состояние, что прямое применение.
-17. Смешанные `sv` по группам: старый клиент правит `flags`, новый — `body`; обе правки выживают, неизвестная группа не теряется при переотправке старым клиентом.
-18. Клиент с часами на 25 ч вперёд — push отвергнут; после исправления часов синхронизация восстанавливается без потери локальных правок, `base` и id ревизий пересчитаны.
-19. Восстановление из корзины доходит до другого устройства (ТЗ).
-20. Удаление чата с поздним переносом сообщения в него — сообщение показано в Inbox с пометкой (производно), ничего не потеряно, конвертов `placement` не возникло.
-21. Копия базы с тем же `device_id`: совпадающий HLC разрешается детерминированно, тело проигравшего в ревизии.
-22. Конверт, который проходит AEAD, но не проходит разбор, — карантин `malformed`, синхронизация продолжается.
-23. Сервер: параллельные push одного аккаунта — курсор не пропускает записи (S4c).
-24. Первая привязка копии базы: запись, отредактированная на копии и purged на оригинале, попадает в карантин, а не удаляется; нетронутая копия удаляется тихо.
-25. Два живых экземпляра с одним `device_id` правят одно сообщение с разными HLC — обе версии сохранены, ревизия `conflict` есть (`supersedes` пуст).
-26. Новый клиент (`sv = 2`) переотправляет снимок с `body` старого клиента — на старом клиенте нет ошибки целостности, нет режима «только чтение», нет ревизии; байты `body` дословно те же.
-27. Purge чата: `purged(chat)` приходит раньше `purged` сообщений (обычный порядок, §3.6) или страница разрезана между ними — у получателей ноль конвертов `placement` и ноль записей карантина; старые сообщения чата между ними скрыты, а не показаны в Inbox.
-28. Смена пароля на устройстве X, затем повторный вход на Y — вход возможен; профиль не понижается ни при смене пароля, ни при восстановлении.
-29. Сервер прислал профиль ниже виденного — отказ с объяснением, восстановление по словам работает.
-30. Смена `generation` при локальных tombstones — tombstones переотправлены, устройства без tombstone не держат запись в корзине.
-31. Пересинхронизация при наличии `pending_unknown` для записи — запись не в карантине.
-32. Падение посреди генерации 100k конвертов при первой привязке — после перезапуска нет ни дубликатов, ни пропусков.
-33. Выход из `clock_skew` с неподтверждёнными конвертами в пределах `SKEW_MAX` — они повторяются как есть (`duplicate`), перештамповываются только отвергнутые, вместе с `base` и `supersedes`.
-34. Purge без аккаунта, привязка копии через 200 дней — tombstone дожил, запись не воскресла.
-35. Позднее сообщение purged-чата остаётся видимым в Inbox после истечения tombstone чата и на новом устройстве после сжатия серверного `purged(chat)`.
-36. Устройство, отставшее на две версии `body`, правит `flags` — у остальных ноль ревизий `conflict`.
-37. 65+ правок офлайн без сжатия outbox — не больше одной лишней ревизии, ни одной потерянной версии.
-38. Инвариант `canonical(колонки) == groups_raw[g]` для групп, которые писал этот клиент, после любой локальной правки (property).
-39. Сообщение, созданное агентом или импортом, сохраняет `origin` после правок и синхронизации.
-40. Восстановление чата против purge чата: онлайн-гонка (purge отправлен по устаревшему pull) и офлайн-восстановление в обоих порядках `seq` — чат с сообщениями либо жив везде, либо целиком в карантине у восстановившего; пустого восстановленного чата нет.
-41. Инициатор purge чата пропал после ack `purged(chat)` до каскада — сообщения скрыты, не потеряны; после истечения tombstone чата видны в Inbox с пометкой.
-42. Устройство с неотправленной правкой `body` вернулось через 200 дней, текст за это время правили дважды на других устройствах (промежуточная версия сжата) — своя версия в ревизии `conflict`. То же при первой привязке копии базы.
-43. Равный HLC и разные байты у `flags` или у группы чата — без ревизии, событие в журнале без содержимого.
-44. Ревизия `conflict` от двух устройств с разными версиями клиента — байты `snapshot_json` совпадают (`raw` строкой); при неподдерживаемой `sv` версии P ревизию создаёт только поддерживающее устройство.
-45. Blob повреждён на сервере → на устройстве с файлом «загрузить заново» — новый `remote_blob_id`, остальные устройства получают новый `core` и читают файл, старый blob удалён.
-46. Повторный импорт того же экспорта Telegram — ноль новых записей, отчёт «пропущено N»; на втором устройстве после синхронизации — тоже ноль.
-47. Непривязанная копия делает локальный purge сообщения с вложением, на привязанной базе сообщение восстановлено, затем копия привязывается — вложение и blob целы, tombstones детей сняты, вложение воссоздано из `held`. То же для чата с сообщениями и при смене `generation`; то же при `stale_purge` родителя в гонке на push. После `ok(seq)` на `purged(child)` его `held` и `cascade_of` пусты, и последующее снятие tombstone родителя этого ребёнка не воскрешает.
-48. Сообщение перенесено в чат после его удаления (D3), чат восстановлен офлайн (D1) и purged (D2) — перенесённое сообщение не попадает в карантин D1 и не удаляется у D2 при ack, у всех в Inbox. Возврат чата из карантина: сообщения без tombstone переносятся `placement`, с tombstone — копией; дублей живых сообщений нет.
-49. Перенос сообщения из чата в окне purge: D1 офлайн с момента до удаления чата перенёс M в X (HLC переноса меньше HLC удаления) и синхронизировался между ack `purged(chat)` и `purged(M)` — сервер отвечает `stale_purge` на `purged(M)`, инициатор после pull не повторяет его, M жив в X везде. Нечестный сервер принимает `purged(M)` после переноса — D1 уносит M в карантин, а не удаляет тихо. У инициатора после снятия tombstone M строки outbox `purged(M)` нет.
-50. Ответ `purged` на push без локального tombstone (сервер принял чужой `purged(X)` между pull и push) — X в карантине, tombstone записан; следующий pull `purged(X)` уточняет снимок и в остальном no-op.
+1. Convergence of the records' state under any delivery order; a repeated push is idempotent.
+2. HLC string comparison matches tuple comparison; counter overflow is monotonic.
+3. A restart after receiving a "future" timestamp does not produce repeated HLCs.
+4. The clock ticks from envelopes dropped by `op_id` or by a tombstone: the next local timestamp is greater.
+5. Two offline edits on one device (with and without outbox compaction), then sync — `conflict` revisions are **not** created. The same for two offline moves (`placement`).
+6. A real concurrent edit — exactly one `conflict` revision with the same id and content on all devices. The same for a concurrent move into different chats (`group = 2`); a concurrent `flags` edit gives no revisions.
+7. A text conflict preserves both versions (PRD).
+8. The first binding of two databases with records older than 180 days, both with an Inbox — everything goes to push, the quarantine is empty, there is one Inbox.
+9. Purge without an account, then binding of a database copy — `purged` goes out, the record is not resurrected.
+10. Restore versus purge in both `seq` orders, plus a dishonest server order (purge accepted after the restore) — the client loses neither the record nor its children, no divergence.
+11. A purge ack with a concurrent local restore — the record is not silently deleted, it goes to quarantine.
+12. A `purged` response to a push of a live edit — the record with its children is in quarantine at the author's, the others do not have it, the feeds match.
+13. A child arrives after its parent's `purged` — deleted locally, `purged(child)` sent, a repeat is a no-op.
+14. A device came back after 200 days with an edit of a deleted record — quarantine, no resurrection (PRD).
+15. Server restore from a backup (`generation`) with an unconfirmed outbox — everything arrived, the `server_known` records are back on the server.
+16. `pending_unknown` → client update → applying gives the same state as applying directly.
+17. Mixed `sv` per group: an old client edits `flags`, a new one edits `body`; both edits survive, and the unknown group is not lost when the old client resends.
+18. A client with its clock 25 h ahead — push rejected; after the clock is fixed, sync recovers without losing local edits, `base` and revision ids are recomputed.
+19. A restore from the trash reaches another device (PRD).
+20. Deleting a chat with a late move of a message into it — the message is shown in Inbox with a mark (derived), nothing is lost, no `placement` envelopes arose.
+21. A database copy with the same `device_id`: an HLC tie is resolved deterministically, the loser's body is in a revision.
+22. An envelope that passes AEAD but fails parsing — `malformed` quarantine, sync continues.
+23. Server: parallel pushes of one account — the cursor does not skip records (S4c).
+24. The first binding of a database copy: a record edited on the copy and purged on the original goes to quarantine and is not deleted; an untouched copy is deleted silently.
+25. Two live instances with one `device_id` edit one message with different HLCs — both versions are kept, there is a `conflict` revision (`supersedes` is empty).
+26. A new client (`sv = 2`) resends a snapshot with an old client's `body` — on the old client there is no integrity error, no "read-only" mode, no revision; the `body` bytes are verbatim the same.
+27. Chat purge: `purged(chat)` arrives before the `purged` of the messages (the normal order, §3.6), or the page is split between them — the recipients get zero `placement` envelopes and zero quarantine records; the chat's old messages in between are hidden, not shown in Inbox.
+28. A password change on device X, then logging in again on Y — login works; the profile is not downgraded either on a password change or on recovery.
+29. The server sent a profile lower than the one seen — refusal with an explanation, recovery with the words works.
+30. A `generation` change with local tombstones — the tombstones are resent, devices without a tombstone do not keep the record in the trash.
+31. A full resync with a `pending_unknown` for a record — the record is not in quarantine.
+32. A crash in the middle of generating 100k envelopes at the first binding — after a restart there are neither duplicates nor gaps.
+33. Leaving `clock_skew` with unconfirmed envelopes within `SKEW_MAX` — they are repeated as is (`duplicate`), only the rejected ones are restamped, together with `base` and `supersedes`.
+34. Purge without an account, binding of a copy after 200 days — the tombstone survived, the record was not resurrected.
+35. A late message of a purged chat stays visible in Inbox after the chat's tombstone expires, and on a new device after compaction of the server's `purged(chat)`.
+36. A device that is two `body` versions behind edits `flags` — the others get zero `conflict` revisions.
+37. 65+ offline edits without outbox compaction — no more than one extra revision, not a single lost version.
+38. The invariant `canonical(columns) == groups_raw[g]` for the groups this client wrote, after any local edit (property).
+39. A message created by an agent or by an import keeps its `origin` after edits and sync.
+40. Chat restore versus chat purge: an online race (the purge was sent based on a stale pull) and an offline restore in both `seq` orders — the chat with its messages is either alive everywhere or entirely in quarantine at the device that restored it; there is no restored empty chat.
+41. The chat purge initiator disappeared after the ack of `purged(chat)` before the cascade — the messages are hidden, not lost; after the chat's tombstone expires they are visible in Inbox with a mark.
+42. A device with an unsent `body` edit came back after 200 days, and the text was edited twice on other devices in the meantime (the intermediate version was compacted) — its own version is in a `conflict` revision. The same at the first binding of a database copy.
+43. An equal HLC with different bytes in `flags` or in a chat group — no revision, an event in the log without content.
+44. A `conflict` revision from two devices with different client versions — the `snapshot_json` bytes match (`raw` as a string); with an unsupported `sv` of version P, only a device that supports it creates the revision.
+45. A blob is damaged on the server → "upload again" on a device that has the file — a new `remote_blob_id`, the other devices get the new `core` and read the file, the old blob is deleted.
+46. Re-importing the same Telegram export — zero new records, the report says "skipped N"; on a second device after sync — also zero.
+47. An unbound copy does a local purge of a message with an attachment, the message is restored on the bound database, then the copy is bound — the attachment and the blob are intact, the children's tombstones are lifted, the attachment is recreated from `held`. The same for a chat with messages and on a `generation` change; the same on a `stale_purge` of the parent in a push race. After `ok(seq)` on `purged(child)` its `held` and `cascade_of` are empty, and a later lift of this child's parent's tombstone does not resurrect it.
+48. A message is moved into a chat after the chat's deletion (D3), the chat is restored offline (D1) and purged (D2) — the moved message does not go into D1's quarantine and is not deleted at D2 on the ack; it is in Inbox for everyone. Returning the chat from quarantine: messages without a tombstone are moved via `placement`, those with a tombstone as a copy; no duplicate live messages.
+49. Moving a message out of a chat within the purge window: D1, offline since before the chat's deletion, moved M into X (the HLC of the move is less than the HLC of the deletion) and synced between the ack of `purged(chat)` and `purged(M)` — the server answers `stale_purge` to `purged(M)`, the initiator does not repeat it after pull, and M is alive in X everywhere. A dishonest server accepts `purged(M)` after the move — D1 takes M into quarantine rather than deleting it silently. At the initiator, after M's tombstone is lifted, there is no `purged(M)` outbox row.
+50. A `purged` response to a push without a local tombstone (the server accepted someone else's `purged(X)` between pull and push) — X is in quarantine, a tombstone is written; the next pull of `purged(X)` refines the snapshot and is otherwise a no-op.
 
-**S4b — конверт и ключи**
+**S4b — envelope and keys**
 
-1. Тест-векторы с фиксированными ключом, nonce и входом и ожидаемыми байтами для: конверта, `AD_env`, обеих обёрток с `AD_wrap`, `crypto_kdf`-подключей, выравнивания, id ревизии `conflict` и её `snapshot_json` (`raw` строкой), blob из 0 байт, 1 МиБ − 1, ровно 1 МиБ, 1 МиБ + 1.
-2. Подмена каждого открытого поля (HLC, `purged`, `sv`, `key_id`, `format_version`, `account_id`) и перестановка конверта к другой записи обнаруживаются (ТЗ).
-3. Слишком большой `header_len` или длина отвергаются до выделения памяти.
-4. Обрезанный blob, blob без `TAG_FINAL`, байты после `TAG_FINAL` — ошибка.
-5. Смена пароля без перешифровки; восстановление по 24 словам (ТЗ).
-6. После восстановления старые слова недействительны; перевыпуск слов работает.
-7. Сервер прислал профиль ниже виденного или неизвестный — клиент отказывает до вывода ключа.
-8. Неизвестный логин: соль 16 байт, тот же профиль; ответы восстановления неразличимы.
-9. Мнемоника → `to_entropy` (не `to_seed`). Опечатка в несловарное слово даёт `UnknownWord`; замена на другое словарное слово ловится контрольной суммой с вероятностью 1 − 2⁻⁸ (у 24 слов 8 бит суммы). Ввод в верхнем регистре нормализуется до разбора.
-10. Логи сервера и клиента после прогона не содержат `auth_key`, `rc_auth_key`, токенов, текста.
-11. Сборка выбранной привязки libsodium на macOS, Windows, Linux — в начале S4b.
-12. Канонический JSON: одно и то же значение группы из Rust и из libsodium.js-клиента даёт одинаковые байты (тест-вектор).
-13. Падение клиента между показом новых слов и запросом замены при восстановлении — на сервере ничего не изменилось, старые слова действуют. Без нажатия «Сохранить» (успешной записи файла или печати) запрос замены (и регистрации) не уходит. Ответ потерян, клиент перезапущен — повтор с тем же пакетом даёт один аккаунт, слова из PDF действуют; при неопределённом исходе восстановления вход новым паролем подтверждает замену. Занятый логин — слова прежние.
-14. Восстановление по словам на устройстве с `kdf_profile_seen = 2` при присланном профиле 1 — новый пароль получает профиль 2, устройство входит своим новым паролем без отказа.
+1. Test vectors with a fixed key, nonce and input and the expected bytes for: the envelope, `AD_env`, both wraps with `AD_wrap`, the `crypto_kdf` subkeys, padding, the id of a `conflict` revision and its `snapshot_json` (`raw` as a string), blobs of 0 bytes, 1 MiB − 1, exactly 1 MiB, 1 MiB + 1.
+2. Substitution of each open field (HLC, `purged`, `sv`, `key_id`, `format_version`, `account_id`) and moving an envelope to another record are detected (PRD).
+3. A too large `header_len` or length is rejected before memory is allocated.
+4. A truncated blob, a blob without `TAG_FINAL`, bytes after `TAG_FINAL` — error.
+5. Password change without re-encryption; recovery with the 24 words (PRD).
+6. After recovery the old words are invalid; reissuing the words works.
+7. The server sent a profile lower than the one seen, or an unknown one — the client refuses before deriving the key.
+8. Unknown login: a 16-byte salt, the same profile; recovery responses are indistinguishable.
+9. Mnemonic → `to_entropy` (not `to_seed`). A typo into a non-dictionary word gives `UnknownWord`; a substitution with another dictionary word is caught by the checksum with probability 1 − 2⁻⁸ (24 words have 8 checksum bits). Upper-case input is normalized before parsing.
+10. The server and client logs after a run contain no `auth_key`, `rc_auth_key`, tokens, text.
+11. Build of the chosen libsodium binding on macOS, Windows, Linux — at the start of S4b.
+12. Canonical JSON: the same group value from Rust and from a libsodium.js client gives the same bytes (a test vector).
+13. A client crash between showing the new words and the replacement request on recovery — nothing changed on the server, the old words still work. Without pressing "Save" (a successful file write or print), the replacement (and registration) request does not go out. The response is lost and the client restarted — a repeat with the same package gives one account, and the words from the PDF work; with an uncertain recovery outcome, logging in with the new password confirms the replacement. A taken login — the words stay the same.
+14. Recovery with the words on a device with `kdf_profile_seen = 2` when profile 1 is sent — the new password gets profile 2, and the device logs in with its new password without a refusal.
 
-## C. Последствия для схемы §4.2 ТЗ
+## C. Consequences for the schema of PRD §4.2
 
-ТЗ §4.2 — черновик для ADR. В слайсе 1 нужно:
-- **во всех синхронизируемых таблицах:**
-  - `hlc_json` вида `{"<группа>":{"h":"HLC","sv":1}}`;
+PRD §4.2 is a draft for the ADR. Slice 1 needs:
+- **in all synchronized tables:**
+  - `hlc_json` of the form `{"<group>":{"h":"HLC","sv":1}}`;
   - `server_known INTEGER NOT NULL DEFAULT 0`;
-  - `groups_raw` вида `{"<группа>":<сырые канонические байты>}` — источник для переотправки; заменяет `unknown_json` черновика, потому что неизвестные группы и поля лежат там же;
-  - колонки полей — разобранное, при старой `sv` — мигрированное представление;
-- `message`: в `body` и `placement` — `base`, `supersedes`; `origin TEXT NOT NULL DEFAULT 'user'` и `ext_json TEXT` (группа `core`);
-- `message_revision`: `hlc_json` (только `core`), `schema_version`, `groups_raw`;
+  - `groups_raw` of the form `{"<group>":<raw canonical bytes>}` — the source for resending; replaces the draft's `unknown_json`, because unknown groups and fields live there too;
+  - field columns — the parsed representation, migrated if the `sv` is old;
+- `message`: `base`, `supersedes` in `body` and `placement`; `origin TEXT NOT NULL DEFAULT 'user'` and `ext_json TEXT` (the `core` group);
+- `message_revision`: `hlc_json` (`core` only), `schema_version`, `groups_raw`;
 - `attachment`: `blob_key`, `groups_raw`; `remote_blob_id` — UUID v7 (§7);
-- новые таблицы:
-  - `tombstone(entity, id, purged_of, purged_at, cascade_of, held)`: `purged_of` — JSON-снимок `{"<группа>":"HLC"}` (§3.5); `cascade_of` — id родителя каскада (сообщение для вложений и ревизий, чат для его детей), у корня `NULL`; `held` — отложенный снимок ребёнка, пришедшего, пока tombstone жив (§3.5): слитые группы в виде `groups_raw` + `hlc_json`, а не байты конверта; есть только у tombstones с `cascade_of`, у подтверждённых сервером `NULL`. `cascade_of` и `held` очищаются при `ok(seq)` на `purged(child)`, при снятии tombstone и у получателя `purged(child)` для существующего tombstone с `cascade_of`: purge ребёнка подтверждён сервером, и снятие родителя его уже не воскрешает. Снятие tombstone родителя идёт рекурсивно по `cascade_of` и затрагивает только детей с непустым `cascade_of`. Отправка tombstones при привязке и смене `generation` — родитель первым (§6.2);
+- new tables:
+  - `tombstone(entity, id, purged_of, purged_at, cascade_of, held)`: `purged_of` is a JSON snapshot `{"<group>":"HLC"}` (§3.5); `cascade_of` is the id of the cascade's parent (the message for attachments and revisions, the chat for its children), `NULL` at the root; `held` is the held snapshot of a child that arrived while the tombstone is alive (§3.5): the merged groups in the form of `groups_raw` + `hlc_json`, not envelope bytes; it exists only on tombstones with `cascade_of`, and is `NULL` on those confirmed by the server. `cascade_of` and `held` are cleared on `ok(seq)` for `purged(child)`, when the tombstone is lifted, and at a recipient of `purged(child)` for an existing tombstone with `cascade_of`: the child's purge is confirmed by the server, and lifting the parent no longer resurrects it. Lifting a parent's tombstone goes recursively over `cascade_of` and affects only children with a non-empty `cascade_of`. Sending tombstones at binding and on a `generation` change — parent first (§6.2);
   - `quarantine(id, entity, entity_id, payload, reason, created_at)`;
   - `pending_unknown(seq, entity, entity_id, envelope)`;
-  - `message_ext(src, ext_chat, ext_msg, message_id)`, первичный ключ `(src, ext_chat, ext_msg)` — локальный несинхронизируемый индекс, производный от `core`, пересчитывается при pull. Вставка — `INSERT OR IGNORE`: два сообщения с разными id и одним `ext` (одновременный импорт на двух устройствах) не ломают пересчёт, дубль попадает в отчёт импорта и в интерфейс;
+  - `message_ext(src, ext_chat, ext_msg, message_id)`, primary key `(src, ext_chat, ext_msg)` — a local non-synchronized index, derived from `core`, recomputed on pull. Insertion is `INSERT OR IGNORE`: two messages with different ids and the same `ext` (a concurrent import on two devices) do not break the recomputation; the duplicate shows up in the import report and in the UI;
 - `change_outbox`: `acked_seq`;
 - `sync_state`: `device_id`, `hlc_l`, `hlc_c`, `generation`, `cursor`, `account_id`, `kdf_profile_seen`.
 
-В слайсе 1 синхронизации нет, но `hlc_json`, `sv = 1`, `device_id`, часы HLC и локальные tombstones работают с первой записи.
+Slice 1 has no sync, but `hlc_json`, `sv = 1`, `device_id`, the HLC clock and local tombstones work from the very first write.
 
-### C.1. Уточнение слайса 1 (21.10.2026)
+### C.1. Slice 1 refinement (21.10.2026)
 
-- **Константа Inbox:** `00000000-0000-4000-8000-000000000001` (UUID v4: версия 4, вариант 8). Группа `core` у Inbox — `{"created_at":0,"is_inbox":true}` (`created_at` колонки `chat` тоже 0); группы `meta` (`{"color":null,"icon":"📥","title":""}`, хранимое имя пустое — интерфейс показывает переведённое), `order` (`{"sort_key":"a0"}`), `state`, `privacy`, `deleted` создаются при первом запуске вместе с `core` под одним HLC. Идемпотентно: Inbox определяется по id.
-- **Таблицы миграции 1 — только те, в которые слайс 1 пишет:** `chat`, `message`, `sync_state` (`device_id`, `hlc_l`, `hlc_c`), а также локальные несинхронизируемые `app_setting` (`mirror_dir`, `text_size`) и `mirror_dirty(chat_id, journal_date, seq)`. Остальные таблицы этого раздела (`tombstone`, `message_revision`, `message_ext`, `attachment`, `change_outbox`, `quarantine`, `pending_unknown`) добавят свои слайсы миграциями `CREATE TABLE` без изменения существующих строк: пока в них никто не пишет, пустая таблица ничего не защищает. Колонки, от которых зависят строки (`hlc_json`, `server_known`, `groups_raw`, `schema_version`, `origin`, `ext_json`, `base`/`supersedes` у `body` и `placement`), есть у `message` с первой записи; `body_search` как колонки нет (решено в слайсе 4, см. §C.3: индекс поиска — отдельные локальные таблицы `search_fts` и `search_map`, `message_ext` добавлена миграцией 4).
-- **Новая запись** создаётся со всеми пятью группами `core`, `body`, `flags`, `placement`, `deleted` под одним HLC (одно событие) и `sv = 1`; байты групп — JCS (RFC 8785, ключи по кодовым единицам UTF-16), колонки строятся из тех же значений.
+- **The Inbox constant:** `00000000-0000-4000-8000-000000000001` (UUID v4: version 4, variant 8). Inbox's `core` group is `{"created_at":0,"is_inbox":true}` (the `created_at` column of `chat` is 0 too); the groups `meta` (`{"color":null,"icon":"📥","title":""}`, the stored name is empty — the UI shows the translated one), `order` (`{"sort_key":"a0"}`), `state`, `privacy`, `deleted` are created on first launch together with `core` under one HLC. Idempotent: Inbox is identified by id.
+- **Migration 1 has only the tables slice 1 writes to:** `chat`, `message`, `sync_state` (`device_id`, `hlc_l`, `hlc_c`), plus the local non-synchronized `app_setting` (`mirror_dir`, `text_size`) and `mirror_dirty(chat_id, journal_date, seq)`. The other tables of this section (`tombstone`, `message_revision`, `message_ext`, `attachment`, `change_outbox`, `quarantine`, `pending_unknown`) will be added by their slices with `CREATE TABLE` migrations without changing existing rows: while nobody writes to them, an empty table protects nothing. The columns that rows depend on (`hlc_json`, `server_known`, `groups_raw`, `schema_version`, `origin`, `ext_json`, `base`/`supersedes` of `body` and `placement`) exist on `message` from the very first write; there is no `body_search` column (decided in slice 4, see §C.3: the search index is separate local tables `search_fts` and `search_map`; `message_ext` was added by migration 4).
+- **A new record** is created with all five groups `core`, `body`, `flags`, `placement`, `deleted` under one HLC (one event) and `sv = 1`; the group bytes are JCS (RFC 8785, keys by UTF-16 code units), and the columns are built from the same values.
 
-### C.2. Уточнение слайса 3 (27.10.2026)
+### C.2. Slice 3 refinement (27.10.2026)
 
-- **Миграция 3** (`CREATE TABLE` и индекс, строки синхронизируемых таблиц не меняются): `message_revision(id, message_id, snapshot_json, saved_at, reason, hlc_json, server_known, schema_version, groups_raw)`; `tombstone(entity, id, purged_of, purged_at, cascade_of, held)` с первичным ключом `(entity, id)`; локальные несинхронизируемые `message_tag(message_id, tag)` (производная от `body_md`, пересчитывается в миграции кодом Rust) и `mirror_chat(chat_id, folder)` (в какой папке Markdown-копии лежат файлы чата); частичный индекс `message_deleted`. Перед миграцией существующей базы синхронно проверяется `PRAGMA integrity_check` и снимается копия (`backups/pre-migration-v<схема>-<UTC>.db`, через backup API SQLite); нет копии — нет миграции.
-- **Новый чат** создаётся со всеми шестью группами (`core`, `meta`, `order`, `state`, `privacy`, `deleted`) под одним HLC и `sv = 1`; `order.sort_key` — `a` и шесть цифр по основанию 36 (`a000001`, …), Inbox — `a0`. Одинаковые ключи на двух устройствах допустимы: порядок решает `id`.
-- **Копия файла базы и восстановление** (локально, не синхронизируется): `backups/daily-YYYY-MM-DD.db` (7 последних), `backups/pre-migration-…` (3 последних). Восстановление всегда создаёт новый `device_id` (§1); повреждённый файл не удаляется, а откладывается как `corrupt-<мс>.db`. Рядом с базой лежит файл-отметка `needs-recovery`: пустой — фоновая проверка нашла повреждение (при запуске её перепроверяет синхронная проверка), содержимое `restoring` — восстановление начато и не закончено (при запуске окно предложит копии). Папка Markdown-копии, названная в настройках самой копии (или папка по умолчанию), переименовывается ПЕРВОЙ, до любого переноса базы, в `<имя>-before-restore-<UTC>` (при совпадении имени — суффикс `-2`, `-3`); не удалось переименовать — восстановление не начинается, ничего не тронуто. Повтор после сбоя, случившегося уже после первого переноса файла (отметка `restoring`), папку второй раз не переносит и возвращает путь самой поздней `…-before-restore-…` рядом в ответе команды (`previousMirror`); окно этот путь не показывает, у него общий текст про «…-before-restore-…» без пути.
-- **Имя папки чата в Markdown-копии:** название, очищенное от `/ \ : * ? " < > |` и управляющих знаков, до 80 знаков; совпадения без учёта регистра различаются суффиксом ` (<8 знаков id>)`, простое имя остаётся у самого старого чата; Inbox — `Inbox`.
+- **Migration 3** (`CREATE TABLE` and an index; rows of synchronized tables do not change): `message_revision(id, message_id, snapshot_json, saved_at, reason, hlc_json, server_known, schema_version, groups_raw)`; `tombstone(entity, id, purged_of, purged_at, cascade_of, held)` with the primary key `(entity, id)`; the local non-synchronized `message_tag(message_id, tag)` (derived from `body_md`, recomputed in the migration by Rust code) and `mirror_chat(chat_id, folder)` (which folder of the Markdown copy holds the chat's files); a partial index `message_deleted`. Before migrating an existing database, `PRAGMA integrity_check` is run synchronously and a backup is taken (`backups/pre-migration-v<schema>-<UTC>.db`, via the SQLite backup API); no backup — no migration.
+- **A new chat** is created with all six groups (`core`, `meta`, `order`, `state`, `privacy`, `deleted`) under one HLC and `sv = 1`; `order.sort_key` is `a` and six base-36 digits (`a000001`, …), Inbox is `a0`. Equal keys on two devices are acceptable: `id` decides the order.
+- **Database file backup and restore** (local, not synchronized): `backups/daily-YYYY-MM-DD.db` (the 7 latest), `backups/pre-migration-…` (the 3 latest). A restore always creates a new `device_id` (§1); a damaged file is not deleted but set aside as `corrupt-<ms>.db`. Next to the database lies a marker file `needs-recovery`: empty — the background check found damage (at launch the synchronous check rechecks it); with the content `restoring` — a restore was started and not finished (at launch the window will offer the backups). The Markdown copy folder named in the settings of the backup itself (or the default folder) is renamed FIRST, before any database file is moved, to `<name>-before-restore-<UTC>` (on a name clash, the suffix `-2`, `-3`); if the rename fails, the restore does not start and nothing is touched. A retry after a failure that happened after the first file move (the `restoring` marker) does not move the folder a second time and returns the path of the latest `…-before-restore-…` next to it in the command's response (`previousMirror`); the window does not show this path, it has a generic text about "…-before-restore-…" without the path.
+- **The name of a chat folder in the Markdown copy:** the title, stripped of `/ \ : * ? " < > |` and control characters, up to 80 characters; case-insensitive clashes are distinguished by the suffix ` (<8 characters of the id>)`, and the plain name stays with the oldest chat; Inbox is `Inbox`.
 
-### C.3. Уточнение слайса 4 (28.10.2026)
+### C.3. Slice 4 refinement (28.10.2026)
 
-- **Миграция 4** (`CREATE TABLE`, строки синхронизируемых таблиц не меняются): локальные несинхронизируемые `message_ext(src, ext_chat, ext_msg, message_id)` (`WITHOUT ROWID`, первичный ключ `(src, ext_chat, ext_msg)`, индекс по `message_id`) и таблицы поиска `search_map(rowid, message_id UNIQUE)` и `search_fts` (FTS5 без хранения текста, `contentless_delete=1`, `unicode61 remove_diacritics 0`; решение — ADR-0008). `after_migration(4)` строит обе из существующих записей: `message_ext` — из `ext_json` (`INSERT OR IGNORE`, повреждённый `ext_json` строк не даёт), индекс — из `body_md` всех записей, в том числе из корзины (корзину отсекает запрос). Версия правил индекса — `app_setting.search_index_version`; при несовпадении индекс перестраивается при открытии. Перед миграцией существующей базы снимается копия `pre-migration-v3-<UTC>.db` (C.2).
-- **Отступление от черновика §4.2:** колонки `message.body_search` нет. Индекс — отдельная производная таблица: менять строки синхронизируемой таблицы ради производного не нужно. ADR §C (первый абзац списка) и приложение §A.0 уже называют `body_search` производным.
-- **Индекс обновляется в той же транзакции**, что любое изменение `body_md`: отправка, дописывание, правка и галочка `- [ ]`, импорт. Удаление навсегда (`purge`) удаляет строку индекса и все строки `message_ext` записи в той же транзакции; поэтому повторный импорт возвращает такую запись как новую (в отчёте «новая»). Ревизии (`message_revision`) в индекс не попадают.
-- **Группа `core` импортированной записи** (байты — JCS, ключи по кодовым единицам UTF-16; пример для чата 9223372036854775807, сообщения −5):
+- **Migration 4** (`CREATE TABLE`; rows of synchronized tables do not change): the local non-synchronized `message_ext(src, ext_chat, ext_msg, message_id)` (`WITHOUT ROWID`, primary key `(src, ext_chat, ext_msg)`, an index on `message_id`) and the search tables `search_map(rowid, message_id UNIQUE)` and `search_fts` (FTS5 without stored text, `contentless_delete=1`, `unicode61 remove_diacritics 0`; the decision is ADR-0008). `after_migration(4)` builds both from existing records: `message_ext` from `ext_json` (`INSERT OR IGNORE`; a damaged `ext_json` yields no rows), the index from `body_md` of all records, including those in the trash (the query filters out the trash). The version of the index rules is `app_setting.search_index_version`; on a mismatch, the index is rebuilt on open. Before migrating an existing database, a backup `pre-migration-v3-<UTC>.db` is taken (C.2).
+- **Deviation from the §4.2 draft:** there is no `message.body_search` column. The index is a separate derived table: there is no need to change rows of a synchronized table for derived data. ADR §C (the first paragraph of the list) and appendix §A.0 already call `body_search` derived.
+- **The index is updated in the same transaction** as any change of `body_md`: send, append, edit and a `- [ ]` checkbox, import. Delete forever (`purge`) deletes the index row and all the record's `message_ext` rows in the same transaction; so a re-import brings such a record back as new (the report says "new"). Revisions (`message_revision`) do not go into the index.
+- **The `core` group of an imported record** (bytes are JCS, keys by UTF-16 code units; an example for chat 9223372036854775807, message −5):
   `{"created_at":1552000000007,"created_tz":"Europe/Moscow","ext":{"chat":"9223372036854775807","msg":"-5","src":"telegram"},"origin":"import_telegram","reply_to_id":null}`.
-  `ext.chat` и `ext.msg` — строки по `^-?[0-9]{1,20}$` (id Telegram 64-битные, JCS ограничен ±2⁵³). `reply_to_id` — id записи Kinige (UUID v4), если сообщение-адресат того же чата Telegram уже импортировано, иначе `null`: `core` неизменяема, и позже поле не заполнить. Колонка `message.ext_json` — те же каноничные байты `ext`. Остальные четыре группы (`body`, `flags`, `placement`, `deleted`) — байт в байт такие же, как у записи пользователя, `groups::new_message`.
-- **HLC при массовой записи:** каждая импортированная запись получает свой новый HLC (`next_hlc` в момент импорта; часы продолжаются от последнего значения, поэтому в пачке из 500 записей HLC строго возрастают), один на все пять групп, `sv = 1`, `server_known = 0`. Исходное время из Telegram — в `created_at` и `journal_date`, не в HLC: это исключение «кроме импорта» из §10 (по HLC сервер не должен узнавать время написания, а у импорта оно было бы поддельным). Пачка — одна транзакция писателя, между пачками писатель свободен.
-- **Копия перед импортом:** `backups/pre-import-<UTC>.db` (`BackupKind::PreImport`), хранятся 3 последних; снимается тем же путём, что копия дня, и видна в окне «База повреждена».
-- **Порядок внутри секунды:** `created_at` = `date_unixtime` × 1000 + k мс, где k — порядковый номер сообщения этой секунды в файле (не больше 999); иначе случайный `id` записи перемешал бы их в ленте.
+  `ext.chat` and `ext.msg` are strings matching `^-?[0-9]{1,20}$` (Telegram ids are 64-bit, JCS is limited to ±2⁵³). `reply_to_id` is the id of a Kinige record (UUID v4) if the replied-to message of the same Telegram chat has already been imported, otherwise `null`: `core` is immutable, and the field cannot be filled in later. The `message.ext_json` column holds the same canonical bytes of `ext`. The other four groups (`body`, `flags`, `placement`, `deleted`) are byte for byte the same as for a user's record, `groups::new_message`.
+- **HLC in bulk writes:** each imported record gets its own new HLC (`next_hlc` at the time of import; the clock continues from the last value, so in a batch of 500 records the HLCs strictly increase), one for all five groups, `sv = 1`, `server_known = 0`. The original time from Telegram goes into `created_at` and `journal_date`, not into the HLC: this is the "except for imports" exception of §10 (the server must not learn the writing time from the HLC, and for an import it would be fake). A batch is one writer transaction; between batches the writer is free.
+- **Backup before an import:** `backups/pre-import-<UTC>.db` (`BackupKind::PreImport`), the 3 latest are kept; it is taken the same way as the daily backup and is visible in the "The database is damaged" window.
+- **Order within a second:** `created_at` = `date_unixtime` × 1000 + k ms, where k is the ordinal number of the message within that second in the file (no more than 999); otherwise the random record `id` would shuffle them in the feed.
 
-### C.4. Уточнение слайса 4a (28.10.2026, MCP, ADR-0009)
+### C.4. Slice 4a refinement (28.10.2026, MCP, ADR-0009)
 
-- **Миграция 5** (`CREATE TABLE`, строки синхронизируемых таблиц не меняются): локальные несинхронизируемые таблицы журнала обращений агентов.
-  - `mcp_log(id INTEGER PRIMARY KEY AUTOINCREMENT, at, client, tool, args_json, outcome, entry_count)` — `entry_count` (число записей обращения) пишется в той же транзакции и не меняется при `purge`; одна строка на обращение: вызов инструмента, подключение (`tool = 'connect'`), отключение (`'disconnect'`), переподключение моста после обрыва (`'reconnect'`).
-  - `mcp_log_message(log_id, message_id)` (`WITHOUT ROWID`, первичный ключ `(log_id, message_id)`, индекс по `message_id`) — id записей, которые затронуло обращение.
-  - Перед миграцией существующей базы снимается копия `pre-migration-v4-<UTC>.db` (C.2). В `outbox` слайса 11 ни настройки доступа (`app_setting`: `mcp_enabled`, `mcp_mode`, `mcp_chats`), ни эти таблицы не попадают.
-- **Журнал без содержимого.** `args_json` собирается по **белому списку** полей разобранных аргументов (`kinige_domain::agent::args_json`): `chat_id`, даты `from`/`to`/`date`, флаги `favorites`/`tasks`/`task`/`done`, номер пункта `item`, признак `page`, `query` не длиннее 128 знаков. Поля `text` и id записей там нет никогда: id идут в `mcp_log_message`. Property-тест: для любых аргументов любого инструмента текст записи в `args_json` не попадает. `client` — слова клиента (`clientInfo.name`): управляющие символы убраны, не длиннее 64 знаков, не выдаётся за проверенное. Исход (`outcome`): `ok`, `disabled`, `read_only`, `not_found`, `no_agent_entry`, `not_a_task`, `invalid_argument`, `error`.
-- **Транзакции.** Изменение данных и строка журнала — одна транзакция писателя; отказ откатывает всё, кроме строки об отказе (она пишется отдельной транзакцией того же задания писателя). Чтение: выборка на соединении чтения, затем транзакция писателя со строкой журнала и id записей, которые вошли в ответ, затем ответ; сбой фиксации — агент получает ошибку, а не данные.
-- **Каскады.** `purge` записи (`trash::purge`) в той же транзакции удаляет её строки `mcp_log_message`; строка `mcp_log` остаётся. Ротация в обслуживании (`run_maintenance`): строки старше 90 дней и сверх 20 000 (остаются самые новые), затем `mcp_log_message` без родителя, всё в одной транзакции.
-- **Группа `core` записи агента** (байты — JCS; без `ext`; `origin` неизменяем, значение аддитивное, `sv` не растёт):
-  `{"created_at":1760000000000,"created_tz":"Europe/Moscow","origin":"agent","reply_to_id":null}`. Остальные четыре группы — как у записи пользователя (`groups::build_message`), все пять под одним HLC, `sv = 1`.
-- **Группа `flags` при `task = true`** создаётся сразу, в той же транзакции и под тем же HLC, что остальные группы: `{"favorite_at":null,"is_task":true,"pinned_at":null,"task_done_at":null}`. Колонка `is_task` строится из тех же значений. Агент может отметить выполненной (`task_done_at`) любую запись-задачу видимого чата, но не может сделать чужую запись задачей.
-- **Исключение из §A.0: дописывание агентом пишет ревизию `edit`**, в отличие от ⌘Enter (ADR-0006). Запись агента мог поправить пользователь: версия до дописывания сохраняется ревизией (`reason = 'edit'`, полный снимок, как у `edit_message`), затем перезаписывается группа `body` (§3.3, §3.4). Цель — последняя живая запись чата в порядке `(journal_date, created_at, id)`; «своя» определяется по `origin = 'agent'`, а не по имени клиента: запись клиента A дописывает клиент B. Окно захвата к записи агента не дописывает (`origin ≠ 'user'`).
-- **Доступ к данным.** Видимое множество чатов: чат есть в `mcp_chats`, у него нет `ai_excluded`, он не удалён; архив виден. Предикат (`json_each` по значению `app_setting`) стоит в **каждом** операторе чтения агента и внутри транзакции записи; строка «Чаты» поиска — отдельный оператор с тем же предикатом. Всё вне множества, удалённое, в корзине и несуществующее получает один и тот же `not_found` (в том числе Inbox по умолчанию, если он не отмечен).
+- **Migration 5** (`CREATE TABLE`; rows of synchronized tables do not change): the local non-synchronized tables of the agent access log.
+  - `mcp_log(id INTEGER PRIMARY KEY AUTOINCREMENT, at, client, tool, args_json, outcome, entry_count)` — `entry_count` (the number of entries in the request) is written in the same transaction and does not change on `purge`; one row per request: a tool call, a connection (`tool = 'connect'`), a disconnection (`'disconnect'`), a reconnection of the bridge after a drop (`'reconnect'`).
+  - `mcp_log_message(log_id, message_id)` (`WITHOUT ROWID`, primary key `(log_id, message_id)`, an index on `message_id`) — the ids of the records the request touched.
+  - Before migrating an existing database, a backup `pre-migration-v4-<UTC>.db` is taken (C.2). Neither the access settings (`app_setting`: `mcp_enabled`, `mcp_mode`, `mcp_chats`) nor these tables go into slice 11's `outbox`.
+- **A log without content.** `args_json` is built from an **allowlist** of fields of the parsed arguments (`kinige_domain::agent::args_json`): `chat_id`, the dates `from`/`to`/`date`, the flags `favorites`/`tasks`/`task`/`done`, the item number `item`, the `page` marker, `query` no longer than 128 characters. The `text` field and record ids are never there: ids go into `mcp_log_message`. Property test: for any arguments of any tool, entry text does not get into `args_json`. `client` is the client's own words (`clientInfo.name`): control characters removed, no longer than 64 characters, not presented as verified. The outcome (`outcome`): `ok`, `disabled`, `read_only`, `not_found`, `no_agent_entry`, `not_a_task`, `invalid_argument`, `error`.
+- **Transactions.** A data change and the log row are one writer transaction; a refusal rolls back everything except the row about the refusal (it is written in a separate transaction of the same writer job). Reads: the query on the read connection, then a writer transaction with the log row and the ids of the records included in the response, then the response; if the commit fails, the agent gets an error, not data.
+- **Cascades.** A `purge` of a record (`trash::purge`) deletes its `mcp_log_message` rows in the same transaction; the `mcp_log` row stays. Rotation during maintenance (`run_maintenance`): rows older than 90 days and beyond 20 000 (the newest stay), then `mcp_log_message` rows without a parent, all in one transaction.
+- **The `core` group of an agent's record** (bytes are JCS; no `ext`; `origin` is immutable, the value is additive, `sv` does not grow):
+  `{"created_at":1760000000000,"created_tz":"Europe/Moscow","origin":"agent","reply_to_id":null}`. The other four groups are as for a user's record (`groups::build_message`), all five under one HLC, `sv = 1`.
+- **The `flags` group with `task = true`** is created right away, in the same transaction and under the same HLC as the other groups: `{"favorite_at":null,"is_task":true,"pinned_at":null,"task_done_at":null}`. The `is_task` column is built from the same values. An agent may mark as done (`task_done_at`) any task entry of a visible chat, but cannot turn someone else's entry into a task.
+- **An exception to §A.0: an agent's append writes an `edit` revision**, unlike ⌘Enter (ADR-0006). The user may have edited the agent's entry: the version before the append is saved as a revision (`reason = 'edit'`, a full snapshot, as with `edit_message`), then the `body` group is rewritten (§3.3, §3.4). The target is the latest live entry of the chat in `(journal_date, created_at, id)` order; "own" is determined by `origin = 'agent'`, not by the client name: client B appends to client A's entry. The capture window does not append to an agent's entry (`origin ≠ 'user'`).
+- **Data access.** The visible set of chats: the chat is in `mcp_chats`, it does not have `ai_excluded`, it is not deleted; the archive is visible. The predicate (`json_each` over the `app_setting` value) is in **every** read statement of the agent and inside the write transaction; the "Chats" row of search is a separate statement with the same predicate. Everything outside the set, deleted, in the trash and non-existent gets the same `not_found` (including Inbox by default, if it is not marked).
 
-### C.5. Уточнение слайса 5 (31.10.2026, «В этот день» и ответы)
+### C.5. Slice 5 refinement (31.10.2026, "On this day" and replies)
 
-- **Миграция 6** (`ALTER TABLE`, строки синхронизируемых таблиц не меняются): `ALTER TABLE draft ADD COLUMN reply_to_id TEXT`. `draft` — локальная несинхронизируемая таблица (C.1, миграция 2); существующие черновики получают `NULL`. Строка черновика удаляется, только когда пусты и текст, и `reply_to_id`. Перед миграцией существующей базы снимается копия `pre-migration-v5-<UTC>.db` (C.2).
-- **Группа `core` ответа пользователя.** Первое ненулевое `reply_to_id` в записи пользователя. Байты (JCS, ключи по кодовым единицам UTF-16; `ext` нет):
+- **Migration 6** (`ALTER TABLE`; rows of synchronized tables do not change): `ALTER TABLE draft ADD COLUMN reply_to_id TEXT`. `draft` is a local non-synchronized table (C.1, migration 2); existing drafts get `NULL`. A draft row is deleted only when both the text and `reply_to_id` are empty. Before migrating an existing database, a backup `pre-migration-v5-<UTC>.db` is taken (C.2).
+- **The `core` group of a user's reply.** The first non-null `reply_to_id` in a user's record. Bytes (JCS, keys by UTF-16 code units; no `ext`):
   `{"created_at":1793000000000,"created_tz":"Europe/Moscow","origin":"user","reply_to_id":"5b1c0d9e-3f2a-4a7b-9c8d-1e2f3a4b5c6d"}`.
-  Остальные четыре группы — байт в байт как у записи пользователя (`groups::build_message`), все пять под одним HLC, `sv = 1`. `core` неизменяема: ссылку не правят и не снимают, правка, перенос, смена даты и дописывание её не трогают.
-- **Проверка перед записью (Rust, в транзакции писателя).** `reply_to_id` — UUID v4 в нижнем регистре; запись с таким id есть, лежит в **том же чате**, что и ответ, и не в корзине. Иначе ошибка `reply_target_not_found`, ничего не записано. Окно захвата и агент (MCP) ответов не создают и `reply_to_id` не принимают.
-- **Ссылка без внешнего ключа, три состояния старой записи.** При показе: `live` (запись на месте, в том числе в другом чате после переноса), `trash` (`deleted_at` не пуст: цитата подписана «Запись в корзине»), `missing` (записи нет: удалена навсегда или при pull ещё не пришла; «Исходная запись удалена»). Ссылка на запись чата `ai_excluded` в ответе хранится так же; тексты чужого чата попадают только в цитату интерфейса, агенту `reply_to_id` не отдаётся (ADR-0009). При синхронизации ссылка на ещё не пришедшую запись не ломает применение: это `missing`, пока запись не придёт.
-- **Слайс 11 (синхронизация), что учесть заранее.** `missing` при pull может значить не «удалена», а «ещё не пришла»: тогда подпись цитаты должна быть другой (сейчас «Исходная запись удалена» была бы неверной). При применении полученной записи надо помечать грязными дни локальных ответов на неё (`mirror_dirty`), иначе строка `↩` в Markdown-копии останется без ссылки; для этого понадобится индекс по `message.reply_to_id`, которого сейчас нет (выборка ответов на запись — полный просмотр, поэтому в слайсе 5 она не делается).
-- **Дата чужого конверта (слайс 11).** Карточка и MCP `on_this_day` берут год самой старой записи из `journal_date` через `year_of`; если применённый конверт принесёт запись с не-датой в `journal_date`, этот год пропускается, а при самом старом значении карточка и `on_this_day` станут пустыми. Поэтому формат `journal_date` (`is_valid_journal_date`) проверяется при применении конверта, до записи в `message`.
-- **Черновик и перенос адресата.** Строка над полем у черновика получает состояние `moved`, если запись жива, но лежит в другом чате (ответ принимается только на запись того же чата). В ленте и в результатах поиска такая запись остаётся `live`: состояние `moved` бывает только у `chat_draft`.
-- **Журнал обращений агента** показывает записи без `reply_to`: агент ссылки и цитаты не видел (ADR-0009).
-- **Импорт.** `reply_to_id` импортированной реплики (C.3) показывается так же, как у ответов пользователя.
+  The other four groups are byte for byte as for a user's record (`groups::build_message`), all five under one HLC, `sv = 1`. `core` is immutable: the link is neither edited nor removed; edit, move, date change and append do not touch it.
+- **Check before writing (Rust, in the writer transaction).** `reply_to_id` is a lowercase UUID v4; a record with this id exists, is in **the same chat** as the reply, and is not in the trash. Otherwise the error `reply_target_not_found`, nothing written. The capture window and the agent (MCP) do not create replies and do not accept `reply_to_id`.
+- **A link without a foreign key, three states of the old record.** On display: `live` (the record is in place, including in another chat after a move), `trash` (`deleted_at` is not empty: the quote is labeled "Entry in the trash"), `missing` (there is no record: deleted forever, or on pull it has not arrived yet; "The original entry was deleted"). A link to an entry of an `ai_excluded` chat is stored in the reply the same way; texts of the other chat get only into the UI quote, and `reply_to_id` is not given to the agent (ADR-0009). In sync, a link to a record that has not arrived yet does not break applying: it is `missing` until the record arrives.
+- **Slice 11 (sync), what to take into account in advance.** On pull, `missing` may mean not "deleted" but "has not arrived yet": then the quote label must be different (the current "The original entry was deleted" would be wrong). When applying a received record, the days of local replies to it must be marked dirty (`mirror_dirty`), otherwise the `↩` line in the Markdown copy stays without a link; this will need an index on `message.reply_to_id`, which does not exist now (selecting the replies to a record is a full scan, so slice 5 does not do it).
+- **The date of someone else's envelope (slice 11).** The card and MCP `on_this_day` take the year of the oldest entry from `journal_date` via `year_of`; if an applied envelope brings a record with a non-date in `journal_date`, that year is skipped, and if it is the oldest value, the card and `on_this_day` become empty. So the `journal_date` format (`is_valid_journal_date`) is checked when an envelope is applied, before writing to `message`.
+- **Draft and a moved reply target.** The line above the input field of a draft gets the `moved` state if the record is alive but is in another chat (a reply is accepted only to a record of the same chat). In the feed and in search results such a record stays `live`: the `moved` state exists only in `chat_draft`.
+- **The agent access log** shows entries without `reply_to`: the agent did not see the link or the quote (ADR-0009).
+- **Import.** The `reply_to_id` of an imported reply (C.3) is shown the same way as for user replies.
 
-## D. Примитивы libsodium и профили Argon2id
+## D. libsodium primitives and Argon2id profiles
 
-| Профиль | `opslimit` | `memlimit` | Пресет libsodium |
-|---|---|---|---|
-| 1 (нижняя граница, по умолчанию) | 3 | 268435456 (256 МиБ) | `MODERATE` — около 0,7 с на Core i7 2,8 ГГц по документации |
-| 2 | 4 | 1073741824 (1 ГиБ) | `SENSITIVE` |
+| Profile                  | `opslimit` | `memlimit`          | libsodium preset                                                             |
+|--------------------------|------------|---------------------|------------------------------------------------------------------------------|
+| 1 (lower bound, default) | 3          | 268435456 (256 MiB) | `MODERATE` — about 0.7 s on a 2.8 GHz Core i7 according to the documentation |
+| 2                        | 4          | 1073741824 (1 GiB)  | `SENSITIVE`                                                                  |
 
-Профиль аккаунта только растёт (§8.2).
+An account's profile only grows (§8.2).
 
-| Назначение | Функция | Константы (заголовки ветки `stable`) |
-|---|---|---|
-| Конверт, обёртки | `crypto_aead_xchacha20poly1305_ietf_*` | ключ 32, nonce 24, тег 16 |
-| Blob | `crypto_secretstream_xchacha20poly1305_*` | ключ 32, заголовок 24, `ABYTES` 17, `TAG_FINAL = PUSH \| REKEY` |
-| Пароль | `crypto_pwhash`, `ALG_ARGON2ID13` | соль 16; `MODERATE` 3 / 268435456; `SENSITIVE` 4 / 1073741824; одна полоса |
-| Подключи | `crypto_kdf_derive_from_key` (BLAKE2b) | мастер-ключ 32, контекст 8, подключ 16–64 (берём 32) |
-| Хэши, PRF | `crypto_generichash` (BLAKE2b) | выход 16–64 (32 по умолчанию), ключ 16–64 |
-| Выравнивание | `sodium_pad` / `sodium_unpad` (ISO/IEC 7816-4) | блок 1024 |
-| Прочее | `randombytes_buf`, `sodium_memcmp`, `sodium_memzero` | — |
+| Purpose         | Function                                             | Constants (headers of the `stable` branch)                              |
+|-----------------|------------------------------------------------------|-------------------------------------------------------------------------|
+| Envelope, wraps | `crypto_aead_xchacha20poly1305_ietf_*`               | key 32, nonce 24, tag 16                                                |
+| Blob            | `crypto_secretstream_xchacha20poly1305_*`            | key 32, header 24, `ABYTES` 17, `TAG_FINAL = PUSH \| REKEY`             |
+| Password        | `crypto_pwhash`, `ALG_ARGON2ID13`                    | salt 16; `MODERATE` 3 / 268435456; `SENSITIVE` 4 / 1073741824; one lane |
+| Subkeys         | `crypto_kdf_derive_from_key` (BLAKE2b)               | master key 32, context 8, subkey 16–64 (we use 32)                      |
+| Hashes, PRF     | `crypto_generichash` (BLAKE2b)                       | output 16–64 (32 by default), key 16–64                                 |
+| Padding         | `sodium_pad` / `sodium_unpad` (ISO/IEC 7816-4)       | block 1024                                                              |
+| Other           | `randombytes_buf`, `sodium_memcmp`, `sodium_memzero` | —                                                                       |
 
-## E. Источники
+## E. Sources
 
-- Документация libsodium: https://doc.libsodium.org/ — разделы `secret-key_cryptography/aead/chacha20-poly1305/xchacha20-poly1305_construction`, `secret-key_cryptography/secretstream`, `password_hashing/default_phf`, `key_derivation`, `padding`.
-- Заголовки и исходники libsodium (`stable`): `include/sodium/crypto_{aead_xchacha20poly1305,secretstream_xchacha20poly1305,pwhash_argon2id,kdf_blake2b,generichash_blake2b}.h`, `crypto_pwhash/argon2/pwhash_argon2id.c` (одна полоса), `configure.ac` (1.0.22): https://github.com/jedisct1/libsodium/tree/stable
-- Крейты:
-  - https://docs.rs/libsodium-rs/latest/libsodium_rs/ — 0.3.0 от 2026-10-14, крейт создан 2025-04-04 (crates.io);
+- libsodium documentation: https://doc.libsodium.org/ — the sections `secret-key_cryptography/aead/chacha20-poly1305/xchacha20-poly1305_construction`, `secret-key_cryptography/secretstream`, `password_hashing/default_phf`, `key_derivation`, `padding`.
+- libsodium headers and sources (`stable`): `include/sodium/crypto_{aead_xchacha20poly1305,secretstream_xchacha20poly1305,pwhash_argon2id,kdf_blake2b,generichash_blake2b}.h`, `crypto_pwhash/argon2/pwhash_argon2id.c` (one lane), `configure.ac` (1.0.22): https://github.com/jedisct1/libsodium/tree/stable
+- Crates:
+  - https://docs.rs/libsodium-rs/latest/libsodium_rs/ — 0.3.0 of 2026-10-14, the crate was created on 2025-04-04 (crates.io);
   - https://github.com/jedisct1/libsodium-sys-stable — 1.24.3;
   - https://docs.rs/bip39/latest/bip39/struct.Mnemonic.html — 3.0.0, `parse_in_normalized`, `to_entropy`;
   - https://docs.rs/chacha20poly1305/ — 0.11;
-  - `sodiumoxide` в архиве с 2022 года: https://github.com/sodiumoxide/sodiumoxide;
-  - версии `argon2` 0.6.0, `blake2` 0.11.0, `aead-stream` 0.6.0, `uuid` 1.28.0 — API crates.io, 2026-10-20; `Uuid::now_v7()` в `uuid` 1.28.0 — feature `v7`, `src/v7.rs` (проверено при ревью rev 4).
+  - `sodiumoxide` has been archived since 2022: https://github.com/sodiumoxide/sodiumoxide;
+  - versions `argon2` 0.6.0, `blake2` 0.11.0, `aead-stream` 0.6.0, `uuid` 1.28.0 — crates.io API, 2026-10-20; `Uuid::now_v7()` in `uuid` 1.28.0 — feature `v7`, `src/v7.rs` (verified during the rev 4 review).
 - RFC 9106, §4: https://www.rfc-editor.org/rfc/rfc9106.html
-- RFC 8785 (JCS, Informational): сортировка ключей по кодовым единицам UTF-16, без пробелов, числа по ECMAScript: https://www.rfc-editor.org/rfc/rfc8785.html
-- `serde_json::value::RawValue` (feature `raw_value`, хранит байты значения без переформатирования; serde_json 1.0.154): https://docs.rs/serde_json/latest/serde_json/value/struct.RawValue.html
-- Готовый Rust-крейт для JCS не выбирался и не проверялся: при наших ограничениях на типы канонизация — сортировка ключей и экранирование, тест-векторы в S4b.
-- BIP-39: https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki и `bip-0039/bip-0039-wordlists.md`
-- Kulkarni et al., «Logical Physical Clocks and Consistent Snapshots in Globally Distributed Databases», 2014, рис. 5: https://cse.buffalo.edu/tech-reports/2014-04.pdf
+- RFC 8785 (JCS, Informational): keys sorted by UTF-16 code units, no whitespace, numbers per ECMAScript: https://www.rfc-editor.org/rfc/rfc8785.html
+- `serde_json::value::RawValue` (feature `raw_value`, keeps the value's bytes without reformatting; serde_json 1.0.154): https://docs.rs/serde_json/latest/serde_json/value/struct.RawValue.html
+- A ready-made Rust crate for JCS was neither chosen nor checked: with our type restrictions, canonicalization is key sorting and escaping, with test vectors in S4b.
+- BIP-39: https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki and `bip-0039/bip-0039-wordlists.md`
+- Kulkarni et al., "Logical Physical Clocks and Consistent Snapshots in Globally Distributed Databases", 2014, fig. 5: https://cse.buffalo.edu/tech-reports/2014-04.pdf
