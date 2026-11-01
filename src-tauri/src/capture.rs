@@ -235,20 +235,27 @@ pub fn request_hide<R: Runtime>(app: &AppHandle<R>) {
     }
     trace("request-hide");
     let _ = window.eval("window.dispatchEvent(new Event('kinige-capture-hide-request'))");
-    let app = app.clone();
+    let delayed = app.clone();
     let shown = app
         .try_state::<CaptureShell>()
         .map(|shell| shell.shown.load(Ordering::SeqCst));
-    std::thread::spawn(move || {
-        std::thread::sleep(HIDE_GRACE);
-        let same_showing = app
-            .try_state::<CaptureShell>()
-            .map(|shell| shell.shown.load(Ordering::SeqCst))
-            == shown;
-        if same_showing {
-            hide_capture(&app);
-        }
-    });
+    let spawned = std::thread::Builder::new()
+        .name("kinige-capture-hide".into())
+        .spawn(move || {
+            std::thread::sleep(HIDE_GRACE);
+            let same_showing = delayed
+                .try_state::<CaptureShell>()
+                .map(|shell| shell.shown.load(Ordering::SeqCst))
+                == shown;
+            if same_showing {
+                hide_capture(&delayed);
+            }
+        });
+    if spawned.is_err() {
+        // Ждать «льготное время» негде: прячем сразу (страница уже получила запрос на сохранение черновика).
+        log::warn!("поток отложенного скрытия окна захвата не запущен");
+        hide_capture(app);
+    }
 }
 
 /// Окно захвата стало ключевым (только метка в журнале `KINIGE_TRACE`).

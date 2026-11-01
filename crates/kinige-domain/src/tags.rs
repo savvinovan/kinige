@@ -12,6 +12,10 @@ use crate::mirror::{is_closing_fence, opening_fence};
 /// Наибольшая длина тега в знаках; длиннее — не тег.
 pub const MAX_TAG_CHARS: usize = 64;
 
+/// Глубже скобки не считаются: иначе строка из `[a]([a](…` читалась бы за квадратичное время (каждая `(` ищет закрытие до
+/// конца строки). Настоящие ссылки так глубоко не вложены.
+const MAX_NESTING: usize = 64;
+
 fn is_tag_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
@@ -149,10 +153,6 @@ fn skip_angle(chars: &[char], start: usize, last_gt: Option<usize>) -> usize {
         .position(|c| *c == '>')
         .map_or(start + 1, |offset| start + offset + 1)
 }
-
-/// Глубже скобки не считаются: иначе строка из `[a]([a](…` читалась бы за квадратичное время (каждая `(` ищет закрытие до
-/// конца строки). Настоящие ссылки так глубоко не вложены.
-const MAX_NESTING: usize = 64;
 
 /// Индекс скобки, закрывающей `open` в `start`, с учётом вложенности; в пределах строки и не глубже [`MAX_NESTING`].
 fn matching(chars: &[char], start: usize, open: char, close: char) -> Option<usize> {

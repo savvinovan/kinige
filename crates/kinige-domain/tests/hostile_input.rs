@@ -13,13 +13,16 @@ use kinige_domain::emoji::is_emoji_sequence;
 use kinige_domain::hlc::{is_uuid, is_uuid_v4, parse};
 use kinige_domain::journal::{date_parts, is_journal_date, is_valid_journal_date};
 use kinige_domain::link::validate_external_url;
-use kinige_domain::mirror::{day_file_segments, render_day_file};
+use kinige_domain::mirror::{
+    MirrorEntry, MirrorReply, day_file_segments, relative_day_link, render_day_file,
+};
 use kinige_domain::on_this_day::{past_dates, year_of};
 use kinige_domain::search::{fts_query, highlight_terms, index_text, snippet, title_matches};
 use kinige_domain::shortcuts::canonical_accelerator;
 use kinige_domain::tags::parse_tags;
 use kinige_domain::tasks::{set_task_item, task_item_state, task_items};
-use kinige_domain::telegram::parse_export;
+use kinige_domain::telegram::{parse_export, render_body};
+use serde_json::{Value, json};
 
 const DEVICE: &str = "123e4567-e89b-42d3-a456-426614174000";
 /// Знаки в 2, 3 и 4 байта UTF-8, композитный и нулевой знаки.
@@ -121,7 +124,33 @@ fn text_renderers_never_panic_on_hostile_markdown() {
         for max in [0, 1, 2, 3, 4, 10, 80, usize::MAX] {
             let _ = snippet(text, &["задача".to_string(), text.clone()], max);
         }
-        let _ = render_day_file("2026-03-14", &[]);
+        let entry = |body: &str, reply: Option<MirrorReply>| MirrorEntry {
+            time: text.clone(),
+            body_md: body.to_string(),
+            reply,
+        };
+        let entries = [
+            entry(text, None),
+            entry(&format!("{text}\n{text}\n---\n{text}\n==="), None),
+            entry(
+                &format!("- [ ] {text}\n- [x] {text}\n> {text}\n# {text}"),
+                None,
+            ),
+            entry(
+                &format!("```{text}\n{text}\n```\n{text}"),
+                Some(MirrorReply::Gone),
+            ),
+            entry(
+                text,
+                Some(MirrorReply::Original {
+                    date: text.clone(),
+                    time: text.clone(),
+                    link: Some(text.clone()),
+                }),
+            ),
+        ];
+        let _ = render_day_file(text, &entries);
+        let _ = relative_day_link(text, &[text.clone(), text.clone(), text.clone()]);
     }
     for big in [
         "я".repeat(100_000),
@@ -154,5 +183,57 @@ fn the_telegram_reader_answers_garbage_with_an_error() {
     ] {
         let _ = parse_export(text);
     }
-    let _ = Language::En;
+}
+
+#[test]
+fn a_valid_telegram_export_with_hostile_texts_is_read_and_rendered_without_a_panic() {
+    let hostile: Vec<String> = mutations().into_iter().filter(|t| t.len() < 300).collect();
+    let mut rendered = 0usize;
+    for chunk in hostile.chunks(40) {
+        let messages: Vec<Value> = chunk
+            .iter()
+            .enumerate()
+            .map(|(id, text)| {
+                json!({
+                    "id": id + 1,
+                    "type": "message",
+                    "date": "2024-03-05T09:41:07",
+                    "date_unixtime": "1709632867",
+                    "from": text,
+                    "from_id": format!("user{id}"),
+                    "forwarded_from": text,
+                    "reply_to_message_id": text,
+                    "text": text,
+                    "text_entities": [
+                        {"type": "plain", "text": text},
+                        {"type": "bold", "text": text},
+                        {"type": "code", "text": text},
+                        {"type": "pre", "text": text, "language": text},
+                        {"type": "text_link", "text": text, "href": text},
+                        {"type": "link", "text": text},
+                        {"type": "mention", "text": text},
+                        {"type": "hashtag", "text": text},
+                        {"type": "blockquote", "text": text},
+                        {"type": "custom_emoji", "text": text},
+                        {"type": text, "text": text},
+                    ],
+                })
+            })
+            .collect();
+        let export =
+            json!({"name": chunk.first(), "type": "saved_messages", "id": 1, "messages": messages});
+        let parsed = parse_export(&export.to_string()).expect("корректная выгрузка читается");
+        for chat in &parsed.chats {
+            for message in &chat.messages {
+                for language in [Language::En, Language::Ru] {
+                    if let Some(body) = render_body(message, message.from.as_deref(), language) {
+                        let _ = parse_tags(&body);
+                        let _ = snippet(&body, &[], 80);
+                        rendered += 1;
+                    }
+                }
+            }
+        }
+    }
+    assert!(rendered > 1_000, "{rendered}");
 }

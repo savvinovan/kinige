@@ -97,6 +97,24 @@ fn edit_revision_is_a_verbatim_snapshot_of_every_group_before_the_edit() {
 }
 
 #[test]
+fn edit_snapshot_bytes_are_fixed_literally() {
+    // Эталонные байты: ключи по алфавиту (JCS), группы по имени, `raw` — строка с дословными байтами группы (вместе с
+    // пробелами и порядком ключей), без пробелов вне строк. Если эти байты меняются, меняется то, что подписывает клиент.
+    let h = "0000000000001-00001-123e4567-e89b-42d3-a456-426614174000";
+    // Обратная косая — через подстановку: экранирование внутри группы должно дойти до снимка нетронутым.
+    let bs = '\\';
+    let raw = format!(r#"{{"body":{{"text":"a{bs}u0020б"}},"future":{{ "z": 1, "a": [ ] }}}}"#);
+    let hl = format!(r#"{{"body":{{"h":"{h}","sv":1}},"future":{{"h":"{h}","sv":3}}}}"#);
+    let expected = concat!(
+        r#"{"groups":["#,
+        r#"{"g":"body","h":"0000000000001-00001-123e4567-e89b-42d3-a456-426614174000","raw":"{\"text\":\"a\\u0020б\"}","sv":1},"#,
+        r#"{"g":"future","h":"0000000000001-00001-123e4567-e89b-42d3-a456-426614174000","raw":"{ \"z\": 1, \"a\": [ ] }","sv":3}"#,
+        r#"]}"#
+    );
+    assert_eq!(edit_snapshot(&raw, &hl).unwrap(), expected);
+}
+
+#[test]
 fn purged_of_covers_every_group_including_unknown_ones() {
     let row = message();
     let mut hl = hlcs(&row.hlc_json);

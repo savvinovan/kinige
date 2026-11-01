@@ -255,3 +255,32 @@ fn with_no_journal_open_every_command_answers_without_a_panic() {
         }
     }
 }
+
+#[test]
+fn a_panic_in_the_command_handler_rejects_the_promise_with_internal() {
+    use tauri::test::{mock_builder, mock_context, noop_assets};
+    use tauri::{WebviewWindowBuilder, ipc::Invoke};
+
+    // Обработчик, который паникует на одной команде, обёрнут так же, как настоящий в `builder`.
+    let handler = kinige_lib::startup::guarded(|invoke: Invoke<tauri::test::MockRuntime>| {
+        assert!(
+            invoke.message.command() != "boom",
+            "проверка: паника в обработчике"
+        );
+        false
+    });
+    let app = mock_builder()
+        .invoke_handler(handler)
+        .build(mock_context(noop_assets()))
+        .unwrap();
+    let window = WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+
+    let error =
+        call(&window, "boom", json!({})).expect_err("паника — ошибка, а не зависший промис");
+    assert_eq!(error["code"], "internal", "{error}");
+    // Обработчик жив: следующий вызов не паникует (команды нет — ошибка tauri, не `internal` от паники).
+    let next = call(&window, "other", json!({})).expect_err("нет такой команды");
+    assert_ne!(next["code"], "internal", "{next}");
+}

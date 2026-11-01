@@ -40,19 +40,20 @@ pub struct Labels {
 /// Подписи на языке интерфейса из файлов переводов (`tray.*`). Нет ключа — подпись по умолчанию (английская), а не падение:
 /// файлы вшиты в бинарник, и полноту ключей проверяет тест.
 pub fn labels(language: Language) -> Labels {
-    let source = translations(language);
+    let json = parse_translations(translations(language));
     Labels {
-        new_note: translation(source, ["tray", "newNote"], "New note"),
-        inbox: translation(source, ["tray", "inbox"], "Inbox"),
-        settings: translation(source, ["tray", "settings"], "Settings…"),
-        quit: translation(source, ["tray", "quit"], "Quit"),
-        tooltip: translation(source, ["tray", "tooltip"], "Kinige"),
+        new_note: translation(&json, ["tray", "newNote"], "New note"),
+        inbox: translation(&json, ["tray", "inbox"], "Inbox"),
+        settings: translation(&json, ["tray", "settings"], "Settings…"),
+        quit: translation(&json, ["tray", "quit"], "Quit"),
+        tooltip: translation(&json, ["tray", "tooltip"], "Kinige"),
     }
 }
 
 /// Заголовок окна «Настройки» на языке интерфейса (`settings.title` в файлах переводов).
 pub fn window_title(language: Language) -> String {
-    translation(translations(language), ["settings", "title"], "Settings")
+    let json = parse_translations(translations(language));
+    translation(&json, ["settings", "title"], "Settings")
 }
 
 fn translations(language: Language) -> &'static str {
@@ -62,9 +63,13 @@ fn translations(language: Language) -> &'static str {
     }
 }
 
-/// Строка перевода по пути `[раздел, ключ]`; нет файла, раздела или строки — `fallback`.
-fn translation(source: &str, path: [&str; 2], fallback: &str) -> String {
-    let json: Value = serde_json::from_str(source).unwrap_or(Value::Null);
+/// Файл переводов как JSON; не разбирается — `Null` (все строки тогда берутся из запасных подписей).
+fn parse_translations(source: &str) -> Value {
+    serde_json::from_str(source).unwrap_or(Value::Null)
+}
+
+/// Строка перевода по пути `[раздел, ключ]`; нет раздела или строки — `fallback`.
+fn translation(json: &Value, path: [&str; 2], fallback: &str) -> String {
     json.get(path[0])
         .and_then(|section| section.get(path[1]))
         .and_then(Value::as_str)
@@ -313,10 +318,15 @@ mod tests {
             r#"{"tray":{"quit":5}}"#,
             r#"{"tray":"quit"}"#,
         ] {
-            assert_eq!(translation(source, path, "Quit"), "Quit", "{source:?}");
+            let json = parse_translations(source);
+            assert_eq!(translation(&json, path, "Quit"), "Quit", "{source:?}");
         }
         assert_eq!(
-            translation(r#"{"tray":{"quit":"Выйти"}}"#, path, "Quit"),
+            translation(
+                &parse_translations(r#"{"tray":{"quit":"Выйти"}}"#),
+                path,
+                "Quit"
+            ),
             "Выйти"
         );
     }

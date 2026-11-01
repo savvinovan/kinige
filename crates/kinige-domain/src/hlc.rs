@@ -79,7 +79,8 @@ pub fn parse(hlc: &str) -> Result<(Clock, &str), HlcError> {
         return Err(HlcError::Format);
     }
     let digits = |range: std::ops::Range<usize>| -> Result<u64, HlcError> {
-        // Не на границе символа (в метке есть многобайтовый знак) — не метка, а не паника.
+        // Длина 56 байт и ASCII-дефисы на 13 и 19 уже проверены, поэтому границы 0, 13, 14, 19 и 20 лежат на границах
+        // символов и `get` не отказывает; он здесь вместо среза `[..]`, чтобы нарушение этого было ошибкой, а не паникой.
         let part = hlc.get(range).ok_or(HlcError::Format)?;
         if !part.bytes().all(|b| b.is_ascii_digit()) {
             return Err(HlcError::Format);
@@ -248,7 +249,7 @@ mod tests {
         assert!(parse(&ok).is_ok());
         for bad in [
             "",
-            ok.get(..55).unwrap_or_default(),
+            ok.get(..55).unwrap(),
             &format!("{ok}0"),
             &ok.replace("0000000000001-", "00000000000001-"),
             &ok.replacen('-', "_", 1),

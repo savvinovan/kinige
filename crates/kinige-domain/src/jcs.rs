@@ -10,9 +10,11 @@ use std::fmt;
 /// Наибольшее безопасное целое: ±2⁵³ (ADR-0001 §3.3).
 pub const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_992;
 
-/// Глубина вложенности, глубже которой значение не пишется. `serde_json` сам не разбирает глубже 128, так что предел
-/// страхует только значения, собранные в коде: рекурсия записи не должна переполнять стек от чужих данных.
-pub const MAX_DEPTH: usize = 256;
+/// Предел вложенности равен пределу разбора serde_json (`remaining_depth` = 128 в `de.rs`): что записали — то прочитаем.
+/// Счёт у serde_json такой: контейнер, при входе в который остаток дошёл до 0, — ошибка, поэтому читается не больше
+/// `MAX_DEPTH - 1` = 127 вложенных массивов и объектов, а 128-й — `TooDeep`. Значение глубже не пишется, и рекурсия записи
+/// не переполняет стек от чужих данных (ADR-0001 §A: глубина значения группы ≤ 127 контейнеров, глубже — `malformed`).
+pub const MAX_DEPTH: usize = 128;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JcsError {
@@ -47,8 +49,9 @@ pub fn canonical_bytes(value: &Value) -> Result<Vec<u8>, JcsError> {
     canonical_string(value).map(String::into_bytes)
 }
 
+/// `depth` — сколько контейнеров уже открыто вокруг `value`.
 fn write_value(value: &Value, out: &mut String, depth: usize) -> Result<(), JcsError> {
-    if depth > MAX_DEPTH {
+    if matches!(value, Value::Array(_) | Value::Object(_)) && depth + 1 >= MAX_DEPTH {
         return Err(JcsError::TooDeep);
     }
     match value {
@@ -202,16 +205,39 @@ mod tests {
 
     #[test]
     fn nesting_beyond_the_limit_is_an_error_not_a_stack_overflow() {
-        let mut value = json!(1);
-        for _ in 0..MAX_DEPTH + 50 {
-            value = Value::Array(vec![value]);
+        let nested = |levels: usize| {
+            let mut value = json!(1);
+            for _ in 0..levels {
+                value = Value::Array(vec![value]);
+            }
+            value
+        };
+        assert!(canonical_string(&nested(MAX_DEPTH - 1)).is_ok());
+        assert_eq!(canonical_string(&nested(MAX_DEPTH)), Err(JcsError::TooDeep));
+        assert_eq!(
+            canonical_string(&nested(MAX_DEPTH + 50)),
+            Err(JcsError::TooDeep)
+        );
+    }
+
+    #[test]
+    fn what_is_written_is_read_back_by_serde_json_at_every_depth() {
+        // Предел совпадает с пределом разбора serde_json: записанное читается, а не записанное и не читалось бы.
+        for levels in (MAX_DEPTH - 5)..=(MAX_DEPTH + 5) {
+            let arrays = format!("{}1{}", "[".repeat(levels), "]".repeat(levels));
+            let objects = format!("{}1{}", "{\"a\":".repeat(levels), "}".repeat(levels));
+            for text in [arrays, objects] {
+                let parsed: Result<Value, _> = serde_json::from_str(&text);
+                let written = parsed.as_ref().ok().map(canonical_string);
+                match written {
+                    Some(result) => assert_eq!(result.as_deref(), Ok(text.as_str()), "{levels}"),
+                    None => assert!(
+                        levels >= MAX_DEPTH,
+                        "{levels}: serde_json отказал раньше предела"
+                    ),
+                }
+            }
         }
-        assert_eq!(canonical_string(&value), Err(JcsError::TooDeep));
-        let mut ok = json!(1);
-        for _ in 0..MAX_DEPTH {
-            ok = Value::Array(vec![ok]);
-        }
-        assert!(canonical_string(&ok).is_ok());
     }
 
     #[test]

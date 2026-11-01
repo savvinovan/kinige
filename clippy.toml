@@ -5,3 +5,9 @@ allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
 allow-indexing-slicing-in-tests = true
+
+# `std::thread::spawn` паникует, если ОС не дала поток: потоки запускаются через `thread::Builder::spawn` с обработкой отказа.
+# В тестах — `#[allow(clippy::disallowed_methods)]` на тесте или в корне файла (настройки «в тестах» у clippy для него нет).
+disallowed-methods = [
+    { path = "std::thread::spawn", reason = "паникует при отказе ОС: используйте `thread::Builder::spawn` и обработайте ошибку" },
+]

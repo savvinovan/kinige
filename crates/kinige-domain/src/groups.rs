@@ -5,7 +5,7 @@
 use crate::hlc::is_uuid_v4;
 use crate::jcs::{self, JcsError};
 use crate::journal::is_valid_journal_date;
-use serde_json::{Value, json, value::RawValue};
+use serde_json::{Map, Value, json, value::RawValue};
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -213,23 +213,21 @@ pub(crate) fn build_message(
     if !is_valid_journal_date(input.journal_date) {
         return Err(GroupError::Invalid("journal_date"));
     }
-    let mut core = json!({
-        "created_at": input.created_at,
-        "created_tz": input.created_tz,
-        "origin": provenance.origin,
-        "reply_to_id": provenance.reply_to_id,
-    });
-    let ext_json = match &provenance.ext {
-        Some(ext) => {
-            if let Some(object) = core.as_object_mut() {
-                object.insert("ext".to_string(), ext.clone());
-            }
-            Some(jcs::canonical_string(ext)?)
-        }
-        None => None,
-    };
+    let mut core = Map::new();
+    core.insert("created_at".to_string(), json!(input.created_at));
+    core.insert("created_tz".to_string(), json!(input.created_tz));
+    core.insert("origin".to_string(), json!(provenance.origin));
+    core.insert("reply_to_id".to_string(), json!(provenance.reply_to_id));
+    if let Some(ext) = &provenance.ext {
+        core.insert("ext".to_string(), ext.clone());
+    }
+    let ext_json = provenance
+        .ext
+        .as_ref()
+        .map(jcs::canonical_string)
+        .transpose()?;
     let groups: [(&str, Value); 5] = [
-        ("core", core),
+        ("core", Value::Object(core)),
         ("body", body_group(input.body_md)),
         (
             "flags",

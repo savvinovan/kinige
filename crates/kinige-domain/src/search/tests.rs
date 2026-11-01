@@ -122,7 +122,10 @@ fn query_cannot_carry_fts5_syntax() {
                 term.starts_with('"') && term.ends_with('"') && term.len() >= 3,
                 "{input} -> {query}"
             );
-            let inner = term.trim_matches('"');
+            let inner = term
+                .strip_prefix('"')
+                .and_then(|t| t.strip_suffix('"'))
+                .unwrap();
             assert!(
                 inner.chars().all(char::is_alphanumeric),
                 "{input} -> {query}"

@@ -15,6 +15,7 @@ mod panel;
 pub mod panic_hook;
 pub mod recovery;
 pub mod settings_window;
+pub mod startup;
 pub mod tray;
 
 use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
@@ -22,35 +23,13 @@ use hotkeys::{Hotkeys, PluginRegistrar};
 use kinige_domain::ShortcutKind;
 use kinige_store::{Store, StoreError, StoreOptions};
 use recovery::Recovery;
-use std::ffi::OsString;
-use std::panic::{self, AssertUnwindSafe};
+use startup::{exit_after_failure, fail_fast, guarded, is_background_launch, launch_args};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, Runtime, WindowEvent};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
-
-/// Аргумент запуска мостом MCP: окно не показывается, приложение живёт в menu bar.
-pub const BACKGROUND_FLAG: &str = "--background";
-
-/// Запущено мостом MCP (`--background`)? Тогда нет ни окна, ни значка в Dock: приложение живёт в menu bar (политика
-/// активации Accessory); первое же показанное окно возвращает обычную политику (`capture::show_main`).
-pub fn is_background_launch<I: IntoIterator<Item = String>>(args: I) -> bool {
-    args.into_iter().any(|arg| arg == BACKGROUND_FLAG)
-}
-
-/// Аргументы процесса строками. `std::env::args()` паникует на аргументе не в UTF-8 (его может подсунуть любая программа,
-/// запустившая приложение): такой аргумент приходит с заменой нечитаемых байтов, флаги от этого не меняются.
-pub fn launch_args() -> Vec<String> {
-    lossy_args(std::env::args_os())
-}
-
-fn lossy_args<I: IntoIterator<Item = OsString>>(args: I) -> Vec<String> {
-    args.into_iter()
-        .map(|arg| arg.to_string_lossy().into_owned())
-        .collect()
-}
 
 pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS};
 
@@ -62,7 +41,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(guarded::<tauri::ipc::Invoke<R>>(tauri::generate_handler![
+        .invoke_handler(guarded::<R>(tauri::generate_handler![
             commands::app_info,
             commands::get_language,
             commands::list_chats,
@@ -120,21 +99,6 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             capture::capture_resize,
             capture::capture_add_recent_emoji,
         ]))
-}
-
-/// Страховка вокруг разбора вызова: паника в синхронной части обработчика (разбор аргументов, синхронная команда на главном
-/// потоке, где размотка стека через обратный вызов ОС оборвала бы процесс) логируется и не выходит наружу. Асинхронная
-/// часть команд идёт в задаче tokio: её паника убивает только эту задачу (ответ на вызов не приходит, процесс жив), а
-/// чтение, запись и агентские вызовы хранилища ловят панику сами и отвечают ошибкой (`kinige-store`).
-fn guarded<I>(
-    handler: impl Fn(I) -> bool + Send + Sync + 'static,
-) -> impl Fn(I) -> bool + Send + Sync + 'static {
-    move |invoke| {
-        panic::catch_unwind(AssertUnwindSafe(|| handler(invoke))).unwrap_or_else(|_| {
-            log::error!("паника в обработчике команды, вызов отменён");
-            true
-        })
-    }
 }
 
 /// Где лежат данные. `KINIGE_DATA_DIR` и `KINIGE_MIRROR_DIR` — для проверки на чистой машине и для автотестов; обычный
@@ -277,37 +241,6 @@ fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
     }
 }
 
-/// Код выхода, если приложение не смогло запуститься (ошибка запуска или сборки). Паники при этом нет.
-const EXIT_STARTUP_FAILED: i32 = 1;
-
-/// Ошибка запуска не паника: причина (только категория) уходит в журнал, процесс завершается кодом. Tauri на ошибке
-/// `setup` паникует сам, поэтому ошибка перехватывается здесь, до него.
-fn fail_fast(
-    result: Result<(), Box<dyn std::error::Error>>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if let Err(error) = result {
-        log::error!(
-            "запуск не удался: {}",
-            startup_error_category(error.as_ref())
-        );
-        exit_after_failure();
-    }
-    Ok(())
-}
-
-fn exit_after_failure() -> ! {
-    log::logger().flush();
-    std::process::exit(EXIT_STARTUP_FAILED)
-}
-
-/// Категория ошибки запуска для журнала: тексты ошибок ОС и SQLite содержат пути и куски данных.
-fn startup_error_category(error: &(dyn std::error::Error + 'static)) -> &'static str {
-    match error.downcast_ref::<StoreError>() {
-        Some(store) => store.category(),
-        None => "startup",
-    }
-}
-
 pub fn run() {
     panic_hook::install();
     let configured = builder(
@@ -433,59 +366,4 @@ pub fn run() {
         #[cfg(not(target_os = "macos"))]
         let _ = (app, event);
     });
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{guarded, is_background_launch, lossy_args, startup_error_category};
-    use kinige_store::StoreError;
-
-    fn args(list: &[&str]) -> Vec<String> {
-        list.iter().map(|arg| arg.to_string()).collect()
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn an_argument_that_is_not_utf8_does_not_panic_and_flags_still_work() {
-        use std::ffi::OsString;
-        use std::os::unix::ffi::OsStringExt;
-        // `std::env::args()` паниковал бы на втором аргументе.
-        let args = lossy_args([
-            OsString::from("kinige"),
-            OsString::from_vec(vec![b'-', 0xff, 0xfe, b'x']),
-            OsString::from("--background"),
-        ]);
-        assert!(is_background_launch(args));
-    }
-
-    #[test]
-    fn a_panic_in_the_command_handler_is_caught_and_the_call_counts_as_handled() {
-        let handler = guarded(|arg: u32| {
-            assert!(arg != 0, "проверка: паника в обработчике");
-            false
-        });
-        assert!(!handler(1), "обычный вызов — как у обработчика");
-        assert!(handler(0), "паника поймана, вызов считается обработанным");
-        assert!(!handler(2), "после паники обработчик работает");
-    }
-
-    #[test]
-    fn a_startup_error_is_logged_by_category_never_by_its_text() {
-        let store: Box<dyn std::error::Error> =
-            Box::new(StoreError::Corrupt("/Users/someone/kinige.db".into()));
-        assert_eq!(startup_error_category(store.as_ref()), "corrupt");
-        let other: Box<dyn std::error::Error> = "/Users/someone/data: нет доступа".into();
-        assert_eq!(startup_error_category(other.as_ref()), "startup");
-    }
-
-    #[test]
-    fn only_the_exact_flag_marks_a_background_launch() {
-        assert!(is_background_launch(args(&["kinige", "--background"])));
-        assert!(!is_background_launch(args(&["kinige"])));
-        assert!(!is_background_launch(args(&[
-            "kinige",
-            "--background=1",
-            "background"
-        ])));
-    }
 }
