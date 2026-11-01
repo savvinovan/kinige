@@ -1,0 +1,23 @@
+/* Окно «О программе»: название с версией и строка о приложении. Только токены. */
+.about {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5);
+}
+
+.about__name {
+  margin: 0;
+  font-family: var(--type-h3-family);
+  font-size: var(--type-h3-size);
+  font-weight: var(--type-h3-weight);
+  line-height: var(--type-h3-line-height);
+}
+
+.about__text {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  overflow-wrap: anywhere;
+}

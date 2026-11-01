@@ -19,13 +19,15 @@ interface ProfileMenuProps {
   onOpenSettings?: () => void;
   /** «Импорт из Telegram…» (слайс 4). Без обработчика пункт нарисован и объявлен недоступным. */
   onOpenImport?: () => void;
+  /** «О программе» (KINIG-54): версия сборки. Без обработчика пункт нарисован и объявлен недоступным. */
+  onOpenAbout?: () => void;
   /** Свёрнутый сайдбар: только аватар, меню открывается вправо от него, а не вверх на всю ширину. */
   compact?: boolean;
 }
 
 /**
  * Строка профиля внизу сайдбара, как в Notion: аватар с инициалами, имя, шеврон и меню «Настройки», «Импорт из
- * Telegram…», «Экспорт», «О программе». Работают «Настройки» и «Импорт» (если переданы обработчики); остальные пункты объявлены недоступными
+ * Telegram…», «Экспорт», «О программе». Работают «Настройки», «Импорт» и «О программе» (если переданы обработчики); «Экспорт» объявлен недоступным
  * (`aria-disabled`, «Появится позже»), но меню настоящее: открывается щелчком, Enter, пробелом или стрелкой; стрелки,
  * Home и End ходят по пунктам, Esc закрывает и возвращает фокус на кнопку, щелчок вне меню и Tab закрывают.
  * В свёрнутом сайдбаре (`compact`) остаётся аватар; имя читается по подписи кнопки.
@@ -36,6 +38,7 @@ export function ProfileMenu({
   defaultOpen = false,
   onOpenSettings,
   onOpenImport,
+  onOpenAbout,
   compact = false,
 }: ProfileMenuProps) {
   const { t } = useTranslation();
@@ -112,7 +115,7 @@ export function ProfileMenu({
     }
   };
 
-  const handlers: Partial<Record<Item, () => void>> = { settings: onOpenSettings, import: onOpenImport };
+  const handlers: Partial<Record<Item, () => void>> = { settings: onOpenSettings, import: onOpenImport, about: onOpenAbout };
   const itemAvailable = (item: Item) => handlers[item] !== undefined;
 
   return (

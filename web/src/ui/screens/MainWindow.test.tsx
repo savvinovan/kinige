@@ -147,12 +147,12 @@ describe("MainWindow: настройки живут в отдельном окн
     fireEvent.click(await screen.findByRole("menuitem", { name: "Настройки" }));
   }
 
-  it("меню профиля: «Настройки» работают, «Экспорт» и «О программе» — «Появится позже»", async () => {
+  it("меню профиля: «Настройки» и «О программе» работают, «Экспорт» — «Появится позже»", async () => {
     setup();
     fireEvent.click(await screen.findByRole("button", { name: /Профиль/ }));
     expect(screen.getByRole("menuitem", { name: "Настройки" })).not.toHaveAttribute("aria-disabled");
     expect(screen.getByRole("menuitem", { name: "Экспорт" })).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("menuitem", { name: "О программе" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("menuitem", { name: "О программе" })).not.toHaveAttribute("aria-disabled");
   });
 
   it("«Настройки» просят у Rust открыть отдельное окно; в главном окне диалога нет", async () => {

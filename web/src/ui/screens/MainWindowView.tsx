@@ -63,6 +63,8 @@ interface MainWindowViewProps {
   searchResults?: ReactNode;
   /** «Импорт из Telegram…» в меню профиля. */
   onOpenImport?: () => void;
+  /** «О программе» в меню профиля. */
+  onOpenAbout?: () => void;
   sidebar?: SidebarControls;
   feedUi?: FeedUiState;
   feedActions?: FeedActions;
@@ -116,6 +118,7 @@ export function MainWindowView({
   search,
   searchResults,
   onOpenImport,
+  onOpenAbout,
   sidebar,
   feedUi,
   feedActions,
@@ -143,6 +146,7 @@ export function MainWindowView({
         onSelect={onSelectChat}
         onOpenSettings={onOpenSettings}
         onOpenImport={onOpenImport}
+        onOpenAbout={onOpenAbout}
         showSearch={showSearch}
         search={search}
         collapsed={sidebar?.collapsed}
