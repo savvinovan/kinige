@@ -31,7 +31,7 @@ $WorkChat = -join ([char[]](0x0420, 0x0430, 0x0431, 0x043E, 0x0442, 0x0430))
 $script:AppProcess = $null
 $Port = 9222
 
-Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing
+Add-Type -AssemblyName System.Drawing
 
 # C# 5 only (Windows PowerShell compiles with the .NET Framework compiler).
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
@@ -39,6 +39,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Text;
 
 public static class Win {
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
@@ -66,6 +67,28 @@ public static class Win {
   [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
   [DllImport("user32.dll", CharSet = CharSet.Ansi)] static extern bool EnumDisplaySettings(string device, int mode, ref DEVMODE dm);
   [DllImport("user32.dll", CharSet = CharSet.Ansi)] static extern int ChangeDisplaySettings(ref DEVMODE dm, int flags);
+
+  delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc proc, IntPtr l);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder text, int max);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+
+  // The visible top-level window of a process with this exact title, or IntPtr.Zero. Plain Win32: no accessibility
+  // client touches the web view (a UI Automation client makes WebView2 build its accessibility tree, which stalled it).
+  public static IntPtr FindTitled(uint pid, string title) {
+    IntPtr found = IntPtr.Zero;
+    EnumWindows(delegate(IntPtr h, IntPtr l) {
+      uint owner;
+      GetWindowThreadProcessId(h, out owner);
+      if (owner != pid || !IsWindowVisible(h)) return true;
+      StringBuilder text = new StringBuilder(256);
+      GetWindowText(h, text, 256);
+      if (text.ToString() == title) { found = h; return false; }
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
 
   public static void MakeDpiAware() { SetProcessDPIAware(); }
 
@@ -118,9 +141,6 @@ public static class Win {
 }
 '@
 
-$AE = [System.Windows.Automation.AutomationElement]
-$Scope = [System.Windows.Automation.TreeScope]
-
 # ---- Helpers ----------------------------------------------------------------------------------------------------------
 
 function Say([string]$text) { Write-Host ((Get-Date).ToString('HH:mm:ss') + ' ' + $text) }
@@ -141,18 +161,17 @@ function Wait-For([scriptblock]$condition, [int]$seconds, [string]$what) {
   return $null
 }
 
-# Top-level windows of the app process that have a title (UI Automation, children of the desktop only: cheap and reliable;
-# the helper windows of the event loop have no title).
+# The handle of a top-level window of the app process by its title (plain Win32), or $null.
 function Get-AppWindow([string]$title) {
   if (-not $script:AppProcess) { return $null }
-  $condition = New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, $script:AppProcess.Id)
-  foreach ($w in $AE::RootElement.FindAll($Scope::Children, $condition)) { if ($w.Current.Name -eq $title) { return $w } }
-  return $null
+  $handle = [Win]::FindTitled([uint32]$script:AppProcess.Id, $title)
+  if ($handle -eq [System.IntPtr]::Zero) { return $null }
+  return $handle
 }
 
 function Focus-Window([string]$title) {
   $window = Get-AppWindow $title
-  if ($window) { [Win]::Raise((New-Object System.IntPtr($window.Current.NativeWindowHandle))) }
+  if ($window) { [Win]::Raise($window) }
 }
 
 # One action on a page over the DevTools protocol; returns the exit code and the output of cdp.mjs.
@@ -195,7 +214,7 @@ function Test-Private([string]$text, [string]$label) {
   if ($hit.Success) { Fail "personal paths or names in the text of $label ($($hit.Value))" }
 }
 
-# The window title (what UI Automation calls the name) of each page: the main window is "Kinige", the other one "Settings".
+# The window title of each page: the main window is "Kinige", the other one "Settings".
 function Title-Of([string]$which) { if ($which -eq 'settings') { 'Settings' } else { 'Kinige' } }
 
 function Shoot([string]$name, [string]$which) {
@@ -207,7 +226,7 @@ function Shoot([string]$name, [string]$which) {
   Set-Content -Path (Join-Path $Debug "shot-$name.txt") -Value $text -Encoding UTF8
   if ($text.Length -lt 50) { Fail "the text of $name is empty, so the private-path check could not run" }
   Test-Private $text $name
-  $handle = New-Object System.IntPtr($window.Current.NativeWindowHandle)
+  $handle = $window
   [Win]::Raise($handle)
   Start-Sleep -Seconds 1
   Say ("shot ${name}: " + [Win]::Capture($handle, (Join-Path $Out "$name.png")))
@@ -227,7 +246,7 @@ function Start-App([string]$exe, [bool]$overrides) {
   $window = Wait-For { Get-AppWindow 'Kinige' } 90 'the main window'
   if ($window) {
     Wait-For { (Invoke-Cdp 'main' 'ready').Code -eq 0 } 90 'the main page over DevTools' | Out-Null
-    [Win]::MoveTo((New-Object System.IntPtr($window.Current.NativeWindowHandle)), 20, 20, 1280, 800)
+    [Win]::MoveTo($window, 20, 20, 1280, 800)
     Focus-Window 'Kinige'
     Start-Sleep -Seconds 2
   }
