@@ -1,26 +1,26 @@
-# ADR-0012: Версии и релизы
+# ADR-0012: Versions and releases
 
-Дата: 2026-11-01. Статус: **принято** (задача KINIG-54, не слайс). Решения пользователя: схема версий и порядок выпуска. Связано с ADR-0003 (подпись).
+Date: 2026-11-01. Status: **accepted** (task KINIG-54, not a slice). The user's decisions: the version scheme and the release procedure. Related to ADR-0003 (signing).
 
-## Контекст
-До этой задачи версия стояла 0.1.0 с каркаса, релизов не было: приложение собиралось только локально (`scripts/build-app.sh`). Нужны номера, по которым можно сказать «это сломалось в такой-то версии», и скачиваемая сборка.
+## Context
+Before this task the version was 0.1.0 from the skeleton, and there were no releases: the app was built only locally (`scripts/build-app.sh`). What is needed: numbers by which one can say "this broke in such-and-such version", and a downloadable build.
 
-## Решение
+## Decision
 
-**Схема.** Семвер `x.y.z` без приставок. Пока приложение до 1.0: минор = номер слайса (после слайса 5 — `0.5.0`, после слайса 6 — `0.6.0`; подслайсы вроде 4a и 4b входят в минор своего слайса), патч — исправления между слайсами. `1.0.0` — после синхронизации (слайс 11). Мажор и минор после 1.0 — по смыслу изменений для пользователя, решает владелец.
+**Scheme.** Semver `x.y.z` without prefixes. While the app is below 1.0: minor = the slice number (after slice 5 — `0.5.0`, after slice 6 — `0.6.0`; sub-slices such as 4a and 4b belong to the minor of their slice), patch — fixes between slices. `1.0.0` — after sync (slice 11). Major and minor after 1.0 — by the meaning of the changes for the user; the owner decides.
 
-**Один источник.** `[workspace.package] version` в `Cargo.toml`: крейты наследуют её (`version.workspace = true`), `tauri.conf.json` своей `version` не имеет и Tauri берёт версию из крейта (по документации `tauri-utils`: «если не задана, берётся из `Cargo.toml`»), поэтому `CFBundleShortVersionString` и `CFBundleVersion` равны ей; `scripts/build-app.sh` проверяет это по `Info.plist` собранного `.app`. `web/package.json` и lock-файлы повторяют версию; расхождение ловит `web/src/version.test.ts`. Версия видна в приложении: «Профиль» -> «О программе» (строка от Rust, `KinigeApi.appInfo()`).
+**One source.** `[workspace.package] version` in `Cargo.toml`: the crates inherit it (`version.workspace = true`), `tauri.conf.json` has no `version` of its own and Tauri takes the version from the crate (according to the `tauri-utils` documentation: "if not set, it is taken from `Cargo.toml`"), so `CFBundleShortVersionString` and `CFBundleVersion` equal it; `scripts/build-app.sh` checks this against the `Info.plist` of the built `.app`. `web/package.json` and the lock files repeat the version; a mismatch is caught by `web/src/version.test.ts`. The version is visible in the app: "Profile" -> "About" (a string from Rust, `KinigeApi.appInfo()`).
 
-**Кто и когда.** Релиз режет координатор, не автоматика на каждый мерж: после приёмки слайса и после пачки исправлений. Два явных шага, ничего на `main` само:
-1. `scripts/release.sh X.Y.Z` — проверяет формат и что версия больше текущей, во временном worktree от `origin/main` поднимает версию во всех четырёх файлах (`Cargo.lock` только у крейтов рабочей области: `cargo update -w --offline`), коммит `Release vX.Y.Z` в ветке `release/vX.Y.Z`, push и PR. PR идёт обычным CI и мержится как все.
-2. После мержа `scripts/release.sh --tag X.Y.Z` проверяет, что в `origin/main` именно эта версия и что CI (`ci.yml`) на этом коммите завершился успешно, и ставит аннотированный тег `vX.Y.Z` на `origin/main`.
+**Who and when.** A release is cut by the coordinator, not by automation on every merge: after a slice is accepted and after a batch of fixes. Two explicit steps, nothing on `main` happens by itself:
+1. `scripts/release.sh X.Y.Z` — checks the format and that the version is greater than the current one, bumps the version in all four files in a temporary worktree from `origin/main` (`Cargo.lock` only for the workspace crates: `cargo update -w --offline`), commits `Release vX.Y.Z` on the branch `release/vX.Y.Z`, pushes and opens a PR. The PR goes through ordinary CI and is merged like any other.
+2. After the merge, `scripts/release.sh --tag X.Y.Z` checks that `origin/main` has exactly this version and that CI (`ci.yml`) on this commit finished successfully, and puts an annotated tag `vX.Y.Z` on `origin/main`.
 
-**Что в релизе.** Тег запускает `.github/workflows/release.yml` (macOS-раннер `macos-15`, arm64): проверяет «тег = `v` + версия из `Cargo.toml`» и «коммит тега в `main`», собирает как `scripts/build-app.sh` (с мостом MCP), делает `.dmg` и `.zip`, проверяет подпись у приложения внутри образа и в распакованном архиве, считает `SHA256SUMS`. Отдельная короткая задача с правом записи создаёт GitHub Release: заметки = шаблон `.github/release-notes.md` (как открыть сборку с ad-hoc подписью, где лежат данные) + сгенерированный GitHub список изменений. Сборка идёт без кэшей, права на запись у задачи сборки нет. Повтор по готовому тегу — `workflow_dispatch` с вводом тега.
+**What is in a release.** The tag triggers `.github/workflows/release.yml` (macOS runner `macos-15`, arm64): it checks "tag = `v` + the version from `Cargo.toml`" and "the tag's commit is in `main`", builds like `scripts/build-app.sh` (with the MCP bridge), makes a `.dmg` and a `.zip`, checks the signature of the app inside the image and in the unpacked archive, computes `SHA256SUMS`. A separate short job with write permission creates the GitHub Release: notes = the template `.github/release-notes.md` (how to open a build with an ad-hoc signature, where the data lives) + the change list generated by GitHub. The build runs without caches, and the build job has no write permission. A rerun for an existing tag — `workflow_dispatch` with the tag as input.
 
-**Подпись.** До слайса 10 сборка подписана ad-hoc (ADR-0003): macOS при первом запуске остановит её, в заметках релиза описаны способы открыть (на macOS 15 и новее правый клик -> «Открыть» проверку больше не обходит: нужно «Всё равно открыть» в настройках конфиденциальности или `xattr`). Developer ID, нотаризация и updater — слайс 10; секреты подписи в workflow появятся тогда и только в задаче сборки релиза.
+**Signing.** Until slice 10 the build is signed ad hoc (ADR-0003): macOS will stop it on first launch, and the release notes describe ways to open it (on macOS 15 and newer, right-click -> "Open" no longer bypasses the check: one needs "Open Anyway" in the Privacy settings, or `xattr`). Developer ID, notarization and the updater are slice 10; signing secrets will appear in the workflow then, and only in the release build job.
 
-## Последствия
-- Тег неизменяем по договорённости: ошибочный релиз не переписывается, выходит следующий патч.
-- Intel-сборки нет (раннер arm64); universal-сборка — отдельное решение, если понадобится.
-- Сгенерированные GitHub заметки перечисляют PR, а не коммиты; у первого релиза (0.5.0) это все PR с начала истории, список можно вычистить вручную.
-- Исключение из правила 15 CLAUDE.md: релизный коммит и PR `Release vX.Y.Z` создаёт скрипт и идёт без номера задачи Huly (номер KINIG-54 к ним не подходит: релизов будет много, а задача одна).
+## Consequences
+- A tag is immutable by agreement: a faulty release is not rewritten; the next patch is released.
+- There is no Intel build (the runner is arm64); a universal build is a separate decision, if it is ever needed.
+- The notes generated by GitHub list PRs, not commits; for the first release (0.5.0) that is all PRs since the beginning of history, and the list can be cleaned up by hand.
+- An exception to rule 15 of CLAUDE.md: the release commit and the `Release vX.Y.Z` PR are created by the script and go without a Huly task number (the number KINIG-54 does not fit them: there will be many releases, but only one task).

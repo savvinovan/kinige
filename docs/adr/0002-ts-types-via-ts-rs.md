@@ -1,22 +1,22 @@
-# ADR-0002: TS-типы из Rust через ts-rs
+# ADR-0002: TS types from Rust via ts-rs
 
-Дата: 2026-10-19. Статус: принято (слайс 0). Номер 0001 зарезервирован под «протокол + ключи».
+Date: 2026-10-19. Status: accepted (slice 0). Number 0001 is reserved for "protocol + keys".
 
-## Контекст
-§3.2 ТЗ: типы Rust → TypeScript генерируются, а не пишутся руками; выбрать `ts-rs` или `tauri-specta`.
-Фронтенд не знает о Tauri (только `KinigeApi`), а `kinige-domain` должен собираться под `wasm32` и не зависеть от Tauri.
+## Context
+PRD §3.2: Rust → TypeScript types are generated, not written by hand; choose `ts-rs` or `tauri-specta`.
+The frontend does not know about Tauri (only `KinigeApi`), and `kinige-domain` must build for `wasm32` and must not depend on Tauri.
 
-## Решение
-`ts-rs` 12 в `kinige-domain`. Типы с `#[derive(TS)]` и `#[ts(export)]` записываются в `web/src/api/generated/`
-при `cargo test` (каталог задаёт `TS_RS_EXPORT_DIR` в `.cargo/config.toml`). Файлы коммитятся.
-CI после `cargo test` выполняет `git diff --exit-code -- web/src/api/generated`: устаревшие типы краснят сборку.
-Обёртка над `invoke` (`TauriApi`) пишется вручную: команд мало, а типы аргументов и результата берутся из сгенерированных.
+## Decision
+`ts-rs` 12 in `kinige-domain`. Types with `#[derive(TS)]` and `#[ts(export)]` are written to `web/src/api/generated/`
+on `cargo test` (the directory is set by `TS_RS_EXPORT_DIR` in `.cargo/config.toml`). The files are committed.
+After `cargo test`, CI runs `git diff --exit-code -- web/src/api/generated`: stale types turn the build red.
+The wrapper over `invoke` (`TauriApi`) is written by hand: there are few commands, and the argument and result types come from the generated ones.
 
-## Почему не `tauri-specta`
-- Версия для Tauri 2 на момент решения — `2.0.0-rc.25` (crates.io), то есть не стабильная.
-- Он привязывает описание команд к крейту `tauri`, а типы протокола и домена должны жить вне Tauri
-  (`kinige-domain`, `kinige-sync` используются сервером и WASM-клиентом).
-- Выигрыш `tauri-specta` — типизированные обёртки команд; при одной-двух десятках команд за `KinigeApi` это не окупает риск rc-версии.
+## Why not `tauri-specta`
+- The version for Tauri 2 at the time of the decision is `2.0.0-rc.25` (crates.io), that is, not stable.
+- It ties the command descriptions to the `tauri` crate, while the protocol and domain types must live outside Tauri
+  (`kinige-domain`, `kinige-sync` are used by the server and the WASM client).
+- The gain of `tauri-specta` is typed command wrappers; with one or two dozen commands behind `KinigeApi`, this does not pay for the risk of an rc version.
 
-## Последствия
-Если число команд вырастет и ручные обёртки начнут расходиться с Rust, вернуться к `tauri-specta` после его стабильного релиза.
+## Consequences
+If the number of commands grows and the hand-written wrappers start to drift from Rust, return to `tauri-specta` after its stable release.
