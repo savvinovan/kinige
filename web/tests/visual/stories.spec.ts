@@ -10,32 +10,51 @@ interface StorybookIndex {
 const index = JSON.parse(readFileSync("storybook-static/index.json", "utf8")) as StorybookIndex;
 const stories = Object.values(index.entries).filter((entry) => entry.type === "story");
 
+// Переходы и анимации выключены в самой странице: снимок не может поймать их на середине (2 пикселя у скруглённого поля).
+const NO_MOTION = "*, *::before, *::after { transition: none !important; animation: none !important; }";
+
 async function open(page: Page, id: string) {
   await page.goto(`/iframe.html?id=${encodeURIComponent(id)}&viewMode=story`);
+  await page.addStyleTag({ content: NO_MOTION });
   await page.locator("#storybook-root > *").first().waitFor();
   await settle(page);
 }
 
-/** Шрифты грузятся лениво, когда текст уже разложен: ждём кадр, потом готовность. */
+/** Шрифты грузятся лениво, когда текст уже разложен: ждём кадр, потом готовность и устойчивый фокус. */
 async function settle(page: Page) {
   await page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await document.fonts.ready;
-    // Переходы (рамка фокуса поля, появление окна), начатые при монтировании, должны закончиться: иначе снимок иногда ловил
-    // их на середине (два пикселя у скруглённых углов поля).
+    // Переходы, начатые при монтировании до добавления стиля выше, отменяются; на случай других анимаций ждём их конца.
     await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
-    await new Promise((resolve) => requestAnimationFrame(resolve));
   });
-  // Окна с автофокусом (чат, импорт) переносят фокус из эффекта React уже после первой отрисовки: Modal ставит фокус на «закрыть»,
-  // поле берёт его следом. На нагруженном раннере снимок иногда приходился между двумя состояниями (2 пикселя у скруглённого
-  // поля, эталон и прогон расходились то в одну, то в другую сторону). Короткая пауза и ещё один круг ожидания переходов
-  // делают момент снимка одним и тем же. Порог сравнения не менялся.
-  await page.waitForTimeout(150);
-  await page.evaluate(async () => {
-    await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-  });
+  await waitForStableFocus(page);
+}
+
+/**
+ * Окна с автофокусом (чат, импорт) переносят фокус из эффекта React уже после первой отрисовки: Modal ставит фокус на «закрыть»,
+ * поле берёт его следом. Снимок брали то до, то после переноса (рамка фокуса у скруглённого поля, 2 пикселя). Ждём, пока
+ * `document.activeElement` не будет одним и тем же три кадра подряд (не больше 120 кадров). Паузы по времени нет, порог сравнения не менялся.
+ */
+async function waitForStableFocus(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        let last: Element | null = null;
+        let same = 0;
+        let frames = 0;
+        const tick = () => {
+          const current = document.activeElement;
+          same = current === last ? same + 1 : 0;
+          last = current;
+          frames += 1;
+          if (same >= 2 || frames >= 120) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+  );
 }
 
 test("есть истории для снимков", () => {
