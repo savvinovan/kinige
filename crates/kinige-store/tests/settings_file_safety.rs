@@ -199,8 +199,10 @@ fn an_external_edit_made_while_the_app_was_off_is_applied_at_start_before_anythi
         again.store.get_settings().unwrap().text_size,
         TextSize::Large
     );
-    assert!(again.store.agent_access().unwrap().enabled);
-    assert_eq!(again.log_rows().len(), 1);
+    // AI-agent access from the file is applied on Unix only; on Windows it is reported and not stored (ADR-0010).
+    let agent_applied = cfg!(unix);
+    assert_eq!(again.store.agent_access().unwrap().enabled, agent_applied);
+    assert_eq!(again.log_rows().len(), usize::from(agent_applied));
 }
 
 #[test]
