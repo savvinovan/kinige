@@ -3,11 +3,13 @@
 use crate::error::{read_err, write_err};
 use crate::send::mark_all_dirty;
 use crate::{Store, StoreError};
+use kinige_domain::emoji::emoji_identity;
 use kinige_domain::shortcuts::canonical_accelerator;
 use kinige_domain::{
     MirrorStatus, Settings, ShortcutKind, ShortcutState, ShortcutStatus, TextSize,
 };
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 pub(crate) const KEY_MIRROR_DIR: &str = "mirror_dir";
@@ -17,11 +19,18 @@ const KEY_RECENT_EMOJI: &str = "recent_emoji";
 /// Сколько недавних эмодзи помнит пикер.
 pub const MAX_RECENT_EMOJI: usize = 24;
 
-/// Недавние эмодзи, самые свежие первыми. Повреждённое значение — пустой список: недавние не стоят ошибки.
+/// Недавние эмодзи, самые свежие первыми. Повреждённое значение — пустой список: недавние не стоят ошибки. Записи,
+/// отличающиеся только `VS16` (старая `✅\u{FE0F}` и новая `✅` из `emojibase-data` 18), считаются одним эмодзи: остаётся
+/// самая свежая.
 fn recent_emoji(conn: &Connection) -> rusqlite::Result<Vec<String>> {
-    Ok(get_setting(conn, KEY_RECENT_EMOJI)?
+    let stored = get_setting(conn, KEY_RECENT_EMOJI)?
         .and_then(|text| serde_json::from_str::<Vec<String>>(&text).ok())
-        .unwrap_or_default())
+        .unwrap_or_default();
+    let mut seen = HashSet::new();
+    Ok(stored
+        .into_iter()
+        .filter(|emoji| seen.insert(emoji_identity(emoji)))
+        .collect())
 }
 
 pub(crate) fn get_setting(conn: &Connection, key: &str) -> rusqlite::Result<Option<String>> {
@@ -189,12 +198,13 @@ impl Store {
             return Err(kinige_domain::chat::ChatInputError::IconInvalid.into());
         }
         let emoji = emoji.to_string();
+        let identity = emoji_identity(&emoji);
         self.write(move |conn| {
             let tx = conn
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(write_err)?;
             let mut list = recent_emoji(&tx).map_err(read_err)?;
-            list.retain(|known| *known != emoji);
+            list.retain(|known| emoji_identity(known) != identity);
             list.insert(0, emoji);
             list.truncate(MAX_RECENT_EMOJI);
             let text = serde_json::to_string(&list)
