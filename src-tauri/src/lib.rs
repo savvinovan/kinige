@@ -22,6 +22,7 @@ use hotkeys::{Hotkeys, PluginRegistrar};
 use kinige_domain::ShortcutKind;
 use kinige_store::{Store, StoreError, StoreOptions};
 use recovery::Recovery;
+use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
@@ -48,7 +49,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler(guarded::<tauri::ipc::Invoke<R>>(tauri::generate_handler![
             commands::app_info,
             commands::get_language,
             commands::list_chats,
@@ -105,7 +106,22 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             capture::capture_hide,
             capture::capture_resize,
             capture::capture_add_recent_emoji,
-        ])
+        ]))
+}
+
+/// Страховка вокруг разбора вызова: паника в синхронной части обработчика (разбор аргументов, синхронная команда на главном
+/// потоке, где размотка стека через обратный вызов ОС оборвала бы процесс) логируется и не выходит наружу. Асинхронная
+/// часть команд идёт в задаче tokio: её паника убивает только эту задачу (ответ на вызов не приходит, процесс жив), а
+/// чтение, запись и агентские вызовы хранилища ловят панику сами и отвечают ошибкой (`kinige-store`).
+fn guarded<I>(
+    handler: impl Fn(I) -> bool + Send + Sync + 'static,
+) -> impl Fn(I) -> bool + Send + Sync + 'static {
+    move |invoke| {
+        panic::catch_unwind(AssertUnwindSafe(|| handler(invoke))).unwrap_or_else(|_| {
+            log::error!("паника в обработчике команды, вызов отменён");
+            true
+        })
+    }
 }
 
 /// Где лежат данные. `KINIGE_DATA_DIR` и `KINIGE_MIRROR_DIR` — для проверки на чистой машине и для автотестов; обычный
@@ -408,11 +424,22 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_background_launch, startup_error_category};
+    use super::{guarded, is_background_launch, startup_error_category};
     use kinige_store::StoreError;
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|arg| arg.to_string()).collect()
+    }
+
+    #[test]
+    fn a_panic_in_the_command_handler_is_caught_and_the_call_counts_as_handled() {
+        let handler = guarded(|arg: u32| {
+            assert!(arg != 0, "проверка: паника в обработчике");
+            false
+        });
+        assert!(!handler(1), "обычный вызов — как у обработчика");
+        assert!(handler(0), "паника поймана, вызов считается обработанным");
+        assert!(!handler(2), "после паники обработчик работает");
     }
 
     #[test]
