@@ -101,8 +101,10 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) -> Resul
                 // Паника в проходе не должна молча убить поток обслуживания (проверка целостности, корзина, копии, ротация
                 // журнала): она ловится, в статусе копий «Не удалось записать», следующий проход — через час.
                 let outcome = catch_unwind(AssertUnwindSafe(|| {
+                    // Крючок тестов страховки; в релизной сборке (`debug_assertions` выключены) его нет.
                     assert!(
-                        !shared.panic_next.swap(false, Ordering::SeqCst),
+                        !(cfg!(debug_assertions)
+                            && shared.panic_next.swap(false, Ordering::SeqCst)),
                         "проверка: паника в проходе обслуживания"
                     );
                     store.run_maintenance(&Now::system())

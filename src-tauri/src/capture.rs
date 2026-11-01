@@ -280,25 +280,38 @@ pub fn toggle_capture<R: Runtime>(app: &AppHandle<R>) {
 /// буфера и запись в базу не должны задерживать цикл событий.
 pub fn save_clipboard<R: Runtime>(app: &AppHandle<R>) {
     let app = app.clone();
-    std::thread::spawn(move || {
-        let text = match arboard::Clipboard::new().and_then(|mut clipboard| clipboard.get_text()) {
-            Ok(text) => text,
+    let spawned = std::thread::Builder::new()
+        .name("kinige-clipboard".into())
+        .spawn(move || {
             // Не текст (картинка, файлы — слайс 7), пустой буфер или буфер занят другой программой: ничего не пишем.
-            Err(_) => return,
-        };
-        let store = app.state::<Store>();
-        match store.save_clipboard(&text, &Now::system()) {
-            Ok(_) => {
-                notify_entries_changed(&app);
-                crate::tray::flash(&app);
+            if let Ok(text) =
+                arboard::Clipboard::new().and_then(|mut clipboard| clipboard.get_text())
+            {
+                save_clipboard_text(&app, text);
             }
-            Err(StoreError::Empty) => {}
-            Err(error) => {
-                log::error!("сохранение буфера не удалось: {}", error.category());
-                open_with_failed_clipboard(&app, text, error.code());
-            }
+        });
+    if spawned.is_err() {
+        log::error!("поток хоткея буфера не запущен");
+    }
+}
+
+/// Запись текста буфера в Inbox. Хранилища нет (журнал не открыт, режим восстановления) — ничего не пишется.
+fn save_clipboard_text<R: Runtime>(app: &AppHandle<R>, text: String) {
+    let Some(store) = app.try_state::<Store>() else {
+        log::warn!("хоткей буфера: журнал не открыт");
+        return;
+    };
+    match store.save_clipboard(&text, &Now::system()) {
+        Ok(_) => {
+            notify_entries_changed(app);
+            crate::tray::flash(app);
         }
-    });
+        Err(StoreError::Empty) => {}
+        Err(error) => {
+            log::error!("сохранение буфера не удалось: {}", error.category());
+            open_with_failed_clipboard(app, text, error.code());
+        }
+    }
 }
 
 /// Сбой записи буфера: окно захвата открывается с текстом буфера в поле и ошибкой (ТЗ §1.2 п. 9). Прежний непустой черновик
@@ -306,14 +319,17 @@ pub fn save_clipboard<R: Runtime>(app: &AppHandle<R>) {
 /// если окно закроют, не исправив ошибку.
 fn open_with_failed_clipboard<R: Runtime>(app: &AppHandle<R>, text: String, error: ErrorCode) {
     if let Some(shell) = app.try_state::<CaptureShell>() {
-        let store = app.state::<Store>();
-        let joined = match store.merge_clipboard_into_capture_draft(&text, &Now::system()) {
-            Ok((joined, _saved)) => joined,
-            // База не пишет (из-за этого, возможно, и случился сбой): поле собирается из того, что читается.
-            Err(_) => kinige_domain::draft::joined_draft(
-                &store.get_capture_draft().unwrap_or_default(),
-                &text,
-            ),
+        let joined = match app.try_state::<Store>() {
+            Some(store) => match store.merge_clipboard_into_capture_draft(&text, &Now::system()) {
+                Ok((joined, _saved)) => joined,
+                // База не пишет (из-за этого, возможно, и случился сбой): поле собирается из того, что читается.
+                Err(_) => kinige_domain::draft::joined_draft(
+                    &store.get_capture_draft().unwrap_or_default(),
+                    &text,
+                ),
+            },
+            // Хранилища нет: черновика нет, текст буфера не теряется — он попадает в поле как есть.
+            None => text,
         };
         *shell.pending() = Some(Pending {
             text: joined,
@@ -422,3 +438,7 @@ pub fn capture_resize<R: Runtime>(app: AppHandle<R>, height: f64) {
         let _ = window.set_position(PhysicalPosition::new(x, top_for_bottom(bottom, new_height)));
     }
 }
+
+#[cfg(test)]
+#[path = "capture_tests.rs"]
+mod tests;

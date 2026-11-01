@@ -22,6 +22,7 @@ use serde_json::json;
 use tauri::Manager;
 
 #[test]
+#[allow(unsafe_code)] // `set_var` в 2024 — unsafe; обоснование ниже
 fn a_failure_of_the_services_after_restore_leaves_the_recovery_window_and_no_store() {
     let dir = tempfile::tempdir().unwrap();
     let db = dir.path().join("kinige.db");

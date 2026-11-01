@@ -163,8 +163,9 @@ async fn run_listener<R: Runtime>(
         tokio::select! {
             accepted = listener.accept() => match accepted {
                 Ok((stream, _)) => {
+                    // Крючок тестов страховки; в релизной сборке (`debug_assertions` выключены) его нет.
                     assert!(
-                        !state.panic_next.swap(false, Ordering::SeqCst),
+                        !(cfg!(debug_assertions) && state.panic_next.swap(false, Ordering::SeqCst)),
                         "проверка: паника слушателя"
                     );
                     tauri::async_runtime::spawn(serve_connection(app.clone(), stream, uid));

@@ -126,8 +126,10 @@ pub(crate) fn spawn(
                 // Паника в проходе не должна молча убить поток копии: она ловится, в статусе «Настроек» ошибка записи, повтор
                 // через `retry`, цикл продолжается.
                 let retry_soon = catch_unwind(AssertUnwindSafe(|| {
+                    // Крючок тестов страховки; в релизной сборке (`debug_assertions` выключены) его нет.
                     assert!(
-                        !shared.panic_next.swap(false, Ordering::SeqCst),
+                        !(cfg!(debug_assertions)
+                            && shared.panic_next.swap(false, Ordering::SeqCst)),
                         "проверка: паника в проходе копии"
                     );
                     pass(&shared, &reader, &writer, default_dir.as_deref())

@@ -37,39 +37,44 @@ pub struct Labels {
     pub tooltip: String,
 }
 
-/// Подписи на языке интерфейса из файлов переводов (`tray.*`). Нет ключа — это ошибка сборки, её ловит тест.
+/// Подписи на языке интерфейса из файлов переводов (`tray.*`). Нет ключа — подпись по умолчанию (английская), а не падение:
+/// файлы вшиты в бинарник, и полноту ключей проверяет тест.
 pub fn labels(language: Language) -> Labels {
-    let source = match language {
-        Language::En => EN,
-        Language::Ru => RU,
-    };
-    let json: Value = serde_json::from_str(source).expect("файл переводов — корректный JSON");
-    let text = |key: &str| -> String {
-        json["tray"][key]
-            .as_str()
-            .unwrap_or_else(|| panic!("в переводах нет tray.{key}"))
-            .to_string()
-    };
+    let source = translations(language);
     Labels {
-        new_note: text("newNote"),
-        inbox: text("inbox"),
-        settings: text("settings"),
-        quit: text("quit"),
-        tooltip: text("tooltip"),
+        new_note: translation(source, ["tray", "newNote"], "New note"),
+        inbox: translation(source, ["tray", "inbox"], "Inbox"),
+        settings: translation(source, ["tray", "settings"], "Settings…"),
+        quit: translation(source, ["tray", "quit"], "Quit"),
+        tooltip: translation(source, ["tray", "tooltip"], "Kinige"),
     }
 }
 
 /// Заголовок окна «Настройки» на языке интерфейса (`settings.title` в файлах переводов).
 pub fn window_title(language: Language) -> String {
-    let source = match language {
+    translation(translations(language), ["settings", "title"], "Settings")
+}
+
+fn translations(language: Language) -> &'static str {
+    match language {
         Language::En => EN,
         Language::Ru => RU,
-    };
-    let json: Value = serde_json::from_str(source).expect("файл переводов — корректный JSON");
-    json["settings"]["title"]
-        .as_str()
-        .expect("в переводах нет settings.title")
-        .to_string()
+    }
+}
+
+/// Строка перевода по пути `[раздел, ключ]`; нет файла, раздела или строки — `fallback`.
+fn translation(source: &str, path: [&str; 2], fallback: &str) -> String {
+    let json: Value = serde_json::from_str(source).unwrap_or(Value::Null);
+    json.get(path[0])
+        .and_then(|section| section.get(path[1]))
+        .and_then(Value::as_str)
+        .map_or_else(
+            || {
+                log::error!("в переводах нет строки интерфейса, взята подпись по умолчанию");
+                fallback.to_string()
+            },
+            str::to_string,
+        )
 }
 
 /// Значки: обычный (template, macOS перекрашивает под светлую и тёмную строку меню) и «вспышка».
@@ -225,22 +230,27 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
 pub fn flash<R: Runtime>(app: &AppHandle<R>) {
     crate::capture::trace("flash");
     let app = app.clone();
-    std::thread::spawn(move || {
-        let Some(state) = app.try_state::<TrayFlash<R>>() else {
-            return;
-        };
-        let set = |icon: &Image<'static>| {
-            let _ = state
-                .tray
-                .set_icon_with_as_template(Some(icon.clone()), true);
-        };
-        for _ in 0..2 {
-            set(&state.icons.flash);
-            std::thread::sleep(FLASH_ON);
-            set(&state.icons.normal);
-            std::thread::sleep(FLASH_OFF);
-        }
-    });
+    let spawned = std::thread::Builder::new()
+        .name("kinige-tray-flash".into())
+        .spawn(move || {
+            let Some(state) = app.try_state::<TrayFlash<R>>() else {
+                return;
+            };
+            let set = |icon: &Image<'static>| {
+                let _ = state
+                    .tray
+                    .set_icon_with_as_template(Some(icon.clone()), true);
+            };
+            for _ in 0..2 {
+                set(&state.icons.flash);
+                std::thread::sleep(FLASH_ON);
+                set(&state.icons.normal);
+                std::thread::sleep(FLASH_OFF);
+            }
+        });
+    if spawned.is_err() {
+        log::warn!("поток мигания значка не запущен");
+    }
 }
 
 #[cfg(test)]
@@ -267,6 +277,54 @@ mod tests {
         }
         assert_ne!(en.new_note, ru.new_note);
         assert_ne!(en.quit, ru.quit);
+    }
+
+    #[test]
+    fn both_translation_files_have_every_string_the_tray_needs() {
+        // Запасная подпись скрыла бы пропуск ключа, поэтому полноту проверяем по самим файлам.
+        for source in [EN, RU] {
+            let json: Value = serde_json::from_str(source).expect("файл переводов — JSON");
+            for (section, key) in [
+                ("tray", "newNote"),
+                ("tray", "inbox"),
+                ("tray", "settings"),
+                ("tray", "quit"),
+                ("tray", "tooltip"),
+                ("settings", "title"),
+            ] {
+                assert!(
+                    json[section][key].as_str().is_some_and(|s| !s.is_empty()),
+                    "нет {section}.{key}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_broken_or_incomplete_translation_file_gives_the_fallback_not_a_panic() {
+        let path = ["tray", "quit"];
+        for source in [
+            "",
+            "не json",
+            "null",
+            "[]",
+            "{}",
+            r#"{"tray":null}"#,
+            r#"{"tray":{"quit":5}}"#,
+            r#"{"tray":"quit"}"#,
+        ] {
+            assert_eq!(translation(source, path, "Quit"), "Quit", "{source:?}");
+        }
+        assert_eq!(
+            translation(r#"{"tray":{"quit":"Выйти"}}"#, path, "Quit"),
+            "Выйти"
+        );
+    }
+
+    #[test]
+    fn the_settings_window_title_comes_from_the_translation_files() {
+        assert_ne!(window_title(Language::En), window_title(Language::Ru));
+        assert!(!window_title(Language::En).trim().is_empty());
     }
 
     #[test]
