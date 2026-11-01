@@ -23,7 +23,10 @@ use hotkeys::{Hotkeys, PluginRegistrar};
 use kinige_domain::ShortcutKind;
 use kinige_store::{Store, StoreError, StoreOptions};
 use recovery::Recovery;
-use startup::{exit_after_failure, fail_fast, guarded, is_background_launch, launch_args};
+use startup::{
+    exit_after_failure, fail_fast, guarded, is_background_launch, launch_args,
+    should_show_main_on_launch,
+};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
@@ -317,12 +320,14 @@ pub fn run() {
                 .with_mirror(mirror)
                 .with_corruption_flag(corruption),
         );
+        let store_open = store.is_some();
         if let Some(store) = store {
             start_services(&handle, store)?;
         }
         // Главное окно создаётся скрытым (`visible: false`), чтобы запуск в фоне не мигал окном: показываем его здесь,
-        // если приложение запущено не мостом MCP (`--background`, значок в menu bar без окна).
-        if !is_background_launch(launch_args()) {
+        // если приложение запущено не мостом MCP (`--background`, значок в menu bar без окна) или если журнал не открыт
+        // (экран восстановления нельзя прятать). `show_main` же возвращает обычную политику активации (значок в Dock).
+        if should_show_main_on_launch(is_background_launch(launch_args()), store_open) {
             capture::show_main(&handle);
         }
         Ok(())
