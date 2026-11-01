@@ -24,6 +24,9 @@ impl Store {
     pub fn get_on_this_day(&self, now: &Now) -> Result<Option<OnThisDay>, StoreError> {
         let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
         self.read(|conn| {
+            // Одна транзакция чтения: снимок базы общий для счётчика и записей года, `total` не расходится с `entries`, даже
+            // если писатель добавляет запись между запросами.
+            let conn = &conn.unchecked_transaction().map_err(read_err)?;
             let dismissed = get_setting(conn, DISMISSED_KEY).map_err(read_err)?;
             if dismissed.as_deref() == Some(today.as_str()) {
                 return Ok(None);

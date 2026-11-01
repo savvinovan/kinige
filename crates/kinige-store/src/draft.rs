@@ -5,9 +5,9 @@
 use crate::error::{read_err, write_err};
 use crate::view::load_reply_to;
 use crate::{Now, Store, StoreError};
-use kinige_domain::ChatDraft;
 use kinige_domain::hlc::is_uuid_v4;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
+use kinige_domain::{ChatDraft, ReplyState};
 use rusqlite::{OptionalExtension, Transaction, TransactionBehavior};
 
 /// Ключ черновика окна захвата.
@@ -51,7 +51,15 @@ impl Store {
                 });
             };
             let reply_to = match reply_id {
-                Some(id) => Some(load_reply_to(conn, &id, &today)?),
+                Some(id) => {
+                    let mut quote = load_reply_to(conn, &id, &today)?;
+                    // Запись жива, но в другом чате: ответ на неё Rust не примет, строка над полем это покажет.
+                    if quote.state == ReplyState::Live && quote.chat_id.as_deref() != Some(chat_id)
+                    {
+                        quote.state = ReplyState::Moved;
+                    }
+                    Some(quote)
+                }
                 None => None,
             };
             Ok(ChatDraft { body, reply_to })
