@@ -161,9 +161,14 @@ function Get-Elements($root) {
   $cache.Add($AE::NameProperty)
   $cache.Add($AE::ControlTypeProperty)
   $cache.TreeScope = $Scope::Element
-  $activation = $cache.Activate()
-  try { return $root.FindAll($Scope::Descendants, [System.Windows.Automation.Condition]::TrueCondition) }
-  finally { $activation.Dispose() }
+  # The first queries to a freshly started web view can time out (the page is still building its accessibility tree): retry.
+  for ($attempt = 1; $attempt -le 4; $attempt++) {
+    $activation = $cache.Activate()
+    try { return $root.FindAll($Scope::Descendants, [System.Windows.Automation.Condition]::TrueCondition) }
+    catch { Say "UI Automation query failed (attempt $attempt): $($_.Exception.Message)"; Start-Sleep -Seconds 3 }
+    finally { $activation.Dispose() }
+  }
+  return @()
 }
 
 # One line per element: depth is not available through FindAll, so the dump is flat: "ControlType | name".
