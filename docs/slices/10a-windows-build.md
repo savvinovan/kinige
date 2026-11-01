@@ -36,7 +36,7 @@
 ## Done looks like
 - `windows` job in CI is green; macOS and Linux jobs unchanged and green.
 - `release.yml` run in dry-run mode (build and upload the artifact, no Release) on a branch: the installer exists, size is reported, `SHA256SUMS` lists macOS and Windows files, the versions match.
-- Screenshots of the real window from the Windows runner in `docs/screens/10a/` (normal and large text), plus the text checks.
+- Screenshots of the real window from the Windows runner in `docs/screens/10a/` (normal text only on Windows, see the follow-ups), plus the data checks.
 - Data survive killing the process: the existing `abort` tests of the store (the child calls `abort()`, the parent reads the database) run in the `windows` job too (only the `SIGABRT` assertion is Unix-only), and in the real window the scenario kills the process with `TerminateProcess` and counts the entries before and after (`survival.txt`).
 
 ## Screenshots (`docs/screens/10a/`)
