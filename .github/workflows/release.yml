@@ -16,8 +16,6 @@ name: Release
 on:
   push:
     tags: ["v*.*.*"]
-    # TEMPORARY (KINIG-61): dry run of this workflow from the slice branch; removed in the next commit.
-    branches: ["slice/10a-windows-build"]
   workflow_dispatch:
     inputs:
       tag:
