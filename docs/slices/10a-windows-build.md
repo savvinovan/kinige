@@ -22,7 +22,7 @@
 - **UI:** the "AI agent access" page, when `socket.error == "unsupported"`, shows only the title and the line "Not available on Windows yet." (ru and en, `agent.unavailable`); no switch, mode, chats, log or connect blocks. A Storybook story and a component test.
 - **CI (`ci.yml`):** job `windows` on `windows-2025`: `cargo clippy -p kinige -p kinige-store -p kinige-domain -p kinige-mcp --all-targets -- -D warnings`, then `cargo test` for the same crates. Unix-only tests are gated with `#[cfg(unix)]`. `rust-cache` saves on `main` only, like the other jobs.
 - **Release (`release.yml`):** a `windows` build job on `windows-2025`: unsigned NSIS installer (`tauri build --bundles nsis`, per-user), file `Kinige-X.Y.Z-windows-x64-setup.exe`; the tag is checked against the version in `Cargo.toml` (as for macOS) and against the version stored in the built `kinige.exe` and in the installer. One `SHA256SUMS` covers the macOS and Windows files (a short `checksums` step in `publish`, not two files). Release notes get a Windows section: SmartScreen ("More info" -> "Run anyway"), data locations, AI-agent access is not available yet.
-- **Screens on a Windows runner:** `screens.yml` gets the input `os` (`macos` default, `windows`). `scripts/screens/10a.ps1` builds nothing itself: the workflow builds the installer, installs it silently into a temporary directory, runs the installed app on synthetic data (`seed_demo`, temporary `KINIGE_DATA_DIR` and `KINIGE_MIRROR_DIR`), waits for the window, drives the page over the WebView2 DevTools channel (Playwright `connectOverCDP` to a localhost-only port that only the scenario opens through the HKLM WebView2 policy `AdditionalBrowserArguments`, because the admin runner makes the app elevated and WebView2 ignores the environment variable and HKCU then; no app code) and captures only the Kinige window by its rectangle. The personal-path check runs on the page text and accessible names before each capture, as on macOS. UI Automation was tried first and hangs on the WebView2 tree.
+- **Screens on a Windows runner:** `screens.yml` gets the input `os` (`macos` default, `windows`). `scripts/screens/10a.ps1` builds nothing itself: the workflow builds the installer, the script installs it silently into a temporary directory, runs the installed app on synthetic data (`seed_demo`, temporary `KINIGE_DATA_DIR` and `KINIGE_MIRROR_DIR`), and drives it with keys injected on the disposable runner (`SendKeys` after raising the window): `Ctrl+K` and Tab stops reach the profile menu, Enter opens Settings, arrows reach "AI agent access". Only the Kinige window is captured, by its rectangle. The checks that do not need the UI read the database and the Markdown copy from disk. The personal-path check of the macOS scenarios is replaced by a check that the scenario works only in the runner's temporary directory on synthetic data.
 - **Docs:** ADR-0012 (Windows artifacts), ADR-0010 (Windows note), `README.md` "Download", `CLAUDE.md` "Build and tests", PRD §15 row 10a and a history line.
 
 ## Out of scope (stay in slice 10)
@@ -40,13 +40,18 @@
 - Data survive killing the process: the existing `abort` tests of the store (the child calls `abort()`, the parent reads the database) run in the `windows` job too (only the `SIGABRT` assertion is Unix-only), and in the real window the scenario kills the process with `TerminateProcess` and counts the entries before and after (`survival.txt`).
 
 ## Screenshots (`docs/screens/10a/`)
-1. `01-inbox.png`: main window, Inbox with the "On this day" card.
-2. `02-chat.png`: a chat with entries (Markdown, tasks).
-3. `03-settings-appearance.png`: settings window, Appearance.
+1. `01-inbox.png`: main window with the seeded data, Inbox with the "On this day" card.
+2. `02-note-sent.png`: a note typed with keys and sent.
+3. `03-settings.png`: the settings window.
 4. `04-settings-access-unavailable.png`: "AI agent access" with "Not available on Windows yet."
-5. `05-large-text-inbox.png`, `06-large-text-settings.png`: large text.
-6. `07-after-kill.png`: after killing the process and starting again, entries are in place.
-Texts: `install.txt` (installer size, SHA256, installed files, version of the installed exe), `survival.txt` (entry counts around the kill), `data-location.txt` (names of files in the default `%APPDATA%\me.savvinov.kinige` and `Documents\Kinige`, from a start without the data overrides, no content).
+5. `05-after-kill.png`: after killing the process and starting again.
+Texts: `install.txt` (installer size, SHA256, installed files, version of the installed exe), `survival.txt` (message counts around the kill), `mirror.txt` (the Markdown copy of the scenario), `data-location.txt` (names of files in the default `%APPDATA%\me.savvinov.kinige` and `Documents\Kinige`, from a start without the data overrides, no content).
+Large text is not shot on Windows: it needs several more key-driven steps and the large-text layout is covered by the Storybook visual tests.
+
+## Follow-ups (not in this slice; full Windows UI automation goes to slice 10)
+- **UI Automation stalls the WebView2 page.** On the GitHub Windows runner the first queries to the WebView2 tree answer, later `FindAll` calls time out (`0x80131505`) for minutes, and the settings window showed no tree at all. A client that touches the tree makes Chromium build its accessibility tree, which blocked the page; calls that do not touch the tree (window lookup by Win32, `SetFocus`, value patterns) kept working.
+- **The DevTools channel is awkward on the runner.** `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` and `HKCU` are ignored because the runner account is an administrator and the app runs elevated (Microsoft Learn, "Develop secure WebView2 apps"); the `HKLM` policy `AdditionalBrowserArguments` opens the port, and a probe on an idle app answered instantly, but inside the scenario Playwright's `connectOverCDP` timed out intermittently. The cause was not found within the time-box.
+- Large text, the capture window and the global shortcuts in a real Windows session, Russian UI screenshots, the personal-path text check, hiding the "Visible chats" and "Access log" tree items when MCP is unavailable.
 
 ## Touches sensitive zones
 Only the settings-file safety checks on Windows (ADR-0010): ownership and mode checks do not exist there, the data directory is protected by the per-user ACL of `%APPDATA%`. `sync-crypto-guardian` reviews the Windows note in ADR-0010 before merge. Schema, protocol, envelope and keys do not change.

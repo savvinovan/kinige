@@ -5,7 +5,7 @@
 #            без npm, cargo и сторонних кэшей).
 # Запуск: gh workflow run screens.yml --ref <ветка> -f slice=4a   (в main и на тегах не работает).
 # Windows (слайс 10a): -f os=windows -f slice=10a — задача shots-windows на windows-2025: собирает установщик NSIS, ставит его
-# тихо и запускает scripts/screens/<слайс>.ps1 (страница управляется по каналу DevTools WebView2, scripts/screens/cdp.mjs); коммит тот же.
+# тихо и запускает scripts/screens/<слайс>.ps1 (ввод — клавиши через SendKeys на одноразовой ВМ раннера); коммит тот же.
 # Коммит от GITHUB_TOKEN CI сам не запускает (push-событие), но запуск через workflow_dispatch от GITHUB_TOKEN разрешён:
 # последний шаг задачи commit запускает ci.yml на ветке (нужно право actions: write, оно только у этой задачи).
 # Ввод — только действия доступности (scripts/screens/ax.js): раннер выдаёт osascript право Accessibility (проверено пробой).
@@ -137,7 +137,7 @@ jobs:
         shell: bash
         run: scripts/build-windows.sh
 
-      # Windows PowerShell 5.1 (`shell: powershell`); node and the web/ dependencies (Playwright) come from the installer build above.
+      # Windows PowerShell 5.1 (`shell: powershell`); keys are injected with SendKeys, the data checks read the database and the disk.
       - name: Screens scenario
         shell: powershell
         timeout-minutes: 25
