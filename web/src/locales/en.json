@@ -289,11 +289,13 @@
     "import_in_progress": "An import is already running.",
     "import_session_expired": "The chosen file was forgotten. Choose it again.",
     "import_backup_failed": "Could not take a copy of the database before the import. Nothing was written.",
+    "unsupported": "This is not available on this system yet.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },
   "agent": {
     "title": "AI agent access",
+    "unavailable": "Not available on Windows yet.",
     "enable": {
       "label": "Allow agents to access the journal",
       "description": "An agent you connect can read the chats you mark below and, if you allow it, write entries.",

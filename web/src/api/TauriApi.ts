@@ -74,6 +74,7 @@ const CODES: readonly ErrorCode[] = [
   "import_in_progress",
   "import_session_expired",
   "import_backup_failed",
+  "unsupported",
   "internal",
 ];
 

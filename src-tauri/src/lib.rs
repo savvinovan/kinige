@@ -9,6 +9,12 @@ pub mod guard;
 pub mod hotkeys;
 pub mod import;
 pub mod logging;
+// Сервер MCP — Unix-сокет (ADR-0009). Без Unix (Windows, слайс 10a) — заглушка с тем же внешним видом: сокета нет,
+// окно «Доступ ИИ-агентов» видит `unsupported`.
+#[cfg(unix)]
+pub mod mcp;
+#[cfg(not(unix))]
+#[path = "mcp_unsupported.rs"]
 pub mod mcp;
 #[cfg(target_os = "macos")]
 mod panel;

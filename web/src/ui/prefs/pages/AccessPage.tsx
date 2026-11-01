@@ -36,6 +36,17 @@ export function AccessPage({ access, error, onEnabledChange, onModeChange, onOpe
   const connectId = useId();
   const off = !access.enabled;
   const visible = access.chats.filter((chat) => chat.visible).length;
+  // Платформа без сервера MCP (Windows до именованных каналов, слайс 10a): ни выключателя, ни режима, ни списков.
+  if (access.socket.error === "unsupported") {
+    return (
+      <section className="prefs-page" aria-labelledby={titleId}>
+        <h2 className="prefs-page__title" id={titleId}>
+          {t("prefs.section.access")}
+        </h2>
+        <p className="settings__description">{t("agent.unavailable")}</p>
+      </section>
+    );
+  }
   return (
     <section className="prefs-page" aria-labelledby={titleId}>
       <h2 className="prefs-page__title" id={titleId}>

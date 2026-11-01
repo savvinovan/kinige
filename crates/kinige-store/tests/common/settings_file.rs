@@ -126,14 +126,22 @@ impl Rig {
     }
 }
 
+/// Правка файла «снаружи»: временный файл и `rename`, как делают редакторы. Режим — только на Unix; на Windows прав в стиле
+/// POSIX нет (ADR-0010, заметка про Windows), и аргумент игнорируется.
 pub fn write_file(dir: &Path, bytes: &[u8], mode: u32) {
-    use std::os::unix::fs::PermissionsExt;
     let tmp = dir.join(".editor.tmp");
     fs::write(&tmp, bytes).unwrap();
-    fs::set_permissions(&tmp, fs::Permissions::from_mode(mode)).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&tmp, fs::Permissions::from_mode(mode)).unwrap();
+    }
+    #[cfg(not(unix))]
+    let _ = mode;
     fs::rename(&tmp, file_path(dir)).unwrap();
 }
 
+#[cfg(unix)]
 pub fn mode_of(path: &Path) -> u32 {
     use std::os::unix::fs::PermissionsExt;
     fs::metadata(path).unwrap().permissions().mode() & 0o777

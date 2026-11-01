@@ -230,7 +230,10 @@ pub fn restore_backup_with(
     let mut base_touched = false;
     let placed = (|| -> Result<(), StoreError> {
         fs::copy(&source, &staged).map_err(io)?;
-        fs::File::open(&staged)
+        // Для записи, а не только для чтения: на Windows `FlushFileBuffers` отказывает дескриптору без права записи.
+        fs::OpenOptions::new()
+            .write(true)
+            .open(&staged)
             .and_then(|f| f.sync_all())
             .map_err(io)?;
         before_place()?;

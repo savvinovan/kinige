@@ -2,8 +2,10 @@
 //! обрыв без повторной отправки, повтор рукопожатия, запуск приложения только когда процесса нет, предел кадра, stderr.
 
 // Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/. Мост только для Unix (Unix-сокет): на Windows файл пуст,
+// там проверяет `tests/unsupported.rs`.
 #![cfg(test)]
+#![cfg(unix)]
 #![allow(clippy::disallowed_methods)] // `thread::spawn` запрещён в коде приложения (clippy.toml), тесту поток нужен без обработки отказа
 
 use std::fs;

@@ -44,6 +44,7 @@ fn install_logger() {
 
 /// Сервер MCP (слайс 4a): тексты записей, поисковые запросы, id и имена чатов из вызовов агента в журнал процесса не
 /// попадают, ни при успехе, ни при отказе, ни при мусоре на проводе.
+#[cfg(unix)]
 #[test]
 fn the_mcp_server_logs_no_texts_queries_or_arguments() {
     use common::mcp::mcp;
@@ -117,7 +118,6 @@ fn failed_commands_log_only_categories_never_user_input() {
 #[test]
 fn the_settings_file_logs_only_categories_never_keys_titles_values_or_paths() {
     use kinige_store::SettingsFile;
-    use std::os::unix::fs::PermissionsExt;
     use tauri::Manager;
     install_logger();
     let fixture = fixture();
@@ -125,7 +125,14 @@ fn the_settings_file_logs_only_categories_never_keys_titles_values_or_paths() {
     let path = fixture.data.path().join("settings.json");
     let write = |text: String, mode: u32| {
         std::fs::write(&path, text).unwrap();
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).unwrap();
+        // Режим файла — только на Unix; на Windows он игнорируется (ADR-0010, заметка про Windows).
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).unwrap();
+        }
+        #[cfg(not(unix))]
+        let _ = mode;
         file.sync_now();
     };
     write(

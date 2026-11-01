@@ -65,6 +65,7 @@ fn a_denied_window_changes_nothing_in_the_settings() {
     assert_eq!(access.mode, kinige_domain::AgentMode::Read);
 }
 
+#[cfg(unix)]
 #[test]
 fn the_settings_window_drives_the_settings_and_sees_the_socket_state() {
     let fixture = fixture();
@@ -103,5 +104,44 @@ fn the_settings_window_drives_the_settings_and_sees_the_socket_state() {
     assert!(call(&main, "set_agent_mode", json!({"mode": "root"})).is_err());
     assert!(call(&main, "list_agent_log", json!({"before": "x"})).is_err());
     let page = call(&main, "list_agent_log", json!({})).unwrap();
+    assert_eq!(page["rows"], json!([]));
+}
+
+/// Windows (слайс 10a): сервера MCP нет, команды, которые что-то меняют, отвечают `unsupported`, настройка не меняется, а окно
+/// получает от `get_agent_access` код `unsupported` вместо состояния сокета.
+#[cfg(not(unix))]
+#[test]
+fn without_an_mcp_server_the_settings_window_gets_unsupported_and_nothing_changes() {
+    let fixture = fixture();
+    let settings = window(&fixture, "settings");
+    let unsupported = json!({"code": "unsupported"});
+    assert_eq!(
+        call(&settings, "set_agent_enabled", json!({"enabled": true})).unwrap_err(),
+        unsupported
+    );
+    assert_eq!(
+        call(&settings, "set_agent_mode", json!({"mode": "read_write"})).unwrap_err(),
+        unsupported
+    );
+    assert_eq!(
+        call(
+            &settings,
+            "set_agent_chats",
+            json!({"chatIds": [kinige_domain::groups::INBOX_ID]})
+        )
+        .unwrap_err(),
+        unsupported
+    );
+    // Мусор вместо аргументов — по-прежнему ошибка разбора, а не паника.
+    assert!(call(&settings, "set_agent_mode", json!({"mode": "root"})).is_err());
+    let access = call(&settings, "get_agent_access", json!({})).unwrap();
+    assert_eq!(access["enabled"], false);
+    assert_eq!(access["mode"], "read");
+    assert_eq!(access["socket"]["listening"], false);
+    assert_eq!(access["socket"]["error"], "unsupported");
+    assert!(access["socket"]["socketPath"].is_null());
+    assert!(access["socket"]["codeCommand"].is_null());
+    // Журнал обращений доступен (пустой): страница журнала не ломается.
+    let page = call(&settings, "list_agent_log", json!({})).unwrap();
     assert_eq!(page["rows"], json!([]));
 }

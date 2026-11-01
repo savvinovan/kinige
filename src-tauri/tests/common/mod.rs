@@ -3,6 +3,8 @@
 
 #![allow(dead_code)]
 
+// Клиент сервера MCP по Unix-сокету; на Windows сервера нет (слайс 10a).
+#[cfg(unix)]
 pub mod mcp;
 
 use kinige_lib::builder;

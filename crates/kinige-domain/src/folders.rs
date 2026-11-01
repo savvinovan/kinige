@@ -41,8 +41,29 @@ pub fn sanitize_folder_name(title: &str) -> String {
     let limited = limited.trim_end_matches(|c: char| c.is_whitespace() || c == '.');
     if limited.is_empty() {
         FALLBACK_FOLDER.to_string()
+    } else if cfg!(windows) {
+        avoid_windows_device_name(limited)
     } else {
         limited.to_string()
+    }
+}
+
+/// Windows не создаёт файлы и папки с именами устройств (`CON`, `NUL`, `COM1`, … — и с расширением тоже: `con.txt`).
+/// К такому имени добавляется `_`. Только на Windows: на других системах имя остаётся как есть, и папки существующих копий
+/// не переименовываются.
+fn avoid_windows_device_name(name: &str) -> String {
+    const DEVICES: [&str; 4] = ["CON", "PRN", "AUX", "NUL"];
+    let stem = name.split('.').next().unwrap_or(name).trim_end();
+    let upper = stem.to_ascii_uppercase();
+    let numbered = |prefix: &str| {
+        upper
+            .strip_prefix(prefix)
+            .is_some_and(|rest| matches!(rest.as_bytes(), [b'0'..=b'9']))
+    };
+    if DEVICES.contains(&upper.as_str()) || numbered("COM") || numbered("LPT") {
+        format!("{name}_")
+    } else {
+        name.to_string()
     }
 }
 
@@ -110,6 +131,40 @@ mod tests {
             MAX_FOLDER_CHARS
         );
         assert_eq!(sanitize_folder_name("😀 Смайлы"), "😀 Смайлы");
+    }
+
+    #[test]
+    fn windows_device_names_get_an_underscore_and_ordinary_names_do_not() {
+        for device in [
+            "con",
+            "CON",
+            "Aux",
+            "nul",
+            "PRN",
+            "com1",
+            "LPT9",
+            "con.txt",
+            "Nul.tar.gz",
+        ] {
+            assert_eq!(
+                avoid_windows_device_name(device),
+                format!("{device}_"),
+                "{device}"
+            );
+        }
+        for fine in [
+            "Console",
+            "COM",
+            "COM10",
+            "LPT",
+            "com1a",
+            "Книги",
+            "a.con",
+            "Inbox",
+            "Cons",
+        ] {
+            assert_eq!(avoid_windows_device_name(fine), fine, "{fine}");
+        }
     }
 
     #[test]

@@ -71,6 +71,27 @@ jobs:
       - run: cargo clippy -p kinige --all-targets -- -D warnings
       - run: cargo test -p kinige
 
+  # Windows (slice 10a): the app crate and the three crates it stands on. MCP is Unix-only and is compiled out there; the
+  # tests that need Unix sockets, modes, symlinks or signals are gated with `#[cfg(unix)]`. The runner is pinned like the
+  # others: `windows-latest` moves to a new image without notice. Everything else (fmt, wasm32, generated TS types,
+  # cargo-deny) is platform independent and stays in `rust`.
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Rust toolchain
+        run: rustup toolchain install
+
+      # The cache is saved on main only, like in the other jobs: branches and PRs restore it but do not write.
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - run: cargo clippy -p kinige -p kinige-store -p kinige-domain -p kinige-mcp --all-targets -- -D warnings
+      - run: cargo test -p kinige -p kinige-store -p kinige-domain -p kinige-mcp
+
   # Покрытие Rust → Codecov (бейджи в README, комментарий в PR). Информационно: порог не валит CI (codecov.yml).
   # Отдельное задание: сборка с инструментированием (cargo llvm-cov) не делит артефакты с `rust` и идёт параллельно ему.
   # Покрытие web снимается в задании `web` тем же прогоном vitest, что и проверка.

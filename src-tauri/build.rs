@@ -10,9 +10,14 @@ fn main() {
     // `bundle.externalBin` требует файл `binaries/kinige-mcp-<triple>` при любой сборке, в том числе `cargo clippy` и
     // `cargo test` на чистом клоне. Пустая заглушка (она в .gitignore) не даёт сборке упасть; настоящий мост кладут туда
     // `scripts/build-app.sh` и `scripts/run-app.sh`. Приложение считает пустой файл «мост не найден».
+    // На Windows моста в бандле нет (`tauri.windows.conf.json` опустошает `externalBin`, слайс 10a): заглушка не нужна.
     let target = std::env::var("TARGET").expect("cargo не передал TARGET");
+    let windows = std::env::var("CARGO_CFG_TARGET_OS").is_ok_and(|os| os == "windows");
+    if windows {
+        embed_manifest_in_tests();
+    }
     let sidecar = std::path::Path::new("binaries").join(format!("kinige-mcp-{target}"));
-    if !sidecar.exists() {
+    if !windows && !sidecar.exists() {
         std::fs::create_dir_all("binaries").expect("не удалось создать src-tauri/binaries");
         std::fs::write(&sidecar, []).expect("не удалось создать заглушку моста");
     }
@@ -80,4 +85,27 @@ fn main() {
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("не удалось выполнить tauri-build");
+}
+
+/// Common Controls v6 для тестовых исполняемых файлов на Windows (слайс 10a). Диалог выбора папки (`rfd` через
+/// `tauri-plugin-dialog`) вызывает `TaskDialogIndirect`, которой нет в comctl32 версии 5: без этой зависимости в манифесте
+/// любой тест, слинкованный с приложением, не запускается (`STATUS_ENTRYPOINT_NOT_FOUND`). Для самого приложения манифест
+/// кладёт `tauri-build`, но только в бинарники, поэтому для тестов он вставляется здесь.
+fn embed_manifest_in_tests() {
+    const COMMON_CONTROLS_V6: &str = r#"<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*" />
+    </dependentAssembly>
+  </dependency>
+</assembly>
+"#;
+    let out_dir = std::env::var_os("OUT_DIR").expect("cargo не передал OUT_DIR");
+    let manifest = std::path::Path::new(&out_dir).join("tests.manifest");
+    std::fs::write(&manifest, COMMON_CONTROLS_V6).expect("не удалось записать манифест тестов");
+    println!("cargo:rustc-link-arg-tests=/MANIFEST:EMBED");
+    println!(
+        "cargo:rustc-link-arg-tests=/MANIFESTINPUT:{}",
+        manifest.display()
+    );
 }

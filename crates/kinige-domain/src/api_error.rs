@@ -64,6 +64,8 @@ pub enum ErrorCode {
     ImportSessionExpired,
     /// Копия базы перед импортом не снялась: ни одной записи не добавлено.
     ImportBackupFailed,
+    /// Действие недоступно на этой платформе: доступ ИИ-агентов (MCP) на Windows, пока нет именованных каналов (слайс 10a).
+    Unsupported,
     Internal,
 }
 

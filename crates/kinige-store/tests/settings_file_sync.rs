@@ -18,6 +18,7 @@ use std::time::Duration;
 #[test]
 fn a_missing_file_is_created_from_the_state_with_all_keys_and_private_mode() {
     let rig = rig();
+    #[cfg(unix)]
     assert_eq!(mode_of(&rig.path()), 0o600);
     assert_eq!(
         rig.json(),

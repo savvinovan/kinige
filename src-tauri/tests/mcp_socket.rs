@@ -2,8 +2,9 @@
 //! сбой `bind` и `chmod`, удаление при выходе.
 
 // Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/. Сервер MCP — Unix-сокет; на Windows его нет (слайс 10a).
 #![cfg(test)]
+#![cfg(unix)]
 
 mod common;
 
