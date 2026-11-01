@@ -265,7 +265,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
         ) : undefined
       }
       onOpenImport={importer.start}
-      onOpenAbout={() => void api.appInfo().then((info) => setAbout(info.title), () => undefined)}
+      // Версию не получили: окно всё равно открывается, вместо версии прочерк (отдельного канала в лог из окна нет).
+      onOpenAbout={() => void api.appInfo().then((info) => setAbout(info.title), () => setAbout(t("about.unknown")))}
       composerButtons={{ emoji: true }}
       emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji }}
       chats={sidebarChats}

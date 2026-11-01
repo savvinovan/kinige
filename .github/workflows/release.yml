@@ -102,7 +102,14 @@ jobs:
           MNT="$(mktemp -d)"
           hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$DIST/$NAME.dmg"
           codesign --verify --deep --strict --verbose=2 "$MNT/Kinige.app"
-          lipo -archs "$MNT/Kinige.app/Contents/MacOS/kinige-mcp"
+          MAIN="$(plutil -extract CFBundleExecutable raw "$MNT/Kinige.app/Contents/Info.plist")"
+          for BIN in "$MAIN" kinige-mcp; do
+            ARCHS="$(lipo -archs "$MNT/Kinige.app/Contents/MacOS/$BIN")"
+            if [ "$ARCHS" != "arm64" ]; then
+              echo "$BIN: архитектуры «$ARCHS», ожидалась arm64"
+              exit 1
+            fi
+          done
           hdiutil detach "$MNT"
           UNZ="$(mktemp -d)"
           ditto -x -k "$DIST/$NAME.zip" "$UNZ"

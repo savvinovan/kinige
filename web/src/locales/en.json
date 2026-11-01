@@ -59,6 +59,7 @@
     "about": "About"
   },
   "about": {
+    "unknown": "—",
     "tagline": "A personal journal in the form of a chat with yourself. Entries are stored on this computer."
   },
   "import": {

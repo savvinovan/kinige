@@ -2,10 +2,10 @@
 # Релиз Kinige (ADR-0012). Два шага, оба явные; на main ничего не делается само.
 #
 #   scripts/release.sh X.Y.Z          поднять версию, ветка release/vX.Y.Z, коммит «Release vX.Y.Z», push и PR
-#   scripts/release.sh --tag X.Y.Z    после мержа PR: аннотированный тег vX.Y.Z на origin/main и его push
+#   scripts/release.sh --tag X.Y.Z    после мержа PR и зелёного ci.yml на main: аннотированный тег vX.Y.Z на origin/main и его push
 #
 # Тег запускает .github/workflows/release.yml: сборка на macOS-раннере и GitHub Release с .dmg, .zip и SHA256SUMS.
-# Ключи: --dry-run (с первым шагом: всё, кроме push и PR; рабочее дерево с результатом остаётся и печатается).
+# Ключи: --dry-run (с первым шагом: всё, кроме push и PR; показывает коммит, worktree и ветка удаляются).
 # Первый шаг работает во временном git worktree от origin/main: текущая ветка и неотправленные правки не затрагиваются.
 set -euo pipefail
 
@@ -60,16 +60,30 @@ tag_release() {
   git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null && die "тег $tag уже есть локально"
   [ -z "$(git ls-remote --tags origin "refs/tags/$tag")" ] || die "тег $tag уже есть в origin"
   sha="$(git rev-parse origin/main)"
+  require_green_ci "$sha"
   git tag -a "$tag" -m "Kinige $version" "$sha"
   git push origin "refs/tags/$tag"
   echo "OK: тег $tag на $(git log -1 --format='%h %s' "$sha"); сборку ведёт workflow Release:"
   echo "    gh run list --workflow release.yml --limit 1"
 }
 
+# Тег ставится только на коммит, где последний запуск ci.yml завершился успешно (запуск по push в main после мержа).
+require_green_ci() {
+  local sha="$1" state
+  state="$(gh run list --workflow ci.yml --commit "$sha" --limit 1 --json status,conclusion \
+    --jq '.[0] | "\(.status) \(.conclusion)"')" || die "не удалось спросить GitHub о CI (gh run list)"
+  case "$state" in
+    "completed success") ;;
+    "null null") die "для коммита ${sha:0:7} нет запуска ci.yml: дождитесь CI на main или запустите его (gh workflow run ci.yml --ref main)" ;;
+    "completed "*) die "CI на коммите ${sha:0:7} завершился как «${state#completed }»: тег не ставится" ;;
+    *) die "CI на коммите ${sha:0:7} ещё не завершён (${state%% *}): подождите и повторите" ;;
+  esac
+}
+
 # --- шаг 1: версия, ветка, PR ----------------------------------------------------------------------------------------
 # root, work, branch, pushed и dry_run — глобальные: их читает ловушка EXIT, когда функция уже вернула управление.
 prepare_release() {
-  local version="$1" tag="v$1" current tmp
+  local version="$1" tag="v$1" current tmp log
   branch="release/v$1"
   pushed=0
   dry_run="$2"
@@ -99,25 +113,22 @@ prepare_release() {
   mv "$tmp" Cargo.toml
 
   # Cargo.lock: только крейты рабочей области, без компиляции и без сети.
-  cargo update --workspace --offline >/dev/null 2>&1 || die "cargo update -w --offline не удался"
+  log="$(mktemp "${TMPDIR:-/tmp}/kinige-cargo-log.XXXXXX")"
+  cargo update --workspace --offline >"$log" 2>&1 || { cat "$log" >&2; rm -f "$log"; die "cargo update -w --offline не удался"; }
+  rm -f "$log"
   # package.json и package-lock.json: npm правит обе строки версии, тег и коммит не создаёт.
   npm --prefix web version "$version" --no-git-tag-version --allow-same-version >/dev/null
 
   verify_diff "$current" "$version"
-  if [ -d "$root/web/node_modules" ]; then
-    # Тест версий без установки зависимостей в рабочем дереве: берём node_modules основного.
-    ln -s "$root/web/node_modules" web/node_modules
-    (cd web && npx vitest run src/version.test.ts >/dev/null) || die "web/src/version.test.ts не прошёл"
-    rm web/node_modules
-  fi
+  run_version_test
 
   git add Cargo.toml Cargo.lock web/package.json web/package-lock.json
+  # Релизный коммит и PR идут без номера задачи Huly (исключение из правила 15 CLAUDE.md, ADR-0012).
   git commit --quiet -m "Release $tag"
 
   if [ "$dry_run" = "1" ]; then
-    echo "dry-run: ветка $branch готова в $work (push и PR не делались)"
+    echo "dry-run: коммит в ветке $branch подготовлен; push и PR не делались, рабочее дерево и ветка удаляются"
     git --no-pager show --stat --format='%h %s' HEAD
-    trap - EXIT
     return
   fi
   git push --quiet -u origin "$branch"
@@ -126,13 +137,25 @@ prepare_release() {
   echo "Дальше: дождаться CI, вмержить PR, затем: scripts/release.sh --tag $version"
 }
 
+# Тест версий в временном worktree. Зависимости: node_modules основного дерева (ссылкой), а если их нет — `npm ci` здесь
+# (временный каталог удаляется вместе с worktree). Молча пропускать тест нельзя: он и ловит забытый файл версии.
+run_version_test() {
+  if [ -d "$root/web/node_modules" ]; then
+    ln -s "$root/web/node_modules" web/node_modules
+  else
+    echo "release.sh: в $root/web нет node_modules, ставлю зависимости во временном worktree (npm ci)" >&2
+    npm --prefix web ci --ignore-scripts --no-audit --no-fund >/dev/null || die "npm ci не удался"
+  fi
+  (cd web && npx vitest run src/version.test.ts) || die "web/src/version.test.ts не прошёл"
+  [ ! -L web/node_modules ] || rm web/node_modules
+}
+
+# Всегда: worktree удаляется (и после --dry-run, и при ошибке), локальная ветка — пока она не отправлена в origin.
 cleanup_worktree() {
-  local status=$?
-  [ "$dry_run" = "0" ] || return 0
-  git -C "$root" worktree remove --force "$work" >/dev/null 2>&1 || true
-  # Неудача до отправки ветки: локальную ветку убираем, чтобы повторный запуск не упёрся в «ветка уже есть».
-  if [ "$status" != "0" ] && [ "$pushed" = "0" ]; then
-    git -C "$root" branch -D "$branch" >/dev/null 2>&1 || true
+  cd "$root" || true
+  git worktree remove --force "$work" >/dev/null 2>&1 || true
+  if [ "$pushed" = "0" ]; then
+    git branch -D "$branch" >/dev/null 2>&1 || true
   fi
 }
 

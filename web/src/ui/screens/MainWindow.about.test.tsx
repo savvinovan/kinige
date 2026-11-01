@@ -33,6 +33,16 @@ describe("О программе", () => {
     expect(within(dialog).getByText(/personal journal/)).toBeInTheDocument();
   });
 
+  it("версия не получена: окно открывается, вместо версии прочерк", async () => {
+    const api = new MockApi({ now: NOW, language: "ru" });
+    api.appInfo = () => Promise.reject(new Error("нет связи"));
+    render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />, { language: "ru" });
+    fireEvent.click(await screen.findByRole("button", { name: /^Профиль/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "О программе" }));
+    const dialog = await screen.findByRole("dialog", { name: "О программе" });
+    expect(within(dialog).getByText("—")).toBeInTheDocument();
+  });
+
   it("крестик закрывает окно", async () => {
     await openAbout("ru", "О программе");
     const dialog = await screen.findByRole("dialog", { name: "О программе" });

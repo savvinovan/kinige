@@ -13,7 +13,7 @@
 
 ## Скачать
 
-Готовые сборки для macOS (Apple Silicon) — на странице [Releases](https://github.com/savvinovan/kinige/releases): `.dmg`, `.zip` и `SHA256SUMS`. Сборка подписана ad-hoc (Developer ID и нотаризация — слайс 10), поэтому при первом запуске macOS её остановит: правый клик по `Kinige.app` -> «Открыть», либо `xattr -dr com.apple.quarantine /Applications/Kinige.app`. Версии — семвер, минор = номер слайса ([ADR-0012](docs/adr/0012-versions-and-releases.md)); текущая версия видна в приложении: «Профиль» -> «О программе».
+Готовые сборки для macOS (Apple Silicon) — на странице [Releases](https://github.com/savvinovan/kinige/releases): `.dmg`, `.zip` и `SHA256SUMS`. Сборка подписана ad-hoc (Developer ID и нотаризация — слайс 10), поэтому при первом запуске macOS её остановит. На macOS 15 и новее: запустить `Kinige.app` один раз и нажать «Всё равно открыть» в «Системные настройки» -> «Конфиденциальность и безопасность»; на macOS 13-14 хватит правого клика -> «Открыть». На любой версии работает и `xattr -dr com.apple.quarantine /Applications/Kinige.app`. Версии — семвер, минор = номер слайса ([ADR-0012](docs/adr/0012-versions-and-releases.md)); текущая версия видна в приложении: «Профиль» -> «О программе».
 
 ## Требования
 
