@@ -1,0 +1,22 @@
+{
+  "name": "kinige-spike-s3-forest",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Spike S3: forest grid (12x31 vs 7x53) and renderer (Canvas 2D vs PixiJS). Not part of the app.",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "bench": "node bench/run.mjs",
+    "shots": "node bench/shots.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "26.6.5",
+    "typescript": "6.0.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}
