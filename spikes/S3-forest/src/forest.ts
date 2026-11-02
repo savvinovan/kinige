@@ -13,7 +13,7 @@ import {
   stageOf,
   syntheticYear,
 } from "./calendar";
-import { type Chrome, type View, drawScene, lodOf } from "./draw";
+import { type Chrome, type View, drawHover, drawScene, lodOf } from "./draw";
 import {
   type Camera,
   type Pt,
@@ -34,6 +34,16 @@ const MAX_CELL_PX = 280;
 const MIN_ZOOM = 0.2;
 const STAGE_NAMES = ["empty ground", "a sprout", "a sapling", "a young tree", "a tree", "a large tree", "a great tree"];
 
+/** A rendered bitmap of the board with its camera and margins (CSS pixels). */
+interface Layer {
+  canvas: HTMLCanvasElement;
+  cam: Camera;
+  mx: number;
+  my: number;
+  version: number;
+  dpr: number;
+}
+
 export class Forest {
   readonly canvas: HTMLCanvasElement;
   readonly ctx: CanvasRenderingContext2D;
@@ -43,6 +53,8 @@ export class Forest {
   h = 0;
   dpr = 1;
   frozen = false; // the benchmark drives the frames itself
+  /** Pan and zoom blit a cached bitmap of the board; it is re-rendered when the camera rests (see `drawCached`). */
+  useCache = true;
   drawMs = 0;
   /** Number of frames drawn: the "no gratuitous motion" test checks that it stands still when nothing happens. */
   frames = 0;
@@ -52,11 +64,15 @@ export class Forest {
   private grid: GridKind = "A";
   private first: FirstWeekday = "mon";
   private raf = 0;
+  /** Bumped by everything that changes the picture except the camera and the hover: the layer is re-rendered when it moves. */
+  private version = 1;
+  private layer: Layer | null = null;
+  private settleTimer = 0;
+  private settled = false;
   private camAnim: { from: Camera; to: Camera; start: number; dur: number } | null = null;
   private fitCam: Camera;
-  /** Backing-store density cap: 1 while the user pans or zooms on a HiDPI screen (a quarter of the pixels), native at rest. */
+  /** Backing-store density cap, for the benchmark (a density-1 canvas is a quarter of the pixels on a HiDPI screen). */
   private maxDpr = Number.POSITIVE_INFINITY;
-  private settleTimer = 0;
   private reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   private pointers = new Map<number, Pt>();
   private drag: { x: number; y: number; cam: Camera; moved: boolean } | null = null;
@@ -105,7 +121,7 @@ export class Forest {
   /** Draw detailed trees from pre-rendered bitmaps (see `View.sprites`). */
   setSprites(on: boolean): void {
     this.view.sprites = on;
-    this.invalidate();
+    this.refresh();
   }
 
   get gridKind(): GridKind {
@@ -141,7 +157,7 @@ export class Forest {
       this.announce(cell.row, cell.col);
       this.ensureVisible(cell.center);
     }
-    this.invalidate();
+    this.refresh();
   }
 
   /** Shows the card of a date as if the pointer were over it (screenshots). */
@@ -164,7 +180,7 @@ export class Forest {
     const cell = this.cellByKey(key);
     if (cell) cell.data = next;
     this.view.grow = this.reduceMotion ? null : { key, from: d.stage, to: next.stage, start: performance.now(), dur: 700 };
-    this.invalidate();
+    this.refresh();
     return true;
   }
 
@@ -219,17 +235,92 @@ export class Forest {
     }
     this.frames++;
     const t0 = performance.now();
-    if (drawScene(this.ctx, this.w, this.h, this.scene, this.view, this.chrome)) again = true;
+    if (this.view.grow) this.version++; // the growing tree changes every frame
+    const animating = this.useCache ? this.drawCached() : drawScene(this.ctx, this.w, this.h, this.scene, this.view, this.chrome);
+    drawHover(this.ctx, this.scene, this.view, this.chrome);
+    if (animating) again = true;
     this.drawMs = performance.now() - t0;
     if (!again && this.view.grow && now - this.view.grow.start >= this.view.grow.dur) this.view.grow = null;
     this.updateInfo();
     if (again) this.invalidate();
   }
 
+  /** Re-renders the picture (the fonts arrived, the data changed). */
+  refresh(): void {
+    this.version++;
+    this.invalidate();
+  }
+
   // ---- internals -----------------------------------------------------------------------------------------------
+
+  /**
+   * The board is static between data changes, so a pan or a zoom only moves a bitmap of it: the board is rendered into a
+   * layer larger than the window (a quarter of the window of margin on each side) and every gesture frame is one
+   * `drawImage`. The layer is re-rendered when the content changes, when the camera has rested for 140 ms (crisp again),
+   * or when the view leaves the layer or the scale differs by more than 0.6..1.7 from the layer's. The hover outline is
+   * drawn over the layer and does not invalidate it.
+   */
+  private drawCached(): boolean {
+    const L = this.layer;
+    const cam = this.view.cam;
+    const same = L !== null && L.cam.s === cam.s && L.cam.tx === cam.tx && L.cam.ty === cam.ty;
+    let animating = false;
+    if (!L || L.version !== this.version || L.dpr !== this.dpr || (!same && (this.settled || !this.covers(L)))) {
+      animating = this.renderLayer();
+      this.settled = false;
+    }
+    window.clearTimeout(this.settleTimer);
+    const cur = this.layer;
+    if (!cur) return animating;
+    if (cur.cam.s !== cam.s || cur.cam.tx !== cam.tx || cur.cam.ty !== cam.ty) {
+      this.settleTimer = window.setTimeout(() => {
+        this.settled = true;
+        this.invalidate();
+      }, 140);
+      const k = cam.s / cur.cam.s;
+      const w = (cur.canvas.width / cur.dpr) * k;
+      const h = (cur.canvas.height / cur.dpr) * k;
+      this.ctx.drawImage(cur.canvas, (-cur.mx - cur.cam.tx) * k + cam.tx, (-cur.my - cur.cam.ty) * k + cam.ty, w, h);
+    } else {
+      this.ctx.drawImage(cur.canvas, -cur.mx, -cur.my, cur.canvas.width / cur.dpr, cur.canvas.height / cur.dpr);
+    }
+    return animating;
+  }
+
+  /** Does the layer cover the whole window at the current camera, at a scale close enough to look right? */
+  private covers(L: Layer): boolean {
+    const cam = this.view.cam;
+    const k = cam.s / L.cam.s;
+    if (k < 0.6 || k > 1.7) return false;
+    // The window corners in the layer's screen space.
+    const x0 = (0 - cam.tx) / k + L.cam.tx;
+    const y0 = (0 - cam.ty) / k + L.cam.ty;
+    const x1 = (this.w - cam.tx) / k + L.cam.tx;
+    const y1 = (this.h - cam.ty) / k + L.cam.ty;
+    return x0 >= -L.mx && y0 >= -L.my && x1 <= this.w + L.mx && y1 <= this.h + L.my;
+  }
+
+  private renderLayer(): boolean {
+    const mx = Math.round(this.w * 0.25);
+    const my = Math.round(this.h * 0.25);
+    const W = this.w + 2 * mx;
+    const H = this.h + 2 * my;
+    const canvas = this.layer?.canvas ?? document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(W * this.dpr));
+    canvas.height = Math.max(1, Math.round(H * this.dpr));
+    const g = canvas.getContext("2d");
+    if (!g) return false;
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    const cam = this.view.cam;
+    const shifted: View = { ...this.view, cam: { s: cam.s, tx: cam.tx + mx, ty: cam.ty + my } };
+    const animating = drawScene(g, W, H, this.scene, shifted, this.chrome);
+    this.layer = { canvas, cam, mx, my, version: this.version, dpr: this.dpr };
+    return animating;
+  }
 
   private rebuild(): void {
     this.scene = buildScene(this.grid, YEAR, this.first, this.data);
+    this.version++;
     this.view.selected = null;
     this.view.hover = null;
     this.card.hidden = true;
@@ -251,37 +342,18 @@ export class Forest {
     this.canvas.width = Math.round(this.w * this.dpr);
     this.canvas.height = Math.round(this.h * this.dpr);
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.version++;
     const wasFit = this.view.cam === this.fitCam || this.fitCam.s === 1;
     this.fitCam = this.computeFit();
     if (wasFit) this.view.cam = this.fitCam;
     this.invalidate();
   }
 
-  /**
-   * Adaptive resolution: during a gesture the canvas is drawn at density 1 and the browser scales it up; 160 ms after the
-   * last gesture event it is redrawn at the native density. On a HiDPI screen without GPU raster this is the difference
-   * between 40 and 60 FPS (see the README); on a density-1 screen it does nothing.
-   */
-  private interacting(): void {
-    if (!this.adaptive || (window.devicePixelRatio || 1) <= 1) return;
-    if (this.maxDpr !== 1) {
-      this.maxDpr = 1;
-      this.resize();
-      this.frame(performance.now());
-    }
-    window.clearTimeout(this.settleTimer);
-    this.settleTimer = window.setTimeout(() => this.setMaxDpr(Number.POSITIVE_INFINITY), 160);
-  }
-
   /** Caps the backing-store density; `Infinity` is the native one. */
   setMaxDpr(n: number): void {
     this.maxDpr = n;
     this.resize();
-    this.invalidate();
   }
-
-  /** Whether gestures switch to density 1 (on by default; the benchmark turns it off to measure the full-density path). */
-  adaptive = true;
 
   private computeFit(): Camera {
     const margin = 36;
@@ -318,7 +390,6 @@ export class Forest {
 
   private zoomBy(p: Pt, factor: number): void {
     this.camAnim = null;
-    this.interacting();
     const next = zoomAt(this.view.cam, p, factor, this.fitCam.s * MIN_ZOOM, MAX_CELL_PX / TW);
     this.view.cam = this.clampCam(next);
     this.hoverFrom(p);
@@ -363,7 +434,6 @@ export class Forest {
         const [a, b] = [...this.pointers.values()];
         if (a && b) {
           const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-          this.interacting();
           const k = Math.hypot(a.x - b.x, a.y - b.y) / this.pinch.dist;
           this.view.cam = this.clampCam(zoomAt(this.pinch.cam, mid, k, this.fitCam.s * MIN_ZOOM, MAX_CELL_PX / TW));
           this.invalidate();
@@ -380,7 +450,6 @@ export class Forest {
         }
         if (this.drag.moved) {
           this.camAnim = null;
-          this.interacting();
           this.view.cam = this.clampCam({ ...this.drag.cam, tx: this.drag.cam.tx + dx, ty: this.drag.cam.ty + dy });
           this.invalidate();
         }

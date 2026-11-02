@@ -80,7 +80,7 @@ const api = {
   bench: (opts?: BenchOptions) => runBench(forest, opts),
   webgl: webglInfo,
   limits: () => forest.limits,
-  setAdaptive: (on: boolean) => { forest.adaptive = on; },
+  setCache: (on: boolean) => { forest.useCache = on; forest.refresh(); },
   setMaxDpr: (n: number) => forest.setMaxDpr(n),
   setSprites: (on: boolean) => forest.setSprites(on),
   pickTransparencyDemo: () => forest.pickTransparencyDemo(),
@@ -95,4 +95,4 @@ if (q.get("sprites") === "1") api.setSprites(true);
 syncButtons();
 forest.fitYear(false);
 // The canvas text needs the web font; redraw once it is there.
-void document.fonts.ready.then(() => forest.invalidate());
+void document.fonts.ready.then(() => forest.refresh());

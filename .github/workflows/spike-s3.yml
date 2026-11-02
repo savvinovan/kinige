@@ -54,7 +54,8 @@ jobs:
       matrix:
         include:
           - { runner: ubuntu-24.04, os: Linux, config: chromium, shots: all }
-          - { runner: ubuntu-24.04, os: Linux, config: chromium-swiftshader, shots: none }
+          # Software WebGL (SwiftShader) also composites the page in software: it is slow, so only a few variants run.
+          - { runner: ubuntu-24.04, os: Linux, config: chromium-swiftshader, shots: none, extra: "--perf-only --variants wide,wide-cached,narrow" }
           - { runner: ubuntu-24.04, os: Linux, config: webkit, shots: year }
           - { runner: macos-15, os: macOS, config: chromium, shots: none }
           - { runner: macos-15, os: macOS, config: chromium-nogpu, shots: none }
@@ -82,8 +83,11 @@ jobs:
         env:
           RESULT_PREFIX: ${{ matrix.os }}
           SHOTS: ${{ matrix.shots }}
+          EXTRA: ${{ matrix.extra }}
         run: |
           args=(--config "${{ matrix.config }}" --seconds 3 --out "$RUNNER_TEMP/s3/results")
+          # shellcheck disable=SC2206
+          if [ -n "$EXTRA" ]; then args+=($EXTRA); fi
           if [ "$SHOTS" != "none" ]; then args+=(--shots "$RUNNER_TEMP/s3/shots" --shots-only "$SHOTS"); fi
           node bench/run.mjs "${args[@]}"
       - uses: actions/upload-artifact@v7

@@ -128,11 +128,9 @@ export function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, s
     ctx.fill();
   }
 
-  // Today, selection and hover sit on the ground, under the trees.
+  // Today and the selection sit on the ground, under the trees; the hover outline is drawn over the picture by `drawHover`.
   const todayCell = scene.cells.find((c) => c.date && c.date.m === view.today.m && c.date.d === view.today.d);
   if (todayCell) outline(ctx, view, todayCell, chrome.text, 1, 0.55);
-  const hov = view.hover && scene.cells[view.hover.row * scene.dims.cols + view.hover.col];
-  if (hov?.date) outline(ctx, view, hov, chrome.text, 1.5, 0.9);
   const sel = view.selected && scene.cells[view.selected.row * scene.dims.cols + view.selected.col];
   if (sel) outline(ctx, view, sel, chrome.accent, Math.max(2, s * 3), 1, true);
 
@@ -157,6 +155,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, s
     else drawTree(ctx, p, f, s, c.season, lod);
   }
 
+  // The selection outline once more over the trees (thin): a selected tile hidden behind a canopy must still be findable.
+  if (sel) outline(ctx, view, sel, chrome.accent, 1.5, 0.9);
   drawLabels(ctx, scene, view, chrome);
   return animating && view.now - (view.grow?.start ?? 0) < (view.grow?.dur ?? 0);
 }
@@ -229,6 +229,12 @@ function drawGhost(ctx: CanvasRenderingContext2D, p: Pt, f: number, s: number, s
   ctx.globalAlpha = alpha;
   ctx.drawImage(scratch, Math.round(x0 * k), Math.round(y0 * k));
   ctx.restore();
+}
+
+/** The outline of the hovered day, drawn over the (possibly cached) picture so that a hover never re-renders the board. */
+export function drawHover(ctx: CanvasRenderingContext2D, scene: Scene, view: View, chrome: Chrome): void {
+  const hov = view.hover && scene.cells[view.hover.row * scene.dims.cols + view.hover.col];
+  if (hov?.date) outline(ctx, view, hov, chrome.text, 1.5, 0.9);
 }
 
 function diamond(ctx: CanvasRenderingContext2D, p: Pt, tw: number, th: number, k: number): void {
