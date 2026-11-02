@@ -425,8 +425,9 @@ fn a_server_that_never_answers_the_repeated_initialize_gives_the_call_an_error_a
     bridge.say(INITIALIZED);
     assert_eq!(first.next(LONG).as_deref(), Some(INITIALIZED));
     first.close();
-    // Мосту нужно заметить обрыв (читающий поток увидит конец): иначе вызов уйдёт в уже закрытое соединение и получит
-    // ошибку «потеряно», а не повторное подключение (на нагруженной машине так и бывало). Ждём его сообщения об обрыве.
+    // The bridge must notice the cut (its reader thread sees the end of the stream) before the next call; otherwise the
+    // call goes into the closed connection and gets the "lost" error instead of a reconnect (it did on a loaded machine).
+    // The bridge announces the cut on stderr, so wait for that line instead of sleeping.
     bridge.wait_for_note("connection_lost", LONG);
     bridge.say(&call(3, "never-delivered"));
     let mut second = server.accept(LONG).unwrap();

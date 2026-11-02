@@ -122,7 +122,7 @@ fn a_dropped_handle_stops_the_thread_nothing_is_applied_and_nothing_is_logged() 
         store,
         changes,
     } = rig;
-    // `Drop` ждёт остановки потока: после него опросов нет вообще, так что ждать нечего и проверка не зависит от времени.
+    // `Drop` waits for the thread to stop: there are no polls after it at all, so there is nothing to wait for.
     drop(file);
     write_file(dir.path(), br#"{"text_size": "large"}"#, 0o600);
     write_file(dir.path(), br#"{"text_size": "#, 0o600);
