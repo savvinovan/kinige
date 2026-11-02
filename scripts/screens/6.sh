@@ -104,9 +104,9 @@ restart_app() {
 # The journal day of the runner (the day changes at 04:00) and the dates the scenario aims at.
 TODAY="$(python3 -c 'import datetime as d; print((d.datetime.now() - d.timedelta(hours=4)).strftime("%Y-%m-%d"))')"
 YEAR="${TODAY%%-*}"
-# A day 20..35 days back whose first entry is in the Inbox (its text ends with the date): inside the first page of the feed.
-OLDER="$(sqlw "select journal_date from message where chat_id = '$INBOX' and deleted_at is null and body_md like '% · ' || journal_date and journal_date <= date('${TODAY}', '-20 day') and journal_date >= date('${TODAY}', '-35 day') order by journal_date desc limit 1")"
-[ -n "${OLDER}" ] || fail "no first entry of a day 20..35 days back in the Inbox"
+# A day 20..35 days back whose first entry carries its date in the text (in whatever chat): the day of the calendar click.
+OLDER="$(sqlw "select journal_date from message where deleted_at is null and body_md like '% · ' || journal_date and journal_date <= date('${TODAY}', '-20 day') and journal_date >= date('${TODAY}', '-35 day') order by journal_date desc limit 1")"
+[ -n "${OLDER}" ] || fail "no first entry of a day 20..35 days back"
 # One of the oldest entries on the first page of the Inbox (the feed loads the last 200): the first entry of a day whose text
 # ends with the date, so that the search finds it near the start of the tree.
 EARLY="$(sqlw "select journal_date from (select * from message where chat_id = '$INBOX' and deleted_at is null order by journal_date desc, created_at desc, id desc limit 200) where body_md like '% · ' || journal_date order by journal_date limit 1")"
