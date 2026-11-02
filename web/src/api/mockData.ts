@@ -36,6 +36,8 @@ export const DEFAULT_SETTINGS: Settings = {
     { kind: "clipboard", accelerator: DEFAULT_SHORTCUTS.clipboard, isDefault: true, state: "assigned" },
   ],
   sidebarCollapsed: false,
+  forestView: "strip",
+  forestMode: "forest",
   recentEmoji: [],
   backup: { folder: "/Users/me/Library/Application Support/me.savvinov.kinige/backups", lastAt: null, count: 0, error: null },
 };

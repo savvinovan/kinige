@@ -31,6 +31,7 @@
     --motion-duration-short: 0s;
     --motion-duration-medium: 0s;
     --motion-duration-long: 0s;
+    --motion-duration-grow: 0s;
   }
 }
 
@@ -38,4 +39,5 @@
   --motion-duration-short: 0s;
   --motion-duration-medium: 0s;
   --motion-duration-long: 0s;
+  --motion-duration-grow: 0s;
 }

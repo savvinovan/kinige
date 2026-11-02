@@ -14,6 +14,11 @@ import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { FeedCursor } from "./generated/FeedCursor";
+import type { FirstWeekday } from "./generated/FirstWeekday";
+import type { ForestMode } from "./generated/ForestMode";
+import type { ForestTarget } from "./generated/ForestTarget";
+import type { ForestView } from "./generated/ForestView";
+import type { ForestYear } from "./generated/ForestYear";
 import type { ImportOpened } from "./generated/ImportOpened";
 import type { ImportProgress } from "./generated/ImportProgress";
 import type { ImportReport } from "./generated/ImportReport";
@@ -31,6 +36,7 @@ import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
+import type { WeekdaySource } from "./generated/WeekdaySource";
 
 /** События Rust → главное окно (имена совпадают с `capture::ENTRIES_CHANGED`, `capture::OPEN_CHAT`, `recovery::DATABASE_CORRUPT`). */
 const ENTRIES_CHANGED = "entries-changed";
@@ -155,6 +161,18 @@ export class TauriApi implements KinigeApi {
 
   async dismissOnThisDay(date: string): Promise<void> {
     await call("dismiss_on_this_day", { date });
+  }
+
+  getForestYear(year: number, firstWeekday: FirstWeekday, weekdaySource?: WeekdaySource): Promise<ForestYear> {
+    return call("get_forest_year", weekdaySource === undefined ? { year, firstWeekday } : { year, firstWeekday, weekdaySource });
+  }
+
+  getForestDayTarget(date: string, currentChatId: string | null): Promise<ForestTarget | null> {
+    return call("get_forest_day_target", { date, currentChatId });
+  }
+
+  async setForestView(view: ForestView, mode: ForestMode): Promise<void> {
+    await call("set_forest_view", { view, mode });
   }
 
   setShortcut(kind: ShortcutKind, accelerator: string): Promise<Settings> {

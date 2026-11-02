@@ -13,8 +13,11 @@ import {
   Database,
   Download,
   Ellipsis,
+  EyeOff,
   Info,
+  Maximize2,
   Mic,
+  Minimize2,
   PanelLeftClose,
   PanelLeftOpen,
   Paperclip,
@@ -29,6 +32,7 @@ import {
   SquareCheck,
   Star,
   Trash2,
+  Trees,
   Undo2,
   Upload,
   X,
@@ -75,6 +79,11 @@ const GLYPHS = {
   settings: Settings,
   download: Download,
   upload: Upload,
+  // Slice 6: the forest above the feed (expand and collapse the pane, hide it, its profile menu item).
+  expandPane: Maximize2,
+  collapsePane: Minimize2,
+  hidePane: EyeOff,
+  forest: Trees,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

@@ -1,5 +1,5 @@
 import { type KinigeApi, KinigeApiError } from "./KinigeApi";
-import { MockApiSlice5 } from "./MockApiSlice5";
+import { MockApiSlice6 } from "./MockApiSlice6";
 import { DAY_MS, DEFAULT_SHORTCUTS, TRASH_DAYS, isRealDate } from "./mockData";
 import type { AppInfo } from "./generated/AppInfo";
 import type { ChatList } from "./generated/ChatList";
@@ -23,7 +23,7 @@ const ALLOWED_SCHEMES = ["http:", "https:", "mailto:"];
  * ведёт корзину, правки и ревизии, умеет «отказ» любой команды (`failNext`) и запоминает открытые ссылки (`openedUrls`). День
  * записи считается упрощённо (UTC, граница 04:00): настоящие правила — в Rust. Состояние и окно захвата — в `MockApiBase`.
  */
-export class MockApi extends MockApiSlice5 implements KinigeApi {
+export class MockApi extends MockApiSlice6 implements KinigeApi {
   private readonly openChatListeners = new Set<(chatId: string) => void>();
   private readonly corruptListeners = new Set<() => void>();
 

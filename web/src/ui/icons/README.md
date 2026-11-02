@@ -37,6 +37,10 @@ Line SVGs from the [Lucide](https://lucide.dev) set via the npm package `lucide-
 | `settings`     | `settings`                                  | ISC                |
 | `download`     | `download`                                  | MIT (from Feather) |
 | `upload`       | `upload`                                    | MIT (from Feather) |
+| `expandPane`   | `maximize-2`                                | ISC                |
+| `collapsePane` | `minimize-2`                                | MIT (from Feather) |
+| `hidePane`     | `eye-off`                                   | ISC                |
+| `forest`       | `trees`                                     | ISC                |
 
 The origin of the slice 3 icons was checked against the Feather list in the `LICENSE` of package 1.60.0: `trash-2`, `calendar`, `plus`, `chevron-right`, `database` are there, the rest are ISC.
 

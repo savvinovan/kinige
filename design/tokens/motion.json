@@ -4,7 +4,8 @@
       "$type": "duration",
       "short": { "$value": "120ms", "$description": "Наведение, появление подсветки." },
       "medium": { "$value": "200ms", "$description": "Появление тоста, раскрытие поля ввода." },
-      "long": { "$value": "320ms", "$description": "Крупные переходы." }
+      "long": { "$value": "320ms", "$description": "Крупные переходы." },
+      "grow": { "$value": "700ms", "$description": "Growth of today's tree when its stage rises (the forest, slice 6). The curve is motion.easing.enter. 0 under Reduce Motion: the tree jumps." }
     },
     "delay": {
       "$type": "duration",
@@ -23,7 +24,8 @@
         "$type": "duration",
         "short": { "$value": "0ms" },
         "medium": { "$value": "0ms" },
-        "long": { "$value": "0ms" }
+        "long": { "$value": "0ms" },
+        "grow": { "$value": "0ms" }
       }
     }
   }

@@ -35,6 +35,8 @@ interface UseFeedOptions {
   onTag: (tag: string) => void;
   /** Открыть чат на записи: страница вокруг неё, дальше подгрузка вверх и вниз. Используется один раз на `nonce`. */
   focus?: FocusTarget | null;
+  /** The entries of the journal changed through this feed (sent, edited, deleted, restored, moved, re-dated): the forest reloads. */
+  onMutated?: () => void;
 }
 
 /**
@@ -42,8 +44,13 @@ interface UseFeedOptions {
  * Без оптимистичного показа: запись меняется после ответа Rust. Удалённая запись стоит на месте приглушённой («Удалено ·
  * Вернуть»), пока человек не уйдёт из чата (решение пользователя 1).
  */
-export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus = null }: UseFeedOptions) {
+export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus = null, onMutated }: UseFeedOptions) {
   const { t } = useTranslation();
+  const mutatedRef = useRef(onMutated);
+  useEffect(() => {
+    mutatedRef.current = onMutated;
+  });
+  const mutated = useCallback(() => mutatedRef.current?.(), []);
   const [messages, setMessages] = useState<FeedMessage[]>([]);
   const [today, setToday] = useState("");
   // Первая страница открытого чата получена: до этого лента может ничего не рисовать (первый кадр с карточкой «В этот день»).
@@ -275,9 +282,13 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     }
   }, [api, setCursor]);
 
-  const replace = useCallback((view: MessageView) => {
-    setMessages((list) => list.map((m) => (m.id === view.id ? view : m)));
-  }, []);
+  const replace = useCallback(
+    (view: MessageView) => {
+      setMessages((list) => list.map((m) => (m.id === view.id ? view : m)));
+      mutated();
+    },
+    [mutated],
+  );
 
   /**
    * Отправленная запись встаёт в конец ленты. Вызывается из ответа на отправку, который мог прийти после смены чата или
@@ -287,6 +298,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
    */
   const appendSent = useCallback(
     (sent: MessageView) => {
+      mutated();
       const { chatId: id, tag: filter } = current.current;
       if (sent.chatId !== id) return;
       if (filter !== null && !sent.tags.includes(filter)) return;
@@ -297,7 +309,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
       }
       setMessages((all) => [...all, sent]);
     },
-    [restart],
+    [restart, mutated],
   );
 
   const fail = useCallback((reason: unknown) => onError(errorCode(reason)), [onError]);
@@ -339,6 +351,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
           .then(() => {
             setDeletedIds((ids) => new Set(ids).add(id));
             setEditingId((editing) => (editing === id ? null : editing));
+            mutated();
             return refreshChats();
           })
           .catch(fail);
@@ -352,6 +365,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
               next.delete(id);
               return next;
             });
+            mutated();
             return refreshChats();
           })
           .catch(fail);
@@ -379,7 +393,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
           .catch(fail);
       },
     }),
-    [api, t, replace, setFlag, refreshChats, fail, reload, onTag],
+    [api, t, replace, setFlag, refreshChats, fail, reload, onTag, mutated],
   );
 
   /** Календарь выбрал день для записи `dateFor`; ответ — код ошибки (диалог показывает её), `null` — готово. */

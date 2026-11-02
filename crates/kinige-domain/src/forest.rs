@@ -22,6 +22,18 @@ pub enum FirstWeekday {
     Sunday,
 }
 
+/// Where the window got the first weekday from (ADR-0013): the `Intl.Locale` method `getWeekInfo()`, the older
+/// `weekInfo` property, or the Monday fallback. Sent with the first year request of a session so that the app log
+/// (debug level) records which of the three the real web view supports; no locale string travels with it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "WeekdaySource.ts")]
+pub enum WeekdaySource {
+    GetWeekInfo,
+    WeekInfo,
+    Fallback,
+}
+
 /// A cell of the board.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CellPos {

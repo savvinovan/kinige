@@ -6,7 +6,7 @@ use kinige_domain::link::{LinkError, validate_external_url};
 use kinige_domain::{
     ApiError, AppInfo, ChatDraft, ChatList, ErrorCode, FeedCursor, FirstWeekday, ForestMode,
     ForestTarget, ForestView, ForestYear, Language, MessagePage, MessageView, OnThisDay, Settings,
-    ShortcutKind, TextSize,
+    ShortcutKind, TextSize, WeekdaySource,
 };
 use kinige_store::{DEFAULT_PAGE, Now, PageAt, SettingsFile, Store, StoreError};
 use tauri::{AppHandle, Manager, Runtime, State};
@@ -145,14 +145,20 @@ pub fn dismiss_on_this_day(store: State<'_, Store>, date: String) -> ApiResult<(
 }
 
 /// The table of one year for the forest (slice 6): every day with its cell, season, notes, stage and the start of its
-/// first entry. `year` outside 1000..=9999 is `invalid_date`; an unknown `first_weekday` is rejected while the arguments
-/// are parsed. Only the main window has this command (the excerpts are entry text).
+/// first entry. `year` outside 1000..=9999 is `invalid_date`; an unknown `first_weekday` or `weekday_source` is rejected
+/// while the arguments are parsed. `weekday_source` (sent once per session) only goes to the debug log: which of the
+/// web view's locale APIs gave the first weekday, and what it was. Only the main window has this command (the excerpts
+/// are entry text).
 #[tauri::command(async)]
 pub fn get_forest_year(
     store: State<'_, Store>,
     year: i32,
     first_weekday: FirstWeekday,
+    weekday_source: Option<WeekdaySource>,
 ) -> ApiResult<ForestYear> {
+    if let Some(source) = weekday_source {
+        log::debug!("forest: first weekday {first_weekday:?} from {source:?}");
+    }
     store
         .get_forest_year(year, first_weekday, &Now::system())
         .map_err(api)

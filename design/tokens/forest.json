@@ -1,0 +1,84 @@
+{
+  "color": {
+    "forest": {
+      "$type": "color",
+      "$description": "The forest (slice 6). PLACEHOLDER colours of the simple shapes: ground tiles, canopies, trunks and accents per season, taken over from the S3 spike (original, no outside source). Slice 9 replaces the shapes with atlases and may retune these. Seasons are bands of the board (PRD §7.3), so all four sets are visible at once. The strip and the calendar reuse `crown-mid` as their tint.",
+      "winter": {
+        "ground-a": { "$value": "#c9d6e0", "$description": "Winter ground tile, even checker cell: pale blue-grey." },
+        "ground-b": { "$value": "#bccbd8", "$description": "Winter ground tile, odd checker cell." },
+        "crown-mid": { "$value": "#3f6b5c", "$description": "Winter canopy, main tone (dark evergreen); also the tint of winter days in the strip and the calendar." },
+        "crown-dark": { "$value": "#2a4a40", "$description": "Winter canopy, shaded side." },
+        "crown-light": { "$value": "#5a8a78", "$description": "Winter canopy, lit highlight." },
+        "trunk": { "$value": "#5b4636", "$description": "Winter trunk." },
+        "accent": { "$value": "#ffffff", "$description": "Snow on the canopy." }
+      },
+      "spring": {
+        "ground-a": { "$value": "#9fcf7a", "$description": "Spring ground tile, even checker cell: light green." },
+        "ground-b": { "$value": "#92c46d", "$description": "Spring ground tile, odd checker cell." },
+        "crown-mid": { "$value": "#7fc46a", "$description": "Spring canopy, main tone; also the tint of spring days in the strip and the calendar." },
+        "crown-dark": { "$value": "#5ea54e", "$description": "Spring canopy, shaded side." },
+        "crown-light": { "$value": "#a6df8e", "$description": "Spring canopy, lit highlight." },
+        "trunk": { "$value": "#6b5039", "$description": "Spring trunk." },
+        "accent": { "$value": "#f2a7c3", "$description": "Blossom." }
+      },
+      "summer": {
+        "ground-a": { "$value": "#6fb04f", "$description": "Summer ground tile, even checker cell: grass." },
+        "ground-b": { "$value": "#63a447", "$description": "Summer ground tile, odd checker cell." },
+        "crown-mid": { "$value": "#3f8f3a", "$description": "Summer canopy, main tone; also the tint of summer days in the strip and the calendar." },
+        "crown-dark": { "$value": "#2d6e2c", "$description": "Summer canopy, shaded side." },
+        "crown-light": { "$value": "#62b250", "$description": "Summer canopy, lit highlight." },
+        "trunk": { "$value": "#5b4430", "$description": "Summer trunk." },
+        "accent": { "$value": "#e8d44d", "$description": "Summer accent (not drawn by the placeholder shapes yet)." }
+      },
+      "autumn": {
+        "ground-a": { "$value": "#c9a45c", "$description": "Autumn ground tile, even checker cell: ochre." },
+        "ground-b": { "$value": "#bb9650", "$description": "Autumn ground tile, odd checker cell." },
+        "crown-mid": { "$value": "#d9822b", "$description": "Autumn canopy, main tone; also the tint of autumn days in the strip and the calendar." },
+        "crown-dark": { "$value": "#b3541e", "$description": "Autumn canopy, shaded side." },
+        "crown-light": { "$value": "#f0a94a", "$description": "Autumn canopy, lit highlight." },
+        "trunk": { "$value": "#5b4430", "$description": "Autumn trunk." },
+        "accent": { "$value": "#e8c547", "$description": "Fallen leaves." }
+      },
+      "void": { "$value": "#1d1d1d", "$description": "A board cell without a date (the cells around the year) and a day after today: dark ground, no interaction." },
+      "shadow": { "$value": "rgba(0, 0, 0, 0.22)", "$description": "Soft shadow under a detailed tree." },
+      "outline": { "$value": "#88c0d0", "$description": "Outline and fill of the selected day on the board and in the strip (same hue as accent.default)." },
+      "outline-today": { "$value": "#dedede", "$description": "Thin outline of today's cell." },
+      "outline-hover": { "$value": "#dedede", "$description": "Outline of the day under the pointer." },
+      "label": { "$value": "#dedede", "$description": "Month and weekday labels on the edges of the board." },
+      "label-halo": { "$value": "#141414", "$description": "Halo around a label, so that it stays readable over a canopy." },
+      "strip-empty": { "$value": "#2b2b2b", "$description": "A day without notes in the strip and the calendar: quiet fill, lighter than the paper behind it." }
+    }
+  },
+  "opacity": {
+    "forest": {
+      "$type": "number",
+      "front": { "$value": 0.32, "$description": "Opacity of a tree that stands in front of the selected tree and overlaps it." },
+      "selection-fill": { "$value": 0.28, "$description": "Opacity of the fill under the selected cell outline." },
+      "heat-1": { "$value": 0.3, "$description": "Strip and calendar intensity of a day with stage 1 (a sprout)." },
+      "heat-2": { "$value": 0.42, "$description": "Intensity of stage 2." },
+      "heat-3": { "$value": 0.55, "$description": "Intensity of stage 3." },
+      "heat-4": { "$value": 0.7, "$description": "Intensity of stage 4." },
+      "heat-5": { "$value": 0.85, "$description": "Intensity of stage 5." },
+      "heat-6": { "$value": 1, "$description": "Intensity of stage 6 (a large tree): the full season tint." }
+    }
+  },
+  "layout": {
+    "forest": {
+      "$type": "dimension",
+      "pane-height": { "$value": "45%", "$description": "Height of the expanded forest pane: a share of the main area (the feed and the input stay below it). The board fits the pane when it opens." },
+      "strip-cell": { "$value": "0.9rem", "$description": "Largest side of a day cell in the collapsed strip (11.7 px at a 13 px root). Cells shrink with the window so that 53 or 54 weeks always fit; seven of them make the strip's height." },
+      "strip-gap": { "$value": "0.15rem", "$description": "Gap between strip cells (2 px)." },
+      "strip-label": { "$value": "1.6rem", "$description": "Width of the weekday letters column of the strip (21 px)." },
+      "card-width": { "$value": "17rem", "$description": "Width of the day card (221 px)." },
+      "card-lines": { "$value": 2, "$type": "number", "$description": "How many lines of the first entry the day card shows; the rest is cut with an ellipsis (line-clamp)." },
+      "calendar-month": { "$value": "15rem", "$description": "Smallest width of one month grid in the calendar alternative (195 px); as many months as fit sit side by side." },
+      "calendar-cell": { "$value": "1.9rem", "$description": "Side of a day button in the calendar (25 px)." },
+      "calendar-dot-1": { "$value": "0.25rem", "$description": "Calendar dot of stage 1 (3 px)." },
+      "calendar-dot-2": { "$value": "0.4rem", "$description": "Calendar dot of stage 2 (5 px)." },
+      "calendar-dot-3": { "$value": "0.55rem", "$description": "Calendar dot of stage 3 (7 px)." },
+      "calendar-dot-4": { "$value": "0.7rem", "$description": "Calendar dot of stage 4 (9 px)." },
+      "calendar-dot-5": { "$value": "0.85rem", "$description": "Calendar dot of stage 5 (11 px)." },
+      "calendar-dot-6": { "$value": "1rem", "$description": "Calendar dot of stage 6 (13 px)." }
+    }
+  }
+}

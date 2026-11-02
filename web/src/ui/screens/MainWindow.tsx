@@ -25,6 +25,7 @@ import { useOnThisDay } from "./useOnThisDay";
 import { useOpenMessage } from "./useOpenMessage";
 import { useReplyActions } from "./useReplyActions";
 import { useSettingsState } from "./useSettingsState";
+import { useForestPane } from "./useForestPane";
 import { useTrash } from "./useTrash";
 
 interface MainWindowProps {
@@ -75,6 +76,9 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     (target: FocusTarget) => setFocus((previous) => ({ ...target, nonce: (previous?.nonce ?? 0) + 1 })),
     [],
   );
+  // The forest reloads when the journal changes: through this feed (`onMutated`) or from outside (the capture window).
+  const [mutations, setMutations] = useState(0);
+  const bumpMutations = useCallback(() => setMutations((count) => count + 1), []);
   const feed = useFeed({
     api,
     chatId: selected,
@@ -83,6 +87,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onError: setComposerError,
     onTag: setTag,
     focus,
+    onMutated: bumpMutations,
   });
   const { reload: reloadFeed, restart: restartFeed } = feed;
   const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
@@ -148,7 +153,10 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     };
     // Запись пришла из окна захвата или из буфера; меню значка просит открыть чат.
     api
-      .onEntriesChanged(() => void Promise.all([refreshChats(), reloadFeed()]))
+      .onEntriesChanged(() => {
+        bumpMutations();
+        void Promise.all([refreshChats(), reloadFeed()]);
+      })
       .then(keep)
       .catch(() => undefined);
     api
@@ -159,7 +167,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       closed = true;
       for (const off of offs) off();
     };
-  }, [api, refreshChats, reloadFeed, select]);
+  }, [api, refreshChats, reloadFeed, select, bumpMutations]);
 
   const { sending, submit, openEntry, startReply, hideCard } = useReplyActions({
     api,
@@ -178,6 +186,14 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     setComposerError,
     dismissCard: onThisDay.dismiss,
     onDismissed: () => setToBottom((count) => count + 1),
+  });
+  // A click on a day opens the feed on its first entry the same way a quote does.
+  const forest = useForestPane({
+    api,
+    initial: { view: initialSettings.forestView, mode: initialSettings.forestMode },
+    chatId: selected,
+    refreshKey: `${mutations}:${feed.today}`,
+    openEntry,
   });
 
   const closeChatDialog = () => {
@@ -290,6 +306,9 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       feedScrollTo={feed.scrollTo}
       feedToBottom={toBottom}
       feedLoading={selected === INBOX_ID && tag === null && !(feed.loaded && onThisDay.ready)}
+      forest={forest.pane}
+      onFeedTopDay={forest.onTopDay}
+      forestMenu={{ hidden: forest.hidden, onToggle: forest.toggleHidden }}
       // Карточка стоит в конце живой ленты: не в середине истории (после перехода к записи из поиска).
       onThisDay={
         onThisDay.card !== null && !feed.paging.hasNewer

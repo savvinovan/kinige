@@ -169,6 +169,36 @@ fn garbage_years_and_weekdays_are_refused_without_a_panic() {
 }
 
 #[test]
+fn the_weekday_source_is_optional_and_only_three_names_are_accepted() {
+    let fixture = fixture();
+    let main = window(&fixture, "main");
+    for good in ["get_week_info", "week_info", "fallback"] {
+        let table = call(
+            &main,
+            "get_forest_year",
+            json!({"year": 2026, "firstWeekday": "sunday", "weekdaySource": good}),
+        )
+        .unwrap();
+        assert_eq!(table["firstWeekday"], "sunday");
+    }
+    for bad in [
+        json!("locale"),
+        json!(""),
+        json!(3),
+        json!("ru-RU"),
+        json!("\u{0}"),
+    ] {
+        let error = call(
+            &main,
+            "get_forest_year",
+            json!({"year": 2026, "firstWeekday": "monday", "weekdaySource": bad}),
+        )
+        .unwrap_err();
+        assert!(!is_acl_denial(&error), "{error}");
+    }
+}
+
+#[test]
 fn garbage_dates_and_chat_ids_of_the_day_target() {
     let fixture = fixture();
     let main = window(&fixture, "main");
