@@ -3,6 +3,6 @@ runner culture: en-US
 runner first day of week (Windows setting): Sunday
 windows: Microsoft Windows NT 10.0.26100.0
 log files found: 12
-[18:05:00][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
-[18:05:21][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
-[18:05:42][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
+[22:41:29][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
+[22:41:50][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
+[22:42:10][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
