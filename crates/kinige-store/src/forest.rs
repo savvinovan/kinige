@@ -1,13 +1,13 @@
 //! The year's forest (slice 6, PRD §7): the per-day facts of one year, the entry a click on a day opens and the local view
 //! state. Entries count when they are live (`deleted_at IS NULL`) and their chat is not in the trash; archived chats
-//! count. One range query over the `message_day` index per year, no cache table (slice 6 spec). The rules are in
-//! `kinige_domain::forest` / `forest_year`; nothing here is written to the log.
+//! count. One aggregate query over the `message_day` index per year (about 365 rows), no cache table (slice 6 spec).
+//! The rules are in `kinige_domain::forest` / `forest_year`; nothing here is written to the log.
 
 use crate::error::{read_err, write_err};
 use crate::settings::get_setting;
 use crate::{Now, Store, StoreError};
 use chrono::NaiveDate;
-use kinige_domain::forest::{FirstWeekday, NoteStat};
+use kinige_domain::forest::FirstWeekday;
 use kinige_domain::forest_year::{
     DayStats, FOREST_YEARS, ForestMode, ForestTarget, ForestView, ForestYear, day_chat, year_table,
 };
@@ -15,14 +15,21 @@ use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, is_valid_journal_date, journal_date};
 use kinige_domain::on_this_day::year_of;
 use rusqlite::{Connection, OptionalExtension};
-use std::collections::BTreeMap;
-use std::collections::btree_map::Entry;
 
 pub(crate) const KEY_FOREST_VIEW: &str = "forest_view";
 pub(crate) const KEY_FOREST_MODE: &str = "forest_mode";
 
 /// Live entries of chats that are not in the trash.
 const LIVE: &str = "m.deleted_at IS NULL AND c.deleted_at IS NULL";
+
+/// One row per day of the year: date, entries, weight, text of the first entry (see `year_stats`).
+const YEAR_QUERY: &str = "SELECT m.journal_date, COUNT(*), \
+     SUM(CASE WHEN length(m.body_md) >= 3 THEN MIN(1.0, length(m.body_md) / 200.0) ELSE 0.0 END), \
+     m.body_md, MIN(printf('%020d', m.created_at) || m.id) \
+     FROM message m JOIN chat c ON c.id = m.chat_id \
+     WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 AND m.deleted_at IS NULL AND c.deleted_at IS NULL \
+     AND typeof(m.body_md) = 'text' \
+     GROUP BY m.journal_date ORDER BY m.journal_date";
 
 impl Store {
     /// The table of `year` for the forest: every day with its cell, season, notes, stage and first-entry excerpt, plus the
@@ -119,66 +126,37 @@ pub(crate) fn stored_view(conn: &Connection) -> rusqlite::Result<(ForestView, Fo
     ))
 }
 
-/// The facts of every day of `year` that has live entries, in calendar order. Rows with a date that is not a date
-/// (a damaged value) are skipped. The rows are read in index order without a sort; the first entry of a day (by creation
-/// time, then id) is found while scanning, and only its text is copied.
+/// The facts of every day of `year` that has live entries, in calendar order: one SQL aggregate per day, so about 365
+/// rows reach Rust instead of one per entry. The weight is the SQL form of `forest::day_weight` (`Σ min(1, len/200)`
+/// over entries of 3 characters or more; `length()` counts characters, not bytes, and there are no attachments yet),
+/// proven equal to it by the `sql_weight_equals_the_domain_weight` test. The first entry of a day is the one with the
+/// smallest `created_at`, then id: SQLite takes the bare column `body_md` from the row of the query's only `MIN()`
+/// aggregate, whose key is the zero-padded creation time followed by the id (creation times are milliseconds since
+/// 1970, so the padded text sorts like the number). Rows whose date is not a date or whose text is not text (a damaged
+/// value) are skipped.
 fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError> {
-    /// One day while it is being scanned: the weights of its entries and the first one so far.
-    struct Day {
-        notes: Vec<NoteStat>,
-        first: (i64, String, String),
-    }
-    let mut statement = conn
-        .prepare_cached(&format!(
-            "SELECT m.journal_date, m.created_at, m.id, m.body_md FROM message m JOIN chat c ON c.id = m.chat_id \
-             WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 AND {LIVE}"
-        ))
-        .map_err(read_err)?;
+    let mut statement = conn.prepare_cached(YEAR_QUERY).map_err(read_err)?;
     let mut rows = statement
         .query((format!("{year:04}-01-01"), format!("{year:04}-12-31")))
         .map_err(read_err)?;
-    let mut days: BTreeMap<NaiveDate, Day> = BTreeMap::new();
+    let mut days = Vec::with_capacity(366);
     while let Some(row) = rows.next().map_err(read_err)? {
-        let (date, id, body) = (
-            row.get_ref(0).map_err(read_err)?.as_str().ok(),
-            row.get_ref(2).map_err(read_err)?.as_str().ok(),
-            row.get_ref(3).map_err(read_err)?.as_str().ok(),
-        );
-        let (Some(date), Some(id), Some(body)) = (date, id, body) else {
+        let date = row.get_ref(0).map_err(read_err)?.as_str().ok();
+        let Some(date) = date.and_then(|date| NaiveDate::parse_from_str(date, "%Y-%m-%d").ok())
+        else {
             continue;
         };
-        let Ok(date) = NaiveDate::parse_from_str(date, "%Y-%m-%d") else {
-            continue;
-        };
-        let created: i64 = row.get(1).map_err(read_err)?;
-        let note = NoteStat {
-            len: body.chars().count(),
-            attachments: 0,
-        };
-        match days.entry(date) {
-            Entry::Vacant(slot) => {
-                slot.insert(Day {
-                    notes: vec![note],
-                    first: (created, id.to_string(), body.to_string()),
-                });
-            }
-            Entry::Occupied(mut slot) => {
-                let day = slot.get_mut();
-                day.notes.push(note);
-                if (created, id) < (day.first.0, day.first.1.as_str()) {
-                    day.first = (created, id.to_string(), body.to_string());
-                }
-            }
-        }
-    }
-    Ok(days
-        .into_iter()
-        .map(|(date, day)| DayStats {
+        let notes: i64 = row.get(1).map_err(read_err)?;
+        let weight: f64 = row.get(2).map_err(read_err)?;
+        let first_body: Option<String> = row.get(3).map_err(read_err)?;
+        days.push(DayStats {
             date,
-            notes: day.notes,
-            first_body: Some(day.first.2),
-        })
-        .collect())
+            notes: u32::try_from(notes).unwrap_or(u32::MAX),
+            weight,
+            first_body,
+        });
+    }
+    Ok(days)
 }
 
 /// The year of the oldest live entry of a chat that is not in the trash.
@@ -215,3 +193,6 @@ fn chat_counts(conn: &Connection, date: &str) -> Result<Vec<(String, usize)>, St
         .map_err(read_err)?;
     Ok(counts)
 }
+
+#[cfg(test)]
+mod tests;

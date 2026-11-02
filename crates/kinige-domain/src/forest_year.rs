@@ -114,14 +114,29 @@ impl ForestMode {
     }
 }
 
-/// What the store found out about one day.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// What the store found out about one day. The store may sum the weight in SQL (one row per day instead of one per
+/// entry); the per-entry rule of `day_weight` is the definition and the store tests that its SQL gives the same number.
+#[derive(Debug, Clone, PartialEq)]
 pub struct DayStats {
     pub date: NaiveDate,
-    /// One item per live entry of the day.
-    pub notes: Vec<NoteStat>,
+    /// How many live entries the day has.
+    pub notes: u32,
+    /// `forest::day_weight` of those entries.
+    pub weight: f64,
     /// Markdown of the day's first entry (by journal date, creation time, id).
     pub first_body: Option<String>,
+}
+
+impl DayStats {
+    /// The facts of a day from its entries one by one (the weight by `day_weight`).
+    pub fn from_notes(date: NaiveDate, notes: &[NoteStat], first_body: Option<String>) -> DayStats {
+        DayStats {
+            date,
+            notes: u32::try_from(notes.len()).unwrap_or(u32::MAX),
+            weight: day_weight(notes),
+            first_body,
+        }
+    }
 }
 
 /// The board of one year.
@@ -139,12 +154,13 @@ pub fn year_table(year: i32, first: FirstWeekday, stats: &[DayStats]) -> Option<
         return None;
     }
     let dims = grid_dims(year, first)?;
-    let mut by_date: BTreeMap<NaiveDate, (Vec<NoteStat>, Option<&str>)> = BTreeMap::new();
+    let mut by_date: BTreeMap<NaiveDate, (u32, f64, Option<&str>)> = BTreeMap::new();
     for stat in stats.iter().filter(|stat| stat.date.year() == year) {
         let entry = by_date.entry(stat.date).or_default();
-        entry.0.extend_from_slice(&stat.notes);
-        if entry.1.is_none() {
-            entry.1 = stat.first_body.as_deref();
+        entry.0 = entry.0.saturating_add(stat.notes);
+        entry.1 += stat.weight;
+        if entry.2.is_none() {
+            entry.2 = stat.first_body.as_deref();
         }
     }
     let mut days = Vec::with_capacity(366);
@@ -152,15 +168,15 @@ pub fn year_table(year: i32, first: FirstWeekday, stats: &[DayStats]) -> Option<
         let Some(date) = NaiveDate::from_yo_opt(year, ordinal) else {
             break;
         };
-        let (notes, body) = by_date.get(&date).cloned().unwrap_or_default();
+        let (notes, weight, body) = by_date.get(&date).copied().unwrap_or_default();
         let pos = day_position(date, first);
         days.push(ForestDay {
             date: date.format("%Y-%m-%d").to_string(),
             row: pos.row,
             col: pos.col,
             season: season_of_month(date.month(), false),
-            notes: u32::try_from(notes.len()).unwrap_or(u32::MAX),
-            stage: stage_of(day_weight(&notes), DEFAULT_W_MAX),
+            notes,
+            stage: stage_of(weight, DEFAULT_W_MAX),
             excerpt: body.map(excerpt).filter(|text| !text.is_empty()),
         });
     }

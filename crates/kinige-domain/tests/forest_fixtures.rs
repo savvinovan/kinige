@@ -50,7 +50,7 @@ fn journal(year: i32, today: NaiveDate, seed: u64) -> Vec<DayStats> {
         let gap = date.month() == 8 && (3..=9).contains(&date.day());
         if !gap && rng.below(100) >= 14 {
             let n = counts[rng.below(counts.len() as u64) as usize];
-            let notes = (0..n)
+            let notes: Vec<NoteStat> = (0..n)
                 .map(|_| {
                     let len = match rng.below(10) {
                         0..=1 => 1 + rng.below(2) as usize,
@@ -64,11 +64,11 @@ fn journal(year: i32, today: NaiveDate, seed: u64) -> Vec<DayStats> {
                 })
                 .collect();
             let phrase = PHRASES[rng.below(PHRASES.len() as u64) as usize];
-            stats.push(DayStats {
+            stats.push(DayStats::from_notes(
                 date,
-                notes,
-                first_body: Some(format!("Synthetic entry of {date}: {phrase}")),
-            });
+                &notes,
+                Some(format!("Synthetic entry of {date}: {phrase}")),
+            ));
         }
         date = date.succ_opt().unwrap();
     }

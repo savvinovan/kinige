@@ -17,11 +17,8 @@ fn note(len: usize) -> NoteStat {
 }
 
 fn stat(date: NaiveDate, notes: &[usize], body: Option<&str>) -> DayStats {
-    DayStats {
-        date,
-        notes: notes.iter().map(|len| note(*len)).collect(),
-        first_body: body.map(str::to_string),
-    }
+    let notes: Vec<NoteStat> = notes.iter().map(|len| note(*len)).collect();
+    DayStats::from_notes(date, &notes, body.map(str::to_string))
 }
 
 fn find<'a>(table: &'a YearTable, date: &str) -> &'a ForestDay {
