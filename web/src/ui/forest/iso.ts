@@ -58,6 +58,8 @@ export function screenToWorld(cam: Camera, p: Pt): Pt {
 
 /** The cell under a screen point, or `null` outside the board. A `NaN` or infinite point is a miss. */
 export function hitTest(cam: Camera, dims: GridDims, p: Pt): Cell | null {
+  // A camera that is not a camera (NaN, infinite, zero or negative scale) hits nothing instead of a wrong cell.
+  if (!Number.isFinite(cam.s) || !Number.isFinite(cam.tx) || !Number.isFinite(cam.ty) || cam.s <= 0) return null;
   const { gc, gr } = worldToGrid(screenToWorld(cam, p));
   if (!Number.isFinite(gc) || !Number.isFinite(gr)) return null; // NaN would pass every range check below
   const col = Math.floor(gc);

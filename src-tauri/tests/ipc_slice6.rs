@@ -76,7 +76,7 @@ fn a_note_written_today_shows_up_in_the_year_table_and_opens_from_its_day() {
     )
     .unwrap();
     let today = sent["journalDate"].as_str().unwrap().to_string();
-    let year: i64 = today[..4].parse().unwrap();
+    let year: i64 = today.split('-').next().unwrap().parse().unwrap();
 
     let table = year_of(&main, year);
     assert_eq!(table["today"], json!(today));

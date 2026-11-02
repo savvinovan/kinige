@@ -148,7 +148,7 @@ fn the_forest_commands_log_no_dates_excerpts_or_chat_ids() {
     )
     .unwrap();
     let today = sent["journalDate"].as_str().unwrap();
-    let year: i64 = today[..4].parse().unwrap();
+    let year: i64 = today.split('-').next().unwrap().parse().unwrap();
     let table = call(
         &window,
         "get_forest_year",

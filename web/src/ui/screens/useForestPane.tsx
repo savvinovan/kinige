@@ -6,6 +6,13 @@ import type { ForestYear } from "../../api/generated/ForestYear";
 import { detectFirstWeekday } from "../forest/firstWeekday";
 import { ForestPane } from "../forest/ForestPane";
 
+/** A number that grows with every call of `bump`: the host feeds it to the forest as "the journal changed, reload". */
+export function useChangeCounter(): [number, () => void] {
+  const [count, setCount] = useState(0);
+  const bump = useCallback(() => setCount((value) => value + 1), []);
+  return [count, bump];
+}
+
 interface UseForestPaneOptions {
   api: KinigeApi;
   /** The state saved from the last run (`Settings`), read before the first frame. */
@@ -14,6 +21,8 @@ interface UseForestPaneOptions {
   chatId: string | null;
   /** Any change here reloads the table: local entry changes, the "entries changed" event, a new journal day. */
   refreshKey: string;
+  /** The first page of the feed has arrived: the first table is requested only then (the strip never delays the feed). */
+  ready: boolean;
   /** Opens the feed on the first entry of the target chat that day (switches the chat if needed). */
   openEntry: (chatId: string, messageId: string) => void;
 }
@@ -23,7 +32,7 @@ interface UseForestPaneOptions {
  * the day the feed shows at its top (the outlined cell; the board shows the year of that day), and the click that opens a day.
  * The first weekday comes from the system locale once; the table is not requested while the forest is hidden.
  */
-export function useForestPane({ api, initial, chatId, refreshKey, openEntry }: UseForestPaneOptions) {
+export function useForestPane({ api, initial, chatId, refreshKey, ready, openEntry }: UseForestPaneOptions) {
   const [state, setState] = useState(initial);
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [table, setTable] = useState<ForestYear | null>(null);
@@ -33,10 +42,13 @@ export function useForestPane({ api, initial, chatId, refreshKey, openEntry }: U
   const weekday = useMemo(() => detectFirstWeekday(), []);
   const sourceSent = useRef(false);
   const hidden = state.view === "hidden";
+  // Once the feed has shown its first page, the forest may load; switching chats later does not hold it back again.
+  const [started, setStarted] = useState(ready);
+  if (ready && !started) setStarted(true);
 
   // The table of the shown year. A newer request wins; the table on screen stays until the next one arrives.
   useEffect(() => {
-    if (hidden) return;
+    if (hidden || !started) return;
     let live = true;
     const source = sourceSent.current ? undefined : weekday.source;
     sourceSent.current = true;
@@ -51,7 +63,7 @@ export function useForestPane({ api, initial, chatId, refreshKey, openEntry }: U
     return () => {
       live = false;
     };
-  }, [api, year, weekday, hidden, refreshKey]);
+  }, [api, year, weekday, hidden, started, refreshKey]);
 
   // The feed scrolls: its top day is the outlined one, and when the day moves into another year the board follows.
   const onTopDay = useCallback((date: string) => {

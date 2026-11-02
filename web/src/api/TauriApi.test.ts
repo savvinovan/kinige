@@ -138,3 +138,34 @@ describe("TauriApi: слайс 5 (ответ и «В этот день»)", () =
     expect((error as KinigeApiError).code).toBe("reply_target_not_found");
   });
 });
+
+describe("TauriApi: the year's forest (slice 6)", () => {
+  beforeEach(() => {
+    invoke.mockReset();
+  });
+
+  it("get_forest_year: camelCase arguments, the weekday source only when given", async () => {
+    invoke.mockResolvedValue({ year: 2026 });
+    await new TauriApi().getForestYear(2026, "monday");
+    expect(invoke).toHaveBeenLastCalledWith("get_forest_year", { year: 2026, firstWeekday: "monday" });
+    await new TauriApi().getForestYear(2028, "sunday", "week_info");
+    expect(invoke).toHaveBeenLastCalledWith("get_forest_year", { year: 2028, firstWeekday: "sunday", weekdaySource: "week_info" });
+  });
+
+  it("get_forest_day_target and set_forest_view", async () => {
+    invoke.mockResolvedValue(null);
+    await expect(new TauriApi().getForestDayTarget("2026-10-16", null)).resolves.toBeNull();
+    expect(invoke).toHaveBeenLastCalledWith("get_forest_day_target", { date: "2026-10-16", currentChatId: null });
+    invoke.mockResolvedValue({ chatId: "c", messageId: "m" });
+    await expect(new TauriApi().getForestDayTarget("2026-10-16", "c")).resolves.toEqual({ chatId: "c", messageId: "m" });
+    invoke.mockResolvedValue(undefined);
+    await new TauriApi().setForestView("expanded", "calendar");
+    expect(invoke).toHaveBeenLastCalledWith("set_forest_view", { view: "expanded", mode: "calendar" });
+  });
+
+  it("an error code from Rust becomes a KinigeApiError", async () => {
+    invoke.mockRejectedValue({ code: "invalid_date" });
+    await expect(new TauriApi().getForestYear(0, "monday")).rejects.toMatchObject({ code: "invalid_date" });
+    await expect(new TauriApi().getForestYear(0, "monday")).rejects.toBeInstanceOf(KinigeApiError);
+  });
+});

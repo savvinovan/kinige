@@ -1,7 +1,9 @@
 //! Демо-данные для проверки слайсов 3–5 в настоящем окне (скриншоты, ручная проверка): чаты, записи, теги, задачи, корзина;
 //! слайс 5 — записи Inbox на сегодняшний день журнала 1, 3, 4, 6 и 9 лет назад («В этот день») и синтетический личный чат
 //! Telegram с ответами. Только для разработки: пишет во временный каталог, который передан аргументом, и ничего не делает с
-//! настоящей базой. Все тексты синтетические.
+//! настоящей базой. Все тексты синтетические. Слайс 6 — синтетические год и прошлый год записей для леса: все стадии роста,
+//! неделя без записей, дни с несколькими чатами, запись в корзине; сегодняшнее дерево стоит на третьей стадии у самой границы
+//! четвёртой (одна запись в сто знаков поднимает его).
 //!
 //! Использование: `cargo run -p kinige-store --example seed_demo -- <каталог данных> [<папка Markdown-копии>]`
 
@@ -16,8 +18,9 @@
     clippy::string_slice
 )]
 
-use chrono::{NaiveDate, TimeZone};
+use chrono::{Datelike, Duration, NaiveDate, TimeZone};
 use chrono_tz::Tz;
+use kinige_domain::forest::{NoteStat, day_weight};
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use kinige_domain::telegram::parse_export;
@@ -126,6 +129,7 @@ fn main() {
     store.set_chat_pinned(&work.id, true, &at(-DAY)).unwrap();
     store.set_chat_archived(&old.id, true, &at(-DAY)).unwrap();
     seed_on_this_day(&store, &now);
+    seed_forest(&store, &now, &books.id, &work.id, &data);
     seed_telegram_chat(&store, &now);
     // Копия дня для строки в «Настройках».
     store.run_maintenance(&at(0)).unwrap();
@@ -265,4 +269,172 @@ fn seed_telegram_chat(store: &Store, now: &Now) {
             Arc::new(AtomicBool::new(false)),
         )
         .expect("импорт синтетического чата");
+}
+
+/// Seed for the forest days: the same journal on every run.
+struct Rng(u64);
+
+impl Rng {
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+
+    fn below(&mut self, n: u64) -> u64 {
+        self.next() % n
+    }
+}
+
+/// Entries per active day and how likely each count is (percent): every growth stage appears (stage 6 needs a weight of 22.3,
+/// about 28 entries when four in five are long).
+const FOREST_COUNTS: [(u64, u64); 10] = [
+    (0, 12),
+    (1, 20),
+    (2, 15),
+    (3, 12),
+    (4, 10),
+    (6, 8),
+    (9, 6),
+    (16, 4),
+    (30, 2),
+    (38, 1),
+];
+
+const FOREST_PHRASES: [&str; 8] = [
+    "Прошёлся к реке и подумал о неделе",
+    "**Черновик** плана на осень, три пункта",
+    "Короткий звонок, ничего нового",
+    "Прочитал две главы перед сном",
+    "Саду снова нужна вода",
+    "Чай, дождь и длинный список мелких дел",
+    "Дописал письмо, которое откладывал",
+    "Тихий день с открытым окном",
+];
+
+/// A year of the current journal year and the year before it for the forest (slice 6): every stage, a week without entries
+/// (45 days before today in the current year, the first week of August in the last), days with entries in two or three
+/// chats, one entry in the trash. Today's tree is left at stage 3 with weight 6.2: one entry of a hundred characters (weight
+/// 0.5) lifts it to stage 4.
+fn seed_forest(store: &Store, now: &Now, books: &str, work: &str, data: &std::path::Path) {
+    let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
+    let today = NaiveDate::parse_from_str(&today, "%Y-%m-%d").expect("день журнала");
+    let tz: Tz = now.tz.parse().unwrap_or(chrono_tz::UTC);
+    let at = |date: NaiveDate, minutes: u32| {
+        let local = date
+            .and_hms_opt(6 + minutes / 60, minutes % 60, 0)
+            .expect("время");
+        let ms = tz
+            .from_local_datetime(&local)
+            .earliest()
+            .expect("местное время существует")
+            .timestamp_millis();
+        Now::at(ms, &now.tz)
+    };
+    let long = |n: u64| "я".repeat(200 + (n % 80) as usize);
+    for (seed, year) in [
+        (0x5EED_6001u64, today.year()),
+        (0x5EED_6002, today.year() - 1),
+    ] {
+        let mut rng = Rng(seed);
+        let last = if year == today.year() {
+            today
+        } else {
+            NaiveDate::from_ymd_opt(year, 12, 31).expect("конец года")
+        };
+        let gap = if year == today.year() {
+            today - Duration::days(45)
+        } else {
+            NaiveDate::from_ymd_opt(year, 8, 3).expect("начало августа")
+        };
+        let mut date = NaiveDate::from_ymd_opt(year, 1, 1).expect("начало года");
+        while date <= last {
+            // Today is set up separately below.
+            if date == today || (date >= gap && date < gap + Duration::days(7)) {
+                date += Duration::days(1);
+                continue;
+            }
+            let roll = rng.below(100);
+            let mut acc = 0;
+            let count = FOREST_COUNTS
+                .iter()
+                .find(|(_, percent)| {
+                    acc += percent;
+                    roll < acc
+                })
+                .map_or(1, |(count, _)| *count);
+            let to_books = count >= 2 && rng.below(100) < 20;
+            let to_work = count >= 2 && !to_books && rng.below(100) < 6;
+            for n in 0..count {
+                let body = if n == 0 {
+                    // The day is in the text: a scenario finds the first entry of a day by it.
+                    format!(
+                        "{} · {date}",
+                        FOREST_PHRASES[rng.below(FOREST_PHRASES.len() as u64) as usize]
+                    )
+                } else if rng.below(10) < 2 {
+                    "да".to_string()
+                } else {
+                    long(rng.next())
+                };
+                let chat = if to_work || (to_books && n % 2 == 1) {
+                    if to_work { work } else { books }
+                } else {
+                    INBOX_ID
+                };
+                store
+                    .send_message(chat, &body, &at(date, (n * 20) as u32))
+                    .expect("запись леса");
+            }
+            date += Duration::days(1);
+        }
+    }
+
+    // One day with an entry in the trash: the forest counts only the live ones.
+    let day = today - Duration::days(20);
+    store
+        .send_message(INBOX_ID, "Первая запись дня, остаётся", &at(day, 0))
+        .expect("запись");
+    let doomed = store
+        .send_message(INBOX_ID, "Эта запись уйдёт в корзину", &at(day, 20))
+        .expect("запись")
+        .id;
+    store.delete_message(&doomed, now).expect("в корзину");
+
+    // Today's tree: stage 3, weight 6.2.
+    let db = rusqlite::Connection::open(data.join("kinige.db")).expect("база");
+    let mut statement = db
+        .prepare("SELECT body_md FROM message WHERE journal_date = ?1 AND deleted_at IS NULL")
+        .expect("запрос");
+    let have: Vec<NoteStat> = statement
+        .query_map([today.format("%Y-%m-%d").to_string()], |row| {
+            row.get::<_, String>(0)
+        })
+        .expect("записи сегодня")
+        .map(|body| NoteStat {
+            len: body.expect("текст").chars().count(),
+            attachments: 0,
+        })
+        .collect();
+    let mut weight = day_weight(&have);
+    let mut seconds = 1;
+    let pad = |len: usize, seconds: i64| {
+        store
+            .send_message(
+                INBOX_ID,
+                &"я".repeat(len),
+                &Now::at(now.ms - seconds * 1000, &now.tz),
+            )
+            .expect("запись сегодня");
+    };
+    while weight + 1.0 <= 6.2 {
+        pad(220, seconds);
+        weight += 1.0;
+        seconds += 1;
+    }
+    let rest = (6.2 - weight) * 200.0;
+    if rest >= 3.0 {
+        pad(rest.round() as usize, seconds);
+    }
 }

@@ -24,6 +24,8 @@ interface ForestBoardProps {
   zoom: ZoomRequest | null;
   /** A click on a tree, or Enter on the keyboard selection: open the day in the feed. */
   onOpenDay: (date: string) => void;
+  /** The engine once it exists (and `null` when it is gone): the visual click-through test asks it where each day is. */
+  onEngine?: (engine: ForestEngine | null) => void;
 }
 
 interface Hover {
@@ -44,7 +46,7 @@ const STEPS: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -
  * the selection. The keyboard selection is announced in a live region ("October 16, 5 notes, a large tree"). The pointer
  * selects nothing by itself: hover shows the card, a click opens the day, a drag pans, wheel and pinch zoom.
  */
-export function ForestBoard({ table, selected, zoom, onOpenDay }: ForestBoardProps) {
+export function ForestBoard({ table, selected, zoom, onOpenDay, onEngine }: ForestBoardProps) {
   const { t } = useTranslation();
   const language = useLanguage();
   const hintId = useId();
@@ -63,9 +65,9 @@ export function ForestBoard({ table, selected, zoom, onOpenDay }: ForestBoardPro
   const shownDay = shown !== null ? (board.byDate.get(shown)?.day ?? null) : null;
 
   // The latest values for the engine's callbacks, which outlive a render.
-  const latest = useRef({ board, onOpenDay });
+  const latest = useRef({ board, onOpenDay, onEngine });
   useEffect(() => {
-    latest.current = { board, onOpenDay };
+    latest.current = { board, onOpenDay, onEngine };
   });
 
   useEffect(() => {
@@ -79,7 +81,9 @@ export function ForestBoard({ table, selected, zoom, onOpenDay }: ForestBoardPro
       onActivate: (date) => latest.current.onOpenDay(date),
     });
     engine.current = created;
+    latest.current.onEngine?.(created);
     return () => {
+      latest.current.onEngine?.(null);
       created.destroy();
       engine.current = null;
     };
@@ -93,11 +97,14 @@ export function ForestBoard({ table, selected, zoom, onOpenDay }: ForestBoardPro
     engine.current?.setSelected(shown, cursor !== null);
   }, [shown, cursor, board]);
 
+  // One request, one move: the effect follows the request's number, not the identity of the object.
+  const zoomTarget = zoom?.target;
+  const zoomNonce = zoom?.nonce;
   useEffect(() => {
-    if (!zoom) return;
-    if (zoom.target === "year") engine.current?.fitYear();
-    else engine.current?.fitCells(seasonCells(latest.current.board, zoom.target));
-  }, [zoom]);
+    if (zoomNonce === undefined || zoomTarget === undefined) return;
+    if (zoomTarget === "year") engine.current?.fitYear();
+    else engine.current?.fitCells(seasonCells(latest.current.board, zoomTarget));
+  }, [zoomTarget, zoomNonce]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLCanvasElement>) => {
     const step = STEPS[event.key];

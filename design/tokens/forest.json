@@ -78,7 +78,11 @@
       "calendar-dot-3": { "$value": "0.55rem", "$description": "Calendar dot of stage 3 (7 px)." },
       "calendar-dot-4": { "$value": "0.7rem", "$description": "Calendar dot of stage 4 (9 px)." },
       "calendar-dot-5": { "$value": "0.85rem", "$description": "Calendar dot of stage 5 (11 px)." },
-      "calendar-dot-6": { "$value": "1rem", "$description": "Calendar dot of stage 6 (13 px)." }
+      "calendar-dot-6": { "$value": "1rem", "$description": "Calendar dot of stage 6 (13 px)." },
+      "story-width": { "$value": "1014px", "$description": "Storybook only: the width of the main area in a 1280 px window (window minus the 266 px sidebar), the stand-in column of the forest stories." },
+      "story-height": { "$value": "800px", "$description": "Storybook only: the height of the main area in a 1280 x 800 window." },
+      "story-box-height": { "$value": "360px", "$description": "Storybook only: the height of the board box in the level-of-detail stories (the expanded pane of an 800 px window)." },
+      "story-box-small": { "$value": "360px", "$description": "Storybook only: the width of the small board box (a window so narrow that the whole year is drawn as dots)." }
     }
   }
 }

@@ -1,0 +1,50 @@
+/* Only for Storybook stories of the forest: a stand-in for the main area of the window (the pane sits at the top of a column
+   of a fixed height, the way it sits above the feed). */
+.forest-story {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: var(--layout-forest-story-width);
+  height: var(--layout-forest-story-height);
+  background: var(--color-surface-paper);
+}
+
+.forest-story--narrow {
+  width: var(--layout-window-narrow);
+}
+
+/* A board in a box of its own, for the levels of detail. */
+.forest-story__box {
+  display: flex;
+  box-sizing: border-box;
+  height: var(--layout-forest-story-box-height);
+  background: var(--color-surface-paper);
+}
+
+.forest-story__box--small {
+  width: var(--layout-forest-story-box-small);
+}
+
+.forest-story__box--wide {
+  width: var(--layout-forest-story-width);
+}
+
+.forest-story__feed {
+  flex: 1;
+  padding: var(--space-4);
+  color: var(--color-text-tertiary);
+}
+
+/* Day cards on a patch of the paper, side by side. */
+.forest-story__cards {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-surface-paper);
+}
+
+.forest-story__cards .day-card {
+  position: static;
+}

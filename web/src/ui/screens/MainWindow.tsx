@@ -25,7 +25,7 @@ import { useOnThisDay } from "./useOnThisDay";
 import { useOpenMessage } from "./useOpenMessage";
 import { useReplyActions } from "./useReplyActions";
 import { useSettingsState } from "./useSettingsState";
-import { useForestPane } from "./useForestPane";
+import { useChangeCounter, useForestPane } from "./useForestPane";
 import { useTrash } from "./useTrash";
 
 interface MainWindowProps {
@@ -77,8 +77,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     [],
   );
   // The forest reloads when the journal changes: through this feed (`onMutated`) or from outside (the capture window).
-  const [mutations, setMutations] = useState(0);
-  const bumpMutations = useCallback(() => setMutations((count) => count + 1), []);
+  const [mutations, bumpMutations] = useChangeCounter();
   const feed = useFeed({
     api,
     chatId: selected,
@@ -193,6 +192,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     initial: { view: initialSettings.forestView, mode: initialSettings.forestMode },
     chatId: selected,
     refreshKey: `${mutations}:${feed.today}`,
+    ready: feed.loaded,
     openEntry,
   });
 

@@ -48,7 +48,8 @@ export function notesText(t: TFunction, notes: number): string {
 }
 
 export function stageName(t: TFunction, stage: number): string {
-  return t(`forest.stage${Math.min(6, Math.max(0, Math.trunc(stage)))}` as "forest.stage0");
+  const clamped = Number.isFinite(stage) ? Math.min(6, Math.max(0, Math.trunc(stage))) : 0;
+  return t(`forest.stage${clamped}` as "forest.stage0");
 }
 
 /** "5 notes · a large tree", or "No notes" for an empty day. */
