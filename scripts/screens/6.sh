@@ -14,8 +14,15 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 # shellcheck source=lib.sh
 . "$REPO/scripts/screens/lib.sh"
 
-# The tree of the window with a feed, a pane and a sidebar is long: actions and searches wait up to 150 s.
+# The tree of this window is huge (a feed of 200 entries, 371 cells of the strip, 365 buttons of the calendar) and System Events
+# reads it one property at a time: a full dump of it took more than 120 s on the runner and the run timed out (first attempt).
+# So no dumps here: the data are synthetic and live in a temporary directory (as in the Windows scenario), and the actions are
+# arranged so that a search for an element never has to walk through the feed: the pane comes before the feed in the tree, the
+# entry to scroll to is one of the oldest loaded ones (the tree runs from the old to the new), and the note is sent in the chat
+# "Идеи", which has one entry, not in the Inbox.
 export AX_TIMEOUT=150
+dump() { :; }
+dump_complete() { return 0; }
 
 INBOX="00000000-0000-4000-8000-000000000001"
 SETTINGS_FILE="$K/data/settings.json"
@@ -70,12 +77,12 @@ labels() {
     L_EXPAND="Развернуть лес"; L_COLLAPSE="Свернуть лес"; L_HIDE="Скрыть лес"; L_SHOW="Показать лес"; L_WHOLE="Весь год"
     L_AUTUMN="Осень"; L_CALENDAR="Календарь"; L_FOREST="Лес"; L_PREV="Предыдущий год"; L_NEXT="Следующий год"
     L_BOARD="Лес ${YEAR} года"; L_STRIP="Дни ${YEAR} года"; L_PROFILE="Профиль"; L_SEND="Отправить"
-    L_INBOX="Входящие"; L_BOOKS="Книги"
+    L_INBOX="Входящие"; L_IDEAS="Идеи"
   else
     L_EXPAND="Expand forest"; L_COLLAPSE="Collapse forest"; L_HIDE="Hide forest"; L_SHOW="Show forest"; L_WHOLE="Whole year"
     L_AUTUMN="Autumn"; L_CALENDAR="Calendar"; L_FOREST="Forest"; L_PREV="Previous year"; L_NEXT="Next year"
     L_BOARD="Forest of ${YEAR}"; L_STRIP="Days of ${YEAR}"; L_PROFILE="Profile"; L_SEND="Send"
-    L_INBOX="Inbox"; L_BOOKS="Книги"
+    L_INBOX="Inbox"; L_IDEAS="Идеи"
   fi
 }
 
@@ -99,9 +106,14 @@ TODAY="$(python3 -c 'import datetime as d; print((d.datetime.now() - d.timedelta
 YEAR="${TODAY%%-*}"
 # A day 20..35 days back whose first entry is in the Inbox (its text ends with the date): inside the first page of the feed.
 OLDER="$(sqlw "select journal_date from message where chat_id = '$INBOX' and deleted_at is null and body_md like '% · ' || journal_date and journal_date <= date('${TODAY}', '-20 day') and journal_date >= date('${TODAY}', '-35 day') order by journal_date desc limit 1")"
-OLDER_MARK="· ${OLDER}"
 [ -n "${OLDER}" ] || fail "no first entry of a day 20..35 days back in the Inbox"
-echo "today (journal): ${TODAY}; a day to scroll to and open: ${OLDER}"
+# One of the oldest entries on the first page of the Inbox (the feed loads the last 200): the first entry of a day whose text
+# ends with the date, so that the search finds it near the start of the tree.
+EARLY="$(sqlw "select journal_date from (select * from message where chat_id = '$INBOX' and deleted_at is null order by journal_date desc, created_at desc, id desc limit 200) where body_md like '% · ' || journal_date order by journal_date limit 1")"
+EARLY_MARK="· ${EARLY}"
+[ -n "${EARLY}" ] || fail "no dated entry on the first page of the Inbox"
+IDEAS="$(chat_id 'Идеи')"
+echo "today (journal): ${TODAY}; the day of the calendar click: ${OLDER}; the oldest loaded dated entry: ${EARLY}"
 
 # ---- 1. Inbox with the strip (the default view) ----
 set_language ru
@@ -129,7 +141,7 @@ shoot 03-autumn-zoom
 # ---- 6. The feed moves to an older day: the outlined cell follows the day at the top of the feed ----
 # (before the jump of step 4: a scroll that the feed made itself is not reported until the person scrolls again)
 press "${L_WHOLE}"
-scroll_to "${OLDER_MARK}"
+scroll_to "${EARLY_MARK}"
 sleep 3
 shoot 06-feed-older-day-selection-followed
 
@@ -170,11 +182,10 @@ press "${L_AUTUMN}"
 sleep 2
 shoot 09-today-before-note
 NOTE="Синтетическая запись для роста сегодняшнего дерева: сто знаков, чтобы вес дня поднялся на следующую стадию роста."
-sqlw "insert or replace into draft(key, body, updated_at) values ('chat:$INBOX', '${NOTE}', $(python3 -c 'import time; print(int(time.time()*1000))'))"
+sqlw "insert or replace into draft(key, body, updated_at) values ('chat:$IDEAS', '${NOTE}', $(python3 -c 'import time; print(int(time.time()*1000))'))"
 BEFORE_NOTES="$(sqlw "select count(*) from message where journal_date = '${TODAY}' and deleted_at is null")"
-# The Inbox reads its draft when it is opened.
-press "${L_BOOKS}"
-press "${L_INBOX}"
+# The chat reads its draft when it is opened.
+press "${L_IDEAS}"
 sleep 2
 press "${L_SEND}"
 sleep 4
@@ -183,7 +194,7 @@ AFTER_NOTES="$(sqlw "select count(*) from message where journal_date = '${TODAY}
 shoot 10-today-after-note
 
 # ---- 11. English ----
-sqlw "delete from draft where key = 'chat:$INBOX'"
+sqlw "delete from draft where key = 'chat:$IDEAS'"
 set_language en
 restart_app
 detect_language
