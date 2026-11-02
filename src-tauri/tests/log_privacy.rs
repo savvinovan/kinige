@@ -60,8 +60,29 @@ fn the_mcp_server_logs_no_texts_queries_or_arguments() {
     client.call("add_entry", json!({"text": format!("{MARK} в чужой чат"), "chat_id": "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"}));
     client.send_raw(format!("{MARK} \u{0}мусор").as_bytes());
     drop(client);
-    std::thread::sleep(std::time::Duration::from_millis(300));
+    // The server handles the garbage and the close on its own task; its last step is the `disconnect` row in the access
+    // log. Wait for that row, otherwise the check below may run before the server has logged anything.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !mcp
+        .store()
+        .agent_log_page(None)
+        .unwrap()
+        .rows
+        .iter()
+        .any(|row| row.tool == "disconnect")
+    {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the server did not finish the connection"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
     let lines = CAPTURED.lock().unwrap().clone();
+    // The capture is live: the listener announced itself through `log` when it started.
+    assert!(
+        lines.iter().any(|line| line.contains("mcp: сокет поднят")),
+        "the logger sees the server's lines: {lines:?}"
+    );
     for line in &lines {
         assert!(
             !line.to_uppercase().contains(MARK),
