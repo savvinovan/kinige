@@ -334,10 +334,10 @@ fn the_reconnect_marker_arriving_in_pieces_is_still_recognised() {
     let mcp = mcp(AgentMode::Read, &[INBOX_ID]);
     let mut client = mcp.client();
     let marker = br#"{"jsonrpc":"2.0","method":"kinige/reconnect"}"#;
+    // No pauses between the pieces: how the socket splits them is up to the kernel and proves nothing either way. That the
+    // marker is recognised when it arrives in parts is pinned deterministically by the unit tests of `read_marker`.
     client.send_partial(&marker[..11]);
-    std::thread::sleep(Duration::from_millis(150));
     client.send_partial(&marker[11..30]);
-    std::thread::sleep(Duration::from_millis(150));
     client.send_raw(&marker[30..]);
     client.handshake("Piecewise");
     assert!(!client.call("list_chats", json!({})).0);

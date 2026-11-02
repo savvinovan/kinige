@@ -173,7 +173,10 @@ impl Bridge {
         while let Ok(line) = self.err.recv_timeout(LONG) {
             self.err_seen.push(line);
         }
-        self.err_seen.iter().map(|line| format!("{line}\n")).collect()
+        self.err_seen
+            .iter()
+            .map(|line| format!("{line}\n"))
+            .collect()
     }
 }
 
