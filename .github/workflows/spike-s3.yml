@@ -1,0 +1,145 @@
+# Spike S3 (forest): checks of the standalone page in spikes/S3-forest and the measurements in real browsers (Playwright on
+# GitHub runners; nothing runs on a developer's machine). Triggered by a push to the spike branch only.
+#   check  - typecheck, unit tests (positions, hit-test of every cell, growth formulas), build;
+#   bench  - FPS of scripted pan/zoom, click-through hit-test of every day, motion checks and screenshots, one job per
+#            browser configuration (Linux: Chromium, Chromium with software WebGL, WebKit; macOS: Chromium, Chromium without
+#            the GPU, WebKit);
+#   commit - the only job that can write: puts the screenshots into docs/screens/S3/ and the numbers into
+#            spikes/S3-forest/results/ on the branch.
+name: Spike S3
+
+on:
+  push:
+    branches: [spike/S3-forest]
+    paths:
+      - spikes/S3-forest/**
+      - "!spikes/S3-forest/results/**"
+      - "!spikes/S3-forest/README.md"
+      - web/src/ui/**
+      - .github/workflows/spike-s3.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spike-s3-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: spikes/S3-forest
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: spikes/S3-forest/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  bench:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, os: Linux, config: chromium, shots: all }
+          - { runner: ubuntu-24.04, os: Linux, config: chromium-swiftshader, shots: none }
+          - { runner: ubuntu-24.04, os: Linux, config: webkit, shots: year }
+          - { runner: macos-15, os: macOS, config: chromium, shots: none }
+          - { runner: macos-15, os: macOS, config: chromium-nogpu, shots: none }
+          - { runner: macos-15, os: macOS, config: webkit, shots: none }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: spikes/S3-forest/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Playwright browsers (Linux, with system libraries)
+        if: runner.os == 'Linux'
+        run: npx playwright install --with-deps chromium webkit
+      - name: Playwright browsers (macOS)
+        if: runner.os == 'macOS'
+        run: npx playwright install chromium webkit
+      - name: Measure
+        env:
+          RESULT_PREFIX: ${{ matrix.os }}
+          SHOTS: ${{ matrix.shots }}
+        run: |
+          args=(--config "${{ matrix.config }}" --seconds 3 --out "$RUNNER_TEMP/s3/results")
+          if [ "$SHOTS" != "none" ]; then args+=(--shots "$RUNNER_TEMP/s3/shots" --shots-only "$SHOTS"); fi
+          node bench/run.mjs "${args[@]}"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: s3-${{ matrix.os }}-${{ matrix.config }}
+          path: ${{ runner.temp }}/s3
+          if-no-files-found: error
+
+  commit:
+    needs: [check, bench]
+    if: always() && needs.check.result == 'success' && needs.bench.result != 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: s3-*
+          path: ${{ runner.temp }}/art
+      # Only docs/screens/S3/ and spikes/S3-forest/results/ are replaced; the rest of the branch is untouched.
+      - name: Commit the screenshots and the numbers
+        id: commit
+        run: |
+          rm -rf docs/screens/S3 spikes/S3-forest/results
+          mkdir -p docs/screens/S3/webkit spikes/S3-forest/results
+          cp "$RUNNER_TEMP"/art/s3-Linux-chromium/shots/*.png docs/screens/S3/
+          cp "$RUNNER_TEMP"/art/s3-Linux-webkit/shots/*.png docs/screens/S3/webkit/
+          cp "$RUNNER_TEMP"/art/*/results/*.json spikes/S3-forest/results/
+          node spikes/S3-forest/bench/summarize.mjs results > /dev/null
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- docs/screens/S3 spikes/S3-forest/results
+          if git diff --cached --quiet; then
+            echo "nothing changed"
+            exit 0
+          fi
+          git diff --cached --stat | tail -1
+          git commit -m "Spike S3: screenshots and measurements from CI"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+      # A bot commit does not start the pull_request CI; a workflow_dispatch from GITHUB_TOKEN does.
+      - name: Start CI on the branch
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref "$GITHUB_REF_NAME"
