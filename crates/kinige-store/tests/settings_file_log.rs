@@ -44,6 +44,16 @@ fn install() -> std::sync::MutexGuard<'static, ()> {
     guard
 }
 
+/// How many full polls the "nothing is logged again" checks wait for.
+const QUIET_POLLS: u64 = 10;
+
+/// Waits until the file thread has finished `polls` full polls after this call. One more is waited for, because a poll that
+/// is already running may have started before the state the caller cares about.
+fn after_polls(rig: &Rig, polls: u64) {
+    let target = rig.file.polls() + polls + 1;
+    wait_until("опросы потока файла", || rig.file.polls() >= target);
+}
+
 fn file_lines() -> Vec<String> {
     CAPTURED
         .lock()
@@ -65,7 +75,7 @@ fn a_broken_file_after_a_window_edit_is_logged_once_not_on_every_poll() {
         .unwrap()
         .unwrap();
     let polls_before = file_lines().len();
-    std::thread::sleep(Duration::from_millis(500));
+    after_polls(&rig, QUIET_POLLS);
     let lines = file_lines();
     assert_eq!(
         lines.len(),
@@ -77,7 +87,7 @@ fn a_broken_file_after_a_window_edit_is_logged_once_not_on_every_poll() {
     // Файл не перечитывался на каждом опросе: после починки он применяется, и состояние «битый» снова логируется заново.
     rig.write(r#"{"text_size": "normal"}"#);
     rig.write(r#"{"text_size": "#);
-    std::thread::sleep(Duration::from_millis(200));
+    after_polls(&rig, QUIET_POLLS / 2);
     assert_eq!(file_lines().len(), 2);
 }
 
@@ -104,7 +114,7 @@ fn an_unsafe_file_and_a_fifo_do_not_flood_the_log_either() {
         .edit(|store| store.set_text_size(TextSize::Large))
         .unwrap()
         .unwrap();
-    std::thread::sleep(Duration::from_millis(400));
+    after_polls(&rig, QUIET_POLLS);
     assert!(file_lines().len() - before <= 1, "{:?}", file_lines());
 }
 
@@ -119,12 +129,10 @@ fn a_dropped_handle_stops_the_thread_nothing_is_applied_and_nothing_is_logged() 
         store,
         changes,
     } = rig;
-    // `Drop` ждёт остановки потока: после него опросов нет, дальше всё детерминировано.
+    // `Drop` ждёт остановки потока: после него опросов нет вообще, так что ждать нечего и проверка не зависит от времени.
     drop(file);
     write_file(dir.path(), br#"{"text_size": "large"}"#, 0o600);
-    std::thread::sleep(Duration::from_millis(150));
     write_file(dir.path(), br#"{"text_size": "#, 0o600);
-    std::thread::sleep(Duration::from_millis(150));
     assert_eq!(store.get_settings().unwrap().text_size, TextSize::Normal);
     assert_eq!(changes.load(Ordering::SeqCst), applied);
     assert!(file_lines().is_empty(), "{:?}", file_lines());
@@ -149,7 +157,10 @@ fn a_busy_database_logs_the_apply_error_once_and_again_after_a_success() {
     // База «занята»: таблицы настроек нет, запись из применения файла падает, признак файла сбрасывается и опрос идёт снова.
     hide("app_setting", "app_setting_away");
     write_file(rig.dir.path(), br#"{"text_size":"large"}"#, 0o600);
-    std::thread::sleep(Duration::from_millis(500));
+    // The poll notices the file and fails to apply it: the first line. The failed apply clears the file signature, so every
+    // later poll reads and tries the file again; those polls must stay silent.
+    wait_until("первое предупреждение", || count("не применён") >= 1);
+    after_polls(&rig, QUIET_POLLS);
     assert_eq!(count("не применён"), 1, "{:?}", file_lines());
     // Починили: применяется (успех сбрасывает вид «apply»).
     hide("app_setting_away", "app_setting");
@@ -159,7 +170,8 @@ fn a_busy_database_logs_the_apply_error_once_and_again_after_a_success() {
     // Снова сбой: вторая строка, а не молчание и не поток.
     hide("app_setting", "app_setting_away");
     write_file(rig.dir.path(), br#"{"text_size":"normal"}"#, 0o600);
-    std::thread::sleep(Duration::from_millis(500));
+    wait_until("второе предупреждение", || count("не применён") >= 2);
+    after_polls(&rig, QUIET_POLLS);
     assert_eq!(count("не применён"), 2, "{:?}", file_lines());
 }
 
@@ -200,7 +212,8 @@ fn a_failing_hash_write_and_the_apply_error_that_follows_are_each_logged_once_an
     ] {
         edit(size);
     }
-    std::thread::sleep(Duration::from_millis(300));
+    // `edit` returns after the edit and the failed writes are done; the polls that follow must add no lines.
+    after_polls(&rig, QUIET_POLLS);
     assert_eq!(
         count("хэш файла настроек не записан"),
         1,
@@ -218,7 +231,7 @@ fn a_failing_hash_write_and_the_apply_error_that_follows_are_each_logged_once_an
     for size in [TextSize::Large, TextSize::Normal, TextSize::Large] {
         edit(size);
     }
-    std::thread::sleep(Duration::from_millis(300));
+    after_polls(&rig, QUIET_POLLS);
     assert_eq!(
         count("хэш файла настроек не записан"),
         2,
