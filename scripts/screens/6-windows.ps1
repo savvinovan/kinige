@@ -181,7 +181,6 @@ function Focus-Window([string]$title) {
   if ($window) { [Win]::Raise($window); Start-Sleep -Milliseconds 500 }
 }
 
-# Keys go to the foreground window: bring the Kinige window up first. `$keys` is SendKeys syntax.
 function Shoot([string]$name, [string]$title) {
   $window = Get-AppWindow $title
   if (-not $window) { Fail "no window '$title' for $name"; return }

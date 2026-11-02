@@ -62,7 +62,7 @@ Layout: `crates/kinige-domain` (rules, no IO, builds for wasm32), `crates/kinige
 Rust (from the root):
 - `cargo fmt --all --check`
 - `cargo clippy --workspace --all-targets -- -D warnings`
-- `cargo test --workspace` — also regenerates the TS types in `web/src/api/generated/` (ts-rs, ADR-0002); after changing types in Rust, commit the result
+- `cargo test --workspace` — also regenerates the TS types in `web/src/api/generated/` (ts-rs, ADR-0002); after changing types in Rust, commit the result; it also rewrites the year tables of the forest stories in `web/src/ui/forest/fixtures/` (built by the real `year_table`, slice 6; CI fails when they differ from the commit)
 - `cargo build -p kinige-domain --target wasm32-unknown-unknown`
 
 Frontend (from `web/`, after `npm ci`):
