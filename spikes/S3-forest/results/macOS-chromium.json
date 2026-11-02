@@ -1,0 +1,1980 @@
+{
+  "config": "chromium",
+  "os": "darwin 24.6.0 arm64",
+  "cpus": "3 x Apple M1 (Virtual)",
+  "browser": "chromium 156.0.8078.4",
+  "seconds": 3,
+  "runs": [
+    {
+      "viewport": {
+        "name": "wide",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1,
+        "load": 1
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 77,
+          "seconds": 3.0166000000000004,
+          "fps": 25.525425976264664,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 83.29999999999973,
+          "p99Ms": 83.40000000000009,
+          "maxMs": 83.40000000000009,
+          "slowFrames": 48,
+          "drawMeanMs": 1.4589743589742097,
+          "drawP95Ms": 2.8000000000029104,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 87,
+          "seconds": 3.0332,
+          "fps": 28.68257945404194,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 66.69999999999982,
+          "p99Ms": 66.80000000000018,
+          "maxMs": 66.80000000000018,
+          "slowFrames": 49,
+          "drawMeanMs": 1.0840909090915043,
+          "drawP95Ms": 2.5,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 76,
+          "seconds": 3.0166000000000004,
+          "fps": 25.193926937611877,
+          "p50Ms": 33.399999999999636,
+          "p95Ms": 66.70000000000073,
+          "p99Ms": 83.30000000000109,
+          "maxMs": 83.30000000000109,
+          "slowFrames": 47,
+          "drawMeanMs": 1.2896103896111835,
+          "drawP95Ms": 2.400000000008731,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "wide",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1,
+        "load": 1
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 81,
+          "seconds": 3.0165999999999995,
+          "fps": 26.851422130875825,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 66.70000000000005,
+          "p99Ms": 83.29999999999973,
+          "maxMs": 83.29999999999973,
+          "slowFrames": 47,
+          "drawMeanMs": 1.2731707317067138,
+          "drawP95Ms": 2.7999999999883585,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 72,
+          "seconds": 3.0165,
+          "fps": 23.868722028841372,
+          "p50Ms": 50,
+          "p95Ms": 66.69999999999982,
+          "p99Ms": 66.80000000000018,
+          "maxMs": 66.80000000000018,
+          "slowFrames": 53,
+          "drawMeanMs": 0.9136986301363484,
+          "drawP95Ms": 2.3999999999941792,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 103,
+          "seconds": 3.016500000000001,
+          "fps": 34.145532902370284,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 66.69999999999982,
+          "p99Ms": 66.79999999999927,
+          "maxMs": 83.30000000000109,
+          "slowFrames": 43,
+          "drawMeanMs": 0.9413461538463778,
+          "drawP95Ms": 2.1000000000058208,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 1
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 92,
+          "seconds": 3.0665,
+          "fps": 30.00163052339801,
+          "p50Ms": 16.800000000000182,
+          "p95Ms": 66.70000000000027,
+          "p99Ms": 83.30000000000018,
+          "maxMs": 83.30000000000018,
+          "slowFrames": 44,
+          "drawMeanMs": 1.5537634408592762,
+          "drawP95Ms": 2.6000000000058208,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 84,
+          "seconds": 3.0166000000000004,
+          "fps": 27.845919246834182,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 83.30000000000018,
+          "p99Ms": 100,
+          "maxMs": 100,
+          "slowFrames": 43,
+          "drawMeanMs": 1.3317647058831747,
+          "drawP95Ms": 3,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 74,
+          "seconds": 3.0165,
+          "fps": 24.531742085198076,
+          "p50Ms": 33.30000000000109,
+          "p95Ms": 83.40000000000055,
+          "p99Ms": 150,
+          "maxMs": 150,
+          "slowFrames": 44,
+          "drawMeanMs": 1.6626666666656578,
+          "drawP95Ms": 4.5,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 1
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 97,
+          "seconds": 3.0166,
+          "fps": 32.15540674932043,
+          "p50Ms": 16.700000000000273,
+          "p95Ms": 83.30000000000018,
+          "p99Ms": 100,
+          "maxMs": 100,
+          "slowFrames": 36,
+          "drawMeanMs": 1.4510204081618991,
+          "drawP95Ms": 4.399999999994179,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 81,
+          "seconds": 3.0331000000000006,
+          "fps": 26.705350961062937,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 66.70000000000073,
+          "p99Ms": 83.40000000000055,
+          "maxMs": 83.40000000000055,
+          "slowFrames": 47,
+          "drawMeanMs": 1.0963414634134985,
+          "drawP95Ms": 2.5,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 100,
+          "seconds": 3.0165999999999995,
+          "fps": 33.149903865278795,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 66.70000000000073,
+          "p99Ms": 66.80000000000109,
+          "maxMs": 66.80000000000109,
+          "slowFrames": 45,
+          "drawMeanMs": 1.1782178217844834,
+          "drawP95Ms": 2.3000000000174623,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "narrow",
+        "width": 640,
+        "height": 800,
+        "dpr": 1,
+        "load": 1
+      },
+      "grid": "A",
+      "tilePxAtFit": 26.41860465116279,
+      "canvas": {
+        "w": 640,
+        "h": 731
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 90,
+          "seconds": 3.0332,
+          "fps": 29.671633917974418,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 66.69999999999982,
+          "p99Ms": 66.70000000000027,
+          "maxMs": 66.70000000000027,
+          "slowFrames": 56,
+          "drawMeanMs": 1.5758241758253912,
+          "drawP95Ms": 2.7000000000116415,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 83,
+          "seconds": 3.0498000000000003,
+          "fps": 27.214899337661485,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 66.69999999999982,
+          "p99Ms": 83.30000000000018,
+          "maxMs": 83.30000000000018,
+          "slowFrames": 55,
+          "drawMeanMs": 1.1642857142848828,
+          "drawP95Ms": 2.7999999999883585,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 85,
+          "seconds": 3.0166000000000004,
+          "fps": 28.17741828548697,
+          "p50Ms": 33.30000000000109,
+          "p95Ms": 66.69999999999891,
+          "p99Ms": 66.80000000000018,
+          "maxMs": 66.80000000000018,
+          "slowFrames": 55,
+          "drawMeanMs": 1.1476744186030945,
+          "drawP95Ms": 2.6000000000058208,
+          "lods": [
+            "simple",
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "narrow",
+        "width": 640,
+        "height": 800,
+        "dpr": 1,
+        "load": 1
+      },
+      "grid": "B",
+      "tilePxAtFit": 18.933333333333334,
+      "canvas": {
+        "w": 640,
+        "h": 731
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 83,
+          "seconds": 3.0165000000000006,
+          "fps": 27.515332338803244,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 66.69999999999982,
+          "p99Ms": 83.40000000000009,
+          "maxMs": 83.40000000000009,
+          "slowFrames": 58,
+          "drawMeanMs": 0.9797619047641914,
+          "drawP95Ms": 1.6000000000058208,
+          "lods": [
+            "simple"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 90,
+          "seconds": 3.0165,
+          "fps": 29.835902536051716,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 66.69999999999982,
+          "p99Ms": 66.69999999999982,
+          "maxMs": 66.69999999999982,
+          "slowFrames": 56,
+          "drawMeanMs": 0.9054945054960406,
+          "drawP95Ms": 2.5,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 84,
+          "seconds": 3.0166000000000004,
+          "fps": 27.845919246834182,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 66.70000000000073,
+          "p99Ms": 83.30000000000109,
+          "maxMs": 83.30000000000109,
+          "slowFrames": 57,
+          "drawMeanMs": 0.9470588235304389,
+          "drawP95Ms": 1.7999999999883585,
+          "lods": [
+            "simple",
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-x2",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 2
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 56,
+          "seconds": 3.0166,
+          "fps": 18.563946164556125,
+          "p50Ms": 50.09999999999991,
+          "p95Ms": 100,
+          "p99Ms": 150,
+          "maxMs": 150,
+          "slowFrames": 46,
+          "drawMeanMs": 2.812280701756224,
+          "drawP95Ms": 4.899999999994179,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 64,
+          "seconds": 3.0498999999999996,
+          "fps": 20.984294567034986,
+          "p50Ms": 50,
+          "p95Ms": 83.40000000000055,
+          "p99Ms": 116.60000000000036,
+          "maxMs": 116.60000000000036,
+          "slowFrames": 46,
+          "drawMeanMs": 2.4123076923088567,
+          "drawP95Ms": 5.600000000005821,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 64,
+          "seconds": 3.033299999999999,
+          "fps": 21.09913295750503,
+          "p50Ms": 50,
+          "p95Ms": 100,
+          "p99Ms": 100,
+          "maxMs": 100,
+          "slowFrames": 48,
+          "drawMeanMs": 2.3830769230772813,
+          "drawP95Ms": 5,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-x2",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 2
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 78,
+          "seconds": 3.0498000000000003,
+          "fps": 25.57544757033248,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 83.30000000000018,
+          "p99Ms": 100,
+          "maxMs": 100,
+          "slowFrames": 43,
+          "drawMeanMs": 2.186075949366499,
+          "drawP95Ms": 4.2000000000116415,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 85,
+          "seconds": 3.0331000000000006,
+          "fps": 28.024133724572216,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 66.70000000000073,
+          "p99Ms": 83.39999999999964,
+          "maxMs": 83.39999999999964,
+          "slowFrames": 51,
+          "drawMeanMs": 1.8360465116295315,
+          "drawP95Ms": 4.600000000005821,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 77,
+          "seconds": 3.0165,
+          "fps": 25.526272169733133,
+          "p50Ms": 33.399999999999636,
+          "p95Ms": 83.30000000000109,
+          "p99Ms": 99.89999999999964,
+          "maxMs": 99.89999999999964,
+          "slowFrames": 50,
+          "drawMeanMs": 1.961538461540327,
+          "drawP95Ms": 4.600000000005821,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-x4",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 4
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 44,
+          "seconds": 3.0164999999999997,
+          "fps": 14.586441239847508,
+          "p50Ms": 66.70000000000005,
+          "p95Ms": 116.59999999999991,
+          "p99Ms": 116.70000000000005,
+          "maxMs": 116.70000000000005,
+          "slowFrames": 42,
+          "drawMeanMs": 4.917777777775579,
+          "drawP95Ms": 8.199999999982538,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 58,
+          "seconds": 3.0498000000000003,
+          "fps": 19.01764050101646,
+          "p50Ms": 66.59999999999945,
+          "p95Ms": 100.10000000000036,
+          "p99Ms": 116.69999999999982,
+          "maxMs": 116.69999999999982,
+          "slowFrames": 40,
+          "drawMeanMs": 3.474576271181508,
+          "drawP95Ms": 7.699999999982538,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 42,
+          "seconds": 3.0165,
+          "fps": 13.9234211834908,
+          "p50Ms": 66.69999999999891,
+          "p95Ms": 116.69999999999891,
+          "p99Ms": 133.3000000000011,
+          "maxMs": 133.3000000000011,
+          "slowFrames": 40,
+          "drawMeanMs": 4.116279069764735,
+          "drawP95Ms": 9.299999999988358,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-x4",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 4
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 55,
+          "seconds": 3.0331,
+          "fps": 18.133262998252615,
+          "p50Ms": 50,
+          "p95Ms": 83.30000000000018,
+          "p99Ms": 100.00000000000045,
+          "maxMs": 100.00000000000045,
+          "slowFrames": 53,
+          "drawMeanMs": 3.7749999999993764,
+          "drawP95Ms": 7.899999999994179,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 86,
+          "seconds": 3.0165,
+          "fps": 28.509862423338305,
+          "p50Ms": 33.19999999999982,
+          "p95Ms": 83.30000000000018,
+          "p99Ms": 100,
+          "maxMs": 100,
+          "slowFrames": 43,
+          "drawMeanMs": 2.6241379310353525,
+          "drawP95Ms": 7.100000000005821,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 55,
+          "seconds": 3.0165999999999995,
+          "fps": 18.232447125903338,
+          "p50Ms": 50,
+          "p95Ms": 100,
+          "p99Ms": 116.60000000000036,
+          "maxMs": 116.60000000000036,
+          "slowFrames": 51,
+          "drawMeanMs": 3.594642857143169,
+          "drawP95Ms": 8.299999999988358,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-sprites",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 1,
+        "sprites": true
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 48,
+          "seconds": 3.0165000000000006,
+          "fps": 15.912481352560913,
+          "p50Ms": 66.59999999999991,
+          "p95Ms": 99.89999999999986,
+          "p99Ms": 116.70000000000005,
+          "maxMs": 116.70000000000005,
+          "slowFrames": 47,
+          "drawMeanMs": 0.8204081632673256,
+          "drawP95Ms": 1.5,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 73,
+          "seconds": 3.0332,
+          "fps": 24.066991955690362,
+          "p50Ms": 33.20000000000073,
+          "p95Ms": 116.70000000000073,
+          "p99Ms": 200,
+          "maxMs": 200,
+          "slowFrames": 38,
+          "drawMeanMs": 0.943243243245839,
+          "drawP95Ms": 1.900000000023283,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 43,
+          "seconds": 3.066499999999999,
+          "fps": 14.022501222892553,
+          "p50Ms": 50,
+          "p95Ms": 166.6999999999989,
+          "p99Ms": 199.89999999999964,
+          "maxMs": 199.89999999999964,
+          "slowFrames": 36,
+          "drawMeanMs": 1.2272727272720658,
+          "drawP95Ms": 1.6999999999825377,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-sprites",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 1,
+        "sprites": true
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 91,
+          "seconds": 3.0332000000000003,
+          "fps": 30.001318739285242,
+          "p50Ms": 33.30000000000018,
+          "p95Ms": 66.59999999999945,
+          "p99Ms": 100,
+          "maxMs": 100,
+          "slowFrames": 58,
+          "drawMeanMs": 0.8760869565202206,
+          "drawP95Ms": 1.5,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 88,
+          "seconds": 3.0165,
+          "fps": 29.172882479695012,
+          "p50Ms": 33.29999999999927,
+          "p95Ms": 83.39999999999964,
+          "p99Ms": 116.69999999999982,
+          "maxMs": 116.69999999999982,
+          "slowFrames": 48,
+          "drawMeanMs": 0.6842696629196479,
+          "drawP95Ms": 1.5,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 75,
+          "seconds": 3.0499000000000005,
+          "fps": 24.59097019574412,
+          "p50Ms": 33.399999999999636,
+          "p95Ms": 83.29999999999927,
+          "p99Ms": 116.60000000000036,
+          "maxMs": 116.60000000000036,
+          "slowFrames": 51,
+          "drawMeanMs": 0.6828947368424116,
+          "drawP95Ms": 1.3999999999941792,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-x4-sprites",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 4,
+        "sprites": true
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 13,
+          "seconds": 3.1164999999999994,
+          "fps": 4.171346061286701,
+          "p50Ms": 233.39999999999986,
+          "p95Ms": 300,
+          "p99Ms": 300,
+          "maxMs": 300,
+          "slowFrames": 13,
+          "drawMeanMs": 2.300000000007068,
+          "drawP95Ms": 4,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 53,
+          "seconds": 3.0665,
+          "fps": 17.28354801891407,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 300,
+          "p99Ms": 500,
+          "maxMs": 500,
+          "slowFrames": 17,
+          "drawMeanMs": 2.290740740740956,
+          "drawP95Ms": 4.2999999999883585,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 14,
+          "seconds": 3.1332999999999993,
+          "fps": 4.4681326397089345,
+          "p50Ms": 150,
+          "p95Ms": 400,
+          "p99Ms": 400,
+          "maxMs": 400,
+          "slowFrames": 14,
+          "drawMeanMs": 2.9466666666674426,
+          "drawP95Ms": 9.60000000000582,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-x4-sprites",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 4,
+        "sprites": true
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 29,
+          "seconds": 3.0665,
+          "fps": 9.457035708462417,
+          "p50Ms": 116.59999999999991,
+          "p95Ms": 133.4000000000001,
+          "p99Ms": 150,
+          "maxMs": 150,
+          "slowFrames": 29,
+          "drawMeanMs": 2.073333333331781,
+          "drawP95Ms": 4,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 58,
+          "seconds": 3.0999000000000008,
+          "fps": 18.7102809768057,
+          "p50Ms": 16.800000000000182,
+          "p95Ms": 216.69999999999982,
+          "p99Ms": 266.60000000000036,
+          "maxMs": 266.60000000000036,
+          "slowFrames": 28,
+          "drawMeanMs": 2.228813559324007,
+          "drawP95Ms": 4.7000000000116415,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 27,
+          "seconds": 3.0164999999999993,
+          "fps": 8.950770760815518,
+          "p50Ms": 83.29999999999927,
+          "p95Ms": 283.2999999999993,
+          "p99Ms": 333.2999999999993,
+          "maxMs": 333.2999999999993,
+          "slowFrames": 27,
+          "drawMeanMs": 1.8214285714285714,
+          "drawP95Ms": 3.8000000000174623,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-lowres",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 1,
+        "maxDpr": 1
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 132,
+          "seconds": 3.0331,
+          "fps": 43.51983119580627,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 50,
+          "p99Ms": 66.69999999999982,
+          "maxMs": 66.70000000000027,
+          "slowFrames": 39,
+          "drawMeanMs": 1.429323308269845,
+          "drawP95Ms": 2.400000000023283,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 126,
+          "seconds": 3.0165,
+          "fps": 41.7702635504724,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 50,
+          "p99Ms": 66.69999999999982,
+          "maxMs": 66.70000000000073,
+          "slowFrames": 36,
+          "drawMeanMs": 1.2874015748040664,
+          "drawP95Ms": 3.099999999976717,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 129,
+          "seconds": 3.016500000000001,
+          "fps": 42.76479363500744,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 50.100000000000364,
+          "p99Ms": 66.70000000000073,
+          "maxMs": 66.70000000000073,
+          "slowFrames": 33,
+          "drawMeanMs": 1.6407692307709323,
+          "drawP95Ms": 3.900000000023283,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-lowres",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 1,
+        "maxDpr": 1
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 132,
+          "seconds": 3.0164999999999997,
+          "fps": 43.75932371954252,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 50.09999999999991,
+          "p99Ms": 66.70000000000027,
+          "maxMs": 66.70000000000027,
+          "slowFrames": 30,
+          "drawMeanMs": 1.3909774436094602,
+          "drawP95Ms": 2.7000000000116415,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 114,
+          "seconds": 3.0165999999999995,
+          "fps": 37.79089040641783,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 66.60000000000036,
+          "p99Ms": 66.70000000000073,
+          "maxMs": 83.19999999999982,
+          "slowFrames": 37,
+          "drawMeanMs": 1.6139130434785645,
+          "drawP95Ms": 3.2999999999883585,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 124,
+          "seconds": 3.033200000000001,
+          "fps": 40.88091784254252,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 50,
+          "p99Ms": 66.60000000000036,
+          "maxMs": 66.60000000000036,
+          "slowFrames": 41,
+          "drawMeanMs": 1.160000000004191,
+          "drawP95Ms": 2.400000000023283,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-clear-only",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 1,
+        "clearOnly": true
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 137,
+          "seconds": 3.0498,
+          "fps": 44.92097842481475,
+          "p50Ms": 16.700000000000045,
+          "p95Ms": 33.40000000000009,
+          "p99Ms": 66.59999999999991,
+          "maxMs": 66.80000000000018,
+          "slowFrames": 38,
+          "drawMeanMs": 0.024637681159167212,
+          "drawP95Ms": 0.1000000000349246,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 125,
+          "seconds": 3.0165,
+          "fps": 41.43875352229405,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 50,
+          "p99Ms": 66.70000000000073,
+          "maxMs": 66.70000000000073,
+          "slowFrames": 42,
+          "drawMeanMs": 0.01904761904918973,
+          "drawP95Ms": 0.1000000000349246,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 133,
+          "seconds": 3.0166000000000004,
+          "fps": 44.089372140820785,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 50,
+          "p99Ms": 66.60000000000036,
+          "maxMs": 83.29999999999927,
+          "slowFrames": 34,
+          "drawMeanMs": 0.020149253730995777,
+          "drawP95Ms": 0.1000000000349246,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-clear-only",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 1,
+        "clearOnly": true
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 140,
+          "seconds": 3.0166000000000004,
+          "fps": 46.4098654113903,
+          "p50Ms": 16.700000000000045,
+          "p95Ms": 33.40000000000009,
+          "p99Ms": 50,
+          "maxMs": 50.09999999999991,
+          "slowFrames": 37,
+          "drawMeanMs": 0.017730496453487888,
+          "drawP95Ms": 0.1000000000349246,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 138,
+          "seconds": 3.0165,
+          "fps": 45.74838388861263,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 49.899999999999636,
+          "p99Ms": 50.099999999999454,
+          "maxMs": 66.60000000000036,
+          "slowFrames": 35,
+          "drawMeanMs": 0.015827338129161393,
+          "drawP95Ms": 0.1000000000349246,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 130,
+          "seconds": 3.0499000000000005,
+          "fps": 42.6243483392898,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 50,
+          "p99Ms": 66.69999999999891,
+          "maxMs": 66.69999999999891,
+          "slowFrames": 36,
+          "drawMeanMs": 0.011450381679389313,
+          "drawP95Ms": 0.09999999997671694,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "wide-cached",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1,
+        "load": 1,
+        "cache": true
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 105,
+          "seconds": 3.0498999999999996,
+          "fps": 34.42735827404178,
+          "p50Ms": 16.700000000000273,
+          "p95Ms": 66.69999999999982,
+          "p99Ms": 66.70000000000027,
+          "maxMs": 66.70000000000027,
+          "slowFrames": 47,
+          "drawMeanMs": 0.10660377357930455,
+          "drawP95Ms": 0.20000000001164153,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 106,
+          "seconds": 3.0665,
+          "fps": 34.56709603782814,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 66.69999999999982,
+          "p99Ms": 116.60000000000036,
+          "maxMs": 116.69999999999982,
+          "slowFrames": 43,
+          "drawMeanMs": 0.5644859813097168,
+          "drawP95Ms": 2,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 99,
+          "seconds": 3.0165999999999995,
+          "fps": 32.81840482662601,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 100,
+          "p99Ms": 133.1999999999989,
+          "maxMs": 133.1999999999989,
+          "slowFrames": 28,
+          "drawMeanMs": 0.5269999999954598,
+          "drawP95Ms": 0.30000000004656613,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "wide-cached",
+        "width": 1280,
+        "height": 800,
+        "dpr": 1,
+        "load": 1,
+        "cache": true
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 89,
+          "seconds": 3.0831999999999997,
+          "fps": 28.8661131292164,
+          "p50Ms": 16.700000000000273,
+          "p95Ms": 100,
+          "p99Ms": 133.29999999999973,
+          "maxMs": 133.29999999999973,
+          "slowFrames": 37,
+          "drawMeanMs": 0.10111111111085241,
+          "drawP95Ms": 0.20000000001164153,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 95,
+          "seconds": 3.0165,
+          "fps": 31.493452676943477,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 100.09999999999945,
+          "p99Ms": 133.30000000000018,
+          "maxMs": 133.30000000000018,
+          "slowFrames": 31,
+          "drawMeanMs": 1.1083333333329695,
+          "drawP95Ms": 9.799999999988358,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 92,
+          "seconds": 3.0164000000000004,
+          "fps": 30.499933695796308,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 100.00000000000091,
+          "p99Ms": 133.3000000000011,
+          "maxMs": 133.3000000000011,
+          "slowFrames": 33,
+          "drawMeanMs": 0.3053763440875236,
+          "drawP95Ms": 0.20000000001164153,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-cached",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 1,
+        "cache": true
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 84,
+          "seconds": 3.0166,
+          "fps": 27.845919246834185,
+          "p50Ms": 16.700000000000273,
+          "p95Ms": 100,
+          "p99Ms": 116.69999999999982,
+          "maxMs": 116.69999999999982,
+          "slowFrames": 35,
+          "drawMeanMs": 0.13999999999821952,
+          "drawP95Ms": 0.30000000004656613,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 74,
+          "seconds": 3,
+          "fps": 24.666666666666668,
+          "p50Ms": 16.800000000000182,
+          "p95Ms": 100,
+          "p99Ms": 150,
+          "maxMs": 150,
+          "slowFrames": 36,
+          "drawMeanMs": 2.2133333333348855,
+          "drawP95Ms": 16.79999999998836,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 112,
+          "seconds": 3.033299999999999,
+          "fps": 36.92348267563381,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 100,
+          "p99Ms": 116.70000000000073,
+          "maxMs": 133.1999999999989,
+          "slowFrames": 31,
+          "drawMeanMs": 0.8035398230077163,
+          "drawP95Ms": 0.20000000001164153,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-cached",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 1,
+        "cache": true
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 80,
+          "seconds": 3.0164999999999997,
+          "fps": 26.520802254268197,
+          "p50Ms": 16.700000000000273,
+          "p95Ms": 116.59999999999991,
+          "p99Ms": 133.29999999999973,
+          "maxMs": 133.29999999999973,
+          "slowFrames": 34,
+          "drawMeanMs": 0.0913580246880524,
+          "drawP95Ms": 0.20000000001164153,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 92,
+          "seconds": 3.0165,
+          "fps": 30.49892259240842,
+          "p50Ms": 16.699999999999818,
+          "p95Ms": 83.39999999999964,
+          "p99Ms": 116.79999999999927,
+          "maxMs": 116.79999999999927,
+          "slowFrames": 40,
+          "drawMeanMs": 1.7301075268844743,
+          "drawP95Ms": 17.79999999998836,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 109,
+          "seconds": 3.0999000000000008,
+          "fps": 35.16242459434174,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 66.5,
+          "p99Ms": 100,
+          "maxMs": 100.09999999999854,
+          "slowFrames": 47,
+          "drawMeanMs": 0.6036363636360461,
+          "drawP95Ms": 0.20000000001164153,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "narrow-cached",
+        "width": 640,
+        "height": 800,
+        "dpr": 1,
+        "load": 1,
+        "cache": true
+      },
+      "grid": "A",
+      "tilePxAtFit": 26.41860465116279,
+      "canvas": {
+        "w": 640,
+        "h": 731
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 112,
+          "seconds": 3.0499000000000005,
+          "fps": 36.72251549231122,
+          "p50Ms": 16.700000000000045,
+          "p95Ms": 83.40000000000009,
+          "p99Ms": 100,
+          "maxMs": 100,
+          "slowFrames": 31,
+          "drawMeanMs": 0.10088495575035798,
+          "drawP95Ms": 0.20000000001164153,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 81,
+          "seconds": 3.0165,
+          "fps": 26.852312282446544,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 100,
+          "p99Ms": 133.29999999999927,
+          "maxMs": 133.29999999999927,
+          "slowFrames": 34,
+          "drawMeanMs": 1.5548780487804879,
+          "drawP95Ms": 8.099999999976717,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 102,
+          "seconds": 3.0166000000000004,
+          "fps": 33.81290194258436,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 66.69999999999982,
+          "p99Ms": 99.90000000000146,
+          "maxMs": 100.10000000000036,
+          "slowFrames": 47,
+          "drawMeanMs": 0.28058252426924507,
+          "drawP95Ms": 0.20000000001164153,
+          "lods": [
+            "simple",
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "narrow-cached",
+        "width": 640,
+        "height": 800,
+        "dpr": 1,
+        "load": 1,
+        "cache": true
+      },
+      "grid": "B",
+      "tilePxAtFit": 18.933333333333334,
+      "canvas": {
+        "w": 640,
+        "h": 731
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 91,
+          "seconds": 3.0165,
+          "fps": 30.16741256423007,
+          "p50Ms": 16.700000000000273,
+          "p95Ms": 83.5,
+          "p99Ms": 116.70000000000027,
+          "maxMs": 116.70000000000027,
+          "slowFrames": 38,
+          "drawMeanMs": 0.10978260869160295,
+          "drawP95Ms": 0.20000000001164153,
+          "lods": [
+            "simple"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 84,
+          "seconds": 3.0165999999999995,
+          "fps": 27.84591924683419,
+          "p50Ms": 16.700000000000728,
+          "p95Ms": 100,
+          "p99Ms": 116.60000000000036,
+          "maxMs": 116.60000000000036,
+          "slowFrames": 37,
+          "drawMeanMs": 1.1976470588185988,
+          "drawP95Ms": 9.899999999965075,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 69,
+          "seconds": 3.000000000000001,
+          "fps": 22.999999999999993,
+          "p50Ms": 16.800000000000182,
+          "p95Ms": 100,
+          "p99Ms": 133.3000000000011,
+          "maxMs": 133.3000000000011,
+          "slowFrames": 34,
+          "drawMeanMs": 0.4871428571400299,
+          "drawP95Ms": 2,
+          "lods": [
+            "simple",
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-x4-cached",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 4,
+        "cache": true
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 38,
+          "seconds": 3.0665999999999998,
+          "fps": 12.391573729863692,
+          "p50Ms": 83.30000000000018,
+          "p95Ms": 116.69999999999982,
+          "p99Ms": 116.70000000000027,
+          "maxMs": 116.70000000000027,
+          "slowFrames": 38,
+          "drawMeanMs": 58.30769230769231,
+          "drawP95Ms": 90.79999999998836,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 43,
+          "seconds": 3.0665,
+          "fps": 14.022501222892549,
+          "p50Ms": 66.69999999999982,
+          "p95Ms": 100,
+          "p99Ms": 133.30000000000018,
+          "maxMs": 133.30000000000018,
+          "slowFrames": 43,
+          "drawMeanMs": 49.04318181818235,
+          "drawP95Ms": 68.5,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 40,
+          "seconds": 3.0165999999999995,
+          "fps": 13.25996154611152,
+          "p50Ms": 66.70000000000073,
+          "p95Ms": 133.40000000000146,
+          "p99Ms": 150,
+          "maxMs": 150,
+          "slowFrames": 40,
+          "drawMeanMs": 54.75365853658735,
+          "drawP95Ms": 71,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-x4-cached",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 4,
+        "cache": true
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 43,
+          "seconds": 3.0498,
+          "fps": 14.099285199029445,
+          "p50Ms": 66.69999999999982,
+          "p95Ms": 100,
+          "p99Ms": 149.99999999999955,
+          "maxMs": 149.99999999999955,
+          "slowFrames": 43,
+          "drawMeanMs": 51.020454545456396,
+          "drawP95Ms": 62.70000000001164,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 40,
+          "seconds": 3.0332,
+          "fps": 13.187392852433074,
+          "p50Ms": 66.70000000000073,
+          "p95Ms": 150,
+          "p99Ms": 166.69999999999982,
+          "maxMs": 166.69999999999982,
+          "slowFrames": 40,
+          "drawMeanMs": 50.04390243903404,
+          "drawP95Ms": 77.90000000002328,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 44,
+          "seconds": 3.0499000000000005,
+          "fps": 14.426702514836549,
+          "p50Ms": 66.70000000000073,
+          "p95Ms": 83.39999999999964,
+          "p99Ms": 133.29999999999927,
+          "maxMs": 133.29999999999927,
+          "slowFrames": 44,
+          "drawMeanMs": 49.95333333333256,
+          "drawP95Ms": 61.29999999998836,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-x8-cached",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 8,
+        "cache": true
+      },
+      "grid": "A",
+      "tilePxAtFit": 55.22267206477733,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 22,
+          "seconds": 3.0166,
+          "fps": 7.292978850361334,
+          "p50Ms": 133.30000000000018,
+          "p95Ms": 183.30000000000018,
+          "p99Ms": 183.4000000000001,
+          "maxMs": 183.4000000000001,
+          "slowFrames": 22,
+          "drawMeanMs": 119.29565217392519,
+          "drawP95Ms": 156.90000000002328,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 24,
+          "seconds": 3.0332,
+          "fps": 7.912435711459845,
+          "p50Ms": 133.29999999999927,
+          "p95Ms": 166.59999999999945,
+          "p99Ms": 250,
+          "maxMs": 250,
+          "slowFrames": 24,
+          "drawMeanMs": 102.3759999999986,
+          "drawP95Ms": 133.69999999995343,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 25,
+          "seconds": 3.0498999999999996,
+          "fps": 8.196990065248041,
+          "p50Ms": 116.79999999999927,
+          "p95Ms": 166.69999999999982,
+          "p99Ms": 166.69999999999982,
+          "maxMs": 166.69999999999982,
+          "slowFrames": 25,
+          "drawMeanMs": 108.1576923076959,
+          "drawP95Ms": 137.40000000002328,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "retina-x8-cached",
+        "width": 1280,
+        "height": 800,
+        "dpr": 2,
+        "load": 8,
+        "cache": true
+      },
+      "grid": "B",
+      "tilePxAtFit": 40.266666666666666,
+      "canvas": {
+        "w": 1280,
+        "h": 754
+      },
+      "phases": [
+        {
+          "name": "pan",
+          "frames": 19,
+          "seconds": 3.0665999999999998,
+          "fps": 6.195786864931846,
+          "p50Ms": 166.5999999999999,
+          "p95Ms": 200,
+          "p99Ms": 200,
+          "maxMs": 200,
+          "slowFrames": 19,
+          "drawMeanMs": 137.17499999999126,
+          "drawP95Ms": 166.70000000001164,
+          "lods": [
+            "detailed"
+          ]
+        },
+        {
+          "name": "zoom",
+          "frames": 26,
+          "seconds": 3.0332,
+          "fps": 8.571805354081498,
+          "p50Ms": 133.19999999999982,
+          "p95Ms": 166.70000000000073,
+          "p99Ms": 183.30000000000018,
+          "maxMs": 183.30000000000018,
+          "slowFrames": 26,
+          "drawMeanMs": 102.0444444444535,
+          "drawP95Ms": 158.70000000001164,
+          "lods": [
+            "dot",
+            "simple",
+            "detailed"
+          ]
+        },
+        {
+          "name": "pan+zoom",
+          "frames": 23,
+          "seconds": 3.033200000000001,
+          "fps": 7.582750890149016,
+          "p50Ms": 150,
+          "p95Ms": 166.6999999999989,
+          "p99Ms": 183.39999999999964,
+          "maxMs": 183.39999999999964,
+          "slowFrames": 23,
+          "drawMeanMs": 114.12500000000243,
+          "drawP95Ms": 148.90000000002328,
+          "lods": [
+            "detailed"
+          ]
+        }
+      ]
+    }
+  ],
+  "webgl": {
+    "ok": true,
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)"
+  },
+  "hit": [
+    {
+      "label": "A-mon wide",
+      "clicks": 730,
+      "misses": 0,
+      "first": []
+    },
+    {
+      "label": "B-mon wide",
+      "clicks": 730,
+      "misses": 0,
+      "first": []
+    },
+    {
+      "label": "B-sun wide",
+      "clicks": 730,
+      "misses": 0,
+      "first": []
+    },
+    {
+      "label": "A-mon retina",
+      "clicks": 730,
+      "misses": 0,
+      "first": []
+    },
+    {
+      "label": "B-mon retina",
+      "clicks": 730,
+      "misses": 0,
+      "first": []
+    },
+    {
+      "label": "B-sun retina",
+      "clicks": 730,
+      "misses": 0,
+      "first": []
+    }
+  ],
+  "motion": {
+    "idleFramesIn1500ms": 0,
+    "stageBefore": 3,
+    "stageAfter": 4,
+    "addNoteGrew": true,
+    "animatingRightAfter": true,
+    "animatingAfter1200ms": false,
+    "framesWhileAnimating": 23,
+    "framesAfterSettled800ms": 0,
+    "notesUntilMaxStage": 2,
+    "reducedMotionAnimates": false
+  },
+  "gestures": {
+    "wheel-up zooms in": true,
+    "wheel-down zooms out again": true,
+    "ctrl+wheel (Chromium pinch) zooms in": true,
+    "double click zooms in about 2x": true,
+    "drag pans by the drag distance": true,
+    "a drag does not select a day": true,
+    "Whole year button restores the fit": true,
+    "A: ArrowRight is the next day, across the month": true,
+    "A: ArrowLeft is the previous day": true,
+    "A: ArrowDown is the next month (clamped)": true,
+    "A: Escape clears the selection": true,
+    "B: ArrowRight is the next day, across the month": true,
+    "B: ArrowLeft is the previous day": true,
+    "B: ArrowDown is the next week": true,
+    "B: Escape clears the selection": true,
+    "ArrowRight at the end of the year stays": true
+  }
+}
