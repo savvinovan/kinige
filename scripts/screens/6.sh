@@ -248,7 +248,8 @@ cat "$OUT/week-info.txt"
 grep -q "forest: first weekday" "$LOG_FILE" 2>/dev/null || fail "the app log has no 'forest: first weekday' line (log: $LOG_FILE)"
 
 # ---- Privacy of the log: no dates, excerpts or chat names ----
-if grep -E "$TODAY|$OLDER|Синтетическая запись|Прошёлся к реке|Книги" "$LOG_FILE" > "$K/debug/log-private.txt" 2>&1; then
+# (the date and time in front of each line are the log's own: they are cut off before the check)
+if sed -E 's/^\[[^]]*\]\[[^]]*\]//' "$LOG_FILE" | grep -E "$TODAY|$OLDER|Синтетическая запись|Прошёлся к реке|Книги" > "$K/debug/log-private.txt" 2>&1; then
   fail "the app log holds dates, entry text or chat names: $(head -c 300 "$K/debug/log-private.txt")"
 fi
 
