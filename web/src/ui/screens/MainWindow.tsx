@@ -186,13 +186,12 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     dismissCard: onThisDay.dismiss,
     onDismissed: () => setToBottom((count) => count + 1),
   });
-  // A click on a day opens the feed on its first entry the same way a quote does.
   const forest = useForestPane({
     api,
     initial: { view: initialSettings.forestView, mode: initialSettings.forestMode },
     chatId: selected,
-    refreshKey: `${mutations}:${feed.today}`,
     ready: feed.loaded,
+    refreshKey: `${mutations}:${feed.today}`,
     openEntry,
   });
 
