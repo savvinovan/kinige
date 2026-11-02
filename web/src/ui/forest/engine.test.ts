@@ -6,7 +6,7 @@ import { FOREST_2026 } from "./fixtures";
 import { type Pt, worldToScreen } from "./iso";
 import { stubCanvas } from "./testCanvas";
 
-const LABELS = { months: [], weekdays: [] };
+const LABELS = { months: [], monthsNarrow: [], weekdays: [] };
 const FRAME = 16;
 /** A CSS time built from parts: the raw-values test forbids literal times in source files, even in tests. */
 const seconds = (n: number) => `${n}s`;

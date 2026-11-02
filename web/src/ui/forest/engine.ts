@@ -37,7 +37,7 @@ export class ForestEngine {
   private readonly ctx: CanvasRenderingContext2D | null;
   private readonly layer = new LayerCache();
   private board: Board | null = null;
-  private labels: Labels = { months: [], weekdays: [] };
+  private labels: Labels = { months: [], monthsNarrow: [], weekdays: [] };
   private palette: Palette;
   private w = 1;
   private h = 1;

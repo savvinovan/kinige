@@ -33,6 +33,8 @@ export interface View {
 export interface Labels {
   /** Short month names, January first. */
   months: readonly string[];
+  /** One letter per month, for boards too small for the short names. */
+  monthsNarrow: readonly string[];
   /** One letter per row of the board (the weekday of that row). */
   weekdays: readonly string[];
 }
@@ -175,12 +177,17 @@ function outline(ctx: CanvasRenderingContext2D, view: View, c: BoardCell, color:
   ctx.globalAlpha = 1;
 }
 
+/** Below this tile width the months are one letter and the weekday letters are gone; below the next one the weekdays are thinned. */
+const LABELS_COMPACT_BELOW = 24;
+const LABELS_THIN_BELOW = 32;
+
 /** Months on the front edge and weekday letters on the left edge: they are what makes a date readable. */
 function drawLabels(ctx: CanvasRenderingContext2D, board: Board, view: View, palette: Palette, labels: Labels): void {
   const { cam } = view;
   const tile = TW * cam.s;
   if (tile < 12) return; // a dot-sized board: the labels would only smear
-  const coarse = tile < 30; // fewer labels on simplified boards, where they would overlap
+  const compact = tile < LABELS_COMPACT_BELOW; // a small board: one letter per month, no weekdays, or they would pile up
+  const thin = tile < LABELS_THIN_BELOW;
   ctx.font = palette.font;
   ctx.fillStyle = palette.label;
   // A halo in the background colour keeps the labels readable over the canopies.
@@ -195,12 +202,12 @@ function drawLabels(ctx: CanvasRenderingContext2D, board: Board, view: View, pal
     ctx.fillText(text, p.x, p.y);
   };
   const dates = rowDates(board);
-  for (let row = 0; row < board.dims.rows; row++) {
+  for (let row = 0; row < board.dims.rows && !compact; row++) {
     const letter = labels.weekdays[row];
-    if (letter && dates[row] !== null && (!coarse || row % 2 === 0)) put(letter, row, -1, "right");
+    if (letter && dates[row] !== null && (!thin || row % 2 === 0)) put(letter, row, -1, "right");
   }
   for (const { month, col } of monthStarts(board)) {
-    const name = labels.months[month - 1];
+    const name = (compact ? labels.monthsNarrow : labels.months)[month - 1];
     if (name) put(name, board.dims.rows, col, "center");
   }
 }

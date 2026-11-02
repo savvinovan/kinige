@@ -53,7 +53,10 @@ export function ForestBoard({ table, selected, zoom, onOpenDay, onEngine }: Fore
   const canvas = useRef<HTMLCanvasElement>(null);
   const engine = useRef<ForestEngine | null>(null);
   const board = useMemo(() => buildBoard(table), [table]);
-  const labels = useMemo(() => ({ months: monthNames(language), weekdays: weekdayLetters(rowDates(board), language) }), [board, language]);
+  const labels = useMemo(
+    () => ({ months: monthNames(language), monthsNarrow: monthNames(language, "narrow"), weekdays: weekdayLetters(rowDates(board), language) }),
+    [board, language],
+  );
   const [hover, setHover] = useState<Hover | null>(null);
   // The keyboard selection belongs to the feed day it was made at: when the feed moves to another day it is dropped.
   const [keyboard, setKeyboard] = useState<{ anchor: string | null; date: string } | null>(null);

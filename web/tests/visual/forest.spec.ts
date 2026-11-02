@@ -10,7 +10,8 @@ const STORIES = [
 
 async function open(page: Page, id: string) {
   await page.goto(`/iframe.html?id=${encodeURIComponent(id)}&viewMode=story`);
-  await page.locator('[data-testid="opened"][data-ready="yes"]').waitFor();
+  // The result element is empty until a click: attached is enough (an empty element is never "visible").
+  await page.locator('[data-testid="opened"][data-ready="yes"]').waitFor({ state: "attached" });
   // The first frame is drawn on the next animation frame, after the fonts.
   await page.evaluate(async () => {
     await document.fonts.ready;
