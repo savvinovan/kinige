@@ -253,10 +253,8 @@ fn a_connection_from_another_user_is_closed_without_an_answer() {
     });
     let uid = own();
     let app = mcp.fixture.app.handle().clone();
-    let serving =
-        tauri::async_runtime::spawn(
-            async move { mcp::serve_connection(app, theirs, uid + 1).await },
-        );
+    // The client end is configured before the server task starts: the server closes its end at once, and on macOS
+    // `setsockopt` (the read timeout) on a socket whose peer has already closed fails with EINVAL.
     let mut client = {
         let std_stream = ours.into_std().unwrap();
         std_stream.set_nonblocking(false).unwrap();
@@ -265,6 +263,10 @@ fn a_connection_from_another_user_is_closed_without_an_answer() {
             .unwrap();
         std_stream
     };
+    let serving =
+        tauri::async_runtime::spawn(
+            async move { mcp::serve_connection(app, theirs, uid + 1).await },
+        );
     use std::io::{Read, Write};
     let _ = client.write_all(b"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n");
     let mut buffer = [0u8; 16];
