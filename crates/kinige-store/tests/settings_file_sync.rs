@@ -13,7 +13,6 @@ use kinige_domain::{KeyIssueKind, ShortcutKind, TextSize};
 use serde_json::json;
 use std::fs;
 use std::sync::Arc;
-use std::time::Duration;
 
 #[test]
 fn a_missing_file_is_created_from_the_state_with_all_keys_and_private_mode() {
@@ -423,6 +422,7 @@ fn on_windows_agent_access_in_the_file_is_reported_and_never_stored() {
 fn on_windows_a_held_settings_file_gives_an_io_problem_and_is_written_after_the_holder_lets_go() {
     use kinige_domain::FileProblemKind;
     use std::os::windows::fs::OpenOptionsExt;
+    use std::time::Duration;
     const FILE_SHARE_READ_WRITE: u32 = 0x1 | 0x2;
     let rig = rig();
     let held = fs::OpenOptions::new()
