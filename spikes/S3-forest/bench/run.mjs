@@ -179,20 +179,22 @@ if (!perfOnly) {
   const check = (name, ok) => { result.gestures[name] = ok; if (!ok) console.error(`${config} gesture FAILED: ${name}`); };
   const cx = 640;
   const cy = 420;
+  // Events arrive asynchronously on a loaded runner: wait for the scale to change instead of sleeping a fixed time.
+  const changed = (prev) => page.waitForFunction((p) => Math.abs(window.__forest.state().cam.s - p) > 1e-9, prev, { timeout: 3000 }).catch(() => {});
   let a = await st();
   await page.mouse.move(cx, cy);
   await page.mouse.wheel(0, -300);
-  await page.waitForTimeout(100);
+  await changed(a.cam.s);
   let b = await st();
   check("wheel-up zooms in", b.cam.s > a.cam.s);
   await page.mouse.wheel(0, 300);
-  await page.waitForTimeout(100);
+  await changed(b.cam.s);
   const c = await st();
   check("wheel-down zooms out again", c.cam.s < b.cam.s);
   await page.keyboard.down("Control");
   await page.mouse.wheel(0, -200);
   await page.keyboard.up("Control");
-  await page.waitForTimeout(100);
+  await changed(c.cam.s);
   const d = await st();
   check("ctrl+wheel (Chromium pinch) zooms in", d.cam.s > c.cam.s);
   await page.evaluate(() => window.__forest.fitYear());
