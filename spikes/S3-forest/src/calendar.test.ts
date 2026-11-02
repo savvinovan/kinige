@@ -85,30 +85,32 @@ describe("grid layout", () => {
   });
 
   it("every day of every year 1990..2100 has a unique cell inside the grid and the inverse returns the same date", () => {
+    // Plain checks that collect problems: millions of expect() calls would only measure the assertion library.
+    const problems: string[] = [];
     for (const grid of GRIDS) {
       for (const first of FIRSTS) {
         for (let y = 1990; y <= 2100; y++) {
           const dims = gridDims(grid, y, first);
           const seen = new Set<number>();
-          let n = 0;
           for (const date of allDays(y)) {
             const pos = dayPosition(grid, date, first);
-            expect(pos).not.toBeNull();
-            if (!pos) continue;
-            expect(pos.row).toBeGreaterThanOrEqual(0);
-            expect(pos.row).toBeLessThan(dims.rows);
-            expect(pos.col).toBeGreaterThanOrEqual(0);
-            expect(pos.col).toBeLessThan(dims.cols);
+            const tag = `${grid} ${first} ${isoKey(date)}`;
+            if (!pos) {
+              problems.push(`${tag}: no position`);
+              continue;
+            }
+            if (pos.row < 0 || pos.row >= dims.rows || pos.col < 0 || pos.col >= dims.cols) problems.push(`${tag}: outside the grid`);
             const id = pos.row * 100 + pos.col;
-            expect(seen.has(id)).toBe(false);
+            if (seen.has(id)) problems.push(`${tag}: collides`);
             seen.add(id);
-            expect(dateAtCell(grid, y, first, pos)).toEqual(date);
-            n++;
+            const back = dateAtCell(grid, y, first, pos);
+            if (!back || isoKey(back) !== isoKey(date)) problems.push(`${tag}: inverse differs`);
           }
-          expect(n).toBe(daysInYear(y));
+          if (seen.size !== daysInYear(y)) problems.push(`${grid} ${first} ${y}: ${seen.size} cells`);
         }
       }
     }
+    expect(problems.slice(0, 5)).toEqual([]);
   });
 
   it("B: the row is the weekday counted from the first weekday, the column is the week", () => {
