@@ -360,10 +360,12 @@ function drawLabels(ctx: CanvasRenderingContext2D, scene: Scene, view: View, chr
     ctx.strokeText(text, p.x, p.y);
     ctx.fillText(text, p.x, p.y);
   };
-  const coarse = TW * cam.s < 22;
+  const tile = TW * cam.s;
+  if (tile < 12) return; // a dot-sized board: the labels would only smear
+  const coarse = tile < 22;
   if (scene.grid === "A") {
-    for (let r = 0; r < 12; r++) put(MONTHS[r] ?? "", r, -1, "right");
-    for (let c = 0; c < 31; c++) if (!coarse || c % 5 === 4 || c === 0) put(String(c + 1), -1, c, "left");
+    for (let r = 0; r < 12; r++) if (!coarse || r % 3 === 0) put(MONTHS[r] ?? "", r, -1, "right");
+    for (let c = 0; c < 31; c++) if (!coarse || c % 10 === 9 || c === 0) put(String(c + 1), -1, c, "left");
   } else {
     const firstIdx = scene.first === "mon" ? 0 : 6;
     for (let r = 0; r < 7; r++) {

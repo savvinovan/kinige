@@ -277,6 +277,12 @@ if (shotsDir) {
     await page.waitForTimeout(150);
     await shot(page, `${g}-growth-after-1280x800`);
     await ctx.close();
+    // The forest collapsed into a strip above the feed (PRD 7.4): a short, wide window.
+    const strip = await open({ name: "strip", width: 1280, height: 300, dpr: 1 }, { reducedMotion: "reduce" });
+    await strip.page.evaluate((x) => window.__forest.setGrid(x), grid);
+    await strip.page.waitForTimeout(150);
+    await shot(strip.page, `${g}-strip-1280x300`);
+    await strip.ctx.close();
     // Narrow window.
     const n = await open(narrow, { reducedMotion: "reduce" });
     await n.page.evaluate((x) => window.__forest.setGrid(x), grid);
