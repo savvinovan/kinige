@@ -13,6 +13,7 @@ The review this version is based on: [`01-review.md`](01-review.md). Research: [
   - §7.4: the forest sits in a pane above the feed of the open chat (not in the trash or in search results): a flat strip by default (a 7 × 53/54 heat map like GitHub's, tinted by season, denser for fuller days), expanded into the isometric board with the feed below it; the strip can be hidden, and "Show forest" in the profile menu brings the strip back; no sidebar item. All chats count, archived ones included, the trash does not; a click opens the open chat if it has entries that day, otherwise the chat with the most entries, the Inbox on a tie. The card shows the date, "N notes · stage" and the start of the day's first entry (no photos line until slice 7);
   - the frontend gets the whole year table from Rust (`get_forest_year`: every day with its cell, season, notes, stage and excerpt); there is no wasm build and no TypeScript copy of the calendar rules (ADR-0013, slice 6 paragraph);
   - §12.3: `get_forest_year`, `get_forest_day_target` and `set_forest_view` are for the main window only (the excerpts are entry text); the capture window keeps seven commands, the `settings` window is denied the new ones (negative tests `src-tauri/tests/ipc_slice6.rs`); the view state is two `app_setting` keys (`forest_view`, `forest_mode`), local, not synced, not in `settings.json`;
+  - §7.1: the board is drawn in an oblique projection with the weeks along the horizontal axis of the screen (found in slice 6: the 45-degree isometry fills a third of a wide pane); the hit-test is the inverse of the projection;
   - §15, row 6: "simple assets, one level of detail + dot" became "placeholder shapes, three levels of detail" (dot, simplified, detailed; the shapes are replaced by atlases in slice 9).
 
 - **v0.16 (02.11.2026)** — for spike S3 (KINIG-14) and ADR-0013, only §7.1, Q4 and §14:
@@ -403,14 +404,14 @@ The app is single-instance: opening it a second time activates the existing wind
 
 ### 7.1. Grid
 
-**Chosen: B, weekday × week (decided 02.11.2026 after spike S3, ADR-0013).** Seven rows (weekdays counted from the first weekday), one column per week. The board is 7 × 53, or 7 × 54 in a leap year whose 1 January is the last day of the week (2012, 2040, 2068, 2096 with a Monday start; 2000, 2028, 2056, 2084 with a Sunday start): the width is a function of the year. The first column starts with 0–6 empty cells above 1 January. In isometry the board is a strip of about 1 : 7.6; seasons are bands of about 13 columns; weekdays are visible; dates are read with month and weekday labels on the board edges. The first weekday follows the system locale (Monday by default), see ADR-0013.
+**Chosen: B, weekday × week (decided 02.11.2026 after spike S3, ADR-0013).** Seven rows (weekdays counted from the first weekday), one column per week. The board is 7 × 53, or 7 × 54 in a leap year whose 1 January is the last day of the week (2012, 2040, 2068, 2096 with a Monday start; 2000, 2028, 2056, 2084 with a Sunday start): the width is a function of the year. The first column starts with 0–6 empty cells above 1 January. The ground is drawn in an oblique projection with the weeks along the horizontal axis of the screen (slice 6: the 45-degree isometry of spike S3 laid the year along a diagonal and filled a third of a wide pane), a strip of about 1 : 5 to 1 : 6; seasons are bands of about 13 columns; weekdays are visible; dates are read with month and weekday labels on the board edges. The first weekday follows the system locale (Monday by default), see ADR-0013.
 
 Grid A (12 × 31, month × day) was rejected; it stays documented in the spike (`spikes/S3-forest/README.md`). The rest of this section applies to B.
 
 Requirements:
 
 - The position of a day is a pure function in `kinige-domain` (`forest.rs`): `(year, date, first_weekday) → (row, col)`, covered by tests for leap years, year boundaries and the 54-column years.
-- **Hit-test by the grid, not by sprites:** point → inverse isometric transform → cell. A tall tree overlaps its neighbors visually but does not intercept the click.
+- **Hit-test by the grid, not by sprites:** point → inverse of the projection → cell. A tall tree overlaps its neighbors visually but does not intercept the click.
 - The selected cell is highlighted, the trees in front of it become semi-transparent.
 - Three levels of detail: dot/symbol → simplified sprite → detailed sprite. The grid does not change.
 - Gestures: the wheel and pinch on the trackpad — zoom, dragging — pan, double click — zoom in, a "whole year" button, the keyboard arrows — moving between days.
