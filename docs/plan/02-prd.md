@@ -1,4 +1,4 @@
-# Kinige v2 (Project Forest) — PRD v0.15
+# Kinige v2 (Project Forest) — PRD v0.16
 
 **Type:** a personal journal and notes in the form of a "chat with yourself", local-first.
 **Platforms:** desktop — macOS first, then Windows and Linux (Tauri 2). Later a web client (decrypts data in the browser) and a phone, if the main app catches on.
@@ -8,6 +8,10 @@
 The review this version is based on: [`01-review.md`](01-review.md). Research: [`research/`](research/). Mockups: [`references/`](references/) — **a mood reference, not a specification**.
 
 ## Version history
+
+- **v0.16 (02.11.2026)** — for spike S3 (KINIG-14) and ADR-0013, only §7.1, Q4 and §14:
+  - forest grid: **B (7 × 53, weekday × week)** chosen; the board is 53 or 54 columns by year (the 54th column in leap years that start on the last day of the week); grid A is rejected and described in the spike report; the first weekday follows the system locale;
+  - rendering: Canvas 2D with a layer cache for pan and zoom, no PixiJS; Q4 is decided and S3 is done (§13, §14).
 
 - **v0.15 (01.11.2026)** — translated to English (KINIG-62); no content changes.
   - Added to §15 (slice 10a, `docs/slices/10a-windows-build.md`): Windows build ahead of slice 10 — the workspace compiles on Windows, an unsigned NSIS installer goes into the GitHub Release next to the macOS `.dmg`, CI has a Windows job, screenshots of the real window come from a GitHub Windows runner; AI-agent access (MCP, Unix socket) is disabled on Windows until named pipes (slice 10); Linux, signing and the updater stay in slice 10.
@@ -393,25 +397,18 @@ The app is single-instance: opening it a second time activates the existing wind
 
 ### 7.1. Grid
 
-Two candidates, the choice is by spike S3 in a 1280 × 800 window and in a narrow window:
+**Chosen: B, weekday × week (decided 02.11.2026 after spike S3, ADR-0013).** Seven rows (weekdays counted from the first weekday), one column per week. The board is 7 × 53, or 7 × 54 in a leap year whose 1 January is the last day of the week (2012, 2040, 2068, 2096 with a Monday start; 2000, 2028, 2056, 2084 with a Sunday start): the width is a function of the year. The first column starts with 0–6 empty cells above 1 January. In isometry the board is a strip of about 1 : 7.6; seasons are bands of about 13 columns; weekdays are visible; dates are read with month and weekday labels on the board edges. The first weekday follows the system locale (Monday by default), see ADR-0013.
 
-|                    | A. 12 × 31 (month × day)                   | B. 7 × 53 (weekday × week) |
-|--------------------|--------------------------------------------|----------------------------|
-| Shape in isometry  | an almost square rhombus                   | a long strip ≈ 1 : 7.5     |
-| Reading the date   | "October, 16" — without a hint             | needs a hint               |
-| Seasons            | bands of 3 rows                            | bands of ~13 columns       |
-| Non-existent dates | 7 cells — empty ground without interaction | none                       |
-| Weekdays           | not visible                                | visible                    |
-| Closer to          | the mockup                                 | GitHub                     |
+Grid A (12 × 31, month × day) was rejected; it stays documented in the spike (`spikes/S3-forest/README.md`). The rest of this section applies to B.
 
-Common requirements:
+Requirements:
 
-- The position of a day is a pure function in `kinige-domain`: `(year, date, first_weekday) → (row, col)`, covered by tests for leap years and year boundaries.
+- The position of a day is a pure function in `kinige-domain` (`forest.rs`): `(year, date, first_weekday) → (row, col)`, covered by tests for leap years, year boundaries and the 54-column years.
 - **Hit-test by the grid, not by sprites:** point → inverse isometric transform → cell. A tall tree overlaps its neighbors visually but does not intercept the click.
 - The selected cell is highlighted, the trees in front of it become semi-transparent.
 - Three levels of detail: dot/symbol → simplified sprite → detailed sprite. The grid does not change.
 - Gestures: the wheel and pinch on the trackpad — zoom, dragging — pan, double click — zoom in, a "whole year" button, the keyboard arrows — moving between days.
-- Rendering: **Canvas 2D as the base**, PixiJS v8 (WebGL) as an enhancement if Canvas does not hold 60 FPS. On Linux, WebKitGTK WebGL is sometimes "silently" software-rendered (the context is created, but without the GPU) and crashes on NVIDIA with DMABUF — so a path without WebGL is mandatory. The choice is spike S3.
+- Rendering: **Canvas 2D as the base**, PixiJS v8 (WebGL) as an enhancement if Canvas does not hold 60 FPS. On Linux, WebKitGTK WebGL is sometimes "silently" software-rendered (the context is created, but without the GPU) and crashes on NVIDIA with DMABUF — so a path without WebGL is mandatory. Decided by spike S3: Canvas 2D with a layer cache, no PixiJS (ADR-0013).
 
 ### 7.2. Growth
 
@@ -680,7 +677,7 @@ References: Telegram (density, input field, sidebar), Bear, Apple Journal, Day O
 | Q1  | Who the product is for                                                                                                     | **Decided:** first for myself, the goal is a self-hosted product with a free core and a paid tier                                                                                                                |
 | Q2  | Platforms                                                                                                                  | **Decided:** desktop (macOS → Windows/Linux) on Tauri 2; web and phone later                                                                                                                                     |
 | Q3  | Sync                                                                                                                       | **Decided:** our own self-hosted server with end-to-end encryption; the first installation is the homelab. Fable's alternative (device logs in S3/a folder without a server) was considered and rejected in v0.6 |
-| Q4  | Forest grid                                                                                                                | Spike S3; expectation — 12 × 31                                                                                                                                                                                  |
+| Q4  | Forest grid                                                                                                                | **Decided (02.11.2026):** B, 7 × 53 or 54 by year, ADR-0013                                                                                                                                                      |
 | Q5  | Visual direction                                                                                                           | **Decided (v0.7):** a dark theme, neutral graphite with a light blue accent, density as in Telegram (§11.2, ADR-0004); "warm paper" and the blue-graphite Nord are canceled                                      |
 | Q6  | Art                                                                                                                        | **Decided:** Codex — concepts, Blender — sprites                                                                                                                                                                 |
 | Q6a | Pet                                                                                                                        | **Decided (v0.6):** cut                                                                                                                                                                                          |
@@ -703,12 +700,14 @@ Each spike is a separate folder `spikes/Sx-*`, time-boxed, the result is a short
 |-----|-----------------------------|--------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------|
 | S1  | Composer with live Markdown | CodeMirror 6 (main) vs Milkdown or another                                                 | Russian keyboard layout, IME and macOS autocorrect, undo/redo, pasting an image, 5 000 characters without lag, the cursor does not jump on highlighting, the same in WKWebView / WebView2 / WebKitGTK | 3 days |
 | S2  | Feed with 100k              | TanStack Virtual (`anchorTo: 'end'`, keys by id) vs virtua vs the free `Virtuoso`          | No jank on fast scrolling, jump to a date < 300 ms, no jumps when images load and when loading more upward, memory is normal                                                                          | 3 days |
-| S3  | Forest                      | Canvas 2D vs PixiJS v8; grid 12 × 31 vs 7 × 53                                             | 60 FPS on pan/zoom on macOS **and Linux (including a machine without GPU-accelerated WebGL)**, correct hit-test of all days, readability of the year in a 1280 × 800 window, growth animation         | 4 days |
+| S3  | Forest                      | **Done (02.11.2026):** Canvas 2D + layer cache, grid B, ADR-0013                           | 60 FPS on pan/zoom on macOS **and Linux (including a machine without GPU-accelerated WebGL)**, correct hit-test of all days, readability of the year in a 1280 × 800 window, growth animation         | 4 days |
 | S4a | Sync protocol               | A simulation of 2–3 clients in one process, without a network and a server; property tests | Criteria from §10.2                                                                                                                                                                                   | 5 days |
 | S4b | Envelope and keys           | libsodium / RustCrypto; Argon2id; onboarding of the password and the recovery key          | Forging the HLC/flag/moving an envelope is detected; password change without re-encryption; recovery from 24 words                                                                                    | 4 days |
 | S4c | Server and self-host        | axum + Postgres, `seq` under an account lock, blobs, `docker compose`, backup and restore  | No plain text in the server database; the cursor does not skip records with parallel pushes; restore from a backup → clients do a full resync                                                         | 5 days |
 | S5  | Search in Russian           | A stemmed column + FTS5, trigrams, a custom tokenizer                                      | Word forms are found, 100k messages < 300 ms, index size is acceptable                                                                                                                                | 1 day  |
 | S6  | OpenRouter embeddings       | `bge-m3`, `text-embedding-3-small` (512/1536), `qwen3-embedding-8b`; float32 vs int8       | Quality on 50 of my own queries in Russian, the cost of indexing 100k, query latency, memory on the client                                                                                            | 2 days |
+
+S3 report: [`spikes/S3-forest/README.md`](../../spikes/S3-forest/README.md); screenshots: `docs/screens/S3/`.
 
 Order: S3 (forest) and S5 (search) — when the slices get to them; S1 (CodeMirror) — when the plain input field starts getting in the way; S2 (feed) — when the volume after the Telegram import shows lag. **Before slice 1** — ADR-0001 "protocol + keys" on paper (a separate task in parallel with D1) (field groups, HLC, `schema_version`, id): the local schema depends on it. S4a/S4b — before slice 9, S4c — before slice 11, S6 — before AI.
 
