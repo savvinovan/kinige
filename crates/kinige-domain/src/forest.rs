@@ -44,13 +44,14 @@ pub enum Season {
 /// What the day weight needs to know about one message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NoteStat {
-    /// Length in characters.
+    /// Length in characters (`chars().count()` of the message text), not bytes.
     pub len: usize,
     pub attachments: usize,
 }
 
 /// The position of a day: `(date, first_weekday) → (row, col)`. The row is the weekday counted from the first weekday,
-/// the column is the week; 1 January sits `january_offset` cells down the first column.
+/// the column is the number of weeks since the first-weekday week that holds 1 January (not an ISO week number);
+/// 1 January sits `january_offset` cells down the first column.
 pub fn day_position(date: NaiveDate, first: FirstWeekday) -> CellPos {
     let idx = january_offset(date.year(), first) + date.ordinal0();
     CellPos {

@@ -1,5 +1,5 @@
 # Spike S3 (forest): checks of the standalone page in spikes/S3-forest and the measurements in real browsers (Playwright on
-# GitHub runners; nothing runs on a developer's machine). Triggered by a push to the spike branch only.
+# GitHub runners; nothing runs on a developer's machine). Started by hand on the spike branch only.
 #   check  - typecheck, unit tests (positions, hit-test of every cell, growth formulas), build;
 #   bench  - FPS of scripted pan/zoom, click-through hit-test of every day, motion checks and screenshots, one job per
 #            browser configuration (Linux: Chromium, Chromium with software WebGL, WebKit; macOS: Chromium, Chromium without
@@ -8,15 +8,10 @@
 #            spikes/S3-forest/results/ on the branch.
 name: Spike S3
 
+# Manual only: `gh workflow run spike-s3.yml --ref spike/S3-forest`. Every job is guarded by the branch, so after the merge
+# the workflow cannot run (or write) anywhere else.
 on:
-  push:
-    branches: [spike/S3-forest]
-    paths:
-      - spikes/S3-forest/**
-      - "!spikes/S3-forest/results/**"
-      - "!spikes/S3-forest/README.md"
-      - web/src/ui/**
-      - .github/workflows/spike-s3.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -31,6 +26,7 @@ defaults:
 
 jobs:
   check:
+    if: github.ref == 'refs/heads/spike/S3-forest'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -49,6 +45,7 @@ jobs:
 
   bench:
     needs: check
+    if: github.ref == 'refs/heads/spike/S3-forest'
     strategy:
       fail-fast: false
       matrix:
@@ -84,8 +81,9 @@ jobs:
           RESULT_PREFIX: ${{ matrix.os }}
           SHOTS: ${{ matrix.shots }}
           EXTRA: ${{ matrix.extra }}
+          CONFIG: ${{ matrix.config }}
         run: |
-          args=(--config "${{ matrix.config }}" --seconds 3 --out "$RUNNER_TEMP/s3/results")
+          args=(--config "$CONFIG" --seconds 3 --out "$RUNNER_TEMP/s3/results")
           # shellcheck disable=SC2206
           if [ -n "$EXTRA" ]; then args+=($EXTRA); fi
           if [ "$SHOTS" != "none" ]; then args+=(--shots "$RUNNER_TEMP/s3/shots" --shots-only "$SHOTS"); fi
@@ -99,7 +97,7 @@ jobs:
 
   commit:
     needs: [check, bench]
-    if: always() && needs.check.result == 'success' && needs.bench.result != 'cancelled'
+    if: always() && github.ref == 'refs/heads/spike/S3-forest' && needs.check.result == 'success' && needs.bench.result != 'cancelled'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

@@ -2,7 +2,7 @@
 
 Date: 2026-11-02 (Huly KINIG-14, prerequisite of slice 6). Limit per the PRD: 4 days; this took well under that, most of the wall time was CI. **Outcome (02.11.2026): the user chose grid B**, Canvas 2D with a layer cache, no PixiJS: `docs/adr/0013-forest.md`, PRD v0.16 (§7.1, Q4, §14). The report below is the evidence as it was written, with the recommendation of grid A that was not taken; "What the PRD has to learn" is already absorbed into the PRD.
 
-Code: `spikes/S3-forest/` (a standalone Vite + TypeScript page, outside the workspace and outside the app; `npm ci && npm run dev` there to look at it, `npm test` for the unit tests). The Rust candidate of the rules is `crates/kinige-domain/src/forest.rs`. Measurements run only in GitHub Actions (`.github/workflows/spike-s3.yml`, on every push to the spike branch): the numbers are in `spikes/S3-forest/results/` (`summary.md` has every row), the screenshots in `docs/screens/S3/`. Nothing was run on a developer's Mac and no real data was used: the year is synthetic (`syntheticYear`, a fixed seed).
+Code: `spikes/S3-forest/` (a standalone Vite + TypeScript page, outside the workspace and outside the app; `npm ci && npm run dev` there to look at it, `npm test` for the unit tests). The Rust candidate of the rules is `crates/kinige-domain/src/forest.rs`. Measurements run only in GitHub Actions (`.github/workflows/spike-s3.yml`, started by hand on the spike branch; it ran on every push while the spike was open): the numbers are in `spikes/S3-forest/results/` (`summary.md` has every row), the screenshots in `docs/screens/S3/`. Nothing was run on a developer's Mac and no real data was used: the year is synthetic (`syntheticYear`, a fixed seed).
 
 ## Short answer
 

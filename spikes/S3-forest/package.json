@@ -9,8 +9,7 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "bench": "node bench/run.mjs",
-    "shots": "node bench/shots.mjs"
+    "bench": "node bench/run.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
