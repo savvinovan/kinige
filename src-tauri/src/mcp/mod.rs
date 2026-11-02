@@ -18,7 +18,7 @@ use server::{ConnectionInfo, McpServer, disconnected};
 use socket::socket_present;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, Runtime};
@@ -40,6 +40,9 @@ pub struct McpState {
     recheck: Duration,
     /// Только для тестов: слушатель паникует при ближайшем соединении.
     panic_next: AtomicBool,
+    /// How many listeners have been bound and made ready (`bind` returned, including `chmod 0600`). Tests wait for it to
+    /// grow instead of sleeping or polling the file system.
+    binds: AtomicU64,
 }
 
 impl McpState {
@@ -66,6 +69,17 @@ impl McpState {
     pub fn inject_listener_panic_for_test(&self) {
         self.panic_next.store(true, Ordering::SeqCst);
     }
+
+    /// Test hook: the number of listeners bound so far. A new value means the socket file is final (0600) and the previous
+    /// listener, if any, is already gone, so a client that connects now reaches the new one.
+    #[doc(hidden)]
+    pub fn binds(&self) -> u64 {
+        self.binds.load(Ordering::SeqCst)
+    }
+
+    fn bound(&self) {
+        self.binds.fetch_add(1, Ordering::SeqCst);
+    }
 }
 
 /// Обёртка для `app.manage`: общий доступ к состоянию из задач и команд.
@@ -88,6 +102,7 @@ pub fn start_with_recheck<R: Runtime>(app: &AppHandle<R>, data_dir: &Path, reche
         error: Mutex::new(None),
         recheck,
         panic_next: AtomicBool::new(false),
+        binds: AtomicU64::new(0),
     });
     app.manage(McpHandle(state.clone()));
     let Ok(uid) = tauri::async_runtime::block_on(async { own_uid() }) else {
@@ -97,7 +112,10 @@ pub fn start_with_recheck<R: Runtime>(app: &AppHandle<R>, data_dir: &Path, reche
     // `UnixListener` tokio привязывается к реактору: `bind` вызывается внутри среды выполнения.
     let first = tauri::async_runtime::block_on(async { bind(&path, uid) });
     match &first {
-        Ok(_) => log::info!("mcp: сокет поднят"),
+        Ok(_) => {
+            state.bound();
+            log::info!("mcp: сокет поднят");
+        }
         Err(error) => {
             log::warn!("mcp: сокет не поднят: {}", error.code());
             state.set_error(Some(*error));
@@ -131,6 +149,7 @@ async fn supervise<R: Runtime>(
                 Ok(fresh) => {
                     listener = Some(fresh);
                     state.set_error(None);
+                    state.bound();
                     log::info!("mcp: сокет поднят");
                 }
                 Err(error) => state.set_error(Some(error)),
@@ -146,6 +165,7 @@ async fn supervise<R: Runtime>(
             listener = bind(state.path(), uid).ok();
             if listener.is_some() {
                 state.set_error(None);
+                state.bound();
             }
         } else {
             return;
@@ -181,6 +201,7 @@ async fn run_listener<R: Runtime>(
                     Ok(fresh) => {
                         listener = fresh;
                         state.set_error(None);
+                        state.bound();
                         log::info!("mcp: сокет перепривязан");
                     }
                     Err(error) => {
