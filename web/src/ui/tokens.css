@@ -5,7 +5,8 @@
   --layout-calendar-day-mark: 0.3rem; /** Точка под числом «сегодня» (4 px). */
   --layout-drag-ghost-max-width: 26rem; /** Наибольшая ширина «призрака» перетаскиваемой плашки (338 px при корне 13 px): широкая плашка не закрывает сайдбар целиком. */
   --layout-drag-ghost-offset: 1rem; /** Отступ «призрака» от указателя вправо и вниз (13 px при корне 13 px): чат под указателем остаётся виден. */
-  --layout-forest-pane-height: 45%; /** Height of the expanded forest pane: a share of the main area (the feed and the input stay below it). The board fits the pane when it opens. */
+  --layout-forest-pane-height: 60%; /** Height of the expanded forest pane: a share of the main area (the feed and the input stay below it). The board fits the pane when it opens. */
+  --layout-forest-pane-min-height: 22rem; /** The expanded pane is never lower than this (286 px at a 13 px root, 357 px with large text): with a header of two or three lines in a narrow window or at large text, the share of a short window would leave the board no room. */
   --layout-forest-strip-cell: 0.9rem; /** Largest side of a day cell in the collapsed strip (11.7 px at a 13 px root). Cells shrink with the window so that 53 or 54 weeks always fit; seven of them make the strip's height. */
   --layout-forest-strip-gap: 0.15rem; /** Gap between strip cells (2 px). */
   --layout-forest-strip-label: 1.6rem; /** Width of the weekday letters column of the strip (21 px). */

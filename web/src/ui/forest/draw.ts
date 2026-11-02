@@ -178,8 +178,8 @@ function outline(ctx: CanvasRenderingContext2D, view: View, c: BoardCell, color:
 }
 
 /** Below this tile width the months are one letter and the weekday letters are gone; below the next one the weekdays are thinned. */
-const LABELS_COMPACT_BELOW = 24;
-const LABELS_THIN_BELOW = 32;
+const LABELS_COMPACT_BELOW = 16;
+const LABELS_THIN_BELOW = 24;
 /** Months are one letter on boards so small that the short names would touch. */
 const LABELS_NARROW_MONTHS_BELOW = 14;
 

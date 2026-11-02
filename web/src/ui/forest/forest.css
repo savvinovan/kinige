@@ -19,7 +19,7 @@
 
 /* Expanded: a share of the main area, the feed and the input keep the rest. */
 .forest-pane--expanded {
-  flex: 0 1 var(--layout-forest-pane-height);
+  flex: 0 1 max(var(--layout-forest-pane-height), var(--layout-forest-pane-min-height));
 }
 
 .forest-pane__header {
@@ -76,9 +76,25 @@
 /* ---- the board ---------------------------------------------------------------------------------------------------- */
 
 .forest-board {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The canvas and the card that follows the pointer. */
+.forest-board__stage {
   position: relative;
   flex: 1;
   min-height: 0;
+}
+
+/* The row under the board for the selected day; it keeps its height when empty. */
+.forest-board__caption {
+  flex: none;
+  box-sizing: border-box;
+  min-height: calc(var(--type-meta-size) * var(--type-meta-line-height) + var(--space-3));
+  padding: 0 var(--space-4) var(--space-2);
 }
 
 /* The canvas reads its label font from here, so large text scales the labels. */
@@ -120,10 +136,32 @@
   top: 100%;
 }
 
-/* The card of the selected day waits in the corner of the board that the year's ribbon leaves empty. */
+/* The card of the selected day is one line under the board: date, count and stage, then the start of the entry. */
 .day-card--pinned {
-  top: var(--space-3);
-  right: var(--space-3);
+  position: static;
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  width: auto;
+  max-width: none;
+  padding: 0;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.day-card--pinned p {
+  flex: none;
+}
+
+.day-card--pinned .day-card__excerpt {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  text-overflow: ellipsis;
+  -webkit-line-clamp: unset;
 }
 
 .day-card p {

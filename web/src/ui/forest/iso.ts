@@ -7,9 +7,9 @@
 // parallelogram: one step to the next week is `COL`, one step to the next weekday is `ROW`; trees stand upright on their cell.
 
 /** One week to the right, in world units: also the width of a tile, which decides the level of detail. */
-const COL = { x: 64, y: 10 };
-/** One weekday down: it goes down and a little to the left, so that the rows do not fall on top of each other. */
-const ROW = { x: -20, y: 26 };
+const COL = { x: 64, y: 12 };
+/** One weekday down: it goes down and a little to the left; the depth of a row gives the ground its tilt and the trees room to stand. */
+const ROW = { x: -26, y: 50 };
 export const TW = COL.x;
 const DET = COL.x * ROW.y - ROW.x * COL.y;
 

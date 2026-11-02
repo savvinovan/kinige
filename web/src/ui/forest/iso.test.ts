@@ -117,7 +117,7 @@ describe("camera", () => {
 
   it("the whole year lies along the width: a board of 53 weeks is much wider than it is tall", () => {
     const box = boardBounds({ rows: 7, cols: 53 });
-    expect((box.x1 - box.x0) / (box.y1 - box.y0)).toBeGreaterThan(4);
+    expect((box.x1 - box.x0) / (box.y1 - box.y0)).toBeGreaterThan(3);
     expect(TW).toBe(64);
   });
 

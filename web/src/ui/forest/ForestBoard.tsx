@@ -131,24 +131,28 @@ export function ForestBoard({ table, selected, zoom, onOpenDay, onEngine }: Fore
 
   return (
     <div className="forest-board">
-      <canvas
-        ref={canvas}
-        className="forest-board__canvas"
-        tabIndex={0}
-        role="application"
-        aria-label={t("forest.board", { year: table.year })}
-        aria-describedby={hintId}
-        onKeyDown={onKeyDown}
-        onBlur={() => setKeyboard(null)}
-        onPointerDown={() => canvas.current?.focus({ preventScroll: true })}
-      />
-      <p className="visually-hidden" id={hintId}>
-        {t("forest.boardHint")}
-      </p>
-      <div className="visually-hidden" role="status" aria-live="polite">
-        {announcement}
+      <div className="forest-board__stage">
+        <canvas
+          ref={canvas}
+          className="forest-board__canvas"
+          tabIndex={0}
+          role="application"
+          aria-label={t("forest.board", { year: table.year })}
+          aria-describedby={hintId}
+          onKeyDown={onKeyDown}
+          onBlur={() => setKeyboard(null)}
+          onPointerDown={() => canvas.current?.focus({ preventScroll: true })}
+        />
+        <p className="visually-hidden" id={hintId}>
+          {t("forest.boardHint")}
+        </p>
+        <div className="visually-hidden" role="status" aria-live="polite">
+          {announcement}
+        </div>
+        {hover ? <DayCard day={hover.day} style={cardAt} /> : null}
       </div>
-      {hover ? <DayCard day={hover.day} style={cardAt} /> : shownDay ? <DayCard day={shownDay} pinned /> : null}
+      {/* The selected day is written under the board in a row of its own: the row is always there, so that nothing moves. */}
+      <div className="forest-board__caption">{shownDay ? <DayCard day={shownDay} pinned /> : null}</div>
     </div>
   );
 }

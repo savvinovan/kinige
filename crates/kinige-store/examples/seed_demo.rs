@@ -3,7 +3,8 @@
 //! Telegram с ответами. Только для разработки: пишет во временный каталог, который передан аргументом, и ничего не делает с
 //! настоящей базой. Все тексты синтетические. Слайс 6 — синтетические год и прошлый год записей для леса: все стадии роста,
 //! неделя без записей, дни с несколькими чатами, запись в корзине; сегодняшнее дерево стоит на третьей стадии у самой границы
-//! четвёртой (одна запись в сто знаков поднимает его).
+//! четвёртой (одна запись в сто знаков поднимает его). Лес засевается только при `KINIGE_SEED_FOREST=1`, чтобы сценарии прежних
+//! слайсов не меняли свои данные.
 //!
 //! Использование: `cargo run -p kinige-store --example seed_demo -- <каталог данных> [<папка Markdown-копии>]`
 
@@ -133,7 +134,24 @@ fn main() {
     store.set_chat_pinned(&work.id, true, &at(-DAY)).unwrap();
     store.set_chat_archived(&old.id, true, &at(-DAY)).unwrap();
     seed_on_this_day(&store, &now);
-    seed_forest(&store, &now, &history, &old.id, &data);
+    // The forest year (slice 6) only when asked: the scenarios of the earlier slices keep their data.
+    if std::env::var_os("KINIGE_SEED_FOREST").is_some() {
+        for (days_ago, title, icon) in [
+            (22, "Фильмы", "🎬"),
+            (21, "Путешествия", "✈️"),
+            (20, "Здоровье", "💪"),
+            (19, "Финансы", "💰"),
+            (18, "Кухня", "🍳"),
+        ] {
+            history.push(
+                store
+                    .create_chat(title, Some(icon), &at(-days_ago * DAY))
+                    .unwrap()
+                    .id,
+            );
+        }
+        seed_forest(&store, &now, &history, &old.id, &data);
+    }
     seed_telegram_chat(&store, &now);
     // Копия дня для строки в «Настройках».
     store.run_maintenance(&at(0)).unwrap();
@@ -293,16 +311,15 @@ impl Rng {
 
 /// Entries per active day and how likely each count is (percent): every growth stage appears (stage 6 needs a weight of 22.3,
 /// about 28 entries when four in five are long).
-const FOREST_COUNTS: [(u64, u64); 9] = [
-    (0, 45),
-    (1, 30),
-    (2, 10),
-    (3, 6),
-    (4, 4),
-    (6, 2),
-    (9, 1),
-    (13, 1),
-    (26, 1),
+const FOREST_COUNTS: [(u64, u64); 8] = [
+    (0, 12),
+    (1, 24),
+    (2, 26),
+    (3, 14),
+    (4, 10),
+    (9, 8),
+    (13, 4),
+    (26, 2),
 ];
 
 const FOREST_PHRASES: [&str; 8] = [
@@ -402,10 +419,8 @@ fn seed_forest(store: &Store, now: &Now, history: &[String], old: &str, data: &s
                     "да".to_string()
                 } else if n == 0 {
                     // The day is in the text: a scenario finds the first entry of a day by it.
-                    format!(
-                        "{} · {date}",
-                        FOREST_PHRASES[rng.below(FOREST_PHRASES.len() as u64) as usize]
-                    )
+                    // Long enough to weigh as much as any other entry (200 characters), so that one entry makes stage 1.
+                    format!("{} · {date}", filler(188, rng.next()))
                 } else {
                     long(rng.next())
                 };

@@ -22,7 +22,7 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 # the feed in the tree, the entry to scroll to is one of the oldest loaded ones (the tree runs from the old to the new), and
 # the note is sent in the chat "Идеи", which has one entry.
 export AX_TIMEOUT=150
-export DUMP_TIMEOUT=300
+export DUMP_TIMEOUT=420
 
 INBOX="00000000-0000-4000-8000-000000000001"
 SETTINGS_FILE="$K/data/settings.json"
@@ -30,7 +30,7 @@ SETTINGS_FILE="$K/data/settings.json"
 rm -f "$OUT"/*.png "$OUT"/*.txt
 rm -rf "$K/data" "$K/mirror" "$K/bench"
 mkdir -p "$K/data" "$K/mirror"
-cargo run --release -q -p kinige-store --example seed_demo -- "$K/data" "$K/mirror"
+KINIGE_SEED_FOREST=1 cargo run --release -q -p kinige-store --example seed_demo -- "$K/data" "$K/mirror"
 prepare_app "$SOURCE_APP"
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")"
 # The app logs at debug level, so that the log holds the line with the first weekday and its source (week-info.txt).

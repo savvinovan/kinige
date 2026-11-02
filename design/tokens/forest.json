@@ -65,7 +65,8 @@
   "layout": {
     "forest": {
       "$type": "dimension",
-      "pane-height": { "$value": "45%", "$description": "Height of the expanded forest pane: a share of the main area (the feed and the input stay below it). The board fits the pane when it opens." },
+      "pane-height": { "$value": "60%", "$description": "Height of the expanded forest pane: a share of the main area (the feed and the input stay below it). The board fits the pane when it opens." },
+      "pane-min-height": { "$value": "22rem", "$description": "The expanded pane is never lower than this (286 px at a 13 px root, 357 px with large text): with a header of two or three lines in a narrow window or at large text, the share of a short window would leave the board no room." },
       "strip-cell": { "$value": "0.9rem", "$description": "Largest side of a day cell in the collapsed strip (11.7 px at a 13 px root). Cells shrink with the window so that 53 or 54 weeks always fit; seven of them make the strip's height." },
       "strip-gap": { "$value": "0.15rem", "$description": "Gap between strip cells (2 px)." },
       "strip-label": { "$value": "1.6rem", "$description": "Width of the weekday letters column of the strip (21 px)." },

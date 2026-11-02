@@ -252,6 +252,7 @@ Start-Sleep -Seconds 3
 Push-Location $Repo
 # Cargo writes progress to stderr, which Windows PowerShell 5.1 turns into errors under 'Stop'.
 $ErrorActionPreference = 'Continue'
+$env:KINIGE_SEED_FOREST = '1'
 try { & cargo run --release -q -p kinige-store --example seed_demo -- $Data $Mirror 2>&1 | Out-Host; if ($LASTEXITCODE -ne 0) { throw "seed_demo failed" } }
 finally { Pop-Location; $ErrorActionPreference = 'Stop' }
 $seeded = Get-Scalar 'select count(*) from message'

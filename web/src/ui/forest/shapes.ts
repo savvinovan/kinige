@@ -18,9 +18,11 @@ export function lodOfTile(tilePx: number): Lod {
   return tilePx < LOD_DOT_BELOW ? "dot" : tilePx < LOD_SIMPLE_BELOW ? "simple" : "detailed";
 }
 
-// Height of the whole tree and radius of the crown in tile widths, per stage 0..6.
-const HEIGHT = [0, 0.3, 0.55, 0.85, 1.2, 1.6, 2.05];
-const RADIUS = [0, 0.08, 0.14, 0.2, 0.26, 0.32, 0.38];
+// Height of the whole tree and radius of the crown in tile widths, per stage 0..6. A week is only about 17 px wide when the
+// whole year is on screen, so the trees are drawn larger than their tile (a stage-6 crown is about one and a half tiles wide):
+// neighbours overlap a little, which is what makes a forest of 53 columns readable.
+const HEIGHT = [0, 0.45, 0.8, 1.3, 1.8, 2.4, 3.1];
+const RADIUS = [0, 0.12, 0.2, 0.3, 0.39, 0.48, 0.57];
 
 /** Height of the tallest tree in tile widths: the board needs this much room above its back edge. */
 export const TALLEST = HEIGHT[MAX_STAGE] ?? 2;
