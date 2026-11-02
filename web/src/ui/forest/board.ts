@@ -22,7 +22,7 @@ export interface Board {
   dims: GridDims;
   /** Row-major: `cells[row * cols + col]`. */
   cells: BoardCell[];
-  /** Indices into `cells`, back to front (rows + cols ascending). */
+  /** Indices into `cells`, back to front (higher on the screen first). */
   order: number[];
   byDate: Map<string, BoardCell>;
   today: string;
@@ -50,7 +50,8 @@ export function buildBoard(table: ForestYear): Board {
     const ca = cells[a];
     const cb = cells[b];
     if (!ca || !cb) return 0;
-    return ca.row + ca.col - (cb.row + cb.col) || ca.row - cb.row;
+    // Back to front: the cells higher on the screen first (a tree stands on its cell and hides what is behind it).
+    return ca.center.y - cb.center.y || ca.center.x - cb.center.x;
   });
   return { year: table.year, dims, cells, order, byDate, today: table.today, days: table.days };
 }

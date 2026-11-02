@@ -4,7 +4,7 @@
 import type { Season } from "../../api/generated/Season";
 import type { Board, BoardCell } from "./board";
 import { monthStarts, rowDates } from "./board";
-import { type Camera, type Cell, type Pt, TH, TW, worldToScreen } from "./iso";
+import { type Camera, type Cell, type Pt, TILE_CORNERS, TW, cellCenter, worldToScreen } from "./iso";
 import type { Palette } from "./palette";
 import { type Lod, drawTree, lodOfTile, overlaps, treeBox, treePad, tuft } from "./shapes";
 
@@ -55,7 +55,6 @@ export function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, b
   const { cam } = view;
   const s = cam.s;
   const tw = TW * s;
-  const th = TH * s;
   const lod = lodOf(cam);
 
   ctx.fillStyle = palette.background;
@@ -68,7 +67,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, b
     const c = board.cells[i];
     if (!c) continue;
     const p = worldToScreen(cam, c.center);
-    if (p.x < -tw || p.x > w + tw || p.y < -2.2 * tw || p.y > h + th) continue;
+    if (p.x < -tw || p.x > w + tw || p.y < -2.2 * tw || p.y > h + tw) continue;
     screen.set(i, p);
     visible.push(i);
   }
@@ -80,7 +79,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, b
     if (!c || !p) continue;
     const colors = c.day ? palette.seasons[c.day.season] : null;
     ctx.fillStyle = colors ? ((c.row + c.col) % 2 === 0 ? colors.groundA : colors.groundB) : palette.voidTile;
-    diamond(ctx, p, tw, th, lod === "dot" ? 0.92 : 1);
+    tilePath(ctx, p, s, lod === "dot" ? 0.92 : 1);
     ctx.fill();
   }
 
@@ -105,7 +104,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, b
       if (c.day.notes > 0) tuft(ctx, p, s, colors);
       continue;
     }
-    const front = sel && selBox && c !== sel && c.row + c.col > sel.row + sel.col && overlaps(treeBox(p, f, s), selBox);
+    const front = sel && selBox && c !== sel && c.center.y > sel.center.y && overlaps(treeBox(p, f, s), selBox);
     if (front) drawGhost(ctx, p, f, s, palette, c.day.season, lod, palette.frontAlpha);
     else drawTree(ctx, p, f, s, colors, palette.shadow, lod, c.day.season);
   }
@@ -151,20 +150,21 @@ export function drawHover(ctx: CanvasRenderingContext2D, board: Board, view: Vie
   if (hov?.interactive) outline(ctx, view, hov, palette.outlineHover, 1.5, 0.9);
 }
 
-function diamond(ctx: CanvasRenderingContext2D, p: Pt, tw: number, th: number, k: number): void {
-  const hw = (tw / 2) * k;
-  const hh = (th / 2) * k;
+/** The outline of a tile around its screen centre `p`, scaled by `k` about the centre. */
+function tilePath(ctx: CanvasRenderingContext2D, p: Pt, s: number, k: number): void {
   ctx.beginPath();
-  ctx.moveTo(p.x, p.y - hh);
-  ctx.lineTo(p.x + hw, p.y);
-  ctx.lineTo(p.x, p.y + hh);
-  ctx.lineTo(p.x - hw, p.y);
+  TILE_CORNERS.forEach((corner, i) => {
+    const x = p.x + corner.x * s * k;
+    const y = p.y + corner.y * s * k;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
   ctx.closePath();
 }
 
 function outline(ctx: CanvasRenderingContext2D, view: View, c: BoardCell, color: string, width: number, alpha: number, fillAlpha = 0): void {
   const p = worldToScreen(view.cam, c.center);
-  diamond(ctx, p, TW * view.cam.s, TH * view.cam.s, 1);
+  tilePath(ctx, p, view.cam.s, 1);
   if (fillAlpha > 0) {
     ctx.globalAlpha = fillAlpha;
     ctx.fillStyle = color;
@@ -180,14 +180,17 @@ function outline(ctx: CanvasRenderingContext2D, view: View, c: BoardCell, color:
 /** Below this tile width the months are one letter and the weekday letters are gone; below the next one the weekdays are thinned. */
 const LABELS_COMPACT_BELOW = 24;
 const LABELS_THIN_BELOW = 32;
+/** Months are one letter on boards so small that the short names would touch. */
+const LABELS_NARROW_MONTHS_BELOW = 14;
 
 /** Months on the front edge and weekday letters on the left edge: they are what makes a date readable. */
 function drawLabels(ctx: CanvasRenderingContext2D, board: Board, view: View, palette: Palette, labels: Labels): void {
   const { cam } = view;
   const tile = TW * cam.s;
   if (tile < 12) return; // a dot-sized board: the labels would only smear
-  const compact = tile < LABELS_COMPACT_BELOW; // a small board: one letter per month, no weekdays, or they would pile up
+  const compact = tile < LABELS_COMPACT_BELOW; // rows only a few pixels apart: no weekday letters, or they would pile up
   const thin = tile < LABELS_THIN_BELOW;
+  const narrowMonths = tile < LABELS_NARROW_MONTHS_BELOW;
   ctx.font = palette.font;
   ctx.fillStyle = palette.label;
   // A halo in the background colour keeps the labels readable over the canopies.
@@ -196,7 +199,7 @@ function drawLabels(ctx: CanvasRenderingContext2D, board: Board, view: View, pal
   ctx.lineJoin = "round";
   ctx.textBaseline = "middle";
   const put = (text: string, row: number, col: number, align: CanvasTextAlign) => {
-    const p = worldToScreen(cam, { x: (col - row) * (TW / 2), y: (col + row + 1) * (TH / 2) });
+    const p = worldToScreen(cam, cellCenter({ row, col }));
     ctx.textAlign = align;
     ctx.strokeText(text, p.x, p.y);
     ctx.fillText(text, p.x, p.y);
@@ -207,7 +210,7 @@ function drawLabels(ctx: CanvasRenderingContext2D, board: Board, view: View, pal
     if (letter && dates[row] !== null && (!thin || row % 2 === 0)) put(letter, row, -1, "right");
   }
   for (const { month, col } of monthStarts(board)) {
-    const name = (compact ? labels.monthsNarrow : labels.months)[month - 1];
+    const name = (narrowMonths ? labels.monthsNarrow : labels.months)[month - 1];
     if (name) put(name, board.dims.rows, col, "center");
   }
 }

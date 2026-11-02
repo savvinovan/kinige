@@ -19,9 +19,10 @@ describe("the board built from a Rust year table", () => {
     expect(cellAt(board, { row: 3, col: 0 })?.day?.date).toBe("2026-01-01");
   });
 
-  it("paints back to front: rows + columns ascend", () => {
-    const sums = board.order.map((i) => (board.cells[i]?.row ?? 0) + (board.cells[i]?.col ?? 0));
-    expect(sums).toEqual([...sums].sort((a, b) => a - b));
+  it("paints back to front: the cells higher on the screen first", () => {
+    const ys = board.order.map((i) => board.cells[i]?.center.y ?? 0);
+    expect(ys).toEqual([...ys].sort((a, b) => a - b));
+    expect(board.order).toHaveLength(board.cells.length);
   });
 
   it("only days up to today can be selected", () => {

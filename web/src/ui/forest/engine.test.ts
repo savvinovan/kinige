@@ -245,7 +245,7 @@ describe("zoom buttons", () => {
     const board = start();
     const fit = { ...engine.view.cam };
     engine.fitCells(seasonCells(board, "autumn"));
-    expect(engine.view.cam.s).toBeGreaterThan(fit.s * 2);
+    expect(engine.view.cam.s).toBeGreaterThan(fit.s * 1.5);
     engine.fitCells(seasonCells(board, "winter"));
     const winter = engine.view.cam.s;
     expect(winter).toBeGreaterThan(fit.s);

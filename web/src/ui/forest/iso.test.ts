@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildBoard } from "./board";
 import { demoYear } from "./demoYear";
-import { type Camera, TH, TW, boardBounds, cellCenter, cellsBounds, clampCamera, fitCamera, hitTest, screenToWorld, worldToScreen, zoomAt } from "./iso";
+import { type Camera, TILE_CORNERS, TW, boardBounds, cellCenter, cellsBounds, clampCamera, fitCamera, hitTest, screenToWorld, worldToScreen, zoomAt } from "./iso";
 
 const CASES = [
   { year: 2026, first: "monday" as const },
@@ -45,12 +45,12 @@ describe("hit-test by the inverse isometric transform", () => {
       const cam: Camera = { s: 1.3, tx: 500, ty: 120 };
       for (const cell of board.cells) {
         const c = cell.center;
-        for (const [dx, dy] of [[0.45, 0], [-0.45, 0], [0, 0.45], [0, -0.45]] as const) {
-          const p = worldToScreen(cam, { x: c.x + dx * TW, y: c.y + dy * TH });
-          expect(hitTest(cam, board.dims, p)).toEqual({ row: cell.row, col: cell.col });
+        for (const corner of TILE_CORNERS) {
+          const inside = worldToScreen(cam, { x: c.x + corner.x * 0.9, y: c.y + corner.y * 0.9 });
+          expect(hitTest(cam, board.dims, inside)).toEqual({ row: cell.row, col: cell.col });
+          const outside = worldToScreen(cam, { x: c.x + corner.x * 1.1, y: c.y + corner.y * 1.1 });
+          expect(hitTest(cam, board.dims, outside)).not.toEqual({ row: cell.row, col: cell.col });
         }
-        const out = worldToScreen(cam, { x: c.x + 0.55 * TW, y: c.y });
-        expect(hitTest(cam, board.dims, out)).not.toEqual({ row: cell.row, col: cell.col });
       }
     });
   }
@@ -115,13 +115,23 @@ describe("camera", () => {
     }
   });
 
+  it("the whole year lies along the width: a board of 53 weeks is much wider than it is tall", () => {
+    const box = boardBounds({ rows: 7, cols: 53 });
+    expect((box.x1 - box.x0) / (box.y1 - box.y0)).toBeGreaterThan(4);
+    expect(TW).toBe(64);
+  });
+
   it("cellsBounds covers the rhombi of the given cells and is null for none", () => {
     expect(cellsBounds([])).toBeNull();
     const box = cellsBounds([{ row: 0, col: 0 }, { row: 2, col: 5 }]);
     expect(box).not.toBeNull();
     const c = cellCenter({ row: 2, col: 5 });
-    expect(box?.x1).toBe(c.x + TW / 2);
-    expect(box?.y1).toBe(c.y + TH / 2);
-    expect(box?.y0).toBe(cellCenter({ row: 0, col: 0 }).y - TH / 2);
+    for (const corner of TILE_CORNERS) {
+      expect(box?.x1).toBeGreaterThanOrEqual(c.x + corner.x);
+      expect(box?.y1).toBeGreaterThanOrEqual(c.y + corner.y);
+    }
+    const first = cellCenter({ row: 0, col: 0 });
+    for (const corner of TILE_CORNERS) expect(box?.y0).toBeLessThanOrEqual(first.y + corner.y);
+    expect(box?.x1).toBeCloseTo(Math.max(...TILE_CORNERS.map((k) => c.x + k.x)));
   });
 });

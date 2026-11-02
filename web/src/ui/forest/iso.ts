@@ -1,10 +1,17 @@
-// Geometry of the board only (ADR-0013): the isometric 2:1 projection of the grid, the camera, and the hit-test by the
-// inverse transform. Which date sits in which cell is decided in Rust and arrives in the year table; nothing here knows a
-// calendar. A click is point -> world -> cell, never sprites, so a tall tree does not take the click of its neighbour.
+// Geometry of the board only (ADR-0013): the oblique projection of the grid, the camera, and the hit-test by the inverse
+// transform. Which date sits in which cell is decided in Rust and arrives in the year table; nothing here knows a calendar.
+// A click is point -> world -> cell, never sprites, so a tall tree does not take the click of its neighbour.
+//
+// The grid is drawn as a ground tilted away from the viewer, rotated so that the 53 weeks run along the horizontal axis of the
+// screen (the first drawing, a 45-degree isometry, laid the year along a diagonal and used a third of a wide pane). A cell is a
+// parallelogram: one step to the next week is `COL`, one step to the next weekday is `ROW`; trees stand upright on their cell.
 
-/** Tile size in world units; a tile is a 2:1 rhombus. */
-export const TW = 64;
-export const TH = 32;
+/** One week to the right, in world units: also the width of a tile, which decides the level of detail. */
+const COL = { x: 64, y: 10 };
+/** One weekday down: it goes down and a little to the left, so that the rows do not fall on top of each other. */
+const ROW = { x: -20, y: 26 };
+export const TW = COL.x;
+const DET = COL.x * ROW.y - ROW.x * COL.y;
 
 export interface Pt {
   x: number;
@@ -36,16 +43,27 @@ export interface Box {
   y1: number;
 }
 
-/** World position of the centre of a cell. Columns run down-right, rows run down-left. */
-export function cellCenter({ row, col }: Cell): Pt {
-  return { x: (col - row) * (TW / 2), y: (col + row + 1) * (TH / 2) };
+/** World position of a point of the grid given in fractional (column, row) coordinates. */
+function gridToWorld(gc: number, gr: number): Pt {
+  return { x: gc * COL.x + gr * ROW.x, y: gc * COL.y + gr * ROW.y };
 }
+
+/** World position of the centre of a cell. The columns run to the right, the rows run down. */
+export function cellCenter({ row, col }: Cell): Pt {
+  return gridToWorld(col + 0.5, row + 0.5);
+}
+
+/** The four corners of a tile around its centre, in world units, in drawing order. */
+export const TILE_CORNERS: readonly Pt[] = [
+  { x: -(COL.x + ROW.x) / 2, y: -(COL.y + ROW.y) / 2 },
+  { x: (COL.x - ROW.x) / 2, y: (COL.y - ROW.y) / 2 },
+  { x: (COL.x + ROW.x) / 2, y: (COL.y + ROW.y) / 2 },
+  { x: (ROW.x - COL.x) / 2, y: (ROW.y - COL.y) / 2 },
+];
 
 /** Fractional grid coordinates (col, row) of a world point: the inverse transform. */
 export function worldToGrid(p: Pt): { gc: number; gr: number } {
-  const u = p.x / (TW / 2);
-  const v = p.y / (TH / 2);
-  return { gc: (u + v) / 2, gr: (v - u) / 2 };
+  return { gc: (p.x * ROW.y - p.y * ROW.x) / DET, gr: (COL.x * p.y - COL.y * p.x) / DET };
 }
 
 export function worldToScreen(cam: Camera, p: Pt): Pt {
@@ -70,18 +88,25 @@ export function hitTest(cam: Camera, dims: GridDims, p: Pt): Cell | null {
 
 /** Bounding box of the whole board in world units. */
 export function boardBounds(dims: GridDims): Box {
-  return { x0: -dims.rows * (TW / 2), x1: dims.cols * (TW / 2), y0: 0, y1: (dims.rows + dims.cols) * (TH / 2) };
+  const corners = [gridToWorld(0, 0), gridToWorld(dims.cols, 0), gridToWorld(0, dims.rows), gridToWorld(dims.cols, dims.rows)];
+  return {
+    x0: Math.min(...corners.map((c) => c.x)),
+    x1: Math.max(...corners.map((c) => c.x)),
+    y0: Math.min(...corners.map((c) => c.y)),
+    y1: Math.max(...corners.map((c) => c.y)),
+  };
 }
 
-/** Bounding box of some cells (their rhombi) in world units; `null` for no cells. */
+/** Bounding box of some cells (their parallelograms) in world units; `null` for no cells. */
 export function cellsBounds(cells: readonly Cell[]): Box | null {
   let box: Box | null = null;
   for (const cell of cells) {
     const c = cellCenter(cell);
-    const next = { x0: c.x - TW / 2, x1: c.x + TW / 2, y0: c.y - TH / 2, y1: c.y + TH / 2 };
-    box = box
-      ? { x0: Math.min(box.x0, next.x0), x1: Math.max(box.x1, next.x1), y0: Math.min(box.y0, next.y0), y1: Math.max(box.y1, next.y1) }
-      : next;
+    for (const corner of TILE_CORNERS) {
+      const x = c.x + corner.x;
+      const y = c.y + corner.y;
+      box = box ? { x0: Math.min(box.x0, x), x1: Math.max(box.x1, x), y0: Math.min(box.y0, y), y1: Math.max(box.y1, y) } : { x0: x, x1: x, y0: y, y1: y };
+    }
   }
   return box;
 }
