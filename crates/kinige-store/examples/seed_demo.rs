@@ -62,18 +62,22 @@ fn main() {
     let old = store
         .create_chat("Старые заметки", Some("🗄️"), &at(-27 * DAY))
         .unwrap();
-    store
+    let long_name = store
         .create_chat(
             "Очень длинное название чата, которое не помещается в строку сайдбара",
             Some("🌿"),
             &at(-26 * DAY),
         )
         .unwrap();
+    let mut history = vec![books.id.clone(), work.id.clone(), long_name.id.clone()];
     // Чаты без эмодзи (хранятся с «💬» по умолчанию): сайдбар показывает для них плитку с первой буквой названия (слайс D2).
     for (days_ago, title) in [(25, "Проекты"), (24, "Linux notes"), (23, "Мама")] {
-        store
-            .create_chat(title, None, &at(-days_ago * DAY))
-            .unwrap();
+        history.push(
+            store
+                .create_chat(title, None, &at(-days_ago * DAY))
+                .unwrap()
+                .id,
+        );
     }
 
     send(
@@ -129,7 +133,7 @@ fn main() {
     store.set_chat_pinned(&work.id, true, &at(-DAY)).unwrap();
     store.set_chat_archived(&old.id, true, &at(-DAY)).unwrap();
     seed_on_this_day(&store, &now);
-    seed_forest(&store, &now, &books.id, &work.id, &data);
+    seed_forest(&store, &now, &history, &old.id, &data);
     seed_telegram_chat(&store, &now);
     // Копия дня для строки в «Настройках».
     store.run_maintenance(&at(0)).unwrap();
@@ -289,17 +293,16 @@ impl Rng {
 
 /// Entries per active day and how likely each count is (percent): every growth stage appears (stage 6 needs a weight of 22.3,
 /// about 28 entries when four in five are long).
-const FOREST_COUNTS: [(u64, u64); 10] = [
-    (0, 12),
-    (1, 20),
-    (2, 15),
-    (3, 12),
-    (4, 10),
-    (6, 8),
-    (9, 6),
-    (16, 4),
-    (30, 2),
-    (38, 1),
+const FOREST_COUNTS: [(u64, u64); 9] = [
+    (0, 45),
+    (1, 30),
+    (2, 10),
+    (3, 6),
+    (4, 4),
+    (6, 2),
+    (9, 1),
+    (13, 1),
+    (26, 1),
 ];
 
 const FOREST_PHRASES: [&str; 8] = [
@@ -330,7 +333,7 @@ fn filler(len: usize, start: u64) -> String {
 /// (45 days before today in the current year, the first week of August in the last), days with entries in two or three
 /// chats, one entry in the trash. Today's tree is left at stage 3 with weight 6.2: one entry of a hundred characters (weight
 /// 0.5) lifts it to stage 4.
-fn seed_forest(store: &Store, now: &Now, books: &str, work: &str, data: &std::path::Path) {
+fn seed_forest(store: &Store, now: &Now, history: &[String], old: &str, data: &std::path::Path) {
     let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
     let today = NaiveDate::parse_from_str(&today, "%Y-%m-%d").expect("день журнала");
     let tz: Tz = now.tz.parse().unwrap_or(chrono_tz::UTC);
@@ -377,25 +380,36 @@ fn seed_forest(store: &Store, now: &Now, books: &str, work: &str, data: &std::pa
                     roll < acc
                 })
                 .map_or(1, |(count, _)| *count);
-            let to_books = count >= 2 && rng.below(100) < 20;
-            let to_work = count >= 2 && !to_books && rng.below(100) < 6;
+            // The history is spread over several chats and the previous year sits in the archive: the feed of any chat the
+            // scenario opens stays short (the window tree is read through accessibility, one element at a time). Only the
+            // last ten days are in the Inbox.
+            let recent = year == today.year() && date >= today - Duration::days(10);
+            let home = if year != today.year() {
+                old
+            } else if recent {
+                INBOX_ID
+            } else {
+                &history[(date.ordinal() as usize / 5) % history.len()]
+            };
+            // Busy days are split between two chats: the day target then picks the chat with more entries.
+            let second = if count >= 4 && !recent && year == today.year() {
+                &history[(date.ordinal() as usize / 5 + 1) % history.len()]
+            } else {
+                home
+            };
             for n in 0..count {
-                let body = if n == 0 {
+                let body = if n == 0 && count == 1 && rng.below(100) < 15 {
+                    "да".to_string()
+                } else if n == 0 {
                     // The day is in the text: a scenario finds the first entry of a day by it.
                     format!(
                         "{} · {date}",
                         FOREST_PHRASES[rng.below(FOREST_PHRASES.len() as u64) as usize]
                     )
-                } else if rng.below(10) < 2 {
-                    "да".to_string()
                 } else {
                     long(rng.next())
                 };
-                let chat = if to_work || (to_books && n % 2 == 1) {
-                    if to_work { work } else { books }
-                } else {
-                    INBOX_ID
-                };
+                let chat = if n % 3 == 2 { second } else { home };
                 store
                     .send_message(chat, &body, &at(date, (n * 20) as u32))
                     .expect("запись леса");

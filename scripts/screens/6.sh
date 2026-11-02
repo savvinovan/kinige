@@ -14,15 +14,15 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 # shellcheck source=lib.sh
 . "$REPO/scripts/screens/lib.sh"
 
-# The tree of this window is huge (a feed of 200 entries, 371 cells of the strip, 365 buttons of the calendar) and System Events
-# reads it one property at a time: a full dump of it took more than 120 s on the runner and the run timed out (first attempt).
-# So no dumps here: the data are synthetic and live in a temporary directory (as in the Windows scenario), and the actions are
-# arranged so that a search for an element never has to walk through the feed: the pane comes before the feed in the tree, the
-# entry to scroll to is one of the oldest loaded ones (the tree runs from the old to the new), and the note is sent in the chat
-# "Идеи", which has one entry, not in the Inbox.
+# The tree of this window is large (a feed, 371 cells of the strip, 365 buttons of the calendar) and System Events reads it one
+# property at a time: with 200 entries in the feed a dump took more than 120 s on the runner and the first attempt timed out.
+# So the seed keeps every chat short (seed_demo: the history is spread over several chats, the previous year is in the archive),
+# the dump limit is raised for this scenario (the check of personal paths is still a full dump of every shot, nothing is
+# skipped), and the actions are arranged so that a search for an element does not walk through a feed: the pane comes before
+# the feed in the tree, the entry to scroll to is one of the oldest loaded ones (the tree runs from the old to the new), and
+# the note is sent in the chat "Идеи", which has one entry.
 export AX_TIMEOUT=150
-dump() { :; }
-dump_complete() { return 0; }
+export DUMP_TIMEOUT=300
 
 INBOX="00000000-0000-4000-8000-000000000001"
 SETTINGS_FILE="$K/data/settings.json"
