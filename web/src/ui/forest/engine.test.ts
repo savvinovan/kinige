@@ -152,6 +152,28 @@ describe("pointer", () => {
     expect(engine.dateAt({ x: 4, y: Number.POSITIVE_INFINITY })).toBeNull();
   });
 
+  it("a click with no pointer press before it (an assistive-technology press) opens the day; a real click opens it once", () => {
+    const board = start();
+    const p = centre(board, "2026-05-05");
+    canvas.dispatchEvent(new MouseEvent("click", { clientX: p.x, clientY: p.y, bubbles: true }));
+    expect(activated).toEqual(["2026-05-05"]);
+    // A real click: press, release, click.
+    const q = centre(board, "2026-06-06");
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { clientX: q.x, clientY: q.y, pointerId: 1, bubbles: true }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", { clientX: q.x, clientY: q.y, pointerId: 1, bubbles: true }));
+    canvas.dispatchEvent(new MouseEvent("click", { clientX: q.x, clientY: q.y, bubbles: true }));
+    expect(activated).toEqual(["2026-05-05", "2026-06-06"]);
+    // A drag ends in a click too: it opens nothing, and the next bare click still works.
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { clientX: q.x, clientY: q.y, pointerId: 1, bubbles: true }));
+    canvas.dispatchEvent(new PointerEvent("pointermove", { clientX: q.x + 40, clientY: q.y, pointerId: 1, bubbles: true }));
+    canvas.dispatchEvent(new PointerEvent("pointerup", { clientX: q.x + 40, clientY: q.y, pointerId: 1, bubbles: true }));
+    canvas.dispatchEvent(new MouseEvent("click", { clientX: q.x + 40, clientY: q.y, bubbles: true }));
+    expect(activated).toHaveLength(2);
+    const r = centre(board, "2026-07-07");
+    canvas.dispatchEvent(new MouseEvent("click", { clientX: r.x, clientY: r.y, bubbles: true }));
+    expect(activated.at(-1)).toBe("2026-07-07");
+  });
+
   it("every day of the year hits its own cell through real pointer events", () => {
     const board = start();
     for (const day of board.days.filter((d) => d.date <= board.today)) click(centre(board, day.date));

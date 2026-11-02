@@ -134,7 +134,7 @@ sleep 3
 shoot 06-feed-older-day-selection-followed
 
 # ---- 4. A click on the board opens the day in the feed, with the card of the selected day ----
-press "${L_BOARD}" "Group|Unknown|Image"
+press "${L_BOARD}" "Group|Application|Unknown|Image"
 sleep 3
 shoot 04-selected-day-with-card
 

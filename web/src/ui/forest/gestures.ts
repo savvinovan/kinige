@@ -41,7 +41,17 @@ export function bindGestures(canvas: HTMLCanvasElement, host: GestureHost): () =
     offs.push(() => canvas.removeEventListener(type, handler));
   };
 
+  // A click that no pointer press came before: a press made by assistive technology (an accessibility "press" action
+  // dispatches a simulated click, not pointer events), or by the screen scenarios of the slice. A real click is a press,
+  // a release and a click, and the release has already handled it.
+  let pressed = false;
+  on("click", (e) => {
+    if (pressed) pressed = false;
+    else host.click(local(e));
+  });
+
   on("pointerdown", (e) => {
+    pressed = true;
     canvas.setPointerCapture?.(e.pointerId);
     const p = local(e);
     pointers.set(e.pointerId, p);
@@ -87,6 +97,8 @@ export function bindGestures(canvas: HTMLCanvasElement, host: GestureHost): () =
   const end = (e: PointerEvent) => {
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = null;
+    // A cancelled press (the system took the touch) has no click after it.
+    if (e.type === "pointercancel") pressed = false;
     if (drag && !drag.moved && e.type === "pointerup") host.click(local(e));
     drag = null;
     delete canvas.dataset.dragging;
