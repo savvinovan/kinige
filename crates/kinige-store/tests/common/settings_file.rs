@@ -86,6 +86,14 @@ impl Rig {
         file_path(self.dir.path())
     }
 
+    /// Waits until the file thread has finished `polls` full polls after this call, for "nothing happened over N polls"
+    /// checks. One more is waited for, because a poll that is already running may have started before the state the caller
+    /// cares about.
+    pub fn after_polls(&self, polls: u64) {
+        let target = self.file.polls() + polls + 1;
+        wait_until("polls of the file thread", || self.file.polls() >= target);
+    }
+
     /// Как правит редактор: временный файл рядом и `rename` (режим 0600).
     pub fn write(&self, text: &str) {
         write_file(self.dir.path(), text.as_bytes(), 0o600);

@@ -104,6 +104,22 @@ shoot() {
   KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" "$OUT/$name.png" kinige "$mode" || fail "нет снимка $name"
 }
 
+# Since slice 4b the settings live in their own window ("Settings"), next to the main one ("Kinige"). Accessibility actions read
+# the window named by AX_WINDOW; the shot mode tells screenshot-window.sh which window to capture.
+in_settings() { export AX_WINDOW=Settings; }
+in_main() { export AX_WINDOW=Kinige; }
+shoot_settings() { in_settings; shoot "$1" settings; }
+shoot_main() { in_main; shoot "$1" main; in_settings; }
+settings_windows() { KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list 2>/dev/null | awk -F'\t' '$5 == "Settings" || $5 == "Настройки"' | wc -l | tr -d ' '; }
+
+wait_for_settings() {
+  for _ in $(seq 1 30); do
+    [ "$(settings_windows)" -ge 1 ] && return 0
+    sleep 1
+  done
+  fail "settings window did not appear"
+}
+
 sql() { sqlite3 "$K/data/kinige.db" "$@"; }
 chat_id() { sql "select id from chat where title = '$1'"; }
 

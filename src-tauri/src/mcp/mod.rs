@@ -18,7 +18,7 @@ use server::{ConnectionInfo, McpServer, disconnected};
 use socket::socket_present;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, Runtime};
@@ -40,6 +40,9 @@ pub struct McpState {
     recheck: Duration,
     /// Только для тестов: слушатель паникует при ближайшем соединении.
     panic_next: AtomicBool,
+    /// How many listeners have been bound and made ready (`bind` returned, including `chmod 0600`). Tests wait for it to
+    /// grow instead of sleeping or polling the file system.
+    binds: AtomicU64,
 }
 
 impl McpState {
@@ -66,6 +69,17 @@ impl McpState {
     pub fn inject_listener_panic_for_test(&self) {
         self.panic_next.store(true, Ordering::SeqCst);
     }
+
+    /// Test hook: the number of listeners bound so far. A new value means the socket file is final (0600) and the previous
+    /// listener, if any, is already gone, so a client that connects now reaches the new one.
+    #[doc(hidden)]
+    pub fn binds(&self) -> u64 {
+        self.binds.load(Ordering::SeqCst)
+    }
+
+    fn bound(&self) {
+        self.binds.fetch_add(1, Ordering::SeqCst);
+    }
 }
 
 /// Обёртка для `app.manage`: общий доступ к состоянию из задач и команд.
@@ -88,6 +102,7 @@ pub fn start_with_recheck<R: Runtime>(app: &AppHandle<R>, data_dir: &Path, reche
         error: Mutex::new(None),
         recheck,
         panic_next: AtomicBool::new(false),
+        binds: AtomicU64::new(0),
     });
     app.manage(McpHandle(state.clone()));
     let Ok(uid) = tauri::async_runtime::block_on(async { own_uid() }) else {
@@ -97,7 +112,10 @@ pub fn start_with_recheck<R: Runtime>(app: &AppHandle<R>, data_dir: &Path, reche
     // `UnixListener` tokio привязывается к реактору: `bind` вызывается внутри среды выполнения.
     let first = tauri::async_runtime::block_on(async { bind(&path, uid) });
     match &first {
-        Ok(_) => log::info!("mcp: сокет поднят"),
+        Ok(_) => {
+            state.bound();
+            log::info!("mcp: сокет поднят");
+        }
         Err(error) => {
             log::warn!("mcp: сокет не поднят: {}", error.code());
             state.set_error(Some(*error));
@@ -131,6 +149,7 @@ async fn supervise<R: Runtime>(
                 Ok(fresh) => {
                     listener = Some(fresh);
                     state.set_error(None);
+                    state.bound();
                     log::info!("mcp: сокет поднят");
                 }
                 Err(error) => state.set_error(Some(error)),
@@ -146,6 +165,7 @@ async fn supervise<R: Runtime>(
             listener = bind(state.path(), uid).ok();
             if listener.is_some() {
                 state.set_error(None);
+                state.bound();
             }
         } else {
             return;
@@ -181,6 +201,7 @@ async fn run_listener<R: Runtime>(
                     Ok(fresh) => {
                         listener = fresh;
                         state.set_error(None);
+                        state.bound();
                         log::info!("mcp: сокет перепривязан");
                     }
                     Err(error) => {
@@ -241,4 +262,72 @@ pub async fn serve_connection<R: Runtime>(app: AppHandle<R>, stream: UnixStream,
         Err(_) => log::debug!("mcp: рукопожатие не состоялось"),
     }
     disconnected(&app, &info).await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+    use tokio::io::{AsyncRead, ReadBuf};
+
+    /// Hands out one piece per read, so the data arrives in parts by construction (a socket does not promise how it splits).
+    struct Pieces<'a> {
+        pieces: std::slice::Iter<'a, &'a [u8]>,
+    }
+
+    impl AsyncRead for Pieces<'_> {
+        fn poll_read(
+            mut self: Pin<&mut Self>,
+            _cx: &mut Context<'_>,
+            buf: &mut ReadBuf<'_>,
+        ) -> Poll<std::io::Result<()>> {
+            if let Some(piece) = self.pieces.next() {
+                buf.put_slice(piece);
+            }
+            Poll::Ready(Ok(()))
+        }
+    }
+
+    async fn marker_of(pieces: &[&[u8]]) -> (bool, Vec<u8>) {
+        let mut reader = Pieces {
+            pieces: pieces.iter(),
+        };
+        read_marker(&mut reader).await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn the_reconnect_marker_arriving_in_pieces_is_recognised_and_the_rest_is_kept() {
+        let (head, middle, tail) = (
+            RECONNECT_MARKER.get(..11).unwrap(),
+            RECONNECT_MARKER.get(11..30).unwrap(),
+            RECONNECT_MARKER.get(30..).unwrap(),
+        );
+        let (reconnect, rest) = marker_of(&[head, middle, tail, b"{\"id\":1}\n"]).await;
+        assert!(reconnect);
+        assert!(rest.is_empty(), "{rest:?}");
+        // What follows the marker in the same read goes back to the server as the start of the stream.
+        let with_rest = [RECONNECT_MARKER, b"{\"id\":1}\n"].concat();
+        let (reconnect, rest) =
+            marker_of(&[with_rest.get(..20).unwrap(), with_rest.get(20..).unwrap()]).await;
+        assert!(reconnect);
+        assert_eq!(rest, b"{\"id\":1}\n");
+    }
+
+    #[tokio::test]
+    async fn a_first_message_that_only_starts_like_the_marker_is_not_a_marker_and_loses_nothing() {
+        let message = br#"{"jsonrpc":"2.0","method":"kinige/ping"}"#;
+        let (reconnect, rest) =
+            marker_of(&[message.get(..11).unwrap(), message.get(11..).unwrap()]).await;
+        assert!(!reconnect);
+        assert_eq!(rest, message);
+    }
+
+    #[tokio::test]
+    async fn an_empty_or_garbage_start_is_not_a_marker() {
+        assert_eq!(marker_of(&[]).await, (false, Vec::new()));
+        let (reconnect, rest) = marker_of(&[b"\0\xff not json"]).await;
+        assert!(!reconnect);
+        assert_eq!(rest, b"\0\xff not json");
+    }
 }

@@ -9,7 +9,7 @@
 #![allow(clippy::disallowed_methods)] // `thread::spawn` запрещён в коде приложения (clippy.toml), тесту поток нужен без обработки отказа
 
 use std::fs;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -87,7 +87,10 @@ struct Bridge {
     child: Child,
     stdin: Option<std::process::ChildStdin>,
     out: Receiver<String>,
-    err: std::process::ChildStderr,
+    /// stderr lines as they arrive (a reader thread: the bridge announces what it noticed, e.g. `connection_lost`).
+    err: Receiver<String>,
+    /// stderr lines already taken from `err`.
+    err_seen: Vec<String>,
 }
 
 impl Bridge {
@@ -113,9 +116,20 @@ impl Bridge {
                 }
             }
         });
+        let stderr = child.stderr.take().unwrap();
+        let (send, err) = mpsc::channel();
+        thread::spawn(move || {
+            for line in BufReader::new(stderr).lines() {
+                let Ok(line) = line else { return };
+                if send.send(line).is_err() {
+                    return;
+                }
+            }
+        });
         Bridge {
             stdin: child.stdin.take(),
-            err: child.stderr.take().unwrap(),
+            err,
+            err_seen: Vec::new(),
             out,
             child,
         }
@@ -132,13 +146,37 @@ impl Bridge {
         self.out.recv_timeout(within).ok()
     }
 
+    /// Waits until the bridge reports `category` on stderr (`kinige-mcp: <category>`). A cut that left no request without an
+    /// answer is otherwise invisible to the test: the next call must not be sent before the bridge has noticed it.
+    fn wait_for_note(&mut self, category: &str, within: Duration) {
+        let wanted = format!("kinige-mcp: {category}");
+        let deadline = Instant::now() + within;
+        loop {
+            let left = deadline.saturating_duration_since(Instant::now());
+            let line = self
+                .err
+                .recv_timeout(left)
+                .unwrap_or_else(|_| panic!("the bridge did not report {category}"));
+            let found = line.starts_with(&wanted);
+            self.err_seen.push(line);
+            if found {
+                return;
+            }
+        }
+    }
+
     /// Закрывает stdin, ждёт завершения и возвращает весь stderr.
     fn finish(mut self) -> String {
         drop(self.stdin.take());
         let _ = self.child.wait();
-        let mut text = String::new();
-        let _ = self.err.read_to_string(&mut text);
-        text
+        // The reader thread ends at EOF of stderr, which follows the exit of the bridge.
+        while let Ok(line) = self.err.recv_timeout(LONG) {
+            self.err_seen.push(line);
+        }
+        self.err_seen
+            .iter()
+            .map(|line| format!("{line}\n"))
+            .collect()
     }
 }
 
@@ -387,9 +425,10 @@ fn a_server_that_never_answers_the_repeated_initialize_gives_the_call_an_error_a
     bridge.say(INITIALIZED);
     assert_eq!(first.next(LONG).as_deref(), Some(INITIALIZED));
     first.close();
-    // Мосту нужно заметить обрыв (читающий поток увидит конец): иначе вызов уйдёт в уже закрытое соединение и получит
-    // ошибку «потеряно», а не повторное подключение (на нагруженной машине так и бывало).
-    thread::sleep(Duration::from_millis(500));
+    // The bridge must notice the cut (its reader thread sees the end of the stream) before the next call; otherwise the
+    // call goes into the closed connection and gets the "lost" error instead of a reconnect (it did on a loaded machine).
+    // The bridge announces the cut on stderr, so wait for that line instead of sleeping.
+    bridge.wait_for_note("connection_lost", LONG);
     bridge.say(&call(3, "never-delivered"));
     let mut second = server.accept(LONG).unwrap();
     assert_eq!(second.next(LONG).as_deref(), Some(MARKER));

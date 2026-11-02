@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Снимки слайса 4a («Доступ ИИ-агентов», MCP) в настоящем окне на macOS-раннере: scripts/screens/4a.sh <собранный Kinige.app>.
 # Данные — синтетические (seed_demo) во временном каталоге; настоящая база не трогается. Результат — $OUT (docs/screens/4a).
+# Since slice 4b the access settings live in the separate "Settings" window (tree: "AI agent access", "Visible chats",
+# "Access log"), not in a dialog of the main window; steps 2-9 drive that window the way 4b.sh does.
 set -u
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 K="${K:-${RUNNER_TEMP:-/tmp}/kinige-screens}"
@@ -60,87 +62,89 @@ app_type() { lsappinfo info -only ApplicationType "$(lsappinfo find pid="$(app_p
 } > "$EVIDENCE" 2>&1
 cat "$EVIDENCE"
 
-# ---- 2. Настройки → строка «Доступ ИИ-агентов» → окно: выключено ----
-press "Profile"
-press "Settings"
-scroll_to "AI agent access"
-shoot 01-settings-agent-row
-press "Configure"
-shoot 02-access-off
-# Доступ выключен, а журнал виден: в нём отказы на пробный сеанс из первого шага («denied: access is off»).
-scroll_to "Access log"
+# ---- 2. Profile -> Settings -> "AI agent access": access is off, the log shows the refusals of the first step ----
+open_settings() {
+  in_main
+  press "Profile"
+  press "Settings"
+  wait_for_settings
+  sleep 2
+  in_settings
+}
+open_settings
+press "AI agent access"
+shoot_settings 01-access-off
+press "Access log"
 has "denied: access is off" || fail "в журнале при выключенном доступе нет строк отказа"
-shoot 02b-access-off-log
-scroll_to "Allow agents to access the journal"
+shoot_settings 02-access-off-log
+press "AI agent access"
+scroll_to "How to connect"
 has "$SOCKET" && echo "путь основного сокета виден в окне" || fail "основного пути сокета нет в тексте окна ($SOCKET)"
 
-# ---- 3. Включение: предупреждение, режим, чаты ----
+# ---- 3. Turning on: the warning, the mode, the visible chats ----
 press "Allow agents to access the journal"
-shoot 03-warning
+shoot_settings 03-warning
 press "Turn on"
 press "Read and write"
+press "Configure"
 press "Работа" CheckBox
 press "Inbox" CheckBox
-shoot 04-access-on
+shoot_settings 04-access-on
 
-# ---- 4. Сеанс агента через мост из бандла: чтение, запись, закрытый чат ----
+# ---- 4. An agent session through the bridge from the bundle: reading, writing, a closed chat ----
 limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session.txt" --chat "$WORK" --closed-chat "$BOOKS" || fail "сеанс агента"
 sleep 4
-scroll_to "Chats visible to the agent"
-shoot 05-dialog-after-agent
-scroll_to "Access log"
-shoot 06-access-log
+shoot_settings 05-visible-chats-after-agent
+press "Access log"
+shoot_settings 06-access-log
 press "Show entries of this request"
-shoot 07-access-log-expanded
+shoot_settings 07-access-log-expanded
 
-# ---- 5. Режим «только чтение»: вызовы записи отклонены ----
-scroll_to "Mode"
+# ---- 5. Read-only mode: write calls are refused ----
+press "AI agent access"
 press "Read only"
 limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session-read-only.txt" --chat "$WORK" || fail "сеанс только чтение"
 sleep 4
-scroll_to "Access log"
-shoot 08-access-log-denied
-scroll_to "Mode"
+press "Access log"
+shoot_settings 08-access-log-denied
+press "AI agent access"
 press "Read and write"
 
-# ---- 6. Лента: запись агента ----
-press "Close"
-press "Close"
+# ---- 6. The feed: the agent's entry ----
+in_main
 # Чаты в сайдбаре — AXPopUpButton с названием и числом записей («Работа , entries: 2»).
 press "Работа , entries" PopUpButton
-shoot 09-feed-agent-entry
+shoot_main 09-feed-agent-entry
 
-# ---- 7. kill -9 и перезапуск: данные на месте, старый сокет заменяется ----
+# ---- 7. kill -9 and a restart: the data is in place, the old socket is replaced ----
 kill -9 "$(app_pid)"
 sleep 2
 launch_window
 wait_for_window
 sleep 2
+in_main
 press "Работа , entries" PopUpButton
-shoot 10-after-kill9-restart
-press "Profile"
-press "Settings"
-scroll_to "AI agent access"
-press "Configure"
-scroll_to "Access log"
-shoot 11-access-log-after-kill9
+shoot_main 10-after-kill9-restart
+open_settings
+press "AI agent access"
+press "Access log"
+shoot_settings 11-access-log-after-kill9
 
-# ---- 8. Чат, исключённый из AI (значение пишется в базу напрямую: переключателя в интерфейсе нет) ----
+# ---- 8. A chat excluded from AI (written to the database directly: there is no switch in the interface) ----
 sql "update chat set ai_excluded = 1 where id = '$BOOKS'"
 sleep 4
-scroll_to "Chats visible to the agent"
-shoot 15-chat-excluded-from-ai
+press "Visible chats"
+has "excluded from AI" || fail "the chat list has no \"excluded from AI\" mark"
+shoot_settings 15-chat-excluded-from-ai
 
-# ---- 9. Крупный текст: настройки, окно, журнал ----
-press "Close"
+# ---- 9. Large text: settings, visible chats, the log ----
+press "Appearance"
 press "Large"
-scroll_to "Text size"
-shoot 12-settings-large-text
-scroll_to "AI agent access"
-press "Configure"
-scroll_to "Chats visible to the agent"
-shoot 13-access-large-text
-scroll_to "Access log"
-shoot 14-access-log-large-text
+shoot_settings 12-settings-large-text
+press "AI agent access"
+press "Visible chats"
+shoot_settings 13-access-large-text
+press "Access log"
+shoot_settings 14-access-log-large-text
 
 finish

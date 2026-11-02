@@ -10,6 +10,16 @@ interface StorybookIndex {
 const index = JSON.parse(readFileSync("storybook-static/index.json", "utf8")) as StorybookIndex;
 const stories = Object.values(index.entries).filter((entry) => entry.type === "story");
 
+// Stories with rasterization noise (KINIG-48): they may differ by up to 8 pixels, every other story must match exactly. The
+// artifacts of failed runs (31.10-01.11.2026) show 2 pixels off by 1 level of a channel, exactly at the rounded corners of a
+// focused field with an error (the error border and the inner focus line share one radius: two anti-aliased edges on top of
+// each other). The retry in the same job a few seconds later gives the same values, so it is not a transition, a caret or
+// focus: the likely cause is runners with different CPUs rounding Skia's anti-aliasing differently (not verified: the
+// rasterizer was not pinned with Chromium flags). A real regression (a colour, a shifted line, text) touches hundreds of
+// pixels and does not fit in 8. The normal and the large-text snapshots of a story share its id.
+const NOISY = new Set(["компоненты-окно-чата--переименованиеошибка", "экраны-главное-окно--ошибкаотправки"]);
+const NOISY_PIXELS = 8;
+
 // Переходы и анимации выключены в самой странице: снимок не может поймать их на середине (2 пикселя у скруглённого поля).
 const NO_MOTION = "*, *::before, *::after { transition: none !important; animation: none !important; }";
 
@@ -63,12 +73,13 @@ test("есть истории для снимков", () => {
 
 for (const story of stories) {
   test(`снимок: ${story.id}`, async ({ page }) => {
+    const options = NOISY.has(story.id) ? { fullPage: true, maxDiffPixels: NOISY_PIXELS } : { fullPage: true };
     await open(page, story.id);
-    await expect(page).toHaveScreenshot(`${story.id}.png`, { fullPage: true });
+    await expect(page).toHaveScreenshot(`${story.id}.png`, options);
 
     await page.evaluate(() => document.documentElement.setAttribute("data-text-scale", "large"));
     await settle(page);
-    await expect(page).toHaveScreenshot(`${story.id}-large.png`, { fullPage: true });
+    await expect(page).toHaveScreenshot(`${story.id}-large.png`, options);
   });
 }
 

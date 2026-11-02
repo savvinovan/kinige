@@ -137,7 +137,11 @@ describe("Адресат ответа перенесён в другой чат"
     render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />);
     await screen.findByText("Запись перенесена в другой чат");
     await api.moveMessage("old2023", INBOX_ID);
-    act(() => {
+    // The window "focus" listener is attached by a passive effect once the «moved» row is committed. `findByText` can resolve
+    // before React has flushed that effect (it runs in a scheduler task, racing with the timers of testing-library), and
+    // an event dispatched earlier is lost. An empty async `act` flushes pending effects first.
+    await act(async () => {});
+    await act(async () => {
       window.dispatchEvent(new Event("focus"));
     });
     expect(await screen.findByRole("group", { name: "Ответ на запись 31 октября 2023" })).toBeInTheDocument();

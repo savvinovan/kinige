@@ -13,7 +13,7 @@ use common::mcp::*;
 use common::*;
 use kinige_domain::AgentMode;
 use kinige_domain::groups::INBOX_ID;
-use kinige_lib::mcp::{self, McpHandle, SocketError};
+use kinige_lib::mcp::{self, McpHandle, McpState, SocketError};
 use kinige_store::Store;
 use serde_json::json;
 use std::os::unix::fs::{PermissionsExt, symlink};
@@ -169,12 +169,12 @@ fn a_long_data_dir_falls_back_to_a_short_path_in_the_temp_dir() {
 #[test]
 fn a_socket_file_removed_from_outside_is_rebound_on_the_next_check() {
     let mcp = mcp_with_recheck(AgentMode::Read, &[INBOX_ID], Duration::from_millis(150));
+    let state = mcp.fixture.app.state::<McpHandle>().0.clone();
+    let bound = state.binds();
     assert!(UnixStream::connect(&mcp.socket).is_ok());
     std::fs::remove_file(&mcp.socket).unwrap();
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while !mcp.socket.exists() && Instant::now() < deadline {
-        std::thread::sleep(Duration::from_millis(30));
-    }
+    // The file appears at `bind`, before `chmod 0600`: wait for the listener to be bound and ready, not for the file.
+    wait_for_binds_above(&state, bound);
     assert!(
         mcp.socket.exists(),
         "слушатель перепривязался к тому же пути"
@@ -185,15 +185,16 @@ fn a_socket_file_removed_from_outside_is_rebound_on_the_next_check() {
     assert!(!client.call("list_chats", json!({})).0);
 }
 
-/// Подключается, повторяя попытки: слушателя могли только что перезапустить.
-fn connect_when_ready(socket: &Path) -> UnixStream {
+/// Waits until the supervisor has bound a listener after `seen` earlier ones. Then the socket file is final (0600) and the
+/// previous listener is already closed, so every later connection reaches the new listener.
+fn wait_for_binds_above(state: &McpState, seen: u64) {
     let deadline = Instant::now() + Duration::from_secs(10);
-    loop {
-        match UnixStream::connect(socket) {
-            Ok(stream) => return stream,
-            Err(error) if Instant::now() >= deadline => panic!("слушатель не вернулся: {error}"),
-            Err(_) => std::thread::sleep(Duration::from_millis(30)),
-        }
+    while state.binds() <= seen {
+        assert!(
+            Instant::now() < deadline,
+            "the listener was not bound again"
+        );
+        std::thread::sleep(Duration::from_millis(5));
     }
 }
 
@@ -201,24 +202,14 @@ fn connect_when_ready(socket: &Path) -> UnixStream {
 fn a_panic_in_the_listener_is_caught_and_the_listener_comes_back() {
     let mcp = mcp_with_recheck(AgentMode::Read, &[INBOX_ID], Duration::from_millis(200));
     let state = mcp.fixture.app.state::<McpHandle>().0.clone();
+    let bound = state.binds();
     state.inject_listener_panic_for_test();
     // Это соединение роняет слушатель; оно само не обслуживается и закрывается.
     let mut doomed = common::mcp::Client::connect(&mcp.socket);
     assert!(doomed.recv().is_none(), "соединение закрыто, не обслужено");
-    // Слушатель перезапускается: пока старый не закрыт, соединения могут попасть в него и оборваться, поэтому пробуем,
-    // пока кто-то не ответит на `initialize`.
-    let deadline = Instant::now() + Duration::from_secs(10);
-    loop {
-        if let Some(mut probe) = common::mcp::Client::try_connect(&mcp.socket) {
-            probe.send(json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
-                "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "Probe", "version": "1"}}}));
-            if probe.recv().is_some() {
-                break;
-            }
-        }
-        assert!(Instant::now() < deadline, "слушатель не вернулся");
-        std::thread::sleep(Duration::from_millis(30));
-    }
+    // A connection made before the old listener is closed would be cut (EPIPE/ECONNRESET), so the client connects only
+    // after the restarted listener is bound.
+    wait_for_binds_above(&state, bound);
     let mut client = mcp.client();
     client.handshake("Claude");
     assert!(!client.call("list_chats", json!({})).0);
@@ -239,14 +230,12 @@ fn a_failed_first_bind_is_retried_and_the_listener_appears_when_the_folder_is_fi
     assert_eq!(error_of(&fixture), Some(SocketError::DirUnsafe));
     // Папку исправили (симлинк убрали): следующая проверка поднимает слушатель и снимает ошибку.
     std::fs::remove_file(&link).unwrap();
-    let path = fixture.app.state::<McpHandle>().0.path().to_path_buf();
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while error_of(&fixture).is_some() && Instant::now() < deadline {
-        std::thread::sleep(Duration::from_millis(30));
-    }
+    let state = fixture.app.state::<McpHandle>().0.clone();
+    let path = state.path().to_path_buf();
+    wait_for_binds_above(&state, 0);
     assert_eq!(error_of(&fixture), None, "ошибка снята");
     assert_eq!(mode(&path), 0o600);
-    drop(connect_when_ready(&path));
+    assert!(UnixStream::connect(&path).is_ok());
 }
 
 #[test]
@@ -267,10 +256,8 @@ fn a_connection_from_another_user_is_closed_without_an_answer() {
     });
     let uid = own();
     let app = mcp.fixture.app.handle().clone();
-    let serving =
-        tauri::async_runtime::spawn(
-            async move { mcp::serve_connection(app, theirs, uid + 1).await },
-        );
+    // The client end is configured before the server task starts: the server closes its end at once, and on macOS
+    // `setsockopt` (the read timeout) on a socket whose peer has already closed fails with EINVAL.
     let mut client = {
         let std_stream = ours.into_std().unwrap();
         std_stream.set_nonblocking(false).unwrap();
@@ -279,6 +266,10 @@ fn a_connection_from_another_user_is_closed_without_an_answer() {
             .unwrap();
         std_stream
     };
+    let serving =
+        tauri::async_runtime::spawn(
+            async move { mcp::serve_connection(app, theirs, uid + 1).await },
+        );
     use std::io::{Read, Write};
     let _ = client.write_all(b"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n");
     let mut buffer = [0u8; 16];

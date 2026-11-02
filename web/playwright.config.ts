@@ -6,8 +6,7 @@ export default defineConfig({
   testDir: "tests/visual",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  // Один повтор в CI: поле в фокусе изредка всё ещё даёт 2 пикселя расхождения (ошибка ввода в окне чата, 28.10.2026,
-  // несмотря на reducedMotion ниже). Настоящая регрессия воспроизводится и при повторе.
+  // One retry in CI for one-off load hiccups; it does not cure the 2-pixel difference (see NOISY in tests/visual/stories.spec.ts).
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
   // reducedMotion: переходы дизайн-системы при Reduce Motion нулевые (themes.css), и снимок не может поймать их на середине.
@@ -15,6 +14,7 @@ export default defineConfig({
   // на ±1 уровень: `animations: "disabled"` не всегда успевает довести CSS-переход до конца.
   use: { baseURL: "http://127.0.0.1:6007", reducedMotion: "reduce" },
   // threshold: 0 — по умолчанию 0.2, и тогда заметная смена фона проходит как «то же самое».
+  // No pixel tolerance here: the two stories with a known 2-pixel rasterization noise get one in tests/visual/stories.spec.ts.
   expect: { toHaveScreenshot: { animations: "disabled", threshold: 0 } },
   projects: [
     {
