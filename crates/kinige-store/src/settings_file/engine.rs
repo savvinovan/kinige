@@ -10,6 +10,7 @@ use serde_json::{Map, Value};
 use std::collections::HashSet;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
@@ -67,6 +68,8 @@ pub struct SettingsFile {
     jobs: Option<Sender<Job>>,
     thread: Option<JoinHandle<()>>,
     status: Arc<Mutex<SettingsFileState>>,
+    /// Finished polls of the file thread (idle ones too). Only for tests, see [`SettingsFile::polls`].
+    polls: Arc<AtomicU64>,
 }
 
 impl SettingsFile {
@@ -102,14 +105,17 @@ impl SettingsFile {
         guarded(&mut engine, Engine::reconcile);
         engine.initial = false;
         let (jobs, inbox) = mpsc::channel::<Job>();
+        let polls = Arc::new(AtomicU64::new(0));
+        let counter = polls.clone();
         let thread = std::thread::Builder::new()
             .name("kinige-settings-file".into())
-            .spawn(move || run(engine, inbox))
+            .spawn(move || run(engine, inbox, counter))
             .ok();
         SettingsFile {
             jobs: Some(jobs),
             thread,
             status,
+            polls,
         }
     }
 
@@ -138,6 +144,13 @@ impl SettingsFile {
         });
         self.jobs.as_ref()?.send(job).ok()?;
         answer.recv().ok()
+    }
+
+    /// How many polls the file thread has finished (a poll that found nothing to do counts too). Tests that assert "the
+    /// log did not grow over N polls" wait for this number instead of sleeping.
+    #[doc(hidden)]
+    pub fn polls(&self) -> u64 {
+        self.polls.load(Ordering::SeqCst)
     }
 
     /// Перечитать файл сейчас, не дожидаясь опроса (тесты).
@@ -172,13 +185,16 @@ impl Drop for SettingsFile {
     }
 }
 
-fn run(mut engine: Engine, inbox: mpsc::Receiver<Job>) {
+fn run(mut engine: Engine, inbox: mpsc::Receiver<Job>, polls: Arc<AtomicU64>) {
     loop {
         match inbox.recv_timeout(engine.options.poll) {
             Ok(job) => {
                 let _ = catch_unwind(AssertUnwindSafe(|| job(&mut engine)));
             }
-            Err(RecvTimeoutError::Timeout) => guarded(&mut engine, Engine::tick),
+            Err(RecvTimeoutError::Timeout) => {
+                guarded(&mut engine, Engine::tick);
+                polls.fetch_add(1, Ordering::SeqCst);
+            }
             Err(RecvTimeoutError::Disconnected) => break,
         }
     }
