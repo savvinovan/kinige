@@ -1,6 +1,7 @@
 //! Настройки (`app_setting`, не синхронизируются): папка Markdown-копии и размер текста (ADR-0004).
 
 use crate::error::{read_err, write_err};
+use crate::forest::stored_view;
 use crate::send::mark_all_dirty;
 use crate::{Store, StoreError};
 use kinige_domain::emoji::emoji_identity;
@@ -83,7 +84,7 @@ impl Store {
     /// система при регистрации, её накладывает слой Tauri.
     pub fn get_settings(&self) -> Result<Settings, StoreError> {
         let default = self.inner.default_mirror_dir.clone();
-        let (text_size, folder, pending_days, shortcuts, collapsed, recent) =
+        let (text_size, folder, pending_days, shortcuts, collapsed, recent, forest) =
             self.read(|conn| {
                 let text_size = get_setting(conn, KEY_TEXT_SIZE).map_err(read_err)?;
                 let folder = effective_mirror_dir(conn, default.as_deref()).map_err(read_err)?;
@@ -93,9 +94,14 @@ impl Store {
                 let shortcuts = shortcut_statuses(conn).map_err(read_err)?;
                 let collapsed = get_setting(conn, KEY_SIDEBAR_COLLAPSED).map_err(read_err)?;
                 let recent = recent_emoji(conn).map_err(read_err)?;
-                Ok((text_size, folder, pending, shortcuts, collapsed, recent))
+                let forest = stored_view(conn).map_err(read_err)?;
+                Ok((
+                    text_size, folder, pending, shortcuts, collapsed, recent, forest,
+                ))
             })?;
         Ok(Settings {
+            forest_view: forest.0,
+            forest_mode: forest.1,
             sidebar_collapsed: collapsed.as_deref() == Some("1"),
             recent_emoji: recent,
             backup: self.inner.backup.status(&self.inner.db_path),

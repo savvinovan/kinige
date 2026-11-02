@@ -12,6 +12,7 @@ pub mod draft;
 pub mod emoji;
 pub mod folders;
 pub mod forest;
+pub mod forest_year;
 pub mod groups;
 pub mod history;
 pub mod hlc;
@@ -54,6 +55,8 @@ pub use api::{
 };
 pub use api_error::{ApiError, ErrorCode};
 pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, RestoreOutcome, StartupState};
+pub use forest::{FirstWeekday, Season};
+pub use forest_year::{ForestDay, ForestMode, ForestTarget, ForestView, ForestYear};
 pub use import::{
     ImportChatKind, ImportChatPreview, ImportOpened, ImportPreview, ImportProgress, ImportReport,
 };

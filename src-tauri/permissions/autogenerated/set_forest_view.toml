@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-forest-view"
+description = "Enables the set_forest_view command without any pre-configured scope."
+commands.allow = ["set_forest_view"]
+
+[[permission]]
+identifier = "deny-set-forest-view"
+description = "Denies the set_forest_view command without any pre-configured scope."
+commands.deny = ["set_forest_view"]

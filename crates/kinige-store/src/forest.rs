@@ -1,0 +1,189 @@
+//! The year's forest (slice 6, PRD §7): the per-day facts of one year, the entry a click on a day opens and the local view
+//! state. Entries count when they are live (`deleted_at IS NULL`) and their chat is not in the trash; archived chats
+//! count. One range query over the `message_day` index per year, no cache table (slice 6 spec). The rules are in
+//! `kinige_domain::forest` / `forest_year`; nothing here is written to the log.
+
+use crate::error::{read_err, write_err};
+use crate::settings::get_setting;
+use crate::{Now, Store, StoreError};
+use chrono::NaiveDate;
+use kinige_domain::forest::{FirstWeekday, NoteStat};
+use kinige_domain::forest_year::{
+    DayStats, FOREST_YEARS, ForestMode, ForestTarget, ForestView, ForestYear, day_chat, year_table,
+};
+use kinige_domain::groups::INBOX_ID;
+use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, is_valid_journal_date, journal_date};
+use kinige_domain::on_this_day::year_of;
+use rusqlite::{Connection, OptionalExtension};
+
+pub(crate) const KEY_FOREST_VIEW: &str = "forest_view";
+pub(crate) const KEY_FOREST_MODE: &str = "forest_mode";
+
+/// Live entries of chats that are not in the trash.
+const LIVE: &str = "m.deleted_at IS NULL AND c.deleted_at IS NULL";
+
+impl Store {
+    /// The table of `year` for the forest: every day with its cell, season, notes, stage and first-entry excerpt, plus the
+    /// current journal day and the year of the oldest entry. A year outside `1000..=9999` is `InvalidDate`. The
+    /// facts are read in one snapshot.
+    pub fn get_forest_year(
+        &self,
+        year: i32,
+        first: FirstWeekday,
+        now: &Now,
+    ) -> Result<ForestYear, StoreError> {
+        if !FOREST_YEARS.contains(&year) {
+            return Err(StoreError::InvalidDate);
+        }
+        let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
+        let (stats, oldest) = self.read(|conn| {
+            let conn = &conn.unchecked_transaction().map_err(read_err)?;
+            Ok((year_stats(conn, year)?, oldest_year(conn)?))
+        })?;
+        let table = year_table(year, first, &stats).ok_or(StoreError::InvalidDate)?;
+        let this_year = year_of(&today).unwrap_or(year);
+        Ok(ForestYear {
+            year,
+            first_weekday: first,
+            cols: table.cols,
+            min_year: oldest.map_or(this_year, |oldest| oldest.min(this_year)),
+            today,
+            days: table.days,
+        })
+    }
+
+    /// The entry a click on a day opens: the open chat if it has entries that day, otherwise the chat with the most,
+    /// the Inbox on a tie (`forest_year::day_chat`); the entry is the day's first one in that chat. `None` for an empty
+    /// day. A chat id that does not exist is treated as "no open chat". A bad date is `InvalidDate`.
+    pub fn forest_day_target(
+        &self,
+        date: &str,
+        current_chat: Option<&str>,
+    ) -> Result<Option<ForestTarget>, StoreError> {
+        if !is_valid_journal_date(date) {
+            return Err(StoreError::InvalidDate);
+        }
+        self.read(|conn| {
+            let conn = &conn.unchecked_transaction().map_err(read_err)?;
+            let counts = chat_counts(conn, date)?;
+            let Some(chat_id) = day_chat(&counts, current_chat, INBOX_ID) else {
+                return Ok(None);
+            };
+            let message_id: Option<String> = conn
+                .query_row(
+                    "SELECT id FROM message WHERE chat_id = ?1 AND journal_date = ?2 AND deleted_at IS NULL \
+                     ORDER BY created_at, id LIMIT 1",
+                    (chat_id, date),
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(read_err)?;
+            Ok(message_id.map(|message_id| ForestTarget {
+                chat_id: chat_id.to_string(),
+                message_id,
+            }))
+        })
+    }
+
+    /// Remembers how much of the forest is shown and whether it is the board or the calendar. Local, not synced, not
+    /// written to `settings.json`; both values are saved in one transaction.
+    pub fn set_forest_view(&self, view: ForestView, mode: ForestMode) -> Result<(), StoreError> {
+        self.write(move |conn| {
+            let tx = conn.transaction().map_err(write_err)?;
+            for (key, value) in [
+                (KEY_FOREST_VIEW, view.as_setting()),
+                (KEY_FOREST_MODE, mode.as_setting()),
+            ] {
+                tx.execute(
+                    "INSERT INTO app_setting(key, value) VALUES (?1, ?2) \
+                     ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    (key, value),
+                )
+                .map_err(write_err)?;
+            }
+            tx.commit().map_err(write_err)?;
+            Ok(())
+        })
+    }
+}
+
+/// How the stored view state reads back: unknown or missing values are the defaults (the strip, the board).
+pub(crate) fn stored_view(conn: &Connection) -> rusqlite::Result<(ForestView, ForestMode)> {
+    let view = get_setting(conn, KEY_FOREST_VIEW)?;
+    let mode = get_setting(conn, KEY_FOREST_MODE)?;
+    Ok((
+        ForestView::from_setting(view.as_deref()),
+        ForestMode::from_setting(mode.as_deref()),
+    ))
+}
+
+/// The facts of every day of `year` that has live entries, in calendar order. Rows with a date that is not a date
+/// (a damaged value) are skipped.
+fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError> {
+    let mut statement = conn
+        .prepare_cached(&format!(
+            "SELECT m.journal_date, m.body_md FROM message m JOIN chat c ON c.id = m.chat_id \
+             WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 AND {LIVE} \
+             ORDER BY m.journal_date, m.created_at, m.id"
+        ))
+        .map_err(read_err)?;
+    let mut rows = statement
+        .query((format!("{year:04}-01-01"), format!("{year:04}-12-31")))
+        .map_err(read_err)?;
+    let mut days: Vec<DayStats> = Vec::new();
+    while let Some(row) = rows.next().map_err(read_err)? {
+        let text: String = row.get(0).map_err(read_err)?;
+        let Ok(date) = NaiveDate::parse_from_str(&text, "%Y-%m-%d") else {
+            continue;
+        };
+        let body: String = row.get(1).map_err(read_err)?;
+        let note = NoteStat {
+            len: body.chars().count(),
+            attachments: 0,
+        };
+        match days.last_mut() {
+            Some(day) if day.date == date => day.notes.push(note),
+            _ => days.push(DayStats {
+                date,
+                notes: vec![note],
+                first_body: Some(body),
+            }),
+        }
+    }
+    Ok(days)
+}
+
+/// The year of the oldest live entry of a chat that is not in the trash.
+fn oldest_year(conn: &Connection) -> Result<Option<i32>, StoreError> {
+    let oldest: Option<String> = conn
+        .query_row(
+            &format!(
+                "SELECT m.journal_date FROM message m JOIN chat c ON c.id = m.chat_id WHERE {LIVE} \
+                 ORDER BY m.journal_date LIMIT 1"
+            ),
+            [],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(read_err)?;
+    Ok(oldest.as_deref().and_then(year_of))
+}
+
+/// `(chat id, live entries)` of one day.
+fn chat_counts(conn: &Connection, date: &str) -> Result<Vec<(String, usize)>, StoreError> {
+    let mut statement = conn
+        .prepare_cached(&format!(
+            "SELECT m.chat_id, COUNT(*) FROM message m JOIN chat c ON c.id = m.chat_id \
+             WHERE m.journal_date = ?1 AND {LIVE} GROUP BY m.chat_id"
+        ))
+        .map_err(read_err)?;
+    let counts = statement
+        .query_map([date], |row| {
+            let count: i64 = row.get(1)?;
+            Ok((row.get(0)?, usize::try_from(count).unwrap_or(0)))
+        })
+        .map_err(read_err)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(read_err)?;
+    Ok(counts)
+}

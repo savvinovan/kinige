@@ -1,19 +1,22 @@
 //! The forest (PRD §7, ADR-0013): where a day sits on the board (grid B, weekday x week), the season of a date, the
-//! weight of a day and its growth stage. No IO. This is the single source of truth for slice 6. The spike keeps a
-//! TypeScript copy with the same B rows of the golden table (and the rejected grid A) in
-//! `spikes/S3-forest/src/calendar.ts`.
-//!
-//! Not wired into the API yet: slice 6 decides the IPC shape and adds the ts-rs types.
+//! weight of a day and its growth stage. No IO. This is the single source of truth for slice 6: the frontend never
+//! copies these rules, it receives the whole year table built from them (`forest_year`). The spike keeps a TypeScript
+//! copy with the same B rows of the golden table (and the rejected grid A) in `spikes/S3-forest/src/calendar.ts`.
 
 use chrono::{Datelike, NaiveDate};
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 /// Number of growth stages above zero: stage 6 is the biggest tree (PRD §7.2).
 pub const MAX_STAGE: u8 = 6;
 /// Default `w_max` of the stage formula (PRD §7.2).
 pub const DEFAULT_W_MAX: f64 = 30.0;
 
-/// The first day of a week on the board (PRD §7.1, ADR-0013).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The first day of a week on the board (PRD §7.1, ADR-0013). Anything but `"monday"` / `"sunday"` is rejected when
+/// the IPC argument is parsed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "FirstWeekday.ts")]
 pub enum FirstWeekday {
     Monday,
     Sunday,
@@ -33,7 +36,9 @@ pub struct GridDims {
     pub cols: u8,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "Season.ts")]
 pub enum Season {
     Winter,
     Spring,

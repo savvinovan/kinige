@@ -4,8 +4,9 @@
 use crate::hotkeys::Hotkeys;
 use kinige_domain::link::{LinkError, validate_external_url};
 use kinige_domain::{
-    ApiError, AppInfo, ChatDraft, ChatList, ErrorCode, FeedCursor, Language, MessagePage,
-    MessageView, OnThisDay, Settings, ShortcutKind, TextSize,
+    ApiError, AppInfo, ChatDraft, ChatList, ErrorCode, FeedCursor, FirstWeekday, ForestMode,
+    ForestTarget, ForestView, ForestYear, Language, MessagePage, MessageView, OnThisDay, Settings,
+    ShortcutKind, TextSize,
 };
 use kinige_store::{DEFAULT_PAGE, Now, PageAt, SettingsFile, Store, StoreError};
 use tauri::{AppHandle, Manager, Runtime, State};
@@ -141,6 +142,43 @@ pub fn get_on_this_day(store: State<'_, Store>) -> ApiResult<Option<OnThisDay>> 
 #[tauri::command(async)]
 pub fn dismiss_on_this_day(store: State<'_, Store>, date: String) -> ApiResult<()> {
     store.dismiss_on_this_day(&date).map_err(api)
+}
+
+/// The table of one year for the forest (slice 6): every day with its cell, season, notes, stage and the start of its
+/// first entry. `year` outside 1000..=9999 is `invalid_date`; an unknown `first_weekday` is rejected while the arguments
+/// are parsed. Only the main window has this command (the excerpts are entry text).
+#[tauri::command(async)]
+pub fn get_forest_year(
+    store: State<'_, Store>,
+    year: i32,
+    first_weekday: FirstWeekday,
+) -> ApiResult<ForestYear> {
+    store
+        .get_forest_year(year, first_weekday, &Now::system())
+        .map_err(api)
+}
+
+/// The entry a click on a day opens (slice 6): the open chat if it has entries that day, otherwise the chat with the
+/// most, the Inbox on a tie; `null` for an empty day. A bad `date` is `invalid_date`.
+#[tauri::command(async)]
+pub fn get_forest_day_target(
+    store: State<'_, Store>,
+    date: String,
+    current_chat_id: Option<String>,
+) -> ApiResult<Option<ForestTarget>> {
+    store
+        .forest_day_target(&date, current_chat_id.as_deref())
+        .map_err(api)
+}
+
+/// Remembers the forest view (hidden, strip, expanded) and mode (board or calendar). Local, like the sidebar state.
+#[tauri::command(async)]
+pub fn set_forest_view(
+    store: State<'_, Store>,
+    view: ForestView,
+    mode: ForestMode,
+) -> ApiResult<()> {
+    store.set_forest_view(view, mode).map_err(api)
 }
 
 /// Смена сочетания клавиш: проверка до сохранения, регистрация в системе, сохранение. Отказ — код ошибки, прежнее
