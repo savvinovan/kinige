@@ -25,20 +25,6 @@ prepare_app "$SOURCE_APP"
 WORK="$(chat_id 'Работа')"
 BOOKS="$(chat_id 'Книги')"
 
-in_settings() { export AX_WINDOW=Settings; }
-in_main() { export AX_WINDOW=Kinige; }
-shoot_settings() { in_settings; shoot "$1" settings; }
-shoot_main() { in_main; shoot "$1" main; in_settings; }
-settings_windows() { KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list 2>/dev/null | awk -F'\t' '$5 == "Settings" || $5 == "Настройки"' | wc -l | tr -d ' '; }
-
-wait_for_settings() {
-  for _ in $(seq 1 30); do
-    [ "$(settings_windows)" -ge 1 ] && return 0
-    sleep 1
-  done
-  fail "окно настроек не появилось"
-}
-
 # Правка файла «снаружи»: временный файл и mv (режим 0600). Аргумент — содержимое.
 write_settings() {
   printf '%s' "$1" > "$K/data/.editor.tmp"
