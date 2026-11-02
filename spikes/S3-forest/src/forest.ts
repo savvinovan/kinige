@@ -277,14 +277,25 @@ export class Forest {
         this.settled = true;
         this.invalidate();
       }, 140);
-      const k = cam.s / cur.cam.s;
-      const w = (cur.canvas.width / cur.dpr) * k;
-      const h = (cur.canvas.height / cur.dpr) * k;
-      this.ctx.drawImage(cur.canvas, (-cur.mx - cur.cam.tx) * k + cam.tx, (-cur.my - cur.cam.ty) * k + cam.ty, w, h);
-    } else {
-      this.ctx.drawImage(cur.canvas, -cur.mx, -cur.my, cur.canvas.width / cur.dpr, cur.canvas.height / cur.dpr);
     }
+    this.blit(cur, cam);
     return animating;
+  }
+
+  /** Draws the part of the layer that lands in the window: a source rectangle, so the cost follows the window, not the layer. */
+  private blit(L: Layer, cam: Camera): void {
+    const k = cam.s / L.cam.s;
+    const dx = (-L.mx - L.cam.tx) * k + cam.tx;
+    const dy = (-L.my - L.cam.ty) * k + cam.ty;
+    const dw = (L.canvas.width / L.dpr) * k;
+    const dh = (L.canvas.height / L.dpr) * k;
+    const x0 = Math.max(0, dx);
+    const y0 = Math.max(0, dy);
+    const x1 = Math.min(this.w, dx + dw);
+    const y1 = Math.min(this.h, dy + dh);
+    if (x1 <= x0 || y1 <= y0) return;
+    const f = L.dpr / k;
+    this.ctx.drawImage(L.canvas, (x0 - dx) * f, (y0 - dy) * f, (x1 - x0) * f, (y1 - y0) * f, x0, y0, x1 - x0, y1 - y0);
   }
 
   /** Does the layer cover the whole window at the current camera, at a scale close enough to look right? */
