@@ -313,6 +313,19 @@ const FOREST_PHRASES: [&str; 8] = [
     "Тихий день с открытым окном",
 ];
 
+/// Text of exactly `len` characters made of the forest phrases, so that long entries look like entries (the weight of a day
+/// depends on the length, so the length is exact).
+fn filler(len: usize, start: u64) -> String {
+    let mut text = String::new();
+    let mut n = start as usize;
+    while text.chars().count() < len {
+        text.push_str(FOREST_PHRASES[n % FOREST_PHRASES.len()]);
+        text.push_str(". ");
+        n += 3;
+    }
+    text.chars().take(len).collect()
+}
+
 /// A year of the current journal year and the year before it for the forest (slice 6): every stage, a week without entries
 /// (45 days before today in the current year, the first week of August in the last), days with entries in two or three
 /// chats, one entry in the trash. Today's tree is left at stage 3 with weight 6.2: one entry of a hundred characters (weight
@@ -332,7 +345,7 @@ fn seed_forest(store: &Store, now: &Now, books: &str, work: &str, data: &std::pa
             .timestamp_millis();
         Now::at(ms, &now.tz)
     };
-    let long = |n: u64| "я".repeat(200 + (n % 80) as usize);
+    let long = |n: u64| filler(200 + (n % 80) as usize, n);
     for (seed, year) in [
         (0x5EED_6001u64, today.year()),
         (0x5EED_6002, today.year() - 1),
@@ -423,7 +436,7 @@ fn seed_forest(store: &Store, now: &Now, books: &str, work: &str, data: &std::pa
         store
             .send_message(
                 INBOX_ID,
-                &"я".repeat(len),
+                &filler(len, seconds as u64),
                 &Now::at(now.ms - seconds * 1000, &now.tz),
             )
             .expect("запись сегодня");
