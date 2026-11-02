@@ -134,7 +134,7 @@ shoot_settings 11-access-log-after-kill9
 sql "update chat set ai_excluded = 1 where id = '$BOOKS'"
 sleep 4
 press "Visible chats"
-has "excluded from AI" || fail "в списке чатов нет пометки «excluded from AI»"
+has "excluded from AI" || fail "the chat list has no \"excluded from AI\" mark"
 shoot_settings 15-chat-excluded-from-ai
 
 # ---- 9. Large text: settings, visible chats, the log ----

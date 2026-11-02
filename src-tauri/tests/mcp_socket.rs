@@ -190,7 +190,10 @@ fn a_socket_file_removed_from_outside_is_rebound_on_the_next_check() {
 fn wait_for_binds_above(state: &McpState, seen: u64) {
     let deadline = Instant::now() + Duration::from_secs(10);
     while state.binds() <= seen {
-        assert!(Instant::now() < deadline, "слушатель не привязался заново");
+        assert!(
+            Instant::now() < deadline,
+            "the listener was not bound again"
+        );
         std::thread::sleep(Duration::from_millis(5));
     }
 }

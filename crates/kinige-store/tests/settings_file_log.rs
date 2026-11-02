@@ -152,9 +152,7 @@ fn a_busy_database_logs_the_apply_error_once_and_again_after_a_success() {
     write_file(rig.dir.path(), br#"{"text_size":"large"}"#, 0o600);
     // The poll notices the file and fails to apply it: the first line. The failed apply clears the file signature, so every
     // later poll reads and tries the file again; those polls must stay silent.
-    wait_until("первое предупреждение", || {
-        count("не применён") >= 1
-    });
+    wait_until("the first warning", || count("не применён") >= 1);
     rig.after_polls(QUIET_POLLS);
     assert_eq!(count("не применён"), 1, "{:?}", file_lines());
     // Починили: применяется (успех сбрасывает вид «apply»).
@@ -165,9 +163,7 @@ fn a_busy_database_logs_the_apply_error_once_and_again_after_a_success() {
     // Снова сбой: вторая строка, а не молчание и не поток.
     hide("app_setting", "app_setting_away");
     write_file(rig.dir.path(), br#"{"text_size":"normal"}"#, 0o600);
-    wait_until("второе предупреждение", || {
-        count("не применён") >= 2
-    });
+    wait_until("the second warning", || count("не применён") >= 2);
     rig.after_polls(QUIET_POLLS);
     assert_eq!(count("не применён"), 2, "{:?}", file_lines());
 }

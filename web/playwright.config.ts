@@ -6,7 +6,7 @@ export default defineConfig({
   testDir: "tests/visual",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  // One retry in CI for one-off load hiccups; it does not cure the 2-pixel difference (see maxDiffPixels below).
+  // One retry in CI for one-off load hiccups; it does not cure the 2-pixel difference (see NOISY in tests/visual/stories.spec.ts).
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
   // reducedMotion: переходы дизайн-системы при Reduce Motion нулевые (themes.css), и снимок не может поймать их на середине.
@@ -14,14 +14,8 @@ export default defineConfig({
   // на ±1 уровень: `animations: "disabled"` не всегда успевает довести CSS-переход до конца.
   use: { baseURL: "http://127.0.0.1:6007", reducedMotion: "reduce" },
   // threshold: 0 — по умолчанию 0.2, и тогда заметная смена фона проходит как «то же самое».
-  // maxDiffPixels: 8 — rasterization noise, not page state (KINIG-48). The artifacts of failed runs (31.10-01.11.2026) show
-  // 2 pixels off by 1 level of a channel, exactly at the rounded corners of a focused field with an error (the error border
-  // and the inner focus line share one radius: two anti-aliased edges on top of each other; "Rename chat" with an error, the
-  // send error). The retry in the same job a few seconds later gives the same values, so it is not a transition, a caret or
-  // focus: the likely cause is runners with different CPUs rounding Skia's anti-aliasing differently (not verified: the
-  // rasterizer was not pinned with Chromium flags). A real regression (a colour, a shifted line, text) touches hundreds of
-  // pixels and does not fit in 8.
-  expect: { toHaveScreenshot: { animations: "disabled", threshold: 0, maxDiffPixels: 8 } },
+  // No pixel tolerance here: the two stories with a known 2-pixel rasterization noise get one in tests/visual/stories.spec.ts.
+  expect: { toHaveScreenshot: { animations: "disabled", threshold: 0 } },
   projects: [
     {
       name: "chromium",

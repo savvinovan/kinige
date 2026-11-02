@@ -91,9 +91,7 @@ impl Rig {
     /// cares about.
     pub fn after_polls(&self, polls: u64) {
         let target = self.file.polls() + polls + 1;
-        wait_until("опросы потока файла", || {
-            self.file.polls() >= target
-        });
+        wait_until("polls of the file thread", || self.file.polls() >= target);
     }
 
     /// Как правит редактор: временный файл рядом и `rename` (режим 0600).
