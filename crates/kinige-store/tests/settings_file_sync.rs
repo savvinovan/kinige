@@ -61,7 +61,7 @@ fn our_own_write_is_not_applied_again() {
         .unwrap()
         .unwrap();
     assert_eq!(rig.json()["text_size"], "large");
-    std::thread::sleep(Duration::from_millis(200));
+    rig.after_polls(8);
     // Одно уведомление за правку окна; опрос свою запись не применяет и не уведомляет.
     assert_eq!(
         rig.changes.load(std::sync::atomic::Ordering::SeqCst),

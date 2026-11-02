@@ -41,9 +41,10 @@ fn a_panic_inside_a_read_fails_that_call_only_and_later_reads_work() {
 #[test]
 fn a_panic_in_a_mirror_pass_is_caught_shown_in_settings_and_the_thread_keeps_going() {
     let dir = tempfile::tempdir().unwrap();
-    // Повтор после паники — через 1,5 с: за это время ошибка в настройках успевает быть увиденной.
+    // The retry after a panic is a minute away, so the error stays in the settings until the test wakes the thread itself
+    // (the next `send_message`); with a short retry the error could be gone before a loaded runner got to look at it.
     let mut options = options(dir.path());
-    options.mirror_retry = std::time::Duration::from_millis(1500);
+    options.mirror_retry = std::time::Duration::from_secs(60);
     let store = Store::open_at(options, &moscow(T0)).unwrap();
     store.send_message(INBOX_ID, "первая", &moscow(T0)).unwrap();
     let file = mirror_dir(dir.path())
