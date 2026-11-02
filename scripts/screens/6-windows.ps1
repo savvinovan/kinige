@@ -1,6 +1,8 @@
 # Screens of slice 6 (the year's forest) in the real window on a GitHub Windows runner:
-#   powershell -NoProfile -File scripts/screens/6.ps1 -Installer <Kinige-setup.exe>
-# Windows PowerShell 5.1 (the runner has it).
+#   powershell -NoProfile -File scripts/screens/6-windows.ps1 -Installer <Kinige-setup.exe>
+# Windows PowerShell 5.1 (the runner has it). Run with `gh workflow run screens.yml --ref <branch> -f slice=6-windows -f os=windows`:
+# the slice name is `6-windows` and the result goes to docs/screens/6-windows/, because the commit job of screens.yml replaces
+# a whole slice directory and the macOS pictures of slice 6 live in docs/screens/6/.
 #
 # The scenario is short on purpose: 01 the strip (the default), 02 the expanded board, 03 the calendar, and week-info.txt, the
 # probe of the first weekday in the real WebView2 (which of the three locale APIs answered; ADR-0013). There is no input at all:
@@ -13,7 +15,7 @@
 # touched, and the scenario works only in the runner's temporary directory (no user profile path).
 param(
   [Parameter(Mandatory = $true)][string]$Installer,
-  [string]$Out = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'docs\screens\6'),
+  [string]$Out = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'docs\screens\6-windows'),
   [string]$Work = (Join-Path $(if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { $env:TEMP }) 'kinige-screens')
 )
 
