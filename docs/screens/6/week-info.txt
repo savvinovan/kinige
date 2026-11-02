@@ -3,6 +3,6 @@ runner locale: en_US
 runner languages: ("en-US")
 runner first weekday setting: not set
 macOS: 15.8.2
-[21:00:49][DEBUG][kinige_lib::commands] forest: first weekday Monday from GetWeekInfo
-[21:15:33][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
-[21:25:58][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
+[21:48:34][DEBUG][kinige_lib::commands] forest: first weekday Monday from GetWeekInfo
+[22:11:28][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
+[22:30:19][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
