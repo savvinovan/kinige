@@ -362,7 +362,7 @@ function drawLabels(ctx: CanvasRenderingContext2D, scene: Scene, view: View, chr
   };
   const tile = TW * cam.s;
   if (tile < 12) return; // a dot-sized board: the labels would only smear
-  const coarse = tile < 22;
+  const coarse = tile < 30; // fewer labels on simplified boards, where they would overlap
   if (scene.grid === "A") {
     for (let r = 0; r < 12; r++) if (!coarse || r % 3 === 0) put(MONTHS[r] ?? "", r, -1, "right");
     for (let c = 0; c < 31; c++) if (!coarse || c % 10 === 9 || c === 0) put(String(c + 1), -1, c, "left");
