@@ -106,7 +106,10 @@ describe("Карточка «В этот день» в ленте Inbox", () => 
     expect(card()).toBeNull();
     // Следующий день журнала (после 04:00): окно получает фокус и перечитывает карточку.
     nowMs = Date.UTC(2026, 10, 1, 9, 0);
-    act(() => {
+    // The window "focus" listener is attached by a passive effect after the first commit; an event dispatched before that is lost
+    // (the flake of KINIG-48). An empty async `act` flushes pending effects first.
+    await act(async () => {});
+    await act(async () => {
       window.dispatchEvent(new Event("focus"));
     });
     const next = await screen.findByRole("region", { name: "В этот день" });
