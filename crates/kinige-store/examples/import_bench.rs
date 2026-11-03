@@ -4,6 +4,9 @@
 //! Usage (the data directory is temporary, not the real database!):
 //! `cargo run --release -p kinige-store --example import_bench -- <data directory> synthetic <N>`
 //! `cargo run --release -p kinige-store --example import_bench -- <data directory> file <result.json>`
+//! Slice 7: `synthetic <N> --images <M>` gives M messages a drawn photo (1600 x 1200 JPEG, laid out in
+//! `<data directory>/export/photos`) and imports them with the files; `--files <K> --file-mb <S>` adds K plain files of S MB each
+//! (hard links of one file, so the export takes S MB, the stored copies K x S MB). Peak memory: run under `/usr/bin/time -l`.
 
 // The example is a console utility: printing to stdout and panicking on any error are allowed (the rules "only through
 // log" and "never panic" are for app code).
@@ -26,17 +29,35 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 
+#[path = "import_bench/media.rs"]
+mod media;
+
+use media::{MediaPlan, attachment_benches};
+
 fn main() {
     let mut args = std::env::args().skip(1);
     let data = PathBuf::from(args.next().expect("data directory"));
     let mode = args.next().expect("synthetic | file");
     let arg = args.next().expect("N or the path to result.json");
+    let media = MediaPlan::parse(args.collect());
+    let export_dir = data.join("export");
     let json = match mode.as_str() {
-        "synthetic" => synthetic(arg.parse().expect("number of messages")),
+        "synthetic" => synthetic(arg.parse().expect("number of messages"), &media),
         "file" => std::fs::read_to_string(&arg).expect("the file is readable"),
         other => panic!("unknown mode {other}"),
     };
     std::fs::create_dir_all(&data).unwrap();
+    if media.total() > 0 {
+        let t = Instant::now();
+        media.lay_out(&export_dir);
+        println!(
+            "export files laid out: {} photos, {} files of {} MB: {:.0} ms",
+            media.images,
+            media.files,
+            media.file_mb,
+            ms(t)
+        );
+    }
     let options = || {
         let mut options = StoreOptions::new(data.join("kinige.db"), Some(data.join("mirror")));
         options.start_maintenance = false;
@@ -69,16 +90,29 @@ fn main() {
     let ids = export.chats.iter().map(|c| c.id.clone()).collect();
     let t = Instant::now();
     let report = store
-        .import_telegram(
+        .import_telegram_with_media(
             export.clone(),
             ids,
             Language::Ru,
             &Now::system(),
             |_| {},
             Arc::new(AtomicBool::new(false)),
+            (media.total() > 0).then_some(export_dir.as_path()),
         )
         .unwrap();
     let elapsed = ms(t);
+    if media.total() > 0 {
+        let mb = report.media_bytes as f64 / 1e6;
+        println!(
+            "media import: attached {}, missing {}, skipped {}, disk full {}; {mb:.0} MB in {:.1} s = {:.0} MB/s (with the text import)",
+            report.media_attached,
+            report.media_missing,
+            report.media_skipped,
+            report.disk_full,
+            elapsed / 1000.0,
+            mb / (elapsed / 1000.0)
+        );
+    }
     println!(
         "import: {:.0} ms ({:.1} us per message); imported {}, skipped: already present {}, service {}, empty {}; \
          attachment placeholders {}; chats created {}; backup: {}",
@@ -236,6 +270,9 @@ fn main() {
             result.hits.len()
         );
     }
+    if media.images > 0 {
+        attachment_benches(&store, &data);
+    }
 }
 
 fn ms(t: Instant) -> f64 {
@@ -276,7 +313,8 @@ fn sample_words(dir: &Path, n: usize) -> Vec<String> {
 }
 
 /// An export of "Saved Messages" with `n` messages over five years: Zipf-distributed words from a pseudo-vocabulary, some messages formatted.
-fn synthetic(n: usize) -> String {
+fn synthetic(n: usize, media: &MediaPlan) -> String {
+    assert!(media.total() <= n, "more media than messages");
     let mut state = 0x5EED_1234_ABCD_9876u64;
     let mut next = move || {
         state ^= state << 13;
@@ -331,8 +369,24 @@ fn synthetic(n: usize) -> String {
         let unix = start + (next() % (5 * 365 * 86_400)) as i64;
         let id = i as u64 + 1;
         let json_text = serde_json::to_string(&text).unwrap();
+        // The media messages are spread evenly over the history: the k-th one when the running share crosses a whole number.
+        let media_field = if (i + 1) * media.total() / n > i * media.total() / n {
+            let k = i * media.total() / n;
+            if k < media.images {
+                format!(
+                    r#""photo":"photos/photo_{k}.jpg","photo_file_size":300000,"width":1600,"height":1200,"#
+                )
+            } else {
+                let f = k - media.images;
+                format!(
+                    r#""file":"files/big_{f}.bin","file_name":"big_{f}.bin","mime_type":"application/octet-stream","#
+                )
+            }
+        } else {
+            String::new()
+        };
         out.push_str(&format!(
-            r#"{{"id":{id},"type":"message","date_unixtime":"{unix}","from":"Я","from_id":"user1000001","text":{json_text},"text_entities":[{{"type":"plain","text":{json_text}}}]}}"#
+            r#"{{"id":{id},"type":"message","date_unixtime":"{unix}","from":"Я","from_id":"user1000001",{media_field}"text":{json_text},"text_entities":[{{"type":"plain","text":{json_text}}}]}}"#
         ));
     }
     out.push_str("]}");

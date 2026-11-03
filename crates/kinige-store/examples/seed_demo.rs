@@ -4,7 +4,9 @@
 //! to the real database. All texts are synthetic. Slice 6 - a synthetic current year and previous year of entries for the
 //! forest: every growth stage, a week without entries, days with several chats, an entry in the trash; today's tree is at
 //! the third stage right at the border of the fourth (one entry of a hundred characters raises it). The forest is seeded
-//! only with `KINIGE_SEED_FOREST=1`, so that the scenarios of earlier slices do not change their data.
+//! only with `KINIGE_SEED_FOREST=1`, so that the scenarios of earlier slices do not change their data. Slice 7 - drawn
+//! pictures and documents attached to entries, pending tiles, a missing file, a trashed photo and a Telegram import with
+//! photos, only with `KINIGE_SEED_ATTACH=1`.
 //!
 //! Usage: `cargo run -p kinige-store --example seed_demo -- <data directory> [<Markdown copy folder>]`
 
@@ -30,9 +32,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
+#[path = "seed_demo/attach.rs"]
+mod attach;
 #[path = "seed_demo/forest.rs"]
 mod forest;
 
+use attach::seed_attachments;
 use forest::seed_forest;
 
 const MINUTE: i64 = 60_000;
@@ -154,6 +159,10 @@ fn main() {
         seed_forest(&store, &now, &history, &old.id, &data);
     }
     seed_telegram_chat(&store, &now);
+    // Photos and files (slice 7) only when asked, like the forest.
+    if std::env::var_os("KINIGE_SEED_ATTACH").is_some() {
+        seed_attachments(&store, &now, &data, &ideas.id);
+    }
     // The day's copy for the line in "Settings".
     store.run_maintenance(&at(0)).unwrap();
     println!("done: {}", data.display());
