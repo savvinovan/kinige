@@ -453,22 +453,29 @@ BENCH="$REPO/target/release/examples/import_bench"
 [ -x "$BENCH" ] || BENCH="${CARGO_TARGET_DIR:-$REPO/target}/release/examples/import_bench"
 /usr/bin/time -l "$BENCH" "$K/bench" synthetic 100000 --images 10000 > "$OUT/bench.txt" 2> "$K/debug/bench-time.txt" || fail "import_bench 100000 with 10000 photos"
 grep -E "maximum resident|peak memory|real" "$K/debug/bench-time.txt" >> "$OUT/bench.txt"
+# The cold start on the 100 000-entry data with the photos, between two controls on an empty database with the same binary and the
+# same VM: the VM drifts (a run of this scenario had a median 1.27 s and another 1.82 s on the same code), so the number is read
+# against the controls taken right before and right after it.
+{
+  KINIGE_BIN="$APP/Contents/MacOS/kinige" limit 600 "$REPO/scripts/measure-cold-start.sh" 10
+} > "$OUT/cold-start-control-before.txt" 2>&1 || fail "cold start control (before)"
 {
   KINIGE_DATA_DIR="$K/bench" KINIGE_MIRROR_DIR="$K/bench/mirror" KINIGE_BIN="$APP/Contents/MacOS/kinige" \
     limit 600 "$REPO/scripts/measure-cold-start.sh" 10
 } > "$OUT/cold-start.txt" 2>&1 || fail "cold start measurement"
+{
+  KINIGE_BIN="$APP/Contents/MacOS/kinige" limit 600 "$REPO/scripts/measure-cold-start.sh" 10
+} > "$OUT/cold-start-control-after.txt" 2>&1 || fail "cold start control (after)"
 rm -rf "$K/bench"
 /usr/bin/time -l "$BENCH" "$K/bench-media" synthetic 200 --files 40 --file-mb 50 > "$OUT/import-media.txt" 2> "$K/debug/media-time.txt" || fail "import_bench 2 GB"
 grep -E "maximum resident|peak memory|real" "$K/debug/media-time.txt" >> "$OUT/import-media.txt"
 rm -rf "$K/bench-media"
-# The control for the forest year table: the same code, the same VM, the same 100 000 entries, no photos. The difference between the
-# two lines is what the attachments cost; the VM itself drifts between runs, so a number from another run is not a comparison.
-"$BENCH" "$K/bench-plain" synthetic 100000 > "$OUT/bench-no-images.txt" 2>&1 || fail "import_bench 100000 without photos"
-rm -rf "$K/bench-plain"
+# The forest year table against itself: import_bench alternates, in one process on one database, rounds with the attachments table and
+# rounds with it swapped for an empty twin. The difference of the two lines is what the attachments cost; a number from another run or
+# another VM is not a comparison.
 {
-  echo "# get_forest_year on the same VM and the same code in this run: with 10 000 photos (bench.txt) and without photos (bench-no-images.txt)"
-  echo "with photos:    $(grep 'forest year table' "$OUT/bench.txt" | sed -E 's/.*calls over [0-9.]+: //; s/;.*//')"
-  echo "without photos: $(grep 'forest year table' "$OUT/bench-no-images.txt" | sed -E 's/.*calls over [0-9.]+: //; s/;.*//')"
+  echo "# get_forest_year, alternating in one process on the same data (from bench.txt)"
+  grep 'forest year table, alternating' "$OUT/bench.txt" | sed -E 's/forest year table, alternating with the attachment table swapped for an empty one, //'
 } > "$OUT/forest-compare.txt"
 cat "$OUT/forest-compare.txt"
 cat "$OUT/bench.txt" "$OUT/cold-start.txt" "$OUT/import-media.txt"

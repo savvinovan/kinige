@@ -17,8 +17,8 @@ use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, is_valid_journal_date, journal_date};
 use kinige_domain::on_this_day::year_of;
 use rusqlite::{Connection, OptionalExtension};
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, HashSet};
 
 pub(crate) const KEY_FOREST_VIEW: &str = "forest_view";
 pub(crate) const KEY_FOREST_MODE: &str = "forest_mode";
@@ -141,6 +141,10 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
         first_has_files: bool,
         photos: u32,
     }
+    // Which entries have attachments at all: one index-only pass over `attachment_message`. Only those entries are asked for their
+    // counts, so the other nine in ten cost a hash lookup, not a probe of the table (a probe per entry cost a fifth of the pass).
+    let owners = attachment_owners(conn)?;
+    let mut counts = conn.prepare_cached(COUNTS_SQL).map_err(read_err)?;
     let mut statement = conn.prepare_cached(&year_sql()).map_err(read_err)?;
     let mut rows = statement
         .query((format!("{year:04}-01-01"), format!("{year:04}-12-31")))
@@ -159,9 +163,19 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
             continue;
         };
         let created: i64 = row.get(1).map_err(read_err)?;
-        // Live attachments of this entry, counted in the same pass (not a second pass over the year).
-        let all = usize::try_from(row.get::<_, i64>(4).map_err(read_err)?).unwrap_or(0);
-        let photos = usize::try_from(row.get::<_, i64>(5).map_err(read_err)?).unwrap_or(0);
+        let (all, photos) = if owners.contains(id) {
+            counts
+                .query_row([id], |row| {
+                    Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
+                })
+                .map_err(read_err)?
+        } else {
+            (0, 0)
+        };
+        let (all, photos) = (
+            usize::try_from(all).unwrap_or(0),
+            usize::try_from(photos).unwrap_or(0),
+        );
         let note = NoteStat {
             len: body.chars().count(),
             attachments: all,
@@ -201,17 +215,28 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
     Ok(stats)
 }
 
-/// The rows of one year, `?1..=?2` being its first and last date. The last two columns are the entry's live attachments and how
-/// many of them are photos: a correlated probe of `attachment_message` per entry, in the same pass as the scan (a separate
-/// aggregate over the year cost more than the scan itself on the 100,000-entry bench).
+/// The rows of one year, `?1..=?2` being its first and last date.
 fn year_sql() -> String {
     format!(
-        "SELECT m.journal_date, m.created_at, m.id, m.body_md, \
-         (SELECT COUNT(*) FROM attachment a WHERE a.message_id = m.id AND a.deleted_at IS NULL), \
-         (SELECT COUNT(*) FROM attachment a WHERE a.message_id = m.id AND a.deleted_at IS NULL AND a.kind = 'image') \
-         FROM message m JOIN chat c ON c.id = m.chat_id \
+        "SELECT m.journal_date, m.created_at, m.id, m.body_md FROM message m JOIN chat c ON c.id = m.chat_id \
          WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 AND {LIVE}"
     )
+}
+
+/// The live attachments of one entry (`?1`) and how many of them are photos.
+const COUNTS_SQL: &str = "SELECT COUNT(*), COALESCE(SUM(kind = 'image'), 0) FROM attachment \
+                          WHERE message_id = ?1 AND deleted_at IS NULL";
+
+/// The ids of the entries that have any attachment row (live or not): the index `attachment_message` covers the column, so this reads
+/// no table rows. An entry in the set is then asked for its live counts; an entry outside it has none.
+fn attachment_owners(conn: &Connection) -> Result<HashSet<String>, StoreError> {
+    let mut statement = conn
+        .prepare_cached("SELECT DISTINCT message_id FROM attachment")
+        .map_err(read_err)?;
+    let rows = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(read_err)?;
+    rows.collect::<Result<_, _>>().map_err(read_err)
 }
 
 /// The start of an entry that is kept for the excerpt, cut on a character boundary.

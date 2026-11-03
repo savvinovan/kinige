@@ -11,6 +11,7 @@
 
 use super::ms;
 use kinige_domain::SearchFilters;
+use kinige_domain::forest::FirstWeekday;
 use kinige_store::{MediaVariant, Now, Store};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -98,6 +99,8 @@ pub fn attachment_benches(store: &Store, data: &Path) {
         );
     }
 
+    forest_with_and_without_photos(store, &conn);
+
     // The sweep is one writer job over every row and file: how long it holds the writer (a send waits that long).
     let rows: i64 = conn
         .query_row("SELECT COUNT(*) FROM attachment", [], |row| row.get(0))
@@ -108,6 +111,58 @@ pub fn attachment_benches(store: &Store, data: &Path) {
         "attachment sweep over {rows} rows: {:.0} ms ({report:?})",
         ms(t)
     );
+}
+
+/// What the attachments cost `get_forest_year`, measured against itself: the same store, the same data and the same page cache,
+/// alternating rounds in which the `attachment` table is swapped for an empty twin (the query then finds no photos) and swapped
+/// back. A number from another run or another VM is not a comparison; this one is.
+fn forest_with_and_without_photos(store: &Store, conn: &rusqlite::Connection) {
+    conn.execute_batch(
+        "CREATE TABLE attachment_empty AS SELECT * FROM attachment WHERE 0; \
+         CREATE INDEX attachment_empty_message ON attachment_empty(message_id, sort_index);",
+    )
+    .unwrap();
+    let swap = |to_empty: bool| {
+        let sql = if to_empty {
+            "ALTER TABLE attachment RENAME TO attachment_held; ALTER TABLE attachment_empty RENAME TO attachment;"
+        } else {
+            "ALTER TABLE attachment RENAME TO attachment_empty; ALTER TABLE attachment_held RENAME TO attachment;"
+        };
+        conn.execute_batch(sql).unwrap();
+    };
+    let run = || -> Vec<f64> {
+        (0..30)
+            .flat_map(|round| (2018..=2023).map(move |year| (round, year)))
+            .map(|(round, year)| {
+                let first = if round % 2 == 0 {
+                    FirstWeekday::Monday
+                } else {
+                    FirstWeekday::Sunday
+                };
+                let t = Instant::now();
+                store.get_forest_year(year, first, &Now::system()).unwrap();
+                ms(t)
+            })
+            .collect()
+    };
+    let (mut with, mut without) = (Vec::new(), Vec::new());
+    for _ in 0..3 {
+        with.extend(run());
+        swap(true);
+        without.extend(run());
+        swap(false);
+    }
+    conn.execute_batch("DROP TABLE attachment_empty").unwrap();
+    for (label, mut values) in [("with photos", with), ("without photos", without)] {
+        values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        println!(
+            "forest year table, alternating with the attachment table swapped for an empty one, {label} ({} calls): p50 {:.1} ms, p95 {:.1} ms, max {:.1} ms",
+            values.len(),
+            values[values.len() / 2],
+            values[(values.len() * 95).div_ceil(100) - 1],
+            values[values.len() - 1]
+        );
+    }
 }
 
 /// Photos and plain files that the synthetic export carries (slice 7).
