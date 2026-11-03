@@ -1,7 +1,7 @@
-//! Дописывание к последней записи Inbox: правило цели (граница 10 минут, `origin`, удалённая, вчерашняя, `sv` > 1), `base`/`supersedes` обеих веток §3.4.
+//! Appending to the last Inbox entry: the target rule (10-minute boundary, `origin`, deleted, yesterday's, `sv` > 1), `base`/`supersedes` of both branches of §3.4.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -34,8 +34,11 @@ fn append_within_ten_minutes_extends_the_same_entry_as_a_new_paragraph() {
     assert_eq!(outcome.action, CaptureAction::Appended);
     assert_eq!(outcome.message.id, first.id);
     assert_eq!(outcome.message.body_md, "Идея: попробовать\n\nи ещё");
-    assert_eq!(outcome.message.created_at, first.created_at, "то же время");
-    assert_eq!(count(dir.path()), 1, "новой записи нет");
+    assert_eq!(
+        outcome.message.created_at, first.created_at,
+        "the same time"
+    );
+    assert_eq!(count(dir.path()), 1, "no new entry");
     assert_eq!(store.list_chats().unwrap()[0].count, 1);
     assert_eq!(store.get_capture_draft().unwrap(), "");
 
@@ -48,7 +51,10 @@ fn append_within_ten_minutes_extends_the_same_entry_as_a_new_paragraph() {
         after.body_supersedes,
         format!(r#"["{}"]"#, body_hlc(&before))
     );
-    assert!(body_hlc(&after) > body_hlc(&before), "HLC строго больше");
+    assert!(
+        body_hlc(&after) > body_hlc(&before),
+        "HLC is strictly greater"
+    );
     assert!(parse_hlc(&body_hlc(&after)).is_ok());
     assert_eq!(
         group(&after, "body"),
@@ -57,30 +63,30 @@ fn append_within_ten_minutes_extends_the_same_entry_as_a_new_paragraph() {
             T0 + 3 * MINUTE,
             body_hlc(&before)
         ),
-        "байты группы body: каноничные, предыдущая версия в supersedes"
+        "bytes of the body group: canonical, the previous version in supersedes"
     );
-    // Остальные группы и их HLC нетронуты, записей ревизий и других таблиц нет.
+    // The other groups and their HLC are untouched, there are no revision rows or rows in other tables.
     for name in ["core", "flags", "placement", "deleted"] {
         assert_eq!(group(&after, name), group(&before, name), "{name}");
     }
     let hlcs: Value = serde_json::from_str(&after.hlc_json).unwrap();
     let hlcs_before: Value = serde_json::from_str(&before.hlc_json).unwrap();
     for name in ["core", "flags", "placement", "deleted"] {
-        assert_eq!(hlcs[name], hlcs_before[name], "HLC группы {name}");
+        assert_eq!(hlcs[name], hlcs_before[name], "HLC of group {name}");
     }
     assert_eq!(hlcs["body"]["sv"], 1);
     assert_eq!(after.schema_version, 1);
-    // Колонки — разобранное представление байтов группы (инвариант ADR-0001 §B).
+    // The columns are the parsed representation of the group bytes (invariant of ADR-0001 §B).
     let body: Value = serde_json::from_str(&group(&after, "body")).unwrap();
     assert_eq!(body["body_md"], json!(after.body_md));
     assert_eq!(body["edited_at"], json!(after.edited_at));
 
-    // Markdown-копия показывает дописанный текст под тем же временем.
+    // The Markdown copy shows the appended text under the same time.
     let file = mirror_dir(dir.path())
         .join("Inbox")
         .join("2026")
         .join("2026-10-21.md");
-    wait_until("копия с дописанным текстом", || {
+    wait_until("copy with the appended text", || {
         std::fs::read_to_string(&file).is_ok_and(|text| text.contains("Идея: попробовать\n\nи ещё"))
     });
     let text = std::fs::read_to_string(&file).unwrap();
@@ -148,7 +154,7 @@ fn append_boundary_is_ten_minutes_inclusive() {
 
 #[test]
 fn a_target_shown_at_open_that_expired_before_cmd_enter_gives_a_new_entry() {
-    // Окно показало подсказку (цель была), человек думал дольше десяти минут: правило решает Rust в момент отправки.
+    // The window showed the hint (there was a target), the person thought for longer than ten minutes: Rust decides the rule at send time.
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let first = store.capture_send("начало", &moscow(T0)).unwrap().message;
@@ -164,13 +170,13 @@ fn a_target_shown_at_open_that_expired_before_cmd_enter_gives_a_new_entry() {
     assert_eq!(
         row(dir.path(), &first.id).body_md,
         "начало",
-        "первая запись не тронута"
+        "the first entry is untouched"
     );
 }
 
 #[test]
 fn append_without_a_target_creates_a_new_entry() {
-    // Пустой Inbox за сегодня.
+    // An empty Inbox for today.
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let out = store.capture_append("первая", &moscow(T0)).unwrap();
@@ -178,7 +184,7 @@ fn append_without_a_target_creates_a_new_entry() {
     assert_eq!(count(dir.path()), 1);
     assert_eq!(row(dir.path(), &out.message.id).edited_at, None);
 
-    // Последняя запись старше десяти минут.
+    // The last entry is older than ten minutes.
     let out2 = store
         .capture_append("через пятнадцать минут", &moscow(T0 + 15 * MINUTE))
         .unwrap();
@@ -203,10 +209,10 @@ fn a_foreign_origin_is_never_appended_to() {
         let after = row(dir.path(), &first.id);
         assert_eq!(
             after.groups_raw, before.groups_raw,
-            "чужая запись нетронута"
+            "the foreign entry is untouched"
         );
         assert_eq!(after.body_md, "чужая");
-        // Теперь последняя запись — моя, и дописывать можно к ней, а не к чужой.
+        // Now the last entry is mine, and appending is possible to it, not to the foreign one.
         assert_eq!(
             store
                 .capture_view(&moscow(T0 + MINUTE))
@@ -239,9 +245,12 @@ fn a_deleted_last_entry_is_skipped_and_the_previous_one_is_the_target() {
     assert_eq!(out.message.id, first.id);
     assert_eq!(out.message.body_md, "первая\n\nдописано");
     let deleted = row(dir.path(), &second.id);
-    assert_eq!(deleted.body_md, "вторая", "удалённая запись не менялась");
+    assert_eq!(
+        deleted.body_md, "вторая",
+        "the deleted entry did not change"
+    );
 
-    // Если удалена единственная запись — цели нет.
+    // If the only entry is deleted, there is no target.
     let dir2 = tempfile::tempdir().unwrap();
     let store2 = open_without_mirror(dir2.path());
     let only = store2.capture_send("одна", &moscow(T0)).unwrap().message;
@@ -257,10 +266,10 @@ fn a_deleted_last_entry_is_skipped_and_the_previous_one_is_the_target() {
 
 #[test]
 fn an_entry_from_yesterday_is_not_appended_even_within_ten_minutes() {
-    // Граница дня 04:00: запись в 03:55 принадлежит вчерашнему дню журнала, в 04:02 уже сегодня.
+    // The day boundary is 04:00: an entry at 03:55 belongs to yesterday's journal day, at 04:02 it is already today.
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
-    let t_0355 = T_NIGHT + (3 * 60 + 55 - 30) * MINUTE; // 00:30 + 3 ч 25 мин
+    let t_0355 = T_NIGHT + (3 * 60 + 55 - 30) * MINUTE; // 00:30 + 3 h 25 min
     let first = store
         .capture_send("поздняя", &moscow(t_0355))
         .unwrap()
@@ -302,7 +311,7 @@ fn an_entry_with_a_group_of_a_newer_version_is_read_only() {
     let out = store.capture_append("новая", &moscow(T0 + MINUTE)).unwrap();
     assert_eq!(out.action, CaptureAction::Created);
     let after = row(dir.path(), &first.id);
-    assert_eq!(after.groups_raw, before.groups_raw, "байт в байт");
+    assert_eq!(after.groups_raw, before.groups_raw, "byte for byte");
     assert_eq!(after.hlc_json, before.hlc_json);
     assert_eq!(after.body_md, "новее");
 }

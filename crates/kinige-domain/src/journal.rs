@@ -1,10 +1,10 @@
-//! `journal_date` — день записи с границей 04:00 (ТЗ §4.1). Чистая арифметика: смещение часового пояса на момент записи
-//! приходит снаружи, поэтому переход на летнее время учитывается тем, кто это смещение знает.
+//! `journal_date` is the entry's day with a 04:00 boundary (PRD §4.1). Pure arithmetic: the time zone offset at the moment
+//! of the entry comes from outside, so the daylight saving switch is handled by whoever knows that offset.
 
-/// День заканчивается в 04:00: запись в 00:30 относится ко вчера. Настройка границы — не в слайсе 1.
+/// The day ends at 04:00: an entry at 00:30 belongs to yesterday. Setting the boundary is not in slice 1.
 pub const DAY_BOUNDARY_MINUTES: u32 = 4 * 60;
 
-/// Дата записи `YYYY-MM-DD`: локальное время (`UTC + offset`) минус граница дня.
+/// The entry date `YYYY-MM-DD`: local time (`UTC + offset`) minus the day boundary.
 pub fn journal_date(created_at_ms: i64, utc_offset_secs: i32, boundary_minutes: u32) -> String {
     let local_secs = created_at_ms.div_euclid(1000) + i64::from(utc_offset_secs);
     let shifted = local_secs - i64::from(boundary_minutes) * 60;
@@ -12,7 +12,7 @@ pub fn journal_date(created_at_ms: i64, utc_offset_secs: i32, boundary_minutes: 
     format!("{year:04}-{month:02}-{day:02}")
 }
 
-/// Дни от 1970-01-01 → (год, месяц, день) по григорианскому календарю (алгоритм Говарда Хиннанта, `civil_from_days`).
+/// Days since 1970-01-01 -> (year, month, day) in the Gregorian calendar (Howard Hinnant's algorithm, `civil_from_days`).
 fn civil_from_days(days: i64) -> (i64, u32, u32) {
     let z = days + 719_468;
     let era = z.div_euclid(146_097);
@@ -27,14 +27,14 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
     (if month <= 2 { year + 1 } else { year }, month, day)
 }
 
-/// `YYYY-MM-DD` с настоящими цифрами и месяцем 01–12, днём 01–31 (проверка формата; существование даты не проверяется).
+/// `YYYY-MM-DD` with real digits and a month 01-12, a day 01-31 (a format check; whether the date exists is not checked).
 pub fn is_journal_date(text: &str) -> bool {
     date_parts(text)
         .is_some_and(|(_, month, day)| (1..=12).contains(&month) && (1..=31).contains(&day))
 }
 
-/// Год, месяц и день из `YYYY-MM-DD`: ровно 10 байт ASCII, разделители на местах, остальное — цифры. Диапазоны не
-/// проверяются. Работает по байтам, поэтому на любой строке (в том числе не ASCII) отвечает `None`, а не паникой.
+/// The year, month and day from `YYYY-MM-DD`: exactly 10 ASCII bytes, separators in place, the rest digits. Ranges are
+/// not checked. It works on bytes, so on any string (including non-ASCII) it answers `None` instead of panicking.
 pub fn date_parts(text: &str) -> Option<(i32, u32, u32)> {
     let [y1, y2, y3, y4, b'-', m1, m2, b'-', d1, d2] = *text.as_bytes() else {
         return None;
@@ -50,9 +50,9 @@ pub fn date_parts(text: &str) -> Option<(i32, u32, u32)> {
     Some((year, number(&[m1, m2])?, number(&[d1, d2])?))
 }
 
-/// Настоящая дата `YYYY-MM-DD`: формат, месяц 01–12, день в пределах месяца (с високосными годами). Будущие даты
-/// допустимы (ADR-0001 §2): `journal_date` — содержимое записи, а не часы. Год — не раньше 1000 и не позже 9999, чтобы
-/// запись не уезжала в «год 0000», где календарь не определён.
+/// A real date `YYYY-MM-DD`: the format, a month 01-12, a day within the month (with leap years). Future dates are
+/// allowed (ADR-0001 §2): `journal_date` is the content of the entry, not a clock. The year is not earlier than 1000 and
+/// not later than 9999, so that an entry does not drift into "year 0000", where the calendar is undefined.
 pub fn is_valid_journal_date(text: &str) -> bool {
     let Some((year, month, day)) = date_parts(text) else {
         return false;
@@ -72,7 +72,7 @@ pub fn is_valid_journal_date(text: &str) -> bool {
 mod tests {
     use super::*;
 
-    /// Момент UTC в мс по компонентам (тест не зависит от часового пояса машины).
+    /// A UTC moment in ms from components (the test does not depend on the machine's time zone).
     fn utc(y: i64, m: u32, d: u32, h: i64, min: i64) -> i64 {
         let days = days_from_civil(y, m, d);
         ((days * 24 + h) * 60 + min) * 60_000
@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn boundary_at_four_in_the_morning() {
-        // 2026-10-21 по Москве (UTC+3).
+        // 2026-10-21 in Moscow (UTC+3).
         assert_eq!(
             journal_date(
                 utc(2026, 10, 21, 0, 30) - i64::from(MOSCOW) * 1000,
@@ -106,7 +106,7 @@ mod tests {
                 DAY_BOUNDARY_MINUTES
             ),
             "2026-10-20",
-            "00:30 — ещё вчера"
+            "00:30 is still yesterday"
         );
         assert_eq!(
             journal_date(
@@ -115,7 +115,7 @@ mod tests {
                 DAY_BOUNDARY_MINUTES
             ),
             "2026-10-20",
-            "03:59 — ещё вчера"
+            "03:59 is still yesterday"
         );
         assert_eq!(
             journal_date(
@@ -124,7 +124,7 @@ mod tests {
                 DAY_BOUNDARY_MINUTES
             ),
             "2026-10-21",
-            "04:00 — уже сегодня"
+            "04:00 is already today"
         );
         assert_eq!(
             journal_date(
@@ -138,20 +138,20 @@ mod tests {
 
     #[test]
     fn boundary_across_spring_forward() {
-        // Берлин, 2026-03-29: в 01:00 UTC часы переходят с +01:00 на +02:00 (02:00 → 03:00 по местному).
+        // Berlin, 2026-03-29: at 01:00 UTC the clocks go from +01:00 to +02:00 (02:00 -> 03:00 local).
         let before = 3600; // CET
         let after = 7200; // CEST
-        // 00:59 UTC = 01:59 CET: до границы 04:00 — предыдущий день.
+        // 00:59 UTC = 01:59 CET: before the 04:00 boundary, so the previous day.
         assert_eq!(
             journal_date(utc(2026, 3, 29, 0, 59), before, DAY_BOUNDARY_MINUTES),
             "2026-03-28"
         );
-        // 01:59 UTC = 03:59 CEST: переход уже случился, но до 04:00 — всё ещё предыдущий день.
+        // 01:59 UTC = 03:59 CEST: the switch has already happened, but it is before 04:00, so still the previous day.
         assert_eq!(
             journal_date(utc(2026, 3, 29, 1, 59), after, DAY_BOUNDARY_MINUTES),
             "2026-03-28"
         );
-        // 02:00 UTC = 04:00 CEST: граница дня; без учёта нового смещения (+01:00) это была бы 03:00 и вчерашняя дата.
+        // 02:00 UTC = 04:00 CEST: the day boundary; without the new offset (+01:00) it would be 03:00 and yesterday's date.
         assert_eq!(
             journal_date(utc(2026, 3, 29, 2, 0), after, DAY_BOUNDARY_MINUTES),
             "2026-03-29"
@@ -159,13 +159,13 @@ mod tests {
         assert_eq!(
             journal_date(utc(2026, 3, 29, 2, 0), before, DAY_BOUNDARY_MINUTES),
             "2026-03-28",
-            "старое смещение дало бы другой день"
+            "the old offset would give another day"
         );
     }
 
     #[test]
     fn boundary_across_fall_back() {
-        // Берлин, 2026-10-25: в 01:00 UTC часы переходят с +02:00 на +01:00 (03:00 → 02:00).
+        // Berlin, 2026-10-25: at 01:00 UTC the clocks go from +02:00 to +01:00 (03:00 -> 02:00).
         assert_eq!(
             journal_date(utc(2026, 10, 25, 1, 59), 3600, DAY_BOUNDARY_MINUTES),
             "2026-10-24",
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn negative_offsets_and_leap_days() {
-        // Нью-Йорк (UTC−5), 2024-02-29 03:00 по местному — ещё 28-е (високосный год).
+        // New York (UTC-5), 2024-02-29 03:00 local is still the 28th (a leap year).
         assert_eq!(
             journal_date(utc(2024, 2, 29, 8, 0), -5 * 3600, DAY_BOUNDARY_MINUTES),
             "2024-02-28"
@@ -197,17 +197,17 @@ mod tests {
         assert_eq!(
             journal_date(utc(2024, 3, 1, 3, 0), 0, DAY_BOUNDARY_MINUTES),
             "2024-02-29",
-            "до 04:00 первого марта — 29 февраля"
+            "before 04:00 on March 1 it is February 29"
         );
         assert_eq!(
             journal_date(utc(2026, 1, 1, 3, 59), 0, DAY_BOUNDARY_MINUTES),
             "2025-12-31",
-            "граница года"
+            "year boundary"
         );
         assert_eq!(
             journal_date(utc(1969, 12, 31, 12, 0), 0, 0),
             "1969-12-31",
-            "до эпохи"
+            "before the epoch"
         );
     }
 

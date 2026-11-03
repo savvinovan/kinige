@@ -1,4 +1,4 @@
-//! Перезапись группы `body`: `base`/`supersedes`, лимит 64, дословность чужого, ошибки (ADR-0001 §3.3, §3.4, §4).
+//! Rewriting the `body` group: `base`/`supersedes`, the limit of 64, verbatim foreign data, errors (ADR-0001 §3.3, §3.4, §4).
 
 use super::*;
 
@@ -34,7 +34,7 @@ fn unconfirmed_version_gets_base_from_itself_and_supersedes_the_old_hlc() {
         assert_eq!(
             hlcs[other],
             json!({"h": hlc(1_760_000_000_000), "sv": 1}),
-            "{other} не тронута"
+            "{other} is untouched"
         );
     }
 }
@@ -68,7 +68,10 @@ fn second_rewrite_of_an_unconfirmed_version_accumulates_supersedes() {
             hlc(1_760_000_100_000)
         )
     );
-    assert_eq!(second.body_base, None, "base первой версии остаётся");
+    assert_eq!(
+        second.body_base, None,
+        "the base of the first version stays"
+    );
 }
 
 #[test]
@@ -95,7 +98,7 @@ fn confirmed_version_becomes_base_and_supersedes_is_empty() {
 #[test]
 fn unknown_groups_unknown_body_fields_and_extra_hlc_fields_survive_byte_for_byte() {
     let row = message("Идея");
-    // Группа новой версии с пробелами в байтах и своим sv, лишнее поле в записи HLC чужой группы, неизвестное поле в body.
+    // A group of a newer version with spaces in its bytes and its own sv, an extra field in the HLC record of a foreign group, an unknown field in body.
     let future = r#"{ "z": [1, 2],  "a": "ё" }"#;
     let mut groups = parse_groups_raw(&row.groups_raw).unwrap();
     groups.insert(
@@ -142,21 +145,25 @@ fn unknown_groups_unknown_body_fields_and_extra_hlc_fields_survive_byte_for_byte
     .unwrap();
 
     let after = parse_groups_raw(&out.groups_raw).unwrap();
-    assert_eq!(after["future"].get(), future, "неизвестная группа дословно");
+    assert_eq!(
+        after["future"].get(),
+        future,
+        "the unknown group is verbatim"
+    );
     for name in ["core", "flags", "placement", "deleted"] {
-        assert_eq!(after[name].get(), groups[name].get(), "{name} дословно");
+        assert_eq!(after[name].get(), groups[name].get(), "{name} is verbatim");
     }
     let body: Value = serde_json::from_str(after["body"].get()).unwrap();
-    assert_eq!(body["flair"], "x", "неизвестное поле body сохранено");
+    assert_eq!(body["flair"], "x", "the unknown body field is kept");
     assert_eq!(
         after["body"].get(),
         String::from_utf8(jcs::canonical_bytes(&body).unwrap()).unwrap(),
-        "перезаписанная группа каноничная"
+        "the rewritten group is canonical"
     );
     let hlc_after: BTreeMap<String, Box<RawValue>> = serde_json::from_str(&out.hlc_json).unwrap();
     assert_eq!(hlc_after["future"].get(), hlcs["future"].get());
     assert_eq!(hlc_after["flags"].get(), hlcs["flags"].get());
-    assert_eq!(out.schema_version, 2, "максимум по группам");
+    assert_eq!(out.schema_version, 2, "the maximum over the groups");
 }
 
 #[test]
@@ -235,7 +242,7 @@ fn new_hlc_must_be_strictly_greater() {
             "{bad}"
         );
     }
-    // Тот же момент, но счётчик больше.
+    // The same moment, but a larger counter.
     let next = format!("{:013}-00001-{DEVICE}", 1_760_000_000_000u64);
     assert!(rewrite_body(&current(&row, false), "x", NOW, &next).is_ok());
 }
@@ -244,7 +251,7 @@ fn new_hlc_must_be_strictly_greater() {
 fn group_limit_counts_canonical_bytes_after_joining() {
     let row = message("Идея");
     let newer = hlc(1_760_000_100_000);
-    // Кавычки и переводы строк удваиваются в JCS.
+    // Quotes and line breaks double in JCS.
     let escaped = "\"\n".repeat(256 * 1024 - 8);
     assert_eq!(
         rewrite_body(&current(&row, false), &escaped, NOW, &newer),

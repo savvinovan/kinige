@@ -1,5 +1,6 @@
-//! Хранилище Kinige (ТЗ §3.2): SQLite через `rusqlite`, один поток-писатель, чтение отдельным соединением (WAL),
-//! миграции, Markdown-копия, копия файла базы. Бизнес-правила — в `kinige-domain`; здесь только транзакции и файлы.
+//! Kinige store (PRD §3.2): SQLite via `rusqlite`, one writer thread, reads on a separate connection (WAL),
+//! migrations, the Markdown copy, the database file backup. Business rules live in `kinige-domain`; here only
+//! transactions and files.
 
 mod agent;
 mod agent_entry;
@@ -73,7 +74,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use writer::Writer;
 
-/// Фоновый поток хранилища (для тестов паники).
+/// A background thread of the store (for panic tests).
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy)]
 pub enum BackgroundThread {
@@ -81,8 +82,8 @@ pub enum BackgroundThread {
     Maintenance,
 }
 
-/// Сигнал о повреждении базы, найденном проверкой целостности в фоне: вызывается один раз за запуск, из потока
-/// обслуживания. Слой Tauri по нему ставит отметку «нужно восстановление» и сообщает окну.
+/// Signal about database corruption found by the background integrity check: called once per launch, from the
+/// maintenance thread. The Tauri layer uses it to set the "restore needed" mark and tell the window.
 #[derive(Clone)]
 pub struct CorruptionHook(pub Arc<dyn Fn() + Send + Sync>);
 
@@ -92,21 +93,21 @@ impl fmt::Debug for CorruptionHook {
     }
 }
 
-/// Параметры открытия хранилища.
+/// Options for opening the store.
 #[derive(Debug, Clone)]
 pub struct StoreOptions {
-    /// Файл базы SQLite.
+    /// The SQLite database file.
     pub db_path: PathBuf,
-    /// Папка Markdown-копии по умолчанию (`~/Documents/Kinige`); `None` — по умолчанию копии нет, пока папку не выберут.
+    /// Default Markdown copy folder (`~/Documents/Kinige`); `None` means there is no copy by default until a folder is chosen.
     pub default_mirror_dir: Option<PathBuf>,
-    /// Запускать ли фоновую запись копии (тесты процесса, убитого сразу после фиксации, выключают её).
+    /// Whether to start the background copy writer (tests of a process killed right after a commit turn it off).
     pub start_mirror: bool,
-    /// Через сколько повторять запись копии после ошибки.
+    /// How long to wait before retrying the copy write after an error.
     pub mirror_retry: Duration,
-    /// Запускать ли фоновое обслуживание: автоудаление корзины, проверка целостности, копия дня (тесты выключают и зовут
-    /// [`Store::run_maintenance`] сами).
+    /// Whether to start background maintenance: trash auto-delete, integrity check, the day's backup (tests turn it off
+    /// and call [`Store::run_maintenance`] themselves).
     pub start_maintenance: bool,
-    /// Что сделать, когда проверка целостности нашла повреждение.
+    /// What to do when the integrity check finds corruption.
     pub on_corruption: Option<CorruptionHook>,
 }
 
@@ -132,7 +133,7 @@ pub(crate) struct Inner {
     backup: BackupShared,
     maintenance: Arc<MaintenanceShared>,
     on_corruption: Option<CorruptionHook>,
-    /// Сколько раз за запуск лечили индекс поиска (`search::heal_search_index`).
+    /// How many times the search index was healed during this launch (`search::heal_search_index`).
     search_heals: Arc<std::sync::atomic::AtomicU64>,
 }
 
@@ -143,14 +144,14 @@ impl Drop for Inner {
     }
 }
 
-/// Хранилище. Копируется дёшево (общий `Arc`): команды Tauri держат свой экземпляр.
+/// The store. Cheap to clone (a shared `Arc`): Tauri commands hold their own instance.
 #[derive(Clone)]
 pub struct Store {
     inner: Arc<Inner>,
 }
 
-/// Перед миграцией существующей базы: проверка целостности (синхронно) и копия. Свежая база (файла нет или пустой, версия
-/// схемы 0) и база текущей версии копии не требуют.
+/// Before migrating an existing database: an integrity check (synchronous) and a backup. A fresh database (no file or an
+/// empty one, schema version 0) and a database of the current version need no backup.
 fn prepare_migration(db_path: &Path, now: &Now) -> Result<(), StoreError> {
     let exists = std::fs::metadata(db_path).is_ok_and(|m| m.len() > 0);
     if !exists {
@@ -164,34 +165,35 @@ fn prepare_migration(db_path: &Path, now: &Now) -> Result<(), StoreError> {
         return Ok(());
     }
     match backup::check_integrity(&conn) {
-        // Индекс поиска производный: его порча миграции не мешает (перестраивается при открытии или первом запросе).
+        // The search index is derived: its corruption does not block the migration (it is rebuilt on open or on the first query).
         backup::Integrity::Ok | backup::Integrity::SearchIndex => {}
         backup::Integrity::Corrupt => {
             return Err(StoreError::Corrupt(
-                "проверка целостности перед миграцией".into(),
+                "integrity check before the migration".into(),
             ));
         }
-        // Не повреждение: база занята или ввод-вывод не удался. Мигрировать без вердикта нельзя, а предлагать копии
-        // здоровой базе — тем более.
+        // Not corruption: the database is busy or an I/O call failed. Migrating without a verdict is not allowed, and
+        // offering backups for a healthy database is even less so.
         backup::Integrity::Unknown => {
             return Err(StoreError::Read(
-                "не удалось проверить целостность перед миграцией".into(),
+                "could not check integrity before the migration".into(),
             ));
         }
     }
-    // Нет копии — нет миграции: откат приложения после миграции не поддерживается (ТЗ §10.4).
+    // No backup, no migration: rolling the app back after a migration is not supported (PRD §10.4).
     backup::before_migration(&conn, db_path, current, &time::utc_stamp(now.ms))
-        .map_err(|error| StoreError::Write(format!("копия перед миграцией: {error:?}")))
+        .map_err(|error| StoreError::Write(format!("backup before the migration: {error:?}")))
 }
 
 impl Store {
-    /// Открывает базу, применяет миграции (перед миграцией существующей базы снимается копия), при первом запуске создаёт
-    /// `device_id`, часы HLC и Inbox (идемпотентно), запускает писателя, фоновую запись копии и обслуживание.
+    /// Opens the database, applies migrations (a backup is taken before migrating an existing database), on the first
+    /// launch creates `device_id`, the HLC clock and Inbox (idempotently), starts the writer, the background copy
+    /// writer and maintenance.
     pub fn open(options: StoreOptions) -> Result<Store, StoreError> {
         Store::open_at(options, &Now::system())
     }
 
-    /// То же, что [`Store::open`], но с заданным «сейчас» (тесты).
+    /// Same as [`Store::open`], but with a given "now" (tests).
     pub fn open_at(options: StoreOptions, now: &Now) -> Result<Store, StoreError> {
         if let Some(parent) = options.db_path.parent() {
             data_dir::create(parent).map_err(|e| StoreError::Internal(e.to_string()))?;
@@ -237,10 +239,10 @@ impl Store {
         Ok(store)
     }
 
-    /// Выполняет запись на потоке-писателе. Если запись сама перестроила индекс поиска (порча всплыла под `guarded`),
-    /// число лечений растёт: запрос со старым `seen` не станет перестраивать здоровый индекс ещё раз. Если порча
-    /// индекса всплыла там, где `guarded` не стоит (например, на `COMMIT`), индекс лечится по возможности сразу, чтобы
-    /// повтор записи прошёл; сама ошибка возвращается как есть.
+    /// Runs a write on the writer thread. If the write itself rebuilt the search index (corruption surfaced under
+    /// `guarded`), the heal count grows: a query with an old `seen` will not rebuild a healthy index again. If index
+    /// corruption surfaced where `guarded` is not set (for example, on `COMMIT`), the index is healed right away when
+    /// possible so that a retry of the write passes; the error itself is returned as is.
     fn write<T: Send + 'static>(
         &self,
         job: impl FnOnce(&mut Connection) -> Result<T, StoreError> + Send + 'static,
@@ -261,7 +263,7 @@ impl Store {
         result
     }
 
-    /// Запись без лечения индекса и без подсчёта: ею лечит сам индекс.
+    /// A write without index healing and without counting: the index heals itself with it.
     fn write_raw<T: Send + 'static>(
         &self,
         job: impl FnOnce(&mut Connection) -> Result<T, StoreError> + Send + 'static,
@@ -271,7 +273,7 @@ impl Store {
         result
     }
 
-    /// Выполняет чтение на отдельном соединении.
+    /// Runs a read on a separate connection.
     fn read<T>(
         &self,
         job: impl FnOnce(&Connection) -> Result<T, StoreError>,
@@ -281,42 +283,41 @@ impl Store {
         result
     }
 
-    /// Чтение без сигнала о повреждении: для запроса, который сам решает, что делать с `Corrupt` (поиск лечит свой индекс).
+    /// A read without the corruption signal: for a query that decides itself what to do with `Corrupt` (search heals its index).
     fn read_unnoted<T>(
         &self,
         job: impl FnOnce(&Connection) -> Result<T, StoreError>,
     ) -> Result<T, StoreError> {
-        // Паника внутри чтения (профиль release теперь с размоткой стека) не должна ломать все следующие чтения: она ловится
-        // здесь, вызов получает `Internal`, а замок, если его всё же отравили, берётся как есть — соединение чтения
-        // (`query_only`; транзакцию чтения, если нужна, открывает и закрывает сам запрос) после размотки согласовано.
+        // A panic inside a read (the release profile now unwinds the stack) must not break all following reads: it is caught
+        // here, the call gets `Internal`, and the lock, if it was poisoned anyway, is taken as is -- the read connection
+        // (`query_only`; the query itself opens and closes a read transaction if needed) is consistent after unwinding.
         let conn = self
             .inner
             .reader
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job(&conn))).unwrap_or_else(|_| {
-            log::error!("паника в чтении, вызов отменён");
-            Err(StoreError::Internal("паника при чтении".into()))
+            log::error!("panic in a read, the call is cancelled");
+            Err(StoreError::Internal("panic during a read".into()))
         })
     }
 
-    /// Только для тестов: паника внутри чтения. Следующие чтения должны работать.
+    /// Tests only: a panic inside a read. The following reads must work.
     #[doc(hidden)]
-    #[allow(clippy::panic)] // крючок для интеграционных тестов страховки от паники: паника здесь и есть его назначение
+    #[allow(clippy::panic)] // a hook for integration tests of the panic safety net: the panic is its whole purpose
     pub fn panic_in_read_for_test(&self) -> Result<(), StoreError> {
-        self.read(|_| -> Result<(), StoreError> {
-            panic!("проверка: паника в чтении")
-        })
+        self.read(|_| -> Result<(), StoreError> { panic!("check: panic in a read") })
     }
 
-    /// Только для тестов: шаг в проходе Markdown-копии после чтения пачки отметок и до проверки папки; `None` снимает его.
-    /// В шаге тест меняет папку копии посреди пачки (проход должен начаться заново с новой папкой).
+    /// Tests only: a step in the Markdown copy pass after reading a batch of marks and before checking the folder; `None`
+    /// removes it. In the step the test changes the copy folder in the middle of a batch (the pass must restart with the
+    /// new folder).
     #[doc(hidden)]
     pub fn set_mirror_batch_hook_for_test(&self, hook: Option<Arc<dyn Fn() + Send + Sync>>) {
         self.inner.mirror.set_batch_hook(hook);
     }
 
-    /// Только для тестов: следующий проход фоновой копии (`mirror`) или обслуживания (`maintenance`) паникует один раз.
+    /// Tests only: the next pass of the background copy (`mirror`) or maintenance (`maintenance`) panics once.
     #[doc(hidden)]
     pub fn inject_background_panic_for_test(&self, thread: BackgroundThread) {
         match thread {
@@ -327,15 +328,15 @@ impl Store {
         self.inner.maintenance.wake_now();
     }
 
-    /// Только для тестов: разбудить поток обслуживания сейчас.
+    /// Tests only: wake the maintenance thread now.
     #[doc(hidden)]
     pub fn wake_maintenance_for_test(&self) {
         self.inner.maintenance.wake_now();
     }
 
-    /// Любая команда, наткнувшаяся на повреждение (`SQLITE_CORRUPT`, `SQLITE_NOTADB`), проходит тот же путь, что и
-    /// фоновая проверка: один сигнал на запуск (отметка, флаг, событие окну) — иначе «Перезапустить» после такой ошибки
-    /// осталась бы мёртвой кнопкой, пока обслуживание не дойдёт до своей проверки.
+    /// Any command that runs into corruption (`SQLITE_CORRUPT`, `SQLITE_NOTADB`) takes the same path as the background
+    /// check: one signal per launch (mark, flag, event to the window) -- otherwise "Restart" after such an error would
+    /// be a dead button until maintenance reaches its own check.
     fn note_if_corrupt<T>(&self, result: &Result<T, StoreError>) {
         if matches!(result, Err(StoreError::Corrupt(_))) {
             self.report_corruption();
@@ -346,24 +347,25 @@ impl Store {
         self.inner.mirror.wake();
     }
 
-    /// Id Inbox: константа (ADR-0001, §3.6).
+    /// Inbox id: a constant (ADR-0001, §3.6).
     pub fn inbox_id(&self) -> &'static str {
         groups::INBOX_ID
     }
 
-    /// Сколько владельцев у хранилища (сам `Store`, его клоны, фоновые потоки через `Weak` не считаются): тест сервера MCP
-    /// проверяет, что подключённый клиент не держит клон `Store` (восстановление из копии не должно застать живой писатель).
+    /// How many owners the store has (the `Store` itself and its clones; background threads via `Weak` are not counted):
+    /// the MCP server test checks that a connected client does not hold a `Store` clone (a restore from a backup must not
+    /// find a live writer).
     #[doc(hidden)]
     pub fn handle_count(&self) -> usize {
         Arc::strong_count(&self.inner)
     }
 
-    /// Файл базы: нужен слою Tauri для восстановления и диагностики.
+    /// The database file: needed by the Tauri layer for restore and diagnostics.
     pub fn db_path(&self) -> &Path {
         &self.inner.db_path
     }
 
-    /// Прагмы соединения-писателя `(synchronous, fullfsync, journal_mode)`: для проверки, что запись долговечна.
+    /// Pragmas of the writer connection `(synchronous, fullfsync, journal_mode)`: to check that writes are durable.
     #[doc(hidden)]
     pub fn writer_pragmas(&self) -> Result<(i64, i64, String), StoreError> {
         self.write(|conn| {
@@ -378,13 +380,13 @@ impl Store {
         })
     }
 
-    /// Путь папки Markdown-копии по умолчанию нужен тестам и диагностике.
+    /// The default Markdown copy folder path is needed by tests and diagnostics.
     pub fn default_mirror_dir(&self) -> Option<&Path> {
         self.inner.default_mirror_dir.as_deref()
     }
 }
 
-/// Соединение с общими настройками. Для чтения — `query_only`.
+/// A connection with the shared settings. For reading it is `query_only`.
 pub(crate) fn open_connection(path: &Path, read_only: bool) -> Result<Connection, StoreError> {
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
         | OpenFlags::SQLITE_OPEN_CREATE
@@ -396,14 +398,14 @@ pub(crate) fn open_connection(path: &Path, read_only: bool) -> Result<Connection
         conn.pragma_update(None, "query_only", true)
             .map_err(read_err)?;
     } else {
-        // WAL: читатели не блокируют писателя. FULL: запись фиксируется на диске до ответа (переживает и убийство процесса,
-        // и потерю питания, ТЗ §12.3).
+        // WAL: readers do not block the writer. FULL: a write is committed to disk before the reply (survives both a
+        // process kill and a power loss, PRD §12.3).
         conn.pragma_update(None, "journal_mode", "WAL")
             .map_err(write_err)?;
         conn.pragma_update(None, "synchronous", "FULL")
             .map_err(write_err)?;
-        // macOS: обычный fsync не сбрасывает кэш накопителя, F_FULLFSYNC сбрасывает (иначе потеря питания может
-        // унести уже подтверждённую запись). На других ОС прагма ничего не меняет.
+        // macOS: a plain fsync does not flush the drive cache, F_FULLFSYNC does (otherwise a power loss can take away an
+        // already confirmed write). On other OSes the pragma changes nothing.
         conn.pragma_update(None, "fullfsync", true)
             .map_err(write_err)?;
     }

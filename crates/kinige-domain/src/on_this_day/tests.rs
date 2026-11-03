@@ -37,7 +37,7 @@ fn the_leap_day_matches_only_leap_days() {
     assert_eq!(
         strings(past_dates("2026-02-28", 2023)),
         ["2025-02-28", "2024-02-28", "2023-02-28"],
-        "28 февраля не совпадает с 29-м"
+        "February 28 does not match the 29th"
     );
     assert_eq!(
         strings(past_dates("2026-03-01", 2024)),

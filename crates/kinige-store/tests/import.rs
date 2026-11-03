@@ -1,8 +1,8 @@
-//! Импорт из Telegram (слайс 4, задача 4.8): запись, повтор, копия, время, ответы, ход импорта, Markdown-копия. Личные чаты,
-//! выбор чатов и корзина — `import_chats.rs`, неизменяемость `origin` и `ext` — `import_immutable.rs`.
+//! Import from Telegram (slice 4, task 4.8): writing, a repeat, the copy, time, replies, import progress, the Markdown copy. Personal chats,
+//! chat selection and the trash are in `import_chats.rs`, immutability of `origin` and `ext` is in `import_immutable.rs`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -49,11 +49,11 @@ fn saved_messages_go_to_inbox_with_original_time_core_and_one_hlc_per_record() {
     let texts: Vec<_> = page.iter().map(|m| m.body_md.as_str()).collect();
     assert_eq!(texts, ["запись 1", "запись 2", "запись 3"]);
     let first = &page[0];
-    // 2019-03-08 12:00:01 по Москве; пояс устройства (в тесте Москва), день по границе 04:00.
+    // 2019-03-08 12:00:01 Moscow time; the device time zone (Moscow in the test), the day by the 04:00 boundary.
     assert_eq!(first.created_at, (SAVED_T + 1) * 1000);
     assert_eq!(first.created_tz, "Europe/Moscow");
     assert_eq!(first.journal_date, "2019-03-08");
-    // Группы: `core` с `origin` и `ext` (id строками), колонки совпадают с группами.
+    // Groups: `core` with `origin` and `ext` (ids as strings), the columns match the groups.
     let row = common::capture::row(dir.path(), &first.id);
     assert_eq!(row.origin, "import_telegram");
     let groups = groups(dir.path(), "message", &first.id);
@@ -70,7 +70,7 @@ fn saved_messages_go_to_inbox_with_original_time_core_and_one_hlc_per_record() {
         columns.ext_json.as_deref(),
         Some(format!(r#"{{"chat":"{OWNER}","msg":"1","src":"telegram"}}"#).as_str())
     );
-    // Все группы под одним HLC момента импорта, `sv = 1`, `server_known = 0`; HLC записей строго возрастают.
+    // All groups under one HLC of the import moment, `sv = 1`, `server_known = 0`; the HLCs of the entries strictly increase.
     let mut hlcs = Vec::new();
     for message in &page {
         let entries = hlc_entries(dir.path(), "message", &message.id);
@@ -87,16 +87,19 @@ fn saved_messages_go_to_inbox_with_original_time_core_and_one_hlc_per_record() {
         );
         hlcs.push(one);
     }
-    assert!(hlcs.windows(2).all(|w| w[0] < w[1]), "HLC растут: {hlcs:?}");
-    // HLC импорта — момент импорта, а не Telegram: свежая локальная запись позже любой импортированной.
+    assert!(
+        hlcs.windows(2).all(|w| w[0] < w[1]),
+        "HLCs increase: {hlcs:?}"
+    );
+    // The import HLC is the import moment, not Telegram's: a fresh local entry is later than any imported one.
     let local = store
         .send_message(INBOX_ID, "после", &moscow(T0 + MINUTE))
         .unwrap();
     assert!(group_hlc(dir.path(), "message", &local.id, "core") > hlcs[2]);
-    // Стена HLC — момент импорта (заданное «сейчас» плюс прошедшие миллисекунды), а не 2019 год из Telegram.
+    // The HLC wall is the import moment (the given "now" plus the elapsed milliseconds), not the year 2019 from Telegram.
     let wall: i64 = hlcs[0].get(..13).unwrap().parse().unwrap();
     assert!((T0..T0 + 60_000).contains(&wall), "{}", hlcs[0]);
-    // Счётчик в сайдбаре вырос.
+    // The counter in the sidebar grew.
     assert_eq!(store.list_chats().unwrap()[0].count, 4);
 }
 
@@ -110,11 +113,14 @@ fn repeat_import_adds_nothing_and_takes_no_second_copy() {
     let name = first
         .backup_name
         .clone()
-        .expect("копия перед первой записью");
+        .expect("copy before the first write");
     let again = run(&store, &export, &[]).unwrap();
     assert_eq!(again.imported, 0);
     assert_eq!(again.skipped_existing, 5);
-    assert_eq!(again.backup_name, None, "писать нечего — копия не нужна");
+    assert_eq!(
+        again.backup_name, None,
+        "nothing to write, so no copy is needed"
+    );
     assert_eq!(count_where(dir.path(), "1 = 1"), 5);
     assert_eq!(backups(&common::db_path(dir.path())).len(), 1);
     assert_eq!(backups(&common::db_path(dir.path()))[0].name, name);
@@ -126,7 +132,7 @@ fn copy_is_taken_before_the_first_write_and_holds_the_old_data_only() {
     let store = open_plain(dir.path());
     store.send_message(INBOX_ID, "своя", &moscow(T0)).unwrap();
     let report = run(&store, &parse(&saved_n(4)), &[]).unwrap();
-    let name = report.backup_name.expect("копия");
+    let name = report.backup_name.expect("copy");
     assert!(name.starts_with("pre-import-") && name.ends_with(".db"));
     let listed = backups(&common::db_path(dir.path()));
     assert_eq!(listed[0].kind, BackupKind::PreImport);
@@ -135,7 +141,10 @@ fn copy_is_taken_before_the_first_write_and_holds_the_old_data_only() {
     let in_copy: i64 = copy
         .query_row("SELECT COUNT(*) FROM message", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(in_copy, 1, "в копии только то, что было до импорта");
+    assert_eq!(
+        in_copy, 1,
+        "the copy has only what was there before the import"
+    );
     assert_eq!(count_where(dir.path(), "1 = 1"), 5);
 }
 
@@ -156,7 +165,10 @@ fn service_and_empty_messages_are_skipped_and_media_is_counted() {
     assert_eq!(report.imported, 3);
     assert_eq!(report.skipped_service, 1);
     assert_eq!(report.skipped_empty, 1);
-    assert_eq!(report.media_placeholders, 1, "фото — заглушка, опрос — нет");
+    assert_eq!(
+        report.media_placeholders, 1,
+        "a photo is a placeholder, a poll is not"
+    );
     let texts: Vec<String> = feed(&store, INBOX_ID)
         .into_iter()
         .map(|m| m.body_md)
@@ -232,7 +244,7 @@ fn impossible_dates_do_not_break_the_batch_and_land_on_the_import_day() {
             assert_eq!(message.journal_date, today);
         }
     }
-    // Записи без настоящей даты стоят в порядке файла, а не в порядке случайных id.
+    // Entries without a real date stay in file order, not in the order of random ids.
     let texts: Vec<&str> = all.iter().map(|m| m.body_md.as_str()).collect();
     assert_eq!(
         texts,
@@ -288,13 +300,13 @@ fn reply_to_an_imported_message_is_stored_and_unknown_target_is_null() {
         None,
         "адресат ещё не импортирован"
     );
-    // И в байтах `core`.
+    // And in the `core` bytes.
     let core = &groups(dir.path(), "message", &page[1].id)["core"];
     assert!(
         core.contains(&format!(r#""reply_to_id":"{}""#, page[0].id)),
         "{core}"
     );
-    // Повторный импорт тех же сообщений не меняет уже записанное.
+    // A repeated import of the same messages does not change what is already written.
     assert_eq!(
         run(
             &store,
@@ -334,7 +346,7 @@ fn batches_and_progress_cover_every_message() {
     assert_eq!(
         ids.len(),
         500,
-        "страница ленты ограничена; все записи на месте по счётчику"
+        "the feed page is limited; all entries are in place by the counter"
     );
     let integrity: String = raw(dir.path())
         .query_row("PRAGMA integrity_check", [], |r| r.get(0))
@@ -347,7 +359,7 @@ fn imported_days_get_markdown_files() {
     let dir = tempfile::tempdir().unwrap();
     let store = open(dir.path());
     let own = format!("user{OWNER}");
-    // Два дня: 8 и 9 марта 2019 (по Москве).
+    // Two days: March 8 and 9, 2019 (Moscow time).
     let messages = vec![
         msg(1, SAVED_T, "первый день", &own),
         msg(2, SAVED_T + 86_400, "второй день", &own),
@@ -364,12 +376,8 @@ fn imported_days_get_markdown_files() {
             .join("2019")
             .join(format!("{date}.md"))
     };
-    wait_until("файл первого дня", || {
-        day("2019-03-08").exists()
-    });
-    wait_until("файл второго дня", || {
-        day("2019-03-09").exists()
-    });
+    wait_until("file of the first day", || day("2019-03-08").exists());
+    wait_until("file of the second day", || day("2019-03-09").exists());
     let text = std::fs::read_to_string(day("2019-03-08")).unwrap();
     assert!(text.contains("первый день"), "{text}");
 }

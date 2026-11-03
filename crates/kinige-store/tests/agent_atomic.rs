@@ -1,7 +1,7 @@
-//! Запись агента и строка журнала — одна транзакция (ADR-0009, слайс 4a): откат при сбое журнала, `abort` после фиксации.
+//! An agent write and its log row are one transaction (ADR-0009, slice 4a): rollback on a log failure, `abort` after the commit.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -20,11 +20,11 @@ fn entry_id(reply: &serde_json::Value) -> String {
     reply["entry"]["id"].as_str().unwrap().to_string()
 }
 
-/// Ловушка, которая роняет любую вставку в `mcp_log`: проверка, что запись и журнал — одна транзакция.
+/// A trap that fails any insert into `mcp_log`: checks that the entry and the log are one transaction.
 fn break_the_log(dir: &std::path::Path) {
     raw(dir)
         .execute_batch(
-            "CREATE TRIGGER mcp_log_broken BEFORE INSERT ON mcp_log BEGIN SELECT RAISE(ABORT, 'журнал сломан'); END;",
+            "CREATE TRIGGER mcp_log_broken BEFORE INSERT ON mcp_log BEGIN SELECT RAISE(ABORT, 'log is broken'); END;",
         )
         .unwrap();
 }
@@ -76,11 +76,11 @@ fn a_failing_log_row_rolls_the_write_back() {
         )
         .is_err()
     );
-    assert_eq!(count(a.dir.path(), "message"), 2, "новых записей нет");
+    assert_eq!(count(a.dir.path(), "message"), 2, "no new entries");
     assert_eq!(
         count(a.dir.path(), "message_revision"),
         revisions,
-        "ревизий нет"
+        "no revisions"
     );
     let body: String = raw(a.dir.path())
         .query_row("SELECT body_md FROM message WHERE id = ?1", [&first], |r| {
@@ -152,12 +152,12 @@ fn abort_right_after_a_write_keeps_the_entry_and_its_log_row() {
         (rows[0].1.as_str(), rows[0].3.as_str(), rows[0].4),
         ("add_entry", "ok", 1)
     );
-    // Markdown-копия дописана при следующем старте.
+    // The Markdown copy is completed at the next startup.
     let file = mirror_dir(dir.path())
         .join("Inbox")
         .join("2026")
         .join("2026-10-21.md");
-    wait_until("файл копии", || {
+    wait_until("copy file", || {
         std::fs::read_to_string(&file).is_ok_and(|text| text.contains("переживёт abort"))
     });
 }

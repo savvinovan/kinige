@@ -1,57 +1,57 @@
-//! Гибридные логические часы (ADR-0001 §2). Формат метки: `{wall_ms:013}-{counter:05}-{device_id}`.
+//! Hybrid logical clock (ADR-0001 §2). Stamp format: `{wall_ms:013}-{counter:05}-{device_id}`.
 //!
-//! В слайсе 1 синхронизации нет, поэтому реализованы только локальное событие и продолжение счётчика после перезапуска.
-//! Приём чужой метки (алгоритм Kulkarni et al., 2014, рис. 5) появится вместе с синхронизацией.
+//! Slice 1 has no sync, so only the local event and continuing the counter after a restart are implemented.
+//! Receiving a foreign stamp (the algorithm of Kulkarni et al., 2014, fig. 5) will appear together with sync.
 
 use std::fmt;
 
-/// Наибольший счётчик: пять десятичных цифр.
+/// The largest counter: five decimal digits.
 pub const MAX_COUNTER: u32 = 99_999;
-/// Наибольшее значение `wall_ms`: тринадцать десятичных цифр.
+/// The largest `wall_ms` value: thirteen decimal digits.
 pub const MAX_WALL_MS: u64 = 9_999_999_999_999;
-/// Длина метки: 13 + 1 + 5 + 1 + 36.
+/// The stamp length: 13 + 1 + 5 + 1 + 36.
 pub const HLC_LEN: usize = 56;
 
-/// Ошибки разбора и тика часов.
+/// Parse and clock tick errors.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HlcError {
-    /// Строка не соответствует формату `{wall_ms:013}-{counter:05}-{device_id}`.
+    /// The string does not match the format `{wall_ms:013}-{counter:05}-{device_id}`.
     Format,
-    /// `wall_ms` не помещается в 13 цифр.
+    /// `wall_ms` does not fit in 13 digits.
     WallOverflow,
 }
 
 impl fmt::Display for HlcError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            HlcError::Format => f.write_str("неверный формат HLC"),
-            HlcError::WallOverflow => f.write_str("wall_ms не помещается в 13 цифр"),
+            HlcError::Format => f.write_str("invalid HLC format"),
+            HlcError::WallOverflow => f.write_str("wall_ms does not fit in 13 digits"),
         }
     }
 }
 
 impl std::error::Error for HlcError {}
 
-/// Состояние часов устройства: пара `(l, c)` из `sync_state` (`hlc_l`, `hlc_c`).
+/// The state of the device clock: the pair `(l, c)` from `sync_state` (`hlc_l`, `hlc_c`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Clock {
-    /// Логическая «стенка», мс.
+    /// The logical "wall", ms.
     pub l: u64,
-    /// Счётчик внутри одной «стенки».
+    /// The counter within one "wall".
     pub c: u32,
 }
 
 impl Clock {
-    /// Часы после запуска (ADR-0001 §2, «Хранение и перезапуск»): `l = max(stored_l, pt)`, счётчик продолжается,
-    /// если `l` не сдвинулось, иначе начинается с нуля. Без продолжения счётчика метка после перезапуска могла бы повториться.
+    /// The clock after start (ADR-0001 §2, "Storage and restart"): `l = max(stored_l, pt)`, the counter continues
+    /// if `l` did not move, otherwise it starts from zero. Without continuing the counter a stamp could repeat after a restart.
     pub fn resume(stored_l: u64, stored_c: u32, pt: u64) -> Clock {
         let l = stored_l.max(pt);
         let c = if l == stored_l { stored_c } else { 0 };
         Clock { l, c }
     }
 
-    /// Локальное событие: `l' = l; l = max(l', pt); c = (l == l') ? c + 1 : 0`.
-    /// Переполнение счётчика (больше 99999) переносит `l` на миллисекунду вперёд и обнуляет счётчик.
+    /// A local event: `l' = l; l = max(l', pt); c = (l == l') ? c + 1 : 0`.
+    /// A counter overflow (above 99999) moves `l` one millisecond forward and resets the counter.
     pub fn tick(self, pt: u64) -> Result<Clock, HlcError> {
         let l = self.l.max(pt);
         let c = if l == self.l { self.c + 1 } else { 0 };
@@ -66,21 +66,21 @@ impl Clock {
         Ok(next)
     }
 
-    /// Метка в сортируемом виде.
+    /// The stamp in a sortable form.
     pub fn format(self, device_id: &str) -> String {
         format!("{:013}-{:05}-{device_id}", self.l, self.c)
     }
 }
 
-/// Строгий разбор метки: 56 символов, цифры, `device_id` — UUID в нижнем регистре.
+/// Strict stamp parsing: 56 characters, digits, `device_id` is a lower-case UUID.
 pub fn parse(hlc: &str) -> Result<(Clock, &str), HlcError> {
     let bytes = hlc.as_bytes();
     if bytes.len() != HLC_LEN || bytes.get(13) != Some(&b'-') || bytes.get(19) != Some(&b'-') {
         return Err(HlcError::Format);
     }
     let digits = |range: std::ops::Range<usize>| -> Result<u64, HlcError> {
-        // Длина 56 байт и ASCII-дефисы на 13 и 19 уже проверены, поэтому границы 0, 13, 14, 19 и 20 лежат на границах
-        // символов и `get` не отказывает; он здесь вместо среза `[..]`, чтобы нарушение этого было ошибкой, а не паникой.
+        // The length of 56 bytes and the ASCII hyphens at 13 and 19 are already checked, so the boundaries 0, 13, 14, 19 and 20 lie on
+        // character boundaries and `get` does not fail; it is here instead of a `[..]` slice so that a violation is an error, not a panic.
         let part = hlc.get(range).ok_or(HlcError::Format)?;
         if !part.bytes().all(|b| b.is_ascii_digit()) {
             return Err(HlcError::Format);
@@ -96,7 +96,7 @@ pub fn parse(hlc: &str) -> Result<(Clock, &str), HlcError> {
     Ok((Clock { l, c }, device))
 }
 
-/// UUID в нижнем регистре, 36 символов (`8-4-4-4-12`).
+/// A lower-case UUID, 36 characters (`8-4-4-4-12`).
 pub fn is_uuid(text: &str) -> bool {
     let bytes = text.as_bytes();
     bytes.len() == 36
@@ -106,7 +106,7 @@ pub fn is_uuid(text: &str) -> bool {
         })
 }
 
-/// UUID версии 4 в нижнем регистре: 36 символов, `4` в начале третьей группы, вариант `8`, `9`, `a` или `b` в начале четвёртой.
+/// A version 4 UUID in lower case: 36 characters, `4` at the start of the third group, variant `8`, `9`, `a` or `b` at the start of the fourth.
 pub fn is_uuid_v4(text: &str) -> bool {
     let bytes = text.as_bytes();
     is_uuid(text)
@@ -133,7 +133,7 @@ mod tests {
         assert_eq!(
             clock.tick(1_500).unwrap(),
             Clock { l: 2_000, c: 1 },
-            "часы пошли назад: l не уменьшается"
+            "the clock went back: l does not decrease"
         );
     }
 
@@ -147,7 +147,7 @@ mod tests {
         assert_eq!(next, Clock { l: 5_001, c: 0 });
         assert!(
             next.format(DEVICE) > clock.format(DEVICE),
-            "метка остаётся строго возрастающей"
+            "the stamp stays strictly increasing"
         );
     }
 
@@ -160,7 +160,7 @@ mod tests {
             let current = clock.format(DEVICE);
             assert!(
                 current > previous,
-                "{current} должна быть больше {previous}"
+                "{current} must be greater than {previous}"
             );
             previous = current;
         }
@@ -168,7 +168,7 @@ mod tests {
 
     #[test]
     fn restart_continues_counter_when_clock_has_not_moved() {
-        // Приняли «будущую» метку (l = 9000), перезапустились, когда pt = 3000: счётчик продолжается, а не повторяется.
+        // Accepted a "future" stamp (l = 9000), restarted when pt = 3000: the counter continues instead of repeating.
         let resumed = Clock::resume(9_000, 4, 3_000);
         assert_eq!(resumed, Clock { l: 9_000, c: 4 });
         assert_eq!(resumed.tick(3_000).unwrap(), Clock { l: 9_000, c: 5 });
@@ -215,7 +215,7 @@ mod tests {
         );
         assert_eq!(text.len(), HLC_LEN);
         assert_eq!(parse(&text).unwrap(), (clock, DEVICE));
-        // Малые значения дополняются нулями: сравнение строк совпадает со сравнением кортежей.
+        // Small values are padded with zeros: string comparison matches tuple comparison.
         assert_eq!(
             Clock { l: 7, c: 3 }.format(DEVICE),
             "0000000000007-00003-5f0c3e2a-9b1d-4c7e-8a64-0d2f1b3c4e5f"

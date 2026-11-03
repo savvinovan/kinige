@@ -1,11 +1,11 @@
-//! Разбор файла настроек: по каждому ключу — неверный тип, недопустимое значение, `null`, отсутствие, неизвестный ключ;
-//! «охотник за мусором»: случайные байты, не-UTF-8, BOM, глубокая вложенность, огромные строки и числа. Только ошибки, без паник.
+//! Parsing the settings file: for each key - a wrong type, an invalid value, `null`, absence, an unknown key;
+//! a "garbage hunter": random bytes, non-UTF-8, BOM, deep nesting, huge strings and numbers. Only errors, no panics.
 
 use super::parse::{Field, FileError, MAX_BYTES, parse};
 use kinige_domain::{AgentMode, KeyIssueKind, TextSize};
 
 fn kinds(text: &str) -> Vec<(String, KeyIssueKind)> {
-    let parsed = parse(text.as_bytes()).expect("файл разобран");
+    let parsed = parse(text.as_bytes()).expect("file parsed");
     parsed.issues.into_iter().map(|i| (i.key, i.kind)).collect()
 }
 
@@ -136,7 +136,7 @@ fn unknown_keys_are_warnings_and_stay_in_the_document() {
     );
     assert!(parsed.raw.contains_key("zzz"));
     assert!(parsed.issues.is_empty());
-    // Имя неизвестного ключа в окне не длиннее 64 знаков.
+    // The name of an unknown key in the window is at most 64 characters.
     let long = "я".repeat(5000);
     let parsed = parse(format!("{{\"{long}\":1}}").as_bytes()).unwrap();
     assert_eq!(parsed.unknown[0].chars().count(), 65);
@@ -253,12 +253,12 @@ fn a_file_replaced_while_it_is_read_leaves_no_signature_so_the_next_poll_reads_i
     let dir = tempfile::tempdir().unwrap();
     let path = file_path(dir.path());
     std::fs::write(&path, br#"{"text_size":"normal"}"#).unwrap();
-    // Спокойное чтение даёт признак.
+    // A calm read yields the stamp.
     assert!(matches!(
         read_file(&path, dir.path()),
         ReadOutcome::Content { sig: Some(_), .. }
     ));
-    // Файл подменили между чтением и снятием признака (агент сохранил через rename): признака нет.
+    // The file was replaced between the read and taking the stamp (an agent saved via rename): no stamp.
     let swapped = read_file_with(&path, dir.path(), &|| {
         let other = dir.path().join(".other");
         std::fs::write(&other, br#"{"text_size":"large"}"#).unwrap();

@@ -1,55 +1,53 @@
-//! Канонический JSON по RFC 8785 (JCS) для групп полей (ADR-0001 §3.3).
+//! Canonical JSON per RFC 8785 (JCS) for field groups (ADR-0001 §3.3).
 //!
-//! В группах только строки, булевы, `null`, объекты, массивы и целые в пределах ±2⁵³, поэтому правила JCS сводятся к
-//! сортировке ключей по кодовым единицам UTF-16, минимальному экранированию строк и отсутствию пробелов. Числа с дробной
-//! частью и вне ±2⁵³ не допускаются: их запись в JCS (ECMAScript) — отдельная задача, которой в группах нет.
+//! Groups hold only strings, booleans, `null`, objects, arrays and integers within ±2⁵³, so the JCS rules boil down to
+//! sorting keys by UTF-16 code units, minimal string escaping and no whitespace. Numbers with a fractional
+//! part and outside ±2⁵³ are not allowed: writing them in JCS (ECMAScript) is a separate task that groups do not need.
 
 use serde_json::Value;
 use std::fmt;
 
-/// Наибольшее безопасное целое: ±2⁵³ (ADR-0001 §3.3).
+/// The largest safe integer: ±2⁵³ (ADR-0001 §3.3).
 pub const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_992;
 
-/// Предел вложенности равен пределу разбора serde_json (`remaining_depth` = 128 в `de.rs`): что записали — то прочитаем.
-/// Счёт у serde_json такой: контейнер, при входе в который остаток дошёл до 0, — ошибка, поэтому читается не больше
-/// `MAX_DEPTH - 1` = 127 вложенных массивов и объектов, а 128-й — `TooDeep`. Значение глубже не пишется, и рекурсия записи
-/// не переполняет стек от чужих данных (ADR-0001 §A: глубина значения группы ≤ 127 контейнеров, глубже — `malformed`).
+/// The nesting limit equals the serde_json parse limit (`remaining_depth` = 128 in `de.rs`): what we write, we can read back.
+/// serde_json counts like this: a container whose entry brings the remainder to 0 is an error, so at most
+/// `MAX_DEPTH - 1` = 127 nested arrays and objects are read, and the 128th is `TooDeep`. A deeper value is not written, and the write
+/// recursion does not overflow the stack on foreign data (ADR-0001 §A: a group value depth is ≤ 127 containers, deeper is `malformed`).
 pub const MAX_DEPTH: usize = 128;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JcsError {
-    /// Число с дробной частью или вне ±2⁵³.
+    /// A number with a fractional part or outside ±2⁵³.
     UnsupportedNumber,
-    /// Вложенность глубже [`MAX_DEPTH`].
+    /// Nesting deeper than [`MAX_DEPTH`].
     TooDeep,
 }
 
 impl fmt::Display for JcsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            JcsError::UnsupportedNumber => {
-                f.write_str("в группе допустимы только целые числа в пределах ±2^53")
-            }
-            JcsError::TooDeep => f.write_str("в группе слишком глубокая вложенность"),
+            JcsError::UnsupportedNumber => f.write_str("a group allows only integers within ±2^53"),
+            JcsError::TooDeep => f.write_str("the group nesting is too deep"),
         }
     }
 }
 
 impl std::error::Error for JcsError {}
 
-/// Каноническая запись значения группы. Пишется сразу в `String`, поэтому UTF-8 гарантирован типом, а не проверкой.
+/// The canonical form of a group value. It is written straight into a `String`, so UTF-8 is guaranteed by the type, not by a check.
 pub fn canonical_string(value: &Value) -> Result<String, JcsError> {
     let mut out = String::new();
     write_value(value, &mut out, 0)?;
     Ok(out)
 }
 
-/// Канонические байты значения группы (те же, что у [`canonical_string`]).
+/// The canonical bytes of a group value (the same as in [`canonical_string`]).
 pub fn canonical_bytes(value: &Value) -> Result<Vec<u8>, JcsError> {
     canonical_string(value).map(String::into_bytes)
 }
 
-/// `depth` — сколько контейнеров уже открыто вокруг `value`.
+/// `depth` is how many containers are already open around `value`.
 fn write_value(value: &Value, out: &mut String, depth: usize) -> Result<(), JcsError> {
     if matches!(value, Value::Array(_) | Value::Object(_)) && depth + 1 >= MAX_DEPTH {
         return Err(JcsError::TooDeep);
@@ -77,7 +75,7 @@ fn write_value(value: &Value, out: &mut String, depth: usize) -> Result<(), JcsE
             out.push(']');
         }
         Value::Object(map) => {
-            // Порядок ключей — по кодовым единицам UTF-16, а не по байтам UTF-8 (они расходятся за пределами BMP).
+            // Keys are ordered by UTF-16 code units, not by UTF-8 bytes (they differ outside the BMP).
             let mut entries: Vec<(&String, &Value)> = map.iter().collect();
             entries.sort_by(|a, b| a.0.encode_utf16().cmp(b.0.encode_utf16()));
             out.push('{');
@@ -95,8 +93,8 @@ fn write_value(value: &Value, out: &mut String, depth: usize) -> Result<(), JcsE
     Ok(())
 }
 
-/// Минимальное экранирование: `"` и `\`, управляющие символы короткими формами `\b \t \n \f \r`, остальные — `\u00xx`
-/// строчными буквами; всё прочее (в том числе U+007F и символы вне ASCII) — как есть, в UTF-8.
+/// Minimal escaping: `"` and `\`, control characters in the short forms `\b \t \n \f \r`, the others as `\u00xx`
+/// in lower case; everything else (including U+007F and non-ASCII characters) as is, in UTF-8.
 fn write_string(text: &str, out: &mut String) {
     out.push('"');
     for ch in text.chars() {
@@ -126,8 +124,8 @@ mod tests {
 
     #[test]
     fn keys_are_sorted_by_utf16_code_units_rfc8785_section_3_2_3() {
-        // Пример из RFC 8785, п. 3.2.3: порядок — U+000D, "1", U+0080, "ö", "€", U+1F600 (суррогатная пара D83D DE00), U+FB33.
-        // По байтам UTF-8 U+FB33 шёл бы раньше U+1F600; по UTF-16 — позже.
+        // The example from RFC 8785, section 3.2.3: the order is U+000D, "1", U+0080, "ö", "€", U+1F600 (surrogate pair D83D DE00), U+FB33.
+        // By UTF-8 bytes U+FB33 would come before U+1F600; by UTF-16 it comes after.
         let value = json!({
             "\u{20ac}": "Euro Sign",
             "\r": "Carriage Return",
@@ -150,7 +148,7 @@ mod tests {
         .iter()
         .map(|key| {
             text.find(&format!("\"{key}\":"))
-                .unwrap_or_else(|| panic!("нет ключа {key:?} в {text:?}"))
+                .unwrap_or_else(|| panic!("no key {key:?} in {text:?}"))
         })
         .collect();
         assert!(positions.windows(2).all(|w| w[0] < w[1]), "{text:?}");
@@ -169,7 +167,7 @@ mod tests {
         assert_eq!(canon(json!("a\"b\\c")), r#""a\"b\\c""#);
         assert_eq!(canon(json!("\u{8}\t\n\u{c}\r")), r#""\b\t\n\f\r""#);
         assert_eq!(canon(json!("\u{0}\u{1f}")), r#""\u0000\u001f""#);
-        // Не экранируются: «/», DEL, символы вне ASCII, эмодзи.
+        // Not escaped: "/", DEL, non-ASCII characters, emoji.
         assert_eq!(canon(json!("/\u{7f}Привет😀")), "\"/\u{7f}Привет😀\"");
     }
 
@@ -222,7 +220,7 @@ mod tests {
 
     #[test]
     fn what_is_written_is_read_back_by_serde_json_at_every_depth() {
-        // Предел совпадает с пределом разбора serde_json: записанное читается, а не записанное и не читалось бы.
+        // The limit matches the serde_json parse limit: what is written can be read, and what is not written could not be read anyway.
         for levels in (MAX_DEPTH - 5)..=(MAX_DEPTH + 5) {
             let arrays = format!("{}1{}", "[".repeat(levels), "]".repeat(levels));
             let objects = format!("{}1{}", "{\"a\":".repeat(levels), "}".repeat(levels));
@@ -233,7 +231,7 @@ mod tests {
                     Some(result) => assert_eq!(result.as_deref(), Ok(text.as_str()), "{levels}"),
                     None => assert!(
                         levels >= MAX_DEPTH,
-                        "{levels}: serde_json отказал раньше предела"
+                        "{levels}: serde_json refused before the limit"
                     ),
                 }
             }

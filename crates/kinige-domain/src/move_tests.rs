@@ -1,5 +1,5 @@
-//! Тесты переноса записи в другой чат (`message_ops::move_to_chat`): байты группы `placement`, обе ветки §3.4, день не
-//! меняется, остальные группы дословно, запись с неподдерживаемой `sv` не переносится.
+//! Tests of moving an entry to another chat (`message_ops::move_to_chat`): the bytes of the `placement` group, both
+//! branches of §3.4, the day does not change, the other groups are verbatim, an entry with an unsupported `sv` is not moved.
 
 use crate::groups::{GroupError, INBOX_ID, MessageRow, NewMessage, new_message, parse_groups_raw};
 use crate::message_ops::{self, message_columns};
@@ -61,14 +61,17 @@ fn placement_bytes_for_a_move_in_both_branches_of_the_chain() {
         message_ops::move_to_chat(&groups(&row), BOOKS, false, &hlc(NOW as u64 + 1000)).unwrap();
     let columns = message_columns(&own.groups_raw).unwrap();
     assert_eq!(columns.chat_id, BOOKS);
-    assert_eq!(columns.journal_date, "2026-10-09", "день не меняется");
+    assert_eq!(
+        columns.journal_date, "2026-10-09",
+        "the day does not change"
+    );
     assert_eq!(columns.placement_base, None);
     assert_eq!(
         columns.placement_supersedes,
         format!(r#"["{}"]"#, hlc(NOW as u64))
     );
 
-    // Перенос обратно накапливает supersedes (как вторая смена дня).
+    // Moving back accumulates supersedes (like a second day change).
     let back = message_ops::move_to_chat(
         &Groups {
             groups_raw: &own.groups_raw,
@@ -96,7 +99,7 @@ fn only_placement_changes_and_its_hlc_grows() {
     let after = parse_groups_raw(&moved.groups_raw).unwrap();
     for (name, raw) in &before {
         if name != "placement" {
-            assert_eq!(after[name].get(), raw.get(), "{name} дословно");
+            assert_eq!(after[name].get(), raw.get(), "{name} verbatim");
             assert_eq!(hlcs(&moved.hlc_json)[name], hlcs(&row.hlc_json)[name]);
         }
     }
@@ -104,7 +107,7 @@ fn only_placement_changes_and_its_hlc_grows() {
         hlcs(&moved.hlc_json)["placement"],
         hlcs(&row.hlc_json)["placement"]
     );
-    // Не растущий HLC — ошибка, ничего не переписано.
+    // An HLC that does not grow is an error, nothing is rewritten.
     assert!(matches!(
         message_ops::move_to_chat(&groups(&row), BOOKS, true, &hlc(NOW as u64 - 1)),
         Err(GroupError::HlcNotNewer)
@@ -114,16 +117,16 @@ fn only_placement_changes_and_its_hlc_grows() {
 #[test]
 fn a_bad_chat_id_is_refused_and_a_newer_group_makes_the_record_read_only() {
     let row = message();
-    // Допустимо только Inbox или UUID v4 в нижнем регистре (ADR-0001 §1).
+    // Only Inbox or a lowercase UUID v4 is allowed (ADR-0001 §1).
     let bad_ids = [
         "",
         "с\nпереводом",
         &"я".repeat(65),
         "books",
-        "7D6E5F40-3B2A-4C19-8E07-6A5B4C3D2E1F", // верхний регистр
-        "7d6e5f40-3b2a-1c19-8e07-6a5b4c3d2e1f", // версия 1
-        "7d6e5f40-3b2a-4c19-ce07-6a5b4c3d2e1f", // вариант не RFC 4122
-        "7d6e5f403b2a4c198e076a5b4c3d2e1f",     // без дефисов
+        "7D6E5F40-3B2A-4C19-8E07-6A5B4C3D2E1F", // upper case
+        "7d6e5f40-3b2a-1c19-8e07-6a5b4c3d2e1f", // version 1
+        "7d6e5f40-3b2a-4c19-ce07-6a5b4c3d2e1f", // variant is not RFC 4122
+        "7d6e5f403b2a4c198e076a5b4c3d2e1f",     // no hyphens
         " 7d6e5f40-3b2a-4c19-8e07-6a5b4c3d2e1f",
     ];
     for bad in bad_ids {
@@ -141,7 +144,7 @@ fn a_bad_chat_id_is_refused_and_a_newer_group_makes_the_record_read_only() {
             "{good}"
         );
     }
-    // Группа из будущей версии: запись только для чтения, перенос не предлагается (проверяет вызывающий через is_read_only).
+    // A group from a future version: the entry is read-only, moving is not offered (the caller checks via is_read_only).
     let mut hlc_map: BTreeMap<String, Value> = hlcs(&row.hlc_json);
     hlc_map.insert(
         "flags".into(),
@@ -152,7 +155,7 @@ fn a_bad_chat_id_is_refused_and_a_newer_group_makes_the_record_read_only() {
     assert!(!is_read_only(&row.hlc_json).unwrap());
 }
 
-/// Запись, у которой в `placement` (sv = 1) есть поле, неизвестное этой версии: перезапись группы его не теряет.
+/// An entry whose `placement` (sv = 1) has a field unknown to this version: rewriting the group does not lose it.
 fn with_unknown_placement_field(row: &MessageRow) -> MessageRow {
     let mut raw = parse_groups_raw(&row.groups_raw).unwrap();
     let mut placement: serde_json::Map<String, Value> =
@@ -181,11 +184,11 @@ fn unknown_fields_inside_placement_survive_a_move_and_a_date_change() {
     let moved =
         message_ops::move_to_chat(&groups(&row), BOOKS, false, &hlc(NOW as u64 + 1)).unwrap();
     let placement = placement_of(&moved.groups_raw);
-    assert_eq!(placement["zz_future"], unknown, "перенос");
+    assert_eq!(placement["zz_future"], unknown, "move");
     assert_eq!(placement["chat_id"], BOOKS);
     assert_eq!(placement["journal_date"], "2026-10-09");
 
-    // Смена дня поверх переноса, в ту же цепочку: неизвестное поле всё ещё на месте, чат не потерян.
+    // A day change on top of the move, into the same chain: the unknown field is still in place, the chat is not lost.
     let moved_row = MessageRow {
         groups_raw: moved.groups_raw,
         hlc_json: moved.hlc_json,
@@ -199,10 +202,10 @@ fn unknown_fields_inside_placement_survive_a_move_and_a_date_change() {
     )
     .unwrap();
     let placement = placement_of(&dated.groups_raw);
-    assert_eq!(placement["zz_future"], unknown, "смена дня");
+    assert_eq!(placement["zz_future"], unknown, "day change");
     assert_eq!(placement["chat_id"], BOOKS);
     assert_eq!(placement["journal_date"], "2026-10-12");
-    // Колонки по-прежнему собираются из группы с лишним полем.
+    // The columns are still built from a group with an extra field.
     let columns = message_columns(&dated.groups_raw).unwrap();
     assert_eq!(columns.chat_id, BOOKS);
 }

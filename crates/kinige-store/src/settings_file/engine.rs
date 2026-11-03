@@ -1,5 +1,5 @@
-//! Поток файла настроек (ADR-0010): опрос раз в секунду, применение внешних правок, запись после правок из окна. Вся работа
-//! с файлом идёт здесь, в одном потоке; правка из окна выполняется в нём же как задание.
+//! The settings file thread (ADR-0010): polls once a second, applies external edits, writes after edits from the window.
+//! All work with the file happens here, in one thread; an edit from the window runs in it as a job.
 
 use super::apply::KEY_FILE_HASH;
 use super::io::{self, Sig};
@@ -16,10 +16,10 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-/// Как часто поток смотрит на файл.
+/// How often the thread looks at the file.
 pub const POLL: Duration = Duration::from_secs(1);
 
-/// Система (или проверка) не приняла сочетание из файла.
+/// The system (or the validation) refused a shortcut from the file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShortcutRefusal {
     Invalid,
@@ -27,7 +27,7 @@ pub enum ShortcutRefusal {
     Taken,
 }
 
-/// Принимает сочетание из файла: проверка, регистрация в системе, сохранение — как при смене в окне. Слой Tauri.
+/// Accepts a shortcut from the file: validation, registration in the system, saving -- as on a change in the window. The Tauri layer.
 pub trait ShortcutApplier: Send + Sync {
     fn apply(
         &self,
@@ -37,14 +37,14 @@ pub trait ShortcutApplier: Send + Sync {
     ) -> Result<(), ShortcutRefusal>;
 }
 
-/// Параметры потока файла.
+/// Options of the file thread.
 pub struct SettingsFileOptions {
     pub poll: Duration,
-    /// Принимает сочетания после запуска. `None` — только запись в базу (тесты хранилища).
+    /// Accepts shortcuts after startup. `None` means a plain database write (store tests).
     pub shortcuts: Option<Arc<dyn ShortcutApplier>>,
-    /// Что-то изменилось (применён файл, записан файл, правка окна): слой Tauri сообщает окнам. Не блокирует.
+    /// Something changed (the file was applied, the file was written, a window edit): the Tauri layer tells the windows. Does not block.
     pub on_change: Arc<dyn Fn() + Send + Sync>,
-    /// Только для тестов: шаг между `rename` приложения и записью хэша (гонка «агент заменил файл»).
+    /// Tests only: a step between the app's `rename` and the hash write (the "an agent replaced the file" race).
     #[doc(hidden)]
     pub after_rename: Option<Arc<dyn Fn() + Send + Sync>>,
 }
@@ -62,8 +62,8 @@ impl SettingsFileOptions {
 
 type Job = Box<dyn FnOnce(&mut Engine) + Send>;
 
-/// Дескриптор потока файла. Поток живёт, пока жив дескриптор; при сбросе дескриптора поток останавливается и ждётся,
-/// чтобы он не успел сделать ещё один опрос по уже убранному каталогу.
+/// The handle of the file thread. The thread lives as long as the handle; when the handle is dropped, the thread is
+/// stopped and joined so that it cannot make one more poll of an already removed directory.
 pub struct SettingsFile {
     jobs: Option<Sender<Job>>,
     thread: Option<JoinHandle<()>>,
@@ -73,8 +73,8 @@ pub struct SettingsFile {
 }
 
 impl SettingsFile {
-    /// Убирает брошенные временные файлы, один раз приводит файл и базу в согласие (синхронно: файл применяется до
-    /// регистрации сочетаний и до слушателя MCP) и запускает поток опроса.
+    /// Removes abandoned temporary files, reconciles the file and the database once (synchronously: the file is applied
+    /// before the shortcuts are registered and before the MCP listener) and starts the polling thread.
     pub fn start(store: Store, data_dir: PathBuf, options: SettingsFileOptions) -> SettingsFile {
         io::remove_stale_temp(&data_dir);
         let path = io::file_path(&data_dir);
@@ -119,7 +119,7 @@ impl SettingsFile {
         }
     }
 
-    /// Состояние файла для окна.
+    /// The file state for the window.
     pub fn state(&self) -> SettingsFileState {
         self.status
             .lock()
@@ -127,8 +127,8 @@ impl SettingsFile {
             .clone()
     }
 
-    /// Правка из окна: в потоке файла сначала применяется внешняя правка (если файл изменился), затем `change`, затем файл
-    /// записывается. `None` — поток остановился или `change` упал с паникой.
+    /// An edit from the window: in the file thread the external edit is applied first (if the file changed), then
+    /// `change`, then the file is written. `None` means the thread stopped or `change` panicked.
     pub fn edit<T: Send + 'static, E: Send + 'static>(
         &self,
         change: impl FnOnce(&Store) -> Result<T, E> + Send + 'static,
@@ -153,7 +153,7 @@ impl SettingsFile {
         self.polls.load(Ordering::SeqCst)
     }
 
-    /// Перечитать файл сейчас, не дожидаясь опроса (тесты).
+    /// Re-read the file now without waiting for a poll (tests).
     #[doc(hidden)]
     pub fn sync_now(&self) {
         let (reply, answer) = mpsc::channel();
@@ -171,9 +171,10 @@ impl SettingsFile {
     }
 }
 
-/// Сброс дескриптора ждёт остановки потока файла. Поэтому его нельзя сбрасывать на главном потоке приложения, пока поток
-/// файла ждёт `run_on_main_thread` (регистрация сочетаний): оба ждали бы друг друга. Сейчас это недостижимо: дескриптор
-/// держит `AppHandle`, а тот живёт до конца процесса (цикл через `AppHandle`), так что `drop` в приложении не вызывается.
+/// Dropping the handle waits for the file thread to stop. So it must not be dropped on the app's main thread while the
+/// file thread waits for `run_on_main_thread` (shortcut registration): the two would wait for each other. Today this is
+/// unreachable: the handle is held by `AppHandle`, which lives to the end of the process (a cycle through `AppHandle`),
+/// so `drop` is never called in the app.
 impl Drop for SettingsFile {
     fn drop(&mut self) {
         self.jobs = None;
@@ -200,10 +201,10 @@ fn run(mut engine: Engine, inbox: mpsc::Receiver<Job>, polls: Arc<AtomicU64>) {
     }
 }
 
-/// Паника в потоке файла не должна его останавливать: ошибка в лог (без данных), поток продолжает.
+/// A panic in the file thread must not stop it: the error goes to the log (without data), the thread continues.
 fn guarded(engine: &mut Engine, step: fn(&mut Engine)) {
     if catch_unwind(AssertUnwindSafe(|| step(engine))).is_err() {
-        log::error!("паника в потоке файла настроек, шаг пропущен");
+        log::error!("panic in the settings file thread, step skipped");
     }
 }
 
@@ -213,20 +214,20 @@ pub(super) struct Engine {
     pub(super) path: PathBuf,
     pub(super) options: SettingsFileOptions,
     pub(super) status: Arc<Mutex<SettingsFileState>>,
-    /// Хэш байтов, с которыми база и файл согласованы в последний раз (зеркало `app_setting`).
+    /// Hash of the bytes the database and the file were last reconciled with (a mirror of `app_setting`).
     pub(super) stored_hash: Option<String>,
     pub(super) last_sig: Option<Sig>,
-    /// Запись файла отложена (файл небезопасен, не разобран или запись не удалась).
+    /// The file write is deferred (the file is unsafe, unparsed, or the write failed).
     pub(super) pending_write: bool,
-    /// Файл можно перезаписывать: его нет или он безопасен и разобран.
+    /// The file may be overwritten: it does not exist, or it is safe and parsed.
     pub(super) writable: bool,
-    /// Документ последнего удачного чтения: из него берутся чужие ключи при записи.
+    /// The document of the last successful read: foreign keys are taken from it on write.
     pub(super) base: Option<Map<String, Value>>,
-    /// Запуск приложения: окон ещё нет, сочетания идут прямо в базу, событий нет.
+    /// App startup: there are no windows yet, shortcuts go straight to the database, no events.
     pub(super) initial: bool,
-    /// Предупреждения, уже записанные в журнал процесса (вид и категория): повтор не пишется, пока тот же вид не отработал успешно.
+    /// Warnings already written to the process log (kind and category): a repeat is not written until the same kind has succeeded.
     pub(super) logged: HashSet<String>,
-    /// Подряд неудачных записей файла и когда пробовать снова (с 2^n секунд, не реже раза в минуту).
+    /// Consecutive failed file writes and when to try again (after 2^n seconds, at least once a minute).
     pub(super) write_failures: u32,
     pub(super) retry_at: Option<Instant>,
 }

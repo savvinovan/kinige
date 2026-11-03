@@ -1,7 +1,7 @@
-//! Доступ агента (ADR-0009, слайс 4a): выключатель, режим, видимое множество чатов, единый `not_found`, журнал отказов.
+//! Agent access (ADR-0009, slice 4a): the switch, the mode, the visible set of chats, the uniform `not_found`, the refusal log.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 
 const MISSING: &str = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
 
-/// Минимальные допустимые аргументы каждого инструмента (чат и запись подставляет тест).
+/// The minimal valid arguments of every tool (the test fills in the chat and the entry).
 fn minimal(tool: AgentTool, chat: &str, entry: &str) -> Value {
     match tool {
         AgentTool::ListChats => json!({}),
@@ -39,11 +39,7 @@ fn access_is_off_by_default_and_every_tool_is_refused_and_logged() {
         assert_eq!(result, Err(AgentError::Disabled), "{}", tool.name());
     }
     let rows = log_rows(dir.path());
-    assert_eq!(
-        rows.len(),
-        AgentTool::ALL.len(),
-        "ровно одна строка на вызов"
-    );
+    assert_eq!(rows.len(), AgentTool::ALL.len(), "exactly one row per call");
     assert!(rows.iter().all(|row| row.3 == "disabled" && row.4 == 0));
     assert_eq!(count(dir.path(), "message"), 0);
 }
@@ -55,7 +51,7 @@ fn nothing_is_visible_until_chats_are_marked_even_the_inbox() {
     a.store
         .send_message(INBOX_ID, "пароль от банка", &now)
         .unwrap();
-    // Inbox не отмечен: список и поиск пусты, запись без chat_id — not_found, запись не создана.
+    // Inbox is not ticked: the list and the search are empty, a write without chat_id is not_found, no entry is created.
     let chats = call(&a.store, "list_chats", json!({}), T0).unwrap();
     let ids: Vec<&str> = chats["chats"]
         .as_array()
@@ -83,7 +79,7 @@ fn nothing_is_visible_until_chats_are_marked_even_the_inbox() {
 fn not_found_matrix_closed_excluded_deleted_and_missing_are_indistinguishable() {
     let a = agent(AgentMode::ReadWrite, true);
     let now = moscow(T0);
-    // Записи: в закрытом чате, в исключённом, в корзине видимого чата, живая задача в видимом чате.
+    // Entries: in a closed chat, in an excluded one, in the trash of a visible chat, a live task in a visible chat.
     let in_secret = a
         .store
         .send_message(&a.secret, "заметка про секрет", &now)
@@ -131,9 +127,9 @@ fn not_found_matrix_closed_excluded_deleted_and_missing_are_indistinguishable() 
             assert_eq!(result, Err(AgentError::NotFound), "{} {entry}", tool.name());
         }
     }
-    // Ответ одинаков: код и текст не зависят от причины.
+    // The reply is the same: the code and the text do not depend on the reason.
     assert_eq!(AgentError::NotFound.code(), "not_found");
-    // Ничего не записано, каждый отказ в журнале.
+    // Nothing is written, every refusal is in the log.
     assert_eq!(count(a.dir.path(), "message"), 3);
     let rows = log_rows(a.dir.path());
     assert!(
@@ -158,7 +154,7 @@ fn closed_chat_title_is_found_neither_by_search_nor_in_the_list() {
         !list.contains("Секретный") && !list.contains("Дневник"),
         "{list}"
     );
-    // Видимый чат находится по названию (первая страница), следующие страницы строки «Чаты» не несут.
+    // A visible chat is found by name (first page), the following pages do not carry the "Chats" row.
     let found = call(&a.store, "search", json!({"query": "Работа"}), T0).unwrap();
     assert_eq!(found["chats"][0]["id"], json!(a.work));
 }
@@ -177,7 +173,7 @@ fn mcp_chats_value_cases() {
         }
         .unwrap();
     };
-    // Ключа нет: множество пусто, всё not_found / пусто.
+    // No key: the set is empty, everything is not_found / empty.
     set(None);
     assert_eq!(
         call(&a.store, "get_entry", json!({"id": MISSING}), T0),
@@ -187,11 +183,11 @@ fn mcp_chats_value_cases() {
         call(&a.store, "list_chats", json!({}), T0).unwrap()["chats"],
         json!([])
     );
-    // Id, которых нет в базе, игнорируются; существующий виден.
+    // Ids that are not in the database are ignored; an existing one is visible.
     set(Some(&format!(r#"["{MISSING}","{}"]"#, a.work)));
     let ids = call(&a.store, "list_chats", json!({}), T0).unwrap();
     assert_eq!(ids["chats"].as_array().unwrap().len(), 1);
-    // Повреждённое значение: ошибка без данных, записи нет.
+    // A corrupted value: an error without data, no entry.
     for broken in ["{broken", r#"{"a":"x"}"#, "[1,2]", "null"] {
         set(Some(broken));
         let before = count(a.dir.path(), "message");
@@ -258,7 +254,7 @@ fn read_only_mode_refuses_every_write_and_writes_nothing() {
     let rows = log_rows(a.dir.path());
     assert_eq!(rows.len(), 3);
     assert!(rows.iter().all(|row| row.3 == "read_only"));
-    // Чтение в этом режиме работает.
+    // Reading works in this mode.
     assert!(call(&a.store, "get_entry", json!({"id": id}), T0).is_ok());
 }
 

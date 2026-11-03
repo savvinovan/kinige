@@ -1,10 +1,10 @@
-//! Время и часовой пояс: момент записи, смещение пояса на этот момент, местное время записи.
+//! Time and time zone: the moment of an entry, the zone offset at that moment, the local time of an entry.
 
 use chrono::{DateTime, Local, Offset, TimeZone, Utc};
 use chrono_tz::Tz;
 
-/// «Сейчас» для одной операции: UTC в мс, IANA-пояс устройства и его смещение на этот момент (с учётом летнего времени).
-/// Операции получают его снаружи, поэтому тесты задают время и пояс сами.
+/// "Now" for one operation: UTC in ms, the device's IANA zone and its offset at that moment (including daylight saving
+/// time). Operations receive it from outside, so tests set the time and the zone themselves.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Now {
     pub ms: i64,
@@ -13,7 +13,7 @@ pub struct Now {
 }
 
 impl Now {
-    /// Системные часы и пояс устройства.
+    /// The system clock and the device's zone.
     pub fn system() -> Now {
         let ms = Utc::now().timestamp_millis();
         let tz = iana_time_zone::get_timezone().unwrap_or_else(|_| "UTC".to_string());
@@ -25,7 +25,7 @@ impl Now {
         }
     }
 
-    /// Заданный момент в заданном поясе (для тестов). Неизвестный пояс — UTC.
+    /// A given moment in a given zone (for tests). An unknown zone means UTC.
     pub fn at(ms: i64, tz: &str) -> Now {
         match offset_secs(tz, ms) {
             Some(utc_offset_secs) => Now {
@@ -42,7 +42,7 @@ impl Now {
     }
 }
 
-/// Смещение пояса `tz` на момент `ms` в секундах; `None`, если пояс неизвестен.
+/// Offset of the zone `tz` at the moment `ms`, in seconds; `None` if the zone is unknown.
 pub fn offset_secs(tz: &str, ms: i64) -> Option<i32> {
     let zone: Tz = tz.parse().ok()?;
     let utc: DateTime<Utc> = DateTime::from_timestamp_millis(ms)?;
@@ -53,7 +53,7 @@ pub fn offset_secs(tz: &str, ms: i64) -> Option<i32> {
     )
 }
 
-/// Момент в UTC для имени файла: `YYYYMMDDTHHMMSSZ` (сортируется как строка).
+/// A UTC moment for a file name: `YYYYMMDDTHHMMSSZ` (sorts as a string).
 pub fn utc_stamp(ms: i64) -> String {
     DateTime::from_timestamp_millis(ms)
         .unwrap_or_default()
@@ -61,7 +61,7 @@ pub fn utc_stamp(ms: i64) -> String {
         .to_string()
 }
 
-/// Смещение пояса операционной системы на момент `ms`.
+/// Offset of the operating system's zone at the moment `ms`.
 fn local_offset_secs(ms: i64) -> i32 {
     match DateTime::from_timestamp_millis(ms) {
         Some(utc) => Local
@@ -72,7 +72,7 @@ fn local_offset_secs(ms: i64) -> i32 {
     }
 }
 
-/// Время записи `HH:MM` (24 часа) в поясе, где она создана. Повреждённый или неизвестный пояс — UTC.
+/// The entry time `HH:MM` (24 hours) in the zone where it was created. A corrupted or unknown zone means UTC.
 pub fn local_hhmm(created_at_ms: i64, tz: &str) -> String {
     let offset = offset_secs(tz, created_at_ms).unwrap_or(0);
     let local = created_at_ms.div_euclid(1000) + i64::from(offset);
@@ -86,7 +86,7 @@ mod tests {
 
     #[test]
     fn offsets_follow_daylight_saving_time() {
-        // Берлин: 2026-03-29 01:00 UTC — переход на летнее время.
+        // Berlin: 2026-03-29 01:00 UTC is the switch to daylight saving time.
         let before = 1_774_746_000_000 - 1; // 2026-03-29T00:59:59.999Z
         let after = 1_774_746_000_000; // 2026-03-29T01:00:00Z
         assert_eq!(offset_secs("Europe/Berlin", before), Some(3600));
@@ -109,6 +109,6 @@ mod tests {
         assert_eq!(local_hhmm(ms, "Europe/Moscow"), "04:00");
         assert_eq!(local_hhmm(ms, "America/New_York"), "21:00");
         assert_eq!(local_hhmm(ms, "garbage"), "01:00");
-        assert_eq!(local_hhmm(-60_000, "UTC"), "23:59", "до эпохи");
+        assert_eq!(local_hhmm(-60_000, "UTC"), "23:59", "before the epoch");
     }
 }

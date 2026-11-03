@@ -1,8 +1,9 @@
-//! Перенос записи и Markdown-копия «до конца»: файл дня уходит из папки старого чата и появляется в папке нового (с
-//! настоящим фоновым писателем копии), в том числе для архивного чата и чата без строки в `mirror_chat`.
+//! Moving an entry and the Markdown copy end to end: the day file leaves the old chat's folder and appears in the new
+//! chat's folder (with the real background copy writer), including for an archived chat and a chat without a row in
+//! `mirror_chat`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -41,7 +42,7 @@ fn known_folder(dir: &Path, chat: &str) -> Option<String> {
         .ok()
 }
 
-/// Ждёт, пока все отметки сняты (писатель копии отработал) и день записан или удалён.
+/// Waits until all marks are cleared (the copy writer has finished) and the day is written or deleted.
 fn settled(dir: &Path, what: &str, mut condition: impl FnMut() -> bool) {
     wait_until(what, || dirty_count(dir) == 0 && condition());
 }
@@ -51,10 +52,10 @@ fn the_day_file_moves_between_chat_folders_for_a_chat_without_a_mirror_row() {
     let dir = tempfile::tempdir().unwrap();
     let store = open(dir.path());
     let first = store.send_message(INBOX_ID, "первая", &moscow(T0)).unwrap();
-    settled(dir.path(), "файл Inbox", || {
+    settled(dir.path(), "Inbox file", || {
         day_file(dir.path(), "Inbox").exists()
     });
-    // Новый чат: файлов и строки `mirror_chat` у него ещё нет.
+    // A new chat: it has no files and no `mirror_chat` row yet.
     let books = store.create_chat("Книги", Some("📚"), &moscow(T0)).unwrap();
     assert_eq!(known_folder(dir.path(), &books.id), None);
 
@@ -63,7 +64,7 @@ fn the_day_file_moves_between_chat_folders_for_a_chat_without_a_mirror_row() {
         .unwrap();
     settled(
         dir.path(),
-        "файл в «Книгах», Inbox пуст",
+        "the file is in Книги, Inbox is empty",
         || day_file(dir.path(), "Книги").exists() && !day_file(dir.path(), "Inbox").exists(),
     );
     assert_eq!(
@@ -72,21 +73,19 @@ fn the_day_file_moves_between_chat_folders_for_a_chat_without_a_mirror_row() {
     );
     assert!(
         !mirror_dir(dir.path()).join("Inbox").exists(),
-        "пустая папка Inbox убрана"
+        "the empty Inbox folder is removed"
     );
 
-    // Вторая запись и обратный путь: день в «Книгах» остаётся с одной записью, в Inbox возвращается первая.
+    // The second entry and the way back: the day in Книги keeps one entry, the first one returns to Inbox.
     let second = store
         .send_message(INBOX_ID, "вторая", &moscow(T0 + 2 * MINUTE))
         .unwrap();
     store
         .move_message(&second.id, &books.id, &moscow(T0 + 3 * MINUTE))
         .unwrap();
-    settled(
-        dir.path(),
-        "обе записи в «Книгах»",
-        || text(dir.path(), "Книги").contains("вторая") && !day_file(dir.path(), "Inbox").exists(),
-    );
+    settled(dir.path(), "both entries are in Книги", || {
+        text(dir.path(), "Книги").contains("вторая") && !day_file(dir.path(), "Inbox").exists()
+    });
     assert_eq!(
         text(dir.path(), "Книги"),
         "# 2026-10-21\n\n## 09:12\n\nпервая\n\n## 09:14\n\nвторая\n"
@@ -94,14 +93,10 @@ fn the_day_file_moves_between_chat_folders_for_a_chat_without_a_mirror_row() {
     store
         .move_message(&first.id, INBOX_ID, &moscow(T0 + 4 * MINUTE))
         .unwrap();
-    settled(
-        dir.path(),
-        "первая вернулась в Inbox",
-        || {
-            text(dir.path(), "Inbox").contains("первая")
-                && !text(dir.path(), "Книги").contains("первая")
-        },
-    );
+    settled(dir.path(), "the first returned to Inbox", || {
+        text(dir.path(), "Inbox").contains("первая")
+            && !text(dir.path(), "Книги").contains("первая")
+    });
     assert_eq!(
         text(dir.path(), "Книги"),
         "# 2026-10-21\n\n## 09:14\n\nвторая\n"
@@ -119,14 +114,14 @@ fn the_copy_follows_a_move_into_an_archived_chat_out_of_it_and_for_a_chat_with_a
     let inbox = store
         .send_message(INBOX_ID, "из Inbox", &moscow(T0 + MINUTE))
         .unwrap();
-    settled(dir.path(), "файлы двух чатов", || {
+    settled(dir.path(), "files of two chats", || {
         day_file(dir.path(), "Старое").exists() && day_file(dir.path(), "Inbox").exists()
     });
-    // Переименование записывает папку в `mirror_chat`: у чата есть строка с прежним именем папки.
+    // Renaming writes the folder into `mirror_chat`: the chat has a row with the previous folder name.
     store
         .rename_chat(&old.id, "Прежнее", &moscow(T0 + 2 * MINUTE))
         .unwrap();
-    settled(dir.path(), "папка переехала", || {
+    settled(dir.path(), "the folder moved", || {
         day_file(dir.path(), "Прежнее").exists() && !day_file(dir.path(), "Старое").exists()
     });
     assert_eq!(
@@ -137,35 +132,26 @@ fn the_copy_follows_a_move_into_an_archived_chat_out_of_it_and_for_a_chat_with_a
         .set_chat_archived(&old.id, true, &moscow(T0 + 3 * MINUTE))
         .unwrap();
 
-    // В архивный чат с записанной папкой.
+    // Into an archived chat with a recorded folder.
     store
         .move_message(&inbox.id, &old.id, &moscow(T0 + 4 * MINUTE))
         .unwrap();
-    settled(
-        dir.path(),
-        "запись в архивном чате",
-        || {
-            text(dir.path(), "Прежнее").contains("из Inbox")
-                && !day_file(dir.path(), "Inbox").exists()
-        },
-    );
+    settled(dir.path(), "the entry is in the archived chat", || {
+        text(dir.path(), "Прежнее").contains("из Inbox") && !day_file(dir.path(), "Inbox").exists()
+    });
     assert_eq!(
         text(dir.path(), "Прежнее"),
         "# 2026-10-21\n\n## 09:12\n\nсвоя запись\n\n## 09:13\n\nиз Inbox\n"
     );
 
-    // Из архивного чата-источника в Inbox: день в архивной папке остаётся с одной записью, в Inbox появляется файл.
+    // From the archived source chat into Inbox: the day in the archived folder keeps one entry, a file appears in Inbox.
     store
         .move_message(&own.id, INBOX_ID, &moscow(T0 + 5 * MINUTE))
         .unwrap();
-    settled(
-        dir.path(),
-        "запись ушла из архивного чата",
-        || {
-            text(dir.path(), "Inbox").contains("своя запись")
-                && !text(dir.path(), "Прежнее").contains("своя запись")
-        },
-    );
+    settled(dir.path(), "the entry left the archived chat", || {
+        text(dir.path(), "Inbox").contains("своя запись")
+            && !text(dir.path(), "Прежнее").contains("своя запись")
+    });
     assert_eq!(
         text(dir.path(), "Прежнее"),
         "# 2026-10-21\n\n## 09:13\n\nиз Inbox\n"

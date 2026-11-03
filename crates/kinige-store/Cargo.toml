@@ -1,6 +1,6 @@
 [package]
 name = "kinige-store"
-description = "Хранилище Kinige: SQLite, миграции, один писатель, Markdown-копия"
+description = "Kinige storage: SQLite, migrations, a single writer, Markdown copy"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,16 +12,16 @@ workspace = true
 
 [dependencies]
 kinige-domain = { path = "../kinige-domain" }
-# Только фасад: приёмник логов выбирает приложение (src-tauri). В записях лога никогда нет текстов пользователя.
+# Facade only: the app (src-tauri) chooses the log sink. Log records never contain the user's texts.
 log = "0.4.34"
-# backup: копия файла базы через backup API SQLite (`rusqlite::backup`), а не `fs::copy` (при WAL файл без `-wal` не согласован).
+# backup: a copy of the database file through the SQLite backup API (`rusqlite::backup`), not `fs::copy` (with WAL a file without `-wal` is inconsistent).
 rusqlite = { version = "0.40", features = ["bundled", "backup"] }
 serde_json = "1"
 uuid = { version = "1.28", features = ["v4"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 chrono-tz = "0.10"
 iana-time-zone = "0.1"
-# Файл настроек (ADR-0010): хэш записанных байтов; права, владелец и O_NOFOLLOW. Оба крейта уже стоят в Cargo.lock.
+# Settings file (ADR-0010): a hash of the written bytes; permissions, owner and O_NOFOLLOW. Both crates are already in Cargo.lock.
 sha2 = "0.11"
 
 [target.'cfg(unix)'.dependencies]

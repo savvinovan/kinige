@@ -1,30 +1,31 @@
-//! Глобальные сочетания клавиш (ТЗ §5.1, слайс 2): формат записи, проверка и сочетания по умолчанию.
+//! Global keyboard shortcuts (PRD §5.1, slice 2): the notation format, validation and the default shortcuts.
 //!
-//! Каноничная запись — `Модификаторы+Клавиша`: модификаторы в порядке `Ctrl`, `Alt`, `Shift`, `Cmd`, клавиша — имя
-//! `KeyboardEvent.code` (`KeyV`, `Digit1`, `Space`, `F5`, `Slash`). Те же имена понимает разбор сочетаний в
-//! `global-hotkey`, поэтому строка идёт и в плагин, и в `app_setting` без перекодирования. Фронтенд собирает строку из
-//! `event.code` и модификаторов, поэтому раскладка не влияет (⌥V на macOS даёт «√», а `code` остаётся `KeyV`).
+//! The canonical notation is `Modifiers+Key`: modifiers in the order `Ctrl`, `Alt`, `Shift`, `Cmd`, the key is a
+//! `KeyboardEvent.code` name (`KeyV`, `Digit1`, `Space`, `F5`, `Slash`). The shortcut parser in `global-hotkey`
+//! understands the same names, so the string goes both to the plugin and to `app_setting` without re-encoding. The
+//! frontend builds the string from `event.code` and modifiers, so the keyboard layout has no effect (⌥V on macOS gives
+//! "√", but `code` stays `KeyV`).
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use ts_rs::TS;
 
-/// Какое сочетание: окно захвата или сохранение буфера.
+/// Which shortcut: the capture window or saving the clipboard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ShortcutKind.ts")]
 pub enum ShortcutKind {
-    /// Открыть окно быстрого захвата.
+    /// Open the quick capture window.
     Capture,
-    /// Сохранить текст из буфера обмена в Inbox без окна.
+    /// Save the text from the clipboard to Inbox without a window.
     Clipboard,
 }
 
 impl ShortcutKind {
     pub const ALL: [ShortcutKind; 2] = [ShortcutKind::Capture, ShortcutKind::Clipboard];
 
-    /// Сочетание по умолчанию (решение пользователя 22.10.2026): ⌃⌥N и ⌥⇧V. Захват — **временно** ⌃⌥N вместо ⌥Space:
-    /// ⌥Space и ⌥⇧Space перехватывают ChatGPT и Gemini, ⌃Space и ⌃⌥Space — переключение раскладки, ⌘Space — Raycast.
+    /// The default shortcut (the user's decision of 22.10.2026): ⌃⌥N and ⌥⇧V. Capture is **temporarily** ⌃⌥N instead of
+    /// ⌥Space: ⌥Space and ⌥⇧Space are taken by ChatGPT and Gemini, ⌃Space and ⌃⌥Space switch the layout, ⌘Space is Raycast.
     pub fn default_accelerator(self) -> &'static str {
         match self {
             ShortcutKind::Capture => "Ctrl+Alt+KeyN",
@@ -32,7 +33,7 @@ impl ShortcutKind {
         }
     }
 
-    /// Ключ в `app_setting`.
+    /// The key in `app_setting`.
     pub fn setting_key(self) -> &'static str {
         match self {
             ShortcutKind::Capture => "shortcut_capture",
@@ -41,54 +42,54 @@ impl ShortcutKind {
     }
 }
 
-/// Состояние сочетания в этом запуске.
+/// The state of the shortcut in this run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ShortcutState.ts")]
 pub enum ShortcutState {
-    /// Система приняла сочетание: оно работает.
+    /// The system accepted the shortcut: it works.
     Assigned,
-    /// Не назначено: сочетание занято другой программой или системой.
+    /// Not assigned: the shortcut is taken by another program or by the system.
     Taken,
 }
 
-/// Сочетание в «Настройках».
+/// A shortcut in "Settings".
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "ShortcutStatus.ts")]
 pub struct ShortcutStatus {
     pub kind: ShortcutKind,
-    /// Каноничная запись (`Ctrl+Alt+KeyN`).
+    /// The canonical notation (`Ctrl+Alt+KeyN`).
     pub accelerator: String,
-    /// Сочетание совпадает с умолчанием: «Сбросить» не нужна.
+    /// The shortcut equals the default: "Reset" is not needed.
     pub is_default: bool,
     pub state: ShortcutState,
 }
 
-/// Почему сочетание не принято.
+/// Why the shortcut was not accepted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShortcutError {
-    /// Строка не разобрана, неизвестная клавиша, повтор модификатора, больше одной клавиши.
+    /// The string did not parse, an unknown key, a repeated modifier, more than one key.
     Invalid,
-    /// Нет Ctrl, Alt или Cmd: одна буква или Shift+буква перехватили бы обычный ввод.
+    /// No Ctrl, Alt or Cmd: a single letter or Shift+letter would intercept normal typing.
     NeedsModifier,
-    /// Системное сочетание, которое нельзя отнимать (⌘Q, ⌘W, ⌘H, ⌘M, ⌘Space).
+    /// A system shortcut that must not be taken away (⌘Q, ⌘W, ⌘H, ⌘M, ⌘Space).
     Reserved,
 }
 
 impl fmt::Display for ShortcutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            ShortcutError::Invalid => "неверная запись сочетания",
-            ShortcutError::NeedsModifier => "нужен Ctrl, Alt или Cmd",
-            ShortcutError::Reserved => "сочетание зарезервировано системой",
+            ShortcutError::Invalid => "invalid shortcut notation",
+            ShortcutError::NeedsModifier => "Ctrl, Alt or Cmd is required",
+            ShortcutError::Reserved => "shortcut is reserved by the system",
         })
     }
 }
 
 impl std::error::Error for ShortcutError {}
 
-/// Допустимые клавиши (имена `KeyboardEvent.code`).
+/// Allowed keys (`KeyboardEvent.code` names).
 fn is_known_key(key: &str) -> bool {
     let letter = key
         .strip_prefix("Key")
@@ -120,8 +121,8 @@ fn is_known_key(key: &str) -> bool {
         )
 }
 
-/// Системные сочетания, которые приложение не отнимает. Список короткий и намеренно консервативный: «занято» остальным
-/// определяет сама система при регистрации.
+/// System shortcuts that the app does not take away. The list is short and deliberately conservative: whether the rest
+/// is "taken" is decided by the system itself at registration.
 fn is_reserved(ctrl: bool, alt: bool, shift: bool, cmd: bool, key: &str) -> bool {
     if !cmd || ctrl || alt {
         return false;
@@ -133,8 +134,8 @@ fn is_reserved(ctrl: bool, alt: bool, shift: bool, cmd: bool, key: &str) -> bool
     }
 }
 
-/// Разбирает запись и возвращает каноничную (порядок модификаторов, регистр имён). Модификаторы принимаются как
-/// `Ctrl`/`Control`, `Alt`/`Option`, `Shift`, `Cmd`/`Command`/`Super`; клавиша — как в `KeyboardEvent.code`.
+/// Parses the notation and returns the canonical one (modifier order, name case). Modifiers are accepted as
+/// `Ctrl`/`Control`, `Alt`/`Option`, `Shift`, `Cmd`/`Command`/`Super`; the key is as in `KeyboardEvent.code`.
 pub fn canonical_accelerator(text: &str) -> Result<String, ShortcutError> {
     let mut ctrl = false;
     let mut alt = false;
@@ -143,7 +144,7 @@ pub fn canonical_accelerator(text: &str) -> Result<String, ShortcutError> {
     let mut key: Option<&str> = None;
     for token in text.split('+') {
         if key.is_some() {
-            // Клавиша должна быть последней и единственной.
+            // The key must be the last and the only one.
             return Err(ShortcutError::Invalid);
         }
         let flag = match token {
@@ -283,7 +284,7 @@ mod tests {
                 "{text}"
             );
         }
-        // С другим модификатором или с Shift (кроме Q) — не зарезервировано.
+        // With another modifier or with Shift (except Q) it is not reserved.
         assert!(canonical_accelerator("Cmd+Alt+KeyH").is_ok());
         assert!(canonical_accelerator("Cmd+Shift+KeyW").is_ok());
         assert!(canonical_accelerator("Ctrl+Space").is_ok());

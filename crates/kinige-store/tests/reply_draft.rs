@@ -1,8 +1,8 @@
-//! Черновик с ответом (слайс 5): строка «Ответ на запись» переживает перезапуск и `kill -9`, очищается отправкой, миграция
-//! 5 → 6 сохраняет черновики.
+//! A draft with a reply (slice 5): the "Reply to entry" row survives a restart and `kill -9`, is cleared by sending, and
+//! the 5 -> 6 migration keeps drafts.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -39,7 +39,7 @@ fn a_draft_keeps_the_reply_target_and_is_deleted_only_when_text_and_reply_are_bo
         .unwrap();
     let only_reply = store.chat_draft(INBOX_ID, &now()).unwrap();
     assert_eq!(only_reply.body, "");
-    let quote = only_reply.reply_to.expect("строка ответа без текста");
+    let quote = only_reply.reply_to.expect("reply row without text");
     assert_eq!(
         (quote.id.as_str(), quote.state, quote.years_later),
         (old.as_str(), ReplyState::Live, 3)
@@ -56,14 +56,17 @@ fn a_draft_keeps_the_reply_target_and_is_deleted_only_when_text_and_reply_are_bo
     assert_eq!(
         (text_only.body.as_str(), text_only.reply_to),
         ("текст", None),
-        "отмена ответа убирает только ответ"
+        "cancelling the reply removes only the reply"
     );
 
     store.save_chat_draft(INBOX_ID, "", None, &now()).unwrap();
     let rows: i64 = raw(dir.path())
         .query_row("SELECT COUNT(*) FROM draft", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(rows, 0, "пусты и текст, и ответ — строки нет");
+    assert_eq!(
+        rows, 0,
+        "both the text and the reply are empty, so there is no row"
+    );
 }
 
 #[test]
@@ -97,11 +100,11 @@ fn a_refused_reply_keeps_the_draft_and_its_reply_line() {
         "{result:?}"
     );
     let draft = store.chat_draft(INBOX_ID, &now()).unwrap();
-    assert_eq!(draft.body, "ответ", "текст остаётся в поле");
+    assert_eq!(draft.body, "ответ", "the text stays in the field");
     assert_eq!(
         draft.reply_to.unwrap().state,
         ReplyState::Trash,
-        "строка показывает «в корзине»"
+        "the row shows \"in the trash\""
     );
     store.purge_message(&old, &now()).unwrap();
     assert_eq!(
@@ -139,7 +142,7 @@ fn garbage_reply_ids_are_not_saved_into_a_draft() {
     assert_eq!(
         (draft.body.as_str(), draft.reply_to),
         ("черновик", None),
-        "прежний черновик цел"
+        "the previous draft is intact"
     );
 }
 
@@ -203,7 +206,7 @@ fn migration_five_to_six_keeps_drafts_and_takes_a_copy_first() {
     );
 }
 
-/// Дочерний процесс: сохраняет черновик-ответ и падает через `abort` сразу после ответа (то есть после `COMMIT`).
+/// Child process: saves a reply draft and crashes via `abort` right after the reply (that is, after `COMMIT`).
 #[test]
 fn abort_right_after_saving_a_reply_draft_keeps_the_draft_and_its_reply_line() {
     if let Ok(dir) = std::env::var(CHILD_ENV) {
@@ -211,7 +214,7 @@ fn abort_right_after_saving_a_reply_draft_keeps_the_draft_and_its_reply_line() {
         let old = old_entry(&store);
         store
             .save_chat_draft(INBOX_ID, "недописанный ответ", Some(&old), &now())
-            .expect("черновик");
+            .expect("draft");
         std::process::abort();
     }
     let dir = tempfile::tempdir().unwrap();
@@ -225,12 +228,14 @@ fn abort_right_after_saving_a_reply_draft_keeps_the_draft_and_its_reply_line() {
         .env(CHILD_ENV, dir.path())
         .status()
         .unwrap();
-    assert!(!status.success(), "дочерний процесс должен был упасть");
+    assert!(!status.success(), "the child process should have crashed");
 
     let store = open_without_mirror(dir.path());
     let draft = store.chat_draft(INBOX_ID, &now()).unwrap();
     assert_eq!(draft.body, "недописанный ответ");
-    let quote = draft.reply_to.expect("строка «Ответ на запись» на месте");
+    let quote = draft
+        .reply_to
+        .expect("the \"Reply to entry\" row is in place");
     assert_eq!(
         (quote.state, quote.excerpt.as_str()),
         (ReplyState::Live, "Старая мысль")
@@ -238,8 +243,8 @@ fn abort_right_after_saving_a_reply_draft_keeps_the_draft_and_its_reply_line() {
 }
 
 fn wait_closed(dir: &std::path::Path) {
-    // Фоновые потоки закрытого хранилища отпускают файл базы не мгновенно.
-    wait_until("база свободна", || {
+    // The background threads of a closed store do not release the database file instantly.
+    wait_until("the database is free", || {
         raw(dir)
             .query_row("SELECT COUNT(*) FROM sqlite_master", [], |r| {
                 r.get::<_, i64>(0)

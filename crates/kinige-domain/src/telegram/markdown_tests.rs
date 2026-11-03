@@ -1,4 +1,4 @@
-//! Тесты `render_body`: таблицы «сущность → Markdown», экранирование, заглушки, пересылка, автор.
+//! Tests of `render_body`: "entity -> Markdown" tables, escaping, placeholders, forward, author.
 
 use super::*;
 use crate::lang::Language;
@@ -66,7 +66,7 @@ fn entities_table() {
         (TgSpanKind::Hashtag, "#дела", "#дела"),
         (TgSpanKind::Cashtag, "$USD", "$USD"),
         (TgSpanKind::BotCommand, "/start", "/start"),
-        // Остальные — как обычный текст.
+        // The rest are plain text.
         (TgSpanKind::Underline, "под чертой", "под чертой"),
         (TgSpanKind::Spoiler, "секрет", "секрет"),
         (TgSpanKind::MentionName, "Пётр", "Пётр"),
@@ -99,7 +99,7 @@ fn spaces_move_outside_the_markers() {
         .unwrap(),
         "а\t_курсив_\u{a0}б"
     );
-    // Пустая сущность маркеров не получает.
+    // An empty entity gets no markers.
     assert_eq!(
         ru(vec![plain("а"), sp(TgSpanKind::Bold, "   "), plain("б")]).unwrap(),
         "а   б"
@@ -117,9 +117,9 @@ fn multiline_entities_are_wrapped_per_line() {
 fn inline_code_uses_one_more_backtick_than_the_longest_run() {
     assert_eq!(one(TgSpanKind::Code, "a`b"), "``a`b``");
     assert_eq!(one(TgSpanKind::Code, "a``b`c"), "```a``b`c```");
-    // Кавычка с краю: пробелы по бокам, иначе она склеится с оградой.
+    // A backtick at the edge: spaces on the sides, otherwise it would merge with the fence.
     assert_eq!(one(TgSpanKind::Code, "`x"), "`` `x ``");
-    // В коде ничего не экранируется.
+    // Nothing is escaped in code.
     assert_eq!(one(TgSpanKind::Code, "a*b_c[d]"), "`a*b_c[d]`");
 }
 
@@ -137,17 +137,17 @@ fn pre_block_goes_on_its_own_lines_with_language() {
         .unwrap(),
         "до\n```rust\nfn main() {}\n```\nпосле"
     );
-    // Блок посреди строки начинается с новой строки.
+    // A block in the middle of a line starts on a new line.
     assert_eq!(
         ru(vec![plain("до"), sp(pre(None), "x"), plain("после")]).unwrap(),
         "до\n```\nx\n```\nпосле"
     );
-    // Ограда длиннее любой серии кавычек внутри; обязательный `*` и `_` внутри не экранируются.
+    // The fence is longer than any run of backticks inside; `*` and `_` inside are not escaped.
     assert_eq!(
         one(pre(None), "```\na_b*\n```"),
         "````\n```\na_b*\n```\n````"
     );
-    // Язык с лишними знаками не ломает строку-открытие.
+    // A language with extra characters does not break the opening line.
     assert_eq!(one(pre(Some("c`++ x")), "x"), "```c++x\nx\n```");
 }
 
@@ -164,7 +164,7 @@ fn blockquote_prefixes_every_line() {
         .unwrap(),
         "до \n> цитата\nпосле"
     );
-    // Внутри цитаты знак списка в начале строки экранируется.
+    // Inside a quote, a list mark at the line start is escaped.
     assert_eq!(
         one(TgSpanKind::Blockquote, "- не список"),
         "> \\- не список"
@@ -185,7 +185,7 @@ fn text_link_escapes_text_and_keeps_parentheses_balanced() {
         link("https://example.org/a_(b)", "статья"),
         "[статья](https://example.org/a_(b))"
     );
-    // Непарная скобка в адресе — процентами, иначе ссылка закроется раньше.
+    // An unpaired bracket in the address is percent-encoded, otherwise the link would close earlier.
     assert_eq!(
         link("https://example.org/a)b", "x"),
         "[x](https://example.org/a%29b)"
@@ -206,7 +206,7 @@ fn plain_text_escaping() {
         one(TgSpanKind::Plain, "a*b_c`d[e]f<g~h\\i"),
         "a\\*b\\_c\\`d\\[e\\]f\\<g\\~h\\\\i"
     );
-    // Знаки, безвредные в середине строки, не трогаются.
+    // Characters harmless in the middle of a line are not touched.
     assert_eq!(
         one(TgSpanKind::Plain, "a > b - c # d + e 1. f"),
         "a > b - c # d + e 1. f"
@@ -230,7 +230,7 @@ fn line_start_markers_are_escaped() {
         ("---", "\\---"),
         ("===", "\\==="),
         ("  - с отступом", "  \\- с отступом"),
-        // Не маркеры:
+        // Not markers:
         ("#тег", "#тег"),
         ("####### семь", "####### семь"),
         ("-5 градусов", "-5 градусов"),
@@ -241,12 +241,12 @@ fn line_start_markers_are_escaped() {
     for (input, expected) in cases {
         assert_eq!(one(TgSpanKind::Plain, input), expected, "{input}");
     }
-    // Каждая строка текста, а не только первая.
+    // Every line of the text, not only the first.
     assert_eq!(
         one(TgSpanKind::Plain, "раз\n- два\n# три"),
         "раз\n\\- два\n\\# три"
     );
-    // Сразу после предыдущего текста в той же строке — не начало строки.
+    // Right after the previous text on the same line is not a line start.
     assert_eq!(ru(vec![plain("а"), plain("- б")]).unwrap(), "а- б");
     assert_eq!(ru(vec![plain("а\n"), plain("- б")]).unwrap(), "а\n\\- б");
 }
@@ -262,7 +262,7 @@ fn hashtag_stays_a_tag_and_escapes_do_not_create_tags() {
     ])
     .unwrap();
     assert_eq!(parse_tags(&body), ["работа", "идея_1"]);
-    // Код с # — не тег; ссылка с # — не тег.
+    // Code with # is not a tag; a link with # is not a tag.
     let body = ru(vec![
         sp(TgSpanKind::Code, "#нет"),
         plain(" "),
@@ -281,7 +281,7 @@ fn hashtag_stays_a_tag_and_escapes_do_not_create_tags() {
 
 #[test]
 fn result_is_normalized() {
-    // Конец строки приведён к `\n`, хвостовые пробелы и ведущие пустые строки убраны.
+    // Line endings are normalized to `\n`, trailing spaces and leading empty lines are removed.
     assert_eq!(ru(vec![plain("\r\n\r\nтекст  \r\n")]).unwrap(), "текст");
 }
 

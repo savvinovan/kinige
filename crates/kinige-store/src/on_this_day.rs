@@ -1,6 +1,6 @@
-//! «В этот день» (слайс 5, ТЗ §2.1): отбор записей Inbox этого числа прошлых лет и скрытие карточки до следующего дня
-//! журнала. Даты прошлых лет считает домен; запрос идёт по индексу `message_feed (chat_id, journal_date, …)` на каждую
-//! дату, а не по `substr` всей таблицы.
+//! "On this day" (slice 5, PRD §2.1): picking the Inbox entries of this calendar day in past years and hiding the card
+//! until the next journal day. The domain computes the dates of past years; the query goes over the index
+//! `message_feed (chat_id, journal_date, …)` for each date, not over `substr` of the whole table.
 
 use crate::error::{read_err, write_err};
 use crate::settings::get_setting;
@@ -14,18 +14,18 @@ use kinige_domain::on_this_day::{
 };
 use rusqlite::{Connection, OptionalExtension};
 
-/// `app_setting`: `journal_date`, до конца которого карточка скрыта. Локально, не синхронизируется, в `settings.json` не
-/// пишется (это не настройка, а состояние дня).
+/// `app_setting`: the `journal_date` until the end of which the card is hidden. Local, not synced, not written to
+/// `settings.json` (it is not a setting but the state of the day).
 const DISMISSED_KEY: &str = "on_this_day_dismissed";
 
 impl Store {
-    /// Карточка «В этот день» для сегодняшнего дня журнала. `None`, если записей этого числа в прошлые годы нет или
-    /// карточку на сегодня скрыли.
+    /// The "On this day" card for today's journal day. `None` if there are no entries of this calendar day in past
+    /// years or the card was hidden for today.
     pub fn get_on_this_day(&self, now: &Now) -> Result<Option<OnThisDay>, StoreError> {
         let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
         self.read(|conn| {
-            // Одна транзакция чтения: снимок базы общий для счётчика и записей года, `total` не расходится с `entries`, даже
-            // если писатель добавляет запись между запросами.
+            // One read transaction: the database snapshot is shared by the counter and the year's entries, so `total`
+            // never differs from `entries`, even if the writer adds an entry between the queries.
             let conn = &conn.unchecked_transaction().map_err(read_err)?;
             let dismissed = get_setting(conn, DISMISSED_KEY).map_err(read_err)?;
             if dismissed.as_deref() == Some(today.as_str()) {
@@ -47,7 +47,7 @@ impl Store {
         })
     }
 
-    /// «Скрыть до завтра»: карточка не показывается до конца дня журнала `date`. Не дата — `InvalidDate`.
+    /// "Hide until tomorrow": the card is not shown until the end of the journal day `date`. Not a date means `InvalidDate`.
     pub fn dismiss_on_this_day(&self, date: &str) -> Result<(), StoreError> {
         if !is_valid_journal_date(date) {
             return Err(StoreError::InvalidDate);
@@ -65,7 +65,7 @@ impl Store {
     }
 }
 
-/// Год самой старой записи Inbox, кроме корзины; `None` — записей нет.
+/// The year of the oldest Inbox entry, trash excluded; `None` means there are no entries.
 fn oldest_year(conn: &Connection) -> Result<Option<i32>, StoreError> {
     let oldest: Option<String> = conn
         .query_row(
@@ -79,8 +79,8 @@ fn oldest_year(conn: &Connection) -> Result<Option<i32>, StoreError> {
     Ok(oldest.as_deref().and_then(year_of))
 }
 
-/// Год карточки за один день: число записей и первая запись; у подробного года ещё и сами записи. `None`, если в этот
-/// день записей Inbox нет.
+/// A card year for one day: the number of entries and the first entry; a detailed year also has the entries
+/// themselves. `None` if there are no Inbox entries on that day.
 fn load_year(
     conn: &Connection,
     journal_date: &str,

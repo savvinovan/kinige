@@ -1,23 +1,23 @@
-//! Типы окна «Доступ ИИ-агентов» (слайс 4a, ADR-0009): настройки доступа, состояние сокета, журнал обращений.
-//! TS-типы генерируются в `web/src/api/generated/` (ADR-0002).
+//! Types of the "AI agent access" window (slice 4a, ADR-0009): access settings, socket state, the call log.
+//! TS types are generated in `web/src/api/generated/` (ADR-0002).
 
 use crate::MessageView;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-/// Режим доступа агента: один переключатель на все видимые чаты (решение 3, 28.10.2026).
+/// The agent's access mode: one switch for all visible chats (decision 3, 28.10.2026).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "AgentMode.ts")]
 pub enum AgentMode {
-    /// Только чтение: запись и отметка задач отказывают.
+    /// Read-only: writing and marking tasks are refused.
     Read,
-    /// Чтение и запись в любой видимый чат.
+    /// Reading and writing in any visible chat.
     ReadWrite,
 }
 
 impl AgentMode {
-    /// Значение в `app_setting`. Незнакомое значение — «только чтение»: безопаснее.
+    /// The value in `app_setting`. An unknown value means "read-only": safer.
     pub fn setting(self) -> &'static str {
         match self {
             AgentMode::Read => "read",
@@ -34,7 +34,7 @@ impl AgentMode {
     }
 }
 
-/// Чат в списке «видно агенту».
+/// A chat in the "visible to the agent" list.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "AgentChatChoice.ts")]
@@ -45,31 +45,31 @@ pub struct AgentChatChoice {
     pub is_inbox: bool,
     #[ts(type = "number")]
     pub count: i64,
-    /// Исключён из AI (`ai_excluded`): строка неактивна, агент его не видит никогда.
+    /// Excluded from AI (`ai_excluded`): the row is inactive, the agent never sees it.
     pub ai_excluded: bool,
-    /// Отмечен «видно агенту».
+    /// Marked "visible to the agent".
     pub visible: bool,
 }
 
-/// Состояние сокета MCP, фрагменты подключения и путь к мосту. Заполняет слой Tauri.
+/// The MCP socket state, connection snippets and the path to the bridge. Filled in by the Tauri layer.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "AgentSocket.ts")]
 pub struct AgentSocket {
-    /// Сокет слушает.
+    /// The socket is listening.
     pub listening: bool,
-    /// Почему не слушает: `dir_unsafe`, `second_instance`, `bind_failed`, `bridge_missing`.
+    /// Why it is not listening:`dir_unsafe`, `second_instance`, `bind_failed`, `bridge_missing`.
     pub error: Option<String>,
-    /// Абсолютный путь моста (`kinige-mcp`) рядом с приложением.
+    /// The absolute path of the bridge (`kinige-mcp`) next to the app.
     pub bridge_path: Option<String>,
     pub socket_path: Option<String>,
-    /// Фрагмент `claude_desktop_config.json`.
+    /// A snippet for `claude_desktop_config.json`.
     pub desktop_config: Option<String>,
-    /// Команда `claude mcp add …`.
+    /// The `claude mcp add …` command.
     pub code_command: Option<String>,
 }
 
-/// Окно «Доступ ИИ-агентов».
+/// The "AI agent access" window.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "AgentAccess.ts")]
@@ -80,42 +80,42 @@ pub struct AgentAccess {
     pub socket: AgentSocket,
 }
 
-/// Строка журнала обращений: факт обращения без содержимого записей.
+/// A call log row: the fact of the call without the entries' content.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "AgentLogRow.ts")]
 pub struct AgentLogRow {
     #[ts(type = "number")]
     pub id: i64,
-    /// UTC, мс.
+    /// UTC, ms.
     #[ts(type = "number")]
     pub at: i64,
-    /// Имя клиента с его слов: не проверено.
+    /// The client name as the client states it: not verified.
     pub client: String,
-    /// Имя инструмента или служебная строка сеанса: `connect`, `reconnect` (мост переподключился), `disconnect`.
+    /// The tool name or a service session line: `connect`, `reconnect` (the bridge reconnected), `disconnect`.
     pub tool: String,
-    /// Поисковый запрос (до 128 знаков).
+    /// The search query (up to 128 characters).
     pub query: Option<String>,
     /// `ok`, `disabled`, `read_only`, `not_found`, `no_agent_entry`, `not_a_task`, `invalid_argument`, `error`.
     pub outcome: String,
-    /// Сколько записей затронуло обращение. Пишется вместе со строкой и не меняется после «Удалить навсегда» (раскрытие
-    /// покажет меньше записей, окно скажет, сколько удалено).
+    /// How many entries the call touched. Written together with the row and does not change after "Delete permanently" (expanding
+    /// will show fewer entries, the window will say how many were deleted).
     #[ts(type = "number")]
     pub count: i64,
 }
 
-/// Страница журнала, новые сверху.
+/// A log page, the newest on top.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "AgentLogPage.ts")]
 pub struct AgentLogPage {
     pub rows: Vec<AgentLogRow>,
-    /// `id` последней строки страницы, если есть ещё более старые.
+    /// The `id` of the page's last row, if there are older ones.
     #[ts(type = "number | null")]
     pub older: Option<i64>,
 }
 
-/// Запись, которую затронуло обращение: сама запись или `None`, если она удалена навсегда.
+/// An entry the call touched: the entry itself or `None` if it was deleted permanently.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "AgentLogEntry.ts")]

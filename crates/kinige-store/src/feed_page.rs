@@ -1,7 +1,7 @@
-//! Страницы ленты вокруг записи и новее (слайс 4, задача 4.10): `Latest`, `Before`, `After`, `Around`. Порядок ленты —
-//! `(journal_date, created_at, id)`; страница отдаётся по возрастанию, самая новая запись последней. Корзина не
-//! показывается. `older` — курсор следующей более старой страницы (первая запись этой), `newer` — более новой
-//! (последняя запись этой); `None` — в ту сторону записей нет.
+//! Feed pages around an entry and newer (slice 4, task 4.10): `Latest`, `Before`, `After`, `Around`. The feed order is
+//! `(journal_date, created_at, id)`; a page comes in ascending order, the newest entry last. The trash is not shown.
+//! `older` is the cursor of the next older page (the first entry of this one), `newer` of a newer page (the last
+//! entry of this one); `None` means there are no entries in that direction.
 
 use crate::error::read_err;
 use crate::feed::MAX_PAGE;
@@ -11,16 +11,16 @@ use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use kinige_domain::{FeedCursor, MessagePage, MessageView};
 use rusqlite::Connection;
 
-/// Откуда брать страницу.
+/// Where to take the page from.
 #[derive(Debug, Clone, Copy)]
 pub enum PageAt<'a> {
-    /// Самые новые записи.
+    /// The newest entries.
     Latest,
-    /// Записи строго старше курсора.
+    /// Entries strictly older than the cursor.
     Before(&'a FeedCursor),
-    /// Записи строго новее курсора.
+    /// Entries strictly newer than the cursor.
     After(&'a FeedCursor),
-    /// Половина страницы до записи, сама запись и остальное после неё.
+    /// Half a page before the entry, the entry itself and the rest after it.
     Around(&'a str),
 }
 
@@ -38,7 +38,7 @@ fn cursor_of(message: &MessageView) -> FeedCursor {
     }
 }
 
-/// До `take` записей чата по одну сторону от курсора, ближайшие к нему первыми; `tag` оставляет записи с этим тегом.
+/// Up to `take` entries of the chat on one side of the cursor, the nearest to it first; `tag` keeps entries with this tag.
 fn fetch(
     conn: &Connection,
     chat_id: &str,
@@ -86,7 +86,7 @@ fn fetch(
     rows.collect::<Result<Vec<_>, _>>().map_err(read_err)
 }
 
-/// Есть ли записи по эту сторону от курсора.
+/// Whether there are entries on this side of the cursor.
 fn exists(
     conn: &Connection,
     chat_id: &str,
@@ -97,7 +97,7 @@ fn exists(
     Ok(!fetch(conn, chat_id, tag, Some(cursor), side, 1)?.is_empty())
 }
 
-/// Оставляет `keep` ближайших к курсору записей; `true`, если лишняя запись была (значит, дальше есть ещё).
+/// Keeps the `keep` entries nearest to the cursor; `true` if there was an extra entry (so there is more further on).
 fn trim(found: &mut Vec<MessageView>, keep: usize) -> bool {
     let more = found.len() > keep;
     found.truncate(keep);
@@ -105,8 +105,8 @@ fn trim(found: &mut Vec<MessageView>, keep: usize) -> bool {
 }
 
 impl Store {
-    /// Страница ленты чата: `limit` записей от `at`. `Around(id)` — запись и соседние с двух сторон; записи нет в этом чате,
-    /// она в корзине или не подходит под `tag` — `MessageNotFound`.
+    /// A chat feed page: `limit` entries from `at`. `Around(id)` is the entry and its neighbours on both sides; if the
+    /// entry is not in this chat, is in the trash or does not match `tag`, the result is `MessageNotFound`.
     pub fn list_messages_page(
         &self,
         chat_id: &str,
@@ -164,7 +164,7 @@ impl Store {
                         return Err(StoreError::MessageNotFound);
                     }
                     let center = cursor_of(&target);
-                    // Половина страницы до записи, остальное после. У края ленты страница короче.
+                    // Half a page before the entry, the rest after it. At the edge of the feed the page is shorter.
                     let half_before = (limit - 1) / 2;
                     let half_after = limit - 1 - half_before;
                     let mut before = fetch(

@@ -1,7 +1,7 @@
-//! Разбор экспорта «Избранного» (`fixtures/real-saved.json`): 50 сообщений, покрывающих все формы настоящего файла Telegram
-//! Desktop (вложения, пересылки, ответ, реакции, правка, геометка, контакт, подарок, все виды сущностей). Файл полностью
-//! синтетический (KINIG-45): имена, тексты, ссылки, id, даты, размеры и габариты выдуманы, от настоящего экспорта остались
-//! только перечисления вроде имён ключей, типов сущностей и MIME.
+//! Parsing of a "Saved Messages" export (`fixtures/real-saved.json`): 50 messages covering all forms of a real Telegram
+//! Desktop file (attachments, forwards, a reply, reactions, an edit, a geotag, a contact, a gift, all entity kinds). The
+//! file is fully synthetic (KINIG-45): names, texts, links, ids, dates, sizes and dimensions are invented, only
+//! enumerations such as key names, entity types and MIME types remain from the real export.
 
 use super::*;
 use crate::lang::Language;
@@ -16,19 +16,19 @@ fn fixture() -> Option<String> {
 
 #[test]
 fn real_shaped_export_parses_and_every_message_renders() {
-    let json = fixture().expect("fixtures/real-saved.json лежит в репозитории");
+    let json = fixture().expect("fixtures/real-saved.json is in the repository");
     let export = parse_export(&json).unwrap();
     assert_eq!(export.chats.len(), 1);
     let chat = &export.chats[0];
     assert_eq!(chat.kind, TgChatKind::Saved);
-    assert_eq!(chat.name, None, "у «Избранного» нет name");
+    assert_eq!(chat.name, None, "\"Saved Messages\" has no name");
     assert_eq!(export.owner_id.as_deref(), Some(chat.id.as_str()));
     let mut ids: Vec<&str> = chat.messages.iter().map(|m| m.id.as_str()).collect();
     ids.sort_unstable();
     ids.dedup();
-    assert_eq!(ids.len(), chat.messages.len(), "id не повторяются");
+    assert_eq!(ids.len(), chat.messages.len(), "ids are not repeated");
     assert!(chat.messages.iter().all(|m| m.unix.is_some()));
-    // Каждое не служебное сообщение даёт запись или пусто (пустых мало), служебных нет среди «рендерящихся».
+    // Each non-service message gives an entry or nothing (few are empty); no service messages among the "rendered" ones.
     let rendered = chat
         .messages
         .iter()
@@ -38,9 +38,9 @@ fn real_shaped_export_parses_and_every_message_renders() {
     let not_service = chat.messages.iter().filter(|m| !m.service).count();
     assert!(
         rendered * 10 >= not_service * 8,
-        "{rendered} из {not_service}"
+        "{rendered} of {not_service}"
     );
-    // Встретились виды, которые есть в настоящем файле.
+    // The kinds that exist in the real file are present.
     assert!(chat.messages.iter().any(|m| m.forwarded));
     assert!(chat.messages.iter().any(|m| m.reply_to.is_some()));
     assert!(chat.messages.iter().any(|m| m.media.is_some()));

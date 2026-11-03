@@ -1,4 +1,4 @@
-//! Настройки (`app_setting`, не синхронизируются): папка Markdown-копии и размер текста (ADR-0004).
+//! Settings (`app_setting`, not synchronised): the Markdown copy folder and the text size (ADR-0004).
 
 use crate::error::{read_err, write_err};
 use crate::forest::stored_view;
@@ -17,12 +17,12 @@ pub(crate) const KEY_MIRROR_DIR: &str = "mirror_dir";
 pub(crate) const KEY_TEXT_SIZE: &str = "text_size";
 const KEY_SIDEBAR_COLLAPSED: &str = "sidebar_collapsed";
 const KEY_RECENT_EMOJI: &str = "recent_emoji";
-/// Сколько недавних эмодзи помнит пикер.
+/// How many recent emoji the picker remembers.
 pub const MAX_RECENT_EMOJI: usize = 24;
 
-/// Недавние эмодзи, самые свежие первыми. Повреждённое значение — пустой список: недавние не стоят ошибки. Записи,
-/// отличающиеся только `VS16` (старая `✅\u{FE0F}` и новая `✅` из `emojibase-data` 18), считаются одним эмодзи: остаётся
-/// самая свежая.
+/// Recent emoji, the freshest first. A corrupted value is an empty list: recents are not worth an error. Entries that
+/// differ only by `VS16` (the old `✅\u{FE0F}` and the new `✅` from `emojibase-data` 18) count as one emoji: the
+/// freshest one stays.
 fn recent_emoji(conn: &Connection) -> rusqlite::Result<Vec<String>> {
     let stored = get_setting(conn, KEY_RECENT_EMOJI)?
         .and_then(|text| serde_json::from_str::<Vec<String>>(&text).ok())
@@ -43,7 +43,7 @@ pub(crate) fn get_setting(conn: &Connection, key: &str) -> rusqlite::Result<Opti
     .optional()
 }
 
-/// Папка копии: выбранная пользователем или по умолчанию. `None` — копия выключена. Второе значение — «по умолчанию».
+/// The copy folder: chosen by the user or the default. `None` means the copy is off. The second value is "is default".
 pub(crate) fn effective_mirror_dir(
     conn: &Connection,
     default: Option<&Path>,
@@ -54,7 +54,7 @@ pub(crate) fn effective_mirror_dir(
     })
 }
 
-/// Сохранённое сочетание вида `kind`; нет записи, незнакомое или повреждённое значение — сочетание по умолчанию.
+/// The stored shortcut of kind `kind`; no record, an unknown or a corrupted value gives the default shortcut.
 pub(crate) fn stored_accelerator(
     conn: &Connection,
     kind: ShortcutKind,
@@ -80,8 +80,8 @@ fn shortcut_statuses(conn: &Connection) -> rusqlite::Result<Vec<ShortcutStatus>>
 }
 
 impl Store {
-    /// Настройки и состояние копии для окна «Настройки». Состояние сочетаний здесь — «назначено»: занятость определяет
-    /// система при регистрации, её накладывает слой Tauri.
+    /// The settings and the copy state for the Settings window. The shortcut state here is "assigned": whether a
+    /// shortcut is taken is decided by the system at registration, and the Tauri layer overlays it.
     pub fn get_settings(&self) -> Result<Settings, StoreError> {
         let default = self.inner.default_mirror_dir.clone();
         let (text_size, folder, pending_days, shortcuts, collapsed, recent, forest) =
@@ -118,9 +118,9 @@ impl Store {
         })
     }
 
-    /// Проверка нового сочетания до регистрации в системе: запись разбирается и приводится к каноничной, зарезервированное
-    /// и без модификатора отвергается (`ShortcutInvalid`), совпадение с сочетанием другого действия — `ShortcutDuplicate`.
-    /// Ничего не записывает.
+    /// Checks a new shortcut before registering it in the system: the text is parsed and made canonical, a reserved one
+    /// or one without a modifier is rejected (`ShortcutInvalid`), a clash with the shortcut of another action gives
+    /// `ShortcutDuplicate`. Writes nothing.
     pub fn check_shortcut(
         &self,
         kind: ShortcutKind,
@@ -141,12 +141,12 @@ impl Store {
         Ok(canonical)
     }
 
-    /// Сочетание вида `kind` как есть сейчас (сохранённое или по умолчанию).
+    /// The shortcut of kind `kind` as it is now (stored or the default).
     pub fn shortcut_accelerator(&self, kind: ShortcutKind) -> Result<String, StoreError> {
         self.read(|conn| stored_accelerator(conn, kind).map_err(read_err))
     }
 
-    /// Сохраняет сочетание, уже принятое системой. Повторяет проверку [`Store::check_shortcut`].
+    /// Saves a shortcut the system has already accepted. Repeats the check of [`Store::check_shortcut`].
     pub fn save_shortcut(&self, kind: ShortcutKind, accelerator: &str) -> Result<(), StoreError> {
         let canonical = self.check_shortcut(kind, accelerator)?;
         self.write(move |conn| {
@@ -159,7 +159,7 @@ impl Store {
         })
     }
 
-    /// «Сбросить»: возвращает сочетание по умолчанию.
+    /// "Reset": returns the default shortcut.
     pub fn reset_shortcut(&self, kind: ShortcutKind) -> Result<(), StoreError> {
         self.write(move |conn| {
             conn.execute(
@@ -171,7 +171,7 @@ impl Store {
         })
     }
 
-    /// «Размер текста»: хранится, переживает перезапуск.
+    /// "Text size": stored, survives a restart.
     pub fn set_text_size(&self, size: TextSize) -> Result<(), StoreError> {
         self.write(move |conn| {
             conn.execute(
@@ -183,7 +183,7 @@ impl Store {
         })
     }
 
-    /// Сайдбар свёрнут до полосы эмодзи или развёрнут: хранится, переживает перезапуск.
+    /// The sidebar is collapsed to an emoji strip or expanded: stored, survives a restart.
     pub fn set_sidebar_collapsed(&self, collapsed: bool) -> Result<(), StoreError> {
         self.write(move |conn| {
             conn.execute(
@@ -195,11 +195,11 @@ impl Store {
         })
     }
 
-    /// Выбранный в пикере эмодзи встаёт первым в «недавних»; повтор переезжает вперёд, список ограничен
-    /// [`MAX_RECENT_EMOJI`]. Ответ — список целиком. Чтение и запись — в одной транзакции писателя.
+    /// An emoji chosen in the picker goes first in "recent"; a repeat moves to the front, the list is capped at
+    /// [`MAX_RECENT_EMOJI`]. The reply is the whole list. Reading and writing happen in one writer transaction.
     pub fn add_recent_emoji(&self, emoji: &str) -> Result<Vec<String>, StoreError> {
-        // Только одна последовательность эмодзи (без пробелов, разметки и текста): список «недавних» показывается в пикере
-        // обоих окон. Окно захвата получает эту команду отдельно, поэтому проверка здесь, а не в пикере.
+        // Only one emoji sequence (no spaces, markup or text): the "recent" list is shown in the picker of both
+        // windows. The capture window gets this command separately, so the check is here, not in the picker.
         if !kinige_domain::emoji::is_emoji_sequence(emoji) {
             return Err(kinige_domain::chat::ChatInputError::IconInvalid.into());
         }
@@ -225,12 +225,12 @@ impl Store {
         })
     }
 
-    /// Новая папка копии (путь пришёл из системного диалога в Rust). В той же транзакции все дни с записями помечаются
-    /// для перезаписи: копия в новой папке получается полной, а не только с новых записей.
+    /// A new copy folder (the path came from the system dialog in Rust). In the same transaction all days with entries
+    /// are marked for rewriting: the copy in the new folder comes out complete, not only with new entries.
     pub fn set_mirror_dir(&self, dir: &Path) -> Result<(), StoreError> {
         let text = dir
             .to_str()
-            .ok_or_else(|| StoreError::Internal("путь не в UTF-8".into()))?
+            .ok_or_else(|| StoreError::Internal("path is not UTF-8".into()))?
             .to_string();
         self.write(move |conn| {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate).map_err(write_err)?;
@@ -246,8 +246,8 @@ impl Store {
         Ok(())
     }
 
-    /// Папка копии сменилась (окном или файлом настроек): прошлая ошибка копии снимается, писатель просыпается и пишет дни
-    /// в новую папку сразу, а не после следующей записи или перезапуска.
+    /// The copy folder changed (by the window or the settings file): the previous copy error is cleared, the writer wakes
+    /// up and writes the days into the new folder at once, not after the next entry or a restart.
     pub(crate) fn mirror_dir_changed(&self) {
         self.inner.mirror.clear_error();
         self.wake_mirror();

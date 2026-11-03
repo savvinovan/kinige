@@ -1,37 +1,38 @@
-//! Типы файла настроек `settings.json` для окна «Файл настроек» (слайс 4b, ADR-0010): путь, что не так с файлом, ошибки
-//! ключей и когда раздел менялся через файл. Без IO. TS-типы генерируются в `web/src/api/generated/` (ADR-0002).
+//! Types of the `settings.json` settings file for the "Settings file" window (slice 4b, ADR-0010): the path, what is wrong
+//! with the file, key errors and when a section was changed through the file. No IO. The TS types are generated into
+//! `web/src/api/generated/` (ADR-0002).
 
 use serde::Serialize;
 use ts_rs::TS;
 
-/// Состояние файла для окна.
+/// The state of the file for the window.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "SettingsFileState.ts")]
 pub struct SettingsFileState {
-    /// Абсолютный путь файла: показывается и копируется («Копировать путь»).
+    /// The absolute path of the file: shown and copied ("Copy path").
     pub path: String,
-    /// Файл не разобран или не прочитан; ни одна настройка из него не применена.
+    /// The file did not parse or could not be read; no setting from it was applied.
     pub problem: Option<FileProblem>,
-    /// Почему файл небезопасен: ключи `agent_access.*` и `mirror.folder` из него не применяются.
+    /// Why the file is unsafe: the `agent_access.*` and `mirror.folder` keys from it are not applied.
     pub unsafe_reason: Option<UnsafeReason>,
-    /// Ошибки отдельных ключей: остальные ключи применены.
+    /// Errors of individual keys: the other keys were applied.
     pub issues: Vec<KeyIssue>,
-    /// Неизвестные ключи: предупреждение, в файле они сохраняются.
+    /// Unknown keys: a warning, they are kept in the file.
     pub unknown_keys: Vec<String>,
-    /// Сколько неизвестных ключей не поместилось в список («и ещё N»).
+    /// How many unknown keys did not fit into the list ("and N more").
     pub unknown_more: u32,
-    /// Когда раздел менялся через файл.
+    /// When a section was changed through the file.
     pub changed: FileChanges,
 }
 
-/// Файл целиком не годится.
+/// The file as a whole is unusable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "FileProblem.ts")]
 pub struct FileProblem {
     pub kind: FileProblemKind,
-    /// Строка и столбец (с единицы) для `parse`.
+    /// Line and column (1-based) for `parse`.
     pub line: Option<u32>,
     pub column: Option<u32>,
 }
@@ -40,38 +41,38 @@ pub struct FileProblem {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "FileProblemKind.ts")]
 pub enum FileProblemKind {
-    /// Не JSON.
+    /// Not JSON.
     Parse,
-    /// JSON, но не объект.
+    /// JSON, but not an object.
     NotObject,
-    /// Не UTF-8.
+    /// Not UTF-8.
     NotUtf8,
-    /// Начинается с BOM.
+    /// Starts with a BOM.
     Bom,
-    /// Больше 1 МиБ.
+    /// Larger than 1 MiB.
     TooLarge,
-    /// Не удалось прочитать или записать (права, диск).
+    /// Could not be read or written (permissions, disk).
     Io,
 }
 
-/// Почему файл небезопасен (ADR-0010).
+/// Why the file is unsafe (ADR-0010).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "UnsafeReason.ts")]
 pub enum UnsafeReason {
-    /// Файл — символическая ссылка.
+    /// The file is a symbolic link.
     Symlink,
-    /// Не обычный файл (канал, устройство).
+    /// Not a regular file (a pipe, a device).
     NotRegular,
-    /// Владелец не текущий пользователь.
+    /// The owner is not the current user.
     Owner,
-    /// Файл доступен на запись группе или всем.
+    /// The file is writable by the group or by everyone.
     Permissions,
-    /// Каталог данных доступен на запись группе или всем (или это ссылка).
+    /// The data directory is writable by the group or by everyone (or it is a link).
     Directory,
 }
 
-/// Ошибка одного ключа (или элемента массива): `key` — путь вида `agent_access.chats[2]`.
+/// An error of one key (or array element): `key` is a path like `agent_access.chats[2]`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "KeyIssue.ts")]
@@ -84,31 +85,31 @@ pub struct KeyIssue {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "KeyIssueKind.ts")]
 pub enum KeyIssueKind {
-    /// Неверный тип значения.
+    /// The wrong type of value.
     Type,
-    /// Недопустимое значение.
+    /// An invalid value.
     Value,
-    /// Сочетание записано неверно или зарезервировано.
+    /// The shortcut is written incorrectly or is reserved.
     ShortcutInvalid,
-    /// Сочетание уже назначено другому действию.
+    /// The shortcut is already assigned to another action.
     ShortcutDuplicate,
-    /// Система не приняла сочетание.
+    /// The system did not accept the shortcut.
     ShortcutTaken,
     FolderNotAbsolute,
     FolderMissing,
-    /// Папка внутри каталога данных.
+    /// The folder is inside the data directory.
     FolderInsideData,
-    /// Файл небезопасен: ключ не применён.
+    /// The file is unsafe: the key was not applied.
     UnsafeIgnored,
     ChatNotFound,
     ChatAmbiguous,
-    /// Чат исключён из AI.
+    /// The chat is excluded from AI.
     ChatExcluded,
     /// The key is not available on this platform (`agent_access` on Windows until named pipes, slice 10a): not applied.
     Unsupported,
 }
 
-/// Когда раздел менялся через файл (UTC, мс); `null` — не менялся в этом запуске.
+/// When a section was changed through the file (UTC, ms); `null` means it was not changed in this run.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "FileChanges.ts")]

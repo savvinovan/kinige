@@ -1,6 +1,6 @@
-//! Запрос поиска (слайс 4, задача 4.9): MATCH по индексу ADR-0008, фильтры, порядок ленты по убыванию и keyset-курсор.
-//! Корзина, удалённые чаты и ревизии в результаты не попадают. Форма запроса — «A» из отчёта S5: от FTS к `message`,
-//! сортировка найденного (p95 на 100 000 записей — десятки миллисекунд).
+//! Search query (slice 4, task 4.9): MATCH over the ADR-0008 index, filters, feed order descending and a keyset cursor.
+//! Trash, deleted chats and revisions never appear in the results. The query shape is "A" from the S5 report: from FTS
+//! to `message`, then sorting the matches (p95 on 100,000 entries is tens of milliseconds).
 
 use crate::error::read_err;
 use crate::feed::{MAX_PAGE, chat_list};
@@ -12,12 +12,12 @@ use kinige_domain::search::{fts_query, highlight_terms, snippet, title_matches};
 use kinige_domain::{FeedCursor, SearchFilters, SearchHit, SearchPage};
 use rusqlite::Connection;
 
-/// Длина фрагмента в знаках.
+/// Snippet length in characters.
 const SNIPPET_CHARS: usize = 200;
 
 impl Store {
-    /// Поиск по записям. `before` — позиция последней записи предыдущей страницы. Пустой запрос (нет ни одного слова) —
-    /// пустая страница без ошибки. Чаты, чьё название совпало с запросом, приходят только на первой странице.
+    /// Search over entries. `before` is the position of the last entry of the previous page. An empty query (no words)
+    /// gives an empty page, not an error. Chats whose name matched the query arrive only on the first page.
     pub fn search(
         &self,
         input: &str,
@@ -131,8 +131,9 @@ impl Store {
             };
             Ok(SearchPage { chats, hits, older })
         };
-        // Индекс поиска — производная таблица: его повреждение лечится перестройкой из записей, а не экраном «база
-        // повреждена». Если после перестройки ошибка осталась, повреждена сама база: сигнал уходит как обычно.
+        // The search index is a derived table: its corruption is fixed by rebuilding it from the entries, not by a
+        // "database is corrupted" screen. If the error remains after the rebuild, the database itself is corrupted:
+        // the signal goes out as usual.
         let seen = self.search_generation();
         let result = match self.read_unnoted(run) {
             Err(StoreError::SearchIndex(_)) => match self.heal_search_index(seen) {

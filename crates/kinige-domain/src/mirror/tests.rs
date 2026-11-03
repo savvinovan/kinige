@@ -165,7 +165,7 @@ fn fence_closes_only_with_a_long_enough_matching_marker() {
         demote_headings(body),
         "````\n```\n# всё ещё внутри\n````\n### снаружи"
     );
-    // Незакрытое ограждение до конца записи: заголовки внутри не трогаем (как делает рендерер Markdown).
+    // An unclosed fence up to the end of the entry: headings inside are left alone (as a Markdown renderer does).
     assert_eq!(demote_headings("```\n# внутри"), "```\n# внутри");
 }
 

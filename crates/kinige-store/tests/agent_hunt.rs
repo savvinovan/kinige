@@ -1,8 +1,8 @@
-//! «Охотник за паникой» на уровне хранилища (слайс 4a): каждый инструмент получает мусорные аргументы. Результат — ошибка или
-//! обычный ответ, но не паника; запись в базе появляется только у вызовов, которые прошли проверку.
+//! "Panic hunter" at the store level (slice 4a): every tool gets garbage arguments. The result is an error or
+//! a normal reply, but never a panic; a database row appears only for calls that passed validation.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -82,13 +82,13 @@ fn every_tool_survives_garbage_arguments_and_only_valid_calls_write() {
                         }
                     }
                     Err(AgentError::Internal | AgentError::Unavailable) => {
-                        panic!("{} {key}: внутренняя ошибка на мусоре", tool.name())
+                        panic!("{} {key}: internal error on garbage", tool.name())
                     }
                     Err(_) => {}
                 }
             }
         }
-        // Без аргументов вовсе.
+        // No arguments at all.
         let _ = a.store.agent_call(
             &kinige_store::AgentRequest {
                 client: "Fuzz",
@@ -99,9 +99,9 @@ fn every_tool_survives_garbage_arguments_and_only_valid_calls_write() {
             &moscow(T0),
         );
     }
-    // Базa цела; записей ровно столько, сколько успешных add_entry; журнал: по строке на каждый вызов.
+    // The database is intact; there are exactly as many entries as successful add_entry calls; log: one row per call.
     assert_eq!(count(a.dir.path(), "message") as usize, created);
-    // Ревизии появляются только от успешных дописываний к записям, которые мусорный `text` уже создал.
+    // Revisions appear only from successful appends to entries that the garbage `text` has already created.
     assert!(count(a.dir.path(), "message_revision") as usize <= created);
     let calls = AgentTool::ALL.len() * (keys.len() * garbage().len() + 1);
     assert_eq!(count(a.dir.path(), "mcp_log") as usize, calls);

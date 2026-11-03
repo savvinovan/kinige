@@ -1,5 +1,5 @@
-//! Настройки доступа агентов для окна «Доступ ИИ-агентов» (`app_setting`, локальные, не синхронизируются):
-//! `mcp_enabled`, `mcp_mode`, `mcp_chats`. По умолчанию доступ выключен, режим «только чтение», видимых чатов нет.
+//! Agent access settings for the "AI agent access" window (`app_setting`, local, not synced):
+//! `mcp_enabled`, `mcp_mode`, `mcp_chats`. By default access is off, the mode is "read only", and no chats are visible.
 
 use crate::agent::{KEY_CHATS, KEY_ENABLED, KEY_MODE, load_settings};
 use crate::error::{read_err, write_err};
@@ -19,7 +19,8 @@ pub(crate) fn put(conn: &Connection, key: &str, value: &str) -> rusqlite::Result
 }
 
 impl Store {
-    /// Состояние доступа для окна: флажок, режим, все чаты с отметкой «видно агенту». Состояние сокета заполняет слой Tauri.
+    /// Access state for the window: the switch, the mode, all chats with a "visible to the agent" mark. The Tauri layer
+    /// fills in the socket state.
     pub fn agent_access(&self) -> Result<AgentAccess, StoreError> {
         self.read(|conn| {
             let settings = load_settings(conn)?;
@@ -56,25 +57,26 @@ impl Store {
         })
     }
 
-    /// Режим доступа (для списка инструментов: в режиме «только чтение» инструментов записи в списке нет).
+    /// Access mode (for the tool list: in "read only" mode the list has no write tools).
     pub fn agent_mode(&self) -> Result<AgentMode, StoreError> {
         self.read(load_settings).map(|settings| settings.mode)
     }
 
-    /// Выключатель доступа. Выключенный доступ отказывает каждому вызову инструмента (`mcp_disabled`).
+    /// The access switch. With access off, every tool call is refused (`mcp_disabled`).
     pub fn set_agent_enabled(&self, enabled: bool) -> Result<(), StoreError> {
         self.write(move |conn| {
             put(conn, KEY_ENABLED, if enabled { "1" } else { "0" }).map_err(write_err)
         })
     }
 
-    /// Режим доступа. Клиент видит прежний список инструментов до переподключения; сами вызовы проверяются по новому.
+    /// The access mode. The client sees the previous tool list until it reconnects; the calls themselves are checked
+    /// against the new one.
     pub fn set_agent_mode(&self, mode: AgentMode) -> Result<(), StoreError> {
         self.write(move |conn| put(conn, KEY_MODE, mode.setting()).map_err(write_err))
     }
 
-    /// Чаты, видимые агенту. Принимаются только существующие чаты без `ai_excluded`; иначе `ChatNotFound` и ничего не
-    /// меняется. Повторы убираются, порядок сохраняется.
+    /// Chats visible to the agent. Only existing chats without `ai_excluded` are accepted; otherwise `ChatNotFound` and
+    /// nothing changes. Duplicates are removed, the order is kept.
     pub fn set_agent_chats(&self, ids: Vec<String>) -> Result<(), StoreError> {
         let mut seen = HashSet::new();
         let ids: Vec<String> = ids

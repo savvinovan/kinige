@@ -1,7 +1,7 @@
-//! Сочетания клавиш в настройках: умолчания, смена, сброс, отказ до сохранения.
+//! Keyboard shortcuts in settings: defaults, change, reset, refusal before saving.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -77,7 +77,7 @@ fn invalid_reserved_and_duplicate_shortcuts_are_refused_before_anything_is_saved
         );
         assert!(store.save_shortcut(ShortcutKind::Capture, bad).is_err());
     }
-    // Совпадение с сочетанием другого действия — в любой записи.
+    // A match with the shortcut of another action, in any notation.
     for same in ["Alt+Shift+KeyV", "Shift+Alt+KeyV", "Option+Shift+KeyV"] {
         assert!(
             matches!(
@@ -87,7 +87,7 @@ fn invalid_reserved_and_duplicate_shortcuts_are_refused_before_anything_is_saved
             "{same}"
         );
     }
-    // Своё же текущее сочетание допустимо.
+    // One's own current shortcut is allowed.
     assert_eq!(
         store
             .check_shortcut(ShortcutKind::Capture, "Ctrl+Alt+KeyN")
@@ -102,7 +102,7 @@ fn invalid_reserved_and_duplicate_shortcuts_are_refused_before_anything_is_saved
         )
         .unwrap();
     assert_eq!(stored, 0);
-    // Повреждённое значение в настройках → умолчание.
+    // A corrupted value in settings gives the default.
     raw(dir.path())
         .execute(
             "INSERT INTO app_setting(key, value) VALUES ('shortcut_capture', 'мусор')",

@@ -1,8 +1,8 @@
-//! Действия с записью (слайс 3): перезапись одной группы, дословность чужого, HLC, повреждение, отказ записи,
-//! только чтение. Для `deleted`, `flags`, `placement` и `body` (правка и пункт задачи).
+//! Entry actions (slice 3): rewriting one group, verbatim foreign data, HLC, corruption, write failure,
+//! read-only. For `deleted`, `flags`, `placement` and `body` (edit and task item).
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -21,7 +21,7 @@ fn at(minutes: i64) -> kinige_store::Now {
     moscow(T0 + minutes * MINUTE)
 }
 
-/// Действия по одному на группу: имя, меняемая группа, вызов.
+/// One action per group: name, the group it changes, the call.
 fn ops() -> Vec<(&'static str, &'static str, Op)> {
     vec![
         ("delete", "deleted", |s, id| s.delete_message(id, &at(1))),
@@ -69,18 +69,18 @@ fn every_op_rewrites_only_its_group_and_keeps_foreign_bytes_verbatim() {
         assert_only_changed(&before_groups, &after_groups, &[changed]);
         assert_eq!(
             after_groups["future"], FUTURE_GROUP,
-            "{name}: пробелы в байтах"
+            "{name}: whitespace in the bytes"
         );
         let after_hlcs = hlc_entries(dir.path(), "message", &id);
         for (group, entry) in &before_hlcs {
             if group != changed {
                 assert_eq!(
                     &after_hlcs[group], entry,
-                    "{name}: запись HLC группы {group} дословно"
+                    "{name}: the HLC entry of group {group} is verbatim"
                 );
             }
         }
-        // Меняется только своя группа, и её HLC строго больше прежнего и равен новому состоянию часов.
+        // Only its own group changes, and its HLC is strictly greater than before and equals the new clock state.
         let new_hlc = group_hlc(dir.path(), "message", &id, changed);
         assert!(new_hlc > before_hlc, "{name}: {new_hlc} > {before_hlc}");
         assert_eq!(
@@ -118,7 +118,7 @@ fn hlc_labels_grow_strictly_across_ops_and_restarts() {
     let id = {
         let (store, id) = setup(dir.path());
         for (_, changed, op) in ops() {
-            // Часы стоят на месте и идут назад: метка всё равно растёт.
+            // The clock stands still and goes backwards: the stamp still grows.
             op(&store, &id).ok();
             seen.push(group_hlc(dir.path(), "message", &id, changed));
         }
@@ -130,8 +130,8 @@ fn hlc_labels_grow_strictly_across_ops_and_restarts() {
     seen.push(group_hlc(dir.path(), "message", &id, "deleted"));
     store.restore_message(&id, &moscow(T0 - 2000)).unwrap();
     seen.push(group_hlc(dir.path(), "message", &id, "deleted"));
-    // Первая запись после "delete" как первой группы deleted уже растёт; остальные группы разные, поэтому сравниваем
-    // метки событий через часы: каждая следующая больше предыдущей в порядке выполнения.
+    // The first write after "delete", as the first write of the deleted group, already grows; the other groups differ,
+    // so we compare event stamps through the clock: each next one is greater than the previous in execution order.
     let tail = &seen[seen.len() - 2..];
     assert!(tail[0] < tail[1], "{tail:?}");
     let (l, c) = clock(dir.path());
@@ -162,7 +162,11 @@ fn corrupt_groups_fail_every_op_with_an_error_and_change_nothing() {
                 "{name} {column} {bad}: {error}"
             );
             assert_eq!(error.code(), ErrorCode::Internal);
-            assert_eq!(clock(dir.path()), clock_before, "{name}: часы откатились");
+            assert_eq!(
+                clock(dir.path()),
+                clock_before,
+                "{name}: the clock went back"
+            );
             assert_eq!(revisions(dir.path(), &id), 0);
             let stored: String = conn
                 .query_row(
@@ -171,7 +175,7 @@ fn corrupt_groups_fail_every_op_with_an_error_and_change_nothing() {
                     |r| r.get(0),
                 )
                 .unwrap();
-            assert_eq!(stored, bad, "{name}: поврежденное значение не тронуто");
+            assert_eq!(stored, bad, "{name}: the corrupted value is untouched");
         }
     }
 }
@@ -182,7 +186,7 @@ fn a_missing_group_is_an_error_not_a_silent_recreate() {
         let dir = tempfile::tempdir().unwrap();
         let (store, id) = setup(dir.path());
         edit_raw_groups(dir.path(), &id, |groups, hlcs| {
-            // Нет самой группы при наличии метки, и наоборот: нет метки при наличии группы.
+            // No group while its stamp exists, and vice versa: no stamp while the group exists.
             groups.remove(changed);
             hlcs.remove("future");
         });
@@ -211,12 +215,12 @@ fn an_injected_write_failure_changes_nothing_for_every_op() {
             .query_row("SELECT SUM(seq) FROM mirror_dirty", [], |r| r.get(0))
             .unwrap();
 
-        // Отказ на последнем шаге: после перезаписи группы, колонок, HLC и ревизии.
+        // Failure at the last step: after rewriting the group, columns, HLC and the revision.
         let conn = raw(dir.path());
         conn.execute_batch(
-            "CREATE TRIGGER fail_i BEFORE INSERT ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'нет места'); END; \
-             CREATE TRIGGER fail_u BEFORE UPDATE ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'нет места'); END; \
-             CREATE TRIGGER fail_m BEFORE UPDATE OF is_task, favorite_at ON message BEGIN SELECT RAISE(ABORT, 'нет места'); END;",
+            "CREATE TRIGGER fail_i BEFORE INSERT ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'no space'); END; \
+             CREATE TRIGGER fail_u BEFORE UPDATE ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'no space'); END; \
+             CREATE TRIGGER fail_m BEFORE UPDATE OF is_task, favorite_at ON message BEGIN SELECT RAISE(ABORT, 'no space'); END;",
         )
         .unwrap();
         let error = op(&store, &id).unwrap_err();
@@ -230,7 +234,7 @@ fn an_injected_write_failure_changes_nothing_for_every_op() {
             revisions(dir.path(), &id),
             count_rows(dir.path(), "message_tag"),
         );
-        assert_eq!(after, before, "{name}: ничего не изменилось");
+        assert_eq!(after, before, "{name}: nothing changed");
         assert_eq!(
             conn.query_row::<i64, _, _>("SELECT SUM(seq) FROM mirror_dirty", [], |r| r.get(0))
                 .unwrap(),
@@ -240,7 +244,7 @@ fn an_injected_write_failure_changes_nothing_for_every_op() {
 
         conn.execute_batch("DROP TRIGGER fail_i; DROP TRIGGER fail_u; DROP TRIGGER fail_m;")
             .unwrap();
-        op(&store, &id).unwrap_or_else(|e| panic!("{name} после починки: {e}"));
+        op(&store, &id).unwrap_or_else(|e| panic!("{name} after the repair: {e}"));
     }
 }
 
@@ -267,7 +271,7 @@ fn a_record_with_a_newer_group_is_read_only_for_every_op() {
             before,
             "{name}"
         );
-        // В ленте запись помечена только для чтения.
+        // In the feed the entry is marked read-only.
         let page = store.list_messages(INBOX_ID, None, 10, &at(2)).unwrap();
         assert!(page.messages[0].read_only);
     }

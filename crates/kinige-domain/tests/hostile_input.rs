@@ -1,9 +1,9 @@
-//! Враждебные строки на входе разборщиков домена (KINIG-28): многобайтовые знаки на каждой позиции образцов (метка HLC, даты,
-//! UUID, имена копий, штампы), юникод-мусор, NUL, очень длинные строки. Ни один разборщик не паникует: ответ — `Err`, `None`
-//! или обычный результат. Срезы строк по чужим смещениям здесь падали бы на границе символа.
+//! Hostile strings at the input of the domain parsers (KINIG-28): multibyte characters at every position of the samples
+//! (HLC stamp, dates, UUID, backup names, timestamps), unicode garbage, NUL, very long strings. No parser panics: the
+//! answer is `Err`, `None` or an ordinary result. String slices at foreign offsets would fail here on a character boundary.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 use kinige_domain::Language;
@@ -25,7 +25,7 @@ use kinige_domain::telegram::{parse_export, render_body};
 use serde_json::{Value, json};
 
 const DEVICE: &str = "123e4567-e89b-42d3-a456-426614174000";
-/// Знаки в 2, 3 и 4 байта UTF-8, композитный и нулевой знаки.
+/// Characters of 2, 3 and 4 bytes in UTF-8, a combining character and a NUL character.
 const UNITS: [&str; 7] = ["я", "€", "😀", "\u{301}", "\0", "\u{202e}", "\u{200d}"];
 
 fn samples() -> Vec<String> {
@@ -47,7 +47,7 @@ fn samples() -> Vec<String> {
     ]
 }
 
-/// Образцы с многобайтовым знаком, вставленным на каждую позицию и подставленным вместо каждого знака.
+/// Samples with a multibyte character inserted at every position and substituted for every character.
 fn mutations() -> Vec<String> {
     let mut out = samples();
     for sample in samples() {
@@ -61,7 +61,7 @@ fn mutations() -> Vec<String> {
                 out.push(format!("{head}{unit}{tail_without}"));
             }
         }
-        // Усечения по байтам, как у обрезанных путей и имён.
+        // Truncations by bytes, like truncated paths and names.
         for cut in 0..sample.len() {
             if let Some(prefix) = sample.get(..cut) {
                 out.push(prefix.to_string());
@@ -117,7 +117,7 @@ fn string_parsers_never_panic_on_hostile_text() {
 
 #[test]
 fn text_renderers_never_panic_on_hostile_markdown() {
-    // Рендер и поиск по телу записи: на большом входе (мегабайт) тоже, но без квадратичных проходов по всем образцам.
+    // Rendering and search over the entry body: also on a large input (a megabyte), but without quadratic passes over all samples.
     for text in mutations().iter().filter(|t| t.len() < 400) {
         let _ = highlight_terms(text, text);
         let _ = highlight_terms(text, "задача tag");
@@ -222,7 +222,7 @@ fn a_valid_telegram_export_with_hostile_texts_is_read_and_rendered_without_a_pan
             .collect();
         let export =
             json!({"name": chunk.first(), "type": "saved_messages", "id": 1, "messages": messages});
-        let parsed = parse_export(&export.to_string()).expect("корректная выгрузка читается");
+        let parsed = parse_export(&export.to_string()).expect("a valid export is readable");
         for chat in &parsed.chats {
             for message in &chat.messages {
                 for language in [Language::En, Language::Ru] {

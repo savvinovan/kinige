@@ -1,5 +1,5 @@
-//! Файл настроек на диске (ADR-0010): безопасное чтение по дескриптору, признак для опроса, атомарная запись, уборка
-//! брошенных временных файлов. Все проверки владельца и прав — только под `cfg(unix)`.
+//! The settings file on disk (ADR-0010): safe reading by descriptor, a signature for polling, atomic writing, cleanup of
+//! abandoned temporary files. All owner and permission checks are only under `cfg(unix)`.
 
 use super::parse::MAX_BYTES;
 use kinige_domain::UnsafeReason;
@@ -13,7 +13,7 @@ pub const FILE_NAME: &str = "settings.json";
 const TMP_PREFIX: &str = ".settings.json.";
 const TMP_SUFFIX: &str = ".tmp";
 
-/// Признак изменения файла для опроса раз в секунду: любое отличие — повод перечитать.
+/// A file change signature for polling once a second: any difference is a reason to reread.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Sig {
     mtime_ns: u128,
@@ -21,11 +21,11 @@ pub struct Sig {
     mode: u32,
     inode: u64,
     symlink: bool,
-    /// У ссылки — время изменения и размер цели: правка цели опросом видна (сама ссылка при этом не меняется).
+    /// For a symlink -- the modification time and size of the target: an edit of the target is visible to polling (the link itself does not change).
     target: Option<(u128, u64)>,
 }
 
-/// Признак файла по пути (без перехода по ссылке); `None` — файла нет или он не виден.
+/// The signature of a file by path (without following a symlink); `None` -- there is no file or it is not visible.
 pub fn signature(path: &Path) -> Option<Sig> {
     let meta = fs::symlink_metadata(path).ok()?;
     Some(Sig {
@@ -67,15 +67,15 @@ fn inode_of(_: &fs::Metadata) -> u64 {
     0
 }
 
-/// Что нашлось на диске.
+/// What was found on disk.
 #[derive(Debug)]
 pub enum ReadOutcome {
     Missing,
-    /// Не читается или слишком велик (причина — в ошибке файла).
+    /// Not readable or too large (the reason is in the file error).
     Failed(super::parse::FileError),
-    /// Не обычный файл: содержимое не читалось.
+    /// Not a regular file: the content was not read.
     NotRegular,
-    /// Содержимое и вывод проверок. `unsafe_reason` — первая найденная причина.
+    /// The content and the result of the checks. `unsafe_reason` is the first reason found.
     Content {
         bytes: Vec<u8>,
         unsafe_reason: Option<UnsafeReason>,
@@ -83,15 +83,16 @@ pub enum ReadOutcome {
     },
 }
 
-/// Читает файл настроек. Файл открывается один раз (`O_NOFOLLOW | O_NONBLOCK`), владелец, права и тип проверяются по
-/// дескриптору, а не по пути: между проверкой и чтением файл подменить нельзя. Ссылка читается по цели, но помечается
-/// небезопасной; канал и устройство не читаются вовсе. Читается не больше `MAX_BYTES + 1` байт.
+/// Reads the settings file. The file is opened once (`O_NOFOLLOW | O_NONBLOCK`), the owner, permissions and type are
+/// checked by descriptor, not by path: the file cannot be swapped between the check and the read. A symlink is read by
+/// its target but marked unsafe; a pipe and a device are not read at all. At most `MAX_BYTES + 1` bytes are read.
 pub fn read_file(path: &Path, dir: &Path) -> ReadOutcome {
     read_file_with(path, dir, &|| ())
 }
 
-/// То же с шагом `between` после чтения и до снятия признака: в нём тесты подменяют файл. Признак снимается до `open` и
-/// после чтения; не совпали — файл менялся во время чтения, признак пустой, и следующий опрос прочитает файл заново.
+/// The same with a `between` step after reading and before taking the signature: tests swap the file in it. The
+/// signature is taken before `open` and after reading; if they differ, the file changed during reading, the signature is
+/// empty, and the next poll will read the file again.
 #[doc(hidden)]
 pub fn read_file_with(path: &Path, dir: &Path, between: &dyn Fn()) -> ReadOutcome {
     let sig_before = signature(path);
@@ -144,7 +145,7 @@ fn open(path: &Path) -> io::Result<(File, bool)> {
         .open(path)
     {
         Ok(file) => Ok((file, false)),
-        // Ссылка: `O_NOFOLLOW` даёт ELOOP. Читаем по цели (без доверия к ней) и помечаем.
+        // A symlink: `O_NOFOLLOW` gives ELOOP. We read by the target (without trusting it) and mark it.
         Err(error) if error.raw_os_error() == Some(libc::ELOOP) => OpenOptions::new()
             .read(true)
             .custom_flags(flags)
@@ -167,13 +168,13 @@ fn unsafe_file(meta: &fs::Metadata) -> Option<UnsafeReason> {
     (meta.mode() & 0o022 != 0).then_some(UnsafeReason::Permissions)
 }
 
-/// Единственный `unsafe` в проекте (`unsafe_code = "deny"` в workspace): в `std` нет безопасного `geteuid`, а лишняя
-/// зависимость ради одного вызова хуже одной строки с обоснованием.
+/// The only `unsafe` in the project (`unsafe_code = "deny"` in the workspace): `std` has no safe `geteuid`, and an extra
+/// dependency for one call is worse than one line with a justification.
 #[cfg(unix)]
 #[allow(unsafe_code)]
 fn effective_uid() -> u32 {
-    // SAFETY: `geteuid` (POSIX) ничего не читает и не пишет по указателям, не принимает аргументов и по стандарту
-    // всегда успешна.
+    // SAFETY: `geteuid` (POSIX) neither reads nor writes through pointers, takes no arguments and by the standard
+    // always succeeds.
     unsafe { libc::geteuid() }
 }
 #[cfg(not(unix))]
@@ -181,7 +182,7 @@ fn unsafe_file(_: &fs::Metadata) -> Option<UnsafeReason> {
     None
 }
 
-/// Каталог данных: не ссылка, свой, не доступен на запись группе и всем.
+/// The data directory: not a symlink, owned by us, not writable by the group or others.
 #[cfg(unix)]
 pub fn unsafe_directory(dir: &Path) -> Option<UnsafeReason> {
     use std::os::unix::fs::MetadataExt;
@@ -196,8 +197,8 @@ pub fn unsafe_directory(_: &Path) -> Option<UnsafeReason> {
     None
 }
 
-/// Атомарная запись: временный файл рядом (`O_EXCL`, 0600), `fsync`, `rename`, `fsync` каталога. Читатель видит файл
-/// целиком старым или целиком новым.
+/// Atomic write: a temporary file next to it (`O_EXCL`, 0600), `fsync`, `rename`, `fsync` of the directory. A reader
+/// sees the file either entirely old or entirely new.
 pub fn write_atomic(path: &Path, dir: &Path, bytes: &[u8]) -> io::Result<()> {
     let tmp = dir.join(format!(
         "{TMP_PREFIX}{}{TMP_SUFFIX}",
@@ -234,7 +235,7 @@ fn create_private(path: &Path) -> io::Result<File> {
     OpenOptions::new().write(true).create_new(true).open(path)
 }
 
-/// Убирает брошенные временные файлы (обрыв между созданием и `rename`).
+/// Removes abandoned temporary files (a break between creation and `rename`).
 pub fn remove_stale_temp(dir: &Path) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
@@ -248,7 +249,7 @@ pub fn remove_stale_temp(dir: &Path) {
     }
 }
 
-/// Путь файла настроек в каталоге данных.
+/// The path of the settings file in the data directory.
 pub fn file_path(dir: &Path) -> PathBuf {
     dir.join(FILE_NAME)
 }

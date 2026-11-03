@@ -1,8 +1,8 @@
-//! Файл настроек `settings.json` (слайс 4b, ADR-0010): создание, внешние правки, правки окна, битый и удалённый файл,
-//! ошибки ключей, строка журнала обращений.
+//! The `settings.json` settings file (slice 4b, ADR-0010): creation, external edits, window edits, a broken and a deleted file,
+//! key errors, the access log row.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -24,7 +24,7 @@ fn a_missing_file_is_created_from_the_state_with_all_keys_and_private_mode() {
         json!({
             "text_size": "normal",
             "shortcuts": {"capture": "Ctrl+Alt+KeyN", "clipboard": "Alt+Shift+KeyV"},
-            // Папка по умолчанию — null: личный путь не попадает в файл.
+            // The default folder is null: a personal path does not get into the file.
             "mirror": {"folder": null},
             "agent_access": {"enabled": false, "mode": "read", "chats": []},
         })
@@ -38,15 +38,15 @@ fn an_external_edit_is_applied_by_the_poll_and_the_file_is_left_as_written() {
     let rig = rig_with(fast_poll);
     let text = "{\n  \"text_size\": \"large\"\n}\n";
     write_file(rig.dir.path(), text.as_bytes(), 0o600);
-    // Без `sync_now`: за несколько интервалов опроса.
-    wait_until("размер текста из файла", || {
+    // Without `sync_now`: within a few poll intervals.
+    wait_until("text size from the file", || {
         rig.file.state().changed.appearance.is_some()
     });
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
     assert_eq!(
         rig.bytes(),
         text.as_bytes(),
-        "формат пользователя не трогается"
+        "the user's formatting is not touched"
     );
     assert!(rig.changes.load(std::sync::atomic::Ordering::SeqCst) >= 1);
 }
@@ -61,7 +61,7 @@ fn our_own_write_is_not_applied_again() {
         .unwrap();
     assert_eq!(rig.json()["text_size"], "large");
     rig.after_polls(8);
-    // Одно уведомление за правку окна; опрос свою запись не применяет и не уведомляет.
+    // One notification per window edit; a poll does not apply its own write and does not notify.
     assert_eq!(
         rig.changes.load(std::sync::atomic::Ordering::SeqCst),
         before + 1
@@ -104,7 +104,7 @@ fn a_broken_file_changes_nothing_is_not_rewritten_and_the_window_edit_goes_to_th
     let rig = rig();
     rig.write(r#"{"text_size": "#);
     let state = rig.file.state();
-    let problem = state.problem.expect("файл не разобран");
+    let problem = state.problem.expect("the file was not parsed");
     assert_eq!(problem.kind, kinige_domain::FileProblemKind::Parse);
     assert_eq!((problem.line, problem.column), (Some(1), Some(14)));
     assert_eq!(
@@ -119,11 +119,11 @@ fn a_broken_file_changes_nothing_is_not_rewritten_and_the_window_edit_goes_to_th
     assert_eq!(
         rig.bytes(),
         br#"{"text_size": "#,
-        "битый файл не перезаписывается"
+        "a broken file is not overwritten"
     );
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
 
-    // Файл починили позже правки окна: побеждает последняя правка.
+    // The file was fixed after the window edit: the last edit wins.
     rig.write(r#"{"text_size": "normal"}"#);
     assert_eq!(
         rig.store.get_settings().unwrap().text_size,
@@ -140,7 +140,7 @@ fn a_deleted_file_is_recreated_from_the_state_and_settings_are_not_reset() {
         .unwrap()
         .unwrap();
     fs::remove_file(rig.path()).unwrap();
-    wait_until("файл воссоздан", || rig.path().exists());
+    wait_until("the file is recreated", || rig.path().exists());
     assert_eq!(rig.json()["text_size"], "large");
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
 }
@@ -183,7 +183,7 @@ fn each_key_with_a_wrong_type_or_value_is_an_error_of_that_key_and_the_rest_is_a
     );
     assert!(state.unknown_keys.contains(&"surprise".to_string()));
     assert!(state.unknown_keys.contains(&"shortcuts.zzz".to_string()));
-    // Применилось годное: сочетание буфера. Остальное прежнее.
+    // The valid part applied: the buffer shortcut. The rest is as before.
     assert_eq!(
         rig.store
             .shortcut_accelerator(ShortcutKind::Clipboard)
@@ -207,7 +207,7 @@ fn null_means_the_default_and_a_missing_key_means_no_change() {
     let rig = rig();
     rig.write(r#"{"text_size":"large","shortcuts":{"capture":"Ctrl+Alt+KeyJ"}}"#);
     rig.write(r#"{"shortcuts":{"capture":null}}"#);
-    // text_size не упомянут — остался large; capture сброшен к умолчанию.
+    // text_size is not mentioned, so it stayed large; capture is reset to the default.
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
     assert_eq!(
         rig.store
@@ -244,7 +244,7 @@ fn a_shortcut_the_system_refuses_is_an_error_of_that_key_and_the_old_one_stays()
             .unwrap(),
         "Ctrl+Alt+KeyJ"
     );
-    // Правка пользователя в файле не стирается.
+    // A user's edit in the file is not erased.
     assert!(
         String::from_utf8(rig.bytes())
             .unwrap()
@@ -308,13 +308,13 @@ fn the_mirror_folder_must_be_absolute_existing_and_outside_the_data_directory() 
     assert_eq!(mirror.folder.as_deref(), target.path().to_str());
     assert!(!mirror.is_default);
     assert!(rig.file.state().changed.mirror.is_some());
-    // Окно меняет что-то другое: путь в файле остаётся (он не по умолчанию).
+    // The window changes something else: the path in the file stays (it is not the default).
     rig.file
         .edit(|store| store.set_text_size(TextSize::Large))
         .unwrap()
         .unwrap();
     assert_eq!(rig.json()["mirror"]["folder"], json!(target.path()));
-    // null возвращает папку по умолчанию.
+    // null brings back the default folder.
     rig.write(r#"{"mirror":{"folder":null}}"#);
     assert!(rig.store.get_settings().unwrap().mirror.is_default);
 }
@@ -331,7 +331,7 @@ fn a_duplicate_key_takes_the_last_value() {
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
 }
 
-/// Есть ли в каталоге (рекурсивно) файл дня `.md`.
+/// Whether the directory (recursively) contains a day `.md` file.
 fn has_day_file(dir: &std::path::Path) -> bool {
     std::fs::read_dir(dir).is_ok_and(|entries| {
         entries.flatten().any(|entry| {
@@ -347,7 +347,7 @@ fn has_day_file(dir: &std::path::Path) -> bool {
 
 #[test]
 fn a_mirror_folder_from_the_file_wakes_the_copy_writer_at_once() {
-    // Без пробуждения писатель копии спал бы до следующей записи или перезапуска, и в новой папке дней не было бы.
+    // Without a wake-up the copy writer would sleep until the next write or restart, and the new folder would have no days.
     let dir = tempfile::tempdir().unwrap();
     let store = open(dir.path());
     store
@@ -361,7 +361,7 @@ fn a_mirror_folder_from_the_file_wakes_the_copy_writer_at_once() {
     let target = tempfile::tempdir().unwrap();
     assert!(!has_day_file(target.path()));
     rig.write(&json!({"mirror": {"folder": target.path()}}).to_string());
-    wait_until("файл дня в новой папке", || {
+    wait_until("the day file in the new folder", || {
         has_day_file(target.path())
     });
 }

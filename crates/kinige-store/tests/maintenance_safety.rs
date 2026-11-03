@@ -1,9 +1,9 @@
-//! Обслуживание и целостность (повторное ревью guardian, продолжение `restore_safety.rs`): проверка раз в сутки, после
-//! находки в базу ничего не пишется, `verify_database` только читает, автоудаление не блокируется пропущенными записями,
-//! восстановление из копии схемы 2 мигрирует базу.
+//! Maintenance and integrity (repeated guardian review, a continuation of `restore_safety.rs`): a check once a day, after
+//! a finding nothing is written to the database, `verify_database` only reads, auto-delete is not blocked by skipped entries,
+//! restoring from a schema 2 copy migrates the database.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -23,18 +23,18 @@ fn at(ms: i64) -> Now {
     moscow(ms)
 }
 
-/// Портит страницы в хвосте файла: проверка целостности это видит, открытие базы проходит.
+/// Spoils pages at the tail of the file: the integrity check sees it, opening the database passes.
 fn damage_pages(path: &Path) {
     let mut bytes = fs::read(path).unwrap();
     let len = bytes.len();
-    assert!(len > 40 * 1024, "достаточно страниц: {len}");
+    assert!(len > 40 * 1024, "enough pages: {len}");
     for byte in &mut bytes[len - 12 * 1024..len - 4 * 1024] {
         *byte = 0xFF;
     }
     fs::write(path, bytes).unwrap();
 }
 
-/// База больше 256 страниц: у неё есть «хвост», который можно испортить.
+/// A database of more than 256 pages: it has a "tail" that can be spoiled.
 fn big_database(dir: &Path, options: kinige_store::StoreOptions) -> Store {
     let store = Store::open_at(options, &at(T0)).unwrap();
     for i in 0..300 {
@@ -46,7 +46,7 @@ fn big_database(dir: &Path, options: kinige_store::StoreOptions) -> Store {
     store
 }
 
-// ---------- проверка целостности и обслуживание ----------
+// ---------- integrity check and maintenance ----------
 
 #[test]
 fn the_second_run_of_a_day_does_not_check_integrity_again() {
@@ -62,20 +62,20 @@ fn the_second_run_of_a_day_does_not_check_integrity_again() {
     wait_closed_keep_open(dir.path());
     damage_pages(&db_path(dir.path()));
 
-    // Тот же день: проверка не повторяется (иначе нашла бы порчу), сигнала нет.
+    // The same day: the check is not repeated (otherwise it would find the corruption), no signal.
     let report = store.run_maintenance(&at(T0 + MINUTE)).unwrap();
     assert!(
         report.integrity_ok,
-        "проверка раз в сутки: сегодня уже была"
+        "a check once a day: there was one today already"
     );
     assert_eq!(calls.load(Ordering::SeqCst), 0);
-    // Следующие сутки: проверка идёт и находит.
+    // The next day: the check runs and finds it.
     let next = store.run_maintenance(&at(T0 + DAY_MS)).unwrap();
     assert!(!next.integrity_ok);
     assert_eq!(calls.load(Ordering::SeqCst), 1);
 }
 
-/// Контрольная точка WAL без закрытия хранилища: страницы базы лежат в основном файле.
+/// A WAL checkpoint without closing the store: the database pages lie in the main file.
 fn wait_closed_keep_open(dir: &Path) {
     let conn = raw(dir);
     let _ = conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
@@ -102,7 +102,7 @@ fn after_corruption_is_found_nothing_is_written_not_even_the_trash_cleanup() {
     assert!(!first.integrity_ok);
     assert_eq!(
         first.purged, 0,
-        "автоудаление идёт только после вердикта «цела»"
+        "auto-delete runs only after an \"intact\" verdict"
     );
     let second = store.run_maintenance(&at(later + MINUTE)).unwrap();
     assert!(!second.integrity_ok && second.purged == 0 && !second.backup_made);
@@ -116,7 +116,7 @@ fn after_corruption_is_found_nothing_is_written_not_even_the_trash_cleanup() {
             |r| r.get(0),
         )
         .unwrap();
-    assert_eq!(in_trash, 1, "запись осталась в корзине");
+    assert_eq!(in_trash, 1, "the entry stayed in the trash");
 }
 
 #[test]
@@ -139,24 +139,24 @@ fn verifying_a_database_only_reads_it() {
 
     assert_eq!(verify_database(&db), Integrity::Ok);
 
-    assert_eq!(fs::read(&db).unwrap(), bytes, "файл не изменён");
-    // Читателю базы в режиме WAL SQLite сама заводит `-shm` и `-wal`; больше ничего появляться не должно.
+    assert_eq!(fs::read(&db).unwrap(), bytes, "the file is unchanged");
+    // For a database reader in WAL mode SQLite itself creates `-shm` and `-wal`; nothing else should appear.
     let created: Vec<String> = names()
         .into_iter()
         .filter(|n| !before.contains(n) && !n.ends_with("-shm") && !n.ends_with("-wal"))
         .collect();
     assert!(created.is_empty(), "{created:?}");
-    // Нет файла: проверка не создаёт пустую базу.
+    // No file: the check does not create an empty database.
     let missing = dir.path().join("none.db");
     assert_eq!(verify_database(&missing), Integrity::Corrupt);
     assert!(!missing.exists());
-    // Не база данных.
+    // Not a database.
     let junk: PathBuf = dir.path().join("junk.db");
     fs::write(&junk, vec![0xAB; 8192]).unwrap();
     assert_eq!(verify_database(&junk), Integrity::Corrupt);
 }
 
-// ---------- автоудаление: пропущенные записи не мешают здоровым ----------
+// ---------- auto-delete: skipped entries do not block healthy ones ----------
 
 #[test]
 fn more_than_a_page_of_skipped_entries_does_not_block_the_healthy_ones_behind_them() {
@@ -175,13 +175,13 @@ fn more_than_a_page_of_skipped_entries_does_not_block_the_healthy_ones_behind_th
         let sent = store
             .send_message(INBOX_ID, &format!("здоровая {i}"), &at(T0 + 500 + i))
             .unwrap();
-        // Удалены позже всех пропускаемых: в выборке стоят за ними.
+        // Deleted later than all the skipped ones: in the selection they stand behind them.
         store.delete_message(&sent.id, &at(T0 + 5000 + i)).unwrap();
         healthy.push(sent.id);
     }
     drop(store);
     wait_closed(dir.path());
-    // У первых 230 группа `deleted` из будущей версии: автоудаление их пропускает.
+    // The first 230 have a `deleted` group from a future version: auto-delete skips them.
     let conn = raw(dir.path());
     for id in &skipped {
         let hlc: String = conn
@@ -202,13 +202,16 @@ fn more_than_a_page_of_skipped_entries_does_not_block_the_healthy_ones_behind_th
     let store = open_without_mirror(dir.path());
     let purged = store.purge_expired(&at(T0 + 60 * DAY_MS)).unwrap();
 
-    assert_eq!(purged, 5, "здоровые записи за 230 пропущенными удалены");
+    assert_eq!(
+        purged, 5,
+        "healthy entries behind the 230 skipped ones are deleted"
+    );
     assert_eq!(count_rows(dir.path(), "tombstone"), 5);
     assert_eq!(count_rows(dir.path(), "message"), 230);
     let _ = healthy;
 }
 
-// ---------- восстановление из копии схемы 2 ----------
+// ---------- restoring from a schema 2 copy ----------
 
 #[test]
 fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() {
@@ -220,7 +223,7 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
             .unwrap();
     }
     wait_closed(dir.path());
-    // База слайса 2.
+    // A slice 2 database.
     let conn = raw(dir.path());
     conn.execute_batch(
         "DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; DROP TABLE message_tag; \
@@ -231,7 +234,7 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
     .unwrap();
     conn.pragma_update(None, "user_version", 2).unwrap();
     drop(conn);
-    // Миграция снимает копию «перед обновлением», после чего с базой «случается беда».
+    // The migration takes a "before update" copy, after which "disaster strikes" the database.
     drop(Store::open_at(options(dir.path()), &at(T0 + 5 * MINUTE)).unwrap());
     wait_closed(dir.path());
     let copy = pre_migration_name(2, &kinige_store::utc_stamp(T0 + 5 * MINUTE));
@@ -239,7 +242,7 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
     fs::write(db_path(dir.path()), b"broken").unwrap();
 
     kinige_store::restore_backup(&db_path(dir.path()), &copy, T0 + 10 * MINUTE, None).unwrap();
-    // Что делает `resume_after_restore`: открывает восстановленную базу (схема 2) — она мигрирует до последней.
+    // What `resume_after_restore` does: it opens the restored database (schema 2), which migrates to the latest.
     let store = Store::open_at(options(dir.path()), &at(T0 + 10 * MINUTE)).unwrap();
 
     let version: i64 = raw(dir.path())
@@ -247,8 +250,16 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
         .unwrap();
     assert_eq!(version, kinige_store::LATEST_VERSION);
     assert_eq!(count_rows(dir.path(), "message"), 1);
-    assert_eq!(count_rows(dir.path(), "search_map"), 1, "индекс построен");
-    assert_eq!(count_rows(dir.path(), "message_tag"), 1, "теги пересчитаны");
+    assert_eq!(
+        count_rows(dir.path(), "search_map"),
+        1,
+        "the index is built"
+    );
+    assert_eq!(
+        count_rows(dir.path(), "message_tag"),
+        1,
+        "tags are recomputed"
+    );
     assert_eq!(store.list_chats().unwrap()[0].count, 1);
     assert!(
         backups(&db_path(dir.path()))
@@ -259,7 +270,7 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
     );
 }
 
-// ---------- повреждение, найденное командой, и копия с порчей, которой не видит `quick_check` ----------
+// ---------- corruption found by the command, and a copy with corruption that `quick_check` does not see ----------
 
 fn counting_options(dir: &Path, calls: &Arc<AtomicUsize>) -> kinige_store::StoreOptions {
     let mut opts = options(dir);
@@ -293,11 +304,11 @@ fn a_read_that_hits_a_damaged_page_raises_the_hook_once_and_stops_the_maintenanc
     assert_eq!(
         calls.load(Ordering::SeqCst),
         1,
-        "тот же сигнал, что у фоновой проверки"
+        "the same signal as the background check"
     );
     assert!(store.get_settings().is_err());
-    assert_eq!(calls.load(Ordering::SeqCst), 1, "один раз за запуск");
-    // После находки обслуживание в базу ничего не пишет (автоудаление корзины, копия дня).
+    assert_eq!(calls.load(Ordering::SeqCst), 1, "once per launch");
+    // After a finding, maintenance writes nothing to the database (trash auto-delete, the day's copy).
     let report = store.run_maintenance(&at(T0 + 40 * DAY_MS)).unwrap();
     assert!(!report.integrity_ok && report.purged == 0 && !report.backup_made);
 }
@@ -316,8 +327,8 @@ fn a_restored_copy_with_a_damaged_index_passes_quick_check_and_the_first_pass_ra
     }
     wait_closed(dir.path());
     let name = backups(&db_path(dir.path()))[0].name.clone();
-    // Порча индекса `message_day` прямо в файле копии: ключ индекса расходится с таблицей. `quick_check` индексы
-    // с таблицей не сверяет и проходит, `integrity_check` — нет.
+    // Corruption of the `message_day` index right in the copy file: the index key diverges from the table. `quick_check` does not
+    // compare indexes with the table and passes, `integrity_check` does not.
     let copy = backups_dir(&db_path(dir.path())).join(&name);
     let root: i64 = rusqlite::Connection::open(&copy)
         .unwrap()
@@ -332,14 +343,14 @@ fn a_restored_copy_with_a_damaged_index_passes_quick_check_and_the_first_pass_ra
     let at_key = bytes[page..page + 4096]
         .windows(8)
         .position(|w| w == b"2026-10-")
-        .expect("ключ дня в странице индекса");
+        .expect("day key in the index page");
     bytes[page + at_key + 9] = b'9';
     fs::write(&copy, bytes).unwrap();
     let verdict: String = rusqlite::Connection::open(&copy)
         .unwrap()
         .query_row("PRAGMA quick_check", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(verdict, "ok", "копия проходит быструю проверку");
+    assert_eq!(verdict, "ok", "the copy passes the quick check");
     fs::write(db_path(dir.path()), b"broken").unwrap();
 
     kinige_store::restore_backup(&db_path(dir.path()), &name, T0 + MINUTE, None).unwrap();
@@ -348,14 +359,14 @@ fn a_restored_copy_with_a_damaged_index_passes_quick_check_and_the_first_pass_ra
     assert_eq!(
         calls.load(Ordering::SeqCst),
         0,
-        "при открытии порчи не видно"
+        "the corruption is not visible on open"
     );
 
     let report = store.run_maintenance(&at(T0 + MINUTE)).unwrap();
 
     assert!(
         !report.integrity_ok,
-        "первый проход обслуживания находит порчу"
+        "the first maintenance pass finds the corruption"
     );
     assert_eq!(calls.load(Ordering::SeqCst), 1);
 }
@@ -371,7 +382,7 @@ fn a_command_that_finds_corruption_also_shows_it_in_the_settings_row() {
             .unwrap();
     }
     wait_closed_keep_open(dir.path());
-    // Портится только корневая страница таблицы `message`: настройки читаются, записи — нет.
+    // Only the root page of the `message` table is spoiled: settings are readable, entries are not.
     let root: i64 = raw(dir.path())
         .query_row(
             "SELECT rootpage FROM sqlite_master WHERE name = 'message'",
@@ -399,6 +410,6 @@ fn a_command_that_finds_corruption_also_shows_it_in_the_settings_row() {
     assert_eq!(
         settings.backup.error,
         Some(kinige_domain::BackupError::IntegrityFailed),
-        "строка в «Настройках» совпадает с окном «База повреждена»"
+        "the row in Settings matches the \"Database is damaged\" window"
     );
 }

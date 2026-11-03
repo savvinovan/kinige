@@ -1,4 +1,4 @@
-//! Помощники тестов доступа агентов (слайс 4a): окружение с чатами, вызов инструмента, строки журнала.
+//! Helpers for the agent access tests (slice 4a): an environment with chats, a tool call, log rows.
 
 #![allow(dead_code)]
 
@@ -9,8 +9,8 @@ use kinige_store::{AgentError, AgentRequest};
 use serde_json::{Map, Value};
 use tempfile::TempDir;
 
-/// Хранилище с тремя чатами: «Работа» (отмечен агенту), «Секретный проект» (не отмечен), «Дневник» (`ai_excluded`, отмечен
-/// в настройках, но агент его не видит).
+/// A store with three chats: "Работа" (ticked for the agent), "Секретный проект" (not ticked), "Дневник" (`ai_excluded`, ticked
+/// in settings, but the agent does not see it).
 pub struct Agent {
     pub dir: TempDir,
     pub store: Store,
@@ -33,11 +33,11 @@ pub fn agent(mode: AgentMode, mark_inbox: bool) -> Agent {
         .execute("UPDATE chat SET ai_excluded = 1 WHERE id = ?1", [&excluded])
         .unwrap();
     let mut marked = vec![work.clone()];
-    // Отмеченный Inbox — только если тест просит: по умолчанию агент не видит и его (решение 2).
+    // A ticked Inbox only if the test asks: by default the agent does not see it either (decision 2).
     if mark_inbox {
         marked.push(INBOX_ID.to_string());
     }
-    // `ai_excluded` в настройках не принимается: отмечаем в обход, как мог бы сделать повреждённый файл.
+    // `ai_excluded` is not accepted in settings: we tick it by a bypass, as a corrupted file could do.
     store.set_agent_chats(marked.clone()).unwrap();
     store.set_agent_mode(mode).unwrap();
     store.set_agent_enabled(true).unwrap();
@@ -61,7 +61,7 @@ pub fn args(value: Value) -> Map<String, Value> {
     value.as_object().cloned().unwrap_or_default()
 }
 
-/// Вызов от имени клиента «Test Client» в момент `ms`.
+/// A call on behalf of the client "Test Client" at the moment `ms`.
 pub fn call(store: &Store, tool: &str, arguments: Value, ms: i64) -> Result<Value, AgentError> {
     call_as(store, "Test Client", tool, arguments, ms)
 }
@@ -83,10 +83,10 @@ pub fn call_as(
         },
         &moscow(ms),
     )?;
-    Ok(serde_json::from_str(&reply.text).expect("ответ — JSON"))
+    Ok(serde_json::from_str(&reply.text).expect("the reply is JSON"))
 }
 
-/// Строки `mcp_log` старые → новые: `(client, tool, args_json, outcome, число записей)`.
+/// `mcp_log` rows, old to new: `(client, tool, args_json, outcome, number of entries)`.
 pub fn log_rows(dir: &Path) -> Vec<(String, String, String, String, i64)> {
     let conn = raw(dir);
     let mut statement = conn
@@ -110,7 +110,7 @@ pub fn count(dir: &Path, table: &str) -> i64 {
         .unwrap()
 }
 
-/// Все id записей агента из ответа `entries`.
+/// All agent entry ids from the `entries` reply.
 pub fn entry_ids(reply: &Value) -> Vec<String> {
     reply["entries"]
         .as_array()

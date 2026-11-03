@@ -1,12 +1,12 @@
-//! Восстановление из копии (слайс 3, ТЗ §10.4, §12.3; ADR-0001 §1). Работает с файлами, пока база не открыта в этом
-//! процессе: повреждённый файл не удаляется, а откладывается рядом как `corrupt-<время>.db`, копия встаёт на его место, а
-//! `device_id` создаётся новый — база восстановлена из копии, это новый экземпляр (иначе два экземпляра с одним `device_id`
-//! выдавали бы одинаковые метки HLC).
+//! Restore from a backup (slice 3, PRD §10.4, §12.3; ADR-0001 §1). Works with files while the database is not open in
+//! this process: the corrupt file is not deleted but put aside next to it as `corrupt-<time>.db`, the backup takes its
+//! place, and a new `device_id` is created -- the database is restored from a backup, so it is a new instance (otherwise
+//! two instances with the same `device_id` would issue identical HLC stamps).
 //!
-//! Отметка `needs-recovery` ставится в начале восстановления и снимается в конце: сбой между двумя `rename` оставил бы при
-//! следующем запуске папку без файла базы, и приложение молча создало бы пустую базу. Папка Markdown-копии переименовывается
-//! в `<имя>-before-restore-<метка>` и все дни помечаются для перезаписи: иначе первая правка дня затёрла бы файл с записями,
-//! сделанными после снимка копии.
+//! The `needs-recovery` mark is set at the start of the restore and removed at the end: a failure between the two
+//! `rename` calls would leave a folder without a database file at the next launch, and the app would silently create an
+//! empty database. The Markdown copy folder is renamed to `<name>-before-restore-<stamp>` and all days are marked for
+//! rewriting: otherwise the first edit of a day would overwrite the file with entries made after the backup snapshot.
 
 use crate::backup::{backups_dir, list_backups};
 use crate::error::{read_err, write_err};
@@ -25,7 +25,7 @@ use uuid::Uuid;
 
 const MARKER: &str = "needs-recovery";
 
-/// Восстановления в одном процессе идут по очереди: два одновременных вызова не должны делить промежуточные файлы.
+/// Restores in one process run one at a time: two simultaneous calls must not share intermediate files.
 static RESTORE_LOCK: Mutex<()> = Mutex::new(());
 
 fn marker_path(db_path: &Path) -> PathBuf {
@@ -35,51 +35,54 @@ fn marker_path(db_path: &Path) -> PathBuf {
         .join(MARKER)
 }
 
-/// Проверка целостности нашла повреждение работающей базы: следующий запуск не открывает её, а предлагает копии.
+/// The integrity check found corruption in the running database: the next launch does not open it but offers backups.
 pub fn mark_needs_recovery(db_path: &Path) -> std::io::Result<()> {
     fs::write(marker_path(db_path), b"")
 }
 
-/// Стоит ли отметка «нужно восстановление» (см. [`mark_needs_recovery`]).
+/// Whether the "restore needed" mark is set (see [`mark_needs_recovery`]).
 pub fn needs_recovery(db_path: &Path) -> bool {
     marker_path(db_path).exists()
 }
 
-/// Снимает отметку (база проверена и цела, либо восстановление закончено).
+/// Removes the mark (the database was checked and is intact, or the restore is finished).
 pub fn clear_needs_recovery(db_path: &Path) {
     let _ = fs::remove_file(marker_path(db_path));
 }
 
-/// Восстановление началось и не закончено: в отметке написано `restoring`.
+/// The restore started and is not finished: the mark says `restoring`.
 const RESTORING: &[u8] = b"restoring";
 
 fn restore_interrupted(db_path: &Path) -> bool {
     fs::read(marker_path(db_path)).is_ok_and(|content| content == RESTORING)
 }
 
-/// С чего начинать запуск.
+/// How to start the launch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StartupCheck {
-    /// Открыть базу как обычно.
+    /// Open the database as usual.
     Normal,
-    /// Журнал не открывать, показать окно «База повреждена» с копиями.
+    /// Do not open the journal, show the "Database is corrupt" window with backups.
     Recovery,
 }
 
-/// Решение при запуске до открытия базы:
-/// - отметка «восстановление не закончено» — всегда окно с копиями (база могла остаться без нового `device_id`);
-/// - отметка «нужно восстановление» от фоновой проверки — повторная синхронная проверка: `ok` — отметка снимается, база
-///   открывается как обычно (проверка прошлого запуска могла ошибиться или повреждение было временным); вердикт «повреждена»
-///   или нет файла — окно с копиями; проверка не состоялась (занято, ввод-вывод) — открываем как обычно, отметку оставляем;
-/// - отметки нет, файла базы нет, а копии есть — окно с копиями: молча создать пустую базу рядом с копиями нельзя.
+/// The decision at launch before the database is opened:
+/// - the "restore not finished" mark -- always the window with backups (the database may have been left without a new
+///   `device_id`);
+/// - the "restore needed" mark from the background check -- a repeated synchronous check: `ok` -- the mark is removed and
+///   the database opens as usual (the previous launch's check could have been wrong or the corruption was temporary);
+///   a "corrupt" verdict or no file -- the window with backups; the check did not happen (busy, I/O) -- open as usual,
+///   keep the mark;
+/// - no mark, no database file, but backups exist -- the window with backups: silently creating an empty database next
+///   to the backups is not allowed.
 pub fn startup_check(db_path: &Path) -> StartupCheck {
     if restore_interrupted(db_path) {
         return StartupCheck::Recovery;
     }
     if needs_recovery(db_path) {
         return match crate::backup::verify_database(db_path) {
-            // Порча только индекса поиска — не повод к восстановлению: отметка снимается, индекс вылечит первый запрос
-            // или проход обслуживания.
+            // Corruption of only the search index is no reason to restore: the mark is removed, the first query or a
+            // maintenance pass will heal the index.
             crate::backup::Integrity::Ok | crate::backup::Integrity::SearchIndex => {
                 clear_needs_recovery(db_path);
                 StartupCheck::Normal
@@ -95,43 +98,43 @@ pub fn startup_check(db_path: &Path) -> StartupCheck {
     }
 }
 
-/// Файла базы нет, а копии в папке есть: так выглядит прерванное восстановление (или потерянный файл). Молча создать
-/// пустую базу рядом с копиями нельзя — предлагаются копии.
+/// There is no database file, but there are backups in the folder: this is how an interrupted restore (or a lost file)
+/// looks. Silently creating an empty database next to the backups is not allowed -- backups are offered.
 pub fn database_missing_but_backups_exist(db_path: &Path) -> bool {
     !db_path.exists() && !list_backups(&backups_dir(db_path)).is_empty()
 }
 
-/// Копии, из которых можно восстановить, новые первыми.
+/// Backups that can be restored from, newest first.
 pub fn backups(db_path: &Path) -> Vec<BackupInfo> {
     list_backups(&backups_dir(db_path))
 }
 
-/// Копия открывается, проходит `PRAGMA quick_check` и сделана схемой, которую это приложение понимает.
+/// The backup opens, passes `PRAGMA quick_check` and was made with a schema this app understands.
 fn usable(path: &Path) -> bool {
     let Ok(conn) = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY) else {
         return false;
     };
     let version: Result<i64, _> = conn.pragma_query_value(None, "user_version", |row| row.get(0));
-    // Копия с повреждённым индексом поиска годится: он производный и перестроится при первом же запросе или записи.
+    // A backup with a corrupt search index is fine: it is derived and will be rebuilt on the first query or write.
     matches!(version, Ok(v) if (1..=LATEST_VERSION).contains(&v))
         && matches!(crate::backup::quick_check_fine(&conn), Ok(true))
 }
 
-/// Что сделало восстановление.
+/// What the restore did.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RestoreReport {
-    /// Куда переехала прежняя папка Markdown-копии; `None` — копия выключена или папки не было.
+    /// Where the previous Markdown copy folder went; `None` means the copy is off or there was no folder.
     pub previous_mirror: Option<PathBuf>,
-    /// Куда переехала папка копии, названная в `settings.json` (ADR-0010), если она другая; `None` — такой папки не было.
+    /// Where the copy folder named in `settings.json` (ADR-0010) went, if it is a different one; `None` means there was no such folder.
     pub settings_file_mirror: Option<PathBuf>,
 }
 
-/// Восстанавливает базу из копии `name` (имя файла из [`backups`]). Повреждённая база (если файл есть) уходит в
-/// `corrupt-<now_ms>.db` вместе с `-wal` и `-shm`; копия встаёт на место; `device_id` создаётся новый. Прежняя папка
-/// Markdown-копии (`default_mirror` — папка по умолчанию на случай, когда пользователь её не менял) переименовывается в
-/// `<имя>-before-restore-<метка>` (имя уникально) ПЕРВЫМ делом, до любого переноса базы; все дни помечаются для перезаписи.
-/// Отметка «нужно восстановление» снимается в конце. Копия не найдена или не проходит проверку — `BackupNotFound`, папку
-/// переименовать не удалось — `MirrorFolderBusy`; в обоих случаях ничего не тронуто.
+/// Restores the database from the backup `name` (a file name from [`backups`]). The corrupt database (if the file exists)
+/// goes to `corrupt-<now_ms>.db` together with `-wal` and `-shm`; the backup takes its place; a new `device_id` is
+/// created. The previous Markdown copy folder (`default_mirror` is the default folder, for when the user did not change
+/// it) is renamed to `<name>-before-restore-<stamp>` (the name is unique) FIRST, before any move of the database; all days
+/// are marked for rewriting. The "restore needed" mark is removed at the end. A backup that is not found or fails the
+/// check -- `BackupNotFound`, a folder that could not be renamed -- `MirrorFolderBusy`; in both cases nothing is touched.
 pub fn restore_backup(
     db_path: &Path,
     name: &str,
@@ -148,9 +151,9 @@ pub fn restore_backup(
     )
 }
 
-/// То же с проверочными шагами: `before_place` выполняется после копирования и до первого `rename` базы, `after_first_rename`
-/// — сразу после первого `rename` (в них тесты имитируют сбой копирования, записи на диск или переименования). Не часть
-/// API приложения.
+/// The same with check steps: `before_place` runs after copying and before the first `rename` of the database,
+/// `after_first_rename` -- right after the first `rename` (tests simulate a copy, disk write or rename failure in them).
+/// Not part of the app API.
 #[doc(hidden)]
 pub fn restore_backup_with(
     db_path: &Path,
@@ -173,20 +176,21 @@ pub fn restore_backup_with(
     let io = |error: std::io::Error| StoreError::Write(error.to_string());
     let dir = db_path.parent().unwrap_or_else(|| Path::new("."));
 
-    // 1. Папка Markdown-копии уходит в сторону ПЕРВОЙ, пока ничего больше не тронуто: не удалось переименовать (занята,
-    // нет прав) — `MirrorFolderBusy`, всё на месте, человек закрывает папку и повторяет. Путь берётся из самой копии: именно
-    // её настройка станет настройкой восстановленной базы.
+    // 1. The Markdown copy folder is moved aside FIRST, while nothing else is touched: if it cannot be renamed (busy, no
+    // permissions) -- `MirrorFolderBusy`, everything stays in place, the person closes the folder and retries. The path is
+    // taken from the backup itself: its setting becomes the setting of the restored database.
     let mirror = mirror_folder_in(&source, default_mirror);
-    // Повтор после сбоя восстановления (отметка `restoring`): папка уже переехала в прошлой попытке — окно должно узнать
-    // про `…-before-restore-…`, поэтому берётся самая поздняя такая папка рядом.
+    // A retry after a failed restore (the `restoring` mark): the folder already moved in the previous attempt -- the
+    // window must learn about `...-before-restore-...`, so the latest such folder next to it is taken.
     let earlier = if restore_interrupted(db_path) {
         mirror.as_deref().and_then(latest_before_restore)
     } else {
         None
     };
-    // Папка из `settings.json` (ADR-0010) тоже уходит в сторону, если она другая: файл применится поверх восстановленной
-    // базы, поставит эту папку копией и пометит все дни на перезапись, а писатель копии удаляет в папке файлы дней, которых
-    // нет в базе, то есть дни, появившиеся после снимка. Файл читается только как чтение, с теми же проверками безопасности.
+    // The folder from `settings.json` (ADR-0010) is also moved aside if it is a different one: the file will apply on top
+    // of the restored database, set this folder as the copy and mark all days for rewriting, and the copy writer deletes
+    // day files in the folder that are not in the database, that is, days that appeared after the snapshot. The file is
+    // only read, with the same safety checks.
     let from_file = db_path
         .parent()
         .and_then(|data_dir| settings_file::mirror_folder_from_file(data_dir, default_mirror));
@@ -209,9 +213,9 @@ pub fn restore_backup_with(
         }
     }
 
-    // 2. С этого момента база в неопределённом состоянии: упасть можно, а пустую базу молча создать — нет. Прежняя отметка
-    // (например, «нужно восстановление» от фоновой проверки) запоминается: если до первого `rename` что-то не удалось,
-    // база цела и отметка возвращается как была.
+    // 2. From this moment the database is in an undefined state: crashing is allowed, silently creating an empty database
+    // is not. The previous mark (for example, "restore needed" from the background check) is remembered: if anything fails
+    // before the first `rename`, the database is intact and the mark returns as it was.
     let prior_marker = fs::read(marker_path(db_path)).ok();
     let restore_marker = || match &prior_marker {
         Some(content) => {
@@ -225,7 +229,7 @@ pub fn restore_backup_with(
         return Err(io(error));
     }
 
-    // 3. Копия сначала целиком рядом с базой (имя уникально), и только потом занимает её место.
+    // 3. The backup is first copied whole next to the database (the name is unique), and only then takes its place.
     let staged = dir.join(format!(".restore-{}.tmp", Uuid::new_v4()));
     let mut base_touched = false;
     let placed = (|| -> Result<(), StoreError> {
@@ -258,8 +262,8 @@ pub fn restore_backup_with(
     })();
     if let Err(error) = placed {
         let _ = fs::remove_file(&staged);
-        // Сбой до первого `rename` (копирование, сброс на диск): база и папка на месте, всё возвращается как было. После
-        // первого `rename` отметка `restoring` остаётся: при запуске окно предложит копии.
+        // A failure before the first `rename` (copying, flush to disk): the database and the folder are in place, everything
+        // returns to how it was. After the first `rename` the `restoring` mark stays: at launch the window offers backups.
         if !base_touched {
             restore_marker();
             undo_move(&moved);
@@ -268,7 +272,7 @@ pub fn restore_backup_with(
     }
 
     let mut conn = Connection::open(db_path).map_err(write_err)?;
-    // Новый `device_id` — в одной транзакции с отметкой «все дни на перезапись».
+    // The new `device_id` is in one transaction with the "all days for rewriting" mark.
     {
         let tx = conn
             .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -280,12 +284,12 @@ pub fn restore_backup_with(
         )
         .map_err(write_err)?;
         mark_all_dirty(&tx).map_err(write_err)?;
-        // Доступ агентов из копии не переносится (ADR-0010): итог — ровно как в файле настроек, а если файл небезопасен или
-        // не разобран — выключено. Хэша файла в копии нет: файл применится как внешняя правка.
+        // Agent access is not carried over from the backup (ADR-0010): the result is exactly as in the settings file, and if
+        // the file is unsafe or not parsed -- off. The backup has no hash of the file: the file will apply as an external edit.
         settings_file::reset_access_after_restore(&tx).map_err(write_err)?;
         tx.commit().map_err(write_err)?;
     }
-    // Контроль: после замены база читается.
+    // Check: after the replacement the database can be read.
     conn.query_row("SELECT COUNT(*) FROM chat", [], |row| row.get::<_, i64>(0))
         .map_err(read_err)?;
     drop(conn);
@@ -309,8 +313,8 @@ pub fn restore_backup_with(
     })
 }
 
-/// Самая поздняя папка `<имя>-before-restore-…` рядом с `folder` (имена с меткой UTC сортируются по времени, суффикс
-/// `-2` идёт позже того же момента). Папки самой `folder` может не быть: прошлая попытка её уже переименовала.
+/// The latest folder `<name>-before-restore-...` next to `folder` (names with a UTC stamp sort by time, the suffix `-2`
+/// comes after the same moment). The `folder` itself may be absent: the previous attempt already renamed it.
 fn latest_before_restore(folder: &Path) -> Option<PathBuf> {
     let name = folder.file_name()?.to_string_lossy().into_owned();
     let prefix = format!("{name}-before-restore-");
@@ -325,15 +329,15 @@ fn latest_before_restore(folder: &Path) -> Option<PathBuf> {
         .max()
 }
 
-/// Папка Markdown-копии по настройке самой копии (или по умолчанию, если пользователь её не менял); `None` — копия
-/// выключена или настройка не читается (тогда ничего не переносится).
+/// The Markdown copy folder per the backup's own setting (or the default, if the user did not change it); `None` means
+/// the copy is off or the setting cannot be read (then nothing is moved).
 fn mirror_folder_in(backup: &Path, default_mirror: Option<&Path>) -> Option<PathBuf> {
     let conn = Connection::open_with_flags(backup, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
     effective_mirror_dir(&conn, default_mirror).ok()?.0
 }
 
-/// Папка копии → `<имя>-before-restore-<метка>` рядом; если такое имя занято (два восстановления в одну секунду) —
-/// `…-2`, `…-3`. Переименовать не удалось — [`StoreError::MirrorFolderBusy`].
+/// The copy folder becomes `<name>-before-restore-<stamp>` next to it; if that name is taken (two restores in the same
+/// second) -- `...-2`, `...-3`. If it could not be renamed -- [`StoreError::MirrorFolderBusy`].
 fn move_aside(folder: &Path, now_ms: i64) -> Result<PathBuf, StoreError> {
     let name = folder
         .file_name()

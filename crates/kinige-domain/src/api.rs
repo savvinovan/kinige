@@ -1,5 +1,5 @@
-//! Типы, которыми обмениваются Rust и фронтенд (`KinigeApi`). TS-типы генерируются в `web/src/api/generated/`
-//! (`cargo test`, ADR-0002). Тексты ошибок — во фронтенде: Rust возвращает только коды.
+//! Types exchanged between Rust and the frontend (`KinigeApi`). TS types are generated in `web/src/api/generated/`
+//! (`cargo test`, ADR-0002). Error texts live in the frontend: Rust returns only codes.
 
 use crate::api_error::ErrorCode;
 use crate::backup::BackupStatus;
@@ -10,7 +10,7 @@ use crate::shortcuts::ShortcutStatus;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-/// Чат в сайдбаре. У Inbox хранимое имя пустое: интерфейс показывает переведённое.
+/// A chat in the sidebar. Inbox has an empty stored name: the interface shows the translated one.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "ChatSummary.ts")]
@@ -19,30 +19,30 @@ pub struct ChatSummary {
     pub title: String,
     pub icon: Option<String>,
     pub is_inbox: bool,
-    /// Записи чата, кроме корзины.
+    /// The chat's entries, except the trash.
     #[ts(type = "number")]
     pub count: i64,
-    /// Когда закреплён (мс); `null` — не закреплён. Закреплённые идут в разделе «Закреплённые» в порядке закрепления.
+    /// When pinned (ms); `null` -- not pinned. Pinned chats go in the "Pinned" section in the order they were pinned.
     #[ts(type = "number | null")]
     pub pinned_at: Option<i64>,
-    /// Когда отправлен в архив (мс); `null` — не в архиве.
+    /// When sent to the archive (ms); `null` -- not archived.
     #[ts(type = "number | null")]
     pub archived_at: Option<i64>,
 }
 
-/// Чаты сайдбара в порядке показа и размер корзины.
+/// The sidebar chats in display order and the trash size.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "ChatList.ts")]
 pub struct ChatList {
-    /// Сначала закреплённые (по времени закрепления), затем остальные и архив (по `sort_key`, при равных — по `id`).
+    /// Pinned first (by pin time), then the rest and the archive (by `sort_key`, ties by `id`).
     pub chats: Vec<ChatSummary>,
-    /// Записей в корзине.
+    /// Entries in the trash.
     #[ts(type = "number")]
     pub trash_count: i64,
 }
 
-/// Запись в ленте.
+/// An entry in the feed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "MessageView.ts")]
@@ -50,55 +50,55 @@ pub struct MessageView {
     pub id: String,
     pub chat_id: String,
     pub body_md: String,
-    /// `YYYY-MM-DD`, граница дня 04:00 (ТЗ §4.1).
+    /// `YYYY-MM-DD`, the day boundary is 04:00 (PRD §4.1).
     pub journal_date: String,
-    /// UTC, мс.
+    /// UTC, ms.
     #[ts(type = "number")]
     pub created_at: i64,
-    /// IANA-пояс устройства в момент создания.
+    /// The device's IANA time zone at the moment of creation.
     pub created_tz: String,
-    /// Запись — задача (флажок у плашки).
+    /// The entry is a task (the flag on the bubble).
     pub is_task: bool,
-    /// Когда задача отмечена выполненной (мс); `null` — не выполнена.
+    /// When the task was marked done (ms); `null` -- not done.
     #[ts(type = "number | null")]
     pub task_done_at: Option<i64>,
-    /// Когда добавлена в избранное (мс); `null` — не в избранном.
+    /// When added to favorites (ms); `null` -- not a favorite.
     #[ts(type = "number | null")]
     pub favorite_at: Option<i64>,
-    /// Теги записи в нижнем регистре, без `#` (разбор — `kinige_domain::tags`).
+    /// The entry's tags in lower case, without `#` (parsing -- `kinige_domain::tags`).
     pub tags: Vec<String>,
-    /// Одна из групп записи новее поддерживаемой версии: запись только для чтения, действия недоступны (ADR-0001 §4).
+    /// One of the entry's groups is newer than the supported version: the entry is read-only, actions are unavailable (ADR-0001 §4).
     pub read_only: bool,
-    /// Кто создал запись (`core.origin`): `user`, `import_telegram`, `agent`. Лента помечает записи агента.
+    /// Who created the entry (`core.origin`): `user`, `import_telegram`, `agent`. The feed marks agent entries.
     pub origin: String,
-    /// Запись, на которую это ответ (слайс 5): у новых ответов и у ответов, импортированных из Telegram; `null` — не ответ.
+    /// The entry this one replies to (slice 5): set for new replies and for replies imported from Telegram; `null` -- not a reply.
     pub reply_to: Option<ReplyTo>,
 }
 
-/// Черновик поля ввода чата (слайс 5): текст и запись, на которую пишется ответ.
+/// The draft of the chat input field (slice 5): the text and the entry being replied to.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "ChatDraft.ts")]
 pub struct ChatDraft {
     pub body: String,
-    /// Строка «Ответ на запись» над полем; `null` — обычная запись. Если записи уже нет, `state = missing`.
+    /// The "Reply to entry" line above the field; `null` -- a plain entry. If the entry no longer exists, `state = missing`.
     pub reply_to: Option<ReplyTo>,
 }
 
-/// Какой флаг записи меняется командой `set_message_flag`.
+/// Which entry flag the `set_message_flag` command changes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "MessageFlag.ts")]
 pub enum MessageFlag {
-    /// Запись — задача (флажок). Снятие обнуляет «выполнено».
+    /// The entry is a task (the flag). Clearing it resets "done".
     Task,
-    /// Задача выполнена; только у задачи.
+    /// The task is done; only for a task.
     TaskDone,
-    /// Избранное.
+    /// Favorite.
     Favorite,
 }
 
-/// Запись в корзине (ТЗ §2.1): чат, дата, сколько осталось до автоудаления.
+/// An entry in the trash (PRD §2.1): chat, date, how long is left until auto-deletion.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "TrashItem.ts")]
@@ -107,15 +107,15 @@ pub struct TrashItem {
     pub chat_title: String,
     pub chat_icon: Option<String>,
     pub chat_is_inbox: bool,
-    /// Когда удалена (мс).
+    /// When deleted (ms).
     #[ts(type = "number")]
     pub deleted_at: i64,
-    /// Сколько целых дней осталось до автоудаления (неполный день считается днём).
+    /// How many whole days are left until auto-deletion (a partial day counts as a day).
     #[ts(type = "number")]
     pub days_left: i64,
 }
 
-/// Позиция в ленте для постраничной загрузки (keyset): `(journal_date, created_at, id)` последней загруженной записи.
+/// A feed position for paged loading (keyset): `(journal_date, created_at, id)` of the last loaded entry.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "FeedCursor.ts")]
@@ -126,38 +126,38 @@ pub struct FeedCursor {
     pub id: String,
 }
 
-/// Страница ленты: записи по возрастанию `(journal_date, created_at, id)`, самая новая — последней.
+/// A feed page: entries in ascending `(journal_date, created_at, id)` order, the newest last.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "MessagePage.ts")]
 pub struct MessagePage {
     pub messages: Vec<MessageView>,
-    /// Позиция для следующей (более старой) страницы; `null` — больше записей нет.
+    /// The position for the next (older) page; `null` -- there are no more entries.
     pub older: Option<FeedCursor>,
-    /// Позиция для следующей (более новой) страницы: последняя запись этой; `null` — новее ничего нет (слайс 4).
+    /// The position for the next (newer) page: the last entry of this one; `null` -- nothing is newer (slice 4).
     pub newer: Option<FeedCursor>,
-    /// Сегодняшний `journal_date` (с границей дня 04:00): от него считаются метки «Сегодня» и «Вчера».
+    /// Today's `journal_date` (with the 04:00 day boundary): the "Today" and "Yesterday" labels are counted from it.
     pub today: String,
 }
 
-/// Фильтры поиска (слайс 4, §9.1): все необязательные и соединяются через «и».
+/// Search filters (slice 4, §9.1): all optional and combined with "and".
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
 #[ts(export, export_to = "SearchFilters.ts")]
 pub struct SearchFilters {
-    /// Только записи этого чата; `null` — везде.
+    /// Only entries of this chat; `null` -- everywhere.
     pub chat_id: Option<String>,
-    /// Только избранное.
+    /// Favorites only.
     pub favorite: bool,
-    /// Только задачи.
+    /// Tasks only.
     pub tasks: bool,
-    /// С этого `journal_date` включительно (`YYYY-MM-DD`).
+    /// From this `journal_date`, inclusive (`YYYY-MM-DD`).
     pub from: Option<String>,
-    /// По этот `journal_date` включительно.
+    /// Up to this `journal_date`, inclusive.
     pub to: Option<String>,
 }
 
-/// Найденная запись: сама запись, её чат и то, что показывает строка результата.
+/// A found entry: the entry itself, its chat and what the result row shows.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "SearchHit.ts")]
@@ -166,25 +166,25 @@ pub struct SearchHit {
     pub chat_title: String,
     pub chat_icon: Option<String>,
     pub chat_is_inbox: bool,
-    /// Простой текст вокруг первого совпадения, до 200 знаков, с «…» по обрезанным краям.
+    /// Plain text around the first match, up to 200 characters, with "…" at the trimmed edges.
     pub snippet: String,
-    /// Слова записи, которые совпали с запросом, как они в ней написаны: фронтенд подсвечивает их целиком.
+    /// The entry's words that matched the query, as written in it: the frontend highlights them whole.
     pub terms: Vec<String>,
 }
 
-/// Страница результатов поиска: новые записи сверху (порядок ленты, самые новые первыми).
+/// A page of search results: new entries on top (feed order, the newest first).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "SearchPage.ts")]
 pub struct SearchPage {
-    /// Чаты, чьё название совпало с запросом; только на первой странице. У Inbox название переводит фронтенд.
+    /// Chats whose name matched the query; only on the first page. The frontend translates Inbox's name.
     pub chats: Vec<ChatSummary>,
     pub hits: Vec<SearchHit>,
-    /// Позиция для следующей страницы (последняя запись этой); `null` — больше нет.
+    /// The position for the next page (the last entry of this one); `null` -- there are no more.
     pub older: Option<FeedCursor>,
 }
 
-/// Размер текста (ADR-0004): «Обычный» или «Крупный» ×1,25.
+/// Text size (ADR-0004): "Normal" or "Large" at ×1.25.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
 #[ts(export, export_to = "TextSize.ts")]
@@ -201,7 +201,7 @@ impl TextSize {
         }
     }
 
-    /// Значение из `app_setting`; незнакомое — обычный размер.
+    /// The value from `app_setting`; an unknown one means the normal size.
     pub fn from_setting(value: &str) -> TextSize {
         if value == "large" {
             TextSize::Large
@@ -211,46 +211,46 @@ impl TextSize {
     }
 }
 
-/// Почему Markdown-копия сейчас не пишется.
+/// Why the Markdown copy is not being written right now.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "MirrorError.ts")]
 pub enum MirrorError {
-    /// Папку нельзя создать или открыть (нет доступа, диска, это файл).
+    /// The folder cannot be created or opened (no access, no disk, it is a file).
     FolderUnavailable,
-    /// Файл дня записать не удалось.
+    /// The day's file could not be written.
     WriteFailed,
 }
 
-/// Состояние Markdown-копии для окна «Настройки».
+/// The state of the Markdown copy for the "Settings" window.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "MirrorStatus.ts")]
 pub struct MirrorStatus {
-    /// Путь папки; `null`, если папка не выбрана и по умолчанию её нет — копия выключена.
+    /// The folder path; `null` if no folder is chosen and there is no default one -- the copy is off.
     pub folder: Option<String>,
-    /// Папка по умолчанию (`~/Documents/Kinige`), пользователь её не менял.
+    /// The default folder (`~/Documents/Kinige`), the user did not change it.
     pub is_default: bool,
     pub error: Option<MirrorError>,
-    /// Дней, которые ждут записи в копию.
+    /// Days waiting to be written to the copy.
     #[ts(type = "number")]
     pub pending_days: i64,
 }
 
-/// Настройки (не синхронизируются, `app_setting`).
+/// Settings (not synced, `app_setting`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "Settings.ts")]
 pub struct Settings {
     pub text_size: TextSize,
     pub mirror: MirrorStatus,
-    /// Глобальные сочетания клавиш (слайс 2): по одному на каждое действие.
+    /// Global keyboard shortcuts (slice 2): one for each action.
     pub shortcuts: Vec<ShortcutStatus>,
-    /// Сайдбар свёрнут до полосы эмодзи (слайс 3).
+    /// The sidebar is collapsed to an emoji strip (slice 3).
     pub sidebar_collapsed: bool,
-    /// Недавние эмодзи пикера, самые свежие первыми (слайс 3).
+    /// The picker's recent emoji, the freshest first (slice 3).
     pub recent_emoji: Vec<String>,
-    /// Копия файла базы (слайс 3).
+    /// The database file backup (slice 3).
     pub backup: BackupStatus,
     /// How much of the forest is shown above the feed (slice 6); local, not synced, not in `settings.json`.
     pub forest_view: ForestView,
@@ -258,18 +258,18 @@ pub struct Settings {
     pub forest_mode: ForestMode,
 }
 
-/// Что сделал быстрый захват.
+/// What the quick capture did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "CaptureAction.ts")]
 pub enum CaptureAction {
-    /// Создана новая запись.
+    /// A new entry was created.
     Created,
-    /// Текст дописан к последней записи.
+    /// The text was appended to the last entry.
     Appended,
 }
 
-/// Ответ окну захвата: что сделано и запись, как она теперь выглядит.
+/// The reply to the capture window: what was done and the entry as it looks now.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "CaptureOutcome.ts")]
@@ -278,24 +278,24 @@ pub struct CaptureOutcome {
     pub message: MessageView,
 }
 
-/// Всё, что нужно окну захвата при показе, одним ответом (§5.1, слайс 2).
+/// Everything the capture window needs when shown, in one reply (§5.1, slice 2).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "CaptureState.ts")]
 pub struct CaptureState {
     pub language: Language,
     pub text_size: TextSize,
-    /// Сегодняшний `journal_date` (с границей дня 04:00).
+    /// Today's `journal_date` (with the 04:00 day boundary).
     pub today: String,
-    /// До трёх последних неудалённых записей Inbox за сегодня, по возрастанию: самая новая последней.
+    /// Up to three last non-deleted Inbox entries of today, ascending: the newest last.
     pub context: Vec<MessageView>,
-    /// Id записи, к которой ⌘Enter допишет текст; `null` — ⌘Enter создаст новую запись.
+    /// The id of the entry that ⌘Enter appends the text to; `null` -- ⌘Enter creates a new entry.
     pub append_target: Option<String>,
-    /// Черновик окна захвата.
+    /// The capture window's draft.
     pub draft: String,
-    /// Ошибка, с которой окно открыто (сбой записи из буфера): показывается один раз.
+    /// The error the window was opened with (a failure writing from the clipboard): shown once.
     pub error: Option<ErrorCode>,
-    /// «Недавние» эмодзи пикера (общий список с главным окном), свежие первыми.
+    /// The picker's "Recent" emoji (a list shared with the main window), the freshest first.
     pub recent_emoji: Vec<String>,
 }
 

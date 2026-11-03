@@ -1,9 +1,9 @@
-//! Поиск по-русски (слайс 4, ADR-0008): нормализация текста для индекса и запрос FTS5. Без IO.
+//! Search in Russian (slice 4, ADR-0008): text normalization for the index and the FTS5 query. No IO.
 //!
-//! Слово — непрерывная серия `char::is_alphanumeric`. Нормализация: нижний регистр, «ё» → «е». Русское слово (только
-//! буквы а–я) идёт в русский стеммер Snowball, слово из ASCII-букв — в английский, остальное (цифры, другие алфавиты)
-//! остаётся как есть. В индексе лежат только основы. Последний терм запроса, если ввод не кончается пробелом или знаком,
-//! ищется по префиксу основы: «моло» → `мол*` находит «молоко» (основа `молок`).
+//! A word is a contiguous run of `char::is_alphanumeric`. Normalization: lower case, "ё" -> "е". A Russian word (only
+//! the letters а-я) goes to the Russian Snowball stemmer, a word of ASCII letters goes to the English one, the rest
+//! (digits, other alphabets) stays as is. The index holds only stems. The last query term, if the input does not end
+//! with a space or a punctuation mark, is searched by stem prefix: "моло" -> `мол*` finds "молоко" (stem `молок`).
 
 use rust_stemmers::{Algorithm, Stemmer};
 
@@ -11,14 +11,14 @@ mod highlight;
 
 pub use highlight::{highlight_terms, snippet};
 
-/// Версия правил нормализации и раскладки индекса. Меняется вместе со стеммером, правилами слов и `tokenize` таблицы:
-/// при несовпадении с `app_setting.search_index_version` индекс перестраивается при старте (ADR-0008).
+/// Version of the normalization rules and the index layout. Changes together with the stemmer, the word rules and the
+/// table's `tokenize`: on a mismatch with `app_setting.search_index_version` the index is rebuilt at start (ADR-0008).
 pub const SEARCH_INDEX_VERSION: u32 = 1;
 
-/// Наименьшая длина основы последнего терма, при которой он ищется как префикс: один знак дал бы `м*` по четверти индекса.
+/// Shortest stem length of the last term at which it is searched as a prefix: one character would give `м*` over a quarter of the index.
 const MIN_PREFIX_CHARS: usize = 2;
 
-/// Слова текста: оригинал (срез исходной строки) и нормализованная форма (нижний регистр, «ё» → «е»).
+/// Words of the text: the original (a slice of the source string) and the normalized form (lower case, "ё" -> "е").
 pub(crate) fn words(text: &str) -> impl Iterator<Item = (&str, String)> {
     let mut chars = text.char_indices().peekable();
     std::iter::from_fn(move || {
@@ -32,7 +32,7 @@ pub(crate) fn words(text: &str) -> impl Iterator<Item = (&str, String)> {
                     end = i + c.len_utf8();
                     chars.next();
                 }
-                // Границы взяты из `char_indices`: `get` здесь не отказывает, но и не паникует.
+                // The bounds come from `char_indices`: `get` does not fail here, and it does not panic either.
                 let original = text.get(start..end).unwrap_or_default();
                 return Some((original, normalize(original)));
             }
@@ -49,7 +49,7 @@ fn normalize(word: &str) -> String {
         .collect()
 }
 
-/// Основа нормализованного слова.
+/// Stem of a normalized word.
 pub(crate) fn stem(word: &str) -> String {
     let algorithm = if word.chars().all(|c| ('а'..='я').contains(&c)) {
         Algorithm::Russian
@@ -61,7 +61,7 @@ pub(crate) fn stem(word: &str) -> String {
     Stemmer::create(algorithm).stem(word).into_owned()
 }
 
-/// Текст для индекса: основы слов через пробел.
+/// Text for the index: word stems separated by spaces.
 pub fn index_text(body_md: &str) -> String {
     let mut out = String::with_capacity(body_md.len() / 2);
     for (_, word) in words(body_md) {
@@ -73,7 +73,7 @@ pub fn index_text(body_md: &str) -> String {
     out
 }
 
-/// Разобранный запрос: основы слов и признак «последний терм — префикс».
+/// A parsed query: word stems and the flag "the last term is a prefix".
 pub(crate) struct Query {
     pub terms: Vec<String>,
     pub prefix_last: bool,
@@ -85,7 +85,7 @@ impl Query {
         if terms.is_empty() {
             return None;
         }
-        // Слово не закончено, если ввод оборвался на букве или цифре; пробел или знак после него — закончено.
+        // The word is unfinished if the input stops on a letter or a digit; a space or a mark after it means finished.
         let typing = input.chars().next_back().is_some_and(char::is_alphanumeric);
         let prefix_last = typing
             && terms
@@ -95,7 +95,7 @@ impl Query {
         Some(Query { terms, prefix_last })
     }
 
-    /// Совпадает ли основа слова текста с одним из термов запроса (последний — по префиксу, если он префикс).
+    /// Whether the stem of a text word matches one of the query terms (the last one by prefix, if it is a prefix).
     pub(crate) fn matches(&self, stem: &str) -> bool {
         let last = self.terms.len() - 1;
         self.terms.iter().enumerate().any(|(i, term)| {
@@ -108,9 +108,9 @@ impl Query {
     }
 }
 
-/// Совпадает ли название чата с запросом: каждому терму находится слово названия с той же основой (у последнего терма —
-/// с этим началом основы, пока слово не закончено). Названия чатов в индексе не лежат: их не больше сотни, они
-/// сверяются здесь. Пустой запрос ничему не соответствует.
+/// Whether a chat title matches the query: each term finds a title word with the same stem (for the last term, with
+/// that stem start, while the word is unfinished). Chat titles are not in the index: there are at most a hundred of
+/// them, they are checked here. An empty query matches nothing.
 pub fn title_matches(title: &str, input: &str) -> bool {
     let Some(query) = Query::parse(input) else {
         return false;
@@ -128,9 +128,9 @@ pub fn title_matches(title: &str, input: &str) -> bool {
     })
 }
 
-/// Запрос FTS5 по вводу пользователя: термы в кавычках через пробел (то есть «и»); последний — префикс `"основа"*`, если
-/// слово не закончено (ADR-0008). В кавычки попадают только буквы и цифры, поэтому синтаксис FTS5 из ввода пройти не
-/// может. Без слов (пусто, одни знаки) — `None`.
+/// FTS5 query from the user's input: quoted terms separated by spaces (that is, "and"); the last one is a prefix
+/// `"stem"*` if the word is unfinished (ADR-0008). Only letters and digits get into the quotes, so FTS5 syntax cannot
+/// pass through from the input. Without words (empty, only marks) -- `None`.
 pub fn fts_query(input: &str) -> Option<String> {
     let query = Query::parse(input)?;
     let last = query.terms.len() - 1;

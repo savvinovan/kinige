@@ -1,7 +1,7 @@
-//! Миграция 1 → 2 и прерывание процесса (`abort`) после фиксации дописывания и после сохранения черновика.
+//! Migration 1 -> 2 and process abort (`abort`) after the commit of an append and after saving a draft.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -23,7 +23,7 @@ fn migration_two_adds_only_the_draft_table_and_keeps_every_existing_row() {
             .unwrap()
     };
     let before = row(dir.path(), &sent.id);
-    // Возвращаем базу в состояние слайса 1: без таблицы черновиков и с `user_version = 1`.
+    // Return the database to the slice 1 state: without the drafts table and with `user_version = 1`.
     {
         let conn = raw(dir.path());
         conn.execute_batch(
@@ -63,12 +63,12 @@ fn migration_two_adds_only_the_draft_table_and_keeps_every_existing_row() {
     assert_eq!(after.hlc_json, before.hlc_json);
     assert_eq!(after.body_md, "до миграции");
     assert_eq!(store.list_chats().unwrap()[0].count, 1);
-    // Повторное открытие ничего не меняет.
+    // Reopening changes nothing.
     drop(store);
     drop(open_without_mirror(dir.path()));
 }
 
-// ---------- прерывание процесса ----------
+// ---------- process abort ----------
 
 const CHILD_ENV: &str = "KINIGE_CAPTURE_ABORT_DIR";
 const CHILD_MODE: &str = "KINIGE_CAPTURE_ABORT_MODE";
@@ -80,7 +80,7 @@ fn run_child(test: &str, dir: &Path, mode: &str) {
         .env(CHILD_MODE, mode)
         .status()
         .unwrap();
-    assert!(!status.success(), "дочерний процесс должен был упасть");
+    assert!(!status.success(), "the child process should have died");
     #[cfg(unix)]
     {
         use std::os::unix::process::ExitStatusExt;
@@ -112,14 +112,17 @@ fn abort_right_after_an_append_commit_keeps_the_rewritten_entry() {
     let view = store.capture_view(&moscow(T0 + 2 * MINUTE)).unwrap();
     assert_eq!(view.context.len(), 1);
     assert_eq!(view.context[0].body_md, "основа\n\nдописано");
-    assert_eq!(view.draft, "", "черновик очищен той же транзакцией");
+    assert_eq!(
+        view.draft, "",
+        "the draft was cleared by the same transaction"
+    );
     let after = row(dir.path(), &view.context[0].id);
     assert_eq!(after.edited_at, Some(T0 + MINUTE));
     assert!(after.body_supersedes.starts_with("[\""));
     let dirty: i64 = raw(dir.path())
         .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(dirty, 1, "отметка копии пережила прерывание");
+    assert_eq!(dirty, 1, "the copy mark survived the abort");
 }
 
 #[test]

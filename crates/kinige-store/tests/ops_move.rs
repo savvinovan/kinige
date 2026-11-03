@@ -1,8 +1,8 @@
-//! Перенос записи в другой чат (слайс 3, решение приёмки): группа `placement`, день не меняется, ревизии нет, Markdown-копия
-//! (оба чата), счётчики, «последние чаты», теги, отказы.
+//! Moving an entry to another chat (slice 3, acceptance decision): the `placement` group, the day does not change, no
+//! revision, the Markdown copy (both chats), counters, "recent chats", tags, refusals.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -49,8 +49,8 @@ fn moving_rewrites_only_placement_keeps_the_day_and_writes_no_revision_in_both_b
     let moved = store.move_message(&id, &books, &at(2)).unwrap();
 
     assert_eq!(moved.chat_id, books);
-    assert_eq!(moved.journal_date, "2026-10-21", "день не меняется");
-    assert_eq!(moved.created_at, T0, "время создания не меняется");
+    assert_eq!(moved.journal_date, "2026-10-21", "the day does not change");
+    assert_eq!(moved.created_at, T0, "the creation time does not change");
     let c = columns(dir.path(), &id);
     assert_eq!(c["placement_base"], json!(null));
     assert_eq!(c["placement_supersedes"], json!(format!(r#"["{h0}"]"#)));
@@ -62,12 +62,16 @@ fn moving_rewrites_only_placement_keeps_the_day_and_writes_no_revision_in_both_b
         )
     );
     for name in ["core", "body", "flags", "deleted"] {
-        assert_eq!(after[name], before[name], "{name} дословно");
+        assert_eq!(after[name], before[name], "{name} verbatim");
     }
-    assert_eq!(revisions(dir.path(), &id), 0, "ревизия `edit` не пишется");
+    assert_eq!(
+        revisions(dir.path(), &id),
+        0,
+        "no `edit` revision is written"
+    );
     assert_columns_match_groups(dir.path(), &id);
 
-    // Подтверждённая сервером версия: base = её HLC, supersedes пуст.
+    // A version confirmed by the server: base = its HLC, supersedes is empty.
     let h1 = group_hlc(dir.path(), "message", &id, "placement");
     raw(dir.path())
         .execute("UPDATE message SET server_known = 1 WHERE id = ?1", [&id])
@@ -93,7 +97,7 @@ fn counters_the_tray_menu_the_tag_filter_and_both_days_of_the_copy_follow_the_mo
         .unwrap();
     assert!(
         store.recent_chats(5).unwrap().is_empty(),
-        "в «Книгах» записей ещё нет"
+        "there are no entries in Книги yet"
     );
 
     store.move_message(&id, &books, &at(2)).unwrap();
@@ -112,7 +116,7 @@ fn counters_the_tray_menu_the_tag_filter_and_both_days_of_the_copy_follow_the_mo
     assert_eq!(
         (tagged(INBOX_ID), tagged(&books)),
         (0, 1),
-        "теги идут за записью"
+        "tags follow the entry"
     );
     assert_eq!(
         dirty(dir.path()),
@@ -124,7 +128,7 @@ fn counters_the_tray_menu_the_tag_filter_and_both_days_of_the_copy_follow_the_mo
             expected.sort();
             expected
         },
-        "день старого и день нового чата помечены для перезаписи"
+        "the old chat's day and the new chat's day are marked for rewriting"
     );
 }
 
@@ -137,12 +141,15 @@ fn the_same_chat_writes_nothing_and_the_target_may_be_archived() {
     assert_eq!(
         clock(dir.path()),
         clock_before,
-        "тот же чат — ничего не пишется"
+        "the same chat, nothing is written"
     );
 
     store.set_chat_archived(&books, true, &at(3)).unwrap();
     let moved = store.move_message(&id, &books, &at(4)).unwrap();
-    assert_eq!(moved.chat_id, books, "в архивный чат переносить можно");
+    assert_eq!(
+        moved.chat_id, books,
+        "moving into an archived chat is allowed"
+    );
 }
 
 #[test]
@@ -159,7 +166,7 @@ fn refusals_leave_the_record_untouched() {
         store.move_message("нет-такой-записи", &books, &at(2)),
         Err(StoreError::MessageNotFound)
     ));
-    // Запись в корзине не переносится: отдельный код, а не «не найдена» (запись есть, её можно вернуть).
+    // An entry in the trash is not moved: a separate code, not "not found" (the entry exists, it can be restored).
     store.delete_message(&id, &at(3)).unwrap();
     assert!(matches!(
         store.move_message(&id, &books, &at(4)),
@@ -170,7 +177,7 @@ fn refusals_leave_the_record_untouched() {
         kinige_domain::ErrorCode::MessageInTrash
     );
     store.restore_message(&id, &at(5)).unwrap();
-    // Запись с группой из будущей версии — только для чтения.
+    // An entry with a group from a future version is read-only.
     make_read_only(dir.path(), &id);
     assert!(matches!(
         store.move_message(&id, &books, &at(6)),
@@ -217,7 +224,7 @@ fn a_moved_record_is_still_live_so_purge_refuses_it_and_a_purged_record_cannot_b
     let dir = tempfile::tempdir().unwrap();
     let (store, id, books) = setup(dir.path());
 
-    // Перенос, затем purge источника: запись жива (не в корзине), навсегда её удалить нельзя.
+    // A move, then purge of the source: the entry is alive (not in the trash), it cannot be deleted permanently.
     store.move_message(&id, &books, &at(2)).unwrap();
     assert!(matches!(
         store.purge_message(&id, &at(3)),
@@ -227,10 +234,10 @@ fn a_moved_record_is_still_live_so_purge_refuses_it_and_a_purged_record_cannot_b
     assert_eq!(
         count_rows(dir.path(), "tombstone"),
         0,
-        "tombstone не создан"
+        "no tombstone is created"
     );
 
-    // Purge, затем перенос: записи больше нет.
+    // Purge, then a move: the entry is gone.
     store.delete_message(&id, &at(4)).unwrap();
     store.purge_message(&id, &at(5)).unwrap();
     assert!(matches!(
@@ -266,7 +273,7 @@ fn moving_out_of_an_archived_source_chat_works_and_marks_both_days() {
             .unwrap()
             .archived_at
             .is_some(),
-        "источник остаётся в архиве"
+        "the source stays in the archive"
     );
     assert_eq!(
         dirty(dir.path()),
@@ -278,7 +285,7 @@ fn moving_out_of_an_archived_source_chat_works_and_marks_both_days() {
             expected.sort();
             expected
         },
-        "оба дня помечены, в том числе день архивного чата-источника"
+        "both days are marked, including the day of the archived source chat"
     );
     assert_columns_match_groups(dir.path(), &sent.id);
 }

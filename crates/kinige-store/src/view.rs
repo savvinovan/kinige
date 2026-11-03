@@ -1,4 +1,4 @@
-//! Запись для интерфейса: одни и те же колонки и разбор для ленты, окна захвата, корзины и ответов на действия.
+//! An entry for the interface: the same columns and parsing for the feed, the capture window, the trash and replies to actions.
 
 use crate::StoreError;
 use crate::error::read_err;
@@ -8,8 +8,9 @@ use kinige_domain::reply::{ReplyTarget, reply_to};
 use kinige_domain::tags::parse_tags;
 use rusqlite::{Connection, OptionalExtension, Row};
 
-/// Старая запись, на которую ответили, одним значением JSON (чат, день, начало текста — 1000 знаков: цитата берёт из них
-/// 120 знаков простого текста, а разметка при снятии съедает часть — и признак корзины). Таблица в запросе называется `r`.
+/// The old entry that was replied to, as one JSON value (chat, day, start of the text - 1000 characters: the quote takes
+/// 120 characters of plain text from them, and stripping the markup eats some - and the trash flag). The table in the
+/// query is called `r`.
 macro_rules! reply_target_object {
     () => {
         "json_object('chat', r.chat_id, 'date', r.journal_date, 'body', substr(r.body_md, 1, 1000), \
@@ -17,10 +18,10 @@ macro_rules! reply_target_object {
     };
 }
 
-/// Колонки `message`, из которых строится [`MessageView`]; таблица в запросе называется `m`. Последняя колонка — запись,
-/// на которую ответили: то же, что `LEFT JOIN message r ON r.id = m.reply_to_id` (внешнего ключа нет, записи может не быть),
-/// но подзапросом, чтобы все запросы с этими колонками получали её без правки своих `FROM`. Без ответа подзапрос не
-/// выполняется.
+/// The `message` columns that [`MessageView`] is built from; the table in the query is called `m`. The last column is
+/// the entry that was replied to: the same as `LEFT JOIN message r ON r.id = m.reply_to_id` (there is no foreign key,
+/// the entry may be missing), but as a subquery, so that all queries with these columns get it without editing their
+/// `FROM`. Without a reply the subquery is not executed.
 pub(crate) const VIEW_COLUMNS: &str = concat!(
     "m.id, m.chat_id, m.body_md, m.journal_date, m.created_at, m.created_tz, \
      m.is_task, m.task_done_at, m.favorite_at, m.schema_version, m.origin, m.reply_to_id, \
@@ -28,12 +29,12 @@ pub(crate) const VIEW_COLUMNS: &str = concat!(
     reply_target_object!(),
     " FROM message r WHERE r.id = m.reply_to_id) END)"
 );
-/// Сколько колонок в [`VIEW_COLUMNS`]: дополнительные колонки запроса идут с этого номера.
+/// How many columns [`VIEW_COLUMNS`] has: the query's extra columns start from this index.
 pub(crate) const VIEW_LEN: usize = 13;
 
-/// Запись из строки с колонками [`VIEW_COLUMNS`], начиная с `first`. Теги разбираются из текста, а не читаются из
-/// `message_tag`: ответ не зависит от производной таблицы. Запись «только для чтения», если какая-то её группа новее
-/// поддерживаемой (`schema_version` — максимум `sv` по группам).
+/// An entry from a row with the [`VIEW_COLUMNS`] columns, starting at `first`. Tags are parsed from the text, not read
+/// from `message_tag`: the reply does not depend on the derived table. An entry is "read only" if any of its groups
+/// is newer than the supported one (`schema_version` is the maximum `sv` over the groups).
 pub(crate) fn view_from_row_at(row: &Row<'_>, first: usize) -> rusqlite::Result<MessageView> {
     let body_md: String = row.get(first + 2)?;
     let journal_date: String = row.get(first + 3)?;
@@ -64,7 +65,7 @@ pub(crate) fn view_from_row(row: &Row<'_>) -> rusqlite::Result<MessageView> {
     view_from_row_at(row, 0)
 }
 
-/// Запись по id (в том числе из корзины); нет записи — `MessageNotFound`.
+/// An entry by id (including one from the trash); no such entry gives `MessageNotFound`.
 pub(crate) fn load_view(conn: &Connection, id: &str) -> Result<MessageView, StoreError> {
     match conn.query_row(
         &format!("SELECT {VIEW_COLUMNS} FROM message m WHERE m.id = ?1"),
@@ -77,7 +78,7 @@ pub(crate) fn load_view(conn: &Connection, id: &str) -> Result<MessageView, Stor
     }
 }
 
-/// Цитата для записи-адресата `target_id` в день `reply_date`: строка над полем ввода у черновика-ответа.
+/// The quote for the target entry `target_id` on the day `reply_date`: the line above the input field of a reply draft.
 pub(crate) fn load_reply_to(
     conn: &Connection,
     target_id: &str,
@@ -102,7 +103,7 @@ pub(crate) fn load_reply_to(
     ))
 }
 
-/// Разбор значения [`VIEW_COLUMNS`]; повреждённое значение — «записи нет».
+/// Parsing of the [`VIEW_COLUMNS`] value; a corrupted value means "no entry".
 fn parse_target(json: &str) -> Option<ReplyTarget> {
     let value: serde_json::Value = serde_json::from_str(json).ok()?;
     let text = |key: &str| value.get(key)?.as_str().map(str::to_string);

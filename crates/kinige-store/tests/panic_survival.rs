@@ -1,8 +1,8 @@
-//! Паника вне MCP после снятия `panic = "abort"` (слайс 4a): чтение, проход копии и проход обслуживания не должны молча
-//! ломаться навсегда. Паника — ошибка этого вызова или этого прохода, следующие работают.
+//! A panic outside MCP after removing `panic = "abort"` (slice 4a): reading, a copy pass and a maintenance pass must not
+//! silently break forever. A panic is an error of that call or that pass, the next ones work.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -24,7 +24,7 @@ fn a_panic_inside_a_read_fails_that_call_only_and_later_reads_work() {
         store.panic_in_read_for_test(),
         Err(StoreError::Internal(_))
     ));
-    // Соединение чтения живо: чтения идут, запись видна.
+    // The read connection is alive: reads work, the write is visible.
     for _ in 0..3 {
         let page = store
             .list_messages(INBOX_ID, None, 10, &moscow(T0 + MINUTE))
@@ -51,19 +51,19 @@ fn a_panic_in_a_mirror_pass_is_caught_shown_in_settings_and_the_thread_keeps_goi
         .join("Inbox")
         .join("2026")
         .join("2026-10-21.md");
-    wait_until("первая копия", || file.exists());
+    wait_until("the first copy", || file.exists());
     store.inject_background_panic_for_test(BackgroundThread::Mirror);
-    wait_until("ошибка копии в настройках", || {
+    wait_until("the copy error in settings", || {
         store.get_settings().unwrap().mirror.error == Some(MirrorError::WriteFailed)
     });
-    // Поток жив: новая запись попадает в копию, ошибка снимается.
+    // The thread is alive: a new entry reaches the copy, the error is cleared.
     store
         .send_message(INBOX_ID, "вторая после паники", &moscow(T0 + MINUTE))
         .unwrap();
-    wait_until("копия после паники", || {
+    wait_until("the copy after the panic", || {
         std::fs::read_to_string(&file).is_ok_and(|text| text.contains("вторая после паники"))
     });
-    wait_until("ошибка снята", || {
+    wait_until("the error is cleared", || {
         store.get_settings().unwrap().mirror.error.is_none()
     });
 }
@@ -75,18 +75,17 @@ fn a_panic_in_a_maintenance_pass_is_caught_shown_in_settings_and_the_next_pass_r
     options.start_mirror = false;
     options.start_maintenance = true;
     let store = Store::open_at(options, &moscow(T0)).unwrap();
-    // Первый проход при старте идёт на настоящих часах; ждём его конца (копия дня появилась).
-    wait_until("первый проход обслуживания", || {
+    // The first pass at startup runs on the real clock; we wait for its end (the day's copy appeared).
+    wait_until("the first maintenance pass", || {
         store.get_settings().unwrap().backup.count >= 1
     });
     store.inject_background_panic_for_test(BackgroundThread::Maintenance);
-    wait_until("ошибка копий в настройках", || {
+    wait_until("the copy error in settings", || {
         store.get_settings().unwrap().backup.error == Some(BackupError::WriteFailed)
     });
-    // Поток жив: разбудим его ещё раз, следующий проход проходит и снимает ошибку.
+    // The thread is alive: we wake it once more, the next pass runs and clears the error.
     store.wake_maintenance_for_test();
-    wait_until(
-        "следующий проход снял ошибку",
-        || store.get_settings().unwrap().backup.error.is_none(),
-    );
+    wait_until("the next pass cleared the error", || {
+        store.get_settings().unwrap().backup.error.is_none()
+    });
 }

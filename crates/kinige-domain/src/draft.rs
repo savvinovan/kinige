@@ -1,8 +1,8 @@
-//! Черновики (ТЗ §5, §5.1): правила, которые не зависят от хранилища.
+//! Drafts (PRD §5, §5.1): rules that do not depend on the storage.
 
-/// Текст поля, когда в черновик окна захвата приходит ещё и текст из буфера (сбой хоткея буфера, ТЗ §1.2 п. 9): прежний
-/// непустой черновик не затирается — новый текст идёт под ним отдельным абзацем. Пустой (или из одних пробелов) черновик
-/// заменяется текстом буфера.
+/// The field text when text from the clipboard also arrives in the capture window draft (clipboard hotkey failure, PRD §1.2 item 9): the previous
+/// non-empty draft is not overwritten -- the new text goes under it as a separate paragraph. An empty draft (or one with only spaces)
+/// is replaced with the clipboard text.
 pub fn joined_draft(existing: &str, clipboard: &str) -> String {
     if existing.trim().is_empty() {
         clipboard.to_string()
@@ -30,7 +30,7 @@ mod tests {
         assert_eq!(
             joined_draft("a\n", "b"),
             "a\n\n\nb",
-            "текст черновика не правится"
+            "the draft text is not edited"
         );
     }
 }

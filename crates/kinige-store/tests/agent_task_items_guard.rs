@@ -1,8 +1,8 @@
-//! Страховки отметки пункта для агента (ADR-0009, слайс 4a, замечания guardian): `item_text` против сдвинувшихся номеров,
-//! предел ответа записи при десятках тысяч пунктов, `item` не трогает флаг «выполнено» самой записи-задачи.
+//! Safeguards for ticking an item for the agent (ADR-0009, slice 4a, guardian remarks): `item_text` against shifted numbers,
+//! the reply limit of a write with tens of thousands of items, `item` does not touch the "done" flag of the task entry itself.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -46,10 +46,10 @@ fn mark(a: &Agent, id: &str, arguments: Value) -> Result<Value, AgentError> {
 fn an_item_added_above_after_the_agent_read_the_list_is_a_mismatch_and_nothing_is_written() {
     let a = agent(AgentMode::ReadWrite, true);
     let id = a.store.send_message(&a.work, BODY, &moscow(T0)).unwrap().id;
-    // Агент прочитал: «Почитать книгу» — пункт 1.
+    // The agent read it: "Почитать книгу" is item 1.
     let read = call(&a.store, "get_entry", json!({"id": id}), T0).unwrap();
     assert_eq!(read["entry"]["tasks"][1]["text"], "Почитать книгу");
-    // Пользователь добавил пункт наверх: теперь под номером 1 стоит «первый».
+    // The user added an item at the top: now "первый" is under number 1.
     let edited = "Планы\n- [ ] новый\n- [ ] первый\n- [ ] Почитать книгу\n- [ ] третий";
     a.store
         .edit_message(&id, edited, &moscow(T0 + MINUTE))
@@ -60,14 +60,14 @@ fn an_item_added_above_after_the_agent_read_the_list_is_a_mismatch_and_nothing_i
     assert!(
         matches!(&error, AgentError::Invalid(why) if why == "checklist item changed; re-read the entry")
     );
-    assert_eq!(body_of(&a, &id), edited, "ничего не записано");
+    assert_eq!(body_of(&a, &id), edited, "nothing is written");
     assert_eq!(revisions(&a, &id), revisions_before);
     let rows = log_rows(a.dir.path());
     let last = rows.last().unwrap();
     assert_eq!(last.3, "invalid_argument");
-    // Текст пункта в журнал не попадает ни при отказе, ни при успехе.
+    // The item text does not reach the log, neither on a refusal nor on success.
     assert!(rows.iter().all(|r| !r.2.contains("Почитать")));
-    // После повторного чтения с новым номером — отмечается тот пункт, который имелся в виду.
+    // After re-reading with the new number, the item that was meant gets ticked.
     mark(&a, &id, json!({"item": 2, "item_text": "Почитать книгу"})).unwrap();
     assert_eq!(
         body_of(&a, &id),
@@ -92,14 +92,14 @@ fn a_matching_item_text_marks_the_item_and_surrounding_spaces_do_not_matter() {
     .unwrap();
     assert_eq!(reply["entry"]["tasks"][1]["done"], true);
     assert!(body_of(&a, &id).contains("- [x] Почитать книгу"));
-    // Совпавший текст у пункта в нужном состоянии — успех без записи.
+    // A matching text on an item that is already in the needed state is a success without a write.
     let revisions_now = revisions(&a, &id);
     mark(&a, &id, json!({"item": 1, "item_text": "Почитать книгу"})).unwrap();
     assert_eq!(revisions(&a, &id), revisions_now);
-    // Текст другого регистра — другой пункт.
+    // A text in a different case is a different item.
     let error = mark(&a, &id, json!({"item": 0, "item_text": "Первый "})).unwrap_err();
     assert_eq!(error.code(), "invalid_argument");
-    // `item_text` без `item` — не принимается, пустой — тоже.
+    // `item_text` without `item` is not accepted, an empty one neither.
     for junk in [
         json!({"item_text": "первый"}),
         json!({"item": 0, "item_text": ""}),
@@ -109,8 +109,8 @@ fn a_matching_item_text_marks_the_item_and_surrounding_spaces_do_not_matter() {
     }
 }
 
-/// Без `item_text` номер принимается как есть, даже если пункт под ним уже не тот: так работал бы клиент, который не
-/// передаёт страховку. Описание инструмента просит её передавать; тест фиксирует, что без неё поведение прежнее.
+/// Without `item_text` the number is accepted as is, even if the item under it is no longer the same: this is how a client
+/// that does not pass the safeguard would work. The tool description asks to pass it; the test pins that without it the behavior is unchanged.
 #[test]
 fn without_item_text_the_number_is_taken_as_it_is_even_when_the_items_shifted() {
     let a = agent(AgentMode::ReadWrite, true);
@@ -123,7 +123,7 @@ fn without_item_text_the_number_is_taken_as_it_is_even_when_the_items_shifted() 
     assert_eq!(
         body_of(&a, &id),
         edited.replacen("- [ ] первый", "- [x] первый", 1),
-        "отмечен пункт, который теперь стоит под номером 1"
+        "the item that is now under number 1 is ticked"
     );
 }
 
@@ -154,16 +154,16 @@ fn an_item_never_changes_the_done_flag_of_a_task_entry() {
         assert_eq!(reply["entry"]["task"], true);
         assert_eq!(
             reply["entry"]["done"], false,
-            "запись-задача не стала выполненной"
+            "the task entry did not become done"
         );
     }
     assert!(body_of(&a, &id).contains("- [x] хлеб") && body_of(&a, &id).contains("- [x] молоко"));
     assert_eq!(
         flags(&a),
         "null",
-        "task_done_at не тронут, хотя все пункты отмечены"
+        "task_done_at is untouched although all items are ticked"
     );
-    // Отметка записи целиком по-прежнему отдельное действие.
+    // Ticking the whole entry is still a separate action.
     let whole = call(
         &a.store,
         "set_task_done",
@@ -174,7 +174,7 @@ fn an_item_never_changes_the_done_flag_of_a_task_entry() {
     assert_eq!(whole["entry"]["done"], true);
 }
 
-/// Ответы инструментов записи, как и `get_entry`, не больше `RESPONSE_BYTES`, даже когда `tasks` вдвое больше текста.
+/// Replies of the write tools, like `get_entry`, are no larger than `RESPONSE_BYTES`, even when `tasks` is twice the size of the text.
 #[test]
 fn write_replies_stay_within_the_response_limit_for_entries_with_tens_of_thousands_of_items() {
     let a = agent(AgentMode::ReadWrite, true);
@@ -197,7 +197,7 @@ fn write_replies_stay_within_the_response_limit_for_entries_with_tens_of_thousan
     );
     assert_eq!(created["entry"]["truncated"], true);
     let id = created["entry"]["id"].as_str().unwrap().to_string();
-    // Начало списка цело, номера идут с нуля.
+    // The start of the list is intact, numbers go from zero.
     let tasks = created["entry"]["tasks"].as_array().unwrap();
     assert!(!tasks.is_empty());
     for (position, task) in tasks.iter().enumerate() {
@@ -221,12 +221,12 @@ fn write_replies_stay_within_the_response_limit_for_entries_with_tens_of_thousan
         "set_task_done: {}",
         size(&marked)
     );
-    // В базе запись целая: пункт 100 отмечен, текст не обрезан.
+    // The entry in the database is whole: item 100 is ticked, the text is not truncated.
     let body = body_of(&a, &id);
     assert!(body.ends_with("Конец"));
     assert_eq!(body.matches("- [x] a").count(), 1);
     assert_eq!(body.matches("- [ ] a").count(), 49_999);
-    // `get_entry` по-прежнему в пределе.
+    // `get_entry` is still within the limit.
     let read = call(&a.store, "get_entry", json!({"id": id}), T0).unwrap();
     assert!(size(&read) <= RESPONSE_BYTES);
 }

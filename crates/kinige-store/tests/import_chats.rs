@@ -1,7 +1,7 @@
-//! Импорт из Telegram (слайс 4, задача 4.8), чаты: личные чаты и их имена, выбор чатов, корзина, ход импорта.
+//! Import from Telegram (slice 4, task 4.8), chats: personal chats and their names, chat selection, the trash, import progress.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -48,11 +48,11 @@ fn personal_chat_gets_its_own_chat_once_and_foreign_messages_carry_the_author() 
         .map(|m| m.body_md)
         .collect();
     assert_eq!(texts, ["**Имя user2000002**\nпривет", "здравствуй"]);
-    // Повтор — тот же чат, ни новых записей, ни пустого дубля.
+    // A repeat gives the same chat, no new entries, no empty duplicate.
     let again = run(&store, &export, &[]).unwrap();
     assert_eq!((again.imported, again.chats_created), (0, 0));
     assert_eq!(store.list_chats().unwrap().len(), 2);
-    // Новое сообщение в уже импортированном чате доносится в тот же чат.
+    // A new message in an already imported chat is delivered into the same chat.
     let more = single(
         "personal_chat",
         PETER,
@@ -142,10 +142,10 @@ fn only_selected_chats_are_imported_and_groups_are_ignored() {
     let report = run(&store, &export, &[OWNER, "-1001"]).unwrap();
     assert_eq!(
         report.imported, 2,
-        "группа не выбрана к импорту, личный чат не отмечен"
+        "the group is not selected for import, the personal chat is not marked"
     );
     assert_eq!(store.list_chats().unwrap().len(), 1);
-    // После импорта предпросмотр знает, что «Избранное» уже есть.
+    // After the import the preview knows that "Saved Messages" already exists.
     let preview = store.import_preview(&export).unwrap();
     assert_eq!((preview.chats[0].total, preview.chats[0].existing), (2, 2));
     assert_eq!((preview.chats[1].total, preview.chats[1].existing), (1, 0));
@@ -165,7 +165,7 @@ fn trashed_record_is_not_imported_again_but_a_purged_one_is() {
     assert_eq!(
         (again.imported, again.skipped_existing),
         (0, 3),
-        "из корзины не возвращается"
+        "does not come back from the trash"
     );
     store
         .purge_message(&page[0].id, &moscow(T0 + 2 * MINUTE))
@@ -174,12 +174,12 @@ fn trashed_record_is_not_imported_again_but_a_purged_one_is() {
     let ext: i64 = raw(dir.path())
         .query_row("SELECT COUNT(*) FROM message_ext", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(ext, 2, "удаление навсегда убирает строку message_ext");
+    assert_eq!(ext, 2, "deleting forever removes the message_ext row");
     let back = run(&store, &export, &[]).unwrap();
     assert_eq!(
         (back.imported, back.skipped_existing),
         (1, 2),
-        "удалённая навсегда вернулась как новая"
+        "the forever-deleted entry came back as a new one"
     );
 }
 
@@ -209,11 +209,11 @@ fn progress_total_counts_only_importable_messages_like_the_chat_list() {
             std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         )
         .unwrap();
-    assert_eq!(listed, 3, "в списке чатов три записи");
+    assert_eq!(listed, 3, "the chat list has three entries");
     assert_eq!(
         *seen.lock().unwrap(),
         [(3, 3)],
-        "«N из M» считает те же три, а не пять сообщений файла"
+        "\"N of M\" counts the same three, not the five messages of the file"
     );
 }
 
@@ -223,7 +223,7 @@ fn a_reply_across_batches_goes_to_the_owner_of_a_key_taken_between_them() {
     let store = open_plain(dir.path());
     let own = format!("user{OWNER}");
     let batch = kinige_store::IMPORT_BATCH as u64;
-    // Четыре пачки: ключ «1100» в третьей, ответ на него — первое сообщение четвёртой.
+    // Four batches: the key "1100" is in the third, the reply to it is the first message of the fourth.
     let target = 2 * batch + 100;
     let reply_id = 3 * batch + 1;
     let mut messages: Vec<String> = (1..=4 * batch)
@@ -234,7 +234,7 @@ fn a_reply_across_batches_goes_to_the_owner_of_a_key_taken_between_them() {
         SAVED_T + reply_id as i64
     );
     let export = parse(&single("saved_messages", OWNER, None, &messages));
-    // После второй пачки (до записи третьей) ключ «1100» занимает чужая запись, например с другого устройства.
+    // After the second batch (before the third is written) the key "1100" is taken by a foreign entry, for example from another device.
     let path = dir.path().to_path_buf();
     let owner_id = "7b2c9d10-1111-4222-8333-444455556666".to_string();
     let taken = owner_id.clone();
@@ -273,6 +273,6 @@ fn a_reply_across_batches_goes_to_the_owner_of_a_key_taken_between_them() {
     assert_eq!(
         reply_to.as_deref(),
         Some(owner_id.as_str()),
-        "ответ из четвёртой пачки указывает на владельца ключа, а не на id пропущенной записи третьей"
+        "the reply from the fourth batch points to the key owner, not to the id of the skipped entry of the third"
     );
 }

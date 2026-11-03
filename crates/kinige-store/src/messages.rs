@@ -1,6 +1,6 @@
-//! Действия с записью (слайс 3): удалить и восстановить, правка текста (с ревизией `edit`), флаги, день записи, пункт
-//! задачи. Каждое — одна транзакция: перезапись одной группы (`kinige_domain::rewrite`), HLC, колонки из новых байтов групп,
-//! теги, ревизия и отметка Markdown-копии. Без оптимистичного показа: при ошибке ничего не записано.
+//! Entry actions (slice 3): delete and restore, text edit (with an `edit` revision), flags, the entry day, a task
+//! item. Each is one transaction: a rewrite of one group (`kinige_domain::rewrite`), HLC, columns from the new group bytes,
+//! tags, the revision and the Markdown copy mark. No optimistic display: on error nothing is written.
 
 use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
@@ -18,7 +18,7 @@ use kinige_domain::{MessageFlag, MessageView};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
 use uuid::Uuid;
 
-/// Запись, как её видит перезапись: байты групп и признак «подтверждена сервером».
+/// An entry as the rewrite sees it: the group bytes and the "confirmed by the server" flag.
 pub(crate) struct Loaded {
     pub(crate) id: String,
     pub(crate) hlc_json: String,
@@ -27,7 +27,7 @@ pub(crate) struct Loaded {
     pub(crate) columns: MessageColumns,
 }
 
-/// Запись по id; нет записи — `MessageNotFound`, повреждённые группы — `Internal`.
+/// An entry by id; no entry -- `MessageNotFound`, damaged groups -- `Internal`.
 pub(crate) fn load(conn: &Connection, id: &str) -> Result<Loaded, StoreError> {
     let (hlc_json, groups_raw, server_known): (String, String, i64) = match conn.query_row(
         "SELECT hlc_json, groups_raw, server_known FROM message WHERE id = ?1",
@@ -56,7 +56,7 @@ impl Loaded {
         }
     }
 
-    /// Запись с группой в неподдерживаемой `sv` — только для чтения (ADR-0001 §4 п. 4).
+    /// An entry with a group in an unsupported `sv` is read-only (ADR-0001 §4 item 4).
     pub(crate) fn ensure_writable(&self) -> Result<(), StoreError> {
         if is_read_only(&self.hlc_json)? {
             return Err(StoreError::ReadOnly);
@@ -65,8 +65,8 @@ impl Loaded {
     }
 }
 
-/// Записывает новые байты групп и все колонки, которые из них строятся. Неизменяемые колонки (`created_*`, `origin`,
-/// `ext_json`, `reply_to_id`) не трогаются: их группа `core` не переписывается.
+/// Writes the new group bytes and all the columns built from them. Immutable columns (`created_*`, `origin`,
+/// `ext_json`, `reply_to_id`) are not touched: their `core` group is not rewritten.
 pub(crate) fn apply(
     tx: &Transaction<'_>,
     id: &str,
@@ -101,7 +101,9 @@ pub(crate) fn apply(
         )
         .map_err(write_err)?;
     if changed != 1 {
-        return Err(StoreError::Internal("запись для изменения исчезла".into()));
+        return Err(StoreError::Internal(
+            "the entry to change disappeared".into(),
+        ));
     }
     Ok(columns)
 }
@@ -111,8 +113,8 @@ fn begin(conn: &mut Connection) -> Result<Transaction<'_>, StoreError> {
         .map_err(write_err)
 }
 
-/// Правка текста внутри открытой транзакции: ревизия `edit` (снимок до правки), новая группа `body`, теги, отметка копии.
-/// Тот же текст — ничего не пишется.
+/// A text edit inside an open transaction: the `edit` revision (a snapshot before the edit), the new `body` group, tags, the copy mark.
+/// The same text -- nothing is written.
 pub(crate) fn edit_body(
     tx: &Transaction<'_>,
     loaded: &Loaded,
@@ -135,7 +137,7 @@ pub(crate) fn edit_body(
         &CurrentBody {
             groups_raw: &loaded.groups_raw,
             hlc_json: &loaded.hlc_json,
-            // Outbox появится в слайсе 11: тогда подтверждённость — и колонка, и строка outbox (ADR-0001 §3.4).
+            // The outbox appears in slice 11: then "confirmed" is both a column and an outbox row (ADR-0001 §3.4).
             body_confirmed: loaded.server_known,
         },
         body_md,
@@ -170,8 +172,8 @@ pub(crate) fn edit_body(
 }
 
 impl Store {
-    /// Чат живой записи (не в корзине) — чтобы открыть её в ленте из окна, у которого самой ленты нет. Записи нет, она
-    /// удалена навсегда или лежит в корзине — `MessageNotFound`. Текст записи не читается.
+    /// The chat of a live entry (not in the trash) -- to open it in the feed from a window that has no feed itself. If there is no entry, it
+    /// was deleted for good or is in the trash -- `MessageNotFound`. The entry text is not read.
     pub fn live_message_chat(&self, id: &str) -> Result<String, StoreError> {
         self.read(|conn| {
             match conn.query_row(
@@ -186,13 +188,13 @@ impl Store {
         })
     }
 
-    /// «Удалить»: запись уходит в корзину (группа `deleted`), счётчик чата уменьшается, из Markdown-копии она пропадает.
-    /// Повторное удаление ничего не меняет.
+    /// "Delete": the entry goes to the trash (the `deleted` group), the chat counter decreases, it disappears from the Markdown copy.
+    /// Deleting again changes nothing.
     pub fn delete_message(&self, id: &str, now: &Now) -> Result<(), StoreError> {
         self.set_deleted(id, now, true)
     }
 
-    /// «Восстановить»: запись возвращается на своё место (чат и день не менялись).
+    /// "Restore": the entry returns to its place (the chat and the day did not change).
     pub fn restore_message(&self, id: &str, now: &Now) -> Result<(), StoreError> {
         self.set_deleted(id, now, false)
     }
@@ -218,8 +220,8 @@ impl Store {
         Ok(())
     }
 
-    /// Правка текста: старая версия сохраняется ревизией `edit` в той же транзакции; запись остаётся на месте, с прежним
-    /// временем и днём. Пустой текст — `Empty`, ничего не меняется. Текст, равный прежнему, ничего не пишет.
+    /// Text edit: the old version is kept as an `edit` revision in the same transaction; the entry stays in place, with the same
+    /// time and day. Empty text -- `Empty`, nothing changes. Text equal to the previous one writes nothing.
     pub fn edit_message(&self, id: &str, body: &str, now: &Now) -> Result<MessageView, StoreError> {
         let body = normalize_body(body)?;
         let (id, now) = (id.to_string(), now.clone());
@@ -236,8 +238,8 @@ impl Store {
         Ok(view)
     }
 
-    /// Щелчок по `- [ ]` в ленте: пункт `index` (с нуля) переводится в состояние `checked`. Это правка текста — ревизия
-    /// `edit` пишется так же. Пункта нет или он уже в нужном состоянии — `TaskItemStale`: окно показывало устаревший текст.
+    /// A click on `- [ ]` in the feed: item `index` (zero-based) is set to the `checked` state. This is a text edit -- the `edit`
+    /// revision is written the same way. No such item or it is already in the needed state -- `TaskItemStale`: the window showed stale text.
     pub fn toggle_task_item(
         &self,
         id: &str,
@@ -267,8 +269,8 @@ impl Store {
         Ok(view)
     }
 
-    /// Флаги записи: задача, выполнено, избранное. Запись уже в нужном состоянии — ничего не пишется.
-    /// «Выполнено» у записи, которая не задача, — внутренняя ошибка (в интерфейсе такой кнопки нет).
+    /// Entry flags: task, done, favorite. If the entry is already in the needed state, nothing is written.
+    /// "Done" on an entry that is not a task is an internal error (the interface has no such button).
     pub fn set_message_flag(
         &self,
         id: &str,
@@ -284,7 +286,7 @@ impl Store {
             let columns = &loaded.columns;
             let already = match flag {
                 MessageFlag::Task => columns.is_task == on,
-                // Снять «выполнено» у не-задачи нечего; поставить — ошибка (`change_flag`).
+                // There is nothing to clear "done" on a non-task; setting it is an error (`change_flag`).
                 MessageFlag::TaskDone if columns.is_task => columns.task_done_at.is_some() == on,
                 MessageFlag::TaskDone => !on,
                 MessageFlag::Favorite => columns.favorite_at.is_some() == on,
@@ -305,9 +307,9 @@ impl Store {
         })
     }
 
-    /// «Изменить дату»: запись переезжает на другой день журнала (группа `placement`; первая перезапись пишет
-    /// `base`/`supersedes` по ADR-0001 §3.4). Будущие даты разрешены. Файлы старого и нового дня в Markdown-копии
-    /// перезаписываются.
+    /// "Change date": the entry moves to another journal day (the `placement` group; the first rewrite writes
+    /// `base`/`supersedes` per ADR-0001 §3.4). Future dates are allowed. The files of the old and the new day in the
+    /// Markdown copy are rewritten.
     pub fn set_message_date(
         &self,
         id: &str,
@@ -327,7 +329,7 @@ impl Store {
                 let rewritten = message_ops::set_journal_date(
                     &loaded.groups(),
                     &journal_date,
-                    // Outbox появится в слайсе 11: тогда подтверждённость — и колонка, и строка outbox (ADR-0001 §3.4).
+                    // The outbox appears in slice 11: then "confirmed" is both a column and an outbox row (ADR-0001 §3.4).
                     loaded.server_known,
                     &hlc,
                 )?;
@@ -344,11 +346,11 @@ impl Store {
         Ok(view)
     }
 
-    /// «Переместить в чат»: запись переезжает в другой чат (группа `placement`, `chat_id`; `journal_date` не меняется;
-    /// первая перезапись пишет `base`/`supersedes` по ADR-0001 §3.4). Ревизия `edit` не пишется: текст не менялся. День
-    /// записи в старом и в новом чате помечается для перезаписи в Markdown-копии. Целевой чат может быть архивным;
-    /// нет такого чата — `ChatNotFound`; запись в корзине — `MessageInTrash` (перенос только для живых записей); запись с
-    /// группой в неподдерживаемой `sv` — `ReadOnly`. Тот же чат — ничего не пишется.
+    /// "Move to chat": the entry moves to another chat (the `placement` group, `chat_id`; `journal_date` does not change;
+    /// the first rewrite writes `base`/`supersedes` per ADR-0001 §3.4). No `edit` revision is written: the text did not change. The day
+    /// of the entry in the old and in the new chat is marked for rewriting in the Markdown copy. The target chat may be archived;
+    /// no such chat -- `ChatNotFound`; an entry in the trash -- `MessageInTrash` (moving is only for live entries); an entry with a
+    /// group in an unsupported `sv` -- `ReadOnly`. The same chat -- nothing is written.
     pub fn move_message(
         &self,
         id: &str,
@@ -378,7 +380,7 @@ impl Store {
                 let rewritten = message_ops::move_to_chat(
                     &loaded.groups(),
                     &chat_id,
-                    // Outbox появится в слайсе 11: тогда подтверждённость — и колонка, и строка outbox (ADR-0001 §3.4).
+                    // The outbox appears in slice 11: then "confirmed" is both a column and an outbox row (ADR-0001 §3.4).
                     loaded.server_known,
                     &hlc,
                 )?;

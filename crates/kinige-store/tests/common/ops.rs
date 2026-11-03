@@ -1,4 +1,4 @@
-//! Помощники тестов действий с записью и чатом: группы дословно, HLC, неизвестные группы, колонки.
+//! Helpers for the entry and chat action tests: groups verbatim, HLC, unknown groups, columns.
 
 #![allow(dead_code)]
 
@@ -8,10 +8,10 @@ use serde_json::{Value, json, value::RawValue};
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// Неизвестная группа с пробелами в байтах.
+/// An unknown group with spaces in its bytes.
 pub const FUTURE_GROUP: &str = r#"{ "z": [1, 2],  "a": "ё" }"#;
 
-/// Группы записи дословно: `имя → байты`.
+/// The groups of an entry verbatim: `name -> bytes`.
 pub fn groups(dir: &Path, table: &str, id: &str) -> BTreeMap<String, String> {
     let text: String = raw(dir)
         .query_row(
@@ -27,7 +27,7 @@ pub fn groups(dir: &Path, table: &str, id: &str) -> BTreeMap<String, String> {
         .collect()
 }
 
-/// Записи `hlc_json` дословно: `имя → байты записи`.
+/// The `hlc_json` records verbatim: `name -> bytes of the record`.
 pub fn hlc_entries(dir: &Path, table: &str, id: &str) -> BTreeMap<String, String> {
     let text: String = raw(dir)
         .query_row(
@@ -43,7 +43,7 @@ pub fn hlc_entries(dir: &Path, table: &str, id: &str) -> BTreeMap<String, String
         .collect()
 }
 
-/// HLC группы.
+/// The HLC of a group.
 pub fn group_hlc(dir: &Path, table: &str, id: &str, group: &str) -> String {
     let entry = &hlc_entries(dir, table, id)[group];
     serde_json::from_str::<Value>(entry).unwrap()["h"]
@@ -52,7 +52,7 @@ pub fn group_hlc(dir: &Path, table: &str, id: &str, group: &str) -> String {
         .to_string()
 }
 
-/// Состояние часов HLC в `sync_state`.
+/// The state of the HLC clock in `sync_state`.
 pub fn clock(dir: &Path) -> (String, String) {
     let conn = raw(dir);
     let get = |key: &str| -> String {
@@ -64,8 +64,8 @@ pub fn clock(dir: &Path) -> (String, String) {
     (get("hlc_l"), get("hlc_c"))
 }
 
-/// Добавляет записи неизвестную группу `future` (в поддерживаемой `sv`, пробелы в байтах) и лишнее поле в запись `hlc_json`
-/// группы `flags`. Эти байты должны пережить перезапись любой другой группы дословно.
+/// Adds to an entry an unknown group `future` (within the supported `sv`, spaces in its bytes) and an extra field in the `hlc_json`
+/// record of the `flags` group. These bytes must survive a rewrite of any other group verbatim.
 pub fn add_foreign(dir: &Path, id: &str) {
     edit_raw_groups(dir, id, |groups, hlcs| {
         groups.insert(
@@ -84,7 +84,7 @@ pub fn add_foreign(dir: &Path, id: &str) {
     });
 }
 
-/// То же для чата.
+/// The same for a chat.
 pub fn add_foreign_chat(dir: &Path, id: &str) {
     let conn = raw(dir);
     let (groups_raw, hlc_json): (String, String) = conn
@@ -120,7 +120,7 @@ pub fn add_foreign_chat(dir: &Path, id: &str) {
     .unwrap();
 }
 
-/// Группа с `sv = 2`: запись становится «только для чтения».
+/// A group with `sv = 2`: the entry becomes "read-only".
 pub fn make_read_only(dir: &Path, id: &str) {
     edit_raw_groups(dir, id, |_, hlcs| {
         let h = serde_json::from_str::<Value>(hlcs["flags"].get()).unwrap()["h"].clone();
@@ -134,7 +134,7 @@ pub fn make_read_only(dir: &Path, id: &str) {
         .unwrap();
 }
 
-/// Колонки, которые строятся из групп, одним значением для сравнения.
+/// The columns that are built from the groups, as a single value for comparison.
 pub fn columns(dir: &Path, id: &str) -> Value {
     raw(dir)
         .query_row(
@@ -163,7 +163,7 @@ pub fn columns(dir: &Path, id: &str) -> Value {
         .unwrap()
 }
 
-/// Инвариант приложения §B п. 38: колонки записи — разобранное представление каноничных байтов её групп.
+/// Appendix §B item 38 invariant: the entry columns are the parsed representation of the canonical bytes of its groups.
 pub fn assert_columns_match_groups(dir: &Path, id: &str) {
     let text: String = raw(dir)
         .query_row("SELECT groups_raw FROM message WHERE id = ?1", [id], |r| {
@@ -187,7 +187,7 @@ pub fn assert_columns_match_groups(dir: &Path, id: &str) {
         c["placement_supersedes"],
         json!(parsed.placement_supersedes)
     );
-    // Каждая группа канонична: перекодирование даёт те же байты (кроме чужих, записанных чужим клиентом).
+    // Every group is canonical: re-encoding gives the same bytes (except foreign ones, written by a foreign client).
     for (name, bytes) in groups(dir, "message", id) {
         if name == "future" {
             continue;
@@ -196,15 +196,15 @@ pub fn assert_columns_match_groups(dir: &Path, id: &str) {
         assert_eq!(
             kinige_domain::jcs::canonical_bytes(&value).unwrap(),
             bytes.as_bytes(),
-            "{name} каноничен"
+            "{name} is canonical"
         );
     }
 }
 
-/// Файл базы записан целиком: поток-писатель закрывает соединение уже после `drop(store)`, и пока часть записей лежит в
-/// `-wal`, основной файл неполон. Контрольная точка переносит всё в основной файл (повторяется, пока соединение занято).
+/// The database file is written in full: the writer thread closes the connection only after `drop(store)`, and while some entries lie in
+/// `-wal`, the main file is incomplete. A checkpoint moves everything into the main file (it repeats while the connection is busy).
 pub fn wait_closed(dir: &Path) {
-    super::wait_until("контрольная точка WAL", || {
+    super::wait_until("WAL checkpoint", || {
         raw(dir)
             .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| {
                 row.get::<_, i64>(0)
@@ -213,7 +213,7 @@ pub fn wait_closed(dir: &Path) {
     });
 }
 
-/// Число ревизий записи.
+/// The number of revisions of an entry.
 pub fn revisions(dir: &Path, message_id: &str) -> i64 {
     raw(dir)
         .query_row(
@@ -224,14 +224,14 @@ pub fn revisions(dir: &Path, message_id: &str) -> i64 {
         .unwrap()
 }
 
-/// Число строк в таблице.
+/// The number of rows in a table.
 pub fn count_rows(dir: &Path, table: &str) -> i64 {
     raw(dir)
         .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
         .unwrap()
 }
 
-/// Группы `before` и `after` совпадают дословно везде, кроме `changed`.
+/// The groups `before` and `after` match verbatim everywhere except `changed`.
 pub fn assert_only_changed(
     before: &BTreeMap<String, String>,
     after: &BTreeMap<String, String>,
@@ -240,13 +240,13 @@ pub fn assert_only_changed(
     assert_eq!(
         before.keys().collect::<Vec<_>>(),
         after.keys().collect::<Vec<_>>(),
-        "набор групп"
+        "the set of groups"
     );
     for (name, bytes) in before {
         if changed.contains(&name.as_str()) {
-            assert_ne!(&after[name], bytes, "{name} должна измениться");
+            assert_ne!(&after[name], bytes, "{name} must change");
         } else {
-            assert_eq!(&after[name], bytes, "{name} дословно");
+            assert_eq!(&after[name], bytes, "{name} verbatim");
         }
     }
 }

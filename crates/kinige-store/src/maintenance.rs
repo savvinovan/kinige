@@ -1,9 +1,10 @@
-//! Обслуживание в фоне (слайс 3): раз в сутки и при старте — автоудаление корзины (30 дней), проверка целостности и копия
-//! дня. Идёт после показа окна, чтобы не ломать холодный старт (< 1,5 с); работает на отдельных соединениях чтения.
+//! Background maintenance (slice 3): once a day and at startup -- auto-delete of the trash (30 days), the integrity check
+//! and the daily backup. It runs after the window is shown, so it does not slow the cold start (< 1.5 s); it works on
+//! separate read connections.
 //!
-//! Копия дня снимается **только после успешной проверки**: иначе испорченные копии вытеснили бы хорошие (7 последних).
-//! Проверка нашла повреждение — копия не снимается, ошибка видна в «Настройках», вызывающему слою приходит сигнал
-//! (`StoreOptions::on_corruption`): он предложит восстановление из копии.
+//! The daily backup is taken **only after a successful check**: otherwise corrupted backups would push out good ones (the last 7).
+//! If the check finds corruption, no backup is taken, the error is visible in Settings, and the calling layer gets a signal
+//! (`StoreOptions::on_corruption`): it will offer a restore from a backup.
 
 use crate::backup::{Integrity, backups_dir, check_integrity, has_daily, rotate, snapshot};
 use crate::{Inner, Now, Store, StoreError, open_connection};
@@ -16,17 +17,17 @@ use std::sync::{Arc, Condvar, Mutex, PoisonError, Weak};
 use std::thread;
 use std::time::Duration;
 
-/// Как часто поток просыпается проверить, не наступили ли новые сутки.
+/// How often the thread wakes up to check whether a new day has started.
 const TICK: Duration = Duration::from_secs(3600);
 
-/// Что сделал проход обслуживания.
+/// What a maintenance pass did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MaintenanceReport {
-    /// Сколько записей удалено из корзины навсегда.
+    /// How many entries were deleted from the trash for good.
     pub purged: usize,
-    /// `PRAGMA integrity_check` дал `ok`.
+    /// `PRAGMA integrity_check` returned `ok`.
     pub integrity_ok: bool,
-    /// Снята копия дня.
+    /// The daily backup was taken.
     pub backup_made: bool,
 }
 
@@ -34,16 +35,16 @@ pub(crate) struct MaintenanceShared {
     wake: Mutex<bool>,
     signal: Condvar,
     stopped: AtomicBool,
-    /// Сигнал о повреждении уже подан: повторять его каждый час незачем.
+    /// The corruption signal was already sent: no need to repeat it every hour.
     reported: AtomicBool,
-    /// Только для тестов: следующий проход паникует.
+    /// Tests only: the next pass panics.
     panic_next: AtomicBool,
 }
 
 impl MaintenanceShared {
     pub(crate) fn new() -> Arc<MaintenanceShared> {
         Arc::new(MaintenanceShared {
-            wake: Mutex::new(true), // первый проход — сразу при старте
+            wake: Mutex::new(true), // the first pass runs right at startup
             signal: Condvar::new(),
             stopped: AtomicBool::new(false),
             reported: AtomicBool::new(false),
@@ -55,7 +56,7 @@ impl MaintenanceShared {
         self.panic_next.store(true, Ordering::SeqCst);
     }
 
-    /// Разбудить поток сейчас (тест): следующий проход без ожидания часа.
+    /// Wake the thread now (test): the next pass runs without waiting an hour.
     pub(crate) fn wake_now(&self) {
         *self.wake.lock().unwrap_or_else(PoisonError::into_inner) = true;
         self.signal.notify_all();
@@ -88,27 +89,27 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) -> Resul
                 if shared.stopped.load(Ordering::SeqCst) {
                     return;
                 }
-                // Хранилище берётся только на время прохода: поток не должен удерживать его живым.
+                // The store is held only for the duration of a pass: the thread must not keep it alive.
                 let Some(inner) = store.upgrade() else {
                     return;
                 };
                 let store = Store { inner };
-                // Паника в проходе не должна молча убить поток обслуживания (проверка целостности, корзина, копии, ротация
-                // журнала): она ловится, в статусе копий «Не удалось записать», следующий проход — через час.
+                // A panic in a pass must not silently kill the maintenance thread (integrity check, trash, backups, log
+                // rotation): it is caught, the backup status becomes "could not write", the next pass runs in an hour.
                 let outcome = catch_unwind(AssertUnwindSafe(|| {
-                    // Крючок тестов страховки; в релизной сборке (`debug_assertions` выключены) его нет.
+                    // Hook for the safety-net tests; absent in a release build (`debug_assertions` off).
                     assert!(
                         !(cfg!(debug_assertions)
                             && shared.panic_next.swap(false, Ordering::SeqCst)),
-                        "проверка: паника в проходе обслуживания"
+                        "check: panic in the maintenance pass"
                     );
                     store.run_maintenance(&Now::system())
                 }));
                 match outcome {
                     Ok(Ok(_)) => {}
-                    Ok(Err(error)) => log::warn!("обслуживание: {}", error.category()),
+                    Ok(Err(error)) => log::warn!("maintenance: {}", error.category()),
                     Err(_) => {
-                        log::error!("обслуживание: паника в проходе, повтор позже");
+                        log::error!("maintenance: panic in the pass, retry later");
                         store.inner.backup.set_error(Some(BackupError::WriteFailed));
                     }
                 }
@@ -120,14 +121,14 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) -> Resul
             }
         })
         .map(drop)
-        .map_err(|_| StoreError::Internal("не удалось запустить поток обслуживания".into()))
+        .map_err(|_| StoreError::Internal("could not start the maintenance thread".into()))
 }
 
 impl Store {
-    /// Повреждение найдено (проверкой целостности или командой, прочитавшей битую страницу): сигнал подаётся один раз за
-    /// запуск, после него в базу больше ничего не пишется (`run_maintenance`).
+    /// Corruption found (by the integrity check or by a command that read a broken page): the signal is sent once per
+    /// launch, after it nothing more is written to the database (`run_maintenance`).
     pub(crate) fn report_corruption(&self) {
-        // Строка в «Настройках» совпадает с окном «База повреждена», в том числе когда находка пришла от команды.
+        // The line in Settings matches the "Database is corrupted" window, also when the finding came from a command.
         self.inner
             .backup
             .set_error(Some(BackupError::IntegrityFailed));
@@ -137,7 +138,7 @@ impl Store {
         }
     }
 
-    /// Один проход обслуживания (поток вызывает его при старте и раз в сутки; тесты — с заданным «сейчас»).
+    /// One maintenance pass (the thread calls it at startup and once a day; tests call it with a given "now").
     pub fn run_maintenance(&self, now: &Now) -> Result<MaintenanceReport, StoreError> {
         let db_path = &self.inner.db_path;
         let mut report = MaintenanceReport {
@@ -145,8 +146,8 @@ impl Store {
             integrity_ok: true,
             backup_made: false,
         };
-        // Повреждение уже найдено: в такую базу больше ничего не пишется (ни автоудаление, ни копия), пока человек не
-        // восстановит её из копии.
+        // Corruption was already found: nothing more is written to such a database (no auto-delete, no backup) until the
+        // person restores it from a backup.
         if self.inner.maintenance.reported.load(Ordering::SeqCst) {
             report.integrity_ok = false;
             return Ok(report);
@@ -154,13 +155,13 @@ impl Store {
         let reader = open_connection(db_path, true)?;
         let dir = backups_dir(db_path);
         let today = journal_date(now.ms, now.utc_offset_secs, 0);
-        // Проверка целостности — раз в локальные сутки (не каждый час), если она уже прошла успешно.
+        // The integrity check runs once per local day (not every hour) if it has already passed.
         if self.inner.backup.checked_on().as_deref() != Some(today.as_str()) {
             let seen = self.search_generation();
             let mut verdict = check_integrity(&reader);
             if verdict == Integrity::SearchIndex {
-                // Цела база, повреждён только индекс поиска: перестройка, затем повторная проверка (настоящая порча не
-                // скроется, а перестройка в повреждённой базе сама сообщит `Corrupt`).
+                // The database is intact, only the search index is damaged: rebuild, then check again (real corruption
+                // will not be hidden, and a rebuild in a corrupted database reports `Corrupt` by itself).
                 self.heal_search_index(seen)?;
                 verdict = check_integrity(&open_connection(db_path, true)?);
             }
@@ -174,26 +175,26 @@ impl Store {
                     self.report_corruption();
                     return Ok(report);
                 }
-                // Проверка не состоялась (база занята, ошибка ввода-вывода): это не повреждение. Отметку не ставим,
-                // копию не снимаем без вердикта, следующий проход повторит.
+                // The check did not happen (database busy, I/O error): this is not corruption. We set no mark and
+                // take no backup without a verdict; the next pass will retry.
                 Integrity::Unknown | Integrity::SearchIndex => {
-                    log::warn!("проверка целостности не состоялась, повтор позже");
+                    log::warn!("integrity check did not complete, retry later");
                     return Ok(report);
                 }
             }
         }
-        // Автоудаление идёт только после вердикта «цела» (или после успешной проверки сегодня): писать в базу, которую ещё
-        // не проверили, нельзя. Одна повреждённая запись в корзине не должна навсегда лишать базу копии: ошибка
-        // автоудаления записывается (видна в «Настройках») и проход идёт дальше.
+        // Auto-delete runs only after an "intact" verdict (or after a successful check today): we must not write to a
+        // database that has not been checked yet. One damaged entry in the trash must not deprive the database of backups
+        // forever: the auto-delete error is recorded (visible in Settings) and the pass goes on.
         let (purged, purge_error) = self.purge_expired_report(now);
         if let Some(error) = &purge_error {
-            log::warn!("автоудаление корзины: {}", error.category());
+            log::warn!("trash auto-delete: {}", error.category());
         }
         self.inner.backup.set_purge_failed(purge_error.is_some());
         report.purged = purged;
-        // Журнал обращений агентов: 90 дней и не больше 20 000 строк; ошибка ротации копию дня не отменяет.
+        // The agent access log: 90 days and at most 20,000 rows; a rotation error does not cancel the daily backup.
         if let Err(error) = self.rotate_agent_log(now) {
-            log::warn!("ротация журнала агентов: {}", error.category());
+            log::warn!("agent log rotation: {}", error.category());
         }
         if has_daily(&dir, &today) {
             self.inner.backup.set_error(None);

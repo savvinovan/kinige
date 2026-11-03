@@ -1,8 +1,8 @@
-//! Индекс поиска и `message_ext` (слайс 4, задача 4.6): миграция 3 → 4 с копией, индекс совпадает с текстом после каждой
-//! операции, перестройка при смене версии, откат вместе с записью, `abort` сразу после фиксации.
+//! The search index and `message_ext` (slice 4, task 4.6): migration 3 -> 4 with a copy, the index matches the text after
+//! every operation, a rebuild on a version change, a rollback together with the write, `abort` right after the commit.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -16,9 +16,9 @@ use kinige_store::{LATEST_VERSION, Store};
 use std::path::Path;
 use std::process::Command;
 
-/// Id записей, найденных запросом в индексе (без корзины и без разбора порядка).
+/// Ids of the entries found by a query in the index (without the trash and ignoring order).
 fn found(dir: &Path, input: &str) -> Vec<String> {
-    let query = fts_query(input).expect("в запросе есть слова");
+    let query = fts_query(input).expect("the query has words");
     let conn = raw(dir);
     let mut statement = conn
         .prepare(
@@ -45,7 +45,7 @@ fn user_version(dir: &Path) -> i64 {
         .unwrap()
 }
 
-/// Возвращает базу в состояние слайса 3: без таблиц миграции 4, `user_version = 3`.
+/// Returns the database to the slice 3 state: without the migration 4 tables, `user_version = 3`.
 fn downgrade_to_three(dir: &Path) {
     let conn = raw(dir);
     conn.execute_batch(
@@ -81,7 +81,7 @@ fn migration_four_takes_a_copy_and_builds_the_index_and_ext_from_old_records() {
             .id;
         (a, b, c, d)
     };
-    // Запись с внешним id, как её оставит импорт (поле `ext_json`), и повреждённая строка `ext_json` другой записи.
+    // An entry with an external id, as an import leaves it (the `ext_json` field), and a corrupted `ext_json` row of another entry.
     raw(dir.path())
         .execute(
             "UPDATE message SET ext_json = '{\"chat\":\"9223372036854775807\",\"msg\":\"-5\",\"src\":\"telegram\"}' \
@@ -100,7 +100,7 @@ fn migration_four_takes_a_copy_and_builds_the_index_and_ext_from_old_records() {
     let later = moscow(T0 + 10 * MINUTE);
     let _store = Store::open_at(options(dir.path()), &later).unwrap();
     assert_eq!(user_version(dir.path()), LATEST_VERSION);
-    // Копия снята до миграции, в ней схема 3.
+    // The copy was taken before the migration, it has schema 3.
     let copies: Vec<String> =
         std::fs::read_dir(db_path(dir.path()).parent().unwrap().join("backups"))
             .unwrap()
@@ -125,7 +125,7 @@ fn migration_four_takes_a_copy_and_builds_the_index_and_ext_from_old_records() {
         .unwrap();
     assert_eq!(in_copy, 3);
 
-    // Индекс полон: живые и удалённая запись (корзину отсекает запрос, а не индекс).
+    // The index is full: live entries and the deleted one (the query cuts off the trash, not the index).
     assert_eq!(count(dir.path(), "search_map"), 4);
     assert_eq!(found(dir.path(), "молоко "), vec![first.clone()]);
     assert_eq!(found(dir.path(), "книги "), vec![second.clone()]);
@@ -142,7 +142,7 @@ fn migration_four_takes_a_copy_and_builds_the_index_and_ext_from_old_records() {
             .unwrap(),
         SEARCH_INDEX_VERSION.to_string()
     );
-    // `message_ext` собран из `ext_json`; повреждённый `ext_json` строк не даёт.
+    // `message_ext` is built from `ext_json`; a corrupted `ext_json` yields no rows.
     let ext: Vec<(String, String, String, String)> = raw(dir.path())
         .prepare("SELECT src, ext_chat, ext_msg, message_id FROM message_ext")
         .unwrap()
@@ -165,7 +165,7 @@ fn migration_four_takes_a_copy_and_builds_the_index_and_ext_from_old_records() {
 fn index_follows_send_append_edit_toggle_and_purge() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
-    // Отправка.
+    // Send.
     let sent = store
         .send_message(
             INBOX_ID,
@@ -175,7 +175,7 @@ fn index_follows_send_append_edit_toggle_and_purge() {
         .unwrap();
     assert_eq!(found(dir.path(), "аксолотль "), vec![sent.id.clone()]);
     assert_eq!(found(dir.path(), "позвонить мама "), vec![sent.id.clone()]);
-    // Правка: старое слово ушло, новое нашлось.
+    // Edit: the old word is gone, the new one is found.
     store
         .edit_message(
             &sent.id,
@@ -185,20 +185,20 @@ fn index_follows_send_append_edit_toggle_and_purge() {
         .unwrap();
     assert!(found(dir.path(), "аксолотль ").is_empty());
     assert_eq!(found(dir.path(), "бегемотик "), vec![sent.id.clone()]);
-    // Галочка `- [ ]`: слова те же, индекс не ломается и не двоится.
+    // The `- [ ]` checkbox: the words are the same, the index neither breaks nor duplicates.
     store
         .toggle_task_item(&sent.id, 0, true, &moscow(T0 + 2 * MINUTE))
         .unwrap();
     assert_eq!(found(dir.path(), "бегемотик "), vec![sent.id.clone()]);
     assert_eq!(count(dir.path(), "search_map"), 1);
-    // Дописывание из окна захвата (запись создана пользователем, не старше десяти минут).
+    // Appending from the capture window (the entry was created by the user, not older than ten minutes).
     let outcome = store
         .capture_append("и ещё фламинго", &moscow(T0 + 3 * MINUTE))
         .unwrap();
-    assert_eq!(outcome.message.id, sent.id, "дописано к той же записи");
+    assert_eq!(outcome.message.id, sent.id, "appended to the same entry");
     assert_eq!(found(dir.path(), "фламинго "), vec![sent.id.clone()]);
     assert_eq!(found(dir.path(), "бегемотик "), vec![sent.id.clone()]);
-    // Корзина: индекс на месте (запись можно вернуть), удаление навсегда убирает.
+    // Trash: the index stays (the entry can be restored), a permanent delete removes it.
     store
         .delete_message(&sent.id, &moscow(T0 + 4 * MINUTE))
         .unwrap();
@@ -209,7 +209,7 @@ fn index_follows_send_append_edit_toggle_and_purge() {
     assert!(found(dir.path(), "бегемотик ").is_empty());
     assert!(found(dir.path(), "фламинго ").is_empty());
     assert_eq!(count(dir.path(), "search_map"), 0);
-    // В индексе нет ни одной строки: удаляются и документы, и их строки соответствия.
+    // The index has no rows at all: both the documents and their mapping rows are deleted.
     let rows: i64 = raw(dir.path())
         .query_row("SELECT COUNT(*) FROM search_fts_docsize", [], |r| r.get(0))
         .unwrap();
@@ -247,7 +247,7 @@ fn changing_the_version_rebuilds_the_index_on_open() {
             .unwrap()
             .id
     };
-    // Индекс испорчен «старыми правилами»: пуст и с другой версией.
+    // The index is spoiled by "old rules": empty and with a different version.
     {
         let conn = raw(dir.path());
         conn.execute(
@@ -266,7 +266,7 @@ fn changing_the_version_rebuilds_the_index_on_open() {
     let _store = open_without_mirror(dir.path());
     assert_eq!(found(dir.path(), "вермишель "), vec![id.clone()]);
     assert_eq!(found(dir.path(), "мармелад "), [id]);
-    // Версия совпала — повторное открытие индекс не трогает (метка id строки соответствия не меняется).
+    // The version matched: reopening does not touch the index (the mark of the mapping row id does not change).
     let before: i64 = raw(dir.path())
         .query_row("SELECT rowid FROM search_map", [], |r| r.get(0))
         .unwrap();
@@ -284,7 +284,7 @@ fn a_failing_index_write_rolls_back_the_record_too() {
     let kept = store
         .send_message(INBOX_ID, "Остаётся", &moscow(T0))
         .unwrap();
-    // Отказ записи индекса (как `ops_abort.rs`: триггер): новая запись не должна остаться без индекса.
+    // An index write failure (like `ops_abort.rs`: a trigger): a new entry must not be left without an index.
     raw(dir.path())
         .execute_batch(
             "CREATE TRIGGER fail_index BEFORE INSERT ON search_map BEGIN SELECT RAISE(ABORT, 'index down'); END;",
@@ -297,7 +297,7 @@ fn a_failing_index_write_rolls_back_the_record_too() {
     assert_eq!(count(dir.path(), "message"), 1);
     assert_eq!(count(dir.path(), "search_map"), 1);
     assert!(found(dir.path(), "запишется ").is_empty());
-    // Правка: сбой уже после замены строки индекса (отметка копии идёт в той же транзакции следом) откатывает и индекс.
+    // Edit: a failure after the index row is replaced (the copy mark follows in the same transaction) rolls back the index too.
     raw(dir.path())
         .execute_batch(
             "DROP TRIGGER fail_index; \
@@ -322,7 +322,7 @@ fn abort_right_after_commit_keeps_the_index() {
         let store = open_without_mirror(dir.as_ref());
         store
             .send_message(INBOX_ID, "Переживёт саламандра", &moscow(T0))
-            .expect("отправка");
+            .expect("send");
         std::process::abort();
     }
     let dir = tempfile::tempdir().unwrap();
@@ -336,9 +336,9 @@ fn abort_right_after_commit_keeps_the_index() {
         .env(CHILD_ENV, dir.path())
         .status()
         .unwrap();
-    assert!(!status.success(), "дочерний процесс должен был упасть");
+    assert!(!status.success(), "the child process should have crashed");
     let ids = found(dir.path(), "саламандры ");
-    assert_eq!(ids.len(), 1, "индекс пережил abort");
+    assert_eq!(ids.len(), 1, "the index survived abort");
     let quick: String = raw(dir.path())
         .query_row("PRAGMA integrity_check", [], |r| r.get(0))
         .unwrap();

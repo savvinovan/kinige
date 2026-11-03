@@ -1,16 +1,16 @@
-//! Формы ответов агенту (ADR-0009, слайс 4a): запись, чат, страница, «в этот день» и ограничение размера ответа.
-//! Без IO. Ответ не больше [`RESPONSE_BYTES`]; текст записи в списках обрезается.
+//! Reply shapes for the agent (ADR-0009, slice 4a): entry, chat, page, "on this day" and the reply size limit.
+//! No IO. A reply is no larger than [`RESPONSE_BYTES`]; entry text in lists is truncated.
 
 use crate::agent::{RESPONSE_BYTES, truncate_chars};
 use crate::journal::{date_parts, is_valid_journal_date};
 use crate::tasks::TaskItem;
 use serde::Serialize;
 
-/// Запас на обёртку ответа (курсор, чаты): записи делят остальное.
+/// Headroom for the reply wrapper (cursor, chats): entries share the rest.
 const WRAPPER_BYTES: usize = 8 * 1024;
 
-/// Месяц-день и год даты для «в этот день»: записи с тем же `MM-DD` в **прошлые** годы. 29 февраля сравнивается только с
-/// 29 февраля других годов (строгое равенство `MM-DD`).
+/// Month-day and year of a date for "on this day": entries with the same `MM-DD` in **past** years. February 29 is compared only with
+/// February 29 of other years (strict equality of `MM-DD`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MonthDay {
     pub month_day: String,
@@ -27,21 +27,21 @@ pub fn month_day(date: &str) -> Option<MonthDay> {
     })
 }
 
-/// Запись в ответе агента. `reply_to_id` не отдаётся и в слайсе 5, когда ответы появились в интерфейсе (ADR-0009).
+/// An entry in the agent's reply. `reply_to_id` is not exposed in slice 5 either, when replies appeared in the interface (ADR-0009).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AgentEntry {
     pub id: String,
     pub chat_id: String,
     pub chat: String,
     pub journal_date: String,
-    /// Местное время создания с поясом на тот момент: `2026-03-14T21:05:09+03:00`.
+    /// Local creation time with the offset at that moment: `2026-03-14T21:05:09+03:00`.
     pub created: String,
     pub origin: String,
     pub task: bool,
     pub done: bool,
     pub favorite: bool,
     pub text: String,
-    /// Пункты `- [ ]` внутри записи с номерами для `set_task_done(item)`; поля нет, если пунктов нет.
+    /// The `- [ ]` items inside the entry with numbers for `set_task_done(item)`; the field is absent if there are no items.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tasks: Vec<TaskItem>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
@@ -49,9 +49,9 @@ pub struct AgentEntry {
 }
 
 impl AgentEntry {
-    /// Текст в списках обрезается до [`crate::agent::LIST_TEXT_CHARS`]. Тексты пунктов считаются тем же пределом (все
-    /// вместе): пункты остаются началом списка, поэтому их номера прежние; не поместившиеся отбрасываются, последний
-    /// поместившийся режется.
+    /// Text in lists is truncated to [`crate::agent::LIST_TEXT_CHARS`]. Item texts count against the same limit (all
+    /// together): the items stay at the start of the list, so their numbers are unchanged; those that do not fit are dropped, the last
+    /// one that fits is cut.
     pub fn shorten(mut self, max: usize) -> AgentEntry {
         if self.text.chars().take(max + 1).count() > max {
             self.text = truncate_chars(&self.text, max);
@@ -87,19 +87,19 @@ pub struct AgentChat {
     pub archived: bool,
 }
 
-/// Страница записей в ответе.
+/// A page of entries in the reply.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AgentPage {
     pub entries: Vec<AgentEntry>,
-    /// Чаты, чьё название совпало с запросом (первая страница поиска).
+    /// Chats whose name matched the query (the first page of a search).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub chats: Vec<AgentChat>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
 }
 
-/// Оставляет записи, чей JSON помещается в [`RESPONSE_BYTES`] вместе с обёрткой; вторая часть ответа — «страница
-/// оборвана по размеру» (курсор тогда указывает на следующую запись). Одна запись больше предела обрезается с `truncated`.
+/// Keeps the entries whose JSON fits into [`RESPONSE_BYTES`] together with the wrapper; the second part of the reply is "the page
+/// was cut by size" (the cursor then points to the next entry). A single entry above the limit is truncated with `truncated`.
 pub fn fit_entries(mut entries: Vec<AgentEntry>) -> (Vec<AgentEntry>, bool) {
     let budget = RESPONSE_BYTES - WRAPPER_BYTES;
     let mut used = 0usize;
@@ -116,10 +116,10 @@ pub fn fit_entries(mut entries: Vec<AgentEntry>) -> (Vec<AgentEntry>, bool) {
         return (entries, false);
     }
     if kept == 0 {
-        // Первая запись одна больше предела: режем текст, пока не поместится.
+        // The first entry alone is above the limit: cut the text until it fits.
         let mut first = entries.swap_remove(0);
         let mut chars = first.text.chars().count();
-        // Пункты режутся вместе с текстом (оставляется начало списка: номера прежние).
+        // Items are cut together with the text (the start of the list is kept: numbers are unchanged).
         while (chars > 1 || !first.tasks.is_empty())
             && serde_json::to_string(&first).map_or(usize::MAX, |json| json.len()) > budget
         {

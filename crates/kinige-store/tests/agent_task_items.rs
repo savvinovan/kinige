@@ -1,8 +1,8 @@
-//! Пункты `- [ ]` внутри записи для агента (ADR-0009, слайс 4a, приёмка): `get_entry` и `get_entries` отдают `tasks` с
-//! номерами, `set_task_done` с `item` переключает один пункт тем же `set_task_item`, что щелчок в ленте, с ревизией `edit`.
+//! `- [ ]` items inside an entry for the agent (ADR-0009, slice 4a, acceptance): `get_entry` and `get_entries` return `tasks` with
+//! numbers, `set_task_done` with `item` toggles one item through the same `set_task_item` as a click in the feed, with an `edit` revision.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -14,7 +14,7 @@ use kinige_domain::groups::INBOX_ID;
 use kinige_store::AgentError;
 use serde_json::{Value, json};
 
-/// Пункты 0 «первый», 1 «второй», 2 «в цитате», 3 «четвёртый» (отмечен); пункт в блоке кода не считается.
+/// Items: 0 "первый", 1 "второй", 2 "в цитате", 3 "четвёртый" (ticked); an item in a code block does not count.
 const BODY: &str = "Планы на выходные\n- [ ] первый\n- [ ] второй\n```\n- [ ] в коде\n```\n> - [ ] в цитате\n- [x] четвёртый";
 
 fn body_of(a: &Agent, id: &str) -> String {
@@ -74,7 +74,10 @@ fn entries_list_their_checklist_items_with_numbers_and_plain_entries_have_none()
     let with = entries.iter().find(|e| e["id"] == json!(id)).unwrap();
     assert_eq!(with["tasks"].as_array().unwrap().len(), 4);
     let without = entries.iter().find(|e| e["id"] == json!(plain)).unwrap();
-    assert!(without.get("tasks").is_none(), "поля нет, если пунктов нет");
+    assert!(
+        without.get("tasks").is_none(),
+        "no field if there are no items"
+    );
 }
 
 #[test]
@@ -87,12 +90,15 @@ fn one_item_is_toggled_in_the_text_with_an_edit_revision_and_the_log_keeps_only_
         done["entry"]["tasks"][1],
         json!({"item": 1, "done": true, "text": "второй"})
     );
-    assert_eq!(done["entry"]["task"], false, "сама запись не стала задачей");
+    assert_eq!(
+        done["entry"]["task"], false,
+        "the entry itself did not become a task"
+    );
     assert_eq!(
         body_of(&a, &id),
         BODY.replacen("- [ ] второй", "- [x] второй", 1)
     );
-    // Ревизия `edit` со снимком до правки (как у щелчка в ленте).
+    // An `edit` revision with a snapshot from before the edit (as with a click in the feed).
     assert_eq!(revisions(&a, &id), 1);
     let snapshot: String = raw(a.dir.path())
         .query_row(
@@ -102,13 +108,13 @@ fn one_item_is_toggled_in_the_text_with_an_edit_revision_and_the_log_keeps_only_
         )
         .unwrap();
     assert!(snapshot.contains("- [ ] второй"));
-    // Пункт в цитате считается по правилам домена; снять отметку тоже можно.
+    // An item in a quote counts by the domain rules; the tick can be removed too.
     mark(&a, &id, json!(2), true).unwrap();
     assert!(body_of(&a, &id).contains("> - [x] в цитате"));
     mark(&a, &id, json!(3), false).unwrap();
     assert!(body_of(&a, &id).ends_with("- [ ] четвёртый"));
     assert_eq!(revisions(&a, &id), 3);
-    // Журнал: номер пункта и больше ничего; текст пункта и записи в `args_json` нет.
+    // Log: the item number and nothing else; neither the item text nor the entry is in `args_json`.
     let rows = log_rows(a.dir.path());
     let last = rows.last().unwrap();
     assert_eq!((last.1.as_str(), last.3.as_str()), ("set_task_done", "ok"));
@@ -117,25 +123,25 @@ fn one_item_is_toggled_in_the_text_with_an_edit_revision_and_the_log_keeps_only_
         rows.iter()
             .all(|r| !r.2.contains("второй") && !r.2.contains(&id))
     );
-    assert_eq!(last.4, 1, "в журнал ушла одна запись");
+    assert_eq!(last.4, 1, "one entry went to the log");
 }
 
 #[test]
 fn an_item_inside_a_code_block_cannot_be_addressed_and_a_missing_number_is_an_invalid_argument() {
     let a = agent(AgentMode::ReadWrite, true);
     let id = user_entry(&a, &a.work, BODY);
-    // Пунктов четыре (0..=3): «в коде» номера не имеет.
+    // There are four items (0..=3): "в коде" has no number.
     for item in [4, 5, 999] {
         let error = mark(&a, &id, json!(item), true).unwrap_err();
         assert!(matches!(error, AgentError::Invalid(_)), "{error:?}");
         assert_eq!(error.code(), "invalid_argument");
     }
-    assert_eq!(body_of(&a, &id), BODY, "ничего не изменилось");
+    assert_eq!(body_of(&a, &id), BODY, "nothing changed");
     assert_eq!(revisions(&a, &id), 0);
     assert!(body_of(&a, &id).contains("- [ ] в коде"));
     let rows = log_rows(a.dir.path());
     assert_eq!(rows.last().unwrap().3, "invalid_argument");
-    // Запись без пунктов: любой номер — тот же отказ.
+    // An entry without items: any number gives the same refusal.
     let plain = user_entry(&a, &a.work, "без пунктов");
     assert!(matches!(
         mark(&a, &plain, json!(0), true),
@@ -151,7 +157,11 @@ fn an_item_already_in_the_requested_state_is_a_success_without_a_write() {
     assert_eq!(reply["entry"]["tasks"][3]["done"], true);
     mark(&a, &id, json!(0), false).unwrap();
     assert_eq!(body_of(&a, &id), BODY);
-    assert_eq!(revisions(&a, &id), 0, "ревизий нет: текст не менялся");
+    assert_eq!(
+        revisions(&a, &id),
+        0,
+        "no revisions: the text did not change"
+    );
     let rows = log_rows(a.dir.path());
     assert!(rows.iter().all(|r| r.3 == "ok"));
 }
@@ -167,7 +177,7 @@ fn an_item_in_a_hidden_chat_looks_like_a_missing_entry() {
         assert_eq!(body_of(&a, id), BODY);
         assert_eq!(revisions(&a, id), 0);
     }
-    // Чтение чужого чата тоже ничего не отдаёт: пунктов не видно.
+    // Reading someone else's chat gives nothing either: no items are visible.
     assert_eq!(
         call(&a.store, "get_entry", json!({"id": in_secret}), T0),
         Err(AgentError::NotFound)
@@ -205,7 +215,7 @@ fn junk_item_values_are_invalid_arguments_and_nothing_is_written() {
     }
     assert_eq!(body_of(&a, &id), BODY);
     assert_eq!(revisions(&a, &id), 0);
-    // `null` — «поля нет»: отметка записи целиком, а она не задача.
+    // `null` means "no field": ticking the whole entry, and it is not a task.
     assert_eq!(mark(&a, &id, Value::Null, true), Err(AgentError::NotATask));
 }
 
@@ -229,8 +239,7 @@ fn the_markdown_copy_gets_the_toggled_item() {
         .join("Работа")
         .join("2026")
         .join("2026-10-21.md");
-    wait_until(
-        "файл копии с отмеченным пунктом",
-        || std::fs::read_to_string(&file).is_ok_and(|text| text.contains("- [x] первый")),
-    );
+    wait_until("copy file with the ticked item", || {
+        std::fs::read_to_string(&file).is_ok_and(|text| text.contains("- [x] первый"))
+    });
 }

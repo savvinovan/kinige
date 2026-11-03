@@ -1,7 +1,7 @@
-//! Теги и фильтр ленты, настройки слайса 3 (свёрнутый сайдбар, недавние эмодзи).
+//! Tags and the feed filter, slice 3 settings (collapsed sidebar, recent emoji).
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -70,7 +70,7 @@ fn the_tag_filter_keeps_only_entries_of_this_chat_with_this_tag_ignoring_case() 
             .unwrap()),
         ["в другом чате #идея"]
     );
-    // Без фильтра лента целая; счётчик чата тот же.
+    // Without the filter the feed is whole; the chat counter is the same.
     assert_eq!(
         store
             .list_messages(INBOX_ID, None, 50, &at(8))
@@ -80,7 +80,7 @@ fn the_tag_filter_keeps_only_entries_of_this_chat_with_this_tag_ignoring_case() 
         4
     );
 
-    // Пагинация по курсору внутри фильтра.
+    // Cursor pagination inside the filter.
     for i in 0..5 {
         store
             .send_message(INBOX_ID, &format!("страница {i} #стр"), &at(10 + i))
@@ -117,16 +117,16 @@ fn tags_follow_edits_task_toggles_appends_and_the_trash() {
     assert_eq!(
         (tags("старый"), tags("новый")),
         (0, 1),
-        "правка пересчитала теги"
+        "the edit recomputed the tags"
     );
     store.toggle_task_item(&sent.id, 0, true, &at(3)).unwrap();
     assert_eq!(tags("новый"), 1);
-    // Дописывание из окна захвата тоже обновляет теги.
+    // Appending from the capture window updates tags too.
     let appended = store.capture_append("и ещё #хвост", &at(4)).unwrap();
     assert_eq!(appended.message.id, sent.id);
     assert_eq!(appended.message.tags, ["новый", "хвост"]);
     assert_eq!(tags("хвост"), 1);
-    // Таблица совпадает с тем, что получится из текстов (она производная).
+    // The table matches what the texts would give (it is derived).
     let rows: Vec<(String, String)> = raw(dir.path())
         .prepare("SELECT message_id, tag FROM message_tag ORDER BY tag")
         .unwrap()
@@ -157,11 +157,11 @@ fn the_sidebar_state_and_recent_emoji_persist() {
         assert_eq!(
             store.add_recent_emoji("📚").unwrap(),
             ["📚", "🎬"],
-            "повтор переезжает вперёд"
+            "a repeat moves to the front"
         );
         assert!(store.add_recent_emoji("").is_err());
         assert!(store.add_recent_emoji("два слова").is_err());
-        // Только последовательности эмодзи: текст, разметка, пробелы, управляющие знаки, несколько эмодзи, слишком длинное.
+        // Emoji sequences only: text, markup, spaces, control characters, several emoji, too long.
         for bad in [
             "abc",
             "<b>abc",
@@ -183,7 +183,7 @@ fn the_sidebar_state_and_recent_emoji_persist() {
     let settings = store.get_settings().unwrap();
     assert!(
         settings.sidebar_collapsed,
-        "свёрнутость пережила перезапуск"
+        "the collapsed state survived a restart"
     );
     assert_eq!(settings.recent_emoji, ["📚", "🎬"]);
     store.set_sidebar_collapsed(false).unwrap();
@@ -194,7 +194,7 @@ fn the_sidebar_state_and_recent_emoji_persist() {
 fn composite_emoji_sequences_of_the_picker_are_accepted() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
-    // Флаг, семья, тон кожи, самый длинный поцелуй пикера (35 байт).
+    // A flag, a family, a skin tone, the picker's longest kiss (35 bytes).
     let all = [
         "🇷🇺",
         "👨\u{200D}👩\u{200D}👧\u{200D}👦",
@@ -212,20 +212,20 @@ fn composite_emoji_sequences_of_the_picker_are_accepted() {
 fn recent_emoji_ignore_a_redundant_variation_selector() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
-    // emojibase-data 18 выдаёт `✅` там, где 17 выдавала `✅\u{FE0F}`; в базе лежит старая запись.
+    // emojibase-data 18 gives `✅` where 17 gave `✅\u{FE0F}`; the database holds the old entry.
     store.add_recent_emoji("✅\u{FE0F}").unwrap();
     store.add_recent_emoji("🎬").unwrap();
     assert_eq!(
         store.add_recent_emoji("✅").unwrap(),
         ["✅", "🎬"],
-        "новая запись заменяет старую, а не дублирует её"
+        "the new entry replaces the old one instead of duplicating it"
     );
     assert_eq!(
         store.add_recent_emoji("✅\u{FE0F}").unwrap(),
         ["✅\u{FE0F}", "🎬"],
-        "и наоборот: остаётся самая свежая форма"
+        "and vice versa: the freshest form remains"
     );
-    // Дубликаты, уже лежащие в базе (записаны до исправления), схлопываются при чтении: остаётся первый, самый свежий.
+    // Duplicates already in the database (written before the fix) collapse on read: the first, freshest one remains.
     raw(dir.path())
         .execute(
             "UPDATE app_setting SET value = ?1 WHERE key = 'recent_emoji'",
@@ -236,7 +236,7 @@ fn recent_emoji_ignore_a_redundant_variation_selector() {
         store.get_settings().unwrap().recent_emoji,
         ["✅", "🎬", "❤\u{FE0F}"]
     );
-    // Мусор по-прежнему ошибка: один `VS16` не последовательность эмодзи.
+    // Garbage is still an error: a lone `VS16` is not an emoji sequence.
     assert!(store.add_recent_emoji("\u{FE0F}").is_err());
     assert!(store.add_recent_emoji("a\u{FE0F}").is_err());
 }
@@ -260,7 +260,7 @@ fn recent_emoji_are_limited_and_survive_a_broken_stored_value() {
         .unwrap();
     assert!(
         store.get_settings().unwrap().recent_emoji.is_empty(),
-        "недавние не стоят ошибки"
+        "recent emoji are not worth an error"
     );
     assert_eq!(store.add_recent_emoji("📚").unwrap(), ["📚"]);
 }

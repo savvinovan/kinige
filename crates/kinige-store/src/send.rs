@@ -1,4 +1,4 @@
-//! Отправка записи (ТЗ §5): одна транзакция — запись, HLC в `sync_state`, отметка для Markdown-копии.
+//! Sending an entry (PRD §5): one transaction -- the entry, the HLC in `sync_state`, the mark for the Markdown copy.
 
 use crate::error::write_err;
 use crate::hlc_state::{get_state, load_clock, next_hlc, save_clock, set_state};
@@ -11,7 +11,7 @@ use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
 use uuid::Uuid;
 
-/// Первый запуск: `device_id`, часы HLC и Inbox. Повторный запуск ничего не меняет, кроме часов (они продолжаются, ADR §2).
+/// First launch: `device_id`, the HLC clock and the Inbox. A repeated launch changes nothing except the clock (it continues, ADR §2).
 pub(crate) fn ensure_initialized(conn: &mut Connection, now: &Now) -> Result<(), StoreError> {
     let tx = conn
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -101,8 +101,8 @@ pub(crate) fn insert_message(tx: &Transaction<'_>, m: &MessageRow) -> rusqlite::
     Ok(())
 }
 
-/// Отмечает день чата как требующий перезаписи файла Markdown-копии. Номер растёт: фоновая задача удаляет отметку,
-/// только если она не изменилась с момента чтения.
+/// Marks a chat day as needing its Markdown copy file rewritten. The number grows: the background task removes the mark
+/// only if it has not changed since it was read.
 pub(crate) fn mark_dirty(
     tx: &Transaction<'_>,
     chat_id: &str,
@@ -117,8 +117,8 @@ pub(crate) fn mark_dirty(
     Ok(())
 }
 
-/// Новая запись в открытой транзакции: проверка чата, HLC, запись со всеми пятью группами, отметка копии. Фиксирует
-/// транзакцию вызывающий; тот же путь у отправки из главного окна и из окна захвата.
+/// A new entry in an open transaction: chat check, HLC, the entry with all five groups, the copy mark. The caller
+/// commits the transaction; sending from the main window and from the capture window takes the same path.
 pub(crate) fn insert_new_message(
     tx: &Transaction<'_>,
     chat_id: &str,
@@ -128,8 +128,9 @@ pub(crate) fn insert_new_message(
     insert_built_message(tx, chat_id, body, now, groups::new_message)
 }
 
-/// Ответ на запись (слайс 5): тот же путь, `core.reply_to_id` = id записи-адресата. Адресат проверяется здесь же, в
-/// транзакции писателя: нет такой записи в этом чате, она в корзине или id не UUID v4 — `ReplyTargetNotFound`, ничего не записано.
+/// A reply to an entry (slice 5): the same path, `core.reply_to_id` = the id of the target entry. The target is checked
+/// here, in the writer transaction: no such entry in this chat, it is in the trash or the id is not a UUID v4 --
+/// `ReplyTargetNotFound`, nothing is written.
 pub(crate) fn insert_reply_message(
     tx: &Transaction<'_>,
     chat_id: &str,
@@ -143,7 +144,7 @@ pub(crate) fn insert_reply_message(
     })
 }
 
-/// Адресат ответа жив и лежит в том же чате, что и ответ. Ответ из окна захвата и от агента адресата не имеет.
+/// The reply target is alive and lies in the same chat as the reply. A reply from the capture window and from an agent has no target.
 fn check_reply_target(
     tx: &Transaction<'_>,
     chat_id: &str,
@@ -166,8 +167,8 @@ fn check_reply_target(
     }
 }
 
-/// Новая запись агента (ADR-0009): тот же путь, `origin = 'agent'`, с `task` группа `flags` создаётся сразу задачей.
-/// Чат уже проверен вызывающим (видимое агенту множество), здесь только существование.
+/// A new agent entry (ADR-0009): the same path, `origin = 'agent'`; with `task` the `flags` group is created as a task at once.
+/// The chat was already checked by the caller (the set visible to the agent), here only its existence.
 pub(crate) fn insert_agent_message(
     tx: &Transaction<'_>,
     chat_id: &str,
@@ -238,8 +239,8 @@ fn insert_built_message(
 }
 
 impl Store {
-    /// Отправка (ТЗ §5): текст нормализуется, затем одна транзакция: запись со всеми пятью группами, HLC, отметка копии,
-    /// очистка черновика этого чата. Ответ — сохранённая запись; без оптимистичного показа: при ошибке ничего не записано.
+    /// Send (PRD §5): the text is normalized, then one transaction: the entry with all five groups, HLC, the copy mark,
+    /// clearing this chat's draft. The result is the saved entry; no optimistic display: on error nothing is written.
     pub fn send_message(
         &self,
         chat_id: &str,
@@ -249,8 +250,8 @@ impl Store {
         self.send_reply(chat_id, body, None, now)
     }
 
-    /// Отправка, возможно ответом на запись (слайс 5): с `reply_to_id` адресат проверяется в той же транзакции
-    /// (`ReplyTargetNotFound`, если его нет). Черновик чата, в том числе строка «Ответ на запись», очищается там же.
+    /// Send, possibly as a reply to an entry (slice 5): with `reply_to_id` the target is checked in the same transaction
+    /// (`ReplyTargetNotFound` if it is missing). The chat draft, including the "Reply to entry" line, is cleared there too.
     pub fn send_reply(
         &self,
         chat_id: &str,
@@ -280,7 +281,7 @@ impl Store {
     }
 }
 
-/// Помечает все дни с записями (кроме корзины): копия в новой папке пишется целиком.
+/// Marks all days that have entries (except the trash): the copy in a new folder is written in full.
 pub(crate) fn mark_all_dirty(tx: &Transaction<'_>) -> rusqlite::Result<()> {
     tx.execute(
         "INSERT INTO mirror_dirty (chat_id, journal_date, seq) \

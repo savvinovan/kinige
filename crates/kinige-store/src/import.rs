@@ -1,8 +1,9 @@
-//! Импорт из Telegram (слайс 4, задача 4.8): предпросмотр и запись пачками по 500 сообщений.
+//! Import from Telegram (slice 4, task 4.8): a preview and writing in batches of 500 messages.
 //!
-//! Каждая пачка — одна транзакция писателя: записи, `message_ext`, теги, индекс поиска, отметки Markdown-копии и HLC. Между
-//! пачками писатель свободен для других записей. Остановка и `kill -9` теряют не больше одной незафиксированной пачки;
-//! повторный импорт дедуплицируется по `message_ext` и доносит остаток. Копия базы снимается перед первой записью.
+//! Each batch is one writer transaction: entries, `message_ext`, tags, the search index, Markdown copy marks and the HLC.
+//! Between batches the writer is free for other writes. A stop or `kill -9` loses at most one uncommitted batch;
+//! a repeated import is deduplicated by `message_ext` and brings in the rest. The database backup is taken before the
+//! first write.
 
 use crate::chats::insert_new_chat;
 use crate::error::{read_err, write_err};
@@ -24,7 +25,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
-/// Сообщений в одной пачке (одной транзакции писателя).
+/// Messages in one batch (one writer transaction).
 pub const IMPORT_BATCH: usize = 500;
 
 fn supported_kind(chat: &TgChat) -> Option<ImportChatKind> {
@@ -35,7 +36,7 @@ fn supported_kind(chat: &TgChat) -> Option<ImportChatKind> {
     }
 }
 
-/// Уже импортированные сообщения чата Telegram: `ext_msg → id записи Kinige`.
+/// Already imported messages of a Telegram chat: `ext_msg -> Kinige entry id`.
 fn imported_messages(
     conn: &Connection,
     ext_chat: &str,
@@ -51,8 +52,8 @@ fn imported_messages(
     rows.collect::<Result<_, _>>().map_err(read_err)
 }
 
-/// Чат личной переписки при повторном импорте — чат самой свежей живой импортированной записи этого чата Telegram
-/// (решение 5): не удалённая запись в не удалённом чате. Нет такой — `None`, чат создаст первая пачка с записями.
+/// The personal-conversation chat on a repeated import is the chat of the freshest live imported entry of this Telegram
+/// chat (decision 5): a not deleted entry in a not deleted chat. None -- `None`, the first batch with entries creates the chat.
 fn find_import_chat(conn: &Connection, ext_chat: &str) -> Result<Option<String>, StoreError> {
     conn.query_row(
         "SELECT m.chat_id FROM message_ext e \
@@ -66,7 +67,7 @@ fn find_import_chat(conn: &Connection, ext_chat: &str) -> Result<Option<String>,
     .map_err(read_err)
 }
 
-/// Имя чата Kinige для личной переписки: из экспорта; нет имени — `Telegram <id>`; длиннее предела — обрезается.
+/// The Kinige chat name for a personal conversation: from the export; no name -- `Telegram <id>`; longer than the limit -- cut.
 fn chat_title(chat: &TgChat) -> String {
     let fallback = format!("Telegram {}", chat.id);
     let Some(name) = chat.name.as_deref() else {
@@ -76,7 +77,7 @@ fn chat_title(chat: &TgChat) -> String {
     normalize_title(&cut).unwrap_or(fallback)
 }
 
-/// Автор: у чужого сообщения личного чата (`from_id` = `user<id чата>`, решение 6) — имя; свои и «Избранное» — без имени.
+/// Author: for the other person's message in a personal chat (`from_id` = `user<chat id>`, decision 6) -- the name; own messages and "Saved Messages" -- no name.
 fn author_of<'a>(chat: &'a TgChat, message: &'a TgMessage) -> Option<&'a str> {
     if chat.kind != TgChatKind::Personal {
         return None;
@@ -88,7 +89,7 @@ fn author_of<'a>(chat: &'a TgChat, message: &'a TgMessage) -> Option<&'a str> {
     message.from.as_deref().or(chat.name.as_deref())
 }
 
-/// Запись к вставке, подготовленная вне писателя.
+/// An entry to insert, prepared outside the writer.
 struct Prepared {
     id: String,
     ext_msg: String,
@@ -98,19 +99,19 @@ struct Prepared {
     reply_to_id: Option<String>,
 }
 
-/// Что вернула пачка.
+/// What a batch returned.
 struct BatchOutcome {
-    /// Чат-адресат; `None` — личный чат так и не создан (все ключи пачки оказались заняты).
+    /// The destination chat; `None` -- the personal chat was never created (all keys of the batch turned out to be taken).
     chat_id: Option<String>,
     created_chat: bool,
-    /// Записи, чей внешний id оказался занят в самой транзакции: не вставлены.
+    /// Entries whose external id turned out to be taken inside the transaction itself: not inserted.
     skipped: i64,
-    /// Подготовленный id пропущенной записи → id записи, которая владеет её внешним id: ответы на пропущенную идут к ней.
+    /// The prepared id of a skipped entry -> the id of the entry that owns its external id: replies to the skipped one go to it.
     replaced: HashMap<String, String>,
 }
 
 impl Store {
-    /// Что нашлось в экспорте: чаты, которые можно импортировать, число записей и сколько уже импортировано.
+    /// What was found in the export: the chats that can be imported, the number of entries and how many are already imported.
     pub fn import_preview(&self, export: &TgExport) -> Result<ImportPreview, StoreError> {
         let mut chats = Vec::new();
         let mut skipped_chats = 0;
@@ -142,9 +143,9 @@ impl Store {
         })
     }
 
-    /// Импорт выбранных чатов (`chats` — их id Telegram). Перед первой записью снимается копия базы; её сбой отменяет
-    /// импорт (`ImportBackupFailed`). `progress` вызывается после каждой зафиксированной пачки; `stop` проверяется между
-    /// пачками. Ошибка записи пачки оставляет предыдущие пачки на месте: повторный запуск доносит остаток.
+    /// Import of the selected chats (`chats` are their Telegram ids). A database backup is taken before the first write;
+    /// its failure cancels the import (`ImportBackupFailed`). `progress` is called after each committed batch; `stop` is
+    /// checked between batches. A batch write error leaves the previous batches in place: a repeated run brings in the rest.
     pub fn import_telegram(
         &self,
         export: Arc<TgExport>,
@@ -159,7 +160,7 @@ impl Store {
             .iter()
             .filter(|chat| supported_kind(chat).is_some() && chats.contains(&chat.id))
             .collect();
-        // Как в предпросмотре: служебные и пустые сообщения в «N из M» не входят (иначе M больше числа в списке чатов).
+        // As in the preview: service and empty messages are not part of "N of M" (otherwise M is larger than the number in the chat list).
         let total: i64 = selected
             .iter()
             .flat_map(|c| c.messages.iter())
@@ -184,7 +185,7 @@ impl Store {
                 let mut rows: Vec<Prepared> = Vec::new();
                 let mut new_ids: HashMap<String, String> = HashMap::new();
                 let mut media = 0;
-                // Сколько сообщений пачки входит в «N из M»: не служебные и не пустые.
+                // How many messages of the batch are part of "N of M": not service and not empty.
                 let mut counted = 0i64;
                 for message in batch {
                     let created_at = timeline.created_at(message, now);
@@ -238,7 +239,7 @@ impl Store {
                     report.skipped_existing += outcome.skipped;
                     report.media_placeholders += media;
                     existing.extend(new_ids);
-                    // Ответы следующих пачек на пропущенную запись идут к настоящему владельцу её внешнего id.
+                    // Replies of the following batches to a skipped entry go to the real owner of its external id.
                     for id in existing.values_mut() {
                         if let Some(owner) = outcome.replaced.get(id.as_str()) {
                             id.clone_from(owner);
@@ -253,7 +254,7 @@ impl Store {
         Ok(report)
     }
 
-    /// Одна пачка одной транзакцией. `dest` — чат-адресат; `None` — личный чат ещё не создан, его создаёт эта пачка.
+    /// One batch in one transaction. `dest` is the destination chat; `None` -- the personal chat is not created yet, this batch creates it.
     fn write_batch(
         &self,
         chat: &TgChat,
@@ -267,9 +268,9 @@ impl Store {
             let tx = conn
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(write_err)?;
-            // Ключи внешних id первыми: занятый ключ (запись появилась после чтения `existing`) — записи не будет, а
-            // ответы на неё должны идти к настоящему владельцу ключа, иначе в неизменяемый `core` ляжет id несуществующей
-            // записи. Если не осталось ни одной новой, личный чат не создаётся: пустого чата-дубля не будет.
+            // External id keys first: a taken key (the entry appeared after `existing` was read) means no entry will be
+            // made, and replies to it must go to the real owner of the key, otherwise the id of a nonexistent entry would
+            // land in the immutable `core`. If no new ones are left, the personal chat is not created: no empty duplicate chat.
             let mut fresh: Vec<&Prepared> = Vec::new();
             let mut replaced: HashMap<String, String> = HashMap::new();
             for row in &rows {
@@ -313,12 +314,12 @@ impl Store {
                 }
                 None => (insert_new_chat(&tx, &title, DEFAULT_ICON, pt_ms)?, true),
             };
-            // Часы читаются после создания чата, которое двигает их само. Дальше тик идёт в памяти, сохранение — один раз.
+            // The clock is read after the chat is created, which moves it by itself. Then the tick goes in memory, saved once.
             let device = get_state(&tx, "device_id")
                 .map_err(write_err)?
-                .ok_or_else(|| StoreError::Internal("нет device_id".into()))?;
+                .ok_or_else(|| StoreError::Internal("no device_id".into()))?;
             let mut clock = load_clock(&tx)?
-                .ok_or_else(|| StoreError::Internal("нет состояния часов".into()))?;
+                .ok_or_else(|| StoreError::Internal("no clock state".into()))?;
             let mut days: BTreeSet<String> = BTreeSet::new();
             for row in fresh {
                 let reply_to_id = row

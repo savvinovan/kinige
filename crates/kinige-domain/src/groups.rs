@@ -1,6 +1,6 @@
-//! Группы полей новой записи и чата (ADR-0001 §3.2, приложение §A.0): каждая запись создаётся сразу со всеми группами,
-//! у каждой свой HLC и `sv = 1`. Колонки таблиц и каноничные байты групп строятся из одних и тех же значений, поэтому
-//! расхождения между ними не бывает (инвариант `canonical(колонки) == groups_raw[g]`, приложение §B п. 38).
+//! Field groups of a new entry and chat (ADR-0001 §3.2, appendix §A.0): every entry is created at once with all groups,
+//! each with its own HLC and `sv = 1`. Table columns and the groups' canonical bytes are built from the same values, so
+//! they cannot diverge (invariant `canonical(columns) == groups_raw[g]`, appendix §B item 38).
 
 use crate::hlc::is_uuid_v4;
 use crate::jcs::{self, JcsError};
@@ -9,38 +9,38 @@ use serde_json::{Map, Value, json, value::RawValue};
 use std::collections::BTreeMap;
 use std::fmt;
 
-/// `sv` групп, которые пишет этот клиент (ADR-0001 §4).
+/// The `sv` of the groups this client writes (ADR-0001 §4).
 pub const SCHEMA_VERSION: u32 = 1;
 
-/// Inbox — одна константа на все аккаунты (ADR-0001, решение 2); определяется по id, а не по флагу (§3.6).
-/// Значение в формате UUID v4 (версия 4, вариант 8), выбрано человеком и закреплено в приложении ADR-0001, §C.
+/// Inbox is one constant for all accounts (ADR-0001, decision 2); it is identified by id, not by a flag (§3.6).
+/// The value is in UUID v4 format (version 4, variant 8), chosen by a human and fixed in the ADR-0001 appendix, §C.
 pub const INBOX_ID: &str = "00000000-0000-4000-8000-000000000001";
-/// Эмодзи Inbox в `meta`: данные чата, пользователь сможет сменить в слайсе 3.
+/// The Inbox emoji in `meta`: chat data, the user will be able to change it in slice 3.
 pub const INBOX_ICON: &str = "📥";
-/// Ключ порядка Inbox (дробный индекс, ТЗ §4.2): первый в списке.
+/// The Inbox order key (fractional index, PRD §4.2): first in the list.
 pub const INBOX_SORT_KEY: &str = "a0";
-/// Предел группы `body` в каноничных байтах JCS: конверт ограничен 1 МиБ до выравнивания (ADR-0001 §5.3), остальное место —
-/// другим группам. Считаются именно байты группы, а не длина текста: экранирование (`"` → `\"`, перевод строки → `\n`)
-/// удваивает размер, и текст в 512 КиБ мог бы дать группу в 1 МиБ.
+/// The limit of the `body` group in canonical JCS bytes: the envelope is capped at 1 MiB before padding (ADR-0001 §5.3), the rest of the space
+/// is for the other groups. The group's bytes are counted, not the text length: escaping (`"` → `\"`, line break → `\n`)
+/// doubles the size, and a 512 KiB text could produce a 1 MiB group.
 pub const MAX_BODY_GROUP_BYTES: usize = 512 * 1024;
-/// Кто создал запись: интерфейс и быстрый захват (ADR-0001, «origin»).
+/// Who created the entry: the interface and quick capture (ADR-0001, "origin").
 pub const ORIGIN_USER: &str = "user";
-/// Кто создал запись: ИИ-агент через MCP (ADR-0009). Новое значение неизменяемого `core.origin`, аддитивное, `sv` не растёт.
+/// Who created the entry: an AI agent over MCP (ADR-0009). A new value of the immutable `core.origin`, additive, `sv` does not grow.
 pub const ORIGIN_AGENT: &str = "agent";
 
-/// Ошибки сборки групп.
+/// Group assembly errors.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GroupError {
     Jcs(JcsError),
-    /// `groups_raw` или `hlc_json` повреждены.
+    /// `groups_raw` or `hlc_json` is corrupt.
     Corrupt(String),
-    /// Группа, которую нужно переписать, имеет `sv` выше поддерживаемой (ADR-0001 §4 п. 4): запись только для чтения.
+    /// The group to be rewritten has an `sv` above the supported one (ADR-0001 §4 item 4): the entry is read-only.
     UnsupportedVersion,
-    /// Новый HLC не больше прежнего: перезапись группы требует строго большего (ADR-0001 §3.3).
+    /// The new HLC is not greater than the previous one: rewriting a group requires a strictly greater one (ADR-0001 §3.3).
     HlcNotNewer,
-    /// Группа длиннее [`MAX_BODY_GROUP_BYTES`] в каноничных байтах.
+    /// The group is longer than [`MAX_BODY_GROUP_BYTES`] in canonical bytes.
     TooLarge,
-    /// Запрос не имеет смысла для этой записи или чата (дата не существует, имя пустое, «выполнено» у не-задачи).
+    /// The request makes no sense for this entry or chat (the date does not exist, the name is empty, "done" on a non-task).
     Invalid(&'static str),
 }
 
@@ -48,11 +48,11 @@ impl fmt::Display for GroupError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             GroupError::Jcs(error) => write!(f, "{error}"),
-            GroupError::Corrupt(why) => write!(f, "повреждены группы записи: {why}"),
-            GroupError::UnsupportedVersion => f.write_str("группа новее поддерживаемой версии"),
-            GroupError::HlcNotNewer => f.write_str("новый HLC не больше прежнего"),
-            GroupError::TooLarge => f.write_str("группа длиннее предела"),
-            GroupError::Invalid(why) => write!(f, "недопустимый запрос: {why}"),
+            GroupError::Corrupt(why) => write!(f, "entry groups are corrupt: {why}"),
+            GroupError::UnsupportedVersion => f.write_str("group version is unsupported"),
+            GroupError::HlcNotNewer => f.write_str("new HLC is not above the previous one"),
+            GroupError::TooLarge => f.write_str("the group is longer than the limit"),
+            GroupError::Invalid(why) => write!(f, "invalid request: {why}"),
         }
     }
 }
@@ -65,17 +65,17 @@ impl From<JcsError> for GroupError {
     }
 }
 
-/// Причина, по которой текст записи не принят.
+/// The reason an entry text was not accepted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BodyError {
-    /// Только пробельные символы.
+    /// Only whitespace characters.
     Empty,
-    /// Группа `body` длиннее [`MAX_BODY_GROUP_BYTES`] в каноничных байтах.
+    /// The `body` group is longer than [`MAX_BODY_GROUP_BYTES`] in canonical bytes.
     TooLarge,
 }
 
-/// Текст записи перед сохранением: перевод строк приведён к `\n`, ведущие пустые строки и хвостовые пробелы убраны
-/// (ведущие пробелы первой непустой строки остаются: отступ может быть значимым), пустой текст и слишком длинный — ошибка.
+/// Entry text before saving: line breaks are normalized to `\n`, leading empty lines and trailing spaces are removed
+/// (leading spaces of the first non-empty line stay: the indent may be significant), empty and too long text is an error.
 pub fn normalize_body(raw: &str) -> Result<String, BodyError> {
     let unified = raw.replace("\r\n", "\n").replace('\r', "\n");
     let mut lines = unified
@@ -101,12 +101,12 @@ pub fn normalize_body(raw: &str) -> Result<String, BodyError> {
     Ok(text)
 }
 
-/// Значение группы `body` новой записи (одно место и для проверки размера, и для байтов группы).
+/// The value of a new entry's `body` group (one place for both the size check and the group's bytes).
 fn body_group(body_md: &str) -> Value {
     json!({"base": null, "body_md": body_md, "edited_at": null, "supersedes": []})
 }
 
-/// Исходные значения новой записи; текст уже нормализован.
+/// The initial values of a new entry; the text is already normalized.
 pub struct NewMessage<'a> {
     pub id: &'a str,
     pub chat_id: &'a str,
@@ -116,7 +116,7 @@ pub struct NewMessage<'a> {
     pub journal_date: &'a str,
 }
 
-/// Строка таблицы `message` целиком: разобранные колонки и сырые байты групп.
+/// A whole row of the `message` table: the parsed columns and the groups' raw bytes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MessageRow {
     pub id: String,
@@ -135,28 +135,28 @@ pub struct MessageRow {
     pub ext_json: Option<String>,
     pub deleted_at: Option<i64>,
     pub body_base: Option<String>,
-    /// JSON-массив HLC, `[]` у новой записи.
+    /// A JSON array of HLCs, `[]` for a new entry.
     pub body_supersedes: String,
     pub placement_base: Option<String>,
     pub placement_supersedes: String,
-    /// `{"<группа>":{"h":"HLC","sv":1}}`.
+    /// `{"<group>":{"h":"HLC","sv":1}}`.
     pub hlc_json: String,
     pub schema_version: u32,
-    /// `{"<группа>":<каноничные байты>}` — источник для переотправки (ADR-0001 §C).
+    /// `{"<group>":<canonical bytes>}` -- the source for re-sending (ADR-0001 §C).
     pub groups_raw: String,
 }
 
-/// Происхождение записи — то, чем группа `core` отличается у записи пользователя и импортированной (слайс 4).
+/// The entry's provenance -- what makes the `core` group differ between a user's entry and an imported one (slice 4).
 pub(crate) struct Provenance<'a> {
     pub origin: &'a str,
     pub reply_to_id: Option<&'a str>,
-    /// Внешний id импорта (`ext`), необязательное неизменяемое поле `core`.
+    /// The external import id (`ext`), an optional immutable `core` field.
     pub ext: Option<Value>,
-    /// Запись создаётся сразу задачей: группа `flags` с `is_task = true` (только агент, ADR-0009).
+    /// The entry is created as a task right away: the `flags` group with `is_task = true` (agent only, ADR-0009).
     pub is_task: bool,
 }
 
-/// Новая запись сразу со всеми пятью группами (`core`, `body`, `flags`, `placement`, `deleted`) под одним HLC: она создаётся одним событием.
+/// A new entry at once with all five groups (`core`, `body`, `flags`, `placement`, `deleted`) under one HLC: it is created as one event.
 pub fn new_message(input: &NewMessage<'_>, hlc: &str) -> Result<MessageRow, GroupError> {
     let user = Provenance {
         origin: ORIGIN_USER,
@@ -167,15 +167,15 @@ pub fn new_message(input: &NewMessage<'_>, hlc: &str) -> Result<MessageRow, Grou
     build_message(input, &user, hlc)
 }
 
-/// Ответ пользователя на запись (слайс 5): те же пять групп под одним HLC, `core.reply_to_id` — id старой записи. Группа
-/// `core` неизменяема: ссылку не правят и не снимают. `reply_to_id` обязан быть UUID v4 в нижнем регистре.
+/// A user's reply to an entry (slice 5): the same five groups under one HLC, `core.reply_to_id` is the id of the old entry. The
+/// `core` group is immutable: the link is neither edited nor removed. `reply_to_id` must be a lower-case UUID v4.
 pub fn new_reply_message(
     input: &NewMessage<'_>,
     reply_to_id: &str,
     hlc: &str,
 ) -> Result<MessageRow, GroupError> {
     if !is_uuid_v4(reply_to_id) {
-        return Err(GroupError::Invalid("reply_to_id не UUID v4"));
+        return Err(GroupError::Invalid("reply_to_id is not a UUID v4"));
     }
     let reply = Provenance {
         origin: ORIGIN_USER,
@@ -186,8 +186,8 @@ pub fn new_reply_message(
     build_message(input, &reply, hlc)
 }
 
-/// Новая запись агента (ADR-0009): те же пять групп под одним HLC, `origin = 'agent'`, без `ext`. С `task = true` группа
-/// `flags` создаётся сразу с `is_task = true` — иначе агенту пришлось бы переписывать группу сразу после создания.
+/// A new agent entry (ADR-0009): the same five groups under one HLC, `origin = 'agent'`, without `ext`. With `task = true` the
+/// `flags` group is created right away with `is_task = true` -- otherwise the agent would have to rewrite the group right after creation.
 pub fn new_agent_message(
     input: &NewMessage<'_>,
     task: bool,
@@ -202,14 +202,14 @@ pub fn new_agent_message(
     build_message(input, &agent, hlc)
 }
 
-/// Общая сборка новой записи: пять групп под одним HLC и колонки из тех же значений. `new_message` и
-/// `import::new_imported_message` различаются только [`Provenance`].
+/// Shared assembly of a new entry: five groups under one HLC and the columns from the same values. `new_message` and
+/// `import::new_imported_message` differ only in [`Provenance`].
 pub(crate) fn build_message(
     input: &NewMessage<'_>,
     provenance: &Provenance<'_>,
     hlc: &str,
 ) -> Result<MessageRow, GroupError> {
-    // `journal_date` попадает в группу `placement` и в индексы: невозможная дата не должна дойти до байтов синхронизации.
+    // `journal_date` goes into the `placement` group and into the indexes: an impossible date must not reach the sync bytes.
     if !is_valid_journal_date(input.journal_date) {
         return Err(GroupError::Invalid("journal_date"));
     }
@@ -266,7 +266,7 @@ pub(crate) fn build_message(
     })
 }
 
-/// Строка таблицы `chat` целиком.
+/// A whole row of the `chat` table.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChatRow {
     pub id: String,
@@ -286,8 +286,8 @@ pub struct ChatRow {
     pub groups_raw: String,
 }
 
-/// Inbox: константный id и константная группа `core` (ADR-0001 §3.6) — `created_at = 0`, `is_inbox = true`, чтобы два
-/// Inbox, созданные до привязки, сливались без конфликта. Хранимое имя пустое: интерфейс показывает переведённое.
+/// Inbox: a constant id and a constant `core` group (ADR-0001 §3.6) -- `created_at = 0`, `is_inbox = true`, so that two
+/// Inboxes created before linking merge without conflict. The stored name is empty: the interface shows the translated one.
 pub fn inbox_chat(hlc: &str, now_ms: i64) -> Result<ChatRow, GroupError> {
     let groups: [(&str, Value); 6] = [
         ("core", json!({"created_at": 0, "is_inbox": true})),
@@ -320,12 +320,12 @@ pub fn inbox_chat(hlc: &str, now_ms: i64) -> Result<ChatRow, GroupError> {
     })
 }
 
-/// Группы из `groups_raw` с дословными байтами (для проверки инварианта и для слияния).
+/// Groups from `groups_raw` with verbatim bytes (for the invariant check and for merging).
 pub fn parse_groups_raw(groups_raw: &str) -> Result<BTreeMap<String, Box<RawValue>>, GroupError> {
     serde_json::from_str(groups_raw).map_err(|e| GroupError::Corrupt(e.to_string()))
 }
 
-/// Собирает `groups_raw` (каноничные байты групп дословно) и `hlc_json` (один HLC на все группы события).
+/// Builds `groups_raw` (the groups' canonical bytes verbatim) and `hlc_json` (one HLC for all groups of the event).
 pub(crate) fn assemble(
     groups: &[(&str, Value)],
     hlc: &str,

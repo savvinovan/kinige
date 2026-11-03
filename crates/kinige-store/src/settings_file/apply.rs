@@ -1,6 +1,6 @@
-//! Применение разобранного файла к базе (ADR-0010): одна транзакция писателя на всё, кроме сочетаний (их принимает система
-//! и регистрирует слой Tauri). В той же транзакции: сравнение «до / после» доступа агента, ключи `mcp_*`, хэш файла и
-//! строка журнала обращений.
+//! Applying a parsed file to the database (ADR-0010): one writer transaction for everything except the shortcuts (the
+//! system accepts them and the Tauri layer registers them). The same transaction holds the "before / after" comparison of
+//! the agent access, the `mcp_*` keys, the file hash and the access log row.
 
 use super::parse::{ChatRef, Field, MAX_ISSUES, Parsed};
 use crate::agent::{KEY_CHATS, KEY_ENABLED, KEY_MODE, load_settings};
@@ -19,15 +19,15 @@ use rusqlite::{Connection, Transaction, TransactionBehavior};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-/// Хэш последнего синхронизированного файла (`app_setting`, в файл не идёт).
+/// Hash of the last synchronised file (`app_setting`, not written to the file).
 pub(crate) const KEY_FILE_HASH: &str = "settings_file_hash";
-/// Подпись строки журнала обращений при изменении доступа из файла: по `tool`, а не по `client` (клиент MCP называет себя сам).
+/// Signature of the access log row when the access is changed from the file: by `tool`, not by `client` (an MCP client names itself).
 pub const LOG_CLIENT: &str = "settings.json";
 pub const LOG_TOOL: &str = "settings_file";
-/// Название Inbox в файле: в базе оно пустое, интерфейс переводит его по языку, файл не зависит от языка.
+/// Inbox title in the file: in the database it is empty and the interface translates it by language; the file does not depend on the language.
 pub(crate) const INBOX_FILE_TITLE: &str = "Inbox";
 
-/// Чат для сопоставления с элементом `agent_access.chats`.
+/// A chat to match against an `agent_access.chats` element.
 #[derive(Debug, Clone)]
 pub(crate) struct ChatInfo {
     pub id: String,
@@ -35,7 +35,7 @@ pub(crate) struct ChatInfo {
     pub ai_excluded: bool,
 }
 
-/// Живые чаты (архив входит). У Inbox название `Inbox`.
+/// Live chats (the archive is included). Inbox is titled `Inbox`.
 pub(crate) fn load_chats(conn: &Connection) -> Result<Vec<ChatInfo>, StoreError> {
     let mut statement = conn
         .prepare("SELECT id, title, ai_excluded FROM chat WHERE deleted_at IS NULL")
@@ -58,8 +58,8 @@ pub(crate) fn load_chats(conn: &Connection) -> Result<Vec<ChatInfo>, StoreError>
     rows.collect::<Result<_, _>>().map_err(write_err)
 }
 
-/// Элементы массива чатов → id, которые можно включить. Неподходящий элемент даёт ошибку этого элемента и не включается;
-/// ошибки только сужают доступ. `id` главнее названия: несуществующий `id` — ошибка, без отката на название.
+/// Elements of the chats array -> ids that can be enabled. An unsuitable element gives an error for that element and is
+/// not enabled; errors only narrow the access. `id` wins over the title: a nonexistent `id` is an error, with no fallback to the title.
 pub(crate) fn resolve_chats(chats: &[ChatInfo], refs: &[ChatRef]) -> (Vec<String>, Vec<KeyIssue>) {
     let by_id: HashMap<&str, &ChatInfo> =
         chats.iter().map(|chat| (chat.id.as_str(), chat)).collect();
@@ -96,7 +96,7 @@ pub(crate) fn resolve_chats(chats: &[ChatInfo], refs: &[ChatRef]) -> (Vec<String
             }
             Err(kind) => Some(kind),
         };
-        // Потолок, как у разбора: массив из тысяч негодных элементов не раздувает окно.
+        // A cap, as in the parser: an array of thousands of bad elements does not bloat the window.
         if let Some(kind) = issue
             && issues.len() < MAX_ISSUES
         {
@@ -106,7 +106,7 @@ pub(crate) fn resolve_chats(chats: &[ChatInfo], refs: &[ChatRef]) -> (Vec<String
     (ids, issues)
 }
 
-/// Папка копии из файла: абсолютная, существующая папка вне каталога данных.
+/// The copy folder from the file: an absolute, existing folder outside the data directory.
 pub(crate) fn check_folder(path: &str, data_dir: &Path) -> Result<PathBuf, KeyIssueKind> {
     let folder = Path::new(path);
     if !folder.is_absolute() {
@@ -122,30 +122,30 @@ pub(crate) fn check_folder(path: &str, data_dir: &Path) -> Result<PathBuf, KeyIs
     Ok(folder.to_path_buf())
 }
 
-/// Что нужно применить.
+/// What has to be applied.
 pub(crate) struct ApplyInput {
     pub parsed: Parsed,
-    /// Файл безопасен: ключи `agent_access.*` и `mirror.folder` применяются.
+    /// The file is safe: the `agent_access.*` and `mirror.folder` keys are applied.
     pub trusted: bool,
     pub data_dir: PathBuf,
-    /// SHA-256 прочитанных байтов, hex.
+    /// SHA-256 of the bytes read, hex.
     pub hash: String,
     pub at_ms: i64,
 }
 
-/// Что изменилось и что ещё нужно сделать после фиксации.
+/// What changed and what still has to be done after the commit.
 #[derive(Debug, Default)]
 pub(crate) struct ApplyOutcome {
     pub issues: Vec<KeyIssue>,
     pub appearance: bool,
     pub mirror: bool,
     pub access: bool,
-    /// Сочетания, значение которых из файла отличается от действующего: принимает система (слой Tauri) и сохраняет.
+    /// Shortcuts whose value in the file differs from the current one: the system (the Tauri layer) accepts and saves them.
     pub shortcuts: Vec<(ShortcutKind, String)>,
 }
 
 impl Store {
-    /// Применяет файл одной транзакцией. Ошибка записи — ничего не применено (хэш не сдвинут, файл применится снова).
+    /// Applies the file in one transaction. A write error means nothing is applied (the hash is not moved, the file is applied again).
     pub(crate) fn apply_settings_file(
         &self,
         input: ApplyInput,
@@ -174,7 +174,7 @@ fn apply_in(
         ..ApplyOutcome::default()
     };
 
-    // Оформление.
+    // Appearance.
     let size = match &parsed.text_size {
         Field::Absent => None,
         Field::Default => Some(TextSize::Normal),
@@ -190,7 +190,7 @@ fn apply_in(
         }
     }
 
-    // Сочетания: принимает система, поэтому здесь только список отличий.
+    // Shortcuts: the system accepts them, so only the list of differences is built here.
     for kind in ShortcutKind::ALL {
         let Some(field) = parsed.shortcuts.get(shortcut_slot(kind)) else {
             continue;
@@ -205,7 +205,7 @@ fn apply_in(
         }
     }
 
-    // Копия и доступ агента — только из безопасного файла.
+    // The copy and the agent access come only from a safe file.
     let wants_mirror = !matches!(parsed.mirror_folder, Field::Absent);
     let wants_agent = !matches!(
         (&parsed.agent_enabled, &parsed.agent_mode, &parsed.chats),
@@ -291,8 +291,8 @@ fn apply_agent(
 ) -> Result<(), StoreError> {
     let parsed = &input.parsed;
     let mut before = agent_state(conn);
-    // Чаты, которых уже нет или которые исключены из AI, агент не видит: сравнение «до / после» их не считает, иначе лишняя
-    // строка журнала появилась бы без изменения доступа.
+    // The agent does not see chats that are gone or excluded from AI: the "before / after" comparison ignores them,
+    // otherwise an extra log row would appear without any change of access.
     let visible: HashSet<String> = load_chats(conn)?
         .into_iter()
         .filter(|chat| !chat.ai_excluded)
@@ -328,7 +328,7 @@ fn apply_agent(
     let chats = serde_json::to_string(&after.chats)
         .map_err(|error| StoreError::Internal(error.to_string()))?;
     put(conn, KEY_CHATS, &chats).map_err(write_err)?;
-    // Без названий чатов и путей: только флаг, режим и число чатов.
+    // No chat titles and no paths: only the flag, the mode and the number of chats.
     let args = serde_json::json!({
         "enabled": after.enabled,
         "mode": after.mode.setting(),
@@ -340,7 +340,7 @@ fn apply_agent(
     Ok(())
 }
 
-/// Доступ агента как есть. Повреждённое значение читается как «выключено, чатов нет».
+/// The agent access as it is. A corrupted value reads as "off, no chats".
 fn agent_state(conn: &Connection) -> AgentSettings {
     load_settings(conn).unwrap_or(AgentSettings {
         enabled: false,

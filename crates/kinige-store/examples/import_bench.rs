@@ -1,12 +1,12 @@
-//! Замер импорта и поиска (слайс 4): время разбора, импорта, поиска и холодного старта, размер базы до и после. Печатает
-//! только числа и время — тексты, имена и пути из файла экспорта не выводятся.
+//! Benchmark of import and search (slice 4): parse, import, search and cold start times, database size before and after.
+//! Prints only numbers and times - texts, names and paths from the export file are not printed.
 //!
-//! Использование (каталог данных — временный, не настоящая база!):
-//! `cargo run --release -p kinige-store --example import_bench -- <каталог данных> synthetic <N>`
-//! `cargo run --release -p kinige-store --example import_bench -- <каталог данных> file <result.json>`
+//! Usage (the data directory is temporary, not the real database!):
+//! `cargo run --release -p kinige-store --example import_bench -- <data directory> synthetic <N>`
+//! `cargo run --release -p kinige-store --example import_bench -- <data directory> file <result.json>`
 
-// Пример — консольная утилита: печать в stdout и падение на любой ошибке разрешены (правила «только через log» и
-// «никогда не падать» — для кода приложения).
+// The example is a console utility: printing to stdout and panicking on any error are allowed (the rules "only through
+// log" and "never panic" are for app code).
 #![allow(
     clippy::print_stdout,
     clippy::unwrap_used,
@@ -28,13 +28,13 @@ use std::time::Instant;
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    let data = PathBuf::from(args.next().expect("каталог данных"));
+    let data = PathBuf::from(args.next().expect("data directory"));
     let mode = args.next().expect("synthetic | file");
-    let arg = args.next().expect("N или путь к result.json");
+    let arg = args.next().expect("N or the path to result.json");
     let json = match mode.as_str() {
-        "synthetic" => synthetic(arg.parse().expect("число сообщений")),
-        "file" => std::fs::read_to_string(&arg).expect("файл читается"),
-        other => panic!("неизвестный режим {other}"),
+        "synthetic" => synthetic(arg.parse().expect("number of messages")),
+        "file" => std::fs::read_to_string(&arg).expect("the file is readable"),
+        other => panic!("unknown mode {other}"),
     };
     std::fs::create_dir_all(&data).unwrap();
     let options = || {
@@ -44,14 +44,14 @@ fn main() {
     };
     let t = Instant::now();
     let store = Store::open(options()).unwrap();
-    println!("открытие пустой базы: {:.0} мс", ms(t));
+    println!("opening an empty database: {:.0} ms", ms(t));
     let size_before = db_size(&data);
 
     let t = Instant::now();
-    let export: Arc<TgExport> = Arc::new(parse_export(&json).expect("экспорт разбирается"));
+    let export: Arc<TgExport> = Arc::new(parse_export(&json).expect("the export parses"));
     let messages: usize = export.chats.iter().map(|c| c.messages.len()).sum();
     println!(
-        "разбор: {:.0} мс, {} МБ JSON, чатов {}, сообщений {messages}",
+        "parse: {:.0} ms, {} MB of JSON, chats {}, messages {messages}",
         ms(t),
         json.len() / 1_000_000,
         export.chats.len()
@@ -60,7 +60,7 @@ fn main() {
     let t = Instant::now();
     let preview = store.import_preview(&export).unwrap();
     println!(
-        "предпросмотр: {:.0} мс, чатов к импорту {}, записей {}",
+        "preview: {:.0} ms, chats to import {}, entries {}",
         ms(t),
         preview.chats.len(),
         preview.chats.iter().map(|c| c.total).sum::<i64>()
@@ -80,8 +80,8 @@ fn main() {
         .unwrap();
     let elapsed = ms(t);
     println!(
-        "импорт: {:.0} мс ({:.1} мкс на сообщение); импортировано {}, пропущено: уже были {}, служебных {}, пустых {}; \
-         заглушек вложений {}; чатов создано {}; копия: {}",
+        "import: {:.0} ms ({:.1} us per message); imported {}, skipped: already present {}, service {}, empty {}; \
+         attachment placeholders {}; chats created {}; backup: {}",
         elapsed,
         elapsed * 1000.0 / report.imported.max(1) as f64,
         report.imported,
@@ -104,7 +104,7 @@ fn main() {
         )
         .unwrap();
     println!(
-        "повторный импорт: {:.0} мс, новых {}, уже были {}",
+        "repeated import: {:.0} ms, new {}, already present {}",
         ms(t),
         again.imported,
         again.skipped_existing
@@ -112,12 +112,12 @@ fn main() {
     drop(store);
     let size_after = db_size(&data);
     println!(
-        "размер базы: до {:.1} МБ, после {:.1} МБ",
+        "database size: before {:.1} MB, after {:.1} MB",
         size_before as f64 / 1e6,
         size_after as f64 / 1e6
     );
 
-    // Холодный старт после импорта: новое открытие базы и первая страница ленты.
+    // Cold start after the import: reopening the database and the first feed page.
     let t = Instant::now();
     let store = Store::open(options()).unwrap();
     let open = ms(t);
@@ -126,13 +126,13 @@ fn main() {
         .list_messages(kinige_domain::groups::INBOX_ID, None, 200, &Now::system())
         .unwrap();
     println!(
-        "холодный старт: открытие {open:.0} мс, первая страница ({} записей) {:.0} мс",
+        "cold start: open {open:.0} ms, first page ({} entries) {:.0} ms",
         page.messages.len(),
         ms(t)
     );
 
-    // «В этот день» (слайс 5): карточка на 200 разных «сегодня» 2023 года, позади пять лет записей (2018–2022). Открытие Inbox =
-    // первая страница ленты + карточка; цель слайса — p95 и открытие меньше 300 мс.
+    // "On this day" (slice 5): the card for 200 different "todays" of 2023, with five years of entries behind (2018-2022).
+    // Opening Inbox = the first feed page + the card; the slice target is p95 and opening under 300 ms.
     let mut card_times = Vec::new();
     let mut card_entries = 0usize;
     for day in 0..200i64 {
@@ -149,7 +149,7 @@ fn main() {
     }
     card_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
     println!(
-        "«В этот день» на 200 днях: p50 {:.1} мс, p95 {:.1} мс, max {:.1} мс; записей в карточке в среднем {:.1}",
+        "\"On this day\" over 200 days: p50 {:.1} ms, p95 {:.1} ms, max {:.1} ms; entries in the card on average {:.1}",
         card_times[card_times.len() / 2],
         card_times[(card_times.len() * 95).div_ceil(100) - 1],
         card_times[card_times.len() - 1],
@@ -161,7 +161,7 @@ fn main() {
         .unwrap();
     let card = store.get_on_this_day(&Now::system()).unwrap();
     println!(
-        "открытие Inbox (страница из {} записей + карточка, {} лет): {:.0} мс",
+        "opening Inbox (a page of {} entries + the card, {} years): {:.0} ms",
         page.messages.len(),
         card.map_or(0, |c| c.years.len()),
         ms(t)
@@ -202,7 +202,7 @@ fn main() {
         target.is_some()
     );
 
-    // Поиск: слова берутся из самих записей, не печатаются.
+    // Search: the words are taken from the entries themselves and are not printed.
     let words = sample_words(&data, 200);
     let mut times = Vec::new();
     let mut found = 0usize;
@@ -217,7 +217,7 @@ fn main() {
     times.sort_by(|a, b| a.partial_cmp(b).unwrap());
     if !times.is_empty() {
         println!(
-            "поиск по {} словам из записей (префиксный запрос, страница 50): p50 {:.1} мс, p95 {:.1} мс, max {:.1} мс; найдено в среднем {:.1}",
+            "search over {} words from the entries (prefix query, page of 50): p50 {:.1} ms, p95 {:.1} ms, max {:.1} ms; found on average {:.1}",
             times.len(),
             times[times.len() / 2],
             times[(times.len() * 95).div_ceil(100) - 1],
@@ -231,7 +231,7 @@ fn main() {
             .search(&format!("{word} "), &SearchFilters::default(), None, 50)
             .unwrap();
         println!(
-            "поиск частого слова из одной буквы: {:.1} мс, найдено на странице {}",
+            "search of a frequent one-letter word: {:.1} ms, found on the page {}",
             ms(t),
             result.hits.len()
         );
@@ -250,7 +250,7 @@ fn db_size(dir: &Path) -> u64 {
         .sum()
 }
 
-/// Слова длиной не меньше четырёх знаков из записей базы, по одному на каждую `n`-ю запись.
+/// Words of at least four characters from the database entries, one for each `n`-th entry.
 fn sample_words(dir: &Path, n: usize) -> Vec<String> {
     let conn = rusqlite::Connection::open(dir.join("kinige.db")).unwrap();
     let mut statement = conn
@@ -265,7 +265,7 @@ fn sample_words(dir: &Path, n: usize) -> Vec<String> {
             .split(|c: char| !c.is_alphanumeric())
             .find(|w| w.chars().count() >= 4)
         {
-            // Незаконченное слово — путь, которым ходит поиск при наборе.
+            // An unfinished word is the path search takes while typing.
             words.push(word.chars().take(word.chars().count().max(4) - 1).collect());
         }
         if words.len() >= n {
@@ -275,7 +275,7 @@ fn sample_words(dir: &Path, n: usize) -> Vec<String> {
     words
 }
 
-/// Экспорт «Избранного» из `n` сообщений за пять лет: слова по Ципфу из псевдословаря, часть сообщений с форматированием.
+/// An export of "Saved Messages" with `n` messages over five years: Zipf-distributed words from a pseudo-vocabulary, some messages formatted.
 fn synthetic(n: usize) -> String {
     let mut state = 0x5EED_1234_ABCD_9876u64;
     let mut next = move || {

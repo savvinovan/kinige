@@ -1,5 +1,6 @@
-//! «В этот день» (слайс 5, ТЗ §2.1): карточка в начале сегодняшнего дня Inbox с записями этого же числа прошлых лет.
-//! Здесь — даты прошлых лет, состав карточки и типы ответа. Отбор записей — в `kinige-store`. Без IO.
+//! "On this day" (slice 5, PRD §2.1): a card at the start of today's Inbox day with entries of the same date from past years.
+//! This module holds the dates of past years, the composition of the card and the response types. Selecting the entries
+//! is in `kinige-store`. No IO.
 
 use crate::api::MessageView;
 use crate::journal::{date_parts, is_valid_journal_date};
@@ -8,46 +9,46 @@ use chrono::{Datelike, NaiveDate};
 use serde::Serialize;
 use ts_rs::TS;
 
-/// Сколько самых новых лет показываются подробно; остальные — одной строкой («Решение пользователя 3», слайс 5).
+/// How many of the newest years are shown in detail; the rest get one line each ("User decision 3", slice 5).
 pub const DETAILED_YEARS: usize = 3;
-/// Сколько записей года показывается подробно; про остальные — «ещё N записей этого дня ›».
+/// How many entries of a year are shown in detail; for the rest there is "N more entries of this day >".
 pub const ENTRIES_PER_YEAR: usize = 2;
 
-/// Сколько знаков простого текста записи отдаёт карточка: плашка показывает до трёх строк, остальное обрезает CSS.
+/// How many characters of the entry's plain text the card returns: the card shows up to three lines, CSS cuts the rest.
 pub const PREVIEW_CHARS: usize = 300;
 
-/// Карточка «В этот день».
+/// The "On this day" card.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "OnThisDay.ts")]
 pub struct OnThisDay {
-    /// Сегодняшний `journal_date`, к которому относится карточка (с ним же вызывается `dismiss_on_this_day`).
+    /// Today's `journal_date` the card belongs to (`dismiss_on_this_day` is called with it too).
     pub today: String,
-    /// Годы с записями, от новых к старым; не пусто.
+    /// Years with entries, from newest to oldest; not empty.
     pub years: Vec<OnThisDayYear>,
 }
 
-/// Один год карточки.
+/// One year of the card.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "OnThisDayYear.ts")]
 pub struct OnThisDayYear {
-    /// День этого года (`YYYY-MM-DD`).
+    /// The day of this year (`YYYY-MM-DD`).
     pub journal_date: String,
-    /// Сколько полных лет назад (1, 3, 11…).
+    /// How many full years ago (1, 3, 11...).
     #[ts(type = "number")]
     pub years_ago: i64,
-    /// Сколько записей Inbox в этот день, кроме корзины.
+    /// How many Inbox entries there are on this day, not counting the trash.
     #[ts(type = "number")]
     pub total: i64,
-    /// Первая запись дня: на неё открывается лента по «ещё N записей этого дня ›» и по строке старого года.
+    /// The first entry of the day: the feed opens on it from "N more entries of this day >" and from the line of an old year.
     pub first_id: String,
-    /// Первые записи дня (до [`ENTRIES_PER_YEAR`]) у подробных лет; у остальных пусто.
+    /// The first entries of the day (up to [`ENTRIES_PER_YEAR`]) for detailed years; empty for the others.
     pub entries: Vec<OnThisDayEntry>,
 }
 
-/// Запись в карточке: сама запись и её текст простым текстом в одну строку (без разметки Markdown, до [`PREVIEW_CHARS`]
-/// знаков с «…» в конце) для компактной строки с обрезкой по трём строкам.
+/// An entry in the card: the entry itself and its text as plain text on one line (without Markdown markup, up to
+/// [`PREVIEW_CHARS`] characters with "…" at the end) for a compact line cut to three lines.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "OnThisDayEntry.ts")]
@@ -63,9 +64,9 @@ impl OnThisDayEntry {
     }
 }
 
-/// Даты прошлых лет для `today` (`YYYY-MM-DD`): тот же месяц и день, годы от `oldest_year` до года перед сегодняшним,
-/// от новых к старым. 29 февраля совпадает только с 29 февраля (года без него пропускаются), как у `on_this_day` в MCP.
-/// Не дата — пусто.
+/// Dates of past years for `today` (`YYYY-MM-DD`): the same month and day, years from `oldest_year` to the year before
+/// the current one, from newest to oldest. February 29 matches only February 29 (years without it are skipped), as with
+/// `on_this_day` in MCP. If it is not a date, the result is empty.
 pub fn past_dates(today: &str, oldest_year: i32) -> Vec<NaiveDate> {
     if !is_valid_journal_date(today) {
         return Vec::new();
@@ -79,14 +80,14 @@ pub fn past_dates(today: &str, oldest_year: i32) -> Vec<NaiveDate> {
         .collect()
 }
 
-/// Год из `journal_date` (`YYYY-MM-DD`); `None`, если это не дата.
+/// The year from `journal_date` (`YYYY-MM-DD`); `None` if it is not a date.
 pub fn year_of(journal_date: &str) -> Option<i32> {
     is_valid_journal_date(journal_date)
         .then(|| date_parts(journal_date).map(|(year, _, _)| year))
         .flatten()
 }
 
-/// Сколько лет назад был `date` относительно `today` (только по году: даты одного месяца и дня).
+/// How many years ago `date` was relative to `today` (by the year only: the dates share the month and day).
 pub fn years_ago(today: &str, date: &NaiveDate) -> i64 {
     let year = year_of(today).unwrap_or(0);
     i64::from(year - date.year())

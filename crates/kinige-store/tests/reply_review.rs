@@ -1,8 +1,8 @@
-//! Правки по ревью слайса 5: адресат, перенесённый в другой чат; журнал обращений без цитат; адресат, пришедший позже;
-//! скрытие карточки не попадает в `settings.json`; страницы, где у каждой записи есть ответ (смещения колонок `VIEW_LEN`).
+//! Fixes from the slice 5 review: a target moved to another chat; the access log without quotes; a target that arrives
+//! later; hiding the card does not reach `settings.json`; pages where every entry has a reply (column offsets `VIEW_LEN`).
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -43,12 +43,9 @@ fn a_draft_whose_target_moved_to_another_chat_says_moved_and_a_plain_send_still_
 
     store.move_message(&old.id, &books.id, &today()).unwrap();
     let draft = store.chat_draft(INBOX_ID, &today()).unwrap();
-    assert_eq!(
-        draft.reply_to.expect("строка ответа").state,
-        ReplyState::Moved
-    );
+    assert_eq!(draft.reply_to.expect("reply row").state, ReplyState::Moved);
     assert_eq!(draft.body, "ответ");
-    // Ответ Rust по-прежнему не принимает (адресат в другом чате), обычная запись уходит и очищает черновик.
+    // Rust still does not accept the reply (the target is in another chat), a plain entry goes through and clears the draft.
     let refused = store.send_reply(INBOX_ID, "ответ", Some(&old.id), &today());
     assert!(
         matches!(refused, Err(StoreError::ReplyTargetNotFound)),
@@ -57,7 +54,7 @@ fn a_draft_whose_target_moved_to_another_chat_says_moved_and_a_plain_send_still_
     store.send_message(INBOX_ID, "ответ", &today()).unwrap();
     let after = store.chat_draft(INBOX_ID, &today()).unwrap();
     assert_eq!((after.body.as_str(), after.reply_to), ("", None));
-    // В ленте самого ответа запись в другом чате остаётся живой: «moved» бывает только у строки над полем.
+    // In the reply's own feed the entry in another chat stays alive: "moved" exists only for the row above the field.
     let reply_view = store.list_messages(INBOX_ID, None, 10, &today()).unwrap();
     assert!(reply_view.messages.iter().all(|m| m.reply_to.is_none()));
 }
@@ -88,16 +85,16 @@ fn the_agent_log_shows_what_the_agent_saw_without_the_reply_quote() {
         .rows
         .into_iter()
         .find(|r| r.tool == "get_entries")
-        .expect("обращение");
+        .expect("access");
     let entries = a.store.agent_log_entries(call.id).unwrap();
     let shown = entries
         .iter()
         .filter_map(|e| e.message.as_ref())
         .find(|m| m.id == reply.id)
-        .expect("запись в журнале");
+        .expect("log entry");
     assert_eq!(
         shown.reply_to, None,
-        "журнал не отдаёт цитату: агент её не видел"
+        "the log does not return the quote: the agent did not see it"
     );
     assert_eq!(shown.body_md, "ответ");
 }
@@ -127,12 +124,12 @@ fn a_target_that_arrives_later_turns_the_quote_from_missing_to_live_without_a_re
             .unwrap()
             .state
     };
-    // Запись ещё не пришла при pull: её id пока занят другим (запись «исчезла» из базы).
+    // The entry has not arrived with the pull yet: its id is taken by another one for now (the entry "vanished" from the database).
     let conn = raw(dir.path());
     conn.execute("UPDATE message SET id = 'parked' WHERE id = ?1", [&old.id])
         .unwrap();
     assert_eq!(state(&store), ReplyState::Missing);
-    // Пришла: строка с тем же id появилась в базе, цитата ожила без перезапуска.
+    // It arrived: a row with the same id appeared in the database, the quote came alive without a restart.
     conn.execute("UPDATE message SET id = ?1 WHERE id = 'parked'", [&old.id])
         .unwrap();
     assert_eq!(state(&store), ReplyState::Live);
@@ -142,7 +139,7 @@ fn a_target_that_arrives_later_turns_the_quote_from_missing_to_live_without_a_re
 fn dismissing_the_card_never_reaches_settings_json() {
     let rig = rig();
     rig.store.dismiss_on_this_day("2026-10-31").unwrap();
-    // Любая правка настроек переписывает файл: ключа скрытия в нём нет ни до, ни после.
+    // Any settings edit rewrites the file: the hide key is absent both before and after.
     rig.file
         .edit(|store| store.set_text_size(TextSize::Large))
         .unwrap()
@@ -195,7 +192,7 @@ fn every_message_of_a_page_search_hits_and_trash_carry_their_own_quote() {
         .unwrap()
         .messages;
     for message in page.iter().filter(|m| ids.contains(&m.id)) {
-        let quote = message.reply_to.as_ref().expect("цитата в ленте");
+        let quote = message.reply_to.as_ref().expect("quote in the feed");
         assert_eq!(
             (quote.id.as_str(), quote.excerpt.as_str(), quote.years_later),
             (old.id.as_str(), "Мысль про лес", 3)
@@ -216,7 +213,7 @@ fn every_message_of_a_page_search_hits_and_trash_carry_their_own_quote() {
         assert_eq!(&quote.id, target);
         assert_eq!(
             hit.chat_title, title,
-            "название чата не сдвинулось из-за новых колонок"
+            "the chat title did not shift because of the new columns"
         );
         assert!(!hit.snippet.is_empty());
     }

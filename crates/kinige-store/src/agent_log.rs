@@ -1,6 +1,6 @@
-//! Журнал обращений ИИ-агентов (ADR-0009, §12.3 ТЗ): факт обращения, а не содержимое. `args_json` — только белый список
-//! полей (`kinige_domain::agent::args_json`), id затронутых записей — в `mcp_log_message`. Хранение: 90 дней и не больше
-//! 20 000 строк; `purge` записи и ротация удаляют строки `mcp_log_message` в той же транзакции, сирот не остаётся.
+//! The access log of AI agents (ADR-0009, PRD §12.3): the fact of an access, not the content. `args_json` holds only an allowlist of
+//! fields (`kinige_domain::agent::args_json`), the ids of the affected entries go to `mcp_log_message`. Retention: 90 days and at most
+//! 20,000 rows; an entry `purge` and the rotation delete the `mcp_log_message` rows in the same transaction, so no orphans remain.
 
 use crate::agent::AgentError;
 use crate::error::{read_err, write_err};
@@ -10,15 +10,15 @@ use kinige_domain::groups::INBOX_ID;
 use kinige_domain::{AgentLogEntry, AgentLogPage, AgentLogRow};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 
-/// Сколько дней хранится журнал.
+/// How many days the log is kept.
 pub const LOG_DAYS: i64 = 90;
-/// Сколько строк журнала хранится самое большее.
+/// The most log rows kept.
 pub const LOG_MAX_ROWS: i64 = 20_000;
-/// Строк на странице журнала в окне.
+/// Rows per log page in the window.
 pub const LOG_PAGE: usize = 30;
 const DAY_MS: i64 = 24 * 60 * 60 * 1000;
 
-/// Строка журнала и её записи. Вызывающий открыл транзакцию писателя: данные и журнал фиксируются вместе.
+/// A log row and its entries. The caller has opened the writer transaction: the data and the log are committed together.
 pub(crate) fn insert_log(
     conn: &Connection,
     at_ms: i64,
@@ -43,7 +43,7 @@ pub(crate) fn insert_log(
     Ok(())
 }
 
-/// Обращение без изменения данных (отказ, подключение): отдельная транзакция писателя с одной строкой журнала.
+/// An access that changes no data (a refusal, a connection): a separate writer transaction with one log row.
 pub(crate) fn log_only(
     store: &Store,
     client: &str,
@@ -70,8 +70,8 @@ pub(crate) fn log_only(
         .map_err(AgentError::from)
 }
 
-/// Строка подключения (`connect`) или переподключения моста (`reconnect`). При переподключении прежний сеанс клиента,
-/// если его последняя строка — подключение (не «отключение»), закрывается строкой «отключение» в той же транзакции.
+/// A connection row (`connect`) or a bridge reconnection row (`reconnect`). On reconnection the client's previous session,
+/// if its last row is a connection (not a "disconnect"), is closed with a "disconnect" row in the same transaction.
 pub(crate) fn log_connection(
     store: &Store,
     client: &str,
@@ -103,7 +103,7 @@ pub(crate) fn log_connection(
     })
 }
 
-/// Удаление записи навсегда убирает и её следы в журнале; сама строка обращения остаётся.
+/// Deleting an entry forever also removes its traces in the log; the access row itself stays.
 pub(crate) fn delete_log_messages(conn: &Connection, message_id: &str) -> rusqlite::Result<()> {
     conn.execute(
         "DELETE FROM mcp_log_message WHERE message_id = ?1",
@@ -112,7 +112,7 @@ pub(crate) fn delete_log_messages(conn: &Connection, message_id: &str) -> rusqli
     Ok(())
 }
 
-/// Ротация: старше 90 дней и сверх 20 000 строк; строки `mcp_log_message` удалённых обращений уходят в той же транзакции.
+/// Rotation: older than 90 days and beyond 20,000 rows; the `mcp_log_message` rows of the deleted accesses go in the same transaction.
 pub(crate) fn rotate(conn: &Connection, now_ms: i64) -> rusqlite::Result<usize> {
     let old = conn.execute(
         "DELETE FROM mcp_log WHERE at < ?1",
@@ -130,7 +130,7 @@ pub(crate) fn rotate(conn: &Connection, now_ms: i64) -> rusqlite::Result<usize> 
 }
 
 impl Store {
-    /// Журнал обращений для окна, новые сверху. `before` — `id` последней строки предыдущей страницы.
+    /// The access log for the window, newest on top. `before` is the `id` of the last row of the previous page.
     pub fn agent_log_page(&self, before: Option<i64>) -> Result<AgentLogPage, StoreError> {
         self.read(|conn| {
             let mut statement = conn
@@ -161,7 +161,7 @@ impl Store {
         })
     }
 
-    /// Записи, которые затронуло обращение: сама запись (в том числе из корзины) или «удалена навсегда» (`None`).
+    /// The entries an access touched: the entry itself (including from the trash) or "deleted forever" (`None`).
     pub fn agent_log_entries(&self, log_id: i64) -> Result<Vec<AgentLogEntry>, StoreError> {
         self.read(|conn| {
             let mut ids = conn
@@ -178,7 +178,7 @@ impl Store {
                 .into_iter()
                 .map(|message_id| log_entry(conn, message_id))
                 .collect::<Result<_, _>>()?;
-            // Хронологически: по дате и времени записи; удалённые — в конце.
+            // Chronologically: by the date and time of the entry; the deleted ones go last.
             entries.sort_by(|a, b| match (&a.message, &b.message) {
                 (Some(x), Some(y)) => {
                     (&x.journal_date, x.created_at).cmp(&(&y.journal_date, y.created_at))
@@ -191,7 +191,7 @@ impl Store {
         })
     }
 
-    /// Ротация журнала в обслуживании: возвращает, сколько строк удалено.
+    /// Log rotation during maintenance: returns how many rows were deleted.
     pub fn rotate_agent_log(&self, now: &Now) -> Result<usize, StoreError> {
         let now_ms = now.ms;
         self.write(move |conn| {
@@ -225,7 +225,7 @@ fn log_entry(conn: &Connection, message_id: String) -> Result<AgentLogEntry, Sto
         .map_err(read_err)?;
     Ok(match found {
         Some((mut message, title, icon)) => {
-            // Журнал показывает то, что видел агент, а ему `reply_to_id` и цитата не отдаются (ADR-0009).
+            // The log shows what the agent saw, and it is not given `reply_to_id` or the quote (ADR-0009).
             message.reply_to = None;
             AgentLogEntry {
                 chat_is_inbox: message.chat_id == INBOX_ID,

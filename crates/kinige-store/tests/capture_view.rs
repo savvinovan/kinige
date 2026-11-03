@@ -1,7 +1,7 @@
-//! Окно захвата на настоящем SQLite: контекст за сегодня и новая запись из окна.
+//! The capture window on a real SQLite: the context for today and a new entry from the window.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -25,7 +25,7 @@ fn context_is_up_to_three_latest_undeleted_entries_of_today_oldest_first() {
         .unwrap();
     assert!(
         store.capture_view(&moscow(T0)).unwrap().context.is_empty(),
-        "вчерашняя запись не в контексте"
+        "yesterday's entry is not in the context"
     );
 
     let ids: Vec<String> = (0..5)
@@ -45,7 +45,7 @@ fn context_is_up_to_three_latest_undeleted_entries_of_today_oldest_first() {
     assert_eq!(
         texts,
         ["запись 1", "запись 2", "запись 3"],
-        "три последних неудалённых, самая новая последней"
+        "the last three non-deleted, the newest last"
     );
     assert_eq!(view.append_target.as_deref(), Some(ids[3].as_str()));
 }
@@ -73,6 +73,6 @@ fn capture_send_creates_a_user_entry_in_inbox_and_clears_the_capture_draft() {
     assert_eq!(
         store.get_chat_draft(INBOX_ID).unwrap(),
         "черновик чата",
-        "черновик главного окна не тронут"
+        "the main window draft is untouched"
     );
 }

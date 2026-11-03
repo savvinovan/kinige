@@ -1,10 +1,10 @@
-//! Копия перед импортом (слайс 4, задача 4.7): имя и вид, согласованность при работающем писателе, ротация, недоступная
-//! папка.
+//! The copy before an import (slice 4, task 4.7): name and kind, consistency with a running writer, rotation, an inaccessible
+//! folder.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
-#![allow(clippy::disallowed_methods)] // `thread::spawn` запрещён в коде приложения (clippy.toml), тесту поток нужен без обработки отказа
+#![allow(clippy::disallowed_methods)] // `thread::spawn` is forbidden in app code (clippy.toml), the test needs a thread without handling a spawn failure
 
 mod common;
 
@@ -48,7 +48,7 @@ fn copy_is_named_listed_and_consistent_with_the_database() {
     let mode: String = conn
         .query_row("PRAGMA journal_mode", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(mode, "delete", "копия — один файл без -wal");
+    assert_eq!(mode, "delete", "the copy is a single file without -wal");
 }
 
 #[test]
@@ -62,7 +62,10 @@ fn two_copies_in_the_same_second_keep_both_files() {
         .send_message(INBOX_ID, "между", &moscow(T0 + MINUTE))
         .unwrap();
     let second = store.backup_before_import(&now).unwrap();
-    assert_ne!(first, second, "вторая копия не затирает первую");
+    assert_ne!(
+        first, second,
+        "the second copy does not overwrite the first"
+    );
     assert_eq!(classify(&second), Some(BackupKind::PreImport));
     let count = |name: &str| -> i64 {
         rusqlite::Connection::open(backups_dir(&db_path(dir.path())).join(name))
@@ -125,7 +128,7 @@ fn unavailable_folder_is_an_error_and_the_database_is_untouched() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     store.send_message(INBOX_ID, "до", &moscow(T0)).unwrap();
-    // Вместо папки копий лежит файл: создать папку нельзя.
+    // A file lies where the copies folder should be: the folder cannot be created.
     fs::write(backups_dir(&db_path(dir.path())), b"not a folder").unwrap();
     let error = store
         .backup_before_import(&moscow(T0 + MINUTE))

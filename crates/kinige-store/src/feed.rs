@@ -1,4 +1,4 @@
-//! Чтение: чаты сайдбара и страница ленты по keyset-курсору (ТЗ §4.1, §6).
+//! Reading: sidebar chats and a feed page by keyset cursor (PRD §4.1, §6).
 
 use crate::error::read_err;
 use crate::feed_page::PageAt;
@@ -7,12 +7,12 @@ use kinige_domain::groups::INBOX_ID;
 use kinige_domain::{ChatList, ChatSummary, FeedCursor, MessagePage};
 use rusqlite::Connection;
 
-/// Сколько записей в странице, если вызывающий не просил иначе, и наибольшая страница.
+/// Entries per page if the caller did not ask otherwise, and the largest page.
 pub const DEFAULT_PAGE: usize = 200;
 pub const MAX_PAGE: usize = 500;
 
-/// Порядок чатов в сайдбаре: закреплённые (по времени закрепления), затем остальные по `sort_key`, затем архив.
-/// Архивный закреплённый чат остаётся в архиве. Равные ключи решает `id` (ADR-0001, приложение §A.0).
+/// Sidebar chat order: pinned (by pin time), then the rest by `sort_key`, then the archive.
+/// An archived pinned chat stays in the archive. Equal keys are decided by `id` (ADR-0001, appendix §A.0).
 fn section_rank(chat: &ChatSummary) -> u8 {
     if chat.archived_at.is_some() {
         2
@@ -23,11 +23,11 @@ fn section_rank(chat: &ChatSummary) -> u8 {
     }
 }
 
-/// Чаты со счётчиками, в порядке показа, и размер корзины.
+/// Chats with counters, in display order, and the trash size.
 ///
-/// Счётчик чата — все записи минус корзина. Все записи считаются по покрывающему индексу `message_feed`, корзина — по
-/// частичному индексу `message_deleted`; условие `deleted_at IS NULL` само читало бы строки таблицы (на 100 000 записей
-/// импорта счётчик стоил около 150 мс против 5 мс).
+/// A chat counter is all entries minus the trash. All entries are counted over the covering index `message_feed`, the
+/// trash over the partial index `message_deleted`; the condition `deleted_at IS NULL` would read table rows itself (on
+/// 100,000 imported entries the counter cost about 150 ms against 5 ms).
 pub(crate) fn chat_list(conn: &Connection) -> Result<ChatList, StoreError> {
     let mut statement = conn
         .prepare(
@@ -39,7 +39,7 @@ pub(crate) fn chat_list(conn: &Connection) -> Result<ChatList, StoreError> {
              FROM chat c WHERE c.deleted_at IS NULL",
         )
         .map_err(read_err)?;
-    // Inbox определяется по id, а не по флагу `is_inbox` (ADR-0001 §3.6).
+    // Inbox is identified by id, not by the `is_inbox` flag (ADR-0001 §3.6).
     let rows = statement
         .query_map([INBOX_ID], |row| {
             Ok((
@@ -84,18 +84,18 @@ pub(crate) fn chat_list(conn: &Connection) -> Result<ChatList, StoreError> {
 }
 
 impl Store {
-    /// Чаты сайдбара со счётчиком записей (все, кроме корзины) и размер корзины.
+    /// Sidebar chats with an entry counter (all except the trash) and the trash size.
     pub fn sidebar(&self) -> Result<ChatList, StoreError> {
         self.read(chat_list)
     }
 
-    /// Чаты сайдбара в порядке показа.
+    /// Sidebar chats in display order.
     pub fn list_chats(&self) -> Result<Vec<ChatSummary>, StoreError> {
         Ok(self.sidebar()?.chats)
     }
 
-    /// Страница ленты: самая новая — без курсора, более старая — после `before`. Записи отдаются по возрастанию
-    /// `(journal_date, created_at, id)`; корзина не показывается.
+    /// A feed page: the newest one without a cursor, an older one after `before`. Entries come in ascending
+    /// `(journal_date, created_at, id)` order; the trash is not shown.
     pub fn list_messages(
         &self,
         chat_id: &str,
@@ -106,7 +106,7 @@ impl Store {
         self.list_messages_tagged(chat_id, before, limit, None, now)
     }
 
-    /// То же, что [`Store::list_messages`], но `tag` оставляет только записи с этим тегом (нижний регистр, без `#`).
+    /// Same as [`Store::list_messages`], but `tag` keeps only entries with this tag (lower case, without `#`).
     pub fn list_messages_tagged(
         &self,
         chat_id: &str,

@@ -1,4 +1,4 @@
-//! Восстановление из копии и файл настроек (ADR-0010).
+//! Restoring from a backup and the settings file (ADR-0010).
 
 use super::apply::{KEY_FILE_HASH, check_folder};
 use super::io::{self, ReadOutcome};
@@ -8,9 +8,10 @@ use crate::agent_settings::put;
 use rusqlite::Connection;
 use std::path::{Path, PathBuf};
 
-/// Папка Markdown-копии из `settings.json` для восстановления: только чтение. Файл небезопасен, не разобран или значение
-/// негодное — `None` (такую папку файл всё равно не применил бы). `null` в файле — папка по умолчанию (`default_mirror`):
-/// после применения файла копия пойдёт в неё, значит, её тоже нужно увести, если там лежат дни, появившиеся после снимка.
+/// The Markdown copy folder from `settings.json` for restoring: read only. If the file is unsafe, not parsed or the
+/// value is unusable, the result is `None` (the file would not have applied such a folder anyway). `null` in the file
+/// means the default folder (`default_mirror`): after the file is applied the copy will go there, so it too must be
+/// moved aside if it holds days that appeared after the snapshot.
 pub(crate) fn mirror_folder_from_file(
     data_dir: &Path,
     default_mirror: Option<&Path>,
@@ -30,7 +31,8 @@ pub(crate) fn mirror_folder_from_file(
     }
 }
 
-/// В транзакции восстановления: доступ агента выключен, видимых чатов нет (режим остаётся из копии), хэша файла нет.
+/// In the restore transaction: agent access is off, there are no visible chats (the mode stays from the backup), and
+/// there is no file hash.
 pub(crate) fn reset_access_after_restore(conn: &Connection) -> rusqlite::Result<()> {
     put(conn, KEY_ENABLED, "0")?;
     put(conn, KEY_CHATS, "[]")?;

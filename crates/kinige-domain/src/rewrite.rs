@@ -1,12 +1,12 @@
-//! Перезапись одной группы записи или чата (ADR-0001 §3.3, §3.4, §4). Без IO: записи и часов здесь нет, вызывающий
-//! передаёт строки из базы и новый HLC.
+//! Rewriting one group of an entry or a chat (ADR-0001 §3.3, §3.4, §4). No IO: there is no database or clock here, the caller
+//! passes the rows from the database and the new HLC.
 //!
-//! Правила, общие для всех групп:
-//! - каноничные байты пишутся только для группы, которую правят, и только с новым HLC строго больше прежнего;
-//! - остальные группы, неизвестные группы и неизвестные поля самой группы сохраняются дословно;
-//! - запись в `hlc_json` самой группы пересобирается: `{"h": новый HLC, "sv": 1}`; записи других групп (с лишними полями)
-//!   не трогаются;
-//! - группа в `sv` выше поддерживаемой не переписывается ([`GroupError::UnsupportedVersion`]), повреждённые байты — ошибка.
+//! Rules common to all groups:
+//! - canonical bytes are written only for the group being edited, and only with a new HLC strictly greater than the previous one;
+//! - the other groups, unknown groups and unknown fields of the group itself are kept verbatim;
+//! - the `hlc_json` record of the group itself is rebuilt: `{"h": new HLC, "sv": 1}`; the records of other groups (with extra fields)
+//!   are not touched;
+//! - a group whose `sv` is higher than supported is not rewritten ([`GroupError::UnsupportedVersion`]); corrupt bytes are an error.
 
 use crate::groups::{GroupError, SCHEMA_VERSION, parse_groups_raw};
 use crate::hlc;
@@ -14,17 +14,17 @@ use crate::jcs;
 use serde_json::{Map, Value, json, value::RawValue};
 use std::collections::BTreeMap;
 
-/// Предел `supersedes` в группах `body` и `placement` (ADR-0001 §3.4): старейшие отбрасываются.
+/// The limit of `supersedes` in the `body` and `placement` groups (ADR-0001 §3.4): the oldest are dropped.
 pub const MAX_SUPERSEDES: usize = 64;
 
-/// Что нужно знать о записи или чате, чтобы переписать одну из их групп.
+/// What you need to know about an entry or a chat to rewrite one of its groups.
 #[derive(Debug, Clone, Copy)]
 pub struct Groups<'a> {
     pub groups_raw: &'a str,
     pub hlc_json: &'a str,
 }
 
-/// Результат перезаписи: новые `groups_raw`, `hlc_json` и `schema_version` (максимум `sv` по группам, ADR-0001 §4).
+/// The result of a rewrite: the new `groups_raw`, `hlc_json` and `schema_version` (the maximum `sv` over the groups, ADR-0001 §4).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rewritten {
     pub groups_raw: String,
@@ -36,10 +36,10 @@ pub(crate) fn corrupt(why: impl ToString) -> GroupError {
     GroupError::Corrupt(why.to_string())
 }
 
-/// `base` и `supersedes` для перезаписи `body` или `placement` по ADR-0001 §3.4.
+/// `base` and `supersedes` for rewriting `body` or `placement` per ADR-0001 §3.4.
 ///
-/// Версия подтверждена (`confirmed`): `base = hlc(текущей)`, `supersedes = []`. Собственная неподтверждённая версия V:
-/// `base = V.base`, `supersedes = V.supersedes ∪ {hlc(V)}`, не больше [`MAX_SUPERSEDES`] (старейшие отбрасываются).
+/// The version is confirmed (`confirmed`): `base = hlc(current)`, `supersedes = []`. Own unconfirmed version V:
+/// `base = V.base`, `supersedes = V.supersedes ∪ {hlc(V)}`, at most [`MAX_SUPERSEDES`] (the oldest are dropped).
 pub fn chain_fields(
     object: &Map<String, Value>,
     old_hlc: &str,
@@ -51,37 +51,37 @@ pub fn chain_fields(
     let base = match object.get("base") {
         Some(Value::String(h)) => Some(h.clone()),
         Some(Value::Null) | None => None,
-        Some(_) => return Err(corrupt("base группы")),
+        Some(_) => return Err(corrupt("group base")),
     };
     let mut list: Vec<String> = match object.get("supersedes") {
         Some(Value::Array(items)) => items
             .iter()
             .map(|item| item.as_str().map(str::to_string))
             .collect::<Option<_>>()
-            .ok_or_else(|| corrupt("supersedes группы"))?,
+            .ok_or_else(|| corrupt("group supersedes"))?,
         None => Vec::new(),
-        Some(_) => return Err(corrupt("supersedes группы")),
+        Some(_) => return Err(corrupt("group supersedes")),
     };
     if !list.iter().any(|h| h == old_hlc) {
         list.push(old_hlc.to_string());
     }
     if list.len() > MAX_SUPERSEDES {
-        // Отбрасываются наименьшие HLC (старейшие версии), а не первые по позиции: чужая запись могла записать список
-        // не по порядку. Метки фиксированной ширины сравниваются как строки (ADR-0001 §2).
+        // The smallest HLCs (the oldest versions) are dropped, not the first by position: a foreign write may have stored the list
+        // out of order. Fixed-width stamps are compared as strings (ADR-0001 §2).
         list.sort();
         list.drain(..list.len() - MAX_SUPERSEDES);
     }
     Ok((base, list))
 }
 
-/// Записывает в объект группы `base` и `supersedes`.
+/// Writes `base` and `supersedes` into the group object.
 pub fn set_chain(object: &mut Map<String, Value>, base: &Option<String>, supersedes: &[String]) {
     object.insert("base".into(), json!(base));
     object.insert("supersedes".into(), json!(supersedes));
 }
 
-/// Перезаписывает группу `group` с новым HLC. `edit` получает объект группы (с неизвестными полями) и HLC её прежней
-/// версии; `max_bytes` — предел каноничных байтов группы.
+/// Rewrites the group `group` with a new HLC. `edit` receives the group object (with unknown fields) and the HLC of its previous
+/// version; `max_bytes` is the limit of the group's canonical bytes.
 pub fn rewrite_group(
     current: &Groups<'_>,
     group: &str,
@@ -95,31 +95,31 @@ pub fn rewrite_group(
 
     let old_group = groups
         .get(group)
-        .ok_or_else(|| corrupt(format!("нет группы {group}")))?;
+        .ok_or_else(|| corrupt(format!("no group {group}")))?;
     let Value::Object(mut object) = serde_json::from_str(old_group.get()).map_err(corrupt)? else {
-        return Err(corrupt(format!("группа {group} не объект")));
+        return Err(corrupt(format!("group {group} is not an object")));
     };
     let old_entry: Value = serde_json::from_str(
         hlcs.get(group)
-            .ok_or_else(|| corrupt(format!("нет HLC группы {group}")))?
+            .ok_or_else(|| corrupt(format!("no HLC for group {group}")))?
             .get(),
     )
     .map_err(corrupt)?;
     let old_hlc = old_entry
         .get("h")
         .and_then(Value::as_str)
-        .ok_or_else(|| corrupt(format!("нет h у группы {group}")))?
+        .ok_or_else(|| corrupt(format!("group {group} has no h")))?
         .to_string();
     let old_sv = old_entry
         .get("sv")
         .and_then(Value::as_u64)
-        .ok_or_else(|| corrupt(format!("нет sv у группы {group}")))?;
+        .ok_or_else(|| corrupt(format!("group {group} has no sv")))?;
     if old_sv > u64::from(SCHEMA_VERSION) {
         return Err(GroupError::UnsupportedVersion);
     }
-    // Метки сравниваются как строки только после строгого разбора: повреждённая метка — ошибка, а не «больше» или «меньше».
-    hlc::parse(&old_hlc).map_err(|e| corrupt(format!("HLC группы {group}: {e}")))?;
-    hlc::parse(new_hlc).map_err(|e| corrupt(format!("новый HLC: {e}")))?;
+    // Stamps are compared as strings only after strict parsing: a corrupt stamp is an error, not "greater" or "smaller".
+    hlc::parse(&old_hlc).map_err(|e| corrupt(format!("HLC of group {group}: {e}")))?;
+    hlc::parse(new_hlc).map_err(|e| corrupt(format!("new HLC: {e}")))?;
     if new_hlc <= old_hlc.as_str() {
         return Err(GroupError::HlcNotNewer);
     }
@@ -161,64 +161,64 @@ pub fn rewrite_group(
     })
 }
 
-/// Запись только для чтения: хотя бы одна её группа в `sv` выше поддерживаемой (ADR-0001 §4 п. 4). Повреждённый
-/// `hlc_json` (не разбирается, у группы нет `sv`) — ошибка, а не «можно».
+/// A read-only entry: at least one of its groups has an `sv` higher than supported (ADR-0001 §4 item 4). A corrupt
+/// `hlc_json` (does not parse, a group has no `sv`) is an error, not "allowed".
 pub fn is_read_only(hlc_json: &str) -> Result<bool, GroupError> {
     let entries = serde_json::from_str::<BTreeMap<String, Value>>(hlc_json).map_err(corrupt)?;
     let mut read_only = false;
     for entry in entries.values() {
         let sv = entry["sv"]
             .as_u64()
-            .ok_or_else(|| corrupt("нет sv у группы"))?;
+            .ok_or_else(|| corrupt("group has no sv"))?;
         read_only |= sv > u64::from(SCHEMA_VERSION);
     }
     Ok(read_only)
 }
 
-/// Значение группы как объект (по `groups_raw`).
+/// The value of a group as an object (from `groups_raw`).
 pub fn group_object(groups_raw: &str, group: &str) -> Result<Map<String, Value>, GroupError> {
     let groups = parse_groups_raw(groups_raw)?;
     let raw = groups
         .get(group)
-        .ok_or_else(|| corrupt(format!("нет группы {group}")))?;
+        .ok_or_else(|| corrupt(format!("no group {group}")))?;
     match serde_json::from_str(raw.get()).map_err(corrupt)? {
         Value::Object(object) => Ok(object),
-        _ => Err(corrupt(format!("группа {group} не объект"))),
+        _ => Err(corrupt(format!("group {group} is not an object"))),
     }
 }
 
-/// Целое или `null` из поля группы.
+/// An integer or `null` from a group field.
 pub fn opt_int(object: &Map<String, Value>, key: &str) -> Result<Option<i64>, GroupError> {
     match object.get(key) {
         Some(Value::Null) | None => Ok(None),
         Some(Value::Number(n)) => n
             .as_i64()
             .map(Some)
-            .ok_or_else(|| corrupt(format!("поле {key}"))),
-        Some(_) => Err(corrupt(format!("поле {key}"))),
+            .ok_or_else(|| corrupt(format!("field {key}"))),
+        Some(_) => Err(corrupt(format!("field {key}"))),
     }
 }
 
-/// Строка или `null` из поля группы.
+/// A string or `null` from a group field.
 pub fn opt_str(object: &Map<String, Value>, key: &str) -> Result<Option<String>, GroupError> {
     match object.get(key) {
         Some(Value::Null) | None => Ok(None),
         Some(Value::String(s)) => Ok(Some(s.clone())),
-        Some(_) => Err(corrupt(format!("поле {key}"))),
+        Some(_) => Err(corrupt(format!("field {key}"))),
     }
 }
 
-/// Обязательная строка из поля группы.
+/// A required string from a group field.
 pub fn req_str(object: &Map<String, Value>, key: &str) -> Result<String, GroupError> {
-    opt_str(object, key)?.ok_or_else(|| corrupt(format!("нет поля {key}")))
+    opt_str(object, key)?.ok_or_else(|| corrupt(format!("no field {key}")))
 }
 
-/// Булево из поля группы; нет поля — `false`.
+/// A boolean from a group field; no field means `false`.
 pub fn flag(object: &Map<String, Value>, key: &str) -> Result<bool, GroupError> {
     match object.get(key) {
         Some(Value::Bool(b)) => Ok(*b),
         Some(Value::Null) | None => Ok(false),
-        Some(_) => Err(corrupt(format!("поле {key}"))),
+        Some(_) => Err(corrupt(format!("field {key}"))),
     }
 }
 
@@ -232,11 +232,11 @@ mod tests {
 
     #[test]
     fn overflowing_supersedes_drops_the_smallest_hlc_not_the_first_by_position() {
-        // Список, записанный чужим клиентом не по порядку: меньшие метки в середине и в конце.
+        // A list written out of order by a foreign client: smaller stamps in the middle and at the end.
         let mut list: Vec<String> = (0..MAX_SUPERSEDES as u64)
             .map(|i| hlc(10_000 - i))
             .collect();
-        list.push(hlc(5)); // самая старая стоит в конце
+        list.push(hlc(5)); // the oldest is at the end
         let object: Map<String, Value> = serde_json::from_value(json!({
             "base": null,
             "supersedes": list,
@@ -245,15 +245,15 @@ mod tests {
         let (base, chain) = chain_fields(&object, &hlc(20_000), false).unwrap();
         assert_eq!(base, None);
         assert_eq!(chain.len(), MAX_SUPERSEDES);
-        assert!(!chain.contains(&hlc(5)), "наименьшая метка отброшена");
+        assert!(!chain.contains(&hlc(5)), "the smallest stamp is dropped");
         assert!(
             !chain.contains(&hlc(10_000 - 63)),
-            "и следующая за ней по возрасту"
+            "and the next one by age"
         );
-        assert!(chain.contains(&hlc(20_000)), "новая метка на месте");
+        assert!(chain.contains(&hlc(20_000)), "the new stamp is in place");
         assert!(
             chain.contains(&hlc(10_000)),
-            "самая свежая из старых осталась"
+            "the newest of the old ones stayed"
         );
     }
 

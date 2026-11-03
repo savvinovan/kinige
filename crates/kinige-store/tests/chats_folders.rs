@@ -1,7 +1,7 @@
-//! Папки Markdown-копии по чатам (слайс 3): имя папки по названию чата, суффикс при совпадении, переименование и архив.
+//! Markdown copy folders per chat (slice 3): the folder name from the chat title, a suffix on a clash, renaming and the archive.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -33,10 +33,10 @@ fn the_copy_puts_each_chat_into_a_folder_named_after_it_and_inbox_stays_inbox() 
         .unwrap();
     store.send_message(&books.id, "Дюна", &at(2)).unwrap();
     store.send_message(INBOX_ID, "входящее", &at(3)).unwrap();
-    wait_until("файл чата", || {
+    wait_until("chat file", || {
         folder(dir.path(), "Книги _ проза", "2026-10-21").exists()
     });
-    wait_until("файл inbox", || {
+    wait_until("inbox file", || {
         folder(dir.path(), "Inbox", "2026-10-21").exists()
     });
     assert!(
@@ -55,7 +55,7 @@ fn chats_with_the_same_name_get_an_id_suffix_and_the_oldest_keeps_the_plain_name
     store.send_message(&first.id, "первая", &at(3)).unwrap();
     store.send_message(&second.id, "вторая", &at(4)).unwrap();
     let suffixed = format!("книги ({})", second.id.get(..8).unwrap());
-    wait_until("обе папки", || {
+    wait_until("both folders", || {
         folder(dir.path(), "Книги", "2026-10-21").exists()
             && folder(dir.path(), &suffixed, "2026-10-21").exists()
     });
@@ -71,26 +71,26 @@ fn renaming_a_chat_moves_its_folder_and_rewrites_every_day() {
     store
         .send_message(&chat.id, "вчера", &moscow(yesterday))
         .unwrap();
-    wait_until("файлы до переименования", || {
+    wait_until("files before the rename", || {
         folder(dir.path(), "Книги", "2026-10-21").exists()
             && folder(dir.path(), "Книги", "2026-10-20").exists()
     });
 
     store.rename_chat(&chat.id, "Проза", &at(3)).unwrap();
-    wait_until("папка переехала", || {
+    wait_until("the folder moved", || {
         folder(dir.path(), "Проза", "2026-10-21").exists()
             && folder(dir.path(), "Проза", "2026-10-20").exists()
     });
     assert!(
         !mirror_dir(dir.path()).join("Книги").exists(),
-        "старой папки нет"
+        "no old folder"
     );
     assert!(
         fs::read_to_string(folder(dir.path(), "Проза", "2026-10-20"))
             .unwrap()
             .contains("вчера")
     );
-    wait_until("отметки сняты", || {
+    wait_until("marks cleared", || {
         count_rows(dir.path(), "mirror_dirty") == 0
     });
     let known: String = raw(dir.path())
@@ -102,9 +102,9 @@ fn renaming_a_chat_moves_its_folder_and_rewrites_every_day() {
         .unwrap();
     assert_eq!(known, "Проза");
 
-    // Имя только в другом регистре тоже переезжает.
+    // A name that differs only in case moves too.
     store.rename_chat(&chat.id, "проза", &at(4)).unwrap();
-    wait_until("регистр", || {
+    wait_until("case", || {
         folder(dir.path(), "проза", "2026-10-21").exists()
     });
     let names: Vec<String> = fs::read_dir(mirror_dir(dir.path()))
@@ -126,12 +126,12 @@ fn renaming_the_oldest_of_two_same_named_chats_hands_the_plain_folder_to_the_oth
     store.send_message(&first.id, "первая", &at(3)).unwrap();
     store.send_message(&second.id, "вторая", &at(4)).unwrap();
     let suffixed = format!("Книги ({})", second.id.get(..8).unwrap());
-    wait_until("две папки", || {
+    wait_until("two folders", || {
         folder(dir.path(), &suffixed, "2026-10-21").exists()
     });
 
     store.rename_chat(&first.id, "Фильмы", &at(5)).unwrap();
-    wait_until("вторая заняла простое имя", || {
+    wait_until("the second took the plain name", || {
         folder(dir.path(), "Книги", "2026-10-21").exists()
             && folder(dir.path(), "Фильмы", "2026-10-21").exists()
     });
@@ -147,17 +147,15 @@ fn an_archived_chat_keeps_its_folder_and_a_message_in_the_trash_leaves_the_copy(
     let chat = store.create_chat("Идеи", None, &at(1)).unwrap();
     let sent = store.send_message(&chat.id, "в корзину", &at(2)).unwrap();
     store.send_message(&chat.id, "остаётся", &at(3)).unwrap();
-    wait_until("файл", || {
-        folder(dir.path(), "Идеи", "2026-10-21").exists()
-    });
+    wait_until("file", || folder(dir.path(), "Идеи", "2026-10-21").exists());
     store.set_chat_archived(&chat.id, true, &at(4)).unwrap();
     store.delete_message(&sent.id, &at(5)).unwrap();
-    wait_until("запись ушла из копии", || {
+    wait_until("the entry left the copy", || {
         fs::read_to_string(folder(dir.path(), "Идеи", "2026-10-21"))
             .is_ok_and(|t| !t.contains("в корзину"))
     });
     store.restore_message(&sent.id, &at(6)).unwrap();
-    wait_until("запись вернулась в копию", || {
+    wait_until("the entry returned to the copy", || {
         fs::read_to_string(folder(dir.path(), "Идеи", "2026-10-21"))
             .is_ok_and(|t| t.contains("в корзину"))
     });

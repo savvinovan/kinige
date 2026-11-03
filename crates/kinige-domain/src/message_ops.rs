@@ -1,6 +1,7 @@
-//! Перезапись групп сообщения (слайс 3): `deleted` (удалить и восстановить), `flags` (задача, выполнено, избранное),
-//! `placement` (день записи) и разбор колонок из групп. Байты групп каноничные, HLC растёт строго, неизвестное сохраняется
-//! дословно — общий движок в [`crate::rewrite`]. Правка текста — [`crate::append::rewrite_body`].
+//! Rewriting of message groups (slice 3): `deleted` (delete and restore), `flags` (task, done, favorite),
+//! `placement` (the entry's day) and parsing columns out of groups. The group bytes are canonical, the HLC grows strictly,
+//! unknown data is kept verbatim -- the shared engine is in [`crate::rewrite`]. Editing the text is
+//! [`crate::append::rewrite_body`].
 
 use crate::chat::is_chat_id;
 use crate::groups::GroupError;
@@ -11,8 +12,8 @@ use crate::rewrite::{
 };
 use serde_json::{Value, json};
 
-/// Колонки таблицы `message`, которые строятся из групп: разобранное представление каноничных байтов
-/// (ADR-0001 приложение §B п. 38: `canonical(колонки) == groups_raw[g]`).
+/// The columns of the `message` table that are built from groups: the parsed representation of the canonical bytes
+/// (ADR-0001 appendix §B item 38: `canonical(columns) == groups_raw[g]`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MessageColumns {
     pub created_at: i64,
@@ -23,7 +24,7 @@ pub struct MessageColumns {
     pub body_md: String,
     pub edited_at: Option<i64>,
     pub body_base: Option<String>,
-    /// JSON-массив HLC.
+    /// A JSON array of HLCs.
     pub body_supersedes: String,
     pub is_task: bool,
     pub task_done_at: Option<i64>,
@@ -40,11 +41,11 @@ fn supersedes_text(object: &serde_json::Map<String, Value>) -> Result<String, Gr
     match object.get("supersedes") {
         Some(list @ Value::Array(_)) => serde_json::to_string(list).map_err(corrupt),
         None | Some(Value::Null) => Ok("[]".to_string()),
-        Some(_) => Err(corrupt("supersedes группы")),
+        Some(_) => Err(corrupt("supersedes of the group")),
     }
 }
 
-/// Колонки сообщения по его `groups_raw` (повреждённая или неполная запись — [`GroupError::Corrupt`]).
+/// The message columns from its `groups_raw` (a damaged or incomplete entry gives [`GroupError::Corrupt`]).
 pub fn message_columns(groups_raw: &str) -> Result<MessageColumns, GroupError> {
     let core = group_object(groups_raw, "core")?;
     let body = group_object(groups_raw, "body")?;
@@ -52,7 +53,7 @@ pub fn message_columns(groups_raw: &str) -> Result<MessageColumns, GroupError> {
     let placement = group_object(groups_raw, "placement")?;
     let deleted = group_object(groups_raw, "deleted")?;
     Ok(MessageColumns {
-        created_at: opt_int(&core, "created_at")?.ok_or_else(|| corrupt("нет created_at"))?,
+        created_at: opt_int(&core, "created_at")?.ok_or_else(|| corrupt("no created_at"))?,
         created_tz: req_str(&core, "created_tz")?,
         reply_to_id: opt_str(&core, "reply_to_id")?,
         origin: req_str(&core, "origin")?,
@@ -76,7 +77,7 @@ pub fn message_columns(groups_raw: &str) -> Result<MessageColumns, GroupError> {
     })
 }
 
-/// Удалить (`Some(время)`) или восстановить (`None`): группа `deleted` с новым HLC; побеждает больший (ADR-0001 §3.5).
+/// Delete (`Some(time)`) or restore (`None`): the `deleted` group with a new HLC; the greater one wins (ADR-0001 §3.5).
 pub fn set_deleted(
     current: &Groups<'_>,
     deleted_at: Option<i64>,
@@ -88,17 +89,17 @@ pub fn set_deleted(
     })
 }
 
-/// Изменение флагов записи (ТЗ §2.1, §6).
+/// A change of the entry's flags (PRD §2.1, §6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FlagChange {
-    /// Сделать задачей или снять; снятие обнуляет «выполнено».
+    /// Make it a task or remove the task flag; removing it clears "done".
     Task(bool),
-    /// Отметить выполненной или снять отметку; только у задачи.
+    /// Mark it done or remove the mark; only for a task.
     TaskDone(bool),
     Favorite(bool),
 }
 
-/// Перезаписывает группу `flags`. «Выполнено» у записи, которая не задача, — ошибка [`GroupError::Invalid`].
+/// Rewrites the `flags` group. "Done" on an entry that is not a task is an error, [`GroupError::Invalid`].
 pub fn change_flag(
     current: &Groups<'_>,
     change: FlagChange,
@@ -116,7 +117,7 @@ pub fn change_flag(
             FlagChange::TaskDone(done) => {
                 if !flag(group, "is_task")? {
                     return Err(GroupError::Invalid(
-                        "отметка «выполнено» у записи, которая не задача",
+                        "\"done\" mark on an entry that is not a task",
                     ));
                 }
                 group.insert("task_done_at".into(), json!(done.then_some(now_ms)));
@@ -129,9 +130,9 @@ pub fn change_flag(
     })
 }
 
-/// Перезаписывает группу `placement`: новый день записи (чат не меняется). `base`/`supersedes` — по ADR-0001 §3.4, та же
-/// логика, что у `body` (`confirmed` — версия подтверждена сервером). Дата — настоящая, `YYYY-MM-DD`; будущие даты
-/// разрешены (ADR-0001 §2).
+/// Rewrites the `placement` group: a new day for the entry (the chat does not change). `base`/`supersedes` follow
+/// ADR-0001 §3.4, the same logic as for `body` (`confirmed` means the version is confirmed by the server). The date is
+/// a real one, `YYYY-MM-DD`; future dates are allowed (ADR-0001 §2).
 pub fn set_journal_date(
     current: &Groups<'_>,
     journal_date: &str,
@@ -139,7 +140,7 @@ pub fn set_journal_date(
     new_hlc: &str,
 ) -> Result<Rewritten, GroupError> {
     if !is_valid_journal_date(journal_date) {
-        return Err(GroupError::Invalid("дата записи"));
+        return Err(GroupError::Invalid("entry date"));
     }
     rewrite_group(current, "placement", new_hlc, None, |group, old_hlc| {
         let (base, supersedes) = chain_fields(group, old_hlc, confirmed)?;
@@ -149,9 +150,10 @@ pub fn set_journal_date(
     })
 }
 
-/// Перезаписывает группу `placement`: запись переезжает в чат `chat_id`; `journal_date` не меняется (запись остаётся в тот
-/// же день нового чата). `base`/`supersedes` — по ADR-0001 §3.4, та же логика, что у смены дня. Существование чата проверяет
-/// вызывающий (хранилище): домен знает только формат id — Inbox или UUID v4 в нижнем регистре (ADR-0001 §1).
+/// Rewrites the `placement` group: the entry moves to chat `chat_id`; `journal_date` does not change (the entry stays on
+/// the same day of the new chat). `base`/`supersedes` follow ADR-0001 §3.4, the same logic as for a day change. The
+/// caller (the store) checks that the chat exists: the domain knows only the id format -- Inbox or a lowercase UUID v4
+/// (ADR-0001 §1).
 pub fn move_to_chat(
     current: &Groups<'_>,
     chat_id: &str,
@@ -159,7 +161,7 @@ pub fn move_to_chat(
     new_hlc: &str,
 ) -> Result<Rewritten, GroupError> {
     if !is_chat_id(chat_id) {
-        return Err(GroupError::Invalid("чат записи"));
+        return Err(GroupError::Invalid("entry chat"));
     }
     rewrite_group(current, "placement", new_hlc, None, |group, old_hlc| {
         let (base, supersedes) = chain_fields(group, old_hlc, confirmed)?;

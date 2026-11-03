@@ -1,7 +1,7 @@
-//! Чтение агента (ADR-0009, слайс 4a): поиск, день и диапазон, «в этот день», запись по id, страницы и предел ответа.
+//! Agent reads (ADR-0009, slice 4a): search, a day and a range, "on this day", an entry by id, pages and the reply limit.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -13,7 +13,7 @@ use kinige_domain::agent::{ENTRIES_PAGE, LIST_TEXT_CHARS, RESPONSE_BYTES, SEARCH
 use kinige_domain::groups::INBOX_ID;
 use serde_json::json;
 
-/// 2026-03-14 12:00 по Москве.
+/// 2026-03-14 12:00 Moscow time.
 const MARCH: i64 = 1_773_468_000_000;
 const DAY: i64 = 24 * 60 * MINUTE;
 
@@ -51,7 +51,7 @@ fn search_finds_only_visible_entries_and_filters_by_chat_flags_and_dates() {
     assert_eq!(
         entry_ids(&all),
         [in_inbox.clone(), in_work.clone()],
-        "новые сверху, только видимые"
+        "newest first, only the visible ones"
     );
     let only_work = call(
         &a.store,
@@ -77,7 +77,7 @@ fn search_finds_only_visible_entries_and_filters_by_chat_flags_and_dates() {
     )
     .unwrap();
     assert!(entry_ids(&dated).is_empty());
-    // Слова с окончаниями находятся (словоформы ADR-0008), пустой запрос — пустая страница.
+    // Words with endings are found (word forms, ADR-0008), an empty query gives an empty page.
     assert!(
         !entry_ids(&call(&a.store, "search", json!({"query": "лидера"}), MARCH).unwrap())
             .is_empty()
@@ -85,7 +85,7 @@ fn search_finds_only_visible_entries_and_filters_by_chat_flags_and_dates() {
     assert!(
         entry_ids(&call(&a.store, "search", json!({"query": "  "}), MARCH).unwrap()).is_empty()
     );
-    // Журнал: id записей в ответе — в mcp_log_message, query — в args_json.
+    // Log: the ids of the entries in the reply go to mcp_log_message, the query goes to args_json.
     let rows = log_rows(a.dir.path());
     assert_eq!(rows[0].3, "ok");
     assert_eq!(rows[0].4, 2);
@@ -120,7 +120,7 @@ fn search_pages_by_keyset_and_a_cursor_points_to_the_next_entry() {
     all.extend(entry_ids(&second));
     all.sort();
     all.dedup();
-    assert_eq!(all.len(), SEARCH_PAGE + 5, "без повторов и пропусков");
+    assert_eq!(all.len(), SEARCH_PAGE + 5, "no repeats and no gaps");
 }
 
 #[test]
@@ -159,7 +159,7 @@ fn get_entries_reads_a_day_and_a_range_in_chronological_order_with_pages() {
     )
     .unwrap();
     assert!(entry_ids(&one_chat).is_empty());
-    // Страницы по 200 записей.
+    // Pages of 200 entries.
     for i in 0..(ENTRIES_PAGE + 3) {
         a.store
             .send_message(
@@ -192,7 +192,7 @@ fn get_entries_reads_a_day_and_a_range_in_chronological_order_with_pages() {
 fn on_this_day_returns_past_years_and_leap_day_matches_only_leap_day() {
     let a = agent(AgentMode::Read, true);
     let at = |date_ms: i64| moscow(date_ms);
-    // 2024-02-29 12:00 MSK, 2025-02-28, 2025-03-14, 2026-03-14 (сегодня), 2023-03-14.
+    // 2024-02-29 12:00 MSK, 2025-02-28, 2025-03-14, 2026-03-14 (today), 2023-03-14.
     let leap = a
         .store
         .send_message(&a.work, "високосный", &at(1_709_200_800_000))
@@ -225,7 +225,7 @@ fn on_this_day_returns_past_years_and_leap_day_matches_only_leap_day() {
     assert!(ids.contains(&last_year), "{reply}");
     assert!(
         !ids.iter().any(|id| id == &leap),
-        "29 февраля не показывается 14 марта"
+        "February 29 is not shown on March 14"
     );
     assert!(reply.to_string().contains("год назад") && !reply.to_string().contains("сегодня"));
     let _ = three;
@@ -247,9 +247,9 @@ fn on_this_day_returns_past_years_and_leap_day_matches_only_leap_day() {
     assert_eq!(
         entry_ids(&feb28).len(),
         1,
-        "28 февраля: только запись 28 февраля"
+        "February 28: only the February 28 entry"
     );
-    // Без даты — сегодняшний день журнала по времени вызова.
+    // Without a date, today's journal day by the call time.
     let today = call(&a.store, "on_this_day", json!({}), MARCH).unwrap();
     assert!(today.to_string().contains("год назад"));
 }
@@ -287,7 +287,7 @@ fn list_texts_are_cut_and_get_entry_returns_the_whole_text() {
 #[test]
 fn a_response_over_the_limit_is_cut_by_whole_entries_and_only_returned_ids_are_logged() {
     let a = agent(AgentMode::Read, true);
-    // Четыре байта на знак: 200 записей по 2 000 знаков не помещаются в 1 МиБ.
+    // Four bytes per character: 200 entries of 2,000 characters do not fit into 1 MiB.
     let big = "😀".repeat(LIST_TEXT_CHARS);
     for i in 0..ENTRIES_PAGE {
         a.store
@@ -308,14 +308,14 @@ fn a_response_over_the_limit_is_cut_by_whole_entries_and_only_returned_ids_are_l
     let returned = entry_ids(&reply).len();
     assert!(
         returned < ENTRIES_PAGE,
-        "ответ усечён по записям: {returned}"
+        "the reply is truncated by entries: {returned}"
     );
     assert!(reply.to_string().len() <= RESPONSE_BYTES);
     assert!(reply["next_cursor"].is_string());
     let rows = log_rows(a.dir.path());
     assert_eq!(
         rows[0].4, returned as i64,
-        "в журнале только возвращённые записи"
+        "the log has only the returned entries"
     );
     let rest = call(
         &a.store,
@@ -327,7 +327,7 @@ fn a_response_over_the_limit_is_cut_by_whole_entries_and_only_returned_ids_are_l
     assert_eq!(
         returned + entry_ids(&rest).len(),
         ENTRIES_PAGE,
-        "курсор указывает на следующую запись"
+        "the cursor points to the next entry"
     );
 }
 
@@ -355,7 +355,7 @@ fn list_chats_shows_visible_chats_with_counts_and_archive() {
         .unwrap()
         .clone();
     assert_eq!(work["entries"], 1);
-    assert_eq!(work["archived"], true, "архив виден");
+    assert_eq!(work["archived"], true, "the archive is visible");
     let inbox = chats["chats"]
         .as_array()
         .unwrap()
@@ -364,12 +364,12 @@ fn list_chats_shows_visible_chats_with_counts_and_archive() {
         .unwrap()
         .clone();
     assert_eq!(inbox["title"], "Inbox");
-    // Корзина не раскрывается: ни размера, ни содержимого.
+    // The trash is not revealed: neither its size nor its content.
     assert!(!chats.to_string().contains("trash"));
 }
 
-/// Паника внутри запроса чтения агента (внутри `query_map`) — ошибка этого вызова; соединение чтения живо, следующие
-/// вызовы агента (в том числе после повторной паники) проходят.
+/// A panic inside an agent read query (inside `query_map`) is an error of that call; the read connection stays alive, the next
+/// agent calls (including after a repeated panic) go through.
 #[test]
 fn a_panic_inside_an_agent_read_fails_that_call_only_and_later_agent_calls_work() {
     let a = agent(AgentMode::Read, true);

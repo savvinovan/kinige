@@ -1,18 +1,18 @@
-//! Подсветка найденных слов и фрагмент для строки результата (слайс 4, задача 4.5).
+//! Highlighting of the found words and the snippet for a result row (slice 4, task 4.5).
 
 use super::{Query, normalize, stem, words};
 use crate::mirror::{is_closing_fence, opening_fence};
 
-/// Не больше стольких различных слов отдаёт [`highlight_terms`]: префикс из двух знаков в длинной записи совпадает с сотнями слов.
+/// [`highlight_terms`] returns at most this many distinct words: a two-character prefix in a long entry matches hundreds of words.
 const MAX_TERMS: usize = 64;
 
-/// Скобки глубже не считаются: иначе строка из `[a](` ×N читалась бы за квадратичное время, а рекурсия `inline` по тексту
-/// ссылки была бы ограничена только длиной строки. Настоящие ссылки так глубоко не вложены.
+/// Brackets deeper than this are not counted: otherwise a string of `[a](` x N would be read in quadratic time, and the
+/// `inline` recursion over the link text would be limited only by the string length. Real links are not nested that deep.
 const MAX_NESTING: usize = 64;
 
-/// Различные слова текста записи (как они в нём написаны, с регистром), которые совпали с запросом по правилам
-/// [`super::fts_query`]: основа слова равна основе терма, а у последнего терма — начинается с неё, если слово не закончено.
-/// Фронтенд подсвечивает эти слова как целые.
+/// Distinct words of the entry text (as written there, with case) that matched the query by the rules of
+/// [`super::fts_query`]: the word stem equals the term stem, and for the last term it starts with it, if the word is unfinished.
+/// The frontend highlights these words as whole words.
 pub fn highlight_terms(body_md: &str, input: &str) -> Vec<String> {
     let Some(query) = Query::parse(input) else {
         return Vec::new();
@@ -29,9 +29,10 @@ pub fn highlight_terms(body_md: &str, input: &str) -> Vec<String> {
     found
 }
 
-/// Простой текст вокруг первого слова из `terms` (регистр и «ё» не важны), не длиннее `max_chars` знаков вместе с «…»
-/// по обрезанным краям. Разметка Markdown снята, переводы строк стали пробелами. Режет только по границе слова
-/// (одно слово длиннее остатка режется по знаку) и по границе знака UTF-8. Совпадения нет — начало текста.
+/// Plain text around the first word from `terms` (case and "ё" do not matter), no longer than `max_chars` characters
+/// including the "…" on the cut edges. Markdown markup is stripped, line breaks became spaces. Cuts only at a word
+/// boundary (a single word longer than the remainder is cut by character) and at a UTF-8 character boundary. No match
+/// -- the start of the text.
 pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String {
     let text = plain_text(body_md);
     let chars: Vec<char> = text.chars().collect();
@@ -41,7 +42,7 @@ pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String {
     if chars.len() <= max_chars {
         return text;
     }
-    // Под два «…» и хоть один знак окна места нет: просто начало текста.
+    // No room for two "…" and at least one window character: just the start of the text.
     if max_chars < 3 {
         return chars.iter().take(max_chars).collect();
     }
@@ -49,14 +50,14 @@ pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String {
     let first_match = words(&text)
         .find(|(_, word)| wanted.contains(word))
         .map(|(original, _)| {
-            // Слово — срез `text`: его смещение — разность адресов.
+            // The word is a slice of `text`: its offset is the difference of the addresses.
             let offset = (original.as_ptr() as usize).saturating_sub(text.as_ptr() as usize);
             text.get(..offset).map_or(0, |head| head.chars().count())
         });
     let hit = first_match.unwrap_or(0);
     let is_alnum = |at: usize| chars.get(at).is_some_and(|c| c.is_alphanumeric());
 
-    // Начало окна: треть окна контекста до совпадения, сдвинутая вперёд к началу слова.
+    // Window start: a third of the window as context before the match, moved forward to the start of a word.
     let mut start = hit.saturating_sub(max_chars / 3);
     while start > 0
         && start < hit
@@ -65,7 +66,7 @@ pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String {
         start += 1;
     }
     let lead = usize::from(start > 0);
-    // Конец окна. Если текст не помещается, один знак уходит под «…» в конце.
+    // Window end. If the text does not fit, one character goes to the trailing "…".
     let mut end = (start + max_chars - lead).min(chars.len());
     if end < chars.len() {
         end = (start + max_chars - lead - 1).min(chars.len());
@@ -75,7 +76,7 @@ pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String {
         while cut > start && is_alnum(cut - 1) && is_alnum(cut) {
             cut -= 1;
         }
-        // Одно слово длиннее окна: режем по знаку.
+        // A single word is longer than the window: cut by character.
         if cut > start {
             end = cut;
         }
@@ -90,8 +91,8 @@ pub fn snippet(body_md: &str, terms: &[String], max_chars: usize) -> String {
     )
 }
 
-/// Markdown записи → простой текст в одну строку: без маркеров списков, цитат, заголовков, оград кода, ссылок и
-/// выделения. Не разбор Markdown, а вырезание разметки для фрагмента.
+/// Entry Markdown -> plain text on one line: without list markers, quotes, headings, code fences, links and
+/// emphasis. Not a Markdown parser, just cutting out the markup for a snippet.
 fn plain_text(body_md: &str) -> String {
     let mut lines: Vec<String> = Vec::new();
     let mut fence: Option<(char, usize)> = None;
@@ -117,7 +118,7 @@ fn plain_text(body_md: &str) -> String {
         .join(" ")
 }
 
-/// Цитата, заголовок, маркер списка и квадрат задачи в начале строки.
+/// Quote, heading, list marker and task box at the start of a line.
 fn strip_line_markers(line: &str) -> &str {
     let mut rest = line.trim_start();
     while let Some(after) = rest.strip_prefix('>') {
@@ -152,8 +153,8 @@ fn strip_line_markers(line: &str) -> &str {
     rest
 }
 
-/// Разметка внутри строки: экранирование, ссылки `[текст](адрес)` и `<адрес>`, обратные кавычки, `**`, `~~`, `__`, а
-/// также одиночные `*` и `_` на границе слова (в середине слова, как в `snake_case`, остаются).
+/// Markup inside a line: escaping, links `[text](address)` and `<address>`, backticks, `**`, `~~`, `__`, and also
+/// single `*` and `_` at a word boundary (in the middle of a word, as in `snake_case`, they stay).
 fn inline(line: &str) -> String {
     let chars: Vec<char> = line.chars().collect();
     let mut out = String::with_capacity(line.len());
@@ -181,7 +182,7 @@ fn inline(line: &str) -> String {
                 out.push(c);
             }
             '<' => {
-                // `<https://…>` — адрес без скобок и пробелов: первый `>` или пробел после `<` должен оказаться `>`.
+                // `<https://…>` is an address without brackets and spaces: the first `>` or space after `<` must be `>`.
                 let end = stops.get(i + 1).copied().unwrap_or(chars.len());
                 match chars.get(i + 1..end) {
                     Some(address) if chars.get(end) == Some(&'>') => {
@@ -207,8 +208,8 @@ fn inline(line: &str) -> String {
     out
 }
 
-/// Для каждой позиции — индекс ближайшего с неё `>` или пробельного знака (длина строки, если их нет). Считается один раз
-/// за строку, чтобы поиск закрытия у каждой `<` не делал разбор квадратичным по длине.
+/// For each position, the index of the nearest `>` or whitespace at or after it (the string length if there is none).
+/// Computed once per line, so that looking for the closing mark for each `<` does not make parsing quadratic in length.
 fn next_stops(chars: &[char]) -> Vec<usize> {
     let mut stops = vec![chars.len(); chars.len() + 1];
     for (i, c) in chars.iter().enumerate().rev() {
@@ -224,7 +225,7 @@ fn next_stops(chars: &[char]) -> Vec<usize> {
     stops
 }
 
-/// Индекс скобки, закрывающей `open` в `start`, с учётом вложенности и экранирования; не глубже [`MAX_NESTING`].
+/// Index of the bracket that closes `open` at `start`, taking nesting and escaping into account; no deeper than [`MAX_NESTING`].
 fn matching(chars: &[char], start: usize, open: char, close: char) -> Option<usize> {
     let mut depth = 0usize;
     let mut i = start;

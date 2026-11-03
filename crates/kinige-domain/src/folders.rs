@@ -1,20 +1,20 @@
-//! Папки чатов в Markdown-копии (ТЗ §2.1, слайс 3): `<папка копии>/<имя чата>/YYYY/YYYY-MM-DD.md`. Имя папки — имя чата,
-//! очищенное от знаков, недопустимых в именах файлов. Папка Inbox — `Inbox` при любом языке интерфейса и любых именах
-//! других чатов. Одинаковые имена (без учёта регистра: файловая система macOS регистр не различает) различаются суффиксом
-//! из начала id чата; имя без суффикса остаётся у самого старого чата.
+//! Chat folders in the Markdown copy (PRD §2.1, slice 3): `<copy folder>/<chat name>/YYYY/YYYY-MM-DD.md`. The folder name is the chat name
+//! cleaned of characters not allowed in file names. The Inbox folder is `Inbox` in any interface language and with any names
+//! of other chats. Equal names (case-insensitive: the macOS file system does not distinguish case) are told apart by a suffix
+//! taken from the start of the chat id; the name without a suffix stays with the oldest chat.
 
 use crate::groups::INBOX_ID;
 use crate::mirror::INBOX_FOLDER;
 use std::collections::{BTreeMap, BTreeSet};
 
-/// Сколько знаков имени чата попадает в имя папки.
+/// How many characters of the chat name go into the folder name.
 pub const MAX_FOLDER_CHARS: usize = 80;
-/// Имя папки чата с пустым или целиком недопустимым именем.
+/// The folder name for a chat with an empty or entirely invalid name.
 pub const FALLBACK_FOLDER: &str = "Chat";
-/// Сколько знаков id идёт в суффикс (потом, если и это совпало, суффикс удлиняется).
+/// How many characters of the id go into the suffix (later, if even that matches, the suffix is lengthened).
 const SUFFIX_CHARS: usize = 8;
 
-/// Чат для расчёта папок.
+/// A chat for the folder calculation.
 #[derive(Debug, Clone, Copy)]
 pub struct FolderChat<'a> {
     pub id: &'a str,
@@ -22,8 +22,8 @@ pub struct FolderChat<'a> {
     pub created_at: i64,
 }
 
-/// Имя из названия чата: недопустимые знаки (`/ \ : * ? " < > |` и управляющие) заменяются на `_`, пробелы и точки по краям
-/// убираются, длина ограничена. Пустое — [`FALLBACK_FOLDER`].
+/// A name from the chat title: invalid characters (`/ \ : * ? " < > |` and control ones) are replaced with `_`, surrounding spaces and dots
+/// are removed, the length is limited. An empty result becomes [`FALLBACK_FOLDER`].
 pub fn sanitize_folder_name(title: &str) -> String {
     let outer = title.trim_matches(|c: char| c.is_whitespace() || c == '.');
     let replaced: String = outer
@@ -78,11 +78,11 @@ fn avoid_windows_device_name(name: &str) -> String {
     }
 }
 
-/// Папка каждого чата. Результат не зависит от порядка `chats`.
+/// The folder of each chat. The result does not depend on the order of `chats`.
 pub fn chat_folders(chats: &[FolderChat<'_>]) -> BTreeMap<String, String> {
     let mut result = BTreeMap::new();
     let mut taken: BTreeSet<String> = BTreeSet::new();
-    // Inbox занимает своё имя первым.
+    // Inbox takes its name first.
     if chats.iter().any(|chat| chat.id == INBOX_ID) {
         result.insert(INBOX_ID.to_string(), INBOX_FOLDER.to_string());
     }
@@ -99,7 +99,7 @@ pub fn chat_folders(chats: &[FolderChat<'_>]) -> BTreeMap<String, String> {
             let id_start: String = chat.id.chars().take(suffix).collect();
             name = format!("{base} ({id_start})");
             if whole_id_tried {
-                // Id исчерпан (одинаковые id в одной базе невозможны): различаем номером.
+                // The id is exhausted (equal ids in one database are impossible): tell apart by a number.
                 name = format!("{name} {number}");
                 number += 1;
             }
@@ -216,7 +216,11 @@ mod tests {
         assert_eq!(folders["cccccccc-0000"], "книги (cccccccc)");
         let mut reversed = chats;
         reversed.reverse();
-        assert_eq!(chat_folders(&reversed), folders, "порядок входа не важен");
+        assert_eq!(
+            chat_folders(&reversed),
+            folders,
+            "the input order does not matter"
+        );
     }
 
     #[test]

@@ -1,10 +1,10 @@
-//! Схема SQLite и миграции (`PRAGMA user_version`). Миграция 6 (слайс 5) добавляет ответ в черновик; миграция 5 (слайс 4a) добавляет журнал обращений агентов; миграция 4 (слайс 4) добавляет индекс внешних id импорта и индекс
-//! поиска; миграция 3 (слайс 3) — ревизии, tombstones и производные локальные таблицы; миграция 2 — локальную таблицу
-//! черновиков (слайс 2).
-//! Миграция 1 создаёт только таблицы, в которые пишет слайс 1
-//! (слайс 1, «Затрагивает чувствительные зоны»): остальные таблицы ADR-0001 §C добавят свои слайсы миграциями
-//! `CREATE TABLE` без изменения существующих строк. Колонки `hlc_json`, `server_known`, `groups_raw` и `schema_version`
-//! есть с первой записи: задним числом их не исправить.
+//! SQLite schema and migrations (`PRAGMA user_version`). Migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
+//! index; migration 3 (slice 3) adds revisions, tombstones and derived local tables; migration 2 adds the local table
+//! of drafts (slice 2).
+//! Migration 1 creates only the tables that slice 1 writes to
+//! (slice 1, "Touches sensitive areas"): the other tables of ADR-0001 §C will be added by their slices as migrations
+//! with `CREATE TABLE` and no change to existing rows. The columns `hlc_json`, `server_known`, `groups_raw` and
+//! `schema_version` exist from the first write: they cannot be fixed retroactively.
 
 use rusqlite::Connection;
 
@@ -74,8 +74,8 @@ CREATE TABLE mirror_dirty (
 );
 ";
 
-/// Миграция 2 (слайс 2): черновики. Локальная несинхронизируемая таблица, строки сообщений и чатов не меняются.
-/// Ключ — `capture` (окно захвата) или `chat:<id>` (поле ввода главного окна).
+/// Migration 2 (slice 2): drafts. A local table that is not synced; message and chat rows do not change.
+/// The key is `capture` (the capture window) or `chat:<id>` (the input field of the main window).
 const MIGRATION_2: &str = "
 CREATE TABLE draft (
   key TEXT PRIMARY KEY,
@@ -84,14 +84,14 @@ CREATE TABLE draft (
 );
 ";
 
-/// Миграция 3 (слайс 3): `CREATE TABLE` без изменения строк синхронизируемых таблиц (ADR-0001, приложение §C).
-/// - `message_revision` — синхронизируемая, append-only; `hlc_json` только `core` (ревизия — запись с одной группой);
-/// - `tombstone(entity, id, purged_of, purged_at, cascade_of, held)` — следы физического удаления (корзина, 30 дней): живут
-///   до первой привязки к аккаунту и не меньше 180 дней; `purged_of` — снимок HLC всех групп; у детей `cascade_of` = id
-///   родителя, `held` = NULL;
-/// - `message_tag` — локальная производная от `body_md` (фильтр по `#тегу`), пересчитывается в этой же миграции;
-/// - `mirror_chat` — в какой папке Markdown-копии лежат файлы чата сейчас (переименование чата переносит папку);
-/// - частичный индекс корзины.
+/// Migration 3 (slice 3): `CREATE TABLE` with no change to rows of synced tables (ADR-0001, appendix §C).
+/// - `message_revision` -- synced, append-only; `hlc_json` is only `core` (a revision is an entry with one group);
+/// - `tombstone(entity, id, purged_of, purged_at, cascade_of, held)` -- traces of physical deletion (trash, 30 days): they
+///   live until the first binding to an account and for at least 180 days; `purged_of` is a snapshot of the HLC of all
+///   groups; for children `cascade_of` = the parent id, `held` = NULL;
+/// - `message_tag` -- a local derivative of `body_md` (the `#tag` filter), recomputed in this same migration;
+/// - `mirror_chat` -- in which Markdown copy folder the chat's files lie now (renaming a chat moves the folder);
+/// - a partial index of the trash.
 const MIGRATION_3: &str = "
 CREATE TABLE message_revision (
   id TEXT PRIMARY KEY,
@@ -131,14 +131,14 @@ CREATE TABLE mirror_chat (
 CREATE INDEX message_deleted ON message(deleted_at) WHERE deleted_at IS NOT NULL;
 ";
 
-/// Миграция 4 (слайс 4): `CREATE TABLE` без изменения строк синхронизируемых таблиц (ADR-0001, приложение §C.3).
-/// - `message_ext(src, ext_chat, ext_msg, message_id)` — локальный несинхронизируемый индекс внешних id импорта,
-///   производный от `message.ext_json`; дедупликация повторного импорта;
-/// - `search_fts` — FTS5 без хранения текста (`contentless_delete`) по основам слов, `search_map` — `rowid → message_id`
-///   (ADR-0008); локальная производная от `message.body_md`.
+/// Migration 4 (slice 4): `CREATE TABLE` with no change to rows of synced tables (ADR-0001, appendix §C.3).
+/// - `message_ext(src, ext_chat, ext_msg, message_id)` -- a local, non-synced index of external import ids, derived from
+///   `message.ext_json`; deduplication of a repeated import;
+/// - `search_fts` -- FTS5 without storing the text (`contentless_delete`) over word stems, `search_map` -- `rowid →
+///   message_id` (ADR-0008); a local derivative of `message.body_md`.
 ///
-/// Обе таблицы заполняет `after_migration(4)` кодом Rust и SQL из существующих записей. Колонки `message.body_search`
-/// из черновика ТЗ §4.2 нет: производное не меняет строки синхронизируемой таблицы.
+/// Both tables are filled by `after_migration(4)` with Rust code and SQL from existing entries. The column
+/// `message.body_search` from the PRD §4.2 draft does not exist: a derivative does not change rows of a synced table.
 pub(crate) const MIGRATION_4: &str = "
 CREATE TABLE message_ext (
   src TEXT NOT NULL,
@@ -158,14 +158,15 @@ CREATE VIRTUAL TABLE search_fts USING fts5(
 );
 ";
 
-/// Миграция 5 (слайс 4a): журнал обращений ИИ-агентов через MCP (ADR-0009, приложение ADR-0001 §C.4). Локальные
-/// несинхронизируемые таблицы, строки синхронизируемых таблиц не меняются.
-/// - `mcp_log` — одна строка на обращение (вызов инструмента, подключение, отключение): время, имя клиента с его слов,
-///   инструмент, `args_json` (только белый список полей, **без текста записей**) и исход;
-/// - `entry_count` — сколько записей затронуло обращение; пишется в той же транзакции, что строка, и **не меняется** после
-///   `purge` записи: история обращений не переписывается удалением (окно показывает число отсюда);
-/// - `mcp_log_message` — id записей, которые затронуло обращение; `purge` записи и ротация журнала удаляют эти строки
-///   в той же транзакции, сирот не остаётся.
+/// Migration 5 (slice 4a): the log of AI agent accesses via MCP (ADR-0009, appendix ADR-0001 §C.4). Local, non-synced
+/// tables; rows of synced tables do not change.
+/// - `mcp_log` -- one row per access (a tool call, connect, disconnect): the time, the client name as the client states it,
+///   the tool, `args_json` (only an allowlist of fields, **without entry text**) and the outcome;
+/// - `entry_count` -- how many entries the access touched; written in the same transaction as the row and **does not
+///   change** after a `purge` of an entry: the access history is not rewritten by deletion (the window shows the number
+///   from here);
+/// - `mcp_log_message` -- ids of the entries the access touched; a `purge` of an entry and log rotation delete these rows
+///   in the same transaction, no orphans are left.
 pub(crate) const MIGRATION_5: &str = "
 CREATE TABLE mcp_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -184,14 +185,14 @@ CREATE TABLE mcp_log_message (
 CREATE INDEX mcp_log_message_message ON mcp_log_message(message_id);
 ";
 
-/// Миграция 6 (слайс 5, приложение ADR-0001 §C.5): к локальной таблице черновиков добавляется запись, на которую пишется
-/// ответ (строка «Ответ на запись» над полем ввода). Таблица не синхронизируется, строки синхронизируемых таблиц не
-/// меняются; существующие черновики остаются со значением `NULL`.
+/// Migration 6 (slice 5, appendix ADR-0001 §C.5): the entry being replied to is added to the local table of drafts (the
+/// "Reply to entry" row above the input field). The table is not synced, rows of synced tables do not change; existing
+/// drafts keep the value `NULL`.
 pub(crate) const MIGRATION_6: &str = "
 ALTER TABLE draft ADD COLUMN reply_to_id TEXT;
 ";
 
-/// Миграции по порядку; номер версии — индекс + 1.
+/// Migrations in order; the version number is the index + 1.
 const MIGRATIONS: &[&str] = &[
     MIGRATION_1,
     MIGRATION_2,
@@ -201,10 +202,10 @@ const MIGRATIONS: &[&str] = &[
     MIGRATION_6,
 ];
 
-/// Версия схемы, которую понимает это приложение.
+/// The schema version this app understands.
 pub const LATEST_VERSION: i64 = MIGRATIONS.len() as i64;
 
-/// Данные, которые миграция считает кодом Rust, а не SQL: теги из `body_md` (правила разбора — `kinige_domain::tags`).
+/// Data a migration computes with Rust code, not SQL: tags from `body_md` (the parsing rules are in `kinige_domain::tags`).
 fn after_migration(tx: &rusqlite::Transaction<'_>, version: i64) -> rusqlite::Result<()> {
     if version == 3 {
         crate::tags::rebuild_all(tx)?;
@@ -216,7 +217,7 @@ fn after_migration(tx: &rusqlite::Transaction<'_>, version: i64) -> rusqlite::Re
     Ok(())
 }
 
-/// База создана более новым приложением: откат после миграции не поддерживается (ТЗ §10.4).
+/// The database was created by a newer app: rolling back after a migration is not supported (PRD §10.4).
 #[derive(Debug)]
 pub enum MigrateError {
     TooNew { found: i64 },
@@ -229,7 +230,7 @@ impl From<rusqlite::Error> for MigrateError {
     }
 }
 
-/// Применяет недостающие миграции, каждую в своей транзакции вместе с `user_version`.
+/// Applies the missing migrations, each in its own transaction together with `user_version`.
 pub fn migrate(conn: &mut Connection) -> Result<(), MigrateError> {
     let current: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
     if current > LATEST_VERSION {

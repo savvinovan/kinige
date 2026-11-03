@@ -1,33 +1,33 @@
-//! Проверка адреса перед открытием в системном браузере (ТЗ §6, §12.3): только `http`, `https`, `mailto`.
+//! Check of an address before opening it in the system browser (PRD §6, §12.3): only `http`, `https`, `mailto`.
 
 use std::fmt;
 use url::Url;
 
-/// Самый длинный допустимый адрес.
+/// The longest allowed address.
 pub const MAX_URL_LEN: usize = 8192;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LinkError {
-    /// Пустой, слишком длинный, с пробелами по краям или управляющими символами, относительный или не разбирается.
+    /// Empty, too long, with spaces at the edges or control characters, relative, or does not parse.
     Invalid,
-    /// Схема не из списка (`file:`, `javascript:`, `data:`, `tauri:`, `asset:`, `ipc:` и любые другие).
+    /// A scheme not on the list (`file:`, `javascript:`, `data:`, `tauri:`, `asset:`, `ipc:` and any other).
     SchemeNotAllowed,
 }
 
 impl fmt::Display for LinkError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LinkError::Invalid => f.write_str("неверный адрес"),
-            LinkError::SchemeNotAllowed => f.write_str("схема адреса не разрешена"),
+            LinkError::Invalid => f.write_str("invalid address"),
+            LinkError::SchemeNotAllowed => f.write_str("address scheme is not allowed"),
         }
     }
 }
 
 impl std::error::Error for LinkError {}
 
-/// Проверенный адрес в нормализованном виде (его и открывает система). Разбор — как у браузера (WHATWG, крейт `url`);
-/// управляющие символы и пробелы по краям отвергаются до разбора: разбор молча вырезал бы их, и система открыла бы
-/// не ту строку, что проверена.
+/// The checked address in normalized form (this is what the system opens). Parsing works like a browser (WHATWG, the
+/// `url` crate); control characters and spaces at the edges are rejected before parsing: parsing would silently strip
+/// them, and the system would open a different string than the one that was checked.
 pub fn validate_external_url(input: &str) -> Result<String, LinkError> {
     if input.is_empty()
         || input.len() > MAX_URL_LEN

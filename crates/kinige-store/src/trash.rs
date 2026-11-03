@@ -1,13 +1,13 @@
-//! Корзина (слайс 3, ТЗ §2.1, §4.1, §16; ADR-0001 §3.5): список, «Удалить навсегда» и автоудаление через 30 дней.
+//! Trash (slice 3, PRD §2.1, §4.1, §16; ADR-0001 §3.5): the list, "Delete forever" and auto-deletion after 30 days.
 //!
-//! Физическое удаление (purge) локальное, пока нет аккаунта: запись и её ревизии уходят из таблиц, а в `tombstone`
-//! остаются следы со снимком `purged_of` — HLC **всех** групп, включая неизвестные. У ревизий `cascade_of` — id записи,
-//! `held` — `NULL`. Следы хранятся до первой привязки к аккаунту и не меньше 180 дней; в слайсах 1–10 их никто не стирает.
-//! Корзина в Markdown-копию не попадает.
+//! Physical deletion (purge) is local while there is no account: the entry and its revisions leave the tables, and
+//! `tombstone` keeps traces with a `purged_of` snapshot -- the HLC of **all** groups, including unknown ones. For
+//! revisions `cascade_of` is the entry id and `held` is `NULL`. The traces are kept until the first binding to an account
+//! and for at least 180 days; in slices 1-10 nobody erases them. The trash does not get into the Markdown copy.
 //!
-//! Purge читает только колонки `hlc_json` и `deleted_at`, не `groups_raw`: запись с повреждёнными байтами групп всё равно
-//! можно удалить навсегда (в снимок попадает то, что читается). Запись, у которой группа `deleted` в неподдерживаемой `sv`,
-//! не удаляется ни вручную, ни автоматически (ADR-0001 §4 п. 4: `purged` создаётся, только если `deleted` поддерживается).
+//! Purge reads only the columns `hlc_json` and `deleted_at`, not `groups_raw`: an entry with damaged group bytes can still
+//! be deleted forever (what is readable gets into the snapshot). An entry whose `deleted` group has an unsupported `sv`
+//! is deleted neither manually nor automatically (ADR-0001 §4 item 4: `purged` is created only if `deleted` is supported).
 
 use crate::error::{read_err, write_err};
 use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row_at};
@@ -19,12 +19,12 @@ use kinige_domain::history::{
 };
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 
-/// Сколько записей удаляется за одну транзакцию при автоудалении.
+/// How many entries are deleted in one transaction during auto-deletion.
 const PURGE_BATCH: i64 = 200;
-/// Наибольшее число записей в списке корзины.
+/// The largest number of entries in the trash list.
 const TRASH_LIMIT: i64 = 1000;
 
-/// Запись, как её видит purge: без разбора групп.
+/// An entry as purge sees it: without parsing the groups.
 struct PurgeTarget {
     id: String,
     hlc_json: String,
@@ -48,7 +48,7 @@ fn load_target(conn: &Connection, id: &str) -> Result<PurgeTarget, StoreError> {
     .ok_or(StoreError::MessageNotFound)
 }
 
-/// Физически удаляет запись из корзины вместе с ревизиями и пишет tombstones. Вызывающий открыл транзакцию.
+/// Physically deletes an entry from the trash together with its revisions and writes tombstones. The caller has opened a transaction.
 fn purge(tx: &Connection, target: &PurgeTarget, now_ms: i64) -> Result<(), StoreError> {
     let message_snapshot = purged_of_best_effort(&target.hlc_json)?;
     tx.execute(
@@ -90,17 +90,17 @@ fn purge(tx: &Connection, target: &PurgeTarget, now_ms: i64) -> Result<(), Store
     )
     .map_err(write_err)?;
     crate::ext::remove(tx, &target.id).map_err(write_err)?;
-    // Следы записи в журнале обращений агентов уходят вместе с ней; сама строка обращения остаётся (ADR-0009).
+    // The entry's traces in the agent access log go with it; the access row itself stays (ADR-0009).
     crate::agent_log::delete_log_messages(tx, &target.id).map_err(write_err)?;
     tx.execute("DELETE FROM message WHERE id = ?1", [&target.id])
         .map_err(write_err)?;
-    // После удаления строки `message`: повреждённый индекс перестраивается из оставшихся записей, и удалённая в него не вернётся.
+    // After the `message` row is deleted: a damaged index is rebuilt from the remaining entries, and the deleted one will not return to it.
     crate::search::remove(tx, &target.id).map_err(write_err)?;
     Ok(())
 }
 
 impl Store {
-    /// Записи из корзины, самые недавно удалённые первыми: чат, дата, сколько осталось до автоудаления.
+    /// Entries in the trash, most recently deleted first: the chat, the date, how long is left before auto-deletion.
     pub fn list_trash(&self, now: &Now) -> Result<Vec<TrashItem>, StoreError> {
         let now_ms = now.ms;
         self.read(|conn| {
@@ -131,8 +131,9 @@ impl Store {
         })
     }
 
-    /// «Удалить навсегда» у записи в корзине: то же, что автоудаление через 30 дней. Записи нет — `MessageNotFound`,
-    /// запись не в корзине — `NotInTrash`: живую запись так не удалить. Группа `deleted` новее поддерживаемой — `ReadOnly`.
+    /// "Delete forever" for an entry in the trash: the same as auto-deletion after 30 days. No such entry --
+    /// `MessageNotFound`, the entry is not in the trash -- `NotInTrash`: a live entry cannot be deleted this way. A
+    /// `deleted` group newer than supported -- `ReadOnly`.
     pub fn purge_message(&self, id: &str, now: &Now) -> Result<(), StoreError> {
         let (id, now_ms) = (id.to_string(), now.ms);
         self.write(move |conn| {
@@ -151,9 +152,9 @@ impl Store {
         })
     }
 
-    /// Автоудаление: записи, пролежавшие в корзине 30 суток, удаляются физически (при старте и раз в сутки). Возвращает,
-    /// сколько удалено. Повреждённая запись не останавливает остальные: она остаётся в корзине, а последняя ошибка
-    /// возвращается после обработки остальных. Записи с группой `deleted` в неподдерживаемой `sv` пропускаются молча.
+    /// Auto-deletion: entries that lay in the trash for 30 days are deleted physically (at start and once a day). Returns
+    /// how many were deleted. A damaged entry does not stop the others: it stays in the trash, and the last error is
+    /// returned after the rest are processed. Entries with a `deleted` group in an unsupported `sv` are skipped silently.
     pub fn purge_expired(&self, now: &Now) -> Result<usize, StoreError> {
         match self.purge_expired_report(now) {
             (purged, None) => Ok(purged),
@@ -161,7 +162,7 @@ impl Store {
         }
     }
 
-    /// То же, но результат частичный и ошибка не прерывает вызывающего: сколько удалено и последняя ошибка (если была).
+    /// The same, but the result is partial and the error does not interrupt the caller: how many were deleted and the last error (if any).
     pub(crate) fn purge_expired_report(&self, now: &Now) -> (usize, Option<StoreError>) {
         let border = now.ms.saturating_sub(TRASH_DAYS * DAY_MS);
         let now_ms = now.ms;
@@ -193,7 +194,7 @@ impl Store {
                 let mut bad = Vec::new();
                 let mut error = None;
                 for id in ids.into_iter().filter(|id| !skipped.contains(id)) {
-                    // Точка сохранения на запись: повреждённая откатывается одна, уже удалённые остаются.
+                    // A savepoint per entry: a damaged one is rolled back alone, the already deleted ones stay.
                     let step = tx.savepoint().map_err(write_err)?;
                     let result = load_target(&step, &id).and_then(|target| {
                         if deleted_group_supported(&target.hlc_json) {
@@ -229,8 +230,8 @@ impl Store {
                 }
             };
             purged += done;
-            // Пропущенные записи (неподдерживаемая группа, повреждённый JSON) не мешают здоровым за ними: выборка в
-            // следующем проходе длиннее на число пропущенных, цикл кончается только когда новых записей не осталось.
+            // Skipped entries (an unsupported group, damaged JSON) do not block the healthy ones behind them: the
+            // selection in the next pass is longer by the number of skipped ones, the loop ends only when no new entries are left.
             let seen_new = done + bad.len();
             skip.extend(bad);
             if error.is_some() {

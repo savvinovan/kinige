@@ -1,4 +1,4 @@
-//! Поток-писатель (ТЗ §3.2): все записи идут через одно соединение, которым владеет один поток.
+//! The writer thread (PRD §3.2): all writes go through one connection owned by one thread.
 
 use crate::StoreError;
 use rusqlite::Connection;
@@ -8,7 +8,7 @@ use std::thread;
 
 type Job = Box<dyn FnOnce(&mut Connection) + Send>;
 
-/// Дескриптор потока-писателя. Поток завершается, когда уничтожены все дескрипторы.
+/// A handle of the writer thread. The thread ends when all handles are dropped.
 #[derive(Clone)]
 pub(crate) struct Writer {
     jobs: mpsc::Sender<Job>,
@@ -21,16 +21,16 @@ impl Writer {
             .name("kinige-writer".into())
             .spawn(move || {
                 for job in queue {
-                    // Паника в задаче не должна останавливать писателя: транзакция откатится при размотке стека,
-                    // вызывающий получит `Internal`.
+                    // A panic in a task must not stop the writer: the transaction rolls back on stack unwinding,
+                    // the caller gets `Internal`.
                     let _ = catch_unwind(AssertUnwindSafe(|| job(&mut conn)));
                 }
             })
-            .map_err(|_| StoreError::Internal("не удалось запустить поток-писатель".into()))?;
+            .map_err(|_| StoreError::Internal("could not start the writer thread".into()))?;
         Ok(Writer { jobs })
     }
 
-    /// Выполняет задачу на потоке-писателе и ждёт результат.
+    /// Runs a task on the writer thread and waits for the result.
     pub(crate) fn run<T: Send + 'static>(
         &self,
         job: impl FnOnce(&mut Connection) -> T + Send + 'static,
@@ -40,9 +40,9 @@ impl Writer {
             .send(Box::new(move |conn| {
                 let _ = reply.send(job(conn));
             }))
-            .map_err(|_| StoreError::Internal("поток-писатель остановлен".into()))?;
+            .map_err(|_| StoreError::Internal("the writer thread has stopped".into()))?;
         result
             .recv()
-            .map_err(|_| StoreError::Internal("задача писателя прервана".into()))
+            .map_err(|_| StoreError::Internal("the writer task was interrupted".into()))
     }
 }

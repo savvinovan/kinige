@@ -1,5 +1,5 @@
-//! Чтение для агента (ADR-0009): каждый оператор несёт предикат видимого множества чатов (`VISIBLE`), корзина не видна.
-//! Список чатов для строки «Чаты» поиска — отдельный оператор с тем же предикатом, а не фильтр в Rust.
+//! Reading for the agent (ADR-0009): every statement carries the predicate of the visible set of chats (`VISIBLE`), the trash is not visible.
+//! The list of chats for the search "Chats" row is a separate statement with the same predicate, not a filter in Rust.
 
 use crate::agent::VISIBLE;
 use crate::agent_entry::{chat_title, page, to_entry};
@@ -20,7 +20,7 @@ use rusqlite::{Connection, params_from_iter};
 use serde_json::json;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-/// Что известно вызову на время чтения.
+/// What the call knows at the time of reading.
 pub(crate) struct ReadCtx<'a> {
     pub(crate) inbox_title: &'a str,
     today: String,
@@ -35,7 +35,7 @@ impl<'a> ReadCtx<'a> {
     }
 }
 
-/// Ответ чтения: текст для агента и id записей, которые уйдут в журнал (только те, что вошли в ответ).
+/// The read reply: the text for the agent and the entry ids that go to the log (only those that made it into the reply).
 pub(crate) struct ReadOutput {
     pub(crate) text: String,
     pub(crate) ids: Vec<String>,
@@ -59,8 +59,8 @@ impl From<rusqlite::Error> for ReadFail {
 }
 
 impl Store {
-    /// Чтение на соединении чтения; паника внутри запроса не отравляет соединение. Повреждение индекса поиска лечится
-    /// перестройкой и одним повтором (как в поиске главного окна).
+    /// Reading on the read connection; a panic inside the query does not poison the connection. A damaged search index
+    /// is healed by a rebuild and one retry (as in the main window search).
     pub(crate) fn read_with_heal(
         &self,
         ctx: &ReadCtx<'_>,
@@ -87,30 +87,30 @@ impl Store {
         &self,
         job: impl FnOnce(&Connection) -> Result<T, ReadFail>,
     ) -> Result<T, ReadFail> {
-        // Как в `read_unnoted`: паника внутри чтения (профиль release с размоткой стека) ловится здесь, вызов получает
-        // `Internal`; если замок всё же отравлен, он берётся как есть — соединение чтения (`query_only`, без транзакции)
-        // после размотки согласовано. Иначе одна паника ломала бы все чтения агента до перезапуска.
+        // As in `read_unnoted`: a panic inside the read (release profile with stack unwinding) is caught here and the
+        // call gets `Internal`; if the lock is poisoned anyway, it is taken as is -- the read connection (`query_only`,
+        // no transaction) is consistent after unwinding. Otherwise one panic would break all agent reads until a restart.
         let conn = self
             .inner
             .reader
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         catch_unwind(AssertUnwindSafe(|| job(&conn))).unwrap_or_else(|_| {
-            log::error!("паника в чтении агента, вызов отменён");
+            log::error!("panic in an agent read, call cancelled");
             Err(ReadFail::Store(StoreError::Internal(
-                "паника в запросе агента".into(),
+                "panic in an agent query".into(),
             )))
         })
     }
 
-    /// Только для тестов: паника внутри `query_map` на соединении чтения агента. Следующие чтения агента должны работать.
+    /// Tests only: a panic inside `query_map` on the agent read connection. The following agent reads must keep working.
     #[doc(hidden)]
-    #[allow(clippy::panic)] // крючок для интеграционных тестов страховки от паники: паника здесь и есть его назначение
+    #[allow(clippy::panic)] // a hook for the integration tests of the panic safety net: the panic is its whole purpose
     pub fn panic_in_agent_read_for_test(&self) -> Result<(), StoreError> {
         let result = self.with_reader(|conn| -> Result<(), ReadFail> {
             let mut statement = conn.prepare("SELECT id FROM chat")?;
             let rows = statement.query_map([], |_| -> rusqlite::Result<()> {
-                panic!("проверка: паника в запросе агента")
+                panic!("test: panic in an agent query")
             })?;
             for row in rows {
                 row?;
@@ -120,7 +120,7 @@ impl Store {
         match result {
             Ok(()) => Ok(()),
             Err(ReadFail::Store(error)) => Err(error),
-            Err(ReadFail::NotFound) => Err(StoreError::Internal("не найдено".into())),
+            Err(ReadFail::NotFound) => Err(StoreError::Internal("not found".into())),
         }
     }
 }
@@ -132,16 +132,16 @@ fn run_read(conn: &Connection, args: &ToolArgs, ctx: &ReadCtx<'_>) -> Result<Rea
         ToolArgs::GetEntries(entries) => get_entries(conn, entries, ctx),
         ToolArgs::OnThisDay { date } => on_this_day(conn, date.as_deref(), ctx),
         ToolArgs::GetEntry { id } => get_entry(conn, id, ctx),
-        // Инструменты записи сюда не попадают: их ведёт `agent_write`.
+        // Write tools never get here: `agent_write` handles them.
         ToolArgs::AddEntry { .. }
         | ToolArgs::AppendToLastEntry { .. }
         | ToolArgs::SetTaskDone { .. } => {
-            Err(StoreError::Internal("запись в чтении".into()).into())
+            Err(StoreError::Internal("write tool in a read".into()).into())
         }
     }
 }
 
-/// Чат с этим id виден агенту. Закрытый, исключённый из AI, удалённый и несуществующий неразличимы.
+/// The chat with this id is visible to the agent. A closed, AI-excluded, deleted and nonexistent chat are indistinguishable.
 pub(crate) fn chat_visible(conn: &Connection, id: &str) -> rusqlite::Result<bool> {
     conn.query_row(
         &format!("SELECT EXISTS(SELECT 1 FROM chat c WHERE c.id = ?1 AND {VISIBLE})"),
@@ -150,7 +150,7 @@ pub(crate) fn chat_visible(conn: &Connection, id: &str) -> rusqlite::Result<bool
     )
 }
 
-/// Запрос с нумерованными параметрами.
+/// A query with numbered parameters.
 struct Sql {
     text: String,
     params: Vec<Value>,
@@ -164,14 +164,14 @@ impl Sql {
         }
     }
 
-    /// Добавляет условие `<left> <op> ?N`.
+    /// Adds the condition `<left> <op> ?N`.
     fn and(&mut self, condition: &str, value: impl Into<Value>) {
         self.params.push(value.into());
         self.text
             .push_str(&format!(" AND {condition} ?{}", self.params.len()));
     }
 
-    /// Добавляет условие `<left> IN (?N, …)`.
+    /// Adds the condition `<left> IN (?N, ...)`.
     fn and_in(&mut self, left: &str, values: Vec<String>) {
         let marks: Vec<String> = values
             .into_iter()
@@ -201,7 +201,7 @@ fn list_chats(conn: &Connection, ctx: &ReadCtx<'_>) -> Result<ReadOutput, ReadFa
     })
 }
 
-/// Видимые чаты: отдельный оператор с предикатом (используется и списком чатов, и строкой «Чаты» поиска).
+/// Visible chats: a separate statement with the predicate (used by both the chat list and the search "Chats" row).
 fn visible_chats(conn: &Connection, ctx: &ReadCtx<'_>) -> Result<Vec<AgentChat>, ReadFail> {
     let mut statement = conn.prepare(&format!(
         "SELECT c.id, c.title, c.icon, c.archived_at IS NOT NULL, \
@@ -265,7 +265,7 @@ fn search_entries(
         }
     }
     if let Some(cursor) = &args.cursor {
-        // Поиск идёт от новых к старым: следующая страница — строго раньше позиции курсора.
+        // The search goes from new to old: the next page is strictly earlier than the cursor position.
         keyset(&mut sql, cursor, "<");
     }
     sql.text.push_str(&format!(
@@ -275,7 +275,7 @@ fn search_entries(
     let mut found = sql.rows(conn)?;
     let has_more = found.len() > SEARCH_PAGE;
     found.truncate(SEARCH_PAGE);
-    // Строка «Чаты» — только первая страница, отдельным оператором с предикатом.
+    // The "Chats" row is only on the first page, as a separate statement with the predicate.
     let chats = if args.cursor.is_none() {
         visible_chats(conn, ctx)?
             .into_iter()
@@ -320,7 +320,7 @@ fn get_entries(
         sql.and("m.chat_id =", chat.clone());
     }
     if let Some(cursor) = &args.cursor {
-        // День и диапазон читаются в хронологическом порядке: дальше — строго позже позиции курсора.
+        // A day and a range are read in chronological order: further means strictly later than the cursor position.
         keyset(&mut sql, cursor, ">");
     }
     sql.text.push_str(&format!(
@@ -339,10 +339,10 @@ fn on_this_day(
     ctx: &ReadCtx<'_>,
 ) -> Result<ReadOutput, ReadFail> {
     let Some(day) = month_day(date.unwrap_or(&ctx.today)) else {
-        return Err(StoreError::Internal("дата «в этот день» не разобрана".into()).into());
+        return Err(StoreError::Internal("the \"on this day\" date was not parsed".into()).into());
     };
-    // Даты прошлых лет считает домен (одна функция с карточкой «В этот день»; 29 февраля — только 29 февраля): запрос идёт по
-    // индексу дат, а не по `substr` всей таблицы. Начало — год самой старой записи, видимой агенту.
+    // The dates of past years are computed by the domain (one function shared with the "On this day" card; February 29 matches only February 29): the query goes by the
+    // date index, not by `substr` over the whole table. The start is the year of the oldest entry visible to the agent.
     let oldest: Option<String> = conn
         .query_row(
             &format!(
@@ -385,7 +385,7 @@ fn get_entry(conn: &Connection, id: &str, ctx: &ReadCtx<'_>) -> Result<ReadOutpu
     let Some((view, title)) = sql.rows(conn)?.into_iter().next() else {
         return Err(ReadFail::NotFound);
     };
-    // Целиком, без обрезки списка; слишком длинная запись режется общим пределом ответа.
+    // In full, without trimming the list; an entry that is too long is cut by the common reply limit.
     let (entries, _) = fit_entries(vec![to_entry(
         &view,
         &chat_title(&view, &title, ctx.inbox_title),

@@ -13,9 +13,9 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-/// 2026-10-21 09:12 по Москве (06:12 UTC).
+/// 2026-10-21 09:12 Moscow time (06:12 UTC).
 pub const T0: i64 = 1_792_563_120_000;
-/// 2026-10-21 00:30 по Москве (20 октября, 21:30 UTC): ещё вчерашний день записей (граница 04:00).
+/// 2026-10-21 00:30 Moscow time (October 20, 21:30 UTC): still yesterday's entry day (the boundary is 04:00).
 pub const T_NIGHT: i64 = 1_792_531_800_000;
 pub const MINUTE: i64 = 60_000;
 
@@ -34,22 +34,22 @@ pub fn mirror_dir(dir: &Path) -> PathBuf {
 pub fn options(dir: &Path) -> StoreOptions {
     let mut options = StoreOptions::new(db_path(dir), Some(mirror_dir(dir)));
     options.mirror_retry = Duration::from_millis(40);
-    // Фоновое обслуживание (корзина, проверка целостности, копия дня) тесты запускают сами, с заданным временем.
+    // Tests run background maintenance (trash, integrity check, the day's copy) themselves, with a given time.
     options.start_maintenance = false;
     options
 }
 
 pub fn open(dir: &Path) -> Store {
-    Store::open_at(options(dir), &moscow(T0)).expect("хранилище открывается")
+    Store::open_at(options(dir), &moscow(T0)).expect("the store opens")
 }
 
 pub fn open_without_mirror(dir: &Path) -> Store {
     let mut options = options(dir);
     options.start_mirror = false;
-    Store::open_at(options, &moscow(T0)).expect("хранилище открывается")
+    Store::open_at(options, &moscow(T0)).expect("the store opens")
 }
 
-/// Ждёт, пока условие станет истинным (фоновая запись копии асинхронна).
+/// Waits until the condition becomes true (the background copy write is asynchronous).
 pub fn wait_until(what: &str, mut condition: impl FnMut() -> bool) {
     let deadline = Instant::now() + Duration::from_secs(10);
     while Instant::now() < deadline {
@@ -58,14 +58,14 @@ pub fn wait_until(what: &str, mut condition: impl FnMut() -> bool) {
         }
         std::thread::sleep(Duration::from_millis(15));
     }
-    panic!("не дождались: {what}");
+    panic!("timed out waiting for: {what}");
 }
 
 pub fn raw(dir: &Path) -> rusqlite::Connection {
     rusqlite::Connection::open(db_path(dir)).unwrap()
 }
 
-/// Чат, который называет себя Inbox (`is_inbox = 1`), но id у него другой.
+/// A chat that calls itself Inbox (`is_inbox = 1`) but has a different id.
 pub fn insert_impostor_inbox(dir: &Path, id: &str) {
     raw(dir)
         .execute(
@@ -76,8 +76,8 @@ pub fn insert_impostor_inbox(dir: &Path, id: &str) {
         .unwrap();
 }
 
-/// Правка записи в обход хранилища: `f` получает разобранные `groups_raw` и `hlc_json` (значения дословно), результат
-/// пишется обратно. Колонки правит вызывающий отдельно.
+/// Editing an entry bypassing the store: `f` gets the parsed `groups_raw` and `hlc_json` (values verbatim), the result
+/// is written back. The caller edits the columns separately.
 pub fn edit_raw_groups(
     dir: &Path,
     id: &str,
