@@ -8,17 +8,17 @@ interface DemoProps {
   name?: string;
   statusDot?: boolean;
   defaultOpen?: boolean;
-  /** Ставит фокус на кнопку профиля: так история показывает кольцо фокуса без мыши. */
+  /** Focuses the profile button: this is how the story shows the focus ring without a mouse. */
   focus?: boolean;
-  /** Свёрнутый сайдбар: только аватар, меню открывается вправо. */
+  /** Collapsed sidebar: only the avatar; the menu opens to the right. */
   compact?: boolean;
 }
 
-/** Строка профиля на фоне сайдбара, у нижнего края, как в окне: меню открывается вверх (в свёрнутом виде — вправо). */
+/** The profile row on the sidebar background, at the bottom edge, as in the window: the menu opens upward (to the right when collapsed). */
 function Demo({ name, statusDot, defaultOpen, focus = false, compact = false }: DemoProps) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // Открытое меню само ставит фокус на первый пункт; кнопку фокусируем только в истории «Фокус».
+    // An open menu focuses the first item itself; the button is focused only in the "Фокус" story.
     if (focus) host.current?.querySelector<HTMLButtonElement>(".profile__button")?.focus();
   }, [focus]);
   return (
@@ -38,31 +38,31 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Обычное: аватар «Я», имя «Я», шеврон. */
+/** Default: the avatar "Я", the name "Я", the chevron. */
 export const Обычное: Story = {};
 
-/** Меню открыто: «Настройки», «Экспорт», «О программе» — только вид, пункты приглушены (aria-disabled, «Появится позже»). */
+/** The menu is open: "Настройки", "Экспорт", "О программе" are visual only, the items are muted (aria-disabled, "Появится позже"). */
 export const МенюОткрыто: Story = { args: { defaultOpen: true } };
 
-/** Имя из двух слов: инициалы «АС». */
+/** A two-word name: the initials "АС". */
 export const ИмяИзДвухСлов: Story = { args: { name: "Александр Саввинов" } };
 
-/** Длинное имя обрезается многоточием, аватар и шеврон на месте; кириллица и латиница. */
+/** A long name is truncated with an ellipsis, the avatar and chevron stay in place; Cyrillic and Latin. */
 export const ДлинноеИмя: Story = {
   args: { name: "Александр Саввинов-Очень-Длинная-Фамилия and Some Long English Name" },
 };
 
-/** Точка статуса у аватара (слайс 11): в приложении D1 не показывается, проп готов. */
+/** The status dot by the avatar (slice 11): not shown in the D1 app, the prop is ready. */
 export const СТочкойСтатуса: Story = { args: { statusDot: true } };
 
-/** Фокус с клавиатуры на кнопке профиля. */
+/** Keyboard focus on the profile button. */
 export const Фокус: Story = { args: { focus: true } };
 
-/** Свёрнутый сайдбар: только аватар по центру полосы; имя читается диктором по подписи кнопки. */
+/** Collapsed sidebar: only the avatar, centered in the rail; the screen reader reads the name from the button label. */
 export const Компактный: Story = { args: { compact: true } };
 
-/** Свёрнутый сайдбар, меню открыто: выходит вправо от аватара, на ленту. */
+/** Collapsed sidebar, menu open: it extends to the right of the avatar, over the feed. */
 export const КомпактныйМенюОткрыто: Story = { args: { compact: true, defaultOpen: true } };
 
-/** Свёрнутый сайдбар, фокус с клавиатуры на аватаре. */
+/** Collapsed sidebar, keyboard focus on the avatar. */
 export const КомпактныйФокус: Story = { args: { compact: true, focus: true } };

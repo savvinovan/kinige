@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 
-/** Сколько «Скопировано» остаётся в подписи кнопки, прежде чем вернуться к «Копировать». */
+/** How long "Copied" stays in the button label before it returns to "Copy". */
 const COPIED_MS = 2000;
 
 export type CopyState = "idle" | "copied" | "failed";
 
 /**
- * Выделенный текст внутри `root` или `null`, если выделения нет или оно выходит за пределы `root`. Выделение берётся из
- * отрисованного текста (без Markdown-разметки): так копируется ровно то, что человек выделил мышью.
+ * The selected text inside `root`, or `null` if there is no selection or it goes beyond `root`. The selection is taken from
+ * the rendered text (without Markdown markup): so exactly what the person selected with the mouse is copied.
  */
 export function selectedTextIn(root: Element | null): string | null {
   const selection = window.getSelection();
@@ -17,7 +17,7 @@ export function selectedTextIn(root: Element | null): string | null {
   return text === "" ? null : text;
 }
 
-/** Запись в буфер обмена и состояние подписи кнопки: «Скопировано» или честное «Не удалось скопировать». */
+/** Writing to the clipboard and the button label state: "Copied" or an honest "Could not copy". */
 export function useCopy(resetAfterMs: number = COPIED_MS) {
   const [state, setState] = useState<CopyState>("idle");
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -29,7 +29,7 @@ export function useCopy(resetAfterMs: number = COPIED_MS) {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
-      // Буфер обмена недоступен (нет разрешения, не защищённый контекст): честно говорим об этом, а не делаем вид.
+      // The clipboard is unavailable (no permission, insecure context): we say so honestly instead of pretending.
       next = "failed";
     }
     setState(next);

@@ -13,7 +13,7 @@ import { StatusNote } from "../settings/StatusNote";
 import { HighlightedText } from "./HighlightedText";
 import "./search.css";
 
-/** Фильтры, как их видит интерфейс. «Этот чат» превращается в `chatId` при запросе. */
+/** Filters as the interface sees them. "This chat" becomes `chatId` in the request. */
 export interface SearchUiFilters {
   scope: "all" | "chat";
   favorite: boolean;
@@ -24,30 +24,30 @@ export interface SearchUiFilters {
 
 export const NO_FILTERS: SearchUiFilters = { scope: "all", favorite: false, tasks: false, from: null, to: null };
 
-/** Id строки результата для `aria-activedescendant` поля поиска. */
+/** The id of a result row for the search field's `aria-activedescendant`. */
 export const searchRowId = (listId: string, index: number) => `${listId}-row-${index}`;
 
 interface SearchResultsProps {
-  /** Id списка: на него указывает `aria-controls` поля поиска. */
+  /** The list id: the search field's `aria-controls` points at it. */
   listId: string;
-  /** Запрос, по которому получены результаты (подсказка «введите слово» показывается при пустом). */
+  /** The query the results were obtained for (the "type a word" hint is shown when it is empty). */
   query: string;
   chats: readonly ChatSummary[];
   hits: readonly SearchHit[];
   hasMore: boolean;
   loading: boolean;
-  /** Поиск по запросу уже состоялся (иначе «Ничего не найдено» мигало бы до ответа). */
+  /** The search for the query has already happened (otherwise "Nothing found" would flash before the answer). */
   searched: boolean;
   error?: ErrorCode | null;
   today: string;
   language: Language;
   filters: SearchUiFilters;
   onFiltersChange: (filters: SearchUiFilters) => void;
-  /** «Этот чат» доступен, только когда открыт какой-нибудь чат (не корзина). */
+  /** "This chat" is available only when some chat is open (not the trash). */
   canScopeChat: boolean;
-  /** Выбрать дату фильтра в календаре. */
+  /** Pick the filter date in the calendar. */
   onPickDate: (which: "from" | "to") => void;
-  /** Строка, выбранная стрелками (индекс по списку «чаты, затем записи»). */
+  /** The row selected with the arrows (an index into the list "chats, then entries"). */
   activeIndex: number;
   onActiveChange: (index: number) => void;
   onOpenChat: (chat: ChatSummary) => void;
@@ -56,11 +56,11 @@ interface SearchResultsProps {
 }
 
 /**
- * Результаты поиска на месте ленты (как корзина): фильтры сверху, строка «Чаты» с совпавшими названиями, ниже записи —
- * эмодзи и имя чата, день, до трёх строк фрагмента с подсвеченными словами. Новые записи сверху. Список — `listbox`,
- * выбранная стрелками строка отмечена `aria-selected`; фокус остаётся в поле поиска. Пустой результат — одна тихая строка,
- * ошибка — строка ошибки. Следующая страница подгружается, когда конец списка показался в области прокрутки; «Показать
- * ещё» — то же с клавиатуры.
+ * Search results in place of the feed (like the trash): filters on top, a "Chats" row with the matching names, below it entries:
+ * the emoji and chat name, the day, up to three lines of a snippet with highlighted words. Newest entries on top. The list is a `listbox`,
+ * the row selected with the arrows is marked `aria-selected`; focus stays in the search field. An empty result is a single quiet line,
+ * an error is an error line. The next page loads when the end of the list appears in the scroll area; "Show
+ * more" does the same from the keyboard.
  */
 export function SearchResults(props: SearchResultsProps) {
   const { t } = useTranslation();
@@ -69,7 +69,7 @@ export function SearchResults(props: SearchResultsProps) {
   const end = useRef<HTMLLIElement>(null);
   const { onLoadMore } = props;
 
-  // Конец списка показался в области прокрутки: грузим следующую страницу (там, где есть IntersectionObserver).
+  // The end of the list appeared in the scroll area: load the next page (where IntersectionObserver exists).
   useEffect(() => {
     const target = end.current;
     if (!target || !hasMore || loading || typeof IntersectionObserver === "undefined") return;
@@ -80,12 +80,12 @@ export function SearchResults(props: SearchResultsProps) {
     return () => observer.disconnect();
   }, [hasMore, loading, onLoadMore, hits.length]);
 
-  // Выбранная стрелками строка остаётся на виду (в jsdom прокрутки нет).
+  // The row selected with the arrows stays in view (jsdom has no scrolling).
   useEffect(() => {
     document.getElementById(searchRowId(listId, activeIndex))?.scrollIntoView?.({ block: "nearest" });
   }, [listId, activeIndex]);
 
-  // На кнопке фильтра дата всегда полная («21 октября 2026»), а не «Сегодня»: «с Сегодня» не прочитать.
+  // On the filter button the date is always full ("21 октября 2026"), not "Today": "from Today" would not read.
   const longDate = (value: string) => {
     const [year, month, day] = value.split("-").map(Number);
     return new Intl.DateTimeFormat(language, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(

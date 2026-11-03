@@ -1,113 +1,113 @@
 {
   "layout": {
     "$type": "dimension",
-    "$description": "Размеры раскладки в rem (1rem = размер текста записей), поэтому «крупный текст» меняет плотность целиком: отступы плашек, промежутки, высоты строк и полей. Значения в px — при корне 13 px (font.root.default).",
+    "$description": "Layout sizes in rem (1rem = the entry text size), so 'large text' changes the density as a whole: plate padding, gaps, row and field heights. The px values are at a 13 px root (font.root.default).",
     "measure": {
-      "$description": "Ширина колонки текста в знаках (ch): зависит от шрифта и масштаба текста, поэтому колонка держит число знаков в строке.",
-      "text": { "$value": "65ch", "$description": "Колонка текста на страницах Storybook и подводках." },
-      "page": { "$value": "140ch", "$description": "Максимальная ширина страницы Storybook «Основа»." },
-      "column": { "$value": "34ch", "$description": "Минимальная ширина колонки в сетке карточек на страницах «Основа»." }
+      "$description": "Text column width in characters (ch): it depends on the font and the text scale, so the column keeps the number of characters per line.",
+      "text": { "$value": "65ch", "$description": "The text column on Storybook pages and lead-ins." },
+      "page": { "$value": "140ch", "$description": "Maximum width of the Storybook 'Основа' (Foundation) page." },
+      "column": { "$value": "34ch", "$description": "Minimum column width in the card grid on the 'Основа' (Foundation) pages." }
     },
     "message": {
-      "measure": { "$value": "60ch", "$description": "Максимальная ширина плашки: около 65 знаков русского текста Inter, 60–68 в строке (ADR-0004; ch считается по цифре «0», она шире средней буквы; значение уточнено по снимку)." },
-      "padding-block": { "$value": "0.6rem", "$description": "Внутренний отступ плашки сверху и снизу (7,8 px; D2: было 6,5)." },
-      "padding-inline": { "$value": "0.95rem", "$description": "Внутренний отступ плашки слева и справа (12,35 px; D2: было 9,75)." },
-      "gap-series": { "$value": "0.35rem", "$description": "Промежуток между плашками одной серии: пауза меньше 5 минут (4,55 px; D2: было 3,25)." },
-      "gap-group": { "$value": "{space.4}", "$description": "Промежуток между сериями и вокруг метки дня (13 px; D2: было 9,75)." },
-      "time-reserve": { "$value": "3.1rem", "$description": "Место под время «09:12» у конца последней строки текста (около 40 px; D2: было 38): время стоит в правом нижнем углу плашки, а текст его не накрывает." },
-      "agent-mark-reserve": { "$value": "10.1rem", "$description": "Дополнительное место у конца последней строки записи агента под тихую пометку «добавлено агентом ·» левее времени (около 131 px, слайс 4a; D2: было 124)." }
+      "measure": { "$value": "60ch", "$description": "Maximum plate width: about 65 characters of Russian Inter text, 60-68 per line (ADR-0004; ch is measured by the digit '0', which is wider than an average letter; the value was refined from a screenshot)." },
+      "padding-block": { "$value": "0.6rem", "$description": "Inner padding of a plate at the top and bottom (7.8 px; D2: was 6.5)." },
+      "padding-inline": { "$value": "0.95rem", "$description": "Inner padding of a plate on the left and right (12.35 px; D2: was 9.75)." },
+      "gap-series": { "$value": "0.35rem", "$description": "The gap between plates of one series: a pause of under 5 minutes (4.55 px; D2: was 3.25)." },
+      "gap-group": { "$value": "{space.4}", "$description": "The gap between series and around the day label (13 px; D2: was 9.75)." },
+      "time-reserve": { "$value": "3.1rem", "$description": "Room for the time '09:12' at the end of the last text line (about 40 px; D2: was 38): the time sits in the bottom right corner of the plate, and the text does not cover it." },
+      "agent-mark-reserve": { "$value": "10.1rem", "$description": "Extra room at the end of the last line of an agent entry for the quiet 'added by agent ·' mark to the left of the time (about 131 px, slice 4a; D2: was 124)." }
     },
     "checkbox": {
-      "size": { "$value": "1.1rem", "$description": "Квадрат задачи «- [ ]» в сообщении (14 px)." },
-      "tick-width": { "$value": "0.3rem", "$description": "Галочка отмеченной задачи: ширина короткой стороны повёрнутого прямоугольника (4 px)." },
-      "tick-height": { "$value": "0.58rem", "$description": "Галочка отмеченной задачи: высота (7,5 px)." },
-      "tick-left": { "$value": "0.28rem", "$description": "Галочка отмеченной задачи: сдвиг слева внутри квадрата (3,6 px)." },
-      "tick-top": { "$value": "0.06rem", "$description": "Галочка отмеченной задачи: сдвиг сверху внутри квадрата (0,8 px)." }
+      "size": { "$value": "1.1rem", "$description": "The task square '- [ ]' in a message (14 px)." },
+      "tick-width": { "$value": "0.3rem", "$description": "Checked task tick: the width of the short side of the rotated rectangle (4 px)." },
+      "tick-height": { "$value": "0.58rem", "$description": "Checked task tick: height (7.5 px)." },
+      "tick-left": { "$value": "0.28rem", "$description": "Checked task tick: the offset from the left inside the square (3.6 px)." },
+      "tick-top": { "$value": "0.06rem", "$description": "Checked task tick: the offset from the top inside the square (0.8 px)." }
     },
     "feed": {
-      "column": { "$value": "51.4rem", "$description": "Ширина колонки ленты и поля ввода по центру области чата: 668 px при корне 13 px. В узком окне колонка занимает всю ширину за вычетом полей." },
-      "padding-inline": { "$value": "{space.6}", "$description": "Поле ленты слева и справа (26 px; D2: было 19,5)." },
-      "padding-block": { "$value": "{space.5}", "$description": "Поле ленты сверху и снизу (19,5 px; D2: было 9,75)." }
+      "column": { "$value": "51.4rem", "$description": "Width of the feed and input field column in the center of the chat area: 668 px at a 13 px root. In a narrow window the column takes the whole width minus the margins." },
+      "padding-inline": { "$value": "{space.6}", "$description": "The feed margin on the left and right (26 px; D2: was 19.5)." },
+      "padding-block": { "$value": "{space.5}", "$description": "The feed margin at the top and bottom (19.5 px; D2: was 9.75)." }
     },
     "sidebar": {
-      "width": { "$value": "20.5rem", "$description": "Ширина сайдбара (266 px; D2: было 240)." },
-      "padding": { "$value": "{space.3}", "$description": "Поле сайдбара вокруг поиска и списка чатов (9,75 px; D2: было 6,5)." }
+      "width": { "$value": "20.5rem", "$description": "Sidebar width (266 px; D2: was 240)." },
+      "padding": { "$value": "{space.3}", "$description": "The sidebar margin around the search and the chat list (9.75 px; D2: was 6.5)." }
     },
     "tile": {
-      "size": { "$value": "1.75rem", "$description": "Плитка чата в сайдбаре, слот значка у нижних пунктов и аватар профиля (22,75 px, D2)." }
+      "size": { "$value": "1.75rem", "$description": "A chat tile in the sidebar, the icon slot of the lower items and the profile avatar (22.75 px, D2)." }
     },
     "avatar": {
-      "size": { "$value": "{layout.tile.size}", "$description": "Аватар-кружок с инициалами в строке профиля (22,75 px): того же размера, что плитка чата, чтобы нижние строки шли в одном ритме." },
-      "dot": { "$value": "0.6rem", "$description": "Точка статуса у аватара (8 px), в D1 не показывается." }
+      "size": { "$value": "{layout.tile.size}", "$description": "A round avatar with initials in the profile row (22.75 px): the same size as a chat tile, so the lower rows keep one rhythm." },
+      "dot": { "$value": "0.6rem", "$description": "The status dot at the avatar (8 px), not shown in D1." }
     },
     "row": {
-      "height": { "$value": "2.6rem", "$description": "Высота строки списка: пункт меню, копия, строка настроек (33,8 px; D2: было 32,5). Строки сайдбара выше: layout.sidebar.row-height." }
+      "height": { "$value": "2.6rem", "$description": "List row height: a menu item, a copy, a settings row (33.8 px; D2: was 32.5). Sidebar rows are taller: layout.sidebar.row-height." }
     },
     "field": {
-      "height": { "$value": "2.7rem", "$description": "Высота однострочного поля ввода: поиск (35 px; D2: было 30)." }
+      "height": { "$value": "2.7rem", "$description": "Height of a single-line input field: the search (35 px; D2: was 30)." }
     },
     "composer": {
-      "min-height": { "$value": "4rem", "$description": "Минимальная высота поля ввода с кнопками (52 px; D2: было 45,5)." },
-      "max-height": { "$value": "40vh", "$description": "Поле растёт до 40% высоты окна, дальше внутри него прокрутка (ТЗ §5)." }
+      "min-height": { "$value": "4rem", "$description": "Minimum height of an input field with buttons (52 px; D2: was 45.5)." },
+      "max-height": { "$value": "40vh", "$description": "The field grows up to 40% of the window height, beyond that it scrolls inside (PRD §5)." }
     },
     "action": {
-      "size": { "$value": "1.6rem", "$description": "Мелкая кнопка в ряду действий (21 px)." },
-      "gap": { "$value": "{space.2}", "$description": "Прозрачный зазор между плашкой и рядом действий справа от неё (6,5 px); в него входит наведение мыши." },
-      "offset": { "$value": "{space.1}", "$description": "Отступ ряда от правого края плашки, когда справа нет места и ряд стоит над плашкой у её правого края; у верхнего края ленты — и от верхнего края плашки (3,25 px)." }
+      "size": { "$value": "1.6rem", "$description": "A small button in the action row (21 px)." },
+      "gap": { "$value": "{space.2}", "$description": "A transparent gap between the plate and the action row to its right (6.5 px); mouse hover extends into it." },
+      "offset": { "$value": "{space.1}", "$description": "Offset of the row from the right edge of the plate when there is no room on the right and the row stands above the plate at its right edge; at the top edge of the feed, also from the top edge of the plate (3.25 px)." }
     },
     "control": {
-      "height": { "$value": "2.5rem", "$description": "Высота кнопки и иконки-кнопки (32,5 px; D2: было 30)." }
+      "height": { "$value": "2.5rem", "$description": "Height of a button and an icon button (32.5 px; D2: was 30)." }
     },
     "toast": {
-      "offset": { "$value": "5.5rem", "$description": "Отступ тоста от нижнего края ленты: над полем ввода (71,5 px)." }
+      "offset": { "$value": "5.5rem", "$description": "Offset of a toast from the bottom edge of the feed: above the input field (71.5 px)." }
     },
     "dialog": {
-      "width": { "$value": "42rem", "$description": "Ширина модального окна «Настройки» (546 px при корне 13 px); в узком окне панель занимает ширину окна за вычетом полей." },
-      "max-height": { "$value": "88vh", "$description": "Наибольшая высота панели модального окна: выше неё содержимое прокручивается внутри панели, заголовок и кнопка закрытия остаются на месте." }
+      "width": { "$value": "42rem", "$description": "Width of the modal 'Settings' window (546 px at a 13 px root); in a narrow window the panel takes the window width minus the margins." },
+      "max-height": { "$value": "88vh", "$description": "Largest height of a modal window panel: above it the content scrolls inside the panel, the title and the close button stay in place." }
     },
     "settings": {
-      "$description": "Окно «Настройки» (слайс 4b): отдельное окно ОС с деревом разделов слева и одной прокручиваемой страницей справа.",
-      "window-width": { "$value": "860px", "$description": "Начальная ширина окна ОС (логические px). Окно создаёт Rust, значения совпадают с константами `settings_window` (проверяет тест конфигурации)." },
-      "window-height": { "$value": "600px", "$description": "Начальная высота окна ОС." },
-      "window-min-width": { "$value": "640px", "$description": "Наименьшая ширина окна." },
-      "window-min-height": { "$value": "440px", "$description": "Наименьшая высота окна: при ней и при крупном тексте дерево разделов ещё помещается без прокрутки." },
-      "tree-width": { "$value": "17rem", "$description": "Ширина дерева разделов слева (221 px при корне 13 px; D2: было 195); растёт с размером текста, чтобы названия не обрезались." },
-      "row-label": { "$value": "11rem", "$description": "Наименьшая ширина названия в строке настроек (143 px). В узком окне сжимается и переносится название; под название клавиши с кнопкой переходят, только если рядом с названием такой ширины они не помещаются." },
-      "shortcut-slot": { "$value": "9rem", "$description": "Наименьшая ширина места под клавиши-«капсулы» или поле записи в строке сочетания (117 px). Поле записи может быть шире и расширяется влево (группа прижата вправо), а высота строки и положение кнопок при записи не меняются." },
-      "page-width": { "$value": "42rem", "$description": "Наибольшая ширина содержимого страницы раздела (546 px; D2: было 520): строки текста не растягиваются на широком окне." }
+      "$description": "The 'Settings' window (slice 4b): a separate OS window with a section tree on the left and one scrollable page on the right.",
+      "window-width": { "$value": "860px", "$description": "Initial width of the OS window (logical px). The window is created by Rust, the values match the `settings_window` constants (checked by the configuration test)." },
+      "window-height": { "$value": "600px", "$description": "Initial height of the OS window." },
+      "window-min-width": { "$value": "640px", "$description": "Minimum window width." },
+      "window-min-height": { "$value": "440px", "$description": "Minimum window height: at it, even with large text, the section tree still fits without scrolling." },
+      "tree-width": { "$value": "17rem", "$description": "Width of the section tree on the left (221 px at a 13 px root; D2: was 195); it grows with the text size so the titles are not cut off." },
+      "row-label": { "$value": "11rem", "$description": "Minimum width of the title in a settings row (143 px). In a narrow window the title shrinks and wraps; the keys with the button move under the title only if they do not fit next to a title of this width." },
+      "shortcut-slot": { "$value": "9rem", "$description": "Minimum width of the slot for key 'capsules' or the recording field in a shortcut row (117 px). The recording field may be wider and expands to the left (the group is pressed to the right), while the row height and the button positions do not change during recording." },
+      "page-width": { "$value": "42rem", "$description": "Largest width of a section page's content (546 px; D2: was 520): text lines do not stretch in a wide window." }
     },
     "menu": {
-      "min-width": { "$value": "14rem", "$description": "Наименьшая ширина контекстного меню (182 px при корне 13 px)." },
-      "max-width": { "$value": "24rem", "$description": "Наибольшая ширина контекстного меню (312 px): длинное название чата обрезается многоточием." }
+      "min-width": { "$value": "14rem", "$description": "Minimum width of the context menu (182 px at a 13 px root)." },
+      "max-width": { "$value": "24rem", "$description": "Largest width of the context menu (312 px): a long chat title is cut off with an ellipsis." }
     },
     "capture": {
-      "panel-width": { "$value": "520px", "$description": "Ширина видимой панели быстрого захвата (скруглённая «пилюля») в логических пикселях. Размер в px, не растёт с размером текста: окно создаёт Rust, значения должны совпадать с ним." },
-      "shadow-margin": { "$value": "32px", "$description": "Прозрачное поле вокруг панели внутри окна ОС: в нём рисуется тень (shadow.overlay: смещение 8 px + размытие 24 px). Окно захвата прозрачное и без системной тени, весь вид панели — в CSS." },
-      "window-width": { "$value": "584px", "$description": "Ширина окна ОС: panel-width + 2 × shadow-margin (проверяет тест конфигурации). Высота окна подстраивается под содержимое (команда capture_resize), верх окна остаётся на месте." },
-      "window-height": { "$value": "123px", "$description": "Начальная высота окна ОС в tauri.conf.json (одно пустое поле: 58,5 px панели + 2 × 32 px поля под тень = 122,5 px при корне 13 px, округляется вверх до 123 px, как и высота, которую страница сообщает команде capture_resize; D2: кнопка выше, было 122). Значение совпадает с tauri.conf.json (проверяет тест конфигурации); дальше страница сообщает Rust высоту содержимого." },
-      "window-min-height": { "$value": "100px", "$description": "Нижний предел высоты окна, который Rust принимает от страницы (capture_resize): меньше любого содержимого, защита от нуля и отрицательных значений. Совпадает с константой в Rust (проверяет тест)." },
-      "window-max-height": { "$value": "640px", "$description": "Верхний предел высоты окна (capture_resize): выше содержимое прокручивается в поле, а старые плашки контекста уходят за верхний край. Хватает на открытый пикер эмодзи (его панель 351 px) над полем и ещё остаётся место для контекста. Совпадает с константой в Rust (проверяет тест)." },
-      "field-max-share": { "$type": "number", "$value": 0.325, "$description": "До какой доли высоты панели при самом высоком окне (window-max-height минус два поля под тень) растёт поле ввода в окне захвата; дальше прокрутка внутри поля, а старые плашки контекста уходят за верхний край. Доля подобрана так, чтобы предел поля остался прежним (187 px), когда окно стало выше ради пикера эмодзи." },
-      "field-lines-with-picker": { "$type": "number", "$value": 3, "$description": "Сколько строк текста показывает поле ввода окна захвата, пока открыт пикер эмодзи; длиннее — прокрутка внутри поля. Пикер и поле вместе должны уместиться в window-max-height." },
-      "window-narrow": { "$value": "360px", "$description": "Ширина «узкого окна» захвата в историях Storybook (вместе с полями под тень): проверка, что подсказка, ошибка и длинные записи не ломают раскладку. Само окно — window-width." },
-      "entry-lines": { "$type": "number", "$value": 2, "$description": "Сколько строк текста показывает бледная запись контекста; остальное обрезается многоточием (line-clamp)." }
+      "panel-width": { "$value": "520px", "$description": "Width of the visible quick capture panel (a rounded 'pill') in logical pixels. The size is in px and does not grow with the text size: the window is created by Rust, the values must match it." },
+      "shadow-margin": { "$value": "32px", "$description": "A transparent margin around the panel inside the OS window: the shadow is drawn in it (shadow.overlay: offset 8 px + blur 24 px). The capture window is transparent and has no system shadow, the whole look of the panel is in CSS." },
+      "window-width": { "$value": "584px", "$description": "Width of the OS window: panel-width + 2 × shadow-margin (checked by the configuration test). The window height adapts to the content (the capture_resize command), the top of the window stays in place." },
+      "window-height": { "$value": "123px", "$description": "Initial height of the OS window in tauri.conf.json (one empty field: 58.5 px of the panel + 2 × 32 px of shadow margin = 122.5 px at a 13 px root, rounded up to 123 px, like the height the page reports to the capture_resize command; D2: the button is taller, was 122). The value matches tauri.conf.json (checked by the configuration test); after that the page reports the content height to Rust." },
+      "window-min-height": { "$value": "100px", "$description": "The lower limit of the window height that Rust accepts from the page (capture_resize): below any content, a guard against zero and negative values. Matches the constant in Rust (checked by a test)." },
+      "window-max-height": { "$value": "640px", "$description": "The upper limit of the window height (capture_resize): above it the content scrolls in the field, and old context plates go past the top edge. Enough for an open emoji picker (its panel is 351 px) above the field with room left for context. Matches the constant in Rust (checked by a test)." },
+      "field-max-share": { "$type": "number", "$value": 0.325, "$description": "Up to what share of the panel height at the tallest window (window-max-height minus two shadow margins) the input field in the capture window grows; beyond that it scrolls inside the field, and old context plates go past the top edge. The share is chosen so that the field limit stays the same (187 px) when the window became taller for the emoji picker." },
+      "field-lines-with-picker": { "$type": "number", "$value": 3, "$description": "How many text lines the input field of the capture window shows while the emoji picker is open; longer text scrolls inside the field. The picker and the field together must fit in window-max-height." },
+      "window-narrow": { "$value": "360px", "$description": "Width of the 'narrow window' of the capture in Storybook stories (together with the shadow margins): a check that the hint, the error and long entries do not break the layout. The window itself is window-width." },
+      "entry-lines": { "$type": "number", "$value": 2, "$description": "How many text lines a pale context entry shows; the rest is cut off with an ellipsis (line-clamp)." }
     },
     "keycap": {
-      "size": { "$value": "1.6rem", "$description": "Клавиша-«капсула» в строке сочетания: минимальная ширина и высота (21 px при корне 13 px); длинные названия (Space, F12) растут по ширине." }
+      "size": { "$value": "1.6rem", "$description": "A key 'capsule' in a shortcut row: minimum width and height (21 px at a 13 px root); long names (Space, F12) grow in width." }
     },
     "progress": {
-      "height": { "$value": "0.5rem", "$description": "Полоса прогресса импорта (6,5 px): тихая линия под строкой «3 200 из 15 000»." }
+      "height": { "$value": "0.5rem", "$description": "The import progress bar (6.5 px): a quiet line under the '3 200 of 15 000' row." }
     },
     "import": {
-      "list-max-height": { "$value": "22rem", "$description": "Наибольшая высота списка чатов в окне импорта (286 px при корне 13 px): полный экспорт может содержать сотни личных чатов, список прокручивается внутри окна." }
+      "list-max-height": { "$value": "22rem", "$description": "Largest height of the chat list in the import window (286 px at a 13 px root): a full export may contain hundreds of personal chats, the list scrolls inside the window." }
     },
     "search": {
-      "snippet-lines": { "$type": "number", "$value": 3, "$description": "Сколько строк фрагмента показывает строка результата поиска; остальное обрезается многоточием (line-clamp)." },
-      "filters-gap": { "$value": "{space.2}", "$description": "Промежуток между фильтрами поиска (6,5 px)." }
+      "snippet-lines": { "$type": "number", "$value": 3, "$description": "How many lines of the snippet a search result row shows; the rest is cut off with an ellipsis (line-clamp)." },
+      "filters-gap": { "$value": "{space.2}", "$description": "The gap between search filters (6.5 px)." }
     },
     "window": {
-      "height": { "$value": "100vh", "$description": "Высота окна приложения: всё окно." },
-      "narrow": { "$value": "45rem", "$description": "Ширина «узкого окна» в историях Storybook (585 px)." }
+      "height": { "$value": "100vh", "$description": "The height of the app window: the whole window." },
+      "narrow": { "$value": "45rem", "$description": "Width of the 'narrow window' in Storybook stories (585 px)." }
     }
   }
 }

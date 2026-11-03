@@ -72,7 +72,7 @@ describe("acceleratorFromEvent", () => {
   });
 
   it("раскладка не важна: берётся код физической клавиши, а не символ", () => {
-    // На русской раскладке клавиша V даёт «м», но `code` остаётся KeyV.
+    // In the Russian layout the V key gives "м", but `code` stays KeyV.
     expect(acceleratorFromEvent({ ...press("KeyV", { alt: true }), key: "м" } as Parameters<typeof acceleratorFromEvent>[0])).toBe("Alt+KeyV");
   });
 

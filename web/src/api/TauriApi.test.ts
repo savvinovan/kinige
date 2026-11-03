@@ -8,7 +8,7 @@ const { TauriApi } = await import("./TauriApi");
 
 describe("TauriApi", () => {
   beforeEach(() => {
-    // Без фигурных скобок хук вернул бы мок, а vitest вызвал бы его как «очистку» после теста.
+    // Without curly braces the hook would return the mock, and vitest would call it as a "cleanup" after the test.
     invoke.mockReset();
   });
 
@@ -38,7 +38,7 @@ describe("TauriApi", () => {
   it("импорт и поиск: команды слайса 4, аргументы camelCase, путь к файлу из JS не передаётся", async () => {
     invoke.mockResolvedValue(null);
     await new TauriApi().importTelegramOpen();
-    // Файл выбирает диалог в Rust: аргументов у команды нет.
+    // The file is chosen by a dialog in Rust: the command has no arguments.
     expect(invoke).toHaveBeenLastCalledWith("import_telegram_open", undefined);
 
     invoke.mockResolvedValue({ imported: 1 });

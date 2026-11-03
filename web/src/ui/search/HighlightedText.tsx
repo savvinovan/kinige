@@ -3,8 +3,8 @@ import { Fragment, useMemo } from "react";
 const WORD = /[\p{L}\p{N}]+/gu;
 
 /**
- * Текст с подсвеченными словами. `terms` — слова записи, как они в ней написаны (их отдаёт Rust): совпадают только целые
- * слова и с учётом регистра, поэтому «книга» не подсвечивается внутри «книгами». Слово — серия букв и цифр любого алфавита.
+ * Text with highlighted words. `terms` are the entry's words as they are written in it (Rust provides them): only whole
+ * words match, case-sensitively, so "книга" is not highlighted inside "книгами". A word is a run of letters and digits of any alphabet.
  */
 export function HighlightedText({ text, terms }: { text: string; terms: readonly string[] }) {
   const parts = useMemo(() => {

@@ -17,7 +17,7 @@ describe("Окно «Настройки»: дерево разделов", () =>
     const names = within(tree())
       .getAllByRole("button")
       .map((button) => button.textContent);
-    // Группы по умолчанию свёрнуты: вложенных пунктов не видно, пока не открыт «Доступ ИИ-агентов» или не нажат шеврон.
+    // Groups are collapsed by default: nested items are not visible until "Доступ ИИ-агентов" (AI agent access) is open or the chevron is pressed.
     expect(names).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов", "Файл настроек"]);
     fireEvent.click(within(tree()).getByRole("button", { name: "Доступ ИИ-агентов" }));
     expect(
@@ -28,7 +28,7 @@ describe("Окно «Настройки»: дерево разделов", () =>
     fireEvent.click(within(tree()).getByRole("button", { name: "Оформление" }));
     expect(current()).toHaveTextContent("Оформление");
     expect(within(tree()).getAllByRole("button", { current: "page" })).toHaveLength(1);
-    // Содержимое справа — страница выбранного раздела.
+    // The content on the right is the page of the selected section.
     expect(screen.getByRole("region", { name: "Оформление" })).toBeInTheDocument();
 
     fireEvent.click(within(tree()).getByRole("button", { name: "Сочетания клавиш" }));
@@ -54,7 +54,7 @@ describe("Окно «Настройки»: дерево разделов", () =>
     expect(buttons[buttons.length - 1]).toHaveFocus();
     fireEvent.keyDown(buttons[buttons.length - 1]!, { key: "Home" });
     expect(buttons[0]).toHaveFocus();
-    // Enter на пункте — обычное нажатие кнопки: страница открывается, выбранный пункт меняется.
+    // Enter on an item is an ordinary button press: the page opens, the selected item changes.
     buttons[3]!.focus();
     fireEvent.click(buttons[3]!);
     expect(current()).toHaveTextContent("Доступ ИИ-агентов");
@@ -92,10 +92,10 @@ describe("Окно «Настройки»: дерево разделов", () =>
 });
 
 describe("Окно «Настройки»: прокрутка страницы", () => {
-  // Один прокручиваемый блок на все страницы: переход (дерево, «Настроить ›», «назад») открывает страницу сверху.
+  // One scrollable block for all pages: a navigation (the tree, "Настроить ›", "back") opens the page from the top.
   const scroller = () => document.querySelector<HTMLElement>(".prefs__page") as HTMLElement;
   const scrollTo300 = () => {
-    // jsdom не считает вёрстку: положение прокрутки хранится в свойстве, как у настоящего элемента.
+    // jsdom does not compute layout: the scroll position is stored in a property, like on a real element.
     let top = 300;
     Object.defineProperty(scroller(), "scrollTop", { configurable: true, get: () => top, set: (value: number) => (top = value) });
   };
@@ -175,7 +175,7 @@ describe("Окно «Настройки»: оформление и копии", 
     const api = await openWindow();
     fireEvent.click(within(tree()).getByRole("button", { name: "Копии" }));
     expect(screen.getByText("Копия актуальна")).toBeInTheDocument();
-    // Папка стала недоступна уже при открытом окне.
+    // The folder became unavailable while the window was already open.
     const settings = await api.getSettings();
     api.getSettings = () => Promise.resolve({ ...settings, mirror: { ...settings.mirror, error: "folder_unavailable", pendingDays: 2 } });
     await act(async () => {
@@ -214,7 +214,7 @@ describe("Окно «Настройки»: английский", () => {
     const names = within(screen.getByRole("navigation", { name: "Settings sections" }))
       .getAllByRole("button")
       .map((button) => button.textContent);
-    // Группа по умолчанию свёрнута; раскрывается шевроном.
+    // The group is collapsed by default; the chevron expands it.
     expect(names).toEqual(["Appearance", "Keyboard shortcuts", "Copies", "AI agent access", "Settings file"]);
     fireEvent.click(screen.getByTestId("tree-chevron-access"));
     expect(screen.getByRole("button", { name: "Visible chats" })).toBeInTheDocument();

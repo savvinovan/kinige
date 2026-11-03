@@ -8,16 +8,16 @@ interface RecentEmojiProps {
 }
 
 /**
- * Секция «Недавние» над сеткой пикера: до 24 эмодзи в тех же столбцах. Одна остановка в обходе Tab (скользящий tabindex),
- * внутри — стрелки, Home и End. Вне прокручиваемой сетки frimousse: её виртуализация считает строки от верха области и не
- * знает о посторонних блоках внутри.
+ * The "Recent" section above the picker grid: up to 24 emoji in the same columns. A single Tab stop (roving tabindex),
+ * inside it arrows, Home and End. Outside the scrollable frimousse grid: its virtualization counts rows from the top of the area and does not
+ * know about foreign blocks inside.
  */
 export function RecentEmoji({ emojis, onPick }: RecentEmojiProps) {
   const { t } = useTranslation();
   const headingId = useId();
   const [requested, setActive] = useState(0);
   const items = useRef<(HTMLButtonElement | null)[]>([]);
-  // Список «недавних» может стать короче (поиск, смена данных): активным остаётся последний существующий.
+  // The "recent" list can become shorter (search, data change): the last existing one stays active.
   const active = Math.min(requested, emojis.length - 1);
 
   const move = (to: number) => {
@@ -29,11 +29,11 @@ export function RecentEmoji({ emojis, onPick }: RecentEmojiProps) {
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const steps: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -EMOJI_COLUMNS, ArrowDown: EMOJI_COLUMNS };
     const step = steps[event.key];
-    // Отправная точка — кнопка, на которой стоит фокус, а не состояние: оно может отстать от фокуса на один кадр.
+    // The starting point is the button that has focus, not the state: the state can lag behind focus by one frame.
     const current = items.current.indexOf(event.target as HTMLButtonElement);
     if (step !== undefined) {
       event.preventDefault();
-      // Вниз с последней строки и вверх с первой остаются на месте: не перескакивают на край.
+      // Down from the last row and up from the first stay in place: they do not jump to the edge.
       const target = (current < 0 ? active : current) + step;
       if (target >= 0 && target < emojis.length) move(target);
     } else if (event.key === "Home") {

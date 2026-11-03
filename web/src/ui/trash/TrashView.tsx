@@ -13,24 +13,24 @@ import "./trash.css";
 interface TrashViewProps {
   items: readonly TrashItem[];
   language: Language;
-  /** Сегодняшний `journal_date` (`YYYY-MM-DD`) для меток «Сегодня» и «Вчера»: его присылает Rust. */
+  /** Today's `journal_date` (`YYYY-MM-DD`) for the "Today" and "Yesterday" labels: Rust sends it. */
   today: string;
-  /** Запись, над которой сейчас идёт действие (восстановление или удаление): её кнопки на это время недоступны. */
+  /** The entry an action is currently running on (restore or delete): its buttons are unavailable meanwhile. */
   busyId?: string | null;
-  /** Уже переведённая ошибка последнего действия: `role="alert"` над списком. */
+  /** The already translated error of the last action: `role="alert"` above the list. */
   error?: string;
   onRestore: (id: string) => void;
-  /** Только после подтверждения «Удалить навсегда». */
+  /** Only after the "Delete forever" confirmation. */
   onPurge: (id: string) => void;
 }
 
 const DEFAULT_ICON = "💬";
 
 /**
- * Корзина: открывается на месте ленты. Плашка на запись: эмодзи и имя чата, день записи, «осталось N дн.», текст записи
- * (как в ленте, без действий, обрезан по строкам), «Восстановить» и «Удалить навсегда». «Удалить навсегда» сначала
- * спрашивает подтверждение (единственное подтверждение в приложении: действие необратимо; фокус по умолчанию на «Отмена»).
- * Кнопки «Очистить корзину» нет. Заголовка над списком нет, как и над лентой; пустая корзина — тихая строка.
+ * The trash: opens in place of the feed. One bubble per entry: the chat emoji and name, the entry day, "N days left", the entry text
+ * (as in the feed, without actions, clamped by lines), "Restore" and "Delete forever". "Delete forever" first
+ * asks for confirmation (the only confirmation in the app: the action is irreversible; the default focus is on "Cancel").
+ * There is no "Empty trash" button. There is no heading above the list, as above the feed; an empty trash is a quiet line.
  */
 export function TrashView({ items, language, today, busyId = null, error, onRestore, onPurge }: TrashViewProps) {
   const { t } = useTranslation();
@@ -39,7 +39,7 @@ export function TrashView({ items, language, today, busyId = null, error, onRest
   const taskLabels = { done: t("message.taskDone"), todo: t("message.taskTodo") };
 
   return (
-    // Прокручиваемая область берёт фокус с клавиатуры, как лента.
+    // The scrollable area takes keyboard focus, like the feed.
     <section className="trash" aria-label={t("trash.label")} tabIndex={0}>
       <div className="trash__column">
         {error ? (
@@ -72,7 +72,7 @@ export function TrashView({ items, language, today, busyId = null, error, onRest
                     </header>
                     <div
                       className="markdown trash-entry__text"
-                      // Тот же безопасный рендер, что и в ленте (markdown.ts), только без ссылок и остановок Tab.
+                      // The same safe rendering as in the feed (markdown.ts), only without links and Tab stops.
                       dangerouslySetInnerHTML={{ __html: renderContextMarkdown(message.bodyMd, taskLabels) }}
                     />
                     <footer className="trash-entry__actions">
@@ -118,12 +118,12 @@ export function TrashView({ items, language, today, busyId = null, error, onRest
   );
 }
 
-/** Подтверждение «Удалить навсегда?»: фокус по умолчанию на «Отмена», Esc и подложка отменяют. */
+/** The "Delete forever?" confirmation: the default focus is on "Cancel", Esc and the backdrop cancel. */
 function PurgeConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
   const { t } = useTranslation();
   const actions = useRef<HTMLDivElement>(null);
-  // Modal ставит фокус на кнопку закрытия в своём эффекте, который идёт после эффектов потомков: перенос на «Отмена» (первую
-  // кнопку действий) — позже, в микрозадаче.
+  // Modal puts focus on the close button in its own effect, which runs after the effects of its descendants: the move to "Cancel" (the first
+  // action button) happens later, in a microtask.
   useEffect(() => {
     queueMicrotask(() => actions.current?.querySelector("button")?.focus());
   }, []);

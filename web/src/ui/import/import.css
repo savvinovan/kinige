@@ -1,4 +1,4 @@
-/* Окно «Импорт из Telegram»: инструкция, список чатов с флажками, прогресс, отчёт. Только токены. */
+/* The "Import from Telegram" window: instructions, a chat list with checkboxes, progress, a report. Tokens only. */
 .import {
   display: grid;
   gap: var(--space-5);
@@ -26,7 +26,7 @@
   color: var(--color-text-tertiary);
 }
 
-/* Список чатов: длинный (сотни личных чатов) прокручивается внутри окна, заголовок остаётся на месте. */
+/* The chat list: a long one (hundreds of personal chats) scrolls inside the window, the heading stays in place. */
 .import__chats {
   display: grid;
   gap: var(--space-3);

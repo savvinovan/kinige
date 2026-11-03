@@ -8,16 +8,16 @@ import type { ImportDialogProps, ImportStep } from "../import/ImportDialog";
 
 interface UseImportOptions {
   api: KinigeApi;
-  /** Импорт что-то записал (или остановлен после записи): счётчики и лента обновляются. */
+  /** The import wrote something (or was stopped after writing): counters and the feed are refreshed. */
   onChanged: () => void;
-  /** «Готово» после отчёта: окно закрыто, открыть чат «Избранного». */
+  /** "Done" after the report: the window is closed, open the Saved chat. */
   onDone: () => void;
 }
 
 /**
- * Окно импорта из Telegram: шаги «файл → чаты → прогресс → отчёт». Файл выбирает и читает Rust; здесь только номер сессии,
- * отмеченные чаты и ход импорта. «Избранное» отмечено заранее, личные чаты — нет (решение пользователя 3). Окно закрывается
- * на любом шаге, кроме прогресса; закрытие забывает разобранный файл.
+ * Telegram import window: steps "file -> chats -> progress -> report". Rust picks and reads the file; here live only the
+ * session number, the ticked chats and the import progress. "Saved" is ticked in advance, personal chats are not (user
+ * decision 3). The window closes on any step except progress; closing forgets the parsed file.
  */
 export function useImport({ api, onChanged, onDone }: UseImportOptions) {
   const [open, setOpen] = useState(false);
@@ -29,11 +29,11 @@ export function useImport({ api, onChanged, onDone }: UseImportOptions) {
   const [progress, setProgress] = useState<ImportProgress | undefined>(undefined);
   const [stopping, setStopping] = useState(false);
   const [report, setReport] = useState<ImportReport | undefined>(undefined);
-  // Идёт импорт: второй запуск и закрытие окна в это время невозможны (кнопок нет, но события клавиатуры не должны пройти).
+  // An import is running: a second start and closing the window are impossible meanwhile (no buttons, but keyboard events must not get through).
   const running = useRef(false);
   const picking = useRef(false);
 
-  // Прогресс приходит событием Rust; подписка живёт, пока окно открыто (событие может прийти раньше ответа команды).
+  // Progress arrives as a Rust event; the subscription lives while the window is open (the event may arrive before the command's reply).
   useEffect(() => {
     if (!open) return;
     let off: (() => void) | undefined;
@@ -70,7 +70,7 @@ export function useImport({ api, onChanged, onDone }: UseImportOptions) {
 
   const close = useCallback(() => {
     if (running.current) return;
-    // Разобранный файл забывается; ошибка забывания окну не нужна.
+    // The parsed file is forgotten; the window does not need an error from forgetting.
     void api.importTelegramClose().catch(() => undefined);
     reset();
   }, [api, reset]);
@@ -83,7 +83,7 @@ export function useImport({ api, onChanged, onDone }: UseImportOptions) {
     api
       .importTelegramOpen()
       .then((result) => {
-        // Отмена диалога ничего не меняет.
+        // Cancelling the dialog changes nothing.
         if (result === null) return;
         setOpened(result);
         setSelected(new Set(result.preview.chats.filter((c) => c.kind === "saved" && c.total > 0).map((c) => c.id)));
@@ -124,7 +124,7 @@ export function useImport({ api, onChanged, onDone }: UseImportOptions) {
       .catch((reason: unknown) => {
         const code = errorCode(reason);
         setError(code);
-        // Файл забыт: выбрать заново; иначе вернуться к списку (часть пачек могла записаться).
+        // The file is forgotten: pick it again; otherwise go back to the list (some batches may have been written).
         setStep(code === "import_session_expired" ? "pick" : "choose");
         onChanged();
       })

@@ -7,31 +7,31 @@ import type { SearchHit } from "../../api/generated/SearchHit";
 import { inboxMatches } from "../search/inboxMatch";
 import { NO_FILTERS, type SearchUiFilters, searchRowId } from "../search/SearchResults";
 
-/** Пауза после последней клавиши до запроса (спецификация слайса 4, задача 4.13). */
+/** The pause after the last keystroke before the request (slice 4 specification, task 4.13). */
 export const SEARCH_DEBOUNCE_MS = 150;
-/** Записей на странице результатов. */
+/** Entries per results page. */
 const PAGE = 50;
 
 interface UseSearchOptions {
   api: KinigeApi;
-  /** Открытый чат: «Этот чат» ищет в нём; `null` — открыта корзина, такого фильтра нет. */
+  /** The open chat: "This chat" searches in it; `null` means the trash is open, there is no such filter. */
   chatId: string | null;
-  /** Результат выбран (щелчок или Enter): открыть чат на записи. */
+  /** A result is picked (click or Enter): open the chat at the entry. */
   onOpenHit: (hit: SearchHit, query: string) => void;
   onOpenChat: (chat: ChatSummary) => void;
-  /** Inbox и его переведённое имя: Rust Inbox среди «Чатов» не отдаёт, строку добавляет интерфейс (задача 4.9). */
+  /** Inbox and its translated name: Rust does not return Inbox among the "Chats", the interface adds the row (task 4.9). */
   inbox?: { chat: ChatSummary | undefined; name: string };
 }
 
 /**
- * Поиск: запрос из поля сайдбара с задержкой 150 мс, фильтры, страницы по курсору, выбор стрелками. Ответы, устаревшие к
- * моменту прихода (запрос или фильтры успели измениться), отбрасываются. Результаты показываются, пока в поле есть текст;
- * Esc очищает поле и возвращает ленту. Фокус остаётся в поле: выбранная строка передаётся диктору через
- * `aria-activedescendant`.
+ * Search: the query from the sidebar field with a 150 ms delay, filters, cursor pages, arrow-key selection. Replies that
+ * are stale on arrival (the query or filters changed meanwhile) are dropped. Results are shown while the field has text;
+ * Esc clears the field and brings the feed back. Focus stays in the field: the selected row is passed to the screen
+ * reader through `aria-activedescendant`.
  */
 export function useSearch({ api, chatId, onOpenHit, onOpenChat, inbox }: UseSearchOptions) {
   const listId = useId();
-  // Inbox читается в момент прихода ответа: смена счётчика чата не должна перезапускать поиск.
+  // Inbox is read when the reply arrives: a change of the chat counter must not restart the search.
   const inboxRef = useRef(inbox);
   useEffect(() => {
     inboxRef.current = inbox;
@@ -53,8 +53,8 @@ export function useSearch({ api, chatId, onOpenHit, onOpenChat, inbox }: UseSear
   const dateTo = filters.to;
   const { favorite, tasks } = filters;
 
-  // Новый запрос или другие фильтры: состояние подстраивается прямо при отрисовке (так React советует «сбрасывать» состояние);
-  // пустой запрос сбрасывает всё, иначе прежние результаты остаются на виду, пока не придёт ответ на новый запрос.
+  // A new query or other filters: the state adjusts right during rendering (this is how React advises to "reset" state);
+  // an empty query resets everything, otherwise the previous results stay visible until the reply to the new query arrives.
   const requestKey = JSON.stringify([trimmed, scopedChat, favorite, tasks, dateFrom, dateTo]);
   const [shownKey, setShownKey] = useState(requestKey);
   if (shownKey !== requestKey) {
@@ -70,7 +70,7 @@ export function useSearch({ api, chatId, onOpenHit, onOpenChat, inbox }: UseSear
     }
   }
 
-  // Первая страница с задержкой; ответы, устаревшие к приходу, отбрасываются (`generation`).
+  // The first page, with a delay; replies that are stale on arrival are dropped (`generation`).
   useEffect(() => {
     generation.current += 1;
     const mine = generation.current;
@@ -146,7 +146,7 @@ export function useSearch({ api, chatId, onOpenHit, onOpenChat, inbox }: UseSear
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape" && (open || query !== "")) {
       event.preventDefault();
-      // Esc — человек сам уходит из поля: фокус отдаётся полю заметки, которое вернётся вместе с лентой.
+      // Esc: the person leaves the field on purpose, so focus goes to the note field, which returns together with the feed.
       event.currentTarget.blur();
       clear();
       return;

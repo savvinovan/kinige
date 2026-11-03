@@ -53,7 +53,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Состояния: Story = {};
 
-/** Фокус с клавиатуры: кольцо фокуса видно на кнопке, иконке-кнопке и поле. */
+/** Keyboard focus: the focus ring is visible on the button, the icon button and the field. */
 export const Фокус: Story = {
   render: () => (
     <Frame>
@@ -71,7 +71,7 @@ export const Фокус: Story = {
   ),
 };
 
-/** Флажок (слайс 4): пустой, отмеченный, недоступный, с описанием и с длинным именем; полоса прогресса. */
+/** Checkbox (slice 4): empty, checked, unavailable, with a description and with a long name; the progress bar. */
 export const ФлажокИПрогресс: Story = {
   render: () => (
     <Frame>
@@ -94,7 +94,7 @@ export const ФлажокИПрогресс: Story = {
   ),
 };
 
-/** Длинная подпись флажка переносится (`checkbox--wrap`, D2), а не обрезается многоточием; название чата в списке остаётся в одну строку. */
+/** A long checkbox label wraps (`checkbox--wrap`, D2) instead of being cut with an ellipsis; a chat name in a list stays on one line. */
 export const ФлажокДлиннаяПодпись: Story = {
   render: () => (
     <Frame>
@@ -109,7 +109,7 @@ export const ФлажокДлиннаяПодпись: Story = {
   globals: { textScale: "large" },
 };
 
-/** Фокус с клавиатуры на флажке: кольцо вокруг квадрата. */
+/** Keyboard focus on the checkbox: a ring around the square. */
 export const ФокусНаФлажке: Story = {
   render: () => (
     <Frame>
@@ -120,7 +120,7 @@ export const ФокусНаФлажке: Story = {
   ),
 };
 
-/** Длинный текст и кириллица с латиницей. */
+/** Long text and Cyrillic mixed with Latin. */
 export const ДлинныйТекст: Story = {
   render: () => (
     <Frame narrow>

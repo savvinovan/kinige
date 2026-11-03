@@ -28,14 +28,14 @@ export interface SettingsWindowViewProps {
   file: SettingsFileState;
   log: AgentLogView;
   language: Language;
-  /** «Сейчас» для меток времени; по умолчанию часы окна. В тестах и историях фиксируется. */
+  /** "Now" for time marks; by default the window clock. Fixed in tests and stories. */
   now?: Date;
-  /** Развёрнутые группы дерева при открытии (истории Storybook); без него берётся сохранённое состояние окна. */
+  /** Tree groups expanded on open (Storybook stories); without it the saved window state is used. */
   treeExpanded?: readonly Route[];
-  /** Показано предупреждение «текст уйдёт провайдеру модели»: `Modal` поверх окна. */
+  /** The "the text will go to the model provider" warning is shown: a `Modal` over the window. */
   warning: boolean;
   choosing?: boolean;
-  /** Уже переведённые тексты ошибок. */
+  /** The already translated error texts. */
   pickError?: string;
   shortcutErrors?: Partial<Record<ShortcutKind, string>>;
   accessError?: string;
@@ -55,9 +55,9 @@ export interface SettingsWindowViewProps {
 }
 
 /**
- * Окно «Настройки» целиком (слайс 4b): слева дерево разделов, справа страница с одной прокруткой. Только вид и поведение:
- * данные и действия приходят снаружи, вызовов бэкенда здесь нет. Предупреждение при включении доступа — один `Modal` поверх
- * окна. Подэкраны («Видимые чаты», «Журнал обращений») открываются из «Доступа ИИ-агентов» и подсвечены в дереве.
+ * The whole "Settings" window (slice 4b): the section tree on the left, a page with a single scroll on the right. View and behavior
+ * only: data and actions come from outside, there are no backend calls here. The warning when enabling access is a single `Modal`
+ * over the window. The subscreens ("Видимые чаты", "Журнал обращений") open from "Доступ ИИ-агентов" and are highlighted in the tree.
  */
 export function SettingsWindowView(props: SettingsWindowViewProps) {
   const { onNavigate, file, access, now } = props;
@@ -68,9 +68,9 @@ export function SettingsWindowView(props: SettingsWindowViewProps) {
   const changed = file.changed;
   const problems: Route[] = file.problem || file.unsafeReason || file.issues.length > 0 ? ["file"] : [];
   const back = () => onNavigate(parentOf(route));
-  // Один прокручиваемый блок на все страницы: при каждом переходе (дерево, «Настроить ›», «назад») страница открывается
-  // сверху, а не с места, где остановилась предыдущая. (Пересоздание блока по `key` маршрута проверено снимками на раннере:
-  // остаточный «язычок» полосы WebKit это не убирает, поэтому прокрутка сбрасывается явно.)
+  // One scrollable block for all pages: on every navigation (the tree, "Настроить ›", "back") the page opens
+  // at the top, not where the previous one stopped. (Recreating the block by the route `key` was checked with screenshots on the runner:
+  // it does not remove the leftover WebKit scrollbar "tab", so the scroll is reset explicitly.)
   const page = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     if (page.current) page.current.scrollTop = 0;

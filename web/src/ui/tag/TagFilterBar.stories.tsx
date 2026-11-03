@@ -13,24 +13,24 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Обычное: «Показаны записи с #идея» тихо, тег акцентным цветом, справа «×». */
+/** Regular: "Показаны записи с #идея" quietly, the tag in the accent color, "×" on the right. */
 export const Обычное: Story = {};
 
-/** Латиница, цифры, подчёркивание. */
+/** Latin, digits, underscore. */
 export const Латиница: Story = { args: { tag: "reading_list_2026" } };
 
-/** Длинный тег переносится внутри колонки, кнопка «×» остаётся справа. */
+/** A long tag wraps inside the column, the "×" button stays on the right. */
 export const ДлинныйТег: Story = {
   args: { tag: "очень_длинный_тег_про_всё_что_угодно_и_ещё_немного_about_everything_else_in_the_world" },
 };
 
-/** Английский. */
+/** English. */
 export const Английский: Story = { args: { tag: "ideas" }, globals: { language: "en" } };
 
-/** Крупный текст. */
+/** Large text. */
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };
 
-/** Узкая колонка (проверка переноса). */
+/** A narrow column (a wrapping check). */
 export const Узкая: Story = {
   render: (args) => (
     <>
@@ -42,7 +42,7 @@ export const Узкая: Story = {
   ),
 };
 
-/** Фокус с клавиатуры на «×»: кольцо фокуса. */
+/** Keyboard focus on "×": the focus ring. */
 function FocusedClear(args: React.ComponentProps<typeof TagFilterBar>) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => host.current?.querySelector("button")?.focus(), []);

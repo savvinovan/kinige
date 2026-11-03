@@ -10,7 +10,7 @@ interface DemoProps {
   focus?: boolean;
 }
 
-/** Строка папки на «бумаге», шириной окна настроек. */
+/** The folder row on "paper", at the width of the settings window. */
 function Demo({ path, isDefault, busy, focus = false }: DemoProps) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -35,16 +35,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Папка по умолчанию: путь и бейдж. */
+/** The default folder: the path and a badge. */
 export const ПоУмолчанию: Story = {};
 
-/** Другая папка: бейджа нет. */
+/** Another folder: no badge. */
 export const ДругаяПапка: Story = { args: { path: "/Users/alexandr/Dropbox/Журнал", isDefault: false } };
 
-/** Папка не выбрана. */
+/** No folder is chosen. */
 export const НеВыбрана: Story = { args: { path: null, isDefault: false } };
 
-/** Длинный путь с кириллицей и латиницей: переносится, кнопка остаётся справа. */
+/** A long path with Cyrillic and Latin: it wraps, the button stays on the right. */
 export const ДлинныйПуть: Story = {
   args: {
     path: "/Users/александр.саввинов/Документы и настройки/Мои документы за все годы/Личный журнал/Kinige-копия-в-формате-Markdown-для-чтения-без-приложения-Kinige",
@@ -52,11 +52,11 @@ export const ДлинныйПуть: Story = {
   },
 };
 
-/** Диалог выбора папки открыт: кнопка недоступна. */
+/** The folder picker dialog is open: the button is unavailable. */
 export const Занято: Story = { args: { busy: true } };
 
-/** Фокус с клавиатуры на «Выбрать…». */
+/** Keyboard focus on "Выбрать…". */
 export const Фокус: Story = { args: { focus: true } };
 
-/** Английский. */
+/** English. */
 export const EnНеВыбрана: Story = { args: { path: null, isDefault: false }, globals: { language: "en" } };

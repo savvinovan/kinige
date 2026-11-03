@@ -3,10 +3,10 @@ import { DEFAULT_SETTINGS, MockApi } from "../../api/MockApi";
 import { fireEvent, render, screen } from "../../test/render";
 import { AppRoot } from "./AppRoot";
 
-// Кольцо фокуса в главном окне (по отзыву на приёмке 4b): после щелчка мышью по профилю и закрытия меню фокус возвращается на
-// кнопку-триггер (доступность), но кольца нет: режим ввода `pointer`. После клавиши (Tab) режим `keyboard`, и кольцо
-// рисуется. jsdom не применяет `:focus-visible` и CSS, поэтому проверяется режим ввода на `<html>`; правило, которое по нему
-// гасит кольцо, — в `ui/focus-ring.test.ts`.
+// The focus ring in the main window (from the 4b acceptance feedback): after a mouse click on the profile and closing the menu,
+// focus returns to the trigger button (accessibility), but there is no ring: the input mode is `pointer`. After a key
+// press (Tab) the mode is `keyboard` and the ring is drawn. jsdom does not apply `:focus-visible` and CSS, so the input
+// mode on `<html>` is checked; the rule that hides the ring based on it is in `ui/focus-ring.test.ts`.
 
 const NORMAL = { needsRecovery: false, backups: [], databaseTooNew: false, corruptionFound: false };
 const mode = () => document.documentElement.dataset.input;

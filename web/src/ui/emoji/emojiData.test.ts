@@ -3,7 +3,7 @@ import type { Language } from "../../i18n";
 import { buildEmojiData, createEmojiResolver, loadEmojiSource, type EmojiSource } from "./emojiData";
 import { FALLBACK_SUPPORT } from "./emojiSupport";
 
-// Настоящие наборы emojibase-data: проверяется то, что пикер действительно найдёт и покажет, а не придуманные фикстуры.
+// Real emojibase-data sets: this checks what the picker will actually find and show, not made-up fixtures.
 let sources: Record<Language, EmojiSource>;
 beforeAll(async () => {
   sources = { en: await loadEmojiSource("en"), ru: await loadEmojiSource("ru") };
@@ -11,7 +11,7 @@ beforeAll(async () => {
 
 const labelsOf = (data: ReturnType<typeof buildEmojiData>) => data.emojis.map((emoji) => emoji.label);
 
-/** Поиск как у frimousse (`searchEmojis`): подпись и теги, без учёта регистра. */
+/** Search as in frimousse (`searchEmojis`): label and tags, case-insensitive. */
 const found = (data: ReturnType<typeof buildEmojiData>, query: string) => {
   const text = query.toLowerCase().trim();
   return data.emojis.filter((emoji) => emoji.label.toLowerCase().includes(text) || emoji.tags.some((tag) => tag.toLowerCase().includes(text)));
@@ -41,7 +41,7 @@ describe("buildEmojiData", () => {
   it("служебная категория «component» и записи без категории отсечены", () => {
     const data = buildEmojiData("en", sources, FALLBACK_SUPPORT);
     expect(data.categories.map((category) => category.label)).not.toContain("Components");
-    // Оттенки кожи (component) и региональные индикаторы не должны попасть в сетку.
+    // Skin tones (component) and regional indicators must not get into the grid.
     expect(data.emojis.some((emoji) => emoji.emoji === "\u{1F3FB}")).toBe(false);
     expect(data.emojis.some((emoji) => emoji.emoji === "\u{1F1E6}")).toBe(false);
   });
@@ -81,7 +81,7 @@ describe("createEmojiResolver", () => {
     const data = await resolve("ru", {});
     expect(data.locale).toBe("ru");
     expect(data.emojis.length).toBeGreaterThan(1500);
-    // Незнакомая локаль — английский.
+    // An unknown locale falls back to English.
     expect((await resolve("de", {})).locale).toBe("en");
   });
 

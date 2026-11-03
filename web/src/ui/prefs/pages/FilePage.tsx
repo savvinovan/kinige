@@ -6,14 +6,14 @@ import { StatusNote } from "../../settings/StatusNote";
 import "../prefs.css";
 import "../../settings/settings.css";
 
-// Разрыв строки предлагается после каждого разделителя пути; запасной перенос в любом месте — в CSS (`path-row__path`).
+// A line break is offered after each path separator; the fallback wrap at any position is in CSS (`path-row__path`).
 const segments = (path: string) => path.split(/(?<=[\\/])/);
 
 /**
- * «Файл настроек»: путь с кнопкой «Копировать путь» и состояние файла. Файл без ошибок — тихая строка; файл не разобран —
- * ошибка с позицией («строка 1, столбец 15»), остальные настройки прежние; небезопасный файл — причина, по которой ключи
- * доступа и папки из него не применяются; ошибки ключей — по строке на ключ; неизвестные ключи — предупреждение (в файле они
- * остаются). Тостов нет: всё это стоит на странице и ничего не двигает.
+ * "Файл настроек": the path with the "Копировать путь" button and the file state. A file without errors is a quiet line; a file that
+ * did not parse is an error with a position ("строка 1, столбец 15"), the other settings stay as they were; an unsafe file is the reason why the access
+ * keys and folders from it are not applied; key errors are one line per key; unknown keys are a warning (they
+ * stay in the file). There are no toasts: all of this stands on the page and moves nothing.
  */
 export function FilePage({ file }: { file: SettingsFileState }) {
   const { t } = useTranslation();

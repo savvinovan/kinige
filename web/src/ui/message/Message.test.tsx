@@ -24,7 +24,7 @@ describe("Message", () => {
     render(<Message markdown="Купить билеты" sentAt={sentAt} status="failed" onRetry={onRetry} />);
     expect(screen.getByText(/Не отправилось\./)).toBeInTheDocument();
     const retry = screen.getByRole("button", { name: "Повторить отправку сообщения" });
-    // Имя кнопки начинается с видимой подписи (WCAG 2.5.3), а сама кнопка берёт фокус и срабатывает как обычная.
+    // The button name starts with the visible label (WCAG 2.5.3), and the button itself takes focus and works like an ordinary one.
     expect(retry).toHaveTextContent("Повторить");
     expect(retry).toHaveAttribute("type", "button");
     retry.focus();
@@ -72,7 +72,7 @@ describe("Message", () => {
       const before = window.location.href;
       render(<Message markdown={withLink} sentAt={sentAt} />);
       const link = screen.getByRole("link");
-      // fireEvent возвращает false, если обработчик вызвал preventDefault.
+      // fireEvent returns false if the handler called preventDefault.
       expect(fireEvent.click(link)).toBe(false);
       expect(window.location.href).toBe(before);
     });

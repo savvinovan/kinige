@@ -10,16 +10,16 @@ import "../../settings/settings.css";
 
 interface MirrorPageProps {
   settings: Settings;
-  /** Системный диалог выбора папки открыт. */
+  /** The system folder picker dialog is open. */
   choosing?: boolean;
-  /** Уже переведённый текст ошибки выбора папки. */
+  /** The already translated error text of the folder choice. */
   actionError?: string;
   onChooseFolder: () => void;
   changedAt: number | null;
   now?: Date;
 }
 
-/** «Копии»: Markdown-копия (папка, состояние, предупреждение «открытый текст») и копия файла базы. */
+/** "Копии": the Markdown copy (folder, state, the "plain text" warning) and the database file copy. */
 export function MirrorPage({ settings, choosing = false, actionError, onChooseFolder, changedAt, now }: MirrorPageProps) {
   const { t } = useTranslation();
   const titleId = useId();

@@ -25,7 +25,7 @@ describe("Дерево настроек: сворачивание", () => {
     render(<Host />);
     expect(names()).not.toContain("Видимые чаты");
     expect(access()).toHaveAttribute("aria-expanded", "false");
-    // У пунктов без вложенных aria-expanded нет.
+    // Items without nested ones have no aria-expanded.
     expect(within(nav()).getByRole("button", { name: "Копии" })).not.toHaveAttribute("aria-expanded");
   });
 
@@ -55,12 +55,12 @@ describe("Дерево настроек: сворачивание", () => {
     fireEvent.click(access());
     expect(names()).toContain("Журнал обращений");
     expect(access()).toHaveAttribute("aria-expanded", "true");
-    // Enter на кнопке в браузере — то же нажатие (см. тест ниже).
+    // Enter on a button in the browser is the same press (see the test below).
     fireEvent.click(chevron());
     expect(access()).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(access());
     expect(access()).toHaveAttribute("aria-expanded", "true");
-    // Название уже развёрнутой группы её не сворачивает.
+    // The name of an already expanded group does not collapse it.
     fireEvent.click(access());
     expect(access()).toHaveAttribute("aria-expanded", "true");
   });
@@ -103,11 +103,11 @@ describe("Дерево настроек: сворачивание", () => {
   it("выбранный пункт — только заливка: в стилях дерева нет рамки, контура и тени", () => {
     const css = readFileSync(resolve(__dirname, "settings-tree.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
     expect(css).not.toMatch(/box-shadow\s*:/);
-    // Кольцо фокуса — только в правилах `:focus-visible` (и только при вводе с клавиатуры), никогда у выбранного пункта.
+    // The focus ring is only in `:focus-visible` rules (and only for keyboard input), never on the selected item.
     const outlined = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, , body]) => /(^|[;{\s])outline\s*:/.test(body ?? ""));
     expect(outlined.length).toBeGreaterThan(0);
     for (const [, selector] of outlined) expect(selector, "outline только у :focus-visible").toContain(":focus-visible");
-    // Единственная линия — разделитель правого края колонки (`border-right` у `.settings-tree`), не обводка пункта.
+    // The only line is the divider on the right edge of the column (`border-right` on `.settings-tree`), not an item outline.
     const borders = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
       .filter(([, , body]) => /\bborder(?:-(?:top|right|bottom|left|width|style|color))*\s*:(?!\s*0\s*;)[^;]+;/.test(body ?? ""))
       .map((match) => match[1]?.trim());

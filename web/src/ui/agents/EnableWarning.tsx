@@ -5,14 +5,14 @@ import { Modal } from "../settings/Modal";
 import "./agents.css";
 
 /**
- * Предупреждение при включении доступа (ТЗ §9.3): «текст, который прочитает агент, уходит провайдеру его модели». Один
- * `Modal` поверх окна: страница под ним свой `overflow` не меняет, и её содержимое не сдвигается. Фокус по умолчанию на
- * «Отмена», Esc и подложка отменяют.
+ * The warning on enabling access (spec §9.3): "the text the agent reads goes to the provider of its model". A single
+ * `Modal` over the window: the page under it does not change its `overflow`, and its content does not shift. Default focus is on
+ * "Отмена"; Esc and the scrim cancel.
  */
 export function EnableWarning({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   const { t } = useTranslation();
   const actions = useRef<HTMLDivElement>(null);
-  // Modal ставит фокус на кнопку закрытия в своём эффекте, который идёт после эффектов потомков: перенос на «Отмена» — позже.
+  // Modal focuses the close button in its own effect, which runs after the children's effects: moving focus to "Отмена" happens later.
   useEffect(() => {
     queueMicrotask(() => actions.current?.querySelector("button")?.focus());
   }, []);

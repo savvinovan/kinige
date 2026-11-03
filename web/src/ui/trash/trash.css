@@ -1,4 +1,4 @@
-/* Корзина: плашки удалённых записей на месте ленты. Только токены. */
+/* Trash: bubbles of deleted entries in place of the feed. Tokens only. */
 .trash {
   box-sizing: border-box;
   min-height: 0;
@@ -8,7 +8,7 @@
   background: var(--color-surface-paper);
 }
 
-/* Та же колонка, что у ленты. */
+/* The same column as the feed. */
 .trash__column {
   display: flex;
   flex-direction: column;
@@ -36,7 +36,7 @@
   list-style: none;
 }
 
-/* Плашка записи: заливка плашки сообщения, сверху чат и срок, ниже текст, внизу кнопки. */
+/* An entry bubble: the message bubble fill, the chat and the time left on top, the text below, the buttons at the bottom. */
 .trash-entry {
   display: grid;
   gap: var(--space-2);
@@ -66,7 +66,7 @@
   line-height: var(--type-meta-line-height);
 }
 
-/* Эмодзи и имя чата: длинное имя обрезается многоточием, срок справа не сжимается. */
+/* The emoji and the chat name: a long name is cut with an ellipsis, the time left on the right does not shrink. */
 .trash-entry__chat {
   display: flex;
   flex: 1;
@@ -101,8 +101,8 @@
   white-space: nowrap;
 }
 
-/* Текст обрезается по числу строк (layout.trash.entry-lines): одинаковая высота строк, чтобы срез приходился на границу строки.
-   Для обычного текста, списков и кода (он переносит длинные строки, KINIG-40) — многоточие, для нескольких блоков — ровный срез по высоте. */
+/* The text is clamped by line count (layout.trash.entry-lines): equal line heights so that the cut falls on a line boundary.
+   Plain text, lists and code (which wraps long lines, KINIG-40) get an ellipsis; several blocks get an even cut by height. */
 .trash-entry__text {
   display: -webkit-box;
   max-height: calc(var(--layout-trash-entry-lines) * var(--type-body-size) * var(--type-body-line-height));
@@ -125,7 +125,7 @@
   line-height: var(--type-body-line-height);
 }
 
-/* Ссылка в корзине — просто текст: действий над записью здесь нет. */
+/* A link in the trash is just text: there are no actions on the entry here. */
 .trash-entry .capture-link {
   color: var(--color-text-tertiary);
 }
@@ -141,12 +141,12 @@
   opacity: var(--opacity-disabled);
 }
 
-/* «Удалить навсегда»: цвет ошибки (текст ≥ 5:1 к плашке и к бумаге). */
+/* "Delete forever": the error color (text >= 5:1 against the bubble and the paper). */
 .trash__danger {
   color: var(--color-status-error);
 }
 
-/* Подтверждение: окно уже обычного диалога. */
+/* Confirmation: the window is narrower than a regular dialog. */
 .modal__panel:has(.trash-confirm) {
   max-width: var(--layout-trash-confirm-width);
 }

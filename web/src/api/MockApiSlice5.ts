@@ -6,17 +6,17 @@ import type { MessageView } from "./generated/MessageView";
 import type { OnThisDay } from "./generated/OnThisDay";
 import type { OnThisDayYear } from "./generated/OnThisDayYear";
 
-/** Сколько лет карточка показывает подробно и сколько записей на год (как `kinige_domain::on_this_day`). */
+/** How many years the card shows in detail and how many entries per year (like `kinige_domain::on_this_day`). */
 const DETAILED_YEARS = 3;
 const ENTRIES_PER_YEAR = 2;
 
 /**
- * Слайс 5 в `MockApi`: ответ на запись (проверка адресата, цитата в ленте, черновик с ответом) и карточка «В этот день».
- * Настоящие правила — в Rust; здесь то, что нужно тестам и историям: те же состояния `live` / `trash` / `missing`, тот же
- * порядок и состав карточки, скрытие до следующего дня журнала.
+ * Slice 5 in `MockApi`: a reply to an entry (addressee check, the quote in the feed, a draft with a reply) and the "On this
+ * day" card. The real rules are in Rust; here is what tests and stories need: the same `live` / `trash` / `missing`
+ * states, the same order and content of the card, hiding until the next journal day.
  */
 export class MockApiSlice5 extends MockApiSlice4b {
-  /** День журнала, до конца которого карточка скрыта (`dismissOnThisDay`). */
+  /** The journal day until whose end the card is hidden (`dismissOnThisDay`). */
   dismissedOnThisDay: string | null = null;
 
   sendMessage(chatId: string, body: string, replyToId: string | null = null): Promise<MessageView> {
@@ -42,7 +42,7 @@ export class MockApiSlice5 extends MockApiSlice4b {
     });
     const row = { view: message, deletedAt: null, revisions: [], replyToId: replyToId ?? undefined };
     this.rows.push(row);
-    // Как в Rust: отправка очищает черновик этого чата вместе со строкой ответа.
+    // As in Rust: sending clears this chat's draft together with the reply line.
     this.drafts.delete(chatId);
     this.replyDrafts.delete(chatId);
     return Promise.resolve(this.viewOf(row));
@@ -51,7 +51,7 @@ export class MockApiSlice5 extends MockApiSlice4b {
   getDraft(chatId: string): Promise<ChatDraft> {
     const target = this.replyDrafts.get(chatId);
     let replyTo = target === undefined ? null : this.replyTo(target, this.journalDate(this.now()));
-    // Как в Rust: запись жива, но в другом чате — «перенесена» (ответ на неё не принимается).
+    // As in Rust: the entry is alive but in another chat - "moved" (a reply to it is not accepted).
     if (replyTo !== null && replyTo.state === "live" && replyTo.chatId !== chatId) replyTo = { ...replyTo, state: "moved" };
     return Promise.resolve({ body: this.drafts.get(chatId) ?? "", replyTo });
   }
@@ -100,13 +100,13 @@ export class MockApiSlice5 extends MockApiSlice4b {
     });
   }
 
-  /** Адресат ответа жив и лежит в том же чате. */
+  /** The reply addressee is alive and lies in the same chat. */
   private replyTargetLives(targetId: string, chatId: string): boolean {
     return this.rows.some((r) => r.view.id === targetId && r.view.chatId === chatId && r.deletedAt === null);
   }
 }
 
-/** Простой текст записи в одну строку (в моке — грубо; настоящий считает Rust). */
+/** Plain text of an entry on one line (rough in the mock; the real one is computed by Rust). */
 function plainPreview(bodyMd: string): string {
   const text = bodyMd.replace(/[*_`#>~]|\[[ xX]\]/g, "").replace(/\s+/g, " ").trim();
   return [...text].length > 300 ? `${[...text].slice(0, 299).join("").trimEnd()}…` : text;

@@ -6,11 +6,11 @@ import { ChatDialog, type ChatDialogProps } from "./ChatDialog";
 import "./chat-stories.css";
 
 interface DemoProps extends Partial<Pick<ChatDialogProps, "mode" | "initialName" | "initialEmoji" | "error" | "busy">> {
-  /** Имя вводится в поле после показа (как с клавиатуры). */
+  /** The name is typed into the field after display (as from the keyboard). */
   typed?: string;
-  /** Пикер раскрыт кнопкой эмодзи после показа. */
+  /** The picker is opened by the emoji button after display. */
   openPicker?: boolean;
-  /** После раскрытия пикера выбирается эмодзи из «Недавних» с этим номером (как щелчок). */
+  /** After the picker opens, the emoji with this number is chosen from "Recent" (like a click). */
   pickRecent?: number;
 }
 
@@ -21,18 +21,18 @@ function typeInto(input: HTMLInputElement, text: string) {
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-/** Окно чата поверх «главного окна» (заглушка из поверхностей): окно прижато к верху и не сдвигается, когда раскрывается пикер. */
+/** The chat window over the "main window" (a stub made of surfaces): the window is pinned to the top and does not shift when the picker opens. */
 function Demo({ mode = "create", initialName, initialEmoji, error, busy, typed, openPicker = false, pickRecent }: DemoProps) {
   const language = useLanguage();
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // Эффект родителя выполняется после эффектов окна (оно ставит фокус в поле): действия истории идут поверх.
+    // The parent's effect runs after the window's effects (it puts focus in the field): the story's actions go on top.
     const root = host.current;
     const input = root?.querySelector<HTMLInputElement>('.chat-dialog__name input');
     if (typed && input) typeInto(input, typed);
     if (openPicker) root?.querySelector<HTMLButtonElement>(".chat-dialog__emoji")?.click();
   }, [typed, openPicker]);
-  // Пикер появляется в документе после перерисовки, вызванной щелчком: «Недавние» ждут по наблюдателю.
+  // The picker appears in the document after a re-render caused by the click: "Recent" is awaited via an observer.
   useEffect(() => {
     const root = host.current;
     if (pickRecent === undefined || !root) return;
@@ -80,53 +80,53 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Новый чат, пусто: поле «Название» в фокусе, 💬 приглушён (подсказка), «Создать» недоступна. */
+/** New chat, empty: the "Name" field is focused, 💬 is muted (a hint), "Create" is disabled. */
 export const Создание: Story = {};
 
-/** Имя введено: «Создать» доступна. */
+/** The name is entered: "Create" is enabled. */
 export const СоздатьСИменем: Story = { args: { typed: "Книги" } };
 
-/** Пикер раскрыт под полем: окно выросло вниз, заголовок остался на месте. */
+/** The picker is open under the field: the window grew down, the heading stayed in place. */
 export const СоздатьСПикером: Story = { args: { typed: "Книги", openPicker: true } };
 
-/** Эмодзи выбран из «Недавних»: пикер закрылся, на кнопке 📚, фокус вернулся в поле. */
+/** An emoji is chosen from "Recent": the picker closed, the button shows 📚, focus returned to the field. */
 export const СоздатьЭмодзиВыбран: Story = { args: { typed: "Книги", openPicker: true, pickRecent: 0 } };
 
-/** Длинное имя из кириллицы и латиницы: поле не растёт, текст прокручивается внутри. */
+/** A long name of Cyrillic and Latin: the field does not grow, the text scrolls inside. */
 export const СоздатьДлинноеИмя: Story = {
   args: { typed: "Подготовка к собеседованию по системному дизайну and distributed systems, часть вторая и третья" },
 };
 
-/** Ошибка Rust под полем (role=alert): поле с рамкой ошибки, введённое остаётся. */
+/** A Rust error under the field (role=alert): the field has an error border, the entered text stays. */
 export const СоздатьОшибка: Story = { args: { typed: "x", error: "Введите название чата." } };
 
-/** Запрос идёт: поля и кнопки недоступны. */
+/** A request is in flight: the fields and buttons are disabled. */
 export const СоздатьЗанято: Story = { args: { typed: "Книги", busy: true } };
 
-/** Переименование: имя подставлено, кнопки эмодзи нет, «Сохранить». */
+/** Rename: the name is filled in, there is no emoji button, "Save". */
 export const Переименование: Story = { args: { mode: "rename", initialName: "Книги", initialEmoji: "📚" } };
 
-/** Переименование, ошибка. */
+/** Rename, error. */
 export const ПереименованиеОшибка: Story = {
   args: { mode: "rename", initialName: "Книги", error: "Название чата — не длиннее 128 знаков." },
 };
 
-/** Смена эмодзи: только пикер, выбор сразу отправляет; фокус в поиске. */
+/** Change the emoji: the picker only, a choice submits at once; focus in the search. */
 export const СменаЭмодзи: Story = { args: { mode: "icon", initialName: "Книги", initialEmoji: "📚" } };
 
-/** Смена эмодзи, ошибка над пикером. */
+/** Change the emoji, an error above the picker. */
 export const СменаЭмодзиОшибка: Story = {
   args: { mode: "icon", initialName: "Книги", error: "Этот эмодзи не подошёл. Выберите другой." },
 };
 
-/** Английский интерфейс. */
+/** English interface. */
 export const СозданиеАнглийский: Story = { args: { typed: "Books", openPicker: true }, globals: { language: "en" } };
 
-/** Английский, переименование. */
+/** English, rename. */
 export const ПереименованиеАнглийский: Story = { args: { mode: "rename", initialName: "Books" }, globals: { language: "en" } };
 
-/** Крупный текст: окно, поле, пикер и кнопки растут вместе с текстом. */
+/** Large text: the window, field, picker and buttons grow with the text. */
 export const СозданиеКрупныйТекст: Story = { args: { typed: "Книги", openPicker: true }, globals: { textScale: "large" } };
 
-/** Крупный текст, переименование. */
+/** Large text, rename. */
 export const ПереименованиеКрупныйТекст: Story = { args: { mode: "rename", initialName: "Книги" }, globals: { textScale: "large" } };

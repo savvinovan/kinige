@@ -1,78 +1,78 @@
 {
   "type": {
-    "$description": "Типографическая шкала по ролям, компактная (плотность как в Telegram, ADR-0004). Размер в rem, где 1rem = размер текста записей (font.root.default, 13 px), поэтому «крупный текст» меняет всю плотность вместе. Межстрочный — безразмерный множитель. Семейство — роль font.family.* (sans / mono), реальные шрифты задаёт активный набор (active.fontset). Значения в px — при корне 13 px.",
+    "$description": "The typographic scale by roles, compact (density as in Telegram, ADR-0004). Sizes are in rem, where 1rem = the entry text size (font.root.default, 13 px), so 'large text' changes the whole density together. Line height is a unitless multiplier. The family is a font.family.* role (sans / mono), the real fonts are set by the active set (active.fontset). The px values are at a 13 px root.",
     "day": {
-      "$description": "Метка дня («таблетка» по центру ленты): 11,7 px (D2: было 11,2).",
+      "$description": "The day label (a 'pill' in the center of the feed): 11.7 px (D2: was 11.2).",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "0.9rem" },
       "lineHeight": { "$type": "number", "$value": 1.3 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.medium}" }
     },
     "h1": {
-      "$description": "Заголовок H1 в записи: 16,8 px, ненамного крупнее текста.",
+      "$description": "H1 heading in an entry: 16.8 px, not much larger than the text.",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1.29rem" },
       "lineHeight": { "$type": "number", "$value": 1.3 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
     },
     "h2": {
-      "$description": "Заголовок H2 в записи: 14,8 px.",
+      "$description": "H2 heading in an entry: 14.8 px.",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1.14rem" },
       "lineHeight": { "$type": "number", "$value": 1.35 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
     },
     "h3": {
-      "$description": "Заголовок H3 в записи: 13,9 px.",
+      "$description": "H3 heading in an entry: 13.9 px.",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1.07rem" },
       "lineHeight": { "$type": "number", "$value": 1.4 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
     },
     "body": {
-      "$description": "Текст записи и поле ввода: Inter 13 px, межстрочный 1,43 (18,6 px).",
+      "$description": "Entry text and the input field: Inter 13 px, line height 1.43 (18.6 px).",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1rem" },
       "lineHeight": { "$type": "number", "$value": 1.43 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
     },
     "small": {
-      "$description": "Интерфейс: кнопки, подписи, поиск, строки настроек: 13 px (D2: было 12,1).",
+      "$description": "Interface: buttons, captions, search, settings rows: 13 px (D2: was 12.1).",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1rem" },
       "lineHeight": { "$type": "number", "$value": 1.4 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
     },
     "nav": {
-      "$description": "Навигация: строки чатов в сайдбаре и пункты дерева настроек, 14 px (D2, по образцу крупной боковой панели).",
+      "$description": "Navigation: chat rows in the sidebar and settings tree items, 14 px (D2, after the model of a large side panel).",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1.08rem" },
       "lineHeight": { "$type": "number", "$value": 1.3 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
     },
     "section": {
-      "$description": "Заголовок раздела в сайдбаре («Закреплённые», «Чаты», «Архив»): тихий серый, 12 px (D2).",
+      "$description": "A section heading in the sidebar ('Pinned', 'Chats', 'Archive'): quiet gray, 12 px (D2).",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "0.92rem" },
       "lineHeight": { "$type": "number", "$value": 1.3 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.medium}" }
     },
     "title": {
-      "$description": "Заголовок окна, диалога и страницы настроек: 16 px (D2). Заголовки H1–H3 внутри записи остаются компактными.",
+      "$description": "The title of a window, a dialog and a settings page: 16 px (D2). The H1-H3 headings inside an entry stay compact.",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "1.23rem" },
       "lineHeight": { "$type": "number", "$value": 1.3 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.semibold}" }
     },
     "code": {
-      "$description": "Код: строчный и блок, 12,1 px.",
+      "$description": "Code: inline and block, 12.1 px.",
       "family": { "$type": "fontFamily", "$value": "{font.family.mono}" },
       "size": { "$type": "dimension", "$value": "0.93rem" },
       "lineHeight": { "$type": "number", "$value": 1.5 },
       "weight": { "$type": "fontWeight", "$value": "{font.weight.regular}" }
     },
     "meta": {
-      "$description": "Метаданные: время в плашке, счётчики, 11 px (D2: было 10,4).",
+      "$description": "Metadata: the time in a plate, counters, 11 px (D2: was 10.4).",
       "family": { "$type": "fontFamily", "$value": "{font.family.sans}" },
       "size": { "$type": "dimension", "$value": "0.85rem" },
       "lineHeight": { "$type": "number", "$value": 1.3 },

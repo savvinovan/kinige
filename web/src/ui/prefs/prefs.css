@@ -1,12 +1,12 @@
-/* Окно «Настройки» (слайс 4b): рамка окна, страница раздела, подэкраны, строка «Настроить ›», файл настроек. Только токены.
-   Единственная прокручиваемая область окна — `.prefs__page`; остальное (дерево, списки, журнал, блоки кода) показывается
-   целиком, без своей прокрутки и предельной высоты. Предупреждение при включении доступа — `Modal` поверх окна: страница
-   под ним свой `overflow` не меняет, и её содержимое не сдвигается даже при «Всегда показывать полосы прокрутки». */
+/* The "Settings" window (slice 4b): the window frame, a section page, subscreens, the "Настроить ›" row, the settings file. Tokens only.
+   The only scrollable area of the window is `.prefs__page`; everything else (the tree, lists, the log, code blocks) is shown
+   in full, without its own scroll or a maximum height. The warning when enabling access is a `Modal` over the window: the page
+   under it does not change its `overflow`, and its content does not shift even with "Always show scroll bars". */
 
-/* В окне ОС документ не прокручивается: единственная полоса — у страницы (`.prefs__page`). В настоящем WKWebView у окна
-   была вторая полоса, полосы документа (снимки 04, 09, 13 слайса 4b): дерево доступности показало один AXScrollArea — сам
-   WebView, то есть документ был выше окна. Строка сетки задана явно (`minmax(0, 1fr)`: ровно высота окна, а не высота
-   содержимого), а у окна настроек (`data-window="settings"`, ставит main.tsx) документ не прокручивается совсем. */
+/* In the OS window the document does not scroll: the only scrollbar is the page's (`.prefs__page`). In a real WKWebView the window
+   had a second scrollbar, the document's (screenshots 04, 09, 13 of slice 4b): the accessibility tree showed one AXScrollArea, the
+   WebView itself, meaning the document was taller than the window. The grid row is set explicitly (`minmax(0, 1fr)`: exactly the window
+   height, not the content height), and in the settings window (`data-window="settings"`, set by main.tsx) the document does not scroll at all. */
 html[data-window="settings"],
 html[data-window="settings"] body {
   overflow: hidden;
@@ -61,7 +61,7 @@ html[data-window="settings"] body {
   border-top: var(--border-width-hairline) solid var(--color-border-divider);
 }
 
-/* «Изменено через settings.json · 14:02»: тихая строка рядом с разделом; место под неё не резервируется заранее и ничего не двигает, потому что стоит последней в блоке. */
+/* "Изменено через settings.json · 14:02": a quiet line next to the section; space for it is not reserved in advance and it shifts nothing, because it is last in the block. */
 .prefs-changed {
   margin: 0;
   color: var(--color-text-tertiary);
@@ -70,7 +70,7 @@ html[data-window="settings"] body {
   line-height: var(--type-meta-line-height);
 }
 
-/* Заголовок подэкрана: стрелка назад и «Раздел › Название». */
+/* The subscreen header: a back arrow and "Section > Name". */
 .prefs-subscreen {
   display: flex;
   align-items: center;
@@ -140,8 +140,8 @@ html[data-window="settings"] body {
   overflow-wrap: anywhere;
 }
 
-/* Карточка-группа строк (системные настройки macOS, Zed): одна заливка, тонкие разделители между строками. Так оформлены
-   сочетания клавиш и строки «Видимые чаты» / «Журнал обращений». */
+/* A card-group of rows (macOS system settings, Zed): one fill, thin dividers between rows. This is how the
+   keyboard shortcuts and the "Видимые чаты" / "Журнал обращений" rows are styled. */
 .settings-group {
   display: grid;
   border-radius: var(--radius-panel);
@@ -153,7 +153,7 @@ html[data-window="settings"] body {
   border-top: var(--border-width-hairline) solid var(--color-border-divider);
 }
 
-/* Строка «Настроить ›»: название и состояние слева, действие справа; вся строка — кнопка внутри группы. */
+/* The "Настроить ›" row: the name and state on the left, the action on the right; the whole row is a button inside the group. */
 .configure-row {
   display: flex;
   align-items: center;
@@ -209,7 +209,7 @@ html[data-window="settings"] body {
   height: var(--icon-size-small);
 }
 
-/* Файл настроек: путь, состояние, список проблем. */
+/* The settings file: the path, the state, the list of problems. */
 .prefs-file {
   display: grid;
   gap: var(--space-2);

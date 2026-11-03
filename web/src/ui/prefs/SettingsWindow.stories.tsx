@@ -18,7 +18,7 @@ import { SettingsWindowView, type SettingsWindowViewProps } from "./SettingsWind
 import type { Route } from "./routes";
 import "./prefs-stories.css";
 
-// Окно «Настройки» (слайс 4b) во всех страницах и состояниях. «Сейчас» фиксировано: среда, 28 октября 2026, 14:10 (UTC).
+// The "Settings" window (slice 4b) in all pages and states. "Now" is fixed: Wednesday, 28 October 2026, 14:10 (UTC).
 const NOW = new Date(Date.UTC(2026, 9, 28, 14, 10));
 const at = (hour: number, minute: number) => Date.UTC(2026, 9, 28, hour, minute);
 const noop = () => undefined;
@@ -100,7 +100,7 @@ const BASE: SettingsWindowViewProps = {
   log: LOG,
   language: "ru",
   now: NOW,
-  // Дерево в историях не читает localStorage: развёрнута только группа текущей страницы (если она внутри группы).
+  // The tree in stories does not read localStorage: only the group of the current page is expanded (if it is inside a group).
   treeExpanded: [],
   warning: false,
   onTextSizeChange: noop,
@@ -119,13 +119,13 @@ const BASE: SettingsWindowViewProps = {
 };
 
 interface DemoProps extends Partial<SettingsWindowViewProps> {
-  /** Наименьшее окно (640 × 440). */
+  /** The smallest window (640 × 440). */
   min?: boolean;
-  /** Сразу включает запись нового сочетания в первой строке («Изменить» нажимается в истории: мыши нет). */
+  /** Immediately starts recording a new shortcut in the first row ("Изменить" is pressed in the story: there is no mouse). */
   record?: boolean;
 }
 
-/** Окно с настоящей навигацией по дереву; остальное — без вызовов. */
+/** A window with real navigation through the tree; the rest makes no calls. */
 function Demo({ min = false, record = false, route: initial = "appearance", warning: initialWarning = false, ...rest }: DemoProps) {
   const [route, setRoute] = useState<Route>(initial);
   const [warning, setWarning] = useState(initialWarning);
@@ -161,25 +161,25 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Оформление: размер текста. */
+/** Appearance: the text size. */
 export const Оформление: Story = {};
 
-/** Сочетания клавиш: оба назначены. */
+/** Keyboard shortcuts: both are assigned. */
 export const Сочетания: Story = { args: { route: "shortcuts" } };
 
-/** Запись нового сочетания: поле записи на месте клавиш, кнопки скрыты, раскладка строки не меняется. */
+/** Recording a new shortcut: the recording field in place of the keys, the buttons hidden, the row layout does not change. */
 export const СочетанияЗапись: Story = { args: { route: "shortcuts", record: true } };
 
-/** Дерево: группа «Доступ ИИ-агентов» свёрнута (по умолчанию), шеврон ›. */
+/** Tree: the "Доступ ИИ-агентов" group is collapsed (the default), chevron ›. */
 export const ДеревоСвёрнуто: Story = {};
 
-/** Дерево: группа развёрнута, шеврон ⌄ и вложенные пункты. */
+/** Tree: the group is expanded, chevron ⌄ and nested items. */
 export const ДеревоРазвёрнуто: Story = { args: { treeExpanded: ["access"] } };
 
-/** Узкое окно: клавиши и кнопки переходят под название. */
+/** A narrow window: the keys and buttons move below the name. */
 export const НаименьшийРазмерСочетания: Story = { args: { min: true, route: "shortcuts", record: true } };
 
-/** Сочетание занято другой программой («не назначено»), у второго ошибка сохранения. */
+/** A shortcut is taken by another program ("не назначено"), the second one has a save error. */
 export const СочетаниеЗанято: Story = {
   args: {
     route: "shortcuts",
@@ -194,10 +194,10 @@ export const СочетаниеЗанято: Story = {
   },
 };
 
-/** Копии: Markdown-копия актуальна, копия базы снята. */
+/** Copies: the Markdown copy is up to date, the database copy is taken. */
 export const Копии: Story = { args: { route: "mirror", settings: { ...SETTINGS, backup: DEFAULT_BACKUP } } };
 
-/** Копии: папка недоступна, дни ждут записи, ошибка выбора. */
+/** Copies: the folder is unavailable, days are waiting to be written, a choice error. */
 export const КопииОшибка: Story = {
   args: {
     route: "mirror",
@@ -206,7 +206,7 @@ export const КопииОшибка: Story = {
   },
 };
 
-/** Доступ выключен: режим недоступен, чаты и журнал открываются строками «Настроить ›». */
+/** Access is off: the mode is unavailable, chats and the log open through the "Настроить ›" rows. */
 export const ДоступВыключен: Story = { args: { route: "access", access: OFF } };
 
 /** Windows until named pipes (slice 10a): there is no MCP server, so one quiet line stands in for the switch. */
@@ -217,10 +217,10 @@ export const ДоступНедоступен: Story = {
   },
 };
 
-/** Предупреждение о провайдере модели — один Modal поверх окна; страница под ним на месте. */
+/** The model provider warning is a single Modal over the window; the page under it stays in place. */
 export const ПредупреждениеПриВключении: Story = { args: { route: "access", access: OFF, warning: true } };
 
-/** Включён, «чтение и запись»; раздел изменён через файл — тихая строка рядом. */
+/** Enabled, "чтение и запись"; the section was changed through the file: a quiet line next to it. */
 export const ДоступВключён: Story = {
   args: {
     route: "access",
@@ -229,13 +229,13 @@ export const ДоступВключён: Story = {
   },
 };
 
-/** Подэкран «Видимые чаты»: список целиком, «Дневник» исключён из AI. */
+/** The "Видимые чаты" subscreen: the whole list, "Дневник" is excluded from AI. */
 export const ВидимыеЧаты: Story = { args: { route: "access/chats" } };
 
-/** Подэкран «Журнал обращений»: пуст. */
+/** The "Журнал обращений" subscreen: empty. */
 export const ЖурналПуст: Story = { args: { route: "access/log", log: EMPTY_LOG } };
 
-/** Подэкран «Журнал обращений»: строка раскрыта, «Показать ещё» внизу страницы; строка «settings.json · доступ изменён». */
+/** The "Журнал обращений" subscreen: a row is expanded, "Показать ещё" at the bottom of the page; the "settings.json · доступ изменён" row. */
 export const ЖурналДлинный: Story = {
   args: {
     route: "access/log",
@@ -249,15 +249,15 @@ export const ЖурналДлинный: Story = {
   },
 };
 
-/** Файл настроек без ошибок: путь, «Копировать путь». */
+/** A settings file without errors: the path, "Копировать путь". */
 export const ФайлБезОшибок: Story = { args: { route: "file" } };
 
-/** Файл не разобран: строка и столбец; у пункта дерева метка ошибки. */
+/** The file did not parse: line and column; the tree item has an error mark. */
 export const ФайлНеРазобран: Story = {
   args: { route: "file", file: file({ problem: { kind: "parse", line: 1, column: 15 } }) },
 };
 
-/** Ошибки нескольких ключей и неизвестный ключ: остальное применено. */
+/** Errors of several keys and an unknown key: the rest is applied. */
 export const ОшибкиКлючей: Story = {
   args: {
     route: "file",
@@ -275,7 +275,7 @@ export const ОшибкиКлючей: Story = {
   },
 };
 
-/** Небезопасные права файла: ключи доступа и папки из него не применяются. */
+/** Unsafe file permissions: the access keys and folders from it are not applied. */
 export const ФайлНебезопасен: Story = {
   args: {
     route: "file",
@@ -283,7 +283,7 @@ export const ФайлНебезопасен: Story = {
   },
 };
 
-/** Длинные пути и названия переносятся или обрезаются многоточием. */
+/** Long paths and names wrap or are truncated with an ellipsis. */
 export const ДлинныеПутиИНазвания: Story = {
   args: {
     route: "file",
@@ -295,26 +295,26 @@ export const ДлинныеПутиИНазвания: Story = {
   },
 };
 
-/** Наименьшее окно (640 × 440): всё доступно, дерево не прокручивается. */
+/** The smallest window (640 × 440): everything is reachable, the tree does not scroll. */
 export const НаименьшийРазмер: Story = { args: { min: true, route: "access", access: OFF } };
 
-/** Наименьшее окно, подэкран. */
+/** The smallest window, a subscreen. */
 export const НаименьшийРазмерПодэкран: Story = { args: { min: true, route: "access/chats" } };
 
-/** Английская версия истории: язык интерфейса и подписи переключаются, данные те же. */
+/** The English version of a story: the interface language and labels switch, the data is the same. */
 const en = (story: Story, args: Partial<DemoProps> = {}): Story => ({
   ...story,
   args: { ...story.args, language: "en", ...args },
   globals: { language: "en" },
 });
 
-/** English: оформление. */
+/** English: appearance. */
 export const English: Story = en(Оформление);
 export const EnglishShortcuts: Story = en(Сочетания);
 export const EnglishShortcutTaken: Story = en(СочетаниеЗанято, { shortcutErrors: { clipboard: "The other action already uses this shortcut." } });
 export const EnglishMirror: Story = en(Копии);
 export const EnglishMirrorError: Story = en(КопииОшибка, { pickError: "Could not choose the folder." });
-/** English: доступ выключен, предупреждение, включён. */
+/** English: access off, the warning, enabled. */
 export const EnglishAccessOff: Story = en(ДоступВыключен);
 export const EnglishWarning: Story = en(ПредупреждениеПриВключении);
 export const EnglishAccessUnavailable: Story = en(ДоступНедоступен);

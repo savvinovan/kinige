@@ -13,7 +13,7 @@ afterAll(() => restoreLayout());
 const BOOK = "\u{1F4DA}";
 const BULB = "\u{1F4A1}";
 
-/** Поле с настоящим состоянием: значение живёт в родителе, как в приложении. */
+/** A field with real state: the value lives in the parent, as in the app. */
 function Field({ initial, emoji, viewOnly = false }: { initial: string; emoji?: ComposerEmoji; viewOnly?: boolean }) {
   const [value, setValue] = useState(initial);
   return (

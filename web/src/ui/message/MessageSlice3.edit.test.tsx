@@ -39,7 +39,7 @@ describe("правка в плашке", () => {
     expect(field()).toHaveFocus();
     rerender(view({ markdown: "Первая строка\nвторая", onEdit: vi.fn() }));
     expect(article(container)).toHaveFocus();
-    // Плашка принимает фокус программно, но не стоит в порядке Tab.
+    // The bubble takes focus programmatically but is not in the Tab order.
     expect(article(container)).toHaveAttribute("tabindex", "-1");
     fireEvent.keyDown(article(container), { key: "F10", shiftKey: true });
     expect(screen.getByRole("menu")).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe("правка в плашке", () => {
     });
     const { container, rerender } = render(view());
     rerender(editing());
-    // Ширина плашки в jsdom подменена (321); в переменную она попадает числом в пикселях.
+    // The bubble width is overridden in jsdom (321); it goes into the variable as a number of pixels.
     expect(article(container).style.getPropertyValue("--message-edit-width")).toBe(`${321}px`);
     rerender(view());
     expect(article(container).style.getPropertyValue("--message-edit-width")).toBe("");

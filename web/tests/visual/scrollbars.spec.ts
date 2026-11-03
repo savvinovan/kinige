@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Полосы прокрутки видны всегда, как при настройке macOS «Всегда показывать полосы прокрутки» с мышью (KINIG-40, KINIG-38).
-// По умолчанию Playwright запускает Chromium с --hide-scrollbars, и снимки историй полос не видят вовсе: здесь флаг снят.
-// Проверки считают геометрию и цвет пикселей, а не сравнивают с эталоном, поэтому отдельных эталонов не нужно.
+// Scroll bars are always visible, as with the macOS "Always show scroll bars" setting with a mouse (KINIG-40, KINIG-38).
+// By default Playwright launches Chromium with --hide-scrollbars, and story snapshots do not see scroll bars at all: here the flag is removed.
+// The checks measure geometry and pixel color rather than compare with a baseline, so no separate baselines are needed.
 test.use({ launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"] } });
 
 const STORY = "компоненты-сообщение--кодсдлиннойстрокой";
@@ -21,9 +21,9 @@ for (const scale of ["default", "large"]) {
     const geometry = await page.evaluate(() => {
       const pre = document.querySelector<HTMLElement>(".markdown pre");
       const next = pre?.nextElementSibling;
-      if (!pre || !next) throw new Error("в истории нет блока кода и абзаца после него");
+      if (!pre || !next) throw new Error("the story has no code block and no paragraph after it");
       return {
-        // offsetHeight включает полосу прокрутки, clientHeight нет: разница — высота полосы под блоком.
+        // offsetHeight includes the scroll bar, clientHeight does not: the difference is the bar height under the block.
         scrollbar: pre.offsetHeight - pre.clientHeight,
         horizontalOverflow: pre.scrollWidth - pre.clientWidth,
         gap: next.getBoundingClientRect().top - pre.getBoundingClientRect().bottom,
@@ -34,7 +34,7 @@ for (const scale of ["default", "large"]) {
     expect(geometry.scrollbar).toBe(0);
     expect(geometry.horizontalOverflow).toBeLessThanOrEqual(0);
     expect(geometry.gap).toBeGreaterThan(0);
-    // Длинная строка действительно перенеслась (иначе тест ничего не проверял бы).
+    // The long line really wrapped (otherwise the test would check nothing).
     expect(geometry.lines).toBeGreaterThan(2);
   });
 }
@@ -43,7 +43,7 @@ test("полосы прокрутки тёмные, а не светлые на 
   await open(page, STORY);
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe("dark");
 
-  // Прокручиваемая область поверх истории: полоса справа, её дорожка — системная.
+  // A scrollable area over the story: the bar is on the right, its track is the system one.
   const track = await page.evaluate(() => {
     const box = document.createElement("div");
     box.id = "scrollbar-probe";
@@ -54,12 +54,12 @@ test("полосы прокрутки тёмные, а не светлые на 
   });
   expect(track.width).toBeGreaterThan(0);
   const shot = await page.screenshot({ clip: { x: 200 - track.width, y: 40, width: track.width, height: 20 } });
-  // Пиксели читаются тем же браузером: отдельного разборщика PNG в зависимостях нет.
+  // The pixels are read by the same browser: there is no separate PNG parser in the dependencies.
   const mean = await page.evaluate(async (base64) => {
     const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${base64}`)).blob());
     const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
     const context = canvas.getContext("2d");
-    if (!context) throw new Error("нет 2d-контекста");
+    if (!context) throw new Error("no 2d context");
     context.drawImage(bitmap, 0, 0);
     const { data } = context.getImageData(Math.floor(bitmap.width / 2), 5, 1, 1);
     return (0.2126 * (data[0] ?? 0) + 0.7152 * (data[1] ?? 0) + 0.0722 * (data[2] ?? 0)) / 255;
@@ -67,9 +67,9 @@ test("полосы прокрутки тёмные, а не светлые на 
   expect(mean).toBeLessThan(0.35);
 });
 
-// Окно «Настройки» (слайс 4b): единственная прокручиваемая область — страница справа (`.prefs__page`). Полосы видны всегда
-// (флаг `--hide-scrollbars` снят выше), как при «Всегда показывать полосы прокрутки». Дерево слева, списки чатов, журнал,
-// блоки кода и пути своей прокрутки не имеют; предупреждение о провайдере лежит поверх окна и страницу под ним не двигает.
+// The "Настройки" (Settings) window (slice 4b): the only scrollable area is the page on the right (`.prefs__page`). The bars are always visible
+// (the `--hide-scrollbars` flag is removed above), as with "Always show scroll bars". The tree on the left, the chat lists, the log,
+// the code blocks and the paths have no scrolling of their own; the provider warning lies over the window and does not move the page under it.
 const PREFS = (story: string) => `экраны-окно-настроек--${story}`;
 const PREFS_STORIES = ["оформление", "доступвыключен", "видимыечаты", "журналдлинный", "файлбезошибок", "ошибкиключей", "длинныепутииназвания", "наименьшийразмер", "наименьшийразмерподэкран"];
 
@@ -93,7 +93,7 @@ for (const story of PREFS_STORIES) {
               hidden: style.overflowY !== "visible",
             };
           })
-          // Рамка истории режет холст сама (`overflow: clip`): это не прокрутка.
+          // The story frame clips the canvas itself (`overflow: clip`): this is not scrolling.
           .filter((item) => !item.name.includes("story-prefs-frame"))
           .filter((item) => item.verticalBar > 0 || item.horizontalBar > 0 || (item.hidden && item.taller > 0 && !item.overflow.includes("clip"))),
       );
@@ -108,7 +108,7 @@ test("окно настроек: дерево при наименьшем окн
   await page.evaluate(() => document.documentElement.setAttribute("data-text-scale", "large"));
   const tree = await page.evaluate(() => {
     const nav = document.querySelector<HTMLElement>(".settings-tree");
-    if (!nav) throw new Error("нет дерева");
+    if (!nav) throw new Error("no tree");
     return { scrollable: nav.scrollHeight - nav.clientHeight, bottom: nav.getBoundingClientRect().bottom, lastBottom: [...nav.querySelectorAll("button")].at(-1)!.getBoundingClientRect().bottom };
   });
   expect(tree.scrollable).toBeLessThanOrEqual(0);
@@ -120,7 +120,7 @@ test("окно настроек: предупреждение не сдвига�
     page.evaluate(() => {
       const scroller = document.querySelector<HTMLElement>(".prefs__page");
       const heading = document.querySelector<HTMLElement>(".prefs-page__title");
-      if (!scroller || !heading) throw new Error("нет страницы");
+      if (!scroller || !heading) throw new Error("no page");
       const rect = heading.getBoundingClientRect();
       const box = scroller.getBoundingClientRect();
       return {

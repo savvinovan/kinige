@@ -1,15 +1,15 @@
-/** Страницы окна «Настройки» (слайс 4b): разделы дерева и подэкраны «Доступа ИИ-агентов». */
+/** Pages of the "Settings" window (slice 4b): the tree sections and the subscreens of "AI agent access". */
 export type Route = "appearance" | "shortcuts" | "mirror" | "access" | "access/chats" | "access/log" | "file";
 
 export interface TreeItem {
   route: Route;
-  /** Ключ названия в файлах переводов. */
+  /** The name key in the translation files. */
   label: `prefs.section.${"appearance" | "shortcuts" | "mirror" | "access" | "accessChats" | "accessLog" | "file"}`;
-  /** 0 — раздел, 1 — вложенный пункт (подэкран). */
+  /** 0 is a section, 1 is a nested item (subscreen). */
   level: 0 | 1;
 }
 
-/** Дерево разделов в порядке показа; вложенные пункты стоят под своим разделом. */
+/** The tree of sections in display order; nested items stand under their section. */
 export const TREE: readonly TreeItem[] = [
   { route: "appearance", label: "prefs.section.appearance", level: 0 },
   { route: "shortcuts", label: "prefs.section.shortcuts", level: 0 },
@@ -20,15 +20,15 @@ export const TREE: readonly TreeItem[] = [
   { route: "file", label: "prefs.section.file", level: 0 },
 ];
 
-/** Раздел, к которому относится подэкран; для раздела — он сам. */
+/** The section a subscreen belongs to; for a section, itself. */
 export const parentOf = (route: Route): Route => (route === "access/chats" || route === "access/log" ? "access" : route);
 
-/** Раздел с вложенными пунктами и его подэкраны: такие пункты дерева сворачиваются. */
+/** A section with nested items and its subscreens: such tree items collapse. */
 export const GROUPS: Readonly<Partial<Record<Route, readonly Route[]>>> = {
   access: ["access/chats", "access/log"],
 };
 
-/** Группа, в которой лежит страница: сам раздел с вложенными пунктами или один из его подэкранов; иначе `undefined`. */
+/** The group the page belongs to: a section with nested items itself or one of its subscreens; otherwise `undefined`. */
 export function groupOf(route: Route): Route | undefined {
   const parent = parentOf(route);
   return GROUPS[parent] ? parent : undefined;

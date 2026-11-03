@@ -1,4 +1,4 @@
-/* Оформление страниц «Основа» в Storybook. Только токены. */
+/* Styling of the "Основа" (Foundation) pages in Storybook. Tokens only. */
 
 .foundation {
   box-sizing: border-box;
@@ -43,7 +43,7 @@
   align-items: start;
 }
 
-/* Кандидат палитры или шрифтов: свой фон, чтобы палитры различались рядом. */
+/* A palette or font candidate: its own background so that palettes are distinguishable side by side. */
 .candidate {
   box-sizing: border-box;
   padding: var(--space-5);

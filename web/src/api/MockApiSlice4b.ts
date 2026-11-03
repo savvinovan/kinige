@@ -2,7 +2,7 @@ import { KinigeApiError } from "./KinigeApi";
 import { MockApiSlice4a } from "./MockApiSlice4a";
 import type { SettingsFileState } from "./generated/SettingsFileState";
 
-/** Состояние файла настроек без проблем: путь и пустые списки. */
+/** The settings file state with no problems: a path and empty lists. */
 export const MOCK_SETTINGS_FILE: SettingsFileState = {
   path: "/Users/me/Library/Application Support/me.savvinov.kinige/settings.json",
   problem: null,
@@ -14,16 +14,16 @@ export const MOCK_SETTINGS_FILE: SettingsFileState = {
 };
 
 /**
- * Окно настроек и файл `settings.json` в `MockApi` (слайс 4b, ADR-0010): состояние файла, которое тест или история задают
- * как хотят (`settingsFile`), событие «настройки изменились» (его шлют и правки окна), открытие записи из журнала и счётчик
- * «окно настроек открыто».
+ * The settings window and the `settings.json` file in `MockApi` (slice 4b, ADR-0010): the file state that a test or a story
+ * sets as it likes (`settingsFile`), the "settings changed" event (window edits send it too), opening an entry from the
+ * log and the "settings window is open" counter.
  */
 export class MockApiSlice4b extends MockApiSlice4a {
-  /** Что вернёт `getSettingsFile`: тест подменяет целиком или частично. */
+  /** What `getSettingsFile` returns: a test replaces it fully or partly. */
   settingsFile: SettingsFileState = MOCK_SETTINGS_FILE;
-  /** Сколько раз просили открыть окно настроек. */
+  /** How many times the settings window was asked to open. */
   openSettingsCount = 0;
-  /** Записи, которые окно настроек просило открыть в ленте: `settingsOpenEntry` отправляет их главному окну. */
+  /** Entries that the settings window asked to open in the feed: `settingsOpenEntry` sends them to the main window. */
   readonly openedEntries: string[] = [];
   private readonly settingsListeners = new Set<() => void>();
   private readonly openMessageListeners = new Set<(target: { chatId: string; messageId: string }) => void>();
@@ -61,7 +61,7 @@ export class MockApiSlice4b extends MockApiSlice4a {
     });
   }
 
-  /** Как событие Rust `settings-changed`: правка окна, другого окна или файла. */
+  /** Like the Rust `settings-changed` event: an edit from the window, another window or the file. */
   emitSettingsChanged(): void {
     for (const handler of [...this.settingsListeners]) handler();
   }

@@ -1,5 +1,5 @@
-// Арифметика календарных дат без часовых поясов: дата — строка `YYYY-MM-DD` (`journal_date`), все расчёты идут по
-// компонентам через UTC, поэтому результат не зависит от пояса окна и перехода на летнее время.
+// Calendar date arithmetic without time zones: a date is a `YYYY-MM-DD` string (`journal_date`), all calculations go through
+// components via UTC, so the result does not depend on the window's zone or on daylight saving transitions.
 
 import type { Language } from "../../i18n";
 
@@ -11,7 +11,7 @@ export interface Ymd {
 
 const DAY_MS = 86_400_000;
 
-/** `YYYY-MM-DD` → компоненты; `null`, если строка не календарная дата («2026-02-30» — не дата). */
+/** `YYYY-MM-DD` -> components; `null` if the string is not a calendar date ("2026-02-30" is not a date). */
 export function parseDate(value: string): Ymd | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return null;
@@ -19,7 +19,7 @@ export function parseDate(value: string): Ymd | null {
   const month = Number(match[2]);
   const day = Number(match[3]);
   const time = new Date(Date.UTC(year, month - 1, day));
-  // Date.UTC сдвигает несуществующие дни в соседний месяц: отличие и значит «такой даты нет».
+  // Date.UTC shifts nonexistent days into the neighboring month: a difference means "no such date".
   if (time.getUTCFullYear() !== year || time.getUTCMonth() !== month - 1 || time.getUTCDate() !== day) return null;
   return { year, month, day };
 }
@@ -30,7 +30,7 @@ export function formatDate({ year, month, day }: Ymd): string {
   return `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`;
 }
 
-/** Дата как момент UTC-полуночи: общий вид для сдвигов. */
+/** A date as a UTC-midnight instant: the common form for shifts. */
 const toTime = ({ year, month, day }: Ymd) => Date.UTC(year, month - 1, day);
 
 function fromTime(time: number): Ymd {
@@ -46,7 +46,7 @@ export function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-/** Сдвиг на месяцы; день ужимается до длины месяца (31 января + 1 месяц = 28 февраля). */
+/** Shift by months; the day is clamped to the month length (31 January + 1 month = 28 February). */
 export function addMonths(date: Ymd, months: number): Ymd {
   const index = date.year * 12 + (date.month - 1) + months;
   const year = Math.floor(index / 12);
@@ -54,7 +54,7 @@ export function addMonths(date: Ymd, months: number): Ymd {
   return { year, month, day: Math.min(date.day, daysInMonth(year, month)) };
 }
 
-/** День недели: 0 — воскресенье … 6 — суббота. */
+/** Day of the week: 0 is Sunday ... 6 is Saturday. */
 export function weekday(date: Ymd): number {
   return new Date(toTime(date)).getUTCDay();
 }
@@ -65,9 +65,9 @@ interface WeekInfoLocale {
 }
 
 /**
- * Первый день недели: 0 — воскресенье, 1 — понедельник. Берётся из `Intl.Locale` (`getWeekInfo()` или старое свойство
- * `weekInfo`; `firstDay` там 1–7, где 7 — воскресенье). Если среда выполнения этого не умеет, запасной вариант:
- * понедельник для русского, воскресенье для английского.
+ * The first day of the week: 0 is Sunday, 1 is Monday. Taken from `Intl.Locale` (`getWeekInfo()` or the old property
+ * `weekInfo`; `firstDay` there is 1-7, where 7 is Sunday). If the runtime cannot do this, the fallback is:
+ * Monday for Russian, Sunday for English.
  */
 export function firstWeekday(language: Language): number {
   try {
@@ -75,12 +75,12 @@ export function firstWeekday(language: Language): number {
     const info = locale.getWeekInfo?.() ?? locale.weekInfo;
     if (info) return info.firstDay % 7;
   } catch {
-    // нет Intl.Locale — запасной вариант ниже
+    // no Intl.Locale: the fallback is below
   }
   return language === "ru" ? 1 : 0;
 }
 
-/** Ячейки сетки месяца: полные недели, начиная с `firstDay`; дни соседних месяцев входят (у них `inMonth: false`). */
+/** Cells of the month grid: full weeks starting from `firstDay`; days of neighboring months are included (they have `inMonth: false`). */
 export function monthGrid(year: number, month: number, firstDay: number): { date: Ymd; inMonth: boolean }[][] {
   const first: Ymd = { year, month, day: 1 };
   const lead = (weekday(first) - firstDay + 7) % 7;
@@ -94,14 +94,14 @@ export function monthGrid(year: number, month: number, firstDay: number): { date
   return weeks;
 }
 
-/** Начало и конец недели, в которой лежит дата. */
+/** The start and end of the week that contains the date. */
 export function weekBounds(date: Ymd, firstDay: number): { start: Ymd; end: Ymd } {
   const offset = (weekday(date) - firstDay + 7) % 7;
   const start = addDays(date, -offset);
   return { start, end: addDays(start, 6) };
 }
 
-/** Название месяца и года: «октябрь 2026» / «October 2026» (русское « г.» после года отброшено). */
+/** Month and year name: "октябрь 2026" / "October 2026" (the Russian " г." after the year is dropped). */
 export function formatMonth(year: number, month: number, language: Language): string {
   const parts = new Intl.DateTimeFormat(language, { month: "long", year: "numeric", timeZone: "UTC" }).formatToParts(
     new Date(Date.UTC(year, month - 1, 1)),
@@ -111,7 +111,7 @@ export function formatMonth(year: number, month: number, language: Language): st
   return parts.map((part) => part.value).join("");
 }
 
-/** Полная дата для диктора: «вторник, 20 октября 2026 г.» / «Tuesday, October 20, 2026». */
+/** Full date for the screen reader: "вторник, 20 октября 2026 г." / "Tuesday, October 20, 2026". */
 export function formatLongDate(date: Ymd, language: Language): string {
   return new Intl.DateTimeFormat(language, {
     weekday: "long",
@@ -122,8 +122,8 @@ export function formatLongDate(date: Ymd, language: Language): string {
   }).format(new Date(toTime(date)));
 }
 
-/** Название дня недели: короткое для заголовка столбца, длинное для диктора. */
+/** Weekday name: short for the column header, long for the screen reader. */
 export function weekdayName(day: number, language: Language, style: "short" | "long"): string {
-  // 2026-10-04 — воскресенье: любая известная неделя подходит, важен только день недели.
+  // 2026-10-04 is a Sunday: any known week will do, only the weekday matters.
   return new Intl.DateTimeFormat(language, { weekday: style, timeZone: "UTC" }).format(new Date(Date.UTC(2026, 9, 4 + day)));
 }

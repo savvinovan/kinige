@@ -1,6 +1,6 @@
-// Хуки Style Dictionary для дизайн-системы Kinige: выбор активных кандидатов, фильтр ядра, формат themes.css.
+// Style Dictionary hooks for the Kinige design system: choosing the active candidates, the core filter, the themes.css format.
 
-/** Копирует активный кандидат палитры и шрифтов в роли color.* и font.family.*. */
+/** Copies the active palette and font candidates into the color.* and font.family.* roles. */
 export function selectActive(tokens) {
   const next = structuredClone(tokens);
   const pick = (group, key) => {
@@ -8,7 +8,7 @@ export function selectActive(tokens) {
     const candidate = next[group]?.[name];
     if (!candidate) {
       const known = Object.keys(next[group] ?? {}).join(", ");
-      throw new Error(`design/tokens/active.json: ${key} = "${name}" не найден в ${group} (есть: ${known})`);
+      throw new Error(`design/tokens/active.json: ${key} = "${name}" not found in ${group} (known: ${known})`);
     }
     return structuredClone(candidate);
   };
@@ -20,7 +20,7 @@ export function selectActive(tokens) {
 
 const CANDIDATE_ROOTS = new Set(["palette", "fontset", "active"]);
 
-/** В tokens.css попадает всё, кроме кандидатов, выбора и значений Reduce Motion. */
+/** tokens.css gets everything except the candidates, the choice and the Reduce Motion values. */
 export function coreFilter(token) {
   const [root, second] = token.path;
   return !CANDIDATE_ROOTS.has(root) && !(root === "motion" && second === "reduced");
@@ -31,9 +31,9 @@ const declarations = (pairs, indent = "  ") => pairs.map(([name, value]) => `${i
 /** themes.css: @font-face, Reduce Motion. */
 export function candidatesFormat({ dictionary }) {
   const tokens = dictionary.allTokens;
-  const out = ["/* Сгенерировано из design/tokens (npm run tokens). Не править вручную. */", ""];
+  const out = ["/* Generated from design/tokens (npm run tokens). Do not edit by hand. */", ""];
 
-  out.push("/* Начертания: пути относительно этого файла. */");
+  out.push("/* Font faces: paths are relative to this file. */");
   for (const face of tokens.filter((t) => t.path[0] === "fontset" && t.path[2] === "face")) {
     const { family, style, weight, file } = face.$value;
     out.push(
@@ -52,7 +52,7 @@ export function candidatesFormat({ dictionary }) {
     .filter((t) => t.path[0] === "motion" && t.path[1] === "reduced")
     .map((t) => [`motion-${t.path.slice(2).join("-")}`, t.$value]);
   out.push(
-    "/* Reduce Motion: настройка ОС или атрибут data-reduce-motion на любом элементе (переключатель в Storybook и в настройках). */",
+    "/* Reduce Motion: the OS setting or the data-reduce-motion attribute on any element (the switch in Storybook and in the settings). */",
     "@media (prefers-reduced-motion: reduce) {",
     "  :root {",
     declarations(reduced, "    "),

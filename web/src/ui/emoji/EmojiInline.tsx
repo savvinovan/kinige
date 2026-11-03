@@ -9,17 +9,17 @@ export interface EmojiInlineProps {
   recent: readonly string[];
   language: Language;
   onPick: (emoji: string) => void;
-  /** Закрыть панель; `returnFocus` — вернуть фокус в поле (Esc, Tab). */
+  /** Close the panel; `returnFocus` returns focus to the field (Esc, Tab). */
   onClose: (returnFocus: boolean) => void;
-  /** Место в потоке содержимого (над строкой поля), куда встаёт панель. */
+  /** The place in the content flow (above the field row) where the panel stands. */
   host: HTMLElement;
 }
 
 /**
- * Пикер эмодзи «в потоке» (окно быстрого захвата): панель занимает место над строкой поля и раздвигает содержимое, а окно
- * подгоняется под него (растёт вверх, нижний край на месте). В отличие от всплывающей панели (`EmojiPopover`) ничего не
- * накладывает поверх: у окна захвата нет места за границами. Щелчок мимо её не закрывает: она закрывается кнопкой «эмодзи»,
- * выбором эмодзи и Esc. Фокус при открытии уходит в поиск.
+ * The "inline" emoji picker (quick capture window): the panel takes the place above the field row and pushes the content apart, and the window
+ * adjusts to it (grows up, the bottom edge stays). Unlike the popover panel (`EmojiPopover`) it overlays nothing:
+ * the capture window has no room beyond its borders. An outside click does not close it: it is closed by the "emoji" button,
+ * by choosing an emoji and by Esc. On opening, focus goes to the search.
  */
 export function EmojiInline({ recent, language, onPick, onClose, host }: EmojiInlineProps) {
   const { t } = useTranslation();
@@ -27,7 +27,7 @@ export function EmojiInline({ recent, language, onPick, onClose, host }: EmojiIn
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape" || event.key === "Tab") {
       event.preventDefault();
-      // Esc сначала закрывает пикер, окно (слушает документ) остаётся.
+      // Esc closes the picker first, the window (which listens on the document) stays.
       event.stopPropagation();
       onClose(true);
     }

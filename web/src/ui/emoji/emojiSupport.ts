@@ -1,20 +1,20 @@
 import type { RawEmoji } from "./emojiData";
 
-// Какие эмодзи рисует системный шрифт. Данные emojibase содержат эмодзи всех версий Unicode Emoji, а шрифт ОС знает не
-// все: на более старой системе новый эмодзи рисуется «тофу» (пустой рамкой) или распадается на части. Пикер не должен
-// показывать то, чего нет в шрифте.
+// Which emoji the system font draws. The emojibase data contains emoji of all Unicode Emoji versions, but the OS font does not know
+// all of them: on an older system a new emoji is drawn as "tofu" (an empty box) or falls apart into pieces. The picker must not
+// show what is not in the font.
 
 export interface EmojiSupport {
-  /** Наибольшая версия Unicode Emoji, чей эмодзи шрифт рисует; записи новее скрываются. */
+  /** The highest Unicode Emoji version whose emoji the font draws; newer entries are hidden. */
   version: number;
-  /** Рисуются ли флаги стран (🇪🇺): на Windows они остаются буквами. */
+  /** Whether country flags (🇪🇺) are drawn: on Windows they stay letters. */
   countryFlags: boolean;
 }
 
 /**
- * Версия, когда проверить глифы нельзя (нет canvas: тесты в jsdom). Не проверено на реальной системе: Emoji 15.1 —
- * последняя версия, которую, по памяти, уже рисует macOS 14+; Emoji 16 и 17 в эту границу не входят, пока проверка
- * по глифам не подтвердит их на целевой системе.
+ * The version used when glyphs cannot be checked (no canvas: tests in jsdom). Not verified on a real system: Emoji 15.1 is
+ * the last version that, from memory, macOS 14+ already draws; Emoji 16 and 17 are not within this limit until the glyph
+ * check confirms them on the target system.
  */
 export const FALLBACK_SUPPORT: EmojiSupport = { version: 15.1, countryFlags: true };
 
@@ -22,9 +22,9 @@ const SIZE = 2;
 const EU_FLAG = "\u{1F1EA}\u{1F1FA}";
 
 /**
- * Проверка по глифу, как делает frimousse (MIT): эмодзи рисуется на canvas двумя цветами текста. Цветной эмодзи от цвета
- * текста не зависит, а «тофу» и запасной монохромный глиф зависят. Составной эмодзи, которого шрифт не знает, распадается на
- * несколько и становится шире двух условных единиц. `null` — canvas недоступен.
+ * A check by glyph, as frimousse (MIT) does it: the emoji is drawn on a canvas with two text colors. A color emoji does not depend on the text
+ * color, while "tofu" and a fallback monochrome glyph do. A composite emoji that the font does not know falls apart into
+ * several and becomes wider than two nominal units. `null` means the canvas is unavailable.
  */
 function canvasContext(): CanvasRenderingContext2D | null {
   try {
@@ -37,7 +37,7 @@ function canvasContext(): CanvasRenderingContext2D | null {
 function glyphRenderer(): ((emoji: string) => boolean) | null {
   const ctx = canvasContext();
   if (!ctx) return null;
-  // Семейство берётся из токена (--font-family-emoji), а не из кода: единственное место, где его задаёт дизайн-система.
+  // The family comes from the token (--font-family-emoji), not from code: the only place where the design system sets it.
   const family = getComputedStyle(document.documentElement).getPropertyValue("--font-family-emoji").trim() || "sans-serif";
   ctx.canvas.width = SIZE;
   ctx.canvas.height = SIZE;
@@ -51,7 +51,7 @@ function glyphRenderer(): ((emoji: string) => boolean) | null {
       ctx.fillText(emoji, 0, 0);
       return ctx.getImageData(0, 0, SIZE, SIZE).data;
     };
-    // Два произвольных контрастных цвета на невидимом canvas: это пробы, а не цвета интерфейса.
+    // Two arbitrary contrasting colors on an invisible canvas: these are probes, not interface colors.
     const first = draw("blue");
     const second = draw("red");
     for (let i = 0; i < SIZE * SIZE * 4; i += 4) {
@@ -64,8 +64,8 @@ function glyphRenderer(): ((emoji: string) => boolean) | null {
 let detected: EmojiSupport | undefined;
 
 /**
- * Границу ищет по одному эмодзи каждой версии, от новой к старой: первая версия, чей эмодзи нарисован, и есть предел.
- * Результат запоминается на сессию. Без canvas — `FALLBACK_SUPPORT`. На реальном macOS не проверено.
+ * It looks for the limit by one emoji of each version, from new to old: the first version whose emoji is drawn is the limit.
+ * The result is remembered for the session. Without a canvas, `FALLBACK_SUPPORT`. Not verified on a real macOS.
  */
 export function detectSupport(emojis: readonly RawEmoji[]): EmojiSupport {
   if (detected) return detected;

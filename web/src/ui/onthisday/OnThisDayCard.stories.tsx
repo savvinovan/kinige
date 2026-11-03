@@ -23,22 +23,22 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Один год: заголовок, крестик «Скрыть до завтра», «1 год назад · дата», запись со временем. */
+/** One year: the heading, the "Скрыть до завтра" (hide until tomorrow) cross, "1 год назад · date", an entry with its time. */
 export const ОдинГод: Story = { args: { card: ONE_YEAR } };
 
-/** Три года подробно (до двух записей, «ещё N записей этого дня ›») и строки старых лет: «31 октября 2019 · 5 записей ›». */
+/** Three years in detail (up to two entries, "ещё N записей этого дня >") and rows of older years: "31 октября 2019 · 5 записей >". */
 export const ТриГодаИСтрокиСтарых: Story = {};
 
-/** Длинная запись обрезается многоточием на третьей строке. */
+/** A long entry is cut with an ellipsis on the third line. */
 export const ДлинныйТекст: Story = { args: { card: LONG_TEXT } };
 
-/** Английский. */
+/** English. */
 export const Английский: Story = { globals: { language: "en" } };
 
-/** Крупный текст. */
+/** Large text. */
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };
 
-/** Узкая колонка (проверка переноса). */
+/** A narrow column (a wrapping check). */
 export const Узкая: Story = {
   render: (args) => (
     <div style={{ maxWidth: "var(--layout-measure-column)" }}>

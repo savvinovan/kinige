@@ -2,7 +2,7 @@ import { type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { Settings } from "../../api/generated/Settings";
 import type { StartupState } from "../../api/generated/StartupState";
 
-/** Настройки, пока журнал не открыт (база повреждена): читать их не из чего, окно «База повреждена» от них не зависит. */
+/** Settings while the journal is not open (the database is damaged): there is nothing to read them from, the "Database is damaged" window does not depend on them. */
 export const RECOVERY_SETTINGS: Settings = {
   textSize: "normal",
   mirror: { folder: null, isDefault: true, error: null, pendingDays: 0 },
@@ -15,10 +15,10 @@ export const RECOVERY_SETTINGS: Settings = {
 };
 
 /**
- * Что нужно окну до первого кадра: настройки и состояние запуска. Журнал не открыт (нужно восстановление или база новее
- * приложения) — настройки читать не из чего. База открылась, но чтение настроек само упёрлось в повреждение (порча в
- * страницах, которой открытие не видит) — это то же «повреждение найдено»: окно «База повреждена», а не пустая страница.
- * Любая другая ошибка чтения — наверх, её покажет `main.tsx`.
+ * What the window needs before the first frame: the settings and the startup state. The journal is not open (a restore is
+ * needed or the database is newer than the app) -- there is nothing to read the settings from. The database opened, but
+ * reading the settings itself hit damage (corruption in pages that opening does not see) -- that is the same "damage
+ * found": the "Database is damaged" window, not an empty page. Any other read error goes up, `main.tsx` will show it.
  */
 export async function loadStartup(
   api: KinigeApi,

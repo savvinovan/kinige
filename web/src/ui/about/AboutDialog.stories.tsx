@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { AboutDialog } from "./AboutDialog";
 
-// Окно «О программе» (KINIG-54): название с версией сборки и одна строка о приложении; версия недоступна; en; крупный текст.
+// The "About" window (KINIG-54): the name with the build version and one line about the app; version unavailable; en; large text.
 const meta = {
   title: "Экраны/О программе",
   component: AboutDialog,
@@ -12,14 +12,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Название и версия от Rust, строка о приложении. */
+/** The name and version from Rust, a line about the app. */
 export const Версия: Story = {};
 
-/** Rust не ответил: вместо версии прочерк. */
+/** Rust did not answer: a dash instead of the version. */
 export const ВерсияНеизвестна: Story = { args: { title: "—" } };
 
-/** Английский. */
+/** English. */
 export const En: Story = { globals: { language: "en" } };
 
-/** Крупный текст. */
+/** Large text. */
 export const Крупный: Story = { globals: { textScale: "large" } };

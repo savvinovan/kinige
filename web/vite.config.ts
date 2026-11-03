@@ -1,18 +1,18 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
-// Порт фиксирован: он указан в `devUrl` и в devCsp файла src-tauri/tauri.conf.json.
+// The port is fixed: it is set in `devUrl` and in devCsp of src-tauri/tauri.conf.json.
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
-  // fs.allow: сам web/ и design/tokens (тесты и истории читают токены JSON на уровень выше web/).
+  // fs.allow: web/ itself and design/tokens (tests and stories read the JSON tokens one level above web/).
   server: { port: 1420, strictPort: true, fs: { allow: [".", "../design/tokens"] } },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
-    // `npm run test:coverage` (CI → Codecov): только код приложения. Без тестов, историй, сгенерированных типов
-    // и того, что нужно только тестам и Storybook (MockApi и его данные, демо-данные настроек, рамка историй).
+    // `npm run test:coverage` (CI → Codecov): app code only. Without tests, stories, generated types
+    // and what only tests and Storybook need (MockApi and its data, the settings demo data, the stories frame).
     coverage: {
       provider: "v8",
       reporter: ["lcov", "text-summary"],

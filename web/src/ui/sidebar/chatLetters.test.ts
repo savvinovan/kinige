@@ -25,7 +25,7 @@ describe("firstLetter", () => {
   });
 
   it("буква с комбинируемым знаком — одна графема целиком", () => {
-    // «е» + U+0308 (комбинируемая диереза) и «a» + U+0301 (акут): запись из двух кодовых точек не рвётся.
+    // "е" + U+0308 (combining diaeresis) and "a" + U+0301 (acute): a sequence of two code points is not split.
     expect(firstLetter("ёлка")).toBe("Ё");
     expect(firstLetter("ábc")).toBe("Á");
   });

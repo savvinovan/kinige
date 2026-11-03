@@ -26,25 +26,25 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** «Ответ на запись · 31 октября 2023», первая строка записи и крестик; под ней поле ввода. */
+/** "Reply to the entry of 31 October 2023", the first line of the entry and a cross; the input field is under it. */
 export const Обычная: Story = {};
 
-/** Запись ушла в корзину: строка так и говорит, отправить ответ нельзя (текст остаётся). */
+/** The entry went to the trash: the line says so, the reply cannot be sent (the text stays). */
 export const ЗаписьВКорзине: Story = { args: { quote: { ...LIVE, state: "trash" } } };
 
-/** Запись удалена навсегда. */
+/** The entry was deleted for good. */
 export const Удалена: Story = { args: { quote: { ...LIVE, state: "missing", journalDate: null, excerpt: "", yearsLater: 0 } } };
 
-/** Запись, на которую отвечали, перенесли в другой чат: ответ на неё Rust не примет, запись уйдёт обычной. */
+/** The entry being replied to was moved to another chat: Rust will not accept a reply to it, the entry will go as an ordinary one. */
 export const ЗаписьПеренесена: Story = { args: { quote: { ...LIVE, state: "moved" } } };
 
-/** Очень длинная первая строка обрезается многоточием. */
+/** A very long first line is cut with an ellipsis. */
 export const ДлиннаяСтрока: Story = {
   args: { quote: { ...LIVE, excerpt: "Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям, разобрать, чем консенсус отличается от двухфазной фиксации." } },
 };
 
-/** Английский. */
+/** English. */
 export const Английский: Story = { globals: { language: "en" } };
 
-/** Крупный текст. */
+/** Large text. */
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };

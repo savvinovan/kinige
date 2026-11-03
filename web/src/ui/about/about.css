@@ -1,4 +1,4 @@
-/* Окно «О программе»: название с версией и строка о приложении. Только токены. */
+/* The "About" window: the name with the version and a line about the app. Tokens only. */
 .about {
   display: grid;
   gap: var(--space-2);

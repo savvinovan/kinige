@@ -1,4 +1,4 @@
-/* Экран «База повреждена»: окно целиком, колонка по центру. Только токены. */
+/* The "База повреждена" screen: the whole window, a centered column. Tokens only. */
 .recovery {
   display: flex;
   align-items: center;
@@ -49,7 +49,7 @@
   line-height: var(--type-h3-line-height);
 }
 
-/* Список копий: строки с тонкими разделителями, без карточек; выбранная — заливка без рамки. Длинный список прокручивается. */
+/* The copy list: rows with thin dividers, no cards; the selected one is a fill with no outline. A long list scrolls. */
 .recovery__list {
   display: grid;
   max-height: var(--layout-recovery-list-max-height);
@@ -76,12 +76,12 @@
   background: var(--color-surface-selected);
 }
 
-/* Выбранная копия — заливка светлее, чем при наведении (там `surface-selected`), без рамки. */
+/* The selected copy is a fill lighter than on hover (which uses `surface-selected`), no outline. */
 .recovery__backup:has(input:checked) {
   background: var(--color-highlight-background);
 }
 
-/* Фокус с клавиатуры на радиокнопке: кольцо вокруг всей строки (сама радиокнопка скрыта визуально). */
+/* Keyboard focus on the radio button: a ring around the whole row (the radio button itself is visually hidden). */
 .recovery__backup:has(input:focus-visible) {
   outline: var(--focus-width) solid var(--color-focus-ring);
   outline-offset: calc(var(--focus-offset) * -1);
@@ -107,7 +107,7 @@
   white-space: nowrap;
 }
 
-/* Главная кнопка: акцентная заливка, текст цветом фона окна (9,2:1 к акценту); подпись длинная, поэтому переносится. */
+/* The main button: an accent fill, the text in the window background color (9.2:1 against the accent); the label is long, so it wraps. */
 .recovery__primary,
 .recovery__primary:hover {
   justify-self: start;

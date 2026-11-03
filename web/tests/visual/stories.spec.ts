@@ -5,8 +5,8 @@ interface StorybookIndex {
   entries: Record<string, { id: string; type: string }>;
 }
 
-// Одна тема. Каждая история снимается дважды: обычный и крупный текст (атрибут data-text-scale на <html>, как в приложении).
-// Список историй берётся из собранного Storybook (`npm run build-storybook` идёт до тестов).
+// One theme. Each story is captured twice: normal and large text (the data-text-scale attribute on <html>, as in the app).
+// The list of stories comes from the built Storybook (`npm run build-storybook` runs before the tests).
 const index = JSON.parse(readFileSync("storybook-static/index.json", "utf8")) as StorybookIndex;
 const stories = Object.values(index.entries).filter((entry) => entry.type === "story");
 
@@ -21,7 +21,7 @@ const stories = Object.values(index.entries).filter((entry) => entry.type === "s
 const NOISY = new Set(["компоненты-окно-чата--переименованиеошибка", "компоненты-окно-чата--создатьошибка", "экраны-главное-окно--ошибкаотправки"]);
 const NOISY_PIXELS = 8;
 
-// Переходы и анимации выключены в самой странице: снимок не может поймать их на середине (2 пикселя у скруглённого поля).
+// Transitions and animations are turned off in the page itself: a snapshot cannot catch them midway (2 pixels at a rounded field).
 const NO_MOTION = "*, *::before, *::after { transition: none !important; animation: none !important; }";
 
 async function open(page: Page, id: string) {
@@ -31,22 +31,22 @@ async function open(page: Page, id: string) {
   await settle(page);
 }
 
-/** Шрифты грузятся лениво, когда текст уже разложен: ждём кадр, потом готовность и устойчивый фокус. */
+/** Fonts load lazily, when the text is already laid out: wait a frame, then readiness and a stable focus. */
 async function settle(page: Page) {
   await page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await document.fonts.ready;
-    // Переходы, начатые при монтировании до добавления стиля выше, отменяются; на случай других анимаций ждём их конца.
+    // Transitions started on mount before the style above was added are cancelled; for other animations we wait for their end.
     await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
   });
   await waitForStableFocus(page);
 }
 
 /**
- * Окна с автофокусом (чат, импорт) переносят фокус из эффекта React уже после первой отрисовки: Modal ставит фокус на «закрыть»,
- * поле берёт его следом. Снимок брали то до, то после переноса (рамка фокуса у скруглённого поля, 2 пикселя). Ждём, пока
- * `document.activeElement` не будет одним и тем же три кадра подряд (не больше 120 кадров). Паузы по времени нет, порог сравнения не менялся.
+ * Windows with autofocus (chat, import) move the focus from a React effect after the first render: Modal puts the focus on "close",
+ * the field takes it next. The snapshot was taken sometimes before and sometimes after the move (the focus ring at a rounded field, 2 pixels). We wait until
+ * `document.activeElement` is the same for three frames in a row (at most 120 frames). There is no time pause, the comparison threshold did not change.
  */
 async function waitForStableFocus(page: Page) {
   await page.evaluate(
@@ -84,7 +84,7 @@ for (const story of stories) {
   });
 }
 
-// Файлы из токенов действительно загрузились и декодировались браузером (а не подменились системным шрифтом).
+// The files from the tokens were really loaded and decoded by the browser (and not replaced by a system font).
 test("встроенные шрифты загружаются в браузере", async ({ page }) => {
   const dir = "../design/tokens/fontsets";
   const faces = readdirSync(dir).flatMap((file) => {

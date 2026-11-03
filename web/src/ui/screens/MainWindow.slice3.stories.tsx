@@ -6,8 +6,8 @@ import type { SidebarChat } from "../sidebar/Sidebar";
 import { MainWindowView } from "./MainWindowView";
 import "./screens-stories.css";
 
-// Слайс 3 в главном окне: чаты по разделам, свёрнутая панель, правка и удаление записи, фильтр по тегу, корзина.
-// «Сегодня» в историях фиксировано (вторник, 20 октября 2026): метки дней и снимки не меняются от запуска к запуску.
+// Slice 3 in the main window: chats by section, a collapsed panel, editing and deleting an entry, a tag filter, the trash.
+// "Today" is fixed in the stories (Tuesday, 20 October 2026): day labels and snapshots do not change from run to run.
 const TODAY = "2026-10-20";
 
 const noop = () => undefined;
@@ -55,27 +55,27 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Закреплённый чат, обычные, раздел «Архив» (свёрнут) и корзина со счётчиком. */
+/** A pinned chat, regular ones, the "Archive" section (collapsed) and the trash with a counter. */
 export const Чаты: Story = {};
 
-/** То же по-английски и с крупным текстом. */
+/** The same in English and with large text. */
 export const ЧатыEnКрупный: Story = { globals: { language: "en", textScale: "large" } };
 
-/** Панель свёрнута до узкой полосы: значки чатов и корзина. */
+/** The panel is collapsed to a narrow strip: chat icons and the trash. */
 export const ПанельСвёрнута: Story = { args: { sidebar: { ...sidebar, collapsed: true } } };
 
-/** Запись в правке: на месте плашки поле, ширина закреплена. */
+/** An entry being edited: a field in place of the plate, the width is fixed. */
 export const Правка: Story = { args: { feedUi: { editingId: "m2" } } };
 
-/** Удалённая запись остаётся на месте приглушённой: «Удалено · Вернуть». */
+/** A deleted entry stays in place, dimmed: "Deleted · Restore". */
 export const УдалённаяЗапись: Story = { args: { feedUi: { deletedIds: new Set(["m3"]) } } };
 
-/** Фильтр по тегу: строка «#еда ×» над лентой. */
+/** A tag filter: the "#food x" strip above the feed. */
 export const ФильтрПоТегу: Story = {
   args: { messages: [MESSAGES[1] as (typeof MESSAGES)[number]], tagFilter: { tag: "еда", onClear: noop } },
 };
 
-/** Задача, избранное и запись только для чтения. */
+/** A task, a favorite and a read-only entry. */
 export const Флажки: Story = {
   args: {
     messages: [
@@ -109,7 +109,7 @@ const trashEntry = (id: string, body: string, daysLeft: number, chat: [string, s
   daysLeft,
 });
 
-/** Корзина на месте ленты: срок, «Восстановить» и «Удалить навсегда». */
+/** The trash in place of the feed: the deadline, "Restore" and "Delete forever". */
 export const Корзина: Story = {
   args: {
     selectedChatId: null,
@@ -126,7 +126,7 @@ export const Корзина: Story = {
   },
 };
 
-/** Пустая корзина. */
+/** An empty trash. */
 export const КорзинаПуста: Story = {
   args: { selectedChatId: null, sidebar: { ...sidebar, trashCount: 0 }, trash: { items: [], today: TODAY, onRestore: noop, onPurge: noop } },
 };

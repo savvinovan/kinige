@@ -8,24 +8,24 @@ import { useSearch } from "./useSearch";
 
 interface UseMainSearchOptions {
   api: KinigeApi;
-  /** Открытый чат (`null` — корзина). */
+  /** The open chat (`null` means the trash). */
   selected: string | null;
-  /** Открыть чат (черновик прежнего уходит в Rust до переключения). */
+  /** Open a chat (the previous chat's draft goes to Rust before switching). */
   select: (chatId: string | null) => Promise<void>;
   sidebarCollapsed: boolean;
   toggleCollapsed: () => void;
-  /** Лента открывает чат на записи: страница вокруг неё и подсветка найденных слов (`useFeed`). */
+  /** The feed opens the chat at an entry: the page around it and highlighting of the found words (`useFeed`). */
   onFocus: (target: FocusTarget) => void;
-  /** Inbox и его переведённое имя для строки «Чаты». */
+  /** Inbox and its translated name for the "Chats" row. */
   inbox: { chat: ChatSummary | undefined; name: string };
 }
 
-/** Мак: там поиск по ⌘F, на других системах — по Ctrl+F. */
+/** Mac: search is on Cmd+F there, on other systems on Ctrl+F. */
 const isMac = () => typeof navigator !== "undefined" && /Mac/i.test(navigator.platform);
 
 /**
- * Поиск в главном окне (слайс 4): поле сайдбара, результаты на месте ленты, ⌘F, значок поиска в свёрнутом сайдбаре и выбор
- * дат фильтра. Выбор результата открывает чат на записи (`focus` для ленты) и закрывает поиск.
+ * Search in the main window (slice 4): the sidebar field, results in place of the feed, Cmd+F, the search icon in the
+ * collapsed sidebar and the filter date picking. Picking a result opens the chat at the entry (`focus` for the feed) and closes search.
  */
 export function useMainSearch({ api, selected, select, sidebarCollapsed, toggleCollapsed, onFocus, inbox }: UseMainSearchOptions) {
   const input = useRef<HTMLInputElement>(null);
@@ -33,7 +33,7 @@ export function useMainSearch({ api, selected, select, sidebarCollapsed, toggleC
   const counter = useRef(0);
   const [datePick, setDatePick] = useState<"from" | "to" | null>(null);
 
-  // Очистка поля нужна обработчикам, которые создаются раньше самого поиска: она берётся из ссылки на момент вызова.
+  // Clearing the field is needed by handlers created before the search itself: it is taken from the ref at call time.
   const clearSearch = useRef<() => void>(() => undefined);
   const openHit = useCallback(
     (hit: SearchHit) => {
@@ -60,7 +60,7 @@ export function useMainSearch({ api, selected, select, sidebarCollapsed, toggleC
 
   const focusSearch = useCallback(() => {
     if (sidebarCollapsed) {
-      // Поля в свёрнутом сайдбаре нет: сначала он разворачивается, фокус ставит эффект ниже.
+      // There is no field in the collapsed sidebar: it expands first, the effect below sets focus.
       wantFocus.current = true;
       toggleCollapsed();
       return;

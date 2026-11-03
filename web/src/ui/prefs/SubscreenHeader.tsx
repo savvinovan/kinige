@@ -3,16 +3,16 @@ import { Icon } from "../icons/Icon";
 import "./prefs.css";
 
 interface SubscreenHeaderProps {
-  /** Раздел, из которого открыт подэкран: «Доступ ИИ-агентов». */
+  /** The section the subscreen was opened from: "Доступ ИИ-агентов". */
   parent: string;
-  /** Название подэкрана: «Видимые чаты». */
+  /** The subscreen name: "Видимые чаты". */
   title: string;
   onBack: () => void;
 }
 
 /**
- * Заголовок подэкрана: стрелка назад и строка «Раздел › Название». Стрелка — настоящая кнопка с подписью «Назад: раздел».
- * Название подэкрана — заголовок страницы (`h2`), раздел перед ним — тихий текст.
+ * The subscreen header: a back arrow and a "Section > Name" line. The arrow is a real button labeled "Назад: раздел".
+ * The subscreen name is the page heading (`h2`), the section before it is quiet text.
  */
 export function SubscreenHeader({ parent, title, onBack }: SubscreenHeaderProps) {
   const { t } = useTranslation();

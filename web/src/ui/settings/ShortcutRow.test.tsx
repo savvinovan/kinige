@@ -81,12 +81,12 @@ describe("ShortcutRow: запись нового сочетания", () => {
     expect(live).toBeEmptyDOMElement();
     startRecording();
     expect(recorder()).toHaveFocus();
-    // В поле записи — короткая подсказка (раскладка строки не прыгает), полная — во всплывающей подсказке и в объявлении диктору.
+    // The recording field has a short hint (the row layout does not jump), the full one is in the tooltip and in the screen reader announcement.
     expect(recorder()).toHaveTextContent("Нажмите клавиши…");
     expect(recorder()).toHaveAttribute("title", "Нажмите новое сочетание с ⌃, ⌥ или ⌘… Esc — отмена");
     expect(onRecording).toHaveBeenCalledTimes(1);
     expect(onRecording).toHaveBeenLastCalledWith(true);
-    // Область status есть всегда, текст в ней появился с началом записи.
+    // The status region is always there, the text appeared in it when recording started.
     expect(live).toHaveTextContent("Нажмите новое сочетание");
     expect(screen.queryByRole("img", { name: /Сочетание:/ })).toBeNull();
   });

@@ -1,6 +1,6 @@
-/* Сгенерировано из design/tokens (npm run tokens). Не править вручную. */
+/* Generated from design/tokens (npm run tokens). Do not edit by hand. */
 
-/* Начертания: пути относительно этого файла. */
+/* Font faces: paths are relative to this file. */
 @font-face {
   font-family: "Inter";
   font-style: normal;
@@ -25,7 +25,7 @@
   src: url("./fonts/jetbrains-mono/JetBrainsMono-Variable.woff2") format("woff2");
 }
 
-/* Reduce Motion: настройка ОС или атрибут data-reduce-motion на любом элементе (переключатель в Storybook и в настройках). */
+/* Reduce Motion: the OS setting or the data-reduce-motion attribute on any element (the switch in Storybook and in the settings). */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-duration-short: 0s;

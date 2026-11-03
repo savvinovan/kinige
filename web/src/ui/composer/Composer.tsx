@@ -7,62 +7,62 @@ import "./composer.css";
 export type { ComposerEmoji };
 
 export interface ComposerButtons {
-  /** «Прикрепить файл» (слайс 7). */
+  /** "Attach file" (slice 7). */
   attach?: boolean;
-  /** «Эмодзи» (слайс 3). */
+  /** "Emoji" (slice 3). */
   emoji?: boolean;
-  /** «Записать голосовое» (слайс 7a). */
+  /** "Record voice message" (slice 7a). */
   voice?: boolean;
 }
 
 interface ComposerProps {
   value: string;
   onChange: (value: string) => void;
-  /** Enter без Shift (и не внутри блока кода) отправляет. В D1 отправки нет: поле показывает вид. */
+  /** Enter without Shift (and not inside a code block) submits. D1 has no submitting: the field only shows the look. */
   onSubmit?: () => void;
   /**
-   * ⌘Enter (на не-macOS Ctrl+Enter) — «дописать» (окно быстрого захвата, слайс 2). Работает и внутри блока кода: перевода строки
-   * не вставляет. Не во время ввода через IME; в пустом поле ничего не делает. Без обработчика ⌘Enter ведёт себя как Enter.
+   * ⌘Enter (Ctrl+Enter on non-macOS) is "append" (quick capture window, slice 2). Works inside a code block too: it does not
+   * insert a line break. Not during IME input; does nothing in an empty field. Without a handler ⌘Enter behaves like Enter.
    */
   onAppend?: () => void;
-  /** Какие кнопки показывать; по умолчанию все три. В приложении кнопка появляется в слайсе, где её функция работает. */
+  /** Which buttons to show; all three by default. In the app a button appears in the slice where its function works. */
   buttons?: ComposerButtons;
   /**
-   * Пикер эмодзи. Есть вместе с `buttons.emoji` — кнопка «эмодзи» живая: открывает панель над собой, выбранный эмодзи
-   * вставляется в позицию курсора (выделение заменяется), каретка встаёт после него, значение уходит через `onChange`.
-   * Без него кнопка только нарисована и недоступна («Появится позже»), как в D1.
+   * Emoji picker. Together with `buttons.emoji` the "emoji" button is live: it opens a panel above itself, the chosen emoji
+   * is inserted at the caret position (a selection is replaced), the caret goes after it, the value goes out through `onChange`.
+   * Without it the button is only drawn and disabled ("Coming later"), as in D1.
    */
   emoji?: ComposerEmoji;
-  /** Кнопки только нарисованы (D1): объявляются как недоступные («Появится позже») и ничего не делают. */
+  /** Buttons are only drawn (D1): announced as disabled ("Coming later") and do nothing. */
   viewOnly?: boolean;
-  /** Ошибка отправки: показывается над полем, черновик остаётся. */
+  /** Send error: shown above the field, the draft stays. */
   error?: string;
   /**
-   * Плавающая панель (окно быстрого захвата): поле без своей заливки и рамки, полей и ограничения ширины колонки: фон, рамку
-   * и скругление задаёт панель вокруг. Ошибка и подсказка стоят строкой ПОД полем: когда они появляются, окно растёт вниз, а
-   * поле остаётся на месте. Область `role="alert"` в дереве всегда (пустая, высоты нет), текст в неё приходит позже — так
-   * диктор объявляет ошибку надёжно.
+   * Floating panel (quick capture window): the field has no fill, border, margins or column width limit: the background, border
+   * and rounding are set by the panel around it. The error and the hint stand in a line UNDER the field: when they appear, the window grows down and
+   * the field stays in place. The `role="alert"` area is always in the tree (empty, no height), the text arrives in it later, so
+   * the screen reader announces the error reliably.
    */
   floating?: boolean;
-  /** Подсказка под полем в плавающей панели («⌘Enter — дописать»): поле описано ею; пока есть ошибка, подсказки нет. */
+  /** Hint under the field in the floating panel ("⌘Enter - append"): the field is described by it; while there is an error, there is no hint. */
   hint?: string;
   placeholder?: string;
-  /** Фокус в поле при показе: после отправки и при открытии чата. */
+  /** Focus in the field on display: after sending and when a chat opens. */
   autoFocus?: boolean;
-  /** Строка «Ответ на запись» над полем (слайс 5, `ReplyStrip`); только в главном окне. */
+  /** The "Reply to entry" line above the field (slice 5, `ReplyStrip`); main window only. */
   replyStrip?: ReactNode;
 }
 
-/** Внутри блока кода (открыто нечётное число ограждений ```) Enter — новая строка, а не отправка (ТЗ §5). */
+/** Inside a code block (an odd number of ``` fences is open) Enter is a new line, not submit (spec §5). */
 export function insideCodeFence(text: string, caret: number): boolean {
   const fences = text.slice(0, caret).match(/^```/gm);
   return (fences?.length ?? 0) % 2 === 1;
 }
 
 /**
- * Поле ввода как в Telegram: слева «файл», в середине обычное поле «Написать заметку…», справа «эмодзи» и «микрофон»;
- * когда в поле есть текст, «микрофон» сменяется круглой акцентной кнопкой «Отправить» (как в ChatGPT и Claude).
- * Растёт вместе с текстом до 40% высоты окна, дальше — прокрутка внутри (ТЗ §5). Подсказку про Enter не показываем.
+ * Input field as in Telegram: "file" on the left, an ordinary "Write a note..." field in the middle, "emoji" and "microphone" on the right;
+ * when the field has text, the "microphone" is replaced by a round accent "Send" button (as in ChatGPT and Claude).
+ * Grows with the text up to 40% of the window height, then scrolls inside (spec §5). We do not show a hint about Enter.
  */
 export function Composer({
   value,
@@ -86,8 +86,8 @@ export function Composer({
   const [emojiHost, setEmojiHost] = useState<HTMLDivElement | null>(null);
   const hasText = value.trim() !== "";
 
-  // Фокус в поле при появлении, но только если он ни у кого другого: лента с полем заново монтируется, когда результаты
-  // поиска закрываются (стёрли запрос), а человек всё ещё печатает в поле поиска — отбирать у него фокус нельзя.
+  // Focus in the field on appearance, but only if nobody else has it: the feed with the field is mounted again when the search results
+  // close (the query was erased), while the person is still typing in the search field - its focus must not be taken away.
   useEffect(() => {
     if (!autoFocus) return;
     const active = document.activeElement;
@@ -95,7 +95,7 @@ export function Composer({
     if (!elsewhere) input.current?.focus();
   }, [autoFocus]);
 
-  // Кнопка «Отправить» делает то же, что Enter. После щелчка фокус возвращается в поле: сама кнопка исчезает, как только поле пустеет.
+  // The "Send" button does the same as Enter. After a click focus returns to the field: the button itself disappears as soon as the field is empty.
   const send = () => {
     onSubmit?.();
     input.current?.focus();
@@ -103,9 +103,9 @@ export function Composer({
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== "Enter" || event.shiftKey) return;
-    // IME (русская раскладка, диктовка): Enter подтверждает ввод, а не отправляет.
+    // IME (Russian layout, dictation): Enter confirms the input, it does not submit.
     if (event.nativeEvent.isComposing) return;
-    // ⌘Enter / Ctrl+Enter: «дописать». Перевод строки не вставляется нигде, в том числе внутри блока кода.
+    // ⌘Enter / Ctrl+Enter: "append". A line break is inserted nowhere, including inside a code block.
     if (onAppend && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       if (hasText) onAppend();
@@ -128,11 +128,11 @@ export function Composer({
     <div className={floating ? "composer composer--floating" : "composer"}>
       {error && !floating ? errorLine : null}
       {replyStrip}
-      {/* Место пикера эмодзи «в потоке» (окно захвата): пустое высоты не имеет, с панелью раздвигает поле вверх. */}
+      {/* The place of the "inline" emoji picker (capture window): empty it has no height, with the panel it pushes the field up. */}
       {floating && emoji?.placement === "inline" ? <div className="composer__emoji-host" ref={setEmojiHost} /> : null}
       <div className={`composer__bar${error ? " composer__bar--invalid" : ""}`}>
         {buttons.attach ? <IconButton icon="attach" label={t("composer.attach")} unavailable={viewOnly} /> : null}
-        {/* Копия текста в ::after задаёт высоту поля: оно растёт без скриптов измерения. */}
+        {/* The copy of the text in ::after sets the field height: it grows without measuring scripts. */}
         <div className="composer__field" data-replicated-value={value}>
           <textarea
             className="composer__input"
@@ -152,7 +152,7 @@ export function Composer({
         ) : buttons.emoji ? (
           <IconButton icon="emoji" label={t("composer.emoji")} unavailable={viewOnly} />
         ) : null}
-        {/* Правое место: «Отправить» при непробельном тексте, иначе «микрофон». Обе кнопки одного размера, ширина не прыгает. */}
+        {/* The right slot: "Send" for non-blank text, otherwise "microphone". Both buttons are the same size, the width does not jump. */}
         {hasText ? (
           <span className="composer__action" key="send">
             <IconButton icon="send" label={t("composer.send")} tone="accent" unavailable={!onSubmit} onClick={send} />

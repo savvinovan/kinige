@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
-  <!-- Мигание при успешном сохранении буфера: та же страница, залитая, буква K вырезана. -->
+  <!-- Flash on a successful clipboard save: the same page, filled, with the letter K cut out. -->
   <defs>
     <mask id="k" maskUnits="userSpaceOnUse" x="0" y="0" width="22" height="22">
       <rect width="22" height="22" fill="#fff"/>

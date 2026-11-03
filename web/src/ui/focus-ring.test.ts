@@ -2,10 +2,10 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// Кольцо фокуса только после клавиши (отзыв на приёмке 4b): `useInputModality` ставит `data-input="pointer"` на <html> после мыши
-// и пока ничего не нажато, `keyboard` после клавиши. Одно общее правило в `base.css` гасит кольцо в режиме `pointer`. Любое
-// собственное кольцо компонента (`outline` в правиле с `:focus-visible`) должно быть в его списке, иначе оно появится после
-// щелчка. Поля ввода кольца не имеют: их фокус — тонкая линия по `:focus` (каретка видна), она остаётся как есть.
+// The focus ring only after a key press (feedback at the 4b acceptance): `useInputModality` sets `data-input="pointer"` on <html> after the mouse
+// and while nothing has been pressed, `keyboard` after a key. One shared rule in `base.css` hides the ring in `pointer` mode. Any
+// own ring of a component (`outline` in a rule with `:focus-visible`) must be in its list, otherwise it would appear after a
+// click. Input fields have no ring: their focus is a thin line on `:focus` (the caret is visible), and it stays as is.
 
 const ROOT = import.meta.dirname;
 const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "");

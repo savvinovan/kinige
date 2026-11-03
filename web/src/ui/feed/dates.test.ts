@@ -5,7 +5,7 @@ const RU = { today: "Сегодня", yesterday: "Вчера" };
 const EN = { today: "Today", yesterday: "Yesterday" };
 
 describe("formatTime", () => {
-  // 2026-10-21 06:12 UTC = 09:12 в Москве, 23:12 накануне в Лос-Анджелесе.
+  // 2026-10-21 06:12 UTC = 09:12 in Moscow, 23:12 the day before in Los Angeles.
   const moment = new Date(Date.UTC(2026, 9, 21, 6, 12));
 
   it("24 часа, две цифры, в поясе записи", () => {
@@ -18,7 +18,7 @@ describe("formatTime", () => {
   });
 
   it("переход на летнее время: пояс записи, а не пояс окна", () => {
-    // Берлин, 2026-03-29: 00:59 UTC = 01:59 (зима), 01:00 UTC = 03:00 (лето).
+    // Berlin, 2026-03-29: 00:59 UTC = 01:59 (winter), 01:00 UTC = 03:00 (summer).
     expect(formatTime(new Date(Date.UTC(2026, 2, 29, 0, 59)), "ru", "Europe/Berlin")).toBe("01:59");
     expect(formatTime(new Date(Date.UTC(2026, 2, 29, 1, 0)), "ru", "Europe/Berlin")).toBe("03:00");
   });

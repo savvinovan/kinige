@@ -9,23 +9,23 @@ import { RecentEmoji } from "./RecentEmoji";
 import "./emoji.css";
 
 export interface EmojiPickerProps {
-  /** Недавно выбранные эмодзи, свежие первыми; показываются до 24 (пока в поиске пусто). */
+  /** Recently chosen emoji, newest first; up to 24 are shown (while the search is empty). */
   recent: readonly string[];
-  /** Язык интерфейса: на нём подписи эмодзи и названия категорий; искать можно и на втором языке. */
+  /** Interface language: emoji labels and category names are in it; you can search in the second language too. */
   language: Language;
   onPick: (emoji: string) => void;
-  /** Фокус в поле поиска при показе. */
+  /** Focus in the search field on display. */
   autoFocus?: boolean;
 }
 
-// Эмодзи рисует системный шрифт из токена, а не список шрифтов, который frimousse подставляет сам.
+// Emoji are drawn by the system font from the token, not by the font list that frimousse substitutes itself.
 const EMOJI_FONT = { "--frimousse-emoji-font": "var(--font-family-emoji)" } as CSSProperties;
 
 /**
- * Пикер эмодзи: поиск, «Недавние», категории, сетка. Основа — frimousse (без оформления, виртуальный список); вид — только
- * токены. Поиск идёт по подписи и тегам на обоих языках. Стрелки двигают выбор по сетке, пока фокус в поле поиска
- * (Enter выбирает); пока в поле есть текст, стрелки влево и вправо остаются за кареткой. Esc обрабатывает хозяин пикера
- * (всплывающая панель или окно чата).
+ * Emoji picker: search, "Recent", categories, grid. The base is frimousse (unstyled, virtual list); the look is tokens
+ * only. Search goes by label and tags in both languages. Arrows move the selection over the grid while focus is in the search field
+ * (Enter chooses); while the field has text, the left and right arrows stay with the caret. Esc is handled by the picker's owner
+ * (the popover panel or the chat window).
  */
 export function EmojiPicker({ recent, language, onPick, autoFocus }: EmojiPickerProps) {
   const { t } = useTranslation();
@@ -34,7 +34,7 @@ export function EmojiPicker({ recent, language, onPick, autoFocus }: EmojiPicker
   const recentShown = search.trim() === "" ? [...new Set(recent)].slice(0, RECENT_LIMIT) : [];
 
   const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    // frimousse слушает стрелки на документе и гасит их. Пока в поле набран запрос, влево и вправо — каретка.
+    // frimousse listens to arrows on the document and swallows them. While a query is typed in the field, left and right belong to the caret.
     if (search !== "" && (event.key === "ArrowLeft" || event.key === "ArrowRight")) event.stopPropagation();
   };
 

@@ -3,7 +3,7 @@ import { useState } from "react";
 import "../settings/settings-stories.css";
 import { CalendarDialog } from "./CalendarDialog";
 
-/** Календарь поверх «главного окна» (заглушка из поверхностей, как у «Настроек»): выбор дня подсвечивает его и закрывает ничего не меняя. */
+/** The calendar over the "main window" (a stub made of surfaces, as for "Settings"): picking a day highlights it and closes without changing anything. */
 function Window(props: React.ComponentProps<typeof CalendarDialog>) {
   return (
     <div className="story-settings-window">
@@ -27,31 +27,31 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Обычное: октябрь 2026, выбрано 20-е, сегодня 27-е (точка под числом), неделя с понедельника, дни соседних месяцев приглушены. Фокус на выбранном дне. */
+/** Regular: October 2026, the 20th selected, today is the 27th (a dot under the number), the week starts on Monday, days of neighboring months are muted. Focus on the selected day. */
 export const Обычное: Story = {};
 
-/** Выбранный день — сегодня: заливка и точка вместе. */
+/** The selected day is today: the fill and the dot together. */
 export const ВыбранСегодня: Story = { args: { value: "2026-10-27" } };
 
-/** Прошлый год, месяц из шести недель (март 2025: 1-е — суббота). */
+/** A past year, a month of six weeks (March 2025: the 1st is a Saturday). */
 export const ШестьНедель: Story = { args: { value: "2025-03-14" } };
 
-/** Будущая дата записи: будущие даты разрешены. */
+/** A future entry date: future dates are allowed. */
 export const БудущаяДата: Story = { args: { value: "2027-02-28" } };
 
-/** Английский: неделя с воскресенья, «October 2026», «Today». */
+/** English: the week starts on Sunday, "October 2026", "Today". */
 export const Английский: Story = { args: { language: "en" }, globals: { language: "en" } };
 
-/** Крупный текст: сетка растёт вместе с текстом, окно остаётся в границах. */
+/** Large text: the grid grows with the text, the window stays within bounds. */
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };
 
-/** Ошибка сохранения даты: строка `role="alert"` под сеткой. */
+/** Error saving the date: a `role="alert"` line under the grid. */
 export const Ошибка: Story = { args: { error: "Такой даты нет." } };
 
-/** Дата сохраняется (busy): выбор дня и «Сегодня» не срабатывают. */
+/** The date is being saved (busy): picking a day and "Today" do nothing. */
 export const Сохраняется: Story = { args: { busy: true } };
 
-/** Живое окно: выбранный день переносится щелчком, месяцы листаются кнопками и клавиатурой (PageUp / PageDown). */
+/** A live window: the selected day moves on click, months are flipped with the buttons and the keyboard (PageUp / PageDown). */
 function Live(args: React.ComponentProps<typeof CalendarDialog>) {
   const [value, setValue] = useState(args.value);
   return <Window {...args} value={value} onPick={setValue} />;

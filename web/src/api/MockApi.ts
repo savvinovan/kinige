@@ -19,9 +19,10 @@ export { DEFAULT_SETTINGS, type MockApiOptions, mockMessage } from "./mockData";
 const ALLOWED_SCHEMES = ["http:", "https:", "mailto:"];
 
 /**
- * `KinigeApi` в памяти: тот же интерфейс, что у `TauriApi`, для тестов и Storybook. Хранит чаты и записи, считает счётчики,
- * ведёт корзину, правки и ревизии, умеет «отказ» любой команды (`failNext`) и запоминает открытые ссылки (`openedUrls`). День
- * записи считается упрощённо (UTC, граница 04:00): настоящие правила — в Rust. Состояние и окно захвата — в `MockApiBase`.
+ * `KinigeApi` in memory: the same interface as `TauriApi`, for tests and Storybook. Stores chats and entries, counts
+ * counters, keeps the trash, edits and revisions, can "fail" any command (`failNext`) and remembers opened links
+ * (`openedUrls`). The entry day is computed in a simplified way (UTC, 04:00 boundary): the real rules are in Rust. The
+ * state and the capture window are in `MockApiBase`.
  */
 export class MockApi extends MockApiSlice6 implements KinigeApi {
   private readonly openChatListeners = new Set<(chatId: string) => void>();
@@ -78,7 +79,7 @@ export class MockApi extends MockApiSlice6 implements KinigeApi {
     try {
       scheme = new URL(url).protocol;
     } catch {
-      // относительный или пустой адрес
+      // a relative or empty address
     }
     if (!ALLOWED_SCHEMES.includes(scheme)) return Promise.reject(new KinigeApiError("link_not_allowed"));
     this.openedUrls.push(url);
@@ -105,7 +106,7 @@ export class MockApi extends MockApiSlice6 implements KinigeApi {
     });
   }
 
-  // ---- слайс 3 ----
+  // ---- slice 3 ----
 
   createChat(title: string, icon: string | null): Promise<ChatSummary> {
     return this.run("createChat", `${title} ${icon}`, () => {
@@ -296,7 +297,7 @@ export class MockApi extends MockApiSlice6 implements KinigeApi {
     });
   }
 
-  /** Как событие меню значка «открыть этот чат». */
+  /** Like the tray menu "open this chat" event. */
   emitOpenChat(chatId: string): void {
     for (const handler of [...this.openChatListeners]) handler(chatId);
   }
@@ -323,7 +324,7 @@ export class MockApi extends MockApiSlice6 implements KinigeApi {
     });
   }
 
-  /** Как событие «проверка целостности нашла повреждение». */
+  /** Like the "integrity check found corruption" event. */
   emitDatabaseCorrupt(): void {
     for (const handler of [...this.corruptListeners]) handler();
   }

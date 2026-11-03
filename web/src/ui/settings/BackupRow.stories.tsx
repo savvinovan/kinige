@@ -4,7 +4,7 @@ import { BackupRow } from "./BackupRow";
 import { BACKUP_FOLDER, BACKUP_NOW, DEFAULT_BACKUP } from "./demoBackup";
 import "./settings-stories.css";
 
-/** Строка состояния копии файла базы на «бумаге», шириной окна настроек. «Сейчас» фиксировано (27.10.2026, 17:00). */
+/** The database file copy status row on "paper", at the width of the settings window. "Now" is fixed (27.10.2026, 17:00). */
 function Demo({ backup }: { backup: BackupStatus }) {
   return (
     <div className="story-settings-part">
@@ -24,28 +24,28 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Копия снята сегодня, их семь. */
+/** The copy was taken today, there are seven of them. */
 export const Сегодня: Story = { args: { backup: DEFAULT_BACKUP } };
 
-/** Копия снята вчера. */
+/** The copy was taken yesterday. */
 export const Вчера: Story = { args: { backup: { ...DEFAULT_BACKUP, lastAt: new Date(2026, 9, 26, 22, 30).getTime(), count: 3 } } };
 
-/** Копий ещё нет. */
+/** There are no copies yet. */
 export const ЕщёНеСнималась: Story = { args: { backup: { ...DEFAULT_BACKUP, lastAt: null, count: 0 } } };
 
-/** Папка копий недоступна. */
+/** The copies folder is unavailable. */
 export const ПапкаНедоступна: Story = { args: { backup: { ...DEFAULT_BACKUP, error: "folder_unavailable" } } };
 
-/** Копию записать не удалось. */
+/** The copy could not be written. */
 export const ОшибкаЗаписи: Story = { args: { backup: { ...DEFAULT_BACKUP, error: "write_failed" } } };
 
-/** Проверка целостности нашла повреждение: заметное предупреждение, копия дня не снимается. */
+/** The integrity check found corruption: a prominent warning, the day's copy is not taken. */
 export const Повреждение: Story = { args: { backup: { ...DEFAULT_BACKUP, error: "integrity_failed" } } };
 
-/** Автоудаление повреждённой записи из корзины не сработало. */
+/** Auto-deleting a corrupted entry from the trash did not work. */
 export const АвтоудалениеНеСработало: Story = { args: { backup: { ...DEFAULT_BACKUP, error: "purge_failed" } } };
 
-/** Длинный путь папки копий переносится. */
+/** A long path of the copies folder wraps. */
 export const ДлинныйПуть: Story = {
   args: { backup: { ...DEFAULT_BACKUP, folder: `${BACKUP_FOLDER}/очень/длинный/путь/${"вложенная-папка/".repeat(6)}backups` } },
 };

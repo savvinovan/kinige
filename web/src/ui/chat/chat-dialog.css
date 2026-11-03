@@ -1,6 +1,6 @@
-/* Окно чата: создание, переименование, эмодзи. Работает поверх Modal (settings/modal.css). Только токены. */
+/* Chat window: create, rename, emoji. Works on top of Modal (settings/modal.css). Tokens only. */
 
-/* Окно прижато к верху, а не по центру: пикер раскрывается под полем и растит окно вниз, заголовок остаётся на месте. */
+/* The window is pinned to the top, not centered: the picker opens under the field and grows the window down, the heading stays in place. */
 .modal:has(.chat-dialog) {
   align-items: start;
   padding-top: var(--layout-chat-dialog-top);
@@ -28,7 +28,7 @@
   min-width: 0;
 }
 
-/* Кнопка эмодзи слева от поля: высота поля, квадрат. Пока эмодзи не выбран, 💬 приглушён — это подсказка, а не выбор. */
+/* The emoji button to the left of the field: the field height, a square. While no emoji is chosen, 💬 is muted - it is a hint, not a choice. */
 .chat-dialog__emoji {
   display: grid;
   flex: none;
@@ -62,7 +62,7 @@
   opacity: var(--opacity-disabled);
 }
 
-/* Пикер внутри окна лежит на бумаге окна, а не на плашке меню. */
+/* The picker inside the window lies on the window's paper, not on a menu plate. */
 .chat-dialog__picker .emoji-picker {
   --emoji-surface: var(--color-surface-paper);
 }
@@ -81,7 +81,7 @@
   gap: var(--space-2);
 }
 
-/* «Создать» / «Сохранить»: акцентный текст на заливке кнопки, чтобы читалась как главная. */
+/* "Create" / "Save": accent text on the button fill, so that it reads as the primary one. */
 .chat-dialog__submit {
   background: var(--color-surface-selected);
 }

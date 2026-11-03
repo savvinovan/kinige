@@ -7,13 +7,13 @@ export interface MenuItem {
   id: string;
   label: string;
   icon?: IconName;
-  /** Эмодзи вместо значка (данные пользователя: эмодзи чата в подменю «Переместить в чат»). */
+  /** An emoji instead of an icon (user data: the chat emoji in the "Move to chat" submenu). */
   emoji?: string;
-  /** Опасное действие («Удалить»): акцентируется цветом ошибки. */
+  /** A dangerous action ("Delete"): emphasized with the error color. */
   danger?: boolean;
-  /** Пункт виден, но недоступен (`aria-disabled`); стрелки его пропускают. */
+  /** The item is visible but unavailable (`aria-disabled`); the arrows skip it. */
   disabled?: boolean;
-  /** Тонкая черта над пунктом: группы действий. */
+  /** A thin line above the item: groups of actions. */
   separatorBefore?: boolean;
 }
 
@@ -24,27 +24,27 @@ export interface MenuPosition {
 
 interface ContextMenuProps {
   items: readonly MenuItem[];
-  /** Угол меню в координатах окна (щелчок мыши или нижний левый угол кнопки). Меню не выходит за края окна. */
+  /** The menu corner in window coordinates (a mouse click or the bottom left corner of a button). The menu does not go beyond the window edges. */
   position: MenuPosition;
-  /** Подпись меню для диктора. */
+  /** The menu label for the screen reader. */
   label: string;
   onSelect: (id: string) => void;
   onClose: () => void;
   /**
-   * Подменю (два уровня в одной панели): Esc и стрелка влево возвращают на уровень выше, а не закрывают меню. Без него Esc
-   * закрывает.
+   * A submenu (two levels in one panel): Esc and the left arrow go back up a level instead of closing the menu. Without it Esc
+   * closes.
    */
   onBack?: () => void;
-  /** Меняется, когда пункты заменены другим уровнем: фокус снова уходит на первый доступный пункт. */
+  /** Changes when the items are replaced by another level: focus goes to the first available item again. */
   levelKey?: string;
 }
 
 const isEnabled = (element: HTMLElement) => element.getAttribute("aria-disabled") !== "true";
 
 /**
- * Контекстное меню дизайн-системы (не системное): накладывается поверх окна и ничего не сдвигает. Открывается правым
- * щелчком, кнопкой «ещё» и с клавиатуры (`useMenuTrigger`). Стрелки, Home и End ходят по пунктам, Enter и пробел выбирают,
- * Esc закрывает и возвращает фокус туда, где он был; щелчок вне меню, прокрутка, смена размера окна и Tab закрывают.
+ * The design system's context menu (not the system one): overlays the window and shifts nothing. It opens with a right
+ * click, the "more" button and from the keyboard (`useMenuTrigger`). Arrows, Home and End move between items, Enter and space select,
+ * Esc closes and returns focus to where it was; a click outside the menu, scrolling, a window resize and Tab close it.
  */
 export function ContextMenu({ items, position, label, onSelect, onClose, onBack, levelKey }: ContextMenuProps) {
   const panel = useRef<HTMLDivElement>(null);
@@ -55,7 +55,7 @@ export function ContextMenu({ items, position, label, onSelect, onClose, onBack,
     onCloseRef.current = onClose;
   });
 
-  // Меню прижимается к краям окна: если справа или снизу не хватает места, оно открывается влево или вверх от точки.
+  // The menu is kept within the window edges: if there is not enough room on the right or at the bottom, it opens to the left or upward from the point.
   useLayoutEffect(() => {
     const element = panel.current;
     if (!element) return;
@@ -171,15 +171,15 @@ export function ContextMenu({ items, position, label, onSelect, onClose, onBack,
   );
 }
 
-/** Позиция меню по прямоугольнику элемента (кнопка «ещё», клавиатура): нижний левый угол. */
+/** The menu position from an element's rectangle (the "more" button, keyboard): the bottom left corner. */
 export function positionBelow(element: Element): MenuPosition {
   const rect = element.getBoundingClientRect();
   return { x: rect.left, y: rect.bottom };
 }
 
 /**
- * Обработчики для элемента, у которого есть контекстное меню: правый щелчок и клавиша меню / Shift+F10. Меню по клавиатуре
- * открывается под самим элементом.
+ * Handlers for an element that has a context menu: a right click and the menu key / Shift+F10. A menu opened by keyboard
+ * opens right under the element itself.
  */
 export function useMenuTrigger(open: (position: MenuPosition) => void) {
   return {

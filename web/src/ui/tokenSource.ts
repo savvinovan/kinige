@@ -1,5 +1,5 @@
-// Токены из design/tokens/*.json в виде, удобном для тестов и историй Storybook.
-// Читаются сами JSON (а не tokens.css), поэтому видны все кандидаты, а не только активный.
+// Tokens from design/tokens/*.json in a form convenient for tests and Storybook stories.
+// The JSON files themselves are read (not tokens.css), so all candidates are visible, not only the active one.
 
 interface Leaf {
   $value: unknown;
@@ -9,7 +9,7 @@ interface Leaf {
 
 const isLeaf = (node: unknown): node is Leaf => typeof node === "object" && node !== null && "$value" in node;
 
-/** Объединяет группу `group` из нескольких файлов токенов (каждый файл вносит свой кандидат). */
+/** Merges the group `group` from several token files (each file contributes its own candidate). */
 const load = (files: Record<string, unknown>, group: string): Record<string, unknown> =>
   Object.assign({}, ...Object.values(files).map((file) => (file as Record<string, unknown>)[group])) as Record<
     string,
@@ -20,10 +20,10 @@ const paletteFiles = import.meta.glob("../../../design/tokens/palettes/*.json", 
 const fontsetFiles = import.meta.glob("../../../design/tokens/fontsets/*.json", { eager: true, import: "default" });
 const activeFile = import.meta.glob("../../../design/tokens/active.json", { eager: true, import: "default" });
 
-/** Плитки с буквой у чатов без эмодзи (D2): насыщенные приглушённые цвета, на них текст `text.primary`. */
+/** Tiles with a letter for chats without an emoji (D2): saturated muted colors, with `text.primary` text on them. */
 export const TILE_ROLES = ["tile.blue", "tile.teal", "tile.green", "tile.orange", "tile.pink", "tile.violet"] as const;
 
-/** Роли цвета, которые должна задавать палитра. */
+/** Color roles that a palette must define. */
 export const PALETTE_ROLES = [
   "surface.background",
   "surface.paper",
@@ -61,9 +61,9 @@ function collectLeaves(node: unknown, path: string[], into: Map<string, Leaf>): 
 
 export interface Palette {
   description: string;
-  /** Роль («surface.paper») -> цвет «#rrggbb». */
+  /** Role ("surface.paper") -> color "#rrggbb". */
   colors: Record<string, string>;
-  /** Роль -> откуда цвет (официальное имя или «подгонка: …»); есть у палитр по мотивам готовых схем. */
+  /** Role -> where the color comes from (an official name or "подгонка: ..."); present for palettes based on existing schemes. */
   origins: Record<string, string>;
 }
 
@@ -90,17 +90,17 @@ export const palettes: Record<string, Palette> = Object.fromEntries(
 export interface FontFace {
   family: string;
   style: "normal" | "italic";
-  /** «400» или диапазон переменного шрифта «200 900». */
+  /** "400" or the range of a variable font "200 900". */
   weight: string;
-  /** Путь относительно web/src/ui/. */
+  /** Path relative to web/src/ui/. */
   file: string;
 }
 
 export interface Fontset {
   description: string;
-  /** Роль (sans / mono / emoji) -> список семейств, первое — встроенное (у emoji системные). */
+  /** Role (sans / mono / emoji) -> list of families, the first one is embedded (emoji use system fonts). */
   families: Record<string, string[]>;
-  /** Ключ начертания («sans-italic-variable») -> описание. Префикс ключа — роль. */
+  /** Face key ("sans-italic-variable") -> description. The key prefix is the role. */
   faces: Record<string, FontFace>;
 }
 
@@ -125,7 +125,7 @@ export const fontsets: Record<string, Fontset> = Object.fromEntries(
   ),
 );
 
-/** Что сейчас по умолчанию (design/tokens/active.json). */
+/** What is the default right now (design/tokens/active.json). */
 export const active = Object.fromEntries(
   Object.entries(load(activeFile, "active"))
     .filter(([key]) => !key.startsWith("$"))
@@ -134,7 +134,7 @@ export const active = Object.fromEntries(
 
 const motionFile = import.meta.glob("../../../design/tokens/motion.json", { eager: true, import: "default" });
 
-/** Длительности анимаций: обычные и для Reduce Motion (строки как в токенах, например «120ms»). */
+/** Animation durations: regular and for Reduce Motion (strings as in the tokens, for example "120ms"). */
 export const motionDurations: Record<string, { normal: string; reduced: string }> = (() => {
   const motion = load(motionFile, "motion") as {
     duration: Record<string, Leaf>;

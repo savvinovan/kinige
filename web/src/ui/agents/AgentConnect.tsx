@@ -15,9 +15,9 @@ const ERRORS = {
 const isKnown = (code: string): code is SocketErrorCode => code in ERRORS;
 
 /**
- * «Как подключить»: путь, фрагмент для Claude Desktop и команда для Claude Code моноширинным шрифтом, у каждого «Копировать».
- * Если подключиться нельзя (папка сокета чужая, второй Kinige, `bind` не удался, нет моста), вместо этого — одна строка
- * ошибки. Конфиги клиентов приложение не правит.
+ * "Как подключить": the path, the snippet for Claude Desktop and the command for Claude Code in a monospaced font, each with "Копировать".
+ * If connecting is impossible (the socket folder belongs to someone else, a second Kinige, `bind` failed, no bridge), a single
+ * error line is shown instead. The app does not edit client configs.
  */
 export function AgentConnect({ socket }: { socket: AgentSocket }) {
   const { t } = useTranslation();

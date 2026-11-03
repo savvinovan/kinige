@@ -7,8 +7,8 @@ import type { SidebarChat } from "../sidebar/Sidebar";
 import { MainWindowView } from "./MainWindowView";
 import "./screens-stories.css";
 
-// Слайс 4 в главном окне: сайдбар с импортированными чатами, поиск с результатами на месте ленты, запись, открытая из
-// поиска, архив прошлых лет в ленте. «Сегодня» в историях фиксировано (вторник, 20 октября 2026).
+// Slice 4 in the main window: a sidebar with imported chats, search with results in place of the feed, an entry opened from
+// search, an archive of past years in the feed. "Today" is fixed in the stories (Tuesday, 20 October 2026).
 const TODAY = "2026-10-20";
 const noop = () => undefined;
 
@@ -99,10 +99,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Лента прошлых лет: метки «8 марта 2019», пересланное, фото-заглушка, чужие сообщения с именем автора жирным. */
+/** A feed of past years: "8 March 2019" labels, a forwarded message, a photo placeholder, other people's messages with the author's name in bold. */
 export const АрхивПрошлыхЛет: Story = {};
 
-/** Поле «Поиск» с запросом и результаты на месте ленты (поле ввода скрыто). */
+/** The "Search" field with a query and results in place of the feed (the composer is hidden). */
 export const ПоискРезультаты: Story = {
   args: {
     search: { value: "книги", onChange: noop, resultsId: "results", activeDescendant: "results-row-1" },
@@ -110,7 +110,7 @@ export const ПоискРезультаты: Story = {
   },
 };
 
-/** То же по-английски и с крупным текстом. */
+/** The same in English and with large text. */
 export const ПоискEnКрупный: Story = {
   args: {
     search: { value: "книги", onChange: noop, resultsId: "results", activeDescendant: "results-row-1" },
@@ -119,14 +119,14 @@ export const ПоискEnКрупный: Story = {
   globals: { language: "en", textScale: "large" },
 };
 
-/** Запись, открытая из поиска: подсвечена заливкой, найденное слово выделено. */
+/** An entry opened from search: highlighted with a fill, the found word marked. */
 export const ЗаписьИзПоиска: Story = {
   args: {
     feedUi: { markedId: "o5", markTerms: ["книгу"] },
   },
 };
 
-/** Свёрнутый сайдбар: значок поиска под кнопкой «развернуть». */
+/** A collapsed sidebar: the search icon under the "expand" button. */
 export const СвёрнутыйСПоиском: Story = {
   args: {
     search: { value: "", onChange: noop, onRailClick: noop },

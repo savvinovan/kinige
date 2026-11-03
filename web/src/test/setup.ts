@@ -2,16 +2,16 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, configure } from "@testing-library/react";
 import { afterEach } from "vitest";
 
-// Ожидания `findBy*` / `waitFor` по умолчанию — 1 с; на нагруженной машине (параллельная сборка Rust) тесты контейнера
-// главного окна иногда не укладывались: запас не делает зелёные тесты медленнее.
+// The `findBy*` / `waitFor` waits default to 1 s; on a loaded machine (a parallel Rust build) the main window container
+// tests sometimes did not fit: the margin does not make green tests slower.
 configure({ asyncUtilTimeout: 4000 });
 
 afterEach(() => {
   cleanup();
-  // Состояние дерева настроек и подобное не должно переходить из теста в тест.
+  // The settings tree state and the like must not pass from one test to another.
   try {
     localStorage.clear();
   } catch {
-    // нет хранилища — нечего чистить
+    // no storage - nothing to clear
   }
 });

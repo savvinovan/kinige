@@ -28,7 +28,7 @@ describe("buildFeed", () => {
   });
 
   it("запись после полуночи с journal_date вчера остаётся в вчерашнем дне, а не открывает новый", () => {
-    // 00:30 по часам, но журнальный день — 19-е: идёт сразу за вечерними записями 19-го.
+    // 00:30 by the clock, but the journal day is the 19th: it follows right after the evening entries of the 19th.
     const night = { ...msg("night", "2026-10-19", "21:30"), createdAt: Date.UTC(2026, 9, 20, 0, 30) };
     const items = buildFeed([msg("evening", "2026-10-19", "21:00"), night, msg("morning", "2026-10-20", "09:00")]);
     expect(items.map((i) => (i.kind === "day" ? `# ${i.journalDate}` : i.kind === "card" ? "card" : i.message.id))).toEqual([
@@ -51,7 +51,7 @@ describe("buildFeed", () => {
     expect(series).toEqual([
       ["a", false],
       ["b", true],
-      ["c", true], // 9:14 -> 9:18: четыре минуты
+      ["c", true], // 9:14 -> 9:18: four minutes
       ["d", false],
     ]);
   });

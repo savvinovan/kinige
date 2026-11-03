@@ -1,8 +1,8 @@
-/* Базовые правила на семантических токенах: размер и масштаб текста, фон и текст страницы, фокус. */
+/* Base rules on semantic tokens: text size and scale, page background and text, focus. */
 
-/* Плотность целиком: 1rem = размер текста записей (font.root.default, 13 px). Размеры шрифта, отступы, радиусы, высоты строк
-   и значки заданы в rem, поэтому масштаб текста (data-text-scale="large", font.scale.large) меняет всю плотность
-   пропорционально, а не только текст. */
+/* Density as a whole: 1rem = the entry text size (font.root.default, 13 px). Font sizes, spacing, radii, row heights
+   and icons are set in rem, so the text scale (data-text-scale="large", font.scale.large) changes the whole density
+   proportionally, not just the text. */
 :root {
   --text-scale: var(--font-scale-default);
   --text-root-size: var(--font-root-default);
@@ -18,7 +18,7 @@
 
 html {
   font-size: var(--text-root-resolved);
-  /* Тема одна, тёмная: системные элементы (полосы прокрутки, поля, меню) рисуются в тёмном варианте, а не светлом (KINIG-38). */
+  /* There is one theme, the dark one: system elements (scroll bars, fields, menus) are drawn in the dark variant, not the light one (KINIG-38). */
   color-scheme: var(--color-scheme);
 }
 
@@ -32,17 +32,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Видимый фокус с клавиатуры на любом интерактивном элементе. */
+/* Visible keyboard focus on any interactive element. */
 :focus-visible {
   outline: var(--focus-width) solid var(--color-focus-ring);
   outline-offset: var(--focus-offset);
 }
 
-/* Кольцо фокуса — только после клавиши. `data-input` ставит `useInputModality` (все окна): `pointer` после мыши и пока ничего не
-   нажато. Так нет «рамки» у кнопки, на которую фокус вернулся после закрытия меню или который поставила система при открытии
-   окна; сам фокус остаётся (доступность). Без хука (истории Storybook) атрибута нет и кольца рисуются как прежде. Поля ввода
-   этим не затронуты: их фокус — тонкая линия по `:focus` в своих стилях. Компоненты с собственным кольцом перечислены здесь,
-   чтобы правило оставалось одним (их селекторы не слабее базового; `ui/focus-ring.test.ts` следит, чтобы список был полным). */
+/* The focus ring is shown only after a key press. `data-input` is set by `useInputModality` (all windows): `pointer` after the mouse and while nothing has
+   been pressed. This way there is no "frame" on a button that got focus back after a menu closed or that the system focused when the
+   window opened; the focus itself stays (accessibility). Without the hook (Storybook stories) the attribute is absent and rings are drawn as before. Input fields
+   are not affected: their focus is a thin line on `:focus` in their own styles. Components with their own ring are listed here
+   so that there is still one rule (their selectors are not weaker than the base one; `ui/focus-ring.test.ts` checks that the list is complete). */
 html[data-input="pointer"] :focus-visible,
 html[data-input="pointer"] .checkbox__input:focus-visible + .checkbox__box,
 html[data-input="pointer"] .recovery__backup:has(input:focus-visible),

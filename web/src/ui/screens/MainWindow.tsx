@@ -30,29 +30,29 @@ import { useTrash } from "./useTrash";
 
 interface MainWindowProps {
   api: KinigeApi;
-  /** Настройки, прочитанные до первого кадра (размер текста применяется без мигания). */
+  /** Settings read before the first frame (the text size is applied without flicker). */
   initialSettings: Settings;
 }
 
 /**
- * Главное окно на настоящем `KinigeApi`: чаты (выбор, создание, имя, эмодзи, закрепление, архив), лента страницей из Rust,
- * действия над записями, корзина, поле ввода с черновиком у каждого чата, настройки. Без оптимистичного показа (§5): запись
- * появляется после ответа Rust; при ошибке текст остаётся в поле, над ним — ошибка.
+ * Main window on the real `KinigeApi`: chats (selecting, creating, name, emoji, pinning, archive), the feed paged from Rust,
+ * entry actions, the trash, a composer with a per-chat draft, settings. No optimistic display (§5): an entry appears
+ * after Rust replies; on an error the text stays in the composer with the error above it.
  */
 export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const { t } = useTranslation();
   const language = useLanguage();
   const [list, setList] = useState<ChatList>(EMPTY_LIST);
-  /** Открытый чат; `null` — корзина. */
+  /** The open chat; `null` means the trash. */
   const [selected, setSelected] = useState<string | null>(INBOX_ID);
   const [tag, setTag] = useState<string | null>(null);
   const [composerError, setComposerError] = useState<ErrorCode | null>(null);
   const [chatDialog, setChatDialog] = useState<ChatDialogState | null>(null);
   const [dialogError, setDialogError] = useState<ErrorCode | null>(null);
   const [dateError, setDateError] = useState<ErrorCode | null>(null);
-  // «О программе»: строка сборки от Rust («Kinige 0.5.0»); `null` — окно закрыто.
+  // "About": the build string from Rust ("Kinige 0.5.0"); `null` means the window is closed.
   const [about, setAbout] = useState<string | null>(null);
-  // Номер просьбы «к нижнему краю ленты»: растёт после скрытия карточки «В этот день».
+  // The number of the "to the bottom edge of the feed" request: grows after the "On this day" card is hidden.
   const [toBottom, setToBottom] = useState(0);
   const { draft, reply, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
     useComposerDraft(api, selected);
@@ -68,10 +68,10 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     [api],
   );
 
-  // Переход к записи из поиска: лента открывает чат на ней (страница вокруг, найденные слова выделены).
+  // Jump to an entry from search: the feed opens the chat at it (the page around it, found words highlighted).
   const [focus, setFocus] = useState<FocusTarget | null>(null);
-  // Переходы к записи идут из поиска, окна «Настройки», карточки и цитат: `nonce` общий и растёт, иначе второй источник со
-  // своим счётчиком получил бы номер меньше уже отработанного и лента его бы пропустила.
+  // Jumps to an entry come from search, the "Settings" window, the card and quotes: the `nonce` is shared and grows,
+  // otherwise a second source with its own counter would get a number lower than one already handled and the feed would skip it.
   const focusOn = useCallback(
     (target: FocusTarget) => setFocus((previous) => ({ ...target, nonce: (previous?.nonce ?? 0) + 1 })),
     [],
@@ -90,7 +90,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   });
   const { reload: reloadFeed, restart: restartFeed } = feed;
   const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
-  // Фокус окна: не наступил ли новый день журнала (метки «Сегодня» и «Вчера» в ленте; карточка перечитывается сама).
+  // Window focus: has a new journal day begun (the "Today" and "Yesterday" labels in the feed; the card rereads itself).
   const { checkDay } = feed;
   useEffect(() => {
     const onFocus = () => void checkDay();
@@ -99,7 +99,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   }, [checkDay]);
   const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
   const moveTargets = useMemo(() => moveTargetsFrom(sidebarChats, selected, t), [sidebarChats, selected, t]);
-  // Перетаскивание плашки на чат: бросок на любой чат, кроме того, где запись лежит.
+  // Dragging a plate onto a chat: a drop on any chat except the one where the entry lives.
   const drag = useRecordDrag({
     canDrop: (chatId) => chatId !== selected,
     onDrop: (messageId, chatId) => feed.actions.onMoveTo(messageId, chatId),
@@ -107,7 +107,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const trash = useTrash({ api, open: selected === null, refreshChats, onRestored: bumpMutations });
   const { clearError: clearTrashError } = trash;
 
-  /** Открыть чат (или корзину при `null`). Черновик прежнего чата уходит в Rust до переключения. */
+  /** Open a chat (or the trash on `null`). The previous chat's draft goes to Rust before switching. */
   const select = useCallback(
     async (next: string | null) => {
       await draftSaver.flush();
@@ -129,13 +129,13 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onFocus: focusOn,
     inbox: { chat: list.chats.find((c) => c.isInbox), name: t("chat.inbox") },
   });
-  // Запись из журнала обращений (окно «Настройки») открывается в ленте этого окна.
+  // An entry from the access log (the "Settings" window) is opened in this window's feed.
   useOpenMessage({ api, select, onFocus: focusOn });
   const importer = useImport({
     api,
-    // Импорт кладёт записи в середину истории: открытая лента перечитывается с нуля вместе с курсорами.
+    // An import puts entries into the middle of the history: the open feed is reread from scratch together with the cursors.
     onChanged: () => void Promise.all([refreshChats(), restartFeed()]),
-    // «Готово»: открывается «Избранное» (Inbox), куда легли записи.
+    // "Done": the Saved chat (Inbox), where the entries landed, is opened.
     onDone: () => void select(INBOX_ID),
   });
 
@@ -150,7 +150,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       if (closed) off();
       else offs.push(off);
     };
-    // Запись пришла из окна захвата или из буфера; меню значка просит открыть чат.
+    // An entry came from the capture window or from the clipboard; the tray menu asks to open a chat.
     api
       .onEntriesChanged(() => {
         bumpMutations();
@@ -234,7 +234,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     request
       .then(async () => {
         await refreshChats();
-        // Архивный чат закрывается: открытым остаётся Inbox.
+        // An archived chat is closed: Inbox stays open.
         if (action === "archive" && selected === id) await select(INBOX_ID);
       })
       .catch((reason: unknown) => setComposerError(errorCode(reason)));
@@ -280,7 +280,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
         ) : undefined
       }
       onOpenImport={importer.start}
-      // Версию не получили: окно всё равно открывается, вместо версии прочерк (отдельного канала в лог из окна нет).
+      // The version was not received: the window opens anyway, with a dash instead of the version (the window has no separate channel to the log).
       onOpenAbout={() => void api.appInfo().then((info) => setAbout(info.title), () => setAbout(t("about.unknown")))}
       composerButtons={{ emoji: true }}
       emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji }}
@@ -308,7 +308,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       forest={forest.pane}
       onFeedTopDay={forest.onTopDay}
       forestMenu={{ hidden: forest.hidden, onToggle: forest.toggleHidden }}
-      // Карточка стоит в конце живой ленты: не в середине истории (после перехода к записи из поиска).
+      // The card sits at the end of the live feed, not in the middle of the history (after a jump to an entry from search).
       onThisDay={
         onThisDay.card !== null && !feed.paging.hasNewer
           ? {

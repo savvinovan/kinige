@@ -3,7 +3,7 @@ import { demoEntry, demoMessages } from "../../api/demoData";
 import { Frame } from "../stories/Frame";
 import { Feed } from "./Feed";
 
-// «Сегодня» в историях фиксировано (вторник, 20 октября 2026), чтобы метки дней и снимки были стабильны.
+// "Today" in the stories is pinned (Tuesday, 20 October 2026) so that day labels and snapshots are stable.
 const NOW = new Date(2026, 9, 20, 17, 0);
 const TODAY = "2026-10-20";
 
@@ -25,13 +25,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Обычная: три метки дня («14 марта 2025», «Вчера», «Сегодня»), время у каждого сообщения. */
+/** Regular: three day labels ("14 марта 2025", "Вчера", "Сегодня"), a time on every message. */
 export const Обычная: Story = {};
 
-/** Пустая: подсказка вместо ленты. */
+/** Empty: a hint instead of the feed. */
 export const Пусто: Story = { args: { messages: [] } };
 
-/** Серия: пауза меньше 5 минут — плашки ближе друг к другу (9:12, 9:14, 9:17), пауза 5 минут и больше — обычный промежуток (9:22). */
+/** Series: a pause under 5 minutes puts bubbles closer to each other (9:12, 9:14, 9:17), a pause of 5 minutes or more gives the regular gap (9:22). */
 export const Серия: Story = {
   args: {
     messages: [
@@ -43,7 +43,7 @@ export const Серия: Story = {
   },
 };
 
-/** Метка прошлого года и текущего: «14 марта 2025» и «14 марта» (без года). */
+/** Labels of a past year and the current one: "14 марта 2025" and "14 марта" (no year). */
 export const МеткиДней: Story = {
   args: {
     messages: [
@@ -55,5 +55,5 @@ export const МеткиДней: Story = {
   },
 };
 
-/** Метки дней и подсказка по-английски: «March 14, 2025», «Yesterday», «Today». */
+/** Day labels and the hint in English: "March 14, 2025", "Yesterday", "Today". */
 export const Английский: Story = { globals: { language: "en" } };

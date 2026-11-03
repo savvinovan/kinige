@@ -2,20 +2,20 @@ import type { EmojiData, EmojiDataResolver } from "frimousse";
 import type { Language } from "../../i18n";
 import { detectSupport, type EmojiSupport } from "./emojiSupport";
 
-// Данные эмодзи лежат в бандле (пакет emojibase-data, MIT) и подгружаются динамическим import(): Vite делает из каждого
-// JSON отдельный чанк, он грузится при первом открытии пикера. Сети нет: по умолчанию frimousse тянет данные с CDN,
-// а CSP окна (`connect-src` без 'self') это запрещает, поэтому пикеру передаётся свой `resolveEmojiData`.
+// The emoji data lives in the bundle (the emojibase-data package, MIT) and is loaded by a dynamic import(): Vite makes a separate
+// chunk from each JSON, it is loaded when the picker is first opened. There is no network: by default frimousse pulls data from a CDN,
+// and the window's CSP (`connect-src` without 'self') forbids it, so the picker is given its own `resolveEmojiData`.
 
-/** Запись emojibase `data.json`: только поля, которые нужны пикеру (остальные игнорируются). */
+/** An emojibase `data.json` record: only the fields the picker needs (the rest are ignored). */
 export interface RawEmoji {
   hexcode: string;
   emoji: string;
   label: string;
   tags?: readonly string[];
-  /** Номер категории (`messages.groups[].order`); у служебных записей (региональные индикаторы) его нет. */
+  /** Category number (`messages.groups[].order`); service records (regional indicators) do not have it. */
   group?: number;
   subgroup?: number;
-  /** Версия Unicode Emoji, в которой эмодзи появился (0.6, 1, 15.1, 17 …). */
+  /** The Unicode Emoji version in which the emoji appeared (0.6, 1, 15.1, 17 ...). */
   version: number;
 }
 
@@ -25,7 +25,7 @@ interface RawGroup {
   order: number;
 }
 
-/** `messages.json` emojibase: названия категорий и оттенков кожи на языке набора. */
+/** emojibase `messages.json`: names of categories and skin tones in the language of the set. */
 export interface RawMessages {
   groups: readonly RawGroup[];
   subgroups: readonly RawGroup[];
@@ -44,10 +44,10 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 const otherLanguage = (language: Language): Language => (language === "ru" ? "en" : "ru");
 
 /**
- * Данные для frimousse на языке интерфейса. Подпись эмодзи и названия категорий — на языке интерфейса; в теги (по ним и
- * по подписи идёт поиск) добавлены подпись и теги второго языка, поэтому «собака» и «dog» находят один и тот же эмодзи
- * при любом языке интерфейса. Служебная категория «component», оттенки кожи, эмодзи новее `support.version` и (если
- * системный шрифт их не рисует) флаги стран отсечены.
+ * Data for frimousse in the interface language. The emoji label and category names are in the interface language; the label and tags of the
+ * second language are added to the tags (search goes by them and by the label), so "собака" and "dog" find the same emoji
+ * in either interface language. The service category "component", skin tones, emoji newer than `support.version` and (if
+ * the system font does not draw them) country flags are cut off.
  */
 export function buildEmojiData(language: Language, sources: Record<Language, EmojiSource>, support: EmojiSupport): EmojiData {
   const own = sources[language];
@@ -85,7 +85,7 @@ export function buildEmojiData(language: Language, sources: Record<Language, Emo
   };
 }
 
-// Набор грузится один раз на язык. Типы JSON — из d.ts пакета (там тип из `emojibase`); здесь нужны только поля RawEmoji.
+// The set is loaded once per language. JSON types come from the package d.ts (the type is from `emojibase` there); only the RawEmoji fields are needed here.
 const loaders: Record<Language, () => Promise<EmojiSource>> = {
   en: async () => {
     const [data, messages] = await Promise.all([import("emojibase-data/en/data.json"), import("emojibase-data/en/messages.json")]);
@@ -99,7 +99,7 @@ const loaders: Record<Language, () => Promise<EmojiSource>> = {
 
 const sources = new Map<Language, Promise<EmojiSource>>();
 
-/** Набор emojibase языка; повторные вызовы получают тот же промис. Ошибка загрузки не кэшируется. */
+/** The emojibase set of the language; repeated calls get the same promise. A load error is not cached. */
 export function loadEmojiSource(language: Language): Promise<EmojiSource> {
   let source = sources.get(language);
   if (!source) {
@@ -111,8 +111,8 @@ export function loadEmojiSource(language: Language): Promise<EmojiSource> {
 }
 
 /**
- * Резолвер данных для `resolveEmojiData` пикера. `support` решает, какие эмодзи рисует системный шрифт; в историях и тестах
- * он подменяется, в приложении — `detectSupport`.
+ * Data resolver for the picker's `resolveEmojiData`. `support` decides which emoji the system font draws; in stories and tests
+ * it is replaced, in the app it is `detectSupport`.
  */
 export function createEmojiResolver(support: (emojis: readonly RawEmoji[]) => EmojiSupport): EmojiDataResolver {
   return async (locale, { signal }) => {
@@ -124,7 +124,7 @@ export function createEmojiResolver(support: (emojis: readonly RawEmoji[]) => Em
 }
 
 /**
- * Единственный резолвер приложения. Функция должна быть одной и той же на всех рендерах: frimousse кэширует данные по
- * её идентичности.
+ * The app's only resolver. The function must be the same on all renders: frimousse caches the data by
+ * its identity.
  */
 export const resolveEmojiData: EmojiDataResolver = createEmojiResolver(detectSupport);

@@ -1,19 +1,19 @@
 import "./controls.css";
 
 interface ProgressBarProps {
-  /** Сделано. */
+  /** Done. */
   value: number;
-  /** Всего; при `0` полоса пуста. */
+  /** Total; with `0` the bar is empty. */
   max: number;
-  /** Имя полосы для диктора. */
+  /** The bar name for the screen reader. */
   label: string;
-  /** Текст значения для диктора («3 200 из 15 000»); без него диктор читает проценты. */
+  /** The value text for the screen reader ("3 200 из 15 000"); without it the screen reader reads percentages. */
   valueText?: string;
 }
 
 /**
- * Полоса прогресса: тихая линия, акцентная заливка слева направо. Это `role="progressbar"`; ширина заливки меняется с
- * короткой анимацией из токена движения, при Reduce Motion — сразу.
+ * A progress bar: a quiet line, an accent fill going left to right. This is `role="progressbar"`; the fill width changes with
+ * a short animation from the motion token, immediately under Reduce Motion.
  */
 export function ProgressBar({ value, max, label, valueText }: ProgressBarProps) {
   const safeMax = Math.max(max, 0);

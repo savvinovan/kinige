@@ -3,28 +3,28 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../controls/Button";
 import "./toast.css";
 
-/** Сколько тост «Отменить» висит: 5 секунд. */
+/** How long the "Undo" toast stays: 5 seconds. */
 export const UNDO_TOAST_MS = 5000;
 
 interface UndoToastProps {
-  /** Показан ли тост. Область для диктора (`role="status"`) есть всегда: так обновление объявляется надёжно. */
+  /** Whether the toast is shown. The screen-reader region (`role="status"`) is always present: this way the update is announced reliably. */
   open: boolean;
-  /** Что произошло: «Сообщение удалено». */
+  /** What happened: "Message deleted". */
   message: string;
   onUndo: () => void;
-  /** Время вышло: действие остаётся в силе. */
+  /** Time ran out: the action stays in force. */
   onExpire: () => void;
   durationMs?: number;
 }
 
 /**
- * Тост «Отменить» на 5 секунд — только для обратимых действий вроде «Запись удалена» (слайс 3). После отправки записи
- * тоста нет: запись просто появляется в ленте, подтверждений рутинных действий нет (решение пользователя 21.10.2026).
+ * The "Undo" toast for 5 seconds is only for reversible actions like "Entry deleted" (slice 3). After an entry is sent
+ * there is no toast: the entry just appears in the feed, routine actions have no confirmations (the user's decision of 21.10.2026).
  *
- * Тост ВСЕГДА накладывается поверх (`position: absolute`) и никогда не сдвигает и не сжимает ленту: ни резерва места, ни
- * отступа под него у ленты нет, последняя плашка не «прыгает». Объявляется диктором (`role="status"`, вежливо), кнопка доступна с клавиатуры.
- * Таймер стоит, пока на тост наведена мышь или в нём фокус: человек успевает нажать (WCAG 2.2.1). Нужен позиционированный
- * родитель: тост прижимается к его нижнему краю, над полем ввода.
+ * The toast ALWAYS overlays (`position: absolute`) and never shifts or squeezes the feed: the feed has neither reserved space nor
+ * padding for it, the last bubble does not "jump". It is announced by the screen reader (`role="status"`, polite), the button is keyboard accessible.
+ * The timer pauses while the mouse is over the toast or focus is inside it: the person has time to press (WCAG 2.2.1). A positioned
+ * parent is required: the toast is pressed to its bottom edge, above the input field.
  */
 export function UndoToast({ open, message, onUndo, onExpire, durationMs = UNDO_TOAST_MS }: UndoToastProps) {
   const { t } = useTranslation();

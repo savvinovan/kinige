@@ -4,7 +4,7 @@ import { Icon } from "../icons/Icon";
 import { GROUPS, type Route, TREE, groupOf, parentOf } from "./routes";
 import "./settings-tree.css";
 
-/** Где окно помнит, какие группы дерева развёрнуты, между запусками (только это окно, не `settings.json`). */
+/** Where the window remembers which tree groups are expanded between launches (this window only, not `settings.json`). */
 const STORAGE_KEY = "kinige.settingsTree.expanded";
 
 function loadExpanded(): Route[] {
@@ -12,7 +12,7 @@ function loadExpanded(): Route[] {
     const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
     return Array.isArray(parsed) ? parsed.filter((item): item is Route => typeof item === "string" && item in GROUPS) : [];
   } catch {
-    // Хранилища нет или значение повреждено: все группы свёрнуты.
+    // There is no storage or the value is corrupted: all groups are collapsed.
     return [];
   }
 }
@@ -21,32 +21,32 @@ function saveExpanded(groups: ReadonlySet<Route>) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...groups]));
   } catch {
-    // Хранилище недоступно: состояние живёт до закрытия окна.
+    // The storage is unavailable: the state lives until the window closes.
   }
 }
 
 interface SettingsTreeProps {
   route: Route;
   onNavigate: (route: Route) => void;
-  /** Пункты, у которых есть ошибка: рядом с названием метка (пока это «Файл настроек»). У свёрнутой группы — на разделе. */
+  /** Items that have an error: a mark next to the name (for now this is "Файл настроек"). For a collapsed group, on the section. */
   withProblems?: readonly Route[];
-  /** Развёрнутые группы при открытии (истории Storybook); без него берётся сохранённое состояние. */
+  /** Groups expanded on open (Storybook stories); without it the saved state is used. */
   defaultExpanded?: readonly Route[];
   /** Routes that are not offered at all (Windows has no AI-agent access yet: no "Visible chats" and "Access log"). */
   without?: readonly Route[];
 }
 
 /**
- * Дерево разделов окна «Настройки»: `nav` со списком кнопок. Выбранный пункт — `aria-current="page"` и заливка (без рамки);
- * вложенные пункты («Видимые чаты», «Журнал обращений») стоят под «Доступом ИИ-агентов» и сворачиваются: шеврон слева
- * сворачивает и разворачивает группу, название открывает раздел и разворачивает группу. По умолчанию группы свёрнуты, кроме
- * той, где текущая страница (она разворачивается сама при любом переходе); свёрнутая группа с текущим подпунктом подсвечена.
- * Состояние помнится на время жизни окна и в `localStorage`.
+ * The section tree of the "Settings" window: a `nav` with a list of buttons. The selected item is `aria-current="page"` and a fill (no outline);
+ * nested items ("Видимые чаты", "Журнал обращений") stand under "Доступ ИИ-агентов" and collapse: the chevron on the left
+ * collapses and expands the group, the name opens the section and expands the group. By default groups are collapsed, except
+ * the one with the current page (it expands by itself on any navigation); a collapsed group with the current subitem is highlighted.
+ * The state is remembered for the lifetime of the window and in `localStorage`.
  *
- * Клавиатура по образцу WAI-ARIA tree: ↑ и ↓ — по видимым пунктам, → разворачивает группу (на развёрнутой — переходит к первому
- * вложенному), ← сворачивает (на вложенном — переходит к разделу), Home и End — крайние пункты, Enter и пробел открывают
- * страницу. `aria-expanded` стоит на разделе с вложенными пунктами. В обходе Tab один пункт — выбранный, а если он скрыт в
- * свёрнутой группе, то её раздел. Кольцо фокуса — только `:focus-visible` (с клавиатуры). Движения нет.
+ * The keyboard follows the WAI-ARIA tree pattern: Up and Down move over visible items, Right expands a group (on an expanded one it moves to the first
+ * nested item), Left collapses (on a nested item it moves to the section), Home and End go to the edge items, Enter and Space open the
+ * page. `aria-expanded` is on a section with nested items. In the Tab order there is one item, the selected one, or if it is hidden in a
+ * collapsed group, the section of that group. The focus ring is `:focus-visible` only (from the keyboard). There is no motion.
  */
 export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpanded, without = [] }: SettingsTreeProps) {
   const { t } = useTranslation();
@@ -63,8 +63,8 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
     return open;
   });
 
-  // Любой переход (дерево, «Настроить ›», «назад», ошибка файла) разворачивает группу текущей страницы. Состояние
-  // подстраивается при отрисовке, а не в эффекте: без лишнего кадра со свёрнутой группой.
+  // Any navigation (the tree, "Настроить ›", "back", a file error) expands the group of the current page. The state
+  // is adjusted during rendering, not in an effect: no extra frame with a collapsed group.
   const [seenRoute, setSeenRoute] = useState(route);
   if (seenRoute !== route) {
     setSeenRoute(route);
@@ -127,7 +127,7 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
     const group = groupOf(item);
     return group !== undefined && group !== item && !expanded.has(group);
   };
-  // Единственный пункт в обходе Tab: выбранный, а если он скрыт в свёрнутой группе — раздел этой группы.
+  // The only item in the Tab order: the selected one, or if it is hidden in a collapsed group, the section of that group.
   const tabStop = hidden(route) ? parentOf(route) : route;
 
   return (
@@ -137,7 +137,7 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
           const children = childrenOf(item.route);
           const open = expanded.has(item.route);
           const current = item.route === route;
-          // Свёрнутая группа с текущим подпунктом подсвечена; метка ошибки подпункта видна на разделе, пока группа свёрнута.
+          // A collapsed group with the current subitem is highlighted; the subitem's error mark is visible on the section while the group is collapsed.
           const containsCurrent = !!children && !open && parentOf(route) === item.route && !current;
           const problem =
             withProblems.includes(item.route) || (!!children && !open && children.some((child) => withProblems.includes(child)));
@@ -169,7 +169,7 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
                   aria-label={problem ? `${t(item.label)}, ${t("prefs.errorMark")}` : undefined}
                   tabIndex={item.route === tabStop ? 0 : -1}
                   onClick={() => {
-                    // Название и открывает раздел, и разворачивает группу — в том числе когда страница уже открыта (маршрут не меняется).
+                    // The name both opens the section and expands the group, including when the page is already open (the route does not change).
                     if (children) toggle(item.route, true);
                     onNavigate(item.route);
                   }}

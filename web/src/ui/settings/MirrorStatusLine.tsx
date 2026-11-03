@@ -3,8 +3,8 @@ import type { MirrorStatus } from "../../api/generated/MirrorStatus";
 import { StatusNote } from "./StatusNote";
 
 /**
- * Состояние Markdown-копии одной строкой: ошибка (приоритет; записи сохранены, копия догонит), «N дней ждут записи в копию»
- * или «Копия актуальна». Если папка не выбрана и ошибки нет, сказать нечего: строки нет. Ошибка — `role="alert"`.
+ * The Markdown copy state in one line: an error (priority; entries are saved, the copy will catch up), "N дней ждут записи в копию"
+ * or "Копия актуальна". If no folder is chosen and there is no error, there is nothing to say: no line. An error is `role="alert"`.
  */
 export function MirrorStatusLine({ mirror }: { mirror: MirrorStatus }) {
   const { t } = useTranslation();

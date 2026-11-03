@@ -4,10 +4,10 @@ import "./spacing.css";
 
 const SPACES = ["1", "2", "3", "4", "5", "6", "7", "8"];
 
-/** Значение из tokens.css (rem) для подписи; читается из активной темы. */
+/** A value from tokens.css (rem) for the caption; read from the active theme. */
 const tokenValue = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-/** Текущий размер 1rem в px (14 по умолчанию, зависит от выбранного размера текста и масштаба). */
+/** The current size of 1rem in px (14 by default, depends on the chosen text size and scale). */
 const rootPx = () => Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
 
 const SHAPES = [

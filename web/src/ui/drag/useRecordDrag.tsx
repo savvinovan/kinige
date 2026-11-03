@@ -2,16 +2,16 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import { createPortal } from "react-dom";
 import "./drag.css";
 
-/** Атрибут цели: у строки чата в сайдбаре и у значка в свёрнутой полосе стоит `data-chat-drop="<id чата>"`. */
+/** The target attribute: a chat row in the sidebar and an icon in the collapsed strip carry `data-chat-drop="<chat id>"`. */
 export const DROP_ATTRIBUTE = "data-chat-drop";
 
-/** Элементы плашки, с которых перетаскивание не начинается: у них своё поведение при нажатии. */
+/** Bubble elements that dragging does not start from: they have their own press behavior. */
 const INTERACTIVE = 'button, a, input, textarea, select, [role="checkbox"], [role="button"], [contenteditable="true"]';
 
 interface DragOptions {
-  /** Можно ли бросить на этот чат (текущий чат записи — нельзя). */
+  /** Whether dropping onto this chat is allowed (the entry's current chat is not). */
   canDrop: (chatId: string, messageId: string) => boolean;
-  /** Бросок на чат: перенос записи. Бросок мимо и Esc ничего не вызывают. */
+  /** A drop onto a chat: moving the entry. A drop elsewhere and Esc call nothing. */
   onDrop: (messageId: string, chatId: string) => void;
 }
 
@@ -31,24 +31,24 @@ interface Session {
 }
 
 /**
- * Перетаскивание плашки записи на чат в сайдбаре (события указателя, не HTML5 DnD: тот в WKWebView рисует системный
- * «призрак», не даёт управлять подсветкой цели и вмешивается в выделение текста).
+ * Dragging an entry bubble onto a chat in the sidebar (pointer events, not HTML5 DnD: in WKWebView that draws a system
+ * "ghost", gives no control over the target highlight and interferes with text selection).
  *
- * Начало: нажатие основной кнопкой мыши (не на кнопке, ссылке, флажке, теге и не в поле правки) и выход указателя за границы
- * плашки. Пока указатель внутри плашки, это обычное выделение текста; тащить за пределы плашки при нажатой кнопке и нужно,
- * чтобы дойти до сайдбара, поэтому выход за край и есть порог смещения.
+ * Start: pressing the primary mouse button (not on a button, link, checkbox, tag or in the edit field) and the pointer leaving the
+ * bubble bounds. While the pointer is inside the bubble this is ordinary text selection; dragging beyond the bubble with the button held is
+ * how one reaches the sidebar, so leaving the edge is the movement threshold.
  *
- * Дальше: под курсором тихий «призрак» (копия плашки), чат под указателем подсвечивается (`overChatId`), страница не
- * выделяет текст. Отпускание на чате — `onDrop`; мимо, Esc, потеря фокуса окном — ничего. Следом идущий щелчок
- * подавляется, чтобы запись не открывала меню или ссылку.
+ * After that: a quiet "ghost" (a copy of the bubble) under the cursor, the chat under the pointer is highlighted (`overChatId`), the page does not
+ * select text. Releasing on a chat calls `onDrop`; releasing elsewhere, Esc, or the window losing focus do nothing. The click that
+ * follows is suppressed so that the entry does not open a menu or a link.
  */
 export function useRecordDrag({ canDrop, onDrop }: DragOptions): {
-  /** Чат, над которым сейчас указатель (для подсветки), или `null`. */
+  /** The chat the pointer is currently over (for highlighting), or `null`. */
   overChatId: string | null;
   dragging: boolean;
-  /** Обработчик нажатия плашки: `begin(id)(event, plate)`. */
+  /** The bubble press handler: `begin(id)(event, plate)`. */
   begin: (messageId: string) => (event: ReactPointerEvent<HTMLElement>, plate: HTMLElement) => void;
-  /** «Призрак»: отрисовать один раз рядом с остальным окном. */
+  /** The "ghost": render it once next to the rest of the window. */
   ghost: ReactNode;
 } {
   const [overChatId, setOverChatId] = useState<string | null>(null);
@@ -102,7 +102,7 @@ export function useRecordDrag({ canDrop, onDrop }: DragOptions): {
         }
         const box = current.plate.getBoundingClientRect();
         setGhost({
-          // «Призрак» стоит правее и ниже указателя (отступ — токен в CSS): чат под указателем остаётся виден.
+          // The "ghost" stands to the right of and below the pointer (the offset is a token in CSS): the chat under the pointer stays visible.
           x: move.clientX,
           y: move.clientY,
           width: box.width,
@@ -122,7 +122,7 @@ export function useRecordDrag({ canDrop, onDrop }: DragOptions): {
         const wasDragging = current.started;
         stop();
         if (wasDragging) {
-          // Щелчок после броска не должен открыть меню, ссылку или тег под курсором.
+          // A click after a drop must not open a menu, link or tag under the cursor.
           const swallow = (click: Event) => {
             click.stopPropagation();
             click.preventDefault();
@@ -135,7 +135,7 @@ export function useRecordDrag({ canDrop, onDrop }: DragOptions): {
 
       const onKey = (key: KeyboardEvent) => {
         if (key.key !== "Escape") return;
-        // Esc принадлежит перетаскиванию: окно и фильтры его не получают.
+        // Esc belongs to the drag: the window and the filters do not get it.
         key.stopPropagation();
         key.preventDefault();
         stop();

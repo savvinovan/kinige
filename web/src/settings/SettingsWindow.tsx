@@ -8,7 +8,7 @@ interface SettingsWindowProps {
   initial: PreferencesInitial;
 }
 
-/** Окно «Настройки» на настоящем `KinigeApi` (слайс 4b): `index.html#settings`, отдельное окно ОС. */
+/** The "Настройки" (Settings) window on the real `KinigeApi` (slice 4b): `index.html#settings`, a separate OS window. */
 export function SettingsWindow({ api, initial }: SettingsWindowProps) {
   useInputModality();
   const view = usePreferences(api, initial);

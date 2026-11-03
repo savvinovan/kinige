@@ -5,7 +5,7 @@ import { Frame } from "../stories/Frame";
 import { TrashView } from "./TrashView";
 import "./trash-stories.css";
 
-// «Сегодня» в историях фиксировано (вторник, 27 октября 2026): метки дней и сроки стабильны.
+// "Today" in the stories is pinned (Tuesday, 27 October 2026): day labels and deadlines are stable.
 const TODAY = "2026-10-27";
 
 const entry = (id: string, body: string, patch: Partial<TrashItem> = {}, journalDate = "2026-10-26"): TrashItem => ({
@@ -53,7 +53,7 @@ const meta = {
   component: TrashView,
   parameters: { layout: "fullscreen" },
   args: { items, language: "ru", today: TODAY, onRestore: () => undefined, onPurge: () => undefined },
-  // Корзина занимает окно по высоте (как в приложении): обёртка с высотой окна.
+  // The trash takes the window's full height (as in the app): a wrapper with the window height.
   render: (args) => (
     <div className="story-trash">
       <TrashView {...args} />
@@ -71,16 +71,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Обычное: четыре записи — Inbox (имя «Входящие»), чат с эмодзи, задача, код; срок «остался/осталось N дн.» и «удалится сегодня». */
+/** Regular: four entries: Inbox (named "Входящие"), a chat with an emoji, a task, code; the deadline "N days left" and "will be deleted today". */
 export const Обычное: Story = {};
 
-/** Пустая корзина: тихая строка. */
+/** Empty trash: a quiet line. */
 export const Пусто: Story = { args: { items: [] } };
 
-/** Длинный текст обрезается по строкам (layout.trash.entry-lines) с многоточием. */
+/** Long text is clamped by lines (layout.trash.entry-lines) with an ellipsis. */
 export const ДлинныйТекст: Story = { args: { items: [entry("a", LONG, { chatTitle: "Учёба", chatIcon: "🎓", chatIsInbox: false })] } };
 
-/** Длинные имена чата обрезаются многоточием, срок справа остаётся; кириллица и латиница. */
+/** Long chat names are cut with an ellipsis, the deadline on the right stays; Cyrillic and Latin. */
 export const ДлинноеИмяЧата: Story = {
   args: {
     items: [
@@ -93,24 +93,24 @@ export const ДлинноеИмяЧата: Story = {
   },
 };
 
-/** Чат без эмодзи: нейтральный 💬. Другой год: «14 марта 2025». */
+/** A chat without an emoji: the neutral 💬. A different year: "14 марта 2025". */
 export const БезЭмодзиДругойГод: Story = {
   args: { items: [entry("a", "Запись без эмодзи у чата", { chatTitle: "Заметки", chatIcon: null, chatIsInbox: false }, "2025-03-14")] },
 };
 
-/** Ошибка последнего действия: строка `role="alert"` над списком. */
+/** The error of the last action: a `role="alert"` line above the list. */
 export const Ошибка: Story = { args: { error: "Запись не найдена: возможно, её удалили навсегда." } };
 
-/** Запись в работе (busyId): плашка приглушена, её кнопки недоступны. */
+/** An entry being worked on (busyId): the bubble is muted, its buttons are unavailable. */
 export const ЗаписьВРаботе: Story = { args: { busyId: "b" } };
 
-/** Английский. */
+/** English. */
 export const Английский: Story = { args: { language: "en" }, globals: { language: "en" } };
 
-/** Крупный текст. */
+/** Large text. */
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };
 
-/** Подтверждение «Удалить навсегда?»: единственное подтверждение в приложении, фокус на «Отмена». */
+/** The "Delete forever?" confirmation: the only confirmation in the app, focus on "Cancel". */
 function WithConfirm(args: React.ComponentProps<typeof TrashView>) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => host.current?.querySelector<HTMLButtonElement>(".trash__danger")?.click(), []);
@@ -122,14 +122,14 @@ function WithConfirm(args: React.ComponentProps<typeof TrashView>) {
 }
 export const Подтверждение: Story = { render: (args) => <WithConfirm {...args} /> };
 
-/** Подтверждение на английском, крупный текст. */
+/** The confirmation in English, large text. */
 export const ПодтверждениеEnКрупный: Story = {
   globals: { language: "en", textScale: "large" },
   args: { language: "en" },
   render: (args) => <WithConfirm {...args} />,
 };
 
-/** Живая корзина: «Восстановить» и подтверждённое «Удалить навсегда» убирают запись из списка. */
+/** A live trash: "Restore" and a confirmed "Delete forever" remove the entry from the list. */
 function Live(args: React.ComponentProps<typeof TrashView>) {
   const [list, setList] = useState(args.items);
   const remove = (id: string) => setList((current) => current.filter((i) => i.message.id !== id));
@@ -141,7 +141,7 @@ function Live(args: React.ComponentProps<typeof TrashView>) {
 }
 export const Живая: Story = { render: (args) => <Live {...args} /> };
 
-/** Фокус с клавиатуры на «Восстановить» первой записи. */
+/** Keyboard focus on "Restore" of the first entry. */
 function FocusedRestore(args: React.ComponentProps<typeof TrashView>) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => host.current?.querySelector<HTMLButtonElement>(".trash-entry .button")?.focus(), []);

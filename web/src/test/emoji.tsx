@@ -2,14 +2,14 @@ import type { EmojiData, EmojiDataResolver } from "frimousse";
 import type { ReactNode } from "react";
 import { EmojiResolverProvider } from "../ui/emoji/EmojiResolver";
 
-// Только для тестов. jsdom не раскладывает элементы: у области прокрутки пикера нет размеров, а frimousse по ним решает,
-// какие строки рисовать (виртуальный список), и следит за размерами через ResizeObserver, которого в jsdom нет. Заглушка
-// подставляет размеры: ячейка 40, область 40 x 8 ячеек. Она позволяет проверять обвязку (поиск, «Недавние», выбор,
-// клавиатуру), но не раскладку: раскладку и вид показывают истории Storybook.
+// For tests only. jsdom does not lay out elements: the picker's scroll area has no sizes, and frimousse uses them to decide
+// which rows to draw (a virtual list), and watches the sizes through ResizeObserver, which jsdom does not have. The stub
+// supplies sizes: a cell is 40, the area is 40 x 8 cells. It lets tests check the wiring (search, "Недавние" (Recent), selection,
+// keyboard), but not the layout: the layout and the look are shown by the Storybook stories.
 
 const CELL = 40;
 
-/** Ставит заглушки; возвращает функцию, которая возвращает всё как было. */
+/** Installs the stubs; returns a function that puts everything back as it was. */
 export function installEmojiLayoutStub(): () => void {
   const clientHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
   const offsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth");
@@ -29,7 +29,7 @@ export function installEmojiLayoutStub(): () => void {
     },
   });
   Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, get: () => CELL * 9 });
-  // frimousse прокручивает область к активной ячейке; в jsdom прокрутки нет.
+  // frimousse scrolls the area to the active cell; jsdom has no scrolling.
   HTMLElement.prototype.scrollTo = () => {};
 
   return () => {
@@ -40,7 +40,7 @@ export function installEmojiLayoutStub(): () => void {
   };
 }
 
-/** Данные из двух категорий для тестов пикера. */
+/** Data of two categories for the picker tests. */
 export const STUB_EMOJI_DATA: EmojiData = {
   locale: "ru",
   categories: [
@@ -56,10 +56,10 @@ export const STUB_EMOJI_DATA: EmojiData = {
   ],
 };
 
-/** Резолвер с этими данными. Одна и та же функция на всех рендерах: frimousse кэширует данные по её идентичности. */
+/** A resolver with this data. The same function on all renders: frimousse caches the data by its identity. */
 export const STUB_EMOJI_RESOLVER: EmojiDataResolver = async () => STUB_EMOJI_DATA;
 
-/** Пикеры внутри получают маленький набор вместо emojibase-data (быстро, без динамического import). */
+/** The pickers inside get a small set instead of emojibase-data (fast, no dynamic import). */
 export function StubEmojiData({ resolver = STUB_EMOJI_RESOLVER, children }: { resolver?: EmojiDataResolver; children: ReactNode }) {
   return <EmojiResolverProvider value={resolver}>{children}</EmojiResolverProvider>;
 }

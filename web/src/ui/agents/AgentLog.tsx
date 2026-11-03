@@ -7,23 +7,23 @@ import { Button } from "../controls/Button";
 import { Icon } from "../icons/Icon";
 import { logLine, shortDay } from "./logText";
 
-/** Журнал обращений для окна: строки, раскрытая строка с записями, какие записи уже оказались удалёнными. */
+/** The access log for the window: rows, the expanded row with entries, which entries turned out to be already deleted. */
 export interface AgentLogView {
   rows: readonly AgentLogRow[];
-  /** Есть более старые строки. */
+  /** There are older rows. */
   hasMore: boolean;
-  /** Раскрытая строка (`id`). */
+  /** The expanded row (`id`). */
   expandedId: number | null;
-  /** Записи раскрытых строк; `undefined` — ещё грузятся. */
+  /** Entries of the expanded rows; `undefined` means still loading. */
   entries: Readonly<Record<number, readonly AgentLogEntry[] | undefined>>;
-  /** Id записей, которые при открытии оказались удалёнными навсегда. */
+  /** Ids of entries that turned out to be permanently deleted on open. */
   gone: ReadonlySet<string>;
 }
 
 interface AgentLogProps {
   log: AgentLogView;
   language: Language;
-  /** «Сейчас» для метки времени (в тестах и историях фиксируется). */
+  /** "Now" for the time mark (fixed in tests and stories). */
   now: Date;
   onToggleRow: (id: number) => void;
   onOpenEntry: (logId: number, entry: AgentLogEntry) => void;
@@ -31,10 +31,10 @@ interface AgentLogProps {
 }
 
 /**
- * Журнал обращений: тихие строки «время · клиент · действие · N записей», новые сверху, внизу «Показать ещё». Имя клиента — с его
- * слов, без значка «проверено». Щелчок по строке раскрывает записи (чат, дата, начало текста); щелчок по записи открывает её
- * в ленте. Удалённая навсегда запись — тихая строка «Запись удалена». Содержимого записей в журнале нет: тексты читаются из
- * ленты по id при раскрытии.
+ * The access log: quiet rows "time · client · action · N entries", newest on top, "Показать ещё" at the bottom. The client name is as it
+ * states itself, without a "verified" badge. A click on a row expands the entries (chat, date, start of the text); a click on an entry opens it
+ * in the feed. A permanently deleted entry is a quiet row "Запись удалена". The log holds no entry contents: the texts are read from
+ * the feed by id on expand.
  */
 export function AgentLog({ log, language, now, onToggleRow, onOpenEntry, onMore }: AgentLogProps) {
   const { t } = useTranslation();

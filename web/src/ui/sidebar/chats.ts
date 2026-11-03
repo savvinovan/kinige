@@ -2,36 +2,36 @@ import type { TFunction } from "i18next";
 import type { ChatSummary } from "../../api/generated/ChatSummary";
 import type { MenuItem } from "../menu/ContextMenu";
 
-/** Цвет плитки с буквой (D2). Совпадает с ролями `tile.*` палитры. */
+/** The color of the letter tile (D2). Matches the `tile.*` roles of the palette. */
 export type ChatTint = "blue" | "teal" | "green" | "orange" | "pink" | "violet";
 
 export interface SidebarChat {
   id: string;
-  /** Название чата — данные пользователя. У Inbox (`isInbox`) хранимое имя пустое, интерфейс показывает переведённое. */
+  /** The chat name is user data. For Inbox (`isInbox`) the stored name is empty and the UI shows the translated one. */
   name: string;
-  /** Inbox: пустое имя заменяется переводом «Входящие» / «Inbox». Его нельзя ни переименовать, ни архивировать. */
+  /** Inbox: the empty name is replaced by the translation "Входящие" / "Inbox". It can be neither renamed nor archived. */
   isInbox?: boolean;
-  /** Эмодзи чата — данные пользователя; рисует системный эмодзи-шрифт. */
+  /** The chat emoji is user data; drawn by the system emoji font. */
   emoji: string;
   /**
-   * Цвет плитки с буквой. Колонка `chat.color` в базе пока всегда пустая и в `ChatSummary` не отдаётся (D2 Rust не меняет),
-   * поэтому `toSidebarChat` его не задаёт, а цвет выводится из идентификатора (`tintOf`); хранимый цвет придёт с KINIG-59.
+   * The color of the letter tile. The `chat.color` column in the database is always empty for now and is not returned in `ChatSummary` (D2 does not change Rust),
+   * so `toSidebarChat` does not set it and the color is derived from the id (`tintOf`); the stored color arrives with KINIG-59.
    */
   tint?: ChatTint;
-  /** Сколько записей в чате, кроме корзины. 0 или не задано — счётчик скрыт. */
+  /** How many entries are in the chat, excluding the trash. 0 or unset: the counter is hidden. */
   count?: number;
-  /** Закреплён: строка в разделе «Закреплённые». Если чат ещё и в архиве, архив главнее. */
+  /** Pinned: the row is in the "Pinned" section. If the chat is also archived, the archive wins. */
   pinned?: boolean;
-  /** В архиве: строка в свёрнутом разделе «Архив». У Inbox флаг игнорируется. */
+  /** Archived: the row is in the collapsed "Archive" section. The flag is ignored for Inbox. */
   archived?: boolean;
 }
 
-/** Действие из контекстного меню чата. */
+/** An action from the chat context menu. */
 export type ChatAction = "rename" | "icon" | "pin" | "unpin" | "archive" | "unarchive";
 
 const isSet = (time: number | null | undefined) => time !== null && time !== undefined;
 
-/** Чат из ответа Rust → строка сайдбара. Чат без эмодзи хранится с «💬»: сайдбар показывает для него плитку с буквой. */
+/** A chat from the Rust response -> a sidebar row. A chat without an emoji is stored with "💬": the sidebar shows a letter tile for it. */
 export function toSidebarChat(chat: ChatSummary): SidebarChat {
   return {
     id: chat.id,
@@ -50,7 +50,7 @@ export interface ChatSections {
   archived: SidebarChat[];
 }
 
-/** Разделы по флагам: архив главнее закрепления; Inbox в архив не попадает. Порядок внутри раздела — как пришёл. */
+/** Sections by flags: the archive wins over pinning; Inbox never goes to the archive. The order inside a section is as received. */
 export function partitionChats(chats: readonly SidebarChat[]): ChatSections {
   const sections: ChatSections = { pinned: [], chats: [], archived: [] };
   for (const chat of chats) {
@@ -61,14 +61,14 @@ export function partitionChats(chats: readonly SidebarChat[]): ChatSections {
   return sections;
 }
 
-/** Название для глаз и диктора: у Inbox пустое хранимое имя заменяется переводом. */
+/** The name for eyes and the screen reader: for Inbox the empty stored name is replaced by the translation. */
 export function displayName(chat: SidebarChat, t: TFunction): string {
   return chat.isInbox && chat.name === "" ? t("chat.inbox") : chat.name;
 }
 
 /**
- * Пункты меню чата. У Inbox только «Закрепить» / «Открепить». У архивного чата закрепления нет: он всё равно лежит в
- * «Архиве», и пункт ничего бы не показал.
+ * The chat menu items. Inbox has only "Pin" / "Unpin". An archived chat has no pinning: it lies in the "Archive"
+ * anyway, and the item would show nothing.
  */
 export function chatMenuItems(chat: SidebarChat, t: TFunction): MenuItem[] {
   const items: MenuItem[] = [];

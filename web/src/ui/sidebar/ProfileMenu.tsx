@@ -14,30 +14,31 @@ type Item = (typeof ITEMS_WITH_FOREST)[number];
 const ITEM_ICON: Record<Item, IconName> = { settings: "settings", forest: "forest", import: "download", export: "upload", about: "info" };
 
 interface ProfileMenuProps {
-  /** Имя в строке профиля; по умолчанию «Я» / «Me» из переводов. Из него берутся инициалы аватара. */
+  /** Name in the profile row; defaults to "Я" / "Me" from the translations. The avatar initials come from it. */
   name?: string;
-  /** Точка статуса у аватара (синхронизация, слайс 11). В D1 не показывается; значение появится вместе со слайсом. */
+  /** Status dot by the avatar (sync, slice 11). Not shown in D1; the value arrives with the slice. */
   statusDot?: boolean;
-  /** Меню открыто с самого начала (для историй и снимков). */
+  /** The menu is open from the start (for stories and screenshots). */
   defaultOpen?: boolean;
-  /** «Настройки» (слайс 1). Без обработчика пункт только нарисован и объявлен недоступным, как «Экспорт» и «О программе». */
+  /** "Settings" (slice 1). Without a handler the item is only drawn and announced as unavailable, like "Export" and "About". */
   onOpenSettings?: () => void;
-  /** «Импорт из Telegram…» (слайс 4). Без обработчика пункт нарисован и объявлен недоступным. */
+  /** "Import from Telegram..." (slice 4). Without a handler the item is drawn and announced as unavailable. */
   onOpenImport?: () => void;
-  /** «О программе» (KINIG-54): версия сборки. Без обработчика пункт нарисован и объявлен недоступным. */
+  /** "About" (KINIG-54): the build version. Without a handler the item is drawn and announced as unavailable. */
   onOpenAbout?: () => void;
   /** The forest above the feed (slice 6): without it the menu has no forest item; `hidden` decides "Show" or "Hide". */
   forestMenu?: { hidden: boolean; onToggle: () => void };
-  /** Свёрнутый сайдбар: только аватар, меню открывается вправо от него, а не вверх на всю ширину. */
+  /** Collapsed sidebar: only the avatar; the menu opens to the right of it, not upward at full width. */
   compact?: boolean;
 }
 
 /**
- * Строка профиля внизу сайдбара, как в Notion: аватар с инициалами, имя, шеврон и меню «Настройки», «Импорт из
- * Telegram…», «Экспорт», «О программе». Работают «Настройки», «Импорт» и «О программе» (если переданы обработчики); «Экспорт» объявлен недоступным
- * (`aria-disabled`, «Появится позже»), но меню настоящее: открывается щелчком, Enter, пробелом или стрелкой; стрелки,
- * Home и End ходят по пунктам, Esc закрывает и возвращает фокус на кнопку, щелчок вне меню и Tab закрывают.
- * В свёрнутом сайдбаре (`compact`) остаётся аватар; имя читается по подписи кнопки.
+ * The profile row at the bottom of the sidebar, as in Notion: avatar with initials, name, chevron and a menu with
+ * "Settings", "Import from Telegram...", "Export", "About". "Settings", "Import" and "About" work (if handlers are
+ * passed); "Export" is announced as unavailable (`aria-disabled`, "Coming later"), but the menu is real: it opens with
+ * a click, Enter, Space or an arrow; arrows, Home and End move between items, Esc closes it and returns focus to the
+ * button, a click outside the menu and Tab close it.
+ * In the collapsed sidebar (`compact`) only the avatar stays; the name is read from the button label.
  */
 export function ProfileMenu({
   name,
@@ -68,7 +69,7 @@ export function ProfileMenu({
     if (returnFocus) button.current?.focus();
   };
 
-  // При открытии фокус уходит на первый пункт (или на последний, если меню открыли стрелкой вверх).
+  // On open, focus goes to the first item (or to the last one if the menu was opened with the up arrow).
   const opener = useRef<"first" | "last">("first");
   useEffect(() => {
     if (!open) return;
@@ -117,7 +118,7 @@ export function ProfileMenu({
         close(true);
         break;
       case "Tab":
-        // Меню закрывается, фокус идёт дальше по странице как обычно.
+        // The menu closes; focus moves on through the page as usual.
         setOpen(false);
         break;
     }
@@ -140,8 +141,8 @@ export function ProfileMenu({
                 className="profile__item"
                 tabIndex={-1}
                 onClick={() => {
-                  // Фокус сначала возвращается на кнопку профиля (пункт меню исчезнет): окно настроек запомнит её
-                  // и вернёт фокус на неё при закрытии.
+                  // Focus first returns to the profile button (the menu item will disappear): the settings window
+                  // remembers it and returns focus to it on close.
                   close(true);
                   handlers[item]?.();
                 }}

@@ -4,7 +4,7 @@ import { installEmojiLayoutStub, StubEmojiData } from "../test/emoji";
 import { act, fireEvent, render, screen, waitFor, within } from "../test/render";
 import { CaptureWindow, HIDE_REQUEST_EVENT, SHOWN_EVENT } from "./CaptureWindow";
 
-// Эмодзи в окне быстрого захвата (решение приёмки слайса 3): кнопка в поле, пикер в потоке над полем, окно растёт вверх.
+// Emoji in the quick capture window (a slice 3 acceptance decision): a button in the field, the picker in the flow above the field, the window grows upward.
 let restoreLayout: () => void;
 beforeAll(() => {
   restoreLayout = installEmojiLayoutStub();
@@ -15,7 +15,7 @@ const NOW = new Date(Date.UTC(2026, 9, 21, 6, 12));
 const BOOK = "\u{1F4DA}";
 const BULB = "\u{1F4A1}";
 
-/** Высота содержимого в jsdom: окно с пикером выше (высоты задают подставленные размеры, не раскладка). */
+/** The content height in jsdom: the window with the picker is taller (heights come from the stubbed sizes, not from layout). */
 const CLOSED_HEIGHT = 150;
 const OPEN_HEIGHT = 520;
 
@@ -62,7 +62,7 @@ const field = () => screen.getByRole("textbox", { name: "Новая заметк
 const button = () => screen.getByRole("button", { name: "Эмодзи" });
 const dialog = () => screen.getByRole("dialog", { name: "Выбор эмодзи" });
 const open = () => fireEvent.click(button());
-/** Страница сообщает высоту после того, как ResizeObserver сработал. */
+/** The page reports the height after the ResizeObserver has fired. */
 const flushResize = () =>
   act(() => {
     for (const callback of observers) (callback as (entries: unknown[]) => void)([]);
@@ -78,7 +78,7 @@ describe("окно захвата: эмодзи", () => {
     const panel = dialog();
     expect(panel.closest(".capture-panel")).not.toBeNull();
     expect(panel.parentElement).toHaveClass("composer__emoji-host");
-    // Пикер стоит выше строки поля, кнопка и поле остаются на месте.
+    // The picker stands above the field row, the button and the field stay in place.
     const bar = field().closest(".composer__bar") as HTMLElement;
     expect(panel.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(panel).getByRole("searchbox", { name: "Найти эмодзи" })).toHaveFocus();
@@ -117,7 +117,7 @@ describe("окно захвата: эмодзи", () => {
     fireEvent.click(within(dialog()).getByRole("button", { name: BULB }));
     await waitFor(async () => expect((await api.captureState()).recentEmoji).toEqual([BULB, BOOK]));
     expect((await api.getSettings()).recentEmoji).toEqual([BULB, BOOK]);
-    // Следующее открытие показывает его первым в «Недавних».
+    // The next opening shows it first in "Недавние" (Recent).
     open();
     const recent = within(dialog()).getByRole("region", { name: "Недавние" });
     expect(within(recent).getAllByRole("button").map((b) => b.textContent)).toEqual([BULB, BOOK]);

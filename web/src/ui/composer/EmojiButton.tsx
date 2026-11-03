@@ -5,35 +5,35 @@ import { IconButton } from "../controls/IconButton";
 import { EmojiInline } from "../emoji/EmojiInline";
 import { EmojiPopover } from "../emoji/EmojiPopover";
 
-/** Эмодзи-пикер в поле ввода (слайс 3). */
+/** Emoji picker in the input field (slice 3). */
 export interface ComposerEmoji {
-  /** Недавно выбранные эмодзи, свежие первыми. */
+  /** Recently chosen emoji, newest first. */
   recent: readonly string[];
   language: Language;
-  /** Эмодзи выбран и вставлен: запомнить его в «недавних». */
+  /** An emoji was chosen and inserted: remember it in "recent". */
   onPicked?: (emoji: string) => void;
   /**
-   * Где показать пикер. `popover` (по умолчанию) — панель над кнопкой поверх окна. `inline` — панель в потоке над строкой
-   * поля (окно быстрого захвата: окно растёт вверх вместе с ней); работает только в плавающем поле.
+   * Where to show the picker. `popover` (default) is a panel above the button on top of the window. `inline` is a panel in the flow above the
+   * field row (quick capture window: the window grows up together with it); works only in the floating field.
    */
   placement?: "popover" | "inline";
-  /** Открыт ли пикер, если им управляет хозяин (окно захвата: Esc сначала закрывает пикер). Без него состояние внутри кнопки. */
+  /** Whether the picker is open, if the owner controls it (capture window: Esc closes the picker first). Without it the state is inside the button. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
 interface EmojiButtonProps extends ComposerEmoji {
-  /** Поле ввода: в его позицию курсора вставляется эмодзи. */
+  /** The input field: the emoji is inserted at its caret position. */
   field: RefObject<HTMLTextAreaElement | null>;
   value: string;
   onChange: (value: string) => void;
-  /** Место для панели `inline`; пока его нет, панель не показывается. */
+  /** The place for the `inline` panel; until it exists, the panel is not shown. */
   host?: HTMLElement | null;
 }
 
 /**
- * Кнопка «эмодзи» поля ввода: открывает панель пикера над собой. Выбор вставляет эмодзи вместо выделения (или в позицию
- * курсора), каретка встаёт после него, фокус возвращается в поле, панель закрывается.
+ * The "emoji" button of the input field: opens the picker panel above itself. The choice inserts the emoji instead of the selection (or at the caret
+ * position), the caret goes after it, focus returns to the field, the panel closes.
  */
 export function EmojiButton({ recent, language, onPicked, placement = "popover", open: controlled, onOpenChange, field, value, onChange, host }: EmojiButtonProps) {
   const { t } = useTranslation();
@@ -44,7 +44,7 @@ export function EmojiButton({ recent, language, onPicked, placement = "popover",
     onOpenChange?.(next);
   };
   const anchor = useRef<HTMLSpanElement>(null);
-  // Каретку можно поставить, только когда родитель уже подставил новое значение в поле.
+  // The caret can be placed only when the parent has already put the new value into the field.
   const caret = useRef<{ value: string; position: number } | null>(null);
 
   useLayoutEffect(() => {
@@ -55,7 +55,7 @@ export function EmojiButton({ recent, language, onPicked, placement = "popover",
 
   const pick = (emoji: string) => {
     const input = field.current;
-    // Выделение textarea переживает уход фокуса в пикер; без поля (его нет в дереве) эмодзи дописывается в конец.
+    // The textarea selection survives focus moving to the picker; without the field (it is not in the tree) the emoji is appended to the end.
     const start = input?.selectionStart ?? value.length;
     const end = input?.selectionEnd ?? start;
     const next = value.slice(0, start) + emoji + value.slice(end);

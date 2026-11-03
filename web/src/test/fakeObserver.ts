@@ -1,6 +1,6 @@
 import { act, waitFor } from "@testing-library/react";
 
-/** Подмена IntersectionObserver для тестов ленты: тест сам «показывает» край списка. */
+/** An IntersectionObserver replacement for feed tests: the test itself "shows" the list edge. */
 export class FakeObserver {
   static all: FakeObserver[] = [];
   private readonly targets = new Set<Element>();
@@ -28,19 +28,20 @@ export class FakeObserver {
   }
 }
 
-/** В `column-reverse` первый в разметке край стоит внизу (новое), последний — вверху (старое). */
+/** In `column-reverse` the first edge in the markup is at the bottom (new), the last is at the top (old). */
 export const edges = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>(".feed__edge")];
 
 /**
- * Край списка показался в области прокрутки. Ленту наблюдатель ставит эффектом после отрисовки страницы (при смене числа
- * записей прежний наблюдатель снимается): ждём, пока он увидит край, как настоящий браузер сообщил бы о нём не раньше.
+ * The list edge became visible in the scroll area. The observer is attached to the feed by an effect after the page is
+ * rendered (when the number of entries changes, the previous observer is removed): we wait until it sees the edge, as a
+ * real browser would not report it earlier.
  */
 export async function showEdge(container: HTMLElement, which: "older" | "newer") {
   const watched = () => {
     const list = edges(container);
     const edge = which === "older" ? list.at(-1) : list[0];
     const observer = FakeObserver.all.find((o) => edge && o.has(edge));
-    if (!edge || !observer) throw new Error(`нет края «${which}»`);
+    if (!edge || !observer) throw new Error(`no "${which}" edge`);
     return { edge, observer };
   };
   await waitFor(watched);

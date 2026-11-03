@@ -3,31 +3,31 @@
     "columns": {
       "$type": "number",
       "$value": 9,
-      "$description": "Столбцов в сетке пикера эмодзи. То же число стоит в коде как EMOJI_COLUMNS (frimousse принимает его числом); тест emoji/emojiTokens.test.ts сверяет оба."
+      "$description": "Columns in the emoji picker grid. The same number is in the code as EMOJI_COLUMNS (frimousse takes it as a number); the test emoji/emojiTokens.test.ts compares both."
     },
     "cell": {
       "$type": "dimension",
       "size": {
         "$value": "2.4rem",
-        "$description": "Высота ячейки эмодзи в сетке пикера (31 px при корне 13 px); ширина — доля строки (1 / columns)."
+        "$description": "Height of an emoji cell in the picker grid (31 px at a 13 px root); the width is a share of the row (1 / columns)."
       }
     },
     "glyph": {
       "$type": "dimension",
       "size": {
         "$value": "1.5rem",
-        "$description": "Размер глифа эмодзи в ячейке пикера (19,5 px)."
+        "$description": "Emoji glyph size in a picker cell (19.5 px)."
       }
     },
     "panel": {
       "$type": "dimension",
       "width": {
         "$value": "24rem",
-        "$description": "Ширина панели пикера над кнопкой «эмодзи» в поле ввода (312 px при корне 13 px); в окне чата пикер занимает ширину содержимого."
+        "$description": "Width of the picker panel above the 'emoji' button in the input field (312 px at a 13 px root); in the chat window the picker takes the content width."
       },
       "height": {
         "$value": "27rem",
-        "$description": "Высота панели пикера: фиксирована, поэтому панель не прыгает, когда секция «Недавние» появляется и исчезает при поиске (351 px)."
+        "$description": "Height of the picker panel: fixed, so the panel does not jump when the 'Recent' section appears and disappears during a search (351 px)."
       }
     }
   }

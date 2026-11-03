@@ -1,6 +1,7 @@
 /**
- * Теги записи для `MockApi`: упрощённая копия правил `kinige_domain::tags` (настоящий разбор — в Rust). Тег — `#` и следом
- * буквы любого алфавита, цифры, `_`, не только цифры; регистр не важен; не тег код, ссылки, `#` после буквы/цифры/`_`.
+ * Entry tags for `MockApi`: a simplified copy of the `kinige_domain::tags` rules (the real parsing is in Rust). A tag is `#`
+ * followed by letters of any alphabet, digits, `_`, not digits only; case does not matter; code, links and `#` after a
+ * letter/digit/`_` are not tags.
  */
 export function mockTags(body: string): string[] {
   const text = body

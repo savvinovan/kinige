@@ -5,7 +5,7 @@ import { rect } from "../../test/rect";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// Перенос записи в другой чат (решение приёмки): подменю «Переместить в чат» и перетаскивание на чат в сайдбаре.
+// Moving an entry to another chat (an acceptance decision): the "Move to chat" submenu and dragging onto a chat in the sidebar.
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 const TODAY_AT = Date.UTC(2026, 9, 21, 5, 0);
 const CHATS = [
@@ -44,7 +44,7 @@ describe("«Переместить в чат»: меню записи", () => {
     expect(names).toEqual(["Назад", "💡Идеи", "📥Входящие", "📚Книги", "🗄️Очень длинное название старого чата, которое не поместится в меню"]);
     expect(item(/Входящие/)).toHaveAttribute("aria-disabled", "true");
     expect(item(/Идеи/)).not.toHaveAttribute("aria-disabled");
-    // Архивный чат отделён чертой от обычных; название лежит в элементе с многоточием (CSS `context-menu__label`).
+    // The archived chat is separated from the regular ones by a line; the name sits in an element with an ellipsis (CSS `context-menu__label`).
     expect(item(/Очень длинное/).parentElement).toHaveClass("context-menu__group");
     expect(item(/Очень длинное/).querySelector(".context-menu__label")).toBeInTheDocument();
   });
@@ -60,7 +60,7 @@ describe("«Переместить в чат»: меню записи", () => {
     expect(api.messageById("m1")?.chatId).toBe("books");
     const books = await screen.findByRole("button", { name: /^Книги/ });
     expect(books).toHaveTextContent("1");
-    // В «Книгах» запись на месте.
+    // In "Books" the entry is in place.
     fireEvent.click(books);
     expect(await screen.findByText("Купить хлеб")).toBeInTheDocument();
   });
@@ -80,7 +80,7 @@ describe("«Переместить в чат»: меню записи", () => {
     expect(item("Переместить в чат")).toHaveFocus();
     fireEvent.click(document.activeElement as HTMLElement);
     await waitFor(() => expect(item("Назад")).toHaveFocus());
-    // Текущий чат стрелки пропускают: первый после «Назад» — «Идеи».
+    // The arrows skip the current chat: the first after "Back" is "Ideas".
     fireEvent.keyDown(menu(), { key: "ArrowDown" });
     expect(item(/Идеи/)).toHaveFocus();
 
@@ -139,7 +139,7 @@ describe("«Переместить в чат»: перетаскивание н�
     document.elementFromPoint = original;
   });
 
-  /** Плашка с настоящими (подставленными) границами: jsdom границ не знает. */
+  /** A plate with real (stubbed) bounds: jsdom knows no bounds. */
   async function plate() {
     await screen.findByText("Купить хлеб");
     const element = article("Купить хлеб");

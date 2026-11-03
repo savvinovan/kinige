@@ -7,8 +7,8 @@ import { Frame } from "../stories/Frame";
 import { Message } from "./Message";
 import type { MoveTarget } from "./moveTargets";
 
-// Слайс 3: ряд действий, контекстное меню, правка в плашке, удалённая плашка, задача, избранное, теги, кликабельные квадраты,
-// запись только для чтения. Первые истории «Компоненты/Сообщение» (D1) — в Message.stories.tsx.
+// Slice 3: action row, context menu, editing in the bubble, deleted bubble, task, favorite, tags, clickable boxes,
+// read-only entry. The first "Components/Message" stories (D1) are in Message.stories.tsx.
 
 const at = (hour: number, minute: number) => new Date(2026, 9, 20, hour, minute);
 
@@ -27,17 +27,17 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const noop = () => undefined;
-/** Все обработчики есть: кнопки ряда и пункты меню живые. */
+/** All handlers present: the row buttons and menu items are live. */
 const live = { onEdit: noop, onToggleTask: noop, onToggleFavorite: noop, onChangeDate: noop, onDelete: noop };
 
-/** Открывает контекстное меню плашки после показа: так история показывает открытое меню без мыши. */
+/** Opens the bubble context menu after display: this is how the story shows an open menu without a mouse. */
 function OpenMenu({ children, keyboard = false }: { children: ReactNode; keyboard?: boolean }) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const plate = host.current?.querySelector("article");
     if (!plate) return;
     if (keyboard) {
-      // С клавиатуры: Shift+F10 на кнопке «Ещё» открывает меню под ней.
+      // From the keyboard: Shift+F10 on the "More" button opens the menu below it.
       const more = host.current?.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]');
       more?.focus();
       more?.dispatchEvent(new KeyboardEvent("keydown", { key: "F10", shiftKey: true, bubbles: true, cancelable: true }));
@@ -55,7 +55,7 @@ function OpenMenu({ children, keyboard = false }: { children: ReactNode; keyboar
   );
 }
 
-/** Ряд действий при наведении: задача и избранное выключены; все пять кнопок живые. */
+/** Action row on hover: task and favorite are off; all five buttons are live. */
 export const РядДействий: Story = {
   render: () => (
     <div className="story-column">
@@ -64,7 +64,7 @@ export const РядДействий: Story = {
   ),
 };
 
-/** Задача и избранное включены: значок «задача» акцентный, звезда залитая, подписи для диктора — «Убрать задачу», «Убрать из избранного». */
+/** Task and favorite are on: the "task" icon is accent, the star is filled, the screen reader labels are "Remove task", "Remove from favorites". */
 export const РядДействийВключено: Story = {
   render: () => (
     <div className="story-column">
@@ -73,7 +73,7 @@ export const РядДействийВключено: Story = {
   ),
 };
 
-/** Без обработчиков (D1): «Редактировать», «Задача», «Избранное» нарисованы и недоступны; «Копировать» и «Ещё» работают. */
+/** Without handlers (D1): "Edit", "Task", "Favorite" are drawn and disabled; "Copy" and "More" work. */
 export const РядДействийБезОбработчиков: Story = {
   render: () => (
     <div className="story-column">
@@ -82,7 +82,7 @@ export const РядДействийБезОбработчиков: Story = {
   ),
 };
 
-/** Меню по правому щелчку: «Копировать», «Редактировать», «Сделать задачей», «В избранное», «Изменить дату…», «Удалить» (опасное, за чертой). Ряд действий остаётся виден. */
+/** Menu on right click: "Copy", "Edit", "Make a task", "Add to favorites", "Change date...", "Delete" (dangerous, below a divider). The action row stays visible. */
 export const МенюОткрыто: Story = {
   render: () => (
     <OpenMenu>
@@ -91,7 +91,7 @@ export const МенюОткрыто: Story = {
   ),
 };
 
-/** Меню у записи-задачи в избранном: пункты «Убрать задачу» и «Убрать из избранного». */
+/** Menu of a task entry in favorites: the items "Remove task" and "Remove from favorites". */
 export const МенюЗадачаВИзбранном: Story = {
   render: () => (
     <OpenMenu>
@@ -100,7 +100,7 @@ export const МенюЗадачаВИзбранном: Story = {
   ),
 };
 
-/** Меню открыто с клавиатуры (Shift+F10 на кнопке «Ещё»): первый пункт в фокусе, меню под кнопкой. */
+/** Menu opened from the keyboard (Shift+F10 on the "More" button): the first item is focused, the menu is under the button. */
 export const МенюСКлавиатуры: Story = {
   render: () => (
     <OpenMenu keyboard>
@@ -109,7 +109,7 @@ export const МенюСКлавиатуры: Story = {
   ),
 };
 
-/** Меню на английском. */
+/** Menu in English. */
 export const МенюEn: Story = {
   globals: { language: "en" },
   render: () => (
@@ -119,7 +119,7 @@ export const МенюEn: Story = {
   ),
 };
 
-/** Меню при крупном тексте. */
+/** Menu with large text. */
 export const МенюКрупныйТекст: Story = {
   globals: { textScale: "large" },
   render: () => (
@@ -144,7 +144,7 @@ const MOVE_TARGETS_EN: MoveTarget[] = [
 ];
 const movable = { ...live, onMoveTo: noop };
 
-/** Открывает меню записи и переходит на второй уровень: «Переместить в чат» (шестой пункт). */
+/** Opens the entry menu and goes to the second level: "Move to chat" (the sixth item). */
 function OpenMoveMenu({ children }: { children: ReactNode }) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -154,7 +154,7 @@ function OpenMoveMenu({ children }: { children: ReactNode }) {
     plate.dispatchEvent(
       new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: rect.left + rect.width / 2, clientY: rect.bottom }),
     );
-    // Меню появляется после отрисовки: второй уровень открывается следующим кадром.
+    // The menu appears after rendering: the second level opens on the next frame.
     const frame = requestAnimationFrame(() => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[5]?.click());
     return () => cancelAnimationFrame(frame);
   }, []);
@@ -165,7 +165,7 @@ function OpenMoveMenu({ children }: { children: ReactNode }) {
   );
 }
 
-/** «Переместить в чат»: второй уровень меню. «Назад», закреплённые, обычные и архивные чаты тонкими чертами; текущий чат приглушён, длинное имя обрезано многоточием. */
+/** "Move to chat": the second menu level. "Back", pinned, regular and archived chats separated by thin dividers; the current chat is muted, a long name is cut with an ellipsis. */
 export const МенюПеремещения: Story = {
   render: () => (
     <OpenMoveMenu>
@@ -174,7 +174,7 @@ export const МенюПеремещения: Story = {
   ),
 };
 
-/** То же на английском. */
+/** The same in English. */
 export const МенюПеремещенияEn: Story = {
   globals: { language: "en" },
   render: () => (
@@ -184,7 +184,7 @@ export const МенюПеремещенияEn: Story = {
   ),
 };
 
-/** То же при крупном тексте. */
+/** The same with large text. */
 export const МенюПеремещенияКрупныйТекст: Story = {
   globals: { textScale: "large" },
   render: () => (
@@ -194,7 +194,7 @@ export const МенюПеремещенияКрупныйТекст: Story = {
   ),
 };
 
-/** «Призрак» плашки под курсором при перетаскивании на чат: та же плашка, чуть прозрачнее, с тенью; сам курсор не рисуется. */
+/** The "ghost" of the bubble under the cursor while dragging to a chat: the same bubble, slightly more transparent, with a shadow; the cursor itself is not drawn. */
 export const ПризракПеретаскивания: Story = {
   render: () => (
     <div className="story-column story-ghost">
@@ -205,7 +205,7 @@ export const ПризракПеретаскивания: Story = {
   ),
 };
 
-/** Запись только для чтения (группа новее поддерживаемой версии): кнопки приглушены с пояснением в подсказке, в меню доступно только «Копировать». */
+/** Read-only entry (group newer than the supported version): buttons are muted with an explanation in the tooltip, only "Copy" is available in the menu. */
 export const ТолькоЧтение: Story = {
   render: () => (
     <div className="story-column">
@@ -214,7 +214,7 @@ export const ТолькоЧтение: Story = {
   ),
 };
 
-/** Меню записи только для чтения. */
+/** Menu of a read-only entry. */
 export const МенюТолькоЧтение: Story = {
   render: () => (
     <OpenMenu>
@@ -223,7 +223,7 @@ export const МенюТолькоЧтение: Story = {
   ),
 };
 
-/** Правка, короткий текст: поле вместо текста, ширина плашки та же, время на месте; ряда действий нет. Линия фокуса внутри плашки. */
+/** Editing, short text: a field instead of the text, the bubble width is the same, the time is in place; no action row. The focus line is inside the bubble. */
 export const ПравкаКороткая: Story = {
   render: () => (
     <div className="story-column">
@@ -232,7 +232,7 @@ export const ПравкаКороткая: Story = {
   ),
 };
 
-/** Правка, длинный многострочный текст с кириллицей, латиницей и тегом: плашка растёт только по высоте, до ширины колонки. */
+/** Editing, long multi-line text with Cyrillic, Latin and a tag: the bubble grows only in height, up to the column width. */
 export const ПравкаДлинная: Story = {
   render: () => (
     <div className="story-column">
@@ -248,7 +248,7 @@ export const ПравкаДлинная: Story = {
   ),
 };
 
-/** Ошибка сохранения правки: строка `role="alert"` внутри плашки, текст в поле остаётся. */
+/** Save-edit error: a `role="alert"` line inside the bubble, the text stays in the field. */
 export const ПравкаОшибка: Story = {
   render: () => (
     <div className="story-column">
@@ -264,7 +264,7 @@ export const ПравкаОшибка: Story = {
   ),
 };
 
-/** Правка на английском, крупный текст. */
+/** Editing in English, large text. */
 export const ПравкаEnКрупный: Story = {
   globals: { language: "en", textScale: "large" },
   render: () => (
@@ -281,7 +281,7 @@ export const ПравкаEnКрупный: Story = {
   ),
 };
 
-/** Живая правка: «Редактировать» в ряду превращает плашку в поле (ширина закрепляется), Enter сохраняет, Esc отменяет. */
+/** Live editing: "Edit" in the row turns the bubble into a field (the width is pinned), Enter saves, Esc cancels. */
 function EditDemo() {
   const [mode, setMode] = useState<"view" | "editing">("view");
   const [text, setText] = useState("Купить хлеб");

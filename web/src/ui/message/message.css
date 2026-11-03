@@ -1,18 +1,18 @@
-/* Обёртка: плашка и под ней ряд действий. Ширина по тексту, не шире layout.message.measure (около 65 знаков). */
+/* Wrapper: the bubble and the action row next to it. Width follows the text, no wider than layout.message.measure (about 65 characters). */
 .message-wrap {
   position: relative;
   width: fit-content;
   max-width: min(100%, var(--layout-message-measure));
 }
 
-/* Ряд действий стоит справа от плашки, на уровне её нижней строки (рядом со временем), в свободном месте колонки:
-   ничего не накрывает, место не резервируется, высота сообщения и плотность не меняются. Виден, пока мышь в строке
-   ленты (зона наведения — вся строка во всю колонку, а не только плашка; после ухода ещё motion.delay.hide-actions,
-   см. useActionsPlacement), и когда фокус внутри сообщения (кнопки всегда в дереве, поэтому доступны с клавиатуры).
-   Внешний слой держит прозрачный зазор слева: мышь переходит с плашки на ряд, не теряя наведения. */
+/* The action row stands to the right of the bubble, level with its bottom line (next to the time), in the free space of the column:
+   it covers nothing, reserves no space, and the message height and density do not change. Visible while the mouse is in the feed
+   row (the hover zone is the whole row across the column, not just the bubble; after leaving, another motion.delay.hide-actions,
+   see useActionsPlacement), and when focus is inside the message (the buttons are always in the tree, so they are keyboard accessible).
+   The outer layer holds a transparent gap on the left: the mouse moves from the bubble to the row without losing hover. */
 .message-actions {
   position: absolute;
-  /* На уровне нижней строки плашки: нижний край ряда там же, где нижний край последней строки текста. */
+  /* Level with the bubble's bottom line: the row's bottom edge is where the bottom edge of the last text line is. */
   bottom: var(--layout-message-padding-block);
   left: 100%;
   z-index: 1;
@@ -27,7 +27,7 @@
   gap: var(--space-1);
 }
 
-/* Включённые действия: «задача» акцентным цветом, «избранное» — залитая звезда (подпись для диктора тоже меняется). */
+/* Active actions: "task" in the accent color, "favorite" is a filled star (the screen reader label changes too). */
 .message-actions .message-actions__on,
 .message-actions .message-actions__on:hover {
   color: var(--color-accent-default);
@@ -37,7 +37,7 @@
   fill: currentColor;
 }
 
-/* Запись только для чтения: кнопка видна, но приглушена и не откликается (пояснение — в подсказке). */
+/* Read-only entry: the button is visible but muted and does not respond (the explanation is in the tooltip). */
 .message-actions .icon-button[aria-disabled="true"]:not(.icon-button--unavailable),
 .message-actions .icon-button[aria-disabled="true"]:not(.icon-button--unavailable):hover {
   background: transparent;
@@ -46,10 +46,10 @@
   opacity: var(--opacity-disabled);
 }
 
-/* Узкое окно: справа нет места (ряд не помещается между краем плашки и краем колонки). Тогда ряд стоит на верхней
-   границе плашки у её правого края, как плавающая панель в Slack и Telegram Desktop: бо́льшая часть над плашкой,
-   в промежутке, а нижний край заходит внутрь не дальше верхнего отступа плашки, то есть текст не накрывает.
-   У ряда своя заливка и тонкая граница. Он может временно накрыть промежуток и нижний край предыдущей плашки. */
+/* Narrow window: there is no room on the right (the row does not fit between the bubble edge and the column edge). Then the row stands on the top
+   border of the bubble at its right edge, like a floating panel in Slack and Telegram Desktop: most of it above the bubble,
+   in the gap, and the bottom edge goes inside no further than the bubble's top padding, so it does not cover the text.
+   The row has its own fill and a thin border. It may temporarily cover the gap and the bottom edge of the previous bubble. */
 .message-wrap--actions-inside .message-actions {
   top: auto;
   right: var(--layout-action-offset);
@@ -57,7 +57,7 @@
   left: auto;
 }
 
-/* Над плашкой нет места (первое сообщение у верхнего края ленты): ряд прижимается внутрь, а не обрезается краем ленты. */
+/* There is no room above the bubble (the first message at the top edge of the feed): the row is pressed inside instead of being clipped by the feed edge. */
 .message-wrap--actions-flip .message-actions {
   top: var(--layout-action-offset);
   bottom: auto;
@@ -76,7 +76,7 @@
   pointer-events: auto;
 }
 
-/* Плашка сообщения: заливка, скругление, без хвоста, тени и аватара. Только токены. */
+/* Message bubble: fill, rounding, no tail, shadow or avatar. Tokens only. */
 .message {
   position: relative;
   box-sizing: border-box;
@@ -90,22 +90,22 @@
   font-size: var(--type-body-size);
   font-weight: var(--type-body-weight);
   line-height: var(--type-body-line-height);
-  /* Длинная строка без пробелов переносится, а не вылезает из плашки. */
+  /* A long line without spaces wraps instead of sticking out of the bubble. */
   overflow-wrap: anywhere;
 }
 
-/* Подсветка — только заливка: чуть светлее и бирюзовее плашки, текст остаётся ≥ 4,5:1 (тест контраста). */
+/* Highlight is only a fill: slightly lighter and more teal than the bubble, the text stays >= 4.5:1 (contrast test). */
 .message--highlighted {
   background: var(--color-highlight-background);
 }
 
-/* Содержимое плашки: текст (или поле правки) и строка «Не отправилось». У задачи слева от него флажок. */
+/* Bubble content: the text (or the edit field) and the "Not sent" line. For a task there is a checkbox to the left of it. */
 .message__content {
   min-width: 0;
 }
 
-/* Правый нижний угол, на одной строке с концом текста: отметка «избранное» и время (у удалённой плашки — «Удалено · Вернуть»).
-   Высота строки равна высоте строки текста, поэтому базовые линии совпадают. */
+/* Bottom right corner, on the same line as the end of the text: the "favorite" mark and the time (for a deleted bubble, "Deleted · Restore").
+   The line height equals the text line height, so the baselines match. */
 .message__meta {
   position: absolute;
   right: var(--layout-message-padding-inline);
@@ -127,7 +127,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Тихая отметка «избранное»: залитая звезда третичного цвета левее времени. Места ей даёт распорка (ниже), поэтому текст её не накрывает. */
+/* Quiet "favorite" mark: a filled star in the tertiary color to the left of the time. The spacer (below) gives it room, so the text does not cover it. */
 .message__mark {
   display: inline-flex;
   color: var(--color-text-tertiary);
@@ -143,7 +143,7 @@
   width: calc(var(--layout-message-time-reserve) + var(--icon-size-mark) + var(--space-1));
 }
 
-/* Запись агента (слайс 4a): тихая пометка «добавлено агентом ·» стилем метки времени, левее неё; плашка не меняется. */
+/* Agent entry (slice 4a): a quiet "added by agent ·" mark in the time label style, to the left of it; the bubble does not change. */
 .message__origin {
   color: var(--color-text-tertiary);
   font-family: var(--type-meta-family);
@@ -160,7 +160,7 @@
   width: calc(var(--layout-message-time-reserve) + var(--layout-message-agent-mark-reserve) + var(--icon-size-mark) + var(--space-1));
 }
 
-/* Задача: перед текстом флажок размером с квадрат `- [ ]` в тексте и на уровне первой строки. */
+/* Task: a checkbox before the text, the size of the `- [ ]` box in the text and level with the first line. */
 .message--task {
   display: flex;
   align-items: flex-start;
@@ -190,7 +190,7 @@
   background: var(--color-accent-default);
 }
 
-/* Галочка та же, что у квадрата в тексте (markdown.css): размеры — токены layout.checkbox.tick-*. */
+/* The check mark is the same as for the box in the text (markdown.css): sizes are layout.checkbox.tick-* tokens. */
 .message__check[aria-checked="true"]::after {
   content: "";
   position: absolute;
@@ -208,18 +208,18 @@
   cursor: default;
 }
 
-/* Выполненная задача: текст приглушён (третичный цвет, ≥ 5:1 к плашке); ссылки остаются акцентными. */
+/* Completed task: the text is muted (tertiary color, >= 5:1 to the bubble); links stay accent. */
 .message--task-done .markdown {
   color: var(--color-text-tertiary);
 }
 
-/* Правка в плашке: ширина закреплена той, что была до правки (--message-edit-width ставит Message), меняется только высота.
-   Поле без рамки и заливки, гарнитура и размер как у текста; высоту задаёт невидимая копия текста в той же ячейке сетки. */
+/* Editing in the bubble: the width is pinned to what it was before editing (Message sets --message-edit-width), only the height changes.
+   The field has no border and fill, the typeface and size are as for the text; the height is set by an invisible copy of the text in the same grid cell. */
 .message--editing {
   width: var(--message-edit-width, fit-content);
 }
 
-/* Фокус в поле: тонкая линия цветом фокуса внутри плашки (как у поля ввода), без внешнего кольца. */
+/* Focus in the field: a thin line in the focus color inside the bubble (as for the input field), without an outer ring. */
 .message--editing:focus-within {
   box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-focus-ring);
 }
@@ -254,8 +254,8 @@
   outline: none;
 }
 
-/* Удалённая плашка (решение 1 слайса 3): остаётся на месте, текст приглушён, вместо времени «Удалено · Вернуть».
-   Строка длиннее времени, поэтому распорка у конца текста шире (место в правом нижнем углу). */
+/* Deleted bubble (decision 1 of slice 3): stays in place, the text is muted, "Deleted · Restore" instead of the time.
+   The line is longer than the time, so the spacer at the end of the text is wider (room in the bottom right corner). */
 .message--deleted .message__content,
 .message--deleted .message__check {
   opacity: var(--opacity-deleted);
@@ -276,18 +276,18 @@
   color: var(--color-accent-default);
 }
 
-/* Распорка в конце последней строки: резервирует место под время, чтобы текст его не накрывал. */
+/* Spacer at the end of the last line: reserves room for the time so that the text does not cover it. */
 .message__spacer {
   display: inline-block;
   width: var(--layout-message-time-reserve);
 }
 
-/* Сообщение кончается блоком кода: под блоком отдельная строка для времени. */
+/* The message ends with a code block: a separate line for the time under the block. */
 .message--time-below {
   padding-bottom: calc(var(--layout-message-padding-block) + var(--type-body-size) * var(--type-body-line-height));
 }
 
-/* «Не отправилось. Повторить» — строка под текстом, время справа на её уровне. */
+/* "Not sent. Retry" is a line under the text, the time is on the right at its level. */
 .message__error {
   margin: var(--space-1) 0 0;
   padding-right: var(--layout-message-time-reserve);

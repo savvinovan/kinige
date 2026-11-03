@@ -101,7 +101,7 @@ describe("MainWindow: черновик поля ввода (§5)", () => {
 });
 
 describe("MainWindow: нажатие во время отправки и порядок сохранения черновика", () => {
-  /** Отправка, которая завершается, когда тест её отпустит. */
+  /** A send that completes when the test releases it. */
   function holdSend(api: MockApi) {
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => (release = resolve));
@@ -188,7 +188,7 @@ describe("MainWindow: событие «записи изменились»", () 
     });
     const old = [mk("a", 1), mk("b", 2)];
     const api = new MockApi({ now: NOW });
-    // Первая загрузка: три записи и «есть более старые»; после события — страница короче (только свежие), тоже с «есть старые».
+    // The first load: three entries and "there are older ones"; after the event, a shorter page (only fresh ones), also with "there are older ones".
     const pages = [
       { messages: [...old, mk("c", 3)], older: { journalDate: "2026-10-21", createdAt: 1, id: "z" }, newer: null, today: "2026-10-21" },
       { messages: [mk("c", 3), mk("d", 4)], older: { journalDate: "2026-10-21", createdAt: 1, id: "z" }, newer: null, today: "2026-10-21" },

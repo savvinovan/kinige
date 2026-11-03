@@ -5,15 +5,15 @@ import type { TrashItem } from "../../api/generated/TrashItem";
 
 interface UseTrashOptions {
   api: KinigeApi;
-  /** Корзина открыта вместо чата (`selected === null`): список читается при открытии. */
+  /** The trash is open instead of a chat (`selected === null`): the list is read on opening. */
   open: boolean;
-  /** Счётчики чатов и корзины после изменения записи. */
+  /** Chat and trash counters after an entry changes. */
   refreshChats: () => Promise<void>;
   /** Slice 6: a restored entry is a live entry again, so the forest has to be read again. */
   onRestored?: () => void;
 }
 
-/** Корзина (слайс 3): список записей на 30 дней, «Восстановить» и «Удалить навсегда» (подтверждение — в `TrashView`). */
+/** Trash (slice 3): the list of entries kept for 30 days, "Restore" and "Delete forever" (confirmation is in `TrashView`). */
 export function useTrash({ api, open, refreshChats, onRestored }: UseTrashOptions) {
   const [items, setItems] = useState<TrashItem[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);

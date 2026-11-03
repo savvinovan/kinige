@@ -1,4 +1,4 @@
-/* Строка фильтра по тегу над лентой. Только токены. */
+/* The tag filter row above the feed. Tokens only. */
 .tag-filter {
   box-sizing: border-box;
   padding: var(--space-2) var(--layout-feed-padding-inline);
@@ -6,7 +6,7 @@
   background: var(--color-surface-paper);
 }
 
-/* Та же колонка, что у ленты и поля ввода. */
+/* The same column as the feed and the input field. */
 .tag-filter__inner {
   display: flex;
   align-items: center;

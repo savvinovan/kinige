@@ -1,11 +1,11 @@
-/* Перетаскивание записи на чат (решение приёмки слайса 3). Только токены. */
+/* Dragging an entry onto a chat (a slice 3 acceptance decision). Tokens only. */
 
-/* «Призрак» плашки идёт под курсором и ничего не перехватывает: цель под ним определяется по координатам. */
+/* The bubble's "ghost" follows the cursor and intercepts nothing: the target under it is determined by coordinates. */
 .record-ghost {
   position: fixed;
   z-index: 4;
   max-width: var(--layout-drag-ghost-max-width);
-  /* Правее и ниже указателя: сам чат под указателем не закрыт. */
+  /* To the right of and below the pointer: the chat under the pointer is not covered. */
   margin: var(--layout-drag-ghost-offset);
   pointer-events: none;
   opacity: var(--opacity-drag-ghost);
@@ -17,7 +17,7 @@
   margin: 0;
 }
 
-/* Пока запись тащат, текст на странице не выделяется и курсор «захватывает». */
+/* While an entry is being dragged, text on the page is not selected and the cursor "grabs". */
 body.is-record-dragging {
   cursor: grabbing;
   user-select: none;

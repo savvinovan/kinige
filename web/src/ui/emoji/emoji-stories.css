@@ -1,13 +1,13 @@
-/* Только для историй Storybook. */
+/* For Storybook stories only. */
 
-/* Пока пикер не нарисовал сетку, у истории нет размера: Playwright не считает такой элемент видимым и ждёт, а снимок не
-   ловит «загрузку». Не visibility: hidden — в скрытом элементе не работает автофокус поля поиска. */
+/* Until the picker has drawn the grid, the story has no size: Playwright does not consider such an element visible and waits, and the snapshot does not
+   catch "loading". Not visibility: hidden - autofocus of the search field does not work in a hidden element. */
 .story-emoji--pending {
   height: 0;
   overflow: hidden;
 }
 
-/* Пикер на плашке меню: так он выглядит во всплывающей панели над полем ввода. */
+/* The picker on a menu plate: this is how it looks in the popover panel above the input field. */
 .story-emoji-panel {
   box-sizing: border-box;
   width: var(--emoji-panel-width);
@@ -18,7 +18,7 @@
   box-shadow: var(--shadow-overlay);
 }
 
-/* Узкая плашка: проверка, что сетка и поиск не ломаются на ширине в 5 столбцов. */
+/* A narrow plate: a check that the grid and search do not break at a width of 5 columns. */
 .story-emoji-panel--narrow {
   width: calc(var(--emoji-panel-width) * 0.7);
 }

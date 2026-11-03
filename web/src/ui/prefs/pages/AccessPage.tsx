@@ -15,9 +15,9 @@ import "../../settings/settings.css";
 
 interface AccessPageProps {
   access: AgentAccess;
-  /** Уже переведённый текст ошибки последнего действия (`role="alert"`). */
+  /** The already translated error text of the last action (`role="alert"`). */
   error?: string;
-  /** Флажок доступа. Включение родитель сначала подтверждает предупреждением. */
+  /** The access checkbox. The parent first confirms enabling with a warning. */
   onEnabledChange: (enabled: boolean) => void;
   onModeChange: (mode: AgentMode) => void;
   onOpen: (route: Route) => void;
@@ -26,8 +26,8 @@ interface AccessPageProps {
 }
 
 /**
- * «Доступ ИИ-агентов»: флажок доступа, режим, «Как подключить» и две строки «Настроить ›» — «Видимые чаты» и «Журнал
- * обращений» (длинные списки живут на подэкранах). Пока доступ выключен, режим и чаты недоступны, журнал виден.
+ * "Доступ ИИ-агентов": the access checkbox, the mode, "Как подключить" and two "Настроить ›" rows, "Видимые чаты" and "Журнал
+ * обращений" (the long lists live on subscreens). While access is off, the mode and chats are unavailable, the log is visible.
  */
 export function AccessPage({ access, error, onEnabledChange, onModeChange, onOpen, changedAt, now }: AccessPageProps) {
   const { t } = useTranslation();

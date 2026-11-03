@@ -4,14 +4,14 @@ import { Checkbox } from "../controls/Checkbox";
 
 interface AgentChatsProps {
   chats: readonly AgentChatChoice[];
-  /** Доступ выключен: список виден, но недоступен. */
+  /** Access is off: the list is visible but unavailable. */
   disabled: boolean;
   onToggle: (id: string, on: boolean) => void;
 }
 
 /**
- * Список чатов с флажками «видно агенту»: эмодзи, имя (многоточие), число записей. Показывается целиком, своей прокрутки
- * нет (в окне одна прокрутка, у самой панели). Чат с `ai_excluded` неактивен и подписан «исключён из AI»: агент его не видит никогда.
+ * A list of chats with "visible to the agent" checkboxes: emoji, name (ellipsis), entry count. It is shown in full, with no scroll
+ * of its own (the window has one scroll, the panel's). A chat with `ai_excluded` is inactive and labeled "исключён из AI": the agent never sees it.
  */
 export function AgentChats({ chats, disabled, onToggle }: AgentChatsProps) {
   const { t } = useTranslation();

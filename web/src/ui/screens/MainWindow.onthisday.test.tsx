@@ -4,7 +4,7 @@ import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// «В этот день» и ответ на настоящем `MainWindow` и `MockApi` (слайс 5). «Сегодня» — суббота 31 октября 2026, 06:12 UTC.
+// "On this day" and replies on the real `MainWindow` and `MockApi` (slice 5). "Today" is Saturday 31 October 2026, 06:12 UTC.
 let nowMs = Date.UTC(2026, 9, 31, 6, 12);
 const NOW = () => new Date(nowMs);
 const entry = (id: string, year: number, month: number, day: number, body: string, extra: Partial<Parameters<typeof mockMessage>[0]> = {}) =>
@@ -99,12 +99,12 @@ describe("Карточка «В этот день» в ленте Inbox", () => 
     await waitFor(() => expect(card()).toBeNull());
     expect(api.dismissedOnThisDay).toBe("2026-10-31");
     expect(field()).toHaveFocus();
-    // Перезапуск окна на том же хранилище.
+    // A window restart on the same store.
     unmount();
     render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />);
     await screen.findByText("Сегодняшняя запись");
     expect(card()).toBeNull();
-    // Следующий день журнала (после 04:00): окно получает фокус и перечитывает карточку.
+    // The next journal day (after 04:00): the window gets focus and rereads the card.
     nowMs = Date.UTC(2026, 10, 1, 9, 0);
     // The window "focus" listener is attached by a passive effect after the first commit; an event dispatched before that is lost
     // (the flake of KINIG-48). An empty async `act` flushes pending effects first.

@@ -9,11 +9,11 @@ const css = (file: string) => readFileSync(join(import.meta.dirname, file), "utf
 
 describe("contrastRatio", () => {
   it("совпадает с известными значениями WCAG", () => {
-    // Сырые цвета в src запрещены даже в тестах, поэтому «#» + шесть цифр собирается здесь.
+    // Raw colors in src are forbidden even in tests, so "#" + six digits is assembled here.
     const hex = (digits: string) => `#${digits}`;
     expect(contrastRatio(hex("000000"), hex("ffffff"))).toBeCloseTo(21, 5);
     expect(contrastRatio(hex("ffffff"), hex("ffffff"))).toBeCloseTo(1, 5);
-    // Серый на белом, известный пример: 4,48:1 (не проходит AA для текста).
+    // Gray on white, a known example: 4.48:1 (fails AA for text).
     expect(contrastRatio(hex("777777"), hex("ffffff"))).toBeCloseTo(4.48, 2);
   });
 });
@@ -22,8 +22,8 @@ describe("палитры", () => {
   const rows: string[] = [];
 
   afterAll(() => {
-    // Таблица пар «цвет / фон» для приёмки: видна в выводе `npm test`.
-    console.log(`\nКонтраст пар (WCAG 2.x; порог: text 4,5, ui 3, decorative 1,2, hover 1,15)\n${rows.join("\n")}`);
+    // Table of "color / background" pairs for acceptance: visible in the `npm test` output.
+    console.log(`\nPair contrast (WCAG 2.x; threshold: text 4.5, ui 3, decorative 1.2, hover 1.15)\n${rows.join("\n")}`);
   });
 
   it("палитра одна: graphite, она же активная (ADR-0004)", () => {
@@ -47,18 +47,18 @@ describe("палитры", () => {
           expect(bg, pair.background).toBeDefined();
           const ratio = contrastRatio(fg ?? "", bg ?? "");
           rows.push(
-            `${name.padEnd(5)} ${pair.foreground.padEnd(21)} на ${pair.background.padEnd(21)} ${ratio.toFixed(2).padStart(5)}:1  (${pair.kind}, нужно >= ${MIN_RATIO[pair.kind]})`,
+            `${name.padEnd(5)} ${pair.foreground.padEnd(21)} on ${pair.background.padEnd(21)} ${ratio.toFixed(2).padStart(5)}:1  (${pair.kind}, need >=${MIN_RATIO[pair.kind]})`,
           );
           expect(ratio).toBeGreaterThanOrEqual(MIN_RATIO[pair.kind]);
         });
       }
 
-      // Цели пользователя по живому окну (ADR-0004): темнее и белее.
+      // The user's targets from the live window (ADR-0004): darker and whiter.
       for (const target of MESSAGE_TARGETS) {
         it(`цель пользователя: ${target.foreground} на плашке (surface.message) >= ${target.min}`, () => {
           const ratio = contrastRatio(palette.colors[target.foreground] ?? "", palette.colors["surface.message"] ?? "");
           rows.push(
-            `${name.padEnd(5)} ${target.foreground.padEnd(21)} на ${"surface.message".padEnd(21)} ${ratio.toFixed(2).padStart(5)}:1  (цель, нужно >= ${target.min})`,
+            `${name.padEnd(5)} ${target.foreground.padEnd(21)} on ${"surface.message".padEnd(21)} ${ratio.toFixed(2).padStart(5)}:1  (target, need >=${target.min})`,
           );
           expect(ratio).toBeGreaterThanOrEqual(target.min);
         });
@@ -114,7 +114,7 @@ describe("шкалы", () => {
   it("у каждой длительности анимации есть вариант для Reduce Motion", () => {
     const themes = css("themes.css");
     for (const [, name] of tokens.matchAll(/--motion-duration-(\w+):/g)) {
-      // Для Reduce Motion длительность нулевая (SD пишет её в секундах).
+      // For Reduce Motion the duration is zero (SD writes it in seconds).
       expect(themes, `reduced ${name}`).toMatch(new RegExp(`--motion-duration-${name}: 0(?:s|ms);`));
     }
     expect(themes).toContain("prefers-reduced-motion: reduce");

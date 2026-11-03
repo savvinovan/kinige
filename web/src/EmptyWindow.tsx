@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { KinigeApi } from "./api/KinigeApi";
 
-/** Каркас слайса 0: пустое окно со строкой «Kinige <версия>». */
+/** The slice 0 skeleton: an empty window with the line "Kinige <version>". */
 export function EmptyWindow({ api }: { api: KinigeApi }) {
   const [title, setTitle] = useState("");
 

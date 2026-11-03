@@ -1,4 +1,4 @@
-/* Подложка историй компонентов. Только токены. */
+/* The backdrop of component stories. Tokens only. */
 .story-frame {
   position: relative;
   box-sizing: border-box;
@@ -32,7 +32,7 @@
   max-width: var(--layout-measure-page);
 }
 
-/* Лента в истории занимает всё окно по высоте и прокручивается внутри. */
+/* The feed in a story takes the window's full height and scrolls inside. */
 .story-feed {
   display: flex;
   flex-direction: column;
@@ -43,7 +43,7 @@
   flex: 1;
 }
 
-/* Колонка ленты как в окне (668 px при корне 13 px) и узкая колонка: места справа от плашки хватает или нет. */
+/* The feed column as in the window (668 px at a 13 px root) and a narrow column: whether there is room to the right of the bubble or not. */
 .story-column {
   display: grid;
   gap: var(--layout-message-gap-group);
@@ -66,7 +66,7 @@
   line-height: var(--type-meta-line-height);
 }
 
-/* Первое сообщение у верхнего края ленты (в историях «Наведение»): лента в обычном порядке, первая плашка сразу под полем. */
+/* The first message at the top edge of the feed (in the "Наведение" (hover) stories): the feed in regular order, the first bubble right under the margin. */
 .story-feed-top .feed-scroll {
   flex-direction: column;
   overflow-y: hidden;

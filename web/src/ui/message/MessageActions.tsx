@@ -12,26 +12,26 @@ interface MessageActionsProps {
   onCopy: () => void;
   isTask: boolean;
   favorite: boolean;
-  /** Запись только для чтения (группа новее поддерживаемой версии): всё, кроме «Копировать», недоступно. */
+  /** Read-only entry (group newer than the supported version): everything except "Copy" is disabled. */
   readOnly: boolean;
-  /** Обработчики без аргумента: «включить / выключить» решает Message по текущему состоянию. Нет обработчика — кнопка только нарисована. */
+  /** Handlers without an argument: Message decides "turn on / off" from the current state. No handler - the button is only drawn. */
   onEdit?: () => void;
   onToggleTask?: () => void;
   onToggleFavorite?: () => void;
-  /** «Ещё»: открыть контекстное меню у кнопки. */
+  /** "More": open the context menu at the button. */
   onMore: (position: MenuPosition) => void;
   menuOpen: boolean;
 }
 
 /**
- * Ряд действий справа от плашки, на уровне её нижней строки (рядом со временем): копировать, редактировать, задача,
- * избранное, «ещё». Виден при наведении на сообщение, пока открыто его меню и когда фокус внутри него (стили в message.css);
- * в узком окне, где справа нет места, Message ставит его поверх правого верхнего угла самой плашки. Это панель инструментов
- * с одной остановкой в обходе по Tab: стрелки, Home и End ходят между кнопками.
+ * Action row to the right of the bubble, level with its bottom line (next to the time): copy, edit, task,
+ * favorite, "more". Visible on hover over the message, while its menu is open and when focus is inside it (styles in message.css);
+ * in a narrow window with no room on the right, Message puts it over the top right corner of the bubble itself. It is a toolbar
+ * with a single Tab stop: arrows, Home and End move between the buttons.
  *
- * Состояния: у задачи значок «задача» акцентный, у избранного звезда залитая; подпись для диктора меняется («В избранное» ↔
- * «Убрать из избранного»). Кнопка без обработчика только нарисована (`aria-disabled`, «Появится позже»); у записи только для
- * чтения — недоступна с пояснением, почему.
+ * States: for a task the "task" icon is accent, for a favorite the star is filled; the screen reader label changes ("Add to favorites" <->
+ * "Remove from favorites"). A button without a handler is only drawn (`aria-disabled`, "Coming later"); for a read-only
+ * entry it is disabled with an explanation of why.
  */
 export function MessageActions({
   copyState,
@@ -64,7 +64,7 @@ export function MessageActions({
     move(keys[event.key] ?? 0);
   };
 
-  // Кнопка действия над записью: нет обработчика — «Появится позже», запись только для чтения — недоступна с пояснением.
+  // Entry action button: no handler - "Coming later", read-only entry - disabled with an explanation.
   const action = (index: number, icon: IconName, label: string, handler: (() => void) | undefined, on = false) => (
     <IconButton
       small
@@ -82,8 +82,8 @@ export function MessageActions({
   );
 
   return (
-    // Внешний слой — место справа от плашки вместе с прозрачным зазором (мышь переходит с плашки на ряд, не теряя наведения);
-    // внутренний — сам ряд. Ширину внешнего слоя Message сравнивает со свободным местом колонки.
+    // The outer layer is the space to the right of the bubble with a transparent gap (the mouse moves from the bubble to the row without losing hover);
+    // the inner one is the row itself. Message compares the outer layer's width with the free space of the column.
     <div className="message-actions">
       <div className="message-actions__bar" role="toolbar" aria-label={t("message.actions")} ref={bar} onKeyDown={onKeyDown}>
         <IconButton

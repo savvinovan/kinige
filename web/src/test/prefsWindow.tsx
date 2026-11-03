@@ -6,7 +6,7 @@ import { DEFAULT_SHORTCUTS } from "../ui/settings/demoShortcuts";
 import { SettingsWindow } from "../settings/SettingsWindow";
 import { loadPreferences } from "../settings/usePreferences";
 
-/** Настройки для тестов окна: путь копии, сочетания по умолчанию. */
+/** Settings for the window tests: the copy path, default shortcuts. */
 export const SETTINGS: Settings = {
   ...DEFAULT_SETTINGS,
   mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
@@ -15,7 +15,7 @@ export const SETTINGS: Settings = {
 
 export const NOW = () => new Date(Date.UTC(2026, 9, 28, 12, 0));
 
-/** Окно «Настройки» на `MockApi` (как в приложении, но в памяти). Чаты: «Работа», «Дневник» (`ai_excluded`). */
+/** The "Настройки" (Settings) window on `MockApi` (as in the app, but in memory). Chats: "Работа", "Дневник" (`ai_excluded`). */
 export async function openWindow(options: MockApiOptions = {}, language: "ru" | "en" = "ru") {
   const api = new MockApi({
     now: NOW,

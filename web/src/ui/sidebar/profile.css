@@ -1,4 +1,4 @@
-/* Строка профиля внизу сайдбара и меню над ней. Только токены. */
+/* The profile row at the bottom of the sidebar and the menu above it. Tokens only. */
 .profile {
   position: relative;
   flex: none;
@@ -34,7 +34,7 @@
   background: var(--color-surface-selected);
 }
 
-/* Аватар: заливка из палитры и инициалы, без картинок. */
+/* Avatar: a fill from the palette and initials, no images. */
 .profile__avatar {
   position: relative;
   display: grid;
@@ -52,7 +52,7 @@
   user-select: none;
 }
 
-/* Точка статуса (слайс 11): в D1 не показывается; ободок цвета фона отделяет её от аватара. */
+/* Status dot (slice 11): not shown in D1; a background-colored rim separates it from the avatar. */
 .profile__dot {
   position: absolute;
   right: calc(var(--layout-avatar-dot) / -4);
@@ -65,7 +65,7 @@
   background: var(--color-accent-default);
 }
 
-/* Длинное имя обрезается многоточием, аватар и шеврон не сжимаются. */
+/* A long name is truncated with an ellipsis; the avatar and the chevron do not shrink. */
 .profile__name {
   flex: 1;
   min-width: 0;
@@ -80,7 +80,7 @@
   color: var(--color-text-tertiary);
 }
 
-/* Меню открывается вверх: строка профиля прижата к низу окна. */
+/* The menu opens upward: the profile row is pressed to the bottom of the window. */
 .profile__menu {
   position: absolute;
   right: 0;
@@ -97,7 +97,7 @@
   box-shadow: var(--shadow-overlay);
 }
 
-/* Свёрнутый сайдбар: кнопка — только аватар по центру полосы, меню открывается вправо от него, снизу вровень с аватаром. */
+/* Collapsed sidebar: the button is only the avatar, centered in the rail; the menu opens to the right of it, flush with the avatar at the bottom. */
 .profile--compact .profile__button {
   justify-content: center;
   padding: 0;
@@ -111,7 +111,7 @@
   min-width: var(--layout-menu-min-width);
 }
 
-/* Пункты пока без функции: остаются в обходе стрелками, объявлены недоступными и приглушены. */
+/* Items without a function yet: they stay in arrow-key navigation, are announced as unavailable and are muted. */
 .profile__item {
   display: flex;
   align-items: center;
@@ -141,7 +141,7 @@
   white-space: nowrap;
 }
 
-/* Меню лежит на `surface.message`: заливка наведения светлее панели, а не темнее, как строки сайдбара на фоне окна. */
+/* The menu sits on `surface.message`: the hover fill is lighter than the panel, not darker as for sidebar rows on the window background. */
 .profile__item:hover,
 .profile__item:focus {
   background: var(--color-surface-field-active);

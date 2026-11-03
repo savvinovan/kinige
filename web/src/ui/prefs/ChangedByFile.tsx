@@ -4,8 +4,8 @@ import { logTime } from "../agents/logText";
 import "./prefs.css";
 
 /**
- * «Изменено через settings.json · 14:02»: тихая строка рядом с разделом, который поменял файл (а не окно). Без `at`
- * ничего не рисует. Не тост и не подтверждение: строка стоит на месте и ничего не сдвигает.
+ * "Изменено через settings.json · 14:02": a quiet line next to the section that the file changed (not the window). Without `at`
+ * it draws nothing. Not a toast and not a confirmation: the line stays in place and shifts nothing.
  */
 export function ChangedByFile({ at, now }: { at: number | null; now?: Date }) {
   const { t } = useTranslation();

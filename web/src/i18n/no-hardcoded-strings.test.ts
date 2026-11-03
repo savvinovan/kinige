@@ -3,11 +3,11 @@ import { join, relative } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
-// Строки интерфейса живут только в `src/locales` (ADR-0005). Проверка идёт по дереву разбора TypeScript, а не по тексту:
-// кириллица в комментариях допустима (комментарии русские), в строковых литералах, шаблонах и тексте JSX — нет.
+// UI strings live only in `src/locales` (ADR-0005). The check walks the TypeScript syntax tree, not the text:
+// Cyrillic in comments is allowed, in string literals, templates and JSX text it is not.
 //
-// Исключения (не интерфейс): тесты и истории (их данные и ожидаемые строки), демо-данные (в том числе карточки «В этот день»), сгенерированные типы и
-// инструменты проверки токенов, которые запускаются только в тестах и пользователю ничего не показывают.
+// Exceptions (not the UI): tests and stories (their data and expected strings), demo data (including the "В этот день"
+// cards), generated types and the token check tools, which run only in tests and show nothing to the user.
 const SRC = join(import.meta.dirname, "..");
 const EXEMPT = [
   /\.test\.tsx?$/,
@@ -29,7 +29,7 @@ function sources(dir: string): string[] {
   });
 }
 
-/** Строки с кириллицей в коде: `[номер строки, начало текста]`. Комментарии не в счёт. */
+/** Strings with Cyrillic in code: `[line number, start of the text]`. Comments do not count. */
 function cyrillicStrings(code: string, fileName: string): [number, string][] {
   const kind = fileName.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   const file = ts.createSourceFile(fileName, code, ts.ScriptTarget.Latest, true, kind);

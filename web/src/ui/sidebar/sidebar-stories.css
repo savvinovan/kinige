@@ -1,4 +1,4 @@
-/* Только для историй Storybook: сайдбар во всю высоту окна и пустая лента справа (на ней видны меню и подсказки). */
+/* Storybook stories only: the sidebar at full window height and an empty feed on the right (menus and tooltips show on it). */
 .story-sidebar {
   display: flex;
   height: var(--layout-window-height);
@@ -9,8 +9,8 @@
   height: 100%;
 }
 
-/* Наведение в историях: `:hover` из CSS задать нельзя, поэтому история ставит атрибут на строку, а здесь повторены заливка и
-   цвет из правил `.chat-row:hover` и `.rail-button:hover` (sidebar.css). Выбранная строка остаётся выбранной. */
+/* Hover in stories: `:hover` cannot be set from CSS, so the story puts an attribute on the row, and here the fill and
+   color from the `.chat-row:hover` and `.rail-button:hover` rules (sidebar.css) are repeated. The selected row stays selected. */
 .story-sidebar :is(.chat-row, .rail-button)[data-story-hover]:not([aria-current]) {
   background: var(--color-surface-hover);
   color: var(--color-text-primary);

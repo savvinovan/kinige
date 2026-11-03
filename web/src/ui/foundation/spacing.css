@@ -1,6 +1,6 @@
-/* Страница «Отступы». Только токены. */
+/* The "Отступы" (Spacing) page. Tokens only. */
 
-/* Отступы, радиусы, тени */
+/* Spacing, radii, shadows */
 .spaces {
   display: grid;
   gap: var(--space-2);

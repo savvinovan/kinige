@@ -1,7 +1,7 @@
-/* Цитата ответа в плашке и строка «Ответ на запись» над полем ввода (слайс 5). Только токены; рамок, теней и движения нет. */
+/* The reply quote in the bubble and the "Reply to the entry" line above the input field (slice 5). Tokens only; no borders, shadows or motion. */
 
-/* Цитата: одна строка вверху плашки. Заливка темнее плашки («врезка», как блок кода), без рамки. Подпись не сжимается, начало
-   старой записи обрезается многоточием; ширину плашки цитата растягивает не дальше layout.message.measure. */
+/* Quote: one line at the top of the bubble. A fill darker than the bubble (an "inset", like a code block), no border. The label does not shrink, the start of
+   the old entry is cut with an ellipsis; the quote stretches the bubble width no further than layout.message.measure. */
 .reply-quote {
   display: flex;
   align-items: baseline;
@@ -39,7 +39,7 @@
   text-overflow: ellipsis;
 }
 
-/* Строка над полем ввода: значок, подпись, начало записи и крестик. Заливка поля, без рамки. */
+/* The line above the input field: icon, label, start of the entry and a cross. The fill of the field, no border. */
 .reply-strip {
   display: flex;
   align-items: center;
@@ -75,7 +75,7 @@
   white-space: nowrap;
 }
 
-/* Подпись без начала записи (записи нет) оставляет крестик справа. */
+/* A label without the start of the entry (there is no entry) leaves the cross on the right. */
 .reply-strip .icon-button {
   margin-left: auto;
 }

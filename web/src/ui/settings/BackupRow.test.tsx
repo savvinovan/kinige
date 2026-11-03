@@ -15,7 +15,7 @@ describe("BackupRow", () => {
     expect(screen.getByRole("group", { name: "Папка копий" })).toHaveTextContent(BACKUP_FOLDER);
     expect(screen.getByTitle(BACKUP_FOLDER)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
-    // Папку выбрать нельзя: кнопки нет.
+    // The folder cannot be chosen: there is no button.
     expect(screen.queryByRole("button")).toBeNull();
   });
 

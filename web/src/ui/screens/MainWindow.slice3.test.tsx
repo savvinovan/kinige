@@ -3,8 +3,8 @@ import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// Слайс 3 на настоящем `MainWindow` и `MockApi`: чаты, действия над записями, корзина, теги, события Rust.
-// 2026-10-21 06:12 UTC; день записи считается с границей 04:00, поэтому «сегодня» — 2026-10-21.
+// Slice 3 on the real `MainWindow` and `MockApi`: chats, entry actions, the trash, tags, Rust events.
+// 2026-10-21 06:12 UTC; the entry day is counted with a 04:00 boundary, so "today" is 2026-10-21.
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 const TODAY_AT = Date.UTC(2026, 9, 21, 5, 0);
 
@@ -20,9 +20,9 @@ function setup(options: MockApiOptions = {}, language: "ru" | "en" = "ru") {
 }
 
 const field = () => screen.getByRole("textbox", { name: "Новая заметка" }) as HTMLTextAreaElement;
-/** Обёртка плашки: в ней ряд действий и сама плашка. */
+/** The plate wrapper: it holds the actions row and the plate itself. */
 const plate = (text: string) => screen.getByText(text).closest(".message-wrap") as HTMLElement;
-/** Сама плашка: на ней правый щелчок открывает меню записи. */
+/** The plate itself: a right click on it opens the entry menu. */
 const article = (text: string) => screen.getByText(text).closest("article") as HTMLElement;
 const chatRow = (name: RegExp | string) => screen.findByRole("button", { name: typeof name === "string" ? new RegExp(`^${name}`) : name });
 const type = (value: string) => fireEvent.change(field(), { target: { value } });
@@ -44,7 +44,7 @@ describe("MainWindow слайс 3: чаты", () => {
     expect(await screen.findByText("во входящих")).toBeInTheDocument();
     expect(screen.getByText("Закреплённые")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Идеи/ })).toBeInTheDocument();
-    // Архивный чат спрятан в свёрнутом разделе.
+    // The archived chat is hidden in the collapsed section.
     expect(screen.queryByRole("button", { name: /^Старое/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Архив" }));
     expect(screen.getByRole("button", { name: /^Старое/ })).toBeInTheDocument();
@@ -122,7 +122,7 @@ describe("MainWindow слайс 3: чаты", () => {
   it("событие «открыть чат» из меню значка открывает чат", async () => {
     const api = setup({ chats: [BOOKS] });
     await chatRow("Книги");
-    // Подписка ставится после первого кадра: ждём, пока обработчик появится.
+    // The subscription is set after the first frame: wait until the handler appears.
     await waitFor(() => {
       act(() => api.emitOpenChat("books"));
       expect(screen.getByRole("button", { name: /^Книги/ })).toHaveAttribute("aria-current", "true");
@@ -286,7 +286,7 @@ describe("MainWindow слайс 3: теги и корзина", () => {
     fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Удалить" }));
     await screen.findByRole("button", { name: "Вернуть удалённую запись" });
 
-    // Фильтр по тому же тегу: удалённая запись подходит под него и остаётся на месте.
+    // A filter by the same tag: the deleted entry matches it and stays in place.
     fireEvent.click(within(plate("молоко")).getByText("#еда"));
     await waitFor(() => expect(screen.queryByText("идея про сайт")).toBeNull());
     expect(screen.getByRole("button", { name: "Вернуть удалённую запись" })).toBeInTheDocument();
@@ -294,7 +294,7 @@ describe("MainWindow слайс 3: теги и корзина", () => {
     await screen.findByText("идея про сайт");
     expect(screen.getByRole("button", { name: "Вернуть удалённую запись" })).toBeInTheDocument();
 
-    // Фильтр по другому тегу: удалённая запись под него не подходит.
+    // A filter by another tag: the deleted entry does not match it.
     fireEvent.click(within(plate("идея про сайт")).getByText("#идеи"));
     await waitFor(() => expect(screen.queryByText("молоко")).toBeNull());
     expect(screen.queryByRole("button", { name: "Вернуть удалённую запись" })).toBeNull();
@@ -321,7 +321,7 @@ describe("MainWindow слайс 3: теги и корзина", () => {
 
     fireEvent.click(within(region).getByRole("button", { name: /^Удалить навсегда/ }));
     const confirm = screen.getByRole("dialog", { name: "Удалить навсегда?" });
-    // Подтверждение: «Отмена» ничего не делает.
+    // Confirmation: "Cancel" does nothing.
     fireEvent.click(within(confirm).getByRole("button", { name: "Отмена" }));
     expect(api.calls.filter((c) => c.startsWith("purgeMessage"))).toEqual([]);
 
@@ -330,7 +330,7 @@ describe("MainWindow слайс 3: теги и корзина", () => {
     await waitFor(() => expect(within(region).getByText("Корзина пуста")).toBeInTheDocument());
     const purged = api.calls.filter((c) => c.startsWith("purgeMessage"));
     expect(purged).toHaveLength(1);
-    // Удалённая навсегда запись исчезла из «базы», восстановленная — осталась.
+    // The entry deleted forever vanished from the "database", the restored one stayed.
     const gone = (purged[0] as string).split(" ")[1] as string;
     expect(api.messageById(gone)).toBeUndefined();
     expect(["d1", "d2"].filter((id) => api.messageById(id) !== undefined)).toHaveLength(1);

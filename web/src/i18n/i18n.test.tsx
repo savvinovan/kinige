@@ -9,7 +9,7 @@ type Tree = { [key: string]: string | Tree };
 
 const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/;
 
-/** Ключи в виде «a.b.c»; у множественных форм суффикс отброшен, а категории собраны отдельно. */
+/** Keys as "a.b.c"; for plural forms the suffix is dropped and the categories are collected separately. */
 function collect(tree: Tree, prefix = "", keys = new Map<string, Set<string>>()) {
   for (const [name, value] of Object.entries(tree)) {
     if (typeof value === "string") {

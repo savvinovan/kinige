@@ -13,19 +13,19 @@ import { ProfileMenu } from "./ProfileMenu";
 
 interface Tip {
   label: string;
-  /** Правый край кнопки и её середина по вертикали в координатах окна. */
+  /** The right edge of the button and its vertical middle, in window coordinates. */
   left: number;
   top: number;
 }
 
 interface RailButtonProps {
   label: string;
-  /** Подпись при наведении: только имя, без счётчика. */
+  /** The hover label: the name only, without the counter. */
   tip: string;
   selected: boolean;
-  /** Чат этой кнопки: цель перетаскивания записи (`data-chat-drop`). */
+  /** The chat of this button: the drop target for dragging an entry (`data-chat-drop`). */
   dropId?: string;
-  /** Над кнопкой сейчас тащат запись: подсветка цели. */
+  /** An entry is being dragged over the button right now: highlight the target. */
   dropOver?: boolean;
   onClick?: () => void;
   onShowTip: (element: HTMLElement, label: string) => void;
@@ -34,7 +34,7 @@ interface RailButtonProps {
   children: ReactNode;
 }
 
-/** Квадратная кнопка полосы: имя для диктора — `aria-label`, для глаз — подсказка справа от полосы. */
+/** A square rail button: the name for the screen reader is `aria-label`, for the eyes a tooltip to the right of the rail. */
 function RailButton({ label, tip, selected, dropId, dropOver, onClick, onShowTip, onHideTip, onOpenMenu, children }: RailButtonProps) {
   const trigger = useMenuTrigger((position) => onOpenMenu?.(position));
   return (
@@ -58,7 +58,7 @@ function RailButton({ label, tip, selected, dropId, dropOver, onClick, onShowTip
 }
 
 interface SidebarRailProps {
-  /** Чаты полосы: без архивных, в порядке показа; открытый архивный чат стоит последним (иначе у открытого чата нет значка). */
+  /** The rail chats: without archived ones, in display order; an open archived chat goes last (otherwise the open chat has no icon). */
   chats: readonly SidebarChat[];
   selectedId: string | null;
   language: Language;
@@ -72,16 +72,16 @@ interface SidebarRailProps {
   onOpenImport?: () => void;
   onOpenAbout?: () => void;
   forestMenu?: { hidden: boolean; onToggle: () => void };
-  /** Значок поиска: разворачивает сайдбар и ставит фокус в поле (слайс 4). */
+  /** The search icon: expands the sidebar and focuses the field (slice 4). */
   onSearch?: () => void;
-  /** Чат, над которым тащат запись (подсветка цели). */
+  /** The chat an entry is dragged over (target highlight). */
   dropTargetId?: string | null;
 }
 
 /**
- * Свёрнутый сайдбар — «полоса эмодзи»: сверху «развернуть», дальше эмодзи чатов, внизу корзина и аватар профиля. Имя чата
- * видно при наведении и фокусе: подсказка рисуется поверх окна справа от полосы (список чатов прокручивается и обрезал
- * бы её). Архивных чатов в полосе нет — архив открывается в развёрнутом виде.
+ * The collapsed sidebar is an "emoji rail": "expand" on top, then the chat emoji, the trash and the profile avatar at the
+ * bottom. The chat name is visible on hover and focus: the tooltip is drawn over the window to the right of the rail (the
+ * chat list scrolls and would clip it). There are no archived chats in the rail: the archive opens in the expanded view.
  */
 export function SidebarRail({
   chats,

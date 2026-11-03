@@ -3,14 +3,14 @@ import { Icon } from "../icons/Icon";
 import "./prefs.css";
 
 interface ConfigureRowProps {
-  /** Что настраивается: «Видимые чаты». */
+  /** What is being configured: "Видимые чаты". */
   label: string;
-  /** Текущее состояние тихим цветом: «2 из 5». */
+  /** The current state in a quiet color: "2 из 5". */
   value?: string;
   onOpen: () => void;
 }
 
-/** Строка «Название · состояние · Настроить ›»: открывает подэкран. Вся строка — одна кнопка. */
+/** A "Name · state · Настроить ›" row: opens a subscreen. The whole row is one button. */
 export function ConfigureRow({ label, value, onOpen }: ConfigureRowProps) {
   const { t } = useTranslation();
   return (

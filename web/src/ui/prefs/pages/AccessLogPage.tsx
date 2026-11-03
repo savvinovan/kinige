@@ -16,7 +16,7 @@ interface AccessLogPageProps {
   onBack: () => void;
 }
 
-/** Подэкран «Журнал обращений»: строки журнала, «Показать ещё» внизу страницы; прокрутка — одна, у страницы. */
+/** The "Журнал обращений" subscreen: log rows, "Показать ещё" at the bottom of the page; there is one scroll, the page's. */
 export function AccessLogPage({ log, language, now, onToggleRow, onOpenEntry, onMore, onBack }: AccessLogPageProps) {
   const { t } = useTranslation();
   return (

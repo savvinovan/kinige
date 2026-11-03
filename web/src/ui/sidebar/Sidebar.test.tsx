@@ -5,7 +5,7 @@ import { INBOX_ID } from "../../api/KinigeApi";
 import { Sidebar, toSidebarChat } from "./Sidebar";
 
 const CHATS = DEMO_CHATS.map(toSidebarChat);
-// `\s` в JavaScript включает и неразрывный, и узкий неразрывный пробелы, которые ставит Intl.
+// In JavaScript `\s` includes both the no-break and the narrow no-break spaces that Intl inserts.
 const plain = (text: string | null) => (text ?? "").replace(/\s/g, " ");
 
 describe("Sidebar", () => {
@@ -68,7 +68,7 @@ describe("Sidebar", () => {
     expect(plain(screen.getByRole("button", { name: /^Рецепты/ }).textContent)).toBe("🍳Рецепты, записей: 12 тыс.");
     unmount();
     render(<Sidebar chats={CHATS} selectedId={INBOX_ID} />, { language: "en" });
-    // Название чата — данные пользователя и не переводится; подпись счётчика и склонение — переводятся.
+    // The chat name is user data and is not translated; the counter label and the declension are translated.
     expect(plain(screen.getByRole("button", { name: /^Рецепты/ }).textContent)).toBe("🍳Рецепты, entries: 12K");
     expect(screen.getByRole("button", { name: /^Рецепты/ })).toHaveAttribute("title", "Рецепты, 12,345 entries");
   });

@@ -15,10 +15,10 @@ import type { SettingsWindowViewProps } from "../ui/prefs/SettingsWindowView";
 import type { Route } from "../ui/prefs/routes";
 import { applyTextSize } from "../ui/screens/textSize";
 
-/** Как часто открытое окно перечитывает состояние копий, сокет и первую страницу журнала (обращения агента идут сами). */
+/** How often the open window rereads the backups state, the socket and the first log page (agent calls arrive on their own). */
 const REFRESH_MS = 2000;
 
-/** Всё, что окно читает при открытии: оно рисуется уже с данными, без мигания пустым. */
+/** Everything the window reads on opening: it is drawn already with data, without flashing empty. */
 export interface PreferencesInitial {
   settings: Settings;
   access: AgentAccess;
@@ -26,16 +26,16 @@ export interface PreferencesInitial {
   log: { rows: AgentLogRow[]; older: number | null };
 }
 
-/** Читает начальные данные окна настроек (до первого кадра). */
+/** Reads the initial data of the settings window (before the first frame). */
 export async function loadPreferences(api: KinigeApi): Promise<PreferencesInitial> {
   const [settings, access, file, log] = await Promise.all([api.getSettings(), api.getAgentAccess(), api.getSettingsFile(), api.listAgentLog()]);
   return { settings, access, file, log: { rows: log.rows, older: log.older } };
 }
 
 /**
- * Состояние окна «Настройки» (слайс 4b): настройки, доступ агентов, файл, журнал; действия окна. Окно не получает ленту:
- * запись из журнала открывается командой `settingsOpenEntry` (главное окно откроет чат само). Данные перечитываются по событию
- * `settings-changed` (правка этого окна, другого окна или файла) и раз в две секунды (состояние копий, обращения агентов).
+ * The state of the "Настройки" (Settings) window (slice 4b): settings, agent access, the file, the log; the window actions. The window gets no feed:
+ * an entry from the log is opened by the `settingsOpenEntry` command (the main window will open the chat itself). The data is reread on the
+ * `settings-changed` event (an edit from this window, another window or the file) and once every two seconds (backups state, agent calls).
  */
 export function usePreferences(api: KinigeApi, initial: PreferencesInitial) {
   const { t } = useTranslation();
@@ -70,7 +70,7 @@ export function usePreferences(api: KinigeApi, initial: PreferencesInitial) {
       setFile(freshFile);
       setFirst({ rows: page.rows, older: page.older });
     } catch {
-      // Окно остаётся с прежними данными; следующее обновление повторит попытку.
+      // The window keeps its previous data; the next refresh will retry.
     }
   }, [api]);
 
@@ -118,7 +118,7 @@ export function usePreferences(api: KinigeApi, initial: PreferencesInitial) {
       .catch(() => setEntries((old) => ({ ...old, [id]: [] })));
   };
 
-  // Запись открывается в главном окне. Её могли удалить навсегда после того, как журнал прочитан: тогда она остаётся тихой строкой «Запись удалена».
+  // The entry opens in the main window. It could have been deleted forever after the log was read: then it stays a quiet "Запись удалена" (Entry deleted) line.
   const openEntry = (_logId: number, entry: AgentLogEntry) => {
     const message = entry.message;
     if (!message) return;
@@ -153,7 +153,7 @@ export function usePreferences(api: KinigeApi, initial: PreferencesInitial) {
     shortcutErrors,
     accessError: accessError ? t(`error.${accessError}`) : undefined,
     onTextSizeChange: (size: TextSize) => {
-      // Размер применяется сразу; отказ вернёт прежний при перечитывании.
+      // The size is applied at once; a failure brings the previous one back on reread.
       setSettings((old) => ({ ...old, textSize: size }));
       api
         .setTextSize(size)

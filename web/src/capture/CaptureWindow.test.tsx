@@ -4,7 +4,7 @@ import type { MessageView } from "../api/generated/MessageView";
 import { act, fireEvent, render, screen, waitFor } from "../test/render";
 import { CaptureWindow, HIDE_REQUEST_EVENT, SHOWN_EVENT } from "./CaptureWindow";
 
-// 2026-10-21 06:12 UTC; граница дня 04:00 — запись в 06:09 «сегодня».
+// 2026-10-21 06:12 UTC; the day boundary is 04:00 - an entry at 06:09 is "today".
 const NOW = new Date(Date.UTC(2026, 9, 21, 6, 12));
 const clock = { now: NOW };
 
@@ -114,7 +114,7 @@ describe("CaptureWindow на MockApi: сценарий слайса 2", () => {
     expect((await api.captureState()).draft).toBe("недописанная мысль");
     expect(field().value).toBe("недописанная мысль");
 
-    // Закрыли, открыли снова: страница перечитывает состояние.
+    // Closed, opened again: the page rereads the state.
     act(() => {
       window.dispatchEvent(new Event(SHOWN_EVENT));
     });
@@ -161,7 +161,7 @@ describe("CaptureWindow на MockApi: сценарий слайса 2", () => {
     api.failNextCapture = "store_write_failed";
     type("важное");
     fireEvent.keyDown(field(), { key: "Enter" });
-    // Область alert есть в дереве всегда (пустая), текст приходит в неё позже.
+    // The alert region is always in the tree (empty), the text arrives in it later.
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Не удалось сохранить запись. Текст остался в поле."));
     expect(field().value).toBe("важное");
     expect(api.hideCount).toBe(0);
@@ -256,7 +256,7 @@ describe("CaptureWindow на MockApi: сценарий слайса 2", () => {
   });
 
   describe("нажатие во время отправки и порядок сохранения черновика", () => {
-    /** Отправка, которая завершается, когда тест её отпустит. */
+    /** A send that completes when the test releases it. */
     function holdSend(api: MockApi) {
       let release: () => void = () => undefined;
       const gate = new Promise<void>((resolve) => (release = resolve));
@@ -272,7 +272,7 @@ describe("CaptureWindow на MockApi: сценарий слайса 2", () => {
       const release = holdSend(api);
       type("отправляю");
       fireEvent.keyDown(field(), { key: "Enter" });
-      // Отправка в полёте: нажатие не принимается и ничего не планирует.
+      // A send in flight: the keypress is not accepted and schedules nothing.
       type("отправляю!");
       expect(field().value).toBe("отправляю");
       release();
@@ -305,7 +305,7 @@ describe("CaptureWindow на MockApi: сценарий слайса 2", () => {
         return realSend(body);
       };
       type("текст");
-      await vi.advanceTimersByTimeAsync(350); // таймер сработал: сохранение ушло и висит
+      await vi.advanceTimersByTimeAsync(350); // the timer fired: the save went out and is pending
       expect(order).toEqual(["save:start"]);
       fireEvent.keyDown(field(), { key: "Enter" });
       await vi.advanceTimersByTimeAsync(50);

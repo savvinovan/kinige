@@ -8,15 +8,15 @@ import "./settings-stories.css";
 interface DemoProps {
   status: ShortcutStatus;
   error?: string;
-  /** Сразу включает запись нового сочетания (нажатием «Изменить»): в историях мыши нет. */
+  /** Immediately starts recording a new shortcut (by pressing "Изменить"): there is no mouse in stories. */
   recording?: boolean;
-  /** Фокус на кнопке «Изменить»: кольцо фокуса с клавиатуры. */
+  /** Focus on the "Изменить" button: the keyboard focus ring. */
   focusChange?: boolean;
-  /** Узкая колонка (около 34 знаков). */
+  /** A narrow column (about 34 characters). */
   narrow?: boolean;
 }
 
-/** Строка сочетания на «бумаге» шириной окна настроек; запись работает: нажатое сочетание сохраняется в состоянии истории. */
+/** A shortcut row on "paper" at the width of the settings window; recording works: the pressed shortcut is saved in the story state. */
 function Demo({ status: initial, error, recording = false, focusChange = false, narrow = false }: DemoProps) {
   const [status, setStatus] = useState(initial);
   const host = useRef<HTMLDivElement>(null);
@@ -54,21 +54,21 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Назначено, по умолчанию: название, капсулы ⌃ ⌥ N, «Изменить»; ничего лишнего. */
+/** Assigned, the default: the name, the capsules ⌃ ⌥ N, "Изменить"; nothing extra. */
 export const Назначено: Story = {};
 
-/** Не по умолчанию: все четыре модификатора, рядом «Сбросить». */
+/** Not the default: all four modifiers, "Сбросить" next to it. */
 export const НеПоУмолчанию: Story = {
   args: { status: { kind: "clipboard", accelerator: "Ctrl+Alt+Shift+Cmd+KeyK", isDefault: false, state: "assigned" } },
 };
 
-/** Занято другой программой: капсулы приглушены, строка ошибки со значком; «Сбросить» есть и у умолчания. */
+/** Taken by another program: the capsules are muted, an error row with an icon; "Сбросить" is there even for the default. */
 export const Занято: Story = { args: { status: { ...capture, state: "taken" } } };
 
-/** Запись нового сочетания: вместо капсул поле «Нажмите новое сочетание… Esc — отмена», фокус в нём, кнопок нет. */
+/** Recording a new shortcut: instead of the capsules the field "Нажмите новое сочетание… Esc — отмена", focus in it, no buttons. */
 export const ЗаписьНового: Story = { args: { recording: true } };
 
-/** Ошибка сохранения нового сочетания: под строкой, цвет и значок ошибки. */
+/** A save error of the new shortcut: under the row, the error color and icon. */
 export const ОшибкаСохранения: Story = {
   args: {
     status: { kind: "clipboard", accelerator: "Alt+Shift+KeyV", isDefault: true, state: "assigned" },
@@ -76,25 +76,25 @@ export const ОшибкаСохранения: Story = {
   },
 };
 
-/** Фокус с клавиатуры на «Изменить». */
+/** Keyboard focus on "Изменить". */
 export const Фокус: Story = { args: { focusChange: true } };
 
-/** Длинные подписи (английский, занято и не по умолчанию) в узкой колонке: капсулы и кнопки переносятся, ничего не вылезает. */
+/** Long labels (English, taken and not the default) in a narrow column: the capsules and buttons wrap, nothing overflows. */
 export const EnДлинныеПодписи: Story = {
   args: { status: { kind: "clipboard", accelerator: "Ctrl+Alt+Shift+Cmd+F12", isDefault: false, state: "taken" }, narrow: true },
   globals: { language: "en" },
 };
 
-/** Узкая колонка, русский: поле записи с длинной подсказкой переносится. */
+/** A narrow column, Russian: the recording field with a long hint wraps. */
 export const УзкаяЗапись: Story = {
   args: { status: { kind: "clipboard", accelerator: "Ctrl+Alt+Shift+Cmd+F12", isDefault: false, state: "assigned" }, narrow: true, recording: true },
 };
 
-/** Английский: запись нового сочетания. */
+/** English: recording a new shortcut. */
 export const EnЗаписьНового: Story = { args: { recording: true }, globals: { language: "en" } };
 
-/** Английский: назначено. */
+/** English: assigned. */
 export const EnНазначено: Story = { globals: { language: "en" } };
 
-/** Пунктуация и пробел на капсулах. */
+/** Punctuation and Space on the capsules. */
 export const ПунктуацияИПробел: Story = { args: { status: { ...capture, accelerator: "Alt+Backquote", isDefault: false } } };

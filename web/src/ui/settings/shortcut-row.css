@@ -1,4 +1,4 @@
-/* Строка сочетания в «Настройках»: название слева, справа клавиши-«капсулы» и кнопки, под ними состояние. Только токены. */
+/* A shortcut row in "Settings": the name on the left, on the right key "capsules" and buttons, the state under them. Tokens only. */
 .shortcut-row {
   display: grid;
   gap: var(--space-1);
@@ -6,8 +6,8 @@
   padding: var(--space-3) var(--space-4);
 }
 
-/* Название слева, справа в одной группе клавиши и кнопки, по вертикальному центру. В узком окне переносится само название
-   (оно сжимается до `row-label`); группа уходит под название (flex-wrap) только когда не помещается и при такой ширине. */
+/* The name on the left, on the right in one group the keys and buttons, vertically centered. In a narrow window the name itself wraps
+   (it shrinks to `row-label`); the group goes below the name (flex-wrap) only when it does not fit, even at that width. */
 .shortcut-row__line {
   display: flex;
   flex-wrap: wrap;
@@ -34,8 +34,8 @@
   margin-inline-start: auto;
 }
 
-/* Наименьшее место под клавиши и под поле записи одинаковое. Поле записи шире места расширяется влево (группа прижата
-   вправо); высота строки и положение кнопок не меняются. */
+/* The smallest space for the keys and for the recording field is the same. A recording field wider than the space expands to the left (the group is pressed
+   to the right); the row height and the button positions do not change. */
 .shortcut-row__keys {
   display: flex;
   flex-wrap: wrap;
@@ -47,7 +47,7 @@
   min-height: var(--layout-control-height);
 }
 
-/* Не назначено: капсулы приглушены, а причину называет строка состояния под ними. */
+/* Not assigned: the capsules are muted, and the status row under them names the reason. */
 .shortcut-row__keys--taken {
   opacity: var(--opacity-unavailable);
 }
@@ -76,12 +76,12 @@
   gap: var(--space-1);
 }
 
-/* На время записи кнопки скрыты, но место за ними занято: строка не прыгает. */
+/* During recording the buttons are hidden, but their space is kept: the row does not jump. */
 .shortcut-row__actions--hidden {
   visibility: hidden;
 }
 
-/* Поле записи: как поле ввода в фокусе (светлая заливка, тонкая линия цветом фокуса), на месте капсул. */
+/* The recording field: like a focused input field (a light fill, a thin line in the focus color), in place of the capsules. */
 .shortcut-row__recorder {
   display: flex;
   align-items: center;

@@ -1,6 +1,6 @@
-/* Страница «Цвета». Только токены. */
+/* The "Цвета" (Colors) page. Tokens only. */
 
-/* Цвета: роли */
+/* Colors: roles */
 .swatches {
   display: grid;
   gap: var(--space-3);
@@ -38,7 +38,7 @@
   color: var(--color-text-tertiary);
 }
 
-/* Цвета: образец ленты на «бумаге» */
+/* Colors: a feed sample on "paper" */
 .sample {
   display: grid;
   gap: var(--layout-message-gap-group);
@@ -130,7 +130,7 @@
   outline-offset: var(--focus-offset);
 }
 
-/* Цвета: таблица контраста */
+/* Colors: the contrast table */
 .ratios {
   width: 100%;
   border-collapse: collapse;

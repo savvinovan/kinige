@@ -1,10 +1,10 @@
 :root {
-  --layout-agent-warning-width: 30rem; /** Ширина окна предупреждения при включении доступа (390 px при корне 13 px). */
-  --layout-calendar-width: 23rem; /** Ширина окна календаря (299 px при корне 13 px); в узком окне панель занимает ширину окна за вычетом полей. */
-  --layout-calendar-cell: 2.7rem; /** Сторона ячейки дня в сетке месяца (35 px): семь ячеек помещаются в окно с полями. */
-  --layout-calendar-day-mark: 0.3rem; /** Точка под числом «сегодня» (4 px). */
-  --layout-drag-ghost-max-width: 26rem; /** Наибольшая ширина «призрака» перетаскиваемой плашки (338 px при корне 13 px): широкая плашка не закрывает сайдбар целиком. */
-  --layout-drag-ghost-offset: 1rem; /** Отступ «призрака» от указателя вправо и вниз (13 px при корне 13 px): чат под указателем остаётся виден. */
+  --layout-agent-warning-width: 30rem; /** Width of the warning window when turning on access (390 px at a 13 px root). */
+  --layout-calendar-width: 23rem; /** Width of the calendar window (299 px at a 13 px root); in a narrow window the panel takes the window width minus the margins. */
+  --layout-calendar-cell: 2.7rem; /** Side of a day cell in the month grid (35 px): seven cells fit in the window with margins. */
+  --layout-calendar-day-mark: 0.3rem; /** The dot under the 'today' number (4 px). */
+  --layout-drag-ghost-max-width: 26rem; /** Largest width of the 'ghost' of the dragged plate (338 px at a 13 px root): a wide plate does not cover the whole sidebar. */
+  --layout-drag-ghost-offset: 1rem; /** Offset of the 'ghost' from the pointer to the right and down (13 px at a 13 px root): the chat under the pointer stays visible. */
   --layout-forest-pane-height: 60%; /** Height of the expanded forest pane: a share of the main area (the feed and the input stay below it). The board fits the pane when it opens. */
   --layout-forest-pane-min-height: 22rem; /** The expanded pane is never lower than this (286 px at a 13 px root, 357 px with large text): with a header of two or three lines in a narrow window or at large text, the share of a short window would leave the board no room. */
   --layout-forest-strip-cell: 0.9rem; /** Largest side of a day cell in the collapsed strip (11.7 px at a 13 px root). Cells shrink with the window so that 53 or 54 weeks always fit; seven of them make the strip's height. */
@@ -24,81 +24,81 @@
   --layout-forest-story-height: 800px; /** Storybook only: the height of the main area in a 1280 x 800 window. */
   --layout-forest-story-box-height: 360px; /** Storybook only: the height of the board box in the level-of-detail stories (the expanded pane of an 800 px window). */
   --layout-forest-story-box-small: 360px; /** Storybook only: the width of the small board box (a window so narrow that the whole year is drawn as dots). */
-  --layout-measure-text: 65ch; /** Колонка текста на страницах Storybook и подводках. */
-  --layout-measure-page: 140ch; /** Максимальная ширина страницы Storybook «Основа». */
-  --layout-measure-column: 34ch; /** Минимальная ширина колонки в сетке карточек на страницах «Основа». */
-  --layout-message-measure: 60ch; /** Максимальная ширина плашки: около 65 знаков русского текста Inter, 60–68 в строке (ADR-0004; ch считается по цифре «0», она шире средней буквы; значение уточнено по снимку). */
-  --layout-message-padding-block: 0.6rem; /** Внутренний отступ плашки сверху и снизу (7,8 px; D2: было 6,5). */
-  --layout-message-padding-inline: 0.95rem; /** Внутренний отступ плашки слева и справа (12,35 px; D2: было 9,75). */
-  --layout-message-gap-series: 0.35rem; /** Промежуток между плашками одной серии: пауза меньше 5 минут (4,55 px; D2: было 3,25). */
-  --layout-message-time-reserve: 3.1rem; /** Место под время «09:12» у конца последней строки текста (около 40 px; D2: было 38): время стоит в правом нижнем углу плашки, а текст его не накрывает. */
-  --layout-message-agent-mark-reserve: 10.1rem; /** Дополнительное место у конца последней строки записи агента под тихую пометку «добавлено агентом ·» левее времени (около 131 px, слайс 4a; D2: было 124). */
-  --layout-message-deleted-reserve: 8.5rem; /** Место под строку «Удалено · Вернуть» у конца последней строки текста удалённой плашки (110 px при корне 13 px: сама строка около 100 px и зазор до текста около 10 px, как у времени; D2: было 104): шире, чем под время, поэтому у удалённой плашки распорка длиннее. */
-  --layout-checkbox-size: 1.1rem; /** Квадрат задачи «- [ ]» в сообщении (14 px). */
-  --layout-checkbox-tick-width: 0.3rem; /** Галочка отмеченной задачи: ширина короткой стороны повёрнутого прямоугольника (4 px). */
-  --layout-checkbox-tick-height: 0.58rem; /** Галочка отмеченной задачи: высота (7,5 px). */
-  --layout-checkbox-tick-left: 0.28rem; /** Галочка отмеченной задачи: сдвиг слева внутри квадрата (3,6 px). */
-  --layout-checkbox-tick-top: 0.06rem; /** Галочка отмеченной задачи: сдвиг сверху внутри квадрата (0,8 px). */
-  --layout-feed-column: 51.4rem; /** Ширина колонки ленты и поля ввода по центру области чата: 668 px при корне 13 px. В узком окне колонка занимает всю ширину за вычетом полей. */
-  --layout-sidebar-width: 20.5rem; /** Ширина сайдбара (266 px; D2: было 240). */
-  --layout-sidebar-rail-width: 4.4rem; /** Ширина свёрнутого сайдбара («полосы эмодзи»): 57 px при корне 13 px (D2: было 52). Внутри — квадратные кнопки высотой layout.sidebar.row-height при полях layout.sidebar.padding. */
-  --layout-sidebar-heading-height: 1.9rem; /** Минимальная высота заголовка раздела («Закреплённые», «Чаты», «Архив»): 24,7 px (D2: было 21). Больше мелкой кнопки «+» в заголовке «Чаты» (21 px), поэтому строка не прыгает, когда кнопка появляется. */
-  --layout-sidebar-dot: 0.5rem; /** Точка «в корзине есть записи» у значка корзины в свёрнутом сайдбаре (6,5 px). */
-  --layout-sidebar-row-height: 2.8rem; /** Высота строки сайдбара: чат, «Корзина», профиль (36,4 px, D2: было 32,5 у всех строк списка). */
-  --layout-sidebar-row-gap: 0.15rem; /** Промежуток между строками сайдбара (2 px, D2: было 3,25). */
-  --layout-sidebar-row-padding: 0.7rem; /** Внутренний отступ строки сайдбара слева и справа (9,1 px, D2: было 6,5). Плитка и заголовок раздела стоят на одной вертикали. */
-  --layout-sidebar-row-content-gap: 0.8rem; /** Промежуток между плиткой и названием в строке сайдбара (10,4 px, D2: было 6,5). */
-  --layout-sidebar-section-gap: 1.5rem; /** Воздух над заголовком раздела сайдбара («Чаты» под «Закреплёнными»): 19,5 px (D2: было 6,5). */
-  --layout-tile-size: 1.75rem; /** Плитка чата в сайдбаре, слот значка у нижних пунктов и аватар профиля (22,75 px, D2). */
-  --layout-avatar-dot: 0.6rem; /** Точка статуса у аватара (8 px), в D1 не показывается. */
-  --layout-row-height: 2.6rem; /** Высота строки списка: пункт меню, копия, строка настроек (33,8 px; D2: было 32,5). Строки сайдбара выше: layout.sidebar.row-height. */
-  --layout-field-height: 2.7rem; /** Высота однострочного поля ввода: поиск (35 px; D2: было 30). */
-  --layout-composer-min-height: 4rem; /** Минимальная высота поля ввода с кнопками (52 px; D2: было 45,5). */
-  --layout-composer-max-height: 40vh; /** Поле растёт до 40% высоты окна, дальше внутри него прокрутка (ТЗ §5). */
-  --layout-action-size: 1.6rem; /** Мелкая кнопка в ряду действий (21 px). */
-  --layout-control-height: 2.5rem; /** Высота кнопки и иконки-кнопки (32,5 px; D2: было 30). */
-  --layout-toast-offset: 5.5rem; /** Отступ тоста от нижнего края ленты: над полем ввода (71,5 px). */
-  --layout-dialog-width: 42rem; /** Ширина модального окна «Настройки» (546 px при корне 13 px); в узком окне панель занимает ширину окна за вычетом полей. */
-  --layout-dialog-max-height: 88vh; /** Наибольшая высота панели модального окна: выше неё содержимое прокручивается внутри панели, заголовок и кнопка закрытия остаются на месте. */
-  --layout-settings-window-width: 860px; /** Начальная ширина окна ОС (логические px). Окно создаёт Rust, значения совпадают с константами `settings_window` (проверяет тест конфигурации). */
-  --layout-settings-window-height: 600px; /** Начальная высота окна ОС. */
-  --layout-settings-window-min-width: 640px; /** Наименьшая ширина окна. */
-  --layout-settings-window-min-height: 440px; /** Наименьшая высота окна: при ней и при крупном тексте дерево разделов ещё помещается без прокрутки. */
-  --layout-settings-tree-width: 17rem; /** Ширина дерева разделов слева (221 px при корне 13 px; D2: было 195); растёт с размером текста, чтобы названия не обрезались. */
-  --layout-settings-row-label: 11rem; /** Наименьшая ширина названия в строке настроек (143 px). В узком окне сжимается и переносится название; под название клавиши с кнопкой переходят, только если рядом с названием такой ширины они не помещаются. */
-  --layout-settings-shortcut-slot: 9rem; /** Наименьшая ширина места под клавиши-«капсулы» или поле записи в строке сочетания (117 px). Поле записи может быть шире и расширяется влево (группа прижата вправо), а высота строки и положение кнопок при записи не меняются. */
-  --layout-settings-page-width: 42rem; /** Наибольшая ширина содержимого страницы раздела (546 px; D2: было 520): строки текста не растягиваются на широком окне. */
-  --layout-menu-min-width: 14rem; /** Наименьшая ширина контекстного меню (182 px при корне 13 px). */
-  --layout-menu-max-width: 24rem; /** Наибольшая ширина контекстного меню (312 px): длинное название чата обрезается многоточием. */
-  --layout-capture-panel-width: 520px; /** Ширина видимой панели быстрого захвата (скруглённая «пилюля») в логических пикселях. Размер в px, не растёт с размером текста: окно создаёт Rust, значения должны совпадать с ним. */
-  --layout-capture-shadow-margin: 32px; /** Прозрачное поле вокруг панели внутри окна ОС: в нём рисуется тень (shadow.overlay: смещение 8 px + размытие 24 px). Окно захвата прозрачное и без системной тени, весь вид панели — в CSS. */
-  --layout-capture-window-width: 584px; /** Ширина окна ОС: panel-width + 2 × shadow-margin (проверяет тест конфигурации). Высота окна подстраивается под содержимое (команда capture_resize), верх окна остаётся на месте. */
-  --layout-capture-window-height: 123px; /** Начальная высота окна ОС в tauri.conf.json (одно пустое поле: 58,5 px панели + 2 × 32 px поля под тень = 122,5 px при корне 13 px, округляется вверх до 123 px, как и высота, которую страница сообщает команде capture_resize; D2: кнопка выше, было 122). Значение совпадает с tauri.conf.json (проверяет тест конфигурации); дальше страница сообщает Rust высоту содержимого. */
-  --layout-capture-window-min-height: 100px; /** Нижний предел высоты окна, который Rust принимает от страницы (capture_resize): меньше любого содержимого, защита от нуля и отрицательных значений. Совпадает с константой в Rust (проверяет тест). */
-  --layout-capture-window-max-height: 640px; /** Верхний предел высоты окна (capture_resize): выше содержимое прокручивается в поле, а старые плашки контекста уходят за верхний край. Хватает на открытый пикер эмодзи (его панель 351 px) над полем и ещё остаётся место для контекста. Совпадает с константой в Rust (проверяет тест). */
-  --layout-capture-field-max-share: 0.325; /** До какой доли высоты панели при самом высоком окне (window-max-height минус два поля под тень) растёт поле ввода в окне захвата; дальше прокрутка внутри поля, а старые плашки контекста уходят за верхний край. Доля подобрана так, чтобы предел поля остался прежним (187 px), когда окно стало выше ради пикера эмодзи. */
-  --layout-capture-field-lines-with-picker: 3; /** Сколько строк текста показывает поле ввода окна захвата, пока открыт пикер эмодзи; длиннее — прокрутка внутри поля. Пикер и поле вместе должны уместиться в window-max-height. */
-  --layout-capture-window-narrow: 360px; /** Ширина «узкого окна» захвата в историях Storybook (вместе с полями под тень): проверка, что подсказка, ошибка и длинные записи не ломают раскладку. Само окно — window-width. */
-  --layout-capture-entry-lines: 2; /** Сколько строк текста показывает бледная запись контекста; остальное обрезается многоточием (line-clamp). */
-  --layout-keycap-size: 1.6rem; /** Клавиша-«капсула» в строке сочетания: минимальная ширина и высота (21 px при корне 13 px); длинные названия (Space, F12) растут по ширине. */
-  --layout-progress-height: 0.5rem; /** Полоса прогресса импорта (6,5 px): тихая линия под строкой «3 200 из 15 000». */
-  --layout-import-list-max-height: 22rem; /** Наибольшая высота списка чатов в окне импорта (286 px при корне 13 px): полный экспорт может содержать сотни личных чатов, список прокручивается внутри окна. */
-  --layout-search-snippet-lines: 3; /** Сколько строк фрагмента показывает строка результата поиска; остальное обрезается многоточием (line-clamp). */
-  --layout-window-height: 100vh; /** Высота окна приложения: всё окно. */
-  --layout-window-narrow: 45rem; /** Ширина «узкого окна» в историях Storybook (585 px). */
-  --layout-on-this-day-entry-lines: 3; /** Сколько строк текста записи показывает строка карточки «В этот день» (слайс 5); остальное обрезается многоточием (line-clamp). Полный текст открывается в ленте щелчком по записи. */
-  --layout-recovery-width: 36rem; /** Ширина колонки экрана «База повреждена» (468 px при корне 13 px); в узком окне колонка занимает ширину окна за вычетом полей. */
-  --layout-recovery-list-max-height: 24rem; /** Наибольшая высота списка копий (312 px при корне 13 px): длиннее список прокручивается внутри, заголовок и кнопка остаются на месте. */
-  --layout-chat-dialog-width: 27rem; /** Ширина окна «Новый чат» / «Переименовать» / «Эмодзи чата» (351 px при корне 13 px): уже окна настроек, пикер внутри занимает ширину содержимого. */
-  --layout-chat-dialog-top: 4rem; /** Отступ окна чата от верхнего края: окно прижато вверх, а не по центру, поэтому пикер, раскрывающийся под полем, не сдвигает заголовок (52 px). */
-  --layout-trash-entry-lines: 6; /** Сколько строк текста записи показывает плашка корзины; остальное обрезается многоточием (line-clamp). Полный текст записи в корзине не нужен: он нужен, чтобы узнать запись. */
-  --layout-trash-confirm-width: 26rem; /** Ширина окна подтверждения «Удалить навсегда?» (338 px при корне 13 px). */
-  --border-width-hairline: 1px; /** Тонкий разделитель и рамка элемента. */
-  --border-width-strong: 2px; /** Линия, которая должна читаться как линия: кривые на графиках. */
-  --focus-width: 2px; /** Толщина кольца фокуса с клавиатуры. */
-  --focus-offset: 2px; /** Зазор между элементом и кольцом фокуса. */
-  --color-scheme: dark; /** Схема приложения для системных элементов (полосы прокрутки, поля ввода, меню выделения). Тема одна, тёмная (палитра graphite, ADR-0004), поэтому браузер должен рисовать системные элементы в тёмном варианте: без этого полосы прокрутки светлые на тёмном фоне (KINIG-38). base.css ставит это значение в `color-scheme` на html; прозрачность окна захвата это не ломает (углы прозрачны на macOS 15 и 26, docs/screens/kinig-40). `$type` не задан: в DTCG нет типа для ключевого слова, а чужой тип (как `string`) был бы неверным. Появится светлая тема — значение переходит в палитру. */
-  --opacity-drag-ghost: 0.8; /** «Призрак» плашки записи, которую тащат на чат в сайдбаре (решение приёмки слайса 3): копия плашки под курсором, тихая, но читаемая. */
+  --layout-measure-text: 65ch; /** The text column on Storybook pages and lead-ins. */
+  --layout-measure-page: 140ch; /** Maximum width of the Storybook 'Основа' (Foundation) page. */
+  --layout-measure-column: 34ch; /** Minimum column width in the card grid on the 'Основа' (Foundation) pages. */
+  --layout-message-measure: 60ch; /** Maximum plate width: about 65 characters of Russian Inter text, 60-68 per line (ADR-0004; ch is measured by the digit '0', which is wider than an average letter; the value was refined from a screenshot). */
+  --layout-message-padding-block: 0.6rem; /** Inner padding of a plate at the top and bottom (7.8 px; D2: was 6.5). */
+  --layout-message-padding-inline: 0.95rem; /** Inner padding of a plate on the left and right (12.35 px; D2: was 9.75). */
+  --layout-message-gap-series: 0.35rem; /** The gap between plates of one series: a pause of under 5 minutes (4.55 px; D2: was 3.25). */
+  --layout-message-time-reserve: 3.1rem; /** Room for the time '09:12' at the end of the last text line (about 40 px; D2: was 38): the time sits in the bottom right corner of the plate, and the text does not cover it. */
+  --layout-message-agent-mark-reserve: 10.1rem; /** Extra room at the end of the last line of an agent entry for the quiet 'added by agent ·' mark to the left of the time (about 131 px, slice 4a; D2: was 124). */
+  --layout-message-deleted-reserve: 8.5rem; /** Room for the 'Deleted · Restore' line at the end of the last text line of a deleted plate (110 px at a 13 px root: the line itself is about 100 px and the gap to the text about 10 px, as for the time; D2: was 104): wider than for the time, so the spacer of a deleted plate is longer. */
+  --layout-checkbox-size: 1.1rem; /** The task square '- [ ]' in a message (14 px). */
+  --layout-checkbox-tick-width: 0.3rem; /** Checked task tick: the width of the short side of the rotated rectangle (4 px). */
+  --layout-checkbox-tick-height: 0.58rem; /** Checked task tick: height (7.5 px). */
+  --layout-checkbox-tick-left: 0.28rem; /** Checked task tick: the offset from the left inside the square (3.6 px). */
+  --layout-checkbox-tick-top: 0.06rem; /** Checked task tick: the offset from the top inside the square (0.8 px). */
+  --layout-feed-column: 51.4rem; /** Width of the feed and input field column in the center of the chat area: 668 px at a 13 px root. In a narrow window the column takes the whole width minus the margins. */
+  --layout-sidebar-width: 20.5rem; /** Sidebar width (266 px; D2: was 240). */
+  --layout-sidebar-rail-width: 4.4rem; /** Width of the collapsed sidebar (the 'emoji strip'): 57 px at a 13 px root (D2: was 52). Inside are square buttons of height layout.sidebar.row-height with padding layout.sidebar.padding. */
+  --layout-sidebar-heading-height: 1.9rem; /** Minimum height of a section heading ('Pinned', 'Chats', 'Archive'): 24.7 px (D2: was 21). Larger than the small '+' button in the 'Chats' heading (21 px), so the row does not jump when the button appears. */
+  --layout-sidebar-dot: 0.5rem; /** The 'the trash has entries' dot at the trash icon in the collapsed sidebar (6.5 px). */
+  --layout-sidebar-row-height: 2.8rem; /** Sidebar row height: a chat, 'Trash', the profile (36.4 px, D2: was 32.5 for all list rows). */
+  --layout-sidebar-row-gap: 0.15rem; /** The gap between sidebar rows (2 px, D2: was 3.25). */
+  --layout-sidebar-row-padding: 0.7rem; /** Inner padding of a sidebar row on the left and right (9.1 px, D2: was 6.5). The tile and the section heading stand on one vertical line. */
+  --layout-sidebar-row-content-gap: 0.8rem; /** The gap between the tile and the title in a sidebar row (10.4 px, D2: was 6.5). */
+  --layout-sidebar-section-gap: 1.5rem; /** Space above a sidebar section heading ('Chats' under 'Pinned'): 19.5 px (D2: was 6.5). */
+  --layout-tile-size: 1.75rem; /** A chat tile in the sidebar, the icon slot of the lower items and the profile avatar (22.75 px, D2). */
+  --layout-avatar-dot: 0.6rem; /** The status dot at the avatar (8 px), not shown in D1. */
+  --layout-row-height: 2.6rem; /** List row height: a menu item, a copy, a settings row (33.8 px; D2: was 32.5). Sidebar rows are taller: layout.sidebar.row-height. */
+  --layout-field-height: 2.7rem; /** Height of a single-line input field: the search (35 px; D2: was 30). */
+  --layout-composer-min-height: 4rem; /** Minimum height of an input field with buttons (52 px; D2: was 45.5). */
+  --layout-composer-max-height: 40vh; /** The field grows up to 40% of the window height, beyond that it scrolls inside (PRD §5). */
+  --layout-action-size: 1.6rem; /** A small button in the action row (21 px). */
+  --layout-control-height: 2.5rem; /** Height of a button and an icon button (32.5 px; D2: was 30). */
+  --layout-toast-offset: 5.5rem; /** Offset of a toast from the bottom edge of the feed: above the input field (71.5 px). */
+  --layout-dialog-width: 42rem; /** Width of the modal 'Settings' window (546 px at a 13 px root); in a narrow window the panel takes the window width minus the margins. */
+  --layout-dialog-max-height: 88vh; /** Largest height of a modal window panel: above it the content scrolls inside the panel, the title and the close button stay in place. */
+  --layout-settings-window-width: 860px; /** Initial width of the OS window (logical px). The window is created by Rust, the values match the `settings_window` constants (checked by the configuration test). */
+  --layout-settings-window-height: 600px; /** Initial height of the OS window. */
+  --layout-settings-window-min-width: 640px; /** Minimum window width. */
+  --layout-settings-window-min-height: 440px; /** Minimum window height: at it, even with large text, the section tree still fits without scrolling. */
+  --layout-settings-tree-width: 17rem; /** Width of the section tree on the left (221 px at a 13 px root; D2: was 195); it grows with the text size so the titles are not cut off. */
+  --layout-settings-row-label: 11rem; /** Minimum width of the title in a settings row (143 px). In a narrow window the title shrinks and wraps; the keys with the button move under the title only if they do not fit next to a title of this width. */
+  --layout-settings-shortcut-slot: 9rem; /** Minimum width of the slot for key 'capsules' or the recording field in a shortcut row (117 px). The recording field may be wider and expands to the left (the group is pressed to the right), while the row height and the button positions do not change during recording. */
+  --layout-settings-page-width: 42rem; /** Largest width of a section page's content (546 px; D2: was 520): text lines do not stretch in a wide window. */
+  --layout-menu-min-width: 14rem; /** Minimum width of the context menu (182 px at a 13 px root). */
+  --layout-menu-max-width: 24rem; /** Largest width of the context menu (312 px): a long chat title is cut off with an ellipsis. */
+  --layout-capture-panel-width: 520px; /** Width of the visible quick capture panel (a rounded 'pill') in logical pixels. The size is in px and does not grow with the text size: the window is created by Rust, the values must match it. */
+  --layout-capture-shadow-margin: 32px; /** A transparent margin around the panel inside the OS window: the shadow is drawn in it (shadow.overlay: offset 8 px + blur 24 px). The capture window is transparent and has no system shadow, the whole look of the panel is in CSS. */
+  --layout-capture-window-width: 584px; /** Width of the OS window: panel-width + 2 × shadow-margin (checked by the configuration test). The window height adapts to the content (the capture_resize command), the top of the window stays in place. */
+  --layout-capture-window-height: 123px; /** Initial height of the OS window in tauri.conf.json (one empty field: 58.5 px of the panel + 2 × 32 px of shadow margin = 122.5 px at a 13 px root, rounded up to 123 px, like the height the page reports to the capture_resize command; D2: the button is taller, was 122). The value matches tauri.conf.json (checked by the configuration test); after that the page reports the content height to Rust. */
+  --layout-capture-window-min-height: 100px; /** The lower limit of the window height that Rust accepts from the page (capture_resize): below any content, a guard against zero and negative values. Matches the constant in Rust (checked by a test). */
+  --layout-capture-window-max-height: 640px; /** The upper limit of the window height (capture_resize): above it the content scrolls in the field, and old context plates go past the top edge. Enough for an open emoji picker (its panel is 351 px) above the field with room left for context. Matches the constant in Rust (checked by a test). */
+  --layout-capture-field-max-share: 0.325; /** Up to what share of the panel height at the tallest window (window-max-height minus two shadow margins) the input field in the capture window grows; beyond that it scrolls inside the field, and old context plates go past the top edge. The share is chosen so that the field limit stays the same (187 px) when the window became taller for the emoji picker. */
+  --layout-capture-field-lines-with-picker: 3; /** How many text lines the input field of the capture window shows while the emoji picker is open; longer text scrolls inside the field. The picker and the field together must fit in window-max-height. */
+  --layout-capture-window-narrow: 360px; /** Width of the 'narrow window' of the capture in Storybook stories (together with the shadow margins): a check that the hint, the error and long entries do not break the layout. The window itself is window-width. */
+  --layout-capture-entry-lines: 2; /** How many text lines a pale context entry shows; the rest is cut off with an ellipsis (line-clamp). */
+  --layout-keycap-size: 1.6rem; /** A key 'capsule' in a shortcut row: minimum width and height (21 px at a 13 px root); long names (Space, F12) grow in width. */
+  --layout-progress-height: 0.5rem; /** The import progress bar (6.5 px): a quiet line under the '3 200 of 15 000' row. */
+  --layout-import-list-max-height: 22rem; /** Largest height of the chat list in the import window (286 px at a 13 px root): a full export may contain hundreds of personal chats, the list scrolls inside the window. */
+  --layout-search-snippet-lines: 3; /** How many lines of the snippet a search result row shows; the rest is cut off with an ellipsis (line-clamp). */
+  --layout-window-height: 100vh; /** The height of the app window: the whole window. */
+  --layout-window-narrow: 45rem; /** Width of the 'narrow window' in Storybook stories (585 px). */
+  --layout-on-this-day-entry-lines: 3; /** How many lines of the entry text a row of the 'On this day' card shows (slice 5); the rest is cut off with an ellipsis (line-clamp). The full text opens in the feed by clicking the entry. */
+  --layout-recovery-width: 36rem; /** Width of the column of the 'Database is damaged' screen (468 px at a 13 px root); in a narrow window the column takes the window width minus the margins. */
+  --layout-recovery-list-max-height: 24rem; /** Largest height of the copies list (312 px at a 13 px root): a longer list scrolls inside, the heading and the button stay in place. */
+  --layout-chat-dialog-width: 27rem; /** Width of the 'New chat' / 'Rename' / 'Chat emoji' window (351 px at a 13 px root): narrower than the settings window, the picker inside takes the content width. */
+  --layout-chat-dialog-top: 4rem; /** Offset of the chat window from the top edge: the window is pressed to the top, not centered, so the picker that expands under the field does not shift the title (52 px). */
+  --layout-trash-entry-lines: 6; /** How many lines of the entry text a trash plate shows; the rest is cut off with an ellipsis (line-clamp). The full text is not needed in the trash: only enough to recognize the entry. */
+  --layout-trash-confirm-width: 26rem; /** Width of the 'Delete forever?' confirmation window (338 px at a 13 px root). */
+  --border-width-hairline: 1px; /** A thin divider and an element border. */
+  --border-width-strong: 2px; /** A line that must read as a line: curves on charts. */
+  --focus-width: 2px; /** Thickness of the keyboard focus ring. */
+  --focus-offset: 2px; /** The gap between the element and the focus ring. */
+  --color-scheme: dark; /** The app scheme for system elements (scroll bars, input fields, the selection menu). There is one theme, dark (the graphite palette, ADR-0004), so the browser must draw system elements in the dark variant: without it the scroll bars are light on a dark background (KINIG-38). base.css puts this value into `color-scheme` on html; it does not break the transparency of the capture window (the corners are transparent on macOS 15 and 26, docs/screens/kinig-40). `$type` is not set: DTCG has no type for a keyword, and a foreign type (like `string`) would be wrong. When a light theme appears, the value moves into the palette. */
+  --opacity-drag-ghost: 0.8; /** The 'ghost' of an entry plate dragged onto a chat in the sidebar (a slice 3 acceptance decision): a copy of the plate under the cursor, quiet but readable. */
   --opacity-forest-front: 0.32; /** Opacity of a tree that stands in front of the selected tree and overlaps it. */
   --opacity-forest-selection-fill: 0.28; /** Opacity of the fill under the selected cell outline. */
   --opacity-forest-heat-1: 0.3; /** Strip and calendar intensity of a day with stage 1 (a sprout). */
@@ -107,47 +107,47 @@
   --opacity-forest-heat-4: 0.7; /** Intensity of stage 4. */
   --opacity-forest-heat-5: 0.85; /** Intensity of stage 5. */
   --opacity-forest-heat-6: 1; /** Intensity of stage 6 (a large tree): the full season tint. */
-  --opacity-deleted: 0.55; /** Текст удалённой плашки (слайс 3, решение 1): плашка остаётся на месте приглушённой. Приглушается только текст записи, строка «Удалено · Вернуть» остаётся обычной. */
-  --opacity-disabled: 0.5; /** Недоступная кнопка (WCAG не требует контраста для недоступных элементов). */
-  --opacity-unavailable: 0.7; /** Кнопка, функции которой ещё нет («Появится позже»): остаётся читаемой, но слабее обычной. */
-  --opacity-context-plate: 0.6; /** Заливка бледной записи контекста в окне захвата: заливка плашки сообщения с этой непрозрачностью. Только заливка: текст остаётся обычным цветом, поэтому контраст текста считается по существующим парам (заливка лежит между бумагой и плашкой). */
-  --opacity-panel-edge: 0.18; /** Тонкая светлая обводка плавающей панели захвата: рамка цвета основного текста с этой непрозрачностью (псевдоэлемент панели). Отделяет панель от тёмных окон за ней; светлых рабочих столов хватает самой заливки и тени. */
-  --opacity-scrim: 0.72; /** Подложка модального окна: заливка цвета фона окна с этой непрозрачностью. Главное окно за диалогом остаётся различимым, но отступает. */
-  --emoji-columns: 9; /** Столбцов в сетке пикера эмодзи. То же число стоит в коде как EMOJI_COLUMNS (frimousse принимает его числом); тест emoji/emojiTokens.test.ts сверяет оба. */
-  --emoji-cell-size: 2.4rem; /** Высота ячейки эмодзи в сетке пикера (31 px при корне 13 px); ширина — доля строки (1 / columns). */
-  --emoji-glyph-size: 1.5rem; /** Размер глифа эмодзи в ячейке пикера (19,5 px). */
-  --emoji-panel-width: 24rem; /** Ширина панели пикера над кнопкой «эмодзи» в поле ввода (312 px при корне 13 px); в окне чата пикер занимает ширину содержимого. */
-  --emoji-panel-height: 27rem; /** Высота панели пикера: фиксирована, поэтому панель не прыгает, когда секция «Недавние» появляется и исчезает при поиске (351 px). */
+  --opacity-deleted: 0.55; /** Text of a deleted plate (slice 3, decision 1): the plate stays in place, muted. Only the entry text is muted; the 'Deleted · Restore' line stays normal. */
+  --opacity-disabled: 0.5; /** A disabled button (WCAG does not require contrast for disabled elements). */
+  --opacity-unavailable: 0.7; /** A button whose feature does not exist yet ('Coming later'): stays readable but weaker than a normal one. */
+  --opacity-context-plate: 0.6; /** Fill of a pale context entry in the capture window: the message plate fill with this opacity. Only the fill: the text keeps its normal color, so the text contrast is computed from the existing pairs (the fill lies between the paper and the plate). */
+  --opacity-panel-edge: 0.18; /** A thin light outline of the floating capture panel: a border in the primary text color with this opacity (a pseudo-element of the panel). It separates the panel from dark windows behind it; on light desktops the fill and the shadow are enough. */
+  --opacity-scrim: 0.72; /** The backdrop of a modal window: a fill in the window background color with this opacity. The main window behind the dialog stays distinguishable but recedes. */
+  --emoji-columns: 9; /** Columns in the emoji picker grid. The same number is in the code as EMOJI_COLUMNS (frimousse takes it as a number); the test emoji/emojiTokens.test.ts compares both. */
+  --emoji-cell-size: 2.4rem; /** Height of an emoji cell in the picker grid (31 px at a 13 px root); the width is a share of the row (1 / columns). */
+  --emoji-glyph-size: 1.5rem; /** Emoji glyph size in a picker cell (19.5 px). */
+  --emoji-panel-width: 24rem; /** Width of the picker panel above the 'emoji' button in the input field (312 px at a 13 px root); in the chat window the picker takes the content width. */
+  --emoji-panel-height: 27rem; /** Height of the picker panel: fixed, so the panel does not jump when the 'Recent' section appears and disappears during a search (351 px). */
   --font-weight-regular: 400;
-  --font-weight-medium: 500; /** Метка дня. */
-  --font-weight-semibold: 600; /** Заголовки. */
-  --font-weight-bold: 700; /** Выделение жирным в тексте записи. */
-  --font-root-default: 13px; /** Размер текста записей 13 px: выбран пользователем 20.10.2026 на живом экране среди 13 / 14 / 15 px (ADR-0004). Значения в px в описаниях токенов — при этом корне. */
+  --font-weight-medium: 500; /** The day label. */
+  --font-weight-semibold: 600; /** Headings. */
+  --font-weight-bold: 700; /** Bold emphasis in the entry text. */
+  --font-root-default: 13px; /** Entry text size 13 px: chosen by the user on 20.10.2026 on a live screen among 13 / 14 / 15 px (ADR-0004). The px values in token descriptions are at this root. */
   --font-scale-default: 1;
-  --font-scale-large: 1.25; /** «Крупный текст» (+25%). */
+  --font-scale-large: 1.25; /** 'Large text' (+25%). */
   --font-family-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-family-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  --font-family-emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; /** ИСКЛЮЧЕНИЕ из правила «шрифты только встроенные»: эмодзи чатов рисует системный эмодзи-шрифт (цветные эмодзи не встраиваем). Это данные пользователя (chats.icon), а не декор; других системных шрифтов в интерфейсе нет. Проверяет fonts.test.ts. */
-  --color-surface-background: #141414; /** Фон окна и сайдбара вокруг ленты: самая тёмная поверхность. */
-  --color-surface-paper: #1b1b1b; /** «Бумага» ленты: фон за плашками сообщений и под полем ввода. */
-  --color-surface-message: #2b2b2b; /** Заливка плашки сообщения и тоста: светлее бумаги (1,22:1). */
-  --color-surface-code: #171717; /** Фон блока кода и строчного кода внутри плашки: темнее плашки (1,27:1), как «врезка». */
-  --color-surface-day: #2b2b2b; /** Заливка метки дня («таблетки») по центру ленты. */
-  --color-surface-selected: #313131; /** Выбранный чат в сайдбаре, выбранный пункт дерева настроек, заливка кнопки и наведения на значок (D2: было #2b2b2b). Светлее фона окна в 1,42:1 и светлее наведения в 1,21:1, поэтому выбранное читается рядом с подсвеченным под мышью. */
-  --color-surface-hover: #232323; /** Подсветка строки под мышью (сайдбар, дерево настроек): тихая, светлее фона окна в 1,17:1 и темнее выбранной строки (surface.selected светлее её в 1,21:1). Выбранное — surface.selected, наведение — это (D2). */
-  --color-surface-card: #2b2b2b; /** Заливка карточки «В этот день» (слайс 5) в ленте: светлее бумаги (1,22:1), без рамки и тени. «Бумага» ленты сама лежит на surface.paper, поэтому карточка с той же заливкой растворилась бы в ней. */
-  --color-surface-field: #2b2b2b; /** Заливка поля ввода без обводки: поиск, composer. */
-  --color-surface-field-active: #343434; /** Заливка поля ввода, когда в нём курсор: чуть светлее (1,14:1 к обычной). Вместе со сменой заливки в фокусе поля есть тонкая линия цветом фокуса. */
-  --color-text-primary: #f5f5f5; /** Основной текст записей: почти белый, нейтральный. */
-  --color-text-secondary: #dedede; /** Вторичный текст: подписи, имена чатов, метка дня. */
-  --color-text-tertiary: #ababab; /** Метаданные: время, подсказки, счётчик записей, значки. Тихий серый, не акцент. */
-  --color-accent-default: #88c0d0; /** Приглушённый акцент: ссылки, отмеченная задача, кнопка «Отправить», курсор. */
-  --color-border-divider: #333333; /** Тонкий разделитель: граница сайдбара и ленты (декоративный). */
-  --color-highlight-background: #3e3e3e; /** Заливка подсвеченного сообщения (найдено поиском, переход по ссылке): заметно светлее плашки (1,32:1; D2: было #3a3a3a) и светлее выбранной строки (1,22:1). Время, ошибка и акцент на ней остаются ≥ 4,6:1. */
-  --color-highlight-row: #474747; /** Заливка строки, выбранной стрелками в результатах поиска: фокус остаётся в поле, и это единственный знак, что откроет Enter. Светлее плашки в 1,52:1 (порог 1,5). Основной текст на ней 8,5:1, вторичный 6,9:1; третичный на ней ниже 4,5:1, поэтому в выбранной строке он заменён вторичным. */
-  --color-highlight-mark: #555555; /** Заливка найденного слова в тексте записи (поиск, слайс 4): нейтральный серый, заметно светлее плашки (1,8:1) и подсвеченной плашки (1,5:1). Основной текст на нём 7,0:1, вторичный 5,6:1. Третичный текст и акцент на нём не стоят: слова в ссылках и тегах не подсвечиваются. */
-  --color-focus-ring: #88c0d0; /** Кольцо фокуса с клавиатуры (кнопки, строки, ссылки) и тонкая линия в поле ввода. */
-  --color-status-error: #d89fa4; /** Состояние «не отправилось» и ошибки (§1.2 п. 9). */
+  --font-family-emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; /** EXCEPTION to the rule 'fonts are embedded only': chat emoji are drawn by the system emoji font (color emoji are not embedded). This is user data (chats.icon), not decoration; there are no other system fonts in the interface. Checked by fonts.test.ts. */
+  --color-surface-background: #141414; /** The background of the window and the sidebar around the feed: the darkest surface. */
+  --color-surface-paper: #1b1b1b; /** The feed 'paper': the background behind message plates and under the input field. */
+  --color-surface-message: #2b2b2b; /** The fill of a message plate and a toast: lighter than the paper (1.22:1). */
+  --color-surface-code: #171717; /** The background of a code block and inline code inside a plate: darker than the plate (1.27:1), like an 'inset'. */
+  --color-surface-day: #2b2b2b; /** The fill of the day label (a 'pill') in the center of the feed. */
+  --color-surface-selected: #313131; /** The selected chat in the sidebar, the selected settings tree item, the fill of a button and of hover on an icon (D2: was #2b2b2b). Lighter than the window background by 1.42:1 and lighter than hover by 1.21:1, so the selected item reads next to the one highlighted under the mouse. */
+  --color-surface-hover: #232323; /** The highlight of a row under the mouse (the sidebar, the settings tree): quiet, lighter than the window background by 1.17:1 and darker than the selected row (surface.selected is lighter than it by 1.21:1). The selected one is surface.selected, hover is this (D2). */
+  --color-surface-card: #2b2b2b; /** The fill of the 'On this day' card (slice 5) in the feed: lighter than the paper (1.22:1), with no border and no shadow. The feed 'paper' itself lies on surface.paper, so a card with the same fill would dissolve in it. */
+  --color-surface-field: #2b2b2b; /** The fill of an input field with no outline: the search, the composer. */
+  --color-surface-field-active: #343434; /** The fill of an input field when it has the cursor: slightly lighter (1.14:1 to the normal one). Together with the fill change, a focused field has a thin line in the focus color. */
+  --color-text-primary: #f5f5f5; /** The primary entry text: almost white, neutral. */
+  --color-text-secondary: #dedede; /** Secondary text: captions, chat names, the day label. */
+  --color-text-tertiary: #ababab; /** Metadata: the time, hints, the entry counter, icons. A quiet gray, not an accent. */
+  --color-accent-default: #88c0d0; /** A muted accent: links, a checked task, the 'Send' button, the cursor. */
+  --color-border-divider: #333333; /** A thin divider: the border of the sidebar and the feed (decorative). */
+  --color-highlight-background: #3e3e3e; /** The fill of a highlighted message (found by search, a jump by link): noticeably lighter than the plate (1.32:1; D2: was #3a3a3a) and lighter than the selected row (1.22:1). The time, the error and the accent on it stay at >= 4.6:1. */
+  --color-highlight-row: #474747; /** The fill of a row selected with the arrows in the search results: the focus stays in the field, and this is the only sign of what Enter will open. Lighter than the plate by 1.52:1 (the threshold is 1.5). The primary text on it is 8.5:1, the secondary 6.9:1; the tertiary on it is below 4.5:1, so in the selected row it is replaced by the secondary. */
+  --color-highlight-mark: #555555; /** The fill of a found word in the entry text (search, slice 4): a neutral gray, noticeably lighter than the plate (1.8:1) and the highlighted plate (1.5:1). The primary text on it is 7.0:1, the secondary 5.6:1. Tertiary text and the accent are not placed on it: words in links and tags are not highlighted. */
+  --color-focus-ring: #88c0d0; /** The keyboard focus ring (buttons, rows, links) and a thin line in the input field. */
+  --color-status-error: #d89fa4; /** The 'not sent' state and errors (PRD §1.2 item 9). */
   --color-tile-blue: #3c6a9f; /** Tile color "blue". */
   --color-tile-teal: #2b736e; /** Tile color "teal". */
   --color-tile-green: #2d7645; /** Tile color "green". */
@@ -190,32 +190,32 @@
   --color-forest-label: #dedede; /** Month and weekday labels on the edges of the board. */
   --color-forest-label-halo: #141414; /** Halo around a label, so that it stays readable over a canopy. */
   --color-forest-strip-empty: #2b2b2b; /** A day without notes in the strip and the calendar: quiet fill, lighter than the paper behind it. */
-  --icon-size: 1.35rem; /** Размер линейного значка: 17,5 px при корне 13 px. */
-  --icon-size-small: 1.05rem; /** Мелкий значок: ряд действий справа от плашки сообщения (13,5 px). */
-  --icon-emoji-slot: 1.7rem; /** Ширина слота эмодзи чата в списке: не уже глифа. Глиф Apple Color Emoji при font-size = icon.size шире em (около 1,2 em, 21 px при корне 13 px), и в слоте шириной в em он вылезал вправо и съедал промежуток до названия (22 px). */
-  --icon-emoji-line-height: 1; /** Межстрочный множитель эмодзи в слоте: 1, чтобы коробка равнялась кеглю и не добавляла ascent и descent межстрочного текста (он сажал глиф ниже центра). */
-  --icon-emoji-shift: -0.08rem; /** Оптическая поправка по вертикали для эмодзи в строке чата: у системного эмодзи-шрифта свои ascent и descent, и глиф в геометрическом центре строки сидит ниже центра текста; поправка поднимает его (-1 px). Подобрана по скриншоту настоящего окна (WKWebView). */
+  --icon-size: 1.35rem; /** Size of a line icon: 17.5 px at a 13 px root. */
+  --icon-size-small: 1.05rem; /** A small icon: the action row to the right of a message plate (13.5 px). */
+  --icon-emoji-slot: 1.7rem; /** Width of the chat emoji slot in the list: not narrower than the glyph. The Apple Color Emoji glyph at font-size = icon.size is wider than 1em (about 1.2 em, 21 px at a 13 px root), and in a slot one em wide it stuck out to the right and ate the gap to the title (22 px). */
+  --icon-emoji-line-height: 1; /** Emoji line-height multiplier in the slot: 1, so the box equals the font size and does not add the ascent and descent of body line spacing (it put the glyph below the center). */
+  --icon-emoji-shift: -0.08rem; /** Optical vertical correction for the emoji in a chat row: the system emoji font has its own ascent and descent, and a glyph at the geometric center of the row sits below the text center; the correction raises it (-1 px). Chosen from a screenshot of the real window (WKWebView). */
   --icon-emoji-row: 1.25rem; /** Size of a chat emoji in a sidebar row: 16.25 px (D2; it was `in-tile` before the emoji lost its tile). The Apple Color Emoji glyph is about 1.2 times wider than the em, so it takes about 19.5 px in the 22.75 px slot (layout.tile.size) and leaves a small margin. */
-  --icon-stroke: 1.75; /** Толщина линии значка в единицах viewBox (24): тоньше стандартных 2, «воздушнее» рядом с мелким текстом. */
-  --icon-size-nav: 1.2rem; /** Значок нижних пунктов сайдбара («Корзина», пункты меню профиля): 15,6 px (D2). Сидит в слоте размера layout.tile.size, в одной колонке с плитками чатов. */
-  --icon-size-mark: 0.85rem; /** Тихая отметка «избранное» (звезда) рядом со временем в правом нижнем углу плашки: по кеглю времени (11 px, D2: было 10,4). */
-  --motion-duration-short: 0.12s; /** Наведение, появление подсветки. */
-  --motion-duration-medium: 0.2s; /** Появление тоста, раскрытие поля ввода. */
-  --motion-duration-long: 0.32s; /** Крупные переходы. */
+  --icon-stroke: 1.75; /** Icon line thickness in viewBox units (24): thinner than the standard 2, 'airier' next to small text. */
+  --icon-size-nav: 1.2rem; /** Icon of the lower sidebar items ('Trash', the profile menu items): 15.6 px (D2). Sits in a slot of size layout.tile.size, in the same column as the chat tiles. */
+  --icon-size-mark: 0.85rem; /** A quiet 'favorite' mark (a star) next to the time in the bottom right corner of the plate: the size of the time text (11 px, D2: was 10.4). */
+  --motion-duration-short: 0.12s; /** Hover, the highlight appearing. */
+  --motion-duration-medium: 0.2s; /** A toast appearing, an input field expanding. */
+  --motion-duration-long: 0.32s; /** Large transitions. */
   --motion-duration-grow: 0.7s; /** Growth of today's tree when its stage rises (the forest, slice 6). The curve is motion.easing.enter. 0 under Reduce Motion: the tree jumps. */
-  --motion-delay-hide-actions: 0.18s; /** Ряд действий под рукой остаётся виден ещё столько после ухода мыши со строки ленты: можно дойти по диагонали к значку, не потеряв ряд. */
+  --motion-delay-hide-actions: 0.18s; /** The action row stays visible this long after the mouse leaves a feed row: you can reach an icon diagonally without losing the row. */
   --motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
-  --motion-easing-enter: cubic-bezier(0, 0, 0.2, 1); /** Появление: быстрый старт, мягкая остановка. */
-  --motion-easing-exit: cubic-bezier(0.4, 0, 1, 1); /** Уход: плавный разгон. */
-  --radius-inline: 0.25rem; /** Строчный код, тег. */
-  --radius-tile: 0.45rem; /** Плитка чата в сайдбаре (D2): квадрат 22,75 px с мягкими углами. */
-  --radius-control: 0.65rem; /** Кнопки, поля ввода, строка чата, пункт меню, блок кода внутри плашки. */
-  --radius-panel: 0.9rem; /** Composer, тост, контекстное меню, диалог. */
-  --radius-message: 0.9rem; /** Плашка сообщения и карточка «В этот день». */
-  --radius-floating: 1.5rem; /** Плавающая панель быстрого захвата («пилюля»): 19,5 px при корне 13 px, как у Gemini и ChatGPT (ориентир 18–22 px). */
-  --radius-round: 999px; /** Полностью скруглённые элементы: метка дня. */
-  --shadow-raised: 0px 1px 2px 0px #00000066, 0px 4px 12px 0px #00000040; /** Приподнятое: composer, тост. */
-  --shadow-overlay: 0px 8px 24px 0px #00000073; /** Поверх всего: контекстное меню, диалог. */
+  --motion-easing-enter: cubic-bezier(0, 0, 0.2, 1); /** Entering: a quick start, a soft stop. */
+  --motion-easing-exit: cubic-bezier(0.4, 0, 1, 1); /** Leaving: a smooth acceleration. */
+  --radius-inline: 0.25rem; /** Inline code, a tag. */
+  --radius-tile: 0.45rem; /** A chat tile in the sidebar (D2): a 22.75 px square with soft corners. */
+  --radius-control: 0.65rem; /** Buttons, input fields, a chat row, a menu item, a code block inside a plate. */
+  --radius-panel: 0.9rem; /** The composer, a toast, the context menu, a dialog. */
+  --radius-message: 0.9rem; /** A message plate and the 'On this day' card. */
+  --radius-floating: 1.5rem; /** The floating quick capture panel (a 'pill'): 19.5 px at a 13 px root, as in Gemini and ChatGPT (the reference is 18-22 px). */
+  --radius-round: 999px; /** Fully rounded elements: the day label. */
+  --shadow-raised: 0px 1px 2px 0px #00000066, 0px 4px 12px 0px #00000040; /** Raised: the composer, a toast. */
+  --shadow-overlay: 0px 8px 24px 0px #00000073; /** Above everything: the context menu, a dialog. */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -246,14 +246,14 @@
   --type-code-line-height: 1.5;
   --type-meta-size: 0.85rem;
   --type-meta-line-height: 1.3;
-  --layout-message-gap-group: var(--space-4); /** Промежуток между сериями и вокруг метки дня (13 px; D2: было 9,75). */
-  --layout-feed-padding-inline: var(--space-6); /** Поле ленты слева и справа (26 px; D2: было 19,5). */
-  --layout-feed-padding-block: var(--space-5); /** Поле ленты сверху и снизу (19,5 px; D2: было 9,75). */
-  --layout-sidebar-padding: var(--space-3); /** Поле сайдбара вокруг поиска и списка чатов (9,75 px; D2: было 6,5). */
-  --layout-avatar-size: var(--layout-tile-size); /** Аватар-кружок с инициалами в строке профиля (22,75 px): того же размера, что плитка чата, чтобы нижние строки шли в одном ритме. */
-  --layout-action-gap: var(--space-2); /** Прозрачный зазор между плашкой и рядом действий справа от неё (6,5 px); в него входит наведение мыши. */
-  --layout-action-offset: var(--space-1); /** Отступ ряда от правого края плашки, когда справа нет места и ряд стоит над плашкой у её правого края; у верхнего края ленты — и от верхнего края плашки (3,25 px). */
-  --layout-search-filters-gap: var(--space-2); /** Промежуток между фильтрами поиска (6,5 px). */
+  --layout-message-gap-group: var(--space-4); /** The gap between series and around the day label (13 px; D2: was 9.75). */
+  --layout-feed-padding-inline: var(--space-6); /** The feed margin on the left and right (26 px; D2: was 19.5). */
+  --layout-feed-padding-block: var(--space-5); /** The feed margin at the top and bottom (19.5 px; D2: was 9.75). */
+  --layout-sidebar-padding: var(--space-3); /** The sidebar margin around the search and the chat list (9.75 px; D2: was 6.5). */
+  --layout-avatar-size: var(--layout-tile-size); /** A round avatar with initials in the profile row (22.75 px): the same size as a chat tile, so the lower rows keep one rhythm. */
+  --layout-action-gap: var(--space-2); /** A transparent gap between the plate and the action row to its right (6.5 px); mouse hover extends into it. */
+  --layout-action-offset: var(--space-1); /** Offset of the row from the right edge of the plate when there is no room on the right and the row stands above the plate at its right edge; at the top edge of the feed, also from the top edge of the plate (3.25 px). */
+  --layout-search-filters-gap: var(--space-2); /** The gap between search filters (6.5 px). */
   --type-day-family: var(--font-family-sans);
   --type-day-weight: var(--font-weight-medium);
   --type-h1-family: var(--font-family-sans);

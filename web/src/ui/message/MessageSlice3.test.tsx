@@ -85,9 +85,9 @@ describe("контекстное меню записи", () => {
     ]);
     expect(items[6]).toHaveClass("context-menu__item--danger");
     expect(items[6]?.parentElement).toHaveClass("context-menu__group");
-    // Без списка чатов и обработчика переноса пункт виден, но недоступен.
+    // Without a chat list and a move handler the item is visible but disabled.
     expect(items[5]).toHaveAttribute("aria-disabled", "true");
-    // Первый пункт получает фокус: меню сразу работает с клавиатуры.
+    // The first item gets focus: the menu works from the keyboard right away.
     expect(items[0]).toHaveFocus();
   });
 

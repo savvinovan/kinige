@@ -6,8 +6,8 @@ import type { ImportPreview } from "../../api/generated/ImportPreview";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// Черновик у каждого чата на настоящем `MainWindow` и `MockApi` (§5.1): переключение чатов и гонки между набором, сохранением
-// и ответом на запрос черновика.
+// A draft per chat on the real `MainWindow` and `MockApi` (§5.1): chat switching and races between typing, saving
+// and the reply to the draft request.
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 
 const BOOKS = { id: "books", title: "Книги", icon: "📚" };
@@ -46,7 +46,7 @@ describe("MainWindow: черновик у каждого чата", () => {
   it("запоздавший ответ с черновиком прежнего чата не попадает в поле нового", async () => {
     const api = new MockApi({ now: NOW, language: "ru", chats: [BOOKS] });
     await api.saveDraft(INBOX_ID, "старый черновик");
-    // Ответ на первый запрос черновика Inbox задерживается, пока человек не переключится на другой чат.
+    // The reply to the first Inbox draft request is delayed until the person switches to another chat.
     const answer = api.getDraft.bind(api);
     let release: () => void = () => undefined;
     const held = new Promise<void>((resolve) => (release = resolve));
@@ -59,7 +59,7 @@ describe("MainWindow: черновик у каждого чата", () => {
     render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />, { language: "ru" });
     await screen.findByText(/Пока пусто/);
 
-    // Ответ приходит сразу после отрисовки Книг, пока React ещё не сбросил эффект Inbox; поле Книг должно остаться пустым.
+    // The reply arrives right after "Books" is rendered, while React has not yet cleaned up the Inbox effect; the "Books" field must stay empty.
     const answered = whenOpened("Книги", () => {
       release();
       return reply;
@@ -87,7 +87,7 @@ describe("MainWindow: повторный выбор уже открытого ч
     const api = setup();
     await openChat("Книги");
     type("про книги");
-    // Подписка на событие ставится после первого кадра: повторяем, пока событие не сработает на другом чате.
+    // The event subscription is set after the first frame: repeat until the event fires on another chat.
     await waitFor(() => {
       act(() => api.emitOpenChat(INBOX_ID));
       expect(screen.getByRole("button", { name: /^Входящие/ })).toHaveAttribute("aria-current", "true");
@@ -133,7 +133,7 @@ describe("MainWindow: повторный выбор уже открытого ч
     await screen.findByText(/Пока пусто/);
     await chatRow("Книги");
     type("текст А");
-    // Оба щелчка до первой отрисовки: React объединяет обновления, `selected` остаётся прежним.
+    // Both clicks before the first render: React batches the updates, `selected` stays the same.
     fireEvent.click(screen.getByRole("button", { name: /^Книги/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Входящие/ }));
     await waitFor(() => expect(screen.getByRole("button", { name: /^Входящие/ })).toHaveAttribute("aria-current", "true"));
@@ -148,7 +148,7 @@ function setup(options: MockApiOptions = {}) {
   return api;
 }
 
-/** Черновик дошёл до Rust (сохранение идёт с паузой после набора). */
+/** The draft reached Rust (saving happens with a pause after typing). */
 const savedDraft = (api: MockApi, chatId: string, text: string) =>
   waitFor(async () => expect((await api.getDraft(chatId)).body).toBe(text));
 
@@ -162,9 +162,9 @@ async function openChat(name: string) {
 }
 
 /**
- * Выполняет `action` в тот миг, когда чат `name` стал открытым в DOM. Колбэк MutationObserver идёт сразу после отрисовки,
- * раньше, чем React сбросит эффекты предыдущего чата; промис результата завершается вместе с `action`. Не дождавшись
- * чата за `timeoutMs`, наблюдатель снимается, а промис отклоняется понятной ошибкой.
+ * Runs `action` at the moment the chat `name` became open in the DOM. The MutationObserver callback runs right after the render,
+ * before React cleans up the previous chat's effects; the result promise completes together with `action`. If the
+ * chat does not appear within `timeoutMs`, the observer is removed and the promise is rejected with a clear error.
  */
 function whenOpened(name: string, action: () => unknown, timeoutMs = 4000) {
   return new Promise<void>((resolve, reject) => {

@@ -4,15 +4,15 @@ import type { OnThisDay } from "../../api/generated/OnThisDay";
 
 interface UseOnThisDayOptions {
   api: KinigeApi;
-  /** Карточка нужна: открыт Inbox, без фильтра по тегу. */
+  /** The card is needed: Inbox is open, with no tag filter. */
   enabled: boolean;
 }
 
 /**
- * Карточка «В этот день» Inbox (слайс 5). Читается при открытии Inbox и при фокусе окна: так замечается и смена дня журнала
- * (после 04:00 появляется карточка нового дня), и скрытие с другого места. `ready` — первое чтение закончилось (успехом или
- * ошибкой): лента показывается, только когда карточка уже известна, и в первом кадре ничего не прыгает. Ошибка чтения —
- * карточки просто нет: это украшение, а не данные.
+ * The "On this day" card of Inbox (slice 5). It is read when Inbox opens and on window focus: this way both a change of
+ * the journal day (after 04:00 the new day's card appears) and a dismissal from elsewhere are noticed. `ready` means the
+ * first read has finished (with success or an error): the feed is shown only when the card is already known, so nothing
+ * jumps in the first frame. A read error just means there is no card: it is a decoration, not data.
  */
 export function useOnThisDay({ api, enabled }: UseOnThisDayOptions) {
   const [card, setCard] = useState<OnThisDay | null>(null);
@@ -35,8 +35,8 @@ export function useOnThisDay({ api, enabled }: UseOnThisDayOptions) {
   }, [enabled, refresh]);
 
   /**
-   * Крестик: скрыть до следующего дня журнала. Карточка уходит после ответа Rust. `true` — скрыта; `false` — карточки нет или
-   * Rust отказал: она остаётся на месте, нажать можно ещё раз (вызывающий ничего не двигает).
+   * The cross: hide until the next journal day. The card goes away after Rust replies. `true` means hidden; `false` means
+   * there is no card or Rust refused: it stays in place and can be pressed again (the caller moves nothing).
    */
   const dismiss = useCallback(async (): Promise<boolean> => {
     if (card === null) return false;

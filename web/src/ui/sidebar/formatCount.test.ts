@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatCount } from "./formatCount";
 
-// Группы разрядов и «тыс.» ставит Intl языка интерфейса (ADR-0005); пробелы в нём неразрывные, поэтому сравниваем без них.
+// Digit groups and "тыс." come from Intl of the interface language (ADR-0005); its spaces are no-break, so we compare without them.
 const plain = (text: string) => text.replace(/\s/g, " ");
 
 describe("formatCount (ru)", () => {

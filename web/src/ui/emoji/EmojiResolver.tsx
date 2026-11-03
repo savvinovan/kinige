@@ -5,9 +5,9 @@ import { resolveEmojiData } from "./emojiData";
 const EmojiResolverContext = createContext<EmojiDataResolver>(resolveEmojiData);
 
 /**
- * Подмена источника данных пикера для историй и тестов (детерминированный набор, вечная загрузка, ошибка). В приложении
- * провайдера нет и работает `resolveEmojiData` из бандла. Значение должно быть одной и той же функцией на всех рендерах:
- * frimousse кэширует данные по её идентичности.
+ * Overriding the picker's data source for stories and tests (a deterministic set, endless loading, an error). In the app
+ * there is no provider and `resolveEmojiData` from the bundle works. The value must be the same function on all renders:
+ * frimousse caches the data by its identity.
  */
 export const EmojiResolverProvider = EmojiResolverContext.Provider;
 
