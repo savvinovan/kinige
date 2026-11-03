@@ -7,7 +7,8 @@ use crate::error::{read_err, write_err};
 use crate::settings::get_setting;
 use crate::{Now, Store, StoreError};
 use chrono::NaiveDate;
-use kinige_domain::forest::FirstWeekday;
+use kinige_domain::chat::is_chat_id;
+use kinige_domain::forest::{FirstWeekday, NoteStat, day_weight};
 use kinige_domain::forest_year::{
     DayStats, FOREST_YEARS, ForestMode, ForestTarget, ForestView, ForestYear, day_chat, year_table,
 };
@@ -19,16 +20,21 @@ use rusqlite::{Connection, OptionalExtension};
 pub(crate) const KEY_FOREST_VIEW: &str = "forest_view";
 pub(crate) const KEY_FOREST_MODE: &str = "forest_mode";
 
-/// Live entries of chats that are not in the trash.
-const LIVE: &str = "m.deleted_at IS NULL AND c.deleted_at IS NULL";
+/// Live entries of chats that are not in the trash whose text is text (a damaged value of another type is skipped everywhere
+/// the same way: in the year table, the day's chats, the oldest year and the entry a click opens).
+const LIVE: &str = "m.deleted_at IS NULL AND c.deleted_at IS NULL AND typeof(m.body_md) = 'text'";
 
-/// One row per day of the year: date, entries, weight, text of the first entry (see `year_stats`).
+/// One row per day of the year: date, entries, weight, the first 4096 characters of the first entry (the excerpt is far
+/// shorter, and a huge entry is not copied for it), the ordering key of that entry, and how many entries of the day contain
+/// a NUL character (see `year_stats`). The conditions repeat `LIVE` and must stay in step with it. Do not add a second
+/// `MIN()` or `MAX()` aggregate: it would change which row the bare columns come from.
 const YEAR_QUERY: &str = "SELECT m.journal_date, COUNT(*), \
      SUM(CASE WHEN length(m.body_md) >= 3 THEN MIN(1.0, length(m.body_md) / 200.0) ELSE 0.0 END), \
-     m.body_md, MIN(printf('%020d', m.created_at) || m.id) \
+     substr(m.body_md, 1, 4096), MIN(printf('%020d', MAX(m.created_at, 0)) || m.id), \
+     SUM(instr(CAST(m.body_md AS BLOB), x'00') > 0) \
      FROM message m JOIN chat c ON c.id = m.chat_id \
-     WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 AND m.deleted_at IS NULL AND c.deleted_at IS NULL \
-     AND typeof(m.body_md) = 'text' \
+     WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 \
+     AND m.deleted_at IS NULL AND c.deleted_at IS NULL AND typeof(m.body_md) = 'text' \
      GROUP BY m.journal_date ORDER BY m.journal_date";
 
 impl Store {
@@ -72,6 +78,8 @@ impl Store {
         if !is_valid_journal_date(date) {
             return Err(StoreError::InvalidDate);
         }
+        // The id comes from the window: something that cannot be a chat id is "no open chat", never an error.
+        let current_chat = current_chat.filter(|id| is_chat_id(id));
         self.read(|conn| {
             let conn = &conn.unchecked_transaction().map_err(read_err)?;
             let counts = chat_counts(conn, date)?;
@@ -80,8 +88,8 @@ impl Store {
             };
             let message_id: Option<String> = conn
                 .query_row(
-                    "SELECT id FROM message WHERE chat_id = ?1 AND journal_date = ?2 AND deleted_at IS NULL \
-                     ORDER BY created_at, id LIMIT 1",
+                    "SELECT m.id FROM message m WHERE m.chat_id = ?1 AND m.journal_date = ?2 AND m.deleted_at IS NULL \
+                     AND typeof(m.body_md) = 'text' ORDER BY m.created_at, m.id LIMIT 1",
                     (chat_id, date),
                     |row| row.get(0),
                 )
@@ -131,9 +139,12 @@ pub(crate) fn stored_view(conn: &Connection) -> rusqlite::Result<(ForestView, Fo
 /// over entries of 3 characters or more; `length()` counts characters, not bytes, and there are no attachments yet),
 /// proven equal to it by the `sql_weight_equals_the_domain_weight` test. The first entry of a day is the one with the
 /// smallest `created_at`, then id: SQLite takes the bare column `body_md` from the row of the query's only `MIN()`
-/// aggregate, whose key is the zero-padded creation time followed by the id (creation times are milliseconds since
-/// 1970, so the padded text sorts like the number). Rows whose date is not a date or whose text is not text (a damaged
-/// value) are skipped.
+/// aggregate, whose key is the zero-padded creation time (clamped at 0: creation times are milliseconds since 1970, and a
+/// negative number would sort wrongly as text) followed by the id. Only the start of the text is read.
+///
+/// `length()` stops at a NUL character while the domain counts every character. A day with such an entry (never written
+/// by the app, but possible in imported or synced text) is measured again in Rust, entry by entry. Rows whose date is not a
+/// date or whose text is not text (a damaged value) are skipped.
 fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError> {
     let mut statement = conn.prepare_cached(YEAR_QUERY).map_err(read_err)?;
     let mut rows = statement
@@ -147,8 +158,12 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
             continue;
         };
         let notes: i64 = row.get(1).map_err(read_err)?;
-        let weight: f64 = row.get(2).map_err(read_err)?;
-        let first_body: Option<String> = row.get(3).map_err(read_err)?;
+        let mut weight: f64 = row.get(2).map_err(read_err)?;
+        let mut first_body: Option<String> = row.get(3).map_err(read_err)?;
+        let with_nul: i64 = row.get(5).map_err(read_err)?;
+        if with_nul > 0 {
+            (weight, first_body) = exact_day(conn, date)?;
+        }
         days.push(DayStats {
             date,
             notes: u32::try_from(notes).unwrap_or(u32::MAX),
@@ -157,6 +172,39 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
         });
     }
     Ok(days)
+}
+
+/// The weight and the first entry of one day by the domain rules over every entry, the slow way (see `year_stats`).
+fn exact_day(conn: &Connection, date: NaiveDate) -> Result<(f64, Option<String>), StoreError> {
+    let mut statement = conn
+        .prepare_cached(&format!(
+            "SELECT m.created_at, m.id, m.body_md FROM message m JOIN chat c ON c.id = m.chat_id \
+             WHERE m.journal_date = ?1 AND {LIVE}"
+        ))
+        .map_err(read_err)?;
+    let rows = statement
+        .query_map([date.format("%Y-%m-%d").to_string()], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })
+        .map_err(read_err)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(read_err)?;
+    let notes: Vec<NoteStat> = rows
+        .iter()
+        .map(|(_, _, body)| NoteStat {
+            len: body.chars().count(),
+            attachments: 0,
+        })
+        .collect();
+    let first = rows
+        .into_iter()
+        .min_by(|a, b| (a.0, &a.1).cmp(&(b.0, &b.1)))
+        .map(|(_, _, body)| body);
+    Ok((day_weight(&notes), first))
 }
 
 /// The year of the oldest live entry of a chat that is not in the trash.

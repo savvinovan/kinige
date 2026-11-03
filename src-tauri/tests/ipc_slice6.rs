@@ -102,6 +102,26 @@ fn a_note_written_today_shows_up_in_the_year_table_and_opens_from_its_day() {
     )
     .unwrap();
     assert_eq!(target, json!({"chatId": INBOX, "messageId": sent["id"]}));
+    // A chat id that is not a chat id (garbage from the window) counts as "no open chat": the day still opens.
+    for bad in [
+        "",
+        "no-such-chat",
+        "'; DROP TABLE chat; --",
+        &"я".repeat(1 << 20),
+    ] {
+        let again = call(
+            &main,
+            "get_forest_day_target",
+            json!({"date": today, "currentChatId": bad}),
+        )
+        .unwrap();
+        assert_eq!(
+            again,
+            target,
+            "{:?}",
+            bad.chars().take(12).collect::<String>()
+        );
+    }
     let empty = call(
         &main,
         "get_forest_day_target",

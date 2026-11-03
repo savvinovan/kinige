@@ -72,6 +72,18 @@ print(f"{d} {ru[m - 1]}" if lang == "ru" else f"{en[m - 1]} {d}")
 PY
 }
 
+# The date (YYYY-MM-DD) of the selected-day caption under the board ("Пт, 23 октября 2026") in a dump of the Russian window.
+caption_date() {
+  python3 - "$1" <<'PY'
+import re, sys
+months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+found = re.search(r"[А-Яа-я]{2}, (\d{1,2}) (" + "|".join(months) + r") (\d{4})", text)
+if found:
+    print(f"{found.group(3)}-{months.index(found.group(2)) + 1:02d}-{int(found.group(1)):02d}")
+PY
+}
+
 labels() {
   if [ "$UI" = "ru" ]; then
     L_EXPAND="Развернуть лес"; L_COLLAPSE="Свернуть лес"; L_HIDE="Скрыть лес"; L_SHOW="Показать лес"; L_WHOLE="Весь год"
@@ -146,9 +158,22 @@ sleep 3
 shoot 06-feed-older-day-selection-followed
 
 # ---- 4. A click on the board opens the day in the feed, with the card of the selected day ----
+# The press (AXPress, a click without coordinates) lands in the middle of the canvas. At the whole-year view that is bare ground
+# next to the ribbon, so the camera goes to autumn first, where the middle of the board is a day with entries. The keyboard
+# path (focus, arrows, Enter) is not part of this scenario: input here is accessibility actions only; vitest covers it.
+before_click="$(caption_date "$K/debug/shot-06-feed-older-day-selection-followed.txt")"
+[ -n "${before_click}" ] || fail "no selected-day caption in the dump of shot 06"
+press "${L_AUTUMN}"
+sleep 2
 press "${L_BOARD}" "Group|Application|Unknown|Image"
 sleep 3
 shoot 04-selected-day-with-card
+clicked="$(caption_date "$K/debug/shot-04-selected-day-with-card.txt")"
+echo "the day under the click: ${clicked:-none} (before: ${before_click})"
+[ -n "${clicked}" ] || fail "no selected-day caption after the click on the board"
+[ "${clicked}" != "${before_click}" ] || fail "the click on the board did not change the selected day (${clicked})"
+# The feed moved to the day: the first entry of the day (its text ends with the date) is in the window.
+has "· ${clicked}" || fail "the feed does not show the entry of ${clicked} after the click on the board"
 
 # ---- 5. Collapse: the feed below the strip, on the day that was opened ----
 press "${L_COLLAPSE}"

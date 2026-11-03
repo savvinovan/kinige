@@ -84,16 +84,30 @@ describe("Feed reports the day at its top", () => {
     expect(onTopDay).not.toHaveBeenCalled();
   });
 
-  it("scrolling to the bottom on request is the feed's own move too", async () => {
+  it("scrolling to the bottom on request reports the day it lands on, so the board does not keep an old selection", async () => {
     const onTopDay = vi.fn();
     const view = render(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} toBottom={0} />);
-    const scroller = place("2026-10-10");
-    view.rerender(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} toBottom={1} />);
+    // The person's click jumped to an old entry: the feed is deaf until the next scroll.
+    view.rerender(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} toBottom={0} scrollTo={{ id: "m1", nonce: 1 }} />);
+    const scroller = place("2026-10-12");
+    onTopDay.mockClear();
+    view.rerender(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} toBottom={1} scrollTo={{ id: "m1", nonce: 1 }} />);
+    expect(onTopDay).toHaveBeenLastCalledWith("2026-10-12");
     onTopDay.mockClear();
     fireEvent.scroll(scroller);
-    await nextFrame();
-    await nextFrame();
-    expect(onTopDay).not.toHaveBeenCalled();
+    await waitFor(() => expect(onTopDay).toHaveBeenCalledWith("2026-10-12"));
+  });
+
+  it("opening another list after a jump listens again: the board does not keep the day of the old chat", () => {
+    const onTopDay = vi.fn();
+    const view = render(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} listKey="inbox" scrollTo={null} />);
+    view.rerender(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} listKey="inbox" scrollTo={{ id: "m2", nonce: 1 }} />);
+    // Deaf now: a new list in the same chat is not reported.
+    view.rerender(<Feed messages={MESSAGES.slice(0, 2)} today="2026-10-12" onTopDay={onTopDay} listKey="inbox" scrollTo={{ id: "m2", nonce: 1 }} />);
+    onTopDay.mockClear();
+    place("2026-10-10");
+    view.rerender(<Feed messages={MESSAGES.slice(0, 1)} today="2026-10-12" onTopDay={onTopDay} listKey="ideas" scrollTo={null} />);
+    expect(onTopDay).toHaveBeenCalled();
   });
 
   it("works without a handler", async () => {

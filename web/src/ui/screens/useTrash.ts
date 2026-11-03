@@ -9,10 +9,12 @@ interface UseTrashOptions {
   open: boolean;
   /** Счётчики чатов и корзины после изменения записи. */
   refreshChats: () => Promise<void>;
+  /** Slice 6: a restored entry is a live entry again, so the forest has to be read again. */
+  onRestored?: () => void;
 }
 
 /** Корзина (слайс 3): список записей на 30 дней, «Восстановить» и «Удалить навсегда» (подтверждение — в `TrashView`). */
-export function useTrash({ api, open, refreshChats }: UseTrashOptions) {
+export function useTrash({ api, open, refreshChats, onRestored }: UseTrashOptions) {
   const [items, setItems] = useState<TrashItem[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<ErrorCode | null>(null);
@@ -43,7 +45,14 @@ export function useTrash({ api, open, refreshChats }: UseTrashOptions) {
     [refreshChats],
   );
 
-  const restore = useCallback((id: string) => remove(api.restoreMessage(id), id), [api, remove]);
+  const restore = useCallback(
+    (id: string) =>
+      remove(
+        api.restoreMessage(id).then(() => onRestored?.()),
+        id,
+      ),
+    [api, remove, onRestored],
+  );
   const purge = useCallback((id: string) => remove(api.purgeMessage(id), id), [api, remove]);
   const clearError = useCallback(() => setError(null), []);
 

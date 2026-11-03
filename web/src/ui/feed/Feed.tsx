@@ -83,9 +83,12 @@ interface FeedProps {
   loading?: boolean;
   /**
    * Slice 6: the journal day at the top of the feed, reported when the list changes and while the person scrolls. A scroll the
-   * feed makes itself (to an entry, to the bottom) is not reported until the person scrolls again.
+   * feed makes itself to an entry is not reported until the person scrolls again; moving to the bottom and opening another
+   * list (`listKey`) are reported, because the day at the top is then not what the board still shows.
    */
   onTopDay?: (journalDate: string) => void;
+  /** Slice 6: what the list belongs to (the open chat). A new value starts listening to the person's position again. */
+  listKey?: string;
 }
 
 /**
@@ -111,6 +114,7 @@ export function Feed({
   toBottom = 0,
   loading = false,
   onTopDay,
+  listKey,
 }: FeedProps) {
   const { t } = useTranslation();
   const language = useLanguage();
@@ -186,14 +190,25 @@ export function Feed({
     beforeNewer.current = null;
   }, [messages]);
 
+  // Another list (the person opened another chat): after a jump the feed stayed deaf until the next scroll, and the board kept
+  // the day of the old chat. Declared before the effects that jump, so a jump that comes with the new list still wins.
+  const listSeen = useRef(listKey);
+  useLayoutEffect(() => {
+    if (listSeen.current === listKey) return;
+    listSeen.current = listKey;
+    listening.current = true;
+  }, [listKey]);
+
   // Переход из поиска: запись по центру области. Мгновенно, без плавной прокрутки (тихий интерфейс, Reduce Motion).
   // Область `column-reverse`: нижний край — `scrollTop = 0`. Прокрутка по просьбе родителя, не при первом показе.
   const bottomSeen = useRef(toBottom);
   useLayoutEffect(() => {
     if (bottomSeen.current === toBottom) return;
     bottomSeen.current = toBottom;
-    listening.current = false;
     if (scroller.current) scroller.current.scrollTop = 0;
+    // The bottom is no jump to a day: the day at the top is what the board has to follow.
+    listening.current = true;
+    reportTop();
   }, [toBottom]);
 
   // Один раз на просьбу (`nonce`): запись могла ещё не попасть в ленту, тогда прокрутка ждёт её появления, но, найдя запись,

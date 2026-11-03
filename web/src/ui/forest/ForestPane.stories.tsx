@@ -51,7 +51,7 @@ function PaneStory({ table = FOREST_2026, mode = "forest", selected = "2026-09-1
   );
 }
 
-/** The whole year of 2026 on the isometric board: winter at both ends, spring, summer and autumn between; empty days are bare ground. */
+/** The whole year of 2026 on the board: winter at both ends, spring, summer and autumn between; empty days are bare ground. */
 export const WholeYear: Story = { render: () => <PaneStory selected={null} /> };
 
 export const WholeYearEnglish: Story = { ...WholeYear, globals: { language: "en" } };
@@ -106,6 +106,11 @@ declare global {
   }
 }
 
+/** The year with "today" at its last day, so that every day of it can be opened (the fixtures stop at a day in the middle of the year). */
+function wholeYear(table: ForestYear): ForestYear {
+  return { ...table, today: table.days[table.days.length - 1]?.date ?? table.today };
+}
+
 /**
  * The board with a probe for the visual click-through test (tests/visual/forest.spec.ts): the test asks where each day is and
  * clicks it with a real pointer; the day that the board opened is written next to the board.
@@ -141,7 +146,7 @@ function ClickThrough({ table }: { table: ForestYear }) {
 }
 
 /** Every day of 2026 (Monday first) can be clicked: the test clicks each one and the board opens that day. */
-export const ClickThrough2026: Story = { render: () => <ClickThrough table={FOREST_2026} /> };
+export const ClickThrough2026: Story = { render: () => <ClickThrough table={wholeYear(FOREST_2026)} /> };
 
 /** The same for 2028 (Sunday first, 54 columns). */
-export const ClickThrough2028Sunday: Story = { render: () => <ClickThrough table={FOREST_2028_SUNDAY} /> };
+export const ClickThrough2028Sunday: Story = { render: () => <ClickThrough table={wholeYear(FOREST_2028_SUNDAY)} /> };

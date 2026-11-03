@@ -277,7 +277,7 @@ export class ForestEngine {
     this.gesture.last = now;
   }
 
-  /** The frame rate of the finished gesture, numbers only (the real-hardware check of the slice reads the web console). */
+  /** The frame rate of the finished gesture, numbers only (a dev build prints it to the web console; a release build has no way to read it). */
   private reportGesture(): void {
     const { frames, start, last } = this.gesture;
     if (start > 0 && frames > 10 && last > start) console.debug(`forest gesture: ${frames} frames, ${Math.round((frames * 1000) / (last - start))} fps`);

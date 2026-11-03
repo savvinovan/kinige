@@ -104,7 +104,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     canDrop: (chatId) => chatId !== selected,
     onDrop: (messageId, chatId) => feed.actions.onMoveTo(messageId, chatId),
   });
-  const trash = useTrash({ api, open: selected === null, refreshChats });
+  const trash = useTrash({ api, open: selected === null, refreshChats, onRestored: bumpMutations });
   const { clearError: clearTrashError } = trash;
 
   /** Открыть чат (или корзину при `null`). Черновик прежнего чата уходит в Rust до переключения. */

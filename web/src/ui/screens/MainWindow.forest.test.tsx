@@ -228,6 +228,20 @@ describe("the forest follows the journal", () => {
     await waitFor(() => expect(forestCalls(api).length).toBeGreaterThan(before));
   });
 
+  it("restoring an entry from the trash reloads it: the day has its note again", async () => {
+    const { api } = setup();
+    const plate = (await screen.findByText("Today in the inbox")).closest("article") as HTMLElement;
+    fireEvent.contextMenu(plate);
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Delete" }));
+    await waitFor(() => expect(cell("2026-10-21")).toHaveAttribute("aria-label", expect.stringMatching(/No notes/)));
+    fireEvent.click(screen.getByRole("button", { name: /^Trash/ }));
+    const before = forestCalls(api).length;
+    fireEvent.click(await screen.findByRole("button", { name: /^Restore the entry/ }));
+    await waitFor(() => expect(forestCalls(api).length).toBeGreaterThan(before));
+    fireEvent.click(await screen.findByRole("button", { name: /^Inbox/ }));
+    await waitFor(() => expect(cell("2026-10-21")).toHaveAttribute("aria-label", expect.stringMatching(/1 note/)));
+  });
+
   it("the outlined day follows the day at the top of the feed inside a year, without reloading the year", async () => {
     const { api } = setup();
     await screen.findByText("Today in the inbox");

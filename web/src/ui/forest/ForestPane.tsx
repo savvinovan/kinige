@@ -7,7 +7,7 @@ import { IconButton } from "../controls/IconButton";
 import { SegmentedChoice } from "../settings/SegmentedChoice";
 import { ForestBoard, type ZoomRequest } from "./ForestBoard";
 import { ForestCalendar } from "./ForestCalendar";
-import { ForestStrip } from "./ForestStrip";
+import { ForestStrip, ForestStripPlaceholder } from "./ForestStrip";
 import "./forest.css";
 
 export interface ForestPaneProps {
@@ -36,7 +36,7 @@ export interface ForestPaneProps {
 const SEASONS: readonly Season[] = ["winter", "spring", "summer", "autumn"];
 
 /**
- * The forest above the feed: the strip (a flat heat map of the year) or, expanded, the isometric board or the calendar under a
+ * The forest above the feed: the strip (a flat heat map of the year) or, expanded, the board (oblique projection) or the calendar under a
  * header with the year, "Whole year", the season zooms, the "Forest / Calendar" switch, collapse and hide. It is a region of the
  * main window, not a screen of its own; nothing here loads data (the host passes the year table).
  */
@@ -53,6 +53,8 @@ export function ForestPane(props: ForestPaneProps) {
       {table === null ? (
         failed ? (
           <p className="forest-pane__note">{t("forest.loadFailed")}</p>
+        ) : !expanded ? (
+          <ForestStripPlaceholder />
         ) : null
       ) : !expanded ? (
         <ForestStrip table={table} selected={selected} onOpenDay={onOpenDay} />

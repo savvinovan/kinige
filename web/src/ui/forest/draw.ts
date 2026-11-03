@@ -4,7 +4,8 @@
 import type { Season } from "../../api/generated/Season";
 import type { Board, BoardCell } from "./board";
 import { monthStarts, rowDates } from "./board";
-import { type Camera, type Cell, type Pt, TILE_CORNERS, TW, cellCenter, worldToScreen } from "./iso";
+import { type Camera, type Cell, type Pt, ROW_PITCH, TILE_CORNERS, TW, cellCenter, worldToScreen } from "./iso";
+import { fontPx, pickMonths, weekdayStep } from "./labels";
 import type { Palette } from "./palette";
 import { type Lod, drawTree, lodOfTile, overlaps, treeBox, treePad, tuft } from "./shapes";
 
@@ -177,20 +178,9 @@ function outline(ctx: CanvasRenderingContext2D, view: View, c: BoardCell, color:
   ctx.globalAlpha = 1;
 }
 
-/** Below this tile width the months are one letter and the weekday letters are gone; below the next one the weekdays are thinned. */
-const LABELS_COMPACT_BELOW = 16;
-const LABELS_THIN_BELOW = 24;
-/** Months are one letter on boards so small that the short names would touch. */
-const LABELS_NARROW_MONTHS_BELOW = 14;
-
 /** Months on the front edge and weekday letters on the left edge: they are what makes a date readable. */
 function drawLabels(ctx: CanvasRenderingContext2D, board: Board, view: View, palette: Palette, labels: Labels): void {
   const { cam } = view;
-  const tile = TW * cam.s;
-  if (tile < 12) return; // a dot-sized board: the labels would only smear
-  const compact = tile < LABELS_COMPACT_BELOW; // rows only a few pixels apart: no weekday letters, or they would pile up
-  const thin = tile < LABELS_THIN_BELOW;
-  const narrowMonths = tile < LABELS_NARROW_MONTHS_BELOW;
   ctx.font = palette.font;
   ctx.fillStyle = palette.label;
   // A halo in the background colour keeps the labels readable over the canopies.
@@ -198,19 +188,21 @@ function drawLabels(ctx: CanvasRenderingContext2D, board: Board, view: View, pal
   ctx.lineWidth = 3;
   ctx.lineJoin = "round";
   ctx.textBaseline = "middle";
-  const put = (text: string, row: number, col: number, align: CanvasTextAlign) => {
-    const p = worldToScreen(cam, cellCenter({ row, col }));
+  const put = (text: string, p: Pt, align: CanvasTextAlign) => {
     ctx.textAlign = align;
     ctx.strokeText(text, p.x, p.y);
     ctx.fillText(text, p.x, p.y);
   };
   const dates = rowDates(board);
-  for (let row = 0; row < board.dims.rows && !compact; row++) {
+  const step = weekdayStep(ROW_PITCH * cam.s, fontPx(palette.font));
+  for (let row = 0; row < board.dims.rows && step > 0; row += step === 2 ? 2 : 1) {
     const letter = labels.weekdays[row];
-    if (letter && dates[row] !== null && (!thin || row % 2 === 0)) put(letter, row, -1, "right");
+    if (letter && dates[row] !== null) put(letter, worldToScreen(cam, cellCenter({ row, col: -1 })), "right");
   }
-  for (const { month, col } of monthStarts(board)) {
-    const name = (narrowMonths ? labels.monthsNarrow : labels.months)[month - 1];
-    if (name) put(name, board.dims.rows, col, "center");
-  }
+  const spots = monthStarts(board).map(({ month, col }) => ({
+    ...worldToScreen(cam, cellCenter({ row: board.dims.rows, col })),
+    full: labels.months[month - 1] ?? "",
+    narrow: labels.monthsNarrow[month - 1] ?? "",
+  }));
+  for (const { spot, text } of pickMonths(spots, (label) => ctx.measureText(label).width)) put(text, spot, "center");
 }

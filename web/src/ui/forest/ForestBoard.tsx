@@ -41,7 +41,7 @@ const CARD_GAP = 16;
 const STEPS: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
 
 /**
- * The isometric board of a year on a canvas (ADR-0013). The canvas is one focusable element: Tab into it, then left and right
+ * The board of a year on a canvas, in an oblique projection (ADR-0013). The canvas is one focusable element: Tab into it, then left and right
  * for the previous and next day, up and down for the previous and next week, Enter to open the day in the feed, Escape to clear
  * the selection. The keyboard selection is announced in a live region ("October 16, 5 notes, a large tree"). The pointer
  * selects nothing by itself: hover shows the card, a click opens the day, a drag pans, wheel and pinch zoom.

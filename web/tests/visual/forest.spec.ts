@@ -1,11 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // The click-through of the forest (slice 6): every day that can be opened is clicked with a real pointer on the expanded
-// board, and the board must open exactly that day. 0 misses. Two years: 2026 (Monday first, 53 columns) and 2028 (Sunday
-// first, 54 columns). The stories `ClickThrough*` expose where each day is (`window.__forestProbe`).
+// board, and the board must open exactly that day. 0 misses. Two whole years: 2026 (Monday first, 53 columns, 365 days) and 2028
+// (Sunday first, 54 columns, 366 days, so 31 December 2028 in the 54th column is clicked too). The stories `ClickThrough*`
+// expose where each day is (`window.__forestProbe`).
 const STORIES = [
-  { id: "forest-pane-and-board--click-through-2026", year: "2026", days: 294 },
-  { id: "forest-pane-and-board--click-through-2028-sunday", year: "2028", days: 167 },
+  { id: "forest-pane-and-board--click-through-2026", year: "2026", days: 365 },
+  { id: "forest-pane-and-board--click-through-2028-sunday", year: "2028", days: 366 },
 ];
 
 async function open(page: Page, id: string) {

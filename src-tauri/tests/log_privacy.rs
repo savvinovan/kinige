@@ -152,7 +152,7 @@ fn the_forest_commands_log_no_dates_excerpts_or_chat_ids() {
     let table = call(
         &window,
         "get_forest_year",
-        json!({"year": year, "firstWeekday": "monday"}),
+        json!({"year": year, "firstWeekday": "monday", "weekdaySource": "fallback"}),
     )
     .unwrap();
     assert!(
@@ -191,6 +191,13 @@ fn the_forest_commands_log_no_dates_excerpts_or_chat_ids() {
     .expect_err("not a view");
 
     let lines = CAPTURED.lock().unwrap().clone();
+    // The debug line about the first weekday is among the captured lines, so that the checks below look at it too.
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.contains("forest: first weekday")),
+        "the weekday line was not captured: {lines:?}"
+    );
     for line in &lines {
         assert!(
             !line.to_uppercase().contains(MARK),

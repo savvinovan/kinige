@@ -11,6 +11,8 @@ const COL = { x: 64, y: 12 };
 /** One weekday down: it goes down and a little to the left; the depth of a row gives the ground its tilt and the trees room to stand. */
 const ROW = { x: -26, y: 50 };
 export const TW = COL.x;
+/** Distance between two weekday rows on the screen at scale 1 (the label decision needs it). */
+export const ROW_PITCH = ROW.y;
 const DET = COL.x * ROW.y - ROW.x * COL.y;
 
 export interface Pt {

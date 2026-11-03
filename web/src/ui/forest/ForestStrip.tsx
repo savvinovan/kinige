@@ -121,3 +121,23 @@ export function ForestStrip({ table, selected, onOpenDay }: ForestStripProps) {
     </div>
   );
 }
+
+/** What the strip is made of while the year is not here yet: the same grid with invisible cells, so the pane has its height from the first frame and nothing jumps when the table arrives. */
+export function ForestStripPlaceholder() {
+  const cols = 53;
+  return (
+    <div className="forest-strip forest-strip--placeholder" style={{ "--forest-cols": String(cols) } as CSSProperties} aria-hidden="true">
+      <div className="forest-strip__row">
+        <span className="forest-strip__month">{"\u00a0"}</span>
+      </div>
+      {ROWS.map((row) => (
+        <div className="forest-strip__row" key={row}>
+          <span className="forest-strip__weekday">{"\u00a0"}</span>
+          {Array.from({ length: cols }, (_, col) => (
+            <div className="forest-strip__day" key={col} style={{ gridColumnStart: col + 2 }} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}

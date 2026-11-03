@@ -20,6 +20,8 @@
 /* Expanded: a share of the main area, the feed and the input keep the rest. */
 .forest-pane--expanded {
   flex: 0 1 max(var(--layout-forest-pane-height), var(--layout-forest-pane-min-height));
+  /* The pane is a fixed share of the window: whatever does not fit inside it is cut, never pushed into a scroll bar of the window. */
+  overflow: hidden;
 }
 
 .forest-pane__header {
@@ -87,6 +89,7 @@
   position: relative;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* The row under the board for the selected day; it keeps its height when empty. */
@@ -252,6 +255,11 @@
 .forest-strip__day[data-season="autumn"],
 .forest-calendar__day[data-season="autumn"] {
   --forest-tint: var(--color-forest-autumn-crown-mid);
+}
+
+/* The strip before its year has arrived: the cells take their room and show nothing. */
+.forest-strip--placeholder .forest-strip__day {
+  visibility: hidden;
 }
 
 .forest-strip__day[data-stage="1"] {

@@ -3,7 +3,7 @@ import { rect } from "../../test/rect";
 
 /** A 2D context that accepts every call and remembers nothing: jsdom has no canvas, the engine only needs something to draw on. */
 function fakeContext(): CanvasRenderingContext2D {
-  const target: Record<string, unknown> = { getTransform: () => ({ a: 1 }) };
+  const target: Record<string, unknown> = { getTransform: () => ({ a: 1 }), measureText: (text: string) => ({ width: text.length * 7 }) };
   return new Proxy(target, {
     get: (object, key) => (key in object ? object[key as string] : () => undefined),
     set: () => true,

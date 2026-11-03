@@ -199,6 +199,7 @@ export function MainWindowView({
               toBottom={feedToBottom}
               loading={feedLoading}
               onTopDay={onFeedTopDay}
+              listKey={selectedChatId ?? "trash"}
             />
             <Composer
               key={selectedChatId ?? "trash"}

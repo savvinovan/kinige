@@ -10,8 +10,9 @@ const YEAR: i32 = 2026;
 const START: i64 = 1_767_225_600_000; // 2026-01-01 00:00 UTC
 const DAY_MS: i64 = 86_400_000;
 
-/// Pieces of text: ASCII, Cyrillic (2 bytes a character), emoji (4 bytes), a combining mark (2 code points), a heading.
-const PIECES: [&str; 6] = ["word ", "слово ", "😀", "e\u{301}", "# ", "ж"];
+/// Pieces of text: ASCII, Cyrillic (2 bytes a character), emoji (4 bytes), a combining mark (2 code points), a heading, NUL.
+/// A NUL character is there too: SQLite's `length()` stops at it, the domain does not, and the store has to give the domain's number.
+const PIECES: [&str; 7] = ["word ", "слово ", "😀", "e\u{301}", "# ", "ж", "\0"];
 
 struct Rng(u64);
 
@@ -164,4 +165,65 @@ fn the_year_query_walks_the_day_index_not_the_table() {
         !plan.iter().any(|step| step.contains("TEMP B-TREE")),
         "the grouping reads the index in order: {plan:?}"
     );
+}
+
+#[test]
+fn damaged_rows_are_skipped_the_same_way_everywhere() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open(dir.path());
+    let at = |day: i64| Now::at(START + day * DAY_MS + 3_600_000, "UTC");
+    let kept = store
+        .send_message(INBOX_ID, "a good entry of the second day", &at(1))
+        .unwrap();
+    let damaged = store
+        .send_message(INBOX_ID, "an entry that will lose its type", &at(-200))
+        .unwrap();
+    // Some days into the year, so that today is not still in the year before.
+    let now = Now::at(START + 5 * DAY_MS, "UTC");
+    let raw = Connection::open(dir.path().join("kinige.db")).unwrap();
+    // A text that is a blob and a creation time before 1970: the first is skipped, the second must not break the first-entry order.
+    raw.execute(
+        "UPDATE message SET body_md = CAST(body_md AS BLOB) WHERE id = ?1",
+        [&damaged.id],
+    )
+    .unwrap();
+    raw.execute(
+        "UPDATE message SET created_at = -5 WHERE id = ?1",
+        [&kept.id],
+    )
+    .unwrap();
+
+    let table = store
+        .get_forest_year(YEAR, FirstWeekday::Monday, &now)
+        .unwrap();
+    let day = |date: &str| table.days.iter().find(|d| d.date == date).unwrap();
+    assert_eq!(
+        table.days.iter().map(|d| d.notes).sum::<u32>(),
+        1,
+        "the damaged entry is in another year anyway"
+    );
+    assert_eq!(day(&kept.journal_date).notes, 1);
+    assert_eq!(
+        day(&kept.journal_date).excerpt.as_deref(),
+        Some("a good entry of the second day")
+    );
+    assert_eq!(
+        store
+            .forest_day_target(&damaged.journal_date, None)
+            .unwrap(),
+        None
+    );
+    assert_eq!(
+        store
+            .forest_day_target(&kept.journal_date, None)
+            .unwrap()
+            .map(|t| t.message_id),
+        Some(kept.id)
+    );
+    // The damaged entry is the oldest one and it is from the year before: it must not set the lower end of the year switch.
+    assert_eq!(table.min_year, YEAR);
+    let earlier = store
+        .get_forest_year(YEAR - 1, FirstWeekday::Monday, &now)
+        .unwrap();
+    assert!(earlier.days.iter().all(|d| d.notes == 0));
 }

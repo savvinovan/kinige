@@ -28,7 +28,7 @@ function cameras(w: number, h: number, dims: { rows: number; cols: number }): Ca
   return out;
 }
 
-describe("hit-test by the inverse isometric transform", () => {
+describe("hit-test by the inverse of the projection", () => {
   for (const { year, first } of CASES) {
     it(`${year} ${first}: the centre of every day's cell hits that day under many cameras`, () => {
       const board = buildBoard(demoYear(year, { first }));
