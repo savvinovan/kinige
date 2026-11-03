@@ -292,8 +292,10 @@ if ($missing -ne '1') { Fail "the sweep marked $missing files as missing, expect
 
 # ---- 2. Shift+Tab from the composer lands on the last photo or card of the feed; Enter opens it ----------------------------
 
+# A first run with four stops ended on the last file card; two stops further back is the photo that stands above the two cards
+# in the same entry, so six stops are sent.
 Send-Keys 'Kinige' '+{TAB}' $true
-for ($i = 0; $i -lt 3; $i++) { Send-Keys 'Kinige' '+{TAB}' $false }
+for ($i = 0; $i -lt 5; $i++) { Send-Keys 'Kinige' '+{TAB}' $false }
 Send-Keys 'Kinige' '{ENTER}' $false
 Start-Sleep -Seconds 3
 Shoot '02-after-shift-tab-and-enter' 'Kinige'
