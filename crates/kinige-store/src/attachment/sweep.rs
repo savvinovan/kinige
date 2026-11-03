@@ -8,8 +8,9 @@ use crate::{Now, Store, StoreError};
 use kinige_domain::history::DAY_MS;
 use rusqlite::{Connection, OptionalExtension};
 use std::collections::{HashMap, HashSet};
-use std::fs;
+use std::fs::{self, File};
 use std::path::Path;
+use std::time::{Duration, UNIX_EPOCH};
 
 /// How long a file without a row waits in `.orphans/` before it is deleted.
 const ORPHAN_DAYS: i64 = 30;
@@ -52,11 +53,13 @@ fn sweep(
     let mut report = SweepReport {
         stale_dirs: remove_other_processes(&dirs.tmp_root(), dirs.process())
             + remove_other_processes(&dirs.open_root(), dirs.process()),
+        // Expiry comes first: a file moved to `.orphans/` in this pass is never a candidate in the same pass.
+        orphans_expired: expire_orphans(&dirs.orphans(), now_ms),
         ..SweepReport::default()
     };
     let locals = load_locals(conn).map_err(write_err)?;
     let drafts = load_drafts(conn).map_err(write_err)?;
-    let mut present = sort_files(conn, dirs, faults, &locals, &drafts, &mut report)?;
+    let mut present = sort_files(conn, dirs, faults, &locals, &drafts, now_ms, &mut report)?;
     let tx = conn.transaction().map_err(write_err)?;
     for (id, (file_name, state)) in &locals {
         if present.contains(file_name) {
@@ -84,7 +87,6 @@ fn sweep(
     }
     tx.commit().map_err(write_err)?;
     report.thumbs_removed = remove_orphan_thumbs(conn, dirs).map_err(write_err)?;
-    report.orphans_expired = expire_orphans(&dirs.orphans(), now_ms);
     Ok(report)
 }
 
@@ -96,6 +98,7 @@ fn sort_files(
     faults: &super::Faults,
     locals: &HashMap<String, (String, String)>,
     drafts: &HashMap<String, String>,
+    now_ms: i64,
     report: &mut SweepReport,
 ) -> Result<HashSet<String>, StoreError> {
     let owned: HashSet<&str> = locals
@@ -127,18 +130,31 @@ fn sort_files(
         if purged {
             delete_stored_files(dirs, faults, &[(id.to_string(), Some(name))]);
             report.deleted += 1;
-        } else if move_to_orphans(dirs, &name) {
+        } else if move_to_orphans(dirs, &name, now_ms) {
             report.orphaned += 1;
         }
     }
     Ok(present)
 }
 
-fn move_to_orphans(dirs: &Dirs, file_name: &str) -> bool {
+/// Moves a file aside and stamps it with the time of the move: the 30 days count from here, not from when the file was written
+/// (a rename keeps the modification time, so a file older than 30 days would otherwise be expired at once).
+fn move_to_orphans(dirs: &Dirs, file_name: &str, now_ms: i64) -> bool {
     let Some(from) = dirs.stored(file_name) else {
         return false;
     };
-    make_dir(&dirs.orphans()).is_ok() && fs::rename(from, dirs.orphans().join(file_name)).is_ok()
+    let to = dirs.orphans().join(file_name);
+    if make_dir(&dirs.orphans()).is_err() || fs::rename(from, &to).is_err() {
+        return false;
+    }
+    // If stamping fails the file keeps its old time and may expire early; with the sweep running at startup that is a rare case
+    // of a failed metadata write, and the file is still moved aside rather than deleted.
+    let moved_at = UNIX_EPOCH + Duration::from_millis(u64::try_from(now_ms).unwrap_or(0));
+    let _ = File::options()
+        .write(true)
+        .open(&to)
+        .and_then(|file| file.set_modified(moved_at));
+    true
 }
 
 /// A file of a row that lies in `.orphans/` goes back (restoring an older backup and then a newer one).
@@ -255,7 +271,7 @@ fn expire_orphans(dir: &Path, now_ms: i64) -> usize {
                 .metadata()
                 .and_then(|meta| meta.modified())
                 .ok()
-                .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+                .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
                 .map(|age| u64::try_from(age.as_millis()).unwrap_or(u64::MAX));
             modified.is_some_and(|ms| ms <= border) && fs::remove_file(entry.path()).is_ok()
         })

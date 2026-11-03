@@ -404,6 +404,45 @@ fn the_sweep_marks_missing_files_and_gives_files_back_from_orphans() {
 }
 
 #[test]
+fn a_file_older_than_thirty_days_that_loses_its_row_waits_thirty_days_from_the_move() {
+    // Day 0 a photo is attached, day 40 its row is gone (an older backup restored): the file is set aside, not deleted in the same
+    // pass, and a newer backup restored within 30 days still finds it.
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    let stored = dir
+        .path()
+        .join("attachments/00000000-0000-4000-8000-00000000dddd.png");
+    std::fs::create_dir_all(stored.parent().unwrap()).unwrap();
+    std::fs::write(&stored, b"photo").unwrap();
+    let long_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(60 * 24 * 3600);
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&stored)
+        .unwrap()
+        .set_modified(long_ago)
+        .unwrap();
+    let orphan = dir
+        .path()
+        .join("attachments/.orphans/00000000-0000-4000-8000-00000000dddd.png");
+
+    let day40 = Now::system();
+    let report = store.sweep_attachments(&day40).unwrap();
+    assert_eq!(
+        (report.orphaned, report.orphans_expired),
+        (1, 0),
+        "{report:?}"
+    );
+    assert!(orphan.is_file() && !stored.exists());
+
+    let later = |days: i64| Now::at(day40.ms + days * 24 * 3600 * 1000, &day40.tz);
+    store.sweep_attachments(&later(29)).unwrap();
+    assert!(orphan.is_file(), "still there after 29 days");
+    let report = store.sweep_attachments(&later(31)).unwrap();
+    assert_eq!(report.orphans_expired, 1, "{report:?}");
+    assert!(!orphan.exists(), "gone 31 days after the move");
+}
+
+#[test]
 fn orphans_are_deleted_after_thirty_days_and_unowned_thumbnails_at_once() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
