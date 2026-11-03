@@ -374,6 +374,20 @@ fn a_truncated_jpeg_and_a_decompression_bomb_get_no_preview_and_no_oom() {
 }
 
 #[test]
+fn a_tile_above_the_field_has_its_thumbnail_before_it_is_sent_and_not_after_it_is_removed() {
+    // Found in the real window: the tiles asked the protocol for a picture that only the sent rows had.
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    let tile = attach_file(&store, dir.path(), "tile.jpg", &jpeg(300, 200)).unwrap();
+    let thumb = store
+        .media(&tile.id, MediaVariant::Thumb)
+        .expect("a tile has a thumbnail");
+    assert_eq!(decode_size(&thumb.bytes), (300, 200));
+    store.remove_draft_attachment(INBOX_ID, &tile.id).unwrap();
+    assert!(store.media(&tile.id, MediaVariant::Thumb).is_none());
+}
+
+#[test]
 fn the_protocol_serves_only_what_it_may() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());

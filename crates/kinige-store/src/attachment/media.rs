@@ -142,23 +142,36 @@ impl Store {
     }
 }
 
+/// An attachment of an entry, or a tile above the input field (a draft attachment has the same id as the row it will become).
 fn find(conn: &rusqlite::Connection, id: &str) -> Result<Option<Found>, StoreError> {
-    let row = conn
+    let read = |row: &rusqlite::Row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, i64>(2)?,
+            row.get::<_, String>(3)?,
+        ))
+    };
+    let sent = conn
         .query_row(
             "SELECT a.kind, a.mime, a.byte_size, l.file_name FROM attachment a \
              JOIN attachment_local l ON l.attachment_id = a.id WHERE a.id = ?1",
             [id],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, i64>(2)?,
-                    row.get::<_, String>(3)?,
-                ))
-            },
+            read,
         )
         .optional()
         .map_err(read_err)?;
+    let row = match sent {
+        Some(row) => Some(row),
+        None => conn
+            .query_row(
+                "SELECT kind, mime, byte_size, file_name FROM draft_attachment WHERE attachment_id = ?1",
+                [id],
+                read,
+            )
+            .optional()
+            .map_err(read_err)?,
+    };
     Ok(row.and_then(|(kind, mime, byte_size, file_name)| {
         Some(Found {
             kind: AttachmentKind::parse(&kind)?,

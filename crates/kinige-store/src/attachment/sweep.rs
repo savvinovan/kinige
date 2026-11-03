@@ -226,10 +226,14 @@ fn remove_orphan_thumbs(conn: &Connection, dirs: &Dirs) -> rusqlite::Result<usiz
         if !kinige_domain::hlc::is_uuid_v4(id) || !matches!(ext, "jpg" | "png") {
             continue;
         }
+        // A tile above the input field has a thumbnail too (the same id as the row it becomes on sending).
         let known: Option<i64> = conn
-            .query_row("SELECT 1 FROM attachment WHERE id = ?1", [id], |row| {
-                row.get(0)
-            })
+            .query_row(
+                "SELECT 1 FROM attachment WHERE id = ?1 \
+                 UNION ALL SELECT 1 FROM draft_attachment WHERE attachment_id = ?1",
+                [id],
+                |row| row.get(0),
+            )
             .optional()?;
         if known.is_none() && fs::remove_file(entry.path()).is_ok() {
             removed += 1;
