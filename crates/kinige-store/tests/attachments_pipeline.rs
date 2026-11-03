@@ -326,7 +326,7 @@ fn thumbnails_fit_960_rotate_drop_exif_and_are_cached() {
 }
 
 #[test]
-fn a_truncated_jpeg_and_a_decompression_bomb_get_no_preview_and_no_oom() {
+fn a_truncated_png_and_a_decompression_bomb_get_no_preview_and_no_oom() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     // A truncated PNG: the header reads, the data does not.

@@ -79,7 +79,7 @@ A 1280 × 800 window. The composer shows the paperclip `IconButton` ("Attach fil
   - pipeline: `abort` between rename and commit, then sweep, gives no orphans and no half rows;
   - a source that changes size while copying gives `attachment_unreadable`;
   - ENOSPC, injected, rolls back;
-  - 0-byte file, a 2 GiB + 1 file (sparse), a truncated JPEG, a decompression bomb (100k × 100k header) gives "No preview" without OOM, an EXIF orientation of 6;
+  - 0-byte file, a 2 GiB + 1 file (sparse), a truncated JPEG, a decompression bomb (100k × 100k header) gives "No preview" without OOM, an EXIF orientation of 6 (as built: the JPEG decoder of `image` 0.25 is lenient and still draws a truncated JPEG, so the test uses a truncated PNG for "No preview"; the bomb and the size caps are as written);
   - send: garbage `attachment_ids` (not a UUID, 1 MiB, another chat's, duplicates, 11 ids);
   - trash, restore and purge: tombstones, files gone after the commit;
   - backup restore: the `missing` state and the return from `.orphans/`;
