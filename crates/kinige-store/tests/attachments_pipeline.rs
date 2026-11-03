@@ -112,6 +112,9 @@ fn paths_that_are_not_regular_files_are_unreadable() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let file = write(dir.path(), "real.txt", b"hello");
+    // Only the symlink case below uses it (Unix).
+    #[cfg(not(unix))]
+    let _ = &file;
     std::fs::create_dir(dir.path().join("folder")).unwrap();
     let missing = dir.path().join("missing.txt");
     #[cfg(unix)]

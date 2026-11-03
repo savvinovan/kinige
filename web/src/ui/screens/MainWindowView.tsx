@@ -111,7 +111,8 @@ export interface AttachmentControls {
   onPasteFiles: (files: readonly File[]) => void;
   /** Files are dragged over the window: "Drop to attach" over the feed. */
   dragOver: boolean;
-  onOpenImage: (messageId: string, attachmentId: string) => void;
+  /** A photo of an entry: the entry's attachments (the lightbox pages through its photos) and the photo clicked. */
+  onOpenImage: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
   onOpenFile: (attachmentId: string) => void;
 }
 

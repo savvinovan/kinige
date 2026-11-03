@@ -91,7 +91,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onMutated: bumpMutations,
   });
   const { reload: reloadFeed, restart: restartFeed } = feed;
-  const attachments = useAttachments({ api, selected, tiles, addTiles, dropTile, messages: feed.messages, onError: setComposerError });
+  const attachments = useAttachments({ api, selected, tiles, addTiles, dropTile, onError: setComposerError });
   const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
   // Window focus: has a new journal day begun (the "Today" and "Yesterday" labels in the feed; the card rereads itself).
   const { checkDay } = feed;

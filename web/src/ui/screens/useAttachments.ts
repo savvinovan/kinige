@@ -3,7 +3,6 @@ import { type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { AttachOutcome } from "../../api/generated/AttachOutcome";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
-import type { FeedMessage } from "../feed/buildFeed";
 import type { AttachmentControls } from "./MainWindowView";
 
 interface UseAttachmentsOptions {
@@ -14,8 +13,6 @@ interface UseAttachmentsOptions {
   tiles: readonly AttachmentView[];
   addTiles: (added: readonly AttachmentView[]) => void;
   dropTile: (attachmentId: string) => void;
-  /** The loaded feed: the lightbox needs the other photos of the entry. */
-  messages: readonly FeedMessage[];
   /** The error above the composer; `null` clears it. */
   onError: (code: ErrorCode | null) => void;
 }
@@ -34,12 +31,12 @@ const GENERIC_PASTE_NAME = /^image\.(png|jpe?g|gif|webp|tiff?)$/i;
  * a path), removing a tile, the "Drop to attach" overlay, opening a photo in the lightbox and a file in its system app. The
  * files themselves are handled in Rust; here is only the state of the screen.
  */
-export function useAttachments({ api, selected, tiles, addTiles, dropTile, messages, onError }: UseAttachmentsOptions) {
+export function useAttachments({ api, selected, tiles, addTiles, dropTile, onError }: UseAttachmentsOptions) {
   const [dragOver, setDragOver] = useState(false);
   const [lightbox, setLightbox] = useState<LightboxState | null>(null);
-  const latest = useRef({ selected, messages });
+  const latest = useRef({ selected });
   useEffect(() => {
-    latest.current = { selected, messages };
+    latest.current = { selected };
   });
 
   const apply = useCallback(
@@ -116,9 +113,8 @@ export function useAttachments({ api, selected, tiles, addTiles, dropTile, messa
     };
   }, [api, apply, fail]);
 
-  const openImage = useCallback((messageId: string, attachmentId: string) => {
-    const message = latest.current.messages.find((m) => m.id === messageId);
-    const images = (message?.attachments ?? []).filter((a) => a.kind === "image");
+  const openImage = useCallback((entryAttachments: readonly AttachmentView[], attachmentId: string) => {
+    const images = entryAttachments.filter((a) => a.kind === "image");
     const index = images.findIndex((a) => a.id === attachmentId);
     if (index >= 0) setLightbox({ images: [...images], index });
   }, []);
