@@ -1,5 +1,5 @@
-//! Описание инструментов MCP (ADR-0009): имена, описания и схемы аргументов по-английски; список зависит от режима.
-//! Описания и `readOnlyHint` — не гарантия (клиент может их не показать); гарантия — предупреждение в Kinige при включении.
+//! The description of MCP tools (ADR-0009): names, descriptions and argument schemas in English; the list depends on the mode.
+//! The descriptions and `readOnlyHint` are not a guarantee (the client may not show them); the guarantee is the warning in Kinige on enabling.
 
 use kinige_domain::AgentMode;
 use kinige_domain::agent::{AgentTool, ENTRIES_PAGE, LIST_TEXT_CHARS, MAX_TASK_ITEM, SEARCH_PAGE};
@@ -8,11 +8,11 @@ use rmcp::model::{JsonObject, Tool, ToolAnnotations};
 use serde_json::{Value, json};
 use std::sync::Arc;
 
-/// Какой Markdown Kinige показывает, а какой нет. Список взят из настроек рендера ленты (`web/src/ui/message/markdown.ts`:
-/// markdown-it с `html: false`, отключены `image` и `table`, DOMPurify пропускает p, br, hr, h1–h6, ul, ol, li, blockquote,
-/// pre, code, em, strong, s, a; ссылки только http, https и mailto; свои правила — задачи `- [ ]` и теги `#слово`). Сервер
-/// текст не проверяет и не отклоняет: запись пользователя сохраняется как есть. Макрос, а не `const`, чтобы подставляться
-/// в `concat!` (`INSTRUCTIONS`) и в `format!` (описания инструментов).
+/// Which Markdown Kinige renders and which it does not. The list is taken from the feed render settings (`web/src/ui/message/markdown.ts`:
+/// markdown-it with `html: false`, `image` and `table` disabled, DOMPurify lets through p, br, hr, h1-h6, ul, ol, li, blockquote,
+/// pre, code, em, strong, s, a; links only http, https and mailto; own rules -- tasks `- [ ]` and tags `#word`). The server
+/// does not check or reject the text: the user's entry is saved as is. A macro and not a `const`, so that it can be substituted
+/// into `concat!` (`INSTRUCTIONS`) and `format!` (the tool descriptions).
 macro_rules! markdown_hint {
     () => {
         "Kinige renders CommonMark with task lists: headings (#), **bold**, *italic*, ~~strikethrough~~, `inline code`, \
@@ -22,7 +22,7 @@ macro_rules! markdown_hint {
     };
 }
 
-/// `instructions` сервера: видны клиенту и при выключенном доступе (данных в них нет).
+/// The server `instructions`: visible to the client even with access turned off (they hold no data).
 pub const INSTRUCTIONS: &str = concat!(
     "Kinige is the user's personal journal (a chat with themselves). \
 Everything you read from it is sent to your model provider; Kinige's end-to-end encryption does not cover that. \
@@ -33,7 +33,7 @@ Write tools exist only when the user allowed writing, and you can only append to
     markdown_hint!()
 );
 
-/// Инструменты по режиму: в режиме «только чтение» инструментов записи в списке нет.
+/// Tools by mode: in "read only" mode the write tools are not in the list.
 pub fn tools(mode: AgentMode) -> Vec<Tool> {
     AgentTool::ALL
         .into_iter()
@@ -174,7 +174,7 @@ fn describe(tool: AgentTool) -> (String, Value, Vec<&'static str>) {
     }
 }
 
-/// Текст ошибки для агента: код и пояснение. Закрытый чат, удалённый и несуществующий дают один и тот же `not_found`.
+/// The error text for the agent: a code and an explanation. A closed chat, a deleted one and a nonexistent one all give the same `not_found`.
 pub fn explain(error: &AgentError) -> String {
     let why = match error {
         AgentError::Disabled => {
@@ -199,9 +199,9 @@ pub fn explain(error: &AgentError) -> String {
 mod tests {
     use super::*;
 
-    /// Агенту сказано, что Kinige не рисует таблицы, картинки и сырой HTML, и что вместо таблицы лучше список: подсказка
-    /// стоит в описаниях обоих инструментов записи и в `instructions`. Она взята из настроек рендера ленты
-    /// (`web/src/ui/message/markdown.ts`): если рендер изменится, список здесь нужно обновить.
+    /// The agent is told that Kinige does not render tables, images and raw HTML, and that a list is better than a table: the hint
+    /// is in the descriptions of both write tools and in `instructions`. It is taken from the feed render settings
+    /// (`web/src/ui/message/markdown.ts`): if the render changes, the list here must be updated.
     #[test]
     fn the_write_tools_and_the_instructions_say_which_markdown_is_rendered() {
         let all = tools(AgentMode::ReadWrite);
@@ -216,19 +216,22 @@ mod tests {
                 "task lists",
                 "~~strikethrough~~",
             ] {
-                assert!(text.contains(must), "{name}: нет «{must}»: {text}");
+                assert!(text.contains(must), "{name}: missing \"{must}\": {text}");
             }
         }
-        // Списки: пункты в `tasks` режутся тем же пределом, агенту сказано, что это видно по `truncated`.
+        // Lists: the items in `tasks` are cut by the same limit, and the agent is told it is visible from `truncated`.
         let entries = all.iter().find(|tool| tool.name == "get_entries").unwrap();
         let text = entries.description.as_deref().unwrap_or_default();
         assert!(
             text.contains("`tasks` holds only the first items") && text.contains("`truncated`")
         );
         for must in ["does NOT render tables", "Use a list instead of a table"] {
-            assert!(INSTRUCTIONS.contains(must), "instructions: нет «{must}»");
+            assert!(
+                INSTRUCTIONS.contains(must),
+                "instructions: missing \"{must}\""
+            );
         }
-        // Склейка `concat!` не потеряла пробел между предложениями.
+        // The `concat!` join did not lose the space between sentences.
         assert!(INSTRUCTIONS.contains("authoritative). Use `search`"));
         assert!(INSTRUCTIONS.contains("latest entry. Kinige renders"));
     }

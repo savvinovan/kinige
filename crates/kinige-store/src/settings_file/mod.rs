@@ -1,6 +1,6 @@
-//! Файл настроек `settings.json` (слайс 4b, ADR-0010): файл — вход, `app_setting` — действующее состояние. Разбор без
-//! паник (`parse`), безопасное чтение и атомарная запись (`io`), применение одной транзакцией (`apply`), файл из состояния
-//! (`render`), поток опроса и записи (`engine`).
+//! The settings file `settings.json` (slice 4b, ADR-0010): the file is the input, `app_setting` is the effective state.
+//! Panic-free parsing (`parse`), safe reading and atomic writing (`io`), applying in one transaction (`apply`), the file
+//! from the state (`render`), the polling and writing thread (`engine`).
 
 mod apply;
 mod engine;

@@ -1,4 +1,4 @@
-//! Помощники тестов сервера MCP: приложение с поднятым слушателем и клиент JSON-RPC по Unix-сокету.
+//! Helpers for the MCP server tests: an app with a running listener and a JSON-RPC client over a Unix socket.
 
 #![allow(dead_code)]
 
@@ -18,12 +18,12 @@ pub struct Mcp {
     pub socket: PathBuf,
 }
 
-/// Приложение, доступ включён, режим и видимые чаты заданы, слушатель поднят в каталоге данных фикстуры.
+/// An app with access turned on, the mode and visible chats set, and the listener up in the fixture's data directory.
 pub fn mcp(mode: AgentMode, chats: &[&str]) -> Mcp {
     mcp_with_recheck(mode, chats, Duration::from_secs(600))
 }
 
-/// То же с коротким интервалом проверки слушателя (перепривязка, перезапуск после паники).
+/// The same with a short listener check interval (rebinding, restart after a panic).
 pub fn mcp_with_recheck(mode: AgentMode, chats: &[&str], recheck: Duration) -> Mcp {
     let fixture = fixture();
     {
@@ -66,7 +66,7 @@ pub struct Client {
 
 impl Client {
     pub fn connect(socket: &std::path::Path) -> Client {
-        Client::try_connect(socket).expect("сокет принимает соединения")
+        Client::try_connect(socket).expect("the socket accepts connections")
     }
 
     pub fn try_connect(socket: &std::path::Path) -> Option<Client> {
@@ -74,7 +74,7 @@ impl Client {
         stream
             .set_read_timeout(Some(Duration::from_secs(10)))
             .unwrap();
-        // Запись большого кадра в сокет, который сервер перестал читать, не должна вешать тест.
+        // Writing a big frame into a socket that the server stopped reading must not hang the test.
         stream
             .set_write_timeout(Some(Duration::from_secs(10)))
             .unwrap();
@@ -90,7 +90,7 @@ impl Client {
         self.writer.write_all(b"\n").unwrap();
     }
 
-    /// Часть строки без перевода строки: так проверяется чтение маркера частями.
+    /// A part of a line without a newline: this is how reading the marker in parts is checked.
     pub fn send_partial(&mut self, bytes: &[u8]) {
         self.writer.write_all(bytes).unwrap();
         self.writer.flush().unwrap();
@@ -100,22 +100,22 @@ impl Client {
         self.send_raw(value.to_string().as_bytes());
     }
 
-    /// Следующее сообщение сервера; `None` — соединение закрыто.
+    /// The next server message; `None` means the connection is closed.
     pub fn recv(&mut self) -> Option<Value> {
         let mut line = String::new();
         match self.reader.read_line(&mut line) {
             Ok(0) | Err(_) => None,
-            Ok(_) => Some(serde_json::from_str(&line).expect("сервер шлёт JSON")),
+            Ok(_) => Some(serde_json::from_str(&line).expect("the server sends JSON")),
         }
     }
 
-    /// Запрос и ответ на него (уведомления сервера пропускаются).
+    /// A request and its reply (server notifications are skipped).
     pub fn request(&mut self, method: &str, params: Value) -> Value {
         let id = self.next;
         self.next += 1;
         self.send(json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}));
         loop {
-            let message = self.recv().expect("сервер ответил");
+            let message = self.recv().expect("the server replied");
             if message["id"] == json!(id) {
                 return message;
             }
@@ -141,7 +141,7 @@ impl Client {
             .collect()
     }
 
-    /// Вызов инструмента: `(isError, текст ответа)`.
+    /// A tool call: `(isError, reply text)`.
     pub fn call(&mut self, tool: &str, arguments: Value) -> (bool, String) {
         let reply = self.request("tools/call", json!({"name": tool, "arguments": arguments}));
         let result = &reply["result"];
@@ -154,8 +154,8 @@ impl Client {
         )
     }
 
-    /// Сервер закрыл соединение. Если он закрыл его, не дочитав присланное (кадр больше предела), ядро шлёт RST, и чтение
-    /// возвращает `ConnectionReset` вместо конца потока: это тоже «закрыто сервером». Таймаут чтения — нет.
+    /// The server closed the connection. If it closed it without reading everything sent (a frame over the limit), the kernel sends RST, and the read
+    /// returns `ConnectionReset` instead of end of stream: that also counts as "closed by the server". A read timeout does not.
     pub fn closed_by_server(&mut self) -> bool {
         let mut rest = Vec::new();
         match self.reader.read_to_end(&mut rest) {
@@ -164,8 +164,8 @@ impl Client {
         }
     }
 
-    /// Строка без `unwrap`: сервер мог закрыть соединение посреди большой записи (`BrokenPipe`, `ConnectionReset`).
-    /// Возвращает, дошла ли строка целиком.
+    /// A line without `unwrap`: the server may have closed the connection in the middle of a big write (`BrokenPipe`, `ConnectionReset`).
+    /// Returns whether the line went through whole.
     pub fn send_raw_lossy(&mut self, bytes: &[u8]) -> bool {
         match self
             .writer
@@ -174,7 +174,7 @@ impl Client {
         {
             Ok(()) => true,
             Err(error) if is_closed_by_peer(&error) => false,
-            Err(error) => panic!("запись в сокет: {error}"),
+            Err(error) => panic!("write to the socket: {error}"),
         }
     }
 }

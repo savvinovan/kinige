@@ -16,54 +16,54 @@ import "./sidebar.css";
 export { toSidebarChat } from "./chats";
 export type { ChatAction, ChatTint, SidebarChat } from "./chats";
 
-/** Рабочее поле «Поиск» (слайс 4): значение, клавиши и связь с результатами (combobox: `aria-activedescendant`). */
+/** The working "Search" field (slice 4): the value, keys and the link to the results (combobox: `aria-activedescendant`). */
 export interface SidebarSearch {
   value: string;
   onChange: (value: string) => void;
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
   inputRef?: Ref<HTMLInputElement>;
-  /** Результаты показаны на месте ленты: поле — combobox, `aria-controls` указывает на список. */
+  /** The results are shown in place of the feed: the field is a combobox, `aria-controls` points to the list. */
   resultsId?: string;
-  /** Id выбранной стрелками строки результатов. */
+  /** The id of the result row selected with the arrows. */
   activeDescendant?: string;
-  /** Значок поиска в свёрнутом сайдбаре: разворачивает сайдбар и ставит фокус в поле. */
+  /** The search icon in the collapsed sidebar: expands the sidebar and focuses the field. */
   onRailClick?: () => void;
 }
 
 interface SidebarProps {
-  /** Чаты в порядке показа. Разделы выводятся по флагам: `archived` — «Архив», иначе `pinned` — «Закреплённые», иначе «Чаты». */
+  /** The chats in display order. Sections are derived from flags: `archived` is "Archive", otherwise `pinned` is "Pinned", otherwise "Chats". */
   chats: readonly SidebarChat[];
-  /** Выбранный чат; `null` — выбрана корзина. */
+  /** The selected chat; `null` means the trash is selected. */
   selectedId: string | null;
-  /** Без обработчика строки только показывают выбор (истории D1). */
+  /** Without a handler the rows only show the selection (D1 stories). */
   onSelect?: (chatId: string) => void;
-  /** Свёрнут в «полосу эмодзи». */
+  /** Collapsed into the "emoji rail". */
   collapsed?: boolean;
-  /** Кнопка «свернуть» / «развернуть»; без обработчика кнопки нет. */
+  /** The "collapse" / "expand" button; without a handler there is no button. */
   onToggleCollapsed?: () => void;
-  /** Кнопка «+» в заголовке раздела «Чаты»; без обработчика кнопки нет. */
+  /** The "+" button in the "Chats" section header; without a handler there is no button. */
   onCreateChat?: () => void;
-  /** Пункт контекстного меню чата. Без обработчика меню у строк нет. */
+  /** A chat context menu item. Without a handler the rows have no menu. */
   onChatAction?: (chatId: string, action: ChatAction) => void;
-  /** Сколько записей в корзине (тихий счётчик в строке «Корзина»). */
+  /** How many entries are in the trash (the quiet counter in the "Trash" row). */
   trashCount?: number;
-  /** Строка «Корзина» над строкой профиля; без обработчика строки нет. */
+  /** The "Trash" row above the profile row; without a handler there is no row. */
   onOpenTrash?: () => void;
-  /** Строка профиля внизу: имя (по умолчанию «Я») и точка статуса у аватара (слайс 11; в D1 не показывается). */
+  /** The profile row at the bottom: the name (default "Я") and the status dot by the avatar (slice 11; not shown in D1). */
   profile?: { name?: string; statusDot?: boolean };
-  /** «Настройки» в меню профиля (слайс 1). */
+  /** "Settings" in the profile menu (slice 1). */
   onOpenSettings?: () => void;
-  /** Поле «Поиск». В историях D1 оно только нарисовано; рабочее поле — `search`. */
+  /** The "Search" field. In D1 stories it is only drawn; the working field is `search`. */
   showSearch?: boolean;
-  /** Рабочий поиск (слайс 4): поле управляется снаружи. Без него поле только нарисовано (если `showSearch`). */
+  /** Working search (slice 4): the field is controlled from outside. Without it the field is only drawn (if `showSearch`). */
   search?: SidebarSearch;
-  /** «Импорт из Telegram…» в меню профиля (слайс 4). */
+  /** "Import from Telegram..." in the profile menu (slice 4). */
   onOpenImport?: () => void;
-  /** «О программе» в меню профиля (KINIG-54). */
+  /** "About" in the profile menu (KINIG-54). */
   onOpenAbout?: () => void;
   /** "Show forest" / "Hide forest" in the profile menu (slice 6): the only way back after the forest is hidden. */
   forestMenu?: { hidden: boolean; onToggle: () => void };
-  /** Чат, над которым сейчас тащат запись (решение приёмки): подсветка цели; сами строки всегда цели (`data-chat-drop`). */
+  /** The chat an entry is dragged over right now (acceptance decision): target highlight; the rows themselves are always targets (`data-chat-drop`). */
   dropTargetId?: string | null;
 }
 
@@ -73,14 +73,15 @@ interface OpenMenu {
 }
 
 /**
- * Сайдбар: поле «Поиск», чаты в разделах «Закреплённые» / «Чаты» / «Архив» (строки «эмодзи + имя + счётчик записей»),
- * «Корзина» и профиль внизу. Выбранный чат подсвечен. Счётчик справа — тихий серый (не акцент): сколько записей накоплено,
- * а не «что не прочитано». Заголовок раздела виден, только если в разделе есть чаты; заголовок «Чаты» с кнопкой «+» виден
- * всегда, пока есть `onCreateChat` (иначе при закреплённом единственном чате создать новый было бы нечем). «Архив» свёрнут и
- * раскрывается сам, если выбран чат из архива.
+ * The sidebar: the "Search" field, chats in the "Pinned" / "Chats" / "Archive" sections (rows "emoji + name + entry
+ * counter"), the "Trash" and the profile at the bottom. The selected chat is highlighted. The counter on the right is
+ * quiet gray (not an accent): how many entries have accumulated, not "what is unread". A section header is visible only
+ * if the section has chats; the "Chats" header with the "+" button is always visible while `onCreateChat` exists
+ * (otherwise, with a single pinned chat, there would be no way to create a new one). "Archive" is collapsed and
+ * expands by itself if a chat from the archive is selected.
  *
- * Правый щелчок, Shift+F10 и клавиша меню открывают меню чата (`ContextMenu`). В свёрнутом виде сайдбар — «полоса эмодзи»
- * (`SidebarRail`); смена вида анимирует только ширину (длительность из токена, при Reduce Motion — сразу).
+ * Right click, Shift+F10 and the menu key open the chat menu (`ContextMenu`). In the collapsed view the sidebar is an
+ * "emoji rail" (`SidebarRail`); the view change animates only the width (duration from a token, instant with Reduce Motion).
  */
 export function Sidebar({
   chats,
@@ -107,8 +108,8 @@ export function Sidebar({
   const [menu, setMenu] = useState<OpenMenu | null>(null);
   const sections = useMemo(() => partitionChats(chats), [chats]);
   const selectedInArchive = sections.archived.some((chat) => chat.id === selectedId);
-  // «Архив» раскрывается сам, когда человек открывает архивный чат; дальше кнопка работает как обычный переключатель:
-  // свёрнутый раздел прячет все свои чаты, в том числе открытый (открытый чат остаётся в ленте).
+  // "Archive" expands by itself when the person opens an archived chat; after that the button works as a plain toggle:
+  // a collapsed section hides all its chats, including the open one (the open chat stays in the feed).
   const [archiveOpen, setArchiveOpen] = useState(selectedInArchive);
   const [seenSelected, setSeenSelected] = useState(selectedId);
   if (seenSelected !== selectedId) {
@@ -253,12 +254,12 @@ export function Sidebar({
 
 interface SectionProps {
   title: string;
-  /** Кнопка справа от заголовка («+» у «Чатов»). */
+  /** The button to the right of the header ("+" by "Chats"). */
   action?: ReactNode;
   children: ReactNode;
 }
 
-/** Раздел списка: тихий серый заголовок и список строк. */
+/** A list section: a quiet gray header and a list of rows. */
 function Section({ title, action, children }: SectionProps) {
   const headingId = useId();
   return (

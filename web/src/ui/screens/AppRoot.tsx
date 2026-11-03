@@ -14,16 +14,16 @@ import { MainWindow } from "./MainWindow";
 interface AppRootProps {
   api: KinigeApi;
   initialSettings: Settings;
-  /** Состояние запуска: журнал открыт или нужно восстановление из копии. */
+  /** The startup state: the journal is open or a restore from a backup is needed. */
   startup: StartupState;
 }
 
 type Recovery = { mode: "startup" | "running"; backups: readonly BackupInfo[] };
 
 /**
- * Корень главного окна (слайс 3): журнал или окно «База повреждена». Окно восстановления появляется при запуске (база не
- * открывается) и по событию Rust, если проверка целостности в фоне нашла повреждение работающей базы (тогда нужен
- * перезапуск: работающую базу подменять нельзя).
+ * Root of the main window (slice 3): the journal or the "Database is damaged" window. The recovery window appears at
+ * startup (the database does not open) and on a Rust event, if the background integrity check found damage in the
+ * running database (then a restart is needed: a running database cannot be swapped).
  */
 export function AppRoot({ api, initialSettings, startup }: AppRootProps) {
   const { t } = useTranslation();
@@ -49,8 +49,8 @@ export function AppRoot({ api, initialSettings, startup }: AppRootProps) {
       .then((unlisten) => {
         if (closed) unlisten();
         else off = unlisten;
-        // Проверка целостности идёт сразу при старте и могла найти повреждение раньше, чем страница подписалась на событие
-        // (найдено в живой проверке): состояние запуска хранит отметку, спрашиваем его ещё раз уже после подписки.
+        // The integrity check runs right at startup and could find damage before the page subscribed to the event
+        // (found in a live check): the startup state keeps a flag, so we ask it again after subscribing.
         return api.startupState();
       })
       .then((state) => {
@@ -63,7 +63,7 @@ export function AppRoot({ api, initialSettings, startup }: AppRootProps) {
     };
   }, [api]);
 
-  // База создана более новой версией (§10.4): журнал не открыт, копии не предлагаются.
+  // The database was created by a newer version (§10.4): the journal is not open, backups are not offered.
   if (startup.databaseTooNew) return <TooNewScreen />;
   if (!recovery) return <MainWindow api={api} initialSettings={settings} />;
 
@@ -72,17 +72,17 @@ export function AppRoot({ api, initialSettings, startup }: AppRootProps) {
     setError(null);
     api
       .restoreBackup(name)
-      // Rust открыл базу из копии и запустил сервисы: настройки читаются уже по-настоящему. Обслуживание восстановленной
-      // базы могло найти в ней повреждение ещё во время восстановления: событие тогда пришло в окно «startup» и было
-      // проигнорировано, поэтому состояние спрашивается заново (иначе журнал открылся бы на базе, объявленной повреждённой).
+      // Rust opened the database from the backup and started the services: settings are now read for real. Maintenance of
+      // the restored database could find damage in it during the restore itself: the event then reached the "startup"
+      // window and was ignored, so the state is asked again (otherwise the journal would open on a database declared damaged).
       .then(() => Promise.all([api.getSettings(), api.startupState()]))
       .then(([fresh, state]) => {
         setSettings(fresh);
         setRecovery(state.corruptionFound ? { mode: "running", backups: [] } : null);
       })
       .catch((reason: unknown) => {
-        // Восстановленная копия повреждена там, куда `quick_check` не заглядывает (страница настроек): хранилище уже отдано
-        // приложению, снова «Восстановить» нельзя — как и при чтении первых настроек (`loadStartup`), окно «перезапустить».
+        // The restored backup is damaged where `quick_check` does not look (the settings page): the store has already been
+        // handed to the app, "Restore" cannot be done again -- as with reading the first settings (`loadStartup`), the window says "restart".
         if (errorCode(reason) === "database_corrupt") setRecovery({ mode: "running", backups: [] });
         else setError(errorCode(reason));
       })

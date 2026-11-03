@@ -1,8 +1,8 @@
-//! Запрос поиска (слайс 4, задача 4.9): словоформы и префикс, корзина и удалённый чат, фильтры по отдельности и вместе,
-//! keyset без пропусков и повторов, пустой запрос, чаты по названию.
+//! Search query (slice 4, task 4.9): word forms and prefix, the trash and a deleted chat, filters alone and together,
+//! keyset without gaps and repeats, an empty query, chats by title.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -52,14 +52,14 @@ fn word_forms_and_prefix_are_found_newest_first() {
             "Читаю книгу",
             "Купил книга"
         ],
-        "четыре формы слова, новые сверху"
+        "four forms of the word, newest on top"
     );
     assert_eq!(texts(&store, "моло", &any()), ["Купить молоко"]);
     assert_eq!(texts(&store, "МОЛОКА ", &any()), ["Купить молоко"]);
     assert_eq!(
         texts(&store, "читаю молоко ", &any()),
         Vec::<String>::new(),
-        "термы соединены через «и»"
+        "terms are joined with AND"
     );
     assert_eq!(texts(&store, "купить моло", &any()), ["Купить молоко"]);
 }
@@ -83,7 +83,10 @@ fn hit_has_snippet_terms_and_chat_info() {
     assert_eq!(in_chat.chat_title, "Чтение");
     assert_eq!(in_chat.chat_icon.as_deref(), Some("📚"));
     assert_eq!(in_chat.terms, ["книгу"]);
-    assert_eq!(in_chat.snippet, "Читаю книгу про море", "разметка снята");
+    assert_eq!(
+        in_chat.snippet, "Читаю книгу про море",
+        "markup is stripped"
+    );
 }
 
 #[test]
@@ -107,14 +110,14 @@ fn trash_deleted_chats_and_old_revisions_are_not_found() {
     );
     assert!(
         texts(&store, "старый ", &any()).is_empty(),
-        "ревизии не индексируются"
+        "revisions are not indexed"
     );
-    // Восстановленная из корзины запись находится снова.
+    // An entry restored from the trash is found again.
     store
         .restore_message(&trashed, &moscow(T0 + 12 * MINUTE))
         .unwrap();
     assert!(texts(&store, "жирафы ", &any()).contains(&"Жираф в корзине".to_string()));
-    // Удалённый чат: его записи в результаты не попадают.
+    // A deleted chat: its entries do not appear in the results.
     raw(dir.path())
         .execute("UPDATE chat SET deleted_at = 1 WHERE id = ?1", [&chat.id])
         .unwrap();
@@ -134,7 +137,7 @@ fn each_filter_alone_and_all_together() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let chat = store.create_chat("Дела", None, &moscow(T0)).unwrap();
-    // Пять записей с одним словом в разные дни (по записи в сутки).
+    // Five entries with one word on different days (one entry per day).
     let day = |n: i64| T0 + n * DAY_MS;
     let a = store
         .send_message(INBOX_ID, "ключ раз", &moscow(day(0)))
@@ -227,7 +230,7 @@ fn each_filter_alone_and_all_together() {
         }),
         [d.clone(), c.clone()]
     );
-    // Всё вместе: чат + задача + даты.
+    // All together: chat + task + dates.
     assert_eq!(
         ids(SearchFilters {
             chat_id: Some(chat.id.clone()),
@@ -255,7 +258,7 @@ fn each_filter_alone_and_all_together() {
         })
         .is_empty()
     );
-    assert_eq!(ids(any()).last(), Some(&a), "самая старая запись последней");
+    assert_eq!(ids(any()).last(), Some(&a), "the oldest entry is last");
 }
 
 fn journal_of(store: &Store, id: &str) -> String {
@@ -296,7 +299,7 @@ fn keyset_pages_have_no_gaps_and_no_repeats() {
     let store = open_without_mirror(dir.path());
     let mut all = Vec::new();
     for i in 0..30 {
-        // Часть записей в одну минуту: порядок решает id.
+        // Some entries share a minute: the id decides the order.
         all.push(send(&store, INBOX_ID, &format!("страница {i}"), i / 3));
     }
     let mut seen: Vec<String> = Vec::new();
@@ -321,11 +324,11 @@ fn keyset_pages_have_no_gaps_and_no_repeats() {
     let mut unique = seen.clone();
     unique.sort();
     unique.dedup();
-    assert_eq!(unique.len(), 30, "повторов нет");
+    assert_eq!(unique.len(), 30, "no repeats");
     let mut expected = all.clone();
     expected.sort();
-    assert_eq!(unique, expected, "пропусков нет");
-    // Порядок — как в ленте, по убыванию.
+    assert_eq!(unique, expected, "no gaps");
+    // The order is as in the feed, descending.
     let feed: Vec<String> = store
         .list_messages(INBOX_ID, None, 100, &moscow(T0 + DAY_MS))
         .unwrap()

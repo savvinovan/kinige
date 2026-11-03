@@ -8,21 +8,21 @@ import { applyTextSize } from "../ui/screens/textSize";
 import { CapturePanel } from "../ui/capture/CapturePanel";
 import { useInputModality } from "../ui/useInputModality";
 
-/** Rust показал окно (см. `capture::show_capture`): страница перечитывает состояние. Без IPC-события: у окна нет права слушать. */
+/** Rust showed the window (see `capture::show_capture`): the page rereads the state. Not an IPC event: the window has no right to listen. */
 export const SHOWN_EVENT = "kinige-capture-shown";
-/** Rust просит спрятать окно (хоткей при открытом окне, закрытие, потеря фокуса): страница сохраняет черновик и прячется. */
+/** Rust asks to hide the window (the hotkey with the window open, closing, loss of focus): the page saves the draft and hides. */
 export const HIDE_REQUEST_EVENT = "kinige-capture-hide-request";
 
 interface CaptureWindowProps {
   api: KinigeApi;
-  /** Состояние, прочитанное до первого кадра. */
+  /** The state read before the first frame. */
   initial: CaptureState;
 }
 
 /**
- * Окно быстрого захвата (слайс 2) на `KinigeApi`: контекст за сегодня, поле ввода, Enter — новая запись, ⌘Enter — дописать,
- * Esc — спрятать. Черновик уходит в Rust через ~300 мс после последнего нажатия и при скрытии. После успеха — тишина: окно
- * просто прячется (ни тоста, ни подтверждения). Ошибка записи оставляет текст в поле, над полем — сообщение.
+ * The quick capture window (slice 2) on `KinigeApi`: today's context, the input field, Enter - a new entry, Cmd+Enter -
+ * append, Esc - hide. The draft goes to Rust ~300 ms after the last keypress and on hiding. After success - silence: the
+ * window just hides (no toast, no confirmation). A write error leaves the text in the field, with a message above it.
  */
 export function CaptureWindow({ api, initial }: CaptureWindowProps) {
   const { t } = useTranslation();
@@ -31,14 +31,14 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
   const [value, setValue] = useState(initial.draft);
   const [error, setError] = useState<ErrorCode | null>(initial.error);
   const busy = useRef(false);
-  // Пикер эмодзи открыт: панель растёт вверх (окно подгоняется командой `capture_resize`). Закрывается при каждом скрытии окна.
+  // The emoji picker is open: the panel grows upward (the window is fitted by the `capture_resize` command). It closes on every window hide.
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const saveDraft = useCallback((body: string) => api.captureSaveDraft(body), [api]);
   const draft = useDraftSaver(saveDraft);
   const draftSaver = draft;
   const { flush, cancel, schedule } = draft;
-  // Счётчик показов: после каждого показа (и при первом) курсор ставится в конец текста, как в главном окне.
+  // The show counter: after every show (and the first one) the cursor is put at the end of the text, as in the main window.
   const [shown, setShown] = useState(0);
   useEffect(() => {
     const field = document.querySelector("textarea");
@@ -47,16 +47,16 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
     field.setSelectionRange(field.value.length, field.value.length);
   }, [shown]);
 
-  /** Высота окна — по содержимому; сбой изменения размера не мешает писать (окно остаётся прежнего размера). */
+  /** The window height follows the content; a resize failure does not prevent writing (the window keeps its old size). */
   const resize = useCallback((height: number) => void api.captureResize(height).catch(() => undefined), [api]);
 
-  /** Сохраняет черновик и прячет окно. */
+  /** Saves the draft and hides the window. */
   const hide = useCallback(() => {
     setPickerOpen(false);
     void flush().finally(() => void api.captureHide().catch(() => undefined));
   }, [api, flush]);
 
-  // Показ: свежий контекст и черновик (записи могли появиться из главного окна, буфера и с другого экрана), размер текста.
+  // On show: a fresh context and draft (entries could appear from the main window, the clipboard and another screen), the text size.
   useEffect(() => {
     const refresh = () => {
       api
@@ -67,8 +67,8 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
           setPickerOpen(false);
           setValue(fresh.draft);
           setError(fresh.error);
-          // Окно показали заново: страница могла считать фокус своим всё это время (события focus нет), поэтому курсор
-          // ставится в поле явно — после того как значение уже в поле (эффект по счётчику).
+          // The window was shown again: the page could consider the focus its own all this time (there is no focus
+          // event), so the cursor is put into the field explicitly - after the value is already in the field (an effect on the counter).
           setShown((n) => n + 1);
         })
         .catch((reason: unknown) => setError(errorCode(reason)));
@@ -85,9 +85,9 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
     if (busy.current || value.trim() === "") return;
     busy.current = true;
     const text = value;
-    // Пока идёт отправка, ввод не принимается (см. `onChange`), а черновик не сохраняется: Rust очистит его сам, в той же
-    // транзакции. Сначала отменяется запланированное и дожидается уже отправленное сохранение — иначе оно дошло бы до
-    // писателя после отправки и вернуло бы отправленный текст черновиком.
+    // While sending, input is not accepted (see `onChange`) and the draft is not saved: Rust clears it itself, in the same
+    // transaction. First the scheduled save is cancelled and the already sent save is awaited - otherwise it would reach
+    // the writer after the send and bring the sent text back as a draft.
     cancel();
     draftSaver
       .settle()
@@ -100,7 +100,7 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
         void api.captureHide().catch(() => undefined);
       })
       .catch((reason: unknown) => {
-        // Текст остаётся в поле, над полем — ошибка; черновик возвращается в очередь сохранения.
+        // The text stays in the field, with an error above it; the draft goes back to the save queue.
         setError(errorCode(reason));
         schedule(text);
       })
@@ -115,7 +115,7 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
       appendTargetId={state.appendTarget}
       value={value}
       onChange={(next) => {
-        // Пока запись уходит в Rust, нажатия не принимаются: набранное в этот миг иначе вернулось бы черновиком.
+        // While the entry goes to Rust, keypresses are not accepted: what is typed at that moment would otherwise come back as a draft.
         if (busy.current) return;
         setValue(next);
         setError(null);
@@ -128,7 +128,7 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
       error={error ? t(`error.${error}`) : undefined}
       emoji={{
         recent: state.recentEmoji,
-        // Выбор вставлен в поле; в «недавние» (общие с главным окном) он попадает отдельной командой, сбой её не мешает писать.
+        // The choice is inserted into the field; it reaches "recent" (shared with the main window) by a separate command, whose failure does not prevent writing.
         onPicked: (emoji) =>
           void api
             .captureAddRecentEmoji(emoji)

@@ -1,8 +1,8 @@
-//! Импорт из Telegram (слайс 4, задача 4.8), неизменяемость: `origin` и `ext` переживают правки, а дописывание из окна
-//! захвата никогда не липнет к импортированной записи.
+//! Import from Telegram (slice 4, task 4.8), immutability: `origin` and `ext` survive edits, and an append from the capture
+//! window never sticks to an imported entry.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -48,7 +48,7 @@ fn origin_and_ext_survive_edit_move_date_and_flags() {
     assert_eq!(
         groups(dir.path(), "message", &id)["core"],
         core_before,
-        "core неизменяема"
+        "core is immutable"
     );
     let (origin, ext): (String, String) = raw(dir.path())
         .query_row(
@@ -73,7 +73,7 @@ fn origin_and_ext_survive_edit_move_date_and_flags() {
 fn capture_append_never_attaches_to_an_imported_record() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_plain(dir.path());
-    // Импортированное сообщение «сегодняшнее» и свежее: по времени дописывание было бы допустимо.
+    // The imported message is "today's" and fresh: by time, appending would be allowed.
     let at = T0 / 1000 - 120;
     let own = format!("user{OWNER}");
     let export = parse(&single(
@@ -100,6 +100,6 @@ fn capture_append_never_attaches_to_an_imported_record() {
     assert!(
         view.append_target.is_none()
             || view.append_target.as_deref() == Some(outcome.message.id.as_str()),
-        "целью дописывания не бывает импортированная запись"
+        "an imported entry is never an append target"
     );
 }

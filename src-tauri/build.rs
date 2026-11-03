@@ -1,30 +1,30 @@
-// Скрипт сборки сообщает об ошибке только паникой (так его останавливает cargo); приложение он не затрагивает.
+// The build script reports an error only by panicking (that is how cargo stops it); it does not affect the app.
 #![allow(clippy::expect_used)]
 
 fn main() {
-    // `generate_context!` падает, если нет каталога `frontendDist`. Чтобы `cargo clippy`
-    // и `cargo test` работали на чистом клоне без сборки фронтенда, создаём пустой каталог;
-    // настоящее содержимое кладёт `npm run build` (`beforeBuildCommand`).
-    std::fs::create_dir_all("../web/dist").expect("не удалось создать web/dist");
+    // `generate_context!` fails if the `frontendDist` directory is missing. So that `cargo clippy`
+    // and `cargo test` work on a clean clone without building the frontend, we create an empty directory;
+    // the real content is put there by `npm run build` (`beforeBuildCommand`).
+    std::fs::create_dir_all("../web/dist").expect("could not create web/dist");
 
-    // `bundle.externalBin` требует файл `binaries/kinige-mcp-<triple>` при любой сборке, в том числе `cargo clippy` и
-    // `cargo test` на чистом клоне. Пустая заглушка (она в .gitignore) не даёт сборке упасть; настоящий мост кладут туда
-    // `scripts/build-app.sh` и `scripts/run-app.sh`. Приложение считает пустой файл «мост не найден».
+    // `bundle.externalBin` requires the file `binaries/kinige-mcp-<triple>` for any build, including `cargo clippy` and
+    // `cargo test` on a clean clone. An empty stub (it is in .gitignore) keeps the build from failing; the real bridge is put there
+    // by `scripts/build-app.sh` and `scripts/run-app.sh`. The app treats an empty file as "bridge not found".
     // On Windows there is no bridge in the bundle (`tauri.windows.conf.json` empties `externalBin`, slice 10a): no stub needed.
-    let target = std::env::var("TARGET").expect("cargo не передал TARGET");
+    let target = std::env::var("TARGET").expect("cargo did not pass TARGET");
     let windows = std::env::var("CARGO_CFG_TARGET_OS").is_ok_and(|os| os == "windows");
     if windows {
         embed_manifest();
     }
     let sidecar = std::path::Path::new("binaries").join(format!("kinige-mcp-{target}"));
     if !windows && !sidecar.exists() {
-        std::fs::create_dir_all("binaries").expect("не удалось создать src-tauri/binaries");
-        std::fs::write(&sidecar, []).expect("не удалось создать заглушку моста");
+        std::fs::create_dir_all("binaries").expect("could not create src-tauri/binaries");
+        std::fs::write(&sidecar, []).expect("could not create the bridge stub");
     }
 
-    // Собственные команды получают разрешения `allow-<имя>` и по умолчанию никому не выданы:
-    // окно может вызвать только то, что перечислено в его capability. Список совпадает с `kinige_lib::COMMANDS`
-    // (это проверяет тест `tests/config.rs`).
+    // Our own commands get `allow-<name>` permissions and are granted to nobody by default:
+    // a window can call only what is listed in its capability. The list matches `kinige_lib::COMMANDS`
+    // (the test `tests/config.rs` checks this).
     let manifest = tauri_build::AppManifest::new().commands(&[
         "app_info",
         "get_language",

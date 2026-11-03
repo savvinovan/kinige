@@ -35,8 +35,8 @@ describe("useFeed: курсоры страниц", () => {
     );
     expect(list).toHaveBeenCalledTimes(1);
 
-    // Ответ на страницу вокруг записи: `useFeed` подписался на него раньше теста, поэтому к концу `await reply` состояние уже
-    // обновлено, а отрисовка и сброс эффектов React (отдельная задача) ещё впереди.
+    // The reply with the page around an entry: `useFeed` subscribed to it before the test, so by the end of `await reply`
+    // the state is already updated, while the render and React's effect cleanup (a separate task) are still ahead.
     release();
     await reply;
     await result.current.reload();

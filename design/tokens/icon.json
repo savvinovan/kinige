@@ -3,28 +3,28 @@
     "size": {
       "$type": "dimension",
       "$value": "1.35rem",
-      "$description": "Размер линейного значка: 17,5 px при корне 13 px."
+      "$description": "Size of a line icon: 17.5 px at a 13 px root."
     },
     "size-small": {
       "$type": "dimension",
       "$value": "1.05rem",
-      "$description": "Мелкий значок: ряд действий справа от плашки сообщения (13,5 px)."
+      "$description": "A small icon: the action row to the right of a message plate (13.5 px)."
     },
     "emoji": {
       "slot": {
         "$type": "dimension",
         "$value": "1.7rem",
-        "$description": "Ширина слота эмодзи чата в списке: не уже глифа. Глиф Apple Color Emoji при font-size = icon.size шире em (около 1,2 em, 21 px при корне 13 px), и в слоте шириной в em он вылезал вправо и съедал промежуток до названия (22 px)."
+        "$description": "Width of the chat emoji slot in the list: not narrower than the glyph. The Apple Color Emoji glyph at font-size = icon.size is wider than 1em (about 1.2 em, 21 px at a 13 px root), and in a slot one em wide it stuck out to the right and ate the gap to the title (22 px)."
       },
       "line-height": {
         "$type": "number",
         "$value": 1,
-        "$description": "Межстрочный множитель эмодзи в слоте: 1, чтобы коробка равнялась кеглю и не добавляла ascent и descent межстрочного текста (он сажал глиф ниже центра)."
+        "$description": "Emoji line-height multiplier in the slot: 1, so the box equals the font size and does not add the ascent and descent of body line spacing (it put the glyph below the center)."
       },
       "shift": {
         "$type": "dimension",
         "$value": "-0.08rem",
-        "$description": "Оптическая поправка по вертикали для эмодзи в строке чата: у системного эмодзи-шрифта свои ascent и descent, и глиф в геометрическом центре строки сидит ниже центра текста; поправка поднимает его (-1 px). Подобрана по скриншоту настоящего окна (WKWebView)."
+        "$description": "Optical vertical correction for the emoji in a chat row: the system emoji font has its own ascent and descent, and a glyph at the geometric center of the row sits below the text center; the correction raises it (-1 px). Chosen from a screenshot of the real window (WKWebView)."
       },
       "row": {
         "$type": "dimension",
@@ -35,12 +35,12 @@
     "stroke": {
       "$type": "number",
       "$value": 1.75,
-      "$description": "Толщина линии значка в единицах viewBox (24): тоньше стандартных 2, «воздушнее» рядом с мелким текстом."
+      "$description": "Icon line thickness in viewBox units (24): thinner than the standard 2, 'airier' next to small text."
     },
     "size-nav": {
       "$type": "dimension",
       "$value": "1.2rem",
-      "$description": "Значок нижних пунктов сайдбара («Корзина», пункты меню профиля): 15,6 px (D2). Сидит в слоте размера layout.tile.size, в одной колонке с плитками чатов."
+      "$description": "Icon of the lower sidebar items ('Trash', the profile menu items): 15.6 px (D2). Sits in a slot of size layout.tile.size, in the same column as the chat tiles."
     }
   }
 }

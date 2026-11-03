@@ -3,9 +3,9 @@ import { I18n } from "../src/i18n/I18n";
 import type { Language } from "../src/i18n";
 import "../src/app.css";
 
-// Переключатели дизайн-системы в панели Storybook. Они только ставят атрибуты на <html>,
-// все значения живут в токенах (src/ui/tokens.css, themes.css, base.css). Пустое значение — «по умолчанию».
-// Палитра и шрифты не переключаются: выбраны (graphite, Inter + JetBrains Mono; ADR-0004).
+// Design system switches in the Storybook toolbar. They only set attributes on <html>,
+// all values live in the tokens (src/ui/tokens.css, themes.css, base.css). An empty value means "default".
+// The palette and fonts are not switchable: they are chosen (graphite, Inter + JetBrains Mono; ADR-0004).
 const ATTRIBUTES: Record<string, string> = {
   textScale: "data-text-scale",
   reduceMotion: "data-reduce-motion",
@@ -21,8 +21,8 @@ const withDesignSystem: Decorator = (Story, context) => {
   return Story();
 };
 
-// Язык интерфейса. По умолчанию русский: снимки историй D1 сняты на русском. Английский — `globals: { language: "en" }`
-// в истории или переключатель в панели.
+// The interface language. Russian by default: the D1 story snapshots were taken in Russian. English is `globals: { language: "en" }`
+// in a story or the toolbar switch.
 const withLanguage: Decorator = (Story, context) => {
   const language: Language = context.globals.language === "en" ? "en" : "ru";
   document.documentElement.lang = language;
@@ -33,9 +33,10 @@ const withLanguage: Decorator = (Story, context) => {
   );
 };
 
-// Шрифты грузятся лениво, когда текст уже разложен, и догрузка посреди первой отрисовки меняет сглаживание скруглённых
-// краёв в уже растрированных плитках: снимок окна захвата (там блок кода в JetBrains Mono) то совпадал с эталоном, то
-// расходился на ±1 уровень в углах. Все начертания из @font-face загружаются до отрисовки истории.
+// Fonts load lazily, when the text is already laid out, and a late load in the middle of the first render changes the
+// anti-aliasing of rounded edges in already rasterized tiles: the capture window snapshot (with a code block in
+// JetBrains Mono) sometimes matched the baseline and sometimes differed by ±1 level in the corners. All faces from
+// @font-face are loaded before the story is rendered.
 const loadFonts = async () => {
   await Promise.all([...document.fonts].map((face) => face.load()));
 };

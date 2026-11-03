@@ -1,8 +1,8 @@
-//! Сокет сервера MCP (ADR-0009, слайс 4a): права, симлинки, чужой владелец, второй экземпляр, длинный путь, перепривязка,
-//! сбой `bind` и `chmod`, удаление при выходе.
+//! The MCP server socket (ADR-0009, slice 4a): permissions, symlinks, a foreign owner, a second instance, a long path, rebinding,
+//! a `bind` and `chmod` failure, removal on exit.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 // The MCP server is a Unix socket; there is none on Windows (slice 10a).
 #![cfg(unix)]
@@ -34,7 +34,7 @@ fn error_of(fixture: &Fixture) -> Option<SocketError> {
     fixture.app.state::<McpHandle>().0.error()
 }
 
-/// Свой uid: `own_uid` строит пару сокетов tokio и поэтому требует среды выполнения.
+/// Our own uid: `own_uid` builds a pair of tokio sockets and therefore requires a runtime.
 fn own() -> u32 {
     tauri::async_runtime::block_on(async { mcp::own_uid().unwrap() })
 }
@@ -55,7 +55,7 @@ fn the_socket_file_is_0600_and_its_folder_0700() {
 
 #[test]
 fn a_symlinked_or_loose_folder_makes_mcp_unavailable_but_the_journal_keeps_working() {
-    // Папка сокета — симлинк на чужое место.
+    // The socket folder is a symlink to a foreign place.
     let fixture = fixture();
     let elsewhere = tempfile::tempdir().unwrap();
     symlink(elsewhere.path(), fixture.data.path().join("mcp")).unwrap();
@@ -66,9 +66,9 @@ fn a_symlinked_or_loose_folder_makes_mcp_unavailable_but_the_journal_keeps_worki
             .unwrap()
             .next()
             .is_none(),
-        "в чужую папку ничего не положено"
+        "nothing was put into the foreign folder"
     );
-    // Журнал работает, ошибка сокета видна окну.
+    // The journal works, the socket error is visible to the window.
     let main = window(&fixture, "settings");
     let access = call(&main, "get_agent_access", json!({})).unwrap();
     assert_eq!(access["socket"]["error"], "dir_unsafe");
@@ -79,7 +79,7 @@ fn a_symlinked_or_loose_folder_makes_mcp_unavailable_but_the_journal_keeps_worki
         .send_message(INBOX_ID, "запись", &kinige_store::Now::system())
         .unwrap();
 
-    // Права шире 0700 — тоже небезопасно.
+    // Permissions wider than 0700 are also unsafe.
     let loose = fixture_without_start();
     let dir = loose.data.path().join("mcp");
     std::fs::create_dir(&dir).unwrap();
@@ -96,12 +96,12 @@ fn fixture_without_start() -> Fixture {
 fn a_responding_old_socket_means_a_second_kinige_and_its_server_is_not_started() {
     let first = plain_fixture();
     assert!(error_of(&first).is_none());
-    // Второй Kinige на тех же данных: свой каталог данных у фикстуры другой, поэтому берём путь первого напрямую.
+    // A second Kinige on the same data: the fixture has its own, different data directory, so we take the first one's path directly.
     let path = first.app.state::<McpHandle>().0.path().to_path_buf();
     let uid = own();
     let second = tauri::async_runtime::block_on(async { mcp::bind(&path, uid) });
     assert_eq!(second.err(), Some(SocketError::SecondInstance));
-    // Первый продолжает отвечать.
+    // The first one keeps answering.
     assert!(UnixStream::connect(&path).is_ok());
 }
 
@@ -112,13 +112,13 @@ fn a_stale_socket_file_is_replaced_and_a_foreign_file_is_left_alone() {
     std::fs::create_dir(&dir).unwrap();
     std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
     let path = dir.join("kinige.sock");
-    // Старый сокет без слушателя (процесс умер): удаляется, слушатель поднимается.
+    // An old socket without a listener (the process died): it is removed, the listener comes up.
     drop(std::os::unix::net::UnixListener::bind(&path).unwrap());
     mcp::start(fixture.app.handle(), fixture.data.path());
     assert!(error_of(&fixture).is_none());
     assert!(UnixStream::connect(&path).is_ok());
 
-    // На месте сокета лежит чужой обычный файл: не трогаем, MCP недоступен.
+    // A foreign regular file lies in place of the socket: we do not touch it, MCP is unavailable.
     let other = common::fixture();
     let dir = other.data.path().join("mcp");
     std::fs::create_dir(&dir).unwrap();
@@ -139,19 +139,19 @@ fn a_failed_chmod_after_bind_removes_the_socket_file() {
     let path = dir.path().join("k.sock");
     let uid = own();
     let failed = tauri::async_runtime::block_on(async {
-        mcp::bind_with(&path, uid, |_| Err(std::io::Error::other("chmod отказал")))
+        mcp::bind_with(&path, uid, |_| Err(std::io::Error::other("chmod refused")))
     });
     assert_eq!(failed.err(), Some(SocketError::BindFailed));
     assert!(
         !path.exists(),
-        "файл сокета с неверными правами не остаётся"
+        "a socket file with wrong permissions does not remain"
     );
 }
 
 #[test]
 fn a_long_data_dir_falls_back_to_a_short_path_in_the_temp_dir() {
     let fixture = fixture();
-    // Много вложенных папок, а не одно длинное имя: имя компонента пути ограничено 255 байтами (NAME_MAX на Linux).
+    // Many nested folders and not one long name: a path component name is limited to 255 bytes (NAME_MAX on Linux).
     let long = (0..6).fold(fixture.data.path().to_path_buf(), |path, _| {
         path.join("очень-длинное-имя-папки")
     });
@@ -175,10 +175,7 @@ fn a_socket_file_removed_from_outside_is_rebound_on_the_next_check() {
     std::fs::remove_file(&mcp.socket).unwrap();
     // The file appears at `bind`, before `chmod 0600`: wait for the listener to be bound and ready, not for the file.
     wait_for_binds_above(&state, bound);
-    assert!(
-        mcp.socket.exists(),
-        "слушатель перепривязался к тому же пути"
-    );
+    assert!(mcp.socket.exists(), "the listener rebound to the same path");
     assert_eq!(mode(&mcp.socket), 0o600);
     let mut client = mcp.client();
     client.handshake("Claude");
@@ -204,9 +201,12 @@ fn a_panic_in_the_listener_is_caught_and_the_listener_comes_back() {
     let state = mcp.fixture.app.state::<McpHandle>().0.clone();
     let bound = state.binds();
     state.inject_listener_panic_for_test();
-    // Это соединение роняет слушатель; оно само не обслуживается и закрывается.
+    // This connection brings the listener down; it is not served itself and is closed.
     let mut doomed = common::mcp::Client::connect(&mcp.socket);
-    assert!(doomed.recv().is_none(), "соединение закрыто, не обслужено");
+    assert!(
+        doomed.recv().is_none(),
+        "the connection is closed, not served"
+    );
     // A connection made before the old listener is closed would be cut (EPIPE/ECONNRESET), so the client connects only
     // after the restarted listener is bound.
     wait_for_binds_above(&state, bound);
@@ -228,12 +228,12 @@ fn a_failed_first_bind_is_retried_and_the_listener_appears_when_the_folder_is_fi
         Duration::from_millis(150),
     );
     assert_eq!(error_of(&fixture), Some(SocketError::DirUnsafe));
-    // Папку исправили (симлинк убрали): следующая проверка поднимает слушатель и снимает ошибку.
+    // The folder was fixed (the symlink removed): the next check brings the listener up and clears the error.
     std::fs::remove_file(&link).unwrap();
     let state = fixture.app.state::<McpHandle>().0.clone();
     let path = state.path().to_path_buf();
     wait_for_binds_above(&state, 0);
-    assert_eq!(error_of(&fixture), None, "ошибка снята");
+    assert_eq!(error_of(&fixture), None, "the error is cleared");
     assert_eq!(mode(&path), 0o600);
     assert!(UnixStream::connect(&path).is_ok());
 }
@@ -249,7 +249,7 @@ fn the_socket_is_removed_on_exit() {
 #[test]
 fn a_connection_from_another_user_is_closed_without_an_answer() {
     let mcp = mcp(AgentMode::Read, &[INBOX_ID]);
-    // Подменённый `peer_cred`: сервер считает своим другой uid, значит наш собственный uid для него «чужой».
+    // A substituted `peer_cred`: the server considers a different uid its own, so our own uid is "foreign" to it.
     let (ours, theirs) = tauri::async_runtime::block_on(async {
         let (a, b) = tokio::net::UnixStream::pair().unwrap();
         (a, b)
@@ -276,7 +276,7 @@ fn a_connection_from_another_user_is_closed_without_an_answer() {
     assert_eq!(
         client.read(&mut buffer).unwrap_or(0),
         0,
-        "соединение закрыто, ответа нет"
+        "the connection is closed, no reply"
     );
     tauri::async_runtime::block_on(serving).unwrap();
 }

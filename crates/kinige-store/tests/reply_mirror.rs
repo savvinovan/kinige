@@ -1,7 +1,7 @@
-//! Markdown-копия и ответ (слайс 5): под заголовком времени ответа стоит строка `↩` со ссылкой на файл дня старой записи.
+//! The Markdown copy and a reply (slice 5): under the reply's time heading there is a `↩` line linking to the old entry's day file.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -20,7 +20,7 @@ fn day_file(dir: &Path, chat: &str, date: &str) -> PathBuf {
 }
 
 fn read_when(file: &Path, needle: &str) -> String {
-    wait_until("файл дня с нужным текстом", || {
+    wait_until("the day file with the needed text", || {
         fs::read_to_string(file).is_ok_and(|t| t.contains(needle))
     });
     fs::read_to_string(file).unwrap()
@@ -46,12 +46,12 @@ fn a_reply_has_a_link_line_to_the_day_file_of_the_old_entry() {
         text,
         "# 2026-10-31\n\n## 09:00\n\n↩ [2023-10-31 12:05](<../2023/2023-10-31.md>)\n\nДо сих пор так думаю\n"
     );
-    // Ссылка указывает на настоящий файл.
+    // The link points to a real file.
     let target = day_file(dir.path(), "Inbox", "2026-10-31")
         .parent()
         .unwrap()
         .join("../2023/2023-10-31.md");
-    wait_until("файл старого дня", || target.is_file());
+    wait_until("the old day's file", || target.is_file());
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn the_link_line_loses_the_link_when_the_old_entry_is_in_the_trash_or_gone() {
     store.delete_message(&trashed.id, &now).unwrap();
     store.delete_message(&purged.id, &now).unwrap();
     store.purge_message(&purged.id, &now).unwrap();
-    // Ответы пересчитываются при правке своего дня.
+    // Replies are recomputed when their own day is edited.
     store
         .edit_message(
             &store
@@ -119,7 +119,7 @@ fn a_link_to_an_entry_of_another_chat_goes_through_both_chat_folders() {
             &at(2026, 3, 14, 9, 0),
         )
         .unwrap();
-    // Старая запись переехала в Inbox: ссылка ведёт через папки обоих чатов.
+    // The old entry moved to Inbox: the link goes through the folders of both chats.
     store
         .move_message(&old.id, INBOX_ID, &at(2026, 3, 14, 9, 5))
         .unwrap();

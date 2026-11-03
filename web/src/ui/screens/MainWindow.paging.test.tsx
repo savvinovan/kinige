@@ -4,11 +4,11 @@ import { FakeObserver, edges, showEdge } from "../../test/fakeObserver";
 import { act, configure, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// Лента на 2 000 записях (слайс 4, задача 4.14): подгрузка вверх без скачка, переход к записи из середины, подгрузка вниз,
-// возврат в обычный режим, удалённая плашка переживает подгрузку, прокрутка без плавности. Плашки в jsdom рисуются долго,
-// поэтому до конца всей истории интерфейс идёт на 450 записях, а 2 000 проверяют переход и цепочку страниц.
-// Сотни плашек в jsdom рисуются долго: на загруженном CI запас больше обычных пяти секунд. Ожидания состояния (`waitFor`,
-// `findBy*`) получают тот же запас, что и сам тест: они ждут отрисовки страницы, а не времени.
+// A feed of 2,000 entries (slice 4, task 4.14): loading upwards without a jump, a jump to an entry from the middle, loading downwards,
+// returning to the normal mode, a deleted plate surviving loading, scrolling without smoothness. Plates render slowly in jsdom,
+// so the interface goes through the whole history on 450 entries, while 2,000 check the jump and the chain of pages.
+// Hundreds of plates render slowly in jsdom: on a busy CI the margin is larger than the usual five seconds. State waits (`waitFor`,
+// `findBy*`) get the same margin as the test itself: they wait for the page to render, not for time.
 vi.setConfig({ testTimeout: 30_000 });
 configure({ asyncUtilTimeout: 20_000 });
 
@@ -54,7 +54,7 @@ describe("Лента: старые страницы", () => {
     expect(edges(container)).toHaveLength(1);
     await showEdge(container, "older");
     await screen.findByText("запись 50 слово50");
-    // Нижняя запись на месте: лента добавляет записи СВЕРХУ, а область `column-reverse` держит нижний край.
+    // The bottom entry is in place: the feed adds entries at the TOP, and the `column-reverse` area holds the bottom edge.
     expect(screen.getByText("запись 449 слово449")).toBeInTheDocument();
     expect(edges(container)).toHaveLength(1);
     await showEdge(container, "older");
@@ -91,7 +91,7 @@ describe("Лента: переход к записи из поиска", () => {
       const plate = plateOf(container, "m500") as HTMLElement;
       expect(plate).toHaveClass("message--highlighted");
       expect(plate.querySelector("mark")?.textContent).toBe("слово500");
-      // Около ста записей до и ста после; конца истории на экране нет.
+      // About a hundred entries before and a hundred after; the end of the history is not on screen.
       expect(plateOf(container, "m450")).not.toBeNull();
       expect(plateOf(container, "m1999")).toBeNull();
       await waitFor(() => expect(scrolled.length).toBeGreaterThan(0));
@@ -113,14 +113,14 @@ describe("Лента: переход к записи из поиска", () => {
     await screen.findByText("запись 449 слово449");
     await openFromSearch("слово100");
     await waitFor(() => expect(plateOf(container, "m100")).not.toBeNull());
-    // Пока лента в середине истории, событие «записи изменились» её не трогает.
+    // While the feed is in the middle of the history, the "entries changed" event does not touch it.
     api.addExternalMessage(
       mockMessage({ id: "ext1", bodyMd: "пришло снаружи", createdAt: Date.UTC(2026, 9, 21, 5, 55), journalDate: "2026-10-21" }),
     );
     act(() => api.emitEntriesChanged());
     await act(async () => void (await Promise.resolve()));
     expect(screen.queryByText("пришло снаружи")).toBeNull();
-    // Вниз до конца истории: две страницы. Нижний край — первый в разметке области (`column-reverse`), до списка.
+    // Down to the end of the history: two pages. The bottom edge is first in the area's markup (`column-reverse`), before the list.
     const hasNewerEdge = () => container.querySelector(".feed-scroll")?.firstElementChild?.classList.contains("feed__edge") === true;
     expect(hasNewerEdge()).toBe(true);
     await showEdge(container, "newer");
@@ -145,7 +145,7 @@ describe("Лента: переход к записи из поиска", () => {
       const scroller = container.querySelector(".feed-scroll") as HTMLElement;
       scroller.scrollTop = -300;
       await showEdge(container, "newer");
-      // К моменту отрисовки новых записей область стала выше на 700.
+      // By the time the new entries are rendered, the area has become 700 taller.
       height.value = 1700;
       await waitFor(() => expect(plateOf(container, "m600")).not.toBeNull());
       await waitFor(() => expect(scroller.scrollTop).toBe(-1000));

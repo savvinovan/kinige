@@ -1,7 +1,7 @@
 import "i18next";
 import type en from "../locales/en.json";
 
-// Ключи типизированы по английскому файлу: нет ключа — ошибка `tsc` (ADR-0005).
+// Keys are typed from the English file: a missing key is a `tsc` error (ADR-0005).
 declare module "i18next" {
   interface CustomTypeOptions {
     defaultNS: "translation";

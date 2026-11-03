@@ -5,7 +5,7 @@ import { Frame } from "../stories/Frame";
 import { NO_FILTERS, SearchResults } from "./SearchResults";
 import "./search-stories.css";
 
-// Результаты поиска на месте ленты. «Сегодня» в историях фиксировано (вторник, 27 октября 2026).
+// Search results in place of the feed. "Today" in the stories is pinned (Tuesday, 27 October 2026).
 const TODAY = "2026-10-27";
 const noop = () => undefined;
 
@@ -89,37 +89,37 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Записи с подсвеченными словами: Входящие, чат с эмодзи, другой год, длинное имя чата и слово без пробелов. */
+/** Entries with highlighted words: Inbox ("Входящие"), a chat with an emoji, another year, a long chat name and a word without spaces. */
 export const Результаты: Story = {};
 
-/** Чат, чьё название совпало, — отдельной строкой «Чаты» над записями. */
+/** A chat whose name matched appears as a separate "Chats" row above the entries. */
 export const СЧатами: Story = { args: { chats: [CHAT], activeIndex: 1 } };
 
-/** Выбранная стрелками строка: только заметная заливка (`highlight.row`), без рамки. */
+/** A row selected with the arrows: only a noticeable fill (`highlight.row`), no border. */
 export const ВыбраннаяСтрока: Story = { args: { activeIndex: 2 } };
 
-/** Фильтры: этот чат, избранное, задачи, обе даты. */
+/** Filters: this chat, favorites, tasks, both dates. */
 export const Фильтры: Story = {
   args: { filters: { scope: "chat", favorite: true, tasks: true, from: "2026-01-01", to: "2026-10-26" } },
 };
 
-/** Есть следующая страница: «Показать ещё». */
+/** There is a next page: "Show more". */
 export const ЕщёСтраница: Story = { args: { hasMore: true } };
 
-/** Ищем: идёт запрос. */
+/** Searching: a request is in flight. */
 export const Ищем: Story = { args: { hits: [], searched: false, loading: true } };
 
-/** Пустой результат: одна тихая строка. */
+/** An empty result: a single quiet line. */
 export const Пусто: Story = { args: { hits: [], query: "ничего" } };
 
-/** Пустой запрос: подсказка. */
+/** An empty query: a hint. */
 export const ПустойЗапрос: Story = { args: { hits: [], query: "", searched: false } };
 
-/** Ошибка чтения: строка ошибки D1. */
+/** A read error: the D1 error line. */
 export const Ошибка: Story = { args: { hits: [], error: "store_read_failed" } };
 
-/** Английский. */
+/** English. */
 export const Английский: Story = { args: { chats: [CHAT], language: "en" }, globals: { language: "en" } };
 
-/** Крупный текст. */
+/** Large text. */
 export const КрупныйТекст: Story = { args: { chats: [CHAT] }, globals: { textScale: "large" } };

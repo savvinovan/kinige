@@ -4,13 +4,14 @@ import type { SidebarChat } from "./chats";
 
 interface ChatTileProps {
   chat: Pick<SidebarChat, "id" | "emoji" | "tint">;
-  /** Название, которое видит человек (у Inbox переведённое): из него берётся буква плитки. */
+  /** The name the person sees (translated for Inbox): the tile letter is taken from it. */
   name: string;
 }
 
 /**
- * Значок чата. С эмодзи — сам эмодзи, без фона, в слоте размера плитки (названия стоят ровно). Без эмодзи (пусто или «💬» по
- * умолчанию) — скруглённая плитка цвета чата с первой буквой названия. Декор: название читается рядом.
+ * The chat icon. With an emoji: the emoji itself, without a background, in a slot of the tile size (the names line up).
+ * Without an emoji (empty or the default "💬"): a rounded tile in the chat color with the first letter of the name.
+ * Decoration: the name is read next to it.
  */
 export function ChatTile({ chat, name }: ChatTileProps) {
   if (hasEmoji(chat.emoji)) {
@@ -27,7 +28,7 @@ export function ChatTile({ chat, name }: ChatTileProps) {
   );
 }
 
-/** Слот значка у нижних пунктов («Корзина», пункты меню профиля): того же размера, что плитка, без заливки; значок по центру. */
+/** The icon slot of the bottom items ("Trash", profile menu items): the same size as the tile, no fill; the icon is centered. */
 export function NavSlot({ children }: { children: ReactNode }) {
   return (
     <span className="nav-slot" aria-hidden="true">

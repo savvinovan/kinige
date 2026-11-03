@@ -1,4 +1,4 @@
-//! Тесты внутренностей импорта, недоступных через публичный API: занятый внешний id внутри самой транзакции.
+//! Tests of import internals that are not reachable through the public API: an external id taken inside the transaction itself.
 
 use super::*;
 use crate::StoreOptions;
@@ -28,8 +28,8 @@ fn a_taken_external_id_inside_the_transaction_skips_the_record_and_keeps_the_res
     let store = open(dir.path());
     let export = parse_export(r#"{"type":"saved_messages","id":1000001,"messages":[]}"#).unwrap();
     let chat = &export.chats[0];
-    // Чужая запись заняла внешний id «2» уже после того, как импорт прочитал `existing` (например, пришла с другого
-    // устройства): вставка ключа не добавляет строку.
+    // Someone else's entry took the external id "2" after the import had read `existing` (for example, it came from
+    // another device): inserting the key does not add a row.
     store
         .write(|conn| {
             crate::ext::insert(conn, EXT_SRC_TELEGRAM, "1000001", "2", "other-record")
@@ -81,8 +81,8 @@ fn a_taken_external_id_inside_the_transaction_skips_the_record_and_keeps_the_res
         .unwrap();
     assert!(bodies.contains(&"первая".to_string()) && bodies.contains(&"третья".to_string()));
     assert!(!bodies.contains(&"вторая".to_string()));
-    assert_eq!(lost_rows, 0, "записи с занятым внешним id нет");
-    assert_eq!(owner, "other-record", "ключ остался за первой записью");
+    assert_eq!(lost_rows, 0, "there is no entry with the taken external id");
+    assert_eq!(owner, "other-record", "the key stayed with the first entry");
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn hlc_stays_strictly_increasing_when_the_device_clock_lags_behind_the_stored_on
     let dir = tempfile::tempdir().unwrap();
     let store = open(dir.path());
     let export = parse_export(r#"{"type":"saved_messages","id":1000001,"messages":[]}"#).unwrap();
-    // Часы устройства ушли назад: сохранённая «стенка» на 100 000 000 с впереди момента импорта.
+    // The device clock went back: the stored "wall" is 100,000,000 s ahead of the import moment.
     let ahead = Clock {
         l: 1_900_000_000_000,
         c: 5,
@@ -125,7 +125,7 @@ fn hlc_stays_strictly_increasing_when_the_device_clock_lags_behind_the_stored_on
                     })
                     .map_err(read_err)?;
                 let value: serde_json::Value = serde_json::from_str(&json).unwrap();
-                // Одна метка на все группы записи.
+                // One label for all groups of the entry.
                 let labels: BTreeSet<String> = value
                     .as_object()
                     .unwrap()
@@ -154,24 +154,24 @@ fn hlc_stays_strictly_increasing_when_the_device_clock_lags_behind_the_stored_on
     let key = |c: &Clock| (c.l, c.c);
     assert!(
         key(&hlcs[0]) > key(&ahead),
-        "первая метка новее прежних часов"
+        "the first label is newer than the previous clock"
     );
     assert!(
         hlcs.windows(2).all(|w| key(&w[0]) < key(&w[1])),
-        "метки строго возрастают: {hlcs:?}"
+        "labels strictly increase: {hlcs:?}"
     );
     assert_eq!(
         stored,
         *hlcs.last().unwrap(),
-        "в базе сохранены часы последней метки"
+        "the database stores the clock of the last label"
     );
     assert_eq!(
         hlcs[0].l, ahead.l,
-        "«стенка» не откатывается к часам устройства"
+        "the \"wall\" does not roll back to the device clock"
     );
 }
 
-/// Запись, которая уже владеет внешним id «1» (UUID v4: `reply_to_id` проверяется).
+/// The entry that already owns the external id "1" (UUID v4: `reply_to_id` is validated).
 const OWNER_ID: &str = "7b2c9d10-1111-4222-8333-444455556666";
 
 fn reply_of(store: &Store, id: &str) -> Option<String> {
@@ -190,7 +190,7 @@ fn a_reply_to_a_skipped_record_points_to_the_real_owner_of_its_external_id() {
     let dir = tempfile::tempdir().unwrap();
     let store = open(dir.path());
     let export = parse_export(r#"{"type":"saved_messages","id":1000001,"messages":[]}"#).unwrap();
-    // Запись «1» уже появилась (например, импортом на другом устройстве) после чтения `existing`.
+    // Entry "1" has already appeared (for example, by an import on another device) after `existing` was read.
     store
         .write(|conn| {
             conn.execute(
@@ -223,7 +223,7 @@ fn a_reply_to_a_skipped_record_points_to_the_real_owner_of_its_external_id() {
     assert_eq!(
         reply_of(&store, &reply_id).as_deref(),
         Some(OWNER_ID),
-        "ответ идёт к настоящему владельцу, а не к id несуществующей записи"
+        "the reply goes to the real owner, not to the id of a nonexistent entry"
     );
 }
 
@@ -263,7 +263,7 @@ fn a_personal_chat_whose_first_batch_is_all_taken_is_not_created_empty() {
     assert_eq!((outcome.skipped, outcome.created_chat), (2, false));
     assert_eq!(
         outcome.chat_id, None,
-        "чата-адресата нет: следующая пачка создаст его, если будет что писать"
+        "there is no destination chat: the next batch will create it if there is something to write"
     );
-    assert_eq!(count(&store), before, "пустой чат не создан");
+    assert_eq!(count(&store), before, "the empty chat is not created");
 }

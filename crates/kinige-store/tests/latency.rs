@@ -1,8 +1,8 @@
-//! Замер задержки отправки (ТЗ §5: запись в ленте < 100 мс). Зависит от диска, поэтому в обычный прогон не входит:
+//! Send latency measurement (spec §5: an entry in the feed < 100 ms). It depends on the disk, so it is not part of the normal run:
 //! `cargo test -p kinige-store --test latency -- --ignored --nocapture`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -12,7 +12,7 @@ use kinige_domain::groups::INBOX_ID;
 use std::time::Instant;
 
 #[test]
-#[ignore = "замер зависит от диска; запускается вручную"]
+#[ignore = "the measurement depends on the disk; run manually"]
 fn send_latency_with_full_synchronous_commit() {
     let dir = tempfile::tempdir().unwrap();
     let store = open(dir.path());
@@ -31,5 +31,5 @@ fn send_latency_with_full_synchronous_commit() {
     println!(
         "отправка (транзакция + fsync, synchronous=FULL + fullfsync), 200 записей: медиана {median:.2} мс, p95 {p95:.2} мс, максимум {max:.2} мс"
     );
-    assert!(p95 < 100.0, "p95 {p95:.1} мс");
+    assert!(p95 < 100.0, "p95 {p95:.1} ms");
 }

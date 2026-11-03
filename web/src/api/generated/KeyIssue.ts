@@ -2,6 +2,6 @@
 import type { KeyIssueKind } from "./KeyIssueKind";
 
 /**
- * Ошибка одного ключа (или элемента массива): `key` — путь вида `agent_access.chats[2]`.
+ * An error of one key (or array element): `key` is a path like `agent_access.chats[2]`.
  */
 export type KeyIssue = { key: string, kind: KeyIssueKind, };

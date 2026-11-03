@@ -39,8 +39,8 @@ import {
 } from "lucide-react";
 import "./icon.css";
 
-// Линейные значки интерфейса из набора Lucide (npm lucide-react, лицензия ISC; происхождение и лицензии — icons/README.md).
-// Эмодзи как декор интерфейса запрещены (§11.2), поэтому значок только отсюда. Размер и толщина линии — токены icon.*.
+// Line icons of the interface from the Lucide set (npm lucide-react, ISC license; origin and licenses are in icons/README.md).
+// Emoji as interface decoration are forbidden (§11.2), so icons come only from here. The size and line thickness are the icon.* tokens.
 const GLYPHS = {
   attach: Paperclip,
   emoji: Smile,
@@ -57,7 +57,7 @@ const GLYPHS = {
   close: X,
   alert: CircleAlert,
   info: Info,
-  // Слайс 3: меню чата и записи, сайдбар, корзина, копия базы.
+  // Slice 3: the chat and entry menu, the sidebar, the trash, the database backup.
   trash: Trash2,
   calendar: Calendar,
   pin: Pin,
@@ -70,12 +70,12 @@ const GLYPHS = {
   undo: Undo2,
   chevronRight: ChevronRight,
   database: Database,
-  // Решение приёмки: «Переместить в чат» (меню записи) и возврат из подменю.
+  // Acceptance decision: "Move to chat" (the entry menu) and the return from the submenu.
   moveTo: ArrowRight,
   chevronLeft: ChevronLeft,
-  // Слайс 5: «Ответить» в карточке «В этот день» и строка ответа.
+  // Slice 5: "Reply" in the "On this day" card and the reply row.
   reply: Reply,
-  // D2: значки у пунктов меню профиля.
+  // D2: icons for the profile menu items.
   settings: Settings,
   download: Download,
   upload: Upload,
@@ -88,7 +88,7 @@ const GLYPHS = {
 
 export type IconName = keyof typeof GLYPHS;
 
-/** Декоративный значок: у него нет подписи для диктора, подпись всегда у кнопки или поля, где он стоит. */
+/** A decorative icon: it has no label for the screen reader, the label always belongs to the button or field where it stands. */
 export function Icon({ name }: { name: IconName }) {
   const Glyph = GLYPHS[name];
   return <Glyph className="icon" aria-hidden="true" focusable="false" />;

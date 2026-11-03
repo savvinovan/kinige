@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Релиз Kinige (ADR-0012). Два шага, оба явные; на main ничего не делается само.
+# Kinige release (ADR-0012). Two steps, both explicit; nothing happens on main by itself.
 #
-#   scripts/release.sh X.Y.Z          поднять версию, ветка release/vX.Y.Z, коммит «Release vX.Y.Z», push и PR
-#   scripts/release.sh --tag X.Y.Z    после мержа PR и зелёного ci.yml на main: аннотированный тег vX.Y.Z на origin/main и его push
+#   scripts/release.sh X.Y.Z          bump the version, branch release/vX.Y.Z, commit "Release vX.Y.Z", push and PR
+#   scripts/release.sh --tag X.Y.Z    after the PR is merged and ci.yml on main is green: an annotated tag vX.Y.Z on origin/main and its push
 #
 # The tag starts .github/workflows/release.yml: builds on a macOS and a Windows runner and a GitHub Release with the .dmg, .zip, the Windows installer .exe and one SHA256SUMS.
-# Ключи: --dry-run (с первым шагом: всё, кроме push и PR; показывает коммит, worktree и ветка удаляются).
-# Первый шаг работает во временном git worktree от origin/main: текущая ветка и неотправленные правки не затрагиваются.
+# Flags: --dry-run (with the first step: everything except push and PR; shows the commit, the worktree and the branch are removed).
+# The first step works in a temporary git worktree from origin/main: the current branch and unpushed changes are not touched.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -23,7 +23,7 @@ usage() {
   exit 2
 }
 
-# Версия из [workspace.package] в тексте Cargo.toml на stdin.
+# The version from [workspace.package] in the Cargo.toml text on stdin.
 workspace_version() {
   awk '
     /^\[/ { in_pkg = ($0 == "[workspace.package]") }
@@ -33,7 +33,7 @@ workspace_version() {
     }'
 }
 
-# 0, если $1 строго больше $2 (оба x.y.z, сравнение по числам).
+# 0 if $1 is strictly greater than $2 (both x.y.z, compared numerically).
 version_greater() {
   local a b i
   IFS=. read -r -a a <<<"$1"
@@ -46,42 +46,42 @@ version_greater() {
 }
 
 check_semver() {
-  [[ "$1" =~ $SEMVER ]] || die "версия «$1» не x.y.z (семвер без приставок, без ведущих нулей)"
+  [[ "$1" =~ $SEMVER ]] || die "version '$1' is not x.y.z (semver without suffixes, without leading zeros)"
 }
 
-# --- шаг 2: тег ------------------------------------------------------------------------------------------------------
+# --- step 2: the tag -------------------------------------------------------------------------------------------------
 tag_release() {
   local version="$1" tag="v$1" main_version sha
   check_semver "$version"
   git fetch --quiet origin main --tags
   main_version="$(git show origin/main:Cargo.toml | workspace_version)"
   [ "$main_version" = "$version" ] ||
-    die "в origin/main версия $main_version, а не $version: сначала вмержите PR «Release ${tag}»"
-  git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null && die "тег $tag уже есть локально"
-  [ -z "$(git ls-remote --tags origin "refs/tags/$tag")" ] || die "тег $tag уже есть в origin"
+    die "origin/main has version $main_version, not $version: merge the PR 'Release ${tag}' first"
+  git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null && die "tag $tag already exists locally"
+  [ -z "$(git ls-remote --tags origin "refs/tags/$tag")" ] || die "tag $tag already exists in origin"
   sha="$(git rev-parse origin/main)"
   require_green_ci "$sha"
   git tag -a "$tag" -m "Kinige $version" "$sha"
   git push origin "refs/tags/$tag"
-  echo "OK: тег $tag на $(git log -1 --format='%h %s' "$sha"); сборку ведёт workflow Release:"
+  echo "OK: tag $tag on $(git log -1 --format='%h %s' "$sha"); the build is run by the Release workflow:"
   echo "    gh run list --workflow release.yml --limit 1"
 }
 
-# Тег ставится только на коммит, где последний запуск ci.yml завершился успешно (запуск по push в main после мержа).
+# The tag is put only on a commit where the last ci.yml run succeeded (the run on push to main after the merge).
 require_green_ci() {
   local sha="$1" state
   state="$(gh run list --workflow ci.yml --commit "$sha" --limit 1 --json status,conclusion \
-    --jq '.[0] | "\(.status) \(.conclusion)"')" || die "не удалось спросить GitHub о CI (gh run list)"
+    --jq '.[0] | "\(.status) \(.conclusion)"')" || die "could not ask GitHub about CI (gh run list)"
   case "$state" in
     "completed success") ;;
-    "null null") die "для коммита ${sha:0:7} нет запуска ci.yml: дождитесь CI на main или запустите его (gh workflow run ci.yml --ref main)" ;;
-    "completed "*) die "CI на коммите ${sha:0:7} завершился как «${state#completed }»: тег не ставится" ;;
-    *) die "CI на коммите ${sha:0:7} ещё не завершён (${state%% *}): подождите и повторите" ;;
+    "null null") die "commit ${sha:0:7} has no ci.yml run: wait for CI on main or start it (gh workflow run ci.yml --ref main)" ;;
+    "completed "*) die "CI on commit ${sha:0:7} finished as '${state#completed }': the tag is not put" ;;
+    *) die "CI on commit ${sha:0:7} has not finished yet (${state%% *}): wait and retry" ;;
   esac
 }
 
-# --- шаг 1: версия, ветка, PR ----------------------------------------------------------------------------------------
-# root, work, branch, pushed и dry_run — глобальные: их читает ловушка EXIT, когда функция уже вернула управление.
+# --- step 1: the version, the branch, the PR -------------------------------------------------------------------------
+# root, work, branch, pushed and dry_run are global: the EXIT trap reads them when the function has already returned.
 prepare_release() {
   local version="$1" tag="v$1" current tmp log
   branch="release/v$1"
@@ -92,65 +92,65 @@ prepare_release() {
 
   git fetch --quiet origin main --tags
   current="$(git show origin/main:Cargo.toml | workspace_version)"
-  [[ "$current" =~ $SEMVER ]] || die "в origin/main не нашлась версия в Cargo.toml"
-  version_greater "$version" "$current" || die "версия $version не больше текущей $current"
-  git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null && die "тег $tag уже есть"
-  git show-ref --quiet --verify "refs/heads/$branch" && die "ветка $branch уже есть локально"
-  [ -z "$(git ls-remote --heads origin "$branch")" ] || die "ветка $branch уже есть в origin"
+  [[ "$current" =~ $SEMVER ]] || die "no version found in Cargo.toml in origin/main"
+  version_greater "$version" "$current" || die "version $version is not greater than the current $current"
+  git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null && die "tag $tag already exists"
+  git show-ref --quiet --verify "refs/heads/$branch" && die "branch $branch already exists locally"
+  [ -z "$(git ls-remote --heads origin "$branch")" ] || die "branch $branch already exists in origin"
 
   work="$(mktemp -d "${TMPDIR:-/tmp}/kinige-release.XXXXXX")"
   git worktree add --quiet -b "$branch" "$work" origin/main
   trap cleanup_worktree EXIT
   cd "$work"
 
-  # Cargo.toml: меняется одна строка в [workspace.package]; файл пишется во временный и переносится атомарно.
+  # Cargo.toml: one line in [workspace.package] is changed; the file is written to a temporary one and moved atomically.
   tmp="$(mktemp "${TMPDIR:-/tmp}/kinige-cargo.XXXXXX")"
   awk -v v="$version" '
     /^\[/ { in_pkg = ($0 == "[workspace.package]") }
     in_pkg && !done && /^version[[:space:]]*=/ { print "version = \"" v "\""; done = 1; next }
     { print }
-    END { if (!done) exit 1 }' Cargo.toml >"$tmp" || { rm -f "$tmp"; die "в Cargo.toml нет version в [workspace.package]"; }
+    END { if (!done) exit 1 }' Cargo.toml >"$tmp" || { rm -f "$tmp"; die "Cargo.toml has no version in [workspace.package]"; }
   mv "$tmp" Cargo.toml
 
-  # Cargo.lock: только крейты рабочей области, без компиляции и без сети.
+  # Cargo.lock: only the workspace crates, without compiling and without the network.
   log="$(mktemp "${TMPDIR:-/tmp}/kinige-cargo-log.XXXXXX")"
-  cargo update --workspace --offline >"$log" 2>&1 || { cat "$log" >&2; rm -f "$log"; die "cargo update -w --offline не удался"; }
+  cargo update --workspace --offline >"$log" 2>&1 || { cat "$log" >&2; rm -f "$log"; die "cargo update -w --offline failed"; }
   rm -f "$log"
-  # package.json и package-lock.json: npm правит обе строки версии, тег и коммит не создаёт.
+  # package.json and package-lock.json: npm edits both version lines, creates no tag and no commit.
   npm --prefix web version "$version" --no-git-tag-version --allow-same-version >/dev/null
 
   verify_diff "$current" "$version"
   run_version_test
 
   git add Cargo.toml Cargo.lock web/package.json web/package-lock.json
-  # Релизный коммит и PR идут без номера задачи Huly (исключение из правила 15 CLAUDE.md, ADR-0012).
+  # The release commit and PR go without a Huly task number (an exception to rule 15 of CLAUDE.md, ADR-0012).
   git commit --quiet -m "Release $tag"
 
   if [ "$dry_run" = "1" ]; then
-    echo "dry-run: коммит в ветке $branch подготовлен; push и PR не делались, рабочее дерево и ветка удаляются"
+    echo "dry-run: the commit on branch $branch is prepared; no push and no PR, the worktree and the branch are removed"
     git --no-pager show --stat --format='%h %s' HEAD
     return
   fi
   git push --quiet -u origin "$branch"
   pushed=1
   gh pr create --base main --head "$branch" --title "Release $tag" --body "$(pr_body "$version" "$current")"
-  echo "Дальше: дождаться CI, вмержить PR, затем: scripts/release.sh --tag $version"
+  echo "Next: wait for CI, merge the PR, then: scripts/release.sh --tag $version"
 }
 
-# Тест версий в временном worktree. Зависимости: node_modules основного дерева (ссылкой), а если их нет — `npm ci` здесь
-# (временный каталог удаляется вместе с worktree). Молча пропускать тест нельзя: он и ловит забытый файл версии.
+# The version test in the temporary worktree. Dependencies: node_modules of the main tree (by a link), and if absent, `npm ci` here
+# (the temporary directory is removed together with the worktree). The test must not be skipped silently: it catches a forgotten version file.
 run_version_test() {
   if [ -d "$root/web/node_modules" ]; then
     ln -s "$root/web/node_modules" web/node_modules
   else
-    echo "release.sh: в $root/web нет node_modules, ставлю зависимости во временном worktree (npm ci)" >&2
-    npm --prefix web ci --ignore-scripts --no-audit --no-fund >/dev/null || die "npm ci не удался"
+    echo "release.sh: $root/web has no node_modules, installing dependencies in the temporary worktree (npm ci)" >&2
+    npm --prefix web ci --ignore-scripts --no-audit --no-fund >/dev/null || die "npm ci failed"
   fi
-  (cd web && npx vitest run src/version.test.ts) || die "web/src/version.test.ts не прошёл"
+  (cd web && npx vitest run src/version.test.ts) || die "web/src/version.test.ts failed"
   [ ! -L web/node_modules ] || rm web/node_modules
 }
 
-# Всегда: worktree удаляется (и после --dry-run, и при ошибке), локальная ветка — пока она не отправлена в origin.
+# Always: the worktree is removed (after --dry-run and on error), the local branch too unless it has been pushed to origin.
 cleanup_worktree() {
   cd "$root" || true
   git worktree remove --force "$work" >/dev/null 2>&1 || true
@@ -159,28 +159,28 @@ cleanup_worktree() {
   fi
 }
 
-# В дифф должны попасть ровно четыре файла, а в Cargo.lock — только строки version крейтов рабочей области.
+# The diff must contain exactly four files, and in Cargo.lock only the version lines of the workspace crates.
 verify_diff() {
   local old="$1" new="$2" files lock
   files="$(git diff --name-only | sort | tr '\n' ' ')"
   [ "$files" = "Cargo.lock Cargo.toml web/package-lock.json web/package.json " ] ||
-    die "изменились лишние файлы: $files"
+    die "extra files changed: $files"
   lock="$(git diff -U0 Cargo.lock | grep -E '^[+-][^+-]' || true)"
-  [ -n "$lock" ] || die "Cargo.lock не изменился"
+  [ -n "$lock" ] || die "Cargo.lock did not change"
   if printf '%s\n' "$lock" | grep -Ev "^[+-]version = \"($old|$new)\"$" >/dev/null; then
-    die "в Cargo.lock изменилось не только version крейтов рабочей области"
+    die "Cargo.lock changed in more than the version of the workspace crates"
   fi
 }
 
 pr_body() {
   cat <<EOF
-Версия $2 -> $1 (Cargo.toml, Cargo.lock, web/package.json, web/package-lock.json). Схема версий и порядок выпуска — ADR-0012.
+Version $2 -> $1 (Cargo.toml, Cargo.lock, web/package.json, web/package-lock.json). The version scheme and the release procedure are in ADR-0012.
 
-После мержа: \`scripts/release.sh --tag $1\` ставит тег v$1 на main; workflow Release соберёт приложение и создаст GitHub Release.
+After the merge: \`scripts/release.sh --tag $1\` puts the tag v$1 on main; the Release workflow builds the app and creates a GitHub Release.
 EOF
 }
 
-# --- разбор аргументов -----------------------------------------------------------------------------------------------
+# --- argument parsing ------------------------------------------------------------------------------------------------
 mode="prepare"
 dry_run=0
 version=""
@@ -196,7 +196,7 @@ done
 [ -n "$version" ] || usage
 
 if [ "$mode" = "tag" ]; then
-  [ "$dry_run" = "0" ] || die "--dry-run относится только к первому шагу"
+  [ "$dry_run" = "0" ] || die "--dry-run applies only to the first step"
   tag_release "$version"
 else
   prepare_release "$version" "$dry_run"

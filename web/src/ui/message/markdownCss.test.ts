@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// Свойства, которые видны только в настоящем окне (jsdom CSS не считает): правила не должны пропасть из таблиц.
+// Properties that are visible only in a real window (jsdom does not compute CSS): the rules must not disappear from the style sheets.
 const css = (name: string) => readFileSync(new URL(name, import.meta.url), "utf8");
 
-/** Тело правила с точным селектором (без комментариев внутри). */
+/** The body of a rule with the exact selector (without comments inside). */
 const rule = (source: string, selector: string) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const body = new RegExp(`(?:^|\\})\\s*(?:/\\*[^]*?\\*/\\s*)*${escaped}\\s*\\{([^}]*)\\}`, "m").exec(source)?.[1];

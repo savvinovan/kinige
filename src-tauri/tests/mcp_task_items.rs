@@ -1,8 +1,8 @@
-//! Пункты `- [ ]` по настоящему сокету MCP (слайс 4a, приёмка): схема `set_task_done` называет `item`, `get_entry` отдаёт
-//! `tasks` с номерами, отметка пункта доходит до записи, мусорные `item` — `invalid_argument`.
+//! The `- [ ]` items over the real MCP socket (slice 4a, acceptance): the `set_task_done` schema names `item`, `get_entry` returns
+//! `tasks` with numbers, the item mark reaches the entry, garbage `item` values give `invalid_argument`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 // The MCP server is a Unix socket; there is none on Windows (slice 10a).
 #![cfg(unix)]
@@ -28,7 +28,7 @@ fn an_agent_can_mark_one_checklist_item_by_the_number_it_read() {
         .id;
     let mut client = mcp.client();
     client.handshake("Claude");
-    // Схема: `item` — целое от нуля, и описание объясняет, откуда номера.
+    // The schema: `item` is an integer from zero, and the description explains where the numbers come from.
     let list = client.request("tools/list", json!({}));
     let tool = list["result"]["tools"]
         .as_array()
@@ -47,7 +47,7 @@ fn an_agent_can_mark_one_checklist_item_by_the_number_it_read() {
         tool["inputSchema"]["properties"]["item_text"]["type"],
         "string"
     );
-    // Описание просит передавать текст пункта вместе с номером и говорит, что будет при расхождении.
+    // The description asks to pass the item text together with the number and says what happens on a mismatch.
     let description = tool["description"].as_str().unwrap();
     assert!(description.contains("`item_text`") && description.contains("numbers then shift"));
     assert!(
@@ -62,7 +62,7 @@ fn an_agent_can_mark_one_checklist_item_by_the_number_it_read() {
             .unwrap()
             .contains(&json!("item"))
     );
-    // Агент читает запись и находит «Почитать книгу» по номеру.
+    // The agent reads the entry and finds "Почитать книгу" by number.
     let (error, text) = client.call("get_entry", json!({"id": id}));
     assert!(!error, "{text}");
     let entry: Value = serde_json::from_str(&text).unwrap();
@@ -77,7 +77,7 @@ fn an_agent_can_mark_one_checklist_item_by_the_number_it_read() {
         book,
         json!({"item": 2, "done": false, "text": "Почитать книгу"})
     );
-    // Отмечает ровно его.
+    // It marks exactly that one.
     let (error, text) = client.call(
         "set_task_done",
         json!({"id": id, "done": true, "item": book["item"], "item_text": book["text"]}),
@@ -94,7 +94,7 @@ fn an_agent_can_mark_one_checklist_item_by_the_number_it_read() {
         body,
         "Планы на выходные\n- [x] Поход в горы\n- [ ] Разобрать фотографии\n- [x] Почитать книгу"
     );
-    // Мусорный номер — `invalid_argument`, текст не тронут.
+    // A garbage number gives `invalid_argument`, the text is untouched.
     for junk in [json!(-1), json!("2"), json!(7)] {
         let (error, text) = client.call(
             "set_task_done",

@@ -84,8 +84,8 @@ describe("useDraftSaver", () => {
   });
 
   it("текст уходит в тот `save`, с которым его запланировали, даже если flush вызван из прежней отрисовки", async () => {
-    // Смена чата меняет `save`; React сбрасывает эффекты прежней отрисовки (в том числе сохранение при размонтировании) с
-    // задержкой, уже после того, как человек начал печатать в новом чате.
+    // A chat change changes `save`; React flushes the effects of the previous render (including the save on unmount) with
+    // a delay, after the person has already started typing in the new chat.
     const saveInbox = vi.fn().mockResolvedValue(undefined);
     const saveBooks = vi.fn().mockResolvedValue(undefined);
     const { result, rerender } = renderHook(({ save }) => useDraftSaver(save), { initialProps: { save: saveInbox } });
@@ -102,7 +102,7 @@ describe("useDraftSaver", () => {
     const saveBooks = vi.fn().mockResolvedValue(undefined);
     const { result, rerender } = renderHook(({ save }) => useDraftSaver(save), { initialProps: { save: saveInbox } });
     result.current.schedule("недописанное во входящих");
-    // Чат переключён, но запланированное ещё не сохранено; в новом чате начался набор.
+    // The chat is switched but the scheduled save is not done yet; typing began in the new chat.
     rerender({ save: saveBooks });
     result.current.schedule("про книги");
     await result.current.flush();

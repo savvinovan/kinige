@@ -1,4 +1,4 @@
-/* Только для историй Storybook: результаты поиска занимают окно по высоте, как в приложении. */
+/* Storybook stories only: the search results take the window's full height, as in the app. */
 .story-search {
   display: flex;
   flex-direction: column;

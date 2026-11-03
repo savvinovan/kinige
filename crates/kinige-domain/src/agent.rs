@@ -1,30 +1,30 @@
-//! ИИ-агент через MCP (ADR-0009, слайс 4a): разбор и проверка аргументов инструментов, формы ответов, «журнал без
-//! содержимого». Без IO. Права доступа здесь не проверяются: их каждый раз проверяет хранилище внутри запроса.
+//! AI agent over MCP (ADR-0009, slice 4a): parsing and validating tool arguments, reply shapes, the "log without
+//! content". No IO. Access rights are not checked here: the store checks them every time inside the query.
 
 use crate::hlc::is_uuid;
 use crate::journal::is_valid_journal_date;
 use serde_json::{Map, Value};
 
-/// Длина поискового запроса в знаках: дальше запрос не имеет смысла для индекса слов.
+/// Search query length in characters: a longer query makes no sense for the word index.
 pub const MAX_QUERY_CHARS: usize = 1000;
-/// `query` в журнале обращений обрезается до этой длины (ADR-0009).
+/// `query` in the call log is truncated to this length (ADR-0009).
 pub const LOG_QUERY_CHARS: usize = 128;
-/// `client` в журнале: то, что клиент сообщил о себе, не длиннее.
+/// `client` in the log: what the client reported about itself, no longer than this.
 pub const CLIENT_CHARS: usize = 64;
-/// Записей на странице поиска.
+/// Entries per search page.
 pub const SEARCH_PAGE: usize = 50;
-/// Записей на странице дня или диапазона.
+/// Entries per page of a day or range.
 pub const ENTRIES_PAGE: usize = 200;
-/// Текст записи в списке: дальше обрезается с признаком `truncated`, целиком — в `get_entry`.
+/// Entry text in a list: longer text is truncated with the `truncated` flag, the full text is in `get_entry`.
 pub const LIST_TEXT_CHARS: usize = 2000;
-/// Наибольший номер пункта `- [ ]` в `set_task_done(item)`: дальше запрос явно мусорный (пунктов в записи столько нет).
+/// The largest `- [ ]` item number in `set_task_done(item)`: beyond it the request is clearly garbage (an entry has no that many items).
 pub const MAX_TASK_ITEM: u64 = 1_000_000;
-/// Наибольшая длина `item_text` в знаках: пункт длиннее строки записи не бывает, а мусор отсекается сразу.
+/// The largest `item_text` length in characters: an item cannot be longer than an entry line, and garbage is cut off at once.
 pub const MAX_ITEM_TEXT_CHARS: usize = 100_000;
-/// Ответ не больше этого размера: страница обрывается на последней целой записи, которая помещается.
+/// A reply is no larger than this: the page is cut at the last whole entry that fits.
 pub const RESPONSE_BYTES: usize = 1024 * 1024;
 
-/// Инструмент MCP. Имена — часть протокола с клиентами.
+/// An MCP tool. The names are part of the protocol with clients.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AgentTool {
     ListChats,
@@ -66,7 +66,7 @@ impl AgentTool {
         AgentTool::ALL.into_iter().find(|tool| tool.name() == name)
     }
 
-    /// Инструмент меняет данные: доступен только в режиме «чтение и запись».
+    /// The tool changes data: available only in the "read and write" mode.
     pub fn writes(self) -> bool {
         matches!(
             self,
@@ -75,11 +75,11 @@ impl AgentTool {
     }
 }
 
-/// Аргумент не принят: текст для агента (по-английски), без содержимого аргументов.
+/// An argument is not accepted: text for the agent (in English), without the arguments' content.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArgError(pub String);
 
-/// Позиция в выдаче для постраничного чтения: `YYYY-MM-DD:<created_at>:<id>` (ключ ленты `journal_date, created_at, id`).
+/// A position in the output for paged reading: `YYYY-MM-DD:<created_at>:<id>` (the feed key `journal_date, created_at, id`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentCursor {
     pub journal_date: String,
@@ -115,7 +115,7 @@ pub struct SearchArgs {
     pub cursor: Option<AgentCursor>,
 }
 
-/// День или диапазон дней (включительно); один день — `from == to`.
+/// A day or a range of days (inclusive); one day means `from == to`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntriesArgs {
     pub from: String,
@@ -124,7 +124,7 @@ pub struct EntriesArgs {
     pub cursor: Option<AgentCursor>,
 }
 
-/// Проверенные аргументы вызова. Права и существование чатов и записей проверяет хранилище.
+/// Validated call arguments. The store checks rights and the existence of chats and entries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToolArgs {
     ListChats,
@@ -145,12 +145,12 @@ pub enum ToolArgs {
         text: String,
         chat_id: Option<String>,
     },
-    /// Без `item` — отметка задачи-записи целиком; с `item` — один пункт `- [ ]` внутри записи (номер с нуля, как в
+    /// Without `item` -- marks the task-entry as a whole; with `item` -- one `- [ ]` item inside the entry (zero-based number, as in
     /// `tasks::task_items`).
     ///
-    /// `item_text` — страховка от сдвинувшихся номеров (пользователь добавил пункт выше после чтения): текст пункта так,
-    /// как его отдаёт `tasks`; не совпал с текстом найденного пункта — отказ, ничего не записано. Без `item_text` номер
-    /// принимается как есть.
+    /// `item_text` is a safeguard against shifted numbers (the user added an item above after the read): the item text as
+    /// `tasks` returns it; if it does not match the text of the found item, the call is refused and nothing is written. Without `item_text` the number
+    /// is accepted as is.
     SetTaskDone {
         id: String,
         done: bool,
@@ -159,7 +159,7 @@ pub enum ToolArgs {
     },
 }
 
-/// Разбор `arguments` вызова инструмента. Лишние поля игнорируются (клиенты добавляют свои), типы и форматы строгие.
+/// Parsing the `arguments` of a tool call. Extra fields are ignored (clients add their own), types and formats are strict.
 pub fn parse_args(
     tool: AgentTool,
     arguments: Option<&Map<String, Value>>,
@@ -277,7 +277,7 @@ fn bool_field(args: &Map<String, Value>, key: &str) -> Result<Option<bool>, ArgE
     }
 }
 
-/// Номер пункта: целое неотрицательное число (не строка, не дробное, не больше [`MAX_TASK_ITEM`]).
+/// Item number: a non-negative whole number (not a string, not fractional, not above [`MAX_TASK_ITEM`]).
 fn item_field(args: &Map<String, Value>) -> Result<Option<usize>, ArgError> {
     match field(args, "item") {
         None => Ok(None),
@@ -291,8 +291,8 @@ fn item_field(args: &Map<String, Value>) -> Result<Option<usize>, ArgError> {
     }
 }
 
-/// Текст пункта для сверки: строка, без пробелов по краям (так же обрезан `text` в `tasks`), не пустая и не длиннее
-/// [`MAX_ITEM_TEXT_CHARS`]; без `item` не имеет смысла.
+/// Item text for comparison: a string, without surrounding spaces (`text` in `tasks` is trimmed the same way), non-empty and no longer than
+/// [`MAX_ITEM_TEXT_CHARS`]; makes no sense without `item`.
 fn item_text_field(args: &Map<String, Value>) -> Result<Option<String>, ArgError> {
     let Some(text) = text_field(args, "item_text")? else {
         return Ok(None);
@@ -319,8 +319,8 @@ fn cursor_field(args: &Map<String, Value>) -> Result<Option<AgentCursor>, ArgErr
     }
 }
 
-/// `args_json` журнала обращений — **белый список** полей разобранных аргументов: чат, даты, флаги и `query`, обрезанный
-/// до [`LOG_QUERY_CHARS`]. Текста записи (`text`) и id записей здесь нет никогда: id идут в `mcp_log_message`.
+/// `args_json` of the call log is an **allow-list** of the parsed arguments' fields: chat, dates, flags and `query`, truncated
+/// to [`LOG_QUERY_CHARS`]. The entry text (`text`) and entry ids are never here: ids go to `mcp_log_message`.
 pub fn args_json(args: &ToolArgs) -> String {
     let mut out = Map::new();
     match args {
@@ -352,7 +352,7 @@ pub fn args_json(args: &ToolArgs) -> String {
         ToolArgs::AppendToLastEntry { chat_id, .. } => put(&mut out, "chat_id", chat_id.as_ref()),
         ToolArgs::SetTaskDone { done, item, .. } => {
             out.insert("done".into(), Value::Bool(*done));
-            // Только номер пункта: его текст в журнал не попадает никогда.
+            // Only the item number: its text never reaches the log.
             if let Some(item) = item {
                 out.insert("item".into(), Value::from(*item));
             }
@@ -373,8 +373,8 @@ fn flag(out: &mut Map<String, Value>, key: &str, on: bool) {
     }
 }
 
-/// Имя клиента из `clientInfo` для журнала: управляющие символы убраны, не длиннее [`CLIENT_CHARS`]. Пустое имя —
-/// `unknown`. Это слова клиента, а не проверенная личность (ADR-0009).
+/// The client name from `clientInfo` for the log: control characters removed, no longer than [`CLIENT_CHARS`]. An empty name becomes
+/// `unknown`. These are the client's words, not a verified identity (ADR-0009).
 pub fn clean_client(raw: &str) -> String {
     let cleaned: String = raw.chars().filter(|c| !c.is_control()).collect();
     let cleaned = truncate_chars(cleaned.trim(), CLIENT_CHARS);
@@ -385,7 +385,7 @@ pub fn clean_client(raw: &str) -> String {
     }
 }
 
-/// Первые `max` знаков (по границе символа).
+/// The first `max` characters (at a character boundary).
 pub fn truncate_chars(text: &str, max: usize) -> String {
     text.chars().take(max).collect()
 }

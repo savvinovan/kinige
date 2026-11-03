@@ -1,7 +1,7 @@
-/* Окно быстрого захвата: прозрачное окно ОС, в нём плавающая панель-«пилюля» с полем под тень вокруг. Только токены. */
+/* The quick capture window: a transparent OS window with a floating "pill" panel and a shadow margin around it. Tokens only. */
 
-/* Страница окна захвата прозрачная: форму панели и тень рисует CSS (атрибут ставит main.tsx). Прокрутки у страницы нет:
-   высоту окна подгоняет Rust по высоте содержимого. */
+/* The capture window page is transparent: the panel shape and shadow are drawn by CSS (main.tsx sets the attribute). The page does not scroll:
+   Rust fits the window height to the content height. */
 :root[data-window="capture"],
 :root[data-window="capture"] body,
 :root[data-window="capture"] #root {
@@ -9,18 +9,18 @@
   background: transparent;
 }
 
-/* Панель прижата к нижнему краю окна: окно растёт вверх, а пока размер окна догоняет содержимое (один кадр), поле ввода
-   остаётся на месте и не дёргается. */
+/* The panel is pressed to the bottom edge of the window: the window grows upward, and while the window size catches up with the content (one frame), the input field
+   stays in place and does not twitch. */
 :root[data-window="capture"] #root {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
 }
 
-/* Поле под тень: окно ОС больше панели на shadow-margin с каждой стороны. Высота — по содержимому, но не выше окна:
-   дальше сжимается контекст, а поле растёт внутри себя. */
+/* The shadow margin: the OS window is larger than the panel by shadow-margin on each side. The height follows the content but not beyond the window:
+   past that the context shrinks and the field grows within itself. */
 .capture-shell {
-  /* Не сжимается вместе с окном: измеряется собственная высота содержимого (по ней Rust подгоняет окно). */
+  /* Does not shrink with the window: the content's own height is measured (Rust fits the window to it). */
   flex: none;
   display: flex;
   flex-direction: column;
@@ -30,7 +30,7 @@
   padding: var(--layout-capture-shadow-margin);
 }
 
-/* Сама панель: заливка бумаги (на ней лежат плашки контекста), мягкая тень поверх всего, скругление «пилюлей». */
+/* The panel itself: a paper fill (the context bubbles lie on it), a soft shadow over everything, "pill" rounding. */
 .capture-panel {
   position: relative;
   display: flex;
@@ -39,9 +39,9 @@
   gap: var(--space-2);
   box-sizing: border-box;
   min-height: 0;
-  /* Единый внутренний отступ со всех четырёх сторон (13 px): плашки, поле и кнопка не заходят в зону скругления. Левая линия
-     текста общая: текст плашки (padding плашки), текст поля (отступ поля) и подсказка стоят на одной вертикали, 9,75 px от
-     края плашки; подсказка и ошибка под полем получают тот же отступ снизу, что и всё остальное. */
+  /* One inner padding on all four sides (13 px): bubbles, the field and the button do not enter the rounding zone. The left line
+     of text is shared: the bubble text (bubble padding), the field text (field padding) and the hint stand on one vertical, 9.75 px from
+     the bubble edge; the hint and the error under the field get the same bottom padding as everything else. */
   padding: var(--space-4);
   overflow: hidden;
   border-radius: var(--radius-floating);
@@ -50,7 +50,7 @@
   color: var(--color-text-primary);
 }
 
-/* Тонкая светлая обводка: рамка цветом основного текста в долю силы (opacity.panel-edge), поверх содержимого, события не ловит. */
+/* A thin light outline: a border in the primary text color at a fraction of strength (opacity.panel-edge), over the content, catches no events. */
 .capture-panel::after {
   content: "";
   position: absolute;
@@ -61,26 +61,26 @@
   pointer-events: none;
 }
 
-/* Ошибка отправки: единственный случай, когда обводка цветная и в полную силу (как рамка поля в главном окне). */
+/* A send error: the only case where the outline is colored and at full strength (like the field border in the main window). */
 .capture-panel:has(.composer__bar--invalid)::after {
   border-color: var(--color-status-error);
   opacity: 1;
 }
 
-/* Поле ввода — тот же Composer, что в главном окне, в плавающем виде: без полей, панель держит отступы. */
+/* The input field is the same Composer as in the main window, in floating form: without margins, the panel holds the padding. */
 .capture-panel .composer {
   flex: none;
 }
 
-/* Поле растёт до доли высоты панели (layout.capture.field-max-share) при самом высоком окне, дальше прокрутка внутри. Предел от высоты окна из токена, а не 40vh:
-   в историях Storybook viewport выше окна, в приложении это одно и то же. */
+/* The field grows up to a share of the panel height (layout.capture.field-max-share) at the tallest window, beyond that it scrolls inside. The limit comes from the window height token, not 40vh:
+   in Storybook stories the viewport is taller than the window, in the app they are the same. */
 .capture-panel .composer__field {
   max-height: calc((var(--layout-capture-window-max-height) - 2 * var(--layout-capture-shadow-margin)) * var(--layout-capture-field-max-share));
 }
 
-/* Пока открыт пикер эмодзи (351 px высоты), поле показывает не больше нескольких строк (layout.capture.field-lines-with-picker),
-   дальше прокрутка внутри: пикер и поле вместе помещаются в самое высокое окно. Строка занимает высоту line-height, а первая
-   ещё и вертикальные поля textarea, то есть высоту кнопки (layout.control-height). */
+/* While the emoji picker is open (351 px tall), the field shows no more than a few lines (layout.capture.field-lines-with-picker),
+   beyond that it scrolls inside: the picker and the field together fit into the tallest window. A line takes the line-height, and the first one
+   also takes the textarea's vertical padding, that is the button height (layout.control-height). */
 .capture-panel:has(.emoji-inline) .composer__field {
   max-height: calc(
     var(--layout-control-height) + (var(--layout-capture-field-lines-with-picker) - 1) * var(--type-body-size) *
@@ -88,8 +88,8 @@
   );
 }
 
-/* Контекст занимает место над полем и первым уступает его: если места не хватает (длинный текст в поле, крупный шрифт),
-   старые плашки уходят за верхний край, а поле остаётся целым. Плашки лежат у нижнего края, ближе к полю. */
+/* The context takes the space above the field and is the first to give it up: if there is not enough room (long text in the field, a large font),
+   the old bubbles go beyond the top edge while the field stays whole. Bubbles lie at the bottom edge, closer to the field. */
 .capture-context {
   display: flex;
   flex: 0 1 auto;
@@ -113,8 +113,8 @@
   display: block;
 }
 
-/* Бледная плашка: заливка плашки сообщения в долю силы (текст при этом обычного цвета), без тени и действий. Время слева
-   отдельной колонкой: у обрезанной записи конец текста не накрыт временем, у всех записей текст начинается с одного места. */
+/* A pale bubble: the message bubble fill at a fraction of strength (the text keeps its regular color), no shadow or actions. The time sits on the left
+   in its own column: for a clipped entry the end of the text is not covered by the time, and the text of all entries starts from the same place. */
 .capture-entry {
   position: relative;
   display: flex;
@@ -150,17 +150,17 @@
   font-family: var(--type-meta-family);
   font-size: var(--type-meta-size);
   font-weight: var(--type-meta-weight);
-  /* Высота строки текста: базовые линии времени и первой строки совпадают. */
+  /* The text line height: the baselines of the time and of the first line coincide. */
   line-height: calc(var(--type-body-size) * var(--type-body-line-height));
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   user-select: none;
 }
 
-/* Текст обрезается по числу строк (layout.capture.entry-lines): у обычного текста, списков и блока кода (он переносит длинные
-   строки, KINIG-40) — многоточие (line-clamp), при нескольких блоках — ровный срез по высоте.
-   Чтобы срез приходился на границу строки, внутри контекста все строки одной высоты: заголовки набраны размером текста,
-   промежутков между блоками нет, у блока кода нет вертикальных полей. */
+/* The text is clamped by line count (layout.capture.entry-lines): plain text, lists and a code block (which wraps long
+   lines, KINIG-40) get an ellipsis (line-clamp), several blocks get an even cut by height.
+   So that the cut falls on a line boundary, all lines inside the context have the same height: headings are set at the text size,
+   there are no gaps between blocks, the code block has no vertical padding. */
 .capture-entry__text {
   display: -webkit-box;
   flex: 1;
@@ -185,7 +185,7 @@
   line-height: var(--type-body-line-height);
 }
 
-/* Ссылка в контексте — просто текст: окно не открывает ссылок. */
+/* A link in the context is just text: the window does not open links. */
 .capture-link {
   color: var(--color-text-tertiary);
 }

@@ -1,4 +1,4 @@
-/* Модальное окно внутри главного окна: подложка и панель по центру. Только токены. */
+/* A modal inside the main window: a scrim and a centered panel. Tokens only. */
 .modal {
   position: fixed;
   inset: 0;
@@ -9,7 +9,7 @@
   padding: var(--space-4);
 }
 
-/* Подложка: заливка цвета фона окна, а не отдельный чёрный цвет; главное окно за ней различимо, но отступает. */
+/* Scrim: a fill in the window background color, not a separate black; the main window behind it is distinguishable but recedes. */
 .modal__scrim {
   position: absolute;
   inset: 0;
@@ -34,7 +34,7 @@
   animation: modal-panel-in var(--motion-duration-medium) var(--motion-easing-enter);
 }
 
-/* Панель получает фокус программно, только если в ней нет кнопок; кольцо вокруг всей панели ничего не сообщает. */
+/* The panel gets focus programmatically only if it has no buttons; a ring around the whole panel conveys nothing. */
 .modal__panel:focus {
   outline: none;
 }
@@ -59,20 +59,20 @@
   overflow-wrap: anywhere;
 }
 
-/* Содержимое прокручивается внутри панели, заголовок остаётся на месте. */
+/* The content scrolls inside the panel, the header stays in place. */
 .modal__body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
 
-/* Окно под другим окном не прокручивается и полосы не рисует: иначе в WebKit она проступает сквозь верхнее окно. Положение
-   прокрутки при этом сохраняется (после закрытия верхнего окна всё на месте). */
+/* A window under another window does not scroll and draws no scrollbar: otherwise in WebKit it shows through the top window. The scroll
+   position is kept (after the top window closes everything is in place). */
 .modal[data-covered] .modal__body {
   overflow-y: hidden;
 }
 
-/* Reduce Motion обнуляет длительность (themes.css): окно появляется сразу. */
+/* Reduce Motion zeroes the duration (themes.css): the window appears at once. */
 @keyframes modal-scrim-in {
   from {
     opacity: 0;

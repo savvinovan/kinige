@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-/** Запасная задержка скрытия (мс), если токен `motion.delay.hide-actions` недоступен (тесты без CSS). */
+/** Fallback hide delay (ms) if the `motion.delay.hide-actions` token is unavailable (tests without CSS). */
 const FALLBACK_HIDE_DELAY_MS = 180;
 
-/** Задержка скрытия из токена `--motion-delay-hide-actions` («0.18s» после Style Dictionary). Reduce Motion её не меняет. */
+/** Hide delay from the `--motion-delay-hide-actions` token ("0.18s" after Style Dictionary). Reduce Motion does not change it. */
 export function hideDelayMs(): number {
   const raw = getComputedStyle(document.documentElement).getPropertyValue("--motion-delay-hide-actions").trim();
   const value = Number.parseFloat(raw);
@@ -12,8 +12,8 @@ export function hideDelayMs(): number {
 }
 
 /**
- * Над плашкой нет места для ряда (первое сообщение у верхнего края ленты). Ряд над плашкой занимает свою высоту минус то,
- * что заходит внутрь плашки (её верхний отступ). Вне ленты (нет `.feed-scroll`) ограничителя сверху нет.
+ * There is no room above the bubble for the row (the first message at the top edge of the feed). The row above the bubble takes its height minus
+ * the part that goes inside the bubble (its top padding). Outside the feed (no `.feed-scroll`) there is no limit at the top.
  */
 function noRoomAbove(element: HTMLElement): boolean {
   const scroller = element.closest<HTMLElement>(".feed-scroll");
@@ -25,13 +25,13 @@ function noRoomAbove(element: HTMLElement): boolean {
 }
 
 /**
- * Где стоит ряд действий и когда он виден.
+ * Where the action row stands and when it is visible.
  *
- * - `inside`: справа от плашки не хватает места (плашка + ряд шире колонки) — ряд переходит на верхнюю границу плашки
- *   у её правого края (чуть выше плашки). Ширина внешнего слоя ряда не зависит от режима, поэтому на границе нет дребезга.
- * - `flip`: над плашкой нет места (первое сообщение у верхнего края ленты) — ряд прижимается внутрь плашки, а не обрезается.
- * - `shown`: зона наведения — вся строка ленты (`.feed__item` во всю колонку), а не только плашка; вне ленты — сама обёртка.
- *   После ухода мыши ряд остаётся ещё `motion.delay.hide-actions` (около 180 мс): можно дойти по диагонали до значка.
+ * - `inside`: there is not enough room to the right of the bubble (bubble + row wider than the column) - the row moves to the top border of the bubble
+ *   at its right edge (slightly above the bubble). The width of the row's outer layer does not depend on the mode, so there is no flicker at the threshold.
+ * - `flip`: there is no room above the bubble (the first message at the top edge of the feed) - the row is pressed inside the bubble instead of being clipped.
+ * - `shown`: the hover zone is the whole feed row (`.feed__item` across the column), not just the bubble; outside the feed, the wrapper itself.
+ *   After the mouse leaves, the row stays for another `motion.delay.hide-actions` (about 180 ms): you can reach the icon diagonally.
  */
 export function useActionsPlacement(deps: unknown) {
   const wrap = useRef<HTMLDivElement>(null);

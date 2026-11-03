@@ -40,19 +40,19 @@ interface DemoProps {
   value?: string;
   error?: string;
   narrow?: boolean;
-  /** Фокус на кнопке «Отправить»: так история показывает кольцо фокуса с клавиатуры. */
+  /** Focus on the "Send" button: this is how the story shows the keyboard focus ring. */
   focusSend?: boolean;
-  /** Пикер эмодзи открыт при показе: панель в потоке над полем, окно выше. */
+  /** The emoji picker is open on show: the panel in the flow above the field, the window taller. */
   pickerOpen?: boolean;
 }
 
-/** Окно захвата своего размера на «столе»; текст в поле живой, Enter очищает его, как после отправки. */
+/** The capture window at its own size on a "desk"; the text in the field is live, Enter clears it, as after sending. */
 function Demo({ context, appendTargetId = null, value: initial = "", error, narrow = false, focusSend = false, pickerOpen = false }: DemoProps) {
   const [value, setValue] = useState(initial);
   const [open, setOpen] = useState(pickerOpen);
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // Родительский эффект идёт после дочернего: фокус из истории перекрывает автофокус поля.
+    // The parent effect runs after the child's: the story's focus overrides the field's autofocus.
     if (focusSend) host.current?.querySelector<HTMLButtonElement>(".icon-button--accent")?.focus();
   }, [focusSend]);
   return (
@@ -91,28 +91,28 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** За сегодня записей нет: только поле, одна строка («пилюля» без пустой области сверху). */
+/** No entries today: only the field, a single row (a "pill" without an empty area on top). */
 export const ПустоЗаСегодня: Story = { args: { context: [] } };
 
-/** Одна запись: бледная плашка со временем над полем. */
+/** One entry: a pale bubble with the time above the field. */
 export const ОднаЗапись: Story = { args: { context: ONE } };
 
-/** Три записи (заголовок и задачи, ссылка, жирный): время у каждой, самая новая ближе к полю; ссылка не нажимается. */
+/** Three entries (a heading with tasks, a link, bold): a time on each, the newest closer to the field; the link is not clickable. */
 export const ТриЗаписи: Story = {};
 
-/** Есть цель дописывания: под полем подсказка «⌘Enter — дописать» (окно растёт вниз, поле остаётся на месте). */
+/** There is an append target: under the field the hint "⌘Enter -- append" (the window grows downward, the field stays in place). */
 export const ЕстьЦельДописывания: Story = { args: { appendTargetId: "c" } };
 
-/** Цель есть и в поле есть текст: справа внутри поля круглая кнопка «Отправить», под полем подсказка. */
+/** There is a target and the field has text: a round "Send" button on the right inside the field, the hint under the field. */
 export const ЕстьЦельИТекст: Story = { args: { appendTargetId: "c", value: "и ещё одна мысль" } };
 
-/** Цели нет (последняя запись старше 10 минут или не своя): подсказки нет, строки под полем нет. */
+/** No target (the last entry is older than 10 minutes or not our own): no hint, no row under the field. */
 export const НетЦелиДописывания: Story = { args: { appendTargetId: null } };
 
-/** Длинные записи: обрезаны по строкам с многоточием; блок кода, список и слово без пробелов не ломают плашку. */
+/** Long entries: clipped by lines with an ellipsis; a code block, a list and a word without spaces do not break the bubble. */
 export const ДлинныеЗаписи: Story = { args: { context: LONG, appendTargetId: "c" } };
 
-/** Длинный текст в поле: окно растёт до предела высоты, поле — до 45% панели (дальше прокрутка внутри), старые плашки уходят за верхний край. */
+/** Long text in the field: the window grows to its height limit, the field to 45% of the panel (beyond that it scrolls inside), old bubbles go beyond the top edge. */
 export const ДлинныйТекстВПоле: Story = {
   args: {
     appendTargetId: "c",
@@ -120,12 +120,12 @@ export const ДлинныйТекстВПоле: Story = {
   },
 };
 
-/** Очень длинное слово без пробелов (например, вставленная ссылка или данные): переносится по символам, горизонтальной прокрутки нет. */
+/** A very long word without spaces (for example a pasted link or data): wrapped by characters, no horizontal scrolling. */
 export const ДлинноеСловоВПоле: Story = {
   args: { appendTargetId: "c", value: `прежний черновик\n\n${"я".repeat(900)}` },
 };
 
-/** Ошибка над полем: место для неё занято заранее, текст остался в поле. */
+/** An error above the field: space for it is reserved in advance, the text stayed in the field. */
 export const Ошибка: Story = {
   args: {
     appendTargetId: "c",
@@ -134,10 +134,10 @@ export const Ошибка: Story = {
   },
 };
 
-/** Фокус с клавиатуры на кнопке «Отправить» (в поле фокус виден тонкой линией сам). */
+/** Keyboard focus on the "Send" button (in the field, focus shows as a thin line by itself). */
 export const ФокусСКлавиатуры: Story = { args: { appendTargetId: "c", value: "и ещё", focusSend: true } };
 
-/** Узкая ширина: плашки, подсказка и ошибка переносятся, поле не вылезает. */
+/** Narrow width: bubbles, the hint and the error wrap, the field does not overflow. */
 export const УзкаяШирина: Story = {
   args: {
     context: LONG,
@@ -149,12 +149,12 @@ export const УзкаяШирина: Story = {
 };
 
 /**
- * Пикер эмодзи открыт: панель в потоке между контекстом и полем, окно выросло вверх (нижний край и поле на месте), «Недавние»
- * сверху. Поле при открытом пикере показывает не больше трёх строк.
+ * The emoji picker is open: the panel sits in the flow between the context and the field, the window grew upward (the bottom
+ * edge and the field stay in place), "Недавние" (Recent) on top. With the picker open the field shows at most three lines.
  */
 export const ПикерЭмодзи: Story = { args: { appendTargetId: "c", pickerOpen: true } };
 
-/** Пикер открыт, в поле длинный текст: поле ограничено тремя строками с прокруткой внутри, пикер цел, старые плашки уходят за край. */
+/** The picker is open, the field has long text: the field is limited to three lines with scrolling inside, the picker is intact, old bubbles go beyond the edge. */
 export const ПикерЭмодзиИДлинныйТекст: Story = {
   args: {
     appendTargetId: "c",
@@ -163,13 +163,13 @@ export const ПикерЭмодзиИДлинныйТекст: Story = {
   },
 };
 
-/** Пикер открыт при пустом дне: только пикер и поле. */
+/** The picker is open on an empty day: only the picker and the field. */
 export const ПикерЭмодзиПустойДень: Story = { args: { context: [], pickerOpen: true } };
 
-/** Английский: пикер эмодзи открыт. */
+/** English: the emoji picker is open. */
 export const EnПикерЭмодзи: Story = { args: { context: ONE, appendTargetId: "a", pickerOpen: true }, globals: { language: "en" } };
 
-/** Английский: три записи, подсказка «⌘Enter — append». */
+/** English: three entries, the hint "⌘Enter -- append". */
 export const EnЦельДописывания: Story = {
   args: {
     context: [
@@ -182,10 +182,10 @@ export const EnЦельДописывания: Story = {
   globals: { language: "en" },
 };
 
-/** Английский: пусто за сегодня. */
+/** English: nothing today. */
 export const EnПусто: Story = { args: { context: [] }, globals: { language: "en" } };
 
-/** Английский: ошибка. */
+/** English: an error. */
 export const EnОшибка: Story = {
   args: { context: ONE, value: "and one more thing", error: "Could not save the entry. The text is still in the field." },
   globals: { language: "en" },

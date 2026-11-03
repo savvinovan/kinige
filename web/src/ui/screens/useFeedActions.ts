@@ -103,7 +103,7 @@ export function useFeedActions({
           .then(replace)
           .catch((reason: unknown) => {
             fail(reason);
-            // Текст записи успел измениться: показываем актуальный.
+            // The entry text changed in the meantime: show the current one.
             if (errorCode(reason) === "task_item_stale") void reload();
           });
       },
@@ -112,7 +112,7 @@ export function useFeedActions({
         api
           .moveMessage(id, targetChatId)
           .then(() => {
-            // Запись просто исчезает из текущего чата (без тоста, лента не прыгает); счётчики берутся заново.
+            // The entry simply disappears from the current chat (no toast, the feed does not jump); counters are fetched again.
             setMessages((list) => list.filter((m) => m.id !== id));
             setEditingId((editing) => (editing === id ? null : editing));
             return refreshChats();

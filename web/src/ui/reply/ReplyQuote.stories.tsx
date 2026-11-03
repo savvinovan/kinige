@@ -32,37 +32,37 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Запись на месте: «3 года спустя · 31 октября 2023» и начало старой записи, одной строкой; щелчок открывает её. */
+/** The entry is in place: "3 years later · 31 October 2023" and the start of the old entry, on one line; a click opens it. */
 export const Живая: Story = {};
 
-/** Старая запись в корзине: «Запись в корзине», цитата не нажимается. */
+/** The old entry is in the trash: "Entry in the trash", the quote is not clickable. */
 export const ЗаписьВКорзине: Story = { args: { quote: { ...LIVE, state: "trash" } } };
 
-/** Старая запись удалена навсегда: «Исходная запись удалена», сам ответ остаётся. */
+/** The old entry was deleted for good: "Original entry deleted", the reply itself stays. */
 export const Удалена: Story = {
   args: { quote: { ...LIVE, state: "missing", chatId: null, journalDate: null, excerpt: "", yearsLater: 0 } },
 };
 
-/** Разница меньше года (ответы, импортированные из Telegram): подписи «N лет спустя» нет. */
+/** The difference is less than a year (replies imported from Telegram): there is no "N years later" label. */
 export const МеньшеГода: Story = { args: { quote: { ...LIVE, journalDate: "2023-03-14", yearsLater: 0, excerpt: "Едем в субботу?" } } };
 
-/** Ответ на чужую реплику из импорта: в цитате имя автора и начало реплики. */
+/** A reply to someone else's line from an import: the quote has the author's name and the start of the line. */
 export const ЧужаяРеплика: Story = {
   args: { quote: { ...LIVE, journalDate: "2023-03-14", yearsLater: 0, excerpt: "Анна К. Ну что, едем в субботу? Я уже взяла билеты" } },
 };
 
-/** Очень длинное начало записи обрезается многоточием; плашка не шире 65 знаков. */
+/** A very long start of the entry is cut with an ellipsis; the bubble is no wider than 65 characters. */
 export const ДлинноеНачало: Story = {
   args: { quote: { ...LIVE, excerpt: "Нужно начать готовиться к системному дизайну. Посмотреть материалы по Raft и распределённым транзакциям, разобрать, чем консенсус отличается от двухфазной фиксации." } },
 };
 
-/** Английский. */
+/** English. */
 export const Английский: Story = { globals: { language: "en" } };
 
-/** Крупный текст. */
+/** Large text. */
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };
 
-/** Все состояния в колонке (английский: «3 years later · October 31, 2023»). */
+/** All states in a column (English: "3 years later · October 31, 2023"). */
 export const ВсеСостояния: Story = {
   render: () => (
     <div className="story-column">

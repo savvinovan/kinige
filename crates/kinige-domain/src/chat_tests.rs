@@ -1,5 +1,5 @@
-//! Тесты чатов слайса 3 (продолжение `ops_tests.rs`): новый чат со всеми группами, перезапись `meta` и `state`, правила
-//! названия и эмодзи, ключи порядка.
+//! Slice 3 chat tests (continuation of `ops_tests.rs`): a new chat with all groups, rewriting `meta` and `state`, the rules
+//! for name and emoji, order keys.
 
 use crate::chat::{self, ChatInputError, NewChat, StateChange};
 use crate::groups::{GroupError, parse_groups_raw};
@@ -157,7 +157,7 @@ fn chat_input_rules() {
         chat::normalize_icon(Some(&"😀".repeat(11))),
         Err(ChatInputError::IconInvalid)
     );
-    // Самая длинная последовательность пикера (поцелуй с разными тонами кожи, 35 байт) помещается.
+    // The longest picker sequence (a kiss with different skin tones, 35 bytes) fits.
     let kiss = "👩\u{1F3FB}\u{200D}\u{2764}\u{FE0F}\u{200D}💋\u{200D}👨\u{1F3FF}";
     assert_eq!(chat::normalize_icon(Some(kiss)), Ok(kiss.to_string()));
 }
@@ -166,7 +166,7 @@ fn chat_input_rules() {
 fn order_keys_grow_and_sort_after_everything_before() {
     let first = chat::key_after(None);
     assert_eq!(first, "a000001");
-    assert!(first.as_str() > "a0", "после Inbox");
+    assert!(first.as_str() > "a0", "after Inbox");
     assert_eq!(chat::key_after(Some("a0")), "a000001");
     let mut key = first;
     for _ in 0..2000 {
@@ -174,18 +174,14 @@ fn order_keys_grow_and_sort_after_everything_before() {
         assert!(next > key, "{next} > {key}");
         key = next;
     }
-    assert_eq!(
-        chat::key_after(Some("a00000z")),
-        "a000010",
-        "перенос разряда"
-    );
+    assert_eq!(chat::key_after(Some("a00000z")), "a000010", "digit carry");
     assert_eq!(
         chat::key_after(Some("azzzzzz")),
         "azzzzzz1",
-        "переполнение — приставка"
+        "overflow -- a prefix"
     );
     assert!(chat::key_after(Some("azzzzzz")).as_str() > "azzzzzz");
-    // Чужой формат: строго больше максимума.
+    // A foreign format: strictly above the maximum.
     let foreign = chat::key_after(Some("m5"));
     assert!(foreign.as_str() > "m5", "{foreign}");
     assert_eq!(chat::key_after(Some("A")), "a000001");

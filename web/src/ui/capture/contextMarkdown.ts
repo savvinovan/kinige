@@ -1,10 +1,10 @@
 import { renderMarkdown, type TaskLabels } from "../message/markdown";
 
 /**
- * Markdown записи для окна захвата: тот же безопасный рендер, что и в ленте, но без всего, что можно нажать.
- * У окна захвата нет права открывать ссылки (`open_external_url` ему не разрешена), поэтому ссылка становится обычным
- * текстом (`<span class="capture-link">` без адреса), а всё, что берёт фокус (теги, флажки задач), теряет `tabindex`:
- * запись контекста — подсказка, а не элемент управления.
+ * An entry's Markdown for the capture window: the same safe rendering as in the feed, but without anything clickable.
+ * The capture window has no right to open links (`open_external_url` is not allowed for it), so a link becomes plain
+ * text (`<span class="capture-link">` without an address), and everything that takes focus (tags, task checkboxes) loses `tabindex`:
+ * a context entry is a hint, not a control.
  */
 export function renderContextMarkdown(source: string, taskLabels: TaskLabels): string {
   const template = document.createElement("template");

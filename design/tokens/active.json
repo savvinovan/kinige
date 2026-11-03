@@ -1,13 +1,13 @@
 {
   "active": {
-    "$description": "Какой набор сейчас «по умолчанию» (:root). Смена выбора — правка значения здесь, остальное пересобирается (npm run tokens). Палитра graphite (нейтральный графит, акцент и ошибка из Nord) и набор шрифтов Inter + JetBrains Mono выбраны пользователем 20.10.2026 (ADR-0004); других кандидатов в репозитории нет.",
+    "$description": "Which set is the default now (:root). To change the choice, edit the value here; the rest is rebuilt (npm run tokens). The graphite palette (neutral graphite, accent and error from Nord) and the Inter + JetBrains Mono font set were chosen by the user on 20.10.2026 (ADR-0004); there are no other candidates in the repository.",
     "palette": {
       "$value": "graphite",
-      "$description": "Имя файла из design/tokens/palettes/ без расширения. Выбрана пользователем (ADR-0004)."
+      "$description": "The file name from design/tokens/palettes/ without the extension. Chosen by the user (ADR-0004)."
     },
     "fontset": {
       "$value": "inter",
-      "$description": "Имя файла из design/tokens/fontsets/ без расширения. Выбран пользователем."
+      "$description": "The file name from design/tokens/fontsets/ without the extension. Chosen by the user."
     }
   }
 }

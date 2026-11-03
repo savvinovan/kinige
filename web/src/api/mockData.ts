@@ -8,17 +8,17 @@ import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
 
 export interface MockApiOptions {
-  /** «Сейчас» для новых записей и метки «сегодня»; по умолчанию — часы окна. */
+  /** "Now" for new entries and the "today" label; the window clock by default. */
   now?: () => Date;
   language?: Language;
-  /** Записи, которые уже есть в Inbox (и, если у них другой `chatId`, в соответствующих чатах). */
+  /** Entries that are already in the Inbox (and, if they have another `chatId`, in the matching chats). */
   messages?: readonly MessageView[];
-  /** Чаты кроме Inbox, в порядке раздела «Чаты». */
+  /** Chats other than the Inbox, in the order of the "Чаты" section. */
   chats?: readonly Partial<ChatSummary>[];
   settings?: Settings;
-  /** Следующая папка, которую «выберет» системный диалог; `null` — пользователь отменил. */
+  /** The next folder the system dialog will "pick"; `null` - the user cancelled. */
   pickedFolder?: string | null;
-  /** Состояние запуска; по умолчанию журнал открыт. */
+  /** The startup state; the journal is open by default. */
   startup?: StartupState;
 }
 
@@ -27,7 +27,7 @@ export const DEFAULT_SHORTCUTS: Record<ShortcutKind, string> = {
   clipboard: "Alt+Shift+KeyV",
 };
 
-/** Настройки по умолчанию для тестов и историй (все поля `Settings`). */
+/** Default settings for tests and stories (all `Settings` fields). */
 export const DEFAULT_SETTINGS: Settings = {
   textSize: "normal",
   mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
@@ -42,14 +42,14 @@ export const DEFAULT_SETTINGS: Settings = {
   backup: { folder: "/Users/me/Library/Application Support/me.savvinov.kinige/backups", lastAt: null, count: 0, error: null },
 };
 
-/** Окно дописывания (ТЗ §2.1): запись не старше десяти минут. */
+/** The append window (PRD §2.1): an entry not older than ten minutes. */
 export const APPEND_WINDOW_MS = 10 * 60 * 1000;
-/** Сколько записей окно захвата показывает над полем. */
+/** How many entries the capture window shows above the field. */
 export const CONTEXT_LEN = 3;
 export const DAY_MS = 24 * 3_600_000;
 export const TRASH_DAYS = 30;
 
-/** Запись для тестов и историй: все поля `MessageView` с разумными значениями по умолчанию. */
+/** An entry for tests and stories: all `MessageView` fields with sensible defaults. */
 export function mockMessage(part: Partial<MessageView> & Pick<MessageView, "id" | "bodyMd">): MessageView {
   return {
     chatId: INBOX_ID,
@@ -70,13 +70,13 @@ export function mockMessage(part: Partial<MessageView> & Pick<MessageView, "id" 
 export interface Row {
   view: MessageView;
   deletedAt: number | null;
-  /** Тексты до каждой правки (ревизии `edit`). */
+  /** Texts before each edit (`edit` revisions). */
   revisions: string[];
-  /** Запись — ответ (слайс 5): id записи-адресата; цитата `view.replyTo` собирается при чтении (`MockApiBase.viewOf`). */
+  /** The entry is a reply (slice 5): the addressee entry id; the `view.replyTo` quote is built on read (`MockApiBase.viewOf`). */
   replyToId?: string;
 }
 
-/** Полные годы между днём старой записи и днём ответа; 0, если меньше года или ответ раньше (как `reply::years_later` в Rust). */
+/** Full years between the old entry's day and the reply day; 0 if under a year or the reply is earlier (like `reply::years_later` in Rust). */
 export function yearsLater(old: string, reply: string): number {
   if (!isRealDate(old) || !isRealDate(reply)) return 0;
   const [oy, om, od] = old.split("-").map(Number) as [number, number, number];
@@ -85,7 +85,7 @@ export function yearsLater(old: string, reply: string): number {
   return Math.max(0, years);
 }
 
-/** `YYYY-MM-DD` — существующая дата (как в Rust: будущие разрешены). */
+/** `YYYY-MM-DD` - an existing date (as in Rust: future dates are allowed). */
 export function isRealDate(text: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
   const [year, month, day] = text.split("-").map(Number);
@@ -94,7 +94,7 @@ export function isRealDate(text: string): boolean {
   return date.getUTCFullYear() === year && date.getUTCMonth() === (month ?? 1) - 1 && date.getUTCDate() === day;
 }
 
-/** Порядок ленты `(journal_date, created_at, id)`. */
+/** Feed order `(journal_date, created_at, id)`. */
 export function compareFeed(
   a: { journalDate: string; createdAt: number; id: string },
   b: { journalDate: string; createdAt: number; id: string },

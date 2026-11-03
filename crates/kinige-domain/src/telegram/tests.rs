@@ -1,4 +1,4 @@
-//! Тесты разбора экспорта Telegram на синтетических фикстурах (формат не проверен на настоящем экспорте).
+//! Tests of Telegram export parsing on synthetic fixtures (the format is not verified on a real export).
 
 use super::*;
 
@@ -16,7 +16,7 @@ pub(super) fn message<'a>(chat: &'a TgChat, id: &str) -> &'a TgMessage {
     chat.messages
         .iter()
         .find(|m| m.id == id)
-        .unwrap_or_else(|| panic!("нет сообщения {id}"))
+        .unwrap_or_else(|| panic!("no message {id}"))
 }
 
 pub(super) fn span(kind: TgSpanKind, text: &str) -> TgSpan {
@@ -26,7 +26,7 @@ pub(super) fn span(kind: TgSpanKind, text: &str) -> TgSpan {
     }
 }
 
-/// Экспорт одного чата с одним сообщением, заданным JSON-объектом.
+/// An export of one chat with one message given as a JSON object.
 pub(super) fn one(message_json: &str) -> TgMessage {
     let json =
         format!(r#"{{"name":"x","type":"saved_messages","id":1,"messages":[{message_json}]}}"#);
@@ -41,7 +41,7 @@ pub(super) fn one(message_json: &str) -> TgMessage {
 #[test]
 fn single_chat_form() {
     let export = parse_export(SINGLE).unwrap();
-    // У «Избранного» id чата равен id владельца.
+    // For "Saved Messages" the chat id equals the owner id.
     assert_eq!(export.owner_id.as_deref(), Some("9223372036854775807"));
     let chat = &export.chats[0];
     assert_eq!(chat.id, "9223372036854775807");
@@ -83,7 +83,7 @@ fn full_export_form() {
     assert_eq!(personal.name.as_deref(), Some("Пётр Тестов"));
     assert_eq!(personal.messages[0].from_id.as_deref(), Some("user2000002"));
     assert_eq!(personal.messages[1].reply_to.as_deref(), Some("1"));
-    // Сообщения групп и каналов не разбираются: импортёр их не берёт.
+    // Group and channel messages are not parsed: the importer does not take them.
     assert!(export.chats[2].messages.is_empty());
 }
 
@@ -105,7 +105,7 @@ fn full_export_entities_and_ordering() {
             span(TgSpanKind::Hashtag, "#дела"),
         ]
     );
-    // text пуст, а text_entities нет: берутся сущности, порядок файла сохранён.
+    // text is empty, text_entities is not: the entities are taken, file order is kept.
     assert_eq!(
         saved.messages[1].text,
         vec![
@@ -128,7 +128,7 @@ fn legacy_without_unixtime_and_entities() {
     let first = &chat.messages[0];
     assert_eq!(first.unix, None);
     assert_eq!(first.local.as_deref(), Some("2019-12-31T21:30:00"));
-    // from_id числом превращается в строку.
+    // A numeric from_id becomes a string.
     assert_eq!(first.from_id.as_deref(), Some("1000001"));
     assert_eq!(
         first.text,
@@ -160,7 +160,7 @@ fn text_as_string_and_as_array_agree_with_entities() {
             language: Some("rust".to_owned())
         }
     );
-    // То же сообщение без text_entities разбирается из массива text так же.
+    // The same message without text_entities is parsed from the text array the same way.
     let legacy = one(
         r#"{"id":2,"text":["Жирный ",{"type":"bold","text":"акцент"}," и ",{"type":"pre","text":"fn main() {}","language":"rust"}]}"#,
     );
@@ -272,7 +272,7 @@ fn reply_forward_and_saved_from() {
 
 #[test]
 fn forwarded_key_counts_even_when_null() {
-    // Скрытый аккаунт: ключи есть, значения `null` (настоящий экспорт, спецификация 4.1).
+    // Hidden account: the keys are present, the values are `null` (real export, specification 4.1).
     let hidden = one(r#"{"id":1,"forwarded_from":null,"saved_from":null}"#);
     assert!(hidden.forwarded);
     assert_eq!((hidden.forwarded_from, hidden.saved_from), (None, None));
@@ -284,12 +284,12 @@ fn forwarded_key_counts_even_when_null() {
 
 #[test]
 fn saved_chat_without_name_takes_owner_from_chat_id() {
-    // Настоящий экспорт «Избранного»: верхний уровень — только `type`, `id`, `messages`.
+    // Real "Saved Messages" export: the top level has only `type`, `id`, `messages`.
     let export = parse_export(r#"{"type":"saved_messages","id":777,"messages":[]}"#).unwrap();
     assert_eq!(export.owner_id.as_deref(), Some("777"));
     assert_eq!(export.chats[0].name, None);
     assert_eq!(export.chats[0].kind, TgChatKind::Saved);
-    // У личного чата id владельца в форме одного чата неизвестен.
+    // For a personal chat the owner id is unknown in the single-chat form.
     let personal = parse_export(r#"{"type":"personal_chat","id":5,"messages":[]}"#).unwrap();
     assert_eq!(personal.owner_id, None);
 }

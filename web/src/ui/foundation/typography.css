@@ -1,6 +1,6 @@
-/* Страница «Типографика». Только токены. */
+/* The "Типографика" (Typography) page. Tokens only. */
 
-/* Типографика */
+/* Typography */
 .faces {
   display: grid;
   gap: var(--space-3);
@@ -117,7 +117,7 @@
   line-height: var(--type-meta-line-height);
 }
 
-/* Образец записи: день, время, абзацы на «бумаге» */
+/* An entry sample: day, time, paragraphs on "paper" */
 .page {
   padding: var(--space-5);
   border-radius: var(--radius-panel);

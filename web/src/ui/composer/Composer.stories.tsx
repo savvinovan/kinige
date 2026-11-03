@@ -10,15 +10,15 @@ interface DemoProps {
   buttons?: ComposerButtons;
   error?: string;
   autoFocus?: boolean;
-  /** Кнопки только нарисованы («Появится позже»); в D1 так везде. */
+  /** Buttons are only drawn ("Coming later"); in D1 this is so everywhere. */
   viewOnly?: boolean;
-  /** Пикер эмодзи подключён: кнопка «эмодзи» живая (слайс 3). */
+  /** The emoji picker is connected: the "emoji" button is live (slice 3). */
   emoji?: boolean;
-  /** Панель пикера открыта после показа (как после щелчка по кнопке). */
+  /** The picker panel is open after display (as after a click on the button). */
   openPicker?: boolean;
 }
 
-/** Поле у нижнего края окна с рабочим состоянием (черновик живёт в истории). */
+/** A field at the bottom edge of the window with working state (the draft lives in the story). */
 function Demo({ initial = "", buttons, error, autoFocus, viewOnly = true, emoji = false, openPicker = false }: DemoProps) {
   const [value, setValue] = useState(initial);
   const language = useLanguage();
@@ -54,13 +54,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Пустое: подсказка «Написать заметку…», слева «файл», справа «эмодзи» и «микрофон» (в D1 они только нарисованы). */
+/** Empty: the "Write a note..." hint, "file" on the left, "emoji" and "microphone" on the right (in D1 they are only drawn). */
 export const Пусто: Story = {};
 
-/** Кнопки с функцией (так будет, когда их слайсы готовы): обычные, откликаются на наведение. */
+/** Buttons with a function (how it will be when their slices are ready): ordinary, respond to hover. */
 export const КнопкиРаботают: Story = { args: { viewOnly: false } };
 
-/** Черновик: несколько строк, поле выросло; кириллица и латиница. */
+/** Draft: several lines, the field has grown; Cyrillic and Latin. */
 export const Черновик: Story = {
   args: {
     initial:
@@ -68,73 +68,73 @@ export const Черновик: Story = {
   },
 };
 
-/** Очень длинное слово без пробелов: переносится по символам, горизонтальной прокрутки нет. */
+/** A very long word without spaces: wraps by characters, no horizontal scrolling. */
 export const ДлинноеСлово: Story = {
   args: { initial: `ссылка:\n${"https://example.org/".repeat(5)}${"я".repeat(700)}` },
 };
 
-/** Очень длинный текст: поле растёт до 40% высоты окна, дальше внутри прокрутка. */
+/** Very long text: the field grows up to 40% of the window height, then it scrolls inside. */
 export const ДлинныйТекст: Story = {
   args: {
     initial: Array.from({ length: 30 }, (_, i) => `Строка ${i + 1}: пишешь как в мессенджере, перечитываешь как книгу.`).join("\n"),
   },
 };
 
-/** Длинная строка без пробелов переносится внутри поля, а не раздвигает его. */
+/** A long line without spaces wraps inside the field instead of widening it. */
 export const ДлиннаяСтрокаБезПробелов: Story = {
   args: {
     initial: "Сверхъестественнонепроизносимоесловобезединогопробелаинизкогомногобуквенногообрыва_и_ещё_одно_очень_длинное_слово_без_пробелов",
   },
 };
 
-/** Ошибка отправки: сообщение над полем, черновик на месте, рамка цвета ошибки. */
+/** Send error: the message above the field, the draft in place, a border in the error color. */
 export const Ошибка: Story = {
   args: { initial: "Купить билеты на субботу", error: "Не удалось отправить. Текст сохранён в черновике." },
 };
 
-/** Кнопки по слайсам: в приложении кнопка появляется, когда её функция работает (здесь только «эмодзи»). */
+/** Buttons by slice: in the app a button appears when its function works (here only "emoji"). */
 export const ТолькоЭмодзи: Story = {
   args: { buttons: { emoji: true } },
 };
 
-/** Без кнопок. */
+/** No buttons. */
 export const БезКнопок: Story = {
   args: { buttons: {} },
 };
 
-/** Фокус с клавиатуры в поле: кольцо вокруг всего поля. */
+/** Keyboard focus in the field: a ring around the whole field. */
 export const Фокус: Story = {
   args: { autoFocus: true },
 };
 
-/** С текстом: «микрофон» сменился круглой акцентной кнопкой «Отправить» (то же, что Enter). */
+/** With text: the "microphone" was replaced by a round accent "Send" button (the same as Enter). */
 export const СТекстом: Story = { args: { initial: "Купить билеты на субботу" } };
 
-/** Фокус с клавиатуры на кнопке «Отправить»: кольцо фокуса вокруг круглой кнопки. */
+/** Keyboard focus on the "Send" button: the focus ring around the round button. */
 export const ФокусНаОтправить: Story = {
   args: { initial: "Купить билеты на субботу" },
   render: (args) => <FocusedSend {...args} />,
 };
 
-/** Пикер подключён: кнопка «эмодзи» живая (в D1 она только нарисована), «Появится позже» с неё снято. */
+/** The picker is connected: the "emoji" button is live (in D1 it is only drawn), "Coming later" is removed from it. */
 export const СЭмодзи: Story = { args: { emoji: true, viewOnly: false } };
 
-/** Панель пикера над кнопкой «эмодзи»: недавние, категории, поиск; выбранный эмодзи встаёт туда, где стоит курсор. */
+/** The picker panel above the "emoji" button: recent, categories, search; the chosen emoji goes where the caret is. */
 export const ПикерОткрыт: Story = { args: { emoji: true, viewOnly: false, openPicker: true, initial: "Купить билеты на субботу" } };
 
-/** Панель пикера, английский интерфейс. */
+/** The picker panel, English interface. */
 export const ПикерОткрытАнглийский: Story = {
   args: { emoji: true, viewOnly: false, openPicker: true, initial: "Buy tickets for Saturday" },
   globals: { language: "en" },
 };
 
-/** Панель пикера, крупный текст. */
+/** The picker panel, large text. */
 export const ПикерОткрытКрупныйТекст: Story = {
   args: { emoji: true, viewOnly: false, openPicker: true, initial: "Купить билеты на субботу" },
   globals: { textScale: "large" },
 };
 
-/** Ставит фокус на «Отправить» после показа: так история показывает кольцо фокуса без мыши. */
+/** Puts focus on "Send" after display: this is how the story shows the focus ring without a mouse. */
 function FocusedSend(args: DemoProps) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => host.current?.querySelector<HTMLButtonElement>('button[aria-label="Отправить"]')?.focus(), []);

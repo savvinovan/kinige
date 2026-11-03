@@ -4,7 +4,7 @@ import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// Правки по ревью слайса 5: прокрутка к записи один раз, адресат ответа в другом чате, смена дня без карточки.
+// Fixes from the slice 5 review: scrolling to an entry once, a reply target in another chat, a day change without a card.
 let nowMs = Date.UTC(2026, 9, 31, 6, 12);
 const NOW = () => new Date(nowMs);
 const entry = (id: string, year: number, body: string, chatId = INBOX_ID) =>
@@ -59,7 +59,7 @@ describe("Прокрутка к записи", () => {
     const region = await screen.findByRole("region", { name: "В этот день" });
     fireEvent.click(within(region).getByRole("button", { name: /^Открыть запись 31 октября 2023/ }));
     await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
-    // Корзина заменяет ленту целиком (лента размонтируется): запрос не должен ждать в состоянии и сработать на новой ленте.
+    // The trash replaces the feed entirely (the feed unmounts): the request must not wait in state and fire on the new feed.
     fireEvent.click(await screen.findByRole("button", { name: /^Корзина/ }));
     await waitFor(() => expect(document.querySelector(".feed-scroll")).toBeNull());
     fireEvent.click(await screen.findByRole("button", { name: /^Входящие/ }));
@@ -72,7 +72,7 @@ describe("Прокрутка к записи", () => {
     const region = await screen.findByRole("region", { name: "В этот день" });
     fireEvent.click(within(region).getByRole("button", { name: /^Открыть запись 31 октября 2025/ }));
     await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
-    // Уход в другой чат и возврат: лента открывается внизу, к старой записи не прокручивается.
+    // Leaving for another chat and returning: the feed opens at the bottom, it does not scroll to the old entry.
     fireEvent.click(await screen.findByRole("button", { name: /^Книги/ }));
     await api.sendMessage(INBOX_ID, "новая запись", null);
     fireEvent.click(await screen.findByRole("button", { name: /^Входящие/ }));
@@ -100,7 +100,7 @@ describe("Скрытие карточки", () => {
   it("после крестика лента возвращается к нижнему краю (область column-reverse: scrollTop = 0), а не остаётся на карточке", async () => {
     setup();
     await screen.findByRole("region", { name: "В этот день" });
-    // Читатель прокрутил ленту вверх, к карточке (в column-reverse это отрицательный scrollTop).
+    // The reader scrolled the feed up, to the card (in column-reverse this is a negative scrollTop).
     const scroller = document.querySelector(".feed-scroll") as HTMLElement;
     let top = -300;
     Object.defineProperty(scroller, "scrollTop", { configurable: true, get: () => top, set: (value: number) => (top = value) });
@@ -122,7 +122,7 @@ describe("Адресат ответа перенесён в другой чат"
     expect(await screen.findByRole("alert")).toHaveTextContent("больше нет на месте");
     expect(await screen.findByText("Запись перенесена в другой чат")).toBeInTheDocument();
     expect(field().value).toBe("ответ");
-    // Вторая отправка: без ответа, без ошибки, строка и текст очищены.
+    // The second send: no reply, no error, the strip and the text are cleared.
     fireEvent.keyDown(field(), { key: "Enter" });
     await waitFor(() => expect(field().value).toBe(""));
     expect(screen.queryByText("Запись перенесена в другой чат")).toBeNull();

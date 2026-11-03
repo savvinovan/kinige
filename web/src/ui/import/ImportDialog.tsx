@@ -15,29 +15,29 @@ export type ImportStep = "pick" | "choose" | "running" | "report";
 
 export interface ImportDialogProps {
   step: ImportStep;
-  /** Ошибка последнего действия (выбор файла, запуск). На шаге выбора файла стоит над кнопкой, на шаге чатов — над списком. */
+  /** The error of the last action (picking a file, starting). On the file step it stands above the button, on the chats step above the list. */
   error?: ErrorCode | null;
-  /** Идёт открытие файла: кнопка недоступна. */
+  /** The file is being opened: the button is unavailable. */
   opening?: boolean;
   preview?: ImportPreview;
-  /** Отмеченные чаты (id Telegram). */
+  /** The checked chats (Telegram ids). */
   selected?: ReadonlySet<string>;
   progress?: ImportProgress;
-  /** Остановка запрошена, импорт дописывает пачку. */
+  /** A stop was requested, the import is finishing the current batch. */
   stopping?: boolean;
   report?: ImportReport;
   onPick: () => void;
   onToggle: (chatId: string, on: boolean) => void;
   onRun: () => void;
   onStop: () => void;
-  /** Крестик, Esc, подложка и «Готово». На шаге прогресса не вызывается: закрыть окно нечем, кроме «Остановить». */
+  /** The cross, Esc, the backdrop and "Done". Not called on the progress step: there is nothing to close the window with except "Stop". */
   onClose: () => void;
 }
 
 /**
- * Окно «Импорт из Telegram» поверх главного (Modal): инструкция и выбор файла → список чатов с флажками → прогресс с
- * «Остановить» → отчёт. Отчёт — тихие строки без цветных плашек; ошибка — строка ошибки D1. Тостов и анимаций нет.
- * На шаге прогресса крестика и Esc нет: окно закрывает только «Готово» после отчёта.
+ * The "Import from Telegram" window over the main one (Modal): instructions and file picking -> a chat list with checkboxes -> progress with
+ * "Stop" -> a report. The report is quiet lines without colored bubbles; an error is the D1 error line. No toasts or animations.
+ * On the progress step there is no cross and no Esc: the window is closed only by "Done" after the report.
  */
 export function ImportDialog(props: ImportDialogProps) {
   const { t } = useTranslation();
@@ -95,7 +95,7 @@ function ChooseStep({ error, preview, selected, opening, onToggle, onRun, onPick
             const name = chat.kind === "saved" ? t("import.savedName") : (chat.name ?? chat.id);
             const entries = chat.total === 0 ? t("import.noEntries") : t("count.entries", { count: chat.total });
             const existing = chat.existing > 0 ? ` · ${t("import.existing", { count: chat.existing })}` : "";
-            // У «Избранного» имя и есть тип: второй раз его не повторяем.
+            // For "Saved Messages" the name is the type: we do not repeat it a second time.
             const kind = chat.kind === "saved" ? "" : `${t(`import.kind.${chat.kind}`)} · `;
             return (
               <li key={chat.id} className="import__chat">
@@ -131,7 +131,7 @@ function ChooseStep({ error, preview, selected, opening, onToggle, onRun, onPick
 function RunningStep({ progress, stopping, error, onStop }: ImportDialogProps) {
   const { t } = useTranslation();
   const stop = useRef<HTMLButtonElement>(null);
-  // Крестика на этом шаге нет, а кнопка предыдущего шага исчезла вместе с ним: фокус переходит на «Остановить».
+  // There is no cross on this step, and the previous step's button vanished together with it: focus moves to "Stop".
   useEffect(() => stop.current?.focus(), []);
   const done = progress?.done ?? 0;
   const total = progress?.total ?? 0;

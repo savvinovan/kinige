@@ -1,8 +1,8 @@
-//! Журнал процесса при битом файле настроек (ADR-0010): предупреждение один раз на смену состояния, а не на каждый опрос.
-//! Отдельный бинарник: логгер один на процесс, другие тесты его строки не засоряют.
+//! The process log with a broken settings file (ADR-0010): one warning per state change, not one per poll.
+//! A separate binary: there is one logger per process, other tests do not clutter its lines.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -16,7 +16,7 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 static CAPTURED: Mutex<Vec<String>> = Mutex::new(Vec::new());
-/// Тесты бинарника идут по очереди: у них общий логгер.
+/// The binary's tests run one after another: they share a logger.
 static ONE_AT_A_TIME: Mutex<()> = Mutex::new(());
 
 struct Capture;
@@ -52,7 +52,7 @@ fn file_lines() -> Vec<String> {
         .lock()
         .unwrap()
         .iter()
-        .filter(|line| line.contains("настроек"))
+        .filter(|line| line.contains("settings"))
         .cloned()
         .collect()
 }
@@ -62,7 +62,7 @@ fn a_broken_file_after_a_window_edit_is_logged_once_not_on_every_poll() {
     let _guard = install();
     let rig = rig_with(|options| options.poll = Duration::from_millis(20));
     rig.write(r#"{"text_size": "#);
-    // Правка из окна при битом файле: запись откладывается; опросы идут каждые 20 мс.
+    // An edit from the window with a broken file: the write is deferred; polls run every 20 ms.
     rig.file
         .edit(|store| store.set_text_size(TextSize::Large))
         .unwrap()
@@ -73,11 +73,11 @@ fn a_broken_file_after_a_window_edit_is_logged_once_not_on_every_poll() {
     assert_eq!(
         lines.len(),
         polls_before,
-        "опросы не пишут повторов: {lines:?}"
+        "polls do not write repeats: {lines:?}"
     );
     assert_eq!(lines.len(), 1, "{lines:?}");
-    assert!(lines[0].contains("не разобран") && lines[0].contains("parse"));
-    // Файл не перечитывался на каждом опросе: после починки он применяется, и состояние «битый» снова логируется заново.
+    assert!(lines[0].contains("not parsed") && lines[0].contains("parse"));
+    // The file was not re-read on every poll: after a fix it is applied, and the "broken" state is logged anew.
     rig.write(r#"{"text_size": "normal"}"#);
     rig.write(r#"{"text_size": "#);
     rig.after_polls(QUIET_POLLS / 2);
@@ -92,7 +92,7 @@ fn an_unsafe_file_and_a_fifo_do_not_flood_the_log_either() {
     let before = file_lines().len();
     let rig = rig_with(|options| options.poll = Duration::from_millis(20));
     let path = rig.path();
-    // Подмена одним rename: опрос раз в 20 мс не должен увидеть «файла нет» и пересоздавать его.
+    // A swap with a single rename: a poll every 20 ms must not see "no file" and recreate it.
     let fifo = rig.dir.path().join("fifo.swap");
     assert!(
         std::process::Command::new("mkfifo")
@@ -147,25 +147,25 @@ fn a_busy_database_logs_the_apply_error_once_and_again_after_a_success() {
             .execute_batch(&format!("ALTER TABLE {name} RENAME TO {to}"))
             .unwrap();
     };
-    // База «занята»: таблицы настроек нет, запись из применения файла падает, признак файла сбрасывается и опрос идёт снова.
+    // The database is "busy": the settings table is absent, the write from applying the file fails, the file signature is cleared and polling goes on.
     hide("app_setting", "app_setting_away");
     write_file(rig.dir.path(), br#"{"text_size":"large"}"#, 0o600);
     // The poll notices the file and fails to apply it: the first line. The failed apply clears the file signature, so every
     // later poll reads and tries the file again; those polls must stay silent.
-    wait_until("the first warning", || count("не применён") >= 1);
+    wait_until("the first warning", || count("not applied") >= 1);
     rig.after_polls(QUIET_POLLS);
-    assert_eq!(count("не применён"), 1, "{:?}", file_lines());
-    // Починили: применяется (успех сбрасывает вид «apply»).
+    assert_eq!(count("not applied"), 1, "{:?}", file_lines());
+    // Fixed: it applies (a success clears the "apply" kind).
     hide("app_setting_away", "app_setting");
-    wait_until("применено после починки", || {
+    wait_until("applied after the fix", || {
         rig.store.get_settings().unwrap().text_size == TextSize::Large
     });
-    // Снова сбой: вторая строка, а не молчание и не поток.
+    // Failing again: a second line, neither silence nor a flood.
     hide("app_setting", "app_setting_away");
     write_file(rig.dir.path(), br#"{"text_size":"normal"}"#, 0o600);
-    wait_until("the second warning", || count("не применён") >= 2);
+    wait_until("the second warning", || count("not applied") >= 2);
     rig.after_polls(QUIET_POLLS);
-    assert_eq!(count("не применён"), 2, "{:?}", file_lines());
+    assert_eq!(count("not applied"), 2, "{:?}", file_lines());
 }
 
 #[test]
@@ -177,9 +177,9 @@ fn a_failing_hash_write_and_the_apply_error_that_follows_are_each_logged_once_an
         raw(rig.dir.path())
             .execute_batch(
                 "CREATE TRIGGER no_hash_insert BEFORE INSERT ON app_setting WHEN NEW.key = 'settings_file_hash' \
-                 BEGIN SELECT RAISE(ABORT, 'нельзя'); END; \
+                 BEGIN SELECT RAISE(ABORT, 'forbidden'); END; \
                  CREATE TRIGGER no_hash_update BEFORE UPDATE ON app_setting WHEN NEW.key = 'settings_file_hash' \
-                 BEGIN SELECT RAISE(ABORT, 'нельзя'); END;",
+                 BEGIN SELECT RAISE(ABORT, 'forbidden'); END;",
             )
             .unwrap();
     };
@@ -194,8 +194,8 @@ fn a_failing_hash_write_and_the_apply_error_that_follows_are_each_logged_once_an
             .unwrap()
             .unwrap();
     };
-    // Хэш записать нельзя: первая правка пишет файл и упирается в запись хэша; вторая находит файл «чужим» (хэш не сошёлся),
-    // применяет его и упирается в ту же запись внутри транзакции применения. Каждый вид — одна строка, сколько бы правок ни было.
+    // The hash cannot be written: the first edit writes the file and runs into the hash write; the second finds the file "foreign" (the hash did not match),
+    // applies it and runs into the same write inside the apply transaction. Each kind is one line, however many edits there are.
     block_hash();
     for size in [
         TextSize::Large,
@@ -208,28 +208,28 @@ fn a_failing_hash_write_and_the_apply_error_that_follows_are_each_logged_once_an
     // `edit` returns after the edit and the failed writes are done; the polls that follow must add no lines.
     rig.after_polls(QUIET_POLLS);
     assert_eq!(
-        count("хэш файла настроек не записан"),
+        count("settings file hash not written"),
         1,
         "{:?}",
         file_lines()
     );
-    assert_eq!(count("не применён"), 1, "{:?}", file_lines());
-    // Починили: правки проходят, оба вида сбрасываются успехом.
+    assert_eq!(count("not applied"), 1, "{:?}", file_lines());
+    // Fixed: edits go through, both kinds are cleared by a success.
     allow_hash();
-    // Внешняя правка (другие байты файла) применяется успешно: вид «apply» сброшен; правка окна пишет хэш: вид «hash» сброшен.
+    // An external edit (different file bytes) applies successfully: the "apply" kind is cleared; a window edit writes the hash: the "hash" kind is cleared.
     rig.write(r#"{"text_size":"large"}"#);
     edit(TextSize::Normal);
-    // Снова сбой: по второй строке на каждый вид.
+    // Failing again: a second line for each kind.
     block_hash();
     for size in [TextSize::Large, TextSize::Normal, TextSize::Large] {
         edit(size);
     }
     rig.after_polls(QUIET_POLLS);
     assert_eq!(
-        count("хэш файла настроек не записан"),
+        count("settings file hash not written"),
         2,
         "{:?}",
         file_lines()
     );
-    assert_eq!(count("не применён"), 2, "{:?}", file_lines());
+    assert_eq!(count("not applied"), 2, "{:?}", file_lines());
 }

@@ -3,7 +3,7 @@
     "$type": "number",
     "drag-ghost": {
       "$value": 0.8,
-      "$description": "«Призрак» плашки записи, которую тащат на чат в сайдбаре (решение приёмки слайса 3): копия плашки под курсором, тихая, но читаемая."
+      "$description": "The 'ghost' of an entry plate dragged onto a chat in the sidebar (a slice 3 acceptance decision): a copy of the plate under the cursor, quiet but readable."
     }
   },
   "layout": {
@@ -11,11 +11,11 @@
     "drag": {
       "ghost-max-width": {
         "$value": "26rem",
-        "$description": "Наибольшая ширина «призрака» перетаскиваемой плашки (338 px при корне 13 px): широкая плашка не закрывает сайдбар целиком."
+        "$description": "Largest width of the 'ghost' of the dragged plate (338 px at a 13 px root): a wide plate does not cover the whole sidebar."
       },
       "ghost-offset": {
         "$value": "1rem",
-        "$description": "Отступ «призрака» от указателя вправо и вниз (13 px при корне 13 px): чат под указателем остаётся виден."
+        "$description": "Offset of the 'ghost' from the pointer to the right and down (13 px at a 13 px root): the chat under the pointer stays visible."
       }
     }
   }

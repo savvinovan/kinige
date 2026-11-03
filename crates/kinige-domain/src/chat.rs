@@ -1,5 +1,5 @@
-//! Чаты (слайс 3): новый чат со всеми шестью группами, перезапись `meta` (имя, эмодзи) и `state` (закреплён, архив),
-//! ключ порядка `order.sort_key` и разбор колонок из групп (ADR-0001 §3.2, приложение §A.0). Без IO.
+//! Chats (slice 3): a new chat with all six groups, rewriting `meta` (name, emoji) and `state` (pinned, archive),
+//! the order key `order.sort_key` and parsing columns from the groups (ADR-0001 §3.2, appendix §A.0). No IO.
 
 use crate::groups::{ChatRow, GroupError, INBOX_ID, SCHEMA_VERSION, assemble};
 use crate::rewrite::{
@@ -8,15 +8,15 @@ use crate::rewrite::{
 use serde_json::{Value, json};
 use std::fmt;
 
-/// Эмодзи чата по умолчанию (слайс 3: «без эмодзи — 💬»).
+/// The default chat emoji (slice 3: "no emoji means 💬").
 pub const DEFAULT_ICON: &str = "💬";
-/// Длина имени чата в знаках (слайс 3: от 1 до 128).
+/// Chat name length in characters (slice 3: from 1 to 128).
 pub const MAX_TITLE_CHARS: usize = 128;
-/// Предел записи эмодзи в байтах: помещается любая последовательность пикера. Самая длинная в `emojibase-data` 17.0.0 и 18.0.0 —
-/// поцелуй пары с разными тонами кожи, 35 байт (прежний предел в 32 такие эмодзи отвергал).
+/// The emoji size limit in bytes: any picker sequence fits. The longest in `emojibase-data` 17.0.0 and 18.0.0 is
+/// a couple kissing with different skin tones, 35 bytes (the earlier limit of 32 rejected such emoji).
 pub const MAX_ICON_BYTES: usize = 40;
 
-/// Почему введённые имя или эмодзи не приняты.
+/// Why the entered name or emoji was not accepted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChatInputError {
     TitleEmpty,
@@ -27,16 +27,16 @@ pub enum ChatInputError {
 impl fmt::Display for ChatInputError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            ChatInputError::TitleEmpty => "имя чата пустое",
-            ChatInputError::TitleTooLong => "имя чата длиннее 128 знаков",
-            ChatInputError::IconInvalid => "эмодзи чата не принято",
+            ChatInputError::TitleEmpty => "chat name is empty",
+            ChatInputError::TitleTooLong => "chat name is longer than 128 characters",
+            ChatInputError::IconInvalid => "chat emoji is not accepted",
         })
     }
 }
 
 impl std::error::Error for ChatInputError {}
 
-/// Имя чата: пробелы по краям убраны, от 1 до 128 знаков, без управляющих символов (в них перевод строки и табуляция).
+/// Chat name: surrounding spaces trimmed, from 1 to 128 characters, no control characters (line breaks and tabs count as such).
 pub fn normalize_title(raw: &str) -> Result<String, ChatInputError> {
     let title = raw.trim();
     if title.is_empty() {
@@ -51,9 +51,9 @@ pub fn normalize_title(raw: &str) -> Result<String, ChatInputError> {
     Ok(title.to_string())
 }
 
-/// Эмодзи чата: непустая строка до [`MAX_ICON_BYTES`] без пробелов и управляющих символов; нет значения — 💬.
-/// Что это именно эмодзи, домен не проверяет: пикер выдаёт только эмодзи, а чужой клиент мог записать что угодно, и
-/// ADR-0001 §4 требует показывать записанное.
+/// Chat emoji: a non-empty string up to [`MAX_ICON_BYTES`] without spaces and control characters; no value means 💬.
+/// The domain does not check that it really is an emoji: the picker yields only emoji, while a foreign client could have written anything, and
+/// ADR-0001 §4 requires showing what was written.
 pub fn normalize_icon(raw: Option<&str>) -> Result<String, ChatInputError> {
     let Some(icon) = raw.map(str::trim).filter(|icon| !icon.is_empty()) else {
         return Ok(DEFAULT_ICON.to_string());
@@ -67,10 +67,10 @@ pub fn normalize_icon(raw: Option<&str>) -> Result<String, ChatInputError> {
 const KEY_DIGITS: &[u8; 36] = b"0123456789abcdefghijklmnopqrstuvwxyz";
 const KEY_WIDTH: usize = 6;
 
-/// Ключ порядка для нового чата в конце списка (ТЗ §4.2: дробный индекс). Ключ чата — `a` и шесть цифр системы по
-/// основанию 36, поэтому строки сравниваются так же, как числа; Inbox имеет `a0` и стоит первым. Чужой ключ другого формата
-/// (другой клиент) получает приставку: строка, у которой прежний максимум — начало, больше его и всех меньших. Одинаковые
-/// ключи на двух устройствах допустимы: порядок решает `id` (приложение §A.0).
+/// The order key for a new chat at the end of the list (PRD §4.2: fractional index). A chat key is `a` plus six digits of a
+/// base-36 number, so strings compare the same way as numbers; Inbox has `a0` and goes first. A foreign key of another format
+/// (another client) gets a prefix: a string that has the previous maximum as its start is larger than it and all smaller ones. Equal
+/// keys on two devices are allowed: `id` decides the order (appendix §A.0).
 pub fn key_after(max: Option<&str>) -> String {
     let Some(max) = max else {
         return format!("a{}", "0".repeat(KEY_WIDTH - 1) + "1");
@@ -80,7 +80,7 @@ pub fn key_after(max: Option<&str>) -> String {
         d.len() == KEY_WIDTH && d.iter().all(|b| KEY_DIGITS.contains(b)) && d != [b'z'; KEY_WIDTH]
     });
     if !own {
-        // Inbox (`a0`) и чужие форматы: берём стартовое значение или дописываем к максимуму.
+        // Inbox (`a0`) and foreign formats: take the starting value or append to the maximum.
         return if max == "a0" || max < "a000001" {
             key_after(None)
         } else {
@@ -99,12 +99,12 @@ pub fn key_after(max: Option<&str>) -> String {
         }
         *slot = b'0';
     }
-    // Все байты — цифры ASCII (проверено выше), поэтому `char::from(u8)` совпадает с UTF-8.
+    // All bytes are ASCII digits (checked above), so `char::from(u8)` matches UTF-8.
     let digits: String = next.into_iter().map(char::from).collect();
     format!("a{digits}")
 }
 
-/// Исходные значения нового чата; имя и эмодзи уже нормализованы.
+/// The initial values of a new chat; the name and emoji are already normalized.
 pub struct NewChat<'a> {
     pub id: &'a str,
     pub title: &'a str,
@@ -113,7 +113,7 @@ pub struct NewChat<'a> {
     pub created_at: i64,
 }
 
-/// Новый чат сразу со всеми шестью группами (`core`, `meta`, `order`, `state`, `privacy`, `deleted`) под одним HLC, `sv = 1`.
+/// A new chat at once with all six groups (`core`, `meta`, `order`, `state`, `privacy`, `deleted`) under one HLC, `sv = 1`.
 pub fn new_chat(input: &NewChat<'_>, hlc: &str) -> Result<ChatRow, GroupError> {
     let groups: [(&str, Value); 6] = [
         (
@@ -149,7 +149,7 @@ pub fn new_chat(input: &NewChat<'_>, hlc: &str) -> Result<ChatRow, GroupError> {
     })
 }
 
-/// Колонки таблицы `chat`, которые строятся из групп.
+/// The columns of the `chat` table that are built from the groups.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChatColumns {
     pub created_at: i64,
@@ -164,7 +164,7 @@ pub struct ChatColumns {
     pub deleted_at: Option<i64>,
 }
 
-/// Колонки чата по его `groups_raw`.
+/// The chat's columns from its `groups_raw`.
 pub fn chat_columns(groups_raw: &str) -> Result<ChatColumns, GroupError> {
     let core = group_object(groups_raw, "core")?;
     let meta = group_object(groups_raw, "meta")?;
@@ -173,7 +173,7 @@ pub fn chat_columns(groups_raw: &str) -> Result<ChatColumns, GroupError> {
     let privacy = group_object(groups_raw, "privacy")?;
     let deleted = group_object(groups_raw, "deleted")?;
     Ok(ChatColumns {
-        created_at: opt_int(&core, "created_at")?.ok_or_else(|| corrupt("нет created_at"))?,
+        created_at: opt_int(&core, "created_at")?.ok_or_else(|| corrupt("no created_at"))?,
         is_inbox: flag(&core, "is_inbox")?,
         title: opt_str(&meta, "title")?.unwrap_or_default(),
         icon: opt_str(&meta, "icon")?,
@@ -186,8 +186,8 @@ pub fn chat_columns(groups_raw: &str) -> Result<ChatColumns, GroupError> {
     })
 }
 
-/// Перезаписывает `meta`: имя и/или эмодзи (`None` — поле остаётся); `color` и неизвестные поля — дословно.
-/// Inbox переименовать нельзя: его имя в базе пустое, интерфейс показывает переведённое.
+/// Rewrites `meta`: the name and/or emoji (`None` -- the field stays); `color` and unknown fields are kept verbatim.
+/// Inbox cannot be renamed: its name in the database is empty, the interface shows the translated one.
 pub fn set_meta(
     current: &Groups<'_>,
     title: Option<&str>,
@@ -205,16 +205,16 @@ pub fn set_meta(
     })
 }
 
-/// Изменение группы `state`.
+/// A change to the `state` group.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StateChange {
-    /// Закрепить (`Some(время)`) или открепить.
+    /// Pin (`Some(time)`) or unpin.
     Pinned(Option<i64>),
-    /// В архив (`Some(время)`) или из архива. Inbox архивировать нельзя.
+    /// Into the archive (`Some(time)`) or out of it. Inbox cannot be archived.
     Archived(Option<i64>),
 }
 
-/// Перезаписывает `state`: закрепление или архив; второе поле и неизвестные поля — дословно.
+/// Rewrites `state`: pinning or archive; the other field and unknown fields are kept verbatim.
 pub fn set_state(
     current: &Groups<'_>,
     change: StateChange,
@@ -229,12 +229,12 @@ pub fn set_state(
     })
 }
 
-/// Это Inbox (по id, а не по флагу, ADR-0001 §3.6).
+/// Whether this is Inbox (by id, not by a flag, ADR-0001 §3.6).
 pub fn is_inbox(chat_id: &str) -> bool {
     chat_id == INBOX_ID
 }
 
-/// Допустимый формат id чата: Inbox (константа) или UUID v4 в нижнем регистре (ADR-0001 §1). Существование чата — забота хранилища.
+/// A valid chat id format: Inbox (a constant) or a lower-case UUID v4 (ADR-0001 §1). Whether the chat exists is the store's concern.
 pub fn is_chat_id(chat_id: &str) -> bool {
     is_inbox(chat_id) || crate::hlc::is_uuid_v4(chat_id)
 }

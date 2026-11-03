@@ -1,5 +1,5 @@
-//! Сведения для окна «Доступ ИИ-агентов»: состояние сокета и фрагменты подключения (ADR-0009). Конфиги клиентов
-//! приложение не правит: пользователь копирует фрагмент сам.
+//! Information for the "AI agent access" window: the socket state and connection snippets (ADR-0009). The app does not edit
+//! client configs: the user copies the snippet.
 
 use super::McpHandle;
 use kinige_domain::AgentSocket;
@@ -7,14 +7,14 @@ use serde_json::json;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, Runtime};
 
-/// Имя моста рядом с главным исполняемым файлом (`Kinige.app/Contents/MacOS/kinige-mcp`).
+/// The bridge name next to the main executable (`Kinige.app/Contents/MacOS/kinige-mcp`).
 const BRIDGE_NAME: &str = "kinige-mcp";
 
-/// Мост рядом с приложением. В сборке `dev` его может не быть.
+/// The bridge next to the app. A `dev` build may not have it.
 fn bridge_path() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let bridge = exe.parent()?.join(BRIDGE_NAME);
-    // Пустой файл — заглушка из build.rs (сборка без настоящего моста): считается, что моста нет.
+    // An empty file is a stub from build.rs (a build without a real bridge): the bridge is considered absent.
     let real = std::fs::metadata(&bridge).is_ok_and(|meta| meta.is_file() && meta.len() > 0);
     real.then_some(bridge)
 }
@@ -46,7 +46,7 @@ pub fn socket_info<R: Runtime>(app: &AppHandle<R>) -> AgentSocket {
     }
 }
 
-/// Фрагмент `claude_desktop_config.json`.
+/// A snippet of `claude_desktop_config.json`.
 pub(crate) fn desktop_config(bridge: &Path, socket: &Path) -> String {
     let config = json!({
         "mcpServers": {
@@ -59,7 +59,7 @@ pub(crate) fn desktop_config(bridge: &Path, socket: &Path) -> String {
     serde_json::to_string_pretty(&config).unwrap_or_default()
 }
 
-/// Команда Claude Code. `--scope user`: журнал один на все проекты; без этого сервер появился бы только в текущем.
+/// The Claude Code command. `--scope user`: the journal is one for all projects; without it the server would appear only in the current one.
 pub(crate) fn code_command(bridge: &Path, socket: &Path) -> String {
     format!(
         "claude mcp add --scope user kinige -- {} --socket {}",
@@ -68,7 +68,7 @@ pub(crate) fn code_command(bridge: &Path, socket: &Path) -> String {
     )
 }
 
-/// Одинарные кавычки, если в пути есть что-то кроме безопасных знаков.
+/// Single quotes if the path has anything besides safe characters.
 fn shell_quote(text: &str) -> String {
     let plain = !text.is_empty()
         && text.chars().all(|c| {

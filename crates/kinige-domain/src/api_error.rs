@@ -1,9 +1,9 @@
-//! Ошибка команды, как её получает фронтенд: код, текст — во фронтенде (`error.<код>` в файлах переводов).
+//! A command error as the frontend receives it: a code; the text lives in the frontend (`error.<code>` in the translation files).
 
 use serde::Serialize;
 use ts_rs::TS;
 
-/// Код ошибки команды; текст — во фронтенде (`error.<код>` в файлах переводов).
+/// Command error code; the text lives in the frontend (`error.<code>` in the translation files).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ErrorCode.ts")]
@@ -15,61 +15,61 @@ pub enum ErrorCode {
     StoreReadFailed,
     LinkNotAllowed,
     FolderPickFailed,
-    /// Сочетание не принято: нет модификатора, зарезервировано системой или записано неверно.
+    /// The shortcut is not accepted: no modifier, reserved by the system, or written incorrectly.
     ShortcutInvalid,
-    /// Сочетание занято другой программой или системой.
+    /// The shortcut is taken by another program or by the system.
     ShortcutTaken,
-    /// Такое же сочетание уже назначено другому действию Kinige.
+    /// The same shortcut is already assigned to another Kinige action.
     ShortcutDuplicate,
-    /// Запись не найдена (удалена навсегда или id неверен).
+    /// The entry is not found (deleted permanently or the id is wrong).
     MessageNotFound,
-    /// Запись в корзине: перенос в другой чат только для живых записей, сначала «Вернуть».
+    /// The entry is in the trash: moving to another chat is only for live entries, "Restore" first.
     MessageInTrash,
-    /// Запись, на которую пишется ответ (слайс 5), не найдена: id неверен, она в корзине, удалена навсегда или в другом чате.
+    /// The entry being replied to (slice 5) is not found: the id is wrong, it is in the trash, deleted permanently or in another chat.
     ReplyTargetNotFound,
-    /// Запись с группой в неподдерживаемой версии: только чтение (ADR-0001 §4).
+    /// An entry with a group in an unsupported version: read-only (ADR-0001 §4).
     ReadOnly,
-    /// Inbox нельзя переименовать, архивировать и удалить.
+    /// Inbox cannot be renamed, archived or deleted.
     InboxProtected,
-    /// Действие только для записи в корзине (удалить навсегда).
+    /// The action is only for an entry in the trash (delete permanently).
     NotInTrash,
-    /// Дата записи не существует.
+    /// The entry date does not exist.
     InvalidDate,
-    /// Имя чата пустое.
+    /// The chat name is empty.
     ChatTitleEmpty,
-    /// Имя чата длиннее 128 знаков.
+    /// The chat name is longer than 128 characters.
     ChatTitleTooLong,
-    /// Эмодзи чата не принято.
+    /// The chat emoji is not accepted.
     ChatIconInvalid,
-    /// Пункта задачи с таким номером в тексте нет или он уже в нужном состоянии: окно показывало устаревший текст.
+    /// There is no task item with this number in the text, or it is already in the needed state: the window showed stale text.
     TaskItemStale,
-    /// База повреждена.
+    /// The database is corrupt.
     DatabaseCorrupt,
-    /// База создана более новой версией приложения (§10.4): откат не поддерживается, нужно обновить Kinige.
+    /// The database was created by a newer version of the app (§10.4): downgrade is not supported, Kinige must be updated.
     DatabaseTooNew,
-    /// Копия не найдена или не открывается.
+    /// The backup is not found or cannot be opened.
     BackupNotFound,
-    /// Папку Markdown-копии не удалось переименовать (занята другой программой, нет прав): восстановление не начато,
-    /// ничего не тронуто; закрыть папку и повторить.
+    /// The Markdown copy folder could not be renamed (busy with another program, no permissions): the restore did not start,
+    /// nothing was touched; close the folder and retry.
     MirrorFolderBusy,
-    /// Выбранный файл не экспорт Telegram (не JSON или чужой JSON): ничего не записано (слайс 4).
+    /// The chosen file is not a Telegram export (not JSON or someone else's JSON): nothing was written (slice 4).
     ImportNotTelegram,
-    /// Выбранный файл не прочитался.
+    /// The chosen file could not be read.
     ImportFileUnreadable,
-    /// Файл больше предела 1 ГиБ.
+    /// The file is larger than the 1 GiB limit.
     ImportFileTooLarge,
-    /// Импорт уже идёт: одновременно один.
+    /// An import is already running: only one at a time.
     ImportInProgress,
-    /// Разобранный экспорт забыт (окно закрыто или выбран другой файл): выбрать файл заново.
+    /// The parsed export was forgotten (the window was closed or another file was chosen): choose the file again.
     ImportSessionExpired,
-    /// Копия базы перед импортом не снялась: ни одной записи не добавлено.
+    /// The database backup before the import was not taken: no entries were added.
     ImportBackupFailed,
     /// The action is not available on this platform: AI-agent access (MCP) on Windows until named pipes (slice 10a).
     Unsupported,
     Internal,
 }
 
-/// Ошибка команды, как её получает фронтенд: `{ "code": "store_write_failed" }`.
+/// A command error as the frontend receives it: `{ "code": "store_write_failed" }`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[ts(export, export_to = "ApiError.ts")]
 pub struct ApiError {

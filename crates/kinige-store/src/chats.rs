@@ -1,6 +1,6 @@
-//! Чаты (слайс 3): создание, имя, эмодзи, закрепление, архив и «последние чаты» для меню значка. Каждое действие —
-//! перезапись одной группы чата (`meta` или `state`) или создание со всеми шестью группами под одним HLC.
-//! Удаления чата нет (ТЗ §2.1: архив). Inbox нельзя переименовать, сменить ему эмодзи, архивировать.
+//! Chats (slice 3): creating, naming, emoji, pinning, archiving and the "recent chats" for the tray icon menu. Each action is
+//! a rewrite of one chat group (`meta` or `state`) or a creation with all six groups under one HLC.
+//! There is no chat deletion (PRD §2.1: archive). Inbox cannot be renamed, given another emoji or archived.
 
 use crate::error::{read_err, write_err};
 use crate::feed::chat_list;
@@ -19,11 +19,11 @@ use rusqlite::{Connection, Transaction, TransactionBehavior};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-/// Чат для меню значка в menu bar.
+/// A chat for the menu bar icon menu.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecentChat {
     pub id: String,
-    /// Название; у чата без названия (не бывает у обычных чатов) — пусто.
+    /// The title; empty for a chat without a title (ordinary chats never lack one).
     pub title: String,
     pub icon: Option<String>,
 }
@@ -103,7 +103,7 @@ fn apply_chat(
     Ok(())
 }
 
-/// Папка каждого чата в Markdown-копии по текущим названиям (чаты без удалённых).
+/// The folder of each chat in the Markdown copy by the current titles (chats without the deleted ones).
 pub(crate) fn folder_map(conn: &Connection) -> Result<BTreeMap<String, String>, StoreError> {
     let mut statement = conn
         .prepare("SELECT id, title, created_at FROM chat WHERE deleted_at IS NULL")
@@ -124,7 +124,7 @@ pub(crate) fn folder_map(conn: &Connection) -> Result<BTreeMap<String, String>, 
     Ok(chat_folders(&input))
 }
 
-/// Все дни чата с записями (кроме корзины) помечаются для перезаписи: папка чата изменилась.
+/// All days of the chat with entries (except the trash) are marked for rewriting: the chat folder changed.
 fn mark_chat_dirty(tx: &Transaction<'_>, chat_id: &str) -> rusqlite::Result<()> {
     tx.execute(
         "INSERT INTO mirror_dirty (chat_id, journal_date, seq) \
@@ -136,7 +136,7 @@ fn mark_chat_dirty(tx: &Transaction<'_>, chat_id: &str) -> rusqlite::Result<()> 
     Ok(())
 }
 
-/// Чаты, у которых после изменения поменялась папка копии (сам чат и те, кто делил с ним имя), помечаются для перезаписи.
+/// Chats whose copy folder changed after the edit (the chat itself and those that shared its name) are marked for rewriting.
 fn mark_folder_changes(
     tx: &Transaction<'_>,
     before: &BTreeMap<String, String>,
@@ -163,8 +163,8 @@ fn summary(conn: &Connection, id: &str) -> Result<ChatSummary, StoreError> {
         .ok_or(StoreError::ChatNotFound)
 }
 
-/// Новый чат в конце раздела, всеми шестью группами под одним HLC, в открытой транзакции вызывающего. `title` и `icon`
-/// уже нормализованы (`normalize_title`, `normalize_icon`). Тот же путь у «+» и у импорта личного чата.
+/// A new chat at the end of the section, with all six groups under one HLC, in the caller's open transaction. `title` and `icon`
+/// are already normalised (`normalize_title`, `normalize_icon`). The "+" button and the import of a personal chat share this path.
 pub(crate) fn insert_new_chat(
     tx: &Transaction<'_>,
     title: &str,
@@ -189,14 +189,14 @@ pub(crate) fn insert_new_chat(
         &hlc,
     )?;
     insert_chat(tx, &chat).map_err(write_err)?;
-    // Новый чат с именем уже существующего занимает суффикс, а чужие папки при этом не меняются; но на случай
-    // смены владельца простого имени всё равно сверяем.
+    // A new chat with the name of an existing one takes the suffix, and other folders do not change; but in case
+    // the owner of the plain name changes, we compare anyway.
     mark_folder_changes(tx, &before, &folder_map(tx)?)?;
     Ok(id)
 }
 
 impl Store {
-    /// «+» у раздела «Чаты»: новый чат в конце раздела. Имя — от 1 до 128 знаков, эмодзи — из пикера, без эмодзи — 💬.
+    /// The "+" of the Chats section: a new chat at the end of the section. The name is 1 to 128 characters, the emoji comes from the picker, without an emoji it is 💬.
     pub fn create_chat(
         &self,
         title: &str,
@@ -217,7 +217,7 @@ impl Store {
         Ok(summary)
     }
 
-    /// «Переименовать». Inbox не переименовывается. Папка чата в Markdown-копии переезжает, все его дни перезаписываются.
+    /// "Rename". Inbox is not renamed. The chat folder in the Markdown copy moves, all its days are rewritten.
     pub fn rename_chat(&self, id: &str, title: &str, now: &Now) -> Result<ChatSummary, StoreError> {
         let title = normalize_title(title)?;
         let result = self.change_meta(id, now, Some(title), None);
@@ -225,7 +225,7 @@ impl Store {
         result
     }
 
-    /// «Сменить эмодзи». Inbox эмодзи не меняет.
+    /// "Change emoji". Inbox does not change its emoji.
     pub fn set_chat_icon(
         &self,
         id: &str,
@@ -269,7 +269,7 @@ impl Store {
         })
     }
 
-    /// «Закрепить» / «Открепить». Закрепить можно и Inbox.
+    /// "Pin" / "Unpin". Inbox can be pinned too.
     pub fn set_chat_pinned(
         &self,
         id: &str,
@@ -279,7 +279,7 @@ impl Store {
         self.change_state(id, now, StateKind::Pinned, pinned)
     }
 
-    /// «В архив» / «Из архива». Inbox архивировать нельзя.
+    /// "Archive" / "Unarchive". Inbox cannot be archived.
     pub fn set_chat_archived(
         &self,
         id: &str,
@@ -324,8 +324,8 @@ impl Store {
         })
     }
 
-    /// До `limit` последних чатов по последней записи — для меню значка. Без Inbox (у него свой пункт), без архива и без
-    /// чатов, где нет ни одной живой записи.
+    /// Up to `limit` last chats by the last entry, for the icon menu. Without Inbox (it has its own item), without the archive and without
+    /// chats that have no live entry.
     pub fn recent_chats(&self, limit: usize) -> Result<Vec<RecentChat>, StoreError> {
         self.read(|conn| {
             let mut statement = conn

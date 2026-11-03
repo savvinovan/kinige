@@ -1,10 +1,10 @@
-//! Единственное место, где мост пишет в stderr (ADR-0009). Клиент MCP читает stderr моста как диагностику; кадры, аргументы и
-//! тексты записей сюда не попадают никогда — только категория ошибки и `id` запроса (обрезанный и очищенный).
+//! The only place where the bridge writes to stderr (ADR-0009). The MCP client reads the bridge's stderr as diagnostics; frames, arguments and
+//! entry texts never get here -- only the error category and the request `id` (truncated and sanitized).
 
-/// Сколько знаков `id` попадает в строку.
+/// How many characters of `id` go into the line.
 const ID_CHARS: usize = 40;
 
-// У моста нет зависимостей, значит нет и крейта `log`: этот вывод осознанно идёт напрямую в stderr, одной функцией.
+// The bridge has no dependencies, so no `log` crate either: this output deliberately goes straight to stderr, through one function.
 #[allow(clippy::print_stderr)]
 pub fn note(category: &str, id: Option<&str>) {
     match id {
@@ -13,7 +13,7 @@ pub fn note(category: &str, id: Option<&str>) {
     }
 }
 
-/// `id` из сообщения клиента — чужие данные: только буквы, цифры и `-_.`, остальное заменяется.
+/// The `id` from the client message is foreign data: only letters, digits and `-_.` stay, the rest is replaced.
 fn clean_id(id: &str) -> String {
     id.chars()
         .take(ID_CHARS)

@@ -4,7 +4,7 @@ import type { ImportPreview } from "../../api/generated/ImportPreview";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// Импорт из Telegram на настоящем `MainWindow` и `MockApi`: все шаги, отмена выбора, ошибки по коду, остановка, клавиатура.
+// Telegram import on the real `MainWindow` and `MockApi`: all steps, cancelling the pick, errors by code, stopping, keyboard.
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 
 const PREVIEW: ImportPreview = {
@@ -81,10 +81,10 @@ describe("Импорт: выбор чатов", () => {
     const peter = within(dialog).getByRole("checkbox", { name: "Пётр Тестов" });
     expect(saved).toBeChecked();
     expect(peter).not.toBeChecked();
-    // Разряды в русском числе разделены неразрывным пробелом (Intl).
+    // Digit groups in a Russian number are separated by a non-breaking space (Intl).
     expect(saved).toHaveAccessibleDescription("1 682 записи");
     expect(peter).toHaveAccessibleDescription("Личный чат · 240 записей · 40 уже есть");
-    // Чат без записей нельзя отметить.
+    // A chat without entries cannot be ticked.
     const empty = within(dialog).getByRole("checkbox", { name: "Пустой" });
     expect(empty).toBeDisabled();
     expect(empty).toHaveAccessibleDescription("Личный чат · нет записей");
@@ -152,12 +152,12 @@ describe("Импорт: прогресс, остановка, отчёт", () =>
     await waitFor(() => expect(bar).toHaveAttribute("aria-valuetext", "641 из 1 922"));
     expect(within(dialog).getByRole("button", { name: "Остановить" })).toHaveFocus();
     expect(within(dialog).queryByRole("button", { name: "Закрыть" })).toBeNull();
-    // Esc и щелчок по подложке окно не закрывают.
+    // Esc and a click on the backdrop do not close the window.
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(api.importClosed).toBe(0);
 
-    // Каждый шаг ждёт своего «отпускания»: второе возможно только после того, как мок дошёл до следующей остановки.
+    // Each step waits for its "release": the second is possible only after the mock has reached the next stop.
     for (let step = 0; step < 2; step++) {
       await act(async () => {
         api.releaseImport();
@@ -167,18 +167,18 @@ describe("Импорт: прогресс, остановка, отчёт", () =>
     }
     await waitFor(() => expect(within(screen.getByRole("dialog")).getByRole("heading", { name: "Импорт завершён" })).toBeInTheDocument());
     const report = within(screen.getByRole("dialog"));
-    // Текст узла Testing Library нормализует (неразрывный пробел становится обычным).
+    // Testing Library normalizes the node text (a non-breaking space becomes a regular one).
     expect(report.getByText("Импортировано: 1 882")).toBeInTheDocument();
     expect(report.getByText("Пропущено, уже импортировано: 40")).toBeInTheDocument();
     expect(report.getByText(/Вложения не перенесены у записей: \d/)).toBeInTheDocument();
-    // Нулевые счётчики в отчёте не выводятся (кроме «Импортировано»): чат Петра уже был, нового не создано.
+    // Zero counters are not shown in the report (except "Imported"): Petr's chat already existed, no new chat was created.
     expect(report.queryByText(/Создано чатов/)).toBeNull();
     expect(report.getByText(/Копия базы перед импортом: pre-import-/)).toBeInTheDocument();
     expect(api.lastImportChats).toEqual(["1000001", "2000002"]);
 
     fireEvent.click(report.getByRole("button", { name: "Готово" }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    // Открыт чат «Избранного» (Inbox).
+    // The Saved chat (Inbox) is open.
     expect(screen.getByRole("button", { name: /^Входящие/ })).toHaveAttribute("aria-current", "true");
   });
 
@@ -191,7 +191,7 @@ describe("Импорт: прогресс, остановка, отчёт", () =>
     await within(dialog).findByRole("progressbar");
     const stop = within(dialog).getByRole("button", { name: "Остановить" });
     fireEvent.click(stop);
-    // Пока Rust дописывает пачку, окно говорит об остановке и кнопка недоступна.
+    // While Rust finishes the batch, the window reports the stop and the button is unavailable.
     expect(within(dialog).getByText("Останавливаем…")).toBeInTheDocument();
     expect(stop).toHaveAttribute("aria-disabled", "true");
     expect(await within(dialog).findByRole("heading", { name: "Импорт остановлен" })).toBeInTheDocument();

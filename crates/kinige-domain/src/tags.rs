@@ -1,26 +1,26 @@
-//! Теги `#тег` (ТЗ §2.1, слайс 3, решение 3). Без IO.
+//! Tags `#tag` (PRD §2.1, slice 3, decision 3). No IO.
 //!
-//! Тег — `#` и следом буквы любого алфавита, цифры и `_`; хотя бы один знак — не цифра (`#1` — номер, не тег; так же
-//! решает Obsidian). Регистр не важен: тег хранится в нижнем регистре. Не тег:
-//! - внутри кода: ограждённые блоки ``` и ~~~, строки в обратных кавычках;
-//! - внутри ссылок: `[текст](адрес)`, `<http://…>`, голые адреса `https://…`, HTML-теги;
-//! - `#` после буквы, цифры, `_` или другого `#` (`a#b`, `##x`), после `&` (сущность `&#38;`) и после `\` (экранирование);
-//! - `# ` с пробелом (заголовок) — после `#` нет знаков тега.
+//! A tag is `#` followed by letters of any alphabet, digits and `_`; at least one character is not a digit (`#1` is a number, not a tag;
+//! Obsidian decides the same way). Case does not matter: a tag is stored in lower case. Not a tag:
+//! - inside code: fenced blocks ``` and ~~~, strings in backticks;
+//! - inside links: `[text](address)`, `<http://…>`, bare addresses `https://…`, HTML tags;
+//! - `#` after a letter, a digit, `_` or another `#` (`a#b`, `##x`), after `&` (the entity `&#38;`) and after `\` (escaping);
+//! - `# ` with a space (a heading) -- there are no tag characters after `#`.
 
 use crate::mirror::{is_closing_fence, opening_fence};
 
-/// Наибольшая длина тега в знаках; длиннее — не тег.
+/// The longest tag length in characters; longer is not a tag.
 pub const MAX_TAG_CHARS: usize = 64;
 
-/// Глубже скобки не считаются: иначе строка из `[a]([a](…` читалась бы за квадратичное время (каждая `(` ищет закрытие до
-/// конца строки). Настоящие ссылки так глубоко не вложены.
+/// Brackets deeper than this are not counted: otherwise a line of `[a]([a](…` would be read in quadratic time (every `(` looks for its closing one up to
+/// the end of the line). Real links are not nested that deep.
 const MAX_NESTING: usize = 64;
 
 fn is_tag_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 
-/// Теги записи в нижнем регистре, без повторов, в порядке первого появления.
+/// The tags of an entry in lower case, without repeats, in order of first appearance.
 pub fn parse_tags(body_md: &str) -> Vec<String> {
     let mut tags: Vec<String> = Vec::new();
     let mut fence: Option<(char, usize)> = None;
@@ -42,8 +42,8 @@ pub fn parse_tags(body_md: &str) -> Vec<String> {
 
 fn scan_line(line: &str, tags: &mut Vec<String>) {
     let chars: Vec<char> = line.chars().collect();
-    // Последний `>` строки: без него `<` не открывает адрес или тег, и искать закрытие у каждой `<` не нужно (иначе строка из
-    // `<a<a<a…` без `>` читалась бы за время, квадратичное по длине).
+    // The last `>` of the line: without it `<` does not open an address or a tag, and there is no need to look for the closing one for every `<` (otherwise a line of
+    // `<a<a<a…` without `>` would be read in time quadratic in its length).
     let last_gt = chars.iter().rposition(|c| *c == '>');
     let mut i = 0;
     while let Some(&c) = chars.get(i) {
@@ -80,7 +80,7 @@ fn scan_line(line: &str, tags: &mut Vec<String>) {
     }
 }
 
-/// Голый адрес начинается на границе слова: `https://…`, `http://…`, `mailto:…`, `www.…`.
+/// A bare address starts at a word boundary: `https://…`, `http://…`, `mailto:…`, `www.…`.
 fn starts_url(chars: &[char], i: usize) -> bool {
     if i.checked_sub(1)
         .and_then(|p| chars.get(p))
@@ -99,7 +99,7 @@ fn starts_url(chars: &[char], i: usize) -> bool {
         .any(|prefix| rest.starts_with(prefix))
 }
 
-/// Строка в обратных кавычках: серия из n кавычек и закрывающая серия той же длины. Не закрыта — кавычки обычный текст.
+/// A string in backticks: a run of n backticks and a closing run of the same length. If not closed, the backticks are plain text.
 fn skip_code_span(chars: &[char], start: usize) -> usize {
     let run = chars
         .get(start..)
@@ -127,7 +127,7 @@ fn skip_code_span(chars: &[char], start: usize) -> usize {
     start + run
 }
 
-/// `[текст](адрес)`: пропускается целиком вместе с текстом. Иначе (`[ ]`, `[x]`, сноски) `[` обычный знак.
+/// `[text](address)`: skipped whole, together with the text. Otherwise (`[ ]`, `[x]`, footnotes) `[` is a plain character.
 fn skip_link(chars: &[char], start: usize) -> usize {
     let Some(close) = matching(chars, start, '[', ']') else {
         return start + 1;
@@ -138,7 +138,7 @@ fn skip_link(chars: &[char], start: usize) -> usize {
     matching(chars, close + 1, '(', ')').map_or(start + 1, |end| end + 1)
 }
 
-/// `<https://…>` и HTML-теги: пропускаются до `>`, если после `<` буква, `/` или `!`.
+/// `<https://…>` and HTML tags: skipped up to `>` if `<` is followed by a letter, `/` or `!`.
 fn skip_angle(chars: &[char], start: usize, last_gt: Option<usize>) -> usize {
     let looks_like_tag = chars
         .get(start + 1)
@@ -154,7 +154,7 @@ fn skip_angle(chars: &[char], start: usize, last_gt: Option<usize>) -> usize {
         .map_or(start + 1, |offset| start + offset + 1)
 }
 
-/// Индекс скобки, закрывающей `open` в `start`, с учётом вложенности; в пределах строки и не глубже [`MAX_NESTING`].
+/// The index of the bracket that closes `open` at `start`, taking nesting into account; within the line and not deeper than [`MAX_NESTING`].
 fn matching(chars: &[char], start: usize, open: char, close: char) -> Option<usize> {
     let mut depth = 0usize;
     let mut i = start;
@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn a_pathological_line_is_read_in_linear_time() {
-        // Раньше `[a](` ×40 000 читалось около 12 с, `<a` ×100 000 без `>` — столько же: закрытие искалось от каждой скобки.
+        // Before, `[a](` x40,000 took about 12 s to read, and so did `<a` x100,000 without `>`: the closing bracket was searched from every bracket.
         for line in [
             "[a](".repeat(40_000),
             "<a".repeat(100_000),

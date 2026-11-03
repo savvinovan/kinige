@@ -1,10 +1,10 @@
-//! Теги записей (`message_tag`, слайс 3): локальная производная от `body_md`, обновляется в той же транзакции, что и
-//! запись, и пересчитывается при миграции. Правила разбора — `kinige_domain::tags`.
+//! Entry tags (`message_tag`, slice 3): a local derivative of `body_md`, updated in the same transaction as the entry
+//! and recomputed on migration. The parsing rules are in `kinige_domain::tags`.
 
 use kinige_domain::tags::parse_tags;
 use rusqlite::Connection;
 
-/// Заменяет теги записи тегами её текущего `body_md`.
+/// Replaces an entry's tags with the tags of its current `body_md`.
 pub(crate) fn replace_tags(
     conn: &Connection,
     message_id: &str,
@@ -27,7 +27,7 @@ fn insert_tags(conn: &Connection, message_id: &str, body_md: &str) -> rusqlite::
     Ok(())
 }
 
-/// Пересчитывает теги всех записей (миграция 3): таблица всегда строится из текстов, а не наоборот.
+/// Recomputes the tags of all entries (migration 3): the table is always built from the texts, not the other way round.
 pub(crate) fn rebuild_all(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute("DELETE FROM message_tag", [])?;
     let mut statement = conn.prepare("SELECT id, body_md FROM message")?;

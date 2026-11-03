@@ -41,7 +41,7 @@ describe("Feed", () => {
     const items = [...container.querySelectorAll("li.feed__item:not(.feed__item--day)")];
     const series = (text: string) =>
       items.find((li) => li.textContent?.includes(text))?.classList.contains("feed__item--series");
-    // 09:12 -> 09:14 — серия; 09:14 -> 11:30 — уже нет.
+    // 09:12 -> 09:14 is a series; 09:14 -> 11:30 is not any more.
     expect(series("Ещё: позвонить")).toBe(true);
     expect(series("Планы на выходные")).toBe(false);
     expect(series("Проснулся рано")).toBe(false);

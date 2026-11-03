@@ -15,16 +15,16 @@ if (!root) throw new Error("no #root element");
 
 const api = new TauriApi();
 
-/** Одна страница на три окна: окно захвата открывает её с `#capture` (`tauri.conf.json`), окно настроек — с `#settings`
- * (создаётся при первом открытии), главное — без хэша. */
+/** One page for three windows: the capture window opens it with `#capture` (`tauri.conf.json`), the settings window with
+ * `#settings` (created on first opening), the main one without a hash. */
 const isCaptureWindow = window.location.hash === "#capture";
 const isSettingsWindow = window.location.hash === "#settings";
-// Окно захвата прозрачное (форму и тень панели рисует CSS): странице нужна метка, чтобы убрать фон (ui/capture/capture.css).
+// The capture window is transparent (CSS draws the panel shape and shadow): the page needs a marker to remove the background (ui/capture/capture.css).
 if (isCaptureWindow) document.documentElement.dataset.window = "capture";
-// Окно настроек: документ не прокручивается, прокручивается только страница справа (ui/prefs/prefs.css).
+// The settings window: the document does not scroll, only the page on the right does (ui/prefs/prefs.css).
 if (isSettingsWindow) document.documentElement.dataset.window = "settings";
 
-// Язык и размер текста читаются до первого кадра: окно не мигает чужим языком и размером. Язык выбирает Rust по языкам системы.
+// The language and the text size are read before the first frame: the window does not flash a wrong language or size. Rust chooses the language by the system languages.
 const start = isSettingsWindow
   ? Promise.all([api.getLanguage(), loadPreferences(api)]).then(([language, initial]) => {
       applyTextSize(initial.settings.textSize);
@@ -48,7 +48,7 @@ const start = isSettingsWindow
       );
     })
   : Promise.all([api.getLanguage(), api.startupState()]).then(async ([language, first]) => {
-      // Журнал не открыт или чтение настроек само упёрлось в повреждение: окно «База повреждена» (см. `loadStartup`).
+      // The journal is not open or reading the settings itself ran into corruption: the "База повреждена" (Database is corrupted) window (see `loadStartup`).
       const { settings, startup } = await loadStartup(api, first);
       applyTextSize(settings.textSize);
       createRoot(root).render(
@@ -61,6 +61,6 @@ const start = isSettingsWindow
     });
 
 start.catch((reason: unknown) => {
-  // Язык неизвестен, поэтому сообщение без переводов: оно появляется, только если Rust не отвечает совсем.
+  // The language is unknown, so the message has no translations: it appears only if Rust does not answer at all.
   root.textContent = `Kinige: ${String((reason as { code?: string } | null)?.code ?? reason)}`;
 });

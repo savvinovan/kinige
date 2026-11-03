@@ -1,5 +1,5 @@
-//! Состояние HLC устройства в `sync_state` (`device_id`, `hlc_l`, `hlc_c`): читается и пишется в той же транзакции,
-//! что и изменение (ADR-0001 §2).
+//! The device's HLC state in `sync_state` (`device_id`, `hlc_l`, `hlc_c`): read and written in the same transaction
+//! as the change (ADR-0001 §2).
 
 use crate::StoreError;
 use kinige_domain::hlc::{Clock, HlcError};
@@ -22,7 +22,7 @@ pub(crate) fn set_state(tx: &Transaction<'_>, key: &str, value: &str) -> rusqlit
     Ok(())
 }
 
-/// Сохранённое состояние часов.
+/// The saved clock state.
 pub(crate) fn load_clock(tx: &Transaction<'_>) -> Result<Option<Clock>, StoreError> {
     let write = crate::error::write_err;
     let (Some(l), Some(c)) = (
@@ -33,7 +33,7 @@ pub(crate) fn load_clock(tx: &Transaction<'_>) -> Result<Option<Clock>, StoreErr
     };
     match (l.parse(), c.parse()) {
         (Ok(l), Ok(c)) => Ok(Some(Clock { l, c })),
-        _ => Err(StoreError::Internal("повреждены hlc_l или hlc_c".into())),
+        _ => Err(StoreError::Internal("hlc_l or hlc_c is corrupted".into())),
     }
 }
 
@@ -42,14 +42,13 @@ pub(crate) fn save_clock(tx: &Transaction<'_>, clock: Clock) -> rusqlite::Result
     set_state(tx, "hlc_c", &clock.c.to_string())
 }
 
-/// Следующая метка HLC для локального события в момент `pt_ms`; новое состояние часов пишется в `sync_state`.
+/// The next HLC stamp for a local event at the moment `pt_ms`; the new clock state is written to `sync_state`.
 pub(crate) fn next_hlc(tx: &Transaction<'_>, pt_ms: i64) -> Result<String, StoreError> {
     let write = crate::error::write_err;
     let device = get_state(tx, "device_id")
         .map_err(write)?
-        .ok_or_else(|| StoreError::Internal("нет device_id".into()))?;
-    let clock =
-        load_clock(tx)?.ok_or_else(|| StoreError::Internal("нет состояния часов".into()))?;
+        .ok_or_else(|| StoreError::Internal("no device_id".into()))?;
+    let clock = load_clock(tx)?.ok_or_else(|| StoreError::Internal("no clock state".into()))?;
     let next = clock
         .tick(u64::try_from(pt_ms).unwrap_or(0))
         .map_err(|e: HlcError| StoreError::Internal(e.to_string()))?;

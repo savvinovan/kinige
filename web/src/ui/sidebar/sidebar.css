@@ -1,4 +1,4 @@
-/* Сайдбар: поиск и список чатов. Только токены. */
+/* The sidebar: search and the chat list. Tokens only. */
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -9,30 +9,30 @@
   min-height: 0;
   padding: var(--layout-sidebar-padding);
   background: var(--color-surface-background);
-  /* Тонкая граница с лентой: поверхности фона и бумаги близки по яркости. */
+  /* A thin border with the feed: the background and paper surfaces are close in brightness. */
   border-right: var(--border-width-hairline) solid var(--color-border-divider);
-  /* Сворачивание анимирует только ширину; при Reduce Motion длительность нулевая (themes.css). */
+  /* Collapsing animates only the width; with Reduce Motion the duration is zero (themes.css). */
   transition: width var(--motion-duration-medium) var(--motion-easing-standard);
 }
 
-/* Свёрнутый вид — «полоса эмодзи». Содержимое меняется сразу, ширина доезжает за motion.duration.medium. */
+/* The collapsed view is the "emoji rail". The content changes at once, the width catches up within motion.duration.medium. */
 .sidebar--rail {
   width: var(--layout-sidebar-rail-width);
 }
 
-/* Список прокручивается только по вертикали: длинные имена обрезаются многоточием, а не раздвигают сайдбар. */
+/* The list scrolls only vertically: long names are truncated with an ellipsis instead of widening the sidebar. */
 .sidebar nav {
   flex: 1;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  /* Кольцо фокуса выступает за строку на ширину линии и зазор; поле такой же ширины с отрицательным внешним отступом
-     оставляет ему место внутри области прокрутки, и оно не обрезается краем списка. */
+  /* The focus ring extends past the row by the line width and the gap; padding of the same width with a negative outer margin
+     leaves it room inside the scroll area, so it is not clipped by the edge of the list. */
   margin: calc((var(--focus-width) + var(--focus-offset)) * -1);
   padding: calc(var(--focus-width) + var(--focus-offset));
 }
 
-/* Верхняя строка: поле «Поиск» и тихая кнопка «свернуть». Без поиска кнопка стоит справа одна. */
+/* The top row: the "Search" field and a quiet "collapse" button. Without search the button stands alone on the right. */
 .sidebar__top {
   display: flex;
   flex: none;
@@ -46,18 +46,18 @@
   min-width: 0;
 }
 
-/* Своя кнопка очистки WebKit в поле поиска не нужна: запрос стирается Backspace, а Esc очищает поле и возвращает ленту. */
+/* The WebKit clear button in the search field is not needed: the query is erased with Backspace, and Esc clears the field and returns the feed. */
 .sidebar__search input::-webkit-search-cancel-button {
   appearance: none;
 }
 
-/* Воздух над заголовком раздела: разделы отделяются пустым местом, а не линиями. */
+/* Air above a section header: sections are separated by empty space, not lines. */
 .sidebar__section + .sidebar__section {
   margin-top: var(--layout-sidebar-section-gap);
 }
 
-/* Заголовок раздела: мелкий тихий серый, как метка, а не акцент. Левый край на одной вертикали с плиткой чата.
-   Высота больше мелкой кнопки «+»: строка не прыгает, когда кнопка есть. */
+/* Section header: small quiet gray, like a label, not an accent. The left edge is on the same vertical as the chat tile.
+   The height is larger than the small "+" button: the row does not jump when the button is present. */
 .sidebar__heading {
   display: flex;
   align-items: center;
@@ -81,7 +81,7 @@
   white-space: nowrap;
 }
 
-/* «Архив» — кнопка-заголовок: шеврон справа, весь заголовок нажимается. */
+/* "Archive" is a header button: the chevron on the right, the whole header is clickable. */
 .sidebar__heading--toggle {
   width: 100%;
   border: 0;
@@ -96,12 +96,12 @@
   color: var(--color-text-primary);
 }
 
-/* Мелкая кнопка «+» не раздвигает заголовок и не выступает за его поля. */
+/* The small "+" button does not stretch the header and does not stick out past its padding. */
 .sidebar__heading .icon-button {
   margin-right: calc(var(--layout-sidebar-row-padding) / -2);
 }
 
-/* Колонка minmax(0, 1fr): без этого колонка grid не сжимается ниже ширины самого длинного имени (min-content). */
+/* The minmax(0, 1fr) column: without it the grid column does not shrink below the width of the longest name (min-content). */
 .sidebar__list {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -111,7 +111,7 @@
   list-style: none;
 }
 
-/* Строка сайдбара (D2): плитка слева, имя, тихий счётчик. Под мышью — мягкая заливка, выбранная — заливка плотнее, без обводки. */
+/* A sidebar row (D2): tile on the left, name, quiet counter. Under the mouse a soft fill, selected a denser fill, no outline. */
 .chat-row {
   display: flex;
   align-items: center;
@@ -145,8 +145,8 @@
   color: var(--color-text-primary);
 }
 
-/* Эмодзи чата: как есть, без фона, в слоте размера плитки (названия стоят ровно). Эмодзи чата — единственное место, где
-   интерфейс берёт системный шрифт (design/tokens/fontsets/inter.json). */
+/* The chat emoji: as is, without a background, in a slot of the tile size (the names line up). The chat emoji is the only place where
+   the interface takes the system font (design/tokens/fontsets/inter.json). */
 .chat-emoji {
   display: grid;
   flex: none;
@@ -155,16 +155,16 @@
   height: var(--layout-tile-size);
   font-family: var(--font-family-emoji);
   font-size: var(--icon-emoji-row);
-  /* Высота строки 1: у эмодзи-шрифта свои ascent и descent, а межстрочный текста сажал глиф ниже центра. */
+  /* Line height 1: the emoji font has its own ascent and descent, and the text line height put the glyph below the center. */
   line-height: var(--icon-emoji-line-height);
 }
 
 .chat-emoji__glyph {
-  /* Оптическое, а не геометрическое центрирование (icon.emoji.shift). */
+  /* Optical, not geometric centering (icon.emoji.shift). */
   transform: translateY(var(--icon-emoji-shift));
 }
 
-/* Плитка с буквой у чата без эмодзи: скруглённый квадрат цвета чата, первая буква названия белым (text.primary). */
+/* The letter tile of a chat without an emoji: a rounded square in the chat color, the first letter of the name in white (text.primary). */
 .chat-tile {
   display: grid;
   flex: none;
@@ -206,7 +206,7 @@
   background: var(--color-tile-violet);
 }
 
-/* Слот значка у нижних пунктов: того же размера, что плитка, без заливки; значок по центру, тихим серым. */
+/* The icon slot of the bottom items: the same size as the tile, no fill; the icon is centered, in quiet gray. */
 .nav-slot {
   display: grid;
   flex: none;
@@ -226,7 +226,7 @@
   color: var(--color-text-secondary);
 }
 
-/* Нижняя группа сайдбара («Корзина», профиль): тонкая линия сверху, как разделитель, а не карточка. */
+/* The bottom group of the sidebar ("Trash", profile): a thin line on top as a divider, not a card. */
 .sidebar__bottom {
   display: grid;
   flex: none;
@@ -243,7 +243,7 @@
   white-space: nowrap;
 }
 
-/* Счётчик записей: тихий серый, не акцент и не заливка; справа, не сжимается и не переносится. */
+/* The entry counter: quiet gray, not an accent and not a fill; on the right, it neither shrinks nor wraps. */
 .chat-row__count {
   flex: none;
   color: var(--color-text-tertiary);
@@ -255,7 +255,7 @@
   white-space: nowrap;
 }
 
-/* ---- Свёрнутый вид: полоса эмодзи ---- */
+/* ---- Collapsed view: the emoji rail ---- */
 
 .sidebar__rail-top {
   display: flex;
@@ -265,7 +265,7 @@
   gap: var(--space-1);
 }
 
-/* Квадратная кнопка полосы: плитка чата или значок корзины по центру. Размер — высота строки сайдбара. */
+/* A square rail button: the chat tile or the trash icon in the center. The size is the height of a sidebar row. */
 .rail-button {
   position: relative;
   display: flex;
@@ -299,9 +299,9 @@
   color: var(--color-text-secondary);
 }
 
-/* Цель перетаскивания записи: тихая рамка акцентного цвета и заливка активного поля (решение приёмки слайса 3).
-   `:hover` в списке обязателен: у правил наведения (`.chat-row:hover`) специфичность выше, и без него цель под указателем
-   получала бы заливку наведения вместо заливки цели (регрессия D2). */
+/* The drop target of an entry drag: a quiet accent-colored frame and the active field fill (slice 3 acceptance decision).
+   `:hover` in the list is required: the hover rules (`.chat-row:hover`) have higher specificity, and without it the target under the pointer
+   would get the hover fill instead of the target fill (D2 regression). */
 .rail-button--drop,
 .rail-button--drop:hover,
 .chat-row--drop,
@@ -311,7 +311,7 @@
   outline-offset: calc(var(--focus-offset) * -1);
 }
 
-/* Точка «в корзине есть записи»: акцентная, в углу значка; число — в подписи для диктора. */
+/* The "the trash has entries" dot: accent-colored, in the corner of the icon; the number is in the label for the screen reader. */
 .rail-button__dot {
   position: absolute;
   top: var(--space-2);
@@ -324,8 +324,8 @@
   background: var(--color-accent-default);
 }
 
-/* Подсказка с именем чата справа от полосы. Рисуется поверх окна (position: fixed в body): список чатов прокручивается
-   и обрезал бы её. Появляется сразу, без задержки, и ничего не сдвигает. */
+/* The tooltip with the chat name to the right of the rail. Drawn over the window (position: fixed in body): the chat list scrolls
+   and would clip it. It appears at once, without a delay, and shifts nothing. */
 .rail-tip {
   position: fixed;
   z-index: 3;

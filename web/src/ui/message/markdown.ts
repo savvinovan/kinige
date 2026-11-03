@@ -1,17 +1,17 @@
 import createDOMPurify from "dompurify";
 import MarkdownIt, { type StateCore, type Token } from "markdown-it";
 
-// Безопасный рендер Markdown в ленте (ТЗ §6): сырой HTML в тексте отключён (он выводится как текст), картинки и таблицы
-// в D1 не рендерятся, ссылки только http(s) и mailto, результат дополнительно проходит DOMPurify по белому списку.
-// Заметки — пользовательские данные, а у webview есть доступ к командам Tauri, поэтому защита двойная.
+// Safe Markdown rendering in the feed (spec §6): raw HTML in the text is disabled (it is shown as text), images and tables
+// are not rendered in D1, links are only http(s) and mailto, and the result additionally goes through DOMPurify with an allow list.
+// Notes are user data, and the webview has access to Tauri commands, so the protection is double.
 
-/** Подписи квадратиков задач для диктора: из переводов, поэтому приходят снаружи. */
+/** Task box labels for the screen reader: from the translations, so they come from outside. */
 export interface TaskLabels {
   done: string;
   todo: string;
   /**
-   * Имя кликабельного квадрата (`interactiveTasks`): у флажка имя не должно зависеть от состояния, состояние говорит
-   * `aria-checked`. Без него берутся `done` / `todo`.
+   * Name of the clickable box (`interactiveTasks`): a checkbox's name must not depend on its state, the state is conveyed
+   * by `aria-checked`. Without it `done` / `todo` are used.
    */
   item?: string;
 }
@@ -21,7 +21,7 @@ type RenderEnv = {
   taskLabels?: TaskLabels;
   tags?: ReadonlySet<string>;
   interactiveTasks?: boolean;
-  /** Найденные поиском слова (как они написаны в записи): подсвечиваются в обычном тексте целыми словами. */
+  /** Words found by search (as written in the entry): highlighted in plain text as whole words. */
   marks?: ReadonlySet<string>;
 };
 
@@ -29,21 +29,21 @@ const md = new MarkdownIt({ html: false, linkify: true, breaks: true, typographe
 md.linkify.set({ fuzzyLink: false, fuzzyEmail: false });
 md.disable(["image", "table"]);
 
-// Блок кода: без подсветки синтаксиса; длинные строки переносятся (markdown.css), прокрутки нет, поэтому и фокус не нужен.
+// Code block: no syntax highlighting; long lines wrap (markdown.css), there is no scrolling, so focus is not needed either.
 md.renderer.rules.fence = (tokens, idx) =>
   `<pre class="code-block"><code>${md.utils.escapeHtml(tokens[idx]?.content ?? "")}</code></pre>\n`;
 
-// Ссылка остаётся настоящим <a href> (видна диктору, берёт фокус, адрес читается при наведении), но переход по ней
-// отменяется в Message: webview не должен уходить с экрана приложения на внешний сайт. Адрес уходит в системный браузер
-// командой `open_external_url` (слайс 1), а «Open Link» из системного меню закрывает `on_navigation` в Rust.
-// rel закрывает доступ к window.opener на случай, если переход когда-нибудь разрешат.
+// The link stays a real <a href> (visible to the screen reader, takes focus, the address is readable on hover), but following it
+// is cancelled in Message: the webview must not leave the app screen for an external site. The address goes to the system browser
+// via the `open_external_url` command (slice 1), and "Open Link" from the system menu is blocked by `on_navigation` in Rust.
+// rel closes access to window.opener in case navigation is ever allowed.
 const defaultLinkOpen = md.renderer.rules.link_open ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
 md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
   tokens[idx]?.attrSet("rel", "noopener noreferrer");
   return defaultLinkOpen(tokens, idx, options, env, self);
 };
 
-// Задачи `- [ ] текст` и `- [x] текст`: пункт получает маркер-квадрат, список — класс task-list.
+// Tasks `- [ ] text` and `- [x] text`: the item gets a box marker, the list gets the task-list class.
 md.core.ruler.after("inline", "kinige-task-lists", (state) => {
   const { tokens } = state;
   for (let i = 2; i < tokens.length; i++) {
@@ -62,7 +62,7 @@ md.core.ruler.after("inline", "kinige-task-lists", (state) => {
     const box = new state.Token("html_inline", "", 0);
     const { taskLabels: labels, interactiveTasks } = state.env as RenderEnv;
     if (interactiveTasks) {
-      // Кликабельный квадрат (слайс 3): флажок с клавиатуры; щелчок и пробел обрабатывает Message по порядковому номеру.
+      // Clickable box (slice 3): a checkbox from the keyboard; Message handles click and Space by the ordinal number.
       const label = md.utils.escapeHtml(labels?.item ?? (done ? labels?.done : labels?.todo) ?? "");
       box.content = `<span class="task__box" role="checkbox" aria-checked="${done}" aria-label="${label}" tabindex="0"></span>`;
     } else {
@@ -82,15 +82,15 @@ md.core.ruler.after("inline", "kinige-task-lists", (state) => {
   }
 });
 
-// Теги `#слово` (слайс 3). Какие слова — теги, решает Rust (`kinige_domain::tags`), сюда они приходят списком в `env.tags`
-// (нижний регистр, без `#`); здесь только подсветка. Правило идёт после linkify и до text_join: ссылки уже видны как
-// пары link_open / link_close (внутри них тегов нет), а экранированное `\#` ещё отдельный токен text_special.
-// Код (`code_inline`, блоки) в текстовые токены не попадает. Слово — буквы любого алфавита, цифры и `_`; перед `#`
-// нет буквы, цифры, `_`, `#`, `&` и `\`.
+// Tags `#word` (slice 3). Which words are tags is decided by Rust (`kinige_domain::tags`), they arrive here as a list in `env.tags`
+// (lower case, without `#`); only highlighting is done here. The rule runs after linkify and before text_join: links are already visible as
+// link_open / link_close pairs (there are no tags inside them), and the escaped `\#` is still a separate text_special token.
+// Code (`code_inline`, blocks) does not get into text tokens. A word is letters of any alphabet, digits and `_`; before `#`
+// there is no letter, digit, `_`, `#`, `&` or `\`.
 const TAG_AT = /#([\p{L}\p{N}_]+)/gu;
 const NOT_BEFORE_TAG = /[\p{L}\p{N}_#&\\]$/u;
 
-/** Текстовый токен → цепочка из текста и `<span class="tag">`; без тегов возвращает `null`. */
+/** Text token -> a chain of text and `<span class="tag">`; returns `null` if there are no tags. */
 function splitTags(state: StateCore, token: Token, before: string, tags: ReadonlySet<string>): Token[] | null {
   const text = token.content;
   const parts: Token[] = [];
@@ -131,16 +131,16 @@ md.core.ruler.after("linkify", "kinige-tags", (state) => {
       else if (token.type === "link_close") linkDepth--;
       const parts = token.type === "text" && linkDepth === 0 ? splitTags(state, token, before, tags) : null;
       result.push(...(parts ?? [token]));
-      // Что стоит перед следующим токеном: последний знак соседнего текста; всё остальное (разметка, код) — «ничего».
+      // What stands before the next token: the last character of the neighboring text; everything else (markup, code) is "nothing".
       before = token.type === "text" || token.type === "text_special" ? token.content : "";
     }
     block.children = result;
   }
 });
 
-// Найденные поиском слова (слайс 4): слова записи, которые вернул Rust, в обычном тексте оборачиваются в `<mark>`. Совпадают
-// только целые слова и с тем же регистром, как слово написано в записи; в ссылках, коде и тегах подсветки нет (после
-// «kinige-tags» теги уже html_inline-токены, текст ссылок пропускается по глубине).
+// Words found by search (slice 4): the entry's words returned by Rust are wrapped in `<mark>` in plain text. Only whole words match,
+// with the same case as the word is written in the entry; there is no highlighting in links, code and tags (after
+// "kinige-tags" the tags are already html_inline tokens, the text of links is skipped by depth).
 const MARK_WORD = /[\p{L}\p{N}]+/gu;
 
 function splitMarks(state: StateCore, token: Token, marks: ReadonlySet<string>): Token[] | null {
@@ -185,9 +185,9 @@ md.core.ruler.after("kinige-tags", "kinige-marks", (state) => {
   }
 });
 
-// Время стоит в правом нижнем углу плашки на одной строке с концом текста: в конец последней строки вставляется
-// невидимая распорка по ширине времени, чтобы текст его не накрывал. Если сообщение кончается блоком кода,
-// распорки нет: время стоит под блоком.
+// The time sits in the bottom right corner of the bubble on the same line as the end of the text: an invisible spacer the width of the time
+// is inserted at the end of the last line so that the text does not cover it. If the message ends with a code block,
+// there is no spacer: the time sits under the block.
 md.core.ruler.push("kinige-time-spacer", (state) => {
   if (!(state.env as RenderEnv).timeSpacer) return;
   let last = state.tokens.length - 1;
@@ -200,9 +200,9 @@ md.core.ruler.push("kinige-time-spacer", (state) => {
 });
 
 const purify = createDOMPurify(window);
-// Адреса: только http, https и mailto (по умолчанию DOMPurify пропускает ещё tel:, sms:, относительные и другие).
-// Свой ALLOWED_URI_REGEXP здесь нельзя: DOMPurify применяет его ко всем атрибутам вне списка «безопасных для URI»
-// и вычистил бы tabindex и aria-label, поэтому адрес проверяется отдельно.
+// Addresses: only http, https and mailto (by default DOMPurify also lets through tel:, sms:, relative ones and others).
+// A custom ALLOWED_URI_REGEXP is not an option here: DOMPurify applies it to all attributes outside the "URI-safe" list
+// and would strip tabindex and aria-label, so the address is checked separately.
 const SAFE_HREF = /^(?:https?:|mailto:)/i;
 purify.addHook("afterSanitizeAttributes", (node) => {
   if (node.tagName !== "A") return;
@@ -221,18 +221,18 @@ const SANITIZE = {
   ALLOW_ARIA_ATTR: false,
 };
 
-/** Второй рубеж защиты: белый список тегов, атрибутов и адресов. Отдельно экспортируется ради теста. */
+/** The second line of defense: an allow list of tags, attributes and addresses. Exported separately for the test. */
 export function sanitizeHtml(html: string): string {
   return purify.sanitize(html, SANITIZE);
 }
 
 /**
- * Markdown сообщения -> безопасный HTML для плашки.
- * @param timeSpacer вставить в конец последней строки распорку под время (нет при состоянии «не отправилось»,
- * когда время стоит в нижней строке рядом с «Повторить»).
- * @param taskLabels подписи квадратиков задач (переводы).
- * @param tags теги записи (нижний регистр, без `#`), которые нужно подсветить в тексте; их определил Rust.
- * @param interactiveTasks квадраты `- [ ]` становятся флажками (`role="checkbox"`, `aria-checked`, `tabindex="0"`).
+ * Message Markdown -> safe HTML for the bubble.
+ * @param timeSpacer insert a spacer for the time at the end of the last line (not in the "not sent" state,
+ * when the time sits in the bottom line next to "Retry").
+ * @param taskLabels task box labels (translations).
+ * @param tags entry tags (lower case, without `#`) to highlight in the text; determined by Rust.
+ * @param interactiveTasks `- [ ]` boxes become checkboxes (`role="checkbox"`, `aria-checked`, `tabindex="0"`).
  */
 export function renderMarkdown(
   source: string,

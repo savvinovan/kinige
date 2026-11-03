@@ -17,7 +17,7 @@ const TOOLS = {
   add_entry: "agent.log.tool.add_entry",
   append_to_last_entry: "agent.log.tool.append_to_last_entry",
   set_task_done: "agent.log.tool.set_task_done",
-  // Доступ изменён через settings.json (слайс 4b): подпись по инструменту, а не по имени клиента — клиент называет себя сам.
+  // Access changed through settings.json (slice 4b): the label is by tool, not by client name, because a client names itself.
   settings_file: "agent.log.tool.settings_file",
 } as const;
 
@@ -33,7 +33,7 @@ const OUTCOMES = {
 const isTool = (tool: string): tool is keyof typeof TOOLS => tool in TOOLS;
 const isOutcome = (outcome: string): outcome is keyof typeof OUTCOMES => outcome in OUTCOMES;
 
-/** Время строки журнала: сегодня — `14:02`, раньше — `28 окт., 14:02`. */
+/** The time of a log row: today `14:02`, earlier `28 окт., 14:02`. */
 export function logTime(at: number, now: Date, language: Language): string {
   const date = new Date(at);
   const time = formatTime(date, language);
@@ -42,7 +42,7 @@ export function logTime(at: number, now: Date, language: Language): string {
   return `${day}, ${time}`;
 }
 
-/** День записи `YYYY-MM-DD` коротко: `14 мар.` (год — только если не этот). */
+/** The entry day `YYYY-MM-DD` in short form: `14 мар.` (the year only if it is not this one). */
 export function shortDay(journalDate: string, now: Date, language: Language): string {
   const [year, month, day] = journalDate.split("-").map(Number);
   if (!year || !month || !day) return journalDate;
@@ -51,7 +51,7 @@ export function shortDay(journalDate: string, now: Date, language: Language): st
   return new Intl.DateTimeFormat(language, { timeZone: "UTC", day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) }).format(date);
 }
 
-/** Строка журнала: «14:02 · Claude Desktop · поиск «Raft» · 3 записи» или «… · отказано: только чтение». */
+/** A log row: "14:02 · Claude Desktop · поиск «Raft» · 3 записи" or "... · отказано: только чтение". */
 export function logLine(row: AgentLogRow, now: Date, language: Language, t: TFunction): string {
   const tool = t(isTool(row.tool) ? TOOLS[row.tool] : "agent.log.tool.unknown");
   const action = row.query ? t("agent.log.withQuery", { tool, query: row.query }) : tool;

@@ -9,10 +9,10 @@ import type { FeedPaging, FeedUiState, ScrollRequest } from "../feed/Feed";
 import { mergeLatestPage, mergeOlder, withDeleted } from "../feed/mergeFeed";
 import { useFeedActions } from "./useFeedActions";
 
-/** Сколько записей грузит страница ленты. Старые страницы подгружаются при прокрутке к верху (слайс 4), без виртуализации. */
+/** How many entries a feed page loads. Older pages are loaded when scrolling to the top (slice 4), without virtualization. */
 export const PAGE_SIZE = 200;
 
-/** Переход к записи (из поиска): чат, запись и слова, которые нужно выделить. Новый `nonce` — новый переход. */
+/** A jump to an entry (from search): the chat, the entry and the words to highlight. A new `nonce` is a new jump. */
 export interface FocusTarget {
   chatId: string;
   messageId: string;
@@ -22,26 +22,26 @@ export interface FocusTarget {
 
 interface UseFeedOptions {
   api: KinigeApi;
-  /** Открытый чат; `null` — открыта корзина, ленты нет. */
+  /** The open chat; `null` means the trash is open, there is no feed. */
   chatId: string | null;
-  /** Фильтр по тегу (нижний регистр, без `#`). */
+  /** The tag filter (lowercase, without `#`). */
   tag: string | null;
-  /** Счётчики чатов и корзины после изменения записи. */
+  /** Chat and trash counters after an entry changes. */
   refreshChats: () => Promise<void>;
-  /** Ошибка действия, которой нет места внутри плашки (показывается над полем ввода). */
+  /** An action error that has no place inside the plate (shown above the composer). */
   onError: (code: ErrorCode) => void;
-  /** Щелчок по `#тегу`. */
+  /** A click on a `#tag`. */
   onTag: (tag: string) => void;
-  /** Открыть чат на записи: страница вокруг неё, дальше подгрузка вверх и вниз. Используется один раз на `nonce`. */
+  /** Open the chat at an entry: the page around it, then loading up and down. Used once per `nonce`. */
   focus?: FocusTarget | null;
   /** The entries of the journal changed through this feed (sent, edited, deleted, restored, moved, re-dated): the forest reloads. */
   onMutated?: () => void;
 }
 
 /**
- * Лента открытого чата и действия над её записями (слайс 3): правка в плашке, удаление, флаги, день, пункты `- [ ]`.
- * Без оптимистичного показа: запись меняется после ответа Rust. Удалённая запись стоит на месте приглушённой («Удалено ·
- * Вернуть»), пока человек не уйдёт из чата (решение пользователя 1).
+ * The open chat's feed and the actions on its entries (slice 3): editing in the plate, deletion, flags, day, `- [ ]` items.
+ * No optimistic display: an entry changes after Rust replies. A deleted entry stays in place, dimmed ("Deleted ·
+ * Restore"), until the person leaves the chat (user decision 1).
  */
 export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus = null, onMutated }: UseFeedOptions) {
   const mutatedRef = useRef(onMutated);
@@ -51,18 +51,18 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
   const mutated = useCallback(() => mutatedRef.current?.(), []);
   const [messages, setMessages] = useState<FeedMessage[]>([]);
   const [today, setToday] = useState("");
-  // Первая страница открытого чата получена: до этого лента может ничего не рисовать (первый кадр с карточкой «В этот день»).
+  // The first page of the open chat is received: until then the feed may draw nothing (the first frame with the "On this day" card).
   const [loaded, setLoaded] = useState(false);
-  // Края загруженной ленты: курсор следующей старой страницы и следующей новой; `newer === null` — лента дошла до конца.
+  // The edges of the loaded feed: the cursor of the next older page and of the next newer one; `newer === null` means the feed reached the end.
   const [older, setOlder] = useState<FeedCursor | null>(null);
   const [newer, setNewer] = useState<FeedCursor | null>(null);
   const [mark, setMark] = useState<{ id: string; terms: readonly string[] } | null>(null);
   const [scrollTo, setScrollTo] = useState<ScrollRequest | null>(null);
-  // Переход уже выполнен: тот же `nonce` второй раз (возврат в чат) ленту к записи не уводит.
+  // The jump is already done: the same `nonce` a second time (returning to the chat) does not take the feed to the entry.
   const usedFocus = useRef(0);
-  // Курсоры для обработчиков краёв и события Rust. Новый курсор попадает сюда в тот же миг, что и в состояние (`setCursor`):
-  // React сбрасывает эффекты с задержкой, и край, показавшийся сразу после отрисовки страницы, грузил бы по старому курсору,
-  // а событие «записи изменились» принимало бы середину истории за конец. В смене чата курсоры сбрасывает эффект ниже.
+  // Cursors for the edge handlers and the Rust event. A new cursor lands here at the same moment as in the state (`setCursor`):
+  // React cleans up effects with a delay, so an edge that showed up right after a page render would load by the old cursor,
+  // and the "entries changed" event would take the middle of the history for the end. On a chat switch the effect below resets the cursors.
   const paging = useRef<{ older: FeedCursor | null; newer: FeedCursor | null }>({ older: null, newer: null });
   const setCursor = useCallback((edge: "older" | "newer", cursor: FeedCursor | null) => {
     paging.current = { ...paging.current, [edge]: cursor };
@@ -75,7 +75,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
   const [deletedIds, setDeletedIds] = useState<ReadonlySet<string>>(new Set());
   const [dateFor, setDateFor] = useState<string | null>(null);
   const deleted = useRef(deletedIds);
-  // Последние значения для обработчиков, которые живут дольше одной отрисовки (ответы Rust, события, отправка записи).
+  // The latest values for handlers that live longer than one render (Rust replies, events, sending an entry).
   const current = useRef({ chatId, tag, loaded, messages, onError });
   const shownToday = useRef(today);
   useEffect(() => {
@@ -84,8 +84,8 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     shownToday.current = today;
   });
 
-  // Смена чата или фильтра: состояние плашек сбрасывается прямо при отрисовке (так React советует «подстраивать состояние»).
-  // Удалённые записи («Удалено · Вернуть») живут, пока человек не уйдёт из чата; смена тега-фильтра чат не меняет.
+  // A chat or filter switch: the plate state is reset right during rendering (this is how React advises to "adjust state").
+  // Deleted entries ("Deleted · Restore") live until the person leaves the chat; changing the tag filter does not change the chat.
   const chatKey = chatId ?? "";
   const feedKey = `${chatKey}\u0000${tag ?? ""}`;
   const [shownChat, setShownChat] = useState(chatKey);
@@ -103,24 +103,24 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
       setOlder(null);
       setNewer(null);
       setMark(null);
-      // Просьба прокрутить к записи относилась к прежнему чату: вернувшись, лента открывается внизу, а не у старой записи.
+      // The request to scroll to an entry belonged to the previous chat: on return the feed opens at the bottom, not at the old entry.
       setScrollTo(null);
     } else {
-      // Тот же чат, другой фильтр: на месте остаются только удалённые записи, подходящие под новый фильтр.
+      // The same chat, another filter: only the deleted entries that match the new filter stay in place.
       setMessages((shown) => withDeleted(shown, [], deletedIds, tag));
     }
   }
 
-  // Другой чат: курсоры прежнего больше не годятся (состояние сброшено выше). Объявлен раньше загрузки ленты, чтобы не
-  // затереть курсоры, которые она принесёт.
+  // Another chat: the previous chat's cursors are no longer valid (the state is reset above). Declared before the feed
+  // loading so as not to wipe the cursors it brings.
   useEffect(() => {
     paging.current = { older: null, newer: null };
   }, [chatKey]);
 
   /**
-   * Переход к записи не удался (её нет на месте: в корзине, удалена): загруженные копии записей устарели, прежде всего цитаты
-   * ответов (у них осталось `state: "live"`). Свежие копии встают на место загруженных; ничего не добавляется и не убирается.
-   * Окно: последняя страница, а в середине истории — страница вокруг середины загруженного (прокрутка не прыгает).
+   * The jump to an entry failed (it is not in place: in the trash, deleted): the loaded copies of entries are stale, first of
+   * all the reply quotes (they still have `state: "live"`). Fresh copies take the place of the loaded ones; nothing is added or removed.
+   * The window: the last page, and in the middle of the history the page around the middle of what is loaded (scrolling does not jump).
    */
   const refreshLoaded = useCallback(async () => {
     const { chatId: id, tag: filter, messages: shown } = current.current;
@@ -137,13 +137,13 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
       if (current.current.chatId !== id || current.current.tag !== filter) return;
       setMessages((loaded) => mergeOlder(loaded, page.messages));
     } catch {
-      // Цитаты обновятся при следующем чтении ленты.
+      // The quotes will refresh on the next feed read.
     }
   }, [api]);
 
-  // Смена чата, фильтра или переход к записи: лента перечитывается. Переход — страница вокруг записи; найденные слова
-  // выделяются в ней, запись подсвечена до следующего щелчка (`clearMark`). Не удавшийся переход — не ошибка загрузки: лента
-  // остаётся, ошибка уходит в `onError`; в чате, где ничего ещё не загружено, показывается его последняя страница.
+  // A chat switch, a filter change or a jump to an entry: the feed is reread. A jump is the page around the entry; the
+  // found words are highlighted in it, the entry stays highlighted until the next click (`clearMark`). A failed jump is
+  // not a load error: the feed stays, the error goes to `onError`; in a chat where nothing is loaded yet, its last page is shown.
   const focusNonce = focus?.nonce ?? 0;
   useEffect(() => {
     if (chatId === null) return;
@@ -181,11 +181,11 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     return () => {
       live = false;
     };
-    // `focus` читается один раз на `nonce`: сам объект в зависимости не нужен; `setCursor` и `refreshLoaded` стабильны.
+    // `focus` is read once per `nonce`: the object itself is not needed as a dependency; `setCursor` and `refreshLoaded` are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, chatId, tag, focusNonce]);
 
-  /** Старая страница сверху: курсор `older`, записи встают перед загруженными. Прокрутка при этом не прыгает. */
+  /** An older page at the top: the `older` cursor, the entries go before the loaded ones. Scrolling does not jump. */
   const loadOlder = useCallback(async () => {
     const { older: cursor } = paging.current;
     const { chatId: id, tag: filter } = current.current;
@@ -203,7 +203,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     }
   }, [api, onError, setCursor]);
 
-  /** Новая страница снизу (только после перехода к записи из середины истории); дойдя до конца, лента снова «живая». */
+  /** A newer page at the bottom (only after a jump to an entry from the middle of the history); on reaching the end, the feed is "live" again. */
   const loadNewer = useCallback(async () => {
     const { newer: cursor } = paging.current;
     const { chatId: id, tag: filter } = current.current;
@@ -221,12 +221,12 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     }
   }, [api, onError, setCursor]);
 
-  // Свежая последняя страница: запись пришла из окна захвата или из буфера (событие Rust «записи изменились»). Подгруженная
-  // история не сбрасывается; удалённые записи, которые ещё стоят на месте, не исчезают вместе со страницей.
+  // A fresh last page: an entry came from the capture window or from the clipboard (the Rust "entries changed" event). The
+  // loaded history is not reset; deleted entries that still stand in place do not vanish with the page.
   const reload = useCallback(async () => {
     const { chatId: id, tag: filter } = current.current;
     if (id === null) return;
-    // Лента открыта в середине истории (переход из поиска): новые записи снизу появятся, когда до них дойдёт подгрузка.
+    // The feed is open in the middle of the history (a jump from search): new entries at the bottom will appear when loading reaches them.
     if (paging.current.newer !== null) return;
     try {
       const page = await api.listMessages(id, { limit: PAGE_SIZE, tag: filter ?? undefined });
@@ -235,18 +235,18 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
         const merged = mergeLatestPage(loaded, page.messages, page.older !== null);
         return withDeleted(loaded, merged, deleted.current, filter);
       });
-      // Подгруженная история остаётся; если старше страницы ничего нет, курсора больше нет.
+      // The loaded history stays; if there is nothing older than the page, there is no cursor any more.
       if (page.older === null) setCursor("older", null);
       setToday(page.today);
     } catch {
-      // Лента остаётся прежней: следующее событие перечитает.
+      // The feed stays as it was: the next event will reread it.
     }
   }, [api, setCursor]);
 
   /**
-   * Наступил новый день журнала (после 04:00), пока окно было открыто: лента перечитывается, метки «Сегодня» и «Вчера» встают
-   * правильно. Вызывается при фокусе окна; день спрашивается у Rust самым дешёвым запросом (одна запись), независимо от того,
-   * есть ли карточка «В этот день».
+   * A new journal day began (after 04:00) while the window was open: the feed is reread, the "Today" and "Yesterday" labels
+   * come out right. Called on window focus; the day is asked from Rust with the cheapest request (one entry), regardless of
+   * whether there is an "On this day" card.
    */
   const checkDay = useCallback(async () => {
     const { chatId: id, tag: filter } = current.current;
@@ -255,14 +255,14 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
       const page = await api.listMessages(id, { limit: 1, tag: filter ?? undefined });
       if (shownToday.current !== "" && page.today !== shownToday.current) await reload();
     } catch {
-      // Следующий фокус проверит снова.
+      // The next focus will check again.
     }
   }, [api, reload]);
 
   /**
-   * Лента с нуля: последняя страница заменяет всё загруженное, оба курсора пересчитываются. Нужна, когда записи легли в
-   * середину уже загруженной истории (импорт): курсор «старше» прежней ленты указывал бы мимо новых записей, а страницы
-   * между ними остались бы незагруженными. Удалённые плашки, не ушедшие из чата, остаются на месте.
+   * The feed from scratch: the last page replaces everything loaded, both cursors are recomputed. Needed when entries
+   * landed in the middle of the already loaded history (import): the "older" cursor of the previous feed would point past
+   * the new entries, and the pages between them would stay unloaded. Deleted plates that have not left the chat stay in place.
    */
   const restart = useCallback(async () => {
     const { chatId: id, tag: filter } = current.current;
@@ -276,7 +276,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
       setToday(page.today);
       setMark(null);
     } catch {
-      // Лента остаётся прежней: следующее событие или «Готово» перечитает.
+      // The feed stays as it was: the next event or "Done" will reread it.
     }
   }, [api, setCursor]);
 
@@ -289,10 +289,10 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
   );
 
   /**
-   * Отправленная запись встаёт в конец ленты. Вызывается из ответа на отправку, который мог прийти после смены чата или
-   * фильтра, поэтому чат и тег читаются из `current`, а не из замыкания. Запись другого чата в ленту не попадает; под
-   * фильтром по тегу она видна, только если в ней есть этот тег; лента в середине истории (после перехода к записи)
-   * открывается заново у живого края, иначе запись встала бы сразу после старых.
+   * A sent entry goes to the end of the feed. Called from the reply to a send, which could arrive after a chat or filter
+   * switch, so the chat and tag are read from `current`, not from the closure. An entry of another chat does not get into
+   * the feed; under a tag filter it is visible only if it has that tag; a feed in the middle of the history (after a jump
+   * to an entry) is reopened at the live edge, otherwise the entry would land right after the old ones.
    */
   const appendSent = useCallback(
     (sent: MessageView) => {
@@ -301,7 +301,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
       if (sent.chatId !== id) return;
       if (filter !== null && !sent.tags.includes(filter)) return;
       if (paging.current.newer !== null) {
-        // Лента встаёт у живого края, отправленная запись — в центре кадра, как после перехода к записи.
+        // The feed goes to the live edge, the sent entry to the center of the frame, as after a jump to an entry.
         void restart().then(() => setScrollTo({ id: sent.id, nonce: 0 }));
         return;
       }
@@ -327,7 +327,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     setDateFor,
   });
 
-  /** Календарь выбрал день для записи `dateFor`; ответ — код ошибки (диалог показывает её), `null` — готово. */
+  /** The calendar picked a day for the entry `dateFor`; the reply is an error code (the dialog shows it), `null` means done. */
   const pickDate = useCallback(
     async (journalDate: string): Promise<ErrorCode | null> => {
       if (dateFor === null) return null;

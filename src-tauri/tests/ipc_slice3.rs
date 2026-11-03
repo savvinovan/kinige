@@ -1,8 +1,8 @@
-//! Сценарии слайса 3 через IPC на mock-рантайме с настоящими capabilities: удаление и корзина, чаты, правка, флаги, день,
-//! теги, состояние запуска и восстановление. Матрица «окно → команды» — в `ipc.rs`, прочие сценарии — в `ipc_flows.rs`.
+//! Slice 3 scenarios through IPC on a mock runtime with the real capabilities: deletion and trash, chats, editing, flags, the day,
+//! tags, the startup state and restore. The "window -> commands" matrix is in `ipc.rs`, the other scenarios are in `ipc_flows.rs`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -25,7 +25,7 @@ fn chat_titles(window: &tauri::WebviewWindow<tauri::test::MockRuntime>) -> Vec<S
 
 #[test]
 fn delete_updates_the_counter_and_errors_come_back_by_code() {
-    // Долг слайса 1: «удалить → счётчик → ошибка по коду».
+    // A slice 1 debt: "delete -> counter -> error by code".
     let fixture = fixture();
     let window = window(&fixture, "main");
     let sent = call(
@@ -48,7 +48,7 @@ fn delete_updates_the_counter_and_errors_come_back_by_code() {
 
     call(&window, "delete_message", json!({"id": id})).unwrap();
     let list = call(&window, "list_chats", json!({})).unwrap();
-    assert_eq!(list["chats"][0]["count"], 1, "счётчик уменьшился на 1");
+    assert_eq!(list["chats"][0]["count"], 1, "the counter decreased by 1");
     assert_eq!(list["trashCount"], 1);
     let page = call(&window, "list_messages", json!({"chatId": INBOX})).unwrap();
     assert_eq!(page["messages"].as_array().unwrap().len(), 1);
@@ -64,7 +64,7 @@ fn delete_updates_the_counter_and_errors_come_back_by_code() {
         2
     );
 
-    // Ошибки — кодами.
+    // Errors come as codes.
     for (command, args, code) in [
         ("delete_message", json!({"id": "нет"}), "message_not_found"),
         ("restore_message", json!({"id": "нет"}), "message_not_found"),
@@ -102,7 +102,7 @@ fn delete_updates_the_counter_and_errors_come_back_by_code() {
             "{command} {args}"
         );
     }
-    // Неверный вид аргументов (неизвестный флаг) отвергается до обработчика.
+    // A wrong shape of arguments (an unknown flag) is rejected before the handler.
     assert!(
         call(
             &window,
@@ -111,7 +111,7 @@ fn delete_updates_the_counter_and_errors_come_back_by_code() {
         )
         .is_err()
     );
-    // «Удалить навсегда» у записи из корзины: запись исчезает насовсем.
+    // "Delete forever" for an entry from the trash: the entry disappears for good.
     call(&window, "delete_message", json!({"id": id})).unwrap();
     call(&window, "purge_message", json!({"id": id})).unwrap();
     assert_eq!(call(&window, "list_trash", json!({})).unwrap(), json!([]));
@@ -177,7 +177,7 @@ fn chats_over_ipc_create_rename_pin_archive_and_protect_inbox() {
     assert_eq!(
         chat_titles(&window),
         ["Проза", "", "Фильмы"],
-        "закреплённый первым"
+        "the pinned one first"
     );
     let archived = call(
         &window,
@@ -189,7 +189,7 @@ fn chats_over_ipc_create_rename_pin_archive_and_protect_inbox() {
     assert_eq!(
         chat_titles(&window),
         ["Проза", "", "Фильмы"],
-        "архивный чат уходит в конец списка"
+        "the archived chat goes to the end of the list"
     );
     call(
         &window,
@@ -198,7 +198,7 @@ fn chats_over_ipc_create_rename_pin_archive_and_protect_inbox() {
     )
     .unwrap();
 
-    // Inbox: закрепить можно, остальное нельзя.
+    // Inbox: pinning is allowed, the rest is not.
     call(
         &window,
         "set_chat_pinned",
@@ -220,7 +220,7 @@ fn chats_over_ipc_create_rename_pin_archive_and_protect_inbox() {
         json!({"code": "chat_not_found"})
     );
 
-    // Запись уходит в выбранный чат; черновик у каждого чата свой.
+    // An entry goes to the chosen chat; each chat has its own draft.
     call(
         &window,
         "send_message",
@@ -253,7 +253,7 @@ fn chats_over_ipc_create_rename_pin_archive_and_protect_inbox() {
         "черновик книг"
     );
 
-    // Настройки сайдбара и недавние эмодзи.
+    // Sidebar settings and recent emoji.
     call(&window, "set_sidebar_collapsed", json!({"collapsed": true})).unwrap();
     assert_eq!(
         call(&window, "add_recent_emoji", json!({"emoji": "📚"})).unwrap(),
@@ -327,7 +327,7 @@ fn edit_flags_date_task_items_and_tags_over_ipc() {
     .unwrap();
     assert_eq!(moved["journalDate"], "2099-01-01");
 
-    // Фильтр по тегу: только записи чата с этим тегом.
+    // The tag filter: only the chat's entries with this tag.
     call(
         &window,
         "send_message",
@@ -348,7 +348,11 @@ fn edit_flags_date_task_items_and_tags_over_ipc() {
         json!({"chatId": INBOX, "tag": "работа"}),
     )
     .unwrap();
-    assert_eq!(none["messages"], json!([]), "после правки старого тега нет");
+    assert_eq!(
+        none["messages"],
+        json!([]),
+        "after the edit the old tag is gone"
+    );
 }
 
 #[test]
@@ -359,7 +363,7 @@ fn startup_state_reports_recovery_and_refuses_restore_when_the_journal_is_open()
         call(&main, "startup_state", json!({})).unwrap(),
         json!({"needsRecovery": false, "backups": [], "databaseTooNew": false, "corruptionFound": false})
     );
-    // «Перезапустить для восстановления» без найденного повреждения (отметки нет) отвергается и отметку не ставит.
+    // "Restart for recovery" without found corruption (there is no mark) is rejected and sets no mark.
     assert_eq!(
         call(&main, "restart_for_recovery", json!({})).unwrap_err(),
         json!({"code": "internal"})
@@ -374,17 +378,17 @@ fn startup_state_reports_recovery_and_refuses_restore_when_the_journal_is_open()
         )
         .unwrap_err(),
         json!({"code": "internal"}),
-        "журнал открыт — восстанавливать нельзя"
+        "the journal is open -- restoring is not allowed"
     );
 
-    // Журнал не открыт: окно получает копии, новые первыми.
+    // The journal is not open: the window gets the copies, newest first.
     let store = fixture.app.state::<Store>();
     store
         .send_message(INBOX, "из копии", &kinige_store::Now::system())
         .unwrap();
     let report = store.run_maintenance(&kinige_store::Now::system()).unwrap();
     assert!(report.backup_made);
-    // Отдельное приложение без открытого хранилища, как при повреждённой базе: только состояние восстановления.
+    // A separate app without an open store, as with a corrupt database: only the recovery state.
     let again = fixture_without_store(store.db_path());
     let main = window(&again, "main");
     let state = call(&main, "startup_state", json!({})).unwrap();
@@ -393,7 +397,7 @@ fn startup_state_reports_recovery_and_refuses_restore_when_the_journal_is_open()
     assert_eq!(backups.len(), 1);
     assert_eq!(backups[0]["kind"], "daily");
     assert!(backups[0]["name"].as_str().unwrap().starts_with("daily-"));
-    // Неизвестное имя копии — отказ, база не тронута.
+    // An unknown copy name is refused, the database is untouched.
     assert_eq!(
         call(&main, "restore_backup", json!({"name": "../kinige.db"})).unwrap_err(),
         json!({"code": "backup_not_found"})

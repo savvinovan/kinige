@@ -2,22 +2,22 @@
 import type { ImportChatKind } from "./ImportChatKind";
 
 /**
- * Чат экспорта в окне выбора.
+ * An export chat in the selection window.
  */
 export type ImportChatPreview = { 
 /**
- * Id чата Telegram (строка: 64-битное число).
+ * The Telegram chat id (a string: a 64-bit number).
  */
 id: string, 
 /**
- * Имя из экспорта; у «Избранного» его нет.
+ * The name from the export; "Saved Messages" has none.
  */
 name: string | null, kind: ImportChatKind, 
 /**
- * Сколько записей получится: сообщения без служебных и без пустых.
+ * How many entries there will be: messages without service and empty ones.
  */
 total: number, 
 /**
- * Из них уже импортировано (есть в `message_ext`).
+ * Of them already imported (present in `message_ext`).
  */
 existing: number, };

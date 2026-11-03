@@ -1,8 +1,8 @@
-//! Доступ ИИ-агентов через MCP (ADR-0009, слайс 4a): настройки доступа и единая точка входа для вызова инструмента.
+//! Access for AI agents through MCP (ADR-0009, slice 4a): the access settings and the single entry point for a tool call.
 //!
-//! Агент ничего не получает мимо [`Store::agent_call`]: выключатель и режим проверяются при каждом вызове, видимое множество
-//! чатов (`VISIBLE`) входит в каждый оператор чтения и в транзакцию записи, каждый вызов оставляет ровно одну строку
-//! журнала (`agent_log`), а текст записей в журнал не попадает. Клиентам и мосту не доверяем.
+//! An agent gets nothing around [`Store::agent_call`]: the switch and the mode are checked on every call, the visible set
+//! of chats (`VISIBLE`) goes into every read statement and into the write transaction, every call leaves exactly one
+//! log row (`agent_log`), and entry text does not get into the log. We trust neither clients nor the bridge.
 
 use crate::agent_log::{insert_log, log_connection, log_only};
 use crate::agent_read::{ReadCtx, ReadFail};
@@ -19,14 +19,14 @@ pub(crate) const KEY_ENABLED: &str = "mcp_enabled";
 pub(crate) const KEY_MODE: &str = "mcp_mode";
 pub(crate) const KEY_CHATS: &str = "mcp_chats";
 
-/// Чат (`c`) виден агенту ⇔ он отмечен в `mcp_chats`, не исключён из AI и не удалён. Архив виден. Предикат стоит в каждом
-/// операторе чтения агента и внутри транзакции записи: между операторами одного вызова множество может измениться, каждый
-/// оператор проверен сам. Ключа нет → `json_each(NULL)` пуст → видимых чатов нет. Id, которых нет в базе, ни с чем не
-/// совпадают.
+/// A chat (`c`) is visible to the agent iff it is marked in `mcp_chats`, not excluded from AI and not deleted. Archived is visible. The predicate sits in each
+/// agent read statement and inside the write transaction: between the statements of one call the set may change, each
+/// statement is checked on its own. No key -> `json_each(NULL)` is empty -> no visible chats. Ids that are not in the
+/// database match nothing.
 pub(crate) const VISIBLE: &str = "c.deleted_at IS NULL AND c.ai_excluded = 0 AND c.id IN \
      (SELECT j.value FROM json_each((SELECT value FROM app_setting WHERE key = 'mcp_chats')) j)";
 
-/// Настройки доступа агента (`app_setting`, не синхронизируются).
+/// Agent access settings (`app_setting`, not synchronized).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentSettings {
     pub enabled: bool,
@@ -34,14 +34,14 @@ pub struct AgentSettings {
     pub chats: Vec<String>,
 }
 
-/// Настройки из базы. Повреждённый `mcp_chats` (не массив строк) — ошибка без данных; ключа нет — пустое множество.
+/// Settings from the database. A damaged `mcp_chats` (not an array of strings) is an error without data; no key -- an empty set.
 pub(crate) fn load_settings(conn: &Connection) -> Result<AgentSettings, StoreError> {
     let enabled = get_setting(conn, KEY_ENABLED).map_err(read_err)?;
     let mode = get_setting(conn, KEY_MODE).map_err(read_err)?;
     let chats = match get_setting(conn, KEY_CHATS).map_err(read_err)? {
         None => Vec::new(),
         Some(text) => serde_json::from_str::<Vec<String>>(&text)
-            .map_err(|_| StoreError::Internal("значение mcp_chats повреждено".into()))?,
+            .map_err(|_| StoreError::Internal("the mcp_chats value is damaged".into()))?,
     };
     Ok(AgentSettings {
         enabled: enabled.as_deref() == Some("1"),
@@ -52,23 +52,23 @@ pub(crate) fn load_settings(conn: &Connection) -> Result<AgentSettings, StoreErr
     })
 }
 
-/// Вызов инструмента от агента. `client` — слова клиента (`clientInfo.name`), в журнал идёт очищенным.
+/// A tool call from an agent. `client` is the client's own words (`clientInfo.name`), it goes into the log sanitized.
 pub struct AgentRequest<'a> {
     pub client: &'a str,
     pub tool: &'a str,
     pub arguments: Option<&'a Map<String, Value>>,
-    /// Название Inbox на языке интерфейса (в базе хранится пустое).
+    /// The Inbox name in the interface language (the database stores it empty).
     pub inbox_title: &'a str,
 }
 
-/// Ответ агенту: текст с JSON и признак «данные изменились» (слой Tauri тихо обновляет ленту и трей).
+/// The reply to an agent: text with JSON and a "data changed" flag (the Tauri layer quietly refreshes the feed and the tray).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentReply {
     pub text: String,
     pub changed: bool,
 }
 
-/// Отказ агенту. Закрытый чат, `ai_excluded`, удалённый, несуществующий и запись в корзине дают один и тот же `NotFound`.
+/// A refusal to an agent. A closed chat, `ai_excluded`, a deleted one, a nonexistent one and an entry in the trash all give the same `NotFound`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AgentError {
     Disabled,
@@ -77,14 +77,14 @@ pub enum AgentError {
     NoAgentEntry,
     NotATask,
     Invalid(String),
-    /// База повреждена: данных нет.
+    /// The database is corrupted: there is no data.
     Unavailable,
-    /// Остальное; подробности только в категории лога.
+    /// Everything else; details only in the log category.
     Internal,
 }
 
 impl AgentError {
-    /// Код ошибки для агента.
+    /// The error code for the agent.
     pub fn code(&self) -> &'static str {
         match self {
             AgentError::Disabled => "mcp_disabled",
@@ -98,7 +98,7 @@ impl AgentError {
         }
     }
 
-    /// Исход для журнала обращений.
+    /// The outcome for the access log.
     pub(crate) fn outcome(&self) -> &'static str {
         match self {
             AgentError::Disabled => "disabled",
@@ -114,7 +114,7 @@ impl AgentError {
 
 impl From<StoreError> for AgentError {
     fn from(error: StoreError) -> Self {
-        log::warn!("агент: {}", error.category());
+        log::warn!("agent: {}", error.category());
         match error {
             StoreError::Corrupt(_) => AgentError::Unavailable,
             _ => AgentError::Internal,
@@ -123,8 +123,8 @@ impl From<StoreError> for AgentError {
 }
 
 impl Store {
-    /// Единая точка входа вызова инструмента. Порядок: инструмент известен → доступ включён → режим → аргументы → выполнение.
-    /// Каждый путь оставляет ровно одну строку журнала; сбой записи журнала — ошибка агенту, данных он не получает.
+    /// The single entry point of a tool call. Order: tool known -> access enabled -> mode -> arguments -> execution.
+    /// Every path leaves exactly one log row; a log write failure is an error to the agent, it gets no data.
     pub fn agent_call(
         &self,
         request: &AgentRequest<'_>,
@@ -166,7 +166,7 @@ impl Store {
             self.agent_read(&call, &args)
         };
         if let Err(AgentError::Internal | AgentError::Unavailable) = &result {
-            // Сбой выполнения: данных нет, но обращение остаётся в журнале, если база ещё принимает записи.
+            // Execution failed: there is no data, but the call stays in the log if the database still accepts writes.
             let _ = log_only(
                 self,
                 &call.client,
@@ -179,7 +179,7 @@ impl Store {
         result
     }
 
-    /// Отказ без выполнения: одна строка журнала, затем ошибка агенту.
+    /// A refusal without execution: one log row, then an error to the agent.
     fn agent_refuse(
         &self,
         client: &str,
@@ -191,8 +191,8 @@ impl Store {
         Err(error.clone())
     }
 
-    /// Чтение: выборка на соединении чтения, затем транзакция писателя со строкой журнала, затем ответ. Сбой журнала —
-    /// ошибка, а не данные.
+    /// Read: a select on a read connection, then a writer transaction with a log row, then the reply. A log failure is
+    /// an error, not data.
     fn agent_read(&self, call: &Call, args: &ToolArgs) -> Result<AgentReply, AgentError> {
         let ctx = ReadCtx::new(&call.inbox_title, &call.now);
         let read = match self.read_with_heal(&ctx, args) {
@@ -224,7 +224,7 @@ impl Store {
         .map_err(AgentError::from)
     }
 
-    /// Запись: одна транзакция писателя — проверка доступа и режима, видимость чата, изменение данных и строка журнала.
+    /// Write: one writer transaction -- the access and mode check, chat visibility, the data change and the log row.
     fn agent_write(&self, call: &Call, args: ToolArgs) -> Result<AgentReply, AgentError> {
         let call = call.clone();
         let reply = self.write(move |conn| run_write_job(conn, &call, &args))??;
@@ -232,9 +232,9 @@ impl Store {
         Ok(reply)
     }
 
-    /// Подключение клиента (`initialize`): одна строка журнала с очищенным именем клиента. `reconnect` — соединение открыто
-    /// мостом после обрыва: строка `reconnect`, а прежний сеанс этого клиента, если он остался открытым (приложение
-    /// перезапускалось), закрывается строкой «отключение» в той же транзакции. Немых путей нет: каждое соединение — строка.
+    /// A client connecting (`initialize`): one log row with the sanitized client name. `reconnect` -- the connection was opened
+    /// by the bridge after a drop: a `reconnect` row, and the previous session of this client, if it stayed open (the app
+    /// was restarted), is closed with a "disconnect" row in the same transaction. There are no silent paths: every connection is a row.
     pub fn agent_connected(
         &self,
         client: &str,
@@ -242,21 +242,21 @@ impl Store {
         now: &Now,
     ) -> Result<(), StoreError> {
         log_connection(self, &clean_client(client), reconnect, now).map_err(|error| {
-            log::warn!("агент: журнал подключения: {}", error.category());
-            StoreError::Write("журнал подключения".into())
+            log::warn!("agent: connection log: {}", error.category());
+            StoreError::Write("connection log".into())
         })
     }
 
-    /// Отключение клиента: одна строка журнала.
+    /// A client disconnecting: one log row.
     pub fn agent_disconnected(&self, client: &str, now: &Now) -> Result<(), StoreError> {
         log_only(self, &clean_client(client), "disconnect", "{}", "ok", now).map_err(|error| {
-            log::warn!("агент: журнал отключения: {}", error.code());
-            StoreError::Write("журнал отключения".into())
+            log::warn!("agent: disconnection log: {}", error.code());
+            StoreError::Write("disconnection log".into())
         })
     }
 }
 
-/// Один вызов инструмента после разбора аргументов (всё владеемое: уходит на поток-писатель).
+/// One tool call after argument parsing (everything owned: it goes to the writer thread).
 #[derive(Clone)]
 pub(crate) struct Call {
     pub(crate) client: String,

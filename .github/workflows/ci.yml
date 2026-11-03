@@ -1,40 +1,40 @@
-# CI на каждый PR и push в main (GitHub Actions): Linux-раннеры, а код приложения под macOS — на macos-15 (задание `macos`).
+# CI on every PR and push to main (GitHub Actions): Linux runners, and the macOS app code on macos-15 (job `macos`).
 # Windows (slice 10a) runs on windows-2025 (job `windows`).
-# Сборка и подпись .app — локально: scripts/build-app.sh; снимки настоящего окна — screens.yml (macOS-раннер).
+# Building and signing the .app is local: scripts/build-app.sh; shots of the real window are screens.yml (macOS runner).
 name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
-  # Коммиты бота из visual-update.yml и screens.yml идут от GITHUB_TOKEN и CI сами не запускают: эти workflow вызывают
-  # `gh workflow run ci.yml` (workflow_dispatch от GITHUB_TOKEN запускается). Руками — тоже можно.
+  # Bot commits from visual-update.yml and screens.yml are made by GITHUB_TOKEN and do not start CI by themselves: those workflows call
+  # `gh workflow run ci.yml` (workflow_dispatch by GITHUB_TOKEN does start). It can also be run by hand.
   workflow_dispatch:
 
-# Права по умолчанию — только чтение; шире не нужно ни одному заданию.
+# Default permissions are read-only; no job needs more.
 permissions:
   contents: read
 
-# Раннер закреплён: ubuntu-latest переезжает на Ubuntu 26, а там имена пакетов WebKitGTK не проверены.
+# The runner is pinned: ubuntu-latest is moving to Ubuntu 26, and the WebKitGTK package names there are not verified.
 jobs:
   rust:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
-      # Системные библиотеки Tauri на Linux (wry/WebKitGTK).
-      - name: Системные зависимости Tauri
+      # Tauri system libraries on Linux (wry/WebKitGTK).
+      - name: Tauri system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends build-essential curl pkg-config libssl-dev \
             libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
 
-      # Версия и компоненты берутся из rust-toolchain.toml; rustup на раннере GitHub уже есть.
+      # The version and components come from rust-toolchain.toml; rustup is already on the GitHub runner.
       - name: Rust toolchain
         run: rustup toolchain install
 
-      # Кэш сохраняется только на main: ветки и PR его читают (восстановление из кэша main), но не пишут,
-      # иначе каждый PR занимает место в лимите 10 ГБ и вытесняет кэш main.
+      # The cache is saved only on main: branches and PRs read it (restoring from the main cache) but do not write it,
+      # otherwise every PR takes space in the 10 GB limit and evicts the main cache.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -42,11 +42,11 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
-      - name: kinige-domain под wasm32
+      - name: kinige-domain for wasm32
         run: cargo build -p kinige-domain --target wasm32-unknown-unknown
-      # `cargo test` выше перегенерировал TS-типы (ts-rs) и таблицы года для историй леса (slice 6, crates/kinige-domain/tests/forest_fixtures.rs);
-      # любое отличие от закоммиченного, включая новые неотслеживаемые файлы, — падаем (`git diff` их не видит).
-      - name: Сгенерированные TS-типы и таблицы леса актуальны
+      # `cargo test` above regenerated the TS types (ts-rs) and the year tables for the forest stories (slice 6, crates/kinige-domain/tests/forest_fixtures.rs);
+      # any difference from what is committed, including new untracked files, fails the job (`git diff` does not see them).
+      - name: Generated TS types and forest tables are up to date
         run: |
           changed="$(git status --porcelain -- web/src/api/generated web/src/ui/forest/fixtures)"
           if [ -n "$changed" ]; then
@@ -54,8 +54,8 @@ jobs:
             exit 1
           fi
 
-  # Код под `#[cfg(target_os = "macos")]` (панель NSPanel, трей, окно настроек) и тесты IPC src-tauri на настоящей macOS:
-  # на Linux этот код не компилируется. Только крейт приложения; остальное проверяет `rust`.
+  # Code under `#[cfg(target_os = "macos")]` (the NSPanel, the tray, the settings window) and the src-tauri IPC tests on a real macOS:
+  # this code does not compile on Linux. Only the app crate; the rest is checked by `rust`.
   macos:
     runs-on: macos-15
     timeout-minutes: 45
@@ -94,15 +94,15 @@ jobs:
       # --no-fail-fast: one run lists every failing test binary, a Windows run is too slow to find them one by one.
       - run: cargo test --no-fail-fast -p kinige -p kinige-store -p kinige-domain -p kinige-mcp
 
-  # Покрытие Rust → Codecov (бейджи в README, комментарий в PR). Информационно: порог не валит CI (codecov.yml).
-  # Отдельное задание: сборка с инструментированием (cargo llvm-cov) не делит артефакты с `rust` и идёт параллельно ему.
-  # Покрытие web снимается в задании `web` тем же прогоном vitest, что и проверка.
+  # Rust coverage -> Codecov (badges in the README, a comment in the PR). Informational: the threshold does not fail CI (codecov.yml).
+  # A separate job: the instrumented build (cargo llvm-cov) does not share artifacts with `rust` and runs in parallel with it.
+  # The web coverage is taken in the `web` job by the same vitest run as the check.
   coverage:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
-      - name: Системные зависимости Tauri
+      - name: Tauri system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends build-essential curl pkg-config libssl-dev \
@@ -113,8 +113,8 @@ jobs:
           rustup toolchain install
           rustup component add llvm-tools-preview
 
-      # Кэш сохраняется только на main: ветки и PR его читают (восстановление из кэша main), но не пишут,
-      # иначе каждый PR занимает место в лимите 10 ГБ и вытесняет кэш main.
+      # The cache is saved only on main: branches and PRs read it (restoring from the main cache) but do not write it,
+      # otherwise every PR takes space in the 10 GB limit and evicts the main cache.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -123,8 +123,8 @@ jobs:
         with:
           tool: cargo-llvm-cov@0.9.1
 
-      # Тестовые модули внутри src/ (`tests.rs`, `*_tests.rs`, `tests_*.rs`) в покрытие не входят; каталоги tests/ llvm-cov отбрасывает сам.
-      - name: Покрытие Rust
+      # Test modules inside src/ (`tests.rs`, `*_tests.rs`, `tests_*.rs`) are not part of the coverage; llvm-cov drops the tests/ directories itself.
+      - name: Rust coverage
         run: >-
           cargo llvm-cov --workspace --lcov --output-path lcov-rust.info
           --ignore-filename-regex '(^|/)(tests|[a-z0-9_]+_tests|tests_[a-z0-9_]+|[a-z0-9_]+_tests_[a-z0-9_]+)\.rs$'
@@ -150,7 +150,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
-      - name: tokens.css и themes.css актуальны
+      - name: tokens.css and themes.css are up to date
         run: |
           npm run tokens
           changed="$(git status --porcelain -- src/ui/tokens.css src/ui/themes.css)"
@@ -158,12 +158,12 @@ jobs:
             echo "$changed"
             exit 1
           fi
-      - name: Помощники сценариев снимков (пустой дамп окна — ошибка)
+      - name: Shot scenario helpers (an empty window dump is an error)
         working-directory: .
         run: bash scripts/screens/lib.test.sh
       - run: npm run typecheck
       - run: npm run lint
-      # Тесты и покрытие одним прогоном vitest; отчёт уходит в Codecov (флаг web), сбой отправки CI не валит.
+      # Tests and coverage in one vitest run; the report goes to Codecov (flag web), an upload failure does not fail CI.
       - run: npm run test:coverage
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
@@ -175,7 +175,7 @@ jobs:
 
   visual:
     runs-on: ubuntu-24.04
-    # Тот же образ, что в visual-update.yml: эталоны снимаются в такой же среде.
+    # The same image as in visual-update.yml: baselines are captured in the same environment.
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
     defaults:
@@ -186,7 +186,7 @@ jobs:
       - run: npm ci
       - run: npm run build-storybook
       - run: npx playwright test
-      # Расхождения снимков (ожидаемый, полученный и разница) остаются в прогоне: мигающий снимок можно разобрать по картинкам.
+      # Shot mismatches (expected, actual and the diff) stay in the run: a flaky shot can be analyzed from the images.
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
@@ -194,13 +194,13 @@ jobs:
           path: web/test-results
           if-no-files-found: ignore
 
-  # Лицензии, известные уязвимости (RustSec) и источники крейтов — deny.toml.
+  # Licenses, known vulnerabilities (RustSec) and crate sources: deny.toml.
   deny:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
-      # cargo-deny вызывает `cargo metadata`: версия Rust берётся из rust-toolchain.toml.
+      # cargo-deny calls `cargo metadata`: the Rust version comes from rust-toolchain.toml.
       - name: Rust toolchain
         run: rustup toolchain install
 
@@ -210,7 +210,7 @@ jobs:
 
       - run: cargo deny check advisories licenses sources
 
-  # Секреты в истории git. Ложные срабатывания — в .gitleaksignore (отпечаток и причина). Бинарник закреплён версией и sha256.
+  # Secrets in the git history. False positives go in .gitleaksignore (the fingerprint and the reason). The binary is pinned by version and sha256.
   gitleaks:
     runs-on: ubuntu-24.04
     env:
@@ -221,13 +221,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Установить gitleaks
+      - name: Install gitleaks
         run: |
           curl -sSfL -A kinige-dev -o "$RUNNER_TEMP/gitleaks.tgz" \
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tgz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
 
-      # --redact: найденное значение в лог не попадает.
-      - name: Поиск секретов
+      # --redact: the found value does not get into the log.
+      - name: Search for secrets
         run: '"$RUNNER_TEMP/gitleaks" git . --redact --no-banner'

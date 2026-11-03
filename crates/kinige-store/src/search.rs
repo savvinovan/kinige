@@ -1,14 +1,14 @@
-//! Индекс поиска (слайс 4, ADR-0008): `search_fts` — FTS5 без хранения текста (`contentless_delete`), `search_map` —
-//! `rowid → message_id`. Локальная производная от `body_md`, не синхронизируется. Обновляется в той же транзакции, что
-//! любое изменение текста записи (отправка, дописывание, правка, галочка `- [ ]`, импорт); удаление навсегда убирает
-//! строку. Корзина в индексе остаётся (запись можно вернуть) и отсекается запросом. Ревизии в индекс не попадают.
+//! The search index (slice 4, ADR-0008): `search_fts` -- FTS5 without storing the text (`contentless_delete`),
+//! `search_map` -- `rowid → message_id`. A local derivative of `body_md`, not synced. Updated in the same transaction as
+//! any change of entry text (send, append, edit, a `- [ ]` tick, import); deleting forever removes the row. The trash
+//! stays in the index (the entry can be restored) and is cut off by the query. Revisions do not enter the index.
 //!
-//! Версия правил — `kinige_domain::search::SEARCH_INDEX_VERSION` в `app_setting.search_index_version`: если она не
-//! совпала, индекс перестраивается при открытии базы.
+//! The rules version is `kinige_domain::search::SEARCH_INDEX_VERSION` in `app_setting.search_index_version`: if it does
+//! not match, the index is rebuilt when the database is opened.
 //!
-//! Повреждение самой таблицы поиска (`error::is_search_index_error`) — не повреждение базы: индекс перестраивается из
-//! `message.body_md`. Запись, наткнувшаяся на него, перестраивает индекс прямо в своей транзакции (запись не теряется),
-//! запрос поиска и проход обслуживания — отдельным заданием писателя ([`Store::heal_search_index`]).
+//! Corruption of the search table itself (`error::is_search_index_error`) is not database corruption: the index is
+//! rebuilt from `message.body_md`. A write that runs into it rebuilds the index right in its own transaction (the write
+//! is not lost), a search query and a maintenance pass do it with a separate writer job ([`Store::heal_search_index`]).
 
 use crate::Store;
 use crate::StoreError;
@@ -20,17 +20,17 @@ use std::sync::atomic::Ordering;
 
 const VERSION_KEY: &str = "search_index_version";
 
-/// Та же таблица, что создаёт миграция 4 (`schema.rs`); тест сверяет текст с `sqlite_master`.
+/// The same table that migration 4 creates (`schema.rs`); a test compares the text with `sqlite_master`.
 const FTS_DDL: &str = "CREATE VIRTUAL TABLE search_fts USING fts5(\n  t, content='', contentless_delete=1, tokenize='unicode61 remove_diacritics 0'\n)";
 
-/// Строка индекса записи заменяется основами её текущего `body_md` (нет строки — создаётся). Таблица повреждена —
-/// индекс целиком перестраивается из `message` (строка этой записи уже там) и запись не теряется.
+/// The entry's index row is replaced with the stems of its current `body_md` (no row -- it is created). If the table is
+/// corrupt, the whole index is rebuilt from `message` (this entry's row is already there) and the write is not lost.
 pub(crate) fn reindex(conn: &Connection, message_id: &str, body_md: &str) -> rusqlite::Result<()> {
     guarded(conn, || put_row(conn, message_id, body_md))
 }
 
-/// Операция над индексом под точкой сохранения: упавшая на порче таблица оставляет у FTS5 полузаписанное состояние, в
-/// котором ни `DROP`, ни запись уже не проходят; откат к точке сбрасывает его, и индекс перестраивается заново.
+/// An index operation under a savepoint: one that failed on table corruption leaves FTS5 in a half-written state in
+/// which neither `DROP` nor a write passes any more; rolling back to the savepoint clears it, and the index is rebuilt.
 fn guarded(
     conn: &Connection,
     operation: impl FnOnce() -> rusqlite::Result<()>,
@@ -39,8 +39,8 @@ fn guarded(
     match operation() {
         Ok(()) => conn.execute_batch("RELEASE search_index"),
         Err(error) => {
-            // Откат не удался (точки уже нет после тяжёлого сбоя: полный диск, ввод-вывод, память): наружу идёт исходная
-            // ошибка, а не ошибка отката, которая скрыла бы настоящую причину.
+            // The rollback failed (the savepoint is gone after a heavy failure: full disk, I/O, memory): the original error
+            // goes out, not the rollback error, which would hide the real cause.
             if conn
                 .execute_batch("ROLLBACK TO search_index; RELEASE search_index")
                 .is_err()
@@ -59,11 +59,11 @@ fn guarded(
 }
 
 thread_local! {
-    /// Запись перестроила индекс сама (поток-писатель один; `Store::write` забирает флаг после задания).
+    /// A write rebuilt the index itself (there is one writer thread; `Store::write` takes the flag after the job).
     static REBUILT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
-/// Был ли индекс перестроен записью с прошлого вызова; флаг сбрасывается.
+/// Whether a write rebuilt the index since the last call; the flag is reset.
 pub(crate) fn take_rebuilt() -> bool {
     REBUILT.with(|flag| flag.replace(false))
 }
@@ -91,8 +91,8 @@ fn put_row(conn: &Connection, message_id: &str, body_md: &str) -> rusqlite::Resu
     Ok(())
 }
 
-/// Убирает запись из индекса (удаление навсегда); вызывается после удаления строки `message`. Нет строки — ничего не
-/// происходит; таблица повреждена — индекс перестраивается из оставшихся записей.
+/// Removes the entry from the index (deleting forever); called after the `message` row is deleted. No row -- nothing
+/// happens; the table is corrupt -- the index is rebuilt from the remaining entries.
 pub(crate) fn remove(conn: &Connection, message_id: &str) -> rusqlite::Result<()> {
     guarded(conn, || remove_row(conn, message_id))
 }
@@ -111,9 +111,9 @@ fn remove_row(conn: &Connection, message_id: &str) -> rusqlite::Result<()> {
     Ok(())
 }
 
-/// Индекс заново из `message.body_md` всех записей (в том числе из корзины) и версия правил. Таблица пересоздаётся
-/// (`DROP` + `CREATE`), а не очищается: у повреждённой таблицы `delete-all` тоже может не пройти. Вызывающий открыл
-/// транзакцию: миграция 4, перестройка при смене версии, лечение.
+/// The index anew from `message.body_md` of all entries (including the trash) and the rules version. The table is
+/// recreated (`DROP` + `CREATE`), not cleared: on a corrupt table `delete-all` may fail too. The caller opened a
+/// transaction: migration 4, a rebuild on a version change, healing.
 pub(crate) fn rebuild_all(conn: &Connection) -> rusqlite::Result<()> {
     conn.flush_prepared_statement_cache();
     drop_index(conn)?;
@@ -134,9 +134,9 @@ pub(crate) fn rebuild_all(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
-/// Удаляет `search_fts`. Повреждены настройки таблицы («invalid fts5 file format»): такая таблица не открывается, а значит
-/// и не удаляется. Тогда номер формата в теневой таблице чинится руками (4 — текущий формат FTS5), после чего удаление
-/// проходит.
+/// Drops `search_fts`. If the table settings are corrupt ("invalid fts5 file format"), such a table does not open and
+/// so cannot be dropped. Then the format number in the shadow table is fixed by hand (4 is the current FTS5 format),
+/// after which the drop passes.
 fn drop_index(conn: &Connection) -> rusqlite::Result<()> {
     match conn.execute("DROP TABLE IF EXISTS search_fts", []) {
         Err(error) if is_search_index_error(&error) => {
@@ -151,16 +151,16 @@ fn drop_index(conn: &Connection) -> rusqlite::Result<()> {
     }
 }
 
-/// Лечение повреждённого индекса: версия правил сбрасывается отдельной фиксацией, затем индекс перестраивается заново из
-/// `body_md`. Если перестройка не дошла до конца, версии нет, и индекс перестроится при следующем открытии. Повреждение
-/// самой базы проявится здесь же как `Corrupt` писателя.
+/// Healing a corrupt index: the rules version is reset by a separate commit, then the index is rebuilt anew from
+/// `body_md`. If the rebuild did not finish, there is no version, and the index will be rebuilt at the next open.
+/// Corruption of the database itself shows up here as the writer's `Corrupt`.
 pub(crate) fn heal(conn: &mut Connection) -> Result<(), StoreError> {
     conn.execute("DELETE FROM app_setting WHERE key = ?1", [VERSION_KEY])
         .map_err(write_err)?;
     rebuild_if_stale(conn)
 }
 
-/// При открытии базы: версия правил в базе не совпала с версией приложения — индекс перестраивается одной транзакцией.
+/// On opening the database: the rules version in the database does not match the app's -- the index is rebuilt in one transaction.
 pub(crate) fn rebuild_if_stale(conn: &mut Connection) -> Result<(), StoreError> {
     let stored = get_setting(conn, VERSION_KEY).map_err(write_err)?;
     if stored.as_deref() == Some(SEARCH_INDEX_VERSION.to_string().as_str()) {
@@ -174,20 +174,20 @@ pub(crate) fn rebuild_if_stale(conn: &mut Connection) -> Result<(), StoreError> 
 }
 
 impl Store {
-    /// Сколько раз индекс лечили в этом запуске: читающий запоминает число до запроса и передаёт в
+    /// How many times the index was healed in this launch: the reader remembers the number before the query and passes it to
     /// [`Store::heal_search_index`].
     pub(crate) fn search_generation(&self) -> u64 {
         self.inner.search_heals.load(Ordering::SeqCst)
     }
 
-    /// Сколько раз лечили индекс в этом запуске (для тестов; не часть API приложения).
+    /// How many times the index was healed in this launch (for tests; not part of the app API).
     #[doc(hidden)]
     pub fn search_heal_count(&self) -> u64 {
         self.search_generation()
     }
 
-    /// Лечит индекс на писателе, если с момента неудачного чтения (`seen` — число лечений до него) его никто не вылечил:
-    /// несколько одновременных запросов, упавших на одной порче, дают одну перестройку, а не по одной на запрос.
+    /// Heals the index on the writer if nobody has healed it since the failed read (`seen` is the heal count before it):
+    /// several simultaneous queries that failed on the same corruption cause one rebuild, not one per query.
     pub(crate) fn heal_search_index(&self, seen: u64) -> Result<(), StoreError> {
         let heals = self.inner.search_heals.clone();
         self.write_raw(move |conn| {
@@ -206,14 +206,14 @@ mod tests {
     use super::FTS_DDL;
     use crate::StoreError;
 
-    /// Перестройка создаёт ровно ту таблицу, что миграция 4: иначе после лечения индекс устроен иначе.
+    /// A rebuild creates exactly the table migration 4 creates: otherwise after healing the index is built differently.
     #[test]
     fn rebuild_creates_the_table_migration_four_creates() {
         assert!(crate::schema::MIGRATION_4.contains(&format!("{FTS_DDL};")));
     }
 
-    /// Порча индекса, всплывшая вне `guarded` (например, на `COMMIT`): запись возвращает ошибку, но индекс лечится сразу,
-    /// чтобы повтор прошёл.
+    /// Index corruption that surfaced outside `guarded` (for example, on `COMMIT`): the write returns an error, but the
+    /// index is healed right away so that a retry passes.
     #[test]
     fn an_index_error_outside_guarded_heals_the_index_for_the_retry() {
         let dir = tempfile::tempdir().unwrap();
@@ -238,23 +238,27 @@ mod tests {
             })
             .unwrap();
         let failed: Result<(), _> =
-            store.write(|_| Err(StoreError::SearchIndex("ошибка на COMMIT".into())));
+            store.write(|_| Err(StoreError::SearchIndex("error on COMMIT".into())));
         assert!(matches!(failed, Err(StoreError::SearchIndex(_))));
         assert_eq!(store.search_heal_count(), 1);
         let found = store
             .search("книга", &Default::default(), None, 10)
             .unwrap()
             .hits;
-        assert_eq!(found.len(), 1, "повтор проходит: индекс уже вылечен");
+        assert_eq!(
+            found.len(),
+            1,
+            "the retry passes: the index is already healed"
+        );
         assert_eq!(
             store.search_heal_count(),
             1,
-            "запрос не перестраивал заново"
+            "the query did not rebuild again"
         );
     }
 
-    /// Лечение живёт в той же транзакции, что и запись: откат записи возвращает и повреждённый индекс, а следующая запись
-    /// лечит его снова и уже фиксирует.
+    /// Healing lives in the same transaction as the write: rolling back the write brings back the corrupt index too, and
+    /// the next write heals it again and commits.
     #[test]
     fn a_rebuild_inside_a_rolled_back_transaction_is_rolled_back_with_it() {
         use super::reindex;
@@ -284,7 +288,7 @@ mod tests {
                     [],
                 )
                 .map_err(crate::error::write_err)?;
-                assert!(broken(conn).is_err(), "индекс повреждён");
+                assert!(broken(conn).is_err(), "the index is corrupt");
                 Ok(())
             })
             .unwrap();
@@ -294,14 +298,21 @@ mod tests {
                 conn.execute_batch("BEGIN")
                     .map_err(crate::error::write_err)?;
                 reindex(conn, &again, "новая книга").map_err(crate::error::write_err)?;
-                assert_eq!(broken(conn).unwrap(), 1, "внутри транзакции индекс вылечен");
+                assert_eq!(
+                    broken(conn).unwrap(),
+                    1,
+                    "inside the transaction the index is healed"
+                );
                 conn.execute_batch("ROLLBACK")
                     .map_err(crate::error::write_err)?;
-                assert!(broken(conn).is_err(), "после отката индекс снова повреждён");
+                assert!(
+                    broken(conn).is_err(),
+                    "after the rollback the index is corrupt again"
+                );
                 Ok(())
             })
             .unwrap();
-        // Следующая запись (своя транзакция) лечит индекс и фиксирует его.
+        // The next write (its own transaction) heals the index and commits it.
         let last = id.clone();
         store
             .write(move |conn| {
@@ -318,7 +329,7 @@ mod tests {
         assert_eq!(
             store.search_heal_count(),
             2,
-            "обе перестройки записи учтены"
+            "both write rebuilds are counted"
         );
     }
 }

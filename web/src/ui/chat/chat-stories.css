@@ -1,4 +1,4 @@
-/* Только для историй Storybook: «главное окно» за окном чата, чтобы подложка лежала на настоящих поверхностях. */
+/* For Storybook stories only: a "main window" behind the chat window, so that the backdrop lies on real surfaces. */
 .story-chat-window {
   display: flex;
   box-sizing: border-box;

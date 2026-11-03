@@ -1,8 +1,8 @@
-//! Markdown-копия: файл дня после отправки и «Отменить», день без записей, недоступная папка и повтор, смена папки,
-//! атомарная запись.
+//! The Markdown copy: the day file after sending and "Undo", a day without entries, an inaccessible folder and a retry, a folder change,
+//! atomic writes.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -26,7 +26,7 @@ fn dirty_count(dir: &Path) -> i64 {
         .unwrap()
 }
 
-/// Запись уходит в корзину настоящей операцией: день помечается для перезаписи в той же транзакции.
+/// An entry goes to the trash by a real operation: the day is marked for rewriting in the same transaction.
 fn delete_entry(store: &kinige_store::Store, _dir: &Path, id: &str, _date: &str) {
     store.delete_message(id, &moscow(T0 + 10 * MINUTE)).unwrap();
 }
@@ -44,7 +44,7 @@ fn sending_writes_the_day_file_with_time_and_deleted_entries_leave_it() {
             &moscow(T0),
         )
         .unwrap();
-    wait_until("файл дня", || file.exists());
+    wait_until("day file", || file.exists());
     let second = store
         .send_message(
             INBOX_ID,
@@ -52,7 +52,7 @@ fn sending_writes_the_day_file_with_time_and_deleted_entries_leave_it() {
             &moscow(T0 + 2 * MINUTE),
         )
         .unwrap();
-    wait_until("вторая запись в файле", || {
+    wait_until("second entry in the file", || {
         fs::read_to_string(&file).is_ok_and(|t| t.contains("вторая"))
     });
     assert_eq!(
@@ -61,15 +61,14 @@ fn sending_writes_the_day_file_with_time_and_deleted_entries_leave_it() {
     );
 
     delete_entry(&store, dir.path(), &second.id, "2026-10-21");
-    wait_until(
-        "запись из корзины ушла из копии",
-        || fs::read_to_string(&file).is_ok_and(|t| !t.contains("вторая")),
-    );
+    wait_until("the entry from the trash left the copy", || {
+        fs::read_to_string(&file).is_ok_and(|t| !t.contains("вторая"))
+    });
     assert_eq!(
         fs::read_to_string(&file).unwrap(),
         "# 2026-10-21\n\n## 09:12\n\nКупить **молоко**\n- [ ] позвонить маме\n"
     );
-    wait_until("отметки сняты", || dirty_count(dir.path()) == 0);
+    wait_until("marks cleared", || dirty_count(dir.path()) == 0);
 }
 
 #[test]
@@ -78,16 +77,16 @@ fn a_day_without_entries_loses_its_file_and_empty_folders() {
     let store = open(dir.path());
     let file = day_file(dir.path(), "2026-10-21");
     let sent = store.send_message(INBOX_ID, "одна", &moscow(T0)).unwrap();
-    wait_until("файл дня", || file.exists());
+    wait_until("day file", || file.exists());
 
     delete_entry(&store, dir.path(), &sent.id, "2026-10-21");
-    wait_until("файл удалён", || !file.exists());
-    wait_until("отметки сняты", || dirty_count(dir.path()) == 0);
+    wait_until("file deleted", || !file.exists());
+    wait_until("marks cleared", || dirty_count(dir.path()) == 0);
     assert!(
         !mirror_dir(dir.path()).join("Inbox").exists(),
-        "пустые папки чата и года убраны"
+        "empty chat and year folders are removed"
     );
-    assert!(mirror_dir(dir.path()).exists(), "корень копии остаётся");
+    assert!(mirror_dir(dir.path()).exists(), "the copy root stays");
 }
 
 #[test]
@@ -98,7 +97,7 @@ fn night_entry_goes_to_the_previous_days_file_with_its_local_time() {
         .send_message(INBOX_ID, "не спится", &moscow(T_NIGHT))
         .unwrap();
     let file = day_file(dir.path(), "2026-10-20");
-    wait_until("файл вчерашнего дня", || file.exists());
+    wait_until("file of yesterday", || file.exists());
     assert_eq!(
         fs::read_to_string(&file).unwrap(),
         "# 2026-10-20\n\n## 00:30\n\nне спится\n"
@@ -110,9 +109,7 @@ fn inbox_folder_name_does_not_depend_on_language_or_title() {
     let dir = tempfile::tempdir().unwrap();
     let store = open(dir.path());
     store.send_message(INBOX_ID, "x", &moscow(T0)).unwrap();
-    wait_until("файл дня", || {
-        day_file(dir.path(), "2026-10-21").exists()
-    });
+    wait_until("day file", || day_file(dir.path(), "2026-10-21").exists());
     let names: Vec<String> = fs::read_dir(mirror_dir(dir.path()))
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
@@ -129,7 +126,7 @@ fn no_temporary_files_are_left_behind() {
             .send_message(INBOX_ID, &format!("запись {i}"), &moscow(T0 + i * MINUTE))
             .unwrap();
     }
-    wait_until("отметки сняты", || dirty_count(dir.path()) == 0);
+    wait_until("marks cleared", || dirty_count(dir.path()) == 0);
     let year = mirror_dir(dir.path()).join("Inbox").join("2026");
     let names: Vec<String> = fs::read_dir(&year)
         .unwrap()
@@ -150,36 +147,34 @@ fn marks_left_by_a_killed_process_are_written_at_startup() {
     assert_eq!(dirty_count(dir.path()), 1);
     assert!(!day_file(dir.path(), "2026-10-21").exists());
     let _store = open(dir.path());
-    wait_until("файл при старте", || {
+    wait_until("file at startup", || {
         day_file(dir.path(), "2026-10-21").exists()
     });
-    wait_until("отметки сняты", || dirty_count(dir.path()) == 0);
+    wait_until("marks cleared", || dirty_count(dir.path()) == 0);
 }
 
 #[test]
 fn unavailable_folder_is_reported_marks_are_kept_and_retried() {
     let dir = tempfile::tempdir().unwrap();
-    // «Папка» занята обычным файлом: создать каталог нельзя.
+    // The "folder" is occupied by a regular file: a directory cannot be created.
     fs::write(mirror_dir(dir.path()), "я файл").unwrap();
     let store = open(dir.path());
     store
         .send_message(INBOX_ID, "запись при недоступной папке", &moscow(T0))
         .unwrap();
 
-    wait_until("ошибка папки в настройках", || {
+    wait_until("folder error in settings", || {
         store.get_settings().unwrap().mirror.error == Some(MirrorError::FolderUnavailable)
     });
     let status = store.get_settings().unwrap().mirror;
-    assert_eq!(status.pending_days, 1, "отметка не потеряна");
+    assert_eq!(status.pending_days, 1, "the mark is not lost");
     assert!(status.is_default);
 
-    // Папка починена — копия дописывается сама, без нового сообщения.
+    // The folder is fixed: the copy completes by itself, without a new message.
     fs::remove_file(mirror_dir(dir.path())).unwrap();
     let file = day_file(dir.path(), "2026-10-21");
-    wait_until("копия после починки папки", || {
-        file.exists()
-    });
-    wait_until("ошибка снята", || {
+    wait_until("copy after the folder is fixed", || file.exists());
+    wait_until("error cleared", || {
         store.get_settings().unwrap().mirror.error.is_none()
     });
     assert_eq!(store.get_settings().unwrap().mirror.pending_days, 0);
@@ -196,7 +191,7 @@ fn write_failure_inside_an_existing_folder_is_reported_and_retried() {
     use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
     fs::create_dir_all(mirror_dir(dir.path())).unwrap();
-    // Папка есть, но писать в неё нельзя (права). Если тест выполняется от root, права не действуют — тогда пропускаем.
+    // The folder exists, but it cannot be written to (permissions). If the test runs as root, permissions do not apply, so we skip.
     fs::set_permissions(mirror_dir(dir.path()), fs::Permissions::from_mode(0o555)).unwrap();
     if fs::create_dir(mirror_dir(dir.path()).join("probe")).is_ok() {
         fs::set_permissions(mirror_dir(dir.path()), fs::Permissions::from_mode(0o755)).unwrap();
@@ -206,13 +201,13 @@ fn write_failure_inside_an_existing_folder_is_reported_and_retried() {
     store
         .send_message(INBOX_ID, "не запишется сразу", &moscow(T0))
         .unwrap();
-    wait_until("ошибка записи", || {
+    wait_until("write error", || {
         store.get_settings().unwrap().mirror.error == Some(MirrorError::WriteFailed)
     });
     assert_eq!(store.get_settings().unwrap().mirror.pending_days, 1);
 
     fs::set_permissions(mirror_dir(dir.path()), fs::Permissions::from_mode(0o755)).unwrap();
-    wait_until("копия после починки", || {
+    wait_until("copy after the fix", || {
         day_file(dir.path(), "2026-10-21").exists()
     });
 }
@@ -227,10 +222,10 @@ fn choosing_another_folder_rewrites_the_whole_copy_there() {
     store
         .send_message(INBOX_ID, "сегодня", &moscow(T0))
         .unwrap();
-    wait_until("копия в папке по умолчанию", || {
+    wait_until("copy in the default folder", || {
         day_file(dir.path(), "2026-10-21").exists() && day_file(dir.path(), "2026-10-20").exists()
     });
-    wait_until("отметки сняты", || dirty_count(dir.path()) == 0);
+    wait_until("marks cleared", || dirty_count(dir.path()) == 0);
 
     let other = dir.path().join("другая папка");
     store.set_mirror_dir(&other).unwrap();
@@ -238,7 +233,7 @@ fn choosing_another_folder_rewrites_the_whole_copy_there() {
     assert_eq!(settings.mirror.folder.as_deref(), other.to_str());
     assert!(!settings.mirror.is_default);
 
-    wait_until("полная копия в новой папке", || {
+    wait_until("full copy in the new folder", || {
         other.join("Inbox/2026/2026-10-21.md").exists()
             && other.join("Inbox/2026/2026-10-20.md").exists()
     });
@@ -249,10 +244,10 @@ fn choosing_another_folder_rewrites_the_whole_copy_there() {
     );
     assert!(
         day_file(dir.path(), "2026-10-21").exists(),
-        "старая папка не трогается"
+        "the old folder is not touched"
     );
 
-    // Выбор переживает перезапуск.
+    // The choice survives a restart.
     drop(store);
     let store = open(dir.path());
     assert_eq!(
@@ -279,14 +274,14 @@ fn without_any_folder_the_copy_is_off_and_marks_wait() {
 
     let chosen = dir.path().join("выбрана");
     store.set_mirror_dir(&chosen).unwrap();
-    wait_until("копия после выбора папки", || {
+    wait_until("copy after choosing the folder", || {
         chosen.join("Inbox/2026/2026-10-21.md").exists()
     });
 }
 
 #[test]
 fn an_empty_journal_does_not_touch_the_copy_folder() {
-    // На macOS первое обращение к «Документам» вызывает запрос доступа; он должен появиться с первой записью.
+    // On macOS the first access to "Documents" triggers an access prompt; it must appear with the first entry.
     let dir = tempfile::tempdir().unwrap();
     let store = open(dir.path());
     std::thread::sleep(std::time::Duration::from_millis(250));
@@ -294,10 +289,9 @@ fn an_empty_journal_does_not_touch_the_copy_folder() {
     assert_eq!(store.get_settings().unwrap().mirror.error, None);
 
     store.send_message(INBOX_ID, "первая", &moscow(T0)).unwrap();
-    wait_until(
-        "папка и файл после первой записи",
-        || day_file(dir.path(), "2026-10-21").exists(),
-    );
+    wait_until("folder and file after the first entry", || {
+        day_file(dir.path(), "2026-10-21").exists()
+    });
 }
 
 #[test]
@@ -309,25 +303,21 @@ fn a_chat_with_the_inbox_flag_but_another_id_does_not_get_the_inbox_folder() {
     store
         .send_message(impostor, "я не Inbox", &moscow(T0))
         .unwrap();
-    // Самозванец получает папку по своему имени, как любой другой чат; `Inbox` остаётся за настоящим Inbox.
+    // The impostor gets a folder by its own name, like any other chat; `Inbox` stays with the real Inbox.
     let file = mirror_dir(dir.path())
         .join("Самозванец")
         .join("2026")
         .join("2026-10-21.md");
-    wait_until("файл в папке по имени чата", || {
-        file.exists()
-    });
+    wait_until("file in the folder named after the chat", || file.exists());
     assert!(
         !mirror_dir(dir.path()).join("Inbox").exists(),
-        "папку Inbox занимает только настоящий Inbox"
+        "the Inbox folder is occupied only by the real Inbox"
     );
 
     store
         .send_message(INBOX_ID, "я настоящий", &moscow(T0 + MINUTE))
         .unwrap();
-    wait_until("файл Inbox", || {
-        day_file(dir.path(), "2026-10-21").exists()
-    });
+    wait_until("Inbox file", || day_file(dir.path(), "2026-10-21").exists());
 }
 
 #[test]
@@ -339,7 +329,7 @@ fn a_failed_read_of_the_marks_is_retried_not_treated_as_nothing_to_write() {
             .send_message(INBOX_ID, "ждёт чтения отметок", &moscow(T0))
             .unwrap();
     }
-    // Чтение отметок падает («нет таблицы»); копия не должна решить, что писать нечего, и забыть про день.
+    // Reading the marks fails ("no table"); the copy must not decide that there is nothing to write and forget the day.
     raw(dir.path())
         .execute_batch("ALTER TABLE mirror_dirty RENAME TO mirror_dirty_away")
         .unwrap();
@@ -350,16 +340,15 @@ fn a_failed_read_of_the_marks_is_retried_not_treated_as_nothing_to_write() {
     raw(dir.path())
         .execute_batch("ALTER TABLE mirror_dirty_away RENAME TO mirror_dirty")
         .unwrap();
-    wait_until(
-        "повтор после починки чтения",
-        || day_file(dir.path(), "2026-10-21").exists(),
-    );
+    wait_until("a retry after the read is fixed", || {
+        day_file(dir.path(), "2026-10-21").exists()
+    });
 }
 
 #[test]
 fn a_folder_changed_in_the_middle_of_a_batch_restarts_the_pass_and_fills_the_new_folder() {
-    // Две записи в разные дни. Пока проход держит прочитанную пачку (шаг после `dirty_batch`), папку меняют: прежний код
-    // дописал бы пачку в старую папку и снял отметки, а новая папка осталась бы пустой.
+    // Two entries on different days. While the pass holds the batch it has read (the step after `dirty_batch`), the folder is changed: the old code
+    // would have written the batch into the old folder and cleared the marks, leaving the new folder empty.
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
     let dir = tempfile::tempdir().unwrap();
@@ -377,10 +366,8 @@ fn a_folder_changed_in_the_middle_of_a_batch_restarts_the_pass_and_fills_the_new
         if hook_done.swap(true, Ordering::SeqCst) {
             return;
         }
-        // Ждём вторую запись (её отправляет тест), затем меняем папку посреди пачки.
-        wait_until("вторая отметка дня", || {
-            dirty_count(&hook_dir) >= 2
-        });
+        // Wait for the second entry (the test sends it), then change the folder in the middle of the batch.
+        wait_until("second day mark", || dirty_count(&hook_dir) >= 2);
         hook_store.set_mirror_dir(&hook_root).unwrap();
     })));
     store
@@ -396,11 +383,9 @@ fn a_folder_changed_in_the_middle_of_a_batch_restarts_the_pass_and_fills_the_new
             .join(date.get(..4).unwrap())
             .join(format!("{date}.md"))
     };
-    wait_until("оба дня в новой папке", || {
+    wait_until("both days in the new folder", || {
         in_new("2026-10-21").exists() && in_new("2026-10-23").exists()
     });
-    wait_until("отметок не осталось", || {
-        dirty_count(dir.path()) == 0
-    });
+    wait_until("no marks left", || dirty_count(dir.path()) == 0);
     store.set_mirror_batch_hook_for_test(None);
 }

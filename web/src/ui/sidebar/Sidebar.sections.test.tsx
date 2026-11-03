@@ -93,7 +93,7 @@ describe("разделы", () => {
     expect(archive).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(archive);
     expect(archive).toHaveAttribute("aria-expanded", "false");
-    // Тот же выбранный чат при следующих отрисовках раздел заново не раскрывает.
+    // The same selected chat does not expand the section again on later renders.
     rerender(<Sidebar chats={[...LIST]} selectedId="old" showSearch={false} />);
     expect(archive).toHaveAttribute("aria-expanded", "false");
   });
@@ -149,7 +149,7 @@ describe("верхняя строка и «Корзина»", () => {
     expect(trash).not.toHaveAttribute("aria-current");
     fireEvent.click(trash);
     expect(onOpenTrash).toHaveBeenCalledTimes(1);
-    // Строка стоит после списка чатов и перед профилем.
+    // The row comes after the chat list and before the profile.
     const nav = screen.getByRole("navigation", { name: "Чаты" });
     const profile = document.querySelector(".profile") as HTMLElement;
     expect(nav.compareDocumentPosition(trash) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

@@ -1,8 +1,8 @@
 {
   "layout": {
     "trash": {
-      "entry-lines": { "$type": "number", "$value": 6, "$description": "Сколько строк текста записи показывает плашка корзины; остальное обрезается многоточием (line-clamp). Полный текст записи в корзине не нужен: он нужен, чтобы узнать запись." },
-      "confirm-width": { "$type": "dimension", "$value": "26rem", "$description": "Ширина окна подтверждения «Удалить навсегда?» (338 px при корне 13 px)." }
+      "entry-lines": { "$type": "number", "$value": 6, "$description": "How many lines of the entry text a trash plate shows; the rest is cut off with an ellipsis (line-clamp). The full text is not needed in the trash: only enough to recognize the entry." },
+      "confirm-width": { "$type": "dimension", "$value": "26rem", "$description": "Width of the 'Delete forever?' confirmation window (338 px at a 13 px root)." }
     }
   }
 }

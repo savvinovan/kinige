@@ -1,4 +1,4 @@
-/* Только для историй Storybook: «главное окно» за модальным окном, чтобы подложка лежала на настоящих поверхностях. */
+/* Storybook stories only: a "main window" behind the modal so that the scrim lies on real surfaces. */
 .story-settings-window {
   display: flex;
   box-sizing: border-box;
@@ -36,7 +36,7 @@
   min-height: var(--layout-composer-min-height);
 }
 
-/* Подложки для историй отдельных частей. */
+/* Backdrops for stories of individual parts. */
 .story-settings-part {
   box-sizing: border-box;
   min-height: var(--layout-window-height);
@@ -50,7 +50,7 @@
   max-width: var(--layout-dialog-width);
 }
 
-/* Узкая колонка: проверка, что строки с длинными подписями переносятся, а не вылезают. */
+/* A narrow column: a check that rows with long labels wrap instead of overflowing. */
 .story-settings-part__inner--narrow {
   max-width: var(--layout-measure-column);
 }

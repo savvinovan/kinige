@@ -16,7 +16,7 @@ import {
 
 const ymd = (value: string) => {
   const date = parseDate(value);
-  if (!date) throw new Error(`не дата: ${value}`);
+  if (!date) throw new Error(`not a date: ${value}`);
   return date;
 };
 
@@ -57,8 +57,8 @@ describe("сдвиги", () => {
     expect(daysInMonth(2026, 2)).toBe(28);
     expect(daysInMonth(2024, 2)).toBe(29);
     expect(daysInMonth(2026, 10)).toBe(31);
-    expect(weekday(ymd("2026-10-20"))).toBe(2); // вторник
-    expect(weekday(ymd("2026-10-18"))).toBe(0); // воскресенье
+    expect(weekday(ymd("2026-10-20"))).toBe(2); // Tuesday
+    expect(weekday(ymd("2026-10-18"))).toBe(0); // Sunday
   });
 });
 
@@ -87,12 +87,12 @@ describe("monthGrid", () => {
   });
 
   it("февраль 2027 ровно в четыре недели, если начинается с первого дня недели", () => {
-    // 1 февраля 2027 — понедельник, 28 дней.
+    // 1 February 2027 is a Monday, 28 days.
     expect(monthGrid(2027, 2, 1)).toHaveLength(4);
   });
 
   it("месяц, которому нужно шесть недель", () => {
-    // Март 2025: 1-е — суббота, 31 день, неделя с понедельника → 6 строк.
+    // March 2025: the 1st is a Saturday, 31 days, Monday-first week -> 6 rows.
     expect(monthGrid(2025, 3, 1)).toHaveLength(6);
   });
 });

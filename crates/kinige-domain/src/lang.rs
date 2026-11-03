@@ -1,9 +1,9 @@
-//! Язык интерфейса (ТЗ §2.1, ADR-0005): выбирает Rust по предпочитаемым языкам системы, а не `navigator.language`.
+//! Interface language (PRD §2.1, ADR-0005): Rust picks it from the system's preferred languages, not from `navigator.language`.
 
 use serde::Serialize;
 use ts_rs::TS;
 
-/// Языки интерфейса: английский и русский.
+/// Interface languages: English and Russian.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "lowercase")]
 #[ts(export, export_to = "Language.ts")]
@@ -12,8 +12,8 @@ pub enum Language {
     Ru,
 }
 
-/// Первый предпочитаемый язык системы: русский — русский интерфейс, любой другой (или список пуст) — английский.
-/// Теги вида `ru`, `ru-RU`, `ru_RU`, `RU-ru` — русские.
+/// The first preferred system language: Russian gives the Russian interface, any other (or an empty list) gives English.
+/// Tags like `ru`, `ru-RU`, `ru_RU`, `RU-ru` are Russian.
 pub fn pick_language<S: AsRef<str>>(preferred: &[S]) -> Language {
     let primary = preferred.first().map(|tag| {
         tag.as_ref()

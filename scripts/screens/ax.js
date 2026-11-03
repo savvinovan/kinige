@@ -1,12 +1,12 @@
-// Доступность вместо мыши и клавиатуры (macOS, System Events): ничего не жмёт глобально, только действия AX над окном процесса.
+// Accessibility instead of mouse and keyboard (macOS, System Events): presses nothing globally, only AX actions on the process window.
 //   osascript -l JavaScript scripts/screens/ax.js dump   <pid>
-//   osascript -l JavaScript scripts/screens/ax.js press  <pid> <текст в названии/описании> [роль: Button|CheckBox|RadioButton|PopUpButton|MenuItem]
-//   osascript -l JavaScript scripts/screens/ax.js scroll <pid> <текст>      (AXScrollToVisible)
-//   osascript -l JavaScript scripts/screens/ax.js has    <pid> <текст>      (печатает yes/no)
-//   osascript -l JavaScript scripts/screens/ax.js frame  <pid> <текст>      (печатает «x y ширина высота» первого найденного)
-//   osascript -l JavaScript scripts/screens/ax.js resize <pid> <ширина> <высота>  (меняет размер окна; печатает итоговый размер)
-// Окно процесса: по умолчанию первое; переменная AX_WINDOW=<часть заголовка> выбирает окно «Settings» или «Kinige».
-// Текст ищется как подстрока в «роль, название, описание, значение» элемента, первый найденный в порядке обхода.
+//   osascript -l JavaScript scripts/screens/ax.js press  <pid> <text in the title/description> [role: Button|CheckBox|RadioButton|PopUpButton|MenuItem]
+//   osascript -l JavaScript scripts/screens/ax.js scroll <pid> <text>      (AXScrollToVisible)
+//   osascript -l JavaScript scripts/screens/ax.js has    <pid> <text>      (prints yes/no)
+//   osascript -l JavaScript scripts/screens/ax.js frame  <pid> <text>      (prints "x y width height" of the first match)
+//   osascript -l JavaScript scripts/screens/ax.js resize <pid> <width> <height>  (resizes the window; prints the resulting size)
+// Process window: the first one by default; the AX_WINDOW=<part of the title> variable selects the "Settings" or "Kinige" window.
+// The text is searched as a substring of the element's "role, title, description, value", the first match in traversal order.
 ObjC.import("Foundation");
 
 function run(argv) {
@@ -32,8 +32,8 @@ function run(argv) {
     return p;
   }
 
-  // Столбец свойства у всех детей элемента одним запросом к System Events (обход по одному свойству за запрос занимал больше
-  // минуты); не вышло — по одному ребёнку.
+  // A property column for all children of an element in one System Events request (a traversal with one property per request took more
+  // than a minute); if that fails, one child at a time.
   function column(el, key, count) {
     try {
       const values = el.uiElements[key]();
@@ -50,8 +50,8 @@ function run(argv) {
     return values;
   }
 
-  // Значение свойства в строку. У группы радиокнопок и вкладок значение — ссылка на выбранный элемент, и String() на ней
-  // падает с «Can't convert types (-1700)» уже вне try колонки; такой обход рвал весь дамп окна «Настройки».
+  // A property value as a string. For a group of radio buttons and tabs the value is a reference to the selected element, and String() on it
+  // fails with "Can't convert types (-1700)" already outside the column's try; such a traversal broke the whole dump of the Settings window.
   function text(v) {
     if (v === null || v === undefined) return "";
     try {
@@ -61,7 +61,7 @@ function run(argv) {
     }
   }
 
-  // Дамп дерева (тот же вид строк, что и раньше: отступ по глубине, роль, название | описание | значение | имя).
+  // A tree dump (the same line format as before: indent by depth, role, title | description | value | name).
   function dumpTree(el, depth) {
     if (depth > 30) return;
     let roles = [];

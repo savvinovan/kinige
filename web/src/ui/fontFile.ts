@@ -1,9 +1,9 @@
-// Минимальный разбор woff2 для проверки встроенных шрифтов: кириллица (cmap), вес и курсив (OS/2, fvar), лицензия (name).
-// Только чтение; нужные таблицы в woff2 не преобразуются (преобразуются только glyf, loca и, по желанию, hmtx).
-// Формат: https://www.w3.org/TR/WOFF2/ ; таблицы sfnt: https://learn.microsoft.com/typography/opentype/spec/
+// Minimal woff2 parsing to check the embedded fonts: Cyrillic (cmap), weight and italic (OS/2, fvar), license (name).
+// Read-only; the tables we need are not transformed in woff2 (only glyf, loca and, optionally, hmtx are).
+// Format: https://www.w3.org/TR/WOFF2/ ; sfnt tables: https://learn.microsoft.com/typography/opentype/spec/
 import { brotliDecompressSync } from "node:zlib";
 
-// Известные теги из спецификации WOFF2 (раздел 5.1), индекс = 6 младших бит флага.
+// Known tags from the WOFF2 specification (section 5.1), index = the low 6 bits of the flag.
 const KNOWN_TAGS = [
   "cmap", "head", "hhea", "hmtx", "maxp", "name", "OS/2", "post", "cvt ", "fpgm", "glyf", "loca", "prep", "CFF ", "VORG",
   "EBDT", "EBLC", "gasp", "hdmx", "kern", "LTSH", "PCLT", "VDMX", "vhea", "vmtx", "BASE", "GDEF", "GPOS", "GSUB", "EBSC",
@@ -14,14 +14,14 @@ const KNOWN_TAGS = [
 
 export interface FontInfo {
   tables: string[];
-  /** Покрытые кодовые точки (из cmap). */
+  /** Covered code points (from cmap). */
   has: (codePoint: number) => boolean;
-  /** usWeightClass из OS/2. */
+  /** usWeightClass from OS/2. */
   weightClass: number;
   italic: boolean;
-  /** Оси переменного шрифта: тег -> [min, default, max]; пусто у статических. */
+  /** Axes of a variable font: tag -> [min, default, max]; empty for static fonts. */
   axes: Record<string, [number, number, number]>;
-  /** Строка лицензии (name ID 13). */
+  /** License string (name ID 13). */
   license: string;
 }
 
@@ -32,11 +32,11 @@ function readBase128(view: DataView, start: number): [value: number, next: numbe
     value = value * 128 + (byte & 0x7f);
     if ((byte & 0x80) === 0) return [value, start + i + 1];
   }
-  throw new Error("woff2: некорректное UIntBase128");
+  throw new Error("woff2: invalid UIntBase128");
 }
 
 function tableDirectory(view: DataView): { tag: string; length: number }[] {
-  if (view.getUint32(0) !== 0x774f4632) throw new Error("woff2: нет сигнатуры wOF2");
+  if (view.getUint32(0) !== 0x774f4632) throw new Error("woff2: no wOF2 signature");
   const count = view.getUint16(12);
   let pos = 48;
   const tables: { tag: string; length: number }[] = [];
@@ -54,7 +54,7 @@ function tableDirectory(view: DataView): { tag: string; length: number }[] {
     if (transformed) [length, pos] = readBase128(view, pos);
     tables.push({ tag, length });
   }
-  // Сжатый блок начинается сразу за каталогом таблиц.
+  // The compressed block starts right after the table directory.
   tables.push({ tag: "", length: pos });
   return tables;
 }
@@ -143,7 +143,7 @@ export function readFont(file: Uint8Array): FontInfo {
   }
   const need = (tag: string): number => {
     const offset = offsets.get(tag);
-    if (offset === undefined) throw new Error(`woff2: нет таблицы ${tag}`);
+    if (offset === undefined) throw new Error(`woff2: no table ${tag}`);
     return offset;
   };
 

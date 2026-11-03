@@ -1,5 +1,5 @@
-/* Оформление отрендеренного Markdown внутри плашки: абзацы, заголовки, списки, задачи, цитата, код, ссылки. Только токены. */
-/* Все блоки без полей браузера; промежуток между соседними блоками (в том числе внутри цитаты и пункта) задаётся ниже. */
+/* Styling of the rendered Markdown inside the bubble: paragraphs, headings, lists, tasks, quote, code, links. Tokens only. */
+/* All blocks without browser margins; the gap between neighboring blocks (including inside a quote and an item) is set below. */
 .markdown :is(p, blockquote, ul, ol, pre, hr, h1, h2, h3, h4, h5, h6) {
   margin: 0;
 }
@@ -8,7 +8,7 @@
   margin-top: var(--space-2);
 }
 
-/* Заголовок ближе к своему тексту, чем обычные блоки друг к другу. */
+/* A heading is closer to its text than ordinary blocks are to each other. */
 .markdown :is(h1, h2, h3, h4, h5, h6) + :is(p, blockquote, ul, ol, pre) {
   margin-top: var(--space-1);
 }
@@ -32,7 +32,7 @@
   line-height: var(--type-h2-line-height);
 }
 
-/* H3 и глубже выглядят одинаково: в записях глубже третьего уровня заголовки не нужны. */
+/* H3 and deeper look the same: entries do not need headings deeper than the third level. */
 .markdown h3,
 .markdown h4,
 .markdown h5,
@@ -59,7 +59,7 @@
   margin-top: var(--space-1);
 }
 
-/* Задачи: список без маркеров, перед пунктом квадрат; текст пункта остаётся обычным строчным потоком. */
+/* Tasks: a list without markers, a box before the item; the item text stays an ordinary inline flow. */
 .markdown ul.task-list {
   padding: 0;
   list-style: none;
@@ -86,7 +86,7 @@
   background: var(--color-accent-default);
 }
 
-/* Галочка из двух сторон повёрнутого прямоугольника, цвет — заливка плашки (7,2:1 к акценту). Размеры — токены layout.checkbox.tick-*. */
+/* A check mark made of two sides of a rotated rectangle, colored with the bubble fill (7.2:1 to the accent). Sizes are layout.checkbox.tick-* tokens. */
 .task--done .task__box::after {
   content: "";
   position: absolute;
@@ -100,12 +100,12 @@
   transform: rotate(45deg);
 }
 
-/* Квадрат в тексте, который можно нажать (слайс 3: role="checkbox", tabindex 0): указатель вместо стрелки, фокус виден кольцом. */
+/* A box in the text that can be pressed (slice 3: role="checkbox", tabindex 0): a pointer instead of an arrow, focus is visible as a ring. */
 .task__box[role="checkbox"] {
   cursor: pointer;
 }
 
-/* Тег `#слово`: акцентный цвет без подчёркивания (ссылки подчёркнуты), при наведении подчёркивается. Нажимается: фильтр ленты. */
+/* Tag `#word`: accent color without underline (links are underlined), underlined on hover. Clickable: feed filter. */
 .markdown .tag {
   border-radius: var(--radius-inline);
   color: var(--color-accent-default);
@@ -118,7 +118,7 @@
   text-underline-offset: var(--space-1);
 }
 
-/* Найденное слово в открытой из поиска записи (слайс 4): заливка highlight.mark, цвет текста не меняется. */
+/* A found word in an entry opened from search (slice 4): highlight.mark fill, the text color does not change. */
 .markdown mark {
   padding: 0;
   border-radius: var(--radius-inline);
@@ -126,7 +126,7 @@
   color: inherit;
 }
 
-/* Цитата: черта слева только у самой цитаты. */
+/* Quote: the bar on the left only on the quote itself. */
 .markdown blockquote {
   padding-left: var(--space-3);
   border-left: var(--border-width-strong) solid var(--color-text-tertiary);
@@ -144,7 +144,7 @@
   text-underline-offset: var(--space-1);
 }
 
-/* Код: врезка темнее плашки; строчный код без обратных кавычек. */
+/* Code: an inset darker than the bubble; inline code without backticks. */
 .markdown code {
   padding: 0 var(--space-1);
   border-radius: var(--radius-inline);
@@ -156,10 +156,10 @@
   line-height: var(--type-code-line-height);
 }
 
-/* Блок кода переносит длинные строки, как в Telegram, и не прокручивается: у блока нет полос прокрутки, закрывать ими
-   следующий абзац нечему (KINIG-40: при настройке macOS «Всегда показывать полосы прокрутки» полоса блока ложилась на первую
-   строку абзаца под ним). Отступы и пробелы в начале строк сохраняются (pre-wrap). Overflow не задан намеренно: тест
-   markdownCss.test.ts следит, чтобы блок не получил ни прокрутки, ни обрезки, ни фиксированной высоты. */
+/* A code block wraps long lines, as in Telegram, and does not scroll: the block has no scroll bars, so there is
+   nothing to cover the next paragraph with (KINIG-40: with the macOS setting "Always show scroll bars" the block's bar lay on the first
+   line of the paragraph under it). Indents and spaces at the start of lines are kept (pre-wrap). Overflow is deliberately not set: the test
+   markdownCss.test.ts makes sure the block gets neither scrolling, nor clipping, nor a fixed height. */
 .markdown pre {
   box-sizing: border-box;
   padding: var(--space-2) var(--space-3);

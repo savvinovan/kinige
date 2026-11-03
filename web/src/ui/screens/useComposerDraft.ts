@@ -3,25 +3,25 @@ import { INBOX_ID, type KinigeApi } from "../../api/KinigeApi";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { useDraftSaver } from "../../draft/useDraftSaver";
 
-/** Что уходит в черновик: текст и запись, на которую пишется ответ (слайс 5). */
+/** What goes into the draft: the text and the entry being replied to (slice 5). */
 interface DraftValue {
   body: string;
   replyToId: string | null;
 }
 
 /**
- * Текст в поле ввода главного окна, строка «Ответ на запись» и черновик у каждого чата: подстановка сохранённого при открытии
- * чата, отложенное сохранение при наборе, немедленное — при скрытии окна или потере фокуса (§5.1). Состояние чата (`selected`)
- * хранит `MainWindow`; `switchChat` вызывается в тот же миг, что и его `setSelected`.
+ * The text in the main window's composer, the "Reply to entry" strip and a draft per chat: the saved draft is filled in when
+ * a chat opens, saving is deferred while typing and immediate when the window hides or loses focus (§5.1). The chat
+ * state (`selected`) is kept by `MainWindow`; `switchChat` is called at the same moment as its `setSelected`.
  */
 export function useComposerDraft(api: KinigeApi, selected: string | null) {
   const [draft, setDraft] = useState("");
   const [reply, setReply] = useState<ReplyTo | null>(null);
-  // Текст и ответ без ожидания отрисовки: нужны обработчикам, которые меняют что-то одно из двух.
+  // The text and the reply without waiting for a render: needed by handlers that change just one of the two.
   const latest = useRef<{ body: string; reply: ReplyTo | null }>({ body: "", reply: null });
-  // Пока человек не печатал, черновик из Rust подставляется в пустое поле; набранное до ответа не затирается.
+  // Until the person has typed, the draft from Rust is put into the empty field; what was typed before the reply is not overwritten.
   const typed = useRef(false);
-  // Открытый чат без ожидания отрисовки: ответ на `getDraft` прежнего чата, пришедший после переключения, в поле нового не попадает.
+  // The open chat without waiting for a render: a `getDraft` reply of the previous chat that arrives after switching does not reach the new chat's field.
   const opened = useRef<string | null>(INBOX_ID);
   const chatId = selected ?? INBOX_ID;
 
@@ -29,7 +29,7 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
   const saver = useDraftSaver<DraftValue>(save);
   const { flush, schedule } = saver;
 
-  // Номер открытия чата: эффект загрузки черновика идёт заново и тогда, когда `selected` не изменился (A→B→A до отрисовки).
+  // The chat opening number: the draft loading effect runs again even when `selected` did not change (A->B->A before a render).
   const [opening, setOpening] = useState(0);
 
   const show = useCallback((body: string, replyTo: ReplyTo | null) => {
@@ -44,8 +44,8 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
   );
 
   /**
-   * Другой чат: поле пустое, пока не подгрузится его черновик (эффект ниже). Черновик прежнего чата сохраняет вызывающий.
-   * Повторный выбор уже открытого чата поле не трогает: набранное остаётся, как и его запланированное сохранение.
+   * Another chat: the field is empty until its draft loads (the effect below). The caller saves the previous chat's draft.
+   * Selecting the already open chat again does not touch the field: what was typed stays, and so does its scheduled save.
    */
   const switchChat = useCallback(
     (next: string | null) => {
@@ -58,7 +58,7 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
     [show],
   );
 
-  /** Человек печатает: текст в поле, сохранение отложено. */
+  /** The person types: the text goes into the field, saving is deferred. */
   const type = useCallback(
     (value: string) => {
       typed.current = true;
@@ -69,7 +69,7 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
     [plan],
   );
 
-  /** «Ответить» у записи карточки (или крестик строки: `null`): строка над полем меняется, черновик уходит в Rust. */
+  /** "Reply" on a card entry (or the strip's cross: `null`): the strip above the composer changes, the draft goes to Rust. */
   const changeReply = useCallback(
     (next: ReplyTo | null) => {
       typed.current = true;
@@ -80,20 +80,20 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
     [plan],
   );
 
-  /** Строка ответа обновилась (после ошибки отправки Rust подтвердил, что записи нет): черновик не пересохраняется. */
+  /** The reply strip was refreshed (after a send error Rust confirmed the entry is gone): the draft is not saved again. */
   const refreshReply = useCallback((next: ReplyTo | null) => {
     latest.current = { ...latest.current, reply: next };
     setReply(next);
   }, []);
 
-  /** Запись отправлена: поле и строка ответа очищены (Rust уже очистил черновик). */
+  /** The entry was sent: the field and the reply strip are cleared (Rust has already cleared the draft). */
   const clear = useCallback(() => show("", null), [show]);
 
-  // Черновик открытого чата: пока человек не печатал, подставляется в пустое поле вместе со строкой ответа.
+  // The open chat's draft: until the person has typed, it is put into the empty field together with the reply strip.
   useEffect(() => {
     if (selected === null) return;
     let live = true;
-    // Эффект прежнего чата React сбрасывает после отрисовки, а `switchChat` обнуляет поле раньше: одного `live` мало.
+    // React cleans up the previous chat's effect after a render, while `switchChat` empties the field earlier: `live` alone is not enough.
     api
       .getDraft(selected)
       .then((saved) => {
@@ -103,10 +103,10 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
     return () => {
       live = false;
     };
-    // `opening` в зависимостях: каждое открытие чата перезапускает загрузку, даже если `selected` тот же.
+    // `opening` is in the dependencies: every chat opening restarts the loading, even if `selected` is the same.
   }, [api, selected, opening, show]);
 
-  // Окно скрывается или теряет фокус: черновик уходит в Rust сразу, не дожидаясь паузы в наборе.
+  // The window hides or loses focus: the draft goes to Rust at once, without waiting for a pause in typing.
   useEffect(() => {
     const onHide = () => {
       if (document.visibilityState === "hidden") void flush();

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "capture-window",
-  "description": "Окно быстрого захвата: только Inbox и свой черновик, без чтения ленты, настроек, ссылок и событий",
+  "description": "Quick capture window: only Inbox and its own draft, no reading of the feed, settings, links or events",
   "windows": ["capture"],
   "permissions": [
     "allow-capture-state",

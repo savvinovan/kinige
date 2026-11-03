@@ -10,7 +10,7 @@ const SETTINGS: Settings = {
   mirror: { folder: "/Users/me/Documents/Kinige", isDefault: true, error: null, pendingDays: 0 },
   shortcuts: DEFAULT_SHORTCUTS,
 };
-// 2026-10-21 06:12 UTC; запись создаётся в поясе UTC, время в ленте — «06:12».
+// 2026-10-21 06:12 UTC; the entry is created in the UTC zone, the time in the feed is "06:12".
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 
 function setup(options: MockApiOptions = {}, settings: Settings = SETTINGS, language: "ru" | "en" = "ru") {
@@ -51,7 +51,7 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
     expect(within(plate).getByText("06:12")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Сегодня");
     expect(screen.getByRole("button", { name: /^Входящие/ })).toHaveTextContent("1");
-    // После отправки нет ни тоста, ни другого подтверждения: запись просто появилась в ленте.
+    // After sending there is no toast or other confirmation: the entry simply appeared in the feed.
     expect(screen.queryByText("Запись отправлена")).toBeNull();
     expect(screen.queryByRole("button", { name: "Отменить" })).toBeNull();
     expect(document.querySelector(".toast, .toast-region")).toBeNull();
@@ -134,7 +134,7 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
     const api = setup({
       messages: [mockMessage({ id: "l", bodyMd: "<ftp://example.com/x>", createdAt: Date.UTC(2026, 9, 21, 5, 0) })],
     });
-    // markdown-it не делает ссылкой ftp:, а DOMPurify убирает href: щёлкать не по чему.
+    // markdown-it does not make ftp: a link, and DOMPurify removes the href: there is nothing to click.
     await screen.findByRole("article");
     expect(screen.queryByRole("link")).toBeNull();
     expect(api.openedUrls).toEqual([]);
@@ -160,7 +160,7 @@ describe("MainWindow: настройки живут в отдельном окн
     await chooseSettingsInMenu();
     await waitFor(() => expect(api.openSettingsCount).toBe(1));
     expect(screen.queryByRole("dialog")).toBeNull();
-    // Повторный выбор — снова просьба (Rust поднимет то же окно), диалога в этом окне по-прежнему нет.
+    // Picking again is a request again (Rust will raise the same window), there is still no dialog in this window.
     await chooseSettingsInMenu();
     await waitFor(() => expect(api.openSettingsCount).toBe(2));
     expect(screen.queryByRole("dialog")).toBeNull();

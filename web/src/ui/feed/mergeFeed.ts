@@ -4,7 +4,7 @@ interface Keyed {
   createdAt: number;
 }
 
-/** Порядок ленты и курсора (§4.1 ТЗ): `(journal_date, created_at, id)`. */
+/** Feed and cursor order (§4.1 of the spec): `(journal_date, created_at, id)`. */
 function byFeedOrder(a: Keyed, b: Keyed): number {
   if (a.journalDate !== b.journalDate) return a.journalDate < b.journalDate ? -1 : 1;
   if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
@@ -12,9 +12,9 @@ function byFeedOrder(a: Keyed, b: Keyed): number {
 }
 
 /**
- * Сливает свежую последнюю страницу ленты с уже загруженными записями: всё, что страница покрывает, берётся из неё
- * (новые записи появляются, дописанные меняются, пропавшие исчезают), а более старые записи, которые человек уже подгрузил,
- * остаются на месте. Если страница — вся история (`hasOlder = false`), лента равна странице.
+ * Merges a fresh last page of the feed with the entries that are already loaded: everything the page covers is taken from it
+ * (new entries appear, appended ones change, vanished ones disappear), while older entries that the person has already loaded
+ * stay in place. If the page is the whole history (`hasOlder = false`), the feed equals the page.
  */
 export function mergeLatestPage<M extends Keyed>(loaded: readonly M[], page: readonly M[], hasOlder: boolean): M[] {
   const oldest = page[0];
@@ -23,8 +23,8 @@ export function mergeLatestPage<M extends Keyed>(loaded: readonly M[], page: rea
 }
 
 /**
- * Присоединяет к загруженной ленте страницу, пришедшую сверху (старые записи) или снизу (новые, после перехода к записи):
- * записи, которые уже есть, не повторяются (ответ Rust свежее и заменяет загруженную копию), порядок — лентовый.
+ * Attaches to the loaded feed a page that came from the top (older entries) or from the bottom (newer ones, after jumping to an entry):
+ * entries that are already there are not repeated (the Rust response is fresher and replaces the loaded copy), the order is the feed order.
  */
 export function mergeOlder<M extends Keyed>(loaded: readonly M[], page: readonly M[]): M[] {
   const fresh = new Map(page.map((message) => [message.id, message]));
@@ -34,8 +34,8 @@ export function mergeOlder<M extends Keyed>(loaded: readonly M[], page: readonly
 }
 
 /**
- * Страница ленты плюс удалённые записи, которые ещё стоят на месте приглушёнными («Удалено · Вернуть»): в ответе Rust их
- * уже нет, а человек из чата не уходил. Под фильтром по тегу остаются только записи с этим тегом. Порядок — лентовый.
+ * A feed page plus deleted entries that still stand in place muted ("Deleted · Restore"): the Rust response no longer
+ * has them, and the person has not left the chat. Under a tag filter only entries with that tag remain. The order is the feed order.
  */
 export function withDeleted<M extends Keyed & { tags?: readonly string[] }>(
   loaded: readonly M[],

@@ -2,14 +2,14 @@
 import type { MessageView } from "./MessageView";
 
 /**
- * Найденная запись: сама запись, её чат и то, что показывает строка результата.
+ * A found entry: the entry itself, its chat and what the result row shows.
  */
 export type SearchHit = { message: MessageView, chatTitle: string, chatIcon: string | null, chatIsInbox: boolean, 
 /**
- * Простой текст вокруг первого совпадения, до 200 знаков, с «…» по обрезанным краям.
+ * Plain text around the first match, up to 200 characters, with "…" at the trimmed edges.
  */
 snippet: string, 
 /**
- * Слова записи, которые совпали с запросом, как они в ней написаны: фронтенд подсвечивает их целиком.
+ * The entry's words that matched the query, as written in it: the frontend highlights them whole.
  */
 terms: Array<string>, };

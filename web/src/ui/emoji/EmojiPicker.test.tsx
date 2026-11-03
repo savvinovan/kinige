@@ -4,8 +4,8 @@ import { installEmojiLayoutStub, StubEmojiData } from "../../test/emoji";
 import { fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { EmojiPicker } from "./EmojiPicker";
 
-// Раскладку jsdom не считает, поэтому размеры области подставляет заглушка (test/emoji.ts): здесь проверяется обвязка
-// (поиск, «Недавние», выбор, клавиатура), а вид и раскладку показывают истории Storybook.
+// jsdom does not compute layout, so the area sizes are supplied by a stub (test/emoji.ts): this checks the wiring
+// (search, "Recent", choice, keyboard), while the look and layout are shown by the Storybook stories.
 let restoreLayout: () => void;
 beforeAll(() => {
   restoreLayout = installEmojiLayoutStub();
@@ -93,7 +93,7 @@ describe("EmojiPicker: обвязка", () => {
     const search = screen.getByRole("searchbox");
     fireEvent.change(search, { target: { value: "соб" } });
     const stopped = !fireEvent.keyDown(search, { key: "ArrowLeft", cancelable: true });
-    // Событие не погашено (preventDefault не вызван): каретка поля двигается обычным образом.
+    // The event is not swallowed (preventDefault was not called): the field caret moves in the ordinary way.
     expect(stopped).toBe(false);
   });
 });

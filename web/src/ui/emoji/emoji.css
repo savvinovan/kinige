@@ -1,6 +1,6 @@
-/* Пикер эмодзи (основа — frimousse без оформления) и всплывающая панель над полем ввода. Только токены. */
+/* Emoji picker (based on unstyled frimousse) and the popover panel above the input field. Tokens only. */
 .emoji-picker {
-  /* Фон под липкими заголовками категорий: должен быть непрозрачным и совпадать с поверхностью хозяина пикера. */
+  /* Background under the sticky category headings: must be opaque and match the surface of the picker's owner. */
   --emoji-surface: var(--color-surface-message);
   display: flex;
   flex: 0 1 auto;
@@ -16,7 +16,7 @@
   line-height: var(--type-small-line-height);
 }
 
-/* Поле поиска: те же заливка, фокус и ошибка, что у поля «Поиск» в сайдбаре (TextField). */
+/* Search field: the same fill, focus and error as the "Search" field in the sidebar (TextField). */
 .emoji-picker__search-box {
   display: flex;
   flex: none;
@@ -57,12 +57,12 @@
   opacity: 1;
 }
 
-/* Свой крестик в поле не нужен: запрос стирается обычным способом. */
+/* No clear button of our own is needed in the field: the query is erased the ordinary way. */
 .emoji-picker__search::-webkit-search-cancel-button {
   appearance: none;
 }
 
-/* Заголовки: «Недавние» и категории сетки выглядят одинаково. */
+/* Headings: "Recent" and the grid categories look the same. */
 .emoji-picker__heading,
 .emoji-picker [frimousse-category-header] {
   box-sizing: border-box;
@@ -88,7 +88,7 @@
   grid-template-columns: repeat(var(--emoji-columns), minmax(0, 1fr));
 }
 
-/* Прокручивается колесом и клавиатурой; полосы нет, поэтому сетка и «Недавние» выровнены на любой системе. */
+/* Scrolls with the wheel and keyboard; there is no scroll bar, so the grid and "Recent" are aligned on any system. */
 .emoji-picker__viewport {
   flex: 1;
   min-height: 0;
@@ -106,7 +106,7 @@
   text-align: center;
 }
 
-/* Ячейка эмодзи: и в сетке, и в «Недавних». Шрифт глифа frimousse ставит сам из --frimousse-emoji-font (токен). */
+/* Emoji cell: both in the grid and in "Recent". The glyph font is set by frimousse itself from --frimousse-emoji-font (a token). */
 .emoji-picker [frimousse-emoji],
 .emoji-picker__recent-item {
   box-sizing: border-box;
@@ -131,8 +131,8 @@
   background: var(--color-surface-selected);
 }
 
-/* Выбор с клавиатуры: фокус остаётся в поле поиска, а ячейку выделяет frimousse (data-active). Кольцо — только у ячейки,
-   до которой дошли стрелками, а не у той, над которой стоит мышь. */
+/* Keyboard choice: focus stays in the search field, and frimousse highlights the cell (data-active). The ring is only on the cell
+   reached with the arrows, not on the one the mouse is over. */
 .emoji-picker[data-focused] [frimousse-emoji][data-active]:not(:hover) {
   outline: var(--focus-width) solid var(--color-focus-ring);
   outline-offset: calc(var(--focus-offset) * -1);
@@ -143,8 +143,8 @@
   outline-offset: calc(var(--focus-offset) * -1);
 }
 
-/* Всплывающая панель над кнопкой «эмодзи»: поверх окна, ничего не сдвигает. Положение (bottom, right, --emoji-popover-room)
-   ставит компонент по кнопке. */
+/* Popover panel above the "emoji" button: over the window, shifts nothing. The position (bottom, right, --emoji-popover-room)
+   is set by the component from the button. */
 .emoji-popover {
   position: fixed;
   z-index: 3;
@@ -153,7 +153,7 @@
   box-sizing: border-box;
   width: min(var(--emoji-panel-width), 100%);
   max-height: calc(var(--emoji-popover-room, 100%) - var(--space-4));
-  /* Над кнопкой «эмодзи» в поле ввода: зазор до самого поля (его край выше кнопки на внутренний отступ поля) такой же, как у меню. */
+  /* Above the "emoji" button in the input field: the gap to the field itself (its edge is above the button by the field's inner indent) is the same as for the menu. */
   margin-bottom: var(--space-4);
   padding: var(--space-2);
   border: var(--border-width-hairline) solid var(--color-border-divider);
@@ -169,8 +169,8 @@
   }
 }
 
-/* Пикер «в потоке» (окно быстрого захвата): занимает место над строкой поля и раздвигает панель, ничего не накладывает.
-   Заливка той же поверхности, что у всплывающей панели; тени и появления нет: окно само растёт вверх. */
+/* The "inline" picker (quick capture window): takes the place above the field row and pushes the panel apart, overlays nothing.
+   The fill is the same surface as the popover panel; there is no shadow and no appearance animation: the window itself grows up. */
 .emoji-inline {
   display: flex;
   flex-direction: column;

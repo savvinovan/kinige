@@ -1,43 +1,43 @@
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { continuesSeries } from "./dates";
 
-/** Сообщение для ленты: поля настоящего ответа Rust (`MessageView`) плюс два состояния вида из D1. */
+/** A message for the feed: the fields of the real Rust response (`MessageView`) plus two view states from D1. */
 export interface FeedMessage {
   id: string;
-  /** UTC, мс. */
+  /** UTC, ms. */
   createdAt: number;
-  /** IANA-пояс, в котором запись создана: в нём показывается время. */
+  /** The IANA zone in which the entry was created: the time is shown in it. */
   createdTz: string;
-  /** День записи (`YYYY-MM-DD`) — по нему метки дней и серии; считает Rust (граница дня 04:00). */
+  /** The entry's day (`YYYY-MM-DD`): day labels and series are based on it; Rust computes it (day boundary 04:00). */
   journalDate: string;
-  /** Текст в Markdown. */
+  /** Text in Markdown. */
   bodyMd: string;
-  /** «failed» — плашка «Не отправилось» (в приложении слайса 1 её нет: при ошибке текст остаётся в поле; состояние осталось в Storybook). */
+  /** "failed" is the "Not sent" bubble (the slice 1 app does not have it: on error the text stays in the field; the state remained in Storybook). */
   status?: "sent" | "failed";
   highlighted?: boolean;
-  /** Запись — задача (флажок у плашки). */
+  /** The entry is a task (a checkbox on the bubble). */
   isTask?: boolean;
-  /** Когда задача выполнена (мс); `null` или нет — не выполнена. */
+  /** When the task was completed (ms); `null` or absent means not completed. */
   taskDoneAt?: number | null;
-  /** Когда добавлена в избранное (мс). */
+  /** When it was added to favorites (ms). */
   favoriteAt?: number | null;
-  /** Теги записи в нижнем регистре, без `#` (разбирает Rust): по ним подсвечивается текст. */
+  /** The entry's tags in lower case, without `#` (parsed by Rust): the text is highlighted by them. */
   tags?: readonly string[];
-  /** Запись новее поддерживаемой версии: только для чтения, действия недоступны. */
+  /** The entry is newer than the supported version: read-only, actions unavailable. */
   readOnly?: boolean;
-  /** Кто создал запись (`core.origin`): `agent` — тихая пометка «добавлено агентом» в строке времени. */
+  /** Who created the entry (`core.origin`): `agent` is a quiet "added by an agent" mark in the time line. */
   origin?: string;
-  /** Запись, на которую это ответ (слайс 5): цитата в плашке. */
+  /** The entry this is a reply to (slice 5): a quote in the bubble. */
   replyTo?: ReplyTo | null;
 }
 
 export type FeedItem =
   | { kind: "day"; key: string; journalDate: string }
-  /** Карточка «В этот день» (слайс 5): стоит под меткой своего дня, перед записями этого дня. */
+  /** The "On this day" card (slice 5): stands under its own day label, before the entries of that day. */
   | { kind: "card"; key: "card" }
-  | { kind: "message"; key: string; message: FeedMessage; /** Продолжает серию: промежуток сверху меньше. */ inSeries: boolean };
+  | { kind: "message"; key: string; message: FeedMessage; /** Continues a series: the gap above is smaller. */ inSeries: boolean };
 
-/** Порядок ленты и курсора (§4.1 ТЗ): `(journal_date, created_at, id)`. */
+/** Feed and cursor order (§4.1 of the spec): `(journal_date, created_at, id)`. */
 function byFeedOrder(a: FeedMessage, b: FeedMessage): number {
   if (a.journalDate !== b.journalDate) return a.journalDate < b.journalDate ? -1 : 1;
   if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
@@ -45,8 +45,8 @@ function byFeedOrder(a: FeedMessage, b: FeedMessage): number {
 }
 
 /**
- * Лента: метка дня перед первым сообщением каждого `journal_date`, у каждого сообщения признак серии (пауза < 5 минут,
- * тот же день). Порядок — `(journal_date, created_at, id)`, как у Rust; слияния в «страницы» нет, у каждого своё время (ТЗ §6).
+ * The feed: a day label before the first message of each `journal_date`, every message has a series flag (pause < 5 minutes,
+ * same day). The order is `(journal_date, created_at, id)`, as in Rust; there is no merging into "pages", each has its own time (spec §6).
  */
 export function buildFeed(messages: readonly FeedMessage[], cardDate?: string): FeedItem[] {
   const sorted = [...messages].sort(byFeedOrder);
@@ -59,7 +59,7 @@ export function buildFeed(messages: readonly FeedMessage[], cardDate?: string): 
   };
   for (const message of sorted) {
     if (!previous || previous.journalDate !== message.journalDate) {
-      // Карточка стоит под меткой своего дня перед его записями; нет записей этого дня — на своём месте по дате.
+      // The card stands under its own day label before its entries; with no entries that day, in its place by date.
       if (!cardPlaced && cardDate !== undefined && message.journalDate > cardDate) placeCard(cardDate);
       items.push({ kind: "day", key: `day-${message.journalDate}`, journalDate: message.journalDate });
       if (!cardPlaced && message.journalDate === cardDate) {

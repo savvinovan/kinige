@@ -1,7 +1,7 @@
-//! Запись агента (ADR-0009, слайс 4a): байты записи, дописывание с ревизией `edit`, задачи.
+//! Agent writes (ADR-0009, slice 4a): the bytes of an entry, appending with an `edit` revision, tasks.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -38,7 +38,7 @@ fn add_entry_writes_an_agent_record_with_exact_group_bytes_and_one_log_row() {
         g["flags"],
         r#"{"favorite_at":null,"is_task":false,"pinned_at":null,"task_done_at":null}"#
     );
-    // Пять групп под одним HLC, sv = 1.
+    // Five groups under one HLC, sv = 1.
     let hlcs = hlc_entries(a.dir.path(), "message", &id);
     assert_eq!(hlcs.len(), 5);
     assert_eq!(
@@ -54,7 +54,7 @@ fn add_entry_writes_an_agent_record_with_exact_group_bytes_and_one_log_row() {
         ("add_entry", "ok", 1)
     );
     assert_eq!(rows[0].2, "{}");
-    // Лента видит запись с пометкой происхождения.
+    // The feed sees the entry with an origin mark.
     let page = a
         .store
         .list_messages(INBOX_ID, None, 50, &moscow(T0))
@@ -104,7 +104,7 @@ fn add_entry_goes_to_the_marked_chat_and_the_markdown_copy_gets_it() {
         .join("Работа")
         .join("2026")
         .join("2026-10-21.md");
-    wait_until("файл копии с записью агента", || {
+    wait_until("copy file with the agent entry", || {
         std::fs::read_to_string(&file).is_ok_and(|text| text.contains("запись агента в работе"))
     });
 }
@@ -124,7 +124,7 @@ fn append_goes_to_the_agent_entry_within_ten_minutes_and_saves_an_edit_revision(
     assert_eq!(reply["action"], "appended");
     assert_eq!(entry_id(&reply), id);
     assert_eq!(reply["entry"]["text"], "Пункт один\n\nПункт два");
-    // Ревизия `edit` со снимком до дописывания (исключение из §A.0: ⌘Enter ревизий не пишет).
+    // An `edit` revision with a snapshot from before the append (an exception to §A.0: ⌘Enter writes no revisions).
     let (snapshot, reason): (String, String) = raw(a.dir.path())
         .query_row(
             "SELECT snapshot_json, reason FROM message_revision WHERE message_id = ?1",
@@ -168,7 +168,7 @@ fn append_belongs_to_any_agent_entry_regardless_of_the_client_name() {
 fn append_refuses_when_the_last_entry_is_not_the_agents_or_is_too_old_and_creates_nothing() {
     let a = agent(AgentMode::ReadWrite, true);
     call(&a.store, "add_entry", json!({"text": "агент в 9:12"}), T0).unwrap();
-    // Пользователь записал позже: последняя запись чата не агента.
+    // The user wrote later: the last entry of the chat is not the agent's.
     a.store
         .send_message(INBOX_ID, "мысль пользователя", &moscow(T0 + 3 * MINUTE))
         .unwrap();
@@ -183,7 +183,7 @@ fn append_refuses_when_the_last_entry_is_not_the_agents_or_is_too_old_and_create
         Err(AgentError::NoAgentEntry)
     );
     assert_eq!(count(a.dir.path(), "message"), before);
-    // Запись агента старше десяти минут — тоже нет.
+    // An agent entry older than ten minutes is not allowed either.
     let b = agent(AgentMode::ReadWrite, true);
     call(&b.store, "add_entry", json!({"text": "старая"}), T0).unwrap();
     assert_eq!(
@@ -195,7 +195,7 @@ fn append_refuses_when_the_last_entry_is_not_the_agents_or_is_too_old_and_create
         ),
         Err(AgentError::NoAgentEntry)
     );
-    // Пустой чат — нет записи агента.
+    // An empty chat has no agent entry.
     let c = agent(AgentMode::ReadWrite, true);
     assert_eq!(
         call(
@@ -314,7 +314,7 @@ fn set_task_done_marks_and_unmarks_tasks_and_refuses_plain_entries() {
     let rows = log_rows(a.dir.path());
     assert_eq!(rows.len(), before + 1);
     assert_eq!(rows.last().unwrap().3, "not_a_task");
-    // Запись, которая не задача, не изменилась.
+    // An entry that is not a task did not change.
     let flags = groups(a.dir.path(), "message", &plain)["flags"].clone();
     assert!(flags.contains(r#""is_task":false"#));
 }

@@ -1,7 +1,7 @@
-//! Запрос поиска (слайс 4, задача 4.9), края: пустой запрос и синтаксис FTS5, чаты по названию. Остальное — `search_query.rs`.
+//! Search query (slice 4, task 4.9), edges: an empty query and FTS5 syntax, chats by title. The rest is in `search_query.rs`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -34,7 +34,7 @@ fn empty_query_is_an_empty_page_without_error() {
             "{query:?}"
         );
     }
-    // Синтаксис FTS5 в запросе безвреден.
+    // FTS5 syntax in the query is harmless.
     let page = store
         .search("\" OR * NEAR( ^ - :col", &any(), None, 10)
         .unwrap();
@@ -61,11 +61,8 @@ fn chats_whose_title_matches_come_only_on_the_first_page() {
     let second = store
         .search("книга", &any(), first.older.as_ref(), 3)
         .unwrap();
-    assert!(
-        second.chats.is_empty(),
-        "названия — только на первой странице"
-    );
-    // Название находится по словоформе и по префиксу; Inbox в Rust не сравнивается (его добавляет интерфейс).
+    assert!(second.chats.is_empty(), "titles are only on the first page");
+    // A title is found by word form and by prefix; Inbox is not compared in Rust (the interface adds it).
     assert_eq!(
         store.search("фильм", &any(), None, 3).unwrap().chats.len(),
         1

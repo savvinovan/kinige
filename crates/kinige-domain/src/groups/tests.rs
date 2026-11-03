@@ -22,16 +22,16 @@ fn sample() -> MessageRow {
 #[test]
 fn inbox_id_is_a_valid_v4_uuid() {
     assert!(crate::hlc::is_uuid(INBOX_ID));
-    assert_eq!(INBOX_ID.get(14..15), Some("4"), "версия");
+    assert_eq!(INBOX_ID.get(14..15), Some("4"), "version");
     assert!(
         matches!(INBOX_ID.get(19..20), Some("8" | "9" | "a" | "b")),
-        "вариант"
+        "variant"
     );
 }
 
 #[test]
 fn new_message_group_bytes_are_exact() {
-    // Точные байты групп новой записи: ключи по JCS, без пробелов, `sv = 1`, все пять групп (ADR-0001 §A.0).
+    // The exact bytes of a new entry's groups: JCS key order, no spaces, `sv = 1`, all five groups (ADR-0001 §A.0).
     let row = sample();
     let groups = parse_groups_raw(&row.groups_raw).unwrap();
     let get = |name: &str| groups[name].get().to_string();
@@ -75,7 +75,7 @@ fn new_message_has_hlc_and_sv_for_every_group() {
 
 #[test]
 fn columns_match_canonical_group_bytes() {
-    // Инвариант приложения §B п. 38: колонки — разобранное представление байтов групп.
+    // Appendix invariant §B item 38: the columns are the parsed representation of the groups' bytes.
     let row = sample();
     let groups = parse_groups_raw(&row.groups_raw).unwrap();
     let value = |name: &str| -> Value { serde_json::from_str(groups[name].get()).unwrap() };
@@ -92,7 +92,7 @@ fn columns_match_canonical_group_bytes() {
         assert_eq!(
             jcs::canonical_bytes(&reparsed).unwrap(),
             groups[name].get().as_bytes(),
-            "{name} каноничен"
+            "{name} is canonical"
         );
     }
 }
@@ -111,7 +111,7 @@ fn inbox_core_is_constant_and_independent_of_time_and_device() {
     assert_eq!(a.id, INBOX_ID);
     assert_eq!(
         a.title, "",
-        "хранимое имя пустое, интерфейс показывает переведённое"
+        "the stored name is empty, the interface shows the translated one"
     );
     let groups = parse_groups_raw(&a.groups_raw).unwrap();
     assert_eq!(
@@ -145,20 +145,20 @@ fn body_is_normalized() {
     assert_eq!(normalize_body(" \n\t\r\n"), Err(BodyError::Empty));
 }
 
-/// Каноничные байты группы `body` для текста.
+/// The canonical bytes of the `body` group for a text.
 fn body_group_len(text: &str) -> usize {
     jcs::canonical_bytes(&body_group(text)).unwrap().len()
 }
 
 #[test]
 fn body_limit_counts_canonical_group_bytes_not_text_length() {
-    // Кавычка и перевод строки в JCS занимают по два байта: 256 Ки пар `"\n` — это 512 КиБ текста,
-    // но 1 МиБ группы. По длине текста такая запись проходила бы.
+    // A quote and a line break take two bytes each in JCS: 256 Ki pairs of `"\n` are 512 KiB of text,
+    // but 1 MiB of the group. By text length such an entry would pass.
     let escaped = "\"\n".repeat(256 * 1024);
     assert!(escaped.len() <= MAX_BODY_GROUP_BYTES);
     assert_eq!(normalize_body(&escaped), Err(BodyError::TooLarge));
 
-    // Обычный текст: граница ровно по байтам группы (накладные — ключи и `null` вокруг текста).
+    // Plain text: the boundary is exactly by the group's bytes (the overhead is the keys and `null` around the text).
     let overhead = body_group_len("");
     let fits = "я".repeat((MAX_BODY_GROUP_BYTES - overhead) / 2);
     assert_eq!(
@@ -174,7 +174,7 @@ fn body_limit_counts_canonical_group_bytes_not_text_length() {
 
 #[test]
 fn reply_core_bytes_are_exact_and_other_groups_match_a_plain_message() {
-    // Эталон слайса 5 (приложение ADR-0001 §C.5): `reply_to_id` — id старой записи, остальное как у записи пользователя.
+    // The slice 5 reference (ADR-0001 appendix §C.5): `reply_to_id` is the id of the old entry, the rest is as in a user's entry.
     let input = NewMessage {
         id: MSG_ID,
         chat_id: INBOX_ID,
@@ -221,7 +221,7 @@ fn reply_rejects_ids_that_are_not_a_lowercase_v4_uuid() {
     ] {
         assert_eq!(
             new_reply_message(&input, bad, HLC).unwrap_err(),
-            GroupError::Invalid("reply_to_id не UUID v4"),
+            GroupError::Invalid("reply_to_id is not a UUID v4"),
             "{}",
             bad.chars().take(40).collect::<String>()
         );

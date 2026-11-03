@@ -36,12 +36,12 @@ describe("ряд действий под плашкой", () => {
     const { container } = render(<Message markdown="Купить хлеб" sentAt={sentAt} />);
     const wrap = container.querySelector(".message-wrap");
     expect(wrap).toContainElement(toolbar());
-    // Статья (плашка) и ряд — соседи: ряд не меняет высоту плашки.
+    // The article (bubble) and the row are siblings: the row does not change the bubble height.
     expect(container.querySelector("article")).not.toContainElement(toolbar());
   });
 
   describe("положение ряда: справа от плашки или, если места нет, поверх её правого верхнего угла", () => {
-    // jsdom не считает раскладку, поэтому ширины задаются подменой offsetWidth и clientWidth.
+    // jsdom does not compute layout, so widths are set by overriding offsetWidth and clientWidth.
     const sizes = (wrap: number, actions: number, column: number) => {
       const offset = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
         if (this.classList.contains("message-wrap")) return wrap;
@@ -173,7 +173,7 @@ describe("зона наведения и задержка скрытия", () =>
   it("уход с плашки в пустую часть строки не скрывает ряд (зона — вся строка, а не плашка)", () => {
     const { row, wrap } = renderInFeed();
     enter(row);
-    // Мышь покинула плашку, но осталась внутри строки: у строки pointerleave нет.
+    // The mouse left the bubble but stayed inside the row: the row gets no pointerleave.
     leave(wrap);
     advance(5000);
     expect(wrap).toHaveClass("message-wrap--actions");
@@ -219,7 +219,7 @@ describe("зона наведения и задержка скрытия", () =>
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
       return this.classList.contains("message-actions") ? 26 : 0;
     });
-    // Верх обёртки сообщения относительно верха ленты (верх ленты — 0).
+    // The top of the message wrapper relative to the top of the feed (the feed top is 0).
     let wrapTop = 100;
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
       const y = this.classList.contains("message-wrap") ? wrapTop : 0;
@@ -239,13 +239,13 @@ describe("зона наведения и задержка скрытия", () =>
     const row = container.querySelector(".feed__item") as HTMLElement;
     expect(wrap).toHaveClass("message-wrap--actions-inside");
 
-    wrapTop = 100; // сверху 100 px при высоте ряда 26: места достаточно
+    wrapTop = 100; // 100 px above with a row height of 26: there is enough room
     enter(row);
     expect(wrap).not.toHaveClass("message-wrap--actions-flip");
     leave(row);
     advance(180);
 
-    wrapTop = 5; // над плашкой всего 5 px: ряд прижимается внутрь, а не обрезается краем ленты
+    wrapTop = 5; // only 5 px above the bubble: the row is pressed inside instead of being clipped by the feed edge
     enter(row);
     expect(wrap).toHaveClass("message-wrap--actions-flip");
 

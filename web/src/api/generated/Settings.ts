@@ -7,23 +7,23 @@ import type { ShortcutStatus } from "./ShortcutStatus";
 import type { TextSize } from "./TextSize";
 
 /**
- * Настройки (не синхронизируются, `app_setting`).
+ * Settings (not synced, `app_setting`).
  */
 export type Settings = { textSize: TextSize, mirror: MirrorStatus, 
 /**
- * Глобальные сочетания клавиш (слайс 2): по одному на каждое действие.
+ * Global keyboard shortcuts (slice 2): one for each action.
  */
 shortcuts: Array<ShortcutStatus>, 
 /**
- * Сайдбар свёрнут до полосы эмодзи (слайс 3).
+ * The sidebar is collapsed to an emoji strip (slice 3).
  */
 sidebarCollapsed: boolean, 
 /**
- * Недавние эмодзи пикера, самые свежие первыми (слайс 3).
+ * The picker's recent emoji, the freshest first (slice 3).
  */
 recentEmoji: Array<string>, 
 /**
- * Копия файла базы (слайс 3).
+ * The database file backup (slice 3).
  */
 backup: BackupStatus, 
 /**

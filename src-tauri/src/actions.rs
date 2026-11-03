@@ -1,5 +1,5 @@
-//! Команды главного окна слайса 3: чаты, действия с записью, корзина, настройки сайдбара и пикера. Бизнес-правил здесь нет
-//! (они в `kinige-domain` и `kinige-store`); после изменений обновляется меню значка. Окну захвата эти команды не выданы.
+//! Main window commands of slice 3: chats, entry actions, trash, sidebar and picker settings. There are no business rules here
+//! (they are in `kinige-domain` and `kinige-store`); after changes the icon menu is refreshed. These commands are not granted to the capture window.
 
 use kinige_domain::{ApiError, ChatSummary, MessageFlag, MessageView, TrashItem};
 use kinige_store::{Now, Store, StoreError};
@@ -8,12 +8,12 @@ use tauri::{AppHandle, Runtime, State};
 type ApiResult<T> = Result<T, ApiError>;
 
 fn api(error: StoreError) -> ApiError {
-    // В журнал процесса — только категория: текст внутренней ошибки может содержать куски данных.
-    log::error!("ошибка хранилища: {}", error.category());
+    // Only the category goes to the process log: the text of an internal error may contain pieces of data.
+    log::error!("store error: {}", error.category());
     error.code().into()
 }
 
-/// «+» у раздела «Чаты»: новый чат в конце раздела; без эмодзи — 💬.
+/// The "+" of the "Chats" section: a new chat at the end of the section; without an emoji it gets 💬.
 #[tauri::command(async)]
 pub fn create_chat<R: Runtime>(
     app: AppHandle<R>,
@@ -81,7 +81,7 @@ pub fn set_chat_archived<R: Runtime>(
     Ok(chat)
 }
 
-/// «Удалить»: запись уходит в корзину. Без оптимистичного показа: ответ приходит после фиксации.
+/// "Delete": the entry goes to the trash. No optimistic display: the reply comes after the commit.
 #[tauri::command(async)]
 pub fn delete_message<R: Runtime>(
     app: AppHandle<R>,
@@ -104,13 +104,13 @@ pub fn restore_message<R: Runtime>(
     Ok(())
 }
 
-/// Правка текста в плашке: ответ — запись, как она теперь выглядит; старая версия сохранена ревизией.
+/// Editing the text in the bubble: the reply is the entry as it now looks; the old version is kept as a revision.
 #[tauri::command(async)]
 pub fn edit_message(store: State<'_, Store>, id: String, body: String) -> ApiResult<MessageView> {
     store.edit_message(&id, &body, &Now::system()).map_err(api)
 }
 
-/// Щелчок по `- [ ]` внутри записи: пункт `index` (с нуля) получает состояние `checked`.
+/// A click on `- [ ]` inside an entry: the item `index` (zero-based) gets the state `checked`.
 #[tauri::command(async)]
 pub fn toggle_task_item(
     store: State<'_, Store>,
@@ -123,7 +123,7 @@ pub fn toggle_task_item(
         .map_err(api)
 }
 
-/// Задача, выполнено, избранное.
+/// Task, done, favorite.
 #[tauri::command(async)]
 pub fn set_message_flag(
     store: State<'_, Store>,
@@ -136,7 +136,7 @@ pub fn set_message_flag(
         .map_err(api)
 }
 
-/// «Изменить дату»: `YYYY-MM-DD`; будущие даты разрешены.
+/// "Change date": `YYYY-MM-DD`; future dates are allowed.
 #[tauri::command(async)]
 pub fn set_message_date(
     store: State<'_, Store>,
@@ -148,7 +148,7 @@ pub fn set_message_date(
         .map_err(api)
 }
 
-/// «Переместить в чат»: запись переезжает в другой чат (день и текст не меняются, ревизии нет).
+/// "Move to chat": the entry moves to another chat (the day and text do not change, no revision).
 #[tauri::command(async)]
 pub fn move_message<R: Runtime>(
     app: AppHandle<R>,
@@ -159,7 +159,7 @@ pub fn move_message<R: Runtime>(
     let view = store
         .move_message(&id, &chat_id, &Now::system())
         .map_err(api)?;
-    // «Последние чаты» в меню значка зависят от последней записи чата.
+    // "Recent chats" in the icon menu depend on the last entry of a chat.
     crate::tray::refresh(&app);
     Ok(view)
 }
@@ -169,7 +169,7 @@ pub fn list_trash(store: State<'_, Store>) -> ApiResult<Vec<TrashItem>> {
     store.list_trash(&Now::system()).map_err(api)
 }
 
-/// «Удалить навсегда» у записи в корзине (фронтенд спрашивает подтверждение).
+/// "Delete forever" for an entry in the trash (the frontend asks for confirmation).
 #[tauri::command(async)]
 pub fn purge_message(store: State<'_, Store>, id: String) -> ApiResult<()> {
     store.purge_message(&id, &Now::system()).map_err(api)
@@ -180,7 +180,7 @@ pub fn set_sidebar_collapsed(store: State<'_, Store>, collapsed: bool) -> ApiRes
     store.set_sidebar_collapsed(collapsed).map_err(api)
 }
 
-/// Выбранный в пикере эмодзи — первым в «недавних»; ответ — список целиком.
+/// The emoji chosen in the picker goes first in "recent"; the reply is the whole list.
 #[tauri::command(async)]
 pub fn add_recent_emoji(store: State<'_, Store>, emoji: String) -> ApiResult<Vec<String>> {
     store.add_recent_emoji(&emoji).map_err(api)

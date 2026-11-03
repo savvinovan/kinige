@@ -3,12 +3,12 @@ import { Modal } from "../settings/Modal";
 import "./about.css";
 
 export interface AboutDialogProps {
-  /** Строка сборки от Rust («Kinige 0.5.0», `KinigeApi.appInfo()`): версия берётся из бандла, а не из веб-кода. */
+  /** The build line from Rust ("Kinige 0.5.0", `KinigeApi.appInfo()`): the version comes from the bundle, not from the web code. */
   title: string;
   onClose: () => void;
 }
 
-/** «О программе» поверх главного окна (Modal): название с версией и одна строка о приложении. Второго окна ОС нет. */
+/** "About" over the main window (Modal): the name with the version and one line about the app. There is no second OS window. */
 export function AboutDialog({ title, onClose }: AboutDialogProps) {
   const { t } = useTranslation();
   return (

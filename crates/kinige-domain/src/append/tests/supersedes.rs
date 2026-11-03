@@ -1,4 +1,4 @@
-//! Предел `supersedes` в группе `body` (64, старейшие отбрасываются) и строгий разбор меток HLC (ADR-0001 §3.4).
+//! The `supersedes` limit in the `body` group (64, the oldest are dropped) and strict parsing of HLC stamps (ADR-0001 §3.4).
 
 use super::*;
 
@@ -25,15 +25,15 @@ fn supersedes_keeps_the_newest_64() {
         hlc_json = out.hlc_json;
         all.push(new_hlc);
         let list: Vec<String> = serde_json::from_str(&out.body_supersedes).unwrap();
-        assert!(list.len() <= MAX_SUPERSEDES, "шаг {step}");
-        // Всегда последние версии, кроме текущей.
+        assert!(list.len() <= MAX_SUPERSEDES, "step {step}");
+        // Always the latest versions, except the current one.
         let expected: Vec<&String> = all[..all.len() - 1]
             .iter()
             .rev()
             .take(MAX_SUPERSEDES)
             .rev()
             .collect();
-        assert_eq!(list.iter().collect::<Vec<_>>(), expected, "шаг {step}");
+        assert_eq!(list.iter().collect::<Vec<_>>(), expected, "step {step}");
     }
     let list: Vec<String> = serde_json::from_str(
         &serde_json::from_str::<Value>(&body_group(&groups_raw)).unwrap()["supersedes"].to_string(),
@@ -43,7 +43,7 @@ fn supersedes_keeps_the_newest_64() {
     assert_eq!(list.last(), Some(&hlc(1_760_000_000_000 + 69)));
 }
 
-/// Запись, у которой в `supersedes` уже `count` меток (старейшая — `l = 1_000 + 0`), текущая версия — `l = 1_000 + count`.
+/// An entry whose `supersedes` already has `count` stamps (the oldest is `l = 1_000 + 0`), the current version is `l = 1_000 + count`.
 fn with_supersedes(count: u64) -> (String, String, Vec<String>) {
     let row = message("Идея");
     let old: Vec<String> = (0..count).map(|i| hlc(1_000 + i)).collect();
@@ -75,9 +75,9 @@ fn with_supersedes(count: u64) -> (String, String, Vec<String>) {
 
 #[test]
 fn supersedes_is_exactly_64_at_the_boundary_and_drops_only_the_oldest() {
-    // 62 прежних + текущая версия → после правки 63 метки: ничего не отброшено.
-    // 63 прежних + текущая → ровно 64: ничего не отброшено.
-    // 64 прежних + текущая → было бы 65: отбрасывается ровно одна, самая старая.
+    // 62 previous + the current version -> 63 stamps after the edit: nothing is dropped.
+    // 63 previous + the current -> exactly 64: nothing is dropped.
+    // 64 previous + the current -> would be 65: exactly one is dropped, the oldest.
     for (count, dropped) in [(62u64, 0usize), (63, 0), (64, 1), (70, 7)] {
         let (groups_raw, hlc_json, old) = with_supersedes(count);
         let out = rewrite_body(
@@ -106,15 +106,15 @@ fn supersedes_is_exactly_64_at_the_boundary_and_drops_only_the_oldest() {
         assert_eq!(
             group["supersedes"],
             json!(list),
-            "группа и колонка совпадают"
+            "the group and the column match"
         );
         assert_eq!(
             list.last(),
             Some(&hlc(1_000 + count)),
-            "прежняя версия в списке"
+            "the previous version is in the list"
         );
         if dropped > 0 {
-            assert!(!list.contains(&old[0]), "старейшая отброшена");
+            assert!(!list.contains(&old[0]), "the oldest is dropped");
         }
     }
     let (groups_raw, hlc_json, _) = with_supersedes(63);
@@ -130,13 +130,13 @@ fn supersedes_is_exactly_64_at_the_boundary_and_drops_only_the_oldest() {
     )
     .unwrap();
     let list: Vec<String> = serde_json::from_str(&out.body_supersedes).unwrap();
-    assert_eq!(list.len(), 64, "ровно 64, не 63 и не 65");
+    assert_eq!(list.len(), 64, "exactly 64, not 63 and not 65");
 }
 
 #[test]
 fn malformed_hlc_labels_are_corrupt_not_ordered_by_string_comparison() {
     let row = message("Идея");
-    // Новая метка повреждена, но «больше» как строка.
+    // The new stamp is corrupt but "greater" as a string.
     for bad in ["zzz", "9999999999999-00000-not-a-uuid", ""] {
         assert!(
             matches!(
@@ -146,7 +146,7 @@ fn malformed_hlc_labels_are_corrupt_not_ordered_by_string_comparison() {
             "{bad:?}"
         );
     }
-    // Прежняя метка повреждена: ошибка, а не HlcNotNewer и не успех.
+    // The previous stamp is corrupt: an error, not HlcNotNewer and not success.
     let hlc_json = row.hlc_json.replace(
         &format!(r#""body":{{"h":"{}","sv":1}}"#, hlc(1_760_000_000_000)),
         r#""body":{"h":"0","sv":1}"#,

@@ -1,4 +1,5 @@
-//! Файл одного дня Markdown-копии: записи дня с цитатой ответа, перезапись временным файлом и удаление пустого дня.
+//! The file of one day of the Markdown copy: the day's entries with a reply quote, rewriting through a temporary file
+//! and deleting an empty day.
 
 use crate::time::local_hhmm;
 use kinige_domain::MirrorError;
@@ -11,7 +12,7 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-/// Перезаписывает файл одного дня одного чата или удаляет его, если записей не осталось.
+/// Rewrites the file of one day of one chat, or deletes it if no entries are left.
 pub(crate) fn write_day(
     reader: &Connection,
     root: &Path,
@@ -21,7 +22,7 @@ pub(crate) fn write_day(
     journal_date: &str,
 ) -> Result<(), MirrorError> {
     let Some(segments) = day_file_segments(folder, journal_date) else {
-        // Недопустимая дата или имя папки: файла быть не может, отметку снимаем (иначе она не сойдёт никогда).
+        // Invalid date or folder name: there can be no file, so we clear the mark (otherwise it would never go away).
         return Ok(());
     };
     let entries = day_entries(reader, chat_id, folder, folders, journal_date)
@@ -36,7 +37,7 @@ pub(crate) fn write_day(
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
             Err(_) => return Err(MirrorError::WriteFailed),
         }
-        // Пустые папки года и чата убираем, если они опустели; корень копии не трогаем.
+        // Remove the year and chat folders if they became empty; the copy root is left alone.
         let _ = fs::remove_dir(&year_path);
         let _ = fs::remove_dir(root.join(&chat_dir));
         return Ok(());
@@ -46,7 +47,7 @@ pub(crate) fn write_day(
     write_atomically(&year_path, &file_name, text.as_bytes()).map_err(|_| MirrorError::WriteFailed)
 }
 
-/// Временный файл рядом с целевым → запись → `fsync` → переименование: читатель видит либо старый, либо новый файл целиком.
+/// A temporary file next to the target -> write -> `fsync` -> rename: a reader sees either the old or the new file whole.
 fn write_atomically(dir: &Path, name: &str, bytes: &[u8]) -> std::io::Result<()> {
     fs::create_dir_all(dir)?;
     let temp = dir.join(format!(".{name}.tmp"));
@@ -55,8 +56,8 @@ fn write_atomically(dir: &Path, name: &str, bytes: &[u8]) -> std::io::Result<()>
         file.write_all(bytes)?;
         file.sync_all()?;
         fs::rename(&temp, dir.join(name))?;
-        // Запись в каталоге (само переименование) тоже сбрасывается на диск: иначе после потери питания файл мог бы
-        // оказаться под прежним именем. На Windows каталог открыть нельзя, там ошибка игнорируется.
+        // The directory entry (the rename itself) is flushed to disk too: otherwise after a power loss the file could
+        // end up under the old name. A directory cannot be opened on Windows, so the error is ignored there.
         if let Ok(directory) = fs::File::open(dir) {
             let _ = directory.sync_all();
         }
@@ -68,8 +69,9 @@ fn write_atomically(dir: &Path, name: &str, bytes: &[u8]) -> std::io::Result<()>
     result
 }
 
-/// Записи дня с цитатой ответа (слайс 5): старая запись берётся `LEFT JOIN` по `reply_to_id`, без внешнего ключа. Ссылка
-/// ведёт на файл дня старой записи в папке её чата; запись в корзине в копию не попадает, поэтому её строка без ссылки.
+/// The day's entries with a reply quote (slice 5): the old entry is taken by `LEFT JOIN` on `reply_to_id`, without a
+/// foreign key. The link leads to the day file of the old entry in its chat's folder; an entry in the trash does not
+/// get into the copy, so its line has no link.
 fn day_entries(
     reader: &Connection,
     chat_id: &str,

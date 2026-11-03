@@ -1,5 +1,5 @@
-//! Тесты слоя агента: байты записи агента, правило дописывания, «в этот день», «охотник за паникой» на разборе
-//! аргументов, property-тест «журнал без содержимого» (ADR-0009, слайс 4a).
+//! Agent layer tests: the bytes of an agent entry, the appending rule, "on this day", a "panic hunter" on argument
+//! parsing, the "log without content" property test (ADR-0009, slice 4a).
 
 use super::*;
 use crate::agent_reply::{AgentEntry, fit_entries, month_day};
@@ -58,7 +58,7 @@ fn agent_task_message_has_flags_group_with_is_task() {
         r#"{"favorite_at":null,"is_task":true,"pinned_at":null,"task_done_at":null}"#
     );
     assert!(row.is_task);
-    // Все пять групп под одним HLC, `sv = 1`.
+    // All five groups under one HLC, `sv = 1`.
     let hlcs: Value = serde_json::from_str(&row.hlc_json).unwrap();
     for group in ["core", "body", "flags", "placement", "deleted"] {
         assert_eq!(hlcs[group], json!({"h": HLC, "sv": 1}), "{group}");
@@ -76,12 +76,12 @@ fn append_rule_follows_the_expected_origin_and_user_rule_is_unchanged() {
     };
     let today = "2026-10-09";
     assert!(can_append_origin(&candidate, ORIGIN_AGENT, NOW + 60_000, today).unwrap());
-    // Окно захвата (origin = user) к записи агента не дописывает.
+    // The capture window (origin = user) does not append to an agent entry.
     assert!(!can_append(&candidate, NOW + 60_000, today).unwrap());
-    // Старше десяти минут и не сегодняшняя — нет.
+    // Older than ten minutes and not from today -- no.
     assert!(!can_append_origin(&candidate, ORIGIN_AGENT, NOW + 11 * 60_000, today).unwrap());
     assert!(!can_append_origin(&candidate, ORIGIN_AGENT, NOW + 60_000, "2026-10-10").unwrap());
-    // Запись пользователя агент не дописывает.
+    // The agent does not append to a user's entry.
     let user = AppendCandidate {
         origin: "user",
         ..candidate
@@ -157,7 +157,7 @@ fn argument_limits_and_formats() {
     assert!(ok(AgentTool::AddEntry, json!({"text": "ok", "task": "yes"})).is_err());
     assert!(ok(AgentTool::SetTaskDone, json!({"id": ID})).is_err());
     assert!(ok(AgentTool::SetTaskDone, json!({"id": ID, "done": true})).is_ok());
-    // Лишние поля игнорируются, `null` — «нет поля».
+    // Extra fields are ignored, `null` means "no field".
     assert!(
         ok(
             AgentTool::GetEntry,
@@ -186,7 +186,7 @@ fn cursor_round_trips_and_rejects_garbage() {
     }
 }
 
-/// Мусорные значения: пустые, неверного типа, огромные, со служебными символами.
+/// Garbage values: empty, of the wrong type, huge, with control characters.
 fn garbage() -> Vec<Value> {
     vec![
         Value::Null,
@@ -235,13 +235,13 @@ fn panic_hunt_every_tool_survives_garbage_arguments() {
             for value in garbage() {
                 let mut args = Map::new();
                 args.insert(key.to_string(), value);
-                // Результат не важен: важно, что нет паники, а принятые аргументы после разбора корректны.
+                // The result does not matter: what matters is that there is no panic and accepted arguments are valid after parsing.
                 if let Ok(parsed) = parse_args(tool, Some(&args)) {
                     let _ = args_json(&parsed);
                 }
             }
         }
-        // Все поля сразу мусорные.
+        // All fields garbage at once.
         for value in garbage() {
             let args: Map<String, Value> = keys
                 .iter()
@@ -252,7 +252,7 @@ fn panic_hunt_every_tool_survives_garbage_arguments() {
     }
 }
 
-/// Детерминированный генератор для property-теста (без внешних крейтов).
+/// A deterministic generator for the property test (no external crates).
 struct Xorshift(u64);
 
 impl Xorshift {
@@ -315,10 +315,10 @@ fn log_args_never_contain_entry_text() {
             assert!(!json.contains(&text), "{json}");
             assert!(
                 !json.contains(ID) || chat.is_some(),
-                "id записи в args_json: {json}"
+                "entry id in args_json: {json}"
             );
         }
-        // Через разбор настоящих аргументов инструмента записи.
+        // Through parsing real arguments of a write tool.
         let parsed = parse_args(
             AgentTool::AddEntry,
             Some(&map(
@@ -405,7 +405,7 @@ fn item_numbers_are_whole_non_negative_numbers_and_the_log_keeps_only_the_number
     ] {
         assert!(parse(bad.clone()).is_err(), "{bad}");
     }
-    // `null` — «нет поля»: отметка записи целиком.
+    // `null` means "no field": marks the entry as a whole.
     assert_eq!(
         parse(Value::Null).unwrap(),
         ToolArgs::SetTaskDone {
@@ -439,7 +439,7 @@ fn item_text_is_a_trimmed_non_empty_string_tied_to_item_and_never_reaches_the_lo
             item_text: Some("Почитать книгу".into())
         }
     );
-    // Текст пункта — только в памяти вызова; в журнал идёт номер и больше ничего.
+    // The item text lives only in the call's memory; the log gets the number and nothing else.
     assert_eq!(args_json(&parsed), r#"{"done":true,"item":1}"#);
     for bad in [
         json!(""),
@@ -452,7 +452,7 @@ fn item_text_is_a_trimmed_non_empty_string_tied_to_item_and_never_reaches_the_lo
         assert!(parse(bad.clone()).is_err(), "{bad}");
     }
     assert!(parse(json!("я".repeat(MAX_ITEM_TEXT_CHARS))).is_ok());
-    // `null` — «нет поля»; без `item` текст пункта не принимается.
+    // `null` means "no field"; without `item` the item text is not accepted.
     assert!(matches!(
         parse(Value::Null).unwrap(),
         ToolArgs::SetTaskDone {
@@ -474,12 +474,12 @@ fn list_entries_cut_item_texts_by_the_same_limit_and_keep_the_list_start() {
     let mut entry = entry("тело");
     entry.tasks = items(5, &"я".repeat(900));
     let short = entry.shorten(LIST_TEXT_CHARS);
-    // 900 + 900 + 200 из третьего; остальные отброшены, номера оставшихся прежние.
+    // 900 + 900 + 200 of the third; the rest are dropped, the numbers of the remaining ones are unchanged.
     assert!(short.truncated);
     assert_eq!(short.tasks.len(), 3);
     assert_eq!(short.tasks[2].item, 2);
     assert_eq!(short.tasks[2].text.chars().count(), 200);
-    // Помещающиеся пункты не режутся; без пунктов поле не выводится.
+    // Items that fit are not cut; without items the field is not output.
     let small = entry_with("тело", items(3, "пункт")).shorten(LIST_TEXT_CHARS);
     assert!(!small.truncated);
     assert_eq!(small.tasks.len(), 3);
@@ -498,7 +498,7 @@ fn an_oversized_single_entry_loses_items_too_and_fits() {
     let (fitted, cut) = fit_entries(vec![huge]);
     assert!(cut && fitted[0].truncated);
     assert!(serde_json::to_string(&fitted[0]).unwrap().len() <= RESPONSE_BYTES);
-    // Остаётся начало списка: номера идут подряд с нуля.
+    // The start of the list remains: numbers run consecutively from zero.
     for (position, task) in fitted[0].tasks.iter().enumerate() {
         assert_eq!(task.item, position);
     }

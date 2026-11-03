@@ -1,26 +1,28 @@
-//! Telegram-сообщение → Markdown записи (слайс 4, задача 4.2). Без IO.
+//! Telegram message -> entry Markdown (slice 4, task 4.2). No IO.
 //!
-//! Заглушки и строки «Переслано от» пишутся в текст на языке интерфейса в момент импорта: это данные, а не интерфейс
-//! (спецификация слайса 4, решение 7). Результат проходит [`normalize_body`], поэтому годен для `new_message` как есть.
+//! Placeholders and the "Переслано от" ("Forwarded from") lines are written into the text in the interface language at
+//! the moment of import: this is data, not interface (slice 4 specification, decision 7). The result goes through
+//! [`normalize_body`], so it is fit for `new_message` as is.
 
 use super::{TgMedia, TgMessage, TgSpan, TgSpanKind};
 use crate::groups::normalize_body;
 use crate::lang::Language;
 
-/// Знаки, которые в обычном тексте экранируются везде.
+/// Characters that are escaped everywhere in plain text.
 const SPECIAL: [char; 8] = ['\\', '*', '_', '`', '[', ']', '<', '~'];
 
-/// Текст записи по сообщению. Порядок строк: автор (если передан), пересылка, вложение, текст.
+/// Entry text for a message. Order of lines: author (if given), forward, attachment, text.
 ///
-/// `None` — после сборки не осталось ничего, кроме пробелов (нет текста и вложения), или текст не влезает в группу
-/// `body` (предел 512 КиБ; сообщения Telegram на порядок короче, поэтому на практике это только пустое сообщение).
+/// `None` means nothing but spaces is left after assembly (no text and no attachment), or the text does not fit the
+/// `body` group (limit 512 KiB; Telegram messages are an order of magnitude shorter, so in practice this is only an
+/// empty message).
 pub fn render_body(
     message: &TgMessage,
     author: Option<&str>,
     language: Language,
 ) -> Option<String> {
     let t = Strings::of(language);
-    // Содержание — вложение и текст. Имя автора и «Переслано» содержанием не считаются: сообщение без него пустое.
+    // Content is the attachment and the text. The author name and "Переслано" do not count as content: a message without it is empty.
     let mut content: Vec<String> = Vec::new();
     if let Some(media) = &message.media {
         media_lines(media, &t, &mut content);
@@ -52,12 +54,12 @@ pub fn render_body(
     normalize_body(&lines.join("\n")).ok()
 }
 
-/// Подписи заглушек и пересылки на одном языке.
+/// Captions of placeholders and forwards in one language.
 struct Strings {
     forwarded_from: &'static str,
     forwarded: &'static str,
     poll: &'static str,
-    /// Шаблоны «… не импортировано»: `{}` — подпись (имя файла, эмодзи), если она есть.
+    /// "... not imported" templates: `{}` is the caption (file name, emoji), if there is one.
     photo: &'static str,
     sticker: &'static str,
     animation: &'static str,
@@ -114,7 +116,7 @@ impl Strings {
 }
 
 fn media_lines(media: &TgMedia, t: &Strings, lines: &mut Vec<String>) {
-    // Подпись к шаблону: `" report.pdf"` или пусто. Экранируется как обычный текст.
+    // Caption for the template: `" report.pdf"` or empty. Escaped as plain text.
     let with = |template: &str, label: Option<&str>| {
         let label = label
             .map(str::trim)
@@ -152,7 +154,7 @@ fn media_lines(media: &TgMedia, t: &Strings, lines: &mut Vec<String>) {
     }
 }
 
-/// Куски текста → Markdown. Блоки (`Pre`, `Blockquote`) всегда начинаются с новой строки и заканчиваются переводом строки.
+/// Text pieces -> Markdown. Blocks (`Pre`, `Blockquote`) always start on a new line and end with a line break.
 fn render_spans(spans: &[TgSpan]) -> String {
     let mut out = String::new();
     for span in spans {
@@ -188,7 +190,7 @@ fn render_spans(spans: &[TgSpan]) -> String {
                     ));
                 }
             }
-            // Дословно: `#тег` остаётся тегом, адрес — ссылкой.
+            // Verbatim: `#tag` stays a tag, an address stays a link.
             TgSpanKind::Link
             | TgSpanKind::Email
             | TgSpanKind::Phone
@@ -196,7 +198,7 @@ fn render_spans(spans: &[TgSpan]) -> String {
             | TgSpanKind::Hashtag
             | TgSpanKind::Cashtag
             | TgSpanKind::BotCommand => out.push_str(&span.text),
-            // Подчёркивание и спойлер в Markdown записи не выражаются, остальное — как обычный текст.
+            // Underline and spoiler cannot be expressed in the entry Markdown; the rest is plain text.
             _ => out.push_str(&escape(&span.text, at_start)),
         }
     }
@@ -209,14 +211,14 @@ fn ensure_new_line(out: &mut String) {
     }
 }
 
-/// Текст в маркерах построчно: пробелы по краям строки остаются снаружи, пустые строки маркеров не получают.
+/// Text in markers line by line: spaces at the line edges stay outside, empty lines get no markers.
 fn wrap(text: &str, marker: &str) -> String {
     map_lines(text, |core| {
         format!("{marker}{}{marker}", escape(core, false))
     })
 }
 
-/// Код в строке: обратных кавычек вокруг на одну больше, чем самая длинная серия внутри.
+/// Inline code: one more backtick around than the longest run inside.
 fn code_inline(text: &str) -> String {
     map_lines(text, |core| {
         let fence = "`".repeat(longest_run(core, '`') + 1);
@@ -229,7 +231,7 @@ fn code_inline(text: &str) -> String {
     })
 }
 
-/// Применяет `f` к содержимому каждой строки без пробелов по краям; пробелы и пустые строки сохраняются.
+/// Applies `f` to the content of each line without edge spaces; spaces and empty lines are kept.
 fn map_lines(text: &str, f: impl Fn(&str) -> String) -> String {
     text.split('\n')
         .map(|line| {
@@ -239,7 +241,7 @@ fn map_lines(text: &str, f: impl Fn(&str) -> String) -> String {
             }
             let start = line.len() - line.trim_start().len();
             let end = line.trim_end().len();
-            // Границы взяты из `trim_*`, то есть лежат на границах символов.
+            // The bounds come from `trim_*`, so they lie on character boundaries.
             let head = line.get(..start).unwrap_or_default();
             let tail = line.get(end..).unwrap_or_default();
             format!("{head}{}{tail}", f(core))
@@ -257,7 +259,7 @@ fn longest_run(text: &str, target: char) -> usize {
     best
 }
 
-/// Ограждённый блок кода на отдельных строках; ограда длиннее любой серии кавычек внутри.
+/// A fenced code block on separate lines; the fence is longer than any run of backticks inside.
 fn fenced(text: &str, language: Option<&str>) -> String {
     let fence = "`".repeat((longest_run(text, '`') + 1).max(3));
     let info: String = language
@@ -269,7 +271,7 @@ fn fenced(text: &str, language: Option<&str>) -> String {
     format!("{fence}{info}\n{body}\n{fence}\n")
 }
 
-/// Адрес ссылки: пробелы, `<`, `>`, `\` и управляющие знаки — процентами; скобки остаются, пока они парные.
+/// Link destination: spaces, `<`, `>`, `\` and control characters are percent-encoded; brackets stay while they are paired.
 fn destination(href: &str) -> String {
     let balanced = {
         let mut depth = 0i32;
@@ -304,8 +306,8 @@ fn destination(href: &str) -> String {
     out
 }
 
-/// Обычный текст → Markdown без форматирования. `at_line_start`: текст стоит в начале строки записи (первая строка текста
-/// и каждая следующая), поэтому знаки списка, цитаты и заголовка в начале строки тоже экранируются.
+/// Plain text -> Markdown without formatting. `at_line_start`: the text stands at the start of an entry line (the first
+/// line of the text and every following one), so list, quote and heading marks at the line start are escaped too.
 fn escape(text: &str, at_line_start: bool) -> String {
     let mut out = String::with_capacity(text.len() + 8);
     for (index, line) in text.split('\n').enumerate() {
@@ -327,8 +329,8 @@ fn escape(text: &str, at_line_start: bool) -> String {
     out
 }
 
-/// Байтовый индекс знака, который в начале строки превращает её в разметку: `#`, `>`, `-`, `+`, `N.`, `N)`, строки из
-/// одних `-` или `=`. `*`, `_` и `~` экранируются везде, поэтому здесь не нужны.
+/// Byte index of a character that turns the line into markup at its start: `#`, `>`, `-`, `+`, `N.`, `N)`, lines made
+/// of only `-` or `=`. `*`, `_` and `~` are escaped everywhere, so they are not needed here.
 fn line_marker(line: &str) -> Option<usize> {
     let trimmed = line.trim_start_matches([' ', '\t']);
     let lead = line.len() - trimmed.len();

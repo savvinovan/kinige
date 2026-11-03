@@ -4,7 +4,7 @@ import "../feed/feed.css";
 import { Frame, FrameLabel } from "../stories/Frame";
 import { Message } from "./Message";
 
-// Время в историях фиксировано (местное), чтобы снимки не менялись от запуска к запуску.
+// The time in the stories is fixed (local), so that snapshots do not change from run to run.
 const at = (hour: number, minute: number) => new Date(2026, 9, 20, hour, minute);
 
 const CODE = "```\nfn main() {\n    let today = Day::new(2026, 10, 20);\n    println!(\"Записей: {}\", today.count());\n}\n```";
@@ -22,10 +22,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Обычное: короткий текст — короткая плашка, время в правом нижнем углу. */
+/** Normal: short text, a short bubble, the time in the bottom right corner. */
 export const Обычное: Story = {};
 
-/** Курсив, жирный, ссылка и строчный код в одном абзаце; плашка по тексту, но не шире ~80 знаков. */
+/** Italic, bold, a link and inline code in one paragraph; the bubble fits the text but is no wider than ~80 characters. */
 export const Текст: Story = {
   args: {
     markdown:
@@ -33,7 +33,7 @@ export const Текст: Story = {
   },
 };
 
-/** Заголовки H1–H3: ненамного крупнее текста (компактная шкала). */
+/** Headings H1-H3: not much larger than the text (compact scale). */
 export const Заголовки: Story = {
   render: () => (
     <>
@@ -44,7 +44,7 @@ export const Заголовки: Story = {
   ),
 };
 
-/** Списки и задачи: обычные пункты, нумерованный список, отмеченные и неотмеченные задачи. */
+/** Lists and tasks: ordinary items, a numbered list, checked and unchecked tasks. */
 export const СпискиИЗадачи: Story = {
   render: () => (
     <>
@@ -55,7 +55,7 @@ export const СпискиИЗадачи: Story = {
   ),
 };
 
-/** Цитата: черта только у цитаты, следующий абзац без черты. */
+/** Quote: the bar only on the quote, the next paragraph has no bar. */
 export const Цитата: Story = {
   args: {
     markdown: "> Лучше сделано, чем идеально.\n\nЗаписал, чтобы перечитать, когда начну полировать пятый день подряд.",
@@ -63,7 +63,7 @@ export const Цитата: Story = {
   },
 };
 
-/** Код: строчный и блок; блок на отдельной заливке, время под блоком. */
+/** Code: inline and block; the block has its own fill, the time is under the block. */
 export const Код: Story = {
   args: {
     markdown: `Починил историю командой \`git rebase --onto main\`, вот что получилось:\n\n${CODE}`,
@@ -71,7 +71,7 @@ export const Код: Story = {
   },
 };
 
-/** Код с длинной строкой и абзац после него (KINIG-40): строка переносится, под блоком нет полосы прокрутки, и первая строка абзаца ничем не закрыта, даже если ОС показывает полосы всегда. */
+/** Code with a long line and a paragraph after it (KINIG-40): the line wraps, there is no scroll bar under the block, and the first line of the paragraph is not covered by anything, even if the OS always shows scroll bars. */
 export const КодСДлиннойСтрокой: Story = {
   args: {
     markdown: `Вот команда сборки:\n\n${LONG_CODE}\n\nПосле неё запускаю проверки и жду зелёного результата.`,
@@ -79,7 +79,7 @@ export const КодСДлиннойСтрокой: Story = {
   },
 };
 
-/** Длинный текст: плашка упирается в ширину ~80 знаков и переносит строки; время остаётся у конца последней. */
+/** Long text: the bubble hits the ~80 character width and wraps lines; the time stays at the end of the last one. */
 export const ДлинныйТекст: Story = {
   args: {
     markdown:
@@ -88,7 +88,7 @@ export const ДлинныйТекст: Story = {
   },
 };
 
-/** Длинная строка без пробелов и длинная строка кода: обе переносятся, прокрутки нет. */
+/** A long line without spaces and a long line of code: both wrap, there is no scrolling. */
 export const ДлиннаяСтрокаБезПробелов: Story = {
   render: () => (
     <>
@@ -104,7 +104,7 @@ export const ДлиннаяСтрокаБезПробелов: Story = {
   ),
 };
 
-/** Кириллица и латиница в одном сообщении, цифры, пунктуация, тире. */
+/** Cyrillic and Latin in one message, digits, punctuation, dashes. */
 export const КириллицаИЛатиница: Story = {
   args: {
     markdown:
@@ -112,7 +112,7 @@ export const КириллицаИЛатиница: Story = {
   },
 };
 
-/** Состояния: подсвечено, не отправилось, оба вместе. Серию (меньший промежуток) показывает история «Лента». */
+/** States: highlighted, not sent, both together. A series (a smaller gap) is shown by the "Feed" story. */
 export const Состояния: Story = {
   render: () => (
     <>
@@ -132,12 +132,12 @@ export const Состояния: Story = {
   ),
 };
 
-/** Фокус с клавиатуры на «Повторить»: кольцо фокуса видно на заливке плашки. */
+/** Keyboard focus on "Retry": the focus ring is visible on the bubble fill. */
 export const Фокус: Story = {
   render: () => <FocusedRetry />,
 };
 
-/** Ставит фокус на кнопку «Повторить» после показа: так история показывает кольцо фокуса без мыши. */
+/** Puts focus on the "Retry" button after display: this is how the story shows the focus ring without a mouse. */
 function FocusedRetry() {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => host.current?.querySelector("button")?.focus(), []);
@@ -148,7 +148,7 @@ function FocusedRetry() {
   );
 }
 
-/** Наведение, короткое сообщение: справа от плашки, на уровне нижней строки, ряд действий (копировать, редактировать, задача, избранное, ещё). «Копировать» работает, остальные только вид. */
+/** Hover, a short message: to the right of the bubble, level with the bottom line, the action row (copy, edit, task, favorite, more). "Copy" works, the others are only visual. */
 export const Наведение: Story = {
   render: () => (
     <div className="story-column">
@@ -157,7 +157,7 @@ export const Наведение: Story = {
   ),
 };
 
-/** Наведение, сообщение максимальной ширины (около 65 знаков) в колонке 720 px: справа ещё хватает места. */
+/** Hover, a message of maximum width (about 65 characters) in a 720 px column: there is still enough room on the right. */
 export const НаведениеШирокаяПлашка: Story = {
   render: () => (
     <div className="story-column">
@@ -170,7 +170,7 @@ export const НаведениеШирокаяПлашка: Story = {
   ),
 };
 
-/** Наведение в узком окне: справа нет места, ряд стоит поверх правого верхнего угла самой плашки и накрывает только её край. */
+/** Hover in a narrow window: there is no room on the right, the row stands over the top right corner of the bubble itself and covers only its edge. */
 export const НаведениеУзкоеОкно: Story = {
   render: () => (
     <div className="story-column story-column--narrow">
@@ -183,7 +183,7 @@ export const НаведениеУзкоеОкно: Story = {
   ),
 };
 
-/** Наведение на сообщение в серии: ряд справа от плашки не задевает ни верхнюю, ни нижнюю соседнюю плашку. */
+/** Hover on a message in a series: the row to the right of the bubble touches neither the upper nor the lower neighboring bubble. */
 export const НаведениеВСерии: Story = {
   render: () => (
     <div className="story-column" style={{ gap: "var(--layout-message-gap-series)" }}>
@@ -194,7 +194,7 @@ export const НаведениеВСерии: Story = {
   ),
 };
 
-/** Фокус с клавиатуры на первой кнопке ряда: ряд виден, у кнопки кольцо фокуса. */
+/** Keyboard focus on the first button of the row: the row is visible, the button has a focus ring. */
 export const ФокусНаДействиях: Story = {
   render: () => <FocusedActions />,
 };
@@ -209,7 +209,7 @@ function FocusedActions() {
   );
 }
 
-/** Наведение на первое сообщение у верхнего края ленты в узком окне: над плашкой нет места, ряд прижимается внутрь, а не обрезается краем ленты. */
+/** Hover on the first message at the top edge of the feed in a narrow window: there is no room above the bubble, the row is pressed inside instead of being clipped by the feed edge. */
 export const НаведениеПервоеСообщение: Story = {
   render: () => (
     <div className="story-column story-column--narrow story-feed-top">
@@ -224,7 +224,7 @@ export const НаведениеПервоеСообщение: Story = {
   ),
 };
 
-/** Наведение в серии в узком окне: промежуток 3,25 px, ряд над плашкой неизбежно заходит на нижний край предыдущей (и на её время, если плашки одной ширины). */
+/** Hover in a series in a narrow window: the gap is 3.25 px, the row above the bubble inevitably overlaps the bottom edge of the previous one (and its time, if the bubbles have the same width). */
 export const НаведениеВСерииУзкоеОкно: Story = {
   render: () => (
     <div className="story-column story-column--narrow" style={{ gap: "var(--layout-message-gap-series)" }}>

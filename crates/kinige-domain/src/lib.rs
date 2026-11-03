@@ -1,4 +1,4 @@
-//! Правила предметной области Kinige. Без IO; собирается и под `wasm32` (§3.2 ТЗ).
+//! Kinige domain rules. No IO; also builds for `wasm32` (PRD §3.2).
 
 pub mod agent;
 pub mod agent_api;
@@ -69,17 +69,17 @@ pub use settings_file::{
 };
 pub use shortcuts::{ShortcutKind, ShortcutState, ShortcutStatus};
 
-/// Сведения о приложении, которые фронтенд получает через `KinigeApi`.
+/// App information that the frontend receives through `KinigeApi`.
 ///
-/// TS-тип генерируется в `web/src/api/generated/` (см. ADR-0002).
+/// The TS type is generated in `web/src/api/generated/` (see ADR-0002).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[ts(export, export_to = "AppInfo.ts")]
 pub struct AppInfo {
-    /// Строка для окна: «Kinige 0.1.0».
+    /// The string for the window: "Kinige 0.1.0".
     pub title: String,
 }
 
-/// Собирает сведения о приложении из версии сборки.
+/// Builds the app information from the build version.
 pub fn app_info(version: &str) -> AppInfo {
     AppInfo {
         title: format!("Kinige {version}"),

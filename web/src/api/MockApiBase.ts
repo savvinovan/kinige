@@ -14,38 +14,38 @@ import type { StartupState } from "./generated/StartupState";
 export type MockMethod = keyof KinigeApi;
 
 /**
- * Общее состояние `MockApi` и окно захвата: записи, чаты, настройки, события, журнал вызовов и отказы команд. Команды
- * главного окна — в `MockApi`.
+ * The shared `MockApi` state and the capture window: entries, chats, settings, events, the call log and command failures.
+ * The main window commands are in `MockApi`.
  */
 export class MockApiBase {
-  /** Ссылки, которые «открыты в системном браузере». */
+  /** Links that were "opened in the system browser". */
   readonly openedUrls: string[] = [];
-  /** Следующая отправка завершится этой ошибкой, ничего не записав. */
+  /** The next send fails with this error without writing anything. */
   failNextSend: ErrorCode | null = null;
-  /** Следующий выбор папки завершится этой ошибкой. */
+  /** The next folder choice fails with this error. */
   failNextPick: ErrorCode | null = null;
-  /** Следующая смена или сброс сочетания завершится этой ошибкой. */
+  /** The next shortcut change or reset fails with this error. */
   failNextShortcut: ErrorCode | null = null;
-  /** Следующая отправка или дописывание из окна захвата завершится этой ошибкой. */
+  /** The next send or append from the capture window fails with this error. */
   failNextCapture: ErrorCode | null = null;
-  /** Окно захвата спрятано командой `captureHide` столько раз. */
+  /** The capture window was hidden by the `captureHide` command this many times. */
   hideCount = 0;
-  /** Высоты окна захвата, которые страница просила командой `captureResize`. */
+  /** Capture window heights that the page asked for with the `captureResize` command. */
   readonly resizeLog: number[] = [];
-  /** Записи режима записи сочетания: `true` при начале, `false` в конце. */
+  /** Shortcut recording mode records: `true` at the start, `false` at the end. */
   readonly recordingLog: boolean[] = [];
-  /** Журнал вызовов команд слайса 3: `метод аргументы` — для проверок порядка и числа вызовов. */
+  /** The slice 3 command call log: `method arguments` - for checking the order and number of calls. */
   readonly calls: string[] = [];
-  /** Восстановление из копии запрошено: имя копии. */
+  /** Restoring from a backup was requested: the backup name. */
   restoredFrom: string | null = null;
-  /** Перезапуск для восстановления запрошен. */
+  /** A restart for the restore was requested. */
   restartRequested = false;
   pickedFolder: string | null;
 
   protected rows: Row[];
   protected chats: ChatSummary[];
   protected readonly drafts = new Map<string, string>();
-  /** Запись, на которую пишется ответ, у черновика чата (слайс 5). */
+  /** The entry that a chat draft replies to (slice 5). */
   protected readonly replyDrafts = new Map<string, string>();
   protected captureDraft = "";
   protected readonly listeners = new Set<() => void>();
@@ -82,27 +82,27 @@ export class MockApiBase {
     this.pickedFolder = options.pickedFolder === undefined ? "/Users/me/Notes/Kinige" : options.pickedFolder;
   }
 
-  /** Следующий вызов этой команды завершится ошибкой (один раз). */
+  /** The next call of this command fails with an error (once). */
   failNext(method: MockMethod, code: ErrorCode): void {
     this.failures.set(method, code);
   }
 
-  /** Как событие Rust «записи изменились» (в тестах — запись, сделанная окном захвата). */
+  /** Like the Rust "entries changed" event (in tests, an entry made by the capture window). */
   emitEntriesChanged(): void {
     for (const handler of [...this.listeners]) handler();
   }
 
-  /** Запись, появившаяся «снаружи» (окно захвата, буфер): попадает в ленту после события. */
+  /** An entry that appeared "from outside" (the capture window, the clipboard): reaches the feed after the event. */
   addExternalMessage(message: MessageView): void {
     this.rows.push({ view: message, deletedAt: null, revisions: [] });
   }
 
-  /** Тексты до каждой правки записи (ревизии `edit`), старые первыми. */
+  /** Texts before each entry edit (`edit` revisions), oldest first. */
   revisionsOf(id: string): string[] {
     return this.rows.find((r) => r.view.id === id)?.revisions ?? [];
   }
 
-  /** Запись как она сейчас в «базе» (в том числе из корзины). */
+  /** An entry as it is now in the "database" (including from the trash). */
   messageById(id: string): MessageView | undefined {
     return this.rows.find((r) => r.view.id === id)?.view;
   }
@@ -125,7 +125,7 @@ export class MockApiBase {
     });
   }
 
-  /** Эмодзи, выбранный в пикере окна захвата: общий список «недавних» (тот же, что у главного окна). */
+  /** The emoji chosen in the capture window picker: the shared "recent" list (the same as the main window's). */
   captureAddRecentEmoji(emoji: string): Promise<string[]> {
     if (emoji.trim() === "") return Promise.reject(new KinigeApiError("chat_icon_invalid"));
     const recent = [emoji, ...this.settings.recentEmoji.filter((known) => known !== emoji)].slice(0, 24);
@@ -156,7 +156,7 @@ export class MockApiBase {
     return Promise.resolve();
   }
 
-  /** Живые (не из корзины) записи чата по порядку ленты. */
+  /** Live (not trashed) entries of a chat in feed order. */
   protected live(chatId: string): MessageView[] {
     return this.rows
       .filter((r) => r.view.chatId === chatId && r.deletedAt === null)
@@ -164,12 +164,12 @@ export class MockApiBase {
       .sort(compareFeed);
   }
 
-  /** Запись с цитатой ответа, как её отдаёт Rust: состояние старой записи считается при каждом чтении (слайс 5). */
+  /** An entry with a reply quote as Rust returns it: the old entry's state is computed on every read (slice 5). */
   protected viewOf(row: Row): MessageView {
     return row.replyToId === undefined ? row.view : { ...row.view, replyTo: this.replyTo(row.replyToId, row.view.journalDate) };
   }
 
-  /** Цитата для записи-адресата `targetId` в день `replyDate`: живая, в корзине или «удалена». */
+  /** The quote for the addressee entry `targetId` on day `replyDate`: live, trashed or "deleted". */
   protected replyTo(targetId: string, replyDate: string): ReplyTo {
     const target = this.rows.find((r) => r.view.id === targetId);
     if (!target) return { id: targetId, chatId: null, journalDate: null, excerpt: "", state: "missing", yearsLater: 0 };
@@ -222,7 +222,7 @@ export class MockApiBase {
     return row.view;
   }
 
-  /** День записи с границей 04:00 (упрощённо, UTC). */
+  /** The entry's day with the 04:00 boundary (simplified, UTC). */
   protected journalDate(date: Date): string {
     return new Date(date.getTime() - 4 * 3_600_000).toISOString().slice(0, 10);
   }
@@ -256,7 +256,7 @@ export class MockApiBase {
     return Promise.resolve({ action: "created", message });
   }
 
-  /** Правило цели дописывания, упрощённо: сегодняшняя запись не старше десяти минут (остальное решает Rust). */
+  /** The append target rule, simplified: today's entry not older than ten minutes (Rust decides the rest). */
   private canAppend(message: MessageView, now: Date): boolean {
     return message.journalDate === this.journalDate(now) && now.getTime() - message.createdAt <= APPEND_WINDOW_MS;
   }

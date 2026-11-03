@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// Поведение, которое видно только в настоящем окне (jsdom CSS не считает): правила не должны пропасть из таблиц.
+// Behavior that is visible only in a real window (jsdom does not compute CSS): the rules must not disappear from the stylesheets.
 const css = (name: string) => readFileSync(new URL(name, import.meta.url), "utf8");
 
 describe("Поиск: правила CSS", () => {

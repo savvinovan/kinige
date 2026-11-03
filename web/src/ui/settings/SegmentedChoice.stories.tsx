@@ -41,14 +41,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** «Обычный» выбран. */
+/** "Обычный" is selected. */
 export const Обычный: Story = {};
 
-/** «Крупный» выбран. */
+/** "Крупный" is selected. */
 export const Крупный: Story = { args: { initial: "large" } };
 
-/** Длинные подписи, кириллица и латиница: сегменты растут по тексту. */
+/** Long labels, Cyrillic and Latin: the segments grow with the text. */
 export const ДлинныеПодписи: Story = { args: { options: "long" } };
 
-/** Фокус с клавиатуры на выбранном варианте; стрелки двигают фокус и выбор. */
+/** Keyboard focus on the selected option; the arrows move focus and selection. */
 export const Фокус: Story = { args: { focus: true } };

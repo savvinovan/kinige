@@ -1,9 +1,9 @@
-//! «Охотник за паникой» для MCP (KINIG-28): каждый инструмент получает мусорные аргументы — не объект, пустые, не тех типов
-//! и враждебные по значению. Ответ приходит всегда, на неверные типы это `isError`, а сервер после всего мусора отвечает на
-//! обычный вызов.
+//! The "panic hunter" for MCP (KINIG-28): each tool gets garbage arguments -- not an object, empty, of the wrong types
+//! and hostile by value. A reply always comes, for wrong types it is `isError`, and after all the garbage the server answers
+//! a regular call.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 // The MCP server is a Unix socket; there is none on Windows (slice 10a).
 #![cfg(unix)]
@@ -47,12 +47,12 @@ fn hostile_for(kind: &str) -> Vec<Value> {
     }
 }
 
-/// Сырой ответ на `tools/call`: ответ приходит всегда (`request` ждёт его и падает, если сервер замолчал).
+/// The raw reply to `tools/call`: a reply always comes (`request` waits for it and fails if the server went silent).
 fn call_raw(client: &mut Client, tool: &str, arguments: Value) -> Value {
     client.request("tools/call", json!({"name": tool, "arguments": arguments}))
 }
 
-/// Отказ: ошибка JSON-RPC (аргументы не разобраны) или результат с `isError`.
+/// A refusal: a JSON-RPC error (the arguments were not parsed) or a result with `isError`.
 fn failed(reply: &Value) -> bool {
     reply.get("error").is_some() || reply["result"]["isError"].as_bool().unwrap_or(false)
 }
@@ -82,13 +82,11 @@ fn every_tool_survives_garbage_arguments_and_the_server_lives_on() {
     let mut client = mcp.client();
     client.handshake("Hunter");
     let listed = client.request("tools/list", json!({}));
-    let tools = listed["result"]["tools"]
-        .as_array()
-        .expect("список инструментов");
-    assert_eq!(tools.len(), 8, "охотник должен видеть все инструменты");
+    let tools = listed["result"]["tools"].as_array().expect("the tool list");
+    assert_eq!(tools.len(), 8, "the hunter must see all the tools");
 
     for tool in tools {
-        let name = tool["name"].as_str().expect("имя");
+        let name = tool["name"].as_str().expect("the name");
         let schema = &tool["inputSchema"];
         let properties: Map<String, Value> = schema["properties"]
             .as_object()
@@ -96,23 +94,23 @@ fn every_tool_survives_garbage_arguments_and_the_server_lives_on() {
             .unwrap_or_default();
         let required = schema["required"].as_array().map_or(0, Vec::len);
 
-        // Не объект и пустые аргументы: ответ приходит; если есть обязательные поля, это ошибка.
+        // Not an object and empty arguments: a reply comes; if there are required fields, it is an error.
         for arguments in [json!(5), json!("x"), json!([]), Value::Null, json!({})] {
             let reply = call_raw(&mut client, name, arguments.clone());
             if required > 0 {
                 assert!(failed(&reply), "{name}({arguments}): {reply}");
             }
         }
-        // Не те типы у каждого поля.
+        // The wrong types for every field.
         if required > 0 {
             let wrong: Map<String, Value> = properties
                 .iter()
                 .map(|(key, spec)| (key.clone(), wrong_for(spec["type"].as_str().unwrap_or(""))))
                 .collect();
             let reply = call_raw(&mut client, name, Value::Object(wrong));
-            assert!(failed(&reply), "{name}: не те типы приняты: {reply}");
+            assert!(failed(&reply), "{name}: wrong types were accepted: {reply}");
         }
-        // Враждебные значения нужного типа, по одному полю при безобидных остальных: ответ приходит, паники нет.
+        // Hostile values of the right type, one field at a time with harmless others: a reply comes, no panic.
         for (key, spec) in &properties {
             for value in hostile_for(spec["type"].as_str().unwrap_or("")) {
                 let mut arguments: Map<String, Value> = properties
@@ -130,7 +128,7 @@ fn every_tool_survives_garbage_arguments_and_the_server_lives_on() {
         }
     }
 
-    // Сервер жив, и мусор ничего не записал.
+    // The server is alive, and the garbage wrote nothing.
     let (is_error, _) = client.call("list_chats", json!({}));
-    assert!(!is_error, "после мусора инструменты работают");
+    assert!(!is_error, "the tools work after the garbage");
 }

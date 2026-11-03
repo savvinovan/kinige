@@ -8,12 +8,12 @@ import "../../settings/settings.css";
 interface AppearancePageProps {
   textSize: TextSize;
   onTextSizeChange: (size: TextSize) => void;
-  /** Когда раздел менялся через файл (UTC, мс). */
+  /** When the section was changed through the file (UTC, ms). */
   changedAt: number | null;
   now?: Date;
 }
 
-/** «Оформление»: размер текста. */
+/** "Оформление": the text size. */
 export function AppearancePage({ textSize, onTextSizeChange, changedAt, now }: AppearancePageProps) {
   const { t } = useTranslation();
   const titleId = useId();

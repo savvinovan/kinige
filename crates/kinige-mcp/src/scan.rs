@@ -1,22 +1,22 @@
-//! Минимальный разбор сообщения JSON-RPC: мосту нужны только `id` и `method` верхнего уровня (ADR-0009). Остальное он не
-//! читает и не хранит. Никакой паники на мусоре: любая неразобранная строка даёт пустой результат и пересылается как есть.
+//! Minimal parsing of a JSON-RPC message: the bridge needs only the top-level `id` and `method` (ADR-0009). It does not
+//! read or store the rest. No panic on garbage: any unparsed line gives an empty result and is forwarded as is.
 
-/// Что мост знает о сообщении.
+/// What the bridge knows about a message.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Scan {
-    /// `id` дословно, как в строке (число или строка JSON); другие значения (`null`, объект) не считаются.
+    /// `id` verbatim, as in the line (a JSON number or string); other values (`null`, an object) do not count.
     pub id: Option<String>,
-    /// `method`, если это простая строка без escape-последовательностей.
+    /// `method`, if it is a plain string without escape sequences.
     pub method: Option<String>,
 }
 
 impl Scan {
-    /// Запрос: есть и `method`, и `id`. Только запросы ждут ответа.
+    /// A request: both `method` and `id` are present. Only requests wait for a reply.
     pub fn is_request(&self) -> bool {
         self.id.is_some() && self.method.is_some()
     }
 
-    /// Ответ: есть `id` и нет `method` (в том числе ответ клиента на запрос сервера).
+    /// A reply: `id` is present and `method` is not (including a client reply to a server request).
     pub fn is_response(&self) -> bool {
         self.id.is_some() && self.method.is_none()
     }
@@ -30,15 +30,15 @@ pub fn scan(line: &[u8]) -> Scan {
     }
 }
 
-/// Разбирает только начало слишком длинной строки: `id`, если он стоит раньше места обрыва. Нужен, чтобы ответить на
-/// отвергнутый кадр ошибкой с настоящим `id`, а не с `null`.
+/// Parses only the beginning of a too-long line: the `id`, if it stands before the cut. It is needed to answer a
+/// rejected frame with an error carrying the real `id` and not `null`.
 pub fn scan_prefix(prefix: &[u8]) -> Scan {
     let mut found = Scan::default();
     let _ = scan_object(prefix, &mut found);
     found
 }
 
-/// Строка — целый JSON-объект верхнего уровня (по структуре; значения не проверяются).
+/// The line is a whole top-level JSON object (by structure; values are not checked).
 pub fn is_object(line: &[u8]) -> bool {
     scan_object(line, &mut Scan::default()).is_some()
 }
@@ -103,7 +103,7 @@ fn skip_space(line: &[u8], mut i: usize) -> usize {
     i
 }
 
-/// Индекс сразу после закрывающей кавычки строки, которая начинается в `start`.
+/// The index right after the closing quote of the string that starts at `start`.
 fn string_end(line: &[u8], start: usize) -> Option<usize> {
     let mut i = start + 1;
     loop {
@@ -115,7 +115,7 @@ fn string_end(line: &[u8], start: usize) -> Option<usize> {
     }
 }
 
-/// Индекс сразу после значения, которое начинается в `start`.
+/// The index right after the value that starts at `start`.
 fn value_end(line: &[u8], start: usize) -> Option<usize> {
     match *line.get(start)? {
         b'"' => string_end(line, start),
@@ -182,7 +182,7 @@ mod tests {
         assert!(response.is_response() && !response.is_request());
         let notification = s(r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#);
         assert!(!notification.is_request() && !notification.is_response());
-        // Ответ клиента на запрос сервера — тоже ответ: в таблицу неотвеченных он не попадает.
+        // A client reply to a server request is also a reply: it does not go into the table of unanswered requests.
         assert!(s(r#"{"id":"srv-1","result":{"roots":[]}}"#).is_response());
     }
 
@@ -201,9 +201,9 @@ mod tests {
     fn a_cut_prefix_still_gives_an_id_that_precedes_the_cut() {
         let cut = br#"{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"text":"aaaa"#;
         assert_eq!(scan_prefix(cut).id.as_deref(), Some("42"));
-        // Обычный разбор целой строки по такому обрубку ничего не даёт.
+        // The regular parse of a whole line gives nothing for such a stump.
         assert_eq!(scan(cut), Scan::default());
-        // id после обрыва достать нельзя.
+        // An id after the cut cannot be extracted.
         assert_eq!(scan_prefix(br#"{"params":{"text":"aaaa"#).id, None);
     }
 
@@ -238,9 +238,9 @@ mod tests {
         }
         assert_eq!(scan(b"{\"id\":\"\\").id, None);
         assert_eq!(scan(b"\xff\xfe{\"id\":1}"), Scan::default());
-        // method с escape-последовательностью не считается именем метода: такое сообщение — ответ по `id`.
+        // A method with an escape sequence does not count as a method name: such a message is a reply by `id`.
         assert_eq!(scan(br#"{"method":"a\nb","id":1}"#).method, None);
-        // Все префиксы настоящего сообщения тоже не вызывают паники.
+        // All prefixes of a real message do not panic either.
         let full = br#"{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"search","arguments":{"query":"\"x\""}}}"#;
         for end in 0..full.len() {
             let _ = scan(&full[..end]);

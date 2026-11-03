@@ -1,11 +1,11 @@
-//! Сырые структуры `result.json` и их перевод в доменные типы. Снаружи модуля виден только `parse`.
+//! Raw `result.json` structures and their conversion into domain types. Only `parse` is visible outside the module.
 
 use super::{TgChat, TgChatKind, TgExport, TgMedia, TgMessage, TgParseError, TgSpan, TgSpanKind};
 use serde::Deserialize;
 use serde::de::IgnoredAny;
 use serde_json::value::RawValue;
 
-/// Определяет форму экспорта (одного чата или полную) и собирает доменные структуры.
+/// Determines the export's shape (one chat or a full one) and builds the domain structures.
 pub(super) fn parse(json: &str) -> Result<TgExport, TgParseError> {
     let top: RawTop = from_str(json)?;
     if let Some(list) = top.chats.and_then(|c| c.list) {
@@ -30,7 +30,7 @@ pub(super) fn parse(json: &str) -> Result<TgExport, TgParseError> {
                 messages: Some(messages),
             };
             let chat = raw.into_chat()?;
-            // Экспорт «Избранного»: id чата равен id владельца (проверено на настоящем экспорте).
+            // Export of "Saved Messages": the chat id equals the owner id (verified on a real export).
             let owner_id = (chat.kind == TgChatKind::Saved).then(|| chat.id.clone());
             Ok(TgExport {
                 owner_id,
@@ -49,8 +49,8 @@ fn from_str<'a, T: Deserialize<'a>>(json: &'a str) -> Result<T, TgParseError> {
     })
 }
 
-/// Идентификатор или число, пришедшее строкой либо числом. `untagged` буферизует число как `i64`/`u64`, не `f64`,
-/// поэтому дробное и слишком большое число не подходит ни под один вариант, а целое не теряет точность.
+/// An identifier or a number that came as a string or as a number. `untagged` buffers a number as `i64`/`u64`, not `f64`,
+/// so a fractional or too large number fits no variant, and an integer does not lose precision.
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum Flex {
@@ -69,7 +69,7 @@ impl Flex {
     }
 }
 
-/// Поле, у которого важно само наличие ключа: отсутствует — `None`, `null` — `Some(None)`.
+/// A field where the presence of the key itself matters: absent is `None`, `null` is `Some(None)`.
 fn present<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Option<String>>, D::Error> {
     Option::<String>::deserialize(d).map(Some)
 }
@@ -98,8 +98,8 @@ struct RawChats<'a> {
     list: Option<Vec<RawChat<'a>>>,
 }
 
-/// Сообщения лежат сырым фрагментом: у групп и каналов, которые не импортируются, они не разбираются вовсе
-/// (быстрее, и странное сообщение чужого чата не ломает весь файл).
+/// Messages are kept as a raw fragment: for groups and channels, which are not imported, they are not parsed at all
+/// (faster, and a strange message of someone else's chat does not break the whole file).
 #[derive(Deserialize)]
 struct RawChat<'a> {
     id: Flex,
@@ -135,7 +135,7 @@ impl RawChat<'_> {
     }
 }
 
-/// Сообщение как в экспорте. Поля медиа перечислены явно: нужны только факт наличия ключа и пара подписей.
+/// A message as in the export. Media fields are listed explicitly: only the fact that the key exists and a couple of captions are needed.
 #[derive(Deserialize)]
 struct RawMessage {
     id: Flex,
@@ -146,7 +146,7 @@ struct RawMessage {
     from: Option<String>,
     from_id: Option<Flex>,
     reply_to_message_id: Option<Flex>,
-    // `Some(None)` — ключ есть, значение `null` (скрытый аккаунт): это тоже пересылка.
+    // `Some(None)`: the key is present, the value is `null` (a hidden account): this is a forward too.
     #[serde(default, deserialize_with = "present")]
     forwarded_from: Option<Option<String>>,
     #[serde(default, deserialize_with = "present")]
@@ -162,7 +162,7 @@ struct RawMessage {
     place_name: Option<String>,
     contact_information: Option<IgnoredAny>,
     poll: Option<RawPoll>,
-    // Ключи прочих вложений (не проверено): сообщение с ними не должно выглядеть пустым.
+    // Keys of other attachments (not verified): a message with them must not look empty.
     game_title: Option<IgnoredAny>,
     invoice_information: Option<IgnoredAny>,
 }
@@ -237,7 +237,7 @@ impl RawMessage {
         }
     }
 
-    /// Порядок проверок важен: у фото и стикера бывает и `file`, и `media_type`.
+    /// The order of checks matters: a photo and a sticker can have both `file` and `media_type`.
     fn media(&self) -> Option<TgMedia> {
         if self.photo.is_some() {
             return Some(TgMedia::Photo);
@@ -288,7 +288,7 @@ impl RawMessage {
     }
 }
 
-/// Обычный кусок из строки; пустая строка куска не даёт.
+/// A plain piece from a string; an empty string gives no piece.
 fn plain(text: String) -> Option<TgSpan> {
     (!text.is_empty()).then_some(TgSpan {
         kind: TgSpanKind::Plain,

@@ -11,18 +11,18 @@ interface ChatRowProps {
   selected: boolean;
   language: Language;
   onSelect?: (chatId: string) => void;
-  /** Над строкой тащат запись (решение приёмки): подсветка цели. Сама строка всегда цель (`data-chat-drop`). */
+  /** An entry is being dragged over the row (acceptance decision): highlight the target. The row itself is always a target (`data-chat-drop`). */
   dropOver?: boolean;
-  /** Контекстное меню: правый щелчок, Shift+F10 и клавиша меню. Без обработчика меню нет (D1). */
+  /** Context menu: right click, Shift+F10 and the menu key. Without a handler there is no menu (D1). */
   onOpenMenu?: (chat: SidebarChat, position: MenuPosition) => void;
 }
 
-/** Подпись строки чата для диктора и подсказки: «Рецепты, 12 345 записей». */
+/** The chat row label for the screen reader and the tooltip: "Рецепты, 12 345 записей". */
 export function chatLabel(chat: SidebarChat, name: string, counter: string, t: TFunction): string {
   return counter ? `${name}, ${t("count.entries", { count: chat.count ?? 0 })}` : name;
 }
 
-/** Строка чата: эмодзи, имя (обрезается многоточием), тихий счётчик записей. Выбранный чат подсвечен и помечен `aria-current`. */
+/** A chat row: emoji, name (truncated with an ellipsis), a quiet entry counter. The selected chat is highlighted and marked `aria-current`. */
 export function ChatRow({ chat, selected, language, onSelect, dropOver = false, onOpenMenu }: ChatRowProps) {
   const { t } = useTranslation();
   const name = displayName(chat, t);
@@ -43,7 +43,7 @@ export function ChatRow({ chat, selected, language, onSelect, dropOver = false, 
         <ChatTile chat={chat} name={name} />
         <span className="chat-row__name">{name}</span>
         {counter ? (
-          // Диктору читается «Рецепты, записей: 12 тыс.»: запятая и подпись скрыты визуально, число видно.
+          // The screen reader reads "Рецепты, записей: 12 тыс.": the comma and the label are visually hidden, the number is visible.
           <span className="chat-row__count">
             <span className="visually-hidden">{t("sidebar.entriesLabel")}</span> {counter}
           </span>

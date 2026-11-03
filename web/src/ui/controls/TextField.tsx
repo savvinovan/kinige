@@ -3,17 +3,17 @@ import { Icon, type IconName } from "../icons/Icon";
 import "./controls.css";
 
 interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "aria-label" | "aria-invalid"> {
-  /** Имя поля для диктора (видимой подписи нет: смысл виден из значка и подсказки). */
+  /** The field name for the screen reader (there is no visible label: the meaning is clear from the icon and the placeholder). */
   label: string;
-  /** Значок слева внутри поля. */
+  /** The icon on the left inside the field. */
   icon?: IconName;
-  /** Текст ошибки: показывается под полем, поле помечается недопустимым. */
+  /** The error text: shown under the field, the field is marked invalid. */
   error?: string;
-  /** Ссылка на `<input>` (⌘F ставит в поле фокус). */
+  /** A reference to the `<input>` (⌘F puts focus in the field). */
   inputRef?: Ref<HTMLInputElement>;
 }
 
-/** Однострочное поле ввода (поиск и подобное). Без обводки: тёмная заливка, фокус — курсор и более светлая заливка; рамка только у ошибки. */
+/** A single-line input field (search and the like). No outline: a dark fill, focus is the caret and a lighter fill; a border only for an error. */
 export function TextField({ label, icon, error, className, inputRef, ...rest }: TextFieldProps) {
   const errorId = useId();
   return (

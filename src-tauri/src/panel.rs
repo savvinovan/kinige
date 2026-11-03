@@ -1,12 +1,12 @@
-//! Окно захвата как неактивирующая панель NSPanel (macOS, ADR-0006).
+//! The capture window as a non-activating NSPanel (macOS, ADR-0006).
 //!
-//! Обычное окно Tauri на macOS 14+ получает ввод ненадёжно, когда активна чужая программа: система «кооперативно» отказывает
-//! в активации, и окно то получает фокус, то теряет его, а нажатия клавиш уходят не в страницу. Панель с флагом
-//! `NonactivatingPanel` становится ключевым окном, не активируя приложение (так устроены Spotlight, Raycast, Alfred): прежняя
-//! программа остаётся активной и после скрытия панели сама получает фокус обратно, главное окно не всплывает.
-//! Библиотека — `tauri-nspanel` 2.1.1 (требует флаг `macOSPrivateApi`).
+//! A regular Tauri window on macOS 14+ gets input unreliably while another app is active: the system "cooperatively" refuses
+//! activation, and the window gets focus and loses it, while key presses go not to the page. A panel with the
+//! `NonactivatingPanel` flag becomes the key window without activating the app (this is how Spotlight, Raycast, Alfred work): the previous
+//! app stays active and gets focus back by itself after the panel hides, the main window does not pop up.
+//! The library is `tauri-nspanel` 2.1.1 (it requires the `macOSPrivateApi` flag).
 
-#![allow(clippy::unused_unit)] // макрос `panel_event!` пишет `-> ()`
+#![allow(clippy::unused_unit)] // the `panel_event!` macro writes `-> ()`
 
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_nspanel::{
@@ -29,9 +29,9 @@ tauri_panel! {
     })
 }
 
-/// Превращает созданное при старте скрытое окно захвата в панель: без активации, поверх остальных, на всех рабочих столах и
-/// над полноэкранными программами. Потеря ключевого статуса — спрятаться (`on_resign`), закрытие окна (⌘W) — то же самое,
-/// но панель не уничтожается.
+/// Turns the hidden capture window created at startup into a panel: without activation, above the others, on all desktops and
+/// over full-screen apps. Losing key status means hiding (`on_resign`), closing the window (Cmd+W) is the same,
+/// but the panel is not destroyed.
 pub fn convert<R: Runtime>(
     app: &AppHandle<R>,
     label: &str,
@@ -62,7 +62,7 @@ pub fn convert<R: Runtime>(
     handler.window_did_resign_key(move |_| on_resign(&resign_app));
     let close_app = app.clone();
     handler.window_should_close(move |_| {
-        // Закрытие окна не уничтожает панель: окно просто прячется (через страницу, чтобы сохранить черновик).
+        // Closing the window does not destroy the panel: the window just hides (through the page, to save the draft).
         on_close(&close_app);
         tauri_nspanel::objc2::runtime::Bool::NO
     });
@@ -70,13 +70,13 @@ pub fn convert<R: Runtime>(
     Ok(())
 }
 
-/// Панель окна, если плагин подключён и окно уже превращено в панель (в тестах с mock-рантаймом плагина нет).
+/// The window's panel, if the plugin is attached and the window is already turned into a panel (tests with a mock runtime have no plugin).
 fn panel_of<R: Runtime>(app: &AppHandle<R>, label: &str) -> Option<tauri_nspanel::PanelHandle<R>> {
     app.try_state::<tauri_nspanel::WebviewPanelManager<R>>()?;
     app.get_webview_panel(label).ok()
 }
 
-/// Показывает панель и делает её ключевой, не активируя приложение.
+/// Shows the panel and makes it key without activating the app.
 pub fn show<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
     panel_of(app, label).is_some_and(|panel| {
         panel.show_and_make_key();
@@ -84,7 +84,7 @@ pub fn show<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
     })
 }
 
-/// Прячет панель.
+/// Hides the panel.
 pub fn hide<R: Runtime>(app: &AppHandle<R>, label: &str) -> bool {
     panel_of(app, label).is_some_and(|panel| {
         panel.hide();

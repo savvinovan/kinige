@@ -31,7 +31,7 @@ describe("AppRoot: запуск и восстановление (слайс 3)",
     const api = setup({ ...NORMAL, needsRecovery: true, backups: [BACKUP] });
     expect(await screen.findByRole("main", { name: "База повреждена" })).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Новая заметка" })).toBeNull();
-    // Папка Markdown-копии будет отложена в сторону: человек видит это до нажатия.
+    // The Markdown copy folder will be set aside: the person sees this before pressing.
     expect(screen.getByText(/Папка Markdown-копии будет переименована в «…-before-restore-…»/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Восстановить из копии/ }));
     expect(await screen.findByRole("textbox", { name: "Новая заметка" })).toBeInTheDocument();
@@ -41,7 +41,7 @@ describe("AppRoot: запуск и восстановление (слайс 3)",
   it("повреждение найдено во время восстановления: после него окно «перезапустить», а не журнал на повреждённой базе", async () => {
     const api = setup({ ...NORMAL, needsRecovery: true, backups: [BACKUP] });
     await screen.findByRole("main", { name: "База повреждена" });
-    // Событие приходит в окно «startup» и игнорируется; к концу восстановления Rust уже знает о находке.
+    // The event reaches the "startup" window and is ignored; by the end of the restore Rust already knows about the finding.
     const restoreBackup = api.restoreBackup.bind(api);
     api.restoreBackup = async (name) => {
       const outcome = await restoreBackup(name);
@@ -87,7 +87,7 @@ describe("AppRoot: запуск и восстановление (слайс 3)",
 
   it("повреждение найдено до подписки страницы на событие: отметка в состоянии запуска открывает окно без события", async () => {
     const api = new MockApi({ now: NOW });
-    // Страница получила состояние до проверки, а к моменту подписки Rust уже поставил отметку.
+    // The page got the state before the check, and by the time of subscribing Rust had already set the flag.
     api.startupState = () => Promise.resolve({ ...NORMAL, corruptionFound: true });
     render(<AppRoot api={api} initialSettings={DEFAULT_SETTINGS} startup={NORMAL} />);
     expect(await screen.findByRole("main", { name: "База повреждена" })).toBeInTheDocument();

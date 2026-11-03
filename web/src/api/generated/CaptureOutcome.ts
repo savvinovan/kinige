@@ -3,6 +3,6 @@ import type { CaptureAction } from "./CaptureAction";
 import type { MessageView } from "./MessageView";
 
 /**
- * Ответ окну захвата: что сделано и запись, как она теперь выглядит.
+ * The reply to the capture window: what was done and the entry as it looks now.
  */
 export type CaptureOutcome = { action: CaptureAction, message: MessageView, };

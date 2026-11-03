@@ -1,9 +1,9 @@
-//! Убийство процесса сразу после фиксации каждой операции слайса 3 (ТЗ §12.2): данные на месте, группы и колонки согласованы.
+//! Killing the process right after each slice 3 operation commits (spec §12.2): the data is in place, groups and columns agree.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
-#![allow(clippy::disallowed_methods)] // `thread::spawn` запрещён в коде приложения (clippy.toml), тесту поток нужен без обработки отказа
+#![allow(clippy::disallowed_methods)] // `thread::spawn` is forbidden in app code (clippy.toml); the test needs a thread without failure handling
 
 mod common;
 
@@ -30,7 +30,7 @@ const MODES: &[&str] = &[
     "purge",
 ];
 
-/// Дочерний процесс: подготовка, одна операция и `abort` сразу после её ответа (то есть после `COMMIT`).
+/// Child process: setup, one operation and `abort` right after its reply (that is, after `COMMIT`).
 fn child(dir: &std::path::Path, mode: &str) -> ! {
     let store = open_without_mirror(dir);
     let sent = store
@@ -68,15 +68,16 @@ fn child(dir: &std::path::Path, mode: &str) -> ! {
             store.delete_message(&sent.id, &moscow(T0 + 1)).unwrap();
             store.purge_message(&sent.id, &later).unwrap();
         }
-        other => panic!("неизвестный режим {other}"),
+        other => panic!("unknown mode {other}"),
     }
     std::process::abort();
 }
 
 const MOVE_CHILD_ENV: &str = "KINIGE_OPS_ABORT_MOVE_DIR";
 
-/// Дочерний процесс: перенос записи застревает внутри транзакции (триггер на `mirror_dirty` нового чата считает долго,
-/// когда запись и день старого чата уже изменены), а главный поток убивает процесс `abort` до `COMMIT`.
+/// Child process: moving an entry gets stuck inside the transaction (the trigger on the new chat's `mirror_dirty` runs
+/// for a long time once the entry and the old chat's day are already changed), and the main thread kills the process
+/// with `abort` before `COMMIT`.
 fn child_in_the_middle_of_a_move(dir: &std::path::Path) -> ! {
     let store = open_without_mirror(dir);
     let sent = store
@@ -96,7 +97,8 @@ fn child_in_the_middle_of_a_move(dir: &std::path::Path) -> ! {
     std::thread::spawn(move || {
         let _ = store.move_message(&id, &chat, &when);
     });
-    // Писатель входит в транзакцию за миллисекунды и до конца «считает»: через секунду он гарантированно посередине.
+    // The writer enters the transaction within milliseconds and keeps "counting" to the end: after a second it is
+    // guaranteed to be in the middle.
     std::thread::sleep(std::time::Duration::from_millis(1000));
     std::process::abort();
 }
@@ -117,15 +119,15 @@ fn abort_in_the_middle_of_a_move_rolls_the_whole_move_back() {
         .env(MOVE_CHILD_ENV, dir.path())
         .status()
         .unwrap();
-    assert!(!status.success(), "дочерний процесс должен был упасть");
+    assert!(!status.success(), "the child process should have crashed");
     #[cfg(unix)]
     {
         use std::os::unix::process::ExitStatusExt;
         assert_eq!(status.signal(), Some(6), "SIGABRT");
     }
 
-    // После перезапуска (журнал WAL разбирается при открытии) записи как до переноса: ни чата, ни групп, ни отметок копии
-    // нового чата, ни ревизий; база цела.
+    // After the restart (the WAL is replayed on open) the entry is as before the move: no chat, no groups, no copy
+    // marks of the new chat, no revisions; the database is intact.
     let id: String = raw(dir.path())
         .query_row("SELECT id FROM message", [], |r| r.get(0))
         .unwrap();
@@ -149,7 +151,7 @@ fn abort_in_the_middle_of_a_move_rolls_the_whole_move_back() {
     assert_eq!(
         dirty_chats,
         [INBOX_ID],
-        "отметка только у дня Inbox, от отправки"
+        "the mark is only on the Inbox day, from the send"
     );
     let integrity: String = raw(dir.path())
         .query_row("PRAGMA integrity_check", [], |r| r.get(0))
@@ -159,7 +161,7 @@ fn abort_in_the_middle_of_a_move_rolls_the_whole_move_back() {
     let chats = store.list_chats().unwrap();
     assert_eq!(chats.iter().map(|c| c.count).sum::<i64>(), 1);
 
-    // Сняв «застревание», перенос выполняется как обычно.
+    // With the "getting stuck" removed, the move works as usual.
     raw(dir.path())
         .execute_batch("DROP TRIGGER stall_move;")
         .unwrap();
@@ -175,7 +177,7 @@ fn abort_right_after_commit_keeps_every_operation() {
     if let Ok(dir) = std::env::var(CHILD_ENV) {
         child(
             dir.as_ref(),
-            &std::env::var(MODE_ENV).expect("режим дочернего процесса"),
+            &std::env::var(MODE_ENV).expect("child process mode"),
         );
     }
     for mode in MODES {
@@ -193,7 +195,7 @@ fn abort_right_after_commit_keeps_every_operation() {
             .unwrap();
         assert!(
             !status.success(),
-            "{mode}: дочерний процесс должен был упасть"
+            "{mode}: the child process should have crashed"
         );
         #[cfg(unix)]
         {
@@ -234,7 +236,7 @@ fn abort_right_after_commit_keeps_every_operation() {
                 assert_eq!(
                     revisions(dir.path(), id.as_deref().unwrap()),
                     1,
-                    "ревизия пережила"
+                    "the revision survived"
                 );
             }
             "toggle" => {
@@ -252,7 +254,7 @@ fn abort_right_after_commit_keeps_every_operation() {
             "pin" => assert!(chat.unwrap().pinned_at.is_some()),
             "archive" => assert!(chat.unwrap().archived_at.is_some()),
             "purge" => {
-                assert!(id.is_none(), "запись удалена навсегда");
+                assert!(id.is_none(), "the entry is deleted permanently");
                 assert_eq!(count_rows(dir.path(), "tombstone"), 1);
             }
             other => panic!("{other}"),

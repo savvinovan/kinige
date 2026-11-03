@@ -12,7 +12,7 @@ import { TagFilterBar } from "../tag/TagFilterBar";
 import { TrashView } from "../trash/TrashView";
 import "./main-window.css";
 
-/** Свёртка сайдбара, создание чата, меню чата и корзина. */
+/** Sidebar collapsing, chat creation, the chat menu and the trash. */
 export interface SidebarControls {
   collapsed: boolean;
   onToggleCollapsed: () => void;
@@ -22,7 +22,7 @@ export interface SidebarControls {
   onOpenTrash: () => void;
 }
 
-/** Корзина на месте ленты. */
+/** The trash in place of the feed. */
 export interface TrashControls {
   items: readonly TrashItem[];
   today: string;
@@ -34,57 +34,57 @@ export interface TrashControls {
 
 interface MainWindowViewProps {
   chats: readonly SidebarChat[];
-  /** Выбранный чат; `null` — открыта корзина. */
+  /** The selected chat; `null` means the trash is open. */
   selectedChatId: string | null;
   messages: readonly FeedMessage[];
-  /** Сегодняшний `journal_date` для меток «Сегодня» и «Вчера»: в приложении его присылает Rust, в историях он фиксирован. */
+  /** Today's `journal_date` for the "Today" and "Yesterday" labels: Rust sends it in the app, it is fixed in stories. */
   today: string;
   onSelectChat?: (chatId: string) => void;
   onRetry?: (messageId: string) => void;
   onOpenLink?: (url: string) => void;
-  /** Какие кнопки показывать в поле ввода. По умолчанию все три нарисованы и объявлены недоступными («Появится позже»), как в D1; приложение показывает только рабочие. */
+  /** Which buttons to show in the composer. By default all three are drawn and declared unavailable ("Coming later"), as in D1; the app shows only the working ones. */
   composerButtons?: ComposerButtons;
-  /** Поле ввода работает (приложение): без него оно только нарисовано. */
+  /** The composer works (the app); without it, it is only drawn. */
   interactive?: boolean;
-  /** Текст в поле ввода. Без него вид хранит черновик сам (истории). */
+  /** The text in the composer. Without it, the view keeps the draft itself (stories). */
   draft?: string;
   onDraftChange?: (value: string) => void;
   onSubmit?: () => void;
-  /** Ошибка над полем ввода (уже переведённый текст). */
+  /** The error above the composer (already translated text). */
   composerError?: string;
-  /** Эмодзи-пикер в поле ввода: недавние, язык и «выбрано» (запомнить в недавних). */
+  /** The emoji picker in the composer: recent ones, the language and "picked" (remember in recents). */
   emoji?: { recent: readonly string[]; language: Language; onPicked?: (emoji: string) => void };
   onOpenSettings?: () => void;
-  /** Поле «Поиск» в сайдбаре, нарисованное без работы (истории D1). Рабочее поле — `search`. */
+  /** The "Search" field in the sidebar, drawn without working (D1 stories). The working field is `search`. */
   showSearch?: boolean;
-  /** Рабочий поиск (слайс 4): поле сайдбара; результаты — `searchResults`. */
+  /** Working search (slice 4): the sidebar field; the results are `searchResults`. */
   search?: SidebarSearch;
-  /** Результаты поиска на месте ленты и поля ввода (корзина и поиск не показываются вместе: поиск главнее). */
+  /** Search results in place of the feed and the composer (the trash and search are not shown together: search wins). */
   searchResults?: ReactNode;
-  /** «Импорт из Telegram…» в меню профиля. */
+  /** "Import from Telegram..." in the profile menu. */
   onOpenImport?: () => void;
-  /** «О программе» в меню профиля. */
+  /** "About" in the profile menu. */
   onOpenAbout?: () => void;
   sidebar?: SidebarControls;
   feedUi?: FeedUiState;
   feedActions?: FeedActions;
-  /** Подгрузка старых и новых страниц ленты, прокрутка к записи и снятие подсветки записи, открытой из поиска (слайс 4). */
+  /** Loading older and newer feed pages, scrolling to an entry and clearing the highlight of the entry opened from search (slice 4). */
   feedPaging?: FeedPaging;
   feedScrollTo?: ScrollRequest | null;
   onFeedPointerDown?: () => void;
-  /** Слайс 5: карточка «В этот день» в ленте, щелчок по цитате ответа, лента ждёт первого кадра и строка «Ответ на запись» над полем. */
+  /** Slice 5: the "On this day" card in the feed, a click on a reply quote, the feed waiting for the first frame and the "Reply to entry" strip above the composer. */
   onThisDay?: { journalDate: string; node: ReactNode };
   onOpenReply?: (quote: ReplyTo) => void;
-  /** Новый номер — лента прокручивается к нижнему краю (после скрытия карточки). */
+  /** A new number makes the feed scroll to the bottom edge (after the card is hidden). */
   feedToBottom?: number;
   feedLoading?: boolean;
   replyStrip?: ReactNode;
-  /** Фильтр ленты по тегу: строка «#тег ×» над лентой. */
+  /** The feed tag filter: the "#tag x" strip above the feed. */
   tagFilter?: { tag: string; onClear: () => void };
   trash?: TrashControls;
-  /** Чаты для «Переместить в чат» (текущий помечен). */
+  /** Chats for "Move to chat" (the current one is marked). */
   moveTargets?: readonly MoveTarget[];
-  /** Перетаскивание записи на чат (`useRecordDrag`): обработчик нажатия плашки, подсвеченный чат и «призрак». */
+  /** Dragging an entry onto a chat (`useRecordDrag`): the plate press handler, the highlighted chat and the "ghost". */
   drag?: {
     onDragStart: (messageId: string) => (event: PointerEvent<HTMLElement>, plate: HTMLElement) => void;
     dropTargetId: string | null;
@@ -94,13 +94,13 @@ interface MainWindowViewProps {
   forest?: ReactNode;
   onFeedTopDay?: (journalDate: string | null) => void;
   forestMenu?: { hidden: boolean; onToggle: () => void };
-  /** Поверх окна: модальные окна (настройки, чат, календарь). */
+  /** On top of the window: modal windows (settings, chat, calendar). */
   overlay?: ReactNode;
 }
 
 /**
- * Главное окно: сайдбар + лента (или корзина) + поле ввода. Строки с названием чата над лентой нет: выбранный чат выделен в
- * сайдбаре (§6). Только вид: данные приходят снаружи (в Storybook — сразу, в приложении — через `MainWindow`).
+ * Main window: sidebar + feed (or trash) + composer. There is no chat-title row above the feed: the selected chat is
+ * highlighted in the sidebar (§6). View only: data comes from outside (in Storybook directly, in the app via `MainWindow`).
  */
 export function MainWindowView({
   chats,

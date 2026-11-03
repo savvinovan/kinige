@@ -1,4 +1,4 @@
-//! Тесты разбора, продолжение: идентификаторы, сущности, время и ошибки.
+//! Parsing tests, continued: identifiers, entities, time and errors.
 
 use super::tests::{message, one, single, span};
 use super::*;
@@ -17,7 +17,7 @@ fn big_ids_keep_precision() {
     assert_eq!(m.id, u64::MAX.to_string());
     assert_eq!(m.reply_to.as_deref(), Some("9223372036854775807"));
     assert_eq!(m.from_id.as_deref(), Some("-9223372036854775808"));
-    // Целое число, приходящее строкой, и число совпадают.
+    // An integer that comes as a string and the same number match.
     assert_eq!(one(r#"{"id":"42"}"#).id, one(r#"{"id":42}"#).id);
 }
 
@@ -78,7 +78,7 @@ fn every_entity_type() {
         let m = one(&format!(
             r#"{{"id":1,"text_entities":[{{"type":"{name}","text":"t"}}]}}"#
         ));
-        assert_eq!(m.text, vec![span(kind, "t")], "тип {name}");
+        assert_eq!(m.text, vec![span(kind, "t")], "type {name}");
     }
     let empty_lang = one(r#"{"id":1,"text_entities":[{"type":"pre","text":"t","language":""}]}"#);
     assert_eq!(empty_lang.text[0].kind, TgSpanKind::Pre { language: None });
@@ -124,7 +124,7 @@ fn empty_input_is_not_json() {
 
 #[test]
 fn foreign_json_is_not_telegram() {
-    // Объекты без нужных ключей.
+    // Objects without the required keys.
     for json in [
         "{}",
         r#"{"name":"x","items":[]}"#,
@@ -137,7 +137,7 @@ fn foreign_json_is_not_telegram() {
             "{json}"
         );
     }
-    // Не объект, `chats` не объект, сообщение без id: ошибка с подробностью от разборщика.
+    // Not an object, `chats` not an object, a message without id: an error with a detail from the parser.
     for json in [
         "[]",
         "[1,2]",
@@ -154,20 +154,20 @@ fn foreign_json_is_not_telegram() {
     }
     let Err(error) = parse_export(r#"{"type":"saved_messages","id":1,"messages":[{"text":"x"}]}"#)
     else {
-        panic!("ошибка");
+        panic!("error");
     };
     assert!(error.to_string().contains("missing field `id`"), "{error}");
 }
 
 #[test]
 fn broken_message_of_a_group_does_not_break_the_file() {
-    // Сообщения групп не разбираются: странное сообщение чужого чата не мешает импорту «Избранного».
+    // Group messages are not parsed: a strange message of someone else's chat does not block the import of "Saved Messages".
     let json = r#"{"chats":{"list":[
         {"type":"private_group","id":1,"messages":[{"no_id":true}]},
         {"type":"saved_messages","id":2,"messages":[{"id":1,"text":"x"}]}]}}"#;
     let export = parse_export(json).unwrap();
     assert_eq!(export.chats[1].messages.len(), 1);
-    // А у импортируемого чата такое сообщение — ошибка файла.
+    // But for a chat being imported such a message is a file error.
     let bad = r#"{"chats":{"list":[{"type":"personal_chat","id":1,"messages":[{"no_id":true}]}]}}"#;
     assert!(matches!(parse_export(bad), Err(TgParseError::Malformed(_))));
 }

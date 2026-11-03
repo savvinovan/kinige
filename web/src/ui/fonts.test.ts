@@ -4,12 +4,12 @@ import { describe, expect, it } from "vitest";
 import { type FontInfo, readFont } from "./fontFile";
 import { type FontFace, active, fontsets } from "./tokenSource";
 
-// Шрифты проверяются по самим файлам: кириллица (cmap), курсив (OS/2), вес (OS/2 или ось wght), лицензия (name).
-// Описание начертания в токенах — заявка, а тест сверяет её с файлом.
+// Fonts are checked against the files themselves: Cyrillic (cmap), italic (OS/2), weight (OS/2 or the wght axis), license (name).
+// The face description in the tokens is a claim, and the test checks it against the file.
 
 const UI_DIR = import.meta.dirname;
 
-/** Начертания, которые нужны любому набору: роль, стиль, вес. Остальное (курсив mono) не используется. */
+/** Faces that every set needs: role, style, weight. The rest (mono italic) is not used. */
 const REQUIRED: [role: string, style: "normal" | "italic", weight: number][] = [
   ["sans", "normal", 400],
   ["sans", "italic", 400],
@@ -35,7 +35,7 @@ const readFace = (face: FontFace): FontInfo => {
   return info;
 };
 
-/** Вес, который реально покрывает файл: диапазон оси wght или единственное значение OS/2. */
+/** The weight the file actually covers: the range of the wght axis or the single OS/2 value. */
 const fileWeights = (info: FontInfo): [number, number] => {
   const axis = info.axes.wght;
   return axis ? [axis[0], axis[2]] : [info.weightClass, info.weightClass];
@@ -60,7 +60,7 @@ describe("наборы шрифтов", () => {
           const first = set.families[role]?.[0];
           expect(first, `family.${role}`).toBeTruthy();
           const faces = Object.entries(set.faces).filter(([key]) => key.startsWith(`${role}-`));
-          expect(faces.length, `начертания роли ${role}`).toBeGreaterThan(0);
+          expect(faces.length, `faces of role ${role}`).toBeGreaterThan(0);
           for (const [key, face] of faces) expect(face.family, key).toBe(first);
         }
       });
@@ -70,32 +70,32 @@ describe("наборы шрифтов", () => {
           it("файл woff2 существует, рядом лежит OFL.txt", () => {
             expect(face.file).toMatch(/\.woff2$/);
             expect(existsSync(join(UI_DIR, face.file)), face.file).toBe(true);
-            expect(existsSync(join(dirname(join(UI_DIR, face.file)), "OFL.txt")), "OFL.txt рядом").toBe(true);
+            expect(existsSync(join(dirname(join(UI_DIR, face.file)), "OFL.txt")), "OFL.txt next to it").toBe(true);
           });
 
           it("содержит русский алфавит (А–я, Ё, ё) и лицензия внутри файла — OFL", () => {
             const info = readFace(face);
             const missing = RUSSIAN.filter((codePoint) => !info.has(codePoint));
-            expect(missing.map((c) => c.toString(16)), "нет кодовых точек").toEqual([]);
+            expect(missing.map((c) => c.toString(16)), "missing code points").toEqual([]);
             const block = Array.from({ length: 0x100 }, (_, i) => 0x400 + i).filter((c) => info.has(c));
-            expect(block.length, "кодовых точек в U+0400–U+04FF").toBeGreaterThanOrEqual(90);
+            expect(block.length, "code points in U+0400-U+04FF").toBeGreaterThanOrEqual(90);
             expect(info.license).toContain("Open Font License");
           });
 
           it("стиль и вес в файле совпадают с заявленными в токене", () => {
             const info = readFace(face);
-            expect(info.italic, "курсив в OS/2").toBe(face.style === "italic");
+            expect(info.italic, "italic in OS/2").toBe(face.style === "italic");
             const [from, to] = parseWeight(face.weight);
             const [min, max] = fileWeights(info);
-            expect([from, to], `заявлено ${face.weight}, в файле ${min}–${max}`).toEqual(
+            expect([from, to], `claimed ${face.weight}, in the file ${min}-${max}`).toEqual(
               info.axes.wght ? [min, max] : [min, min],
             );
           });
         });
       }
 
-      // Единственное исключение из «шрифты только встроенные» (ADR-0004): эмодзи чатов — данные пользователя,
-      // цветные эмодзи не встраиваются. Любая другая роль без файла в наборе — ошибка.
+      // The only exception to "fonts are embedded only" (ADR-0004): chat emoji are user data,
+      // and color emoji are not embedded. Any other role without a file in the set is an error.
       it("кроме эмодзи, у каждой роли есть встроенные начертания; эмодзи — системные шрифты", () => {
         expect(Object.keys(set.families).sort()).toEqual(["emoji", "mono", "sans"]);
         expect(Object.keys(set.faces).filter((key) => key.startsWith("emoji-"))).toEqual([]);

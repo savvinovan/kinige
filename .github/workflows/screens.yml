@@ -1,22 +1,22 @@
-# Снимки настоящего окна Kinige на macOS-раннере GitHub для приёмки слайса. Две задачи:
-#   shots  — собирает .app и запускает scripts/screens/<слайс>.sh на синтетических данных (временные KINIGE_DATA_DIR и
-#            KINIGE_MIRROR_DIR); права только на чтение, токен после checkout не сохраняется; результат — артефакт;
-#   commit — короткая: скачивает артефакт и коммитит docs/screens/<слайс>/ в ветку (единственное место с правом записи,
-#            без npm, cargo и сторонних кэшей).
-# Запуск: gh workflow run screens.yml --ref <ветка> -f slice=4a   (в main и на тегах не работает).
+# Shots of the real Kinige window on the GitHub macOS runner for the acceptance of a slice. Two jobs:
+#   shots  - builds the .app and runs scripts/screens/<slice>.sh on synthetic data (temporary KINIGE_DATA_DIR and
+#            KINIGE_MIRROR_DIR); read-only permissions, the token is not kept after checkout; the result is an artifact;
+#   commit - short: downloads the artifact and commits docs/screens/<slice>/ to the branch (the only place with write permission,
+#            no npm, no cargo and no third-party caches).
+# Run: gh workflow run screens.yml --ref <branch> -f slice=4a   (does not work in main and on tags).
 # Windows (slice 10a): -f os=windows -f slice=10a runs the job shots-windows on windows-2025: it builds the NSIS installer,
 # installs it silently and runs scripts/screens/<slice>.ps1 (input is keys sent with SendKeys on the disposable runner VM);
 # the commit job is the same.
-# Коммит от GITHUB_TOKEN CI сам не запускает (push-событие), но запуск через workflow_dispatch от GITHUB_TOKEN разрешён:
-# последний шаг задачи commit запускает ci.yml на ветке (нужно право actions: write, оно только у этой задачи).
-# Ввод — только действия доступности (scripts/screens/ax.js): раннер выдаёт osascript право Accessibility (проверено пробой).
+# A commit by GITHUB_TOKEN does not start CI by itself (a push event), but starting through workflow_dispatch by GITHUB_TOKEN is allowed:
+# the last step of the commit job starts ci.yml on the branch (the actions: write permission is needed, only this job has it).
+# Input is accessibility actions only (scripts/screens/ax.js): the runner gives osascript the Accessibility permission (checked by a probe).
 name: Screens
 
 on:
   workflow_dispatch:
     inputs:
       slice:
-        description: Сценарий scripts/screens/<слайс>.sh и каталог docs/screens/<слайс> (только 0-9, a-z и дефис)
+        description: The scenario scripts/screens/<slice>.sh and the directory docs/screens/<slice> (only 0-9, a-z and a hyphen)
         default: 4a
         required: true
       os:
@@ -25,7 +25,7 @@ on:
         options: [macos, windows]
         default: macos
 
-# Права по умолчанию — только чтение; запись только у задачи commit.
+# Default permissions are read-only; write only for the commit job.
 permissions:
   contents: read
 
@@ -35,7 +35,7 @@ concurrency:
 
 jobs:
   shots:
-    # Снимки меняют ветку и PR: только ветки, не main.
+    # Shots change a branch and a PR: branches only, not main.
     if: startsWith(github.ref, 'refs/heads/') && github.ref != 'refs/heads/main' && inputs.os != 'windows'
     runs-on: macos-15
     timeout-minutes: 110
@@ -44,10 +44,10 @@ jobs:
     env:
       SLICE: ${{ inputs.slice || '4a' }}
     steps:
-      - name: Проверить имя слайса
+      - name: Check the slice name
         run: |
           if ! [[ "$SLICE" =~ ^[0-9a-z-]+$ ]]; then
-            echo "slice должен соответствовать ^[0-9a-z-]+$"
+            echo "slice must match ^[0-9a-z-]+$"
             exit 1
           fi
 
@@ -66,26 +66,26 @@ jobs:
 
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
-      # Тёмная тема системы, как у пользователя: заголовок окна на снимке тёмный. `defaults write` без перезапуска сеанса
-      # не подействовал (проверено прогоном), поэтому переключаем через System Events.
-      - name: Тёмная тема
+      # The system dark theme, as on the user's Mac: the window title in the shot is dark. `defaults write` without restarting the session
+      # did not take effect (checked by a run), so we switch through System Events.
+      - name: Dark theme
         run: |
           osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to true'
           sleep 3
           defaults read -g AppleInterfaceStyle || true
 
-      - name: Собрать приложение
+      - name: Build the app
         env:
           KINIGE_IDENTIFIER: me.savvinov.kinige.accept
         run: scripts/build-app.sh
 
-      - name: Сценарий снимков
+      - name: Shots scenario
         timeout-minutes: 90
         run: |
           mkdir -p "$RUNNER_TEMP/kinige-screens"
           K="$RUNNER_TEMP/kinige-screens" scripts/screens/${SLICE}.sh "$PWD/target/release/bundle/macos/Kinige.app"
 
-      # Снимки и тексты проверок — то, что попадёт в ветку; отладочные дампы дерева окна — отдельно, в репозиторий не идут.
+      # The shots and the check texts are what goes into the branch; the debug window tree dumps are separate and do not go into the repository.
       - uses: actions/upload-artifact@v7
         if: success()
         with:
@@ -182,10 +182,10 @@ jobs:
       SLICE: ${{ inputs.slice || '4a' }}
       RUNNER_OS_NAME: ${{ inputs.os == 'windows' && 'Windows' || 'macOS' }}
     steps:
-      - name: Проверить имя слайса
+      - name: Check the slice name
         run: |
           if ! [[ "$SLICE" =~ ^[0-9a-z-]+$ ]]; then
-            echo "slice должен соответствовать ^[0-9a-z-]+$"
+            echo "slice must match ^[0-9a-z-]+$"
             exit 1
           fi
 
@@ -198,8 +198,8 @@ jobs:
           name: screens-${{ env.SLICE }}
           path: ${{ runner.temp }}/screens
 
-      # Каталог снимков заменяется целиком (уходят и снимки с прежними именами); трогается только docs/screens/<слайс>/.
-      - name: Закоммитить снимки в ветку
+      # The shots directory is replaced entirely (shots with old names go too); only docs/screens/<slice>/ is touched.
+      - name: Commit the shots to the branch
         id: commit
         run: |
           rm -rf "docs/screens/${SLICE}"
@@ -209,7 +209,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -- "docs/screens/${SLICE}"
           if git diff --cached --quiet; then
-            echo "снимки не изменились"
+            echo "the shots did not change"
             exit 0
           fi
           git diff --cached --stat | tail -1
@@ -218,8 +218,8 @@ jobs:
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-      # Коммит бота CI не запускает; workflow_dispatch от GITHUB_TOKEN — запускает (документация GitHub, «Triggering a workflow»).
-      - name: Запустить CI на ветке
+      # A bot commit does not start CI; workflow_dispatch by GITHUB_TOKEN does (GitHub documentation, "Triggering a workflow").
+      - name: Start CI on the branch
         if: steps.commit.outputs.pushed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}

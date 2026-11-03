@@ -10,17 +10,17 @@ export interface EmojiPopoverProps {
   language: Language;
   onPick: (emoji: string) => void;
   /**
-   * Закрыть панель. `returnFocus` — вернуть ли фокус туда, откуда пришли (Esc, Tab, выбор эмодзи): щелчок мимо фокус не
-   * возвращает, человек уже выбрал другое место.
+   * Close the panel. `returnFocus` says whether to return focus to where it came from (Esc, Tab, emoji choice): a click outside does not
+   * return focus, the person has already chosen another place.
    */
   onClose: (returnFocus: boolean) => void;
-  /** Кнопка «эмодзи»: панель встаёт над ней, правым краем к её правому краю. Щелчок по кнопке не считается «щелчком мимо»: кнопка сама переключает панель. */
+  /** The "emoji" button: the panel stands above it, its right edge at the button's right edge. A click on the button is not an "outside click": the button toggles the panel itself. */
   anchor: RefObject<HTMLElement | null>;
 }
 
 /**
- * Всплывающая панель с пикером над кнопкой «эмодзи» поля ввода. Накладывается поверх окна и ничего не сдвигает. Esc, Tab,
- * щелчок мимо, прокрутка, смена размера окна и уход из окна закрывают её; фокус при открытии уходит в поиск.
+ * A popover panel with the picker above the "emoji" button of the input field. It overlays the window and shifts nothing. Esc, Tab,
+ * an outside click, scrolling, a window resize and leaving the window close it; on opening, focus goes to the search.
  */
 export function EmojiPopover({ recent, language, onPick, onClose, anchor }: EmojiPopoverProps) {
   const { t } = useTranslation();
@@ -30,8 +30,8 @@ export function EmojiPopover({ recent, language, onPick, onClose, anchor }: Emoj
     onCloseRef.current = onClose;
   });
 
-  // До первой отрисовки, прямо в DOM: панель закреплена к нижнему и правому краю окна у кнопки (растёт вверх и влево) и не
-  // выше места над кнопкой. Положение берётся из прямоугольника кнопки, поэтому панель не мигает в углу окна.
+  // Before the first paint, directly in the DOM: the panel is pinned to the bottom and right edge of the window at the button (grows up and left) and is not
+  // taller than the space above the button. The position is taken from the button's rectangle, so the panel does not flash in the corner of the window.
   useLayoutEffect(() => {
     const rect = anchor.current?.getBoundingClientRect();
     const element = panel.current;

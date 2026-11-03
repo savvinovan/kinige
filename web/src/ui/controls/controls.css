@@ -1,4 +1,4 @@
-/* Кнопка, иконка-кнопка, поле ввода. Только семантические токены. */
+/* Button, icon button, input field. Semantic tokens only. */
 
 .button {
   box-sizing: border-box;
@@ -24,7 +24,7 @@
   background: var(--color-surface-selected);
 }
 
-/* Кнопка с заливкой: заметна как кнопка и без акцентного цвета; в недоступном состоянии (aria-disabled) приглушена. */
+/* A button with a fill: it reads as a button even without the accent color; muted in the unavailable state (aria-disabled). */
 .button--secondary {
   background: var(--color-surface-selected);
   color: var(--color-text-primary);
@@ -41,7 +41,7 @@
   opacity: var(--opacity-disabled);
 }
 
-/* В строке текста: высота и поля не раздвигают строку, цвет и размер наследуются, подчёркивание показывает действие. */
+/* Inside a line of text: height and margins do not spread the line, color and size are inherited, the underline shows the action. */
 .button--inline {
   min-height: 0;
   padding: 0;
@@ -82,14 +82,14 @@
   color: var(--color-text-primary);
 }
 
-/* «Отправить»: круглая акцентная кнопка, стрелка цветом фона (9,2:1 к акценту). Размер тот же, что у «микрофона»: ширина не прыгает. */
+/* "Send": a round accent button, the arrow in the background color (9.2:1 against the accent). The size is the same as the "microphone": the width does not jump. */
 .icon-button--accent,
 .icon-button--accent:hover {
   background: var(--color-accent-default);
   color: var(--color-surface-background);
 }
 
-/* Мелкая кнопка: ряд действий под плашкой. */
+/* A small button: the actions row under a bubble. */
 .icon-button--small {
   width: var(--layout-action-size);
   height: var(--layout-action-size);
@@ -107,7 +107,7 @@
   opacity: var(--opacity-disabled);
 }
 
-/* Кнопка без функции («Появится позже»): остаётся в порядке обхода, но не откликается на наведение и нажатие. */
+/* A button without a function ("Coming later"): it stays in the tab order but does not respond to hover or press. */
 .icon-button--unavailable,
 .icon-button--unavailable:hover {
   background: transparent;
@@ -116,14 +116,14 @@
   opacity: var(--opacity-unavailable);
 }
 
-/* «Отправить» без обработчика (D1): остаётся акцентной, но приглушённой. */
+/* "Send" without a handler (D1): stays accent-colored but muted. */
 .icon-button--accent.icon-button--unavailable,
 .icon-button--accent.icon-button--unavailable:hover {
   background: var(--color-accent-default);
   color: var(--color-surface-background);
 }
 
-/* Текст только для экранного диктора. */
+/* Text for the screen reader only. */
 .visually-hidden {
   position: absolute;
   width: var(--border-width-hairline);
@@ -133,7 +133,7 @@
   white-space: nowrap;
 }
 
-/* Поле ввода: тёмная заливка без рамки, значок слева, ошибка под полем. */
+/* Input field: a dark fill without a border, an icon on the left, the error under the field. */
 .text-field {
   display: grid;
   gap: var(--space-1);
@@ -146,7 +146,7 @@
   box-sizing: border-box;
   min-height: var(--layout-field-height);
   padding: 0 var(--space-3);
-  /* Рамки у поля нет, только заливка (как в Telegram); прозрачная рамка нужна, чтобы ошибка не сдвигала содержимое. */
+  /* The field has no border, only a fill (as in Telegram); a transparent border is needed so that an error does not shift the content. */
   border: var(--border-width-hairline) solid transparent;
   border-radius: var(--radius-control);
   background: var(--color-surface-field);
@@ -154,19 +154,19 @@
   transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
-/* Значок слева в поле («Поиск») тоньше по размеру, чем значки кнопок: в одной колонке со значками нижних пунктов сайдбара. */
+/* The icon on the left in the field ("Search") is smaller than button icons: it shares a column with the icons of the lower sidebar items. */
 .text-field__box > .icon {
   width: var(--icon-size-nav);
   height: var(--icon-size-nav);
 }
 
-/* Фокус: курсор (акцентный), чуть более светлая заливка и одна тонкая линия внутри поля цветом фокуса; снаружи кольца нет. */
+/* Focus: the (accent) caret, a slightly lighter fill and one thin line inside the field in the focus color; no ring outside. */
 .text-field__box:has(.text-field__input:focus) {
   background: var(--color-surface-field-active);
   box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-focus-ring);
 }
 
-/* Ошибка: единственный случай, когда у поля есть рамка. */
+/* Error: the only case in which the field has a border. */
 .text-field__box--invalid {
   border-color: var(--color-status-error);
 }
@@ -198,7 +198,7 @@
   line-height: var(--type-small-line-height);
 }
 
-/* Флажок (слайс 4): тот же квадрат, что у задачи в ленте; настоящий input скрыт визуально, но остаётся в порядке Tab. */
+/* Checkbox (slice 4): the same square as the task in the feed; the real input is visually hidden but stays in the Tab order. */
 .checkbox {
   display: flex;
   align-items: flex-start;
@@ -232,7 +232,7 @@
   background: var(--color-accent-default);
 }
 
-/* Галочка из двух сторон повёрнутого прямоугольника, цвет — фон окна (9,2:1 к акценту), как у задачи в ленте. */
+/* The tick is two sides of a rotated rectangle, the color is the window background (9.2:1 against the accent), as for the task in the feed. */
 .checkbox__input:checked + .checkbox__box::after {
   content: "";
   position: absolute;
@@ -275,8 +275,8 @@
   white-space: nowrap;
 }
 
-/* Длинная подпись переносится, а не обрезается (`checkbox--wrap`): в окне наименьшего размера и при крупном тексте смысл
-   фразы «Разрешить агентам доступ к журналу» нельзя прятать за многоточием. Названия чатов в списках остаются в одну строку. */
+/* A long label wraps instead of being cut (`checkbox--wrap`): in the smallest window and with large text the meaning
+   of a phrase like "Allow agents access to the journal" must not be hidden behind an ellipsis. Chat names in lists stay on one line. */
 .checkbox--wrap .checkbox__label {
   overflow: visible;
   overflow-wrap: anywhere;
@@ -284,7 +284,7 @@
   white-space: normal;
 }
 
-/* Пояснение переносится по словам: в русском оно длиннее строки окна, обрезка прятала бы смысл (слайс 4a). */
+/* The explanation wraps by words: in Russian it is longer than the window line, and cutting it would hide the meaning (slice 4a). */
 .checkbox__description {
   color: var(--color-text-tertiary);
   font-family: var(--type-meta-family);
@@ -293,7 +293,7 @@
   overflow-wrap: anywhere;
 }
 
-/* Полоса прогресса: тихая линия на заливке поля, акцентная заливка слева направо. */
+/* Progress bar: a quiet line on the field fill, the accent fill going left to right. */
 .progress {
   box-sizing: border-box;
   width: 100%;

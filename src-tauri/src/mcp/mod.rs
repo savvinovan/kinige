@@ -1,9 +1,9 @@
-//! Сервер MCP внутри приложения (ADR-0009, слайс 4a): `kinige-mcp` — мост stdio <-> Unix-сокет, база принадлежит одному
-//! писателю приложения. Слушатель стартует ПОСЛЕДНИМ в `start_services`, после `app.manage(store)`; сбой сокета журнал не
-//! останавливает: ошибка видна в окне «Доступ ИИ-агентов». Сокет удаляется в `RunEvent::Exit`.
+//! The MCP server inside the app (ADR-0009, slice 4a): `kinige-mcp` is a stdio <-> Unix socket bridge, the database belongs to the one
+//! writer of the app. The listener starts LAST in `start_services`, after `app.manage(store)`; a socket failure does not
+//! stop the journal: the error is visible in the "AI agent access" window. The socket is removed on `RunEvent::Exit`.
 //!
-//! Слушатель живёт под присмотром (`supervise`): первый `bind` не удался — привязка повторяется раз в интервал проверки;
-//! слушатель упал с паникой (профиль release с размоткой стека) — ошибка в состоянии и перезапуск.
+//! The listener lives under supervision (`supervise`): if the first `bind` failed, the binding is retried once per check interval;
+//! if the listener panicked (the release profile with stack unwinding), an error goes into the state and it is restarted.
 
 mod connect;
 mod server;
@@ -25,20 +25,20 @@ use tauri::{AppHandle, Manager, Runtime};
 use tokio::io::AsyncReadExt;
 use tokio::net::{UnixListener, UnixStream};
 
-/// Как часто слушатель проверяет, что файл сокета на месте (macOS может вычищать старые файлы в `$TMPDIR`), а после
-/// неудачного `bind` — повторяет привязку.
+/// How often the listener checks that the socket file is in place (macOS may clean old files in `$TMPDIR`), and after
+/// a failed `bind` retries the binding.
 const RECHECK: Duration = Duration::from_secs(10 * 60);
 
-/// Первая строка соединения после обрыва, которую шлёт мост (см. `kinige-mcp`): сеанс клиента тот же, строка журнала —
-/// «переподключение», а не «подключение».
+/// The first line of a connection after a drop, sent by the bridge (see `kinige-mcp`): the client session is the same, the log row is
+/// "reconnect", not "connect".
 const RECONNECT_MARKER: &[u8] = b"{\"jsonrpc\":\"2.0\",\"method\":\"kinige/reconnect\"}\n";
 
-/// Состояние сервера MCP в приложении: путь сокета и почему он не слушает.
+/// The MCP server state in the app: the socket path and why it is not listening.
 pub struct McpState {
     path: PathBuf,
     error: Mutex<Option<SocketError>>,
     recheck: Duration,
-    /// Только для тестов: слушатель паникует при ближайшем соединении.
+    /// For tests only: the listener panics on the nearest connection.
     panic_next: AtomicBool,
     /// How many listeners have been bound and made ready (`bind` returned, including `chmod 0600`). Tests wait for it to
     /// grow instead of sleeping or polling the file system.
@@ -64,7 +64,7 @@ impl McpState {
         }
     }
 
-    /// Только для тестов: следующее принятое соединение роняет слушатель паникой (присмотр его перезапустит).
+    /// For tests only: the next accepted connection brings the listener down with a panic (supervision will restart it).
     #[doc(hidden)]
     pub fn inject_listener_panic_for_test(&self) {
         self.panic_next.store(true, Ordering::SeqCst);
@@ -82,16 +82,16 @@ impl McpState {
     }
 }
 
-/// Обёртка для `app.manage`: общий доступ к состоянию из задач и команд.
+/// A wrapper for `app.manage`: shared access to the state from tasks and commands.
 pub struct McpHandle(pub Arc<McpState>);
 
-/// Запускает слушатель. Всегда возвращается: ошибка сокета записывается в состояние (`McpState::error`).
-/// Вызывается из `start_services` последним, на главном потоке.
+/// Starts the listener. It always returns: a socket error is recorded in the state (`McpState::error`).
+/// Called from `start_services` last, on the main thread.
 pub fn start<R: Runtime>(app: &AppHandle<R>, data_dir: &Path) {
     start_with_recheck(app, data_dir, RECHECK);
 }
 
-/// То же с заданным интервалом проверки (тесты укорачивают его).
+/// The same with a given check interval (tests shorten it).
 pub fn start_with_recheck<R: Runtime>(app: &AppHandle<R>, data_dir: &Path, recheck: Duration) {
     if app.try_state::<McpHandle>().is_some() {
         return;
@@ -109,23 +109,23 @@ pub fn start_with_recheck<R: Runtime>(app: &AppHandle<R>, data_dir: &Path, reche
         state.set_error(Some(SocketError::BindFailed));
         return;
     };
-    // `UnixListener` tokio привязывается к реактору: `bind` вызывается внутри среды выполнения.
+    // The tokio `UnixListener` binds to the reactor: `bind` is called inside the runtime.
     let first = tauri::async_runtime::block_on(async { bind(&path, uid) });
     match &first {
         Ok(_) => {
             state.bound();
-            log::info!("mcp: сокет поднят");
+            log::info!("mcp: socket is up");
         }
         Err(error) => {
-            log::warn!("mcp: сокет не поднят: {}", error.code());
+            log::warn!("mcp: socket is not up: {}", error.code());
             state.set_error(Some(*error));
         }
     }
-    // Присмотр живёт и после неудачного `bind`: условие (папка, второй экземпляр) может исчезнуть.
+    // Supervision lives on after a failed `bind` too: the condition (a folder, a second instance) may go away.
     tauri::async_runtime::spawn(supervise(app.clone(), state, first.ok(), uid));
 }
 
-/// Удаляет файл сокета при выходе из приложения.
+/// Removes the socket file when the app exits.
 pub fn shutdown<R: Runtime>(app: &AppHandle<R>) {
     if let Some(handle) = app.try_state::<McpHandle>()
         && handle.0.error().is_none()
@@ -134,8 +134,8 @@ pub fn shutdown<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Присмотр: пока слушателя нет — раз в интервал пробует привязаться; слушатель упал с паникой — ошибка в состоянии и
-/// перезапуск. Сам не возвращается.
+/// Supervision: while there is no listener, it tries to bind once per interval; if the listener panicked, an error goes into the state and it is
+/// restarted. It never returns by itself.
 async fn supervise<R: Runtime>(
     app: AppHandle<R>,
     state: Arc<McpState>,
@@ -150,18 +150,18 @@ async fn supervise<R: Runtime>(
                     listener = Some(fresh);
                     state.set_error(None);
                     state.bound();
-                    log::info!("mcp: сокет поднят");
+                    log::info!("mcp: socket is up");
                 }
                 Err(error) => state.set_error(Some(error)),
             }
             continue;
         };
         let task = tauri::async_runtime::spawn(run_listener(app.clone(), state.clone(), live, uid));
-        // `run_listener` не возвращается сам: конец — только паника (или остановка среды выполнения).
+        // `run_listener` does not return by itself: the end is only a panic (or the runtime stopping).
         if task.await.is_err() {
-            log::error!("mcp: слушатель упал с паникой, перезапуск");
+            log::error!("mcp: listener panicked, restarting");
             state.set_error(Some(SocketError::BindFailed));
-            // Прежний слушатель уничтожен вместе с задачей; файл сокета остался, `bind` его заменит.
+            // The previous listener was destroyed with the task; the socket file remained, `bind` will replace it.
             listener = bind(state.path(), uid).ok();
             if listener.is_some() {
                 state.set_error(None);
@@ -183,10 +183,10 @@ async fn run_listener<R: Runtime>(
         tokio::select! {
             accepted = listener.accept() => match accepted {
                 Ok((stream, _)) => {
-                    // Крючок тестов страховки; в релизной сборке (`debug_assertions` выключены) его нет.
+                    // A hook for the safety net tests; it is absent in a release build (`debug_assertions` off).
                     assert!(
                         !(cfg!(debug_assertions) && state.panic_next.swap(false, Ordering::SeqCst)),
-                        "проверка: паника слушателя"
+                        "check: listener panic"
                     );
                     tauri::async_runtime::spawn(serve_connection(app.clone(), stream, uid));
                 }
@@ -196,16 +196,16 @@ async fn run_listener<R: Runtime>(
                 if socket_present(state.path()) {
                     continue;
                 }
-                // Файл сокета пропал (его вычистила система или удалили): те же проверки и тот же путь.
+                // The socket file is gone (cleaned by the system or deleted): the same checks and the same path.
                 match bind(state.path(), uid) {
                     Ok(fresh) => {
                         listener = fresh;
                         state.set_error(None);
                         state.bound();
-                        log::info!("mcp: сокет перепривязан");
+                        log::info!("mcp: socket rebound");
                     }
                     Err(error) => {
-                        log::warn!("mcp: сокет не перепривязан: {}", error.code());
+                        log::warn!("mcp: socket not rebound: {}", error.code());
                         state.set_error(Some(error));
                     }
                 }
@@ -214,8 +214,8 @@ async fn run_listener<R: Runtime>(
     }
 }
 
-/// Читает начало соединения и решает, маркер ли это переподключения. Читает не больше длины маркера и только пока
-/// прочитанное — его начало (маркер может прийти частями); всё лишнее возвращается серверу как начало потока.
+/// Reads the start of a connection and decides whether it is the reconnect marker. Reads no more than the marker length and only while
+/// what was read is its beginning (the marker may arrive in parts); everything extra is returned to the server as the start of the stream.
 async fn read_marker<R: AsyncReadExt + Unpin>(read: &mut R) -> std::io::Result<(bool, Vec<u8>)> {
     let mut head: Vec<u8> = Vec::with_capacity(RECONNECT_MARKER.len());
     let mut chunk = [0u8; 256];
@@ -233,18 +233,18 @@ async fn read_marker<R: AsyncReadExt + Unpin>(read: &mut R) -> std::io::Result<(
     }
 }
 
-/// Соединение: чужой uid закрывается, предел кадра ставится на читающую половину, затем сервис `rmcp`. `own_uid` приходит
-/// снаружи, чтобы тест мог подменить его и проверить закрытие соединения чужого пользователя.
+/// A connection: a foreign uid is closed, the frame limit is put on the reading half, then the `rmcp` service. `own_uid` comes
+/// from outside, so that a test can substitute it and check that a foreign user's connection is closed.
 pub async fn serve_connection<R: Runtime>(app: AppHandle<R>, stream: UnixStream, own_uid: u32) {
     match stream.peer_cred() {
         Ok(cred) if cred.uid() == own_uid => {}
         _ => {
-            log::warn!("mcp: соединение чужого пользователя закрыто");
+            log::warn!("mcp: a foreign user's connection was closed");
             return;
         }
     }
     let (mut read, write) = stream.into_split();
-    // Мост после обрыва начинает соединение с маркера: сеанс клиента тот же, в журнале — «переподключение».
+    // After a drop the bridge starts the connection with the marker: the client session is the same, the log shows "reconnect".
     let Ok((reconnect, rest)) = read_marker(&mut read).await else {
         return;
     };
@@ -259,7 +259,7 @@ pub async fn serve_connection<R: Runtime>(app: AppHandle<R>, stream: UnixStream,
         Ok(running) => {
             let _ = running.waiting().await;
         }
-        Err(_) => log::debug!("mcp: рукопожатие не состоялось"),
+        Err(_) => log::debug!("mcp: the handshake did not happen"),
     }
     disconnected(&app, &info).await;
 }

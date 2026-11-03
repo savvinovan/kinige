@@ -1,12 +1,12 @@
 import type { ChatTint, SidebarChat } from "./chats";
 
-/** Цвета плитки с буквой. Порядок значим: цвет чата выбирается по хешу идентификатора, перестановка перекрасит чаты. */
+/** Colors of the letter tile. The order matters: a chat's color is chosen by the hash of its id, so reordering recolors chats. */
 export const TINTS: readonly ChatTint[] = ["blue", "teal", "green", "orange", "pink", "violet"];
 
-/** Эмодзи по умолчанию (`DEFAULT_ICON` в `kinige-domain/src/chat.rs`): Rust хранит его, когда эмодзи не выбран. */
+/** The default emoji (`DEFAULT_ICON` in `kinige-domain/src/chat.rs`): Rust stores it when no emoji is chosen. */
 const DEFAULT_EMOJI = "💬";
 
-/** Чат с настоящим эмодзи: пустой значок и значок по умолчанию «💬» считаются «без эмодзи» (только для показа, в данных ничего не меняется). */
+/** A chat with a real emoji: an empty icon and the default "💬" icon count as "no emoji" (display only, the data does not change). */
 export function hasEmoji(emoji: string | null | undefined): boolean {
   const value = (emoji ?? "").trim();
   return value !== "" && value !== DEFAULT_EMOJI;
@@ -18,23 +18,23 @@ const FALLBACK_LETTER = "#";
 const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 /**
- * Первая буква названия для плитки: первая графема-буква или цифра в верхнем регистре. Пробелы, знаки препинания и эмодзи
- * в начале пропускаются («  «Ёлка»», «🎉 Party» дают «Ё» и «P»); графема целиком, поэтому «Е» с комбинируемым диакритическим
- * знаком не рвётся. Если букв нет вовсе, возвращается «#».
+ * The first letter of the title for the tile: the first grapheme that is a letter or digit, in upper case. Spaces,
+ * punctuation and emoji at the start are skipped ("  «Ёлка»" and "🎉 Party" give "Ё" and "P"); the grapheme is taken
+ * whole, so "Е" with a combining diacritical mark is not split. If there are no letters at all, "#" is returned.
  */
 export function firstLetter(title: string): string {
   for (const { segment } of segmenter.segment(title)) {
     if (!LETTER.test(segment)) continue;
     const upper = segment.toLocaleUpperCase();
-    // «ß» → «SS»: плитка вмещает одну графему.
+    // "ß" -> "SS": the tile fits one grapheme.
     return segmenter.segment(upper)[Symbol.iterator]().next().value?.segment ?? upper;
   }
   return FALLBACK_LETTER;
 }
 
 /**
- * Цвет плитки по идентификатору чата: 32-битный FNV-1a и остаток от деления на число цветов. Один и тот же чат всегда получает
- * один и тот же цвет; хранимый цвет чата (KINIG-59) заменит эту функцию одним значением `chat.tint` (см. `tintOf`).
+ * The tile color by chat id: 32-bit FNV-1a and the remainder of division by the number of colors. The same chat always
+ * gets the same color; the stored chat color (KINIG-59) will replace this function with a single `chat.tint` value (see `tintOf`).
  */
 export function tintForId(id: string): ChatTint {
   let hash = 0x811c9dc5;
@@ -45,7 +45,7 @@ export function tintForId(id: string): ChatTint {
   return TINTS[hash % TINTS.length] ?? "blue";
 }
 
-/** Цвет плитки чата: заданный (`tint`) или выведенный из идентификатора. Единственное место, которое надо заменить в KINIG-59. */
+/** The chat tile color: the given one (`tint`) or derived from the id. The only place to replace in KINIG-59. */
 export function tintOf(chat: Pick<SidebarChat, "id" | "tint">): ChatTint {
   return chat.tint ?? tintForId(chat.id);
 }

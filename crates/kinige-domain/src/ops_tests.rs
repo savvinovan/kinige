@@ -1,5 +1,5 @@
-//! Тесты перезаписи групп слайса 3: байты каждой группы, `placement` в обеих ветках §3.4, снимок ревизии `edit`,
-//! `purged_of` с неизвестной группой, новый чат со всеми группами, ключи порядка.
+//! Tests of group rewriting for slice 3: the bytes of each group, `placement` in both branches of §3.4, the `edit`
+//! revision snapshot, `purged_of` with an unknown group, a new chat with all groups, ordering keys.
 
 use crate::groups::{GroupError, INBOX_ID, MessageRow, NewMessage, new_message, parse_groups_raw};
 use crate::message_ops::{self, FlagChange, message_columns};
@@ -47,14 +47,14 @@ fn hlcs(hlc_json: &str) -> BTreeMap<String, Value> {
     serde_json::from_str(hlc_json).unwrap()
 }
 
-/// Все группы, кроме `except`, дословно прежние; HLC всех остальных групп прежние.
+/// All groups except `except` are verbatim as before; the HLC of all the other groups is as before.
 fn assert_only_changed(before: &MessageRow, after_raw: &str, after_hlc: &str, except: &str) {
     let b = parse_groups_raw(&before.groups_raw).unwrap();
     let a = parse_groups_raw(after_raw).unwrap();
     assert_eq!(a.keys().collect::<Vec<_>>(), b.keys().collect::<Vec<_>>());
     for (name, raw) in &b {
         if name != except {
-            assert_eq!(a[name].get(), raw.get(), "{name} дословно");
+            assert_eq!(a[name].get(), raw.get(), "{name} verbatim");
             assert_eq!(
                 hlcs(after_hlc)[name],
                 hlcs(&before.hlc_json)[name],
@@ -62,7 +62,7 @@ fn assert_only_changed(before: &MessageRow, after_raw: &str, after_hlc: &str, ex
             );
         }
     }
-    assert_ne!(a[except].get(), b[except].get(), "{except} изменилась");
+    assert_ne!(a[except].get(), b[except].get(), "{except} changed");
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn flags_group_bytes_and_rules() {
         )
     );
 
-    // Снятие задачи обнуляет «выполнено»; избранное не трогается.
+    // Removing the task flag clears "done"; the favorite is not touched.
     let (raw, hl) = g(&done);
     let fav = message_ops::change_flag(
         &Groups {
@@ -167,7 +167,7 @@ fn flags_group_bytes_and_rules() {
     assert_eq!(columns.task_done_at, None);
     assert_eq!(columns.favorite_at, Some(NOW + 20));
 
-    // «Выполнено» у записи, которая не задача.
+    // "Done" on an entry that is not a task.
     assert_eq!(
         message_ops::change_flag(
             &groups(&row),
@@ -176,7 +176,7 @@ fn flags_group_bytes_and_rules() {
             &hlc(NOW as u64 + 1)
         ),
         Err(GroupError::Invalid(
-            "отметка «выполнено» у записи, которая не задача"
+            "\"done\" mark on an entry that is not a task"
         ))
     );
 }
@@ -184,7 +184,7 @@ fn flags_group_bytes_and_rules() {
 #[test]
 fn placement_first_rewrite_covers_both_branches_of_the_chain() {
     let row = message();
-    // Версия подтверждена сервером: base = её HLC, supersedes пуст.
+    // The version is confirmed by the server: base = its HLC, supersedes is empty.
     let confirmed =
         message_ops::set_journal_date(&groups(&row), "2026-10-08", true, &hlc(NOW as u64 + 1000))
             .unwrap();
@@ -202,7 +202,7 @@ fn placement_first_rewrite_covers_both_branches_of_the_chain() {
         "placement",
     );
 
-    // Собственная неподтверждённая версия: base остаётся (у первой — null), прежний HLC попадает в supersedes.
+    // Its own unconfirmed version: base stays (for the first one it is null), the previous HLC goes into supersedes.
     let own =
         message_ops::set_journal_date(&groups(&row), "2026-10-08", false, &hlc(NOW as u64 + 1000))
             .unwrap();
@@ -221,7 +221,7 @@ fn placement_first_rewrite_covers_both_branches_of_the_chain() {
         format!(r#"["{}"]"#, hlc(NOW as u64))
     );
 
-    // Вторая перезапись собственной версии накапливает supersedes.
+    // A second rewrite of its own version accumulates supersedes.
     let again = message_ops::set_journal_date(
         &Groups {
             groups_raw: &own.groups_raw,
@@ -272,12 +272,12 @@ fn hlc_must_grow_strictly_and_groups_must_exist() {
     assert_eq!(
         message_ops::set_deleted(&groups(&row), Some(1), &hlc(NOW as u64)),
         Err(GroupError::HlcNotNewer),
-        "равный"
+        "equal"
     );
     assert_eq!(
         message_ops::set_deleted(&groups(&row), Some(1), &hlc(NOW as u64 - 1)),
         Err(GroupError::HlcNotNewer),
-        "меньший"
+        "lower"
     );
     let without = {
         let mut map: BTreeMap<String, Box<RawValue>> = parse_groups_raw(&row.groups_raw).unwrap();
@@ -334,7 +334,7 @@ fn read_only_when_any_group_is_newer() {
         is_read_only(r#"{"core":{"h":"x"}}"#),
         Err(GroupError::Corrupt(_))
     ));
-    // Группа, которую переписывают, в sv 2 — отказ; чужая группа в sv 2 не мешает перезаписи своей.
+    // A group being rewritten that is in sv 2 is refused; a foreign group in sv 2 does not block rewriting your own.
     let mut other = row.clone();
     other.hlc_json = row.hlc_json.replace(
         &format!(r#""flags":{{"h":"{}","sv":1}}"#, hlc(NOW as u64)),
@@ -351,7 +351,7 @@ fn read_only_when_any_group_is_newer() {
         Err(GroupError::UnsupportedVersion)
     );
     let ok = message_ops::set_deleted(&groups(&other), Some(1), &hlc(NOW as u64 + 1)).unwrap();
-    assert_eq!(ok.schema_version, 2, "максимум sv по группам");
+    assert_eq!(ok.schema_version, 2, "the maximum sv over the groups");
     assert_eq!(hlcs(&ok.hlc_json)["flags"], hlcs(&other.hlc_json)["flags"]);
 }
 

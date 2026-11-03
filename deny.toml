@@ -1,21 +1,21 @@
-# cargo-deny: лицензии зависимостей, известные уязвимости (RustSec) и источники крейтов. Запуск: задание `deny` в ci.yml.
-# Локально: cargo install cargo-deny && cargo deny check advisories licenses sources
+# cargo-deny: dependency licenses, known vulnerabilities (RustSec) and crate sources. Run by the `deny` job in ci.yml.
+# Locally: cargo install cargo-deny && cargo deny check advisories licenses sources
 
 [graph]
 all-features = true
 
 [advisories]
-# Только «не поддерживается» для транзитивных зависимостей Tauri на Linux: заменить их можно лишь обновлением Tauri
-# и его плагинов. Каждая запись пересматривается при обновлении Tauri; уязвимости (не «unmaintained») сюда не добавляются.
+# Only "unmaintained" for transitive Tauri dependencies on Linux: they can be replaced only by updating Tauri
+# and its plugins. Every entry is reviewed on a Tauri update; vulnerabilities (not "unmaintained") are not added here.
 ignore = [
-    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error: через glib-macros -> gtk3-rs -> tray-icon/wry (Tauri, только Linux)" },
-    { id = "RUSTSEC-2026-0370", reason = "zvariant: через zbus -> tauri-plugin-opener и tauri-plugin-single-instance (только Linux)" },
-    { id = "RUSTSEC-2026-0371", reason = "zbus_names: через zbus (тот же путь, что у zvariant)" },
-    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: через zbus (тот же путь, что у zvariant)" },
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error: via glib-macros -> gtk3-rs -> tray-icon/wry (Tauri, Linux only)" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant: via zbus -> tauri-plugin-opener and tauri-plugin-single-instance (Linux only)" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names: via zbus (the same path as zvariant)" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: via zbus (the same path as zvariant)" },
 ]
 
 [licenses]
-# Разрешены только лицензии, допускающие распространение в бинарнике (правило 10 CLAUDE.md для ассетов — то же и для кода).
+# Only licenses that permit distribution in a binary are allowed (rule 10 of CLAUDE.md for assets; the same goes for code).
 allow = [
     "MIT",
     "Apache-2.0",
@@ -25,13 +25,13 @@ allow = [
     "Unicode-3.0",
     "Zlib",
     "MPL-2.0",
-    # target-lexicon (через tauri-build/tauri-utils): Apache-2.0 с исключением LLVM — не накладывает условий на бинарник.
+    # target-lexicon (via tauri-build/tauri-utils): Apache-2.0 with the LLVM exception - puts no conditions on the binary.
     "Apache-2.0 WITH LLVM-exception",
-    # clipboard-win, error-code (arboard, только Windows): Boost Software License — разрешительная, без копилефта.
+    # clipboard-win, error-code (arboard, Windows only): Boost Software License - permissive, no copyleft.
     "BSL-1.0",
 ]
 confidence-threshold = 0.8
-# Список общий для всех платформ; лишнее в нём не ошибка.
+# The list is shared by all platforms; an unused entry is not an error.
 unused-allowed-license = "allow"
 
 [sources]

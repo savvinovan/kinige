@@ -2,9 +2,9 @@ import { useTranslation } from "react-i18next";
 import "./recovery.css";
 
 /**
- * Экран «База создана более новой версией Kinige» (`StartupState.databaseTooNew`, §10.4): во всё окно, без кнопок.
- * Откат версии не поддерживается, копии не помогут: нужно обновить приложение. Ничего не изменено и не удалено.
- * Вид тот же, что у «База повреждена» (колонка по центру), но это другая причина, поэтому отдельный компонент.
+ * The "База создана более новой версией Kinige" screen (`StartupState.databaseTooNew`, §10.4): the whole window, no buttons.
+ * Downgrading is not supported and copies will not help: the app must be updated. Nothing was changed or deleted.
+ * The look is the same as for "База повреждена" (a centered column), but the cause is different, hence a separate component.
  */
 export function TooNewScreen() {
   const { t } = useTranslation();

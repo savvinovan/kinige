@@ -1,10 +1,10 @@
-//! Импорт и сбои (слайс 4, задача 4.8): остановка между пачками, отказ записи пачки, сбой копии, `abort` между пачками и
-//! посреди пачки. Полупачек нет, повторный импорт доносит остаток без дублей.
+//! Import and failures (slice 4, task 4.8): a stop between batches, a batch write failure, a copy failure, `abort` between batches and
+//! in the middle of a batch. There are no half batches, a repeated import delivers the rest without duplicates.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
-#![allow(clippy::disallowed_methods)] // `thread::spawn` запрещён в коде приложения (clippy.toml), тесту поток нужен без обработки отказа
+#![allow(clippy::disallowed_methods)] // `thread::spawn` is forbidden in app code (clippy.toml), the test needs a thread without handling a spawn failure
 
 mod common;
 
@@ -19,7 +19,7 @@ use std::process::Command;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-/// Записей, строк `message_ext` и строк индекса поиска.
+/// Entries, `message_ext` rows and search index rows.
 fn counts(dir: &std::path::Path) -> (i64, i64, i64) {
     let conn = raw(dir);
     let n = |sql: &str| -> i64 { conn.query_row(sql, [], |r| r.get(0)).unwrap() };
@@ -44,7 +44,7 @@ fn assert_consistent(dir: &std::path::Path, expected: i64) {
             |r| r.get(0),
         )
         .unwrap();
-    assert_eq!(duplicates, 0, "дублей нет");
+    assert_eq!(duplicates, 0, "no duplicates");
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn a_failing_batch_is_not_written_at_all_and_the_next_run_finishes() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let export = parse(&saved_n(1_200));
-    // Отказ посреди второй пачки (сообщение 700): пачка откатывается целиком, с индексом, тегами и `message_ext`.
+    // A failure in the middle of the second batch (message 700): the batch rolls back entirely, with the index, tags and `message_ext`.
     raw(dir.path())
         .execute_batch(
             "CREATE TRIGGER fail_batch BEFORE INSERT ON message_ext WHEN NEW.ext_msg = '700' \
@@ -126,20 +126,20 @@ fn a_failed_copy_cancels_the_import_before_any_write() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     store.send_message(INBOX_ID, "своя", &moscow(T0)).unwrap();
-    // Вместо папки копий лежит файл: копию снять нельзя.
+    // A file lies where the copies folder should be: a copy cannot be taken.
     std::fs::write(backups_dir(&db_path(dir.path())), b"not a folder").unwrap();
     let error = run(&store, &parse(&saved_n(20)), &[]).unwrap_err();
     assert!(matches!(error, StoreError::ImportBackupFailed));
     assert_eq!(error.code(), ErrorCode::ImportBackupFailed);
-    assert_eq!(counts(dir.path()).0, 1, "ни одной импортированной записи");
+    assert_eq!(counts(dir.path()).0, 1, "not a single imported entry");
     assert_eq!(counts(dir.path()).1, 0);
 }
 
 const CHILD_ENV: &str = "KINIGE_IMPORT_ABORT_DIR";
 const MODE_ENV: &str = "KINIGE_IMPORT_ABORT_MODE";
 
-/// Дочерний процесс: импорт 1200 сообщений; `between` — `abort` сразу после фиксации первой пачки, `inside` — `abort`
-/// посреди второй (её запись застревает в триггере).
+/// Child process: imports 1200 messages; `between` is `abort` right after the first batch is committed, `inside` is `abort`
+/// in the middle of the second (its write gets stuck in a trigger).
 fn child(dir: &std::path::Path, mode: &str) -> ! {
     let store = open_without_mirror(dir);
     let export = parse(&saved_n(1_200));
@@ -152,7 +152,7 @@ fn child(dir: &std::path::Path, mode: &str) -> ! {
             )
             .unwrap();
         std::thread::spawn(|| {
-            // Первая пачка фиксируется за доли секунды, вторая «считает» дальше: через секунду писатель посередине.
+            // The first batch is committed within a fraction of a second, the second one keeps "counting": after a second the writer is in the middle.
             std::thread::sleep(std::time::Duration::from_millis(1500));
             std::process::abort();
         });
@@ -181,7 +181,7 @@ fn killed_import(mode: &str, test: &str) -> tempfile::TempDir {
         .env(MODE_ENV, mode)
         .status()
         .unwrap();
-    assert!(!status.success(), "дочерний процесс должен был упасть");
+    assert!(!status.success(), "the child process should have died");
     #[cfg(unix)]
     {
         use std::os::unix::process::ExitStatusExt;
@@ -191,14 +191,14 @@ fn killed_import(mode: &str, test: &str) -> tempfile::TempDir {
 }
 
 fn finish_after_kill(dir: &std::path::Path) {
-    // Следующий запуск: база цела, пачка либо есть целиком, либо нет совсем.
+    // Next launch: the database is intact, a batch is either entirely there or not there at all.
     assert_consistent(dir, 500);
     let store = open_without_mirror(dir);
     let export = parse(&saved_n(1_200));
     let rest = run(&store, &export, &[]).unwrap();
     assert_eq!((rest.imported, rest.skipped_existing), (700, 500));
     assert_consistent(dir, 1_200);
-    // Отметки Markdown-копии пережили: каждый импортированный день помечен или уже записан.
+    // The Markdown copy marks survived: every imported day is marked or already written.
     let days: i64 = raw(dir)
         .query_row(
             "SELECT COUNT(DISTINCT journal_date) FROM message",
@@ -229,7 +229,7 @@ fn abort_in_the_middle_of_a_batch_leaves_no_half_batch() {
         child(dir.as_ref(), &std::env::var(MODE_ENV).unwrap());
     }
     let dir = killed_import("inside", name);
-    // Триггер-задержка остался в базе дочернего процесса: перед повторным импортом его убирают.
+    // The delay trigger stayed in the child process database: it is removed before the repeated import.
     raw(dir.path())
         .execute_batch("DROP TRIGGER IF EXISTS stall_batch;")
         .unwrap();

@@ -1,8 +1,8 @@
-//! Команды окна «Доступ ИИ-агентов» (слайс 4a) через IPC на mock-рантайме с настоящими capabilities. С слайса 4b они
-//! живут в окне настроек (`settings`): главному окну и окну захвата — отказ на каждую, набор окна захвата не изменился (§12.3).
+//! Commands of the "AI agent access" window (slice 4a) through IPC on a mock runtime with the real capabilities. Since slice 4b they
+//! live in the settings window (`settings`): the main window and the capture window are refused on each, the capture window set did not change (§12.3).
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -27,7 +27,7 @@ fn agent_commands_are_settings_only_and_the_capture_window_still_has_seven() {
     assert_eq!(
         CAPTURE_COMMANDS.len(),
         7,
-        "у окна захвата по-прежнему семь команд"
+        "the capture window still has seven commands"
     );
     let fixture = fixture();
     let settings = window(&fixture, "settings");
@@ -39,8 +39,9 @@ fn agent_commands_are_settings_only_and_the_capture_window_still_has_seven() {
         assert!(!MAIN_COMMANDS.contains(command), "{command}");
         assert!(!CAPTURE_COMMANDS.contains(command), "{command}");
         for denied in [&main, &capture, &other] {
-            let error = call(denied, command, args_for(command))
-                .expect_err(&format!("{command}: окну без права нельзя"));
+            let error = call(denied, command, args_for(command)).expect_err(&format!(
+                "{command}: not allowed for a window without the permission"
+            ));
             assert!(is_acl_denial(&error), "{command}: {error}");
         }
         let result = call(&settings, command, args_for(command));
@@ -60,7 +61,7 @@ fn a_denied_window_changes_nothing_in_the_settings() {
     let access = store.agent_access().unwrap();
     assert!(
         !access.enabled,
-        "доступ выключен по умолчанию, окно захвата его не включит"
+        "access is off by default, the capture window will not turn it on"
     );
     assert_eq!(access.mode, kinige_domain::AgentMode::Read);
 }
@@ -88,9 +89,9 @@ fn the_settings_window_drives_the_settings_and_sees_the_socket_state() {
         .find(|c| c["isInbox"] == true)
         .unwrap();
     assert_eq!(inbox["visible"], true);
-    // В тесте слушателя нет: сокет не слушает, но окно получает ответ, а не ошибку.
+    // There is no listener in the test: the socket is not listening, but the window gets a reply, not an error.
     assert!(access["socket"].is_object());
-    // Неизвестный чат не принимается, настройка не меняется.
+    // An unknown chat is not accepted, the setting does not change.
     let error = call(
         &main,
         "set_agent_chats",
@@ -100,7 +101,7 @@ fn the_settings_window_drives_the_settings_and_sees_the_socket_state() {
     assert_eq!(error, json!({"code": "chat_not_found"}));
     let after = call(&main, "get_agent_access", json!({})).unwrap();
     assert_eq!(after["chats"], access["chats"]);
-    // Мусор вместо режима — ошибка разбора, не паника.
+    // Garbage instead of a mode is a parse error, not a panic.
     assert!(call(&main, "set_agent_mode", json!({"mode": "root"})).is_err());
     assert!(call(&main, "list_agent_log", json!({"before": "x"})).is_err());
     let page = call(&main, "list_agent_log", json!({})).unwrap();

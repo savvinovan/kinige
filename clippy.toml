@@ -1,13 +1,13 @@
-# Печать и «падающие» вызовы разрешены только в тестах (unit-тесты в `src/` и корни `tests/` с `#![cfg(test)]`), где
-# падение теста и есть сообщение об ошибке. Для `unreachable`, `todo` и `unimplemented` такой настройки у clippy нет.
+# Printing and "panicking" calls are allowed only in tests (unit tests in `src/` and `tests/` roots with `#![cfg(test)]`), where
+# a failing test is the error message. Clippy has no such setting for `unreachable`, `todo` and `unimplemented`.
 allow-print-in-tests = true
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
 allow-indexing-slicing-in-tests = true
 
-# `std::thread::spawn` паникует, если ОС не дала поток: потоки запускаются через `thread::Builder::spawn` с обработкой отказа.
-# В тестах — `#[allow(clippy::disallowed_methods)]` на тесте или в корне файла (настройки «в тестах» у clippy для него нет).
+# `std::thread::spawn` panics if the OS did not give a thread: threads are started through `thread::Builder::spawn` with the failure handled.
+# In tests, use `#[allow(clippy::disallowed_methods)]` on the test or at the file root (clippy has no "in tests" setting for it).
 disallowed-methods = [
-    { path = "std::thread::spawn", reason = "паникует при отказе ОС: используйте `thread::Builder::spawn` и обработайте ошибку" },
+    { path = "std::thread::spawn", reason = "panics if the OS refuses: use `thread::Builder::spawn` and handle the error" },
 ]

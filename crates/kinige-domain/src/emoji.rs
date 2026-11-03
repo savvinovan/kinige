@@ -1,16 +1,16 @@
-//! Проверка «это последовательность эмодзи» для списка «недавних» (слайс 3). Без внешних данных: правила UTS #51 (ED-20,
-//! `emoji sequence`) для одного графемного кластера, ограниченные тем, что выдаёт пикер: символ эмодзи, при желании с
-//! `VS16` или тоном кожи; флаг из двух региональных индикаторов; клавиша-кейкап; тег-флаг подобласти (🏴 + теги); цепочка
-//! элементов через ZWJ.
+//! Check "is this an emoji sequence" for the "recent" list (slice 3). No external data: the UTS #51 rules (ED-20,
+//! `emoji sequence`) for one grapheme cluster, limited to what the picker produces: an emoji character, optionally with
+//! `VS16` or a skin tone; a flag made of two regional indicators; a keycap; a subdivision tag flag (🏴 + tags); a chain
+//! of elements joined by ZWJ.
 //!
-//! Таблица `Extended_Pictographic` — из `emoji-data.txt` (Unicode Emoji 16.0, диапазоны неназначенных кодов внутри блоков
-//! эмодзи включены намеренно, как в самом файле: так будущие эмодзи проходят без обновления). Список написан вручную, а не
-//! подключён из крейта: зависимость ради одной проверки не нужна. Таблица записана по памяти, поэтому сверена со всеми
-//! последовательностями `emojibase-data` 17.0.0 и 18.0.0 (en, ru, с вариантами тонов кожи): отвергаются только «компоненты», которых
-//! пикер не выдаёт, — одиночные региональные индикаторы и одиночные тона кожи (разовая проверка при разработке, в
-//! репозиторий не входит).
+//! The `Extended_Pictographic` table comes from `emoji-data.txt` (Unicode Emoji 16.0; ranges of unassigned code points
+//! inside emoji blocks are included on purpose, as in the file itself: this way future emoji pass without an update). The
+//! list is written by hand rather than pulled in from a crate: a dependency for one check is not needed. The table was
+//! written from memory, so it was checked against all the sequences of `emojibase-data` 17.0.0 and 18.0.0 (en, ru, with
+//! skin tone variants): only the "components" that the picker does not produce are rejected -- lone regional
+//! indicators and lone skin tones (a one-off check made during development, not part of the repository).
 
-/// Самая длинная последовательность в байтах: как у эмодзи чата.
+/// The longest sequence in bytes: the same as for a chat emoji.
 pub const MAX_EMOJI_BYTES: usize = crate::chat::MAX_ICON_BYTES;
 
 const ZWJ: char = '\u{200D}';
@@ -21,7 +21,7 @@ const TAG_LAST: char = '\u{E007E}';
 const TAG_CANCEL: char = '\u{E007F}';
 const BLACK_FLAG: char = '\u{1F3F4}';
 
-/// Диапазоны `Extended_Pictographic` (включительно).
+/// `Extended_Pictographic` ranges (inclusive).
 const EXTENDED_PICTOGRAPHIC: &[(u32, u32)] = &[
     (0x00A9, 0x00A9),
     (0x00AE, 0x00AE),
@@ -122,13 +122,13 @@ fn is_regional_indicator(c: char) -> bool {
     ('\u{1F1E6}'..='\u{1F1FF}').contains(&c)
 }
 
-/// `Emoji_Modifier`: тона кожи (Фицпатрик).
+/// `Emoji_Modifier`: skin tones (Fitzpatrick).
 fn is_skin_tone(c: char) -> bool {
     ('\u{1F3FB}'..='\u{1F3FF}').contains(&c)
 }
 
-/// Элемент цепочки: символ `Extended_Pictographic`, затем не более одного `VS16` или тона кожи. Возвращает, сколько
-/// символов съедено (0 — элемента нет).
+/// A chain element: an `Extended_Pictographic` character, then at most one `VS16` or skin tone. Returns how many
+/// characters were consumed (0 means there is no element).
 fn element_len(chars: &[char]) -> usize {
     match chars {
         [first, rest @ ..] if is_extended_pictographic(*first) => match rest.first() {
@@ -139,25 +139,25 @@ fn element_len(chars: &[char]) -> usize {
     }
 }
 
-/// Строка — ровно одна последовательность эмодзи: пустая, с пробелами, с управляющими знаками, разметкой, текстом или
-/// длиннее [`MAX_EMOJI_BYTES`] — нет.
+/// The string is exactly one emoji sequence: an empty one, one with spaces, control characters, markup, text, or one
+/// longer than [`MAX_EMOJI_BYTES`] is not.
 pub fn is_emoji_sequence(text: &str) -> bool {
     if text.is_empty() || text.len() > MAX_EMOJI_BYTES {
         return false;
     }
     let chars: Vec<char> = text.chars().collect();
     match chars.as_slice() {
-        // Кейкап: цифра, `#` или `*`, необязательный VS16, U+20E3.
+        // Keycap: a digit, `#` or `*`, an optional VS16, U+20E3.
         [key, rest @ ..] if key.is_ascii_digit() || *key == '#' || *key == '*' => {
             matches!(rest, [KEYCAP] | [VS16, KEYCAP])
         }
-        // Флаг страны: два региональных индикатора.
+        // Country flag: two regional indicators.
         [a, b] if is_regional_indicator(*a) && is_regional_indicator(*b) => true,
-        // Флаг подобласти: чёрный флаг, теги, отмена тегов.
+        // Subdivision flag: black flag, tags, cancel tag.
         [flag, tags @ .., cancel] if *flag == BLACK_FLAG && *cancel == TAG_CANCEL => {
             !tags.is_empty() && tags.iter().all(|c| (TAG_FIRST..=TAG_LAST).contains(c))
         }
-        // Цепочка элементов через ZWJ.
+        // A chain of elements joined by ZWJ.
         all => {
             let mut rest = all;
             loop {
@@ -179,8 +179,9 @@ pub fn is_emoji_sequence(text: &str) -> bool {
     }
 }
 
-/// Ключ сравнения эмодзи: последовательность без `VS16`. `emojibase-data` 18 убрала лишний `VS16` у 152 эмодзи (`✅\u{FE0F}`
-/// стало `✅`), а в базе «недавние» лежат в старой записи; для пользователя это один и тот же эмодзи.
+/// Emoji comparison key: the sequence without `VS16`. `emojibase-data` 18 removed a redundant `VS16` from 152 emoji
+/// (`✅\u{FE0F}` became `✅`), while the "recent" ones in the database are stored in the old form; for the user this is the
+/// same emoji.
 pub fn emoji_identity(emoji: &str) -> String {
     emoji.chars().filter(|c| *c != VS16).collect()
 }
@@ -217,15 +218,15 @@ mod tests {
             "❤\u{FE0F}",
             "©",
             "☺\u{FE0F}",
-            "👍\u{1F3FD}", // тон кожи
-            "🇷🇺",          // флаг страны
-            "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}", // 🏴 Шотландия
-            "1\u{FE0F}\u{20E3}", // кейкап
+            "👍\u{1F3FD}", // skin tone
+            "🇷🇺",          // country flag
+            "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}", // 🏴 Scotland
+            "1\u{FE0F}\u{20E3}", // keycap
             "#\u{20E3}",
-            "👨\u{200D}👩\u{200D}👧\u{200D}👦", // семья
-            "🏳\u{FE0F}\u{200D}🌈",              // радужный флаг
-            "👩\u{1F3FB}\u{200D}❤\u{FE0F}\u{200D}👨\u{1F3FF}", // пара с разными тонами
-            "🫩",                                // эмодзи новых версий внутри блока
+            "👨\u{200D}👩\u{200D}👧\u{200D}👦", // family
+            "🏳\u{FE0F}\u{200D}🌈",              // rainbow flag
+            "👩\u{1F3FB}\u{200D}❤\u{FE0F}\u{200D}👨\u{1F3FF}", // couple with different skin tones
+            "🫩",                                // emoji of newer versions inside a block
         ] {
             assert!(is_emoji_sequence(emoji), "{emoji:?}");
         }
@@ -233,7 +234,7 @@ mod tests {
 
     #[test]
     fn everything_else_is_refused() {
-        let long = "📚".repeat(9); // 36 байт
+        let long = "📚".repeat(9); // 36 bytes
         for bad in [
             "",
             " ",
@@ -246,14 +247,14 @@ mod tests {
             "<b>📚",
             "📚a",
             "a📚",
-            "📚📚", // два эмодзи — не одна последовательность
+            "📚📚", // two emoji are not one sequence
             "\n",
             "📚\u{0007}",
             "\u{200D}",
             "📚\u{200D}",
             "\u{200D}📚",
             "📚\u{200D}\u{200D}📚",
-            "\u{1F3FB}", // тон кожи без основы
+            "\u{1F3FB}", // skin tone without a base
             "\u{FE0F}",
             "🇷",
             "🇷🇺🇷",
@@ -271,15 +272,15 @@ mod tests {
 
     #[test]
     fn the_length_limit_fits_the_longest_picker_emoji_and_nothing_longer() {
-        // 👨‍👩‍👧‍👦: четыре символа и три ZWJ — 25 байт.
+        // 👨‍👩‍👧‍👦: four characters and three ZWJ -- 25 bytes.
         let family = "👨\u{200D}👩\u{200D}👧\u{200D}👦";
         assert_eq!(family.len(), 25);
         assert!(is_emoji_sequence(family));
-        // Самая длинная последовательность пикера — поцелуй с разными тонами кожи, 35 байт.
+        // The longest picker sequence is a kiss with different skin tones, 35 bytes.
         let kiss = "👩\u{1F3FB}\u{200D}\u{2764}\u{FE0F}\u{200D}💋\u{200D}👨\u{1F3FF}";
         assert_eq!(kiss.len(), 35);
         assert!(is_emoji_sequence(kiss));
-        // Та же цепочка семьи с тонами у всех — 41 байт: уже за пределом.
+        // The same family chain with skin tones on everyone is 41 bytes: already over the limit.
         let too_long = "👨\u{1F3FB}\u{200D}👩\u{1F3FB}\u{200D}👧\u{1F3FB}\u{200D}👦\u{1F3FB}";
         assert_eq!(too_long.len(), 41);
         assert!(too_long.len() > MAX_EMOJI_BYTES);

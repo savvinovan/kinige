@@ -10,7 +10,7 @@ import { formatDayLabel } from "./dates";
 import { topDayOf } from "./topDay";
 import "./feed.css";
 
-/** Действия над записями ленты; каждое получает id записи. Без них плашки ведут себя как в D1 (кнопки нарисованы и недоступны). */
+/** Actions on feed entries; each receives the entry id. Without them bubbles behave as in D1 (buttons are drawn and disabled). */
 export interface FeedActions {
   onEdit(id: string): void;
   onSaveEdit(id: string, text: string): void;
@@ -23,22 +23,22 @@ export interface FeedActions {
   onRestore(id: string): void;
   onToggleTaskItem(id: string, index: number, checked: boolean): void;
   onTagClick(tag: string): void;
-  /** «Переместить в чат» (меню записи и перетаскивание на чат). */
+  /** "Move to chat" (the entry menu and dragging onto a chat). */
   onMoveTo(id: string, chatId: string): void;
 }
 
-/** Состояние интерфейса записей: какая правится, какие удалены (стоят приглушёнными на месте до ухода из чата). */
+/** Entry UI state: which one is being edited, which are deleted (they stay muted in place until the person leaves the chat). */
 export interface FeedUiState {
   editingId?: string | null;
   deletedIds?: ReadonlySet<string>;
-  /** Ошибка сохранения правки (уже переведённая). */
+  /** Error saving an edit (already translated). */
   editError?: string;
-  /** Запись, открытая из поиска: подсвечена заливкой до следующего щелчка, найденные слова выделены (слайс 4). */
+  /** The entry opened from search: highlighted with a fill until the next click, the found words are marked (slice 4). */
   markedId?: string | null;
   markTerms?: readonly string[];
 }
 
-/** Подгрузка страниц ленты (слайс 4): без виртуализации, по сигналу «край списка показался в области прокрутки». */
+/** Loading feed pages (slice 4): without virtualization, on the signal "the list edge appeared in the scroll area". */
 export interface FeedPaging {
   hasOlder: boolean;
   hasNewer: boolean;
@@ -46,7 +46,7 @@ export interface FeedPaging {
   onLoadNewer: () => void;
 }
 
-/** Просьба прокрутить ленту к записи (переход из поиска): новый `nonce` — новая просьба, даже к той же записи. */
+/** A request to scroll the feed to an entry (a jump from search): a new `nonce` is a new request, even for the same entry. */
 export interface ScrollRequest {
   id: string;
   nonce: number;
@@ -54,32 +54,32 @@ export interface ScrollRequest {
 
 interface FeedProps {
   messages: readonly FeedMessage[];
-  /** Сегодняшний `journal_date` (`YYYY-MM-DD`) для меток «Сегодня» и «Вчера»: его присылает Rust. В историях фиксируется, чтобы снимки были стабильны. */
+  /** Today's `journal_date` (`YYYY-MM-DD`) for the "Today" and "Yesterday" labels: Rust sends it. In stories it is pinned so that snapshots are stable. */
   today: string;
   onRetry?: (messageId: string) => void;
-  /** Щелчок по ссылке в записи → системный браузер. */
+  /** A click on a link in an entry -> the system browser. */
   onOpenLink?: (url: string) => void;
   ui?: FeedUiState;
   actions?: FeedActions;
-  /** Текст пустого состояния; по умолчанию — подсказка пустого чата. */
+  /** Empty-state text; by default the empty-chat hint. */
   emptyText?: string;
-  /** Чаты для пункта «Переместить в чат»; текущий помечен (`useRecordDrag` и `moveTargetsFrom`). */
+  /** Chats for the "Move to chat" item; the current one is marked (`useRecordDrag` and `moveTargetsFrom`). */
   moveTargets?: readonly MoveTarget[];
-  /** Перетаскивание плашки на чат: `begin(id)` — обработчик нажатия плашки. Без него плашки не тащатся. */
+  /** Dragging a bubble onto a chat: `begin(id)` is the bubble's press handler. Without it bubbles cannot be dragged. */
   onDragStart?: (messageId: string) => (event: PointerEvent<HTMLElement>, plate: HTMLElement) => void;
-  /** Подгрузка старых и новых страниц. Без неё лента показывает ровно то, что получила. */
+  /** Loading older and newer pages. Without it the feed shows exactly what it received. */
   paging?: FeedPaging;
-  /** Прокрутить к записи (она по центру области). */
+  /** Scroll to an entry (it ends up in the center of the area). */
   scrollTo?: ScrollRequest | null;
-  /** Нажатие в ленте (любое): снимает подсветку записи, открытой из поиска. */
+  /** A press in the feed (any): removes the highlight of the entry opened from search. */
   onPointerDownFeed?: () => void;
-  /** Карточка «В этот день» (слайс 5): стоит под меткой дня `journalDate` перед его записями; нет записей этого дня — на своём месте по дате. */
+  /** The "On this day" card (slice 5): stands under the day label `journalDate` before its entries; with no entries that day, in its place by date. */
   card?: { journalDate: string; node: ReactNode };
-  /** Щелчок по цитате ответа: открыть старую запись в контексте. Без обработчика цитата не нажимается. */
+  /** A click on a reply quote: open the old entry in context. Without a handler the quote is not clickable. */
   onOpenReply?: (quote: ReplyTo) => void;
-  /** Новый номер — прокрутить ленту к нижнему краю (после скрытия карточки читатель остаётся у самых новых записей). */
+  /** A new number means scroll the feed to the bottom edge (after the card is hidden the reader stays at the newest entries). */
   toBottom?: number;
-  /** Лента ещё не получила всё нужное для первого кадра: не рисует ничего, даже подсказку пустого чата (ничего не прыгает). */
+  /** The feed has not yet received everything needed for the first frame: it draws nothing, not even the empty-chat hint (nothing jumps). */
   loading?: boolean;
   /**
    * Slice 6: the journal day the feed shows, reported when the list changes and while the person scrolls: the day at the top,
@@ -93,9 +93,9 @@ interface FeedProps {
 }
 
 /**
- * Лента: метки дней («таблетки» по центру) и плашки сообщений, прижатые влево. Открывается прокрученной к низу
- * (новое внизу): область прокрутки `column-reverse` держит нижний край на месте, даже когда после загрузки шрифтов
- * меняется высота строк; короткая лента лежит у нижнего края, над composer. Над лентой нет ни заголовка, ни названия чата (§6).
+ * The feed: day labels ("pills" in the center) and message bubbles pressed to the left. It opens scrolled to the bottom
+ * (new at the bottom): the `column-reverse` scroll area keeps the bottom edge in place even when row heights
+ * change after fonts load; a short feed lies at the bottom edge, above the composer. There is neither a title nor a chat name above the feed (§6).
  */
 export function Feed({
   messages,
@@ -125,7 +125,7 @@ export function Feed({
   const scroller = useRef<HTMLDivElement>(null);
   const olderEdge = useRef<HTMLDivElement>(null);
   const newerEdge = useRef<HTMLDivElement>(null);
-  // Высота и положение прокрутки перед подгрузкой новых записей внизу: после неё прокрутка возвращается к тем же записям.
+  // Height and scroll position before loading newer entries at the bottom: afterwards the scroll returns to the same entries.
   const beforeNewer = useRef<{ height: number; top: number } | null>(null);
   const paged = useRef(paging);
   useEffect(() => {
@@ -165,8 +165,8 @@ export function Feed({
   };
   useEffect(() => () => cancelAnimationFrame(reportFrame.current), []);
 
-  // Край списка показался в области прокрутки: грузим следующую страницу. Область `column-reverse` держит нижний край на
-  // месте, поэтому записи, добавленные СВЕРХУ, ничего не сдвигают; добавленные снизу сдвигают — это исправляет эффект ниже.
+  // The list edge appeared in the scroll area: load the next page. The `column-reverse` area keeps the bottom edge in
+  // place, so entries added at the TOP shift nothing; those added at the bottom do shift things, and the effect below fixes that.
   useEffect(() => {
     const root = scroller.current;
     if (!root || typeof IntersectionObserver === "undefined") return;
@@ -206,8 +206,8 @@ export function Feed({
     listening.current = true;
   }, [listKey]);
 
-  // Переход из поиска: запись по центру области. Мгновенно, без плавной прокрутки (тихий интерфейс, Reduce Motion).
-  // Область `column-reverse`: нижний край — `scrollTop = 0`. Прокрутка по просьбе родителя, не при первом показе.
+  // A jump from search: the entry in the center of the area. Instant, without smooth scrolling (quiet UI, Reduce Motion).
+  // The `column-reverse` area: the bottom edge is `scrollTop = 0`. Scrolling happens on the parent's request, not on first show.
   const bottomSeen = useRef(toBottom);
   useLayoutEffect(() => {
     if (bottomSeen.current === toBottom) return;
@@ -218,8 +218,8 @@ export function Feed({
     reportTop();
   }, [toBottom]);
 
-  // Один раз на просьбу (`nonce`): запись могла ещё не попасть в ленту, тогда прокрутка ждёт её появления, но, найдя запись,
-  // больше не возвращается. Иначе отправка ответа, подгрузка страниц и появление карточки каждый раз уводили бы ленту назад.
+  // Once per request (`nonce`): the entry may not have reached the feed yet, in which case scrolling waits for it to appear, but once it finds the entry
+  // it does not come back. Otherwise sending a reply, loading pages and the card appearing would each time pull the feed back.
   const scrollKey = scrollTo ? `${scrollTo.id}:${scrollTo.nonce}` : "";
   const scrolledKey = useRef("");
   useLayoutEffect(() => {
@@ -236,7 +236,7 @@ export function Feed({
     // it landed on, not the one at the top, which is an earlier day while the entry is centred.
     const landed = plate.dataset.journalDate;
     if (landed) topDayHandler.current?.(landed);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- по новой просьбе или появлению записи в ленте
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on a new request or when the entry appears in the feed
   }, [scrollKey, items.length]);
 
   // Declared after the effects that move the feed itself, so a list that arrives with a jump is not reported at its old position.
@@ -245,7 +245,7 @@ export function Feed({
   }, [items, loading]);
 
   return (
-    // Прокручиваемая область берёт фокус с клавиатуры, иначе без мыши ленту не пролистать.
+    // The scrollable area takes keyboard focus, otherwise the feed cannot be scrolled without a mouse.
     <div
       className="feed-scroll"
       tabIndex={0}
@@ -263,7 +263,7 @@ export function Feed({
         if (listening.current) reportSoon();
       }}
     >
-      {/* В `column-reverse` первый в разметке стоит внизу: нижний край (новое) идёт перед списком, верхний (старое) — после. */}
+      {/* In `column-reverse` the first one in the markup stands at the bottom: the bottom edge (new) goes before the list, the top one (old) after it. */}
       {hasNewer ? <div className="feed__edge" ref={newerEdge} aria-hidden="true" /> : null}
       {loading ? null : items.length === 0 ? (
         <p className="feed__empty">{emptyText ?? t("feed.empty")}</p>
@@ -319,7 +319,7 @@ export function Feed({
   );
 }
 
-/** Обработчики плашки по id записи. */
+/** Bubble handlers by entry id. */
 function messageHandlers(actions: FeedActions, id: string) {
   return {
     onEdit: () => actions.onEdit(id),

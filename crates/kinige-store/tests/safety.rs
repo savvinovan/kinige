@@ -1,9 +1,9 @@
-//! Ревью guardian: обслуживание не останавливается из-за корзины, проверка целостности не даёт ложного повреждения, запуск с
-//! отметкой, гонка и прерывание восстановления, Markdown-копия после восстановления, копия под непрерывной записью, purge
-//! записи с группой `deleted` в неподдерживаемой `sv`.
+//! Guardian review: maintenance does not stop because of the trash, the integrity check gives no false corruption,
+//! startup with a mark, a race and an interruption of a restore, the Markdown copy after a restore, a copy under
+//! continuous writing, purge of an entry with a `deleted` group in an unsupported `sv`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -20,7 +20,7 @@ fn at(ms: i64) -> Now {
     moscow(ms)
 }
 
-// ---------- обслуживание ----------
+// ---------- maintenance ----------
 
 #[test]
 fn a_broken_trash_entry_does_not_stop_the_integrity_check_and_the_daily_copy() {
@@ -40,21 +40,21 @@ fn a_broken_trash_entry_does_not_stop_the_integrity_check_and_the_daily_copy() {
 
     let report = store
         .run_maintenance(&at(T0 + 40 * DAY_MS))
-        .expect("обслуживание не прерывается");
-    assert_eq!(report.purged, 1, "целая запись удалена");
+        .expect("maintenance is not interrupted");
+    assert_eq!(report.purged, 1, "the intact entry is deleted");
     assert!(report.integrity_ok && report.backup_made, "{report:?}");
     assert!(
         backups_dir(&db_path(dir.path()))
             .join(daily_name("2026-11-30"))
             .is_file()
     );
-    // Ошибка видна в «Настройках»; повреждённая запись осталась в корзине.
+    // The error is visible in Settings; the corrupted entry stayed in the trash.
     assert_eq!(
         store.get_settings().unwrap().backup.error,
         Some(BackupError::PurgeFailed)
     );
     assert_eq!(count_rows(dir.path(), "message"), 1);
-    // Следующий проход тоже доходит до проверки; ошибка остаётся, пока запись не убрана.
+    // The next pass also reaches the check; the error stays until the entry is removed.
     let again = store.run_maintenance(&at(T0 + 41 * DAY_MS)).unwrap();
     assert!(again.backup_made);
     assert_eq!(
@@ -70,7 +70,7 @@ fn a_corrupt_trash_entry_can_be_purged_by_hand_when_something_is_readable() {
     let sent = store.send_message(INBOX_ID, "частично", &at(T0)).unwrap();
     store.edit_message(&sent.id, "правка", &at(T0 + 1)).unwrap();
     store.delete_message(&sent.id, &at(T0 + 2)).unwrap();
-    // Одна группа в `hlc_json` не читается, остальные целы; байты групп сломаны целиком.
+    // One group in `hlc_json` is unreadable, the others are intact; the group bytes are broken entirely.
     let mut hlcs = hlc_entries(dir.path(), "message", &sent.id);
     hlcs.insert("flags".into(), "123".into());
     let text = format!(
@@ -101,7 +101,7 @@ fn a_corrupt_trash_entry_can_be_purged_by_hand_when_something_is_readable() {
         "{snapshot}"
     );
     assert_eq!(count_rows(dir.path(), "message_revision"), 0);
-    assert_eq!(count_rows(dir.path(), "tombstone"), 2, "запись и ревизия");
+    assert_eq!(count_rows(dir.path(), "tombstone"), 2, "entry and revision");
 }
 
 #[test]
@@ -119,11 +119,11 @@ fn a_hopelessly_corrupt_entry_stays_in_the_trash_with_an_error() {
     let error = store.purge_message(&sent.id, &at(T0 + 2)).unwrap_err();
     assert_eq!(error.code(), ErrorCode::Internal);
     assert_eq!(count_rows(dir.path(), "message"), 1);
-    assert_eq!(count_rows(dir.path(), "tombstone"), 0, "ничего не записано");
+    assert_eq!(count_rows(dir.path(), "tombstone"), 0, "nothing is written");
     assert_eq!(
         store.list_trash(&at(T0 + 3)).unwrap().len(),
         1,
-        "видна в корзине"
+        "visible in the trash"
     );
 }
 
@@ -149,7 +149,7 @@ fn an_entry_with_a_newer_deleted_group_is_not_purged() {
     assert_eq!(
         store.purge_expired(&at(T0 + 60 * DAY_MS)).unwrap(),
         0,
-        "автоудаление пропускает запись молча"
+        "auto-delete skips the entry silently"
     );
     assert_eq!(count_rows(dir.path(), "message"), 1);
     assert_eq!(count_rows(dir.path(), "tombstone"), 0);

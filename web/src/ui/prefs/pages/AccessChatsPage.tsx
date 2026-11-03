@@ -8,7 +8,7 @@ import "../../settings/settings.css";
 
 interface AccessChatsPageProps {
   chats: readonly AgentChatChoice[];
-  /** Доступ выключен: список виден, но недоступен. */
+  /** Access is off: the list is visible but unavailable. */
   disabled: boolean;
   onToggle: (id: string, on: boolean) => void;
   onBack: () => void;
@@ -16,7 +16,7 @@ interface AccessChatsPageProps {
   now?: Date;
 }
 
-/** Подэкран «Видимые чаты»: список целиком, флажок «видно агенту» у каждого чата. */
+/** The "Видимые чаты" subscreen: the whole list, a "visible to the agent" checkbox on each chat. */
 export function AccessChatsPage({ chats, disabled, onToggle, onBack, changedAt, now }: AccessChatsPageProps) {
   const { t } = useTranslation();
   return (

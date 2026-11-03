@@ -1,11 +1,11 @@
-/* Composer: поле ввода с кнопками. Только токены. */
+/* Composer: the input field with buttons. Tokens only. */
 .composer {
   box-sizing: border-box;
   padding: var(--space-3) var(--layout-feed-padding-inline) var(--layout-feed-padding-block);
   background: var(--color-surface-paper);
 }
 
-/* Поле ввода — по ширине той же колонки, что и лента; в узком окне на всю ширину за вычетом полей. */
+/* The input field has the width of the same column as the feed; in a narrow window the full width minus margins. */
 .composer > * {
   max-width: var(--layout-feed-column);
   margin-right: auto;
@@ -21,7 +21,7 @@
   line-height: var(--type-small-line-height);
 }
 
-/* Зарезервированное место: пустая область держит высоту одной строки ошибки. */
+/* Reserved space: the empty area holds the height of one error line. */
 .composer__error:empty {
   min-height: calc(var(--type-small-size) * var(--type-small-line-height));
 }
@@ -33,34 +33,34 @@
   box-sizing: border-box;
   min-height: var(--layout-composer-min-height);
   padding: var(--space-2) var(--space-3);
-  /* Рамки у поля нет, только тёмная заливка (как в Telegram); прозрачная рамка нужна, чтобы ошибка не сдвигала содержимое. */
+  /* The field has no border, only a dark fill (as in Telegram); the transparent border is needed so that the error does not shift the content. */
   border: var(--border-width-hairline) solid transparent;
   border-radius: var(--radius-panel);
   background: var(--color-surface-field);
   transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
-/* Фокус в поле: курсор (акцентный), чуть более светлая заливка и одна тонкая линия внутри поля цветом фокуса
-   (одной смены заливки, 1,15:1, мало для видимости фокуса, WCAG 2.4.7). В покое обводки нет, outline нет, линия не двойная.
-   Кнопки внутри получают обычное кольцо фокуса только с клавиатуры (:focus-visible). */
+/* Focus in the field: the caret (accent), a slightly lighter fill and one thin line inside the field in the focus color
+   (a fill change alone, 1.15:1, is too little for focus visibility, WCAG 2.4.7). At rest there is no outline stroke, no outline, and the line is not doubled.
+   Buttons inside get the ordinary focus ring only from the keyboard (:focus-visible). */
 .composer__bar:has(.composer__input:focus) {
   background: var(--color-surface-field-active);
   box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-focus-ring);
 }
 
-/* Ошибка отправки: единственный случай, когда у поля есть рамка. */
+/* Send error: the only case when the field has a border. */
 .composer__bar--invalid {
   border-color: var(--color-status-error);
 }
 
-/* Кнопка «эмодзи» с пикером: обёртка нужна, чтобы панель знала, над чем встать; размер и место те же, что у обычной кнопки. */
+/* The "emoji" button with the picker: the wrapper is needed so that the panel knows what to stand above; the size and place are the same as for an ordinary button. */
 .composer__emoji {
   display: inline-flex;
   flex: none;
 }
 
-/* Правое место поля: «микрофон» или «Отправить». Всегда ровно размер кнопки, поэтому ширина поля при смене не прыгает;
-   новая кнопка плавно проявляется и чуть вырастает. При Reduce Motion длительность нулевая (themes.css): смена мгновенная. */
+/* The right slot of the field: "microphone" or "Send". Always exactly the button size, so the field width does not jump on change;
+   the new button fades in smoothly and grows a little. With Reduce Motion the duration is zero (themes.css): the change is instant. */
 .composer__action {
   display: inline-flex;
   flex: none;
@@ -76,14 +76,14 @@
   }
 }
 
-/* Растущее поле: в ячейке сетки лежат textarea и невидимая копия текста; высоту задаёт копия. */
+/* Growing field: the grid cell holds the textarea and an invisible copy of the text; the copy sets the height. */
 .composer__field {
   display: grid;
   flex: 1;
   min-width: 0;
   max-height: var(--layout-composer-max-height);
-  /* Текст всегда переносится (`overflow-wrap: anywhere` ниже), горизонтальная прокрутка не нужна: у WebKit на очень длинном слове
-     (сотни тысяч знаков) ширина содержимого всё же выходит за поле, и внизу появлялась полоса прокрутки. */
+  /* The text always wraps (`overflow-wrap: anywhere` below), horizontal scrolling is not needed: in WebKit on a very long word
+     (hundreds of thousands of characters) the content width still goes beyond the field, and a scroll bar appeared at the bottom. */
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -123,9 +123,9 @@
   opacity: 1;
 }
 
-/* Плавающая панель быстрого захвата (floating): заливку, рамку и скругление даёт панель вокруг, поле — только строка внутри неё.
-   Своей линии фокуса у строки нет: в окне одно поле, и оно всегда в фокусе (каретка акцентного цвета; кнопка «Отправить»
-   получает кольцо с клавиатуры, как обычно). */
+/* Floating quick capture panel (floating): the fill, border and rounding come from the panel around, the field is only a line inside it.
+   The line has no focus line of its own: the window has one field, and it is always focused (accent caret; the "Send" button
+   gets a ring from the keyboard, as usual). */
 .composer--floating {
   padding: 0;
   background: transparent;
@@ -138,19 +138,19 @@
 .composer--floating .composer__bar,
 .composer--floating .composer__bar:has(.composer__input:focus) {
   min-height: 0;
-  /* Текст поля начинается там же, где текст плашки контекста: отступ плашки минус боковое поле самого textarea (space-1). */
+  /* The field text starts where the context bubble text does: the bubble indent minus the side padding of the textarea itself (space-1). */
   padding: 0 0 0 calc(var(--layout-message-padding-inline) - var(--space-1));
   border-color: transparent;
   background: transparent;
   box-shadow: none;
 }
 
-/* Пикер эмодзи «в потоке» (окно захвата): над строкой поля; пока пикер закрыт, места не занимает. */
+/* The "inline" emoji picker (capture window): above the field row; while the picker is closed, it takes no space. */
 .composer__emoji-host:not(:empty) {
   margin-bottom: var(--space-2);
 }
 
-/* Строка под полем: пустая высоты не имеет (alert всегда в дереве), с текстом растёт вниз — поле остаётся на месте. */
+/* The line under the field: empty it has no height (alert is always in the tree), with text it grows down - the field stays in place. */
 .composer--floating .composer__error:empty {
   min-height: 0;
 }
@@ -162,7 +162,7 @@
 
 .composer--floating .composer__error:not(:empty),
 .composer__hint {
-  /* Боковой отступ равен внутреннему отступу плашки контекста (layout.message.padding-inline): левая линия текста общая. */
+  /* The side indent equals the inner indent of the context bubble (layout.message.padding-inline): the left line of the text is shared. */
   padding: var(--space-1) var(--layout-message-padding-inline) 0;
 }
 

@@ -1,5 +1,5 @@
-//! Окно «Настройки» (слайс 4b, ADR-0010): отдельное окно Tauri, меню приложения (⌘,) и значка, события окнам, мост к
-//! глобальным сочетаниям для файла настроек. Правила файла живут в `kinige-store`; здесь только окно и платформа.
+//! The "Settings" window (slice 4b, ADR-0010): a separate Tauri window, the app menu (Cmd+,) and the icon menu, events to windows, a bridge to
+//! global shortcuts for the settings file. The file rules live in `kinige-store`; here only the window and the platform.
 
 use crate::capture::{MAIN_LABEL, show_main};
 use crate::hotkeys::Hotkeys;
@@ -10,28 +10,28 @@ use std::sync::{Arc, Mutex, PoisonError};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder};
 
 pub const SETTINGS_LABEL: &str = "settings";
-/// Событие окнам `main` и `settings`: настройки изменились (окном, другим окном или файлом). Без данных: окна читают сами.
+/// An event for the `main` and `settings` windows: the settings changed (by a window, another window or the file). No data: the windows read on their own.
 pub const SETTINGS_CHANGED: &str = "settings-changed";
-/// Событие главному окну: открыть запись в ленте (из журнала обращений в окне настроек).
+/// An event for the main window: open an entry in the feed (from the access log in the settings window).
 pub const OPEN_MESSAGE: &str = "open-message";
 
-/// Размеры окна: по умолчанию и наименьший (логические px). Совпадают с токенами `layout.settings.window-*` (проверяет
-/// `tests/config.rs`): страница рассчитана на ровно такие окна.
+/// Window sizes: default and smallest (logical px). They match the `layout.settings.window-*` tokens (checked by
+/// `tests/config.rs`): the page is designed for exactly such windows.
 pub const WIDTH: f64 = 860.0;
 pub const HEIGHT: f64 = 600.0;
 pub const MIN_WIDTH: f64 = 640.0;
 pub const MIN_HEIGHT: f64 = 440.0;
-/// Идентификатор пункта «Настройки…» в меню приложения.
+/// The identifier of the "Settings..." item in the app menu.
 pub const ID_APP_SETTINGS: &str = "app-settings";
-/// Не дать двум быстрым нажатиям создать два окна.
+/// Keeps two fast presses from creating two windows.
 static OPEN_LOCK: Mutex<()> = Mutex::new(());
 
-/// Пункт «Настройки…» меню приложения: включается, когда журнал открыт.
+/// The "Settings..." item of the app menu: enabled when the journal is open.
 pub struct AppSettingsItem<R: Runtime>(pub tauri::menu::MenuItem<R>);
 
-/// Меню приложения на macOS: стандартное (в нём «Правка» — без неё в WKWebView не работают ⌘C и ⌘V; меню по умолчанию
-/// собирает `tauri::menu::Menu::default`, проверено по исходникам tauri 2.12.4) и в меню приложения пункт «Настройки…» с ⌘,.
-/// Пока журнал не открыт, пункт недоступен (`set_available`).
+/// The app menu on macOS: the standard one (it includes "Edit" -- without it Cmd+C and Cmd+V do not work in WKWebView; the default menu
+/// is built by `tauri::menu::Menu::default`, checked against the tauri 2.12.4 sources) and in the app menu the "Settings..." item with Cmd+,.
+/// While the journal is not open, the item is unavailable (`set_available`).
 #[cfg(target_os = "macos")]
 pub fn app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<tauri::menu::Menu<R>> {
     use tauri::menu::{Menu, MenuItem, MenuItemKind, PredefinedMenuItem};
@@ -44,7 +44,7 @@ pub fn app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<tauri::menu::Me
         false,
         Some("CmdOrCtrl+,"),
     )?;
-    // Первое подменю — меню приложения: «О программе», разделитель, … Пункт ставится после разделителя.
+    // The first submenu is the app menu: "About", a separator, ... The item is placed after the separator.
     if let Some(MenuItemKind::Submenu(first)) = menu.items()?.into_iter().next() {
         first.insert(&item, 2)?;
         first.insert(&PredefinedMenuItem::separator(app)?, 3)?;
@@ -53,8 +53,8 @@ pub fn app_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<tauri::menu::Me
     Ok(menu)
 }
 
-/// Показывает окно настроек (создаёт при первом открытии). Пока журнал не открыт, ничего не делает. Второй вызов поднимает
-/// то же окно. Из фона ставит обычную политику активации, как `show_main`.
+/// Shows the settings window (creates it on first open). While the journal is not open, it does nothing. A second call raises
+/// the same window. From the background it sets the regular activation policy, like `show_main`.
 pub fn open<R: Runtime>(app: &AppHandle<R>) {
     if app.try_state::<Store>().is_none() {
         return;
@@ -83,31 +83,31 @@ pub fn open<R: Runtime>(app: &AppHandle<R>) {
         Ok(window) => {
             let _ = window.set_focus();
         }
-        Err(error) => log::error!("окно настроек не создано: {error}"),
+        Err(error) => log::error!("settings window was not created: {error}"),
     }
 }
 
-/// Окно настроек закрыто (окно уничтожено): режим записи сочетания снимается, иначе хоткеи остались бы выключенными.
+/// The settings window is closed (destroyed): the shortcut recording mode is cleared, otherwise the hotkeys would stay disabled.
 pub fn on_destroyed<R: Runtime>(app: &AppHandle<R>) {
     if let Some(hotkeys) = app.try_state::<Hotkeys>() {
         hotkeys.set_recording(false);
     }
 }
 
-/// Сообщает обоим окнам, что настройки изменились. Не блокирует: вызывается и из потока файла.
+/// Tells both windows that the settings changed. Does not block: it is also called from the file thread.
 pub fn notify_changed<R: Runtime>(app: &AppHandle<R>) {
     let _ = app.emit_to(MAIN_LABEL, SETTINGS_CHANGED, ());
     let _ = app.emit_to(SETTINGS_LABEL, SETTINGS_CHANGED, ());
 }
 
-/// «Настройки…» доступны, когда журнал открыт (не в режиме восстановления и не при «база новее»).
+/// "Settings..." is available when the journal is open (not in recovery mode and not with "database is newer").
 pub fn set_available<R: Runtime>(app: &AppHandle<R>, available: bool) {
     if let Some(item) = app.try_state::<AppSettingsItem<R>>() {
         let _ = item.0.set_enabled(available);
     }
 }
 
-/// Хоткеи для файла настроек: те же шаги, что при смене сочетания в окне (проверка, регистрация, сохранение).
+/// Hotkeys for the settings file: the same steps as when changing a shortcut in the window (check, register, save).
 struct HotkeyBridge<R: Runtime> {
     app: AppHandle<R>,
 }
@@ -132,7 +132,7 @@ impl<R: Runtime> ShortcutApplier for HotkeyBridge<R> {
     }
 }
 
-/// Запускает поток файла настроек. Файл применяется синхронно, до регистрации сочетаний и до слушателя MCP.
+/// Starts the settings file thread. The file is applied synchronously, before registering shortcuts and before the MCP listener.
 pub fn start_file<R: Runtime>(
     app: &AppHandle<R>,
     store: &Store,
@@ -164,17 +164,17 @@ pub fn open_from_event<R: Runtime>(app: &AppHandle<R>) {
     open(app);
 }
 
-/// Путь файла, его состояние и ошибки ключей. Команда не `async`, то есть идёт на главном потоке: она только читает
-/// состояние под коротким замком и никогда не ждёт поток файла. Поток файла, наоборот, ждёт главный поток (регистрация
-/// сочетаний в плагине идёт через `run_on_main_thread`), поэтому ни одна команда главного потока не должна ждать его —
-/// иначе получилась бы взаимная блокировка (`open_settings`, `shortcut_recording` и эта команда не ждут).
+/// The file path, its state and key errors. The command is not `async`, that is, it runs on the main thread: it only reads
+/// the state under a short lock and never waits for the file thread. The file thread, on the contrary, waits for the main thread (registering
+/// shortcuts in the plugin goes through `run_on_main_thread`), so no main thread command may wait for it --
+/// otherwise a deadlock would result (`open_settings`, `shortcut_recording` and this command do not wait).
 #[tauri::command]
 pub fn get_settings_file(file: State<'_, SettingsFile>) -> SettingsFileState {
     file.state()
 }
 
-/// Открыть запись из журнала обращений в главном окне. Запись проверяется здесь: удалена навсегда или в корзине —
-/// `message_not_found`, окно покажет «Запись удалена». Содержимое записи окну настроек не отдаётся.
+/// Open an entry from the access log in the main window. The entry is checked here: deleted forever or in the trash gives
+/// `message_not_found`, and the window shows "Entry deleted". The entry content is not given to the settings window.
 #[tauri::command(async)]
 pub fn settings_open_entry<R: Runtime>(
     app: AppHandle<R>,
@@ -182,7 +182,10 @@ pub fn settings_open_entry<R: Runtime>(
     id: String,
 ) -> Result<(), ApiError> {
     let chat_id = store.live_message_chat(&id).map_err(|error| {
-        log::warn!("запись для окна настроек не найдена: {}", error.category());
+        log::warn!(
+            "entry for the settings window not found: {}",
+            error.category()
+        );
         ApiError::from(error.code())
     })?;
     show_main(&app);

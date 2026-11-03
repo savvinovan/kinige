@@ -15,9 +15,13 @@ fn years_later_counts_full_years() {
     assert_eq!(
         years_later("2023-10-31", "2026-10-30"),
         2,
-        "ещё не годовщина"
+        "not an anniversary yet"
     );
-    assert_eq!(years_later("2025-10-31", "2026-10-30"), 0, "меньше года");
+    assert_eq!(
+        years_later("2025-10-31", "2026-10-30"),
+        0,
+        "less than a year"
+    );
     assert_eq!(years_later("2025-10-31", "2026-10-31"), 1);
     assert_eq!(years_later("2016-01-01", "2026-12-31"), 10);
 }
@@ -28,7 +32,7 @@ fn years_later_handles_leap_days() {
     assert_eq!(
         years_later("2020-02-29", "2023-02-28"),
         2,
-        "28 февраля раньше 29-го"
+        "February 28 is before the 29th"
     );
     assert_eq!(years_later("2020-02-29", "2023-03-01"), 3);
     assert_eq!(years_later("2023-02-28", "2024-02-29"), 1);
@@ -39,7 +43,7 @@ fn years_later_is_zero_when_the_reply_is_earlier_or_dates_are_garbage() {
     assert_eq!(
         years_later("2026-10-31", "2023-10-31"),
         0,
-        "дату ответа сменили на раньше"
+        "the reply date was changed to an earlier one"
     );
     assert_eq!(years_later("2026-10-31", "2026-10-31"), 0);
     for garbage in ["", "2026-13-01", "2026-02-30", "x", "../../etc"] {
@@ -106,7 +110,7 @@ fn reply_to_reports_live_trash_and_missing() {
     assert_eq!(trash.state, ReplyState::Trash);
     assert_eq!(
         trash.excerpt, "Было",
-        "текст остаётся, интерфейс подпишет «Запись в корзине»"
+        "the text stays, the interface will caption it \"Entry in trash\""
     );
 
     let missing = reply_to("r", "2026-10-31", None);

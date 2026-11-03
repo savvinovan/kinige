@@ -1,4 +1,4 @@
-//! Помощники тестов файла настроек (слайс 4b, ADR-0010): хранилище, поток файла с быстрым опросом, чтение и запись файла.
+//! Helpers for the settings file tests (slice 4b, ADR-0010): the store, the file thread with fast polling, reading and writing the file.
 
 #![allow(dead_code)]
 
@@ -14,14 +14,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tempfile::TempDir;
 
 pub struct Rig {
-    /// Первым в списке: поле сбрасывается раньше каталога, поток файла успевает остановиться.
+    /// First in the list: the field is dropped before the directory, so the file thread has time to stop.
     pub file: SettingsFile,
     pub dir: TempDir,
     pub store: Store,
     pub changes: Arc<AtomicUsize>,
 }
 
-/// Система отказывает в этих сочетаниях.
+/// The system refuses these shortcuts.
 pub struct Refusing(pub Vec<&'static str>);
 
 impl ShortcutApplier for Refusing {
@@ -49,7 +49,7 @@ pub fn options_for(changes: &Arc<AtomicUsize>) -> SettingsFileOptions {
     let mut options = SettingsFileOptions::new(Arc::new(move || {
         counter.fetch_add(1, Ordering::SeqCst);
     }));
-    // По умолчанию опрос редкий: тесты ведут поток сами (`sync_now`), чтобы опрос не вклинивался между шагами.
+    // Polling is rare by default: tests drive the thread themselves (`sync_now`) so that a poll does not wedge in between steps.
     options.poll = Duration::from_secs(60);
     options
 }
@@ -94,7 +94,7 @@ impl Rig {
         wait_until("polls of the file thread", || self.file.polls() >= target);
     }
 
-    /// Как правит редактор: временный файл рядом и `rename` (режим 0600).
+    /// How an editor edits: a temporary file alongside and `rename` (mode 0600).
     pub fn write(&self, text: &str) {
         write_file(self.dir.path(), text.as_bytes(), 0o600);
         self.file.sync_now();
@@ -155,7 +155,7 @@ pub fn mode_of(path: &Path) -> u32 {
     fs::metadata(path).unwrap().permissions().mode() & 0o777
 }
 
-/// Чаты для сопоставления: «Работа» (обычный), «Дневник» (`ai_excluded`).
+/// Chats for matching: "Работа" (ordinary), "Дневник" (`ai_excluded`).
 pub fn chats(store: &Store, dir: &Path) -> (String, String) {
     let now = moscow(T0);
     let work = store.create_chat("Работа", None, &now).unwrap().id;

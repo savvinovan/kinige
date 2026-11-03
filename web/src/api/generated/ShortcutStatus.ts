@@ -3,14 +3,14 @@ import type { ShortcutKind } from "./ShortcutKind";
 import type { ShortcutState } from "./ShortcutState";
 
 /**
- * Сочетание в «Настройках».
+ * A shortcut in "Settings".
  */
 export type ShortcutStatus = { kind: ShortcutKind, 
 /**
- * Каноничная запись (`Ctrl+Alt+KeyN`).
+ * The canonical notation (`Ctrl+Alt+KeyN`).
  */
 accelerator: string, 
 /**
- * Сочетание совпадает с умолчанием: «Сбросить» не нужна.
+ * The shortcut equals the default: "Reset" is not needed.
  */
 isDefault: boolean, state: ShortcutState, };

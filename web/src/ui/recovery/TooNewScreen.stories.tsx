@@ -10,14 +10,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Обычное: заголовок и пояснение по центру окна, кнопок нет. */
+/** Default: the heading and explanation centered in the window, no buttons. */
 export const Обычное: Story = {};
 
-/** Английский. */
+/** English. */
 export const Английский: Story = { globals: { language: "en" } };
 
-/** Крупный текст. */
+/** Large text. */
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };
 
-/** Английский, крупный текст. */
+/** English, large text. */
 export const АнглийскийКрупный: Story = { globals: { language: "en", textScale: "large" } };

@@ -1,27 +1,27 @@
-# Новые эталоны визуальных тестов Storybook. Снимаются в том же контейнере Playwright, что и проверка в ci.yml,
-# и коммитятся в ветку, с которой запущен workflow:
-#   gh workflow run visual-update.yml --ref <ветка>
-# Три задачи, как в screens.yml:
-#   shots  — npm ci, сборка Storybook и снимки; права только на чтение, токен после checkout не сохраняется
-#            (скрипты установки пакетов его не видят); результат — артефакт;
-#   commit — короткая: коммитит изменённые эталоны в ветку (единственное место с правом записи, без npm и сборки);
-#   ci     — запускает ci.yml на ветке (право actions: write только у неё).
-# Коммитятся только изменившиеся и новые эталоны (--update-snapshots=changed); эталоны удалённых историй убирает
-# scripts/prune-visual-baselines.mjs. Эталоны, которые прошли сравнение, не перезаписываются: репозиторий не раздувается.
-# Коммит от GITHUB_TOKEN CI сам не запускает (push-событие), но запуск через workflow_dispatch от GITHUB_TOKEN разрешён.
-# Версия образа Playwright здесь и в ci.yml должна совпадать с @playwright/test в web/package.json (меняется вручную).
+# New baselines of the Storybook visual tests. They are captured in the same Playwright container as the check in ci.yml,
+# and committed to the branch the workflow is started from:
+#   gh workflow run visual-update.yml --ref <branch>
+# Three jobs, as in screens.yml:
+#   shots  - npm ci, the Storybook build and the shots; read-only permissions, the token is not kept after checkout
+#            (package install scripts do not see it); the result is an artifact;
+#   commit - short: commits the changed baselines to the branch (the only place with write permission, no npm and no build);
+#   ci     - starts ci.yml on the branch (the actions: write permission is only theirs).
+# Only changed and new baselines are committed (--update-snapshots=changed); baselines of removed stories are removed by
+# scripts/prune-visual-baselines.mjs. Baselines that passed the comparison are not overwritten: the repository does not bloat.
+# A commit by GITHUB_TOKEN does not start CI by itself (a push event), but starting through workflow_dispatch by GITHUB_TOKEN is allowed.
+# The Playwright image version here and in ci.yml must match @playwright/test in web/package.json (changed by hand).
 name: Visual baselines
 
 on:
   workflow_dispatch:
 
-# Права по умолчанию — только чтение; запись только у задачи commit, запуск CI — только у задачи ci.
+# Default permissions are read-only; write only for the commit job, starting CI only for the ci job.
 permissions:
   contents: read
 
 jobs:
   shots:
-    # Эталоны меняются только через ветку и PR.
+    # Baselines change only through a branch and a PR.
     if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
@@ -33,17 +33,17 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Снять эталоны
+      - name: Capture the baselines
         working-directory: web
         run: |
           npm ci
           npm run build-storybook
-          # Перезаписываются только эталоны, не прошедшие сравнение (порог тот же, что в проверке), и создаются недостающие.
+          # Only baselines that failed the comparison are overwritten (the same threshold as in the check), and missing ones are created.
           npx playwright test --update-snapshots=changed
           node ../scripts/prune-visual-baselines.mjs
 
-      # Каталог эталонов целиком одним архивом (имена файлов кириллические, архив надёжнее для артефакта).
-      - name: Упаковать эталоны
+      # The baseline directory as one archive (the file names are Cyrillic, an archive is safer for an artifact).
+      - name: Pack the baselines
         run: tar -czf "$RUNNER_TEMP/baselines.tgz" -C web/tests/visual stories.spec.ts-snapshots
 
       - uses: actions/upload-artifact@v7
@@ -70,8 +70,8 @@ jobs:
           name: visual-baselines
           path: ${{ runner.temp }}/baselines
 
-      # Архив содержит каталог целиком (уже без эталонов удалённых историй); в коммит попадают только отличия от ветки.
-      - name: Закоммитить
+      # The archive holds the whole directory (already without the baselines of removed stories); only the differences from the branch get into the commit.
+      - name: Commit
         id: commit
         run: |
           rm -rf web/tests/visual/stories.spec.ts-snapshots
@@ -80,7 +80,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A web/tests/visual/stories.spec.ts-snapshots
           if git diff --cached --quiet; then
-            echo "эталоны не изменились"
+            echo "the baselines did not change"
             exit 0
           fi
           git diff --cached --stat | tail -1
@@ -89,7 +89,7 @@ jobs:
           git push origin "HEAD:${GITHUB_REF_NAME}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 
-  # Отдельная задача: право actions: write не нужно задаче с записью в репозиторий.
+  # A separate job: the job that writes to the repository does not need the actions: write permission.
   ci:
     needs: commit
     if: needs.commit.outputs.pushed == 'true'
@@ -98,8 +98,8 @@ jobs:
     permissions:
       actions: write
     steps:
-      # workflow_dispatch от GITHUB_TOKEN запускает workflow (в отличие от push; документация GitHub, «Triggering a workflow»).
-      - name: Запустить CI на ветке
+      # workflow_dispatch by GITHUB_TOKEN starts a workflow (unlike push; GitHub documentation, "Triggering a workflow").
+      - name: Start CI on the branch
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

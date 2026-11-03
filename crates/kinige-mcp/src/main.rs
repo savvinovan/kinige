@@ -1,5 +1,5 @@
-//! `kinige-mcp --socket <путь>` — мост MCP: строки JSON-RPC из stdin идут в Unix-сокет Kinige, ответы — в stdout
-//! (ADR-0009, слайс 4a). Запускает его MCP-клиент (Claude Desktop, Claude Code). Базу мост не открывает.
+//! `kinige-mcp --socket <path>` -- the MCP bridge: JSON-RPC lines from stdin go to the Kinige Unix socket, replies go to stdout
+//! (ADR-0009, slice 4a). It is started by an MCP client (Claude Desktop, Claude Code). The bridge does not open the database.
 //!
 //! Unix only. On Windows (slice 10a) there is no AI-agent access until named pipes (slice 10): the binary builds, but
 //! on its first run it says so in one line and exits with code 2.
@@ -25,10 +25,10 @@ use std::time::Duration;
 #[cfg(unix)]
 use std::{env, io};
 
-/// Сколько ждать сокет приложения: оно может ещё запускаться.
+/// How long to wait for the app socket: the app may still be starting.
 #[cfg(unix)]
 const WAIT: Duration = Duration::from_secs(10);
-/// Подмена ожидания в тестах моста, мс.
+/// Override of the wait in the bridge tests, ms.
 #[cfg(unix)]
 const TEST_WAIT_MS: &str = "KINIGE_MCP_TEST_WAIT_MS";
 

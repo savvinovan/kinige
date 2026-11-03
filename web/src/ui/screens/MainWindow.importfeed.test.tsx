@@ -5,8 +5,8 @@ import { FakeObserver, edges, showEdge } from "../../test/fakeObserver";
 import { fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// Лента после импорта: записи легли в середину истории (в базе уже были свежие), открытый Inbox должен перечитаться с нуля,
-// иначе курсор «старше» остаётся прежним и страницы между ними никогда не загрузятся.
+// The feed after an import: entries landed in the middle of the history (fresh ones were already in the database), the open Inbox must be reread from scratch,
+// otherwise the "older" cursor stays the same and the pages between them are never loaded.
 vi.setConfig({ testTimeout: 30_000 });
 
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
@@ -35,7 +35,7 @@ async function runImport() {
   await within(screen.getByRole("dialog")).findByRole("heading", { name: "Импорт завершён" });
 }
 
-/** Верхний край показывается, пока он есть: каждая подгрузка добавляет записи, в конце истории края нет. */
+/** The top edge is shown while it exists: each load adds entries, at the end of the history there is no edge. */
 async function loadAllOlder(container: HTMLElement) {
   for (let step = 0; step < 6 && edges(container).length > 0; step++) {
     const before = container.querySelectorAll("article").length;
@@ -44,7 +44,7 @@ async function loadAllOlder(container: HTMLElement) {
   }
 }
 
-/** Старые записи, которые «записал» импорт (мок сам записей не создаёт). */
+/** Old entries that the import "wrote" (the mock does not create entries itself). */
 function addImported(api: MockApi, from: number, count: number) {
   for (let i = from; i < from + count; i++) {
     const createdAt = OLD_START + i * DAY;
@@ -63,13 +63,13 @@ describe("Лента после импорта", () => {
     api.importFile = PREVIEW;
     const { container } = render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />);
     await screen.findByText("свежая 2");
-    // До импорта все три записи на одной странице: курсора «старше» нет.
+    // Before the import all three entries are on one page: there is no "older" cursor.
     expect(edges(container)).toHaveLength(0);
     addImported(api, 0, 450);
     await runImport();
     fireEvent.click(screen.getByRole("button", { name: "Готово" }));
     await screen.findByText("старая 449");
-    // Край сверху появился, подгрузка идёт до самой старой записи.
+    // The top edge appeared, loading goes up to the oldest entry.
     await waitFor(() => expect(edges(container)).toHaveLength(1));
     await loadAllOlder(container);
     await screen.findByText("старая 0");
@@ -86,19 +86,19 @@ describe("Лента после импорта", () => {
     api.importFile = PREVIEW;
     const { container } = render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />);
     await screen.findByText("свежая 0");
-    // Первый приём: самые свежие из старых записей.
+    // The first intake: the freshest of the old entries.
     addImported(api, 250, 200);
     await runImport();
     fireEvent.click(screen.getByRole("button", { name: "Готово" }));
     await screen.findByText("старая 449");
-    // Второй приём (окно закрыто, приложение не перезапускали): ещё более ранние записи.
+    // The second intake (the window is closed, the app was not restarted): even earlier entries.
     addImported(api, 0, 250);
     await runImport();
     fireEvent.click(screen.getByRole("button", { name: "Готово" }));
     await waitFor(() => expect(edges(container)).toHaveLength(1));
     await loadAllOlder(container);
     await screen.findByText("старая 0");
-    // Ровно 451 запись: ни одна не потеряна между первым и вторым приёмом.
+    // Exactly 451 entries: none lost between the first and second intake.
     await waitFor(() => expect(container.querySelectorAll("article")).toHaveLength(451));
     for (const i of [0, 100, 249, 250, 300, 449]) expect(screen.getByText(`старая ${i}`)).toBeInTheDocument();
   });

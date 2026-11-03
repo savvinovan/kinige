@@ -11,7 +11,7 @@ const CHATS: SidebarChat[] = [
   { id: "work", name: "Работа", emoji: "💼", count: 1234 },
   { id: "books", name: "Книги", emoji: "📚", count: 9 },
   { id: "recipes", name: "Рецепты", emoji: "🍳", count: 12345 },
-  // Без эмодзи: Rust хранит «💬» по умолчанию, сайдбар показывает плитку с буквой (цвет из идентификатора).
+  // Without an emoji: Rust stores "💬" by default, the sidebar shows a letter tile (the color comes from the id).
   { id: "projects", name: "Проекты", emoji: "💬", count: 18 },
   { id: "linux", name: "Linux notes", emoji: "💬", count: 55 },
   { id: "mom", name: "Мама", emoji: "💬", count: 214 },
@@ -24,18 +24,18 @@ interface DemoProps {
   selectedId?: string | null;
   collapsed?: boolean;
   trashCount?: number;
-  /** Ставит фокус на кнопку выбранного чата: так история показывает кольцо фокуса (и подсказку в полосе) без мыши. */
+  /** Focuses the button of the selected chat: this is how the story shows the focus ring (and the rail tooltip) without a mouse. */
   focus?: boolean;
-  /** Открывает контекстное меню строки, имя (или его начало) которой передано: как правый щелчок. */
+  /** Opens the context menu of the row whose name (or its beginning) is passed: like a right click. */
   menuFor?: string;
-  /** Показывает наведение на строку, имя (или его начало) которой передано: `:hover` в историю не поставить, ставится атрибут. */
+  /** Shows hover on the row whose name (or its beginning) is passed: `:hover` cannot be set in a story, so an attribute is set. */
   hoverFor?: string;
   showSearch?: boolean;
-  /** Чат под перетаскиваемой записью (слайс 3, перенос записи): подсвечен как цель. */
+  /** The chat under the dragged entry (slice 3, moving an entry): highlighted as the target. */
   dropTargetId?: string | null;
 }
 
-/** Сайдбар во всю высоту окна на фоне пустой ленты; выбор, «свернуть» и «+» работают на состоянии истории. */
+/** The sidebar at full window height on an empty feed; selection, "collapse" and "+" work on the story state. */
 function Demo({
   chats: initialChats = CHATS,
   selectedId: initialSelected = "work",
@@ -54,10 +54,10 @@ function Demo({
 
   useEffect(() => {
     const buttons = [...(host.current?.querySelectorAll<HTMLButtonElement>(".sidebar button") ?? [])];
-    // Строка списка подписана в title («Книги, 9 записей»), кнопка полосы — в aria-label.
+    // A list row is labeled in title ("Книги, 9 записей"), a rail button in aria-label.
     const label = (button: HTMLButtonElement) => button.getAttribute("title") ?? button.getAttribute("aria-label") ?? "";
     if (focus) host.current?.querySelector<HTMLButtonElement>("[aria-current]")?.focus();
-    // У строки «Корзина» нет ни `title`, ни `aria-label`: имя берётся из текста кнопки.
+    // The "Корзина" row has neither `title` nor `aria-label`: the name is taken from the button text.
     if (hoverFor) {
       buttons.find((button) => (label(button) || (button.textContent ?? "")).startsWith(hoverFor))?.setAttribute("data-story-hover", "");
     }
@@ -110,30 +110,30 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Обычное: «Закреплённые», «Чаты» с кнопкой «+», свёрнутый «Архив»; внизу «Корзина» со счётчиком и профиль. Всё кликабельно. */
+/** Default: "Закреплённые", "Чаты" with the "+" button, a collapsed "Архив"; at the bottom the "Корзина" with a counter and the profile. Everything is clickable. */
 export const Обычное: Story = {};
 
-/** С полем «Поиск» (оно появится в слайсе 4): кнопка «свернуть» стоит рядом с ним. */
+/** With the "Поиск" field (it appears in slice 4): the "collapse" button stands next to it. */
 export const СПоиском: Story = { args: { showSearch: true } };
 
-/** Выбран закреплённый чат. */
+/** A pinned chat is selected. */
 export const ВыбранЗакреплённый: Story = { args: { selectedId: "diary" } };
 
-/** Чат только один — «Входящие»: заголовок «Чаты» с «+» на месте, других разделов нет. */
+/** There is only one chat, "Входящие": the "Чаты" header with "+" is in place, no other sections. */
 export const ТолькоВходящие: Story = { args: { chats: [INBOX], selectedId: "inbox", trashCount: 0 } };
 
-/** Все чаты закреплены: раздел «Чаты» пуст, но заголовок с «+» остаётся — создать новый чат должно быть чем. */
+/** All chats are pinned: the "Чаты" section is empty, but the header with "+" stays: there must be a way to create a new chat. */
 export const ВсёЗакреплено: Story = {
   args: { chats: [{ ...INBOX, pinned: true }, { id: "diary", name: "Дневник", emoji: "📔", count: 318, pinned: true }], selectedId: "inbox" },
 };
 
-/** Выбран чат из архива: «Архив» раскрыт сам и свернуть его нельзя, пока чат выбран. */
+/** A chat from the archive is selected: "Архив" is expanded by itself and cannot be collapsed while the chat is selected. */
 export const АрхивРаскрыт: Story = { args: { selectedId: "trip" } };
 
-/** Выбрана корзина: подсвечена строка «Корзина», ни один чат не выбран. */
+/** The trash is selected: the "Корзина" row is highlighted, no chat is selected. */
 export const КорзинаВыбрана: Story = { args: { selectedId: null } };
 
-/** Длинные имена обрезаются многоточием (полное имя — во всплывающей подсказке) в каждом разделе, эмодзи не сжимается. */
+/** Long names are truncated with an ellipsis (the full name is in the tooltip) in every section, the emoji does not shrink. */
 export const ДлинныеИмена: Story = {
   args: {
     chats: [
@@ -146,7 +146,7 @@ export const ДлинныеИмена: Story = {
   },
 };
 
-/** Плитки с буквой всех шести цветов (цвет задан явно); выбрана зелёная, остальные на фоне и рядом с выбранной. */
+/** Letter tiles of all six colors (the color is set explicitly); the green one is selected, the others on the background and next to the selected one. */
 export const ЦветаПлиток: Story = {
   args: {
     chats: [
@@ -162,7 +162,7 @@ export const ЦветаПлиток: Story = {
   },
 };
 
-/** Эмодзи без плитки и плитки с буквой рядом: названия стоят на одной вертикали; буква — первая графема («Ёлка», «Linux», «A» после эмодзи). */
+/** Emoji without a tile and letter tiles side by side: the names line up on one vertical; the letter is the first grapheme ("Ёлка", "Linux", "A" after an emoji). */
 export const ЭмодзиИБуквы: Story = {
   args: {
     chats: [
@@ -179,24 +179,24 @@ export const ЭмодзиИБуквы: Story = {
   },
 };
 
-/** Те же чаты в английском интерфейсе (названия — данные пользователя). */
+/** The same chats in the English interface (the names are user data). */
 export const ЭмодзиИБуквыАнглийский: Story = {
   args: { ...ЭмодзиИБуквы.args },
   globals: { language: "en" },
 };
 
-/** Крупный текст: плитка с буквой и эмодзи растут вместе с текстом. */
+/** Large text: the letter tile and the emoji grow with the text. */
 export const ЭмодзиИБуквыКрупныйТекст: Story = {
   args: { ...ЭмодзиИБуквы.args },
   globals: { textScale: "large" },
 };
 
-/** Свёрнутая полоса: эмодзи без плитки и плитки с буквой. */
+/** The collapsed rail: emoji without a tile and letter tiles. */
 export const ЭмодзиИБуквыСвёрнутый: Story = {
   args: { ...ЭмодзиИБуквы.args, collapsed: true },
 };
 
-/** Счётчик записей справа: нет у пустого чата, 7, «1 234», «9 999», «12 тыс.», «1,2 млн»; тихий серый, не акцент. */
+/** The entry counter on the right: absent for an empty chat, 7, "1 234", "9 999", "12 тыс.", "1,2 млн"; quiet gray, not an accent. */
 export const Счётчики: Story = {
   args: {
     chats: [
@@ -212,45 +212,45 @@ export const Счётчики: Story = {
   },
 };
 
-/** Много чатов: список прокручивается, «Корзина» и профиль остаются внизу. */
+/** Many chats: the list scrolls, the "Корзина" and the profile stay at the bottom. */
 export const МногоЧатов: Story = {
   args: { chats: Array.from({ length: 40 }, (_, i) => ({ id: `c${i}`, name: `Чат ${i + 1}`, emoji: "📌", count: (i + 1) * 3 })), selectedId: "c0" },
 };
 
-/** Наведение: строка «Книги» подсвечена под мышью (тихая заливка), выбранная «Работа» залита плотнее и читается рядом с ней. */
+/** Hover: the "Книги" row is highlighted under the mouse (a quiet fill), the selected "Работа" has a denser fill and reads next to it. */
 export const Наведение: Story = { args: { hoverFor: "Книги" } };
 
-/** Наведение на «Корзину» внизу и крупный текст. */
+/** Hover on the "Корзина" at the bottom, and large text. */
 export const НаведениеКрупныйТекст: Story = { args: { hoverFor: "Корзина" }, globals: { textScale: "large" } };
 
-/** Фокус с клавиатуры на строке выбранного чата. */
+/** Keyboard focus on the row of the selected chat. */
 export const Фокус: Story = { args: { focus: true } };
 
-/** Меню обычного чата: «Переименовать», «Сменить эмодзи», «Закрепить», «В архив». */
+/** The menu of a regular chat: "Переименовать", "Сменить эмодзи", "Закрепить", "В архив". */
 export const МенюЧата: Story = { args: { menuFor: "Книги" } };
 
-/** Меню закреплённого чата: вместо «Закрепить» — «Открепить». */
+/** The menu of a pinned chat: "Открепить" instead of "Закрепить". */
 export const МенюЗакреплённого: Story = { args: { menuFor: "Идеи" } };
 
-/** Меню «Входящих»: только «Закрепить» — переименовать и архивировать их нельзя. */
+/** The "Входящие" menu: only "Закрепить"; it cannot be renamed or archived. */
 export const МенюВходящих: Story = { args: { menuFor: "Входящие" } };
 
-/** Меню архивного чата: «Из архива», закрепления нет. */
+/** The menu of an archived chat: "Из архива", no pinning. */
 export const МенюАрхивного: Story = { args: { selectedId: "trip", menuFor: "Отпуск" } };
 
-/** Свёрнутый: «полоса эмодзи». Сверху «развернуть», снизу «Корзина» с точкой и аватар; архивных чатов нет. */
+/** Collapsed: the "emoji rail". "Expand" on top, at the bottom the "Корзина" with a dot and the avatar; no archived chats. */
 export const Свёрнутый: Story = { args: { collapsed: true } };
 
-/** Свёрнутый, фокус с клавиатуры на выбранном чате: кольцо фокуса и подсказка с именем справа от полосы. */
+/** Collapsed, keyboard focus on the selected chat: the focus ring and a tooltip with the name to the right of the rail. */
 export const СвёрнутыйФокусИПодсказка: Story = { args: { collapsed: true, focus: true } };
 
-/** Свёрнутый, меню чата (правый щелчок на эмодзи). */
+/** Collapsed, the chat menu (right click on the emoji). */
 export const СвёрнутыйМеню: Story = { args: { collapsed: true, menuFor: "Рецепты" } };
 
-/** Свёрнутый, корзина выбрана и пуста: подсвечена, точки нет. */
+/** Collapsed, the trash is selected and empty: highlighted, no dot. */
 export const СвёрнутыйКорзина: Story = { args: { collapsed: true, selectedId: null, trashCount: 0 } };
 
-/** Свёрнутый, много чатов: полоса прокручивается, «Корзина» и аватар внизу. */
+/** Collapsed, many chats: the rail scrolls, the "Корзина" and the avatar are at the bottom. */
 export const СвёрнутыйМногоЧатов: Story = {
   args: {
     collapsed: true,
@@ -259,29 +259,29 @@ export const СвёрнутыйМногоЧатов: Story = {
   },
 };
 
-/** Английский интерфейс: «Pinned», «Chats», «Archive», «Trash» (названия чатов — данные пользователя, не переводятся). */
-/** Запись тащат на чат «Книги»: строка подсвечена как цель переноса (заливка и тонкая линия акцентом), текущий чат остаётся выбранным. */
+/** English interface: "Pinned", "Chats", "Archive", "Trash" (chat names are user data, not translated). */
+/** An entry is dragged onto the "Книги" chat: the row is highlighted as the drop target (fill and a thin accent line), the current chat stays selected. */
 export const ЦельПереноса: Story = { args: { dropTargetId: "books" } };
 
-/** Цель переноса — закреплённый чат. */
+/** The drop target is a pinned chat. */
 export const ЦельПереносаЗакреплённый: Story = { args: { dropTargetId: "ideas" } };
 
-/** Цель переноса в свёрнутой полосе: значок чата подсвечен. */
+/** The drop target in the collapsed rail: the chat icon is highlighted. */
 export const СвёрнутыйЦельПереноса: Story = { args: { collapsed: true, dropTargetId: "books" } };
 
-/** Цель переноса — чат из раскрытого архива. */
+/** The drop target is a chat from the expanded archive. */
 export const ЦельПереносаАрхив: Story = { args: { selectedId: "trip", dropTargetId: "old" } };
 
-/** Цель переноса при крупном тексте. */
+/** The drop target with large text. */
 export const ЦельПереносаКрупныйТекст: Story = { args: { dropTargetId: "books" }, globals: { textScale: "large" } };
 
 export const Английский: Story = { args: { menuFor: "Книги" }, globals: { language: "en" } };
 
-/** Английский, свёрнутый. */
+/** English, collapsed. */
 export const СвёрнутыйАнглийский: Story = { args: { collapsed: true, focus: true }, globals: { language: "en" } };
 
-/** Крупный текст: строки, заголовки, счётчики и полоса растут вместе с текстом. */
+/** Large text: rows, headers, counters and the rail grow with the text. */
 export const КрупныйТекст: Story = { args: { selectedId: "trip" }, globals: { textScale: "large" } };
 
-/** Крупный текст, свёрнутый. */
+/** Large text, collapsed. */
 export const СвёрнутыйКрупныйТекст: Story = { args: { collapsed: true, focus: true }, globals: { textScale: "large" } };

@@ -4,27 +4,27 @@ import { Button } from "../controls/Button";
 import "./settings.css";
 
 interface PathRowProps {
-  /** Путь папки; `null` — папка не выбрана. */
+  /** The folder path; `null` means no folder is chosen. */
   path: string | null;
-  /** Папка по умолчанию: рядом с путём стоит значок-подпись «Папка по умолчанию». */
+  /** The default folder: a badge "Папка по умолчанию" stands next to the path. */
   isDefault?: boolean;
-  /** Системный диалог выбора папки открыт: «Выбрать…» объявлена недоступной и повторно не нажимается. */
+  /** The system folder picker dialog is open: "Выбрать…" is announced as unavailable and cannot be pressed again. */
   busy?: boolean;
   onChoose: () => void;
 }
 
-// Разрыв строки предлагается после каждого разделителя пути; запасной перенос в любом месте (overflow-wrap) — в CSS.
+// A line break is offered after each path separator; the fallback wrap at any position (overflow-wrap) is in CSS.
 const segments = (path: string) => path.split(/(?<=[\\/])/);
 
 /**
- * Строка «Папка»: подпись, путь, значок «Папка по умолчанию» и кнопка «Выбрать…».
+ * The "Папка" row: a label, the path, the "Папка по умолчанию" badge and the "Выбрать…" button.
  *
- * Длинный путь **переносится**, а не обрезается: по пути важно видеть и начало (где лежит), и конец (как называется), а
- * обрезка многоточием посередине невозможна на чистом CSS, обрезка с начала (`direction: rtl`) ломает порядок знаков `~` и `/`.
- * Перенос идёт по разделителям пути, а слишком длинное имя папки — в любом месте. Путь целиком — в `title`.
+ * A long path **wraps** instead of being truncated: for a path it matters to see both the beginning (where it lies) and the end (what it is called), and
+ * truncation with an ellipsis in the middle is impossible in plain CSS, while truncation from the start (`direction: rtl`) breaks the order of `~` and `/`.
+ * The wrap goes at path separators, and a folder name that is too long wraps anywhere. The whole path is in `title`.
  *
- * «Выбрать…» — настоящая кнопка с видимым текстом. Пока диалог открыт (`busy`), она остаётся в обходе с `aria-disabled`
- * и `aria-busy`, но нажатие ничего не делает.
+ * "Выбрать…" is a real button with visible text. While the dialog is open (`busy`), it stays in the Tab order with `aria-disabled`
+ * and `aria-busy`, but pressing it does nothing.
  */
 export function PathRow({ path, isDefault = false, busy = false, onChoose }: PathRowProps) {
   const { t } = useTranslation();

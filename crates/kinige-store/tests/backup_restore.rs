@@ -1,8 +1,8 @@
-//! Восстановление из копии (слайс 3), продолжение `backup.rs`: копия, повреждённый файл рядом, новый `device_id`, отказ при
-//! чужой или битой копии.
+//! Restoring from a copy (slice 3), a continuation of `backup.rs`: the copy, the corrupted file kept alongside, a new `device_id`, refusal on
+//! a foreign or broken copy.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -24,7 +24,7 @@ fn make_database_with_copy(dir: &Path) -> (String, PathBuf) {
     let store = open_without_mirror(dir);
     store.send_message(INBOX_ID, "из копии", &at(T0)).unwrap();
     store.run_maintenance(&at(T0)).unwrap();
-    // После копии появилась запись, которой в копии нет.
+    // After the copy an entry appeared that the copy does not have.
     store
         .send_message(INBOX_ID, "после копии", &at(T0 + MINUTE))
         .unwrap();
@@ -44,18 +44,18 @@ fn make_database_with_copy(dir: &Path) -> (String, PathBuf) {
 fn restoring_keeps_the_broken_file_beside_and_creates_a_new_device_id() {
     let dir = tempfile::tempdir().unwrap();
     let (old_device, backups) = make_database_with_copy(dir.path());
-    // Заголовок файла испорчен (остальные страницы целы): SQLite отвечает «не база данных».
+    // The file header is spoiled (the other pages are intact): SQLite answers "not a database".
     let mut broken_bytes = fs::read(db_path(dir.path())).unwrap();
     broken_bytes[..64].copy_from_slice(&[0xAB; 64]);
     fs::write(db_path(dir.path()), &broken_bytes).unwrap();
 
-    // Испорченный файл не открывается: код для окна «База повреждена».
+    // The spoiled file does not open: the code for the "Database is damaged" window.
     let error = Store::open_at(options(dir.path()), &at(T0)).err().unwrap();
     assert!(matches!(error, StoreError::Corrupt(_)), "{error}");
     assert_eq!(
         fs::read(db_path(dir.path())).unwrap(),
         broken_bytes,
-        "ничего не тронуто"
+        "nothing is touched"
     );
 
     kinige_store::mark_needs_recovery(&db_path(dir.path())).unwrap();
@@ -68,11 +68,11 @@ fn restoring_keeps_the_broken_file_beside_and_creates_a_new_device_id() {
     kinige_store::restore_backup(&db_path(dir.path()), &list[0].name, 1_700_000_000_000, None)
         .unwrap();
 
-    // Повреждённый файл сохранён рядом, не удалён.
+    // The corrupted file is kept alongside, not deleted.
     let kept = dir.path().join("corrupt-1700000000000.db");
     assert_eq!(fs::read(&kept).unwrap(), broken_bytes);
     assert!(!kinige_store::needs_recovery(&db_path(dir.path())));
-    // База из копии: запись «после копии» потеряна, «из копии» на месте, device_id новый.
+    // The database from the copy: the entry "после копии" is lost, "из копии" is in place, device_id is new.
     let store = open_without_mirror(dir.path());
     let page = store
         .list_messages(INBOX_ID, None, 10, &at(T0 + 2 * MINUTE))
@@ -93,9 +93,9 @@ fn restoring_keeps_the_broken_file_beside_and_creates_a_new_device_id() {
         .unwrap();
     assert_ne!(new_device, old_device);
     assert!(kinige_domain::hlc::is_uuid(&new_device));
-    // Копия осталась в папке копий и после восстановления не изменилась.
+    // The copy stayed in the copies folder and did not change after the restore.
     assert_eq!(backups.read_dir().unwrap().flatten().count(), 1);
-    // Новая запись получает метку HLC с новым device_id и больше всех прежних.
+    // A new entry gets an HLC stamp with the new device_id, greater than all earlier ones.
     let sent = store
         .send_message(INBOX_ID, "после восстановления", &at(T0 + 3 * MINUTE))
         .unwrap();

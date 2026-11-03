@@ -1,15 +1,15 @@
-//! Сквозное восстановление через IPC: `restore_backup` -> файлы -> `resume_after_restore` -> состояние `Recovery`. Отдельный
-//! бинарник с одним тестом: тест задаёт `KINIGE_DATA_DIR`, а переменные окружения общие для всего процесса.
+//! End-to-end restore through IPC: `restore_backup` -> files -> `resume_after_restore` -> the `Recovery` state. A separate
+//! binary with one test: the test sets `KINIGE_DATA_DIR`, and environment variables are shared by the whole process.
 //!
-//! **Успешный проход в mock-рантайме невозможен ни на macOS, ни на Linux.** `resume_after_restore` запускает сервисы:
-//! на macOS первым идёт `panel::convert` (окно захвата как NSPanel — в mock-рантайме нет ни окна, ни плагина панелей), на
-//! Linux — `tray::setup`, которому нужен инициализированный GTK (`gtk::Menu` паникует без дисплея). Поэтому здесь
-//! проверяется то, что можно: **сбой сервисов не оставляет приложение с хранилищем под флагом «журнал не открыт»**
-//! (хранилище отдаётся приложению последним) и окно с копиями остаётся. Успешный проход (хранилище управляется,
-//! `active = false`, `restoring = false`) подтверждён в живом окне собранного приложения (`docs/screens/3/live-run.txt`).
+//! **A successful pass in a mock runtime is impossible on both macOS and Linux.** `resume_after_restore` starts the services:
+//! on macOS `panel::convert` goes first (the capture window as an NSPanel -- the mock runtime has neither a window nor a panel plugin), on
+//! Linux `tray::setup`, which needs an initialized GTK (`gtk::Menu` panics without a display). So what is checked here
+//! is what can be: **a failure of the services does not leave the app with a store under the "journal not open" flag**
+//! (the store is handed to the app last) and the window with copies stays. The successful pass (the store is managed,
+//! `active = false`, `restoring = false`) was confirmed in a live window of the built app (`docs/screens/3/live-run.txt`).
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 #![cfg(target_os = "macos")]
 
@@ -22,11 +22,11 @@ use serde_json::json;
 use tauri::Manager;
 
 #[test]
-#[allow(unsafe_code)] // `set_var` в 2024 — unsafe; обоснование ниже
+#[allow(unsafe_code)] // `set_var` is unsafe in edition 2024; the justification is below
 fn a_failure_of_the_services_after_restore_leaves_the_recovery_window_and_no_store() {
     let dir = tempfile::tempdir().unwrap();
     let db = dir.path().join("kinige.db");
-    // SAFETY: единственный тест в этом бинарнике, другие потоки окружение не читают.
+    // SAFETY: the only test in this binary, other threads do not read the environment.
     unsafe {
         std::env::set_var("KINIGE_DATA_DIR", dir.path());
         std::env::set_var("KINIGE_MIRROR_DIR", dir.path().join("mirror"));
@@ -53,20 +53,20 @@ fn a_failure_of_the_services_after_restore_leaves_the_recovery_window_and_no_sto
 
     let outcome = call(&main, "restore_backup", json!({"name": name}));
 
-    // Файлы восстановлены (повреждённый отложен), но сервисы не запустились: восстановление считается неудавшимся.
+    // The files are restored (the corrupt one is set aside), but the services did not start: the restore counts as failed.
     assert!(
         std::fs::read_dir(dir.path())
             .unwrap()
             .flatten()
             .any(|e| e.file_name().to_string_lossy().starts_with("corrupt-")),
-        "повреждённый файл отложен"
+        "the corrupt file is set aside"
     );
     assert_eq!(outcome.unwrap_err(), json!({"code": "internal"}));
     let recovery = fixture.app.state::<Recovery>();
     assert!(recovery.is_active() && !recovery.is_restoring());
     assert!(
         fixture.app.try_state::<Store>().is_none(),
-        "хранилище приложению не отдано: подмены базы под писателем не будет"
+        "the store was not handed to the app: the database will not be replaced under the writer"
     );
     assert_eq!(
         call(&main, "startup_state", json!({})).unwrap()["needsRecovery"],

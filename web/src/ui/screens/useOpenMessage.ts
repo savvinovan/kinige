@@ -4,15 +4,15 @@ import type { FocusTarget } from "./useFeed";
 
 interface UseOpenMessageOptions {
   api: KinigeApi;
-  /** Открыть чат (черновик прежнего уходит в Rust до переключения). */
+  /** Open a chat (the previous chat's draft goes to Rust before switching). */
   select: (chatId: string | null) => Promise<void>;
-  /** Лента открывает чат на записи (`useFeed`). */
+  /** The feed opens the chat at an entry (`useFeed`). */
   onFocus: (target: FocusTarget) => void;
 }
 
 /**
- * Окно «Настройки» просит открыть запись из журнала обращений (событие `open-message`): Rust уже проверил, что запись есть.
- * Главное окно открывает её чат и ставит ленту на запись.
+ * The "Settings" window asks to open an entry from the access log (the `open-message` event): Rust has already checked
+ * that the entry exists. The main window opens its chat and puts the feed on the entry.
  */
 export function useOpenMessage({ api, select, onFocus }: UseOpenMessageOptions): void {
   const counter = useRef(0);

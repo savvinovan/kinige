@@ -1,16 +1,16 @@
-//! Последняя страховка «никогда не падать» (KINIG-28): паника, которую не поймал `catch_unwind` вокруг команд, задач
-//! писателя и инструментов MCP, всё равно попадает в `kinige.log`. Без хука в .app из Finder она была бы невидимой.
+//! The last safety net of "never crash" (KINIG-28): a panic that `catch_unwind` around commands, writer tasks
+//! and MCP tools did not catch still lands in `kinige.log`. Without the hook, in an .app started from Finder it would be invisible.
 //!
-//! В журнал идёт только место паники (файл:строка) и имя потока. Текст сообщения паники не пишется: в нём бывают куски
-//! данных пользователя (`unwrap()` на `Err`, срез строки, индекс). Путь файла обрезается: внутри зависимостей он
-//! абсолютный и содержит имя пользователя (`/Users/<имя>/.cargo/registry/...`).
+//! Only the panic location (file:line) and the thread name go to the log. The panic message text is not written: it can contain pieces
+//! of user data (`unwrap()` on an `Err`, a string slice, an index). The file path is trimmed: inside dependencies it is
+//! absolute and contains the user name (`/Users/<name>/.cargo/registry/...`).
 
 use std::panic::{self, PanicHookInfo};
 
-/// Сколько последних частей абсолютного пути оставлять в журнале.
+/// How many trailing parts of an absolute path to keep in the log.
 const KEPT_PATH_PARTS: usize = 3;
 
-/// Ставит хук паники. Прежний хук (вывод в stderr для разработчика) вызывается после записи в журнал.
+/// Installs the panic hook. The previous hook (output to stderr for the developer) is called after writing to the log.
 pub fn install() {
     let previous = panic::take_hook();
     panic::set_hook(Box::new(move |info| {
@@ -22,21 +22,21 @@ pub fn install() {
 fn describe(info: &PanicHookInfo<'_>) -> String {
     let thread = std::thread::current();
     let place = info.location().map_or_else(
-        || "место неизвестно".to_string(),
+        || "unknown location".to_string(),
         |location| format!("{}:{}", short_path(location.file()), location.line()),
     );
     format!(
-        "паника в потоке «{}» в {place}",
-        thread.name().unwrap_or("без имени")
+        "panic in thread \"{}\" at {place}",
+        thread.name().unwrap_or("unnamed")
     )
 }
 
-/// Путь без домашнего каталога и без хэша реестра: относительный путь остаётся как есть, у зависимостей из реестра —
-/// `<крейт-версия>/src/…`, у остальных абсолютных — последние части.
+/// A path without the home directory and without the registry hash: a relative path stays as is, for registry dependencies it is
+/// `<crate-version>/src/...`, for other absolute ones the last parts.
 fn short_path(file: &str) -> String {
     const REGISTRY: &str = "/registry/src/";
     if let Some(at) = file.find(REGISTRY) {
-        // После `registry/src/` идёт каталог индекса (`index.crates.io-<хэш>`): он ничего не говорит.
+        // After `registry/src/` comes the index directory (`index.crates.io-<hash>`): it tells nothing.
         let rest = file.get(at + REGISTRY.len()..).unwrap_or_default();
         return rest
             .split_once('/')

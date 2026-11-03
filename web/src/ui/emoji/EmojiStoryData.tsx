@@ -5,24 +5,24 @@ import { FALLBACK_SUPPORT } from "./emojiSupport";
 import { EmojiResolverProvider } from "./EmojiResolver";
 import "./emoji-stories.css";
 
-// Только для историй Storybook.
+// For Storybook stories only.
 
-/** Настоящие данные emojibase с фиксированной границей версий (без проверки глифов): набор в историях один и тот же везде. */
+/** Real emojibase data with a fixed version limit (no glyph check): the set in the stories is the same everywhere. */
 export const STORY_RESOLVER: EmojiDataResolver = createEmojiResolver(() => FALLBACK_SUPPORT);
 
-/** Данные никогда не придут: состояние «загрузка». */
+/** The data never arrives: the "loading" state. */
 export const LOADING_RESOLVER: EmojiDataResolver = () => new Promise(() => {});
 
 /**
- * Данные пикера для историй и «готовность»: пока в документе нет ни одной ячейки эмодзи, история скрыта (visibility), и
- * снимок не поймает пикер на полпути между загрузкой данных и первой отрисовкой сетки. С `wait={false}` — сразу.
+ * Picker data for the stories and "readiness": while the document has no emoji cell, the story is hidden (visibility), and
+ * the snapshot does not catch the picker halfway between loading the data and the first paint of the grid. With `wait={false}` it is immediate.
  */
 export function EmojiStoryData({ resolver = STORY_RESOLVER, wait = true, children }: { resolver?: EmojiDataResolver; wait?: boolean; children: ReactNode }) {
   const [ready, setReady] = useState(!wait);
   useEffect(() => {
     if (!wait) return;
     const check = () => {
-      // Ячейки-образцы для замера (aria-label пуст) есть сразу; настоящая ячейка или «ничего не найдено» — после данных.
+      // Sample cells for measuring (empty aria-label) exist at once; a real cell or "nothing found" appears after the data.
       if (document.querySelector('[role="gridcell"]:not([aria-label=""]), [frimousse-empty]')) setReady(true);
     };
     check();

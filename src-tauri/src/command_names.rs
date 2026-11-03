@@ -1,7 +1,7 @@
-//! Списки имён команд Tauri по окнам (§12.3 ТЗ). Здесь только данные: сами команды зарегистрированы в `builder`
-//! (`lib.rs`), права окон — в `capabilities/` и `build.rs`; совпадение всех трёх мест проверяют тесты.
+//! Lists of Tauri command names per window (PRD §12.3). Only data here: the commands themselves are registered in `builder`
+//! (`lib.rs`), the window permissions are in `capabilities/` and `build.rs`; tests check that all three places match.
 
-/// Команды главного окна (capability `main`).
+/// Commands of the main window (capability `main`).
 pub const MAIN_COMMANDS: &[&str] = &[
     "app_info",
     "get_language",
@@ -44,8 +44,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "set_forest_view",
 ];
 
-/// Команды окна настроек (capability `settings`, слайс 4b, ADR-0010): настройки, сочетания, доступ ИИ-агентов, файл
-/// настроек и «открыть запись из журнала». Ленты, поиска, записи, импорта и восстановления у окна нет.
+/// Commands of the settings window (capability `settings`, slice 4b, ADR-0010): settings, shortcuts, AI agent access, the
+/// settings file and "open an entry from the log". The window has no feed, search, entry, import or restore.
 pub const SETTINGS_COMMANDS: &[&str] = &[
     "get_language",
     "get_settings",
@@ -64,7 +64,7 @@ pub const SETTINGS_COMMANDS: &[&str] = &[
     "settings_open_entry",
 ];
 
-/// Команды окна захвата (capability `capture`): только Inbox, без `chat_id` (§12.3).
+/// Commands of the capture window (capability `capture`): only Inbox, without `chat_id` (§12.3).
 pub const CAPTURE_COMMANDS: &[&str] = &[
     "capture_state",
     "capture_send",
@@ -75,8 +75,8 @@ pub const CAPTURE_COMMANDS: &[&str] = &[
     "capture_add_recent_emoji",
 ];
 
-/// Все команды приложения. Список совпадает с `AppManifest::commands` в `build.rs`: сначала команды главного окна, затем
-/// команды только окна настроек, затем окна захвата (это проверяют тесты).
+/// All app commands. The list matches `AppManifest::commands` in `build.rs`: first the main window commands, then the
+/// commands of the settings window only, then the capture window ones (tests check this).
 pub const COMMANDS: &[&str] = &[
     "app_info",
     "get_language",

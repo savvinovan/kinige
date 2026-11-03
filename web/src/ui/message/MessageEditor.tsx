@@ -2,21 +2,21 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 interface MessageEditorProps {
-  /** Исходный Markdown записи: начальный текст поля. */
+  /** The entry's source Markdown: the field's initial text. */
   initial: string;
-  /** Enter: непустой текст сохраняется. */
+  /** Enter: non-empty text is saved. */
   onSave: (text: string) => void;
   /** Esc. */
   onCancel: () => void;
 }
 
 /**
- * Правка прямо в плашке (решение 2 слайса 3): вместо текста записи стоит поле без рамки и заливки, той же гарнитуры и
- * размера, так что плашка меняет только высоту. Enter сохраняет (пустой текст и Shift+Enter — нет: пустой игнорируется,
- * Shift+Enter переводит строку; во время IME Enter подтверждает ввод), Esc отменяет. Каретка в конце текста, фокус в поле.
+ * Editing right in the bubble (decision 2 of slice 3): instead of the entry text there is a field with no border and fill, of the same typeface and
+ * size, so the bubble changes only its height. Enter saves (empty text and Shift+Enter do not: empty is ignored,
+ * Shift+Enter inserts a line break; during IME, Enter confirms the input), Esc cancels. The caret is at the end of the text, focus is in the field.
  *
- * Высоту задаёт невидимая копия текста под полем (в ней же распорка под время, как в обычной плашке): поле растёт без
- * измерений. Подсказка про Enter и Esc визуально ничего не добавляет: она в `title` и для диктора.
+ * The height is set by an invisible copy of the text under the field (with the time spacer in it, as in a normal bubble): the field grows without
+ * measuring. The hint about Enter and Esc adds nothing visually: it is in `title` and for the screen reader.
  */
 export function MessageEditor({ initial, onSave, onCancel }: MessageEditorProps) {
   const { t } = useTranslation();
@@ -33,14 +33,14 @@ export function MessageEditor({ initial, onSave, onCancel }: MessageEditorProps)
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Escape") {
-      // Esc принадлежит правке: окно и фильтры над лентой его не получают.
+      // Esc belongs to editing: the window and the filters above the feed do not get it.
       event.preventDefault();
       event.stopPropagation();
       onCancel();
       return;
     }
     if (event.key !== "Enter" || event.shiftKey) return;
-    // IME (русская раскладка, диктовка): Enter подтверждает ввод, а не сохраняет.
+    // IME (Russian layout, dictation): Enter confirms the input, it does not save.
     if (event.nativeEvent.isComposing) return;
     event.preventDefault();
     if (value.trim() !== "") onSave(value);
@@ -48,7 +48,7 @@ export function MessageEditor({ initial, onSave, onCancel }: MessageEditorProps)
 
   return (
     <div className="message-edit">
-      {/* Копия текста задаёт высоту; пробел в конце нужен, чтобы пустая последняя строка тоже считалась. */}
+      {/* The copy of the text sets the height; the trailing space is needed so that an empty last line is counted too. */}
       <div className="message-edit__replica" aria-hidden="true">
         {value} <span className="message__spacer" />
       </div>

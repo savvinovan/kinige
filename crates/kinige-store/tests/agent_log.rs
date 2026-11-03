@@ -1,7 +1,7 @@
-//! Журнал обращений агентов (ADR-0009, слайс 4a): без содержимого, имя клиента, подключение, `purge`, ротация, миграция 5.
+//! The agent call log (ADR-0009, slice 4a): no content, the client name, the connection, `purge`, rotation, migration 5.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -98,12 +98,12 @@ fn a_reconnect_is_its_own_row_and_closes_the_previous_open_session_of_that_clien
     a.store
         .agent_connected("Claude Desktop", false, &moscow(T0))
         .unwrap();
-    // Приложение перезапустилось, строки «отключение» не было: мост переподключился.
+    // The app restarted, there was no "disconnect" row: the bridge reconnected.
     a.store
         .agent_connected("Claude Desktop", true, &moscow(T0 + MINUTE))
         .unwrap();
     assert_eq!(tools(a.dir.path()), ["connect", "disconnect", "reconnect"]);
-    // Прежний сеанс уже закрыт «отключением»: лишней строки нет.
+    // The previous session is already closed by a "disconnect": no extra row.
     a.store
         .agent_disconnected("Claude Desktop", &moscow(T0 + 2 * MINUTE))
         .unwrap();
@@ -120,7 +120,7 @@ fn a_reconnect_is_its_own_row_and_closes_the_previous_open_session_of_that_clien
             "reconnect"
         ]
     );
-    // Другой клиент своего сеанса не теряет и чужого не закрывает.
+    // Another client keeps its own session and does not close someone else's.
     a.store
         .agent_connected("Other", true, &moscow(T0 + 4 * MINUTE))
         .unwrap();
@@ -161,9 +161,9 @@ fn purging_an_entry_removes_its_log_traces_but_not_the_call_itself() {
         .map(Result::unwrap)
         .collect();
     assert_eq!(rows, [other]);
-    assert_eq!(count(a.dir.path(), "mcp_log"), 2, "обращение остаётся");
-    // `purge` не переписывает историю: у обеих строк число записей прежнее (1), раскрытие показывает только оставшуюся запись,
-    // окно считает «удалено навсегда» как число строки минус число показанных.
+    assert_eq!(count(a.dir.path(), "mcp_log"), 2, "the call stays");
+    // `purge` does not rewrite history: both rows keep the same entry count (1), the expansion shows only the remaining entry,
+    // the window counts "deleted forever" as the row's number minus the number shown.
     let page = a.store.agent_log_page(None).unwrap();
     let calls: Vec<_> = page.rows.iter().filter(|r| r.tool == "add_entry").collect();
     assert_eq!(calls.len(), 2);
@@ -207,7 +207,7 @@ fn the_row_count_is_written_with_the_row_and_search_rows_keep_it_after_purge() {
     a.store
         .purge_message(&one, &moscow(T0 + 2 * MINUTE))
         .unwrap();
-    // Число в строке то же, а раскрытие находит одну запись из двух.
+    // The number in the row is the same, while the expansion finds one entry out of two.
     assert_eq!(
         counts(&a.store),
         [("list_chats".into(), 0), ("search".into(), 2)]
@@ -239,7 +239,7 @@ fn rotation_drops_rows_older_than_90_days_and_beyond_20000_and_leaves_no_orphans
     let conn = raw(a.dir.path());
     let now = T0;
     let day = 24 * 60 * MINUTE;
-    // 20 010 свежих строк (новее по id), 5 строк старше 90 дней, у каждой по записи в mcp_log_message.
+    // 20,010 fresh rows (newer by id), 5 rows older than 90 days, each with an entry in mcp_log_message.
     let tx = conn.unchecked_transaction().unwrap();
     for i in 0..5 {
         tx.execute("INSERT INTO mcp_log (at, client, tool, args_json, outcome) VALUES (?1, 'c', 'search', '{}', 'ok')", [now - 91 * day - i]).unwrap();

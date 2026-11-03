@@ -1,4 +1,4 @@
-/* Только для историй Storybook: «призрак» перетаскивания лежит в потоке, а не прибит к окну (в приложении он fixed). */
+/* Storybook stories only: the drag "ghost" sits in the flow instead of being pinned to the window (in the app it is fixed). */
 .story-ghost .record-ghost {
   position: static;
 }

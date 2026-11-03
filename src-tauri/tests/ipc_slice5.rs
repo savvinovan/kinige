@@ -1,8 +1,8 @@
-//! Слайс 5 через IPC на mock-рантайме с настоящими capabilities: «В этот день» и ответ. Команды есть только у главного
-//! окна; окну захвата по-прежнему ровно семь команд, окну `settings` новые отказаны; `capture_send` ответа не принимает.
+//! Slice 5 through IPC on a mock runtime with the real capabilities: "On this day" and replies. The commands exist only for the main
+//! window; the capture window still has exactly seven commands, the new ones are refused to the `settings` window; `capture_send` does not accept a reply.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -13,7 +13,7 @@ use serde_json::json;
 
 const INBOX: &str = kinige_domain::groups::INBOX_ID;
 
-/// Команды слайса 5. Окну захвата и окну настроек — отказ на каждую.
+/// The slice 5 commands. The capture window and the settings window are refused on each.
 const SLICE_FIVE: &[&str] = &["get_on_this_day", "dismiss_on_this_day"];
 
 #[test]
@@ -29,7 +29,7 @@ fn slice_five_commands_are_main_only_and_the_capture_set_is_unchanged() {
             "capture_resize",
             "capture_add_recent_emoji"
         ],
-        "у окна захвата по-прежнему семь команд"
+        "the capture window still has seven commands"
     );
     let fixture = fixture();
     let main = window(&fixture, "main");
@@ -41,7 +41,7 @@ fn slice_five_commands_are_main_only_and_the_capture_set_is_unchanged() {
         assert!(!SETTINGS_COMMANDS.contains(command), "{command}");
         for denied in [&capture, &settings] {
             let error = call(denied, command, args_for(command))
-                .expect_err(&format!("{command} недоступна этому окну"));
+                .expect_err(&format!("{command} is unavailable to this window"));
             assert!(is_acl_denial(&error), "{command}: {error}");
         }
         let result = call(&main, command, args_for(command));
@@ -53,7 +53,7 @@ fn slice_five_commands_are_main_only_and_the_capture_set_is_unchanged() {
 
 #[test]
 fn reply_arguments_of_send_message_and_drafts_are_main_only_in_effect() {
-    // `send_message`, `get_draft`, `save_draft` и раньше были только у главного окна; ответ их не расширил.
+    // `send_message`, `get_draft`, `save_draft` were already main-window only; replies did not widen them.
     let fixture = fixture();
     let capture = window(&fixture, "capture");
     let settings = window(&fixture, "settings");
@@ -129,7 +129,7 @@ fn garbage_reply_ids_come_back_as_reply_target_not_found_and_write_nothing() {
         json!({"chatId": INBOX, "limit": 50}),
     )
     .unwrap();
-    assert_eq!(page["messages"], json!([]), "ничего не записано");
+    assert_eq!(page["messages"], json!([]), "nothing was written");
 }
 
 #[test]
@@ -160,7 +160,7 @@ fn the_draft_carries_the_reply_and_survives_through_get_draft() {
     )
     .unwrap_err();
     assert_eq!(error, json!({"code": "reply_target_not_found"}));
-    // Без replyToId черновик — обычный.
+    // Without replyToId the draft is a regular one.
     call(
         &main,
         "save_draft",
@@ -198,7 +198,7 @@ fn on_this_day_and_dismiss_work_and_refuse_garbage() {
     assert_eq!(
         call(&main, "get_on_this_day", json!({})).unwrap(),
         json!(null),
-        "пустая база"
+        "an empty database"
     );
     for bad in ["", "x", "2026-02-30", "../../etc"] {
         let error = call(&main, "dismiss_on_this_day", json!({"date": bad})).unwrap_err();

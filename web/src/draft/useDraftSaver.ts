@@ -1,30 +1,30 @@
 import { useCallback, useEffect, useRef } from "react";
 
-/** Через сколько после последнего нажатия клавиши черновик уходит в Rust (§5.1: ~300 мс). */
+/** How long after the last keypress the draft goes to Rust (§5.1: ~300 ms). */
 export const DRAFT_DELAY_MS = 300;
 
 export interface DraftSaver<T = string> {
-  /** Запланировать сохранение черновика: для того же `save` последний вызов побеждает, значение другого `save` (другого чата) уходит в очередь. */
+  /** Schedule a draft save: for the same `save` the last call wins, the value of another `save` (another chat) goes to the queue. */
   schedule(body: T): void;
-  /** Сохранить сейчас то, что запланировано (при скрытии окна, потере фокуса, закрытии). Ошибки молча глотаются: черновик — удобство, не данные. */
+  /** Save now what is scheduled (on hiding the window, loss of focus, closing). Errors are swallowed silently: a draft is a convenience, not data. */
   flush(): Promise<void>;
-  /** Отменить запланированное: после отправки Rust уже очистил черновик, поздняя запись вернула бы его. */
+  /** Cancel what is scheduled: after sending, Rust has already cleared the draft, and a late write would bring it back. */
   cancel(): void;
-  /** Дождаться сохранений, которые уже отправлены в Rust (не запланированных): после этого отправка записи не обгонит их. */
+  /** Wait for the saves that are already sent to Rust (not the scheduled ones): after that, sending an entry will not overtake them. */
   settle(): Promise<void>;
 }
 
 /**
- * Черновик с задержкой: пока человек печатает, в Rust не уходит ни один запрос; через `DRAFT_DELAY_MS` после последнего
- * нажатия — одно сохранение. При размонтировании запланированное сохраняется.
+ * A delayed draft: while the person types, no request goes to Rust; `DRAFT_DELAY_MS` after the last keypress - one
+ * save. On unmount, the scheduled save is performed.
  *
- * Сохранения идут строго по одному, в порядке вызова: следующее начинается после ответа на предыдущее (команды Rust
- * приходят к писателю в произвольном порядке, и иначе старый текст мог бы перезаписать новый). `settle()` ждёт хвост этой
- * очереди — им пользуется отправка записи, чтобы запоздавшее сохранение не вернуло отправленный текст черновиком.
+ * Saves go strictly one at a time, in call order: the next starts after the reply to the previous one (Rust commands
+ * reach the writer in arbitrary order, and otherwise old text could overwrite new text). `settle()` waits for the tail of
+ * this queue - sending an entry uses it, so that a late save does not bring the sent text back as a draft.
  *
- * Запланированный текст хранит ту функцию `save`, с которой его запланировали (у `MainWindow` она привязана к чату).
- * `flush` берёт её оттуда, а не из своего замыкания: после смены чата React сбрасывает эффекты предыдущей отрисовки с
- * задержкой, и «старый» `flush` успевал сохранить набранный в новом чате текст в черновик прежнего чата.
+ * The scheduled text keeps the `save` function it was scheduled with (in `MainWindow` it is bound to the chat).
+ * `flush` takes it from there, not from its own closure: after a chat change React flushes the effects of the previous
+ * render with a delay, and the "old" `flush` managed to save the text typed in the new chat into the previous chat's draft.
  */
 export function useDraftSaver<T = string>(save: (body: T) => Promise<void>, delayMs = DRAFT_DELAY_MS): DraftSaver<T> {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -46,7 +46,7 @@ export function useDraftSaver<T = string>(save: (body: T) => Promise<void>, dela
 
   const schedule = useCallback(
     (body: T) => {
-      // Запланированный текст другого чата (набран до переключения, который ещё не отрисован) не затирается: он уходит в очередь.
+      // The scheduled text of another chat (typed before the switch that is not rendered yet) is not overwritten: it goes to the queue.
       if (pending.current !== null && pending.current.save !== save) enqueue(pending.current);
       pending.current = { body, save };
       clearTimeout(timer.current);

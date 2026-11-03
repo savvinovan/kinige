@@ -34,20 +34,20 @@ import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
 import type { WeekdaySource } from "./generated/WeekdaySource";
 
-/** Позиция и размер страницы ленты (`KinigeApi.listMessages`). */
+/** The position and size of a feed page (`KinigeApi.listMessages`). */
 export interface ListMessagesOptions {
   before?: FeedCursor;
   after?: FeedCursor;
-  /** Id записи, вокруг которой нужна страница. */
+  /** The id of the entry around which a page is needed. */
   around?: string;
   limit?: number;
   tag?: string;
 }
 
-/** Id Inbox: константа протокола, одна на все аккаунты (ADR-0001, §3.6). */
+/** The Inbox id: a protocol constant, the same for all accounts (ADR-0001, §3.6). */
 export const INBOX_ID = "00000000-0000-4000-8000-000000000001";
 
-/** Ошибка команды: Rust возвращает код, текст — в файлах переводов (`error.<код>`). */
+/** A command error: Rust returns a code, the text is in the translation files (`error.<code>`). */
 export class KinigeApiError extends Error {
   constructor(readonly code: ErrorCode) {
     super(code);
@@ -55,159 +55,161 @@ export class KinigeApiError extends Error {
   }
 }
 
-/** Код ошибки любого сбоя; всё, что пришло не от наших команд, — `internal`. */
+/** The error code of any failure; anything that did not come from our commands is `internal`. */
 export function errorCode(error: unknown): ErrorCode {
   return error instanceof KinigeApiError ? error.code : "internal";
 }
 
 /**
- * Единственная точка, через которую фронтенд говорит с бэкендом (§3.2 ТЗ).
- * Реализации: `TauriApi` (invoke), `MockApi` (тесты, Storybook).
- * Ошибки приходят как `KinigeApiError` с кодом.
+ * The only point through which the frontend talks to the backend (§3.2 of the PRD).
+ * Implementations: `TauriApi` (invoke), `MockApi` (tests, Storybook).
+ * Errors arrive as `KinigeApiError` with a code.
  */
 export interface KinigeApi {
   appInfo(): Promise<AppInfo>;
-  /** Язык интерфейса по предпочитаемым языкам системы (решает Rust). */
+  /** The interface language from the system's preferred languages (Rust decides). */
   getLanguage(): Promise<Language>;
-  /** Чаты в порядке показа (закреплённые, чаты, архив) и размер корзины. */
+  /** Chats in display order (pinned, chats, archive) and the trash size. */
   listChats(): Promise<ChatList>;
   /**
-   * Страница ленты: без позиции — самая новая; записи по возрастанию, самая новая последней. `before` — более старая
-   * страница после курсора, `after` — более новая (слайс 4), `around` — страница вокруг записи (переход из поиска); если
-   * указаны несколько позиций, `around` главнее `after`, а `after` — `before`. `tag` (без `#`, любой регистр) оставляет
-   * только записи с этим тегом.
+   * A feed page: without a position - the newest; entries ascending, the newest last. `before` - an older page after
+   * the cursor, `after` - a newer one (slice 4), `around` - a page around an entry (a jump from search); if several
+   * positions are given, `around` wins over `after`, and `after` over `before`. `tag` (without `#`, any case) keeps
+   * only the entries with this tag.
    */
   listMessages(chatId: string, options?: ListMessagesOptions): Promise<MessagePage>;
   /**
-   * Отправка: ответ — сохранённая запись; без оптимистичного показа. С `replyToId` (слайс 5) это ответ на запись того же
-   * чата; нет такой записи, она в корзине или id неверен — `reply_target_not_found`, ничего не записано.
+   * Sending: the reply is the saved entry; no optimistic display. With `replyToId` (slice 5) it is a reply to an entry of
+   * the same chat; if there is no such entry, it is in the trash or the id is wrong - `reply_target_not_found`, nothing
+   * is written.
    */
   sendMessage(chatId: string, body: string, replyToId?: string | null): Promise<MessageView>;
   getSettings(): Promise<Settings>;
   setTextSize(size: TextSize): Promise<void>;
-  /** Системный диалог выбора папки Markdown-копии (вызывается из Rust). Отмена возвращает прежние настройки. */
+  /** The system dialog for choosing the Markdown copy folder (called from Rust). Cancelling returns the previous settings. */
   chooseMirrorFolder(): Promise<Settings>;
-  /** Открыть ссылку из записи в системном браузере; Rust пропускает только `http`, `https`, `mailto`. */
+  /** Open a link from an entry in the system browser; Rust lets through only `http`, `https`, `mailto`. */
   openExternalUrl(url: string): Promise<void>;
 
-  // ---- главное окно (слайс 2) ----
-  /** Черновик поля ввода чата (§5): пустой текст без ответа, если его нет. Несёт и запись, на которую пишется ответ. */
+  // ---- main window (slice 2) ----
+  /** The chat input draft (§5): empty text without a reply if there is none. It carries the entry being replied to as well. */
   getDraft(chatId: string): Promise<ChatDraft>;
   /**
-   * Сохраняет черновик; удаляется он, только когда пусты и текст, и ответ (`replyToId`). Отправка очищает черновик в Rust,
-   * в той же транзакции.
+   * Saves the draft; it is deleted only when both the text and the reply (`replyToId`) are empty. Sending clears the
+   * draft in Rust, in the same transaction.
    */
   saveDraft(chatId: string, body: string, replyToId?: string | null): Promise<void>;
-  /** Смена своего сочетания: Rust проверяет запись, регистрирует в системе и сохраняет. Ответ — настройки целиком. */
+  /** Change your own shortcut: Rust validates the record, registers it in the system and saves it. The reply is the whole settings. */
   setShortcut(kind: ShortcutKind, accelerator: string): Promise<Settings>;
-  /** «Сбросить»: сочетание по умолчанию, те же проверки. */
+  /** "Reset": the default shortcut, the same checks. */
   resetShortcut(kind: ShortcutKind): Promise<Settings>;
-  /** Идёт (`true`) или закончилась запись нового сочетания: на это время хоткеи не открывают окно захвата. */
+  /** Recording of a new shortcut is going on (`true`) or has ended: during it the hotkeys do not open the capture window. */
   shortcutRecording(active: boolean): Promise<void>;
-  /** Подписка на событие «записи изменились» (захват, дописывание, буфер). Возвращает отписку. */
+  /** Subscribe to the "entries changed" event (capture, appending, clipboard). Returns the unsubscribe function. */
   onEntriesChanged(handler: () => void): Promise<() => void>;
 
-  // ---- главное окно (слайс 3): чаты, действия с записью, корзина ----
-  /** Новый чат в конце раздела «Чаты». Имя 1–128 знаков; без эмодзи — 💬. */
+  // ---- main window (slice 3): chats, entry actions, trash ----
+  /** A new chat at the end of the "Чаты" section. The name is 1-128 characters; without an emoji - 💬. */
   createChat(title: string, icon: string | null): Promise<ChatSummary>;
   renameChat(id: string, title: string): Promise<ChatSummary>;
   setChatIcon(id: string, icon: string): Promise<ChatSummary>;
   setChatPinned(id: string, pinned: boolean): Promise<ChatSummary>;
-  /** Inbox архивировать нельзя (`inbox_protected`). */
+  /** The Inbox cannot be archived (`inbox_protected`). */
   setChatArchived(id: string, archived: boolean): Promise<ChatSummary>;
-  /** «Удалить»: запись уходит в корзину. Без оптимистичного показа: ответ приходит после фиксации. */
+  /** "Delete": the entry goes to the trash. No optimistic display: the reply comes after the commit. */
   deleteMessage(id: string): Promise<void>;
-  /** «Вернуть» из корзины: запись возвращается на своё место. */
+  /** "Restore" from the trash: the entry returns to its place. */
   restoreMessage(id: string): Promise<void>;
-  /** Правка текста; старая версия сохраняется ревизией. Ответ — запись, как она теперь выглядит. */
+  /** Text edit; the old version is kept as a revision. The reply is the entry as it looks now. */
   editMessage(id: string, body: string): Promise<MessageView>;
-  /** Щелчок по `- [ ]` в тексте: пункт `index` (с нуля, по порядку в тексте) получает состояние `checked`. */
+  /** A click on `- [ ]` in the text: the item `index` (zero-based, in text order) gets the `checked` state. */
   toggleTaskItem(id: string, index: number, checked: boolean): Promise<MessageView>;
-  /** Задача, выполнено (только у задачи), избранное. */
+  /** Task, done (tasks only), favorite. */
   setMessageFlag(id: string, flag: MessageFlag, on: boolean): Promise<MessageView>;
-  /** «Изменить дату»: `YYYY-MM-DD`, будущие даты разрешены. */
+  /** "Change date": `YYYY-MM-DD`, future dates are allowed. */
   setMessageDate(id: string, journalDate: string): Promise<MessageView>;
-  /** «Переместить в чат» (меню записи, перетаскивание на чат): день и текст не меняются, в корзину нельзя. */
+  /** "Move to chat" (the entry menu, dragging onto a chat): the day and the text do not change, not into the trash. */
   moveMessage(id: string, chatId: string): Promise<MessageView>;
-  /** Корзина: недавно удалённые первыми. */
+  /** The trash: recently deleted first. */
   listTrash(): Promise<TrashItem[]>;
-  /** «Удалить навсегда» из корзины (интерфейс просит подтверждения). */
+  /** "Delete forever" from the trash (the interface asks for confirmation). */
   purgeMessage(id: string): Promise<void>;
   setSidebarCollapsed(collapsed: boolean): Promise<void>;
-  /** Выбранный в пикере эмодзи — первым в «недавних»; ответ — список целиком. */
+  /** The emoji chosen in the picker goes first in "recent"; the reply is the whole list. */
   addRecentEmoji(emoji: string): Promise<string[]>;
-  /** Меню значка: «открыть этот чат». Возвращает отписку. */
+  /** The tray menu: "open this chat". Returns the unsubscribe function. */
   onOpenChat(handler: (chatId: string) => void): Promise<() => void>;
 
-  // ---- запуск и копии базы (слайс 3) ----
-  /** Журнал или окно «База повреждена» со списком копий. */
+  // ---- startup and database backups (slice 3) ----
+  /** The journal or the "Database is corrupted" window with a list of backups. */
   startupState(): Promise<StartupState>;
   /**
-   * Восстановить из копии `name` (только когда журнал не открыт; повторный вызов во время восстановления — ошибка).
-   * Ответ — куда переехала прежняя папка Markdown-копии.
+   * Restore from the backup `name` (only when the journal is not open; a repeated call during restoring is an error).
+   * The reply is where the previous Markdown copy folder was moved.
    */
   restoreBackup(name: string): Promise<RestoreOutcome>;
-  /** Проверка целостности нашла повреждение работающей базы. Возвращает отписку. */
+  /** The integrity check found corruption in the running database. Returns the unsubscribe function. */
   onDatabaseCorrupt(handler: () => void): Promise<() => void>;
-  /** Перезапустить приложение для восстановления (после события `onDatabaseCorrupt`). */
+  /** Restart the application for the restore (after the `onDatabaseCorrupt` event). */
   restartForRecovery(): Promise<void>;
 
-  // ---- импорт из Telegram и поиск (слайс 4) ----
+  // ---- Telegram import and search (slice 4) ----
   /**
-   * «Выбрать result.json…»: системный диалог (вызывается из Rust, путь во фронтенд не приходит), чтение и разбор файла.
-   * Отмена диалога — `null`. Не тот файл — `import_not_telegram`, не прочитался — `import_file_unreadable`, больше 1 ГБ —
-   * `import_file_too_large`; ничего не записано.
+   * "Choose result.json...": the system dialog (called from Rust, the path does not reach the frontend), reading and
+   * parsing the file. Cancelling the dialog - `null`. The wrong file - `import_not_telegram`, unreadable -
+   * `import_file_unreadable`, over 1 GB - `import_file_too_large`; nothing is written.
    */
   importTelegramOpen(): Promise<ImportOpened | null>;
   /**
-   * «Импортировать»: выбранные чаты (id Telegram) разобранного файла. Ответ приходит в конце; прогресс — событие
-   * `onImportProgress`. Чужая или забытая сессия — `import_session_expired`, второй импорт — `import_in_progress`.
+   * "Import": the chosen chats (Telegram ids) of the parsed file. The reply comes at the end; progress is the
+   * `onImportProgress` event. Someone else's or a forgotten session - `import_session_expired`, a second import -
+   * `import_in_progress`.
    */
   importTelegramRun(session: number, chatIds: readonly string[]): Promise<ImportReport>;
-  /** «Остановить»: идущий импорт дописывает текущую пачку и останавливается. */
+  /** "Stop": the running import finishes the current batch and stops. */
   importTelegramStop(): Promise<void>;
-  /** Окно импорта закрыто: разобранный файл забывается. */
+  /** The import window is closed: the parsed file is forgotten. */
   importTelegramClose(): Promise<void>;
-  /** Прогресс идущего импорта после каждой пачки. Возвращает отписку. */
+  /** The progress of the running import after each batch. Returns the unsubscribe function. */
   onImportProgress(handler: (progress: ImportProgress) => void): Promise<() => void>;
   /**
-   * Поиск по записям: ввод как есть (словоформы и префикс решает Rust). Новые записи сверху; `before` — следующая страница;
-   * чаты с совпавшим названием приходят на первой. Пустой запрос — пустая страница.
+   * Entry search: the input as is (Rust decides word forms and prefix). Newer entries on top; `before` - the next page;
+   * chats with a matching name come on the first one. An empty query - an empty page.
    */
   searchMessages(query: string, options?: { filters?: SearchFilters; before?: FeedCursor; limit?: number }): Promise<SearchPage>;
 
-  // ---- доступ ИИ-агентов (слайс 4a, ADR-0009): только главное окно ----
-  /** Флажок, режим, чаты с отметкой «видно агенту», состояние сокета и фрагменты подключения. */
+  // ---- AI agent access (slice 4a, ADR-0009): main window only ----
+  /** The flag, the mode, the chats marked "visible to the agent", the socket state and the connection snippets. */
   getAgentAccess(): Promise<AgentAccess>;
-  /** Включить или выключить доступ. Предупреждение при включении показывает окно до вызова. */
+  /** Turn the access on or off. The window shows the warning on enabling before the call. */
   setAgentEnabled(enabled: boolean): Promise<void>;
   setAgentMode(mode: AgentMode): Promise<void>;
-  /** Чаты, видимые агенту (целиком). Чат с `aiExcluded` и несуществующий не принимаются (`chat_not_found`). */
+  /** The chats visible to the agent (the whole list). A chat with `aiExcluded` and a nonexistent one are not accepted (`chat_not_found`). */
   setAgentChats(chatIds: readonly string[]): Promise<void>;
-  /** Журнал обращений, новые сверху; `before` — `id` последней строки предыдущей страницы. */
+  /** The call log, newest on top; `before` - the `id` of the last row of the previous page. */
   listAgentLog(before?: number): Promise<AgentLogPage>;
-  /** Записи, которые затронуло обращение; удалённая навсегда приходит с `message: null`. */
+  /** The entries a call touched; one deleted forever comes with `message: null`. */
   listAgentLogEntries(logId: number): Promise<AgentLogEntry[]>;
 
-  // ---- окно настроек и файл settings.json (слайс 4b, ADR-0010) ----
-  /** Открыть окно настроек из главного окна (повторное открытие поднимает то же окно). */
+  // ---- settings window and the settings.json file (slice 4b, ADR-0010) ----
+  /** Open the settings window from the main window (opening again raises the same window). */
   openSettings(): Promise<void>;
-  /** Путь файла `settings.json`, что с ним не так и какие ключи с ошибками; для окна настроек. */
+  /** The `settings.json` path, what is wrong with it and which keys have errors; for the settings window. */
   getSettingsFile(): Promise<SettingsFileState>;
   /**
-   * Открыть запись из журнала обращений в ленте главного окна. Rust проверяет запись: удалена навсегда или в корзине —
-   * `message_not_found`; содержимое окну настроек не отдаётся.
+   * Open an entry from the call log in the main window feed. Rust checks the entry: deleted forever or in the trash -
+   * `message_not_found`; the content is not given to the settings window.
    */
   settingsOpenEntry(id: string): Promise<void>;
-  /** Настройки изменились: окном, другим окном или файлом (чужие правки видны за секунды). Возвращает отписку. */
+  /** Settings changed: by the window, another window or the file (other people's edits are seen within seconds). Returns the unsubscribe function. */
   onSettingsChanged(handler: () => void): Promise<() => void>;
-  /** Окно настроек просит открыть запись: главное окно открывает чат на этой записи. Возвращает отписку. */
+  /** The settings window asks to open an entry: the main window opens the chat at that entry. Returns the unsubscribe function. */
   onOpenMessage(handler: (target: { chatId: string; messageId: string }) => void): Promise<() => void>;
 
-  // ---- «В этот день» (слайс 5) ----
-  /** Карточка «В этот день» Inbox; `null` — записей этого числа в прошлые годы нет или карточку скрыли на сегодня. */
+  // ---- "On this day" (slice 5) ----
+  /** The Inbox "On this day" card; `null` - there are no entries of this date in past years or the card is hidden for today. */
   getOnThisDay(): Promise<OnThisDay | null>;
-  /** «Скрыть до завтра»: `date` — `today` карточки; до конца этого дня журнала карточка не показывается (локально). */
+  /** "Hide until tomorrow": `date` is the card's `today`; until the end of this journal day the card is not shown (locally). */
   dismissOnThisDay(date: string): Promise<void>;
 
   // ---- the year's forest (slice 6): main window only ----
@@ -225,21 +227,21 @@ export interface KinigeApi {
   /** Remembers how much of the forest is shown and whether it is the board or the calendar (local, not synced). */
   setForestView(view: ForestView, mode: ForestMode): Promise<void>;
 
-  // ---- окно захвата (слайс 2): отдельный набор команд, только Inbox ----
-  /** Всё, что нужно окну при показе: язык, размер текста, контекст за сегодня, цель дописывания, черновик, ошибка. */
+  // ---- capture window (slice 2): a separate set of commands, Inbox only ----
+  /** Everything the window needs on showing: language, text size, today's context, the append target, the draft, an error. */
   captureState(): Promise<CaptureState>;
-  /** Enter: новая запись в Inbox. */
+  /** Enter: a new entry in the Inbox. */
   captureSend(body: string): Promise<CaptureOutcome>;
-  /** ⌘Enter: дописать к последней записи (если Rust решил, что можно) или новая запись; ответ сообщает, что сделано. */
+  /** Cmd+Enter: append to the last entry (if Rust decided it is allowed) or a new entry; the reply says what was done. */
   captureAppend(body: string): Promise<CaptureOutcome>;
   captureSaveDraft(body: string): Promise<void>;
-  /** Спрятать окно (после отправки, Esc, потери фокуса). */
+  /** Hide the window (after sending, Esc, loss of focus). */
   captureHide(): Promise<void>;
   /**
-   * Подогнать высоту окна под содержимое (логические px, вместе с прозрачным полем под тень). Rust ограничивает значение
-   * диапазоном `layout.capture.window-min-height … window-max-height`, ширина и верх окна не меняются.
+   * Fit the window height to the content (logical px, together with the transparent margin for the shadow). Rust clamps
+   * the value to the range `layout.capture.window-min-height … window-max-height`; the width and the top of the window do not change.
    */
   captureResize(height: number): Promise<void>;
-  /** Эмодзи, выбранный в пикере окна захвата, встаёт первым в общем списке «недавних»; ответ — список целиком. */
+  /** The emoji chosen in the capture window picker goes first in the shared "recent" list; the reply is the whole list. */
   captureAddRecentEmoji(emoji: string): Promise<string[]>;
 }

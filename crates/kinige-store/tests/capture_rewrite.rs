@@ -1,7 +1,7 @@
-//! Первая перезапись группы `body`: неизвестные группы и поля дословно, повреждённый JSON, отказ записи, лимит, рост HLC.
+//! The first rewrite of the `body` group: unknown groups and fields verbatim, corrupted JSON, a write failure, the limit, HLC growth.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -18,7 +18,7 @@ fn supersedes_stays_at_64_through_the_store_and_the_oldest_is_dropped() {
     let store = open_without_mirror(dir.path());
     let first = store.capture_send("a", &moscow(T0)).unwrap().message;
     let h0 = body_hlc(&row(dir.path(), &first.id));
-    // Запись с 63 прежними метками (HLC из прошлого, строго меньше текущей): после правки их ровно 64.
+    // An entry with 63 earlier stamps (HLC from the past, strictly less than the current one): after an edit there are exactly 64.
     let old: Vec<String> = (0..63)
         .map(|i| format!("{:013}-00000-{}", 1_000 + i, h0.get(20..).unwrap()))
         .collect();
@@ -36,22 +36,22 @@ fn supersedes_stays_at_64_through_the_store_and_the_oldest_is_dropped() {
     let after = row(dir.path(), &first.id);
     let list: Vec<String> = serde_json::from_str(&after.body_supersedes).unwrap();
     assert_eq!(list.len(), 64);
-    assert_eq!(list[0], old[0], "пока 64 — ничего не отброшено");
+    assert_eq!(list[0], old[0], "while there are 64, nothing is dropped");
     assert_eq!(list.last(), Some(&h0));
 
-    // Ещё одна правка: 65-я метка вытесняет самую старую, остаётся ровно 64.
+    // One more edit: the 65th stamp pushes out the oldest, exactly 64 remain.
     let h1 = body_hlc(&after);
     store.capture_append("c", &moscow(T0 + 2 * MINUTE)).unwrap();
     let again = row(dir.path(), &first.id);
     let list: Vec<String> = serde_json::from_str(&again.body_supersedes).unwrap();
     assert_eq!(list.len(), 64);
-    assert_eq!(list[0], old[1], "старейшая отброшена");
+    assert_eq!(list[0], old[1], "the oldest is dropped");
     assert_eq!(list.last(), Some(&h1));
     let body: Value = serde_json::from_str(&group(&again, "body")).unwrap();
     assert_eq!(
         body["supersedes"],
         json!(list),
-        "колонка и группа совпадают"
+        "the column and the group match"
     );
 }
 
@@ -60,8 +60,8 @@ fn unknown_group_unknown_fields_and_extra_hlc_fields_survive_an_append_verbatim(
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let first = store.capture_send("база", &moscow(T0)).unwrap().message;
-    // Неизвестная группа (необязательная, в поддерживаемой sv) с пробелами в байтах; неизвестное поле в самой body;
-    // лишнее поле в записи HLC чужой группы.
+    // An unknown group (optional, within the supported sv) with spaces in its bytes; an unknown field in body itself;
+    // an extra field in the HLC record of a foreign group.
     edit_raw_groups(dir.path(), &first.id, |groups, hlcs| {
         groups.insert(
             "future".into(),
@@ -100,10 +100,10 @@ fn unknown_group_unknown_fields_and_extra_hlc_fields_survive_an_append_verbatim(
 
     assert_eq!(group(&after, "future"), r#"{ "z": [1, 2],  "a": "ё" }"#);
     for name in ["core", "flags", "placement", "deleted"] {
-        assert_eq!(group(&after, name), group(&before, name), "{name} дословно");
+        assert_eq!(group(&after, name), group(&before, name), "{name} verbatim");
     }
     let body: Value = serde_json::from_str(&group(&after, "body")).unwrap();
-    assert_eq!(body["flair"], "x", "неизвестное поле body сохранено");
+    assert_eq!(body["flair"], "x", "the unknown body field is preserved");
     assert_eq!(body["body_md"], "база\n\nдальше");
     let hlcs_after: std::collections::BTreeMap<String, Box<RawValue>> =
         serde_json::from_str(&after.hlc_json).unwrap();
@@ -146,7 +146,7 @@ fn corrupt_groups_fail_the_append_and_change_nothing() {
         let error = store
             .capture_append("не запишется", &moscow(T0 + MINUTE))
             .unwrap_err();
-        // Повреждённая запись — не повод молча создать другую: дописывание отказывает кодом.
+        // A corrupted entry is no reason to silently create another: the append refuses with a code.
         assert!(
             matches!(error, StoreError::Internal(_)),
             "{column} {bad}: {error}"
@@ -157,7 +157,7 @@ fn corrupt_groups_fail_the_append_and_change_nothing() {
         assert_eq!(
             (state(dir.path(), "hlc_l"), state(dir.path(), "hlc_c")),
             clock_before,
-            "часы HLC откатились"
+            "the HLC clock went back"
         );
         assert_eq!(store.get_capture_draft().unwrap(), "останется");
 
@@ -193,10 +193,10 @@ fn write_failure_during_append_leaves_the_entry_the_clock_and_the_draft_untouche
         .query_row("SELECT SUM(seq) FROM mirror_dirty", [], |r| r.get(0))
         .unwrap();
 
-    // Отказ на последнем шаге транзакции: после UPDATE записи и HLC.
+    // A failure at the last step of the transaction: after the UPDATE of the entry and HLC.
     let conn = raw(dir.path());
     conn.execute_batch(
-        "CREATE TRIGGER fail_dirty_update BEFORE UPDATE ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'нет места'); END;",
+        "CREATE TRIGGER fail_dirty_update BEFORE UPDATE ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'no space'); END;",
     )
     .unwrap();
     let error = store
@@ -233,7 +233,7 @@ fn write_failure_during_append_leaves_the_entry_the_clock_and_the_draft_untouche
 fn appending_beyond_the_group_limit_is_rejected_and_changes_nothing() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
-    // 200 Ки знаков «я» — около 400 КиБ группы; второе столько же уже не помещается в 512 КиБ.
+    // 200 Ki characters "я" make about 400 KiB of the group; as much again no longer fits into 512 KiB.
     let big = "я".repeat(200 * 1024);
     let first = store.capture_send(&big, &moscow(T0)).unwrap().message;
     let before = row(dir.path(), &first.id);
@@ -248,7 +248,7 @@ fn appending_beyond_the_group_limit_is_rejected_and_changes_nothing() {
     assert_eq!(
         count(dir.path()),
         1,
-        "новая запись не создана вместо отказа"
+        "no new entry is created instead of the refusal"
     );
     assert_eq!(row(dir.path(), &first.id).groups_raw, before.groups_raw);
     assert_eq!(store.get_capture_draft().unwrap(), "черновик остаётся");
@@ -286,7 +286,7 @@ fn hlc_labels_keep_growing_across_appends_sends_and_restarts() {
     let mut seen: Vec<String> = Vec::new();
     for round in 0..3 {
         let store = open_without_mirror(dir.path());
-        // Часы стоят на месте и идут назад.
+        // The clock stands still and goes backwards.
         let a = store
             .capture_send(&format!("r{round}"), &moscow(T0 + round * 20 * MINUTE))
             .unwrap();

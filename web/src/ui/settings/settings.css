@@ -1,6 +1,6 @@
-/* Окно «Настройки»: разделы, выбор из нескольких, строка папки, строки состояния. Только токены. */
+/* The "Settings" window: sections, a choice of several options, the folder row, status rows. Tokens only. */
 
-/* Разделы отделены тонкой линией, а не карточками. */
+/* Sections are separated by a thin line, not cards. */
 .settings__section {
   display: grid;
   gap: var(--space-4);
@@ -27,13 +27,13 @@
   line-height: var(--type-small-line-height);
 }
 
-/* Строки одного раздела (сочетания клавиш) с промежутком больше, чем между элементами строки. */
+/* Rows of one section (keyboard shortcuts) with a gap larger than between the elements of a row. */
 .settings__rows {
   display: grid;
   gap: var(--space-4);
 }
 
-/* Строка «Доступ ИИ-агентов»: состояние слева, кнопка справа. */
+/* The "Доступ ИИ-агентов" row: the state on the left, the button on the right. */
 .settings__agent-row {
   display: flex;
   align-items: center;
@@ -48,7 +48,7 @@
   line-height: var(--type-small-line-height);
 }
 
-/* Выбор из нескольких: сегменты в одной заливке. */
+/* A choice of several options: segments in one fill. */
 .segmented {
   display: inline-flex;
   gap: var(--space-1);
@@ -74,8 +74,8 @@
   transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
-/* Наведение на невыбранный вариант меняет только цвет текста: заливка поля-активного почти не отличается от заливки выбранного
-   (1,07:1), и невыбранный вариант под мышью выглядел бы выбранным. */
+/* Hovering an unselected option changes only the text color: the fill of the active field is almost the same as the fill of the selected one
+   (1.07:1), and an unselected option under the mouse would look selected. */
 .segmented__option:hover {
   color: var(--color-text-primary);
 }
@@ -88,15 +88,15 @@
   opacity: var(--opacity-disabled);
 }
 
-/* Выбранный вариант: только заливка светлее поля (1,24:1, проверяет тест контраста палитры) и основной цвет текста, без рамки;
-   так же отмечены выбранный пункт дерева настроек, выбранная копия в окне восстановления и найденная строка поиска. */
+/* The selected option: only a fill lighter than the field (1.24:1, checked by the palette contrast test) and the primary text color, no outline;
+   the selected settings tree item, the selected copy in the recovery window and the found search row are marked the same way. */
 .segmented__option[aria-checked="true"],
 .segmented__option[aria-checked="true"]:hover {
   background: var(--color-highlight-background);
   color: var(--color-text-primary);
 }
 
-/* Строка папки: подпись, под ней поле с путём и кнопка справа. */
+/* The folder row: a label, under it a field with the path and a button on the right. */
 .path-row {
   display: grid;
   gap: var(--space-1);
@@ -128,7 +128,7 @@
   background: var(--color-surface-field);
 }
 
-/* Длинный путь переносится по разделителям (<wbr>), а слишком длинное имя папки — в любом месте. */
+/* A long path wraps at separators (<wbr>), and a folder name that is too long wraps anywhere. */
 .path-row__path {
   min-width: 0;
   color: var(--color-text-primary);
@@ -148,7 +148,7 @@
 .path-row__badge {
   padding: 0 var(--space-2);
   border-radius: var(--radius-round);
-  /* Врезка темнее поля (как блок кода в плашке), а не рамка: рамка цвета разделителя на поле почти не видна. */
+  /* An inset darker than the field (like a code block in a callout), not an outline: a divider-colored outline is barely visible on the field. */
   background: var(--color-surface-code);
   color: var(--color-text-secondary);
   font-family: var(--type-meta-family);
@@ -160,7 +160,7 @@
   flex: none;
 }
 
-/* Строка состояния: значок и текст. Ошибка — цветом ошибки и значком, а не одним цветом. */
+/* A status row: an icon and text. An error uses the error color and an icon, not color alone. */
 .status-note {
   display: flex;
   align-items: flex-start;

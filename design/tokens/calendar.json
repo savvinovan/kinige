@@ -2,9 +2,9 @@
   "layout": {
     "calendar": {
       "$type": "dimension",
-      "width": { "$value": "23rem", "$description": "Ширина окна календаря (299 px при корне 13 px); в узком окне панель занимает ширину окна за вычетом полей." },
-      "cell": { "$value": "2.7rem", "$description": "Сторона ячейки дня в сетке месяца (35 px): семь ячеек помещаются в окно с полями." },
-      "day-mark": { "$value": "0.3rem", "$description": "Точка под числом «сегодня» (4 px)." }
+      "width": { "$value": "23rem", "$description": "Width of the calendar window (299 px at a 13 px root); in a narrow window the panel takes the window width minus the margins." },
+      "cell": { "$value": "2.7rem", "$description": "Side of a day cell in the month grid (35 px): seven cells fit in the window with margins." },
+      "day-mark": { "$value": "0.3rem", "$description": "The dot under the 'today' number (4 px)." }
     }
   }
 }

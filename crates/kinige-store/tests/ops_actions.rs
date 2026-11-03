@@ -1,8 +1,8 @@
-//! Действия с записью по одному (слайс 3): удаление и возврат, правка с ревизией, пункт задачи, флаги, день записи.
-//! Общие свойства всех перезаписей (дословность чужого, HLC, повреждение, отказ записи, только чтение) — в `ops.rs`.
+//! Single-entry actions (slice 3): delete and restore, edit with a revision, a task item, flags, the entry's day.
+//! Properties common to all rewrites (verbatim foreign data, HLC, corruption, write failure, read-only) are in `ops.rs`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -38,7 +38,7 @@ fn delete_and_restore_move_the_counter_and_the_feed_and_are_idempotent() {
     assert_eq!(
         store.list_chats().unwrap()[0].count,
         1,
-        "счётчик уменьшился на 1"
+        "the counter dropped by 1"
     );
     assert_eq!(store.sidebar().unwrap().trash_count, 1);
     let page = store.list_messages(INBOX_ID, None, 10, &at(3)).unwrap();
@@ -54,7 +54,7 @@ fn delete_and_restore_move_the_counter_and_the_feed_and_are_idempotent() {
     assert_eq!(
         clock(dir.path()),
         clock_after_delete,
-        "повторное удаление ничего не пишет"
+        "a repeated delete writes nothing"
     );
     assert_eq!(
         columns(dir.path(), &id)["deleted_at"],
@@ -71,7 +71,7 @@ fn delete_and_restore_move_the_counter_and_the_feed_and_are_idempotent() {
             .map(|m| m.id.clone())
             .collect::<Vec<_>>(),
         [id.clone(), other.id],
-        "запись вернулась на своё место"
+        "the entry returned to its place"
     );
     store.restore_message(&id, &at(6)).unwrap();
     assert_eq!(
@@ -99,7 +99,7 @@ fn edit_keeps_the_entry_in_place_and_saves_the_old_version_as_a_revision() {
         (T0, "2026-10-21")
     );
 
-    // Запись на прежнем месте и с прежним временем.
+    // The entry is in the same place and has the same time.
     let page = store.list_messages(INBOX_ID, None, 10, &at(4)).unwrap();
     assert_eq!(
         page.messages
@@ -113,7 +113,7 @@ fn edit_keeps_the_entry_in_place_and_saves_the_old_version_as_a_revision() {
         json!(T0 + 3 * MINUTE)
     );
 
-    // Ровно одна ревизия `edit` со снимком записи до правки: дословные байты всех групп с HLC и sv.
+    // Exactly one `edit` revision with a snapshot of the entry before the edit: the verbatim bytes of all groups with HLC and sv.
     assert_eq!(revisions(dir.path(), &id), 1);
     let (snapshot, reason, saved_at, revision_hlc): (String, String, i64, String) = raw(dir.path())
         .query_row(
@@ -132,13 +132,13 @@ fn edit_keeps_the_entry_in_place_and_saves_the_old_version_as_a_revision() {
         assert_eq!(
             entry["raw"].as_str().unwrap(),
             before[name],
-            "{name}: байты до правки дословно"
+            "{name}: the bytes before the edit are verbatim"
         );
         let hlc_entry: serde_json::Value = serde_json::from_str(&hlcs_before[name]).unwrap();
         assert_eq!(entry["h"], hlc_entry["h"], "{name}");
         assert_eq!(entry["sv"], hlc_entry["sv"], "{name}");
     }
-    // Сама ревизия — запись только с группой `core`; её HLC — метка события правки.
+    // The revision itself is an entry with only the `core` group; its HLC is the stamp of the edit event.
     let revision_groups = groups(
         dir.path(),
         "message_revision",
@@ -169,7 +169,7 @@ fn edit_with_the_same_empty_or_oversized_text_writes_no_revision() {
     let (store, id) = setup(dir.path());
     let clock_before = clock(dir.path());
     store.edit_message(&id, TEXT, &at(1)).unwrap();
-    assert_eq!(revisions(dir.path(), &id), 0, "тот же текст — без ревизии");
+    assert_eq!(revisions(dir.path(), &id), 0, "the same text, no revision");
     assert_eq!(clock(dir.path()), clock_before);
     for text in ["", "  \n\t "] {
         assert!(matches!(
@@ -191,14 +191,14 @@ fn edit_branches_of_base_and_supersedes_follow_the_confirmation() {
     let dir = tempfile::tempdir().unwrap();
     let (store, id) = setup(dir.path());
     let h0 = group_hlc(dir.path(), "message", &id, "body");
-    // Собственная неподтверждённая версия: base остаётся null, прежний HLC попадает в supersedes.
+    // Its own unconfirmed version: base stays null, the previous HLC goes into supersedes.
     store.edit_message(&id, "раз", &at(1)).unwrap();
     let c = columns(dir.path(), &id);
     assert_eq!(
         (c["body_base"].clone(), c["body_supersedes"].clone()),
         (json!(null), json!(format!(r#"["{h0}"]"#)))
     );
-    // Версию подтвердил сервер: base = её HLC, supersedes пуст.
+    // The server confirmed the version: base = its HLC, supersedes is empty.
     let h1 = group_hlc(dir.path(), "message", &id, "body");
     raw(dir.path())
         .execute("UPDATE message SET server_known = 1 WHERE id = ?1", [&id])
@@ -218,7 +218,7 @@ fn task_item_toggle_is_a_text_edit_with_a_revision_and_stale_requests_fail() {
     let (store, id) = setup(dir.path());
     let done = store.toggle_task_item(&id, 0, true, &at(1)).unwrap();
     assert_eq!(done.body_md, "Идея #заметка\n- [x] дело");
-    assert_eq!(revisions(dir.path(), &id), 1, "старая версия сохранена");
+    assert_eq!(revisions(dir.path(), &id), 1, "the old version is kept");
     let undone = store.toggle_task_item(&id, 0, false, &at(2)).unwrap();
     assert_eq!(undone.body_md, TEXT);
     assert_eq!(revisions(dir.path(), &id), 2);
@@ -242,7 +242,7 @@ fn task_item_toggle_is_a_text_edit_with_a_revision_and_stale_requests_fail() {
 fn flags_task_done_favorite_and_no_ops() {
     let dir = tempfile::tempdir().unwrap();
     let (store, id) = setup(dir.path());
-    // «Выполнено» у записи, которая не задача, — ошибка, а сброс — тихий no-op.
+    // "Done" on an entry that is not a task is an error, while clearing it is a quiet no-op.
     assert!(
         store
             .set_message_flag(&id, MessageFlag::TaskDone, true, &at(1))
@@ -271,9 +271,9 @@ fn flags_task_done_favorite_and_no_ops() {
     assert_eq!(
         clock(dir.path()),
         clock_before,
-        "то же состояние — ничего не пишется"
+        "the same state, nothing is written"
     );
-    // Снятие задачи обнуляет «выполнено», избранное остаётся.
+    // Removing the task resets "done", the favorite stays.
     let view = store
         .set_message_flag(&id, MessageFlag::Task, false, &at(5))
         .unwrap();
@@ -286,7 +286,11 @@ fn flags_task_done_favorite_and_no_ops() {
             T0 + 4 * MINUTE
         )
     );
-    assert_eq!(revisions(dir.path(), &id), 0, "флаги ревизий не пишут");
+    assert_eq!(
+        revisions(dir.path(), &id),
+        0,
+        "flags do not write revisions"
+    );
 }
 
 #[test]
@@ -297,7 +301,7 @@ fn changing_the_date_moves_the_entry_between_days_in_both_branches() {
 
     let moved = store.set_message_date(&id, "2026-10-20", &at(1)).unwrap();
     assert_eq!(moved.journal_date, "2026-10-20");
-    assert_eq!(moved.created_at, T0, "время создания не меняется");
+    assert_eq!(moved.created_at, T0, "the creation time does not change");
     let c = columns(dir.path(), &id);
     assert_eq!(c["placement_base"], json!(null));
     assert_eq!(c["placement_supersedes"], json!(format!(r#"["{h0}"]"#)));
@@ -324,7 +328,7 @@ fn changing_the_date_moves_the_entry_between_days_in_both_branches() {
     assert_eq!(
         c["journal_date"],
         json!("2099-01-31"),
-        "будущая дата разрешена"
+        "a future date is allowed"
     );
 
     for bad in ["2026-02-30", "вчера", "", "2026-13-01"] {
@@ -336,10 +340,14 @@ fn changing_the_date_moves_the_entry_between_days_in_both_branches() {
             "{bad}"
         );
     }
-    // Та же дата — ничего не пишется.
+    // The same date, nothing is written.
     let clock_before = clock(dir.path());
     store.set_message_date(&id, "2099-01-31", &at(4)).unwrap();
     assert_eq!(clock(dir.path()), clock_before);
     assert_columns_match_groups(dir.path(), &id);
-    assert_eq!(revisions(dir.path(), &id), 0, "перенос ревизий не пишет");
+    assert_eq!(
+        revisions(dir.path(), &id),
+        0,
+        "a move does not write revisions"
+    );
 }

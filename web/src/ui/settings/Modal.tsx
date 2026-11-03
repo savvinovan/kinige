@@ -6,53 +6,53 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface ModalProps {
-  /** Заголовок окна; на него указывает `aria-labelledby`. */
+  /** The window title; `aria-labelledby` points to it. */
   title: string;
-  /** Подпись кнопки закрытия (для диктора и подсказки). */
+  /** The label of the close button (for the screen reader and the tooltip). */
   closeLabel: string;
   onClose: () => void;
   /**
-   * Куда вернуть фокус при закрытии. По умолчанию — элемент, который был в фокусе в момент открытия; если его к тому времени
-   * убрали со страницы (пункт закрывшегося меню), вернуть фокус некуда, и родителю стоит передать триггер здесь.
+   * Where to return focus on close. By default the element that was focused at the moment of opening; if it was removed from
+   * the page by then (an item of a menu that has closed), there is nowhere to return focus, and the parent should pass the trigger here.
    */
   returnFocusRef?: RefObject<HTMLElement | null>;
   /**
-   * Окно можно закрыть: крестик, Esc и щелчок по подложке. Без этого (идущий импорт) закрыть окно нечем, кроме кнопок
-   * внутри него; Tab ходит по кругу как обычно.
+   * The window can be closed: the cross, Esc and a click on the scrim. Without this (a running import) there is nothing to close
+   * the window with except the buttons inside it; Tab cycles as usual.
    */
   closable?: boolean;
   children: ReactNode;
 }
 
-// `tabindex="-1"` выводит элемент из обхода Tab (выбранный вариант радиогруппы — единственная остановка группы),
-// хотя селектор кнопок его захватывает: такие элементы отбрасываются.
+// `tabindex="-1"` takes an element out of the Tab order (the selected option of a radio group is the group's only stop),
+// although the button selector catches it: such elements are discarded.
 const focusablesIn = (root: HTMLElement) =>
   [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((element) => element.getAttribute("tabindex") !== "-1");
 
-/** Все окна, кроме верхнего (последнего в DOM), получают `data-covered`; у верхнего его нет. */
+/** All windows except the top one (the last in the DOM) get `data-covered`; the top one does not. */
 function markCovered() {
   const modals = [...document.querySelectorAll<HTMLElement>(".modal")];
   modals.forEach((modal, index) => modal.toggleAttribute("data-covered", index < modals.length - 1));
 }
 
 /**
- * Модальное окно внутри главного окна приложения (не второе окно ОС): подложка, панель по центру, заголовок и кнопка
- * закрытия, прокручиваемое содержимое. Без нативного `<dialog>`: `showModal` есть не везде (в jsdom нет), а нам нужна
- * проверяемая и одинаковая в WKWebView работа клавиатуры.
+ * A modal inside the application's main window (not a second OS window): a scrim, a centered panel, a title and a close
+ * button, scrollable content. Without a native `<dialog>`: `showModal` is not available everywhere (not in jsdom), and we need
+ * keyboard behavior that is testable and the same in WKWebView.
  *
- * Клавиатура и фокус:
- * - при открытии фокус уходит на первый управляющий элемент (кнопку закрытия), при закрытии возвращается на открывший элемент;
- * - Tab и Shift+Tab ходят по кругу внутри окна (переход считает само окно, а не браузер); фокус, попавший наружу, возвращается;
- * - Esc и щелчок по подложке закрывают окно.
+ * Keyboard and focus:
+ * - on open, focus goes to the first control (the close button), on close it returns to the opening element;
+ * - Tab and Shift+Tab cycle inside the window (the window computes the move itself, not the browser); focus that lands outside is brought back;
+ * - Esc and a click on the scrim close the window.
  *
- * Появление — короткое затухание и сдвиг; при Reduce Motion длительности нулевые (themes.css), окно появляется сразу.
+ * The appearance is a short fade and shift; with Reduce Motion the durations are zero (themes.css) and the window appears at once.
  */
 export function Modal({ title, closeLabel, onClose, returnFocusRef, closable = true, children }: ModalProps) {
   const titleId = useId();
   const panel = useRef<HTMLDivElement>(null);
-  // Открывший элемент запоминается до первой отрисовки панели, пока фокус ещё на нём.
+  // The opening element is remembered before the panel's first render, while focus is still on it.
   const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null));
-  // Свежий обработчик без переподписки на события: родитель может передавать новую функцию на каждый рендер.
+  // A fresh handler without resubscribing to events: the parent may pass a new function on every render.
   const onCloseRef = useRef(onClose);
   const closableRef = useRef(closable);
   useEffect(() => {
@@ -65,7 +65,7 @@ export function Modal({ title, closeLabel, onClose, returnFocusRef, closable = t
     if (!root) return;
     (focusablesIn(root)[0] ?? root).focus();
 
-    // Окно над окном (предупреждение над «Доступом ИИ-агентов»): клавиатуру и фокус ведёт только верхнее.
+    // A window over a window (the warning over "Доступ ИИ-агентов"): only the top one handles the keyboard and focus.
     const isTopmost = () => {
       const panels = document.querySelectorAll(".modal__panel");
       return panels[panels.length - 1] === root;
@@ -90,21 +90,21 @@ export function Modal({ title, closeLabel, onClose, returnFocusRef, closable = t
       const next = event.shiftKey ? (index <= 0 ? items.length - 1 : index - 1) : index === items.length - 1 ? 0 : index + 1;
       items[next]?.focus();
     };
-    // Фокус не должен уйти за окно ни щелчком, ни программно.
+    // Focus must not leave the window, neither by a click nor programmatically.
     const onFocusIn = (event: FocusEvent) => {
       if (isTopmost() && event.target instanceof Node && !root.contains(event.target)) (focusablesIn(root)[0] ?? root).focus();
     };
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("focusin", onFocusIn);
-    // Нижнее окно под верхним отмечается `data-covered`: его полоса прокрутки в WebKit проступала сквозь верхнее окно
-    // (второй «язычок» рядом с основной полосой, слайс 4a); CSS убирает у закрытого окна прокрутку.
+    // The lower window under the top one is marked `data-covered`: its scrollbar in WebKit showed through the top window
+    // (a second "tab" next to the main scrollbar, slice 4a); CSS removes scrolling from the covered window.
     markCovered();
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("focusin", onFocusIn);
-      // Верхнее окно уходит из DOM после эффекта: пометка пересчитывается, когда его там уже нет.
+      // The top window leaves the DOM after the effect: the mark is recomputed when it is no longer there.
       queueMicrotask(markCovered);
-      // Ref родителя читается именно в момент закрытия: нужен элемент, который стоит там сейчас, а не при открытии.
+      // The parent's ref is read exactly at the moment of closing: we need the element that is there now, not at the time of opening.
       // eslint-disable-next-line react-hooks/exhaustive-deps
       const target = returnFocusRef?.current ?? opener;
       if (target?.isConnected) target.focus();

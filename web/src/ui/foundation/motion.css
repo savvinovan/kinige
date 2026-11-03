@@ -1,6 +1,6 @@
-/* Страница «Анимации». Только токены. */
+/* The "Анимации" (Motion) page. Tokens only. */
 
-/* Анимации */
+/* Motion */
 .motion {
   display: grid;
   gap: var(--space-4);

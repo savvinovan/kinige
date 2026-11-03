@@ -1,34 +1,34 @@
-//! Пункты задач `- [ ] текст` внутри записи (ТЗ §6): щелчок по квадрату в ленте правит текст записи, поэтому правило
-//! «какой это пункт» живёт здесь, а не во фронтенде. Без IO.
+//! Task items `- [ ] text` inside an entry (PRD §6): a click on the box in the feed edits the entry text, so the rule
+//! "which item is this" lives here, not in the frontend. No IO.
 //!
-//! Пункт — строка, которая (после отступа и знаков цитаты `>`) начинается с маркера списка (`-`, `*`, `+`, `1.` или `1)`),
-//! пробела и `[ ]`, `[x]` или `[X]`, затем пробела и непустого текста — так же его находит рендер ленты. Строки внутри
-//! ограждённых блоков кода не считаются. Номер пункта — порядковый в тексте с нуля.
+//! An item is a line that (after indentation and quote marks `>`) starts with a list marker (`-`, `*`, `+`, `1.` or `1)`),
+//! a space and `[ ]`, `[x]` or `[X]`, then a space and non-empty text -- the same way the feed renderer finds it. Lines inside
+//! fenced code blocks do not count. The item number is its zero-based order in the text.
 
 use crate::mirror::{is_closing_fence, opening_fence};
 use serde::Serialize;
 
-/// Почему пункт не переключён.
+/// Why the item was not toggled.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskItemError {
-    /// В тексте нет пункта с таким номером (запись успели изменить).
+    /// The text has no item with this number (the entry was changed in the meantime).
     NotFound,
-    /// Пункт уже в нужном состоянии: окно показывало устаревший текст.
+    /// The item is already in the requested state: the window showed stale text.
     AlreadyThere,
 }
 
-/// Состояние пункта по номеру: `Some(true)` — отмечен; `None` — такого пункта нет.
+/// State of an item by number: `Some(true)` -- checked; `None` -- there is no such item.
 pub fn task_item_state(body_md: &str, index: usize) -> Option<bool> {
     find_item(body_md, index).map(|(_, checked)| checked)
 }
 
-/// Текст записи с пунктом `index`, переведённым в состояние `checked`. Остальные байты текста не меняются.
+/// The entry text with item `index` set to the `checked` state. The other bytes of the text do not change.
 pub fn set_task_item(body_md: &str, index: usize, checked: bool) -> Result<String, TaskItemError> {
     let (at, current) = find_item(body_md, index).ok_or(TaskItemError::NotFound)?;
     if current == checked {
         return Err(TaskItemError::AlreadyThere);
     }
-    // `at` — смещение однобайтового символа в скобках, найденное `find_item`; `get` не отказывает, но и не паникует.
+    // `at` is the offset of the one-byte character in the brackets found by `find_item`; `get` does not fail, and does not panic.
     let (head, tail) = body_md
         .get(..at)
         .zip(body_md.get(at + 1..))
@@ -40,8 +40,8 @@ pub fn set_task_item(body_md: &str, index: usize, checked: bool) -> Result<Strin
     Ok(text)
 }
 
-/// Пункт задачи в списке для агента (ADR-0009, слайс 4a): номер — тот же, что у [`set_task_item`], текст — остаток строки
-/// после `[ ]` без пробелов по краям.
+/// A task item in the list for the agent (ADR-0009, slice 4a): the number is the same as in [`set_task_item`], the text is the rest of the line
+/// after `[ ]` without spaces at the edges.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct TaskItem {
     pub item: usize,
@@ -49,7 +49,7 @@ pub struct TaskItem {
     pub text: String,
 }
 
-/// Все пункты записи по порядку, с теми же правилами, что у [`task_item_state`] (код не считается, цитата считается).
+/// All items of the entry in order, with the same rules as [`task_item_state`] (code does not count, a quote does).
 pub fn task_items(body_md: &str) -> Vec<TaskItem> {
     let mut items = Vec::new();
     scan_items(body_md, |found| {
@@ -63,7 +63,7 @@ pub fn task_items(body_md: &str) -> Vec<TaskItem> {
     items
 }
 
-/// Найденный пункт: порядковый номер, байтовое смещение символа в скобках, состояние и текст.
+/// A found item: its number, the byte offset of the character in the brackets, the state and the text.
 struct Found<'a> {
     index: usize,
     mark: usize,
@@ -71,7 +71,7 @@ struct Found<'a> {
     text: &'a str,
 }
 
-/// Обходит пункты по порядку; `visit` возвращает `true`, чтобы остановиться.
+/// Walks the items in order; `visit` returns `true` to stop.
 fn scan_items(body_md: &str, mut visit: impl FnMut(&Found<'_>) -> bool) {
     let mut seen = 0usize;
     let mut fence: Option<(char, usize)> = None;
@@ -94,7 +94,7 @@ fn scan_items(body_md: &str, mut visit: impl FnMut(&Found<'_>) -> bool) {
                 index: seen,
                 mark: line_start + inside,
                 checked,
-                // `inside` — символ в скобках, дальше `]`; оба однобайтовые.
+                // `inside` is the character in the brackets, then `]`; both are one byte.
                 text: line.get(inside + 2..).unwrap_or_default().trim(),
             };
             if visit(&found) {
@@ -105,7 +105,7 @@ fn scan_items(body_md: &str, mut visit: impl FnMut(&Found<'_>) -> bool) {
     }
 }
 
-/// Байтовое смещение символа внутри скобок пункта `index` и его состояние.
+/// The byte offset of the character inside the brackets of item `index` and its state.
 fn find_item(body_md: &str, index: usize) -> Option<(usize, bool)> {
     let mut result = None;
     scan_items(body_md, |found| {
@@ -119,15 +119,15 @@ fn find_item(body_md: &str, index: usize) -> Option<(usize, bool)> {
     result
 }
 
-/// Смещение символа в скобках и состояние, если строка — пункт задачи.
+/// The offset of the character in the brackets and the state, if the line is a task item.
 fn marker_in_line(line: &str) -> Option<(usize, bool)> {
     let bytes = line.as_bytes();
     let mut i = 0;
-    // Отступ и знаки цитаты.
+    // Indentation and quote marks.
     while matches!(bytes.get(i), Some(b' ' | b'\t' | b'>')) {
         i += 1;
     }
-    // Маркер списка.
+    // List marker.
     match bytes.get(i)? {
         b'-' | b'*' | b'+' => i += 1,
         b'0'..=b'9' => {
@@ -144,7 +144,7 @@ fn marker_in_line(line: &str) -> Option<(usize, bool)> {
         }
         _ => return None,
     }
-    // Пробел после маркера, затем `[ ]`, пробел и непустой текст.
+    // A space after the marker, then `[ ]`, a space and non-empty text.
     let gap = bytes
         .get(i..)
         .unwrap_or_default()
@@ -252,7 +252,7 @@ mod tests {
                 (3, false, "вложенный"),
             ]
         );
-        // Каждый номер из списка переключается ровно этой функцией и ничем другим.
+        // Every number from the list is toggled by exactly this function and nothing else.
         for item in &items {
             assert_eq!(task_item_state(body, item.item), Some(item.done));
         }

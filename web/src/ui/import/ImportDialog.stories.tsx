@@ -3,7 +3,7 @@ import type { ImportPreview } from "../../api/generated/ImportPreview";
 import type { ImportReport } from "../../api/generated/ImportReport";
 import { ImportDialog } from "./ImportDialog";
 
-// Окно «Импорт из Telegram» по шагам: файл → чаты → прогресс → отчёт; ошибки, пустой список, длинные имена, en, крупный текст.
+// The "Import from Telegram" window step by step: file -> chats -> progress -> report; errors, an empty list, long names, en, large text.
 const noop = () => undefined;
 
 const PREVIEW: ImportPreview = {
@@ -45,30 +45,30 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Шаг 1: короткая инструкция и кнопка выбора файла. */
+/** Step 1: a short instruction and the file picker button. */
 export const Файл: Story = {};
 
-/** Файл открывается: кнопка недоступна. */
+/** The file is opening: the button is unavailable. */
 export const ФайлОткрывается: Story = { args: { opening: true } };
 
-/** Не тот файл: строка ошибки D1, ничего не записано. */
+/** The wrong file: the D1 error line, nothing was written. */
 export const НеТотФайл: Story = { args: { error: "import_not_telegram" } };
 
-/** Файл больше предела. */
+/** The file is over the limit. */
 export const СлишкомБольшой: Story = { args: { error: "import_file_too_large" } };
 
-/** Шаг 2: «Избранное» отмечено, личные чаты нет; «уже есть»; чат без записей недоступен; группы и каналы пропущены. */
+/** Step 2: "Saved Messages" is checked, personal chats are not; "already there"; a chat without entries is unavailable; groups and channels are skipped. */
 export const Чаты: Story = { args: { step: "choose", preview: PREVIEW } };
 
-/** Отмечены все чаты; у «Анны» всё уже импортировано. */
+/** All chats are checked; everything of "Анна" is already imported. */
 export const ЧатыОтмечены: Story = {
   args: { step: "choose", preview: PREVIEW, selected: new Set(["1000001", "2000002", "2000003"]) },
 };
 
-/** Ни один чат не отмечен: «Импортировать» недоступна. */
+/** No chat is checked: "Import" is unavailable. */
 export const НичегоНеОтмечено: Story = { args: { step: "choose", preview: PREVIEW, selected: new Set() } };
 
-/** Длинные имена обрезаются многоточием, их много — список прокручивается внутри окна. */
+/** Long names are cut with an ellipsis, and there are many of them: the list scrolls inside the window. */
 export const ДлинныеИмена: Story = {
   args: {
     step: "choose",
@@ -86,22 +86,22 @@ export const ДлинныеИмена: Story = {
   },
 };
 
-/** В файле нет чатов, которые можно импортировать. */
+/** The file has no chats that can be imported. */
 export const НетЧатов: Story = { args: { step: "choose", preview: { chats: [], skippedChats: 4 } } };
 
-/** Ошибка запуска: копия базы не снялась, ничего не записано. */
+/** A start error: the database backup was not made, nothing was written. */
 export const ОшибкаЗапуска: Story = { args: { step: "choose", preview: PREVIEW, error: "import_backup_failed" } };
 
-/** Шаг 3: прогресс «3 200 из 15 000»; крестика нет, только «Остановить». */
+/** Step 3: progress "3 200 из 15 000"; no cross, only "Stop". */
 export const Прогресс: Story = { args: { step: "running", progress: { done: 3200, total: 15000 } } };
 
-/** Остановка запрошена: кнопка недоступна, пока Rust дописывает пачку. */
+/** A stop was requested: the button is unavailable while Rust finishes the batch. */
 export const Останавливаем: Story = { args: { step: "running", progress: { done: 3200, total: 15000 }, stopping: true } };
 
-/** Шаг 4: отчёт тихими строками, называет файл копии базы. */
+/** Step 4: the report in quiet lines, names the database backup file. */
 export const Отчёт: Story = { args: { step: "report", report: REPORT } };
 
-/** Повторный импорт того же файла: новых 0, «пропущено, уже импортировано». */
+/** A repeat import of the same file: 0 new, "skipped, already imported". */
 export const ОтчётПовтор: Story = {
   args: {
     step: "report",
@@ -109,19 +109,19 @@ export const ОтчётПовтор: Story = {
   },
 };
 
-/** Импорт остановлен: в отчёте сказано, что остаток доимпортируется. */
+/** The import was stopped: the report says the remainder will be imported later. */
 export const ОтчётОстановлен: Story = { args: { step: "report", report: { ...REPORT, imported: 3200, stopped: true } } };
 
-/** Английский. */
+/** English. */
 export const ЧатыEn: Story = { args: { step: "choose", preview: PREVIEW }, globals: { language: "en" } };
 
-/** Английский, отчёт. */
+/** English, the report. */
 export const ОтчётEn: Story = { args: { step: "report", report: REPORT }, globals: { language: "en" } };
 
-/** Крупный текст: шаг чатов. */
+/** Large text: the chats step. */
 export const ЧатыКрупный: Story = { args: { step: "choose", preview: PREVIEW }, globals: { textScale: "large" } };
 
-/** Крупный текст, английский, прогресс. */
+/** Large text, English, progress. */
 export const ПрогрессEnКрупный: Story = {
   args: { step: "running", progress: { done: 3200, total: 15000 } },
   globals: { language: "en", textScale: "large" },

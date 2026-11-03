@@ -1,5 +1,5 @@
-//! Общее для тестов IPC: приложение на mock-рантайме с настоящими capabilities и CSP из `tauri.conf.json`, окна, вызов
-//! команды и нормальные аргументы каждой команды.
+//! Shared by the IPC tests: an app on a mock runtime with the real capabilities and the CSP from `tauri.conf.json`, windows, a command
+//! call and normal arguments for each command.
 
 #![allow(dead_code)]
 
@@ -38,13 +38,13 @@ pub fn request(cmd: &str, args: Value) -> InvokeRequest {
     }
 }
 
-/// Реестр сочетаний без системы: «занятые» задаёт тест.
+/// A shortcut registry without the system: the "taken" ones are set by the test.
 #[derive(Default)]
 pub struct FakeRegistrar {
     pub taken: Mutex<HashSet<String>>,
 }
 
-/// Общий реестр: тест держит одну ссылку, приложение — другую.
+/// A shared registry: the test holds one reference, the app the other.
 struct Shared(Arc<FakeRegistrar>);
 
 impl Registrar for Shared {
@@ -59,15 +59,15 @@ impl Registrar for Shared {
     fn unregister(&self, _accelerator: &str) {}
 }
 
-/// Приложение с настоящими capabilities. `generate_context!` вызывается в бинарнике один раз (иначе повтор вшитого
+/// An app with the real capabilities. `generate_context!` is called once in the binary (otherwise a repeat of the embedded
 /// Info.plist).
 fn new_app() -> App<MockRuntime> {
     builder(mock_builder())
         .build(tauri::generate_context!())
-        .expect("не удалось собрать приложение")
+        .expect("could not build the app")
 }
 
-/// Поток файла настроек для тестов: опрос редкий, события окнам не нужны.
+/// The settings file thread for tests: polling is rare, events to windows are not needed.
 pub fn settings_file(
     app: &tauri::AppHandle<MockRuntime>,
     store: &Store,
@@ -120,8 +120,8 @@ pub fn fixture_with_taken(taken: &[&str]) -> Fixture {
     }
 }
 
-/// Как `fixture`, но хранилище открыто с настоящим хуком повреждения приложения (флаг, отметка, событие окну): так, как его
-/// открывает `open_store`.
+/// Like `fixture`, but the store is opened with the app's real corruption hook (a flag, a mark, an event to the window): the way
+/// `open_store` opens it.
 pub fn fixture_with_corruption_hook() -> Fixture {
     let data = tempfile::tempdir().unwrap();
     let db_path = data.path().join("kinige.db");
@@ -152,7 +152,7 @@ pub fn fixture_with_corruption_hook() -> Fixture {
     }
 }
 
-/// Приложение, в котором хранилище не открыто (база повреждена): управляемо только состояние восстановления.
+/// An app in which the store is not open (the database is corrupt): only the recovery state is managed.
 pub fn fixture_without_store(db_path: &std::path::Path) -> Fixture {
     let app = new_app();
     app.manage(Recovery::new(db_path.to_path_buf(), true));
@@ -163,7 +163,7 @@ pub fn fixture_without_store(db_path: &std::path::Path) -> Fixture {
     }
 }
 
-/// Приложение, в котором база новее приложения (§10.4): хранилище не открыто, копии не предлагаются.
+/// An app in which the database is newer than the app (§10.4): the store is not open, copies are not offered.
 pub fn fixture_too_new(db_path: &std::path::Path) -> Fixture {
     let app = new_app();
     app.manage(Recovery::database_too_new(db_path.to_path_buf()));
@@ -188,7 +188,7 @@ pub fn is_acl_denial(error: &Value) -> bool {
     error.as_str().is_some_and(|e| e.contains("not allowed"))
 }
 
-/// Нормальные аргументы каждой команды, чтобы вызов дошёл до обработчика, если ACL пропустил.
+/// Normal arguments for each command, so that the call reaches the handler if the ACL lets it through.
 pub fn args_for(command: &str) -> Value {
     let inbox = kinige_domain::groups::INBOX_ID;
     match command {
@@ -232,7 +232,7 @@ pub fn args_for(command: &str) -> Value {
     }
 }
 
-/// Эти команды нельзя вызвать в mock-рантайме по-настоящему: диалог ждёт главный поток ОС, перезапуск завершает процесс.
+/// These commands cannot be called for real in a mock runtime: a dialog waits for the OS main thread, a restart ends the process.
 pub const NEEDS_NATIVE_UI: &[&str] = &[
     "choose_mirror_folder",
     "restart_for_recovery",

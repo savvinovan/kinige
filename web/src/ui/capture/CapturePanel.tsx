@@ -9,28 +9,28 @@ import { renderContextMarkdown } from "./contextMarkdown";
 import "./capture.css";
 
 export interface CapturePanelProps {
-  /** До трёх последних записей Inbox за сегодня, самая новая последняя (ближе к полю). */
+  /** Up to the last three Inbox entries of today, the newest last (closer to the field). */
   context: readonly FeedMessage[];
-  /** Запись, к которой ⌘Enter допишет текст; пока она в контексте, под полем стоит подсказка «⌘Enter — дописать». `null` — подсказки нет. */
+  /** The entry that ⌘Enter will append text to; while it is in the context, the hint "⌘Enter -- append" stands under the field. `null` means no hint. */
   appendTargetId: string | null;
   value: string;
   onChange: (value: string) => void;
   /** Enter. */
   onSend: () => void;
-  /** ⌘Enter (на не-macOS Ctrl+Enter). */
+  /** ⌘Enter (Ctrl+Enter on non-macOS). */
   onAppend: () => void;
-  /** Esc в любом месте окна. */
+  /** Esc anywhere in the window. */
   onHide: () => void;
-  /** Уже переведённый текст ошибки; показывается под полем, текст в поле остаётся. */
+  /** The already translated error text; shown under the field, the text in the field stays. */
   error?: string;
   /**
-   * Высота содержимого вместе с прозрачным полем под тень (логические px), при каждом её изменении. Окно приложения по ней
-   * подгоняет высоту окна ОС; в историях Storybook обработчика нет.
+   * The content height together with the transparent shadow margin (logical px), on every change. The app fits the
+   * OS window height to it; in Storybook stories there is no handler.
    */
   onHeight?: (height: number) => void;
   /**
-   * Пикер эмодзи: кнопка «эмодзи» в поле, панель в потоке над полем (окно растёт вверх). Без него кнопки нет. `open` и
-   * `onOpenChange` ведёт хозяин: Esc сначала закрывает пикер (`onOpenChange(false)`), а окно (`onHide`) — только следующим нажатием.
+   * The emoji picker: an "emoji" button in the field, the panel in the flow above the field (the window grows upward). Without it there is no button. `open` and
+   * `onOpenChange` are driven by the owner: Esc closes the picker first (`onOpenChange(false)`), and the window (`onHide`) only on the next press.
    */
   emoji?: {
     recent: readonly string[];
@@ -41,25 +41,25 @@ export interface CapturePanelProps {
 }
 
 /**
- * Содержимое окна быстрого захвата (слайс 2): компактная плавающая панель в духе Gemini и ChatGPT — скруглённая «пилюля»
- * с тонкой светлой обводкой и мягкой тенью. Внутри сверху до трёх бледных плашек контекста (время, Markdown свёрстан, длинные
- * обрезаны по строкам, ссылки не нажимаются), под ними строка поля ввода с кнопкой «Отправить» внутри, под полем — подсказка
- * «⌘Enter — дописать» или ошибка. Без записей за сегодня — только поле. Окно прозрачное и без системной рамки: форму и тень
- * рисует CSS, вокруг панели поле под тень. Ни тостов, ни подтверждений.
+ * The content of the quick capture window (slice 2): a compact floating panel in the spirit of Gemini and ChatGPT, a rounded "pill"
+ * with a thin light outline and a soft shadow. Inside, at the top, up to three pale context bubbles (time, Markdown rendered, long ones
+ * clipped by lines, links not clickable), below them the input field row with the "Send" button inside, under the field the hint
+ * "⌘Enter -- append" or an error. With no entries today, only the field. The window is transparent and has no system frame: the shape and shadow
+ * are drawn by CSS, with a shadow margin around the panel. No toasts or confirmations.
  *
- * Контент не прыгает: подсказка и ошибка стоят строкой под полем, окно подгоняется под содержимое с верхом на месте, поэтому
- * при их появлении оно растёт вниз, а поле остаётся там же. Пока в поле длинный текст, контекст сжимается сверху: старые
- * плашки уходят за край.
+ * Content does not jump: the hint and the error stand in a row under the field, the window fits the content with its top in place, so
+ * when they appear it grows downward and the field stays where it was. While the field holds long text, the context shrinks from the top: old
+ * bubbles go beyond the edge.
  *
- * Окно создаётся скрытым и показывается много раз, поэтому автофокуса при монтировании мало: при каждом получении фокуса
- * окном курсор снова ставится в поле. Esc скрывает окно, где бы ни стоял фокус (кроме ввода через IME).
+ * The window is created hidden and shown many times, so autofocus on mount is not enough: every time the window gets focus
+ * the caret is put back into the field. Esc hides the window wherever focus is (except IME input).
  */
 export function CapturePanel({ context, appendTargetId, value, onChange, onSend, onAppend, onHide, error, onHeight, emoji }: CapturePanelProps) {
   const { t } = useTranslation();
   const language = useLanguage();
   const root = useRef<HTMLDivElement>(null);
   const shell = useRef<HTMLDivElement>(null);
-  // Свежие обработчики без переподписки: родитель может передавать новые функции на каждый рендер.
+  // Fresh handlers without resubscribing: the parent may pass new functions on every render.
   const onHideRef = useRef(onHide);
   const onHeightRef = useRef(onHeight);
   const emojiRef = useRef(emoji);
@@ -73,7 +73,7 @@ export function CapturePanel({ context, appendTargetId, value, onChange, onSend,
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.isComposing) return;
       event.preventDefault();
-      // Открыт пикер (фокус в поле, а не в пикере: из пикера Esc до сюда не доходит): сначала закрывается он, окно остаётся.
+      // The picker is open (focus is in the field, not in the picker: Esc from the picker does not reach here): it closes first, the window stays.
       const picker = emojiRef.current;
       if (picker?.open) {
         picker.onOpenChange(false);
@@ -91,7 +91,7 @@ export function CapturePanel({ context, appendTargetId, value, onChange, onSend,
     };
   }, []);
 
-  // Высота содержимого: сообщается при первом кадре и при каждом изменении (текст, ошибка, подсказка, размер текста, контекст).
+  // The content height: reported on the first frame and on every change (text, error, hint, text size, context).
   useEffect(() => {
     const element = shell.current;
     if (!element || typeof ResizeObserver === "undefined") return;

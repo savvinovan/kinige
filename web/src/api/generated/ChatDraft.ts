@@ -2,10 +2,10 @@
 import type { ReplyTo } from "./ReplyTo";
 
 /**
- * Черновик поля ввода чата (слайс 5): текст и запись, на которую пишется ответ.
+ * The draft of the chat input field (slice 5): the text and the entry being replied to.
  */
 export type ChatDraft = { body: string, 
 /**
- * Строка «Ответ на запись» над полем; `null` — обычная запись. Если записи уже нет, `state = missing`.
+ * The "Reply to entry" line above the field; `null` -- a plain entry. If the entry no longer exists, `state = missing`.
  */
 replyTo: ReplyTo | null, };

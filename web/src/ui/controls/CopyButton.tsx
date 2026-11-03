@@ -1,26 +1,26 @@
 import { useCopy } from "../message/useCopy";
 import { IconButton } from "./IconButton";
 
-/** Сколько галочка «скопировано» остаётся на кнопке: около полутора секунд. */
+/** How long the "copied" tick stays on the button: about one and a half seconds. */
 export const COPIED_ICON_MS = 1500;
 
 interface CopyButtonProps {
-  /** Что кладётся в буфер обмена. */
+  /** What goes into the clipboard. */
   text: string;
-  /** Подпись и подсказка кнопки: «Копировать путь». */
+  /** The button label and tooltip: "Copy path". */
   label: string;
-  /** Подпись, пока на кнопке галочка: «Скопировано». */
+  /** The label while the button shows the tick: "Copied". */
   copiedLabel: string;
-  /** Подпись, если буфер обмена недоступен: «Не удалось скопировать». */
+  /** The label if the clipboard is unavailable: "Could not copy". */
   failedLabel: string;
-  /** Id элемента с копируемым текстом (`aria-describedby`): диктор прочтёт, что именно копируется. */
+  /** The id of the element with the text being copied (`aria-describedby`): the screen reader will read what exactly is copied. */
   describedBy?: string;
 }
 
 /**
- * Кнопка «Копировать» значком (меньше шума, чем текстовая): значок копирования, после нажатия на полторы секунды галочка, при
- * сбое буфера обмена — значок ошибки. Подпись и подсказка (`title`) меняются вместе со значком, поэтому диктор слышит
- * «Скопировано». Без анимации и без тостов. Зона нажатия — как у остальных кнопок-значков (`--layout-control-height`).
+ * A "Copy" button with an icon (less noise than a text one): a copy icon, after a press a tick for one and a half seconds, on a
+ * clipboard failure an error icon. The label and the tooltip (`title`) change together with the icon, so the screen reader hears
+ * "Copied". No animation and no toasts. The hit area is the same as for the other icon buttons (`--layout-control-height`).
  */
 export function CopyButton({ text, label, copiedLabel, failedLabel, describedBy }: CopyButtonProps) {
   const { state, copy } = useCopy(COPIED_ICON_MS);

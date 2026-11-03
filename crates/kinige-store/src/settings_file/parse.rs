@@ -1,5 +1,5 @@
-//! Разбор `settings.json` (ADR-0010): байты → значения ключей и ошибки. Без IO и без базы. Правило: ничего не паникует,
-//! текст ошибок `serde_json` не покидает модуль (в нём могут быть значения из файла), наружу идут только категория и позиция.
+//! Parsing `settings.json` (ADR-0010): bytes -> key values and errors. No IO and no database. The rule: nothing panics,
+//! the text of `serde_json` errors never leaves the module (it may hold values from the file), only the category and the position go out.
 
 use kinige_domain::shortcuts::canonical_accelerator;
 use kinige_domain::{
@@ -7,14 +7,14 @@ use kinige_domain::{
 };
 use serde_json::{Map, Value};
 
-/// Наибольший размер файла.
+/// The largest file size.
 pub const MAX_BYTES: u64 = 1024 * 1024;
-/// Сколько ошибок ключей и неизвестных ключей хранится самое большее: файл из мусора не должен раздувать окно.
+/// The most key errors and unknown keys kept: a file of garbage must not bloat the window.
 pub(crate) const MAX_ISSUES: usize = 100;
-/// Сколько знаков имени неизвестного ключа показывается.
+/// How many characters of an unknown key name are shown.
 const KEY_SHOWN_CHARS: usize = 64;
 
-/// Файл целиком не годится. Без текста ошибки разбора: он может содержать значения из файла.
+/// The file as a whole is unusable. Without the parse error text: it may contain values from the file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileError {
     Parse { line: u32, column: u32 },
@@ -26,7 +26,7 @@ pub enum FileError {
 }
 
 impl FileError {
-    /// Категория для лога: `parse`, `io`.
+    /// The category for the log: `parse`, `io`.
     pub fn category(&self) -> &'static str {
         match self {
             FileError::Io(_) => "io",
@@ -47,7 +47,7 @@ impl FileError {
     }
 }
 
-/// Значение ключа: нет в файле (не менять), `null` (по умолчанию) или значение.
+/// A key value: absent from the file (leave as is), `null` (the default) or a value.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Field<T> {
     Absent,
@@ -55,7 +55,7 @@ pub(crate) enum Field<T> {
     Value(T),
 }
 
-/// Элемент `agent_access.chats`: `id` главнее названия.
+/// An `agent_access.chats` element: `id` wins over the title.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ChatRef {
     pub index: usize,
@@ -63,10 +63,10 @@ pub(crate) struct ChatRef {
     pub title: Option<String>,
 }
 
-/// Файл, разобранный до уровня значений. Проверки, зависящие от состояния (папка, чаты, занятость сочетаний), — при применении.
+/// The file parsed down to the level of values. Checks that depend on state (folder, chats, shortcut conflicts) happen on apply.
 #[derive(Debug)]
 pub(crate) struct Parsed {
-    /// Документ целиком: неизвестные ключи сохраняются при записи.
+    /// The whole document: unknown keys are preserved on write.
     pub raw: Map<String, Value>,
     pub text_size: Field<TextSize>,
     pub shortcuts: [Field<String>; 2],
@@ -76,7 +76,7 @@ pub(crate) struct Parsed {
     pub chats: Field<Vec<ChatRef>>,
     pub issues: Vec<KeyIssue>,
     pub unknown: Vec<String>,
-    /// Сколько неизвестных ключей не поместилось в `unknown` («и ещё N»).
+    /// How many unknown keys did not fit into `unknown` ("and N more").
     pub unknown_more: usize,
 }
 
@@ -163,7 +163,7 @@ impl Parsed {
         Field::Absent
     }
 
-    /// Раздел-объект; не объект — ошибка типа раздела, вложенные ключи игнорируются.
+    /// An object section; a non-object is a section type error, nested keys are ignored.
     fn section<'v>(&mut self, key: &str, value: &'v Value) -> Option<&'v Map<String, Value>> {
         match value {
             Value::Object(map) => Some(map),
@@ -246,7 +246,7 @@ impl Parsed {
         };
     }
 
-    /// Годные элементы массива; негодный элемент — ошибка этого элемента, остальные идут дальше.
+    /// Valid array elements; a bad element is an error for that element, the rest go on.
     fn chat_refs(&mut self, items: &[Value]) -> Vec<ChatRef> {
         let mut refs = Vec::new();
         for (index, item) in items.iter().enumerate() {

@@ -2,15 +2,15 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// Цвета, размеры, шрифты, время и ширины живут только в design/tokens -> tokens.css / themes.css (§11.1 ТЗ).
+// Colors, sizes, fonts, durations and widths live only in design/tokens -> tokens.css / themes.css (§11.1 of the spec).
 //
-// Что считается нарушением (в CSS и в TS/TSX, вне комментариев):
-//  - цвета: hex, функции цвета, основные именованные цвета CSS в цветовых свойствах и в JSX-атрибутах;
-//  - единицы: px, rem, em, pt, ch, ms, s, vh, vw, vmin, vmax;
-//  - font-family и font-size не из var(); line-height числом; opacity не из var() (кроме 0 и 1); stroke-width не из var();
-//  - числа в инлайн-стилях TSX: `style={{ fontSize: 18 }}`, `width: 0.5` и подобное.
-// Разумные исключения (не нарушения): голый `0`; `opacity: 0` и `opacity: 1`; проценты и `fr` (доля родителя или
-// дорожки сетки, не размер); `transparent` и `currentColor`; безразмерные множители внутри `calc()` вокруг токенов
+// What counts as a violation (in CSS and in TS/TSX, outside comments):
+//  - colors: hex, color functions, basic named CSS colors in color properties and in JSX attributes;
+//  - units: px, rem, em, pt, ch, ms, s, vh, vw, vmin, vmax;
+//  - font-family and font-size not from var(); line-height as a number; opacity not from var() (except 0 and 1); stroke-width not from var();
+//  - numbers in inline TSX styles: `style={{ fontSize: 18 }}`, `width: 0.5` and the like.
+// Reasonable exceptions (not violations): a bare `0`; `opacity: 0` and `opacity: 1`; percentages and `fr` (a share of the parent or
+// of a grid track, not a size); `transparent` and `currentColor`; unitless multipliers inside `calc()` around tokens
 // (`calc(var(--space-8) * 3)`).
 const SRC = join(import.meta.dirname, "..");
 const SKIP = new Set(["ui/tokens.css", "ui/themes.css", "api/generated"]);
@@ -42,7 +42,7 @@ interface Rule {
   name: string;
   pattern: RegExp;
   only?: Kind;
-  /** Проверять текст без выражений var(...): имена внутри имён переменных не считаются. */
+  /** Check the text without var(...) expressions: names inside variable names do not count. */
   withoutVars?: boolean;
 }
 
@@ -81,7 +81,7 @@ function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
-/** Имена нарушенных правил для текста файла. */
+/** Names of the violated rules for a file's text. */
 function violations(source: string, kind: Kind): string[] {
   const text = stripComments(source);
   const withoutVars = text.replace(/var\([^)]*\)/g, "var()");
@@ -99,7 +99,7 @@ describe("сырые значения вне tokens.css", () => {
   }
 });
 
-// Правила сами должны краснеть на каждом классе нарушений и не краснеть на исключениях.
+// The rules themselves must fail on every class of violation and stay green on the exceptions.
 describe("правила ловят нарушения", () => {
   const BAD: [rule: string, kind: Kind, snippet: string][] = [
     ["hex-цвет", "css", "a { color: #fff; }"],

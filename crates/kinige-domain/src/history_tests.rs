@@ -1,5 +1,5 @@
-//! Тесты истории слайса 3 (продолжение `ops_tests.rs`): снимок ревизии `edit`, `purged_of` с неизвестной группой, сроки
-//! корзины.
+//! History tests for slice 3 (a continuation of `ops_tests.rs`): the `edit` revision snapshot, `purged_of` with an
+//! unknown group, trash periods.
 
 use crate::groups::{GroupError, INBOX_ID, MessageRow, NewMessage, new_message, parse_groups_raw};
 use crate::history::{days_left, edit_revision, edit_snapshot, is_expired, purged_of};
@@ -66,10 +66,13 @@ fn edit_revision_is_a_verbatim_snapshot_of_every_group_before_the_edit() {
         ["body", "core", "deleted", "flags", "future", "placement"]
     );
     let future = &entries[4];
-    assert_eq!(future["raw"], r#"{ "z": 1 }"#, "байты дословно, строкой");
+    assert_eq!(
+        future["raw"], r#"{ "z": 1 }"#,
+        "bytes verbatim, as a string"
+    );
     assert_eq!(future["sv"], 3);
     assert_eq!(future["h"], hlc(NOW as u64));
-    // Снимок каноничен.
+    // The snapshot is canonical.
     assert_eq!(
         crate::jcs::canonical_bytes(&value).unwrap(),
         snapshot.as_bytes()
@@ -89,7 +92,7 @@ fn edit_revision_is_a_verbatim_snapshot_of_every_group_before_the_edit() {
     assert_eq!(core["reason"], "edit");
     assert_eq!(core["snapshot_json"], value);
 
-    // Нет HLC у группы — повреждение, а не пропуск.
+    // A group without an HLC is corruption, not a skip.
     assert!(matches!(
         edit_snapshot(&raw, &row.hlc_json),
         Err(GroupError::Corrupt(_))
@@ -98,10 +101,10 @@ fn edit_revision_is_a_verbatim_snapshot_of_every_group_before_the_edit() {
 
 #[test]
 fn edit_snapshot_bytes_are_fixed_literally() {
-    // Эталонные байты: ключи по алфавиту (JCS), группы по имени, `raw` — строка с дословными байтами группы (вместе с
-    // пробелами и порядком ключей), без пробелов вне строк. Если эти байты меняются, меняется то, что подписывает клиент.
+    // The reference bytes: keys in alphabetical order (JCS), groups by name, `raw` is a string with the verbatim bytes of
+    // the group (together with the spaces and key order), no spaces outside strings. If these bytes change, what the client signs changes.
     let h = "0000000000001-00001-123e4567-e89b-42d3-a456-426614174000";
-    // Обратная косая — через подстановку: экранирование внутри группы должно дойти до снимка нетронутым.
+    // The backslash goes through substitution: escaping inside the group must reach the snapshot untouched.
     let bs = '\\';
     let raw = format!(r#"{{"body":{{"text":"a{bs}u0020б"}},"future":{{ "z": 1, "a": [ ] }}}}"#);
     let hl = format!(r#"{{"body":{{"h":"{h}","sv":1}},"future":{{"h":"{h}","sv":3}}}}"#);
@@ -143,7 +146,7 @@ fn purged_of_covers_every_group_including_unknown_ones() {
 fn trash_timing() {
     const DAY: i64 = 86_400_000;
     assert_eq!(days_left(0, 0), 30);
-    assert_eq!(days_left(0, 1), 30, "неполный день — день");
+    assert_eq!(days_left(0, 1), 30, "a partial day is a day");
     assert_eq!(days_left(0, DAY), 29);
     assert_eq!(days_left(0, 29 * DAY), 1);
     assert_eq!(days_left(0, 30 * DAY - 1), 1);

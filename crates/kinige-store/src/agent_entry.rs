@@ -1,4 +1,4 @@
-//! Записи в ответах агенту (ADR-0009): запись, страница с курсором и ограничением размера, местное время.
+//! Entries in replies to an agent (ADR-0009): an entry, a page with a cursor and a size limit, local time.
 
 use crate::StoreError;
 use crate::agent_read::{ReadCtx, ReadFail, ReadOutput};
@@ -9,8 +9,8 @@ use kinige_domain::agent_reply::{AgentChat, AgentEntry, AgentPage, fit_entries};
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::tasks::task_items;
 
-/// Страница записей: текст в списке обрезается, ответ ограничивается по размеру целыми записями, курсор указывает на
-/// следующую запись. В журнал идут только записи, которые вошли в ответ.
+/// A page of entries: the text in the list is truncated, the reply is limited in size by whole entries, the cursor
+/// points to the next entry. Only entries that made it into the reply go to the log.
 pub(crate) fn page(
     rows: Vec<(MessageView, String)>,
     has_more: bool,
@@ -51,7 +51,7 @@ pub(crate) fn page(
     Ok(ReadOutput { text, ids })
 }
 
-/// Название чата для ответа: Inbox хранится с пустым названием, интерфейс показывает переведённое.
+/// Chat name for the reply: Inbox is stored with an empty name, the interface shows the translated one.
 pub(crate) fn chat_title(view: &MessageView, title: &str, inbox_title: &str) -> String {
     if view.chat_id == INBOX_ID {
         inbox_title.to_string()
@@ -60,7 +60,7 @@ pub(crate) fn chat_title(view: &MessageView, title: &str, inbox_title: &str) -> 
     }
 }
 
-/// Запись для ответа агенту. `reply_to_id` не отдаётся.
+/// An entry for a reply to an agent. `reply_to_id` is not handed out.
 pub(crate) fn to_entry(view: &MessageView, chat_title: &str) -> AgentEntry {
     AgentEntry {
         id: view.id.clone(),
@@ -78,7 +78,7 @@ pub(crate) fn to_entry(view: &MessageView, chat_title: &str) -> AgentEntry {
     }
 }
 
-/// Местное время создания с поясом на тот момент: `2026-03-14T21:05:09+03:00`.
+/// Local creation time with the zone offset at that moment: `2026-03-14T21:05:09+03:00`.
 fn local_time(created_at: i64, tz: &str) -> String {
     let offset = crate::offset_secs(tz, created_at)
         .and_then(FixedOffset::east_opt)

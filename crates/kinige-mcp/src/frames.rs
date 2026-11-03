@@ -1,23 +1,23 @@
-//! Чтение строк (кадров) с пределом: одна строка JSON-RPC — не больше [`FRAME_LIMIT`] байт (ADR-0009).
+//! Reading lines (frames) with a limit: one JSON-RPC line is at most [`FRAME_LIMIT`] bytes (ADR-0009).
 
 use std::io::{self, BufRead};
 
-/// Предел одного кадра: 4 МиБ.
+/// The limit of one frame: 4 MiB.
 pub const FRAME_LIMIT: usize = 4 * 1024 * 1024;
-/// Сколько начала отвергнутой строки сохраняется для поиска `id`.
+/// How much of the beginning of a rejected line is kept to look for the `id`.
 pub const PREFIX_KEEP: usize = 64 * 1024;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Frame {
-    /// Строка без завершающего перевода строки лежит в буфере.
+    /// The line without the trailing newline is in the buffer.
     Line,
-    /// Строка длиннее предела: прочитана до конца и выброшена; в буфере — только её начало (до [`PREFIX_KEEP`] байт).
+    /// The line is longer than the limit: read to the end and dropped; the buffer holds only its beginning (up to [`PREFIX_KEEP`] bytes).
     TooLong,
-    /// Поток закончился.
+    /// The stream has ended.
     Eof,
 }
 
-/// Читает следующую строку в `buf` (он очищается). Память не растёт сверх `limit`: хвост длинной строки отбрасывается.
+/// Reads the next line into `buf` (it is cleared). Memory does not grow beyond `limit`: the tail of a long line is discarded.
 pub fn read_frame<R: BufRead>(
     reader: &mut R,
     buf: &mut Vec<u8>,
@@ -32,7 +32,7 @@ pub fn read_frame<R: BufRead>(
             Err(error) => return Err(error),
         };
         if chunk.is_empty() {
-            // Конец потока: последняя строка без перевода строки тоже строка.
+            // End of stream: a last line without a newline is still a line.
             return Ok(match (too_long, buf.is_empty()) {
                 (true, _) => Frame::TooLong,
                 (false, true) => Frame::Eof,
@@ -46,11 +46,11 @@ pub fn read_frame<R: BufRead>(
         if !too_long {
             if buf.len().saturating_add(take) > limit {
                 too_long = true;
-                // Остаётся только начало строки: по нему ищется `id` для ответа-ошибки.
+                // Only the beginning of the line stays: the `id` for the error reply is looked up in it.
                 buf.truncate(PREFIX_KEEP);
                 buf.shrink_to(PREFIX_KEEP);
             } else {
-                // `take` не больше длины куска: позиция перевода строки или вся длина.
+                // `take` is not larger than the chunk length: the position of the newline or the whole length.
                 buf.extend_from_slice(chunk.get(..take).unwrap_or_default());
             }
         }
@@ -101,7 +101,7 @@ mod tests {
         assert_eq!(got[0].0, Frame::TooLong);
         assert!(got[0].1.len() <= 10 && got[0].1.iter().all(|b| *b == b'x'));
         assert_eq!(got[1], (Frame::Line, b"ok".to_vec()));
-        // Ровно предел проходит.
+        // Exactly the limit passes.
         assert_eq!(frames(&[b'y'; 10], 10)[0].0, Frame::Line);
         assert_eq!(frames(&[b'y'; 11], 10)[0].0, Frame::TooLong);
     }

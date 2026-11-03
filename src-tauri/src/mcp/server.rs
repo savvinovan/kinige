@@ -1,8 +1,8 @@
-//! Обработчик MCP одного соединения (ADR-0009): рукопожатие, список инструментов по режиму, вызов инструмента.
+//! The MCP handler of one connection (ADR-0009): the handshake, the tool list by mode, a tool call.
 //!
-//! Права проверяет Rust в хранилище при каждом вызове; здесь только разбор протокола и доставка. Каждый вызов заново
-//! берёт `Store` из состояния приложения и проверяет «база повреждена»: клон `Store` в задачах не хранится, поэтому
-//! восстановление из копии не застаёт живой дескриптор писателя. Ни один вызов не показывает окно, фокус или тост (§11).
+//! Rust checks permissions in the store on every call; here only protocol parsing and delivery. Each call takes
+//! the `Store` from the app state anew and checks "database is corrupt": a `Store` clone is not kept in tasks, so
+//! a restore from a copy does not find a live writer descriptor. No call shows a window, focus or a toast (§11).
 
 use super::tools::{INSTRUCTIONS, explain, tools};
 use crate::capture::notify_entries_changed;
@@ -23,7 +23,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use tauri::{AppHandle, Manager, Runtime};
 
-/// Что соединение сообщило о себе и записано ли подключение в журнал (отключение пишется, только если писалось подключение).
+/// What the connection told about itself and whether the connect was written to the log (a disconnect is written only if a connect was).
 #[derive(Default)]
 pub struct ConnectionInfo {
     pub client: Mutex<Option<String>>,
@@ -31,8 +31,8 @@ pub struct ConnectionInfo {
 }
 
 impl ConnectionInfo {
-    /// Был ли `initialize` на этом соединении (клиент назвал себя). Без него вызовы не выполняются: встроенный жизненный
-    /// цикл `rmcp` (`_meta.protocolVersion` в запросе) пропускает `tools/call` мимо рукопожатия, а сервер ему не верит.
+    /// Whether `initialize` happened on this connection (the client introduced itself). Without it calls are not executed: the built-in lifecycle
+    /// of `rmcp` (`_meta.protocolVersion` in the request) lets `tools/call` bypass the handshake, and the server does not trust that.
     pub fn initialized(&self) -> bool {
         match self.client.lock() {
             Ok(client) => client.is_some(),
@@ -50,12 +50,12 @@ impl ConnectionInfo {
 
 pub struct McpServer<R: Runtime> {
     pub app: AppHandle<R>,
-    /// Соединение открыто мостом после обрыва: повторный `initialize` не пишется в журнал как новое подключение.
+    /// The connection was opened by the bridge after a drop: the repeated `initialize` is not written to the log as a new connect.
     pub reconnect: bool,
     pub info: Arc<ConnectionInfo>,
 }
 
-/// Название Inbox на языке интерфейса: в базе оно пустое.
+/// The Inbox name in the interface language: in the database it is empty.
 fn inbox_title() -> &'static str {
     match get_language() {
         Language::Ru => "Входящие",
@@ -63,8 +63,8 @@ fn inbox_title() -> &'static str {
     }
 }
 
-/// Хранилище для вызова: `None`, если журнал не открыт (режим восстановления) или найдено повреждение.
-/// Берётся внутри блокирующей задачи и живёт только до её конца.
+/// The store for a call: `None` if the journal is not open (recovery mode) or corruption was found.
+/// It is taken inside a blocking task and lives only until its end.
 fn with_store<R: Runtime, T>(
     app: &AppHandle<R>,
     job: impl FnOnce(&Store) -> T,
@@ -79,7 +79,7 @@ fn with_store<R: Runtime, T>(
     Ok(job(&store))
 }
 
-/// Блокирующая задача: паника внутри превращается в ошибку ответа, приложение продолжает работать.
+/// A blocking task: a panic inside turns into a reply error, the app keeps working.
 async fn blocking<R: Runtime, T: Send + 'static>(
     app: &AppHandle<R>,
     job: impl FnOnce(&Store) -> T + Send + 'static,
@@ -88,16 +88,16 @@ async fn blocking<R: Runtime, T: Send + 'static>(
     match tauri::async_runtime::spawn_blocking(move || with_store(&app, job)).await {
         Ok(result) => result,
         Err(_) => {
-            log::error!("mcp: паника в задаче вызова");
+            log::error!("mcp: panic in the call task");
             Err(AgentError::Internal)
         }
     }
 }
 
 impl<R: Runtime> McpServer<R> {
-    /// Строка журнала «подключение» (или «переподключение» после обрыва моста), один раз за соединение. Вызывается при
-    /// `initialize` и ещё раз перед первым вызовом инструмента, если запись не удалась (база в восстановлении, сбой записи):
-    /// так у вызова всегда есть строка подключения.
+    /// The log row "connect" (or "reconnect" after a bridge drop), once per connection. Called on
+    /// `initialize` and once more before the first tool call if the write failed (the database is in recovery, a write failure):
+    /// so a call always has a connect row.
     async fn record_connection(&self) {
         if self.info.connected_logged.swap(true, Ordering::SeqCst) {
             return;
@@ -151,10 +151,10 @@ impl<R: Runtime> ServerHandler for McpServer<R> {
         self.negotiate_initialize(&request)
     }
 
-    /// Только версии протокола с `initialize` (до 2025-11-25). Версия 2026-07-28 разрешает первый запрос без рукопожатия
-    /// (`_meta.protocolVersion`): сеанс шёл бы без строки «подключение» и без имени клиента. Одного списка мало: `rmcp`
-    /// пропускает запрос с `_meta.protocolVersion = 2025-11-25` тоже, поэтому `list_tools` и `call_tool` сами требуют
-    /// `initialize` (`ConnectionInfo::initialized`). `server/discover` отдаёт только `get_info` (имя, `instructions`), данных нет.
+    /// Only protocol versions with `initialize` (up to 2025-11-25). Version 2026-07-28 allows the first request without a handshake
+    /// (`_meta.protocolVersion`): the session would run without a "connect" row and without the client name. The list alone is not enough: `rmcp`
+    /// lets a request with `_meta.protocolVersion = 2025-11-25` through too, so `list_tools` and `call_tool` themselves require
+    /// `initialize` (`ConnectionInfo::initialized`). `server/discover` returns only `get_info` (name, `instructions`), no data.
     fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]> {
         Cow::Borrowed(ProtocolVersion::known_up_to(&ProtocolVersion::V_2025_11_25))
     }
@@ -165,7 +165,7 @@ impl<R: Runtime> ServerHandler for McpServer<R> {
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
         self.require_initialize()?;
-        // Режим берётся из настроек при каждом запросе; список виден и при выключенном доступе (данных в нём нет).
+        // The mode is taken from the settings on every request; the list is visible even with access turned off (it holds no data).
         let mode = blocking(&self.app, |store| store.agent_mode())
             .await
             .ok()
@@ -182,7 +182,7 @@ impl<R: Runtime> ServerHandler for McpServer<R> {
         request: CallToolRequestParams,
         _context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, ErrorData> {
-        // Без `initialize` вызов не доходит ни до базы, ни до журнала.
+        // Without `initialize` a call reaches neither the database nor the log.
         self.require_initialize()?;
         self.record_connection().await;
         let client = self.info.client();
@@ -204,7 +204,7 @@ impl<R: Runtime> ServerHandler for McpServer<R> {
         let result = match outcome {
             Ok(reply) => {
                 if reply.changed {
-                    // Открытая лента обновляется тихо: окно не выводится вперёд и не получает фокус.
+                    // An open feed is refreshed quietly: the window is not brought forward and does not get focus.
                     notify_entries_changed(&self.app);
                 }
                 CallToolResult::success(vec![ContentBlock::text(reply.text)])
@@ -215,7 +215,7 @@ impl<R: Runtime> ServerHandler for McpServer<R> {
     }
 }
 
-/// Отключение клиента: одна строка журнала, если писалось подключение.
+/// A client disconnect: one log row, if a connect was written.
 pub async fn disconnected<R: Runtime>(app: &AppHandle<R>, info: &ConnectionInfo) {
     if info.connected_logged.load(Ordering::SeqCst) {
         let client = info.client();

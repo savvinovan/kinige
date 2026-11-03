@@ -1,5 +1,5 @@
-//! Приложение Kinige рядом с мостом: запущено ли оно и как его запустить в фоне (ADR-0009). `open` вызывается только когда
-//! процесса нет: запущенному приложению он пришёл бы как Reopen и показал бы главное окно.
+//! The Kinige app next to the bridge: whether it is running and how to start it in the background (ADR-0009). `open` is called only when
+//! there is no process: to a running app it would arrive as Reopen and show the main window.
 
 use std::env;
 use std::fs::OpenOptions;
@@ -7,17 +7,17 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-/// Имя главного исполняемого файла в `Kinige.app/Contents/MacOS/`.
+/// The name of the main executable in `Kinige.app/Contents/MacOS/`.
 const MAIN_BINARY: &str = "kinige";
 
-/// Подмена проверки процесса в тестах моста: `present` или `absent`.
+/// Override of the process check in the bridge tests: `present` or `absent`.
 const TEST_PROCESS: &str = "KINIGE_MCP_TEST_PROCESS";
-/// Вместо `open` в тестах мост дописывает строку в этот файл.
+/// Instead of `open`, in tests the bridge appends a line to this file.
 const TEST_OPEN_LOG: &str = "KINIGE_MCP_TEST_OPEN_LOG";
 
-/// Где находится приложение, из бандла которого запущен мост.
+/// Where the app is, from whose bundle the bridge was started.
 pub struct Host {
-    /// `Kinige.app`, если мост лежит в `Contents/MacOS/` бандла; в сборке `dev` бандла нет.
+    /// `Kinige.app` if the bridge sits in the bundle's `Contents/MacOS/`; a `dev` build has no bundle.
     bundle: Option<PathBuf>,
 }
 
@@ -28,8 +28,8 @@ impl Host {
         Host { bundle }
     }
 
-    /// Процесс приложения из своего бандла есть. Без бандла (dev) и без подмены в тестах считается, что процесса нет, но
-    /// запускать нечего: `launch` ничего не делает.
+    /// The app process from its own bundle exists. Without a bundle (dev) and without an override in tests, there is considered to be no process, but
+    /// there is nothing to start: `launch` does nothing.
     pub fn process_running(&self) -> bool {
         if let Ok(forced) = env::var(TEST_PROCESS) {
             return forced == "present";
@@ -37,9 +37,9 @@ impl Host {
         let Some(bundle) = &self.bundle else {
             return false;
         };
-        // Пути сравниваются после `canonicalize`: `current_exe` на macOS отдаёт путь как запущено (с `..`, симлинками, `/tmp`
-        // вместо `/private/tmp`), а `ps` — путь, как запустила система. Ошибка здесь запустила бы `open` поверх работающего
-        // приложения, а это Reopen и окно на экране.
+        // Paths are compared after `canonicalize`: `current_exe` on macOS returns the path as launched (with `..`, symlinks, `/tmp`
+        // instead of `/private/tmp`), while `ps` returns the path as the system started it. A mistake here would run `open` on top of a running
+        // app, which is a Reopen and a window on the screen.
         let Ok(main) = std::fs::canonicalize(bundle.join("Contents/MacOS").join(MAIN_BINARY))
         else {
             return false;
@@ -54,7 +54,7 @@ impl Host {
             .any(|line| std::fs::canonicalize(line).is_ok_and(|path| path == main))
     }
 
-    /// Запускает приложение в фоне: без вывода окна на передний план и без окна вовсе (`--background`).
+    /// Starts the app in the background: without bringing a window to the front and without a window at all (`--background`).
     pub fn launch(&self) {
         if let Ok(path) = env::var(TEST_OPEN_LOG) {
             if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {

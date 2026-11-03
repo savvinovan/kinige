@@ -1,13 +1,13 @@
 {
   "radius": {
     "$type": "dimension",
-    "$description": "Радиусы в rem: растут вместе с размером текста, как и отступы (при корне 13 px: inline 3,25 px, control 8,45 px, tile 5,85 px, panel и message 11,7 px). D2: control, panel и message мягче (было 6,5 / 9,75 / 9,75 px).",
-    "inline": { "$value": "0.25rem", "$description": "Строчный код, тег." },
-    "tile": { "$value": "0.45rem", "$description": "Плитка чата в сайдбаре (D2): квадрат 22,75 px с мягкими углами." },
-    "control": { "$value": "0.65rem", "$description": "Кнопки, поля ввода, строка чата, пункт меню, блок кода внутри плашки." },
-    "panel": { "$value": "0.9rem", "$description": "Composer, тост, контекстное меню, диалог." },
-    "message": { "$value": "0.9rem", "$description": "Плашка сообщения и карточка «В этот день»." },
-    "floating": { "$value": "1.5rem", "$description": "Плавающая панель быстрого захвата («пилюля»): 19,5 px при корне 13 px, как у Gemini и ChatGPT (ориентир 18–22 px)." },
-    "round": { "$value": "999px", "$description": "Полностью скруглённые элементы: метка дня." }
+    "$description": "Radii in rem: they grow with the text size, like the spacing (at a 13 px root: inline 3.25 px, control 8.45 px, tile 5.85 px, panel and message 11.7 px). D2: control, panel and message are softer (was 6.5 / 9.75 / 9.75 px).",
+    "inline": { "$value": "0.25rem", "$description": "Inline code, a tag." },
+    "tile": { "$value": "0.45rem", "$description": "A chat tile in the sidebar (D2): a 22.75 px square with soft corners." },
+    "control": { "$value": "0.65rem", "$description": "Buttons, input fields, a chat row, a menu item, a code block inside a plate." },
+    "panel": { "$value": "0.9rem", "$description": "The composer, a toast, the context menu, a dialog." },
+    "message": { "$value": "0.9rem", "$description": "A message plate and the 'On this day' card." },
+    "floating": { "$value": "1.5rem", "$description": "The floating quick capture panel (a 'pill'): 19.5 px at a 13 px root, as in Gemini and ChatGPT (the reference is 18-22 px)." },
+    "round": { "$value": "999px", "$description": "Fully rounded elements: the day label." }
   }
 }

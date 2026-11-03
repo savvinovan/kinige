@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { BackupInfo } from "../../api/generated/BackupInfo";
 import { RecoveryScreen } from "./RecoveryScreen";
 
-// Время копий — местное, как задано здесь: снимки не зависят от пояса машины.
+// The copy times are local, as set here: screenshots do not depend on the machine's time zone.
 const backup = (name: string, kind: BackupInfo["kind"], at: Date): BackupInfo => ({ name, kind, createdAt: at.getTime() });
 const THREE: BackupInfo[] = [
   backup("daily-2026-10-27.db", "daily", new Date(2026, 9, 27, 8, 5)),
@@ -24,38 +24,38 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Три копии (копия дня, перед обновлением, копия дня): самая новая выбрана, кнопка называет её дату и время. */
+/** Three copies (daily, before an update, daily): the newest is selected, the button names its date and time. */
 export const ТриКопии: Story = {};
 
-/** Одна копия. */
+/** One copy. */
 export const ОднаКопия: Story = { args: { backups: THREE.slice(0, 1) } };
 
-/** Копий нет: тихое сообщение и подсказка, кнопки нет. */
+/** No copies: a quiet message and a hint, no button. */
 export const БезКопий: Story = { args: { backups: [] } };
 
-/** Много копий: список прокручивается внутри, заголовок и кнопка остаются на месте. */
+/** Many copies: the list scrolls inside, the heading and button stay in place. */
 export const МногоКопий: Story = { args: { backups: MANY } };
 
-/** Идёт восстановление: кнопка приглушена, выбор заблокирован. */
+/** A restore is in progress: the button is muted, the choice is blocked. */
 export const Восстановление: Story = { args: { busy: true } };
 
-/** Ошибка восстановления: строка `role="alert"` перед кнопкой. */
+/** A restore error: a `role="alert"` line before the button. */
 export const Ошибка: Story = { args: { error: "Копия не найдена или не открывается." } };
 
-/** Проверка нашла повреждение в работающем приложении: пояснение и «Перезапустить», списка нет. */
+/** The check found corruption in a running app: an explanation and "Перезапустить", no list. */
 export const Работающее: Story = { args: { mode: "running", backups: [] } };
 
-/** То же, перезапуск идёт и ошибка. */
+/** The same, a restart is in progress, and an error. */
 export const РаботающееОшибка: Story = { args: { mode: "running", backups: [], busy: true, error: "Что-то пошло не так." } };
 
-/** Английский. */
+/** English. */
 export const Английский: Story = { args: { language: "en" }, globals: { language: "en" } };
 
-/** Английский, режим «работающее». */
+/** English, the "running" mode. */
 export const РаботающееEn: Story = { args: { mode: "running", backups: [], language: "en" }, globals: { language: "en" } };
 
-/** Крупный текст. */
+/** Large text. */
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };
 
-/** Английский с крупным текстом: тихая строка про папку Markdown-копии под пояснением. */
+/** English with large text: a quiet line about the Markdown copy folder under the explanation. */
 export const КрупныйТекстEn: Story = { args: { language: "en" }, globals: { language: "en", textScale: "large" } };

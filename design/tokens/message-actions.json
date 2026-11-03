@@ -1,13 +1,13 @@
 {
   "opacity": {
     "$type": "number",
-    "deleted": { "$value": 0.55, "$description": "Текст удалённой плашки (слайс 3, решение 1): плашка остаётся на месте приглушённой. Приглушается только текст записи, строка «Удалено · Вернуть» остаётся обычной." }
+    "deleted": { "$value": 0.55, "$description": "Text of a deleted plate (slice 3, decision 1): the plate stays in place, muted. Only the entry text is muted; the 'Deleted · Restore' line stays normal." }
   },
   "icon": {
     "size-mark": {
       "$type": "dimension",
       "$value": "0.85rem",
-      "$description": "Тихая отметка «избранное» (звезда) рядом со временем в правом нижнем углу плашки: по кеглю времени (11 px, D2: было 10,4)."
+      "$description": "A quiet 'favorite' mark (a star) next to the time in the bottom right corner of the plate: the size of the time text (11 px, D2: was 10.4)."
     }
   },
   "layout": {
@@ -15,7 +15,7 @@
       "deleted-reserve": {
         "$type": "dimension",
         "$value": "8.5rem",
-        "$description": "Место под строку «Удалено · Вернуть» у конца последней строки текста удалённой плашки (110 px при корне 13 px: сама строка около 100 px и зазор до текста около 10 px, как у времени; D2: было 104): шире, чем под время, поэтому у удалённой плашки распорка длиннее."
+        "$description": "Room for the 'Deleted · Restore' line at the end of the last text line of a deleted plate (110 px at a 13 px root: the line itself is about 100 px and the gap to the text about 10 px, as for the time; D2: was 104): wider than for the time, so the spacer of a deleted plate is longer."
       }
     }
   }

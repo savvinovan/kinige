@@ -2,24 +2,24 @@
 import type { BackupInfo } from "./BackupInfo";
 
 /**
- * Состояние запуска: нужна ли страница восстановления вместо журнала.
+ * The startup state: whether the recovery page is needed instead of the journal.
  */
 export type StartupState = { 
 /**
- * База повреждена: журнал не открыт, показывается окно «База повреждена».
+ * The database is corrupted: the journal is not open, the "Database is corrupted" window is shown.
  */
 needsRecovery: boolean, 
 /**
- * Копии, из которых можно восстановить, новые первыми.
+ * The backups it can be restored from, newest first.
  */
 backups: Array<BackupInfo>, 
 /**
- * База создана более новой версией Kinige (§10.4): журнал не открыт, копии не помогут, нужно обновить приложение.
+ * The database was created by a newer version of Kinige (§10.4): the journal is not open, backups will not help, the app must be updated.
  */
 databaseTooNew: boolean, 
 /**
- * Журнал открыт, но фоновая проверка в этом процессе уже нашла в нём повреждение. Событие Rust «база повреждена» может
- * прийти раньше, чем страница на него подпишется (проверка идёт при старте), поэтому страница после подписки
- * спрашивает состояние ещё раз. Не ставится, пока идёт восстановление.
+ * The journal is open, but the background check in this process has already found corruption in it. The Rust event
+ * "database is corrupted" may arrive before the page subscribes to it (the check runs at startup), so after
+ * subscribing the page asks for the state once more. It is not set while a restore is running.
  */
 corruptionFound: boolean, };

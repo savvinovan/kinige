@@ -2,12 +2,12 @@ import type { OnThisDay } from "../../api/generated/OnThisDay";
 import type { OnThisDayYear } from "../../api/generated/OnThisDayYear";
 import { mockMessage } from "../../api/mockData";
 
-/** «Сегодня» в историях и тестах карточки: суббота, 31 октября 2026. */
+/** "Today" in the card's stories and tests: Saturday, 31 October 2026. */
 export const CARD_TODAY = "2026-10-31";
 
 const at = (year: number, hour: number, minute: number) => Date.UTC(year, 9, 31, hour, minute);
 
-/** Год карточки с подробными записями (синтетические тексты). */
+/** A card year with detailed entries (synthetic texts). */
 export function detailedYear(year: number, texts: readonly string[], total = texts.length): OnThisDayYear {
   return {
     journalDate: `${year}-10-31`,
@@ -26,7 +26,7 @@ export function detailedYear(year: number, texts: readonly string[], total = tex
   };
 }
 
-/** Старый год одной строкой. */
+/** An old year on a single line. */
 export function compactYear(year: number, total: number): OnThisDayYear {
   return { journalDate: `${year}-10-31`, yearsAgo: 2026 - year, total, firstId: `m-${year}-0`, entries: [] };
 }

@@ -21,32 +21,32 @@ import {
 import "./calendar.css";
 
 interface CalendarDialogProps {
-  /** Текущая дата записи (`YYYY-MM-DD`): выбранный день, календарь открывается на её месяце. */
+  /** The entry's current date (`YYYY-MM-DD`): the selected day, the calendar opens on its month. */
   value: string;
-  /** Сегодняшний `journal_date` (`YYYY-MM-DD`): его присылает Rust, часы окна не используются. */
+  /** Today's `journal_date` (`YYYY-MM-DD`): Rust sends it, the window clock is not used. */
   today: string;
   language: Language;
-  /** Уже переведённая ошибка (например «Такой даты нет»): `role="alert"` под сеткой. */
+  /** An already translated error (for example "No such date"): `role="alert"` under the grid. */
   error?: string;
-  /** Дата сохраняется: выбор дня на это время не срабатывает. */
+  /** The date is being saved: picking a day does nothing meanwhile. */
   busy?: boolean;
-  /** Выбор дня (щелчок, Enter, пробел) или «Сегодня»: сразу, без кнопки подтверждения. */
+  /** Picking a day (click, Enter, space) or "Today": immediately, without a confirm button. */
   onPick: (date: string) => void;
   onClose: () => void;
-  /** Заголовок окна; по умолчанию «Изменить дату» (дата записи). Поиск ставит свой. */
+  /** The window title; by default "Change date" (the entry's date). Search sets its own. */
   title?: string;
 }
 
-/** Если и `value`, и `today` испорчены — первая календарная дата: сетка всё равно рисуется. */
+/** If both `value` and `today` are corrupted, the first calendar date: the grid is still drawn. */
 const FALLBACK: Ymd = { year: 1970, month: 1, day: 1 };
 
 /**
- * Календарь выбора даты записи в модальном окне. Своя сетка месяца из токенов: системный `<input type="date">` не берётся,
- * его вид токенами не управляется. Будущие даты разрешены; дни соседних месяцев приглушены и тоже выбираются.
- * Неделя начинается с понедельника в русском и с воскресенья в английском (`Intl.Locale`), даты считаются по компонентам (UTC).
+ * A calendar for picking an entry's date in a modal window. Its own month grid built from tokens: the system `<input type="date">` is not used,
+ * its look is not controlled by tokens. Future dates are allowed; days of neighboring months are muted and also selectable.
+ * The week starts on Monday in Russian and on Sunday in English (`Intl.Locale`), dates are computed by components (UTC).
  *
- * Клавиатура (сетка `role="grid"`, одна остановка Tab): стрелки — день и неделя, Home / End — начало и конец недели,
- * PageUp / PageDown — месяц (с Shift — год), Enter и пробел выбирают, Esc закрывает (Modal).
+ * Keyboard (the grid is `role="grid"`, one Tab stop): arrows move by day and week, Home / End go to the start and end of the week,
+ * PageUp / PageDown move by month (with Shift, by year), Enter and space select, Esc closes (Modal).
  */
 export function CalendarDialog({ value, today, language, error, busy = false, onPick, onClose, title }: CalendarDialogProps) {
   const { t } = useTranslation();
@@ -55,7 +55,7 @@ export function CalendarDialog({ value, today, language, error, busy = false, on
   const todayYmd = parseDate(today);
   const [cursor, setCursor] = useState<Ymd>(selected ?? todayYmd ?? FALLBACK);
   const table = useRef<HTMLTableElement>(null);
-  // Фокус переносится на день курсора после перерисовки, но только если курсор сдвинула клавиатура.
+  // Focus moves to the cursor day after a re-render, but only if the keyboard moved the cursor.
   const moveFocus = useRef(false);
   const first = firstWeekday(language);
   const weeks = monthGrid(cursor.year, cursor.month, first);
@@ -69,11 +69,11 @@ export function CalendarDialog({ value, today, language, error, busy = false, on
     dayButton(cursorDate)?.focus();
   });
 
-  // При открытии фокус на выбранном дне. Modal ставит его на кнопку закрытия в своём эффекте, который идёт после эффектов
-  // потомков, поэтому перенос откладывается на микрозадачу.
+  // On open, focus goes to the selected day. Modal puts it on the close button in its own effect, which runs after the effects
+  // of its descendants, so the move is deferred to a microtask.
   useEffect(() => {
     queueMicrotask(() => dayButton(cursorDate)?.focus());
-    // Только при открытии: дальше фокус ведёт курсор.
+    // Only on open: after that the cursor drives focus.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

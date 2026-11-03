@@ -7,26 +7,26 @@ import { EmojiPicker } from "../emoji/EmojiPicker";
 import { Modal } from "../settings/Modal";
 import "./chat-dialog.css";
 
-/** Название чата — от 1 до 128 знаков (ТЗ слайса 3); считаются символы, а не кодовые единицы UTF-16. */
+/** A chat name is 1 to 128 characters (slice 3 spec); characters are counted, not UTF-16 code units. */
 export const CHAT_NAME_MAX = 128;
 
-/** Эмодзи по умолчанию: подсказка на кнопке, пока человек ничего не выбрал; Rust подставляет его же. */
+/** The default emoji: a hint on the button while the person has chosen nothing; Rust substitutes the same one. */
 const DEFAULT_EMOJI = "💬";
 
 export interface ChatDialogProps {
-  /** create — «Новый чат»; rename — «Переименовать чат»; icon — только пикер: выбор эмодзи сразу отправляет. */
+  /** create is "New chat"; rename is "Rename chat"; icon is the picker only: choosing an emoji submits at once. */
   mode: "create" | "rename" | "icon";
-  /** Имя в поле (rename) и имя, которое уходит вместе с эмодзи (icon). */
+  /** The name in the field (rename) and the name that goes together with the emoji (icon). */
   initialName?: string;
-  /** Текущий эмодзи чата. Окно его не меняет, пока человек не выбрал другой: `onSubmit` получит `null`. */
+  /** The chat's current emoji. The window does not change it until the person chooses another: `onSubmit` gets `null`. */
   initialEmoji?: string | null;
   recentEmoji: readonly string[];
   language: Language;
-  /** Уже переведённая ошибка Rust (пустое имя и подобное); показывается строкой `role="alert"`, ввод остаётся. */
+  /** An already translated Rust error (an empty name and the like); shown as a `role="alert"` line, the input stays. */
   error?: string;
-  /** Запрос идёт: поля и кнопки недоступны. */
+  /** A request is in flight: the fields and buttons are disabled. */
   busy?: boolean;
-  /** `emoji` — `null`, если человек эмодзи не выбирал (create: Rust подставит 💬; rename: эмодзи не трогается). */
+  /** `emoji` is `null` if the person did not choose an emoji (create: Rust substitutes 💬; rename: the emoji is not touched). */
   onSubmit: (name: string, emoji: string | null) => void;
   onClose: () => void;
 }
@@ -37,10 +37,10 @@ const clip = (text: string) => {
 };
 
 /**
- * Окно чата поверх главного (Modal): создание, переименование и смена эмодзи. Поле «Название» с автофокусом, Enter
- * отправляет, пустое имя — кнопка недоступна. Эмодзи выбирается в пикере, который раскрывается под полем: окно прижато к
- * верху, поэтому заголовок не сдвигается. Esc закрывает пикер, а следующий закрывает окно. Пикер стоит вне `<form>`: Enter в его
- * поиске не должен отправлять форму.
+ * The chat window over the main one (Modal): create, rename and change the emoji. The "Name" field with autofocus, Enter
+ * submits, an empty name disables the button. The emoji is chosen in the picker, which opens under the field: the window is pinned to
+ * the top, so the heading does not shift. Esc closes the picker, and the next one closes the window. The picker stands outside the `<form>`: Enter in its
+ * search must not submit the form.
  */
 export function ChatDialog({
   mode,
@@ -64,8 +64,8 @@ export function ChatDialog({
   const trimmed = name.trim();
   const canSubmit = trimmed !== "" && !busy;
 
-  // Modal при открытии ставит фокус на кнопку закрытия; эффект родителя выполняется позже, поэтому фокус переходит в поле
-  // (или в поиск пикера в режиме «эмодзи»).
+  // On opening, Modal puts focus on the close button; the parent's effect runs later, so focus moves to the field
+  // (or to the picker search in "emoji" mode).
   useEffect(() => {
     root.current?.querySelector("input")?.focus();
   }, []);
@@ -88,7 +88,7 @@ export function ChatDialog({
     root.current?.querySelector("input")?.focus();
   };
 
-  // Esc внутри пикера (создание): закрывает только пикер; окно закроется следующим Esc.
+  // Esc inside the picker (create): closes only the picker; the window closes on the next Esc.
   const onPickerKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Escape" || mode === "icon") return;
     event.preventDefault();

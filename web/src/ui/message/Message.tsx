@@ -16,81 +16,81 @@ import "./message.css";
 import "./markdown.css";
 
 export interface MessageProps {
-  /** Текст сообщения в Markdown. Сырой HTML в нём не рендерится (§6). */
+  /** Message text in Markdown. Raw HTML in it is not rendered (§6). */
   markdown: string;
-  /** Когда отправлено; время показывается в 24-часовом формате в поясе записи (`timeZone`), без него — в поясе окна. */
+  /** When it was sent; the time is shown in 24-hour format in the entry's time zone (`timeZone`), or in the window's zone without it. */
   sentAt: Date;
-  /** IANA-пояс, в котором запись создана (`created_tz`). */
+  /** IANA time zone the entry was created in (`created_tz`). */
   timeZone?: string;
-  /** «failed» — не отправилось: под текстом строка «Не отправилось. Повторить». */
+  /** "failed" - not sent: a "Not sent. Retry" line under the text. */
   status?: "sent" | "failed";
-  /** Подсвеченное сообщение (найдено поиском, переход по ссылке): другая заливка плашки. */
+  /** Highlighted message (found by search, jump by link): a different fill of the bubble. */
   highlighted?: boolean;
   onRetry?: () => void;
-  /** Щелчок по ссылке в тексте: адрес уходит в системный браузер (команда `open_external_url`). Без обработчика ссылка ничего не открывает. */
+  /** Click on a link in the text: the address goes to the system browser (the `open_external_url` command). Without a handler the link opens nothing. */
   onOpenLink?: (url: string) => void;
-  /** Показать ряд действий без наведения (для историй и снимков состояния «наведение»). */
+  /** Show the action row without hover (for stories and "hover" state snapshots). */
   showActions?: boolean;
 
-  // Слайс 3. Все свойства необязательны; без обработчиков поведение D1: кнопки нарисованы и недоступны.
-  /** Запись — задача: перед текстом флажок. */
+  // Slice 3. All props are optional; without handlers the D1 behavior: buttons are drawn and disabled.
+  /** The entry is a task: a checkbox before the text. */
   isTask?: boolean;
-  /** Задача выполнена: флажок отмечен, текст приглушён. */
+  /** The task is done: the checkbox is checked, the text is muted. */
   taskDone?: boolean;
-  /** В избранном: тихая звезда рядом со временем. */
+  /** Favorite: a quiet star next to the time. */
   favorite?: boolean;
-  /** Запись добавил ИИ-агент (`origin = 'agent'`, слайс 4a): в строке времени тихая пометка «добавлено агентом». */
+  /** The entry was added by an AI agent (`origin = 'agent'`, slice 4a): a quiet "added by agent" mark in the time line. */
   byAgent?: boolean;
-  /** Запись создана более новой версией (группа в неподдерживаемой `sv`): действия недоступны, копировать можно. */
+  /** The entry was created by a newer version (group in an unsupported `sv`): actions are disabled, copying is allowed. */
   readOnly?: boolean;
-  /** Цитата ответа (слайс 5, `ReplyQuote`): стоит вверху плашки, над текстом. Только в обычном режиме. */
+  /** Reply quote (slice 5, `ReplyQuote`): sits at the top of the bubble, above the text. Normal mode only. */
   quote?: ReactNode;
-  /** Теги записи (нижний регистр, без `#`), их определил Rust: в тексте они подсвечиваются и нажимаются. */
+  /** Entry tags (lower case, without `#`), determined by Rust: highlighted and clickable in the text. */
   tags?: readonly string[];
-  /** Найденные поиском слова записи, как они в ней написаны (их отдаёт Rust): подсвечиваются целиком (слайс 4). */
+  /** Words of the entry found by search, as written in it (Rust returns them): highlighted whole (slice 4). */
   markTerms?: readonly string[];
   /**
-   * view — обычная; editing — текст заменён полем правки; deleted — приглушена, вместо времени «Удалено · Вернуть»,
-   * ряда действий и меню нет (решение 1 слайса 3).
+   * view - normal; editing - the text is replaced by the edit field; deleted - muted, "Deleted · Restore" instead of the time,
+   * no action row and no menu (decision 1 of slice 3).
    */
   mode?: "view" | "editing" | "deleted";
-  /** Начать правку (кнопка в ряду, пункт меню). Режим `editing` включает родитель. */
+  /** Start editing (row button, menu item). The parent turns `editing` mode on. */
   onEdit?: () => void;
-  /** Enter в поле правки: непустой текст. */
+  /** Enter in the edit field: non-empty text. */
   onSaveEdit?: (text: string) => void;
-  /** Esc в поле правки. */
+  /** Esc in the edit field. */
   onCancelEdit?: () => void;
-  /** Уже переведённая ошибка сохранения правки: строка `role="alert"` внутри плашки. */
+  /** Already translated save-edit error: a `role="alert"` line inside the bubble. */
   editError?: string;
-  /** Пункт «Сделать задачей» / «Убрать задачу»: `on` — новое состояние. */
+  /** Item "Make a task" / "Remove task": `on` is the new state. */
   onToggleTask?: (on: boolean) => void;
-  /** Щелчок по флажку задачи: `done` — новое состояние. */
+  /** Click on the task checkbox: `done` is the new state. */
   onToggleDone?: (done: boolean) => void;
   onToggleFavorite?: (on: boolean) => void;
   onChangeDate?: () => void;
   onDelete?: () => void;
   onRestore?: () => void;
-  /** Щелчок по `- [ ]` внутри текста: `index` — порядковый номер квадрата в плашке (с нуля), `checked` — новое состояние. */
+  /** Click on `- [ ]` inside the text: `index` is the box's ordinal number in the bubble (from zero), `checked` is the new state. */
   onToggleTaskItem?: (index: number, checked: boolean) => void;
-  /** Щелчок по тегу: тег в нижнем регистре, без `#`. */
+  /** Click on a tag: the tag in lower case, without `#`. */
   onTagClick?: (tag: string) => void;
-  /** Решение приёмки: чаты для пункта «Переместить в чат» (текущий помечен) и перенос в выбранный. Без обработчика пункт недоступен. */
+  /** Acceptance decision: chats for the "Move to chat" item (the current one is marked) and the move to the chosen one. Without a handler the item is disabled. */
   moveTargets?: readonly MoveTarget[];
   onMoveTo?: (chatId: string) => void;
   /**
-   * Нажатие кнопки мыши на плашке: родитель решает, начинать ли перетаскивание на чат (`useRecordDrag`). Плашка отдаёт
-   * событие и сам элемент (его копия — «призрак»). Не вызывается в правке, у удалённой плашки и у записи только для чтения.
+   * Mouse button press on the bubble: the parent decides whether to start dragging to a chat (`useRecordDrag`). The bubble hands over
+   * the event and the element itself (its copy is the "ghost"). Not called while editing, on a deleted bubble and on a read-only entry.
    */
   onDragStart?: (event: PointerEvent<HTMLElement>, plate: HTMLElement) => void;
 }
 
 /**
- * Сообщение — плашка без хвоста и аватара; время мелко в правом нижнем углу на одной строке с концом текста.
- * Промежуток до соседних плашек задаёт лента (серия — меньше), здесь только сама плашка.
+ * A message is a bubble without a tail and avatar; the time is small in the bottom right corner on the same line as the end of the text.
+ * The gap to neighboring bubbles is set by the feed (a series - smaller), here is only the bubble itself.
  *
- * Слайс 3: ряд действий и контекстное меню (правый щелчок, «ещё», Shift+F10 или клавиша меню на любом элементе плашки),
- * правка в плашке, флажок задачи, отметка «избранное», удалённая плашка, кликабельные теги и квадраты `- [ ]`.
- * Компонент «глупый»: состояние (режим, флаги) и обработчики приходят снаружи.
+ * Slice 3: the action row and the context menu (right click, "more", Shift+F10 or the menu key on any element of the bubble),
+ * editing in the bubble, the task checkbox, the "favorite" mark, the deleted bubble, clickable tags and `- [ ]` boxes.
+ * The component is "dumb": state (mode, flags) and handlers come from outside.
  */
 export function Message({
   markdown,
@@ -135,7 +135,7 @@ export function Message({
   const labelItem = t("message.taskItem");
   const interactiveTasks = viewing && !readOnly && onToggleTaskItem !== undefined;
   const tagsKey = (tags ?? []).join(" ");
-  // Слова из поиска разделены пробелом: слово — серия букв и цифр, пробела в нём нет.
+  // Search words are separated by a space: a word is a run of letters and digits, with no space in it.
   const markKey = (markTerms ?? []).join(" ");
   const html = useMemo(
     () =>
@@ -148,19 +148,19 @@ export function Message({
       }),
     [markdown, failed, labelDone, labelTodo, labelItem, tagsKey, interactiveTasks, markKey],
   );
-  // Сообщение кончается блоком (код): распорки у последней строки нет, время стоит под блоком.
+  // The message ends with a block (code): the last line has no spacer, the time sits under the block.
   const timeBelow = !failed && !html.includes("message__spacer");
 
   const plate = useRef<HTMLElement>(null);
   const { state: copyState, copy } = useCopy();
   const [menu, setMenu] = useState<{ position: MenuPosition; selection: string | null } | null>(null);
 
-  // Ряд действий: справа от плашки; в узком окне — чуть выше плашки у её правого края; у верхнего края ленты — внутри.
-  // Виден, пока мышь в строке ленты (и ещё короткую задержку после ухода). Подробности — в useActionsPlacement.
+  // Action row: to the right of the bubble; in a narrow window, slightly above the bubble at its right edge; at the top edge of the feed, inside.
+  // Visible while the mouse is in the feed row (and a short delay after it leaves). Details are in useActionsPlacement.
   const { wrap, inside, flip, shown } = useActionsPlacement(`${html}|${mode}`);
 
-  // Ширина плашки до правки: пока плашка обычная, её ширина запоминается (и обновляется при изменении размера); при входе
-  // в правку она закрепляется переменной `--message-edit-width`, так что плашка меняет только высоту.
+  // Bubble width before editing: while the bubble is normal, its width is remembered (and updated on resize); on entering
+  // edit mode it is pinned by the `--message-edit-width` variable, so the bubble changes only its height.
   const viewWidth = useRef(0);
   useLayoutEffect(() => {
     const element = plate.current;
@@ -182,9 +182,9 @@ export function Message({
     };
   }, [mode]);
 
-  // Правка закончилась (Enter или Esc): поле исчезает, а фокус должен остаться на записи, иначе клавиатура теряет место
-  // (найдено в живой проверке). Плашка не в порядке Tab (tabIndex -1), но принимает фокус программно; Shift+F10 на ней
-  // открывает меню, Tab идёт к её кнопкам и тегам.
+  // Editing is over (Enter or Esc): the field disappears, and focus must stay on the entry, otherwise the keyboard loses its place
+  // (found in a live check). The bubble is not in the Tab order (tabIndex -1) but takes focus programmatically; Shift+F10 on it
+  // opens the menu, Tab goes to its buttons and tags.
   const wasEditing = useRef(false);
   useLayoutEffect(() => {
     if (wasEditing.current && mode !== "editing") plate.current?.focus();
@@ -196,19 +196,19 @@ export function Message({
   };
   const copyNow = (selection: string | null) => void copy(selection ?? markdown);
 
-  // Webview не уходит по ссылке: щелчок мышью, Enter на ссылке с клавиатуры (браузер превращает его в click) и средняя
-  // кнопка (auxclick) отменяются; адрес открывает системный браузер через `open_external_url` (проверка схемы — в Rust).
+  // The webview does not follow the link: a mouse click, Enter on a link from the keyboard (the browser turns it into a click) and the middle
+  // button (auxclick) are cancelled; the system browser opens the address via `open_external_url` (the scheme is checked in Rust).
   const handleLinkClick = (event: MouseEvent<HTMLDivElement>) => {
     if (!(event.target instanceof Element)) return;
     const link = event.target.closest("a");
     if (!link) return;
     event.preventDefault();
     const href = link.getAttribute("href");
-    // Среднюю кнопку не открываем: её щелчок «отменяется» как переход, а открытие — только по основному (click).
+    // We do not open on the middle button: its click is "cancelled" as a navigation, and opening happens only on the primary one (click).
     if (event.type === "click" && href) onOpenLink?.(href);
   };
 
-  // Квадрат `- [ ]` в тексте и тег: нажимаются мышью, Enter и пробелом (это span с role, а не настоящие кнопки).
+  // A `- [ ]` box in the text and a tag: activated by mouse, Enter and Space (they are spans with a role, not real buttons).
   const activate = (target: Element, root: HTMLElement): boolean => {
     const box = target.closest(".task__box");
     if (box && interactiveTasks) {
@@ -232,7 +232,7 @@ export function Message({
     if (event.target instanceof Element && activate(event.target, event.currentTarget)) event.preventDefault();
   };
 
-  // Меню с клавиатуры: Shift+F10 или клавиша меню на любом элементе плашки (кнопка ряда, флажок, ссылка) открывает его под ним.
+  // Menu from the keyboard: Shift+F10 or the menu key on any element of the bubble (row button, checkbox, link) opens it below that element.
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!viewing || !(event.target instanceof Element)) return;
     if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
@@ -364,7 +364,7 @@ export function Message({
           />
         ) : null}
       </div>
-      {/* Меню — соседний узел, а не потомок обёртки: события из него (правый щелчок, клавиши) не всплывают в плашку. */}
+      {/* The menu is a sibling node, not a child of the wrapper: events from it (right click, keys) do not bubble into the bubble. */}
       {menu && viewing ? (
         <MessageMenu
           position={menu.position}

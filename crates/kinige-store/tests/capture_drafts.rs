@@ -1,7 +1,7 @@
-//! Черновики: сохранение, очистка в транзакции отправки, перезапуск; не попадают в Markdown-копию.
+//! Drafts: saving, clearing in the send transaction, restart; they do not reach the Markdown copy.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -29,14 +29,14 @@ fn drafts_are_stored_replaced_removed_and_survive_a_restart() {
     let rows: i64 = raw(dir.path())
         .query_row("SELECT COUNT(*) FROM draft", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(rows, 2, "по строке на ключ");
+    assert_eq!(rows, 2, "one row per key");
 
     store.set_capture_draft("", &moscow(T0 + 3)).unwrap();
     assert_eq!(store.get_capture_draft().unwrap(), "");
     let rows: i64 = raw(dir.path())
         .query_row("SELECT COUNT(*) FROM draft", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(rows, 1, "пустой текст удаляет строку");
+    assert_eq!(rows, 1, "an empty text deletes the row");
 }
 
 #[test]
@@ -73,13 +73,13 @@ fn sending_from_the_main_window_clears_only_that_chat_draft_in_the_same_transact
     assert_eq!(store.get_chat_draft(INBOX_ID).unwrap(), "");
     assert_eq!(store.get_capture_draft().unwrap(), "чужой");
 
-    // Отказ записи: черновик остаётся вместе с текстом.
+    // A write failure: the draft stays together with its text.
     store
         .set_chat_draft(INBOX_ID, "не отправится", &moscow(T0 + 2))
         .unwrap();
     let conn = raw(dir.path());
     conn.execute_batch(
-        "CREATE TRIGGER fail_dirty BEFORE UPDATE ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'нет места'); END;",
+        "CREATE TRIGGER fail_dirty BEFORE UPDATE ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'no space'); END;",
     )
     .unwrap();
     assert!(
@@ -95,14 +95,14 @@ fn a_failed_clipboard_goes_below_the_saved_capture_draft_and_never_replaces_it()
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
 
-    // Пустого черновика нет: в поле только текст буфера.
+    // There is no draft: the field holds only the clipboard text.
     let (text, saved) = store
         .merge_clipboard_into_capture_draft("первый буфер", &moscow(T0))
         .unwrap();
     assert_eq!((text.as_str(), saved), ("первый буфер", true));
     assert_eq!(store.get_capture_draft().unwrap(), "первый буфер");
 
-    // Есть черновик: прежний текст сохраняется, буфер — ниже отдельным абзацем.
+    // There is a draft: the previous text is kept, the clipboard goes below as a separate paragraph.
     store
         .set_capture_draft("недописанная мысль", &moscow(T0 + 1))
         .unwrap();
@@ -113,7 +113,7 @@ fn a_failed_clipboard_goes_below_the_saved_capture_draft_and_never_replaces_it()
     assert!(saved);
     assert_eq!(store.get_capture_draft().unwrap(), text);
 
-    // Повторный сбой не теряет ни прежнее, ни первый буфер.
+    // A repeated failure loses neither the previous text nor the first clipboard.
     let (text, _) = store
         .merge_clipboard_into_capture_draft("третий буфер", &moscow(T0 + 3))
         .unwrap();
@@ -129,12 +129,12 @@ fn a_clipboard_that_does_not_fit_the_draft_limit_keeps_the_stored_draft_and_retu
     let (text, saved) = store
         .merge_clipboard_into_capture_draft(&huge, &moscow(T0 + 1))
         .unwrap();
-    assert!(!saved, "не поместилось в базу");
+    assert!(!saved, "did not fit into the database");
     assert!(text.starts_with("прежний\n\n") && text.len() > huge.len());
     assert_eq!(
         store.get_capture_draft().unwrap(),
         "прежний",
-        "в базе прежний черновик цел"
+        "the previous draft is intact in the database"
     );
 }
 
@@ -152,7 +152,7 @@ fn drafts_are_not_part_of_the_markdown_copy_or_the_message_tables() {
         .join("Inbox")
         .join("2026")
         .join("2026-10-21.md");
-    wait_until("копия", || file.exists());
+    wait_until("copy", || file.exists());
     assert!(
         !std::fs::read_to_string(&file)
             .unwrap()

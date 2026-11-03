@@ -31,7 +31,7 @@ describe("Доступ ИИ-агентов: страница и предупре
     expect(within(page).getByRole("checkbox", { name: ENABLE })).not.toBeChecked();
     for (const option of within(page).getAllByRole("radio")) expect(option).toBeDisabled();
     expect(within(page).getByText("После смены режима переподключите агента.")).toBeInTheDocument();
-    // Длинные списки не на этой странице.
+    // The long lists are not on this page.
     expect(within(page).queryByRole("checkbox", { name: /Входящие/ })).toBeNull();
     expect(within(page).getByRole("button", { name: /Видимые чаты.*0 из 3.*Настроить/ })).toBeInTheDocument();
     expect(within(page).getByRole("button", { name: /Журнал обращений.*Настроить/ })).toBeInTheDocument();

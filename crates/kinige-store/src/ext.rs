@@ -1,11 +1,11 @@
-//! `message_ext(src, ext_chat, ext_msg) → message_id` (слайс 4, ADR-0001 приложение §C): локальный несинхронизируемый
-//! индекс внешних id импорта, производный от `core.ext`. Дедупликация повторного импорта идёт по нему. Вставка —
-//! `INSERT OR IGNORE`: два сообщения с разными id и одним `ext` (импорт одного экспорта на двух устройствах до
-//! синхронизации) не ломают пересчёт.
+//! `message_ext(src, ext_chat, ext_msg) → message_id` (slice 4, ADR-0001 appendix §C): a local, non-synced index of
+//! external import ids, derived from `core.ext`. Deduplication of a repeated import goes through it. The insert is
+//! `INSERT OR IGNORE`: two messages with different ids and the same `ext` (one export imported on two devices before
+//! sync) do not break the recount.
 
 use rusqlite::Connection;
 
-/// Запись о внешнем id; уже занятый ключ остаётся за первой записью. Ответ: добавлена ли строка.
+/// Records an external id; an already taken key stays with the first entry. Returns whether a row was added.
 pub(crate) fn insert(
     conn: &Connection,
     src: &str,
@@ -21,15 +21,15 @@ pub(crate) fn insert(
     Ok(added == 1)
 }
 
-/// Убирает строки записи (удаление навсегда): повторный импорт вернёт такую запись как новую (спецификация слайса 4,
-/// решение 4).
+/// Removes an entry's rows (permanent deletion): a repeated import will bring such an entry back as a new one (slice 4
+/// specification, decision 4).
 pub(crate) fn remove(conn: &Connection, message_id: &str) -> rusqlite::Result<()> {
     conn.prepare_cached("DELETE FROM message_ext WHERE message_id = ?1")?
         .execute([message_id])?;
     Ok(())
 }
 
-/// Таблица заново из `message.ext_json` (миграция 4). Незаполненный или повреждённый `ext_json` строк не даёт.
+/// The table anew from `message.ext_json` (migration 4). An unset or corrupted `ext_json` yields no rows.
 pub(crate) fn rebuild_all(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute("DELETE FROM message_ext", [])?;
     conn.execute(

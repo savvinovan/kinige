@@ -6,114 +6,114 @@
       "surface": {
         "background": {
           "$value": "#141414",
-          "$description": "Фон окна и сайдбара вокруг ленты: самая тёмная поверхность.",
+          "$description": "The background of the window and the sidebar around the feed: the darkest surface.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 8 %" } }
         },
         "paper": {
           "$value": "#1b1b1b",
-          "$description": "«Бумага» ленты: фон за плашками сообщений и под полем ввода.",
+          "$description": "The feed 'paper': the background behind message plates and under the input field.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 10,6 %" } }
         },
         "message": {
           "$value": "#2b2b2b",
-          "$description": "Заливка плашки сообщения и тоста: светлее бумаги (1,22:1).",
+          "$description": "The fill of a message plate and a toast: lighter than the paper (1.22:1).",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 16,9 %" } }
         },
         "code": {
           "$value": "#171717",
-          "$description": "Фон блока кода и строчного кода внутри плашки: темнее плашки (1,27:1), как «врезка».",
+          "$description": "The background of a code block and inline code inside a plate: darker than the plate (1.27:1), like an 'inset'.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 9 %" } }
         },
         "day": {
           "$value": "#2b2b2b",
-          "$description": "Заливка метки дня («таблетки») по центру ленты.",
+          "$description": "The fill of the day label (a 'pill') in the center of the feed.",
           "$extensions": { "kinige": { "origin": "авторский: то же значение, что surface.message" } }
         },
         "selected": {
           "$value": "#313131",
-          "$description": "Выбранный чат в сайдбаре, выбранный пункт дерева настроек, заливка кнопки и наведения на значок (D2: было #2b2b2b). Светлее фона окна в 1,42:1 и светлее наведения в 1,21:1, поэтому выбранное читается рядом с подсвеченным под мышью.",
+          "$description": "The selected chat in the sidebar, the selected settings tree item, the fill of a button and of hover on an icon (D2: was #2b2b2b). Lighter than the window background by 1.42:1 and lighter than hover by 1.21:1, so the selected item reads next to the one highlighted under the mouse.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 19,2 %" } }
         },
         "hover": {
           "$value": "#232323",
-          "$description": "Подсветка строки под мышью (сайдбар, дерево настроек): тихая, светлее фона окна в 1,17:1 и темнее выбранной строки (surface.selected светлее её в 1,21:1). Выбранное — surface.selected, наведение — это (D2).",
+          "$description": "The highlight of a row under the mouse (the sidebar, the settings tree): quiet, lighter than the window background by 1.17:1 and darker than the selected row (surface.selected is lighter than it by 1.21:1). The selected one is surface.selected, hover is this (D2).",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 13,7 %" } }
         },
         "card": {
           "$value": "#2b2b2b",
-          "$description": "Заливка карточки «В этот день» (слайс 5) в ленте: светлее бумаги (1,22:1), без рамки и тени. «Бумага» ленты сама лежит на surface.paper, поэтому карточка с той же заливкой растворилась бы в ней.",
+          "$description": "The fill of the 'On this day' card (slice 5) in the feed: lighter than the paper (1.22:1), with no border and no shadow. The feed 'paper' itself lies on surface.paper, so a card with the same fill would dissolve in it.",
           "$extensions": { "kinige": { "origin": "авторский: то же значение, что surface.message" } }
         },
         "field": {
           "$value": "#2b2b2b",
-          "$description": "Заливка поля ввода без обводки: поиск, composer.",
+          "$description": "The fill of an input field with no outline: the search, the composer.",
           "$extensions": { "kinige": { "origin": "авторский: то же значение, что surface.message" } }
         },
         "field-active": {
           "$value": "#343434",
-          "$description": "Заливка поля ввода, когда в нём курсор: чуть светлее (1,14:1 к обычной). Вместе со сменой заливки в фокусе поля есть тонкая линия цветом фокуса.",
+          "$description": "The fill of an input field when it has the cursor: slightly lighter (1.14:1 to the normal one). Together with the fill change, a focused field has a thin line in the focus color.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 20,4 %" } }
         }
       },
       "text": {
         "primary": {
           "$value": "#f5f5f5",
-          "$description": "Основной текст записей: почти белый, нейтральный.",
+          "$description": "The primary entry text: almost white, neutral.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 96 %" } }
         },
         "secondary": {
           "$value": "#dedede",
-          "$description": "Вторичный текст: подписи, имена чатов, метка дня.",
+          "$description": "Secondary text: captions, chat names, the day label.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 87 %" } }
         },
         "tertiary": {
           "$value": "#ababab",
-          "$description": "Метаданные: время, подсказки, счётчик записей, значки. Тихий серый, не акцент.",
+          "$description": "Metadata: the time, hints, the entry counter, icons. A quiet gray, not an accent.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 67 %" } }
         }
       },
       "accent": {
         "default": {
           "$value": "#88c0d0",
-          "$description": "Приглушённый акцент: ссылки, отмеченная задача, кнопка «Отправить», курсор.",
+          "$description": "A muted accent: links, a checked task, the 'Send' button, the cursor.",
           "$extensions": { "kinige": { "origin": "nord8 (официально: основной акцентный цвет Frost, ссылки)" } }
         }
       },
       "border": {
         "divider": {
           "$value": "#333333",
-          "$description": "Тонкий разделитель: граница сайдбара и ленты (декоративный).",
+          "$description": "A thin divider: the border of the sidebar and the feed (decorative).",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 20 %" } }
         }
       },
       "highlight": {
         "background": {
           "$value": "#3e3e3e",
-          "$description": "Заливка подсвеченного сообщения (найдено поиском, переход по ссылке): заметно светлее плашки (1,32:1; D2: было #3a3a3a) и светлее выбранной строки (1,22:1). Время, ошибка и акцент на ней остаются ≥ 4,6:1.",
+          "$description": "The fill of a highlighted message (found by search, a jump by link): noticeably lighter than the plate (1.32:1; D2: was #3a3a3a) and lighter than the selected row (1.22:1). The time, the error and the accent on it stay at >= 4.6:1.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 24,3 %" } }
         },
         "row": {
           "$value": "#474747",
-          "$description": "Заливка строки, выбранной стрелками в результатах поиска: фокус остаётся в поле, и это единственный знак, что откроет Enter. Светлее плашки в 1,52:1 (порог 1,5). Основной текст на ней 8,5:1, вторичный 6,9:1; третичный на ней ниже 4,5:1, поэтому в выбранной строке он заменён вторичным.",
+          "$description": "The fill of a row selected with the arrows in the search results: the focus stays in the field, and this is the only sign of what Enter will open. Lighter than the plate by 1.52:1 (the threshold is 1.5). The primary text on it is 8.5:1, the secondary 6.9:1; the tertiary on it is below 4.5:1, so in the selected row it is replaced by the secondary.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 27,8 %" } }
         },
         "mark": {
           "$value": "#555555",
-          "$description": "Заливка найденного слова в тексте записи (поиск, слайс 4): нейтральный серый, заметно светлее плашки (1,8:1) и подсвеченной плашки (1,5:1). Основной текст на нём 7,0:1, вторичный 5,6:1. Третичный текст и акцент на нём не стоят: слова в ссылках и тегах не подсвечиваются.",
+          "$description": "The fill of a found word in the entry text (search, slice 4): a neutral gray, noticeably lighter than the plate (1.8:1) and the highlighted plate (1.5:1). The primary text on it is 7.0:1, the secondary 5.6:1. Tertiary text and the accent are not placed on it: words in links and tags are not highlighted.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 33,3 %" } }
         }
       },
       "focus": {
         "ring": {
           "$value": "#88c0d0",
-          "$description": "Кольцо фокуса с клавиатуры (кнопки, строки, ссылки) и тонкая линия в поле ввода.",
+          "$description": "The keyboard focus ring (buttons, rows, links) and a thin line in the input field.",
           "$extensions": { "kinige": { "origin": "nord8 (официально: Frost)" } }
         }
       },
       "status": {
         "error": {
           "$value": "#d89fa4",
-          "$description": "Состояние «не отправилось» и ошибки (§1.2 п. 9).",
+          "$description": "The 'not sent' state and errors (PRD §1.2 item 9).",
           "$extensions": { "kinige": { "origin": "подгонка: nord11 (красный Aurora), HSL-светлота 56,5 % → 73,5 % при том же тоне и насыщенности" } }
         }
       },

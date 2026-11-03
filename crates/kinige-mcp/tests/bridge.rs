@@ -1,12 +1,12 @@
-//! Мост `kinige-mcp` как собранный бинарник с подставным сервером на временном сокете (ADR-0009, слайс 4a): пересылка,
-//! обрыв без повторной отправки, повтор рукопожатия, запуск приложения только когда процесса нет, предел кадра, stderr.
+//! The `kinige-mcp` bridge as a built binary with a fake server on a temporary socket (ADR-0009, slice 4a): forwarding,
+//! a drop without resending, repeating the handshake, starting the app only when there is no process, the frame limit, stderr.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 // The bridge is Unix-only (Unix socket): on Windows this file is empty, `tests/unsupported.rs` covers it there.
 #![cfg(unix)]
-#![allow(clippy::disallowed_methods)] // `thread::spawn` запрещён в коде приложения (clippy.toml), тесту поток нужен без обработки отказа
+#![allow(clippy::disallowed_methods)] // `thread::spawn` is forbidden in app code (clippy.toml); the test needs a thread without handling failure
 
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
@@ -24,7 +24,7 @@ const INIT: &str = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"p
 const INITIALIZED: &str = r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#;
 const MARKER: &str = r#"{"jsonrpc":"2.0","method":"kinige/reconnect"}"#;
 
-/// Подставной сервер: слушает сокет, принимает соединения.
+/// A fake server: listens on the socket, accepts connections.
 struct Server {
     listener: UnixListener,
 }
@@ -82,7 +82,7 @@ impl Conn {
     }
 }
 
-/// Запущенный мост: stdin/stdout клиента и stderr.
+/// A running bridge: the client's stdin/stdout and stderr.
 struct Bridge {
     child: Child,
     stdin: Option<std::process::ChildStdin>,
@@ -165,7 +165,7 @@ impl Bridge {
         }
     }
 
-    /// Закрывает stdin, ждёт завершения и возвращает весь stderr.
+    /// Closes stdin, waits for the exit and returns the whole stderr.
     fn finish(mut self) -> String {
         drop(self.stdin.take());
         let _ = self.child.wait();
@@ -230,7 +230,7 @@ fn forwards_lines_both_ways_and_stdout_has_only_json_rpc() {
     let server = Server::bind(&env.socket());
     let mut bridge = env.bridge("present");
     bridge.say(INIT);
-    let mut conn = server.accept(LONG).expect("мост подключился");
+    let mut conn = server.accept(LONG).expect("the bridge connected");
     assert_eq!(conn.next(LONG).as_deref(), Some(INIT));
     conn.send(&result(1));
     conn.send(r#"{"jsonrpc":"2.0","method":"notifications/message","params":{}}"#);
@@ -242,14 +242,14 @@ fn forwards_lines_both_ways_and_stdout_has_only_json_rpc() {
             .iter()
             .all(|line| line.starts_with('{') && line.ends_with('}'))
     );
-    // Большой ответ приходит целиком.
+    // A big reply arrives whole.
     let big = format!(
         r#"{{"jsonrpc":"2.0","id":9,"result":{{"text":"{}"}}}}"#,
         "я".repeat(500_000)
     );
     conn.send(&big);
     assert_eq!(bridge.hear(LONG).as_deref(), Some(big.as_str()));
-    assert_eq!(env.opens(), 0, "процесс есть: open не вызывается");
+    assert_eq!(env.opens(), 0, "the process exists: open is not called");
 }
 
 #[test]
@@ -257,27 +257,27 @@ fn no_socket_and_no_process_opens_the_app_once_then_answers_with_an_error_and_th
     let env = Env::new();
     let mut bridge = env.bridge("absent");
     bridge.say(&call(5, "m"));
-    let line = bridge.hear(LONG).expect("ошибка");
+    let line = bridge.hear(LONG).expect("error");
     assert!(
         line.contains(r#""id":5"#) && line.contains(r#""error""#),
         "{line}"
     );
     assert!(line.contains("Откройте Kinige"), "{line}");
     assert_eq!(env.opens(), 1);
-    // Уведомление без сокета пропадает молча, мост жив.
+    // A notification without a socket is dropped silently, the bridge stays alive.
     bridge.say(INITIALIZED);
     assert!(bridge.hear(SHORT).is_none() || env.opens() >= 1);
 }
 
-/// Регрессия приёмки 4a: ошибка проверки процесса (путь с `..`, симлинк) запускала `open` поверх работающего приложения, а
-/// это Reopen и окно на экране. Отвечающий сокет значит, что приложение работает, и `open` не нужен, что бы ни сказала проверка.
+/// Regression from the 4a acceptance: a process check error (a path with `..`, a symlink) ran `open` on top of a running app, and
+/// that is a Reopen and a window on the screen. A socket that answers means the app is running and `open` is not needed, whatever the check says.
 #[test]
 fn a_listening_socket_never_triggers_open_even_if_the_process_check_says_absent() {
     let env = Env::new();
     let server = Server::bind(&env.socket());
     let mut bridge = env.bridge("absent");
     bridge.say(&call(8, "m"));
-    let mut conn = server.accept(LONG).expect("мост подключился");
+    let mut conn = server.accept(LONG).expect("the bridge connected");
     assert!(conn.next(LONG).unwrap().contains(r#""id":8"#));
     conn.send(&result(8));
     assert_eq!(bridge.hear(LONG).as_deref(), Some(result(8).as_str()));
@@ -289,7 +289,7 @@ fn process_present_but_no_socket_gives_journal_unavailable_and_never_opens() {
     let env = Env::new();
     let mut bridge = env.bridge("present");
     bridge.say(&call(6, "m"));
-    let line = bridge.hear(LONG).expect("ошибка");
+    let line = bridge.hear(LONG).expect("error");
     assert!(
         line.contains(r#""id":6"#) && line.contains("journal_unavailable"),
         "{line}"
@@ -305,8 +305,8 @@ fn the_socket_appearing_within_the_wait_lets_the_call_through_in_both_cases() {
         let server = thread::spawn(move || {
             thread::sleep(Duration::from_millis(120));
             let server = Server::bind(&socket);
-            let mut conn = server.accept(LONG).expect("подключение");
-            let line = conn.next(LONG).expect("строка");
+            let mut conn = server.accept(LONG).expect("connection");
+            let line = conn.next(LONG).expect("line");
             conn.send(&result(7));
             line
         });
@@ -333,21 +333,21 @@ fn a_cut_with_add_entry_in_flight_answers_with_an_error_and_never_resends() {
     assert!(got.contains("MARKER-ONE"));
     conn.send("");
     conn.close();
-    let line = bridge.hear(LONG).expect("ошибка вместо ответа");
+    let line = bridge.hear(LONG).expect("an error instead of a reply");
     assert!(
         line.contains(r#""id":3"#) && line.contains("потеряно"),
         "{line}"
     );
-    // Повторной отправки нет: новое соединение не появляется, пока клиент сам не напишет.
+    // There is no resend: a new connection does not appear until the client writes itself.
     assert!(
         server.accept(SHORT).is_none(),
-        "мост не должен переподключаться сам"
+        "the bridge must not reconnect by itself"
     );
-    // Следующий запрос идёт в новое соединение, и старый туда не попадает.
+    // The next request goes into the new connection, and the old one does not get there.
     bridge.say(&call(4, "MARKER-TWO"));
     let mut second = server.accept(LONG).unwrap();
     assert!(second.next(LONG).unwrap().contains("MARKER-TWO"));
-    assert!(second.next(SHORT).is_none(), "ни одного повтора");
+    assert!(second.next(SHORT).is_none(), "no repeat at all");
     second.send(&result(4));
     assert_eq!(bridge.hear(LONG).as_deref(), Some(result(4).as_str()));
 }
@@ -379,13 +379,13 @@ fn after_a_reconnect_the_handshake_is_repeated_and_its_answer_never_reaches_the_
     assert_eq!(
         second.next(LONG).as_deref(),
         Some(INIT),
-        "initialize повторён дословно"
+        "initialize repeated verbatim"
     );
     second.send(&result(1));
     assert_eq!(second.next(LONG).as_deref(), Some(INITIALIZED));
     assert!(second.next(LONG).unwrap().contains("after"));
     second.send(&result(3));
-    // Клиент видит только ответ на свой вызов: ответа на повторный initialize у него нет.
+    // The client sees only the reply to its own call: it has no reply to the repeated initialize.
     assert_eq!(bridge.hear(LONG).as_deref(), Some(result(3).as_str()));
     assert!(bridge.hear(SHORT).is_none());
 }
@@ -405,12 +405,12 @@ fn a_cut_before_initialize_repeats_nothing() {
     let line = second.next(LONG).unwrap();
     assert!(
         line.contains("again"),
-        "первая строка нового соединения — сам запрос: {line}"
+        "the first line of the new connection is the request itself: {line}"
     );
 }
 
-/// Сервер, который принял соединение, но не отвечает на повторный `initialize`: вызов клиента не уходит, клиент получает
-/// ошибку со своим `id`, а не молчание.
+/// A server that accepted the connection but does not answer the repeated `initialize`: the client's call does not go out, the client gets
+/// an error with its own `id` and not silence.
 #[test]
 fn a_server_that_never_answers_the_repeated_initialize_gives_the_call_an_error_and_receives_no_call()
  {
@@ -433,15 +433,15 @@ fn a_server_that_never_answers_the_repeated_initialize_gives_the_call_an_error_a
     let mut second = server.accept(LONG).unwrap();
     assert_eq!(second.next(LONG).as_deref(), Some(MARKER));
     assert_eq!(second.next(LONG).as_deref(), Some(INIT));
-    // Ответа на initialize нет.
-    let line = bridge.hear(LONG).expect("ошибка вместо молчания");
+    // There is no reply to initialize.
+    let line = bridge.hear(LONG).expect("an error instead of silence");
     assert!(
         line.contains(r#""id":3"#) && line.contains("journal_unavailable"),
         "{line}"
     );
     assert!(
         second.next(SHORT).is_none(),
-        "вызов на сервер, не прошедший рукопожатие, не уходит"
+        "a call to a server that has not passed the handshake does not go out"
     );
     second.send("");
 }
@@ -451,15 +451,15 @@ fn text_that_is_not_json_is_answered_with_a_parse_error_and_id_null_and_nothing_
     let env = Env::new();
     let mut bridge = env.bridge("absent");
     bridge.say("{not json");
-    let line = bridge.hear(LONG).expect("ошибка разбора");
+    let line = bridge.hear(LONG).expect("parse error");
     assert!(
         line.contains(r#""id":null"#) && line.contains("-32700"),
         "{line}"
     );
-    assert_eq!(env.opens(), 0, "мусор не запускает приложение");
-    // Мост жив и работает дальше.
+    assert_eq!(env.opens(), 0, "garbage does not start the app");
+    // The bridge is alive and keeps working.
     bridge.say(&call(2, "after-garbage"));
-    let line = bridge.hear(LONG).expect("ошибка недоступности");
+    let line = bridge.hear(LONG).expect("unavailability error");
     assert!(line.contains(r#""id":2"#), "{line}");
 }
 
@@ -473,7 +473,7 @@ fn a_client_answer_to_a_server_request_is_not_an_unanswered_request() {
     conn.next(LONG).unwrap();
     conn.send(&result(1));
     bridge.hear(LONG).unwrap();
-    // Сервер просит у клиента корни; клиент отвечает; затем обрыв.
+    // The server asks the client for roots; the client replies; then a drop.
     conn.send(r#"{"jsonrpc":"2.0","id":"srv-1","method":"roots/list"}"#);
     assert!(bridge.hear(LONG).unwrap().contains("roots/list"));
     bridge.say(r#"{"jsonrpc":"2.0","id":"srv-1","result":{"roots":[]}}"#);
@@ -481,7 +481,7 @@ fn a_client_answer_to_a_server_request_is_not_an_unanswered_request() {
     conn.close();
     assert!(
         bridge.hear(SHORT).is_none(),
-        "ответ клиента не получает ошибки"
+        "the client reply does not get an error"
     );
 }
 
@@ -495,24 +495,24 @@ fn a_frame_over_4_mib_is_rejected_on_both_sides() {
     conn.next(LONG).unwrap();
     conn.send(&result(1));
     bridge.hear(LONG).unwrap();
-    // От клиента: ошибка с настоящим id (он стоит раньше места обрыва), на сервер ничего не уходит, мост жив.
+    // From the client: an error with the real id (it stands before the cut), nothing goes to the server, the bridge is alive.
     let huge = format!(
         r#"{{"jsonrpc":"2.0","id":2,"method":"x","params":"{}"}}"#,
         "z".repeat(4 * 1024 * 1024 + 10)
     );
     bridge.say(&huge);
-    let line = bridge.hear(LONG).expect("ошибка");
+    let line = bridge.hear(LONG).expect("error");
     assert!(
         line.contains(r#""id":2"#) && line.contains("4 MiB"),
         "{line}"
     );
-    // id после длинного значения не достать из сохранённого начала: тогда null.
+    // An id after a long value cannot be taken from the saved beginning: then null.
     let late_id = format!(
         r#"{{"jsonrpc":"2.0","method":"x","params":"{}","id":9}}"#,
         "z".repeat(4 * 1024 * 1024 + 10)
     );
     bridge.say(&late_id);
-    let line = bridge.hear(LONG).expect("ошибка");
+    let line = bridge.hear(LONG).expect("error");
     assert!(
         line.contains(r#""id":null"#) && line.contains("4 MiB"),
         "{line}"
@@ -520,16 +520,16 @@ fn a_frame_over_4_mib_is_rejected_on_both_sides() {
     bridge.say(&call(3, "ok"));
     assert!(
         conn.next(LONG).unwrap().contains(r#""id":3"#),
-        "на сервер ушёл только следующий запрос"
+        "only the next request went to the server"
     );
-    // От сервера: соединение закрывается, неотвеченный запрос получает ошибку.
+    // From the server: the connection is closed, the unanswered request gets an error.
     let huge_reply = format!(
         r#"{{"jsonrpc":"2.0","id":3,"result":"{}"}}"#,
         "z".repeat(4 * 1024 * 1024 + 10)
     );
     let _ = conn.writer.write_all(huge_reply.as_bytes());
     let _ = conn.writer.write_all(b"\n");
-    let line = bridge.hear(LONG).expect("ошибка вместо огромного ответа");
+    let line = bridge.hear(LONG).expect("an error instead of a huge reply");
     assert!(
         line.contains(r#""id":3"#) && line.contains("потеряно"),
         "{}",

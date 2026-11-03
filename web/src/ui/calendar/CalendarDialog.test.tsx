@@ -56,7 +56,7 @@ describe("CalendarDialog: вид", () => {
 
   it("дни соседних месяцев показаны приглушёнными и выбираются", () => {
     const { onPick } = show();
-    // Сетка октября 2026 с понедельника начинается 28 сентября и кончается 1 ноября.
+    // The October 2026 grid, Monday-first, starts on 28 September and ends on 1 November.
     expect(day("2026-09-28")).toHaveClass("calendar__day--outside");
     expect(day("2026-11-01")).toHaveClass("calendar__day--outside");
     expect(day("2026-10-15")).not.toHaveClass("calendar__day--outside");
@@ -196,7 +196,7 @@ describe("CalendarDialog: клавиатура", () => {
     press("ArrowRight");
     const focused = document.activeElement as HTMLElement;
     expect(focused.tagName).toBe("BUTTON");
-    // Enter и пробел на настоящей кнопке браузер превращает в click.
+    // On a real button the browser turns Enter and space into a click.
     fireEvent.click(focused);
     expect(onPick).toHaveBeenCalledWith("2026-10-21");
   });

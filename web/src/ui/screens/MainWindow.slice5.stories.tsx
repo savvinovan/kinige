@@ -9,8 +9,8 @@ import type { SidebarChat } from "../sidebar/Sidebar";
 import { MainWindowView } from "./MainWindowView";
 import "./screens-stories.css";
 
-// Слайс 5 в главном окне: карточка «В этот день» в начале сегодняшнего дня, ответ с цитатой, строка «Ответ на запись» над полем.
-// «Сегодня» в историях фиксировано (суббота, 31 октября 2026).
+// Slice 5 in the main window: the "On this day" card at the start of today, a reply with a quote, the "Reply to entry" strip above the composer.
+// "Today" is fixed in the stories (Saturday, 31 October 2026).
 const TODAY = "2026-10-31";
 const noop = () => undefined;
 
@@ -61,13 +61,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Inbox с карточкой под меткой «Сегодня», перед сегодняшней записью; вчерашний ответ с цитатой «3 года спустя». */
+/** Inbox with the card under the "Today" label, before today's entry; yesterday's reply with the quote "3 years later". */
 export const КарточкаВЛенте: Story = {};
 
-/** Сегодня записей нет: карточка внизу ленты, над полем ввода. */
+/** No entries today: the card is at the bottom of the feed, above the composer. */
 export const СегодняПусто: Story = { args: { messages: MESSAGES.slice(0, 2) } };
 
-/** После «Ответить»: над полем строка «Ответ на запись · дата» и первая строка записи. */
+/** After "Reply": above the composer the "Reply to entry · date" strip and the first line of the entry. */
 export const ОтветНаЗапись: Story = {
   args: {
     draft: "До сих пор так думаю",
@@ -75,7 +75,7 @@ export const ОтветНаЗапись: Story = {
   },
 };
 
-/** Английский, крупный текст. */
+/** English, large text. */
 export const АнглийскийКрупный: Story = {
   args: {
     replyStrip: <ReplyStrip quote={QUOTE} onCancel={noop} />,

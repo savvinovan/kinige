@@ -5,15 +5,15 @@ import type { MessageView } from "../../api/generated/MessageView";
 import { fireEvent, render, screen, waitFor } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// Человек переключил чат, пока шла отправка (KINIG-45): ответ на отправку относится к прежнему чату и не должен трогать поле,
-// черновик и ошибку нового.
+// The person switched chats while sending (KINIG-45): the reply to the send belongs to the previous chat and must not touch
+// the new chat's composer, draft and error.
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 const BOOKS = { id: "books", title: "Книги", icon: "📚" };
 const BOOKS_DRAFT = "черновик про книги";
 
 const field = () => screen.getByRole("textbox", { name: "Новая заметка" }) as HTMLTextAreaElement;
 
-/** Текст набран во «Входящих», «Отправить» нажато (ответ задержан), открыты «Книги» с сохранённым черновиком. */
+/** Text typed in Inbox, "Send" pressed (the reply is delayed), "Books" opened with a saved draft. */
 async function sendThenSwitch() {
   const api = new MockApi({ now: NOW, language: "ru", chats: [BOOKS] });
   await api.saveDraft(BOOKS.id, BOOKS_DRAFT);
@@ -38,7 +38,7 @@ describe("Переключение чата во время отправки", (
     const { api, finish } = await sendThenSwitch();
     finish("ok");
     await waitFor(() => expect(api.messageById("mock-1")).toBeDefined());
-    // Ответ на отправку обработан (счётчики чатов перечитаны); поле «Книг» цело.
+    // The reply to the send is handled (chat counters reread); the "Books" composer is intact.
     await waitFor(() => expect(field().disabled).toBe(false));
     expect(field().value).toBe(BOOKS_DRAFT);
     expect((await api.getDraft(BOOKS.id)).body).toBe(BOOKS_DRAFT);
@@ -52,7 +52,7 @@ describe("Переключение чата во время отправки", (
     await waitFor(async () => expect((await api.getDraft(INBOX_ID)).body).toBe("мысль для входящих"));
     expect(field().value).toBe(BOOKS_DRAFT);
     expect((await api.getDraft(BOOKS.id)).body).toBe(BOOKS_DRAFT);
-    // Ошибка отправки из «Входящих» в открытых «Книгах» не показывается.
+    // The send error from Inbox is not shown in the open "Books".
     expect(screen.queryByText("Что-то пошло не так.")).toBeNull();
   });
 });

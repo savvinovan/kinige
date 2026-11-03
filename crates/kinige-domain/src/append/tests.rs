@@ -1,4 +1,4 @@
-//! Тесты дописывания: правило цели и перезапись группы `body` (ADR-0001 §3.3, §3.4, §4).
+//! Append tests: the target rule and rewriting the `body` group (ADR-0001 §3.3, §3.4, §4).
 
 use super::*;
 use crate::groups::{INBOX_ID, NewMessage, new_message, parse_groups_raw};
@@ -64,19 +64,19 @@ fn append_target_rule() {
     assert!(can(&candidate(&row), NOW, today));
     assert!(
         can(&candidate(&row), NOW + APPEND_WINDOW_MS, today),
-        "ровно десять минут — ещё можно"
+        "exactly ten minutes -- still allowed"
     );
     assert!(
         !can(&candidate(&row), NOW + APPEND_WINDOW_MS + 1, today),
-        "десять минут и миллисекунда — уже нет"
+        "ten minutes and a millisecond -- no longer"
     );
     assert!(
         can(&candidate(&row), NOW - 5_000, today),
-        "часы чуть ушли назад: запись «из будущего» дописывается"
+        "the clock went back a little: an entry \"from the future\" is appended to"
     );
     assert!(
         !can(&candidate(&row), NOW, "2026-10-10"),
-        "вчерашняя запись"
+        "yesterday's entry"
     );
     let mut other = candidate(&row);
     for origin in ["agent", "import_telegram", ""] {
@@ -99,7 +99,7 @@ fn records_with_newer_groups_are_not_appended_and_broken_hlc_is_an_error() {
     assert_eq!(
         can_append(&c, NOW, today),
         Ok(false),
-        "sv группы выше поддерживаемой"
+        "the group sv is higher than supported"
     );
     for broken in [
         "",
@@ -111,7 +111,7 @@ fn records_with_newer_groups_are_not_appended_and_broken_hlc_is_an_error() {
         c.hlc_json = broken;
         assert!(
             matches!(can_append(&c, NOW, today), Err(GroupError::Corrupt(_))),
-            "{broken:?} — повреждение, а не «нельзя»"
+            "{broken:?} is corruption, not \"not allowed\""
         );
     }
 }

@@ -1,12 +1,12 @@
-// Сочетания клавиш: каноничная запись (так её хранит и принимает Rust) и вид для человека.
+// Keyboard shortcuts: the canonical form (how Rust stores and accepts it) and the human-readable form.
 //
-// Каноничная запись — `Ctrl+Alt+Shift+Cmd+<код>`: модификаторы строго в этом порядке, затем `event.code` клавиши
-// (`Alt+Space`, `Alt+Shift+KeyV`). Код физической клавиши не зависит от раскладки: ⌥V работает и в русской раскладке.
-// Показываются сочетания в порядке macOS: ⌃ ⌥ ⇧ ⌘ и клавиша.
+// The canonical form is `Ctrl+Alt+Shift+Cmd+<code>`: modifiers strictly in this order, then the key's `event.code`
+// (`Alt+Space`, `Alt+Shift+KeyV`). The physical key code does not depend on the layout: ⌥V works in the Russian layout too.
+// Shortcuts are displayed in macOS order: ⌃ ⌥ ⇧ ⌘ and the key.
 
 export type Modifier = "Ctrl" | "Alt" | "Shift" | "Cmd";
 
-/** Порядок модификаторов в каноничной записи и на экране (⌃ ⌥ ⇧ ⌘ — как в меню macOS). */
+/** The order of modifiers in the canonical form and on screen (⌃ ⌥ ⇧ ⌘, as in macOS menus). */
 export const MODIFIERS: readonly Modifier[] = ["Ctrl", "Alt", "Shift", "Cmd"];
 
 export const MODIFIER_GLYPHS: Record<Modifier, string> = { Ctrl: "⌃", Alt: "⌥", Shift: "⇧", Cmd: "⌘" };
@@ -25,7 +25,7 @@ const PUNCTUATION: Record<string, string> = {
   Slash: "/",
 };
 
-/** Подпись клавиши по `event.code`; `null` — клавиша не годится для сочетания (Escape, Enter, Tab, стрелки, модификаторы…). */
+/** The key label by `event.code`; `null` means the key is not suitable for a shortcut (Escape, Enter, Tab, arrows, modifiers...). */
 export function keyLabel(code: string): string | null {
   const letter = /^Key([A-Z])$/.exec(code);
   if (letter) return letter[1] ?? null;
@@ -38,7 +38,7 @@ export function keyLabel(code: string): string | null {
 
 const isModifier = (token: string): token is Modifier => (MODIFIERS as readonly string[]).includes(token);
 
-/** Разбор каноничной записи: какие модификаторы стоят и какая клавиша (подпись, как на капсуле). */
+/** Parsing the canonical form: which modifiers are set and which key (the label, as on the capsule). */
 export function parseAccelerator(accelerator: string): { modifiers: Modifier[]; key: string | null } {
   const tokens = accelerator.split("+").filter((token) => token !== "");
   const modifiers = MODIFIERS.filter((modifier) => tokens.includes(modifier));
@@ -47,8 +47,8 @@ export function parseAccelerator(accelerator: string): { modifiers: Modifier[]; 
 }
 
 /**
- * Каноничная запись → «капсулы» для показа: `Alt+Space` → `["⌥", "Space"]`, `Alt+Shift+KeyV` → `["⌥", "⇧", "V"]`.
- * Неизвестный код (запись из будущей версии) показывается как есть, а не пропадает.
+ * The canonical form -> "capsules" for display: `Alt+Space` -> `["⌥", "Space"]`, `Alt+Shift+KeyV` -> `["⌥", "⇧", "V"]`.
+ * An unknown code (a record from a future version) is shown as is, not dropped.
  */
 export function formatAccelerator(accelerator: string): readonly string[] {
   const { modifiers, key } = parseAccelerator(accelerator);
@@ -58,10 +58,10 @@ export function formatAccelerator(accelerator: string): readonly string[] {
 type KeyEventLike = Pick<KeyboardEvent, "code" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey">;
 
 /**
- * Нажатие → каноничная запись или `null`, если нажатие не годится: одиночный модификатор, клавиша вне списка
- * (Escape отменяет запись, Enter, Tab, стрелки и прочие не принимаются) или нет ни ⌃, ни ⌥, ни ⌘ — глобальное сочетание
- * на одну букву или ⇧+букву перехватывало бы обычный ввод. Функциональные клавиши F1–F12 допустимы и без модификаторов.
- * Окончательно сочетание проверяет Rust (`shortcut_invalid`).
+ * A key press -> the canonical form, or `null` if the press is not suitable: a lone modifier, a key outside the list
+ * (Escape cancels the recording; Enter, Tab, arrows and others are not accepted) or none of ⌃, ⌥, ⌘ present: a global shortcut
+ * on a single letter or ⇧+letter would intercept ordinary typing. Function keys F1-F12 are allowed even without modifiers.
+ * Rust makes the final check of the shortcut (`shortcut_invalid`).
  */
 export function acceleratorFromEvent(event: KeyEventLike): string | null {
   if (keyLabel(event.code) === null) return null;

@@ -3,7 +3,7 @@ import { rect } from "../../test/rect";
 import { fireEvent, render, screen } from "../../test/render";
 import { DROP_ATTRIBUTE, useRecordDrag } from "./useRecordDrag";
 
-// jsdom не раскладывает элементы и не умеет `elementFromPoint`: границы плашки и «элемент под указателем» подставляются.
+// jsdom does not lay elements out and has no `elementFromPoint`: the bubble bounds and the "element under the pointer" are substituted.
 const PLATE = rect(100, 100, 200, 40);
 
 interface HarnessProps {
@@ -61,7 +61,7 @@ describe("перетаскивание плашки на чат", () => {
     const onDrop = vi.fn();
     render(<Harness onDrop={onDrop} />);
     press();
-    // Внутри плашки это ещё выделение текста: ни призрака, ни класса на странице.
+    // Inside the bubble this is still text selection: no ghost, no class on the page.
     move(160, 125);
     expect(document.querySelector(".record-ghost")).toBeNull();
     expect(document.body).not.toHaveClass("is-record-dragging");

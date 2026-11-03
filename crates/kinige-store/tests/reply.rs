@@ -1,7 +1,7 @@
-//! Ответ на запись (слайс 5): проверка `reply_to_id`, байты `core`, цитата в ленте и её состояния, неизменяемость ссылки.
+//! Reply to an entry (slice 5): `reply_to_id` validation, `core` bytes, the quote in the feed and its states, link immutability.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -16,7 +16,7 @@ use kinige_store::{Store, StoreError};
 
 const OLD_DAY: (i32, u32, u32) = (2023, 10, 31);
 
-/// Старая запись 2023 года и ответ на неё сегодня (31 октября 2026).
+/// An old entry from 2023 and a reply to it today (31 October 2026).
 fn old_and_reply(store: &Store) -> (MessageView, MessageView) {
     let old = store
         .send_message(
@@ -67,10 +67,7 @@ fn a_reply_writes_reply_to_id_into_core_and_comes_back_with_the_quote() {
             reply.created_at, old.id
         )
     );
-    let quote = reply
-        .reply_to
-        .as_ref()
-        .expect("цитата в ответе на отправку");
+    let quote = reply.reply_to.as_ref().expect("quote in the send reply");
     assert_eq!(quote.id, old.id);
     assert_eq!(quote.state, ReplyState::Live);
     assert_eq!(quote.years_later, 3);
@@ -80,7 +77,7 @@ fn a_reply_writes_reply_to_id_into_core_and_comes_back_with_the_quote() {
 
     let in_feed = feed(&store);
     assert_eq!(in_feed.len(), 2);
-    assert_eq!(in_feed[0].reply_to, None, "у старой записи цитаты нет");
+    assert_eq!(in_feed[0].reply_to, None, "the old entry has no quote");
     assert_eq!(in_feed[1].reply_to.as_ref(), Some(quote));
 }
 
@@ -125,11 +122,11 @@ fn garbage_reply_targets_are_refused_and_nothing_is_written() {
             bad.chars().take(30).collect::<String>()
         );
     }
-    assert_eq!(message_count(dir.path()), before, "ничего не записано");
+    assert_eq!(message_count(dir.path()), before, "nothing is written");
     assert_eq!(
         store.get_chat_draft(INBOX_ID).unwrap(),
         "черновик остаётся",
-        "черновик на месте"
+        "the draft is in place"
     );
 }
 
@@ -168,9 +165,9 @@ fn the_link_survives_edit_move_date_change_and_append() {
     assert_eq!(
         groups(dir.path(), "message", &reply.id)["core"],
         core_before,
-        "core не переписывается"
+        "core is not rewritten"
     );
-    // Дописывание ⌘Enter: ответ создан не сегодняшним числом по журналу, поэтому проверяем сам путь, а не цель.
+    // Appending with ⌘Enter: the reply was not created on today's journal date, so we check the path itself, not the target.
     let appended = store
         .send_reply(
             INBOX_ID,
@@ -187,13 +184,13 @@ fn the_link_survives_edit_move_date_change_and_append() {
         outcome.message.reply_to.as_ref().map(|q| q.id.as_str()),
         Some(old.id.as_str())
     );
-    // Перенос ответа в другой чат: ссылка остаётся, старая запись теперь «в другом чате», но жива.
+    // Moving the reply to another chat: the link stays, the old entry is now "in another chat" but alive.
     store.move_message(&reply.id, &books.id, &today()).unwrap();
     let moved = store.list_messages(&books.id, None, 10, &today()).unwrap();
     let quote = moved.messages[0]
         .reply_to
         .as_ref()
-        .expect("ссылка после переноса");
+        .expect("link after the move");
     assert_eq!(
         (quote.id.as_str(), quote.state),
         (old.id.as_str(), ReplyState::Live)
@@ -215,7 +212,7 @@ fn the_quote_follows_the_old_entry_trash_restore_and_purge() {
             .into_iter()
             .find(|m| m.id == reply.id)
             .and_then(|m| m.reply_to)
-            .expect("ответ остаётся в ленте")
+            .expect("the reply stays in the feed")
     };
 
     store.delete_message(&old.id, &today()).unwrap();
@@ -239,7 +236,7 @@ fn the_quote_follows_the_old_entry_trash_restore_and_purge() {
     );
     assert!(
         feed(&store).iter().any(|m| m.id == reply.id),
-        "сам ответ остаётся"
+        "the reply itself stays"
     );
 }
 
@@ -316,16 +313,16 @@ fn imported_telegram_replies_have_a_live_quote_without_a_years_label() {
     let quote = page[1]
         .reply_to
         .as_ref()
-        .expect("цитата у импортированного ответа");
+        .expect("quote of the imported reply");
     assert_eq!(quote.state, ReplyState::Live);
     assert_eq!(quote.years_later, 0);
     assert_eq!(quote.id, page[0].id);
     assert_eq!(
         quote.excerpt, "Имя user2000002 поехали в субботу?",
-        "имя автора и начало реплики"
+        "the author's name and the start of the message"
     );
     assert_eq!(
         page[2].reply_to, None,
-        "ответ на непереданную реплику цитаты не имеет"
+        "a reply to a message that was not exported has no quote"
     );
 }

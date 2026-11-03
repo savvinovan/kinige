@@ -2,10 +2,10 @@
 import type { FileProblemKind } from "./FileProblemKind";
 
 /**
- * Файл целиком не годится.
+ * The file as a whole is unusable.
  */
 export type FileProblem = { kind: FileProblemKind, 
 /**
- * Строка и столбец (с единицы) для `parse`.
+ * Line and column (1-based) for `parse`.
  */
 line: number | null, column: number | null, };

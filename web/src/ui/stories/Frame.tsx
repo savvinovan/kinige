@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import "./frame.css";
 
-/** Подложка историй компонентов: лента («бумага») с полями, чтобы компонент стоял на своём настоящем фоне. */
+/** The backdrop of component stories: the feed ("paper") with margins so that a component stands on its real background. */
 export function Frame({
   children,
   surface = "paper",
@@ -9,11 +9,11 @@ export function Frame({
   bottom = false,
 }: {
   children: ReactNode;
-  /** Фон за компонентом: лента (paper) или сайдбар и окно (background). */
+  /** The background behind the component: the feed (paper) or the sidebar and window (background). */
   surface?: "paper" | "background";
-  /** Ширина колонки около 36 знаков: проверка переноса длинного текста. */
+  /** A column width of about 36 characters: a check for wrapping long text. */
   narrow?: boolean;
-  /** Компонент у нижнего края окна без полей подложки (composer, тост). */
+  /** The component at the bottom edge of the window without the backdrop margins (composer, toast). */
   bottom?: boolean;
 }) {
   return (
@@ -23,7 +23,7 @@ export function Frame({
   );
 }
 
-/** Подпись к группе состояний внутри истории. */
+/** A caption for a group of states inside a story. */
 export function FrameLabel({ children }: { children: ReactNode }) {
   return <p className="story-frame__label">{children}</p>;
 }

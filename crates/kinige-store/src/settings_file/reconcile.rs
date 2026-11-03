@@ -1,5 +1,5 @@
-//! Согласование файла и базы (ADR-0010): чтение, применение внешней правки, правило «хэш совпал — побеждает база»,
-//! запись файла из состояния.
+//! Reconciling the file and the database (ADR-0010): reading, applying an external edit, the "hash matched -- the database wins" rule,
+//! writing the file from the state.
 
 use super::apply::{ApplyInput, KEY_FILE_HASH};
 use super::engine::{Engine, ShortcutRefusal};
@@ -18,8 +18,8 @@ use std::time::{Duration, Instant};
 
 impl Engine {
     pub(super) fn tick(&mut self) {
-        // Отложенная запись что-то значит, только пока файл можно перезаписывать: битый, небезопасный или нечитаемый файл
-        // перечитывается лишь когда он изменился (признак), а не на каждом опросе.
+        // A deferred write means something only while the file can be rewritten: a broken, unsafe or unreadable file
+        // is re-read only when it changed (the signature), not on every poll.
         let due = self.retry_at.is_none_or(|at| Instant::now() >= at);
         let retry_write = self.pending_write && self.writable && due;
         if io::signature(&self.path) == self.last_sig && !retry_write {
@@ -28,7 +28,7 @@ impl Engine {
         self.reconcile();
     }
 
-    /// Запись файла не удалась: следующая попытка позже (2, 4, … 60 секунд), а не на каждом опросе.
+    /// Writing the file failed: the next attempt is later (2, 4, … 60 seconds), not on every poll.
     fn write_failed(&mut self) {
         self.pending_write = true;
         self.write_failures = self.write_failures.saturating_add(1);
@@ -36,22 +36,22 @@ impl Engine {
         self.retry_at = Some(Instant::now() + Duration::from_secs(wait));
     }
 
-    /// Предупреждение в журнал процесса один раз, пока тот же вид ошибки не отработал успешно (`forget`): повторные проходы
-    /// молчат (иначе битый файл или занятая база давали бы строку на каждый опрос). Виды независимы: чередование двух
-    /// ошибок строк не добавляет. Только категории, без данных.
+    /// A warning to the process log once, until the same kind of error has succeeded (`forget`): repeated passes
+    /// stay silent (otherwise a broken file or a busy database would give a line on every poll). Kinds are independent: alternating two
+    /// errors adds no lines. Categories only, no data.
     fn warn_once(&mut self, key: String, text: &str) {
         if self.logged.insert(key.clone()) {
             log::warn!("{text}: {key}");
         }
     }
 
-    /// Вид ошибки (приставка ключа) отработал успешно: следующий сбой снова попадёт в журнал.
+    /// A kind of error (the key prefix) has succeeded: the next failure will get into the log again.
     fn forget(&mut self, prefix: &str) {
         self.logged.retain(|key| !key.starts_with(prefix));
     }
 
-    /// Читает файл и приводит его и базу в согласие. Хэш совпал с последним синхронизированным — внешней правки нет, база
-    /// выигрывает (и при каждом чтении, не только при старте); не совпал — файл применяется как внешняя правка.
+    /// Reads the file and brings it and the database into agreement. The hash matches the last synchronized one -- no external edit, the database
+    /// wins (on every read, not only at startup); it does not match -- the file is applied as an external edit.
     pub(super) fn reconcile(&mut self) {
         match io::read_file(&self.path, &self.dir) {
             ReadOutcome::Missing => {
@@ -74,7 +74,7 @@ impl Engine {
             ReadOutcome::Failed(error) => {
                 self.warn_once(
                     format!("read {}", error.category()),
-                    "файл настроек не прочитан",
+                    "settings file not read",
                 );
                 self.last_sig = io::signature(&self.path);
                 self.writable = false;
@@ -85,7 +85,7 @@ impl Engine {
                 });
             }
             ReadOutcome::NotRegular => {
-                self.warn_once("unsafe".into(), "файл настроек не обычный файл");
+                self.warn_once("unsafe".into(), "settings file is not a regular file");
                 self.last_sig = io::signature(&self.path);
                 self.writable = false;
                 self.base = None;
@@ -104,7 +104,7 @@ impl Engine {
                     Err(error) => {
                         self.warn_once(
                             format!("parse {}", error.category()),
-                            "файл настроек не разобран",
+                            "settings file not parsed",
                         );
                         self.writable = false;
                         self.base = None;
@@ -134,7 +134,7 @@ impl Engine {
         }
     }
 
-    /// Внешняя правка: применяется всё годное. Небезопасный файл применяется без `agent_access.*` и `mirror.folder`.
+    /// An external edit: everything valid is applied. An unsafe file is applied without `agent_access.*` and `mirror.folder`.
     fn apply_external(
         &mut self,
         parsed: Parsed,
@@ -153,10 +153,10 @@ impl Engine {
         let outcome = match self.store.apply_settings_file(input) {
             Ok(outcome) => outcome,
             Err(error) => {
-                // Ничего не применено: хэш не сдвинут, следующий опрос попробует снова.
+                // Nothing was applied: the hash did not move, the next poll will try again.
                 self.warn_once(
                     format!("apply {}", error.category()),
-                    "файл настроек не применён",
+                    "settings file not applied",
                 );
                 self.last_sig = None;
                 return;
@@ -165,10 +165,10 @@ impl Engine {
         self.stored_hash = Some(hash);
         self.forget("apply");
         if outcome.mirror {
-            // Папка копии сменилась: писатель копии просыпается и пишет дни в новую папку сразу.
+            // The copy folder changed: the copy writer wakes up and writes the days to the new folder at once.
             self.store.mirror_dir_changed();
         }
-        // Правка из файла новее отложенной правки окна: побеждает последняя.
+        // An edit from the file is newer than the window's deferred edit: the latest one wins.
         self.pending_write = false;
         let mut issues = outcome.issues;
         let mut shortcuts_changed = false;
@@ -209,7 +209,7 @@ impl Engine {
         use crate::StoreError;
         match (&self.options.shortcuts, self.initial) {
             (Some(applier), false) => applier.apply(&self.store, kind, accelerator),
-            // Запуск: сочетания регистрируются позже (`register_saved`); сейчас только проверка и сохранение.
+            // Startup: shortcuts are registered later (`register_saved`); for now only the check and saving.
             _ => self
                 .store
                 .save_shortcut(kind, accelerator)
@@ -220,8 +220,8 @@ impl Engine {
         }
     }
 
-    /// Хэш совпал: внешней правки нет. Если безопасный и разобранный файл отличается от состояния (правка окна не дошла
-    /// до файла: обрыв, небезопасное состояние), он переписывается из базы.
+    /// The hash matched: no external edit. If the safe and parsed file differs from the state (a window edit did not reach
+    /// the file: an interruption, an unsafe state), it is rewritten from the database.
     fn settle(&mut self, parsed: Parsed, unsafe_reason: Option<UnsafeReason>) {
         let in_sync = match self.store.effective_state() {
             Ok(state) => {
@@ -231,7 +231,7 @@ impl Engine {
             Err(error) => {
                 self.warn_once(
                     format!("state {}", error.category()),
-                    "состояние настроек не прочитано",
+                    "settings state not read",
                 );
                 true
             }
@@ -241,7 +241,7 @@ impl Engine {
             self.update(|state| {
                 state.problem = None;
                 state.unsafe_reason = unsafe_reason;
-                // Ошибки разбора пересчитываются, ошибки состояния (папка, чаты, система) остаются до следующей правки.
+                // Parse errors are recomputed, state errors (folder, chats, system) stay until the next edit.
                 state.issues.retain(|issue| !is_parse_level(issue.kind));
                 for issue in parsed.issues {
                     if !state.issues.contains(&issue) {
@@ -256,7 +256,7 @@ impl Engine {
         self.write_from_state();
     }
 
-    /// После правки окна: файл переписывается из базы, если его можно перезаписывать, иначе запись откладывается.
+    /// After a window edit: the file is rewritten from the database if it can be rewritten, otherwise the write is deferred.
     pub(super) fn after_edit(&mut self) {
         if self.writable {
             self.write_from_state();
@@ -266,14 +266,14 @@ impl Engine {
         self.notify();
     }
 
-    /// Файл из действующего состояния: временный файл, `fsync`, `rename`; хэш записанных байтов — после `rename`.
+    /// The file from the current state: a temporary file, `fsync`, `rename`; the hash of the written bytes -- after `rename`.
     fn write_from_state(&mut self) {
         let state = match self.store.effective_state() {
             Ok(state) => state,
             Err(error) => {
                 self.warn_once(
                     format!("write-state {}", error.category()),
-                    "файл настроек не записан",
+                    "settings file not written",
                 );
                 self.write_failed();
                 return;
@@ -285,7 +285,7 @@ impl Engine {
         if let Err(error) = io::write_atomic(&self.path, &self.dir, &bytes) {
             self.warn_once(
                 format!("write-io {:?}", error.kind()),
-                "файл настроек не записан",
+                "settings file not written",
             );
             self.write_failed();
             self.update(|state| {
@@ -298,7 +298,7 @@ impl Engine {
             return;
         }
         self.forget("write-io");
-        // Признак — сразу после `rename`, до шага хэша: если файл подменят позже, признак изменится и опрос его заметит.
+        // The signature is taken right after `rename`, before the hash step: if the file is replaced later, the signature changes and the poll notices it.
         self.last_sig = io::signature(&self.path);
         if let Some(step) = &self.options.after_rename {
             step();
@@ -310,7 +310,7 @@ impl Engine {
         if let Err(error) = saved {
             self.warn_once(
                 format!("hash {}", error.category()),
-                "хэш файла настроек не записан",
+                "settings file hash not written",
             );
         } else {
             self.stored_hash = Some(hash.clone());
@@ -319,8 +319,8 @@ impl Engine {
         self.pending_write = false;
         self.write_failures = 0;
         self.retry_at = None;
-        // Если на диске уже не то, что записано (агент успел заменить файл), он будет прочитан и применён следующим опросом.
-        // Читается тем же безопасным чтением (без перехода по ссылке, канал и устройство не читаются).
+        // If the disk no longer holds what was written (an agent managed to replace the file), it will be read and applied by the next poll.
+        // It is read with the same safe read (no following links, pipes and devices are not read).
         let same = matches!(
             io::read_file(&self.path, &self.dir),
             ReadOutcome::Content { bytes, .. } if sha256_hex(&bytes) == hash
@@ -331,7 +331,7 @@ impl Engine {
         let (unknown, unknown_more) = parse(&bytes)
             .map(|parsed| (parsed.unknown, parsed.unknown_more as u32))
             .unwrap_or_default();
-        // Каталог данных мог оказаться небезопасным при самом файле в порядке: причина остаётся видна.
+        // The data directory could turn out unsafe while the file itself is fine: the reason stays visible.
         let directory = io::unsafe_directory(&self.dir);
         self.update(|state| {
             state.problem = None;
@@ -368,7 +368,7 @@ fn shortcut_name(kind: ShortcutKind) -> &'static str {
     }
 }
 
-/// SHA-256 в hex.
+/// SHA-256 in hex.
 pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()

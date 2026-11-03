@@ -1,7 +1,7 @@
-//! Хранилище на настоящем SQLite: миграция, Inbox, отправка, порядок и курсор ленты, «Отменить», отказ записи, HLC.
+//! The store on real SQLite: migration, Inbox, sending, feed order and cursor, "Undo", write failure, HLC.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -32,7 +32,7 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
             "app_setting",
             "chat",
             "draft",
-            // Журнал обращений ИИ-агентов (миграция 5).
+            // The AI agent access log (migration 5).
             "mcp_log",
             "mcp_log_message",
             "message",
@@ -41,7 +41,7 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
             "message_tag",
             "mirror_chat",
             "mirror_dirty",
-            // Индекс поиска (миграция 4): виртуальная таблица FTS5 и её служебные таблицы.
+            // The search index (migration 4): the FTS5 virtual table and its auxiliary tables.
             "search_fts",
             "search_fts_config",
             "search_fts_data",
@@ -127,7 +127,7 @@ fn inbox_is_created_once_and_survives_restarts() {
         assert!(chats[0].is_inbox);
         assert_eq!(
             chats[0].title, "",
-            "хранимое имя пустое, интерфейс показывает переведённое"
+            "the stored name is empty, the interface shows the translated one"
         );
         assert_eq!(chats[0].count, 0);
         raw(dir.path())
@@ -143,7 +143,7 @@ fn inbox_is_created_once_and_survives_restarts() {
         assert_eq!(
             store.list_chats().unwrap().len(),
             1,
-            "Inbox один после повторных стартов"
+            "there is one Inbox after repeated starts"
         );
     }
     let conn = raw(dir.path());
@@ -158,7 +158,7 @@ fn inbox_is_created_once_and_survives_restarts() {
             |r| r.get(0),
         )
         .unwrap();
-    assert_eq!(device_before, device_after, "device_id создаётся один раз");
+    assert_eq!(device_before, device_after, "device_id is created once");
     assert!(kinige_domain::hlc::is_uuid(&device_after));
 }
 
@@ -219,7 +219,7 @@ fn night_entries_belong_to_the_previous_day() {
         .unwrap();
     assert_eq!(
         sent.journal_date, "2026-10-20",
-        "00:30 — ещё вчера (граница дня 04:00)"
+        "00:30 is still yesterday (the day boundary is 04:00)"
     );
     let page = store
         .list_messages(INBOX_ID, None, 50, &moscow(T_NIGHT))
@@ -251,7 +251,7 @@ fn empty_and_oversized_entries_are_rejected_before_touching_the_database() {
 fn feed_order_is_journal_date_created_at_id_and_pages_are_keyset() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
-    // Отправка не по порядку времени: лента всё равно идёт по (journal_date, created_at, id).
+    // Sending out of time order: the feed still goes by (journal_date, created_at, id).
     let times = [
         T0 + 3 * MINUTE,
         T0,
@@ -282,7 +282,7 @@ fn feed_order_is_journal_date_created_at_id_and_pages_are_keyset() {
             "запись 4",
             "запись 0"
         ][..],
-        "по возрастанию"
+        "ascending"
     );
     assert_eq!(
         all.messages
@@ -299,7 +299,7 @@ fn feed_order_is_journal_date_created_at_id_and_pages_are_keyset() {
         ]
     );
 
-    // Страницами по два: последняя страница — самые новые, курсор ведёт к более старым, без дублей и пропусков.
+    // Pages of two: the last page holds the newest, the cursor leads to older ones, without duplicates and gaps.
     let mut seen = Vec::new();
     let mut cursor: Option<FeedCursor> = None;
     let mut pages = 0;
@@ -342,7 +342,7 @@ fn entries_with_equal_created_at_are_ordered_by_id() {
     let mut sorted = ids.clone();
     sorted.sort();
     assert_eq!(ids, sorted);
-    // Курсор по записи с таким же created_at не теряет соседей.
+    // A cursor on an entry with the same created_at does not lose its neighbors.
     let second = &page.messages[1];
     let cursor = FeedCursor {
         journal_date: second.journal_date.clone(),
@@ -388,7 +388,7 @@ fn group_bytes_and_hlc_of_a_sent_message_are_complete() {
 
 #[test]
 fn deleted_entries_are_neither_shown_nor_counted() {
-    // Корзина (слайс 3) уже учтена чтением: запись с `deleted_at` не видна в ленте и не входит в счётчик.
+    // The trash (slice 3) is already accounted for by reading: an entry with `deleted_at` is not visible in the feed and is not counted.
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let first = store.send_message(INBOX_ID, "первая", &moscow(T0)).unwrap();
@@ -414,7 +414,7 @@ fn hlc_labels_are_strictly_increasing_across_events_and_restarts() {
     for round in 0..3 {
         let store = open_without_mirror(dir.path());
         for i in 0..4 {
-            // Часы стоят на месте и даже идут назад: метки всё равно растут.
+            // The clock stands still and even goes backwards: the stamps still grow.
             let ms = if i % 2 == 0 { T0 } else { T0 - 5000 };
             let sent = store
                 .send_message(INBOX_ID, &format!("раунд {round} запись {i}"), &moscow(ms))
@@ -433,7 +433,7 @@ fn hlc_labels_are_strictly_increasing_across_events_and_restarts() {
                 })
                 .unwrap();
             if let Some(last) = seen.last() {
-                assert!(&hlc > last, "{hlc} должна быть больше {last}");
+                assert!(&hlc > last, "{hlc} must be greater than {last}");
             }
             seen.push(hlc);
         }
@@ -453,10 +453,10 @@ fn write_failure_leaves_nothing_behind_and_returns_a_code() {
         .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |r| r.get(0))
         .unwrap();
 
-    // Инъекция отказа: последний шаг транзакции (отметка копии) падает, как при нехватке места.
+    // Failure injection: the last step of the transaction (the copy mark) fails, as when out of space.
     let conn = raw(dir.path());
-    conn.execute_batch("CREATE TRIGGER fail_dirty BEFORE INSERT ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'нет места'); END;").unwrap();
-    conn.execute_batch("CREATE TRIGGER fail_dirty_update BEFORE UPDATE ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'нет места'); END;").unwrap();
+    conn.execute_batch("CREATE TRIGGER fail_dirty BEFORE INSERT ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'no space'); END;").unwrap();
+    conn.execute_batch("CREATE TRIGGER fail_dirty_update BEFORE UPDATE ON mirror_dirty BEGIN SELECT RAISE(ABORT, 'no space'); END;").unwrap();
 
     let error = store
         .send_message(INBOX_ID, "не запишется", &moscow(T0 + 1000))
@@ -465,18 +465,18 @@ fn write_failure_leaves_nothing_behind_and_returns_a_code() {
     let count: i64 = conn
         .query_row("SELECT COUNT(*) FROM message", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(count, 1, "записи нет");
+    assert_eq!(count, 1, "there is no entry");
     assert_eq!(
         state(dir.path(), "hlc_c"),
         clock_before,
-        "часы HLC откатились вместе с записью"
+        "the HLC clock rolled back together with the write"
     );
     let dirty_after: i64 = conn
         .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |r| r.get(0))
         .unwrap();
     assert_eq!(dirty_after, dirty_before);
 
-    // Отказ прошёл: запись снова работает.
+    // The failure is gone: writing works again.
     conn.execute_batch("DROP TRIGGER fail_dirty; DROP TRIGGER fail_dirty_update;")
         .unwrap();
     assert!(
@@ -524,8 +524,8 @@ fn a_database_from_a_newer_app_is_refused() {
     let before = std::fs::read(db_path(dir.path())).unwrap();
     let error = kinige_store::Store::open_at(options(dir.path()), &Now::at(T0, "UTC"))
         .err()
-        .expect("отказ");
-    // Отдельный код: окно просит обновить приложение (ТЗ §10.4), а не предлагает копии и не падает.
+        .expect("refusal");
+    // A separate code: the window asks to update the app (spec §10.4), instead of offering copies or crashing.
     assert!(
         matches!(error, kinige_store::StoreError::TooNew(found) if found == LATEST_VERSION + 1)
     );
@@ -533,7 +533,7 @@ fn a_database_from_a_newer_app_is_refused() {
     assert_eq!(
         std::fs::read(db_path(dir.path())).unwrap(),
         before,
-        "файл не тронут, копий и миграций нет"
+        "the file is untouched, there are no copies or migrations"
     );
     assert!(!dir.path().join("backups").exists());
 }
@@ -550,13 +550,13 @@ fn inbox_is_recognised_by_id_not_by_the_flag() {
     assert!(real.is_inbox);
     assert!(
         !fake.is_inbox,
-        "флаг is_inbox у чужого id не делает чат Inbox"
+        "the is_inbox flag on a foreign id does not make a chat Inbox"
     );
 }
 
 #[test]
 fn writer_connection_uses_full_synchronous_and_fullfsync() {
-    // Прагмы читаются с самого соединения-писателя, а не с отдельного читающего.
+    // The pragmas are read from the writer connection itself, not from a separate reader.
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let (synchronous, fullfsync, journal) = store.writer_pragmas().unwrap();

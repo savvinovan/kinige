@@ -1,9 +1,9 @@
-/* Окно «Доступ ИИ-агентов»: список чатов, блоки кода, журнал обращений, предупреждение. Только токены. */
+/* The "Доступ ИИ-агентов" window: the chat list, code blocks, the access log, the warning. Tokens only. */
 
-/* В окне одна прокрутка — у самой панели (modal.css). Ни список чатов, ни блоки кода, ни журнал своей прокрутки и своей
-   предельной высоты не имеют: при постоянных полосах прокрутки (системная настройка) вложенные полосы наезжали на текст. */
+/* The window has one scroll, the panel's (modal.css). Neither the chat list, nor the code blocks, nor the log have a scroll of their own
+   or a maximum height: with permanent scrollbars (a system setting) nested scrollbars overlapped the text. */
 
-/* Список чатов показывается целиком. */
+/* The chat list is shown in full. */
 .agent-chats {
   display: grid;
   gap: var(--space-4);
@@ -42,8 +42,8 @@
   line-height: var(--type-meta-line-height);
 }
 
-/* Моноширинный блок: JetBrains Mono. Длинные строки (путь к сокету, команда) переносятся, а не прокручиваются; текст
-   целиком остаётся в разметке и копируется кнопкой «Копировать». */
+/* A monospaced block: JetBrains Mono. Long lines (the socket path, the command) wrap instead of scrolling; the full text
+   stays in the markup and is copied with the "Копировать" button. */
 .agent-code__text {
   box-sizing: border-box;
   min-width: 0;
@@ -68,7 +68,7 @@
   line-height: var(--type-meta-line-height);
 }
 
-/* Журнал: тихие строки, новые сверху; длиннее страницы — «Показать ещё», без своей прокрутки. */
+/* The log: quiet rows, newest on top; longer than a page means "Показать ещё", with no scroll of its own. */
 .agent-log {
   display: grid;
   gap: var(--space-3);
@@ -169,7 +169,7 @@
   line-height: var(--type-meta-line-height);
 }
 
-/* Начало текста записи: одна строка с многоточием. */
+/* The start of the entry text: one line with an ellipsis. */
 .agent-log__snippet {
   overflow: hidden;
   font-family: var(--type-small-family);
@@ -186,7 +186,7 @@
   line-height: var(--type-meta-line-height);
 }
 
-/* Предупреждение при включении: окно уже обычного диалога, как подтверждение в корзине. */
+/* The warning on enabling: a window narrower than an ordinary dialog, like the confirmation in the trash. */
 .modal__panel:has(.agent-warning) {
   max-width: var(--layout-agent-warning-width);
 }

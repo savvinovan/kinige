@@ -3,53 +3,53 @@ use kinige_domain::chat::ChatInputError;
 use kinige_domain::groups::{BodyError, GroupError};
 use std::fmt;
 
-/// Ошибка хранилища. Фронтенд получает только код (`ErrorCode`), подробности остаются в журнале процесса.
+/// Store error. The frontend gets only the code (`ErrorCode`); details stay in the process log.
 #[derive(Debug)]
 pub enum StoreError {
-    /// Пустой текст записи.
+    /// Empty entry text.
     Empty,
-    /// Текст длиннее предела.
+    /// Text longer than the limit.
     TooLarge,
     ChatNotFound,
-    /// Записи нет (удалена навсегда или id неверен).
+    /// The entry does not exist (deleted forever or the id is wrong).
     MessageNotFound,
-    /// Запись в корзине: перенос в другой чат только для живых записей (сначала «Вернуть»).
+    /// The entry is in the trash: moving to another chat is for live entries only (restore it first).
     MessageInTrash,
-    /// Запись, на которую пишется ответ, не найдена: id неверен, она в корзине, удалена навсегда или в другом чате.
+    /// The entry being replied to is not found: wrong id, in the trash, deleted forever or in another chat.
     ReplyTargetNotFound,
-    /// Запись с группой в неподдерживаемой версии: только чтение (ADR-0001 §4).
+    /// An entry with a group of an unsupported version: read only (ADR-0001 §4).
     ReadOnly,
-    /// Inbox нельзя переименовать, архивировать и удалить.
+    /// Inbox cannot be renamed, archived or deleted.
     InboxProtected,
-    /// «Удалить навсегда» только для записи из корзины.
+    /// "Delete forever" is only for an entry from the trash.
     NotInTrash,
-    /// Дата записи не существует.
+    /// The entry date does not exist.
     InvalidDate,
-    /// Имя или эмодзи чата не приняты.
+    /// The chat name or emoji was not accepted.
     ChatInput(ChatInputError),
-    /// Пункта задачи с таким номером нет или он уже в нужном состоянии.
+    /// There is no task item with this number, or it is already in the wanted state.
     TaskItemStale,
-    /// Сочетание клавиш записано неверно, без модификатора или зарезервировано системой.
+    /// The shortcut is written wrongly, has no modifier or is reserved by the system.
     ShortcutInvalid,
-    /// Такое сочетание уже назначено другому действию Kinige.
+    /// This shortcut is already assigned to another Kinige action.
     ShortcutDuplicate,
-    /// База повреждена: журнал не открыт, нужна копия.
+    /// The database is corrupt: the journal is not open, a backup is needed.
     Corrupt(String),
-    /// Повреждена только таблица поиска (производная): лечится перестройкой из записей, база цела.
+    /// Only the search table (a derived one) is corrupt: healed by a rebuild from the entries, the database is intact.
     SearchIndex(String),
-    /// Копия не найдена, не открывается или повреждена.
+    /// The backup is not found, does not open or is corrupt.
     BackupNotFound,
-    /// Прежнюю папку Markdown-копии не удалось переименовать перед восстановлением: ничего не тронуто.
+    /// The previous Markdown copy folder could not be renamed before the restore: nothing was touched.
     MirrorFolderBusy,
-    /// Копия базы перед импортом не снялась: импорт не начат, ничего не записано.
+    /// The database backup before the import was not taken: the import did not start, nothing was written.
     ImportBackupFailed,
-    /// База создана более новой версией приложения (схема `found`): откат не поддерживается (ТЗ §10.4).
+    /// The database was created by a newer app version (schema `found`): downgrade is not supported (PRD §10.4).
     TooNew(i64),
-    /// Запись в базу не удалась: ничего не записано (транзакция откатилась).
+    /// Writing to the database failed: nothing was written (the transaction rolled back).
     Write(String),
-    /// Чтение не удалось.
+    /// Reading failed.
     Read(String),
-    /// Всё остальное: сломанный поток, повреждённые группы, база новее приложения.
+    /// Everything else: a broken stream, corrupt groups, a database newer than the app.
     Internal(String),
 }
 
@@ -86,8 +86,8 @@ impl StoreError {
 }
 
 impl StoreError {
-    /// Категория для журнала процесса: без текста внутренней ошибки (SQLite, serde, пути, адреса) — в нём могут оказаться
-    /// куски данных пользователя.
+    /// Category for the process log: without the inner error text (SQLite, serde, paths, addresses) -- it may contain
+    /// pieces of the user's data.
     pub fn category(&self) -> &'static str {
         match self {
             StoreError::Empty => "empty",
@@ -120,36 +120,36 @@ impl StoreError {
 impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StoreError::Empty => f.write_str("пустая запись"),
-            StoreError::TooLarge => f.write_str("запись слишком длинная"),
-            StoreError::ChatNotFound => f.write_str("чат не найден"),
-            StoreError::MessageNotFound => f.write_str("запись не найдена"),
-            StoreError::MessageInTrash => f.write_str("запись в корзине"),
-            StoreError::ReplyTargetNotFound => f.write_str("запись для ответа не найдена"),
-            StoreError::ReadOnly => f.write_str("запись только для чтения"),
-            StoreError::InboxProtected => f.write_str("Inbox нельзя изменить так"),
-            StoreError::NotInTrash => f.write_str("запись не в корзине"),
-            StoreError::InvalidDate => f.write_str("дата записи не существует"),
+            StoreError::Empty => f.write_str("empty entry"),
+            StoreError::TooLarge => f.write_str("entry is too long"),
+            StoreError::ChatNotFound => f.write_str("chat not found"),
+            StoreError::MessageNotFound => f.write_str("entry not found"),
+            StoreError::MessageInTrash => f.write_str("entry is in the trash"),
+            StoreError::ReplyTargetNotFound => f.write_str("reply target entry not found"),
+            StoreError::ReadOnly => f.write_str("entry is read-only"),
+            StoreError::InboxProtected => f.write_str("Inbox cannot be changed this way"),
+            StoreError::NotInTrash => f.write_str("entry is not in the trash"),
+            StoreError::InvalidDate => f.write_str("entry date does not exist"),
             StoreError::ChatInput(why) => write!(f, "{why}"),
-            StoreError::TaskItemStale => f.write_str("пункт задачи изменился"),
-            StoreError::ShortcutInvalid => f.write_str("неверное сочетание клавиш"),
-            StoreError::ShortcutDuplicate => f.write_str("сочетание уже назначено"),
-            StoreError::Corrupt(why) => write!(f, "база повреждена: {why}"),
-            StoreError::SearchIndex(why) => write!(f, "индекс поиска повреждён: {why}"),
-            StoreError::BackupNotFound => f.write_str("копия не найдена или повреждена"),
+            StoreError::TaskItemStale => f.write_str("task item changed"),
+            StoreError::ShortcutInvalid => f.write_str("invalid shortcut"),
+            StoreError::ShortcutDuplicate => f.write_str("shortcut already assigned"),
+            StoreError::Corrupt(why) => write!(f, "database is corrupt: {why}"),
+            StoreError::SearchIndex(why) => write!(f, "search index is corrupt: {why}"),
+            StoreError::BackupNotFound => f.write_str("backup not found or corrupt"),
             StoreError::MirrorFolderBusy => {
-                f.write_str("папку Markdown-копии не удалось переименовать")
+                f.write_str("could not rename the Markdown copy folder")
             }
-            StoreError::ImportBackupFailed => f.write_str("копия базы перед импортом не снялась"),
+            StoreError::ImportBackupFailed => f.write_str("backup before the import failed"),
             StoreError::TooNew(found) => {
                 write!(
                     f,
-                    "база создана более новой версией приложения (схема {found})"
+                    "database was created by a newer app version (schema {found})"
                 )
             }
-            StoreError::Write(why) => write!(f, "запись в базу не удалась: {why}"),
-            StoreError::Read(why) => write!(f, "чтение базы не удалось: {why}"),
-            StoreError::Internal(why) => write!(f, "внутренняя ошибка: {why}"),
+            StoreError::Write(why) => write!(f, "writing to the database failed: {why}"),
+            StoreError::Read(why) => write!(f, "reading the database failed: {why}"),
+            StoreError::Internal(why) => write!(f, "internal error: {why}"),
         }
     }
 }
@@ -172,7 +172,7 @@ impl From<ChatInputError> for StoreError {
 }
 
 impl From<GroupError> for StoreError {
-    /// Группа новее поддерживаемой — запись только для чтения; слишком длинная — `TooLarge`; остальное — повреждение.
+    /// A group newer than supported means a read-only entry; too long is `TooLarge`; anything else is corruption.
     fn from(error: GroupError) -> Self {
         match error {
             GroupError::TooLarge => StoreError::TooLarge,
@@ -182,7 +182,7 @@ impl From<GroupError> for StoreError {
     }
 }
 
-/// Ошибка SQLite при записи; «не база данных» и «база повреждена» — это `Corrupt`, а не сбой записи.
+/// SQLite error on write; "not a database" and "database is corrupt" are `Corrupt`, not a write failure.
 pub(crate) fn write_err(error: rusqlite::Error) -> StoreError {
     if is_search_index_error(&error) {
         return StoreError::SearchIndex(error.to_string());
@@ -193,7 +193,7 @@ pub(crate) fn write_err(error: rusqlite::Error) -> StoreError {
     StoreError::Write(error.to_string())
 }
 
-/// Ошибка SQLite при чтении.
+/// SQLite error on read.
 pub(crate) fn read_err(error: rusqlite::Error) -> StoreError {
     if is_search_index_error(&error) {
         return StoreError::SearchIndex(error.to_string());
@@ -204,9 +204,9 @@ pub(crate) fn read_err(error: rusqlite::Error) -> StoreError {
     StoreError::Read(error.to_string())
 }
 
-/// Ошибка самой таблицы поиска `search_fts`, а не базы: `SQLITE_CORRUPT_VTAB` (расширенный код 267, так FTS5 сообщает о
-/// порче своих данных) и «invalid fts5 file format … run 'rebuild'» (`SQLITE_ERROR`, порча настроек индекса). Таблица —
-/// производная от `message.body_md`: лечится перестройкой, а не восстановлением из копии.
+/// An error of the search table `search_fts` itself, not of the database: `SQLITE_CORRUPT_VTAB` (extended code 267, how
+/// FTS5 reports corruption of its data) and "invalid fts5 file format ... run 'rebuild'" (`SQLITE_ERROR`, corrupt index
+/// settings). The table is derived from `message.body_md`: healed by a rebuild, not by a restore from a backup.
 pub(crate) fn is_search_index_error(error: &rusqlite::Error) -> bool {
     const SQLITE_CORRUPT_VTAB: i32 = 267;
     match error {

@@ -1,4 +1,4 @@
-//! Помощники тестов быстрого захвата: чтение строки записи, группы, счётчики.
+//! Helpers for the quick capture tests: reading an entry row, groups, counters.
 
 #![allow(dead_code)]
 

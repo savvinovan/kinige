@@ -2,14 +2,14 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// Окно «Настройки» (слайс 4b): одна прокручиваемая область — страница справа (`.prefs__page`). Дерево слева, списки чатов,
-// журнал, блоки кода и пути показываются целиком, без своей прокрутки и предельной высоты. Предупреждение при включении —
-// `Modal` поверх окна: страница под ним свой overflow не меняет. jsdom не считает вёрстку и не подключает CSS, поэтому правила
-// проверяются по самим файлам; настоящую геометрию (полосы видны) проверяет `tests/visual/scrollbars.spec.ts`.
+// The "Settings" window (slice 4b): one scrollable area, the page on the right (`.prefs__page`). The tree on the left, the chat lists,
+// the log, code blocks and paths are shown in full, without their own scroll or maximum height. The warning on enabling is a
+// `Modal` over the window: the page under it does not change its overflow. jsdom does not compute layout and does not load CSS, so the rules
+// are checked against the files themselves; the real geometry (scrollbars visible) is checked by `tests/visual/scrollbars.spec.ts`.
 
 const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
 
-/** Файлы стилей, которые подключает окно настроек (страницы, дерево, строки, флажки, журнал, окно предупреждения). */
+/** The style files the settings window includes (pages, tree, rows, checkboxes, the log, the warning window). */
 const FILES = [
   "prefs.css",
   "settings-tree.css",
@@ -82,8 +82,8 @@ describe("прокрутка в окне «Настройки»", () => {
     const tree = rules(read("settings-tree.css"));
     expect(tree.get(".settings-tree")).toMatch(/height\s*:\s*100%/);
     expect(tree.get(".settings-tree")).not.toMatch(SCROLLS);
-    // 7 пунктов по `--layout-control-height` (2,3 rem) с промежутком `--space-1` и полями: 7 × 2,3 + 6 × 0,25 + 2 × 1 rem
-    // = 19,6 rem; при крупном тексте (корень 16,25 px) это 319 px < наименьшей высоты окна 440 px.
+    // 7 items of `--layout-control-height` (2.3 rem) with a `--space-1` gap and padding: 7 × 2.3 + 6 × 0.25 + 2 × 1 rem
+    // = 19.6 rem; with large text (root 16.25 px) that is 319 px < the smallest window height of 440 px.
     const rem = 7 * 2.3 + 6 * 0.25 + 2 * 1;
     expect(rem * 16.25).toBeLessThan(440);
   });

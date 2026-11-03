@@ -1,4 +1,4 @@
-/* Главное окно: сайдбар слева, лента и поле ввода справа на всю высоту окна. Только токены. */
+/* Main window: sidebar on the left, feed and composer on the right, full window height. Tokens only. */
 .main-window {
   display: flex;
   height: var(--layout-window-height);

@@ -9,17 +9,17 @@ import "../../settings/settings.css";
 
 interface ShortcutsPageProps {
   shortcuts: readonly ShortcutStatus[];
-  /** Уже переведённый текст ошибки у сочетания. */
+  /** The already translated error text of a shortcut. */
   errors?: Partial<Record<ShortcutKind, string>>;
   onChange: (kind: ShortcutKind, accelerator: string) => void;
   onReset: (kind: ShortcutKind) => void;
-  /** Запись нового сочетания началась или закончилась: Rust на это время отключает глобальные сочетания. */
+  /** Recording a new shortcut started or finished: Rust disables the global shortcuts for that time. */
   onRecording: (active: boolean) => void;
   changedAt: number | null;
   now?: Date;
 }
 
-/** «Сочетания клавиш»: два глобальных сочетания со статусом, сменой и сбросом. */
+/** "Keyboard shortcuts": two global shortcuts with a status, change and reset. */
 export function ShortcutsPage({ shortcuts, errors, onChange, onReset, onRecording, changedAt, now }: ShortcutsPageProps) {
   const { t } = useTranslation();
   const titleId = useId();

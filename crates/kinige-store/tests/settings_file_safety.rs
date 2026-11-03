@@ -1,7 +1,7 @@
-//! Файл настроек: небезопасный файл (ADR-0010), правило «хэш совпал — побеждает база», гонки, обрывы, мусор на входе.
+//! The settings file: an unsafe file (ADR-0010), the "hash matched -- the database wins" rule, races, interruptions, garbage on input.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -44,7 +44,7 @@ fn a_group_writable_file_does_not_switch_agent_access_on_but_the_rest_applies() 
     );
     assert!(
         rig.log_rows().is_empty(),
-        "доступ не менялся — строки журнала нет"
+        "access did not change, so there is no log row"
     );
 }
 
@@ -90,12 +90,12 @@ fn an_unsafe_file_is_not_overwritten_by_a_window_edit() {
 #[cfg(unix)]
 #[test]
 fn a_stale_enabled_in_an_unsafe_period_never_comes_back_when_permissions_are_fixed() {
-    // Последовательность из ревью guardian: файл синхронизирован с enabled=true, chmod 664, в окне выключили доступ
-    // (файл не переписан), chmod 600, агент правит только text_size — доступ остаётся выключенным.
+    // A sequence from the guardian review: the file is synchronized with enabled=true, chmod 664, access is switched off in the window
+    // (the file is not rewritten), chmod 600, the agent edits only text_size: access stays off.
     let rig = rig();
     rig.write(r#"{"agent_access":{"enabled":true}}"#);
     assert!(rig.store.agent_access().unwrap().enabled);
-    // Окно записало файл целиком, теперь он «синхронизирован».
+    // The window wrote the whole file, now it is "synchronized".
     rig.file
         .edit(|store| store.set_agent_mode(kinige_domain::AgentMode::Read))
         .unwrap()
@@ -114,14 +114,14 @@ fn a_stale_enabled_in_an_unsafe_period_never_comes_back_when_permissions_are_fix
     assert_eq!(
         rig.json()["agent_access"]["enabled"],
         true,
-        "небезопасный файл не переписан"
+        "the unsafe file is not rewritten"
     );
     fs::set_permissions(rig.path(), fs::Permissions::from_mode(0o600)).unwrap();
     rig.file.sync_now();
-    // Хэш совпал: победила база, файл переписан из неё.
+    // The hash matched: the database won, the file is rewritten from it.
     assert!(!rig.store.agent_access().unwrap().enabled);
     assert_eq!(rig.json()["agent_access"]["enabled"], false);
-    // Агент правит только text_size в файле, который видит.
+    // The agent edits only text_size in the file it sees.
     let mut doc = rig.json();
     doc["text_size"] = json!("large");
     rig.write(&doc.to_string());
@@ -138,25 +138,25 @@ fn content_written_while_the_file_was_unsafe_is_not_applied_after_chmod() {
     rig.file.sync_now();
     assert!(
         !rig.store.agent_access().unwrap().enabled,
-        "чужая запись не становится доверенной"
+        "a foreign write does not become trusted"
     );
     assert_eq!(
         rig.json()["agent_access"]["enabled"],
         false,
-        "файл переписан из базы"
+        "the file is rewritten from the database"
     );
 }
 
 #[cfg(unix)]
 #[test]
 fn after_chmod_a_fresh_save_applies_the_keys_that_were_ignored() {
-    // Подсказка в окне: «сделайте файл доступным на запись только вам (chmod 600), затем сохраните файл ещё раз».
+    // The hint in the window: "make the file writable only by you (chmod 600), then save the file again".
     let rig = rig();
     rig.write_mode(ACCESS_ON, 0o666);
     fs::set_permissions(rig.path(), fs::Permissions::from_mode(0o600)).unwrap();
     rig.file.sync_now();
     assert!(!rig.store.agent_access().unwrap().enabled);
-    // Повторное сохранение (файл другой по байтам) при безопасных правах применяется целиком.
+    // Saving again (the file differs in bytes) with safe permissions applies in full.
     rig.write(&format!("{ACCESS_ON}\n"));
     assert!(rig.store.agent_access().unwrap().enabled);
     assert!(rig.file.state().unsafe_reason.is_none());
@@ -164,8 +164,8 @@ fn after_chmod_a_fresh_save_applies_the_keys_that_were_ignored() {
 
 #[test]
 fn a_window_edit_between_a_crash_and_a_restart_survives_because_the_hash_matches() {
-    // Окно записало в базу, файл остался прежним (обрыв до записи файла): при старте файл совпадает с сохранённым
-    // хэшем, значит это не внешняя правка — база выигрывает, файл переписывается.
+    // The window wrote to the database, the file stayed as it was (an interruption before the file write): at startup the file matches the stored
+    // hash, so this is not an external edit: the database wins, the file is rewritten.
     let rig = rig();
     rig.store.set_text_size(TextSize::Large).unwrap();
     assert_eq!(rig.json()["text_size"], "normal");
@@ -194,7 +194,7 @@ fn an_external_edit_made_while_the_app_was_off_is_applied_at_start_before_anythi
         0o600,
     );
     let again = start_in(dir, store, |_| {});
-    // Применено синхронно в `start`: опроса ждать не нужно.
+    // Applied synchronously in `start`: there is no need to wait for a poll.
     assert_eq!(
         again.store.get_settings().unwrap().text_size,
         TextSize::Large
@@ -207,7 +207,7 @@ fn an_external_edit_made_while_the_app_was_off_is_applied_at_start_before_anythi
 
 #[test]
 fn a_file_replaced_between_our_rename_and_the_hash_step_is_still_applied() {
-    // Гонка из ревью guardian: хэш считается от записанных байтов, а не от перечитанного файла.
+    // A race from the guardian review: the hash is computed from the written bytes, not from the re-read file.
     let dir_cell: Arc<Mutex<Option<std::path::PathBuf>>> = Arc::new(Mutex::new(None));
     let seen = dir_cell.clone();
     let rig = rig_with(move |options| {
@@ -224,7 +224,7 @@ fn a_file_replaced_between_our_rename_and_the_hash_step_is_still_applied() {
         .edit(|store| store.set_agent_mode(kinige_domain::AgentMode::ReadWrite))
         .unwrap()
         .unwrap();
-    wait_until("правка агента применена", || {
+    wait_until("the agent's edit is applied", || {
         rig.store.get_settings().unwrap().text_size == TextSize::Large
     });
 }

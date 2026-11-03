@@ -1,6 +1,6 @@
-//! Дописывание к последней записи (ТЗ §5.1, §9.3, слайс 2): правило «куда дописывать» и перезапись группы `body`
-//! (ADR-0001 §3.3, §3.4, §4). Без IO: записи и часов здесь нет, вызывающий передаёт строки из базы и новый HLC.
-//! Перезапись `body` используют и дописывание, и правка из ленты (слайс 3); общий движок — `rewrite`.
+//! Appending to the last entry (PRD §5.1, §9.3, slice 2): the "where to append" rule and rewriting the `body` group
+//! (ADR-0001 §3.3, §3.4, §4). No IO: there is no database or clock here, the caller passes the rows from the database and the new HLC.
+//! Both appending and editing from the feed (slice 3) use the `body` rewrite; the shared engine is `rewrite`.
 
 use crate::groups::{GroupError, MAX_BODY_GROUP_BYTES, ORIGIN_USER, SCHEMA_VERSION};
 pub use crate::rewrite::MAX_SUPERSEDES;
@@ -8,23 +8,23 @@ use crate::rewrite::{Groups, chain_fields, rewrite_group, set_chain};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
-/// Окно дописывания: запись не старше десяти минут (ТЗ §2.1, §9.3).
+/// The append window: the entry is not older than ten minutes (PRD §2.1, §9.3).
 pub const APPEND_WINDOW_MS: i64 = 10 * 60 * 1000;
 
-/// Что нужно знать о последней неудалённой записи Inbox, чтобы решить, можно ли дописывать.
+/// What you need to know about the last non-deleted Inbox entry to decide whether it can be appended to.
 #[derive(Debug, Clone, Copy)]
 pub struct AppendCandidate<'a> {
     pub origin: &'a str,
     pub created_at: i64,
     pub journal_date: &'a str,
-    /// `hlc_json` записи: по нему проверяется `sv` каждой группы.
+    /// The entry's `hlc_json`: the `sv` of every group is checked against it.
     pub hlc_json: &'a str,
 }
 
-/// Можно ли дописать к записи: её создал пользователь (`origin = 'user'`, записи агента и импорта не дописываются, §9.3),
-/// она создана не больше десяти минут назад, относится к сегодняшнему дню журнала, а все её группы — в поддерживаемой
-/// `sv` (ADR-0001 §4 п. 4: запись с более новой группой только для чтения). Повреждённый `hlc_json` (не разбирается, нет
-/// группы `body`, у группы нет `sv`) — ошибка, а не «нет»: запись тихо не пропускается, повреждение видно.
+/// Whether the entry can be appended to: it was created by the user (`origin = 'user'`; agent and import entries are not appended to, §9.3),
+/// it was created no more than ten minutes ago, it belongs to today's journal day, and all its groups have a supported
+/// `sv` (ADR-0001 §4 item 4: an entry with a newer group is read-only). A corrupt `hlc_json` (does not parse, no
+/// `body` group, a group has no `sv`) is an error, not "no": the entry is not skipped silently, the corruption is visible.
 pub fn can_append(
     candidate: &AppendCandidate<'_>,
     now_ms: i64,
@@ -33,8 +33,8 @@ pub fn can_append(
     can_append_origin(candidate, ORIGIN_USER, now_ms, today)
 }
 
-/// То же правило для записи с заданным происхождением: агент (ADR-0009) дописывает только к записи `origin = 'agent'`,
-/// пользователь — только к `origin = 'user'`. «Своя» запись определяется по `origin`, а не по имени клиента MCP.
+/// The same rule for an entry with a given origin: the agent (ADR-0009) appends only to an entry with `origin = 'agent'`,
+/// the user only to `origin = 'user'`. "Own" entry is decided by `origin`, not by the MCP client name.
 pub fn can_append_origin(
     candidate: &AppendCandidate<'_>,
     expected_origin: &str,
@@ -44,13 +44,13 @@ pub fn can_append_origin(
     let entries = serde_json::from_str::<BTreeMap<String, Value>>(candidate.hlc_json)
         .map_err(|e| GroupError::Corrupt(e.to_string()))?;
     if !entries.contains_key("body") {
-        return Err(GroupError::Corrupt("нет HLC группы body".into()));
+        return Err(GroupError::Corrupt("no HLC for group body".into()));
     }
     let mut supported = true;
     for entry in entries.values() {
         let sv = entry["sv"]
             .as_u64()
-            .ok_or_else(|| GroupError::Corrupt("нет sv у группы".into()))?;
+            .ok_or_else(|| GroupError::Corrupt("group has no sv".into()))?;
         supported &= sv <= u64::from(SCHEMA_VERSION);
     }
     Ok(supported
@@ -59,47 +59,47 @@ pub fn can_append_origin(
         && now_ms.saturating_sub(candidate.created_at) <= APPEND_WINDOW_MS)
 }
 
-/// Текст записи после дописывания: новый абзац (`\n\n`), потому что переводы строк в ленте склеивают строки (`breaks: true`).
+/// The entry text after appending: a new paragraph (`\n\n`), because line breaks in the feed join lines (`breaks: true`).
 pub fn joined_body(old_body_md: &str, addition: &str) -> String {
     format!("{old_body_md}\n\n{addition}")
 }
 
-/// Текущее состояние записи, нужное для перезаписи `body`.
+/// The current state of an entry needed to rewrite `body`.
 #[derive(Debug, Clone, Copy)]
 pub struct CurrentBody<'a> {
     pub groups_raw: &'a str,
     pub hlc_json: &'a str,
-    /// Текущая версия группы `body` **подтверждена сервером или пришла извне** (ADR-0001 §3.4: «правится версия, которую
-    /// сервер подтвердил»). Неподтверждённая — это «строка outbox без `acked_seq` или `server_known = 0`»: **вызывающий
-    /// обязан учесть оба признака** (в слайсах 1–10 outbox нет, и хватает колонки `server_known`; при появлении outbox
-    /// (слайс 11) версия с неподтверждённой строкой outbox — неподтверждённая, даже если `server_known = 1`).
+    /// The current version of the `body` group is **confirmed by the server or came from outside** (ADR-0001 §3.4: "the version that the
+    /// server confirmed is edited"). Unconfirmed means "an outbox row without `acked_seq` or `server_known = 0`": **the caller
+    /// must take both signs into account** (slices 1-10 have no outbox, and the `server_known` column is enough; once the outbox appears
+    /// (slice 11), a version with an unconfirmed outbox row is unconfirmed even if `server_known = 1`).
     pub body_confirmed: bool,
 }
 
-/// Запись после перезаписи `body`: значения для колонок и новые `groups_raw` / `hlc_json`.
+/// An entry after rewriting `body`: values for the columns and the new `groups_raw` / `hlc_json`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RewrittenBody {
     pub body_md: String,
     pub edited_at: i64,
     pub body_base: Option<String>,
-    /// JSON-массив HLC для колонки `body_supersedes`.
+    /// A JSON array of HLCs for the `body_supersedes` column.
     pub body_supersedes: String,
     pub groups_raw: String,
     pub hlc_json: String,
-    /// Максимум `sv` по группам (ADR-0001 §4).
+    /// The maximum `sv` over the groups (ADR-0001 §4).
     pub schema_version: u32,
 }
 
-/// Перезаписывает группу `body` с новым HLC (ADR-0001 §3.3: клиент пишет каноничные байты только для группы, которую сам
-/// правит). Остальные группы — известные и неизвестные — и неизвестные поля самой `body` сохраняются дословно.
+/// Rewrites the `body` group with a new HLC (ADR-0001 §3.3: the client writes canonical bytes only for the group it itself
+/// edits). The other groups -- known and unknown -- and the unknown fields of `body` itself are kept verbatim.
 ///
-/// `base` и `supersedes` — по §3.4:
-/// - версия подтверждена (`body_confirmed`, см. [`CurrentBody`]): `base = hlc(текущей)`, `supersedes = []`;
-/// - собственная неподтверждённая версия V: `base = V.base`, `supersedes = V.supersedes ∪ {hlc(V)}`, не больше 64 (старейшие
-///   отбрасываются).
+/// `base` and `supersedes` are per §3.4:
+/// - the version is confirmed (`body_confirmed`, see [`CurrentBody`]): `base = hlc(current)`, `supersedes = []`;
+/// - own unconfirmed version V: `base = V.base`, `supersedes = V.supersedes ∪ {hlc(V)}`, at most 64 (the oldest
+///   are dropped).
 ///
-/// Ошибки: повреждённые байты, группа `body` с `sv` выше поддерживаемой, новый HLC не больше прежнего, группа длиннее
-/// [`MAX_BODY_GROUP_BYTES`] после склейки.
+/// Errors: corrupt bytes, a `body` group with `sv` higher than supported, a new HLC not greater than the previous one, a group longer than
+/// [`MAX_BODY_GROUP_BYTES`] after joining.
 pub fn rewrite_body(
     current: &CurrentBody<'_>,
     body_md: &str,

@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Frame } from "../stories/Frame";
 import { UndoToast } from "./UndoToast";
 
-// Тост накладывается поверх и не сдвигает содержимое: в историях он стоит над полем ввода на пустом фоне.
-// В историях тост не исчезает сам (десять минут): снимок и просмотр не гонятся с таймером на 5 секунд.
+// The toast overlays and does not shift content: in the stories it stands above the input field on an empty background.
+// In the stories the toast does not disappear by itself (ten minutes): a snapshot and viewing do not race the 5-second timer.
 const LONG_MS = 600_000;
 
 function Demo({ message, focus = false }: { message: string; focus?: boolean }) {
@@ -32,15 +32,15 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Показан над полем ввода; «Отменить» закрывает его. */
+/** Shown above the input field; "Undo" closes it. */
 export const Показан: Story = {};
 
-/** Длинный текст и латиница переносятся внутри тоста. */
+/** Long text and Latin wrap inside the toast. */
 export const ДлинныйТекст: Story = {
   args: {
     message: "Сообщение «Нужно начать готовиться к системному дизайну и Raft» перемещено в корзину на 30 дней, deleted_at записан",
   },
 };
 
-/** Фокус с клавиатуры на «Отменить». */
+/** Keyboard focus on "Undo". */
 export const Фокус: Story = { args: { focus: true } };

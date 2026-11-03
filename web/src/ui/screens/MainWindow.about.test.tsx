@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, MockApi } from "../../api/MockApi";
 import { fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// «О программе» в меню профиля (KINIG-54): окно поверх главного со строкой сборки от `KinigeApi.appInfo()`.
+// "About" in the profile menu (KINIG-54): a window on top of the main one with the build string from `KinigeApi.appInfo()`.
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 
 async function openAbout(language: "ru" | "en", item: string) {
@@ -22,8 +22,9 @@ describe("О программе", () => {
     const dialog = await screen.findByRole("dialog", { name: "О программе" });
     expect(within(dialog).getByText("Kinige mock")).toBeInTheDocument();
     expect(within(dialog).getByText(/Личный журнал/)).toBeInTheDocument();
-    // Окно появляется после ответа `appInfo` вне act: DOM уже есть, а эффект Modal (фокус на крестик и подписка на Esc
-    // в `document`) ещё может не отработать, и ранний Esc пропадал (KINIG-48). Фокус на крестике — признак, что подписка есть.
+    // The window appears after the `appInfo` reply outside act: the DOM is already there, but the Modal effect (focus on
+    // the cross and the Esc subscription on `document`) may not have run yet, and an early Esc was lost (KINIG-48). Focus
+    // on the cross is a sign that the subscription is in place.
     await waitFor(() => expect(within(dialog).getByRole("button", { name: "Закрыть" })).toHaveFocus());
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -38,7 +39,7 @@ describe("О программе", () => {
 
   it("версия не получена: окно открывается, вместо версии прочерк", async () => {
     const api = new MockApi({ now: NOW, language: "ru" });
-    api.appInfo = () => Promise.reject(new Error("нет связи"));
+    api.appInfo = () => Promise.reject(new Error("no connection"));
     render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />, { language: "ru" });
     fireEvent.click(await screen.findByRole("button", { name: /^Профиль/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "О программе" }));

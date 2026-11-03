@@ -3,18 +3,18 @@ import type { FeedCursor } from "./FeedCursor";
 import type { MessageView } from "./MessageView";
 
 /**
- * Страница ленты: записи по возрастанию `(journal_date, created_at, id)`, самая новая — последней.
+ * A feed page: entries in ascending `(journal_date, created_at, id)` order, the newest last.
  */
 export type MessagePage = { messages: Array<MessageView>, 
 /**
- * Позиция для следующей (более старой) страницы; `null` — больше записей нет.
+ * The position for the next (older) page; `null` -- there are no more entries.
  */
 older: FeedCursor | null, 
 /**
- * Позиция для следующей (более новой) страницы: последняя запись этой; `null` — новее ничего нет (слайс 4).
+ * The position for the next (newer) page: the last entry of this one; `null` -- nothing is newer (slice 4).
  */
 newer: FeedCursor | null, 
 /**
- * Сегодняшний `journal_date` (с границей дня 04:00): от него считаются метки «Сегодня» и «Вчера».
+ * Today's `journal_date` (with the 04:00 day boundary): the "Today" and "Yesterday" labels are counted from it.
  */
 today: string, };

@@ -1,44 +1,44 @@
-//! Markdown-копия (ТЗ §2.1): содержимое файла одного дня `Kinige/<чат>/YYYY/YYYY-MM-DD.md`. Формат не зависит от языка
-//! интерфейса: дата ISO, время 24 часа. Запись файла и расписание — в `kinige-store`.
+//! Markdown copy (PRD §2.1): the contents of the file of one day `Kinige/<chat>/YYYY/YYYY-MM-DD.md`. The format does not
+//! depend on the interface language: ISO date, 24-hour time. Writing the file and the schedule are in `kinige-store`.
 //!
 //! ```text
 //! # 2026-10-21
 //!
 //! ## 09:12
 //!
-//! Купить **молоко**
-//! - [ ] позвонить маме
+//! Buy **milk**
+//! - [ ] call mom
 //!
 //! ## 09:14
 //! …
 //! ```
 //!
-//! Ответ на запись (слайс 5) отмечен строкой `↩` под заголовком времени: `↩ [ГГГГ-ММ-ДД ЧЧ:ММ](<путь к файлу дня старой
-//! записи>)`. Формат не зависит от языка интерфейса.
+//! A reply to an entry (slice 5) is marked with a `↩` line under the time heading: `↩ [YYYY-MM-DD HH:MM](<path to the day
+//! file of the old entry>)`. The format does not depend on the interface language.
 //!
-//! Структура файла держится на заголовках первого и второго уровня. Заголовки внутри записей (ATX `# …` и
-//! подчёркнутые `===` / `---`) сдвигаются на два уровня вниз (не глубже шестого), чтобы запись не разрывала файл на «записи»;
-//! код в ограждениях ``` и ~~~ остаётся как есть.
+//! The file structure rests on first- and second-level headings. Headings inside entries (ATX `# …` and underlined
+//! `===` / `---`) are shifted two levels down (not deeper than the sixth), so that an entry does not split the file into "entries";
+//! code in ``` and ~~~ fences stays as is.
 
 use crate::journal::is_journal_date;
 
-/// Запись для файла дня: время уже переведено в часовой пояс записи.
+/// An entry for the day file: the time is already converted to the entry's time zone.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MirrorEntry {
-    /// `HH:MM`, 24 часа.
+    /// `HH:MM`, 24 hours.
     pub time: String,
     pub body_md: String,
-    /// Запись — ответ: на что (слайс 5).
+    /// The entry is a reply: to what (slice 5).
     pub reply: Option<MirrorReply>,
 }
 
-/// Запись, на которую ответили, как её видно в файле дня.
+/// The entry that was replied to, as it appears in the day file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MirrorReply {
-    /// Старой записи нет (удалена навсегда или ещё не пришла): строка `↩` без даты и ссылки.
+    /// The old entry does not exist (deleted forever or not yet arrived): a `↩` line without a date and a link.
     Gone,
-    /// Старая запись есть: её день, время и путь к файлу её дня относительно файла ответа. Пути нет, если файла в копии
-    /// нет (запись в корзине): строка остаётся без ссылки.
+    /// The old entry exists: its day, time and the path to the file of its day relative to the reply file. There is no
+    /// path if the file is not in the copy (the entry is in the trash): the line stays without a link.
     Original {
         /// `YYYY-MM-DD`.
         date: String,
@@ -48,11 +48,11 @@ pub enum MirrorReply {
     },
 }
 
-/// Имя папки чата: у Inbox — `Inbox` при любом языке интерфейса (путь не меняется от языка).
+/// Chat folder name: for Inbox it is `Inbox` in any interface language (the path does not change with the language).
 pub const INBOX_FOLDER: &str = "Inbox";
 
-/// Путь файла дня относительно папки копии: сегменты `[<чат>, <год>, <YYYY-MM-DD>.md]`. `None`, если дата не в формате
-/// `YYYY-MM-DD` (в путь не должно попадать ничего, кроме цифр).
+/// The path of the day file relative to the copy folder: segments `[<chat>, <year>, <YYYY-MM-DD>.md]`. `None` if the date
+/// is not in the `YYYY-MM-DD` format (nothing but digits may get into the path).
 pub fn day_file_segments(chat_folder: &str, journal_date: &str) -> Option<[String; 3]> {
     if !is_journal_date(journal_date)
         || chat_folder.is_empty()
@@ -69,8 +69,9 @@ pub fn day_file_segments(chat_folder: &str, journal_date: &str) -> Option<[Strin
     ])
 }
 
-/// Путь к файлу дня `to` из файла дня чата `from_chat_folder` (оба — `day_file_segments`), для ссылки `↩`: тот же чат —
-/// `../<год>/<файл>`, другой — `../../<чат>/<год>/<файл>`. Файл ответа лежит в `<чат>/<год>/`.
+/// The path to the day file `to` from the day file of chat `from_chat_folder` (both are `day_file_segments`), for the `↩`
+/// link: the same chat -- `../<year>/<file>`, another one -- `../../<chat>/<year>/<file>`. The reply file lives in
+/// `<chat>/<year>/`.
 pub fn relative_day_link(from_chat_folder: &str, to: &[String; 3]) -> String {
     if to[0] == from_chat_folder {
         format!("../{}/{}", to[1], to[2])
@@ -79,7 +80,7 @@ pub fn relative_day_link(from_chat_folder: &str, to: &[String; 3]) -> String {
     }
 }
 
-/// Содержимое файла дня. Записи — в порядке `(created_at, id)`, как в ленте.
+/// The contents of the day file. Entries are in the order `(created_at, id)`, as in the feed.
 pub fn render_day_file(journal_date: &str, entries: &[MirrorEntry]) -> String {
     let mut out = format!("# {journal_date}\n");
     for entry in entries {
@@ -94,7 +95,7 @@ pub fn render_day_file(journal_date: &str, entries: &[MirrorEntry]) -> String {
     out
 }
 
-/// Строка `↩` ответа. Адрес в угловых скобках: в имени папки чата бывают пробелы и скобки (`<`, `>` и `/` в именах уже вычищены).
+/// The `↩` line of a reply. The address is in angle brackets: a chat folder name may contain spaces and parentheses (`<`, `>` and `/` are already stripped from names).
 fn reply_line(reply: &MirrorReply) -> String {
     match reply {
         MirrorReply::Gone => "↩".to_string(),
@@ -111,9 +112,9 @@ fn reply_line(reply: &MirrorReply) -> String {
     }
 }
 
-/// Сдвигает заголовки внутри записи на два уровня вниз (ATX) и превращает подчёркнутые в ATX (уровни 3 и 4).
-/// Подчёркнутый заголовок над абзацем из нескольких строк превращается в заголовок только из последней строки: структура
-/// файла не ломается, текст не теряется.
+/// Shifts headings inside an entry two levels down (ATX) and turns underlined ones into ATX (levels 3 and 4).
+/// An underlined heading over a multi-line paragraph becomes a heading of the last line only: the file structure
+/// does not break, no text is lost.
 fn demote_headings(body: &str) -> String {
     let lines: Vec<&str> = body.split('\n').collect();
     let mut out: Vec<String> = Vec::with_capacity(lines.len());
@@ -152,7 +153,7 @@ fn demote_headings(body: &str) -> String {
     out.join("\n")
 }
 
-/// Начало ограждённого блока: до трёх пробелов, затем три и более «```» или «~~~» (у «`» в строке информации нет «`»).
+/// The start of a fenced block: up to three spaces, then three or more "```" or "~~~" (for "`" the info string has no "`").
 pub(crate) fn opening_fence(line: &str) -> Option<(char, usize)> {
     let rest = strip_indent(line)?;
     let marker = rest.chars().next().filter(|c| *c == '`' || *c == '~')?;
@@ -171,7 +172,7 @@ pub(crate) fn is_closing_fence(line: &str, marker: char, length: usize) -> bool 
     run >= length && rest.get(run..).unwrap_or_default().trim().is_empty()
 }
 
-/// Строка без отступа в 0–3 пробела; `None`, если отступ больше (это блок кода, не разметка).
+/// The line without its 0-3 space indent; `None` if the indent is larger (that is a code block, not markup).
 fn strip_indent(line: &str) -> Option<&str> {
     let spaces = line.bytes().take_while(|b| *b == b' ').count();
     if spaces > 3 {
@@ -180,7 +181,7 @@ fn strip_indent(line: &str) -> Option<&str> {
     line.get(spaces..)
 }
 
-/// ATX-заголовок `#`…`######` + пробел или конец строки → тот же заголовок на два уровня глубже (не глубже шестого).
+/// An ATX heading `#`…`######` + a space or end of line -> the same heading two levels deeper (not deeper than the sixth).
 fn demote_atx(line: &str) -> Option<String> {
     let rest = strip_indent(line)?;
     let hashes = rest.bytes().take_while(|b| *b == b'#').count();
@@ -198,7 +199,7 @@ fn demote_atx(line: &str) -> Option<String> {
     ))
 }
 
-/// Подчёркивание заголовка: `===` — уровень 1, `---` — уровень 2.
+/// Heading underline: `===` is level 1, `---` is level 2.
 fn setext_level(line: &str) -> Option<usize> {
     let rest = strip_indent(line)?.trim_end();
     if !rest.is_empty() && rest.bytes().all(|b| b == b'=') {
@@ -210,7 +211,7 @@ fn setext_level(line: &str) -> Option<usize> {
     }
 }
 
-/// Строка обычного абзаца: не пустая и не начало списка, цитаты, заголовка, таблицы или ограждения.
+/// A line of a plain paragraph: not empty and not the start of a list, quote, heading, table or fence.
 fn is_plain_paragraph_line(line: &str) -> bool {
     let Some(rest) = strip_indent(line) else {
         return false;

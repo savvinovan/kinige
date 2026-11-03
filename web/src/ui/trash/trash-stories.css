@@ -1,4 +1,4 @@
-/* Только для историй Storybook: корзина занимает окно по высоте, как в приложении. */
+/* Storybook stories only: the trash takes the window's full height, as in the app. */
 .story-trash {
   display: flex;
   flex-direction: column;

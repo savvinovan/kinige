@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Ставит зависимости (если нужно) и запускает приложение в режиме разработки: окно Kinige + Vite.
-# Мост MCP (`kinige-mcp`) собирается и кладётся как sidecar, чтобы фрагмент подключения в окне «Доступ ИИ-агентов» вёл на
-# настоящий файл (в dev он лежит рядом с исполняемым файлом приложения: target/debug/kinige-mcp).
+# Installs dependencies (if needed) and runs the app in development mode: the Kinige window + Vite.
+# The MCP bridge (`kinige-mcp`) is built and placed as a sidecar, so that the connection snippet in the "AI agents access" window
+# points to a real file (in dev it sits next to the app executable: target/debug/kinige-mcp).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -d web/node_modules ] || npm --prefix web ci

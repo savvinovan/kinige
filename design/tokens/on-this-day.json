@@ -1,7 +1,7 @@
 {
   "layout": {
     "on-this-day": {
-      "entry-lines": { "$type": "number", "$value": 3, "$description": "Сколько строк текста записи показывает строка карточки «В этот день» (слайс 5); остальное обрезается многоточием (line-clamp). Полный текст открывается в ленте щелчком по записи." }
+      "entry-lines": { "$type": "number", "$value": 3, "$description": "How many lines of the entry text a row of the 'On this day' card shows (slice 5); the rest is cut off with an ellipsis (line-clamp). The full text opens in the feed by clicking the entry." }
     }
   }
 }

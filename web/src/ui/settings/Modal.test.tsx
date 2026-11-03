@@ -167,7 +167,7 @@ describe("Modal", () => {
     );
     const over = screen.getByRole("dialog", { name: "Верхнее" });
     expect(over.contains(document.activeElement)).toBe(true);
-    // Tab ходит по кругу внутри верхнего и не уходит в нижнее.
+    // Tab cycles inside the top window and does not go to the lower one.
     tab();
     tab();
     tab();
@@ -207,7 +207,7 @@ describe("Modal", () => {
         <p>Текст</p>
       </Modal>,
     );
-    // Кнопка закрытия есть всегда: Tab не уходит из окна, а остаётся на ней.
+    // The close button is always there: Tab does not leave the window but stays on it.
     tab();
     expect(screen.getByRole("button", { name: "Закрыть окно" })).toHaveFocus();
   });

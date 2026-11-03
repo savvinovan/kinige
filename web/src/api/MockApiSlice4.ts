@@ -13,13 +13,13 @@ import type { SearchFilters } from "./generated/SearchFilters";
 import type { SearchHit } from "./generated/SearchHit";
 import type { SearchPage } from "./generated/SearchPage";
 
-/** Выбор файла импорта в моке: что «выберет» диалог. */
+/** The import file choice in the mock: what the dialog will "pick". */
 export type MockImportFile = ImportPreview | ErrorCode | null;
 
-/** Имя копии, которое называет отчёт мока. */
+/** The backup name that the mock report gives. */
 export const MOCK_BACKUP_NAME = "pre-import-20261028T125000Z.db";
 
-// «ё» → «е» (кириллицы в коде нет: строки интерфейса живут в locales).
+// Cyrillic "yo" -> "ye" (no Cyrillic literals in code: UI strings live in locales).
 const YO = String.fromCharCode(0x451);
 const YE = String.fromCharCode(0x435);
 const normalize = (text: string) => text.toLowerCase().replaceAll(YO, YE);
@@ -30,21 +30,21 @@ const cursorOf = (m: { journalDate: string; createdAt: number; id: string }): Fe
 });
 
 /**
- * Слайс 4 в `MockApi`: страницы ленты вокруг записи и новее, поиск (подстрока слов без стемминга — в моке допустимо, настоящие
- * словоформы считает Rust) и импорт из Telegram с прогрессом, остановкой и паузой для тестов.
+ * Slice 4 in `MockApi`: feed pages around an entry and newer ones, search (a word substring without stemming is fine in the
+ * mock, the real word forms are computed by Rust) and the Telegram import with progress, stopping and a pause for tests.
  */
 export class MockApiSlice4 extends MockApiBase {
-  /** Что вернёт следующий «Выбрать result.json…»: предпросмотр, `null` (отмена диалога) или код ошибки. */
+  /** What the next "Choose result.json..." returns: a preview, `null` (the dialog was cancelled) or an error code. */
   importFile: MockImportFile = null;
-  /** Поправки к отчёту, который мок собирает по выбранным чатам. */
+  /** Corrections to the report that the mock builds from the chosen chats. */
   importReportPatch: Partial<ImportReport> = {};
-  /** Сколько событий прогресса мок присылает за импорт (последнее — «всё»). */
+  /** How many progress events the mock sends per import (the last one is "all"). */
   importSteps = 3;
-  /** Импорт замирает после первого события прогресса, пока тест не вызовет `releaseImport()`. */
+  /** The import freezes after the first progress event until the test calls `releaseImport()`. */
   holdImport = false;
-  /** Окно импорта закрыто столько раз (`importTelegramClose`). */
+  /** The import window was closed this many times (`importTelegramClose`). */
   importClosed = 0;
-  /** Выбранные чаты последнего запуска. */
+  /** The chats chosen in the last run. */
   lastImportChats: readonly string[] = [];
 
   private importSession = 0;
@@ -55,7 +55,7 @@ export class MockApiSlice4 extends MockApiBase {
   private readonly progressListeners = new Set<(progress: ImportProgress) => void>();
 
   listMessages(chatId: string, options: ListMessagesOptions = {}): Promise<MessagePage> {
-    // Не через `run`: журнал вызовов ленту не ведёт (его читают проверки команд слайса 3).
+    // Not through `run`: the feed does not keep a call log (slice 3 command checks read it).
     try {
       return Promise.resolve(this.page(chatId, options));
     } catch (error) {
@@ -231,13 +231,13 @@ export class MockApiSlice4 extends MockApiBase {
     });
   }
 
-  /** Продолжить замершую командой `holdImport` загрузку до следующего события прогресса. */
+  /** Continue the import frozen by `holdImport` up to the next progress event. */
   releaseImport(): void {
     this.release?.();
     this.release = null;
   }
 
-  /** Запись, которую открывает переход из результата поиска, для проверок. */
+  /** The entry opened by a jump from a search result, for checks. */
   searchable(): readonly MessageView[] {
     return this.rows.filter((r) => r.deletedAt === null).map((r) => r.view);
   }

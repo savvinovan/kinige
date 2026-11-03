@@ -10,7 +10,7 @@ import { MainWindow } from "./MainWindow";
 import { MainWindowView } from "./MainWindowView";
 import "./screens-stories.css";
 
-// «Сегодня» в историях фиксировано (вторник, 20 октября 2026), чтобы метки дней и снимки не менялись от запуска к запуску.
+// "Today" is fixed in the stories (Tuesday, 20 October 2026), so day labels and snapshots do not change from run to run.
 const NOW = new Date(2026, 9, 20, 17, 0);
 const TODAY = "2026-10-20";
 
@@ -24,13 +24,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Окно 1280 × 800 (размер окна истории в визуальных тестах): сайдбар, лента с метками дней, поле ввода. Названия чата над лентой нет. */
+/** A 1280 x 800 window (the story window size in visual tests): sidebar, feed with day labels, composer. There is no chat title above the feed. */
 export const Обычное: Story = {};
 
-/** То же по-английски: метки дней, время, подписи, «Inbox». */
+/** The same in English: day labels, time, captions, "Inbox". */
 export const Английский: Story = { globals: { language: "en" } };
 
-/** Узкое окно: лента сужается, плашки переносят текст, сайдбар остаётся. */
+/** A narrow window: the feed narrows, plates wrap text, the sidebar stays. */
 export const Узкое: Story = {
   decorators: [
     (Story) => (
@@ -41,10 +41,10 @@ export const Узкое: Story = {
   ],
 };
 
-/** Пустой чат: подсказка в ленте, поле ввода на месте. */
+/** An empty chat: a hint in the feed, the composer in place. */
 export const ПустойЧат: Story = { args: { messages: [] } };
 
-/** Длинные сообщения: плашки упираются в ширину ~80 знаков, длинная строка без пробелов переносится. */
+/** Long messages: plates hit the ~80 character width, a long string without spaces wraps. */
 export const ДлинныйТекст: Story = {
   args: {
     messages: [
@@ -65,7 +65,7 @@ export const ДлинныйТекст: Story = {
   },
 };
 
-/** Настоящее окно слайса 1 в приложении: одна запись, счётчик 1, пустое поле, без тоста и без мёртвых кнопок (запись просто появляется). */
+/** The real slice 1 window in the app: one entry, counter 1, an empty composer, no toast and no dead buttons (the entry simply appears). */
 export const ПослеОтправки: Story = {
   args: {
     chats: [{ ...toSidebarChat(DEMO_INBOX), count: 1 }],
@@ -76,7 +76,7 @@ export const ПослеОтправки: Story = {
   },
 };
 
-/** Приложение слайса 1 с пустым Inbox: пустая лента, курсор в поле, у «Входящих» нет счётчика. */
+/** The slice 1 app with an empty Inbox: an empty feed, the cursor in the composer, no counter on "Inbox". */
 export const ПервыйЗапуск: Story = {
   args: {
     chats: [{ ...toSidebarChat(DEMO_INBOX), count: 0 }],
@@ -87,7 +87,7 @@ export const ПервыйЗапуск: Story = {
   },
 };
 
-/** Ошибка отправки: текст остался в поле, над ним — причина. */
+/** A send error: the text stayed in the composer, the reason is above it. */
 export const ОшибкаОтправки: Story = {
   args: {
     ...ПервыйЗапуск.args,
@@ -96,7 +96,7 @@ export const ОшибкаОтправки: Story = {
   },
 };
 
-/** Настоящий `MainWindow` на `MockApi` (как в приложении, но в памяти): можно писать и отменять. */
+/** The real `MainWindow` on `MockApi` (as in the app, but in memory): you can write and cancel. */
 export const НаMockApi: Story = { render: () => <WindowOnMockApi /> };
 
 function WindowOnMockApi() {

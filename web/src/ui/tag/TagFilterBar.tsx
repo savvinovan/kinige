@@ -3,18 +3,18 @@ import { IconButton } from "../controls/IconButton";
 import "./tag.css";
 
 interface TagFilterBarProps {
-  /** Тег фильтра в нижнем регистре, без `#`. */
+  /** The filter tag in lower case, without `#`. */
   tag: string;
-  /** Сбросить фильтр (кнопка «×»). Esc обрабатывает родитель. */
+  /** Clear the filter (the "×" button). Esc is handled by the parent. */
   onClear: () => void;
 }
 
-// Подстановка для разбора фразы: тег в ней выделяется отдельным элементом, а порядок слов остаётся за переводом.
+// A placeholder for splitting the phrase: the tag in it is rendered as a separate element, while the word order is left to the translation.
 const SLOT = "\u0000";
 
 /**
- * Строка над лентой при фильтре по тегу: «Показаны записи с #тег» тихо, тег акцентным цветом, справа кнопка «×»
- * («Сбросить фильтр»). Длинный тег переносится, строка не растёт за колонку ленты.
+ * The row above the feed when filtering by a tag: "Показаны записи с #тег" (entries with #tag shown) quietly, the tag in the accent color, a "×" button on the right
+ * ("Clear filter"). A long tag wraps, the row does not grow beyond the feed column.
  */
 export function TagFilterBar({ tag, onClear }: TagFilterBarProps) {
   const { t } = useTranslation();

@@ -38,14 +38,14 @@ import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
 import type { WeekdaySource } from "./generated/WeekdaySource";
 
-/** События Rust → главное окно (имена совпадают с `capture::ENTRIES_CHANGED`, `capture::OPEN_CHAT`, `recovery::DATABASE_CORRUPT`). */
+/** Rust -> main window events (the names match `capture::ENTRIES_CHANGED`, `capture::OPEN_CHAT`, `recovery::DATABASE_CORRUPT`). */
 const ENTRIES_CHANGED = "entries-changed";
 const OPEN_CHAT = "open-chat";
 const DATABASE_CORRUPT = "database-corrupt";
-/** Настройки изменились и запись просят открыть (`settings_window::SETTINGS_CHANGED`, `OPEN_MESSAGE`). */
+/** Settings changed and an entry is asked to be opened (`settings_window::SETTINGS_CHANGED`, `OPEN_MESSAGE`). */
 const SETTINGS_CHANGED = "settings-changed";
 const OPEN_MESSAGE = "open-message";
-/** Прогресс импорта (`import::IMPORT_PROGRESS`); приходит только главному окну. */
+/** Import progress (`import::IMPORT_PROGRESS`); it reaches the main window only. */
 const IMPORT_PROGRESS = "import-progress";
 
 const CODES = [
@@ -88,7 +88,7 @@ const CODES = [
 const allCodesListed: [Exclude<ErrorCode, (typeof CODES)[number]>] extends [never] ? true : never = true;
 void allCodesListed;
 
-/** Отказ команды → `KinigeApiError`. Не наш формат (например, отказ ACL — строка) — `internal`. */
+/** A command failure -> `KinigeApiError`. Not our format (for example, an ACL denial is a string) -> `internal`. */
 function toApiError(reason: unknown): KinigeApiError {
   const code = (reason as Partial<ApiError> | null)?.code;
   return new KinigeApiError(CODES.find((known) => known === code) ?? "internal");
@@ -102,7 +102,7 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
   }
 }
 
-/** `KinigeApi` поверх команд Tauri. Имена аргументов — camelCase: Tauri сам переводит их в snake_case Rust. */
+/** `KinigeApi` over Tauri commands. Argument names are camelCase: Tauri itself converts them to Rust snake_case. */
 export class TauriApi implements KinigeApi {
   appInfo(): Promise<AppInfo> {
     return call("app_info");

@@ -1,10 +1,10 @@
 {
   "opacity": {
     "$type": "number",
-    "disabled": { "$value": 0.5, "$description": "Недоступная кнопка (WCAG не требует контраста для недоступных элементов)." },
-    "unavailable": { "$value": 0.7, "$description": "Кнопка, функции которой ещё нет («Появится позже»): остаётся читаемой, но слабее обычной." },
-    "context-plate": { "$value": 0.6, "$description": "Заливка бледной записи контекста в окне захвата: заливка плашки сообщения с этой непрозрачностью. Только заливка: текст остаётся обычным цветом, поэтому контраст текста считается по существующим парам (заливка лежит между бумагой и плашкой)." },
-    "panel-edge": { "$value": 0.18, "$description": "Тонкая светлая обводка плавающей панели захвата: рамка цвета основного текста с этой непрозрачностью (псевдоэлемент панели). Отделяет панель от тёмных окон за ней; светлых рабочих столов хватает самой заливки и тени." },
-    "scrim": { "$value": 0.72, "$description": "Подложка модального окна: заливка цвета фона окна с этой непрозрачностью. Главное окно за диалогом остаётся различимым, но отступает." }
+    "disabled": { "$value": 0.5, "$description": "A disabled button (WCAG does not require contrast for disabled elements)." },
+    "unavailable": { "$value": 0.7, "$description": "A button whose feature does not exist yet ('Coming later'): stays readable but weaker than a normal one." },
+    "context-plate": { "$value": 0.6, "$description": "Fill of a pale context entry in the capture window: the message plate fill with this opacity. Only the fill: the text keeps its normal color, so the text contrast is computed from the existing pairs (the fill lies between the paper and the plate)." },
+    "panel-edge": { "$value": 0.18, "$description": "A thin light outline of the floating capture panel: a border in the primary text color with this opacity (a pseudo-element of the panel). It separates the panel from dark windows behind it; on light desktops the fill and the shadow are enough." },
+    "scrim": { "$value": 0.72, "$description": "The backdrop of a modal window: a fill in the window background color with this opacity. The main window behind the dialog stays distinguishable but recedes." }
   }
 }

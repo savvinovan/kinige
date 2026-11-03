@@ -48,7 +48,7 @@ describe("строка журнала", () => {
     const file = { tool: "settings_file", client: "settings.json", query: null, count: 0 };
     expect(logLine(row(file), NOW, "ru", tr("ru"))).toBe("14:02 · settings.json · доступ изменён");
     expect(logLine(row(file), NOW, "en", tr("en"))).toBe("14:02 · settings.json · access changed");
-    // Клиент MCP может назвать себя «settings.json»: его поиск остаётся поиском.
+    // An MCP client may name itself "settings.json": its search stays a search.
     expect(logLine(row({ client: "settings.json", count: 0 }), NOW, "ru", tr("ru"))).toBe("14:02 · settings.json · поиск «Raft»");
     expect(logLine(row({ tool: "settings_file", client: "Claude Desktop", query: null, count: 0 }), NOW, "ru", tr("ru"))).toBe(
       "14:02 · Claude Desktop · доступ изменён",

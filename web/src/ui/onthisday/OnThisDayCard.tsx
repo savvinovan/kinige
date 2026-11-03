@@ -12,18 +12,18 @@ import "./on-this-day.css";
 
 interface OnThisDayCardProps {
   card: OnThisDay;
-  /** Открыть запись в ленте в контексте (щелчок по записи, «ещё N», строка старого года). */
+  /** Open an entry in the feed in context (a click on an entry, "N more", an old-year row). */
   onOpen: (messageId: string) => void;
-  /** «Ответить» у записи карточки. */
+  /** "Reply" on a card entry. */
   onReply: (entry: OnThisDayEntry) => void;
-  /** Крестик: скрыть до следующего дня журнала. */
+  /** The cross: hide until the next journal day. */
   onDismiss: () => void;
 }
 
 /**
- * Карточка «В этот день» (слайс 5): записи этого же числа прошлых лет, от новых лет к старым. Три новых года подробно (до двух
- * записей, текст до трёх строк, время, «Ответить»), ниже «ещё N записей этого дня ›»; старые годы — по строке «31 октября 2019 ·
- * 5 записей ›». Заливка карточки, без рамки и тени; «Ответить» проявляется при наведении и фокусе (движения нет).
+ * The "On this day" card (slice 5): entries of the same date in past years, from newer years to older. The three newest years in detail (up to two
+ * entries, text up to three lines, time, "Reply"), below that "N more entries of this day >"; older years get one row each, "31 октября 2019 ·
+ * 5 записей >". A filled card, no border or shadow; "Reply" appears on hover and focus (no motion).
  */
 export function OnThisDayCard({ card, onOpen, onReply, onDismiss }: OnThisDayCardProps) {
   const { t } = useTranslation();

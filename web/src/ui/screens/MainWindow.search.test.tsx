@@ -5,8 +5,8 @@ import type { SearchPage } from "../../api/generated/SearchPage";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// Поиск на настоящем `MainWindow` и `MockApi`: ввод с задержкой, фильтры, клавиатура, гонка ответов, пустой результат, ошибка,
-// переход к записи. Стемминг в моке упрощён (подстрока): словоформы проверяют тесты Rust.
+// Search on the real `MainWindow` and `MockApi`: input with a delay, filters, keyboard, a race of replies, an empty result, an error,
+// a jump to an entry. Stemming in the mock is simplified (a substring): word forms are checked by the Rust tests.
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 const DAY = Date.UTC(2026, 9, 21, 5, 0);
 
@@ -35,7 +35,7 @@ const field = () => screen.getByRole("combobox", { name: "Поиск" }) as HTML
 const type = (value: string) => fireEvent.change(field(), { target: { value } });
 const results = () => screen.getByRole("region", { name: "Результаты поиска" });
 const options = () => within(results()).getAllByRole("option");
-/** Строки записей без строки «Чаты» (чат «Книги» совпадает с запросом «книг» по названию). */
+/** Entry rows without the "Chats" row (the chat "Книги" matches the query "книг" by name). */
 const hits = () => options().filter((row) => !row.classList.contains("search-chat"));
 
 describe("Поиск: ввод и результаты на месте ленты", () => {
@@ -44,7 +44,7 @@ describe("Поиск: ввод и результаты на месте лент�
     await screen.findByText("Читаю книгу про море");
     expect(screen.queryByRole("region", { name: "Результаты поиска" })).toBeNull();
     type("книг");
-    // Запрос уходит не сразу, а после паузы в наборе.
+    // The query is not sent at once, but after a pause in typing.
     expect(api.calls.some((c) => c.startsWith("searchMessages"))).toBe(false);
     expect(await within(await screen.findByRole("region", { name: "Результаты поиска" })).findAllByRole("option")).toHaveLength(4);
     expect(api.calls.filter((c) => c.startsWith("searchMessages"))).toEqual(["searchMessages книг"]);
@@ -57,8 +57,8 @@ describe("Поиск: ввод и результаты на месте лент�
     type("книг");
     await waitFor(() => expect(options().length).toBeGreaterThan(0));
     const rows = options();
-    // Новые сверху; первая — из Входящих.
-    expect(rows[0]).toHaveTextContent("Книги"); // строка «Чаты»: чат «Книги» совпал по названию
+    // Newest on top; the first is from Inbox.
+    expect(rows[0]).toHaveTextContent("Книги"); // the "Chats" row: the chat "Книги" matched by name
     const first = rows[1];
     expect(first).toHaveTextContent("Входящие");
     expect(first).toHaveTextContent("Сегодня");
@@ -153,7 +153,7 @@ describe("Поиск: клавиатура и переход к записи", (
     expect(plate).toHaveClass("message--highlighted");
     expect(plate.querySelector("mark")?.textContent).toBe("море");
     expect(field().value).toBe("");
-    // Щелчок в ленте снимает подсветку.
+    // A click in the feed clears the highlight.
     fireEvent.pointerDown(screen.getByRole("region", { name: "Записи" }));
     expect(plate).not.toHaveClass("message--highlighted");
     expect(plate.querySelector("mark")).toBeNull();
@@ -188,7 +188,7 @@ describe("Поиск: клавиатура и переход к записи", (
   });
 
   it("⌘F ставит фокус в поле; в свёрнутом сайдбаре значок поиска разворачивает его и ставит фокус", async () => {
-    // В jsdom платформа не мак: ⌘F — для мака, на остальных системах Ctrl+F.
+    // In jsdom the platform is not a Mac: Cmd+F is for Mac, on other systems it is Ctrl+F.
     vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
     const api = setup();
     await screen.findByText("Читаю книгу про море");
@@ -208,7 +208,7 @@ describe("Поиск: клавиатура и переход к записи", (
     type("к");
     await waitFor(() => expect(options().length).toBeGreaterThan(0));
     type("");
-    // Лента и поле заметки вернулись, но фокус остался там, где печатает человек.
+    // The feed and the note field came back, but focus stayed where the person is typing.
     const note = await screen.findByRole("textbox", { name: "Новая заметка" });
     expect(field()).toHaveFocus();
     expect(note).not.toHaveFocus();
@@ -217,7 +217,7 @@ describe("Поиск: клавиатура и переход к записи", (
     expect(field()).toHaveFocus();
     fireEvent.keyDown(field(), { key: "Enter" });
     expect(api.calls.some((c) => c.startsWith("sendMessage"))).toBe(false);
-    // Esc — человек сам уходит из поля: фокус у поля заметки.
+    // Esc: the person leaves the field on purpose, focus is on the note field.
     fireEvent.keyDown(field(), { key: "Escape" });
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Новая заметка" })).toHaveFocus());
   });
@@ -233,7 +233,7 @@ describe("Поиск: клавиатура и переход к записи", (
     expect(within(results()).getByText("Чаты")).toBeInTheDocument();
     fireEvent.click(row);
     await waitFor(() => expect(screen.getByRole("button", { name: /^Входящие/ })).toHaveAttribute("aria-current", "true"));
-    // Запрос, которому имя не соответствует, строки Inbox не даёт.
+    // A query that the name does not match gives no Inbox row.
     type("книг");
     await waitFor(() => expect(options().length).toBeGreaterThan(0));
     expect(options().filter((o) => o.classList.contains("search-chat") && /Входящие/.test(o.textContent ?? ""))).toHaveLength(0);

@@ -1,7 +1,7 @@
-//! «В этот день» (слайс 5): отбор записей Inbox прошлых лет, состав карточки, скрытие до следующего дня журнала.
+//! "On this day" (slice 5): selecting Inbox entries of past years, the card's contents, hiding it until the next journal day.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -48,7 +48,7 @@ fn only_inbox_entries_of_past_years_with_the_same_month_and_day_are_selected() {
         .delete_message(&doomed, &at(2026, 10, 21, 7, 0))
         .unwrap();
 
-    let found = card(&store, &at(2026, 10, 21, 12, 0)).expect("карточка");
+    let found = card(&store, &at(2026, 10, 21, 12, 0)).expect("card");
     assert_eq!(found.today, "2026-10-21");
     assert_eq!(year_dates(&found), ["2023-10-21"]);
     assert_eq!(found.years[0].years_ago, 3);
@@ -63,7 +63,11 @@ fn only_inbox_entries_of_past_years_with_the_same_month_and_day_are_selected() {
 fn no_card_without_entries_in_past_years_or_without_any_entries() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
-    assert_eq!(card(&store, &at(2026, 10, 21, 12, 0)), None, "пустая база");
+    assert_eq!(
+        card(&store, &at(2026, 10, 21, 12, 0)),
+        None,
+        "empty database"
+    );
     put(&store, INBOX_ID, "сегодня", ms(2026, 10, 21, 8, 0));
     put(
         &store,
@@ -72,7 +76,7 @@ fn no_card_without_entries_in_past_years_or_without_any_entries() {
         ms(2025, 10, 20, 8, 0),
     );
     assert_eq!(card(&store, &at(2026, 10, 21, 12, 0)), None);
-    // Все записи этого числа ушли в корзину.
+    // All entries of this date went to the trash.
     let id = put(&store, INBOX_ID, "год назад", ms(2025, 10, 21, 8, 0));
     assert!(card(&store, &at(2026, 10, 21, 12, 0)).is_some());
     store.delete_message(&id, &at(2026, 10, 21, 12, 5)).unwrap();
@@ -118,7 +122,7 @@ fn years_go_from_new_to_old_three_are_detailed_with_two_entries_and_the_rest_are
             .find(|(y, _)| year.journal_date.starts_with(&y.to_string()))
             .unwrap()
             .1;
-        assert_eq!(&year.first_id, id, "первая запись дня");
+        assert_eq!(&year.first_id, id, "first entry of the day");
         if index < DETAILED_YEARS {
             assert_eq!(year.entries.len(), ENTRIES_PER_YEAR);
             let texts: Vec<&str> = year
@@ -135,7 +139,7 @@ fn years_go_from_new_to_old_three_are_detailed_with_two_entries_and_the_rest_are
                 format!("{} запись 1", year.journal_date.get(..4).unwrap())
             );
         } else {
-            assert!(year.entries.is_empty(), "старые годы — строкой");
+            assert!(year.entries.is_empty(), "old years are a single line");
         }
     }
 }
@@ -156,7 +160,7 @@ fn the_card_counts_only_years_with_entries_when_choosing_the_detailed_ones() {
     assert_eq!(
         detailed.len(),
         DETAILED_YEARS,
-        "годы без записей не занимают места"
+        "years without entries take no space"
     );
     assert_eq!(found.years.len(), 4);
 }
@@ -175,7 +179,7 @@ fn the_leap_day_matches_only_leap_days() {
     assert_eq!(
         year_dates(&common),
         ["2023-02-28"],
-        "28 февраля не совпадает с 29-м"
+        "28 February does not match the 29th"
     );
     assert_eq!(
         card(&store, &at(2026, 3, 1, 12, 0)).unwrap().years[0].journal_date,
@@ -193,14 +197,14 @@ fn the_day_boundary_is_four_in_the_morning() {
         "год назад, 20 октября",
         ms(2025, 10, 20, 12, 0),
     );
-    // 21 октября 02:30 — ещё 20-е по журналу.
+    // 21 October 02:30 is still the 20th by the journal.
     let night = card(&store, &at(2026, 10, 21, 2, 30)).unwrap();
     assert_eq!(night.today, "2026-10-20");
     assert_eq!(year_dates(&night), ["2025-10-20"]);
     assert_eq!(
         card(&store, &at(2026, 10, 21, 4, 0)),
         None,
-        "с 04:00 уже 21-е"
+        "from 04:00 it is the 21st"
     );
 }
 
@@ -233,16 +237,16 @@ fn dismissal_hides_the_card_until_the_next_journal_day_and_survives_a_restart() 
         assert_eq!(
             card(&store, &at(2026, 10, 22, 3, 59)),
             None,
-            "до 04:00 — ещё тот же день журнала"
+            "before 04:00 it is still the same journal day"
         );
     }
     let store = open_without_mirror(dir.path());
     assert_eq!(
         card(&store, &at(2026, 10, 21, 20, 0)),
         None,
-        "перезапуск карточку не возвращает"
+        "a restart does not bring the card back"
     );
-    let next = card(&store, &at(2026, 10, 22, 4, 0)).expect("следующий день журнала");
+    let next = card(&store, &at(2026, 10, 22, 4, 0)).expect("next journal day");
     assert_eq!(year_dates(&next), ["2025-10-22"]);
 }
 
@@ -317,7 +321,7 @@ fn the_card_entries_carry_their_reply_quote() {
         .unwrap();
     let found = card(&store, &at(2026, 10, 21, 12, 0)).unwrap();
     let reply = &found.years[0].entries[0].message;
-    let quote = reply.reply_to.as_ref().expect("цитата");
+    let quote = reply.reply_to.as_ref().expect("quote");
     assert_eq!(
         (quote.years_later, quote.excerpt.as_str()),
         (3, "старая мысль")

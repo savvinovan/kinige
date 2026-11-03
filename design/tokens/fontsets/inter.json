@@ -30,7 +30,7 @@
             "Noto Color Emoji",
             "sans-serif"
           ],
-          "$description": "ИСКЛЮЧЕНИЕ из правила «шрифты только встроенные»: эмодзи чатов рисует системный эмодзи-шрифт (цветные эмодзи не встраиваем). Это данные пользователя (chats.icon), а не декор; других системных шрифтов в интерфейсе нет. Проверяет fonts.test.ts."
+          "$description": "EXCEPTION to the rule 'fonts are embedded only': chat emoji are drawn by the system emoji font (color emoji are not embedded). This is user data (chats.icon), not decoration; there are no other system fonts in the interface. Checked by fonts.test.ts."
         }
       },
       "face": {

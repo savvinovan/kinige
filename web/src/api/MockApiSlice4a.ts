@@ -7,13 +7,13 @@ import type { AgentLogRow } from "./generated/AgentLogRow";
 import type { AgentMode } from "./generated/AgentMode";
 import type { AgentSocket } from "./generated/AgentSocket";
 
-/** Строк журнала на странице (как `LOG_PAGE` в Rust). */
+/** Log rows per page (like `LOG_PAGE` in Rust). */
 export const MOCK_LOG_PAGE = 30;
 
 const BRIDGE = "/Applications/Kinige.app/Contents/MacOS/kinige-mcp";
 const SOCKET = "/Users/me/Library/Application Support/me.savvinov.kinige/mcp/kinige.sock";
 
-/** Состояние сокета, фрагмент для Claude Desktop и команда для Claude Code, как их присылает Rust. */
+/** Socket state, the snippet for Claude Desktop and the command for Claude Code, as Rust sends them. */
 export const MOCK_AGENT_SOCKET: AgentSocket = {
   listening: true,
   error: null,
@@ -24,24 +24,24 @@ export const MOCK_AGENT_SOCKET: AgentSocket = {
 };
 
 /**
- * Доступ ИИ-агентов в `MockApi` (слайс 4a): флажок, режим, видимые чаты (`ai_excluded` не принимаются, как в Rust), журнал
- * обращений страницами и записи строки. Журнал и записи строк тест наполняет через `addAgentLog`.
+ * AI agent access in `MockApi` (slice 4a): the flag, the mode, the visible chats (`ai_excluded` ones are not accepted, as in
+ * Rust), the call log by pages and the entries of a row. A test fills the log and the row entries through `addAgentLog`.
  */
 export abstract class MockApiSlice4a extends MockApiSlice4 {
-  /** Событие «настройки изменились» (правка окна): его слушают окна, реализация — в `MockApiSlice4b`. */
+  /** The "settings changed" event (a window edit): windows listen to it, implemented in `MockApiSlice4b`. */
   abstract emitSettingsChanged(): void;
 
   agentEnabled = false;
   agentMode: AgentMode = "read";
-  /** Id чатов, отмеченных «видно агенту». */
+  /** Ids of the chats marked "visible to the agent". */
   agentChats: string[] = [];
-  /** Чаты с `ai_excluded` (в моке чатов этого признака нет). */
+  /** Chats with `ai_excluded` (the chat mock has no such flag). */
   readonly agentExcluded = new Set<string>();
   agentSocket: AgentSocket = MOCK_AGENT_SOCKET;
   private logRows: AgentLogRow[] = [];
   private readonly logEntries = new Map<number, AgentLogEntry[]>();
 
-  /** Новая строка журнала (старые строки — раньше по вызову). Возвращает её `id`. */
+  /** A new log row (older rows come earlier in the call order). Returns its `id`. */
   addAgentLog(row: Partial<AgentLogRow> & Pick<AgentLogRow, "tool">, entries: AgentLogEntry[] = []): number {
     const id = (this.logRows[0]?.id ?? 0) + 1;
     this.logRows = [

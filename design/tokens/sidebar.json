@@ -4,45 +4,45 @@
     "sidebar": {
       "rail-width": {
         "$value": "4.4rem",
-        "$description": "Ширина свёрнутого сайдбара («полосы эмодзи»): 57 px при корне 13 px (D2: было 52). Внутри — квадратные кнопки высотой layout.sidebar.row-height при полях layout.sidebar.padding."
+        "$description": "Width of the collapsed sidebar (the 'emoji strip'): 57 px at a 13 px root (D2: was 52). Inside are square buttons of height layout.sidebar.row-height with padding layout.sidebar.padding."
       },
       "heading-height": {
         "$value": "1.9rem",
-        "$description": "Минимальная высота заголовка раздела («Закреплённые», «Чаты», «Архив»): 24,7 px (D2: было 21). Больше мелкой кнопки «+» в заголовке «Чаты» (21 px), поэтому строка не прыгает, когда кнопка появляется."
+        "$description": "Minimum height of a section heading ('Pinned', 'Chats', 'Archive'): 24.7 px (D2: was 21). Larger than the small '+' button in the 'Chats' heading (21 px), so the row does not jump when the button appears."
       },
       "dot": {
         "$value": "0.5rem",
-        "$description": "Точка «в корзине есть записи» у значка корзины в свёрнутом сайдбаре (6,5 px)."
+        "$description": "The 'the trash has entries' dot at the trash icon in the collapsed sidebar (6.5 px)."
       },
       "row-height": {
         "$value": "2.8rem",
-        "$description": "Высота строки сайдбара: чат, «Корзина», профиль (36,4 px, D2: было 32,5 у всех строк списка)."
+        "$description": "Sidebar row height: a chat, 'Trash', the profile (36.4 px, D2: was 32.5 for all list rows)."
       },
       "row-gap": {
         "$value": "0.15rem",
-        "$description": "Промежуток между строками сайдбара (2 px, D2: было 3,25)."
+        "$description": "The gap between sidebar rows (2 px, D2: was 3.25)."
       },
       "row-padding": {
         "$value": "0.7rem",
-        "$description": "Внутренний отступ строки сайдбара слева и справа (9,1 px, D2: было 6,5). Плитка и заголовок раздела стоят на одной вертикали."
+        "$description": "Inner padding of a sidebar row on the left and right (9.1 px, D2: was 6.5). The tile and the section heading stand on one vertical line."
       },
       "row-content-gap": {
         "$value": "0.8rem",
-        "$description": "Промежуток между плиткой и названием в строке сайдбара (10,4 px, D2: было 6,5)."
+        "$description": "The gap between the tile and the title in a sidebar row (10.4 px, D2: was 6.5)."
       },
       "section-gap": {
         "$value": "1.5rem",
-        "$description": "Воздух над заголовком раздела сайдбара («Чаты» под «Закреплёнными»): 19,5 px (D2: было 6,5)."
+        "$description": "Space above a sidebar section heading ('Chats' under 'Pinned'): 19.5 px (D2: was 6.5)."
       }
     },
     "chat-dialog": {
       "width": {
         "$value": "27rem",
-        "$description": "Ширина окна «Новый чат» / «Переименовать» / «Эмодзи чата» (351 px при корне 13 px): уже окна настроек, пикер внутри занимает ширину содержимого."
+        "$description": "Width of the 'New chat' / 'Rename' / 'Chat emoji' window (351 px at a 13 px root): narrower than the settings window, the picker inside takes the content width."
       },
       "top": {
         "$value": "4rem",
-        "$description": "Отступ окна чата от верхнего края: окно прижато вверх, а не по центру, поэтому пикер, раскрывающийся под полем, не сдвигает заголовок (52 px)."
+        "$description": "Offset of the chat window from the top edge: the window is pressed to the top, not centered, so the picker that expands under the field does not shift the title (52 px)."
       }
     }
   }

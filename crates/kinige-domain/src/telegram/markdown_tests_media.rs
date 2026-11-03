@@ -1,4 +1,4 @@
-//! Тесты `render_body`: вложения-заглушки, опрос, пересылка, строка автора, пустое сообщение.
+//! Tests of `render_body`: placeholder attachments, a poll, a forward, the author line, an empty message.
 
 use super::markdown_tests::{msg, plain, ru};
 use super::*;
@@ -146,17 +146,17 @@ fn forwarded_line_ru_en_saved_from_and_hidden_account() {
         render(&message, None, Language::En),
         "_Forwarded from Канал\\_1_\nтекст"
     );
-    // Нет forwarded_from — берётся saved_from.
+    // No forwarded_from: saved_from is taken.
     message.forwarded_from = None;
     assert_eq!(
         render(&message, None, Language::Ru),
         "_Переслано от Другой_\nтекст"
     );
-    // Скрытый аккаунт: ключ есть, имён нет.
+    // Hidden account: the key is present, there are no names.
     message.saved_from = None;
     assert_eq!(render(&message, None, Language::Ru), "_Переслано_\nтекст");
     assert_eq!(render(&message, None, Language::En), "_Forwarded_\nтекст");
-    // Пустое имя считается отсутствующим.
+    // An empty name counts as absent.
     message.forwarded_from = Some("  ".to_owned());
     assert_eq!(render(&message, None, Language::Ru), "_Переслано_\nтекст");
 }
@@ -175,7 +175,7 @@ fn author_line_goes_first() {
         render(&message, Some("Пётр"), Language::En),
         "**Пётр**\n_Forwarded from Канал_\n_[Photo not imported]_\nпривет"
     );
-    // Пустое имя автора строки не даёт.
+    // An empty author name gives no line.
     assert_eq!(
         render(&message, Some("  "), Language::En).lines().next(),
         Some("_Forwarded from Канал_")
@@ -186,7 +186,7 @@ fn author_line_goes_first() {
 fn empty_message_is_none() {
     assert_eq!(ru(Vec::new()), None);
     assert_eq!(ru(vec![plain("  \n ")]), None);
-    // Автор и пересылка без текста и вложения записью не становятся: это не содержание сообщения.
+    // An author and a forward without text and attachment do not become an entry: they are not message content.
     let mut message = msg(Vec::new());
     message.forwarded = true;
     assert_eq!(render_body(&message, Some("Пётр"), Language::Ru), None);

@@ -1,5 +1,5 @@
-//! Быстрый захват (ТЗ §5.1, слайс 2): контекст окна, новая запись из окна и дописывание к последней записи Inbox. Только
-//! Inbox: выбор чата в окне захвата не входит ни в один слайс (§1.2 п. 1, §12.3).
+//! Quick capture (PRD §5.1, slice 2): the window context, a new entry from the window and appending to the last Inbox entry. Inbox
+//! only: choosing a chat in the capture window is in no slice (§1.2 item 1, §12.3).
 
 use crate::draft::{CAPTURE_KEY, delete_draft};
 use crate::error::{read_err, write_err};
@@ -13,22 +13,22 @@ use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use kinige_domain::{CaptureAction, CaptureOutcome, MessageView};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 
-/// Сколько записей показывает окно захвата над полем (ТЗ §5.1: две-три).
+/// How many entries the capture window shows above the field (PRD §5.1: two or three).
 pub const CONTEXT_LEN: usize = 3;
 
-/// Что окну захвата нужно из базы при показе.
+/// What the capture window needs from the database when shown.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CaptureView {
     pub today: String,
-    /// До трёх последних неудалённых записей Inbox за сегодня; самая новая последней.
+    /// Up to three last non-deleted Inbox entries of today; the newest is last.
     pub context: Vec<MessageView>,
-    /// Запись, к которой ⌘Enter допишет текст.
+    /// The entry that ⌘Enter will append the text to.
     pub append_target: Option<String>,
     pub draft: String,
 }
 
-/// Ошибки домена при дописывании: слишком длинный текст — `TooLarge`, остальное (в том числе группа новее
-/// поддерживаемой, которую правило цели уже отсеяло) — внутренняя ошибка.
+/// Domain errors on append: a text that is too long gives `TooLarge`, anything else (including a group newer than
+/// the supported one, which the target rule has already filtered out) is an internal error.
 fn group_err(error: GroupError) -> StoreError {
     match error {
         GroupError::TooLarge => StoreError::TooLarge,
@@ -36,7 +36,7 @@ fn group_err(error: GroupError) -> StoreError {
     }
 }
 
-/// Последняя неудалённая запись Inbox со всем, что нужно правилу дописывания и перезаписи `body`.
+/// The last non-deleted Inbox entry with everything the append rule and the `body` rewrite need.
 struct LastMessage {
     view: MessageView,
     origin: String,
@@ -79,7 +79,7 @@ fn last_message(conn: &Connection) -> rusqlite::Result<Option<LastMessage>> {
 }
 
 impl Store {
-    /// Состояние окна захвата при показе: контекст за сегодня, цель дописывания, черновик.
+    /// The capture window state when shown: today's context, the append target, the draft.
     pub fn capture_view(&self, now: &Now) -> Result<CaptureView, StoreError> {
         let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
         let now_ms = now.ms;
@@ -102,7 +102,7 @@ impl Store {
             context.reverse();
             let append_target = last_message(conn)
                 .map_err(read_err)?
-                // Повреждённая запись окну не мешает: подсказки нет, а ⌘Enter сам сообщит об ошибке.
+                // A damaged entry does not bother the window: there is no hint, and ⌘Enter will report the error itself.
                 .filter(|last| can_append(&last.candidate(), now_ms, &today).unwrap_or(false))
                 .map(|last| last.view.id);
             let draft = conn
@@ -123,8 +123,8 @@ impl Store {
         })
     }
 
-    /// Enter в окне захвата: новая запись в Inbox тем же путём, что `send_message` (`origin = 'user'`); черновик окна
-    /// очищается в той же транзакции.
+    /// Enter in the capture window: a new Inbox entry by the same path as `send_message` (`origin = 'user'`); the window
+    /// draft is cleared in the same transaction.
     pub fn capture_send(&self, body: &str, now: &Now) -> Result<CaptureOutcome, StoreError> {
         let body = groups::normalize_body(body)?;
         let now = now.clone();
@@ -144,8 +144,8 @@ impl Store {
         Ok(outcome)
     }
 
-    /// Хоткей буфера: текст из буфера обмена — новая запись в Inbox. Черновики не трогаются: сохранение буфера не отправка
-    /// набранного текста.
+    /// The clipboard hotkey: the clipboard text becomes a new Inbox entry. Drafts are not touched: saving the clipboard is
+    /// not sending the typed text.
     pub fn save_clipboard(&self, text: &str, now: &Now) -> Result<MessageView, StoreError> {
         let body = groups::normalize_body(text)?;
         let now = now.clone();
@@ -161,9 +161,9 @@ impl Store {
         Ok(message)
     }
 
-    /// ⌘Enter в окне захвата: правило решает Rust в той же транзакции (`kinige_domain::append::can_append`). Есть цель —
-    /// текст дописывается новым абзацем: первая перезапись группы `body` (ADR-0001 §3.3, §3.4); нет цели — новая запись.
-    /// Ответ сообщает, что сделано. Если после склейки группа длиннее предела — `TooLarge`, ничего не записано.
+    /// ⌘Enter in the capture window: Rust decides by the rule in the same transaction (`kinige_domain::append::can_append`).
+    /// With a target, the text is appended as a new paragraph: the first rewrite of the `body` group (ADR-0001 §3.3, §3.4);
+    /// with no target, a new entry. The reply says what was done. If the group is longer than the limit after joining, the result is `TooLarge` and nothing is written.
     pub fn capture_append(&self, body: &str, now: &Now) -> Result<CaptureOutcome, StoreError> {
         let addition = groups::normalize_body(body)?;
         let now = now.clone();
@@ -186,7 +186,7 @@ impl Store {
                         &CurrentBody {
                             groups_raw: &last.groups_raw,
                             hlc_json: &last.hlc_json,
-                            // Outbox появится в слайсе 11: тогда подтверждённость — и колонка, и строка outbox (ADR §3.4).
+                            // The outbox arrives in slice 11: then confirmation is both a column and an outbox row (ADR §3.4).
                             body_confirmed: last.server_known,
                         },
                         &combined,
@@ -211,7 +211,7 @@ impl Store {
                         )
                         .map_err(write_err)?;
                     if changed != 1 {
-                        return Err(StoreError::Internal("запись для дописывания исчезла".into()));
+                        return Err(StoreError::Internal("the entry to append to disappeared".into()));
                     }
                     crate::tags::replace_tags(&tx, &last.view.id, &rewritten.body_md)
                         .map_err(write_err)?;

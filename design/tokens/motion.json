@@ -2,24 +2,24 @@
   "motion": {
     "duration": {
       "$type": "duration",
-      "short": { "$value": "120ms", "$description": "Наведение, появление подсветки." },
-      "medium": { "$value": "200ms", "$description": "Появление тоста, раскрытие поля ввода." },
-      "long": { "$value": "320ms", "$description": "Крупные переходы." },
+      "short": { "$value": "120ms", "$description": "Hover, the highlight appearing." },
+      "medium": { "$value": "200ms", "$description": "A toast appearing, an input field expanding." },
+      "long": { "$value": "320ms", "$description": "Large transitions." },
       "grow": { "$value": "700ms", "$description": "Growth of today's tree when its stage rises (the forest, slice 6). The curve is motion.easing.enter. 0 under Reduce Motion: the tree jumps." }
     },
     "delay": {
       "$type": "duration",
-      "$description": "Задержки — не анимация, а время на то, чтобы человек успел дойти мышью. Reduce Motion их не обнуляет.",
-      "hide-actions": { "$value": "180ms", "$description": "Ряд действий под рукой остаётся виден ещё столько после ухода мыши со строки ленты: можно дойти по диагонали к значку, не потеряв ряд." }
+      "$description": "Delays are not animation but the time for a person to get there with the mouse. Reduce Motion does not zero them.",
+      "hide-actions": { "$value": "180ms", "$description": "The action row stays visible this long after the mouse leaves a feed row: you can reach an icon diagonally without losing the row." }
     },
     "easing": {
       "$type": "cubicBezier",
       "standard": { "$value": [0.2, 0, 0, 1] },
-      "enter": { "$value": [0, 0, 0.2, 1], "$description": "Появление: быстрый старт, мягкая остановка." },
-      "exit": { "$value": [0.4, 0, 1, 1], "$description": "Уход: плавный разгон." }
+      "enter": { "$value": [0, 0, 0.2, 1], "$description": "Entering: a quick start, a soft stop." },
+      "exit": { "$value": [0.4, 0, 1, 1], "$description": "Leaving: a smooth acceleration." }
     },
     "reduced": {
-      "$description": "Значения длительностей при Reduce Motion (prefers-reduced-motion: reduce): переходы мгновенные. Подставляются поверх motion.duration.* в themes.css.",
+      "$description": "Duration values under Reduce Motion (prefers-reduced-motion: reduce): transitions are instant. They are substituted over motion.duration.* in themes.css.",
       "duration": {
         "$type": "duration",
         "short": { "$value": "0ms" },

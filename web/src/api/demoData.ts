@@ -2,18 +2,18 @@ import type { FeedMessage } from "../ui/feed/buildFeed";
 import type { ChatSummary } from "./generated/ChatSummary";
 import { INBOX_ID } from "./KinigeApi";
 
-// Записи и чаты из брифа концепта (design/concepts/brief-v2.md, раздел «Записи»): один набор для Storybook и тестов.
-// Дни — относительно `now`, чтобы метки «Сегодня» и «Вчера» были верны. Время записей — в поясе UTC: снимки и тесты не
-// зависят от часового пояса машины.
+// Entries and chats from the concept brief (design/concepts/brief-v2.md, the "Записи" section): one set for Storybook and
+// tests. Days are relative to `now`, so the "Сегодня" and "Вчера" labels are correct. Entry times are in UTC: snapshots
+// and tests do not depend on the machine time zone.
 
 const two = (value: number): string => String(value).padStart(2, "0");
 
-/** `YYYY-MM-DD` по местным компонентам даты. */
+/** `YYYY-MM-DD` from the local date components. */
 export function journalDateOf(date: Date): string {
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
 }
 
-/** Запись демо-ленты: день записи и время `HH:MM` (UTC). */
+/** A demo feed entry: the entry day and the `HH:MM` time (UTC). */
 export function demoEntry(
   id: string,
   journalDate: string,
@@ -35,7 +35,7 @@ export function demoEntry(
 
 const CODE = ["```", "fn main() {", "    let today = Day::new(2026, 10, 20);", '    println!("Записей: {}", today.count());', "}", "```"].join("\n");
 
-/** Записи чата «Входящие»: прошлый год, вчера, сегодня (серия из двух сообщений, задачи, код, не отправилось). */
+/** Entries of the "Входящие" chat: last year, yesterday, today (a series of two messages, tasks, code, not sent). */
 export function demoMessages(now: Date): FeedMessage[] {
   const day = (offset: number) => journalDateOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset));
   const lastYear = `${now.getFullYear() - 1}-03-14`;
@@ -57,8 +57,8 @@ export function demoMessages(now: Date): FeedMessage[] {
   ];
 }
 
-// Числа записей — демонстрационные, чтобы увидеть бейдж в разных видах (42, «1 234», «12 тыс.»); у «Входящих» — настоящее
-// число демо-записей из ленты, чтобы счётчик совпадал с тем, что на экране.
+// The entry counts are for demonstration, to see the badge in different forms (42, "1 234", "12 тыс."); the "Входящие"
+// chat has the real number of demo entries from the feed, so the counter matches what is on screen.
 export const DEMO_INBOX: ChatSummary = {
   id: INBOX_ID,
   title: "",

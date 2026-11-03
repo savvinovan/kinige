@@ -1,5 +1,5 @@
-//! Запуск приложения и страховка вокруг него (KINIG-28, ADR-0011): аргументы процесса, ошибка запуска без паники, обёртка
-//! обработчика команд Tauri, которая превращает панику в ответ окну.
+//! App startup and the safety net around it (KINIG-28, ADR-0011): process arguments, a startup error without a panic, a wrapper
+//! around the Tauri command handler that turns a panic into a reply to the window.
 
 use kinige_domain::ErrorCode;
 use kinige_store::StoreError;
@@ -8,41 +8,38 @@ use std::panic::{self, AssertUnwindSafe};
 use tauri::Runtime;
 use tauri::ipc::{Invoke, InvokeResolver};
 
-/// Аргумент запуска мостом MCP: окно не показывается, приложение живёт в menu bar.
+/// The launch argument used by the MCP bridge: no window is shown, the app lives in the menu bar.
 pub const BACKGROUND_FLAG: &str = "--background";
 
-/// Код выхода, если приложение не смогло запуститься (ошибка запуска или сборки). Паники при этом нет.
+/// The exit code if the app could not start (a startup or build error). There is no panic.
 const EXIT_STARTUP_FAILED: i32 = 1;
 
-/// Запущено мостом MCP (`--background`)? Тогда нет ни окна, ни значка в Dock: приложение живёт в menu bar (политика
-/// активации Accessory); первое же показанное окно возвращает обычную политику (`capture::show_main`).
+/// Started by the MCP bridge (`--background`)? Then there is no window and no Dock icon: the app lives in the menu bar (the
+/// Accessory activation policy); the first window shown restores the regular policy (`capture::show_main`).
 pub fn is_background_launch<I: IntoIterator<Item = String>>(args: I) -> bool {
     args.into_iter().any(|arg| arg == BACKGROUND_FLAG)
 }
 
-/// Показывать ли главное окно при запуске. Обычный запуск показывает всегда. Запуск мостом MCP (`--background`) живёт в
-/// menu bar без окна, но только если журнал открыт: при повреждённой или более новой базе (`store_open = false`) в menu bar
-/// сидел бы невидимый процесс, а экран восстановления (`recovery`) — единственное место, где человек видит, что случилось.
+/// Whether to show the main window at launch. A regular launch always shows it. A launch by the MCP bridge (`--background`) lives in the
+/// menu bar without a window, but only if the journal is open: with a corrupt or newer database (`store_open = false`) an invisible
+/// process would sit in the menu bar, while the recovery screen (`recovery`) is the only place where a person sees what happened.
 pub fn should_show_main_on_launch(background: bool, store_open: bool) -> bool {
     !background || !store_open
 }
 
-/// Аргументы процесса строками. `std::env::args()` паникует на аргументе не в UTF-8 (его может подсунуть любая программа,
-/// запустившая приложение): такой аргумент приходит с заменой нечитаемых байтов, флаги от этого не меняются.
+/// Process arguments as strings. `std::env::args()` panics on a non-UTF-8 argument (any program that started the app can slip one in):
+/// such an argument arrives with unreadable bytes replaced, and the flags do not change because of it.
 pub fn launch_args() -> Vec<String> {
     lossy_args(std::env::args_os())
 }
 
-/// Ошибка запуска не паника: причина (только категория) уходит в журнал, процесс завершается кодом. Tauri на ошибке
-/// `setup` паникует сам, поэтому ошибка перехватывается здесь, до него.
+/// A startup error is not a panic: the cause (only the category) goes to the log, the process exits with a code. Tauri panics on a
+/// `setup` error by itself, so the error is intercepted here, before it.
 pub(crate) fn fail_fast(
     result: Result<(), Box<dyn std::error::Error>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if let Err(error) = result {
-        log::error!(
-            "запуск не удался: {}",
-            startup_error_category(error.as_ref())
-        );
+        log::error!("startup failed: {}", startup_error_category(error.as_ref()));
         exit_after_failure();
     }
     Ok(())
@@ -53,31 +50,31 @@ pub(crate) fn exit_after_failure() -> ! {
     std::process::exit(EXIT_STARTUP_FAILED)
 }
 
-/// Страховка вокруг разбора вызова: паника в синхронной части обработчика (разбор аргументов, синхронная команда на главном
-/// потоке, где размотка стека через обратный вызов ОС оборвала бы процесс) логируется, а окно получает ошибку `internal`
-/// вместо вечно ждущего промиса. Асинхронная часть команд идёт в задаче tokio: её паника убивает только эту задачу
-/// (процесс жив, но ответа на вызов нет — клон ответчика сюда не дотягивается), а чтение, запись и агентские вызовы
-/// хранилища ловят панику сами и отвечают ошибкой (`kinige-store`).
+/// A safety net around call parsing: a panic in the synchronous part of the handler (argument parsing, a synchronous command on the main
+/// thread, where unwinding the stack through an OS callback would abort the process) is logged, and the window gets an `internal` error
+/// instead of a forever-waiting promise. The asynchronous part of commands runs in a tokio task: its panic kills only that task
+/// (the process is alive, but there is no reply to the call -- the responder clone does not reach here), while the store's read, write and agent calls
+/// catch the panic themselves and reply with an error (`kinige-store`).
 pub fn guarded<R: Runtime>(
     handler: impl Fn(Invoke<R>) -> bool + Send + Sync + 'static,
 ) -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static {
     move |invoke| {
         let resolver = invoke.resolver.clone();
         panic::catch_unwind(AssertUnwindSafe(|| handler(invoke))).unwrap_or_else(|_| {
-            log::error!("паника в обработчике команды, окну отправлена ошибка");
+            log::error!("panic in the command handler, an error was sent to the window");
             reject_internal(resolver);
             true
         })
     }
 }
 
-/// Отклоняет вызов ошибкой `internal`. Если ответ ушёл до паники, tauri при втором ответе паникует сам: это ловится здесь.
+/// Rejects the call with an `internal` error. If the reply went out before the panic, tauri panics by itself on the second reply: that is caught here.
 fn reject_internal<R: Runtime>(resolver: InvokeResolver<R>) {
     let rejected = panic::catch_unwind(AssertUnwindSafe(|| {
         resolver.reject(kinige_domain::ApiError::from(ErrorCode::Internal));
     }));
     if rejected.is_err() {
-        log::warn!("вызов уже получил ответ до паники");
+        log::warn!("the call had already been answered before the panic");
     }
 }
 
@@ -87,7 +84,7 @@ fn lossy_args<I: IntoIterator<Item = OsString>>(args: I) -> Vec<String> {
         .collect()
 }
 
-/// Категория ошибки запуска для журнала: тексты ошибок ОС и SQLite содержат пути и куски данных.
+/// The startup error category for the log: OS and SQLite error texts contain paths and pieces of data.
 fn startup_error_category(error: &(dyn std::error::Error + 'static)) -> &'static str {
     match error.downcast_ref::<StoreError>() {
         Some(store) => store.category(),
@@ -102,7 +99,7 @@ mod tests {
 
     #[test]
     fn a_background_launch_with_a_broken_database_still_shows_the_recovery_window() {
-        // Мост MCP запустил приложение, база повреждена или новее приложения: без окна процесс невидим.
+        // The MCP bridge started the app, the database is corrupt or newer than the app: without a window the process is invisible.
         assert!(should_show_main_on_launch(true, false));
     }
 
@@ -126,7 +123,7 @@ mod tests {
     fn an_argument_that_is_not_utf8_does_not_panic_and_flags_still_work() {
         use std::ffi::OsString;
         use std::os::unix::ffi::OsStringExt;
-        // `std::env::args()` паниковал бы на втором аргументе.
+        // `std::env::args()` would panic on the second argument.
         let args = super::lossy_args([
             OsString::from("kinige"),
             OsString::from_vec(vec![b'-', 0xff, 0xfe, b'x']),

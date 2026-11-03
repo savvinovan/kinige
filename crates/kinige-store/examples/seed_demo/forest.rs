@@ -82,16 +82,16 @@ pub fn seed_forest(
     data: &std::path::Path,
 ) {
     let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
-    let today = NaiveDate::parse_from_str(&today, "%Y-%m-%d").expect("день журнала");
+    let today = NaiveDate::parse_from_str(&today, "%Y-%m-%d").expect("journal day");
     let tz: Tz = now.tz.parse().unwrap_or(chrono_tz::UTC);
     let at = |date: NaiveDate, minutes: u32| {
         let local = date
             .and_hms_opt(6 + minutes / 60, minutes % 60, 0)
-            .expect("время");
+            .expect("time");
         let ms = tz
             .from_local_datetime(&local)
             .earliest()
-            .expect("местное время существует")
+            .expect("local time exists")
             .timestamp_millis();
         Now::at(ms, &now.tz)
     };
@@ -104,14 +104,14 @@ pub fn seed_forest(
         let last = if year == today.year() {
             today
         } else {
-            NaiveDate::from_ymd_opt(year, 12, 31).expect("конец года")
+            NaiveDate::from_ymd_opt(year, 12, 31).expect("end of the year")
         };
         let gap = if year == today.year() {
             today - Duration::days(45)
         } else {
-            NaiveDate::from_ymd_opt(year, 8, 3).expect("начало августа")
+            NaiveDate::from_ymd_opt(year, 8, 3).expect("start of August")
         };
-        let mut date = NaiveDate::from_ymd_opt(year, 1, 1).expect("начало года");
+        let mut date = NaiveDate::from_ymd_opt(year, 1, 1).expect("start of the year");
         while date <= last {
             // Today is set up separately below.
             if date == today || (date >= gap && date < gap + Duration::days(7)) {
@@ -157,7 +157,7 @@ pub fn seed_forest(
                 let chat = if n % 3 == 2 { second } else { home };
                 store
                     .send_message(chat, &body, &at(date, (n * 20) as u32))
-                    .expect("запись леса");
+                    .expect("forest entry");
             }
             date += Duration::days(1);
         }
@@ -167,25 +167,25 @@ pub fn seed_forest(
     let day = today - Duration::days(20);
     store
         .send_message(INBOX_ID, "Первая запись дня, остаётся", &at(day, 0))
-        .expect("запись");
+        .expect("entry");
     let doomed = store
         .send_message(INBOX_ID, "Эта запись уйдёт в корзину", &at(day, 20))
-        .expect("запись")
+        .expect("entry")
         .id;
-    store.delete_message(&doomed, now).expect("в корзину");
+    store.delete_message(&doomed, now).expect("to the trash");
 
     // Today's tree: stage 3, weight 6.2.
-    let db = rusqlite::Connection::open(data.join("kinige.db")).expect("база");
+    let db = rusqlite::Connection::open(data.join("kinige.db")).expect("database");
     let mut statement = db
         .prepare("SELECT body_md FROM message WHERE journal_date = ?1 AND deleted_at IS NULL")
-        .expect("запрос");
+        .expect("query");
     let have: Vec<NoteStat> = statement
         .query_map([today.format("%Y-%m-%d").to_string()], |row| {
             row.get::<_, String>(0)
         })
-        .expect("записи сегодня")
+        .expect("today's entries")
         .map(|body| NoteStat {
-            len: body.expect("текст").chars().count(),
+            len: body.expect("text").chars().count(),
             attachments: 0,
         })
         .collect();
@@ -198,7 +198,7 @@ pub fn seed_forest(
                 &filler(len, seconds as u64),
                 &Now::at(now.ms - seconds * 1000, &now.tz),
             )
-            .expect("запись сегодня");
+            .expect("entry today");
     };
     while weight + 1.0 <= 6.2 {
         pad(220, seconds);

@@ -1,6 +1,6 @@
 [package]
 name = "kinige-mcp"
-description = "Мост MCP: stdio клиента <-> Unix-сокет Kinige (ADR-0009). Только std, базу не открывает"
+description = "MCP bridge: client stdio <-> Kinige Unix socket (ADR-0009). std only, does not open the database"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,16 +10,16 @@ publish.workspace = true
 [lints]
 workspace = true
 
-# Исполняемый файл моста собирается как `kinige-mcp-bridge`, а в бандл попадает как `Contents/MacOS/kinige-mcp`
-# (`bundle.externalBin` копирует `binaries/kinige-mcp-<triple>` в каталог сборки под именем `kinige-mcp`): при одинаковом
-# имени tauri-build затирал бы артефакт cargo.
+# The bridge executable is built as `kinige-mcp-bridge` and lands in the bundle as `Contents/MacOS/kinige-mcp`
+# (`bundle.externalBin` copies `binaries/kinige-mcp-<triple>` into the build directory under the name `kinige-mcp`): with the same
+# name tauri-build would overwrite the cargo artifact.
 [[bin]]
 name = "kinige-mcp-bridge"
 path = "src/main.rs"
 
-# Намеренно без зависимостей: мост запускает MCP-клиент, он не должен тянуть ни Tauri, ни SQLite, ни доменный код.
+# Deliberately no dependencies: the bridge is started by an MCP client, so it must not pull in Tauri, SQLite or domain code.
 [dependencies]
 
-# Только для тестов (временные каталоги); в бинарник не попадает.
+# For tests only (temporary directories); does not get into the binary.
 [dev-dependencies]
 tempfile = "3"

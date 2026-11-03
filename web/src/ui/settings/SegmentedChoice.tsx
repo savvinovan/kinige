@@ -10,17 +10,17 @@ interface SegmentedChoiceProps<T extends string> {
   options: readonly Option<T>[];
   value: T;
   onChange: (value: T) => void;
-  /** Подпись группы для диктора: id видимого заголовка (предпочтительно) или текст. Нужна одна из двух. */
+  /** The group label for the screen reader: the id of a visible heading (preferred) or text. One of the two is needed. */
   labelledBy?: string;
   label?: string;
-  /** Выбор недоступен (например, доступ агентов выключен): варианты приглушены и вне обхода Tab. */
+  /** The choice is unavailable (for example, agent access is off): the options are muted and out of the Tab order. */
   disabled?: boolean;
 }
 
 /**
- * Выбор одного из нескольких вариантов («Обычный» / «Крупный»): группа радиокнопок (`radiogroup`) в виде сегментов.
- * В обходе Tab участвует один вариант, выбранный (roving tabindex); стрелки, Home и End переносят фокус и сразу выбирают,
- * как у обычных радиокнопок. Выбранный вариант отмечен заливкой и тонкой линией цвета акцента, а не только цветом.
+ * A choice of one of several options ("Обычный" / "Крупный"): a group of radio buttons (`radiogroup`) shown as segments.
+ * One option takes part in the Tab order, the selected one (roving tabindex); arrows, Home and End move focus and select at once,
+ * like ordinary radio buttons. The selected option is marked with a fill and a thin accent-colored line, not only by color.
  */
 export function SegmentedChoice<T extends string>({ options, value, onChange, labelledBy, label, disabled = false }: SegmentedChoiceProps<T>) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);

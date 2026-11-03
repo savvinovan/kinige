@@ -1,7 +1,7 @@
-//! Строка импортированной записи (слайс 4, задача 4.3). Те же пять групп под одним HLC, что у `groups::new_message`,
-//! но `core` несёт происхождение: `origin = "import_telegram"`, внешний id `ext` и `reply_to_id`
-//! (ADR-0001, приложение §C.3). Исходное время Telegram идёт в `created_at` и `journal_date`, а не в HLC: HLC — момент
-//! импорта (ADR-0001 §10, «кроме импорта»).
+//! The row of an imported entry (slice 4, task 4.3). The same five groups under one HLC as in `groups::new_message`,
+//! but `core` carries the origin: `origin = "import_telegram"`, the external id `ext` and `reply_to_id`
+//! (ADR-0001, appendix §C.3). The original Telegram time goes into `created_at` and `journal_date`, not into the HLC:
+//! the HLC is the moment of the import (ADR-0001 §10, "except import").
 
 use crate::groups::{GroupError, MessageRow, NewMessage, Provenance, build_message};
 use crate::hlc::is_uuid_v4;
@@ -9,12 +9,12 @@ use serde::Serialize;
 use serde_json::json;
 use ts_rs::TS;
 
-/// `origin` импортированной записи из Telegram: неизменяемо, `origin = 'import_telegram'` ⇔ `ext.src = 'telegram'`.
+/// The `origin` of an entry imported from Telegram: immutable, `origin = 'import_telegram'` iff `ext.src = 'telegram'`.
 pub const ORIGIN_IMPORT_TELEGRAM: &str = "import_telegram";
-/// `ext.src` записей из Telegram.
+/// `ext.src` of entries from Telegram.
 pub const EXT_SRC_TELEGRAM: &str = "telegram";
 
-/// Исходные значения импортированной записи; текст уже нормализован (`groups::normalize_body`).
+/// The source values of an imported entry; the text is already normalized (`groups::normalize_body`).
 pub struct NewImportedMessage<'a> {
     pub id: &'a str,
     pub chat_id: &'a str,
@@ -22,33 +22,33 @@ pub struct NewImportedMessage<'a> {
     pub created_at: i64,
     pub created_tz: &'a str,
     pub journal_date: &'a str,
-    /// Id чата Telegram, десятичное целое со знаком или без, до 20 знаков.
+    /// The Telegram chat id, a decimal integer with or without a sign, up to 20 characters.
     pub ext_chat: &'a str,
-    /// Id сообщения Telegram, в том же виде.
+    /// The Telegram message id, in the same form.
     pub ext_msg: &'a str,
-    /// Id записи Kinige (UUID v4), на которую это сообщение отвечает, если она уже импортирована.
+    /// The id of the Kinige entry (UUID v4) this message replies to, if it is already imported.
     pub reply_to_id: Option<&'a str>,
 }
 
-/// `^-?[0-9]{1,20}$`: id Telegram 64-битные, в `core` лежат строкой (JCS ограничен ±2⁵³).
+/// `^-?[0-9]{1,20}$`: Telegram ids are 64-bit, in `core` they are stored as a string (JCS is limited to ±2⁵³).
 fn is_external_id(text: &str) -> bool {
     let digits = text.strip_prefix('-').unwrap_or(text);
     (1..=20).contains(&digits.len()) && digits.bytes().all(|b| b.is_ascii_digit())
 }
 
-/// Строка импортированной записи со всеми пятью группами под одним `hlc`, `sv = 1`, `server_known = 0`.
+/// The row of an imported entry with all five groups under one `hlc`, `sv = 1`, `server_known = 0`.
 pub fn new_imported_message(
     input: &NewImportedMessage<'_>,
     hlc: &str,
 ) -> Result<MessageRow, GroupError> {
     if !is_external_id(input.ext_chat) {
-        return Err(GroupError::Invalid("ext.chat не число Telegram"));
+        return Err(GroupError::Invalid("ext.chat is not a Telegram number"));
     }
     if !is_external_id(input.ext_msg) {
-        return Err(GroupError::Invalid("ext.msg не число Telegram"));
+        return Err(GroupError::Invalid("ext.msg is not a Telegram number"));
     }
     if input.reply_to_id.is_some_and(|id| !is_uuid_v4(id)) {
-        return Err(GroupError::Invalid("reply_to_id не UUID v4"));
+        return Err(GroupError::Invalid("reply_to_id is not a UUID v4"));
     }
     let provenance = Provenance {
         origin: ORIGIN_IMPORT_TELEGRAM,
@@ -71,36 +71,36 @@ pub fn new_imported_message(
     build_message(&base, &provenance, hlc)
 }
 
-/// Вид чата Telegram, который импортируется (группы и каналы не импортируются).
+/// The kind of Telegram chat that is imported (groups and channels are not imported).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "ImportChatKind.ts")]
 pub enum ImportChatKind {
-    /// «Избранное»: записи идут в Inbox.
+    /// "Saved Messages": entries go to Inbox.
     Saved,
-    /// Личный чат: свой чат Kinige.
+    /// A personal chat: its own Kinige chat.
     Personal,
 }
 
-/// Чат экспорта в окне выбора.
+/// An export chat in the selection window.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "ImportChatPreview.ts")]
 pub struct ImportChatPreview {
-    /// Id чата Telegram (строка: 64-битное число).
+    /// The Telegram chat id (a string: a 64-bit number).
     pub id: String,
-    /// Имя из экспорта; у «Избранного» его нет.
+    /// The name from the export; "Saved Messages" has none.
     pub name: Option<String>,
     pub kind: ImportChatKind,
-    /// Сколько записей получится: сообщения без служебных и без пустых.
+    /// How many entries there will be: messages without service and empty ones.
     #[ts(type = "number")]
     pub total: i64,
-    /// Из них уже импортировано (есть в `message_ext`).
+    /// Of them already imported (present in `message_ext`).
     #[ts(type = "number")]
     pub existing: i64,
 }
 
-/// Что нашлось в экспорте: чаты для выбора и сколько чатов пропущено (группы, каналы, боты).
+/// What was found in the export: chats to choose from and how many chats were skipped (groups, channels, bots).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "ImportPreview.ts")]
@@ -110,8 +110,8 @@ pub struct ImportPreview {
     pub skipped_chats: i64,
 }
 
-/// Ответ на выбор файла: номер сессии (разобранный экспорт ждёт в Rust) и то, что в нём нашлось. Путь к файлу во
-/// фронтенд не приходит.
+/// The answer to choosing a file: the session number (the parsed export waits in Rust) and what was found in it. The
+/// file path does not reach the frontend.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "ImportOpened.ts")]
@@ -121,7 +121,7 @@ pub struct ImportOpened {
     pub preview: ImportPreview,
 }
 
-/// Прогресс импорта после каждой зафиксированной пачки: обработано сообщений из скольких.
+/// Import progress after each committed batch: how many messages are processed out of how many.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "ImportProgress.ts")]
@@ -132,31 +132,31 @@ pub struct ImportProgress {
     pub total: i64,
 }
 
-/// Итог импорта.
+/// The import result.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "ImportReport.ts")]
 pub struct ImportReport {
     #[ts(type = "number")]
     pub imported: i64,
-    /// Уже были импортированы раньше (в том числе лежат в корзине).
+    /// Were imported earlier (including those in the trash).
     #[ts(type = "number")]
     pub skipped_existing: i64,
-    /// Служебные сообщения (вступил, закрепил…).
+    /// Service messages (joined, pinned...).
     #[ts(type = "number")]
     pub skipped_service: i64,
-    /// Без текста и без вложения.
+    /// Without text and without an attachment.
     #[ts(type = "number")]
     pub skipped_empty: i64,
-    /// У скольких импортированных записей вместо вложения осталась заглушка.
+    /// For how many imported entries a placeholder is left instead of an attachment.
     #[ts(type = "number")]
     pub media_placeholders: i64,
-    /// Создано чатов Kinige (для личных чатов).
+    /// Kinige chats created (for personal chats).
     #[ts(type = "number")]
     pub chats_created: i64,
-    /// Файл копии базы, снятой перед импортом; `null` — писать было нечего и копия не снималась.
+    /// The database backup file taken before the import; `null` means there was nothing to write and no backup was taken.
     pub backup_name: Option<String>,
-    /// Импорт остановлен пользователем; всё, что записано до остановки, осталось.
+    /// The import was stopped by the user; everything written before the stop stays.
     pub stopped: bool,
 }
 

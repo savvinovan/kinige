@@ -1,5 +1,5 @@
-# Codecov (https://app.codecov.io/gh/savvinovan/kinige): отчёты приходят из .github/workflows/ci.yml: Rust — из задания `coverage`, web — из задания `web`.
-# Пока информационно: статусы не блокируют PR, порогов нет — сначала смотрим, где мы.
+# Codecov (https://app.codecov.io/gh/savvinovan/kinige): the reports come from .github/workflows/ci.yml: Rust from the `coverage` job, web from the `web` job.
+# Informational for now: the statuses do not block PRs, there are no thresholds - first we see where we are.
 coverage:
   status:
     project:

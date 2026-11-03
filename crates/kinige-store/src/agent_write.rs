@@ -1,5 +1,5 @@
-//! Запись для агента (ADR-0009): те же операции, что у интерфейса, одна транзакция писателя на вызов — проверка выключателя
-//! и режима, видимость чата, изменение данных и строка журнала. Отказ откатывает всё, кроме строки журнала об отказе.
+//! Writing for the agent (ADR-0009): the same operations as the interface, one writer transaction per call -- the check of
+//! the switch and the mode, chat visibility, the data change and the log row. A refusal rolls back everything except the refusal log row.
 
 use crate::agent::{AgentError, AgentReply, Call, VISIBLE, load_settings};
 use crate::agent_entry::to_entry;
@@ -22,11 +22,11 @@ use kinige_domain::{AgentMode, MessageView};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
 use serde_json::{Value, json};
 
-/// Итог исполнения внутри транзакции.
+/// The outcome of execution inside the transaction.
 enum Fail {
-    /// Отказ агенту: транзакция откатывается, в журнал идёт строка об отказе.
+    /// A refusal to the agent: the transaction is rolled back, a refusal row goes to the log.
     Refused(AgentError),
-    /// Сбой хранилища: откат, строки журнала нет.
+    /// A storage failure: rollback, no log row.
     Store(StoreError),
 }
 
@@ -47,8 +47,8 @@ struct Done {
     reply: Value,
 }
 
-/// Задача писателя для инструмента записи. Внешний `Err` — сбой хранилища (ничего не записано); внутренний — отказ агенту
-/// (журнал об отказе записан).
+/// The writer job for a write tool. The outer `Err` is a storage failure (nothing written); the inner one is a refusal
+/// to the agent (the refusal log row is written).
 pub(crate) fn run_write_job(
     conn: &mut Connection,
     call: &Call,
@@ -57,7 +57,7 @@ pub(crate) fn run_write_job(
     let tx = conn
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(write_err)?;
-    // Проверка внутри транзакции: выключатель и режим могли измениться после первой проверки.
+    // The check inside the transaction: the switch and the mode may have changed after the first check.
     let settings = load_settings(&tx)?;
     let result = if !settings.enabled {
         Err(Fail::Refused(AgentError::Disabled))
@@ -124,7 +124,7 @@ fn execute(tx: &Transaction<'_>, call: &Call, args: &ToolArgs) -> Result<Done, F
             item,
             item_text,
         } => set_task_done(tx, call, id, *done, *item, item_text.as_deref()),
-        _ => Err(StoreError::Internal("чтение в записи".into()).into()),
+        _ => Err(StoreError::Internal("read tool in a write".into()).into()),
     }
 }
 
@@ -137,7 +137,7 @@ fn body_of(text: &str) -> Result<String, Fail> {
     })
 }
 
-/// Чат по умолчанию — Inbox, и он проходит ту же проверку видимости, что любой другой.
+/// The default chat is Inbox, and it passes the same visibility check as any other.
 fn target_chat<'a>(tx: &Transaction<'_>, chat_id: Option<&'a str>) -> Result<&'a str, Fail> {
     let chat = chat_id.unwrap_or(INBOX_ID);
     if chat_visible(tx, chat)? {
@@ -168,7 +168,7 @@ fn append_to_last_entry(
 ) -> Result<Done, Fail> {
     let addition = body_of(text)?;
     let chat = target_chat(tx, chat_id)?;
-    // Цель — последняя живая запись чата; она должна быть записью агента, сегодняшней и не старше десяти минут.
+    // The target is the last live entry of the chat; it must be an agent entry, from today and no older than ten minutes.
     let last: Option<(String, String, i64, String, String)> = tx
         .query_row(
             "SELECT id, origin, created_at, journal_date, hlc_json FROM message \
@@ -202,7 +202,7 @@ fn append_to_last_entry(
         return Err(Fail::Refused(AgentError::NoAgentEntry));
     }
     let loaded = load(tx, &id)?;
-    // Запись мог поправить пользователь: версия до дописывания сохраняется ревизией `edit` (исключение из §A.0).
+    // The user may have edited the entry: the version before the append is kept as an `edit` revision (an exception to §A.0).
     let combined = joined_body(&loaded.columns.body_md, &addition);
     match edit_body(tx, &loaded, &combined, &call.now) {
         Ok(()) => {}
@@ -217,12 +217,13 @@ fn append_to_last_entry(
     Ok(done("appended", &view, tx, call)?)
 }
 
-/// Без `item` — задача-запись целиком. С `item` — один пункт `- [ ]` внутри записи (она не обязана быть задачей): текст
-/// правится тем же `set_task_item`, что и щелчок в ленте, и пишется той же ревизией `edit`. Нет такого пункта — отказ
-/// `invalid_argument` (запись агенту уже видна, это ошибка его номера, а не скрытая запись); пункт уже в нужном состоянии —
-/// успех без записи. Номера пунктов сдвигаются, если пользователь правит запись между чтением и отметкой: с `item_text`
-/// (текст пункта, как его отдал `tasks`) найденный по номеру пункт сверяется, при расхождении — `invalid_argument` и
-/// ничего не записано; без `item_text` номер принимается как есть.
+/// Without `item` the task is the whole entry. With `item` it is one `- [ ]` item inside an entry (the entry need not be
+/// a task): the text is edited by the same `set_task_item` as a click in the feed and is written with the same `edit`
+/// revision. No such item gives an `invalid_argument` refusal (the entry is already visible to the agent, so this is an
+/// error of its item number, not a hidden entry); an item already in the wanted state is a success with no write. Item
+/// numbers shift if the user edits the entry between the read and the mark: with `item_text` (the item text as `tasks`
+/// returned it) the item found by number is compared, and on a mismatch the result is `invalid_argument` and nothing is
+/// written; without `item_text` the number is taken as is.
 fn set_task_done(
     tx: &Transaction<'_>,
     call: &Call,
@@ -314,8 +315,8 @@ fn done(
         )
         .map_err(write_err)?
     };
-    // Ответ записи тоже не больше `RESPONSE_BYTES`, как у `get_entry`: запись с десятками тысяч пунктов отдаёт `tasks`
-    // вдвое больше самого текста. Запись в базе при этом целая, режется только ответ (признак `truncated`).
+    // The write reply is also capped at `RESPONSE_BYTES`, as in `get_entry`: an entry with tens of thousands of items gives `tasks`
+    // twice the size of the text itself. The entry in the database stays whole, only the reply is cut (the `truncated` flag).
     let (entries, _) = fit_entries(vec![to_entry(view, &title)]);
     Ok(Done {
         message_id: view.id.clone(),

@@ -1,20 +1,20 @@
-//! Копия файла базы (ТЗ §2.1, §10.4, §12.3, слайс 3): имена файлов, ротация и типы для окон. Без IO; снятие копии и
-//! проверка целостности — в `kinige-store`.
+//! Backup of the database file (PRD §2.1, §10.4, §12.3, slice 3): file names, rotation and types for windows. No IO;
+//! taking the backup and the integrity check are in `kinige-store`.
 //!
-//! Копии лежат в папке `backups` рядом с базой:
-//! - `daily-YYYY-MM-DD.db` — копия дня (локальная дата), хранятся 7 последних;
-//! - `pre-migration-v<схема>-YYYYMMDDTHHMMSSZ.db` — копия перед миграцией существующей базы, где `<схема>` — версия, из
-//!   которой мигрируем; хранятся 3 последних;
-//! - `pre-import-YYYYMMDDTHHMMSSZ.db` — копия перед импортом из Telegram (слайс 4); хранятся 3 последних.
+//! Backups live in the `backups` folder next to the database:
+//! - `daily-YYYY-MM-DD.db` is the daily backup (local date), the last 7 are kept;
+//! - `pre-migration-v<schema>-YYYYMMDDTHHMMSSZ.db` is the backup before migrating an existing database, where `<schema>`
+//!   is the version we migrate from; the last 3 are kept;
+//! - `pre-import-YYYYMMDDTHHMMSSZ.db` is the backup before an import from Telegram (slice 4); the last 3 are kept.
 
 use serde::Serialize;
 use ts_rs::TS;
 
-/// Сколько копий дня хранится (ТЗ §2.1).
+/// How many daily backups are kept (PRD §2.1).
 pub const KEEP_DAILY: usize = 7;
-/// Сколько копий перед миграцией хранится.
+/// How many pre-migration backups are kept.
 pub const KEEP_PRE_MIGRATION: usize = 3;
-/// Сколько копий перед импортом хранится.
+/// How many pre-import backups are kept.
 pub const KEEP_PRE_IMPORT: usize = 3;
 
 const DAILY_PREFIX: &str = "daily-";
@@ -22,102 +22,102 @@ const PRE_PREFIX: &str = "pre-migration-v";
 const IMPORT_PREFIX: &str = "pre-import-";
 const SUFFIX: &str = ".db";
 
-/// Вид копии.
+/// The kind of backup.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "BackupKind.ts")]
 pub enum BackupKind {
-    /// Копия дня.
+    /// The daily backup.
     Daily,
-    /// Копия перед миграцией базы.
+    /// The backup before a database migration.
     PreMigration,
-    /// Копия перед импортом из Telegram.
+    /// The backup before an import from Telegram.
     PreImport,
 }
 
-/// Копия в списке окна «База повреждена».
+/// A backup in the list of the "Database is corrupted" window.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "BackupInfo.ts")]
 pub struct BackupInfo {
-    /// Имя файла в папке копий; по нему просят восстановление.
+    /// The file name in the backup folder; restoring is requested by it.
     pub name: String,
     pub kind: BackupKind,
-    /// Когда снята (мс).
+    /// When it was taken (ms).
     #[ts(type = "number")]
     pub created_at: i64,
 }
 
-/// Почему копия не снимается.
+/// Why a backup is not taken.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "BackupError.ts")]
 pub enum BackupError {
-    /// Папку копий нельзя создать или открыть.
+    /// The backup folder cannot be created or opened.
     FolderUnavailable,
-    /// Копию записать не удалось.
+    /// The backup could not be written.
     WriteFailed,
-    /// Проверка целостности нашла повреждение: копия дня не снимается, чтобы испорченная не вытеснила хорошие.
+    /// The integrity check found corruption: the daily backup is not taken, so that a damaged one does not push out the good ones.
     IntegrityFailed,
-    /// Автоудаление корзины не смогло убрать запись (повреждена): запись остаётся в корзине, проверка и копия идут дальше.
+    /// The trash auto-purge could not remove an entry (it is damaged): the entry stays in the trash, the check and the backup go on.
     PurgeFailed,
 }
 
-/// Состояние копий для «Настроек».
+/// The state of backups for "Settings".
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "BackupStatus.ts")]
 pub struct BackupStatus {
-    /// Папка копий.
+    /// The backup folder.
     pub folder: Option<String>,
-    /// Когда снята последняя копия (мс); `null` — копий ещё нет.
+    /// When the last backup was taken (ms); `null` means there are no backups yet.
     #[ts(type = "number | null")]
     pub last_at: Option<i64>,
-    /// Копий в папке.
+    /// Backups in the folder.
     #[ts(type = "number")]
     pub count: i64,
     pub error: Option<BackupError>,
 }
 
-/// Состояние запуска: нужна ли страница восстановления вместо журнала.
+/// The startup state: whether the recovery page is needed instead of the journal.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "StartupState.ts")]
 pub struct StartupState {
-    /// База повреждена: журнал не открыт, показывается окно «База повреждена».
+    /// The database is corrupted: the journal is not open, the "Database is corrupted" window is shown.
     pub needs_recovery: bool,
-    /// Копии, из которых можно восстановить, новые первыми.
+    /// The backups it can be restored from, newest first.
     pub backups: Vec<BackupInfo>,
-    /// База создана более новой версией Kinige (§10.4): журнал не открыт, копии не помогут, нужно обновить приложение.
+    /// The database was created by a newer version of Kinige (§10.4): the journal is not open, backups will not help, the app must be updated.
     pub database_too_new: bool,
-    /// Журнал открыт, но фоновая проверка в этом процессе уже нашла в нём повреждение. Событие Rust «база повреждена» может
-    /// прийти раньше, чем страница на него подпишется (проверка идёт при старте), поэтому страница после подписки
-    /// спрашивает состояние ещё раз. Не ставится, пока идёт восстановление.
+    /// The journal is open, but the background check in this process has already found corruption in it. The Rust event
+    /// "database is corrupted" may arrive before the page subscribes to it (the check runs at startup), so after
+    /// subscribing the page asks for the state once more. It is not set while a restore is running.
     pub corruption_found: bool,
 }
 
-/// Итог восстановления из копии.
+/// The result of restoring from a backup.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "RestoreOutcome.ts")]
 pub struct RestoreOutcome {
-    /// Куда переехала прежняя папка Markdown-копии (`<имя>-before-restore-<метка>`); `null` — папки не было.
+    /// Where the previous Markdown copy folder was moved (`<name>-before-restore-<stamp>`); `null` means there was no folder.
     pub previous_mirror: Option<String>,
-    /// Куда переехала папка копии, названная в `settings.json`, если она другая (слайс 4b); `null` — такой папки не было.
+    /// Where the copy folder named in `settings.json` was moved, if it is a different one (slice 4b); `null` means there was no such folder.
     pub settings_file_mirror: Option<String>,
 }
 
-/// Имя копии дня за локальную дату `YYYY-MM-DD`.
+/// The name of the daily backup for the local date `YYYY-MM-DD`.
 pub fn daily_name(local_date: &str) -> String {
     format!("{DAILY_PREFIX}{local_date}{SUFFIX}")
 }
 
-/// Имя копии перед миграцией: версия схемы, из которой мигрируем, и момент (UTC, `YYYYMMDDTHHMMSSZ`).
+/// The name of the pre-migration backup: the schema version we migrate from and the moment (UTC, `YYYYMMDDTHHMMSSZ`).
 pub fn pre_migration_name(from_version: i64, utc_stamp: &str) -> String {
     format!("{PRE_PREFIX}{from_version}-{utc_stamp}{SUFFIX}")
 }
 
-/// Имя копии перед импортом: момент (UTC, `YYYYMMDDTHHMMSSZ`).
+/// The name of the pre-import backup: the moment (UTC, `YYYYMMDDTHHMMSSZ`).
 pub fn pre_import_name(utc_stamp: &str) -> String {
     format!("{IMPORT_PREFIX}{utc_stamp}{SUFFIX}")
 }
@@ -133,7 +133,7 @@ fn is_utc_stamp(stamp: &str) -> bool {
         && all_digits(bytes.get(9..15))
 }
 
-/// Вид копии по имени файла; чужие имена (в том числе временные `.tmp` и `corrupt-…`) — `None`.
+/// The kind of backup by file name; foreign names (including temporary `.tmp` and `corrupt-…`) give `None`.
 pub fn classify(name: &str) -> Option<BackupKind> {
     let stem = name.strip_suffix(SUFFIX)?;
     if let Some(date) = stem.strip_prefix(DAILY_PREFIX) {
@@ -149,9 +149,9 @@ pub fn classify(name: &str) -> Option<BackupKind> {
     valid.then_some(BackupKind::PreMigration)
 }
 
-/// Что удалить после снятия новой копии: старше [`KEEP_DAILY`] копий дня, [`KEEP_PRE_MIGRATION`] копий перед миграцией и
-/// [`KEEP_PRE_IMPORT`] копий перед импортом. Порядок — по имени (дата и метка времени в имени сортируются как строки);
-/// чужие файлы не трогаются.
+/// What to delete after taking a new backup: the daily backups beyond the newest [`KEEP_DAILY`], the pre-migration ones
+/// beyond [`KEEP_PRE_MIGRATION`] and the pre-import ones beyond [`KEEP_PRE_IMPORT`]. The order is by name (the date and
+/// the timestamp in the name sort as strings); foreign files are not touched.
 pub fn expired(names: &[String]) -> Vec<String> {
     let mut stale = Vec::new();
     for (kind, keep) in [

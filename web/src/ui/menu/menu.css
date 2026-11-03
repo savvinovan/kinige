@@ -1,9 +1,9 @@
-/* Контекстное меню: плавающая панель поверх окна, ничего не сдвигает. Только токены. */
+/* The context menu: a floating panel over the window, shifts nothing. Tokens only. */
 .context-menu {
   position: fixed;
   z-index: 3;
   display: grid;
-  /* Единственный столбец не шире меню: длинное название обрезается многоточием, а не растягивает строки за панель. */
+  /* The only column is no wider than the menu: a long name is cut with an ellipsis instead of stretching rows beyond the panel. */
   grid-template-columns: minmax(0, 1fr);
   box-sizing: border-box;
   min-width: var(--layout-menu-min-width);
@@ -43,7 +43,7 @@
   cursor: default;
 }
 
-/* Меню лежит на `surface.message`, поэтому заливка наведения светлее панели (`field-active`), а не темнее, как в сайдбаре. */
+/* The menu sits on `surface.message`, so the hover fill is lighter than the panel (`field-active`), not darker as in the sidebar. */
 .context-menu__item:hover,
 .context-menu__item:focus-visible {
   background: var(--color-surface-field-active);
@@ -69,7 +69,7 @@
   color: var(--color-text-tertiary);
 }
 
-/* Эмодзи чата в подменю «Переместить в чат»: те же слот и шрифт, что в строке чата сайдбара. */
+/* The chat emoji in the "Move to chat" submenu: the same slot and font as in the sidebar chat row. */
 .context-menu__icon--emoji {
   align-items: center;
   justify-content: center;
@@ -84,7 +84,7 @@
   color: inherit;
 }
 
-/* Длинное название (чат, дата) обрезается многоточием: меню не растёт за предел. */
+/* A long name (chat, date) is cut with an ellipsis: the menu does not grow past its limit. */
 .context-menu__label {
   flex: 1;
   min-width: 0;

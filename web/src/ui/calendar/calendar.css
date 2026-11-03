@@ -1,6 +1,6 @@
-/* Календарь выбора даты: сетка месяца в модальном окне. Только токены. */
+/* The date picker calendar: a month grid in a modal window. Tokens only. */
 
-/* Окно уже обычного диалога: семь ячеек и поля. */
+/* The window is narrower than a regular dialog: seven cells and margins. */
 .modal__panel:has(.calendar) {
   max-width: var(--layout-calendar-width);
 }
@@ -29,7 +29,7 @@
   text-align: center;
 }
 
-/* Значок «вправо» повёрнут на пол-оборота: предыдущий месяц. */
+/* The "right" icon is rotated by a half-turn: the previous month. */
 .calendar__prev .icon {
   transform: rotate(180deg);
 }
@@ -79,12 +79,12 @@
   background: var(--color-surface-selected);
 }
 
-/* Дни соседних месяцев приглушены, но выбираются. */
+/* Days of neighboring months are muted but selectable. */
 .calendar__day--outside {
   color: var(--color-text-tertiary);
 }
 
-/* Сегодня: точка под числом (не только цвет). */
+/* Today: a dot under the number (not only color). */
 .calendar__day--today::after {
   content: "";
   position: absolute;
@@ -97,7 +97,7 @@
   transform: translateX(-50%);
 }
 
-/* Выбранный день (текущая дата записи): акцентная заливка, число цветом фона окна (9,2:1 к акценту). */
+/* The selected day (the entry's current date): an accent fill, the number in the window background color (9.2:1 against the accent). */
 td[aria-selected="true"] .calendar__day,
 td[aria-selected="true"] .calendar__day:hover {
   background: var(--color-accent-default);

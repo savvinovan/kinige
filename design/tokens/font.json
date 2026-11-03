@@ -3,20 +3,20 @@
     "weight": {
       "$type": "fontWeight",
       "regular": { "$value": 400 },
-      "medium": { "$value": 500, "$description": "Метка дня." },
-      "semibold": { "$value": 600, "$description": "Заголовки." },
-      "bold": { "$value": 700, "$description": "Выделение жирным в тексте записи." }
+      "medium": { "$value": 500, "$description": "The day label." },
+      "semibold": { "$value": 600, "$description": "Headings." },
+      "bold": { "$value": 700, "$description": "Bold emphasis in the entry text." }
     },
     "root": {
       "$type": "dimension",
-      "$description": "Корневой размер шрифта = размер текста записей (1rem). Все размеры шрифта, отступы, радиусы, высоты строк и размеры значков заданы в rem, поэтому смена этого размера меняет всю плотность целиком, а не только текст.",
-      "default": { "$value": "13px", "$description": "Размер текста записей 13 px: выбран пользователем 20.10.2026 на живом экране среди 13 / 14 / 15 px (ADR-0004). Значения в px в описаниях токенов — при этом корне." }
+      "$description": "The root font size = the entry text size (1rem). All font sizes, spacing, radii, row heights and icon sizes are set in rem, so changing this size changes the whole density, not only the text.",
+      "default": { "$value": "13px", "$description": "Entry text size 13 px: chosen by the user on 20.10.2026 on a live screen among 13 / 14 / 15 px (ADR-0004). The px values in token descriptions are at this root." }
     },
     "scale": {
       "$type": "number",
-      "$description": "Масштаб текста: множитель корневого размера шрифта поверх font.root. Переключается атрибутом data-text-scale на корневом элементе (см. base.css).",
+      "$description": "Text scale: a multiplier of the root font size on top of font.root. Switched by the data-text-scale attribute on the root element (see base.css).",
       "default": { "$value": 1 },
-      "large": { "$value": 1.25, "$description": "«Крупный текст» (+25%)." }
+      "large": { "$value": 1.25, "$description": "'Large text' (+25%)." }
     }
   }
 }

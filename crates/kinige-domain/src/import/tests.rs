@@ -81,7 +81,7 @@ fn every_group_is_canonical_and_shares_one_hlc_with_sv_1() {
         assert_eq!(
             jcs::canonical_bytes(&value).unwrap(),
             raw.get().as_bytes(),
-            "{name} каноничен"
+            "{name} is canonical"
         );
     }
     let hlcs: BTreeMap<String, Value> = serde_json::from_str(&row.hlc_json).unwrap();
@@ -98,7 +98,7 @@ fn every_group_is_canonical_and_shares_one_hlc_with_sv_1() {
 
 #[test]
 fn other_groups_are_those_of_a_user_message() {
-    // Импорт отличается от записи пользователя только группой `core`: остальные четыре байт в байт те же.
+    // An import differs from a user entry only in the `core` group: the other four are byte for byte the same.
     let imported = new_imported_message(&input(), HLC).unwrap();
     let user = crate::groups::new_message(
         &crate::groups::NewMessage {
@@ -152,7 +152,7 @@ fn invalid_external_ids_are_rejected() {
             "msg {bad:?}"
         );
     }
-    // Границы: 20 знаков и отрицательный id чата (группы и каналы).
+    // Boundaries: 20 characters and a negative chat id (groups and channels).
     for good in [
         "0",
         "-1001234567890",

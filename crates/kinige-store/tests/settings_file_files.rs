@@ -1,10 +1,10 @@
-//! Файл настроек на диске: симлинк, канал вместо файла, размер, кодировка, брошенные временные файлы, каталог данных, мусор
-//! на входе (ADR-0010). Правила небезопасных прав и «хэш совпал» — в `settings_file_safety.rs`.
+//! The settings file on disk: a symlink, a pipe instead of a file, size, encoding, abandoned temporary files, the data
+//! directory, garbage on input (ADR-0010). The unsafe-permissions rules and "hash matched" are in `settings_file_safety.rs`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
-#![allow(clippy::disallowed_methods)] // `thread::spawn` запрещён в коде приложения (clippy.toml), тесту поток нужен без обработки отказа
+#![allow(clippy::disallowed_methods)] // `thread::spawn` is forbidden in app code (clippy.toml); the test needs a thread without failure handling
 
 mod common;
 
@@ -43,7 +43,7 @@ fn a_symlink_is_unsafe_it_is_read_through_but_never_overwritten() {
     assert_eq!(rig.file.state().unsafe_reason, Some(UnsafeReason::Symlink));
     assert!(!rig.store.agent_access().unwrap().enabled);
     assert_eq!(rig.store.get_settings().unwrap().text_size, TextSize::Large);
-    // Правка окна идёт в базу; ссылка и её цель остаются как были.
+    // A window edit goes to the database; the link and its target stay as they were.
     rig.file
         .edit(|store| store.set_text_size(TextSize::Normal))
         .unwrap()
@@ -60,8 +60,8 @@ fn a_symlink_is_unsafe_it_is_read_through_but_never_overwritten() {
 #[cfg(unix)]
 #[test]
 fn an_edit_of_the_symlink_target_is_applied_by_a_sync_pass() {
-    // Шаги ведёт сам тест (`sync_now` — тот же проход, что делает опрос), а не фоновый опрос с ожиданием по часам: под нагрузкой
-    // опрос мог прийтись между усечением файла и записью нового текста, и тест мигал.
+    // The test drives the steps itself (`sync_now` is the same pass a poll does), not a background poll waiting on the clock: under load
+    // a poll could land between truncating the file and writing the new text, and the test flaked.
     let rig = rig();
     let elsewhere = tempfile::tempdir().unwrap();
     let real = elsewhere.path().join("real.json");
@@ -115,7 +115,7 @@ fn a_fifo_in_place_of_the_file_is_unsafe_and_never_blocks_or_reads() {
         rig.file.state().unsafe_reason,
         Some(UnsafeReason::NotRegular)
     );
-    // Окно по-прежнему работает, канал остался каналом.
+    // The window still works, the pipe stayed a pipe.
     rig.file
         .edit(|store| store.set_text_size(TextSize::Large))
         .unwrap()
@@ -153,7 +153,7 @@ fn a_file_over_one_mebibyte_non_utf8_or_with_a_bom_is_a_problem_and_changes_noth
             TextSize::Normal
         );
     }
-    // Ровно 1 МиБ — ещё в пределах.
+    // Exactly 1 MiB is still within the limit.
     let pad = "x".repeat(1024 * 1024 - 40);
     let text = format!("{{\"text_size\":\"large\",\"p\":\"{pad}\"}}");
     assert!(text.len() <= 1024 * 1024);
@@ -196,7 +196,7 @@ fn a_new_data_directory_is_private_and_an_existing_one_is_left_alone() {
     )
     .unwrap();
     assert_eq!(mode_of(&loose), 0o775);
-    // Каталог, открытый группе: доступ агента и папка копии из файла не применяются.
+    // A directory open to the group: agent access and the copy folder from the file are not applied.
     let changes = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     write_file(&loose, ACCESS_ON.as_bytes(), 0o600);
     let file =
@@ -238,7 +238,7 @@ fn garbage_files_only_produce_errors_and_never_touch_the_database() {
         let state = rig.file.state();
         assert!(
             state.problem.is_some(),
-            "раунд {round}: случайные байты не JSON-объект"
+            "round {round}: random bytes are not a JSON object"
         );
     }
     assert_eq!(snapshot(&rig), before);

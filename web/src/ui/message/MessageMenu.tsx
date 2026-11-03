@@ -7,15 +7,15 @@ interface MessageMenuProps {
   position: MenuPosition;
   isTask: boolean;
   favorite: boolean;
-  /** Запись только для чтения: все пункты, кроме «Копировать», недоступны. */
+  /** Read-only entry: all items except "Copy" are disabled. */
   readOnly: boolean;
-  /** Нет обработчика — пункт виден, но недоступен. */
+  /** No handler - the item is visible but disabled. */
   onEdit?: () => void;
   onToggleTask?: () => void;
   onToggleFavorite?: () => void;
   onChangeDate?: () => void;
   onDelete?: () => void;
-  /** Куда можно перенести запись (подменю «Переместить в чат») и что делать при выборе; без них пункт недоступен. */
+  /** Where the entry can be moved (the "Move to chat" submenu) and what to do on choice; without them the item is disabled. */
   moveTargets?: readonly MoveTarget[];
   onMoveTo?: (chatId: string) => void;
   onCopy: () => void;
@@ -25,10 +25,10 @@ interface MessageMenuProps {
 const CHAT_PREFIX = "chat:";
 
 /**
- * Контекстное меню записи: «Копировать», «Редактировать», «Задача», «Избранное», «Изменить дату…», «Переместить в чат»
- * (подменю со списком чатов), «Удалить» (опасное, за чертой). Подменю — второй уровень в той же панели: «Назад», затем
- * закреплённые, обычные и архивные чаты; текущий чат недоступен. Стрелки и Enter ходят и выбирают, Esc и стрелка влево
- * возвращают на первый уровень.
+ * Entry context menu: "Copy", "Edit", "Task", "Favorite", "Change date...", "Move to chat"
+ * (a submenu with the list of chats), "Delete" (dangerous, below a divider). The submenu is a second level in the same panel: "Back", then
+ * pinned, regular and archived chats; the current chat is disabled. Arrows and Enter move and choose, Esc and the left arrow
+ * return to the first level.
  */
 export function MessageMenu({
   position,
@@ -72,7 +72,7 @@ export function MessageMenu({
       label: target.name,
       emoji: target.emoji,
       disabled: target.current,
-      // Тонкая черта между разделами (закреплённые / чаты / архив) и под «Назад».
+      // A thin divider between sections (pinned / chats / archive) and under "Back".
       separatorBefore: index === 0 || target.group !== moveTargets[index - 1]?.group,
     })),
   ];

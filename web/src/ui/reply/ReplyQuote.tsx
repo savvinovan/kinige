@@ -7,14 +7,14 @@ import "./reply.css";
 
 interface ReplyQuoteProps {
   quote: ReplyTo;
-  /** Щелчок по цитате: лента открывает старую запись в контексте. Без обработчика, у записи в корзине и у удалённой цитата не нажимается. */
+  /** Click on the quote: the feed opens the old entry in context. Without a handler, for an entry in the trash and a deleted one the quote is not clickable. */
   onOpen?: (quote: ReplyTo) => void;
 }
 
 /**
- * Цитата ответа в плашке (слайс 5): одна строка — подпись («3 года спустя · 31 октября 2023», при разнице меньше года «Ответ на
- * запись · 14 марта 2023») и начало старой записи. Старая запись в корзине — «Запись в корзине», удалена навсегда —
- * «Исходная запись удалена»; сам ответ остаётся. Заливка без рамки, ничего не двигается.
+ * Reply quote in the bubble (slice 5): one line, a label ("3 years later · 31 October 2023", or "Reply to the entry of
+ * 14 March 2023" when the difference is less than a year) and the start of the old entry. An old entry in the trash gives "Entry in the trash", deleted for good gives
+ * "Original entry deleted"; the reply itself stays. A fill without a border, nothing moves.
  */
 export function ReplyQuote({ quote, onOpen }: ReplyQuoteProps) {
   const { t } = useTranslation();
@@ -28,7 +28,7 @@ export function ReplyQuote({ quote, onOpen }: ReplyQuoteProps) {
     : years > 0
       ? t("reply.quoteYears", { count: years, date })
       : t("reply.quotePlain", { date });
-  // Для диктора: «3 года спустя, ответ на запись 31 октября 2023»; начало старой записи читается как описание.
+  // For the screen reader: "3 years later, reply to the entry of 31 October 2023"; the start of the old entry is read as a description.
   const spoken = !live ? label : years > 0 ? t("reply.quoteYearsLabel", { count: years, date }) : t("reply.quotePlainLabel", { date });
   const text = live && quote.excerpt !== "" ? (
     <span className="reply-quote__text" id={textId}>

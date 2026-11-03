@@ -1,22 +1,22 @@
-// Счётчик записей чата в сайдбаре (ADR-0004): считаются все записи, кроме корзины; тихий серый бейдж справа.
-// Числа форматирует `Intl` на языке интерфейса (ADR-0005); дробная часть отбрасывается, а не округляется: бейдж не должен
-// показывать больше, чем есть.
+// The chat entry counter in the sidebar (ADR-0004): all entries except the trash are counted; a quiet gray badge on the right.
+// Numbers are formatted by `Intl` in the interface language (ADR-0005); the fractional part is dropped, not rounded: the badge
+// must not show more than there is.
 
 import type { Language } from "../../i18n";
 
-// Пробелы заданы кодами, а не символами в тексте: их не различить глазами и легко испортить при правке.
-/** Неразрывный пробел (U+00A0): им Intl разделяет разряды в русском. */
+// The spaces are given by code, not as characters in the text: they cannot be told apart by eye and are easy to break when editing.
+/** The no-break space (U+00A0): Intl separates digit groups with it in Russian. */
 const NBSP = String.fromCharCode(0x00a0);
-/** Узкий неразрывный пробел (U+202F): разряды числа не рвутся на конце строки; так было в D1. */
+/** The narrow no-break space (U+202F): digit groups do not break at the end of a line; this was so in D1. */
 export const THIN_NBSP = String.fromCharCode(0x202f);
 
 const plain = new Map<Language, Intl.NumberFormat>();
 const compact = new Map<string, Intl.NumberFormat>();
 
 /**
- * Сколько показывать в бейдже. Пустая строка — бейдж скрыт (ноль и нечисловые значения).
- * 0 → скрыт; 1…9 999 → «7», «1 234» / «1,234»; 10 000…999 999 → «12 тыс.» / «12K»; от миллиона — «1,2 млн» / «1.2M»
- * (до 10 млн с одной цифрой после запятой, дальше целые).
+ * What to show in the badge. An empty string means the badge is hidden (zero and non-numeric values).
+ * 0 -> hidden; 1...9 999 -> "7", "1 234" / "1,234"; 10 000...999 999 -> "12 тыс." / "12K"; from a million -> "1,2 млн" / "1.2M"
+ * (up to 10 million with one digit after the decimal separator, whole numbers beyond that).
  */
 export function formatCount(count: number, language: Language): string {
   if (!Number.isFinite(count) || count < 1) return "";
@@ -24,8 +24,8 @@ export function formatCount(count: number, language: Language): string {
   if (whole < 10_000) {
     let format = plain.get(language);
     if (!format) plain.set(language, (format = new Intl.NumberFormat(language, { useGrouping: true })));
-    // Русская группа разрядов у Intl — U+00A0, в D1 стоял U+202F: число в тихом бейдже не должно «расползаться».
-    // Для английского разделитель — запятая, менять нечего.
+    // The Russian digit group separator in Intl is U+00A0, in D1 it was U+202F: the number in the quiet badge must not "spread".
+    // For English the separator is a comma, nothing to change.
     return format.format(whole).replaceAll(NBSP, THIN_NBSP);
   }
   const digits = whole >= 1_000_000 && whole < 10_000_000 ? 1 : 0;

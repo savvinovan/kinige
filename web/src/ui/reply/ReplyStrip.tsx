@@ -6,19 +6,19 @@ import { formatLongDate } from "../feed/dates";
 import { Icon } from "../icons/Icon";
 import "./reply.css";
 
-/** Подпись строки, когда записи, на которую отвечают, нет на месте. */
+/** The line label when the entry being replied to is not in place. */
 const NOT_LIVE_LABEL = { trash: "reply.trash", missing: "reply.gone", moved: "reply.moved", live: "reply.strip" } as const;
 
 interface ReplyStripProps {
   quote: ReplyTo;
-  /** Крестик: ответ отменяется, остаётся обычная запись (текст не трогается). */
+  /** The cross: the reply is cancelled, an ordinary entry remains (the text is not touched). */
   onCancel: () => void;
 }
 
 /**
- * Строка «Ответ на запись · 31 октября 2023» над полем ввода (слайс 5): дата и первая строка записи, справа крестик. Если за
- * это время запись ушла в корзину или удалена навсегда, строка так и говорит; отправить ответ тогда нельзя (Rust вернёт
- * `reply_target_not_found`), но текст остаётся.
+ * The line "Reply to the entry of 31 October 2023" above the input field (slice 5): the date and the first line of the entry, a cross on the right. If in
+ * the meantime the entry went to the trash or was deleted for good, the line says so; the reply cannot be sent then (Rust returns
+ * `reply_target_not_found`), but the text stays.
  */
 export function ReplyStrip({ quote, onCancel }: ReplyStripProps) {
   const { t } = useTranslation();

@@ -1,4 +1,4 @@
-/* Линейный значок: размер и толщина линии из токенов, цвет — currentColor (задаёт кнопка или поле). */
+/* A line icon: the size and line thickness come from tokens, the color is currentColor (set by the button or field). */
 .icon {
   flex: none;
   width: var(--icon-size);

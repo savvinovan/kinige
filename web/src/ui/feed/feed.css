@@ -1,4 +1,4 @@
-/* Лента: прокручиваемая область, список плашек и меток дней. Только токены. */
+/* The feed: the scrollable area, the list of bubbles and day labels. Tokens only. */
 .feed-scroll {
   display: flex;
   flex-direction: column-reverse;
@@ -10,9 +10,9 @@
   background: var(--color-surface-paper);
 }
 
-/* Единственный элемент области `column-reverse` стоит у её нижнего края: короткая лента лежит внизу, как в мессенджере.
-   Лента — колонка по центру области чата шириной layout.feed.column (668 px при корне 13 px); в узком окне колонка
-   занимает всю ширину за вычетом полей. Плашки прижаты к левому краю колонки, метки дней стоят по её центру. */
+/* The only element of the `column-reverse` area sits at its bottom edge: a short feed lies at the bottom, as in a messenger.
+   The feed is a column centered in the chat area with the width layout.feed.column (668 px at a 13 px root); in a narrow window the column
+   takes the full width minus the margins. Bubbles are pressed to the left edge of the column, day labels stand in its center. */
 .feed {
   display: flex;
   flex: none;
@@ -27,14 +27,14 @@
   list-style: none;
 }
 
-/* Край списка, за которым следят наблюдатели (слайс 4): тонкая невидимая полоса, при её появлении грузится следующая страница. */
+/* The list edge that observers watch (slice 4): a thin invisible strip, the next page is loaded when it appears. */
 .feed__edge {
   flex: none;
   align-self: stretch;
   height: var(--border-width-hairline);
 }
 
-/* Строка списка занимает всю колонку: свободное место справа от плашки принадлежит ей (там встаёт ряд действий). */
+/* A list row takes the whole column: the free space to the right of the bubble belongs to it (the actions row goes there). */
 .feed__item {
   display: flex;
   width: 100%;
@@ -46,7 +46,7 @@
   margin-top: 0;
 }
 
-/* Серия: пауза меньше 5 минут, плашки ближе друг к другу. */
+/* A series: a pause under 5 minutes, bubbles closer to each other. */
 .feed__item--series {
   margin-top: var(--layout-message-gap-series);
 }
@@ -56,7 +56,7 @@
   justify-content: center;
 }
 
-/* Метка дня: маленькая «таблетка» по центру, одна на день. */
+/* Day label: a small "pill" in the center, one per day. */
 .day-label {
   margin: 0;
   padding: var(--space-1) var(--space-4);

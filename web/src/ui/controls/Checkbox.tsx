@@ -2,16 +2,16 @@ import { useId, type InputHTMLAttributes, type ReactNode } from "react";
 import "./controls.css";
 
 interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "children"> {
-  /** Видимая подпись справа от квадрата; она же даёт имя флажку диктору. */
+  /** The visible label to the right of the square; it also gives the checkbox its name for the screen reader. */
   children: ReactNode;
-  /** Вторая строка тихим цветом под подписью (сколько записей, сколько уже есть). */
+  /** A second line in a quiet color under the label (how many entries, how many already exist). */
   description?: ReactNode;
 }
 
 /**
- * Флажок: настоящий `<input type="checkbox">` (пробел, фокус, диктор работают сами), нарисован квадратом задачи из ленты —
- * серая рамка, отмеченный — акцентная заливка с галочкой. Кольцо фокуса — только с клавиатуры. Подпись обрезается
- * многоточием, если не помещается.
+ * A checkbox: a real `<input type="checkbox">` (space, focus and the screen reader work on their own), drawn as the task square from the feed:
+ * a gray border, and when checked an accent fill with a tick. The focus ring appears only from the keyboard. The label is cut
+ * with an ellipsis if it does not fit.
  */
 export function Checkbox({ children, description, className, ...rest }: CheckboxProps) {
   const descriptionId = useId();

@@ -4,9 +4,9 @@ import { DEFAULT_SETTINGS, MockApi, mockMessage } from "../../api/MockApi";
 import { fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
-// Переход к записи, которой уже нет на месте (KINIG-45): цитата ответа, поиск и карточка «В этот день» просят у Rust страницу
-// вокруг записи, а в ответ приходит `message_not_found`. Это не ошибка загрузки ленты: окно остаётся, лента стоит как стояла,
-// ошибка — тихой строкой над полем ввода.
+// A jump to an entry that is no longer in place (KINIG-45): a reply quote, search and the "On this day" card ask Rust for the
+// page around the entry, and the reply is `message_not_found`. This is not a feed load error: the window stays, the feed
+// stands as it was, the error is a quiet line above the composer.
 
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 const QUOTE = "Ответ на запись 20 октября 2026";
@@ -32,14 +32,14 @@ describe("Переход к удалённой записи", () => {
     fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Удалить" }));
     await screen.findByRole("button", { name: "Вернуть удалённую запись" });
 
-    // В загруженной ленте цитата всё ещё «живая»: её щелчок просит страницу вокруг записи, которой в Rust уже нет.
+    // In the loaded feed the quote is still "live": a click on it asks for the page around an entry that Rust no longer has.
     fireEvent.click(screen.getByRole("button", { name: QUOTE }));
 
     expect(await screen.findByText(/Запись не найдена/)).toBeInTheDocument();
     expect(screen.queryByText(/Не удалось загрузить/)).toBeNull();
     expect(screen.getByRole("textbox", { name: "Новая заметка" })).toBeInTheDocument();
     expect(screen.getByText("ответ на мысль")).toBeInTheDocument();
-    // Цитата перечитана вместе с лентой: запись теперь в корзине, цитата больше не кнопка.
+    // The quote is reread together with the feed: the entry is now in the trash, the quote is no longer a button.
     await waitFor(() => expect(screen.queryByRole("button", { name: QUOTE })).toBeNull());
     expect(screen.getByText("Запись в корзине")).toBeInTheDocument();
   });

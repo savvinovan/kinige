@@ -1,5 +1,5 @@
-# Ложные срабатывания правила generic-api-key: строки с сочетаниями клавиш («Alt+Shift+KeyV»), не ключи.
-# Формат — отпечаток из `gitleaks git . --report-format json` (коммит:файл:правило:строка).
+# False positives of the generic-api-key rule: lines with key combinations ("Alt+Shift+KeyV"), not keys.
+# The format is the fingerprint from `gitleaks git . --report-format json` (commit:file:rule:line).
 d6b8e6bf4689a5fa1d80bbef016c7ba9d245d97d:src-tauri/src/hotkeys/tests.rs:generic-api-key:100
 662ef23a4c473efd5c551ff1110db2ce0deed687:src-tauri/src/hotkeys/tests.rs:generic-api-key:100
 2d76e2c3c79490038af782f331784cf8c3e3b2cb:crates/kinige-store/tests/capture_shortcuts.rs:generic-api-key:77

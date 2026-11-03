@@ -1,7 +1,7 @@
-//! Фоновая Markdown-копия (ТЗ §2.1): после фиксации записи отдельный поток целиком переписывает файл затронутого дня
-//! `<папка>/<чат>/YYYY/YYYY-MM-DD.md` (временный файл + переименование). День без записей — файл удаляется.
-//! Отметки (`mirror_dirty`) лежат в базе, поэтому переживают убийство процесса: оставшиеся обрабатываются при старте.
-//! Корзина в копию не попадает (ТЗ §16).
+//! The background Markdown copy (PRD §2.1): after an entry is committed, a separate thread rewrites the file of the affected day in full,
+//! `<folder>/<chat>/YYYY/YYYY-MM-DD.md` (a temporary file + rename). A day without entries -- the file is deleted.
+//! The marks (`mirror_dirty`) live in the database, so they survive a process kill: the remaining ones are handled at startup.
+//! The trash does not get into the copy (PRD §16).
 
 use crate::StoreError;
 use crate::mirror_day::write_day;
@@ -18,26 +18,26 @@ use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::thread;
 use std::time::Duration;
 
-/// Общее состояние между хранилищем и фоновым потоком.
+/// The state shared between the store and the background thread.
 pub(crate) struct MirrorShared {
     wake: Mutex<bool>,
     signal: Condvar,
     stopped: AtomicBool,
     error: Mutex<Option<MirrorError>>,
     retry: Duration,
-    /// Только для тестов: следующий проход паникует.
+    /// Tests only: the next pass panics.
     panic_next: AtomicBool,
-    /// Только для тестов: шаг после чтения пачки отметок и до проверки папки (в нём тест меняет папку посреди пачки).
+    /// Tests only: a step after reading a batch of marks and before the folder check (a test changes the folder in the middle of a batch here).
     batch_hook: Mutex<Option<BatchHook>>,
 }
 
-/// Шаг теста внутри прохода копии.
+/// A test step inside a copy pass.
 pub(crate) type BatchHook = Arc<dyn Fn() + Send + Sync>;
 
 impl MirrorShared {
     pub(crate) fn new(retry: Duration) -> Arc<MirrorShared> {
         Arc::new(MirrorShared {
-            wake: Mutex::new(true), // первый проход — сразу при старте
+            wake: Mutex::new(true), // the first pass runs right at startup
             signal: Condvar::new(),
             stopped: AtomicBool::new(false),
             error: Mutex::new(None),
@@ -91,7 +91,7 @@ impl MirrorShared {
         *self.error.lock().unwrap_or_else(PoisonError::into_inner) = error;
     }
 
-    /// Ждёт сигнала; после ошибки или с остатком отметок — не дольше `retry`.
+    /// Waits for a signal; after an error or with marks left over -- no longer than `retry`.
     fn wait(&self, retry_soon: bool) {
         let mut flag = self.wake.lock().unwrap_or_else(PoisonError::into_inner);
         if !*flag {
@@ -123,19 +123,19 @@ pub(crate) fn spawn(
                 if shared.stopped.load(Ordering::SeqCst) {
                     return;
                 }
-                // Паника в проходе не должна молча убить поток копии: она ловится, в статусе «Настроек» ошибка записи, повтор
-                // через `retry`, цикл продолжается.
+                // A panic in a pass must not silently kill the copy thread: it is caught, the Settings status shows a write
+                // error, a retry follows after `retry`, the loop goes on.
                 let retry_soon = catch_unwind(AssertUnwindSafe(|| {
-                    // Крючок тестов страховки; в релизной сборке (`debug_assertions` выключены) его нет.
+                    // Hook for the safety-net tests; absent in a release build (`debug_assertions` off).
                     assert!(
                         !(cfg!(debug_assertions)
                             && shared.panic_next.swap(false, Ordering::SeqCst)),
-                        "проверка: паника в проходе копии"
+                        "check: panic in the copy pass"
                     );
                     pass(&shared, &reader, &writer, default_dir.as_deref())
                 }))
                 .unwrap_or_else(|_| {
-                    log::error!("копия: паника в проходе, повтор позже");
+                    log::error!("copy: panic in the pass, retry later");
                     shared.set_error(Some(MirrorError::WriteFailed));
                     true
                 });
@@ -146,10 +146,10 @@ pub(crate) fn spawn(
             }
         })
         .map(drop)
-        .map_err(|_| StoreError::Internal("не удалось запустить поток Markdown-копии".into()))
+        .map_err(|_| StoreError::Internal("could not start the Markdown copy thread".into()))
 }
 
-/// Один проход по отметкам. Возвращает `true`, если нужен повтор (ошибка или остались отметки).
+/// One pass over the marks. Returns `true` if a retry is needed (an error or marks left over).
 fn pass(
     shared: &MirrorShared,
     reader: &Connection,
@@ -158,18 +158,18 @@ fn pass(
 ) -> bool {
     let dir = match effective_mirror_dir(reader, default_dir) {
         Ok((Some(dir), _)) => dir,
-        // Папки нет (не выбрана и по умолчанию её нет): копия выключена, отметки ждут.
+        // No folder (not chosen and there is no default): the copy is off, the marks wait.
         Ok((None, _)) => {
             shared.set_error(None);
             return false;
         }
         Err(_) => {
-            log::warn!("копия: не удалось прочитать настройку папки, повтор позже");
+            log::warn!("copy: could not read the folder setting, retry later");
             return true;
         }
     };
-    // Пока писать нечего, папки не касаемся: на macOS первое обращение к «Документам» вызывает запрос доступа,
-    // и он должен появиться вместе с первой записью, а не при запуске пустого приложения.
+    // While there is nothing to write, we do not touch the folder: on macOS the first access to Documents triggers an
+    // access prompt, and it should appear together with the first entry, not at the launch of an empty app.
     match dirty_batch(reader) {
         Ok(batch) if batch.is_empty() => {
             shared.set_error(None);
@@ -177,8 +177,8 @@ fn pass(
         }
         Ok(_) => {}
         Err(_) => {
-            // Не «писать нечего»: чтение отметок не удалось, отметки целы — повтор по таймеру.
-            log::warn!("копия: не удалось прочитать отметки дней, повтор позже");
+            // Not "nothing to write": reading the marks failed, the marks are intact -- retry on the timer.
+            log::warn!("copy: could not read the day marks, retry later");
             return true;
         }
     }
@@ -191,7 +191,7 @@ fn pass(
             return false;
         }
         let Ok(batch) = dirty_batch(reader) else {
-            log::warn!("копия: не удалось прочитать отметки дней, повтор позже");
+            log::warn!("copy: could not read the day marks, retry later");
             return true;
         };
         if batch.is_empty() {
@@ -199,13 +199,13 @@ fn pass(
             return false;
         }
         shared.run_batch_hook();
-        // Папку могли сменить, пока шёл проход (окно или `settings.json`): смена помечает все дни заново, а писать дни,
-        // отмеченные этим проходом, в прежнюю папку и снимать отметки нельзя — новая папка осталась бы пустой.
-        // Проход начинается заново с новой папкой; отметки целы.
+        // The folder may have been changed during the pass (the window or `settings.json`): the change marks all days
+        // again, and we must neither write the days marked by this pass to the old folder nor clear the marks -- the new
+        // folder would stay empty. The pass starts over with the new folder; the marks are intact.
         if !matches!(effective_mirror_dir(reader, default_dir), Ok((Some(now), _)) if now == dir) {
             return true;
         }
-        // Папки чатов по их нынешним названиям; папки, где файлы лежат сейчас, сверяются с ними до записи дней.
+        // Chat folders by their current names; the folders where the files lie now are reconciled with them before days are written.
         let folders = crate::chats::folder_map(reader).unwrap_or_default();
         let in_batch: HashSet<&str> = batch.iter().map(|(chat, _, _)| chat.as_str()).collect();
         if !reconcile_folders(reader, writer, &dir, &folders, &in_batch) {
@@ -220,7 +220,7 @@ fn pass(
                 shared.set_error(Some(error));
                 return true;
             }
-            // Отметка снимается, только если за время записи её не обновили: новая правка того же дня оставит отметку.
+            // The mark is cleared only if it was not updated during the write: a new edit of the same day keeps the mark.
             let cleared = writer.run(move |conn| {
                 conn.execute(
                     "DELETE FROM mirror_dirty WHERE chat_id = ?1 AND journal_date = ?2 AND seq = ?3",
@@ -243,15 +243,15 @@ fn dirty_batch(reader: &Connection) -> rusqlite::Result<Vec<(String, String, i64
         .collect()
 }
 
-/// Корневая папка существует (создаётся при необходимости) и это каталог.
+/// The root folder exists (created if needed) and is a directory.
 fn prepare_root(dir: &Path) -> bool {
     fs::create_dir_all(dir).is_ok() && dir.is_dir()
 }
 
-/// Папки чатов в копии совпадают с папками, где лежат их файлы (таблица `mirror_chat`): при переименовании (или смене
-/// владельца простого имени) папка переезжает целиком. Переезд в два шага через временные имена — так обмен именами
-/// двух чатов и смена регистра (на macOS это одна папка) не зависят от порядка. Ошибка переименования не останавливает
-/// копию: дни чата всё равно записываются в новую папку. `false` — не удалось записать сведения о папках, нужен повтор.
+/// Chat folders in the copy match the folders where their files lie (the `mirror_chat` table): on a rename (or a change
+/// of the owner of a plain name) the folder moves as a whole. The move is in two steps through temporary names, so a swap of
+/// names between two chats and a case change (on macOS that is one folder) do not depend on the order. A rename error
+/// does not stop the copy: the chat days are still written to the new folder. `false` -- the folder info could not be written, a retry is needed.
 fn reconcile_folders(
     reader: &Connection,
     writer: &Writer,
@@ -269,7 +269,7 @@ fn reconcile_folders(
             (previous != wanted).then_some((chat, previous, wanted))
         })
         .collect();
-    // Шаг 1: уход со старых мест.
+    // Step 1: leave the old places.
     let mut staged: Vec<(&String, &String, PathBuf)> = Vec::new();
     for (chat, previous, wanted) in &moves {
         let from = root.join(previous);
@@ -278,7 +278,7 @@ fn reconcile_folders(
             staged.push((previous, wanted, hop));
         }
     }
-    // Шаг 2: приход на новые; занятое место — папка возвращается, где была.
+    // Step 2: arrive at the new places; if a place is taken, the folder goes back to where it was.
     for (previous, wanted, hop) in staged {
         let to = root.join(wanted);
         if to.exists() || fs::rename(&hop, &to).is_err() {

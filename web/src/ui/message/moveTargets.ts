@@ -1,18 +1,18 @@
 import type { TFunction } from "i18next";
 import { displayName, partitionChats, type SidebarChat } from "../sidebar/chats";
 
-/** Чат в списке «Переместить в чат» (подменю записи). */
+/** A chat in the "Move to chat" list (entry submenu). */
 export interface MoveTarget {
   id: string;
-  /** Название для глаз и диктора (у Inbox — перевод). */
+  /** Name for the eyes and the screen reader (for Inbox, a translation). */
   name: string;
   emoji: string;
   group: "pinned" | "chats" | "archive";
-  /** Чат, в котором запись уже лежит: пункт виден, но недоступен. */
+  /** The chat the entry is already in: the item is visible but disabled. */
   current: boolean;
 }
 
-/** Закреплённые, обычные и архивные чаты — в порядке сайдбара. `currentId` — открытый чат (запись лежит в нём). */
+/** Pinned, regular and archived chats, in sidebar order. `currentId` is the open chat (the entry is in it). */
 export function moveTargetsFrom(chats: readonly SidebarChat[], currentId: string | null, t: TFunction): MoveTarget[] {
   const sections = partitionChats(chats);
   const make = (list: readonly SidebarChat[], group: MoveTarget["group"]): MoveTarget[] =>

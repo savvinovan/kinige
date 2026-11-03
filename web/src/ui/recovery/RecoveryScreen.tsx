@@ -8,21 +8,21 @@ import { StatusNote } from "../settings/StatusNote";
 import "./recovery.css";
 
 interface RecoveryScreenProps {
-  /** startup — база не открылась при старте, список копий и «Восстановить»; running — проверка нашла повреждение в работающем приложении. */
+  /** startup: the database did not open at launch, the copy list and "Восстановить"; running: the check found corruption in a running app. */
   mode: "startup" | "running";
-  /** Копии базы в любом порядке: экран сам ставит новые первыми. */
+  /** The database copies in any order: the screen puts the newest first itself. */
   backups: readonly BackupInfo[];
   language: Language;
-  /** Восстановление или перезапуск идёт: кнопка и выбор недоступны. */
+  /** A restore or restart is in progress: the button and the choice are unavailable. */
   busy?: boolean;
-  /** Уже переведённая ошибка (например «Копия не найдена или не открывается»): `role="alert"`. */
+  /** The already translated error (for example "Копия не найдена или не открывается"): `role="alert"`. */
   error?: string;
-  /** «Восстановить из копии от …»: имя файла выбранной копии. */
+  /** "Восстановить из копии от ...": the file name of the selected copy. */
   onRestore: (name: string) => void;
   onRestart: () => void;
 }
 
-/** «27 октября 2026, 09:12»: день и время копии в часовом поясе окна (русское « г.» после года отброшено). */
+/** "27 октября 2026, 09:12": the day and time of the copy in the window's time zone (the Russian " г." after the year is dropped). */
 function formatWhen(createdAt: number, language: Language): string {
   const date = new Date(createdAt);
   const parts = new Intl.DateTimeFormat(language, { day: "numeric", month: "long", year: "numeric" }).formatToParts(date);
@@ -32,12 +32,12 @@ function formatWhen(createdAt: number, language: Language): string {
 }
 
 /**
- * Экран «База повреждена»: занимает окно целиком и не модальный (журнал не открыт). Повреждённый файл не удаляется, а
- * откладывается рядом с базой; запись после последней копии могла не сохраниться.
+ * The "База повреждена" screen: it takes the whole window and is not modal (the journal is not open). The corrupted file is not deleted but
+ * set aside next to the database; an entry made after the last copy may not have been saved.
  *
- * startup: пояснение, список копий (новые первыми, радиогруппа; вид копии — «копия дня» / «перед обновлением»), главная
- * кнопка «Восстановить из копии от …» для выбранной (по умолчанию самая новая). Копий нет — тихое сообщение и подсказка
- * без кнопки. running: пояснение «Kinige перезапустится и предложит копии» и кнопка «Перезапустить», списка нет.
+ * startup: an explanation, the copy list (newest first, a radio group; the copy kind is "копия дня" / "перед обновлением"), the main
+ * button "Восстановить из копии от ..." for the selected one (the newest by default). No copies: a quiet message and a hint
+ * without a button. running: the explanation "Kinige перезапустится и предложит копии" and the "Перезапустить" button, no list.
  */
 export function RecoveryScreen({
   mode,
@@ -52,7 +52,7 @@ export function RecoveryScreen({
   const sorted = [...backups].sort((a, b) => b.createdAt - a.createdAt);
   const newest = sorted[0];
   const [picked, setPicked] = useState<string | null>(null);
-  // Выбранная копия могла пропасть из списка (обновился список): тогда снова самая новая.
+  // The selected copy may have vanished from the list (the list was refreshed): then the newest again.
   const selected = sorted.find((backup) => backup.name === picked) ?? newest;
 
   return (
@@ -62,7 +62,7 @@ export function RecoveryScreen({
           {t("recovery.title")}
         </h1>
         <p className="recovery__text">{mode === "running" ? t("recovery.runningText") : t("recovery.startupText")}</p>
-        {/* Папка Markdown-копии: путь зависит от выбранной копии (его хранит она), поэтому строка без пути. */}
+        {/* The Markdown copy folder: the path depends on the selected copy (it stores it), so the line has no path. */}
         {mode === "startup" && newest !== undefined ? (
           <p className="recovery__text recovery__text--quiet">{t("recovery.mirrorNote")}</p>
         ) : null}

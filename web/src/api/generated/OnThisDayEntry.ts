@@ -2,7 +2,7 @@
 import type { MessageView } from "./MessageView";
 
 /**
- * Запись в карточке: сама запись и её текст простым текстом в одну строку (без разметки Markdown, до [`PREVIEW_CHARS`]
- * знаков с «…» в конце) для компактной строки с обрезкой по трём строкам.
+ * An entry in the card: the entry itself and its text as plain text on one line (without Markdown markup, up to
+ * [`PREVIEW_CHARS`] characters with "…" at the end) for a compact line cut to three lines.
  */
 export type OnThisDayEntry = { message: MessageView, text: string, };

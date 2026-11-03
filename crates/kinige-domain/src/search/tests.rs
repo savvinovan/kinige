@@ -1,6 +1,6 @@
 use super::*;
 
-/// Основы слов через пробел: проверка «эти формы — одно слово для поиска».
+/// Word stems separated by spaces: a check that "these forms are one word for search".
 fn stems(text: &str) -> String {
     index_text(text)
 }
@@ -10,7 +10,7 @@ fn index_text_keeps_only_stems_of_words() {
     assert_eq!(index_text("Купить МОЛОКО и хлеб!"), "куп молок и хлеб");
     assert_eq!(index_text(""), "");
     assert_eq!(index_text("  ... \n ** "), "");
-    // Разметка Markdown и адреса дают слова, как любой другой текст.
+    // Markdown markup and addresses give words, like any other text.
     assert_eq!(
         index_text("**жирный** [ссылка](https://example.org/a_b) #дела"),
         "жирн ссылк https exampl org a b дел"
@@ -42,14 +42,14 @@ fn word_forms_of_the_spike_pairs_share_a_stem() {
     for (a, b) in same {
         assert_eq!(stems(a), stems(b), "{a} / {b}");
     }
-    // Известные промахи Snowball: это не ошибка, а граница метода (ADR-0008).
+    // Known Snowball misses: not a bug but a limit of the method (ADR-0008).
     let apart = [
         ("бежал", "бегу"),
         ("человек", "люди"),
         ("день", "дня"),
         ("идти", "шёл"),
         ("go", "went"),
-        // «й» не склеивается с «и»: «йод» и «иод» — разные слова.
+        // "й" is not merged with "и": "йод" and "иод" are different words.
         ("йод", "иод"),
     ];
     for (a, b) in apart {
@@ -67,7 +67,7 @@ fn yo_is_folded_and_case_does_not_matter() {
 fn mixed_languages_digits_and_other_alphabets() {
     assert_eq!(index_text("Привет world 2026"), "привет world 2026");
     assert_eq!(index_text("meeting в 15:30"), "meet в 15 30");
-    // Слово со смесью букв и цифр, с латиницей и кириллицей, и чужой алфавит остаются как есть.
+    // A word mixing letters and digits, mixing Latin and Cyrillic, and a foreign alphabet stay as is.
     assert_eq!(
         index_text("abc123 日本語 ÅngströM"),
         "abc123 日本語 ångström"
@@ -84,14 +84,14 @@ fn query_last_word_is_a_prefix_while_typing() {
         fts_query("купить моло").as_deref(),
         Some("\"куп\" \"мол\"*")
     );
-    // Пробел или знак после слова — слово закончено: точный терм.
+    // A space or a mark after the word means the word is finished: an exact term.
     assert_eq!(fts_query("книги ").as_deref(), Some("\"книг\""));
     assert_eq!(fts_query("книги,").as_deref(), Some("\"книг\""));
     assert_eq!(
         fts_query("купить молоко ").as_deref(),
         Some("\"куп\" \"молок\"")
     );
-    // Один знак — не префикс: `м*` совпало бы с четвертью индекса.
+    // One character is not a prefix: `м*` would match a quarter of the index.
     assert_eq!(fts_query("я").as_deref(), Some("\"я\""));
     assert_eq!(fts_query("купить в").as_deref(), Some("\"куп\" \"в\""));
     assert_eq!(fts_query("мо").as_deref(), Some("\"мо\"*"));
@@ -99,9 +99,9 @@ fn query_last_word_is_a_prefix_while_typing() {
 
 #[test]
 fn query_cannot_carry_fts5_syntax() {
-    let query = fts_query("\" OR * NEAR( ^ - :col").expect("слова есть");
+    let query = fts_query("\" OR * NEAR( ^ - :col").expect("there are words");
     assert_eq!(query, "\"or\" \"near\" \"col\"*");
-    // В запросе нет ничего, кроме кавычек, пробелов, звёздочки в конце и букв или цифр основ.
+    // The query has nothing but quotes, spaces, a trailing asterisk and the letters or digits of stems.
     for input in [
         "a\"b",
         "x AND y OR NOT z",
@@ -157,13 +157,13 @@ fn query_with_digits_yo_and_mixed_text() {
 
 #[test]
 fn query_of_a_lone_yo_digits_or_emoji_is_well_formed() {
-    // «ё» сворачивается в «е»; основа в один знак — не префикс (меньше двух знаков).
+    // "ё" folds into "е"; a one-character stem is not a prefix (fewer than two characters).
     assert_eq!(fts_query("ё").as_deref(), Some("\"е\""));
     assert_eq!(fts_query("Ёё").as_deref(), Some("\"е\""));
-    // Цифры: число целиком и его начало.
+    // Digits: the whole number and its start.
     assert_eq!(fts_query("2026").as_deref(), Some("\"2026\"*"));
     assert_eq!(fts_query("7").as_deref(), Some("\"7\""));
-    // Эмодзи — не слова: чистые эмодзи дают запрос без слов, рядом со словом не мешают.
+    // Emoji are not words: pure emoji give a query without words, next to a word they do not interfere.
     for input in ["😀", "🎉🎉 ", "👨‍👩‍👧", "❤\u{fe0f}"] {
         assert_eq!(fts_query(input), None, "{input:?}");
         assert!(!title_matches("Дом 🏠", input), "{input:?}");
@@ -190,22 +190,22 @@ fn chat_titles_match_by_stem_with_yo_digits_and_emoji() {
 fn highlight_finds_the_forms_that_are_in_the_text() {
     let text = "Книга на столе. Я читаю книгу, а книжка рядом. Книга!";
     assert_eq!(highlight_terms(text, "книги "), ["Книга", "книгу"]);
-    // Другого слова с похожим началом нет среди совпавших.
+    // Another word with a similar start is not among the matched ones.
     assert!(!highlight_terms(text, "книги ").contains(&"книжка".to_string()));
 }
 
 #[test]
 fn highlight_follows_the_prefix_rule_for_the_last_word() {
     let text = "Купил молоко и молока ещё. Молодой человек, мол.";
-    // «моло» — основа `мол`, начало основ «молок», «молод»; слово «мол» тоже совпало.
+    // "моло" has the stem `мол`, the start of the stems "молок", "молод"; the word "мол" matched too.
     assert_eq!(
         highlight_terms(text, "моло"),
         ["молоко", "молока", "Молодой", "мол"]
     );
-    // Закончено пробелом — только основа `молок`.
+    // Finished with a space: only the stem `молок`.
     assert_eq!(highlight_terms(text, "моло "), ["мол"]);
     assert_eq!(highlight_terms(text, "молоко "), ["молоко", "молока"]);
-    // Не последние термы — точные.
+    // Terms that are not last are exact.
     assert_eq!(
         highlight_terms(text, "молоко ещ"),
         ["молоко", "молока", "ещё"]
@@ -218,9 +218,9 @@ fn highlight_edge_cases() {
     assert!(highlight_terms("текст", "***").is_empty());
     assert!(highlight_terms("текст", "нет").is_empty());
     assert!(highlight_terms("", "нет").is_empty());
-    // Ё и регистр не мешают, слово отдаётся как написано.
+    // "Ё" and case do not interfere, the word is returned as written.
     assert_eq!(highlight_terms("Ёлка и ёлки", "елка "), ["Ёлка", "ёлки"]);
-    // Слов не больше предела.
+    // No more words than the limit.
     let many: String = (0..200).map(|i| format!("мол{i} ")).collect();
     assert_eq!(highlight_terms(&many, "мол").len(), 64);
 }
@@ -275,10 +275,10 @@ fn snippet_centers_on_the_first_match_with_ellipses_inside_the_limit() {
     assert!(out.starts_with('…') && out.ends_with('…'), "{out}");
     assert!(out.chars().count() <= 60, "{out}");
     assert!(out.contains("слово20"));
-    // Режем по границе слова: каждое слово сниппета — целое слово исходного текста.
+    // We cut at a word boundary: each word of the snippet is a whole word of the source text.
     let source: Vec<&str> = text.split(' ').collect();
     for word in out.trim_matches('…').split(' ') {
-        assert!(source.contains(&word), "обрезанное слово {word:?} в {out}");
+        assert!(source.contains(&word), "cut word {word:?} in {out}");
     }
 }
 
@@ -303,7 +303,7 @@ fn snippet_with_a_match_at_the_very_end_of_a_long_text() {
 
 #[test]
 fn snippet_keeps_emoji_and_cyrillic_whole_at_the_edges() {
-    // Обрезка в любом месте не рвёт знак: проверяем каждый предел, строка остаётся валидной и в пределе.
+    // Cutting anywhere does not split a character: we check every limit, the string stays valid and within the limit.
     let text =
         "🙂 привет, ёлка 🎄 встретилась 🙂🙂 друзьям мир 🌍 здесь и 😀 сейчас ещё раз 🙂 конец";
     for max in 1..text.chars().count() + 3 {
@@ -315,7 +315,7 @@ fn snippet_keeps_emoji_and_cyrillic_whole_at_the_edges() {
     let out = snippet(text, &terms(&["встретилась"]), 30);
     assert!(out.contains("встретилась"), "{out}");
     for word in out.trim_matches('…').split(' ') {
-        assert!(text.split(' ').any(|w| w == word), "{word:?} в {out}");
+        assert!(text.split(' ').any(|w| w == word), "{word:?} in {out}");
     }
 }
 
@@ -337,7 +337,7 @@ fn snippet_matches_terms_regardless_of_case_and_yo() {
 
 #[test]
 fn a_pathological_line_gets_a_snippet_in_linear_time() {
-    // Раньше `[a](` ×20 000 и `<` ×50 000 разбирались около 3 с каждое: закрытие искалось от каждой скобки до конца строки.
+    // Before, `[a](` x 20 000 and `<` x 50 000 took about 3 s each to parse: the closing mark was searched for from every bracket to the end of the line.
     for line in [
         "[a](".repeat(40_000),
         "<".repeat(100_000),

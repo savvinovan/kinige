@@ -10,7 +10,7 @@ import type { FocusTarget } from "./useFeed";
 
 interface UseReplyActionsOptions {
   api: KinigeApi;
-  /** Открытый чат; `null` — корзина. */
+  /** The open chat; `null` means the trash. */
   selected: string | null;
   select: (chatId: string | null) => Promise<void>;
   focusOn: (target: FocusTarget) => void;
@@ -25,14 +25,14 @@ interface UseReplyActionsOptions {
   refreshChats: () => Promise<void>;
   setComposerError: (code: ErrorCode | null) => void;
   dismissCard: () => Promise<boolean>;
-  /** Карточка скрыта: лента возвращается к нижнему краю. */
+  /** The card is hidden: the feed returns to the bottom edge. */
   onDismissed: () => void;
 }
 
 /**
- * Отправка записи (в том числе ответом) и действия слайса 5: «Ответить» у записи карточки, переход к записи из цитаты и
- * карточки, крестик карточки. Без оптимистичного показа (§5): запись появляется после ответа Rust, при ошибке текст остаётся
- * в поле, над ним — ошибка.
+ * Sending an entry (including as a reply) and the slice 5 actions: "Reply" on a card entry, a jump to an entry from a
+ * quote and from the card, the card's cross. No optimistic display (§5): an entry appears after Rust replies; on an
+ * error the text stays in the composer with the error above it.
  */
 export function useReplyActions(options: UseReplyActionsOptions) {
   const { api, selected, select, focusOn, draft, reply, saver, changeReply, refreshReply, clearDraft, planDraft, refreshChats } = options;
@@ -43,7 +43,7 @@ export function useReplyActions(options: UseReplyActionsOptions) {
     selectedRef.current = selected;
   });
 
-  /** Черновик с ответом уходит в Rust, и строка над полем берёт состояние записи оттуда. */
+  /** The draft with the reply goes to Rust, and the strip above the composer takes the entry state from there. */
   const confirmReplyState = useCallback(
     async (chatId: string) => {
       await saver.flush();
@@ -53,8 +53,8 @@ export function useReplyActions(options: UseReplyActionsOptions) {
     [api, saver, refreshReply],
   );
 
-  // Строка ответа показывает «в корзине», «удалена» или «перенесена», а запись могли вернуть (из корзины, в тот же чат): при
-  // фокусе окна состояние перечитывается. При смене чата черновик читается заново сам (`useComposerDraft`).
+  // The reply strip shows "in the trash", "deleted" or "moved", but the entry could have been brought back (from the trash, to the same chat): on
+  // window focus the state is reread. On a chat switch the draft is reread by itself (`useComposerDraft`).
   const staleReply = reply !== null && reply.state !== "live";
   useEffect(() => {
     if (!staleReply || selected === null) return;
@@ -66,14 +66,14 @@ export function useReplyActions(options: UseReplyActionsOptions) {
   const submit = () => {
     if (sending.current || draft.trim() === "" || selected === null) return;
     sending.current = true;
-    // Пока идёт отправка, ввод не принимается (см. `onDraftChange`), а запланированное сохранение черновика отменено, уже
-    // отправленное — дожидаемся: Rust очищает черновик чата в той же транзакции, что и отправку, а запоздавшая запись
-    // вернула бы отправленный текст.
+    // While sending, input is not accepted (see `onDraftChange`), and the scheduled draft save is cancelled; one already
+    // sent is awaited: Rust clears the chat's draft in the same transaction as the send, and a late write would
+    // bring back the sent text.
     saver.cancel();
     const text = draft;
     const replyTo = reply;
-    // Запись, на которую отвечали, перенесли в другой чат: строка над полем уже сказала об этом, запись уходит без ответа
-    // (Rust принимает ответ только на запись того же чата).
+    // The entry being replied to was moved to another chat: the strip above the composer already said so, the entry goes
+    // without a reply (Rust accepts a reply only to an entry of the same chat).
     const replyId = replyTo === null || replyTo.state === "moved" ? null : replyTo.id;
     saver
       .settle()
@@ -81,20 +81,20 @@ export function useReplyActions(options: UseReplyActionsOptions) {
       .then((sent) => {
         appendSent(sent);
         void refreshChats();
-        // Человек мог открыть другой чат, пока шла отправка: Rust уже очистил черновик того, откуда отправляли, а поле, очередь
-        // сохранения и ошибка принадлежат теперь новому чату и остаются как были.
+        // The person could have opened another chat while sending: Rust has already cleared the draft of the chat it was
+        // sent from, and the composer, the save queue and the error now belong to the new chat and stay as they were.
         if (selectedRef.current !== selected) return;
         saver.cancel();
         clearDraft();
         setComposerError(null);
       })
-      // Успех: запись просто появляется в ленте, без тоста и подтверждений (как в Telegram). Ошибка: текст остаётся в поле,
-      // запись не показана; черновик возвращается в очередь сохранения. Если Rust сказал, что записи, на которую отвечают,
-      // нет, строка над полем перечитывается: она покажет «в корзине», «удалена» или «перенесена».
+      // Success: the entry simply appears in the feed, with no toast or confirmations (as in Telegram). Error: the text stays in the composer,
+      // the entry is not shown; the draft returns to the save queue. If Rust said the entry being replied to
+      // does not exist, the strip above the composer is reread: it will show "in the trash", "deleted" or "moved".
       .catch((reason: unknown) => {
         const code = errorCode(reason);
-        // Текст возвращается в очередь сохранения прежнего чата (она привязана к нему); строка ошибки и перечитывание строки
-        // ответа нужны только тому чату, который открыт.
+        // The text returns to the save queue of the previous chat (the queue is bound to it); the error line and rereading
+        // the reply strip matter only for the chat that is open.
         planDraft(text, replyTo);
         if (selectedRef.current !== selected) return;
         setComposerError(code);
@@ -105,12 +105,12 @@ export function useReplyActions(options: UseReplyActionsOptions) {
       });
   };
 
-  /** Открыть запись в ленте в контексте (чат и запись): как переход из поиска, запись подсвечена заливкой. */
+  /** Open an entry in the feed in context (chat and entry): like a jump from search, the entry is highlighted with a fill. */
   const openEntry = (chatId: string, messageId: string) => {
     void select(chatId).then(() => focusOn({ chatId, messageId, terms: [], nonce: 0 }));
   };
 
-  /** «Ответить» у записи карточки: строка над полем и курсор в поле. */
+  /** "Reply" on a card entry: the strip above the composer and the cursor in the composer. */
   const startReply = (entry: OnThisDayEntry) => {
     changeReply({
       id: entry.message.id,

@@ -1,10 +1,10 @@
-//! Предохранитель лечения индекса поиска (слайс 4, guardian, третья проверка): «перестроить» вместо «восстановить из копии»
-//! допустимо только при порче одной таблицы `search_fts`. Смешанный вердикт (порча и индекса поиска, и обычной таблицы) и
-//! порча страницы b-tree самой теневой таблицы (код 11, не 267) по-прежнему означают порчу базы: сигнал подаётся,
-//! индекс не перестраивается.
+//! The safeguard for healing the search index (slice 4, guardian, third check): "rebuild" instead of "restore from a
+//! copy" is allowed only when the single `search_fts` table is corrupted. A mixed verdict (both the search index and an
+//! ordinary table corrupted) and corruption of a b-tree page of the shadow table itself (code 11, not 267) still mean
+//! database corruption: the signal is raised, the index is not rebuilt.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -26,12 +26,12 @@ fn open_counting(dir: &Path) -> (Store, Arc<AtomicUsize>) {
         counter.fetch_add(1, Ordering::SeqCst);
     })));
     (
-        Store::open_at(opts, &moscow(T0)).expect("хранилище открывается"),
+        Store::open_at(opts, &moscow(T0)).expect("the store opens"),
         signals,
     )
 }
 
-/// Структура индекса FTS5 заменена мусором: прямой запрос падает с кодом 267.
+/// The FTS5 index structure is replaced with garbage: a direct query fails with code 267.
 fn damage_fts_data(dir: &Path) {
     raw(dir)
         .execute(
@@ -41,14 +41,14 @@ fn damage_fts_data(dir: &Path) {
         .unwrap();
 }
 
-/// Все изменения в основном файле (WAL перенесён), чтобы порча страницы попала в то, что читает проверка.
+/// All changes are in the main file (the WAL is checkpointed) so the page corruption lands in what the check reads.
 fn checkpoint(dir: &Path) {
     let conn = raw(dir);
     conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))
         .unwrap();
 }
 
-/// Заголовок корневой страницы таблицы заменён мусором прямо в файле: обычное повреждение b-tree (код 11).
+/// The table's root page header is replaced with garbage right in the file: ordinary b-tree corruption (code 11).
 fn damage_root_page(dir: &Path, table: &str) {
     let conn = raw(dir);
     let root: i64 = conn
@@ -96,7 +96,7 @@ fn a_mixed_verdict_is_corruption_not_a_rebuild() {
     assert_eq!(
         kinige_store::verify_database(&db_path(dir.path())),
         Integrity::Corrupt,
-        "порча и индекса поиска, и таблицы записей"
+        "both the search index and the entries table are corrupted"
     );
 }
 
@@ -110,8 +110,8 @@ fn maintenance_with_a_mixed_verdict_signals_and_never_rebuilds() {
     damage_root_page(dir.path(), "message");
     let report = store.run_maintenance(&moscow(T0)).unwrap();
     assert!(!report.integrity_ok, "{report:?}");
-    assert_eq!(signals.load(Ordering::SeqCst), 1, "хук сработал");
-    assert_eq!(store.search_heal_count(), 0, "индекс не перестраивался");
+    assert_eq!(signals.load(Ordering::SeqCst), 1, "the hook fired");
+    assert_eq!(store.search_heal_count(), 0, "the index was not rebuilt");
 }
 
 #[test]
@@ -123,9 +123,9 @@ fn a_damaged_btree_page_of_the_index_shadow_table_is_corruption() {
     assert_eq!(
         kinige_store::verify_database(&db_path(dir.path())),
         Integrity::Corrupt,
-        "страница b-tree (код 11) — не порча данных индекса (код 267)"
+        "a b-tree page (code 11) is not corruption of the index data (code 267)"
     );
-    // Та же порча под живым хранилищем: проход обслуживания сигналит и не лечит.
+    // The same corruption under a live store: the maintenance pass raises the signal and does not heal.
     let dir = tempfile::tempdir().unwrap();
     seeded(dir.path());
     let (store, signals) = open_counting(dir.path());

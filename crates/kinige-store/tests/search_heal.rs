@@ -1,12 +1,12 @@
-//! Самолечение индекса поиска (слайс 4, guardian): порча только таблицы `search_fts` (данные индекса — `SQLITE_CORRUPT_VTAB`
-//! 267, настройки — `SQLITE_ERROR` «invalid fts5 file format») не превращается в экран «база повреждена» ни в поиске, ни в
-//! записи, ни в обслуживании, ни при копии и восстановлении: индекс перестраивается из записей. Настоящая порча базы
-//! по-прежнему подаёт сигнал (тесты `maintenance_safety.rs`).
+//! Self-healing of the search index (slice 4, guardian): corruption of the `search_fts` table alone (index data:
+//! `SQLITE_CORRUPT_VTAB` 267, settings: `SQLITE_ERROR` "invalid fts5 file format") does not turn into the "database is
+//! damaged" screen in search, in writing, in maintenance, or in copy and restore: the index is rebuilt from the entries.
+//! Real database corruption still raises the signal (the `maintenance_safety.rs` tests).
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
-#![allow(clippy::disallowed_methods)] // `thread::spawn` запрещён в коде приложения (clippy.toml), тесту поток нужен без обработки отказа
+#![allow(clippy::disallowed_methods)] // `thread::spawn` is forbidden in app code (clippy.toml); the test needs a thread without failure handling
 
 mod common;
 
@@ -29,7 +29,7 @@ fn open_counting(dir: &Path) -> (Store, Arc<AtomicUsize>) {
         counter.fetch_add(1, Ordering::SeqCst);
     })));
     (
-        Store::open_at(opts, &moscow(T0)).expect("хранилище открывается"),
+        Store::open_at(opts, &moscow(T0)).expect("the store opens"),
         signals,
     )
 }
@@ -42,7 +42,7 @@ fn found(store: &Store, query: &str) -> usize {
         .len()
 }
 
-/// База с тремя записями, закрытая (все данные в основном файле).
+/// A database with three entries, closed (all data in the main file).
 fn seeded(dir: &Path) {
     let store = open_without_mirror(dir);
     for (i, text) in ["читаю книгу", "купил книги", "пишу заметку"]
@@ -57,26 +57,26 @@ fn seeded(dir: &Path) {
     wait_closed(dir);
 }
 
-/// Порча данных индекса FTS5: прямой запрос к нему падает (`SQLITE_CORRUPT_VTAB`), остальная база цела.
+/// Corruption of the FTS5 index data: a direct query to it fails (`SQLITE_CORRUPT_VTAB`), the rest of the database is intact.
 fn damage_data(dir: &Path) {
     let conn = raw(dir);
     let changed = conn
         .execute(
-            // Запись структуры индекса (id = 10) заменена мусором одного и того же вида: порча воспроизводится без случайности.
+            // The index structure record (id = 10) is replaced with garbage of the same kind: the corruption is reproduced without randomness.
             "UPDATE search_fts_data SET block = X'FFFFFFFFFFFF' WHERE id = 10",
             [],
         )
         .unwrap();
-    assert!(changed > 0, "в индексе есть блоки для порчи");
+    assert!(changed > 0, "the index has blocks to corrupt");
     let broken = conn.query_row(
         "SELECT COUNT(*) FROM search_fts WHERE search_fts MATCH 'книг*'",
         [],
         |r| r.get::<_, i64>(0),
     );
-    assert!(broken.is_err(), "индекс повреждён: {broken:?}");
+    assert!(broken.is_err(), "the index is corrupted: {broken:?}");
 }
 
-/// Порча настроек индекса: `SQLITE_ERROR`, а не `CORRUPT`; такая таблица не открывается и не удаляется.
+/// Corruption of the index settings: `SQLITE_ERROR`, not `CORRUPT`; such a table can neither be opened nor dropped.
 fn damage_config(dir: &Path) {
     let conn = raw(dir);
     conn.execute(
@@ -89,7 +89,10 @@ fn damage_config(dir: &Path) {
         [],
         |r| r.get::<_, i64>(0),
     );
-    assert!(broken.is_err(), "настройки индекса повреждены: {broken:?}");
+    assert!(
+        broken.is_err(),
+        "the index settings are corrupted: {broken:?}"
+    );
 }
 
 fn index_version(dir: &Path) -> String {
@@ -102,7 +105,7 @@ fn index_version(dir: &Path) -> String {
         .unwrap()
 }
 
-/// Индекс согласован с записями: каждая запись в `search_map`, лишних строк нет, версия правил на месте.
+/// The index is consistent with the entries: every entry is in `search_map`, there are no extra rows, the rules version is in place.
 fn assert_index_consistent(dir: &Path) {
     let conn = raw(dir);
     let (messages, mapped): (i64, i64) = conn
@@ -114,7 +117,7 @@ fn assert_index_consistent(dir: &Path) {
         .unwrap();
     assert_eq!(
         messages, mapped,
-        "в индексе столько же записей, сколько в базе"
+        "the index has as many entries as the database"
     );
     let integrity: String = conn
         .query_row("PRAGMA integrity_check", [], |r| r.get(0))
@@ -132,13 +135,13 @@ fn a_damaged_search_index_is_rebuilt_on_the_first_query_without_a_corruption_sig
     assert_eq!(
         found(&store, "книга"),
         2,
-        "запрос вылечил индекс и нашёл записи"
+        "the query healed the index and found the entries"
     );
     assert_eq!(found(&store, "заметки"), 1);
     assert_eq!(
         signals.load(Ordering::SeqCst),
         0,
-        "сигнала о повреждении базы нет"
+        "no database corruption signal"
     );
     assert_eq!(store.search_heal_count(), 1);
     assert_index_consistent(dir.path());
@@ -146,7 +149,7 @@ fn a_damaged_search_index_is_rebuilt_on_the_first_query_without_a_corruption_sig
 
 #[test]
 fn damaged_index_settings_are_healed_too_by_a_query_and_by_a_write() {
-    // Запрос.
+    // Query.
     let dir = tempfile::tempdir().unwrap();
     seeded(dir.path());
     damage_config(dir.path());
@@ -156,14 +159,14 @@ fn damaged_index_settings_are_healed_too_by_a_query_and_by_a_write() {
     assert_index_consistent(dir.path());
     drop(store);
 
-    // Запись: сначала порча, потом отправка и правка — обе проходят, запись не теряется.
+    // Write: corruption first, then a send and an edit; both succeed, the entry is not lost.
     let dir = tempfile::tempdir().unwrap();
     seeded(dir.path());
     damage_config(dir.path());
     let (store, signals) = open_counting(dir.path());
     let sent = store
         .send_message(INBOX_ID, "новая запись про книгу", &moscow(T0 + 9 * MINUTE))
-        .expect("запись проходит при повреждённом индексе");
+        .expect("the write succeeds with a corrupted index");
     assert_eq!(signals.load(Ordering::SeqCst), 0);
     assert_eq!(found(&store, "книга"), 3);
     store
@@ -186,15 +189,19 @@ fn a_write_with_a_damaged_index_is_saved_and_the_index_is_rebuilt_in_the_same_tr
             "запись при порче индекса",
             &moscow(T0 + 9 * MINUTE),
         )
-        .expect("отправка проходит");
+        .expect("the send succeeds");
     assert_eq!(
         signals.load(Ordering::SeqCst),
         0,
-        "экран «база повреждена» не вызван"
+        "the \"database is damaged\" screen was not triggered"
     );
     assert_eq!(found(&store, "порче"), 1);
-    assert_eq!(found(&store, "книги"), 2, "старые записи в индексе тоже");
-    // Правка и удаление навсегда при порче: то же.
+    assert_eq!(
+        found(&store, "книги"),
+        2,
+        "the old entries are in the index too"
+    );
+    // Edit and permanent delete under corruption: the same.
     damage_data(dir.path());
     store
         .edit_message(&sent.id, "правка текста", &moscow(T0 + 10 * MINUTE))
@@ -212,13 +219,13 @@ fn maintenance_with_a_damaged_index_only_heals_it_and_signals_nothing() {
     damage_data(dir.path());
     let (store, signals) = open_counting(dir.path());
     let report = store.run_maintenance(&moscow(T0)).unwrap();
-    assert!(report.integrity_ok, "база цела: {report:?}");
-    assert!(report.backup_made, "копия дня снята");
+    assert!(report.integrity_ok, "the database is intact: {report:?}");
+    assert!(report.backup_made, "the day's copy was taken");
     assert_eq!(signals.load(Ordering::SeqCst), 0);
     assert_eq!(store.search_heal_count(), 1);
     assert_eq!(found(&store, "книга"), 2);
     assert_index_consistent(dir.path());
-    // Порча настроек: проход тоже не сигналит (проверка целостности сама возвращает ошибку).
+    // Settings corruption: the pass does not raise the signal either (the integrity check itself returns an error).
     damage_config(dir.path());
     let later = moscow(T0 + 2 * 86_400_000);
     let report = store.run_maintenance(&later).unwrap();
@@ -239,7 +246,7 @@ fn verdicts_name_a_damaged_index_apart_from_a_damaged_database() {
 }
 
 fn seeded_fresh_for_config(dir: &Path) {
-    // Перестройка вернула здоровую базу; порча настроек — тоже только индекс.
+    // The rebuild returned a healthy database; settings corruption is also only the index.
     let (store, _) = open_counting(dir);
     assert_eq!(found(&store, "книга"), 2);
     drop(store);
@@ -257,17 +264,17 @@ fn a_copy_taken_with_a_damaged_index_is_made_and_restoring_it_leaves_a_consisten
     seeded(dir.path());
     damage_data(dir.path());
     let (store, signals) = open_counting(dir.path());
-    // Копия перед импортом не отказывает из-за индекса.
+    // The pre-import copy does not fail because of the index.
     let name = store
         .backup_before_import(&moscow(T0 + 3 * MINUTE))
-        .expect("копия снимается при повреждённом индексе");
+        .expect("the copy is taken with a corrupted index");
     assert_eq!(signals.load(Ordering::SeqCst), 0);
     drop(store);
     wait_closed(dir.path());
-    // Восстановление из такой копии: база открывается, индекс и версия согласованы.
+    // Restoring from such a copy: the database opens, the index and version are consistent.
     let db = db_path(dir.path());
     kinige_store::restore_backup(&db, &name, T0 + 4 * MINUTE, None)
-        .expect("копия годится для восстановления");
+        .expect("the copy is fit for restoring");
     let (store, signals) = open_counting(dir.path());
     assert_eq!(found(&store, "книга"), 2);
     assert_eq!(signals.load(Ordering::SeqCst), 0);
@@ -294,11 +301,7 @@ fn concurrent_queries_over_one_damaged_index_cause_one_rebuild() {
     for handle in handles {
         assert_eq!(handle.join().unwrap(), 2);
     }
-    assert_eq!(
-        store.search_heal_count(),
-        1,
-        "одна перестройка на все запросы"
-    );
+    assert_eq!(store.search_heal_count(), 1, "one rebuild for all queries");
     assert_eq!(signals.load(Ordering::SeqCst), 0);
 }
 

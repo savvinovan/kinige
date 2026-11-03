@@ -1,11 +1,11 @@
-/* Только для историй Storybook: строка профиля шириной сайдбара, с полями и местом над собой для меню. */
+/* Storybook stories only: the profile row at sidebar width, with padding and room above it for the menu. */
 .story-profile {
   box-sizing: border-box;
   width: var(--layout-sidebar-width);
   padding: var(--layout-sidebar-padding);
 }
 
-/* Свёрнутый сайдбар: строка профиля шириной полосы эмодзи. */
+/* Collapsed sidebar: the profile row at the width of the emoji rail. */
 .story-profile--rail {
   width: var(--layout-sidebar-rail-width);
 }

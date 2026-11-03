@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { BackupInfo } from "../../api/generated/BackupInfo";
 import { RecoveryScreen } from "./RecoveryScreen";
 
-// Время копий — местное: подписи не зависят от пояса машины.
+// The copy times are local: labels do not depend on the machine's time zone.
 const backup = (name: string, kind: BackupInfo["kind"], at: Date): BackupInfo => ({ name, kind, createdAt: at.getTime() });
 const OLD = backup("daily-2026-10-25.db", "daily", new Date(2026, 9, 25, 9, 12));
 const MID = backup("pre-migration-2026-10-26.db", "pre_migration", new Date(2026, 9, 26, 18, 30));

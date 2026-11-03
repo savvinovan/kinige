@@ -10,7 +10,7 @@ const EASINGS = [
   { name: "exit", about: "уход", duration: "long" },
 ] as const;
 
-/** Четыре числа из значения вида «cubic-bezier(0.2, 0, 0, 1)» (CSS-переменная --motion-easing-*). */
+/** Four numbers from a value like "cubic-bezier(0.2, 0, 0, 1)" (the CSS variable --motion-easing-*). */
 function bezierPoints(name: string): [number, number, number, number] {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(`--motion-easing-${name}`);
   const numbers = raw.match(/-?\d*\.?\d+/g)?.map(Number) ?? [0, 0, 1, 1];

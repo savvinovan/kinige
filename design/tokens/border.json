@@ -2,13 +2,13 @@
   "border": {
     "width": {
       "$type": "dimension",
-      "hairline": { "$value": "1px", "$description": "Тонкий разделитель и рамка элемента." },
-      "strong": { "$value": "2px", "$description": "Линия, которая должна читаться как линия: кривые на графиках." }
+      "hairline": { "$value": "1px", "$description": "A thin divider and an element border." },
+      "strong": { "$value": "2px", "$description": "A line that must read as a line: curves on charts." }
     }
   },
   "focus": {
     "$type": "dimension",
-    "width": { "$value": "2px", "$description": "Толщина кольца фокуса с клавиатуры." },
-    "offset": { "$value": "2px", "$description": "Зазор между элементом и кольцом фокуса." }
+    "width": { "$value": "2px", "$description": "Thickness of the keyboard focus ring." },
+    "offset": { "$value": "2px", "$description": "The gap between the element and the focus ring." }
   }
 }

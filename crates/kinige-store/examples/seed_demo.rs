@@ -1,15 +1,15 @@
-//! Демо-данные для проверки слайсов 3–5 в настоящем окне (скриншоты, ручная проверка): чаты, записи, теги, задачи, корзина;
-//! слайс 5 — записи Inbox на сегодняшний день журнала 1, 3, 4, 6 и 9 лет назад («В этот день») и синтетический личный чат
-//! Telegram с ответами. Только для разработки: пишет во временный каталог, который передан аргументом, и ничего не делает с
-//! настоящей базой. Все тексты синтетические. Слайс 6 — синтетические год и прошлый год записей для леса: все стадии роста,
-//! неделя без записей, дни с несколькими чатами, запись в корзине; сегодняшнее дерево стоит на третьей стадии у самой границы
-//! четвёртой (одна запись в сто знаков поднимает его). Лес засевается только при `KINIGE_SEED_FOREST=1`, чтобы сценарии прежних
-//! слайсов не меняли свои данные.
+//! Demo data for checking slices 3-5 in the real window (screenshots, manual checks): chats, entries, tags, tasks, trash;
+//! slice 5 - Inbox entries on today's journal date 1, 3, 4, 6 and 9 years ago ("On this day") and a synthetic personal
+//! Telegram chat with replies. Development only: it writes to a temporary directory passed as an argument and does nothing
+//! to the real database. All texts are synthetic. Slice 6 - a synthetic current year and previous year of entries for the
+//! forest: every growth stage, a week without entries, days with several chats, an entry in the trash; today's tree is at
+//! the third stage right at the border of the fourth (one entry of a hundred characters raises it). The forest is seeded
+//! only with `KINIGE_SEED_FOREST=1`, so that the scenarios of earlier slices do not change their data.
 //!
-//! Использование: `cargo run -p kinige-store --example seed_demo -- <каталог данных> [<папка Markdown-копии>]`
+//! Usage: `cargo run -p kinige-store --example seed_demo -- <data directory> [<Markdown copy folder>]`
 
-// Пример — консольная утилита: печать в stdout и падение на любой ошибке разрешены (правила «только через log» и
-// «никогда не падать» — для кода приложения).
+// The example is a console utility: printing to stdout and panicking on any error are allowed (the rules "only through
+// log" and "never panic" are for app code).
 #![allow(
     clippy::print_stdout,
     clippy::unwrap_used,
@@ -40,19 +40,16 @@ const DAY: i64 = 24 * 60 * MINUTE;
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    let data = PathBuf::from(args.next().expect("каталог данных"));
+    let data = PathBuf::from(args.next().expect("data directory"));
     let mirror = args.next().map(PathBuf::from);
     let mut options = StoreOptions::new(data.join("kinige.db"), mirror);
     options.start_maintenance = false;
-    let store = Store::open(options).expect("хранилище открывается");
+    let store = Store::open(options).expect("the store opens");
 
     let now = Now::system();
     let at = |ms: i64| Now::at(now.ms + ms, &now.tz);
     let send = |chat: &str, body: &str, ago: i64| {
-        store
-            .send_message(chat, body, &at(-ago))
-            .expect("запись")
-            .id
+        store.send_message(chat, body, &at(-ago)).expect("entry").id
     };
 
     let books = store
@@ -75,7 +72,7 @@ fn main() {
         )
         .unwrap();
     let mut history = vec![books.id.clone(), work.id.clone(), long_name.id.clone()];
-    // Чаты без эмодзи (хранятся с «💬» по умолчанию): сайдбар показывает для них плитку с первой буквой названия (слайс D2).
+    // Chats without an emoji (stored with "💬" by default): the sidebar shows a tile with the first letter of the name for them (slice D2).
     for (days_ago, title) in [(25, "Проекты"), (24, "Linux notes"), (23, "Мама")] {
         history.push(
             store
@@ -157,19 +154,19 @@ fn main() {
         seed_forest(&store, &now, &history, &old.id, &data);
     }
     seed_telegram_chat(&store, &now);
-    // Копия дня для строки в «Настройках».
+    // The day's copy for the line in "Settings".
     store.run_maintenance(&at(0)).unwrap();
-    println!("готово: {}", data.display());
+    println!("done: {}", data.display());
 }
 
-/// Сколько лет назад лежат записи «В этот день» (слайс 5): три новых года показываются подробно, остальные — строкой.
+/// How many years ago the "On this day" entries lie (slice 5): the three newest years are shown in detail, the rest as a line.
 const PAST_YEARS: [i32; 7] = [1, 3, 4, 6, 9, 12, 16];
 
-/// Записи Inbox на сегодняшний день журнала в прошлые годы. «Сегодня» считается от `journal_date` запуска (граница 04:00),
-/// а не от календарного дня UTC; 29 февраля совпадает только с 29 февраля, поэтому недостающие годы берутся из запасных.
+/// Inbox entries on today's journal date in past years. "Today" is counted from the run's `journal_date` (the 04:00 boundary),
+/// not from the UTC calendar day; 29 February matches only 29 February, so the missing years are taken from the spare ones.
 fn seed_on_this_day(store: &Store, now: &Now) {
     let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
-    let today = NaiveDate::parse_from_str(&today, "%Y-%m-%d").expect("день журнала");
+    let today = NaiveDate::parse_from_str(&today, "%Y-%m-%d").expect("journal day");
     let tz: Tz = now.tz.parse().unwrap_or(chrono_tz::UTC);
     let years: Vec<NaiveDate> = PAST_YEARS
         .iter()
@@ -208,33 +205,34 @@ fn seed_on_this_day(store: &Store, now: &Now) {
     ];
     for (year, (date, bodies)) in years.iter().zip(texts).enumerate() {
         for (n, body) in bodies.iter().enumerate() {
-            let local = date.and_hms_opt(9 + 2 * n as u32, 12, 0).expect("время");
+            let local = date.and_hms_opt(9 + 2 * n as u32, 12, 0).expect("time");
             let ms = tz
                 .from_local_datetime(&local)
                 .earliest()
-                .expect("местное время существует")
+                .expect("local time exists")
                 .timestamp_millis();
             let when = Now::at(ms, &now.tz);
             let id = store
                 .send_message(INBOX_ID, body, &when)
-                .expect("запись прошлого года")
+                .expect("entry of a past year")
                 .id;
-            // Вторая запись третьего года (3 года назад) уходит в корзину: в карточке её нет.
+            // The second entry of the third year (3 years ago) goes to the trash: it is not in the card.
             if (year, n) == (1, 1) {
-                store.delete_message(&id, now).expect("в корзину");
+                store.delete_message(&id, now).expect("to the trash");
             }
         }
     }
 }
 
-/// Синтетический личный чат Telegram «Анна» с ответами: на свою и чужую реплику, чужая реплика на мою и ответ на реплику,
-/// которой нет в файле. JSON строится здесь и идёт через `parse_export` и импорт хранилища, как настоящий файл.
+/// A synthetic personal Telegram chat "Анна" with replies: to one's own and to the other's message, the other's reply to
+/// mine, and a reply to a message that is not in the file. The JSON is built here and goes through `parse_export` and the
+/// store import, like a real file.
 fn seed_telegram_chat(store: &Store, now: &Now) {
     const ME: &str = "user1000001";
     const ANNA: &str = "user2000002";
     let base = 1_678_787_400i64; // 2023-03-14 10:30 UTC
     let message = |id: u64, from: &str, name: &str, text: &str, reply: Option<u64>, at: i64| {
-        let text = serde_json::to_string(text).expect("текст");
+        let text = serde_json::to_string(text).expect("text");
         let reply = reply
             .map(|r| format!(r#""reply_to_message_id":{r},"#))
             .unwrap_or_default();
@@ -283,7 +281,7 @@ fn seed_telegram_chat(store: &Store, now: &Now) {
         r#"{{"personal_information":{{"user_id":1000001}},"chats":{{"list":[{{"name":"Анна","type":"personal_chat","id":2000002,"messages":[{}]}}]}}}}"#,
         messages.join(",")
     );
-    let export = Arc::new(parse_export(&json).expect("синтетический экспорт разбирается"));
+    let export = Arc::new(parse_export(&json).expect("the synthetic export parses"));
     let ids = export.chats.iter().map(|c| c.id.clone()).collect();
     store
         .import_telegram(
@@ -294,5 +292,5 @@ fn seed_telegram_chat(store: &Store, now: &Now) {
             |_| {},
             Arc::new(AtomicBool::new(false)),
         )
-        .expect("импорт синтетического чата");
+        .expect("import of the synthetic chat");
 }

@@ -1,5 +1,5 @@
-//! Файл из действующего состояния (ADR-0010): все известные ключи с действующими значениями, чужие ключи сохраняются.
-//! И обратное: совпадает ли разобранный файл с состоянием («хэш совпал — побеждает база»).
+//! The file from the effective state (ADR-0010): all known keys with effective values, foreign keys are kept.
+//! And the reverse: whether the parsed file matches the state ("hash matched - the database wins").
 
 use super::apply::{ChatInfo, INBOX_FILE_TITLE, load_chats, resolve_chats, shortcut_slot};
 use super::parse::{Field, Parsed};
@@ -13,18 +13,18 @@ use serde_json::{Map, Value, json};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-/// Действующее состояние настроек, как оно попадает в файл.
+/// The effective settings state as it goes into the file.
 #[derive(Debug, Clone)]
 pub(crate) struct EffectiveState {
     pub text_size: TextSize,
     pub shortcuts: [String; 2],
-    /// Папка копии, которую пользователь выбрал; `None` — по умолчанию.
+    /// The copy folder the user chose; `None` means the default.
     pub mirror_custom: Option<String>,
-    /// Папка копии, в которую пишется сейчас (выбранная или по умолчанию).
+    /// The copy folder being written to now (the chosen one or the default).
     pub mirror_effective: Option<PathBuf>,
     pub enabled: bool,
     pub mode: AgentMode,
-    /// Видимые агенту чаты: существуют, не удалены, не исключены из AI.
+    /// Chats visible to the agent: they exist, are not deleted and are not excluded from AI.
     pub visible: Vec<ChatInfo>,
     pub chats: Vec<ChatInfo>,
 }
@@ -71,7 +71,7 @@ impl Store {
 }
 
 impl EffectiveState {
-    /// Содержимое файла: чужие ключи из `base` сохраняются, известные ключи пишутся действующими значениями.
+    /// The file content: foreign keys from `base` are kept, known keys are written with effective values.
     pub(crate) fn render(&self, base: Option<&Map<String, Value>>) -> Vec<u8> {
         let mut doc = base.cloned().unwrap_or_default();
         doc.insert("text_size".into(), json!(self.text_size.as_setting()));
@@ -80,7 +80,7 @@ impl EffectiveState {
             shortcuts.insert("clipboard".into(), json!(self.shortcuts[1]));
         });
         set_in(&mut doc, "mirror", |mirror| {
-            // Папка по умолчанию — `null`: личный путь не попадает в файл, которым делятся.
+            // The default folder is `null`: a personal path does not end up in a file that people share.
             mirror.insert("folder".into(), json!(self.mirror_custom));
         });
         set_in(&mut doc, "agent_access", |agent| {
@@ -99,8 +99,8 @@ impl EffectiveState {
         bytes
     }
 
-    /// Совпадает ли файл с состоянием. Ключи, которых в файле нет или которые в нём негодны, не в счёт: они не были бы
-    /// применены, а ошибка уже видна.
+    /// Whether the file matches the state. Keys that are absent from the file or unusable in it do not count: they
+    /// would not have been applied, and the error is already visible.
     pub(crate) fn matches(&self, parsed: &Parsed) -> bool {
         let text_size_ok = match &parsed.text_size {
             Field::Absent => true,
@@ -161,7 +161,7 @@ fn file_title(chat: &ChatInfo) -> &str {
     }
 }
 
-/// Раздел-объект документа: чужие ключи внутри сохраняются; если на месте раздела не объект — он заменяется.
+/// A section-object of the document: foreign keys inside are kept; if the section is not an object, it is replaced.
 fn set_in(doc: &mut Map<String, Value>, name: &str, fill: impl FnOnce(&mut Map<String, Value>)) {
     let mut section = match doc.remove(name) {
         Some(Value::Object(map)) => map,

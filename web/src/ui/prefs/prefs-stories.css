@@ -1,4 +1,4 @@
-/* Только для историй Storybook: окно «Настройки» нужного размера (токены layout.settings.*), с рамкой окна ОС. */
+/* Storybook stories only: the "Settings" window at the needed size (layout.settings.* tokens), with an OS window frame. */
 .story-prefs-frame {
   position: relative;
   box-sizing: border-box;
@@ -9,13 +9,13 @@
   overflow: clip;
 }
 
-/* Наименьшее окно. */
+/* The smallest window. */
 .story-prefs-frame--min {
   width: var(--layout-settings-window-min-width);
   height: var(--layout-settings-window-min-height);
 }
 
-/* `position: fixed` у подложки предупреждения: в рамке истории оно должно перекрывать только окно, а не весь холст. */
+/* `position: fixed` on the warning backdrop: inside the story frame it must cover only the window, not the whole canvas. */
 .story-prefs-frame {
   transform: translateZ(0);
 }

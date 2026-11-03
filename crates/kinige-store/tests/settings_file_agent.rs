@@ -1,7 +1,7 @@
-//! Доступ ИИ-агентов из файла настроек (слайс 4b, ADR-0010): сопоставление чатов, строка журнала, подпись по инструменту.
+//! AI agent access from the settings file (slice 4b, ADR-0010): matching chats, the log row, signing by tool.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
+// relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 // AI-agent access from the file is applied on Unix only: Windows has no MCP server yet and reports the key as unsupported
 // instead (ADR-0010, Windows note; the Windows test is in `settings_file_sync.rs`).
@@ -63,12 +63,12 @@ fn agent_access_from_the_file_resolves_chats_logs_one_row_and_never_logs_titles(
     );
     assert!(!rows[0].2.contains("Работа") && !rows[0].2.contains("Inbox"));
 
-    // Тот же доступ, другой ключ файла: строки журнала не прибавляется.
+    // The same access, a different file key: no log row is added.
     let mut doc = rig.json();
     doc["text_size"] = json!("large");
     rig.write(&doc.to_string());
     assert_eq!(rig.log_rows().len(), 1);
-    // Окно меняет доступ — строки «settings_file» нет.
+    // The window changes access: there is no "settings_file" row.
     rig.file
         .edit(|store| store.set_agent_enabled(false))
         .unwrap()
@@ -89,7 +89,7 @@ fn inbox_is_matched_by_title_in_any_language_and_a_user_chat_named_inbox_makes_i
             .iter()
             .any(|c| c.is_inbox && c.visible)
     );
-    // Файл, который записало приложение, называет Inbox так же.
+    // A file written by the app names Inbox the same way.
     rig.file
         .edit(|store| store.set_agent_enabled(true))
         .unwrap()
@@ -107,7 +107,7 @@ fn inbox_is_matched_by_title_in_any_language_and_a_user_chat_named_inbox_makes_i
     let issues = rig.file.state().issues;
     assert_eq!(issues.len(), 1);
     assert_eq!(issues[0].kind, KeyIssueKind::ChatAmbiguous);
-    // Элемент с id не зависит от названия.
+    // An element with an id does not depend on the title.
     rig.write(&json!({"agent_access":{"chats":[{"id": twin}]}}).to_string());
     assert!(rig.file.state().issues.is_empty());
 }
@@ -143,8 +143,8 @@ fn a_missing_id_is_an_error_even_when_the_title_exists_and_archived_chats_take_p
 
 #[test]
 fn an_mcp_client_cannot_forge_the_settings_file_log_row_by_name_or_by_tool() {
-    // Строку «доступ изменён» подписывает инструмент `settings_file`, который пишет только поток файла: клиент MCP может
-    // назвать себя `settings.json` сколько угодно, а неизвестный инструмент в журнале всегда `unknown`.
+    // The "access changed" row is signed by the `settings_file` tool, which only the file thread writes: an MCP client can
+    // call itself `settings.json` as much as it likes, and an unknown tool in the log is always `unknown`.
     use common::agent::{agent, call_as};
     use kinige_domain::AgentMode;
     let agent = agent(AgentMode::Read, true);
@@ -182,7 +182,7 @@ fn an_mcp_client_cannot_forge_the_settings_file_log_row_by_name_or_by_tool() {
 
 #[test]
 fn stale_ids_in_the_stored_set_do_not_make_an_unchanged_access_look_changed() {
-    // В базе остался id чата, которого уже нет: агент его не видит. Файл просит те же «ничего не видно» — строки журнала нет.
+    // The database still holds the id of a chat that no longer exists: the agent does not see it. The file asks for the same "nothing visible", so there is no log row.
     let rig = rig();
     raw(rig.dir.path())
         .execute(

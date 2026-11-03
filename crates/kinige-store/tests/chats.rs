@@ -1,8 +1,8 @@
-//! Чаты (слайс 3): создание со всеми группами, имя, эмодзи, закрепление, архив, порядок разделов, Inbox, записи в чате,
-//! папки Markdown-копии и меню значка.
+//! Chats (slice 3): creation with all groups, the name, the emoji, pinning, the archive, the section order, Inbox, entries in a chat,
+//! the Markdown copy folders and the icon menu.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The root of the integration tests is entirely test code: `cfg(test)` gives helpers outside #[test] the same
+// clippy.toml relaxations (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -32,13 +32,17 @@ fn a_new_chat_has_all_six_groups_under_one_hlc_and_goes_to_the_end() {
         (books.title.as_str(), books.icon.as_deref()),
         ("Книги", Some("📚"))
     );
-    assert_eq!(films.icon.as_deref(), Some("💬"), "без эмодзи — 💬");
+    assert_eq!(
+        films.icon.as_deref(),
+        Some("💬"),
+        "without an emoji it is 💬"
+    );
     assert_eq!(books.count, 0);
     assert!(!books.is_inbox && books.pinned_at.is_none() && books.archived_at.is_none());
     assert_eq!(
         titles(&store.list_chats().unwrap()),
         ["", "Книги", "Фильмы"],
-        "Inbox первый, новые — в конец"
+        "Inbox first, new ones at the end"
     );
 
     let g = groups(dir.path(), "chat", &books.id);
@@ -60,7 +64,7 @@ fn a_new_chat_has_all_six_groups_under_one_hlc_and_goes_to_the_end() {
         assert_eq!(
             entry,
             &format!(r#"{{"h":"{first}","sv":1}}"#),
-            "одно событие — один HLC, sv = 1"
+            "one event, one HLC, sv = 1"
         );
     }
     let sort_key = |id: &str| -> String {
@@ -108,7 +112,7 @@ fn title_and_icon_rules() {
     assert_eq!(
         count_rows(dir.path(), "chat"),
         2,
-        "ничего лишнего не создано"
+        "nothing extra is created"
     );
 }
 
@@ -157,10 +161,10 @@ fn rename_and_icon_rewrite_only_meta_and_keep_foreign_bytes() {
     assert_eq!(
         (title.as_str(), icon.as_str()),
         ("Проза", "🎬"),
-        "колонки из групп"
+        "columns from the groups"
     );
 
-    // То же имя — ничего не пишется.
+    // The same name: nothing is written.
     let clock_before = clock(dir.path());
     store.rename_chat(&chat.id, "Проза", &at(4)).unwrap();
     assert_eq!(clock(dir.path()), clock_before);
@@ -191,15 +195,15 @@ fn pin_and_archive_rewrite_only_state_and_form_the_sections() {
     assert_eq!(
         titles(&chats),
         ["C", "B", "", "A"],
-        "закреплённые по времени закрепления, затем чаты, затем архив"
+        "pinned ones by pin time, then chats, then the archive"
     );
     assert!(chats[0].pinned_at.is_some() && chats[3].archived_at.is_some());
 
-    // Открепить и вернуть из архива.
+    // Unpin and restore from the archive.
     store.set_chat_pinned(&c.id, false, &at(7)).unwrap();
     store.set_chat_archived(&a.id, false, &at(8)).unwrap();
     assert_eq!(titles(&store.list_chats().unwrap()), ["B", "", "A", "C"]);
-    // Повтор не пишет.
+    // A repeat writes nothing.
     let clock_before = clock(dir.path());
     store.set_chat_archived(&a.id, false, &at(9)).unwrap();
     assert_eq!(clock(dir.path()), clock_before);
@@ -215,7 +219,7 @@ fn inbox_can_be_pinned_but_not_renamed_archived_or_given_another_icon() {
     assert_eq!(
         titles(&store.list_chats().unwrap()),
         ["", "Книги"],
-        "Inbox закреплён первым"
+        "Inbox is pinned first"
     );
     store.set_chat_pinned(INBOX_ID, false, &at(4)).unwrap();
 
@@ -231,7 +235,7 @@ fn inbox_can_be_pinned_but_not_renamed_archived_or_given_another_icon() {
     assert_eq!(
         store.set_chat_archived(INBOX_ID, false, &at(5)).unwrap().id,
         INBOX_ID,
-        "вернуть из архива, которого нет, можно: ничего не меняется"
+        "restoring from an archive that is not there is allowed: nothing changes"
     );
     let after = (groups(dir.path(), "chat", INBOX_ID), clock(dir.path()));
     assert_eq!(after.0["meta"], before.0["meta"]);
@@ -259,12 +263,12 @@ fn messages_go_to_the_chosen_chat_and_each_chat_keeps_its_own_count_and_draft() 
     assert_eq!(
         (chats[0].count, chats[1].count),
         (0, 1),
-        "у Книг 1, у Inbox прежний"
+        "the Books chat has 1, Inbox keeps its previous count"
     );
     assert_eq!(
         store.get_chat_draft(&books.id).unwrap(),
         "",
-        "отправка очистила черновик своего чата"
+        "sending cleared the draft of its own chat"
     );
     assert_eq!(store.get_chat_draft(INBOX_ID).unwrap(), "черновик inbox");
     let page = store.list_messages(&books.id, None, 10, &at(4)).unwrap();
@@ -301,15 +305,15 @@ fn the_tray_menu_lists_up_to_five_recent_chats_by_their_last_entry() {
     assert_eq!(
         recent.iter().map(|c| c.title.as_str()).collect::<Vec<_>>(),
         ["Пять", "Четыре", "Три", "Два", "Один"],
-        "по последней записи; без Inbox, архива и чатов без записей"
+        "by the last entry; without Inbox, the archive and chats without entries"
     );
     assert!(recent.iter().all(|c| c.id != empty.id && c.id != INBOX_ID));
     assert_eq!(recent[0].icon.as_deref(), Some("💬"));
 
-    // Новая запись в старом чате поднимает его.
+    // A new entry in an old chat raises it.
     store.send_message(&ids[0], "снова", &at(50)).unwrap();
     assert_eq!(store.recent_chats(2).unwrap()[0].title, "Один");
-    // Запись в корзине не считается последней.
+    // An entry in the trash does not count as the last one.
     let last = store.send_message(&ids[1], "последняя", &at(60)).unwrap();
     store.delete_message(&last.id, &at(61)).unwrap();
     assert_ne!(store.recent_chats(1).unwrap()[0].title, "Два");

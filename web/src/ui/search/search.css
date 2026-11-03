@@ -1,16 +1,16 @@
-/* Результаты поиска на месте ленты: фильтры, строка «Чаты», записи с фрагментом и подсвеченными словами. Только токены. */
+/* Search results in place of the feed: filters, the "Chats" row, entries with a snippet and highlighted words. Tokens only. */
 .search {
   box-sizing: border-box;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  /* Место под полосу прокрутки занято всегда: строка фильтров не сдвигается, когда результатов мало или нет. */
+  /* The space for the scroll bar is always reserved: the filters row does not shift when there are few or no results. */
   scrollbar-gutter: stable;
   padding: var(--layout-feed-padding-block) var(--layout-feed-padding-inline);
   background: var(--color-surface-paper);
 }
 
-/* Та же колонка, что у ленты. */
+/* The same column as the feed. */
 .search__column {
   display: flex;
   flex-direction: column;
@@ -67,7 +67,7 @@
   justify-content: center;
 }
 
-/* Строка результата: заливка плашки сообщения; выбранная стрелками — заметно светлее (`highlight.row`, 1,5:1 к плашке), без рамки. */
+/* A result row: the message bubble fill; the one selected with the arrows is clearly lighter (`highlight.row`, 1.5:1 against the bubble), no border. */
 .search-hit,
 .search-chat {
   box-sizing: border-box;
@@ -89,8 +89,8 @@
   gap: var(--space-2);
 }
 
-/* Фокус остаётся в поле поиска, поэтому заливка — единственный знак, что откроет Enter. Третичный текст на этой заливке ниже 4,5:1,
-   поэтому подпись, день и счётчик в выбранной строке вторичные. */
+/* Focus stays in the search field, so the fill is the only sign of what Enter will open. Tertiary text on this fill is below 4.5:1,
+   so the caption, the day and the counter in the selected row are secondary. */
 .search-row--active {
   background: var(--color-highlight-row);
 }
@@ -111,7 +111,7 @@
   line-height: var(--type-meta-line-height);
 }
 
-/* Эмодзи и имя чата: длинное имя обрезается многоточием, день справа не сжимается. */
+/* The emoji and the chat name: a long name is cut with an ellipsis, the day on the right does not shrink. */
 .search-row__chat {
   display: flex;
   flex: 1;
@@ -153,7 +153,7 @@
   flex: none;
 }
 
-/* Фрагмент: до трёх строк, остальное многоточием. */
+/* The snippet: up to three lines, the rest with an ellipsis. */
 .search-hit__snippet {
   display: -webkit-box;
   margin: 0;
@@ -166,7 +166,7 @@
   overflow-wrap: anywhere;
 }
 
-/* Найденное слово: заливка highlight.mark, цвет текста не меняется. */
+/* The found word: the highlight.mark fill, the text color does not change. */
 .search-mark {
   padding: 0;
   border-radius: var(--radius-inline);
