@@ -125,7 +125,7 @@ impl Store {
             return None;
         }
         let source = dirs.stored(&found.file_name)?;
-        let Some(thumb) = make_thumbnail(&source) else {
+        let Some(thumb) = make_thumbnail(&source, self.faults().decoder_panics()) else {
             // Do not decode the same file again on every render; the next launch tries again.
             if let Ok(mut failed) = self.inner.thumb_failed.lock() {
                 failed.insert(id.to_string());

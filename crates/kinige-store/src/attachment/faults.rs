@@ -20,6 +20,8 @@ pub enum AttachFault {
     AfterRename(Hook),
     /// Deleting files after a purge fails.
     DeleteFails,
+    /// The next thumbnail decodes into a panic (debug builds only).
+    DecoderPanics,
     /// Switches every injected failure off.
     Clear,
 }
@@ -27,6 +29,7 @@ pub enum AttachFault {
 pub(crate) struct Faults {
     disk_full_after: AtomicU64,
     delete_fails: AtomicBool,
+    decoder_panics: AtomicBool,
     mid_copy: Mutex<Option<Hook>>,
     after_rename: Mutex<Option<Hook>>,
 }
@@ -36,6 +39,7 @@ impl Default for Faults {
         Faults {
             disk_full_after: AtomicU64::new(u64::MAX),
             delete_fails: AtomicBool::new(false),
+            decoder_panics: AtomicBool::new(false),
             mid_copy: Mutex::new(None),
             after_rename: Mutex::new(None),
         }
@@ -51,9 +55,11 @@ impl Faults {
             AttachFault::MidCopy(hook) => *lock(&self.mid_copy) = Some(hook),
             AttachFault::AfterRename(hook) => *lock(&self.after_rename) = Some(hook),
             AttachFault::DeleteFails => self.delete_fails.store(true, Ordering::SeqCst),
+            AttachFault::DecoderPanics => self.decoder_panics.store(true, Ordering::SeqCst),
             AttachFault::Clear => {
                 self.disk_full_after.store(u64::MAX, Ordering::SeqCst);
                 self.delete_fails.store(false, Ordering::SeqCst);
+                self.decoder_panics.store(false, Ordering::SeqCst);
                 *lock(&self.mid_copy) = None;
                 *lock(&self.after_rename) = None;
             }
@@ -67,6 +73,10 @@ impl Faults {
 
     pub(crate) fn delete_fails(&self) -> bool {
         self.delete_fails.load(Ordering::SeqCst)
+    }
+
+    pub(crate) fn decoder_panics(&self) -> bool {
+        self.decoder_panics.load(Ordering::SeqCst)
     }
 
     pub(crate) fn run_mid_copy(&self) {

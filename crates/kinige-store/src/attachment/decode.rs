@@ -69,8 +69,19 @@ fn probe(path: &Path) -> Option<ImageInfo> {
 
 /// The thumbnail of an image file: fit in 960 x 960 (never enlarged), orientation applied, EXIF dropped by re-encoding.
 /// `None` if the file does not decode inside the limits.
-pub(crate) fn make_thumbnail(path: &Path) -> Option<Thumb> {
-    catch_unwind(AssertUnwindSafe(|| thumbnail(path))).unwrap_or(None)
+pub(crate) fn make_thumbnail(path: &Path, panic_for_test: bool) -> Option<Thumb> {
+    catch_unwind(AssertUnwindSafe(|| {
+        // Hook for the safety-net test; absent in a release build (`debug_assertions` off).
+        assert!(
+            !(cfg!(debug_assertions) && panic_for_test),
+            "check: panic in a decoder"
+        );
+        thumbnail(path)
+    }))
+    .unwrap_or_else(|_| {
+        log::error!("a decoder panicked, the thumbnail is skipped");
+        None
+    })
 }
 
 fn thumbnail(path: &Path) -> Option<Thumb> {
