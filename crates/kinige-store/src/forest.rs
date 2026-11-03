@@ -138,10 +138,9 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
     struct Day {
         notes: Vec<NoteStat>,
         first: (i64, String, String),
+        first_has_files: bool,
         photos: u32,
     }
-    // Live attachments per entry of the year: (all, photos). One small aggregate, empty for a year without attachments.
-    let counts = attachment_counts(conn, year)?;
     let mut statement = conn.prepare_cached(&year_sql()).map_err(read_err)?;
     let mut rows = statement
         .query((format!("{year:04}-01-01"), format!("{year:04}-12-31")))
@@ -160,7 +159,9 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
             continue;
         };
         let created: i64 = row.get(1).map_err(read_err)?;
-        let (all, photos) = counts.get(id).copied().unwrap_or((0, 0));
+        // Live attachments of this entry, counted in the same pass (not a second pass over the year).
+        let all = usize::try_from(row.get::<_, i64>(4).map_err(read_err)?).unwrap_or(0);
+        let photos = usize::try_from(row.get::<_, i64>(5).map_err(read_err)?).unwrap_or(0);
         let note = NoteStat {
             len: body.chars().count(),
             attachments: all,
@@ -170,6 +171,7 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
                 slot.insert(Day {
                     notes: vec![note],
                     first: (created, id.to_string(), excerpt_of(body)),
+                    first_has_files: all > 0,
                     photos: u32::try_from(photos).unwrap_or(u32::MAX),
                 });
             }
@@ -181,6 +183,7 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
                     .saturating_add(u32::try_from(photos).unwrap_or(u32::MAX));
                 if (created, id) < (day.first.0, day.first.1.as_str()) {
                     day.first = (created, id.to_string(), excerpt_of(body));
+                    day.first_has_files = all > 0;
                 }
             }
         }
@@ -190,7 +193,7 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
         let mut stat = DayStats::from_notes(date, &day.notes, Some(day.first.2.clone()));
         stat.photos = day.photos;
         // A first entry without text (a photo sent alone) is described by what it holds.
-        if day.first.2.is_empty() && counts.contains_key(day.first.1.as_str()) {
+        if day.first.2.is_empty() && day.first_has_files {
             stat.first_summary = Some(summary_for(conn, &day.first.1)?);
         }
         stats.push(stat);
@@ -198,40 +201,15 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
     Ok(stats)
 }
 
-/// `(all live attachments, photos)` of every entry of the year that has any.
-fn attachment_counts(
-    conn: &Connection,
-    year: i32,
-) -> Result<std::collections::HashMap<String, (usize, usize)>, StoreError> {
-    let mut statement = conn
-        .prepare_cached(
-            "SELECT a.message_id, COUNT(*), SUM(a.kind = 'image') FROM attachment a \
-             JOIN message m ON m.id = a.message_id \
-             WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 AND m.deleted_at IS NULL AND a.deleted_at IS NULL \
-             GROUP BY a.message_id",
-        )
-        .map_err(read_err)?;
-    let rows = statement
-        .query_map(
-            (format!("{year:04}-01-01"), format!("{year:04}-12-31")),
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    (
-                        usize::try_from(row.get::<_, i64>(1)?).unwrap_or(0),
-                        usize::try_from(row.get::<_, i64>(2)?).unwrap_or(0),
-                    ),
-                ))
-            },
-        )
-        .map_err(read_err)?;
-    rows.collect::<Result<_, _>>().map_err(read_err)
-}
-
-/// The rows of one year, `?1..=?2` being its first and last date.
+/// The rows of one year, `?1..=?2` being its first and last date. The last two columns are the entry's live attachments and how
+/// many of them are photos: a correlated probe of `attachment_message` per entry, in the same pass as the scan (a separate
+/// aggregate over the year cost more than the scan itself on the 100,000-entry bench).
 fn year_sql() -> String {
     format!(
-        "SELECT m.journal_date, m.created_at, m.id, m.body_md FROM message m JOIN chat c ON c.id = m.chat_id \
+        "SELECT m.journal_date, m.created_at, m.id, m.body_md, \
+         (SELECT COUNT(*) FROM attachment a WHERE a.message_id = m.id AND a.deleted_at IS NULL), \
+         (SELECT COUNT(*) FROM attachment a WHERE a.message_id = m.id AND a.deleted_at IS NULL AND a.kind = 'image') \
+         FROM message m JOIN chat c ON c.id = m.chat_id \
          WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 AND {LIVE}"
     )
 }
