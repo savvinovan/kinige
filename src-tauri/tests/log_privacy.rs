@@ -1,7 +1,7 @@
-//! Приватность журнала: ошибки команд пишутся в `log`, но ни адрес, ни id, ни текст записи в журнал не попадают.
+//! Log privacy: command errors are written to `log`, but neither the address, nor the id, nor the entry text gets into the log.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -11,7 +11,7 @@ use log::{LevelFilter, Log, Metadata, Record};
 use serde_json::json;
 use std::sync::Mutex;
 
-/// Уникальная метка, которая есть во всех «пользовательских» аргументах теста.
+/// A unique mark present in all the "user" arguments of the test.
 const MARK: &str = "ZEBRAUNIQ";
 
 static CAPTURED: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -33,17 +33,17 @@ impl Log for Capture {
     fn flush(&self) {}
 }
 
-/// Логгер один на весь тестовый бинарник; оба теста идут в одном процессе и ставят его через `Once`.
+/// There is one logger for the whole test binary; the tests run in one process and install it through `Once`.
 fn install_logger() {
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
-        log::set_logger(&Capture).expect("логгер ставится один раз");
+        log::set_logger(&Capture).expect("the logger is installed once");
         log::set_max_level(LevelFilter::Trace);
     });
 }
 
-/// Сервер MCP (слайс 4a): тексты записей, поисковые запросы, id и имена чатов из вызовов агента в журнал процесса не
-/// попадают, ни при успехе, ни при отказе, ни при мусоре на проводе.
+/// The MCP server (slice 4a): entry texts, search queries, ids and chat names from agent calls do not get into the process
+/// log, neither on success, nor on refusal, nor on garbage on the wire.
 #[cfg(unix)]
 #[test]
 fn the_mcp_server_logs_no_texts_queries_or_arguments() {
@@ -80,13 +80,13 @@ fn the_mcp_server_logs_no_texts_queries_or_arguments() {
     let lines = CAPTURED.lock().unwrap().clone();
     // The capture is live: the listener announced itself through `log` when it started.
     assert!(
-        lines.iter().any(|line| line.contains("mcp: сокет поднят")),
+        lines.iter().any(|line| line.contains("mcp: socket is up")),
         "the logger sees the server's lines: {lines:?}"
     );
     for line in &lines {
         assert!(
             !line.to_uppercase().contains(MARK),
-            "в журнале процесса пользовательский ввод: {line}"
+            "user input in the process log: {line}"
         );
     }
 }
@@ -102,34 +102,34 @@ fn failed_commands_log_only_categories_never_user_input() {
         format!(" https://{MARK}.example/"),
         format!("{MARK}/relative"),
     ] {
-        call(&window, "open_external_url", json!({ "url": url })).expect_err("ссылка отвергнута");
+        call(&window, "open_external_url", json!({ "url": url })).expect_err("link rejected");
     }
     call(
         &window,
         "send_message",
         json!({"chatId": format!("{MARK}-chat"), "body": format!("{MARK} текст записи")}),
     )
-    .expect_err("нет такого чата");
+    .expect_err("no such chat");
     call(
         &window,
         "edit_message",
         json!({"id": format!("{MARK}-id"), "body": format!("{MARK} правка")}),
     )
-    .expect_err("нет такой записи");
+    .expect_err("no such entry");
 
     let lines = CAPTURED.lock().unwrap().clone();
     assert!(
-        lines.iter().any(|line| line.contains("ссылка отвергнута")),
-        "отказ по ссылке должен попасть в журнал: {lines:?}"
+        lines.iter().any(|line| line.contains("link rejected")),
+        "the link refusal must get into the log: {lines:?}"
     );
     assert!(
-        lines.iter().any(|line| line.contains("ошибка хранилища")),
-        "ошибка хранилища должна попасть в журнал: {lines:?}"
+        lines.iter().any(|line| line.contains("store error")),
+        "the store error must get into the log: {lines:?}"
     );
     for line in &lines {
         assert!(
             !line.to_uppercase().contains(MARK),
-            "в журнале пользовательский ввод: {line}"
+            "user input in the log: {line}"
         );
     }
 }
@@ -211,8 +211,8 @@ fn the_forest_commands_log_no_dates_excerpts_or_chat_ids() {
     }
 }
 
-/// Файл настроек (слайс 4b, ADR-0010): метка в неизвестном ключе, названии чата, недопустимом значении, пути папки и в
-/// битом файле не попадает в журнал процесса ни при применении, ни при ошибке разбора, ни при небезопасных правах.
+/// The settings file (slice 4b, ADR-0010): a mark in an unknown key, a chat title, an invalid value, a folder path and in
+/// a broken file does not get into the process log, neither on applying, nor on a parse error, nor on unsafe permissions.
 #[test]
 fn the_settings_file_logs_only_categories_never_keys_titles_values_or_paths() {
     use kinige_store::SettingsFile;
@@ -248,7 +248,7 @@ fn the_settings_file_logs_only_categories_never_keys_titles_values_or_paths() {
         .to_string(),
         0o600,
     );
-    // Небезопасные права, битый файл, не-UTF-8.
+    // Unsafe permissions, a broken file, non-UTF-8.
     write(
         json!({"agent_access": {"enabled": true}, format!("{MARK}-x"): 1}).to_string(),
         0o666,
@@ -258,17 +258,17 @@ fn the_settings_file_logs_only_categories_never_keys_titles_values_or_paths() {
     file.sync_now();
     let lines = CAPTURED.lock().unwrap().clone();
     assert!(
-        lines.iter().any(|line| line.contains("файл настроек")),
-        "события файла попадают в журнал категориями: {lines:?}"
+        lines.iter().any(|line| line.contains("settings file")),
+        "the file events get into the log as categories: {lines:?}"
     );
     for line in &lines {
         assert!(
             !line.to_uppercase().contains(MARK),
-            "в журнале пользовательский ввод из файла настроек: {line}"
+            "user input from the settings file in the log: {line}"
         );
         assert!(
             !line.contains("settings.json") || !line.contains('/'),
-            "путь в журнале: {line}"
+            "a path in the log: {line}"
         );
     }
 }

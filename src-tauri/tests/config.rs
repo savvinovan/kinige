@@ -1,7 +1,7 @@
-//! Проверки безопасности самих конфигов: CSP и список разрешений (§6, §12.3 ТЗ).
+//! Security checks of the configs themselves: the CSP and the permission list (PRD §6, §12.3).
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 use serde_json::Value;
@@ -16,7 +16,7 @@ fn production_csp_forbids_inline_and_remote_code() {
     let conf = read("tauri.conf.json");
     let csp = conf["app"]["security"]["csp"]
         .as_object()
-        .expect("CSP должен быть задан");
+        .expect("the CSP must be set");
 
     assert_eq!(csp["default-src"], "'self'");
     assert_eq!(csp["script-src"], "'self'");
@@ -39,7 +39,7 @@ fn dev_csp_still_forbids_inline_scripts() {
     assert_eq!(script, "'self'");
 }
 
-/// `allow-list-messages` для команды `list_messages`.
+/// `allow-list-messages` for the `list_messages` command.
 fn permission(command: &str) -> String {
     format!("allow-{}", command.replace('_', "-"))
 }
@@ -55,7 +55,7 @@ fn granted(path: &str) -> Vec<String> {
 
 #[test]
 fn command_lists_are_consistent() {
-    // Сначала команды главного окна, затем только окна настроек, затем окна захвата.
+    // First the main window commands, then the settings window only, then the capture window.
     let settings_only = kinige_lib::SETTINGS_COMMANDS
         .iter()
         .filter(|c| !kinige_lib::MAIN_COMMANDS.contains(c));
@@ -69,17 +69,17 @@ fn command_lists_are_consistent() {
     for command in kinige_lib::SETTINGS_COMMANDS {
         assert!(
             !kinige_lib::CAPTURE_COMMANDS.contains(command),
-            "{command} выдана и окну захвата"
+            "{command} is also granted to the capture window"
         );
     }
     for command in kinige_lib::CAPTURE_COMMANDS {
         assert!(
             command.starts_with("capture_"),
-            "{command}: команды окна захвата — с префиксом"
+            "{command}: the capture window commands have the prefix"
         );
         assert!(
             !kinige_lib::MAIN_COMMANDS.contains(command),
-            "{command} выдана и главному окну"
+            "{command} is also granted to the main window"
         );
     }
 }
@@ -93,12 +93,12 @@ fn main_capability_lists_exactly_its_commands_and_the_event_subscription() {
         .iter()
         .map(|c| permission(c))
         .collect();
-    // Слушать событие «записи изменились» (§12.3); отправлять события и управлять окнами главному окну нельзя.
+    // Listening to the "entries changed" event (§12.3); the main window may not send events or manage windows.
     expected.push("core:event:allow-listen".into());
     expected.push("core:event:allow-unlisten".into());
     assert_eq!(
         granted, expected,
-        "главному окну выданы только свои команды и подписка на событие: без core:default, масок и разрешений плагинов"
+        "the main window is granted only its own commands and an event subscription: no core:default, no wildcards and no plugin permissions"
     );
     for permission in &granted {
         assert!(
@@ -107,11 +107,11 @@ fn main_capability_lists_exactly_its_commands_and_the_event_subscription() {
                     permission.as_str(),
                     "core:event:allow-listen" | "core:event:allow-unlisten"
                 ),
-            "{permission}: разрешения плагинов (opener:, dialog:, global-shortcut:) и прочие core: окну не выдаются"
+            "{permission}: plugin permissions (opener:, dialog:, global-shortcut:) and other core: ones are not granted to the window"
         );
         assert!(
             !permission.contains("capture"),
-            "{permission}: команд захвата у главного окна нет"
+            "{permission}: the main window has no capture commands"
         );
     }
 }
@@ -129,7 +129,7 @@ fn capture_capability_lists_exactly_the_capture_commands() {
     for permission in &granted {
         assert!(
             permission.starts_with("allow-capture-") && !permission.contains(':'),
-            "{permission}: окну захвата не выдаются ни чужие команды, ни core:, ни плагины (события в том числе)"
+            "{permission}: the capture window is granted neither foreign commands, nor core:, nor plugins (events included)"
         );
     }
 }
@@ -147,7 +147,7 @@ fn settings_capability_lists_exactly_its_commands_and_the_event_subscription() {
     expected.push("core:event:allow-unlisten".into());
     assert_eq!(
         granted, expected,
-        "окну настроек выданы только свои команды и подписка на события: без core:default, масок и плагинов"
+        "the settings window is granted only its own commands and an event subscription: no core:default, no wildcards and no plugins"
     );
     for forbidden in [
         "list-messages",
@@ -159,7 +159,7 @@ fn settings_capability_lists_exactly_its_commands_and_the_event_subscription() {
     ] {
         assert!(
             !granted.iter().any(|p| p.contains(forbidden)),
-            "{forbidden}: у окна настроек этого нет"
+            "{forbidden}: the settings window does not have this"
         );
     }
 }
@@ -173,7 +173,7 @@ fn settings_window_sizes_match_the_design_tokens() {
             .as_str()
             .and_then(|value| value.strip_suffix("px"))
             .and_then(|value| value.parse().ok())
-            .unwrap_or_else(|| panic!("нет токена layout.settings.{name} в px"))
+            .unwrap_or_else(|| panic!("no layout.settings.{name} token in px"))
     };
     assert_eq!(px("window-width"), WIDTH);
     assert_eq!(px("window-height"), HEIGHT);
@@ -183,7 +183,7 @@ fn settings_window_sizes_match_the_design_tokens() {
 
 #[test]
 fn the_settings_window_is_not_in_the_static_window_list() {
-    // Окно создаётся при первом открытии (холодный старт не меняется), capability привязана к его имени.
+    // The window is created on first open (the cold start does not change), the capability is bound to its name.
     let conf = read("tauri.conf.json");
     let labels: Vec<&str> = conf["app"]["windows"]
         .as_array()
@@ -205,7 +205,7 @@ fn there_are_exactly_three_capability_files() {
     assert_eq!(
         files,
         ["capture.json", "main.json", "settings.json"],
-        "у каждого окна своя capability"
+        "each window has its own capability"
     );
 }
 
@@ -217,19 +217,19 @@ fn build_script_manifest_matches_the_command_list() {
         .split("commands(&[")
         .nth(1)
         .and_then(|rest| rest.split("])").next())
-        .expect("список команд в build.rs");
-    // Между кавычками — имена команд: нечётные части при разбиении по «"».
+        .expect("the command list in build.rs");
+    // Between the quotes are the command names: the odd parts when splitting on `"`.
     let declared: Vec<&str> = list.split('"').skip(1).step_by(2).collect();
     assert_eq!(
         declared,
         kinige_lib::COMMANDS,
-        "список в build.rs должен совпадать с kinige_lib::COMMANDS"
+        "the list in build.rs must match kinige_lib::COMMANDS"
     );
 }
 
 #[test]
 fn macos_private_api_is_on_only_for_the_capture_panel() {
-    // tauri-nspanel (окно захвата как NSPanel, ADR-0006) требует фичу `macos-private-api`; tauri-build сверяет её с конфигом.
+    // tauri-nspanel (the capture window as an NSPanel, ADR-0006) requires the `macos-private-api` feature; tauri-build checks it against the config.
     let conf = read("tauri.conf.json");
     assert_eq!(conf["app"]["macOSPrivateApi"], true);
     let manifest =
@@ -246,7 +246,7 @@ fn two_windows_without_remote_urls_and_the_capture_window_is_a_hidden_floating_p
     assert_eq!(windows[0]["label"], "main");
     assert!(
         windows[0].get("url").is_none(),
-        "главное окно грузит только страницу приложения"
+        "the main window loads only the app page"
     );
 
     let capture = &windows[1];
@@ -254,37 +254,37 @@ fn two_windows_without_remote_urls_and_the_capture_window_is_a_hidden_floating_p
     let url = capture["url"].as_str().unwrap();
     assert!(
         !url.contains("://") && !url.starts_with("//"),
-        "окно захвата грузит страницу приложения, а не внешний адрес: {url}"
+        "the capture window loads the app page, not an external address: {url}"
     );
     assert_eq!(url, "index.html#capture");
     assert_eq!(
         capture["visible"], false,
-        "создаётся скрытым: показ мгновенный"
+        "created hidden: showing is instant"
     );
     assert_eq!(capture["decorations"], false);
     assert_eq!(capture["alwaysOnTop"], true);
     assert_eq!(capture["visibleOnAllWorkspaces"], true);
     assert_eq!(capture["skipTaskbar"], true);
     assert_eq!(capture["resizable"], false);
-    // Размер окна — из токенов дизайн-системы (`layout.capture.window-*`): страница рассчитана на ровно такое окно.
+    // The window size comes from the design system tokens (`layout.capture.window-*`): the page is designed for exactly such a window.
     let tokens = read("../design/tokens/layout.json");
     let px = |name: &str| -> u64 {
         tokens["layout"]["capture"][name]["$value"]
             .as_str()
             .and_then(|value| value.strip_suffix("px"))
             .and_then(|value| value.parse().ok())
-            .unwrap_or_else(|| panic!("нет токена layout.capture.{name} в px"))
+            .unwrap_or_else(|| panic!("no layout.capture.{name} token in px"))
     };
     assert_eq!(capture["width"], px("window-width"));
     assert_eq!(capture["height"], px("window-height"));
-    // Окно прозрачное и без системной тени: форму панели и тень рисует CSS (поле под тень — `shadow-margin`).
+    // The window is transparent and has no system shadow: the panel shape and shadow are drawn by CSS (the shadow margin is `shadow-margin`).
     assert_eq!(capture["transparent"], true);
     assert_eq!(capture["shadow"], false);
     assert_eq!(
         px("window-width"),
         px("panel-width") + 2 * px("shadow-margin")
     );
-    // Константы Rust (пределы `capture_resize`, ширина, положение верха панели) совпадают с токенами.
+    // The Rust constants (the `capture_resize` limits, the width, the panel top position) match the tokens.
     assert_eq!(px("window-width"), kinige_lib::capture::WINDOW_WIDTH as u64);
     assert_eq!(
         px("shadow-margin"),
@@ -305,21 +305,21 @@ fn two_windows_without_remote_urls_and_the_capture_window_is_a_hidden_floating_p
 #[test]
 fn capture_window_sits_low_centered_and_keeps_its_bottom_edge_for_any_height() {
     use kinige_lib::capture::{anchor_for, top_for_bottom};
-    // Рабочая область 3840 × 2160 без Dock: панель по центру, её низ на 12% высоты выше низа, окно ниже панели на 32 px.
+    // A 3840 x 2160 work area without the Dock: the panel is centered, its bottom is 12% of the height above the bottom, the window is 32 px below the panel.
     let (x, bottom) = anchor_for((0, 0, 3840, 2160), 584, 32.0);
     assert_eq!(x, 1628);
     assert_eq!(bottom, 1933); // 2160 × 0,88 + 32 = 1932,8
-    // Рабочая область со смещением (menu bar сверху, Dock снизу) и второй монитор справа: считается от неё, а не от экрана.
+    // An offset work area (the menu bar on top, the Dock at the bottom) and a second monitor on the right: it is computed from it, not from the screen.
     let (x, bottom) = anchor_for((1440, 30, 1440, 800), 584, 32.0);
     assert_eq!(x, 1440 + 428);
     assert_eq!(bottom, 766); // 30 + 800 × 0,88 + 32
-    // Retina: поле под тень 64 физических px.
+    // Retina: the shadow margin is 64 physical px.
     assert_eq!(anchor_for((0, 0, 2880, 1800), 1168, 64.0), (856, 1648)); // 1800 × 0,88 + 64
-    // Нижний край один и тот же при любой высоте окна: растёт только верх (вверх).
+    // The bottom edge is the same at any window height: only the top grows (upward).
     let bottom = 1933;
     for height in [122_u32, 281, 333, 480, 640] {
         let top = top_for_bottom(bottom, height);
-        assert_eq!(top + height as i32, bottom, "высота {height}");
+        assert_eq!(top + height as i32, bottom, "height {height}");
     }
     assert!(top_for_bottom(bottom, 640) < top_for_bottom(bottom, 122));
 }
@@ -335,8 +335,8 @@ fn capture_resize_clamps_the_height_into_the_token_range() {
     assert_eq!(clamp_height(f64::INFINITY), MIN_HEIGHT);
 }
 
-/// Страховка «никогда не падать» (KINIG-28, ADR-0009) держится на размотке стека: `catch_unwind` вокруг задач писателя,
-/// чтения, обслуживания и MCP, хук паники и перезапуск слушателя не работают с `panic = "abort"` ни в одном профиле.
+/// The "never crash" safety net (KINIG-28, ADR-0009) relies on stack unwinding: `catch_unwind` around the writer, read,
+/// maintenance and MCP tasks, the panic hook and the listener restart do not work with `panic = "abort"` in any profile.
 #[test]
 fn no_profile_aborts_on_panic_and_the_never_panic_lints_are_on() {
     let manifest =
@@ -349,7 +349,7 @@ fn no_profile_aborts_on_panic_and_the_never_panic_lints_are_on() {
         !code
             .iter()
             .any(|line| line.replace(' ', "").starts_with("panic=\"abort\"")),
-        "panic = \"abort\" отключает перехват паник"
+        "panic = \"abort\" disables panic interception"
     );
     for lint in [
         "unwrap_used",

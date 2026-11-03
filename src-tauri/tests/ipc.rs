@@ -1,9 +1,9 @@
-//! Тест IPC с настоящими capabilities и CSP из `tauri.conf.json` (mock-рантайм): у каждого окна свой набор команд, чужие и
-//! команды плагинов недоступны; плагины opener и dialog из JS недоступны; ссылки проходят проверку схемы. Сценарии через
-//! IPC (чаты, запись, корзина, захват, сочетания, восстановление) — в `ipc_flows.rs`.
+//! An IPC test with the real capabilities and the CSP from `tauri.conf.json` (a mock runtime): each window has its own set of commands, foreign
+//! commands and plugin commands are unavailable; the opener and dialog plugins are unavailable from JS; links pass the scheme check. The scenarios through
+//! IPC (chats, entries, trash, capture, shortcuts, restore) are in `ipc_flows.rs`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -27,7 +27,7 @@ fn main_window_can_call_every_command_of_its_set() {
         if let Err(error) = &result {
             assert!(
                 !is_acl_denial(error),
-                "{command}: окну main команда должна быть разрешена, получили: {error}"
+                "{command}: the command must be allowed for the main window, got: {error}"
             );
         }
     }
@@ -42,7 +42,7 @@ fn capture_window_can_call_every_command_of_its_set() {
         if let Err(error) = &result {
             assert!(
                 !is_acl_denial(error),
-                "{command}: окну capture команда должна быть разрешена, получили: {error}"
+                "{command}: the command must be allowed for the capture window, got: {error}"
             );
         }
     }
@@ -61,7 +61,7 @@ fn capture_resize_takes_only_a_number_and_never_fails_on_extreme_values() {
         json!({"height": "высокое"}),
         json!({"height": null}),
     ] {
-        let error = call(&window, "capture_resize", args).expect_err("не число — ошибка");
+        let error = call(&window, "capture_resize", args).expect_err("not a number is an error");
         assert!(!is_acl_denial(&error), "{error}");
     }
 }
@@ -71,17 +71,18 @@ fn every_command_is_denied_to_a_window_with_another_label() {
     let fixture = fixture();
     let other = window(&fixture, "not-main");
     for command in COMMANDS {
-        let error = call(&other, command, args_for(command))
-            .expect_err(&format!("{command}: окну без capability нельзя"));
+        let error = call(&other, command, args_for(command)).expect_err(&format!(
+            "{command}: not allowed for a window without a capability"
+        ));
         assert!(
             is_acl_denial(&error),
-            "{command}: ожидали отказ ACL, получили: {error}"
+            "{command}: expected an ACL refusal, got: {error}"
         );
     }
 }
 
-/// Команды слайса 3: чаты, действия с записью, корзина, настройки сайдбара, восстановление. Окну захвата — отказ на
-/// каждую; его набор — шесть команд слайса 2 и `capture_add_recent_emoji` (§12.3).
+/// The slice 3 commands: chats, entry actions, trash, sidebar settings, restore. The capture window is refused on
+/// each; its set is the six commands of slice 2 and `capture_add_recent_emoji` (§12.3).
 const SLICE_THREE: &[&str] = &[
     "create_chat",
     "rename_chat",
@@ -117,7 +118,7 @@ fn every_slice_three_command_is_main_only_and_the_capture_set_is_unchanged() {
             "capture_resize",
             "capture_add_recent_emoji"
         ],
-        "набор окна захвата: шесть команд слайса 2 и одна из решений приёмки слайса 3 (недавние эмодзи)"
+        "the capture window set: the six commands of slice 2 and one from the slice 3 acceptance decisions (recent emoji)"
     );
     let fixture = fixture();
     let main = window(&fixture, "main");
@@ -125,14 +126,14 @@ fn every_slice_three_command_is_main_only_and_the_capture_set_is_unchanged() {
     for command in SLICE_THREE {
         assert!(
             MAIN_COMMANDS.contains(command),
-            "{command} выдана главному окну"
+            "{command} is granted to the main window"
         );
         assert!(!CAPTURE_COMMANDS.contains(command), "{command}");
         let error = call(&capture, command, args_for(command))
-            .expect_err(&format!("{command} недоступна окну захвата"));
+            .expect_err(&format!("{command} is unavailable to the capture window"));
         assert!(
             is_acl_denial(&error),
-            "{command}: ожидали отказ ACL, получили: {error}"
+            "{command}: expected an ACL refusal, got: {error}"
         );
         if !NEEDS_NATIVE_UI.contains(command)
             && let Err(error) = call(&main, command, args_for(command))
@@ -146,14 +147,14 @@ fn every_slice_three_command_is_main_only_and_the_capture_set_is_unchanged() {
 fn capture_window_cannot_call_anything_but_its_own_commands() {
     let fixture = fixture();
     let capture = window(&fixture, "capture");
-    // Чужие команды: лента, чаты, отправка по chat_id, настройки, диалог, ссылки, черновик главного окна, сочетания,
-    // действия слайса 3.
+    // Foreign commands: the feed, chats, sending by chat_id, settings, the dialog, links, the main window draft, shortcuts,
+    // the slice 3 actions.
     for command in MAIN_COMMANDS.iter().chain(SETTINGS_COMMANDS) {
         let error = call(&capture, command, args_for(command))
-            .expect_err(&format!("{command} недоступна окну захвата"));
+            .expect_err(&format!("{command} is unavailable to the capture window"));
         assert!(
             is_acl_denial(&error),
-            "{command}: ожидали отказ ACL, получили: {error}"
+            "{command}: expected an ACL refusal, got: {error}"
         );
     }
     for command in [
@@ -171,7 +172,7 @@ fn capture_window_cannot_call_anything_but_its_own_commands() {
             "{command}"
         );
     }
-    // События и плагины: ни подписки, ни отправки событий, ни окон, ни ссылок, ни диалогов, ни сочетаний.
+    // Events and plugins: no subscriptions, no sending events, no windows, no links, no dialogs, no shortcuts.
     for cmd in [
         "plugin:event|listen",
         "plugin:event|unlisten",
@@ -181,7 +182,7 @@ fn capture_window_cannot_call_anything_but_its_own_commands() {
         "plugin:window|close",
         "plugin:window|hide",
         "plugin:window|show",
-        // Размер и положение окна страница меняет только своей командой `capture_resize` (высота в узких пределах).
+        // The page changes the window size and position only with its own `capture_resize` command (the height within narrow limits).
         "plugin:window|set_size",
         "plugin:window|set_position",
         "plugin:window|set_min_size",
@@ -198,7 +199,7 @@ fn capture_window_cannot_call_anything_but_its_own_commands() {
         "plugin:global-shortcut|register",
         "plugin:global-shortcut|unregister_all",
         "plugin:shell|open",
-        // Журнал пишет только Rust: страница не может засорять файл лога.
+        // Only Rust writes the log: the page cannot clutter the log file.
         "plugin:log|log",
         "no_such_command",
     ] {
@@ -207,10 +208,12 @@ fn capture_window_cannot_call_anything_but_its_own_commands() {
             cmd,
             json!({"url": "https://example.com", "path": "/tmp", "event": ENTRIES_CHANGED}),
         )
-        .expect_err(&format!("{cmd} не должна быть доступна окну захвата"));
+        .expect_err(&format!(
+            "{cmd} must not be available to the capture window"
+        ));
         assert!(
             is_acl_denial(&error),
-            "{cmd}: ожидали отказ ACL, получили: {error}"
+            "{cmd}: expected an ACL refusal, got: {error}"
         );
     }
 }
@@ -221,10 +224,10 @@ fn main_window_cannot_call_capture_commands() {
     let main = window(&fixture, "main");
     for command in CAPTURE_COMMANDS {
         let error = call(&main, command, args_for(command))
-            .expect_err(&format!("{command} недоступна главному окну"));
+            .expect_err(&format!("{command} is unavailable to the main window"));
         assert!(
             is_acl_denial(&error),
-            "{command}: ожидали отказ ACL, получили: {error}"
+            "{command}: expected an ACL refusal, got: {error}"
         );
     }
 }
@@ -233,9 +236,9 @@ fn main_window_cannot_call_capture_commands() {
 fn main_window_cannot_call_unlisted_commands_or_plugin_commands() {
     let fixture = fixture();
     let window = window(&fixture, "main");
-    // Из `core` выданы только подписка и отписка от события; остальное (отправка событий, окна, приложение) — нет.
-    // Плагины opener, dialog и global-shortcut подключены ради Rust-API, но их JS-команды окну не выданы: открыть адрес,
-    // показать диалог или занять сочетание из JS нельзя, только через наши команды, где всё проверяется.
+    // From `core` only subscribing and unsubscribing from an event are granted; the rest (sending events, windows, the app) is not.
+    // The opener, dialog and global-shortcut plugins are attached for the Rust API, but their JS commands are not granted to the window: opening an address,
+    // showing a dialog or taking a shortcut from JS is impossible, only through our commands, where everything is checked.
     for cmd in [
         "plugin:event|emit",
         "plugin:event|emit_to",
@@ -257,9 +260,9 @@ fn main_window_cannot_call_unlisted_commands_or_plugin_commands() {
         "plugin:clipboard-manager|read_text",
         "plugin:shell|open",
         "no_such_command",
-        // Отмена отправки убрана в слайсе 1 (решение пользователя); команды больше нет.
+        // Cancelling a send was removed in slice 1 (a user decision); the command no longer exists.
         "undo_send",
-        // Удаления чата нет (ТЗ §2.1: архив); «очистить корзину» тоже (решение пользователя 4).
+        // There is no chat deletion (PRD §2.1: archive); "empty the trash" is absent too (user decision 4).
         "delete_chat",
         "purge_all",
         "empty_trash",
@@ -269,10 +272,10 @@ fn main_window_cannot_call_unlisted_commands_or_plugin_commands() {
             cmd,
             json!({"url": "https://example.com", "path": "/tmp"}),
         )
-        .expect_err(&format!("{cmd} не должна быть доступна главному окну"));
+        .expect_err(&format!("{cmd} must not be available to the main window"));
         assert!(
             is_acl_denial(&error),
-            "{cmd}: ожидали отказ ACL, получили: {error}"
+            "{cmd}: expected an ACL refusal, got: {error}"
         );
     }
 }
@@ -281,7 +284,7 @@ fn main_window_cannot_call_unlisted_commands_or_plugin_commands() {
 fn main_window_may_subscribe_to_its_events() {
     let fixture = fixture();
     let window = window(&fixture, "main");
-    // Подписка на события приложения: записи изменились, открыть чат, база повреждена.
+    // Subscription to app events: entries changed, open a chat, database corrupt.
     for event in [
         ENTRIES_CHANGED,
         OPEN_CHAT,
@@ -323,7 +326,7 @@ fn open_external_url_rejects_everything_but_http_https_and_mailto() {
         "https://example.com\n",
     ] {
         let error = call(&window, "open_external_url", json!({ "url": url }))
-            .expect_err(&format!("{url:?} должен быть отвергнут"));
+            .expect_err(&format!("{url:?} must be rejected"));
         assert_eq!(error, json!({"code": "link_not_allowed"}), "{url:?}");
     }
 }

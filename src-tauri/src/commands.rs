@@ -1,5 +1,5 @@
-//! Команды Tauri — тонкий слой над `kinige-store` и `kinige-domain` (ТЗ §3.2). Бизнес-правил здесь нет. Ошибки уходят
-//! фронтенду кодами (`ApiError`), тексты — в файлах переводов.
+//! Tauri commands -- a thin layer over `kinige-store` and `kinige-domain` (PRD §3.2). There are no business rules here. Errors go
+//! to the frontend as codes (`ApiError`), the texts are in the translation files.
 
 use crate::hotkeys::Hotkeys;
 use kinige_domain::link::{LinkError, validate_external_url};
@@ -16,8 +16,8 @@ use tauri_plugin_opener::OpenerExt;
 type ApiResult<T> = Result<T, ApiError>;
 
 fn api(error: StoreError) -> ApiError {
-    // В журнал процесса — только категория: текст внутренней ошибки (SQLite, serde) может содержать куски данных.
-    log::error!("ошибка хранилища: {}", error.category());
+    // Only the category goes to the process log: the text of an internal error (SQLite, serde) may contain pieces of data.
+    log::error!("store error: {}", error.category());
     error.code().into()
 }
 
@@ -25,8 +25,8 @@ fn code(error: StoreError) -> ErrorCode {
     api(error).code
 }
 
-/// Правка настроек через поток файла (ADR-0010): он применяет внешнюю правку, если файл изменился, выполняет правку и
-/// записывает файл. Остановка потока — `internal`.
+/// Editing settings through the file thread (ADR-0010): it applies an external edit if the file changed, performs the edit and
+/// writes the file. A stopped thread gives `internal`.
 pub(crate) fn edit<T: Send + 'static>(
     file: &SettingsFile,
     change: impl FnOnce(&Store) -> Result<T, ErrorCode> + Send + 'static,
@@ -36,28 +36,28 @@ pub(crate) fn edit<T: Send + 'static>(
         .map_err(ApiError::from)
 }
 
-/// Сведения о приложении для `KinigeApi.appInfo()`.
+/// App information for `KinigeApi.appInfo()`.
 #[tauri::command]
 pub fn app_info() -> AppInfo {
     kinige_domain::app_info(env!("CARGO_PKG_VERSION"))
 }
 
-/// Язык интерфейса по предпочитаемым языкам системы (ADR-0005).
+/// The interface language from the system's preferred languages (ADR-0005).
 #[tauri::command]
 pub fn get_language() -> Language {
     let preferred: Vec<String> = sys_locale::get_locales().collect();
     kinige_domain::lang::pick_language(&preferred)
 }
 
-/// Чаты сайдбара в порядке показа (закреплённые, чаты, архив) и размер корзины.
+/// Sidebar chats in display order (pinned, chats, archive) and the trash size.
 #[tauri::command(async)]
 pub fn list_chats(store: State<'_, Store>) -> ApiResult<ChatList> {
     store.sidebar().map_err(api)
 }
 
-/// Страница ленты чата; `tag` оставляет только записи с этим тегом (щелчок по `#тегу`). Без `after` и `around` — самая
-/// новая страница или более старая после `before`; `after` — более новая страница после курсора; `around` — страница
-/// вокруг записи (переход из поиска). Указана одна из трёх позиций: `around`, затем `after`, затем `before`.
+/// A page of the chat feed; `tag` keeps only entries with this tag (a click on `#tag`). Without `after` and `around` -- the newest
+/// page or an older one after `before`; `after` -- a newer page after the cursor; `around` -- a page
+/// around an entry (a jump from search). If several positions are given, the order is `around`, then `after`, then `before`.
 #[tauri::command(async)]
 pub fn list_messages(
     store: State<'_, Store>,
@@ -85,8 +85,8 @@ pub fn list_messages(
         .map_err(api)
 }
 
-/// Отправка; с `reply_to_id` (слайс 5) — ответ на запись этого же чата. Нет такой записи, она в корзине или id неверен —
-/// `reply_target_not_found`, ничего не записано.
+/// Send; with `reply_to_id` (slice 5) it is a reply to an entry of the same chat. If there is no such entry, it is in the trash or the id is wrong,
+/// the result is `reply_target_not_found` and nothing is written.
 #[tauri::command(async)]
 pub fn send_message<R: Runtime>(
     app: AppHandle<R>,
@@ -102,7 +102,7 @@ pub fn send_message<R: Runtime>(
     Ok(message)
 }
 
-/// Настройки: размер текста, состояние копии и сочетания клавиш с их состоянием «назначено / занято» от системы.
+/// Settings: the text size, the copy state and the keyboard shortcuts with their "assigned / taken" state from the system.
 #[tauri::command(async)]
 pub fn get_settings(store: State<'_, Store>, hotkeys: State<'_, Hotkeys>) -> ApiResult<Settings> {
     settings_with_shortcuts(&store, &hotkeys)
@@ -114,7 +114,7 @@ fn settings_with_shortcuts(store: &Store, hotkeys: &Hotkeys) -> ApiResult<Settin
     Ok(settings)
 }
 
-/// Черновик поля ввода чата (§5): переживает перезапуск; несёт и запись, на которую пишется ответ (слайс 5).
+/// The draft of the chat input field (§5): survives a restart; it also carries the entry that is being replied to (slice 5).
 #[tauri::command(async)]
 pub fn get_draft(store: State<'_, Store>, chat_id: String) -> ApiResult<ChatDraft> {
     store.chat_draft(&chat_id, &Now::system()).map_err(api)
@@ -132,13 +132,13 @@ pub fn save_draft(
         .map_err(api)
 }
 
-/// Карточка «В этот день» Inbox (слайс 5); `null` — записей этого числа в прошлые годы нет или карточку скрыли на сегодня.
+/// The "On this day" card of Inbox (slice 5); `null` means there are no entries of this date in past years or the card is hidden for today.
 #[tauri::command(async)]
 pub fn get_on_this_day(store: State<'_, Store>) -> ApiResult<Option<OnThisDay>> {
     store.get_on_this_day(&Now::system()).map_err(api)
 }
 
-/// «Скрыть до завтра»: до конца дня журнала `date` карточка не показывается. Состояние локальное (`app_setting`).
+/// "Hide until tomorrow": until the end of the journal day `date` the card is not shown. The state is local (`app_setting`).
 #[tauri::command(async)]
 pub fn dismiss_on_this_day(store: State<'_, Store>, date: String) -> ApiResult<()> {
     store.dismiss_on_this_day(&date).map_err(api)
@@ -187,8 +187,8 @@ pub fn set_forest_view(
     store.set_forest_view(view, mode).map_err(api)
 }
 
-/// Смена сочетания клавиш: проверка до сохранения, регистрация в системе, сохранение. Отказ — код ошибки, прежнее
-/// сочетание продолжает работать. Ответ — настройки целиком.
+/// Changing a keyboard shortcut: check before saving, registration in the system, saving. A refusal is an error code, the previous
+/// shortcut keeps working. The reply is the whole settings.
 #[tauri::command(async)]
 pub fn set_shortcut<R: Runtime>(
     app: AppHandle<R>,
@@ -198,7 +198,7 @@ pub fn set_shortcut<R: Runtime>(
     kind: ShortcutKind,
     accelerator: String,
 ) -> ApiResult<Settings> {
-    // Правка идёт через поток файла: он применит внешнюю правку, если она есть, и запишет файл (ADR-0010).
+    // The edit goes through the file thread: it applies an external edit if there is one, and writes the file (ADR-0010).
     edit(&file, move |store| {
         let hotkeys = app.try_state::<Hotkeys>().ok_or(ErrorCode::Internal)?;
         hotkeys.change(store, kind, &accelerator)
@@ -206,7 +206,7 @@ pub fn set_shortcut<R: Runtime>(
     settings_with_shortcuts(&store, &hotkeys)
 }
 
-/// «Сбросить»: сочетание по умолчанию с теми же проверками.
+/// "Reset": the default shortcut with the same checks.
 #[tauri::command(async)]
 pub fn reset_shortcut<R: Runtime>(
     app: AppHandle<R>,
@@ -222,8 +222,8 @@ pub fn reset_shortcut<R: Runtime>(
     settings_with_shortcuts(&store, &hotkeys)
 }
 
-/// В «Настройках» началась (`true`) или закончилась запись нового сочетания: на это время хоткеи не открывают окно захвата,
-/// иначе нажать уже назначенное сочетание в поле записи было бы нельзя.
+/// Recording of a new shortcut in "Settings" started (`true`) or ended: for that time the hotkeys do not open the capture window,
+/// otherwise an already assigned shortcut could not be pressed in the recording field.
 #[tauri::command]
 pub fn shortcut_recording(hotkeys: State<'_, Hotkeys>, active: bool) {
     hotkeys.set_recording(active);
@@ -234,8 +234,8 @@ pub fn set_text_size(file: State<'_, SettingsFile>, size: TextSize) -> ApiResult
     edit(&file, move |store| store.set_text_size(size).map_err(code))
 }
 
-/// Системный диалог выбора папки Markdown-копии. Диалог вызывается здесь, из Rust: у окна нет JS-разрешений на диалоги,
-/// и путь не приходит из JS (§12.3). Отмена диалога ничего не меняет.
+/// The system dialog for choosing the Markdown copy folder. The dialog is called here, from Rust: the window has no JS permissions for dialogs,
+/// and the path does not come from JS (§12.3). Cancelling the dialog changes nothing.
 #[tauri::command(async)]
 pub fn choose_mirror_folder<R: Runtime>(
     app: AppHandle<R>,
@@ -250,7 +250,7 @@ pub fn choose_mirror_folder<R: Runtime>(
             dialog = dialog.set_directory(current);
         }
     }
-    // Блокирующий вызов допустим: команда выполняется в пуле потоков (`async`), а не на главном потоке.
+    // A blocking call is acceptable: the command runs in a thread pool (`async`), not on the main thread.
     if let Some(picked) = dialog.blocking_pick_folder() {
         let path = picked
             .into_path()
@@ -265,16 +265,16 @@ pub fn choose_mirror_folder<R: Runtime>(
     settings_with_shortcuts(&store, &hotkeys)
 }
 
-/// Открывает ссылку из записи в системном браузере. Схема проверяется в `kinige-domain`: только `http`, `https`, `mailto`.
+/// Opens a link from an entry in the system browser. The scheme is checked in `kinige-domain`: only `http`, `https`, `mailto`.
 #[tauri::command(async)]
 pub fn open_external_url<R: Runtime>(app: AppHandle<R>, url: String) -> ApiResult<()> {
     let checked = validate_external_url(&url).map_err(|error: LinkError| {
-        log::warn!("ссылка отвергнута: {error}");
+        log::warn!("link rejected: {error}");
         ApiError::from(ErrorCode::LinkNotAllowed)
     })?;
     app.opener().open_url(checked, None::<&str>).map_err(|_| {
-        // Текст ошибки opener не пишем: в нём может быть сам адрес.
-        log::warn!("не удалось открыть ссылку в системном браузере");
+        // We do not write the opener error text: it may contain the address itself.
+        log::warn!("could not open the link in the system browser");
         ApiError::from(ErrorCode::Internal)
     })
 }

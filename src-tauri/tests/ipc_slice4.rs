@@ -1,8 +1,8 @@
-//! Сценарии слайса 4 через IPC на mock-рантайме с настоящими capabilities: импорт из Telegram, поиск, страницы ленты
-//! вокруг записи и новее. Новые команды есть только у главного окна; набор окна захвата не изменился.
+//! Slice 4 scenarios through IPC on a mock runtime with the real capabilities: Telegram import, search, feed pages
+//! around an entry and newer. The new commands exist only for the main window; the capture window set did not change.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -20,7 +20,7 @@ use tauri::{Listener, Manager};
 
 const INBOX: &str = kinige_domain::groups::INBOX_ID;
 
-/// Команды слайса 4. Окну захвата — отказ на каждую.
+/// The slice 4 commands. The capture window is refused on each.
 const SLICE_FOUR: &[&str] = &[
     "import_telegram_open",
     "import_telegram_run",
@@ -29,7 +29,7 @@ const SLICE_FOUR: &[&str] = &[
     "search_messages",
 ];
 
-/// «Избранное» из `n` сообщений: по секунде, текст `запись {i} книга`.
+/// "Saved messages" of `n` messages: one second apart, the text `запись {i} книга`.
 fn saved(n: u64) -> kinige_domain::telegram::TgExport {
     let messages: Vec<String> = (1..=n)
         .map(|i| {
@@ -59,7 +59,7 @@ fn slice_four_commands_are_main_only_and_the_capture_set_is_unchanged() {
             "capture_resize",
             "capture_add_recent_emoji"
         ],
-        "у окна захвата по-прежнему семь команд"
+        "the capture window still has seven commands"
     );
     let fixture = fixture();
     let main = window(&fixture, "main");
@@ -68,7 +68,7 @@ fn slice_four_commands_are_main_only_and_the_capture_set_is_unchanged() {
         assert!(kinige_lib::MAIN_COMMANDS.contains(command), "{command}");
         assert!(!CAPTURE_COMMANDS.contains(command), "{command}");
         let error = call(&capture, command, args_for(command))
-            .expect_err(&format!("{command} недоступна окну захвата"));
+            .expect_err(&format!("{command} is unavailable to the capture window"));
         assert!(is_acl_denial(&error), "{command}: {error}");
         if !NEEDS_NATIVE_UI.contains(command)
             && let Err(error) = call(&main, command, args_for(command))
@@ -85,7 +85,7 @@ fn run_with_a_foreign_or_forgotten_session_is_expired() {
     let store = fixture.app.state::<Store>();
     let state = fixture.app.state::<ImportState>();
     let opened = open_with(&store, &state, saved(3)).unwrap();
-    // Чужой номер.
+    // A foreign number.
     let error = call(
         &main,
         "import_telegram_run",
@@ -93,7 +93,7 @@ fn run_with_a_foreign_or_forgotten_session_is_expired() {
     )
     .unwrap_err();
     assert_eq!(error, json!({"code": "import_session_expired"}));
-    // Забытая: окно импорта закрыто.
+    // A forgotten one: the import window is closed.
     call(&main, "import_telegram_close", json!({})).unwrap();
     let error = call(
         &main,
@@ -102,7 +102,7 @@ fn run_with_a_foreign_or_forgotten_session_is_expired() {
     )
     .unwrap_err();
     assert_eq!(error, json!({"code": "import_session_expired"}));
-    // Новая сессия заменяет прежнюю.
+    // A new session replaces the previous one.
     let first = open_with(&store, &state, saved(1)).unwrap();
     let second = open_with(&store, &state, saved(2)).unwrap();
     assert_ne!(first.session, second.session);
@@ -122,7 +122,7 @@ fn a_second_run_during_the_first_is_refused() {
     let store = fixture.app.state::<Store>();
     let state = fixture.app.state::<ImportState>();
     let opened = open_with(&store, &state, saved(3)).unwrap();
-    // Первый импорт «идёт»: его защёлку держит тест.
+    // The first import is "running": the test holds its latch.
     let running = state.begin(opened.session).unwrap();
     let error = call(
         &main,
@@ -180,14 +180,18 @@ fn import_over_ipc_reports_progress_only_to_main_then_search_and_pages_work() {
             .unwrap()
             .starts_with("pre-import-")
     );
-    assert_eq!(to_main.load(Ordering::SeqCst), 3, "три пачки — три события");
+    assert_eq!(
+        to_main.load(Ordering::SeqCst),
+        3,
+        "three batches, three events"
+    );
     assert_eq!(
         to_capture.load(Ordering::SeqCst),
         0,
-        "окно захвата прогресса не получает"
+        "the capture window gets no progress"
     );
 
-    // Поиск словоформы, фильтры и курсор.
+    // Search by word form, filters and the cursor.
     let page = call(
         &main,
         "search_messages",
@@ -223,7 +227,7 @@ fn import_over_ipc_reports_progress_only_to_main_then_search_and_pages_work() {
     .unwrap_err();
     assert_eq!(bad_date, json!({"code": "invalid_date"}));
 
-    // Страницы ленты: вокруг записи и новее.
+    // Feed pages: around an entry and newer.
     let middle = &page["hits"][20]["message"]["id"];
     let around = call(
         &main,
@@ -264,7 +268,7 @@ fn stop_over_ipc_without_a_running_import_is_harmless_and_run_resets_it() {
     let state = fixture.app.state::<ImportState>();
     let opened = open_with(&store, &state, saved(5)).unwrap();
     call(&main, "import_telegram_stop", json!({})).unwrap();
-    // Остановка, пришедшая до запуска, запуску не мешает: флаг сбрасывается при старте.
+    // A stop that came before the start does not interfere with the start: the flag is reset at the start.
     let report = call(
         &main,
         "import_telegram_run",
@@ -308,6 +312,6 @@ fn files_are_read_in_rust_and_bad_ones_have_their_own_codes() {
     assert_eq!(
         read_export(dir.path()).unwrap_err(),
         ErrorCode::ImportFileUnreadable,
-        "папка — не файл"
+        "a folder is not a file"
     );
 }

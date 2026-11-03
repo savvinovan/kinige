@@ -1,8 +1,8 @@
-//! Хук паники пишет в журнал место и поток, но не текст сообщения (в нём бывают данные пользователя). Отдельный бинарник:
-//! логгер и хук процесса глобальные.
+//! The panic hook writes the location and the thread to the log, but not the message text (it can hold user data). A separate binary:
+//! the process logger and hook are global.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 use log::{Level, Log, Metadata, Record};
@@ -43,7 +43,7 @@ fn a_panic_reaches_the_log_with_its_place_and_thread_but_without_its_message() {
         .unwrap()
         .join()
         .unwrap();
-    assert!(caught.is_err(), "паника поймана, поток жив");
+    assert!(caught.is_err(), "the panic was caught, the thread is alive");
 
     let records = RECORDS.lock().unwrap();
     assert_eq!(records.len(), 1, "{records:?}");
@@ -53,10 +53,10 @@ fn a_panic_reaches_the_log_with_its_place_and_thread_but_without_its_message() {
     assert!(text.contains("panic_hook.rs:"), "{text}");
     assert!(
         !text.contains(SECRET),
-        "текст паники попал в журнал: {text}"
+        "the panic text got into the log: {text}"
     );
     assert!(
         !text.contains("/Users/"),
-        "в журнале абсолютный путь с домом: {text}"
+        "an absolute path with the home directory in the log: {text}"
     );
 }

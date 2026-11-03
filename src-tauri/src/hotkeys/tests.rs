@@ -83,7 +83,7 @@ fn a_taken_shortcut_is_reported_and_the_other_one_still_works() {
     let s = states(&f);
     assert_eq!(s[0].2, ShortcutState::Taken);
     assert_eq!(s[1].2, ShortcutState::Assigned);
-    // Нажатие занятого сочетания ничего не вызывает, нажатие рабочего — вызывает своё действие.
+    // Pressing a taken shortcut triggers nothing, pressing a working one triggers its own action.
     assert_eq!(f.hotkeys.kind_for(|a| a == "Ctrl+Alt+KeyN"), None);
     assert_eq!(
         f.hotkeys.kind_for(|a| a == "Alt+Shift+KeyV"),
@@ -122,7 +122,7 @@ fn a_taken_replacement_is_refused_before_saving_and_the_old_one_keeps_working() 
     assert_eq!(
         f.store.shortcut_accelerator(ShortcutKind::Capture).unwrap(),
         "Ctrl+Alt+KeyN",
-        "не сохранено"
+        "not saved"
     );
     assert_eq!(states(&f)[0].2, ShortcutState::Assigned);
 }
@@ -156,7 +156,7 @@ fn reset_returns_the_default_and_a_taken_default_is_reported() {
     assert_eq!(registered(&f), ["Alt+Shift+KeyV", "Ctrl+Alt+KeyN"]);
     assert_eq!(states(&f)[1].1, "Alt+Shift+KeyV");
 
-    // Умолчание занято другой программой: сброс отказывает, действующее сочетание остаётся.
+    // The default is taken by another app: the reset refuses, the current shortcut stays.
     f.hotkeys
         .change(&f.store, ShortcutKind::Clipboard, "Ctrl+Alt+KeyB")
         .unwrap();

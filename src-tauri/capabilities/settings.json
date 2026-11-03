@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "settings-window",
-  "description": "Окно настроек (слайс 4b, ADR-0010): настройки, сочетания, доступ ИИ-агентов, файл настроек и журнал обращений; без ленты, поиска, записи, импорта и восстановления",
+  "description": "Settings window (slice 4b, ADR-0010): settings, shortcuts, AI agent access, the settings file and the access log; no feed, search, entry, import or restore",
   "windows": [
     "settings"
   ],

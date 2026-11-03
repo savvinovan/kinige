@@ -1,6 +1,6 @@
-//! Глобальные сочетания клавиш (ТЗ §5.1): регистрация в системе, статус «назначено / занято», смена и сброс из «Настроек».
-//! Регистрирует плагин `tauri-plugin-global-shortcut`, только из Rust (JS-разрешений у окон нет). Работа с плагином спрятана
-//! за [`Registrar`], чтобы правила (проверка до сохранения, откат при отказе, режим записи) проверялись без окна и системы.
+//! Global keyboard shortcuts (PRD §5.1): registration in the system, the "assigned / taken" status, change and reset from "Settings".
+//! Registered by the `tauri-plugin-global-shortcut` plugin, from Rust only (the windows have no JS permissions). Work with the plugin is hidden
+//! behind [`Registrar`], so that the rules (check before saving, rollback on refusal, recording mode) can be tested without a window and the system.
 
 use kinige_domain::{ErrorCode, Settings, ShortcutKind, ShortcutState};
 use kinige_store::{Store, StoreError};
@@ -8,11 +8,11 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-/// Система не приняла сочетание (занято другой программой или самой системой).
+/// The system did not accept the shortcut (taken by another app or by the system itself).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Refused;
 
-/// Регистрация сочетаний в системе.
+/// Registration of shortcuts in the system.
 pub trait Registrar: Send + Sync {
     fn register(&self, accelerator: &str) -> Result<(), Refused>;
     fn unregister(&self, accelerator: &str);
@@ -24,18 +24,18 @@ struct Inner {
     state: HashMap<ShortcutKind, ShortcutState>,
 }
 
-/// Состояние сочетаний приложения.
+/// The state of the app shortcuts.
 pub struct Hotkeys {
     registrar: Box<dyn Registrar>,
     inner: Mutex<Inner>,
-    /// В «Настройках» идёт запись нового сочетания: нажатия не должны открывать окно захвата (иначе нажать уже назначенное
-    /// сочетание в поле записи нельзя).
+    /// A new shortcut is being recorded in "Settings": presses must not open the capture window (otherwise an already assigned
+    /// shortcut could not be pressed in the recording field).
     recording: AtomicBool,
 }
 
 fn code(error: StoreError) -> ErrorCode {
-    // В журнал — категория без текста внутренней ошибки.
-    log::error!("ошибка хранилища: {}", error.category());
+    // Only the category goes to the log, without the text of the internal error.
+    log::error!("store error: {}", error.category());
     error.code()
 }
 
@@ -49,13 +49,13 @@ impl Hotkeys {
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
-        // Отравленный замок означает панику посреди смены сочетания; данные в нём остаются согласованными по полям.
+        // A poisoned lock means a panic in the middle of a shortcut change; the data in it stays consistent field by field.
         self.inner
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    /// Старт: регистрирует оба сочетания из настроек. То, что система не приняла, остаётся «не назначено», остальное работает.
+    /// Start: registers both shortcuts from the settings. What the system did not accept stays "unassigned", the rest works.
     pub fn register_saved(&self, store: &Store) {
         for kind in ShortcutKind::ALL {
             let accelerator = store
@@ -64,7 +64,7 @@ impl Hotkeys {
             let state = match self.registrar.register(&accelerator) {
                 Ok(()) => ShortcutState::Assigned,
                 Err(Refused) => {
-                    log::warn!("сочетание {kind:?} не назначено: занято");
+                    log::warn!("shortcut {kind:?} not assigned: taken");
                     ShortcutState::Taken
                 }
             };
@@ -74,7 +74,7 @@ impl Hotkeys {
         }
     }
 
-    /// Накладывает состояние «занято» на настройки из хранилища (там все сочетания «назначены»).
+    /// Overlays the "taken" state on the settings from the store (there all shortcuts are "assigned").
     pub fn overlay(&self, settings: &mut Settings) {
         let inner = self.lock();
         for status in &mut settings.shortcuts {
@@ -84,8 +84,8 @@ impl Hotkeys {
         }
     }
 
-    /// Какое действие вызвало нажатие. Сравнение по каноничной записи: плагин присылает разобранное сочетание, а в
-    /// настройках лежит строка, поэтому строка разбирается тем же разбором.
+    /// Which action the press triggered. Compared by the canonical form: the plugin sends a parsed shortcut, while the
+    /// settings hold a string, so the string is parsed by the same parser.
     pub fn kind_for(&self, matches: impl Fn(&str) -> bool) -> Option<ShortcutKind> {
         let inner = self.lock();
         ShortcutKind::ALL.into_iter().find(|kind| {
@@ -102,8 +102,8 @@ impl Hotkeys {
         self.recording.load(Ordering::SeqCst)
     }
 
-    /// Смена своего сочетания. Порядок: проверка записи и дубликата (ничего не меняется) → регистрация нового в системе
-    /// (отказ — `ShortcutTaken`, прежнее продолжает работать) → сохранение (сбой — новое снимается) → снятие прежнего.
+    /// Changing one's own shortcut. Order: check the form and duplicates (nothing changes) -> register the new one in the system
+    /// (refusal gives `ShortcutTaken`, the previous one keeps working) -> save (on failure the new one is released) -> release the previous one.
     pub fn change(
         &self,
         store: &Store,
@@ -119,7 +119,7 @@ impl Hotkeys {
         )
     }
 
-    /// «Сбросить»: сочетание по умолчанию, с теми же проверками.
+    /// "Reset": the default shortcut, with the same checks.
     pub fn reset(&self, store: &Store, kind: ShortcutKind) -> Result<(), ErrorCode> {
         let canonical = store
             .check_shortcut(kind, kind.default_accelerator())
@@ -168,7 +168,7 @@ impl Hotkeys {
     }
 }
 
-/// Реестр на плагине `tauri-plugin-global-shortcut`.
+/// A registry on the `tauri-plugin-global-shortcut` plugin.
 pub struct PluginRegistrar<R: tauri::Runtime> {
     pub app: tauri::AppHandle<R>,
 }
@@ -193,7 +193,7 @@ pub(crate) mod fake {
     use super::*;
     use std::collections::HashSet;
 
-    /// Реестр без системы: «занятые» сочетания заданы тестом, зарегистрированные запоминаются.
+    /// A registry without the system: the "taken" shortcuts are set by the test, the registered ones are remembered.
     #[derive(Default)]
     pub struct FakeRegistrar {
         pub taken: Mutex<HashSet<String>>,

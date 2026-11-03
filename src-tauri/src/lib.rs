@@ -1,4 +1,4 @@
-//! Тонкий слой Tauri: окна и команды. Бизнес-логика живёт в `kinige-domain`, хранение — в `kinige-store`.
+//! The thin Tauri layer: windows and commands. Business logic lives in `kinige-domain`, storage in `kinige-store`.
 
 mod actions;
 mod agent_access;
@@ -42,9 +42,9 @@ use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
 
 pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS};
 
-/// Конструктор приложения; общий для `run` и для тестов IPC (там с mock-рантаймом и своим `Store`).
-/// Плагины opener и dialog подключены только ради Rust-API: JS-разрешений на них у окна нет (capability их не выдаёт).
-/// Глобальные сочетания, трей и single-instance подключает только `run`: в тестах им нет места.
+/// The app constructor; shared by `run` and by the IPC tests (there with a mock runtime and their own `Store`).
+/// The opener and dialog plugins are attached only for the Rust API: the window has no JS permissions for them (the capability does not grant them).
+/// Global shortcuts, the tray and single-instance are attached only by `run`: they have no place in tests.
 pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     builder
         .plugin(guard::plugin())
@@ -113,8 +113,8 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
         ]))
 }
 
-/// Где лежат данные. `KINIGE_DATA_DIR` и `KINIGE_MIRROR_DIR` — для проверки на чистой машине и для автотестов; обычный
-/// запуск их не задаёт: база — в каталоге данных приложения, копия — в `~/Documents/Kinige`.
+/// Where the data lives. `KINIGE_DATA_DIR` and `KINIGE_MIRROR_DIR` are for checks on a clean machine and for autotests; a regular
+/// launch does not set them: the database is in the app data directory, the copy is in `~/Documents/Kinige`.
 fn db_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let data_dir = match std::env::var_os("KINIGE_DATA_DIR") {
         Some(dir) => PathBuf::from(dir),
@@ -134,7 +134,7 @@ fn default_data_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, tauri::Er
     }
 }
 
-/// Папка Markdown-копии по умолчанию: `~/Documents/Kinige` (или `KINIGE_MIRROR_DIR`).
+/// The default folder of the Markdown copy: `~/Documents/Kinige` (or `KINIGE_MIRROR_DIR`).
 fn default_mirror_dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
     match std::env::var_os("KINIGE_MIRROR_DIR") {
         Some(dir) => Some(PathBuf::from(dir)),
@@ -146,8 +146,8 @@ fn default_mirror_dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
     }
 }
 
-/// Открывает хранилище. Повреждение, найденное проверкой целостности в фоне или любой командой с любого потока (она
-/// прочитала битую страницу), ставит отметку, флаг процесса и сообщает главному окну
+/// Opens the store. Corruption found by the background integrity check or by any command on any thread (it
+/// read a broken page) sets a mark, the process flag and tells the main window
 /// (`recovery::corruption_hook`).
 fn open_store<R: Runtime>(
     app: &AppHandle<R>,
@@ -159,12 +159,12 @@ fn open_store<R: Runtime>(
     Store::open(options)
 }
 
-/// Всё, что работает поверх открытого хранилища: сочетания, окно захвата как панель, значок в menu bar. Вызывается при
-/// запуске и, если база была повреждена, сразу после восстановления из копии.
+/// Everything that works on top of the open store: shortcuts, the capture window as a panel, the menu bar icon. Called at
+/// launch and, if the database was corrupt, right after restoring from a copy.
 ///
-/// Хранилище (и всё остальное, что делает «журнал открыт») отдаётся приложению ПОСЛЕДНИМ, когда всё, что может упасть
-/// (панель, значок), уже удалось: иначе при сбое восстановление считалось бы неудавшимся, а хранилище уже стояло бы в
-/// состоянии приложения, и повторное «Восстановить» подменяло бы файл базы под открытым писателем.
+/// The store (and everything else that makes "the journal open") is handed to the app LAST, when everything that can fail
+/// (the panel, the icon) has already succeeded: otherwise on a failure the restore would count as failed while the store already stood in the
+/// app state, and a repeated "Restore" would replace the database file under an open writer.
 fn start_services<R: Runtime>(
     app: &AppHandle<R>,
     store: Store,
@@ -178,12 +178,12 @@ fn start_services<R: Runtime>(
         capture::request_hide,
     )?;
     tray::setup(app, commands::get_language())?;
-    // Файл настроек применяется первым (ADR-0010): до регистрации сочетаний и до слушателя MCP.
+    // The settings file is applied first (ADR-0010): before registering shortcuts and before the MCP listener.
     let db = db_path(app)?;
-    let data_dir = db.parent().ok_or("нет каталога данных")?.to_path_buf();
+    let data_dir = db.parent().ok_or("no data directory")?.to_path_buf();
     let settings_file = settings_window::start_file(app, &store, data_dir);
     let hotkeys = Hotkeys::new(Box::new(PluginRegistrar { app: app.clone() }));
-    // Сочетание, которое система не приняла, остаётся «не назначено» в настройках; остальное работает.
+    // A shortcut the system did not accept stays "unassigned" in the settings; the rest works.
     hotkeys.register_saved(&store);
     app.manage(store);
     app.manage(hotkeys);
@@ -191,9 +191,9 @@ fn start_services<R: Runtime>(
     settings_window::set_available(app, true);
     app.manage(CaptureShell::default());
     app.manage(import::ImportState::default());
-    // Значок строился без хранилища (его ещё не было в состоянии приложения): последние чаты — теперь.
+    // The icon was built without the store (it was not yet in the app state): the recent chats now.
     tray::refresh(app);
-    // Сервер MCP — последним, после `app.manage(store)`: сбой сокета журнал не останавливает (ошибка видна в настройках).
+    // The MCP server goes last, after `app.manage(store)`: a socket failure does not stop the journal (the error is visible in the settings).
     if let Ok(db_path) = db_path(app)
         && let Some(data_dir) = db_path.parent()
     {
@@ -202,7 +202,7 @@ fn start_services<R: Runtime>(
     Ok(())
 }
 
-/// После восстановления из копии: база открывается, сервисы запускаются на главном потоке (значок и панель — AppKit).
+/// After restoring from a copy: the database opens, the services start on the main thread (the icon and the panel are AppKit).
 pub(crate) fn resume_after_restore<R: Runtime>(app: &AppHandle<R>) -> Result<(), StoreError> {
     let db_path = db_path(app).map_err(|e| StoreError::Internal(e.to_string()))?;
     let corruption = app
@@ -221,7 +221,7 @@ pub(crate) fn resume_after_restore<R: Runtime>(app: &AppHandle<R>) -> Result<(),
         .map_err(StoreError::Internal)
 }
 
-/// Нажатие глобального сочетания. В режиме записи нового сочетания («Настройки») нажатия игнорируются.
+/// A global shortcut press. While recording a new shortcut ("Settings"), presses are ignored.
 fn on_shortcut<R: Runtime>(app: &tauri::AppHandle<R>, pressed: &Shortcut) {
     let Some(hotkeys) = app.try_state::<Hotkeys>() else {
         return;
@@ -241,7 +241,7 @@ fn on_shortcut<R: Runtime>(app: &tauri::AppHandle<R>, pressed: &Shortcut) {
     }
 }
 
-/// Закрытие главного окна прячет его, приложение живёт в menu bar; закрытие окна захвата — то же, что Esc.
+/// Closing the main window hides it, the app lives in the menu bar; closing the capture window is the same as Esc.
 fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
     match (window.label(), event) {
         (MAIN_LABEL, WindowEvent::CloseRequested { api, .. }) => {
@@ -252,11 +252,11 @@ fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
             api.prevent_close();
             capture::request_hide(window.app_handle());
         }
-        // Щелчок в другое окно или другую программу: окно захвата прячется, черновик сохраняется.
+        // A click into another window or another app: the capture window hides, the draft is saved.
         (CAPTURE_LABEL, WindowEvent::Focused(false)) => {
             capture::on_capture_blur(window.app_handle())
         }
-        // Окно настроек закрывается совсем; запись сочетания, если шла, снимается.
+        // The settings window closes completely; a shortcut recording, if in progress, is cancelled.
         (settings_window::SETTINGS_LABEL, WindowEvent::Destroyed) => {
             settings_window::on_destroyed(window.app_handle())
         }
@@ -268,14 +268,14 @@ pub fn run() {
     panic_hook::install();
     let configured = builder(
         tauri::Builder::default()
-            // Должен идти первым: второй запуск показывает главное окно существующего экземпляра и завершается.
+            // Must go first: a second launch shows the main window of the existing instance and exits.
             .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-                // Мост MCP запускает приложение с `--background`: уже запущенному окно показывать не нужно.
+                // The MCP bridge starts the app with `--background`: an already running app does not need to show a window.
                 if !is_background_launch(args) {
                     capture::show_main(app);
                 }
             }))
-            // После single-instance: второй экземпляр завершается, не открыв файл журнала.
+            // After single-instance: the second instance exits without opening the log file.
             .plugin(logging::plugin())
             .plugin(
                 tauri_plugin_global_shortcut::Builder::new()
@@ -287,10 +287,10 @@ pub fn run() {
                     .build(),
             ),
     );
-    // Окно захвата — панель NSPanel без активации приложения (ADR-0006).
+    // The capture window is an NSPanel without activating the app (ADR-0006).
     #[cfg(target_os = "macos")]
     let configured = configured.plugin(tauri_nspanel::init());
-    // Меню приложения с «Настройки…» (⌘,), слайс 4b.
+    // The app menu with "Settings..." (Cmd+,), slice 4b.
     #[cfg(target_os = "macos")]
     let configured = configured
         .menu(settings_window::app_menu)
@@ -300,17 +300,17 @@ pub fn run() {
             }
         });
     let setup = |app: &mut tauri::App| -> Result<(), Box<dyn std::error::Error>> {
-        log::info!("запуск Kinige {}", env!("CARGO_PKG_VERSION"));
+        log::info!("starting Kinige {}", env!("CARGO_PKG_VERSION"));
         let handle = app.handle().clone();
         let db_path = db_path(&handle)?;
-        // Журнал не открывается, и окно показывает копии (`recovery`), если: восстановление прошлого запуска не
-        // закончено; отметка фоновой проверки подтвердилась повторной синхронной проверкой (не подтвердилась —
-        // отметка снимается и база открывается как обычно); файла базы нет, а копии есть; база не открывается как
-        // повреждённая. База новее приложения (§10.4) — отдельное сообщение. Любая другая ошибка открытия — не
-        // повод предлагать копии: приложение не запускается и говорит об этом.
+        // The journal does not open, and the window shows the copies (`recovery`), if: the restore of the previous launch is not
+        // finished; the mark of the background check was confirmed by a repeated synchronous check (if not confirmed,
+        // the mark is cleared and the database opens as usual); the database file is missing but copies exist; the database does not open as
+        // corrupt. A database newer than the app (§10.4) gets a separate message. Any other open error is not
+        // a reason to offer copies: the app does not start and says so.
         let mirror = default_mirror_dir(&handle);
         let mut too_new = false;
-        // Флаг «повреждение найдено» нужен хуку проверки, которая стартует вместе с хранилищем, раньше `Recovery`.
+        // The "corruption found" flag is needed by the check hook, which starts together with the store, before `Recovery`.
         let corruption = Arc::new(AtomicBool::new(false));
         let store = if kinige_store::startup_check(&db_path) == kinige_store::StartupCheck::Recovery
         {
@@ -319,11 +319,11 @@ pub fn run() {
             match open_store(&handle, db_path.clone(), corruption.clone()) {
                 Ok(store) => Some(store),
                 Err(StoreError::Corrupt(_)) => {
-                    log::error!("база повреждена, предлагаем копии");
+                    log::error!("database is corrupt, offering copies");
                     None
                 }
                 Err(StoreError::TooNew(found)) => {
-                    log::warn!("база создана более новой версией (схема {found})");
+                    log::warn!("database was created by a newer version (schema {found})");
                     too_new = true;
                     None
                 }
@@ -344,9 +344,9 @@ pub fn run() {
         if let Some(store) = store {
             start_services(&handle, store)?;
         }
-        // Главное окно создаётся скрытым (`visible: false`), чтобы запуск в фоне не мигал окном: показываем его здесь,
-        // если приложение запущено не мостом MCP (`--background`, значок в menu bar без окна) или если журнал не открыт
-        // (экран восстановления нельзя прятать). `show_main` же возвращает обычную политику активации (значок в Dock).
+        // The main window is created hidden (`visible: false`) so that a background launch does not flash a window: we show it here
+        // if the app was not started by the MCP bridge (`--background`, a menu bar icon without a window) or if the journal is not open
+        // (the recovery screen must not be hidden). `show_main` also restores the regular activation policy (the Dock icon).
         if should_show_main_on_launch(is_background_launch(launch_args()), store_open) {
             capture::show_main(&handle);
         }
@@ -356,8 +356,8 @@ pub fn run() {
         .setup(move |app| fail_fast(setup(app)))
         .on_window_event(on_window_event)
         .on_page_load(|webview, payload| {
-            // Замер холодного старта (`scripts/measure-cold-start.sh`): метка, когда страница главного окна загружена.
-            // Без `KINIGE_TIMING=1` уровень цели `kinige-timing` выключен, и ничего не пишется.
+            // Cold start measurement (`scripts/measure-cold-start.sh`): a mark for when the main window page has loaded.
+            // Without `KINIGE_TIMING=1` the level of the `kinige-timing` target is off, and nothing is written.
             if webview.label() == MAIN_LABEL && payload.event() == PageLoadEvent::Finished {
                 log::info!(target: logging::TIMING_TARGET, "page-loaded");
             }
@@ -366,12 +366,12 @@ pub fn run() {
     let mut app = match built {
         Ok(app) => app,
         Err(_) => {
-            log::error!("сборка приложения не удалась");
+            log::error!("building the app failed");
             exit_after_failure()
         }
     };
 
-    // Запуск мостом: без значка в Dock, пока нет окна (политика меняется на обычную в `capture::show_main`).
+    // Launch by the bridge: no Dock icon while there is no window (the policy changes to regular in `capture::show_main`).
     #[cfg(target_os = "macos")]
     if is_background_launch(launch_args()) {
         app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -379,11 +379,11 @@ pub fn run() {
     #[cfg(not(target_os = "macos"))]
     let _ = &mut app;
     app.run(|app, event| {
-        // Файл сокета MCP не должен пережить приложение.
+        // The MCP socket file must not outlive the app.
         if let tauri::RunEvent::Exit = event {
             mcp::shutdown(app);
         }
-        // Щелчок по значку в Dock, когда окон на экране нет, показывает главное окно (событие есть только на macOS).
+        // A click on the Dock icon when there are no windows on the screen shows the main window (the event exists only on macOS).
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Reopen { .. } = event {
             capture::show_main(app);

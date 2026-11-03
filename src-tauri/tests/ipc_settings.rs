@@ -1,8 +1,8 @@
-//! Окно настроек (слайс 4b, ADR-0010) через IPC на mock-рантайме с настоящими capabilities: матрица «окно → команды»,
-//! отрицательные тесты, события `settings-changed` и `open-message`, «Файл настроек».
+//! The settings window (slice 4b, ADR-0010) through IPC on a mock runtime with the real capabilities: the "window -> commands" matrix,
+//! negative tests, the `settings-changed` and `open-message` events, the "Settings file".
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -28,7 +28,7 @@ fn the_settings_window_can_call_every_command_of_its_set() {
         if let Err(error) = call(&settings, command, args_for(command)) {
             assert!(
                 !is_acl_denial(&error),
-                "{command}: окну settings разрешена, получили: {error}"
+                "{command}: allowed for the settings window, got: {error}"
             );
         }
     }
@@ -41,12 +41,15 @@ fn the_settings_window_is_denied_the_feed_search_writing_import_restore_and_capt
     let mut denied = 0;
     for command in COMMANDS.iter().filter(|c| !SETTINGS_COMMANDS.contains(c)) {
         let error = call(&settings, command, args_for(command))
-            .expect_err(&format!("{command} окну настроек недоступна"));
+            .expect_err(&format!("{command} is unavailable to the settings window"));
         assert!(is_acl_denial(&error), "{command}: {error}");
         denied += 1;
     }
-    assert!(denied > 30, "проверены все чужие команды: {denied}");
-    // Названные в спецификации обязательно среди них.
+    assert!(
+        denied > 30,
+        "all the foreign commands were checked: {denied}"
+    );
+    // Those named in the specification are certainly among them.
     for command in [
         "list_messages",
         "search_messages",
@@ -66,7 +69,7 @@ fn the_settings_window_is_denied_the_feed_search_writing_import_restore_and_capt
             &call(&settings, command, args_for(command)).unwrap_err()
         ));
     }
-    // Плагины и события: слушать можно, остальное нельзя.
+    // Plugins and events: listening is allowed, the rest is not.
     for cmd in [
         "plugin:event|emit",
         "plugin:event|emit_to",
@@ -91,7 +94,7 @@ fn the_settings_window_is_denied_the_feed_search_writing_import_restore_and_capt
             cmd,
             json!({"url": "https://example.com", "path": "/tmp"}),
         )
-        .expect_err(&format!("{cmd} окну настроек недоступна"));
+        .expect_err(&format!("{cmd} is unavailable to the settings window"));
         assert!(is_acl_denial(&error), "{cmd}: {error}");
     }
 }
@@ -182,18 +185,26 @@ fn an_edit_from_the_settings_window_notifies_both_windows_but_not_the_capture_wi
         })
         .collect();
     call(&settings, "set_text_size", json!({"size": "large"})).unwrap();
-    assert_eq!(counters[0].load(Ordering::SeqCst), 1, "главное окно узнало");
-    assert_eq!(counters[1].load(Ordering::SeqCst), 1, "окно настроек тоже");
+    assert_eq!(
+        counters[0].load(Ordering::SeqCst),
+        1,
+        "the main window learned"
+    );
+    assert_eq!(
+        counters[1].load(Ordering::SeqCst),
+        1,
+        "the settings window too"
+    );
     assert_eq!(
         counters[2].load(Ordering::SeqCst),
         0,
-        "окно захвата событий не получает"
+        "the capture window gets no events"
     );
     assert_eq!(
         call(&main, "get_settings", json!({})).unwrap()["textSize"],
         "large"
     );
-    // Размер текста попал и в файл.
+    // The text size got into the file too.
     let text = std::fs::read_to_string(fixture.data.path().join("settings.json")).unwrap();
     assert!(text.contains("\"text_size\": \"large\""), "{text}");
 }
@@ -241,7 +252,7 @@ fn opening_an_entry_checks_it_and_tells_only_the_main_window() {
     assert_eq!(to_main.load(Ordering::SeqCst), 1);
     let parsed: Value = serde_json::from_str(&payload.lock().unwrap()).unwrap();
     assert_eq!(parsed, json!({"chatId": INBOX, "messageId": id}));
-    // Нет записи, мусор, запись в корзине: «Запись удалена», событие не уходит.
+    // No entry, garbage, an entry in the trash: "Entry deleted", the event does not go out.
     call(&main, "delete_message", json!({"id": id})).unwrap();
     for bad in [id, "нет-такой", "", "'; DROP TABLE message; --"] {
         let error = call(&settings, "settings_open_entry", json!({"id": bad})).unwrap_err();
@@ -253,7 +264,7 @@ fn opening_an_entry_checks_it_and_tells_only_the_main_window() {
 
 #[test]
 fn closing_the_settings_window_ends_the_shortcut_recording() {
-    // Закрытие окна во время записи сочетания снимает режим записи: иначе глобальные сочетания остались бы выключенными.
+    // Closing the window during a shortcut recording clears the recording mode: otherwise the global shortcuts would stay disabled.
     let fixture = fixture();
     let settings = window(&fixture, "settings");
     call(&settings, "shortcut_recording", json!({"active": true})).unwrap();
@@ -289,7 +300,7 @@ fn opening_the_settings_window_twice_gives_one_window() {
 
 #[test]
 fn no_settings_window_is_created_while_the_journal_is_not_open() {
-    // Восстановление и «база новее»: журнал не открыт, пункт «Настройки…» недоступен, а команда ничего не создаёт.
+    // Recovery and "database is newer": the journal is not open, the "Settings..." item is unavailable, and the command creates nothing.
     let dir = tempfile::tempdir().unwrap();
     let fixture = fixture_without_store(&dir.path().join("kinige.db"));
     let main = window(&fixture, "main");

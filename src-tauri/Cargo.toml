@@ -20,39 +20,39 @@ tauri-build = { version = "2.7", features = [] }
 [dependencies]
 kinige-domain = { path = "../crates/kinige-domain" }
 kinige-store = { path = "../crates/kinige-store" }
-# tray-icon: значок в menu bar (ядро Tauri); image-png: иконка трея из PNG, вшитого в бинарник; macos-private-api: нужна
-# tauri-nspanel (окно захвата — неактивирующая панель NSPanel, ADR-0006) и включается флагом `macOSPrivateApi` в tauri.conf.json.
+# tray-icon: the menu bar icon (Tauri core); image-png: the tray icon from a PNG embedded in the binary; macos-private-api: needed
+# by tauri-nspanel (the capture window is a non-activating NSPanel, ADR-0006) and enabled by the `macOSPrivateApi` flag in tauri.conf.json.
 tauri = { version = "2.12", features = ["tray-icon", "image-png", "macos-private-api"] }
-# Глобальные сочетания клавиш (захват и буфер) — только из Rust; JS-разрешений у окон нет.
+# Global shortcuts (capture and clipboard) -- from Rust only; the windows have no JS permissions.
 tauri-plugin-global-shortcut = "2.4"
-# Второй запуск показывает существующее главное окно (ТЗ §5.1).
+# A second launch shows the existing main window (PRD §5.1).
 tauri-plugin-single-instance = "2.5"
-# Текст из буфера обмена — только из Rust (хоткей буфера).
+# Text from the clipboard -- from Rust only (the clipboard hotkey).
 arboard = { version = "3.7", default-features = false }
-# Открытие ссылок в системном браузере и системный диалог выбора папки — только из Rust (JS-разрешений у окна нет, §12.3).
+# Opening links in the system browser and the system folder picker dialog -- from Rust only (the window has no JS permissions, §12.3).
 tauri-plugin-opener = "2.7"
 tauri-plugin-dialog = "2.8"
-# Предпочитаемые языки системы: язык интерфейса выбирает Rust, а не navigator.language (ADR-0005).
+# Preferred system languages: Rust chooses the interface language, not navigator.language (ADR-0005).
 sys-locale = "0.3"
-# Строки меню трея читаются из файлов переводов интерфейса.
+# The tray menu strings are read from the interface translation files.
 serde_json = "1"
-# Файл лога приложения (ротация, каталог логов ОС) и stderr в dev. JS-разрешений у окон нет: команда `log` плагина не выдана.
+# The app log file (rotation, the OS log directory) and stderr in dev. The windows have no JS permissions: the plugin's `log` command is not granted.
 tauri-plugin-log = "2.10.1"
 log = "0.4.34"
-# Тот же `Url`, что у tauri (предикат навигации).
+# The same `Url` as in tauri (the navigation predicate).
 url = "2"
-# Сервер MCP внутри приложения (ADR-0009): официальный Rust SDK. Версия 3.5.1: последний релиз 3.8.0 младше двух недель.
-# Только фича `server` (без макросов и HTTP): инструменты описаны вручную, сетевых транспортов нет (§12.3).
+# The MCP server inside the app (ADR-0009): the official Rust SDK. Version 3.5.1: the latest release 3.8.0 is less than two weeks old.
+# Only the `server` feature (no macros, no HTTP): the tools are described by hand, there are no network transports (§12.3).
 rmcp = { version = "=3.5.1", default-features = false, features = ["server"] }
-# Unix-сокет и таймеры сервера MCP (tokio уже в дереве через tauri).
+# The Unix socket and timers of the MCP server (tokio is already in the tree through tauri).
 tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros", "rt"] }
 
 [dev-dependencies]
 tauri = { version = "2.12", features = ["test"] }
 tempfile = "3"
-# Только для теста «база новее приложения»: поднять `user_version` у файла базы.
+# Only for the "database is newer than the app" test: raise `user_version` of the database file.
 rusqlite = { version = "0.40", features = ["bundled"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-# Окно захвата как NSPanel без активации приложения: обычное окно не получает ввод надёжно, когда активна чужая программа.
+# The capture window as an NSPanel without activating the app: a regular window does not reliably get input while another app is active.
 tauri-nspanel = "2.1.1"

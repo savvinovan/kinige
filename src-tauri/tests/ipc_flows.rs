@@ -1,8 +1,8 @@
-//! Сценарии через IPC на mock-рантайме с настоящими capabilities: запись и настройки, быстрый захват, сочетания. Матрица
-//! «окно → команды» — в `ipc.rs`, сценарии слайса 3 (чаты, корзина, правка, восстановление) — в `ipc_slice3.rs`.
+//! Scenarios through IPC on a mock runtime with the real capabilities: entries and settings, quick capture, shortcuts. The
+//! "window -> commands" matrix is in `ipc.rs`, the slice 3 scenarios (chats, trash, editing, restore) are in `ipc_slice3.rs`.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -89,7 +89,7 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
         });
     }
 
-    // Пустое состояние: ни контекста, ни цели дописывания, ни черновика, ни ошибки.
+    // The empty state: no context, no appending target, no draft, no error.
     let state = call(&capture, "capture_state", json!({})).unwrap();
     assert_eq!(state["context"], json!([]));
     assert_eq!(state["appendTarget"], Value::Null);
@@ -98,7 +98,7 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
     assert!(state["language"] == "en" || state["language"] == "ru");
     assert_eq!(state["textSize"], "normal");
 
-    // Черновик окна не виден главному и наоборот.
+    // The capture window draft is not visible to the main window and vice versa.
     call(
         &capture,
         "capture_save_draft",
@@ -123,7 +123,7 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
         "недописано"
     );
 
-    // Enter: новая запись; главное окно её видит и получает событие; черновик окна очищен, черновик главного цел.
+    // Enter: a new entry; the main window sees it and gets an event; the capture window draft is cleared, the main window draft is intact.
     let created = call(
         &capture,
         "capture_send",
@@ -137,7 +137,7 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
     assert_eq!(
         to_capture.load(Ordering::SeqCst),
         0,
-        "окно захвата события не получает"
+        "the capture window gets no event"
     );
     let page = call(&main, "list_messages", args_for("list_messages")).unwrap();
     assert_eq!(page["messages"].as_array().unwrap().len(), 1);
@@ -146,13 +146,13 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
         "черновик"
     );
 
-    // Контекст и цель дописывания.
+    // The context and the appending target.
     let state = call(&capture, "capture_state", json!({})).unwrap();
     assert_eq!(state["draft"], "");
     assert_eq!(state["context"].as_array().unwrap().len(), 1);
     assert_eq!(state["appendTarget"], created["message"]["id"]);
 
-    // ⌘Enter: дописано в ту же запись.
+    // Cmd+Enter: appended to the same entry.
     let appended = call(&capture, "capture_append", json!({"body": "и ещё"})).unwrap();
     assert_eq!(appended["action"], "appended");
     assert_eq!(appended["message"]["id"], created["message"]["id"]);
@@ -166,7 +166,7 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
         1
     );
 
-    // Ошибки уходят кодом, событий нет.
+    // Errors go as a code, there are no events.
     let before = to_main.load(Ordering::SeqCst);
     assert_eq!(
         call(&capture, "capture_send", json!({"body": "  "})).unwrap_err(),
@@ -178,7 +178,7 @@ fn capture_flow_over_ipc_creates_appends_keeps_the_draft_and_notifies_only_main(
     );
     assert_eq!(to_main.load(Ordering::SeqCst), before);
 
-    // Прятать окно, которого в mock-рантайме нет, безопасно.
+    // Hiding a window that does not exist in the mock runtime is safe.
     call(&capture, "capture_hide", json!({})).unwrap();
 }
 
@@ -190,7 +190,7 @@ fn capture_window_shares_the_recent_emoji_list_with_the_main_window() {
     let state = call(&capture, "capture_state", json!({})).unwrap();
     assert_eq!(state["recentEmoji"], json!([]));
 
-    // Выбор в пикере главного окна виден окну захвата при следующем показе, выбор в окне захвата — главному.
+    // A choice in the main window picker is visible to the capture window on the next show, a choice in the capture window to the main one.
     call(&main, "add_recent_emoji", json!({"emoji": "🎬"})).unwrap();
     assert_eq!(
         call(&capture, "capture_state", json!({})).unwrap()["recentEmoji"],
@@ -202,10 +202,10 @@ fn capture_window_shares_the_recent_emoji_list_with_the_main_window() {
         call(&main, "get_settings", json!({})).unwrap()["recentEmoji"],
         json!(["📚", "🎬"])
     );
-    // Повтор переезжает вперёд; пустое значение отказано (те же правила, что у команды главного окна), список не меняется.
+    // A repeat moves to the front; an empty value is refused (the same rules as the main window command), the list does not change.
     let list = call(&capture, "capture_add_recent_emoji", json!({"emoji": "🎬"})).unwrap();
     assert_eq!(list, json!(["🎬", "📚"]));
-    // Принимаются только последовательности эмодзи; обе команды (окна захвата и главного) отвечают одинаково.
+    // Only emoji sequences are accepted; both commands (the capture window's and the main one's) answer the same way.
     let too_long_ascii = "a".repeat(33);
     let too_long_emoji = "📚".repeat(11);
     for bad in [
@@ -225,7 +225,7 @@ fn capture_window_shares_the_recent_emoji_list_with_the_main_window() {
             (&capture, "capture_add_recent_emoji"),
             (&main, "add_recent_emoji"),
         ] {
-            let error = call(window, command, json!({"emoji": bad})).expect_err("не эмодзи");
+            let error = call(window, command, json!({"emoji": bad})).expect_err("not an emoji");
             assert_eq!(error["code"], "chat_icon_invalid", "{command} {bad:?}");
         }
     }
@@ -233,7 +233,7 @@ fn capture_window_shares_the_recent_emoji_list_with_the_main_window() {
         call(&main, "get_settings", json!({})).unwrap()["recentEmoji"],
         json!(["🎬", "📚"])
     );
-    // Команда главного окна окну захвата по-прежнему отказана.
+    // The main window command is still refused to the capture window.
     let error = call(&capture, "add_recent_emoji", json!({"emoji": "📚"})).unwrap_err();
     assert!(is_acl_denial(&error));
 }
@@ -251,10 +251,10 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
             {"kind": "capture", "accelerator": "Ctrl+Alt+KeyN", "isDefault": true, "state": "taken"},
             {"kind": "clipboard", "accelerator": "Alt+Shift+KeyV", "isDefault": true, "state": "assigned"},
         ]),
-        "занятое сочетание видно в настройках, остальное работает"
+        "the taken shortcut is visible in the settings, the rest works"
     );
 
-    // Занято — отказ до сохранения, в настройках прежнее.
+    // Taken -- refused before saving, the settings keep the previous one.
     assert_eq!(
         call(
             &prefs,
@@ -264,7 +264,7 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
         .unwrap_err(),
         json!({"code": "shortcut_taken"})
     );
-    // Неверное, зарезервированное и совпадающее с другим действием — свои коды.
+    // Invalid, reserved and matching another action -- each has its own code.
     for (accelerator, code) in [
         ("Space", "shortcut_invalid"),
         ("Cmd+KeyQ", "shortcut_invalid"),
@@ -285,7 +285,7 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
     let after = call(&main, "get_settings", json!({})).unwrap();
     assert_eq!(after["shortcuts"][0]["accelerator"], "Ctrl+Alt+KeyN");
 
-    // Свободное сочетание принято и сохранено в каноничном виде; ответ — настройки целиком.
+    // A free shortcut is accepted and saved in the canonical form; the reply is the whole settings.
     let changed = call(
         &prefs,
         "set_shortcut",
@@ -296,7 +296,7 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
         changed["shortcuts"][0],
         json!({"kind": "capture", "accelerator": "Ctrl+Alt+KeyK", "isDefault": false, "state": "assigned"})
     );
-    // Сброс: умолчание занято другой программой — отказ, действующее остаётся.
+    // Reset: the default is taken by another app -- refused, the current one stays.
     assert_eq!(
         call(&prefs, "reset_shortcut", json!({"kind": "capture"})).unwrap_err(),
         json!({"code": "shortcut_taken"})
@@ -308,7 +308,7 @@ fn shortcuts_over_ipc_show_state_validate_and_roll_back() {
         json!({"kind": "capture", "accelerator": "Ctrl+Alt+KeyN", "isDefault": true, "state": "assigned"})
     );
 
-    // Режим записи включается и выключается без ошибок.
+    // The recording mode turns on and off without errors.
     call(&prefs, "shortcut_recording", json!({"active": true})).unwrap();
     call(&prefs, "shortcut_recording", json!({"active": false})).unwrap();
 }

@@ -1,6 +1,6 @@
-//! Мост stdio <-> Unix-сокет Kinige (ADR-0009). Базу не открывает. Запросы не переотправляет: при обрыве неотвеченный
-//! запрос получает ошибку JSON-RPC (`add_entry` в полёте мог уже записаться). После переподключения повторяет
-//! `initialize` и `notifications/initialized`; ответ на повторный `initialize` клиенту не уходит.
+//! The stdio <-> Kinige Unix socket bridge (ADR-0009). It does not open the database. It does not resend requests: on a drop an unanswered
+//! request gets a JSON-RPC error (an in-flight `add_entry` may already have been written). After reconnecting it repeats
+//! `initialize` and `notifications/initialized`; the reply to the repeated `initialize` does not go to the client.
 
 use crate::frames::{FRAME_LIMIT, Frame, read_frame};
 use crate::host::Host;
@@ -14,7 +14,7 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// Первая строка соединения после обрыва: сервер не пишет в журнал второе «подключение» за тот же сеанс клиента.
+/// The first line of a connection after a drop: the server does not write a second "connection" to the log for the same client session.
 pub const RECONNECT_MARKER: &str = r#"{"jsonrpc":"2.0","method":"kinige/reconnect"}"#;
 const CONNECT_RETRY: Duration = Duration::from_millis(100);
 
@@ -22,14 +22,14 @@ const LOST: &str = "Соединение с Kinige потеряно, прове�
 const NOT_RUNNING: &str = "Откройте Kinige (Open Kinige: the app is not running)";
 const UNAVAILABLE: &str =
     "journal_unavailable: Kinige is starting or recovering, try again in a moment";
-/// Коды JSON-RPC: разбор не удался; ошибка сервера (обрыв, нет приложения).
+/// JSON-RPC codes: parse failed; server error (a drop, no app).
 const PARSE_ERROR: i32 = -32700;
 const SERVER_ERROR: i32 = -32000;
 const TOO_LONG: &str = "invalid_argument: the message is larger than 4 MiB";
 
 pub struct Config {
     pub socket: PathBuf,
-    /// Сколько ждать сокет (10 с); тесты укорачивают.
+    /// How long to wait for the socket (10 s); tests shorten it.
     pub wait: Duration,
     pub frame_limit: usize,
 }
@@ -44,7 +44,7 @@ impl Config {
     }
 }
 
-/// Текущее соединение: поколение растёт с каждым новым, чтобы обрыв старого не трогал новое.
+/// The current connection: the generation grows with each new one, so that a drop of the old one does not touch the new one.
 struct Connection {
     generation: u64,
     writer: UnixStream,
@@ -54,11 +54,11 @@ struct Connection {
 struct State {
     connection: Option<Connection>,
     generation: u64,
-    /// Неотвеченные запросы клиента (сообщения с `method` и `id`): `id` дословно → поколение, в котором отправлены.
+    /// Unanswered client requests (messages with `method` and `id`): `id` verbatim -> the generation in which they were sent.
     pending: HashMap<String, u64>,
     initialize: Option<Vec<u8>>,
     initialized: Option<Vec<u8>>,
-    /// `id` повторного `initialize`, ответ на который уходит не клиенту, а мосту.
+    /// The `id` of the repeated `initialize`, whose reply goes not to the client but to the bridge.
     rehandshake_id: Option<String>,
     rehandshake_done: bool,
 }
@@ -71,7 +71,7 @@ pub struct Bridge {
     out: Mutex<Box<dyn Write + Send>>,
 }
 
-/// Почему соединения нет.
+/// Why there is no connection.
 enum Unreachable {
     NotRunning,
     Unavailable,
@@ -88,7 +88,7 @@ impl Bridge {
         })
     }
 
-    /// Читает сообщения клиента, пока stdin не закончится. Возвращается при EOF.
+    /// Reads client messages until stdin ends. Returns on EOF.
     pub fn run(self: &Arc<Self>, mut input: impl BufRead) {
         let mut line = Vec::new();
         loop {
@@ -99,7 +99,7 @@ impl Bridge {
                     }
                 }
                 Ok(Frame::TooLong) => {
-                    // `id` ищется в сохранённом начале строки; нет — `null`, как велит JSON-RPC для неразобранного запроса.
+                    // The `id` is looked up in the saved beginning of the line; none -- `null`, as JSON-RPC requires for an unparsed request.
                     let found = scan_prefix(&line);
                     let id = found.id.as_deref();
                     note("client_frame_too_long", id);
@@ -111,7 +111,7 @@ impl Bridge {
     }
 
     fn client_line(self: &Arc<Self>, line: &[u8]) {
-        // Не JSON-объект (`{not json`): ответ −32700 с `id: null` и ничего серверу; приложение из-за мусора не запускается.
+        // Not a JSON object (`{not json`): reply -32700 with `id: null` and nothing to the server; garbage does not start the app.
         if !is_object(line) {
             note("parse_error", None);
             self.send_to_client(error_with_code("null", PARSE_ERROR, "Parse error"));
@@ -124,7 +124,7 @@ impl Bridge {
             self.remember_and_forward(line, &scanned);
             return;
         };
-        // Соединения нет: запрос получает ошибку с тем же `id`, уведомление пропадает.
+        // No connection: a request gets an error with the same `id`, a notification is dropped.
         note("unreachable", id);
         if scanned.is_request() {
             let text = match why {
@@ -135,7 +135,7 @@ impl Bridge {
         }
     }
 
-    /// Запоминает рукопожатие клиента и неотвеченный запрос, затем пишет строку серверу.
+    /// Remembers the client handshake and the unanswered request, then writes the line to the server.
     fn remember_and_forward(self: &Arc<Self>, line: &[u8], scanned: &Scan) {
         let generation = {
             let mut state = self.lock();
@@ -147,7 +147,7 @@ impl Bridge {
                 _ => {}
             }
             let Some(generation) = state.connection.as_ref().map(|c| c.generation) else {
-                // Соединение оборвалось между проверкой и отправкой: запрос не ушёл, но и ждать ему нечего.
+                // The connection dropped between the check and the send: the request did not go out, but there is nothing for it to wait for.
                 drop(state);
                 if scanned.is_request() {
                     let id = scanned.id.as_deref().unwrap_or("null");
@@ -165,20 +165,20 @@ impl Bridge {
         }
     }
 
-    /// Устанавливает соединение, если его нет. После обрыва повторяет рукопожатие клиента.
+    /// Establishes a connection if there is none. After a drop it repeats the client handshake.
     fn connect(self: &Arc<Self>) -> Result<(), Unreachable> {
         if self.lock().connection.is_some() {
             return Ok(());
         }
         let deadline = Instant::now() + self.config.wait;
-        // Сначала просто подключаемся: если сокет отвечает, приложение работает, и проверять процесс (а тем более запускать
-        // `open`, который запущенному приложению пришёл бы как Reopen и показал бы окно) незачем.
+        // First just connect: if the socket answers, the app is running, and there is no need to check the process (let alone to run
+        // `open`, which would arrive at a running app as Reopen and show a window).
         let mut running: Option<bool> = None;
         let stream = loop {
             match UnixStream::connect(&self.config.socket) {
                 Ok(stream) => break stream,
                 Err(_) => {
-                    // Не ответил: процесс есть — ждём сокет (приложение стартует); процесса нет — один раз запускаем.
+                    // No answer: the process exists -- wait for the socket (the app is starting); no process -- start it once.
                     let running = *running.get_or_insert_with(|| {
                         let alive = self.host.process_running();
                         if !alive {
@@ -231,7 +231,7 @@ impl Bridge {
         Ok(())
     }
 
-    /// Маркер переподключения, `initialize`, ожидание ответа на него, затем `notifications/initialized`.
+    /// The reconnect marker, `initialize`, waiting for its reply, then `notifications/initialized`.
     fn replay_handshake(&self, generation: u64, initialize: &[u8]) -> io::Result<()> {
         self.write_server(generation, RECONNECT_MARKER.as_bytes())?;
         self.write_server(generation, initialize)?;
@@ -259,7 +259,7 @@ impl Bridge {
         }
     }
 
-    /// Читает ответы сервера до обрыва, затем разбирает неотвеченные запросы.
+    /// Reads server replies until a drop, then settles the unanswered requests.
     fn read_server(self: Arc<Self>, generation: u64, stream: UnixStream) {
         let mut reader = BufReader::new(stream);
         let mut line = Vec::new();
@@ -290,7 +290,7 @@ impl Bridge {
                     .as_ref()
                     .is_some_and(|c| c.generation == generation);
                 if current {
-                    // Ответ на повторный `initialize`: клиент его не ждёт.
+                    // The reply to the repeated `initialize`: the client is not waiting for it.
                     state.rehandshake_done = true;
                     drop(state);
                     self.wake.notify_all();
@@ -304,7 +304,7 @@ impl Bridge {
         self.send_to_client(line);
     }
 
-    /// Соединение `generation` оборвалось: каждый его неотвеченный запрос получает ошибку, повторной отправки нет.
+    /// The connection `generation` dropped: each of its unanswered requests gets an error, there is no resend.
     fn lost(&self, generation: u64) {
         let failed: Vec<String> = {
             let mut state = self.lock();
@@ -335,7 +335,7 @@ impl Bridge {
     }
 
     fn write_server(&self, generation: u64, line: &[u8]) -> io::Result<()> {
-        // Дубликат дескриптора берётся под замком, запись идёт без него: медленный сервер не должен держать читателя ответов.
+        // A duplicate of the descriptor is taken under the lock, the write goes without it: a slow server must not hold up the reply reader.
         let mut writer = {
             let state = self.lock();
             let Some(connection) = state
@@ -347,7 +347,7 @@ impl Bridge {
             };
             connection.writer.try_clone()?
         };
-        // Одна запись на строку.
+        // One write per line.
         let mut framed = Vec::with_capacity(line.len() + 1);
         framed.extend_from_slice(line);
         framed.push(b'\n');
@@ -362,7 +362,7 @@ impl Bridge {
         };
         let mut framed = line.as_ref().to_vec();
         framed.push(b'\n');
-        // Клиент закрыл stdout — мост здесь больше не нужен.
+        // The client closed stdout -- the bridge is no longer needed here.
         if out.write_all(&framed).and_then(|()| out.flush()).is_err() {
             std::process::exit(0);
         }
@@ -380,7 +380,7 @@ fn scan_id(line: Option<&[u8]>) -> Option<String> {
     scan(line?).id
 }
 
-/// Ответ-ошибка JSON-RPC с заданным `id` (дословно). Тексты — константы моста, экранировать в них нечего, кроме кавычек.
+/// A JSON-RPC error reply with the given `id` (verbatim). The texts are bridge constants, there is nothing to escape in them except quotes.
 pub fn error_line(id: &str, message: &str) -> String {
     error_with_code(id, SERVER_ERROR, message)
 }
@@ -397,8 +397,8 @@ mod tests {
     #[test]
     fn error_line_is_valid_json_rpc_with_the_same_id() {
         assert_eq!(
-            error_line("7", "потеряно"),
-            r#"{"jsonrpc":"2.0","id":7,"error":{"code":-32000,"message":"потеряно"}}"#
+            error_line("7", "lost"),
+            r#"{"jsonrpc":"2.0","id":7,"error":{"code":-32000,"message":"lost"}}"#
         );
         assert!(error_line("\"abc\"", "a\"b").contains(r#""id":"abc""#));
         assert!(error_line("null", "x").contains(r#""id":null"#));

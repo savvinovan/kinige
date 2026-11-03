@@ -1,5 +1,5 @@
-//! Сокет сервера MCP (ADR-0009): путь, проверки папки, проба старого сокета, `bind`, `chmod 0600`, предел кадра.
-//! Это не сетевой порт: подключиться может только тот же пользователь, а он и так читает файл базы (§4.1).
+//! The MCP server socket (ADR-0009): the path, folder checks, a probe of an old socket, `bind`, `chmod 0600`, the frame limit.
+//! It is not a network port: only the same user can connect, and that user can read the database file anyway (§4.1).
 
 use std::io;
 use std::os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt, PermissionsExt};
@@ -9,20 +9,20 @@ use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, ReadBuf};
 use tokio::net::{UnixListener, UnixStream};
 
-/// Предел одной строки JSON-RPC: 4 МиБ (ADR-0009).
+/// The limit of one JSON-RPC line: 4 MiB (ADR-0009).
 pub const FRAME_LIMIT: usize = 4 * 1024 * 1024;
-/// `sun_path` на macOS — 104 байта; запас под завершающий ноль и разночтения.
+/// `sun_path` on macOS is 104 bytes; a margin for the terminating zero and discrepancies.
 const MAX_PATH_BYTES: usize = 100;
 const SOCKET_NAME: &str = "kinige.sock";
 
-/// Почему сокет не поднят. Код уходит в окно «Доступ ИИ-агентов».
+/// Why the socket is not up. The code goes to the "AI agent access" window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SocketError {
-    /// Папка сокета — симлинк, чужая или с лишними правами.
+    /// The socket folder is a symlink, foreign or has excess permissions.
     DirUnsafe,
-    /// Старый сокет отвечает: на этих данных уже работает другой Kinige.
+    /// The old socket answers: another Kinige is already working on this data.
     SecondInstance,
-    /// `bind` или `chmod` не удался, либо на месте сокета лежит чужой файл.
+    /// `bind` or `chmod` failed, or a foreign file lies in place of the socket.
     BindFailed,
 }
 
@@ -36,7 +36,7 @@ impl SocketError {
     }
 }
 
-/// Путь сокета: `<каталог данных>/mcp/kinige.sock`; длиннее предела `sun_path` — `<tmp>/kinige-mcp/<хэш>.sock`.
+/// The socket path: `<data directory>/mcp/kinige.sock`; longer than the `sun_path` limit -- `<tmp>/kinige-mcp/<hash>.sock`.
 pub fn socket_path(data_dir: &Path, tmp_dir: &Path) -> PathBuf {
     let primary = data_dir.join("mcp").join(SOCKET_NAME);
     if primary.as_os_str().len() <= MAX_PATH_BYTES {
@@ -48,20 +48,20 @@ pub fn socket_path(data_dir: &Path, tmp_dir: &Path) -> PathBuf {
     ))
 }
 
-/// FNV-1a: хэш должен совпадать между запусками (`DefaultHasher` этого не обещает).
+/// FNV-1a: the hash must be the same between launches (`DefaultHasher` does not promise that).
 fn fnv1a(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf2_9ce4_8422_2325, |hash, byte| {
         (hash ^ u64::from(*byte)).wrapping_mul(0x0100_0000_01b3)
     })
 }
 
-/// Свой uid без `libc`: пара сокетов в процессе, `peer_cred` второго конца — это мы.
+/// Our own uid without `libc`: a socket pair in the process, the `peer_cred` of the other end is us.
 pub fn own_uid() -> io::Result<u32> {
     let (left, _right) = UnixStream::pair()?;
     Ok(left.peer_cred()?.uid())
 }
 
-/// Папка сокета: не симлинк, наша, права 0700. Нет папки — создаётся с правами 0700.
+/// The socket folder: not a symlink, ours, permissions 0700. If there is no folder, it is created with permissions 0700.
 fn prepare_dir(dir: &Path, uid: u32) -> Result<(), SocketError> {
     if std::fs::symlink_metadata(dir).is_err_and(|e| e.kind() == io::ErrorKind::NotFound) {
         std::fs::DirBuilder::new()
@@ -82,15 +82,15 @@ fn prepare_dir(dir: &Path, uid: u32) -> Result<(), SocketError> {
     }
 }
 
-/// Поднимает слушатель: проверки папки, проба старого сокета (ответил — второй Kinige; нет — файл удаляется), `bind`,
-/// `chmod 0600`. Не удался `chmod` — файл сокета удаляется. Чужой файл на месте сокета не трогается.
+/// Brings the listener up: folder checks, a probe of the old socket (it answered -- a second Kinige; it did not -- the file is removed), `bind`,
+/// `chmod 0600`. If `chmod` failed, the socket file is removed. A foreign file in place of the socket is not touched.
 pub fn bind(path: &Path, uid: u32) -> Result<UnixListener, SocketError> {
     bind_with(path, uid, |socket| {
         std::fs::set_permissions(socket, std::fs::Permissions::from_mode(0o600))
     })
 }
 
-/// То же с заданной установкой прав: тест подставляет неудачную, чтобы проверить удаление файла сокета.
+/// The same with a given permission setter: a test substitutes a failing one to check the removal of the socket file.
 pub fn bind_with(
     path: &Path,
     uid: u32,
@@ -117,13 +117,13 @@ pub fn bind_with(
     Ok(listener)
 }
 
-/// Файл сокета на месте (проверка раз в 10 минут: macOS может вычищать старые файлы в `$TMPDIR`).
+/// The socket file is in place (checked every 10 minutes: macOS may clean old files in `$TMPDIR`).
 pub fn socket_present(path: &Path) -> bool {
     std::fs::symlink_metadata(path).is_ok_and(|meta| meta.file_type().is_socket())
 }
 
-/// Читающая половина с пределом кадра: `AsyncRwTransport` из `rmcp` читает строку без границы (проверено в 4a.0), поэтому
-/// предел ставится здесь. Строка длиннее [`FRAME_LIMIT`] — ошибка чтения, сервис завершается и соединение закрывается.
+/// The reading half with a frame limit: `AsyncRwTransport` from `rmcp` reads a line with no bound (checked in 4a.0), so
+/// the limit is set here. A line longer than [`FRAME_LIMIT`] is a read error, the service ends and the connection closes.
 pub struct Limited<R> {
     inner: R,
     since_newline: usize,
@@ -157,11 +157,11 @@ impl<R: AsyncRead + Unpin> AsyncRead for Limited<R> {
                 } else {
                     run += 1;
                     if run > limit {
-                        // Ошибка чтения не оставляет данных в буфере (контракт `AsyncRead`).
+                        // A read error leaves no data in the buffer (the `AsyncRead` contract).
                         buf.set_filled(before);
                         return Poll::Ready(Err(io::Error::new(
                             io::ErrorKind::InvalidData,
-                            "кадр длиннее предела",
+                            "frame is longer than the limit",
                         )));
                     }
                 }
@@ -189,7 +189,7 @@ mod tests {
         let fallback = socket_path(&long, tmp);
         assert!(fallback.starts_with("/var/folders/ab/T/kinige-mcp"));
         assert!(fallback.as_os_str().len() <= MAX_PATH_BYTES);
-        assert_eq!(fallback, socket_path(&long, tmp), "стабилен между вызовами");
+        assert_eq!(fallback, socket_path(&long, tmp), "stable between calls");
         assert_ne!(fallback, socket_path(&long.join("другая"), tmp));
     }
 

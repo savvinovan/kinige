@@ -1,17 +1,17 @@
-//! Навигация главного окна (ТЗ §6, §12.3): webview не уходит со страницы приложения. Ссылки из записей открывает
-//! системный браузер (`open_external_url`); «Open Link» из системного контекстного меню WKWebView пытается перейти по
-//! адресу прямо в окне — этот переход отменяется здесь.
+//! Navigation of the main window (PRD §6, §12.3): the webview does not leave the app page. Links from entries are opened by
+//! the system browser (`open_external_url`); "Open Link" from the WKWebView system context menu tries to go to the
+//! address right in the window -- this navigation is cancelled here.
 
 use tauri::Runtime;
 use tauri::plugin::{Builder, TauriPlugin};
 use url::Url;
 
-/// Порт dev-сервера Vite (`devUrl` в `tauri.conf.json`).
+/// The port of the Vite dev server (`devUrl` in `tauri.conf.json`).
 const DEV_PORT: u16 = 1420;
 
-/// Можно ли webview перейти по адресу. Пускаем только страницу самого приложения:
-/// `tauri://localhost` (macOS, Linux), `http(s)://tauri.localhost` (Windows) и в dev-режиме `http://localhost:1420`.
-/// Всё остальное — внешние сайты, `file:`, `data:`, `javascript:`, `about:` — нет.
+/// Whether the webview may go to the address. Only the app's own page is allowed:
+/// `tauri://localhost` (macOS, Linux), `http(s)://tauri.localhost` (Windows) and in dev mode `http://localhost:1420`.
+/// Everything else -- external sites, `file:`, `data:`, `javascript:`, `about:` -- is not.
 pub fn navigation_allowed(url: &Url, dev: bool) -> bool {
     match url.scheme() {
         "tauri" => url.host_str() == Some("localhost"),
@@ -26,7 +26,7 @@ pub fn navigation_allowed(url: &Url, dev: bool) -> bool {
     }
 }
 
-/// Плагин, который ставит предикат на каждую навигацию окон приложения.
+/// A plugin that puts the predicate on every navigation of the app windows.
 pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("kinige-guard")
         .on_navigation(|_webview, url| navigation_allowed(url, tauri::is_dev()))

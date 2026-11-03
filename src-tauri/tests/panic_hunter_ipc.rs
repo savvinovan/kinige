@@ -1,9 +1,9 @@
-//! «Охотник за паникой» для IPC (KINIG-28): каждая команда каждого окна получает мусорные параметры — пустые, не того типа
-//! и враждебные по значению (огромные строки, NUL, отрицательные и огромные числа, вложенность). Ответ приходит всегда, а на
-//! неверные типы это ошибка. Паника в команде оборвала бы ответ, и тест упал бы, а не зависал.
+//! The "panic hunter" for IPC (KINIG-28): every command of every window gets garbage parameters -- empty, of the wrong type
+//! and hostile by value (huge strings, NUL, negative and huge numbers, nesting). A reply always comes, and for
+//! wrong types it is an error. A panic in a command would cut the reply, and the test would fail rather than hang.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -12,7 +12,7 @@ use common::*;
 use kinige_lib::{CAPTURE_COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS};
 use serde_json::{Map, Value, json};
 
-/// Строка в 300 КБ: больше предела любого поля, но не настолько, чтобы тест шёл минутами.
+/// A string of 300 KB: more than the limit of any field, but not so much that the test takes minutes.
 const BIG: usize = 300_000;
 
 fn hostile_strings() -> Vec<Value> {
@@ -58,7 +58,7 @@ fn hostile_arrays() -> Vec<Value> {
     ]
 }
 
-/// Значения того же вида JSON, что у `original`, но враждебные.
+/// Values of the same JSON kind as `original`, but hostile.
 fn hostile_like(original: &Value) -> Vec<Value> {
     match original {
         Value::String(_) => hostile_strings(),
@@ -70,7 +70,7 @@ fn hostile_like(original: &Value) -> Vec<Value> {
     }
 }
 
-/// Значение другого вида JSON, чем у `original`: десериализация аргумента обязана отказать.
+/// A value of a different JSON kind than `original`: deserializing the argument must refuse.
 fn wrong_kind(original: &Value) -> Value {
     match original {
         Value::String(_) => json!(5),
@@ -81,7 +81,7 @@ fn wrong_kind(original: &Value) -> Value {
     }
 }
 
-/// Копии `template`, в каждой из которых одно поле заменено враждебным значением.
+/// Copies of `template`, in each of which one field is replaced by a hostile value.
 fn hostile_variants(template: &Value) -> Vec<Value> {
     let Some(fields) = template.as_object() else {
         return Vec::new();
@@ -107,7 +107,7 @@ fn wrong_kinds(template: &Value) -> Value {
     )
 }
 
-/// Глубокая вложенность: `serde_json` отказывает на разборе (предел 128), не падает на стеке.
+/// Deep nesting: `serde_json` refuses on parsing (limit 128), it does not overflow the stack.
 fn deeply_nested() -> Value {
     let mut value = json!(1);
     for _ in 0..400 {
@@ -123,12 +123,12 @@ fn hunt(fixture: &Fixture, label: &str, commands: &[&str]) {
         .filter(|command| !NEEDS_NATIVE_UI.contains(command))
     {
         let template = args_for(command);
-        // Пустые аргументы: ответ приходит (Ok у команд без параметров, иначе Err).
+        // Empty arguments: a reply comes (Ok for commands without parameters, otherwise Err).
         let empty = call(&window, command, json!({}));
         if let Err(error) = &empty {
             assert!(!is_acl_denial(error), "{label}/{command}: {error}");
         }
-        // Не те типы: если у команды есть параметры, это ошибка.
+        // The wrong types: if the command has parameters, this is an error.
         if template
             .as_object()
             .is_some_and(|fields| !fields.is_empty())
@@ -136,16 +136,16 @@ fn hunt(fixture: &Fixture, label: &str, commands: &[&str]) {
             let result = call(&window, command, wrong_kinds(&template));
             assert!(
                 result.is_err(),
-                "{label}/{command}: не те типы приняты: {result:?}"
+                "{label}/{command}: wrong types were accepted: {result:?}"
             );
             let nested = call(
                 &window,
                 command,
                 json!({"body": deeply_nested(), "id": deeply_nested()}),
             );
-            assert!(nested.is_err(), "{label}/{command}: вложенность принята");
+            assert!(nested.is_err(), "{label}/{command}: nesting was accepted");
         }
-        // Враждебные значения нужных типов: ответ приходит, паники нет.
+        // Hostile values of the right types: a reply comes, no panic.
         for variant in hostile_variants(&template) {
             if let Err(error) = call(&window, command, variant) {
                 assert!(!is_acl_denial(&error), "{label}/{command}: {error}");
@@ -232,13 +232,13 @@ fn the_feed_and_search_survive_hostile_cursors_limits_and_tags() {
         }
         let _ = call(&window, "search_messages", args);
     }
-    // Приложение живо: обычный вызов после всего мусора работает.
-    call(&window, "list_chats", json!({})).expect("после мусора команды работают");
+    // The app is alive: a regular call works after all the garbage.
+    call(&window, "list_chats", json!({})).expect("the commands work after the garbage");
 }
 
 #[test]
 fn with_no_journal_open_every_command_answers_without_a_panic() {
-    // Режим восстановления: хранилище не управляется. `State<Store>` не найден — ошибка команды, а не паника.
+    // Recovery mode: the store is not managed. `State<Store>` is not found -- a command error, not a panic.
     let data = tempfile::tempdir().unwrap();
     let fixture = fixture_without_store(&data.path().join("kinige.db"));
     for (label, commands) in [
@@ -261,11 +261,11 @@ fn a_panic_in_the_command_handler_rejects_the_promise_with_internal() {
     use tauri::test::{mock_builder, mock_context, noop_assets};
     use tauri::{WebviewWindowBuilder, ipc::Invoke};
 
-    // Обработчик, который паникует на одной команде, обёрнут так же, как настоящий в `builder`.
+    // A handler that panics on one command is wrapped the same way as the real one in `builder`.
     let handler = kinige_lib::startup::guarded(|invoke: Invoke<tauri::test::MockRuntime>| {
         assert!(
             invoke.message.command() != "boom",
-            "проверка: паника в обработчике"
+            "check: panic in the handler"
         );
         false
     });
@@ -278,9 +278,9 @@ fn a_panic_in_the_command_handler_rejects_the_promise_with_internal() {
         .unwrap();
 
     let error =
-        call(&window, "boom", json!({})).expect_err("паника — ошибка, а не зависший промис");
+        call(&window, "boom", json!({})).expect_err("a panic is an error, not a hanging promise");
     assert_eq!(error["code"], "internal", "{error}");
-    // Обработчик жив: следующий вызов не паникует (команды нет — ошибка tauri, не `internal` от паники).
-    let next = call(&window, "other", json!({})).expect_err("нет такой команды");
+    // The handler is alive: the next call does not panic (there is no such command -- a tauri error, not an `internal` from a panic).
+    let next = call(&window, "other", json!({})).expect_err("no such command");
     assert_ne!(next["code"], "internal", "{next}");
 }

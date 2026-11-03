@@ -1,8 +1,8 @@
-//! Перенос записи в другой чат через IPC (решение приёмки): команда `move_message` есть только у главного окна, ответ —
-//! запись в новом чате, счётчики и фильтр по тегу следуют за ней, ошибки приходят кодами.
+//! Moving an entry to another chat through IPC (an acceptance decision): the `move_message` command exists only for the main window, the reply is
+//! the entry in the new chat, the counters and the tag filter follow it, errors come as codes.
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 
 mod common;
@@ -35,7 +35,7 @@ fn move_over_ipc_updates_counters_and_the_tag_filter_and_errors_come_back_by_cod
     assert_eq!(moved["chatId"], json!(books_id));
     assert_eq!(
         moved["journalDate"], sent["journalDate"],
-        "день не меняется"
+        "the day does not change"
     );
 
     let list = call(&main, "list_chats", json!({})).unwrap();
@@ -72,7 +72,7 @@ fn move_over_ipc_updates_counters_and_the_tag_filter_and_errors_come_back_by_cod
         );
     }
 
-    // Запись в корзине: свой код, не «не найдена».
+    // An entry in the trash: its own code, not "not found".
     call(&main, "delete_message", json!({"id": id})).unwrap();
     assert_eq!(
         call(&main, "move_message", json!({"id": id, "chatId": INBOX})).unwrap_err(),

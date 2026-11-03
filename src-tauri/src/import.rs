@@ -1,9 +1,9 @@
-//! Импорт из Telegram и поиск (слайс 4): команды главного окна. Бизнес-правил здесь нет (они в `kinige-domain` и
-//! `kinige-store`). Окну захвата эти команды не выданы (§12.3).
+//! Telegram import and search (slice 4): main window commands. There are no business rules here (they are in `kinige-domain` and
+//! `kinige-store`). These commands are not granted to the capture window (§12.3).
 //!
-//! Путь к файлу выбирается системным диалогом, вызванным из Rust, и во фронтенд не приходит. Файл читается целиком (до
-//! 1 ГиБ), разбирается и ждёт в состоянии приложения под номером сессии до запуска импорта или закрытия окна импорта.
-//! Одновременно идёт один импорт; прогресс уходит событием `import-progress` только окну `main`.
+//! The file path is chosen by a system dialog called from Rust and never reaches the frontend. The file is read whole (up to
+//! 1 GiB), parsed and waits in the app state under a session number until the import starts or the import window closes.
+//! Only one import runs at a time; progress goes as the `import-progress` event only to the `main` window.
 
 use crate::capture::{MAIN_LABEL, notify_entries_changed};
 use kinige_domain::telegram::{TgExport, TgParseError, parse_export};
@@ -19,36 +19,36 @@ use tauri_plugin_dialog::DialogExt;
 
 type ApiResult<T> = Result<T, ApiError>;
 
-/// Событие главному окну: прогресс импорта (`ImportProgress`). Слушает только `main`.
+/// An event for the main window: import progress (`ImportProgress`). Only `main` listens.
 pub const IMPORT_PROGRESS: &str = "import-progress";
 
-/// Предел размера файла экспорта: 1 ГиБ (спецификация слайса 4, решение 11).
+/// The size limit of the export file: 1 GiB (slice 4 specification, decision 11).
 pub const MAX_IMPORT_FILE_BYTES: u64 = 1 << 30;
 
 fn api(error: StoreError) -> ApiError {
-    // В журнал процесса — только категория: текст внутренней ошибки может содержать куски данных.
-    log::error!("ошибка хранилища: {}", error.category());
+    // Only the category goes to the process log: the text of an internal error may contain pieces of data.
+    log::error!("store error: {}", error.category());
     error.code().into()
 }
 
 #[derive(Default)]
 struct Inner {
-    /// Номер следующей сессии.
+    /// The number of the next session.
     next_session: u64,
-    /// Разобранный экспорт и его номер.
+    /// The parsed export and its number.
     session: Option<(u64, Arc<TgExport>)>,
-    /// Импорт идёт.
+    /// An import is running.
     running: bool,
 }
 
-/// Состояние импорта: разобранный экспорт, флаг «идёт» и флаг остановки.
+/// The import state: the parsed export, the "running" flag and the stop flag.
 #[derive(Default)]
 pub struct ImportState {
     inner: Mutex<Inner>,
     stop: Arc<AtomicBool>,
 }
 
-/// Пока жива, импорт считается идущим; при уничтожении снимает флаг.
+/// While it lives, the import counts as running; on drop it clears the flag.
 pub struct RunGuard<'a> {
     state: &'a ImportState,
     pub export: Arc<TgExport>,
@@ -65,7 +65,7 @@ impl ImportState {
         self.inner.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Запоминает разобранный экспорт, прежний забывается. Ответ — номер сессии.
+    /// Remembers the parsed export, the previous one is forgotten. The reply is the session number.
     pub fn open(&self, export: TgExport) -> u64 {
         let mut inner = self.lock();
         inner.next_session += 1;
@@ -74,7 +74,7 @@ impl ImportState {
         id
     }
 
-    /// Начинает импорт сессии `session`: чужая или забытая сессия — `import_session_expired`, уже идущий импорт —
+    /// Starts the import of session `session`: a foreign or forgotten session gives `import_session_expired`, an import already running gives
     /// `import_in_progress`.
     pub fn begin(&self, session: u64) -> Result<RunGuard<'_>, ErrorCode> {
         let mut inner = self.lock();
@@ -93,12 +93,12 @@ impl ImportState {
         })
     }
 
-    /// Окно импорта закрыто: разобранный экспорт забывается (идущий импорт держит свою ссылку и не прерывается).
+    /// The import window is closed: the parsed export is forgotten (a running import holds its own reference and is not interrupted).
     pub fn close(&self) {
         self.lock().session = None;
     }
 
-    /// «Остановить»: импорт закончит текущую пачку и остановится.
+    /// "Stop": the import finishes the current batch and stops.
     pub fn stop(&self) {
         self.stop.store(true, Ordering::SeqCst);
     }
@@ -108,8 +108,8 @@ impl ImportState {
     }
 }
 
-/// Файл → экспорт. Чтение: не прочиталось — `import_file_unreadable`; больше 1 ГиБ — `import_file_too_large`; не UTF-8,
-/// не JSON или не экспорт Telegram — `import_not_telegram`. Разбор — `kinige_domain::telegram`.
+/// File -> export. Reading: unreadable gives `import_file_unreadable`; over 1 GiB gives `import_file_too_large`; not UTF-8,
+/// not JSON or not a Telegram export gives `import_not_telegram`. Parsing is `kinige_domain::telegram`.
 pub fn read_export(path: &std::path::Path) -> Result<TgExport, ErrorCode> {
     let size = std::fs::metadata(path)
         .map_err(|_| ErrorCode::ImportFileUnreadable)?
@@ -120,19 +120,19 @@ pub fn read_export(path: &std::path::Path) -> Result<TgExport, ErrorCode> {
     let bytes = std::fs::read(path).map_err(|_| ErrorCode::ImportFileUnreadable)?;
     let text = String::from_utf8(bytes).map_err(|_| ErrorCode::ImportNotTelegram)?;
     parse_export(&text).map_err(|error: TgParseError| {
-        // Подробность разбора может содержать кусок файла: в журнал — только вид ошибки.
+        // The parse detail may contain a piece of the file: only the kind of error goes to the log.
         let kind = match error {
             TgParseError::NotJson(_) => "not_json",
             TgParseError::NotTelegramExport => "not_telegram",
             TgParseError::Malformed(_) => "malformed",
         };
-        log::warn!("файл импорта отвергнут: {kind}");
+        log::warn!("import file rejected: {kind}");
         ErrorCode::ImportNotTelegram
     })
 }
 
-/// «Выбрать result.json…»: системный диалог (вызывается здесь, из Rust; у окна нет JS-разрешений на диалоги), чтение,
-/// разбор, предпросмотр. Отмена диалога — `null`, ничего не меняется.
+/// "Choose result.json...": the system dialog (called here, from Rust; the window has no JS permissions for dialogs), reading,
+/// parsing, preview. Cancelling the dialog gives `null`, nothing changes.
 #[tauri::command(async)]
 pub fn import_telegram_open<R: Runtime>(
     app: AppHandle<R>,
@@ -154,14 +154,14 @@ pub fn import_telegram_open<R: Runtime>(
     open_with(&store, &state, export).map(Some)
 }
 
-/// Предпросмотр разобранного экспорта и запоминание сессии (общее для команды и тестов).
+/// Preview of the parsed export and remembering the session (shared by the command and tests).
 pub fn open_with(store: &Store, state: &ImportState, export: TgExport) -> ApiResult<ImportOpened> {
     let preview = store.import_preview(&export).map_err(api)?;
     let session = state.open(export);
     Ok(ImportOpened { session, preview })
 }
 
-/// «Импортировать»: выбранные чаты сессии. Возвращает итог; прогресс идёт событием `import-progress`.
+/// "Import": the chosen chats of the session. Returns the outcome; progress goes as the `import-progress` event.
 #[tauri::command(async)]
 pub fn import_telegram_run<R: Runtime>(
     app: AppHandle<R>,
@@ -183,24 +183,24 @@ pub fn import_telegram_run<R: Runtime>(
         state.stop.clone(),
     );
     drop(guard);
-    // Что бы ни случилось, записи из прошлых пачек уже в базе: окно обновляет ленту и счётчики.
+    // Whatever happens, the entries from earlier batches are already in the database: the window refreshes the feed and the counters.
     notify_entries_changed(&app);
     result.map_err(api)
 }
 
-/// «Остановить»: текущая пачка дописывается, следующая не начинается.
+/// "Stop": the current batch is finished, the next one does not start.
 #[tauri::command]
 pub fn import_telegram_stop(state: State<'_, ImportState>) {
     state.stop();
 }
 
-/// Окно импорта закрыто: разобранный экспорт забывается.
+/// The import window is closed: the parsed export is forgotten.
 #[tauri::command]
 pub fn import_telegram_close(state: State<'_, ImportState>) {
     state.close();
 }
 
-/// Поиск по записям: `query` — ввод как есть, правила словоформ и префикса решает Rust.
+/// Search over entries: `query` is the input as is, Rust decides the word form and prefix rules.
 #[tauri::command(async)]
 pub fn search_messages(
     store: State<'_, Store>,
@@ -219,5 +219,5 @@ pub fn search_messages(
         .map_err(api)
 }
 
-/// Записей на странице результатов поиска.
+/// Entries per page of search results.
 const DEFAULT_SEARCH_PAGE: usize = 50;

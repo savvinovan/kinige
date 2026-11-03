@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Главное окно: свои команды без core:default, плюс подписка на события приложения («записи изменились», «открыть чат», «настройки изменились», «открыть запись»); команды «В этот день» (слайс 5) и леса (слайс 6); без JS-разрешений плагинов opener, dialog и global-shortcut. Команды окна настроек у него отозваны (слайс 4b)",
+  "description": "Main window: its own commands without core:default, plus subscription to app events (\"entries changed\", \"open chat\", \"settings changed\", \"open entry\"); the \"On this day\" commands (slice 5) and the forest commands (slice 6); no JS permissions of the opener, dialog and global-shortcut plugins. The settings window commands are revoked from it (slice 4b)",
   "windows": [
     "main"
   ],

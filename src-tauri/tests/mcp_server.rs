@@ -1,8 +1,8 @@
-//! Сервер MCP в процессе приложения (ADR-0009, слайс 4a) по настоящим сокетам: рукопожатие, список инструментов по режиму,
-//! вызовы, два клиента, выключенный доступ, единый `not_found`, предел кадра, мусор на проводе, «окна не всплывают».
+//! The MCP server in the app process (ADR-0009, slice 4a) over real sockets: the handshake, the tool list by mode,
+//! calls, two clients, turned-off access, a uniform `not_found`, the frame limit, garbage on the wire, "windows do not pop up".
 
-// Корень интеграционных тестов целиком — тестовый код: `cfg(test)` даёт хелперам вне #[test] те же послабления
-// clippy.toml (unwrap/expect/panic/индексация), что и тестам в src/.
+// The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
+// of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
 #![cfg(test)]
 // The MCP server is a Unix socket; there is none on Windows (slice 10a).
 #![cfg(unix)]
@@ -46,7 +46,7 @@ fn wait_for(what: &str, mut condition: impl FnMut() -> bool) {
         }
         std::thread::sleep(Duration::from_millis(20));
     }
-    panic!("не дождались: {what}");
+    panic!("did not wait for: {what}");
 }
 
 #[test]
@@ -72,26 +72,26 @@ fn handshake_lists_tools_by_mode_and_two_clients_work_at_once() {
             .iter()
             .all(|t| t["annotations"]["readOnlyHint"] == true)
     );
-    // Одновременные вызовы двух клиентов.
+    // Simultaneous calls from two clients.
     let (ra, rb) = std::thread::scope(|scope| {
         let ha = scope.spawn(|| a.call("list_chats", json!({})));
         let hb = scope.spawn(|| b.call("list_chats", json!({})));
         (ha.join().unwrap(), hb.join().unwrap())
     });
     assert!(!ra.0 && !rb.0);
-    // Режим «чтение и запись» — все восемь инструментов (после нового подключения).
+    // The "read and write" mode gives all eight tools (after a new connection).
     mcp.store().set_agent_mode(AgentMode::ReadWrite).unwrap();
     let mut c = mcp.client();
     c.handshake("Client C");
     assert_eq!(c.tool_names().len(), 8);
-    // Журнал: по одной строке подключения на клиента.
+    // The log: one connect row per client.
     let connects = log_tools(&mcp)
         .into_iter()
         .filter(|(_, tool, _)| tool == "connect")
         .count();
     assert_eq!(connects, 3);
     drop((a, b, c));
-    wait_for("три строки отключения", || {
+    wait_for("three disconnect rows", || {
         log_tools(&mcp)
             .iter()
             .filter(|(_, tool, _)| tool == "disconnect")
@@ -113,7 +113,7 @@ fn disabled_access_shows_only_the_tools_and_instructions_and_refuses_every_call(
     assert_eq!(
         client.tool_names().len(),
         8,
-        "список виден, данных в нём нет"
+        "the list is visible, it holds no data"
     );
     for (tool, arguments) in [
         ("list_chats", json!({})),
@@ -152,10 +152,9 @@ fn a_write_works_end_to_end_notifies_the_window_and_never_shows_or_focuses_it() 
     let reply: serde_json::Value = serde_json::from_str(&text).unwrap();
     assert_eq!(reply["entry"]["origin"], "agent");
     let id = reply["entry"]["id"].as_str().unwrap();
-    wait_for(
-        "событие «записи изменились»",
-        || events.load(Ordering::SeqCst) >= 1,
-    );
+    wait_for("the \"entries changed\" event", || {
+        events.load(Ordering::SeqCst) >= 1
+    });
     let (_, done) = client.call("set_task_done", json!({"id": id, "done": true}));
     assert!(done.contains("\"done\":true"), "{done}");
     let (error, refused) = client.call(
@@ -163,7 +162,7 @@ fn a_write_works_end_to_end_notifies_the_window_and_never_shows_or_focuses_it() 
         json!({"text": "ещё", "chat_id": "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"}),
     );
     assert!(error && refused.starts_with("not_found"));
-    // Окно не вышло вперёд и не получило фокус.
+    // The window was not brought forward and did not get focus.
     assert_eq!(window.is_visible().unwrap(), visible_before);
     assert_eq!(window.is_focused().unwrap(), focused_before);
     let rows = log_tools(&mcp);
@@ -225,7 +224,7 @@ fn a_frame_over_4_mib_closes_the_connection_and_the_server_lives_on() {
         r#"{{"jsonrpc":"2.0","id":99,"method":"tools/call","params":{{"name":"{}"}}}}"#,
         "x".repeat(4 * 1024 * 1024 + 100)
     );
-    // Сервер закрывает соединение, не дочитав кадр: запись может оборваться, чтение — закончиться RST.
+    // The server closes the connection without reading the frame to the end: the write may be cut off, the read may end with RST.
     client.send_raw_lossy(huge.as_bytes());
     assert!(client.closed_by_server());
     let mut again = mcp.client();
@@ -242,7 +241,7 @@ fn garbage_on_the_wire_never_breaks_the_server_or_writes_anything() {
     client.send_raw(br#"{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"clientInfo":5}}"#);
     client.send_raw(b"[1,2,3]");
     client.send_raw(b"{}");
-    // После мусора рукопожатие и вызов работают на том же соединении или на новом.
+    // After garbage the handshake and a call work on the same connection or on a new one.
     let mut fresh = mcp.client();
     fresh.handshake("Fine");
     for (tool, arguments) in [
@@ -285,7 +284,7 @@ fn journal_unavailable_when_corruption_was_found() {
         is_error && text.starts_with("journal_unavailable"),
         "{text}"
     );
-    // Список инструментов остаётся (данных в нём нет).
+    // The tool list stays (it holds no data).
     assert_eq!(client.tool_names().len(), 5);
 }
 
@@ -300,7 +299,7 @@ fn a_connected_client_holds_no_store_clone() {
     assert_eq!(
         mcp.store().handle_count(),
         baseline,
-        "ни слушатель, ни соединение, ни задачи вызовов не держат клон Store"
+        "neither the listener, nor a connection, nor the call tasks hold a Store clone"
     );
 }
 
@@ -317,18 +316,20 @@ fn the_reconnect_marker_from_the_bridge_is_its_own_log_row_not_a_second_connect(
     assert_eq!(
         count("connect"),
         1,
-        "повторный initialize от моста не «подключение»"
+        "the repeated initialize from the bridge is not a \"connect\""
     );
     assert_eq!(
         count("reconnect"),
         1,
-        "немых путей нет: переподключение — строка журнала"
+        "no silent paths: a reconnect is a log row"
     );
     drop((plain, replayed));
-    wait_for("отключения обоих соединений", || count("disconnect") >= 2);
+    wait_for("both connections to disconnect", || {
+        count("disconnect") >= 2
+    });
 }
 
-/// Маркер приходит частями (мост пишет его одним `write`, но сокет не обещает этого): всё равно «переподключение».
+/// The marker arrives in parts (the bridge writes it with one `write`, but a socket does not promise that): it is still a "reconnect".
 #[test]
 fn the_reconnect_marker_arriving_in_pieces_is_still_recognised() {
     let mcp = mcp(AgentMode::Read, &[INBOX_ID]);
@@ -349,7 +350,7 @@ fn the_reconnect_marker_arriving_in_pieces_is_still_recognised() {
     assert!(!log_tools(&mcp).iter().any(|(_, tool, _)| tool == "connect"));
 }
 
-/// Обычное первое сообщение, которое только начинается как маркер, маркером не считается и не теряется.
+/// A regular first message that only starts like the marker is not counted as the marker and is not lost.
 #[test]
 fn a_first_message_that_only_starts_like_the_marker_is_served_normally() {
     let mcp = mcp(AgentMode::Read, &[INBOX_ID]);
@@ -359,10 +360,10 @@ fn a_first_message_that_only_starts_like_the_marker_is_served_normally() {
     assert!(log_tools(&mcp).iter().any(|(_, tool, _)| tool == "connect"));
 }
 
-/// Встроенный жизненный цикл `rmcp` (`_meta.protocolVersion` в самом запросе) пропускает `tools/call` и `tools/list` мимо
-/// `initialize`, причём не только для версии 2026-07-28, но и для 2025-11-25. Такой сеанс шёл бы без «подключения» и без
-/// имени клиента, а `add_entry` записал бы данные. Сервер сам требует `initialize`: вызов не выполняется, в базе и журнале
-/// ничего нет, сеанс не начат.
+/// The built-in lifecycle of `rmcp` (`_meta.protocolVersion` in the request itself) lets `tools/call` and `tools/list` bypass
+/// `initialize`, and not only for version 2026-07-28 but for 2025-11-25 too. Such a session would run without a "connect" and without
+/// the client name, and `add_entry` would write data. The server itself requires `initialize`: the call is not executed, the database and the log
+/// hold nothing, the session is not started.
 #[test]
 fn a_request_that_skips_initialize_by_inline_version_is_refused_and_leaves_no_trace() {
     let mcp = mcp(AgentMode::ReadWrite, &[INBOX_ID]);
@@ -385,7 +386,7 @@ fn a_request_that_skips_initialize_by_inline_version_is_refused_and_leaves_no_tr
         assert_eq!(
             log_tools(&mcp).len(),
             before,
-            "{version}: ни подключения, ни вызова в журнале"
+            "{version}: neither a connect nor a call in the log"
         );
         assert_eq!(
             mcp.store()
@@ -394,14 +395,14 @@ fn a_request_that_skips_initialize_by_inline_version_is_refused_and_leaves_no_tr
                 .messages
                 .len(),
             0,
-            "{version}: запись не создана"
+            "{version}: the entry was not created"
         );
-        // Обычное рукопожатие после этого работает.
+        // A regular handshake works after this.
         client.handshake("Honest");
         assert!(!client.call("list_chats", json!({})).0);
-        // Закрытое соединение пишет «отключение» позже: дожидаемся, чтобы оно не попало в счёт следующего круга.
+        // A closed connection writes "disconnect" later: we wait so that it does not land in the count of the next round.
         drop(client);
-        wait_for("строка отключения", || {
+        wait_for("the disconnect row", || {
             log_tools(&mcp)
                 .last()
                 .is_some_and(|row| row.1 == "disconnect")
@@ -409,7 +410,7 @@ fn a_request_that_skips_initialize_by_inline_version_is_refused_and_leaves_no_tr
     }
 }
 
-/// Если строку подключения записать не удалось (база в восстановлении), она пишется перед первым вызовом.
+/// If the connect row could not be written (the database is in recovery), it is written before the first call.
 #[test]
 fn a_connection_row_that_failed_at_initialize_is_written_before_the_first_call() {
     let mcp = mcp(AgentMode::Read, &[INBOX_ID]);
@@ -420,7 +421,7 @@ fn a_connection_row_that_failed_at_initialize_is_written_before_the_first_call()
     flag.store(false, Ordering::SeqCst);
     assert!(
         log_tools(&mcp).is_empty(),
-        "пока база недоступна, строки нет"
+        "while the database is unavailable, there is no row"
     );
     assert!(!client.call("list_chats", json!({})).0);
     let rows = log_tools(&mcp);
