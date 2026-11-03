@@ -3,6 +3,10 @@
   display: flex;
   height: var(--layout-window-height);
   min-height: 0;
+  /* The window never scrolls as a whole: the feed, the sidebar list and the forest pane scroll or clip inside it. At large text
+     the real WebView showed a window-height scroll bar (the accessibility dump listed a scroll bar on the page itself) that took
+     15 px of width, although no layout showed what overflowed; whatever sticks out is cut here. */
+  overflow: hidden;
   background: var(--color-surface-background);
 }
 
