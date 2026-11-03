@@ -35,8 +35,8 @@ pub(crate) struct Thumb {
     pub ext: &'static str,
 }
 
-/// The format and size of a file if its content is a JPEG, PNG, GIF or WebP whose header reads. Only the header is read, with no
-/// limits: it allocates nothing, and an enormous image still gets its size (its thumbnail fails later).
+/// The format and size of a file if its content is a JPEG, PNG, GIF or WebP whose header reads. Only the header is read, under the
+/// allocation limit alone (an enormous image still gets its size; its thumbnail fails later).
 pub(crate) fn probe_image(path: &Path) -> Option<ImageInfo> {
     catch_unwind(AssertUnwindSafe(|| probe(path))).unwrap_or(None)
 }
@@ -47,7 +47,8 @@ fn probe(path: &Path) -> Option<ImageInfo> {
         .with_guessed_format()
         .ok()?;
     let format = ours(reader.format()?)?;
-    reader.no_limits();
+    // Only the allocation limit (the `image` default, 512 MiB): no width or height limit, so an enormous image still gets its size.
+    reader.limits(Limits::default());
     let mut decoder = reader.into_decoder().ok()?;
     let (width, height) = decoder.dimensions();
     if width == 0 || height == 0 {

@@ -299,7 +299,7 @@ fn migration_four_to_five_takes_a_copy_keeps_the_data_and_creates_the_log_tables
             "DROP TABLE mcp_log; DROP TABLE mcp_log_message; ALTER TABLE draft DROP COLUMN reply_to_id; \
              DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file;",
         )
-            .unwrap();
+        .unwrap();
         conn.pragma_update(None, "user_version", 4).unwrap();
     }
     let later = moscow(T0 + 10 * MINUTE);

@@ -10,8 +10,10 @@ use kinige_domain::attachment::{
     AttachmentKind, MAX_FILE_BYTES, classify, hex_lower, sanitize_filename, stored_ext,
 };
 use sha2::{Digest, Sha256};
-use std::fs::{self, File};
-use std::io::{ErrorKind, Read, Write};
+use std::fs::{self, File, OpenOptions};
+use std::io::{Cursor, Error as IoError, ErrorKind, Read, Write};
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -94,7 +96,7 @@ fn copy_and_describe(
             if size > MAX_FILE_BYTES {
                 return Err(StoreError::AttachmentTooLarge);
             }
-            let mut cursor = std::io::Cursor::new(*bytes);
+            let mut cursor = Cursor::new(*bytes);
             (
                 hints.name.unwrap_or_default().to_string(),
                 stream(faults, &mut cursor, part, None)?,
@@ -135,7 +137,7 @@ fn copy_path(faults: &Faults, path: &Path, part: &Path) -> Result<Copied, StoreE
     if meta.len() > MAX_FILE_BYTES {
         return Err(StoreError::AttachmentTooLarge);
     }
-    let mut file = File::open(path).map_err(|_| StoreError::AttachmentUnreadable)?;
+    let mut file = open_regular(path)?;
     let copied = stream(faults, &mut file, part, Some(meta.len()))?;
     // A source that changed while it was copied is not a faithful copy.
     let after = file
@@ -145,6 +147,23 @@ fn copy_path(faults: &Faults, path: &Path, part: &Path) -> Result<Copied, StoreE
         return Err(StoreError::AttachmentUnreadable);
     }
     Ok(copied)
+}
+
+/// Opens the source for reading and checks that what was opened is a regular file. The `symlink_metadata` check above and this open
+/// are two steps, so a path swapped for a symlink or a FIFO in between must not be followed or waited on: on Unix the open refuses
+/// a final symlink (`O_NOFOLLOW`) and does not block on a FIFO (`O_NONBLOCK`), and the opened handle is checked again.
+fn open_regular(path: &Path) -> Result<File, StoreError> {
+    let mut options = OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    let file = options
+        .open(path)
+        .map_err(|_| StoreError::AttachmentUnreadable)?;
+    match file.metadata() {
+        Ok(meta) if meta.is_file() => Ok(file),
+        _ => Err(StoreError::AttachmentUnreadable),
+    }
 }
 
 struct Copied {
@@ -198,7 +217,7 @@ fn stream(
 }
 
 /// "No space left on the device" is `DiskFull`; any other write error is an unreadable file or a failed write.
-pub(crate) fn io_error(error: std::io::Error) -> StoreError {
+pub(crate) fn io_error(error: IoError) -> StoreError {
     if error.kind() == ErrorKind::StorageFull {
         StoreError::DiskFull
     } else {

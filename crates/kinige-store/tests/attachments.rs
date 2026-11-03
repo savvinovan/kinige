@@ -220,6 +220,15 @@ fn an_entry_can_be_sent_without_text_only_with_an_attachment() {
         r#"{"base":null,"body_md":"","edited_at":null,"supersedes":[]}"#
     );
 
+    // Appending from the capture window to this entry (the photo has no text yet): the addition is the whole text, with no blank
+    // lines in front of it.
+    let appended = store
+        .capture_append("подпись к фото", &now())
+        .expect("append to the entry without text");
+    assert_eq!(appended.message.id, sent.id);
+    assert_eq!(appended.message.body_md, "подпись к фото");
+    assert_eq!(appended.message.attachments.len(), 1);
+
     // Editing: the text may be cleared while an attachment is there, and not on an entry without one.
     let edited = store
         .edit_message(&sent.id, "потом дописал", &now())

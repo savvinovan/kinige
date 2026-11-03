@@ -73,6 +73,7 @@ use kinige_domain::groups;
 use maintenance::MaintenanceShared;
 use mirror::MirrorShared;
 use rusqlite::{Connection, OpenFlags};
+use std::collections::HashSet;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -150,7 +151,7 @@ pub(crate) struct Inner {
     /// The threads behind the `kinige-media` protocol.
     media_pool: attachment::MediaPool,
     /// Images whose thumbnail did not decode in this launch: not tried again on every render.
-    thumb_failed: Mutex<std::collections::HashSet<String>>,
+    thumb_failed: Mutex<HashSet<String>>,
 }
 
 impl Drop for Inner {

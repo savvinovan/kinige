@@ -117,6 +117,31 @@ fn the_trash_hides_attachments_with_the_entry_and_restore_brings_them_back() {
 }
 
 #[test]
+fn a_purge_is_refused_when_an_attachment_deleted_group_is_newer_than_supported() {
+    // A newer device could still restore the attachment (ADR-0001 §4 item 4): nothing is purged, as for the entry itself.
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    let sent = send_files(&store, dir.path(), &[("a.jpg", jpeg(40, 30))], "один");
+    store.delete_message(&sent.id, &now()).unwrap();
+    raw(dir.path())
+        .execute(
+            "UPDATE attachment SET hlc_json = json_set(hlc_json, '$.deleted.sv', 99)",
+            [],
+        )
+        .unwrap();
+
+    let error = store.purge_message(&sent.id, &now()).unwrap_err();
+    assert!(matches!(error, StoreError::ReadOnly), "{error}");
+    assert_eq!(count(dir.path(), "SELECT COUNT(*) FROM attachment"), 1);
+    assert_eq!(count(dir.path(), "SELECT COUNT(*) FROM tombstone"), 0);
+    assert_eq!(stored(dir.path()).len(), 1, "the file stays");
+    // The 30-day auto-delete skips it silently, and does not report a failure.
+    let later = Now::at(now().ms + 31 * 24 * 3600 * 1000, &now().tz);
+    assert_eq!(store.purge_expired(&later).unwrap(), 0);
+    assert_eq!(count(dir.path(), "SELECT COUNT(*) FROM attachment"), 1);
+}
+
+#[test]
 fn delete_forever_writes_tombstones_and_removes_rows_files_and_thumbnails() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());

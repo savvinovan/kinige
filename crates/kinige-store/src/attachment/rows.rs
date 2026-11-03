@@ -6,10 +6,10 @@ use crate::StoreError;
 use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
 use kinige_domain::attachment::{
-    AttachmentKind, AttachmentRow, AttachmentState, AttachmentView, MAX_PER_ENTRY, NewAttachment,
-    hex_lower, new_attachment,
+    AttachmentKind, AttachmentRow, AttachmentState, AttachmentSummary, AttachmentView,
+    MAX_PER_ENTRY, NewAttachment, hex_lower, new_attachment, summary_of,
 };
-use kinige_domain::history::purged_of_best_effort;
+use kinige_domain::history::{deleted_group_supported, purged_of_best_effort};
 use kinige_domain::hlc::is_uuid_v4;
 use rusqlite::{Connection, OptionalExtension, Transaction};
 use serde_json::Value;
@@ -317,6 +317,14 @@ pub(crate) fn delete_for_purge(
             .map_err(write_err)?;
         rows.collect::<Result<_, _>>().map_err(write_err)?
     };
+    // As for the entry itself (ADR-0001 §4 item 4): a purge is created only when every `deleted` group is in a supported `sv`;
+    // otherwise a newer device could still restore the row, so the whole entry stays as it is (`ReadOnly`, nothing written).
+    if found
+        .iter()
+        .any(|(_, hlc_json, _)| !deleted_group_supported(hlc_json))
+    {
+        return Err(StoreError::ReadOnly);
+    }
     let mut files = Vec::with_capacity(found.len());
     for (id, hlc_json, file_name) in found {
         tx.execute(
@@ -357,7 +365,7 @@ pub(crate) fn live_count(conn: &Connection, message_id: &str) -> Result<i64, Sto
 pub(crate) fn summary_for(
     conn: &Connection,
     message_id: &str,
-) -> Result<kinige_domain::AttachmentSummary, StoreError> {
+) -> Result<AttachmentSummary, StoreError> {
     let json: Option<Option<String>> = conn
         .query_row(
             concat!(
@@ -370,7 +378,5 @@ pub(crate) fn summary_for(
         )
         .optional()
         .map_err(read_err)?;
-    Ok(kinige_domain::attachment::summary_of(&parse_attachments(
-        json.flatten(),
-    )))
+    Ok(summary_of(&parse_attachments(json.flatten())))
 }

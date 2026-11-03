@@ -244,7 +244,8 @@ impl Store {
                             files.extend(purged_files);
                             done += 1;
                         }
-                        Ok(None) => {
+                        // An entry (or one of its attachments) with a `deleted` group in an unsupported `sv`: skipped silently.
+                        Ok(None) | Err(StoreError::ReadOnly) => {
                             drop(step);
                             bad.push(id);
                         }

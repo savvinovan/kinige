@@ -38,17 +38,17 @@ const MAX_HEADER_BYTES: usize = 2048;
 /// Dropped files waiting for the window to claim them. Only the Rust side ever sees the paths.
 #[derive(Default)]
 pub struct DropTokens {
-    drops: Mutex<Vec<Drop>>,
+    drops: Mutex<Vec<PendingDrop>>,
 }
 
-struct Drop {
+struct PendingDrop {
     token: String,
     paths: Vec<PathBuf>,
     at: Instant,
 }
 
 impl DropTokens {
-    fn lock(&self) -> MutexGuard<'_, Vec<Drop>> {
+    fn lock(&self) -> MutexGuard<'_, Vec<PendingDrop>> {
         self.drops.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
@@ -62,7 +62,7 @@ impl DropTokens {
         }
         let mut paths = paths;
         paths.truncate(MAX_DROPPED_PATHS);
-        drops.push(Drop {
+        drops.push(PendingDrop {
             token: token.clone(),
             paths,
             at: Instant::now(),

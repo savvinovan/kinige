@@ -52,6 +52,12 @@ fn candidate(row: &crate::groups::MessageRow) -> AppendCandidate<'_> {
 }
 
 #[test]
+fn joined_body_to_an_entry_without_text_is_the_addition_alone() {
+    // A photo sent alone has an empty body (appendix §C.6): no blank lines in front of the caption.
+    assert_eq!(joined_body("", "подпись"), "подпись");
+}
+
+#[test]
 fn joined_body_starts_a_new_paragraph() {
     assert_eq!(joined_body("Идея", "и ещё"), "Идея\n\nи ещё");
 }
