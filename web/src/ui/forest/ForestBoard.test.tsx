@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "../../test/render";
+import { act, fireEvent, render, screen, within } from "../../test/render";
 import { ForestEngine } from "./engine";
 import { FOREST_2026 } from "./fixtures";
 import { ForestBoard } from "./ForestBoard";
@@ -24,6 +24,14 @@ describe("the board as one focusable element", () => {
     expect(canvas).toHaveAccessibleDescription(/Arrow keys move between days/);
     const card = document.querySelector(".day-card--pinned")!;
     expect(card).toHaveTextContent("Fri, October 16, 2026");
+  });
+
+  it("the caption of the selected day is exposed to assistive technology: it says which day the board is on when the feed moved it", () => {
+    setup("2026-10-16");
+    const caption = document.querySelector(".forest-board__caption")!;
+    expect(caption.querySelector('[aria-hidden="true"]')).toBeNull();
+    expect(caption.closest('[aria-hidden="true"]')).toBeNull();
+    expect(within(caption as HTMLElement).getByText("Fri, October 16, 2026")).toBeInTheDocument();
   });
 
   it("is labelled in Russian", () => {

@@ -39,6 +39,10 @@ codesign --force --deep -s - "$APP"
 LOG_FILE="$HOME/Library/Logs/$BUNDLE_ID/kinige.log"
 rm -f "$LOG_FILE"
 
+# Shots that carry no new text are taken without the full dump of the window tree (see SHOOT_DUMP in lib.sh): the dump of a
+# window with a feed and 365 cells takes minutes on the runner. The shots with new UI text (01, 02, 08b, 11, 14, 16) are dumped.
+shoot_light() { SHOOT_DUMP=0 shoot "$@"; }
+
 sqlw() { sqlite3 -cmd '.timeout 5000' "$K/data/kinige.db" "$@"; }
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
 
@@ -144,42 +148,31 @@ sleep 3
 has "${L_BOARD}" || fail "no board '${L_BOARD}'"
 [ "$(sqlw "select value from app_setting where key = 'forest_view'")" = "expanded" ] || fail "forest_view is not 'expanded' in the database"
 shoot 02-expanded-whole-year
+# The caption of the selected day under the board is plain text for assistive technology (not aria-hidden): it is in the tree.
+[ -n "$(caption_date "$K/debug/shot-02-expanded-whole-year.txt")" ] || fail "the selected-day caption under the board is not in the accessibility tree"
 
 # ---- 3. Autumn zoom (a quick zoom, not a filter) ----
 press "${L_AUTUMN}"
 sleep 2
-shoot 03-autumn-zoom
+shoot_light 03-autumn-zoom
 
 # ---- 6. The feed moves to an older day: the outlined cell follows the day at the top of the feed ----
 # (before the jump of step 4: a scroll that the feed made itself is not reported until the person scrolls again)
 press "${L_WHOLE}"
 scroll_to "${EARLY_MARK}"
 sleep 3
-shoot 06-feed-older-day-selection-followed
+shoot_light 06-feed-older-day-selection-followed
 
-# ---- 4. A click on the board opens the day in the feed, with the card of the selected day ----
-# The press (AXPress, a click without coordinates) lands in the middle of the canvas. At the whole-year view that is bare ground
-# next to the ribbon, so the camera goes to autumn first, where the middle of the board is a day with entries. The keyboard
-# path (focus, arrows, Enter) is not part of this scenario: input here is accessibility actions only; vitest covers it.
-before_click="$(caption_date "$K/debug/shot-06-feed-older-day-selection-followed.txt")"
-[ -n "${before_click}" ] || fail "no selected-day caption in the dump of shot 06"
-press "${L_AUTUMN}"
-sleep 2
-press "${L_BOARD}" "Group|Application|Unknown|Image"
-sleep 3
-shoot 04-selected-day-with-card
-clicked="$(caption_date "$K/debug/shot-04-selected-day-with-card.txt")"
-echo "the day under the click: ${clicked:-none} (before: ${before_click})"
-[ -n "${clicked}" ] || fail "no selected-day caption after the click on the board"
-[ "${clicked}" != "${before_click}" ] || fail "the click on the board did not change the selected day (${clicked})"
-# The feed moved to the day: the first entry of the day (its text ends with the date) is in the window.
-has "· ${clicked}" || fail "the feed does not show the entry of ${clicked} after the click on the board"
+# (There is no shot 04: a click on the board is not in this scenario. An accessibility press has no point to land on, so it cannot
+# choose a cell. The click-to-day evidence is the calendar click below (08b, a real window), the Playwright click-through with a
+# real pointer on every day of 2026 and 2028 (tests/visual/forest.spec.ts) and the keyboard path in vitest. The caption of the
+# selected day under the board is in 02, 03 and 06.)
 
-# ---- 5. Collapse: the feed below the strip, on the day that was opened ----
+# ---- 5. Collapse: the feed below the strip, still on the older day ----
 press "${L_COLLAPSE}"
 sleep 2
 [ "$(sqlw "select value from app_setting where key = 'forest_view'")" = "strip" ] || fail "forest_view is not 'strip' after collapse"
-shoot 05-feed-opened-on-the-day
+shoot_light 05-feed-below-the-strip
 
 # ---- 7. The previous year ----
 press "${L_EXPAND}"
@@ -187,14 +180,14 @@ sleep 2
 press "${L_PREV}"
 sleep 3
 has "Лес $((YEAR - 1)) года" || has "Forest of $((YEAR - 1))" || fail "the board did not switch to the previous year"
-shoot 07-previous-year
+shoot_light 07-previous-year
 
 # ---- 8. Calendar: twelve month grids; a click on a day does what a click on a tree does ----
 press "${L_NEXT}"
 sleep 2
 press "${L_CALENDAR}"
 sleep 3
-shoot 08-calendar
+shoot_light 08-calendar
 press "$(short_date "${OLDER}"), "
 sleep 3
 shoot 08b-calendar-click-opened-the-day
@@ -205,7 +198,7 @@ sleep 2
 # ---- 9-10. Today's tree before and after a sent note ----
 press "${L_AUTUMN}"
 sleep 2
-shoot 09-today-before-note
+shoot_light 09-today-before-note
 NOTE="Синтетическая запись для роста сегодняшнего дерева: сто знаков, чтобы вес дня поднялся на следующую стадию роста."
 sqlw "insert or replace into draft(key, body, updated_at) values ('chat:$IDEAS', '${NOTE}', $(python3 -c 'import time; print(int(time.time()*1000))'))"
 BEFORE_NOTES="$(sqlw "select count(*) from message where journal_date = '${TODAY}' and deleted_at is null")"
@@ -216,7 +209,7 @@ press "${L_SEND}"
 sleep 4
 AFTER_NOTES="$(sqlw "select count(*) from message where journal_date = '${TODAY}' and deleted_at is null")"
 [ "${AFTER_NOTES}" -eq $((BEFORE_NOTES + 1)) ] || fail "the note was not sent (${BEFORE_NOTES} -> ${AFTER_NOTES} entries today)"
-shoot 10-today-after-note
+shoot_light 10-today-after-note
 
 # ---- 11. English ----
 sqlw "delete from draft where key = 'chat:$IDEAS'"
@@ -228,13 +221,13 @@ shoot 11-en
 # ---- 12. Large text ----
 edit_settings 'd["text_size"] = "large"'
 sleep 2
-shoot 12-large-text
+shoot_light 12-large-text
 edit_settings 'd["text_size"] = "normal"'
 
 # ---- 13. A 640 px window ----
 echo "window: $(ax resize "$(app_pid)" 640 800)"
 sleep 3
-shoot 13-narrow-640
+shoot_light 13-narrow-640
 echo "window: $(ax resize "$(app_pid)" 1280 800)"
 sleep 3
 
@@ -251,7 +244,7 @@ shoot 14-forest-hidden
 restart_app
 detect_language
 has "${L_EXPAND}" && fail "the forest came back after kill -9 although it was hidden"
-shoot 15-after-kill9-still-hidden
+shoot_light 15-after-kill9-still-hidden
 press "${L_PROFILE}"
 sleep 1
 press "${L_SHOW}"
