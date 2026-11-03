@@ -97,6 +97,17 @@ pub fn attachment_benches(store: &Store, data: &Path) {
             values[values.len() - 1]
         );
     }
+
+    // The sweep is one writer job over every row and file: how long it holds the writer (a send waits that long).
+    let rows: i64 = conn
+        .query_row("SELECT COUNT(*) FROM attachment", [], |row| row.get(0))
+        .unwrap();
+    let t = Instant::now();
+    let report = store.sweep_attachments(&Now::system()).unwrap();
+    println!(
+        "attachment sweep over {rows} rows: {:.0} ms ({report:?})",
+        ms(t)
+    );
 }
 
 /// Photos and plain files that the synthetic export carries (slice 7).

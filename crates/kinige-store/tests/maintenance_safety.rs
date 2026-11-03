@@ -414,3 +414,28 @@ fn a_command_that_finds_corruption_also_shows_it_in_the_settings_row() {
         "the row in Settings matches the \"Database is damaged\" window"
     );
 }
+
+// ---------- the first pass waits for the window (slice 7: the attachment sweep is not on the cold start path) ----------
+
+#[test]
+fn a_deferred_first_pass_waits_for_begin_maintenance_and_then_runs_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut opts = options(dir.path());
+    opts.start_mirror = false;
+    opts.start_maintenance = true;
+    opts.defer_maintenance = true;
+    let store = Store::open_at(opts, &at(T0)).unwrap();
+    store.send_message(INBOX_ID, "запись", &at(T0)).unwrap();
+
+    // The pass takes the day's backup; nothing of the kind happens before the signal.
+    std::thread::sleep(std::time::Duration::from_millis(600));
+    assert!(
+        backups(&db_path(dir.path())).is_empty(),
+        "no pass before the window has loaded"
+    );
+    store.begin_maintenance();
+    store.begin_maintenance();
+    wait_until("the first pass after the signal", || {
+        !backups(&db_path(dir.path())).is_empty()
+    });
+}

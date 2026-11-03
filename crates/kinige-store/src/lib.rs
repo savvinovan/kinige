@@ -112,6 +112,8 @@ pub struct StoreOptions {
     /// Whether to start background maintenance: trash auto-delete, integrity check, the day's backup (tests turn it off
     /// and call [`Store::run_maintenance`] themselves).
     pub start_maintenance: bool,
+    /// The first maintenance pass waits for [`Store::begin_maintenance`] (the app calls it once the main window has loaded), or 20 s.
+    pub defer_maintenance: bool,
     /// What to do when the integrity check finds corruption.
     pub on_corruption: Option<CorruptionHook>,
 }
@@ -124,6 +126,7 @@ impl StoreOptions {
             start_mirror: true,
             mirror_retry: Duration::from_secs(10),
             start_maintenance: true,
+            defer_maintenance: false,
             on_corruption: None,
         }
     }
@@ -223,7 +226,7 @@ impl Store {
         let reader = open_connection(&options.db_path, true)?;
         let writer = Writer::spawn(conn)?;
         let mirror = MirrorShared::new(options.mirror_retry);
-        let maintenance = MaintenanceShared::new();
+        let maintenance = MaintenanceShared::new(options.defer_maintenance);
         let media_pool = attachment::MediaPool::spawn()?;
         let store = Store {
             inner: Arc::new(Inner {
@@ -345,6 +348,12 @@ impl Store {
         }
         self.wake_mirror();
         self.inner.maintenance.wake_now();
+    }
+
+    /// The main window has loaded its page: a deferred first maintenance pass (`StoreOptions::defer_maintenance`) may start now.
+    /// Only the first call does anything; without a deferred start it does nothing.
+    pub fn begin_maintenance(&self) {
+        self.inner.maintenance.begin();
     }
 
     /// Tests only: wake the maintenance thread now.

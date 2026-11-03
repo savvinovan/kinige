@@ -164,6 +164,9 @@ fn open_store<R: Runtime>(
 ) -> Result<Store, StoreError> {
     let mut options = StoreOptions::new(db_path.clone(), default_mirror_dir(app));
     options.on_corruption = Some(recovery::corruption_hook(app.clone(), db_path, corruption));
+    // The first maintenance pass waits for the main window's page (`begin_maintenance` in `on_page_load`), so it is not on the
+    // cold start path.
+    options.defer_maintenance = true;
     Store::open(options)
 }
 
@@ -374,6 +377,10 @@ pub fn run() {
             // Without `KINIGE_TIMING=1` the level of the `kinige-timing` target is off, and nothing is written.
             if webview.label() == MAIN_LABEL && payload.event() == PageLoadEvent::Finished {
                 log::info!(target: logging::TIMING_TARGET, "page-loaded");
+                // The first maintenance pass (integrity check, the day's backup, the attachment sweep) starts only now.
+                if let Some(store) = webview.app_handle().try_state::<Store>() {
+                    store.begin_maintenance();
+                }
             }
         })
         .build(tauri::generate_context!());
