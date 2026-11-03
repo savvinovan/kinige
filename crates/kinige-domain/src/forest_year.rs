@@ -114,8 +114,7 @@ impl ForestMode {
     }
 }
 
-/// What the store found out about one day. The store may sum the weight in SQL (one row per day instead of one per
-/// entry); the per-entry rule of `day_weight` is the definition and the store tests that its SQL gives the same number.
+/// What the store found out about one day; build it with [`DayStats::from_notes`], so the weight is `day_weight`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DayStats {
     pub date: NaiveDate,

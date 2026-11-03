@@ -7,6 +7,7 @@ import { buildBoard, rowDates } from "./board";
 import { dayAnnouncement, monthNames, weekdayLetters } from "./forestText";
 import { useRovingDay } from "./useRovingDay";
 import "./forest.css";
+import "./forest-calendar.css";
 
 interface ForestCalendarProps {
   table: ForestYear;

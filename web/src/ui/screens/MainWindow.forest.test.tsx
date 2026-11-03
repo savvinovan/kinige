@@ -255,6 +255,34 @@ describe("the forest follows the journal", () => {
     expect(forestCalls(api)).toHaveLength(before);
   });
 
+  it("a note sent after a click on an old day moves the outline to today: the caption follows the feed after its own scroll", async () => {
+    // More than a page of newer entries, so that the feed is in the middle of the history and a send restarts it at the live edge.
+    const busy = Array.from({ length: 450 }, (_, i) => entry(`f${i}`, "2026-06-01", `filler ${i}`, INBOX_ID, 7));
+    setup({ messages: [entry("old", "2026-03-05", "An old note of March"), ...busy, entry("today", "2026-10-21", "Today in the inbox")] });
+    await screen.findByRole("grid", { name: "Days of 2026" });
+    await waitFor(() => expect(cell("2026-03-05")).not.toBeNull());
+    fireEvent.click(cell("2026-03-05"));
+    const plate = (await screen.findByText("An old note of March")).closest("article") as HTMLElement;
+    await waitFor(() => expect(plate).toHaveClass("message--highlighted"));
+    expect(cell("2026-03-05")).toHaveAttribute("aria-selected", "true");
+    fireEvent.change(screen.getByRole("textbox", { name: "New note" }), { target: { value: "sent from an old day" } });
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "New note" }), { key: "Enter" });
+    await screen.findByText("sent from an old day");
+    await waitFor(() => expect(cell("2026-10-21")).toHaveAttribute("aria-selected", "true"));
+    expect(cell("2026-03-05")).toHaveAttribute("aria-selected", "false");
+  }, 30_000);
+
+  it("switching to a chat with no entries leaves no outlined day from the old chat", async () => {
+    setup({ chats: [{ id: "books", title: "Books", icon: "📚" }, { id: "empty", title: "Empty", icon: "🫥" }] });
+    await screen.findByText("Today in the inbox");
+    await screen.findByRole("grid", { name: "Days of 2026" });
+    placeFeed("2026-10-14");
+    await waitFor(() => expect(cell("2026-10-14")).toHaveAttribute("aria-selected", "true"));
+    fireEvent.click(screen.getByRole("button", { name: /^Empty/ }));
+    await waitFor(() => expect(screen.queryByText("Today in the inbox")).toBeNull());
+    await waitFor(() => expect(document.querySelectorAll('[data-date][aria-selected="true"]')).toHaveLength(0));
+  });
+
   it("when the feed crosses into the previous year, the board and the strip switch to it", async () => {
     const { api } = setup();
     await screen.findByText("A note from the end of last year");

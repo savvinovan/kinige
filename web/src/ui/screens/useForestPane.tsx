@@ -66,11 +66,12 @@ export function useForestPane({ api, initial, chatId, refreshKey, ready, openEnt
   }, [api, year, weekday, hidden, started, refreshKey]);
 
   // The feed scrolls: its top day is the outlined one, and when the day moves into another year the board follows.
-  const onTopDay = useCallback((date: string) => {
+  // `null`: the feed has no entries (an empty chat), so no day is outlined; the year on the board stays.
+  const onTopDay = useCallback((date: string | null) => {
     const previous = feedDayRef.current;
     feedDayRef.current = date;
     setFeedDay(date);
-    if (previous === null || previous.slice(0, 4) !== date.slice(0, 4)) setYear(Number(date.slice(0, 4)));
+    if (date !== null && (previous === null || previous.slice(0, 4) !== date.slice(0, 4))) setYear(Number(date.slice(0, 4)));
   }, []);
 
   const change = useCallback(

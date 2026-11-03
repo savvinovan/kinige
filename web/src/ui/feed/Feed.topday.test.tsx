@@ -76,12 +76,38 @@ describe("Feed reports the day at its top", () => {
     await waitFor(() => expect(onTopDay).toHaveBeenCalledWith("2026-10-10"));
   });
 
-  it("the list arriving together with a jump is not reported at its old position", () => {
+  it("the list arriving together with a jump is reported at the day it jumps to, not at its old position", () => {
     const onTopDay = vi.fn();
     const view = render(<Feed messages={MESSAGES.slice(0, 2)} today="2026-10-12" onTopDay={onTopDay} />);
     onTopDay.mockClear();
     view.rerender(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} scrollTo={{ id: "m3", nonce: 1 }} />);
+    expect(onTopDay).toHaveBeenCalledTimes(1);
+    expect(onTopDay).toHaveBeenCalledWith("2026-10-12");
+  });
+
+  it("a jump reports the day of the entry it lands on (a send after a click on an old day, a restored entry), once", () => {
+    const onTopDay = vi.fn();
+    const view = render(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} scrollTo={null} />);
+    place("2026-10-10");
+    view.rerender(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} scrollTo={{ id: "m1", nonce: 1 }} />);
+    expect(onTopDay).toHaveBeenLastCalledWith("2026-10-10");
+    // The next request, to another entry: the caption moves with it although the person has not scrolled.
+    view.rerender(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} scrollTo={{ id: "m3", nonce: 2 }} />);
+    expect(onTopDay).toHaveBeenLastCalledWith("2026-10-12");
+    onTopDay.mockClear();
+    view.rerender(<Feed messages={[...MESSAGES]} today="2026-10-12" onTopDay={onTopDay} scrollTo={{ id: "m3", nonce: 2 }} />);
     expect(onTopDay).not.toHaveBeenCalled();
+  });
+
+  it("a list with no entries reports no day, so the board does not keep the old one; a list still loading reports nothing", () => {
+    const onTopDay = vi.fn();
+    const view = render(<Feed messages={MESSAGES} today="2026-10-12" onTopDay={onTopDay} listKey="inbox" />);
+    place("2026-10-11");
+    onTopDay.mockClear();
+    view.rerender(<Feed messages={[]} today="2026-10-12" onTopDay={onTopDay} listKey="ideas" loading />);
+    expect(onTopDay).not.toHaveBeenCalled();
+    view.rerender(<Feed messages={[]} today="2026-10-12" onTopDay={onTopDay} listKey="ideas" />);
+    expect(onTopDay).toHaveBeenLastCalledWith(null);
   });
 
   it("scrolling to the bottom on request reports the day it lands on, so the board does not keep an old selection", async () => {

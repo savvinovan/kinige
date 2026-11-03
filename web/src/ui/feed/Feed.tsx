@@ -82,11 +82,12 @@ interface FeedProps {
   /** Лента ещё не получила всё нужное для первого кадра: не рисует ничего, даже подсказку пустого чата (ничего не прыгает). */
   loading?: boolean;
   /**
-   * Slice 6: the journal day at the top of the feed, reported when the list changes and while the person scrolls. A scroll the
-   * feed makes itself to an entry is not reported until the person scrolls again; moving to the bottom and opening another
-   * list (`listKey`) are reported, because the day at the top is then not what the board still shows.
+   * Slice 6: the journal day the feed shows, reported when the list changes and while the person scrolls: the day at the top,
+   * `null` for a list with no entries. A scroll the feed makes itself to an entry reports that entry's day once and then nothing
+   * until the person scrolls again (the entry is centred, so the day at the top would be an earlier one); moving to the bottom
+   * and opening another list (`listKey`) are reported, because the day at the top is then not what the board still shows.
    */
-  onTopDay?: (journalDate: string) => void;
+  onTopDay?: (journalDate: string | null) => void;
   /** Slice 6: what the list belongs to (the open chat). A new value starts listening to the person's position again. */
   listKey?: string;
 }
@@ -138,13 +139,19 @@ export function Feed({
   const listening = useRef(true);
   const topDayHandler = useRef(onTopDay);
   const reportFrame = useRef(0);
-  useEffect(() => {
+  const loadingNow = useRef(loading);
+  // A layout effect, declared before the ones that report, so that they see the current handler and loading state.
+  useLayoutEffect(() => {
     topDayHandler.current = onTopDay;
+    loadingNow.current = loading;
   });
   const reportTop = () => {
     const root = scroller.current;
-    const date = root && topDayHandler.current ? topDayOf(root) : null;
-    if (date) topDayHandler.current?.(date);
+    if (!root || !topDayHandler.current) return;
+    const date = topDayOf(root);
+    if (date) topDayHandler.current(date);
+    // A list with no entries has no day: the board must not keep the one of the list before (a list still loading has none yet).
+    else if (!loadingNow.current && !root.querySelector("[data-journal-date]")) topDayHandler.current(null);
   };
   const reportSoon = () => {
     if (reportFrame.current !== 0) return;
@@ -225,13 +232,17 @@ export function Feed({
     if (!plate) return;
     scrolledKey.current = scrollKey;
     plate.scrollIntoView?.({ block: "center" });
+    // The caption follows the feed after its own jump (a click on a day, a sent note, a restored entry): the day of the entry
+    // it landed on, not the one at the top, which is an earlier day while the entry is centred.
+    const landed = plate.dataset.journalDate;
+    if (landed) topDayHandler.current?.(landed);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- по новой просьбе или появлению записи в ленте
   }, [scrollKey, items.length]);
 
   // Declared after the effects that move the feed itself, so a list that arrives with a jump is not reported at its old position.
   useLayoutEffect(() => {
     if (listening.current) reportTop();
-  }, [items]);
+  }, [items, loading]);
 
   return (
     // Прокручиваемая область берёт фокус с клавиатуры, иначе без мыши ленту не пролистать.

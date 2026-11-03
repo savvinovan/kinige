@@ -221,7 +221,8 @@ shoot 11-en
 # ---- 12. Large text ----
 edit_settings 'd["text_size"] = "large"'
 sleep 2
-shoot_light 12-large-text
+# Dumped in full: the shot shows a window-height scroll bar that does not reproduce in WebKit or Chromium, and the dump lists the scroll areas.
+shoot 12-large-text
 edit_settings 'd["text_size"] = "normal"'
 
 # ---- 13. A 640 px window ----

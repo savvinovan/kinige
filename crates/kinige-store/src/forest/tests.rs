@@ -1,5 +1,6 @@
-//! The SQL aggregate of `year_stats` against the domain rules: the weight must be exactly `forest::day_weight` of the
-//! entries one by one, the first entry the one with the smallest `(created_at, id)`, and the query must walk an index.
+//! `year_stats` against the domain rules read independently from the same rows: the weight is exactly
+//! `forest::day_weight` of the entries one by one, the first entry the one with the smallest `(created_at, id)`, the
+//! excerpt is cut by characters, damaged rows are skipped, and the query walks an index.
 
 use super::*;
 use crate::StoreOptions;
@@ -11,7 +12,7 @@ const START: i64 = 1_767_225_600_000; // 2026-01-01 00:00 UTC
 const DAY_MS: i64 = 86_400_000;
 
 /// Pieces of text: ASCII, Cyrillic (2 bytes a character), emoji (4 bytes), a combining mark (2 code points), a heading, NUL.
-/// A NUL character is there too: SQLite's `length()` stops at it, the domain does not, and the store has to give the domain's number.
+/// A NUL character is there too: the domain counts it as a character, and so does the store.
 const PIECES: [&str; 7] = ["word ", "слово ", "😀", "e\u{301}", "# ", "ж", "\0"];
 
 struct Rng(u64);
@@ -42,7 +43,7 @@ fn text(rng: &mut Rng, chars: usize) -> String {
 }
 
 #[test]
-fn sql_weight_equals_the_domain_weight() {
+fn weights_equal_the_domain_weight_over_random_days_with_nul_pieces() {
     let dir = tempfile::tempdir().unwrap();
     let store = open(dir.path());
     let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
@@ -85,7 +86,7 @@ fn sql_weight_equals_the_domain_weight() {
 
     let got = store.read(|conn| year_stats(conn, YEAR)).unwrap();
 
-    // The same days by the domain's own rules, from every row the way the first version of the query read them.
+    // The same days by the domain's own rules, from the rows read again on a separate connection.
     let mut statement = raw
         .prepare(&format!(
             "SELECT m.journal_date, m.created_at, m.id, m.body_md FROM message m JOIN chat c ON c.id = m.chat_id \
@@ -150,7 +151,7 @@ fn the_year_query_walks_the_day_index_not_the_table() {
     let plan: Vec<String> = store
         .read(|conn| {
             let mut statement = conn
-                .prepare(&format!("EXPLAIN QUERY PLAN {YEAR_QUERY}"))
+                .prepare(&format!("EXPLAIN QUERY PLAN {}", year_sql()))
                 .map_err(read_err)?;
             let rows = statement
                 .query_map(["2026-01-01", "2026-12-31"], |row| row.get::<_, String>(3))
@@ -161,10 +162,6 @@ fn the_year_query_walks_the_day_index_not_the_table() {
     println!("{plan:#?}");
     let table_step = plan.iter().find(|step| step.contains("message")).unwrap();
     assert!(table_step.contains("USING INDEX message_day"), "{plan:?}");
-    assert!(
-        !plan.iter().any(|step| step.contains("TEMP B-TREE")),
-        "the grouping reads the index in order: {plan:?}"
-    );
 }
 
 #[test]
@@ -226,4 +223,109 @@ fn damaged_rows_are_skipped_the_same_way_everywhere() {
         .get_forest_year(YEAR - 1, FirstWeekday::Monday, &now)
         .unwrap();
     assert!(earlier.days.iter().all(|d| d.notes == 0));
+}
+
+/// A day with a blob row next to good entries, a body over the excerpt limit made of multibyte characters, and entries whose
+/// creation times decide the first one (negative, zero and equal times included).
+#[test]
+fn a_blob_row_is_skipped_the_excerpt_is_cut_by_characters_and_creation_time_picks_the_first_entry()
+{
+    let dir = tempfile::tempdir().unwrap();
+    let store = open(dir.path());
+    let at = |day: i64| Now::at(START + day * DAY_MS + 3_600_000, "UTC");
+    let raw = Connection::open(dir.path().join("kinige.db")).unwrap();
+    let set_created = |id: &str, created: i64| {
+        raw.execute(
+            "UPDATE message SET created_at = ?2 WHERE id = ?1",
+            (id, created),
+        )
+        .unwrap();
+    };
+
+    // Day 1: a blob, then two good entries; the blob is the earliest and must not count or become the excerpt.
+    let blob = store
+        .send_message(INBOX_ID, "blob blob blob", &at(1))
+        .unwrap();
+    let late = store
+        .send_message(INBOX_ID, "late entry text", &at(1))
+        .unwrap();
+    let early = store
+        .send_message(INBOX_ID, "early entry text", &at(1))
+        .unwrap();
+    raw.execute(
+        "UPDATE message SET body_md = CAST(body_md AS BLOB) WHERE id = ?1",
+        [&blob.id],
+    )
+    .unwrap();
+    set_created(&blob.id, -100);
+    set_created(&late.id, 5);
+    set_created(&early.id, -5);
+
+    // Day 2: 4097 characters of 4-byte emoji and Cyrillic: the cut must land on a character, not in the middle of one.
+    let long: String = "😀ж".repeat(2100);
+    assert!(long.chars().count() > 4096 && long.len() > 4096 * 2);
+    let long_entry = store.send_message(INBOX_ID, &long, &at(2)).unwrap();
+
+    // Day 3: a zero and a positive time; day 4: equal times, the smaller id wins.
+    let positive = store
+        .send_message(INBOX_ID, "positive time", &at(3))
+        .unwrap();
+    let zero = store.send_message(INBOX_ID, "zero time", &at(3)).unwrap();
+    set_created(&positive.id, 1);
+    set_created(&zero.id, 0);
+    let tie_a = store.send_message(INBOX_ID, "tie a", &at(4)).unwrap();
+    let tie_b = store.send_message(INBOX_ID, "tie b", &at(4)).unwrap();
+    set_created(&tie_a.id, 7);
+    set_created(&tie_b.id, 7);
+
+    let stats = store.read(|conn| year_stats(conn, YEAR)).unwrap();
+    let stat = |date: &str| stats.iter().find(|s| s.date.to_string() == date).unwrap();
+
+    let one = stat(&early.journal_date);
+    assert_eq!(one.notes, 2, "the blob row is not an entry");
+    assert_eq!(one.first_body.as_deref(), Some("early entry text"));
+    let expected = day_weight(&[
+        NoteStat {
+            len: 16,
+            attachments: 0,
+        },
+        NoteStat {
+            len: 15,
+            attachments: 0,
+        },
+    ]);
+    assert!((one.weight - expected).abs() < 1e-12);
+
+    let two = stat(&long_entry.journal_date);
+    let excerpt = two.first_body.as_deref().unwrap();
+    assert_eq!(excerpt.chars().count(), EXCERPT_CHARS);
+    assert!(long.starts_with(excerpt));
+    assert_eq!(two.notes, 1);
+    assert!(
+        (two.weight - 1.0).abs() < 1e-12,
+        "the weight uses the whole entry"
+    );
+
+    assert_eq!(
+        stat(&zero.journal_date).first_body.as_deref(),
+        Some("zero time")
+    );
+    let tie_first = if tie_a.id < tie_b.id {
+        "tie a"
+    } else {
+        "tie b"
+    };
+    assert_eq!(
+        stat(&tie_a.journal_date).first_body.as_deref(),
+        Some(tie_first)
+    );
+
+    // The entry a click opens is the same one.
+    for (date, id) in [
+        (&early.journal_date, &early.id),
+        (&zero.journal_date, &zero.id),
+    ] {
+        let target = store.forest_day_target(date, None).unwrap().unwrap();
+        assert_eq!(&target.message_id, id);
+    }
 }

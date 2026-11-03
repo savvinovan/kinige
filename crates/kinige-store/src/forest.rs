@@ -1,6 +1,6 @@
 //! The year's forest (slice 6, PRD §7): the per-day facts of one year, the entry a click on a day opens and the local view
 //! state. Entries count when they are live (`deleted_at IS NULL`) and their chat is not in the trash; archived chats
-//! count. One aggregate query over the `message_day` index per year (about 365 rows), no cache table (slice 6 spec).
+//! count. One range query over the `message_day` index per year, scanned row by row, no cache table (slice 6 spec).
 //! The rules are in `kinige_domain::forest` / `forest_year`; nothing here is written to the log.
 
 use crate::error::{read_err, write_err};
@@ -8,7 +8,7 @@ use crate::settings::get_setting;
 use crate::{Now, Store, StoreError};
 use chrono::NaiveDate;
 use kinige_domain::chat::is_chat_id;
-use kinige_domain::forest::{FirstWeekday, NoteStat, day_weight};
+use kinige_domain::forest::{FirstWeekday, NoteStat};
 use kinige_domain::forest_year::{
     DayStats, FOREST_YEARS, ForestMode, ForestTarget, ForestView, ForestYear, day_chat, year_table,
 };
@@ -16,26 +16,18 @@ use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, is_valid_journal_date, journal_date};
 use kinige_domain::on_this_day::year_of;
 use rusqlite::{Connection, OptionalExtension};
+use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 pub(crate) const KEY_FOREST_VIEW: &str = "forest_view";
 pub(crate) const KEY_FOREST_MODE: &str = "forest_mode";
 
+/// How many characters of a day's first entry the year table carries (the excerpt shown is far shorter).
+const EXCERPT_CHARS: usize = 4096;
+
 /// Live entries of chats that are not in the trash whose text is text (a damaged value of another type is skipped everywhere
 /// the same way: in the year table, the day's chats, the oldest year and the entry a click opens).
 const LIVE: &str = "m.deleted_at IS NULL AND c.deleted_at IS NULL AND typeof(m.body_md) = 'text'";
-
-/// One row per day of the year: date, entries, weight, the first 4096 characters of the first entry (the excerpt is far
-/// shorter, and a huge entry is not copied for it), the ordering key of that entry, and how many entries of the day contain
-/// a NUL character (see `year_stats`). The conditions repeat `LIVE` and must stay in step with it. Do not add a second
-/// `MIN()` or `MAX()` aggregate: it would change which row the bare columns come from.
-const YEAR_QUERY: &str = "SELECT m.journal_date, COUNT(*), \
-     SUM(CASE WHEN length(m.body_md) >= 3 THEN MIN(1.0, length(m.body_md) / 200.0) ELSE 0.0 END), \
-     substr(m.body_md, 1, 4096), MIN(printf('%020d', MAX(m.created_at, 0)) || m.id), \
-     SUM(instr(CAST(m.body_md AS BLOB), x'00') > 0) \
-     FROM message m JOIN chat c ON c.id = m.chat_id \
-     WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 \
-     AND m.deleted_at IS NULL AND c.deleted_at IS NULL AND typeof(m.body_md) = 'text' \
-     GROUP BY m.journal_date ORDER BY m.journal_date";
 
 impl Store {
     /// The table of `year` for the forest: every day with its cell, season, notes, stage and first-entry excerpt, plus the
@@ -134,77 +126,72 @@ pub(crate) fn stored_view(conn: &Connection) -> rusqlite::Result<(ForestView, Fo
     ))
 }
 
-/// The facts of every day of `year` that has live entries, in calendar order: one SQL aggregate per day, so about 365
-/// rows reach Rust instead of one per entry. The weight is the SQL form of `forest::day_weight` (`Σ min(1, len/200)`
-/// over entries of 3 characters or more; `length()` counts characters, not bytes, and there are no attachments yet),
-/// proven equal to it by the `sql_weight_equals_the_domain_weight` test. The first entry of a day is the one with the
-/// smallest `created_at`, then id: SQLite takes the bare column `body_md` from the row of the query's only `MIN()`
-/// aggregate, whose key is the zero-padded creation time (clamped at 0: creation times are milliseconds since 1970, and a
-/// negative number would sort wrongly as text) followed by the id. Only the start of the text is read.
-///
-/// `length()` stops at a NUL character while the domain counts every character. A day with such an entry (never written
-/// by the app, but possible in imported or synced text) is measured again in Rust, entry by entry. Rows whose date is not a
-/// date or whose text is not text (a damaged value) are skipped.
+/// The facts of every day of `year` that has live entries, in calendar order. The rows are read over the `message_day`
+/// index (one row per entry, a measured 100,000-entry bench is in ADR-0013) and each day is computed here: the weight by
+/// the domain's own `day_weight`, the first entry by `created_at`, then id (the order `forest_day_target` uses). Only the
+/// first entry's text is copied, and only its first `EXCERPT_CHARS` characters (the excerpt is far shorter). Rows whose
+/// date is not a date or whose text is not text (a damaged value) are skipped.
 fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError> {
-    let mut statement = conn.prepare_cached(YEAR_QUERY).map_err(read_err)?;
+    /// One day while it is being scanned: the weights of its entries and the first one so far.
+    struct Day {
+        notes: Vec<NoteStat>,
+        first: (i64, String, String),
+    }
+    let mut statement = conn.prepare_cached(&year_sql()).map_err(read_err)?;
     let mut rows = statement
         .query((format!("{year:04}-01-01"), format!("{year:04}-12-31")))
         .map_err(read_err)?;
-    let mut days = Vec::with_capacity(366);
+    let mut days: BTreeMap<NaiveDate, Day> = BTreeMap::new();
     while let Some(row) = rows.next().map_err(read_err)? {
-        let date = row.get_ref(0).map_err(read_err)?.as_str().ok();
-        let Some(date) = date.and_then(|date| NaiveDate::parse_from_str(date, "%Y-%m-%d").ok())
-        else {
+        let (date, id, body) = (
+            row.get_ref(0).map_err(read_err)?.as_str().ok(),
+            row.get_ref(2).map_err(read_err)?.as_str().ok(),
+            row.get_ref(3).map_err(read_err)?.as_str().ok(),
+        );
+        let (Some(date), Some(id), Some(body)) = (date, id, body) else {
             continue;
         };
-        let notes: i64 = row.get(1).map_err(read_err)?;
-        let mut weight: f64 = row.get(2).map_err(read_err)?;
-        let mut first_body: Option<String> = row.get(3).map_err(read_err)?;
-        let with_nul: i64 = row.get(5).map_err(read_err)?;
-        if with_nul > 0 {
-            (weight, first_body) = exact_day(conn, date)?;
-        }
-        days.push(DayStats {
-            date,
-            notes: u32::try_from(notes).unwrap_or(u32::MAX),
-            weight,
-            first_body,
-        });
-    }
-    Ok(days)
-}
-
-/// The weight and the first entry of one day by the domain rules over every entry, the slow way (see `year_stats`).
-fn exact_day(conn: &Connection, date: NaiveDate) -> Result<(f64, Option<String>), StoreError> {
-    let mut statement = conn
-        .prepare_cached(&format!(
-            "SELECT m.created_at, m.id, m.body_md FROM message m JOIN chat c ON c.id = m.chat_id \
-             WHERE m.journal_date = ?1 AND {LIVE}"
-        ))
-        .map_err(read_err)?;
-    let rows = statement
-        .query_map([date.format("%Y-%m-%d").to_string()], |row| {
-            Ok((
-                row.get::<_, i64>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        })
-        .map_err(read_err)?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(read_err)?;
-    let notes: Vec<NoteStat> = rows
-        .iter()
-        .map(|(_, _, body)| NoteStat {
+        let Ok(date) = NaiveDate::parse_from_str(date, "%Y-%m-%d") else {
+            continue;
+        };
+        let created: i64 = row.get(1).map_err(read_err)?;
+        let note = NoteStat {
             len: body.chars().count(),
             attachments: 0,
-        })
-        .collect();
-    let first = rows
+        };
+        match days.entry(date) {
+            Entry::Vacant(slot) => {
+                slot.insert(Day {
+                    notes: vec![note],
+                    first: (created, id.to_string(), excerpt_of(body)),
+                });
+            }
+            Entry::Occupied(mut slot) => {
+                let day = slot.get_mut();
+                day.notes.push(note);
+                if (created, id) < (day.first.0, day.first.1.as_str()) {
+                    day.first = (created, id.to_string(), excerpt_of(body));
+                }
+            }
+        }
+    }
+    Ok(days
         .into_iter()
-        .min_by(|a, b| (a.0, &a.1).cmp(&(b.0, &b.1)))
-        .map(|(_, _, body)| body);
-    Ok((day_weight(&notes), first))
+        .map(|(date, day)| DayStats::from_notes(date, &day.notes, Some(day.first.2)))
+        .collect())
+}
+
+/// The rows of one year, `?1..=?2` being its first and last date.
+fn year_sql() -> String {
+    format!(
+        "SELECT m.journal_date, m.created_at, m.id, m.body_md FROM message m JOIN chat c ON c.id = m.chat_id \
+         WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 AND {LIVE}"
+    )
+}
+
+/// The start of an entry that is kept for the excerpt, cut on a character boundary.
+fn excerpt_of(body: &str) -> String {
+    body.chars().take(EXCERPT_CHARS).collect()
 }
 
 /// The year of the oldest live entry of a chat that is not in the trash.

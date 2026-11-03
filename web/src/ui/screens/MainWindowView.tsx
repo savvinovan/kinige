@@ -92,7 +92,7 @@ interface MainWindowViewProps {
   };
   /** Slice 6: the forest pane above the feed (not in the trash or in search results), the feed's top day for it, and the profile menu item. */
   forest?: ReactNode;
-  onFeedTopDay?: (journalDate: string) => void;
+  onFeedTopDay?: (journalDate: string | null) => void;
   forestMenu?: { hidden: boolean; onToggle: () => void };
   /** Поверх окна: модальные окна (настройки, чат, календарь). */
   overlay?: ReactNode;
