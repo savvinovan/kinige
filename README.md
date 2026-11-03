@@ -1,4 +1,9 @@
-# Kinige
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="design/logo/kinige-logo-on-dark.svg">
+    <img alt="Kinige" src="design/logo/kinige-logo-on-light.svg" width="420">
+  </picture>
+</h1>
 
 [![CI](https://github.com/savvinovan/kinige/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/savvinovan/kinige/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/savvinovan/kinige?include_prereleases)](https://github.com/savvinovan/kinige/releases/latest)
