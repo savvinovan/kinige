@@ -98,6 +98,33 @@ pub fn seed_attachments(store: &Store, now: &Now, data: &Path, ideas_id: &str) {
     store
         .delete_message(&trashed.id, &at(-5 * MINUTE))
         .expect("to the trash");
+    // Two more entries in the trash, each in a chat of its own so that a scenario can tell their buttons apart: the first is restored
+    // and the second deleted for good.
+    for (title, icon, files, text) in [
+        (
+            "Снимки",
+            "📷",
+            vec![picture("IMG_0010.jpg", 1600, 1000, 2)],
+            "Фото на восстановление.",
+        ),
+        (
+            "Альбом",
+            "🖼️",
+            vec![
+                picture("IMG_0011.jpg", 1000, 1600, 3),
+                document("смета.pdf"),
+            ],
+            "Фото и документ на удаление.",
+        ),
+    ] {
+        let chat = store
+            .create_chat(title, Some(icon), &at(-12 * MINUTE))
+            .expect("chat");
+        let entry = send(&chat.id, text, &files, 9 * MINUTE);
+        store
+            .delete_message(&entry.id, &at(-4 * MINUTE))
+            .expect("to the trash");
+    }
     // The pending tiles of the chat "Идеи": nothing is sent, the draft keeps them.
     for path in [
         picture("IMG_0009.jpg", 1600, 1000, 4),

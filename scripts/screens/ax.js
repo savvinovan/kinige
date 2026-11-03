@@ -5,6 +5,9 @@
 //   osascript -l JavaScript scripts/screens/ax.js has    <pid> <text>      (prints yes/no)
 //   osascript -l JavaScript scripts/screens/ax.js frame  <pid> <text>      (prints "x y width height" of the first match)
 //   osascript -l JavaScript scripts/screens/ax.js resize <pid> <width> <height>  (resizes the window; prints the resulting size)
+//   osascript -l JavaScript scripts/screens/ax.js set    <pid> <text> <value>   (sets AXValue of the first text field, search field or combo box that matches)
+//   osascript -l JavaScript scripts/screens/ax.js menu   <pid> <menu names> <item names>  (AXPress on a menu bar item; names are alternatives separated by "|",
+//                                                  the app menu is localized: "Edit|Правка" "Paste|Вставить")
 // Process window: the first one by default; the AX_WINDOW=<part of the title> variable selects the "Settings" or "Kinige" window.
 // The text is searched as a substring of the element's "role, title, description, value", the first match in traversal order.
 ObjC.import("Foundation");
@@ -14,9 +17,11 @@ function run(argv) {
   const windowWant = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("AX_WINDOW")) || "";
   const se = Application("System Events");
   const proc = se.processes.whose({ unixId: Number(pid) })[0];
-  const pressable = roleWant
-    ? new RegExp("^AX(" + roleWant + ")$")
-    : /^AX(Button|MenuItem|CheckBox|RadioButton|PopUpButton|MenuButton)$/;
+  // The role filter belongs to `press`; for `set` and `menu` the same argument is a value or an item name.
+  const pressable =
+    roleWant && mode === "press"
+      ? new RegExp("^AX(" + roleWant + ")$")
+      : /^AX(Button|MenuItem|CheckBox|RadioButton|PopUpButton|MenuButton)$/;
   const out = [];
 
   function parts(el) {
@@ -108,6 +113,10 @@ function run(argv) {
             return "scrolled: " + label.slice(0, 80);
           } catch (e) {}
         }
+        if (mode === "set" && /^AX(ComboBox|TextField|TextArea|SearchField)$/.test(p.role)) {
+          k.value = roleWant;
+          return "set: " + p.role + " " + label.slice(0, 60);
+        }
         if (mode === "press" && pressable.test(p.role)) {
           k.actions.byName("AXPress").perform();
           return "pressed: " + p.role + " " + label.slice(0, 80);
@@ -123,6 +132,18 @@ function run(argv) {
   if (mode === "front") {
     proc.frontmost = true;
     return "frontmost";
+  }
+  if (mode === "menu") {
+    // The menu bar, not the window: an AX press on a menu item is not a key.
+    for (const menuName of want.split("|")) {
+      for (const itemName of roleWant.split("|")) {
+        try {
+          proc.menuBars[0].menuBarItems.byName(menuName).menus[0].menuItems.byName(itemName).click();
+          return "clicked: " + menuName + " > " + itemName;
+        } catch (e) {}
+      }
+    }
+    return "no menu item: " + want + " > " + roleWant;
   }
   let win = proc.windows[0];
   if (windowWant) {

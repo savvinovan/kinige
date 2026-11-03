@@ -5,9 +5,7 @@ use crate::error::read_err;
 use kinige_domain::Language;
 use kinige_domain::chat::{MAX_TITLE_CHARS, normalize_title};
 use kinige_domain::import::{EXT_SRC_TELEGRAM, ImportChatKind};
-use kinige_domain::telegram::{
-    TgChat, TgChatKind, TgMessage, render_body, render_body_attached,
-};
+use kinige_domain::telegram::{TgChat, TgChatKind, TgMessage, render_body, render_body_attached};
 use rusqlite::{Connection, OptionalExtension};
 use std::collections::{HashMap, HashSet};
 
