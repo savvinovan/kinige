@@ -3,6 +3,7 @@ import {
   ArchiveRestore,
   ArrowRight,
   ArrowUp,
+  AudioLines,
   Calendar,
   Check,
   ChevronDown,
@@ -14,6 +15,7 @@ import {
   Download,
   Ellipsis,
   EyeOff,
+  File,
   Info,
   Maximize2,
   Mic,
@@ -35,6 +37,7 @@ import {
   Trees,
   Undo2,
   Upload,
+  Video,
   X,
 } from "lucide-react";
 import "./icon.css";
@@ -84,6 +87,10 @@ const GLYPHS = {
   collapsePane: Minimize2,
   hidePane: EyeOff,
   forest: Trees,
+  // Slice 7: the file card (a plain file, audio and video are shown as files).
+  file: File,
+  audio: AudioLines,
+  video: Video,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

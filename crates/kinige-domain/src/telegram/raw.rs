@@ -1,6 +1,8 @@
 //! Raw `result.json` structures and their conversion into domain types. Only `parse` is visible outside the module.
 
-use super::{TgChat, TgChatKind, TgExport, TgMedia, TgMessage, TgParseError, TgSpan, TgSpanKind};
+use super::{
+    TgChat, TgChatKind, TgExport, TgFile, TgMedia, TgMessage, TgParseError, TgSpan, TgSpanKind,
+};
 use serde::Deserialize;
 use serde::de::IgnoredAny;
 use serde_json::value::RawValue;
@@ -153,10 +155,17 @@ struct RawMessage {
     saved_from: Option<Option<String>>,
     text: Option<RawText>,
     text_entities: Option<Vec<RawEntity>>,
-    photo: Option<IgnoredAny>,
+    photo: Option<Lenient<String>>,
     media_type: Option<String>,
-    file: Option<IgnoredAny>,
+    file: Option<Lenient<String>>,
     file_name: Option<String>,
+    // Details of the file (slice 7). Lenient: a field of an unexpected kind is "not stated", never a failed import.
+    mime_type: Option<Lenient<String>>,
+    file_size: Option<Lenient<Num>>,
+    photo_file_size: Option<Lenient<Num>>,
+    width: Option<Lenient<Num>>,
+    height: Option<Lenient<Num>>,
+    duration_seconds: Option<Lenient<Num>>,
     sticker_emoji: Option<String>,
     location_information: Option<IgnoredAny>,
     place_name: Option<String>,
@@ -165,6 +174,50 @@ struct RawMessage {
     // Keys of other attachments (not verified): a message with them must not look empty.
     game_title: Option<IgnoredAny>,
     invoice_information: Option<IgnoredAny>,
+}
+
+/// A value of the expected kind, or anything else (kept as "not stated"): the key being present is still known.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum Lenient<T> {
+    Value(T),
+    Other(IgnoredAny),
+}
+
+impl<T> Lenient<T> {
+    fn value(&self) -> Option<&T> {
+        match self {
+            Lenient::Value(value) => Some(value),
+            Lenient::Other(_) => None,
+        }
+    }
+}
+
+/// A number that came as an integer, a fraction or a string.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum Num {
+    Int(i64),
+    Uint(u64),
+    Float(f64),
+    Str(String),
+}
+
+impl Num {
+    /// A whole non-negative number, or `None`.
+    fn as_u64(&self) -> Option<u64> {
+        match self {
+            Num::Int(n) => u64::try_from(*n).ok(),
+            Num::Uint(n) => Some(*n),
+            Num::Float(f) if f.is_finite() && *f >= 0.0 && *f < 9.0e15 => Some(*f as u64),
+            Num::Float(_) => None,
+            Num::Str(s) => s.trim().parse().ok(),
+        }
+    }
+}
+
+fn num(field: &Option<Lenient<Num>>) -> Option<u64> {
+    field.as_ref()?.value()?.as_u64()
 }
 
 #[derive(Deserialize)]
@@ -205,6 +258,7 @@ struct RawAnswer {
 impl RawMessage {
     fn into_message(self) -> TgMessage {
         let media = self.media();
+        let file = self.file_info(media.as_ref());
         let text = match (self.text_entities, self.text) {
             (Some(entities), _) => entities.into_iter().map(RawEntity::into_span).collect(),
             (None, Some(RawText::Str(s))) => plain(s).into_iter().collect(),
@@ -234,7 +288,41 @@ impl RawMessage {
             saved_from: self.saved_from.flatten(),
             text,
             media,
+            file,
         }
+    }
+
+    /// The file of a photo, file, video, voice message or audio (slice 7). A path that is a "(File not included...)" note, or
+    /// empty, is "not in the export" (`path: None`); anything else is kept as written and checked by the importer.
+    fn file_info(&self, media: Option<&TgMedia>) -> Option<TgFile> {
+        let (path, size) = match media? {
+            TgMedia::Photo => (self.photo.as_ref()?, &self.photo_file_size),
+            TgMedia::File { .. }
+            | TgMedia::VideoFile
+            | TgMedia::VideoMessage
+            | TgMedia::VoiceMessage
+            | TgMedia::AudioFile => (self.file.as_ref()?, &self.file_size),
+            _ => return None,
+        };
+        let path = path
+            .value()
+            .filter(|p| !p.is_empty() && !p.starts_with('('))
+            .cloned();
+        let small = |field: &Option<Lenient<Num>>| num(field).and_then(|n| u32::try_from(n).ok());
+        Some(TgFile {
+            path,
+            name: self.file_name.clone().filter(|n| !n.trim().is_empty()),
+            mime: self
+                .mime_type
+                .as_ref()
+                .and_then(Lenient::value)
+                .filter(|m| !m.is_empty())
+                .cloned(),
+            size: num(size),
+            width: small(&self.width),
+            height: small(&self.height),
+            duration_seconds: small(&self.duration_seconds),
+        })
     }
 
     /// The order of checks matters: a photo and a sticker can have both `file` and `media_type`.

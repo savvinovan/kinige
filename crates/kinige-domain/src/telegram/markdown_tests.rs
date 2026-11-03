@@ -18,6 +18,7 @@ pub(super) fn msg(text: Vec<TgSpan>) -> TgMessage {
         saved_from: None,
         text,
         media: None,
+        file: None,
     }
 }
 

@@ -86,6 +86,17 @@ pub(crate) fn insert_attachment(
     now_ms: i64,
 ) -> Result<AttachmentView, StoreError> {
     let hlc = next_hlc(tx, now_ms)?;
+    insert_attachment_at(tx, &hlc, message_id, sort_index, file)
+}
+
+/// The same under an HLC the caller made: a bulk import keeps its clock in memory and saves it once.
+pub(crate) fn insert_attachment_at(
+    tx: &Transaction<'_>,
+    hlc: &str,
+    message_id: &str,
+    sort_index: u32,
+    file: &NewFile,
+) -> Result<AttachmentView, StoreError> {
     let mut key = [0u8; 32];
     getrandom::fill(&mut key)
         .map_err(|_| StoreError::Internal("the system random source failed".into()))?;
@@ -107,7 +118,7 @@ pub(crate) fn insert_attachment(
             remote_blob_id: &remote_blob_id,
             blob_key: &blob_key,
         },
-        &hlc,
+        hlc,
     )?;
     write_row(tx, &row)?;
     tx.execute(

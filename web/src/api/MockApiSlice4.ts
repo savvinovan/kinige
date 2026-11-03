@@ -179,11 +179,13 @@ export class MockApiSlice4 extends MockApiBase {
     try {
       const chosen = this.importPreview.chats.filter((c) => chatIds.includes(c.id));
       const total = chosen.reduce((sum, c) => sum + c.total, 0);
+      const bytesTotal = chosen.reduce((sum, c) => sum + c.mediaBytes, 0);
       const steps = Math.max(1, this.importSteps);
       let stopped = false;
       for (let step = 1; step <= steps; step++) {
         const done = Math.round((total * step) / steps);
-        for (const handler of [...this.progressListeners]) handler({ done, total });
+        const bytesDone = Math.round((bytesTotal * step) / steps);
+        for (const handler of [...this.progressListeners]) handler({ done, total, bytesDone, bytesTotal });
         if (step < steps) {
           if (this.holdImport) await new Promise<void>((resolve) => (this.release = resolve));
           if (this.stopRequested) {
@@ -199,6 +201,11 @@ export class MockApiSlice4 extends MockApiBase {
         skippedService: 0,
         skippedEmpty: 0,
         mediaPlaceholders: Math.floor(fresh / 2),
+        mediaAttached: chosen.reduce((sum, c) => sum + c.mediaFiles, 0),
+        mediaBytes: bytesTotal,
+        mediaMissing: chosen.reduce((sum, c) => sum + c.mediaMissing, 0),
+        mediaSkipped: 0,
+        diskFull: false,
         chatsCreated: chosen.filter((c) => c.kind === "personal" && c.existing === 0 && c.total > 0).length,
         backupName: fresh > 0 ? MOCK_BACKUP_NAME : null,
         stopped,

@@ -4,6 +4,8 @@ import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { ImportPreview } from "../../api/generated/ImportPreview";
 import type { ImportProgress } from "../../api/generated/ImportProgress";
 import type { ImportReport } from "../../api/generated/ImportReport";
+import { useLanguage } from "../../i18n/I18n";
+import { formatSize } from "../attachments/formatSize";
 import { Button } from "../controls/Button";
 import { Checkbox } from "../controls/Checkbox";
 import { ProgressBar } from "../controls/ProgressBar";
@@ -115,6 +117,8 @@ function ChooseStep({ error, preview, selected, opening, onToggle, onRun, onPick
       {preview && preview.skippedChats > 0 ? (
         <p className="import__text import__text--quiet">{t("import.skippedChats", { count: preview.skippedChats })}</p>
       ) : null}
+      <MediaLine chats={chats.filter((chat) => chosen.has(chat.id) && chat.total > 0)} />
+
       {chats.length > 0 ? <p className="import__text import__text--quiet">{t("import.twoDevices")}</p> : null}
       <div className="import__actions">
         <Button variant="secondary" aria-disabled={opening || undefined} onClick={() => !opening && onPick()}>
@@ -128,14 +132,35 @@ function ChooseStep({ error, preview, selected, opening, onToggle, onRun, onPick
   );
 }
 
+/** "Media: 1,240 files, 6.7 GB · not in the export: 12" for the checked chats; nothing when the export holds no files (slice 7). */
+function MediaLine({ chats }: { chats: ImportPreview["chats"] }) {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const files = chats.reduce((sum, chat) => sum + chat.mediaFiles, 0);
+  const bytes = chats.reduce((sum, chat) => sum + chat.mediaBytes, 0);
+  const missing = chats.reduce((sum, chat) => sum + chat.mediaMissing, 0);
+  if (files === 0 && missing === 0) return null;
+  const head = files > 0 ? t("import.media", { count: files, size: formatSize(bytes, language) }) : t("import.mediaNone");
+  const tail = missing > 0 ? ` · ${t("import.mediaMissing", { count: missing })}` : "";
+  return <p className="import__text import__text--quiet">{`${head}${tail}`}</p>;
+}
+
 function RunningStep({ progress, stopping, error, onStop }: ImportDialogProps) {
   const { t } = useTranslation();
+  const language = useLanguage();
   const stop = useRef<HTMLButtonElement>(null);
   // There is no cross on this step, and the previous step's button vanished together with it: focus moves to "Stop".
   useEffect(() => stop.current?.focus(), []);
-  const done = progress?.done ?? 0;
-  const total = progress?.total ?? 0;
-  const text = t("import.progressText", { done, total });
+  const messages = progress?.done ?? 0;
+  const messagesTotal = progress?.total ?? 0;
+  // With files the bar runs in bytes ("1.2 GB of 6.7 GB"), because copying them is what takes the time (slice 7).
+  const bytesTotal = progress?.bytesTotal ?? 0;
+  const byBytes = bytesTotal > 0;
+  const done = byBytes ? (progress?.bytesDone ?? 0) : messages;
+  const total = byBytes ? bytesTotal : messagesTotal;
+  const text = byBytes
+    ? t("import.progressBytes", { done: formatSize(done, language), total: formatSize(total, language) })
+    : t("import.progressText", { done, total });
   return (
     <>
       <p className="import__text" role="status">
@@ -155,6 +180,7 @@ function RunningStep({ progress, stopping, error, onStop }: ImportDialogProps) {
 
 function ReportStep({ report, onClose }: ImportDialogProps) {
   const { t } = useTranslation();
+  const language = useLanguage();
   const done = useRef<HTMLButtonElement>(null);
   useEffect(() => done.current?.focus(), []);
   if (!report) return null;
@@ -162,17 +188,23 @@ function ReportStep({ report, onClose }: ImportDialogProps) {
   if (report.skippedExisting > 0) lines.push(t("import.report.existing", { count: report.skippedExisting }));
   if (report.skippedService > 0) lines.push(t("import.report.service", { count: report.skippedService }));
   if (report.skippedEmpty > 0) lines.push(t("import.report.empty", { count: report.skippedEmpty }));
+  if (report.mediaAttached > 0) {
+    lines.push(t("import.report.mediaAttached", { count: report.mediaAttached, size: formatSize(report.mediaBytes, language) }));
+  }
+  if (report.mediaMissing > 0) lines.push(t("import.report.mediaMissing", { count: report.mediaMissing }));
+  if (report.mediaSkipped > 0) lines.push(t("import.report.mediaSkipped", { count: report.mediaSkipped }));
   if (report.mediaPlaceholders > 0) lines.push(t("import.report.media", { count: report.mediaPlaceholders }));
   if (report.chatsCreated > 0) lines.push(t("import.report.chats", { count: report.chatsCreated }));
   if (report.backupName) lines.push(t("import.report.backup", { name: report.backupName }));
   return (
     <>
-      <h3 className="import__heading">{report.stopped ? t("import.report.titleStopped") : t("import.report.title")}</h3>
+      <h3 className="import__heading">{report.stopped || report.diskFull ? t("import.report.titleStopped") : t("import.report.title")}</h3>
       <ul className="import__report">
         {lines.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
+      {report.diskFull ? <p className="import__text">{t("import.report.diskFull")}</p> : null}
       {report.stopped ? <p className="import__text import__text--quiet">{t("import.report.stoppedNote")}</p> : null}
       <div className="import__actions">
         <Button variant="secondary" ref={done} onClick={onClose}>

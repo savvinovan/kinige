@@ -98,6 +98,15 @@ pub struct ImportChatPreview {
     /// Of them already imported (present in `message_ext`).
     #[ts(type = "number")]
     pub existing: i64,
+    /// Files the export holds for these entries: photos, files, videos, voice messages, audio (slice 7).
+    #[ts(type = "number")]
+    pub media_files: i64,
+    /// Their size in bytes as the export states it.
+    #[ts(type = "number")]
+    pub media_bytes: i64,
+    /// Media the export says it did not download ("File not included"): they stay placeholders.
+    #[ts(type = "number")]
+    pub media_missing: i64,
 }
 
 /// What was found in the export: chats to choose from and how many chats were skipped (groups, channels, bots).
@@ -121,7 +130,8 @@ pub struct ImportOpened {
     pub preview: ImportPreview,
 }
 
-/// Import progress after each committed batch: how many messages are processed out of how many.
+/// Import progress after each committed batch: how many messages are processed out of how many, and, with media, how many bytes
+/// of files are copied out of how many (slice 7: progress runs in gigabytes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "ImportProgress.ts")]
@@ -130,6 +140,12 @@ pub struct ImportProgress {
     pub done: i64,
     #[ts(type = "number")]
     pub total: i64,
+    /// Bytes of files copied so far; 0 when the import has no media.
+    #[ts(type = "number")]
+    pub bytes_done: i64,
+    /// Bytes of files to copy, as the export states them.
+    #[ts(type = "number")]
+    pub bytes_total: i64,
 }
 
 /// The import result.
@@ -151,6 +167,20 @@ pub struct ImportReport {
     /// For how many imported entries a placeholder is left instead of an attachment.
     #[ts(type = "number")]
     pub media_placeholders: i64,
+    /// Files attached (to new entries and to entries imported earlier, slice 7).
+    #[ts(type = "number")]
+    pub media_attached: i64,
+    /// Bytes of the files attached.
+    #[ts(type = "number")]
+    pub media_bytes: i64,
+    /// Files the export does not hold ("File not included", or the file is not where the export says).
+    #[ts(type = "number")]
+    pub media_missing: i64,
+    /// Files not attached: a bad path, unreadable, over the limit or not a regular file.
+    #[ts(type = "number")]
+    pub media_skipped: i64,
+    /// The import stopped because the disk is full; the batch in progress was rolled back, earlier batches stay.
+    pub disk_full: bool,
     /// Kinige chats created (for personal chats).
     #[ts(type = "number")]
     pub chats_created: i64,

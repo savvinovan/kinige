@@ -1,0 +1,120 @@
+/* The photos of an entry in the bubble. No background and no border: the bubble provides them. Tokens only; nothing animates. */
+.album {
+  display: block;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* One photo: the box is as wide as the photo may be (the bubble, the height cap, the photo's own size) and has the photo's shape from
+   the first frame. Three variables from the component: --album-aspect (width / height) and --album-natural (width in image pixels). */
+.album--single {
+  position: relative;
+  width: min(
+    var(--layout-attachment-album-max-width),
+    calc(var(--layout-attachment-album-max-height) * var(--album-aspect, var(--layout-attachment-fallback-aspect))),
+    var(--album-natural, var(--layout-attachment-album-max-width))
+  );
+  aspect-ratio: var(--album-aspect, var(--layout-attachment-fallback-aspect));
+}
+
+/* Two to ten photos: rows one under another, each row a grid of equal columns. */
+.album--grid {
+  display: grid;
+  gap: var(--layout-attachment-album-gap);
+  width: var(--layout-attachment-album-max-width);
+}
+
+.album__row {
+  display: grid;
+  gap: var(--layout-attachment-album-gap);
+}
+
+.album__row--1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.album__row--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.album__row--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.album__cell {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--layout-attachment-album-radius);
+  background: transparent;
+  color: inherit;
+}
+
+.album__row--1 > .album__cell {
+  aspect-ratio: var(--layout-attachment-cell-aspect-1);
+}
+
+.album__row--2 > .album__cell {
+  aspect-ratio: var(--layout-attachment-cell-aspect-2);
+}
+
+.album__row--3 > .album__cell {
+  aspect-ratio: var(--layout-attachment-cell-aspect-3);
+}
+
+.album--single > .album__cell {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+
+.album__cell--button {
+  cursor: pointer;
+}
+
+/* The ring goes inside the cell: the neighbours are a few pixels away and the bubble may clip what sticks out. */
+.album__cell--button:focus-visible {
+  outline-offset: calc(var(--focus-width) * -1);
+}
+
+/* The photo fills the box. In a grid it is cropped (cover); a single photo has its own shape, so contain crops nothing. A transparent PNG
+   shows the bubble through it: the image has no background of its own. */
+.album__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.album--single .album__image {
+  object-fit: contain;
+}
+
+/* "No preview" and "File is missing": the same box as the photo. Shared with the pending tiles and the lightbox. */
+.preview-tile {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: var(--layout-attachment-tile-text-padding);
+  background: var(--color-surface-background);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+.preview-tile__text {
+  min-width: 0;
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  overflow-wrap: anywhere;
+}

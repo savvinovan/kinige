@@ -2,6 +2,33 @@
   "chat": {
     "inbox": "Inbox"
   },
+  "attachments": {
+    "attach": "Attach file",
+    "photoLabel": "Photo {{name}}, {{width}} by {{height}}",
+    "photoLabelNoSize": "Photo {{name}}",
+    "noPreview": "No preview",
+    "missing": "File is missing",
+    "fileMeta": "{{type}} · {{size}}",
+    "pendingLabel": "Attachments to send",
+    "dropToAttach": "Drop to attach",
+    "remove": "Remove {{name}}",
+    "openDefault": "Open in default app",
+    "counter": "{{index}} / {{total}}",
+    "close": "Close",
+    "previous": "Previous photo",
+    "next": "Next photo",
+    "lightboxLabel": "Photo viewer",
+    "summary": {
+      "photo": "Photo",
+      "file": "File",
+      "photos_one": "{{count, number}} photo",
+      "photos_other": "{{count, number}} photos",
+      "files_one": "{{count, number}} file",
+      "files_other": "{{count, number}} files",
+      "mixed_one": "{{count, number}} attachment",
+      "mixed_other": "{{count, number}} attachments"
+    }
+  },
   "count": {
     "entries_one": "{{count, number}} entry",
     "entries_other": "{{count, number}} entries"
@@ -66,7 +93,13 @@
   },
   "import": {
     "title": "Import from Telegram",
-    "instruction": "Export your data in Telegram Desktop: “Export Telegram data” or “Export chat history”, in JSON format. You do not need to export files, photos or voice messages: they are not imported yet, and a note stays in the entry in their place.",
+    "instruction": "Export your data in Telegram Desktop: “Export Telegram data” or “Export chat history”, in JSON format. To bring in photos, files, videos and voice messages too, export them with the chat and keep result.json in the same folder as they are: they are copied into Kinige. Stickers and animations stay as a note in the entry.",
+    "media_one": "Media: {{count, number}} file, {{size}}",
+    "media_other": "Media: {{count, number}} files, {{size}}",
+    "mediaNone": "Media: none in the export",
+    "mediaMissing_one": "not in the export: {{count, number}}",
+    "mediaMissing_other": "not in the export: {{count, number}}",
+    "progressBytes": "{{done}} of {{total}}",
     "choose": "Choose result.json…",
     "opening": "Opening the file…",
     "chats": "Chats to import",
@@ -96,6 +129,13 @@
       "service": "Skipped service messages: {{count, number}}",
       "empty": "Skipped empty messages: {{count, number}}",
       "media": "Entries with attachments not imported: {{count, number}}",
+      "mediaAttached_one": "File attached: {{count, number}} ({{size}})",
+      "mediaAttached_other": "Files attached: {{count, number}} ({{size}})",
+      "mediaMissing_one": "File not in the export: {{count, number}}",
+      "mediaMissing_other": "Files not in the export: {{count, number}}",
+      "mediaSkipped_one": "File skipped (bad path or could not be read): {{count, number}}",
+      "mediaSkipped_other": "Files skipped (bad path or could not be read): {{count, number}}",
+      "diskFull": "Stopped: not enough disk space. What was copied stays; free some space and choose the same file again to finish.",
       "chats": "Chats created: {{count, number}}",
       "backup": "Database copy before the import: {{name}}",
       "done": "Done"
@@ -326,6 +366,11 @@
     "import_session_expired": "The chosen file was forgotten. Choose it again.",
     "import_backup_failed": "Could not take a copy of the database before the import. Nothing was written.",
     "unsupported": "This is not available on this system yet.",
+    "attachment_too_large": "The file is larger than 2 GB, or the pasted image is larger than 64 MB. It was not attached.",
+    "attachment_limit": "An entry can have at most 10 attachments.",
+    "attachment_unreadable": "Could not read the file. It may have been moved, changed while copying, or be a folder.",
+    "disk_full": "There is not enough disk space. Nothing was attached.",
+    "attachment_not_found": "That attachment is no longer there. Attach it again.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },

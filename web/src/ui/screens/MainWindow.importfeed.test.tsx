@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, MockApi, mockMessage } from "../../api/MockApi";
+import { NO_MEDIA } from "../../api/mockData";
 import type { ImportPreview } from "../../api/generated/ImportPreview";
 import { FakeObserver, edges, showEdge } from "../../test/fakeObserver";
 import { fireEvent, render, screen, waitFor, within } from "../../test/render";
@@ -15,7 +16,7 @@ const OLD_START = Date.UTC(2019, 2, 8, 12);
 const day = (at: number) => new Date(at - 4 * 3_600_000).toISOString().slice(0, 10);
 
 const PREVIEW: ImportPreview = {
-  chats: [{ id: "1000001", name: null, kind: "saved", total: 450, existing: 0 }],
+  chats: [{ id: "1000001", name: null, kind: "saved", total: 450, existing: 0, ...NO_MEDIA }],
   skippedChats: 0,
 };
 

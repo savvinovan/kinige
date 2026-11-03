@@ -12,6 +12,7 @@ use kinige_domain::{
     SearchPage,
 };
 use kinige_store::{Now, Store, StoreError};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use tauri::{AppHandle, Emitter, Runtime, State};
@@ -35,8 +36,9 @@ fn api(error: StoreError) -> ApiError {
 struct Inner {
     /// The number of the next session.
     next_session: u64,
-    /// The parsed export and its number.
-    session: Option<(u64, Arc<TgExport>)>,
+    /// The parsed export, its number and the folder of `result.json` (slice 7: the files of its media lie next to it). The folder
+    /// stays in Rust; the window never sees a path.
+    session: Option<(u64, Arc<TgExport>, Option<PathBuf>)>,
     /// An import is running.
     running: bool,
 }
@@ -52,6 +54,8 @@ pub struct ImportState {
 pub struct RunGuard<'a> {
     state: &'a ImportState,
     pub export: Arc<TgExport>,
+    /// The folder of the chosen `result.json`; the media are read from it.
+    pub folder: Option<PathBuf>,
 }
 
 impl Drop for RunGuard<'_> {
@@ -65,12 +69,12 @@ impl ImportState {
         self.inner.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Remembers the parsed export, the previous one is forgotten. The reply is the session number.
-    pub fn open(&self, export: TgExport) -> u64 {
+    /// Remembers the parsed export and the folder it was read from, the previous one is forgotten. The reply is the session number.
+    pub fn open(&self, export: TgExport, folder: Option<PathBuf>) -> u64 {
         let mut inner = self.lock();
         inner.next_session += 1;
         let id = inner.next_session;
-        inner.session = Some((id, Arc::new(export)));
+        inner.session = Some((id, Arc::new(export), folder));
         id
     }
 
@@ -81,8 +85,8 @@ impl ImportState {
         if inner.running {
             return Err(ErrorCode::ImportInProgress);
         }
-        let export = match &inner.session {
-            Some((id, export)) if *id == session => export.clone(),
+        let (export, folder) = match &inner.session {
+            Some((id, export, folder)) if *id == session => (export.clone(), folder.clone()),
             _ => return Err(ErrorCode::ImportSessionExpired),
         };
         inner.running = true;
@@ -90,6 +94,7 @@ impl ImportState {
         Ok(RunGuard {
             state: self,
             export,
+            folder,
         })
     }
 
@@ -151,13 +156,25 @@ pub fn import_telegram_open<R: Runtime>(
         .into_path()
         .map_err(|_| ApiError::from(ErrorCode::ImportFileUnreadable))?;
     let export = read_export(&path).map_err(ApiError::from)?;
-    open_with(&store, &state, export).map(Some)
+    // The media lie next to `result.json`: the session keeps that folder, in Rust only.
+    let folder = path.parent().map(std::path::Path::to_path_buf);
+    open_with_folder(&store, &state, export, folder).map(Some)
 }
 
-/// Preview of the parsed export and remembering the session (shared by the command and tests).
+/// Preview of the parsed export and remembering the session (shared by the command and tests); no folder, so no media.
 pub fn open_with(store: &Store, state: &ImportState, export: TgExport) -> ApiResult<ImportOpened> {
+    open_with_folder(store, state, export, None)
+}
+
+/// The same with the folder of `result.json`, from which the media are copied.
+pub fn open_with_folder(
+    store: &Store,
+    state: &ImportState,
+    export: TgExport,
+    folder: Option<PathBuf>,
+) -> ApiResult<ImportOpened> {
     let preview = store.import_preview(&export).map_err(api)?;
-    let session = state.open(export);
+    let session = state.open(export, folder);
     Ok(ImportOpened { session, preview })
 }
 
@@ -172,7 +189,7 @@ pub fn import_telegram_run<R: Runtime>(
 ) -> ApiResult<ImportReport> {
     let guard = state.begin(session).map_err(ApiError::from)?;
     let sink = app.clone();
-    let result = store.import_telegram(
+    let result = store.import_telegram_with_media(
         guard.export.clone(),
         chat_ids,
         crate::commands::get_language(),
@@ -181,6 +198,7 @@ pub fn import_telegram_run<R: Runtime>(
             let _ = sink.emit_to(MAIN_LABEL, IMPORT_PROGRESS, progress);
         },
         state.stop.clone(),
+        guard.folder.as_deref(),
     );
     drop(guard);
     // Whatever happens, the entries from earlier batches are already in the database: the window refreshes the feed and the counters.

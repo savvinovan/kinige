@@ -13,14 +13,15 @@ mod open;
 mod rows;
 mod sweep;
 
+pub(crate) use copy::{Hints, Source, Staged, io_error, stage};
 pub use faults::AttachFault;
 pub(crate) use faults::Faults;
 pub(crate) use media::MediaPool;
 pub use media::{Media, MediaVariant};
 pub use open::OpenTarget;
 pub(crate) use rows::{
-    PurgedFile, attachments_column, delete_for_purge, draft_views, live_count, parse_attachments,
-    promote_draft, summary_for,
+    NewFile, PurgedFile, attachments_column, delete_for_purge, draft_views, insert_attachment,
+    insert_attachment_at, live_count, parse_attachments, promote_draft, summary_for,
 };
 pub use sweep::SweepReport;
 

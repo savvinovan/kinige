@@ -23,6 +23,7 @@ const entry = (id: string, body: string, patch: Partial<TrashItem> = {}, journal
     readOnly: false,
     origin: "user",
     replyTo: null,
+    attachments: [],
   },
   chatTitle: "Входящие",
   chatIcon: "📥",

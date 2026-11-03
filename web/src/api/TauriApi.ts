@@ -7,6 +7,8 @@ import type { AgentLogPage } from "./generated/AgentLogPage";
 import type { AgentMode } from "./generated/AgentMode";
 import type { ApiError } from "./generated/ApiError";
 import type { AppInfo } from "./generated/AppInfo";
+import type { AttachOutcome } from "./generated/AttachOutcome";
+import type { AttachmentView } from "./generated/AttachmentView";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
 import type { ChatDraft } from "./generated/ChatDraft";
@@ -47,6 +49,9 @@ const SETTINGS_CHANGED = "settings-changed";
 const OPEN_MESSAGE = "open-message";
 /** Import progress (`import::IMPORT_PROGRESS`); it reaches the main window only. */
 const IMPORT_PROGRESS = "import-progress";
+/** Files dragged over the window and dropped on it (`attachments::ATTACH_DRAG`, `ATTACH_DROPPED`); the main window only. */
+const ATTACHMENTS_DRAG = "attachments-drag";
+const ATTACHMENTS_DROPPED = "attachments-dropped";
 
 const CODES = [
   "empty_message",
@@ -81,6 +86,11 @@ const CODES = [
   "import_session_expired",
   "import_backup_failed",
   "unsupported",
+  "attachment_too_large",
+  "attachment_limit",
+  "attachment_unreadable",
+  "disk_full",
+  "attachment_not_found",
   "internal",
 ] as const satisfies readonly ErrorCode[];
 
@@ -127,8 +137,46 @@ export class TauriApi implements KinigeApi {
     });
   }
 
-  sendMessage(chatId: string, body: string, replyToId?: string | null): Promise<MessageView> {
-    return call("send_message", replyToId ? { chatId, body, replyToId } : { chatId, body });
+  sendMessage(chatId: string, body: string, replyToId?: string | null, attachmentIds?: readonly string[]): Promise<MessageView> {
+    const args: Record<string, unknown> = { chatId, body };
+    if (replyToId) args.replyToId = replyToId;
+    if (attachmentIds && attachmentIds.length > 0) args.attachmentIds = attachmentIds;
+    return call("send_message", args);
+  }
+
+  attachPick(chatId: string): Promise<AttachOutcome> {
+    return call("attach_pick", { chatId });
+  }
+
+  async attachPaste(chatId: string, bytes: Uint8Array, nameHint?: string): Promise<AttachmentView> {
+    // A raw body: the chat id and the name go in headers (ASCII, so the name is percent-encoded; Rust decodes and cleans it).
+    const headers: Record<string, string> = { "x-chat-id": chatId };
+    if (nameHint) headers["x-name-hint"] = encodeURIComponent(nameHint);
+    try {
+      return await invoke<AttachmentView>("attach_paste", bytes, { headers });
+    } catch (reason) {
+      throw toApiError(reason);
+    }
+  }
+
+  attachDropped(token: string, chatId: string): Promise<AttachOutcome> {
+    return call("attach_dropped", { token, chatId });
+  }
+
+  async removeDraftAttachment(chatId: string, attachmentId: string): Promise<void> {
+    await call("remove_draft_attachment", { chatId, attachmentId });
+  }
+
+  async openAttachment(attachmentId: string): Promise<void> {
+    await call("open_attachment", { attachmentId });
+  }
+
+  onAttachmentsDrag(handler: (over: boolean) => void): Promise<() => void> {
+    return listen<boolean>(ATTACHMENTS_DRAG, (event) => handler(event.payload === true));
+  }
+
+  onAttachmentsDropped(handler: (token: string) => void): Promise<() => void> {
+    return listen<string>(ATTACHMENTS_DROPPED, (event) => handler(event.payload));
   }
 
   getSettings(): Promise<Settings> {

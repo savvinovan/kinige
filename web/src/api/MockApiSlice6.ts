@@ -33,6 +33,7 @@ export class MockApiSlice6 extends MockApiSlice5 {
         const day = facts.get(message.journalDate) ?? { lengths: [], excerpt: null };
         day.lengths.push([...message.bodyMd].length);
         day.excerpt ??= excerptOf(message.bodyMd);
+        day.photos = (day.photos ?? 0) + message.attachments.filter((a) => a.kind === "image").length;
         facts.set(message.journalDate, day);
       }
       const { cols, days } = mockDays(year, firstWeekday, facts);

@@ -63,6 +63,7 @@ export function mockMessage(part: Partial<MessageView> & Pick<MessageView, "id" 
     readOnly: false,
     origin: "user",
     replyTo: null,
+    attachments: [],
     ...part,
   };
 }
@@ -103,3 +104,6 @@ export function compareFeed(
   if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
+
+/** The media fields of an import preview chat that has none (slice 7). */
+export const NO_MEDIA = { mediaFiles: 0, mediaBytes: 0, mediaMissing: 0 } as const;

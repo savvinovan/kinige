@@ -1,5 +1,15 @@
 :root {
   --layout-agent-warning-width: 30rem; /** Width of the warning window when turning on access (390 px at a 13 px root). */
+  --layout-attachment-album-max-height: 400px; /** Tallest a single photo goes in the feed. A photo is content, not text, so the size is in px and does not grow with the text scale. */
+  --layout-attachment-pixel: 1px; /** One image pixel on screen: a single photo is never drawn larger than its own pixel size (width * pixel). */
+  --layout-attachment-cell-aspect-1: 1.78; /** Width / height of the cell of a row with one photo (16:9). Which rows an album has is in ui/attachments/albumRows.ts. */
+  --layout-attachment-cell-aspect-2: 1.33; /** Width / height of a cell in a row of two photos (4:3). */
+  --layout-attachment-cell-aspect-3: 1; /** Width / height of a cell in a row of three photos (square). */
+  --layout-attachment-fallback-aspect: 1.33; /** Width / height of the box of a photo whose size is not known (4:3). */
+  --layout-attachment-file-icon-box: 2.8rem; /** Side of the square under the icon of a file card (36 px at a 13 px root). */
+  --layout-attachment-pending-size: 4.5rem; /** Side of a pending tile in the composer (58 px at a 13 px root); the height of a file tile. */
+  --layout-attachment-pending-file-width: 13rem; /** Width of a pending file tile (169 px at a 13 px root). */
+  --layout-attachment-story-narrow-width: 640px; /** Storybook only: the width of a narrow window in the attachment stories. */
   --layout-calendar-width: 23rem; /** Width of the calendar window (299 px at a 13 px root); in a narrow window the panel takes the window width minus the margins. */
   --layout-calendar-cell: 2.7rem; /** Side of a day cell in the month grid (35 px): seven cells fit in the window with margins. */
   --layout-calendar-day-mark: 0.3rem; /** The dot under the 'today' number (4 px). */
@@ -93,11 +103,7 @@
   --layout-chat-dialog-top: 4rem; /** Offset of the chat window from the top edge: the window is pressed to the top, not centered, so the picker that expands under the field does not shift the title (52 px). */
   --layout-trash-entry-lines: 6; /** How many lines of the entry text a trash plate shows; the rest is cut off with an ellipsis (line-clamp). The full text is not needed in the trash: only enough to recognize the entry. */
   --layout-trash-confirm-width: 26rem; /** Width of the 'Delete forever?' confirmation window (338 px at a 13 px root). */
-  --border-width-hairline: 1px; /** A thin divider and an element border. */
-  --border-width-strong: 2px; /** A line that must read as a line: curves on charts. */
-  --focus-width: 2px; /** Thickness of the keyboard focus ring. */
-  --focus-offset: 2px; /** The gap between the element and the focus ring. */
-  --color-scheme: dark; /** The app scheme for system elements (scroll bars, input fields, the selection menu). There is one theme, dark (the graphite palette, ADR-0004), so the browser must draw system elements in the dark variant: without it the scroll bars are light on a dark background (KINIG-38). base.css puts this value into `color-scheme` on html; it does not break the transparency of the capture window (the corners are transparent on macOS 15 and 26, docs/screens/kinig-40). `$type` is not set: DTCG has no type for a keyword, and a foreign type (like `string`) would be wrong. When a light theme appears, the value moves into the palette. */
+  --opacity-lightbox-scrim: 0.94; /** The backdrop of the lightbox: the window background colour with this opacity, nearly opaque so the photo stands alone. */
   --opacity-drag-ghost: 0.8; /** The 'ghost' of an entry plate dragged onto a chat in the sidebar (a slice 3 acceptance decision): a copy of the plate under the cursor, quiet but readable. */
   --opacity-forest-front: 0.32; /** Opacity of a tree that stands in front of the selected tree and overlaps it. */
   --opacity-forest-selection-fill: 0.28; /** Opacity of the fill under the selected cell outline. */
@@ -113,6 +119,11 @@
   --opacity-context-plate: 0.6; /** Fill of a pale context entry in the capture window: the message plate fill with this opacity. Only the fill: the text keeps its normal color, so the text contrast is computed from the existing pairs (the fill lies between the paper and the plate). */
   --opacity-panel-edge: 0.18; /** A thin light outline of the floating capture panel: a border in the primary text color with this opacity (a pseudo-element of the panel). It separates the panel from dark windows behind it; on light desktops the fill and the shadow are enough. */
   --opacity-scrim: 0.72; /** The backdrop of a modal window: a fill in the window background color with this opacity. The main window behind the dialog stays distinguishable but recedes. */
+  --border-width-hairline: 1px; /** A thin divider and an element border. */
+  --border-width-strong: 2px; /** A line that must read as a line: curves on charts. */
+  --focus-width: 2px; /** Thickness of the keyboard focus ring. */
+  --focus-offset: 2px; /** The gap between the element and the focus ring. */
+  --color-scheme: dark; /** The app scheme for system elements (scroll bars, input fields, the selection menu). There is one theme, dark (the graphite palette, ADR-0004), so the browser must draw system elements in the dark variant: without it the scroll bars are light on a dark background (KINIG-38). base.css puts this value into `color-scheme` on html; it does not break the transparency of the capture window (the corners are transparent on macOS 15 and 26, docs/screens/kinig-40). `$type` is not set: DTCG has no type for a keyword, and a foreign type (like `string`) would be wrong. When a light theme appears, the value moves into the palette. */
   --emoji-columns: 9; /** Columns in the emoji picker grid. The same number is in the code as EMOJI_COLUMNS (frimousse takes it as a number); the test emoji/emojiTokens.test.ts compares both. */
   --emoji-cell-size: 2.4rem; /** Height of an emoji cell in the picker grid (31 px at a 13 px root); the width is a share of the row (1 / columns). */
   --emoji-glyph-size: 1.5rem; /** Emoji glyph size in a picker cell (19.5 px). */
@@ -246,6 +257,17 @@
   --type-code-line-height: 1.5;
   --type-meta-size: 0.85rem;
   --type-meta-line-height: 1.3;
+  --layout-attachment-album-max-width: calc(var(--layout-message-measure) - 2 * var(--layout-message-padding-inline)); /** Widest an album or a file card goes: the inner width of the widest bubble. The same width is used by the grid and the file card, so every attachment of an entry shares one column. */
+  --layout-attachment-album-gap: var(--space-1); /** Gap between the cells of an album grid. */
+  --layout-attachment-album-radius: var(--radius-tile); /** Corners of a photo, a grid cell, a file card and a pending tile. */
+  --layout-attachment-tile-text-padding: var(--space-2); /** Padding of the 'No preview' and 'File is missing' tile text. */
+  --layout-attachment-file-padding: var(--space-2); /** Padding of a file card around the icon and the text. */
+  --layout-attachment-file-gap: var(--space-3); /** Gap between the icon box and the text of a file card. */
+  --layout-attachment-pending-gap: var(--space-2); /** Gap between pending tiles; the row wraps. */
+  --layout-attachment-pending-remove-offset: var(--space-1); /** Offset of the x button from the corner of a pending tile. */
+  --layout-attachment-drop-inset: var(--space-3); /** How far the drop outline stands from the edge of the feed. */
+  --layout-attachment-lightbox-padding: var(--space-5); /** Margin around the photo and the controls of the lightbox. */
+  --layout-attachment-lightbox-gap: var(--space-3); /** Gap between the controls and the photo of the lightbox. */
   --layout-message-gap-group: var(--space-4); /** The gap between series and around the day label (13 px; D2: was 9.75). */
   --layout-feed-padding-inline: var(--space-6); /** The feed margin on the left and right (26 px; D2: was 19.5). */
   --layout-feed-padding-block: var(--space-5); /** The feed margin at the top and bottom (19.5 px; D2: was 9.75). */

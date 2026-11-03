@@ -21,6 +21,8 @@ mod feed_page;
 mod forest;
 mod hlc_state;
 mod import;
+mod import_batch;
+mod import_media;
 mod import_time;
 mod maintenance;
 mod messages;

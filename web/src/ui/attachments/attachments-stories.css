@@ -1,0 +1,42 @@
+/* Storybook only: the stand-ins around the attachment components. Tokens only. */
+.attachments-scene {
+  display: grid;
+  gap: var(--layout-message-gap-group);
+  max-width: var(--layout-feed-column);
+}
+
+/* A 640 px wide window: the album and the pending tiles must fit. */
+.attachments-scene--narrow {
+  width: var(--layout-attachment-story-narrow-width);
+  max-width: 100%;
+}
+
+.attachments-scene__slot {
+  margin-block-end: var(--space-2);
+}
+
+/* The feed stand-in for the drop overlay: a window-sized area with the overlay on top. */
+.attachments-feed {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: var(--layout-message-gap-group);
+  box-sizing: border-box;
+  max-width: var(--layout-feed-column);
+  min-height: var(--layout-window-height);
+  padding: var(--space-5);
+}
+
+/* The composer stand-in under the pending tiles. */
+.attachments-composer {
+  display: grid;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  padding: var(--space-3);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-field);
+}
+
+.attachments-composer__field {
+  color: var(--color-text-tertiary);
+}

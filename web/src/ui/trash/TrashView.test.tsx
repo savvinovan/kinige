@@ -20,6 +20,7 @@ const item = (id: string, patch: Partial<TrashItem> = {}, body = "Купить �
     readOnly: false,
     origin: "user",
     replyTo: null,
+    attachments: [],
   },
   chatTitle: "Книги",
   chatIcon: "📚",

@@ -20,4 +20,16 @@ total: number,
 /**
  * Of them already imported (present in `message_ext`).
  */
-existing: number, };
+existing: number, 
+/**
+ * Files the export holds for these entries: photos, files, videos, voice messages, audio (slice 7).
+ */
+mediaFiles: number, 
+/**
+ * Their size in bytes as the export states it.
+ */
+mediaBytes: number, 
+/**
+ * Media the export says it did not download ("File not included"): they stay placeholders.
+ */
+mediaMissing: number, };

@@ -39,6 +39,8 @@ export function mockStage(lengths: readonly number[]): number {
 export interface MockDayFacts {
   lengths: number[];
   excerpt: string | null;
+  /** Live photos of the day (slice 7). */
+  photos?: number;
 }
 
 /** Every day of `year` in calendar order with the given per-day facts (keyed by `YYYY-MM-DD`). */
@@ -55,6 +57,8 @@ export function mockDays(year: number, first: FirstWeekday, facts: ReadonlyMap<s
       notes: day?.lengths.length ?? 0,
       stage: mockStage(day?.lengths ?? []),
       excerpt: day?.excerpt ?? null,
+      photos: day?.photos ?? 0,
+      firstSummary: null,
     });
   }
   return { cols, days };

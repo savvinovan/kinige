@@ -1,0 +1,93 @@
+/* A photo over the whole window. Above the modal windows (z-index 2). Tokens only; nothing animates. */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-attachment-lightbox-gap);
+  box-sizing: border-box;
+  padding: var(--layout-attachment-lightbox-padding);
+  color: var(--color-text-primary);
+}
+
+/* The dialog gets focus itself on open; a ring around the whole window says nothing. */
+.lightbox:focus {
+  outline: none;
+}
+
+.lightbox__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-surface-background);
+  opacity: var(--opacity-lightbox-scrim);
+}
+
+.lightbox__bar {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.lightbox__counter {
+  margin-inline-end: auto;
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--type-small-line-height);
+}
+
+.lightbox__stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--layout-attachment-lightbox-gap);
+  min-height: 0;
+}
+
+/* The photo fits the stage and keeps its shape; a small photo is not enlarged. */
+.lightbox__figure {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+}
+
+.lightbox__image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* "No preview" in the same area: a box of the default photo shape. */
+.lightbox__tile {
+  position: relative;
+  width: var(--layout-attachment-album-max-width);
+  max-width: 100%;
+  aspect-ratio: var(--layout-attachment-fallback-aspect);
+  border-radius: var(--layout-attachment-album-radius);
+  overflow: hidden;
+}
+
+.lightbox__step {
+  flex: none;
+}
+
+/* The first photo has no previous one and the last no next one: the button stays (focus does not jump) but is muted and does nothing. */
+.lightbox__step[aria-disabled="true"],
+.lightbox__step[aria-disabled="true"]:hover {
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: default;
+  opacity: var(--opacity-disabled);
+}

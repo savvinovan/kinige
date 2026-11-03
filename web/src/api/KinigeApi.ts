@@ -3,6 +3,8 @@ import type { AgentLogEntry } from "./generated/AgentLogEntry";
 import type { AgentLogPage } from "./generated/AgentLogPage";
 import type { AgentMode } from "./generated/AgentMode";
 import type { AppInfo } from "./generated/AppInfo";
+import type { AttachOutcome } from "./generated/AttachOutcome";
+import type { AttachmentView } from "./generated/AttachmentView";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
 import type { ChatDraft } from "./generated/ChatDraft";
@@ -83,7 +85,7 @@ export interface KinigeApi {
    * the same chat; if there is no such entry, it is in the trash or the id is wrong - `reply_target_not_found`, nothing
    * is written.
    */
-  sendMessage(chatId: string, body: string, replyToId?: string | null): Promise<MessageView>;
+  sendMessage(chatId: string, body: string, replyToId?: string | null, attachmentIds?: readonly string[]): Promise<MessageView>;
   getSettings(): Promise<Settings>;
   setTextSize(size: TextSize): Promise<void>;
   /** The system dialog for choosing the Markdown copy folder (called from Rust). Cancelling returns the previous settings. */
@@ -226,6 +228,29 @@ export interface KinigeApi {
   getForestDayTarget(date: string, currentChatId: string | null): Promise<ForestTarget | null>;
   /** Remembers how much of the forest is shown and whether it is the board or the calendar (local, not synced). */
   setForestView(view: ForestView, mode: ForestMode): Promise<void>;
+
+  // ---- attachments (slice 7): main window only ----
+  /**
+   * The paperclip: the system file dialog (called from Rust, paths do not reach the frontend); every chosen file becomes a tile
+   * of the chat's draft. Cancelling attaches nothing. The first error stops the rest and comes back in `error` together with the
+   * tiles that made it.
+   */
+  attachPick(chatId: string): Promise<AttachOutcome>;
+  /**
+   * A paste: the bytes of an image or a file from the clipboard. `nameHint` is only a hint and is cleaned in Rust (a nameless
+   * paste is named `pasted-HHMMSS.<ext>`). More than 64 MiB - `attachment_too_large`.
+   */
+  attachPaste(chatId: string, bytes: Uint8Array, nameHint?: string): Promise<AttachmentView>;
+  /** Claims a drop: `token` comes from `onAttachmentsDropped`, is single-use and expires. Folders are skipped and counted. */
+  attachDropped(token: string, chatId: string): Promise<AttachOutcome>;
+  /** The x on a tile: the draft attachment and its file go. */
+  removeDraftAttachment(chatId: string, attachmentId: string): Promise<void>;
+  /** Open an attachment in its system app (a clone; documents are opened, everything else is shown in the file manager). */
+  openAttachment(attachmentId: string): Promise<void>;
+  /** Files are dragged over the window (`true`) or left it / were dropped (`false`): the "Drop to attach" overlay. */
+  onAttachmentsDrag(handler: (over: boolean) => void): Promise<() => void>;
+  /** Files were dropped on the window: the one-time token for `attachDropped`, never a path. */
+  onAttachmentsDropped(handler: (token: string) => void): Promise<() => void>;
 
   // ---- capture window (slice 2): a separate set of commands, Inbox only ----
   /** Everything the window needs on showing: language, text size, today's context, the append target, the draft, an error. */
