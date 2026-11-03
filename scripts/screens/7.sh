@@ -62,12 +62,12 @@ PY
 labels() {
   if [ "$UI" = "ru" ]; then
     L_INBOX="Входящие"; L_IDEAS="Идеи"; L_TRIP="Поездка"; L_SEND="Отправить"; L_TRASH="Корзина"; L_BOOKS="Книги"; L_SNAPS="Снимки"
-    L_SEARCH="Поиск"; L_RESTORE_SNAPS="Восстановить запись из чата «Снимки»"; L_PURGE_ALBUM="Удалить навсегда запись из чата «Альбом»"
+    L_SEARCH="Поиск"; L_SEARCH_RESULTS="Результаты поиска"; L_RESTORE_SNAPS="Восстановить запись из чата «Снимки»"; L_PURGE_ALBUM="Удалить навсегда запись из чата «Альбом»"
     L_CONFIRM_TITLE="Удалить навсегда?"; L_CONFIRM="Удалить навсегда | Удалить навсегда"
     L_PHOTO="Фото"; L_REMOVE="Убрать"; L_VIEWER="Просмотр фото"; L_NEXT="Следующее фото"; L_CLOSE="Закрыть"; L_MISSING="Файла нет"
   else
     L_INBOX="Inbox"; L_IDEAS="Идеи"; L_TRIP="Поездка"; L_SEND="Send"; L_TRASH="Trash"; L_BOOKS="Книги"; L_SNAPS="Снимки"
-    L_SEARCH="Search"; L_RESTORE_SNAPS="Restore the entry from “Снимки”"; L_PURGE_ALBUM="Delete forever the entry from “Альбом”"
+    L_SEARCH="Search"; L_SEARCH_RESULTS="Search results"; L_RESTORE_SNAPS="Restore the entry from “Снимки”"; L_PURGE_ALBUM="Delete forever the entry from “Альбом”"
     L_CONFIRM_TITLE="Delete forever?"; L_CONFIRM="Delete forever | Delete forever"
     L_PHOTO="Photo"; L_REMOVE="Remove"; L_VIEWER="Photo viewer"; L_NEXT="Next photo"; L_CLOSE="Close"; L_MISSING="File is missing"
   fi
@@ -372,27 +372,31 @@ cat "$OUT/open.txt"
 ax front "$(app_pid)" > /dev/null 2>&1
 
 # ---- 11. Search by file name: «маршрут» is in no text, only in the name маршрут.pdf of an attachment ----
-# Setting the value of the search field is an AX action (no keys). Whether the page takes it as typing is a finding: the result goes
-# to `search.txt` either way.
+# The query goes in the way a person's paste does: the word on the pasteboard, the search field focused with an AX action, Edit > Paste
+# from the menu bar (setting the field's AXValue directly did not reach the page as typing: the first run of this step proved it).
+# The results section ("Search results") exists only while a search is open, so seeing it, and the entry in it, is the evidence.
+# Whether the page took the paste is a finding: the result goes to `search.txt` either way.
 press "${L_INBOX}"
 sleep 2
-SEARCH_SET="$(ax set "$(app_pid)" "${L_SEARCH}" "маршрут" 2>&1)"
-sleep 4
-if has "Фото и два документа к поездке"; then
-  SEARCH_RESULT="RESULT: the search found the entry by the file name маршрут.pdf (its text does not contain the word)"
+osascript -e 'set the clipboard to "маршрут"' > "$K/debug/clipboard-search.txt" 2>&1
+SEARCH_FOCUS="$(ax focus "$(app_pid)" "${L_SEARCH}" 2>&1)"
+sleep 1
+SEARCH_MENU="$(ax menu "$(app_pid)" "Edit|Правка" "Paste|Вставить" 2>&1)"
+sleep 5
+if has "${L_SEARCH_RESULTS}" && has "Фото и два документа к поездке"; then
+  SEARCH_RESULT="RESULT: the search results are open and the entry is in them: found by the file name маршрут.pdf (its text does not contain the word)"
 else
-  SEARCH_RESULT="RESULT: the entry was not in the results after setting the field (the page may not have taken the value as typing; a finding)"
+  SEARCH_RESULT="RESULT: the search results did not open or did not hold the entry after the paste (a finding)"
 fi
 {
-  echo "set: ${SEARCH_SET}"
+  echo "focus: ${SEARCH_FOCUS}"
+  echo "menu: ${SEARCH_MENU}"
   echo "text of the entry: $(sqlw "select body_md from message where body_md like 'Фото и два документа%'")"
-  echo "word is in the text: $(sqlw "select count(*) from message where body_md like '%маршрут%'") entries"
+  echo "entries whose text has the word: $(sqlw "select count(*) from message where body_md like '%маршрут%'")"
   echo "${SEARCH_RESULT}"
 } > "$OUT/search.txt"
 cat "$OUT/search.txt"
 shoot_light 13-search-by-file-name
-ax set "$(app_pid)" "${L_SEARCH}" "" > /dev/null 2>&1
-sleep 2
 
 # ---- 12. The forest card with photos (the method of slice 6: the expanded board and the pinned caption of the selected day) ----
 kill -9 "$(app_pid)"
@@ -457,6 +461,16 @@ rm -rf "$K/bench"
 /usr/bin/time -l "$BENCH" "$K/bench-media" synthetic 200 --files 40 --file-mb 50 > "$OUT/import-media.txt" 2> "$K/debug/media-time.txt" || fail "import_bench 2 GB"
 grep -E "maximum resident|peak memory|real" "$K/debug/media-time.txt" >> "$OUT/import-media.txt"
 rm -rf "$K/bench-media"
+# The control for the forest year table: the same code, the same VM, the same 100 000 entries, no photos. The difference between the
+# two lines is what the attachments cost; the VM itself drifts between runs, so a number from another run is not a comparison.
+"$BENCH" "$K/bench-plain" synthetic 100000 > "$OUT/bench-no-images.txt" 2>&1 || fail "import_bench 100000 without photos"
+rm -rf "$K/bench-plain"
+{
+  echo "# get_forest_year on the same VM and the same code in this run: with 10 000 photos (bench.txt) and without photos (bench-no-images.txt)"
+  echo "with photos:    $(grep 'forest year table' "$OUT/bench.txt" | sed -E 's/.*calls over [0-9.]+: //; s/;.*//')"
+  echo "without photos: $(grep 'forest year table' "$OUT/bench-no-images.txt" | sed -E 's/.*calls over [0-9.]+: //; s/;.*//')"
+} > "$OUT/forest-compare.txt"
+cat "$OUT/forest-compare.txt"
 cat "$OUT/bench.txt" "$OUT/cold-start.txt" "$OUT/import-media.txt"
 RSS="$(awk '/maximum resident/ {print $1}' "$K/debug/media-time.txt")"
 [ "${RSS:-0}" -gt 0 ] && [ "${RSS:-0}" -lt 300000000 ] || fail "peak memory of the 2 GB import is ${RSS:-unknown} bytes (limit 300 MB)"

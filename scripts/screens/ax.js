@@ -5,7 +5,8 @@
 //   osascript -l JavaScript scripts/screens/ax.js has    <pid> <text>      (prints yes/no)
 //   osascript -l JavaScript scripts/screens/ax.js frame  <pid> <text>      (prints "x y width height" of the first match)
 //   osascript -l JavaScript scripts/screens/ax.js resize <pid> <width> <height>  (resizes the window; prints the resulting size)
-//   osascript -l JavaScript scripts/screens/ax.js set    <pid> <text> <value>   (sets AXValue of the first text field, search field or combo box that matches)
+//   osascript -l JavaScript scripts/screens/ax.js focus  <pid> <text>           (AXFocused on the first text field, search field or combo box that matches;
+//                                                  setting AXValue does not reach the page as typing, a paste after focusing does)
 //   osascript -l JavaScript scripts/screens/ax.js menu   <pid> <menu names> <item names>  (AXPress on a menu bar item; names are alternatives separated by "|",
 //                                                  the app menu is localized: "Edit|Правка" "Paste|Вставить")
 // Process window: the first one by default; the AX_WINDOW=<part of the title> variable selects the "Settings" or "Kinige" window.
@@ -17,7 +18,7 @@ function run(argv) {
   const windowWant = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("AX_WINDOW")) || "";
   const se = Application("System Events");
   const proc = se.processes.whose({ unixId: Number(pid) })[0];
-  // The role filter belongs to `press`; for `set` and `menu` the same argument is a value or an item name.
+  // The role filter belongs to `press`; for `menu` the same argument is an item name.
   const pressable =
     roleWant && mode === "press"
       ? new RegExp("^AX(" + roleWant + ")$")
@@ -113,9 +114,9 @@ function run(argv) {
             return "scrolled: " + label.slice(0, 80);
           } catch (e) {}
         }
-        if (mode === "set" && /^AX(ComboBox|TextField|TextArea|SearchField)$/.test(p.role)) {
-          k.value = roleWant;
-          return "set: " + p.role + " " + label.slice(0, 60);
+        if (mode === "focus" && /^AX(ComboBox|TextField|TextArea|SearchField)$/.test(p.role)) {
+          k.focused = true;
+          return "focused: " + p.role + " " + label.slice(0, 60);
         }
         if (mode === "press" && pressable.test(p.role)) {
           k.actions.byName("AXPress").perform();
