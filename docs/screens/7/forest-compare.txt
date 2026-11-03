@@ -1,0 +1,3 @@
+# get_forest_year on the same VM and the same code in this run: with 10 000 photos (bench.txt) and without photos (bench-no-images.txt)
+with photos:    forest year table (get_forest_year, 120 calls over 2018..2023): p50 225.0 ms, p95 365.6 ms, max 494.3 ms
+without photos: forest year table (get_forest_year, 120 calls over 2018..2023): p50 85.3 ms, p95 112.4 ms, max 136.8 ms

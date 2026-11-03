@@ -1,4 +1,5 @@
-set: set: AXComboBox Поиск | Поиск | Поиск
+focus: focused: AXComboBox Поиск | Поиск | Поиск
+menu: clicked: Edit > Paste
 text of the entry: Фото и два документа к поездке.
-word is in the text: 0 entries
-RESULT: the search found the entry by the file name маршрут.pdf (its text does not contain the word)
+entries whose text has the word: 0
+RESULT: the search results are open and the entry is in them: found by the file name маршрут.pdf (its text does not contain the word)
