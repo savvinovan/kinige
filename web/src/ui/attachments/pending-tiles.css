@@ -1,9 +1,10 @@
-/* The tiles above the composer field. Tokens only; the row wraps. */
+/* The tiles above the composer field. Tokens only; the row wraps. The row stands in the same column as the field (`.composer > *`
+   centers a child in the feed column, so the inline margins stay `auto`) and has a gap above the field. */
 .pending-tiles {
   display: flex;
   flex-wrap: wrap;
   gap: var(--layout-attachment-pending-gap);
-  margin: 0;
+  margin-block: 0 var(--space-2);
   padding: 0;
   list-style: none;
 }

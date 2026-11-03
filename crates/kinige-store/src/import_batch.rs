@@ -5,6 +5,7 @@
 use crate::chats::insert_new_chat;
 use crate::error::write_err;
 use crate::hlc_state::{get_state, load_clock, save_clock};
+use crate::import_lookup::chat_title;
 use crate::import_media::{Late, LateOutcome, StagedMedia, attach_late, attach_to_new};
 use crate::send::{insert_message, mark_dirty};
 use crate::{Now, Store, StoreError};
@@ -65,7 +66,7 @@ impl Store {
         pt_ms: i64,
         tz: String,
     ) -> Result<BatchOutcome, StoreError> {
-        let (ext_chat, title) = (chat.id.clone(), crate::import::chat_title(chat));
+        let (ext_chat, title) = (chat.id.clone(), chat_title(chat));
         let dirs = self.dirs();
         self.write(move |conn| {
             let tx = conn

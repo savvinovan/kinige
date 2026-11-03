@@ -2,10 +2,11 @@
 
 use super::*;
 use crate::StoreOptions;
-use crate::error::write_err;
+use crate::error::{read_err, write_err};
 use crate::hlc_state::save_clock;
 use crate::import_batch::Row;
 use kinige_domain::hlc::Clock;
+use kinige_domain::import::EXT_SRC_TELEGRAM;
 use kinige_domain::telegram::parse_export;
 use std::collections::BTreeSet;
 

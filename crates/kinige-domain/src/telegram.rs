@@ -19,6 +19,7 @@ mod markdown_tests;
 #[cfg(test)]
 mod markdown_tests_media;
 mod raw;
+mod raw_values;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

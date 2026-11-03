@@ -6,7 +6,8 @@ use crate::attachment::{
     Dirs, Faults, Hints, NewFile, Source, Staged, insert_attachment, insert_attachment_at,
     make_dir, stage,
 };
-use crate::messages::{load, replace_body_without_revision};
+use crate::message_body::replace_body_without_revision;
+use crate::messages::load;
 use crate::send::mark_dirty;
 use crate::{Now, StoreError};
 use kinige_domain::telegram::TgFile;
