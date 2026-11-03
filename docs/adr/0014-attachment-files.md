@@ -32,5 +32,5 @@ Slice 7 stores photos and files next to the database, shows them in the feed, co
 ## Not verified
 - Whether WKWebView hands a pasted Finder file to `clipboardData.files`.
 - `http://kinige-media.localhost` on Windows (the Windows screenshots check it).
-- The licenses of `gif` and `image-webp` (`cargo deny` decides; if one fails, that format becomes `file`).
+- The licenses of `gif` and `image-webp`: the `deny` job of CI passes with them (checked on the branch), so all four formats stay `image`.
 - Whether `fs::copy` drops `com.apple.quarantine` on this macOS (the allowlist assumes it does).
