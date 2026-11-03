@@ -1,0 +1,3 @@
+﻿windows: Microsoft Windows NT 10.0.26100.0
+thumbnails built on request of the web view (kinige-media.localhost): 6
+attachments marked missing by the startup sweep: 1
