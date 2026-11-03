@@ -213,6 +213,8 @@
     "modeCalendar": "Calendar",
     "notes_one": "{{count}} note",
     "notes_other": "{{count}} notes",
+    "photos_one": "{{count}} photo",
+    "photos_other": "{{count}} photos",
     "noNotes": "No notes",
     "stage0": "bare ground",
     "stage1": "a sprout",
@@ -371,6 +373,7 @@
     "attachment_unreadable": "Could not read the file. It may have been moved, changed while copying, or be a folder.",
     "disk_full": "There is not enough disk space. Nothing was attached.",
     "attachment_not_found": "That attachment is no longer there. Attach it again.",
+    "folders_not_attached": "Folders are not attached.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },

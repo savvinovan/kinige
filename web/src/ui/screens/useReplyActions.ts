@@ -5,6 +5,7 @@ import type { MessageView } from "../../api/generated/MessageView";
 import type { OnThisDayEntry } from "../../api/generated/OnThisDayEntry";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import type { DraftSaver } from "../../draft/useDraftSaver";
+import { summaryOf } from "../attachments/summaryText";
 import { focusComposer } from "./mainWindowParts";
 import type { FocusTarget } from "./useFeed";
 
@@ -15,6 +16,8 @@ interface UseReplyActionsOptions {
   select: (chatId: string | null) => Promise<void>;
   focusOn: (target: FocusTarget) => void;
   draft: string;
+  /** The ids of the unsent attachments (slice 7): sent with the entry, which may then have no text. */
+  tileIds: readonly string[];
   reply: ReplyTo | null;
   saver: DraftSaver<{ body: string; replyToId: string | null }>;
   changeReply: (reply: ReplyTo | null) => void;
@@ -35,7 +38,7 @@ interface UseReplyActionsOptions {
  * error the text stays in the composer with the error above it.
  */
 export function useReplyActions(options: UseReplyActionsOptions) {
-  const { api, selected, select, focusOn, draft, reply, saver, changeReply, refreshReply, clearDraft, planDraft, refreshChats } = options;
+  const { api, selected, select, focusOn, draft, tileIds, reply, saver, changeReply, refreshReply, clearDraft, planDraft, refreshChats } = options;
   const { appendSent, setComposerError, dismissCard, onDismissed } = options;
   const sending = useRef(false);
   const selectedRef = useRef(selected);
@@ -64,20 +67,21 @@ export function useReplyActions(options: UseReplyActionsOptions) {
   }, [staleReply, selected, confirmReplyState]);
 
   const submit = () => {
-    if (sending.current || draft.trim() === "" || selected === null) return;
+    if (sending.current || (draft.trim() === "" && tileIds.length === 0) || selected === null) return;
     sending.current = true;
     // While sending, input is not accepted (see `onDraftChange`), and the scheduled draft save is cancelled; one already
     // sent is awaited: Rust clears the chat's draft in the same transaction as the send, and a late write would
     // bring back the sent text.
     saver.cancel();
     const text = draft;
+    const ids = [...tileIds];
     const replyTo = reply;
     // The entry being replied to was moved to another chat: the strip above the composer already said so, the entry goes
     // without a reply (Rust accepts a reply only to an entry of the same chat).
     const replyId = replyTo === null || replyTo.state === "moved" ? null : replyTo.id;
     saver
       .settle()
-      .then(() => api.sendMessage(selected, text, replyId))
+      .then(() => api.sendMessage(selected, text, replyId, ids))
       .then((sent) => {
         appendSent(sent);
         void refreshChats();
@@ -119,6 +123,7 @@ export function useReplyActions(options: UseReplyActionsOptions) {
       excerpt: entry.text,
       state: "live",
       yearsLater: 0,
+      attachments: summaryOf(entry.message.attachments),
     });
     focusComposer();
   };

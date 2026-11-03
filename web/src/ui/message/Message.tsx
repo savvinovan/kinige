@@ -45,6 +45,8 @@ export interface MessageProps {
   readOnly?: boolean;
   /** Reply quote (slice 5, `ReplyQuote`): sits at the top of the bubble, above the text. Normal mode only. */
   quote?: ReactNode;
+  /** The entry's photos and files (slice 7, `MessageAttachments`): between the quote and the text. Not shown while editing. */
+  attachments?: ReactNode;
   /** Entry tags (lower case, without `#`), determined by Rust: highlighted and clickable in the text. */
   tags?: readonly string[];
   /** Words of the entry found by search, as written in it (Rust returns them): highlighted whole (slice 4). */
@@ -107,6 +109,7 @@ export function Message({
   byAgent = false,
   readOnly = false,
   quote,
+  attachments,
   tags,
   markTerms,
   mode = "view",
@@ -246,6 +249,7 @@ export function Message({
   const checkLocked = !viewing || readOnly || !onToggleDone;
 
   const classes = ["message"];
+  if (attachments) classes.push("message--has-attachments");
   if (highlighted) classes.push("message--highlighted");
   if (timeBelow) classes.push("message--time-below");
   if (isTask) classes.push("message--task");
@@ -301,9 +305,10 @@ export function Message({
           ) : null}
           <div className="message__content">
             {mode === "view" ? quote : null}
+            {mode !== "editing" ? attachments : null}
             {mode === "editing" ? (
               <MessageEditor initial={markdown} onSave={(text) => onSaveEdit?.(text)} onCancel={() => onCancelEdit?.()} />
-            ) : (
+            ) : markdown.trim() === "" && attachments ? null : (
               <div
                 className="markdown"
                 onClick={handleBodyClick}

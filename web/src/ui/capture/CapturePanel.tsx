@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
+import { summaryOf, summaryText } from "../attachments/summaryText";
 import { Composer } from "../composer/Composer";
 import { formatTime } from "../feed/dates";
 import type { FeedMessage } from "../feed/buildFeed";
@@ -128,7 +129,12 @@ export function CapturePanel({ context, appendTargetId, value, onChange, onSend,
                     <time className="capture-entry__time" dateTime={new Date(entry.createdAt).toISOString()}>
                       {formatTime(new Date(entry.createdAt), language, entry.createdTz)}
                     </time>
-                    <div className="markdown capture-entry__text" dangerouslySetInnerHTML={{ __html: html }} />
+                    {entry.bodyMd.trim() === "" && (entry.attachments?.length ?? 0) > 0 ? (
+                      // An entry with no text (a photo sent alone) is described by what it holds (slice 7).
+                      <div className="markdown capture-entry__text">{summaryText(summaryOf(entry.attachments ?? []), t)}</div>
+                    ) : (
+                      <div className="markdown capture-entry__text" dangerouslySetInnerHTML={{ __html: html }} />
+                    )}
                   </article>
                 </li>
               ))}

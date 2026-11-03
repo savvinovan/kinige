@@ -228,6 +228,10 @@ fn attach_paths(store: &Store, chat_id: &str, paths: &[PathBuf]) -> AttachOutcom
             }
         }
     }
+    // The files of the drop were attached; the folders were not, and the person is told ("Folders are not attached").
+    if outcome.error.is_none() && outcome.skipped_folders > 0 {
+        outcome.error = Some(ErrorCode::FoldersNotAttached);
+    }
     outcome
 }
 

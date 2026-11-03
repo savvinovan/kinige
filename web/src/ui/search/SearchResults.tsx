@@ -4,6 +4,7 @@ import type { ChatSummary } from "../../api/generated/ChatSummary";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { Language } from "../../api/generated/Language";
 import type { SearchHit } from "../../api/generated/SearchHit";
+import { summaryOf, summaryText } from "../attachments/summaryText";
 import { Button } from "../controls/Button";
 import { Checkbox } from "../controls/Checkbox";
 import { IconButton } from "../controls/IconButton";
@@ -186,7 +187,11 @@ export function SearchResults(props: SearchResultsProps) {
                   <span className="search-hit__when">{formatDayLabel(hit.message.journalDate, today, language, labels)}</span>
                 </div>
                 <p className="search-hit__snippet">
-                  <HighlightedText text={hit.snippet} terms={hit.terms} />
+                  {/* An entry with no text is described by what it holds, and the file name can be the found word (slice 7). */}
+                  <HighlightedText
+                    text={hit.snippet !== "" ? hit.snippet : (summaryText(summaryOf(hit.message.attachments), t) || hit.snippet)}
+                    terms={hit.terms}
+                  />
                 </p>
               </li>
             );

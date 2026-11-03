@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { IconButton } from "../controls/IconButton";
 import { EmojiButton, type ComposerEmoji } from "./EmojiButton";
@@ -51,6 +51,17 @@ interface ComposerProps {
   autoFocus?: boolean;
   /** The "Reply to entry" line above the field (slice 5, `ReplyStrip`); main window only. */
   replyStrip?: ReactNode;
+  /** The unsent attachments (slice 7, `PendingTiles`): a row above the field, under the reply strip. Main window only. */
+  tiles?: ReactNode;
+  /** There is at least one tile: the entry can be sent with no text. */
+  hasTiles?: boolean;
+  /** The paperclip (slice 7): opens the file dialog. Without it the button is only drawn and unavailable. */
+  onAttach?: () => void;
+  /**
+   * Files in the pasted clipboard (slice 7), only when the clipboard has no text: a screenshot or a copied image. They are not
+   * pasted into the field; the handler attaches them. A paste with text is the usual text paste.
+   */
+  onPasteFiles?: (files: readonly File[]) => void;
 }
 
 /** Inside a code block (an odd number of ``` fences is open) Enter is a new line, not submit (spec §5). */
@@ -78,6 +89,10 @@ export function Composer({
   placeholder,
   autoFocus,
   replyStrip,
+  tiles,
+  hasTiles = false,
+  onAttach,
+  onPasteFiles,
 }: ComposerProps) {
   const { t } = useTranslation();
   const errorId = useId();
@@ -85,6 +100,8 @@ export function Composer({
   const input = useRef<HTMLTextAreaElement>(null);
   const [emojiHost, setEmojiHost] = useState<HTMLDivElement | null>(null);
   const hasText = value.trim() !== "";
+  // An entry may be sent with no text if it has attachments.
+  const canSend = hasText || hasTiles;
 
   // Focus in the field on appearance, but only if nobody else has it: the feed with the field is mounted again when the search results
   // close (the query was erased), while the person is still typing in the search field - its focus must not be taken away.
@@ -114,7 +131,16 @@ export function Composer({
     if (!onSubmit) return;
     if (insideCodeFence(event.currentTarget.value, event.currentTarget.selectionStart)) return;
     event.preventDefault();
-    if (hasText) onSubmit();
+    if (canSend) onSubmit();
+  };
+
+  // A screenshot or a copied image: the clipboard has files and no text. WKWebView's handling of a Finder file is not verified.
+  const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!onPasteFiles) return;
+    const files = [...event.clipboardData.files];
+    if (files.length === 0 || event.clipboardData.getData("text/plain") !== "") return;
+    event.preventDefault();
+    onPasteFiles(files);
   };
 
   const errorLine = (
@@ -128,10 +154,13 @@ export function Composer({
     <div className={floating ? "composer composer--floating" : "composer"}>
       {error && !floating ? errorLine : null}
       {replyStrip}
+      {tiles}
       {/* The place of the "inline" emoji picker (capture window): empty it has no height, with the panel it pushes the field up. */}
       {floating && emoji?.placement === "inline" ? <div className="composer__emoji-host" ref={setEmojiHost} /> : null}
       <div className={`composer__bar${error ? " composer__bar--invalid" : ""}`}>
-        {buttons.attach ? <IconButton icon="attach" label={t("composer.attach")} unavailable={viewOnly} /> : null}
+        {buttons.attach ? (
+          <IconButton icon="attach" label={t("composer.attach")} unavailable={viewOnly || !onAttach} onClick={onAttach} />
+        ) : null}
         {/* The copy of the text in ::after sets the field height: it grows without measuring scripts. */}
         <div className="composer__field" data-replicated-value={value}>
           <textarea
@@ -145,6 +174,7 @@ export function Composer({
             aria-describedby={error ? errorId : hintShown ? hintId : undefined}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={onKeyDown}
+            onPaste={onPaste}
           />
         </div>
         {buttons.emoji && emoji ? (
@@ -153,7 +183,7 @@ export function Composer({
           <IconButton icon="emoji" label={t("composer.emoji")} unavailable={viewOnly} />
         ) : null}
         {/* The right slot: "Send" for non-blank text, otherwise "microphone". Both buttons are the same size, the width does not jump. */}
-        {hasText ? (
+        {canSend ? (
           <span className="composer__action" key="send">
             <IconButton icon="send" label={t("composer.send")} tone="accent" unavailable={!onSubmit} onClick={send} />
           </span>

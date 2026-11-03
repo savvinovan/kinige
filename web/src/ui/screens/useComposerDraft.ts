@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { INBOX_ID, type KinigeApi } from "../../api/KinigeApi";
+import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { useDraftSaver } from "../../draft/useDraftSaver";
 
@@ -17,6 +18,8 @@ interface DraftValue {
 export function useComposerDraft(api: KinigeApi, selected: string | null) {
   const [draft, setDraft] = useState("");
   const [reply, setReply] = useState<ReplyTo | null>(null);
+  // The tiles above the field (slice 7): the chat's unsent attachments. Rust keeps them; they come back with the draft.
+  const [tiles, setTiles] = useState<AttachmentView[]>([]);
   // The text and the reply without waiting for a render: needed by handlers that change just one of the two.
   const latest = useRef<{ body: string; reply: ReplyTo | null }>({ body: "", reply: null });
   // Until the person has typed, the draft from Rust is put into the empty field; what was typed before the reply is not overwritten.
@@ -32,10 +35,23 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
   // The chat opening number: the draft loading effect runs again even when `selected` did not change (A->B->A before a render).
   const [opening, setOpening] = useState(0);
 
-  const show = useCallback((body: string, replyTo: ReplyTo | null) => {
+  const show = useCallback((body: string, replyTo: ReplyTo | null, attachments: AttachmentView[] = []) => {
     latest.current = { body, reply: replyTo };
     setDraft(body);
     setReply(replyTo);
+    setTiles(attachments);
+  }, []);
+
+  /** Files were attached (the dialog, a paste, a drop): their tiles join the row. Counts as typing: the saved draft no longer replaces the field. */
+  const addTiles = useCallback((added: readonly AttachmentView[]) => {
+    if (added.length === 0) return;
+    typed.current = true;
+    setTiles((was) => [...was, ...added.filter((tile) => !was.some((known) => known.id === tile.id))]);
+  }, []);
+
+  /** The x on a tile (after Rust has removed the file). */
+  const dropTile = useCallback((attachmentId: string) => {
+    setTiles((was) => was.filter((tile) => tile.id !== attachmentId));
   }, []);
 
   const plan = useCallback(
@@ -97,7 +113,7 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
     api
       .getDraft(selected)
       .then((saved) => {
-        if (live && opened.current === selected && !typed.current) show(saved.body, saved.replyTo);
+        if (live && opened.current === selected && !typed.current) show(saved.body, saved.replyTo, saved.attachments);
       })
       .catch(() => undefined);
     return () => {
@@ -120,5 +136,5 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
     };
   }, [flush]);
 
-  return { draft, reply, changeReply, refreshReply, clear, plan, saver, switchChat, type };
+  return { draft, reply, tiles, addTiles, dropTile, changeReply, refreshReply, clear, plan, saver, switchChat, type };
 }

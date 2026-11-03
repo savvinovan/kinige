@@ -52,13 +52,25 @@ export function stageName(t: TFunction, stage: number): string {
   return t(`forest.stage${clamped}` as "forest.stage0");
 }
 
-/** "5 notes · a large tree", or "No notes" for an empty day. */
-export function daySummary(t: TFunction, day: Pick<ForestDay, "notes" | "stage">): string {
-  return day.notes > 0 ? `${notesText(t, day.notes)} · ${stageName(t, day.stage)}` : t("forest.noNotes");
+/** "3 photos" / "3 фотографии": the day's live photos (slice 7). */
+export function photosText(t: TFunction, photos: number): string {
+  return t("forest.photos", { count: photos });
 }
 
-/** What a screen reader says for a day: "October 16, 5 notes, a large tree". */
-export function dayAnnouncement(t: TFunction, language: Language, day: Pick<ForestDay, "date" | "notes" | "stage">): string {
-  const summary = day.notes > 0 ? `${notesText(t, day.notes)}, ${stageName(t, day.stage)}` : t("forest.noNotes");
+/** "5 notes · 3 photos · a large tree" (the photos only when there are some), or "No notes" for an empty day. */
+export function daySummary(t: TFunction, day: Pick<ForestDay, "notes" | "stage"> & { photos?: number }): string {
+  if (day.notes === 0) return t("forest.noNotes");
+  const photos = (day.photos ?? 0) > 0 ? ` · ${photosText(t, day.photos ?? 0)}` : "";
+  return `${notesText(t, day.notes)}${photos} · ${stageName(t, day.stage)}`;
+}
+
+/** What a screen reader says for a day: "October 16, 5 notes, 3 photos, a large tree". */
+export function dayAnnouncement(
+  t: TFunction,
+  language: Language,
+  day: Pick<ForestDay, "date" | "notes" | "stage"> & { photos?: number },
+): string {
+  const photos = (day.photos ?? 0) > 0 ? `, ${photosText(t, day.photos ?? 0)}` : "";
+  const summary = day.notes > 0 ? `${notesText(t, day.notes)}${photos}, ${stageName(t, day.stage)}` : t("forest.noNotes");
   return t("forest.announce", { date: shortDay(day.date, language), summary });
 }

@@ -10,8 +10,9 @@ import type { MessageView } from "./generated/MessageView";
 const MAX_PER_ENTRY = 10;
 const MAX_PASTE_BYTES = 64 * 1024 * 1024;
 
-/** The picture size the mock gives a pasted or picked image. */
-const PICTURE = { width: 640, height: 480 };
+/** The picture size in pixels the mock gives a pasted or picked image. */
+const PICTURE_W = 640;
+const PICTURE_H = 480;
 
 /** A tile for a file the test "attached": a photo if the name says so, a file card otherwise. */
 export function mockAttachment(id: string, filename: string, part: Partial<AttachmentView> = {}): AttachmentView {
@@ -25,8 +26,8 @@ export function mockAttachment(id: string, filename: string, part: Partial<Attac
     filename,
     mime: image ? `image/${ext === "jpg" ? "jpeg" : ext}` : "application/octet-stream",
     byteSize: 2048,
-    width: image ? PICTURE.width : null,
-    height: image ? PICTURE.height : null,
+    width: image ? PICTURE_W : null,
+    height: image ? PICTURE_H : null,
     durationMs: null,
     state: "local",
     ...part,
@@ -167,6 +168,7 @@ export class MockApiSlice7 extends MockApiSlice6 {
         break;
       }
     }
+    if (outcome.error === null && outcome.skippedFolders > 0) outcome.error = "folders_not_attached";
     return outcome;
   }
 

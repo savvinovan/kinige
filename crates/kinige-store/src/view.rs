@@ -15,7 +15,9 @@ use rusqlite::{Connection, OptionalExtension, Row};
 macro_rules! reply_target_object {
     () => {
         "json_object('chat', r.chat_id, 'date', r.journal_date, 'body', substr(r.body_md, 1, 1000), \
-         'trash', r.deleted_at IS NOT NULL)"
+         'trash', r.deleted_at IS NOT NULL, \
+         'att', (SELECT json_group_array(json_object('k', a.kind, 'n', a.filename)) FROM attachment a \
+                 WHERE a.message_id = r.id AND a.deleted_at IS NULL))"
     };
 }
 
@@ -116,5 +118,25 @@ fn parse_target(json: &str) -> Option<ReplyTarget> {
         journal_date: text("date")?,
         body_md: text("body")?,
         in_trash: value.get("trash")?.as_i64()? != 0,
+        attachments: attachment_summary(value.get("att")),
     })
+}
+
+/// The `att` value of the reply target: an array of `{k, n}`, which SQLite hands over as text when it passes a subquery. A damaged
+/// value means no attachments.
+fn attachment_summary(value: Option<&serde_json::Value>) -> kinige_domain::AttachmentSummary {
+    let parsed: Option<serde_json::Value> = match value {
+        Some(serde_json::Value::String(text)) => serde_json::from_str(text).ok(),
+        Some(other) => Some(other.clone()),
+        None => None,
+    };
+    let items = parsed
+        .as_ref()
+        .and_then(serde_json::Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    kinige_domain::attachment::summarize(items.iter().filter_map(|item| {
+        let kind = kinige_domain::AttachmentKind::parse(item.get("k")?.as_str()?)?;
+        Some((kind, item.get("n")?.as_str()?))
+    }))
 }

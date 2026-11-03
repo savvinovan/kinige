@@ -11,6 +11,7 @@ const LIVE: ReplyTo = {
   excerpt: "Так будет лучше вторая строка",
   state: "live",
   yearsLater: 3,
+  attachments: { photos: 0, files: 0, name: null },
 };
 
 describe("Цитата ответа", () => {

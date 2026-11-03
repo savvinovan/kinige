@@ -353,7 +353,10 @@ fn a_drop_leaves_a_single_use_token_and_only_the_main_window_counts() {
         outcome["skippedFolders"], 1,
         "a folder is skipped, not attached"
     );
-    assert_eq!(outcome["error"], Value::Null);
+    assert_eq!(
+        outcome["error"], "folders_not_attached",
+        "the file was attached and the folder is reported"
+    );
     let again = call(
         &main,
         "attach_dropped",

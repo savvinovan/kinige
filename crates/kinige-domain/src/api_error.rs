@@ -76,6 +76,8 @@ pub enum ErrorCode {
     DiskFull,
     /// A draft attachment of this chat with this id does not exist (send, remove).
     AttachmentNotFound,
+    /// A folder was in a drop: it is skipped ("Folders are not attached"); the files of the same drop were attached.
+    FoldersNotAttached,
     Internal,
 }
 

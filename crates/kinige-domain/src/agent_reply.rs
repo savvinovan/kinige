@@ -44,8 +44,24 @@ pub struct AgentEntry {
     /// The `- [ ]` items inside the entry with numbers for `set_task_done(item)`; the field is absent if there are no items.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tasks: Vec<TaskItem>,
+    /// What the entry holds (slice 7): kind, file name, size and, for a photo, its size in pixels. Never the bytes, a path or a key
+    /// (ADR-0009); the field is absent for an entry without attachments.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub attachments: Vec<AgentAttachment>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub truncated: bool,
+}
+
+/// One attachment as an agent sees it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AgentAttachment {
+    pub kind: &'static str,
+    pub name: String,
+    pub bytes: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub width: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<u32>,
 }
 
 impl AgentEntry {

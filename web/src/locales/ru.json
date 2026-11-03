@@ -239,6 +239,10 @@
     "notes_few": "{{count}} записи",
     "notes_many": "{{count}} записей",
     "notes_other": "{{count}} записи",
+    "photos_one": "{{count}} фото",
+    "photos_few": "{{count}} фото",
+    "photos_many": "{{count}} фото",
+    "photos_other": "{{count}} фото",
     "noNotes": "Записей нет",
     "stage0": "пустая земля",
     "stage1": "росток",
@@ -403,6 +407,7 @@
     "attachment_unreadable": "Не удалось прочитать файл. Возможно, его перенесли, он менялся во время копирования или это папка.",
     "disk_full": "Не хватает места на диске. Ничего не прикреплено.",
     "attachment_not_found": "Этого вложения уже нет. Прикрепите его заново.",
+    "folders_not_attached": "Папки не прикрепляются.",
     "internal": "Что-то пошло не так.",
     "loadFailed": "Не удалось загрузить Kinige"
   },

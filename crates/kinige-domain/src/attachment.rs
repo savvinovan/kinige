@@ -10,7 +10,8 @@ use ts_rs::TS;
 
 mod names;
 pub use names::{
-    classify, is_openable_document, mirror_file_names, sanitize_filename, stored_ext, summary_of,
+    classify, is_openable_document, mirror_file_names, sanitize_filename, stored_ext, summarize,
+    summary_of,
 };
 
 /// The largest attachment: 2 GiB (the free Telegram limit; the user's decision of 03.11.2026).

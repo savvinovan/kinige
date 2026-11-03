@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { useLanguage } from "../../i18n/I18n";
+import { summaryText } from "../attachments/summaryText";
 import { IconButton } from "../controls/IconButton";
 import { formatLongDate } from "../feed/dates";
 import { Icon } from "../icons/Icon";
@@ -26,13 +27,15 @@ export function ReplyStrip({ quote, onCancel }: ReplyStripProps) {
   const date = quote.journalDate === null ? "" : formatLongDate(quote.journalDate, language);
   const live = quote.state === "live";
   const label = !live ? t(NOT_LIVE_LABEL[quote.state]) : t("reply.strip", { date });
+  // An old entry with no text is described by what it holds: "Photo", "3 photos", a file name (slice 7).
+  const preview = quote.excerpt !== "" ? quote.excerpt : summaryText(quote.attachments, t);
   return (
     <div className="reply-strip" role="group" aria-label={live ? t("reply.stripLabel", { date }) : label}>
       <span className="reply-strip__icon">
         <Icon name="reply" />
       </span>
       <span className="reply-strip__label">{label}</span>
-      {live && quote.excerpt !== "" ? <span className="reply-strip__text">{quote.excerpt}</span> : null}
+      {live && preview !== "" ? <span className="reply-strip__text">{preview}</span> : null}
       <IconButton small icon="close" label={t("reply.cancel")} onClick={onCancel} />
     </div>
   );

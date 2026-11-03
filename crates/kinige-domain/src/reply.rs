@@ -1,6 +1,7 @@
 //! A reply to an entry (slice 5, PRD §4.2): the `core.reply_to_id` link, the quote in the plate and the "N years later" caption. No IO.
 //! The link has no foreign key: the old entry may be in the trash, deleted for good or not yet arrived through sync.
 
+use crate::attachment::AttachmentSummary;
 use crate::search::snippet;
 use chrono::NaiveDate;
 use serde::Serialize;
@@ -42,15 +43,18 @@ pub struct ReplyTo {
     /// "N years later" caption is not shown.
     #[ts(type = "number")]
     pub years_later: i64,
+    /// What the old entry holds (slice 7): an entry with no text is quoted as "Photo", "3 photos" or its file name.
+    pub attachments: AttachmentSummary,
 }
 
-/// What is known about the target entry from the query row: chat, day, text and the trash flag.
+/// What is known about the target entry from the query row: chat, day, text, the trash flag and its attachments.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReplyTarget {
     pub chat_id: String,
     pub journal_date: String,
     pub body_md: String,
     pub in_trash: bool,
+    pub attachments: AttachmentSummary,
 }
 
 /// The quote for the reply `reply_id` on the day `reply_date`; `target = None` means there is no entry.
@@ -67,6 +71,7 @@ pub fn reply_to(reply_id: &str, reply_date: &str, target: Option<ReplyTarget>) -
             },
             chat_id: Some(old.chat_id),
             journal_date: Some(old.journal_date),
+            attachments: old.attachments,
         },
         None => ReplyTo {
             id: reply_id.to_string(),
@@ -75,6 +80,7 @@ pub fn reply_to(reply_id: &str, reply_date: &str, target: Option<ReplyTarget>) -
             excerpt: String::new(),
             state: ReplyState::Missing,
             years_later: 0,
+            attachments: AttachmentSummary::default(),
         },
     }
 }

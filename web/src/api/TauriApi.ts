@@ -91,6 +91,7 @@ const CODES = [
   "attachment_unreadable",
   "disk_full",
   "attachment_not_found",
+  "folders_not_attached",
   "internal",
 ] as const satisfies readonly ErrorCode[];
 

@@ -6,6 +6,7 @@ import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { Settings } from "../../api/generated/Settings";
 import { useLanguage } from "../../i18n/I18n";
 import { AboutDialog } from "../about/AboutDialog";
+import { Lightbox } from "../attachments/Lightbox";
 import { CalendarDialog } from "../calendar/CalendarDialog";
 import { ChatDialog } from "../chat/ChatDialog";
 import { useRecordDrag } from "../drag/useRecordDrag";
@@ -17,6 +18,7 @@ import { ReplyStrip } from "../reply/ReplyStrip";
 import { SearchResults } from "../search/SearchResults";
 import { type ChatDialogState, EMPTY_LIST, focusComposer, toSidebar } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
+import { useAttachments } from "./useAttachments";
 import { useComposerDraft } from "./useComposerDraft";
 import { type FocusTarget, useFeed } from "./useFeed";
 import { useImport } from "./useImport";
@@ -54,7 +56,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const [about, setAbout] = useState<string | null>(null);
   // The number of the "to the bottom edge of the feed" request: grows after the "On this day" card is hidden.
   const [toBottom, setToBottom] = useState(0);
-  const { draft, reply, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
+  const { draft, reply, tiles, addTiles, dropTile, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
     useComposerDraft(api, selected);
   const prefs = useSettingsState(api, initialSettings);
   const { settings } = prefs;
@@ -89,6 +91,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onMutated: bumpMutations,
   });
   const { reload: reloadFeed, restart: restartFeed } = feed;
+  const attachments = useAttachments({ api, selected, tiles, addTiles, dropTile, messages: feed.messages, onError: setComposerError });
   const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
   // Window focus: has a new journal day begun (the "Today" and "Yesterday" labels in the feed; the card rereads itself).
   const { checkDay } = feed;
@@ -174,6 +177,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     select,
     focusOn,
     draft,
+    tileIds: tiles.map((tile) => tile.id),
     reply,
     saver: draftSaver,
     changeReply,
@@ -282,7 +286,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       onOpenImport={importer.start}
       // The version was not received: the window opens anyway, with a dash instead of the version (the window has no separate channel to the log).
       onOpenAbout={() => void api.appInfo().then((info) => setAbout(info.title), () => setAbout(t("about.unknown")))}
-      composerButtons={{ emoji: true }}
+      composerButtons={{ attach: true, emoji: true }}
       emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji }}
       chats={sidebarChats}
       moveTargets={moveTargets}
@@ -346,6 +350,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       }}
       onSubmit={submit}
       composerError={composerError ? t(`error.${composerError}`) : undefined}
+      attachments={attachments.controls}
       onOpenLink={openLink}
       onOpenSettings={() => void api.openSettings().catch(() => undefined)}
       overlay={
@@ -363,6 +368,15 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
             />
           ) : null}
           {importer.dialog ? <ImportDialog {...importer.dialog} /> : null}
+          {attachments.lightbox ? (
+            <Lightbox
+              images={attachments.lightbox.images}
+              index={attachments.lightbox.index}
+              onIndexChange={attachments.setLightboxIndex}
+              onClose={attachments.closeLightbox}
+              onOpenExternal={attachments.openFile}
+            />
+          ) : null}
           {about !== null ? <AboutDialog title={about} onClose={() => setAbout(null)} /> : null}
           {datePick ? (
             <CalendarDialog

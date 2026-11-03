@@ -5,6 +5,7 @@ import type { OnThisDayEntry } from "../../api/generated/OnThisDayEntry";
 import type { OnThisDayYear } from "../../api/generated/OnThisDayYear";
 import { useLanguage } from "../../i18n/I18n";
 import type { Language } from "../../i18n";
+import { summaryOf, summaryText } from "../attachments/summaryText";
 import { Button } from "../controls/Button";
 import { IconButton } from "../controls/IconButton";
 import { formatLongDate, formatTime } from "../feed/dates";
@@ -83,7 +84,7 @@ function Year({
                 aria-label={t("onThisDay.openLabel", { date, time })}
                 onClick={() => onOpen(entry.message.id)}
               >
-                <span className="on-this-day__text">{entry.text}</span>
+                <span className="on-this-day__text">{entry.text !== "" ? entry.text : summaryText(summaryOf(entry.message.attachments), t)}</span>
                 <time className="on-this-day__time" dateTime={new Date(entry.message.createdAt).toISOString()}>
                   {time}
                 </time>

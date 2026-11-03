@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Language } from "../../api/generated/Language";
 import type { TrashItem } from "../../api/generated/TrashItem";
+import { MessageAttachments } from "../attachments/MessageAttachments";
 import { renderContextMarkdown } from "../capture/contextMarkdown";
 import { Button } from "../controls/Button";
 import { formatDayLabel } from "../feed/dates";
@@ -22,6 +23,8 @@ interface TrashViewProps {
   onRestore: (id: string) => void;
   /** Only after the "Delete forever" confirmation. */
   onPurge: (id: string) => void;
+  /** A click on a photo or a file card of a trashed entry (slice 7): it opens in the system app. Without it they are only shown. */
+  onOpenAttachment?: (attachmentId: string) => void;
 }
 
 const DEFAULT_ICON = "💬";
@@ -32,7 +35,7 @@ const DEFAULT_ICON = "💬";
  * asks for confirmation (the only confirmation in the app: the action is irreversible; the default focus is on "Cancel").
  * There is no "Empty trash" button. There is no heading above the list, as above the feed; an empty trash is a quiet line.
  */
-export function TrashView({ items, language, today, busyId = null, error, onRestore, onPurge }: TrashViewProps) {
+export function TrashView({ items, language, today, busyId = null, error, onRestore, onPurge, onOpenAttachment }: TrashViewProps) {
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState<TrashItem | null>(null);
   const labels = { today: t("feed.today"), yesterday: t("feed.yesterday") };
@@ -70,6 +73,14 @@ export function TrashView({ items, language, today, busyId = null, error, onRest
                         {formatDayLabel(message.journalDate, today, language, labels)} · {left}
                       </span>
                     </header>
+                    {message.attachments.length > 0 ? (
+                      // The photos and files go to the trash with the entry and show there until it is restored or deleted for good.
+                      <MessageAttachments
+                        attachments={message.attachments}
+                        onOpenImage={(id) => onOpenAttachment?.(id)}
+                        onOpenFile={(id) => onOpenAttachment?.(id)}
+                      />
+                    ) : null}
                     <div
                       className="markdown trash-entry__text"
                       // The same safe rendering as in the feed (markdown.ts), only without links and Tab stops.

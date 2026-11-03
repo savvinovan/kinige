@@ -35,7 +35,9 @@ describe("MainWindow на MockApi: сценарий слайса 1", () => {
     expect(document.querySelector(".chat-row__count")).toBeNull();
     expect(screen.getByText(/Пока пусто/)).toBeInTheDocument();
     expect(field()).toHaveFocus();
-    for (const dead of ["Прикрепить файл", "Записать голосовое"]) expect(screen.queryByRole("button", { name: dead })).toBeNull();
+    // The paperclip works since slice 7; the microphone is still not there (slice 7a).
+    expect(screen.getByRole("button", { name: "Прикрепить файл" })).not.toHaveAttribute("aria-disabled");
+    expect(screen.queryByRole("button", { name: "Записать голосовое" })).toBeNull();
     expect(screen.queryByRole("searchbox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Отправить" })).toBeNull();
   });

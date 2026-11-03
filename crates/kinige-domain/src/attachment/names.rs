@@ -177,19 +177,26 @@ pub fn is_openable_document(ext: &str) -> bool {
 
 /// The summary of an entry's attachments for lines that have no room for them.
 pub fn summary_of(attachments: &[AttachmentView]) -> AttachmentSummary {
-    let photos = attachments
-        .iter()
-        .filter(|a| a.kind == AttachmentKind::Image)
-        .count();
-    let files = attachments.len().saturating_sub(photos);
-    let name = match attachments {
-        [only] => Some(only.filename.clone()),
-        _ => None,
-    };
+    summarize(attachments.iter().map(|a| (a.kind, a.filename.as_str())))
+}
+
+/// The same from `(kind, file name)` pairs, for places that read only those two columns (the reply quote).
+pub fn summarize<'a>(items: impl Iterator<Item = (AttachmentKind, &'a str)>) -> AttachmentSummary {
+    let (mut photos, mut files) = (0u32, 0u32);
+    let mut only = None;
+    for (kind, name) in items {
+        if kind == AttachmentKind::Image {
+            photos = photos.saturating_add(1);
+        } else {
+            files = files.saturating_add(1);
+        }
+        only = Some(name);
+    }
+    let single = photos.saturating_add(files) == 1;
     AttachmentSummary {
-        photos: u32::try_from(photos).unwrap_or(u32::MAX),
-        files: u32::try_from(files).unwrap_or(u32::MAX),
-        name,
+        photos,
+        files,
+        name: only.filter(|_| single).map(str::to_string),
     }
 }
 
