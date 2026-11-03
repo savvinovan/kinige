@@ -7,7 +7,6 @@ import type { Settings } from "../../api/generated/Settings";
 import { useLanguage } from "../../i18n/I18n";
 import { AboutDialog } from "../about/AboutDialog";
 import { Lightbox } from "../attachments/Lightbox";
-import { CalendarDialog } from "../calendar/CalendarDialog";
 import { ChatDialog } from "../chat/ChatDialog";
 import { useRecordDrag } from "../drag/useRecordDrag";
 import { moveTargetsFrom } from "../message/moveTargets";
@@ -16,7 +15,8 @@ import { ImportDialog } from "../import/ImportDialog";
 import { OnThisDayCard } from "../onthisday/OnThisDayCard";
 import { ReplyStrip } from "../reply/ReplyStrip";
 import { SearchResults } from "../search/SearchResults";
-import { type ChatDialogState, EMPTY_LIST, focusComposer, toSidebar } from "./mainWindowParts";
+import { DateDialogs } from "./DateDialogs";
+import { type ChatDialogState, EMPTY_LIST, focusComposer, toSidebar, useCheckOnWindowFocus } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
 import { useAttachments } from "./useAttachments";
 import { useComposerDraft } from "./useComposerDraft";
@@ -93,13 +93,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const { reload: reloadFeed, restart: restartFeed } = feed;
   const attachments = useAttachments({ api, selected, tiles, addTiles, dropTile, onError: setComposerError });
   const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
-  // Window focus: has a new journal day begun (the "Today" and "Yesterday" labels in the feed; the card rereads itself).
-  const { checkDay } = feed;
-  useEffect(() => {
-    const onFocus = () => void checkDay();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [checkDay]);
+  useCheckOnWindowFocus(feed.checkDay);
   const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
   const moveTargets = useMemo(() => moveTargetsFrom(sidebarChats, selected, t), [sidebarChats, selected, t]);
   // Dragging a plate onto a chat: a drop on any chat except the one where the entry lives.
@@ -378,35 +372,24 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
             />
           ) : null}
           {about !== null ? <AboutDialog title={about} onClose={() => setAbout(null)} /> : null}
-          {datePick ? (
-            <CalendarDialog
-              value={search.filters[datePick] ?? feed.today}
-              today={feed.today}
-              language={language}
-              title={t(datePick === "from" ? "search.fromTitle" : "search.toTitle")}
-              onPick={(date) => {
-                search.setFilters({ ...search.filters, [datePick]: date });
-                setDatePick(null);
-              }}
-              onClose={() => setDatePick(null)}
-            />
-          ) : null}
-          {dateTarget ? (
-            <CalendarDialog
-              value={dateTarget.journalDate}
-              today={feed.today}
-              language={language}
-              error={dateError ? t(`error.${dateError}`) : undefined}
-              onPick={(date) => {
-                setDateError(null);
-                void feed.pickDate(date).then(setDateError);
-              }}
-              onClose={() => {
-                setDateError(null);
-                feed.closeDate();
-              }}
-            />
-          ) : null}
+          <DateDialogs
+            language={language}
+            today={feed.today}
+            datePick={datePick}
+            filters={search.filters}
+            onFilters={search.setFilters}
+            onDatePick={setDatePick}
+            dateTarget={dateTarget}
+            dateError={dateError ? t(`error.${dateError}`) : undefined}
+            onPickEntryDate={(date) => {
+              setDateError(null);
+              void feed.pickDate(date).then(setDateError);
+            }}
+            onCloseEntryDate={() => {
+              setDateError(null);
+              feed.closeDate();
+            }}
+          />
         </>
       }
     />
