@@ -135,7 +135,7 @@ export function Feed({
   const hasNewer = paging?.hasNewer === true;
 
   // The day at the top (slice 6). Reported while the person is in charge of the scroll position (`listening`); the feed's own
-  // jumps (to an entry, to the bottom) switch it off until the next wheel, key, touch or press on the scroller.
+  // jumps to an entry switch it off until the next wheel, key, touch or press on the scroller (a scroll to the bottom keeps it on).
   const listening = useRef(true);
   const topDayHandler = useRef(onTopDay);
   const reportFrame = useRef(0);

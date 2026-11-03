@@ -127,7 +127,7 @@ fn weights_equal_the_domain_weight_over_random_days_with_nul_pieces() {
         let weight = day_weight(notes);
         assert!(
             (stat.weight - weight).abs() < 1e-9,
-            "{}: sql {} domain {}",
+            "{}: scan {} domain {}",
             stat.date,
             stat.weight,
             weight
@@ -261,7 +261,7 @@ fn a_blob_row_is_skipped_the_excerpt_is_cut_by_characters_and_creation_time_pick
     set_created(&late.id, 5);
     set_created(&early.id, -5);
 
-    // Day 2: 4097 characters of 4-byte emoji and Cyrillic: the cut must land on a character, not in the middle of one.
+    // Day 2: 4200 characters of 4-byte emoji and Cyrillic: the cut must land on a character, not in the middle of one.
     let long: String = "😀ж".repeat(2100);
     assert!(long.chars().count() > 4096 && long.len() > 4096 * 2);
     let long_entry = store.send_message(INBOX_ID, &long, &at(2)).unwrap();

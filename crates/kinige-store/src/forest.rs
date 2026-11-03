@@ -128,8 +128,9 @@ pub(crate) fn stored_view(conn: &Connection) -> rusqlite::Result<(ForestView, Fo
 
 /// The facts of every day of `year` that has live entries, in calendar order. The rows are read over the `message_day`
 /// index (one row per entry, a measured 100,000-entry bench is in ADR-0013) and each day is computed here: the weight by
-/// the domain's own `day_weight`, the first entry by `created_at`, then id (the order `forest_day_target` uses). Only the
-/// first entry's text is copied, and only its first `EXCERPT_CHARS` characters (the excerpt is far shorter). Rows whose
+/// the domain's own `day_weight`, the first entry by `created_at`, then id (the order `forest_day_target` uses). Text is
+/// copied only from an entry that is the day's first so far, and only its first `EXCERPT_CHARS` characters (the excerpt is
+/// far shorter). Rows whose
 /// date is not a date or whose text is not text (a damaged value) are skipped.
 fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError> {
     /// One day while it is being scanned: the weights of its entries and the first one so far.
