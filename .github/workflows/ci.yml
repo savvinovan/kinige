@@ -44,11 +44,11 @@ jobs:
       - run: cargo test --workspace
       - name: kinige-domain под wasm32
         run: cargo build -p kinige-domain --target wasm32-unknown-unknown
-      # `cargo test` выше перегенерировал TS-типы (ts-rs); любое отличие от закоммиченного,
-      # включая новые неотслеживаемые файлы, — падаем (`git diff` их не видит).
-      - name: Сгенерированные TS-типы актуальны
+      # `cargo test` выше перегенерировал TS-типы (ts-rs) и таблицы года для историй леса (slice 6, crates/kinige-domain/tests/forest_fixtures.rs);
+      # любое отличие от закоммиченного, включая новые неотслеживаемые файлы, — падаем (`git diff` их не видит).
+      - name: Сгенерированные TS-типы и таблицы леса актуальны
         run: |
-          changed="$(git status --porcelain -- web/src/api/generated)"
+          changed="$(git status --porcelain -- web/src/api/generated web/src/ui/forest/fixtures)"
           if [ -n "$changed" ]; then
             echo "$changed"
             exit 1

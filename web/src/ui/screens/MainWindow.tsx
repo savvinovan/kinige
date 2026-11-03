@@ -25,6 +25,7 @@ import { useOnThisDay } from "./useOnThisDay";
 import { useOpenMessage } from "./useOpenMessage";
 import { useReplyActions } from "./useReplyActions";
 import { useSettingsState } from "./useSettingsState";
+import { useChangeCounter, useForestPane } from "./useForestPane";
 import { useTrash } from "./useTrash";
 
 interface MainWindowProps {
@@ -75,6 +76,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     (target: FocusTarget) => setFocus((previous) => ({ ...target, nonce: (previous?.nonce ?? 0) + 1 })),
     [],
   );
+  // The forest reloads when the journal changes: through this feed (`onMutated`) or from outside (the capture window).
+  const [mutations, bumpMutations] = useChangeCounter();
   const feed = useFeed({
     api,
     chatId: selected,
@@ -83,6 +86,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onError: setComposerError,
     onTag: setTag,
     focus,
+    onMutated: bumpMutations,
   });
   const { reload: reloadFeed, restart: restartFeed } = feed;
   const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
@@ -100,7 +104,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     canDrop: (chatId) => chatId !== selected,
     onDrop: (messageId, chatId) => feed.actions.onMoveTo(messageId, chatId),
   });
-  const trash = useTrash({ api, open: selected === null, refreshChats });
+  const trash = useTrash({ api, open: selected === null, refreshChats, onRestored: bumpMutations });
   const { clearError: clearTrashError } = trash;
 
   /** Открыть чат (или корзину при `null`). Черновик прежнего чата уходит в Rust до переключения. */
@@ -148,7 +152,10 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     };
     // Запись пришла из окна захвата или из буфера; меню значка просит открыть чат.
     api
-      .onEntriesChanged(() => void Promise.all([refreshChats(), reloadFeed()]))
+      .onEntriesChanged(() => {
+        bumpMutations();
+        void Promise.all([refreshChats(), reloadFeed()]);
+      })
       .then(keep)
       .catch(() => undefined);
     api
@@ -159,7 +166,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       closed = true;
       for (const off of offs) off();
     };
-  }, [api, refreshChats, reloadFeed, select]);
+  }, [api, refreshChats, reloadFeed, select, bumpMutations]);
 
   const { sending, submit, openEntry, startReply, hideCard } = useReplyActions({
     api,
@@ -178,6 +185,14 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     setComposerError,
     dismissCard: onThisDay.dismiss,
     onDismissed: () => setToBottom((count) => count + 1),
+  });
+  const forest = useForestPane({
+    api,
+    initial: { view: initialSettings.forestView, mode: initialSettings.forestMode },
+    chatId: selected,
+    ready: feed.loaded,
+    refreshKey: `${mutations}:${feed.today}`,
+    openEntry,
   });
 
   const closeChatDialog = () => {
@@ -290,6 +305,9 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       feedScrollTo={feed.scrollTo}
       feedToBottom={toBottom}
       feedLoading={selected === INBOX_ID && tag === null && !(feed.loaded && onThisDay.ready)}
+      forest={forest.pane}
+      onFeedTopDay={forest.onTopDay}
+      forestMenu={{ hidden: forest.hidden, onToggle: forest.toggleHidden }}
       // Карточка стоит в конце живой ленты: не в середине истории (после перехода к записи из поиска).
       onThisDay={
         onThisDay.card !== null && !feed.paging.hasNewer

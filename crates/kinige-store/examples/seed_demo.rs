@@ -1,7 +1,10 @@
 //! Демо-данные для проверки слайсов 3–5 в настоящем окне (скриншоты, ручная проверка): чаты, записи, теги, задачи, корзина;
 //! слайс 5 — записи Inbox на сегодняшний день журнала 1, 3, 4, 6 и 9 лет назад («В этот день») и синтетический личный чат
 //! Telegram с ответами. Только для разработки: пишет во временный каталог, который передан аргументом, и ничего не делает с
-//! настоящей базой. Все тексты синтетические.
+//! настоящей базой. Все тексты синтетические. Слайс 6 — синтетические год и прошлый год записей для леса: все стадии роста,
+//! неделя без записей, дни с несколькими чатами, запись в корзине; сегодняшнее дерево стоит на третьей стадии у самой границы
+//! четвёртой (одна запись в сто знаков поднимает его). Лес засевается только при `KINIGE_SEED_FOREST=1`, чтобы сценарии прежних
+//! слайсов не меняли свои данные.
 //!
 //! Использование: `cargo run -p kinige-store --example seed_demo -- <каталог данных> [<папка Markdown-копии>]`
 
@@ -26,6 +29,11 @@ use kinige_store::{Now, Store, StoreOptions};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+
+#[path = "seed_demo/forest.rs"]
+mod forest;
+
+use forest::seed_forest;
 
 const MINUTE: i64 = 60_000;
 const DAY: i64 = 24 * 60 * MINUTE;
@@ -59,18 +67,22 @@ fn main() {
     let old = store
         .create_chat("Старые заметки", Some("🗄️"), &at(-27 * DAY))
         .unwrap();
-    store
+    let long_name = store
         .create_chat(
             "Очень длинное название чата, которое не помещается в строку сайдбара",
             Some("🌿"),
             &at(-26 * DAY),
         )
         .unwrap();
+    let mut history = vec![books.id.clone(), work.id.clone(), long_name.id.clone()];
     // Чаты без эмодзи (хранятся с «💬» по умолчанию): сайдбар показывает для них плитку с первой буквой названия (слайс D2).
     for (days_ago, title) in [(25, "Проекты"), (24, "Linux notes"), (23, "Мама")] {
-        store
-            .create_chat(title, None, &at(-days_ago * DAY))
-            .unwrap();
+        history.push(
+            store
+                .create_chat(title, None, &at(-days_ago * DAY))
+                .unwrap()
+                .id,
+        );
     }
 
     send(
@@ -126,6 +138,24 @@ fn main() {
     store.set_chat_pinned(&work.id, true, &at(-DAY)).unwrap();
     store.set_chat_archived(&old.id, true, &at(-DAY)).unwrap();
     seed_on_this_day(&store, &now);
+    // The forest year (slice 6) only when asked: the scenarios of the earlier slices keep their data.
+    if std::env::var_os("KINIGE_SEED_FOREST").is_some() {
+        for (days_ago, title, icon) in [
+            (22, "Фильмы", "🎬"),
+            (21, "Путешествия", "✈️"),
+            (20, "Здоровье", "💪"),
+            (19, "Финансы", "💰"),
+            (18, "Кухня", "🍳"),
+        ] {
+            history.push(
+                store
+                    .create_chat(title, Some(icon), &at(-days_ago * DAY))
+                    .unwrap()
+                    .id,
+            );
+        }
+        seed_forest(&store, &now, &history, &old.id, &data);
+    }
     seed_telegram_chat(&store, &now);
     // Копия дня для строки в «Настройках».
     store.run_maintenance(&at(0)).unwrap();

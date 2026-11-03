@@ -39,6 +39,9 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "open_settings",
     "get_on_this_day",
     "dismiss_on_this_day",
+    "get_forest_year",
+    "get_forest_day_target",
+    "set_forest_view",
 ];
 
 /// Команды окна настроек (capability `settings`, слайс 4b, ADR-0010): настройки, сочетания, доступ ИИ-агентов, файл
@@ -111,6 +114,9 @@ pub const COMMANDS: &[&str] = &[
     "open_settings",
     "get_on_this_day",
     "dismiss_on_this_day",
+    "get_forest_year",
+    "get_forest_day_target",
+    "set_forest_view",
     "set_text_size",
     "choose_mirror_folder",
     "set_shortcut",

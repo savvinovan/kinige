@@ -134,6 +134,83 @@ fn failed_commands_log_only_categories_never_user_input() {
     }
 }
 
+/// The forest (slice 6): dates, excerpts and chat ids of the year table and of the day target, with success and with
+/// refusal, stay out of the process log.
+#[test]
+fn the_forest_commands_log_no_dates_excerpts_or_chat_ids() {
+    install_logger();
+    let fixture = fixture();
+    let window = window(&fixture, "main");
+    let sent = call(
+        &window,
+        "send_message",
+        json!({"chatId": kinige_domain::groups::INBOX_ID, "body": format!("{MARK} text of the first entry")}),
+    )
+    .unwrap();
+    let today = sent["journalDate"].as_str().unwrap();
+    let year: i64 = today.split('-').next().unwrap().parse().unwrap();
+    let table = call(
+        &window,
+        "get_forest_year",
+        json!({"year": year, "firstWeekday": "monday", "weekdaySource": "fallback"}),
+    )
+    .unwrap();
+    assert!(
+        table.to_string().contains(MARK),
+        "the excerpt reaches the window"
+    );
+    call(
+        &window,
+        "get_forest_day_target",
+        json!({"date": today, "currentChatId": format!("{MARK}-chat")}),
+    )
+    .unwrap();
+    call(
+        &window,
+        "get_forest_day_target",
+        json!({"date": format!("{MARK}-date"), "currentChatId": null}),
+    )
+    .expect_err("not a date");
+    call(
+        &window,
+        "get_forest_year",
+        json!({"year": 0, "firstWeekday": "monday"}),
+    )
+    .expect_err("not a year");
+    call(
+        &window,
+        "get_forest_year",
+        json!({"year": year, "firstWeekday": format!("{MARK}-day")}),
+    )
+    .expect_err("not a weekday");
+    call(
+        &window,
+        "set_forest_view",
+        json!({"view": format!("{MARK}-view"), "mode": "forest"}),
+    )
+    .expect_err("not a view");
+
+    let lines = CAPTURED.lock().unwrap().clone();
+    // The debug line about the first weekday is among the captured lines, so that the checks below look at it too.
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.contains("forest: first weekday")),
+        "the weekday line was not captured: {lines:?}"
+    );
+    for line in &lines {
+        assert!(
+            !line.to_uppercase().contains(MARK),
+            "user input in the log: {line}"
+        );
+        assert!(!line.contains(today), "a date in the log: {line}");
+        assert!(
+            !line.contains(kinige_domain::groups::INBOX_ID),
+            "a chat id in the log: {line}"
+        );
+    }
+}
+
 /// Файл настроек (слайс 4b, ADR-0010): метка в неизвестном ключе, названии чата, недопустимом значении, пути папки и в
 /// битом файле не попадает в журнал процесса ни при применении, ни при ошибке разбора, ни при небезопасных правах.
 #[test]

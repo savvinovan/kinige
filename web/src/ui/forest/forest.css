@@ -1,0 +1,299 @@
+/* The forest above the feed (slice 6): the pane, the header, the strip, the board, the day card (the calendar is in
+   forest-calendar.css). Tokens only; the board's own colours are drawn on a canvas from the same tokens (palette.ts). No borders on cells, no shadows, no motion. */
+
+.forest-pane {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  border-bottom: var(--border-width-hairline) solid var(--color-border-divider);
+  background: var(--color-surface-paper);
+  color: var(--color-text-secondary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+/* Expanded: a share of the main area, the feed and the input keep the rest. */
+.forest-pane--expanded {
+  flex: 0 1 max(var(--layout-forest-pane-height), var(--layout-forest-pane-min-height));
+  /* The pane is a fixed share of the window: whatever does not fit inside it is cut, never pushed into a scroll bar of the window. */
+  overflow: hidden;
+}
+
+.forest-pane__header {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+}
+
+.forest-pane__spacer {
+  flex: 1;
+}
+
+.forest-pane__year-switch,
+.forest-pane__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.forest-pane__year {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--type-section-family);
+  font-size: var(--type-section-size);
+  font-weight: var(--type-section-weight);
+  line-height: var(--type-section-line-height);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Whole year" is a button of its own: the season buttons next to it are a segmented group. */
+.forest-pane__whole {
+  min-height: var(--layout-control-height);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-field);
+}
+
+.forest-pane__note {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-tertiary);
+}
+
+.forest-pane__calendar {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-2) var(--space-4) var(--space-4);
+}
+
+/* ---- the board ---------------------------------------------------------------------------------------------------- */
+
+.forest-board {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The canvas and the card that follows the pointer. */
+.forest-board__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The row under the board for the selected day; it keeps its height when empty. */
+.forest-board__caption {
+  flex: none;
+  box-sizing: border-box;
+  min-height: calc(var(--type-meta-size) * var(--type-meta-line-height) + var(--space-3));
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+/* The canvas reads its label font from here, so large text scales the labels. */
+.forest-board__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+}
+
+.forest-board__canvas[data-dragging] {
+  cursor: grabbing;
+}
+
+/* ---- the day card ------------------------------------------------------------------------------------------------- */
+
+.day-card {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  width: var(--layout-forest-card-width);
+  max-width: calc(100% - var(--space-4));
+  padding: var(--space-3);
+  border-radius: var(--radius-message);
+  background: var(--color-surface-card);
+  color: var(--color-text-primary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  pointer-events: none;
+}
+
+/* The strip puts the card just under itself, over the feed. */
+.forest-strip > .day-card {
+  top: 100%;
+}
+
+/* The card of the selected day is one line under the board: date, count and stage, then the start of the entry. */
+.day-card--pinned {
+  position: static;
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  width: auto;
+  max-width: none;
+  padding: 0;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.day-card--pinned p {
+  flex: none;
+}
+
+.day-card--pinned .day-card__excerpt {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  text-overflow: ellipsis;
+  -webkit-line-clamp: unset;
+}
+
+.day-card p {
+  margin: 0;
+}
+
+.day-card__date {
+  color: var(--color-text-primary);
+}
+
+.day-card__summary {
+  color: var(--color-text-secondary);
+}
+
+.day-card__excerpt {
+  margin-top: var(--space-2);
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--layout-forest-card-lines);
+}
+
+/* ---- the strip ---------------------------------------------------------------------------------------------------- */
+
+.forest-strip {
+  position: relative;
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.forest-strip__row {
+  display: grid;
+  grid-template-columns: var(--layout-forest-strip-label) repeat(var(--forest-cols), minmax(0, var(--layout-forest-strip-cell)));
+  justify-content: center;
+  gap: var(--layout-forest-strip-gap);
+  margin-bottom: var(--layout-forest-strip-gap);
+}
+
+.forest-strip__month,
+.forest-strip__weekday {
+  color: var(--color-text-tertiary);
+  line-height: var(--type-meta-line-height);
+  white-space: nowrap;
+}
+
+.forest-strip__weekday {
+  grid-column: 1;
+  padding-right: var(--space-1);
+  text-align: right;
+}
+
+/* A month letter is wider than its cell; it spills over the next ones. */
+.forest-strip__month {
+  overflow: visible;
+}
+
+.forest-strip__day,
+.forest-calendar__day {
+  --forest-tint: var(--color-forest-strip-empty);
+}
+
+.forest-strip__day {
+  aspect-ratio: 1;
+  border-radius: var(--radius-inline);
+  background: var(--color-forest-strip-empty);
+}
+
+.forest-strip__day--future {
+  background: var(--color-forest-void);
+  opacity: var(--opacity-forest-heat-1);
+}
+
+.forest-strip__day[data-season="winter"],
+.forest-calendar__day[data-season="winter"] {
+  --forest-tint: var(--color-forest-winter-crown-mid);
+}
+
+.forest-strip__day[data-season="spring"],
+.forest-calendar__day[data-season="spring"] {
+  --forest-tint: var(--color-forest-spring-crown-mid);
+}
+
+.forest-strip__day[data-season="summer"],
+.forest-calendar__day[data-season="summer"] {
+  --forest-tint: var(--color-forest-summer-crown-mid);
+}
+
+.forest-strip__day[data-season="autumn"],
+.forest-calendar__day[data-season="autumn"] {
+  --forest-tint: var(--color-forest-autumn-crown-mid);
+}
+
+/* The strip before its year has arrived: the cells take their room and show nothing. */
+.forest-strip--placeholder .forest-strip__day {
+  visibility: hidden;
+}
+
+.forest-strip__day[data-stage="1"] {
+  background: var(--forest-tint);
+  opacity: var(--opacity-forest-heat-1);
+}
+
+.forest-strip__day[data-stage="2"] {
+  background: var(--forest-tint);
+  opacity: var(--opacity-forest-heat-2);
+}
+
+.forest-strip__day[data-stage="3"] {
+  background: var(--forest-tint);
+  opacity: var(--opacity-forest-heat-3);
+}
+
+.forest-strip__day[data-stage="4"] {
+  background: var(--forest-tint);
+  opacity: var(--opacity-forest-heat-4);
+}
+
+.forest-strip__day[data-stage="5"] {
+  background: var(--forest-tint);
+  opacity: var(--opacity-forest-heat-5);
+}
+
+.forest-strip__day[data-stage="6"] {
+  background: var(--forest-tint);
+  opacity: var(--opacity-forest-heat-6);
+}
+
+/* The day at the top of the feed: an outline in the selection colour, on top of the heat. */
+.forest-strip__day[data-selected="true"] {
+  outline: var(--border-width-strong) solid var(--color-forest-outline);
+  outline-offset: calc(var(--border-width-strong) * -1);
+}

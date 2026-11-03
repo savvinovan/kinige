@@ -12,7 +12,8 @@ export function selectActive(tokens) {
     }
     return structuredClone(candidate);
   };
-  next.color = pick("palette", "palette");
+  // The palette supplies the roles; other `color.*` groups from their own files (`forest.json`, slice 6) stay.
+  next.color = { ...pick("palette", "palette"), ...next.color };
   next.font = { ...next.font, family: pick("fontset", "fontset").family };
   return next;
 }

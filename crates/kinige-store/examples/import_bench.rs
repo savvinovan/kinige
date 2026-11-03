@@ -18,6 +18,7 @@
 
 use kinige_domain::Language;
 use kinige_domain::SearchFilters;
+use kinige_domain::forest::FirstWeekday;
 use kinige_domain::telegram::{TgExport, parse_export};
 use kinige_store::{Now, Store, StoreOptions};
 use std::path::{Path, PathBuf};
@@ -164,6 +165,41 @@ fn main() {
         page.messages.len(),
         card.map_or(0, |c| c.years.len()),
         ms(t)
+    );
+
+    // The forest (slice 6): the table of one year, every year of the data, 20 rounds each. The target is p95 < 100 ms.
+    let mut forest_times = Vec::new();
+    let mut forest_notes = 0u64;
+    for round in 0..20 {
+        for year in 2018..=2023 {
+            let first = if round % 2 == 0 {
+                FirstWeekday::Monday
+            } else {
+                FirstWeekday::Sunday
+            };
+            let t = Instant::now();
+            let table = store.get_forest_year(year, first, &Now::system()).unwrap();
+            forest_times.push(ms(t));
+            forest_notes += table.days.iter().map(|d| u64::from(d.notes)).sum::<u64>();
+        }
+    }
+    forest_times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    println!(
+        "forest year table (get_forest_year, {} calls over 2018..2023): p50 {:.1} ms, p95 {:.1} ms, max {:.1} ms; {} notes counted per call on average",
+        forest_times.len(),
+        forest_times[forest_times.len() / 2],
+        forest_times[(forest_times.len() * 95).div_ceil(100) - 1],
+        forest_times[forest_times.len() - 1],
+        forest_notes / forest_times.len() as u64
+    );
+    let t = Instant::now();
+    let target = store
+        .forest_day_target("2021-06-15", Some(kinige_domain::groups::INBOX_ID))
+        .unwrap();
+    println!(
+        "forest day target: {:.1} ms (found: {})",
+        ms(t),
+        target.is_some()
     );
 
     // Поиск: слова берутся из самих записей, не печатаются.

@@ -17,7 +17,8 @@ const stories = Object.values(index.entries).filter((entry) => entry.type === "s
 // focus: the likely cause is runners with different CPUs rounding Skia's anti-aliasing differently (not verified: the
 // rasterizer was not pinned with Chromium flags). A real regression (a colour, a shifted line, text) touches hundreds of
 // pixels and does not fit in 8. The normal and the large-text snapshots of a story share its id.
-const NOISY = new Set(["компоненты-окно-чата--переименованиеошибка", "экраны-главное-окно--ошибкаотправки"]);
+// The create dialog with an error (2 pixels off on CI run 41499857479, 02.11.2026) is the sibling of the rename dialog: the same error field.
+const NOISY = new Set(["компоненты-окно-чата--переименованиеошибка", "компоненты-окно-чата--создатьошибка", "экраны-главное-окно--ошибкаотправки"]);
 const NOISY_PIXELS = 8;
 
 // Переходы и анимации выключены в самой странице: снимок не может поймать их на середине (2 пикселя у скруглённого поля).

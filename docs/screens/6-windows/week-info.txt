@@ -1,0 +1,8 @@
+﻿# Which locale API of the web view gave the first weekday (ADR-0013). A missing getWeekInfo is a finding, not a failure, as long as the fallback is used.
+runner culture: en-US
+runner first day of week (Windows setting): Sunday
+windows: Microsoft Windows NT 10.0.26100.0
+log files found: 12
+[11:27:17][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
+[11:27:38][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
+[11:27:59][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo

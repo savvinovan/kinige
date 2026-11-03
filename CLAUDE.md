@@ -9,7 +9,7 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 - `docs/slices/<id>-<name>.md` — one-page slice specification (§12.1a).
 - `docs/screens/<slice>/` — screenshots of the real window for acceptance.
 
-Status: slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol + keys) are done; slice 1 (Inbox) is merged; slice 2 (quick capture: window, hotkeys, tray, appending) was accepted by the user on 27.10.2026; slice 3 (chats, entry actions, trash, database backup) and slice 4 (import from Telegram, archive, search with word forms) were accepted on 28.10.2026; slice 4a (MCP server for AI agents) was accepted on 29.10.2026; slice 4b (settings window, settings.json) was accepted on 31.10.2026; slice 5 ("On this day", replies) was accepted on 01.11.2026. Build and test commands are in the "Build and tests" section below.
+Status: slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol + keys) are done; slice 1 (Inbox) is merged; slice 2 (quick capture: window, hotkeys, tray, appending) was accepted by the user on 27.10.2026; slice 3 (chats, entry actions, trash, database backup) and slice 4 (import from Telegram, archive, search with word forms) were accepted on 28.10.2026; slice 4a (MCP server for AI agents) was accepted on 29.10.2026; slice 4b (settings window, settings.json) was accepted on 31.10.2026; slice 5 ("On this day", replies) was accepted on 01.11.2026; slice D2 (visual refresh) accepted 02.11.2026; slice 10a (Windows build) accepted 02.11.2026. Build and test commands are in the "Build and tests" section below.
 
 ## How we work (mandatory, PRD §12)
 
@@ -62,7 +62,7 @@ Layout: `crates/kinige-domain` (rules, no IO, builds for wasm32), `crates/kinige
 Rust (from the root):
 - `cargo fmt --all --check`
 - `cargo clippy --workspace --all-targets -- -D warnings`
-- `cargo test --workspace` — also regenerates the TS types in `web/src/api/generated/` (ts-rs, ADR-0002); after changing types in Rust, commit the result
+- `cargo test --workspace` — also regenerates the TS types in `web/src/api/generated/` (ts-rs, ADR-0002); after changing types in Rust, commit the result; it also rewrites the year tables of the forest stories in `web/src/ui/forest/fixtures/` (built by the real `year_table`, slice 6; CI fails when they differ from the commit)
 - `cargo build -p kinige-domain --target wasm32-unknown-unknown`
 
 Frontend (from `web/`, after `npm ci`):

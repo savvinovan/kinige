@@ -1,0 +1,8 @@
+# Which locale API of the web view gave the first weekday (ADR-0013). A missing getWeekInfo is a finding, not a failure, as long as the fallback is used.
+runner locale: en_US
+runner languages: ("en-US")
+runner first weekday setting: not set
+macOS: 15.8.2
+[12:23:57][DEBUG][kinige_lib::commands] forest: first weekday Monday from GetWeekInfo
+[12:36:03][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo
+[12:50:25][DEBUG][kinige_lib::commands] forest: first weekday Sunday from GetWeekInfo

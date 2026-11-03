@@ -165,7 +165,10 @@ describe("Новый день журнала при открытом окне", 
     expect(screen.queryByRole("region", { name: "В этот день" })).toBeNull();
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Сегодня");
     nowMs = Date.UTC(2026, 10, 1, 9, 0);
-    act(() => {
+    // The window "focus" listener is attached by a passive effect after the first commit; an event dispatched before that is lost
+    // (the flake of KINIG-48). An empty async `act` flushes pending effects first.
+    await act(async () => {});
+    await act(async () => {
       window.dispatchEvent(new Event("focus"));
     });
     await waitFor(() => expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Вчера"));
@@ -180,7 +183,10 @@ describe("Новый день журнала при открытом окне", 
     await screen.findByText("Сегодняшняя запись");
     expect(screen.queryByRole("region", { name: "В этот день" })).toBeNull();
     nowMs = Date.UTC(2026, 10, 1, 9, 0);
-    act(() => {
+    // The window "focus" listener is attached by a passive effect after the first commit; an event dispatched before that is lost
+    // (the flake of KINIG-48). An empty async `act` flushes pending effects first.
+    await act(async () => {});
+    await act(async () => {
       window.dispatchEvent(new Event("focus"));
     });
     await waitFor(() => expect(screen.getAllByRole("heading", { level: 2 }).at(-1)).toHaveTextContent("Вчера"));

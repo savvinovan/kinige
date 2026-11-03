@@ -16,6 +16,7 @@ mod error;
 mod ext;
 mod feed;
 mod feed_page;
+mod forest;
 mod hlc_state;
 mod import;
 mod import_time;

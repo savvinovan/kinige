@@ -7,9 +7,11 @@ import { initials } from "./initials";
 import "./profile.css";
 
 const ITEMS = ["settings", "import", "export", "about"] as const;
-type Item = (typeof ITEMS)[number];
+/** With the forest (slice 6) a "Show forest" / "Hide forest" item follows "Settings". */
+const ITEMS_WITH_FOREST = ["settings", "forest", "import", "export", "about"] as const;
+type Item = (typeof ITEMS_WITH_FOREST)[number];
 
-const ITEM_ICON: Record<Item, IconName> = { settings: "settings", import: "download", export: "upload", about: "info" };
+const ITEM_ICON: Record<Item, IconName> = { settings: "settings", forest: "forest", import: "download", export: "upload", about: "info" };
 
 interface ProfileMenuProps {
   /** Имя в строке профиля; по умолчанию «Я» / «Me» из переводов. Из него берутся инициалы аватара. */
@@ -24,6 +26,8 @@ interface ProfileMenuProps {
   onOpenImport?: () => void;
   /** «О программе» (KINIG-54): версия сборки. Без обработчика пункт нарисован и объявлен недоступным. */
   onOpenAbout?: () => void;
+  /** The forest above the feed (slice 6): without it the menu has no forest item; `hidden` decides "Show" or "Hide". */
+  forestMenu?: { hidden: boolean; onToggle: () => void };
   /** Свёрнутый сайдбар: только аватар, меню открывается вправо от него, а не вверх на всю ширину. */
   compact?: boolean;
 }
@@ -42,6 +46,7 @@ export function ProfileMenu({
   onOpenSettings,
   onOpenImport,
   onOpenAbout,
+  forestMenu,
   compact = false,
 }: ProfileMenuProps) {
   const { t } = useTranslation();
@@ -118,14 +123,15 @@ export function ProfileMenu({
     }
   };
 
-  const handlers: Partial<Record<Item, () => void>> = { settings: onOpenSettings, import: onOpenImport, about: onOpenAbout };
+  const handlers: Partial<Record<Item, () => void>> = { settings: onOpenSettings, forest: forestMenu?.onToggle, import: onOpenImport, about: onOpenAbout };
   const itemAvailable = (item: Item) => handlers[item] !== undefined;
+  const itemLabel = (item: Item) => (item === "forest" ? t(forestMenu?.hidden ? "profile.forestShow" : "profile.forestHide") : t(`profile.${item}`));
 
   return (
     <div className={compact ? "profile profile--compact" : "profile"} ref={root}>
       {open ? (
         <div className="profile__menu" role="menu" id={menuId} aria-label={t("profile.menu")} ref={menu} onKeyDown={onMenuKeyDown}>
-          {ITEMS.map((item) =>
+          {(forestMenu ? ITEMS_WITH_FOREST : ITEMS).map((item) =>
             itemAvailable(item) ? (
               <button
                 key={item}
@@ -143,7 +149,7 @@ export function ProfileMenu({
                 <NavSlot>
                   <Icon name={ITEM_ICON[item]} />
                 </NavSlot>
-                <span className="profile__item-label">{t(`profile.${item}`)}</span>
+                <span className="profile__item-label">{itemLabel(item)}</span>
               </button>
             ) : (
               <button
@@ -154,13 +160,13 @@ export function ProfileMenu({
                 tabIndex={-1}
                 aria-disabled="true"
                 aria-describedby={noteId}
-                title={`${t(`profile.${item}`)}. ${t("common.comingLater")}`}
+                title={`${itemLabel(item)}. ${t("common.comingLater")}`}
                 onClick={(event) => event.preventDefault()}
               >
                 <NavSlot>
                   <Icon name={ITEM_ICON[item]} />
                 </NavSlot>
-                <span className="profile__item-label">{t(`profile.${item}`)}</span>
+                <span className="profile__item-label">{itemLabel(item)}</span>
               </button>
             ),
           )}

@@ -71,6 +71,7 @@ interface SidebarRailProps {
   onOpenSettings?: () => void;
   onOpenImport?: () => void;
   onOpenAbout?: () => void;
+  forestMenu?: { hidden: boolean; onToggle: () => void };
   /** Значок поиска: разворачивает сайдбар и ставит фокус в поле (слайс 4). */
   onSearch?: () => void;
   /** Чат, над которым тащат запись (подсветка цели). */
@@ -95,6 +96,7 @@ export function SidebarRail({
   onOpenSettings,
   onOpenImport,
   onOpenAbout,
+  forestMenu,
   onSearch,
   dropTargetId = null,
 }: SidebarRailProps) {
@@ -160,7 +162,7 @@ export function SidebarRail({
             {trashCount > 0 ? <span className="rail-button__dot" aria-hidden="true" /> : null}
           </RailButton>
         ) : null}
-        <ProfileMenu compact name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} onOpenImport={onOpenImport} onOpenAbout={onOpenAbout} />
+        <ProfileMenu compact name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} onOpenImport={onOpenImport} onOpenAbout={onOpenAbout} forestMenu={forestMenu} />
       </div>
       {tip
         ? createPortal(

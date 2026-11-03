@@ -90,6 +90,10 @@ interface MainWindowViewProps {
     dropTargetId: string | null;
     ghost: ReactNode;
   };
+  /** Slice 6: the forest pane above the feed (not in the trash or in search results), the feed's top day for it, and the profile menu item. */
+  forest?: ReactNode;
+  onFeedTopDay?: (journalDate: string | null) => void;
+  forestMenu?: { hidden: boolean; onToggle: () => void };
   /** Поверх окна: модальные окна (настройки, чат, календарь). */
   overlay?: ReactNode;
 }
@@ -134,6 +138,9 @@ export function MainWindowView({
   trash,
   moveTargets,
   drag,
+  forest,
+  onFeedTopDay,
+  forestMenu,
   overlay,
 }: MainWindowViewProps) {
   const [ownDraft, setOwnDraft] = useState("");
@@ -147,6 +154,7 @@ export function MainWindowView({
         onOpenSettings={onOpenSettings}
         onOpenImport={onOpenImport}
         onOpenAbout={onOpenAbout}
+        forestMenu={forestMenu}
         showSearch={showSearch}
         search={search}
         collapsed={sidebar?.collapsed}
@@ -172,6 +180,7 @@ export function MainWindowView({
           />
         ) : (
           <>
+            {forest}
             {tagFilter ? <TagFilterBar tag={tagFilter.tag} onClear={tagFilter.onClear} /> : null}
             <Feed
               messages={messages}
@@ -189,6 +198,8 @@ export function MainWindowView({
               onOpenReply={onOpenReply}
               toBottom={feedToBottom}
               loading={feedLoading}
+              onTopDay={onFeedTopDay}
+              listKey={selectedChatId ?? "trash"}
             />
             <Composer
               key={selectedChatId ?? "trash"}

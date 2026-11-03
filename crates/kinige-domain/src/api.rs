@@ -3,6 +3,7 @@
 
 use crate::api_error::ErrorCode;
 use crate::backup::BackupStatus;
+use crate::forest_year::{ForestMode, ForestView};
 use crate::lang::Language;
 use crate::reply::ReplyTo;
 use crate::shortcuts::ShortcutStatus;
@@ -251,6 +252,10 @@ pub struct Settings {
     pub recent_emoji: Vec<String>,
     /// Копия файла базы (слайс 3).
     pub backup: BackupStatus,
+    /// How much of the forest is shown above the feed (slice 6); local, not synced, not in `settings.json`.
+    pub forest_view: ForestView,
+    /// What an expanded forest shows: the board or the calendar (slice 6).
+    pub forest_mode: ForestMode,
 }
 
 /// Что сделал быстрый захват.

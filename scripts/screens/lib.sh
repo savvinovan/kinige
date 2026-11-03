@@ -94,6 +94,12 @@ shoot() {
   local mode="${2:-main}"
   ax front "$(app_pid)" > /dev/null 2>&1
   sleep 1
+  # A scenario with a large window tree may take the picture without the full dump (SHOOT_DUMP=0): only for shots that carry no
+  # new text and no screen that can show a path. Every shot that is dumped is still checked for completeness and personal paths.
+  if [ "${SHOOT_DUMP:-1}" = "0" ]; then
+    KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" "$OUT/$name.png" kinige "$mode" || fail "нет снимка $name"
+    return 0
+  fi
   dump "shot-$name"
   # Пустой дамп (обход не уложился в предел, `Alarm clock`) или без строк элементов: grep по нему ничего не найдёт, и проверка
   # молча прошла бы. Это ошибка сценария, а не «чисто».

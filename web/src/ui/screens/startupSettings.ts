@@ -8,6 +8,8 @@ export const RECOVERY_SETTINGS: Settings = {
   mirror: { folder: null, isDefault: true, error: null, pendingDays: 0 },
   shortcuts: [],
   sidebarCollapsed: false,
+  forestView: "strip",
+  forestMode: "forest",
   recentEmoji: [],
   backup: { folder: null, lastAt: null, count: 0, error: null },
 };

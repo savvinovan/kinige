@@ -7,6 +7,7 @@ import type { MoveTarget } from "../message/moveTargets";
 import { ReplyQuote } from "../reply/ReplyQuote";
 import { type FeedMessage, buildFeed } from "./buildFeed";
 import { formatDayLabel } from "./dates";
+import { topDayOf } from "./topDay";
 import "./feed.css";
 
 /** Действия над записями ленты; каждое получает id записи. Без них плашки ведут себя как в D1 (кнопки нарисованы и недоступны). */
@@ -80,6 +81,15 @@ interface FeedProps {
   toBottom?: number;
   /** Лента ещё не получила всё нужное для первого кадра: не рисует ничего, даже подсказку пустого чата (ничего не прыгает). */
   loading?: boolean;
+  /**
+   * Slice 6: the journal day the feed shows, reported when the list changes and while the person scrolls: the day at the top,
+   * `null` for a list with no entries. A scroll the feed makes itself to an entry reports that entry's day once and then nothing
+   * until the person scrolls again (the entry is centred, so the day at the top would be an earlier one); moving to the bottom
+   * and opening another list (`listKey`) are reported, because the day at the top is then not what the board still shows.
+   */
+  onTopDay?: (journalDate: string | null) => void;
+  /** Slice 6: what the list belongs to (the open chat). A new value starts listening to the person's position again. */
+  listKey?: string;
 }
 
 /**
@@ -104,6 +114,8 @@ export function Feed({
   onOpenReply,
   toBottom = 0,
   loading = false,
+  onTopDay,
+  listKey,
 }: FeedProps) {
   const { t } = useTranslation();
   const language = useLanguage();
@@ -121,6 +133,37 @@ export function Feed({
   });
   const hasOlder = paging?.hasOlder === true;
   const hasNewer = paging?.hasNewer === true;
+
+  // The day at the top (slice 6). Reported while the person is in charge of the scroll position (`listening`); the feed's own
+  // jumps to an entry switch it off until the next wheel, key, touch or press on the scroller (a scroll to the bottom keeps it on).
+  const listening = useRef(true);
+  const topDayHandler = useRef(onTopDay);
+  const reportFrame = useRef(0);
+  const loadingNow = useRef(loading);
+  // A layout effect, declared before the ones that report, so that they see the current handler and loading state.
+  useLayoutEffect(() => {
+    topDayHandler.current = onTopDay;
+    loadingNow.current = loading;
+  });
+  const reportTop = () => {
+    const root = scroller.current;
+    if (!root || !topDayHandler.current) return;
+    const date = topDayOf(root);
+    if (date) topDayHandler.current(date);
+    // A list with no entries has no day: the board must not keep the one of the list before (a list still loading has none yet).
+    else if (!loadingNow.current && !root.querySelector("[data-journal-date]")) topDayHandler.current(null);
+  };
+  const reportSoon = () => {
+    if (reportFrame.current !== 0) return;
+    reportFrame.current = requestAnimationFrame(() => {
+      reportFrame.current = 0;
+      reportTop();
+    });
+  };
+  const listen = () => {
+    listening.current = true;
+  };
+  useEffect(() => () => cancelAnimationFrame(reportFrame.current), []);
 
   // Край списка показался в области прокрутки: грузим следующую страницу. Область `column-reverse` держит нижний край на
   // месте, поэтому записи, добавленные СВЕРХУ, ничего не сдвигают; добавленные снизу сдвигают — это исправляет эффект ниже.
@@ -154,6 +197,15 @@ export function Feed({
     beforeNewer.current = null;
   }, [messages]);
 
+  // Another list (the person opened another chat): after a jump the feed stayed deaf until the next scroll, and the board kept
+  // the day of the old chat. Declared before the effects that jump, so a jump that comes with the new list still wins.
+  const listSeen = useRef(listKey);
+  useLayoutEffect(() => {
+    if (listSeen.current === listKey) return;
+    listSeen.current = listKey;
+    listening.current = true;
+  }, [listKey]);
+
   // Переход из поиска: запись по центру области. Мгновенно, без плавной прокрутки (тихий интерфейс, Reduce Motion).
   // Область `column-reverse`: нижний край — `scrollTop = 0`. Прокрутка по просьбе родителя, не при первом показе.
   const bottomSeen = useRef(toBottom);
@@ -161,6 +213,9 @@ export function Feed({
     if (bottomSeen.current === toBottom) return;
     bottomSeen.current = toBottom;
     if (scroller.current) scroller.current.scrollTop = 0;
+    // The bottom is no jump to a day: the day at the top is what the board has to follow.
+    listening.current = true;
+    reportTop();
   }, [toBottom]);
 
   // Один раз на просьбу (`nonce`): запись могла ещё не попасть в ленту, тогда прокрутка ждёт её появления, но, найдя запись,
@@ -169,14 +224,25 @@ export function Feed({
   const scrolledKey = useRef("");
   useLayoutEffect(() => {
     if (!scrollTo || scrolledKey.current === scrollKey) return;
+    // The feed is about to move itself: its top day is not the person's choice until they scroll again.
+    listening.current = false;
     const plate = [...(scroller.current?.querySelectorAll<HTMLElement>("[data-message-id]") ?? [])].find(
       (element) => element.dataset.messageId === scrollTo.id,
     );
     if (!plate) return;
     scrolledKey.current = scrollKey;
     plate.scrollIntoView?.({ block: "center" });
+    // The caption follows the feed after its own jump (a click on a day, a sent note, a restored entry): the day of the entry
+    // it landed on, not the one at the top, which is an earlier day while the entry is centred.
+    const landed = plate.dataset.journalDate;
+    if (landed) topDayHandler.current?.(landed);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- по новой просьбе или появлению записи в ленте
   }, [scrollKey, items.length]);
+
+  // Declared after the effects that move the feed itself, so a list that arrives with a jump is not reported at its old position.
+  useLayoutEffect(() => {
+    if (listening.current) reportTop();
+  }, [items, loading]);
 
   return (
     // Прокручиваемая область берёт фокус с клавиатуры, иначе без мыши ленту не пролистать.
@@ -186,7 +252,16 @@ export function Feed({
       role="region"
       aria-label={t("feed.label")}
       ref={scroller}
-      onPointerDown={onPointerDownFeed}
+      onPointerDown={() => {
+        listen();
+        onPointerDownFeed?.();
+      }}
+      onWheel={listen}
+      onTouchStart={listen}
+      onKeyDown={listen}
+      onScroll={() => {
+        if (listening.current) reportSoon();
+      }}
     >
       {/* В `column-reverse` первый в разметке стоит внизу: нижний край (новое) идёт перед списком, верхний (старое) — после. */}
       {hasNewer ? <div className="feed__edge" ref={newerEdge} aria-hidden="true" /> : null}
@@ -196,7 +271,7 @@ export function Feed({
         <ol className="feed">
           {items.map((item) =>
             item.kind === "day" ? (
-              <li className="feed__item feed__item--day" key={item.key}>
+              <li className="feed__item feed__item--day" key={item.key} data-journal-date={item.journalDate}>
                 <h2 className="day-label">{formatDayLabel(item.journalDate, today, language, labels)}</h2>
               </li>
             ) : item.kind === "card" ? (
@@ -208,6 +283,7 @@ export function Feed({
                 className={`feed__item${item.inSeries ? " feed__item--series" : ""}`}
                 key={item.key}
                 data-message-id={item.message.id}
+                data-journal-date={item.message.journalDate}
               >
                 <Message
                   markdown={item.message.bodyMd}

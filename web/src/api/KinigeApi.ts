@@ -10,6 +10,11 @@ import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { FeedCursor } from "./generated/FeedCursor";
+import type { FirstWeekday } from "./generated/FirstWeekday";
+import type { ForestMode } from "./generated/ForestMode";
+import type { ForestTarget } from "./generated/ForestTarget";
+import type { ForestView } from "./generated/ForestView";
+import type { ForestYear } from "./generated/ForestYear";
 import type { ImportOpened } from "./generated/ImportOpened";
 import type { ImportProgress } from "./generated/ImportProgress";
 import type { ImportReport } from "./generated/ImportReport";
@@ -27,6 +32,7 @@ import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
+import type { WeekdaySource } from "./generated/WeekdaySource";
 
 /** Позиция и размер страницы ленты (`KinigeApi.listMessages`). */
 export interface ListMessagesOptions {
@@ -203,6 +209,21 @@ export interface KinigeApi {
   getOnThisDay(): Promise<OnThisDay | null>;
   /** «Скрыть до завтра»: `date` — `today` карточки; до конца этого дня журнала карточка не показывается (локально). */
   dismissOnThisDay(date: string): Promise<void>;
+
+  // ---- the year's forest (slice 6): main window only ----
+  /**
+   * The table of one year: every day with its cell, season, notes, stage and the start of its first entry, plus the
+   * current journal day and the year of the oldest entry. `weekdaySource` is sent once per session, only for the debug
+   * log. A year outside 1000..9999 is `invalid_date`.
+   */
+  getForestYear(year: number, firstWeekday: FirstWeekday, weekdaySource?: WeekdaySource): Promise<ForestYear>;
+  /**
+   * The entry a click on a day opens: the open chat if it has entries that day, otherwise the chat with the most entries,
+   * the Inbox on a tie; `null` for an empty day. `currentChatId` is `null` when no chat is open.
+   */
+  getForestDayTarget(date: string, currentChatId: string | null): Promise<ForestTarget | null>;
+  /** Remembers how much of the forest is shown and whether it is the board or the calendar (local, not synced). */
+  setForestView(view: ForestView, mode: ForestMode): Promise<void>;
 
   // ---- окно захвата (слайс 2): отдельный набор команд, только Inbox ----
   /** Всё, что нужно окну при показе: язык, размер текста, контекст за сегодня, цель дописывания, черновик, ошибка. */

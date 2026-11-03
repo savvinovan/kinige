@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "../../test/render";
+import { cleanup, fireEvent, render, screen } from "../../test/render";
 import { describe, expect, it, vi } from "vitest";
 import { ProfileMenu } from "./ProfileMenu";
 
@@ -140,5 +140,25 @@ describe("ProfileMenu", () => {
     expect(items()).toHaveLength(4);
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     expect(button).toHaveFocus();
+  });
+
+  it("the forest item (slice 6) is absent without the forest, and follows 'Hide forest' / 'Show forest' with it", () => {
+    render(<ProfileMenu onOpenSettings={() => undefined} />);
+    open();
+    expect(items().map((item) => item.textContent)).not.toContain("Скрыть лес");
+    cleanup();
+
+    const onToggle = vi.fn();
+    const view = render(<ProfileMenu onOpenSettings={() => undefined} forestMenu={{ hidden: false, onToggle }} />);
+    const button = open();
+    expect(items().map((item) => item.textContent)).toEqual(["Настройки", "Скрыть лес", "Импорт из Telegram…", "Экспорт", "О программе"]);
+    fireEvent.click(items()[1] as HTMLElement);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(button).toHaveFocus();
+
+    view.rerender(<ProfileMenu onOpenSettings={() => undefined} forestMenu={{ hidden: true, onToggle }} />);
+    open();
+    expect(items().map((item) => item.textContent)).toContain("Показать лес");
   });
 });

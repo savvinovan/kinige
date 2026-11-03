@@ -61,6 +61,8 @@ interface SidebarProps {
   onOpenImport?: () => void;
   /** «О программе» в меню профиля (KINIG-54). */
   onOpenAbout?: () => void;
+  /** "Show forest" / "Hide forest" in the profile menu (slice 6): the only way back after the forest is hidden. */
+  forestMenu?: { hidden: boolean; onToggle: () => void };
   /** Чат, над которым сейчас тащат запись (решение приёмки): подсветка цели; сами строки всегда цели (`data-chat-drop`). */
   dropTargetId?: string | null;
 }
@@ -96,6 +98,7 @@ export function Sidebar({
   search,
   onOpenImport,
   onOpenAbout,
+  forestMenu,
   dropTargetId = null,
 }: SidebarProps) {
   const { t } = useTranslation();
@@ -146,6 +149,7 @@ export function Sidebar({
           onOpenSettings={onOpenSettings}
           onOpenImport={onOpenImport}
           onOpenAbout={onOpenAbout}
+          forestMenu={forestMenu}
           onSearch={search?.onRailClick}
           dropTargetId={dropTargetId}
         />
@@ -226,7 +230,7 @@ export function Sidebar({
                 ) : null}
               </button>
             ) : null}
-            <ProfileMenu name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} onOpenImport={onOpenImport} onOpenAbout={onOpenAbout} />
+            <ProfileMenu name={profile?.name} statusDot={profile?.statusDot} onOpenSettings={onOpenSettings} onOpenImport={onOpenImport} onOpenAbout={onOpenAbout} forestMenu={forestMenu} />
           </div>
         </>
       )}

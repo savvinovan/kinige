@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
-import type { MessageFlag } from "../../api/generated/MessageFlag";
 import type { MessagePage } from "../../api/generated/MessagePage";
 import type { MessageView } from "../../api/generated/MessageView";
 import type { FeedCursor } from "../../api/generated/FeedCursor";
 import type { FeedMessage } from "../feed/buildFeed";
-import type { FeedActions, FeedPaging, FeedUiState, ScrollRequest } from "../feed/Feed";
+import type { FeedPaging, FeedUiState, ScrollRequest } from "../feed/Feed";
 import { mergeLatestPage, mergeOlder, withDeleted } from "../feed/mergeFeed";
+import { useFeedActions } from "./useFeedActions";
 
 /** Сколько записей грузит страница ленты. Старые страницы подгружаются при прокрутке к верху (слайс 4), без виртуализации. */
 export const PAGE_SIZE = 200;
@@ -35,6 +34,8 @@ interface UseFeedOptions {
   onTag: (tag: string) => void;
   /** Открыть чат на записи: страница вокруг неё, дальше подгрузка вверх и вниз. Используется один раз на `nonce`. */
   focus?: FocusTarget | null;
+  /** The entries of the journal changed through this feed (sent, edited, deleted, restored, moved, re-dated): the forest reloads. */
+  onMutated?: () => void;
 }
 
 /**
@@ -42,8 +43,12 @@ interface UseFeedOptions {
  * Без оптимистичного показа: запись меняется после ответа Rust. Удалённая запись стоит на месте приглушённой («Удалено ·
  * Вернуть»), пока человек не уйдёт из чата (решение пользователя 1).
  */
-export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus = null }: UseFeedOptions) {
-  const { t } = useTranslation();
+export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus = null, onMutated }: UseFeedOptions) {
+  const mutatedRef = useRef(onMutated);
+  useEffect(() => {
+    mutatedRef.current = onMutated;
+  });
+  const mutated = useCallback(() => mutatedRef.current?.(), []);
   const [messages, setMessages] = useState<FeedMessage[]>([]);
   const [today, setToday] = useState("");
   // Первая страница открытого чата получена: до этого лента может ничего не рисовать (первый кадр с карточкой «В этот день»).
@@ -275,9 +280,13 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     }
   }, [api, setCursor]);
 
-  const replace = useCallback((view: MessageView) => {
-    setMessages((list) => list.map((m) => (m.id === view.id ? view : m)));
-  }, []);
+  const replace = useCallback(
+    (view: MessageView) => {
+      setMessages((list) => list.map((m) => (m.id === view.id ? view : m)));
+      mutated();
+    },
+    [mutated],
+  );
 
   /**
    * Отправленная запись встаёт в конец ленты. Вызывается из ответа на отправку, который мог прийти после смены чата или
@@ -287,6 +296,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
    */
   const appendSent = useCallback(
     (sent: MessageView) => {
+      mutated();
       const { chatId: id, tag: filter } = current.current;
       if (sent.chatId !== id) return;
       if (filter !== null && !sent.tags.includes(filter)) return;
@@ -297,90 +307,25 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
       }
       setMessages((all) => [...all, sent]);
     },
-    [restart],
+    [restart, mutated],
   );
 
   const fail = useCallback((reason: unknown) => onError(errorCode(reason)), [onError]);
 
-  const setFlag = useCallback(
-    (id: string, flag: MessageFlag, on: boolean) => {
-      api.setMessageFlag(id, flag, on).then(replace).catch(fail);
-    },
-    [api, replace, fail],
-  );
-
-  const actions: FeedActions = useMemo(
-    () => ({
-      onEdit: (id) => {
-        setEditError(undefined);
-        setEditingId(id);
-      },
-      onSaveEdit: (id, text) => {
-        api
-          .editMessage(id, text)
-          .then((view) => {
-            replace(view);
-            setEditingId(null);
-            setEditError(undefined);
-          })
-          .catch((reason: unknown) => setEditError(t(`error.${errorCode(reason)}`)));
-      },
-      onCancelEdit: () => {
-        setEditingId(null);
-        setEditError(undefined);
-      },
-      onToggleTask: (id, on) => setFlag(id, "task", on),
-      onToggleDone: (id, done) => setFlag(id, "task_done", done),
-      onToggleFavorite: (id, on) => setFlag(id, "favorite", on),
-      onChangeDate: (id) => setDateFor(id),
-      onDelete: (id) => {
-        api
-          .deleteMessage(id)
-          .then(() => {
-            setDeletedIds((ids) => new Set(ids).add(id));
-            setEditingId((editing) => (editing === id ? null : editing));
-            return refreshChats();
-          })
-          .catch(fail);
-      },
-      onRestore: (id) => {
-        api
-          .restoreMessage(id)
-          .then(() => {
-            setDeletedIds((ids) => {
-              const next = new Set(ids);
-              next.delete(id);
-              return next;
-            });
-            return refreshChats();
-          })
-          .catch(fail);
-      },
-      onToggleTaskItem: (id, index, checked) => {
-        api
-          .toggleTaskItem(id, index, checked)
-          .then(replace)
-          .catch((reason: unknown) => {
-            fail(reason);
-            // Текст записи успел измениться: показываем актуальный.
-            if (errorCode(reason) === "task_item_stale") void reload();
-          });
-      },
-      onTagClick: onTag,
-      onMoveTo: (id, targetChatId) => {
-        api
-          .moveMessage(id, targetChatId)
-          .then(() => {
-            // Запись просто исчезает из текущего чата (без тоста, лента не прыгает); счётчики берутся заново.
-            setMessages((list) => list.filter((m) => m.id !== id));
-            setEditingId((editing) => (editing === id ? null : editing));
-            return refreshChats();
-          })
-          .catch(fail);
-      },
-    }),
-    [api, t, replace, setFlag, refreshChats, fail, reload, onTag],
-  );
+  const actions = useFeedActions({
+    api,
+    refreshChats,
+    replace,
+    fail,
+    reload,
+    onTag,
+    mutated,
+    setMessages,
+    setEditingId,
+    setEditError,
+    setDeletedIds,
+    setDateFor,
+  });
 
   /** Календарь выбрал день для записи `dateFor`; ответ — код ошибки (диалог показывает её), `null` — готово. */
   const pickDate = useCallback(
