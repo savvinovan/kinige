@@ -9,8 +9,8 @@
 4. I open an old chat. The images take their final size from the first frame, so nothing below them moves when they load. An image that can't be decoded and a missing file show a tile of the same size ("No preview", "File is missing").
 5. A click on a photo opens it full size over the window. ←/→ move between the entry's photos, Escape closes it, and "Open in default app" opens it in Preview. A click on a file card opens it in its system app. Executables and scripts are shown in Finder, never run.
 6. I delete the entry. It goes to the trash with its attachments and they show there. "Restore" brings everything back. "Delete forever" (or 30 days) removes the files from disk.
-7. In `~/Documents/Kinige/Inbox/2026/` the day file has `![IMG_0001.jpg](<2026-11-03/IMG_0001.jpg>)` and `[menu.pdf](<2026-11-03/menu.pdf>)`, and the files are in `2026-11-03/` next to it (question 3).
-8. Search for «меню» finds the entry by the file name `menu.pdf`. The forest counts the photos: a day with photos grows more (§7.2), and the day card says "5 notes · 3 photos".
+7. In `~/Documents/Kinige/Inbox/2026/` the day file has `![IMG_0001.jpg](<2026-11-03/IMG_0001.jpg>)` and `[меню.pdf](<2026-11-03/меню.pdf>)`, and the files are in `2026-11-03/` next to it (question 3).
+8. Search for «меню» finds the entry by the file name `меню.pdf` (the index holds the stems of file names; there is no transliteration, so "menu" would not find it). The forest counts the photos: a day with photos grows more (§7.2), and the day card says "5 notes · 3 photos".
 9. I import my Telegram export again (6.8 GB). The preview says "Media: 1,240 files, 6.7 GB · not in the export: 12". Progress runs in gigabytes and can be stopped or killed. A second run picks up where the first stopped and never attaches a file twice. Afterwards the old entries show their photos and files where "[Photo not imported]" used to be (question 4).
 
 ## Included
@@ -139,3 +139,12 @@ A 1280 × 800 window. The composer shows the paperclip `IconButton` ("Attach fil
 5. **Quick capture:** no attachments in the capture window and ⌥⇧V stays text-only in slice 7 (the PRD is silent; §12.3 keeps that window to text).
 6. **AI agent (MCP):** the agent sees each entry's attachment metadata (kind, file name, size, image size), never the bytes or paths, and search by file name works for it too.
 7. **Scope:** the Telegram media stay in slice 7 and are done last. If the budget runs out, they go into a follow-up PR (7b) after acceptance of the rest.
+
+## Follow-ups (recorded after the review of 03.11.2026, not done in slice 7)
+- **`full` re-probes the bytes before sync (slice 11).** Today the `kind` and `mime` of a row are written only by `classify()` from the detected format, so the protocol may trust them. When rows arrive from other devices through sync, `full` (and `thumb`) must check the magic bytes of the file (`probe_image` is header-only and cheap) before serving, so that a hostile row cannot turn a file into something the web view renders as another type.
+- **The sweep removes `open/<other process>/` at startup.** A clone still open in Preview from the previous launch disappears from under it (the stored file is untouched; saving an edit in Preview would fail). Leave `open/` for a later pass or age it by time if that becomes a complaint.
+- **`thumb_failed` is not cleared when the sweep brings a file back** from `.orphans/`: a restored file shows "No preview" until the next launch.
+- **The Markdown copy may rewrite a file it wrote** when the size changed (it mirrors the stored file): an edit the user made in place to our `IMG_0001.jpg` in the copy is lost on the next pass. ADR-0014 says "nothing the user put there is ever deleted"; the copy never deletes or overwrites a file it did not write itself.
+- **Windows:** the permissions of a clone under `open/` (`private_mode` does nothing there) rely on the inheritance of the per-user data folder; not verified.
+- **The sweep is one writer job over every row and file**, so a send waits for it while it runs; the time on 10k rows is in `docs/screens/7/bench.txt`.
+- **A codec panic message** goes to stderr through the default panic hook (the message and location, never file names); the "no file names in the log" test scans only the attachment modules, not `import_*`, `trash.rs` or `src-tauri/src/attachments.rs` (they were read and log only categories).
