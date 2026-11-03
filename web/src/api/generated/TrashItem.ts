@@ -2,14 +2,14 @@
 import type { MessageView } from "./MessageView";
 
 /**
- * Запись в корзине (ТЗ §2.1): чат, дата, сколько осталось до автоудаления.
+ * An entry in the trash (PRD §2.1): chat, date, how long is left until auto-deletion.
  */
 export type TrashItem = { message: MessageView, chatTitle: string, chatIcon: string | null, chatIsInbox: boolean, 
 /**
- * Когда удалена (мс).
+ * When deleted (ms).
  */
 deletedAt: number, 
 /**
- * Сколько целых дней осталось до автоудаления (неполный день считается днём).
+ * How many whole days are left until auto-deletion (a partial day counts as a day).
  */
 daysLeft: number, };

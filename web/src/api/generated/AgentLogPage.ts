@@ -2,10 +2,10 @@
 import type { AgentLogRow } from "./AgentLogRow";
 
 /**
- * Страница журнала, новые сверху.
+ * A log page, the newest on top.
  */
 export type AgentLogPage = { rows: Array<AgentLogRow>, 
 /**
- * `id` последней строки страницы, если есть ещё более старые.
+ * The `id` of the page's last row, if there are older ones.
  */
 older: number | null, };

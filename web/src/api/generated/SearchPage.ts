@@ -4,14 +4,14 @@ import type { FeedCursor } from "./FeedCursor";
 import type { SearchHit } from "./SearchHit";
 
 /**
- * Страница результатов поиска: новые записи сверху (порядок ленты, самые новые первыми).
+ * A page of search results: new entries on top (feed order, the newest first).
  */
 export type SearchPage = { 
 /**
- * Чаты, чьё название совпало с запросом; только на первой странице. У Inbox название переводит фронтенд.
+ * Chats whose name matched the query; only on the first page. The frontend translates Inbox's name.
  */
 chats: Array<ChatSummary>, hits: Array<SearchHit>, 
 /**
- * Позиция для следующей страницы (последняя запись этой); `null` — больше нет.
+ * The position for the next page (the last entry of this one); `null` -- there are no more.
  */
 older: FeedCursor | null, };

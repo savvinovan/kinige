@@ -2,6 +2,6 @@
 import type { ImportChatPreview } from "./ImportChatPreview";
 
 /**
- * Что нашлось в экспорте: чаты для выбора и сколько чатов пропущено (группы, каналы, боты).
+ * What was found in the export: chats to choose from and how many chats were skipped (groups, channels, bots).
  */
 export type ImportPreview = { chats: Array<ImportChatPreview>, skippedChats: number, };

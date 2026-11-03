@@ -2,46 +2,46 @@
 import type { ReplyTo } from "./ReplyTo";
 
 /**
- * Запись в ленте.
+ * An entry in the feed.
  */
 export type MessageView = { id: string, chatId: string, bodyMd: string, 
 /**
- * `YYYY-MM-DD`, граница дня 04:00 (ТЗ §4.1).
+ * `YYYY-MM-DD`, the day boundary is 04:00 (PRD §4.1).
  */
 journalDate: string, 
 /**
- * UTC, мс.
+ * UTC, ms.
  */
 createdAt: number, 
 /**
- * IANA-пояс устройства в момент создания.
+ * The device's IANA time zone at the moment of creation.
  */
 createdTz: string, 
 /**
- * Запись — задача (флажок у плашки).
+ * The entry is a task (the flag on the bubble).
  */
 isTask: boolean, 
 /**
- * Когда задача отмечена выполненной (мс); `null` — не выполнена.
+ * When the task was marked done (ms); `null` -- not done.
  */
 taskDoneAt: number | null, 
 /**
- * Когда добавлена в избранное (мс); `null` — не в избранном.
+ * When added to favorites (ms); `null` -- not a favorite.
  */
 favoriteAt: number | null, 
 /**
- * Теги записи в нижнем регистре, без `#` (разбор — `kinige_domain::tags`).
+ * The entry's tags in lower case, without `#` (parsing -- `kinige_domain::tags`).
  */
 tags: Array<string>, 
 /**
- * Одна из групп записи новее поддерживаемой версии: запись только для чтения, действия недоступны (ADR-0001 §4).
+ * One of the entry's groups is newer than the supported version: the entry is read-only, actions are unavailable (ADR-0001 §4).
  */
 readOnly: boolean, 
 /**
- * Кто создал запись (`core.origin`): `user`, `import_telegram`, `agent`. Лента помечает записи агента.
+ * Who created the entry (`core.origin`): `user`, `import_telegram`, `agent`. The feed marks agent entries.
  */
 origin: string, 
 /**
- * Запись, на которую это ответ (слайс 5): у новых ответов и у ответов, импортированных из Telegram; `null` — не ответ.
+ * The entry this one replies to (slice 5): set for new replies and for replies imported from Telegram; `null` -- not a reply.
  */
 replyTo: ReplyTo | null, };

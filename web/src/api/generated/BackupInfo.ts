@@ -2,14 +2,14 @@
 import type { BackupKind } from "./BackupKind";
 
 /**
- * Копия в списке окна «База повреждена».
+ * A backup in the list of the "Database is corrupted" window.
  */
 export type BackupInfo = { 
 /**
- * Имя файла в папке копий; по нему просят восстановление.
+ * The file name in the backup folder; restoring is requested by it.
  */
 name: string, kind: BackupKind, 
 /**
- * Когда снята (мс).
+ * When it was taken (ms).
  */
 createdAt: number, };

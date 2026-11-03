@@ -2,26 +2,26 @@
 import type { OnThisDayEntry } from "./OnThisDayEntry";
 
 /**
- * Один год карточки.
+ * One year of the card.
  */
 export type OnThisDayYear = { 
 /**
- * День этого года (`YYYY-MM-DD`).
+ * The day of this year (`YYYY-MM-DD`).
  */
 journalDate: string, 
 /**
- * Сколько полных лет назад (1, 3, 11…).
+ * How many full years ago (1, 3, 11...).
  */
 yearsAgo: number, 
 /**
- * Сколько записей Inbox в этот день, кроме корзины.
+ * How many Inbox entries there are on this day, not counting the trash.
  */
 total: number, 
 /**
- * Первая запись дня: на неё открывается лента по «ещё N записей этого дня ›» и по строке старого года.
+ * The first entry of the day: the feed opens on it from "N more entries of this day >" and from the line of an old year.
  */
 firstId: string, 
 /**
- * Первые записи дня (до [`ENTRIES_PER_YEAR`]) у подробных лет; у остальных пусто.
+ * The first entries of the day (up to [`ENTRIES_PER_YEAR`]) for detailed years; empty for the others.
  */
 entries: Array<OnThisDayEntry>, };

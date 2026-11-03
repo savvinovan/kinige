@@ -5,30 +5,30 @@ import type { MessageView } from "./MessageView";
 import type { TextSize } from "./TextSize";
 
 /**
- * Всё, что нужно окну захвата при показе, одним ответом (§5.1, слайс 2).
+ * Everything the capture window needs when shown, in one reply (§5.1, slice 2).
  */
 export type CaptureState = { language: Language, textSize: TextSize, 
 /**
- * Сегодняшний `journal_date` (с границей дня 04:00).
+ * Today's `journal_date` (with the 04:00 day boundary).
  */
 today: string, 
 /**
- * До трёх последних неудалённых записей Inbox за сегодня, по возрастанию: самая новая последней.
+ * Up to three last non-deleted Inbox entries of today, ascending: the newest last.
  */
 context: Array<MessageView>, 
 /**
- * Id записи, к которой ⌘Enter допишет текст; `null` — ⌘Enter создаст новую запись.
+ * The id of the entry that ⌘Enter appends the text to; `null` -- ⌘Enter creates a new entry.
  */
 appendTarget: string | null, 
 /**
- * Черновик окна захвата.
+ * The capture window's draft.
  */
 draft: string, 
 /**
- * Ошибка, с которой окно открыто (сбой записи из буфера): показывается один раз.
+ * The error the window was opened with (a failure writing from the clipboard): shown once.
  */
 error: ErrorCode | null, 
 /**
- * «Недавние» эмодзи пикера (общий список с главным окном), свежие первыми.
+ * The picker's "Recent" emoji (a list shared with the main window), the freshest first.
  */
 recentEmoji: Array<string>, };

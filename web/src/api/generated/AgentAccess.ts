@@ -4,6 +4,6 @@ import type { AgentMode } from "./AgentMode";
 import type { AgentSocket } from "./AgentSocket";
 
 /**
- * Окно «Доступ ИИ-агентов».
+ * The "AI agent access" window.
  */
 export type AgentAccess = { enabled: boolean, mode: AgentMode, chats: Array<AgentChatChoice>, socket: AgentSocket, };

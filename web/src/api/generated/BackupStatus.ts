@@ -2,18 +2,18 @@
 import type { BackupError } from "./BackupError";
 
 /**
- * Состояние копий для «Настроек».
+ * The state of backups for "Settings".
  */
 export type BackupStatus = { 
 /**
- * Папка копий.
+ * The backup folder.
  */
 folder: string | null, 
 /**
- * Когда снята последняя копия (мс); `null` — копий ещё нет.
+ * When the last backup was taken (ms); `null` means there are no backups yet.
  */
 lastAt: number | null, 
 /**
- * Копий в папке.
+ * Backups in the folder.
  */
 count: number, error: BackupError | null, };

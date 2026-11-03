@@ -2,18 +2,18 @@
 import type { MirrorError } from "./MirrorError";
 
 /**
- * Состояние Markdown-копии для окна «Настройки».
+ * The state of the Markdown copy for the "Settings" window.
  */
 export type MirrorStatus = { 
 /**
- * Путь папки; `null`, если папка не выбрана и по умолчанию её нет — копия выключена.
+ * The folder path; `null` if no folder is chosen and there is no default one -- the copy is off.
  */
 folder: string | null, 
 /**
- * Папка по умолчанию (`~/Documents/Kinige`), пользователь её не менял.
+ * The default folder (`~/Documents/Kinige`), the user did not change it.
  */
 isDefault: boolean, error: MirrorError | null, 
 /**
- * Дней, которые ждут записи в копию.
+ * Days waiting to be written to the copy.
  */
 pendingDays: number, };

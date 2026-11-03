@@ -2,14 +2,14 @@
 import type { OnThisDayYear } from "./OnThisDayYear";
 
 /**
- * Карточка «В этот день».
+ * The "On this day" card.
  */
 export type OnThisDay = { 
 /**
- * Сегодняшний `journal_date`, к которому относится карточка (с ним же вызывается `dismiss_on_this_day`).
+ * Today's `journal_date` the card belongs to (`dismiss_on_this_day` is called with it too).
  */
 today: string, 
 /**
- * Годы с записями, от новых к старым; не пусто.
+ * Years with entries, from newest to oldest; not empty.
  */
 years: Array<OnThisDayYear>, };

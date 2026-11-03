@@ -2,23 +2,23 @@
 import type { ReplyState } from "./ReplyState";
 
 /**
- * Запись, на которую ответили: то, что нужно цитате в плашке и строке «Ответ на запись» над полем ввода.
+ * The entry that was replied to: what the quote in the plate and the "Reply to entry" line above the input field need.
  */
 export type ReplyTo = { id: string, 
 /**
- * Чат старой записи; `null`, если её нет (`state = missing`).
+ * The chat of the old entry; `null` if there is none (`state = missing`).
  */
 chatId: string | null, 
 /**
- * День старой записи (`YYYY-MM-DD`); `null`, если её нет.
+ * The day of the old entry (`YYYY-MM-DD`); `null` if there is none.
  */
 journalDate: string | null, 
 /**
- * Простой текст начала старой записи в одну строку, до [`EXCERPT_CHARS`] знаков; пустой, если записи нет.
+ * Plain text of the start of the old entry on one line, up to [`EXCERPT_CHARS`] characters; empty if there is no entry.
  */
 excerpt: string, state: ReplyState, 
 /**
- * Полные годы между днём старой записи и днём ответа; 0, если меньше года или ответ раньше оригинала. При 0 подпись
- * «N лет спустя» не показывается.
+ * Full years between the day of the old entry and the day of the reply; 0 if less than a year or the reply is earlier than the original. With 0 the
+ * "N years later" caption is not shown.
  */
 yearsLater: number, };

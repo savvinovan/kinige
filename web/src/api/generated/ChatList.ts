@@ -2,14 +2,14 @@
 import type { ChatSummary } from "./ChatSummary";
 
 /**
- * Чаты сайдбара в порядке показа и размер корзины.
+ * The sidebar chats in display order and the trash size.
  */
 export type ChatList = { 
 /**
- * Сначала закреплённые (по времени закрепления), затем остальные и архив (по `sort_key`, при равных — по `id`).
+ * Pinned first (by pin time), then the rest and the archive (by `sort_key`, ties by `id`).
  */
 chats: Array<ChatSummary>, 
 /**
- * Записей в корзине.
+ * Entries in the trash.
  */
 trashCount: number, };

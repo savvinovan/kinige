@@ -2,6 +2,6 @@
 import type { MessageView } from "./MessageView";
 
 /**
- * Запись, которую затронуло обращение: сама запись или `None`, если она удалена навсегда.
+ * An entry the call touched: the entry itself or `None` if it was deleted permanently.
  */
 export type AgentLogEntry = { messageId: string, message: MessageView | null, chatTitle: string, chatIcon: string | null, chatIsInbox: boolean, };

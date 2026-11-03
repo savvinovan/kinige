@@ -149,8 +149,8 @@ export const УзкаяШирина: Story = {
 };
 
 /**
- * Пикер эмодзи открыт: панель в потоке между контекстом и полем, окно выросло вверх (нижний край и поле на месте), «Недавние»
- * сверху. Поле при открытом пикере показывает не больше трёх строк.
+ * The emoji picker is open: the panel sits in the flow between the context and the field, the window grew upward (the bottom
+ * edge and the field stay in place), "Недавние" (Recent) on top. With the picker open the field shows at most three lines.
  */
 export const ПикерЭмодзи: Story = { args: { appendTargetId: "c", pickerOpen: true } };
 

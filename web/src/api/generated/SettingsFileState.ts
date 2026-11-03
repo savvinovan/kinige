@@ -5,34 +5,34 @@ import type { KeyIssue } from "./KeyIssue";
 import type { UnsafeReason } from "./UnsafeReason";
 
 /**
- * Состояние файла для окна.
+ * The state of the file for the window.
  */
 export type SettingsFileState = { 
 /**
- * Абсолютный путь файла: показывается и копируется («Копировать путь»).
+ * The absolute path of the file: shown and copied ("Copy path").
  */
 path: string, 
 /**
- * Файл не разобран или не прочитан; ни одна настройка из него не применена.
+ * The file did not parse or could not be read; no setting from it was applied.
  */
 problem: FileProblem | null, 
 /**
- * Почему файл небезопасен: ключи `agent_access.*` и `mirror.folder` из него не применяются.
+ * Why the file is unsafe: the `agent_access.*` and `mirror.folder` keys from it are not applied.
  */
 unsafeReason: UnsafeReason | null, 
 /**
- * Ошибки отдельных ключей: остальные ключи применены.
+ * Errors of individual keys: the other keys were applied.
  */
 issues: Array<KeyIssue>, 
 /**
- * Неизвестные ключи: предупреждение, в файле они сохраняются.
+ * Unknown keys: a warning, they are kept in the file.
  */
 unknownKeys: Array<string>, 
 /**
- * Сколько неизвестных ключей не поместилось в список («и ещё N»).
+ * How many unknown keys did not fit into the list ("and N more").
  */
 unknownMore: number, 
 /**
- * Когда раздел менялся через файл.
+ * When a section was changed through the file.
  */
 changed: FileChanges, };

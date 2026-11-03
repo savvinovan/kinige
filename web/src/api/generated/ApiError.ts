@@ -2,6 +2,6 @@
 import type { ErrorCode } from "./ErrorCode";
 
 /**
- * Ошибка команды, как её получает фронтенд: `{ "code": "store_write_failed" }`.
+ * A command error as the frontend receives it: `{ "code": "store_write_failed" }`.
  */
 export type ApiError = { code: ErrorCode, };

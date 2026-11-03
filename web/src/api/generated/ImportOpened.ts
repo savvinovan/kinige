@@ -2,7 +2,7 @@
 import type { ImportPreview } from "./ImportPreview";
 
 /**
- * Ответ на выбор файла: номер сессии (разобранный экспорт ждёт в Rust) и то, что в нём нашлось. Путь к файлу во
- * фронтенд не приходит.
+ * The answer to choosing a file: the session number (the parsed export waits in Rust) and what was found in it. The
+ * file path does not reach the frontend.
  */
 export type ImportOpened = { session: number, preview: ImportPreview, };
