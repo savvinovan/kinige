@@ -1,7 +1,7 @@
-// Удаляет эталоны визуальных тестов историй, которых больше нет в собранном Storybook.
-// Запуск из web/ после `npm run build-storybook` и `playwright test --update-snapshots=changed` (см. visual-update.yml).
-// Имена файлов — как в web/tests/visual/stories.spec.ts: `<id>-chromium-linux.png` и `<id>-large-chromium-linux.png`.
-// Флаг --dry-run только печатает лишние файлы.
+// Removes baselines of story visual tests whose stories are no longer in the built Storybook.
+// Run from web/ after `npm run build-storybook` and `playwright test --update-snapshots=changed` (see visual-update.yml).
+// File names are as in web/tests/visual/stories.spec.ts: `<id>-chromium-linux.png` and `<id>-large-chromium-linux.png`.
+// The --dry-run flag only prints the extra files.
 import { existsSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 
 const INDEX = "storybook-static/index.json";
@@ -11,7 +11,7 @@ const SUFFIX = "-chromium-linux.png";
 const dryRun = process.argv.includes("--dry-run");
 
 if (!existsSync(INDEX) || !existsSync(DIR)) {
-  console.error(`нужны ${INDEX} и ${DIR}: запускайте из web/ после build-storybook`);
+  console.error(`${INDEX} and ${DIR} are required: run from web/ after build-storybook`);
   process.exit(1);
 }
 
@@ -23,15 +23,15 @@ for (const entry of Object.values(index.entries)) {
   expected.add(`${entry.id}-large${SUFFIX}`);
 }
 if (expected.size === 0) {
-  console.error("в index.json нет историй: ничего не удаляю");
+  console.error("index.json has no stories: removing nothing");
   process.exit(1);
 }
 
 let removed = 0;
 for (const file of readdirSync(DIR)) {
   if (!file.endsWith(".png") || expected.has(file)) continue;
-  console.log(`${dryRun ? "лишний" : "удаляю"}: ${file}`);
+  console.log(`${dryRun ? "extra" : "removing"}: ${file}`);
   if (!dryRun) unlinkSync(`${DIR}/${file}`);
   removed += 1;
 }
-console.log(`эталонов без истории: ${removed}`);
+console.log(`baselines without a story: ${removed}`);

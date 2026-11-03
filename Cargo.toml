@@ -3,25 +3,25 @@ resolver = "3"
 members = ["crates/kinige-domain", "crates/kinige-store", "crates/kinige-mcp", "src-tauri"]
 
 [workspace.package]
-# Единственный источник версии приложения (ADR-0012): tauri.conf.json своей версии не имеет, Tauri берёт эту.
-# web/package.json и lock-файлы повторяют её; расхождение ловит web/src/version.test.ts. Меняется `scripts/release.sh`.
+# The only source of the app version (ADR-0012): tauri.conf.json has no version of its own, Tauri takes this one.
+# web/package.json and the lock files repeat it; a mismatch is caught by web/src/version.test.ts. Changed by `scripts/release.sh`.
 version = "0.6.0"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT"
 publish = false
 
-# `unsafe` — только в одной функции `effective_uid` (kinige-store, `geteuid`), с `#[allow]` и обоснованием (KINIG-28).
-# `forbid` нельзя переопределить точечным `allow`, поэтому `deny`.
+# `unsafe` only in one function, `effective_uid` (kinige-store, `geteuid`), with `#[allow]` and a justification (KINIG-28).
+# `forbid` cannot be overridden by a targeted `allow`, hence `deny`.
 [workspace.lints.rust]
 unsafe_code = "deny"
 
-# Вывод только через крейт `log` (файл лога пишет tauri-plugin-log): в .app из Finder stderr никуда не попадает.
-# В тестах и примерах печать разрешена (`clippy.toml`, `#![allow]` в examples).
+# Output only through the `log` crate (the log file is written by tauri-plugin-log): in a .app started from Finder stderr goes nowhere.
+# Printing is allowed in tests and examples (`clippy.toml`, `#![allow]` in examples).
 #
-# «Никогда не падать» (KINIG-28): ни одно из этих мест не должно попадать в код приложения. Исключение — доказуемо
-# безошибочный литерал: `#[allow(clippy::expect_used)]` и `.expect("почему не может упасть")`. В тестах (unit в `src/`,
-# корни `tests/` с `#![cfg(test)]`) и примерах разрешено (`clippy.toml`).
+# "Never panic" (KINIG-28): none of these may appear in the app code. The exception is a provably
+# infallible literal: `#[allow(clippy::expect_used)]` and `.expect("why it cannot fail")`. Allowed in tests (unit in `src/`,
+# `tests/` roots with `#![cfg(test)]`) and examples (`clippy.toml`).
 [workspace.lints.clippy]
 print_stdout = "deny"
 print_stderr = "deny"
@@ -31,17 +31,17 @@ panic = "deny"
 unreachable = "deny"
 todo = "deny"
 unimplemented = "deny"
-# Индексы и границы срезов приходят из чужих данных: `get()` вместо `[i]` и `[a..b]`, срезы строк только по границам
-# символов. В тестах индексация разрешена, срезы строк — нет (у `string_slice` такой настройки нет).
-# `arithmetic_side_effects` не включён: 199 срабатываний на счётчики и итераторы без входных данных; длины и смещения из
-# ввода проверены вручную (`checked_*`, `saturating_*`), см. KINIG-28.
+# Indices and slice bounds come from foreign data: `get()` instead of `[i]` and `[a..b]`, string slices only on character
+# boundaries. Indexing is allowed in tests, string slicing is not (`string_slice` has no such setting).
+# `arithmetic_side_effects` is not enabled: 199 hits on counters and iterators without input data; lengths and offsets from
+# input are checked by hand (`checked_*`, `saturating_*`), see KINIG-28.
 indexing_slicing = "deny"
 string_slice = "deny"
 
 [profile.release]
 lto = true
 codegen-units = 1
-# Без `panic = "abort"` (было до слайса 4a): паника в задаче писателя и в вызове инструмента MCP превращается в ошибку
-# ответа через `catch_unwind` и приложение продолжает работать (ADR-0009). С abort это не работало бы.
+# Without `panic = "abort"` (it was there before slice 4a): a panic in the writer task and in an MCP tool call turns into an error
+# response through `catch_unwind` and the app keeps working (ADR-0009). With abort this would not work.
 strip = true
 opt-level = "s"

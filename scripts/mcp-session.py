@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Сеанс MCP через мост `kinige-mcp` для приёмки слайса 4a: свой клиент вместо Claude Desktop, настоящие конфиги Claude не
-трогаются. Запускает мост (stdio), шлёт запросы, пишет протокол «запрос → ответ» (JSON по строке) в файл.
+"""An MCP session through the `kinige-mcp` bridge for the acceptance of slice 4a: our own client instead of Claude Desktop, the real
+Claude configs are not touched. Starts the bridge (stdio), sends requests, writes the "request -> response" protocol (one JSON per line) to a file.
 
-Использование:
-  scripts/mcp-session.py <путь к kinige-mcp> <путь к сокету> <файл протокола> [--chat <id чата>] [--closed-chat <id>]
+Usage:
+  scripts/mcp-session.py <path to kinige-mcp> <path to the socket> <protocol file> [--chat <chat id>] [--closed-chat <id>]
 
-Тексты записей в протокол попадают те, что отправил сам скрипт (синтетические демо-данные)."""
+The protocol contains only the entry texts that the script itself sent (synthetic demo data)."""
 import json
 import subprocess
 import sys
@@ -49,7 +49,7 @@ try:
     tool("set_task_done", {"id": entry["id"], "done": True})
     tool("get_entry", {"id": entry["id"]})
 except (KeyError, ValueError):
-    log.write("# add_entry не вернул запись (режим «только чтение» или чат не отмечен)\n")
+    log.write("# add_entry did not return an entry (read-only mode or the chat is not marked)\n")
 if "--closed-chat" in extra:
     tool("add_entry", {"text": "в закрытый чат", "chat_id": extra["--closed-chat"]})
     tool("search", {"query": "секретный", "chat_id": extra["--closed-chat"]})

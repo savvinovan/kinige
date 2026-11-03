@@ -1,7 +1,7 @@
-# Интеграция Huly (self-hosted huly.savvinov.me) к каждому новому PR и issue пишет комментарий «Connected to Huly®: KINIG-N»
-# с публичной гостевой ссылкой на карточку. В v0.7.426 это не отключается (github-service: addHulyLink), а репозиторий
-# публичный — ссылку на рабочее пространство не публикуем: комментарий бота сразу удаляется. Связь PR с задачей
-# видна в самом Huly. Подробности: homelab-k3s-2/k8s/huly/README.md.
+# The Huly integration (self-hosted huly.savvinov.me) writes a "Connected to Huly®: KINIG-N" comment on every new PR and issue
+# with a public guest link to the card. In v0.7.426 this cannot be turned off (github-service: addHulyLink), and the repository is
+# public, so we do not publish the workspace link: the bot's comment is deleted at once. The link between the PR and the task
+# is visible in Huly itself. Details: homelab-k3s-2/k8s/huly/README.md.
 name: Remove Huly link comments
 
 on:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
-      - name: Удалить комментарий
+      - name: Delete the comment
         env:
           GH_TOKEN: ${{ github.token }}
           COMMENT_ID: ${{ github.event.comment.id }}

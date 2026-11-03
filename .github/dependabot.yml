@@ -1,5 +1,5 @@
-# Обновления зависимостей раз в неделю; минорные и патч-обновления идут одним PR на экосистему, мажорные — отдельными.
-# Версии actions закреплены SHA с комментарием «# vX.Y.Z»: Dependabot обновляет и SHA, и комментарий.
+# Dependency updates once a week; minor and patch updates go in one PR per ecosystem, major ones separately.
+# Action versions are pinned by SHA with a "# vX.Y.Z" comment: Dependabot updates both the SHA and the comment.
 # Every ecosystem has `cooldown.default-days: 14`: Dependabot does not offer a version younger than two weeks
 # (project rule from ADR-0007 and ADR-0009, recorded in ADR-0012). Cooldown applies to version updates only, not security updates.
 version: 2
@@ -20,8 +20,8 @@ updates:
       interval: weekly
     cooldown:
       default-days: 14
-    # @playwright/test должен совпадать с версией образа mcr.microsoft.com/playwright:vX-noble в ci.yml и visual-update.yml,
-    # а Dependabot образ в workflow не обновит: версию меняют вручную, вместе с образом.
+    # @playwright/test must match the version of the mcr.microsoft.com/playwright:vX-noble image in ci.yml and visual-update.yml,
+    # and Dependabot does not update the image in the workflow: the version is changed by hand, together with the image.
     ignore:
       - dependency-name: "@playwright/test"
     groups:

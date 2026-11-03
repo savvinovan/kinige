@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Снимки слайса 4a («Доступ ИИ-агентов», MCP) в настоящем окне на macOS-раннере: scripts/screens/4a.sh <собранный Kinige.app>.
-# Данные — синтетические (seed_demo) во временном каталоге; настоящая база не трогается. Результат — $OUT (docs/screens/4a).
+# Shots of slice 4a ("AI agent access", MCP) in the real window on the macOS runner: scripts/screens/4a.sh <built Kinige.app>.
+# The data is synthetic (seed_demo) in a temporary directory; the real database is not touched. The result is $OUT (docs/screens/4a).
 # Since slice 4b the access settings live in the separate "Settings" window (tree: "AI agent access", "Visible chats",
 # "Access log"), not in a dialog of the main window; steps 2-9 drive that window the way 4b.sh does.
 set -u
@@ -8,7 +8,7 @@ REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 K="${K:-${RUNNER_TEMP:-/tmp}/kinige-screens}"
 APP="$K/Kinige.app"
 OUT="${OUT:-$REPO/docs/screens/4a}"
-SOURCE_APP="${1:?использование: $0 <путь к собранному Kinige.app>}"
+SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 # shellcheck source=lib.sh
 . "$REPO/scripts/screens/lib.sh"
 
@@ -16,7 +16,7 @@ SOCKET="$K/data/mcp/kinige.sock"
 BRIDGE="$APP/Contents/MacOS/kinige-mcp"
 EVIDENCE="$OUT/background-launch.txt"
 
-# Старые снимки уходят целиком: имена и набор могли измениться.
+# Old shots are removed entirely: the names and the set may have changed.
 rm -f "$OUT"/*.png
 rm -rf "$K/data" "$K/mirror"
 mkdir -p "$K/data" "$K/mirror"
@@ -31,34 +31,34 @@ dock_has_kinige() {
 }
 app_type() { lsappinfo info -only ApplicationType "$(lsappinfo find pid="$(app_pid)")" 2>&1 | sed 's/.*=//'; }
 
-# ---- 1. Запуск в фоне, как его делает мост: без значка в Dock и без окна; основной сокет; затем показ окна ----
+# ---- 1. Background launch, the way the bridge does it: no Dock icon and no window; the main socket; then showing the window ----
 {
-  echo "# Запуск в фоне: open -g -a Kinige.app --args --background, синтетический каталог данных на раннере GitHub (macOS)."
+  echo "# Background launch: open -g -a Kinige.app --args --background, a synthetic data directory on the GitHub runner (macOS)."
   launch_background
   wait_for_process
   sleep 4
-  echo "после --background: ApplicationType=$(app_type)  (UIElement = политика Accessory, значка в Dock нет)"
-  if dock_has_kinige; then echo "Dock: значок Kinige ЕСТЬ"; fail "в фоне значок Kinige в Dock"; else echo "Dock: значка Kinige нет"; fi
-  KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list | grep -c 'layer=0' | sed 's/^/окон обычного слоя: /'
-  # Значок в menu bar: второе меню-бар процесса (status items) через System Events и окно значка (слой 25) среди окон процесса.
+  echo "after --background: ApplicationType=$(app_type)  (UIElement = Accessory policy, no Dock icon)"
+  if dock_has_kinige; then echo "Dock: the Kinige icon IS there"; fail "the Kinige icon is in the Dock in the background"; else echo "Dock: no Kinige icon"; fi
+  KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list | grep -c 'layer=0' | sed 's/^/windows of the normal layer: /'
+  # The menu bar icon: the process's second menu bar (status items) through System Events and the icon window (layer 25) among the process windows.
   items="$(limit 30 osascript -e "tell application \"System Events\" to tell (first process whose unix id is $(app_pid)) to get count of menu bar items of menu bar 2" 2>&1)"
   windows="$(KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list | grep -c 'layer=25')"
-  echo "значок в menu bar: элементов во втором меню-баре процесса: $items; окон значка (слой 25): $windows"
+  echo "menu bar icon: items in the process's second menu bar: $items; icon windows (layer 25): $windows"
   case "$items" in
     '' | *[!0-9]*) items=0 ;;
   esac
-  if [ "$items" -ge 1 ] || [ "$windows" -ge 1 ]; then echo "значок в menu bar есть"; else fail "в фоне нет значка в menu bar"; fi
-  echo "основной сокет (не запасной в TMPDIR):"
+  if [ "$items" -ge 1 ] || [ "$windows" -ge 1 ]; then echo "the menu bar icon is there"; else fail "no menu bar icon in the background"; fi
+  echo "the main socket (not the fallback in TMPDIR):"
   stat -f '%Sp  %N' "$K/data/mcp" "$SOCKET"
-  [ "$(stat -f %Lp "$SOCKET")" = "600" ] && [ "$(stat -f %Lp "$K/data/mcp")" = "700" ] || fail "права сокета"
-  limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$K/debug/session-disabled.txt" || fail "сеанс по основному сокету"
-  grep -o 'mcp_disabled[^"]*' "$K/debug/session-disabled.txt" | head -1 | sed 's/^/вызов при выключенном доступе: /'
-  echo "процесс: $(ps -o command= -p "$(app_pid)" | sed 's#.*/Contents#.../Contents#')"
+  [ "$(stat -f %Lp "$SOCKET")" = "600" ] && [ "$(stat -f %Lp "$K/data/mcp")" = "700" ] || fail "socket permissions"
+  limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$K/debug/session-disabled.txt" || fail "session over the main socket"
+  grep -o 'mcp_disabled[^"]*' "$K/debug/session-disabled.txt" | head -1 | sed 's/^/call while access is off: /'
+  echo "process: $(ps -o command= -p "$(app_pid)" | sed 's#.*/Contents#.../Contents#')"
   launch_window
   wait_for_window
   sleep 2
-  echo "после показа окна (open без аргументов, Reopen): ApplicationType=$(app_type)  (Foreground = Regular, значок в Dock)"
-  if dock_has_kinige; then echo "Dock: значок Kinige есть"; else echo "Dock: значка Kinige нет"; fail "при окне значка нет в Dock"; fi
+  echo "after showing the window (open without arguments, Reopen): ApplicationType=$(app_type)  (Foreground = Regular, Dock icon)"
+  if dock_has_kinige; then echo "Dock: the Kinige icon is there"; else echo "Dock: no Kinige icon"; fail "no Dock icon while the window is shown"; fi
 } > "$EVIDENCE" 2>&1
 cat "$EVIDENCE"
 
@@ -75,11 +75,11 @@ open_settings
 press "AI agent access"
 shoot_settings 01-access-off
 press "Access log"
-has "denied: access is off" || fail "в журнале при выключенном доступе нет строк отказа"
+has "denied: access is off" || fail "the log has no refusal lines while access is off"
 shoot_settings 02-access-off-log
 press "AI agent access"
 scroll_to "How to connect"
-has "$SOCKET" && echo "путь основного сокета виден в окне" || fail "основного пути сокета нет в тексте окна ($SOCKET)"
+has "$SOCKET" && echo "the main socket path is visible in the window" || fail "the main socket path is not in the window text ($SOCKET)"
 
 # ---- 3. Turning on: the warning, the mode, the visible chats ----
 press "Allow agents to access the journal"
@@ -92,7 +92,7 @@ press "Inbox" CheckBox
 shoot_settings 04-access-on
 
 # ---- 4. An agent session through the bridge from the bundle: reading, writing, a closed chat ----
-limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session.txt" --chat "$WORK" --closed-chat "$BOOKS" || fail "сеанс агента"
+limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session.txt" --chat "$WORK" --closed-chat "$BOOKS" || fail "agent session"
 sleep 4
 shoot_settings 05-visible-chats-after-agent
 press "Access log"
@@ -103,7 +103,7 @@ shoot_settings 07-access-log-expanded
 # ---- 5. Read-only mode: write calls are refused ----
 press "AI agent access"
 press "Read only"
-limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session-read-only.txt" --chat "$WORK" || fail "сеанс только чтение"
+limit 60 python3 "$REPO/scripts/mcp-session.py" "$BRIDGE" "$SOCKET" "$OUT/mcp-session-read-only.txt" --chat "$WORK" || fail "read-only session"
 sleep 4
 press "Access log"
 shoot_settings 08-access-log-denied
@@ -112,7 +112,7 @@ press "Read and write"
 
 # ---- 6. The feed: the agent's entry ----
 in_main
-# Чаты в сайдбаре — AXPopUpButton с названием и числом записей («Работа , entries: 2»).
+# Chats in the sidebar are an AXPopUpButton with the title and the entry count ("Работа , entries: 2").
 press "Работа , entries" PopUpButton
 shoot_main 09-feed-agent-entry
 
