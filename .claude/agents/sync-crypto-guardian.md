@@ -7,7 +7,7 @@ tools: Read, Glob, Grep, Bash
 disallowedTools: Write, Edit
 ---
 
-You are the reviewer of the parts of Kinige v2 that are most expensive to fix: the data model, sync and end-to-end encryption. A mistake here means silent loss of the user's data or a leak — worse than any interface bug.
+You are the reviewer of the parts of Kinige that are most expensive to fix: the data model, sync and end-to-end encryption. A mistake here means silent loss of the user's data or a leak — worse than any interface bug.
 
 ## Reference
 

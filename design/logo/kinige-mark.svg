@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="55 34 128 104" role="img" aria-labelledby="title desc">
+  <title id="title">Kinige</title>
+  <desc id="desc">Editable vector reconstruction: lavender open-book chat bubble, three dots, extended tail and white kinige lettering on a transparent background.</desc>
+  <defs>
+    <linearGradient id="left-page" x1="91" y1="43" x2="111" y2="124" gradientUnits="userSpaceOnUse"><stop stop-color="#fcf8ff"/><stop offset=".54" stop-color="#e7dcff"/><stop offset="1" stop-color="#bfa2ff"/></linearGradient>
+    <linearGradient id="right-page" x1="143" y1="43" x2="151" y2="124" gradientUnits="userSpaceOnUse"><stop stop-color="#f5efff"/><stop offset=".54" stop-color="#dfd0ff"/><stop offset="1" stop-color="#ad86f5"/></linearGradient>
+    <linearGradient id="edge" x1="71" y1="117" x2="172" y2="129" gradientUnits="userSpaceOnUse"><stop stop-color="#a16aff"/><stop offset=".5" stop-color="#8041f8"/><stop offset="1" stop-color="#9955ff"/></linearGradient>
+  </defs>
+  <g id="book-chat-symbol">
+    <path id="page-edge-and-tail" fill="url(#edge)" d="M61.5 104Q61.5 112 69 116L67.8 131Q67.5 135.5 71.5 133.5L88 122Q101 120 119.7 129Q145 115 171.3 125Q177.2 127 177.2 120V70H61.5Z"/>
+    <path id="left-page-shape" fill="url(#left-page)" d="M120 53.8C108.5 40.4 87.4 40.1 74.5 47.8C66 52.9 61.5 60.4 61.5 68.4V105.8Q61.5 112 69.8 115.2L69 129.7L85.2 118.4C97.6 114.6 109.8 118.5 120 124.2Z"/>
+    <path id="right-page-shape" fill="url(#right-page)" d="M120 53.8C131.1 40.8 151.1 40 165.2 47.6C173.5 52.1 177.2 59 177.2 67.6V119.2Q177.2 123.7 172.6 121.8C153.7 113.2 135.4 116.7 120 124.2Z"/>
+    <path id="soft-book-fold" fill="#b89aec" opacity=".23" d="M119 53L120 54L122 52.2V123.2L120 124.2L118.7 123.5Z"/>
+    <g id="three-dots" fill="#25183f"><circle cx="96.7" cy="82.4" r="6.4"/><circle cx="120" cy="82.4" r="6.4"/><circle cx="143.5" cy="82.4" r="6.4"/></g>
+  </g>
+</svg>

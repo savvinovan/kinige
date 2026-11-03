@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="54 38 372 102" role="img" aria-labelledby="title desc">
+  <title id="title">Kinige</title>
+  <desc id="desc">Editable vector reconstruction: lavender open-book chat bubble, three dots, extended tail and white kinige lettering on a transparent background.</desc>
+  <defs>
+    <linearGradient id="left-page" x1="91" y1="43" x2="111" y2="124" gradientUnits="userSpaceOnUse"><stop stop-color="#d6c8ff"/><stop offset=".54" stop-color="#b9a1fb"/><stop offset="1" stop-color="#9270f2"/></linearGradient>
+    <linearGradient id="right-page" x1="143" y1="43" x2="151" y2="124" gradientUnits="userSpaceOnUse"><stop stop-color="#cdbdff"/><stop offset=".54" stop-color="#ad92f8"/><stop offset="1" stop-color="#835ced"/></linearGradient>
+    <linearGradient id="edge" x1="71" y1="117" x2="172" y2="129" gradientUnits="userSpaceOnUse"><stop stop-color="#a16aff"/><stop offset=".5" stop-color="#8041f8"/><stop offset="1" stop-color="#9955ff"/></linearGradient>
+  </defs>
+  <g id="book-chat-symbol">
+    <path id="page-edge-and-tail" fill="url(#edge)" d="M61.5 104Q61.5 112 69 116L67.8 131Q67.5 135.5 71.5 133.5L88 122Q101 120 119.7 129Q145 115 171.3 125Q177.2 127 177.2 120V70H61.5Z"/>
+    <path id="left-page-shape" fill="url(#left-page)" d="M120 53.8C108.5 40.4 87.4 40.1 74.5 47.8C66 52.9 61.5 60.4 61.5 68.4V105.8Q61.5 112 69.8 115.2L69 129.7L85.2 118.4C97.6 114.6 109.8 118.5 120 124.2Z"/>
+    <path id="right-page-shape" fill="url(#right-page)" d="M120 53.8C131.1 40.8 151.1 40 165.2 47.6C173.5 52.1 177.2 59 177.2 67.6V119.2Q177.2 123.7 172.6 121.8C153.7 113.2 135.4 116.7 120 124.2Z"/>
+    <path id="soft-book-fold" fill="#b89aec" opacity=".23" d="M119 53L120 54L122 52.2V123.2L120 124.2L118.7 123.5Z"/>
+    <g id="three-dots" fill="#ffffff"><circle cx="96.7" cy="82.4" r="6.4"/><circle cx="120" cy="82.4" r="6.4"/><circle cx="143.5" cy="82.4" r="6.4"/></g>
+  </g>
+  <g id="kinige-wordmark" fill="none" stroke="#1e1a33" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" aria-label="kinige">
+    <path id="letter-k" d="M207.7 54.2V103.3M233.3 69.8L210 89.1M219.4 81.5L234.6 103.3"/>
+    <path id="letter-i-first" d="M249.7 69.4V103.3"/><circle id="dot-i-first" cx="249.7" cy="54.4" r="5.7" fill="#1e1a33" stroke="none"/>
+    <path id="letter-n" d="M267.7 103.3V69.5M268 82.4C268 65.5 296.7 61.8 296.7 83.3V103.3"/>
+    <path id="letter-i-second" d="M314.2 69.4V103.3"/><circle id="dot-i-second" cx="314.2" cy="54.4" r="5.7" fill="#1e1a33" stroke="none"/>
+    <path id="letter-g" d="M364.7 70V102C364.7 124.4 344.8 127.3 333.7 115.2M364.3 85.7C364.3 62.5 330.6 62.8 330.6 86.1C330.6 109.5 364.3 109.1 364.3 85.7Z"/>
+    <path id="letter-e" d="M382.1 85.8H415.8C416 62.5 381.2 62.9 381.2 86C381.2 106.6 402 108.9 412.2 100.1"/>
+  </g>
+</svg>

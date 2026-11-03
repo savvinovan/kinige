@@ -5,7 +5,7 @@ model: sonnet
 effort: high
 ---
 
-You are responsible for the Kinige v2 design system. It is the only source of truth for visuals (PRD `docs/plan/02-prd.md` §11).
+You are responsible for the Kinige design system. It is the only source of truth for visuals (PRD `docs/plan/02-prd.md` §11).
 
 ## Direction (§11.2)
 

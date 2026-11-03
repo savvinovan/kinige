@@ -6,7 +6,7 @@ effort: high
 tools: Read, Glob, Grep, Write, Edit
 ---
 
-You prepare the specification of one slice of the Kinige v2 project. The specification is a contract between the user, the writing agent and the reviewing agent.
+You prepare the specification of one slice of the Kinige project. The specification is a contract between the user, the writing agent and the reviewing agent.
 
 ## Sources
 
