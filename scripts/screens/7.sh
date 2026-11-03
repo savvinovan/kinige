@@ -16,8 +16,12 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 # shellcheck source=lib.sh
 . "$REPO/scripts/screens/lib.sh"
 
-export AX_TIMEOUT=90
-export DUMP_TIMEOUT=240
+# The window tree is read one property at a time, so the forest strip (371 cells) made every search for an element in the feed
+# run into the time limit on the first attempt. The scenario hides the forest first (the saved view state of slice 6): this slice
+# is about the feed, and the tree is then small. The shots are also copied into the debug folder when the scenario fails, so that
+# a failed run can still be looked at (the debug artifact is never committed).
+export AX_TIMEOUT=60
+export DUMP_TIMEOUT=180
 
 SETTINGS_FILE="$K/data/settings.json"
 INBOX="00000000-0000-4000-8000-000000000001"
@@ -26,6 +30,8 @@ rm -f "$OUT"/*.png "$OUT"/*.txt
 rm -rf "$K/data" "$K/mirror" "$K/bench"
 mkdir -p "$K/data" "$K/mirror"
 KINIGE_SEED_ATTACH=1 cargo run --release -q -p kinige-store --example seed_demo -- "$K/data" "$K/mirror"
+sqlite3 "$K/data/kinige.db" "insert or replace into app_setting(key, value) values ('forest_view', 'hidden')"
+trap 'cp "$OUT"/*.png "$K/debug/" 2> /dev/null' EXIT
 prepare_app "$SOURCE_APP"
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")"
 plutil -insert LSEnvironment.KINIGE_LOG -string debug "$APP/Contents/Info.plist"
@@ -93,7 +99,14 @@ launch_window
 wait_for_window
 sleep 6
 detect_language
-has "${L_PHOTO} IMG_0002.jpg" || fail "no photo of the album in the feed"
+if ! has "${L_PHOTO} IMG_0002.jpg"; then
+  # Nothing after this can work: stop here with the window tree and the shot instead of failing every step at a minute apiece.
+  shoot_light() { SHOOT_DUMP=0 shoot "$@"; }
+  fail "no photo of the album in the feed"
+  shoot_light 00-failed-first-look
+  finish
+  exit 1
+fi
 has "меню.pdf" || fail "no file card in the feed"
 has "${L_MISSING}" || fail "the missing file is not marked"
 [ "$(sqlw "select count(*) from attachment_local where state = 'missing'")" = "1" ] || fail "the sweep did not mark exactly one file as missing"
