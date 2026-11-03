@@ -1,4 +1,4 @@
-# Kinige v2
+# Kinige
 
 A personal journal shaped like a "chat with yourself": you write as in a messenger, reread it as a typeset journal, and see the year as an isometric forest. Desktop first (macOS → Windows/Linux) on Tauri 2 + Rust + React/TypeScript, SQLite on the client, its own self-hosted server (axum + Postgres) with end-to-end encryption.
 

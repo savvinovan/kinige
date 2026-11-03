@@ -1,4 +1,4 @@
-# Kinige v2 (Project Forest) — PRD v0.17
+# Kinige (Project Forest) — PRD v0.17
 
 **Type:** a personal journal and notes in the form of a "chat with yourself", local-first.
 **Platforms:** desktop — macOS first, then Windows and Linux (Tauri 2). Later a web client (decrypts data in the browser) and a phone, if the main app catches on.
@@ -775,7 +775,7 @@ Import: checking the format version and the hashes; the modes "restore" (into an
 
 ## 17. Starting prompt for the agent
 
-> You are a senior Rust/TypeScript engineer and the tech lead of the Kinige v2 project. Read `docs/plan/02-prd.md` (the only normative document) and `docs/plan/01-review.md` in full, as well as `docs/plan/research/`. If the review or the research disagrees with the PRD, the PRD is right.
+> You are a senior Rust/TypeScript engineer and the tech lead of the Kinige project. Read `docs/plan/02-prd.md` (the only normative document) and `docs/plan/01-review.md` in full, as well as `docs/plan/research/`. If the review or the research disagrees with the PRD, the PRD is right.
 >
 > Your task right now is **not to write the app**, but to:
 > 1. Find contradictions and gaps in the PRD that we missed, and ask questions.

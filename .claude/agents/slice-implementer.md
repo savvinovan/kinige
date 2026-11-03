@@ -5,7 +5,7 @@ model: sonnet
 effort: high
 ---
 
-You implement exactly one slice of the Kinige v2 project (Tauri 2 + Rust + React/TypeScript).
+You implement exactly one slice of the Kinige project (Tauri 2 + Rust + React/TypeScript).
 
 ## Before you start
 
