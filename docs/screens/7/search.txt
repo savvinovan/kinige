@@ -1,0 +1,4 @@
+set: set: AXComboBox Поиск | Поиск | Поиск
+text of the entry: Фото и два документа к поездке.
+word is in the text: 0 entries
+RESULT: the search found the entry by the file name маршрут.pdf (its text does not contain the word)

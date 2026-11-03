@@ -1,7 +1,16 @@
-rows: 16
-rows marked missing: 1
-files in attachments/: 15
+[before the trash steps]
+rows: 19  draft tiles: 0  marked missing: 1
+files in attachments/: 18  thumbnails: 6  tombstones of attachments: 0
+[after restore]
+rows: 19  draft tiles: 0  marked missing: 1
+files in attachments/: 18  thumbnails: 8  tombstones of attachments: 0
+[after delete forever]
+rows: 17  draft tiles: 0  marked missing: 1
+files in attachments/: 16  thumbnails: 8  tombstones of attachments: 2
+[end of the scenario]
+rows: 17  draft tiles: 0  marked missing: 1
+files in attachments/: 16  thumbnails: 10  tombstones of attachments: 2
+[leftovers]
 leftover .part files: 0
 orphans moved aside: 0
-thumbnails: 9
 rows without a blob key or remote blob id: 0

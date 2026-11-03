@@ -1,13 +1,20 @@
-# Boxes (x y width height) of the first matches in the feed, the thumbnail cache emptied before the launch.
-# 'early' is the first moment the window was readable, 'late' is after the thumbnails were built.
-[early]
+# Boxes (x y width height) from the window tree: the four cells of the album, its caption, the bubble after it.
+# [before]: the album is above the visible part, its pictures are not loaded. [after]: it is scrolled into view and loaded.
+[before]
 Фото IMG_0001.jpg: 316 -1106 232 175
-Фото IMG_0005.jpg: 316 -707 257 401
-меню.pdf: 309 -260 481 50
-Файла нет: 316 287 467 293
-[late]
-Фото IMG_0001.jpg: 316 -1106 232 175
-Фото IMG_0005.jpg: 316 -707 257 401
-меню.pdf: 309 -260 481 50
-Файла нет: 316 287 467 293
+Фото IMG_0002.jpg: 551 -1106 233 175
+Фото IMG_0003.jpg: 316 -928 232 175
+Фото IMG_0004.jpg: 551 -928 233 175
+Прогулка вдоль реки: 316 -752 309 17
+Меню на субботу: 316 -209 115 17
 thumbnails built: 1
+[after]
+Фото IMG_0001.jpg: 316 251 232 175
+Фото IMG_0002.jpg: 551 251 233 175
+Фото IMG_0003.jpg: 316 429 232 175
+Фото IMG_0004.jpg: 551 429 233 175
+Прогулка вдоль реки: 316 605 309 17
+Меню на субботу: 316 1148 115 17
+thumbnails built: 5
+
+RESULT: no jump: 6 boxes keep their sizes and their offsets from the first cell while 4 thumbnails load
