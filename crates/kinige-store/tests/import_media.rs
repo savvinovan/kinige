@@ -505,12 +505,17 @@ fn hostile_and_broken_paths_are_counted_and_nothing_outside_the_folder_is_read()
     let parsed = parse(&export_json(&messages));
     let report = import_with(&store, &parsed, Some(export.path()), Language::Ru);
     assert_eq!(report.imported, paths.len() as i64);
-    // Only the symlink that stays inside the folder and the path with a `.` in it are copied. The empty path is "not in the
-    // export" like the note, and a file that is not there is missing; the other thirteen are refused.
-    assert_eq!(report.media_attached, 2, "{report:?}");
-    assert_eq!(report.media_missing, 2, "{report:?}");
-    assert_eq!(report.media_skipped, 13, "{report:?}");
-    assert_eq!(count(data.path(), "SELECT COUNT(*) FROM attachment"), 2);
+    // On Unix only the symlink that stays inside the folder and the path with a `.` in it are copied. The empty path is "not in
+    // the export" like the note, and a file that is not there is missing; the other thirteen are refused. Where the test cannot
+    // create the links (Windows) those four paths name nothing: only the `.` path is copied, six are missing, ten are refused.
+    let (attached, missing, skipped) = if cfg!(unix) { (2, 2, 13) } else { (1, 6, 10) };
+    assert_eq!(report.media_attached, attached, "{report:?}");
+    assert_eq!(report.media_missing, missing, "{report:?}");
+    assert_eq!(report.media_skipped, skipped, "{report:?}");
+    assert_eq!(
+        count(data.path(), "SELECT COUNT(*) FROM attachment"),
+        attached
+    );
     for entry in feed(&store) {
         for attachment in entry.attachments {
             assert!(
