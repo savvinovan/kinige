@@ -104,11 +104,7 @@ fn copy_and_describe(
     let filename = sanitize_filename(&name);
     let image = probe_image(part);
     let ext = stored_ext(&filename, image.as_ref().map(|i| i.format));
-    let (kind, mime) = classify(
-        &ext,
-        hints.mime,
-        image.as_ref().map(|info| info.format),
-    );
+    let (kind, mime) = classify(&ext, hints.mime, image.as_ref().map(|info| info.format));
     let (width, height) = match (&image, kind) {
         (Some(ImageInfo { width, height, .. }), AttachmentKind::Image) => {
             (Some(*width), Some(*height))
@@ -142,7 +138,9 @@ fn copy_path(faults: &Faults, path: &Path, part: &Path) -> Result<Copied, StoreE
     let mut file = File::open(path).map_err(|_| StoreError::AttachmentUnreadable)?;
     let copied = stream(faults, &mut file, part, Some(meta.len()))?;
     // A source that changed while it was copied is not a faithful copy.
-    let after = file.metadata().map_err(|_| StoreError::AttachmentUnreadable)?;
+    let after = file
+        .metadata()
+        .map_err(|_| StoreError::AttachmentUnreadable)?;
     if after.len() != meta.len() || copied.bytes != meta.len() {
         return Err(StoreError::AttachmentUnreadable);
     }

@@ -23,6 +23,16 @@ pub(crate) struct DayAttachment {
     pub source: Option<PathBuf>,
 }
 
+/// `(message id, attachment id, kind, filename, stored file name, local state)` of one row of the day query.
+type DayRow = (
+    String,
+    String,
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+);
+
 /// The live attachments of a chat day in the order of the entries (`created_at`, `id`, `sort_index`), with the day folder names.
 pub(crate) fn day_attachments(
     reader: &Connection,
@@ -37,7 +47,7 @@ pub(crate) fn day_attachments(
          WHERE m.chat_id = ?1 AND m.journal_date = ?2 AND m.deleted_at IS NULL AND a.deleted_at IS NULL \
          ORDER BY m.created_at, m.id, a.sort_index",
     )?;
-    let rows: Vec<(String, String, String, String, Option<String>, Option<String>)> = statement
+    let rows: Vec<DayRow> = statement
         .query_map((chat_id, journal_date), |row| {
             Ok((
                 row.get(0)?,
@@ -156,7 +166,9 @@ fn recorded(
         "SELECT attachment_id, name FROM mirror_file WHERE chat_id = ?1 AND journal_date = ?2",
     )?;
     statement
-        .query_map((chat_id, journal_date), |row| Ok((row.get(0)?, row.get(1)?)))?
+        .query_map((chat_id, journal_date), |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })?
         .collect()
 }
 

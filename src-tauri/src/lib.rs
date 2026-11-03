@@ -2,6 +2,7 @@
 
 mod actions;
 mod agent_access;
+pub mod attachments;
 pub mod capture;
 mod command_names;
 mod commands;
@@ -9,6 +10,7 @@ pub mod guard;
 pub mod hotkeys;
 pub mod import;
 pub mod logging;
+pub mod media_protocol;
 // The MCP server is a Unix socket (ADR-0009). Without Unix (Windows, slice 10a) a stub with the same surface stands in:
 // there is no socket and the "AI agent access" page sees `unsupported`.
 #[cfg(unix)]
@@ -46,7 +48,8 @@ pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS, SETTINGS_COMM
 /// The opener and dialog plugins are attached only for the Rust API: the window has no JS permissions for them (the capability does not grant them).
 /// Global shortcuts, the tray and single-instance are attached only by `run`: they have no place in tests.
 pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
-    builder
+    // The `kinige-media` protocol (slice 7) answers only the `main` webview; it is outside the capability system.
+    media_protocol::register(builder)
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -56,6 +59,11 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             commands::list_chats,
             commands::list_messages,
             commands::send_message,
+            attachments::attach_pick,
+            attachments::attach_paste,
+            attachments::attach_dropped,
+            attachments::remove_draft_attachment,
+            attachments::open_attachment,
             commands::get_settings,
             commands::set_text_size,
             commands::choose_mirror_folder,
@@ -191,6 +199,7 @@ fn start_services<R: Runtime>(
     settings_window::set_available(app, true);
     app.manage(CaptureShell::default());
     app.manage(import::ImportState::default());
+    app.manage(attachments::DropTokens::default());
     // The icon was built without the store (it was not yet in the app state): the recent chats now.
     tray::refresh(app);
     // The MCP server goes last, after `app.manage(store)`: a socket failure does not stop the journal (the error is visible in the settings).
@@ -242,11 +251,16 @@ fn on_shortcut<R: Runtime>(app: &tauri::AppHandle<R>, pressed: &Shortcut) {
 }
 
 /// Closing the main window hides it, the app lives in the menu bar; closing the capture window is the same as Esc.
-fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
+/// Public so that the IPC tests can send a window a drop (only `main` leaves a token).
+pub fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
     match (window.label(), event) {
         (MAIN_LABEL, WindowEvent::CloseRequested { api, .. }) => {
             api.prevent_close();
             let _ = window.hide();
+        }
+        // Files dragged over the main window: the overlay and, on a drop, a token (slice 7). Other windows ignore drops.
+        (MAIN_LABEL, WindowEvent::DragDrop(event)) => {
+            attachments::on_drag_drop(window.app_handle(), event)
         }
         (CAPTURE_LABEL, WindowEvent::CloseRequested { api, .. }) => {
             api.prevent_close();

@@ -15,11 +15,19 @@ use kinige_store::{Now, Store, StoreError};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
+/// `(id, sort_index, hlc_json, groups_raw, remote_blob_id, blob_key, sha256, server_known)` of an `attachment` row.
+type Row = (String, i64, String, String, String, String, String, i64);
+
 fn now() -> Now {
     at(2026, 11, 3, 12, 0)
 }
 
-fn attach(store: &Store, dir: &std::path::Path, name: &str, bytes: &[u8]) -> kinige_domain::AttachmentView {
+fn attach(
+    store: &Store,
+    dir: &std::path::Path,
+    name: &str,
+    bytes: &[u8],
+) -> kinige_domain::AttachmentView {
     let source = dir.join("src");
     std::fs::create_dir_all(&source).unwrap();
     let path = write(&source, name, bytes);
@@ -43,8 +51,15 @@ fn a_photo_is_copied_hashed_and_described_before_it_is_sent() {
     assert_eq!(view.mime, "image/jpeg");
     assert_eq!((view.width, view.height), (Some(640), Some(480)));
     assert_eq!(view.byte_size, bytes.len() as i64);
-    let stored = dir.path().join("attachments").join(format!("{}.jpg", view.id));
-    assert_eq!(std::fs::read(&stored).unwrap(), bytes, "the stored file is a faithful copy");
+    let stored = dir
+        .path()
+        .join("attachments")
+        .join(format!("{}.jpg", view.id));
+    assert_eq!(
+        std::fs::read(&stored).unwrap(),
+        bytes,
+        "the stored file is a faithful copy"
+    );
     // No half-copied file is left in the process's temporary directory.
     let tmp: Vec<String> = std::fs::read_dir(dir.path().join("attachments/.tmp"))
         .unwrap()
@@ -61,8 +76,14 @@ fn a_photo_is_copied_hashed_and_described_before_it_is_sent() {
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
         .unwrap();
-    assert_eq!(sha, kinige_domain::attachment::hex_lower(Sha256::digest(&bytes).as_slice()));
-    assert_eq!((size, file_name), (bytes.len() as i64, format!("{}.jpg", view.id)));
+    assert_eq!(
+        sha,
+        kinige_domain::attachment::hex_lower(Sha256::digest(&bytes).as_slice())
+    );
+    assert_eq!(
+        (size, file_name),
+        (bytes.len() as i64, format!("{}.jpg", view.id))
+    );
 
     let draft = store.chat_draft(INBOX_ID, &now()).unwrap();
     assert_eq!(ids(&draft.attachments), vec![view.id.clone()]);
@@ -78,9 +99,19 @@ fn sending_turns_the_draft_attachments_into_synced_rows_with_their_own_keys() {
     store.set_chat_draft(INBOX_ID, "подпись", &now()).unwrap();
 
     let sent = store
-        .send_entry(INBOX_ID, "подпись", None, &[b.id.clone(), a.id.clone()], &now())
+        .send_entry(
+            INBOX_ID,
+            "подпись",
+            None,
+            &[b.id.clone(), a.id.clone()],
+            &now(),
+        )
         .unwrap();
-    assert_eq!(ids(&sent.attachments), vec![b.id.clone(), a.id.clone()], "in the order given");
+    assert_eq!(
+        ids(&sent.attachments),
+        vec![b.id.clone(), a.id.clone()],
+        "in the order given"
+    );
     assert_eq!(sent.attachments[0].kind, AttachmentKind::File);
     assert_eq!(sent.attachments[0].state, AttachmentState::Local);
 
@@ -88,9 +119,18 @@ fn sending_turns_the_draft_attachments_into_synced_rows_with_their_own_keys() {
     let mut statement = conn
         .prepare("SELECT id, sort_index, hlc_json, groups_raw, remote_blob_id, blob_key, sha256, server_known FROM attachment ORDER BY sort_index")
         .unwrap();
-    let rows: Vec<(String, i64, String, String, String, String, String, i64)> = statement
+    let rows: Vec<Row> = statement
         .query_map([], |r| {
-            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?))
+            Ok((
+                r.get(0)?,
+                r.get(1)?,
+                r.get(2)?,
+                r.get(3)?,
+                r.get(4)?,
+                r.get(5)?,
+                r.get(6)?,
+                r.get(7)?,
+            ))
         })
         .unwrap()
         .map(Result::unwrap)
@@ -98,11 +138,16 @@ fn sending_turns_the_draft_attachments_into_synced_rows_with_their_own_keys() {
     assert_eq!(rows.len(), 2);
     let mut hlcs = Vec::new();
     let mut keys = Vec::new();
-    for (index, (id, sort, hlc_json, groups_raw, blob_id, blob_key, sha, known)) in rows.iter().enumerate() {
+    for (index, (id, sort, hlc_json, groups_raw, blob_id, blob_key, sha, known)) in
+        rows.iter().enumerate()
+    {
         assert_eq!(*sort, index as i64);
         assert_eq!(id, &sent.attachments[index].id);
         assert_eq!(*known, 0);
-        assert!(is_uuid_v7(blob_id), "remote_blob_id is a UUID v7: {blob_id}");
+        assert!(
+            is_uuid_v7(blob_id),
+            "remote_blob_id is a UUID v7: {blob_id}"
+        );
         assert!(is_hex64(blob_key) && is_hex64(sha));
         let groups: Value = serde_json::from_str(groups_raw).unwrap();
         assert_eq!(groups.as_object().unwrap().len(), 3, "core, order, deleted");
@@ -115,7 +160,10 @@ fn sending_turns_the_draft_attachments_into_synced_rows_with_their_own_keys() {
             .iter()
             .map(|g| hlc[g]["h"].as_str().unwrap())
             .collect();
-        assert!(stamps.iter().all(|s| *s == stamps[0]), "one HLC for the three groups");
+        assert!(
+            stamps.iter().all(|s| *s == stamps[0]),
+            "one HLC for the three groups"
+        );
         assert_eq!(hlc["core"]["sv"], 1);
         hlcs.push(stamps[0].to_string());
         keys.push(blob_key.clone());
@@ -126,13 +174,20 @@ fn sending_turns_the_draft_attachments_into_synced_rows_with_their_own_keys() {
     // The draft and its tiles are gone; the files are in place and nothing else is in `attachments/`.
     let draft = store.chat_draft(INBOX_ID, &now()).unwrap();
     assert_eq!((draft.body.as_str(), draft.attachments.len()), ("", 0));
-    let left: i64 = conn.query_row("SELECT COUNT(*) FROM draft_attachment", [], |r| r.get(0)).unwrap();
+    let left: i64 = conn
+        .query_row("SELECT COUNT(*) FROM draft_attachment", [], |r| r.get(0))
+        .unwrap();
     assert_eq!(left, 0);
     let on_disk = names(&dir.path().join("attachments"));
-    assert!(on_disk.contains(&format!("{}.jpg", a.id)) && on_disk.contains(&format!("{}.pdf", b.id)), "{on_disk:?}");
+    assert!(
+        on_disk.contains(&format!("{}.jpg", a.id)) && on_disk.contains(&format!("{}.pdf", b.id)),
+        "{on_disk:?}"
+    );
 
     // The feed gives the same views back, in order.
-    let page = store.list_messages_page(INBOX_ID, kinige_store::PageAt::Latest, 50, None, &now()).unwrap();
+    let page = store
+        .list_messages_page(INBOX_ID, kinige_store::PageAt::Latest, 50, None, &now())
+        .unwrap();
     assert_eq!(page.messages.len(), 1);
     assert_eq!(page.messages[0].attachments, sent.attachments);
 }
@@ -146,22 +201,41 @@ fn an_entry_can_be_sent_without_text_only_with_an_attachment() {
         Err(StoreError::Empty)
     ));
     let photo = attach(&store, dir.path(), "p.png", &png(32, 32));
-    let sent = store.send_entry(INBOX_ID, "", None, &[photo.id.clone()], &now()).unwrap();
+    let sent = store
+        .send_entry(INBOX_ID, "", None, std::slice::from_ref(&photo.id), &now())
+        .unwrap();
     assert_eq!(sent.body_md, "");
     let groups: Value = serde_json::from_str(
         &raw(dir.path())
-            .query_row("SELECT groups_raw FROM message WHERE id = ?1", [&sent.id], |r| r.get::<_, String>(0))
+            .query_row(
+                "SELECT groups_raw FROM message WHERE id = ?1",
+                [&sent.id],
+                |r| r.get::<_, String>(0),
+            )
             .unwrap(),
     )
     .unwrap();
-    assert_eq!(groups["body"].to_string(), r#"{"base":null,"body_md":"","edited_at":null,"supersedes":[]}"#);
+    assert_eq!(
+        groups["body"].to_string(),
+        r#"{"base":null,"body_md":"","edited_at":null,"supersedes":[]}"#
+    );
 
     // Editing: the text may be cleared while an attachment is there, and not on an entry without one.
-    let edited = store.edit_message(&sent.id, "потом дописал", &now()).unwrap();
+    let edited = store
+        .edit_message(&sent.id, "потом дописал", &now())
+        .unwrap();
     assert_eq!(edited.body_md, "потом дописал");
-    assert_eq!(store.edit_message(&sent.id, "", &now()).unwrap().body_md, "");
-    let plain = store.send_message(INBOX_ID, "просто текст", &now()).unwrap();
-    assert!(matches!(store.edit_message(&plain.id, "  ", &now()), Err(StoreError::Empty)));
+    assert_eq!(
+        store.edit_message(&sent.id, "", &now()).unwrap().body_md,
+        ""
+    );
+    let plain = store
+        .send_message(INBOX_ID, "просто текст", &now())
+        .unwrap();
+    assert!(matches!(
+        store.edit_message(&plain.id, "  ", &now()),
+        Err(StoreError::Empty)
+    ));
 }
 
 #[test]
@@ -182,7 +256,10 @@ fn garbage_attachment_ids_write_nothing() {
         (vec![foreign.id.clone()], "another chat's"),
         (vec![mine.id.clone(), mine.id.clone()], "duplicates"),
         (vec![mine.id.to_uppercase()], "upper case"),
-        (vec!["00000000-0000-4000-8000-0000000000aa".into()], "unknown"),
+        (
+            vec!["00000000-0000-4000-8000-0000000000aa".into()],
+            "unknown",
+        ),
         (eleven, "eleven ids"),
     ];
     for (ids, why) in cases {
@@ -190,7 +267,10 @@ fn garbage_attachment_ids_write_nothing() {
             .send_entry(INBOX_ID, "текст", None, &ids, &now())
             .expect_err(why);
         assert!(
-            matches!(error, StoreError::AttachmentNotFound | StoreError::AttachmentLimit),
+            matches!(
+                error,
+                StoreError::AttachmentNotFound | StoreError::AttachmentLimit
+            ),
             "{why}: {error}"
         );
     }
@@ -202,10 +282,16 @@ fn garbage_attachment_ids_write_nothing() {
         // The Inbox has no messages; nothing was written by any of the rejected sends.
         assert_eq!(n, 0, "{table}");
     }
-    let tiles: i64 = conn.query_row("SELECT COUNT(*) FROM draft_attachment", [], |r| r.get(0)).unwrap();
+    let tiles: i64 = conn
+        .query_row("SELECT COUNT(*) FROM draft_attachment", [], |r| r.get(0))
+        .unwrap();
     assert_eq!(tiles, 2, "both tiles are still there");
     // The valid send still works afterwards.
-    assert!(store.send_entry(INBOX_ID, "ok", None, &[mine.id.clone()], &now()).is_ok());
+    assert!(
+        store
+            .send_entry(INBOX_ID, "ok", None, std::slice::from_ref(&mine.id), &now())
+            .is_ok()
+    );
 }
 
 #[test]
@@ -213,7 +299,12 @@ fn the_eleventh_tile_is_refused_before_anything_is_copied() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     for n in 0..10 {
-        attach(&store, dir.path(), &format!("f{n}.txt"), format!("file {n}").as_bytes());
+        attach(
+            &store,
+            dir.path(),
+            &format!("f{n}.txt"),
+            format!("file {n}").as_bytes(),
+        );
     }
     let path = write(dir.path(), "eleven.txt", b"x");
     assert!(matches!(
@@ -224,7 +315,14 @@ fn the_eleventh_tile_is_refused_before_anything_is_copied() {
         store.attach_bytes(INBOX_ID, Some("p.png"), &png(4, 4), &now()),
         Err(StoreError::AttachmentLimit)
     ));
-    assert_eq!(store.chat_draft(INBOX_ID, &now()).unwrap().attachments.len(), 10);
+    assert_eq!(
+        store
+            .chat_draft(INBOX_ID, &now())
+            .unwrap()
+            .attachments
+            .len(),
+        10
+    );
     assert!(matches!(
         store.attach_path("00000000-0000-4000-8000-000000000bad", &path, &now()),
         Err(StoreError::ChatNotFound)
@@ -236,7 +334,10 @@ fn removing_a_tile_deletes_its_row_and_file_and_the_empty_draft_row() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let view = attach(&store, dir.path(), "a.gif", &gif(10, 10));
-    let stored = dir.path().join("attachments").join(format!("{}.gif", view.id));
+    let stored = dir
+        .path()
+        .join("attachments")
+        .join(format!("{}.gif", view.id));
     assert!(stored.is_file());
     assert!(matches!(
         store.remove_draft_attachment(INBOX_ID, "nope"),
@@ -244,13 +345,28 @@ fn removing_a_tile_deletes_its_row_and_file_and_the_empty_draft_row() {
     ));
     store.remove_draft_attachment(INBOX_ID, &view.id).unwrap();
     assert!(!stored.exists());
-    assert!(store.chat_draft(INBOX_ID, &now()).unwrap().attachments.is_empty());
-    let rows: i64 = raw(dir.path()).query_row("SELECT COUNT(*) FROM draft", [], |r| r.get(0)).unwrap();
+    assert!(
+        store
+            .chat_draft(INBOX_ID, &now())
+            .unwrap()
+            .attachments
+            .is_empty()
+    );
+    let rows: i64 = raw(dir.path())
+        .query_row("SELECT COUNT(*) FROM draft", [], |r| r.get(0))
+        .unwrap();
     assert_eq!(rows, 0, "nothing is left of the draft");
     // Saving an empty text keeps the draft while a tile is there.
     let again = attach(&store, dir.path(), "b.gif", &gif(10, 10));
     store.set_chat_draft(INBOX_ID, "", &now()).unwrap();
-    assert_eq!(store.chat_draft(INBOX_ID, &now()).unwrap().attachments.len(), 1);
+    assert_eq!(
+        store
+            .chat_draft(INBOX_ID, &now())
+            .unwrap()
+            .attachments
+            .len(),
+        1
+    );
     store.remove_draft_attachment(INBOX_ID, &again.id).unwrap();
 }
 
@@ -258,12 +374,24 @@ fn removing_a_tile_deletes_its_row_and_file_and_the_empty_draft_row() {
 fn pasted_bytes_get_a_clean_name_and_the_paste_limit() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
-    let nameless = store.attach_bytes(INBOX_ID, None, &png(16, 16), &at(2026, 11, 3, 14, 5)).unwrap();
+    let nameless = store
+        .attach_bytes(INBOX_ID, None, &png(16, 16), &at(2026, 11, 3, 14, 5))
+        .unwrap();
     assert_eq!(nameless.filename, "pasted-140500");
     assert_eq!(nameless.kind, AttachmentKind::Image);
-    assert!(dir.path().join("attachments").join(format!("{}.png", nameless.id)).is_file());
+    assert!(
+        dir.path()
+            .join("attachments")
+            .join(format!("{}.png", nameless.id))
+            .is_file()
+    );
     let hostile = store
-        .attach_bytes(INBOX_ID, Some("../../etc/pass\u{0}wd\u{202E}.png"), &png(16, 16), &now())
+        .attach_bytes(
+            INBOX_ID,
+            Some("../../etc/pass\u{0}wd\u{202E}.png"),
+            &png(16, 16),
+            &now(),
+        )
         .unwrap();
     assert_eq!(hostile.filename, "passwd.png");
     let too_big = vec![0u8; kinige_domain::attachment::MAX_PASTE_BYTES + 1];
@@ -278,8 +406,12 @@ fn search_finds_an_entry_by_the_stem_of_a_file_name() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let menu = attach(&store, dir.path(), "меню_ресторана.pdf", b"%PDF-1.4");
-    let sent = store.send_entry(INBOX_ID, "", None, &[menu.id.clone()], &now()).unwrap();
-    let other = store.send_message(INBOX_ID, "совсем другое", &now()).unwrap();
+    let sent = store
+        .send_entry(INBOX_ID, "", None, std::slice::from_ref(&menu.id), &now())
+        .unwrap();
+    let other = store
+        .send_message(INBOX_ID, "совсем другое", &now())
+        .unwrap();
     for query in ["меню", "ресторан", "меню ресторана"] {
         let found = store.search(query, &Default::default(), None, 20).unwrap();
         let hits: Vec<&str> = found.hits.iter().map(|h| h.message.id.as_str()).collect();

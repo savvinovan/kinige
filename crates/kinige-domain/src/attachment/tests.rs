@@ -29,7 +29,10 @@ fn input() -> NewAttachment<'static> {
 }
 
 fn hlc() -> String {
-    format!("{:013}-00000-5f0c3e2a-9b1d-4c7e-8a64-0d2f1b3c4e5f", 1_793_000_000_000u64)
+    format!(
+        "{:013}-00000-5f0c3e2a-9b1d-4c7e-8a64-0d2f1b3c4e5f",
+        1_793_000_000_000u64
+    )
 }
 
 #[test]
@@ -73,27 +76,78 @@ fn values_outside_the_format_never_reach_the_bytes() {
     let long_name = "a".repeat(256);
     let not_hex = "g".repeat(64);
     let upper_key = KEY.to_uppercase();
-    let short_sha = &SHA[1..];
+    let short_sha = SHA.get(1..).unwrap();
     let bad: Vec<NewAttachment<'_>> = vec![
         NewAttachment { id: "x", ..input() },
-        NewAttachment { message_id: "", ..input() },
+        NewAttachment {
+            message_id: "",
+            ..input()
+        },
         // Upper case, wrong version, wrong variant.
-        NewAttachment { remote_blob_id: "01934F2E-8A7B-7C3D-9E1F-2A3B4C5D6E7F", ..input() },
-        NewAttachment { remote_blob_id: MESSAGE, ..input() },
-        NewAttachment { remote_blob_id: "01934f2e-8a7b-7c3d-7e1f-2a3b4c5d6e7f", ..input() },
-        NewAttachment { sha256: short_sha, ..input() },
-        NewAttachment { blob_key: &not_hex, ..input() },
-        NewAttachment { blob_key: &upper_key, ..input() },
-        NewAttachment { filename: "", ..input() },
-        NewAttachment { filename: "a\u{0}b.jpg", ..input() },
-        NewAttachment { filename: "dir/a.jpg", ..input() },
-        NewAttachment { filename: "evil\u{202E}gpj.exe", ..input() },
-        NewAttachment { filename: long_name.as_str(), ..input() },
-        NewAttachment { mime: "", ..input() },
-        NewAttachment { mime: "image/jpeg\n", ..input() },
-        NewAttachment { byte_size: -1, ..input() },
-        NewAttachment { byte_size: (MAX_FILE_BYTES as i64) + 1, ..input() },
-        NewAttachment { sort_index: 10, ..input() },
+        NewAttachment {
+            remote_blob_id: "01934F2E-8A7B-7C3D-9E1F-2A3B4C5D6E7F",
+            ..input()
+        },
+        NewAttachment {
+            remote_blob_id: MESSAGE,
+            ..input()
+        },
+        NewAttachment {
+            remote_blob_id: "01934f2e-8a7b-7c3d-7e1f-2a3b4c5d6e7f",
+            ..input()
+        },
+        NewAttachment {
+            sha256: short_sha,
+            ..input()
+        },
+        NewAttachment {
+            blob_key: &not_hex,
+            ..input()
+        },
+        NewAttachment {
+            blob_key: &upper_key,
+            ..input()
+        },
+        NewAttachment {
+            filename: "",
+            ..input()
+        },
+        NewAttachment {
+            filename: "a\u{0}b.jpg",
+            ..input()
+        },
+        NewAttachment {
+            filename: "dir/a.jpg",
+            ..input()
+        },
+        NewAttachment {
+            filename: "evil\u{202E}gpj.exe",
+            ..input()
+        },
+        NewAttachment {
+            filename: long_name.as_str(),
+            ..input()
+        },
+        NewAttachment {
+            mime: "",
+            ..input()
+        },
+        NewAttachment {
+            mime: "image/jpeg\n",
+            ..input()
+        },
+        NewAttachment {
+            byte_size: -1,
+            ..input()
+        },
+        NewAttachment {
+            byte_size: (MAX_FILE_BYTES as i64) + 1,
+            ..input()
+        },
+        NewAttachment {
+            sort_index: 10,
+            ..input()
+        },
     ];
     for (n, case) in bad.iter().enumerate() {
         assert!(new_attachment(case, &hlc()).is_err(), "case {n}");
@@ -133,7 +187,10 @@ fn filenames_are_cleaned_and_cut() {
     assert_eq!(sanitize_filename("  spaced name.pdf  "), "spaced name.pdf");
     for empty in ["", " ", "/", "..", ".", "\u{0}", "a/", "\n"] {
         let cleaned = sanitize_filename(empty);
-        assert!(cleaned == "file" || cleaned == "a", "{empty:?} -> {cleaned:?}");
+        assert!(
+            cleaned == "file" || cleaned == "a",
+            "{empty:?} -> {cleaned:?}"
+        );
     }
     let long = format!("{}.jpeg", "я".repeat(300));
     let cut = sanitize_filename(&long);
@@ -154,7 +211,10 @@ fn the_stored_extension_follows_the_regex_then_the_format_then_bin() {
     assert_eq!(stored_ext("noext", Some(ImageFormat::WebP)), "webp");
     assert_eq!(stored_ext(".hidden", None), "bin");
     assert_eq!(stored_ext("a.", Some(ImageFormat::Png)), "png");
-    assert_eq!(stored_ext("a.waytoolongext1", Some(ImageFormat::Gif)), "gif");
+    assert_eq!(
+        stored_ext("a.waytoolongext1", Some(ImageFormat::Gif)),
+        "gif"
+    );
     assert_eq!(stored_ext("a.j p", Some(ImageFormat::Jpeg)), "jpg");
     assert_eq!(stored_ext("a.ex/../e", None), "bin");
     assert_eq!(stored_ext("photo.я", Some(ImageFormat::Jpeg)), "jpg");
@@ -164,7 +224,10 @@ fn the_stored_extension_follows_the_regex_then_the_format_then_bin() {
 #[test]
 fn the_kind_comes_from_content_then_extension_or_mime() {
     let kind = |ext, mime, image| classify(ext, mime, image).0;
-    assert_eq!(kind("jpg", None, Some(ImageFormat::Jpeg)), AttachmentKind::Image);
+    assert_eq!(
+        kind("jpg", None, Some(ImageFormat::Jpeg)),
+        AttachmentKind::Image
+    );
     // An image whose header failed is a file, whatever the extension says.
     assert_eq!(kind("jpg", None, None), AttachmentKind::File);
     assert_eq!(kind("heic", None, None), AttachmentKind::File);
@@ -177,8 +240,14 @@ fn the_kind_comes_from_content_then_extension_or_mime() {
     assert_eq!(kind("bin", Some("not a mime"), None), AttachmentKind::File);
     assert_eq!(classify("pdf", None, None).1, "application/pdf");
     assert_eq!(classify("bin", None, None).1, "application/octet-stream");
-    assert_eq!(classify("bin", Some("application/x-custom"), None).1, "application/x-custom");
-    assert_eq!(classify("bin", Some("a/b\nc"), None).1, "application/octet-stream");
+    assert_eq!(
+        classify("bin", Some("application/x-custom"), None).1,
+        "application/x-custom"
+    );
+    assert_eq!(
+        classify("bin", Some("a/b\nc"), None).1,
+        "application/octet-stream"
+    );
     assert_eq!(classify("png", None, Some(ImageFormat::Png)).1, "image/png");
 }
 
@@ -213,7 +282,10 @@ fn view(kind: AttachmentKind, name: &str) -> AttachmentView {
 fn the_summary_counts_photos_and_files() {
     assert_eq!(summary_of(&[]), AttachmentSummary::default());
     let one = summary_of(&[view(AttachmentKind::Image, "a.jpg")]);
-    assert_eq!((one.photos, one.files, one.name.as_deref()), (1, 0, Some("a.jpg")));
+    assert_eq!(
+        (one.photos, one.files, one.name.as_deref()),
+        (1, 0, Some("a.jpg"))
+    );
     let mixed = summary_of(&[
         view(AttachmentKind::Image, "a.jpg"),
         view(AttachmentKind::Image, "b.jpg"),
@@ -228,7 +300,12 @@ fn mirror_names_are_safe_and_unique_without_case() {
     let names = mirror_file_names(&["IMG_0001.jpg", "img_0001.JPG", "IMG_0001.jpg", "menu.pdf"]);
     assert_eq!(
         names,
-        ["IMG_0001.jpg", "img_0001 (2).JPG", "IMG_0001 (3).jpg", "menu.pdf"]
+        [
+            "IMG_0001.jpg",
+            "img_0001 (2).JPG",
+            "IMG_0001 (3).jpg",
+            "menu.pdf"
+        ]
     );
     let odd = mirror_file_names(&["a:b*c?.txt", "CON.txt", "nul", "dots...", "x ", ""]);
     assert_eq!(odd, ["a_b_c_.txt", "_CON.txt", "_nul", "dots", "x", "file"]);

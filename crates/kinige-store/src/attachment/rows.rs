@@ -9,8 +9,8 @@ use kinige_domain::attachment::{
     AttachmentKind, AttachmentRow, AttachmentState, AttachmentView, MAX_PER_ENTRY, NewAttachment,
     hex_lower, new_attachment,
 };
-use kinige_domain::hlc::is_uuid_v4;
 use kinige_domain::history::purged_of_best_effort;
+use kinige_domain::hlc::is_uuid_v4;
 use rusqlite::{Connection, OptionalExtension, Transaction};
 use serde_json::Value;
 use uuid::Uuid;
@@ -314,10 +314,16 @@ pub(crate) fn delete_for_purge(
             (&id, purged_of_best_effort(&hlc_json)?, now_ms, message_id),
         )
         .map_err(write_err)?;
-        tx.execute("DELETE FROM attachment_local WHERE attachment_id = ?1", [&id])
-            .map_err(write_err)?;
-        tx.execute("DELETE FROM draft_attachment WHERE attachment_id = ?1", [&id])
-            .map_err(write_err)?;
+        tx.execute(
+            "DELETE FROM attachment_local WHERE attachment_id = ?1",
+            [&id],
+        )
+        .map_err(write_err)?;
+        tx.execute(
+            "DELETE FROM draft_attachment WHERE attachment_id = ?1",
+            [&id],
+        )
+        .map_err(write_err)?;
         files.push(PurgedFile { id, file_name });
     }
     tx.execute("DELETE FROM attachment WHERE message_id = ?1", [message_id])

@@ -2169,6 +2169,7 @@ name = "kinige"
 version = "0.7.0"
 dependencies = [
  "arboard",
+ "image",
  "kinige-domain",
  "kinige-store",
  "log",
@@ -2187,6 +2188,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "url",
+ "uuid",
 ]
 
 [[package]]

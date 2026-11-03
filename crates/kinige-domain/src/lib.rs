@@ -50,9 +50,9 @@ pub use agent_api::{
     AgentAccess, AgentChatChoice, AgentLogEntry, AgentLogPage, AgentLogRow, AgentMode, AgentSocket,
 };
 pub use api::{
-    CaptureAction, CaptureOutcome, CaptureState, ChatDraft, ChatList, ChatSummary, FeedCursor,
-    MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters, SearchHit,
-    SearchPage, Settings, TextSize, TrashItem,
+    AttachOutcome, CaptureAction, CaptureOutcome, CaptureState, ChatDraft, ChatList, ChatSummary,
+    FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters,
+    SearchHit, SearchPage, Settings, TextSize, TrashItem,
 };
 pub use api_error::{ApiError, ErrorCode};
 pub use attachment::{AttachmentKind, AttachmentState, AttachmentSummary, AttachmentView};

@@ -6,7 +6,11 @@ use std::path::{Path, PathBuf};
 
 pub fn jpeg(width: u32, height: u32) -> Vec<u8> {
     let image = RgbImage::from_fn(width, height, |x, y| {
-        Rgb([(x * 255 / width.max(1)) as u8, (y * 255 / height.max(1)) as u8, 90])
+        Rgb([
+            (x * 255 / width.max(1)) as u8,
+            (y * 255 / height.max(1)) as u8,
+            90,
+        ])
     });
     let mut bytes = Vec::new();
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut bytes, 80)
@@ -16,10 +20,17 @@ pub fn jpeg(width: u32, height: u32) -> Vec<u8> {
 }
 
 pub fn png(width: u32, height: u32) -> Vec<u8> {
-    let image = RgbImage::from_fn(width, height, |x, y| Rgb([(x % 256) as u8, (y % 256) as u8, 30]));
+    let image = RgbImage::from_fn(width, height, |x, y| {
+        Rgb([(x % 256) as u8, (y % 256) as u8, 30])
+    });
     let mut bytes = Vec::new();
     image::codecs::png::PngEncoder::new(&mut bytes)
-        .write_image(image.as_raw(), width, height, image::ExtendedColorType::Rgb8)
+        .write_image(
+            image.as_raw(),
+            width,
+            height,
+            image::ExtendedColorType::Rgb8,
+        )
         .unwrap();
     bytes
 }
@@ -27,11 +38,25 @@ pub fn png(width: u32, height: u32) -> Vec<u8> {
 /// A PNG with a transparent corner.
 pub fn png_with_alpha(width: u32, height: u32) -> Vec<u8> {
     let image = RgbaImage::from_fn(width, height, |x, y| {
-        Rgba([200, 40, 40, if x < width / 2 && y < height / 2 { 0 } else { 255 }])
+        Rgba([
+            200,
+            40,
+            40,
+            if x < width / 2 && y < height / 2 {
+                0
+            } else {
+                255
+            },
+        ])
     });
     let mut bytes = Vec::new();
     image::codecs::png::PngEncoder::new(&mut bytes)
-        .write_image(image.as_raw(), width, height, image::ExtendedColorType::Rgba8)
+        .write_image(
+            image.as_raw(),
+            width,
+            height,
+            image::ExtendedColorType::Rgba8,
+        )
         .unwrap();
     bytes
 }
@@ -40,7 +65,12 @@ pub fn gif(width: u32, height: u32) -> Vec<u8> {
     let image = RgbaImage::from_fn(width, height, |x, _| Rgba([(x % 256) as u8, 120, 60, 255]));
     let mut bytes = Vec::new();
     image::codecs::gif::GifEncoder::new(&mut bytes)
-        .encode(image.as_raw(), width, height, image::ExtendedColorType::Rgba8)
+        .encode(
+            image.as_raw(),
+            width,
+            height,
+            image::ExtendedColorType::Rgba8,
+        )
         .unwrap();
     bytes
 }
@@ -52,7 +82,20 @@ pub fn jpeg_with_orientation(width: u32, height: u32, orientation: u8) -> Vec<u8
     exif.extend_from_slice(b"Exif\0\0");
     exif.extend_from_slice(&[0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00]);
     exif.extend_from_slice(&[0x01, 0x00]);
-    exif.extend_from_slice(&[0x12, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, orientation, 0x00, 0x00, 0x00]);
+    exif.extend_from_slice(&[
+        0x12,
+        0x01,
+        0x03,
+        0x00,
+        0x01,
+        0x00,
+        0x00,
+        0x00,
+        orientation,
+        0x00,
+        0x00,
+        0x00,
+    ]);
     exif.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);
     let mut out = plain[..2].to_vec();
     out.extend_from_slice(&exif);
@@ -68,7 +111,11 @@ pub fn png_bomb(width: u32, height: u32) -> Vec<u8> {
     ihdr.extend_from_slice(&height.to_be_bytes());
     ihdr.extend_from_slice(&[8, 2, 0, 0, 0]);
     chunk(&mut out, b"IHDR", &ihdr);
-    chunk(&mut out, b"IDAT", &[0x78, 0x9c, 0x63, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01]);
+    chunk(
+        &mut out,
+        b"IDAT",
+        &[0x78, 0x9c, 0x63, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01],
+    );
     chunk(&mut out, b"IEND", &[]);
     out
 }
@@ -86,7 +133,11 @@ fn crc32(bytes: &[u8]) -> u32 {
     for byte in bytes {
         crc ^= u32::from(*byte);
         for _ in 0..8 {
-            crc = if crc & 1 == 1 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+            crc = if crc & 1 == 1 {
+                (crc >> 1) ^ 0xEDB8_8320
+            } else {
+                crc >> 1
+            };
         }
     }
     !crc

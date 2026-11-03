@@ -90,6 +90,17 @@ pub struct ChatDraft {
     pub attachments: Vec<AttachmentView>,
 }
 
+/// What the paperclip dialog or a file drop attached (slice 7): the new tiles, the folders that were skipped ("Folders are not
+/// attached") and the first error, which stops the rest. The tiles that made it stay in the draft.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "AttachOutcome.ts")]
+pub struct AttachOutcome {
+    pub attached: Vec<AttachmentView>,
+    pub skipped_folders: u32,
+    pub error: Option<ErrorCode>,
+}
+
 /// Which entry flag the `set_message_flag` command changes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]

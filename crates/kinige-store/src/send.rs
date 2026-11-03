@@ -296,8 +296,7 @@ impl Store {
                 None => insert_new_message(&tx, &chat_id, &body, &now)?,
             };
             if !ids.is_empty() {
-                view.attachments =
-                    promote_draft(&tx, &dirs, &key, &ids, &view.id, now.ms)?;
+                view.attachments = promote_draft(&tx, &dirs, &key, &ids, &view.id, now.ms)?;
                 // The file names are part of the entry's search text: index again, now that the rows exist.
                 crate::search::reindex(&tx, &view.id, &view.body_md).map_err(write_err)?;
             }

@@ -1,9 +1,7 @@
 //! Names and kinds of attachments: the stored file name, the extension rules, the kind by content or extension, the allowlist
 //! for opening in a system app and the file names of the Markdown copy (ADR-0014).
 
-use super::{
-    AttachmentKind, AttachmentSummary, AttachmentView, ImageFormat, MAX_FILENAME_BYTES,
-};
+use super::{AttachmentKind, AttachmentSummary, AttachmentView, ImageFormat, MAX_FILENAME_BYTES};
 use std::collections::HashSet;
 
 const VIDEO_EXTS: &[&str] = &[
@@ -107,9 +105,7 @@ fn truncate_keeping_ext(name: &str, max: usize) -> String {
         return name.to_string();
     }
     let (stem, ext) = match name.rfind('.') {
-        Some(dot) if dot > 0 && name.len().saturating_sub(dot) <= 11 => {
-            name.split_at(dot)
-        }
+        Some(dot) if dot > 0 && name.len().saturating_sub(dot) <= 11 => name.split_at(dot),
         _ => (name, ""),
     };
     let room = max.saturating_sub(ext.len());
@@ -128,7 +124,9 @@ pub fn stored_ext(original_name: &str, detected: Option<ImageFormat>) -> String 
         let ext = ext.to_ascii_lowercase();
         if !stem.is_empty()
             && (1..=10).contains(&ext.len())
-            && ext.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+            && ext
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
         {
             return ext;
         }
@@ -167,9 +165,9 @@ pub fn classify(
 fn plausible_mime(mime: &str) -> bool {
     mime.len() <= 100
         && mime.matches('/').count() == 1
-        && mime
-            .bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'/' | b'.' | b'+' | b'-'))
+        && mime.bytes().all(|b| {
+            b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'/' | b'.' | b'+' | b'-')
+        })
 }
 
 /// Whether a system app may open a clone of a file with this extension (ADR-0014); otherwise it is only revealed in the file manager.

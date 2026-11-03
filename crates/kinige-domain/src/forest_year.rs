@@ -165,7 +165,13 @@ pub fn year_table(year: i32, first: FirstWeekday, stats: &[DayStats]) -> Option<
     }
     let dims = grid_dims(year, first)?;
     /// Notes, weight, first body, photos and the first entry's summary of one date.
-    type Merged<'a> = (u32, f64, Option<&'a str>, u32, Option<&'a AttachmentSummary>);
+    type Merged<'a> = (
+        u32,
+        f64,
+        Option<&'a str>,
+        u32,
+        Option<&'a AttachmentSummary>,
+    );
     let mut by_date: BTreeMap<NaiveDate, Merged<'_>> = BTreeMap::new();
     for stat in stats.iter().filter(|stat| stat.date.year() == year) {
         let entry = by_date.entry(stat.date).or_default();

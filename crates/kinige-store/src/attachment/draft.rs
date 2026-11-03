@@ -7,9 +7,7 @@ use super::{Dirs, delete_stored_files};
 use crate::draft::chat_key;
 use crate::error::{read_err, write_err};
 use crate::{Now, Store, StoreError};
-use kinige_domain::attachment::{
-    AttachmentState, AttachmentView, MAX_PASTE_BYTES, MAX_PER_ENTRY,
-};
+use kinige_domain::attachment::{AttachmentState, AttachmentView, MAX_PASTE_BYTES, MAX_PER_ENTRY};
 use kinige_domain::hlc::is_uuid_v4;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use std::fs;
@@ -23,7 +21,15 @@ impl Store {
         path: &Path,
         now: &Now,
     ) -> Result<AttachmentView, StoreError> {
-        self.attach_source(chat_id, Source::Path(path), &Hints { name: None, mime: None }, now)
+        self.attach_source(
+            chat_id,
+            Source::Path(path),
+            &Hints {
+                name: None,
+                mime: None,
+            },
+            now,
+        )
     }
 
     /// Attaches pasted bytes (an image from the clipboard). `name_hint` is only a hint and is cleaned; with no name the file is
@@ -41,12 +47,18 @@ impl Store {
         let hinted = name_hint.map(str::trim).filter(|name| !name.is_empty());
         let name = match hinted {
             Some(name) => name.to_string(),
-            None => format!("pasted-{}", crate::time::hhmmss(now.ms, now.utc_offset_secs)),
+            None => format!(
+                "pasted-{}",
+                crate::time::hhmmss(now.ms, now.utc_offset_secs)
+            ),
         };
         self.attach_source(
             chat_id,
             Source::Bytes(bytes),
-            &Hints { name: Some(&name), mime: None },
+            &Hints {
+                name: Some(&name),
+                mime: None,
+            },
             now,
         )
     }
@@ -81,7 +93,11 @@ impl Store {
             tx.commit().map_err(write_err)?;
             Ok(file_name)
         })?;
-        delete_stored_files(&dirs, self.faults(), &[(attachment_id.to_string(), Some(file_name))]);
+        delete_stored_files(
+            &dirs,
+            self.faults(),
+            &[(attachment_id.to_string(), Some(file_name))],
+        );
         Ok(())
     }
 
@@ -98,7 +114,10 @@ impl Store {
         let dirs = self.dirs();
         let staged = stage(&dirs, self.faults(), source, hints)?;
         let part = staged.part.clone();
-        let (view, ctx) = (view_of(&staged), (chat_id.to_string(), key, now.ms, dirs.clone()));
+        let (view, ctx) = (
+            view_of(&staged),
+            (chat_id.to_string(), key, now.ms, dirs.clone()),
+        );
         let faults = self.inner.faults.clone();
         let result = self.write(move |conn| commit_staged(conn, &faults, &ctx, &staged));
         if result.is_err() {

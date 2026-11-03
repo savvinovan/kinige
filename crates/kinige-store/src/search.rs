@@ -89,7 +89,10 @@ fn index_source(conn: &Connection, message_id: &str, body_md: &str) -> rusqlite:
     let mut text = body_md.to_string();
     for name in names {
         text.push('\n');
-        text.push_str(name.rsplit_once('.').map_or(name.as_str(), |(stem, _)| stem));
+        text.push_str(
+            name.rsplit_once('.')
+                .map_or(name.as_str(), |(stem, _)| stem),
+        );
     }
     Ok(text)
 }

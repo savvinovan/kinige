@@ -75,8 +75,11 @@ fn sweep(
     for (id, file_name) in &drafts {
         if !present.contains(file_name) && !restore(dirs, file_name) {
             // A tile whose file is gone cannot be sent.
-            tx.execute("DELETE FROM draft_attachment WHERE attachment_id = ?1", [id])
-                .map_err(write_err)?;
+            tx.execute(
+                "DELETE FROM draft_attachment WHERE attachment_id = ?1",
+                [id],
+            )
+            .map_err(write_err)?;
         }
     }
     tx.commit().map_err(write_err)?;
@@ -158,9 +161,13 @@ fn set_state(tx: &rusqlite::Transaction<'_>, id: &str, state: &str) -> Result<()
 
 /// `id -> (file_name, state)`; a name that is not `<uuid>.<ext>` is left out, so no path is built from it.
 fn load_locals(conn: &Connection) -> rusqlite::Result<HashMap<String, (String, String)>> {
-    let mut statement = conn.prepare("SELECT attachment_id, file_name, state FROM attachment_local")?;
+    let mut statement =
+        conn.prepare("SELECT attachment_id, file_name, state FROM attachment_local")?;
     let rows = statement.query_map([], |row| {
-        Ok((row.get::<_, String>(0)?, (row.get::<_, String>(1)?, row.get::<_, String>(2)?)))
+        Ok((
+            row.get::<_, String>(0)?,
+            (row.get::<_, String>(1)?, row.get::<_, String>(2)?),
+        ))
     })?;
     Ok(rows
         .filter_map(Result::ok)
@@ -170,7 +177,9 @@ fn load_locals(conn: &Connection) -> rusqlite::Result<HashMap<String, (String, S
 
 fn load_drafts(conn: &Connection) -> rusqlite::Result<HashMap<String, String>> {
     let mut statement = conn.prepare("SELECT attachment_id, file_name FROM draft_attachment")?;
-    let rows = statement.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))?;
+    let rows = statement.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
     Ok(rows
         .filter_map(Result::ok)
         .filter(|(_, name)| is_stored_name(name))
@@ -218,7 +227,9 @@ fn remove_orphan_thumbs(conn: &Connection, dirs: &Dirs) -> rusqlite::Result<usiz
             continue;
         }
         let known: Option<i64> = conn
-            .query_row("SELECT 1 FROM attachment WHERE id = ?1", [id], |row| row.get(0))
+            .query_row("SELECT 1 FROM attachment WHERE id = ?1", [id], |row| {
+                row.get(0)
+            })
             .optional()?;
         if known.is_none() && fs::remove_file(entry.path()).is_ok() {
             removed += 1;

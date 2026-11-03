@@ -399,7 +399,11 @@ impl Store {
 
     /// The attachment directories (`<data>/attachments`, `thumbs`, `open`) of this process.
     pub(crate) fn dirs(&self) -> attachment::Dirs {
-        let data = self.inner.db_path.parent().unwrap_or_else(|| Path::new("."));
+        let data = self
+            .inner
+            .db_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."));
         attachment::Dirs::new(data, &self.inner.process_id)
     }
 
@@ -415,7 +419,10 @@ impl Store {
 
     /// The data directory: the folder of the database, where `attachments/` and `thumbs/` lie.
     pub fn data_dir(&self) -> &Path {
-        self.inner.db_path.parent().unwrap_or_else(|| Path::new("."))
+        self.inner
+            .db_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
     }
 
     /// The default Markdown copy folder path is needed by tests and diagnostics.

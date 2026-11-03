@@ -17,7 +17,12 @@ fn now() -> Now {
     at(2026, 11, 3, 12, 0)
 }
 
-fn attach_file(store: &Store, dir: &std::path::Path, name: &str, bytes: &[u8]) -> Result<kinige_domain::AttachmentView, StoreError> {
+fn attach_file(
+    store: &Store,
+    dir: &std::path::Path,
+    name: &str,
+    bytes: &[u8],
+) -> Result<kinige_domain::AttachmentView, StoreError> {
     let source = dir.join("src");
     std::fs::create_dir_all(&source).unwrap();
     store.attach_path(INBOX_ID, &write(&source, name, bytes), &now())
@@ -28,9 +33,14 @@ fn nothing_left(dir: &std::path::Path) {
         .map(|entries| entries.flatten().flat_map(|d| names(&d.path())).collect())
         .unwrap_or_default();
     assert!(tmp.is_empty(), "temporary files left: {tmp:?}");
-    let stored: Vec<String> = names(&dir.join("attachments")).into_iter().filter(|n| !n.starts_with('.')).collect();
+    let stored: Vec<String> = names(&dir.join("attachments"))
+        .into_iter()
+        .filter(|n| !n.starts_with('.'))
+        .collect();
     assert!(stored.is_empty(), "stored files left: {stored:?}");
-    let rows: i64 = raw(dir).query_row("SELECT COUNT(*) FROM draft_attachment", [], |r| r.get(0)).unwrap();
+    let rows: i64 = raw(dir)
+        .query_row("SELECT COUNT(*) FROM draft_attachment", [], |r| r.get(0))
+        .unwrap();
     assert_eq!(rows, 0, "a half row");
 }
 
@@ -42,7 +52,10 @@ fn a_source_that_changes_size_while_it_is_copied_is_unreadable() {
     let growing = source.clone();
     store.inject_attach_fault_for_test(AttachFault::MidCopy(Arc::new(move || {
         use std::io::Write;
-        let mut file = std::fs::OpenOptions::new().append(true).open(&growing).unwrap();
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&growing)
+            .unwrap();
         file.write_all(b"more").unwrap();
     })));
     let error = store.attach_path(INBOX_ID, &source, &now()).unwrap_err();
@@ -75,7 +88,10 @@ fn an_empty_file_is_a_file_of_zero_bytes() {
     let sha: String = raw(dir.path())
         .query_row("SELECT sha256 FROM draft_attachment", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(sha, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    assert_eq!(
+        sha,
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    );
 }
 
 #[test]
@@ -104,13 +120,20 @@ fn paths_that_are_not_regular_files_are_unreadable() {
         std::os::unix::fs::symlink(&file, &link).unwrap();
         link
     };
-    let mut bad = vec![dir.path().join("folder"), missing, std::path::PathBuf::from("")];
+    let mut bad = vec![
+        dir.path().join("folder"),
+        missing,
+        std::path::PathBuf::from(""),
+    ];
     bad.push(std::path::PathBuf::from("relative/../../nothing"));
     #[cfg(unix)]
     bad.push(link);
     for path in bad {
         let error = store.attach_path(INBOX_ID, &path, &now()).unwrap_err();
-        assert!(matches!(error, StoreError::AttachmentUnreadable), "{path:?}: {error}");
+        assert!(
+            matches!(error, StoreError::AttachmentUnreadable),
+            "{path:?}: {error}"
+        );
     }
     // A FIFO must never be opened (it would block forever).
     #[cfg(unix)]
@@ -121,7 +144,10 @@ fn paths_that_are_not_regular_files_are_unreadable() {
         #[allow(unsafe_code)]
         let made = unsafe { libc::mkfifo(c.as_ptr(), 0o600) };
         assert_eq!(made, 0);
-        assert!(matches!(store.attach_path(INBOX_ID, &fifo, &now()), Err(StoreError::AttachmentUnreadable)));
+        assert!(matches!(
+            store.attach_path(INBOX_ID, &fifo, &now()),
+            Err(StoreError::AttachmentUnreadable)
+        ));
     }
     nothing_left(dir.path());
 }
@@ -132,18 +158,44 @@ fn images_are_recognised_by_content_not_by_name() {
     let store = open_without_mirror(dir.path());
     // A PNG named .txt is an image; a text file named .jpg is a file; HEIC-like and SVG names are files.
     let png_named_txt = attach_file(&store, dir.path(), "photo.txt", &png(30, 20)).unwrap();
-    assert_eq!((png_named_txt.kind, png_named_txt.mime.as_str()), (AttachmentKind::Image, "image/png"));
-    assert_eq!((png_named_txt.width, png_named_txt.height), (Some(30), Some(20)));
+    assert_eq!(
+        (png_named_txt.kind, png_named_txt.mime.as_str()),
+        (AttachmentKind::Image, "image/png")
+    );
+    assert_eq!(
+        (png_named_txt.width, png_named_txt.height),
+        (Some(30), Some(20))
+    );
     let stored: String = raw(dir.path())
-        .query_row("SELECT file_name FROM draft_attachment WHERE attachment_id = ?1", [&png_named_txt.id], |r| r.get(0))
+        .query_row(
+            "SELECT file_name FROM draft_attachment WHERE attachment_id = ?1",
+            [&png_named_txt.id],
+            |r| r.get(0),
+        )
         .unwrap();
-    assert_eq!(stored, format!("{}.txt", png_named_txt.id), "the extension is the original one");
+    assert_eq!(
+        stored,
+        format!("{}.txt", png_named_txt.id),
+        "the extension is the original one"
+    );
     let fake_jpg = attach_file(&store, dir.path(), "notes.jpg", b"just text, not a jpeg").unwrap();
-    assert_eq!((fake_jpg.kind, fake_jpg.width), (AttachmentKind::File, None));
+    assert_eq!(
+        (fake_jpg.kind, fake_jpg.width),
+        (AttachmentKind::File, None)
+    );
     let heic = attach_file(&store, dir.path(), "IMG_1.HEIC", b"\0\0\0\x18ftypheic....").unwrap();
     assert_eq!(heic.kind, AttachmentKind::File);
-    let svg = attach_file(&store, dir.path(), "logo.svg", b"<svg xmlns='http://www.w3.org/2000/svg'/>").unwrap();
-    assert_eq!((svg.kind, svg.mime.as_str()), (AttachmentKind::File, "image/svg+xml"));
+    let svg = attach_file(
+        &store,
+        dir.path(),
+        "logo.svg",
+        b"<svg xmlns='http://www.w3.org/2000/svg'/>",
+    )
+    .unwrap();
+    assert_eq!(
+        (svg.kind, svg.mime.as_str()),
+        (AttachmentKind::File, "image/svg+xml")
+    );
     let movie = attach_file(&store, dir.path(), "clip.MOV", b"fake movie").unwrap();
     assert_eq!(movie.kind, AttachmentKind::Video);
     let song = attach_file(&store, dir.path(), "voice.ogg", b"fake audio").unwrap();
@@ -158,18 +210,44 @@ fn images_are_recognised_by_content_not_by_name() {
 fn exif_orientation_swaps_the_stored_size_and_png_has_none() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
-    for (orientation, expected) in [(1u8, (400, 200)), (3, (400, 200)), (6, (200, 400)), (8, (200, 400)), (5, (200, 400)), (2, (400, 200))] {
-        let view = attach_file(&store, dir.path(), "o.jpg", &jpeg_with_orientation(400, 200, orientation)).unwrap();
-        assert_eq!((view.width, view.height), (Some(expected.0), Some(expected.1)), "orientation {orientation}");
+    for (orientation, expected) in [
+        (1u8, (400, 200)),
+        (3, (400, 200)),
+        (6, (200, 400)),
+        (8, (200, 400)),
+        (5, (200, 400)),
+        (2, (400, 200)),
+    ] {
+        let view = attach_file(
+            &store,
+            dir.path(),
+            "o.jpg",
+            &jpeg_with_orientation(400, 200, orientation),
+        )
+        .unwrap();
+        assert_eq!(
+            (view.width, view.height),
+            (Some(expected.0), Some(expected.1)),
+            "orientation {orientation}"
+        );
         store.remove_draft_attachment(INBOX_ID, &view.id).unwrap();
     }
     let flat = attach_file(&store, dir.path(), "p.png", &png(400, 200)).unwrap();
     assert_eq!((flat.width, flat.height), (Some(400), Some(200)));
 }
 
-fn sent(store: &Store, dir: &std::path::Path, name: &str, bytes: &[u8]) -> kinige_domain::AttachmentView {
+fn sent(
+    store: &Store,
+    dir: &std::path::Path,
+    name: &str,
+    bytes: &[u8],
+) -> kinige_domain::AttachmentView {
     let view = attach_file(store, dir, name, bytes).unwrap();
-    store.send_entry(INBOX_ID, "", None, &[view.id.clone()], &now()).unwrap().attachments.remove(0)
+    store
+        .send_entry(INBOX_ID, "", None, std::slice::from_ref(&view.id), &now())
+        .unwrap()
+        .attachments
+        .remove(0)
 }
 
 fn decode_size(bytes: &[u8]) -> (u32, u32) {
@@ -182,20 +260,38 @@ fn thumbnails_fit_960_rotate_drop_exif_and_are_cached() {
     let dir = tempfile::tempdir().unwrap();
     let store = open_without_mirror(dir.path());
     let big = sent(&store, dir.path(), "big.jpg", &jpeg(2000, 1000));
-    let thumb = store.media(&big.id, MediaVariant::Thumb).expect("a thumbnail");
+    let thumb = store
+        .media(&big.id, MediaVariant::Thumb)
+        .expect("a thumbnail");
     assert_eq!(thumb.content_type, "image/jpeg");
     assert_eq!(decode_size(&thumb.bytes), (960, 480));
     let cached = dir.path().join("thumbs").join(format!("{}.jpg", big.id));
     assert!(cached.is_file(), "built once, kept in thumbs/");
-    assert_eq!(store.media(&big.id, MediaVariant::Thumb).unwrap().bytes, thumb.bytes);
+    assert_eq!(
+        store.media(&big.id, MediaVariant::Thumb).unwrap().bytes,
+        thumb.bytes
+    );
 
     let small = sent(&store, dir.path(), "small.png", &png(100, 50));
     let kept = store.media(&small.id, MediaVariant::Thumb).unwrap();
-    assert_eq!(decode_size(&kept.bytes), (100, 50), "a small image is not enlarged");
+    assert_eq!(
+        decode_size(&kept.bytes),
+        (100, 50),
+        "a small image is not enlarged"
+    );
 
-    let rotated = sent(&store, dir.path(), "rot.jpg", &jpeg_with_orientation(400, 200, 6));
+    let rotated = sent(
+        &store,
+        dir.path(),
+        "rot.jpg",
+        &jpeg_with_orientation(400, 200, 6),
+    );
     let upright = store.media(&rotated.id, MediaVariant::Thumb).unwrap();
-    assert_eq!(decode_size(&upright.bytes), (200, 400), "the orientation is applied");
+    assert_eq!(
+        decode_size(&upright.bytes),
+        (200, 400),
+        "the orientation is applied"
+    );
     assert!(
         !upright.bytes.windows(4).any(|w| w == b"Exif"),
         "EXIF is stripped from the thumbnail"
@@ -203,11 +299,27 @@ fn thumbnails_fit_960_rotate_drop_exif_and_are_cached() {
 
     let alpha = sent(&store, dir.path(), "alpha.png", &png_with_alpha(64, 64));
     let transparent = store.media(&alpha.id, MediaVariant::Thumb).unwrap();
-    assert_eq!(transparent.content_type, "image/png", "an image with alpha keeps it");
-    assert!(dir.path().join("thumbs").join(format!("{}.png", alpha.id)).is_file());
+    assert_eq!(
+        transparent.content_type, "image/png",
+        "an image with alpha keeps it"
+    );
+    assert!(
+        dir.path()
+            .join("thumbs")
+            .join(format!("{}.png", alpha.id))
+            .is_file()
+    );
 
     let animated = sent(&store, dir.path(), "a.gif", &gif(20, 20));
-    assert_eq!(decode_size(&store.media(&animated.id, MediaVariant::Thumb).unwrap().bytes), (20, 20));
+    assert_eq!(
+        decode_size(
+            &store
+                .media(&animated.id, MediaVariant::Thumb)
+                .unwrap()
+                .bytes
+        ),
+        (20, 20)
+    );
 }
 
 #[test]
@@ -217,13 +329,22 @@ fn a_truncated_jpeg_and_a_decompression_bomb_get_no_preview_and_no_oom() {
     // A truncated PNG: the header reads, the data does not.
     let whole = png(800, 600);
     let truncated = sent(&store, dir.path(), "cut.png", &whole[..whole.len() / 3]);
-    assert_eq!((truncated.kind, truncated.width, truncated.height), (AttachmentKind::Image, Some(800), Some(600)));
-    assert!(store.media(&truncated.id, MediaVariant::Thumb).is_none(), "no preview");
+    assert_eq!(
+        (truncated.kind, truncated.width, truncated.height),
+        (AttachmentKind::Image, Some(800), Some(600))
+    );
+    assert!(
+        store.media(&truncated.id, MediaVariant::Thumb).is_none(),
+        "no preview"
+    );
     // A truncated JPEG: `image` 0.25.10 hard-wires zune-jpeg's lenient mode, so the part that decodes is shown (the tile does
     // not say "No preview" for a photo that is mostly there). It must still be a bounded thumbnail.
     let whole = jpeg(800, 600);
     let cut = sent(&store, dir.path(), "cut.jpg", &whole[..whole.len() / 3]);
-    assert_eq!((cut.kind, cut.width, cut.height), (AttachmentKind::Image, Some(800), Some(600)));
+    assert_eq!(
+        (cut.kind, cut.width, cut.height),
+        (AttachmentKind::Image, Some(800), Some(600))
+    );
     if let Some(partial) = store.media(&cut.id, MediaVariant::Thumb) {
         assert_eq!(decode_size(&partial.bytes), (800, 600));
     }
@@ -237,7 +358,11 @@ fn a_truncated_jpeg_and_a_decompression_bomb_get_no_preview_and_no_oom() {
 
     let started = std::time::Instant::now();
     let bomb = sent(&store, dir.path(), "bomb.png", &png_bomb(100_000, 100_000));
-    assert_eq!(bomb.kind, AttachmentKind::Image, "a larger image is still an image");
+    assert_eq!(
+        bomb.kind,
+        AttachmentKind::Image,
+        "a larger image is still an image"
+    );
     assert_eq!((bomb.width, bomb.height), (Some(100_000), Some(100_000)));
     assert!(store.media(&bomb.id, MediaVariant::Thumb).is_none());
     assert!(started.elapsed() < std::time::Duration::from_secs(20));
@@ -255,27 +380,77 @@ fn the_protocol_serves_only_what_it_may() {
     let png_attachment = sent(&store, dir.path(), "x.png", &png(8, 8));
 
     let full = store.media(&photo.id, MediaVariant::Full).unwrap();
-    assert_eq!(full.content_type, "image/jpeg", "the type comes from the detected format");
-    assert_eq!(full.bytes, std::fs::read(dir.path().join("attachments").join(format!("{}.jpg", photo.id))).unwrap());
-    assert_eq!(store.media(&png_attachment.id, MediaVariant::Full).unwrap().content_type, "image/png");
+    assert_eq!(
+        full.content_type, "image/jpeg",
+        "the type comes from the detected format"
+    );
+    assert_eq!(
+        full.bytes,
+        std::fs::read(
+            dir.path()
+                .join("attachments")
+                .join(format!("{}.jpg", photo.id))
+        )
+        .unwrap()
+    );
+    assert_eq!(
+        store
+            .media(&png_attachment.id, MediaVariant::Full)
+            .unwrap()
+            .content_type,
+        "image/png"
+    );
     for id in [&pdf.id, &svg.id] {
-        assert!(store.media(id, MediaVariant::Full).is_none(), "only images are served in full");
-        assert!(store.media(id, MediaVariant::Thumb).is_none(), "and only images have thumbnails");
+        assert!(
+            store.media(id, MediaVariant::Full).is_none(),
+            "only images are served in full"
+        );
+        assert!(
+            store.media(id, MediaVariant::Thumb).is_none(),
+            "and only images have thumbnails"
+        );
     }
-    for bad in ["", "..", "%2e%2e", "../x", &photo.id.to_uppercase(), "00000000-0000-1000-8000-000000000000", &"a".repeat(1 << 16)] {
+    for bad in [
+        "",
+        "..",
+        "%2e%2e",
+        "../x",
+        &photo.id.to_uppercase(),
+        "00000000-0000-1000-8000-000000000000",
+        &"a".repeat(1 << 16),
+    ] {
         assert!(store.media(bad, MediaVariant::Full).is_none(), "{bad:.30}");
         assert!(store.media(bad, MediaVariant::Thumb).is_none(), "{bad:.30}");
     }
     // The row's size is over the cap: the thumbnail may still be served, the file is not.
     raw(dir.path())
-        .execute("UPDATE attachment SET byte_size = ?1 WHERE id = ?2", (kinige_domain::attachment::MAX_FULL_BYTES as i64 + 1, &photo.id))
+        .execute(
+            "UPDATE attachment SET byte_size = ?1 WHERE id = ?2",
+            (
+                kinige_domain::attachment::MAX_FULL_BYTES as i64 + 1,
+                &photo.id,
+            ),
+        )
         .unwrap();
     assert!(store.media(&photo.id, MediaVariant::Full).is_none());
     assert!(store.media(&photo.id, MediaVariant::Thumb).is_some());
     // A file that is gone is a 404, not an error.
-    std::fs::remove_file(dir.path().join("attachments").join(format!("{}.png", png_attachment.id))).unwrap();
-    assert!(store.media(&png_attachment.id, MediaVariant::Full).is_none());
-    assert!(store.media(&png_attachment.id, MediaVariant::Thumb).is_none());
+    std::fs::remove_file(
+        dir.path()
+            .join("attachments")
+            .join(format!("{}.png", png_attachment.id)),
+    )
+    .unwrap();
+    assert!(
+        store
+            .media(&png_attachment.id, MediaVariant::Full)
+            .is_none()
+    );
+    assert!(
+        store
+            .media(&png_attachment.id, MediaVariant::Thumb)
+            .is_none()
+    );
 }
 
 #[test]
@@ -291,7 +466,11 @@ fn media_async_answers_from_the_pool() {
         });
     }
     for _ in 0..8 {
-        assert!(rx.recv_timeout(std::time::Duration::from_secs(20)).unwrap().is_some());
+        assert!(
+            rx.recv_timeout(std::time::Duration::from_secs(20))
+                .unwrap()
+                .is_some()
+        );
     }
 }
 
@@ -308,17 +487,40 @@ fn opening_clones_the_file_and_only_documents_are_opened() {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        assert_eq!(std::fs::metadata(&target.path).unwrap().permissions().mode() & 0o777, 0o600);
+        assert_eq!(
+            std::fs::metadata(&target.path)
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
     }
     // Edits in the system app never touch the stored file.
     std::fs::write(&target.path, b"edited in Preview").unwrap();
-    let stored = dir.path().join("attachments").join(format!("{}.pdf", pdf.id));
+    let stored = dir
+        .path()
+        .join("attachments")
+        .join(format!("{}.pdf", pdf.id));
     assert_eq!(std::fs::read(stored).unwrap(), b"%PDF-1.4 menu");
 
-    for name in ["run.sh", "Installer.app", "tool.command", "payload.exe", "README", "evil.svg", "macro.docm", "a.zip", "x.dmg"] {
+    for name in [
+        "run.sh",
+        "Installer.app",
+        "tool.command",
+        "payload.exe",
+        "README",
+        "evil.svg",
+        "macro.docm",
+        "a.zip",
+        "x.dmg",
+    ] {
         let view = sent(&store, dir.path(), name, b"#!/bin/sh\necho hi\n");
         let target = store.prepare_open(&view.id).unwrap();
-        assert!(target.reveal_only, "{name} must only be revealed, never run");
+        assert!(
+            target.reveal_only,
+            "{name} must only be revealed, never run"
+        );
     }
     // A JPEG with no extension gets one, so the OS sees a picture.
     let bare = sent(&store, dir.path(), "photo", &jpeg(20, 20));
@@ -326,14 +528,25 @@ fn opening_clones_the_file_and_only_documents_are_opened() {
     assert_eq!(target.path.file_name().unwrap(), "photo.jpg");
     assert!(!target.reveal_only);
 
-    assert!(matches!(store.prepare_open("nope"), Err(StoreError::AttachmentNotFound)));
+    assert!(matches!(
+        store.prepare_open("nope"),
+        Err(StoreError::AttachmentNotFound)
+    ));
     assert!(matches!(
         store.prepare_open("00000000-0000-4000-8000-0000000000aa"),
         Err(StoreError::AttachmentNotFound)
     ));
-    std::fs::remove_file(dir.path().join("attachments").join(format!("{}.pdf", pdf.id))).unwrap();
+    std::fs::remove_file(
+        dir.path()
+            .join("attachments")
+            .join(format!("{}.pdf", pdf.id)),
+    )
+    .unwrap();
     std::fs::remove_dir_all(dir.path().join("open")).unwrap();
-    assert!(matches!(store.prepare_open(&pdf.id), Err(StoreError::AttachmentUnreadable)));
+    assert!(matches!(
+        store.prepare_open(&pdf.id),
+        Err(StoreError::AttachmentUnreadable)
+    ));
 }
 
 #[test]
@@ -346,11 +559,18 @@ fn a_panic_in_a_decoder_is_one_lost_thumbnail_not_a_dead_pool() {
     let (tx, rx) = std::sync::mpsc::channel();
     {
         let tx = tx.clone();
-        store.media_async(first.id.clone(), MediaVariant::Thumb, move |media| tx.send(media.is_some()).unwrap());
+        store.media_async(first.id.clone(), MediaVariant::Thumb, move |media| {
+            tx.send(media.is_some()).unwrap()
+        });
     }
-    assert!(!rx.recv_timeout(std::time::Duration::from_secs(20)).unwrap(), "no preview, no crash");
+    assert!(
+        !rx.recv_timeout(std::time::Duration::from_secs(20)).unwrap(),
+        "no preview, no crash"
+    );
     store.inject_attach_fault_for_test(AttachFault::Clear);
     // The pool still answers.
-    store.media_async(second.id.clone(), MediaVariant::Thumb, move |media| tx.send(media.is_some()).unwrap());
+    store.media_async(second.id.clone(), MediaVariant::Thumb, move |media| {
+        tx.send(media.is_some()).unwrap()
+    });
     assert!(rx.recv_timeout(std::time::Duration::from_secs(20)).unwrap());
 }

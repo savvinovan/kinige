@@ -19,8 +19,8 @@ pub(crate) use media::MediaPool;
 pub use media::{Media, MediaVariant};
 pub use open::OpenTarget;
 pub(crate) use rows::{
-    NewFile, PurgedFile, attachments_column, delete_for_purge, draft_views, insert_attachment,
-    live_count, parse_attachments, promote_draft, summary_for,
+    PurgedFile, attachments_column, delete_for_purge, draft_views, live_count, parse_attachments,
+    promote_draft, summary_for,
 };
 pub use sweep::SweepReport;
 

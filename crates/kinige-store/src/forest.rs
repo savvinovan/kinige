@@ -212,19 +212,21 @@ fn attachment_counts(
         )
         .map_err(read_err)?;
     let rows = statement
-        .query_map((format!("{year:04}-01-01"), format!("{year:04}-12-31")), |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                (
-                    usize::try_from(row.get::<_, i64>(1)?).unwrap_or(0),
-                    usize::try_from(row.get::<_, i64>(2)?).unwrap_or(0),
-                ),
-            ))
-        })
+        .query_map(
+            (format!("{year:04}-01-01"), format!("{year:04}-12-31")),
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    (
+                        usize::try_from(row.get::<_, i64>(1)?).unwrap_or(0),
+                        usize::try_from(row.get::<_, i64>(2)?).unwrap_or(0),
+                    ),
+                ))
+            },
+        )
         .map_err(read_err)?;
     rows.collect::<Result<_, _>>().map_err(read_err)
 }
-
 
 /// The rows of one year, `?1..=?2` being its first and last date.
 fn year_sql() -> String {

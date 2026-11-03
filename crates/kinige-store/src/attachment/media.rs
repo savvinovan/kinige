@@ -52,10 +52,7 @@ impl MediaPool {
                 .name(format!("kinige-media-{n}"))
                 .spawn(move || {
                     loop {
-                        let next = queue
-                            .lock()
-                            .unwrap_or_else(PoisonError::into_inner)
-                            .recv();
+                        let next = queue.lock().unwrap_or_else(PoisonError::into_inner).recv();
                         let Ok(job) = next else { return };
                         // A panic in a codec is one lost thumbnail, not a dead worker.
                         let _ = catch_unwind(AssertUnwindSafe(job));

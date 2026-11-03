@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-attach-pick"
+description = "Enables the attach_pick command without any pre-configured scope."
+commands.allow = ["attach_pick"]
+
+[[permission]]
+identifier = "deny-attach-pick"
+description = "Denies the attach_pick command without any pre-configured scope."
+commands.deny = ["attach_pick"]
