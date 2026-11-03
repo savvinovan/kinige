@@ -101,6 +101,15 @@ pub fn normalize_body(raw: &str) -> Result<String, BodyError> {
     Ok(text)
 }
 
+/// Like [`normalize_body`], but a text of only whitespace gives `""` instead of `Empty` (appendix §C.6: an empty body is valid
+/// exactly when the entry has a live attachment; the caller checks that, in the same transaction).
+pub fn normalize_body_or_empty(raw: &str) -> Result<String, BodyError> {
+    match normalize_body(raw) {
+        Err(BodyError::Empty) => Ok(String::new()),
+        other => other,
+    }
+}
+
 /// The value of a new entry's `body` group (one place for both the size check and the group's bytes).
 fn body_group(body_md: &str) -> Value {
     json!({"base": null, "body_md": body_md, "edited_at": null, "supersedes": []})

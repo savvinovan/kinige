@@ -68,8 +68,34 @@ pub(crate) fn take_rebuilt() -> bool {
     REBUILT.with(|flag| flag.replace(false))
 }
 
+/// The text of an entry's index row: its body plus the stems of its live attachments' file names, extension left out (slice 7).
+/// The `attachment` table may be missing while migrations run (migration 4 rebuilds the index before migration 7 exists).
+fn index_source(conn: &Connection, message_id: &str, body_md: &str) -> rusqlite::Result<String> {
+    let names = match conn
+        .prepare_cached(
+            "SELECT filename FROM attachment WHERE message_id = ?1 AND deleted_at IS NULL ORDER BY sort_index",
+        )
+        .and_then(|mut statement| {
+            statement
+                .query_map([message_id], |row| row.get::<_, String>(0))?
+                .collect::<rusqlite::Result<Vec<String>>>()
+        }) {
+        Ok(names) => names,
+        Err(rusqlite::Error::SqliteFailure(_, Some(message))) if message.contains("no such table") => {
+            Vec::new()
+        }
+        Err(error) => return Err(error),
+    };
+    let mut text = body_md.to_string();
+    for name in names {
+        text.push('\n');
+        text.push_str(name.rsplit_once('.').map_or(name.as_str(), |(stem, _)| stem));
+    }
+    Ok(text)
+}
+
 fn put_row(conn: &Connection, message_id: &str, body_md: &str) -> rusqlite::Result<()> {
-    let text = index_text(body_md);
+    let text = index_text(&index_source(conn, message_id, body_md)?);
     let existing: Option<i64> = conn
         .prepare_cached("SELECT rowid FROM search_map WHERE message_id = ?1")?
         .query_row([message_id], |row| row.get(0))

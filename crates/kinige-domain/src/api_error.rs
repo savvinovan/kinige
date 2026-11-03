@@ -66,6 +66,16 @@ pub enum ErrorCode {
     ImportBackupFailed,
     /// The action is not available on this platform: AI-agent access (MCP) on Windows until named pipes (slice 10a).
     Unsupported,
+    /// The file is larger than 2 GiB (or a paste is larger than 64 MiB): nothing was written (slice 7).
+    AttachmentTooLarge,
+    /// The entry already has 10 attachments.
+    AttachmentLimit,
+    /// The file could not be read: it is gone, it is a folder, it changed while being copied or it is not allowed (slice 7).
+    AttachmentUnreadable,
+    /// There is not enough disk space: nothing was written.
+    DiskFull,
+    /// A draft attachment of this chat with this id does not exist (send, remove).
+    AttachmentNotFound,
     Internal,
 }
 

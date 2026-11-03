@@ -72,6 +72,18 @@ fn local_offset_secs(ms: i64) -> i32 {
     }
 }
 
+/// The time of day `HHMMSS` at the moment `ms` in a zone with the offset `utc_offset_secs`: the name of a pasted image.
+pub(crate) fn hhmmss(ms: i64, utc_offset_secs: i32) -> String {
+    let local = ms.div_euclid(1000) + i64::from(utc_offset_secs);
+    let seconds = local.rem_euclid(86_400);
+    format!(
+        "{:02}{:02}{:02}",
+        seconds / 3600,
+        seconds % 3600 / 60,
+        seconds % 60
+    )
+}
+
 /// The entry time `HH:MM` (24 hours) in the zone where it was created. A corrupted or unknown zone means UTC.
 pub fn local_hhmm(created_at_ms: i64, tz: &str) -> String {
     let offset = offset_secs(tz, created_at_ms).unwrap_or(0);

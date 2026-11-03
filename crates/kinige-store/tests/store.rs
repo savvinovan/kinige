@@ -30,8 +30,12 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
         tables,
         [
             "app_setting",
+            // Attachments (migration 7).
+            "attachment",
+            "attachment_local",
             "chat",
             "draft",
+            "draft_attachment",
             // The AI agent access log (migration 5).
             "mcp_log",
             "mcp_log_message",
@@ -41,6 +45,7 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
             "message_tag",
             "mirror_chat",
             "mirror_dirty",
+            "mirror_file",
             // The search index (migration 4): the FTS5 virtual table and its auxiliary tables.
             "search_fts",
             "search_fts_config",

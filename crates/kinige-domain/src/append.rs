@@ -60,7 +60,11 @@ pub fn can_append_origin(
 }
 
 /// The entry text after appending: a new paragraph (`\n\n`), because line breaks in the feed join lines (`breaks: true`).
+/// An entry that has no text yet (a photo sent alone, appendix §C.6) gets the addition as is, with no leading blank lines.
 pub fn joined_body(old_body_md: &str, addition: &str) -> String {
+    if old_body_md.is_empty() {
+        return addition.to_string();
+    }
     format!("{old_body_md}\n\n{addition}")
 }
 

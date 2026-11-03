@@ -229,6 +229,7 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
         "DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; DROP TABLE message_tag; \
          DROP TABLE mirror_chat; DROP TABLE message_ext; DROP TABLE search_fts; DROP TABLE search_map; \
          DROP TABLE mcp_log; DROP TABLE mcp_log_message; ALTER TABLE draft DROP COLUMN reply_to_id; \
+         DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file; \
          DELETE FROM app_setting WHERE key = 'search_index_version';",
     )
     .unwrap();

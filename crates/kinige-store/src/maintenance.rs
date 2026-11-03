@@ -196,6 +196,10 @@ impl Store {
         if let Err(error) = self.rotate_agent_log(now) {
             log::warn!("agent log rotation: {}", error.category());
         }
+        // Attachment files: leftovers of crashes, purges that did not finish, files whose row is gone (ADR-0014). A writer job.
+        if let Err(error) = self.sweep_attachments(now) {
+            log::warn!("attachment sweep: {}", error.category());
+        }
         if has_daily(&dir, &today) {
             self.inner.backup.set_error(None);
             return Ok(report);

@@ -176,8 +176,11 @@ fn migration_five_to_six_keeps_drafts_and_takes_a_copy_first() {
     wait_closed(dir.path());
     {
         let conn = raw(dir.path());
-        conn.execute_batch("ALTER TABLE draft DROP COLUMN reply_to_id;")
-            .unwrap();
+        conn.execute_batch(
+            "ALTER TABLE draft DROP COLUMN reply_to_id; \
+             DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file;",
+        )
+        .unwrap();
         conn.pragma_update(None, "user_version", 5).unwrap();
     }
     let later = moscow(T0 + 10 * MINUTE);

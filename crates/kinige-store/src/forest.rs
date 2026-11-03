@@ -3,6 +3,7 @@
 //! count. One range query over the `message_day` index per year, scanned row by row, no cache table (slice 6 spec).
 //! The rules are in `kinige_domain::forest` / `forest_year`; nothing here is written to the log.
 
+use crate::attachment::summary_for;
 use crate::error::{read_err, write_err};
 use crate::settings::get_setting;
 use crate::{Now, Store, StoreError};
@@ -137,7 +138,10 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
     struct Day {
         notes: Vec<NoteStat>,
         first: (i64, String, String),
+        photos: u32,
     }
+    // Live attachments per entry of the year: (all, photos). One small aggregate, empty for a year without attachments.
+    let counts = attachment_counts(conn, year)?;
     let mut statement = conn.prepare_cached(&year_sql()).map_err(read_err)?;
     let mut rows = statement
         .query((format!("{year:04}-01-01"), format!("{year:04}-12-31")))
@@ -156,31 +160,71 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
             continue;
         };
         let created: i64 = row.get(1).map_err(read_err)?;
+        let (all, photos) = counts.get(id).copied().unwrap_or((0, 0));
         let note = NoteStat {
             len: body.chars().count(),
-            attachments: 0,
+            attachments: all,
         };
         match days.entry(date) {
             Entry::Vacant(slot) => {
                 slot.insert(Day {
                     notes: vec![note],
                     first: (created, id.to_string(), excerpt_of(body)),
+                    photos: u32::try_from(photos).unwrap_or(u32::MAX),
                 });
             }
             Entry::Occupied(mut slot) => {
                 let day = slot.get_mut();
                 day.notes.push(note);
+                day.photos = day
+                    .photos
+                    .saturating_add(u32::try_from(photos).unwrap_or(u32::MAX));
                 if (created, id) < (day.first.0, day.first.1.as_str()) {
                     day.first = (created, id.to_string(), excerpt_of(body));
                 }
             }
         }
     }
-    Ok(days
-        .into_iter()
-        .map(|(date, day)| DayStats::from_notes(date, &day.notes, Some(day.first.2)))
-        .collect())
+    let mut stats = Vec::with_capacity(days.len());
+    for (date, day) in days {
+        let mut stat = DayStats::from_notes(date, &day.notes, Some(day.first.2.clone()));
+        stat.photos = day.photos;
+        // A first entry without text (a photo sent alone) is described by what it holds.
+        if day.first.2.is_empty() && counts.contains_key(day.first.1.as_str()) {
+            stat.first_summary = Some(summary_for(conn, &day.first.1)?);
+        }
+        stats.push(stat);
+    }
+    Ok(stats)
 }
+
+/// `(all live attachments, photos)` of every entry of the year that has any.
+fn attachment_counts(
+    conn: &Connection,
+    year: i32,
+) -> Result<std::collections::HashMap<String, (usize, usize)>, StoreError> {
+    let mut statement = conn
+        .prepare_cached(
+            "SELECT a.message_id, COUNT(*), SUM(a.kind = 'image') FROM attachment a \
+             JOIN message m ON m.id = a.message_id \
+             WHERE m.journal_date >= ?1 AND m.journal_date <= ?2 AND m.deleted_at IS NULL AND a.deleted_at IS NULL \
+             GROUP BY a.message_id",
+        )
+        .map_err(read_err)?;
+    let rows = statement
+        .query_map((format!("{year:04}-01-01"), format!("{year:04}-12-31")), |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                (
+                    usize::try_from(row.get::<_, i64>(1)?).unwrap_or(0),
+                    usize::try_from(row.get::<_, i64>(2)?).unwrap_or(0),
+                ),
+            ))
+        })
+        .map_err(read_err)?;
+    rows.collect::<Result<_, _>>().map_err(read_err)
+}
+
 
 /// The rows of one year, `?1..=?2` being its first and last date.
 fn year_sql() -> String {

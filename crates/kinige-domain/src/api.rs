@@ -2,6 +2,7 @@
 //! (`cargo test`, ADR-0002). Error texts live in the frontend: Rust returns only codes.
 
 use crate::api_error::ErrorCode;
+use crate::attachment::AttachmentView;
 use crate::backup::BackupStatus;
 use crate::forest_year::{ForestMode, ForestView};
 use crate::lang::Language;
@@ -73,6 +74,8 @@ pub struct MessageView {
     pub origin: String,
     /// The entry this one replies to (slice 5): set for new replies and for replies imported from Telegram; `null` -- not a reply.
     pub reply_to: Option<ReplyTo>,
+    /// The live attachments in their order (slice 7). Empty for most entries.
+    pub attachments: Vec<AttachmentView>,
 }
 
 /// The draft of the chat input field (slice 5): the text and the entry being replied to.
@@ -83,6 +86,8 @@ pub struct ChatDraft {
     pub body: String,
     /// The "Reply to entry" line above the field; `null` -- a plain entry. If the entry no longer exists, `state = missing`.
     pub reply_to: Option<ReplyTo>,
+    /// The tiles above the field (slice 7): attachments not yet sent, in their order.
+    pub attachments: Vec<AttachmentView>,
 }
 
 /// Which entry flag the `set_message_flag` command changes.
@@ -319,10 +324,11 @@ mod tests {
             read_only: false,
             origin: "agent".into(),
             reply_to: None,
+            attachments: Vec::new(),
         };
         assert_eq!(
             serde_json::to_string(&view).unwrap(),
-            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false,"origin":"agent","replyTo":null}"#
+            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false,"origin":"agent","replyTo":null,"attachments":[]}"#
         );
     }
 

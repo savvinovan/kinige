@@ -8,6 +8,7 @@ mod agent_log;
 mod agent_read;
 mod agent_settings;
 mod agent_write;
+mod attachment;
 mod backup;
 mod capture;
 mod chats;
@@ -25,6 +26,7 @@ mod maintenance;
 mod messages;
 mod mirror;
 mod mirror_day;
+mod mirror_files;
 mod on_this_day;
 mod recovery;
 mod schema;
@@ -41,6 +43,7 @@ mod writer;
 
 pub use agent::{AgentError, AgentReply, AgentRequest, AgentSettings};
 pub use agent_log::{LOG_DAYS, LOG_MAX_ROWS, LOG_PAGE};
+pub use attachment::{AttachFault, Media, MediaVariant, OpenTarget, SweepReport};
 pub use backup::{Integrity, backups_dir, list_backups, verify_database};
 pub use capture::{CONTEXT_LEN, CaptureView};
 pub use chats::RecentChat;
@@ -135,6 +138,14 @@ pub(crate) struct Inner {
     on_corruption: Option<CorruptionHook>,
     /// How many times the search index was healed during this launch (`search::heal_search_index`).
     search_heals: Arc<std::sync::atomic::AtomicU64>,
+    /// Made at startup: names this process's `.tmp/` and `open/` directories, so the attachment sweep never touches a live copy.
+    process_id: String,
+    /// Failures injected by tests (attachments).
+    faults: Arc<attachment::Faults>,
+    /// The threads behind the `kinige-media` protocol.
+    media_pool: attachment::MediaPool,
+    /// Images whose thumbnail did not decode in this launch: not tried again on every render.
+    thumb_failed: Mutex<std::collections::HashSet<String>>,
 }
 
 impl Drop for Inner {
@@ -211,6 +222,7 @@ impl Store {
         let writer = Writer::spawn(conn)?;
         let mirror = MirrorShared::new(options.mirror_retry);
         let maintenance = MaintenanceShared::new();
+        let media_pool = attachment::MediaPool::spawn()?;
         let store = Store {
             inner: Arc::new(Inner {
                 writer,
@@ -222,6 +234,10 @@ impl Store {
                 maintenance: maintenance.clone(),
                 on_corruption: options.on_corruption.clone(),
                 search_heals: Arc::default(),
+                process_id: uuid::Uuid::new_v4().to_string(),
+                faults: Arc::default(),
+                media_pool,
+                thumb_failed: Mutex::default(),
             }),
         };
         if options.start_mirror {
@@ -231,6 +247,7 @@ impl Store {
                 reader,
                 store.inner.writer.clone(),
                 options.default_mirror_dir,
+                store.dirs().attachments(),
             )?;
         }
         if options.start_maintenance {
@@ -378,6 +395,27 @@ impl Store {
                     .map_err(read_err)?,
             ))
         })
+    }
+
+    /// The attachment directories (`<data>/attachments`, `thumbs`, `open`) of this process.
+    pub(crate) fn dirs(&self) -> attachment::Dirs {
+        let data = self.inner.db_path.parent().unwrap_or_else(|| Path::new("."));
+        attachment::Dirs::new(data, &self.inner.process_id)
+    }
+
+    pub(crate) fn faults(&self) -> &attachment::Faults {
+        &self.inner.faults
+    }
+
+    /// Tests only: an injected attachment failure (ENOSPC, a source that changes, a crash after the rename, a failed deletion).
+    #[doc(hidden)]
+    pub fn inject_attach_fault_for_test(&self, fault: AttachFault) {
+        self.inner.faults.set(fault);
+    }
+
+    /// The data directory: the folder of the database, where `attachments/` and `thumbs/` lie.
+    pub fn data_dir(&self) -> &Path {
+        self.inner.db_path.parent().unwrap_or_else(|| Path::new("."))
     }
 
     /// The default Markdown copy folder path is needed by tests and diagnostics.

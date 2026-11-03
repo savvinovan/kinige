@@ -2,6 +2,7 @@
 //! window (`capture`) and a chat of the main window (`chat:<id>`). A chat draft also carries the entry being replied to (slice 5,
 //! migration 6). A draft is cleared in the same transaction as the send. Drafts do not reach the Markdown copy.
 
+use crate::attachment::draft_views;
 use crate::error::{read_err, write_err};
 use crate::view::load_reply_to;
 use crate::{Now, Store, StoreError};
@@ -21,6 +22,16 @@ pub(crate) fn chat_key(chat_id: &str) -> String {
 
 pub(crate) fn delete_draft(tx: &Transaction<'_>, key: &str) -> rusqlite::Result<()> {
     tx.execute("DELETE FROM draft WHERE key = ?1", [key])?;
+    Ok(())
+}
+
+/// Deletes the draft row if it holds nothing: no text, no reply and no attachment tiles (slice 7).
+pub(crate) fn delete_empty_draft(tx: &Transaction<'_>, key: &str) -> rusqlite::Result<()> {
+    tx.execute(
+        "DELETE FROM draft WHERE key = ?1 AND body = '' AND reply_to_id IS NULL \
+         AND NOT EXISTS (SELECT 1 FROM draft_attachment WHERE draft_key = ?1)",
+        [key],
+    )?;
     Ok(())
 }
 
@@ -44,10 +55,12 @@ impl Store {
                 )
                 .optional()
                 .map_err(read_err)?;
+            let attachments = draft_views(conn, &key)?;
             let Some((body, reply_id)) = stored else {
                 return Ok(ChatDraft {
                     body: String::new(),
                     reply_to: None,
+                    attachments,
                 });
             };
             let reply_to = match reply_id {
@@ -62,7 +75,11 @@ impl Store {
                 }
                 None => None,
             };
-            Ok(ChatDraft { body, reply_to })
+            Ok(ChatDraft {
+                body,
+                reply_to,
+                attachments,
+            })
         })
     }
 
@@ -184,7 +201,15 @@ impl Store {
                     return Err(StoreError::ChatNotFound);
                 }
             }
-            if body.is_empty() && reply_to_id.is_none() {
+            let has_tiles: bool = tx
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM draft_attachment WHERE draft_key = ?1)",
+                    [&key],
+                    |row| row.get(0),
+                )
+                .map_err(write_err)?;
+            // Deleted only when the text, the reply and the attachment tiles are all empty.
+            if body.is_empty() && reply_to_id.is_none() && !has_tiles {
                 delete_draft(&tx, &key).map_err(write_err)?;
             } else {
                 tx.execute(

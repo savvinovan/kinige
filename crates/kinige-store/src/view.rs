@@ -1,6 +1,7 @@
 //! An entry for the interface: the same columns and parsing for the feed, the capture window, the trash and replies to actions.
 
 use crate::StoreError;
+use crate::attachment::{attachments_column, parse_attachments};
 use crate::error::read_err;
 use kinige_domain::MessageView;
 use kinige_domain::groups::SCHEMA_VERSION;
@@ -27,10 +28,11 @@ pub(crate) const VIEW_COLUMNS: &str = concat!(
      m.is_task, m.task_done_at, m.favorite_at, m.schema_version, m.origin, m.reply_to_id, \
      (CASE WHEN m.reply_to_id IS NULL THEN NULL ELSE (SELECT ",
     reply_target_object!(),
-    " FROM message r WHERE r.id = m.reply_to_id) END)"
+    " FROM message r WHERE r.id = m.reply_to_id) END), ",
+    attachments_column!()
 );
 /// How many columns [`VIEW_COLUMNS`] has: the query's extra columns start from this index.
-pub(crate) const VIEW_LEN: usize = 13;
+pub(crate) const VIEW_LEN: usize = 14;
 
 /// An entry from a row with the [`VIEW_COLUMNS`] columns, starting at `first`. Tags are parsed from the text, not read
 /// from `message_tag`: the reply does not depend on the derived table. An entry is "read only" if any of its groups
@@ -40,6 +42,7 @@ pub(crate) fn view_from_row_at(row: &Row<'_>, first: usize) -> rusqlite::Result<
     let journal_date: String = row.get(first + 3)?;
     let reply_id: Option<String> = row.get(first + 11)?;
     let target_json: Option<String> = row.get(first + 12)?;
+    let attachments = parse_attachments(row.get(first + 13)?);
     let reply_to = reply_id.map(|id| {
         let target = target_json.as_deref().and_then(parse_target);
         reply_to(&id, &journal_date, target)
@@ -58,6 +61,7 @@ pub(crate) fn view_from_row_at(row: &Row<'_>, first: usize) -> rusqlite::Result<
         tags: parse_tags(&body_md),
         body_md,
         reply_to,
+        attachments,
     })
 }
 

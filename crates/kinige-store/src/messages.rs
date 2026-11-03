@@ -2,13 +2,14 @@
 //! item. Each is one transaction: a rewrite of one group (`kinige_domain::rewrite`), HLC, columns from the new group bytes,
 //! tags, the revision and the Markdown copy mark. No optimistic display: on error nothing is written.
 
+use crate::attachment::live_count;
 use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
 use crate::send::mark_dirty;
 use crate::view::load_view;
 use crate::{Now, Store, StoreError};
 use kinige_domain::append::{CurrentBody, rewrite_body};
-use kinige_domain::groups::normalize_body;
+use kinige_domain::groups::normalize_body_or_empty;
 use kinige_domain::history::edit_revision;
 use kinige_domain::journal::is_valid_journal_date;
 use kinige_domain::message_ops::{self, FlagChange, MessageColumns, message_columns};
@@ -223,12 +224,16 @@ impl Store {
     /// Text edit: the old version is kept as an `edit` revision in the same transaction; the entry stays in place, with the same
     /// time and day. Empty text -- `Empty`, nothing changes. Text equal to the previous one writes nothing.
     pub fn edit_message(&self, id: &str, body: &str, now: &Now) -> Result<MessageView, StoreError> {
-        let body = normalize_body(body)?;
+        // Empty text is valid exactly when the entry has a live attachment (appendix §C.6); checked below, in the transaction.
+        let body = normalize_body_or_empty(body)?;
         let (id, now) = (id.to_string(), now.clone());
         let view = self.write(move |conn| {
             let tx = begin(conn)?;
             let loaded = load(&tx, &id)?;
             loaded.ensure_writable()?;
+            if body.is_empty() && live_count(&tx, &id)? == 0 {
+                return Err(StoreError::Empty);
+            }
             edit_body(&tx, &loaded, &body, &now)?;
             let view = load_view(&tx, &id)?;
             tx.commit().map_err(write_err)?;
