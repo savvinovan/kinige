@@ -1,0 +1,7 @@
+rows: 16
+rows marked missing: 1
+files in attachments/: 15
+leftover .part files: 0
+orphans moved aside: 0
+thumbnails: 9
+rows without a blob key or remote blob id: 0

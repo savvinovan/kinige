@@ -1,0 +1,20 @@
+export files laid out: 0 photos, 40 files of 50 MB: 359 ms
+opening an empty database: 94 ms
+parse: 0 ms, 0 MB of JSON, chats 1, messages 200
+preview: 2 ms, chats to import 1, entries 200
+media import: attached 40, missing 0, skipped 0, disk full false; 2097 MB in 3.4 s = 609 MB/s (with the text import)
+import: 3442 ms (17208.0 us per message); imported 200, skipped: already present 0, service 0, empty 0; attachment placeholders 0; chats created 0; backup: true
+repeated import: 2 ms, new 0, already present 200
+database size: before 0.3 MB, after 2.3 MB
+cold start: open 2 ms, first page (200 entries) 26 ms
+"On this day" over 200 days: p50 0.0 ms, p95 0.4 ms, max 0.8 ms; entries in the card on average 0.5
+opening Inbox (a page of 200 entries + the card, 0 years): 7 ms
+forest year table (get_forest_year, 120 calls over 2018..2023): p50 1.6 ms, p95 2.4 ms, max 2.7 ms; 33 notes counted per call on average
+forest day target: 0.1 ms (found: false)
+search over 200 words from the entries (prefix query, page of 50): p50 1.1 ms, p95 8.0 ms, max 24.5 ms; found on average 12.8
+search of a frequent one-letter word: 0.3 ms, found on the page 0
+search of a frequent one-letter word: 0.1 ms, found on the page 0
+search of a frequent one-letter word: 0.2 ms, found on the page 0
+        4.70 real         3.20 user         0.86 sys
+            33538048  maximum resident set size
+            11060288  peak memory footprint

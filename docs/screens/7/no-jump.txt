@@ -1,0 +1,13 @@
+# Boxes (x y width height) of the first matches in the feed, the thumbnail cache emptied before the launch.
+# 'early' is the first moment the window was readable, 'late' is after the thumbnails were built.
+[early]
+Фото IMG_0001.jpg: 316 -1106 232 175
+Фото IMG_0005.jpg: 316 -707 257 401
+меню.pdf: 309 -260 481 50
+Файла нет: 316 287 467 293
+[late]
+Фото IMG_0001.jpg: 316 -1106 232 175
+Фото IMG_0005.jpg: 316 -707 257 401
+меню.pdf: 309 -260 481 50
+Файла нет: 316 287 467 293
+thumbnails built: 1
