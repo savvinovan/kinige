@@ -92,10 +92,12 @@ if (-not $main) { exit 1 }
 Start-Sleep -Seconds 6
 $rowsAfter = Get-Scalar "select count(*) from attachment where filename like 'voice-%'"
 if ($rowsAfter -ne '1') { Fail "the note did not survive the kill ($rowsAfter)" }
-# Shift+Tab from the field: the actions of the newest entry, then the speed chip, the seek bar and Play. Stops can differ by one, so
-# three counts are tried; each attempt checks the log for a request of the audio route.
+# Shift+Tab from the field walks back through the newest entry: its five action buttons (copy, edit, task, favorite, more), the speed
+# chip, the seek bar and Play, so Play is the eighth stop (the first run, with six, ended on the Trash button of the sidebar). The
+# neighbouring counts are tried after it; each attempt returns to the field with the same number of Tab presses and checks the log for a
+# request of the audio route.
 $played = $false
-foreach ($stops in 6, 5, 7) {
+foreach ($stops in 8, 7, 9) {
   Focus-Window 'Kinige'
   Start-Sleep -Milliseconds 1500
   for ($i = 0; $i -lt $stops; $i++) { Send-Keys 'Kinige' '+{TAB}' $false }
@@ -104,6 +106,7 @@ foreach ($stops in 6, 5, 7) {
   $now = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
   if ($now.Count -gt $before) { $played = $true; Say "Play reached the route with $stops Shift+Tab stops"; break }
   Send-Keys 'Kinige' '{ESC}{ESC}' $false
+  for ($i = 0; $i -lt $stops; $i++) { Send-Keys 'Kinige' '{TAB}' $false }
 }
 Shoot '03-playing' 'Kinige'
 $lines = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
