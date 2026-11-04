@@ -1,4 +1,4 @@
-# Kinige (Project Forest) — PRD v0.20
+# Kinige (Project Forest) — PRD v0.21
 
 **Type:** a personal journal and notes in the form of a "chat with yourself", local-first.
 **Platforms:** desktop — macOS first, then Windows and Linux (Tauri 2). Later a web client (decrypts data in the browser) and a phone, if the main app catches on.
@@ -8,6 +8,11 @@
 The review this version is based on: [`01-review.md`](01-review.md). Research: [`research/`](research/). Mockups: [`references/`](references/) — **a mood reference, not a specification**.
 
 ## Version history
+
+- **v0.21 (05.11.2026)** — acceptance round of slice 7a: the voice UI looks like Telegram's (`docs/adr/0015-voice-notes.md`, KINIG-16); the synced part is unchanged, there is one local migration:
+  - §5/§6: no more "no waveform" and "seek bar". A voice note is a big round accent play / pause button and a waveform of 64 thin rounded bars (played bars accent, the rest muted, the fill moves smoothly inside a bar, one animation frame after another while playing); under it "0:40, 20.7 KB" (the elapsed time while playing) and, once the note was started, the small `1×` chip; the entry time sits at the bottom right on the same line. Click or drag on the waveform seeks, the arrow keys move by 5 s. The recording bar streams a live waveform across the whole middle of the field, between the timer and Send (new bars enter from the right); with Reduce Motion it steps instead of sliding.
+  - §4 (schema): migration 8 adds one nullable `waveform` BLOB to the device-local `attachment_local` (`NULL` unknown, empty "the decoder could not read the file, do not try again", otherwise 64 bytes 0 to 255, the loudest part 255). It is not synced and not part of `core`; ADR-0001 appendix §C.6 and the bytes of every synced row are unchanged (a test compares the rows before and after). Sources: the recorder's analyser (sent with `send_voice` in the `x-waveform` header, hex) and, for a note with none (import, an older version), the player decodes the file in the web view (`OfflineAudioContext`, 8 kHz, one decode at a time, only for files up to 16 MiB and 20 minutes) when it first shows on screen and saves the result.
+  - §12.3: two more commands for the main window only, `read_voice_for_waveform` (the stored bytes of a voice note, up to 16 MiB, raw answer) and `set_attachment_waveform` (64 bytes or empty, first value wins); negative tests for the other windows and garbage input in `src-tauri/tests/ipc_waveform.rs`. The `audio` route is unchanged (still no cross-origin reads, `connect-src` stays `ipc:`).
 
 - **v0.20 (04.11.2026)** — for slice 7a, voice notes (`docs/slices/7a-voice-notes.md`, KINIG-16, ADR-0015):
   - §5: the microphone records in the web view (`getUserMedia` on the first click, never at startup; `MediaRecorder`, AAC in MP4 on both platforms in the probe); click to start, Send or Enter to finish, the trash button or Escape to cancel (a recording over 5 seconds asks first), no preview, no waveform (a live level meter while recording), at most 30 minutes or 48 MiB (then it is sent by itself), under 1 second is not saved; the bar replaces the field at the same height; the microphone is shown for an empty field with no pending tiles; the note carries a pending reply and goes to the chat it was started in; a lost device keeps the recording (Send or Discard); a running recording is lost at `kill -9` or ⌘Q; errors (access off with "Open settings", no microphone, unavailable) are one line above the field, never a dialog;

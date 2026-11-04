@@ -98,8 +98,10 @@ wait_for() {
 }
 try_press() { [ "$(ax press "$(app_pid)" "$@" 2>&1 | cut -c1-7)" = "pressed" ]; }
 voice_rows() { sqlw "select count(*) from attachment where filename like 'voice-%'"; }
-# The first "m:ss / m:ss" of a window dump, in seconds (the elapsed time of the playing note), or empty.
-elapsed_from() { grep -oE '[0-9]+:[0-9]{2} / [0-9:]+' "$1" | head -1 | python3 -c 'import sys; t=sys.stdin.read().split(" /")[0].strip(); p=[int(x) for x in t.split(":")] if t else []; print(sum(v*60**i for i,v in enumerate(reversed(p))) if p else "")'; }
+# The first "m:ss of m:ss" (the waveform slider's value text) of a window dump, in seconds (the elapsed time of the playing note), or empty.
+elapsed_from() { grep -oE '[0-9]+:[0-9]{2} (of|из) [0-9:]+' "$1" | head -1 | python3 -c 'import sys; t=sys.stdin.read().split(" ")[0].strip(); p=[int(x) for x in t.split(":")] if t else []; print(sum(v*60**i for i,v in enumerate(reversed(p))) if p else "")'; }
+# The length in bytes of the saved waveform of every voice note, oldest first: 64 (peaks), 0 (the decoder gave up) or empty (not known yet).
+waveform_lengths() { sqlw "select coalesce(length(l.waveform), '-') from attachment a join attachment_local l on l.attachment_id = a.id where a.filename like 'voice-%' order by a.rowid" | tr '\n' ' '; }
 
 # ---- 1. The feed: players, the missing file, the Telegram-style voice ----
 set_language ru
@@ -147,14 +149,30 @@ echo "newest note: ${NEWEST}"
 case "$NEWEST" in *"|audio/mp4|"* | *"|audio/webm|"*) ;; *) fail "the saved note has an unexpected MIME: ${NEWEST}" ;; esac
 [ "$(echo "$NEWEST" | cut -d'|' -f3)" -ge 5000 ] || fail "the saved note is shorter than the recording (${NEWEST})"
 [ -z "$(find "$K/data/attachments/.tmp" -name '*.part' 2> /dev/null)" ] || fail "a .part file is left after sending"
+# The recorded note has a waveform: the recorder's peaks went with it (the fake microphone's tone swings through silence, so the shape varies).
+RECORDED_WAVE="$(sqlw "select coalesce(length(waveform), '-') from attachment_local where attachment_id = '${RECORDED_ID}'")"
+echo "waveform of the recorded note (bytes): ${RECORDED_WAVE}"
+[ "${RECORDED_WAVE}" = "64" ] || fail "the recorded note has no 64-peak waveform from the recorder (${RECORDED_WAVE})"
 shoot 04-sent
+# The seeded note that has no peaks in its row is decoded by the player when it shows on screen (the lazy path): wait for it.
+for _ in $(seq 1 12); do
+  case "$(waveform_lengths)" in *"-"*) sleep 5 ;; *) break ;; esac
+done
+{
+  echo "# length in bytes of the saved waveform of every voice note, oldest first (64 = peaks, 0 = the decoder could not read the file)"
+  echo "$(waveform_lengths)"
+  echo "recorded note: ${RECORDED_WAVE}"
+} > "$OUT/waveform.txt"
+cat "$OUT/waveform.txt"
+case "$(waveform_lengths)" in *"-"*) echo "finding: a note is still without a waveform (the player never decoded it)" ;; esac
 
 # ---- 5. Playback: the picture while it plays, then the log of the audio route ----
 ROUTE_BEFORE="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
 press "${L_PLAY}"
-sleep 3
+sleep 14
 # The picture first and without a window dump: a dump takes tens of seconds and the 40 second note had ended (and rewound to 0:00) by the
-# time the first run's shot was taken after it. The dumps come after, for the proof in the text.
+# time the first run's shot was taken after it. The dumps come after, for the proof in the text. 14 s in, the played part of the waveform
+# stands about a third of the way along: the shot shows the fill stopping inside the bars.
 SHOOT_DUMP=0 shoot 05-playing
 dump playing-a
 cp "$K/debug/playing-a.txt" "$K/debug/shot-05-playing.txt"

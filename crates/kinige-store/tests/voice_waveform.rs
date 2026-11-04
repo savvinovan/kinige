@@ -175,7 +175,7 @@ fn only_an_audio_attachment_has_a_waveform() {
     let picture = write(dir.path(), "photo.png", &png(8, 8));
     let staged = store.attach_path(INBOX_ID, &picture, &now()).unwrap();
     let sent = store
-        .send_entry(INBOX_ID, "", None, &[staged.id.clone()], &now())
+        .send_entry(INBOX_ID, "", None, std::slice::from_ref(&staged.id), &now())
         .unwrap();
     let image_id = sent.attachments[0].id.clone();
     assert!(matches!(

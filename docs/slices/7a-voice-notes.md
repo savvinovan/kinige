@@ -38,7 +38,7 @@
   - the track's `ended` event → "disconnected", keeping the bytes;
   - under 1 s → "Too short to save"; the byte threshold or 30:00 → the auto-send above;
   - a send error (`disk_full`) → the bytes stay in memory, and the bar shows the error with "Retry" and "Discard".
-- **Store: `send_voice` (`kinige-store`), no migration.** It reuses the stage-1 copy (`.tmp/<process-uuid>/`, sha256, `fsync`). One writer job then renames the file and writes the message (empty body, valid with an attachment), the `attachment` row (`core` with `duration_ms`, `blob_key`, `remote_blob_id` exactly as in §C.6), `attachment_local`, the search index and `mirror_dirty`. It bypasses `draft_attachment`, which has no `duration_ms` column. Order inside the job, as in `commit_staged`: `BEGIN IMMEDIATE`; chat and reply-target checks; insert the message; `fs::rename`; the existing `faults.run_after_rename()` hook; insert `attachment` and `attachment_local`; reindex; `mark_dirty`; clear the reply; commit; `sync_dir`. On an INSERT failure the renamed file is removed. A crash between the rename and the commit leaves an orphan for the existing sweep. The reply line is cleared with `UPDATE draft SET reply_to_id = NULL` followed by `delete_empty_draft`, never `delete_draft`, so a draft row that holds attachment tiles survives. The microphone is **hidden while the draft has attachment tiles** (as in Telegram), so a voice note never goes out beside pending photos and never takes the reply from the entry that follows. Rules:
+- **Store: `send_voice` (`kinige-store`), no migration in round 1 (round 2: migration 8, a local waveform column).** It reuses the stage-1 copy (`.tmp/<process-uuid>/`, sha256, `fsync`). One writer job then renames the file and writes the message (empty body, valid with an attachment), the `attachment` row (`core` with `duration_ms`, `blob_key`, `remote_blob_id` exactly as in §C.6), `attachment_local`, the search index and `mirror_dirty`. It bypasses `draft_attachment`, which has no `duration_ms` column. Order inside the job, as in `commit_staged`: `BEGIN IMMEDIATE`; chat and reply-target checks; insert the message; `fs::rename`; the existing `faults.run_after_rename()` hook; insert `attachment` and `attachment_local`; reindex; `mark_dirty`; clear the reply; commit; `sync_dir`. On an INSERT failure the renamed file is removed. A crash between the rename and the commit leaves an orphan for the existing sweep. The reply line is cleared with `UPDATE draft SET reply_to_id = NULL` followed by `delete_empty_draft`, never `delete_draft`, so a draft row that holds attachment tiles survives. The microphone is **hidden while the draft has attachment tiles** (as in Telegram), so a voice note never goes out beside pending photos and never takes the reply from the entry that follows. Rules:
   - The container is decided by magic bytes, never by `recorder.mimeType`: `ftyp` at offset 4 → `audio/mp4`, `.m4a`; `1A 45 DF A3` → `audio/webm`, `.webm`; anything else → `attachment_unreadable`.
   - `kind = audio` is set explicitly, because `classify` maps `webm` to video (verified in `names.rs`).
   - The name is `voice-YYYY-MM-DD-HHMMSS.<ext>` in local time (chrono).
@@ -66,10 +66,13 @@
 - **Documents:** ADR-0015; PRD v0.20 (§5 recording details, the §12.3 matrix and route, history); a note in §C.6: `audio` and `video` may carry `duration_ms` (the Telegram import since slice 7, the recorder since 7a), `image`, `file` and later `link` keep `null`, and the bytes and shape of `core` do not change; an `audio` example with a non-null `duration_ms` in the reference vector; `CLAUDE.md` state.
 
 ## Not included
-- Transcription (P2). A waveform (decision 5). A preview before sending, pausing a recording, a hold or lock gesture, and a hotkey to start recording.
+- Transcription (P2). A preview before sending, pausing a recording, a hold or lock gesture, and a hotkey to start recording.
 - Converting Ogg or WebM to AAC. Voice notes in the capture window and through ⌥⇧V. Keeping a running recording across a crash or ⌘Q.
 - Audio and video players for `video` (P2 video). Saving the playback speed in `settings.json`. A Russian `InfoPlist.strings`.
 - Sync and upload of voice files (slice 11). The feed's "media" filter and the search "type" filter (a separate task, as in slice 7).
+
+## Round 2 (05.11.2026): what changed after acceptance
+Where the text below describes a seek bar, a level meter, `0:12 / 0:40` or "no waveform", read decision 5 and ADR-0015 round 2 instead: the player is a round button with a waveform of 64 rounded bars and "0:40, 20.7 KB" under it; the recording bar's live waveform runs across the whole field; progress is driven by animation frames. Migration 8 adds `attachment_local.waveform`; `send_voice` takes an optional `x-waveform`; `read_voice_for_waveform` and `set_attachment_waveform` are main-only. Evidence: `docs/screens/7a/` re-taken on the macOS runner, `waveform.txt`.
 
 ## What “done” looks like
 A 1280 × 800 window.
@@ -108,7 +111,7 @@ A 1280 × 800 window.
 - **By hand at acceptance (the user, on the acceptance build; agents never touch TCC or the user's Mac):** the first-recording prompt, a real recording and its playback, unplugging a headset, turning access off in System Settings.
 
 ## Touches sensitive areas
-**Yes, `sync-crypto-guardian` before merge, but no migration and no new column:**
+**Yes, `sync-crypto-guardian` before merge. Round 1 had no migration; round 2 adds migration 8 (one local column, `attachment_local.waveform`, nothing synced) and two more main-only commands:**
 - a new writer path for synced `attachment` rows, with `duration_ms` coming from the frontend (range-checked in the domain);
 - a new protocol route that sits outside the capability system;
 - the webview permission handler, which tightens wry's default grant of every capture type;
@@ -128,7 +131,7 @@ A 1280 × 800 window.
 2. **Cancel:** the trash button or Escape; past 5 s it asks first. A short slip costs nothing, and a long talk is never lost to one key.
 3. **Maximum length:** 30 minutes. At 29:00 the timer warns, and at 30:00 the note is sent. That is about 15 MB at 64 kb/s, well inside the 64 MiB IPC cap.
 4. **No preview:** Send saves at once, as in Telegram. A bad take is deleted to the trash, which can be undone.
-5. **No waveform:** a seek bar, plus a live level meter only while recording. A stored waveform would need a new synced field or an audio decoder, and the bar looks the same for imported notes.
+5. **A local waveform (replaced on 05.11.2026, acceptance round 2; it was "no waveform: a seek bar and a level meter"):** the user asked for Telegram's voice messages. The note has 64 peaks in a new nullable column of the device-local `attachment_local` (migration 8): nothing synced changes, `core` stays byte-identical. The recorder's analyser provides them (`x-waveform` of `send_voice`); for a note without any, the player decodes the file once in the web view and saves them through a main-only command. The player is a round button, a waveform of thin bars (played in accent, the rest muted, the fill smooth inside a bar, driven by animation frames), "0:40, 20.7 KB" under it and the time at the bottom right; the recording bar shows the live waveform across the whole field. See ADR-0015, round 2.
 6. **Speed:** 1× → 1.5× → 2×, for the whole session, not saved. These are Telegram's steps, with no settings change.
 7. **Text:** none at sending; it is added later with Edit. A pending reply is carried. The microphone shows only with an empty field and no pending attachment tiles (PRD §5, plus the guardian's pre-review).
 8. **Copy, search, forest, MCP:**
