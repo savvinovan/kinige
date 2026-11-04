@@ -86,6 +86,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             actions::create_chat,
             actions::rename_chat,
             actions::set_chat_icon,
+            actions::set_chat_color,
             actions::set_chat_pinned,
             actions::set_chat_archived,
             actions::delete_message,

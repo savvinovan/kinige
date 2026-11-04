@@ -2,7 +2,9 @@
 //! part of the API the app uses.
 
 use crate::error::read_err;
+use crate::recent_chats::LAST_ENTRY_SQL;
 use crate::{AttachFault, BackgroundThread, Store, StoreError};
+use kinige_domain::groups::INBOX_ID;
 use std::sync::Arc;
 
 impl Store {
@@ -50,6 +52,21 @@ impl Store {
     #[doc(hidden)]
     pub fn handle_count(&self) -> usize {
         Arc::strong_count(&self.inner)
+    }
+
+    /// The query plan (`EXPLAIN QUERY PLAN`, the `detail` column) of the per-chat step of "recent chats": the test checks that it
+    /// goes over `message_feed` and does not scan `message`.
+    #[doc(hidden)]
+    pub fn recent_chats_plan_for_test(&self) -> Result<Vec<String>, StoreError> {
+        self.read(|conn| {
+            let mut statement = conn
+                .prepare(&format!("EXPLAIN QUERY PLAN {LAST_ENTRY_SQL}"))
+                .map_err(read_err)?;
+            let rows = statement
+                .query_map([INBOX_ID], |row| row.get::<_, String>(3))
+                .map_err(read_err)?;
+            rows.collect::<Result<Vec<_>, _>>().map_err(read_err)
+        })
     }
 
     /// Pragmas of the writer connection `(synchronous, fullfsync, journal_mode)`: to check that writes are durable.

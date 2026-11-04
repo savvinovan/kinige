@@ -5,7 +5,7 @@ import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { MANY_YEARS } from "../onthisday/demoCard";
 import { OnThisDayCard } from "../onthisday/OnThisDayCard";
 import { ReplyStrip } from "../reply/ReplyStrip";
-import type { SidebarChat } from "../sidebar/Sidebar";
+import { withTints } from "../sidebar/storyChats";
 import { MainWindowView } from "./MainWindowView";
 import "./screens-stories.css";
 
@@ -14,12 +14,12 @@ import "./screens-stories.css";
 const TODAY = "2026-10-31";
 const noop = () => undefined;
 
-const CHATS: SidebarChat[] = [
+const CHATS = withTints([
   { id: INBOX_ID, name: "", isInbox: true, emoji: "📥", count: 1724 },
   { id: "work", name: "Работа", emoji: "💼", count: 987, pinned: true },
   { id: "books", name: "Книги", emoji: "📚", count: 1234 },
   { id: "tg", name: "Анна", emoji: "💬", count: 12 },
-];
+]);
 
 const QUOTE: ReplyTo = {
   id: "old",

@@ -24,6 +24,7 @@ import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
 import type { ChatDraft } from "./generated/ChatDraft";
 import type { ChatList } from "./generated/ChatList";
+import type { ChatColor } from "./generated/ChatColor";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { FeedCursor } from "./generated/FeedCursor";
 import type { FirstWeekday } from "./generated/FirstWeekday";
@@ -187,6 +188,10 @@ export class TauriApi implements KinigeApi {
 
   setChatIcon(id: string, icon: string): Promise<ChatSummary> {
     return call("set_chat_icon", { id, icon });
+  }
+
+  setChatColor(id: string, color: ChatColor): Promise<ChatSummary> {
+    return call("set_chat_color", { id, color });
   }
 
   setChatPinned(id: string, pinned: boolean): Promise<ChatSummary> {

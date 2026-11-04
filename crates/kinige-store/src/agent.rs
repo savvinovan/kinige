@@ -140,7 +140,7 @@ impl Store {
             )?;
             return Err(AgentError::Invalid("unknown tool".into()));
         };
-        let settings = self.read(load_settings)?;
+        let settings = self.read_agent(load_settings)?;
         if !settings.enabled {
             return self.agent_refuse(&client, tool.name(), &AgentError::Disabled, now);
         }

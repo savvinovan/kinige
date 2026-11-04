@@ -206,6 +206,24 @@
   background: var(--color-tile-violet);
 }
 
+.chat-tile--grey {
+  background: var(--color-tile-grey);
+}
+
+/* The small variant for a line of small text (search hits, trash plates): the height of the meta line, so the line does not grow. */
+.chat-tile--small {
+  width: var(--layout-tile-size-small);
+  height: var(--layout-tile-size-small);
+  border-radius: var(--radius-tile-small);
+  font-size: var(--layout-tile-letter-small);
+}
+
+.chat-emoji--small {
+  width: var(--layout-tile-size-small);
+  height: var(--layout-tile-size-small);
+  font-size: var(--icon-emoji-row-small);
+}
+
 /* The icon slot of the bottom items: the same size as the tile, no fill; the icon is centered, in quiet gray. */
 .nav-slot {
   display: grid;

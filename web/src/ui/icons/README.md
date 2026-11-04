@@ -44,6 +44,7 @@ Line SVGs from the [Lucide](https://lucide.dev) set via the npm package `lucide-
 | `file`         | `file`                                      | ISC                |
 | `audio`        | `audio-lines`                               | ISC                |
 | `video`        | `video`                                     | ISC                |
+| `palette`      | `palette`                                   | ISC                |
 
 The origin of the slice 3 icons was checked against the Feather list in the `LICENSE` of package 1.60.0: `trash-2`, `calendar`, `plus`, `chevron-right`, `database` are there, the rest are ISC.
 

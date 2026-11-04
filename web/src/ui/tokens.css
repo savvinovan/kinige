@@ -60,6 +60,8 @@
   --layout-sidebar-row-content-gap: 0.8rem; /** The gap between the tile and the title in a sidebar row (10.4 px, D2: was 6.5). */
   --layout-sidebar-section-gap: 1.5rem; /** Space above a sidebar section heading ('Chats' under 'Pinned'): 19.5 px (D2: was 6.5). */
   --layout-tile-size: 1.75rem; /** A chat tile in the sidebar, the icon slot of the lower items and the profile avatar (22.75 px, D2). */
+  --layout-tile-size-small: 1.1rem; /** A chat tile in a line of small text (search hits, trash plates; KINIG-59): 14.3 px, the line height of type.meta, so the line does not grow. About the size the chat emoji had there before tiles. */
+  --layout-tile-letter-small: 0.7rem; /** The letter in a small tile (9.1 px). */
   --layout-avatar-dot: 0.6rem; /** The status dot at the avatar (8 px), not shown in D1. */
   --layout-row-height: 2.6rem; /** List row height: a menu item, a copy, a settings row (33.8 px; D2: was 32.5). Sidebar rows are taller: layout.sidebar.row-height. */
   --layout-field-height: 2.7rem; /** Height of a single-line input field: the search (35 px; D2: was 30). */
@@ -165,6 +167,7 @@
   --color-tile-orange: #945a38; /** Tile color "orange". */
   --color-tile-pink: #a63f6f; /** Tile color "pink". */
   --color-tile-violet: #653fa6; /** Tile color "violet". */
+  --color-tile-grey: #666666; /** Tile color "grey" (KINIG-59): neutral, chosen by hand only (the automatic colour never picks it) and fixed for Inbox. text.primary on it is 5.27:1; it is 3.21:1 from the window background, 2.74:1 from the hover fill and 2.27:1 from the selected row. */
   --color-forest-winter-ground-a: #c9d6e0; /** Winter ground tile, even checker cell: pale blue-grey. */
   --color-forest-winter-ground-b: #bccbd8; /** Winter ground tile, odd checker cell. */
   --color-forest-winter-crown-mid: #3f6b5c; /** Winter canopy, main tone (dark evergreen); also the tint of winter days in the strip and the calendar. */
@@ -207,6 +210,7 @@
   --icon-emoji-line-height: 1; /** Emoji line-height multiplier in the slot: 1, so the box equals the font size and does not add the ascent and descent of body line spacing (it put the glyph below the center). */
   --icon-emoji-shift: -0.08rem; /** Optical vertical correction for the emoji in a chat row: the system emoji font has its own ascent and descent, and a glyph at the geometric center of the row sits below the text center; the correction raises it (-1 px). Chosen from a screenshot of the real window (WKWebView). */
   --icon-emoji-row: 1.25rem; /** Size of a chat emoji in a sidebar row: 16.25 px (D2; it was `in-tile` before the emoji lost its tile). The Apple Color Emoji glyph is about 1.2 times wider than the em, so it takes about 19.5 px in the 22.75 px slot (layout.tile.size) and leaves a small margin. */
+  --icon-emoji-row-small: 0.9rem; /** Size of a chat emoji in a small tile slot (layout.tile.size-small): 11.7 px; the glyph is about 14 px wide, the slot is 14.3 px. */
   --icon-stroke: 1.75; /** Icon line thickness in viewBox units (24): thinner than the standard 2, 'airier' next to small text. */
   --icon-size-nav: 1.2rem; /** Icon of the lower sidebar items ('Trash', the profile menu items): 15.6 px (D2). Sits in a slot of size layout.tile.size, in the same column as the chat tiles. */
   --icon-size-mark: 0.85rem; /** A quiet 'favorite' mark (a star) next to the time in the bottom right corner of the plate: the size of the time text (11 px, D2: was 10.4). */
@@ -220,6 +224,7 @@
   --motion-easing-exit: cubic-bezier(0.4, 0, 1, 1); /** Leaving: a smooth acceleration. */
   --radius-inline: 0.25rem; /** Inline code, a tag. */
   --radius-tile: 0.45rem; /** A chat tile in the sidebar (D2): a 22.75 px square with soft corners. */
+  --radius-tile-small: 0.3rem; /** A small chat tile in a line of small text (search hits, trash plates): a 14.3 px square, 3.9 px corners. */
   --radius-control: 0.65rem; /** Buttons, input fields, a chat row, a menu item, a code block inside a plate. */
   --radius-panel: 0.9rem; /** The composer, a toast, the context menu, a dialog. */
   --radius-message: 0.9rem; /** A message plate and the 'On this day' card. */

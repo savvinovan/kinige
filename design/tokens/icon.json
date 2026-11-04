@@ -30,6 +30,11 @@
         "$type": "dimension",
         "$value": "1.25rem",
         "$description": "Size of a chat emoji in a sidebar row: 16.25 px (D2; it was `in-tile` before the emoji lost its tile). The Apple Color Emoji glyph is about 1.2 times wider than the em, so it takes about 19.5 px in the 22.75 px slot (layout.tile.size) and leaves a small margin."
+      },
+      "row-small": {
+        "$type": "dimension",
+        "$value": "0.9rem",
+        "$description": "Size of a chat emoji in a small tile slot (layout.tile.size-small): 11.7 px; the glyph is about 14 px wide, the slot is 14.3 px."
       }
     },
     "stroke": {

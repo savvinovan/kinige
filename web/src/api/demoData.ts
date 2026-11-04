@@ -1,6 +1,7 @@
 import type { FeedMessage } from "../ui/feed/buildFeed";
 import type { ChatSummary } from "./generated/ChatSummary";
 import { INBOX_ID } from "./KinigeApi";
+import { INBOX_COLOR, resolveColor } from "./mockColor";
 
 // Entries and chats from the concept brief (design/concepts/brief-v2.md, the "Записи" section): one set for Storybook and
 // tests. Days are relative to `now`, so the "Сегодня" and "Вчера" labels are correct. Entry times are in UTC: snapshots
@@ -67,12 +68,13 @@ export const DEMO_INBOX: ChatSummary = {
   count: demoMessages(new Date(0)).length,
   pinnedAt: null,
   archivedAt: null,
+  color: INBOX_COLOR,
 };
 
 export const DEMO_CHATS: ChatSummary[] = [
   DEMO_INBOX,
-  { id: "ideas", title: "Идеи", icon: "💡", isInbox: false, count: 42, pinnedAt: null, archivedAt: null },
-  { id: "books", title: "Книги", icon: "📚", isInbox: false, count: 1234, pinnedAt: null, archivedAt: null },
-  { id: "work", title: "Работа", icon: "💼", isInbox: false, count: 987, pinnedAt: null, archivedAt: null },
-  { id: "recipes", title: "Рецепты", icon: "🍳", isInbox: false, count: 12345, pinnedAt: null, archivedAt: null },
+  { id: "ideas", title: "Идеи", icon: "💡", isInbox: false, count: 42, pinnedAt: null, archivedAt: null, color: resolveColor("ideas", null) },
+  { id: "books", title: "Книги", icon: "📚", isInbox: false, count: 1234, pinnedAt: null, archivedAt: null, color: resolveColor("books", null) },
+  { id: "work", title: "Работа", icon: "💼", isInbox: false, count: 987, pinnedAt: null, archivedAt: null, color: resolveColor("work", null) },
+  { id: "recipes", title: "Рецепты", icon: "🍳", isInbox: false, count: 12345, pinnedAt: null, archivedAt: null, color: resolveColor("recipes", null) },
 ];

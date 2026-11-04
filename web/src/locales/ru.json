@@ -63,7 +63,19 @@
     "pin": "Закрепить",
     "unpin": "Открепить",
     "archive": "В архив",
-    "unarchive": "Из архива"
+    "unarchive": "Из архива",
+    "color": "Цвет",
+    "colorBack": "Назад",
+    "colorMenu": "Цвет чата: выберите цвет"
+  },
+  "chatColor": {
+    "blue": "Синий",
+    "teal": "Бирюзовый",
+    "green": "Зелёный",
+    "orange": "Оранжевый",
+    "pink": "Розовый",
+    "violet": "Фиолетовый",
+    "grey": "Серый"
   },
   "chatDialog": {
     "titleCreate": "Новый чат",

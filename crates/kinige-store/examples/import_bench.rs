@@ -29,6 +29,8 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 
+#[path = "import_bench/contention.rs"]
+mod contention;
 #[path = "import_bench/media.rs"]
 mod media;
 
@@ -273,6 +275,9 @@ fn main() {
     if media.images > 0 {
         attachment_benches(&store, &data);
     }
+    // KINIG-47, last: the recent chats bench moves entries between chats in the table (a throw-away database).
+    contention::agent_contention_bench(&store, &words);
+    contention::recent_chats_bench(&store, &data);
 }
 
 fn ms(t: Instant) -> f64 {

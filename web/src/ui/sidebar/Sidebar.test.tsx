@@ -74,7 +74,7 @@ describe("Sidebar", () => {
   });
 
   it("склонение в подсказке: 1 запись, 2 записи, 5 записей", () => {
-    const chats = [1, 2, 5, 21, 22, 25, 111].map((count) => ({ id: `c${count}`, name: `Чат ${count}`, emoji: "🫙", count }));
+    const chats = [1, 2, 5, 21, 22, 25, 111].map((count) => ({ id: `c${count}`, name: `Чат ${count}`, emoji: "🫙", tint: "blue" as const, count }));
     render(<Sidebar chats={chats} selectedId="c1" />);
     const titles = chats.map((c) => screen.getByRole("button", { name: new RegExp(`^Чат ${c.count}$|^Чат ${c.count},`) }).getAttribute("title"));
     expect(titles).toEqual([
@@ -97,8 +97,8 @@ describe("Sidebar", () => {
     render(
       <Sidebar
         chats={[
-          { id: "a", name: "Пустой", emoji: "🫙", count: 0 },
-          { id: "b", name: "Без числа", emoji: "🫙" },
+          { id: "a", name: "Пустой", emoji: "🫙", tint: "blue", count: 0 },
+          { id: "b", name: "Без числа", emoji: "🫙", tint: "blue" },
         ]}
         selectedId="a"
       />,
@@ -109,7 +109,7 @@ describe("Sidebar", () => {
   });
 
   it("полное имя длинного чата — в подсказке (в строке оно обрезается многоточием)", () => {
-    render(<Sidebar chats={[{ id: "x", name: "Очень длинное название чата про всё на свете", emoji: "🧭", count: 5 }]} selectedId="x" />);
+    render(<Sidebar chats={[{ id: "x", name: "Очень длинное название чата про всё на свете", emoji: "🧭", tint: "blue", count: 5 }]} selectedId="x" />);
     expect(screen.getByRole("button", { name: /Очень длинное/ })).toHaveAttribute(
       "title",
       "Очень длинное название чата про всё на свете, 5 записей",

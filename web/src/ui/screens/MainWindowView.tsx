@@ -1,4 +1,4 @@
-import { useState, type PointerEvent, type ReactNode } from "react";
+import type { PointerEvent, ReactNode } from "react";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { Language } from "../../api/generated/Language";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
@@ -6,11 +6,13 @@ import type { TrashItem } from "../../api/generated/TrashItem";
 import { useLanguage } from "../../i18n/I18n";
 import { DropOverlay } from "../attachments/DropOverlay";
 import { PendingTiles } from "../attachments/PendingTiles";
-import { Composer, type ComposerButtons } from "../composer/Composer";
+import type { DraftText } from "../../draft/draftText";
+import type { ComposerButtons } from "../composer/Composer";
+import { ComposerPane } from "../composer/ComposerPane";
 import { Feed, type FeedActions, type FeedPaging, type FeedUiState, type ScrollRequest } from "../feed/Feed";
 import type { FeedMessage } from "../feed/buildFeed";
 import type { MoveTarget } from "../message/moveTargets";
-import { type ChatAction, Sidebar, type SidebarChat, type SidebarSearch } from "../sidebar/Sidebar";
+import { type ChatAction, type ChatTint, Sidebar, type SidebarChat, type SidebarSearch } from "../sidebar/Sidebar";
 import { TagFilterBar } from "../tag/TagFilterBar";
 import { TrashView } from "../trash/TrashView";
 import "./main-window.css";
@@ -21,6 +23,8 @@ export interface SidebarControls {
   onToggleCollapsed: () => void;
   onCreateChat: () => void;
   onChatAction: (chatId: string, action: ChatAction) => void;
+  /** "Colour" in the chat menu; without it the item is not shown. */
+  onChatColor?: (chatId: string, color: ChatTint) => void;
   trashCount: number;
   onOpenTrash: () => void;
 }
@@ -49,8 +53,11 @@ interface MainWindowViewProps {
   composerButtons?: ComposerButtons;
   /** The composer works (the app); without it, it is only drawn. */
   interactive?: boolean;
-  /** The text in the composer. Without it, the view keeps the draft itself (stories). */
+  /** The text in the composer, owned below the view (`ComposerPane`: typing does not render the feed). Without it, the pane keeps the text itself (stories). */
+  draftText?: DraftText;
+  /** Stories: the text the pane starts with when it keeps the text itself. */
   draft?: string;
+  /** The person typed; the handler puts the text into `draftText` (and may refuse). */
   onDraftChange?: (value: string) => void;
   onSubmit?: () => void;
   /** The error above the composer (already translated text). */
@@ -130,6 +137,7 @@ export function MainWindowView({
   onOpenLink,
   composerButtons,
   interactive = false,
+  draftText,
   draft,
   onDraftChange,
   onSubmit,
@@ -162,7 +170,6 @@ export function MainWindowView({
   overlay,
   attachments,
 }: MainWindowViewProps) {
-  const [ownDraft, setOwnDraft] = useState("");
   const language = useLanguage();
   return (
     <div className="main-window">
@@ -180,6 +187,7 @@ export function MainWindowView({
         onToggleCollapsed={sidebar?.onToggleCollapsed}
         onCreateChat={sidebar?.onCreateChat}
         onChatAction={sidebar?.onChatAction}
+        onChatColor={sidebar?.onChatColor}
         trashCount={sidebar?.trashCount}
         onOpenTrash={sidebar?.onOpenTrash}
         dropTargetId={drag?.dropTargetId}
@@ -224,10 +232,11 @@ export function MainWindowView({
               onOpenFile={attachments?.onOpenFile}
             />
             {attachments ? <DropOverlay visible={attachments.dragOver} /> : null}
-            <Composer
+            <ComposerPane
               key={selectedChatId ?? "trash"}
-              value={draft ?? ownDraft}
-              onChange={onDraftChange ?? setOwnDraft}
+              text={draftText}
+              initialText={draft}
+              onChange={onDraftChange}
               onSubmit={onSubmit}
               buttons={composerButtons}
               viewOnly={!interactive}

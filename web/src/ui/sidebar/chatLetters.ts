@@ -1,8 +1,3 @@
-import type { ChatTint, SidebarChat } from "./chats";
-
-/** Colors of the letter tile. The order matters: a chat's color is chosen by the hash of its id, so reordering recolors chats. */
-export const TINTS: readonly ChatTint[] = ["blue", "teal", "green", "orange", "pink", "violet"];
-
 /** The default emoji (`DEFAULT_ICON` in `kinige-domain/src/chat.rs`): Rust stores it when no emoji is chosen. */
 const DEFAULT_EMOJI = "💬";
 
@@ -30,22 +25,4 @@ export function firstLetter(title: string): string {
     return segmenter.segment(upper)[Symbol.iterator]().next().value?.segment ?? upper;
   }
   return FALLBACK_LETTER;
-}
-
-/**
- * The tile color by chat id: 32-bit FNV-1a and the remainder of division by the number of colors. The same chat always
- * gets the same color; the stored chat color (KINIG-59) will replace this function with a single `chat.tint` value (see `tintOf`).
- */
-export function tintForId(id: string): ChatTint {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < id.length; index++) {
-    hash ^= id.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  return TINTS[hash % TINTS.length] ?? "blue";
-}
-
-/** The chat tile color: the given one (`tint`) or derived from the id. The only place to replace in KINIG-59. */
-export function tintOf(chat: Pick<SidebarChat, "id" | "tint">): ChatTint {
-  return chat.tint ?? tintForId(chat.id);
 }

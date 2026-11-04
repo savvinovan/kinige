@@ -11,6 +11,7 @@ mod agent_write;
 mod attachment;
 mod backup;
 mod capture;
+mod chat_color;
 mod chats;
 mod data_dir;
 mod draft;
@@ -32,6 +33,7 @@ mod mirror;
 mod mirror_day;
 mod mirror_files;
 mod on_this_day;
+mod recent_chats;
 mod recovery;
 mod schema;
 mod search;
@@ -51,13 +53,13 @@ pub use agent_log::{LOG_DAYS, LOG_MAX_ROWS, LOG_PAGE};
 pub use attachment::{AttachFault, Media, MediaVariant, OpenTarget, SweepReport};
 pub use backup::{Integrity, backups_dir, list_backups, verify_database};
 pub use capture::{CONTEXT_LEN, CaptureView};
-pub use chats::RecentChat;
 pub use draft::MAX_DRAFT_BYTES;
 pub use error::StoreError;
 pub use feed::{DEFAULT_PAGE, MAX_PAGE};
 pub use feed_page::PageAt;
 pub use import::IMPORT_BATCH;
 pub use maintenance::MaintenanceReport;
+pub use recent_chats::RecentChat;
 pub use recovery::{
     RestoreReport, StartupCheck, backups, clear_needs_recovery, database_missing_but_backups_exist,
     mark_needs_recovery, needs_recovery, restore_backup, restore_backup_with, startup_check,
@@ -139,6 +141,9 @@ impl StoreOptions {
 pub(crate) struct Inner {
     writer: Writer,
     reader: Mutex<Connection>,
+    /// A second `query_only` connection for the MCP server's tool calls (`read_agent`, `with_reader`): the window's reads
+    /// and an agent's reads do not wait for each other. One connection, not a pool (KINIG-47.2).
+    agent_reader: Mutex<Connection>,
     mirror: Arc<MirrorShared>,
     default_mirror_dir: Option<PathBuf>,
     db_path: PathBuf,
@@ -228,6 +233,7 @@ impl Store {
         search::rebuild_if_stale(&mut conn)?;
 
         let reader = open_connection(&options.db_path, true)?;
+        let agent_reader = open_connection(&options.db_path, true)?;
         let writer = Writer::spawn(conn)?;
         let mirror = MirrorShared::new(options.mirror_retry);
         let maintenance = MaintenanceShared::new(options.defer_maintenance);
@@ -236,6 +242,7 @@ impl Store {
             inner: Arc::new(Inner {
                 writer,
                 reader: Mutex::new(reader),
+                agent_reader: Mutex::new(agent_reader),
                 mirror: mirror.clone(),
                 default_mirror_dir: options.default_mirror_dir.clone(),
                 db_path: options.db_path.clone(),
@@ -314,18 +321,7 @@ impl Store {
         &self,
         job: impl FnOnce(&Connection) -> Result<T, StoreError>,
     ) -> Result<T, StoreError> {
-        // A panic inside a read (the release profile now unwinds the stack) must not break all following reads: it is caught
-        // here, the call gets `Internal`, and the lock, if it was poisoned anyway, is taken as is -- the read connection
-        // (`query_only`; the query itself opens and closes a read transaction if needed) is consistent after unwinding.
-        let conn = self
-            .inner
-            .reader
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job(&conn))).unwrap_or_else(|_| {
-            log::error!("panic in a read, the call is cancelled");
-            Err(StoreError::Internal("panic during a read".into()))
-        })
+        read_on(&self.inner.reader, job)
     }
 
     /// The main window has loaded its page: a deferred first maintenance pass (`StoreOptions::defer_maintenance`) may start now.
@@ -383,6 +379,23 @@ impl Store {
     pub fn default_mirror_dir(&self) -> Option<&Path> {
         self.inner.default_mirror_dir.as_deref()
     }
+}
+
+/// Runs `job` on the connection behind `reader`.
+pub(crate) fn read_on<T>(
+    reader: &Mutex<Connection>,
+    job: impl FnOnce(&Connection) -> Result<T, StoreError>,
+) -> Result<T, StoreError> {
+    // A panic inside a read (the release profile now unwinds the stack) must not break all following reads: it is caught
+    // here, the call gets `Internal`, and the lock, if it was poisoned anyway, is taken as is -- the read connection
+    // (`query_only`; the query itself opens and closes a read transaction if needed) is consistent after unwinding.
+    let conn = reader
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job(&conn))).unwrap_or_else(|_| {
+        log::error!("panic in a read, the call is cancelled");
+        Err(StoreError::Internal("panic during a read".into()))
+    })
 }
 
 /// A connection with the shared settings. For reading it is `query_only`.

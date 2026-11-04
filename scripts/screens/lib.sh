@@ -73,6 +73,18 @@ press() {
   sleep "$PAUSE"
 }
 
+# A right click without a mouse: the AX action AXShowMenu on a button (the context menu of a sidebar chat opens).
+show_menu() {
+  local result
+  result="$(ax showmenu "$(app_pid)" "$@" 2>&1)"
+  echo "showmenu $*: $result"
+  case "$result" in
+    "menu shown"*) ;;
+    *) fail "menu not shown: $*" ;;
+  esac
+  sleep "$PAUSE"
+}
+
 scroll_to() {
   local result
   result="$(ax scroll "$(app_pid)" "$1" 2>&1)"

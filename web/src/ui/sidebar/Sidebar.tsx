@@ -4,10 +4,11 @@ import { useLanguage } from "../../i18n/I18n";
 import { IconButton } from "../controls/IconButton";
 import { TextField } from "../controls/TextField";
 import { Icon } from "../icons/Icon";
-import { ContextMenu, type MenuPosition } from "../menu/ContextMenu";
+import type { MenuPosition } from "../menu/ContextMenu";
+import { ChatMenu } from "./ChatMenu";
 import { ChatRow } from "./ChatRow";
 import { NavSlot } from "./ChatTile";
-import { chatMenuItems, displayName, partitionChats, type ChatAction, type SidebarChat } from "./chats";
+import { partitionChats, type ChatAction, type ChatTint, type SidebarChat } from "./chats";
 import { formatCount } from "./formatCount";
 import { ProfileMenu } from "./ProfileMenu";
 import { SidebarRail } from "./SidebarRail";
@@ -45,6 +46,8 @@ interface SidebarProps {
   onCreateChat?: () => void;
   /** A chat context menu item. Without a handler the rows have no menu. */
   onChatAction?: (chatId: string, action: ChatAction) => void;
+  /** "Colour" in the chat menu (KINIG-59): the chosen tile colour. Without a handler the item is not shown. */
+  onChatColor?: (chatId: string, color: ChatTint) => void;
   /** How many entries are in the trash (the quiet counter in the "Trash" row). */
   trashCount?: number;
   /** The "Trash" row above the profile row; without a handler there is no row. */
@@ -91,6 +94,7 @@ export function Sidebar({
   onToggleCollapsed,
   onCreateChat,
   onChatAction,
+  onChatColor,
   trashCount = 0,
   onOpenTrash,
   profile,
@@ -236,15 +240,11 @@ export function Sidebar({
         </>
       )}
       {menu && onChatAction ? (
-        <ContextMenu
-          items={chatMenuItems(menu.chat, t)}
+        <ChatMenu
+          chat={menu.chat}
           position={menu.position}
-          label={t("chatMenu.label", { name: displayName(menu.chat, t) })}
-          onSelect={(id) => {
-            const { chat } = menu;
-            setMenu(null);
-            onChatAction(chat.id, id as ChatAction);
-          }}
+          onAction={(action) => onChatAction(menu.chat.id, action)}
+          onColor={onChatColor ? (color) => onChatColor(menu.chat.id, color) : undefined}
           onClose={() => setMenu(null)}
         />
       ) : null}
