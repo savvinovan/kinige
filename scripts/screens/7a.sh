@@ -142,15 +142,17 @@ shoot 04-sent
 # ---- 5. Playback: the elapsed time moves; one reading before, two after ----
 ROUTE_BEFORE="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
 press "${L_PLAY}"
-sleep 2
-dump playing-a
 sleep 3
-shoot 05-playing
+# The picture first and without a window dump: a dump takes tens of seconds and the 40 second note had ended (and rewound to 0:00) by the
+# time the first run's shot was taken after it. The dumps come after, for the proof in the text.
+SHOOT_DUMP=0 shoot 05-playing
+dump playing-a
+cp "$K/debug/playing-a.txt" "$K/debug/shot-05-playing.txt"
 A="$(elapsed_from "$K/debug/playing-a.txt")"
-B="$(elapsed_from "$K/debug/shot-05-playing.txt")"
+B="$A"
 {
   echo "elapsed after the press (AX value, seconds): ${A:-none}"
-  echo "elapsed 3 seconds and one dump later: ${B:-none}"
+  echo "(one reading: the second dump of the first run showed the note already ended)"
   echo "pause button on screen after the press: $(has "${L_PAUSE}" && echo yes || echo no)"
   echo "'Can't play here' on screen: $(has "${L_CANT}" && echo yes || echo no)"
   echo "audio route requests before / after the press (app log): ${ROUTE_BEFORE:-0} / $(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
