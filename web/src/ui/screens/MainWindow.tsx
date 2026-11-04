@@ -3,22 +3,22 @@ import { useTranslation } from "react-i18next";
 import { INBOX_ID, type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { ChatList } from "../../api/generated/ChatList";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
+import type { ReplyTo } from "../../api/generated/ReplyTo";
 import type { Settings } from "../../api/generated/Settings";
 import { useLanguage } from "../../i18n/I18n";
 import { AboutDialog } from "../about/AboutDialog";
 import { Lightbox } from "../attachments/Lightbox";
 import { ChatDialog } from "../chat/ChatDialog";
 import { useRecordDrag } from "../drag/useRecordDrag";
-import { moveTargetsFrom } from "../message/moveTargets";
-import type { ChatAction } from "../sidebar/Sidebar";
 import { ImportDialog } from "../import/ImportDialog";
 import { OnThisDayCard } from "../onthisday/OnThisDayCard";
 import { ReplyStrip } from "../reply/ReplyStrip";
 import { SearchResults } from "../search/SearchResults";
 import { DateDialogs } from "./DateDialogs";
-import { type ChatDialogState, EMPTY_LIST, focusComposer, toSidebar, useCheckOnWindowFocus } from "./mainWindowParts";
+import { EMPTY_LIST, toSidebar, useCheckOnWindowFocus, useMoveTargets } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
 import { useAttachments } from "./useAttachments";
+import { useChatDialog } from "./useChatDialog";
 import { useComposerDraft } from "./useComposerDraft";
 import { type FocusTarget, useFeed } from "./useFeed";
 import { useImport } from "./useImport";
@@ -49,14 +49,12 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const [selected, setSelected] = useState<string | null>(INBOX_ID);
   const [tag, setTag] = useState<string | null>(null);
   const [composerError, setComposerError] = useState<ErrorCode | null>(null);
-  const [chatDialog, setChatDialog] = useState<ChatDialogState | null>(null);
-  const [dialogError, setDialogError] = useState<ErrorCode | null>(null);
   const [dateError, setDateError] = useState<ErrorCode | null>(null);
   // "About": the build string from Rust ("Kinige 0.5.0"); `null` means the window is closed.
   const [about, setAbout] = useState<string | null>(null);
   // The number of the "to the bottom edge of the feed" request: grows after the "On this day" card is hidden.
   const [toBottom, setToBottom] = useState(0);
-  const { draft, reply, tiles, addTiles, dropTile, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
+  const { text: draftText, reply, tiles, addTiles, dropTile, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
     useComposerDraft(api, selected);
   const prefs = useSettingsState(api, initialSettings);
   const { settings } = prefs;
@@ -95,7 +93,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
   useCheckOnWindowFocus(feed.checkDay);
   const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
-  const moveTargets = useMemo(() => moveTargetsFrom(sidebarChats, selected, t), [sidebarChats, selected, t]);
+  const moveTargets = useMoveTargets(sidebarChats, selected, t);
   // Dragging a plate onto a chat: a drop on any chat except the one where the entry lives.
   const drag = useRecordDrag({
     canDrop: (chatId) => chatId !== selected,
@@ -165,12 +163,12 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     };
   }, [api, refreshChats, reloadFeed, select, bumpMutations]);
 
-  const { sending, submit, openEntry, startReply, hideCard } = useReplyActions({
+  const { isSending, submit, openEntry, startReply, hideCard } = useReplyActions({
     api,
     selected,
     select,
     focusOn,
-    draft,
+    draftText,
     tileIds: tiles.map((tile) => tile.id),
     reply,
     saver: draftSaver,
@@ -193,57 +191,36 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     openEntry,
   });
 
-  const closeChatDialog = () => {
-    setChatDialog(null);
-    setDialogError(null);
-  };
+  const chatMenu = useChatDialog({ api, selected, select, refreshChats, recordEmoji: prefs.recordEmoji, onError: setComposerError });
 
-  const submitChatDialog = (name: string, emoji: string | null) => {
-    if (!chatDialog) return;
-    setDialogError(null);
-    const request =
-      chatDialog.mode === "create"
-        ? api.createChat(name, emoji)
-        : chatDialog.mode === "rename"
-          ? api.renameChat(chatDialog.chatId, name)
-          : api.setChatIcon(chatDialog.chatId, emoji ?? "");
-    request
-      .then(async (chat) => {
-        if (emoji) prefs.recordEmoji(emoji);
-        closeChatDialog();
-        await refreshChats();
-        if (chatDialog.mode === "create") {
-          await select(chat.id);
-          focusComposer();
-        }
-      })
-      .catch((reason: unknown) => setDialogError(errorCode(reason)));
-  };
+  // The handlers below go down to the feed's plates; they stay the same between renders so that the plates are not redrawn.
+  const openLink = useCallback(
+    (url: string) => {
+      api.openExternalUrl(url).catch((reason: unknown) => setComposerError(errorCode(reason)));
+    },
+    [api],
+  );
 
-  const chatAction = (id: string, action: ChatAction) => {
-    if (action === "rename" || action === "icon") {
-      setChatDialog({ mode: action, chatId: id });
-      return;
-    }
-    const request =
-      action === "pin" || action === "unpin"
-        ? api.setChatPinned(id, action === "pin")
-        : api.setChatArchived(id, action === "archive");
-    request
-      .then(async () => {
-        await refreshChats();
-        // An archived chat is closed: Inbox stays open.
-        if (action === "archive" && selected === id) await select(INBOX_ID);
-      })
-      .catch((reason: unknown) => setComposerError(errorCode(reason)));
-  };
+  const openReply = useCallback(
+    (quote: ReplyTo) => {
+      if (quote.chatId !== null) openEntry(quote.chatId, quote.id);
+    },
+    [openEntry],
+  );
 
-  const openLink = (url: string) => {
-    api.openExternalUrl(url).catch((reason: unknown) => setComposerError(errorCode(reason)));
-  };
+  // Typing: the text goes to the composer pane (not to this component's state), the error above the field is cleared.
+  const changeDraft = useCallback(
+    (value: string) => {
+      if (isSending()) return;
+      typeDraft(value);
+      setComposerError(null);
+    },
+    [isSending, typeDraft],
+  );
 
   if (feed.loadError) return <p role="alert">{`${t("error.loadFailed")}: ${t(`error.${feed.loadError}`)}`}</p>;
 
+  const chatDialog = chatMenu.dialog;
   const dialogChat = chatDialog && chatDialog.mode !== "create" ? list.chats.find((c) => c.id === chatDialog.chatId) : undefined;
   const dateTarget = feed.dateTarget;
 
@@ -290,8 +267,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       sidebar={{
         collapsed: settings.sidebarCollapsed,
         onToggleCollapsed: prefs.toggleCollapsed,
-        onCreateChat: () => setChatDialog({ mode: "create" }),
-        onChatAction: chatAction,
+        onCreateChat: chatMenu.openCreate,
+        onChatAction: chatMenu.chatAction,
         trashCount: list.trashCount,
         onOpenTrash: () => void select(null),
       }}
@@ -322,9 +299,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
             }
           : undefined
       }
-      onOpenReply={(quote) => {
-        if (quote.chatId !== null) openEntry(quote.chatId, quote.id);
-      }}
+      onOpenReply={openReply}
       replyStrip={reply ? <ReplyStrip quote={reply} onCancel={() => changeReply(null)} /> : undefined}
       onFeedPointerDown={feed.clearMark}
       tagFilter={tag === null ? undefined : { tag, onClear: () => setTag(null) }}
@@ -336,12 +311,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
         onRestore: trash.restore,
         onPurge: trash.purge,
       }}
-      draft={draft}
-      onDraftChange={(value) => {
-        if (sending.current) return;
-        typeDraft(value);
-        setComposerError(null);
-      }}
+      draftText={draftText}
+      onDraftChange={changeDraft}
       onSubmit={submit}
       composerError={composerError ? t(`error.${composerError}`) : undefined}
       attachments={attachments.controls}
@@ -356,9 +327,9 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
               initialEmoji={dialogChat?.icon ?? null}
               recentEmoji={settings.recentEmoji}
               language={language}
-              error={dialogError ? t(`error.${dialogError}`) : undefined}
-              onSubmit={submitChatDialog}
-              onClose={closeChatDialog}
+              error={chatMenu.dialogError ? t(`error.${chatMenu.dialogError}`) : undefined}
+              onSubmit={chatMenu.submitDialog}
+              onClose={chatMenu.closeDialog}
             />
           ) : null}
           {importer.dialog ? <ImportDialog {...importer.dialog} /> : null}

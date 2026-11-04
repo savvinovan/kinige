@@ -4,6 +4,7 @@ import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { MessageView } from "../../api/generated/MessageView";
 import type { OnThisDayEntry } from "../../api/generated/OnThisDayEntry";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
+import type { DraftText } from "../../draft/draftText";
 import type { DraftSaver } from "../../draft/useDraftSaver";
 import { summaryOf } from "../attachments/summaryText";
 import { focusComposer } from "./mainWindowParts";
@@ -15,7 +16,8 @@ interface UseReplyActionsOptions {
   selected: string | null;
   select: (chatId: string | null) => Promise<void>;
   focusOn: (target: FocusTarget) => void;
-  draft: string;
+  /** The composer text; read when sending (it is not React state, see `useComposerDraft`). */
+  draftText: DraftText;
   /** The ids of the unsent attachments (slice 7): sent with the entry, which may then have no text. */
   tileIds: readonly string[];
   reply: ReplyTo | null;
@@ -38,7 +40,7 @@ interface UseReplyActionsOptions {
  * error the text stays in the composer with the error above it.
  */
 export function useReplyActions(options: UseReplyActionsOptions) {
-  const { api, selected, select, focusOn, draft, tileIds, reply, saver, changeReply, refreshReply, clearDraft, planDraft, refreshChats } = options;
+  const { api, selected, select, focusOn, draftText, tileIds, reply, saver, changeReply, refreshReply, clearDraft, planDraft, refreshChats } = options;
   const { appendSent, setComposerError, dismissCard, onDismissed } = options;
   const sending = useRef(false);
   const selectedRef = useRef(selected);
@@ -67,13 +69,13 @@ export function useReplyActions(options: UseReplyActionsOptions) {
   }, [staleReply, selected, confirmReplyState]);
 
   const submit = () => {
-    if (sending.current || (draft.trim() === "" && tileIds.length === 0) || selected === null) return;
+    const text = draftText.get();
+    if (sending.current || (text.trim() === "" && tileIds.length === 0) || selected === null) return;
     sending.current = true;
     // While sending, input is not accepted (see `onDraftChange`), and the scheduled draft save is cancelled; one already
     // sent is awaited: Rust clears the chat's draft in the same transaction as the send, and a late write would
     // bring back the sent text.
     saver.cancel();
-    const text = draft;
     const ids = [...tileIds];
     const replyTo = reply;
     // The entry being replied to was moved to another chat: the strip above the composer already said so, the entry goes
@@ -110,9 +112,12 @@ export function useReplyActions(options: UseReplyActionsOptions) {
   };
 
   /** Open an entry in the feed in context (chat and entry): like a jump from search, the entry is highlighted with a fill. */
-  const openEntry = (chatId: string, messageId: string) => {
-    void select(chatId).then(() => focusOn({ chatId, messageId, terms: [], nonce: 0 }));
-  };
+  const openEntry = useCallback(
+    (chatId: string, messageId: string) => {
+      void select(chatId).then(() => focusOn({ chatId, messageId, terms: [], nonce: 0 }));
+    },
+    [select, focusOn],
+  );
 
   /** "Reply" on a card entry: the strip above the composer and the cursor in the composer. */
   const startReply = (entry: OnThisDayEntry) => {
@@ -136,5 +141,8 @@ export function useReplyActions(options: UseReplyActionsOptions) {
     });
   };
 
-  return { sending, submit, openEntry, startReply, hideCard };
+  /** An entry is on its way to Rust: input is not accepted until the reply. */
+  const isSending = useCallback(() => sending.current, []);
+
+  return { isSending, submit, openEntry, startReply, hideCard };
 }

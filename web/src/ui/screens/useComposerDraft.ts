@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { INBOX_ID, type KinigeApi } from "../../api/KinigeApi";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
+import { useDraftText } from "../../draft/draftText";
 import { useDraftSaver } from "../../draft/useDraftSaver";
 
 /** What goes into the draft: the text and the entry being replied to (slice 5). */
@@ -14,9 +15,12 @@ interface DraftValue {
  * The text in the main window's composer, the "Reply to entry" strip and a draft per chat: the saved draft is filled in when
  * a chat opens, saving is deferred while typing and immediate when the window hides or loses focus (§5.1). The chat
  * state (`selected`) is kept by `MainWindow`; `switchChat` is called at the same moment as its `setSelected`.
+ *
+ * The typed text is not React state here: it sits in `text` and only the composer pane subscribes to it, so a key press
+ * does not render the window (KINIG-47). Read the current text with `text.get()`.
  */
 export function useComposerDraft(api: KinigeApi, selected: string | null) {
-  const [draft, setDraft] = useState("");
+  const text = useDraftText();
   const [reply, setReply] = useState<ReplyTo | null>(null);
   // The tiles above the field (slice 7): the chat's unsent attachments. Rust keeps them; they come back with the draft.
   const [tiles, setTiles] = useState<AttachmentView[]>([]);
@@ -37,10 +41,10 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
 
   const show = useCallback((body: string, replyTo: ReplyTo | null, attachments: AttachmentView[] = []) => {
     latest.current = { body, reply: replyTo };
-    setDraft(body);
+    text.set(body);
     setReply(replyTo);
     setTiles(attachments);
-  }, []);
+  }, [text]);
 
   /** Files were attached (the dialog, a paste, a drop): their tiles join the row. Counts as typing: the saved draft no longer replaces the field. */
   const addTiles = useCallback((added: readonly AttachmentView[]) => {
@@ -79,10 +83,10 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
     (value: string) => {
       typed.current = true;
       latest.current = { ...latest.current, body: value };
-      setDraft(value);
+      text.set(value);
       plan(value, latest.current.reply);
     },
-    [plan],
+    [plan, text],
   );
 
   /** "Reply" on a card entry (or the strip's cross: `null`): the strip above the composer changes, the draft goes to Rust. */
@@ -136,5 +140,5 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
     };
   }, [flush]);
 
-  return { draft, reply, tiles, addTiles, dropTile, changeReply, refreshReply, clear, plan, saver, switchChat, type };
+  return { text, reply, tiles, addTiles, dropTile, changeReply, refreshReply, clear, plan, saver, switchChat, type };
 }

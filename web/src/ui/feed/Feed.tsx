@@ -3,12 +3,10 @@ import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
-import { MessageAttachments } from "../attachments/MessageAttachments";
-import { Message } from "../message/Message";
 import type { MoveTarget } from "../message/moveTargets";
-import { ReplyQuote } from "../reply/ReplyQuote";
 import { type FeedMessage, buildFeed } from "./buildFeed";
 import { formatDayLabel } from "./dates";
+import { FeedRow } from "./FeedRow";
 import { topDayOf } from "./topDay";
 import "./feed.css";
 
@@ -289,46 +287,23 @@ export function Feed({
                 {card?.node}
               </li>
             ) : (
-              <li
-                className={`feed__item${item.inSeries ? " feed__item--series" : ""}`}
+              <FeedRow
                 key={item.key}
-                data-message-id={item.message.id}
-                data-journal-date={item.message.journalDate}
-              >
-                <Message
-                  markdown={item.message.bodyMd}
-                  sentAt={new Date(item.message.createdAt)}
-                  timeZone={item.message.createdTz}
-                  status={item.message.status}
-                  highlighted={item.message.highlighted || ui?.markedId === item.message.id}
-                  markTerms={ui?.markedId === item.message.id ? ui?.markTerms : undefined}
-                  onRetry={onRetry ? () => onRetry(item.message.id) : undefined}
-                  onOpenLink={onOpenLink}
-                  isTask={item.message.isTask}
-                  taskDone={item.message.taskDoneAt != null}
-                  favorite={item.message.favoriteAt != null}
-                  byAgent={item.message.origin === "agent"}
-                  readOnly={item.message.readOnly}
-                  quote={item.message.replyTo ? <ReplyQuote quote={item.message.replyTo} onOpen={onOpenReply} /> : undefined}
-                  attachments={
-                    item.message.attachments && item.message.attachments.length > 0 ? (
-                      <MessageAttachments
-                        attachments={item.message.attachments}
-                        onOpenImage={(attachmentId) => onOpenImage?.(item.message.attachments ?? [], attachmentId)}
-                        onOpenFile={(attachmentId) => onOpenFile?.(attachmentId)}
-                      />
-                    ) : undefined
-                  }
-                  tags={item.message.tags}
-                  mode={
-                    ui?.editingId === item.message.id ? "editing" : ui?.deletedIds?.has(item.message.id) ? "deleted" : "view"
-                  }
-                  editError={ui?.editingId === item.message.id ? ui?.editError : undefined}
-                  moveTargets={moveTargets}
-                  onDragStart={onDragStart?.(item.message.id)}
-                  {...(actions ? messageHandlers(actions, item.message.id) : {})}
-                />
-              </li>
+                message={item.message}
+                inSeries={item.inSeries}
+                marked={ui?.markedId === item.message.id}
+                markTerms={ui?.markedId === item.message.id ? ui?.markTerms : undefined}
+                mode={ui?.editingId === item.message.id ? "editing" : ui?.deletedIds?.has(item.message.id) ? "deleted" : "view"}
+                editError={ui?.editingId === item.message.id ? ui?.editError : undefined}
+                onRetry={onRetry}
+                onOpenLink={onOpenLink}
+                onOpenReply={onOpenReply}
+                onOpenImage={onOpenImage}
+                onOpenFile={onOpenFile}
+                actions={actions}
+                moveTargets={moveTargets}
+                onDragStart={onDragStart}
+              />
             ),
           )}
         </ol>
@@ -336,22 +311,4 @@ export function Feed({
       {hasOlder ? <div className="feed__edge" ref={olderEdge} aria-hidden="true" /> : null}
     </div>
   );
-}
-
-/** Bubble handlers by entry id. */
-function messageHandlers(actions: FeedActions, id: string) {
-  return {
-    onEdit: () => actions.onEdit(id),
-    onSaveEdit: (text: string) => actions.onSaveEdit(id, text),
-    onCancelEdit: () => actions.onCancelEdit(id),
-    onToggleTask: (on: boolean) => actions.onToggleTask(id, on),
-    onToggleDone: (done: boolean) => actions.onToggleDone(id, done),
-    onToggleFavorite: (on: boolean) => actions.onToggleFavorite(id, on),
-    onChangeDate: () => actions.onChangeDate(id),
-    onDelete: () => actions.onDelete(id),
-    onRestore: () => actions.onRestore(id),
-    onToggleTaskItem: (index: number, checked: boolean) => actions.onToggleTaskItem(id, index, checked),
-    onTagClick: actions.onTagClick,
-    onMoveTo: (chatId: string) => actions.onMoveTo(id, chatId),
-  };
 }
