@@ -86,28 +86,30 @@ Shoot '02-sent' 'Kinige'
 
 # ---- 3. The note survives a kill, and Play reaches the audio route ------------------------------------------------------------------
 
-Stop-App
-$before = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' }).Count
-$main = Start-App $exe.FullName
-if (-not $main) { exit 1 }
-Start-Sleep -Seconds 6
-$rowsAfter = Get-Scalar "select count(*) from attachment where filename like 'voice-%'"
-if ($rowsAfter -ne '1') { Fail "the note did not survive the kill ($rowsAfter)" }
-# Shift+Tab from the field walks back through the newest entry: its five action buttons (copy, edit, task, favorite, more), the speed
-# chip, the seek bar and Play, so Play is the eighth stop (the first run, with six, ended on the Trash button of the sidebar). The
-# neighbouring counts are tried after it; each attempt returns to the field with the same number of Tab presses and checks the log for a
-# request of the audio route.
+# The note survives a kill; then Play is found by keyboard. Shift+Tab from the field walks back through the newest entry (its action
+# buttons, the speed chip, the seek bar, Play), but how many stops that is was guessed wrong twice (8 landed on the Trash button, and on a
+# Telegram stub). So the number of stops is scanned: each attempt starts the app afresh (the focus starts in the field), presses Shift+Tab
+# that many times and Enter, and asks the log whether the audio route was reached. Enter on a wrong stop is harmless (copy, edit, a flag, a
+# menu, the speed chip) and the app is killed before the next attempt.
 $played = $false
-foreach ($stops in 8, 7, 9) {
+$before = 0
+for ($stops = 2; $stops -le 16 -and -not $played; $stops++) {
+  Stop-App
+  $before = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' }).Count
+  $main = Start-App $exe.FullName
+  if (-not $main) { exit 1 }
+  Start-Sleep -Seconds 4
+  if ($stops -eq 2) {
+    $rowsAfter = Get-Scalar "select count(*) from attachment where filename like 'voice-%'"
+    if ($rowsAfter -ne '1') { Fail "the note did not survive the kill ($rowsAfter)" }
+  }
   Focus-Window 'Kinige'
-  Start-Sleep -Milliseconds 1500
+  Start-Sleep -Milliseconds 1200
   for ($i = 0; $i -lt $stops; $i++) { Send-Keys 'Kinige' '+{TAB}' $false }
   Send-Keys 'Kinige' '{ENTER}' $false
-  Start-Sleep -Seconds 4
+  Start-Sleep -Seconds 3
   $now = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
-  if ($now.Count -gt $before) { $played = $true; Say "Play reached the route with $stops Shift+Tab stops"; break }
-  Send-Keys 'Kinige' '{ESC}{ESC}' $false
-  for ($i = 0; $i -lt $stops; $i++) { Send-Keys 'Kinige' '{TAB}' $false }
+  if ($now.Count -gt $before) { $played = $true; Say "Play reached the route with $stops Shift+Tab stops" }
 }
 Shoot '03-playing' 'Kinige'
 $lines = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
