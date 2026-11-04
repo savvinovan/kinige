@@ -14,6 +14,8 @@ use std::time::{Duration, Instant};
 const CHATS: usize = 40;
 /// Rounds of each measurement.
 const ROUNDS: usize = 40;
+/// The old recent chats query is slow on purpose-built data (that is the finding), so it gets fewer rounds.
+const OLD_ROUNDS: usize = 5;
 
 /// The query "recent chats" had before KINIG-47.3: `MAX(created_at)` over every live entry of every chat.
 const OLD_RECENT_SQL: &str = "SELECT c.id, c.title, c.icon FROM chat c \
@@ -42,6 +44,9 @@ pub fn recent_chats_bench(store: &Store, data: &Path) {
         )
         .unwrap();
     }
+    // The rewrite left a WAL as large as the table; folded into the database file, so that neither query pays for reading through it.
+    conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))
+        .unwrap();
     let entries: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM message WHERE chat_id != ?1",
@@ -76,18 +81,18 @@ pub fn recent_chats_bench(store: &Store, data: &Path) {
         new(),
         "the old and the new query give the same five chats"
     );
-    let before = sample(ROUNDS, || {
+    let before = sample(OLD_ROUNDS, || {
         old();
     });
     let after = sample(ROUNDS, || {
         new();
     });
     println!(
-        "recent chats (tray menu, 5 of {CHATS} chats, {entries} entries outside Inbox), before (MAX(created_at) over every entry): {}",
+        "recent chats (tray menu, 5 of {CHATS} chats, {entries} entries outside Inbox), before (MAX(created_at) over every entry, {OLD_ROUNDS} rounds): {}",
         stats(&before)
     );
     println!(
-        "recent chats (tray menu, 5 of {CHATS} chats, {entries} entries outside Inbox), after (last entry in feed order, message_feed): {}",
+        "recent chats (tray menu, 5 of {CHATS} chats, {entries} entries outside Inbox), after (last entry in feed order, message_feed, {ROUNDS} rounds): {}",
         stats(&after)
     );
 }
