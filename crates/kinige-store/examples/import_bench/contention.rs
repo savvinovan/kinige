@@ -88,7 +88,7 @@ pub fn recent_chats_bench(store: &Store, data: &Path) {
         new();
     });
     println!(
-        "recent chats (tray menu, 5 of {CHATS} chats, {entries} entries outside Inbox), before (MAX(created_at) over every entry, {OLD_ROUNDS} rounds; the cost grows with the entries of a chat times all entries, so this is the worst shape, not a typical journal): {}",
+        "recent chats (tray menu, 5 of {CHATS} chats, {entries} entries outside Inbox), before (MAX(created_at) over every entry, {OLD_ROUNDS} rounds; on the bundled SQLite the cost grows sharply and depends on the data, so this is a stress case, not what the tray takes on a typical journal): {}",
         stats(&before)
     );
     println!(

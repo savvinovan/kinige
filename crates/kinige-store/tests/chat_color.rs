@@ -312,7 +312,8 @@ fn an_imported_chat_gets_null_and_an_automatic_colour_that_survives_a_reopen() {
 }
 
 /// The child process picks a colour and dies through `abort` right after the reply (that is, after `COMMIT`); the parent runs
-/// the same test program with the directory and the chat id in the environment, then reopens the store.
+/// the same test program with the directory and the chat id in the environment, then reopens the store. This is a process-kill
+/// test: power loss rests on `synchronous=FULL` + `fullfsync`, and column-vs-meta atomicity on the single write transaction.
 #[test]
 fn abort_right_after_a_pick_keeps_the_colour_in_the_column_and_in_meta() {
     if let (Ok(dir), Ok(id)) = (std::env::var(CHILD_DIR_ENV), std::env::var(CHILD_CHAT_ENV)) {

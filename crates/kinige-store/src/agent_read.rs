@@ -133,7 +133,7 @@ impl Store {
     pub fn write_through_agent_read_for_test(&self) -> String {
         let attempt = self.read_agent(|conn| {
             Ok(conn
-                .execute("UPDATE chat SET title = title", [])
+                .execute("UPDATE chat SET title = title || ' (agent)'", [])
                 .map(|_| String::new())
                 .unwrap_or_else(|error| error.to_string()))
         });
