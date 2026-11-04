@@ -132,9 +132,12 @@ export class RecorderSession {
     return this.levels;
   }
 
-  /** Stops, releases the microphone and gives the recording. The clock is read before the recorder stops. */
+  /**
+   * Stops, releases the microphone and gives the recording. The clock is read before the recorder stops, and never past 30 minutes: the
+   * auto-send tick can come late (a hidden window, a swapped-out VM), and the store refuses what is over 30 minutes and 5 seconds.
+   */
   async finish(): Promise<Recording> {
-    const durationMs = this.elapsedMs();
+    const durationMs = Math.min(this.elapsedMs(), MAX_RECORDING_MS);
     await this.stopRecorder();
     this.release();
     const blob = new Blob(this.chunks);

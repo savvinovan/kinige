@@ -50,7 +50,10 @@ export const Discard: Story = { args: { state: { kind: "confirming", elapsedMs: 
 export const DeviceLost: Story = { args: { state: { kind: "lost", elapsedMs: 12_000 } } };
 
 /** A full disk: the bytes stay, Retry and Discard. */
-export const SaveFailed: Story = { args: { state: { kind: "send-failed", elapsedMs: 40_000, error: "disk_full" } } };
+export const SaveFailed: Story = { args: { state: { kind: "send-failed", elapsedMs: 40_000, error: "disk_full", retryable: true } } };
+
+/** The chat is gone: nothing a second try could change, so Discard only, with the reason in words. */
+export const SaveFailedForGood: Story = { args: { state: { kind: "send-failed", elapsedMs: 40_000, error: "chat_not_found", retryable: false } } };
 
 /** Access is off in System Settings. */
 export const AccessOff: Story = { args: { state: { kind: "notice", reason: "denied" } } };
@@ -60,6 +63,8 @@ export const NoMicrophone: Story = { args: { state: { kind: "notice", reason: "n
 export const Busy: Story = { args: { state: { kind: "notice", reason: "busy" } } };
 
 export const TooShort: Story = { args: { state: { kind: "notice", reason: "too-short" } } };
+
+export const TooLong: Story = { args: { state: { kind: "notice", reason: "too-long" } } };
 
 /** English. */
 export const English: Story = { globals: { language: "en" }, args: { state: { kind: "confirming", elapsedMs: 12_000, levels: LEVELS } } };

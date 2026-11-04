@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import { formatDuration, UNKNOWN_TIME, wholeSeconds } from "../../voice/format";
 import { FULL_MAX_BYTES, useMediaUrl } from "../attachments/mediaUrl";
 import { FileCard } from "../attachments/FileCard";
 import { Icon } from "../icons/Icon";
-import { claimPlayback, currentSpeed, nextSpeed, releasePlayback, speedLabel, type PlayingHandle } from "./playerSession";
+import { claimPlayback, currentSpeed, nextSpeed, releasePlayback, speedLabel, subscribeSpeed, type PlayingHandle } from "./playerSession";
 import "./voice-player.css";
 
 /** The arrow keys move the position by this much. */
@@ -54,7 +54,8 @@ export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProp
   const [positionMs, setPositionMs] = useState(preview?.positionMs ?? 0);
   const [loadedMs, setLoadedMs] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
-  const [speed, setSpeed] = useState(currentSpeed);
+  // One speed for every voice note of the session: the chip of any player shows it and moves it for all of them.
+  const speed = useSyncExternalStore(subscribeSpeed, currentSpeed);
 
   // The player goes away while it plays (the chat closes): it stops, and the next player can claim the playback.
   useEffect(() => {
@@ -110,11 +111,9 @@ export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProp
     seekTo(positionMs + (event.key === "ArrowRight" ? SEEK_STEP_MS : -SEEK_STEP_MS));
   };
 
-  const cycleSpeed = () => {
-    const next = nextSpeed();
-    setSpeed(next);
-    if (audio.current) audio.current.playbackRate = next;
-  };
+  useEffect(() => {
+    if (audio.current) audio.current.playbackRate = speed;
+  }, [speed]);
 
   if (attachment.state === "missing") return <FileCard attachment={attachment} onOpen={onOpenFile} />;
 
@@ -162,12 +161,12 @@ export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProp
         onChange={onSeek}
         onKeyDown={onSeekKey}
       />
-      <span className="voice-player__time">{shownTime}</span>
+      <span className={`voice-player__time${started ? " voice-player__time--live" : ""}`}>{shownTime}</span>
       <button
         type="button"
         className="voice-player__speed"
         aria-label={t("voice.speed", { speed: speedLabel(speed) })}
-        onClick={cycleSpeed}
+        onClick={nextSpeed}
       >
         {speedLabel(speed)}
       </button>

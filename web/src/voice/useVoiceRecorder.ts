@@ -26,9 +26,9 @@ export type VoiceState =
   | { kind: "lost"; elapsedMs: number }
   | { kind: "sending"; elapsedMs: number }
   /** Saving failed (a full disk): the bytes stay in memory; Retry and Discard. */
-  | { kind: "send-failed"; elapsedMs: number; error: ErrorCode }
+  | { kind: "send-failed"; elapsedMs: number; error: ErrorCode; retryable: boolean }
   /** One line above the field: access off, no microphone, busy, too short. */
-  | { kind: "notice"; reason: MicError | "too-short" };
+  | { kind: "notice"; reason: MicError | "too-short" | "too-long" };
 
 /** The recorder's state outside React's tree of state: the timer ticks four times a second and must redraw the composer only, never the window or the feed (KINIG-47). */
 export interface VoiceStore {
@@ -125,27 +125,43 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
     setState({ kind: "idle" });
   }, [setState]);
 
-  /** Saves a finished recording in the chat it was started in. */
+  /**
+   * Saves a finished recording in the chat it was started in. What a second try cannot change is not offered again:
+   * - too short and too long end the recording with a line above the field (the duration is clamped to 30 minutes, so "too long" is only
+   *   a safety net);
+   * - the replied-to entry is gone (`reply_target_not_found`): the note is sent once more with no reply, so the recording is not lost;
+   * - the chat is gone or the bytes are not audio: Discard only, with the reason in words;
+   * - anything else (a full disk, a busy writer) keeps the bytes for Retry.
+   */
   const save = useCallback(
     async (recording: Recording) => {
       const where = target.current;
       if (!where) return;
       setState({ kind: "sending", elapsedMs: recording.durationMs });
-      try {
-        const sent = await api.sendVoice(where.chatId, recording.bytes, recording.durationMs, where.replyToId);
-        latest.current.onSent(sent, where.chatId);
-        clear();
-      } catch (reason) {
-        const code = errorCode(reason);
-        // Too short and too long can never succeed on a retry: they end the recording. Anything else keeps the bytes.
-        if (code === "voice_too_short") {
+      // At most two tries in one go: the second only after `reply_target_not_found`, with the reply dropped.
+      for (;;) {
+        try {
+          const sent = await api.sendVoice(where.chatId, recording.bytes, recording.durationMs, where.replyToId);
+          latest.current.onSent(sent, where.chatId);
           clear();
-          setState({ kind: "notice", reason: "too-short" });
+          return;
+        } catch (reason) {
+          const code = errorCode(reason);
+          if (code === "voice_too_short" || code === "voice_too_long") {
+            clear();
+            setState({ kind: "notice", reason: code === "voice_too_short" ? "too-short" : "too-long" });
+            return;
+          }
+          if (code === "reply_target_not_found" && where.replyToId !== null) {
+            where.replyToId = null;
+            continue;
+          }
+          kept.current = recording;
+          busy.current = false;
+          const retryable = code !== "chat_not_found" && code !== "attachment_unreadable" && code !== "reply_target_not_found";
+          setState({ kind: "send-failed", elapsedMs: recording.durationMs, error: code, retryable });
           return;
         }
-        kept.current = recording;
-        busy.current = false;
-        setState({ kind: "send-failed", elapsedMs: recording.durationMs, error: code });
       }
     },
     [api, clear, setState],
@@ -193,10 +209,17 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
         if (!lost) return;
         session.current = null;
         confirming.current = false;
-        void lost.finish().then((recording) => {
-          kept.current = recording;
-          setState({ kind: "lost", elapsedMs: recording.durationMs });
-        });
+        lost
+          .finish()
+          .then((recording) => {
+            kept.current = recording;
+            setState({ kind: "lost", elapsedMs: recording.durationMs });
+          })
+          // Reading the chunks failed: nothing can be kept, and the bar must not stay in limbo.
+          .catch(() => {
+            clear();
+            setState({ kind: "notice", reason: "busy" });
+          });
       },
       onByteLimit: () => sendRef.current(),
     }).then(

@@ -294,7 +294,87 @@ describe("sending", () => {
   });
 });
 
+describe("what a second try cannot change is not offered again (one test per code)", () => {
+  async function recordAndFail(code: Parameters<MockApi["failNext"]>[1], options: Parameters<typeof setup>[0] = {}) {
+    const made = setup(options);
+    await begin(made.hook.result);
+    await advance(5000);
+    made.api.failNext("sendVoice", code);
+    await finish(made.hook.result);
+    return made;
+  }
+
+  it("a recording whose auto-send tick came late is sent as 30:00, not refused as too long", async () => {
+    const { hook, api } = setup();
+    await begin(hook.result);
+    const start = performance.now();
+    // The tick that should have sent the note at 30:00 did not run for ten more seconds (a hidden window, a swapped-out VM).
+    vi.spyOn(performance, "now").mockReturnValue(start + MAX_RECORDING_MS + 10_000);
+    await finish(hook.result);
+    expect(api.sentVoices).toHaveLength(1);
+    expect(api.sentVoices[0]?.durationMs).toBe(MAX_RECORDING_MS);
+    expect(hook.result.current.state.kind).toBe("idle");
+    vi.restoreAllMocks();
+  });
+
+  it("voice_too_long ends the recording with a line above the field, no Retry", async () => {
+    const { hook, api } = await recordAndFail("voice_too_long");
+    expect(hook.result.current.state).toEqual({ kind: "notice", reason: "too-long" });
+    expect(api.sentVoices).toHaveLength(0);
+    expect(stream.track.stopped).toBe(true);
+  });
+
+  it("voice_too_short from Rust ends the recording the same way", async () => {
+    const { hook } = await recordAndFail("voice_too_short");
+    expect(hook.result.current.state).toEqual({ kind: "notice", reason: "too-short" });
+  });
+
+  it("reply_target_not_found sends the note once more with no reply, so the recording is kept", async () => {
+    const { hook, api } = setup();
+    const question = await api.sendMessage(INBOX_ID, "the question");
+    hook.rerender({ chatId: INBOX_ID, replyToId: question.id });
+    await begin(hook.result);
+    await advance(5000);
+    api.failNext("sendVoice", "reply_target_not_found");
+    await finish(hook.result);
+    expect(api.sentVoices).toHaveLength(1);
+    expect(api.sentVoices[0]).toMatchObject({ chatId: INBOX_ID, replyToId: null });
+    expect(hook.result.current.state.kind).toBe("idle");
+  });
+
+  it("reply_target_not_found without a reply to drop is Discard only", async () => {
+    const { hook } = await recordAndFail("reply_target_not_found");
+    expect(hook.result.current.state).toMatchObject({ kind: "send-failed", error: "reply_target_not_found", retryable: false });
+  });
+
+  it.each(["chat_not_found", "attachment_unreadable"] as const)("%s leaves Discard only", async (code) => {
+    const { hook, api } = await recordAndFail(code);
+    expect(hook.result.current.state).toMatchObject({ kind: "send-failed", error: code, retryable: false });
+    act(() => hook.result.current.discard());
+    expect(hook.result.current.state.kind).toBe("idle");
+    expect(api.sentVoices).toHaveLength(0);
+  });
+
+  it("a full disk keeps the bytes and offers Retry", async () => {
+    const { hook } = await recordAndFail("disk_full");
+    expect(hook.result.current.state).toMatchObject({ kind: "send-failed", error: "disk_full", retryable: true });
+  });
+});
+
 describe("a lost device", () => {
+  it("whose recording cannot be read does not leave the bar stuck", async () => {
+    const { hook } = setup();
+    await begin(hook.result);
+    await advance(5000);
+    vi.spyOn(Blob.prototype, "arrayBuffer").mockRejectedValue(new Error("read failed"));
+    await act(async () => {
+      stream.track.dispatchEvent(new Event("ended"));
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(hook.result.current.state).toEqual({ kind: "notice", reason: "busy" });
+    vi.restoreAllMocks();
+  });
+
   it("keeps what was recorded and offers Send", async () => {
     const { hook, api } = setup();
     await begin(hook.result);

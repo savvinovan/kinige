@@ -51,9 +51,20 @@ export const UnknownLength: Story = { args: { attachment: demoVoice("tg", null, 
 /** The file is gone: the slice 7 tile. */
 export const FileMissing: Story = { args: { attachment: demoVoice("gone", 40_000, { state: "missing" }) } };
 
+/** A file the web view will not play (here over 64 MiB, which the route refuses in every web view): "Can't play here" and "Open in default app". */
+export const CantPlayHere: Story = {
+  args: { attachment: demoVoice("big", 40_000, { byteSize: 70 * 1024 * 1024, filename: "interview.m4a" }) },
+};
+
 /** An edited voice note: the text sits under the player. */
 export const WithText: Story = {
   render: () => <Bubble attachments={[NOTE]} text="Idea for the weekend trip" />,
+};
+
+/** English, the same unplayable file. */
+export const CantPlayHereEnglish: Story = {
+  globals: { language: "en" },
+  args: { attachment: demoVoice("big-en", 40_000, { byteSize: 70 * 1024 * 1024, filename: "interview.m4a" }) },
 };
 
 /** English. */

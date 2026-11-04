@@ -50,6 +50,7 @@
     "busy": "The microphone is unavailable",
     "disconnected": "Microphone disconnected · {{time}}",
     "tooShort": "Too short to save",
+    "tooLong": "Too long to save",
     "sendFailed": "The voice note was not saved.",
     "dismiss": "Dismiss",
     "note": "Voice note",

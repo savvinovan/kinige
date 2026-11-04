@@ -96,10 +96,18 @@ describe("the recording bar", () => {
   });
 
   it("a failed save shows the error with Retry and Discard", () => {
-    const { voice } = show({ kind: "send-failed", elapsedMs: 9000, error: "disk_full" });
+    const { voice } = show({ kind: "send-failed", elapsedMs: 9000, error: "disk_full", retryable: true });
     expect(screen.getByRole("alert")).toHaveTextContent("The voice note was not saved. There is not enough disk space. Nothing was attached.");
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(voice.retry).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(voice.discard).toHaveBeenCalled();
+  });
+
+  it("a save that cannot succeed on a second try offers Discard only, with the reason", () => {
+    const { voice } = show({ kind: "send-failed", elapsedMs: 9000, error: "chat_not_found", retryable: false });
+    expect(screen.getByRole("alert")).toHaveTextContent("The voice note was not saved. This chat was not found.");
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));
     expect(voice.discard).toHaveBeenCalled();
   });
@@ -116,6 +124,7 @@ describe("the line above the field", () => {
     ["no-device", "No microphone found"],
     ["busy", "The microphone is unavailable"],
     ["too-short", "Too short to save"],
+    ["too-long", "Too long to save"],
   ] as const)("%s", (reason, text) => {
     show({ kind: "notice", reason });
     expect(screen.getByRole("alert")).toHaveTextContent(text);

@@ -26,6 +26,7 @@ export function VoiceNotice({ state, onOpenSettings, onDismiss }: VoiceNoticePro
     "no-device": t("voice.noDevice"),
     busy: t("voice.busy"),
     "too-short": t("voice.tooShort"),
+    "too-long": t("voice.tooLong"),
   }[state.reason];
   return (
     <p className="voice-notice voice-notice--error" role="alert">

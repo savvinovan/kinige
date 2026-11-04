@@ -73,9 +73,11 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
         <button type="button" className="recording-bar__choice" onClick={controls.discard}>
           {t("voice.discard")}
         </button>
-        <button type="button" className="recording-bar__choice recording-bar__choice--keep" onClick={controls.retry}>
-          {t("voice.retry")}
-        </button>
+        {state.retryable ? (
+          <button type="button" className="recording-bar__choice recording-bar__choice--keep" onClick={controls.retry}>
+            {t("voice.retry")}
+          </button>
+        ) : null}
       </div>
     );
   }

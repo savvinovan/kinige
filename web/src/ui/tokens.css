@@ -108,14 +108,15 @@
   --layout-voice-dot-size: 0.7rem; /** The red dot of the recording bar (9 px at a 13 px root). A shape that does not pulse. */
   --layout-voice-meter-bar-width: 0.2rem; /** Width of one bar of the level meter (2.6 px at a 13 px root). */
   --layout-voice-meter-gap: 0.15rem; /** Gap between the bars of the level meter. */
-  --layout-voice-meter-height: 1.6rem; /** Height of the meter: the tallest bar. About 24 bars stand in a row (the count is in ui/voice/levels.ts). */
+  --layout-voice-meter-height: 1.6rem; /** Height of the meter: the tallest bar. About 24 bars stand in a row (the count is `LEVEL_BARS` in voice/recorderSession.ts). */
   --layout-voice-meter-min-height: 0.2rem; /** The shortest bar: silence still shows a line. */
   --layout-voice-timer-width: 3.6rem; /** Room for the timer of the recording bar up to 59:59 in tabular figures, so the meter does not move as the seconds change. */
-  --layout-voice-player-width: 20rem; /** Width of the player in a bubble (260 px at a 13 px root, between the 240 and 360 px of the spec): fixed, so nothing moves when the duration or the time changes. In a narrow bubble it shrinks to the bubble (max-width 100%). */
+  --layout-voice-player-width: 22rem; /** Width of the player in a bubble (286 px at a 13 px root, between the 240 and 360 px of the spec; at rest the seek bar gets about 160 px of it): fixed, so nothing moves when the duration or the time changes. In a narrow bubble it shrinks to the bubble (max-width 100%). */
   --layout-voice-player-button: 2.4rem; /** The round play / pause button of the player (31 px at a 13 px root). */
   --layout-voice-seek-height: 0.3rem; /** The track of the seek bar. */
   --layout-voice-seek-thumb: 0.8rem; /** The thumb of the seek bar (10 px at a 13 px root). */
-  --layout-voice-time-width: 6.4rem; /** Room for "0:12 / 0:40" in tabular figures; with hours ("1:02:03 / 1:02:03") the text is allowed to be wider. */
+  --layout-voice-time-width: 6.4rem; /** Room for "0:12 / 0:40" in tabular figures once the note has been started; with hours ("1:02:03 / 1:02:03") the text is allowed to be wider. */
+  --layout-voice-time-width-rest: 3rem; /** Room for the total alone ("0:40") while the note rests: the seek bar gets the rest of the width. */
   --layout-voice-speed-width: 2.6rem; /** The speed chip ("1×", "1.5×", "2×"): one width for all three, so the chip does not move. */
   --opacity-lightbox-scrim: 0.94; /** The backdrop of the lightbox: the window background colour with this opacity, nearly opaque so the photo stands alone. */
   --opacity-drag-ghost: 0.8; /** The 'ghost' of an entry plate dragged onto a chat in the sidebar (a slice 3 acceptance decision): a copy of the plate under the cursor, quiet but readable. */

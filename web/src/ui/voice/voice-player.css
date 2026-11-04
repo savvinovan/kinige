@@ -82,10 +82,11 @@
   background: var(--color-accent-default);
 }
 
-/* "0:12 / 0:40": tabular figures in a fixed slot, so the seek bar does not move as the seconds change. */
+/* At rest only the total ("0:40") stands here and the seek bar takes the room; once the note has been started the slot is wide enough
+   for "0:12 / 0:40" in tabular figures, so the seek bar does not move as the seconds change. */
 .voice-player__time {
   flex: none;
-  min-width: var(--layout-voice-time-width);
+  min-width: var(--layout-voice-time-width-rest);
   color: var(--color-text-secondary);
   font-family: var(--type-meta-family);
   font-size: var(--type-meta-size);
@@ -93,6 +94,10 @@
   line-height: var(--type-meta-line-height);
   text-align: end;
   white-space: nowrap;
+}
+
+.voice-player__time--live {
+  min-width: var(--layout-voice-time-width);
 }
 
 .voice-player__speed {

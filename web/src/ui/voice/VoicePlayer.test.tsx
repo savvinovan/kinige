@@ -111,6 +111,34 @@ describe("VoicePlayer", () => {
     expect(screen.getByRole("button", { name: /^Playback speed/ })).toHaveTextContent("1.5×");
   });
 
+  it("the speed is one setting for every note on screen: any chip moves all of them, so no press looks dead", () => {
+    show(demoVoice("a", 10_000));
+    show(demoVoice("b", 20_000));
+    const chips = () => screen.getAllByRole("button", { name: /^Playback speed/ });
+    expect(chips().map((chip) => chip.textContent)).toEqual(["1×", "1×"]);
+    fireEvent.click(chips()[0] as HTMLElement);
+    expect(chips().map((chip) => chip.textContent)).toEqual(["1.5×", "1.5×"]);
+    fireEvent.click(chips()[1] as HTMLElement);
+    expect(chips().map((chip) => chip.textContent)).toEqual(["2×", "2×"]);
+    fireEvent.click(chips()[1] as HTMLElement);
+    expect(chips().map((chip) => chip.textContent)).toEqual(["1×", "1×"]);
+  });
+
+  it("a playing note follows the speed another note's chip sets", () => {
+    const first = show(demoVoice("a", 10_000));
+    show(demoVoice("b", 20_000));
+    fireEvent.click(screen.getAllByRole("button", { name: "Play" })[0] as HTMLElement);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Playback speed/ })[1] as HTMLElement);
+    expect(first.audio.playbackRate).toBe(1.5);
+  });
+
+  it("the time slot is narrow at rest (the seek bar gets the room) and wide once the note has been started", () => {
+    show(demoVoice("a", 40_000));
+    expect(screen.getByText("0:40")).not.toHaveClass("voice-player__time--live");
+    fireEvent.click(screen.getByRole("button", { name: "Play" }));
+    expect(screen.getByText("0:00 / 0:40")).toHaveClass("voice-player__time--live");
+  });
+
   it("starting another voice note pauses the first one", () => {
     const first = show(demoVoice("a", 10_000));
     const second = show(demoVoice("b", 20_000));

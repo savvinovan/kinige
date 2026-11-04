@@ -11,6 +11,7 @@ export interface PlayingHandle {
 
 let playing: PlayingHandle | null = null;
 let speedIndex = 0;
+const speedListeners = new Set<() => void>();
 
 /** A player started: the one that played before it is paused, so only one voice note plays at a time. */
 export function claimPlayback(handle: PlayingHandle): void {
@@ -27,16 +28,24 @@ export function currentSpeed(): number {
   return SPEEDS[speedIndex] ?? 1;
 }
 
-/** The chip was pressed: the next speed, for every player of the session. */
+/** The chip of any player was pressed: the next speed, for every player of the session (as in Telegram, one setting for all notes). */
 export function nextSpeed(): number {
   speedIndex = (speedIndex + 1) % SPEEDS.length;
+  for (const listener of [...speedListeners]) listener();
   return currentSpeed();
+}
+
+/** For `useSyncExternalStore`: players on screen show the shared speed and follow it when any chip changes it. */
+export function subscribeSpeed(listener: () => void): () => void {
+  speedListeners.add(listener);
+  return () => speedListeners.delete(listener);
 }
 
 /** Tests only: back to the start of a session. */
 export function resetPlayerSession(): void {
   playing = null;
   speedIndex = 0;
+  for (const listener of [...speedListeners]) listener();
 }
 
 /** "1×", "1.5×", "2×". */
