@@ -1,0 +1,12 @@
+elapsed after the press (AX value, seconds): 32
+elapsed 3 seconds and one dump later: 0
+pause button on screen after the press: no
+'Can't play here' on screen: no
+audio route requests before / after the press (app log): 0 / 80
+[DEBUG][kinige_lib::audio_route] audio route: 206 2 bytes, asked "bytes=0-1", answered "bytes 0-1/77154"
+[DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=0-7", answered "bytes 0-7/77154"
+[DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=28-35", answered "bytes 28-35/77154"
+[DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=36-43", answered "bytes 36-43/77154"
+[DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=144-151", answered "bytes 144-151/77154"
+[DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=2180-2187", answered "bytes 2180-2187/77154"
+playback proof: elapsed 32 s in the first dump, 80 audio route requests

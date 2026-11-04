@@ -1,0 +1,65 @@
+# Facts about audio recording and playback in the webview of the built app (slice 7a probe, macOS runner).
+# AX press on the Inbox chat before the second run: pressed: AXPopUpButton Inbox | Inbox
+
+KINIGE PROBE 7a, without a user gesture
+origin: tauri://localhost
+isSecureContext: true
+navigator.mediaDevices: true
+MediaRecorder: function
+AudioContext: function
+userActivation.isActive: false
+userActivation.hasBeenActive: false
+userAgent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)
+audioinput devices (count only): 1
+MediaRecorder.isTypeSupported(audio/mp4;codecs=mp4a.40.2): true
+MediaRecorder.isTypeSupported(audio/mp4): true
+MediaRecorder.isTypeSupported(audio/webm;codecs=opus): true
+canPlayType(audio/mp4;codecs=mp4a.40.2): probably
+canPlayType(audio/mp4): maybe
+canPlayType(audio/webm;codecs=opus): probably
+canPlayType(audio/ogg; codecs=opus): probably
+recorder type chosen: audio/mp4;codecs=mp4a.40.2
+fake source tracks: 1
+recorder.mimeType: audio/mp4; codecs=mp4a.40.2
+chunks: 4
+bytes: 16228
+seconds (own clock): 5.01
+observed bytes per second: 3237
+first 12 bytes (hex): 00 00 00 20 66 74 79 70 69 73 6f 35
+decode AudioContext.state: suspended
+decoded duration (s): 5.01
+decoded channels: 2
+decoded sample rate: 48000
+decoded peak amplitude (0 = silence): 0.219
+----
+KINIGE PROBE 7a, on the first user gesture
+origin: tauri://localhost
+isSecureContext: true
+navigator.mediaDevices: true
+MediaRecorder: function
+AudioContext: function
+userActivation.isActive: true
+userActivation.hasBeenActive: true
+userAgent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)
+audioinput devices (count only): 1
+MediaRecorder.isTypeSupported(audio/mp4;codecs=mp4a.40.2): true
+MediaRecorder.isTypeSupported(audio/mp4): true
+MediaRecorder.isTypeSupported(audio/webm;codecs=opus): true
+canPlayType(audio/mp4;codecs=mp4a.40.2): probably
+canPlayType(audio/mp4): maybe
+canPlayType(audio/webm;codecs=opus): probably
+canPlayType(audio/ogg; codecs=opus): probably
+recorder type chosen: audio/mp4;codecs=mp4a.40.2
+fake source tracks: 1
+recorder.mimeType: audio/mp4; codecs=mp4a.40.2
+chunks: 5
+bytes: 16563
+seconds (own clock): 5.00
+observed bytes per second: 3309
+first 12 bytes (hex): 00 00 00 20 66 74 79 70 69 73 6f 35
+decode AudioContext.state: suspended
+decoded duration (s): 5.01
+decoded channels: 2
+decoded sample rate: 48000
+decoded peak amplitude (0 = silence): 0.213
+----
