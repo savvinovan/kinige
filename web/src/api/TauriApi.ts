@@ -97,6 +97,21 @@ export class TauriApi implements KinigeApi {
     }
   }
 
+  async sendVoice(chatId: string, bytes: Uint8Array, durationMs: number, replyToId?: string | null): Promise<MessageView> {
+    // A raw body, like a paste: the chat, the recorder's clock and the reply go in headers (ASCII).
+    const headers: Record<string, string> = { "x-chat-id": chatId, "x-duration-ms": String(Math.round(durationMs)) };
+    if (replyToId) headers["x-reply-to"] = encodeURIComponent(replyToId);
+    try {
+      return await invoke<MessageView>("send_voice", bytes, { headers });
+    } catch (reason) {
+      throw toApiError(reason);
+    }
+  }
+
+  async openMicrophoneSettings(): Promise<void> {
+    await call("open_microphone_settings");
+  }
+
   attachDropped(token: string, chatId: string): Promise<AttachOutcome> {
     return call("attach_dropped", { token, chatId });
   }

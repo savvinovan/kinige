@@ -1,4 +1,5 @@
 import type { AttachmentView } from "../../api/generated/AttachmentView";
+import { VoicePlayer } from "../voice/VoicePlayer";
 import { Album } from "./Album";
 import { FileCard } from "./FileCard";
 import "./message-attachments.css";
@@ -15,7 +16,7 @@ interface MessageAttachmentsProps {
 
 /**
  * The attachments of an entry inside its bubble, above the text (slice 7): the photos as one album in order, then every other attachment
- * as a file card, in order. It has no background or border (the bubble gives them); the root class `message-attachments`
+ * as a file card, in order; an `audio` attachment (a voice note, slice 7a) is a player instead. It has no background or border (the bubble gives them); the root class `message-attachments`
  * lets the bubble find it, e.g. to size itself when the entry has only attachments. Nothing for an entry without attachments.
  */
 export function MessageAttachments({ attachments, onOpenImage, onOpenFile, className }: MessageAttachmentsProps) {
@@ -33,9 +34,13 @@ export function MessageAttachments({ attachments, onOpenImage, onOpenFile, class
           }}
         />
       ) : null}
-      {files.map((file) => (
-        <FileCard key={file.id} attachment={file} onOpen={onOpenFile} />
-      ))}
+      {files.map((file) =>
+        file.kind === "audio" ? (
+          <VoicePlayer key={file.id} attachment={file} onOpenFile={onOpenFile} />
+        ) : (
+          <FileCard key={file.id} attachment={file} onOpen={onOpenFile} />
+        ),
+      )}
     </div>
   );
 }

@@ -103,3 +103,22 @@ function svgUrl({ width, height, transparent }: DemoPhoto, thumb: boolean, id: s
     `</svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
+
+/** A voice note (`audio` with a length); `byteSize` defaults to what 64 kb/s makes of it. */
+export function demoVoice(
+  id: string,
+  durationMs: number | null,
+  options: { filename?: string; mime?: string; state?: AttachmentView["state"]; byteSize?: number } = {},
+): AttachmentView {
+  return {
+    id,
+    kind: "audio",
+    filename: options.filename ?? "voice-2026-11-04-213012.m4a",
+    mime: options.mime ?? "audio/mp4",
+    byteSize: options.byteSize ?? Math.round(((durationMs ?? 40_000) / 1000) * 8000),
+    width: null,
+    height: null,
+    durationMs,
+    state: options.state ?? "local",
+  };
+}

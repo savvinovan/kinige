@@ -23,9 +23,11 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Paperclip,
+  Pause,
   Pencil,
   Pin,
   PinOff,
+  Play,
   Plus,
   Reply,
   Search,
@@ -91,6 +93,9 @@ const GLYPHS = {
   file: File,
   audio: AudioLines,
   video: Video,
+  // Slice 7a: the voice note player (the microphone and the trash button of the recording bar are `voice` and `trash` above).
+  play: Play,
+  pause: Pause,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

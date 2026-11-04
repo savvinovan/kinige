@@ -78,6 +78,41 @@ export class MockApiSlice7 extends MockApiSlice6 {
     });
   }
 
+  /** Voice notes that reached "Rust": chat, size and the recorder's clock, in the order they were saved. */
+  readonly sentVoices: { chatId: string; bytes: number; durationMs: number; replyToId: string | null }[] = [];
+  /** The system's microphone privacy page was asked for this many times. */
+  microphoneSettingsOpened = 0;
+
+  sendVoice(chatId: string, bytes: Uint8Array, durationMs: number, replyToId: string | null = null): Promise<MessageView> {
+    // The same rules as `Store::send_voice`; the container is not looked at (the mock has no files).
+    const check = (): void => {
+      if (bytes.length > MAX_PASTE_BYTES) throw new KinigeApiError("attachment_too_large");
+      if (durationMs < 1000) throw new KinigeApiError("voice_too_short");
+      if (durationMs > 1_805_000) throw new KinigeApiError("voice_too_long");
+      if (!this.chats.some((c) => c.id === chatId)) throw new KinigeApiError("chat_not_found");
+    };
+    return this.run("sendVoice", `${chatId} ${bytes.length} ${durationMs}`, check).then(() =>
+      super.sendMessage(chatId, ".", replyToId).then((sent) => {
+        const row = this.row(sent.id);
+        const note = mockAttachment(`att-${++this.counter}`, "voice-2026-11-04-213012.m4a", {
+          kind: "audio",
+          mime: "audio/mp4",
+          byteSize: bytes.length,
+          durationMs: Math.round(durationMs),
+        });
+        row.view = { ...row.view, bodyMd: "", tags: [], attachments: [note] };
+        this.sentVoices.push({ chatId, bytes: bytes.length, durationMs, replyToId });
+        return this.viewOf(row);
+      }),
+    );
+  }
+
+  openMicrophoneSettings(): Promise<void> {
+    return this.run("openMicrophoneSettings", "", () => {
+      this.microphoneSettingsOpened += 1;
+    });
+  }
+
   getDraft(chatId: string): Promise<ChatDraft> {
     return super.getDraft(chatId).then((draft) => ({ ...draft, attachments: this.tilesOf(chatId) }));
   }

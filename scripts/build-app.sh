@@ -48,5 +48,6 @@ MIC_TEXT="$(plutil -extract NSMicrophoneUsageDescription raw "$APP/Contents/Info
 
 codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -d --entitlements :- "$APP" 2>&1 | grep -q "com.apple.security.device.audio-input" \
-  || { echo "the signature does not carry com.apple.security.device.audio-input" >&2; codesign -d --entitlements :- "$APP" >&2 || true; exit 1; }codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature|Format"
+  || { echo "the signature does not carry com.apple.security.device.audio-input" >&2; codesign -d --entitlements :- "$APP" >&2 || true; exit 1; }
+codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature|Format"
 echo "OK: $APP ($VERSION)"

@@ -1,0 +1,150 @@
+/* The voice note player in a bubble (slice 7a). Tokens only; nothing animates. */
+.voice-player {
+  display: flex;
+  align-items: center;
+  gap: var(--layout-voice-player-gap);
+  box-sizing: border-box;
+  width: var(--layout-voice-player-width);
+  max-width: 100%;
+  color: var(--color-text-primary);
+}
+
+.voice-player__play {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--layout-voice-player-button);
+  height: var(--layout-voice-player-button);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--color-accent-default);
+  color: var(--color-surface-background);
+  cursor: pointer;
+}
+
+.voice-player__seek {
+  flex: 1;
+  min-width: 0;
+  height: var(--layout-voice-player-button);
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.voice-player__seek:disabled {
+  cursor: default;
+}
+
+/* The track: the played part is the accent, the rest is the divider; the fill follows `--voice-progress` (set in percent by the component). */
+.voice-player__seek::-webkit-slider-runnable-track {
+  height: var(--layout-voice-seek-height);
+  border-radius: var(--radius-round);
+  background: linear-gradient(
+    to right,
+    var(--color-accent-default) var(--voice-progress, 0%),
+    var(--color-border-divider) var(--voice-progress, 0%)
+  );
+}
+
+.voice-player__seek::-moz-range-track {
+  height: var(--layout-voice-seek-height);
+  border-radius: var(--radius-round);
+  background: linear-gradient(
+    to right,
+    var(--color-accent-default) var(--voice-progress, 0%),
+    var(--color-border-divider) var(--voice-progress, 0%)
+  );
+}
+
+.voice-player__seek::-webkit-slider-thumb {
+  width: var(--layout-voice-seek-thumb);
+  height: var(--layout-voice-seek-thumb);
+  margin-top: calc((var(--layout-voice-seek-height) - var(--layout-voice-seek-thumb)) / 2);
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--color-accent-default);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.voice-player__seek::-moz-range-thumb {
+  width: var(--layout-voice-seek-thumb);
+  height: var(--layout-voice-seek-thumb);
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--color-accent-default);
+}
+
+/* "0:12 / 0:40": tabular figures in a fixed slot, so the seek bar does not move as the seconds change. */
+.voice-player__time {
+  flex: none;
+  min-width: var(--layout-voice-time-width);
+  color: var(--color-text-secondary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--type-meta-line-height);
+  text-align: end;
+  white-space: nowrap;
+}
+
+.voice-player__speed {
+  flex: none;
+  box-sizing: border-box;
+  min-width: var(--layout-voice-speed-width);
+  margin: 0;
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--color-surface-selected);
+  color: var(--color-text-secondary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--type-meta-line-height);
+  text-align: center;
+  cursor: pointer;
+}
+
+.voice-player__speed:hover {
+  color: var(--color-text-primary);
+}
+
+.voice-player__play:focus-visible,
+.voice-player__seek:focus-visible,
+.voice-player__speed:focus-visible,
+.voice-player__open:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus-ring);
+  outline-offset: var(--border-width-strong);
+}
+
+/* "Can't play here · Open in default app": one line, the same box as the player. */
+.voice-player--unplayable {
+  flex-wrap: wrap;
+  padding: var(--layout-voice-unplayable-padding) 0;
+  color: var(--color-text-secondary);
+}
+
+.voice-player__cant {
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.voice-player__open {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent-default);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

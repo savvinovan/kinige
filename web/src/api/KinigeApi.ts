@@ -252,6 +252,17 @@ export interface KinigeApi {
   /** Files were dropped on the window: the one-time token for `attachDropped`, never a path. */
   onAttachmentsDropped(handler: (token: string) => void): Promise<() => void>;
 
+  // ---- voice notes (slice 7a): main window only ----
+  /**
+   * Saves a recording as a new entry of the chat: no text, one `audio` attachment. `bytes` are the recorder's file, `durationMs` is the
+   * recorder's own clock (1 s to 30 min). Rust decides the container from the first bytes. With `replyToId` the note is a reply, like a
+   * text one. Under a second - `voice_too_short`, over the limit - `voice_too_long`, no such chat - `chat_not_found`, a file that is not
+   * a recording - `attachment_unreadable`, no space - `disk_full`; nothing is written on an error.
+   */
+  sendVoice(chatId: string, bytes: Uint8Array, durationMs: number, replyToId?: string | null): Promise<MessageView>;
+  /** "Open settings" on the "Microphone access is off" line: the system's microphone privacy page. A fixed page, no argument. */
+  openMicrophoneSettings(): Promise<void>;
+
   // ---- capture window (slice 2): a separate set of commands, Inbox only ----
   /** Everything the window needs on showing: language, text size, today's context, the append target, the draft, an error. */
   captureState(): Promise<CaptureState>;
