@@ -109,6 +109,15 @@ export class RecorderSession {
     }
   }
 
+  /**
+   * When the recording is sent by itself: 30 minutes, or what the stream asks for. Only the screens runners' fake microphone asks for less:
+   * on a macOS runner every accessibility call hangs for as long as a recording runs, so the scenario's recording must end by itself.
+   */
+  limitMs(): number {
+    const asked = "maxRecordingMs" in this.stream ? Number(this.stream.maxRecordingMs) : NaN;
+    return Number.isFinite(asked) && asked > 0 ? Math.min(asked, MAX_RECORDING_MS) : MAX_RECORDING_MS;
+  }
+
   /** Milliseconds recorded so far (frozen when the device was lost). */
   elapsedMs(): number {
     return Math.max(0, Math.round((this.endedAt ?? performance.now()) - this.startedAt));

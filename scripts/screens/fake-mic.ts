@@ -29,6 +29,7 @@ export async function openMicrophone(): Promise<MediaStream> {
       void context.close().catch(() => undefined);
     };
   }
-  // No level meter for this stream (`RecorderSession` looks for the mark): see the note there.
-  return Object.assign(destination.stream, { withoutMeter: true });
+  // No level meter, and a recording that ends by itself after 14 seconds (`RecorderSession` looks for the marks; see the notes there):
+  // on a macOS runner every accessibility call hangs while a recording runs, so the scenario cannot press anything during it.
+  return Object.assign(destination.stream, { withoutMeter: true, maxRecordingMs: 14_000 });
 }

@@ -4,7 +4,6 @@ import type { ErrorCode } from "../api/generated/ErrorCode";
 import type { MessageView } from "../api/generated/MessageView";
 import {
   CONFIRM_AFTER_MS,
-  MAX_RECORDING_MS,
   MIN_RECORDING_MS,
   type MicError,
   type Recording,
@@ -266,7 +265,7 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
       const running = session.current;
       if (!running) return;
       const elapsedMs = running.elapsedMs();
-      if (elapsedMs >= MAX_RECORDING_MS) {
+      if (elapsedMs >= running.limitMs()) {
         sendRef.current();
         return;
       }
