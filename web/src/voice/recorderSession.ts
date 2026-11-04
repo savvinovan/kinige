@@ -28,7 +28,8 @@ export type MicError = "denied" | "no-device" | "busy";
 
 /** `getUserMedia` rejects with a DOMException; its name tells the cause. A missing `mediaDevices` is the same as no microphone. */
 export function micErrorOf(reason: unknown): MicError {
-  const name = reason instanceof Error ? reason.name : "";
+  // Read the name structurally: a DOMException from another realm (an iframe, a test environment) is not `instanceof Error`.
+  const name = typeof reason === "object" && reason !== null && "name" in reason ? String(reason.name) : "";
   if (name === "NotAllowedError" || name === "SecurityError") return "denied";
   if (name === "NotFoundError" || name === "OverconstrainedError") return "no-device";
   return "busy";

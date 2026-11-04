@@ -16,6 +16,8 @@ interface VoicePlayerProps {
   attachment: AttachmentView;
   /** "Open in default app" on a file this web view cannot play. */
   onOpenFile: (attachmentId: string) => void;
+  /** Storybook only: shows the player as if it were playing at this position, without a media element doing it. */
+  preview?: { playing: boolean; positionMs: number };
 }
 
 /** Whether this web view says it can play the type; asked once per type. */
@@ -38,15 +40,15 @@ export function resetPlayableCache(): void {
  * width, so nothing moves when it loads. The file is requested only when Play is first pressed (opening a chat loads no audio). A file
  * that is gone shows the slice 7 tile; one this web view cannot play shows "Can't play here" with "Open in default app".
  */
-export function VoicePlayer({ attachment, onOpenFile }: VoicePlayerProps) {
+export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProps) {
   const { t } = useTranslation();
   const mediaUrl = useMediaUrl();
   const audio = useRef<HTMLAudioElement>(null);
   const handle = useRef<PlayingHandle>({ pause: () => audio.current?.pause() });
   const seekOnStart = useRef<number | null>(null);
-  const [started, setStarted] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [positionMs, setPositionMs] = useState(0);
+  const [started, setStarted] = useState(preview !== undefined);
+  const [isPlaying, setIsPlaying] = useState(preview?.playing ?? false);
+  const [positionMs, setPositionMs] = useState(preview?.positionMs ?? 0);
   const [loadedMs, setLoadedMs] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
   const [speed, setSpeed] = useState(currentSpeed);
