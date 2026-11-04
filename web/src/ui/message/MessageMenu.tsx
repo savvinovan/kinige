@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ContextMenu, type MenuItem, type MenuPosition } from "../menu/ContextMenu";
+import { ChatTile } from "../sidebar/ChatTile";
 import type { MoveTarget } from "./moveTargets";
 
 interface MessageMenuProps {
@@ -70,7 +71,8 @@ export function MessageMenu({
     ...moveTargets.map((target, index) => ({
       id: `${CHAT_PREFIX}${target.id}`,
       label: target.name,
-      emoji: target.emoji,
+      // The chat as the sidebar shows it: the emoji, or the letter on the chat's colour.
+      tile: <ChatTile chat={target} name={target.name} />,
       disabled: target.current,
       // A thin divider between sections (pinned / chats / archive) and under "Back".
       separatorBefore: index === 0 || target.group !== moveTargets[index - 1]?.group,

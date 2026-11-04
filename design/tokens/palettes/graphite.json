@@ -148,6 +148,11 @@
           "$value": "#653fa6",
           "$description": "Tile color \"violet\".",
           "$extensions": { "kinige": { "origin": "авторский: тон 262°, насыщенность 45 %, светлота 45 %" } }
+        },
+        "grey": {
+          "$value": "#666666",
+          "$description": "Tile color \"grey\" (KINIG-59): neutral, chosen by hand only (the automatic colour never picks it) and fixed for Inbox. text.primary on it is 5.27:1; it is 3.21:1 from the window background, 2.74:1 from the hover fill and 2.27:1 from the selected row.",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, тон 0°, насыщенность 0 %, светлота 40 %" } }
         }
       }
     }

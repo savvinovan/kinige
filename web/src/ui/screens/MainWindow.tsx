@@ -269,6 +269,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
         onToggleCollapsed: prefs.toggleCollapsed,
         onCreateChat: chatMenu.openCreate,
         onChatAction: chatMenu.chatAction,
+        onChatColor: chatMenu.chatColor,
         trashCount: list.trashCount,
         onOpenTrash: () => void select(null),
       }}

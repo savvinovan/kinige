@@ -11,6 +11,7 @@ import { IconButton } from "../controls/IconButton";
 import { formatDayLabel } from "../feed/dates";
 import { SegmentedChoice } from "../settings/SegmentedChoice";
 import { StatusNote } from "../settings/StatusNote";
+import { ChatTile } from "../sidebar/ChatTile";
 import { HighlightedText } from "./HighlightedText";
 import "./search.css";
 
@@ -156,9 +157,7 @@ export function SearchResults(props: SearchResultsProps) {
               onMouseEnter={() => props.onActiveChange(index)}
               onClick={() => props.onOpenChat(chat)}
             >
-              <span className="search-row__emoji" aria-hidden="true">
-                {chat.icon ?? "\u{1F4AC}"}
-              </span>
+              <ChatTile chat={{ emoji: chat.icon ?? "", tint: chat.color }} name={chat.isInbox ? t("chat.inbox") : chat.title} />
               <span className="search-row__name">{chat.isInbox ? t("chat.inbox") : chat.title}</span>
               <span className="search-row__count">{t("count.entries", { count: chat.count })}</span>
             </li>
@@ -179,9 +178,7 @@ export function SearchResults(props: SearchResultsProps) {
               >
                 <div className="search-hit__head">
                   <span className="search-row__chat" title={chat}>
-                    <span className="search-row__emoji" aria-hidden="true">
-                      {hit.chatIcon ?? "\u{1F4AC}"}
-                    </span>
+                    <ChatTile chat={{ emoji: hit.chatIcon ?? "", tint: hit.chatColor }} name={chat} />
                     <span className="search-row__name">{chat}</span>
                   </span>
                   <span className="search-hit__when">{formatDayLabel(hit.message.journalDate, today, language, labels)}</span>

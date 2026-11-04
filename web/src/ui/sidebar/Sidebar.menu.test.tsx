@@ -4,7 +4,7 @@ import { chatMenuItems, type SidebarChat } from "./chats";
 import { Sidebar, type ChatAction } from "./Sidebar";
 import { createI18n } from "../../i18n";
 
-const chat = (id: string, name: string, extra: Partial<SidebarChat> = {}): SidebarChat => ({ id, name, emoji: "📌", ...extra });
+const chat = (id: string, name: string, extra: Partial<SidebarChat> = {}): SidebarChat => ({ id, name, emoji: "📌", tint: "blue", ...extra });
 
 const LIST: SidebarChat[] = [
   chat("inbox", "", { isInbox: true, emoji: "📥", count: 3 }),

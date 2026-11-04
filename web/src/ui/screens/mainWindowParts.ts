@@ -16,6 +16,7 @@ export function toSidebar(chat: ChatList["chats"][number]): SidebarChat {
     name: chat.title,
     isInbox: chat.isInbox,
     emoji: chat.icon ?? "💬",
+    tint: chat.color,
     count: chat.count,
     pinned: chat.pinnedAt !== null && chat.archivedAt === null,
     archived: chat.archivedAt !== null,

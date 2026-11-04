@@ -4,7 +4,7 @@ import type { SidebarChat } from "../sidebar/chats";
 import { moveTargetsFrom } from "./moveTargets";
 
 const t = ((key: string) => (key === "chat.inbox" ? "Входящие" : key)) as unknown as TFunction;
-const chat = (id: string, name: string, extra: Partial<SidebarChat> = {}): SidebarChat => ({ id, name, emoji: "📌", ...extra });
+const chat = (id: string, name: string, extra: Partial<SidebarChat> = {}): SidebarChat => ({ id, name, emoji: "📌", tint: "blue", ...extra });
 
 describe("moveTargetsFrom", () => {
   it("порядок сайдбара: закреплённые, обычные, архив; текущий чат отмечен, у Inbox переведённое имя", () => {

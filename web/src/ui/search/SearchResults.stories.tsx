@@ -8,6 +8,7 @@ import "./search-stories.css";
 // Search results in place of the feed. "Today" in the stories is pinned (Tuesday, 27 October 2026).
 const TODAY = "2026-10-27";
 const noop = () => undefined;
+const TEAL = "teal";
 
 const hit = (id: string, snippet: string, terms: string[], patch: Partial<SearchHit> = {}, journalDate = TODAY): SearchHit => ({
   message: {
@@ -29,6 +30,7 @@ const hit = (id: string, snippet: string, terms: string[], patch: Partial<Search
   chatTitle: "",
   chatIcon: "📥",
   chatIsInbox: true,
+  chatColor: "grey",
   snippet,
   terms,
   ...patch,
@@ -51,7 +53,7 @@ const HITS: SearchHit[] = [
   }),
 ];
 
-const CHAT: ChatSummary = { id: "books", title: "Книги", icon: "📚", isInbox: false, count: 1234, pinnedAt: null, archivedAt: null };
+const CHAT: ChatSummary = { id: "books", title: "Книги", icon: "📚", isInbox: false, count: 1234, pinnedAt: null, archivedAt: null, color: TEAL };
 
 const meta = {
   title: "Экраны/Поиск",

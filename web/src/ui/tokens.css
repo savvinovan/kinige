@@ -165,6 +165,7 @@
   --color-tile-orange: #945a38; /** Tile color "orange". */
   --color-tile-pink: #a63f6f; /** Tile color "pink". */
   --color-tile-violet: #653fa6; /** Tile color "violet". */
+  --color-tile-grey: #666666; /** Tile color "grey" (KINIG-59): neutral, chosen by hand only (the automatic colour never picks it) and fixed for Inbox. text.primary on it is 5.27:1; it is 3.21:1 from the window background, 2.74:1 from the hover fill and 2.27:1 from the selected row. */
   --color-forest-winter-ground-a: #c9d6e0; /** Winter ground tile, even checker cell: pale blue-grey. */
   --color-forest-winter-ground-b: #bccbd8; /** Winter ground tile, odd checker cell. */
   --color-forest-winter-crown-mid: #3f6b5c; /** Winter canopy, main tone (dark evergreen); also the tint of winter days in the strip and the calendar. */

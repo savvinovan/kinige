@@ -3,7 +3,7 @@ import { demoEntry } from "../../api/demoData";
 import { INBOX_ID } from "../../api/KinigeApi";
 import type { SearchHit } from "../../api/generated/SearchHit";
 import { NO_FILTERS, SearchResults } from "../search/SearchResults";
-import type { SidebarChat } from "../sidebar/Sidebar";
+import { withTints } from "../sidebar/storyChats";
 import { MainWindowView } from "./MainWindowView";
 import "./screens-stories.css";
 
@@ -11,14 +11,15 @@ import "./screens-stories.css";
 // search, an archive of past years in the feed. "Today" is fixed in the stories (Tuesday, 20 October 2026).
 const TODAY = "2026-10-20";
 const noop = () => undefined;
+const TEAL = "teal";
 
-const CHATS: SidebarChat[] = [
+const CHATS = withTints([
   { id: INBOX_ID, name: "", isInbox: true, emoji: "📥", count: 1724 },
   { id: "work", name: "Работа", emoji: "💼", count: 987, pinned: true },
   { id: "books", name: "Книги", emoji: "📚", count: 1234 },
   { id: "tg1", name: "Пётр Тестов", emoji: "💬", count: 240 },
   { id: "tg2", name: "Анна", emoji: "💬", count: 12 },
-];
+]);
 
 const OLD = [
   demoEntry("o1", "2019-03-08", "12:00", "Первая запись из архива Telegram, март 2019"),
@@ -48,6 +49,7 @@ const hit = (id: string, snippet: string, terms: string[], chatTitle: string, ch
   chatTitle,
   chatIcon,
   chatIsInbox: inbox,
+  chatColor: inbox ? "grey" : "blue",
   snippet,
   terms,
 });
@@ -62,7 +64,7 @@ const searchView = (language: "ru" | "en") => (
   <SearchResults
     listId="results"
     query="книги"
-    chats={[{ id: "books", title: "Книги", icon: "📚", isInbox: false, count: 1234, pinnedAt: null, archivedAt: null }]}
+    chats={[{ id: "books", title: "Книги", icon: "📚", isInbox: false, count: 1234, pinnedAt: null, archivedAt: null, color: TEAL }]}
     hits={HITS}
     hasMore={false}
     loading={false}

@@ -28,6 +28,7 @@ const entry = (id: string, body: string, patch: Partial<TrashItem> = {}, journal
   chatTitle: "Входящие",
   chatIcon: "📥",
   chatIsInbox: true,
+  chatColor: "grey",
   deletedAt: Date.UTC(2026, 9, 26, 18, 0),
   daysLeft: 29,
   ...patch,

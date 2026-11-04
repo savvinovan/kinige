@@ -121,12 +121,6 @@
   color: var(--color-text-secondary);
 }
 
-.search-row__emoji {
-  display: flex;
-  flex: none;
-  align-items: center;
-}
-
 .search-row__name {
   min-width: 0;
   overflow: hidden;

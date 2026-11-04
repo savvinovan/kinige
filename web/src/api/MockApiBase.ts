@@ -1,6 +1,7 @@
 import { INBOX_ID, type KinigeApi, KinigeApiError } from "./KinigeApi";
 import { summaryOf } from "../ui/attachments/summaryText";
 import { APPEND_WINDOW_MS, CONTEXT_LEN, DEFAULT_SETTINGS, NO_ATTACHMENTS, type MockApiOptions, type Row, compareFeed, mockMessage, yearsLater } from "./mockData";
+import { INBOX_COLOR, resolveColor } from "./mockColor";
 import { mockTags } from "./mockTags";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
@@ -62,16 +63,20 @@ export class MockApiBase {
     this.language = options.language ?? "ru";
     this.rows = (options.messages ?? []).map((view) => ({ view, deletedAt: null, revisions: [] }));
     this.chats = [
-      { id: INBOX_ID, title: "", icon: "📥", isInbox: true, count: 0, pinnedAt: null, archivedAt: null },
-      ...(options.chats ?? []).map((chat, index) => ({
-        id: chat.id ?? `chat-${index + 1}`,
-        title: chat.title ?? `Chat ${index + 1}`,
-        icon: chat.icon === undefined ? "💬" : chat.icon,
-        isInbox: false,
-        count: 0,
-        pinnedAt: chat.pinnedAt ?? null,
-        archivedAt: chat.archivedAt ?? null,
-      })),
+      { id: INBOX_ID, title: "", icon: "📥", isInbox: true, count: 0, pinnedAt: null, archivedAt: null, color: INBOX_COLOR },
+      ...(options.chats ?? []).map((chat, index) => {
+        const id = chat.id ?? `chat-${index + 1}`;
+        return {
+          id,
+          title: chat.title ?? `Chat ${index + 1}`,
+          icon: chat.icon === undefined ? "💬" : chat.icon,
+          isInbox: false,
+          count: 0,
+          pinnedAt: chat.pinnedAt ?? null,
+          archivedAt: chat.archivedAt ?? null,
+          color: chat.color ?? resolveColor(id, null),
+        };
+      }),
     ];
     this.settings = options.settings ?? DEFAULT_SETTINGS;
     this.startup = options.startup ?? {

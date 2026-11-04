@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Icon, type IconName } from "../icons/Icon";
 import "./menu.css";
@@ -7,8 +7,18 @@ export interface MenuItem {
   id: string;
   label: string;
   icon?: IconName;
-  /** An emoji instead of an icon (user data: the chat emoji in the "Move to chat" submenu). */
-  emoji?: string;
+  /**
+   * A chat tile instead of an icon (`ChatTile`: the chat emoji or the coloured letter; the "Move to chat" and "Colour" submenus).
+   * It has the size of a sidebar tile, so the row text is shifted to the right of the usual icon column by the difference.
+   */
+  tile?: ReactNode;
+  /**
+   * A choice among alternatives (the "Colour" submenu): the item becomes `menuitemradio`, the current one is `aria-checked` and
+   * has a check mark at the end. `undefined` is an ordinary item.
+   */
+  checked?: boolean;
+  /** The item opens a second level in the same panel: a chevron at the end (the caller switches the items on select). */
+  submenu?: boolean;
   /** A dangerous action ("Delete"): emphasized with the error color. */
   danger?: boolean;
   /** The item is visible but unavailable (`aria-disabled`); the arrows skip it. */
@@ -68,7 +78,8 @@ export function ContextMenu({ items, position, label, onSelect, onClose, onBack,
     });
   }, [position.x, position.y, items.length]);
 
-  const enabledItems = () => [...(panel.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])].filter(isEnabled);
+  const enabledItems = () =>
+    [...(panel.current?.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]') ?? [])].filter(isEnabled);
 
   useEffect(() => {
     enabledItems()[0]?.focus();
@@ -151,18 +162,36 @@ export function ContextMenu({ items, position, label, onSelect, onClose, onBack,
         <div key={item.id} role="none" className={item.separatorBefore ? "context-menu__group" : undefined}>
           <button
             type="button"
-            role="menuitem"
+            role={item.checked === undefined ? "menuitem" : "menuitemradio"}
             className={`context-menu__item${item.danger ? " context-menu__item--danger" : ""}`}
             tabIndex={-1}
             aria-disabled={item.disabled ? true : undefined}
+            aria-checked={item.checked}
+            aria-haspopup={item.submenu ? "menu" : undefined}
             onClick={() => {
               if (!item.disabled) onSelect(item.id);
             }}
           >
-            <span className={`context-menu__icon${item.emoji ? " context-menu__icon--emoji" : ""}`} aria-hidden="true">
-              {item.emoji ?? (item.icon ? <Icon name={item.icon} /> : null)}
-            </span>
+            {item.tile ? (
+              <span className="context-menu__tile" aria-hidden="true">
+                {item.tile}
+              </span>
+            ) : (
+              <span className="context-menu__icon" aria-hidden="true">
+                {item.icon ? <Icon name={item.icon} /> : null}
+              </span>
+            )}
             <span className="context-menu__label">{item.label}</span>
+            {item.checked ? (
+              <span className="context-menu__check" aria-hidden="true">
+                <Icon name="done" />
+              </span>
+            ) : null}
+            {item.submenu ? (
+              <span className="context-menu__check" aria-hidden="true">
+                <Icon name="chevronRight" />
+              </span>
+            ) : null}
           </button>
         </div>
       ))}

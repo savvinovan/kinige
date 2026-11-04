@@ -22,6 +22,7 @@ import {
   Minimize2,
   PanelLeftClose,
   PanelLeftOpen,
+  Palette,
   Paperclip,
   Pencil,
   Pin,
@@ -91,6 +92,8 @@ const GLYPHS = {
   file: File,
   audio: AudioLines,
   video: Video,
+  // KINIG-59: "Colour" in the chat menu.
+  palette: Palette,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

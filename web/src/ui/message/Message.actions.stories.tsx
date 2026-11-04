@@ -3,9 +3,14 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import "../drag/drag.css";
 import "../drag/drag-stories.css";
 import "../feed/feed.css";
+import { resolveColor } from "../../api/mockColor";
 import { Frame } from "../stories/Frame";
 import { Message } from "./Message";
 import type { MoveTarget } from "./moveTargets";
+
+/** The story lists have no colours: each chat gets the automatic one, as the sidebar would show it. */
+const tinted = (targets: readonly Omit<MoveTarget, "tint">[]): MoveTarget[] =>
+  targets.map((target) => ({ ...target, tint: resolveColor(target.id, null) }));
 
 // Slice 3: action row, context menu, editing in the bubble, deleted bubble, task, favorite, tags, clickable boxes,
 // read-only entry. The first "Components/Message" stories (D1) are in Message.stories.tsx.
@@ -129,19 +134,19 @@ export const МенюКрупныйТекст: Story = {
   ),
 };
 
-const MOVE_TARGETS: MoveTarget[] = [
+const MOVE_TARGETS = tinted([
   { id: "ideas", name: "Идеи", emoji: "💡", group: "pinned", current: false },
   { id: "inbox", name: "Входящие", emoji: "📥", group: "chats", current: true },
   { id: "books", name: "Книги", emoji: "📚", group: "chats", current: false },
   { id: "recipes", name: "Рецепты на каждый день недели, которые не помещаются в меню", emoji: "🍳", group: "chats", current: false },
   { id: "trip", name: "Отпуск 2025", emoji: "🏖️", group: "archive", current: false },
-];
-const MOVE_TARGETS_EN: MoveTarget[] = [
+]);
+const MOVE_TARGETS_EN = tinted([
   { id: "ideas", name: "Ideas", emoji: "💡", group: "pinned", current: false },
   { id: "inbox", name: "Inbox", emoji: "📥", group: "chats", current: true },
   { id: "books", name: "Books", emoji: "📚", group: "chats", current: false },
   { id: "trip", name: "Trip 2025", emoji: "🏖️", group: "archive", current: false },
-];
+]);
 const movable = { ...live, onMoveTo: noop };
 
 /** Opens the entry menu and goes to the second level: "Move to chat" (the sixth item). */

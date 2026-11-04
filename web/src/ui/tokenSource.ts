@@ -21,7 +21,7 @@ const fontsetFiles = import.meta.glob("../../../design/tokens/fontsets/*.json", 
 const activeFile = import.meta.glob("../../../design/tokens/active.json", { eager: true, import: "default" });
 
 /** Tiles with a letter for chats without an emoji (D2): saturated muted colors, with `text.primary` text on them. */
-export const TILE_ROLES = ["tile.blue", "tile.teal", "tile.green", "tile.orange", "tile.pink", "tile.violet"] as const;
+export const TILE_ROLES = ["tile.blue", "tile.teal", "tile.green", "tile.orange", "tile.pink", "tile.violet", "tile.grey"] as const;
 
 /** Color roles that a palette must define. */
 export const PALETTE_ROLES = [

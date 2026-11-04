@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { INBOX_ID, type KinigeApi, errorCode } from "../../api/KinigeApi";
+import type { ChatColor } from "../../api/generated/ChatColor";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { ChatAction } from "../sidebar/Sidebar";
 import { type ChatDialogState, focusComposer } from "./mainWindowParts";
@@ -17,7 +18,7 @@ interface UseChatDialogOptions {
 }
 
 /**
- * The "New chat" / "Rename" / "Chat emoji" dialog and the actions of the sidebar chat menu (pin, archive, colour).
+ * The "New chat" / "Rename" / "Chat emoji" dialog and the actions of the sidebar chat menu (pin, archive) and its colour choice.
  * No optimistic display: the sidebar changes after Rust replies.
  */
 export function useChatDialog({ api, selected, select, refreshChats, recordEmoji, onError }: UseChatDialogOptions) {
@@ -69,5 +70,13 @@ export function useChatDialog({ api, selected, select, refreshChats, recordEmoji
       .catch((reason: unknown) => onError(errorCode(reason)));
   };
 
-  return { dialog, dialogError, openCreate: () => setDialog({ mode: "create" }), closeDialog, submitDialog, chatAction };
+  /** "Colour": the sidebar changes after Rust replies (no toast, nothing moves). */
+  const chatColor = (id: string, color: ChatColor) => {
+    api
+      .setChatColor(id, color)
+      .then(refreshChats)
+      .catch((reason: unknown) => onError(errorCode(reason)));
+  };
+
+  return { dialog, dialogError, openCreate: () => setDialog({ mode: "create" }), closeDialog, submitDialog, chatAction, chatColor };
 }

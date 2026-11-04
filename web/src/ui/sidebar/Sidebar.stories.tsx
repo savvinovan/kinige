@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState } from "react";
-import { Sidebar, type ChatAction, type SidebarChat } from "./Sidebar";
+import { Sidebar, type ChatAction } from "./Sidebar";
+import { type ChatWithoutTint, withTints } from "./storyChats";
 import "./sidebar-stories.css";
 
-const INBOX: SidebarChat = { id: "inbox", name: "", isInbox: true, emoji: "📥", count: 42 };
-const CHATS: SidebarChat[] = [
+const INBOX: ChatWithoutTint = { id: "inbox", name: "", isInbox: true, emoji: "📥", count: 42 };
+const CHATS: ChatWithoutTint[] = [
   { id: "diary", name: "Дневник", emoji: "📔", count: 318, pinned: true },
   { id: "ideas", name: "Идеи", emoji: "💡", count: 87, pinned: true },
   INBOX,
@@ -20,7 +21,7 @@ const CHATS: SidebarChat[] = [
 ];
 
 interface DemoProps {
-  chats?: readonly SidebarChat[];
+  chats?: readonly ChatWithoutTint[];
   selectedId?: string | null;
   collapsed?: boolean;
   trashCount?: number;
@@ -47,7 +48,7 @@ function Demo({
   showSearch = false,
   dropTargetId = null,
 }: DemoProps) {
-  const [chats, setChats] = useState(initialChats);
+  const [chats, setChats] = useState(() => withTints(initialChats));
   const [selectedId, setSelectedId] = useState<string | null>(initialSelected);
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const host = useRef<HTMLDivElement>(null);

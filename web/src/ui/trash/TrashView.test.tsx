@@ -25,6 +25,7 @@ const item = (id: string, patch: Partial<TrashItem> = {}, body = "Купить �
   chatTitle: "Книги",
   chatIcon: "📚",
   chatIsInbox: false,
+  chatColor: "violet",
   deletedAt: Date.UTC(2026, 9, 25),
   daysLeft: 28,
   ...patch,
@@ -85,11 +86,24 @@ describe("TrashView: список", () => {
     expect(when).toEqual(["Today · 1 day left", "Today · deleted today"]);
   });
 
-  it("у Inbox имя — перевод («Входящие» / «Inbox»), у чата без эмодзи — 💬", () => {
-    const inbox = item("a", { chatIsInbox: true, chatTitle: "", chatIcon: null });
+  it("у Inbox имя — перевод («Входящие» / «Inbox»), у чата без эмодзи — буквенная плитка его цвета", () => {
+    const inbox = item("a", { chatIsInbox: true, chatTitle: "", chatIcon: null, chatColor: "grey" });
     show({ items: [inbox] });
     expect(screen.getByText("Входящие")).toBeInTheDocument();
-    expect(screen.getByText("💬")).toBeInTheDocument();
+    const tile = document.querySelector(".trash-entry__head .chat-tile");
+    expect(tile).toHaveClass("chat-tile--grey");
+    expect(tile).toHaveTextContent("В");
+  });
+
+  it("плашка показывает плитку своего чата: эмодзи как есть, без эмодзи — буква на цвете чата", () => {
+    show({
+      items: [item("a", { chatIcon: "📚" }), item("b", { chatTitle: "Проекты", chatIcon: "💬", chatColor: "pink" })],
+    });
+    const heads = screen.getAllByRole("article").map((article) => article.querySelector(".trash-entry__head"));
+    expect(heads[0]?.querySelector(".chat-tile")).toBeNull();
+    expect(heads[0]?.querySelector(".chat-emoji")).toHaveTextContent("📚");
+    expect(heads[1]?.querySelector(".chat-tile")).toHaveClass("chat-tile--pink");
+    expect(heads[1]?.querySelector(".chat-tile")).toHaveTextContent("П");
   });
 
   it("Inbox на английском", () => {

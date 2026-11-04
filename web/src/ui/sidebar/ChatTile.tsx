@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { firstLetter, hasEmoji, tintOf } from "./chatLetters";
+import { firstLetter, hasEmoji } from "./chatLetters";
 import type { SidebarChat } from "./chats";
+import "./sidebar.css";
 
 interface ChatTileProps {
-  chat: Pick<SidebarChat, "id" | "emoji" | "tint">;
+  chat: Pick<SidebarChat, "emoji" | "tint">;
   /** The name the person sees (translated for Inbox): the tile letter is taken from it. */
   name: string;
 }
@@ -22,7 +23,7 @@ export function ChatTile({ chat, name }: ChatTileProps) {
     );
   }
   return (
-    <span className={`chat-tile chat-tile--${tintOf(chat)}`} aria-hidden="true">
+    <span className={`chat-tile chat-tile--${chat.tint}`} aria-hidden="true">
       {firstLetter(name)}
     </span>
   );

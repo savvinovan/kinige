@@ -12,7 +12,7 @@ import { ComposerPane } from "../composer/ComposerPane";
 import { Feed, type FeedActions, type FeedPaging, type FeedUiState, type ScrollRequest } from "../feed/Feed";
 import type { FeedMessage } from "../feed/buildFeed";
 import type { MoveTarget } from "../message/moveTargets";
-import { type ChatAction, Sidebar, type SidebarChat, type SidebarSearch } from "../sidebar/Sidebar";
+import { type ChatAction, type ChatTint, Sidebar, type SidebarChat, type SidebarSearch } from "../sidebar/Sidebar";
 import { TagFilterBar } from "../tag/TagFilterBar";
 import { TrashView } from "../trash/TrashView";
 import "./main-window.css";
@@ -23,6 +23,8 @@ export interface SidebarControls {
   onToggleCollapsed: () => void;
   onCreateChat: () => void;
   onChatAction: (chatId: string, action: ChatAction) => void;
+  /** "Colour" in the chat menu; without it the item is not shown. */
+  onChatColor?: (chatId: string, color: ChatTint) => void;
   trashCount: number;
   onOpenTrash: () => void;
 }
@@ -185,6 +187,7 @@ export function MainWindowView({
         onToggleCollapsed={sidebar?.onToggleCollapsed}
         onCreateChat={sidebar?.onCreateChat}
         onChatAction={sidebar?.onChatAction}
+        onChatColor={sidebar?.onChatColor}
         trashCount={sidebar?.trashCount}
         onOpenTrash={sidebar?.onOpenTrash}
         dropTargetId={drag?.dropTargetId}

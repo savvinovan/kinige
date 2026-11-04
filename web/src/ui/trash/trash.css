@@ -76,18 +76,6 @@
   color: var(--color-text-secondary);
 }
 
-.trash-entry__emoji {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-emoji-slot);
-  font-family: var(--font-family-emoji);
-  font-size: var(--icon-size);
-  line-height: var(--icon-emoji-line-height);
-  transform: translateY(var(--icon-emoji-shift));
-}
-
 .trash-entry__name {
   min-width: 0;
   overflow: hidden;
