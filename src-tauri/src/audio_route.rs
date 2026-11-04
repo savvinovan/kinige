@@ -88,11 +88,18 @@ pub fn plan(header: Option<&str>, len: u64) -> Plan {
 /// The answer for a request with this `Range` header (or none).
 pub fn respond(audio: AudioFile, range: Option<&str>) -> Response<Vec<u8>> {
     let response = answer(audio, range);
-    // Only the status and the size: no id and no file name (the screens run reads this line to prove the player reached the route).
+    // The request's range, the status, the size and the answered range: no id and no file name (the screens run reads this line to prove
+    // the player reached the route and to see what the web view asked for).
     log::debug!(
-        "audio route: {} {} bytes",
+        "audio route: {} {} bytes, asked {:?}, answered {:?}",
         response.status().as_u16(),
-        response.body().len()
+        response.body().len(),
+        range.unwrap_or("-"),
+        response
+            .headers()
+            .get(header::CONTENT_RANGE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("-"),
     );
     response
 }

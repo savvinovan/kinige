@@ -12,8 +12,11 @@ type BarState = Extract<VoiceState, { kind: "recording" | "confirming" | "lost" 
 
 interface RecordingBarProps {
   state: BarState;
-  controls: Pick<VoiceControls, "send" | "requestCancel" | "keepRecording" | "discard" | "retry">;
+  controls: Pick<VoiceControls, "send" | "requestCancel" | "keepRecording" | "discard" | "retry" | "levels">;
 }
+
+/** How often the bars follow the analyser. */
+const METER_MS = 100;
 
 /**
  * The bar that replaces the input field while recording (slice 7a): the trash button on the left, a red dot that does not pulse, the timer in
@@ -97,7 +100,7 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
           >
             {time}
           </span>
-          <Meter levels={"levels" in state ? state.levels : []} label={t("voice.level")} />
+          <Meter levels={"levels" in state ? state.levels : []} read={controls.levels} label={t("voice.level")} />
         </>
       )}
       <span className="composer__action" ref={sendButton}>
@@ -107,10 +110,24 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
   );
 }
 
-/** About 24 bars from the analyser, each a height between the shortest and the tallest; hidden with Reduce Motion (the dot stays). */
-function Meter({ levels, label }: { levels: readonly number[]; label: string }) {
+/**
+ * About 24 bars from the analyser, each a height between the shortest and the tallest; hidden with Reduce Motion (the dot stays). The first
+ * heights come from the state; after that the bars follow `read` on their own clock, writing the CSS variable straight into the elements:
+ * no render and nothing for the accessibility tree to notice.
+ */
+function Meter({ levels, read, label }: { levels: readonly number[]; read?: () => readonly number[]; label: string }) {
+  const host = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!read) return;
+    const timer = setInterval(() => {
+      const bars = host.current?.children;
+      if (!bars) return;
+      read().forEach((level, index) => (bars[index] as HTMLElement | undefined)?.style.setProperty("--level", level.toFixed(2)));
+    }, METER_MS);
+    return () => clearInterval(timer);
+  }, [read]);
   return (
-    <span className="recording-bar__meter" role="img" aria-label={label}>
+    <span className="recording-bar__meter" role="img" aria-label={label} ref={host}>
       {levels.map((level, index) => (
         <span key={index} className="recording-bar__bar" style={{ "--level": level.toFixed(2) } as React.CSSProperties} />
       ))}

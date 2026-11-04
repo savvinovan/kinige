@@ -62,6 +62,8 @@ export type VoiceController = Omit<VoiceControls, "state"> & { store: VoiceStore
 
 export interface VoiceControls {
   state: VoiceState;
+  /** The live level bars (0 to 1, oldest first), read by the meter on its own clock; not part of the state. */
+  levels: () => readonly number[];
   /** The first click on the microphone: asks the system for it and starts. */
   start: () => void;
   /** Send, Enter and the auto-send. */
@@ -105,6 +107,8 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
   /** The recording kept after a lost device or a failed save, waiting for Send / Retry / Discard. */
   const kept = useRef<Recording | null>(null);
   const confirming = useRef(false);
+  /** The second the timer last showed: the state is set once per second. */
+  const shownSecond = useRef(-1);
   const busy = useRef(false);
   /** The latest `send`: the byte limit and the 30 minute timer call it from outside React's render. */
   const sendRef = useRef<() => void>(() => undefined);
@@ -177,6 +181,7 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
   }, [save, clear, setState]);
 
   const start = useCallback(() => {
+    shownSecond.current = -1;
     const where = latest.current.chatId;
     if (where === null || session.current || busy.current || kept.current) return;
     busy.current = true;
@@ -265,6 +270,12 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
         sendRef.current();
         return;
       }
+      // The state changes once per displayed second: the timer text is the only thing that moves in the accessibility tree, and the
+      // bars are drawn from `levels()` below without a render (a recording-time dump of the window tree stalled on a runner while the
+      // text changed four times a second).
+      const second = Math.floor(elapsedMs / 1000);
+      if (second === shownSecond.current) return;
+      shownSecond.current = second;
       const levels = running.levelBars();
       setState(confirming.current ? { kind: "confirming", elapsedMs, levels } : { kind: "recording", elapsedMs, levels });
     }, TICK_MS);
@@ -280,9 +291,11 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
     [],
   );
 
+  const levels = useCallback(() => session.current?.levelBars() ?? [], []);
+
   return useMemo(
-    () => ({ store, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice }),
-    [store, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice],
+    () => ({ store, levels, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice }),
+    [store, levels, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice],
   );
 }
 
