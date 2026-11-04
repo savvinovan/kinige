@@ -3,10 +3,10 @@
 # The data are synthetic (seed_demo with KINIGE_SEED_ATTACH=1: pictures drawn by the seed, a PDF stub, an album of four, an entry
 # with no text, a mixed entry, a file that is gone from the disk, a trashed photo, two pending tiles in the chat "Идеи", a
 # Telegram chat "Поездка" imported twice: first without files, then with them) in a temporary directory; the real database is
-# not touched. Input is accessibility actions only (ax.js): no mouse, no keyboard, no global shortcuts. The native file dialog,
-# a paste from the clipboard and a drop from Finder cannot be driven that way: they are covered by the IPC tests
-# (src-tauri/tests/ipc_slice7.rs), the store tests and vitest; here the pending tiles come from the draft the seed wrote, which is
-# also what a restart or kill -9 brings back.
+# not touched. Input is accessibility actions only (ax.js): no mouse, no keyboard, no global shortcuts. A paste goes through the
+# app's Edit > Paste menu item. The native file dialog and a drop from Finder cannot be driven that way: they are covered by the
+# IPC tests (src-tauri/tests/ipc_slice7.rs), the store tests and vitest; the other pending tiles come from the draft the seed
+# wrote, which is also what a restart or kill -9 brings back.
 set -u
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 K="${K:-${RUNNER_TEMP:-/tmp}/kinige-screens}"

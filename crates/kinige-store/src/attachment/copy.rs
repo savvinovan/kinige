@@ -103,9 +103,14 @@ fn copy_and_describe(
             )
         }
     };
-    let filename = sanitize_filename(&name);
+    let mut filename = sanitize_filename(&name);
     let image = probe_image(part);
     let ext = stored_ext(&filename, image.as_ref().map(|i| i.format));
+    // A paste has no extension of its own (`pasted-HHMMSS`, or WebKit's bare hint): give it the detected one, so the
+    // Markdown copy and other apps can tell what the file is.
+    if matches!(source, Source::Bytes(_)) && ext != stored_ext(&filename, None) {
+        filename = sanitize_filename(&format!("{filename}.{ext}"));
+    }
     let (kind, mime) = classify(&ext, hints.mime, image.as_ref().map(|info| info.format));
     let (width, height) = match (&image, kind) {
         (Some(ImageInfo { width, height, .. }), AttachmentKind::Image) => {
