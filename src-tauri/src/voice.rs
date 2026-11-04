@@ -10,6 +10,7 @@ use kinige_store::{Now, Store};
 use tauri::ipc::{InvokeBody, Request};
 use tauri::webview::{PermissionKind, PermissionResponse};
 use tauri::{AppHandle, Runtime, State};
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 use tauri_plugin_opener::OpenerExt;
 
 type ApiResult<T> = Result<T, ApiError>;
