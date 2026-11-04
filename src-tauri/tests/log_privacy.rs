@@ -272,3 +272,46 @@ fn the_settings_file_logs_only_categories_never_keys_titles_values_or_paths() {
         );
     }
 }
+
+/// Voice notes (slice 7a): the raw-body command refuses garbage in every header, and none of the user's values (chat id, reply target,
+/// duration text) reaches the log; the refusal itself does.
+#[test]
+fn send_voice_logs_only_categories_never_headers() {
+    install_logger();
+    let fixture = fixture();
+    let window = window(&fixture, "main");
+    let inbox = kinige_domain::groups::INBOX_ID;
+
+    for headers in [
+        vec![
+            ("x-chat-id", format!("{MARK}-chat")),
+            ("x-duration-ms", "40000".to_string()),
+        ],
+        vec![
+            ("x-chat-id", inbox.to_string()),
+            ("x-duration-ms", format!("{MARK}ms")),
+        ],
+        vec![
+            ("x-chat-id", inbox.to_string()),
+            ("x-duration-ms", "40000".to_string()),
+            ("x-reply-to", format!("{MARK}-reply")),
+        ],
+    ] {
+        let headers: Vec<(&str, &str)> = headers.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        let body = common::voice::m4a(256);
+        common::voice::raw_call(&window, "send_voice", &headers, body)
+            .expect_err("the note is refused");
+    }
+
+    let lines = CAPTURED.lock().unwrap().clone();
+    assert!(
+        lines.iter().any(|line| line.contains("store error")),
+        "the refusal must get into the log: {lines:?}"
+    );
+    for line in &lines {
+        assert!(
+            !line.to_uppercase().contains(MARK),
+            "user input in the log: {line}"
+        );
+    }
+}

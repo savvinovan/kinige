@@ -6,6 +6,7 @@
 // The client of the MCP server over the Unix socket; there is no server on Windows (slice 10a).
 #[cfg(unix)]
 pub mod mcp;
+pub mod voice;
 
 use kinige_lib::builder;
 use kinige_lib::capture::CaptureShell;
