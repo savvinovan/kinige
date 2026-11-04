@@ -187,6 +187,13 @@ describe("VoicePlayer", () => {
     expect(onOpenFile).toHaveBeenCalledWith("ogg");
   });
 
+  it("a Telegram voice (Opus in Ogg) is playable when the web view plays Opus in Ogg, even if plain audio/ogg is refused", () => {
+    vi.mocked(HTMLMediaElement.prototype.canPlayType).mockImplementation((type) => (type === "audio/ogg; codecs=opus" ? "probably" : ""));
+    show(demoVoice("ogg", 7_000, { mime: "audio/ogg", filename: "audio_2.ogg" }));
+    expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument();
+    expect(screen.queryByText("Can't play here")).toBeNull();
+  });
+
   it("a file over 64 MiB is not offered to the player either", () => {
     show(demoVoice("big", 3_600_000, { byteSize: 65 * 1024 * 1024 }));
     expect(screen.getByText("Can't play here")).toBeInTheDocument();

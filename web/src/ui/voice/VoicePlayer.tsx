@@ -25,9 +25,12 @@ const playable = new Map<string, boolean>();
 function canPlayHere(mime: string): boolean {
   const known = playable.get(mime);
   if (known !== undefined) return known;
-  const answer = typeof document === "undefined" ? "maybe" : document.createElement("audio").canPlayType(mime);
-  playable.set(mime, answer !== "");
-  return answer !== "";
+  const element = typeof document === "undefined" ? null : document.createElement("audio");
+  // WebKit says "" for plain `audio/ogg` (it means Vorbis) but plays Opus in Ogg, which is what Telegram voice messages are.
+  const candidates = mime === "audio/ogg" || mime === "audio/opus" ? [mime, "audio/ogg; codecs=opus"] : [mime];
+  const ok = element === null || candidates.some((type) => element.canPlayType(type) !== "");
+  playable.set(mime, ok);
+  return ok;
 }
 
 /** Tests only: forget what the web view said about types. */

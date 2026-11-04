@@ -63,10 +63,12 @@ labels() {
     L_INBOX="Входящие"; L_MIC="Записать голосовое"; L_SEND_VOICE="Отправить голосовое сообщение"; L_TRASH_REC="Отменить запись"
     L_RECORDING="Идёт запись"; L_DISCARD_Q="Удалить запись?"; L_KEEP="Продолжить запись"; L_PLAY="Воспроизвести"; L_SPEED="Скорость воспроизведения"
     L_SEARCH="Поиск"; L_SEARCH_RESULTS="Результаты поиска"; L_MISSING="Файла нет"; L_NOTE="Голосовое сообщение"; L_OPEN_DEFAULT="Открыть в приложении по умолчанию"
+    L_PAUSE="Пауза"; L_CANT="Здесь не воспроизвести"
   else
     L_INBOX="Inbox"; L_MIC="Record voice note"; L_SEND_VOICE="Send the voice note"; L_TRASH_REC="Discard the recording"
     L_RECORDING="Recording"; L_DISCARD_Q="Discard the recording?"; L_KEEP="Keep recording"; L_PLAY="Play"; L_SPEED="Playback speed"
     L_SEARCH="Search"; L_SEARCH_RESULTS="Search results"; L_MISSING="File is missing"; L_NOTE="Voice note"; L_OPEN_DEFAULT="Open in default app"
+    L_PAUSE="Pause"; L_CANT="Can't play here"
   fi
 }
 
@@ -84,6 +86,16 @@ restart_app() {
   sleep 5
 }
 
+# Polls for a text in the window every 5 seconds, up to `$2` seconds.
+wait_for() {
+  local waited=0
+  while [ "$waited" -lt "$2" ]; do
+    has "$1" && return 0
+    sleep 5
+    waited=$((waited + 5))
+  done
+  return 1
+}
 try_press() { [ "$(ax press "$(app_pid)" "$@" 2>&1 | cut -c1-7)" = "pressed" ]; }
 voice_rows() { sqlw "select count(*) from attachment where filename like 'voice-%'"; }
 # The first "m:ss / m:ss" of a window dump, in seconds (the elapsed time of the playing note), or empty.
@@ -104,8 +116,9 @@ BEFORE_NOTES="$(voice_rows)"
 
 # ---- 2. Recording: the bar, the timer, the meter ----
 press "${L_MIC}"
+# On a runner with no audio device creating an AudioContext can take long: wait for the bar instead of assuming it.
+wait_for "${L_RECORDING}" 120 || fail "the recording bar did not appear after the microphone button"
 sleep 4
-has "${L_RECORDING}" || fail "the recording bar did not appear after the microphone button"
 shoot 02-recording
 grep -E '[0-9]:[0-9]{2}' "$K/debug/shot-02-recording.txt" | grep -iE "${L_RECORDING}|timer|0:0[2-9]" | head -5 > "$OUT/recording.txt" || true
 cat "$OUT/recording.txt"
@@ -133,6 +146,7 @@ case "$NEWEST" in *"|audio/mp4|"* | *"|audio/webm|"*) ;; *) fail "the saved note
 shoot 04-sent
 
 # ---- 5. Playback: the elapsed time moves; one reading before, two after ----
+ROUTE_BEFORE="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
 press "${L_PLAY}"
 sleep 2
 dump playing-a
@@ -143,6 +157,10 @@ B="$(elapsed_from "$K/debug/shot-05-playing.txt")"
 {
   echo "elapsed after the press (AX value, seconds): ${A:-none}"
   echo "elapsed 3 seconds and one dump later: ${B:-none}"
+  echo "pause button on screen after the press: $(has "${L_PAUSE}" && echo yes || echo no)"
+  echo "'Can't play here' on screen: $(has "${L_CANT}" && echo yes || echo no)"
+  echo "audio route requests before / after the press (app log): ${ROUTE_BEFORE:-0} / $(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
+  grep 'audio route: ' "$LOG_FILE" 2> /dev/null | sed -E 's/^\[[^]]*\]\[[^]]*\]//' | head -6
 } > "$OUT/playback.txt"
 cat "$OUT/playback.txt"
 if [ -z "$A" ] || [ -z "$B" ] || [ "$B" -le "$A" ]; then
@@ -159,8 +177,8 @@ shoot 06-speed-2x
 
 # ---- 7. kill -9: the sent note is back and plays; a recording that was running is gone ----
 press "${L_MIC}"
-sleep 3
-has "${L_RECORDING}" || fail "no second recording to lose"
+wait_for "${L_RECORDING}" 120 || fail "no second recording to lose"
+sleep 2
 restart_app
 detect_language
 [ "$(voice_rows)" = "${AFTER_NOTES}" ] || fail "a note appeared or disappeared across kill -9 ($(voice_rows) instead of ${AFTER_NOTES})"

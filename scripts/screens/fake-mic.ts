@@ -10,7 +10,9 @@ export const FAKE_MIC_MARKER = "kinige-fake-microphone-7a";
 document.documentElement.dataset.fakeMic = FAKE_MIC_MARKER;
 
 export async function openMicrophone(): Promise<MediaStream> {
-  // The context is created before any await so that it is born inside a user gesture when the caller is one.
+  // Not inside the click that asked for the microphone: on a runner without an audio device `new AudioContext()` can take very long, and an
+  // accessibility press (the scenarios' only input) waits for the click handler to return (the 7a run: the first press timed out at 60 s).
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
   const context = new AudioContext();
   const oscillator = context.createOscillator();
   oscillator.frequency.value = 440;
