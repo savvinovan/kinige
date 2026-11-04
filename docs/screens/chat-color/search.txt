@@ -1,0 +1,3 @@
+focus: focused: AXComboBox Поиск | Поиск | Поиск
+menu: clicked: Edit > Paste
+RESULT: the search results are open and the entry of the grey chat is in them

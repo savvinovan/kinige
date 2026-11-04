@@ -1,5 +1,6 @@
 import { type ListMessagesOptions, KinigeApiError } from "./KinigeApi";
 import { MockApiBase } from "./MockApiBase";
+import { resolveColor } from "./mockColor";
 import { compareFeed, isRealDate } from "./mockData";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { FeedCursor } from "./generated/FeedCursor";
@@ -137,6 +138,7 @@ export class MockApiSlice4 extends MockApiBase {
           chatTitle: chat?.title ?? "",
           chatIcon: chat?.icon ?? null,
           chatIsInbox: chat?.isInbox ?? false,
+          chatColor: chat?.color ?? resolveColor(message.chatId, null),
           snippet: message.bodyMd.replace(/\s+/g, " ").slice(0, 160),
           terms,
         };

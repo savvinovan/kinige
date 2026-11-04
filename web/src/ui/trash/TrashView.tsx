@@ -8,6 +8,7 @@ import { Button } from "../controls/Button";
 import { formatDayLabel } from "../feed/dates";
 import { Modal } from "../settings/Modal";
 import { StatusNote } from "../settings/StatusNote";
+import { ChatTile } from "../sidebar/ChatTile";
 import "../message/markdown.css";
 import "./trash.css";
 
@@ -26,8 +27,6 @@ interface TrashViewProps {
   /** A click on a photo or a file card of a trashed entry (slice 7): it opens in the system app. Without it they are only shown. */
   onOpenAttachment?: (attachmentId: string) => void;
 }
-
-const DEFAULT_ICON = "💬";
 
 /**
  * The trash: opens in place of the feed. One bubble per entry: the chat emoji and name, the entry day, "N days left", the entry text
@@ -64,9 +63,7 @@ export function TrashView({ items, language, today, busyId = null, error, onRest
                   <article className="trash-entry" aria-busy={busy || undefined}>
                     <header className="trash-entry__head">
                       <span className="trash-entry__chat" title={chat}>
-                        <span className="trash-entry__emoji" aria-hidden="true">
-                          {item.chatIcon ?? DEFAULT_ICON}
-                        </span>
+                        <ChatTile chat={{ emoji: item.chatIcon ?? "", tint: item.chatColor }} name={chat} size="small" />
                         <span className="trash-entry__name">{chat}</span>
                       </span>
                       <span className="trash-entry__when">

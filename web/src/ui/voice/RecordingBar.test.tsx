@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "../../test/render";
-import type { VoiceControls, VoiceState } from "../../voice/useVoiceRecorder";
+import { staticVoice } from "../../voice/staticVoice";
+import type { VoiceController, VoiceState } from "../../voice/useVoiceRecorder";
 import { Composer } from "../composer/Composer";
 
-function controls(state: VoiceState): VoiceControls {
+function controls(state: VoiceState): VoiceController {
   return {
-    state,
+    ...staticVoice(state),
     start: vi.fn(),
     send: vi.fn(),
     requestCancel: vi.fn(),

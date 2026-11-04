@@ -22,6 +22,7 @@ import {
   Minimize2,
   PanelLeftClose,
   PanelLeftOpen,
+  Palette,
   Paperclip,
   Pause,
   Pencil,
@@ -96,6 +97,8 @@ const GLYPHS = {
   // Slice 7a: the voice note player (the microphone and the trash button of the recording bar are `voice` and `trash` above).
   play: Play,
   pause: Pause,
+  // KINIG-59: "Colour" in the chat menu.
+  palette: Palette,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

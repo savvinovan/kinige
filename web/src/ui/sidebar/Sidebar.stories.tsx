@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState } from "react";
-import { Sidebar, type ChatAction, type SidebarChat } from "./Sidebar";
+import { Sidebar, type ChatAction } from "./Sidebar";
+import { type ChatWithoutTint, withTints } from "./storyChats";
 import "./sidebar-stories.css";
 
-const INBOX: SidebarChat = { id: "inbox", name: "", isInbox: true, emoji: "📥", count: 42 };
-const CHATS: SidebarChat[] = [
+const INBOX: ChatWithoutTint = { id: "inbox", name: "", isInbox: true, emoji: "📥", count: 42 };
+const CHATS: ChatWithoutTint[] = [
   { id: "diary", name: "Дневник", emoji: "📔", count: 318, pinned: true },
   { id: "ideas", name: "Идеи", emoji: "💡", count: 87, pinned: true },
   INBOX,
@@ -20,7 +21,7 @@ const CHATS: SidebarChat[] = [
 ];
 
 interface DemoProps {
-  chats?: readonly SidebarChat[];
+  chats?: readonly ChatWithoutTint[];
   selectedId?: string | null;
   collapsed?: boolean;
   trashCount?: number;
@@ -28,6 +29,8 @@ interface DemoProps {
   focus?: boolean;
   /** Opens the context menu of the row whose name (or its beginning) is passed: like a right click. */
   menuFor?: string;
+  /** With `menuFor`: opens the "Colour" submenu of that menu (a click on the item). */
+  colorFor?: boolean;
   /** Shows hover on the row whose name (or its beginning) is passed: `:hover` cannot be set in a story, so an attribute is set. */
   hoverFor?: string;
   showSearch?: boolean;
@@ -43,11 +46,12 @@ function Demo({
   trashCount = 3,
   focus = false,
   menuFor,
+  colorFor = false,
   hoverFor,
   showSearch = false,
   dropTargetId = null,
 }: DemoProps) {
-  const [chats, setChats] = useState(initialChats);
+  const [chats, setChats] = useState(() => withTints(initialChats));
   const [selectedId, setSelectedId] = useState<string | null>(initialSelected);
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const host = useRef<HTMLDivElement>(null);
@@ -68,9 +72,11 @@ function Demo({
         row.dispatchEvent(
           new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 }),
         );
+        // The "Colour" item is the only one with a submenu: a click opens the second level.
+        if (colorFor) document.querySelector<HTMLElement>('.context-menu [aria-haspopup="menu"]')?.click();
       }
     }
-  }, [focus, menuFor, hoverFor]);
+  }, [focus, menuFor, colorFor, hoverFor]);
 
   const act = (id: string, action: ChatAction) =>
     setChats((list) =>
@@ -92,6 +98,7 @@ function Demo({
         onToggleCollapsed={() => setCollapsed((was) => !was)}
         onCreateChat={() => {}}
         onChatAction={act}
+        onChatColor={(id, tint) => setChats((list) => list.map((chat) => (chat.id === id ? { ...chat, tint } : chat)))}
         trashCount={trashCount}
         onOpenTrash={() => setSelectedId(null)}
         showSearch={showSearch}
@@ -228,6 +235,25 @@ export const Фокус: Story = { args: { focus: true } };
 
 /** The menu of a regular chat: "Переименовать", "Сменить эмодзи", "Закрепить", "В архив". */
 export const МенюЧата: Story = { args: { menuFor: "Книги" } };
+
+/** KINIG-59: the menu of a chat shown as a letter tile has "Цвет" with a chevron after "Сменить эмодзи"; a chat with an emoji does not. */
+export const МенюБуквенногоЧата: Story = { args: { menuFor: "Проекты" } };
+
+/** KINIG-59: the "Цвет" submenu, the colour is the automatic one (the check is on the colour the id gives). Seven rows: the chat's own letter on each colour. */
+export const МенюЦвет: Story = { args: { menuFor: "Проекты", colorFor: true } };
+
+/** KINIG-59: the same, the chat was recoloured to grey by hand: the check moves to "Серый". */
+export const МенюЦветСерый: Story = {
+  args: {
+    menuFor: "Проекты",
+    colorFor: true,
+    chats: CHATS.map((chat) => (chat.id === "projects" ? { ...chat, tint: "grey" as const } : chat)),
+  },
+};
+
+/** KINIG-59: the "Цвет" submenu in English and in large text. */
+export const МенюЦветАнглийский: Story = { args: { ...МенюЦвет.args }, globals: { language: "en" } };
+export const МенюЦветКрупныйТекст: Story = { args: { ...МенюЦвет.args }, globals: { textScale: "large" } };
 
 /** The menu of a pinned chat: "Открепить" instead of "Закрепить". */
 export const МенюЗакреплённого: Story = { args: { menuFor: "Идеи" } };

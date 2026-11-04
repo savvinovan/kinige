@@ -1,7 +1,9 @@
 import { type KinigeApi, KinigeApiError } from "./KinigeApi";
 import { MockApiSlice7 } from "./MockApiSlice7";
+import { resolveColor } from "./mockColor";
 import { DAY_MS, DEFAULT_SHORTCUTS, TRASH_DAYS, isRealDate } from "./mockData";
 import type { AppInfo } from "./generated/AppInfo";
+import type { ChatColor } from "./generated/ChatColor";
 import type { ChatList } from "./generated/ChatList";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { Language } from "./generated/Language";
@@ -114,14 +116,16 @@ export class MockApi extends MockApiSlice7 implements KinigeApi {
       const name = title.trim();
       if (name === "") throw new KinigeApiError("chat_title_empty");
       if ([...name].length > 128) throw new KinigeApiError("chat_title_too_long");
+      const id = `chat-${++this.counter}`;
       const chat: ChatSummary = {
-        id: `chat-${++this.counter}`,
+        id,
         title: name,
         icon: icon?.trim() ? icon.trim() : "💬",
         isInbox: false,
         count: 0,
         pinnedAt: null,
         archivedAt: null,
+        color: resolveColor(id, null),
       };
       this.chats.push(chat);
       return { ...chat };
@@ -144,6 +148,15 @@ export class MockApi extends MockApiSlice7 implements KinigeApi {
       const chat = this.mutableChat(id, true);
       if (icon.trim() === "") throw new KinigeApiError("chat_icon_invalid");
       chat.icon = icon.trim();
+      return { ...chat };
+    });
+  }
+
+  setChatColor(id: string, color: ChatColor): Promise<ChatSummary> {
+    return this.run("setChatColor", `${id} ${color}`, () => {
+      // Inbox is always grey and cannot be recoloured (the same code as in Rust).
+      const chat = this.mutableChat(id, true);
+      chat.color = color;
       return { ...chat };
     });
   }
@@ -261,6 +274,7 @@ export class MockApi extends MockApiSlice7 implements KinigeApi {
             chatTitle: chat?.title ?? "",
             chatIcon: chat?.icon ?? null,
             chatIsInbox: chat?.isInbox ?? false,
+            chatColor: chat?.color ?? resolveColor(r.view.chatId, null),
             deletedAt,
             daysLeft: Math.max(0, Math.ceil((deletedAt + TRASH_DAYS * DAY_MS - now) / DAY_MS)),
           };

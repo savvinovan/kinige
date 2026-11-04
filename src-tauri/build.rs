@@ -38,6 +38,7 @@ fn main() {
         "create_chat",
         "rename_chat",
         "set_chat_icon",
+        "set_chat_color",
         "set_chat_pinned",
         "set_chat_archived",
         "delete_message",

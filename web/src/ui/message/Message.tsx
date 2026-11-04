@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
 import { Button } from "../controls/Button";
@@ -94,7 +94,7 @@ export interface MessageProps {
  * editing in the bubble, the task checkbox, the "favorite" mark, the deleted bubble, clickable tags and `- [ ]` boxes.
  * The component is "dumb": state (mode, flags) and handlers come from outside.
  */
-export function Message({
+export const Message = memo(function Message({
   markdown,
   sentAt,
   timeZone,
@@ -389,4 +389,4 @@ export function Message({
       ) : null}
     </>
   );
-}
+});

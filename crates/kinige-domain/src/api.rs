@@ -4,6 +4,7 @@
 use crate::api_error::ErrorCode;
 use crate::attachment::AttachmentView;
 use crate::backup::BackupStatus;
+use crate::chat_color::ChatColor;
 use crate::forest_year::{ForestMode, ForestView};
 use crate::lang::Language;
 use crate::reply::ReplyTo;
@@ -29,6 +30,8 @@ pub struct ChatSummary {
     /// When sent to the archive (ms); `null` -- not archived.
     #[ts(type = "number | null")]
     pub archived_at: Option<i64>,
+    /// The tile colour as shown: the explicit pick or the automatic one computed from the id (never `null`); Inbox is grey.
+    pub color: ChatColor,
 }
 
 /// The sidebar chats in display order and the trash size.
@@ -123,6 +126,8 @@ pub struct TrashItem {
     pub chat_title: String,
     pub chat_icon: Option<String>,
     pub chat_is_inbox: bool,
+    /// The chat's tile colour as shown (see `ChatSummary::color`).
+    pub chat_color: ChatColor,
     /// When deleted (ms).
     #[ts(type = "number")]
     pub deleted_at: i64,
@@ -182,6 +187,8 @@ pub struct SearchHit {
     pub chat_title: String,
     pub chat_icon: Option<String>,
     pub chat_is_inbox: bool,
+    /// The chat's tile colour as shown (see `ChatSummary::color`).
+    pub chat_color: ChatColor,
     /// Plain text around the first match, up to 200 characters, with "…" at the trimmed edges.
     pub snippet: String,
     /// The entry's words that matched the query, as written in it: the frontend highlights them whole.

@@ -3,6 +3,7 @@
 use crate::error::read_err;
 use crate::feed_page::PageAt;
 use crate::{Now, Store, StoreError};
+use kinige_domain::chat_color::resolve_color;
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::{ChatList, ChatSummary, FeedCursor, MessagePage};
 use rusqlite::Connection;
@@ -35,16 +36,19 @@ pub(crate) fn chat_list(conn: &Connection) -> Result<ChatList, StoreError> {
              (SELECT COUNT(*) FROM message m WHERE m.chat_id = c.id) \
              - (SELECT COUNT(*) FROM message m INDEXED BY message_deleted \
                 WHERE m.chat_id = c.id AND m.deleted_at IS NOT NULL), \
-             c.pinned_at, c.archived_at, c.sort_key \
+             c.pinned_at, c.archived_at, c.sort_key, c.color \
              FROM chat c WHERE c.deleted_at IS NULL",
         )
         .map_err(read_err)?;
     // Inbox is identified by id, not by the `is_inbox` flag (ADR-0001 §3.6).
     let rows = statement
         .query_map([INBOX_ID], |row| {
+            let id: String = row.get(0)?;
+            let stored_color: Option<String> = row.get(8)?;
             Ok((
                 ChatSummary {
-                    id: row.get(0)?,
+                    color: resolve_color(&id, stored_color.as_deref()),
+                    id,
                     title: row.get(1)?,
                     icon: row.get(2)?,
                     is_inbox: row.get(3)?,

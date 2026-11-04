@@ -4,6 +4,7 @@
     "$description": "Radii in rem: they grow with the text size, like the spacing (at a 13 px root: inline 3.25 px, control 8.45 px, tile 5.85 px, panel and message 11.7 px). D2: control, panel and message are softer (was 6.5 / 9.75 / 9.75 px).",
     "inline": { "$value": "0.25rem", "$description": "Inline code, a tag." },
     "tile": { "$value": "0.45rem", "$description": "A chat tile in the sidebar (D2): a 22.75 px square with soft corners." },
+    "tile-small": { "$value": "0.3rem", "$description": "A small chat tile in a line of small text (search hits, trash plates): a 14.3 px square, 3.9 px corners." },
     "control": { "$value": "0.65rem", "$description": "Buttons, input fields, a chat row, a menu item, a code block inside a plate." },
     "panel": { "$value": "0.9rem", "$description": "The composer, a toast, the context menu, a dialog." },
     "message": { "$value": "0.9rem", "$description": "A message plate and the 'On this day' card." },

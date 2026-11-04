@@ -3,7 +3,7 @@ import { demoEntry } from "../../api/demoData";
 import { INBOX_ID } from "../../api/KinigeApi";
 import { FOREST_2026 } from "../forest/fixtures";
 import { ForestPane } from "../forest/ForestPane";
-import type { SidebarChat } from "../sidebar/Sidebar";
+import { withTints } from "../sidebar/storyChats";
 import { MainWindowView } from "./MainWindowView";
 import "./screens-stories.css";
 
@@ -12,11 +12,11 @@ import "./screens-stories.css";
 const TODAY = "2026-10-21";
 const noop = () => undefined;
 
-const CHATS: SidebarChat[] = [
+const CHATS = withTints([
   { id: INBOX_ID, name: "", isInbox: true, emoji: "📥", count: 1724 },
   { id: "work", name: "Работа", emoji: "💼", count: 987, pinned: true },
   { id: "books", name: "Книги", emoji: "📚", count: 1234 },
-];
+]);
 
 const MESSAGES = [
   demoEntry("y1", "2026-10-15", "18:40", "Вечером разобрал фотографии"),

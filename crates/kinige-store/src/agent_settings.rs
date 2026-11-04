@@ -59,7 +59,7 @@ impl Store {
 
     /// Access mode (for the tool list: in "read only" mode the list has no write tools).
     pub fn agent_mode(&self) -> Result<AgentMode, StoreError> {
-        self.read(load_settings).map(|settings| settings.mode)
+        self.read_agent(load_settings).map(|settings| settings.mode)
     }
 
     /// The access switch. With access off, every tool call is refused (`mcp_disabled`).

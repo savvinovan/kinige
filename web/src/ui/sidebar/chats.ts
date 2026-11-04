@@ -1,9 +1,14 @@
 import type { TFunction } from "i18next";
+import type { ChatColor } from "../../api/generated/ChatColor";
 import type { ChatSummary } from "../../api/generated/ChatSummary";
 import type { MenuItem } from "../menu/ContextMenu";
+import { hasEmoji } from "./chatLetters";
 
-/** The color of the letter tile (D2). Matches the `tile.*` roles of the palette. */
-export type ChatTint = "blue" | "teal" | "green" | "orange" | "pink" | "violet";
+/** The color of the letter tile (D2, KINIG-59). Matches the `tile.*` roles of the palette and the names Rust stores in `meta.color`. */
+export type ChatTint = ChatColor;
+
+/** The colours in the "Colour" submenu, in the order of the rows. */
+export const CHAT_COLORS: readonly ChatTint[] = ["blue", "teal", "green", "orange", "pink", "violet", "grey"];
 
 export interface SidebarChat {
   id: string;
@@ -13,11 +18,8 @@ export interface SidebarChat {
   isInbox?: boolean;
   /** The chat emoji is user data; drawn by the system emoji font. */
   emoji: string;
-  /**
-   * The color of the letter tile. The `chat.color` column in the database is always empty for now and is not returned in `ChatSummary` (D2 does not change Rust),
-   * so `toSidebarChat` does not set it and the color is derived from the id (`tintOf`); the stored color arrives with KINIG-59.
-   */
-  tint?: ChatTint;
+  /** The color of the letter tile, as Rust resolved it (`ChatSummary.color`: the picked colour or the automatic one; Inbox is grey). */
+  tint: ChatTint;
   /** How many entries are in the chat, excluding the trash. 0 or unset: the counter is hidden. */
   count?: number;
   /** Pinned: the row is in the "Pinned" section. If the chat is also archived, the archive wins. */
@@ -38,6 +40,7 @@ export function toSidebarChat(chat: ChatSummary): SidebarChat {
     name: chat.title,
     isInbox: chat.isInbox,
     emoji: chat.icon ?? "💬",
+    tint: chat.color,
     count: chat.count,
     pinned: isSet(chat.pinnedAt) && !isSet(chat.archivedAt),
     archived: isSet(chat.archivedAt),
@@ -66,14 +69,23 @@ export function displayName(chat: SidebarChat, t: TFunction): string {
   return chat.isInbox && chat.name === "" ? t("chat.inbox") : chat.name;
 }
 
+/** Whether the chat has a colour to choose: the colour is the tile's, so a chat shown with an emoji has none; Inbox is fixed grey. */
+export function canPickColor(chat: SidebarChat): boolean {
+  return !chat.isInbox && !hasEmoji(chat.emoji);
+}
+
 /**
  * The chat menu items. Inbox has only "Pin" / "Unpin". An archived chat has no pinning: it lies in the "Archive"
- * anyway, and the item would show nothing.
+ * anyway, and the item would show nothing. "Colour" (a submenu, KINIG-59) is only for a chat shown as a letter tile and only
+ * when the caller can change it (`withColor`).
  */
-export function chatMenuItems(chat: SidebarChat, t: TFunction): MenuItem[] {
+export function chatMenuItems(chat: SidebarChat, t: TFunction, withColor = false): MenuItem[] {
   const items: MenuItem[] = [];
   if (!chat.isInbox) {
     items.push({ id: "rename", label: t("chatMenu.rename"), icon: "edit" }, { id: "icon", label: t("chatMenu.icon"), icon: "emoji" });
+  }
+  if (withColor && canPickColor(chat)) {
+    items.push({ id: "color", label: t("chatMenu.color"), icon: "palette", submenu: true });
   }
   if (!chat.archived || chat.isInbox) {
     items.push(chat.pinned ? { id: "unpin", label: t("chatMenu.unpin"), icon: "unpin" } : { id: "pin", label: t("chatMenu.pin"), icon: "pin" });

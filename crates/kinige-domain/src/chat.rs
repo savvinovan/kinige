@@ -1,6 +1,7 @@
-//! Chats (slice 3): a new chat with all six groups, rewriting `meta` (name, emoji) and `state` (pinned, archive),
+//! Chats (slice 3): a new chat with all six groups, rewriting `meta` (name, emoji, colour) and `state` (pinned, archive),
 //! the order key `order.sort_key` and parsing columns from the groups (ADR-0001 §3.2, appendix §A.0). No IO.
 
+use crate::chat_color::ChatColor;
 use crate::groups::{ChatRow, GroupError, INBOX_ID, SCHEMA_VERSION, assemble};
 use crate::rewrite::{
     Groups, Rewritten, corrupt, flag, group_object, opt_int, opt_str, req_str, rewrite_group,
@@ -201,6 +202,18 @@ pub fn set_meta(
         if let Some(icon) = icon {
             meta.insert("icon".into(), json!(icon));
         }
+        Ok(())
+    })
+}
+
+/// Rewrites `meta`: the tile colour (an explicit pick, KINIG-59); the name, emoji and unknown fields are kept verbatim.
+pub fn set_color(
+    current: &Groups<'_>,
+    color: ChatColor,
+    new_hlc: &str,
+) -> Result<Rewritten, GroupError> {
+    rewrite_group(current, "meta", new_hlc, None, |meta, _| {
+        meta.insert("color".into(), json!(color.as_str()));
         Ok(())
     })
 }

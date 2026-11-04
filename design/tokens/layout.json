@@ -34,7 +34,9 @@
       "padding": { "$value": "{space.3}", "$description": "The sidebar margin around the search and the chat list (9.75 px; D2: was 6.5)." }
     },
     "tile": {
-      "size": { "$value": "1.75rem", "$description": "A chat tile in the sidebar, the icon slot of the lower items and the profile avatar (22.75 px, D2)." }
+      "size": { "$value": "1.75rem", "$description": "A chat tile in the sidebar, the icon slot of the lower items and the profile avatar (22.75 px, D2)." },
+      "size-small": { "$value": "1.1rem", "$description": "A chat tile in a line of small text (search hits, trash plates; KINIG-59): 14.3 px, the line height of type.meta, so the line does not grow. About the size the chat emoji had there before tiles." },
+      "letter-small": { "$value": "0.7rem", "$description": "The letter in a small tile (9.1 px)." }
     },
     "avatar": {
       "size": { "$value": "{layout.tile.size}", "$description": "A round avatar with initials in the profile row (22.75 px): the same size as a chat tile, so the lower rows keep one rhythm." },

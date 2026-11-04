@@ -18,6 +18,7 @@
     "allow-create-chat",
     "allow-rename-chat",
     "allow-set-chat-icon",
+    "allow-set-chat-color",
     "allow-set-chat-pinned",
     "allow-set-chat-archived",
     "allow-delete-message",

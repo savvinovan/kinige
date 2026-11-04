@@ -9,6 +9,7 @@ import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
 import type { ChatDraft } from "./generated/ChatDraft";
 import type { ChatList } from "./generated/ChatList";
+import type { ChatColor } from "./generated/ChatColor";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { FeedCursor } from "./generated/FeedCursor";
@@ -115,6 +116,8 @@ export interface KinigeApi {
   createChat(title: string, icon: string | null): Promise<ChatSummary>;
   renameChat(id: string, title: string): Promise<ChatSummary>;
   setChatIcon(id: string, icon: string): Promise<ChatSummary>;
+  /** "Colour" in the chat menu (KINIG-59): the tile colour. Inbox is always grey (`inbox_protected`). */
+  setChatColor(id: string, color: ChatColor): Promise<ChatSummary>;
   setChatPinned(id: string, pinned: boolean): Promise<ChatSummary>;
   /** The Inbox cannot be archived (`inbox_protected`). */
   setChatArchived(id: string, archived: boolean): Promise<ChatSummary>;

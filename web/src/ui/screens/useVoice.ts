@@ -1,7 +1,7 @@
 import type { KinigeApi } from "../../api/KinigeApi";
 import type { MessageView } from "../../api/generated/MessageView";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
-import { useVoiceRecorder } from "../../voice/useVoiceRecorder";
+import { useVoiceController } from "../../voice/useVoiceRecorder";
 
 interface UseVoiceOptions {
   api: KinigeApi;
@@ -20,7 +20,7 @@ interface UseVoiceOptions {
  * person is still in that chat). No toast and no sound: as in Telegram, the entry simply appears.
  */
 export function useVoice({ api, selected, reply, appendSent, refreshChats, changeReply }: UseVoiceOptions) {
-  return useVoiceRecorder({
+  return useVoiceController({
     api,
     chatId: selected,
     replyToId: reply !== null && reply.state === "live" ? reply.id : null,

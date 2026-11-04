@@ -213,6 +213,7 @@ pub fn args_for(command: &str) -> Value {
         "create_chat" => json!({"title": "Книги", "icon": "📚"}),
         "rename_chat" => json!({"id": inbox, "title": "Другое"}),
         "set_chat_icon" => json!({"id": inbox, "icon": "🎬"}),
+        "set_chat_color" => json!({"id": inbox, "color": "grey"}),
         "set_chat_pinned" => json!({"id": inbox, "pinned": true}),
         "set_chat_archived" => json!({"id": inbox, "archived": true}),
         "delete_message" | "restore_message" | "purge_message" => json!({"id": "нет-такой"}),

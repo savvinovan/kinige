@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 /** How long after the last keypress the draft goes to Rust (§5.1: ~300 ms). */
 export const DRAFT_DELAY_MS = 300;
@@ -70,5 +70,6 @@ export function useDraftSaver<T = string>(save: (body: T) => Promise<void>, dela
     [flush],
   );
 
-  return { schedule, flush, cancel, settle };
+  // The same object while its functions are the same: callers (`select`, the feed) keep it in dependency lists.
+  return useMemo(() => ({ schedule, flush, cancel, settle }), [schedule, flush, cancel, settle]);
 }

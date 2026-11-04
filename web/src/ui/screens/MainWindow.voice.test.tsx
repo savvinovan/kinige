@@ -6,6 +6,18 @@ import { MainWindow } from "./MainWindow";
 
 // The microphone on the real `MainWindow` and `MockApi` (slice 7a), with a fake `MediaDevices` and `MediaRecorder`: the click, the bar,
 // Send, the note in the feed, the pending tiles that hide the microphone, and a note sent from another chat.
+// `MessageActions` is drawn once per render of `Message` (KINIG-47.1: `Message` is memoised), so counting its renders counts the feed's.
+const renders = vi.hoisted(() => ({ actions: vi.fn() }));
+
+vi.mock("../message/MessageActions", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../message/MessageActions")>();
+  const Counted = (props: React.ComponentProps<typeof real.MessageActions>) => {
+    renders.actions();
+    return <real.MessageActions {...props} />;
+  };
+  return { ...real, MessageActions: Counted };
+});
+
 const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 
 class FakeTrack extends EventTarget {
@@ -89,5 +101,22 @@ describe("MainWindow: voice notes", () => {
     fireEvent.click(await mic());
     expect(await screen.findByText("No microphone found")).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: /^Recording, / })).toBeNull();
+  });
+
+  it("the timer and the meter redraw the composer only: the feed is not rendered again while recording (KINIG-47)", async () => {
+    const api = setup();
+    await api.sendMessage(INBOX_ID, "an entry that is already in the feed");
+    api.emitEntriesChanged();
+    expect(await screen.findByText("an entry that is already in the feed")).toBeInTheDocument();
+    fireEvent.click(await mic());
+    expect(await screen.findByRole("group", { name: /^Recording, / })).toBeInTheDocument();
+    const settled = renders.actions.mock.calls.length;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1300));
+    });
+    // Four or five ticks have drawn the bar again ...
+    expect(screen.getByRole("group", { name: /^Recording, 0:0[1-9]$/ })).toBeInTheDocument();
+    // ... and no message was drawn again.
+    expect(renders.actions.mock.calls.length).toBe(settled);
   });
 });

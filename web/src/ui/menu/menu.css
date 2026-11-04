@@ -69,15 +69,18 @@
   color: var(--color-text-tertiary);
 }
 
-/* The chat emoji in the "Move to chat" submenu: the same slot and font as in the sidebar chat row. */
-.context-menu__icon--emoji {
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-emoji-slot);
-  font-family: var(--font-family-emoji);
-  font-size: var(--icon-size);
-  line-height: var(--icon-emoji-line-height);
-  transform: translateY(var(--icon-emoji-shift));
+/* The chat tile in the "Move to chat" and "Colour" submenus: the sidebar's `ChatTile` itself (the emoji or the coloured letter) in its own slot. */
+.context-menu__tile {
+  display: inline-flex;
+  flex: none;
+}
+
+/* The check mark on the current choice of a radio item ("Colour"). */
+.context-menu__check {
+  display: inline-flex;
+  flex: none;
+  width: var(--icon-size);
+  color: var(--color-text-secondary);
 }
 
 .context-menu__item--danger .context-menu__icon {

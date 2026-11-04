@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import type { VoiceControls, VoiceState } from "../../voice/useVoiceRecorder";
+import { staticVoice } from "../../voice/staticVoice";
+import type { VoiceState } from "../../voice/useVoiceRecorder";
 import { Composer } from "../composer/Composer";
 import { Frame } from "../stories/Frame";
 
@@ -9,15 +10,11 @@ const noop = () => undefined;
 // A fixed, plausible meter: no randomness, so the snapshots do not change from run to run.
 const LEVELS = [0.1, 0.3, 0.2, 0.5, 0.7, 0.4, 0.3, 0.6, 0.9, 0.5, 0.2, 0.1, 0.3, 0.6, 0.8, 0.4, 0.3, 0.2, 0.5, 0.7, 0.3, 0.2, 0.1, 0.2];
 
-function controls(state: VoiceState): VoiceControls {
-  return { state, start: noop, send: noop, requestCancel: noop, keepRecording: noop, discard: noop, retry: noop, openSettings: noop, dismissNotice: noop };
-}
-
 function Demo({ state, text = "" }: { state: VoiceState; text?: string }) {
   const [value, setValue] = useState(text);
   return (
     <Frame bottom>
-      <Composer value={value} onChange={setValue} onSubmit={noop} voice={controls(state)} />
+      <Composer value={value} onChange={setValue} onSubmit={noop} voice={staticVoice(state)} />
     </Frame>
   );
 }

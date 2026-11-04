@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { VoiceControls, VoiceState } from "../../voice/useVoiceRecorder";
+import { NO_VOICE_STORE, type VoiceController, type VoiceState } from "../../voice/useVoiceRecorder";
 import { IconButton } from "../controls/IconButton";
 import { RecordingBar } from "../voice/RecordingBar";
 import { VoiceNotice } from "../voice/VoiceNotice";
@@ -69,7 +69,7 @@ interface ComposerProps {
    * The microphone (slice 7a, main window only): with it the "microphone" button is live. While a recording runs, the bar takes the
    * place of the field; when the microphone cannot be used, one line above the field says why. Without it the button is only drawn.
    */
-  voice?: VoiceControls;
+  voice?: VoiceController;
 }
 
 /** The states in which the recording bar stands in for the field. */
@@ -123,8 +123,10 @@ export function Composer({
   // An entry may be sent with no text if it has attachments.
   const canSend = hasText || hasTiles;
   // A recording in progress (or kept after a lost device / a failed save) takes the place of the field.
-  const voiceState = voice?.state;
-  const bar = voice && voiceState && barOf(voiceState);
+  // The state is read here, not in the window: the timer ticks four times a second and redraws the composer only (KINIG-47).
+  const store = voice?.store ?? NO_VOICE_STORE;
+  const voiceState = useSyncExternalStore(store.subscribe, store.get);
+  const bar = voice && barOf(voiceState);
 
   // Focus in the field on appearance, but only if nobody else has it: the feed with the field is mounted again when the search results
   // close (the query was erased), while the person is still typing in the search field - its focus must not be taken away.
@@ -178,7 +180,7 @@ export function Composer({
       {error && !floating ? errorLine : null}
       {replyStrip}
       {tiles}
-      {voice && voiceState && (voiceState.kind === "notice" || voiceState.kind === "starting") ? (
+      {voice && (voiceState.kind === "notice" || voiceState.kind === "starting") ? (
         <VoiceNotice state={voiceState} onOpenSettings={voice.openSettings} onDismiss={voice.dismissNotice} />
       ) : null}
       {/* The place of the "inline" emoji picker (capture window): empty it has no height, with the panel it pushes the field up. */}
@@ -221,7 +223,7 @@ export function Composer({
               label={t("composer.voice")}
               unavailable={viewOnly || !voice}
               onClick={voice?.start}
-              aria-busy={voiceState?.kind === "starting" ? true : undefined}
+              aria-busy={voiceState.kind === "starting" ? true : undefined}
             />
           </span>
         ) : null}

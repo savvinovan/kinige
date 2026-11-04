@@ -28,6 +28,7 @@ const entry = (id: string, body: string, patch: Partial<TrashItem> = {}, journal
   chatTitle: "Входящие",
   chatIcon: "📥",
   chatIsInbox: true,
+  chatColor: "grey",
   deletedAt: Date.UTC(2026, 9, 26, 18, 0),
   daysLeft: 29,
   ...patch,
@@ -94,9 +95,21 @@ export const ДлинноеИмяЧата: Story = {
   },
 };
 
-/** A chat without an emoji: the neutral 💬. A different year: "14 марта 2025". */
+/** A chat without an emoji: a letter tile (KINIG-59). A different year: "14 марта 2025". */
 export const БезЭмодзиДругойГод: Story = {
   args: { items: [entry("a", "Запись без эмодзи у чата", { chatTitle: "Заметки", chatIcon: null, chatIsInbox: false }, "2025-03-14")] },
+};
+
+/** KINIG-59: a trash plate shows the chat's tile like the sidebar: the letter on the chat's colour (grey, pink, orange) or the emoji. */
+export const ПлиткиЧатов: Story = {
+  args: {
+    items: [
+      entry("a", "Запись из серого чата", { chatTitle: "Linux notes", chatIcon: "💬", chatIsInbox: false, chatColor: "grey" }),
+      entry("b", "Запись из розового чата", { chatTitle: "Проекты", chatIcon: "💬", chatIsInbox: false, chatColor: "pink" }),
+      entry("c", "Запись из оранжевого чата", { chatTitle: "Мама", chatIcon: "💬", chatIsInbox: false, chatColor: "orange" }),
+      entry("d", "Запись из чата с эмодзи", { chatTitle: "Книги", chatIcon: "📚", chatIsInbox: false }),
+    ],
+  },
 };
 
 /** The error of the last action: a `role="alert"` line above the list. */

@@ -2,6 +2,7 @@
 //! for name and emoji, order keys.
 
 use crate::chat::{self, ChatInputError, NewChat, StateChange};
+use crate::chat_color::ChatColor;
 use crate::groups::{GroupError, parse_groups_raw};
 use crate::rewrite::Groups;
 use serde_json::{Value, json};
@@ -185,4 +186,85 @@ fn order_keys_grow_and_sort_after_everything_before() {
     let foreign = chat::key_after(Some("m5"));
     assert!(foreign.as_str() > "m5", "{foreign}");
     assert_eq!(chat::key_after(Some("A")), "a000001");
+}
+
+fn books() -> crate::groups::ChatRow {
+    chat::new_chat(
+        &NewChat {
+            id: "c1",
+            title: "Книги",
+            icon: "📚",
+            sort_key: "a000001",
+            created_at: NOW,
+        },
+        &hlc(NOW as u64),
+    )
+    .unwrap()
+}
+
+#[test]
+fn colour_rewrite_keeps_title_icon_and_unknown_fields() {
+    let chat = books();
+    // A newer client wrote a field this version does not know.
+    let with_extra = chat.groups_raw.replace(
+        r#"{"color":null,"icon":"📚","title":"Книги"}"#,
+        r#"{"color":null,"future":{"a":[1,2]},"icon":"📚","title":"Книги"}"#,
+    );
+    assert_ne!(with_extra, chat.groups_raw);
+    let cur = Groups {
+        groups_raw: &with_extra,
+        hlc_json: &chat.hlc_json,
+    };
+    let coloured = chat::set_color(&cur, ChatColor::Grey, &hlc(NOW as u64 + 1)).unwrap();
+    assert_eq!(
+        group_text(&coloured.groups_raw, "meta"),
+        r#"{"color":"grey","future":{"a":[1,2]},"icon":"📚","title":"Книги"}"#
+    );
+    for other in ["core", "order", "state", "privacy", "deleted"] {
+        assert_eq!(
+            group_text(&coloured.groups_raw, other),
+            group_text(&chat.groups_raw, other),
+            "{other}"
+        );
+    }
+    assert_eq!(
+        chat::chat_columns(&coloured.groups_raw).unwrap().color,
+        Some("grey".to_string())
+    );
+    // The meta stamp moved forward, the others did not.
+    let stamps = hlcs(&coloured.hlc_json);
+    assert_eq!(stamps["meta"], json!({"h": hlc(NOW as u64 + 1), "sv": 1}));
+    assert_eq!(stamps["state"], json!({"h": hlc(NOW as u64), "sv": 1}));
+}
+
+#[test]
+fn rename_and_icon_rewrites_keep_a_picked_colour() {
+    let chat = books();
+    let cur = Groups {
+        groups_raw: &chat.groups_raw,
+        hlc_json: &chat.hlc_json,
+    };
+    let coloured = chat::set_color(&cur, ChatColor::Violet, &hlc(NOW as u64 + 1)).unwrap();
+    let next = Groups {
+        groups_raw: &coloured.groups_raw,
+        hlc_json: &coloured.hlc_json,
+    };
+    let renamed = chat::set_meta(&next, Some("Фильмы"), Some("🎬"), &hlc(NOW as u64 + 2)).unwrap();
+    assert_eq!(
+        group_text(&renamed.groups_raw, "meta"),
+        r#"{"color":"violet","icon":"🎬","title":"Фильмы"}"#
+    );
+}
+
+#[test]
+fn colour_rewrite_needs_a_newer_stamp() {
+    let chat = books();
+    let cur = Groups {
+        groups_raw: &chat.groups_raw,
+        hlc_json: &chat.hlc_json,
+    };
+    assert_eq!(
+        chat::set_color(&cur, ChatColor::Blue, &hlc(NOW as u64)).map(|_| ()),
+        Err(GroupError::HlcNotNewer)
+    );
 }

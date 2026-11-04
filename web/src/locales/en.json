@@ -90,7 +90,19 @@
     "pin": "Pin",
     "unpin": "Unpin",
     "archive": "Archive",
-    "unarchive": "Unarchive"
+    "unarchive": "Unarchive",
+    "color": "Colour",
+    "colorBack": "Back",
+    "colorMenu": "Chat colour: choose a colour"
+  },
+  "chatColor": {
+    "blue": "Blue",
+    "teal": "Teal",
+    "green": "Green",
+    "orange": "Orange",
+    "pink": "Pink",
+    "violet": "Violet",
+    "grey": "Grey"
   },
   "chatDialog": {
     "titleCreate": "New chat",

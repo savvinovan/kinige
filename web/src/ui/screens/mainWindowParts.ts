@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import type { TFunction } from "i18next";
+import { useEffect, useMemo } from "react";
 import type { ChatList } from "../../api/generated/ChatList";
+import { type MoveTarget, moveTargetsFrom } from "../message/moveTargets";
 import type { SidebarChat } from "../sidebar/Sidebar";
 
 /** State of the main window's "New chat" / "Rename" / "Chat emoji" dialog. */
@@ -14,10 +16,20 @@ export function toSidebar(chat: ChatList["chats"][number]): SidebarChat {
     name: chat.title,
     isInbox: chat.isInbox,
     emoji: chat.icon ?? "💬",
+    tint: chat.color,
     count: chat.count,
     pinned: chat.pinnedAt !== null && chat.archivedAt === null,
     archived: chat.archivedAt !== null,
   };
+}
+
+/**
+ * The "Move to chat" list. A new array comes out of every chat list reread (an entry was sent: the counters changed), but its
+ * content rarely does: the same array is kept while the content is the same, so the feed's plates are not redrawn (KINIG-47).
+ */
+export function useMoveTargets(chats: readonly SidebarChat[], selected: string | null, t: TFunction): readonly MoveTarget[] {
+  const content = JSON.stringify(moveTargetsFrom(chats, selected, t));
+  return useMemo(() => JSON.parse(content) as MoveTarget[], [content]);
 }
 
 /** Focus on the entry composer. A dialog returns focus to whoever opened it only after closing, so the composer takes it afterwards. */

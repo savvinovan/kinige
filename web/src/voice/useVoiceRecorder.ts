@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { type KinigeApi, errorCode } from "../api/KinigeApi";
 import type { ErrorCode } from "../api/generated/ErrorCode";
 import type { MessageView } from "../api/generated/MessageView";
@@ -30,6 +30,35 @@ export type VoiceState =
   | { kind: "send-failed"; elapsedMs: number; error: ErrorCode }
   /** One line above the field: access off, no microphone, busy, too short. */
   | { kind: "notice"; reason: MicError | "too-short" };
+
+/** The recorder's state outside React's tree of state: the timer ticks four times a second and must redraw the composer only, never the window or the feed (KINIG-47). */
+export interface VoiceStore {
+  get: () => VoiceState;
+  subscribe: (listener: () => void) => () => void;
+}
+
+/** The state of "nothing is happening", for a composer without a microphone. */
+export const IDLE_VOICE: VoiceState = { kind: "idle" };
+export const NO_VOICE_STORE: VoiceStore = { get: () => IDLE_VOICE, subscribe: () => () => undefined };
+
+function createVoiceStore(): VoiceStore & { set: (next: VoiceState | ((was: VoiceState) => VoiceState)) => void } {
+  let state: VoiceState = IDLE_VOICE;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    set: (next) => {
+      state = typeof next === "function" ? next(state) : next;
+      for (const listener of [...listeners]) listener();
+    },
+  };
+}
+
+/** What the window holds: stable functions and the store. Holding it does not re-render the holder when the state changes. */
+export type VoiceController = Omit<VoiceControls, "state"> & { store: VoiceStore };
 
 export interface VoiceControls {
   state: VoiceState;
@@ -67,8 +96,9 @@ interface UseVoiceRecorderOptions {
  * to the chat it was started in even if the person has opened another one since. A recording still running when the window closes is
  * lost, as in Telegram.
  */
-export function useVoiceRecorder({ api, chatId, replyToId, onSent }: UseVoiceRecorderOptions): VoiceControls {
-  const [state, setState] = useState<VoiceState>({ kind: "idle" });
+export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceRecorderOptions): VoiceController {
+  const [store] = useState(createVoiceStore);
+  const setState = store.set;
   const session = useRef<RecorderSession | null>(null);
   /** What the recording was started for: its own chat and reply. */
   const target = useRef<{ chatId: string; replyToId: string | null } | null>(null);
@@ -90,7 +120,7 @@ export function useVoiceRecorder({ api, chatId, replyToId, onSent }: UseVoiceRec
     confirming.current = false;
     busy.current = false;
     setState({ kind: "idle" });
-  }, []);
+  }, [setState]);
 
   /** Saves a finished recording in the chat it was started in. */
   const save = useCallback(
@@ -115,7 +145,7 @@ export function useVoiceRecorder({ api, chatId, replyToId, onSent }: UseVoiceRec
         setState({ kind: "send-failed", elapsedMs: recording.durationMs, error: code });
       }
     },
-    [api, clear],
+    [api, clear, setState],
   );
 
   const send = useCallback(() => {
@@ -144,7 +174,7 @@ export function useVoiceRecorder({ api, chatId, replyToId, onSent }: UseVoiceRec
     const recording = kept.current;
     if (recording) void save(recording);
     else busy.current = false;
-  }, [save, clear]);
+  }, [save, clear, setState]);
 
   const start = useCallback(() => {
     const where = latest.current.chatId;
@@ -176,7 +206,7 @@ export function useVoiceRecorder({ api, chatId, replyToId, onSent }: UseVoiceRec
         setState({ kind: "notice", reason: micErrorOf(reason) });
       },
     );
-  }, [clear]);
+  }, [clear, setState]);
 
   useEffect(() => {
     sendRef.current = send;
@@ -193,14 +223,14 @@ export function useVoiceRecorder({ api, chatId, replyToId, onSent }: UseVoiceRec
     }
     confirming.current = true;
     setState({ kind: "confirming", elapsedMs: running.elapsedMs(), levels: running.levelBars() });
-  }, [clear]);
+  }, [clear, setState]);
 
   const keepRecording = useCallback(() => {
     const running = session.current;
     if (!running) return;
     confirming.current = false;
     setState({ kind: "recording", elapsedMs: running.elapsedMs(), levels: running.levelBars() });
-  }, []);
+  }, [setState]);
 
   const discard = useCallback(() => {
     const running = session.current;
@@ -220,11 +250,13 @@ export function useVoiceRecorder({ api, chatId, replyToId, onSent }: UseVoiceRec
     void api.openMicrophoneSettings().catch(() => undefined);
   }, [api]);
 
-  const dismissNotice = useCallback(() => setState((was) => (was.kind === "notice" ? { kind: "idle" } : was)), []);
+  const dismissNotice = useCallback(() => setState((was) => (was.kind === "notice" ? { kind: "idle" } : was)), [setState]);
 
   // The timer and the meter follow the session; at 30 minutes the note is sent by itself.
+  // Only the kind is read here: the holder re-renders when the kind changes (a few times per recording), not on every tick.
+  const kind = useSyncExternalStore(store.subscribe, () => store.get().kind);
   useEffect(() => {
-    if (state.kind !== "recording" && state.kind !== "confirming") return;
+    if (kind !== "recording" && kind !== "confirming") return;
     const timer = setInterval(() => {
       const running = session.current;
       if (!running) return;
@@ -237,7 +269,7 @@ export function useVoiceRecorder({ api, chatId, replyToId, onSent }: UseVoiceRec
       setState(confirming.current ? { kind: "confirming", elapsedMs, levels } : { kind: "recording", elapsedMs, levels });
     }, TICK_MS);
     return () => clearInterval(timer);
-  }, [state.kind]);
+  }, [kind, setState]);
 
   // Closing the window (or the whole main window unmounting) loses a running recording and releases the microphone.
   useEffect(
@@ -248,6 +280,15 @@ export function useVoiceRecorder({ api, chatId, replyToId, onSent }: UseVoiceRec
     [],
   );
 
-  // A notice goes away by itself once something else happens: a new start replaces it, Escape and the cross dismiss it.
-  return { state, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice };
+  return useMemo(
+    () => ({ store, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice }),
+    [store, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice],
+  );
+}
+
+/** The controller with the state read in the holder: the holder re-renders on every change. For tests and small views; the window uses [`useVoiceController`]. */
+export function useVoiceRecorder(options: UseVoiceRecorderOptions): VoiceControls {
+  const controller = useVoiceController(options);
+  const state = useSyncExternalStore(controller.store.subscribe, controller.store.get);
+  return { ...controller, state };
 }

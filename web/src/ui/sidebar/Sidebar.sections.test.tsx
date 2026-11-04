@@ -3,7 +3,8 @@ import { fireEvent, render, screen, within } from "../../test/render";
 import { partitionChats, toSidebarChat, type SidebarChat } from "./chats";
 import { Sidebar } from "./Sidebar";
 
-const chat = (id: string, name: string, extra: Partial<SidebarChat> = {}): SidebarChat => ({ id, name, emoji: "📌", ...extra });
+const TEAL = "teal";
+const chat = (id: string, name: string, extra: Partial<SidebarChat> = {}): SidebarChat => ({ id, name, emoji: "📌", tint: "blue", ...extra });
 
 const INBOX = chat("inbox", "", { isInbox: true, emoji: "📥", count: 3 });
 const LIST: SidebarChat[] = [
@@ -30,8 +31,8 @@ describe("разделы", () => {
   });
 
   it("toSidebarChat: флаги из времён; чат в архиве не считается закреплённым; пустое время — не закреплён", () => {
-    const base = { id: "x", title: "Икс", icon: null, isInbox: false, count: 1 };
-    expect(toSidebarChat({ ...base, pinnedAt: 5, archivedAt: null })).toMatchObject({ pinned: true, archived: false, emoji: "💬" });
+    const base = { id: "x", title: "Икс", icon: null, isInbox: false, count: 1, color: TEAL } as const;
+    expect(toSidebarChat({ ...base, pinnedAt: 5, archivedAt: null })).toMatchObject({ pinned: true, archived: false, emoji: "💬", tint: "teal" });
     expect(toSidebarChat({ ...base, pinnedAt: 5, archivedAt: 6 })).toMatchObject({ pinned: false, archived: true });
     expect(toSidebarChat({ ...base, pinnedAt: null, archivedAt: null })).toMatchObject({ pinned: false, archived: false });
   });

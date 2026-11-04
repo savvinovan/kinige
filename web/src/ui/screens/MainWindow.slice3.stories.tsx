@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { demoEntry } from "../../api/demoData";
 import { INBOX_ID } from "../../api/KinigeApi";
 import type { TrashItem } from "../../api/generated/TrashItem";
-import type { SidebarChat } from "../sidebar/Sidebar";
+import { withTints } from "../sidebar/storyChats";
 import { MainWindowView } from "./MainWindowView";
 import "./screens-stories.css";
 
@@ -20,14 +20,14 @@ const sidebar = {
   onOpenTrash: noop,
 };
 
-const CHATS: SidebarChat[] = [
+const CHATS = withTints([
   { id: INBOX_ID, name: "", isInbox: true, emoji: "📥", count: 42 },
   { id: "work", name: "Работа", emoji: "💼", count: 987, pinned: true },
   { id: "books", name: "Книги", emoji: "📚", count: 1234 },
   { id: "ideas", name: "Идеи", emoji: "💡", count: 12 },
   { id: "long", name: "Очень длинное название чата, которое не помещается в строку сайдбара", emoji: "🧭", count: 7 },
   { id: "old", name: "Старые заметки", emoji: "🗄️", count: 310, archived: true },
-];
+]);
 
 const MESSAGES = [
   demoEntry("m1", "2026-10-19", "21:05", "Идея для заметок про поездку. #идеи #поездки"),
@@ -106,6 +106,7 @@ const trashEntry = (id: string, body: string, daysLeft: number, chat: [string, s
   chatTitle: chat[0],
   chatIcon: chat[1],
   chatIsInbox: chat[2],
+  chatColor: chat[2] ? "grey" : "blue",
   deletedAt: Date.UTC(2026, 9, 19, 18, 0),
   daysLeft,
 });
