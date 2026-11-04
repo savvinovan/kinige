@@ -141,11 +141,17 @@ fn commit(conn: &mut Connection, faults: &Faults, job: &Job) -> Result<MessageVi
         view.attachments = vec![attachment];
         // The file name is part of the entry's search text: index again, now that the row exists.
         crate::search::reindex(&tx, &view.id, &view.body_md).map_err(write_err)?;
-        // The note carries the reply like a text reply; the typed text and the pending tiles stay where they are.
-        let key = chat_key(&job.chat_id);
-        tx.execute("UPDATE draft SET reply_to_id = NULL WHERE key = ?1", [&key])
+        // The note carries the reply like a text reply; the typed text and the pending tiles stay where they are. Only a reply the note
+        // took leaves the draft: a note sent without one (the target is in the trash) leaves the draft's reply line alone.
+        if let Some(target) = &job.reply_to_id {
+            let key = chat_key(&job.chat_id);
+            tx.execute(
+                "UPDATE draft SET reply_to_id = NULL WHERE key = ?1 AND reply_to_id = ?2",
+                (&key, target),
+            )
             .map_err(write_err)?;
-        delete_empty_draft(&tx, &key).map_err(write_err)?;
+            delete_empty_draft(&tx, &key).map_err(write_err)?;
+        }
         tx.commit().map_err(write_err)
     })();
     if written.is_err() {

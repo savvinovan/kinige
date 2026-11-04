@@ -7,6 +7,7 @@ pub mod days;
 pub mod import;
 pub mod ops;
 pub mod settings_file;
+pub mod voice;
 
 use kinige_store::{Now, Store, StoreOptions};
 use serde_json::value::RawValue;
