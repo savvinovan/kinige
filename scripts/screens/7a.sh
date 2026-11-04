@@ -122,7 +122,7 @@ BEFORE_NOTES="$(voice_rows)"
 press "${L_MIC}"
 sleep 5
 SHOOT_DUMP=0 shoot 02-recording
-echo "recording shot taken 5 s after the press; the recording ends by itself at 14 s" > "$OUT/recording.txt"
+echo "the shot was taken after the press, a 5 s sleep and the shot's own wait, so the timer in it (about 0:08) is the evidence, not the 5 s; the recording ends by itself at 14 s" > "$OUT/recording.txt"
 
 # ---- 3. The recording sent itself: the note is in the feed, with the player and no text ----
 for _ in $(seq 1 30); do
@@ -133,6 +133,7 @@ sleep 4
 AFTER_NOTES="$(voice_rows)"
 [ "${AFTER_NOTES}" -eq $((BEFORE_NOTES + 1)) ] || fail "the recording was not saved (${BEFORE_NOTES} -> ${AFTER_NOTES})"
 NEWEST="$(sqlw "select id || '|' || mime || '|' || duration_ms from attachment where filename like 'voice-%' order by rowid desc limit 1")"
+RECORDED_ID="$(echo "$NEWEST" | cut -d'|' -f1)"
 echo "newest note: ${NEWEST}"
 case "$NEWEST" in *"|audio/mp4|"* | *"|audio/webm|"*) ;; *) fail "the saved note has an unexpected MIME: ${NEWEST}" ;; esac
 [ "$(echo "$NEWEST" | cut -d'|' -f3)" -ge 5000 ] || fail "the saved note is shorter than the recording (${NEWEST})"
@@ -255,7 +256,7 @@ grep -qE '\(1:02:03\)' "$OUT/mirror.txt" || fail "the hour-long note has no 1:02
 {
   echo "rows: $(sqlw "select count(*) from attachment")  voice notes: $(voice_rows)  marked missing: $(sqlw "select count(*) from attachment_local where state = 'missing'")"
   echo "files in attachments/: $(find "$K/data/attachments" -maxdepth 1 -type f | wc -l | tr -d ' ')  leftover .part files: $(find "$K/data/attachments/.tmp" -name '*.part' 2> /dev/null | wc -l | tr -d ' ')"
-  echo "recorded notes by container: $(sqlw "select mime || ' x' || count(*) from attachment where filename like 'voice-%' group by mime" | tr '\n' ' ')"
+  echo "seeded voice notes: ${BEFORE_NOTES} (made by seed_demo, not recorded); recorded in this run: $(($(voice_rows) - BEFORE_NOTES)), container: $(sqlw "select mime from attachment where id = '${RECORDED_ID}'")"
 } >> "$OUT/files.txt"
 cat "$OUT/files.txt"
 if [ -f "$PROBE_FORMATS" ]; then cp "$PROBE_FORMATS" "$OUT/formats.txt"; else echo "no probe output was committed" > "$OUT/formats.txt"; fi

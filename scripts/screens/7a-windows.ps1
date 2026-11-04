@@ -62,11 +62,19 @@ $main = Start-App $exe.FullName
 if (-not $main) { exit 1 }
 Start-Sleep -Seconds 6
 Send-Keys 'Kinige' '{TAB}{TAB}{ENTER}' $true
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 4
 Shoot '01-recording' 'Kinige'
 
-# ---- 2. Enter on Send (the focus moved there) saves the note ---------------------------------------------------------------------
+# ---- 2. Escape past five seconds asks "Discard the recording?"; Enter on "Keep recording" goes on; Enter on Send saves ----------------
+# The fake microphone's recording ends by itself at 14 seconds (scripts/screens/fake-mic.ts), so the three steps share that time: the
+# recording is about 6 seconds old at Escape (the question appears only past 5) and about 10 at Send. That a note exists at all after
+# Enter on "Keep recording" is the proof that Keep was the focused button and that the recording went on underneath the question.
 
+Send-Keys 'Kinige' '{ESC}' $false
+Start-Sleep -Milliseconds 800
+Shoot '02-discard-confirm' 'Kinige'
+Send-Keys 'Kinige' '{ENTER}' $false
+Start-Sleep -Milliseconds 800
 Send-Keys 'Kinige' '{ENTER}' $false
 Start-Sleep -Seconds 5
 $rows = Get-Scalar "select count(*) from attachment where filename like 'voice-%'"
@@ -75,14 +83,15 @@ $mime = Get-Scalar "select mime from attachment where filename like 'voice-%' li
 $duration = Get-Scalar "select duration_ms from attachment where filename like 'voice-%' limit 1"
 @(
   "windows: $([Environment]::OSVersion.VersionString)",
-  "recorded notes: $rows",
+  "recorded notes (the Windows run seeds none): $rows",
+  "the note exists after Escape, Enter on Keep recording and Enter on Send: yes",
   "container: $mime",
   "duration_ms: $duration"
 ) | Set-Content -Path (Join-Path $Out 'files.txt') -Encoding UTF8
 Say (Get-Content (Join-Path $Out 'files.txt') -Raw)
 if ($mime -notmatch '^audio/(mp4|webm)$') { Fail "unexpected container: $mime" }
 if ($duration -notmatch '^\d+$' -or [int64]$duration -lt 3000) { Fail "the saved duration looks wrong: $duration" }
-Shoot '02-sent' 'Kinige'
+Shoot '03-sent' 'Kinige'
 
 # ---- 3. The note survives a kill, and Play reaches the audio route ------------------------------------------------------------------
 
@@ -111,7 +120,7 @@ for ($stops = 2; $stops -le 16 -and -not $played; $stops++) {
   $now = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
   if ($now.Count -gt $before) { $played = $true; Say "Play reached the route with $stops Shift+Tab stops" }
 }
-Shoot '03-playing' 'Kinige'
+Shoot '04-playing' 'Kinige'
 $lines = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
 @("audio route requests in the log: $($lines.Count)") + @($lines | Select-Object -First 8 | ForEach-Object { ($_ -replace '^\[[^\]]*\]\[[^\]]*\]', '').Trim() }) |
   Set-Content -Path (Join-Path $Out 'playback.txt') -Encoding UTF8
