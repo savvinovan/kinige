@@ -107,10 +107,11 @@ launch_window
 wait_for_window
 sleep 8
 detect_language
-has "${L_NOTE}, 40" || fail "no voice player of 40 seconds in the feed"
-has "${L_MISSING}" || fail "the voice note whose file is gone is not marked"
+# The last run found nothing in the first dump on a loaded VM (the feed had not drawn yet): wait for the players instead of assuming.
+wait_for "${L_NOTE}, 40" 120 || fail "no voice player of 40 seconds in the feed"
+wait_for "${L_MISSING}" 60 || fail "the voice note whose file is gone is not marked"
 [ "$(sqlw "select count(*) from attachment_local where state = 'missing'")" = "1" ] || fail "the sweep did not mark exactly one file as missing"
-has "3723" || fail "no player of the hour-long note (3723 seconds)"
+wait_for "3723" 30 || fail "no player of the hour-long note (3723 seconds)"
 shoot 01-feed
 BEFORE_NOTES="$(voice_rows)"
 
