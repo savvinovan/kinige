@@ -1,7 +1,7 @@
 //! Main window commands of slice 3: chats, entry actions, trash, sidebar and picker settings. There are no business rules here
 //! (they are in `kinige-domain` and `kinige-store`); after changes the icon menu is refreshed. These commands are not granted to the capture window.
 
-use kinige_domain::{ApiError, ChatSummary, MessageFlag, MessageView, TrashItem};
+use kinige_domain::{ApiError, ChatColor, ChatSummary, MessageFlag, MessageView, TrashItem};
 use kinige_store::{Now, Store, StoreError};
 use tauri::{AppHandle, Runtime, State};
 
@@ -54,6 +54,18 @@ pub fn set_chat_icon<R: Runtime>(
         .map_err(api)?;
     crate::tray::refresh(&app);
     Ok(chat)
+}
+
+/// "Colour" in the chat menu (KINIG-59): the letter tile colour. An unknown name is refused when the arguments are read.
+#[tauri::command(async)]
+pub fn set_chat_color(
+    store: State<'_, Store>,
+    id: String,
+    color: ChatColor,
+) -> ApiResult<ChatSummary> {
+    store
+        .set_chat_color(&id, color, &Now::system())
+        .map_err(api)
 }
 
 #[tauri::command(async)]

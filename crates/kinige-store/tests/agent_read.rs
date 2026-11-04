@@ -385,5 +385,53 @@ fn a_panic_inside_an_agent_read_fails_that_call_only_and_later_agent_calls_work(
         assert!(chats.to_string().contains("Работа"));
         let found = call(&a.store, "search", json!({"query": "паники"}), MARCH).unwrap();
         assert_eq!(entry_ids(&found).len(), 1);
+        // The window's own reads are on another connection and are not affected.
+        assert!(a.store.list_chats().unwrap().len() >= 2);
     }
+}
+
+/// KINIG-47.2: the agent has its own read connection. While one agent read holds it, the window's reads (feed page, chat list,
+/// the tray menu's recent chats) answer at once; the other way round too.
+#[test]
+fn an_agent_read_in_progress_does_not_hold_back_the_windows_reads() {
+    let a = agent(AgentMode::Read, true);
+    a.store
+        .send_message(&a.work, "запись в работе", &moscow(MARCH))
+        .unwrap();
+    let store = a.store.clone();
+    let (page, chats, recent) = a.store.with_agent_read_held_for_test(move || {
+        // The window's reads run on another thread so that a shared lock would hang the test instead of passing it silently.
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let page = store
+                .list_messages(INBOX_ID, None, 10, &moscow(MARCH))
+                .map(|p| p.messages.len());
+            let chats = store.list_chats().map(|c| c.len());
+            let recent = store.recent_chats(5).map(|c| c.len());
+            let _ = sender.send((page, chats, recent));
+        });
+        receiver
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("the window's reads must not wait for the agent's connection")
+    });
+    assert_eq!(page.unwrap(), 0);
+    assert!(chats.unwrap() >= 2);
+    assert_eq!(recent.unwrap(), 1);
+}
+
+/// A panic in an agent read leaves both connections usable: the window's reads work, and so do later agent calls.
+#[test]
+fn after_an_agent_panic_the_windows_reads_still_work() {
+    let a = agent(AgentMode::Read, true);
+    a.store
+        .send_message(&a.work, "до паники", &moscow(MARCH))
+        .unwrap();
+    assert!(matches!(
+        a.store.panic_in_agent_read_for_test(),
+        Err(kinige_store::StoreError::Internal(_))
+    ));
+    assert!(a.store.list_chats().unwrap().len() >= 2);
+    assert_eq!(a.store.recent_chats(5).unwrap().len(), 1);
+    let found = call(&a.store, "search", json!({"query": "паники"}), MARCH).unwrap();
+    assert_eq!(entry_ids(&found).len(), 1);
 }

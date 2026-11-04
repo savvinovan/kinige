@@ -90,9 +90,10 @@ impl Store {
         // As in `read_unnoted`: a panic inside the read (release profile with stack unwinding) is caught here and the
         // call gets `Internal`; if the lock is poisoned anyway, it is taken as is -- the read connection (`query_only`,
         // no transaction) is consistent after unwinding. Otherwise one panic would break all agent reads until a restart.
+        // The agent has its own connection (KINIG-47.2): the window's reads do not queue behind an agent query.
         let conn = self
             .inner
-            .reader
+            .agent_reader
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         catch_unwind(AssertUnwindSafe(|| job(&conn))).unwrap_or_else(|_| {
@@ -101,6 +102,18 @@ impl Store {
                 "panic in an agent query".into(),
             )))
         })
+    }
+
+    /// Tests only: runs `held` while an agent read occupies the agent connection (its lock is taken and kept). The window's reads
+    /// made inside `held` must return, because they use their own connection.
+    #[doc(hidden)]
+    pub fn with_agent_read_held_for_test<T>(&self, held: impl FnOnce() -> T) -> T {
+        let _agent = self
+            .inner
+            .agent_reader
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        held()
     }
 
     /// Tests only: a panic inside `query_map` on the agent read connection. The following agent reads must keep working.

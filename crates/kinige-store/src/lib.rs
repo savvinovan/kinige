@@ -141,6 +141,9 @@ impl StoreOptions {
 pub(crate) struct Inner {
     writer: Writer,
     reader: Mutex<Connection>,
+    /// A second `query_only` connection for the MCP server's tool calls (`read_agent`, `with_reader`): the window's reads
+    /// and an agent's reads do not wait for each other. One connection, not a pool (KINIG-47.2).
+    agent_reader: Mutex<Connection>,
     mirror: Arc<MirrorShared>,
     default_mirror_dir: Option<PathBuf>,
     db_path: PathBuf,
@@ -230,6 +233,7 @@ impl Store {
         search::rebuild_if_stale(&mut conn)?;
 
         let reader = open_connection(&options.db_path, true)?;
+        let agent_reader = open_connection(&options.db_path, true)?;
         let writer = Writer::spawn(conn)?;
         let mirror = MirrorShared::new(options.mirror_retry);
         let maintenance = MaintenanceShared::new(options.defer_maintenance);
@@ -238,6 +242,7 @@ impl Store {
             inner: Arc::new(Inner {
                 writer,
                 reader: Mutex::new(reader),
+                agent_reader: Mutex::new(agent_reader),
                 mirror: mirror.clone(),
                 default_mirror_dir: options.default_mirror_dir.clone(),
                 db_path: options.db_path.clone(),
@@ -316,18 +321,18 @@ impl Store {
         &self,
         job: impl FnOnce(&Connection) -> Result<T, StoreError>,
     ) -> Result<T, StoreError> {
-        // A panic inside a read (the release profile now unwinds the stack) must not break all following reads: it is caught
-        // here, the call gets `Internal`, and the lock, if it was poisoned anyway, is taken as is -- the read connection
-        // (`query_only`; the query itself opens and closes a read transaction if needed) is consistent after unwinding.
-        let conn = self
-            .inner
-            .reader
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job(&conn))).unwrap_or_else(|_| {
-            log::error!("panic in a read, the call is cancelled");
-            Err(StoreError::Internal("panic during a read".into()))
-        })
+        read_on(&self.inner.reader, job)
+    }
+
+    /// A read for an AI agent's tool call, on the agent's own connection (KINIG-47.2): a long agent query (a search over
+    /// 100,000 entries) must not hold the window's reads (feed pages, the chat list, the tray menu) behind the same lock.
+    fn read_agent<T>(
+        &self,
+        job: impl FnOnce(&Connection) -> Result<T, StoreError>,
+    ) -> Result<T, StoreError> {
+        let result = read_on(&self.inner.agent_reader, job);
+        self.note_if_corrupt(&result);
+        result
     }
 
     /// The main window has loaded its page: a deferred first maintenance pass (`StoreOptions::defer_maintenance`) may start now.
@@ -385,6 +390,23 @@ impl Store {
     pub fn default_mirror_dir(&self) -> Option<&Path> {
         self.inner.default_mirror_dir.as_deref()
     }
+}
+
+/// Runs `job` on the connection behind `reader`.
+fn read_on<T>(
+    reader: &Mutex<Connection>,
+    job: impl FnOnce(&Connection) -> Result<T, StoreError>,
+) -> Result<T, StoreError> {
+    // A panic inside a read (the release profile now unwinds the stack) must not break all following reads: it is caught
+    // here, the call gets `Internal`, and the lock, if it was poisoned anyway, is taken as is -- the read connection
+    // (`query_only`; the query itself opens and closes a read transaction if needed) is consistent after unwinding.
+    let conn = reader
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job(&conn))).unwrap_or_else(|_| {
+        log::error!("panic in a read, the call is cancelled");
+        Err(StoreError::Internal("panic during a read".into()))
+    })
 }
 
 /// A connection with the shared settings. For reading it is `query_only`.

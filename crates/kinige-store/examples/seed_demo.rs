@@ -26,7 +26,7 @@ use chrono_tz::Tz;
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use kinige_domain::telegram::parse_export;
-use kinige_domain::{Language, MessageFlag};
+use kinige_domain::{ChatColor, Language, MessageFlag};
 use kinige_store::{Now, Store, StoreOptions};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -79,12 +79,16 @@ fn main() {
     let mut history = vec![books.id.clone(), work.id.clone(), long_name.id.clone()];
     // Chats without an emoji (stored with "💬" by default): the sidebar shows a tile with the first letter of the name for them (slice D2).
     for (days_ago, title) in [(25, "Проекты"), (24, "Linux notes"), (23, "Мама")] {
-        history.push(
+        let chat = store
+            .create_chat(title, None, &at(-days_ago * DAY))
+            .unwrap();
+        // One chat has an explicit colour (KINIG-59); the others keep the automatic one.
+        if title == "Linux notes" {
             store
-                .create_chat(title, None, &at(-days_ago * DAY))
-                .unwrap()
-                .id,
-        );
+                .set_chat_color(&chat.id, ChatColor::Grey, &at(-days_ago * DAY))
+                .unwrap();
+        }
+        history.push(chat.id);
     }
 
     send(
