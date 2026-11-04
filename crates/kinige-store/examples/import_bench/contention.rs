@@ -1,10 +1,11 @@
-//! KINIG-47 measurements of `import_bench`: the tray's "recent chats" before and after the query change, and the window's reads
-//! while an AI agent searches before and after the agent got its own read connection. Both compare the old and the new
-//! arrangement inside one run, on the same database. Prints only numbers; no texts, names or paths.
+//! KINIG-47 measurements of `import_bench`: the tray's "recent chats" before and after the query change (both queries inside one
+//! run, on the same database), and the window's reads while an AI agent searches on its own read connection. Prints only numbers
+//! and query plans; no texts, names or paths.
 
 use kinige_domain::AgentMode;
 use kinige_domain::groups::INBOX_ID;
 use kinige_store::{AgentRequest, Now, Store};
+use rusqlite::{Connection, OpenFlags};
 use serde_json::{Map, Value, json};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -36,7 +37,7 @@ pub fn recent_chats_bench(store: &Store, data: &Path) {
                 .id
         })
         .collect();
-    let conn = rusqlite::Connection::open(data.join("kinige.db")).unwrap();
+    let conn = Connection::open(data.join("kinige.db")).unwrap();
     for (index, chat) in chats.iter().enumerate() {
         conn.execute(
             "UPDATE message SET chat_id = ?1 WHERE chat_id = ?2 AND rowid % ?3 = ?4",
@@ -55,11 +56,10 @@ pub fn recent_chats_bench(store: &Store, data: &Path) {
         )
         .unwrap();
 
-    let reader = rusqlite::Connection::open_with_flags(
-        data.join("kinige.db"),
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    )
-    .unwrap();
+    let reader =
+        Connection::open_with_flags(data.join("kinige.db"), OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .unwrap();
+    print_plan(&reader);
     let old = || -> Vec<String> {
         let mut statement = reader.prepare(OLD_RECENT_SQL).unwrap();
         statement
@@ -88,7 +88,7 @@ pub fn recent_chats_bench(store: &Store, data: &Path) {
         new();
     });
     println!(
-        "recent chats (tray menu, 5 of {CHATS} chats, {entries} entries outside Inbox), before (MAX(created_at) over every entry, {OLD_ROUNDS} rounds): {}",
+        "recent chats (tray menu, 5 of {CHATS} chats, {entries} entries outside Inbox), before (MAX(created_at) over every entry, {OLD_ROUNDS} rounds; the cost grows with the entries of a chat times all entries, so this is the worst shape, not a typical journal): {}",
         stats(&before)
     );
     println!(
@@ -97,8 +97,8 @@ pub fn recent_chats_bench(store: &Store, data: &Path) {
     );
 }
 
-/// The window's feed page and the tray's recent chats while an AI agent searches the whole journal in a loop, with the agent on the
-/// window's connection (before KINIG-47.2) and on its own (after). The agent's own search time is printed too.
+/// The window's feed page and the tray's recent chats while an AI agent searches the whole journal in a loop on its own read
+/// connection (KINIG-47.2). The agent's own search time is printed too.
 pub fn agent_contention_bench(store: &Store, words: &[String]) {
     store.set_agent_chats(vec![INBOX_ID.to_string()]).unwrap();
     store.set_agent_mode(AgentMode::Read).unwrap();
@@ -108,60 +108,81 @@ pub fn agent_contention_bench(store: &Store, words: &[String]) {
         println!("agent contention: no words to search");
         return;
     }
-    for (label, shared) in [
-        ("before: the agent on the window's connection", true),
-        ("after: the agent on its own connection", false),
-    ] {
-        store.set_agent_shares_reader_for_test(shared);
-        let stop = AtomicBool::new(false);
-        let (feed, recent, agent_times) = std::thread::scope(|scope| {
-            let agent = scope.spawn(|| {
-                let mut times = Vec::new();
-                let mut next = 0usize;
-                while !stop.load(Ordering::Relaxed) {
-                    let word = &words[next % words.len()];
-                    next += 1;
-                    let arguments: Map<String, Value> =
-                        json!({"query": word}).as_object().cloned().unwrap();
-                    let t = Instant::now();
-                    store
-                        .agent_call(
-                            &AgentRequest {
-                                client: "bench",
-                                tool: "search",
-                                arguments: Some(&arguments),
-                                inbox_title: "Inbox",
-                            },
-                            &Now::system(),
-                        )
-                        .unwrap();
-                    times.push(super::ms(t));
-                }
-                times.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                times
-            });
-            // Let the agent get going, then read the feed page and the tray list the way the window does.
-            std::thread::sleep(Duration::from_millis(300));
-            let feed = sample(ROUNDS * 5, || {
+    let stop = AtomicBool::new(false);
+    let (feed, recent, agent_times) = std::thread::scope(|scope| {
+        let agent = scope.spawn(|| {
+            let mut times = Vec::new();
+            let mut next = 0usize;
+            while !stop.load(Ordering::Relaxed) {
+                let word = &words[next % words.len()];
+                next += 1;
+                let arguments: Map<String, Value> =
+                    json!({"query": word}).as_object().cloned().unwrap();
+                let t = Instant::now();
                 store
-                    .list_messages(INBOX_ID, None, 200, &Now::system())
+                    .agent_call(
+                        &AgentRequest {
+                            client: "bench",
+                            tool: "search",
+                            arguments: Some(&arguments),
+                            inbox_title: "Inbox",
+                        },
+                        &Now::system(),
+                    )
                     .unwrap();
-            });
-            let recent = sample(ROUNDS, || {
-                store.recent_chats(5).unwrap();
-            });
-            stop.store(true, Ordering::Relaxed);
-            (feed, recent, agent.join().unwrap())
+                times.push(super::ms(t));
+            }
+            times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            times
         });
-        println!(
-            "while an AI agent searches in a loop, {label}: feed page (200 entries) {}; recent chats {}; the agent's search {} ({} searches)",
-            stats(&feed),
-            stats(&recent),
-            stats(&agent_times),
-            agent_times.len()
-        );
-    }
-    store.set_agent_shares_reader_for_test(false);
+        // Let the agent get going, then read the feed page and the tray list the way the window does.
+        std::thread::sleep(Duration::from_millis(300));
+        let feed = sample(ROUNDS * 5, || {
+            store
+                .list_messages(INBOX_ID, None, 200, &Now::system())
+                .unwrap();
+        });
+        let recent = sample(ROUNDS, || {
+            store.recent_chats(5).unwrap();
+        });
+        stop.store(true, Ordering::Relaxed);
+        (feed, recent, agent.join().unwrap())
+    });
+    println!(
+        "while an AI agent searches in a loop on its own connection: feed page (200 entries) {}; recent chats {}; the agent's search {} ({} searches)",
+        stats(&feed),
+        stats(&recent),
+        stats(&agent_times),
+        agent_times.len()
+    );
+}
+
+/// The plan of the old query on the connection that is timed, with the SQLite version of the build and whether the database has
+/// planner statistics: the plan, and with it the time, differs between SQLite versions (the `sqlite3` command line 3.51 plans
+/// this query differently from the 3.53 bundled with `rusqlite`).
+fn print_plan(conn: &Connection) {
+    let version: String = conn
+        .query_row("SELECT sqlite_version()", [], |row| row.get(0))
+        .unwrap();
+    let stats_tables: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE name = 'sqlite_stat1'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let mut statement = conn
+        .prepare(&format!("EXPLAIN QUERY PLAN {OLD_RECENT_SQL}"))
+        .unwrap();
+    let plan: Vec<String> = statement
+        .query_map(rusqlite::params![INBOX_ID, 5], |row| row.get(3))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    println!(
+        "recent chats, plan of the old query (SQLite {version}, planner statistics tables: {stats_tables}): {}",
+        plan.join(" | ")
+    );
 }
 
 /// Times of `rounds` runs of `work`, in milliseconds, sorted.

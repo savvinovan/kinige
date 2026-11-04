@@ -7,20 +7,6 @@ use ts_rs::TS;
 
 use crate::chat::is_inbox;
 
-/// A tile colour. The names are the `color.tile.*` roles of the design system.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "snake_case")]
-#[ts(export, export_to = "ChatColor.ts")]
-pub enum ChatColor {
-    Blue,
-    Teal,
-    Green,
-    Orange,
-    Pink,
-    Violet,
-    Grey,
-}
-
 /// The colours the automatic rule picks from, in the order that decides the colour: reordering recolours every chat. Grey is
 /// not here: it is only chosen by hand (and is the fixed colour of Inbox).
 const AUTOMATIC: [ChatColor; 6] = [
@@ -34,6 +20,20 @@ const AUTOMATIC: [ChatColor; 6] = [
 
 const FNV_OFFSET: u32 = 0x811c_9dc5;
 const FNV_PRIME: u32 = 0x0100_0193;
+
+/// A tile colour. The names are the `color.tile.*` roles of the design system.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "ChatColor.ts")]
+pub enum ChatColor {
+    Blue,
+    Teal,
+    Green,
+    Orange,
+    Pink,
+    Violet,
+    Grey,
+}
 
 impl ChatColor {
     /// The name as stored in `meta.color`.
@@ -90,7 +90,7 @@ mod tests {
     use super::*;
     use crate::groups::INBOX_ID;
 
-    /// The same pairs as in `web/src/ui/sidebar/chatLetters.test.ts`, taken from the former TypeScript function.
+    /// The same pairs as in `web/src/api/mockColor.test.ts`, taken from the former TypeScript function `tintForId`.
     const VECTORS: [(&str, ChatColor); 10] = [
         ("", ChatColor::Teal),
         ("a", ChatColor::Pink),

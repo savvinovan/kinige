@@ -8,15 +8,6 @@ use crate::{Store, StoreError};
 use kinige_domain::groups::INBOX_ID;
 use rusqlite::{Connection, OptionalExtension};
 
-/// A chat for the menu bar icon menu.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RecentChat {
-    pub id: String,
-    /// The title; empty for a chat without a title (ordinary chats never lack one).
-    pub title: String,
-    pub icon: Option<String>,
-}
-
 /// The chats that can be listed: not Inbox (it has its own item), not the archive.
 const CANDIDATES_SQL: &str = "SELECT id, title, icon FROM chat \
      WHERE deleted_at IS NULL AND archived_at IS NULL AND id != ?1";
@@ -26,6 +17,15 @@ const CANDIDATES_SQL: &str = "SELECT id, title, icon FROM chat \
 pub(crate) const LAST_ENTRY_SQL: &str = "SELECT journal_date, created_at, id FROM message \
      WHERE chat_id = ?1 AND deleted_at IS NULL \
      ORDER BY journal_date DESC, created_at DESC, id DESC LIMIT 1";
+
+/// A chat for the menu bar icon menu.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecentChat {
+    pub id: String,
+    /// The title; empty for a chat without a title (ordinary chats never lack one).
+    pub title: String,
+    pub icon: Option<String>,
+}
 
 /// Where a chat's last entry stands in feed order; larger is more recent.
 type FeedPosition = (String, i64, String);
@@ -39,6 +39,8 @@ impl Store {
 }
 
 fn recent_chats(conn: &Connection, limit: usize) -> Result<Vec<RecentChat>, StoreError> {
+    // One read snapshot for the candidates and the per-chat steps: a chat archived in between is not listed.
+    let conn = &conn.unchecked_transaction().map_err(read_err)?;
     let mut candidates = conn.prepare_cached(CANDIDATES_SQL).map_err(read_err)?;
     let chats: Vec<RecentChat> = candidates
         .query_map([INBOX_ID], |row| {

@@ -206,7 +206,7 @@ BENCH="$REPO/target/release/examples/import_bench"
 grep -E "maximum resident|peak memory|real" "$K/debug/bench-time.txt" >> "$OUT/bench.txt"
 grep -E "recent chats|AI agent" "$OUT/bench.txt" > "$OUT/feed-speed.txt"
 cat "$OUT/feed-speed.txt"
-[ "$(grep -c "recent chats" "$OUT/feed-speed.txt")" -ge 2 ] || fail "the bench printed no recent chats lines"
-[ "$(grep -c "AI agent" "$OUT/feed-speed.txt")" -ge 2 ] || fail "the bench printed no agent contention lines"
+[ "$(grep -c "recent chats" "$OUT/feed-speed.txt")" -ge 3 ] || fail "the bench printed no recent chats lines (the plan, before, after)"
+[ "$(grep -c "AI agent" "$OUT/feed-speed.txt")" -ge 1 ] || fail "the bench printed no agent contention line"
 
 finish

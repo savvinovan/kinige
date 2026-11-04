@@ -2,7 +2,9 @@
 //! part of the API the app uses.
 
 use crate::error::read_err;
+use crate::recent_chats::LAST_ENTRY_SQL;
 use crate::{AttachFault, BackgroundThread, Store, StoreError};
+use kinige_domain::groups::INBOX_ID;
 use std::sync::Arc;
 
 impl Store {
@@ -58,15 +60,10 @@ impl Store {
     pub fn recent_chats_plan_for_test(&self) -> Result<Vec<String>, StoreError> {
         self.read(|conn| {
             let mut statement = conn
-                .prepare(&format!(
-                    "EXPLAIN QUERY PLAN {}",
-                    crate::recent_chats::LAST_ENTRY_SQL
-                ))
+                .prepare(&format!("EXPLAIN QUERY PLAN {LAST_ENTRY_SQL}"))
                 .map_err(read_err)?;
             let rows = statement
-                .query_map([kinige_domain::groups::INBOX_ID], |row| {
-                    row.get::<_, String>(3)
-                })
+                .query_map([INBOX_ID], |row| row.get::<_, String>(3))
                 .map_err(read_err)?;
             rows.collect::<Result<Vec<_>, _>>().map_err(read_err)
         })
