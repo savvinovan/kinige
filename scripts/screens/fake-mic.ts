@@ -29,5 +29,6 @@ export async function openMicrophone(): Promise<MediaStream> {
       void context.close().catch(() => undefined);
     };
   }
-  return destination.stream;
+  // No level meter for this stream (`RecorderSession` looks for the mark): see the note there.
+  return Object.assign(destination.stream, { withoutMeter: true });
 }

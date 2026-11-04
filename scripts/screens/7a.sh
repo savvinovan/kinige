@@ -116,12 +116,20 @@ BEFORE_NOTES="$(voice_rows)"
 
 # ---- 2. Recording: the bar, the timer, the meter ----
 press "${L_MIC}"
-# On a runner with no audio device creating an AudioContext can take long: wait for the bar instead of assuming it.
+# The first 7a runs found the window tree unreadable (every accessibility call timed out) for as long as a recording ran. What each process
+# is doing then, and how long the first call takes, go to `recording-load.txt`.
+PRESSED_AT="$(date +%s)"
+sleep 3
+{
+  echo "# processes by CPU, 3 seconds after the microphone button (ps: pid, %cpu, %mem, command)"
+  ps -Ao pid,pcpu,pmem,comm | sort -k2 -nr | head -8
+} > "$OUT/recording-load.txt"
 wait_for "${L_RECORDING}" 120 || fail "the recording bar did not appear after the microphone button"
-sleep 4
-shoot 02-recording
-grep -E '[0-9]:[0-9]{2}' "$K/debug/shot-02-recording.txt" | grep -iE "${L_RECORDING}|timer|0:0[2-9]" | head -5 > "$OUT/recording.txt" || true
-cat "$OUT/recording.txt"
+echo "# the bar was found $(($(date +%s) - PRESSED_AT)) seconds after the press" >> "$OUT/recording-load.txt"
+cat "$OUT/recording-load.txt"
+sleep 2
+# The shot of the recording is taken without a window dump: an accessibility traversal during a recording is what stalls.
+SHOOT_DUMP=0 shoot 02-recording
 sleep 3
 
 # ---- 3. Cancel: past 5 seconds the bar asks; Keep goes on ----

@@ -172,6 +172,9 @@ export class RecorderSession {
 
   private startMeter(): void {
     if (typeof AudioContext === "undefined") return;
+    // The screens runners' fake microphone asks for no meter: a second AudioContext on a VM without an audio device is part of what made the
+    // window tree unreadable while recording (see `scripts/screens/fake-mic.ts`).
+    if ("withoutMeter" in this.stream) return;
     try {
       this.context = new AudioContext();
       this.analyser = this.context.createAnalyser();
