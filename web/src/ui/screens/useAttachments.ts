@@ -23,7 +23,7 @@ export interface LightboxState {
   index: number;
 }
 
-/** A generic name a browser gives a pasted image ("image.png"): the hint is dropped so that Rust names it `pasted-HHMMSS`. */
+/** A generic name a browser gives a pasted image ("image.png"): the hint is dropped so that Rust names it `pasted-HHMMSS.<ext>`. */
 const GENERIC_PASTE_NAME = /^image\.(png|jpe?g|gif|webp|tiff?)$/i;
 
 /**

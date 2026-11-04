@@ -386,7 +386,7 @@ fn pasted_bytes_get_a_clean_name_and_the_paste_limit() {
     let nameless = store
         .attach_bytes(INBOX_ID, None, &png(16, 16), &at(2026, 11, 3, 14, 5))
         .unwrap();
-    assert_eq!(nameless.filename, "pasted-140500");
+    assert_eq!(nameless.filename, "pasted-140500.png");
     assert_eq!(nameless.kind, AttachmentKind::Image);
     assert!(
         dir.path()
@@ -403,6 +403,10 @@ fn pasted_bytes_get_a_clean_name_and_the_paste_limit() {
         )
         .unwrap();
     assert_eq!(hostile.filename, "passwd.png");
+    let bare_hint = store
+        .attach_bytes(INBOX_ID, Some("image"), &png(16, 16), &now())
+        .unwrap();
+    assert_eq!(bare_hint.filename, "image.png");
     let too_big = vec![0u8; kinige_domain::attachment::MAX_PASTE_BYTES + 1];
     assert!(matches!(
         store.attach_bytes(INBOX_ID, Some("big.bin"), &too_big, &now()),
