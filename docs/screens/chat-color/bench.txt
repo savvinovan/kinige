@@ -1,22 +1,22 @@
-opening an empty database: 55 ms
-parse: 235 ms, 156 MB of JSON, chats 1, messages 100000
-preview: 847 ms, chats to import 1, entries 100000
-import: 38569 ms (385.7 us per message); imported 100000, skipped: already present 0, service 0, empty 0; attachment placeholders 0; chats created 0; backup: true
-repeated import: 1010 ms, new 0, already present 100000
-database size: before 0.3 MB, after 389.3 MB
-cold start: open 2 ms, first page (200 entries) 8 ms
-"On this day" over 200 days: p50 8.9 ms, p95 20.7 ms, max 57.0 ms; entries in the card on average 6.0
-opening Inbox (a page of 200 entries + the card, 5 years): 7 ms
-forest year table (get_forest_year, 120 calls over 2018..2023): p50 63.2 ms, p95 82.5 ms, max 184.4 ms; 16665 notes counted per call on average
-forest day target: 0.2 ms (found: true)
-search over 200 words from the entries (prefix query, page of 50): p50 31.1 ms, p95 214.1 ms, max 356.9 ms; found on average 45.6
-search of a frequent one-letter word: 5.0 ms, found on the page 0
-search of a frequent one-letter word: 5.0 ms, found on the page 0
-search of a frequent one-letter word: 4.9 ms, found on the page 0
-while an AI agent searches in a loop, before: the agent on the window's connection: feed page (200 entries) p50 19.0 ms, p95 160.2 ms, max 191.1 ms; recent chats p50 0.0 ms, p95 0.0 ms, max 11.4 ms; the agent's search p50 19.6 ms, p95 162.7 ms, max 191.7 ms (197 searches)
-while an AI agent searches in a loop, after: the agent on its own connection: feed page (200 entries) p50 6.0 ms, p95 6.5 ms, max 14.9 ms; recent chats p50 0.0 ms, p95 0.0 ms, max 0.0 ms; the agent's search p50 19.2 ms, p95 187.5 ms, max 220.1 ms (27 searches)
-recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), before (MAX(created_at) over every entry): p50 77896.2 ms, p95 84516.8 ms, max 87285.0 ms
-recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), after (last entry in feed order, message_feed): p50 0.3 ms, p95 0.3 ms, max 2.6 ms
-     3241.90 real      3174.65 user        43.59 sys
-           477937664  maximum resident set size
-           466700544  peak memory footprint
+opening an empty database: 50 ms
+parse: 302 ms, 156 MB of JSON, chats 1, messages 100000
+preview: 620 ms, chats to import 1, entries 100000
+import: 53767 ms (537.7 us per message); imported 100000, skipped: already present 0, service 0, empty 0; attachment placeholders 0; chats created 0; backup: true
+repeated import: 1411 ms, new 0, already present 100000
+database size: before 0.3 MB, after 389.2 MB
+cold start: open 5 ms, first page (200 entries) 31 ms
+"On this day" over 200 days: p50 12.0 ms, p95 25.0 ms, max 74.4 ms; entries in the card on average 6.0
+opening Inbox (a page of 200 entries + the card, 5 years): 10 ms
+forest year table (get_forest_year, 120 calls over 2018..2023): p50 76.2 ms, p95 137.9 ms, max 302.6 ms; 16665 notes counted per call on average
+forest day target: 1.4 ms (found: true)
+search over 200 words from the entries (prefix query, page of 50): p50 35.5 ms, p95 185.6 ms, max 447.6 ms; found on average 45.1
+search of a frequent one-letter word: 6.0 ms, found on the page 0
+search of a frequent one-letter word: 5.6 ms, found on the page 0
+search of a frequent one-letter word: 6.3 ms, found on the page 0
+while an AI agent searches in a loop, before: the agent on the window's connection: feed page (200 entries) p50 27.7 ms, p95 136.8 ms, max 268.1 ms; recent chats p50 0.0 ms, p95 0.0 ms, max 0.2 ms; the agent's search p50 31.1 ms, p95 158.2 ms, max 273.5 ms (192 searches)
+while an AI agent searches in a loop, after: the agent on its own connection: feed page (200 entries) p50 6.8 ms, p95 13.0 ms, max 19.3 ms; recent chats p50 0.0 ms, p95 0.1 ms, max 0.1 ms; the agent's search p50 38.0 ms, p95 216.0 ms, max 234.5 ms (30 searches)
+recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), before (MAX(created_at) over every entry, 5 rounds): p50 77544.6 ms, p95 87991.7 ms, max 87991.7 ms
+recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), after (last entry in feed order, message_feed, 40 rounds): p50 0.3 ms, p95 0.3 ms, max 1.0 ms
+      580.66 real       520.53 user        34.48 sys
+           475217920  maximum resident set size
+           461441152  peak memory footprint
