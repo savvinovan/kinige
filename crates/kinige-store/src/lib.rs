@@ -11,6 +11,7 @@ mod agent_write;
 mod attachment;
 mod backup;
 mod capture;
+mod chat_color;
 mod chats;
 mod data_dir;
 mod draft;
@@ -32,6 +33,7 @@ mod mirror;
 mod mirror_day;
 mod mirror_files;
 mod on_this_day;
+mod recent_chats;
 mod recovery;
 mod schema;
 mod search;
@@ -51,13 +53,13 @@ pub use agent_log::{LOG_DAYS, LOG_MAX_ROWS, LOG_PAGE};
 pub use attachment::{AttachFault, Media, MediaVariant, OpenTarget, SweepReport};
 pub use backup::{Integrity, backups_dir, list_backups, verify_database};
 pub use capture::{CONTEXT_LEN, CaptureView};
-pub use chats::RecentChat;
 pub use draft::MAX_DRAFT_BYTES;
 pub use error::StoreError;
 pub use feed::{DEFAULT_PAGE, MAX_PAGE};
 pub use feed_page::PageAt;
 pub use import::IMPORT_BATCH;
 pub use maintenance::MaintenanceReport;
+pub use recent_chats::RecentChat;
 pub use recovery::{
     RestoreReport, StartupCheck, backups, clear_needs_recovery, database_missing_but_backups_exist,
     mark_needs_recovery, needs_recovery, restore_backup, restore_backup_with, startup_check,

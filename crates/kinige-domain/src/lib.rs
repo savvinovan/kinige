@@ -9,6 +9,7 @@ pub mod append;
 pub mod attachment;
 pub mod backup;
 pub mod chat;
+pub mod chat_color;
 pub mod draft;
 pub mod emoji;
 pub mod folders;
@@ -57,6 +58,7 @@ pub use api::{
 pub use api_error::{ApiError, ErrorCode};
 pub use attachment::{AttachmentKind, AttachmentState, AttachmentSummary, AttachmentView};
 pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, RestoreOutcome, StartupState};
+pub use chat_color::ChatColor;
 pub use forest::{FirstWeekday, Season, WeekdaySource};
 pub use forest_year::{ForestDay, ForestMode, ForestTarget, ForestView, ForestYear};
 pub use import::{

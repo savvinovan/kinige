@@ -6,6 +6,7 @@ use crate::error::read_err;
 use crate::feed::{MAX_PAGE, chat_list};
 use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row_at};
 use crate::{Store, StoreError};
+use kinige_domain::chat_color::resolve_color;
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::journal::is_valid_journal_date;
 use kinige_domain::search::{fts_query, highlight_terms, snippet, title_matches};
@@ -41,7 +42,7 @@ impl Store {
         let limit = limit.clamp(1, MAX_PAGE);
         let run = |conn: &Connection| -> Result<SearchPage, StoreError> {
             let mut sql = format!(
-                "SELECT {VIEW_COLUMNS}, c.title, c.icon, c.id = ?1 \
+                "SELECT {VIEW_COLUMNS}, c.title, c.icon, c.id = ?1, c.color \
                  FROM search_fts f \
                  JOIN search_map mp ON mp.rowid = f.rowid \
                  JOIN message m ON m.id = mp.message_id \
@@ -91,6 +92,7 @@ impl Store {
                         row.get::<_, String>(VIEW_LEN)?,
                         row.get::<_, Option<String>>(VIEW_LEN + 1)?,
                         row.get::<_, bool>(VIEW_LEN + 2)?,
+                        row.get::<_, Option<String>>(VIEW_LEN + 3)?,
                     ))
                 })
                 .map_err(read_err)?;
@@ -108,17 +110,20 @@ impl Store {
                 .flatten();
             let hits = found
                 .into_iter()
-                .map(|(message, chat_title, chat_icon, chat_is_inbox)| {
-                    let terms = highlight_terms(&message.body_md, input);
-                    SearchHit {
-                        snippet: snippet(&message.body_md, &terms, SNIPPET_CHARS),
-                        terms,
-                        message,
-                        chat_title,
-                        chat_icon,
-                        chat_is_inbox,
-                    }
-                })
+                .map(
+                    |(message, chat_title, chat_icon, chat_is_inbox, stored_color)| {
+                        let terms = highlight_terms(&message.body_md, input);
+                        SearchHit {
+                            snippet: snippet(&message.body_md, &terms, SNIPPET_CHARS),
+                            terms,
+                            chat_color: resolve_color(&message.chat_id, stored_color.as_deref()),
+                            message,
+                            chat_title,
+                            chat_icon,
+                            chat_is_inbox,
+                        }
+                    },
+                )
                 .collect();
             let chats = if before.is_none() {
                 chat_list(conn)?

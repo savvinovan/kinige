@@ -52,6 +52,26 @@ impl Store {
         Arc::strong_count(&self.inner)
     }
 
+    /// The query plan (`EXPLAIN QUERY PLAN`, the `detail` column) of the per-chat step of "recent chats": the test checks that it
+    /// goes over `message_feed` and does not scan `message`.
+    #[doc(hidden)]
+    pub fn recent_chats_plan_for_test(&self) -> Result<Vec<String>, StoreError> {
+        self.read(|conn| {
+            let mut statement = conn
+                .prepare(&format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    crate::recent_chats::LAST_ENTRY_SQL
+                ))
+                .map_err(read_err)?;
+            let rows = statement
+                .query_map([kinige_domain::groups::INBOX_ID], |row| {
+                    row.get::<_, String>(3)
+                })
+                .map_err(read_err)?;
+            rows.collect::<Result<Vec<_>, _>>().map_err(read_err)
+        })
+    }
+
     /// Pragmas of the writer connection `(synchronous, fullfsync, journal_mode)`: to check that writes are durable.
     #[doc(hidden)]
     pub fn writer_pragmas(&self) -> Result<(i64, i64, String), StoreError> {

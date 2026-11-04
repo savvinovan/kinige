@@ -1,4 +1,4 @@
-//! Chats (slice 3): creating, naming, emoji, pinning, archiving and the "recent chats" for the tray icon menu. Each action is
+//! Chats (slice 3): creating, naming, emoji, pinning and archiving (the colour is in `chat_color.rs`). Each action is
 //! a rewrite of one chat group (`meta` or `state`) or a creation with all six groups under one HLC.
 //! There is no chat deletion (PRD §2.1: archive). Inbox cannot be renamed, given another emoji or archived.
 
@@ -19,22 +19,13 @@ use rusqlite::{Connection, Transaction, TransactionBehavior};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-/// A chat for the menu bar icon menu.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RecentChat {
-    pub id: String,
-    /// The title; empty for a chat without a title (ordinary chats never lack one).
-    pub title: String,
-    pub icon: Option<String>,
-}
-
-struct LoadedChat {
+pub(crate) struct LoadedChat {
     hlc_json: String,
     groups_raw: String,
-    columns: ChatColumns,
+    pub(crate) columns: ChatColumns,
 }
 
-fn load_chat(conn: &Connection, id: &str) -> Result<LoadedChat, StoreError> {
+pub(crate) fn load_chat(conn: &Connection, id: &str) -> Result<LoadedChat, StoreError> {
     let (hlc_json, groups_raw): (String, String) = match conn.query_row(
         "SELECT hlc_json, groups_raw FROM chat WHERE id = ?1 AND deleted_at IS NULL",
         [id],
@@ -53,14 +44,14 @@ fn load_chat(conn: &Connection, id: &str) -> Result<LoadedChat, StoreError> {
 }
 
 impl LoadedChat {
-    fn groups(&self) -> Groups<'_> {
+    pub(crate) fn groups(&self) -> Groups<'_> {
         Groups {
             groups_raw: &self.groups_raw,
             hlc_json: &self.hlc_json,
         }
     }
 
-    fn ensure_writable(&self) -> Result<(), StoreError> {
+    pub(crate) fn ensure_writable(&self) -> Result<(), StoreError> {
         if is_read_only(&self.hlc_json)? {
             return Err(StoreError::ReadOnly);
         }
@@ -68,7 +59,7 @@ impl LoadedChat {
     }
 }
 
-fn apply_chat(
+pub(crate) fn apply_chat(
     tx: &Transaction<'_>,
     id: &str,
     rewritten: &Rewritten,
@@ -150,12 +141,12 @@ fn mark_folder_changes(
     Ok(())
 }
 
-fn begin(conn: &mut Connection) -> Result<Transaction<'_>, StoreError> {
+pub(crate) fn begin(conn: &mut Connection) -> Result<Transaction<'_>, StoreError> {
     conn.transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(write_err)
 }
 
-fn summary(conn: &Connection, id: &str) -> Result<ChatSummary, StoreError> {
+pub(crate) fn summary(conn: &Connection, id: &str) -> Result<ChatSummary, StoreError> {
     chat_list(conn)?
         .chats
         .into_iter()
@@ -321,32 +312,6 @@ impl Store {
             let summary = summary(&tx, &id)?;
             tx.commit().map_err(write_err)?;
             Ok(summary)
-        })
-    }
-
-    /// Up to `limit` last chats by the last entry, for the icon menu. Without Inbox (it has its own item), without the archive and without
-    /// chats that have no live entry.
-    pub fn recent_chats(&self, limit: usize) -> Result<Vec<RecentChat>, StoreError> {
-        self.read(|conn| {
-            let mut statement = conn
-                .prepare(
-                    "SELECT c.id, c.title, c.icon FROM chat c \
-                     WHERE c.deleted_at IS NULL AND c.archived_at IS NULL AND c.id != ?1 \
-                     AND EXISTS (SELECT 1 FROM message m WHERE m.chat_id = c.id AND m.deleted_at IS NULL) \
-                     ORDER BY (SELECT MAX(m.created_at) FROM message m WHERE m.chat_id = c.id AND m.deleted_at IS NULL) DESC, \
-                     c.id LIMIT ?2",
-                )
-                .map_err(read_err)?;
-            let rows = statement
-                .query_map(rusqlite::params![INBOX_ID, limit as i64], |row| {
-                    Ok(RecentChat {
-                        id: row.get(0)?,
-                        title: row.get(1)?,
-                        icon: row.get(2)?,
-                    })
-                })
-                .map_err(read_err)?;
-            rows.collect::<Result<Vec<_>, _>>().map_err(read_err)
         })
     }
 }

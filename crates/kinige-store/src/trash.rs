@@ -15,6 +15,7 @@ use crate::send::mark_dirty;
 use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row_at};
 use crate::{Now, Store, StoreError};
 use kinige_domain::TrashItem;
+use kinige_domain::chat_color::resolve_color;
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::history::{
     DAY_MS, TRASH_DAYS, days_left, deleted_group_supported, purged_of_best_effort,
@@ -126,7 +127,7 @@ impl Store {
         self.read(|conn| {
             let mut statement = conn
                 .prepare(&format!(
-                    "SELECT {VIEW_COLUMNS}, m.deleted_at, c.title, c.icon, c.id = ?1 \
+                    "SELECT {VIEW_COLUMNS}, m.deleted_at, c.title, c.icon, c.id = ?1, c.color \
                      FROM message m LEFT JOIN chat c ON c.id = m.chat_id \
                      WHERE m.deleted_at IS NOT NULL \
                      ORDER BY m.deleted_at DESC, m.id DESC LIMIT ?2"
@@ -135,8 +136,11 @@ impl Store {
             let rows = statement
                 .query_map(rusqlite::params![INBOX_ID, TRASH_LIMIT], |row| {
                     let deleted_at: i64 = row.get(VIEW_LEN)?;
+                    let message = view_from_row_at(row, 0)?;
+                    let stored_color: Option<String> = row.get(VIEW_LEN + 4)?;
                     Ok(TrashItem {
-                        message: view_from_row_at(row, 0)?,
+                        chat_color: resolve_color(&message.chat_id, stored_color.as_deref()),
+                        message,
                         chat_title: row
                             .get::<_, Option<String>>(VIEW_LEN + 1)?
                             .unwrap_or_default(),
