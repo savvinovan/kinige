@@ -1,6 +1,8 @@
 // Accessibility instead of mouse and keyboard (macOS, System Events): presses nothing globally, only AX actions on the process window.
 //   osascript -l JavaScript scripts/screens/ax.js dump   <pid>
 //   osascript -l JavaScript scripts/screens/ax.js press  <pid> <text in the title/description> [role: Button|CheckBox|RadioButton|PopUpButton|MenuItem]
+//   osascript -l JavaScript scripts/screens/ax.js showmenu <pid> <text>    (AXShowMenu on the first button that matches: the page gets a "contextmenu"
+//                                                  event, like a right click, without a mouse; KINIG-59)
 //   osascript -l JavaScript scripts/screens/ax.js scroll <pid> <text>      (AXScrollToVisible)
 //   osascript -l JavaScript scripts/screens/ax.js has    <pid> <text>      (prints yes/no)
 //   osascript -l JavaScript scripts/screens/ax.js frame  <pid> <text>      (prints "x y width height" of the first match)
@@ -117,6 +119,10 @@ function run(argv) {
         if (mode === "focus" && /^AX(ComboBox|TextField|TextArea|SearchField)$/.test(p.role)) {
           k.focused = true;
           return "focused: " + p.role + " " + label.slice(0, 60);
+        }
+        if (mode === "showmenu" && p.role === "AXButton") {
+          k.actions.byName("AXShowMenu").perform();
+          return "menu shown: " + p.role + " " + label.slice(0, 80);
         }
         if (mode === "press" && pressable.test(p.role)) {
           k.actions.byName("AXPress").perform();

@@ -92,8 +92,7 @@ impl Store {
         // no transaction) is consistent after unwinding. Otherwise one panic would break all agent reads until a restart.
         // The agent has its own connection (KINIG-47.2): the window's reads do not queue behind an agent query.
         let conn = self
-            .inner
-            .agent_reader
+            .agent_connection()
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         catch_unwind(AssertUnwindSafe(|| job(&conn))).unwrap_or_else(|_| {
@@ -114,6 +113,15 @@ impl Store {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         held()
+    }
+
+    /// Bench only (`import_bench`): `true` makes the agent's reads use the window's connection again, as they did before
+    /// KINIG-47.2, so that one run can measure both arrangements. Never called by the app.
+    #[doc(hidden)]
+    pub fn set_agent_shares_reader_for_test(&self, shared: bool) {
+        self.inner
+            .agent_shares_reader
+            .store(shared, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Tests only: a panic inside `query_map` on the agent read connection. The following agent reads must keep working.

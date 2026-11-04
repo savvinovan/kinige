@@ -6,7 +6,8 @@
 //! the third stage right at the border of the fourth (one entry of a hundred characters raises it). The forest is seeded
 //! only with `KINIGE_SEED_FOREST=1`, so that the scenarios of earlier slices do not change their data. Slice 7 - drawn
 //! pictures and documents attached to entries, pending tiles, a missing file, a trashed photo and a Telegram import with
-//! photos, only with `KINIGE_SEED_ATTACH=1`.
+//! photos, only with `KINIGE_SEED_ATTACH=1`. KINIG-59 - one chat without an emoji has an explicit colour (always); entries in the three
+//! chats without an emoji, one of them in the trash, only with `KINIGE_SEED_COLOR=1`.
 //!
 //! Usage: `cargo run -p kinige-store --example seed_demo -- <data directory> [<Markdown copy folder>]`
 
@@ -77,6 +78,7 @@ fn main() {
         )
         .unwrap();
     let mut history = vec![books.id.clone(), work.id.clone(), long_name.id.clone()];
+    let mut letter_chats = Vec::new();
     // Chats without an emoji (stored with "💬" by default): the sidebar shows a tile with the first letter of the name for them (slice D2).
     for (days_ago, title) in [(25, "Проекты"), (24, "Linux notes"), (23, "Мама")] {
         let chat = store
@@ -88,6 +90,7 @@ fn main() {
                 .set_chat_color(&chat.id, ChatColor::Grey, &at(-days_ago * DAY))
                 .unwrap();
         }
+        letter_chats.push(chat.id.clone());
         history.push(chat.id);
     }
 
@@ -161,6 +164,21 @@ fn main() {
             );
         }
         seed_forest(&store, &now, &history, &old.id, &data);
+    }
+    // Entries in the chats without an emoji, for the search rows and the trash plate of KINIG-59, only when asked.
+    if std::env::var_os("KINIGE_SEED_COLOR").is_some() {
+        let [projects, linux, mom] = letter_chats.as_slice() else {
+            panic!("three chats without an emoji");
+        };
+        send(
+            projects,
+            "Цветной план проекта: макет, текст, проверка",
+            2 * DAY,
+        );
+        send(linux, "Цветной конфиг для терминала на Linux", 3 * DAY);
+        send(mom, "Цветной звонок маме в воскресенье", 4 * DAY);
+        let gone = send(projects, "Цветная запись, которую я удалил", DAY);
+        store.delete_message(&gone, &at(-DAY / 2)).unwrap();
     }
     seed_telegram_chat(&store, &now);
     // Photos and files (slice 7) only when asked, like the forest.

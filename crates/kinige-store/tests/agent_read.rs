@@ -402,14 +402,16 @@ fn an_agent_read_in_progress_does_not_hold_back_the_windows_reads() {
     let (page, chats, recent) = a.store.with_agent_read_held_for_test(move || {
         // The window's reads run on another thread so that a shared lock would hang the test instead of passing it silently.
         let (sender, receiver) = std::sync::mpsc::channel();
-        std::thread::spawn(move || {
-            let page = store
-                .list_messages(INBOX_ID, None, 10, &moscow(MARCH))
-                .map(|p| p.messages.len());
-            let chats = store.list_chats().map(|c| c.len());
-            let recent = store.recent_chats(5).map(|c| c.len());
-            let _ = sender.send((page, chats, recent));
-        });
+        std::thread::Builder::new()
+            .spawn(move || {
+                let page = store
+                    .list_messages(INBOX_ID, None, 10, &moscow(MARCH))
+                    .map(|p| p.messages.len());
+                let chats = store.list_chats().map(|c| c.len());
+                let recent = store.recent_chats(5).map(|c| c.len());
+                let _ = sender.send((page, chats, recent));
+            })
+            .unwrap();
         receiver
             .recv_timeout(std::time::Duration::from_secs(10))
             .expect("the window's reads must not wait for the agent's connection")

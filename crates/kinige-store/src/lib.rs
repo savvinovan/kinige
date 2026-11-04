@@ -144,6 +144,8 @@ pub(crate) struct Inner {
     /// A second `query_only` connection for the MCP server's tool calls (`read_agent`, `with_reader`): the window's reads
     /// and an agent's reads do not wait for each other. One connection, not a pool (KINIG-47.2).
     agent_reader: Mutex<Connection>,
+    /// Bench only (`set_agent_shares_reader_for_test`): the agent uses the window's connection, as before KINIG-47.2.
+    agent_shares_reader: std::sync::atomic::AtomicBool,
     mirror: Arc<MirrorShared>,
     default_mirror_dir: Option<PathBuf>,
     db_path: PathBuf,
@@ -243,6 +245,7 @@ impl Store {
                 writer,
                 reader: Mutex::new(reader),
                 agent_reader: Mutex::new(agent_reader),
+                agent_shares_reader: std::sync::atomic::AtomicBool::new(false),
                 mirror: mirror.clone(),
                 default_mirror_dir: options.default_mirror_dir.clone(),
                 db_path: options.db_path.clone(),
@@ -330,9 +333,22 @@ impl Store {
         &self,
         job: impl FnOnce(&Connection) -> Result<T, StoreError>,
     ) -> Result<T, StoreError> {
-        let result = read_on(&self.inner.agent_reader, job);
+        let result = read_on(self.agent_connection(), job);
         self.note_if_corrupt(&result);
         result
+    }
+
+    /// The connection of the agent's reads: its own, unless the bench asked for the old shared one.
+    fn agent_connection(&self) -> &Mutex<Connection> {
+        if self
+            .inner
+            .agent_shares_reader
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            &self.inner.reader
+        } else {
+            &self.inner.agent_reader
+        }
     }
 
     /// The main window has loaded its page: a deferred first maintenance pass (`StoreOptions::defer_maintenance`) may start now.
