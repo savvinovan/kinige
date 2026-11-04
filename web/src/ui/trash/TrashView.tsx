@@ -63,7 +63,7 @@ export function TrashView({ items, language, today, busyId = null, error, onRest
                   <article className="trash-entry" aria-busy={busy || undefined}>
                     <header className="trash-entry__head">
                       <span className="trash-entry__chat" title={chat}>
-                        <ChatTile chat={{ emoji: item.chatIcon ?? "", tint: item.chatColor }} name={chat} />
+                        <ChatTile chat={{ emoji: item.chatIcon ?? "", tint: item.chatColor }} name={chat} size="small" />
                         <span className="trash-entry__name">{chat}</span>
                       </span>
                       <span className="trash-entry__when">

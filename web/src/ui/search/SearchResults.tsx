@@ -178,7 +178,7 @@ export function SearchResults(props: SearchResultsProps) {
               >
                 <div className="search-hit__head">
                   <span className="search-row__chat" title={chat}>
-                    <ChatTile chat={{ emoji: hit.chatIcon ?? "", tint: hit.chatColor }} name={chat} />
+                    <ChatTile chat={{ emoji: hit.chatIcon ?? "", tint: hit.chatColor }} name={chat} size="small" />
                     <span className="search-row__name">{chat}</span>
                   </span>
                   <span className="search-hit__when">{formatDayLabel(hit.message.journalDate, today, language, labels)}</span>

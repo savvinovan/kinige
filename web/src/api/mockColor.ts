@@ -10,7 +10,11 @@ const AUTOMATIC: readonly ChatColor[] = ["blue", "teal", "green", "orange", "pin
 /** Inbox is always grey. */
 export const INBOX_COLOR: ChatColor = "grey";
 
-/** 32-bit FNV-1a over the id modulo the six hues (the same pairs as the Rust test vectors). */
+/**
+ * 32-bit FNV-1a over the id modulo the six hues (the same pairs as the Rust test vectors). The rule is the UTF-8 bytes of the id
+ * (ADR-0001 details §C.7); this copy hashes UTF-16 code units, so it equals the rule for ASCII ids only (UUIDs, `inbox`): do not
+ * copy it as the rule.
+ */
 export function automaticColor(id: string): ChatColor {
   let hash = 0x811c9dc5;
   for (let index = 0; index < id.length; index++) {

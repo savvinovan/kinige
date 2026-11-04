@@ -1,20 +1,20 @@
-import { memo } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, MockApi, mockMessage } from "../../api/MockApi";
 import { fireEvent, render, screen, waitFor } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
 // KINIG-47.1: a key press in the composer does not render the window, the feed or the plates; sending an entry renders
-// only the new plate. Counted by wrapping the real components.
+// only the new plate. Counted by wrapping components that the real ones render: `MessageActions` is drawn once per render of a
+// `Message` (view mode), so its count is the count of real `Message` renders (the real `Message` stays memoised; the wrapper is not).
 const renders = vi.hoisted(() => ({ message: vi.fn(), feed: vi.fn() }));
 
-vi.mock("../message/Message", async (importOriginal) => {
-  const real = await importOriginal<typeof import("../message/Message")>();
-  const Counted = memo(function Message(props: React.ComponentProps<typeof real.Message>) {
+vi.mock("../message/MessageActions", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../message/MessageActions")>();
+  const Counted = (props: React.ComponentProps<typeof real.MessageActions>) => {
     renders.message();
-    return <real.Message {...props} />;
-  });
-  return { ...real, Message: Counted };
+    return <real.MessageActions {...props} />;
+  };
+  return { ...real, MessageActions: Counted };
 });
 
 vi.mock("../feed/Feed", async (importOriginal) => {

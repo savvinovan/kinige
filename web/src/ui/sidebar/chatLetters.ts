@@ -26,4 +26,3 @@ export function firstLetter(title: string): string {
   }
   return FALLBACK_LETTER;
 }
-

@@ -7,6 +7,8 @@ interface ChatTileProps {
   chat: Pick<SidebarChat, "emoji" | "tint">;
   /** The name the person sees (translated for Inbox): the tile letter is taken from it. */
   name: string;
+  /** "small": for a line of small text (search hits, trash plates), the height of the meta line. The default is the sidebar size. */
+  size?: "small";
 }
 
 /**
@@ -14,16 +16,17 @@ interface ChatTileProps {
  * Without an emoji (empty or the default "💬"): a rounded tile in the chat color with the first letter of the name.
  * Decoration: the name is read next to it.
  */
-export function ChatTile({ chat, name }: ChatTileProps) {
+export function ChatTile({ chat, name, size }: ChatTileProps) {
+  const small = size === "small";
   if (hasEmoji(chat.emoji)) {
     return (
-      <span className="chat-emoji" aria-hidden="true">
+      <span className={`chat-emoji${small ? " chat-emoji--small" : ""}`} aria-hidden="true">
         <span className="chat-emoji__glyph">{chat.emoji}</span>
       </span>
     );
   }
   return (
-    <span className={`chat-tile chat-tile--${chat.tint}`} aria-hidden="true">
+    <span className={`chat-tile chat-tile--${chat.tint}${small ? " chat-tile--small" : ""}`} aria-hidden="true">
       {firstLetter(name)}
     </span>
   );
