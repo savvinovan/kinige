@@ -1,0 +1,4 @@
+﻿windows: Microsoft Windows NT 10.0.26100.0
+recorded notes: 1
+container: audio/mp4
+duration_ms: 7437
