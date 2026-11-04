@@ -87,6 +87,17 @@ pub fn plan(header: Option<&str>, len: u64) -> Plan {
 
 /// The answer for a request with this `Range` header (or none).
 pub fn respond(audio: AudioFile, range: Option<&str>) -> Response<Vec<u8>> {
+    let response = answer(audio, range);
+    // Only the status and the size: no id and no file name (the screens run reads this line to prove the player reached the route).
+    log::debug!(
+        "audio route: {} {} bytes",
+        response.status().as_u16(),
+        response.body().len()
+    );
+    response
+}
+
+fn answer(audio: AudioFile, range: Option<&str>) -> Response<Vec<u8>> {
     let AudioFile {
         mut file,
         len,

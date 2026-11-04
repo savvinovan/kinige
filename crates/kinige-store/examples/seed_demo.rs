@@ -6,7 +6,7 @@
 //! the third stage right at the border of the fourth (one entry of a hundred characters raises it). The forest is seeded
 //! only with `KINIGE_SEED_FOREST=1`, so that the scenarios of earlier slices do not change their data. Slice 7 - drawn
 //! pictures and documents attached to entries, pending tiles, a missing file, a trashed photo and a Telegram import with
-//! photos, only with `KINIGE_SEED_ATTACH=1`.
+//! photos, only with `KINIGE_SEED_ATTACH=1`. Slice 7a - voice notes, only with `KINIGE_SEED_VOICE=1`.
 //!
 //! Usage: `cargo run -p kinige-store --example seed_demo -- <data directory> [<Markdown copy folder>]`
 
@@ -36,9 +36,12 @@ use std::sync::atomic::AtomicBool;
 mod attach;
 #[path = "seed_demo/forest.rs"]
 mod forest;
+#[path = "seed_demo/voice.rs"]
+mod voice;
 
 use attach::seed_attachments;
 use forest::seed_forest;
+use voice::seed_voice;
 
 const MINUTE: i64 = 60_000;
 const DAY: i64 = 24 * 60 * MINUTE;
@@ -162,6 +165,10 @@ fn main() {
     // Photos and files (slice 7) only when asked, like the forest.
     if std::env::var_os("KINIGE_SEED_ATTACH").is_some() {
         seed_attachments(&store, &now, &data, &ideas.id);
+    }
+    // Voice notes (slice 7a) only when asked.
+    if std::env::var_os("KINIGE_SEED_VOICE").is_some() {
+        seed_voice(&store, &now, &data);
     }
     // The day's copy for the line in "Settings".
     store.run_maintenance(&at(0)).unwrap();
