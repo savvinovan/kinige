@@ -4,6 +4,7 @@ import type { ErrorCode } from "../api/generated/ErrorCode";
 import type { MessageView } from "../api/generated/MessageView";
 import {
   CONFIRM_AFTER_MS,
+  type LiveLevels,
   MIN_RECORDING_MS,
   type MicError,
   type Recording,
@@ -19,9 +20,9 @@ export type VoiceState =
   | { kind: "idle" }
   /** Waiting for the system's answer to the first request; the button is busy. */
   | { kind: "starting" }
-  | { kind: "recording"; elapsedMs: number; levels: readonly number[] }
+  | { kind: "recording"; elapsedMs: number }
   /** "Discard the recording?": the recording goes on underneath. */
-  | { kind: "confirming"; elapsedMs: number; levels: readonly number[] }
+  | { kind: "confirming"; elapsedMs: number }
   /** The device was unplugged: what was recorded is kept, Send and Discard are offered. */
   | { kind: "lost"; elapsedMs: number }
   | { kind: "sending"; elapsedMs: number }
@@ -61,8 +62,8 @@ export type VoiceController = Omit<VoiceControls, "state"> & { store: VoiceStore
 
 export interface VoiceControls {
   state: VoiceState;
-  /** The live level bars (0 to 1, oldest first), read by the meter on its own clock; not part of the state. */
-  levels: () => readonly number[];
+  /** The newest `count` levels of the live waveform (0 to 1, oldest first), read by the waveform on its own clock; not part of the state. */
+  levels: (count: number) => LiveLevels;
   /** The first click on the microphone: asks the system for it and starts. */
   start: () => void;
   /** Send, Enter and the auto-send. */
@@ -141,7 +142,7 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
       // At most two tries in one go: the second only after `reply_target_not_found`, with the reply dropped.
       for (;;) {
         try {
-          const sent = await api.sendVoice(where.chatId, recording.bytes, recording.durationMs, where.replyToId);
+          const sent = await api.sendVoice(where.chatId, recording.bytes, recording.durationMs, where.replyToId, recording.peaks);
           latest.current.onSent(sent, where.chatId);
           clear();
           return;
@@ -226,7 +227,7 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
       (started) => {
         session.current = started;
         busy.current = false;
-        setState({ kind: "recording", elapsedMs: 0, levels: started.levelBars() });
+        setState({ kind: "recording", elapsedMs: 0 });
       },
       (reason: unknown) => {
         clear();
@@ -249,14 +250,14 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
       return;
     }
     confirming.current = true;
-    setState({ kind: "confirming", elapsedMs: running.elapsedMs(), levels: running.levelBars() });
+    setState({ kind: "confirming", elapsedMs: running.elapsedMs() });
   }, [clear, setState]);
 
   const keepRecording = useCallback(() => {
     const running = session.current;
     if (!running) return;
     confirming.current = false;
-    setState({ kind: "recording", elapsedMs: running.elapsedMs(), levels: running.levelBars() });
+    setState({ kind: "recording", elapsedMs: running.elapsedMs() });
   }, [setState]);
 
   const discard = useCallback(() => {
@@ -293,13 +294,12 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
         return;
       }
       // The state changes once per displayed second: the timer text is the only thing that moves in the accessibility tree, and the
-      // bars are drawn from `levels()` below without a render (a recording-time dump of the window tree stalled on a runner while the
-      // text changed four times a second).
+      // waveform is drawn from `levels()` on its own animation frames without a render (a recording-time dump of the window tree stalled on
+      // a runner while the text changed four times a second).
       const second = Math.floor(elapsedMs / 1000);
       if (second === shownSecond.current) return;
       shownSecond.current = second;
-      const levels = running.levelBars();
-      setState(confirming.current ? { kind: "confirming", elapsedMs, levels } : { kind: "recording", elapsedMs, levels });
+      setState(confirming.current ? { kind: "confirming", elapsedMs } : { kind: "recording", elapsedMs });
     }, TICK_MS);
     return () => clearInterval(timer);
   }, [kind, setState]);
@@ -313,7 +313,7 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
     [],
   );
 
-  const levels = useCallback(() => session.current?.levelBars() ?? [], []);
+  const levels = useCallback((count: number): LiveLevels => session.current?.liveLevels(count) ?? { levels: [], at: 0 }, []);
 
   return useMemo(
     () => ({ store, levels, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice }),

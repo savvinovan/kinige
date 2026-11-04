@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { peaksToHex } from "../voice/waveform";
 import type { KinigeApi, ListMessagesOptions } from "./KinigeApi";
 import {
   ATTACHMENTS_DRAG,
@@ -98,15 +99,35 @@ export class TauriApi implements KinigeApi {
     }
   }
 
-  async sendVoice(chatId: string, bytes: Uint8Array, durationMs: number, replyToId?: string | null): Promise<MessageView> {
-    // A raw body, like a paste: the chat, the recorder's clock and the reply go in headers (ASCII).
+  async sendVoice(
+    chatId: string,
+    bytes: Uint8Array,
+    durationMs: number,
+    replyToId?: string | null,
+    waveform?: Uint8Array | null,
+  ): Promise<MessageView> {
+    // A raw body, like a paste: the chat, the recorder's clock, the reply and the peaks go in headers (ASCII; the peaks as hex).
     const headers: Record<string, string> = { "x-chat-id": chatId, "x-duration-ms": String(Math.round(durationMs)) };
     if (replyToId) headers["x-reply-to"] = encodeURIComponent(replyToId);
+    if (waveform && waveform.length > 0) headers["x-waveform"] = peaksToHex(waveform);
     try {
       return await invoke<MessageView>("send_voice", bytes, { headers });
     } catch (reason) {
       throw toApiError(reason);
     }
+  }
+
+  async readVoiceForWaveform(attachmentId: string): Promise<ArrayBuffer> {
+    try {
+      // A raw answer: the command returns the file's bytes, which arrive as an ArrayBuffer.
+      return await invoke<ArrayBuffer>("read_voice_for_waveform", { attachmentId });
+    } catch (reason) {
+      throw toApiError(reason);
+    }
+  }
+
+  async setAttachmentWaveform(attachmentId: string, peaks: Uint8Array): Promise<void> {
+    await call("set_attachment_waveform", { attachmentId, peaks: peaksToHex(peaks) });
   }
 
   async openMicrophoneSettings(): Promise<void> {

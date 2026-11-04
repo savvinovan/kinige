@@ -39,35 +39,19 @@
   color: var(--color-status-error);
 }
 
-.recording-bar__meter {
-  display: flex;
+/* The live waveform fills the whole middle of the bar, between the timer and Send. It is a canvas: `LiveWave` draws thin rounded bars in the
+   colour of this element (the accent) with the lengths of the `layout.voice.rec-wave-*` tokens, and they scroll in from the right. The
+   canvas is left and right of the other items by the bar's own gap, and as tall as the tallest bar. */
+.recording-bar__wave {
+  display: block;
   flex: 1;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--layout-voice-meter-gap);
   min-width: 0;
-  height: var(--layout-voice-meter-height);
-  overflow: hidden;
+  height: var(--layout-voice-rec-wave-height);
+  color: var(--color-accent-default);
 }
 
-.recording-bar__bar {
-  flex: none;
-  width: var(--layout-voice-meter-bar-width);
-  height: calc(var(--layout-voice-meter-min-height) + (var(--layout-voice-meter-height) - var(--layout-voice-meter-min-height)) * var(--level, 0));
-  border-radius: var(--radius-round);
-  background: var(--color-text-tertiary);
-}
-
-/* Reduce Motion (the system setting or the switch in Storybook and in the settings): no bars, only the dot and the timer. */
-@media (prefers-reduced-motion: reduce) {
-  .recording-bar__meter {
-    visibility: hidden;
-  }
-}
-
-[data-reduce-motion] .recording-bar__meter {
-  visibility: hidden;
-}
+/* Reduce Motion (the system setting or the switch in Storybook and in the settings): the waveform does not slide, it steps ten times a second
+   (`LiveWave`): it is the level of the microphone, information and not decoration, so it stays. */
 
 .recording-bar__lost,
 .recording-bar__question {

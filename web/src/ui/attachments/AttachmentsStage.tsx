@@ -34,11 +34,23 @@ export function Scene({ children, narrow = false }: { children: ReactNode; narro
 }
 
 /** Storybook only: a bubble with attachments above its text (the integration into `Message` is done by the feed). */
-export function Bubble({ attachments, text = "", slot }: { attachments: readonly AttachmentView[]; text?: string; slot?: ReactNode }) {
+export function Bubble({
+  attachments,
+  text = "",
+  slot,
+  timeBeside = false,
+}: {
+  attachments: readonly AttachmentView[];
+  text?: string;
+  slot?: ReactNode;
+  /** A voice note with no text: the time sits on the player's meta line (as the feed does it). */
+  timeBeside?: boolean;
+}) {
   return (
     <Message
       markdown={text}
       sentAt={SENT_AT}
+      timeBeside={timeBeside}
       quote={
         <div className="attachments-scene__slot">
           {slot ?? <MessageAttachments attachments={attachments} onOpenImage={noop} onOpenFile={noop} />}

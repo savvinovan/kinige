@@ -6,6 +6,7 @@ import { WARN_FROM_MS } from "../../voice/recorderSession";
 import { formatDuration } from "../../voice/format";
 import type { VoiceControls, VoiceState } from "../../voice/useVoiceRecorder";
 import { IconButton } from "../controls/IconButton";
+import { LiveWave } from "./LiveWave";
 import "./recording-bar.css";
 
 type BarState = Extract<VoiceState, { kind: "recording" | "confirming" | "lost" | "sending" | "send-failed" }>;
@@ -15,13 +16,11 @@ interface RecordingBarProps {
   controls: Pick<VoiceControls, "send" | "requestCancel" | "keepRecording" | "discard" | "retry" | "levels">;
 }
 
-/** How often the bars follow the analyser. */
-const METER_MS = 100;
-
 /**
  * The bar that replaces the input field while recording (slice 7a): the trash button on the left, a red dot that does not pulse, the timer in
- * tabular figures (the warning colour from 29:00), a level meter (hidden with Reduce Motion) and the round accent Send on the right. It keeps
- * the height of the field. Focus goes to Send; Enter sends, Escape cancels (a recording over five seconds asks first).
+ * tabular figures (the warning colour from 29:00), the live waveform across the whole middle of the field (new bars enter from the right and
+ * scroll left; see `LiveWave`) and the round accent Send on the right. It keeps the height of the field. Focus goes to Send; Enter sends,
+ * Escape cancels (a recording over five seconds asks first).
  */
 export function RecordingBar({ state, controls }: RecordingBarProps) {
   const { t } = useTranslation();
@@ -102,38 +101,13 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
           >
             {time}
           </span>
-          <Meter levels={"levels" in state ? state.levels : []} read={controls.levels} label={t("voice.level")} />
+          <LiveWave read={controls.levels} label={t("voice.level")} />
         </>
       )}
       <span className="composer__action" ref={sendButton}>
         <IconButton icon="send" label={t("voice.send")} tone="accent" onClick={controls.send} disabled={sending} />
       </span>
     </div>
-  );
-}
-
-/**
- * About 24 bars from the analyser, each a height between the shortest and the tallest; hidden with Reduce Motion (the dot stays). The first
- * heights come from the state; after that the bars follow `read` on their own clock, writing the CSS variable straight into the elements:
- * no render and nothing for the accessibility tree to notice.
- */
-function Meter({ levels, read, label }: { levels: readonly number[]; read?: () => readonly number[]; label: string }) {
-  const host = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (!read) return;
-    const timer = setInterval(() => {
-      const bars = host.current?.children;
-      if (!bars) return;
-      read().forEach((level, index) => (bars[index] as HTMLElement | undefined)?.style.setProperty("--level", level.toFixed(2)));
-    }, METER_MS);
-    return () => clearInterval(timer);
-  }, [read]);
-  return (
-    <span className="recording-bar__meter" role="img" aria-label={label} ref={host}>
-      {levels.map((level, index) => (
-        <span key={index} className="recording-bar__bar" style={{ "--level": level.toFixed(2) } as React.CSSProperties} />
-      ))}
-    </span>
   );
 }
 

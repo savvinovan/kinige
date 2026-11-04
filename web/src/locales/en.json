@@ -60,6 +60,8 @@
     "play": "Play",
     "pause": "Pause",
     "seek": "Position",
+    "position": "{{time}} of {{total}}",
+    "meta": "{{time}}, {{size}}",
     "speed": "Playback speed {{speed}}",
     "unknownTime": "–:––",
     "cantPlay": "Can't play here",

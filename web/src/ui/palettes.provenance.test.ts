@@ -50,8 +50,9 @@ describe("происхождение цветов палитры graphite", () =
           expect(origin.startsWith(`${match?.[0]} `), `"${origin}" must start with "${match?.[0]} "`).toBe(true);
         });
       }
-    } else if ((TILE_ROLES as readonly string[]).includes(role) || role === "status.recording") {
-      // The tiles are tinted (D2), and so is the recording dot (slice 7a): hue, saturation and lightness are recorded in the origin and match the color.
+    } else if ((TILE_ROLES as readonly string[]).includes(role) || role === "status.recording" || role === "voice.unplayed") {
+      // The tiles are tinted (D2), and so are the recording dot and the unplayed bars of a waveform (slice 7a): hue, saturation and lightness are
+      // recorded in the origin and match the color.
       it(`${role}: авторская подкраска, не выданная за Nord, тон, насыщенность и светлота как в описании`, () => {
         expect(origin.startsWith(OWN), origin).toBe(true);
         expect(nord.map(([, value]) => value)).not.toContain(hex);

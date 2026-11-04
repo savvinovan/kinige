@@ -44,6 +44,7 @@ export function demoPhoto(
     height,
     durationMs: null,
     state: options.missing ? "missing" : "local",
+    waveform: null,
   };
 }
 
@@ -56,7 +57,7 @@ export function demoFile(
   state: AttachmentView["state"] = "local",
 ): AttachmentView {
   const mime = kind === "audio" ? "audio/mpeg" : kind === "video" ? "video/mp4" : "application/pdf";
-  return { id, kind, filename, mime, byteSize, width: null, height: null, durationMs: null, state };
+  return { id, kind, filename, mime, byteSize, width: null, height: null, durationMs: null, state, waveform: null };
 }
 
 /** The pictures of the stories: a gradient (or an empty background) with the size written on it. */
@@ -104,11 +105,25 @@ function svgUrl({ width, height, transparent }: DemoPhoto, thumb: boolean, id: s
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-/** A voice note (`audio` with a length); `byteSize` defaults to what 64 kb/s makes of it. */
+/**
+ * Speech-like peaks for stories and tests: 64 values between 0 and 255 in phrases and pauses, the loudest being 255. The same `seed` gives
+ * the same shape, so snapshots do not change from run to run.
+ */
+export function demoPeaks(seed = 1): number[] {
+  const peaks = Array.from({ length: 64 }, (_, i) => {
+    const phrase = 0.5 + 0.5 * Math.sin(i * 0.37 + seed);
+    const syllable = 0.55 + 0.45 * Math.sin(i * 1.9 + seed * 2.3) * Math.cos(i * 0.83 + seed);
+    return phrase * Math.abs(syllable);
+  });
+  const loudest = Math.max(...peaks);
+  return peaks.map((value) => Math.round((value / loudest) * 255));
+}
+
+/** A voice note (`audio` with a length); `byteSize` defaults to what 64 kb/s makes of it. Peaks are `null` (the placeholder bars) unless given. */
 export function demoVoice(
   id: string,
   durationMs: number | null,
-  options: { filename?: string; mime?: string; state?: AttachmentView["state"]; byteSize?: number } = {},
+  options: { filename?: string; mime?: string; state?: AttachmentView["state"]; byteSize?: number; waveform?: number[] | null } = {},
 ): AttachmentView {
   return {
     id,
@@ -120,5 +135,6 @@ export function demoVoice(
     height: null,
     durationMs,
     state: options.state ?? "local",
+    waveform: options.waveform ?? null,
   };
 }

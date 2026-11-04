@@ -42,12 +42,14 @@ describe("the microphone button", () => {
 });
 
 describe("the recording bar", () => {
-  it("replaces the field with a dot, the timer, a level meter, the trash and Send; Send has the focus", () => {
-    const { voice, container } = show({ kind: "recording", elapsedMs: 63_000, levels: [0, 0.5, 1] });
+  it("replaces the field with a dot, the timer, the live waveform, the trash and Send; Send has the focus", () => {
+    const { voice, container } = show({ kind: "recording", elapsedMs: 63_000 });
     expect(screen.getByRole("group", { name: "Recording, 1:03" })).toBeInTheDocument();
     expect(screen.getByText("1:03")).toHaveClass("recording-bar__timer");
     expect(container.querySelector(".recording-bar__dot")).not.toBeNull();
-    expect(container.querySelectorAll(".recording-bar__bar")).toHaveLength(3);
+    // The waveform is one canvas between the timer and Send.
+    expect(container.querySelectorAll("canvas.recording-bar__wave")).toHaveLength(1);
+    expect(screen.getByRole("img", { name: "Microphone level" })).toBeInTheDocument();
     expect(container.querySelector(".composer__bar")).toHaveClass("composer__bar--hidden");
     const send = screen.getByRole("button", { name: "Send the voice note" });
     expect(send).toHaveFocus();
@@ -58,26 +60,26 @@ describe("the recording bar", () => {
   });
 
   it("the timer turns to the warning colour from 29:00", () => {
-    const before = show({ kind: "recording", elapsedMs: 28 * 60_000 + 59_000, levels: [] });
+    const before = show({ kind: "recording", elapsedMs: 28 * 60_000 + 59_000 });
     expect(screen.getByText("28:59")).not.toHaveClass("recording-bar__timer--warn");
     before.unmount();
-    show({ kind: "recording", elapsedMs: 29 * 60_000, levels: [] });
+    show({ kind: "recording", elapsedMs: 29 * 60_000 });
     expect(screen.getByText("29:00")).toHaveClass("recording-bar__timer--warn");
   });
 
   it("Escape cancels; while the question is open Escape keeps recording", () => {
-    const recording = show({ kind: "recording", elapsedMs: 8000, levels: [] });
+    const recording = show({ kind: "recording", elapsedMs: 8000 });
     fireEvent.keyDown(document, { key: "Escape" });
     expect(recording.voice.requestCancel).toHaveBeenCalledTimes(1);
     recording.unmount();
-    const asking = show({ kind: "confirming", elapsedMs: 8000, levels: [] });
+    const asking = show({ kind: "confirming", elapsedMs: 8000 });
     fireEvent.keyDown(document, { key: "Escape" });
     expect(asking.voice.keepRecording).toHaveBeenCalledTimes(1);
     expect(asking.voice.discard).not.toHaveBeenCalled();
   });
 
   it("asks 'Discard the recording?' with Discard and Keep recording, and the focus is on Keep", () => {
-    const { voice } = show({ kind: "confirming", elapsedMs: 8000, levels: [] });
+    const { voice } = show({ kind: "confirming", elapsedMs: 8000 });
     expect(screen.getByRole("alertdialog", { name: "Discard the recording?" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Keep recording" })).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));
@@ -113,7 +115,7 @@ describe("the recording bar", () => {
   });
 
   it("speaks Russian", () => {
-    show({ kind: "confirming", elapsedMs: 8000, levels: [] }, "ru");
+    show({ kind: "confirming", elapsedMs: 8000 }, "ru");
     expect(screen.getByRole("button", { name: "Продолжить запись" })).toBeInTheDocument();
   });
 });

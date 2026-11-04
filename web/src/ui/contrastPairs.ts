@@ -52,6 +52,10 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   ...SURFACES.map((background) => ({ foreground: "focus.ring", background, kind: "ui" as const })),
   // The dot of the recording bar (slice 7a) is a shape, not text: the UI threshold on every surface it can sit on.
   ...SURFACES.map((background) => ({ foreground: "status.recording", background, kind: "ui" as const })),
+  // The unplayed bars of a voice note's waveform (slice 7a) are shapes on the message plate: the UI threshold there. On the highlighted plate
+  // (a short-lived jump target) they only have to stay visible, and they are a step away from the played bars (accent) on the plate.
+  { foreground: "voice.unplayed", background: "surface.message", kind: "ui" },
+  { foreground: "voice.unplayed", background: "highlight.background", kind: "decorative" },
   // The divider between the sidebar and the feed (the sidebar border) and the empty checkbox outline use the divider / tertiary text role.
   { foreground: "border.divider", background: "surface.background", kind: "decorative" },
   { foreground: "border.divider", background: "surface.paper", kind: "decorative" },

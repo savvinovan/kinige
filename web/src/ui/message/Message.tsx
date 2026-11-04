@@ -47,6 +47,11 @@ export interface MessageProps {
   quote?: ReactNode;
   /** The entry's photos and files (slice 7, `MessageAttachments`): between the quote and the text. Not shown while editing. */
   attachments?: ReactNode;
+  /**
+   * The entry has no text and its last attachment is a voice note player (slice 7a): the time sits at the bottom right on the player's own meta
+   * line ("0:40, 20.7 KB"), as in Telegram, so the bubble reserves no extra line for it.
+   */
+  timeBeside?: boolean;
   /** Entry tags (lower case, without `#`), determined by Rust: highlighted and clickable in the text. */
   tags?: readonly string[];
   /** Words of the entry found by search, as written in it (Rust returns them): highlighted whole (slice 4). */
@@ -110,6 +115,7 @@ export const Message = memo(function Message({
   readOnly = false,
   quote,
   attachments,
+  timeBeside = false,
   tags,
   markTerms,
   mode = "view",
@@ -152,7 +158,7 @@ export const Message = memo(function Message({
     [markdown, failed, labelDone, labelTodo, labelItem, tagsKey, interactiveTasks, markKey],
   );
   // The message ends with a block (code): the last line has no spacer, the time sits under the block.
-  const timeBelow = !failed && !html.includes("message__spacer");
+  const timeBelow = !failed && !html.includes("message__spacer") && !(timeBeside && mode !== "editing");
 
   const plate = useRef<HTMLElement>(null);
   const { state: copyState, copy } = useCopy();

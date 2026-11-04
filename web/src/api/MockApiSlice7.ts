@@ -30,6 +30,7 @@ export function mockAttachment(id: string, filename: string, part: Partial<Attac
     height: image ? PICTURE_H : null,
     durationMs: null,
     state: "local",
+    waveform: null,
     ...part,
   };
 }
@@ -79,11 +80,28 @@ export class MockApiSlice7 extends MockApiSlice6 {
   }
 
   /** Voice notes that reached "Rust": chat, size and the recorder's clock, in the order they were saved. */
-  readonly sentVoices: { chatId: string; bytes: number; durationMs: number; replyToId: string | null }[] = [];
+  readonly sentVoices: {
+    chatId: string;
+    bytes: number;
+    durationMs: number;
+    replyToId: string | null;
+    /** The peaks that came with the note (null when the recorder sent none). */
+    waveform: Uint8Array | null;
+  }[] = [];
   /** The system's microphone privacy page was asked for this many times. */
   microphoneSettingsOpened = 0;
+  /** What `readVoiceForWaveform` hands out by attachment id; an id not in here is `attachment_not_found`. */
+  readonly voiceFiles = new Map<string, ArrayBuffer>();
+  /** The peaks saved through `setAttachmentWaveform`, in order. */
+  readonly savedWaveforms: { attachmentId: string; peaks: Uint8Array }[] = [];
 
-  sendVoice(chatId: string, bytes: Uint8Array, durationMs: number, replyToId: string | null = null): Promise<MessageView> {
+  sendVoice(
+    chatId: string,
+    bytes: Uint8Array,
+    durationMs: number,
+    replyToId: string | null = null,
+    waveform: Uint8Array | null = null,
+  ): Promise<MessageView> {
     // The same rules as `Store::send_voice`; the container is not looked at (the mock has no files).
     const check = (): void => {
       if (bytes.length > MAX_PASTE_BYTES) throw new KinigeApiError("attachment_too_large");
@@ -99,12 +117,29 @@ export class MockApiSlice7 extends MockApiSlice6 {
           mime: "audio/mp4",
           byteSize: bytes.length,
           durationMs: Math.round(durationMs),
+          // The same rule as the store: only a full set of peaks is kept.
+          waveform: waveform && waveform.length === 64 ? Array.from(waveform) : null,
         });
         row.view = { ...row.view, bodyMd: "", tags: [], attachments: [note] };
-        this.sentVoices.push({ chatId, bytes: bytes.length, durationMs, replyToId });
+        this.sentVoices.push({ chatId, bytes: bytes.length, durationMs, replyToId, waveform });
         return this.viewOf(row);
       }),
     );
+  }
+
+  readVoiceForWaveform(attachmentId: string): Promise<ArrayBuffer> {
+    return this.run("readVoiceForWaveform", attachmentId, () => {
+      const file = this.voiceFiles.get(attachmentId);
+      if (!file) throw new KinigeApiError("attachment_not_found");
+      return file;
+    });
+  }
+
+  setAttachmentWaveform(attachmentId: string, peaks: Uint8Array): Promise<void> {
+    return this.run("setAttachmentWaveform", attachmentId, () => {
+      if (peaks.length !== 0 && peaks.length !== 64) throw new KinigeApiError("attachment_unreadable");
+      this.savedWaveforms.push({ attachmentId, peaks });
+    });
   }
 
   openMicrophoneSettings(): Promise<void> {

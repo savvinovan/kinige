@@ -5,6 +5,7 @@ import { MessageAttachments } from "../attachments/MessageAttachments";
 import { Message } from "../message/Message";
 import type { MoveTarget } from "../message/moveTargets";
 import { ReplyQuote } from "../reply/ReplyQuote";
+import { showsWaveform } from "../voice/VoicePlayer";
 import type { FeedMessage } from "./buildFeed";
 import type { FeedActions } from "./Feed";
 
@@ -69,6 +70,9 @@ export const FeedRow = memo(function FeedRow({
       ) : undefined,
     [entryAttachments, onOpenImage, onOpenFile],
   );
+  // A voice note with no text ends on the player's meta line, which holds the room for the time (slice 7a).
+  const lastAttachment = entryAttachments?.at(-1);
+  const timeBeside = message.bodyMd.trim() === "" && lastAttachment !== undefined && showsWaveform(lastAttachment);
 
   return (
     <li
@@ -92,6 +96,7 @@ export const FeedRow = memo(function FeedRow({
         readOnly={message.readOnly}
         quote={quote}
         attachments={attachments}
+        timeBeside={timeBeside}
         tags={message.tags}
         mode={mode}
         editError={mode === "editing" ? editError : undefined}

@@ -70,6 +70,8 @@
     "play": "Воспроизвести",
     "pause": "Пауза",
     "seek": "Позиция",
+    "position": "{{time}} из {{total}}",
+    "meta": "{{time}}, {{size}}",
     "speed": "Скорость воспроизведения {{speed}}",
     "unknownTime": "–:––",
     "cantPlay": "Здесь не воспроизвести",

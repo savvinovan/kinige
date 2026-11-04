@@ -106,18 +106,19 @@
   --layout-trash-entry-lines: 6; /** How many lines of the entry text a trash plate shows; the rest is cut off with an ellipsis (line-clamp). The full text is not needed in the trash: only enough to recognize the entry. */
   --layout-trash-confirm-width: 26rem; /** Width of the 'Delete forever?' confirmation window (338 px at a 13 px root). */
   --layout-voice-dot-size: 0.7rem; /** The red dot of the recording bar (9 px at a 13 px root). A shape that does not pulse. */
-  --layout-voice-meter-bar-width: 0.2rem; /** Width of one bar of the level meter (2.6 px at a 13 px root). */
-  --layout-voice-meter-gap: 0.15rem; /** Gap between the bars of the level meter. */
-  --layout-voice-meter-height: 1.6rem; /** Height of the meter: the tallest bar. About 24 bars stand in a row (the count is `LEVEL_BARS` in voice/recorderSession.ts). */
-  --layout-voice-meter-min-height: 0.2rem; /** The shortest bar: silence still shows a line. */
-  --layout-voice-timer-width: 3.6rem; /** Room for the timer of the recording bar up to 59:59 in tabular figures, so the meter does not move as the seconds change. */
-  --layout-voice-player-width: 22rem; /** Width of the player in a bubble (286 px at a 13 px root, between the 240 and 360 px of the spec; at rest the seek bar gets about 160 px of it): fixed, so nothing moves when the duration or the time changes. In a narrow bubble it shrinks to the bubble (max-width 100%). */
-  --layout-voice-player-button: 2.4rem; /** The round play / pause button of the player (31 px at a 13 px root). */
-  --layout-voice-seek-height: 0.3rem; /** The track of the seek bar. */
-  --layout-voice-seek-thumb: 0.8rem; /** The thumb of the seek bar (10 px at a 13 px root). */
-  --layout-voice-time-width: 6.4rem; /** Room for "0:12 / 0:40" in tabular figures once the note has been started; with hours ("1:02:03 / 1:02:03") the text is allowed to be wider. */
-  --layout-voice-time-width-rest: 3rem; /** Room for the total alone ("0:40") while the note rests: the seek bar gets the rest of the width. */
-  --layout-voice-speed-width: 2.6rem; /** The speed chip ("1×", "1.5×", "2×"): one width for all three, so the chip does not move. */
+  --layout-voice-timer-width: 3.6rem; /** Room for the timer of the recording bar up to 59:59 in tabular figures, so the waveform does not move as the seconds change. */
+  --layout-voice-rec-wave-bar-width: 0.2rem; /** Width of one bar of the live waveform in the recording bar (2.6 px at a 13 px root). The canvas reads this value from the computed style. */
+  --layout-voice-rec-wave-gap: 0.15rem; /** Gap between the bars of the live waveform in the recording bar. Read by the canvas like the bar width. */
+  --layout-voice-rec-wave-height: 1.6rem; /** Height of the live waveform: the tallest bar. It runs across the whole middle of the bar, between the timer and Send. */
+  --layout-voice-rec-wave-min-height: 0.2rem; /** The shortest bar of the live waveform: silence still shows a line (a dot as wide as the bar). */
+  --layout-voice-player-button: 3.2rem; /** The big round accent play / pause button of the player (41.6 px at a 13 px root, the 40 to 44 px of the Telegram look). */
+  --layout-voice-play-icon: 1.5rem; /** The play / pause glyph inside the big button (19.5 px at a 13 px root): larger than a line icon, drawn filled. */
+  --layout-voice-play-nudge: 0.12rem; /** The play triangle's weight is on its left, so it is moved this much to the right to look centred in the circle (1.6 px at a 13 px root). */
+  --layout-voice-wave-bar-width: 0.16rem; /** Width of one bar of the player's waveform (2.1 px at a 13 px root): thin and rounded. 64 bars and their gaps make the waveform about 225 px wide, so the bubble sizes like Telegram's. */
+  --layout-voice-wave-gap: 0.11rem; /** Gap between the bars of the player's waveform (1.4 px at a 13 px root). */
+  --layout-voice-wave-height: 2.2rem; /** Height of the player's waveform: the tallest bar (28.6 px at a 13 px root). */
+  --layout-voice-wave-min-height: 0.2rem; /** The shortest bar of the player's waveform: silence still shows a rounded dot. */
+  --layout-voice-speed-width: 2.4rem; /** The speed chip ("1×", "1.5×", "2×"): one width for all three, so the chip does not move. */
   --opacity-lightbox-scrim: 0.94; /** The backdrop of the lightbox: the window background colour with this opacity, nearly opaque so the photo stands alone. */
   --opacity-drag-ghost: 0.8; /** The 'ghost' of an entry plate dragged onto a chat in the sidebar (a slice 3 acceptance decision): a copy of the plate under the cursor, quiet but readable. */
   --opacity-forest-front: 0.32; /** Opacity of a tree that stands in front of the selected tree and overlaps it. */
@@ -175,6 +176,7 @@
   --color-focus-ring: #88c0d0; /** The keyboard focus ring (buttons, rows, links) and a thin line in the input field. */
   --color-status-error: #d89fa4; /** The 'not sent' state and errors (PRD §1.2 item 9). */
   --color-status-recording: #ee5a5f; /** The dot of the recording bar (slice 7a): a saturated red that says "live", brighter than the error text color. Used as a shape, not as text: >= 3:1 on every surface (the UI threshold), 3.7:1 on the message plate. */
+  --color-voice-unplayed: #5b848f; /** The bars of a voice note's waveform that have not been played yet (slice 7a): a muted cousin of the accent. The played part is accent.default (2.0:1 away from this color, a clear step at the edge of the fill). A shape, not text: 3.5:1 on the message plate (the UI threshold), 2.6:1 on the highlighted plate (a short-lived jump target; the bars stay visible). */
   --color-tile-blue: #3c6a9f; /** Tile color "blue". */
   --color-tile-teal: #2b736e; /** Tile color "teal". */
   --color-tile-green: #2d7645; /** Tile color "green". */
@@ -296,7 +298,8 @@
   --layout-action-offset: var(--space-1); /** Offset of the row from the right edge of the plate when there is no room on the right and the row stands above the plate at its right edge; at the top edge of the feed, also from the top edge of the plate (3.25 px). */
   --layout-search-filters-gap: var(--space-2); /** The gap between search filters (6.5 px). */
   --layout-voice-confirm-gap: var(--space-2); /** Gap between the question and the two buttons of the discard confirmation. */
-  --layout-voice-player-gap: var(--space-2); /** Gap between the play button, the seek bar and the time of the player. */
+  --layout-voice-player-gap: var(--space-3); /** Gap between the play button and the waveform of the player. */
+  --layout-voice-meta-gap: var(--space-2); /** Gap between the meta line ("0:05, 20.7 KB") and the speed chip. */
   --layout-voice-unplayable-padding: var(--space-2); /** Padding of the "Can't play here" line. */
   --type-day-family: var(--font-family-sans);
   --type-day-weight: var(--font-weight-medium);

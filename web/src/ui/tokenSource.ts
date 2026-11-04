@@ -46,6 +46,7 @@ export const PALETTE_ROLES = [
   "focus.ring",
   "status.error",
   "status.recording",
+  "voice.unplayed",
   ...TILE_ROLES,
 ] as const;
 

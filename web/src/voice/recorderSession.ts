@@ -1,8 +1,11 @@
-import { openMicrophone } from "virtual:kinige-mic";
+import { openMicrophone, recordingLimitMs } from "virtual:kinige-mic";
+import { levelOfRms, peaksFromLevels } from "./waveform";
 
 // One recording on top of the web view's MediaRecorder (slice 7a, ADR-0015). No React here: the hook `useVoiceRecorder` drives it and the
 // tests drive it with a fake `MediaDevices`. The microphone is asked for in `startSession`, which the first click on the microphone button
 // calls, never at startup (PRD §15). Nothing here reads a device label: it is personal data and never reaches the console, a string or Rust.
+// An `AnalyserNode` is read every 50 ms: the levels draw the live waveform of the recording bar and, once the recording is over, become the
+// 64 peaks that go to Rust with the note (the note's waveform, local to this device).
 
 /** A recording is sent by itself at this length (decision 3). */
 export const MAX_RECORDING_MS = 30 * 60 * 1000;
@@ -14,12 +17,13 @@ export const WARN_FROM_MS = 29 * 60 * 1000;
 export const MIN_RECORDING_MS = 1000;
 /** Cancelling a recording shorter than this drops it at once; a longer one asks first. */
 export const CONFIRM_AFTER_MS = 5000;
-/** The bars of the level meter. */
-export const LEVEL_BARS = 24;
+/** How often the analyser is read: one level (one bar of the live waveform) per this many milliseconds. */
+export const LEVEL_PERIOD_MS = 50;
+/** A timer that fires late (a hidden window runs timers about once a second) still gets a level for every missed period, up to this many. */
+const MAX_CATCH_UP = 40;
 
 const AUDIO_BITS_PER_SECOND = 64_000;
 const TIMESLICE_MS = 1000;
-const LEVEL_PERIOD_MS = 100;
 /** The first supported of these; the container comes out of the first bytes in Rust, never out of this choice. */
 const RECORDER_TYPES = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/webm;codecs=opus"];
 
@@ -40,6 +44,14 @@ export interface Recording {
   bytes: Uint8Array;
   /** The recorder's own clock, in milliseconds. */
   durationMs: number;
+  /** The note's waveform from the analyser (64 peaks, 0 to 255), or `null` where there was no analyser: the player decodes the file later. */
+  peaks: Uint8Array | null;
+}
+
+/** What the live waveform draws: the newest levels (0 to 1, oldest first) and when the newest was taken (`performance.now()`). */
+export interface LiveLevels {
+  levels: readonly number[];
+  at: number;
 }
 
 export interface SessionHooks {
@@ -55,7 +67,9 @@ export class RecorderSession {
   private byteCount = 0;
   private readonly startedAt: number;
   private endedAt: number | null = null;
-  private levels: number[] = new Array<number>(LEVEL_BARS).fill(0);
+  /** Every level of the recording so far, 0 to 255 (a byte per 50 ms: 36 000 of them at the 30 minute limit). */
+  private readonly levelLog: number[] = [];
+  private lastLevelAt = 0;
   private context: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private meter: ReturnType<typeof setInterval> | null = null;
@@ -110,11 +124,12 @@ export class RecorderSession {
   }
 
   /**
-   * When the recording is sent by itself: 30 minutes, or what the stream asks for. Only the screens runners' fake microphone asks for less:
-   * on a macOS runner every accessibility call hangs for as long as a recording runs, so the scenario's recording must end by itself.
+   * When the recording is sent by itself: 30 minutes, or what the microphone module asks for. Only the screens runners' fake microphone
+   * asks for less (`recordingLimitMs` of `scripts/screens/fake-mic.ts`): on a macOS runner every accessibility call hangs for as long as a
+   * recording runs, so the scenario's recording must end by itself. A normal build exports `null`.
    */
   limitMs(): number {
-    const asked = "maxRecordingMs" in this.stream ? Number(this.stream.maxRecordingMs) : NaN;
+    const asked = recordingLimitMs ?? NaN;
     return Number.isFinite(asked) && asked > 0 ? Math.min(asked, MAX_RECORDING_MS) : MAX_RECORDING_MS;
   }
 
@@ -127,9 +142,15 @@ export class RecorderSession {
     return this.byteCount;
   }
 
-  /** The last [`LEVEL_BARS`] levels, 0 to 1, oldest first. */
-  levelBars(): readonly number[] {
-    return this.levels;
+  /** The newest `count` levels for the live waveform (fewer at the start of a recording), and when the newest was taken. */
+  liveLevels(count: number): LiveLevels {
+    const tail = this.levelLog.slice(Math.max(0, this.levelLog.length - Math.max(0, count)));
+    return { levels: tail.map((level) => level / 255), at: this.lastLevelAt };
+  }
+
+  /** The note's waveform: 64 peaks of everything recorded so far, or `null` without an analyser (or in total silence). */
+  peaks(): Uint8Array | null {
+    return peaksFromLevels(this.levelLog.map((level) => level / 255));
   }
 
   /**
@@ -139,9 +160,10 @@ export class RecorderSession {
   async finish(): Promise<Recording> {
     const durationMs = Math.min(this.elapsedMs(), MAX_RECORDING_MS);
     await this.stopRecorder();
+    const peaks = this.peaks();
     this.release();
     const blob = new Blob(this.chunks);
-    return { bytes: new Uint8Array(await blob.arrayBuffer()), durationMs };
+    return { bytes: new Uint8Array(await blob.arrayBuffer()), durationMs, peaks };
   }
 
   /** Drops the recording and releases the microphone. */
@@ -184,13 +206,13 @@ export class RecorderSession {
 
   private startMeter(): void {
     if (typeof AudioContext === "undefined") return;
-    // The screens runners' fake microphone asks for no meter: a second AudioContext on a VM without an audio device is part of what made the
-    // window tree unreadable while recording (see `scripts/screens/fake-mic.ts`).
-    if ("withoutMeter" in this.stream) return;
     try {
       this.context = new AudioContext();
+      // A context made outside a user gesture can start suspended (the autoplay rules): the analyser would read silence.
+      void this.context.resume().catch(() => undefined);
       this.analyser = this.context.createAnalyser();
-      this.analyser.fftSize = 256;
+      // 2048 samples: about 43 ms at 48 kHz, one analyser window per level.
+      this.analyser.fftSize = 2048;
       this.context.createMediaStreamSource(this.stream).connect(this.analyser);
     } catch {
       this.context = null;
@@ -198,6 +220,7 @@ export class RecorderSession {
       return;
     }
     const samples = new Uint8Array(this.analyser.fftSize);
+    this.lastLevelAt = performance.now();
     this.meter = setInterval(() => {
       if (!this.analyser) return;
       this.analyser.getByteTimeDomainData(samples);
@@ -206,9 +229,12 @@ export class RecorderSession {
         const centered = (sample - 128) / 128;
         sum += centered * centered;
       }
-      const rms = Math.sqrt(sum / samples.length);
-      // Speech sits low in RMS: a square root spreads it over the bar height.
-      this.levels = [...this.levels.slice(1), Math.min(1, Math.sqrt(rms) * 1.4)];
+      const level = Math.round(levelOfRms(Math.sqrt(sum / samples.length)) * 255);
+      const now = performance.now();
+      // A late timer (a hidden window) still keeps the time axis: the level holds for the periods that were missed.
+      const periods = Math.min(MAX_CATCH_UP, Math.max(1, Math.round((now - this.lastLevelAt) / LEVEL_PERIOD_MS)));
+      for (let i = 0; i < periods; i += 1) this.levelLog.push(level);
+      this.lastLevelAt = now;
     }, LEVEL_PERIOD_MS);
   }
 }
