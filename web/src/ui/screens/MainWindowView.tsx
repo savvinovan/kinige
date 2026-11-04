@@ -13,6 +13,7 @@ import type { MoveTarget } from "../message/moveTargets";
 import { type ChatAction, Sidebar, type SidebarChat, type SidebarSearch } from "../sidebar/Sidebar";
 import { TagFilterBar } from "../tag/TagFilterBar";
 import { TrashView } from "../trash/TrashView";
+import type { VoiceControls } from "../../voice/useVoiceRecorder";
 import "./main-window.css";
 
 /** Sidebar collapsing, chat creation, the chat menu and the trash. */
@@ -101,6 +102,8 @@ interface MainWindowViewProps {
   overlay?: ReactNode;
   /** Slice 7: the tiles above the composer, the paperclip, a paste, the drop overlay and opening a photo or a file from the feed. */
   attachments?: AttachmentControls;
+  /** The microphone of the composer (slice 7a); without it the button is only drawn. */
+  voice?: VoiceControls;
 }
 
 /** What the window gives the feed and the composer for attachments (slice 7). */
@@ -161,6 +164,7 @@ export function MainWindowView({
   forestMenu,
   overlay,
   attachments,
+  voice,
 }: MainWindowViewProps) {
   const [ownDraft, setOwnDraft] = useState("");
   const language = useLanguage();
@@ -239,6 +243,7 @@ export function MainWindowView({
               hasTiles={(attachments?.tiles.length ?? 0) > 0}
               onAttach={attachments?.onAttach}
               onPasteFiles={attachments?.onPasteFiles}
+              voice={voice}
             />
           </>
         )}

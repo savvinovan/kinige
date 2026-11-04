@@ -173,3 +173,8 @@
   font-weight: var(--type-meta-weight);
   line-height: var(--type-meta-line-height);
 }
+
+/* A recording in progress (slice 7a): the recording bar stands in for the field; the field stays mounted, so the text and the caret are as they were. */
+.composer__bar--hidden {
+  display: none;
+}

@@ -117,13 +117,7 @@
   color: var(--color-text-primary);
 }
 
-.voice-player__play:focus-visible,
-.voice-player__seek:focus-visible,
-.voice-player__speed:focus-visible,
-.voice-player__open:focus-visible {
-  outline: var(--border-width-strong) solid var(--color-focus-ring);
-  outline-offset: var(--border-width-strong);
-}
+/* The keyboard focus ring is the shared `:focus-visible` rule of base.css. */
 
 /* "Can't play here · Open in default app": one line, the same box as the player. */
 .voice-player--unplayable {

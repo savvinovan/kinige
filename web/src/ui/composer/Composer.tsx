@@ -1,6 +1,9 @@
 import { useEffect, useId, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import type { VoiceControls, VoiceState } from "../../voice/useVoiceRecorder";
 import { IconButton } from "../controls/IconButton";
+import { RecordingBar } from "../voice/RecordingBar";
+import { VoiceNotice } from "../voice/VoiceNotice";
 import { EmojiButton, type ComposerEmoji } from "./EmojiButton";
 import "./composer.css";
 
@@ -62,6 +65,22 @@ interface ComposerProps {
    * pasted into the field; the handler attaches them. A paste with text is the usual text paste.
    */
   onPasteFiles?: (files: readonly File[]) => void;
+  /**
+   * The microphone (slice 7a, main window only): with it the "microphone" button is live. While a recording runs, the bar takes the
+   * place of the field; when the microphone cannot be used, one line above the field says why. Without it the button is only drawn.
+   */
+  voice?: VoiceControls;
+}
+
+/** The states in which the recording bar stands in for the field. */
+function barOf(state: VoiceState) {
+  return state.kind === "recording" ||
+    state.kind === "confirming" ||
+    state.kind === "lost" ||
+    state.kind === "sending" ||
+    state.kind === "send-failed"
+    ? state
+    : null;
 }
 
 /** Inside a code block (an odd number of ``` fences is open) Enter is a new line, not submit (spec §5). */
@@ -93,6 +112,7 @@ export function Composer({
   hasTiles = false,
   onAttach,
   onPasteFiles,
+  voice,
 }: ComposerProps) {
   const { t } = useTranslation();
   const errorId = useId();
@@ -102,6 +122,9 @@ export function Composer({
   const hasText = value.trim() !== "";
   // An entry may be sent with no text if it has attachments.
   const canSend = hasText || hasTiles;
+  // A recording in progress (or kept after a lost device / a failed save) takes the place of the field.
+  const voiceState = voice?.state;
+  const bar = voice && voiceState && barOf(voiceState);
 
   // Focus in the field on appearance, but only if nobody else has it: the feed with the field is mounted again when the search results
   // close (the query was erased), while the person is still typing in the search field - its focus must not be taken away.
@@ -155,9 +178,13 @@ export function Composer({
       {error && !floating ? errorLine : null}
       {replyStrip}
       {tiles}
+      {voice && voiceState && (voiceState.kind === "notice" || voiceState.kind === "starting") ? (
+        <VoiceNotice state={voiceState} onOpenSettings={voice.openSettings} onDismiss={voice.dismissNotice} />
+      ) : null}
       {/* The place of the "inline" emoji picker (capture window): empty it has no height, with the panel it pushes the field up. */}
       {floating && emoji?.placement === "inline" ? <div className="composer__emoji-host" ref={setEmojiHost} /> : null}
-      <div className={`composer__bar${error ? " composer__bar--invalid" : ""}`}>
+      {voice && bar ? <RecordingBar state={bar} controls={voice} /> : null}
+      <div className={`composer__bar${error ? " composer__bar--invalid" : ""}${bar ? " composer__bar--hidden" : ""}`}>
         {buttons.attach ? (
           <IconButton icon="attach" label={t("composer.attach")} unavailable={viewOnly || !onAttach} onClick={onAttach} />
         ) : null}
@@ -189,7 +216,13 @@ export function Composer({
           </span>
         ) : buttons.voice ? (
           <span className="composer__action" key="voice">
-            <IconButton icon="voice" label={t("composer.voice")} unavailable={viewOnly} />
+            <IconButton
+              icon="voice"
+              label={t("composer.voice")}
+              unavailable={viewOnly || !voice}
+              onClick={voice?.start}
+              aria-busy={voiceState?.kind === "starting" ? true : undefined}
+            />
           </span>
         ) : null}
       </div>
