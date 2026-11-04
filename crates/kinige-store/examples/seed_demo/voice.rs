@@ -17,17 +17,17 @@ pub fn seed_voice(store: &Store, now: &Now, data: &Path) {
     let work = data.join("seed-voice");
     std::fs::create_dir_all(&work).expect("seed voice folder");
     let m4a = encode(&work, 40);
-    // A Telegram voice message: only the header looks like Ogg; the player shows it at rest and "Can't play here" if pressed.
+    // A Telegram voice message (the newest seeded entry, so that the first player in the feed is a playable note): only the header looks like Ogg; the player shows it at rest and "Can't play here" if pressed.
     let ogg = work.join("audio_1.ogg");
     let mut ogg_bytes = b"OggS\0\x02\0\0\0\0\0\0\0\0".to_vec();
     ogg_bytes.resize(4096, 0);
     std::fs::write(&ogg, ogg_bytes).expect("ogg");
     let id = store
-        .attach_path(INBOX_ID, &ogg, &at(-50 * MINUTE))
+        .attach_path(INBOX_ID, &ogg, &at(-2 * MINUTE))
         .expect("attach ogg")
         .id;
     store
-        .send_entry(INBOX_ID, "", None, &[id], &at(-50 * MINUTE))
+        .send_entry(INBOX_ID, "", None, &[id], &at(-2 * MINUTE))
         .expect("send ogg");
 
     let Some(bytes) = m4a else {
