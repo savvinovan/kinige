@@ -45,6 +45,7 @@ export const PALETTE_ROLES = [
   "highlight.mark",
   "focus.ring",
   "status.error",
+  "status.recording",
   ...TILE_ROLES,
 ] as const;
 

@@ -115,6 +115,11 @@
           "$value": "#d89fa4",
           "$description": "The 'not sent' state and errors (PRD §1.2 item 9).",
           "$extensions": { "kinige": { "origin": "подгонка: nord11 (красный Aurora), HSL-светлота 56,5 % → 73,5 % при том же тоне и насыщенности" } }
+        },
+        "recording": {
+          "$value": "#ee5a5f",
+          "$description": "The dot of the recording bar (slice 7a): a saturated red that says \"live\", brighter than the error text color. Used as a shape, not as text: >= 3:1 on every surface (the UI threshold), 3.7:1 on the message plate.",
+          "$extensions": { "kinige": { "origin": "авторский: тон 358°, насыщенность 81 %, светлота 64 %" } }
         }
       },
       "tile": {

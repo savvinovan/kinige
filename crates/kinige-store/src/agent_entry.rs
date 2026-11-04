@@ -83,6 +83,7 @@ pub(crate) fn to_entry(view: &MessageView, chat_title: &str) -> AgentEntry {
                 bytes: a.byte_size,
                 width: a.width,
                 height: a.height,
+                duration_ms: a.duration_ms,
             })
             .collect(),
         truncated: false,

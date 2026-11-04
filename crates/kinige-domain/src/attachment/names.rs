@@ -177,25 +177,40 @@ pub fn is_openable_document(ext: &str) -> bool {
 
 /// The summary of an entry's attachments for lines that have no room for them.
 pub fn summary_of(attachments: &[AttachmentView]) -> AttachmentSummary {
-    summarize(attachments.iter().map(|a| (a.kind, a.filename.as_str())))
+    summarize(
+        attachments
+            .iter()
+            .map(|a| (a.kind, a.filename.as_str(), a.duration_ms)),
+    )
 }
 
-/// The same from `(kind, file name)` pairs, for places that read only those two columns (the reply quote).
-pub fn summarize<'a>(items: impl Iterator<Item = (AttachmentKind, &'a str)>) -> AttachmentSummary {
-    let (mut photos, mut files) = (0u32, 0u32);
+/// The same from `(kind, file name, duration)` triples, for places that read only those columns (the reply quote). Every `audio`
+/// attachment counts as a voice note (slice 7a, decision 9): the Telegram voices and the recorder's files alike.
+pub fn summarize<'a>(
+    items: impl Iterator<Item = (AttachmentKind, &'a str, Option<i64>)>,
+) -> AttachmentSummary {
+    let (mut photos, mut files, mut voices) = (0u32, 0u32, 0u32);
+    let mut voice_ms: Option<i64> = None;
     let mut only = None;
-    for (kind, name) in items {
-        if kind == AttachmentKind::Image {
-            photos = photos.saturating_add(1);
-        } else {
-            files = files.saturating_add(1);
+    for (kind, name, duration_ms) in items {
+        match kind {
+            AttachmentKind::Image => photos = photos.saturating_add(1),
+            AttachmentKind::Audio => {
+                voices = voices.saturating_add(1);
+                if let Some(ms) = duration_ms {
+                    voice_ms = Some(voice_ms.unwrap_or(0).saturating_add(ms));
+                }
+            }
+            AttachmentKind::File | AttachmentKind::Video => files = files.saturating_add(1),
         }
         only = Some(name);
     }
-    let single = photos.saturating_add(files) == 1;
+    let single = photos.saturating_add(files).saturating_add(voices) == 1;
     AttachmentSummary {
         photos,
         files,
+        voices,
+        voice_ms,
         name: only.filter(|_| single).map(str::to_string),
     }
 }

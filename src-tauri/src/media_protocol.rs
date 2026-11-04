@@ -1,11 +1,13 @@
 //! The `kinige-media` protocol (slice 7, ADR-0014): the only way the webview reads attachment files.
-//! `kinige-media://localhost/{thumb|full}/<uuid>` (on Windows `http://kinige-media.localhost/...`).
+//! `kinige-media://localhost/{thumb|full|audio}/<uuid>` (on Windows `http://kinige-media.localhost/...`). `audio` (slice 7a) serves a
+//! voice note with `Range` support; see `audio_route`.
 //!
 //! A custom protocol does not go through the capability system, so the window is checked here: only the webview labelled `main`
 //! is answered, the others get 403. The label is fixed when the webview is created, it is not read from the request. The path
 //! must be exactly `thumb` or `full` and a lower-case UUID v4; anything else, a purged id or a missing file is 404. A URL never
 //! carries a filesystem path. `full` serves only what the store allows (an image of a format we show, up to 64 MiB, never SVG).
 
+use crate::audio_route;
 use crate::capture::MAIN_LABEL;
 use kinige_store::{Media, MediaVariant, Store};
 use tauri::http::{Method, Response, StatusCode, header};
@@ -22,16 +24,29 @@ pub fn register<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
         let label = ctx.webview_label().to_string();
         let path = request.uri().path().to_string();
         let method = request.method().clone();
+        let range = request
+            .headers()
+            .get(header::RANGE)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_string);
         match ctx.app_handle().try_state::<Store>() {
-            Some(store) => answer(&store, &label, &method, &path, move |response| {
-                responder.respond(response);
-            }),
+            Some(store) => answer_range(
+                &store,
+                &label,
+                &method,
+                &path,
+                range.as_deref(),
+                move |response| {
+                    responder.respond(response);
+                },
+            ),
             None => responder.respond(empty(StatusCode::SERVICE_UNAVAILABLE)),
         }
     })
 }
 
-/// Answers one request. `done` gets the response, from this thread for a refusal and from the media pool otherwise.
+/// Answers one request that carries no `Range` header. `done` gets the response, from this thread for a refusal and from the media
+/// pool otherwise.
 pub fn answer(
     store: &Store,
     label: &str,
@@ -39,11 +54,30 @@ pub fn answer(
     path: &str,
     done: impl FnOnce(Response<Vec<u8>>) + Send + 'static,
 ) {
+    answer_range(store, label, method, path, None, done);
+}
+
+/// The same with the request's `Range` header, which only the `audio` route reads (slice 7a).
+pub fn answer_range(
+    store: &Store,
+    label: &str,
+    method: &Method,
+    path: &str,
+    range: Option<&str>,
+    done: impl FnOnce(Response<Vec<u8>>) + Send + 'static,
+) {
     if label != MAIN_LABEL {
         return done(empty(StatusCode::FORBIDDEN));
     }
     if method != Method::GET {
         return done(empty(StatusCode::METHOD_NOT_ALLOWED));
+    }
+    if let Some(id) = parse_audio(path) {
+        let range = range.map(str::to_string);
+        return store.audio_async(id, move |audio| match audio {
+            Some(audio) => done(audio_route::respond(audio, range.as_deref())),
+            None => done(empty(StatusCode::NOT_FOUND)),
+        });
     }
     let Some((variant, id)) = parse(path) else {
         return done(empty(StatusCode::NOT_FOUND));
@@ -64,6 +98,12 @@ fn parse(path: &str) -> Option<(MediaVariant, String)> {
         _ => return None,
     };
     kinige_domain::hlc::is_uuid_v4(id).then(|| (variant, id.to_string()))
+}
+
+/// `/audio/<uuid>`; nothing else (slice 7a).
+fn parse_audio(path: &str) -> Option<String> {
+    let id = path.strip_prefix("/audio/")?;
+    kinige_domain::hlc::is_uuid_v4(id).then(|| id.to_string())
 }
 
 fn found(media: Media) -> Response<Vec<u8>> {

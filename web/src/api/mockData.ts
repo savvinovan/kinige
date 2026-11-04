@@ -109,4 +109,4 @@ export function compareFeed(
 export const NO_MEDIA = { mediaFiles: 0, mediaBytes: 0, mediaMissing: 0 } as const;
 
 /** An entry with no attachments, as the reply quote and the day card say it (slice 7). */
-export const NO_ATTACHMENTS = { photos: 0, files: 0, name: null } as const;
+export const NO_ATTACHMENTS = { photos: 0, files: 0, voices: 0, voiceMs: null, name: null } as const;

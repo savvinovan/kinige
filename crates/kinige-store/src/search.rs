@@ -14,6 +14,7 @@ use crate::Store;
 use crate::StoreError;
 use crate::error::{is_search_index_error, write_err};
 use crate::settings::get_setting;
+use kinige_domain::attachment::{VOICE_SEARCH_WORD, is_voice_file_name};
 use kinige_domain::search::{SEARCH_INDEX_VERSION, index_text};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use std::sync::atomic::Ordering;
@@ -89,10 +90,15 @@ fn index_source(conn: &Connection, message_id: &str, body_md: &str) -> rusqlite:
     let mut text = body_md.to_string();
     for name in names {
         text.push('\n');
-        text.push_str(
-            name.rsplit_once('.')
-                .map_or(name.as_str(), |(stem, _)| stem),
-        );
+        // A recorder's file is found by the word "voice", not by the date and time in its name (slice 7a).
+        if is_voice_file_name(&name) {
+            text.push_str(VOICE_SEARCH_WORD);
+        } else {
+            text.push_str(
+                name.rsplit_once('.')
+                    .map_or(name.as_str(), |(stem, _)| stem),
+            );
+        }
     }
     Ok(text)
 }

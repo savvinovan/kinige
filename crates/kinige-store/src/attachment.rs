@@ -4,6 +4,7 @@
 //! Layout under the data directory: `attachments/<id>.<ext>`, `attachments/.tmp/<process>/`, `attachments/.orphans/`,
 //! `thumbs/<id>.jpg|png`, `open/<process>/<id>/<name>`. `<process>` is made at startup, so the sweep never touches a live copy.
 
+mod audio;
 mod copy;
 mod decode;
 mod draft;
@@ -12,7 +13,9 @@ mod media;
 mod open;
 mod rows;
 mod sweep;
+mod voice;
 
+pub use audio::AudioFile;
 pub(crate) use copy::{Hints, Source, Staged, io_error, stage};
 pub use faults::AttachFault;
 pub(crate) use faults::Faults;

@@ -41,6 +41,8 @@ export interface MockDayFacts {
   excerpt: string | null;
   /** Live photos of the day (slice 7). */
   photos?: number;
+  /** Live voice notes of the day (slice 7a). */
+  voices?: number;
 }
 
 /** Every day of `year` in calendar order with the given per-day facts (keyed by `YYYY-MM-DD`). */
@@ -58,6 +60,7 @@ export function mockDays(year: number, first: FirstWeekday, facts: ReadonlyMap<s
       stage: mockStage(day?.lengths ?? []),
       excerpt: day?.excerpt ?? null,
       photos: day?.photos ?? 0,
+      voices: day?.voices ?? 0,
       firstSummary: null,
     });
   }

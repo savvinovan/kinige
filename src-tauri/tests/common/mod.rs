@@ -233,6 +233,7 @@ pub fn args_for(command: &str) -> Value {
         "attach_dropped" => json!({"token": "нет-такого", "chatId": inbox}),
         "remove_draft_attachment" => json!({"chatId": inbox, "attachmentId": "нет-такого"}),
         "open_attachment" => json!({"attachmentId": "нет-такого"}),
+        // `send_voice` takes a raw body: a JSON call is the "garbage" case and must be an error, never a panic.
         _ => json!({}),
     }
 }
@@ -244,4 +245,6 @@ pub const NEEDS_NATIVE_UI: &[&str] = &[
     "import_telegram_open",
     // The paperclip dialog.
     "attach_pick",
+    // Opens the system settings page of the microphone: never from a test (slice 7a).
+    "open_microphone_settings",
 ];

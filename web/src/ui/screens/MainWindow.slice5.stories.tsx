@@ -28,7 +28,7 @@ const QUOTE: ReplyTo = {
   excerpt: "Дочитал «Конец вечности». Сильная концовка.",
   state: "live",
   yearsLater: 3,
-  attachments: { photos: 0, files: 0, name: null },
+  attachments: { photos: 0, files: 0, voices: 0, voiceMs: null, name: null },
 };
 
 const REPLY = { ...demoEntry("r1", "2026-10-30", "21:05", "До сих пор так думаю"), replyTo: QUOTE };

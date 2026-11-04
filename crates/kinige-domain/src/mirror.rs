@@ -42,6 +42,8 @@ pub struct MirrorAttachment {
     pub name: String,
     /// The file name in the day folder (`attachment::mirror_file_names`): safe and unique there.
     pub file: String,
+    /// The length of a voice note or other audio, when known (slice 7a): the line ends with ` (m:ss)`.
+    pub duration_ms: Option<i64>,
 }
 
 /// The entry that was replied to, as it appears in the day file.
@@ -127,7 +129,14 @@ fn attachment_line(journal_date: &str, attachment: &MirrorAttachment) -> String 
         text.push(c);
     }
     let bang = if attachment.is_image { "!" } else { "" };
-    format!("{bang}[{text}](<{journal_date}/{}>)", attachment.file)
+    let length = attachment
+        .duration_ms
+        .map(|ms| format!(" ({})", crate::attachment::format_duration(ms)))
+        .unwrap_or_default();
+    format!(
+        "{bang}[{text}](<{journal_date}/{}>){length}",
+        attachment.file
+    )
 }
 
 /// The `↩` line of a reply. The address is in angle brackets: a chat folder name may contain spaces and parentheses (`<`, `>` and `/` are already stripped from names).

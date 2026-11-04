@@ -708,3 +708,56 @@ fn files_land_in_the_markdown_copy_of_their_days() {
         year.join("2019-03-08/IMG_0001.jpg").is_file()
     });
 }
+
+/// Slice 7a: the domain rule for `duration_ms` (audio and video only, up to a `u32` of seconds) must not turn an odd export into a
+/// failed import.
+#[test]
+fn a_long_audiobook_and_an_animation_saved_as_a_gif_import_without_failing_the_batch() {
+    let data = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(data.path());
+    let export = Export::new();
+    export.put("files/book.mp3", b"ID3 fake");
+    export.put("files/huge.mp3", b"ID3 fake");
+    export.put("files/loop.gif", &gif(8, 8));
+    let messages = vec![
+        file(
+            1,
+            "files/book.mp3",
+            "book.mp3",
+            Some("audio_file"),
+            r#","duration_seconds":90000"#,
+        ),
+        file(
+            2,
+            "files/huge.mp3",
+            "huge.mp3",
+            Some("audio_file"),
+            r#","duration_seconds":4294967295"#,
+        ),
+        file(
+            3,
+            "files/loop.gif",
+            "loop.gif",
+            None,
+            r#","duration_seconds":3"#,
+        ),
+        msg(4, SAVED_T + 4, "after them", FROM),
+    ];
+    std::fs::write(export.path().join("result.json"), export_json(&messages)).unwrap();
+    let parsed = parse(&export_json(&messages));
+    let report = import_with(&store, &parsed, Some(export.path()), Language::En);
+    assert_eq!(report.imported, 4, "{report:?}");
+    assert_eq!(report.media_attached, 3, "{report:?}");
+
+    let durations: Vec<(String, Option<i64>)> = feed(&store)
+        .iter()
+        .flat_map(|m| m.attachments.iter())
+        .map(|a| (a.filename.clone(), a.duration_ms))
+        .collect();
+    assert!(durations.contains(&("book.mp3".to_string(), Some(90_000_000))));
+    assert!(durations.contains(&("huge.mp3".to_string(), Some(4_294_967_295_000))));
+    assert!(
+        durations.contains(&("loop.gif".to_string(), None)),
+        "an image has no length: {durations:?}"
+    );
+}

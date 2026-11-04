@@ -47,6 +47,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "attach_dropped",
     "remove_draft_attachment",
     "open_attachment",
+    "send_voice",
+    "open_microphone_settings",
 ];
 
 /// Commands of the settings window (capability `settings`, slice 4b, ADR-0010): settings, shortcuts, AI agent access, the
@@ -127,6 +129,8 @@ pub const COMMANDS: &[&str] = &[
     "attach_dropped",
     "remove_draft_attachment",
     "open_attachment",
+    "send_voice",
+    "open_microphone_settings",
     "set_text_size",
     "choose_mirror_folder",
     "set_shortcut",

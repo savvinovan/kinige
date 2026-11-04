@@ -1,0 +1,23 @@
+{
+  "layout": {
+    "voice": {
+      "$type": "dimension",
+      "$description": "Voice notes (slice 7a): the recording bar that replaces the input field while recording, and the player in the feed.",
+      "dot-size": { "$value": "0.7rem", "$description": "The red dot of the recording bar (9 px at a 13 px root). A shape that does not pulse." },
+      "meter-bar-width": { "$value": "0.2rem", "$description": "Width of one bar of the level meter (2.6 px at a 13 px root)." },
+      "meter-gap": { "$value": "0.15rem", "$description": "Gap between the bars of the level meter." },
+      "meter-height": { "$value": "1.6rem", "$description": "Height of the meter: the tallest bar. About 24 bars stand in a row (the count is in ui/voice/levels.ts)." },
+      "meter-min-height": { "$value": "0.2rem", "$description": "The shortest bar: silence still shows a line." },
+      "timer-width": { "$value": "3.6rem", "$description": "Room for the timer of the recording bar up to 59:59 in tabular figures, so the meter does not move as the seconds change." },
+      "confirm-gap": { "$value": "{space.2}", "$description": "Gap between the question and the two buttons of the discard confirmation." },
+      "player-width": { "$value": "20rem", "$description": "Width of the player in a bubble (260 px at a 13 px root, between the 240 and 360 px of the spec): fixed, so nothing moves when the duration or the time changes. In a narrow bubble it shrinks to the bubble (max-width 100%)." },
+      "player-gap": { "$value": "{space.2}", "$description": "Gap between the play button, the seek bar and the time of the player." },
+      "player-button": { "$value": "2.4rem", "$description": "The round play / pause button of the player (31 px at a 13 px root)." },
+      "seek-height": { "$value": "0.3rem", "$description": "The track of the seek bar." },
+      "seek-thumb": { "$value": "0.8rem", "$description": "The thumb of the seek bar (10 px at a 13 px root)." },
+      "time-width": { "$value": "6.4rem", "$description": "Room for \"0:12 / 0:40\" in tabular figures; with hours (\"1:02:03 / 1:02:03\") the text is allowed to be wider." },
+      "speed-width": { "$value": "2.6rem", "$description": "The speed chip (\"1×\", \"1.5×\", \"2×\"): one width for all three, so the chip does not move." },
+      "unplayable-padding": { "$value": "{space.2}", "$description": "Padding of the \"Can't play here\" line." }
+    }
+  }
+}

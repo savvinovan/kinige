@@ -10,6 +10,7 @@ use crate::message_body::replace_body_without_revision;
 use crate::messages::load;
 use crate::send::mark_dirty;
 use crate::{Now, StoreError};
+use kinige_domain::attachment::AttachmentKind;
 use kinige_domain::telegram::TgFile;
 use rusqlite::Transaction;
 use std::fs;
@@ -125,7 +126,11 @@ impl StagedMedia {
             mime: staged.mime.clone(),
             width: staged.width,
             height: staged.height,
-            duration_ms: self.duration_ms,
+            // A duration belongs to audio and video (the domain rule of slice 7a): an animation saved as a GIF, or a file whose
+            // kind is only a guess, keeps none, instead of failing the whole batch.
+            duration_ms: self
+                .duration_ms
+                .filter(|_| matches!(staged.kind, AttachmentKind::Audio | AttachmentKind::Video)),
         }
     }
 

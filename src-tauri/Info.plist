@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Merged into the bundle's Info.plist by tauri-build (slice 7a, ADR-0015). The text is shown by macOS at the first recording of a voice
+	     note. Without this key, asking for the microphone ends the process. English only: a Russian InfoPlist.strings is not included. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Kinige records voice notes from your microphone, only when you press the microphone button.</string>
+</dict>
+</plist>

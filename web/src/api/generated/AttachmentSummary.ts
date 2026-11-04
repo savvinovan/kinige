@@ -6,9 +6,17 @@
  */
 export type AttachmentSummary = { photos: number, 
 /**
- * Everything that is not a photo: files, audio, video.
+ * Files and video: everything that is neither a photo nor audio.
  */
 files: number, 
+/**
+ * Audio: the recorder's voice notes and the Telegram voices (slice 7a).
+ */
+voices: number, 
+/**
+ * The total of the known durations of the voice notes; `None` when none of them has one.
+ */
+voiceMs: number | null, 
 /**
  * The file name when the entry has exactly one attachment.
  */

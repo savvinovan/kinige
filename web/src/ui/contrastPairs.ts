@@ -50,6 +50,8 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     SURFACES.map((background) => ({ foreground, background, kind: "text" as const })),
   ),
   ...SURFACES.map((background) => ({ foreground: "focus.ring", background, kind: "ui" as const })),
+  // The dot of the recording bar (slice 7a) is a shape, not text: the UI threshold on every surface it can sit on.
+  ...SURFACES.map((background) => ({ foreground: "status.recording", background, kind: "ui" as const })),
   // The divider between the sidebar and the feed (the sidebar border) and the empty checkbox outline use the divider / tertiary text role.
   { foreground: "border.divider", background: "surface.background", kind: "decorative" },
   { foreground: "border.divider", background: "surface.paper", kind: "decorative" },

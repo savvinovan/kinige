@@ -149,6 +149,7 @@ fn day_entries(
                         is_image: item.is_image,
                         name: item.filename.clone(),
                         file: item.name.clone(),
+                        duration_ms: item.duration_ms,
                     })
                     .collect(),
             })

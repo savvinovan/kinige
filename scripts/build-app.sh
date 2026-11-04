@@ -40,6 +40,13 @@ for KEY in CFBundleShortVersionString CFBundleVersion; do
   [ "$GOT" = "$VERSION" ] || { echo "$KEY in the bundle = $GOT, but Cargo.toml has $VERSION" >&2; exit 1; }
 done
 
+# The microphone (slice 7a, ADR-0015): without the usage description macOS ends the process at the first recording, and without the
+# entitlement the hardened runtime refuses the microphone. Nothing in CI reaches TCC, so a missing key is asserted here instead of
+# being found by the person who presses the button.
+MIC_TEXT="$(plutil -extract NSMicrophoneUsageDescription raw "$APP/Contents/Info.plist" 2>/dev/null || true)"
+[ -n "$MIC_TEXT" ] || { echo "the bundle has no NSMicrophoneUsageDescription" >&2; exit 1; }
+
 codesign --verify --deep --strict --verbose=2 "$APP"
-codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature|Format"
+codesign -d --entitlements :- "$APP" 2>&1 | grep -q "com.apple.security.device.audio-input" \
+  || { echo "the signature does not carry com.apple.security.device.audio-input" >&2; codesign -d --entitlements :- "$APP" >&2 || true; exit 1; }codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature|Format"
 echo "OK: $APP ($VERSION)"

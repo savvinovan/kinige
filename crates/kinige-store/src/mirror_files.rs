@@ -21,9 +21,11 @@ pub(crate) struct DayAttachment {
     pub name: String,
     /// The stored file in `attachments/` if this device has it.
     pub source: Option<PathBuf>,
+    /// The length of an `audio` attachment, when known: the link line ends with ` (m:ss)` (slice 7a).
+    pub duration_ms: Option<i64>,
 }
 
-/// `(message id, attachment id, kind, filename, stored file name, local state)` of one row of the day query.
+/// `(message id, attachment id, kind, filename, stored file name, local state, duration)` of one row of the day query.
 type DayRow = (
     String,
     String,
@@ -31,6 +33,7 @@ type DayRow = (
     String,
     Option<String>,
     Option<String>,
+    Option<i64>,
 );
 
 /// The live attachments of a chat day in the order of the entries (`created_at`, `id`, `sort_index`), with the day folder names.
@@ -41,7 +44,7 @@ pub(crate) fn day_attachments(
     journal_date: &str,
 ) -> rusqlite::Result<Vec<DayAttachment>> {
     let mut statement = reader.prepare(
-        "SELECT a.message_id, a.id, a.kind, a.filename, l.file_name, l.state \
+        "SELECT a.message_id, a.id, a.kind, a.filename, l.file_name, l.state, a.duration_ms \
          FROM attachment a JOIN message m ON m.id = a.message_id \
          LEFT JOIN attachment_local l ON l.attachment_id = a.id \
          WHERE m.chat_id = ?1 AND m.journal_date = ?2 AND m.deleted_at IS NULL AND a.deleted_at IS NULL \
@@ -56,6 +59,7 @@ pub(crate) fn day_attachments(
                 row.get(3)?,
                 row.get(4)?,
                 row.get(5)?,
+                row.get(6)?,
             ))
         })?
         .collect::<rusqlite::Result<_>>()?;
@@ -65,15 +69,20 @@ pub(crate) fn day_attachments(
         .into_iter()
         .zip(names)
         .map(
-            |((message_id, id, kind, filename, file_name, state), name)| DayAttachment {
-                message_id,
-                id,
-                is_image: kind == "image",
-                filename,
-                name,
-                source: file_name
-                    .filter(|stored| is_stored_name(stored) && state.as_deref() == Some("local"))
-                    .map(|stored| attachments_dir.join(stored)),
+            |((message_id, id, kind, filename, file_name, state, duration_ms), name)| {
+                DayAttachment {
+                    message_id,
+                    id,
+                    is_image: kind == "image",
+                    duration_ms: duration_ms.filter(|_| kind == "audio"),
+                    filename,
+                    name,
+                    source: file_name
+                        .filter(|stored| {
+                            is_stored_name(stored) && state.as_deref() == Some("local")
+                        })
+                        .map(|stored| attachments_dir.join(stored)),
+                }
             },
         )
         .collect())

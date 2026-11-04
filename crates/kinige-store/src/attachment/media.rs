@@ -35,7 +35,7 @@ pub struct Media {
     pub bytes: Vec<u8>,
 }
 
-type Job = Box<dyn FnOnce() + Send>;
+pub(super) type Job = Box<dyn FnOnce() + Send>;
 
 /// The threads behind [`Store::media_async`].
 pub(crate) struct MediaPool {
@@ -43,6 +43,11 @@ pub(crate) struct MediaPool {
 }
 
 impl MediaPool {
+    /// Queues a job; `false` if the pool has stopped.
+    pub(super) fn submit(&self, job: Job) -> bool {
+        self.jobs.send(job).is_ok()
+    }
+
     pub(crate) fn spawn() -> Result<MediaPool, StoreError> {
         let (jobs, queue) = mpsc::channel::<Job>();
         let queue = Arc::new(Mutex::new(queue));

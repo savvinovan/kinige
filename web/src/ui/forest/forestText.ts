@@ -57,20 +57,30 @@ export function photosText(t: TFunction, photos: number): string {
   return t("forest.photos", { count: photos });
 }
 
-/** "5 notes · 3 photos · a large tree" (the photos only when there are some), or "No notes" for an empty day. */
-export function daySummary(t: TFunction, day: Pick<ForestDay, "notes" | "stage"> & { photos?: number }): string {
+/** "1 voice note" / "3 голосовых": the day's live voice notes (slice 7a). */
+export function voicesText(t: TFunction, voices: number): string {
+  return t("forest.voices", { count: voices });
+}
+
+/** The day's extras, each with the separator in front: " · 3 photos · 1 voice note" (empty when there are none). */
+function extras(t: TFunction, day: { photos?: number; voices?: number }, separator: string): string {
+  const photos = (day.photos ?? 0) > 0 ? `${separator}${photosText(t, day.photos ?? 0)}` : "";
+  const voices = (day.voices ?? 0) > 0 ? `${separator}${voicesText(t, day.voices ?? 0)}` : "";
+  return `${photos}${voices}`;
+}
+
+/** "5 notes · 3 photos · 1 voice note · a large tree" (photos and voice notes only when there are some), or "No notes" for an empty day. */
+export function daySummary(t: TFunction, day: Pick<ForestDay, "notes" | "stage"> & { photos?: number; voices?: number }): string {
   if (day.notes === 0) return t("forest.noNotes");
-  const photos = (day.photos ?? 0) > 0 ? ` · ${photosText(t, day.photos ?? 0)}` : "";
-  return `${notesText(t, day.notes)}${photos} · ${stageName(t, day.stage)}`;
+  return `${notesText(t, day.notes)}${extras(t, day, " · ")} · ${stageName(t, day.stage)}`;
 }
 
 /** What a screen reader says for a day: "October 16, 5 notes, 3 photos, a large tree". */
 export function dayAnnouncement(
   t: TFunction,
   language: Language,
-  day: Pick<ForestDay, "date" | "notes" | "stage"> & { photos?: number },
+  day: Pick<ForestDay, "date" | "notes" | "stage"> & { photos?: number; voices?: number },
 ): string {
-  const photos = (day.photos ?? 0) > 0 ? `, ${photosText(t, day.photos ?? 0)}` : "";
-  const summary = day.notes > 0 ? `${notesText(t, day.notes)}${photos}, ${stageName(t, day.stage)}` : t("forest.noNotes");
+  const summary = day.notes > 0 ? `${notesText(t, day.notes)}${extras(t, day, ", ")}, ${stageName(t, day.stage)}` : t("forest.noNotes");
   return t("forest.announce", { date: shortDay(day.date, language), summary });
 }

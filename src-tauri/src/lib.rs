@@ -3,6 +3,7 @@
 mod actions;
 mod agent_access;
 pub mod attachments;
+pub mod audio_route;
 pub mod capture;
 mod command_names;
 mod commands;
@@ -26,6 +27,7 @@ pub mod recovery;
 pub mod settings_window;
 pub mod startup;
 pub mod tray;
+pub mod voice;
 
 use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
 use data_dirs::{db_path, default_mirror_dir};
@@ -52,6 +54,8 @@ pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS, SETTINGS_COMM
 pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     // The `kinige-media` protocol (slice 7) answers only the `main` webview; it is outside the capability system.
     media_protocol::register(builder)
+        // The web view's own permission prompts (slice 7a): the microphone for `main` only, no camera, screen capture or location.
+        .on_permission_request(|webview, kind| voice::permission_decision(webview.label(), kind))
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -66,6 +70,8 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             attachments::attach_dropped,
             attachments::remove_draft_attachment,
             attachments::open_attachment,
+            voice::send_voice,
+            voice::open_microphone_settings,
             commands::get_settings,
             commands::set_text_size,
             commands::choose_mirror_folder,

@@ -48,7 +48,7 @@ mod writer;
 
 pub use agent::{AgentError, AgentReply, AgentRequest, AgentSettings};
 pub use agent_log::{LOG_DAYS, LOG_MAX_ROWS, LOG_PAGE};
-pub use attachment::{AttachFault, Media, MediaVariant, OpenTarget, SweepReport};
+pub use attachment::{AttachFault, AudioFile, Media, MediaVariant, OpenTarget, SweepReport};
 pub use backup::{Integrity, backups_dir, list_backups, verify_database};
 pub use capture::{CONTEXT_LEN, CaptureView};
 pub use chats::RecentChat;

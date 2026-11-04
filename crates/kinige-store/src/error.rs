@@ -53,6 +53,10 @@ pub enum StoreError {
     DiskFull,
     /// A draft attachment of this chat with this id does not exist.
     AttachmentNotFound,
+    /// The recording is shorter than one second (slice 7a): not saved.
+    VoiceTooShort,
+    /// The recording is longer than the recorder allows (30 minutes): not saved.
+    VoiceTooLong,
     /// The database was created by a newer app version (schema `found`): downgrade is not supported (PRD §10.4).
     TooNew(i64),
     /// Writing to the database failed: nothing was written (the transaction rolled back).
@@ -92,6 +96,8 @@ impl StoreError {
             StoreError::AttachmentUnreadable => ErrorCode::AttachmentUnreadable,
             StoreError::DiskFull => ErrorCode::DiskFull,
             StoreError::AttachmentNotFound => ErrorCode::AttachmentNotFound,
+            StoreError::VoiceTooShort => ErrorCode::VoiceTooShort,
+            StoreError::VoiceTooLong => ErrorCode::VoiceTooLong,
             StoreError::TooNew(_) => ErrorCode::DatabaseTooNew,
             StoreError::Write(_) => ErrorCode::StoreWriteFailed,
             StoreError::Read(_) => ErrorCode::StoreReadFailed,
@@ -129,6 +135,8 @@ impl StoreError {
             StoreError::AttachmentUnreadable => "attachment_unreadable",
             StoreError::DiskFull => "disk_full",
             StoreError::AttachmentNotFound => "attachment_not_found",
+            StoreError::VoiceTooShort => "voice_too_short",
+            StoreError::VoiceTooLong => "voice_too_long",
             StoreError::TooNew(_) => "too_new",
             StoreError::Write(_) => "write",
             StoreError::Read(_) => "read",
@@ -166,6 +174,8 @@ impl fmt::Display for StoreError {
             StoreError::AttachmentUnreadable => f.write_str("file could not be read"),
             StoreError::DiskFull => f.write_str("not enough disk space"),
             StoreError::AttachmentNotFound => f.write_str("draft attachment not found"),
+            StoreError::VoiceTooShort => f.write_str("recording is too short"),
+            StoreError::VoiceTooLong => f.write_str("recording is too long"),
             StoreError::TooNew(found) => {
                 write!(
                     f,

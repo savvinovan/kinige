@@ -70,6 +70,8 @@ fn main() {
         "attach_dropped",
         "remove_draft_attachment",
         "open_attachment",
+        "send_voice",
+        "open_microphone_settings",
         "set_text_size",
         "choose_mirror_folder",
         "set_shortcut",
