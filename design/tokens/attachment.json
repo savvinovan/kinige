@@ -23,6 +23,7 @@
       "drop-inset": { "$value": "{space.3}", "$description": "How far the drop outline stands from the edge of the feed." },
       "lightbox-padding": { "$value": "{space.5}", "$description": "Margin around the photo and the controls of the lightbox." },
       "lightbox-gap": { "$value": "{space.3}", "$description": "Gap between the controls and the photo of the lightbox." },
+      "lightbox-percent-width": { "$value": "3.6rem", "$description": "Minimum width of the zoom percentage button in the lightbox toolbar (47 px at a 13 px root): fits '800%' so the buttons beside it do not move." },
       "story-narrow-width": { "$value": "640px", "$description": "Storybook only: the width of a narrow window in the attachment stories." }
     }
   },

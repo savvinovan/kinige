@@ -45,10 +45,15 @@ Line SVGs from the [Lucide](https://lucide.dev) set via the npm package `lucide-
 | `audio`        | `audio-lines`                               | ISC                |
 | `video`        | `video`                                     | ISC                |
 | `palette`      | `palette`                                   | ISC                |
+| `rotate`       | `rotate-ccw`                                | ISC                |
+| `zoomOut`      | `zoom-out`                                  | MIT (from Feather) |
+| `zoomIn`       | `zoom-in`                                   | MIT (from Feather) |
 
 The origin of the slice 3 icons was checked against the Feather list in the `LICENSE` of package 1.60.0: `trash-2`, `calendar`, `plus`, `chevron-right`, `database` are there, the rest are ISC.
 
 The slice 7 icons (`file`, `audio-lines`, `video`) are not in the Feather list of the package's `LICENSE` (checked against 1.60.0), so they are ISC.
+
+The KINIG-87 icons: `zoom-in` and `zoom-out` are in the Feather list of the `LICENSE` of 1.60.0 (MIT); `rotate-ccw` is not, so it is ISC.
 
 Which icons came from Feather can be seen in the list in the package's `LICENSE`; checked against version 1.60.0.
 

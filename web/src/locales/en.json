@@ -18,6 +18,12 @@
     "previous": "Previous photo",
     "next": "Next photo",
     "lightboxLabel": "Photo viewer",
+    "rotate": "Rotate left",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomReset": "Fit to window, zoom {{percent}}%",
+    "zoomResetShort": "Fit to window",
+    "withKey": "{{label}} ({{key}})",
     "summary": {
       "photo": "Photo",
       "file": "File",
