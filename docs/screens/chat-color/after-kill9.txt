@@ -1,0 +1,11 @@
+# chat.color after kill -9 and a launch
+Книги = null
+Идеи = null
+Работа = null
+Старые заметки = null
+Очень длинное название чата, которое не помещается в строку сайдбара = null
+Проекты = grey
+Linux notes = grey
+Мама = orange
+Анна = null
+RESULT: both picks survived

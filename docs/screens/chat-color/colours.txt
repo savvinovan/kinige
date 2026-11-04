@@ -1,0 +1,11 @@
+# What the database stores in chat.color after the first launch (a name, or null = automatic: the colour is computed from the chat id on every read).
+Книги = null
+Идеи = null
+Работа = null
+Старые заметки = null
+Очень длинное название чата, которое не помещается в строку сайдбара = null
+Проекты = null
+Linux notes = grey
+Мама = null
+Анна = null
+RESULT: the launch wrote nothing: the stored values are the same as before it

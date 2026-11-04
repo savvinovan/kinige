@@ -1,0 +1,4 @@
+while an AI agent searches in a loop, before: the agent on the window's connection: feed page (200 entries) p50 19.0 ms, p95 160.2 ms, max 191.1 ms; recent chats p50 0.0 ms, p95 0.0 ms, max 11.4 ms; the agent's search p50 19.6 ms, p95 162.7 ms, max 191.7 ms (197 searches)
+while an AI agent searches in a loop, after: the agent on its own connection: feed page (200 entries) p50 6.0 ms, p95 6.5 ms, max 14.9 ms; recent chats p50 0.0 ms, p95 0.0 ms, max 0.0 ms; the agent's search p50 19.2 ms, p95 187.5 ms, max 220.1 ms (27 searches)
+recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), before (MAX(created_at) over every entry): p50 77896.2 ms, p95 84516.8 ms, max 87285.0 ms
+recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), after (last entry in feed order, message_feed): p50 0.3 ms, p95 0.3 ms, max 2.6 ms
