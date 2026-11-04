@@ -45,7 +45,7 @@ url = "2"
 uuid = { version = "1.28", features = ["v4"] }
 # The MCP server inside the app (ADR-0009): the official Rust SDK. Version 3.5.1: the latest release 3.8.0 is less than two weeks old.
 # Only the `server` feature (no macros, no HTTP): the tools are described by hand, there are no network transports (§12.3).
-rmcp = { version = "=3.5.1", default-features = false, features = ["server"] }
+rmcp = { version = "=3.6.0", default-features = false, features = ["server"] }
 # The Unix socket and timers of the MCP server (tokio is already in the tree through tauri).
 tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros", "rt"] }
 
