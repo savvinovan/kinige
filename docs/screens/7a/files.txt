@@ -1,3 +1,3 @@
 rows: 6  voice notes: 5  marked missing: 1
 files in attachments/: 5  leftover .part files: 0
-recorded notes by container: audio/mp4 x5 
+seeded voice notes: 4 (made by seed_demo, not recorded); recorded in this run: 1, container: audio/mp4

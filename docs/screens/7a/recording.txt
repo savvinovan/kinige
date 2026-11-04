@@ -1,1 +1,1 @@
-recording shot taken 5 s after the press; the recording ends by itself at 14 s
+the shot was taken after the press, a 5 s sleep and the shot's own wait, so the timer in it (about 0:08) is the evidence, not the 5 s; the recording ends by itself at 14 s
