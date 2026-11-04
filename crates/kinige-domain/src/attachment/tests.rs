@@ -275,6 +275,7 @@ fn view(kind: AttachmentKind, name: &str) -> AttachmentView {
         height: None,
         duration_ms: None,
         state: AttachmentState::Local,
+        waveform: None,
     }
 }
 

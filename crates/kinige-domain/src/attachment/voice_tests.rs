@@ -89,6 +89,7 @@ fn the_summary_counts_audio_as_voice_notes_with_their_total_length() {
         height: None,
         duration_ms,
         state: AttachmentState::Local,
+        waveform: None,
     };
     let one = summary_of(&[view(AttachmentKind::Audio, "v.m4a", Some(40_000))]);
     assert_eq!(

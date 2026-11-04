@@ -20,6 +20,9 @@ pub use voice::{
     format_duration, is_voice_file_name, playable_audio_mime, voice_file_name,
 };
 
+mod waveform;
+pub use waveform::{WAVEFORM_HEX_LEN, WAVEFORM_PEAKS, waveform_from_hex, waveform_is_storable};
+
 /// The largest attachment: 2 GiB (the free Telegram limit; the user's decision of 03.11.2026).
 pub const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 /// The most attachments in one entry.
@@ -134,6 +137,9 @@ pub struct AttachmentView {
     #[ts(type = "number | null")]
     pub duration_ms: Option<i64>,
     pub state: AttachmentState,
+    /// The waveform of an `audio` attachment, local to this device (ADR-0015): `None` until it is known, an empty list when the
+    /// decoder could not read the file (do not try again), otherwise [`WAVEFORM_PEAKS`] peaks from 0 to 255. Not part of `core`.
+    pub waveform: Option<Vec<u8>>,
 }
 
 /// What an entry's attachments amount to, for the lines that have no room for them: the reply quote, "On this day", the forest

@@ -13,7 +13,12 @@ use common::*;
 use kinige_lib::{CAPTURE_COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS};
 use serde_json::{Value, json};
 
-const COMMANDS_7A: &[&str] = &["send_voice", "open_microphone_settings"];
+const COMMANDS_7A: &[&str] = &[
+    "send_voice",
+    "open_microphone_settings",
+    "read_voice_for_waveform",
+    "set_attachment_waveform",
+];
 
 #[test]
 fn the_voice_commands_are_main_only_and_the_capture_set_is_unchanged() {
@@ -37,7 +42,12 @@ fn the_voice_commands_are_main_only_and_the_capture_set_is_unchanged() {
         assert!(MAIN_COMMANDS.contains(command), "{command}");
         assert!(!CAPTURE_COMMANDS.contains(command), "{command}");
         assert!(!SETTINGS_COMMANDS.contains(command), "{command}");
-        assert!(NEEDS_NATIVE_UI.contains(command) || *command == "send_voice");
+        // Only the settings page opens a native thing; the others are plain commands (the waveform ones are in `ipc_waveform.rs`).
+        assert_eq!(
+            NEEDS_NATIVE_UI.contains(command),
+            *command == "open_microphone_settings",
+            "{command}"
+        );
         for denied in [&capture, &settings] {
             let error = call(denied, command, json!({}))
                 .expect_err(&format!("{command} must be denied to this window"));

@@ -53,6 +53,8 @@
     "allow-open-attachment",
     "allow-send-voice",
     "allow-open-microphone-settings",
+    "allow-read-voice-for-waveform",
+    "allow-set-attachment-waveform",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

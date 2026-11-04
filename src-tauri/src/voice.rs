@@ -4,10 +4,10 @@
 
 use crate::attachments::{api, header_text};
 use crate::capture::MAIN_LABEL;
-use kinige_domain::attachment::MAX_PASTE_BYTES;
+use kinige_domain::attachment::{MAX_PASTE_BYTES, waveform_from_hex};
 use kinige_domain::{ApiError, ErrorCode, MessageView};
 use kinige_store::{Now, Store};
-use tauri::ipc::{InvokeBody, Request};
+use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::webview::{PermissionKind, PermissionResponse};
 use tauri::{AppHandle, Runtime, State};
 #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -40,14 +40,48 @@ pub fn send_voice(store: State<'_, Store>, request: Request<'_>) -> ApiResult<Me
         .and_then(parse_duration_ms)
         .ok_or(ErrorCode::AttachmentUnreadable)?;
     let reply_to = header_text(&request, "x-reply-to");
+    // The waveform is cosmetic and local: a header that does not read as 64 peaks is ignored, the note is still saved.
+    let waveform = header_text(&request, "x-waveform")
+        .as_deref()
+        .and_then(waveform_from_hex)
+        .filter(|peaks| !peaks.is_empty());
     store
-        .send_voice(
+        .send_voice_with_waveform(
             &chat_id,
             reply_to.as_deref(),
             bytes,
             duration_ms,
+            waveform.as_deref(),
             &Now::system(),
         )
+        .map_err(api)
+}
+
+/// The stored bytes of a voice note, for the player's waveform decoder (ADR-0015): the same checks as the `audio` route plus a cap of
+/// 16 MiB. Raw bytes in the answer. An IPC command and not a fetch of the route, because the route is deliberately not cross-origin
+/// readable and the page's `connect-src` stays `ipc:` only.
+#[tauri::command(async)]
+pub fn read_voice_for_waveform(
+    store: State<'_, Store>,
+    attachment_id: String,
+) -> ApiResult<Response> {
+    store
+        .audio_for_waveform(&attachment_id)
+        .map(Response::new)
+        .map_err(api)
+}
+
+/// Saves the peaks the player decoded (`peaks` is hex: 128 digits, or empty for "cannot be decoded, do not try again"). Local-only
+/// data: it never reaches `core`, the Markdown copy or sync. Garbage is an error and writes nothing.
+#[tauri::command(async)]
+pub fn set_attachment_waveform(
+    store: State<'_, Store>,
+    attachment_id: String,
+    peaks: String,
+) -> ApiResult<()> {
+    let peaks = waveform_from_hex(&peaks).ok_or(ErrorCode::AttachmentUnreadable)?;
+    store
+        .set_attachment_waveform(&attachment_id, &peaks)
         .map_err(api)
 }
 

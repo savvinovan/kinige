@@ -1,7 +1,8 @@
 //! Sending a voice note (slice 7a, ADR-0015): `Store::send_voice`. The recorder's bytes cross IPC in one raw body; stage 1 is the
 //! copy pipeline of every attachment (`.tmp/`, hash, `fsync`), stage 2 is one writer job that writes the entry (empty body, valid
-//! with an attachment, appendix §C.6), renames the file and writes the `attachment` and `attachment_local` rows. No migration:
-//! `attachment.duration_ms` exists since slice 7. A crash between the rename and the commit leaves an orphan for the sweep.
+//! with an attachment, appendix §C.6), renames the file and writes the `attachment` and `attachment_local` rows (with the local
+//! waveform when the recorder sent one). `attachment.duration_ms` exists since slice 7, the waveform column since migration 8.
+//! A crash between the rename and the commit leaves an orphan for the sweep.
 
 use super::copy::{Hints, Source, stage};
 use super::{Dirs, Faults, NewFile, insert_attachment};
@@ -11,7 +12,8 @@ use crate::send::{insert_new_message, insert_reply_message};
 use crate::{Now, Store, StoreError};
 use kinige_domain::MessageView;
 use kinige_domain::attachment::{
-    AttachmentKind, MAX_PASTE_BYTES, MAX_VOICE_MS, MIN_VOICE_MS, VoiceContainer, voice_file_name,
+    AttachmentKind, MAX_PASTE_BYTES, MAX_VOICE_MS, MIN_VOICE_MS, VoiceContainer, WAVEFORM_PEAKS,
+    voice_file_name,
 };
 use rusqlite::{Connection, TransactionBehavior};
 use std::fs;
@@ -31,6 +33,21 @@ impl Store {
         reply_to_id: Option<&str>,
         bytes: &[u8],
         duration_ms: i64,
+        now: &Now,
+    ) -> Result<MessageView, StoreError> {
+        self.send_voice_with_waveform(chat_id, reply_to_id, bytes, duration_ms, None, now)
+    }
+
+    /// [`Store::send_voice`] with the peaks the recorder collected from its analyser. They are cosmetic and local (ADR-0015): peaks of
+    /// any length other than `WAVEFORM_PEAKS` are dropped and the note is saved as if there were none (the player decodes the file
+    /// itself later), so a bad waveform can never cost a recording.
+    pub fn send_voice_with_waveform(
+        &self,
+        chat_id: &str,
+        reply_to_id: Option<&str>,
+        bytes: &[u8],
+        duration_ms: i64,
+        waveform: Option<&[u8]>,
         now: &Now,
     ) -> Result<MessageView, StoreError> {
         if bytes.len() > MAX_PASTE_BYTES {
@@ -82,6 +99,9 @@ impl Store {
                 duration_ms: Some(duration_ms),
             },
             part: part.clone(),
+            waveform: waveform
+                .filter(|peaks| peaks.len() == WAVEFORM_PEAKS)
+                .map(<[u8]>::to_vec),
         };
         let faults = self.inner.faults.clone();
         let result = self.write(move |conn| commit(conn, &faults, &job));
@@ -102,6 +122,8 @@ struct Job {
     dirs: Dirs,
     file: NewFile,
     part: std::path::PathBuf,
+    /// Exactly `WAVEFORM_PEAKS` bytes, or none.
+    waveform: Option<Vec<u8>>,
 }
 
 fn check_chat(conn: &Connection, chat_id: &str) -> Result<(), StoreError> {
@@ -137,7 +159,15 @@ fn commit(conn: &mut Connection, faults: &Faults, job: &Job) -> Result<MessageVi
     fs::rename(&job.part, &target).map_err(super::io_error)?;
     let written = (|| {
         faults.run_after_rename();
-        let attachment = insert_attachment(&tx, &view.id, 0, &job.file, job.now.ms)?;
+        let mut attachment = insert_attachment(&tx, &view.id, 0, &job.file, job.now.ms)?;
+        if let Some(peaks) = &job.waveform {
+            tx.execute(
+                "UPDATE attachment_local SET waveform = ?2 WHERE attachment_id = ?1",
+                rusqlite::params![attachment.id, peaks],
+            )
+            .map_err(write_err)?;
+            attachment.waveform = Some(peaks.clone());
+        }
         view.attachments = vec![attachment];
         // The file name is part of the entry's search text: index again, now that the row exists.
         crate::search::reindex(&tx, &view.id, &view.body_md).map_err(write_err)?;

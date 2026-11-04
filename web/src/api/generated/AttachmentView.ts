@@ -10,4 +10,9 @@ export type AttachmentView = { id: string, kind: AttachmentKind, filename: strin
 /**
  * Pixels after the EXIF orientation; only for `image` (the feed reserves the box before the file loads).
  */
-width: number | null, height: number | null, durationMs: number | null, state: AttachmentState, };
+width: number | null, height: number | null, durationMs: number | null, state: AttachmentState, 
+/**
+ * The waveform of an `audio` attachment, local to this device (ADR-0015): `None` until it is known, an empty list when the
+ * decoder could not read the file (do not try again), otherwise [`WAVEFORM_PEAKS`] peaks from 0 to 255. Not part of `core`.
+ */
+waveform: Array<number> | null, };

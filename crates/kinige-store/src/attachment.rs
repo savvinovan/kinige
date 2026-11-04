@@ -14,6 +14,7 @@ mod open;
 mod rows;
 mod sweep;
 mod voice;
+mod waveform;
 
 pub use audio::AudioFile;
 pub(crate) use copy::{Hints, Source, Staged, io_error, stage};
@@ -27,6 +28,7 @@ pub(crate) use rows::{
     insert_attachment_at, live_count, parse_attachments, promote_draft, summary_for,
 };
 pub use sweep::SweepReport;
+pub use waveform::MAX_DECODE_BYTES;
 
 use kinige_domain::hlc::is_uuid_v4;
 use std::fs;

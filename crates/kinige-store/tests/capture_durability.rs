@@ -42,7 +42,7 @@ fn migration_two_adds_only_the_draft_table_and_keeps_every_existing_row() {
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .unwrap();
     assert_eq!(version, LATEST_VERSION);
-    assert_eq!(LATEST_VERSION, 7);
+    assert_eq!(LATEST_VERSION, 8);
     let columns: Vec<(String, String)> = conn
         .prepare("SELECT name, type FROM pragma_table_info('draft') ORDER BY cid")
         .unwrap()

@@ -19,7 +19,7 @@ const HEAD_BYTES: usize = 12;
 /// An audio file the route may serve.
 #[derive(Debug)]
 pub struct AudioFile {
-    /// Opened for reading, positioned at the start; seek before reading a range.
+    /// Opened for reading. The first bytes were read to check the container, so the position is not the start: seek before reading.
     pub file: File,
     /// The real length of the file (not the row's claim), 1 to 64 MiB.
     pub len: u64,

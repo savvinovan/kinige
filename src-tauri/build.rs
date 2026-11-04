@@ -73,6 +73,8 @@ fn main() {
         "open_attachment",
         "send_voice",
         "open_microphone_settings",
+        "read_voice_for_waveform",
+        "set_attachment_waveform",
         "set_text_size",
         "choose_mirror_folder",
         "set_shortcut",

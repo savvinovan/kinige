@@ -234,7 +234,8 @@ pub fn args_for(command: &str) -> Value {
         "list_agent_log_entries" => json!({"logId": 1}),
         "attach_dropped" => json!({"token": "нет-такого", "chatId": inbox}),
         "remove_draft_attachment" => json!({"chatId": inbox, "attachmentId": "нет-такого"}),
-        "open_attachment" => json!({"attachmentId": "нет-такого"}),
+        "open_attachment" | "read_voice_for_waveform" => json!({"attachmentId": "нет-такого"}),
+        "set_attachment_waveform" => json!({"attachmentId": "нет-такого", "peaks": ""}),
         // `send_voice` takes a raw body: a JSON call is the "garbage" case and must be an error, never a panic.
         _ => json!({}),
     }

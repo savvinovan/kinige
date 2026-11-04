@@ -50,6 +50,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "open_attachment",
     "send_voice",
     "open_microphone_settings",
+    "read_voice_for_waveform",
+    "set_attachment_waveform",
 ];
 
 /// Commands of the settings window (capability `settings`, slice 4b, ADR-0010): settings, shortcuts, AI agent access, the
@@ -133,6 +135,8 @@ pub const COMMANDS: &[&str] = &[
     "open_attachment",
     "send_voice",
     "open_microphone_settings",
+    "read_voice_for_waveform",
+    "set_attachment_waveform",
     "set_text_size",
     "choose_mirror_folder",
     "set_shortcut",

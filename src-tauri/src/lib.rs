@@ -72,6 +72,8 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             attachments::open_attachment,
             voice::send_voice,
             voice::open_microphone_settings,
+            voice::read_voice_for_waveform,
+            voice::set_attachment_waveform,
             commands::get_settings,
             commands::set_text_size,
             commands::choose_mirror_folder,

@@ -92,3 +92,42 @@ pub fn get(
     );
     rx.recv_timeout(std::time::Duration::from_secs(20)).unwrap()
 }
+
+/// A command whose answer is a raw body (`read_voice_for_waveform`).
+pub fn bytes_call(
+    window: &WebviewWindow<MockRuntime>,
+    cmd: &str,
+    args: Value,
+) -> Result<Vec<u8>, Value> {
+    get_ipc_response(window, request(cmd, args)).map(|body: tauri::ipc::InvokeResponseBody| {
+        match body {
+            tauri::ipc::InvokeResponseBody::Raw(bytes) => bytes,
+            tauri::ipc::InvokeResponseBody::Json(text) => text.into_bytes(),
+        }
+    })
+}
+
+/// `send_voice` with the recorder's peaks in `x-waveform`.
+pub fn voice_with_waveform(
+    window: &WebviewWindow<MockRuntime>,
+    bytes: Vec<u8>,
+    waveform: &str,
+) -> Result<Value, Value> {
+    raw_call(
+        window,
+        "send_voice",
+        &[
+            ("x-chat-id", INBOX),
+            ("x-duration-ms", "40000"),
+            ("x-waveform", waveform),
+        ],
+        bytes,
+    )
+}
+
+/// Peaks as the 128 hex digits the wire carries.
+pub fn peaks_hex(seed: u8) -> String {
+    (0..64u8)
+        .map(|i| format!("{:02x}", seed.wrapping_add(i.wrapping_mul(3))))
+        .collect()
+}

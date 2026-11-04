@@ -1,4 +1,4 @@
-//! SQLite schema and migrations (`PRAGMA user_version`). Migration 7 (slice 7) adds attachments; migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
+//! SQLite schema and migrations (`PRAGMA user_version`). Migration 8 (slice 7a) adds the local waveform column of a voice note; migration 7 (slice 7) adds attachments; migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
 //! index; migration 3 (slice 3) adds revisions, tombstones and derived local tables; migration 2 adds the local table
 //! of drafts (slice 2).
 //! Migration 1 creates only the tables that slice 1 writes to
@@ -257,6 +257,17 @@ CREATE TABLE mirror_file (
 ) WITHOUT ROWID;
 ";
 
+/// Migration 8 (slice 7a, ADR-0015): the waveform of a voice note. One nullable column on the device-local `attachment_local`; no synced
+/// table changes, so `core` and every synced row stay byte-identical (ADR-0001 appendix §C.6).
+/// - `NULL` -- not known yet: the player decodes the file once and saves the peaks;
+/// - an empty blob -- the decoder could not read the file, do not try again;
+/// - otherwise exactly `WAVEFORM_PEAKS` bytes (0 to 255, the loudest part of the note is 255).
+///
+/// Existing rows keep `NULL`. `ALTER TABLE .. ADD COLUMN` with no default is a metadata change in SQLite: no rewrite of the table.
+pub(crate) const MIGRATION_8: &str = "
+ALTER TABLE attachment_local ADD COLUMN waveform BLOB;
+";
+
 /// Migrations in order; the version number is the index + 1.
 const MIGRATIONS: &[&str] = &[
     MIGRATION_1,
@@ -266,6 +277,7 @@ const MIGRATIONS: &[&str] = &[
     MIGRATION_5,
     MIGRATION_6,
     MIGRATION_7,
+    MIGRATION_8,
 ];
 
 /// The schema version this app understands.
