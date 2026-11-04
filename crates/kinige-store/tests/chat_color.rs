@@ -15,6 +15,10 @@ use kinige_domain::groups::INBOX_ID;
 use kinige_domain::{ChatColor, SearchFilters};
 use kinige_store::{Now, StoreError};
 use serde_json::{Value, json};
+use std::process::Command;
+
+const CHILD_DIR_ENV: &str = "KINIGE_COLOR_ABORT_DIR";
+const CHILD_CHAT_ENV: &str = "KINIGE_COLOR_ABORT_CHAT";
 
 fn at(minutes: i64) -> Now {
     moscow(T0 + minutes * MINUTE)
@@ -305,4 +309,59 @@ fn an_imported_chat_gets_null_and_an_automatic_colour_that_survives_a_reopen() {
         .find(|c| c.id == id)
         .unwrap();
     assert_eq!(chat.color, automatic_color(&id), "stable across restarts");
+}
+
+/// The child process picks a colour and dies through `abort` right after the reply (that is, after `COMMIT`); the parent runs
+/// the same test program with the directory and the chat id in the environment, then reopens the store.
+#[test]
+fn abort_right_after_a_pick_keeps_the_colour_in_the_column_and_in_meta() {
+    if let (Ok(dir), Ok(id)) = (std::env::var(CHILD_DIR_ENV), std::env::var(CHILD_CHAT_ENV)) {
+        let store = open_without_mirror(dir.as_ref());
+        store
+            .set_chat_color(&id, ChatColor::Pink, &at(2))
+            .expect("pick");
+        std::process::abort();
+    }
+
+    let dir = tempfile::tempdir().unwrap();
+    let id = {
+        let store = open_without_mirror(dir.path());
+        store.create_chat("Проекты", Some("📚"), &at(1)).unwrap().id
+    };
+    let status = Command::new(std::env::current_exe().unwrap())
+        .args([
+            "abort_right_after_a_pick_keeps_the_colour_in_the_column_and_in_meta",
+            "--exact",
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env(CHILD_DIR_ENV, dir.path())
+        .env(CHILD_CHAT_ENV, &id)
+        .status()
+        .unwrap();
+    assert!(!status.success(), "the child process should have died");
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        assert_eq!(status.signal(), Some(6), "SIGABRT");
+    }
+
+    assert_eq!(stored_column(dir.path(), &id).as_deref(), Some("pink"));
+    assert_eq!(
+        groups(dir.path(), "chat", &id)["meta"],
+        r#"{"color":"pink","icon":"📚","title":"Проекты"}"#
+    );
+    assert_columns_match_chat(dir.path(), &id);
+    let reopened = open_without_mirror(dir.path());
+    let chat = reopened
+        .list_chats()
+        .unwrap()
+        .into_iter()
+        .find(|c| c.id == id)
+        .unwrap();
+    assert_eq!(chat.color, ChatColor::Pink);
+    let integrity: String = raw(dir.path())
+        .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(integrity, "ok");
 }

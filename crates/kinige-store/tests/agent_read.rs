@@ -437,3 +437,13 @@ fn after_an_agent_panic_the_windows_reads_still_work() {
     let found = call(&a.store, "search", json!({"query": "паники"}), MARCH).unwrap();
     assert_eq!(entry_ids(&found).len(), 1);
 }
+
+/// The agent's own read connection is `query_only`: a write through it is refused by SQLite and changes nothing.
+#[test]
+fn the_agent_connection_refuses_a_write() {
+    let a = agent(AgentMode::Read, true);
+    let before = a.store.list_chats().unwrap();
+    let error = a.store.write_through_agent_read_for_test();
+    assert!(error.contains("readonly"), "got: {error:?}");
+    assert_eq!(a.store.list_chats().unwrap(), before);
+}
