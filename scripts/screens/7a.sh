@@ -157,8 +157,12 @@ B="$(elapsed_from "$K/debug/shot-05-playing.txt")"
   grep 'audio route: ' "$LOG_FILE" 2> /dev/null | sed -E 's/^\[[^]]*\]\[[^]]*\]//' | head -6
 } > "$OUT/playback.txt"
 cat "$OUT/playback.txt"
-if [ -z "$A" ] || [ -z "$B" ] || [ "$B" -le "$A" ]; then
-  fail "the elapsed time did not advance (a finding if the web view refused the autoplay of an AX press)"
+# A window dump takes tens of seconds, and the 40 second note ends (and rewinds to 0:00) in that time, so two readings cannot be compared:
+# the proof is an elapsed time above zero in the first dump (the note started and moved) and the web view's requests of the audio route.
+ROUTE_AFTER="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
+echo "playback proof: elapsed ${A:-none} s in the first dump, ${ROUTE_AFTER:-0} audio route requests" >> "$OUT/playback.txt"
+if [ -z "$A" ] || [ "$A" -le 0 ] || [ "${ROUTE_AFTER:-0}" -le "${ROUTE_BEFORE:-0}" ]; then
+  fail "the voice note did not play: no elapsed time above zero or no request of the audio route"
 fi
 
 # ---- 6. Speed: 1x -> 1.5x -> 2x ----
