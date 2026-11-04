@@ -98,6 +98,19 @@ export const Результаты: Story = {};
 /** A chat whose name matched appears as a separate "Chats" row above the entries. */
 export const СЧатами: Story = { args: { chats: [CHAT], activeIndex: 1 } };
 
+/** KINIG-59: chats without an emoji have a letter tile in their colour in the chat row and in the entry rows (grey, pink, violet). */
+export const ПлиткиЧатов: Story = {
+  args: {
+    chats: [{ ...CHAT, icon: "💬", color: "violet" }],
+    hits: [
+      hit("t1", "Проверка плитки серого чата", ["плитки"], { chatTitle: "Linux notes", chatIcon: "💬", chatIsInbox: false, chatColor: "grey" }),
+      hit("t2", "Проверка плитки розового чата", ["плитки"], { chatTitle: "Проекты", chatIcon: "💬", chatIsInbox: false, chatColor: "pink" }),
+      hit("t3", "Проверка плитки фиолетового чата", ["плитки"], { chatTitle: "Книги", chatIcon: "💬", chatIsInbox: false, chatColor: "violet" }, "2026-10-26"),
+    ],
+    activeIndex: 1,
+  },
+};
+
 /** A row selected with the arrows: only a noticeable fill (`highlight.row`), no border. */
 export const ВыбраннаяСтрока: Story = { args: { activeIndex: 2 } };
 

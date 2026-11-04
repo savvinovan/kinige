@@ -179,6 +179,27 @@ export const МенюПеремещения: Story = {
   ),
 };
 
+/** KINIG-59: chats without an emoji show their letter tile in the chat's own colour, the others their emoji; Inbox keeps its emoji. */
+export const МенюПеремещенияСПлитками: Story = {
+  render: () => (
+    <OpenMoveMenu>
+      <Message
+        markdown="Купить хлеб"
+        sentAt={at(9, 12)}
+        moveTargets={[
+          { id: "inbox", name: "Входящие", emoji: "📥", tint: "grey", group: "chats", current: true },
+          { id: "projects", name: "Проекты", emoji: "💬", tint: "pink", group: "chats", current: false },
+          { id: "linux", name: "Linux notes", emoji: "💬", tint: "grey", group: "chats", current: false },
+          { id: "mom", name: "Мама", emoji: "💬", tint: "violet", group: "chats", current: false },
+          { id: "books", name: "Книги", emoji: "📚", tint: "blue", group: "chats", current: false },
+          { id: "old", name: "Старый проект с очень длинным названием, которое не помещается в меню", emoji: "💬", tint: "orange", group: "archive", current: false },
+        ]}
+        {...movable}
+      />
+    </OpenMoveMenu>
+  ),
+};
+
 /** The same in English. */
 export const МенюПеремещенияEn: Story = {
   globals: { language: "en" },
