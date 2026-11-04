@@ -271,11 +271,19 @@ cargo build --release -q -p kinige-store --example voice_bench || fail "build of
 BENCH="$REPO/target/release/examples/voice_bench"
 [ -x "$BENCH" ] || BENCH="${CARGO_TARGET_DIR:-$REPO/target}/release/examples/voice_bench"
 "$BENCH" "$K/bench" > "$OUT/bench.txt" 2>&1 || fail "voice_bench"
+# The cold start of the chat with 200 voice notes between two controls on an empty database with the same binary and the same VM: the VM
+# drifts (slice 7 saw a median of 1.27 s and of 1.82 s on the same code), so the number is read against the controls taken right around it.
+{
+  KINIGE_BIN="$APP/Contents/MacOS/kinige" limit 600 "$REPO/scripts/measure-cold-start.sh" 10
+} > "$OUT/cold-start-control-before.txt" 2>&1 || fail "cold start control (before)"
 {
   KINIGE_DATA_DIR="$K/bench" KINIGE_MIRROR_DIR="$K/bench/mirror" KINIGE_BIN="$APP/Contents/MacOS/kinige" \
     limit 600 "$REPO/scripts/measure-cold-start.sh" 10
 } > "$OUT/cold-start.txt" 2>&1 || fail "cold start measurement"
-cat "$OUT/bench.txt" "$OUT/cold-start.txt"
+{
+  KINIGE_BIN="$APP/Contents/MacOS/kinige" limit 600 "$REPO/scripts/measure-cold-start.sh" 10
+} > "$OUT/cold-start-control-after.txt" 2>&1 || fail "cold start control (after)"
+cat "$OUT/bench.txt" "$OUT/cold-start-control-before.txt" "$OUT/cold-start.txt" "$OUT/cold-start-control-after.txt"
 rm -rf "$K/bench"
 python3 - "$OUT/bench.txt" <<'PY' || fail "a send_voice or chat-open p95 is over its limit"
 import re, sys
