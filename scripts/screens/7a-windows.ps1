@@ -38,10 +38,11 @@ Set-Dark
 Say ("display: " + [Win]::SetBestResolution())
 Start-Sleep -Seconds 3
 
-# Synthetic data (no `afconvert` here: only the Telegram-style voice is seeded).
+# Synthetic data, without voice notes: the only voice note of this run is the one the scenario records, so a request of the audio route can
+# only be that note's (the first run also seeded a Telegram-style stub, and Play landed on it).
 Push-Location $Repo
 $ErrorActionPreference = 'Continue'
-$env:KINIGE_SEED_VOICE = '1'
+Remove-Item Env:KINIGE_SEED_VOICE -ErrorAction SilentlyContinue
 try { & cargo run --release -q -p kinige-store --example seed_demo -- $Data $Mirror 2>&1 | Out-Host; if ($LASTEXITCODE -ne 0) { throw "seed_demo failed" } }
 finally { Pop-Location; $ErrorActionPreference = 'Stop' }
 
@@ -115,6 +116,12 @@ $lines = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
 Say (Get-Content (Join-Path $Out 'playback.txt') -Raw)
 if (-not $played) { Fail 'Play did not reach the audio route (a finding if the focus order differs)' }
 elseif (-not ($lines | Where-Object { $_ -match 'audio route: (200|206) ' })) { Fail 'the audio route answered with something other than 200 or 206' }
+else {
+  # The answer's total length is the recorded file's size: the route served the note this run recorded.
+  $size = Get-Scalar "select byte_size from attachment where filename like 'voice-%' limit 1"
+  if (-not ($lines | Where-Object { $_ -match "answered `"bytes \d+-\d+/$size`"" })) { Fail "no answer of the audio route had the recorded file's size ($size bytes)" }
+  else { Add-Content -Path (Join-Path $Out 'playback.txt') -Value "the route served the recorded note: its size is $size bytes" -Encoding UTF8 }
+}
 
 # ---- Formats from the probe, and the log holds no file names or device names ---------------------------------------------------------
 
