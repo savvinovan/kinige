@@ -1,22 +1,22 @@
-opening an empty database: 50 ms
-parse: 302 ms, 156 MB of JSON, chats 1, messages 100000
-preview: 620 ms, chats to import 1, entries 100000
-import: 53767 ms (537.7 us per message); imported 100000, skipped: already present 0, service 0, empty 0; attachment placeholders 0; chats created 0; backup: true
-repeated import: 1411 ms, new 0, already present 100000
-database size: before 0.3 MB, after 389.2 MB
-cold start: open 5 ms, first page (200 entries) 31 ms
-"On this day" over 200 days: p50 12.0 ms, p95 25.0 ms, max 74.4 ms; entries in the card on average 6.0
-opening Inbox (a page of 200 entries + the card, 5 years): 10 ms
-forest year table (get_forest_year, 120 calls over 2018..2023): p50 76.2 ms, p95 137.9 ms, max 302.6 ms; 16665 notes counted per call on average
-forest day target: 1.4 ms (found: true)
-search over 200 words from the entries (prefix query, page of 50): p50 35.5 ms, p95 185.6 ms, max 447.6 ms; found on average 45.1
+opening an empty database: 33 ms
+parse: 230 ms, 156 MB of JSON, chats 1, messages 100000
+preview: 644 ms, chats to import 1, entries 100000
+import: 45681 ms (456.8 us per message); imported 100000, skipped: already present 0, service 0, empty 0; attachment placeholders 0; chats created 0; backup: true
+repeated import: 1317 ms, new 0, already present 100000
+database size: before 0.3 MB, after 389.0 MB
+cold start: open 3 ms, first page (200 entries) 14 ms
+"On this day" over 200 days: p50 12.9 ms, p95 22.4 ms, max 59.5 ms; entries in the card on average 6.0
+opening Inbox (a page of 200 entries + the card, 5 years): 11 ms
+forest year table (get_forest_year, 120 calls over 2018..2023): p50 73.1 ms, p95 120.4 ms, max 217.8 ms; 16665 notes counted per call on average
+forest day target: 1.7 ms (found: true)
+search over 200 words from the entries (prefix query, page of 50): p50 41.4 ms, p95 246.8 ms, max 500.3 ms; found on average 46.8
 search of a frequent one-letter word: 6.0 ms, found on the page 0
-search of a frequent one-letter word: 5.6 ms, found on the page 0
-search of a frequent one-letter word: 6.3 ms, found on the page 0
-while an AI agent searches in a loop, before: the agent on the window's connection: feed page (200 entries) p50 27.7 ms, p95 136.8 ms, max 268.1 ms; recent chats p50 0.0 ms, p95 0.0 ms, max 0.2 ms; the agent's search p50 31.1 ms, p95 158.2 ms, max 273.5 ms (192 searches)
-while an AI agent searches in a loop, after: the agent on its own connection: feed page (200 entries) p50 6.8 ms, p95 13.0 ms, max 19.3 ms; recent chats p50 0.0 ms, p95 0.1 ms, max 0.1 ms; the agent's search p50 38.0 ms, p95 216.0 ms, max 234.5 ms (30 searches)
-recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), before (MAX(created_at) over every entry, 5 rounds): p50 77544.6 ms, p95 87991.7 ms, max 87991.7 ms
-recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), after (last entry in feed order, message_feed, 40 rounds): p50 0.3 ms, p95 0.3 ms, max 1.0 ms
-      580.66 real       520.53 user        34.48 sys
-           475217920  maximum resident set size
-           461441152  peak memory footprint
+search of a frequent one-letter word: 5.8 ms, found on the page 0
+search of a frequent one-letter word: 6.0 ms, found on the page 0
+while an AI agent searches in a loop on its own connection: feed page (200 entries) p50 6.4 ms, p95 12.7 ms, max 19.1 ms; recent chats p50 0.0 ms, p95 0.0 ms, max 0.1 ms; the agent's search p50 26.8 ms, p95 213.3 ms, max 274.4 ms (27 searches)
+recent chats, plan of the old query (SQLite 3.53.2, planner statistics tables: 0): SCAN c | SEARCH m EXISTS USING INDEX message_feed (chat_id=?) | CORRELATED SCALAR SUBQUERY 2 | SEARCH m USING INDEX message_feed (chat_id=?) | USE TEMP B-TREE FOR ORDER BY
+recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), before (MAX(created_at) over every entry, 5 rounds; the cost grows with the entries of a chat times all entries, so this is the worst shape, not a typical journal): p50 299164.0 ms, p95 323743.2 ms, max 323743.2 ms
+recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), after (last entry in feed order, message_feed, 40 rounds): p50 0.1 ms, p95 0.1 ms, max 10.2 ms
+     1930.59 real       733.92 user      1173.45 sys
+           472760320  maximum resident set size
+           461506688  peak memory footprint
