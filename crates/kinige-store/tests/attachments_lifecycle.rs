@@ -606,7 +606,7 @@ fn migration_six_to_seven_keeps_drafts_and_takes_a_copy_first() {
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .unwrap();
     assert_eq!(version, LATEST_VERSION);
-    assert_eq!(LATEST_VERSION, 7);
+    assert_eq!(LATEST_VERSION, 8);
     assert_eq!(
         store.chat_draft(INBOX_ID, &later).unwrap().body,
         "черновик до миграции 7"
