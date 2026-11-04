@@ -9,6 +9,7 @@ import "./search-stories.css";
 const TODAY = "2026-10-27";
 const noop = () => undefined;
 const TEAL = "teal";
+const VIOLET = "violet";
 
 const hit = (id: string, snippet: string, terms: string[], patch: Partial<SearchHit> = {}, journalDate = TODAY): SearchHit => ({
   message: {
@@ -101,7 +102,7 @@ export const СЧатами: Story = { args: { chats: [CHAT], activeIndex: 1 } }
 /** KINIG-59: chats without an emoji have a letter tile in their colour in the chat row and in the entry rows (grey, pink, violet). */
 export const ПлиткиЧатов: Story = {
   args: {
-    chats: [{ ...CHAT, icon: "💬", color: "violet" }],
+    chats: [{ ...CHAT, icon: "💬", color: VIOLET }],
     hits: [
       hit("t1", "Проверка плитки серого чата", ["плитки"], { chatTitle: "Linux notes", chatIcon: "💬", chatIsInbox: false, chatColor: "grey" }),
       hit("t2", "Проверка плитки розового чата", ["плитки"], { chatTitle: "Проекты", chatIcon: "💬", chatIsInbox: false, chatColor: "pink" }),
