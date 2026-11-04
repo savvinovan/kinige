@@ -24,6 +24,9 @@ fi
 # `KINIGE_BUNDLES` is what to build: `app` by default; the release (.github/workflows/release.yml) asks for `app,dmg`.
 (cd src-tauri && ../web/node_modules/.bin/tauri build --bundles "${KINIGE_BUNDLES:-app}" ${CONFIG_ARGS[@]+"${CONFIG_ARGS[@]}"})
 
+# The screens runners' fake microphone (ADR-0015) must never reach a bundle for people: refuse unless screens.yml opted in.
+scripts/check-fake-mic.sh web/dist
+
 APP="${CARGO_TARGET_DIR:-target}/release/bundle/macos/Kinige.app"
 [ -d "$APP" ] || { echo "not found: $APP" >&2; exit 1; }
 [ -x "$APP/Contents/MacOS/kinige-mcp" ] || { echo "the bundle has no kinige-mcp bridge" >&2; exit 1; }

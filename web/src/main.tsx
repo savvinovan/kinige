@@ -1,5 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { startProbe } from "virtual:kinige-probe";
+import { INBOX_ID } from "./api/KinigeApi";
 import { TauriApi } from "./api/TauriApi";
 import "./app.css";
 import { CaptureWindow } from "./capture/CaptureWindow";
@@ -58,6 +60,8 @@ const start = isSettingsWindow
           </I18n>
         </StrictMode>,
       );
+      // The runners' microphone probe (slice 7a): `undefined` in every normal build (`web/vite.config.ts`).
+      startProbe?.((text) => api.sendMessage(INBOX_ID, text));
     });
 
 start.catch((reason: unknown) => {

@@ -11,6 +11,9 @@ cd "$(dirname "$0")/.."
 
 (cd src-tauri && ../web/node_modules/.bin/tauri build --bundles nsis)
 
+# The screens runners' fake microphone (ADR-0015) must never reach a bundle for people: refuse unless screens.yml opted in.
+scripts/check-fake-mic.sh web/dist
+
 TARGET_DIR="${CARGO_TARGET_DIR:-target}"
 EXE="$TARGET_DIR/release/kinige.exe"
 [ -f "$EXE" ] || { echo "not found: $EXE" >&2; exit 1; }

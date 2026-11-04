@@ -161,6 +161,9 @@ jobs:
       - name: Shot scenario helpers (an empty window dump is an error)
         working-directory: .
         run: bash scripts/screens/lib.test.sh
+      - name: Fake microphone guard (a build with the runners' fake microphone must fail)
+        working-directory: .
+        run: bash scripts/check-fake-mic.test.sh
       - run: npm run typecheck
       - run: npm run lint
       # Tests and coverage in one vitest run; the report goes to Codecov (flag web), an upload failure does not fail CI.
