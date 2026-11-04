@@ -1,0 +1,32 @@
+/* The drag-over state of the feed: a dashed accent outline and a label. Tokens only; no animation; it catches no pointer events. */
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.drop-overlay--visible {
+  visibility: visible;
+}
+
+.drop-overlay__outline {
+  position: absolute;
+  inset: var(--layout-attachment-drop-inset);
+  display: grid;
+  place-items: center;
+  border: var(--border-width-strong) dashed var(--color-accent-default);
+  border-radius: var(--radius-panel);
+}
+
+.drop-overlay__label {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-round);
+  background: var(--color-surface-card);
+  color: var(--color-text-primary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--type-small-line-height);
+}

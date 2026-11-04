@@ -2,8 +2,13 @@
 
 use super::*;
 use crate::StoreOptions;
+use crate::error::{read_err, write_err};
+use crate::hlc_state::save_clock;
+use crate::import_batch::Row;
 use kinige_domain::hlc::Clock;
+use kinige_domain::import::EXT_SRC_TELEGRAM;
 use kinige_domain::telegram::parse_export;
+use std::collections::BTreeSet;
 
 fn open(dir: &std::path::Path) -> Store {
     let mut options = StoreOptions::new(dir.join("kinige.db"), None);
@@ -11,14 +16,15 @@ fn open(dir: &std::path::Path) -> Store {
     Store::open(options).unwrap()
 }
 
-fn prepared(ext_msg: &str, body: &str) -> Prepared {
-    Prepared {
+fn prepared(ext_msg: &str, body: &str) -> Row {
+    Row {
         id: uuid::Uuid::new_v4().to_string(),
         ext_msg: ext_msg.to_string(),
         body: body.to_string(),
         created_at: 1_552_035_600_000,
         journal_date: "2019-03-08".to_string(),
         reply_to_id: None,
+        media: None,
     }
 }
 
@@ -102,7 +108,7 @@ fn hlc_stays_strictly_increasing_when_the_device_clock_lags_behind_the_stored_on
             tx.commit().map_err(write_err)
         })
         .unwrap();
-    let rows: Vec<Prepared> = (1..=4)
+    let rows: Vec<Row> = (1..=4)
         .map(|i| prepared(&i.to_string(), "запись"))
         .collect();
     let ids: Vec<String> = rows.iter().map(|r| r.id.clone()).collect();

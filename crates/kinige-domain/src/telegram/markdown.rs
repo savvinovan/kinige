@@ -5,7 +5,7 @@
 //! [`normalize_body`], so it is fit for `new_message` as is.
 
 use super::{TgMedia, TgMessage, TgSpan, TgSpanKind};
-use crate::groups::normalize_body;
+use crate::groups::{normalize_body, normalize_body_or_empty};
 use crate::lang::Language;
 
 /// Characters that are escaped everywhere in plain text.
@@ -21,17 +21,42 @@ pub fn render_body(
     author: Option<&str>,
     language: Language,
 ) -> Option<String> {
+    render(message, author, language, false)
+}
+
+/// The same text for a message whose file is attached (slice 7): the "... not imported" line of a photo, file, video, voice
+/// message or audio is left out, because the file itself is there. Everything else (author, forward, text, the placeholder of a
+/// sticker, poll lines) is as in [`render_body`]. The result may be empty (a photo with no caption): it is valid because the
+/// entry has an attachment (ADR-0001 appendix §C.6). `None` only when the text does not fit the `body` group.
+pub fn render_body_attached(
+    message: &TgMessage,
+    author: Option<&str>,
+    language: Language,
+) -> Option<String> {
+    render(message, author, language, true)
+}
+
+/// The shared assembly. `attached`: the message's file is attached, so its placeholder is not written and an empty result is fine.
+fn render(
+    message: &TgMessage,
+    author: Option<&str>,
+    language: Language,
+    attached: bool,
+) -> Option<String> {
     let t = Strings::of(language);
     // Content is the attachment and the text. The author name and "Переслано" do not count as content: a message without it is empty.
     let mut content: Vec<String> = Vec::new();
     if let Some(media) = &message.media {
-        media_lines(media, &t, &mut content);
+        let file_is_attached = attached && message.file.is_some();
+        if !file_is_attached {
+            media_lines(media, &t, &mut content);
+        }
     }
     let text = render_spans(&message.text);
     if !text.trim().is_empty() {
         content.push(text);
     }
-    if content.is_empty() {
+    if content.is_empty() && !attached {
         return None;
     }
     let mut lines: Vec<String> = Vec::new();
@@ -51,6 +76,9 @@ pub fn render_body(
         });
     }
     lines.extend(content);
+    if attached {
+        return normalize_body_or_empty(&lines.join("\n")).ok();
+    }
     normalize_body(&lines.join("\n")).ok()
 }
 

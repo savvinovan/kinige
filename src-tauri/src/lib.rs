@@ -2,13 +2,16 @@
 
 mod actions;
 mod agent_access;
+pub mod attachments;
 pub mod capture;
 mod command_names;
 mod commands;
+mod data_dirs;
 pub mod guard;
 pub mod hotkeys;
 pub mod import;
 pub mod logging;
+pub mod media_protocol;
 // The MCP server is a Unix socket (ADR-0009). Without Unix (Windows, slice 10a) a stub with the same surface stands in:
 // there is no socket and the "AI agent access" page sees `unsupported`.
 #[cfg(unix)]
@@ -25,6 +28,7 @@ pub mod startup;
 pub mod tray;
 
 use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
+use data_dirs::{db_path, default_mirror_dir};
 use hotkeys::{Hotkeys, PluginRegistrar};
 use kinige_domain::ShortcutKind;
 use kinige_store::{Store, StoreError, StoreOptions};
@@ -46,7 +50,8 @@ pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS, SETTINGS_COMM
 /// The opener and dialog plugins are attached only for the Rust API: the window has no JS permissions for them (the capability does not grant them).
 /// Global shortcuts, the tray and single-instance are attached only by `run`: they have no place in tests.
 pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
-    builder
+    // The `kinige-media` protocol (slice 7) answers only the `main` webview; it is outside the capability system.
+    media_protocol::register(builder)
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -56,6 +61,11 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             commands::list_chats,
             commands::list_messages,
             commands::send_message,
+            attachments::attach_pick,
+            attachments::attach_paste,
+            attachments::attach_dropped,
+            attachments::remove_draft_attachment,
+            attachments::open_attachment,
             commands::get_settings,
             commands::set_text_size,
             commands::choose_mirror_folder,
@@ -113,39 +123,6 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
         ]))
 }
 
-/// Where the data lives. `KINIGE_DATA_DIR` and `KINIGE_MIRROR_DIR` are for checks on a clean machine and for autotests; a regular
-/// launch does not set them: the database is in the app data directory, the copy is in `~/Documents/Kinige`.
-fn db_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let data_dir = match std::env::var_os("KINIGE_DATA_DIR") {
-        Some(dir) => PathBuf::from(dir),
-        None => default_data_dir(app)?,
-    };
-    Ok(data_dir.join("kinige.db"))
-}
-
-/// The default data directory. On Windows it is the local one (`%LOCALAPPDATA%\me.savvinov.kinige`): a SQLite database
-/// with its journal and WAL does not belong in the roaming profile (`%APPDATA%`), which is synced and copied around.
-/// Elsewhere it is the app data directory as before (macOS: `~/Library/Application Support/me.savvinov.kinige`).
-fn default_data_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, tauri::Error> {
-    if cfg!(windows) {
-        app.path().app_local_data_dir()
-    } else {
-        app.path().app_data_dir()
-    }
-}
-
-/// The default folder of the Markdown copy: `~/Documents/Kinige` (or `KINIGE_MIRROR_DIR`).
-fn default_mirror_dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
-    match std::env::var_os("KINIGE_MIRROR_DIR") {
-        Some(dir) => Some(PathBuf::from(dir)),
-        None => app
-            .path()
-            .document_dir()
-            .ok()
-            .map(|documents| documents.join("Kinige")),
-    }
-}
-
 /// Opens the store. Corruption found by the background integrity check or by any command on any thread (it
 /// read a broken page) sets a mark, the process flag and tells the main window
 /// (`recovery::corruption_hook`).
@@ -156,6 +133,9 @@ fn open_store<R: Runtime>(
 ) -> Result<Store, StoreError> {
     let mut options = StoreOptions::new(db_path.clone(), default_mirror_dir(app));
     options.on_corruption = Some(recovery::corruption_hook(app.clone(), db_path, corruption));
+    // The first maintenance pass waits for the main window's page (`begin_maintenance` in `on_page_load`), so it is not on the
+    // cold start path.
+    options.defer_maintenance = true;
     Store::open(options)
 }
 
@@ -191,6 +171,7 @@ fn start_services<R: Runtime>(
     settings_window::set_available(app, true);
     app.manage(CaptureShell::default());
     app.manage(import::ImportState::default());
+    app.manage(attachments::DropTokens::default());
     // The icon was built without the store (it was not yet in the app state): the recent chats now.
     tray::refresh(app);
     // The MCP server goes last, after `app.manage(store)`: a socket failure does not stop the journal (the error is visible in the settings).
@@ -242,11 +223,16 @@ fn on_shortcut<R: Runtime>(app: &tauri::AppHandle<R>, pressed: &Shortcut) {
 }
 
 /// Closing the main window hides it, the app lives in the menu bar; closing the capture window is the same as Esc.
-fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
+/// Public so that the IPC tests can send a window a drop (only `main` leaves a token).
+pub fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
     match (window.label(), event) {
         (MAIN_LABEL, WindowEvent::CloseRequested { api, .. }) => {
             api.prevent_close();
             let _ = window.hide();
+        }
+        // Files dragged over the main window: the overlay and, on a drop, a token (slice 7). Other windows ignore drops.
+        (MAIN_LABEL, WindowEvent::DragDrop(event)) => {
+            attachments::on_drag_drop(window.app_handle(), event)
         }
         (CAPTURE_LABEL, WindowEvent::CloseRequested { api, .. }) => {
             api.prevent_close();
@@ -360,6 +346,10 @@ pub fn run() {
             // Without `KINIGE_TIMING=1` the level of the `kinige-timing` target is off, and nothing is written.
             if webview.label() == MAIN_LABEL && payload.event() == PageLoadEvent::Finished {
                 log::info!(target: logging::TIMING_TARGET, "page-loaded");
+                // The first maintenance pass (integrity check, the day's backup, the attachment sweep) starts only now.
+                if let Some(store) = webview.app_handle().try_state::<Store>() {
+                    store.begin_maintenance();
+                }
             }
         })
         .build(tauri::generate_context!());

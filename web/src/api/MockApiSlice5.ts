@@ -53,7 +53,7 @@ export class MockApiSlice5 extends MockApiSlice4b {
     let replyTo = target === undefined ? null : this.replyTo(target, this.journalDate(this.now()));
     // As in Rust: the entry is alive but in another chat - "moved" (a reply to it is not accepted).
     if (replyTo !== null && replyTo.state === "live" && replyTo.chatId !== chatId) replyTo = { ...replyTo, state: "moved" };
-    return Promise.resolve({ body: this.drafts.get(chatId) ?? "", replyTo });
+    return Promise.resolve({ body: this.drafts.get(chatId) ?? "", replyTo, attachments: [] });
   }
 
   saveDraft(chatId: string, body: string, replyToId: string | null = null): Promise<void> {

@@ -128,6 +128,7 @@ fn text_renderers_never_panic_on_hostile_markdown() {
             time: text.clone(),
             body_md: body.to_string(),
             reply,
+            attachments: Vec::new(),
         };
         let entries = [
             entry(text, None),

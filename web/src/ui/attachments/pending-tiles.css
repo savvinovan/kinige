@@ -1,0 +1,94 @@
+/* The tiles above the composer field. Tokens only; the row wraps. The row stands in the same column as the field (`.composer > *`
+   centers a child in the feed column, so the inline margins stay `auto`) and has a gap above the field. */
+.pending-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--layout-attachment-pending-gap);
+  margin-block: 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.pending-tiles__item {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pending-tile {
+  position: relative;
+  box-sizing: border-box;
+  height: var(--layout-attachment-pending-size);
+  border-radius: var(--layout-attachment-album-radius);
+  overflow: hidden;
+}
+
+.pending-tile--image {
+  width: var(--layout-attachment-pending-size);
+}
+
+.pending-tile__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pending-tile--file {
+  display: flex;
+  align-items: center;
+  gap: var(--layout-attachment-file-gap);
+  width: var(--layout-attachment-pending-file-width);
+  max-width: 100%;
+  padding: var(--layout-attachment-file-padding);
+  padding-inline-end: var(--space-1);
+  background: var(--color-surface-field-active);
+  color: var(--color-text-primary);
+}
+
+.pending-tile__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: var(--color-accent-default);
+}
+
+.pending-tile__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.pending-tile__name {
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.pending-tile__meta {
+  color: var(--color-text-secondary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+/* "No preview" and "File is missing" in a small tile sit at the bottom, away from the x in the corner. */
+.pending-tile--image .preview-tile {
+  align-items: end;
+}
+
+/* On a photo the x needs its own fill to be seen over any picture; in a file tile it sits at the end of the row. */
+.pending-tile .pending-tile__remove {
+  background: var(--color-surface-background);
+  color: var(--color-text-primary);
+}
+
+.pending-tile .pending-tile__remove:hover {
+  background: var(--color-surface-selected);
+}
+
+.pending-tile--image .pending-tile__remove {
+  position: absolute;
+  top: var(--layout-attachment-pending-remove-offset);
+  right: var(--layout-attachment-pending-remove-offset);
+}

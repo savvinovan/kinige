@@ -5,6 +5,7 @@ fn entry(time: &str, body: &str) -> MirrorEntry {
         time: time.to_string(),
         body_md: body.to_string(),
         reply: None,
+        attachments: Vec::new(),
     }
 }
 
@@ -195,4 +196,43 @@ fn paths_reject_anything_but_a_plain_date_and_folder() {
     for folder in ["", "..", ".", "a/b", "a\\b"] {
         assert_eq!(day_file_segments(folder, "2026-10-21"), None, "{folder}");
     }
+}
+
+fn image(name: &str, file: &str) -> MirrorAttachment {
+    MirrorAttachment {
+        is_image: true,
+        name: name.to_string(),
+        file: file.to_string(),
+    }
+}
+
+#[test]
+fn attachments_are_linked_into_the_day_folder_above_the_text() {
+    let with_files = MirrorEntry {
+        attachments: vec![
+            image("IMG_0001.jpg", "IMG_0001.jpg"),
+            MirrorAttachment {
+                is_image: false,
+                name: "menu [v2].pdf".to_string(),
+                file: "menu [v2].pdf".to_string(),
+            },
+        ],
+        ..entry("09:12", "Lunch")
+    };
+    assert_eq!(
+        render_day_file("2026-11-03", &[with_files]),
+        "# 2026-11-03\n\n## 09:12\n\n![IMG_0001.jpg](<2026-11-03/IMG_0001.jpg>)\n\n[menu \\[v2\\].pdf](<2026-11-03/menu [v2].pdf>)\n\nLunch\n"
+    );
+}
+
+#[test]
+fn an_entry_without_text_ends_after_its_last_attachment() {
+    let photo_only = MirrorEntry {
+        attachments: vec![image("a.png", "a.png")],
+        ..entry("09:12", "")
+    };
+    assert_eq!(
+        render_day_file("2026-11-03", &[photo_only, entry("09:13", "next")]),
+        "# 2026-11-03\n\n## 09:12\n\n![a.png](<2026-11-03/a.png>)\n\n## 09:13\n\nnext\n"
+    );
 }

@@ -1,10 +1,13 @@
 //! The file of one day of the Markdown copy: the day's entries with a reply quote, rewriting through a temporary file
 //! and deleting an empty day.
 
+use crate::mirror_files::{DayAttachment, day_attachments, sync_day_folder};
 use crate::time::local_hhmm;
+use crate::writer::Writer;
 use kinige_domain::MirrorError;
 use kinige_domain::mirror::{
-    MirrorEntry, MirrorReply, day_file_segments, relative_day_link, render_day_file,
+    MirrorAttachment, MirrorEntry, MirrorReply, day_file_segments, relative_day_link,
+    render_day_file,
 };
 use rusqlite::Connection;
 use std::collections::BTreeMap;
@@ -12,9 +15,17 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-/// Rewrites the file of one day of one chat, or deletes it if no entries are left.
+/// Where the attachment files come from and how the copy records what it wrote (slice 7).
+pub(crate) struct FileSource<'a> {
+    pub writer: &'a Writer,
+    pub attachments_dir: &'a Path,
+}
+
+/// Rewrites the file of one day of one chat, or deletes it if no entries are left. The day's attachment files go into the folder
+/// named after the day, next to the day file, before the day file is written (its links must not dangle).
 pub(crate) fn write_day(
     reader: &Connection,
+    files: &FileSource<'_>,
     root: &Path,
     chat_id: &str,
     folder: &str,
@@ -25,11 +36,24 @@ pub(crate) fn write_day(
         // Invalid date or folder name: there can be no file, so we clear the mark (otherwise it would never go away).
         return Ok(());
     };
-    let entries = day_entries(reader, chat_id, folder, folders, journal_date)
+    let attachments = day_attachments(reader, files.attachments_dir, chat_id, journal_date)
+        .map_err(|_| MirrorError::WriteFailed)?;
+    let entries = day_entries(reader, chat_id, folder, folders, journal_date, &attachments)
         .map_err(|_| MirrorError::WriteFailed)?;
     let [chat_dir, year_dir, file_name] = segments;
     let year_path = root.join(&chat_dir).join(&year_dir);
     let file_path = year_path.join(&file_name);
+    let day_dir = year_path.join(journal_date);
+    if !sync_day_folder(
+        reader,
+        files.writer,
+        &day_dir,
+        chat_id,
+        journal_date,
+        &attachments,
+    ) {
+        return Err(MirrorError::WriteFailed);
+    }
 
     if entries.is_empty() {
         match fs::remove_file(&file_path) {
@@ -78,10 +102,11 @@ fn day_entries(
     folder: &str,
     folders: &BTreeMap<String, String>,
     journal_date: &str,
+    attachments: &[DayAttachment],
 ) -> rusqlite::Result<Vec<MirrorEntry>> {
     let mut statement = reader.prepare(
         "SELECT m.body_md, m.created_at, m.created_tz, m.reply_to_id, \
-                r.chat_id, r.journal_date, r.created_at, r.created_tz, r.deleted_at IS NOT NULL \
+                r.chat_id, r.journal_date, r.created_at, r.created_tz, r.deleted_at IS NOT NULL, m.id \
          FROM message m LEFT JOIN message r ON r.id = m.reply_to_id \
          WHERE m.chat_id = ?1 AND m.journal_date = ?2 AND m.deleted_at IS NULL ORDER BY m.created_at, m.id",
     )?;
@@ -112,10 +137,20 @@ fn day_entries(
                     }
                 }
             });
+            let message_id: String = row.get(9)?;
             Ok(MirrorEntry {
                 time: local_hhmm(created_at, &tz),
                 body_md: row.get(0)?,
                 reply,
+                attachments: attachments
+                    .iter()
+                    .filter(|item| item.message_id == message_id)
+                    .map(|item| MirrorAttachment {
+                        is_image: item.is_image,
+                        name: item.filename.clone(),
+                        file: item.name.clone(),
+                    })
+                    .collect(),
             })
         })?
         .collect()

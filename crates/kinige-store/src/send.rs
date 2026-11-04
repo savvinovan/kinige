@@ -1,5 +1,6 @@
 //! Sending an entry (PRD §5): one transaction -- the entry, the HLC in `sync_state`, the mark for the Markdown copy.
 
+use crate::attachment::promote_draft;
 use crate::error::write_err;
 use crate::hlc_state::{get_state, load_clock, next_hlc, save_clock, set_state};
 use crate::view::load_reply_to;
@@ -104,7 +105,7 @@ pub(crate) fn insert_message(tx: &Transaction<'_>, m: &MessageRow) -> rusqlite::
 /// Marks a chat day as needing its Markdown copy file rewritten. The number grows: the background task removes the mark
 /// only if it has not changed since it was read.
 pub(crate) fn mark_dirty(
-    tx: &Transaction<'_>,
+    tx: &Connection,
     chat_id: &str,
     journal_date: &str,
 ) -> rusqlite::Result<()> {
@@ -235,6 +236,7 @@ fn insert_built_message(
         favorite_at: None,
         read_only: false,
         origin: row.origin,
+        attachments: Vec::new(),
     })
 }
 
@@ -259,20 +261,46 @@ impl Store {
         reply_to_id: Option<&str>,
         now: &Now,
     ) -> Result<MessageView, StoreError> {
-        let body = groups::normalize_body(body)?;
+        self.send_entry(chat_id, body, reply_to_id, &[], now)
+    }
+
+    /// Send with attachments (slice 7): `attachment_ids` are the chat's own draft attachments, each once, in the order they will
+    /// show; at most ten. The text may be empty only with at least one attachment (appendix §C.6). One transaction writes the
+    /// entry, the `attachment` rows (each with its own HLC, `remote_blob_id` and `blob_key`), the search index with the file
+    /// names, the copy mark, and clears the draft. A foreign, unknown or repeated id is `AttachmentNotFound`: nothing is written.
+    pub fn send_entry(
+        &self,
+        chat_id: &str,
+        body: &str,
+        reply_to_id: Option<&str>,
+        attachment_ids: &[String],
+        now: &Now,
+    ) -> Result<MessageView, StoreError> {
+        let body = if attachment_ids.is_empty() {
+            groups::normalize_body(body)?
+        } else {
+            groups::normalize_body_or_empty(body)?
+        };
+        let key = crate::draft::chat_key(chat_id);
         let chat_id = chat_id.to_string();
         let reply_to_id = reply_to_id.map(str::to_string);
+        let ids = attachment_ids.to_vec();
+        let dirs = self.dirs();
         let now = now.clone();
         let view = self.write(move |conn| {
             let tx = conn
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(write_err)?;
-            let view = match &reply_to_id {
+            let mut view = match &reply_to_id {
                 Some(target) => insert_reply_message(&tx, &chat_id, &body, target, &now)?,
                 None => insert_new_message(&tx, &chat_id, &body, &now)?,
             };
-            crate::draft::delete_draft(&tx, &crate::draft::chat_key(&chat_id))
-                .map_err(write_err)?;
+            if !ids.is_empty() {
+                view.attachments = promote_draft(&tx, &dirs, &key, &ids, &view.id, now.ms)?;
+                // The file names are part of the entry's search text: index again, now that the rows exist.
+                crate::search::reindex(&tx, &view.id, &view.body_md).map_err(write_err)?;
+            }
+            crate::draft::delete_draft(&tx, &key).map_err(write_err)?;
             tx.commit().map_err(write_err)?;
             Ok(view)
         })?;

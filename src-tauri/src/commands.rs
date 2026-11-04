@@ -86,7 +86,9 @@ pub fn list_messages(
 }
 
 /// Send; with `reply_to_id` (slice 5) it is a reply to an entry of the same chat. If there is no such entry, it is in the trash or the id is wrong,
-/// the result is `reply_target_not_found` and nothing is written.
+/// the result is `reply_target_not_found` and nothing is written. With `attachment_ids` (slice 7) the chat's own draft attachments
+/// are sent with the entry, in the order given; the text may then be empty. A foreign, unknown or repeated id is
+/// `attachment_not_found`, more than ten is `attachment_limit`, and nothing is written.
 #[tauri::command(async)]
 pub fn send_message<R: Runtime>(
     app: AppHandle<R>,
@@ -94,9 +96,16 @@ pub fn send_message<R: Runtime>(
     chat_id: String,
     body: String,
     reply_to_id: Option<String>,
+    attachment_ids: Option<Vec<String>>,
 ) -> ApiResult<MessageView> {
     let message = store
-        .send_reply(&chat_id, &body, reply_to_id.as_deref(), &Now::system())
+        .send_entry(
+            &chat_id,
+            &body,
+            reply_to_id.as_deref(),
+            attachment_ids.as_deref().unwrap_or_default(),
+            &Now::system(),
+        )
         .map_err(api)?;
     crate::tray::refresh(&app);
     Ok(message)

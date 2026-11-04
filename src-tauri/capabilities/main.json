@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Main window: its own commands without core:default, plus subscription to app events (\"entries changed\", \"open chat\", \"settings changed\", \"open entry\"); the \"On this day\" commands (slice 5) and the forest commands (slice 6); no JS permissions of the opener, dialog and global-shortcut plugins. The settings window commands are revoked from it (slice 4b)",
+  "description": "Main window: its own commands without core:default, plus subscription to app events (\"entries changed\", \"open chat\", \"settings changed\", \"open entry\"); the \"On this day\" commands (slice 5) and the forest commands (slice 6); the attachment commands (slice 7); no JS permissions of the opener, dialog and global-shortcut plugins. The settings window commands are revoked from it (slice 4b)",
   "windows": [
     "main"
   ],
@@ -45,6 +45,11 @@
     "allow-get-forest-year",
     "allow-get-forest-day-target",
     "allow-set-forest-view",
+    "allow-attach-pick",
+    "allow-attach-paste",
+    "allow-attach-dropped",
+    "allow-remove-draft-attachment",
+    "allow-open-attachment",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

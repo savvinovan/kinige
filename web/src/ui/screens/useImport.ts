@@ -112,7 +112,13 @@ export function useImport({ api, onChanged, onDone }: UseImportOptions) {
     running.current = true;
     setError(null);
     setStopping(false);
-    setProgress({ done: 0, total: opened.preview.chats.filter((c) => chatIds.includes(c.id)).reduce((s, c) => s + c.total, 0) });
+    const chosen = opened.preview.chats.filter((c) => chatIds.includes(c.id));
+    setProgress({
+      done: 0,
+      total: chosen.reduce((s, c) => s + c.total, 0),
+      bytesDone: 0,
+      bytesTotal: chosen.reduce((s, c) => s + c.mediaBytes, 0),
+    });
     setStep("running");
     api
       .importTelegramRun(opened.session, chatIds)

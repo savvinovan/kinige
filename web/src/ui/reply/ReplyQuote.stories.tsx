@@ -15,6 +15,7 @@ const LIVE: ReplyTo = {
   excerpt: "Так будет лучше: перестать откладывать и написать первую страницу",
   state: "live",
   yearsLater: 3,
+  attachments: { photos: 0, files: 0, name: null },
 };
 
 const meta = {

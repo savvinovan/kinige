@@ -1,5 +1,6 @@
 import { INBOX_ID, type KinigeApi, KinigeApiError } from "./KinigeApi";
-import { APPEND_WINDOW_MS, CONTEXT_LEN, DEFAULT_SETTINGS, type MockApiOptions, type Row, compareFeed, mockMessage, yearsLater } from "./mockData";
+import { summaryOf } from "../ui/attachments/summaryText";
+import { APPEND_WINDOW_MS, CONTEXT_LEN, DEFAULT_SETTINGS, NO_ATTACHMENTS, type MockApiOptions, type Row, compareFeed, mockMessage, yearsLater } from "./mockData";
 import { mockTags } from "./mockTags";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
@@ -172,7 +173,7 @@ export class MockApiBase {
   /** The quote for the addressee entry `targetId` on day `replyDate`: live, trashed or "deleted". */
   protected replyTo(targetId: string, replyDate: string): ReplyTo {
     const target = this.rows.find((r) => r.view.id === targetId);
-    if (!target) return { id: targetId, chatId: null, journalDate: null, excerpt: "", state: "missing", yearsLater: 0 };
+    if (!target) return { id: targetId, chatId: null, journalDate: null, excerpt: "", state: "missing", yearsLater: 0, attachments: NO_ATTACHMENTS };
     const text = target.view.bodyMd.replace(/[*_`#>~]|\[[ xX]\]/g, "").replace(/\s+/g, " ").trim();
     return {
       id: targetId,
@@ -181,6 +182,7 @@ export class MockApiBase {
       excerpt: [...text].length > 120 ? `${[...text].slice(0, 119).join("").trimEnd()}…` : text,
       state: target.deletedAt === null ? "live" : "trash",
       yearsLater: yearsLater(target.view.journalDate, replyDate),
+      attachments: summaryOf(target.view.attachments),
     };
   }
 

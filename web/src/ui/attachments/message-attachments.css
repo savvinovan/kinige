@@ -1,0 +1,10 @@
+/* The attachments of an entry: the album, then the file cards one under another. The bubble supplies the background and the spacing around. */
+.message-attachments {
+  display: grid;
+  /* The track may not be wider than the bubble, so that a photo box (a fixed width) shrinks with `max-width: 100%` in a narrow window
+     instead of sticking out of the bubble (found in the 640 px shot of the missing file). */
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  gap: var(--space-2);
+  min-width: 0;
+}

@@ -2,21 +2,20 @@
 //! item. Each is one transaction: a rewrite of one group (`kinige_domain::rewrite`), HLC, columns from the new group bytes,
 //! tags, the revision and the Markdown copy mark. No optimistic display: on error nothing is written.
 
+use crate::attachment::live_count;
 use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
+use crate::message_body::edit_body;
 use crate::send::mark_dirty;
 use crate::view::load_view;
 use crate::{Now, Store, StoreError};
-use kinige_domain::append::{CurrentBody, rewrite_body};
-use kinige_domain::groups::normalize_body;
-use kinige_domain::history::edit_revision;
+use kinige_domain::groups::normalize_body_or_empty;
 use kinige_domain::journal::is_valid_journal_date;
 use kinige_domain::message_ops::{self, FlagChange, MessageColumns, message_columns};
 use kinige_domain::rewrite::{Groups, Rewritten, is_read_only};
 use kinige_domain::tasks::{TaskItemError, set_task_item};
 use kinige_domain::{MessageFlag, MessageView};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
-use uuid::Uuid;
 
 /// An entry as the rewrite sees it: the group bytes and the "confirmed by the server" flag.
 pub(crate) struct Loaded {
@@ -113,64 +112,6 @@ fn begin(conn: &mut Connection) -> Result<Transaction<'_>, StoreError> {
         .map_err(write_err)
 }
 
-/// A text edit inside an open transaction: the `edit` revision (a snapshot before the edit), the new `body` group, tags, the copy mark.
-/// The same text -- nothing is written.
-pub(crate) fn edit_body(
-    tx: &Transaction<'_>,
-    loaded: &Loaded,
-    body_md: &str,
-    now: &Now,
-) -> Result<(), StoreError> {
-    if loaded.columns.body_md == body_md {
-        return Ok(());
-    }
-    let hlc = next_hlc(tx, now.ms)?;
-    let revision = edit_revision(
-        &Uuid::new_v4().to_string(),
-        &loaded.id,
-        &loaded.groups_raw,
-        &loaded.hlc_json,
-        now.ms,
-        &hlc,
-    )?;
-    let rewritten = rewrite_body(
-        &CurrentBody {
-            groups_raw: &loaded.groups_raw,
-            hlc_json: &loaded.hlc_json,
-            // The outbox appears in slice 11: then "confirmed" is both a column and an outbox row (ADR-0001 §3.4).
-            body_confirmed: loaded.server_known,
-        },
-        body_md,
-        now.ms,
-        &hlc,
-    )?;
-    let groups = Rewritten {
-        groups_raw: rewritten.groups_raw,
-        hlc_json: rewritten.hlc_json,
-        schema_version: rewritten.schema_version,
-    };
-    apply(tx, &loaded.id, &groups)?;
-    tx.execute(
-        "INSERT INTO message_revision (id, message_id, snapshot_json, saved_at, reason, hlc_json, server_known, \
-         schema_version, groups_raw) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8)",
-        rusqlite::params![
-            revision.id,
-            revision.message_id,
-            revision.snapshot_json,
-            revision.saved_at,
-            revision.reason,
-            revision.hlc_json,
-            revision.schema_version,
-            revision.groups_raw
-        ],
-    )
-    .map_err(write_err)?;
-    crate::tags::replace_tags(tx, &loaded.id, body_md).map_err(write_err)?;
-    crate::search::reindex(tx, &loaded.id, body_md).map_err(write_err)?;
-    mark_dirty(tx, &loaded.columns.chat_id, &loaded.columns.journal_date).map_err(write_err)?;
-    Ok(())
-}
-
 impl Store {
     /// The chat of a live entry (not in the trash) -- to open it in the feed from a window that has no feed itself. If there is no entry, it
     /// was deleted for good or is in the trash -- `MessageNotFound`. The entry text is not read.
@@ -223,12 +164,16 @@ impl Store {
     /// Text edit: the old version is kept as an `edit` revision in the same transaction; the entry stays in place, with the same
     /// time and day. Empty text -- `Empty`, nothing changes. Text equal to the previous one writes nothing.
     pub fn edit_message(&self, id: &str, body: &str, now: &Now) -> Result<MessageView, StoreError> {
-        let body = normalize_body(body)?;
+        // Empty text is valid exactly when the entry has a live attachment (appendix §C.6); checked below, in the transaction.
+        let body = normalize_body_or_empty(body)?;
         let (id, now) = (id.to_string(), now.clone());
         let view = self.write(move |conn| {
             let tx = begin(conn)?;
             let loaded = load(&tx, &id)?;
             loaded.ensure_writable()?;
+            if body.is_empty() && live_count(&tx, &id)? == 0 {
+                return Err(StoreError::Empty);
+            }
             edit_body(&tx, &loaded, &body, &now)?;
             let view = load_view(&tx, &id)?;
             tx.commit().map_err(write_err)?;

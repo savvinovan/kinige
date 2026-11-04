@@ -1,3 +1,4 @@
+import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { continuesSeries } from "./dates";
 
@@ -29,6 +30,8 @@ export interface FeedMessage {
   origin?: string;
   /** The entry this is a reply to (slice 5): a quote in the bubble. */
   replyTo?: ReplyTo | null;
+  /** The live photos and files of the entry (slice 7), in order. */
+  attachments?: readonly AttachmentView[];
 }
 
 export type FeedItem =

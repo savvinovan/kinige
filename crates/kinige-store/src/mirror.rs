@@ -4,7 +4,7 @@
 //! The trash does not get into the copy (PRD §16).
 
 use crate::StoreError;
-use crate::mirror_day::write_day;
+use crate::mirror_day::{FileSource, write_day};
 use crate::settings::effective_mirror_dir;
 use crate::writer::Writer;
 use kinige_domain::MirrorError;
@@ -115,6 +115,7 @@ pub(crate) fn spawn(
     reader: Connection,
     writer: Writer,
     default_dir: Option<PathBuf>,
+    attachments_dir: PathBuf,
 ) -> Result<(), StoreError> {
     thread::Builder::new()
         .name("kinige-mirror".into())
@@ -132,7 +133,15 @@ pub(crate) fn spawn(
                             && shared.panic_next.swap(false, Ordering::SeqCst)),
                         "check: panic in the copy pass"
                     );
-                    pass(&shared, &reader, &writer, default_dir.as_deref())
+                    pass(
+                        &shared,
+                        &reader,
+                        &FileSource {
+                            writer: &writer,
+                            attachments_dir: &attachments_dir,
+                        },
+                        default_dir.as_deref(),
+                    )
                 }))
                 .unwrap_or_else(|_| {
                     log::error!("copy: panic in the pass, retry later");
@@ -153,9 +162,10 @@ pub(crate) fn spawn(
 fn pass(
     shared: &MirrorShared,
     reader: &Connection,
-    writer: &Writer,
+    files: &FileSource<'_>,
     default_dir: Option<&Path>,
 ) -> bool {
+    let writer = files.writer;
     let dir = match effective_mirror_dir(reader, default_dir) {
         Ok((Some(dir), _)) => dir,
         // No folder (not chosen and there is no default): the copy is off, the marks wait.
@@ -216,7 +226,7 @@ fn pass(
                 .get(&chat_id)
                 .cloned()
                 .unwrap_or_else(|| chat_id.clone());
-            if let Err(error) = write_day(reader, &dir, &chat_id, &folder, &folders, &date) {
+            if let Err(error) = write_day(reader, files, &dir, &chat_id, &folder, &folders, &date) {
                 shared.set_error(Some(error));
                 return true;
             }

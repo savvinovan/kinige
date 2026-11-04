@@ -6,6 +6,7 @@ pub mod agent_reply;
 pub mod api;
 pub mod api_error;
 pub mod append;
+pub mod attachment;
 pub mod backup;
 pub mod chat;
 pub mod draft;
@@ -49,11 +50,12 @@ pub use agent_api::{
     AgentAccess, AgentChatChoice, AgentLogEntry, AgentLogPage, AgentLogRow, AgentMode, AgentSocket,
 };
 pub use api::{
-    CaptureAction, CaptureOutcome, CaptureState, ChatDraft, ChatList, ChatSummary, FeedCursor,
-    MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters, SearchHit,
-    SearchPage, Settings, TextSize, TrashItem,
+    AttachOutcome, CaptureAction, CaptureOutcome, CaptureState, ChatDraft, ChatList, ChatSummary,
+    FeedCursor, MessageFlag, MessagePage, MessageView, MirrorError, MirrorStatus, SearchFilters,
+    SearchHit, SearchPage, Settings, TextSize, TrashItem,
 };
 pub use api_error::{ApiError, ErrorCode};
+pub use attachment::{AttachmentKind, AttachmentState, AttachmentSummary, AttachmentView};
 pub use backup::{BackupError, BackupInfo, BackupKind, BackupStatus, RestoreOutcome, StartupState};
 pub use forest::{FirstWeekday, Season, WeekdaySource};
 pub use forest_year::{ForestDay, ForestMode, ForestTarget, ForestView, ForestYear};

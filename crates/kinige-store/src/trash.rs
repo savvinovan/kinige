@@ -9,7 +9,9 @@
 //! be deleted forever (what is readable gets into the snapshot). An entry whose `deleted` group has an unsupported `sv`
 //! is deleted neither manually nor automatically (ADR-0001 §4 item 4: `purged` is created only if `deleted` is supported).
 
+use crate::attachment::{PurgedFile, delete_for_purge, delete_stored_files};
 use crate::error::{read_err, write_err};
+use crate::send::mark_dirty;
 use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row_at};
 use crate::{Now, Store, StoreError};
 use kinige_domain::TrashItem;
@@ -48,9 +50,27 @@ fn load_target(conn: &Connection, id: &str) -> Result<PurgeTarget, StoreError> {
     .ok_or(StoreError::MessageNotFound)
 }
 
-/// Physically deletes an entry from the trash together with its revisions and writes tombstones. The caller has opened a transaction.
-fn purge(tx: &Connection, target: &PurgeTarget, now_ms: i64) -> Result<(), StoreError> {
+/// Physically deletes an entry from the trash together with its revisions and attachments and writes tombstones. The caller has
+/// opened a transaction and, after the commit, deletes the files of the returned attachments (`finish_purge`).
+fn purge(
+    tx: &Connection,
+    target: &PurgeTarget,
+    now_ms: i64,
+) -> Result<Vec<PurgedFile>, StoreError> {
     let message_snapshot = purged_of_best_effort(&target.hlc_json)?;
+    // The day is marked so that the Markdown copy removes the entry's attachment files from the day folder.
+    let place: Option<(String, String)> = tx
+        .query_row(
+            "SELECT chat_id, journal_date FROM message WHERE id = ?1",
+            [&target.id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(write_err)?;
+    if let Some((chat_id, journal_date)) = place {
+        mark_dirty(tx, &chat_id, &journal_date).map_err(write_err)?;
+    }
+    let files = delete_for_purge(tx, &target.id, now_ms)?;
     tx.execute(
         "INSERT OR REPLACE INTO tombstone (entity, id, purged_of, purged_at, cascade_of, held) \
          VALUES ('message', ?1, ?2, ?3, NULL, NULL)",
@@ -96,7 +116,7 @@ fn purge(tx: &Connection, target: &PurgeTarget, now_ms: i64) -> Result<(), Store
         .map_err(write_err)?;
     // After the `message` row is deleted: a damaged index is rebuilt from the remaining entries, and the deleted one will not return to it.
     crate::search::remove(tx, &target.id).map_err(write_err)?;
-    Ok(())
+    Ok(files)
 }
 
 impl Store {
@@ -136,7 +156,7 @@ impl Store {
     /// `deleted` group newer than supported -- `ReadOnly`.
     pub fn purge_message(&self, id: &str, now: &Now) -> Result<(), StoreError> {
         let (id, now_ms) = (id.to_string(), now.ms);
-        self.write(move |conn| {
+        let files = self.write(move |conn| {
             let tx = conn
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(write_err)?;
@@ -147,9 +167,23 @@ impl Store {
             if !deleted_group_supported(&target.hlc_json) {
                 return Err(StoreError::ReadOnly);
             }
-            purge(&tx, &target, now_ms)?;
-            tx.commit().map_err(write_err)
-        })
+            let files = purge(&tx, &target, now_ms)?;
+            tx.commit().map_err(write_err)?;
+            Ok(files)
+        })?;
+        self.finish_purge(&files);
+        self.wake_mirror();
+        Ok(())
+    }
+
+    /// After the commit of a purge: the files of its attachments and their thumbnails go. A deletion that fails or is cut short by
+    /// a crash is finished by the sweep (the ids have tombstones), not left for 30 days in `.orphans/`.
+    fn finish_purge(&self, files: &[PurgedFile]) {
+        let list: Vec<(String, Option<String>)> = files
+            .iter()
+            .map(|file| (file.id.clone(), file.file_name.clone()))
+            .collect();
+        delete_stored_files(&self.dirs(), self.faults(), &list);
     }
 
     /// Auto-deletion: entries that lay in the trash for 30 days are deleted physically (at start and once a day). Returns
@@ -193,22 +227,25 @@ impl Store {
                 let mut done = 0usize;
                 let mut bad = Vec::new();
                 let mut error = None;
+                let mut files: Vec<PurgedFile> = Vec::new();
                 for id in ids.into_iter().filter(|id| !skipped.contains(id)) {
                     // A savepoint per entry: a damaged one is rolled back alone, the already deleted ones stay.
                     let step = tx.savepoint().map_err(write_err)?;
                     let result = load_target(&step, &id).and_then(|target| {
                         if deleted_group_supported(&target.hlc_json) {
-                            purge(&step, &target, now_ms).map(|()| true)
+                            purge(&step, &target, now_ms).map(Some)
                         } else {
-                            Ok(false)
+                            Ok(None)
                         }
                     });
                     match result {
-                        Ok(true) => {
+                        Ok(Some(purged_files)) => {
                             step.commit().map_err(write_err)?;
+                            files.extend(purged_files);
                             done += 1;
                         }
-                        Ok(false) => {
+                        // An entry (or one of its attachments) with a `deleted` group in an unsupported `sv`: skipped silently.
+                        Ok(None) | Err(StoreError::ReadOnly) => {
                             drop(step);
                             bad.push(id);
                         }
@@ -220,15 +257,19 @@ impl Store {
                     }
                 }
                 tx.commit().map_err(write_err)?;
-                Ok((done, bad, error))
+                Ok((done, bad, error, files))
             });
-            let (done, bad, error) = match outcome {
+            let (done, bad, error, files) = match outcome {
                 Ok(found) => found,
                 Err(error) => {
                     last_error = Some(error);
                     break;
                 }
             };
+            self.finish_purge(&files);
+            if done > 0 {
+                self.wake_mirror();
+            }
             purged += done;
             // Skipped entries (an unsupported group, damaged JSON) do not block the healthy ones behind them: the
             // selection in the next pass is longer by the number of skipped ones, the loop ends only when no new entries are left.

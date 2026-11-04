@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 pub mod agent;
+pub mod attach;
 pub mod capture;
 pub mod days;
 pub mod import;

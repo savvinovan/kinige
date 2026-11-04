@@ -1,6 +1,7 @@
 //! Background maintenance (slice 3): once a day and at startup -- auto-delete of the trash (30 days), the integrity check
-//! and the daily backup. It runs after the window is shown, so it does not slow the cold start (< 1.5 s); it works on
-//! separate read connections.
+//! and the daily backup, and (slice 7) the attachment sweep. In the app the first pass waits for the main window's page to
+//! load (`StoreOptions::defer_maintenance`, [`Store::begin_maintenance`]), so none of it is on the cold start path (< 1.5 s); it
+//! works on separate read connections.
 //!
 //! The daily backup is taken **only after a successful check**: otherwise corrupted backups would push out good ones (the last 7).
 //! If the check finds corruption, no backup is taken, the error is visible in Settings, and the calling layer gets a signal
@@ -19,6 +20,10 @@ use std::time::Duration;
 
 /// How often the thread wakes up to check whether a new day has started.
 const TICK: Duration = Duration::from_secs(3600);
+
+/// With a deferred start (`StoreOptions::defer_maintenance`) the first pass waits for [`Store::begin_maintenance`] (the main window
+/// has loaded its page); if the signal never comes, it starts after this long anyway.
+const STARTUP_GATE: Duration = Duration::from_secs(20);
 
 /// What a maintenance pass did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,17 +44,46 @@ pub(crate) struct MaintenanceShared {
     reported: AtomicBool,
     /// Tests only: the next pass panics.
     panic_next: AtomicBool,
+    /// The first pass is still waiting for the signal that the window has loaded.
+    gated: AtomicBool,
 }
 
 impl MaintenanceShared {
-    pub(crate) fn new() -> Arc<MaintenanceShared> {
+    /// `deferred`: the first pass waits for [`MaintenanceShared::begin`] (or [`STARTUP_GATE`]) instead of running at once.
+    pub(crate) fn new(deferred: bool) -> Arc<MaintenanceShared> {
         Arc::new(MaintenanceShared {
-            wake: Mutex::new(true), // the first pass runs right at startup
+            wake: Mutex::new(!deferred),
             signal: Condvar::new(),
             stopped: AtomicBool::new(false),
             reported: AtomicBool::new(false),
             panic_next: AtomicBool::new(false),
+            gated: AtomicBool::new(deferred),
         })
+    }
+
+    /// The window has loaded: let a deferred first pass start. Only the first call does anything.
+    pub(crate) fn begin(&self) {
+        if self.gated.swap(false, Ordering::SeqCst) {
+            self.wake_now();
+        }
+    }
+
+    /// Waits at the gate of a deferred start, for the signal or [`STARTUP_GATE`].
+    fn wait_at_gate(&self) {
+        if !self.gated.load(Ordering::SeqCst) {
+            return;
+        }
+        let flag = self.wake.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut flag = self
+            .signal
+            .wait_timeout_while(flag, STARTUP_GATE, |woken| {
+                !*woken && !self.stopped.load(Ordering::SeqCst)
+            })
+            .unwrap_or_else(PoisonError::into_inner)
+            .0;
+        *flag = false;
+        drop(flag);
+        self.gated.store(false, Ordering::SeqCst);
     }
 
     pub(crate) fn inject_panic(&self) {
@@ -85,6 +119,7 @@ pub(crate) fn spawn(shared: Arc<MaintenanceShared>, store: Weak<Inner>) -> Resul
     thread::Builder::new()
         .name("kinige-maintenance".into())
         .spawn(move || {
+            shared.wait_at_gate();
             loop {
                 if shared.stopped.load(Ordering::SeqCst) {
                     return;
@@ -195,6 +230,10 @@ impl Store {
         // The agent access log: 90 days and at most 20,000 rows; a rotation error does not cancel the daily backup.
         if let Err(error) = self.rotate_agent_log(now) {
             log::warn!("agent log rotation: {}", error.category());
+        }
+        // Attachment files: leftovers of crashes, purges that did not finish, files whose row is gone (ADR-0014). A writer job.
+        if let Err(error) = self.sweep_attachments(now) {
+            log::warn!("attachment sweep: {}", error.category());
         }
         if has_daily(&dir, &today) {
             self.inner.backup.set_error(None);

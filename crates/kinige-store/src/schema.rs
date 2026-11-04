@@ -1,4 +1,4 @@
-//! SQLite schema and migrations (`PRAGMA user_version`). Migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
+//! SQLite schema and migrations (`PRAGMA user_version`). Migration 7 (slice 7) adds attachments; migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
 //! index; migration 3 (slice 3) adds revisions, tombstones and derived local tables; migration 2 adds the local table
 //! of drafts (slice 2).
 //! Migration 1 creates only the tables that slice 1 writes to
@@ -192,6 +192,71 @@ pub(crate) const MIGRATION_6: &str = "
 ALTER TABLE draft ADD COLUMN reply_to_id TEXT;
 ";
 
+/// Migration 7 (slice 7, appendix ADR-0001 §C.6): attachments. `CREATE TABLE` only; rows of synced tables and existing drafts do
+/// not change.
+/// - `attachment` -- the first synced attachment table (groups `core`, `order`, `deleted`), no foreign key;
+/// - `attachment_local` -- the state of the file on this device (`local` or `missing` until slice 11) and the stored file name
+///   `<uuid>.<ext>` inside `attachments/`; not synced;
+/// - `draft_attachment` -- the tiles above the input field, with the facts the send needs; the id is the future attachment id
+///   and the file already lies in `attachments/`; not synced;
+/// - `mirror_file` -- what the Markdown copy wrote into a day folder, so that only our own stale files are ever removed.
+pub(crate) const MIGRATION_7: &str = "
+CREATE TABLE attachment (
+  id TEXT PRIMARY KEY,
+  message_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  sort_index INTEGER NOT NULL,
+  sha256 TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  byte_size INTEGER NOT NULL,
+  width INTEGER,
+  height INTEGER,
+  duration_ms INTEGER,
+  url TEXT,
+  link_title TEXT,
+  link_site TEXT,
+  remote_blob_id TEXT NOT NULL,
+  blob_key TEXT NOT NULL,
+  deleted_at INTEGER,
+  hlc_json TEXT NOT NULL,
+  server_known INTEGER NOT NULL DEFAULT 0,
+  schema_version INTEGER NOT NULL,
+  groups_raw TEXT NOT NULL
+);
+CREATE INDEX attachment_message ON attachment(message_id, sort_index);
+
+CREATE TABLE attachment_local (
+  attachment_id TEXT PRIMARY KEY,
+  state TEXT NOT NULL CHECK (state IN ('local', 'missing')),
+  file_name TEXT NOT NULL
+);
+
+CREATE TABLE draft_attachment (
+  attachment_id TEXT PRIMARY KEY,
+  draft_key TEXT NOT NULL,
+  sort_index INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  byte_size INTEGER NOT NULL,
+  width INTEGER,
+  height INTEGER,
+  sha256 TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX draft_attachment_key ON draft_attachment(draft_key, sort_index);
+
+CREATE TABLE mirror_file (
+  chat_id TEXT NOT NULL,
+  journal_date TEXT NOT NULL,
+  attachment_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  PRIMARY KEY (chat_id, journal_date, attachment_id)
+) WITHOUT ROWID;
+";
+
 /// Migrations in order; the version number is the index + 1.
 const MIGRATIONS: &[&str] = &[
     MIGRATION_1,
@@ -200,6 +265,7 @@ const MIGRATIONS: &[&str] = &[
     MIGRATION_4,
     MIGRATION_5,
     MIGRATION_6,
+    MIGRATION_7,
 ];
 
 /// The schema version this app understands.

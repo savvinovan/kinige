@@ -13,7 +13,8 @@ pub use highlight::{highlight_terms, snippet};
 
 /// Version of the normalization rules and the index layout. Changes together with the stemmer, the word rules and the
 /// table's `tokenize`: on a mismatch with `app_setting.search_index_version` the index is rebuilt at start (ADR-0008).
-pub const SEARCH_INDEX_VERSION: u32 = 1;
+/// Version 2 (slice 7): an entry's text also holds the stems of its attachments' file names.
+pub const SEARCH_INDEX_VERSION: u32 = 2;
 
 /// Shortest stem length of the last term at which it is searched as a prefix: one character would give `м*` over a quarter of the index.
 const MIN_PREFIX_CHARS: usize = 2;

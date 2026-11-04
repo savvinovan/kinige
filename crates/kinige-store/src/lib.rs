@@ -8,6 +8,7 @@ mod agent_log;
 mod agent_read;
 mod agent_settings;
 mod agent_write;
+mod attachment;
 mod backup;
 mod capture;
 mod chats;
@@ -20,11 +21,16 @@ mod feed_page;
 mod forest;
 mod hlc_state;
 mod import;
+mod import_batch;
+mod import_lookup;
+mod import_media;
 mod import_time;
 mod maintenance;
+mod message_body;
 mod messages;
 mod mirror;
 mod mirror_day;
+mod mirror_files;
 mod on_this_day;
 mod recovery;
 mod schema;
@@ -34,6 +40,7 @@ mod send;
 mod settings;
 mod settings_file;
 mod tags;
+mod test_hooks;
 mod time;
 mod trash;
 mod view;
@@ -41,6 +48,7 @@ mod writer;
 
 pub use agent::{AgentError, AgentReply, AgentRequest, AgentSettings};
 pub use agent_log::{LOG_DAYS, LOG_MAX_ROWS, LOG_PAGE};
+pub use attachment::{AttachFault, Media, MediaVariant, OpenTarget, SweepReport};
 pub use backup::{Integrity, backups_dir, list_backups, verify_database};
 pub use capture::{CONTEXT_LEN, CaptureView};
 pub use chats::RecentChat;
@@ -68,6 +76,7 @@ use kinige_domain::groups;
 use maintenance::MaintenanceShared;
 use mirror::MirrorShared;
 use rusqlite::{Connection, OpenFlags};
+use std::collections::HashSet;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -107,6 +116,8 @@ pub struct StoreOptions {
     /// Whether to start background maintenance: trash auto-delete, integrity check, the day's backup (tests turn it off
     /// and call [`Store::run_maintenance`] themselves).
     pub start_maintenance: bool,
+    /// The first maintenance pass waits for [`Store::begin_maintenance`] (the app calls it once the main window has loaded), or 20 s.
+    pub defer_maintenance: bool,
     /// What to do when the integrity check finds corruption.
     pub on_corruption: Option<CorruptionHook>,
 }
@@ -119,6 +130,7 @@ impl StoreOptions {
             start_mirror: true,
             mirror_retry: Duration::from_secs(10),
             start_maintenance: true,
+            defer_maintenance: false,
             on_corruption: None,
         }
     }
@@ -135,6 +147,14 @@ pub(crate) struct Inner {
     on_corruption: Option<CorruptionHook>,
     /// How many times the search index was healed during this launch (`search::heal_search_index`).
     search_heals: Arc<std::sync::atomic::AtomicU64>,
+    /// Made at startup: names this process's `.tmp/` and `open/` directories, so the attachment sweep never touches a live copy.
+    process_id: String,
+    /// Failures injected by tests (attachments).
+    faults: Arc<attachment::Faults>,
+    /// The threads behind the `kinige-media` protocol.
+    media_pool: attachment::MediaPool,
+    /// Images whose thumbnail did not decode in this launch: not tried again on every render.
+    thumb_failed: Mutex<HashSet<String>>,
 }
 
 impl Drop for Inner {
@@ -210,7 +230,8 @@ impl Store {
         let reader = open_connection(&options.db_path, true)?;
         let writer = Writer::spawn(conn)?;
         let mirror = MirrorShared::new(options.mirror_retry);
-        let maintenance = MaintenanceShared::new();
+        let maintenance = MaintenanceShared::new(options.defer_maintenance);
+        let media_pool = attachment::MediaPool::spawn()?;
         let store = Store {
             inner: Arc::new(Inner {
                 writer,
@@ -222,6 +243,10 @@ impl Store {
                 maintenance: maintenance.clone(),
                 on_corruption: options.on_corruption.clone(),
                 search_heals: Arc::default(),
+                process_id: uuid::Uuid::new_v4().to_string(),
+                faults: Arc::default(),
+                media_pool,
+                thumb_failed: Mutex::default(),
             }),
         };
         if options.start_mirror {
@@ -231,6 +256,7 @@ impl Store {
                 reader,
                 store.inner.writer.clone(),
                 options.default_mirror_dir,
+                store.dirs().attachments(),
             )?;
         }
         if options.start_maintenance {
@@ -302,36 +328,10 @@ impl Store {
         })
     }
 
-    /// Tests only: a panic inside a read. The following reads must work.
-    #[doc(hidden)]
-    #[allow(clippy::panic)] // a hook for integration tests of the panic safety net: the panic is its whole purpose
-    pub fn panic_in_read_for_test(&self) -> Result<(), StoreError> {
-        self.read(|_| -> Result<(), StoreError> { panic!("check: panic in a read") })
-    }
-
-    /// Tests only: a step in the Markdown copy pass after reading a batch of marks and before checking the folder; `None`
-    /// removes it. In the step the test changes the copy folder in the middle of a batch (the pass must restart with the
-    /// new folder).
-    #[doc(hidden)]
-    pub fn set_mirror_batch_hook_for_test(&self, hook: Option<Arc<dyn Fn() + Send + Sync>>) {
-        self.inner.mirror.set_batch_hook(hook);
-    }
-
-    /// Tests only: the next pass of the background copy (`mirror`) or maintenance (`maintenance`) panics once.
-    #[doc(hidden)]
-    pub fn inject_background_panic_for_test(&self, thread: BackgroundThread) {
-        match thread {
-            BackgroundThread::Mirror => self.inner.mirror.inject_panic(),
-            BackgroundThread::Maintenance => self.inner.maintenance.inject_panic(),
-        }
-        self.wake_mirror();
-        self.inner.maintenance.wake_now();
-    }
-
-    /// Tests only: wake the maintenance thread now.
-    #[doc(hidden)]
-    pub fn wake_maintenance_for_test(&self) {
-        self.inner.maintenance.wake_now();
+    /// The main window has loaded its page: a deferred first maintenance pass (`StoreOptions::defer_maintenance`) may start now.
+    /// Only the first call does anything; without a deferred start it does nothing.
+    pub fn begin_maintenance(&self) {
+        self.inner.maintenance.begin();
     }
 
     /// Any command that runs into corruption (`SQLITE_CORRUPT`, `SQLITE_NOTADB`) takes the same path as the background
@@ -352,32 +352,31 @@ impl Store {
         groups::INBOX_ID
     }
 
-    /// How many owners the store has (the `Store` itself and its clones; background threads via `Weak` are not counted):
-    /// the MCP server test checks that a connected client does not hold a `Store` clone (a restore from a backup must not
-    /// find a live writer).
-    #[doc(hidden)]
-    pub fn handle_count(&self) -> usize {
-        Arc::strong_count(&self.inner)
-    }
-
     /// The database file: needed by the Tauri layer for restore and diagnostics.
     pub fn db_path(&self) -> &Path {
         &self.inner.db_path
     }
 
-    /// Pragmas of the writer connection `(synchronous, fullfsync, journal_mode)`: to check that writes are durable.
-    #[doc(hidden)]
-    pub fn writer_pragmas(&self) -> Result<(i64, i64, String), StoreError> {
-        self.write(|conn| {
-            Ok((
-                conn.pragma_query_value(None, "synchronous", |r| r.get(0))
-                    .map_err(read_err)?,
-                conn.pragma_query_value(None, "fullfsync", |r| r.get(0))
-                    .map_err(read_err)?,
-                conn.pragma_query_value(None, "journal_mode", |r| r.get(0))
-                    .map_err(read_err)?,
-            ))
-        })
+    /// The attachment directories (`<data>/attachments`, `thumbs`, `open`) of this process.
+    pub(crate) fn dirs(&self) -> attachment::Dirs {
+        let data = self
+            .inner
+            .db_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."));
+        attachment::Dirs::new(data, &self.inner.process_id)
+    }
+
+    pub(crate) fn faults(&self) -> &attachment::Faults {
+        &self.inner.faults
+    }
+
+    /// The data directory: the folder of the database, where `attachments/` and `thumbs/` lie.
+    pub fn data_dir(&self) -> &Path {
+        self.inner
+            .db_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
     }
 
     /// The default Markdown copy folder path is needed by tests and diagnostics.

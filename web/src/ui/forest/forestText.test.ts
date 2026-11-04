@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { createI18n } from "../../i18n";
-import { dayAnnouncement, daySummary, longDay, monthNames, notesText, shortDay, stageName, weekdayLetters } from "./forestText";
+import {
+  dayAnnouncement,
+  daySummary,
+  longDay,
+  monthNames,
+  notesText,
+  photosText,
+  shortDay,
+  stageName,
+  weekdayLetters,
+} from "./forestText";
 
 const en = createI18n("en").t;
 const ru = createI18n("ru").t;
@@ -52,6 +62,20 @@ describe("words of the forest", () => {
     expect(dayAnnouncement(en, "en", { date: "2026-10-16", notes: 5, stage: 6 })).toBe("October 16, 5 notes, a large tree");
     expect(dayAnnouncement(en, "en", { date: "2026-10-17", notes: 0, stage: 0 })).toBe("October 17, No notes");
     expect(dayAnnouncement(ru, "ru", { date: "2026-10-16", notes: 5, stage: 6 })).toBe("16 октября, 5 записей, большое дерево");
+  });
+
+  it("the photos of a day (slice 7): \"5 notes · 3 photos · a large tree\", only when there are photos", () => {
+    expect(daySummary(en, { notes: 5, stage: 6, photos: 3 })).toBe("5 notes · 3 photos · a large tree");
+    expect(daySummary(en, { notes: 1, stage: 2, photos: 1 })).toBe("1 note · 1 photo · a seedling");
+    expect(daySummary(en, { notes: 5, stage: 6, photos: 0 })).toBe("5 notes · a large tree");
+    expect(daySummary(en, { notes: 0, stage: 0, photos: 4 })).toBe("No notes");
+    expect(dayAnnouncement(en, "en", { date: "2026-10-16", notes: 5, stage: 6, photos: 3 })).toBe(
+      "October 16, 5 notes, 3 photos, a large tree",
+    );
+    const ruPhotos = (photos: number) => photosText(ru, photos).replace(/\s/g, " ");
+    // The card is short: "фото" does not decline.
+    expect([1, 2, 5, 21].map(ruPhotos)).toEqual(["1 фото", "2 фото", "5 фото", "21 фото"]);
+    expect(daySummary(ru, { notes: 5, stage: 6, photos: 3 }).replace(/\s/g, " ")).toBe("5 записей · 3 фото · большое дерево");
   });
 
   it("weekday letters follow the rows of the board", () => {

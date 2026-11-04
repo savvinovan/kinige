@@ -43,6 +43,16 @@ pub enum StoreError {
     MirrorFolderBusy,
     /// The database backup before the import was not taken: the import did not start, nothing was written.
     ImportBackupFailed,
+    /// The attachment is larger than the limit (slice 7).
+    AttachmentTooLarge,
+    /// The entry would have more attachments than allowed.
+    AttachmentLimit,
+    /// The file could not be read or changed while it was copied.
+    AttachmentUnreadable,
+    /// No space left on the disk: nothing was written.
+    DiskFull,
+    /// A draft attachment of this chat with this id does not exist.
+    AttachmentNotFound,
     /// The database was created by a newer app version (schema `found`): downgrade is not supported (PRD §10.4).
     TooNew(i64),
     /// Writing to the database failed: nothing was written (the transaction rolled back).
@@ -77,6 +87,11 @@ impl StoreError {
             StoreError::BackupNotFound => ErrorCode::BackupNotFound,
             StoreError::MirrorFolderBusy => ErrorCode::MirrorFolderBusy,
             StoreError::ImportBackupFailed => ErrorCode::ImportBackupFailed,
+            StoreError::AttachmentTooLarge => ErrorCode::AttachmentTooLarge,
+            StoreError::AttachmentLimit => ErrorCode::AttachmentLimit,
+            StoreError::AttachmentUnreadable => ErrorCode::AttachmentUnreadable,
+            StoreError::DiskFull => ErrorCode::DiskFull,
+            StoreError::AttachmentNotFound => ErrorCode::AttachmentNotFound,
             StoreError::TooNew(_) => ErrorCode::DatabaseTooNew,
             StoreError::Write(_) => ErrorCode::StoreWriteFailed,
             StoreError::Read(_) => ErrorCode::StoreReadFailed,
@@ -109,6 +124,11 @@ impl StoreError {
             StoreError::BackupNotFound => "backup_not_found",
             StoreError::MirrorFolderBusy => "mirror_folder_busy",
             StoreError::ImportBackupFailed => "import_backup_failed",
+            StoreError::AttachmentTooLarge => "attachment_too_large",
+            StoreError::AttachmentLimit => "attachment_limit",
+            StoreError::AttachmentUnreadable => "attachment_unreadable",
+            StoreError::DiskFull => "disk_full",
+            StoreError::AttachmentNotFound => "attachment_not_found",
             StoreError::TooNew(_) => "too_new",
             StoreError::Write(_) => "write",
             StoreError::Read(_) => "read",
@@ -141,6 +161,11 @@ impl fmt::Display for StoreError {
                 f.write_str("could not rename the Markdown copy folder")
             }
             StoreError::ImportBackupFailed => f.write_str("backup before the import failed"),
+            StoreError::AttachmentTooLarge => f.write_str("attachment is too large"),
+            StoreError::AttachmentLimit => f.write_str("too many attachments"),
+            StoreError::AttachmentUnreadable => f.write_str("file could not be read"),
+            StoreError::DiskFull => f.write_str("not enough disk space"),
+            StoreError::AttachmentNotFound => f.write_str("draft attachment not found"),
             StoreError::TooNew(found) => {
                 write!(
                     f,

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-attach-paste"
+description = "Enables the attach_paste command without any pre-configured scope."
+commands.allow = ["attach_paste"]
+
+[[permission]]
+identifier = "deny-attach-paste"
+description = "Denies the attach_paste command without any pre-configured scope."
+commands.deny = ["attach_paste"]

@@ -1,0 +1,27 @@
+export files laid out: 10000 photos, 0 files of 1 MB: 2732 ms
+opening an empty database: 67 ms
+parse: 314 ms, 157 MB of JSON, chats 1, messages 100000
+preview: 742 ms, chats to import 1, entries 100000
+media import: attached 10000, missing 0, skipped 0, disk full false; 755 MB in 99.1 s = 8 MB/s (with the text import)
+import: 99102 ms (991.0 us per message); imported 100000, skipped: already present 0, service 0, empty 0; attachment placeholders 0; chats created 0; backup: true
+repeated import: 1136 ms, new 0, already present 100000
+database size: before 0.3 MB, after 406.7 MB
+cold start: open 12 ms, first page (200 entries) 51 ms
+"On this day" over 200 days: p50 11.6 ms, p95 45.9 ms, max 81.2 ms; entries in the card on average 6.0
+opening Inbox (a page of 200 entries + the card, 5 years): 11 ms
+forest year table (get_forest_year, 120 calls over 2018..2023): p50 170.2 ms, p95 262.9 ms, max 387.6 ms; 16665 notes counted per call on average
+forest day target: 0.4 ms (found: true)
+search over 200 words from the entries (prefix query, page of 50): p50 44.6 ms, p95 336.0 ms, max 557.9 ms; found on average 45.5
+search of a frequent one-letter word: 8.1 ms, found on the page 0
+search of a frequent one-letter word: 7.8 ms, found on the page 0
+search of a frequent one-letter word: 61.7 ms, found on the page 0
+opening Inbox with photos (a page of 200 entries, 22 attachments on it, 30 rounds): p50 6.5 ms, p95 23.3 ms, max 29.4 ms
+search by file name (200 names, page of 50): p50 9.4 ms, p95 17.2 ms, max 55.8 ms
+thumbnail built (decode + resize + encode), 200 photos of 1600 x 1200: p50 33.1 ms, p95 44.7 ms, max 66.6 ms
+thumbnail read back from the cache, 200 photos of 1600 x 1200: p50 0.3 ms, p95 0.4 ms, max 7.6 ms
+forest year table, alternating with the attachment table swapped for an empty one, with photos (540 calls): p50 96.7 ms, p95 189.4 ms, max 685.2 ms
+forest year table, alternating with the attachment table swapped for an empty one, without photos (540 calls): p50 80.6 ms, p95 146.6 ms, max 391.7 ms
+attachment sweep over 10000 rows: 196 ms (SweepReport { stale_dirs: 1, orphaned: 0, deleted: 0, restored: 0, missing: 0, thumbs_removed: 0, orphans_expired: 0 })
+      255.06 real       120.82 user        83.89 sys
+           487129088  maximum resident set size
+           460146816  peak memory footprint

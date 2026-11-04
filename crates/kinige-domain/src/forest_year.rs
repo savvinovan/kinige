@@ -2,6 +2,7 @@
 //! notes, growth stage and the start of its first entry. The store collects the per-day facts, this module applies the
 //! rules (`forest.rs`), so the frontend only draws and looks days up. No IO.
 
+use crate::attachment::AttachmentSummary;
 use crate::forest::{
     DEFAULT_W_MAX, FirstWeekday, NoteStat, Season, day_position, day_weight, grid_dims,
     season_of_month, stage_of,
@@ -49,6 +50,10 @@ pub struct ForestDay {
     pub stage: u8,
     /// The start of the day's first entry as plain text (the same text as a reply quote); `null` for an empty day.
     pub excerpt: Option<String>,
+    /// Live photos of the day (slice 7): "5 notes · 3 photos" on the day card.
+    pub photos: u32,
+    /// What the day's first entry holds when it has no text (a photo sent alone); `null` otherwise.
+    pub first_summary: Option<AttachmentSummary>,
 }
 
 /// The entry a click on a day opens.
@@ -124,16 +129,22 @@ pub struct DayStats {
     pub weight: f64,
     /// Markdown of the day's first entry (by journal date, creation time, id).
     pub first_body: Option<String>,
+    /// Live photos of the day's entries.
+    pub photos: u32,
+    /// What the first entry holds, when its text is empty.
+    pub first_summary: Option<AttachmentSummary>,
 }
 
 impl DayStats {
-    /// The facts of a day from its entries one by one (the weight by `day_weight`).
+    /// The facts of a day from its entries one by one (the weight by `day_weight`); no photos counted yet.
     pub fn from_notes(date: NaiveDate, notes: &[NoteStat], first_body: Option<String>) -> DayStats {
         DayStats {
             date,
             notes: u32::try_from(notes.len()).unwrap_or(u32::MAX),
             weight: day_weight(notes),
             first_body,
+            photos: 0,
+            first_summary: None,
         }
     }
 }
@@ -153,21 +164,32 @@ pub fn year_table(year: i32, first: FirstWeekday, stats: &[DayStats]) -> Option<
         return None;
     }
     let dims = grid_dims(year, first)?;
-    let mut by_date: BTreeMap<NaiveDate, (u32, f64, Option<&str>)> = BTreeMap::new();
+    /// Notes, weight, first body, photos and the first entry's summary of one date.
+    type Merged<'a> = (
+        u32,
+        f64,
+        Option<&'a str>,
+        u32,
+        Option<&'a AttachmentSummary>,
+    );
+    let mut by_date: BTreeMap<NaiveDate, Merged<'_>> = BTreeMap::new();
     for stat in stats.iter().filter(|stat| stat.date.year() == year) {
         let entry = by_date.entry(stat.date).or_default();
         entry.0 = entry.0.saturating_add(stat.notes);
         entry.1 += stat.weight;
         if entry.2.is_none() {
             entry.2 = stat.first_body.as_deref();
+            entry.4 = stat.first_summary.as_ref();
         }
+        entry.3 = entry.3.saturating_add(stat.photos);
     }
     let mut days = Vec::with_capacity(366);
     for ordinal in 1..=366 {
         let Some(date) = NaiveDate::from_yo_opt(year, ordinal) else {
             break;
         };
-        let (notes, weight, body) = by_date.get(&date).copied().unwrap_or_default();
+        let (notes, weight, body, photos, summary) =
+            by_date.get(&date).copied().unwrap_or_default();
         let pos = day_position(date, first);
         days.push(ForestDay {
             date: date.format("%Y-%m-%d").to_string(),
@@ -177,6 +199,8 @@ pub fn year_table(year: i32, first: FirstWeekday, stats: &[DayStats]) -> Option<
             notes,
             stage: stage_of(weight, DEFAULT_W_MAX),
             excerpt: body.map(excerpt).filter(|text| !text.is_empty()),
+            photos,
+            first_summary: summary.cloned(),
         });
     }
     Some(YearTable {

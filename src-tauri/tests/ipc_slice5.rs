@@ -168,7 +168,10 @@ fn the_draft_carries_the_reply_and_survives_through_get_draft() {
     )
     .unwrap();
     let plain = call(&main, "get_draft", json!({"chatId": INBOX})).unwrap();
-    assert_eq!(plain, json!({"body": "просто текст", "replyTo": null}));
+    assert_eq!(
+        plain,
+        json!({"body": "просто текст", "replyTo": null, "attachments": []})
+    );
 }
 
 #[test]

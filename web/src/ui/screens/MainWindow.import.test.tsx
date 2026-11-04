@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, MockApi } from "../../api/MockApi";
+import { NO_MEDIA } from "../../api/mockData";
 import type { ImportPreview } from "../../api/generated/ImportPreview";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
@@ -9,9 +10,9 @@ const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 
 const PREVIEW: ImportPreview = {
   chats: [
-    { id: "1000001", name: null, kind: "saved", total: 1682, existing: 0 },
-    { id: "2000002", name: "Пётр Тестов", kind: "personal", total: 240, existing: 40 },
-    { id: "2000003", name: "Пустой", kind: "personal", total: 0, existing: 0 },
+    { id: "1000001", name: null, kind: "saved", total: 1682, existing: 0, ...NO_MEDIA },
+    { id: "2000002", name: "Пётр Тестов", kind: "personal", total: 240, existing: 40, ...NO_MEDIA },
+    { id: "2000003", name: "Пустой", kind: "personal", total: 0, existing: 0, ...NO_MEDIA },
   ],
   skippedChats: 3,
 };
@@ -122,7 +123,7 @@ describe("Импорт: выбор чатов", () => {
     const api = setup();
     const dialog = await openDialog();
     await pick();
-    api.importFile = { chats: [{ id: "9", name: "Новый", kind: "personal", total: 5, existing: 0 }], skippedChats: 0 };
+    api.importFile = { chats: [{ id: "9", name: "Новый", kind: "personal", total: 5, existing: 0, ...NO_MEDIA }], skippedChats: 0 };
     fireEvent.click(within(dialog).getByRole("button", { name: "Другой файл…" }));
     expect(await within(dialog).findByRole("checkbox", { name: "Новый" })).not.toBeChecked();
     expect(within(dialog).queryByRole("checkbox", { name: "Избранное" })).toBeNull();
@@ -201,7 +202,7 @@ describe("Импорт: прогресс, остановка, отчёт", () =>
 
   it("повторный импорт того же файла: новых записей нет, «пропущено, уже импортировано»", async () => {
     const api = setup();
-    api.importFile = { chats: [{ id: "1000001", name: null, kind: "saved", total: 1682, existing: 1682 }], skippedChats: 0 };
+    api.importFile = { chats: [{ id: "1000001", name: null, kind: "saved", total: 1682, existing: 1682, ...NO_MEDIA }], skippedChats: 0 };
     const dialog = await openDialog();
     await pick();
     fireEvent.click(within(dialog).getByRole("button", { name: "Импортировать" }));

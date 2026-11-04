@@ -1,0 +1,3 @@
+clone exists: yes
+clone mode: 600
+stored file untouched: same

@@ -367,6 +367,7 @@ fn entry(text: &str) -> AgentEntry {
         favorite: false,
         text: text.into(),
         tasks: Vec::new(),
+        attachments: Vec::new(),
         truncated: false,
     }
 }

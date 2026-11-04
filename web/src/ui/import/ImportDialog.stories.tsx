@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ImportPreview } from "../../api/generated/ImportPreview";
 import type { ImportReport } from "../../api/generated/ImportReport";
+import { NO_MEDIA } from "../../api/mockData";
 import { ImportDialog } from "./ImportDialog";
 
 // The "Import from Telegram" window step by step: file -> chats -> progress -> report; errors, an empty list, long names, en, large text.
@@ -8,10 +9,10 @@ const noop = () => undefined;
 
 const PREVIEW: ImportPreview = {
   chats: [
-    { id: "1000001", name: null, kind: "saved", total: 1682, existing: 0 },
-    { id: "2000002", name: "Пётр Тестов", kind: "personal", total: 240, existing: 40 },
-    { id: "2000003", name: "Анна", kind: "personal", total: 12, existing: 12 },
-    { id: "2000004", name: "Пустой чат", kind: "personal", total: 0, existing: 0 },
+    { id: "1000001", name: null, kind: "saved", total: 1682, existing: 0, ...NO_MEDIA },
+    { id: "2000002", name: "Пётр Тестов", kind: "personal", total: 240, existing: 40, ...NO_MEDIA },
+    { id: "2000003", name: "Анна", kind: "personal", total: 12, existing: 12, ...NO_MEDIA },
+    { id: "2000004", name: "Пустой чат", kind: "personal", total: 0, existing: 0, ...NO_MEDIA },
   ],
   skippedChats: 7,
 };
@@ -22,9 +23,20 @@ const REPORT: ImportReport = {
   skippedService: 2,
   skippedEmpty: 5,
   mediaPlaceholders: 785,
+  mediaAttached: 0,
+  mediaBytes: 0,
+  mediaMissing: 0,
+  mediaSkipped: 0,
+  diskFull: false,
   chatsCreated: 0,
   backupName: "pre-import-20261028T125000Z.db",
   stopped: false,
+};
+
+/** An export with media (slice 7): 1,240 files, 6.7 GB, 12 of them not in the export. */
+const MEDIA_PREVIEW: ImportPreview = {
+  chats: [{ id: "1000001", name: null, kind: "saved", total: 1682, existing: 0, mediaFiles: 1240, mediaBytes: 7_194_000_000, mediaMissing: 12 }],
+  skippedChats: 0,
 };
 
 const meta = {
@@ -81,6 +93,7 @@ export const ДлинныеИмена: Story = {
         kind: "personal" as const,
         total: 1000 + i,
         existing: i % 3 === 0 ? i : 0,
+        ...NO_MEDIA,
       })),
     },
   },
@@ -93,10 +106,35 @@ export const НетЧатов: Story = { args: { step: "choose", preview: { chat
 export const ОшибкаЗапуска: Story = { args: { step: "choose", preview: PREVIEW, error: "import_backup_failed" } };
 
 /** Step 3: progress "3 200 из 15 000"; no cross, only "Stop". */
-export const Прогресс: Story = { args: { step: "running", progress: { done: 3200, total: 15000 } } };
+export const Прогресс: Story = { args: { step: "running", progress: { done: 3200, total: 15000, bytesDone: 0, bytesTotal: 0 } } };
 
 /** A stop was requested: the button is unavailable while Rust finishes the batch. */
-export const Останавливаем: Story = { args: { step: "running", progress: { done: 3200, total: 15000 }, stopping: true } };
+export const Останавливаем: Story = {
+  args: { step: "running", progress: { done: 3200, total: 15000, bytesDone: 0, bytesTotal: 0 }, stopping: true },
+};
+
+/** Media (slice 7): the choose step names the files and their size, "not in the export" included. */
+export const ЧатыСМедиа: Story = {
+  args: { step: "choose", preview: MEDIA_PREVIEW, selected: new Set(["1000001"]) },
+};
+
+/** Media: progress runs in gigabytes. */
+export const ПрогрессСМедиа: Story = {
+  args: { step: "running", progress: { done: 900, total: 1682, bytesDone: 3_900_000_000, bytesTotal: 7_194_000_000 } },
+};
+
+/** Media: the report says how many files were attached, how big they are and how many were not in the export. */
+export const ОтчётСМедиа: Story = {
+  args: {
+    step: "report",
+    report: { ...REPORT, mediaPlaceholders: 40, mediaAttached: 1228, mediaBytes: 7_100_000_000, mediaMissing: 12, mediaSkipped: 1 },
+  },
+};
+
+/** The disk filled up: the batch was rolled back, the report says so. */
+export const ОтчётДиск: Story = {
+  args: { step: "report", report: { ...REPORT, mediaAttached: 600, mediaBytes: 3_000_000_000, stopped: false, diskFull: true } },
+};
 
 /** Step 4: the report in quiet lines, names the database backup file. */
 export const Отчёт: Story = { args: { step: "report", report: REPORT } };
@@ -123,6 +161,6 @@ export const ЧатыКрупный: Story = { args: { step: "choose", preview: 
 
 /** Large text, English, progress. */
 export const ПрогрессEnКрупный: Story = {
-  args: { step: "running", progress: { done: 3200, total: 15000 } },
+  args: { step: "running", progress: { done: 3200, total: 15000, bytesDone: 0, bytesTotal: 0 } },
   globals: { language: "en", textScale: "large" },
 };

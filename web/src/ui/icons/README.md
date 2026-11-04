@@ -41,8 +41,13 @@ Line SVGs from the [Lucide](https://lucide.dev) set via the npm package `lucide-
 | `collapsePane` | `minimize-2`                                | MIT (from Feather) |
 | `hidePane`     | `eye-off`                                   | ISC                |
 | `forest`       | `trees`                                     | ISC                |
+| `file`         | `file`                                      | ISC                |
+| `audio`        | `audio-lines`                               | ISC                |
+| `video`        | `video`                                     | ISC                |
 
 The origin of the slice 3 icons was checked against the Feather list in the `LICENSE` of package 1.60.0: `trash-2`, `calendar`, `plus`, `chevron-right`, `database` are there, the rest are ISC.
+
+The slice 7 icons (`file`, `audio-lines`, `video`) are not in the Feather list of the package's `LICENSE` (checked against 1.60.0), so they are ISC.
 
 Which icons came from Feather can be seen in the list in the package's `LICENSE`; checked against version 1.60.0.
 

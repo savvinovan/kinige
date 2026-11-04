@@ -30,6 +30,18 @@ pub struct MirrorEntry {
     pub body_md: String,
     /// The entry is a reply: to what (slice 5).
     pub reply: Option<MirrorReply>,
+    /// The entry's attachments in order (slice 7); their files lie in the folder named after the day, next to the day file.
+    pub attachments: Vec<MirrorAttachment>,
+}
+
+/// An attachment as the day file links it (ADR-0014): `![name](<YYYY-MM-DD/file>)` for an image, `[name](<YYYY-MM-DD/file>)` otherwise.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MirrorAttachment {
+    pub is_image: bool,
+    /// The name the user knows (the `filename` of the attachment): the link text.
+    pub name: String,
+    /// The file name in the day folder (`attachment::mirror_file_names`): safe and unique there.
+    pub file: String,
 }
 
 /// The entry that was replied to, as it appears in the day file.
@@ -89,10 +101,33 @@ pub fn render_day_file(journal_date: &str, entries: &[MirrorEntry]) -> String {
             out.push_str(&reply_line(reply));
             out.push_str("\n\n");
         }
-        out.push_str(&demote_headings(&entry.body_md));
-        out.push('\n');
+        for attachment in &entry.attachments {
+            out.push_str(&attachment_line(journal_date, attachment));
+            out.push_str("\n\n");
+        }
+        if !entry.body_md.is_empty() {
+            out.push_str(&demote_headings(&entry.body_md));
+            out.push('\n');
+        } else if !entry.attachments.is_empty() {
+            // Drop the blank line left after the last attachment: an entry without text ends with it.
+            out.truncate(out.trim_end_matches('\n').len());
+            out.push('\n');
+        }
     }
     out
+}
+
+/// The link line of an attachment. The path is in angle brackets, the link text is escaped (`\`, `[`, `]`).
+fn attachment_line(journal_date: &str, attachment: &MirrorAttachment) -> String {
+    let mut text = String::with_capacity(attachment.name.len());
+    for c in attachment.name.chars() {
+        if matches!(c, '\\' | '[' | ']') {
+            text.push('\\');
+        }
+        text.push(c);
+    }
+    let bang = if attachment.is_image { "!" } else { "" };
+    format!("{bang}[{text}](<{journal_date}/{}>)", attachment.file)
 }
 
 /// The `↩` line of a reply. The address is in angle brackets: a chat folder name may contain spaces and parentheses (`<`, `>` and `/` are already stripped from names).

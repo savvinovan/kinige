@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, type PointerEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
+import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
+import { MessageAttachments } from "../attachments/MessageAttachments";
 import { Message } from "../message/Message";
 import type { MoveTarget } from "../message/moveTargets";
 import { ReplyQuote } from "../reply/ReplyQuote";
@@ -90,6 +92,12 @@ interface FeedProps {
   onTopDay?: (journalDate: string | null) => void;
   /** Slice 6: what the list belongs to (the open chat). A new value starts listening to the person's position again. */
   listKey?: string;
+  /**
+   * Slice 7: opening an entry's photo (the lightbox, given the entry's attachments so that its other photos are known) and a file
+   * card (the system app). Without it the photos and cards are drawn but do nothing.
+   */
+  onOpenImage?: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
+  onOpenFile?: (attachmentId: string) => void;
 }
 
 /**
@@ -116,6 +124,8 @@ export function Feed({
   loading = false,
   onTopDay,
   listKey,
+  onOpenImage,
+  onOpenFile,
 }: FeedProps) {
   const { t } = useTranslation();
   const language = useLanguage();
@@ -300,6 +310,15 @@ export function Feed({
                   byAgent={item.message.origin === "agent"}
                   readOnly={item.message.readOnly}
                   quote={item.message.replyTo ? <ReplyQuote quote={item.message.replyTo} onOpen={onOpenReply} /> : undefined}
+                  attachments={
+                    item.message.attachments && item.message.attachments.length > 0 ? (
+                      <MessageAttachments
+                        attachments={item.message.attachments}
+                        onOpenImage={(attachmentId) => onOpenImage?.(item.message.attachments ?? [], attachmentId)}
+                        onOpenFile={(attachmentId) => onOpenFile?.(attachmentId)}
+                      />
+                    ) : undefined
+                  }
                   tags={item.message.tags}
                   mode={
                     ui?.editingId === item.message.id ? "editing" : ui?.deletedIds?.has(item.message.id) ? "deleted" : "view"

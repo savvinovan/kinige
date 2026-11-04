@@ -1,8 +1,11 @@
 import { useState, type PointerEvent, type ReactNode } from "react";
+import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { Language } from "../../api/generated/Language";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import type { TrashItem } from "../../api/generated/TrashItem";
 import { useLanguage } from "../../i18n/I18n";
+import { DropOverlay } from "../attachments/DropOverlay";
+import { PendingTiles } from "../attachments/PendingTiles";
 import { Composer, type ComposerButtons } from "../composer/Composer";
 import { Feed, type FeedActions, type FeedPaging, type FeedUiState, type ScrollRequest } from "../feed/Feed";
 import type { FeedMessage } from "../feed/buildFeed";
@@ -96,6 +99,21 @@ interface MainWindowViewProps {
   forestMenu?: { hidden: boolean; onToggle: () => void };
   /** On top of the window: modal windows (settings, chat, calendar). */
   overlay?: ReactNode;
+  /** Slice 7: the tiles above the composer, the paperclip, a paste, the drop overlay and opening a photo or a file from the feed. */
+  attachments?: AttachmentControls;
+}
+
+/** What the window gives the feed and the composer for attachments (slice 7). */
+export interface AttachmentControls {
+  tiles: readonly AttachmentView[];
+  onAttach: () => void;
+  onRemoveTile: (attachmentId: string) => void;
+  onPasteFiles: (files: readonly File[]) => void;
+  /** Files are dragged over the window: "Drop to attach" over the feed. */
+  dragOver: boolean;
+  /** A photo of an entry: the entry's attachments (the lightbox pages through its photos) and the photo clicked. */
+  onOpenImage: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
+  onOpenFile: (attachmentId: string) => void;
 }
 
 /**
@@ -142,6 +160,7 @@ export function MainWindowView({
   onFeedTopDay,
   forestMenu,
   overlay,
+  attachments,
 }: MainWindowViewProps) {
   const [ownDraft, setOwnDraft] = useState("");
   const language = useLanguage();
@@ -177,6 +196,7 @@ export function MainWindowView({
             error={trash.error}
             onRestore={trash.onRestore}
             onPurge={trash.onPurge}
+            onOpenAttachment={attachments?.onOpenFile}
           />
         ) : (
           <>
@@ -200,7 +220,10 @@ export function MainWindowView({
               loading={feedLoading}
               onTopDay={onFeedTopDay}
               listKey={selectedChatId ?? "trash"}
+              onOpenImage={attachments?.onOpenImage}
+              onOpenFile={attachments?.onOpenFile}
             />
+            {attachments ? <DropOverlay visible={attachments.dragOver} /> : null}
             <Composer
               key={selectedChatId ?? "trash"}
               value={draft ?? ownDraft}
@@ -212,6 +235,10 @@ export function MainWindowView({
               autoFocus={interactive}
               emoji={emoji}
               replyStrip={replyStrip}
+              tiles={attachments ? <PendingTiles items={attachments.tiles} onRemove={attachments.onRemoveTile} /> : undefined}
+              hasTiles={(attachments?.tiles.length ?? 0) > 0}
+              onAttach={attachments?.onAttach}
+              onPasteFiles={attachments?.onPasteFiles}
             />
           </>
         )}

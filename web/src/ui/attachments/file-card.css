@@ -1,0 +1,81 @@
+/* A file in the bubble and in the composer. Tokens only; nothing animates. */
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: var(--layout-attachment-file-gap);
+  box-sizing: border-box;
+  /* The card is as wide as the album, and its padding sticks out into the bubble's: the icon lines up with the album edge, the hover fill is a little wider. */
+  width: calc(var(--layout-attachment-album-max-width) + 2 * var(--layout-attachment-file-padding));
+  max-width: calc(100% + 2 * var(--layout-attachment-file-padding));
+  margin: 0 calc(var(--layout-attachment-file-padding) * -1);
+  padding: var(--layout-attachment-file-padding);
+  border: 0;
+  border-radius: var(--layout-attachment-album-radius);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.file-card:hover {
+  background: var(--color-surface-selected);
+}
+
+.file-card--missing,
+.file-card--missing:hover {
+  background: transparent;
+  cursor: default;
+}
+
+.file-card__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--layout-attachment-file-icon-box);
+  height: var(--layout-attachment-file-icon-box);
+  border-radius: var(--layout-attachment-album-radius);
+  background: var(--color-surface-background);
+  color: var(--color-accent-default);
+}
+
+.file-card--missing .file-card__icon {
+  color: var(--color-text-tertiary);
+}
+
+.file-card__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-card__name {
+  font-weight: var(--font-weight-medium);
+}
+
+.file-card__meta {
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+/* The name is cut in the middle: the start shrinks to "...", the end with the extension stays. */
+.file-name {
+  display: flex;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.file-name__stem {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-name__tail {
+  flex: none;
+  white-space: pre;
+}

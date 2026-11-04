@@ -1,5 +1,5 @@
 import { type KinigeApi, KinigeApiError } from "./KinigeApi";
-import { MockApiSlice6 } from "./MockApiSlice6";
+import { MockApiSlice7 } from "./MockApiSlice7";
 import { DAY_MS, DEFAULT_SHORTCUTS, TRASH_DAYS, isRealDate } from "./mockData";
 import type { AppInfo } from "./generated/AppInfo";
 import type { ChatList } from "./generated/ChatList";
@@ -15,6 +15,7 @@ import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
 
 export { DEFAULT_SETTINGS, type MockApiOptions, mockMessage } from "./mockData";
+export { mockAttachment } from "./MockApiSlice7";
 
 const ALLOWED_SCHEMES = ["http:", "https:", "mailto:"];
 
@@ -24,7 +25,7 @@ const ALLOWED_SCHEMES = ["http:", "https:", "mailto:"];
  * (`openedUrls`). The entry day is computed in a simplified way (UTC, 04:00 boundary): the real rules are in Rust. The
  * state and the capture window are in `MockApiBase`.
  */
-export class MockApi extends MockApiSlice6 implements KinigeApi {
+export class MockApi extends MockApiSlice7 implements KinigeApi {
   private readonly openChatListeners = new Set<(chatId: string) => void>();
   private readonly corruptListeners = new Set<() => void>();
 

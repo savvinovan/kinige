@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { INBOX_ID } from "../../api/KinigeApi";
 import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../../api/MockApi";
+import { NO_MEDIA } from "../../api/mockData";
 import type { ChatDraft } from "../../api/generated/ChatDraft";
 import type { ImportPreview } from "../../api/generated/ImportPreview";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
@@ -12,7 +13,7 @@ const NOW = () => new Date(Date.UTC(2026, 9, 21, 6, 12));
 
 const BOOKS = { id: "books", title: "Книги", icon: "📚" };
 const PREVIEW: ImportPreview = {
-  chats: [{ id: "1000001", name: null, kind: "saved", total: 3, existing: 0 }],
+  chats: [{ id: "1000001", name: null, kind: "saved", total: 3, existing: 0, ...NO_MEDIA }],
   skippedChats: 0,
 };
 
@@ -50,7 +51,7 @@ describe("MainWindow: черновик у каждого чата", () => {
     const answer = api.getDraft.bind(api);
     let release: () => void = () => undefined;
     const held = new Promise<void>((resolve) => (release = resolve));
-    let reply: Promise<ChatDraft> = held.then(() => ({ body: "", replyTo: null }));
+    let reply: Promise<ChatDraft> = held.then(() => ({ body: "", replyTo: null, attachments: [] }));
     api.getDraft = (chatId) => {
       if (chatId !== INBOX_ID) return answer(chatId);
       reply = held.then(() => answer(chatId));

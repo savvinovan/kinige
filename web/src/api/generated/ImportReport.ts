@@ -21,6 +21,26 @@ skippedEmpty: number,
  */
 mediaPlaceholders: number, 
 /**
+ * Files attached (to new entries and to entries imported earlier, slice 7).
+ */
+mediaAttached: number, 
+/**
+ * Bytes of the files attached.
+ */
+mediaBytes: number, 
+/**
+ * Files the export does not hold ("File not included", or the file is not where the export says).
+ */
+mediaMissing: number, 
+/**
+ * Files not attached: a bad path, unreadable, over the limit or not a regular file.
+ */
+mediaSkipped: number, 
+/**
+ * The import stopped because the disk is full; the batch in progress was rolled back, earlier batches stay.
+ */
+diskFull: boolean, 
+/**
  * Kinige chats created (for personal chats).
  */
 chatsCreated: number, 

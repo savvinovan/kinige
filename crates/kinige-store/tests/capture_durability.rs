@@ -30,6 +30,7 @@ fn migration_two_adds_only_the_draft_table_and_keeps_every_existing_row() {
             "DROP TABLE draft; DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; \
              DROP TABLE message_tag; DROP TABLE mirror_chat; DROP TABLE message_ext; DROP TABLE search_fts; \
              DROP TABLE search_map; DROP TABLE mcp_log; DROP TABLE mcp_log_message; \
+             DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file; \
              DELETE FROM app_setting WHERE key = 'search_index_version';",
         )
         .unwrap();
@@ -41,7 +42,7 @@ fn migration_two_adds_only_the_draft_table_and_keeps_every_existing_row() {
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .unwrap();
     assert_eq!(version, LATEST_VERSION);
-    assert_eq!(LATEST_VERSION, 6);
+    assert_eq!(LATEST_VERSION, 7);
     let columns: Vec<(String, String)> = conn
         .prepare("SELECT name, type FROM pragma_table_info('draft') ORDER BY cid")
         .unwrap()

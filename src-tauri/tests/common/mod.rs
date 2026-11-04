@@ -112,6 +112,7 @@ pub fn fixture_with_taken(taken: &[&str]) -> Fixture {
     app.manage(hotkeys);
     app.manage(CaptureShell::default());
     app.manage(kinige_lib::import::ImportState::default());
+    app.manage(kinige_lib::attachments::DropTokens::default());
     app.manage(Recovery::new(db_path, false));
     Fixture {
         app,
@@ -144,6 +145,7 @@ pub fn fixture_with_corruption_hook() -> Fixture {
     app.manage(hotkeys);
     app.manage(CaptureShell::default());
     app.manage(kinige_lib::import::ImportState::default());
+    app.manage(kinige_lib::attachments::DropTokens::default());
     app.manage(Recovery::new(db_path, false).with_corruption_flag(flag));
     Fixture {
         app,
@@ -228,6 +230,9 @@ pub fn args_for(command: &str) -> Value {
         "set_agent_mode" => json!({"mode": "read"}),
         "set_agent_chats" => json!({"chatIds": []}),
         "list_agent_log_entries" => json!({"logId": 1}),
+        "attach_dropped" => json!({"token": "нет-такого", "chatId": inbox}),
+        "remove_draft_attachment" => json!({"chatId": inbox, "attachmentId": "нет-такого"}),
+        "open_attachment" => json!({"attachmentId": "нет-такого"}),
         _ => json!({}),
     }
 }
@@ -237,4 +242,6 @@ pub const NEEDS_NATIVE_UI: &[&str] = &[
     "choose_mirror_folder",
     "restart_for_recovery",
     "import_telegram_open",
+    // The paperclip dialog.
+    "attach_pick",
 ];

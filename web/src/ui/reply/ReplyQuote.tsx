@@ -2,6 +2,7 @@ import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { useLanguage } from "../../i18n/I18n";
+import { summaryText } from "../attachments/summaryText";
 import { formatLongDate } from "../feed/dates";
 import "./reply.css";
 
@@ -30,9 +31,11 @@ export function ReplyQuote({ quote, onOpen }: ReplyQuoteProps) {
       : t("reply.quotePlain", { date });
   // For the screen reader: "3 years later, reply to the entry of 31 October 2023"; the start of the old entry is read as a description.
   const spoken = !live ? label : years > 0 ? t("reply.quoteYearsLabel", { count: years, date }) : t("reply.quotePlainLabel", { date });
-  const text = live && quote.excerpt !== "" ? (
+  // An old entry with no text is described by what it holds: "Photo", "3 photos", a file name (slice 7).
+  const preview = quote.excerpt !== "" ? quote.excerpt : summaryText(quote.attachments, t);
+  const text = live && preview !== "" ? (
     <span className="reply-quote__text" id={textId}>
-      {quote.excerpt}
+      {preview}
     </span>
   ) : null;
   const body = (

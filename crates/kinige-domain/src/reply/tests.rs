@@ -6,6 +6,7 @@ fn old(body: &str, in_trash: bool) -> ReplyTarget {
         journal_date: "2023-10-31".into(),
         body_md: body.into(),
         in_trash,
+        attachments: Default::default(),
     }
 }
 
@@ -126,6 +127,6 @@ fn reply_to_serializes_in_camel_case_with_snake_case_state() {
         serde_json::to_string(&reply_to("r", "2026-10-31", Some(old("Текст", true)))).unwrap();
     assert_eq!(
         json,
-        r#"{"id":"r","chatId":"chat","journalDate":"2023-10-31","excerpt":"Текст","state":"trash","yearsLater":3}"#
+        r#"{"id":"r","chatId":"chat","journalDate":"2023-10-31","excerpt":"Текст","state":"trash","yearsLater":3,"attachments":{"photos":0,"files":0,"name":null}}"#
     );
 }

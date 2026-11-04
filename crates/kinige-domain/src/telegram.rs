@@ -11,7 +11,7 @@
 
 use std::fmt;
 
-pub use markdown::render_body;
+pub use markdown::{render_body, render_body_attached};
 
 mod markdown;
 #[cfg(test)]
@@ -19,10 +19,13 @@ mod markdown_tests;
 #[cfg(test)]
 mod markdown_tests_media;
 mod raw;
+mod raw_values;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod tests_cases;
+#[cfg(test)]
+mod tests_files;
 #[cfg(test)]
 mod tests_real;
 
@@ -71,6 +74,26 @@ pub struct TgMessage {
     /// Text in pieces with a formatting kind. Empty text is an empty vector.
     pub text: Vec<TgSpan>,
     pub media: Option<TgMedia>,
+    /// The file of a photo, a file, a video, a voice message or audio (slice 7): where it lies in the export. Stickers and
+    /// animations stay placeholders and have none.
+    pub file: Option<TgFile>,
+}
+
+/// The file of a message as the export describes it (slice 7). The path is relative to the folder of `result.json` and is **not
+/// trusted**: the importer checks it before opening anything (`import::media_path`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TgFile {
+    /// `photo` or `file` from the export; `None` when the export says the file is not included ("(File not included. Change data
+    /// exporting settings to download.)", "(File exceeds maximum size...)").
+    pub path: Option<String>,
+    /// `file_name`: the name the person knew the file by (photos have none).
+    pub name: Option<String>,
+    pub mime: Option<String>,
+    /// `file_size` or `photo_file_size`, bytes, as the export states it.
+    pub size: Option<u64>,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    pub duration_seconds: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

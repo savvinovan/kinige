@@ -42,6 +42,11 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "get_forest_year",
     "get_forest_day_target",
     "set_forest_view",
+    "attach_pick",
+    "attach_paste",
+    "attach_dropped",
+    "remove_draft_attachment",
+    "open_attachment",
 ];
 
 /// Commands of the settings window (capability `settings`, slice 4b, ADR-0010): settings, shortcuts, AI agent access, the
@@ -117,6 +122,11 @@ pub const COMMANDS: &[&str] = &[
     "get_forest_year",
     "get_forest_day_target",
     "set_forest_view",
+    "attach_pick",
+    "attach_paste",
+    "attach_dropped",
+    "remove_draft_attachment",
+    "open_attachment",
     "set_text_size",
     "choose_mirror_folder",
     "set_shortcut",

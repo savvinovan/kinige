@@ -41,7 +41,7 @@ describe("MainWindow: черновик поля ввода (§5)", () => {
     const api = new MockApi({ now: NOW });
     await api.saveDraft(INBOX_ID, "старый");
     let release: (value: string) => void = () => undefined;
-    api.getDraft = () => new Promise<ChatDraft>((resolve) => (release = (body) => resolve({ body, replyTo: null })));
+    api.getDraft = () => new Promise<ChatDraft>((resolve) => (release = (body) => resolve({ body, replyTo: null, attachments: [] })));
     render(<MainWindow api={api} initialSettings={SETTINGS} />);
     await screen.findByRole("textbox", { name: "Новая заметка" });
     type("уже печатаю");
