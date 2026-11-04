@@ -1,0 +1,1 @@
+AX press on the dialog (the backdrop): 'pressed: AXGroup Просмотр фото | Просмотр фото | Просмотр фото'. The viewer stayed open: an AX press is not a pointer click, closing by a click on the backdrop and on the photo is covered by vitest (LightboxClose.test.tsx).
