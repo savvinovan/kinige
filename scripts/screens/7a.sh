@@ -120,7 +120,15 @@ BEFORE_NOTES="$(voice_rows)"
 # every later call too, the web content process is idle in its sample; the calls recover when the recording ends). So nothing is pressed or
 # read through accessibility while recording: the shot of the bar is taken without a window dump, and the fake microphone's recording ends
 # by itself after 14 seconds (scripts/screens/fake-mic.ts). The discard question and Keep are covered by the Storybook stories and vitest.
-press "${L_MIC}"
+# The press itself can time out (the click starts the recording, and the accessibility server then hangs) or not be delivered at all (the
+# last run: an empty answer after 60 s and no recording). So it is tried up to three times; a recording that has started hides the button.
+for attempt in 1 2 3; do
+  RESULT="$(ax press "$(app_pid)" "${L_MIC}" 2>&1)"
+  echo "press ${L_MIC} (try ${attempt}): ${RESULT:-<no answer>}"
+  case "$RESULT" in pressed*) break ;; esac
+  [ "$(voice_rows)" -gt "${BEFORE_NOTES}" ] && break
+  sleep 5
+done
 sleep 5
 SHOOT_DUMP=0 shoot 02-recording
 echo "the shot was taken after the press, a 5 s sleep and the shot's own wait, so the timer in it (about 0:08) is the evidence, not the 5 s; the recording ends by itself at 14 s" > "$OUT/recording.txt"
