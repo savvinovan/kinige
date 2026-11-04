@@ -120,7 +120,8 @@ function run(argv) {
           k.focused = true;
           return "focused: " + p.role + " " + label.slice(0, 60);
         }
-        if (mode === "showmenu" && p.role === "AXButton") {
+        // A sidebar chat row has `aria-haspopup="menu"`, so the page reports it as a pop-up button.
+        if (mode === "showmenu" && /^AX(Button|PopUpButton)$/.test(p.role)) {
           k.actions.byName("AXShowMenu").perform();
           return "menu shown: " + p.role + " " + label.slice(0, 80);
         }
