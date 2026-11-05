@@ -2,20 +2,22 @@
 # Screens of slice 7a (voice notes) in the real window on a macOS runner: scripts/screens/7a.sh <built Kinige.app>.
 # The app is built with KINIGE_FAKE_MIC=1 (screens.yml): an oscillator replaces getUserMedia, so the real MediaRecorder and the whole
 # pipeline run with no device and no TCC prompt. The data are synthetic (seed_demo with KINIGE_SEED_VOICE=1: a tone made by `afconvert`,
-# a Telegram-style .ogg, a note whose file is gone, an hour-long note, a note with text). Input is accessibility actions only
-# (ax.js): no mouse, no keyboard, no global shortcuts. The first-recording permission prompt and a real microphone are NOT covered here:
-# they stay with the person who accepts the slice.
+# a Telegram-style .ogg, a note whose file is gone, an hour-long note, a note with text). Input is the screens driver inside the app
+# (KINIG-92, ADR-0016; DRIVER=1): it finds elements by their accessible name in the app's own web view, so it answers while a recording
+# runs (an accessibility call hung then) and a read of the window text takes ~100 ms (a tree dump took up to 3 minutes). Accessibility
+# actions stay for what the web view cannot reach: resizing the window. No mouse, no keyboard, no global shortcuts. The first-recording
+# permission prompt and a real microphone are NOT covered here: they stay with the person who accepts the slice.
 set -u
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 K="${K:-${RUNNER_TEMP:-/tmp}/kinige-screens}"
 APP="$K/Kinige.app"
 OUT="${OUT:-$REPO/docs/screens/7a}"
 SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
+DRIVER=1
 # shellcheck source=lib.sh
 . "$REPO/scripts/screens/lib.sh"
 
-export AX_TIMEOUT=60
-export DUMP_TIMEOUT=180
+export AX_TIMEOUT=30
 
 SETTINGS_FILE="$K/data/settings.json"
 PROBE_FORMATS="$REPO/docs/screens/7a-probe/formats.txt"
@@ -27,6 +29,8 @@ mkdir -p "$K/data" "$K/mirror"
 
 # Positive control of the fake microphone guard: this build must carry it, or the guard has proved nothing.
 "$REPO/scripts/check-test-hooks.sh" "$REPO/web/dist" --expect fake-mic || { echo "ERROR: the fake microphone is not in web/dist"; FAILS=$((FAILS + 1)); }
+# The same for the screens driver, in web/dist and in the executable.
+"$REPO/scripts/check-test-hooks.sh" "$REPO/web/dist" --binary "$SOURCE_APP/Contents/MacOS/kinige" --expect screens-driver || { echo "ERROR: the screens driver is not in this build"; FAILS=$((FAILS + 1)); }
 
 KINIGE_SEED_VOICE=1 cargo run --release -q -p kinige-store --example seed_demo -- "$K/data" "$K/mirror"
 sqlite3 "$K/data/kinige.db" "insert or replace into app_setting(key, value) values ('forest_view', 'hidden')"
@@ -86,17 +90,10 @@ restart_app() {
   sleep 5
 }
 
-# Polls for a text in the window every 5 seconds, up to `$2` seconds.
-wait_for() {
-  local waited=0
-  while [ "$waited" -lt "$2" ]; do
-    has "$1" && return 0
-    sleep 5
-    waited=$((waited + 5))
-  done
-  return 1
-}
-try_press() { [ "$(ax press "$(app_pid)" "$@" 2>&1 | cut -c1-7)" = "pressed" ]; }
+# Waits for a text in the window, up to `$2` seconds: the page polls every 50 ms and answers at once.
+wait_for() { wait_name "$1" $(($2 * 1000)); }
+# One press that is allowed to find nothing (no scenario error): the note may have ended already.
+try_press() { drive_raw "$(drive_window)" "{\"kind\":\"press\",$(driver_query "$@")}" 5; }
 voice_rows() { sqlw "select count(*) from attachment where filename like 'voice-%'"; }
 # The first "m:ss of m:ss" (the waveform slider's value text) of a window dump, in seconds (the elapsed time of the playing note), or empty.
 elapsed_from() { grep -oE '[0-9]+:[0-9]{2} (of|из) [0-9:]+' "$1" | head -1 | python3 -c 'import sys; t=sys.stdin.read().split(" ")[0].strip(); p=[int(x) for x in t.split(":")] if t else []; print(sum(v*60**i for i,v in enumerate(reversed(p))) if p else "")'; }
@@ -120,9 +117,9 @@ waveform_report() {
 set_language ru
 launch_window
 wait_for_window
-sleep 8
+# The first step waits for the page to listen; then the feed may still be drawing on a loaded VM: wait for the players instead of assuming.
+wait_for "Входящие" 120 || fail "the window did not show the Inbox"
 detect_language
-# The last run found nothing in the first dump on a loaded VM (the feed had not drawn yet): wait for the players instead of assuming.
 wait_for "${L_NOTE}, 40" 120 || fail "no voice player of 40 seconds in the feed"
 wait_for "${L_MISSING}" 60 || fail "the voice note whose file is gone is not marked"
 [ "$(sqlw "select count(*) from attachment_local where state = 'missing'")" = "1" ] || fail "the sweep did not mark exactly one file as missing"
@@ -134,32 +131,27 @@ BEFORE_NOTES="$(voice_rows)"
 ROUTE_BEFORE="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
 press "${L_PLAY}"
 sleep 14
-# The picture first and without a window dump: a dump takes tens of seconds and the 40 second note had ended (and rewound to 0:00) by the
-# time the first run's shot was taken after it. The dumps come after, for the proof in the text. 14 s in, the played part of the waveform
-# stands about a third of the way along: the shot shows the fill stopping inside the bars.
-SHOOT_DUMP=0 shoot 05-playing
-dump playing-a
-cp "$K/debug/playing-a.txt" "$K/debug/shot-05-playing.txt"
+# 14 s in, the played part of the waveform stands about a third of the way along: the shot shows the fill stopping inside the bars. The
+# window text is read through the driver right after the picture (about 100 ms), so the elapsed time and the pause button are the
+# playing note's, not those of a note that has ended by the time a tree dump finishes.
+shoot 05-playing
+cp "$K/debug/shot-05-playing.txt" "$K/debug/playing-a.txt"
 A="$(elapsed_from "$K/debug/playing-a.txt")"
-B="$A"
 {
-  echo "# The dump starts after the picture and takes tens of seconds, so by the time it reads the player the 40 second note has ended: the"
-  echo "# elapsed time and the pause button below come from the dump, not from the picture (05-playing.png shows the playing state)."
-  echo "elapsed in the dump (AX value, seconds): ${A:-none}"
-  echo "pause button in the dump: $(has "${L_PAUSE}" && echo yes || echo no)"
-  echo "'Can't play here' in the dump: $(has "${L_CANT}" && echo yes || echo no)"
+  echo "elapsed right after the picture (the slider's value text through the driver, seconds): ${A:-none}"
+  echo "pause button in the window: $(has "${L_PAUSE}" && echo yes || echo no)"
+  echo "'Can't play here' in the window: $(has "${L_CANT}" && echo yes || echo no)"
   echo "audio route requests before / after the press (app log): ${ROUTE_BEFORE:-0} / $(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
   grep 'audio route: ' "$LOG_FILE" 2> /dev/null | sed -E 's/^\[[^]]*\]\[[^]]*\]//' | head -6
 } > "$OUT/playback.txt"
 cat "$OUT/playback.txt"
-# A window dump takes tens of seconds and the 40 second note ends (and rewinds to 0:00) while it runs, so the elapsed time in a dump is
-# only noted, not asserted. The proof of playback is the web view's requests of the audio route (80 of them in the committed run) and the
-# picture, taken before the dump: 05-playing.png shows the pause icon and a moving time.
+# The proof of playback is the web view's requests of the audio route (80 of them in the committed run), the pause button and a moving time.
 ROUTE_AFTER="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
-echo "playback proof: ${ROUTE_AFTER:-0} audio route requests after ${ROUTE_BEFORE:-0} before the press; elapsed in the dump (note only): ${A:-none}" >> "$OUT/playback.txt"
+echo "playback proof: ${ROUTE_AFTER:-0} audio route requests after ${ROUTE_BEFORE:-0} before the press; elapsed (seconds): ${A:-none}" >> "$OUT/playback.txt"
 if [ "${ROUTE_AFTER:-0}" -le "${ROUTE_BEFORE:-0}" ]; then
   fail "the voice note did not play: the web view made no request of the audio route"
 fi
+[ -n "${A:-}" ] && [ "${A:-0}" -ge 5 ] || fail "the player does not show the note moving (elapsed: ${A:-none})"
 
 # ---- 6. Speed: 1x -> 1.5x -> 2x ----
 press "${L_SPEED} 1×"
@@ -169,26 +161,18 @@ sleep 2
 has "2×" || fail "the speed chip does not say 2×"
 shoot 06-speed-2x
 
-# The note may still be playing: pause it before the recording starts (one accessibility press; no answer is fine when it has ended).
+# The note may still be playing: pause it before the recording starts (one press; no answer is fine when it has ended).
 try_press "${L_PAUSE}" || true
 sleep 2
 
 # ---- 2. Recording: the bar and the timer, then the recording ends by itself ----
-# On a macOS runner every accessibility call hangs for as long as a recording runs (the 7a-load run measured it: the press itself times out,
-# every later call too, the web content process is idle in its sample; the calls recover when the recording ends). So nothing is pressed or
-# read through accessibility while recording: the shot of the bar is taken without a window dump, and the fake microphone's recording ends
-# by itself after 14 seconds (scripts/screens/fake-mic.ts). The discard question and Keep are covered by the Storybook stories and vitest.
-# The press itself can time out (the click starts the recording, and the accessibility server then hangs) or not be delivered at all (the
-# last run: an empty answer after 60 s and no recording). So it is tried up to three times; a recording that has started hides the button.
-for attempt in 1 2 3; do
-  RESULT="$(ax press "$(app_pid)" "${L_MIC}" 2>&1)"
-  echo "press ${L_MIC} (try ${attempt}): ${RESULT:-<no answer>}"
-  case "$RESULT" in pressed*) break ;; esac
-  [ "$(voice_rows)" -gt "${BEFORE_NOTES}" ] && break
-  sleep 5
-done
+# The driver answers while a recording runs (an accessibility call hung then, so the old scenario pressed once and waited). The press is
+# one driver step; the bar is checked and the shot is taken while the recording runs. The fake microphone's recording ends by itself
+# after 14 seconds (scripts/screens/fake-mic.ts). The discard question and Keep are covered by the Storybook stories and vitest.
+press "${L_MIC}"
+wait_for "${L_RECORDING}" 10 || fail "the recording bar did not show after the press"
 sleep 5
-SHOOT_DUMP=0 shoot 02-recording
+shoot 02-recording
 echo "the shot was taken after the press, a 5 s sleep and the shot's own wait, so the timer in it (about 0:08) is the evidence, not the 5 s; the recording ends by itself at 14 s" > "$OUT/recording.txt"
 
 # ---- 3. The recording sent itself: the note is in the feed, with the player and no text ----
@@ -224,16 +208,15 @@ cat "$OUT/waveform.txt"
 case "$(waveform_lengths)" in *"-"*) echo "finding: a note is still without a waveform (the player never decoded it)" ;; esac
 
 # ---- 7. kill -9: the sent note is back and plays; a recording that was running is gone ----
-# A second recording is started and the process is killed 6 seconds later from the background (the press itself hangs while it runs, see 2).
-APP_PID_NOW="$(app_pid)"
-( sleep 6; kill -9 "$APP_PID_NOW" ) &
-KILLER=$!
-ax press "$APP_PID_NOW" "${L_MIC}" > "$K/debug/press-second.txt" 2>&1
-wait "$KILLER" 2> /dev/null
+# A second recording is started and the process is killed 6 seconds later, while it runs.
+press "${L_MIC}"
+wait_for "${L_RECORDING}" 10 || fail "the second recording did not start"
+sleep 6
+kill -9 "$(app_pid)"
 sleep 2
 launch_window
 wait_for_window
-sleep 5
+wait_for "${L_INBOX}" 60 || fail "the window did not show the Inbox after kill -9"
 detect_language
 [ "$(voice_rows)" = "${AFTER_NOTES}" ] || fail "a note appeared or disappeared across kill -9 ($(voice_rows) instead of ${AFTER_NOTES})"
 has "${L_RECORDING}" && fail "the recording bar survived kill -9"
@@ -241,14 +224,11 @@ has "${L_RECORDING}" && fail "the recording bar survived kill -9"
 shoot 07-after-kill9
 
 # ---- 8. Search: the word "voice" finds the notes (no transcription yet); the date in the name does not ----
-osascript -e 'set the clipboard to "voice"' > "$K/debug/clipboard-search.txt" 2>&1
-SEARCH_FOCUS="$(ax focus "$(app_pid)" "${L_SEARCH}" 2>&1)"
-sleep 1
-SEARCH_MENU="$(ax menu "$(app_pid)" "Edit|Правка" "Paste|Вставить" 2>&1)"
-sleep 5
+# The word goes into the search field as typing (the driver's native value setter plus an input event): no clipboard and no Edit menu.
+if drive "$(drive_window)" "{\"kind\":\"type\",\"name\":\"$(json_escape "${L_SEARCH}")\",\"text\":\"voice\"}"; then SEARCH_TYPED=typed; else SEARCH_TYPED="not typed: ${DRIVE_ERROR}"; fi
+wait_for "${L_SEARCH_RESULTS}" 10
 {
-  echo "focus: ${SEARCH_FOCUS}"
-  echo "menu: ${SEARCH_MENU}"
+  echo "type into '${L_SEARCH}': ${SEARCH_TYPED}"
   if has "${L_SEARCH_RESULTS}"; then echo "RESULT: the search results are open for the word voice"; else echo "RESULT: the search results did not open (a finding)"; fi
 } > "$OUT/search.txt"
 cat "$OUT/search.txt"
@@ -260,10 +240,11 @@ sleep 2
 sqlw "insert or replace into app_setting(key, value) values ('forest_view', 'expanded')"
 launch_window
 wait_for_window
+wait_for "${L_INBOX}" 60 || fail "the window did not show the Inbox with the forest open"
 sleep 8
-DUMP_TIMEOUT=420 shoot 09-forest-card
+shoot 09-forest-card
 {
-  echo "# Lines of the window tree of the expanded forest that hold the day card summary"
+  echo "# Lines of the window text of the expanded forest that hold the day card summary"
   grep -E '(записей|записи|запись|notes?) · .*(голосов|voice)' "$K/debug/shot-09-forest-card.txt" | sed -E 's/^ +//' | head -3
 } > "$OUT/forest-card.txt"
 cat "$OUT/forest-card.txt"
@@ -276,16 +257,18 @@ sqlw "insert or replace into app_setting(key, value) values ('forest_view', 'hid
 set_language en
 launch_window
 wait_for_window
-sleep 6
+wait_for "Inbox" 60 || fail "the window did not show the Inbox in English"
+sleep 3
 detect_language
 shoot 10-en
 edit_settings 'd["text_size"] = "large"'
 sleep 2
-SHOOT_DUMP=0 shoot 11-large-text
+shoot 11-large-text
 edit_settings 'd["text_size"] = "normal"'
+# Resizing the window is native: the one accessibility call left in this scenario.
 echo "window: $(ax resize "$(app_pid)" 640 800)"
 sleep 3
-SHOOT_DUMP=0 shoot 12-narrow-640
+shoot 12-narrow-640
 echo "window: $(ax resize "$(app_pid)" 1280 800)"
 sleep 3
 

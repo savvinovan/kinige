@@ -92,22 +92,28 @@ BEFORE="$(voice_rows)"
 drive_raw main '{"kind":"press","name":"Record voice note"}' 20
 RC=$?
 fact "2. press Record voice note: ok=$(yes_no $RC) ${DRIVE_ERROR}"
-sleep 2
 RECORDING=no; wait_name "Recording" 5000 && RECORDING=yes
-fact "2. the recording bar shows 'Recording' 2 s later: $RECORDING"
-OK=0; BAD=0; MAX=0
-for _ in $(seq 1 8); do
+fact "2. the recording bar shows 'Recording' after the press: $RECORDING"
+sleep 2
+shoot 02-recording
+# Six steps one second apart, inside the 14 s of the recording: how many answered, and how many of them saw the recording bar.
+OK=0; BAD=0; SEEN=0; MAX=0
+for _ in $(seq 1 6); do
   START="$(now_ms)"
-  if drive_raw main '{"kind":"has","name":"Recording"}' 10; then OK=$((OK + 1)); else BAD=$((BAD + 1)); fi
+  if drive_raw main '{"kind":"has","name":"Recording"}' 10; then
+    OK=$((OK + 1))
+    [ "$(drive_value)" = "yes" ] && SEEN=$((SEEN + 1))
+  else
+    BAD=$((BAD + 1))
+  fi
   TOOK=$(( $(now_ms) - START ))
   [ "$TOOK" -gt "$MAX" ] && MAX="$TOOK"
-  sleep 1
+  sleep 0.5
 done
-fact "3. driver steps during the recording: $OK answered, $BAD not, slowest $MAX ms"
-shoot 02-recording
+fact "3. driver steps during the recording: $OK answered, $BAD not, $SEEN of them saw the recording bar, slowest $MAX ms"
 START="$(now_ms)"
 AX_RESULT="$(AX_TIMEOUT=10 ax has "$(app_pid)" "Recording" 2>&1 | head -c 80)"
-fact "3. for comparison, one AX call during the recording: $(( $(now_ms) - START )) ms -> ${AX_RESULT:-<no answer>}"
+fact "3. for comparison, one AX call right after (the recording may have ended by then): $(( $(now_ms) - START )) ms -> ${AX_RESULT:-<no answer>}"
 # The fake microphone's recording ends by itself at 14 s and sends the note.
 for _ in $(seq 1 30); do
   [ "$(voice_rows)" -gt "$BEFORE" ] && break
