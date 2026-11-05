@@ -1,10 +1,15 @@
 //! Envelopes of the simulation (ADR-0001 §5): plaintext, with the same open header fields as the real ones. Encryption is S4b. The
 //! AEAD binding is modelled as a seal over header and payload: the server reads the header and cannot change it unnoticed.
 
-use kinige_domain::sync::{Group, Snapshot, SyncError, Versioned};
+#[cfg(not(feature = "real-envelope"))]
+use kinige_domain::sync::Group;
+use kinige_domain::sync::{Snapshot, SyncError, Versioned};
 use std::collections::BTreeMap;
+#[cfg(not(feature = "real-envelope"))]
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
+#[cfg(not(feature = "real-envelope"))]
+use std::hash::Hasher;
 
 /// 30 days in the trash, then a device purges (ADR-0001 §3.5).
 pub const PURGE_AFTER_MS: u64 = 30 * DAY_MS;
@@ -60,8 +65,14 @@ impl Header {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Envelope {
     pub header: Header,
+    /// The plaintext groups. With the `real-envelope` feature `open` does not read them (it decrypts `wire`); they stay for the
+    /// measurement binary and for the oracle's convenience.
     pub payload: BTreeMap<String, String>,
     seal: u64,
+    /// The sealed bytes of ADR-0001 §A.1, made by `kinige-crypto`: what the server stores and serves, and what the outbox keeps and
+    /// resends verbatim (a rebuilt envelope has a new random nonce, so the server would answer `op_conflict`).
+    #[cfg(feature = "real-envelope")]
+    wire: Vec<u8>,
 }
 
 impl Envelope {
@@ -101,12 +112,24 @@ impl Envelope {
         )
     }
 
+    #[cfg(not(feature = "real-envelope"))]
     fn build(header: Header, payload: BTreeMap<String, String>) -> Envelope {
         let seal = seal_of(&header, &payload);
         Envelope {
             header,
             payload,
             seal,
+        }
+    }
+
+    #[cfg(feature = "real-envelope")]
+    fn build(header: Header, payload: BTreeMap<String, String>) -> Envelope {
+        let wire = crate::real::seal(&header, &payload);
+        Envelope {
+            header,
+            payload,
+            seal: crate::real::wire_id(&wire),
+            wire,
         }
     }
 
@@ -118,6 +141,16 @@ impl Envelope {
     /// What a client does before applying (§A.4 steps 3-5): the seal must match (AEAD), and the payload must carry exactly the
     /// groups the header names. Returns the record the envelope carries.
     pub fn open(&self) -> Result<Versioned, EnvelopeError> {
+        #[cfg(feature = "real-envelope")]
+        {
+            crate::real::open(&self.wire, &self.header)
+        }
+        #[cfg(not(feature = "real-envelope"))]
+        self.open_hash_sealed()
+    }
+
+    #[cfg(not(feature = "real-envelope"))]
+    fn open_hash_sealed(&self) -> Result<Versioned, EnvelopeError> {
         if seal_of(&self.header, &self.payload) != self.seal {
             return Err(EnvelopeError::Tampered);
         }
@@ -141,6 +174,10 @@ impl Envelope {
     pub fn with_header_changed(&self, change: impl FnOnce(&mut Header)) -> Envelope {
         let mut copy = self.clone();
         change(&mut copy.header);
+        #[cfg(feature = "real-envelope")]
+        {
+            copy.wire = crate::real::with_header(&self.wire, &copy.header);
+        }
         copy
     }
 }
@@ -154,6 +191,7 @@ pub enum EnvelopeError {
     Group(SyncError),
 }
 
+#[cfg(not(feature = "real-envelope"))]
 fn seal_of(header: &Header, payload: &BTreeMap<String, String>) -> u64 {
     let mut hasher = DefaultHasher::new();
     header.hash(&mut hasher);

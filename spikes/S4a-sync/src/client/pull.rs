@@ -6,14 +6,18 @@ use super::{Client, Event, Local, Quarantined, Resync};
 use crate::envelope::{Entity, Envelope, EnvelopeError, Key, Kind};
 use crate::server::PullResponse;
 use crate::switches::Switches;
-use kinige_domain::sync::conflict::{content_differs, uuid_from_bytes};
+use kinige_domain::sync::conflict::content_differs;
+#[cfg(not(feature = "real-envelope"))]
+use kinige_domain::sync::conflict::uuid_from_bytes;
 use kinige_domain::sync::{
-    Facts, Group, Lineage, Merged, ResyncAction, ResyncCause, Snapshot, TombstoneVerdict,
-    Versioned, conflict_revision, envelope_vs_tombstone, merge, needs_conflict_revision,
-    newer_than_snapshot, resync_action,
+    ConflictRevision, Facts, Group, Lineage, Merged, ResyncAction, ResyncCause, Snapshot,
+    TombstoneVerdict, Versioned, conflict_revision, envelope_vs_tombstone, merge,
+    needs_conflict_revision, newer_than_snapshot, resync_action,
 };
+#[cfg(not(feature = "real-envelope"))]
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
+#[cfg(not(feature = "real-envelope"))]
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
@@ -315,10 +319,7 @@ impl Client {
         let Ok(revision) = conflict_revision(&message.1, group, loser) else {
             return;
         };
-        let key = (
-            Entity::Revision,
-            uuid_from_bytes(toy_hash(&revision.id_input)),
-        );
+        let key = (Entity::Revision, revision_id(&revision));
         // No revision for a message this device holds in quarantine (S4a review round 2): the user has not decided about it, and a live
         // revision would be a child without a live parent. The version P is still on the server, and the quarantined copy keeps the
         // merged groups.
@@ -498,7 +499,19 @@ fn merge_with_switches(local: &Versioned, incoming: &Versioned, switches: &Switc
     merged
 }
 
-/// A stand-in for `crypto_generichash(K_rev, ...)`: deterministic, 16 bytes. The real keyed hash is S4b's.
+/// The id of a `conflict` revision (§1): the real keyed hash with `real-envelope` (S4b), a stand-in otherwise.
+#[cfg(feature = "real-envelope")]
+fn revision_id(revision: &ConflictRevision) -> String {
+    crate::real::revision_id(revision)
+}
+
+#[cfg(not(feature = "real-envelope"))]
+fn revision_id(revision: &ConflictRevision) -> String {
+    uuid_from_bytes(toy_hash(&revision.id_input))
+}
+
+/// A stand-in for `crypto_generichash(K_rev, ...)`: deterministic, 16 bytes. The real keyed hash is in `real.rs`.
+#[cfg(not(feature = "real-envelope"))]
 fn toy_hash(input: &[u8]) -> [u8; 16] {
     let mut out = [0u8; 16];
     for (i, chunk) in out.chunks_mut(8).enumerate() {

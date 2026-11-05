@@ -15,6 +15,19 @@ serde_json = "1"
 # Property tests with shrinking and a fixed seed (MIT OR Apache-2.0). The generators of schedules live in the library so that the
 # measurement binary and the tests share them.
 proptest = { version = "1.12", default-features = false, features = ["std"] }
+# Only with the `real-envelope` feature (S4b, KINIG-96): envelopes sealed and opened by the real AEAD and the `conflict` revision id from
+# the real keyed hash.
+kinige-crypto = { path = "../../crates/kinige-crypto", optional = true }
+
+[features]
+# Seals every envelope with `kinige-crypto` (XChaCha20-Poly1305, the AD of ADR-0001 §A.1, padding) instead of the hash seal, and derives
+# revision ids with `K_rev`. Off by default: the hash seal is fast, and CI runs the properties with this at a small fixed count.
+real-envelope = ["dep:kinige-crypto"]
+
+[profile.dev.package.libsodium-sys-stable]
+opt-level = 3
+[profile.test.package.libsodium-sys-stable]
+opt-level = 3
 
 # The simulation does a lot of small allocations; tests run optimised so that 10 000 cases per property take minutes, not hours.
 [profile.test]

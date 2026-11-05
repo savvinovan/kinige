@@ -317,6 +317,17 @@ jobs:
         # Not `tests/stats.rs`: it prints coverage numbers, asserts nothing and takes 11 s.
         run: cargo test --test properties --test negative --test scenarios
 
+      # The same properties and controls with every envelope sealed and opened by `kinige-crypto` and the revision ids from the real keyed
+      # hash (S4b, KINIG-96, feature `real-envelope`): the protocol and the bytes proven together, at a small fixed count.
+      - name: Simulation with real envelopes
+        working-directory: spikes/S4a-sync
+        env:
+          S4A_CASES: "500"
+          S4A_CASES3: "100"
+          S4A_CONTROL_CASES: "3000"
+          S4A_SEED: "1"
+        run: cargo test --features real-envelope --test properties --test negative --test scenarios --test real_envelope
+
   # Secrets in the git history. False positives go in .gitleaksignore (the fingerprint and the reason). The binary is pinned by version and sha256.
   gitleaks:
     runs-on: ubuntu-24.04
