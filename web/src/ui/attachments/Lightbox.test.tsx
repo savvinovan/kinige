@@ -85,7 +85,17 @@ describe("Lightbox", () => {
     render(<Harness start={1} />, { language: "en" });
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveFocus();
-    const order = ["Open in default app", "Close", "Previous photo", "Next photo"].map((name) => screen.getByRole("button", { name }));
+    // The toolbar reads left to right: open, rotate, zoom out, the percentage, zoom in, close; then the arrows (KINIG-87).
+    const order = [
+      "Open in default app",
+      "Rotate left",
+      "Zoom out",
+      "Fit to window, zoom 100%",
+      "Zoom in",
+      "Close",
+      "Previous photo",
+      "Next photo",
+    ].map((name) => screen.getByRole("button", { name }));
     key("Tab");
     expect(order[0]).toHaveFocus();
     for (const next of order.slice(1)) {
@@ -95,7 +105,7 @@ describe("Lightbox", () => {
     key("Tab");
     expect(order[0]).toHaveFocus();
     key("Tab", { shiftKey: true });
-    expect(order[3]).toHaveFocus();
+    expect(order[order.length - 1]).toHaveFocus();
   });
 
   it("фокус не уходит за окно", () => {

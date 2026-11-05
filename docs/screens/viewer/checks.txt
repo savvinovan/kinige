@@ -1,0 +1,3 @@
+fit: 100%, toolbar buttons present: Повернуть влево, Уменьшить, Вписать в окно, Увеличить
+rotated once, zoomed twice: 200%
+next photo: 3 / 4, back at 100% and upright

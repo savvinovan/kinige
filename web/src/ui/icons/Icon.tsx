@@ -29,6 +29,7 @@ import {
   PinOff,
   Plus,
   Reply,
+  RotateCcw,
   Search,
   Settings,
   Smile,
@@ -40,6 +41,8 @@ import {
   Upload,
   Video,
   X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import "./icon.css";
 
@@ -94,6 +97,10 @@ const GLYPHS = {
   video: Video,
   // KINIG-59: "Colour" in the chat menu.
   palette: Palette,
+  // KINIG-87: the photo viewer toolbar (turn left, zoom out, zoom in).
+  rotate: RotateCcw,
+  zoomOut: ZoomOut,
+  zoomIn: ZoomIn,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;
