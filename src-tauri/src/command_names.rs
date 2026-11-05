@@ -158,3 +158,8 @@ pub const COMMANDS: &[&str] = &[
     "capture_resize",
     "capture_add_recent_emoji",
 ];
+
+/// The screens driver's one command (KINIG-92, ADR-0016): it exists, and its capability is read, only in a build with the cargo feature
+/// `screens-driver`. It is not in `COMMANDS` (that list is the default build's); `tests/config.rs` checks both sides of the gate.
+#[cfg(feature = "screens-driver")]
+pub const DRIVER_COMMANDS: &[&str] = &["screens_driver_reply"];

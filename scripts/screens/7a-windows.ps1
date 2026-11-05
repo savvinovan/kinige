@@ -3,9 +3,11 @@
 # Windows PowerShell 5.1. Run with `gh workflow run screens.yml --ref <branch> -f slice=7a-windows -f os=windows`; the result goes to
 # docs/screens/7a-windows/. The installer is built with KINIGE_FAKE_MIC=1 (screens.yml): an oscillator replaces getUserMedia, so the
 # real MediaRecorder of WebView2 records with no device and no privacy prompt. What it checks that the macOS run cannot: recording and
-# the `http://kinige-media.localhost` audio route (206 ranges) on WebView2. Keys are SendKeys after SetForegroundWindow; there is no UI
-# Automation and no DevTools port (they stalled WebView2 on the runner). That the player played is read from the app log (the route
-# logs its status and size at debug level, no ids), not from the window.
+# the `http://kinige-media.localhost` audio route (206 ranges) on WebView2. Input is the screens driver inside the app (KINIG-92,
+# ADR-0016): it finds a button by its accessible name in the web view and presses it, so Play is a `Press` and no longer a count of Tab
+# stops (that took four hours for one shot). There is no UI Automation and no DevTools port (they stalled WebView2 on the runner), and no
+# SendKeys in this scenario. That the player played is read from the app log (the route logs its status and size at debug level, no ids)
+# and from the window (the Pause button), not guessed.
 param(
   [Parameter(Mandatory = $true)][string]$Installer,
   [string]$Out = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'docs\screens\7a-windows'),
@@ -47,44 +49,51 @@ try { & cargo run --release -q -p kinige-store --example seed_demo -- $Data $Mir
 finally { Pop-Location; $ErrorActionPreference = 'Stop' }
 
 # Positive control of the fake microphone guard.
-& bash (Join-Path $Repo 'scripts/check-fake-mic.sh') (Join-Path $Repo 'web/dist') --expect
+& bash (Join-Path $Repo 'scripts/check-test-hooks.sh') (Join-Path $Repo 'web/dist') --expect fake-mic
 if ($LASTEXITCODE -ne 0) { Fail 'the fake microphone is not in web/dist' }
+# The same for the screens driver, in web/dist and (below) in the installed executable.
+& bash (Join-Path $Repo 'scripts/check-test-hooks.sh') (Join-Path $Repo 'web/dist') --expect screens-driver
+if ($LASTEXITCODE -ne 0) { Fail 'the screens driver is not in web/dist' }
 
 $install = Start-Process -FilePath $Installer -ArgumentList '/S', "/D=$AppDir" -PassThru
 $install.WaitForExit(600000) | Out-Null
 if ($install.ExitCode -ne 0) { Fail "the installer exited with $($install.ExitCode)" }
 $exe = Get-ChildItem -Path $AppDir -Filter *.exe -File | Where-Object { $_.Name -notmatch '^uninstall' } | Select-Object -First 1
 if (-not $exe) { Fail "no application exe in the install directory"; exit 1 }
+& bash (Join-Path $Repo 'scripts/check-test-hooks.sh') (Join-Path $Repo 'web/dist') --binary $exe.FullName --expect screens-driver
+if ($LASTEXITCODE -ne 0) { Fail 'the screens driver is not in the installed executable' }
+Enable-Driver (Join-Path $Work 'driver')
 
-# ---- 1. Recording: Tab from the field reaches the emoji button, then the microphone; Enter starts ---------------------------------
+# ---- 1. Recording: a press on the microphone button -----------------------------------------------------------------------------
 
 $main = Start-App $exe.FullName
 if (-not $main) { exit 1 }
-Start-Sleep -Seconds 6
-Send-Keys 'Kinige' '{TAB}{TAB}{ENTER}' $true
-Start-Sleep -Seconds 4
+# The first step waits for the page to listen; the button shows once the feed has drawn.
+if (-not (Wait-Name 'Record voice note' 60000)) { Fail 'the microphone button did not show' }
+[void](Press 'Record voice note' '' 'Kinige' 100)
+# The discard question below appears only past five seconds of recording: wait for the timer instead of sleeping.
+if (-not (Wait-Name 'Recording, 0:05' 15000)) { Fail 'the recording bar did not reach 0:05' }
 Shoot '01-recording' 'Kinige'
 
-# ---- 2. Escape past five seconds asks "Discard the recording?"; Enter on "Keep recording" goes on; Enter on Send saves ----------------
-# The fake microphone's recording ends by itself at 14 seconds (scripts/screens/fake-mic.ts), so the three steps share that time: the
-# recording is about 6 seconds old at Escape (the question appears only past 5) and about 10 at Send. That a note exists at all after
-# Enter on "Keep recording" is the proof that Keep was the focused button and that the recording went on underneath the question.
+# ---- 2. Escape past five seconds asks "Discard the recording?"; "Keep recording" goes on; Send saves -------------------------------
+# The fake microphone's recording ends by itself at 14 seconds (scripts/screens/fake-mic.ts), so the steps share that time: the shot above
+# is taken at about 5 to 8 seconds, the question appears at about 8, the Send press comes at about 11. That a note exists at all after
+# "Keep recording" is the proof that the recording went on underneath the question.
 
-Send-Keys 'Kinige' '{ESC}' $false
-Start-Sleep -Milliseconds 800
+[void](Press-Key 'Escape' 'Escape' 'Kinige' 100)
+if (-not (Wait-Name 'Discard the recording?' 5000)) { Fail 'the discard question did not show' }
 Shoot '02-discard-confirm' 'Kinige'
-Send-Keys 'Kinige' '{ENTER}' $false
-Start-Sleep -Milliseconds 800
-Send-Keys 'Kinige' '{ENTER}' $false
+[void](Press 'Keep recording' '' 'Kinige' 100)
+[void](Press 'Send the voice note' '' 'Kinige' 100)
 Start-Sleep -Seconds 5
 $rows = Get-Scalar "select count(*) from attachment where filename like 'voice-%'"
-if ($rows -ne '1') { Fail "expected one recorded note after Enter on Send, found $rows" }
+if ($rows -ne '1') { Fail "expected one recorded note after Send, found $rows" }
 $mime = Get-Scalar "select mime from attachment where filename like 'voice-%' limit 1"
 $duration = Get-Scalar "select duration_ms from attachment where filename like 'voice-%' limit 1"
 @(
   "windows: $([Environment]::OSVersion.VersionString)",
   "recorded notes (the Windows run seeds none): $rows",
-  "the note exists after Escape, Enter on Keep recording and Enter on Send: yes",
+  "the note exists after Escape (a script-made key through the driver), Keep recording and Send: yes",
   "container: $mime",
   "duration_ms: $duration"
 ) | Set-Content -Path (Join-Path $Out 'files.txt') -Encoding UTF8
@@ -95,37 +104,28 @@ Shoot '03-sent' 'Kinige'
 
 # ---- 3. The note survives a kill, and Play reaches the audio route ------------------------------------------------------------------
 
-# The note survives a kill; then Play is found by keyboard. Shift+Tab from the field walks back through the newest entry (its action
-# buttons, the speed chip, the seek bar, Play), but how many stops that is was guessed wrong twice (8 landed on the Trash button, and on a
-# Telegram stub). So the number of stops is scanned: each attempt starts the app afresh (the focus starts in the field), presses Shift+Tab
-# that many times and Enter, and asks the log whether the audio route was reached. Enter on a wrong stop is harmless (copy, edit, a flag, a
-# menu, the speed chip) and the app is killed before the next attempt.
-$played = $false
-$before = 0
-for ($stops = 2; $stops -le 16 -and -not $played; $stops++) {
-  Stop-App
-  $before = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' }).Count
-  $main = Start-App $exe.FullName
-  if (-not $main) { exit 1 }
-  Start-Sleep -Seconds 4
-  if ($stops -eq 2) {
-    $rowsAfter = Get-Scalar "select count(*) from attachment where filename like 'voice-%'"
-    if ($rowsAfter -ne '1') { Fail "the note did not survive the kill ($rowsAfter)" }
-  }
-  Focus-Window 'Kinige'
-  Start-Sleep -Milliseconds 1200
-  for ($i = 0; $i -lt $stops; $i++) { Send-Keys 'Kinige' '+{TAB}' $false }
-  Send-Keys 'Kinige' '{ENTER}' $false
-  Start-Sleep -Seconds 3
-  $now = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
-  if ($now.Count -gt $before) { $played = $true; Say "Play reached the route with $stops Shift+Tab stops" }
-}
+# The app is killed, started afresh and the note is there; one press on Play. The first version of this step counted Shift+Tab stops from
+# the field to the Play button (wrong twice, then scanned: about four hours for one shot); the driver presses the button by its name.
+Stop-App
+$before = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' }).Count
+$main = Start-App $exe.FullName
+if (-not $main) { exit 1 }
+$rowsAfter = Get-Scalar "select count(*) from attachment where filename like 'voice-%'"
+if ($rowsAfter -ne '1') { Fail "the note did not survive the kill ($rowsAfter)" }
+if (-not (Wait-Name 'Voice note' 60000)) { Fail 'the note is not in the feed after the restart' }
+[void](Press 'Play' '' 'Kinige' 100)
+Start-Sleep -Seconds 3
+$playing = Has 'Pause' '' 'Kinige'
+$now = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
+$played = $now.Count -gt $before
+Say "Play: the route was reached: $played; the Pause button shows: $playing"
 Shoot '04-playing' 'Kinige'
 $lines = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
 @("audio route requests in the log: $($lines.Count)") + @($lines | Select-Object -First 8 | ForEach-Object { ($_ -replace '^\[[^\]]*\]\[[^\]]*\]', '').Trim() }) |
   Set-Content -Path (Join-Path $Out 'playback.txt') -Encoding UTF8
 Say (Get-Content (Join-Path $Out 'playback.txt') -Raw)
-if (-not $played) { Fail 'Play did not reach the audio route (a finding if the focus order differs)' }
+if (-not $played) { Fail 'Play did not reach the audio route' }
+elseif (-not $playing) { Fail 'the player does not show the note playing (no Pause button)' }
 elseif (-not ($lines | Where-Object { $_ -match 'audio route: (200|206) ' })) { Fail 'the audio route answered with something other than 200 or 206' }
 else {
   # The answer's total length is the recorded file's size: the route served the note this run recorded.

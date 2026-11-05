@@ -214,9 +214,9 @@ fn build_script_manifest_matches_the_command_list() {
     let build =
         std::fs::read_to_string(format!("{}/build.rs", env!("CARGO_MANIFEST_DIR"))).unwrap();
     let list = build
-        .split("commands(&[")
+        .split("let list: &[&'static str] = &[")
         .nth(1)
-        .and_then(|rest| rest.split("])").next())
+        .and_then(|rest| rest.split("];").next())
         .expect("the command list in build.rs");
     // Between the quotes are the command names: the odd parts when splitting on `"`.
     let declared: Vec<&str> = list.split('"').skip(1).step_by(2).collect();

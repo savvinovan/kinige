@@ -2175,6 +2175,7 @@ dependencies = [
  "log",
  "rmcp",
  "rusqlite",
+ "serde",
  "serde_json",
  "sys-locale",
  "tauri",

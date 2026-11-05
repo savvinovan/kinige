@@ -188,6 +188,31 @@ impl<R: tauri::Runtime> Registrar for PluginRegistrar<R> {
     }
 }
 
+/// A global shortcut press. While recording a new shortcut ("Settings"), presses are ignored.
+pub fn on_shortcut<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    pressed: &tauri_plugin_global_shortcut::Shortcut,
+) {
+    use tauri::Manager;
+    use tauri_plugin_global_shortcut::Shortcut;
+    let Some(hotkeys) = app.try_state::<Hotkeys>() else {
+        return;
+    };
+    if hotkeys.is_recording() {
+        return;
+    }
+    let kind = hotkeys.kind_for(|accelerator| {
+        accelerator
+            .parse::<Shortcut>()
+            .is_ok_and(|shortcut| shortcut == *pressed)
+    });
+    match kind {
+        Some(ShortcutKind::Capture) => crate::capture::toggle_capture(app),
+        Some(ShortcutKind::Clipboard) => crate::capture::save_clipboard(app),
+        None => {}
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod fake {
     use super::*;

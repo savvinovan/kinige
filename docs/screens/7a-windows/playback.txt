@@ -1,3 +1,3 @@
 ﻿audio route requests in the log: 1
-[DEBUG][kinige_lib::audio_route] audio route: 206 135581 bytes, asked "bytes=0-", answered "bytes 0-135580/135581"
-the route served the recorded note: its size is 135581 bytes
+[DEBUG][kinige_lib::audio_route] audio route: 206 126624 bytes, asked "bytes=0-", answered "bytes 0-126623/126624"
+the route served the recorded note: its size is 126624 bytes

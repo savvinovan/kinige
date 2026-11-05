@@ -1,3 +1,2 @@
-focus: focused: AXComboBox Поиск | Поиск | Поиск
-menu: clicked: Edit > Paste
+type into 'Поиск': typed
 RESULT: the search results are open for the word voice
