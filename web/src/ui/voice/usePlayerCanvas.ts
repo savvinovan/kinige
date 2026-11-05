@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject } from "react";
+import { TEXT_SCALE_ATTRIBUTE } from "../screens/textSize";
 import { drawPlayer, playerSize, snapLengths, type PlayerColors, type WaveGeometry } from "./waveDraw";
 import { readWaveLengths } from "./waveTokens";
 
@@ -61,10 +62,16 @@ export function usePlayerCanvas(peaks: Uint8Array | null): {
     redraw();
   }, [redraw]);
 
+  // The text size setting changes the `<html>` attribute without resizing the window, so an idle note would keep its old size: watch it too.
   useLayoutEffect(() => {
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    const textScale = new MutationObserver(measure);
+    textScale.observe(document.documentElement, { attributes: true, attributeFilter: [TEXT_SCALE_ATTRIBUTE] });
+    return () => {
+      window.removeEventListener("resize", measure);
+      textScale.disconnect();
+    };
   }, [measure]);
 
   // Until the tokens could be read (the stylesheet may not be applied at the first paint) every draw tries to measure again.

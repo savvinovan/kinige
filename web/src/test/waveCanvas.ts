@@ -26,10 +26,12 @@ const TOKENS: Record<string, string> = {
 
 /**
  * Makes every canvas of the test a recording one and every computed style carry the tokens (13 px root, density 1 unless `ratio` says
- * otherwise). Returns the fills in the order they were made. Call `vi.restoreAllMocks()` and `vi.unstubAllGlobals()` afterwards.
+ * otherwise). Returns the fills in the order they were made, and `root`, whose `px` a test may change to stand for a new text size. Call
+ * `vi.restoreAllMocks()` and `vi.unstubAllGlobals()` afterwards.
  */
 export function installWaveCanvas({ ratio = 1 }: { ratio?: number } = {}) {
   const fills: FilledBars[] = [];
+  const root = { px: 13 };
   let bars: { x: number; h: number; y: number }[] = [];
   let pendingRect: number | null = null;
   let clip: number | null = null;
@@ -64,8 +66,8 @@ export function installWaveCanvas({ ratio = 1 }: { ratio?: number } = {}) {
       ({
         getPropertyValue: (name: string) => TOKENS[name] ?? "",
         color: "the-accent-colour",
-        fontSize: `${13}px`,
+        fontSize: `${root.px}px`,
       }) as unknown as CSSStyleDeclaration,
   );
-  return { fills, context };
+  return { fills, context, root };
 }
