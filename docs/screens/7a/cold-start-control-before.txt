@@ -1,14 +1,14 @@
 machine: Apple M1 (Virtual), VirtualMac2,1, macOS 15.8.2
 build: release (/Users/runner/work/_temp/kinige-screens/Kinige.app/Contents/MacOS/kinige), runs: 10
-  run  1:  1461.0 ms
-  run  2:  1296.5 ms
-  run  3:  1258.4 ms
-  run  4:  1162.0 ms
-  run  5:  1128.6 ms
-  run  6:  1188.5 ms
-  run  7:  1228.2 ms
-  run  8:  1280.6 ms
-  run  9:  1228.0 ms
-  run 10:  1229.8 ms
-first: 1461 ms; min 1129, median 1229, max 1461 ms
-target §15: < 1500 ms - met
+  run  1:  1476.4 ms
+  run  2:  1600.0 ms
+  run  3:  1592.7 ms
+  run  4:  1585.9 ms
+  run  5:  1520.7 ms
+  run  6:  1506.8 ms
+  run  7:  1596.1 ms
+  run  8:  1549.6 ms
+  run  9:  1551.8 ms
+  run 10:  1397.0 ms
+first: 1476 ms; min 1397, median 1551, max 1600 ms
+target §15: < 1500 ms - NOT met

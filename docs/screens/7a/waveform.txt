@@ -1,10 +1,10 @@
 # the saved waveform of every audio note whose file is on disk, oldest first: name | length of the note | bytes saved | what it means
 # (64 bytes are peaks; 0 is the empty marker, from the 20-minute cap or from a file the decoder could not read; the Telegram-style stub is one of them)
 audio_1.ogg | unknown length ms | 0 bytes | empty marker: the decoder could not read the file
-voice-2026-11-05-024554.m4a | 40000 ms | 64 bytes | peaks
-voice-2026-11-05-024754.m4a | 5000 ms | 64 bytes | peaks
-voice-2026-11-05-024854.m4a | 2000 ms | 64 bytes | peaks
-voice-2026-11-05-025554.m4a | 3723000 ms | 0 bytes | empty marker: over the 20-minute cap, never decoded
-voice-2026-11-05-030554.m4a | 40000 ms | 64 bytes | peaks
-voice-2026-11-05-033703.m4a | 14114 ms | 64 bytes | peaks
+voice-2026-11-05-104812.m4a | 40000 ms | 64 bytes | peaks
+voice-2026-11-05-105012.m4a | 5000 ms | 64 bytes | peaks
+voice-2026-11-05-105112.m4a | 2000 ms | 64 bytes | peaks
+voice-2026-11-05-105812.m4a | 3723000 ms | 0 bytes | empty marker: over the 20-minute cap, never decoded
+voice-2026-11-05-110812.m4a | 40000 ms | 64 bytes | peaks
+voice-2026-11-05-112907.m4a | 14105 ms | 64 bytes | peaks
 recorded note: 64 bytes
