@@ -39,7 +39,6 @@ pub struct Server {
 
 #[derive(Debug)]
 struct Stored {
-    login: String,
     salt: [u8; SALT_LEN],
     profile: u8,
     auth_hash: [u8; AUTH_HASH_LEN],
@@ -89,7 +88,6 @@ impl Server {
         let auth = auth_hash(package.auth_key.as_bytes()).map_err(|_| RegisterError::Invalid)?;
         let rc = auth_hash(package.rc_auth_key.as_bytes()).map_err(|_| RegisterError::Invalid)?;
         let stored = Stored {
-            login: login.clone(),
             salt: package.salt,
             profile: package.profile,
             auth_hash: auth,
