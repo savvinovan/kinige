@@ -22,15 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # The debug test binaries of the app crate are large (WebKitGTK, debug info) and a change in web/ relinks all of them (Tauri
-      # embeds the frontend). After slice 7a that no longer fit next to the restored cache: `ld` died with SIGBUS (signal 7) while
-      # writing its output, twice on PR #45. The runner's preinstalled Android SDK, .NET and GHC are not used here, so they go.
-      - name: Free disk space
-        run: |
-          df -h /
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
-          df -h /
-
       # Tauri system libraries on Linux (wry/WebKitGTK).
       - name: Tauri system dependencies
         run: |
@@ -51,9 +42,6 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
-      - name: Disk space after the tests
-        if: always()
-        run: df -h /
       - name: kinige-domain for wasm32
         run: cargo build -p kinige-domain --target wasm32-unknown-unknown
       # `cargo test` above regenerated the TS types (ts-rs) and the year tables for the forest stories (slice 6, crates/kinige-domain/tests/forest_fixtures.rs);
