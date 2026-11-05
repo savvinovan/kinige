@@ -24,6 +24,10 @@ pub mod mcp;
 mod panel;
 pub mod panic_hook;
 pub mod recovery;
+// The screens driver (KINIG-92, ADR-0016): a test hook for the real-window scenarios, compiled only with the cargo feature and refused
+// by `build.rs` without KINIGE_ALLOW_SCREENS_DRIVER=1.
+#[cfg(feature = "screens-driver")]
+pub mod screens_driver;
 pub mod settings_window;
 pub mod startup;
 pub mod tray;
@@ -46,6 +50,8 @@ use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, Runtime, WindowEvent};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
 
+#[cfg(feature = "screens-driver")]
+pub use command_names::DRIVER_COMMANDS;
 pub use command_names::{CAPTURE_COMMANDS, COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS};
 
 /// The app constructor; shared by `run` and by the IPC tests (there with a mock runtime and their own `Store`).
@@ -129,6 +135,8 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             capture::capture_hide,
             capture::capture_resize,
             capture::capture_add_recent_emoji,
+            #[cfg(feature = "screens-driver")]
+            screens_driver::screens_driver_reply,
         ]))
 }
 
@@ -234,6 +242,8 @@ fn on_shortcut<R: Runtime>(app: &tauri::AppHandle<R>, pressed: &Shortcut) {
 /// Closing the main window hides it, the app lives in the menu bar; closing the capture window is the same as Esc.
 /// Public so that the IPC tests can send a window a drop (only `main` leaves a token).
 pub fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
+    #[cfg(feature = "screens-driver")]
+    screens_driver::on_window_event(window, event);
     match (window.label(), event) {
         (MAIN_LABEL, WindowEvent::CloseRequested { api, .. }) => {
             api.prevent_close();
@@ -297,6 +307,8 @@ pub fn run() {
     let setup = |app: &mut tauri::App| -> Result<(), Box<dyn std::error::Error>> {
         log::info!("starting Kinige {}", env!("CARGO_PKG_VERSION"));
         let handle = app.handle().clone();
+        #[cfg(feature = "screens-driver")]
+        screens_driver::start(&handle);
         let db_path = db_path(&handle)?;
         // The journal does not open, and the window shows the copies (`recovery`), if: the restore of the previous launch is not
         // finished; the mark of the background check was confirmed by a repeated synchronous check (if not confirmed,
