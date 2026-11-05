@@ -159,7 +159,7 @@ function Focus-Window([string]$title) {
 function Shoot([string]$name, [string]$title) {
   $window = Get-AppWindow $title
   if (-not $window) { Fail "no window '$title' for $name"; return }
-  # With the driver every shot is checked for personal paths first, from the window text (about 100 ms).
+  # With the driver every shot is checked for personal paths first, from the window text (4.7 s on an idle window in the probe, before the reply parser was changed).
   if ($script:Driver) { Test-WindowText $name $title }
   [Win]::Raise($window)
   Start-Sleep -Seconds 2
@@ -230,7 +230,6 @@ function Send-Keys([string]$title, [string]$keys, [bool]$raise = $true) {
 
 $script:Driver = $false
 $script:DriveDir = $null
-$script:DriveSeq = 0
 # Another user's home, a Mac home path, my names. The runner's own profile (runneradmin) is where its temp directory is.
 $script:PersonalPattern = '(?i)[a-z]:\\Users\\(?!runneradmin)|/Users/|alexandr|savvinovan'
 
@@ -249,8 +248,8 @@ function Get-DriverWindow([string]$title) {
 
 # Sends one step and waits for its reply: @{ Ok; Value; Error }. Never raises, never counts as a scenario error by itself.
 function Drive([string]$window, [hashtable]$step, [int]$seconds = 20) {
-  $script:DriveSeq++
-  $id = "d$PID-$($script:DriveSeq)"
+  # A GUID: unique wherever the function is called from (a counter's increment is lost in a child scope or a job), letters and digits only.
+  $id = 'd' + [guid]::NewGuid().ToString('N')
   $requests = Join-Path $script:DriveDir 'requests'
   $reply = Join-Path $script:DriveDir "replies\$id.json"
   $utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -271,6 +270,8 @@ function Drive([string]$window, [hashtable]$step, [int]$seconds = 20) {
   $parser = New-Object System.Web.Script.Serialization.JavaScriptSerializer
   $parser.MaxJsonLength = [int]::MaxValue
   $answer = $parser.DeserializeObject([System.IO.File]::ReadAllText($reply, $utf8))
+  # Read once and delete: a reply file is never left for a later step to find.
+  Remove-Item -LiteralPath $reply -ErrorAction SilentlyContinue
   # A key the app left out (a reply has "value" or "error", not both) is $null, not an exception.
   $value = $null
   $problem = $null
@@ -286,6 +287,18 @@ function Press([string]$name, [string]$role = '', [string]$title = 'Kinige', [in
   $result = Drive (Get-DriverWindow $title) $step
   if (-not $result.Ok) { Fail "press '$name': $($result.Error)"; return $false }
   Say "press '$name'"
+  Start-Sleep -Milliseconds $settleMs
+  return $true
+}
+
+# keydown and keyup on the focused element of the window (the driver's `key` step): for a key the page handles itself, such as Escape. A
+# script-made key does not do what the browser does for a real one (Enter on a button); it reaches the page's own handlers only.
+function Press-Key([string]$key, [string]$code = '', [string]$title = 'Kinige', [int]$settleMs = 800) {
+  $step = @{ kind = 'key'; key = $key }
+  if ($code) { $step.code = $code }
+  $result = Drive (Get-DriverWindow $title) $step
+  if (-not $result.Ok) { Fail "key '$key': $($result.Error)"; return $false }
+  Say "key '$key'"
   Start-Sleep -Milliseconds $settleMs
   return $true
 }

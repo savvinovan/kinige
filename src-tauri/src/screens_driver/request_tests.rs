@@ -252,6 +252,35 @@ fn a_reply_with_a_bad_id_writes_nothing() {
     assert!(!dir.join("replies").exists());
 }
 
+#[cfg(unix)]
+#[test]
+fn a_reply_does_not_follow_a_link_at_replies_or_at_the_temporary_name() {
+    let outside = tempfile::tempdir().unwrap();
+    let victim = outside.path().join("victim");
+    fs::write(&victim, b"keep").unwrap();
+
+    // `replies` itself is a link to a directory elsewhere: nothing is written there.
+    let dir = tempfile::tempdir().unwrap();
+    std::os::unix::fs::symlink(outside.path(), dir.path().join("replies")).unwrap();
+    assert!(write_reply(dir.path(), &Reply::ok("r1", None)).is_err());
+    assert!(!outside.path().join("r1.json").exists());
+
+    // The temporary name is a link to a file: the file is not written through it.
+    let dir = tempfile::tempdir().unwrap();
+    fs::create_dir(dir.path().join("replies")).unwrap();
+    std::os::unix::fs::symlink(&victim, dir.path().join("replies").join(".r2.tmp")).unwrap();
+    let path = write_reply(dir.path(), &Reply::ok("r2", Some("v".into()))).unwrap();
+    assert_eq!(
+        fs::read(&victim).unwrap(),
+        b"keep",
+        "the link's target is untouched"
+    );
+    assert_eq!(
+        fs::read_to_string(path).unwrap(),
+        r#"{"id":"r2","ok":true,"value":"v"}"#
+    );
+}
+
 #[test]
 fn request_files_are_read_with_a_size_limit_and_only_if_regular() {
     let dir = tempfile::tempdir().unwrap();

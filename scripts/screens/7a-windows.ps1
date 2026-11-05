@@ -75,12 +75,12 @@ if (-not (Wait-Name 'Record voice note' 60000)) { Fail 'the microphone button di
 if (-not (Wait-Name 'Recording, 0:05' 15000)) { Fail 'the recording bar did not reach 0:05' }
 Shoot '01-recording' 'Kinige'
 
-# ---- 2. The trash button past five seconds asks "Discard the recording?"; "Keep recording" goes on; Send saves ----------------------
+# ---- 2. Escape past five seconds asks "Discard the recording?"; "Keep recording" goes on; Send saves -------------------------------
 # The fake microphone's recording ends by itself at 14 seconds (scripts/screens/fake-mic.ts), so the steps share that time: the shot above
 # is taken at about 5 to 8 seconds, the question appears at about 8, the Send press comes at about 11. That a note exists at all after
 # "Keep recording" is the proof that the recording went on underneath the question.
 
-[void](Press 'Discard the recording' '' 'Kinige' 100)
+[void](Press-Key 'Escape' 'Escape' 'Kinige' 100)
 if (-not (Wait-Name 'Discard the recording?' 5000)) { Fail 'the discard question did not show' }
 Shoot '02-discard-confirm' 'Kinige'
 [void](Press 'Keep recording' '' 'Kinige' 100)
@@ -93,7 +93,7 @@ $duration = Get-Scalar "select duration_ms from attachment where filename like '
 @(
   "windows: $([Environment]::OSVersion.VersionString)",
   "recorded notes (the Windows run seeds none): $rows",
-  "the note exists after the trash button, Keep recording and Send: yes",
+  "the note exists after Escape (a script-made key through the driver), Keep recording and Send: yes",
   "container: $mime",
   "duration_ms: $duration"
 ) | Set-Content -Path (Join-Path $Out 'files.txt') -Encoding UTF8

@@ -4,7 +4,7 @@
 # pipeline run with no device and no TCC prompt. The data are synthetic (seed_demo with KINIGE_SEED_VOICE=1: a tone made by `afconvert`,
 # a Telegram-style .ogg, a note whose file is gone, an hour-long note, a note with text). Input is the screens driver inside the app
 # (KINIG-92, ADR-0016; DRIVER=1): it finds elements by their accessible name in the app's own web view, so it answers while a recording
-# runs (an accessibility call hung then) and a read of the window text takes ~100 ms (a tree dump took up to 3 minutes). Accessibility
+# runs (an accessibility call hung then) and a read of the window text takes about half a second (a tree dump took up to 3 minutes). Accessibility
 # actions stay for what the web view cannot reach: resizing the window. No mouse, no keyboard, no global shortcuts. The first-recording
 # permission prompt and a real microphone are NOT covered here: they stay with the person who accepts the slice.
 set -u
@@ -132,7 +132,7 @@ ROUTE_BEFORE="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
 press "${L_PLAY}"
 sleep 14
 # 14 s in, the played part of the waveform stands about a third of the way along: the shot shows the fill stopping inside the bars. The
-# window text is read through the driver right after the picture (about 100 ms), so the elapsed time and the pause button are the
+# window text is read through the driver right after the picture (about half a second), so the elapsed time and the pause button are the
 # playing note's, not those of a note that has ended by the time a tree dump finishes.
 shoot 05-playing
 cp "$K/debug/shot-05-playing.txt" "$K/debug/playing-a.txt"

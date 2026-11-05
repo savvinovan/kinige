@@ -36,7 +36,6 @@ pub mod voice;
 use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
 use data_dirs::{db_path, default_mirror_dir};
 use hotkeys::{Hotkeys, PluginRegistrar};
-use kinige_domain::ShortcutKind;
 use kinige_store::{Store, StoreError, StoreOptions};
 use recovery::Recovery;
 use startup::{
@@ -48,7 +47,7 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, Runtime, WindowEvent};
-use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::ShortcutState;
 
 #[cfg(feature = "screens-driver")]
 pub use command_names::DRIVER_COMMANDS;
@@ -219,26 +218,6 @@ pub(crate) fn resume_after_restore<R: Runtime>(app: &AppHandle<R>) -> Result<(),
         .map_err(StoreError::Internal)
 }
 
-/// A global shortcut press. While recording a new shortcut ("Settings"), presses are ignored.
-fn on_shortcut<R: Runtime>(app: &tauri::AppHandle<R>, pressed: &Shortcut) {
-    let Some(hotkeys) = app.try_state::<Hotkeys>() else {
-        return;
-    };
-    if hotkeys.is_recording() {
-        return;
-    }
-    let kind = hotkeys.kind_for(|accelerator| {
-        accelerator
-            .parse::<Shortcut>()
-            .is_ok_and(|shortcut| shortcut == *pressed)
-    });
-    match kind {
-        Some(ShortcutKind::Capture) => capture::toggle_capture(app),
-        Some(ShortcutKind::Clipboard) => capture::save_clipboard(app),
-        None => {}
-    }
-}
-
 /// Closing the main window hides it, the app lives in the menu bar; closing the capture window is the same as Esc.
 /// Public so that the IPC tests can send a window a drop (only `main` leaves a token).
 pub fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
@@ -286,7 +265,7 @@ pub fn run() {
                 tauri_plugin_global_shortcut::Builder::new()
                     .with_handler(|app, shortcut, event| {
                         if event.state == ShortcutState::Pressed {
-                            on_shortcut(app, shortcut);
+                            hotkeys::on_shortcut(app, shortcut);
                         }
                     })
                     .build(),

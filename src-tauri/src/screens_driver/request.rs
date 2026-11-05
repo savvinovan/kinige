@@ -292,18 +292,38 @@ impl Step {
 }
 
 /// `<dir>/replies/<id>.json`, written atomically (a temporary file in the same directory, then a rename), so a script that sees the
-/// file sees all of it. An id that is not valid writes nothing.
+/// file sees all of it. An id that is not valid writes nothing, and neither does a `replies` that is a link (it is not followed) or a
+/// temporary name that something else already holds (`create_new` does not follow a link either).
+///
+/// Not closed, and accepted: a process that can write into the driver directory could swap `requests/<id>.json` between the check in
+/// `read_request_file` and the read. It could write that request itself, so nothing is gained; the directory is the runner's temp.
 pub fn write_reply(dir: &Path, reply: &Reply) -> io::Result<PathBuf> {
     if !valid_id(&reply.id) {
         return Err(io::Error::new(io::ErrorKind::InvalidInput, "bad id"));
     }
     let replies = dir.join(REPLIES_DIR);
-    fs::create_dir_all(&replies)?;
+    if fs::symlink_metadata(&replies).is_err() {
+        fs::create_dir_all(&replies)?;
+    }
+    if !fs::symlink_metadata(&replies)?.is_dir() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "replies is not a directory",
+        ));
+    }
     let target = replies.join(format!("{}.json", reply.id));
     // A leading dot: the script looks for `<id>.json` only.
     let temporary = replies.join(format!(".{}.tmp", reply.id));
     let bytes = serde_json::to_vec(reply).map_err(io::Error::other)?;
-    let mut file = File::create(&temporary)?;
+    // A leftover of a crashed write goes (a link is removed, not followed); then the file must be new.
+    match fs::remove_file(&temporary) {
+        Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error),
+        _ => {}
+    }
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)?;
     file.write_all(&bytes)?;
     file.sync_all()?;
     drop(file);
