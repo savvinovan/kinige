@@ -124,6 +124,17 @@ expect "a shot of text with a foreign path" fail shoot "driver-private"
 printf '' > "$WORK/text-answer"
 expect "a shot of an empty text" fail shoot "driver-empty"
 printf 'The feed says hello' > "$WORK/text-answer"
+# Subshells (KINIG-92 review): `$(has ...)` runs in a child shell, where `$$` is the parent's and a counter's increment is lost. Each step
+# must still get its own id, hence its own answer, and no reply file may be left for a later step to find.
+FIRST="$(has "Here" && echo yes || echo no)"
+SECOND="$(has "Elsewhere" && echo yes || echo no)"
+THIRD="$(has "Here" && echo yes || echo no)"
+[ "$FIRST $SECOND $THIRD" = "yes no yes" ] || { echo "subshell ids: got '$FIRST $SECOND $THIRD', wanted 'yes no yes'"; PROBLEMS=$((PROBLEMS + 1)); }
+[ "$(find "$DRIVE_DIR/ids" -type f | wc -l | tr -d ' ')" = "0" ] || { echo "reserved ids are left behind"; PROBLEMS=$((PROBLEMS + 1)); }
+AX_WINDOW=Kinige expect "a press after the subshell steps does not read an old reply" fail press "Missing"
+expect "a press after that finds its own reply" pass press "Play"
+[ -z "$(ls "$DRIVE_DIR/replies")" ] || { echo "reply files are left behind: $(ls "$DRIVE_DIR/replies")"; PROBLEMS=$((PROBLEMS + 1)); }
+
 [ "$(json_escape 'a "b" \c')" = 'a \"b\" \\c' ] || { echo "json_escape is wrong"; PROBLEMS=$((PROBLEMS + 1)); }
 FAKE_ESCAPED="$(json_escape 'Say "hi"')"
 FAILS=0

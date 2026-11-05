@@ -12,7 +12,6 @@ PAUSE="${PAUSE:-1.5}"
 DRIVER="${DRIVER:-}"
 DRIVE_DIR="${KINIGE_SCREENS_DRIVER_DIR:-$K/driver}"
 DRIVE_TIMEOUT="${DRIVE_TIMEOUT:-20}"
-DRIVE_SEQ=0
 DRIVE_REPLY=""
 mkdir -p "$OUT" "$K/debug"
 
@@ -106,18 +105,20 @@ driver_query() {
 # drive_raw <window> <step json> [seconds]: sends the step and waits for the reply. DRIVE_REPLY holds the reply file. Returns 0 for
 # ok:true, 1 for ok:false (DRIVE_ERROR holds the page's words), 2 for no reply in time. It never calls `fail`.
 drive_raw() {
-  local window="$1" step="$2" ticks id requests
+  local window="$1" step="$2" ticks id requests reply
   ticks=$((${3:-$DRIVE_TIMEOUT} * 20))
-  DRIVE_SEQ=$((DRIVE_SEQ + 1))
-  id="d$$-$DRIVE_SEQ"
   DRIVE_REPLY=""
   DRIVE_ERROR=""
   requests="$DRIVE_DIR/requests"
-  mkdir -p "$requests" "$DRIVE_DIR/replies"
+  mkdir -p "$requests" "$DRIVE_DIR/replies" "$DRIVE_DIR/ids"
+  # The id is reserved as a file: `mktemp` never hands out the same name twice, also from a subshell (`$(has ...)`), where `$$` is the
+  # parent's and a counter's increment is lost. The name is letters and digits only, which the app accepts as an id.
+  id="$(basename "$(mktemp "$DRIVE_DIR/ids/dXXXXXXXXXX")")"
+  reply="$DRIVE_DIR/replies/$id.json"
   # A temporary name the app skips, then a rename: the app never sees half a request.
   printf '{"id":"%s","window":"%s","step":%s}' "$id" "$window" "$step" > "$requests/.$id.tmp"
   mv "$requests/.$id.tmp" "$requests/$id.json"
-  while [ ! -f "$DRIVE_DIR/replies/$id.json" ]; do
+  while [ ! -f "$reply" ]; do
     if [ "$ticks" -le 0 ]; then
       rm -f "$requests/$id.json"
       DRIVE_ERROR="no reply within ${3:-$DRIVE_TIMEOUT} s"
@@ -126,7 +127,9 @@ drive_raw() {
     sleep 0.05
     ticks=$((ticks - 1))
   done
-  DRIVE_REPLY="$(cat "$DRIVE_DIR/replies/$id.json")"
+  # Read once and delete: a reply file is never left for a later step to find.
+  DRIVE_REPLY="$(cat "$reply")"
+  rm -f "$reply" "$DRIVE_DIR/ids/$id"
   case "$DRIVE_REPLY" in
     *'"ok":true'*) return 0 ;;
   esac
@@ -255,7 +258,7 @@ shoot() {
   if [ "$DRIVER" = "1" ]; then
     drive_raw "$(drive_window)" '{"kind":"front"}' > /dev/null
     sleep 1
-    # The text through the driver (about 100 ms, where an AX dump takes up to 3 minutes): every shot is checked, none is skipped.
+    # The text through the driver (467 ms on an idle window in the probe, where an AX dump took up to 3 minutes): every shot is checked, none is skipped.
     if ! driver_text "$(drive_window)" "$K/debug/shot-$name.txt"; then
       fail "no window text for $name through the driver (the personal path check was not done): $DRIVE_ERROR"
     elif [ ! -s "$K/debug/shot-$name.txt" ]; then
