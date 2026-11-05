@@ -120,6 +120,14 @@ describe("LiveWave", () => {
     expect(moves[0]).toBe(201);
   });
 
+  it("draws again at once when the box is resized (resizing a canvas clears it), not on the next frame or step", () => {
+    render(<LiveWave read={() => LEVELS} label="Microphone level" />, { language: "en" });
+    runFrame();
+    const before = fills;
+    act(() => observers[0]?.callback());
+    expect(fills).toBe(before + 1);
+  });
+
   it("stops the frames and the observer when it goes away", () => {
     const { unmount } = render(<LiveWave read={() => LEVELS} label="Microphone level" />, { language: "en" });
     runFrame();

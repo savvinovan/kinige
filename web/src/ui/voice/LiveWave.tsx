@@ -43,8 +43,6 @@ export function LiveWave({ read, label }: LiveWaveProps) {
         : null;
     };
     measure(true);
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measure(true));
-    observer?.observe(element);
 
     const reduced = prefersReducedMotion(element);
     const frame = () => {
@@ -59,6 +57,17 @@ export function LiveWave({ read, label }: LiveWaveProps) {
       const mode: LiveMode = reduced ? { kind: "stay", total } : { kind: "slide", phase: (now - at) / LEVEL_PERIOD_MS };
       drawWave(context, geometry, levels, mode);
     };
+
+    // Resizing a canvas clears it: draw again at once (the layout settles after the first paint, e.g. when the timer's font loads), so the bars
+    // are never missing until the next frame or step.
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            measure(true);
+            frame();
+          });
+    observer?.observe(element);
 
     let handle = 0;
     let timer: ReturnType<typeof setInterval> | null = null;
