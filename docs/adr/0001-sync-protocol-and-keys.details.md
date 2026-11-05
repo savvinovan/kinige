@@ -120,10 +120,10 @@ Publishing the same `remote_blob_id` again gets the "already exists" response, w
 8. Assigning `seq` under the account lock, writing.
 
 **Client, pull:**
-1. Lengths.
-2. `format_version` and `key_id`; unknown ones → `pending_unknown` with `entity` and `id` from the transport, the cursor moves. On a full resync such a record counts as "is on the server".
+1. The cap on the whole envelope (`MAX_ENVELOPE` = 9 + 4096 + 24 + 1 MiB + 1024 + 16) and nothing else about lengths (S4b, 2026-11-06).
+2. `format_version`; unknown → `pending_unknown` with `entity` and `id` from the transport, the cursor moves. Then the length rules of version 1 (§A.1: `header_len`, the ciphertext multiple of 1024 plus 16, the declared total), which are not applied to another format. Then `key_id`; unknown → `pending_unknown` the same way. On a full resync such a record counts as "is on the server".
 3. AEAD; error → the page is not applied, the cursor stays, the error is visible to the user.
-4. Matching the header's `op` and `id` against those declared by the transport.
+4. Matching the authentic header's `entity`, `id`, `op` and group stamps against those declared by the transport. **A mismatch is handled like an AEAD failure (S4b, 2026-11-06):** the page is not applied, the cursor stays, the error is visible; the server served a genuine envelope under another record.
 5. Strict parsing: HLC, `sodium_unpad`, JSON without duplicate keys, the payload's set of groups equals `header.groups`, the nesting of a group's value is no more than 127 nested arrays and objects (the `serde_json` parsing limit, `remaining_depth` = 128; the Rust writer does not write deeper either, `jcs::MAX_DEPTH`; a web client on `JSON.parse` has no limit and must check the depth itself). Error → quarantine with the reason `malformed`, the cursor moves, the error is visible.
 6. The clock receives all HLCs of the header (§2).
 7. Tombstone and the purge rules (§3.5).
@@ -134,7 +134,7 @@ Publishing the same `remote_blob_id` again gets the "already exists" response, w
 ### A.5. Repeating registration and recovery (§8.3, §8.6)
 
 Without a typed-back check, not only a failure before the request is dangerous but also a lost response: the client restarted, built new keys and words, and the saved PDF belongs to nobody. Therefore:
-- the client saves the **prepared package** (`account_id`, login, `salt`, profile, `auth_key`, `rc_auth_key`, `wrap_pw`, `wrap_rc` and the DEK; without the password and the words' entropy) in the OS secret store **before** showing the words, and after a restart repeats the same request until it gets a definite answer. The DEK is in the package so that after a restart the client can work without entering the password again; it lives where it normally does (§8.8);
+- the client saves the **prepared package** (`account_id`, login, `salt`, profile, `auth_key`, `rc_auth_key`, `wrap_pw`, `wrap_rc` and the DEK; without the password and the words' entropy) in the OS secret store **before** showing the words, and after a restart repeats the same request until it gets a definite answer. The DEK is in the package so that after a restart the client can work without entering the password again; it lives where it normally does (§8.8). **The KEKs are not in the package (S4b, 2026-11-06):** the wraps are bound to the `account_id`, so after an `account_id` clash the client cannot rebuild them from the package; it asks for the password and the words again (the words on the PDF), and a restart in the middle of that changes nothing else. The clash is a v4 UUID collision, so this path is for a hostile or broken server;
 - the server is idempotent:
   - registration — first the `account_id` check: the same package → success, `account_id` taken by another package → a separate error (the client creates a new `account_id` and rebuilds the wraps, §1, the words stay the same); only then whether the login is taken — otherwise a repeat after a lost response would get "login taken";
   - recovery — by the new `rc_auth_key` **and equality of the rest of the package**: the replacement was already made by the same package → success, by another package → a separate error;
@@ -201,6 +201,8 @@ Everything except the test vectors is property tests: 2–3 clients in one proce
 50. A `purged` response to a push without a local tombstone (the server accepted someone else's `purged(X)` between pull and push) — X is in quarantine, a tombstone is written; the next pull of `purged(X)` refines the snapshot and is otherwise a no-op.
 
 **S4b — envelope and keys**
+
+*Status (S4b, 2026-11-06): items 1–14 are covered, each by named tests, in the map in `spikes/S4b-keys/README.md`; the vectors are `crates/kinige-crypto/vectors/` (made by libsodium.js, regenerate with `spikes/S4b-keys/vectors/gen.mjs`).*
 
 1. Test vectors with a fixed key, nonce and input and the expected bytes for: the envelope, `AD_env`, both wraps with `AD_wrap`, the `crypto_kdf` subkeys, padding, the id of a `conflict` revision and its `snapshot_json` (`raw` as a string), blobs of 0 bytes, 1 MiB − 1, exactly 1 MiB, 1 MiB + 1.
 2. Substitution of each open field (HLC, `purged`, `sv`, `key_id`, `format_version`, `account_id`) and moving an envelope to another record are detected (PRD).
@@ -325,7 +327,7 @@ No schema change: no migration, no new column or index. `chat.color` and `meta.c
 | 1 (lower bound, default) | 3          | 268435456 (256 MiB) | `MODERATE` — about 0.7 s on a 2.8 GHz Core i7 according to the documentation |
 | 2                        | 4          | 1073741824 (1 GiB)  | `SENSITIVE`                                                                  |
 
-An account's profile only grows (§8.2).
+An account's profile only grows (§8.2). **Checked (S4b, 2026-11-06):** the two rows are asserted against `libsodium-rs` 0.3.0 in `profile.rs` and were read from libsodium.js 0.8.4 (libsodium 1.0.22): `crypto_pwhash_OPSLIMIT_MODERATE` 3, `MEMLIMIT_MODERATE` 268435456, `OPSLIMIT_SENSITIVE` 4, `MEMLIMIT_SENSITIVE` 1073741824, `ALG_ARGON2ID13` 2. Argon2id output of both profiles is identical in the two (the vectors).
 
 | Purpose         | Function                                             | Constants (headers of the `stable` branch)                              |
 |-----------------|------------------------------------------------------|-------------------------------------------------------------------------|

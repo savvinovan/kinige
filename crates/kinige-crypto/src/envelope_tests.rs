@@ -128,6 +128,13 @@ fn a_purged_with_a_payload_or_an_upsert_with_none_is_malformed() {
 }
 
 #[test]
+fn an_operation_prints_no_group_text() {
+    let shown = format!("{:?} {:#?}", upsert(), upsert());
+    assert!(!shown.contains("fake body text"), "{shown}");
+    assert!(shown.contains("group_bytes"));
+}
+
+#[test]
 fn the_opened_value_prints_no_payload() {
     let bytes = seal_operation(&account(), &dek(1), &upsert()).expect("seal");
     let opened = envelope::open(&bytes, &account(), &dek(1)).expect("open");

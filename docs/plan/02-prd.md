@@ -1,4 +1,4 @@
-# Kinige (Project Forest) — PRD v0.22
+# Kinige (Project Forest) — PRD v0.23
 
 **Type:** a personal journal and notes in the form of a "chat with yourself", local-first.
 **Platforms:** desktop — macOS first, then Windows and Linux (Tauri 2). Later a web client (decrypts data in the browser) and a phone, if the main app catches on.
@@ -9,6 +9,10 @@ The review this version is based on: [`01-review.md`](01-review.md). Research: [
 
 ## Version history
 
+- **v0.23 (06.11.2026)** — spike S4b, the envelope and the keys with the real binding (KINIG-96, `crates/kinige-crypto`, `spikes/S4b-keys`, `docs/adr/0018-s4b-envelope-and-keys.md`); ADR-0001 revision 9, §10.3 is unchanged:
+  - `libsodium-rs` builds and passes on Linux, macOS and Windows and links libsodium 1.0.22; libsodium.js reproduces every byte of the test vectors, so the web client is unblocked on the format; criteria S4b (§14) are met;
+  - seven corrections to the ADR text, none to the bytes: the format byte is checked before the length rules, an authentic header that disagrees with the transport stops the page, the outbox keeps envelope bytes, the revision id is the first 16 bytes of a 32-byte hash, where `max` of the profile rule matters, the binding prints key bytes with `Debug`, libsodium.js needs its sumo build for Argon2id;
+  - Argon2id measured: ARGON_PRD.
 - **v0.22 (05.11.2026)** — spike S4a, simulation of the sync protocol (KINIG-94, `spikes/S4a-sync`, `docs/adr/0017-s4a-sync-simulation.md`); ADR-0001 revision 8, §10.2 brought in line:
   - concurrent versions of `body` and `placement` are told apart by `vv`, the newest HLC per device in a version's ancestry, not by `base` alone; a lost version with no revision was found and is closed;
   - "cursor is outdated" means something a device cannot do without was dropped after its cursor since it last heard from the server, not "older than 180 days";
@@ -749,7 +753,7 @@ Each spike is a separate folder `spikes/Sx-*`, time-boxed, the result is a short
 | S2  | Feed with 100k              | TanStack Virtual (`anchorTo: 'end'`, keys by id) vs virtua vs the free `Virtuoso`          | No jank on fast scrolling, jump to a date < 300 ms, no jumps when images load and when loading more upward, memory is normal                                                                          | 3 days |
 | S3  | Forest                      | **Done:** Canvas 2D + cache, grid B (not met: Linux WebKit 2× no GPU, floor; ADR-0013)     | 60 FPS on pan/zoom on macOS **and Linux (including a machine without GPU-accelerated WebGL)**, correct hit-test of all days, readability of the year in a 1280 × 800 window, growth animation         | 4 days |
 | S4a | Sync protocol               | **Done:** 2–3 clients, 9 properties and 18 controls (ADR-0017)                             | Criteria from §10.2                                                                                                                                                                                   | 5 days |
-| S4b | Envelope and keys           | libsodium / RustCrypto; Argon2id; onboarding of the password and the recovery key          | Forging the HLC/flag/moving an envelope is detected; password change without re-encryption; recovery from 24 words                                                                                    | 4 days |
+| S4b | Envelope and keys           | **Done:** libsodium-rs 0.3.0 / libsodium 1.0.22; vectors from libsodium.js (ADR-0018)      | Forging the HLC/flag/moving an envelope is detected; password change without re-encryption; recovery from 24 words                                                                                    | 4 days |
 | S4c | Server and self-host        | axum + Postgres, `seq` under an account lock, blobs, `docker compose`, backup and restore  | No plain text in the server database; the cursor does not skip records with parallel pushes; restore from a backup → clients do a full resync                                                         | 5 days |
 | S5  | Search in Russian           | A stemmed column + FTS5, trigrams, a custom tokenizer                                      | Word forms are found, 100k messages < 300 ms, index size is acceptable                                                                                                                                | 1 day  |
 | S6  | OpenRouter embeddings       | `bge-m3`, `text-embedding-3-small` (512/1536), `qwen3-embedding-8b`; float32 vs int8       | Quality on 50 of my own queries in Russian, the cost of indexing 100k, query latency, memory on the client                                                                                            | 2 days |

@@ -9,10 +9,25 @@ use crate::keys::Dek;
 use std::collections::BTreeMap;
 
 /// What an envelope carries: the open header and, for an `upsert`, each group's exact bytes (JSON text).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Operation {
     pub header: Header,
     pub groups: BTreeMap<String, String>,
+}
+
+/// The groups hold the user's text: `Debug` names them and says how long they are, never what they say (CLAUDE.md, code style 1).
+impl std::fmt::Debug for Operation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let sizes: BTreeMap<&str, usize> = self
+            .groups
+            .iter()
+            .map(|(name, raw)| (name.as_str(), raw.len()))
+            .collect();
+        f.debug_struct("Operation")
+            .field("header", &self.header)
+            .field("group_bytes", &sizes)
+            .finish()
+    }
 }
 
 /// Header, payload, padding, AEAD. The header must validate and the groups must be exactly the header's.
