@@ -6,3 +6,4 @@ pub mod leak;
 pub mod link;
 pub mod log;
 pub mod server;
+pub mod wire;

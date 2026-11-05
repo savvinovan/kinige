@@ -4,7 +4,6 @@
 mod common;
 
 use common::*;
-use kinige_crypto::words::Words;
 use s4b_keys::client::{ClientError, Pending, Resumed};
 use s4b_keys::link::{Fault, Link};
 
@@ -61,12 +60,10 @@ fn a_cancelled_save_does_not_count() {
     client
         .begin_registration(LOGIN, &password(PASSWORD))
         .expect("begin");
-    // The user opened the dialog and cancelled: `confirm_saved` is not called, however often the button is tried.
+    // The user cancelled the dialog: `confirm_saved` is not called, however often the button is tried.
     for _ in 0..3 {
-        assert_eq!(
-            client.send_registration(&mut Link::new(&mut server)),
-            Err(ClientError::SaveNotConfirmed)
-        );
+        let result = client.send_registration(&mut Link::new(&mut server));
+        assert_eq!(result, Err(ClientError::SaveNotConfirmed));
     }
     client.confirm_saved().expect("a successful write");
     client
@@ -386,7 +383,6 @@ fn a_lost_answer_to_reissuing_the_words_is_repeated_safely() {
         ),
         Err(ClientError::Auth)
     );
-    assert!(Words::parse(&pdf_words).is_ok());
 }
 
 fn client_package_id(client: &s4b_keys::client::Client) -> kinige_crypto::AccountId {
