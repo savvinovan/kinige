@@ -157,6 +157,10 @@ fn the_settings_and_main_windows_may_subscribe_to_the_new_events() {
             }
         }
     }
+    // A build with the screens driver (KINIG-92) lets the capture window hear the driver's steps too; a default build never does.
+    if cfg!(feature = "screens-driver") {
+        return;
+    }
     let capture = window(&fixture, "capture");
     let error = call(
         &capture,

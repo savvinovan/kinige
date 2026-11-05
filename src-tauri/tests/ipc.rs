@@ -204,6 +204,13 @@ fn capture_window_cannot_call_anything_but_its_own_commands() {
         "plugin:log|log",
         "no_such_command",
     ] {
+        // The screens driver's capability (KINIG-92) lets every app window hear its steps: a build with the cargo feature grants the
+        // capture window an event subscription, a default build never does (`tests/config.rs` and `ipc_screens_driver.rs` check both).
+        if cfg!(feature = "screens-driver")
+            && matches!(cmd, "plugin:event|listen" | "plugin:event|unlisten")
+        {
+            continue;
+        }
         let error = call(
             &capture,
             cmd,
