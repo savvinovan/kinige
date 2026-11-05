@@ -18,7 +18,11 @@ Slice 7a spent about 8 of its 30 hours on real-window scenarios: 42 screens runs
 **Scenarios.** A scenario sets `DRIVER=1` (shell) or calls `Enable-Driver` (PowerShell) and uses `drive`, `press`, `wait_name`, `has` (`Drive`, `Press`, `Wait-Name`, `Has`); `shoot` reads the window text through the driver before each shot (about 100 ms where a tree dump took up to 3 minutes). Old scenarios keep their input and move when they are next touched. AX and `SendKeys` stay for native UI: file pickers, the tray and native menus, resizing a window, global hotkeys (never simulated).
 
 ## What the probe found (`docs/screens/screens-driver-probe*/facts.txt`)
-PROBE_FACTS
+Both runners, same questions (macOS 15.8.2 with WKWebView on `tauri://localhost`, Windows 10.0.26100 with WebView2 on `http://tauri.localhost`):
+- **Play without user activation works on both.** A synthetic `press` is `isTrusted: false`, yet the note played: the Pause button showed, the slider's value text moved (macOS `0:02 of 0:40` then `0:06 of 0:40` three seconds apart, Windows `0:02 of 0:14` then `0:05 of 0:14`) and the audio route logged 68 requests on macOS and the answer on Windows. So neither platform needed the fallback the spec allowed (AX press on macOS, the Tab path on Windows).
+- **A press starts a recording from the fake microphone on both**, and the note is saved (`audio/mp4`, 14.1 s on macOS, 14.0 s on Windows).
+- **The driver answers during a recording.** Eight steps one second apart answered, none failed, the slowest took 242 ms (macOS) and 126 ms (Windows). An AX call on the macOS runner at the same time took 10 245 ms and was cut off by its time limit, as in the 7a retro.
+- **Round trip of one step** (20 `has` steps; request file written to reply file read, including starting `perl` for the clock on macOS): median 206 ms, range 130 to 236 ms on macOS; median 79 ms, range 62 to 138 ms on Windows. The first step of a run waits for the page to listen (1.6 s on macOS, 11.4 s on Windows, a cold WebView2). A `text` step of an idle window took 520 ms on macOS (8 kB) and 4.7 s on Windows (11 k characters, read with `ConvertFrom-Json`, which was replaced by `JavaScriptSerializer` afterwards).
 
 ## Consequences
 - The capture window may hear the driver's steps in a driver build only; `tests/ipc.rs` and `tests/ipc_settings.rs` skip the "capture has no event subscription" check there, and keep it in a default build.
