@@ -46,11 +46,12 @@ export function LiveWave({ read, label }: LiveWaveProps) {
 
     const reduced = prefersReducedMotion(element);
     const frame = () => {
-      // The text size and the colours can change (the settings window): look at the tokens again about once a second.
+      // The text size and the colours can change (the settings window): look at the tokens again about once a second. Until the tokens could
+      // be read at all (the stylesheet may not be applied at the first frame) look again on every frame, so the bars are never missing for a second.
       const now = performance.now();
-      if (now - tokensAt > 1000) {
+      if (!geometry || now - tokensAt > 1000) {
         tokensAt = now;
-        measure(false);
+        measure(geometry === null);
       }
       if (!geometry) return;
       const { levels, at, total } = read(barsFor(geometry.width, geometry.barWidth, geometry.gap));

@@ -67,17 +67,20 @@ export function usePlayerCanvas(peaks: Uint8Array | null): {
     return () => window.removeEventListener("resize", measure);
   }, [measure]);
 
+  // Until the tokens could be read (the stylesheet may not be applied at the first paint) every draw tries to measure again.
   useEffect(() => {
     peaksRef.current = peaks;
-    redraw();
-  }, [peaks, redraw]);
+    if (measured.current === null) measure();
+    else redraw();
+  }, [peaks, redraw, measure]);
 
   const draw = useCallback(
     (share: number) => {
       progress.current = share;
-      redraw();
+      if (measured.current === null) measure();
+      else redraw();
     },
-    [redraw],
+    [redraw, measure],
   );
 
   return { canvas, draw, measure };

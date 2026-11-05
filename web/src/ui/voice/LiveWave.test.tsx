@@ -181,6 +181,16 @@ describe("LiveWave", () => {
     expect(frames.size).toBe(0);
   });
 
+  it("while the tokens cannot be read yet (the stylesheet is not applied at the first frame) it looks again on every frame and draws as soon as it can", () => {
+    TOKENS["--layout-voice-rec-wave-gap"] = "";
+    render(<LiveWave read={() => LEVELS} label="Microphone level" />, { language: "en" });
+    runFrame();
+    expect(fills).toBe(0);
+    TOKENS["--layout-voice-rec-wave-gap"] = rem(0.15);
+    runFrame();
+    expect(fills).toBe(1);
+  });
+
   it("looks at the tokens again about once a second (the text size can change)", () => {
     const now = vi.spyOn(performance, "now");
     now.mockReturnValue(0);
