@@ -5,7 +5,7 @@ import { anchorOf, wheelZoomFactor } from "./viewerMath";
 /** A press that moves less than this (px) is a click, not a drag. */
 export const CLICK_SLOP_PX = 4;
 /** Two clicks on the photo within this (ms) are a double click; a single click on the photo at fit size closes the viewer after it. */
-export const DOUBLE_CLICK_MS = 250;
+export const DOUBLE_CLICK_MS = 300;
 
 type Where = "image" | "backdrop";
 
@@ -69,6 +69,12 @@ export function useViewerInput(
     return () => window.clearTimeout(closeTimer.current);
   }, [resetKey]);
 
+  // The photo was zoomed or turned while a close waited for a double click: it stays open.
+  useEffect(() => {
+    window.clearTimeout(closeTimer.current);
+    closeTimer.current = undefined;
+  }, [viewer.percent, viewer.turns]);
+
   useEffect(() => {
     const dialog = root.current;
     if (!dialog) return;
@@ -131,15 +137,24 @@ export function useViewerInput(
       return;
     }
     lastTap.current = { at: now, x, y };
-    // At fit size a click on the photo closes, but a second click may still turn it into a double click: wait for it.
-    if (!view.zoomed) closeTimer.current = window.setTimeout(() => live.current.onClose(), DOUBLE_CLICK_MS);
+    // At fit size a click on the photo closes, but a second click may still turn it into a double click: wait for it. Whoever zoomed or turned
+    // the photo meanwhile (a key, a button, the wheel, a pinch) did not mean to close: that cancels the timer (the effect above), and the
+    // timer itself checks once more that the photo is as it was at the click.
+    if (view.zoomed) return;
+    const { zoom, turns } = view.current();
+    closeTimer.current = window.setTimeout(() => {
+      const now = live.current.viewer.current();
+      if (now.zoom === zoom && now.turns === turns) live.current.onClose();
+    }, DOUBLE_CLICK_MS);
   };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (press.current || event.button !== 0) return;
     const target = event.target instanceof Element ? event.target : null;
     if (target?.closest("button, [data-viewer-control]")) return;
-    const where = target?.closest("[data-viewer-image]") ? "image" : "backdrop";
+    // The bar lies over a zoomed photo: its empty part is the photo then, not the backdrop.
+    const onPhoto = target?.closest("[data-viewer-image]") || (live.current.viewer.zoomed && target?.closest("[data-viewer-bar]"));
+    const where = onPhoto ? "image" : "backdrop";
     press.current = { id: event.pointerId, x: event.clientX, y: event.clientY, where, moved: false, from: live.current.viewer.current().pan };
     try {
       event.currentTarget.setPointerCapture(event.pointerId);

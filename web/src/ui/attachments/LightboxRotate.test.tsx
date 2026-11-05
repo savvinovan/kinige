@@ -75,12 +75,18 @@ describe("Lightbox rotation", () => {
     expect(screen.getByRole("button", { name: "Zoom in" })).toHaveAttribute("title", "Zoom in (+)");
     expect(screen.getByRole("button", { name: "Zoom out" })).toHaveAttribute("title", "Zoom out (-)");
     expect(screen.getByRole("button", { name: "Fit to window, zoom 100%" })).toHaveAttribute("title", "Fit to window (0)");
+    expect(screen.getByRole("button", { name: "Close" })).toHaveAttribute("title", "Close (Esc)");
+    expect(screen.getByRole("button", { name: "Previous photo" })).toHaveAttribute("title", "Previous photo (←)");
+    expect(screen.getByRole("button", { name: "Next photo" })).toHaveAttribute("title", "Next photo (→)");
     unmount();
     render(<Harness />, { language: "ru" });
     expect(screen.getByRole("button", { name: "Повернуть влево" })).toHaveAttribute("title", "Повернуть влево (R)");
     expect(screen.getByRole("button", { name: "Увеличить" })).toHaveAttribute("title", "Увеличить (+)");
     expect(screen.getByRole("button", { name: "Уменьшить" })).toHaveAttribute("title", "Уменьшить (-)");
     expect(screen.getByRole("button", { name: "Вписать в окно, масштаб 100%" })).toHaveAttribute("title", "Вписать в окно (0)");
+    expect(screen.getByRole("button", { name: "Закрыть" })).toHaveAttribute("title", "Закрыть (Esc)");
+    expect(screen.getByRole("button", { name: "Предыдущее фото" })).toHaveAttribute("title", "Предыдущее фото (←)");
+    expect(screen.getByRole("button", { name: "Следующее фото" })).toHaveAttribute("title", "Следующее фото (→)");
   });
 
   it("only the steps ease; the wheel and a drag follow the input", () => {

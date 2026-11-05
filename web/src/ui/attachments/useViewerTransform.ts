@@ -30,6 +30,7 @@ export interface ViewerTransform {
   /** Style of the `<img>`: the box that fits the stage, and the transform for pan, zoom and turn. */
   imageStyle: CSSProperties | undefined;
   animate: boolean;
+  turns: number;
   zoomed: boolean;
   /** Zoom as a whole percentage of fit: fit is 100. */
   percent: number;
@@ -129,6 +130,7 @@ export function useViewerTransform({ resetKey, natural, figure, enabled }: Optio
     current: () => latest.current.state,
     imageStyle: imageStyle(natural, stage, state, pan),
     animate: state.animate,
+    turns: state.turns,
     zoomed,
     percent: Math.round(state.zoom * 100),
     atMin: !zoomed,

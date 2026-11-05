@@ -78,7 +78,7 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
       {...input.handlers}
     >
       <div className="lightbox__scrim" aria-hidden="true" />
-      <header className="lightbox__bar">
+      <header className="lightbox__bar" data-viewer-bar>
         {many ? (
           <span className="lightbox__counter" aria-live="polite" data-viewer-control>
             {t("attachments.counter", { index: position + 1, total: images.length })}
@@ -118,13 +118,20 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
             />
           </div>
         )}
-        <IconButton icon="close" label={t("attachments.close")} className="lightbox__close" onClick={onClose} />
+        <IconButton
+          icon="close"
+          label={t("attachments.close")}
+          title={tip(t("attachments.close"), "Esc")}
+          className="lightbox__close"
+          onClick={onClose}
+        />
       </header>
       <div className="lightbox__stage">
         {many ? (
           <IconButton
             icon="chevronLeft"
             label={t("attachments.previous")}
+            title={tip(t("attachments.previous"), "←")}
             className="lightbox__step"
             aria-disabled={position === 0 || undefined}
             onClick={() => step(-1)}
@@ -156,6 +163,7 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
           <IconButton
             icon="chevronRight"
             label={t("attachments.next")}
+            title={tip(t("attachments.next"), "→")}
             className="lightbox__step"
             aria-disabled={position === last || undefined}
             onClick={() => step(1)}
