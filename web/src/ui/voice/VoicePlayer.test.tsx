@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen } from "../../test/render";
 import { installWaveCanvas } from "../../test/waveCanvas";
 import { demoPeaks, demoVoice } from "../attachments/demo";
+import { TEXT_SCALE_ATTRIBUTE } from "../screens/textSize";
 import { harness, installPlayerMocks, NOTE, progress, show, tick } from "./playerHarness";
 import { resetPlayableCache, showsWaveform } from "./VoicePlayer";
 
 beforeEach(installPlayerMocks);
 
 afterEach(() => {
+  document.documentElement.removeAttribute(TEXT_SCALE_ATTRIBUTE);
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -65,6 +67,17 @@ describe("VoicePlayer", () => {
       vi.unstubAllGlobals();
       installPlayerMocks();
     }
+  });
+
+  it("an idle note takes the new size when the text size changes, without a window resize or Play", async () => {
+    const { root } = installWaveCanvas();
+    const { canvas } = show(NOTE());
+    expect(canvas?.width).toBe(64 * 2 + 63);
+    // Large text: 0.16 rem and 0.11 rem at 17 px are 2.72 and 1.87 CSS pixels, a bar of 3 and a gap of 2 at density 1.
+    root.px = 17;
+    document.documentElement.setAttribute(TEXT_SCALE_ATTRIBUTE, "large");
+    await vi.waitFor(() => expect(canvas?.width).toBe(64 * 3 + 63 * 2));
+    expect(canvas?.style.width).toBe(`${64 * 3 + 63 * 2}px`);
   });
 
   it("draws a flat row of dots while the note has no peaks, and for the marker 'could not decode', in the same layout", () => {
