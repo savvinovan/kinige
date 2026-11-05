@@ -31,6 +31,9 @@ pub(crate) fn seal(header: &Header, payload: &BTreeMap<String, String>) -> Vec<u
 /// page is not applied. `Tampered` stands for both.
 pub(crate) fn open(wire: &[u8], transport: &Header) -> Result<Versioned, EnvelopeError> {
     let (account, dek) = keys();
+    // Not a model for slice 11: the simulation does not model `pending_unknown` (ADR-0017), so `UnknownFormat`, `UnknownKeyId` and every
+    // other error that is not "authentic but malformed" fall into `Tampered` here. A real client sends the first two to
+    // `pending_unknown` and moves the cursor (§A.4 step 2); the envelopes of this simulation are always format 1 and key 1.
     let operation = open_operation(wire, account, dek).map_err(|error| match error {
         CryptoError::Malformed(_) | CryptoError::Padding => EnvelopeError::Malformed,
         _ => EnvelopeError::Tampered,

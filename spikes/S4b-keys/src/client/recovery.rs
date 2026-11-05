@@ -131,7 +131,10 @@ impl Client {
         let login = pending.login.clone();
         match self.login(link, &login, new_password) {
             Ok(()) => Ok(Resumed::Applied),
-            Err(ClientError::Auth) => {
+            // A refusal by the profile rule is the same answer: a replacement made on this device would have given the new password a
+            // profile of at least `seen`, so a server that still sends a lower one has not applied it (§A.5: "refusal = enter the
+            // old words again").
+            Err(ClientError::Auth | ClientError::Profile(_)) => {
                 self.store.pending = None;
                 self.log.event("client recovery dropped: not applied");
                 Ok(Resumed::NotApplied)

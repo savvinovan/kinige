@@ -1,6 +1,6 @@
 //! Registration, login on a new device and password change (ADR-0001 §8.3-§8.5, appendix §A.5).
 
-use super::{Client, ClientError, Pending, PendingRegistration, random_uuid_v4};
+use super::{Client, ClientError, Pending, PendingRegistration, Resumed, random_uuid_v4};
 use crate::link::Link;
 use crate::server::{Package, RegisterError};
 use kinige_crypto::ids::normalize_login;
@@ -165,12 +165,49 @@ impl Client {
             self.default_profile,
         )?;
         let part = self.password_part(new, &account.dek, &account.account_id, new_profile)?;
-        link.call(|server| server.change_password(&token, &old_auth, &part, revoke_others))?
-            .map_err(|_| ClientError::Auth)?;
+        let answer =
+            link.call(|server| server.change_password(&token, &old_auth, &part, revoke_others));
+        let Ok(answer) = answer else {
+            // The server may or may not have applied it. A retry with the old password cannot tell: if it was applied, the old
+            // password is already wrong. Mark it and settle by logging in with the new one.
+            self.store.pending = Some(Pending::PasswordChange);
+            self.log.event("client password change: no answer");
+            return Err(ClientError::Lost);
+        };
+        answer.map_err(|_| ClientError::Auth)?;
         self.store.kdf_profile_seen =
             Some(new_profile.max(self.store.kdf_profile_seen.unwrap_or(new_profile)));
+        self.store.pending = None;
         self.log.event("client password changed");
         Ok(())
+    }
+
+    /// After a lost answer to a password change (§8.5): logs in with the **new** password. Success means the server applied the change
+    /// (the device has a fresh session and the profile it was given); a refusal means it did not, the old password still works and the
+    /// change can be sent again. The same rule as for a recovery (§A.5).
+    pub fn settle_password_change(
+        &mut self,
+        link: &mut Link<'_>,
+        new: &Password,
+    ) -> Result<Resumed, ClientError> {
+        if !matches!(self.store.pending, Some(Pending::PasswordChange)) {
+            return Err(ClientError::NothingPending);
+        }
+        let login = self
+            .store
+            .account
+            .as_ref()
+            .map(|account| account.login.clone())
+            .ok_or(ClientError::NotLoggedIn)?;
+        match self.login(link, &login, new) {
+            Ok(()) => Ok(Resumed::Applied),
+            Err(ClientError::Auth | ClientError::Profile(_)) => {
+                self.store.pending = None;
+                self.log.event("client password change not applied");
+                Ok(Resumed::NotApplied)
+            }
+            Err(other) => Err(other),
+        }
     }
 
     fn build_package(

@@ -120,7 +120,7 @@ Publishing the same `remote_blob_id` again gets the "already exists" response, w
 8. Assigning `seq` under the account lock, writing.
 
 **Client, pull:**
-1. The cap on the whole envelope (`MAX_ENVELOPE` = 9 + 4096 + 24 + 1 MiB + 1024 + 16) and nothing else about lengths (S4b, 2026-11-06).
+1. The cap on the whole envelope (`MAX_ENVELOPE` = 9 + 4096 + 24 + 1 MiB + 1024 + 16) and nothing else about lengths (S4b, 2026-11-06). A future format must fit within this cap or an old client answers `TooLarge` and not `pending_unknown` (ADR §5.4).
 2. `format_version`; unknown → `pending_unknown` with `entity` and `id` from the transport, the cursor moves. Then the length rules of version 1 (§A.1: `header_len`, the ciphertext multiple of 1024 plus 16, the declared total), which are not applied to another format. Then `key_id`; unknown → `pending_unknown` the same way. On a full resync such a record counts as "is on the server".
 3. AEAD; error → the page is not applied, the cursor stays, the error is visible to the user.
 4. Matching the authentic header's `entity`, `id`, `op` and group stamps against those declared by the transport. **A mismatch is handled like an AEAD failure (S4b, 2026-11-06):** the page is not applied, the cursor stays, the error is visible; the server served a genuine envelope under another record.
@@ -138,7 +138,7 @@ Without a typed-back check, not only a failure before the request is dangerous b
 - the server is idempotent:
   - registration — first the `account_id` check: the same package → success, `account_id` taken by another package → a separate error (the client creates a new `account_id` and rebuilds the wraps, §1, the words stay the same); only then whether the login is taken — otherwise a repeat after a lost response would get "login taken";
   - recovery — by the new `rc_auth_key` **and equality of the rest of the package**: the replacement was already made by the same package → success, by another package → a separate error;
-- if the outcome of a recovery is uncertain after a restart (the old `rc_auth_key` is no longer in memory), the client tries to log in with the new password: success = the replacement went through; refusal = the old words have to be entered again;
+- if the outcome of a recovery is uncertain after a restart (the old `rc_auth_key` is no longer in memory), the client tries to log in with the new password: success = the replacement went through; refusal = the old words have to be entered again (S4b, 2026-11-06: a refusal by the profile rule counts as a refusal: a server that still sends a lower profile than this device has seen has not applied the replacement, since a replacement made here gives the new password at least that profile; the same login settles a lost answer to a password change, §8.5);
 - "Save" counts only after a successful file write or sending to print; cancelling the dialog does not count;
 - if the login is taken, the user picks another login, while `account_id`, the keys and **the words do not change** (`rc_root` does not depend on the login);
 - after a definite answer, the package is deleted from the store.

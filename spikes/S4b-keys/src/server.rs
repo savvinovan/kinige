@@ -11,6 +11,7 @@ use kinige_crypto::ids::{
 use kinige_crypto::keys::SALT_LEN;
 use kinige_crypto::secret::{AuthKey, RcAuthKey, ServerSecret};
 use kinige_crypto::wrap::{WRAP_LEN, WRAP_VERSION};
+use libsodium_rs::utils;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub use crate::wire::{
@@ -21,6 +22,10 @@ pub use crate::wire::{
 /// The profile a login without an account is answered with (§8.4).
 const DEFAULT_PROFILE: u8 = 1;
 
+/// The whole state is `Debug` on purpose: a test dumps it and scans the dump for every secret it knows (`tests/logs.rs`). That proves
+/// something only because nothing below holds a `kinige-crypto` secret type, whose `Debug` is redacted: every field is a plain byte
+/// array, vector or string, so a raw key stored anywhere would show in the dump. Only the server's own `secret` is redacted.
+#[derive(Debug)]
 pub struct Server {
     accounts: BTreeMap<[u8; 16], Stored>,
     by_login: BTreeMap<String, [u8; 16]>,
@@ -29,6 +34,7 @@ pub struct Server {
     log: Log,
 }
 
+#[derive(Debug)]
 struct Stored {
     login: String,
     salt: [u8; SALT_LEN],
@@ -39,9 +45,41 @@ struct Stored {
     wrap_pw: Vec<u8>,
     wrap_rc: Vec<u8>,
     sessions: BTreeSet<[u8; AUTH_HASH_LEN]>,
-    registered: Package,
-    last_recovery: Option<Recovery>,
-    last_reissue: Option<(RcAuthKey, Vec<u8>)>,
+    registered: PackageRecord,
+    last_recovery: Option<RecoveryRecord>,
+    last_reissue: Option<ReissueRecord>,
+}
+
+/// What registration sent, as hashes: enough to tell the same package again from another one (§A.5) and no key.
+#[derive(Debug)]
+struct PackageRecord {
+    account_id: [u8; 16],
+    login: String,
+    salt: [u8; SALT_LEN],
+    profile: u8,
+    auth_hash: [u8; AUTH_HASH_LEN],
+    rc_hash: [u8; AUTH_HASH_LEN],
+    wrap_pw: Vec<u8>,
+    wrap_rc: Vec<u8>,
+    key_id: u32,
+}
+
+/// The last recovery applied, as hashes (§A.5).
+#[derive(Debug)]
+struct RecoveryRecord {
+    salt: [u8; SALT_LEN],
+    profile: u8,
+    auth_hash: [u8; AUTH_HASH_LEN],
+    wrap_pw: Vec<u8>,
+    rc_hash: [u8; AUTH_HASH_LEN],
+    wrap_rc: Vec<u8>,
+}
+
+/// The last reissue applied: the hash of the new `rc_auth_key` and its `wrap_rc` (§A.5).
+#[derive(Debug)]
+struct ReissueRecord {
+    rc_hash: [u8; AUTH_HASH_LEN],
+    wrap_rc: Vec<u8>,
 }
 
 impl Server {
@@ -66,7 +104,7 @@ impl Server {
             return Err(RegisterError::Invalid);
         }
         if let Some(existing) = self.accounts.get(package.account_id.as_bytes()) {
-            if !same_package(&existing.registered, package) {
+            if !package_matches(&existing.registered, package) {
                 self.log.event("server register refused: account id taken");
                 return Err(RegisterError::AccountIdTaken);
             }
@@ -77,19 +115,29 @@ impl Server {
             self.log.event("server register refused: login taken");
             return Err(RegisterError::LoginTaken);
         }
+        let auth = auth_hash(package.auth_key.as_bytes()).map_err(|_| RegisterError::Invalid)?;
+        let rc = auth_hash(package.rc_auth_key.as_bytes()).map_err(|_| RegisterError::Invalid)?;
         let stored = Stored {
             login: login.clone(),
             salt: package.salt,
             profile: package.profile,
-            auth_hash: auth_hash(package.auth_key.as_bytes())
-                .map_err(|_| RegisterError::Invalid)?,
-            rc_hash: auth_hash(package.rc_auth_key.as_bytes())
-                .map_err(|_| RegisterError::Invalid)?,
+            auth_hash: auth,
+            rc_hash: rc,
             key_id: package.key_id,
             wrap_pw: package.wrap_pw.clone(),
             wrap_rc: package.wrap_rc.clone(),
             sessions: BTreeSet::new(),
-            registered: package.clone(),
+            registered: PackageRecord {
+                account_id: *package.account_id.as_bytes(),
+                login: login.clone(),
+                salt: package.salt,
+                profile: package.profile,
+                auth_hash: auth,
+                rc_hash: rc,
+                wrap_pw: package.wrap_pw.clone(),
+                wrap_rc: package.wrap_rc.clone(),
+                key_id: package.key_id,
+            },
             last_recovery: None,
             last_reissue: None,
         };
@@ -207,12 +255,14 @@ impl Server {
         let by_login = normalize_login(login).and_then(|login| self.by_login.get(&login).copied());
         let new_hash =
             auth_hash(recovery.rc_auth_key.as_bytes()).map_err(|_| RecoverError::Invalid)?;
+        let new_password_hash =
+            auth_hash(recovery.password.auth_key.as_bytes()).map_err(|_| RecoverError::Invalid)?;
         if let Some(stored) = by_login
             .and_then(|id| self.accounts.get(&id))
-            .filter(|stored| stored.rc_hash == new_hash)
+            .filter(|stored| utils::memcmp(&stored.rc_hash, &new_hash))
         {
             return match &stored.last_recovery {
-                Some(done) if same_recovery(done, recovery) => {
+                Some(done) if recovery_matches(done, recovery, &new_password_hash, &new_hash) => {
                     self.log.event("server recovery repeated: same package");
                     Ok(self.open_session(AccountId::from_bytes(by_login.unwrap_or_default())))
                 }
@@ -226,8 +276,6 @@ impl Server {
         let id = self
             .account_of_rc(login, old)
             .ok_or(RecoverError::AuthFailed)?;
-        let new_password_hash =
-            auth_hash(recovery.password.auth_key.as_bytes()).map_err(|_| RecoverError::Invalid)?;
         let stored = self.accounts.get_mut(&id).ok_or(RecoverError::AuthFailed)?;
         stored.salt = recovery.password.salt;
         stored.profile = recovery.password.profile;
@@ -236,7 +284,14 @@ impl Server {
         stored.rc_hash = new_hash;
         stored.wrap_rc = recovery.wrap_rc.clone();
         stored.sessions.clear();
-        stored.last_recovery = Some(recovery.clone());
+        stored.last_recovery = Some(RecoveryRecord {
+            salt: recovery.password.salt,
+            profile: recovery.password.profile,
+            auth_hash: new_password_hash,
+            wrap_pw: recovery.password.wrap_pw.clone(),
+            rc_hash: new_hash,
+            wrap_rc: recovery.wrap_rc.clone(),
+        });
         self.log.event("server recovery ok: sessions revoked");
         Ok(self.open_session(AccountId::from_bytes(id)))
     }
@@ -258,11 +313,11 @@ impl Server {
             .accounts
             .get_mut(&id)
             .ok_or(SessionError::Unauthorized)?;
-        if stored.rc_hash == new_hash {
-            let same = stored
-                .last_reissue
-                .as_ref()
-                .is_some_and(|(key, wrap)| key.ct_eq(new_rc) && wrap == wrap_rc);
+        if utils::memcmp(&stored.rc_hash, &new_hash) {
+            let same = stored.last_reissue.as_ref().is_some_and(|done| {
+                verify_auth(&done.rc_hash, new_rc.as_bytes()).unwrap_or(false)
+                    && done.wrap_rc == wrap_rc
+            });
             return if same {
                 Ok(())
             } else {
@@ -271,7 +326,10 @@ impl Server {
         }
         stored.rc_hash = new_hash;
         stored.wrap_rc = wrap_rc.to_vec();
-        stored.last_reissue = Some((new_rc.clone(), wrap_rc.to_vec()));
+        stored.last_reissue = Some(ReissueRecord {
+            rc_hash: new_hash,
+            wrap_rc: wrap_rc.to_vec(),
+        });
         self.log.event("server words reissued");
         Ok(())
     }
@@ -374,23 +432,30 @@ fn token_hash(token: &Token) -> [u8; AUTH_HASH_LEN] {
     auth_hash(token.as_bytes()).unwrap_or([0; AUTH_HASH_LEN])
 }
 
-fn same_package(a: &Package, b: &Package) -> bool {
-    a.account_id == b.account_id
-        && a.login == b.login
-        && a.salt == b.salt
-        && a.profile == b.profile
-        && a.auth_key.ct_eq(&b.auth_key)
-        && a.rc_auth_key.ct_eq(&b.rc_auth_key)
-        && a.wrap_pw == b.wrap_pw
-        && a.wrap_rc == b.wrap_rc
-        && a.key_id == b.key_id
+/// Whether `package` is the one that was registered: the keys are compared through their hashes (`verify_auth`, `sodium_memcmp`).
+fn package_matches(record: &PackageRecord, package: &Package) -> bool {
+    record.account_id == *package.account_id.as_bytes()
+        && Some(&record.login) == normalize_login(&package.login).as_ref()
+        && record.salt == package.salt
+        && record.profile == package.profile
+        && verify_auth(&record.auth_hash, package.auth_key.as_bytes()).unwrap_or(false)
+        && verify_auth(&record.rc_hash, package.rc_auth_key.as_bytes()).unwrap_or(false)
+        && record.wrap_pw == package.wrap_pw
+        && record.wrap_rc == package.wrap_rc
+        && record.key_id == package.key_id
 }
 
-fn same_recovery(a: &Recovery, b: &Recovery) -> bool {
-    a.password.salt == b.password.salt
-        && a.password.profile == b.password.profile
-        && a.password.auth_key.ct_eq(&b.password.auth_key)
-        && a.password.wrap_pw == b.password.wrap_pw
-        && a.rc_auth_key.ct_eq(&b.rc_auth_key)
-        && a.wrap_rc == b.wrap_rc
+/// Whether `recovery` (whose hashes the caller made) is the one that was applied.
+fn recovery_matches(
+    record: &RecoveryRecord,
+    recovery: &Recovery,
+    auth: &[u8; AUTH_HASH_LEN],
+    rc: &[u8; AUTH_HASH_LEN],
+) -> bool {
+    record.salt == recovery.password.salt
+        && record.profile == recovery.password.profile
+        && utils::memcmp(&record.auth_hash, auth)
+        && utils::memcmp(&record.rc_hash, rc)
+        && record.wrap_pw == recovery.password.wrap_pw
+        && record.wrap_rc == recovery.wrap_rc
 }

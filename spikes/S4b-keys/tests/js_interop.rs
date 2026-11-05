@@ -11,13 +11,15 @@ use kinige_crypto::keys::{self, derive_pw_root};
 use kinige_crypto::secret::BlobKey;
 use kinige_crypto::words::Words;
 use kinige_crypto::{Profile, open_operation};
+use libsodium_rs::utils;
 use s4b_keys::client::Pending;
 use s4b_keys::link::Link;
-use std::process::Command;
+use std::process::{self, Command};
+use std::{env, fs};
 
 #[test]
 fn libsodium_js_opens_what_the_real_flow_sealed() {
-    if std::env::var("S4B_NODE").ok().as_deref() != Some("1") {
+    if env::var("S4B_NODE").ok().as_deref() != Some("1") {
         eprintln!("S4B_NODE is not 1: the libsodium.js interop test is skipped (CI runs it)");
         return;
     }
@@ -47,10 +49,10 @@ fn libsodium_js_opens_what_the_real_flow_sealed() {
     let file: Vec<u8> = (0..1_048_577usize).map(|i| (i % 251) as u8).collect();
     let blob = seal_blob(&file, &blob_key).expect("blob");
 
-    let dir = std::env::temp_dir().join(format!("kinige-s4b-interop-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).expect("dir");
-    std::fs::write(dir.join("blob.bin"), &blob).expect("blob file");
-    let hex = |bytes: &[u8]| libsodium_rs::utils::bin2hex(bytes);
+    let dir = env::temp_dir().join(format!("kinige-s4b-interop-{}", process::id()));
+    fs::create_dir_all(&dir).expect("dir");
+    fs::write(dir.join("blob.bin"), &blob).expect("blob file");
+    let hex = |bytes: &[u8]| utils::bin2hex(bytes);
     let input = serde_json::json!({
         "account_id_hex": hex(account_id(&a).as_bytes()),
         "key_id": 1,
@@ -70,7 +72,7 @@ fn libsodium_js_opens_what_the_real_flow_sealed() {
         "blob_key": hex(blob_key.as_bytes()),
         "blob_file_size": file.len(),
     });
-    std::fs::write(dir.join("interop.json"), input.to_string()).expect("input file");
+    fs::write(dir.join("interop.json"), input.to_string()).expect("input file");
 
     let script = concat!(env!("CARGO_MANIFEST_DIR"), "/vectors/verify.mjs");
     let output = Command::new("node")
@@ -78,7 +80,7 @@ fn libsodium_js_opens_what_the_real_flow_sealed() {
         .arg(&dir)
         .output()
         .expect("node runs");
-    let _ = std::fs::remove_dir_all(&dir);
+    let _ = fs::remove_dir_all(&dir);
     assert!(
         output.status.success(),
         "libsodium.js refused what Rust sealed:\n{}\n{}",

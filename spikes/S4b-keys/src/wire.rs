@@ -24,14 +24,21 @@ impl Token {
     }
 }
 
+impl Drop for Token {
+    fn drop(&mut self) {
+        libsodium_rs::utils::memzero(&mut self.0);
+    }
+}
+
 impl std::fmt::Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Token(<redacted>)")
     }
 }
 
-/// Everything a registration sends (§8.3), also what the client keeps as its prepared package (§A.5).
-#[derive(Debug, Clone)]
+/// Everything a registration sends (§8.3), also what the client keeps as its prepared package (§A.5). `Debug` is written by hand: it
+/// names no login and no key.
+#[derive(Clone)]
 pub struct Package {
     pub account_id: AccountId,
     pub login: String,
@@ -44,8 +51,18 @@ pub struct Package {
     pub key_id: u32,
 }
 
+impl std::fmt::Debug for Package {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Package")
+            .field("account_id", &self.account_id)
+            .field("profile", &self.profile)
+            .field("key_id", &self.key_id)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A new password: salt, profile, `auth_key` and `wrap_pw` (§8.5).
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PasswordPart {
     pub salt: [u8; SALT_LEN],
     pub profile: u8,
@@ -53,12 +70,28 @@ pub struct PasswordPart {
     pub wrap_pw: Vec<u8>,
 }
 
+impl std::fmt::Debug for PasswordPart {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PasswordPart")
+            .field("profile", &self.profile)
+            .finish_non_exhaustive()
+    }
+}
+
 /// What a recovery replaces in one transaction (§8.6 item 4): the password part and the words part.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Recovery {
     pub password: PasswordPart,
     pub rc_auth_key: RcAuthKey,
     pub wrap_rc: Vec<u8>,
+}
+
+impl std::fmt::Debug for Recovery {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Recovery")
+            .field("password", &self.password)
+            .finish_non_exhaustive()
+    }
 }
 
 pub struct Session {

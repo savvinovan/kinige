@@ -182,6 +182,20 @@ fn a_wrap_opens_only_with_its_kek_account_key_id_salt_and_profile() {
         wrap::unwrap_pw(&wrapped[..72], &kek, &account, 1, &SALT, Profile::P1).unwrap_err(),
         CryptoError::CiphertextLength
     );
+    // A future wrap version may have another length: it is "unknown version", not "wrong length".
+    for length in [1, 10, 73, 200] {
+        let mut future = vec![0u8; length];
+        future[0] = 2;
+        assert_eq!(
+            wrap::unwrap_pw(&future, &kek, &account, 1, &SALT, Profile::P1).unwrap_err(),
+            CryptoError::UnknownWrapVersion(2),
+            "length {length}"
+        );
+    }
+    assert_eq!(
+        wrap::unwrap_pw(&[], &kek, &account, 1, &SALT, Profile::P1).unwrap_err(),
+        CryptoError::Truncated
+    );
 }
 
 #[test]

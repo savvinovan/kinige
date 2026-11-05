@@ -9,83 +9,12 @@ use crate::link::Lost;
 use crate::log::Log;
 use crate::server::{Package, PasswordPart, Token};
 use kinige_crypto::keys::{self, Dek, SALT_LEN};
-use kinige_crypto::secret::{Password, RcAuthKey};
+use kinige_crypto::secret::{Password, PwRoot, RcAuthKey};
 use kinige_crypto::words::Words;
 use kinige_crypto::wrap::wrap_pw;
 use kinige_crypto::{AccountId, CryptoError, Profile};
 
 pub use recovery::{PendingRecovery, Resumed};
-
-/// What survives killing the process: the OS secret store (DEK, token, prepared package) and the device's database
-/// (`kdf_profile_seen`, §A.5 "sync_state"). Cloning it is a restart's persisted state.
-#[derive(Clone, Default)]
-pub struct DeviceStore {
-    pub kdf_profile_seen: Option<Profile>,
-    pub account: Option<AccountState>,
-    pub pending: Option<Pending>,
-}
-
-#[derive(Clone)]
-pub struct AccountState {
-    pub account_id: AccountId,
-    pub login: String,
-    pub dek: Dek,
-    pub token: Option<Token>,
-}
-
-/// A prepared package saved **before** its words are shown and repeated until a definite answer (§A.5).
-#[derive(Clone)]
-pub enum Pending {
-    Registration(PendingRegistration),
-    Recovery(PendingRecovery),
-    Reissue(PendingReissue),
-}
-
-#[derive(Clone)]
-pub struct PendingRegistration {
-    pub package: Package,
-    pub dek: Dek,
-    pub saved: bool,
-}
-
-#[derive(Clone)]
-pub struct PendingReissue {
-    pub new_rc_auth_key: RcAuthKey,
-    pub wrap_rc: Vec<u8>,
-    pub saved: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ClientError {
-    /// No answer: the request or its reply was lost. The prepared package stays, and the same one is sent again.
-    Lost,
-    /// A request would have gone out before "Save" was confirmed (§8.3, §8.6 item 3).
-    SaveNotConfirmed,
-    /// A refusal by the profile rule (§8.2), before anything was derived.
-    Profile(CryptoError),
-    Crypto(CryptoError),
-    /// "No such login" or "wrong key": the server does not say which (§8.6).
-    Auth,
-    LoginTaken,
-    AccountIdTaken,
-    /// A different package already behind the same new `rc_auth_key` (§A.5).
-    PackageMismatch,
-    NothingPending,
-    NotLoggedIn,
-    Invalid,
-}
-
-impl From<Lost> for ClientError {
-    fn from(_: Lost) -> ClientError {
-        ClientError::Lost
-    }
-}
-
-impl From<CryptoError> for ClientError {
-    fn from(error: CryptoError) -> ClientError {
-        ClientError::Crypto(error)
-    }
-}
 
 pub struct Client {
     pub store: DeviceStore,
@@ -94,15 +23,6 @@ pub struct Client {
     derive_runs: usize,
     /// The profile this client version gives a new account and a new password at least (§8.2). A newer version may raise it.
     default_profile: Profile,
-}
-
-/// Lost when the process dies.
-#[derive(Default)]
-struct Memory {
-    /// The words just made, for the one screen that shows them.
-    words: Option<Words>,
-    /// The old `rc_auth_key` of a recovery, kept until step 4 (§8.8).
-    old_rc_auth_key: Option<RcAuthKey>,
 }
 
 impl Client {
@@ -154,6 +74,7 @@ impl Client {
             Pending::Registration(pending) => pending.saved = true,
             Pending::Recovery(pending) => pending.saved = true,
             Pending::Reissue(pending) => pending.saved = true,
+            Pending::PasswordChange => return Err(ClientError::NothingPending),
         }
         self.log.event("client words saved");
         Ok(())
@@ -173,7 +94,7 @@ impl Client {
         password: &Password,
         salt: &[u8; SALT_LEN],
         profile: Profile,
-    ) -> Result<kinige_crypto::secret::PwRoot, ClientError> {
+    ) -> Result<PwRoot, ClientError> {
         self.derive_runs += 1;
         self.log
             .event(format!("client argon2id profile {}", profile.number()));
@@ -222,6 +143,89 @@ impl Client {
         });
         self.store.pending = None;
         self.memory = Memory::default();
+    }
+}
+
+/// Lost when the process dies.
+#[derive(Default)]
+struct Memory {
+    /// The words just made, for the one screen that shows them.
+    words: Option<Words>,
+    /// The old `rc_auth_key` of a recovery, kept until step 4 (§8.8).
+    old_rc_auth_key: Option<RcAuthKey>,
+}
+
+/// What survives killing the process: the OS secret store (DEK, token, prepared package) and the device's database
+/// (`kdf_profile_seen`, §A.5 "sync_state"). Cloning it is a restart's persisted state.
+#[derive(Clone, Default)]
+pub struct DeviceStore {
+    pub kdf_profile_seen: Option<Profile>,
+    pub account: Option<AccountState>,
+    pub pending: Option<Pending>,
+}
+
+#[derive(Clone)]
+pub struct AccountState {
+    pub account_id: AccountId,
+    pub login: String,
+    pub dek: Dek,
+    pub token: Option<Token>,
+}
+
+/// A prepared package saved **before** its words are shown and repeated until a definite answer (§A.5), or the mark of a password
+/// change whose answer was lost (§8.5).
+#[derive(Clone)]
+pub enum Pending {
+    Registration(PendingRegistration),
+    Recovery(PendingRecovery),
+    Reissue(PendingReissue),
+    /// A password change was sent and no answer came. The new password is not kept; it settles the question by logging in (§8.5).
+    PasswordChange,
+}
+
+#[derive(Clone)]
+pub struct PendingRegistration {
+    pub package: Package,
+    pub dek: Dek,
+    pub saved: bool,
+}
+
+#[derive(Clone)]
+pub struct PendingReissue {
+    pub new_rc_auth_key: RcAuthKey,
+    pub wrap_rc: Vec<u8>,
+    pub saved: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ClientError {
+    /// No answer: the request or its reply was lost. The prepared package stays, and the same one is sent again.
+    Lost,
+    /// A request would have gone out before "Save" was confirmed (§8.3, §8.6 item 3).
+    SaveNotConfirmed,
+    /// A refusal by the profile rule (§8.2), before anything was derived.
+    Profile(CryptoError),
+    Crypto(CryptoError),
+    /// "No such login" or "wrong key": the server does not say which (§8.6).
+    Auth,
+    LoginTaken,
+    AccountIdTaken,
+    /// A different package already behind the same new `rc_auth_key` (§A.5).
+    PackageMismatch,
+    NothingPending,
+    NotLoggedIn,
+    Invalid,
+}
+
+impl From<Lost> for ClientError {
+    fn from(_: Lost) -> ClientError {
+        ClientError::Lost
+    }
+}
+
+impl From<CryptoError> for ClientError {
+    fn from(error: CryptoError) -> ClientError {
+        ClientError::Crypto(error)
     }
 }
 

@@ -6,8 +6,8 @@ mod common;
 
 use common::*;
 use kinige_crypto::{CryptoError, Profile, ProfileError};
-use s4b_keys::client::{Client, ClientError};
-use s4b_keys::link::Link;
+use s4b_keys::client::{Client, ClientError, Resumed};
+use s4b_keys::link::{Fault, Link};
 
 #[test]
 fn a_server_that_sends_a_lower_profile_than_seen_is_refused_before_deriving() {
@@ -158,4 +158,42 @@ fn recovery_on_a_device_that_saw_profile_2_when_1_is_sent_gives_profile_2_and_lo
     again.store.account = None;
     login(&mut server, &mut again, LOGIN, NEW_PASSWORD)
         .expect("the device logs in with its new password without a refusal");
+}
+
+#[test]
+fn an_uncertain_recovery_on_a_device_that_saw_profile_2_is_not_applied_when_the_server_still_sends_1()
+ {
+    // The request of the recovery was lost, so the server is unchanged and sends profile 1 to a device that has seen 2. The login that
+    // settles the question is refused by the profile rule, and that means "not applied": enter the old words again (§A.5).
+    let (mut server, log) = world();
+    let (_a, words) = register(&mut server, &log, LOGIN, PASSWORD);
+    let mut x = device(&log);
+    x.store.kdf_profile_seen = Some(Profile::P2);
+    x.begin_recovery(
+        &mut Link::new(&mut server),
+        LOGIN,
+        &words,
+        &password(NEW_PASSWORD),
+    )
+    .expect("begin");
+    x.confirm_saved().expect("save");
+    let mut link = Link::with_faults(&mut server, [Some(Fault::LoseRequest)]);
+    assert_eq!(x.send_recovery(&mut link), Err(ClientError::Lost));
+
+    let mut x = x.restart();
+    let runs = x.derive_runs();
+    let settled =
+        x.resume_recovery_after_restart(&mut Link::new(&mut server), &password(NEW_PASSWORD));
+    assert_eq!(settled, Ok(Resumed::NotApplied));
+    assert_eq!(x.derive_runs(), runs, "refused before deriving");
+    assert!(x.store.pending.is_none(), "the unsent package is dropped");
+
+    // The old words still work, and now give the new password profile 2.
+    x.begin_recovery(
+        &mut Link::new(&mut server),
+        LOGIN,
+        &words,
+        &password(NEW_PASSWORD),
+    )
+    .expect("the old words still work");
 }

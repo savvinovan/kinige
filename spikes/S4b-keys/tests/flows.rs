@@ -4,6 +4,7 @@
 mod common;
 
 use common::*;
+use kinige_crypto::keys::rc_auth_key;
 use kinige_crypto::words::Words;
 use s4b_keys::client::{ClientError, Pending};
 use s4b_keys::link::Link;
@@ -251,7 +252,7 @@ fn an_unknown_login_looks_like_a_known_one() {
             .count()
     );
     // Straight against the server the answer is one value that carries nothing.
-    let unknown_key = kinige_crypto::keys::rc_auth_key(
+    let unknown_key = rc_auth_key(
         &Words::parse(&words_of_nobody)
             .expect("words")
             .rc_root()
@@ -292,7 +293,7 @@ fn another_package_behind_an_applied_rc_auth_key_is_its_own_error() {
     // The same new rc_auth_key with a different password part: not the same package.
     let mut mismatch = pending.request.clone();
     mismatch.password.salt = [0x77; 16];
-    let old = kinige_crypto::keys::rc_auth_key(
+    let old = rc_auth_key(
         &Words::parse(&words)
             .expect("words")
             .rc_root()

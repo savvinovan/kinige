@@ -4,6 +4,7 @@
 use crate::error::{CryptoError, WordsError};
 use crate::secret::{KEY_LEN, RcRoot, SecretBytes, random_array, take_key};
 use bip39::{Error as Bip39Error, Language, Mnemonic};
+use libsodium_rs::utils;
 
 /// 24 words are 264 bits: 256 of entropy and 8 of checksum.
 pub const WORD_COUNT: usize = 24;
@@ -43,7 +44,11 @@ impl Words {
         }
         let text = std::str::from_utf8(normalized.as_slice())
             .map_err(|_| CryptoError::Words(WordsError::UnknownWord(0)))?;
-        Mnemonic::parse_in_normalized(Language::English, text).map_err(words_error)?;
+        let checked = Mnemonic::parse_in_normalized(Language::English, text)
+            .map(drop)
+            .map_err(words_error);
+        utils::stackzero(STACK_RESIDUE);
+        checked?;
         Ok(Words(normalized))
     }
 
@@ -54,15 +59,27 @@ impl Words {
 
     /// `rc_root`: the entropy behind the words (`to_entropy`, never `to_seed`).
     pub fn rc_root(&self) -> Result<RcRoot, CryptoError> {
-        let mnemonic =
-            Mnemonic::parse_in_normalized(Language::English, self.phrase()).map_err(words_error)?;
-        let entropy = mnemonic.to_entropy();
-        if entropy.len() != KEY_LEN {
-            return Err(CryptoError::Words(WordsError::WordCount(
-                mnemonic.word_count(),
-            )));
-        }
-        Ok(RcRoot::from_bytes(take_key(entropy)?))
+        let root =
+            entropy_of(self.phrase()).and_then(|entropy| take_key(entropy).map(RcRoot::from_bytes));
+        // `bip39` works on arrays on its stack (the bits and the entropy) and does not clear them. Its frames are gone now, so clearing
+        // the stack below this one overwrites what they left. Best effort: that it reaches all of it is not verified.
+        utils::stackzero(STACK_RESIDUE);
+        root
+    }
+}
+
+/// How much stack to clear after `bip39` returns: its arrays are 264 + 33 + 24 bytes plus its frames; this is a generous bound.
+const STACK_RESIDUE: usize = 4096;
+
+fn entropy_of(phrase: &str) -> Result<Vec<u8>, CryptoError> {
+    let mnemonic = Mnemonic::parse_in_normalized(Language::English, phrase).map_err(words_error)?;
+    let entropy = mnemonic.to_entropy();
+    if entropy.len() == KEY_LEN {
+        Ok(entropy)
+    } else {
+        Err(CryptoError::Words(WordsError::WordCount(
+            mnemonic.word_count(),
+        )))
     }
 }
 

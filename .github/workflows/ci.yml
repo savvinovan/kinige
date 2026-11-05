@@ -102,8 +102,10 @@ jobs:
 
       - run: cargo clippy -p kinige -p kinige-crypto --all-targets -- -D warnings
       - run: cargo test -p kinige -p kinige-crypto
-      # Argon2id of profiles 1 and 2 on this runner (S4b, ADR-0001 decision 8); informational, the numbers go to the log.
+      # Argon2id of profiles 1 and 2 on this runner (S4b, ADR-0001 decision 8), by hand only: `gh workflow run ci.yml --ref <branch>`. It costs
+      # about 2.5 runner-minutes, and the `rust` job measures it on every run.
       - name: Argon2id timing and peak memory
+        if: github.event_name == 'workflow_dispatch'
         run: |
           cargo run --release -p kinige-crypto --example measure_kdf -- 1 5
           cargo run --release -p kinige-crypto --example measure_kdf -- 2 1
@@ -134,8 +136,10 @@ jobs:
       - run: cargo clippy -p kinige -p kinige-store -p kinige-domain -p kinige-mcp -p kinige-crypto --all-targets -- -D warnings
       # --no-fail-fast: one run lists every failing test binary, a Windows run is too slow to find them one by one.
       - run: cargo test --no-fail-fast -p kinige -p kinige-store -p kinige-domain -p kinige-mcp -p kinige-crypto
-      # Argon2id of profiles 1 and 2 on this runner (S4b, ADR-0001 decision 8); informational, the numbers go to the log.
+      # Argon2id of profiles 1 and 2 on this runner (S4b, ADR-0001 decision 8), by hand only: `gh workflow run ci.yml --ref <branch>`. It costs
+      # about 2.5 runner-minutes, and the `rust` job measures it on every run.
       - name: Argon2id timing and peak memory
+        if: github.event_name == 'workflow_dispatch'
         run: |
           cargo run --release -p kinige-crypto --example measure_kdf -- 1 5
           cargo run --release -p kinige-crypto --example measure_kdf -- 2 1

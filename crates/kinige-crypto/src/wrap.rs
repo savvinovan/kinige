@@ -101,14 +101,15 @@ pub(crate) fn seal(
     Ok(wrap)
 }
 
-/// Lengths and the version byte first, then the AEAD, then the plaintext must be exactly 32 bytes.
+/// The version byte first, then the length, then the AEAD, then the plaintext must be exactly 32 bytes.
 fn open(wrap: &[u8], kek: &[u8; KEY_LEN], ad: &[u8], key_id: u32) -> Result<Dek, CryptoError> {
-    if wrap.len() != WRAP_LEN {
-        return Err(CryptoError::CiphertextLength);
-    }
+    // The version byte comes before the length, as for the envelope: a future wrap version may have another length.
     let (version, rest) = wrap.split_first().ok_or(CryptoError::Truncated)?;
     if *version != WRAP_VERSION {
         return Err(CryptoError::UnknownWrapVersion(*version));
+    }
+    if wrap.len() != WRAP_LEN {
+        return Err(CryptoError::CiphertextLength);
     }
     let (nonce, sealed) = rest
         .split_at_checked(NONCE_LEN)

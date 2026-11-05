@@ -4,7 +4,8 @@
 mod common;
 
 use common::*;
-use s4b_keys::client::{ClientError, Pending, Resumed};
+use kinige_crypto::AccountId;
+use s4b_keys::client::{Client, ClientError, Pending, Resumed};
 use s4b_keys::link::{Fault, Link};
 
 #[test]
@@ -385,16 +386,16 @@ fn a_lost_answer_to_reissuing_the_words_is_repeated_safely() {
     );
 }
 
-fn client_package_id(client: &s4b_keys::client::Client) -> kinige_crypto::AccountId {
+fn client_package_id(client: &Client) -> AccountId {
     match &client.store.pending {
         Some(Pending::Registration(pending)) => pending.package.account_id,
         _ => client_account_id(client),
     }
 }
 
-fn client_account_id(client: &s4b_keys::client::Client) -> kinige_crypto::AccountId {
+fn client_account_id(client: &Client) -> AccountId {
     client.account().map_or_else(
-        || kinige_crypto::AccountId::from_bytes([0; 16]),
+        || AccountId::from_bytes([0; 16]),
         |account| account.account_id,
     )
 }

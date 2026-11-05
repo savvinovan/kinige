@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Log(Rc<RefCell<Vec<String>>>);
 
 impl Log {

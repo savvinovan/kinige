@@ -47,17 +47,20 @@ pub fn open_blob(blob: &[u8], key: &BlobKey) -> Result<Vec<u8>, CryptoError> {
     }
     let key = stream::Key::from_bytes(key.as_bytes()).map_err(|_| CryptoError::Sodium)?;
     let mut pull = stream::PullState::init_pull(&header, &key).map_err(|_| CryptoError::Sodium)?;
-    let mut padded: Vec<u8> = Vec::new();
+    // The plaintext is never longer than the ciphertext after the header: reserving that much means the buffer never moves, so no copy of
+    // the file is left behind in freed memory when it grows (it is zeroed at the end).
+    let mut padded: Vec<u8> = Vec::with_capacity(rest.len());
     let result = loop {
         if rest.is_empty() {
             break Err(CryptoError::Blob(BlobError::MissingFinal));
         }
         let (chunk, tail) = rest.split_at(rest.len().min(CHUNK + FRAME));
-        let (plain, tag) = match pull.pull(chunk, None) {
+        let (mut plain, tag) = match pull.pull(chunk, None) {
             Ok(pulled) => pulled,
             Err(_) => break Err(CryptoError::Blob(BlobError::Chunk)),
         };
         padded.extend_from_slice(&plain);
+        utils::memzero(&mut plain);
         rest = tail;
         if tag == stream::TAG_FINAL {
             break if rest.is_empty() {

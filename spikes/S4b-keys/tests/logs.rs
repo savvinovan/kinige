@@ -6,6 +6,7 @@ mod common;
 
 use common::*;
 use kinige_crypto::Profile;
+use kinige_crypto::ids::auth_hash;
 use kinige_crypto::keys;
 use kinige_crypto::words::Words;
 use s4b_keys::client::Pending;
@@ -111,6 +112,12 @@ fn a_full_run_logs_no_secret_in_any_encoding() {
         .expect("recover");
     secrets.push(Secret::new("token c", token(&c).as_bytes()));
     c.begin_reissue().expect("reissue");
+    if let Some(Pending::Reissue(pending)) = &c.store.pending {
+        secrets.push(Secret::new(
+            "reissued rc_auth_key",
+            pending.new_rc_auth_key.as_bytes(),
+        ));
+    }
     let third_words = c.shown_words().expect("words").phrase().to_string();
     c.confirm_saved().expect("save");
     c.send_reissue(&mut Link::new(&mut server), &password("fake password ten"))
@@ -133,10 +140,20 @@ fn a_full_run_logs_no_secret_in_any_encoding() {
     assert!(leaks.is_empty(), "secrets in the log: {leaks:?}");
     // The login name is personal data too: not in the logs either.
     assert!(!log.text().contains("fake.user"));
+
+    // The whole state of the server, every field of every record (the idempotency records of registration, recovery and reissue
+    // included), holds none of these secrets in any encoding. `Server`'s `Debug` prints plain bytes (see its doc).
+    let dump = format!("{server:?}");
+    let leaks = find_leaks(&dump, &secrets);
+    assert!(
+        leaks.is_empty(),
+        "secrets in the state of the server: {leaks:?}"
+    );
+    assert!(dump.len() > 2000, "the dump is the whole state");
 }
 
 #[test]
-fn the_server_holds_hashes_and_no_secret() {
+fn the_state_of_the_server_holds_hashes_and_no_secret() {
     let (mut server, log) = world();
     let mut a = device(&log);
     a.begin_registration(LOGIN, &password(PASSWORD))
@@ -147,20 +164,38 @@ fn the_server_holds_hashes_and_no_secret() {
     a.confirm_saved().expect("save");
     a.send_registration(&mut Link::new(&mut server))
         .expect("register");
+    write_envelope(&a, &mut server, 1);
+
+    let secrets = [
+        Secret::new("auth_key", pending.package.auth_key.as_bytes()),
+        Secret::new("rc_auth_key", pending.package.rc_auth_key.as_bytes()),
+        Secret::new("dek", pending.dek.key().as_bytes()),
+        Secret::new("token", token(&a).as_bytes()),
+        Secret::new("password", PASSWORD.as_bytes()),
+    ];
+    let dump = format!("{server:?}");
+    assert!(find_leaks(&dump, &secrets).is_empty());
+
+    // Positive controls: the dump is the real state, so the hashes and the public values are in it in the encodings the scanner knows.
     let view = server
         .stored_view(&pending.package.account_id)
         .expect("stored");
-    let (auth_hash, rc_hash) = (view.auth_hash, view.rc_hash);
     assert_eq!(view.salt, pending.package.salt);
     assert_eq!(view.profile, 1);
-    assert_ne!(
-        &auth_hash,
-        pending.package.auth_key.as_bytes(),
-        "a hash, not the key"
-    );
-    assert_ne!(&rc_hash, pending.package.rc_auth_key.as_bytes());
     assert_eq!(
-        auth_hash,
-        kinige_crypto::ids::auth_hash(pending.package.auth_key.as_bytes()).expect("hash")
+        view.auth_hash,
+        auth_hash(pending.package.auth_key.as_bytes()).expect("hash")
     );
+    let hashes = [
+        Secret::new("auth_hash", &view.auth_hash),
+        Secret::new("rc_hash", &view.rc_hash),
+        Secret::new("salt", &view.salt),
+    ];
+    assert_eq!(
+        find_leaks(&dump, &hashes),
+        vec!["auth_hash", "rc_hash", "salt"]
+    );
+    // A raw key would be caught: the same dump with a stored key's bytes appended is flagged for it.
+    let tampered = format!("{dump} {:?}", pending.package.auth_key.as_bytes());
+    assert_eq!(find_leaks(&tampered, &secrets), vec!["auth_key"]);
 }
