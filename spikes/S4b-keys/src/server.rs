@@ -346,12 +346,6 @@ impl Server {
         }
     }
 
-    pub fn login_of(&self, account: &AccountId) -> Option<String> {
-        self.accounts
-            .get(account.as_bytes())
-            .map(|stored| stored.login.clone())
-    }
-
     /// A new session for an account the caller has just found or made.
     fn open_session(&mut self, account: AccountId) -> Session {
         let token = Token::random();
