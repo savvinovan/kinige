@@ -2,4 +2,4 @@
 recorded notes (the Windows run seeds none): 1
 the note exists after Escape, Enter on Keep recording and Enter on Send: yes
 container: audio/mp4
-duration_ms: 10895
+duration_ms: 10892
