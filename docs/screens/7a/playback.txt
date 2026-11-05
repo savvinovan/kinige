@@ -1,6 +1,6 @@
-elapsed right after the picture (the slider's value text through the driver, seconds): 15
+elapsed right after the picture (the slider's value text through the driver, seconds): 16
 pause button in the window: yes
-'Can't play here' in the window: yes
+'Can't play here' anywhere in the window (the Telegram-style stub shows it once the web view cannot decode it): yes
 audio route requests before / after the press (app log): 0 / 72
 [DEBUG][kinige_lib::audio_route] audio route: 206 2 bytes, asked "bytes=0-1", answered "bytes 0-1/77585"
 [DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=0-7", answered "bytes 0-7/77585"
@@ -8,4 +8,4 @@ audio route requests before / after the press (app log): 0 / 72
 [DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=36-43", answered "bytes 36-43/77585"
 [DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=144-151", answered "bytes 144-151/77585"
 [DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=2180-2187", answered "bytes 2180-2187/77585"
-playback proof: 72 audio route requests after 0 before the press; elapsed (seconds): 15
+playback proof: 72 audio route requests after 0 before the press; elapsed (seconds): 16
