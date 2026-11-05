@@ -159,6 +159,8 @@ function Focus-Window([string]$title) {
 function Shoot([string]$name, [string]$title) {
   $window = Get-AppWindow $title
   if (-not $window) { Fail "no window '$title' for $name"; return }
+  # With the driver every shot is checked for personal paths first, from the window text (about 100 ms).
+  if ($script:Driver) { Test-WindowText $name $title }
   [Win]::Raise($window)
   Start-Sleep -Seconds 2
   Say ("shot ${name}: " + [Win]::Capture($window, (Join-Path $Out "$name.png")))
@@ -170,6 +172,8 @@ function Start-App([string]$exe) {
   $env:KINIGE_MIRROR_DIR = $Mirror
   # Debug level: the app log then holds the line with the first weekday and the locale API that gave it.
   $env:KINIGE_LOG = 'debug'
+  # The screens driver (KINIG-92): the directory its request and reply files live in; without it the driver stays idle.
+  if ($script:Driver) { $env:KINIGE_SCREENS_DRIVER_DIR = $script:DriveDir }
   $script:AppProcess = Start-Process -FilePath $exe -PassThru
   $window = Wait-For { Get-AppWindow 'Kinige' } 90 'the main window'
   if ($window) {
@@ -217,4 +221,96 @@ function Send-Keys([string]$title, [string]$keys, [bool]$raise = $true) {
   if ($raise) { Focus-Window $title; Start-Sleep -Milliseconds 1500 }
   [System.Windows.Forms.SendKeys]::SendWait($keys)
   Start-Sleep -Milliseconds 400
+}
+
+# ---- The screens driver (KINIG-92, ADR-0016) ----------------------------------------------------------------------------------
+# The app, built with the driver (screens.yml), finds an element by its accessible name inside its own web view and acts on it: no key
+# counting and no UI Automation (which stalled WebView2). A step is a request file the app picks up and a reply file it writes. A scenario
+# calls `Enable-Driver` before the first `Start-App`. Keys (SendKeys) stay for what the web view cannot reach.
+
+$script:Driver = $false
+$script:DriveDir = $null
+$script:DriveSeq = 0
+# Another user's home, a Mac home path, my names. The runner's own profile (runneradmin) is where its temp directory is.
+$script:PersonalPattern = '(?i)[a-z]:\\Users\\(?!runneradmin)|/Users/|alexandr|savvinovan'
+
+function Enable-Driver([string]$dir) {
+  $script:Driver = $true
+  $script:DriveDir = $dir
+  Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path (Join-Path $dir 'requests'), (Join-Path $dir 'replies') | Out-Null
+}
+
+# The driver window of a window title: Settings is the settings window, anything else the main one.
+function Get-DriverWindow([string]$title) {
+  if ($title -eq 'Settings' -or $title -eq [string]::Join('', [char[]](0x41D, 0x430, 0x441, 0x442, 0x440, 0x43E, 0x439, 0x43A, 0x438))) { return 'settings' }
+  return 'main'
+}
+
+# Sends one step and waits for its reply: @{ Ok; Value; Error }. Never raises, never counts as a scenario error by itself.
+function Drive([string]$window, [hashtable]$step, [int]$seconds = 20) {
+  $script:DriveSeq++
+  $id = "d$PID-$($script:DriveSeq)"
+  $requests = Join-Path $script:DriveDir 'requests'
+  $reply = Join-Path $script:DriveDir "replies\$id.json"
+  $utf8 = New-Object System.Text.UTF8Encoding($false)
+  $json = ConvertTo-Json -Compress -Depth 6 -InputObject @{ id = $id; window = $window; step = $step }
+  # A name the app skips, then a rename: it never sees half a request. UTF-8 without a BOM (serde_json refuses a BOM).
+  $temporary = Join-Path $requests ".$id.tmp"
+  [System.IO.File]::WriteAllText($temporary, $json, $utf8)
+  Move-Item -LiteralPath $temporary -Destination (Join-Path $requests "$id.json")
+  $deadline = (Get-Date).AddSeconds($seconds)
+  while (-not (Test-Path -LiteralPath $reply)) {
+    if ((Get-Date) -gt $deadline) {
+      Remove-Item -LiteralPath (Join-Path $requests "$id.json") -ErrorAction SilentlyContinue
+      return @{ Ok = $false; Value = $null; Error = "no reply within $seconds s" }
+    }
+    Start-Sleep -Milliseconds 50
+  }
+  $answer = [System.IO.File]::ReadAllText($reply, $utf8) | ConvertFrom-Json
+  return @{ Ok = ($answer.ok -eq $true); Value = $answer.value; Error = $answer.error }
+}
+
+# A press on the element whose accessible name holds the words (optional ARIA role). A failure is a scenario error naming the step.
+function Press([string]$name, [string]$role = '', [string]$title = 'Kinige', [int]$settleMs = 800) {
+  $step = @{ kind = 'press'; name = $name }
+  if ($role) { $step.role = $role }
+  $result = Drive (Get-DriverWindow $title) $step
+  if (-not $result.Ok) { Fail "press '$name': $($result.Error)"; return $false }
+  Say "press '$name'"
+  Start-Sleep -Milliseconds $settleMs
+  return $true
+}
+
+# Whether the window has an element or text with these words (no scenario error either way).
+function Has([string]$name, [string]$role = '', [string]$title = 'Kinige') {
+  $step = @{ kind = 'has'; name = $name }
+  if ($role) { $step.role = $role }
+  $result = Drive (Get-DriverWindow $title) $step
+  return ($result.Ok -and $result.Value -eq 'yes')
+}
+
+# Waits inside the page (a poll every 50 ms) for the element to show or, with -Gone, to disappear. $false on a timeout, with no scenario error.
+function Wait-Name([string]$name, [int]$timeoutMs = 10000, [switch]$Gone, [string]$role = '', [string]$title = 'Kinige') {
+  $step = @{ kind = 'wait'; name = $name; timeoutMs = $timeoutMs }
+  if ($role) { $step.role = $role }
+  if ($Gone) { $step.gone = $true }
+  $result = Drive (Get-DriverWindow $title) $step ([int]($timeoutMs / 1000) + 10)
+  return $result.Ok
+}
+
+# The text the window shows (page text, labels, titles); $null when the driver did not answer.
+function Get-WindowText([string]$title = 'Kinige') {
+  $result = Drive (Get-DriverWindow $title) @{ kind = 'text' } 20
+  if (-not $result.Ok) { return $null }
+  return [string]$result.Value
+}
+
+# The personal-path check of a shot, from the window text read through the driver: an empty or missing text is an error, not "clean".
+function Test-WindowText([string]$name, [string]$title) {
+  $text = Get-WindowText $title
+  if ([string]::IsNullOrEmpty($text)) { Fail "no window text for $name through the driver (the personal path check was not done)"; return }
+  if ($Debug) { [System.IO.File]::WriteAllText((Join-Path $Debug "shot-$name.txt"), $text, (New-Object System.Text.UTF8Encoding($false))) }
+  $found = [regex]::Match($text, $script:PersonalPattern)
+  if ($found.Success) { Fail "the text of window $name has a personal path or name near: $($text.Substring([Math]::Max(0, $found.Index - 20), [Math]::Min(80, $text.Length - [Math]::Max(0, $found.Index - 20))))" }
 }
