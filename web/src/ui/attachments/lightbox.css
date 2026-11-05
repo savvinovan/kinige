@@ -1,4 +1,5 @@
-/* A photo over the whole window. Above the modal windows (z-index 2). Tokens only; nothing animates. */
+/* A photo over the whole window. Above the modal windows (z-index 2). Tokens only. The photo can be zoomed past the window and turned (KINIG-87):
+   it moves only by `transform`, easing for button and key steps (`--eased`) and following the input for wheel and drag. */
 .lightbox {
   position: fixed;
   inset: 0;
@@ -8,7 +9,9 @@
   gap: var(--layout-attachment-lightbox-gap);
   box-sizing: border-box;
   padding: var(--layout-attachment-lightbox-padding);
+  overflow: hidden;
   color: var(--color-text-primary);
+  user-select: none;
 }
 
 /* The dialog gets focus itself on open; a ring around the whole window says nothing. */
@@ -23,8 +26,10 @@
   opacity: var(--opacity-lightbox-scrim);
 }
 
+/* The bar and the arrows stay above a photo zoomed past the stage. */
 .lightbox__bar {
   position: relative;
+  z-index: 1;
   display: flex;
   flex: none;
   align-items: center;
@@ -33,12 +38,34 @@
 }
 
 .lightbox__counter {
-  margin-inline-end: auto;
+  margin-inline: calc(-1 * var(--space-3)) auto;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-control);
   color: var(--color-text-secondary);
   font-family: var(--type-small-family);
   font-size: var(--type-small-size);
   font-variant-numeric: tabular-nums;
   line-height: var(--type-small-line-height);
+}
+
+/* Rotate, zoom out, the percentage, zoom in: one group with a fill, so that the icons stay readable over a zoomed photo. */
+.lightbox__tools {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-selected);
+}
+
+.lightbox__tools .lightbox__percent,
+.lightbox__tools .lightbox__percent:hover {
+  min-width: var(--layout-attachment-lightbox-percent-width);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.lightbox__tools .lightbox__percent:not([aria-disabled="true"]):hover {
+  color: var(--color-text-primary);
 }
 
 .lightbox__stage {
@@ -48,6 +75,16 @@
   align-items: center;
   gap: var(--layout-attachment-lightbox-gap);
   min-height: 0;
+  touch-action: none;
+}
+
+/* A zoomed photo is dragged: the whole stage grabs, not only the photo. */
+.lightbox--zoomed .lightbox__stage {
+  cursor: grab;
+}
+
+.lightbox--dragging .lightbox__stage {
+  cursor: grabbing;
 }
 
 /* The photo fits the stage and keeps its shape; a small photo is not enlarged. */
@@ -62,11 +99,19 @@
   margin: 0;
 }
 
+/* Until the stage is measured CSS fits the photo (max-width, max-height); after that the inline size is the same fit, and the transform
+   is the pan, the zoom and the turn. */
 .lightbox__image {
   display: block;
+  flex: none;
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+  transform-origin: center;
+}
+
+.lightbox__image--eased {
+  transition: transform var(--motion-duration-short) var(--motion-easing-standard);
 }
 
 /* "No preview" in the same area: a box of the default photo shape. */
@@ -80,14 +125,34 @@
 }
 
 .lightbox__step {
+  position: relative;
+  z-index: 1;
   flex: none;
 }
 
-/* The first photo has no previous one and the last no next one: the button stays (focus does not jump) but is muted and does nothing. */
+/* The first photo has no previous one and the last no next one: the button stays (focus does not jump) but is muted and does nothing.
+   The zoom buttons at the ends of the zoom are muted the same way. */
 .lightbox__step[aria-disabled="true"],
-.lightbox__step[aria-disabled="true"]:hover {
+.lightbox__step[aria-disabled="true"]:hover,
+.lightbox__tool[aria-disabled="true"],
+.lightbox__tool[aria-disabled="true"]:hover {
   background: transparent;
   color: var(--color-text-tertiary);
   cursor: default;
   opacity: var(--opacity-disabled);
+}
+
+/* A zoomed photo runs under the counter, the arrows and the cross: they get the fill of the toolbar so that they stay readable. At fit
+   size nothing is behind them and they stay quiet. */
+.lightbox--zoomed .lightbox__counter,
+.lightbox--zoomed .lightbox__close,
+.lightbox--zoomed .lightbox__step,
+.lightbox--zoomed .lightbox__step[aria-disabled="true"],
+.lightbox--zoomed .lightbox__step[aria-disabled="true"]:hover {
+  background: var(--color-surface-selected);
+}
+
+.lightbox--zoomed .lightbox__close:hover,
+.lightbox--zoomed .lightbox__step:not([aria-disabled="true"]):hover {
+  background: var(--color-surface-field-active);
 }

@@ -18,6 +18,12 @@
     "previous": "Предыдущее фото",
     "next": "Следующее фото",
     "lightboxLabel": "Просмотр фото",
+    "rotate": "Повернуть влево",
+    "zoomIn": "Увеличить",
+    "zoomOut": "Уменьшить",
+    "zoomReset": "Вписать в окно, масштаб {{percent}}%",
+    "zoomResetShort": "Вписать в окно",
+    "withKey": "{{label}} ({{key}})",
     "summary": {
       "photo": "Фото",
       "file": "Файл",

@@ -9,6 +9,7 @@
   --layout-attachment-file-icon-box: 2.8rem; /** Side of the square under the icon of a file card (36 px at a 13 px root). */
   --layout-attachment-pending-size: 4.5rem; /** Side of a pending tile in the composer (58 px at a 13 px root); the height of a file tile. */
   --layout-attachment-pending-file-width: 13rem; /** Width of a pending file tile (169 px at a 13 px root). */
+  --layout-attachment-lightbox-percent-width: 3.6rem; /** Minimum width of the zoom percentage button in the lightbox toolbar (47 px at a 13 px root): fits '800%' so the buttons beside it do not move. */
   --layout-attachment-story-narrow-width: 640px; /** Storybook only: the width of a narrow window in the attachment stories. */
   --layout-calendar-width: 23rem; /** Width of the calendar window (299 px at a 13 px root); in a narrow window the panel takes the window width minus the margins. */
   --layout-calendar-cell: 2.7rem; /** Side of a day cell in the month grid (35 px): seven cells fit in the window with margins. */
