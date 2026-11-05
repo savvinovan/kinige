@@ -31,10 +31,16 @@ pub use operation::{Operation, open_operation, seal_operation};
 pub use profile::Profile;
 
 #[cfg(test)]
+mod blob_vector_tests;
+#[cfg(test)]
 mod envelope_tests;
+#[cfg(test)]
+mod forgery_tests;
 #[cfg(test)]
 mod garbage_tests;
 #[cfg(test)]
 mod key_tests;
+#[cfg(test)]
+mod test_support;
 #[cfg(test)]
 mod vectors_tests;

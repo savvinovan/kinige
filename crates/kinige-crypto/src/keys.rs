@@ -110,7 +110,7 @@ impl std::fmt::Debug for Dek {
 }
 
 /// `crypto_kdf_derive_from_key(32, id, context, master)`.
-fn subkey(
+pub(crate) fn subkey(
     master: &[u8; KEY_LEN],
     id: u64,
     context: &[u8; 8],

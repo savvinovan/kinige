@@ -1,0 +1,15 @@
+{
+  "name": "kinige-s4b-vectors",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Test vectors for kinige-crypto made with libsodium.js (spike S4b, KINIG-96). Dev only, never shipped.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "vectors": "node gen.mjs",
+    "check": "node gen.mjs --check"
+  },
+  "dependencies": {
+    "libsodium-wrappers-sumo": "0.8.4"
+  }
+}
