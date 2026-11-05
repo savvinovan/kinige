@@ -2,7 +2,7 @@
 
 Date: 2026-11-05. Task: KINIG-94, spec `docs/slices/S4a-sync-simulation.md`. Result: ADR-0017, ADR-0001 revision 8, PRD v0.22.
 
-The question: does the protocol of ADR-0001, as written, converge and keep the promises of PRD §10.2 under hostile delivery, before any network, server or encryption exists? Answer: not as written. The simulation found seven defects (below); with them fixed, nine properties hold, each with a negative control.
+The question: does the protocol of ADR-0001, as written, converge and keep the promises of PRD §10.2 under hostile delivery, before any network, server or encryption exists? Answer: not as written. The simulation found seven defects in its first run and two more once the review rounds made the restore schedules stronger (below); with all nine fixed, nine properties hold, each with a negative control.
 
 ## What it is
 - **The rules under test are the real ones**: `kinige-domain::sync` (merge by field groups, `conflict` revisions, `vv`, purge and tombstone verdicts, the binding and resync table, the feed while a parent is missing) and the existing `rewrite_group`, `rewrite_body`, `new_message`, `new_chat`, `Clock`. The group bytes, `groups_raw` and `hlc_json` are the formats the app writes.
