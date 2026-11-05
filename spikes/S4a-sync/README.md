@@ -13,7 +13,7 @@ The question: does the protocol of ADR-0001, as written, converge and keep the p
 ## Run
 ```text
 cd spikes/S4a-sync
-cargo test                                   # 10 000 cases per property for 2 devices, 2 000 for 3, seed 1: about 35 s
+cargo test                                   # 10 000 cases per property for 2 devices, 2 000 for 3, seed 1: about 25 s
 S4A_CASES=1000 S4A_CASES3=200 S4A_CONTROL_CASES=3000 S4A_SEED=1 cargo test --test properties --test negative --test scenarios   # what CI runs
 cargo test --test negative -- --nocapture    # the negative controls with their reports
 S4A_STATS_N=5000 cargo test --release --test stats -- --nocapture   # how much of the protocol the schedules reach (the table below; default 2000)
