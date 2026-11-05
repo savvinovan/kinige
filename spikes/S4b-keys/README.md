@@ -58,9 +58,16 @@ Also found, not about the scheme: the C library is built with the profile's flag
 ## Measurement
 Argon2id (`crypto_pwhash`, the profiles of §D), `cargo run --release -p kinige-crypto --example measure_kdf -- <profile> <runs>`, one profile per process, a fixed fake password and salt. Peak memory is the process's peak resident set (`ru_maxrss`; `PeakWorkingSetSize` on Windows), the program included. The runner rows are from the `rust`, `macos` and `windows` jobs of CI.
 
-MEASUREMENT_TABLE
+| Machine                               | Profile 1 (3 passes, 256 MiB) | Profile 2 (4 passes, 1 GiB) | Peak memory (1 / 2) |
+|---------------------------------------|-------------------------------|-----------------------------|---------------------|
+| Apple M3 Pro, 18 GB, macOS 26 (local) | 332 ms (323-377, 5 runs)      | 1930 ms (1 run)             | 258 / 1027 MiB      |
+| ubuntu-24.04 runner                   | 334 ms (324-337, 5 runs)      | 2028 ms (1 run)             | 258 / 1028 MiB      |
+| windows-2025 runner                   | 283 ms (279-291, 5 runs)      | 1819 ms (1 run)             | 261 / 1030 MiB      |
+| macos-15 runner (arm64)               | 694 ms (678-812, 5 runs)      | 5595 ms (1 run)             | 259 / 1027 MiB      |
 
-The limit of decision 8 is 2 s "on the weakest machine". No old or low-end machine was available; the GitHub runners are the weakest here. Profile 1, the default, takes 0.3 to 0.7 s everywhere. Profile 2 takes about 2 s on the M3 Pro and the Windows runner and 5.3 s on the macOS runner, which is over the 2 s of the decision; it is the opt-in or upgrade profile, so this is for the user to discuss (ADR-0018), not a blocker. A device with less free memory than the profile's `memlimit` fails the allocation (`CryptoError::Sodium`); profile 2 needs 1 GiB. In WASM (libsodium.js sumo 0.8.4 under node 26, on the M3 Pro) profile 1 took 486 ms and profile 2 took 2315 ms, one run each; a browser was not measured.
+Median of the runs, with min-max in brackets. An earlier CI run of the same code gave 688 ms and 5269 ms on the macOS runner and 298 ms and 1988 ms on the Windows runner, so the runners vary by a few percent run to run; profile 2 is one sample.
+
+The limit of decision 8 is 2 s "on the weakest machine". No old or low-end machine was available; the GitHub runners are the weakest here. Profile 1, the default, takes 0.3 to 0.7 s everywhere. Profile 2 takes about 2 s on the M3 Pro and the Linux and Windows runners and 5.6 s on the macOS runner, which is over the 2 s of the decision; it is the profile a newer client would raise accounts to, so this is for the user to discuss (ADR-0018), not a blocker for S4b. A device with less free memory than the profile's `memlimit` fails the allocation (`CryptoError::Sodium`); profile 2 needs 1 GiB. In WASM (libsodium.js sumo 0.8.4 under node 26, on the M3 Pro) profile 1 took 486 ms and profile 2 took 2315 ms, one run each; a browser was not measured.
 
 ## Not verified
 - A real browser: libsodium.js was run under node only. The memory limit of a tab (profile 2 needs 1 GiB) and the time there are not checked.

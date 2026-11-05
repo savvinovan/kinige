@@ -22,7 +22,7 @@ Seven corrections to the text of ADR-0001, none to the bytes of the format (deta
 
 Build facts: the C library takes the profile's flags (`-O0` in dev makes Argon2id of profile 1 take about 6 s, so the workspace sets `opt-level = 3` for it); Windows downloads a prebuilt MSVC library over HTTP at build time (minisign-checked) and uses `zip` 8.6 with four `extract` advisories (ignored in `deny.toml` with the reason: build time only, a signed archive); `bip39` is CC0-1.0 (allowed in `deny.toml`).
 
-Argon2id (decision 8): MEASURED_SUMMARY
+Argon2id (decision 8, "if more than 2 s, discuss"), median of five runs for profile 1 and one run for profile 2, release build: profile 1 takes 0.28 to 0.33 s on the M3 Pro and the Linux and Windows runners and 0.69 s on the macOS runner; profile 2 takes 1.8 to 2.0 s on the same three and **5.6 s on the macOS runner**. Peak memory is the `memlimit` plus about 3 MiB (258 and 1027 MiB). Profile 1, the default, is far inside the limit. Profile 2 is over it on the weakest runner; it is what a newer client would raise accounts to and what an unusually cautious user could choose, so the question for the user is whether 5 s for a login on a slow machine is acceptable there. In WASM under node (M3 Pro) profile 1 took 0.49 s and profile 2 took 2.3 s; a browser was not measured.
 
 ## What is left
 - **S4c:** the server reads the header with `envelope::peek` and the lengths with `Layout::parse` before it reads the body; it declares `entity`, `id` and `op` next to each envelope (finding 2 needs them); credential versioning and compare-and-swap on a password change; rate limits; the HTTP shapes of the requests the spike calls as functions.

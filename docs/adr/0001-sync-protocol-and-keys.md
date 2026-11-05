@@ -416,7 +416,7 @@ The PRD was brought in line in v0.8.
 5. **Server checks by the header** — ordering purges and refusing when `wall_ms > server_now + SKEW_MAX` (24 h). This is not protection against a malicious server: the client applies the same rules itself (§3.5) and leaves `clock_skew` (§2). The limit applies only to the HLC, not to `journal_date` and not to `created_at` (§2).
 6. **Recovery words** — the English BIP-39 list, entropy, not the seed. The UI language does not affect the list.
 7. **Recovery** (§8.6) revokes the other sessions and reissues the words. The words (at registration, recovery and reissue) are shown with a "Save" button (PDF / print) and a warning about losing access; **there is no typed-back check**; the new words go to the server only after saving. On a password change, "log out on other devices" is an option.
-8. **Argon2id** — profiles 1 and 2, the lower bound is profile 1, **an account's profile only grows** (§8.2); a downgrade is a refusal with an explanation, and the way out is recovery with the words. Measure in S4b on the weakest machine: if more than 2 s, discuss. The WASM measurement — before the web client.
+8. **Argon2id** — profiles 1 and 2, the lower bound is profile 1, **an account's profile only grows** (§8.2); a downgrade is a refusal with an explanation, and the way out is recovery with the words. Measure in S4b on the weakest machine: if more than 2 s, discuss (**measured, S4b, 2026-11-06:** profile 1 takes 0.28-0.69 s and profile 2 takes 1.8-5.6 s, the 5.6 s on the macOS CI runner; ADR-0018). The WASM measurement — before the web client (node only so far: 0.49 s and 2.3 s).
 9. **Narrowing revisions [deviation from §10.2 and §4.2]**, accepted:
    - a `conflict` revision stores only the losing group (`body` or `placement`) with its `sv` and raw bytes — otherwise the content of a revision with the same id would differ between devices;
    - a `placement` conflict (a move into different chats or to different dates) gives a revision and the "there is another version" mark, like text (§3.4); `flags` — LWW without a trace;
@@ -443,8 +443,8 @@ Also: **`origin`** in a message's `core` — who created the record: `user` (the
 
 ## Not verified
 
-- `libsodium-rs` 0.3.0: the names of the modules and functions `utils::{pad, unpad, memcmp, memzero}` are verified; signatures, wrapper quality and audit are not. The libsodium version inside `libsodium-sys-stable` 1.24.3 (the `stable` branch is 1.0.22) and the CI build on three OSes are not.
-- Byte compatibility with libsodium.js — the S4b test vectors will show. The time of profile 1 on target machines and in WASM has not been measured.
+- `libsodium-rs` 0.3.0: the signatures of the functions used are read in its source and exercised by the tests; wrapper quality beyond them and an audit are not verified. (S4b, 2026-11-06: the libsodium version inside `libsodium-sys-stable` 1.24.3 is 1.0.22 and the CI build on three OSes passes, §11.)
+- (S4b, 2026-11-06: byte compatibility with libsodium.js is verified by the vectors, in both directions.) Not verified: libsodium.js in a real browser, the time of Argon2id there and the memory limit of a tab for profile 2; the licence of the BIP-39 word list as data; timing side channels.
 - `synchronizable` for a secret-store item in the chosen crate — S4a. The account lock for `seq` in Postgres — S4c.
 - Convergence as a whole — only the property tests of S4a and S4b (appendix, §B).
 
