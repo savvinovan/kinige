@@ -104,37 +104,28 @@ Shoot '03-sent' 'Kinige'
 
 # ---- 3. The note survives a kill, and Play reaches the audio route ------------------------------------------------------------------
 
-# The note survives a kill; then Play is found by keyboard. Shift+Tab from the field walks back through the newest entry (its action
-# buttons, the speed chip, the seek bar, Play), but how many stops that is was guessed wrong twice (8 landed on the Trash button, and on a
-# Telegram stub). So the number of stops is scanned: each attempt starts the app afresh (the focus starts in the field), presses Shift+Tab
-# that many times and Enter, and asks the log whether the audio route was reached. Enter on a wrong stop is harmless (copy, edit, a flag, a
-# menu, the speed chip) and the app is killed before the next attempt.
-$played = $false
-$before = 0
-for ($stops = 2; $stops -le 16 -and -not $played; $stops++) {
-  Stop-App
-  $before = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' }).Count
-  $main = Start-App $exe.FullName
-  if (-not $main) { exit 1 }
-  Start-Sleep -Seconds 4
-  if ($stops -eq 2) {
-    $rowsAfter = Get-Scalar "select count(*) from attachment where filename like 'voice-%'"
-    if ($rowsAfter -ne '1') { Fail "the note did not survive the kill ($rowsAfter)" }
-  }
-  Focus-Window 'Kinige'
-  Start-Sleep -Milliseconds 1200
-  for ($i = 0; $i -lt $stops; $i++) { Send-Keys 'Kinige' '+{TAB}' $false }
-  Send-Keys 'Kinige' '{ENTER}' $false
-  Start-Sleep -Seconds 3
-  $now = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
-  if ($now.Count -gt $before) { $played = $true; Say "Play reached the route with $stops Shift+Tab stops" }
-}
+# The app is killed, started afresh and the note is there; one press on Play. The first version of this step counted Shift+Tab stops from
+# the field to the Play button (wrong twice, then scanned: about four hours for one shot); the driver presses the button by its name.
+Stop-App
+$before = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' }).Count
+$main = Start-App $exe.FullName
+if (-not $main) { exit 1 }
+$rowsAfter = Get-Scalar "select count(*) from attachment where filename like 'voice-%'"
+if ($rowsAfter -ne '1') { Fail "the note did not survive the kill ($rowsAfter)" }
+if (-not (Wait-Name 'Voice note' 60000)) { Fail 'the note is not in the feed after the restart' }
+[void](Press 'Play' '' 'Kinige' 100)
+Start-Sleep -Seconds 3
+$playing = Has 'Pause' '' 'Kinige'
+$now = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
+$played = $now.Count -gt $before
+Say "Play: the route was reached: $played; the Pause button shows: $playing"
 Shoot '04-playing' 'Kinige'
 $lines = @(Get-AppLogLines | Where-Object { $_ -match 'audio route: ' })
 @("audio route requests in the log: $($lines.Count)") + @($lines | Select-Object -First 8 | ForEach-Object { ($_ -replace '^\[[^\]]*\]\[[^\]]*\]', '').Trim() }) |
   Set-Content -Path (Join-Path $Out 'playback.txt') -Encoding UTF8
 Say (Get-Content (Join-Path $Out 'playback.txt') -Raw)
-if (-not $played) { Fail 'Play did not reach the audio route (a finding if the focus order differs)' }
+if (-not $played) { Fail 'Play did not reach the audio route' }
+elseif (-not $playing) { Fail 'the player does not show the note playing (no Pause button)' }
 elseif (-not ($lines | Where-Object { $_ -match 'audio route: (200|206) ' })) { Fail 'the audio route answered with something other than 200 or 206' }
 else {
   # The answer's total length is the recorded file's size: the route served the note this run recorded.

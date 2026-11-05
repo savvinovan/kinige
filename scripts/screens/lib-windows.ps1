@@ -3,7 +3,7 @@
 # The caller defines $Out, $Work, $Debug, $Data, $Mirror, $AppDir, $script:Fails and $script:AppProcess before the first call.
 # Do not use UI Automation or a DevTools port here: both stalled the WebView2 page on the runner (slice 10a).
 
-Add-Type -AssemblyName System.Drawing, System.Windows.Forms
+Add-Type -AssemblyName System.Drawing, System.Windows.Forms, System.Web.Extensions
 
 # C# 5 only (Windows PowerShell compiles with the .NET Framework compiler).
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
@@ -267,8 +267,16 @@ function Drive([string]$window, [hashtable]$step, [int]$seconds = 20) {
     }
     Start-Sleep -Milliseconds 50
   }
-  $answer = [System.IO.File]::ReadAllText($reply, $utf8) | ConvertFrom-Json
-  return @{ Ok = ($answer.ok -eq $true); Value = $answer.value; Error = $answer.error }
+  # JavaScriptSerializer, not ConvertFrom-Json: the window text is tens of kilobytes and ConvertFrom-Json of Windows PowerShell 5.1 is slow on it.
+  $parser = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+  $parser.MaxJsonLength = [int]::MaxValue
+  $answer = $parser.DeserializeObject([System.IO.File]::ReadAllText($reply, $utf8))
+  # A key the app left out (a reply has "value" or "error", not both) is $null, not an exception.
+  $value = $null
+  $problem = $null
+  if ($answer.ContainsKey('value')) { $value = $answer['value'] }
+  if ($answer.ContainsKey('error')) { $problem = $answer['error'] }
+  return @{ Ok = ($answer['ok'] -eq $true); Value = $value; Error = $problem }
 }
 
 # A press on the element whose accessible name holds the words (optional ARIA role). A failure is a scenario error naming the step.
