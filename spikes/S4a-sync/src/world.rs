@@ -2,8 +2,7 @@
 //! A schedule is a list of steps; nothing is random inside the run, so the same schedule (and the seed that produced it) always
 //! gives the same result.
 
-use crate::client::Client;
-use crate::client::OpError;
+use crate::client::{Client, FeedSlot, OpError};
 use crate::envelope::{Entity, Envelope, Key};
 use crate::oracle::Oracle;
 use crate::server::{PullResponse, PushResponse, Server};
@@ -109,6 +108,8 @@ pub struct World {
     backup: Option<Server>,
     /// A server restore happened (for the property of §6.3).
     pub restored: bool,
+    /// How many restores there have been: the source of the random numbers that name new generations.
+    restores: u64,
 }
 
 impl World {
@@ -132,6 +133,7 @@ impl World {
             last_page: vec![None; n],
             backup: None,
             restored: false,
+            restores: 0,
         }
     }
 
@@ -174,7 +176,10 @@ impl World {
             Step::Backup => self.backup = Some(self.server.backup()),
             Step::RestoreServer => {
                 if let Some(backup) = self.backup.clone() {
-                    self.server.restore(&backup);
+                    // A random number from outside the server, as a real restore draws one; it cannot repeat in a run.
+                    self.restores += 1;
+                    let nonce = self.restores.wrapping_mul(0x9e37_79b9_7f4a_7c15);
+                    self.server.restore(&backup, nonce);
                     self.restored = true;
                 }
             }
@@ -364,7 +369,7 @@ impl World {
             return;
         };
         for item in client.feed() {
-            if let crate::client::FeedSlot::Orphan(chat) = &item.slot {
+            if let FeedSlot::Orphan(chat) = &item.slot {
                 self.violations.push(format!("device {c}: message {} is shown in chat {chat}, which this device does not have", item.message));
             }
         }

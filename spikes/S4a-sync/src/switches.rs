@@ -27,15 +27,24 @@ pub struct Switches {
     /// Client: a pulled `purged(X)` leaves an existing tombstone's snapshot as it was (ADR-0001 revision 7 refines it only after a
     /// `purged` response to a push). S4a, finding 6.
     pub keep_own_snapshot: bool,
-    /// Server: the epoch counter comes back with the backup (revision 8 as first written); with `epoch_survives_generation` this is
-    /// the blocker of the S4a review: a later drop can carry a number a device already holds.
-    pub epoch_from_backup: bool,
+    /// Server: a drop is held against a cursor by `seq` and epoch alone, whatever generation it was made in (revision 8 as first
+    /// written). A restored server issues `seq` again from the backup's head, so a drop of the new generation can sit below an old
+    /// cursor that had gone further: the guardian's second blocker (round 2).
+    pub drop_seq_across_generations: bool,
     /// Client: the drop epoch of the old generation is kept after a generation change, as ADR-0001 revision 8 said. A restored server
-    /// counts epochs from its backup, so a later drop can carry a number the device already knows and is not seen as a drop.
+    /// counts epochs from its backup, so a later drop can carry a number the device already knows and is not seen as a drop (the
+    /// guardian's first blocker, round 1).
     pub epoch_survives_generation: bool,
     /// Client: a conflict is made when the winner was made from the device's own unconfirmed version (its `base`), as before
     /// ADR-0001 revision 8 (S4a, finding 5): a false conflict that property 9 catches.
     pub own_base_is_concurrent: bool,
+    /// Client: a resync that began because the `generation` changed does not notice a compaction that drops a `purged` while it is
+    /// still pulling from 0 (a pull from 0 is never stale), so what the server dropped looks like what the restore lost and is pushed
+    /// back (found by the random restore schedules in round 2).
+    pub no_epoch_check_in_resync: bool,
+    /// Client: an envelope of the device's own, met again in a pull, is only an ack and never merged, even when a purge and a lift
+    /// have left the local record without the device's own writes (found by the random restore schedules in round 2).
+    pub own_envelope_not_merged: bool,
     /// Client: an envelope for a record that is in quarantine is applied live (nothing in ADR-0001 revision 8 said otherwise), so the
     /// record is in the feed and in quarantine at once.
     pub quarantine_applies_live: bool,

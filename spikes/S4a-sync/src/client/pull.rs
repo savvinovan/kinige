@@ -51,7 +51,11 @@ impl Client {
         order: impl FnOnce(&mut Vec<(u64, Arc<Envelope>)>),
     ) {
         match response {
-            PullResponse::GenerationChanged { generation, stale } => {
+            PullResponse::GenerationChanged {
+                generation,
+                stale,
+                epoch,
+            } => {
                 if self.switches.ignore_generation {
                     self.cursor_generation = generation;
                     return;
@@ -64,8 +68,10 @@ impl Client {
                 self.cursor_generation = generation;
                 // An epoch belongs to the generation it came from: a restored server counts from its backup, so a number from the
                 // old generation could equal one the new generation reaches later and hide a drop (S4a review, ADR-0001 §6.3).
+                // The device starts from the epoch the server has now: drops before it are covered by `stale`, a later one shows
+                // in the pages of the resync (see below).
                 if !self.switches.epoch_survives_generation {
-                    self.known_epoch = 0;
+                    self.known_epoch = epoch;
                 }
                 self.start_resync(cause);
             }
@@ -92,6 +98,16 @@ impl Client {
                     self.apply_envelope(*seq, env, now_ms);
                 }
                 self.cursor_seq = next.max(self.cursor_seq);
+                // A compaction that drops a `purged` while a resync of a restore is still pulling from 0 cannot be told "stale" (a pull
+                // from 0 never is), yet a record this device holds and the page no longer has was dropped, not lost in the restore
+                // (S4a review, round 2): quarantine, not push.
+                if epoch > self.known_epoch && !self.switches.no_epoch_check_in_resync {
+                    if let Some(resync) = &mut self.resync {
+                        if resync.cause == ResyncCause::GenerationChanged {
+                            resync.cause = ResyncCause::StaleAndGeneration;
+                        }
+                    }
+                }
                 self.known_epoch = self.known_epoch.max(epoch);
                 let cursor = self.cursor_seq;
                 self.outbox
@@ -178,6 +194,14 @@ impl Client {
                 let snapshot = header.purged_of.clone().unwrap_or_default();
                 self.acked(&header.op_id, &key, header.kind, &snapshot, seq);
             }
+            // Not merged again, unless the local record has lost it: a purge removes the record, and a lift recreates it from another
+            // device's envelope, which may be older than this device's own writes (S4a review, round 2).
+            if header.kind == Kind::Upsert
+                && !self.switches.own_envelope_not_merged
+                && self.local_lacks(&key, &header.group_hlcs())
+            {
+                self.apply_upsert(&key, incoming, &header.group_hlcs());
+            }
             return;
         }
         match header.kind {
@@ -186,6 +210,14 @@ impl Client {
                 self.pulled_purged(&key, &snapshot);
             }
             Kind::Upsert => self.apply_upsert(&key, incoming, &header.group_hlcs()),
+        }
+    }
+
+    /// Whether the envelope has a group the live record does not (a record this device does not hold at all lacks all of them).
+    fn local_lacks(&self, key: &Key, group_hlcs: &Snapshot) -> bool {
+        match self.records.get(key) {
+            Some(local) => newer_than_snapshot(group_hlcs, &local.v.snapshot()),
+            None => true,
         }
     }
 
@@ -287,9 +319,14 @@ impl Client {
             Entity::Revision,
             uuid_from_bytes(toy_hash(&revision.id_input)),
         );
+        // No revision for a message this device holds in quarantine (S4a review round 2): the user has not decided about it, and a live
+        // revision would be a child without a live parent. The version P is still on the server, and the quarantined copy keeps the
+        // merged groups.
+        let message_in_quarantine = self.quarantine.iter().any(|q| q.key == *message);
         if self.records.contains_key(&key)
             || self.tombstones.contains_key(&key)
             || self.tombstones.contains_key(message)
+            || message_in_quarantine
         {
             return;
         }

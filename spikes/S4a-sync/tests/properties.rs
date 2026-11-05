@@ -2,8 +2,12 @@
 //! `S4A_CASES` (default 10 000, 2 clients), `S4A_CASES3` (default 2 000, 3 clients), `S4A_SEED` (default 1).
 //! CI runs a smaller fixed count with the same fixed seeds.
 
+use s4a_sync::directed::{
+    away_schedule, chain_schedule, chat_purge_schedule, compacted_schedule, restore_epoch_schedule,
+    single_writer_schedule,
+};
 use s4a_sync::props::{self, check};
-use s4a_sync::schedules::{Mix, away_schedule, schedule};
+use s4a_sync::schedules::{Mix, schedule};
 use s4a_sync::switches::Switches;
 use s4a_sync::world::Schedule;
 
@@ -122,7 +126,7 @@ fn p9_no_false_conflicts_when_one_device_writes() {
             &format!("9 no false conflicts, {clients} clients"),
             seed(),
             cases,
-            s4a_sync::schedules::single_writer_schedule(clients),
+            single_writer_schedule(clients),
             |s| props::no_false_conflicts(s, on),
         ) {
             Ok(ran) => println!(
@@ -143,14 +147,14 @@ fn p2_concurrent_edit_keeps_both_versions_after_compaction() {
             &format!("2 no version lost, compacted chain, {clients} clients"),
             seed(),
             cases,
-            s4a_sync::schedules::chain_schedule(clients),
+            chain_schedule(clients),
             |s| props::no_version_lost(s, on),
         );
         let random = check(
             &format!("2 no version lost, random then compacted, {clients} clients"),
             seed(),
             cases,
-            s4a_sync::schedules::compacted_schedule(clients),
+            compacted_schedule(clients),
             |s| props::no_version_lost(s, on),
         );
         for result in [chain, random] {
@@ -173,14 +177,14 @@ fn p7_and_p1_chat_purge_cascade() {
             &format!("7 no orphan, chat purges, {clients} clients"),
             seed(),
             cases,
-            s4a_sync::schedules::chat_purge_schedule(clients),
+            chat_purge_schedule(clients),
             |s| props::no_orphans(s, on),
         );
         let converge = check(
             &format!("1 convergence, chat purges, {clients} clients"),
             seed(),
             cases,
-            s4a_sync::schedules::chat_purge_schedule(clients),
+            chat_purge_schedule(clients),
             |s| props::convergence(s, on),
         );
         for result in [orphans, converge] {
@@ -203,7 +207,7 @@ fn p8_drop_epochs_survive_a_restore() {
         "8 server restore, drop epochs, 2 clients",
         seed(),
         cases2(),
-        s4a_sync::schedules::restore_epoch_schedule(),
+        restore_epoch_schedule(),
         |s| props::server_restore(s, on),
     ) {
         Ok(ran) => println!(

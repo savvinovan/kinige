@@ -3,6 +3,7 @@
 //! server, the clients, the network, the clock, the oracle and the generators around them.
 
 pub mod client;
+pub mod directed;
 pub mod envelope;
 pub mod oracle;
 pub mod props;

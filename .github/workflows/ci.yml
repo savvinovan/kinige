@@ -256,7 +256,7 @@ jobs:
 
   # Spike S4a (KINIG-94): the simulation of the sync protocol, `spikes/S4a-sync`, a crate outside the workspace so no job above builds
   # it. Fixed seed and a smaller number of cases keep the job short; plain `cargo test` there runs 10 000 cases per property for 2
-  # devices and 2 000 for 3, and takes about 25 s. The negative controls (a switch that breaks a rule must make a property fail) run
+  # devices and 2 000 for 3, and takes about 20 s once built. The negative controls (a switch that breaks a rule must make a property fail) run
   # here too, so the properties keep their teeth.
   s4a:
     runs-on: ubuntu-24.04

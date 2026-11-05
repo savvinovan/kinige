@@ -7,7 +7,7 @@
 
 use s4a_sync::client::{Client, inbox_key};
 use s4a_sync::envelope::{Entity, Envelope};
-use s4a_sync::server::Server;
+use s4a_sync::server::{PushResponse, Server};
 use s4a_sync::switches::Switches;
 use serde_json::json;
 use std::time::Instant;
@@ -74,7 +74,7 @@ fn main() {
     let started = Instant::now();
     let mut accepted = 0usize;
     for env in &envelopes {
-        if matches!(server.push(env, T0), s4a_sync::server::PushResponse::Ok(_)) {
+        if matches!(server.push(env, T0), PushResponse::Ok(_)) {
             accepted += 1;
         }
     }

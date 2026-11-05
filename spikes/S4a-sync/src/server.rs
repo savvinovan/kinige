@@ -43,13 +43,32 @@ pub enum PullResponse {
     },
     /// Something that matters (a `purged`, or the `upsert`s of a purged entity) was dropped after the cursor (§6.3).
     Stale,
-    /// The server was restored from a backup (§6.3). `stale`: the old cursor was also stale (both causes at once).
-    GenerationChanged { generation: u64, stale: bool },
+    /// The server was restored from a backup (§6.3). `stale`: the old cursor was also stale (both causes at once). `epoch`: the drop
+    /// epoch of the new generation now; whatever dropped before it is covered by `stale`, a later drop is for the device to notice
+    /// in the pages of its resync.
+    GenerationChanged {
+        generation: u64,
+        stale: bool,
+        epoch: u64,
+    },
+}
+
+/// A compaction that dropped something a device cannot do without (a `purged` and the `upsert`s of the entity it purged).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Drop {
+    /// The generation the drop was made in: its `seq` and `epoch` mean something only against a cursor of the same generation.
+    generation: u64,
+    epoch: u64,
+    /// The highest `seq` dropped.
+    seq: u64,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Server {
+    /// The current generation: an opaque id, unique by chance (a random number made at the restore), ordered by `lineage`.
     pub generation: u64,
+    /// The generations this state descends from, oldest first, the current one last. It is part of the dump: a restore appends one.
+    lineage: Vec<u64>,
     next_seq: u64,
     log: BTreeMap<u64, Stored>,
     /// `op_id -> (seq, bytes id)`.
@@ -58,11 +77,11 @@ pub struct Server {
     known: HashMap<Key, Snapshot>,
     /// Purged entities and the `seq` of the accepted `purged`.
     purged: HashMap<Key, u64>,
-    /// Compactions that dropped something a device cannot do without (a `purged` and the `upsert`s of the entity it purged), as
-    /// `(epoch, highest dropped seq)`. A cursor below the `seq` of a drop that happened after the device last heard from the server has
-    /// missed it, so it is stale (§6.3). Covered `upsert`s do not count: a later one says the same.
-    drops: Vec<(u64, u64)>,
-    /// A counter of such compactions; every page tells the device the current value. It is not restored with a backup and only grows.
+    /// The compactions that dropped something a device cannot do without. A cursor of the drop's generation below its `seq`, or any
+    /// cursor of an older generation, has missed it, so it is stale (§6.3). Covered `upsert`s do not count: a later one says the same.
+    drops: Vec<Drop>,
+    /// A counter of such compactions; every page tells the device the current value. It is part of the dump and means something only
+    /// within one generation (S4a review round 2): nothing has to live outside the dump.
     epoch: u64,
     /// With `no_seq_lock`: an envelope that has its `seq` but is not visible yet.
     in_flight: Option<Stored>,
@@ -75,6 +94,7 @@ impl Server {
     pub fn new(switches: Switches) -> Server {
         Server {
             generation: 1,
+            lineage: vec![1],
             next_seq: 1,
             switches,
             ..Server::default()
@@ -83,7 +103,7 @@ impl Server {
 
     /// The highest `seq` pull can reach: the log's last, or the last one dropped if that is higher (a cursor must be able to get there).
     pub fn head(&self) -> u64 {
-        let dropped = self.drops.iter().map(|(_, seq)| *seq).max().unwrap_or(0);
+        let dropped = self.drops.iter().map(|d| d.seq).max().unwrap_or(0);
         self.log
             .keys()
             .next_back()
@@ -215,6 +235,34 @@ impl Server {
         response
     }
 
+    /// Whether the device with cursor `(generation, after)` and `known_epoch` has missed a drop (§6.3). A pull from 0 is a full resync
+    /// itself: it reads what is left. Otherwise, by where the drop's generation stands against the cursor's in the lineage:
+    /// - an older generation: the cursor was made after the drop, it cannot have missed it;
+    /// - the same generation: it missed it if the drop is above the cursor and newer than the last page the device applied;
+    /// - a newer generation: the cursor cannot have seen anything made in it, whatever the `seq`s say (a restored server issues `seq`
+    ///   again from the backup's head).
+    ///
+    /// A generation that is not in the lineage was made after the backup the lineage ends in, so it stands between the backup's and the
+    /// current one.
+    fn missed(&self, generation: u64, after: u64, known_epoch: u64) -> bool {
+        if after == 0 {
+            return false;
+        }
+        if self.switches.drop_seq_across_generations {
+            return self
+                .drops
+                .iter()
+                .any(|d| d.epoch > known_epoch && d.seq > after);
+        }
+        let place = |g: u64| self.lineage.iter().position(|x| *x == g);
+        let cursor =
+            place(generation).map_or(2 * self.lineage.len().saturating_sub(2) + 1, |p| 2 * p);
+        self.drops.iter().any(|d| {
+            let made = 2 * place(d.generation).unwrap_or(0);
+            made > cursor || (made == cursor && d.epoch > known_epoch && d.seq > after)
+        })
+    }
+
     fn pull_inner(
         &self,
         generation: u64,
@@ -222,19 +270,13 @@ impl Server {
         known_epoch: u64,
         limit: usize,
     ) -> PullResponse {
-        // A pull from 0 is a full resync itself: it reads what is left and misses nothing it could have had. Otherwise the cursor is
-        // stale if, since the device last heard from the server, something it needs was dropped above the cursor.
-        let missed = after > 0
-            && self
-                .drops
-                .iter()
-                .any(|(epoch, seq)| *epoch > known_epoch && *seq > after);
+        let missed = self.missed(generation, after, known_epoch);
         if generation != self.generation {
-            // Both causes at once: the restored log is a prefix of the old one (same `seq`s) and the epoch counter never repeats, so
-            // the drops of the restored state can be held against the old cursor. The device does not guess from its clock.
+            // Both causes at once. The device does not guess from its clock; the drops are held against its cursor by generation.
             return PullResponse::GenerationChanged {
                 generation: self.generation,
                 stale: missed && !self.switches.no_stale_check,
+                epoch: self.epoch,
             };
         }
         if missed && !self.switches.no_stale_check {
@@ -287,7 +329,11 @@ impl Server {
         }
         if dropped_max > 0 {
             self.epoch += 1;
-            self.drops.push((self.epoch, dropped_max));
+            self.drops.push(Drop {
+                generation: self.generation,
+                epoch: self.epoch,
+                seq: dropped_max,
+            });
         }
         let mut best: HashMap<(Key, String), (String, u64)> = HashMap::new();
         for stored in self
@@ -326,20 +372,36 @@ impl Server {
         self.clone()
     }
 
-    /// Restoring from a backup (§6.3): whatever was acked after it is gone, and the `generation` changes.
-    pub fn restore(&mut self, backup: &Server) {
-        let generation = self.generation + 1;
+    /// Restoring from a backup (§6.3), into a clean installation: the new state is the dump and a fresh `generation`, nothing else.
+    /// Whatever was acked after the backup is gone. The generation id is `nonce` (a random number in a real server; the world supplies
+    /// one that cannot repeat), and it is appended to the dump's lineage. The one thing kept from the old state is `purged_ever`, which
+    /// is the simulation's own record for the property checks, not server state.
+    pub fn restore(&mut self, backup: &Server, nonce: u64) {
         let purged_ever = std::mem::take(&mut self.purged_ever);
-        let epoch = self.epoch;
-        *self = backup.clone();
-        self.generation = generation;
+        *self = Server::from_dump(backup, nonce);
         self.purged_ever = purged_ever;
-        // The epoch counter is not part of the backup: it only grows, so a later drop never gets a number a device already holds
-        // (S4a review, ADR-0001 §6.3). The drops of the backup keep the numbers they had.
-        if !self.switches.epoch_from_backup {
-            self.epoch = self.epoch.max(epoch);
+    }
+
+    fn from_dump(dump: &Server, nonce: u64) -> Server {
+        let mut state = dump.clone();
+        let mut generation = nonce;
+        while state.lineage.contains(&generation) {
+            generation = generation.wrapping_add(1);
         }
-        self.in_flight = None;
+        state.generation = generation;
+        state.lineage.push(generation);
+        state.in_flight = None;
+        state
+    }
+
+    /// The generations of this state, oldest first (for the tests).
+    pub fn lineage(&self) -> &[u64] {
+        &self.lineage
+    }
+
+    /// The epoch counter (for the tests).
+    pub fn epoch(&self) -> u64 {
+        self.epoch
     }
 
     /// Entities whose `purged` the server accepted and still remembers.

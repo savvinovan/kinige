@@ -30,6 +30,7 @@ pub fn run(schedule: &Schedule, switches: Switches) -> Result<World, String> {
             return Err(format!("device {}: {event:?}", client.idx));
         }
     }
+    oracle::quarantine_is_exclusive(&world)?;
     Ok(world)
 }
 

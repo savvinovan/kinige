@@ -2,9 +2,13 @@
 //! code proves nothing. Each test prints the property's failure report (the reason, the seed and the shrunk schedule), which goes
 //! into the PR description. Cases: `S4A_CONTROL_CASES` (default 20 000, a failure normally comes within a few hundred).
 
-use proptest::strategy::Strategy;
+use proptest::strategy::{Just, Strategy};
+use s4a_sync::directed::{
+    away_schedule, chain_schedule, chat_purge_schedule, compaction_while_a_restore_resync_pulls,
+    own_writes_after_a_lift, restore_epoch_schedule, single_writer_schedule,
+};
 use s4a_sync::props::{self, check};
-use s4a_sync::schedules::{Mix, away_schedule, schedule};
+use s4a_sync::schedules::{Mix, schedule};
 use s4a_sync::switches::Switches;
 use s4a_sync::world::Schedule;
 
@@ -211,7 +215,7 @@ fn control_2_without_vv_a_compacted_chain_loses_a_version() {
     };
     must_fail(
         "2 no version lost, compaction, without vv",
-        s4a_sync::schedules::chain_schedule(2),
+        chain_schedule(2),
         props::no_version_lost,
         on,
         &["is gone"],
@@ -226,7 +230,7 @@ fn control_7_without_the_grace_children_of_a_purged_chat_stay_hidden() {
     };
     must_fail(
         "7 nothing hidden for good, children hidden for as long as the tombstone lives",
-        s4a_sync::schedules::chat_purge_schedule(2),
+        chat_purge_schedule(2),
         props::no_orphans,
         on,
         &["is hidden after a complete pull"],
@@ -241,7 +245,7 @@ fn control_1_cascade_at_the_parent_ack_loses_what_only_the_initiator_had() {
     };
     must_fail(
         "1 convergence, chat purge deleting the messages at the chat's ack (ADR-0001 revision 7)",
-        s4a_sync::schedules::chat_purge_schedule(2),
+        chat_purge_schedule(2),
         props::convergence,
         on,
         &["differ"],
@@ -256,7 +260,7 @@ fn control_9_a_winner_made_from_the_devices_own_version_is_a_false_conflict() {
     };
     must_fail(
         "9 no false conflicts, the winner's own base counted as concurrent (before finding 5)",
-        s4a_sync::schedules::single_writer_schedule(2),
+        single_writer_schedule(2),
         props::no_false_conflicts,
         on,
         &["conflict revision"],
@@ -264,15 +268,14 @@ fn control_9_a_winner_made_from_the_devices_own_version_is_a_false_conflict() {
 }
 
 #[test]
-fn control_8_the_epoch_counter_restored_with_the_backup_resurrects() {
+fn control_8_an_epoch_kept_across_generations_resurrects() {
     let on = Switches {
-        epoch_from_backup: true,
         epoch_survives_generation: true,
         ..Switches::default()
     };
     must_fail(
-        "8 server restore, drop epochs numbered from the backup and kept across generations (the review blocker)",
-        s4a_sync::schedules::restore_epoch_schedule(),
+        "8 server restore, drop epochs kept across generations (the round 1 blocker)",
+        restore_epoch_schedule(),
         props::server_restore,
         on,
         &[
@@ -282,6 +285,57 @@ fn control_8_the_epoch_counter_restored_with_the_backup_resurrects() {
             "live again",
             "not in the trash",
         ],
+    );
+}
+
+#[test]
+fn control_8_a_cursor_compared_with_the_seqs_of_another_generation_resurrects() {
+    let on = Switches {
+        drop_seq_across_generations: true,
+        ..Switches::default()
+    };
+    must_fail(
+        "8 server restore, drop seqs compared across generations (the round 2 blocker)",
+        restore_epoch_schedule(),
+        props::server_restore,
+        on,
+        &[
+            "fresh device",
+            "newest write",
+            "differ",
+            "live again",
+            "not in the trash",
+        ],
+    );
+}
+
+#[test]
+fn control_8_a_resync_that_does_not_see_a_compaction_pushes_back_what_was_dropped() {
+    let on = Switches {
+        no_epoch_check_in_resync: true,
+        ..Switches::default()
+    };
+    must_fail(
+        "8 server restore, no epoch check while the resync pulls (found in round 2)",
+        Just(compaction_while_a_restore_resync_pulls()),
+        props::server_restore,
+        on,
+        &["not in the trash", "live again", "differ"],
+    );
+}
+
+#[test]
+fn control_8_own_writes_met_again_in_a_pull_are_lost_after_a_lifted_tombstone() {
+    let on = Switches {
+        own_envelope_not_merged: true,
+        ..Switches::default()
+    };
+    must_fail(
+        "8 server restore, own envelopes never merged (found in round 2)",
+        Just(own_writes_after_a_lift()),
+        props::server_restore,
+        on,
+        &["differ"],
     );
 }
 

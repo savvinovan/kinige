@@ -12,9 +12,10 @@ pub enum ResyncCause {
     StaleCursor,
     /// The `generation` changed: the server was restored from a backup and lost whatever was acked after it.
     GenerationChanged,
-    /// Both of the last two at once. The server cannot say whether the old cursor was stale (its drops are those of the backup, in
-    /// another numbering), so the device decides by its own clock: the last page it applied is older than the retention period
-    /// (§6.3). The "stale" column applies: quarantine is safer.
+    /// Both of the last two at once. The server decides, not the device (§6.3, S4a): it knows the lineage of its generations and
+    /// the generation each of its drops was made in, so it says "stale" when a drop was made in a generation after the cursor's, or
+    /// in the cursor's generation above its `seq` and `epoch`. The device's own clock plays no part. The "stale" column applies:
+    /// quarantine is safer.
     StaleAndGeneration,
 }
 

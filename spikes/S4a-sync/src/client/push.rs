@@ -4,6 +4,7 @@ use super::Client;
 use super::Event;
 use crate::envelope::{Envelope, Key, Kind};
 use crate::server::PushResponse;
+use kinige_domain::sync::Snapshot;
 use std::sync::Arc;
 
 impl Client {
@@ -83,7 +84,7 @@ impl Client {
         op_id: &str,
         key: &Key,
         kind: Kind,
-        snapshot: &kinige_domain::sync::Snapshot,
+        snapshot: &Snapshot,
         seq: u64,
     ) {
         if let Some(row) = self

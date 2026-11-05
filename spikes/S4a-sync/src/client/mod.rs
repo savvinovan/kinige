@@ -12,10 +12,11 @@ pub mod purge;
 mod push;
 mod view;
 
-use crate::envelope::{Entity, Envelope, Key};
+use crate::envelope::{Entity, Envelope, Key, Kind};
 use crate::switches::Switches;
 use kinige_domain::hlc::{self, Clock, Skew};
 pub use kinige_domain::sync::ResyncCause;
+use kinige_domain::sync::conflict::uuid_from_bytes;
 use kinige_domain::sync::{Snapshot, Versioned};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -213,7 +214,7 @@ impl Client {
         bytes[0] = 0xaa;
         bytes[1] = u8::try_from(self.idx).unwrap_or(0xff);
         bytes[8..].copy_from_slice(&self.counter.to_be_bytes());
-        kinige_domain::sync::conflict::uuid_from_bytes(bytes)
+        uuid_from_bytes(bytes)
     }
 
     pub(crate) fn next_op_id(&mut self) -> String {
@@ -274,7 +275,7 @@ impl Client {
         if self.compact_outbox {
             self.outbox.retain(|row| {
                 let old = &row.env.header;
-                let covered = old.kind == crate::envelope::Kind::Upsert
+                let covered = old.kind == Kind::Upsert
                     && old.key() == *key
                     && old
                         .groups
@@ -312,7 +313,7 @@ impl Client {
     pub(crate) fn drop_unacked_upserts(&mut self, keys: &[Key]) {
         self.outbox.retain(|row| {
             !(row.acked_seq.is_none()
-                && row.env.header.kind == crate::envelope::Kind::Upsert
+                && row.env.header.kind == Kind::Upsert
                 && keys.contains(&row.env.header.key()))
         });
     }
@@ -334,5 +335,5 @@ pub fn device_id(idx: usize) -> String {
     let mut bytes = [0u8; 16];
     bytes[0] = 0xd0;
     bytes[1] = u8::try_from(idx).unwrap_or(0xff);
-    kinige_domain::sync::conflict::uuid_from_bytes(bytes)
+    uuid_from_bytes(bytes)
 }

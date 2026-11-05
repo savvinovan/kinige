@@ -1,11 +1,14 @@
 //! Named counterexamples found by the properties, kept as plain scenarios so that they read as a story and stay fixed.
 
-use s4a_sync::envelope::DAY_MS;
+use s4a_sync::client::{Event, FeedSlot, ResyncCause};
+use s4a_sync::directed::{compaction_while_a_restore_resync_pulls, own_writes_after_a_lift};
+use s4a_sync::envelope::{DAY_MS, Entity, Kind};
 use s4a_sync::props;
+use s4a_sync::server::Server;
 use s4a_sync::switches::Switches;
-use s4a_sync::world::{Op::*, PullFault, PushFault, Schedule, Step::*};
+use s4a_sync::world::{Op::*, PullFault, PushFault, Schedule, Step, Step::*, World};
 
-fn two_devices(steps: Vec<s4a_sync::world::Step>) -> Schedule {
+fn two_devices(steps: Vec<Step>) -> Schedule {
     Schedule {
         clients: 2,
         skews: vec![0, 0],
@@ -152,7 +155,6 @@ fn a_drop_after_a_restore_reuses_an_epoch_a_device_holds() -> Schedule {
 #[test]
 fn review_epoch_after_a_restore_with_revision_8_resurrects() {
     let revision_8 = Switches {
-        epoch_from_backup: true,
         epoch_survives_generation: true,
         ..Switches::default()
     };
@@ -166,29 +168,13 @@ fn review_epoch_after_a_restore_with_revision_8_resurrects() {
 }
 
 #[test]
-fn review_epoch_after_a_restore_is_stale_with_a_counter_that_only_grows() {
+fn review_epoch_after_a_restore_is_stale_when_a_device_forgets_the_old_generations_epoch() {
+    // The epoch means something only within one generation: the device forgets it when the generation changes (ADR-0001 §6.3).
     let schedule = a_drop_after_a_restore_reuses_an_epoch_a_device_holds();
     assert_eq!(
         props::no_resurrection(&schedule, Switches::default()),
         Ok(())
     );
-    // Either half of the fix alone is enough here; the server's counter is the rule (ADR-0001 §6.3), the client's reset a second line.
-    for only_one in [
-        Switches {
-            epoch_from_backup: true,
-            ..Switches::default()
-        },
-        Switches {
-            epoch_survives_generation: true,
-            ..Switches::default()
-        },
-    ] {
-        assert_eq!(
-            props::no_resurrection(&schedule, only_one),
-            Ok(()),
-            "{only_one:?}"
-        );
-    }
 }
 
 /// Review (guardian, "both causes at once"): device A is away for 200 days; meanwhile B deletes and purges Y, the server compacts the
@@ -218,7 +204,7 @@ fn review_both_causes_at_once_the_server_says_the_old_cursor_was_stale() {
         .events
         .iter()
         .filter_map(|e| {
-            if let s4a_sync::client::Event::Resync(c) = e {
+            if let Event::Resync(c) = e {
                 Some(*c)
             } else {
                 None
@@ -226,13 +212,203 @@ fn review_both_causes_at_once_the_server_says_the_old_cursor_was_stale() {
         })
         .collect();
     assert!(
-        causes.contains(&s4a_sync::client::ResyncCause::StaleAndGeneration),
+        causes.contains(&ResyncCause::StaleAndGeneration),
         "{causes:?}"
     );
     assert_eq!(
         props::no_resurrection(&schedule, Switches::default()),
         Ok(())
     );
+}
+
+/// Review round 2 (guardian): the old cursor of a device is a position in the old generation, a drop of the new generation has a `seq` of
+/// the new one. A restored server issues `seq` again from the head of its backup, so a drop made after the restore can have a `seq`
+/// far below a cursor that went further before it. Comparing the two numbers says "not stale" and X comes back live.
+fn a_cursor_above_the_head_of_the_backup(activity: usize) -> Schedule {
+    let (a, b) = (0, 1);
+    let mut steps = vec![
+        Local(a, CreateChat),
+        Local(a, CreateMessage(0)), // X
+        SyncAll { skip: usize::MAX },
+        Backup, // head H0
+    ];
+    for _ in 0..activity {
+        steps.push(Local(a, Favorite(0)));
+        steps.push(SyncAll { skip: usize::MAX });
+    }
+    steps.extend([
+        RestoreServer, // a new generation; its seqs continue from H0; A is away from here on
+        Local(b, DeleteMessage(0)), // B resyncs, pushes back what the server lost, deletes X
+        SyncAll { skip: a },
+        Advance(31 * DAY_MS),
+        Purge(b),
+        SyncAll { skip: a },
+        Advance(181 * DAY_MS),
+        Compact, // a drop whose seq is far below A's old cursor
+        Pull(a, PullFault::Ok),
+    ]);
+    two_devices(steps)
+}
+
+fn resync_causes(world: &World, device: usize) -> Vec<ResyncCause> {
+    world.clients[device]
+        .events
+        .iter()
+        .filter_map(|e| match e {
+            Event::Resync(cause) => Some(*cause),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn review_round_2_an_old_cursor_above_the_restored_head_still_sees_the_drop() {
+    let schedule = a_cursor_above_the_head_of_the_backup(12);
+    let world = props::run(&schedule, Switches::default()).expect("runs clean");
+    let causes = resync_causes(&world, 0);
+    assert!(
+        causes.contains(&ResyncCause::StaleAndGeneration),
+        "{causes:?}"
+    );
+    assert_eq!(
+        props::no_resurrection(&schedule, Switches::default()),
+        Ok(())
+    );
+    assert_eq!(
+        props::server_restore(&schedule, Switches::default()),
+        Ok(())
+    );
+}
+
+#[test]
+fn review_round_2_comparing_seqs_across_generations_resurrects() {
+    let schedule = a_cursor_above_the_head_of_the_backup(12);
+    let old_comparison = Switches {
+        drop_seq_across_generations: true,
+        ..Switches::default()
+    };
+    let world = props::run(&schedule, old_comparison).expect("runs clean");
+    let causes = resync_causes(&world, 0);
+    assert!(
+        causes.contains(&ResyncCause::GenerationChanged)
+            && !causes.contains(&ResyncCause::StaleAndGeneration),
+        "{causes:?}"
+    );
+    let reason = props::no_resurrection(&schedule, old_comparison)
+        .expect_err("the purged record is live again on device 0");
+    println!("{reason}");
+}
+
+/// Two restores in a row, from the same backup and from a backup of the first new generation: every drop is judged in its own generation,
+/// and an old cursor from any of the generations before is told.
+#[test]
+fn review_round_2_two_restores_in_a_row() {
+    let (a, b) = (0, 1);
+    let schedule = two_devices(vec![
+        Local(a, CreateChat),
+        Local(a, CreateMessage(0)), // X
+        Local(a, CreateMessage(0)), // Y
+        SyncAll { skip: usize::MAX },
+        Backup,
+        Local(a, Favorite(0)),
+        SyncAll { skip: usize::MAX },
+        Local(b, DeleteMessage(0)),
+        SyncAll { skip: usize::MAX },
+        Advance(31 * DAY_MS),
+        Purge(b),
+        SyncAll { skip: usize::MAX },
+        Advance(181 * DAY_MS),
+        Compact,
+        RestoreServer, // generation 2: the drop of generation 1 is lost with the post-backup state
+        SyncAll { skip: a },
+        Backup,
+        Local(b, Favorite(1)),
+        SyncAll { skip: a },
+        RestoreServer, // generation 3, from a backup of generation 2
+        SyncAll { skip: a },
+        Local(b, DeleteMessage(1)),
+        SyncAll { skip: a },
+        Advance(31 * DAY_MS),
+        Purge(b),
+        SyncAll { skip: a },
+        Advance(181 * DAY_MS),
+        Compact,
+        Pull(a, PullFault::Ok),
+    ]);
+    let world = props::run(&schedule, Switches::default()).expect("runs clean");
+    assert_eq!(world.server.lineage().len(), 3);
+    assert_eq!(
+        props::no_resurrection(&schedule, Switches::default()),
+        Ok(())
+    );
+    assert_eq!(
+        props::server_restore(&schedule, Switches::default()),
+        Ok(())
+    );
+}
+
+/// A restore into a clean installation (ADR-0001 §6.3): the server keeps nothing but the dump, so a server that was used for months
+/// and one freshly installed from the same dump are the same server. Nothing outside the dump (a counter, a nonce history) may matter.
+#[test]
+fn review_round_2_a_restore_into_a_clean_installation_equals_an_in_place_restore() {
+    let schedule = a_cursor_above_the_head_of_the_backup(5);
+    let mut used = World::new(&schedule, Switches::default());
+    used.run(&schedule.steps[..4]); // up to and including the backup
+    let backup = used.server.backup();
+    used.run(&schedule.steps[4..]); // months of use, a compaction, drops of epoch 1
+    assert!(used.server.drops_count() > 0);
+    let mut clean = Server::new(Switches::default());
+    clean.restore(&backup, 42);
+    used.server.restore(&backup, 42);
+    assert_eq!(used.server.generation, clean.generation);
+    assert_eq!(used.server.lineage(), clean.lineage());
+    assert_eq!(used.server.head(), clean.head());
+    assert_eq!(used.server.epoch(), clean.epoch());
+    assert_eq!(used.server.drops_count(), clean.drops_count());
+    assert_eq!(used.server.log_len(), clean.log_len());
+}
+
+#[test]
+fn review_round_2_a_compaction_during_the_resync_of_a_restore_quarantines() {
+    let schedule = compaction_while_a_restore_resync_pulls();
+    let world = props::run(&schedule, Switches::default()).expect("runs clean");
+    assert_eq!(world.server.lineage().len(), 2);
+    assert_eq!(
+        props::no_resurrection(&schedule, Switches::default()),
+        Ok(())
+    );
+    assert_eq!(
+        props::server_restore(&schedule, Switches::default()),
+        Ok(())
+    );
+}
+
+#[test]
+fn review_round_2_without_the_epoch_check_in_the_resync_the_dropped_message_is_pushed_back() {
+    let old_rule = Switches {
+        no_epoch_check_in_resync: true,
+        ..Switches::default()
+    };
+    let reason = props::server_restore(&compaction_while_a_restore_resync_pulls(), old_rule)
+        .expect_err("M comes back");
+    println!("{reason}");
+}
+
+#[test]
+fn review_round_2_own_writes_survive_a_lifted_tombstone() {
+    let schedule = own_writes_after_a_lift();
+    assert_eq!(
+        props::server_restore(&schedule, Switches::default()),
+        Ok(())
+    );
+    let old_rule = Switches {
+        own_envelope_not_merged: true,
+        ..Switches::default()
+    };
+    let reason = props::server_restore(&schedule, old_rule)
+        .expect_err("device 1 keeps the old M while the others have its edit");
+    println!("{reason}");
+    assert!(reason.contains("differ"));
 }
 
 /// The same restore with no drop in the backup: a device that was only idle is not "stale", its acked records the server lost are
@@ -255,8 +431,6 @@ fn review_an_idle_device_is_not_stale_after_a_restore() {
 /// `purged` it is about to send for them are still in its own outbox.
 #[test]
 fn review_the_initiator_does_not_show_what_it_is_about_to_purge() {
-    use s4a_sync::client::FeedSlot;
-    use s4a_sync::envelope::Kind;
     let schedule = Schedule {
         clients: 2,
         skews: vec![0, 0],
@@ -287,7 +461,7 @@ fn review_the_initiator_does_not_show_what_it_is_about_to_purge() {
             true,
         ),
     ] {
-        let mut world = s4a_sync::world::World::new(&schedule, switches);
+        let mut world = World::new(&schedule, switches);
         world.run(&schedule.steps);
         let a = &world.clients[0];
         let pending = a
@@ -338,17 +512,11 @@ fn review_a_quarantined_record_that_the_server_sends_again_stays_in_quarantine()
             true,
         ),
     ] {
-        let mut world = s4a_sync::world::World::new(&schedule, switches);
+        let mut world = World::new(&schedule, switches);
         world.run(&schedule.steps);
         let a = &world.clients[a];
-        let message_live = a
-            .records
-            .keys()
-            .any(|k| k.0 == s4a_sync::envelope::Entity::Message);
-        let message_held = a
-            .quarantine
-            .iter()
-            .any(|q| q.key.0 == s4a_sync::envelope::Entity::Message);
+        let message_live = a.records.keys().any(|k| k.0 == Entity::Message);
+        let message_held = a.quarantine.iter().any(|q| q.key.0 == Entity::Message);
         assert!(message_held, "M is in quarantine ({switches:?})");
         assert_eq!(message_live, live, "{switches:?}");
     }

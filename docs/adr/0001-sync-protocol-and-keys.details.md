@@ -234,7 +234,7 @@ PRD §4.2 is a draft for the ADR. Slice 1 needs:
   - `pending_unknown(seq, entity, entity_id, envelope)`;
   - `message_ext(src, ext_chat, ext_msg, message_id)`, primary key `(src, ext_chat, ext_msg)` — a local non-synchronized index, derived from `core`, recomputed on pull. Insertion is `INSERT OR IGNORE`: two messages with different ids and the same `ext` (a concurrent import on two devices) do not break the recomputation; the duplicate shows up in the import report and in the UI;
 - `change_outbox`: `acked_seq`;
-- `sync_state`: `device_id`, `hlc_l`, `hlc_c`, `generation`, `cursor`, `known_epoch` (S4a: the drop `epoch` of the last applied pull page, sent with the next pull, forgotten when a resync starts because the `generation` changed; §6.3), `account_id`, `kdf_profile_seen`. A pull page carries `epoch`; a `GenerationChanged` answer carries `stale`.
+- `sync_state`: `device_id`, `hlc_l`, `hlc_c`, `generation`, `cursor`, `known_epoch` (S4a: the drop `epoch` of the last applied pull page, sent with the next pull, replaced by the server's current epoch from the answer when a resync starts because the `generation` changed; §6.3), `account_id`, `kdf_profile_seen`. A pull page carries `epoch`; a `GenerationChanged` answer carries `stale`.
 
 Slice 1 has no sync, but `hlc_json`, `sv = 1`, `device_id`, the HLC clock and local tombstones work from the very first write.
 

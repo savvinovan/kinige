@@ -1,7 +1,7 @@
 //! Envelopes of the simulation (ADR-0001 §5): plaintext, with the same open header fields as the real ones. Encryption is S4b. The
 //! AEAD binding is modelled as a seal over header and payload: the server reads the header and cannot change it unnoticed.
 
-use kinige_domain::sync::{Snapshot, SyncError, Versioned};
+use kinige_domain::sync::{Group, Snapshot, SyncError, Versioned};
 use std::collections::BTreeMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -131,7 +131,7 @@ impl Envelope {
             let raw = self.payload.get(name).ok_or(EnvelopeError::Malformed)?;
             record.set(
                 name,
-                kinige_domain::sync::Group::new(hlc, *sv, raw).map_err(EnvelopeError::Group)?,
+                Group::new(hlc, *sv, raw).map_err(EnvelopeError::Group)?,
             );
         }
         Ok(record)

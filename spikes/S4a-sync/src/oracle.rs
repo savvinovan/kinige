@@ -294,6 +294,22 @@ pub fn no_version_lost(world: &World) -> Result<(), String> {
     Ok(())
 }
 
+/// A record is in quarantine or in the live tables of a device, not both (S4a review: an envelope for a quarantined record stays in
+/// quarantine). A revision that was made before its message went to quarantine stays live: it is not shown without its message.
+pub fn quarantine_is_exclusive(world: &World) -> Result<(), String> {
+    for client in &world.clients {
+        for held in &client.quarantine {
+            if client.records.contains_key(&held.key) {
+                return Err(format!(
+                    "device {}: {:?} is live and in quarantine at once",
+                    client.idx, held.key
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Property 4: nothing the server purged is back in a journal. It may sit in quarantine, never live.
 pub fn purged_stays_gone(world: &World) -> Result<(), String> {
     for key in &world.server.purged_ever {

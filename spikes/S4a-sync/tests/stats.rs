@@ -3,10 +3,13 @@
 
 use proptest::strategy::{Strategy, ValueTree};
 use proptest::test_runner::{Config, RngAlgorithm, RngSeed, TestRunner};
-use s4a_sync::client::Event;
+use s4a_sync::client::{Event, ResyncCause};
+use s4a_sync::directed::{
+    away_schedule, chain_schedule, chat_purge_schedule, single_writer_schedule,
+};
 use s4a_sync::envelope::Entity;
 use s4a_sync::props::run;
-use s4a_sync::schedules::{Mix, away_schedule, chain_schedule, schedule, single_writer_schedule};
+use s4a_sync::schedules::{Mix, schedule};
 use s4a_sync::switches::Switches;
 use s4a_sync::world::Schedule;
 use std::collections::BTreeMap;
@@ -80,12 +83,10 @@ fn report(name: &str, schedules: Vec<Schedule>) {
                 match e {
                     Event::Resync(cause) => add(
                         match cause {
-                            s4a_sync::client::ResyncCause::Binding => "resyncs: first binding",
-                            s4a_sync::client::ResyncCause::StaleCursor => "resyncs: stale cursor",
-                            s4a_sync::client::ResyncCause::GenerationChanged => {
-                                "resyncs: new generation"
-                            }
-                            s4a_sync::client::ResyncCause::StaleAndGeneration => "resyncs: both",
+                            ResyncCause::Binding => "resyncs: first binding",
+                            ResyncCause::StaleCursor => "resyncs: stale cursor",
+                            ResyncCause::GenerationChanged => "resyncs: new generation",
+                            ResyncCause::StaleAndGeneration => "resyncs: both",
                         },
                         1,
                     ),
@@ -130,10 +131,7 @@ fn coverage() {
         sample(away_schedule(2), n),
     );
     report("compacted chain, 2 clients", sample(chain_schedule(2), n));
-    report(
-        "chat purges, 3 clients",
-        sample(s4a_sync::schedules::chat_purge_schedule(3), n),
-    );
+    report("chat purges, 3 clients", sample(chat_purge_schedule(3), n));
     report(
         "single writer, 2 clients",
         sample(single_writer_schedule(2), n),
