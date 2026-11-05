@@ -1,0 +1,20 @@
+[package]
+name = "s4a-sync"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# A separate crate outside the workspace, like S5: the spike is not part of the project build. The merge and purge rules it
+# runs are the real ones in `kinige-domain::sync`; everything else here (server, clients, network, oracle) is the simulation.
+[workspace]
+
+[dependencies]
+kinige-domain = { path = "../../crates/kinige-domain" }
+serde_json = "1"
+# Property tests with shrinking and a fixed seed (MIT OR Apache-2.0). The generators of schedules live in the library so that the
+# measurement binary and the tests share them.
+proptest = { version = "1.12", default-features = false, features = ["std"] }
+
+# The simulation does a lot of small allocations; tests run optimised so that 10 000 cases per property take minutes, not hours.
+[profile.test]
+opt-level = 2
