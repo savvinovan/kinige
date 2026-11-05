@@ -64,14 +64,21 @@ impl Profile {
     }
 
     /// The profile of a new password, on a password change and on recovery (§8.2, §8.5, §8.6):
-    /// `max(seen, sent, default)`. A sent profile lower than `seen` is not refused here (nothing is derived from it) but does not
-    /// lower the result: a recovery on a device that has seen profile 2 gets profile 2 even if the server says 1 (B item 14).
-    /// An unknown number is still a refusal.
-    pub fn for_new_password(sent: u8, seen: Option<Profile>) -> Result<Profile, CryptoError> {
+    /// `max(seen, sent, default)`, where `default` is the profile this client version gives a new account (`Profile::DEFAULT`, the one
+    /// a newer client may raise; a parameter so that tests can play a newer client). A sent profile lower than `seen` is not refused
+    /// here (nothing is derived from it) but does not lower the result: a recovery on a device that has seen profile 2 gets profile 2
+    /// even if the server says 1 (B item 14). An unknown number is still a refusal.
+    ///
+    /// For a password change the **old** password is derived with [`Profile::from_server`], which refuses a sent profile lower than
+    /// `seen` first, so there `seen <= sent` already and `seen` adds nothing; it matters on recovery, which derives nothing from the
+    /// sent profile (S4b finding).
+    pub fn for_new_password(
+        sent: u8,
+        seen: Option<Profile>,
+        default: Profile,
+    ) -> Result<Profile, CryptoError> {
         let sent_profile = Profile::from_number(sent)?;
-        Ok(sent_profile
-            .max(seen.unwrap_or(Profile::DEFAULT))
-            .max(Profile::DEFAULT))
+        Ok(sent_profile.max(seen.unwrap_or(default)).max(default))
     }
 }
 
@@ -99,7 +106,7 @@ mod tests {
                 Err(CryptoError::Profile(ProfileError::Unknown(number)))
             );
             assert!(Profile::from_server(number, None).is_err());
-            assert!(Profile::for_new_password(number, Some(Profile::P2)).is_err());
+            assert!(Profile::for_new_password(number, Some(Profile::P2), Profile::P1).is_err());
         }
     }
 
@@ -119,15 +126,25 @@ mod tests {
 
     #[test]
     fn a_new_password_never_gets_a_lower_profile() {
+        let d = Profile::DEFAULT;
         assert_eq!(
-            Profile::for_new_password(1, Some(Profile::P2)),
+            Profile::for_new_password(1, Some(Profile::P2), d),
             Ok(Profile::P2)
         );
         assert_eq!(
-            Profile::for_new_password(2, Some(Profile::P1)),
+            Profile::for_new_password(2, Some(Profile::P1), d),
             Ok(Profile::P2)
         );
-        assert_eq!(Profile::for_new_password(2, None), Ok(Profile::P2));
-        assert_eq!(Profile::for_new_password(1, None), Ok(Profile::P1));
+        assert_eq!(Profile::for_new_password(2, None, d), Ok(Profile::P2));
+        assert_eq!(Profile::for_new_password(1, None, d), Ok(Profile::P1));
+        // A newer client whose default is 2 raises an account of profile 1 when the password changes.
+        assert_eq!(
+            Profile::for_new_password(1, None, Profile::P2),
+            Ok(Profile::P2)
+        );
+        assert_eq!(
+            Profile::for_new_password(1, Some(Profile::P1), Profile::P2),
+            Ok(Profile::P2)
+        );
     }
 }

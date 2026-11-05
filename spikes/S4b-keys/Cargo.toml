@@ -1,0 +1,26 @@
+[package]
+name = "s4b-keys"
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+# A separate crate outside the workspace, like S4a and S5: the spike is not part of the project build. The keys, wraps, words and
+# envelopes it runs are the real ones in `kinige-crypto`; the account server, the client's account flows, the faulty link and the
+# log scanner here are the simulation.
+[workspace]
+
+[dependencies]
+kinige-crypto = { path = "../../crates/kinige-crypto" }
+# The same pinned binding: hex and base64 for the log scanner, random bytes for ids and tokens.
+libsodium-rs = "=0.3.0"
+# The files of the interop test with libsodium.js.
+serde_json = "1"
+
+# Argon2id of profile 1 is run by every flow; libsodium is optimized by the same override as in the workspace.
+[profile.dev.package.libsodium-sys-stable]
+opt-level = 3
+[profile.test]
+opt-level = 2
+[profile.test.package.libsodium-sys-stable]
+opt-level = 3
