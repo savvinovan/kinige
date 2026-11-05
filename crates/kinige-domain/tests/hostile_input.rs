@@ -10,6 +10,7 @@ use kinige_domain::Language;
 use kinige_domain::backup::{classify, expired};
 use kinige_domain::chat::{key_after, normalize_icon, normalize_title};
 use kinige_domain::emoji::is_emoji_sequence;
+use kinige_domain::hlc::Clock;
 use kinige_domain::hlc::{is_uuid, is_uuid_v4, parse};
 use kinige_domain::journal::{date_parts, is_journal_date, is_valid_journal_date};
 use kinige_domain::link::validate_external_url;
@@ -19,6 +20,11 @@ use kinige_domain::mirror::{
 use kinige_domain::on_this_day::{past_dates, year_of};
 use kinige_domain::search::{fts_query, highlight_terms, index_text, snippet, title_matches};
 use kinige_domain::shortcuts::canonical_accelerator;
+use kinige_domain::sync::conflict::{content_differs, uuid_bytes};
+use kinige_domain::sync::{
+    Group, Lineage, Snapshot, Versioned, conflict_revision, is_chat_child, merge,
+    needs_conflict_revision, newer_than_snapshot, next_vv, with_vv,
+};
 use kinige_domain::tags::parse_tags;
 use kinige_domain::tasks::{set_task_item, task_item_state, task_items};
 use kinige_domain::telegram::{parse_export, render_body};
@@ -112,6 +118,62 @@ fn string_parsers_never_panic_on_hostile_text() {
             let _ = task_item_state(text, index);
             let _ = set_task_item(text, index, true);
         }
+    }
+}
+
+#[test]
+fn sync_rules_never_panic_on_hostile_input() {
+    // KINIG-94: groups, columns, lineage, revisions and `vv` of the sync rules, on every hostile string as a stamp, a group body,
+    // a column text and a message id.
+    let stamp = format!("0000000000001-00001-{DEVICE}");
+    let good = Group::new(&stamp, 1, r#"{"base":null,"body_md":"x","supersedes":[]}"#).unwrap();
+    for text in &mutations() {
+        let _ = Group::new(text, 1, "{}");
+        let hostile_stamp = Group {
+            hlc: text.clone(),
+            sv: 1,
+            raw: "{}".to_string(),
+        };
+        let hostile_body = Group {
+            hlc: stamp.clone(),
+            sv: u32::MAX,
+            raw: text.clone(),
+        };
+        let _ = Versioned::from_columns(text, text);
+        let _ = Versioned::from_columns(text, &format!(r#"{{"body":{{"h":"{stamp}","sv":1}}}}"#));
+        let _ = Lineage::parse(text);
+        let _ = content_differs("body", text, &good.raw);
+        let _ = content_differs("placement", &good.raw, text);
+        for winner in [&hostile_stamp, &hostile_body, &good] {
+            for loser in [&hostile_stamp, &hostile_body, &good] {
+                for group in ["body", "placement", "flags"] {
+                    let _ = needs_conflict_revision(group, winner, loser, true);
+                    let _ = needs_conflict_revision(group, winner, loser, false);
+                }
+                let mut merged = Versioned::new();
+                merged.set("body", winner.clone());
+                let mut theirs = Versioned::new();
+                theirs.set("body", loser.clone());
+                let _ = merge(&merged, &theirs);
+            }
+        }
+        let _ = conflict_revision(text, "body", &good);
+        let _ = conflict_revision(DEVICE, "body", &hostile_stamp);
+        let _ = conflict_revision(DEVICE, "body", &hostile_body);
+        let _ = next_vv(Some(&hostile_stamp), text);
+        let _ = next_vv(Some(&hostile_body), &stamp);
+        let _ = with_vv(text, std::slice::from_ref(text));
+        let _ = uuid_bytes(text);
+        let snapshot: Snapshot = [(text.clone(), text.clone())].into_iter().collect();
+        let _ = newer_than_snapshot(&snapshot, &snapshot);
+        let _ = is_chat_child(text, &snapshot);
+        let _ = Clock::default().receive_checked(
+            Clock {
+                l: u64::MAX,
+                c: u32::MAX,
+            },
+            u64::MAX,
+        );
     }
 }
 
