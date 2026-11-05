@@ -177,7 +177,7 @@
   --color-focus-ring: #88c0d0; /** The keyboard focus ring (buttons, rows, links) and a thin line in the input field. */
   --color-status-error: #d89fa4; /** The 'not sent' state and errors (PRD §1.2 item 9). */
   --color-status-recording: #ee5a5f; /** The dot of the recording bar (slice 7a): a saturated red that says "live", brighter than the error text color. Used as a shape, not as text: >= 3:1 on every surface (the UI threshold), 3.7:1 on the message plate. */
-  --color-voice-unplayed: #5b848f; /** The bars of a voice note's waveform that have not been played yet (slice 7a): a muted cousin of the accent. The played part is accent.default (2.0:1 away from this color, a clear step at the edge of the fill). A shape, not text: 3.5:1 on the message plate (the UI threshold), 2.6:1 on the highlighted plate (a short-lived jump target; the bars stay visible). */
+  --color-voice-unplayed: #44626a; /** The bars of a voice note's waveform that have not been played yet (slice 7a, acceptance round 2): a clearly muted cousin of the accent, as in Telegram. The played part is accent.default, 3.3:1 away from this color, so the edge of the fill is obvious (the first try, #5b848f, was only 2.0:1 away and the fill could not be told from the rest). A graphic, not text: 2.2:1 on the message plate, 1.6:1 on the highlighted plate (a short-lived jump target; the bars stay visible). */
   --color-tile-blue: #3c6a9f; /** Tile color "blue". */
   --color-tile-teal: #2b736e; /** Tile color "teal". */
   --color-tile-green: #2d7645; /** Tile color "green". */
