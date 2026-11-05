@@ -26,7 +26,7 @@ rm -rf "$K/data" "$K/mirror" "$K/bench"
 mkdir -p "$K/data" "$K/mirror"
 
 # Positive control of the fake microphone guard: this build must carry it, or the guard has proved nothing.
-"$REPO/scripts/check-fake-mic.sh" "$REPO/web/dist" --expect || { echo "ERROR: the fake microphone is not in web/dist"; FAILS=$((FAILS + 1)); }
+"$REPO/scripts/check-test-hooks.sh" "$REPO/web/dist" --expect fake-mic || { echo "ERROR: the fake microphone is not in web/dist"; FAILS=$((FAILS + 1)); }
 
 KINIGE_SEED_VOICE=1 cargo run --release -q -p kinige-store --example seed_demo -- "$K/data" "$K/mirror"
 sqlite3 "$K/data/kinige.db" "insert or replace into app_setting(key, value) values ('forest_view', 'hidden')"

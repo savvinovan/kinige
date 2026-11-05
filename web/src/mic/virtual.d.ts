@@ -5,6 +5,16 @@ declare module "virtual:kinige-mic" {
   export const recordingLimitMs: number | null;
 }
 
+// The screens driver (KINIGE_SCREENS_DRIVER=1, KINIG-92) or nothing: `main.tsx` hands it the two Tauri functions it needs.
+declare module "virtual:kinige-driver" {
+  export const startDriver:
+    | ((host: {
+        listen: (event: string, handler: (event: { payload: unknown }) => void) => Promise<unknown>;
+        invoke: (command: string, args: Record<string, unknown>) => Promise<unknown>;
+      }) => void)
+    | undefined;
+}
+
 // The runners' probe (KINIGE_PROBE=1) or nothing.
 declare module "virtual:kinige-probe" {
   export const startProbe: ((report: (text: string) => Promise<unknown>) => void) | undefined;

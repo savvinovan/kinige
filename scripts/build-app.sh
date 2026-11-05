@@ -21,13 +21,21 @@ CONFIG_ARGS=()
 if [ -n "${KINIGE_IDENTIFIER:-}" ]; then
   CONFIG_ARGS=(--config "{\"identifier\":\"${KINIGE_IDENTIFIER}\"}")
 fi
+# The screens driver (KINIG-92, ADR-0016): the cargo feature goes together with the web half (`KINIGE_SCREENS_DRIVER=1`, read by
+# `web/vite.config.ts` in the `beforeBuildCommand`). Off by default; `src-tauri/build.rs` refuses it without KINIGE_ALLOW_SCREENS_DRIVER=1.
+FEATURE_ARGS=()
+if [ "${KINIGE_SCREENS_DRIVER:-}" = "1" ]; then
+  [ "${KINIGE_ALLOW_SCREENS_DRIVER:-}" = "1" ] || { echo "KINIGE_SCREENS_DRIVER=1 builds the screens driver into the app; refusing without KINIGE_ALLOW_SCREENS_DRIVER=1 (only screens.yml sets it)." >&2; exit 1; }
+  FEATURE_ARGS=(--features screens-driver)
+fi
 # `KINIGE_BUNDLES` is what to build: `app` by default; the release (.github/workflows/release.yml) asks for `app,dmg`.
-(cd src-tauri && ../web/node_modules/.bin/tauri build --bundles "${KINIGE_BUNDLES:-app}" ${CONFIG_ARGS[@]+"${CONFIG_ARGS[@]}"})
-
-# The screens runners' fake microphone (ADR-0015) must never reach a bundle for people: refuse unless screens.yml opted in.
-scripts/check-fake-mic.sh web/dist
+(cd src-tauri && ../web/node_modules/.bin/tauri build ${FEATURE_ARGS[@]+"${FEATURE_ARGS[@]}"} --bundles "${KINIGE_BUNDLES:-app}" ${CONFIG_ARGS[@]+"${CONFIG_ARGS[@]}"})
 
 APP="${CARGO_TARGET_DIR:-target}/release/bundle/macos/Kinige.app"
+# The screens runners' test hooks (the fake microphone, ADR-0015; the screens driver, ADR-0016) must never reach a bundle for people:
+# refuse unless screens.yml opted in. The Rust half of the driver is searched in the executable.
+scripts/check-test-hooks.sh web/dist --binary "$APP/Contents/MacOS/kinige"
+
 [ -d "$APP" ] || { echo "not found: $APP" >&2; exit 1; }
 [ -x "$APP/Contents/MacOS/kinige-mcp" ] || { echo "the bundle has no kinige-mcp bridge" >&2; exit 1; }
 

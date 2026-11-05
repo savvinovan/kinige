@@ -20,7 +20,7 @@ rm -rf "$K/data" "$K/mirror"
 mkdir -p "$K/data" "$K/mirror"
 
 # Positive control: this build must carry the fake microphone (the guard in build-app.sh only proves anything if it can fire).
-"$REPO/scripts/check-fake-mic.sh" "$REPO/web/dist" --expect || fail "the fake microphone is not in web/dist"
+"$REPO/scripts/check-test-hooks.sh" "$REPO/web/dist" --expect fake-mic || fail "the fake microphone is not in web/dist"
 
 prepare_app "$SOURCE_APP"
 launch_window

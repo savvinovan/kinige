@@ -9,14 +9,21 @@ cd "$(dirname "$0")/.."
 
 [ -d web/node_modules ] || npm --prefix web ci
 
-(cd src-tauri && ../web/node_modules/.bin/tauri build --bundles nsis)
-
-# The screens runners' fake microphone (ADR-0015) must never reach a bundle for people: refuse unless screens.yml opted in.
-scripts/check-fake-mic.sh web/dist
+# The screens driver (KINIG-92, ADR-0016): the cargo feature goes together with the web half (`KINIGE_SCREENS_DRIVER=1`). Off by default.
+FEATURE_ARGS=()
+if [ "${KINIGE_SCREENS_DRIVER:-}" = "1" ]; then
+  [ "${KINIGE_ALLOW_SCREENS_DRIVER:-}" = "1" ] || { echo "KINIGE_SCREENS_DRIVER=1 builds the screens driver into the app; refusing without KINIGE_ALLOW_SCREENS_DRIVER=1 (only screens.yml sets it)." >&2; exit 1; }
+  FEATURE_ARGS=(--features screens-driver)
+fi
+(cd src-tauri && ../web/node_modules/.bin/tauri build ${FEATURE_ARGS[@]+"${FEATURE_ARGS[@]}"} --bundles nsis)
 
 TARGET_DIR="${CARGO_TARGET_DIR:-target}"
 EXE="$TARGET_DIR/release/kinige.exe"
 [ -f "$EXE" ] || { echo "not found: $EXE" >&2; exit 1; }
+
+# The screens runners' test hooks (the fake microphone, ADR-0015; the screens driver, ADR-0016) must never reach a bundle for people:
+# refuse unless screens.yml opted in.
+scripts/check-test-hooks.sh web/dist --binary "$EXE"
 
 # The version of the build = the version in Cargo.toml (ADR-0012): tauri-build writes it into the exe resources and the
 # bundler into the installer name. `cargo pkgid` prints "…#kinige@0.5.0"; no network needed.

@@ -47,7 +47,7 @@ try { & cargo run --release -q -p kinige-store --example seed_demo -- $Data $Mir
 finally { Pop-Location; $ErrorActionPreference = 'Stop' }
 
 # Positive control of the fake microphone guard.
-& bash (Join-Path $Repo 'scripts/check-fake-mic.sh') (Join-Path $Repo 'web/dist') --expect
+& bash (Join-Path $Repo 'scripts/check-test-hooks.sh') (Join-Path $Repo 'web/dist') --expect fake-mic
 if ($LASTEXITCODE -ne 0) { Fail 'the fake microphone is not in web/dist' }
 
 $install = Start-Process -FilePath $Installer -ArgumentList '/S', "/D=$AppDir" -PassThru

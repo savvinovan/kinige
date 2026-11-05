@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "screens-driver",
+  "description": "The screens driver (KINIG-92, ADR-0016): read only by a build with the cargo feature screens-driver (build.rs), never by a build for people. Lets the three app windows hear a step from the app and answer it; nothing else",
+  "windows": ["main", "settings", "capture"],
+  "permissions": [
+    "allow-screens-driver-reply",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}

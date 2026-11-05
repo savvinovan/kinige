@@ -14,6 +14,11 @@ workspace = true
 name = "kinige_lib"
 crate-type = ["rlib"]
 
+[features]
+# The screens driver (KINIG-92, ADR-0016): the scenario scripts' hands inside the test build. Off by default and refused by build.rs
+# unless KINIGE_ALLOW_SCREENS_DRIVER=1 (only screens.yml sets it). Never in a build for people.
+screens-driver = ["dep:serde"]
+
 [build-dependencies]
 tauri-build = { version = "2.7", features = [] }
 
@@ -36,6 +41,8 @@ tauri-plugin-dialog = "2.8"
 sys-locale = "0.3"
 # The tray menu strings are read from the interface translation files.
 serde_json = "1"
+# Only for the screens driver's request and reply shapes (the feature `screens-driver`); the crate is already in the tree.
+serde = { version = "1", features = ["derive"], optional = true }
 # The app log file (rotation, the OS log directory) and stderr in dev. The windows have no JS permissions: the plugin's `log` command is not granted.
 tauri-plugin-log = "2.10.1"
 log = "0.4.34"
