@@ -36,11 +36,14 @@ pub enum SyncError {
     Corrupt(String),
     /// A group's HLC is not a strict stamp (width, digits, device id).
     Hlc(HlcError),
+    /// A group has an `sv` above the one this client supports: it cannot be written into a revision (ADR-0001 §4 item 4).
+    UnsupportedVersion,
 }
 
 impl fmt::Display for SyncError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            SyncError::UnsupportedVersion => f.write_str("group version is unsupported"),
             SyncError::Corrupt(why) => write!(f, "record is corrupt: {why}"),
             SyncError::Hlc(error) => write!(f, "bad HLC: {error}"),
         }

@@ -122,7 +122,6 @@ pub struct Client {
     /// A pull has just reached the head, so a push may follow (ADR-0001 §3.5: "pull first, then push"). One batch uses it up.
     pub cycle_ready: bool,
     pub resync: Option<Resync>,
-    pub last_pull_ms: u64,
     pub compact_outbox: bool,
     pub switches: Switches,
     /// The shared virtual time, set by the world before every step (the handlers of responses do not take it as an argument).
@@ -158,7 +157,6 @@ impl Client {
             reached_head: false,
             cycle_ready: false,
             resync: None,
-            last_pull_ms: now_ms,
             compact_outbox,
             switches,
             now_ms,
@@ -237,7 +235,9 @@ impl Client {
     }
 
     /// Whether `hlc` of `group` is a version this device wrote itself and the server has not acked: its own HLC (the device id is in
-    /// the stamp) and either the record never left the device or an unacked row carries it.
+    /// the stamp) and either the record never left the device or an unacked row carries it. A version this device wrote and the
+    /// server acked earlier, carried again by a later unacked snapshot row, counts as unconfirmed too; that is harmless (at worst
+    /// one extra revision) and not worth a per-group ack.
     pub(crate) fn is_own_unconfirmed(&self, key: &Key, group: &str, hlc: &str) -> bool {
         let written_here = hlc::parse(hlc).is_ok_and(|(_, device)| device == self.device);
         if !written_here {

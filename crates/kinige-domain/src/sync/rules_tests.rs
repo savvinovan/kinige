@@ -139,6 +139,7 @@ fn the_feed_hides_children_until_the_parent_arrives() {
     let child = |recent| Purged {
         message_is_child: true,
         recent,
+        own_purge_pending: false,
     };
     assert_eq!(
         message_slot(child(true), true),
@@ -158,8 +159,21 @@ fn the_feed_hides_children_until_the_parent_arrives() {
     assert_eq!(
         message_slot(
             Purged {
+                message_is_child: true,
+                recent: false,
+                own_purge_pending: true
+            },
+            true
+        ),
+        Slot::Hidden,
+        "the initiator has the message's purged in its own outbox: it does not show what it is about to purge"
+    );
+    assert_eq!(
+        message_slot(
+            Purged {
                 message_is_child: false,
-                recent: true
+                recent: true,
+                own_purge_pending: false
             },
             false
         ),

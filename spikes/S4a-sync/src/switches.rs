@@ -27,12 +27,27 @@ pub struct Switches {
     /// Client: a pulled `purged(X)` leaves an existing tombstone's snapshot as it was (ADR-0001 revision 7 refines it only after a
     /// `purged` response to a push). S4a, finding 6.
     pub keep_own_snapshot: bool,
+    /// Server: the epoch counter comes back with the backup (revision 8 as first written); with `epoch_survives_generation` this is
+    /// the blocker of the S4a review: a later drop can carry a number a device already holds.
+    pub epoch_from_backup: bool,
+    /// Client: the drop epoch of the old generation is kept after a generation change, as ADR-0001 revision 8 said. A restored server
+    /// counts epochs from its backup, so a later drop can carry a number the device already knows and is not seen as a drop.
+    pub epoch_survives_generation: bool,
+    /// Client: a conflict is made when the winner was made from the device's own unconfirmed version (its `base`), as before
+    /// ADR-0001 revision 8 (S4a, finding 5): a false conflict that property 9 catches.
+    pub own_base_is_concurrent: bool,
+    /// Client: an envelope for a record that is in quarantine is applied live (nothing in ADR-0001 revision 8 said otherwise), so the
+    /// record is in the feed and in quarantine at once.
+    pub quarantine_applies_live: bool,
     /// Client: on the ack of its own `purged(chat)` the initiator deletes the chat's messages and their revisions at once, as ADR-0001
     /// revision 7 says; a stale `purged` for a message that was moved elsewhere then loses what only this device had (S4a, finding 3).
     pub cascade_at_parent_ack: bool,
     /// Client feed: the children of a purged chat stay hidden for as long as the tombstone lives, as ADR-0001 revision 7 says; the
     /// ones whose own `purged` never comes are then invisible for months (S4a, finding 4).
     pub no_child_grace: bool,
+    /// Client feed: the initiator of a chat purge shows the chat's messages in Inbox after the grace although their own `purged` still
+    /// sit in its outbox (ADR-0001 revision 8 said nothing about it; S4a review).
+    pub show_children_with_purge_pending: bool,
     /// Client feed: a message whose chat is unknown is shown in that chat at once instead of waiting for the parent (§3.6).
     pub show_orphans: bool,
     /// Client: a changed `generation` is ignored, the old cursor and `server_known` flags are kept (§6.3).

@@ -3,17 +3,19 @@
 
 use super::purge::message_id_of;
 use super::{Client, Event, Local, Quarantined, Resync};
-use crate::envelope::{Entity, Envelope, EnvelopeError, Key, Kind, RETENTION_MS};
+use crate::envelope::{Entity, Envelope, EnvelopeError, Key, Kind};
 use crate::server::PullResponse;
 use crate::switches::Switches;
-use kinige_domain::sync::conflict::uuid_from_bytes;
+use kinige_domain::sync::conflict::{content_differs, uuid_from_bytes};
 use kinige_domain::sync::{
-    Facts, Merged, ResyncAction, ResyncCause, Snapshot, TombstoneVerdict, Versioned,
-    conflict_revision, envelope_vs_tombstone, merge, needs_conflict_revision, newer_than_snapshot,
-    resync_action,
+    Facts, Group, Lineage, Merged, ResyncAction, ResyncCause, Snapshot, TombstoneVerdict,
+    Versioned, conflict_revision, envelope_vs_tombstone, merge, needs_conflict_revision,
+    newer_than_snapshot, resync_action,
 };
 use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 impl Client {
     /// Whether a pull makes sense: the device has an account, or is binding to one.
@@ -46,21 +48,25 @@ impl Client {
         &mut self,
         response: PullResponse,
         now_ms: u64,
-        order: impl FnOnce(&mut Vec<(u64, std::sync::Arc<Envelope>)>),
+        order: impl FnOnce(&mut Vec<(u64, Arc<Envelope>)>),
     ) {
         match response {
-            PullResponse::GenerationChanged(generation) => {
+            PullResponse::GenerationChanged { generation, stale } => {
                 if self.switches.ignore_generation {
                     self.cursor_generation = generation;
                     return;
                 }
-                let stale = now_ms.saturating_sub(self.last_pull_ms) > RETENTION_MS;
                 let cause = match self.resync.as_ref().map(|r| r.cause) {
                     Some(ResyncCause::Binding) => ResyncCause::Binding,
                     _ if stale => ResyncCause::StaleAndGeneration,
                     _ => ResyncCause::GenerationChanged,
                 };
                 self.cursor_generation = generation;
+                // An epoch belongs to the generation it came from: a restored server counts from its backup, so a number from the
+                // old generation could equal one the new generation reaches later and hide a drop (S4a review, ADR-0001 §6.3).
+                if !self.switches.epoch_survives_generation {
+                    self.known_epoch = 0;
+                }
                 self.start_resync(cause);
             }
             PullResponse::Stale => {
@@ -87,7 +93,6 @@ impl Client {
                 }
                 self.cursor_seq = next.max(self.cursor_seq);
                 self.known_epoch = self.known_epoch.max(epoch);
-                self.last_pull_ms = now_ms;
                 let cursor = self.cursor_seq;
                 self.outbox
                     .retain(|row| row.acked_seq.is_none_or(|seq| seq > cursor));
@@ -227,6 +232,14 @@ impl Client {
                 }
             }
         }
+        // A record this device holds in quarantine stays there (S4a review, ADR-0001 §6.3): what the server sends for it is merged into
+        // the quarantined copy, and the user decides. Applying it live would put the same record in the feed and in quarantine.
+        if !self.records.contains_key(key) && !self.switches.quarantine_applies_live {
+            if let Some(held) = self.quarantine.iter_mut().find(|q| q.key == *key) {
+                held.v = merge(&held.v, &incoming).record;
+                return;
+            }
+        }
         let Some(local) = self.records.get(key).map(|l| l.v.clone()) else {
             self.records.insert(
                 key.clone(),
@@ -246,7 +259,15 @@ impl Client {
             for contest in &merged.contests {
                 let own = contest.loser_is_local
                     && self.is_own_unconfirmed(key, &contest.group, &contest.loser.hlc);
-                if needs_conflict_revision(&contest.group, &contest.winner, &contest.loser, own) {
+                let mut needs =
+                    needs_conflict_revision(&contest.group, &contest.winner, &contest.loser, own);
+                if !needs && self.switches.own_base_is_concurrent && own {
+                    // The rule before S4a finding 5: the winner's own base was a conflict when its ack was lost.
+                    let base = Lineage::parse(&contest.winner.raw).base;
+                    needs = base.as_deref() == Some(contest.loser.hlc.as_str())
+                        && content_differs(&contest.group, &contest.winner.raw, &contest.loser.raw);
+                }
+                if needs {
                     self.make_revision(key, &contest.group, &contest.loser);
                 }
             }
@@ -258,7 +279,7 @@ impl Client {
     }
 
     /// The `conflict` revision of a losing version: the same id and bytes on every device (§3.4).
-    fn make_revision(&mut self, message: &Key, group: &str, loser: &kinige_domain::sync::Group) {
+    fn make_revision(&mut self, message: &Key, group: &str, loser: &Group) {
         let Ok(revision) = conflict_revision(&message.1, group, loser) else {
             return;
         };
@@ -297,7 +318,7 @@ impl Client {
         let keys: Vec<Key> = self.records.keys().cloned().collect();
         // Records that already have an unacked row: only they need the precise "is it covered" check (a binding of 100 000 records
         // would otherwise scan the outbox once per record).
-        let with_rows: std::collections::HashSet<Key> = self
+        let with_rows: HashSet<Key> = self
             .outbox
             .iter()
             .filter(|row| row.acked_seq.is_none() && row.env.header.kind == Kind::Upsert)
@@ -356,8 +377,7 @@ impl Client {
             })
             .map(|(key, t)| (key.clone(), t.purged_of.clone(), t.cascade_of.clone()))
             .collect();
-        let mut parent_ops: std::collections::HashMap<String, String> =
-            std::collections::HashMap::new();
+        let mut parent_ops: HashMap<String, String> = HashMap::new();
         for (key, snapshot, cascade) in &todo {
             if cascade.is_none() {
                 let op = self.enqueue_purged(key, snapshot.clone(), None);

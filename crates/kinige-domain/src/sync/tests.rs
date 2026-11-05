@@ -234,6 +234,34 @@ fn no_base_counts_as_minus_infinity() {
 }
 
 #[test]
+fn a_version_from_the_future_makes_no_revision_on_this_client() {
+    // ADR-0001 §3.4: "if it supports the `sv` of both versions (otherwise another device will create the revision)".
+    let ok = group(&hlc(10, 0, A), &body("a", None, &[]));
+    let future = |h: String| Group::new(&h, 2, &body("b", None, &[])).unwrap();
+    let newer = future(hlc(20, 0, B));
+    let older = future(hlc(5, 0, B));
+    assert!(
+        !needs_conflict_revision(BODY, &newer, &ok, true),
+        "the winner is from the future"
+    );
+    assert!(
+        !needs_conflict_revision(BODY, &ok, &older, true),
+        "the loser is from the future"
+    );
+    assert!(!needs_conflict_revision(BODY, &newer, &older, true));
+    assert_eq!(
+        conflict_revision(MESSAGE, BODY, &older),
+        Err(SyncError::UnsupportedVersion),
+        "and the revision itself cannot be written"
+    );
+    let same_version = Group::new(&hlc(20, 0, B), 1, &body("b", None, &[])).unwrap();
+    assert!(
+        needs_conflict_revision(BODY, &same_version, &ok, true),
+        "the same pair at a supported sv does"
+    );
+}
+
+#[test]
 fn flags_and_other_groups_never_make_revisions() {
     let w = group(&hlc(20, 0, B), r#"{"is_task":true}"#);
     let p = group(&hlc(10, 0, A), r#"{"is_task":false}"#);

@@ -99,10 +99,13 @@ impl Mix {
     pub const RESTORE: Mix = Mix {
         backup: 3,
         restore_server: 2,
-        long_gap: 0,
-        compact: 0,
+        // Months pass and the server compacts, so a restore meets drops (S4a review: with both at 0 the drop epoch was never
+        // tested against a generation change).
+        long_gap: 2,
+        compact: 4,
         bind: 0,
-        purge: 2,
+        purge: 4,
+        delete: 6,
         ..Mix::GENERAL
     };
 }
@@ -493,6 +496,60 @@ pub fn chat_purge_schedule(clients: usize) -> impl Strategy<Value = Schedule> {
                     compact_outbox,
                     page: 2,
                     batch: 3,
+                    steps,
+                }
+            },
+        )
+}
+
+/// The shape of the review blocker (drop epochs and a restore), with the choices random: device 0 syncs, a backup is taken, device 1
+/// deletes and purges one message and the server compacts, the server is restored, then device 0 goes away while device 1 deletes and
+/// purges another and the server compacts again; device 0 comes back. Any device 0 that holds an epoch from before the restore must
+/// still be told its cursor is stale.
+pub fn restore_epoch_schedule() -> impl Strategy<Value = Schedule> {
+    (
+        prop::collection::vec(skew(), 2),
+        any::<bool>(),
+        (0usize..4, 0usize..4),
+        (1u64..40, 181u64..420, 181u64..420),
+    )
+        .prop_map(
+            |(skews, compact_outbox, (first, second), (spare, gap_a, gap_b))| {
+                let (a, b) = (0, 1);
+                let both = usize::MAX;
+                let steps = vec![
+                    Step::Local(a, Op::CreateChat),
+                    Step::Local(a, Op::CreateMessage(1)),
+                    Step::Local(a, Op::CreateMessage(1)),
+                    Step::Local(a, Op::CreateMessage(1)),
+                    Step::SyncAll { skip: both },
+                    Step::Backup,
+                    Step::Local(b, Op::DeleteMessage(first)),
+                    Step::SyncAll { skip: both },
+                    Step::Advance((30 + spare) * DAY_MS),
+                    Step::Purge(b),
+                    Step::SyncAll { skip: both },
+                    Step::Advance(gap_a * DAY_MS),
+                    Step::Compact,
+                    Step::SyncAll { skip: both },
+                    Step::RestoreServer,
+                    Step::SyncAll { skip: both },
+                    Step::Local(b, Op::DeleteMessage(second)),
+                    Step::SyncAll { skip: a },
+                    Step::Advance((30 + spare) * DAY_MS),
+                    Step::Purge(b),
+                    Step::SyncAll { skip: a },
+                    Step::Advance(gap_b * DAY_MS),
+                    Step::Compact,
+                    Step::Pull(a, PullFault::Ok),
+                ];
+                Schedule {
+                    clients: 2,
+                    skews,
+                    unbound: vec![false, false],
+                    compact_outbox,
+                    page: 5,
+                    batch: 5,
                     steps,
                 }
             },

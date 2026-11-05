@@ -3,11 +3,14 @@
 //! would, "is the newest write there", "is every version still somewhere".
 
 use crate::client::{
-    FeedSlot, Write,
+    Client, FeedSlot, Write,
     purge::{chat_id_of, deleted_at},
 };
 use crate::envelope::{Entity, Key};
+use crate::server::PushResponse;
+use crate::switches::Switches;
 use crate::world::World;
+use kinige_domain::sync::Versioned;
 use kinige_domain::sync::conflict::content_differs;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
@@ -93,13 +96,20 @@ impl Oracle {
     }
 }
 
+/// Records the server purged, and records a device holds in quarantine: those leave the "newest write is there" check.
+fn set_aside(world: &World) -> BTreeSet<Key> {
+    let mut out: BTreeSet<Key> = world.server.purged_ever.iter().cloned().collect();
+    for client in &world.clients {
+        out.extend(client.quarantine.iter().map(|q| q.key.clone()));
+        out.extend(client.tombstones.keys().cloned());
+    }
+    out
+}
+
 /// The live records of a device that count for comparison. Quarantine is a device's own decision (ADR-0001 §3.5, §6.3): a message or
 /// revision that one device holds in quarantine may be live on another, because the purger of its chat had not seen it and so never
 /// purged it (S4a, finding 4). Nothing else may differ.
-fn comparable(
-    world: &World,
-    client: &crate::client::Client,
-) -> std::collections::BTreeMap<Key, kinige_domain::sync::Versioned> {
+fn comparable(world: &World, client: &Client) -> BTreeMap<Key, Versioned> {
     let quarantined: BTreeSet<&Key> = world
         .clients
         .iter()
@@ -143,16 +153,6 @@ pub fn converged(world: &World) -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-/// Records the server purged, and records a device holds in quarantine: those leave the "newest write is there" check.
-fn set_aside(world: &World) -> BTreeSet<Key> {
-    let mut out: BTreeSet<Key> = world.server.purged_ever.iter().cloned().collect();
-    for client in &world.clients {
-        out.extend(client.quarantine.iter().map(|q| q.key.clone()));
-        out.extend(client.tombstones.keys().cloned());
-    }
-    out
 }
 
 /// Properties 3 and 6: for every group of every record, the converged value is the write with the highest HLC, whatever the
@@ -204,7 +204,7 @@ pub fn no_version_lost(world: &World) -> Result<(), String> {
     let state = first.state();
     let aside = set_aside(world);
     let mut kept: BTreeSet<(String, String, String)> = BTreeSet::new();
-    let mut note_revision = |v: &kinige_domain::sync::Versioned| {
+    let mut note_revision = |v: &Versioned| {
         let Some(core) = v
             .get("core")
             .and_then(|g| serde_json::from_str::<serde_json::Value>(&g.raw).ok())
@@ -345,7 +345,6 @@ pub fn no_orphan_hidden(world: &World) -> Result<(), String> {
 /// Property 5, the replay: every envelope in the server log is pushed again, in another order, twice. Every answer must be
 /// `duplicate` with the same `seq`, and neither the log nor the numbering may change.
 pub fn push_is_idempotent(world: &mut World) -> Result<(), String> {
-    use crate::server::PushResponse;
     let issued = world.server.issued();
     let len = world.server.log_len();
     let mut envelopes = world.server.all_envelopes();
@@ -377,7 +376,6 @@ pub fn push_is_idempotent(world: &mut World) -> Result<(), String> {
 /// A device that joins now and pulls the server's log from 0 ends with the converged state: the server holds everything, nothing
 /// that was acked is only in the devices' heads (compaction, a restore from a backup and a lost push all leave it intact).
 pub fn server_log_rebuilds_state(world: &mut World) -> Result<(), String> {
-    use crate::client::Client;
     let Some(reference) = world.clients.first().map(|c| comparable(world, c)) else {
         return Ok(());
     };
@@ -386,7 +384,7 @@ pub fn server_log_rebuilds_state(world: &mut World) -> Result<(), String> {
         0,
         false,
         false,
-        crate::switches::Switches::default(),
+        Switches::default(),
         world.now,
     );
     fresh.records.clear();
@@ -402,8 +400,12 @@ pub fn server_log_rebuilds_state(world: &mut World) -> Result<(), String> {
     // Conflict revisions may depend on the order a device saw the versions in (ADR-0001 §3.1): the fresh device may make extra ones.
     // Every other record must be the same, and every revision the devices have must be on the server too.
     let rebuilt = comparable(world, &fresh);
-    let relevant = |state: &std::collections::BTreeMap<Key, kinige_domain::sync::Versioned>| -> std::collections::BTreeMap<Key, kinige_domain::sync::Versioned> {
-        state.iter().filter(|(k, _)| k.0 != Entity::Revision).map(|(k, v)| (k.clone(), v.clone())).collect()
+    let relevant = |state: &BTreeMap<Key, Versioned>| -> BTreeMap<Key, Versioned> {
+        state
+            .iter()
+            .filter(|(k, _)| k.0 != Entity::Revision)
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     };
     let lost_revisions: Vec<_> = reference
         .keys()

@@ -7,12 +7,14 @@
 pub enum ResyncCause {
     /// The first binding of a database to an account (§6.2). Nothing was ever sent: `server_known = 0` for every record.
     Binding,
-    /// The server answered "cursor is stale": the cursor is older than the retention period (180 days), so tombstones and
-    /// `purged` envelopes may be gone.
+    /// The server answered "cursor is stale": since the device last heard from it, a compaction dropped a `purged` (or the
+    /// envelopes of the entity it purged) above the cursor (§6.3, S4a), so a purge the device never saw may be gone.
     StaleCursor,
     /// The `generation` changed: the server was restored from a backup and lost whatever was acked after it.
     GenerationChanged,
-    /// Both of the last two at once: the "stale" column applies, quarantine is safer (§6.3).
+    /// Both of the last two at once. The server cannot say whether the old cursor was stale (its drops are those of the backup, in
+    /// another numbering), so the device decides by its own clock: the last page it applied is older than the retention period
+    /// (§6.3). The "stale" column applies: quarantine is safer.
     StaleAndGeneration,
 }
 

@@ -194,3 +194,22 @@ fn p7_and_p1_chat_purge_cascade() {
         }
     }
 }
+
+#[test]
+fn p8_drop_epochs_survive_a_restore() {
+    // The shape of the review blocker: drops before and after a restore, a device away across the second one. Two devices.
+    let on = Switches::default();
+    match check(
+        "8 server restore, drop epochs, 2 clients",
+        seed(),
+        cases2(),
+        s4a_sync::schedules::restore_epoch_schedule(),
+        |s| props::server_restore(s, on),
+    ) {
+        Ok(ran) => println!(
+            "8 (drop epochs and a restore), 2 clients: {ran} cases passed (seed {})",
+            seed()
+        ),
+        Err(report) => panic!("{report}"),
+    }
+}

@@ -279,7 +279,8 @@ jobs:
           S4A_CASES3: "200"
           S4A_CONTROL_CASES: "3000"
           S4A_SEED: "1"
-        run: cargo test
+        # Not `tests/stats.rs`: it prints coverage numbers, asserts nothing and takes 11 s.
+        run: cargo test --test properties --test negative --test scenarios
 
   # Secrets in the git history. False positives go in .gitleaksignore (the fingerprint and the reason). The binary is pinned by version and sha256.
   gitleaks:

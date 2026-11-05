@@ -43,8 +43,8 @@ pub enum PullResponse {
     },
     /// Something that matters (a `purged`, or the `upsert`s of a purged entity) was dropped after the cursor (§6.3).
     Stale,
-    /// The server was restored from a backup (§6.3).
-    GenerationChanged(u64),
+    /// The server was restored from a backup (§6.3). `stale`: the old cursor was also stale (both causes at once).
+    GenerationChanged { generation: u64, stale: bool },
 }
 
 #[derive(Debug, Clone, Default)]
@@ -62,7 +62,7 @@ pub struct Server {
     /// `(epoch, highest dropped seq)`. A cursor below the `seq` of a drop that happened after the device last heard from the server has
     /// missed it, so it is stale (§6.3). Covered `upsert`s do not count: a later one says the same.
     drops: Vec<(u64, u64)>,
-    /// How many such compactions there have been; every page tells the device the current value.
+    /// A counter of such compactions; every page tells the device the current value. It is not restored with a backup and only grows.
     epoch: u64,
     /// With `no_seq_lock`: an envelope that has its `seq` but is not visible yet.
     in_flight: Option<Stored>,
@@ -222,16 +222,22 @@ impl Server {
         known_epoch: u64,
         limit: usize,
     ) -> PullResponse {
-        if generation != self.generation {
-            return PullResponse::GenerationChanged(self.generation);
-        }
         // A pull from 0 is a full resync itself: it reads what is left and misses nothing it could have had. Otherwise the cursor is
         // stale if, since the device last heard from the server, something it needs was dropped above the cursor.
-        let missed = self
-            .drops
-            .iter()
-            .any(|(epoch, seq)| *epoch > known_epoch && *seq > after);
-        if after > 0 && missed && !self.switches.no_stale_check {
+        let missed = after > 0
+            && self
+                .drops
+                .iter()
+                .any(|(epoch, seq)| *epoch > known_epoch && *seq > after);
+        if generation != self.generation {
+            // Both causes at once: the restored log is a prefix of the old one (same `seq`s) and the epoch counter never repeats, so
+            // the drops of the restored state can be held against the old cursor. The device does not guess from its clock.
+            return PullResponse::GenerationChanged {
+                generation: self.generation,
+                stale: missed && !self.switches.no_stale_check,
+            };
+        }
+        if missed && !self.switches.no_stale_check {
             return PullResponse::Stale;
         }
         let items: Vec<(u64, Arc<Envelope>)> = self
@@ -324,9 +330,15 @@ impl Server {
     pub fn restore(&mut self, backup: &Server) {
         let generation = self.generation + 1;
         let purged_ever = std::mem::take(&mut self.purged_ever);
+        let epoch = self.epoch;
         *self = backup.clone();
         self.generation = generation;
         self.purged_ever = purged_ever;
+        // The epoch counter is not part of the backup: it only grows, so a later drop never gets a number a device already holds
+        // (S4a review, ADR-0001 §6.3). The drops of the backup keep the numbers they had.
+        if !self.switches.epoch_from_backup {
+            self.epoch = self.epoch.max(epoch);
+        }
         self.in_flight = None;
     }
 

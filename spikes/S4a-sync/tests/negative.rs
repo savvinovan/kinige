@@ -248,5 +248,42 @@ fn control_1_cascade_at_the_parent_ack_loses_what_only_the_initiator_had() {
     );
 }
 
+#[test]
+fn control_9_a_winner_made_from_the_devices_own_version_is_a_false_conflict() {
+    let on = Switches {
+        own_base_is_concurrent: true,
+        ..Switches::default()
+    };
+    must_fail(
+        "9 no false conflicts, the winner's own base counted as concurrent (before finding 5)",
+        s4a_sync::schedules::single_writer_schedule(2),
+        props::no_false_conflicts,
+        on,
+        &["conflict revision"],
+    );
+}
+
+#[test]
+fn control_8_the_epoch_counter_restored_with_the_backup_resurrects() {
+    let on = Switches {
+        epoch_from_backup: true,
+        epoch_survives_generation: true,
+        ..Switches::default()
+    };
+    must_fail(
+        "8 server restore, drop epochs numbered from the backup and kept across generations (the review blocker)",
+        s4a_sync::schedules::restore_epoch_schedule(),
+        props::server_restore,
+        on,
+        &[
+            "fresh device",
+            "newest write",
+            "differ",
+            "live again",
+            "not in the trash",
+        ],
+    );
+}
+
 // The control for the tombstone that keeps its own snapshot (S4a finding 6) is a named scenario, tests/scenarios.rs: the random
 // schedules reach it only after about thirty thousand cases.

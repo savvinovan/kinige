@@ -2,7 +2,7 @@
 
 use super::Client;
 use super::purge::{chat_id_of, deleted_at};
-use crate::envelope::{Entity, Key};
+use crate::envelope::{Entity, Key, Kind};
 use kinige_domain::sync::visibility::PURGED_CHILD_GRACE_MS;
 use kinige_domain::sync::{ChatState, InboxMark, Slot, Versioned, is_chat_child, message_slot};
 use std::collections::BTreeMap;
@@ -33,7 +33,7 @@ impl Client {
             let Some(chat) = chat_id_of(&local.v) else {
                 continue;
             };
-            let state = self.chat_state(&chat, &local.v);
+            let state = self.chat_state(&chat, id, &local.v);
             let slot = match message_slot(state, self.reached_head) {
                 Slot::InChat => FeedSlot::Chat(chat),
                 Slot::Inbox(mark) => FeedSlot::Inbox(mark),
@@ -50,7 +50,7 @@ impl Client {
         items
     }
 
-    fn chat_state(&self, chat: &str, message: &Versioned) -> ChatState {
+    fn chat_state(&self, chat: &str, message_id: &str, message: &Versioned) -> ChatState {
         let key = (Entity::Chat, chat.to_string());
         if let Some(local) = self.records.get(&key) {
             return if deleted_at(&local.v).is_some() {
@@ -68,6 +68,13 @@ impl Client {
                 message_is_child: is_chat_child(placed, &tombstone.purged_of),
                 recent: self.switches.no_child_grace
                     || self.now_ms.saturating_sub(tombstone.purged_at) < PURGED_CHILD_GRACE_MS,
+                own_purge_pending: !self.switches.show_children_with_purge_pending
+                    && self.outbox.iter().any(|row| {
+                        row.acked_seq.is_none()
+                            && row.env.header.kind == Kind::Purged
+                            && row.env.header.entity == Entity::Message
+                            && row.env.header.id == message_id
+                    }),
             };
         }
         ChatState::Unknown

@@ -19,6 +19,9 @@ pub enum ChatState {
         message_is_child: bool,
         /// The device learned of the purge less than [`PURGED_CHILD_GRACE_MS`] ago.
         recent: bool,
+        /// This device is the initiator and has the message's own `purged` in its outbox, not yet acked: it is about to purge the
+        /// message, so it must not show it (S4a review).
+        own_purge_pending: bool,
     },
     /// Neither a live chat nor a tombstone: the chat has not arrived yet, or its tombstone expired.
     Unknown,
@@ -53,7 +56,8 @@ pub fn message_slot(chat: ChatState, reached_head: bool) -> Slot {
         ChatState::Purged {
             message_is_child: true,
             recent,
-        } if recent || !reached_head => Slot::Hidden,
+            own_purge_pending,
+        } if recent || own_purge_pending || !reached_head => Slot::Hidden,
         ChatState::Purged { .. } => Slot::Inbox(InboxMark::ChatDeleted),
         ChatState::Unknown if reached_head => Slot::Inbox(InboxMark::ChatUnavailable),
         ChatState::Unknown => Slot::Hidden,

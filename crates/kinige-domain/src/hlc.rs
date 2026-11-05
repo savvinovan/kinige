@@ -11,6 +11,10 @@ pub const MAX_COUNTER: u32 = 99_999;
 pub const MAX_WALL_MS: u64 = 9_999_999_999_999;
 /// The stamp length: 13 + 1 + 5 + 1 + 36.
 pub const HLC_LEN: usize = 56;
+/// A foreign stamp ahead of the local physical time by more than this is a warning (PRD §10.2).
+pub const SKEW_WARN_MS: u64 = 10 * 60 * 1000;
+/// `SKEW_MAX`: the protocol constant, the same on the server (ADR-0001 §2, decision 5).
+pub const SKEW_MAX_MS: u64 = 24 * 60 * 60 * 1000;
 
 /// Parse and clock tick errors.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,6 +43,31 @@ pub struct Clock {
     pub l: u64,
     /// The counter within one "wall".
     pub c: u32,
+}
+
+/// How far a received stamp is ahead of the local physical time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Skew {
+    /// Within ten minutes (or behind).
+    Fine,
+    /// More than ten minutes ahead: the user is warned, nothing is blocked.
+    Warning,
+    /// More than `SKEW_MAX` ahead: applied to the data, not accepted into the clock.
+    TooFar,
+}
+
+impl Skew {
+    /// Classification of a stamp's `wall_ms` against the local physical time `pt`.
+    pub fn of(remote_l: u64, pt: u64) -> Skew {
+        let ahead = remote_l.saturating_sub(pt);
+        if ahead > SKEW_MAX_MS {
+            Skew::TooFar
+        } else if ahead > SKEW_WARN_MS {
+            Skew::Warning
+        } else {
+            Skew::Fine
+        }
+    }
 }
 
 impl Clock {
@@ -110,36 +139,6 @@ impl Clock {
     /// The stamp in a sortable form.
     pub fn format(self, device_id: &str) -> String {
         format!("{:013}-{:05}-{device_id}", self.l, self.c)
-    }
-}
-
-/// A foreign stamp ahead of the local physical time by more than this is a warning (PRD §10.2).
-pub const SKEW_WARN_MS: u64 = 10 * 60 * 1000;
-/// `SKEW_MAX`: the protocol constant, the same on the server (ADR-0001 §2, decision 5).
-pub const SKEW_MAX_MS: u64 = 24 * 60 * 60 * 1000;
-
-/// How far a received stamp is ahead of the local physical time.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Skew {
-    /// Within ten minutes (or behind).
-    Fine,
-    /// More than ten minutes ahead: the user is warned, nothing is blocked.
-    Warning,
-    /// More than `SKEW_MAX` ahead: applied to the data, not accepted into the clock.
-    TooFar,
-}
-
-impl Skew {
-    /// Classification of a stamp's `wall_ms` against the local physical time `pt`.
-    pub fn of(remote_l: u64, pt: u64) -> Skew {
-        let ahead = remote_l.saturating_sub(pt);
-        if ahead > SKEW_MAX_MS {
-            Skew::TooFar
-        } else if ahead > SKEW_WARN_MS {
-            Skew::Warning
-        } else {
-            Skew::Fine
-        }
     }
 }
 

@@ -3,9 +3,11 @@
 //! gives the same schedule.
 
 use crate::client::Event;
+use crate::client::purge::deleted_at;
+use crate::envelope::{DAY_MS, Entity};
 use crate::oracle;
 use crate::switches::Switches;
-use crate::world::{Schedule, World};
+use crate::world::{Schedule, Step, World};
 use proptest::prelude::*;
 use proptest::test_runner::{Config, RngAlgorithm, RngSeed, TestError, TestRunner};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -87,7 +89,7 @@ pub fn no_orphans(schedule: &Schedule, switches: Switches) -> Result<(), String>
     let mut world = run(schedule, switches)?;
     oracle::converged(&world)?;
     // A child of a purged chat may be hidden for a day while the initiator's cascade arrives (S4a); after that nothing is.
-    world.step(crate::world::Step::Advance(2 * crate::envelope::DAY_MS));
+    world.step(Step::Advance(2 * DAY_MS));
     oracle::no_orphan_hidden(&world)
 }
 
@@ -111,12 +113,39 @@ pub fn server_restore(schedule: &Schedule, switches: Switches) -> Result<(), Str
                 .v
                 .get("deleted")
                 .is_some_and(|g| world.oracle.is_restore(key, &g.hlc));
-            if crate::client::purge::deleted_at(&local.v).is_none() && !restored_by_a_person {
+            if deleted_at(&local.v).is_none() && !restored_by_a_person {
                 return Err(format!(
                     "{key:?} was purged, came back after the restore, and is not in the trash"
                 ));
             }
         }
+    }
+    Ok(())
+}
+
+/// 9. (Beyond the eight.) No false conflicts: when one device writes a message's `body` and `placement`, however many times offline,
+/// with or without outbox compaction, and however the network duplicates and reorders, no `conflict` revision is ever made.
+pub fn no_false_conflicts(schedule: &Schedule, switches: Switches) -> Result<(), String> {
+    let world = run(schedule, switches)?;
+    oracle::converged(&world)?;
+    for client in &world.clients {
+        if let Some(key) = client.records.keys().find(|k| k.0 == Entity::Revision) {
+            return Err(format!(
+                "device {}: a conflict revision {key:?} appeared although only one device ever edited",
+                client.idx
+            ));
+        }
+    }
+    if let Some(env) = world
+        .server
+        .all_envelopes()
+        .iter()
+        .find(|e| e.header.entity == Entity::Revision)
+    {
+        return Err(format!(
+            "the server holds a revision envelope {} although only one device ever edited",
+            env.header.id
+        ));
     }
     Ok(())
 }
@@ -155,35 +184,4 @@ where
         )),
         Err(TestError::Abort(reason)) => Err(format!("property `{name}` aborted: {reason}")),
     }
-}
-
-/// 9. (Beyond the eight.) No false conflicts: when one device writes a message's `body` and `placement`, however many times offline,
-/// with or without outbox compaction, and however the network duplicates and reorders, no `conflict` revision is ever made.
-pub fn no_false_conflicts(schedule: &Schedule, switches: Switches) -> Result<(), String> {
-    let world = run(schedule, switches)?;
-    oracle::converged(&world)?;
-    for client in &world.clients {
-        if let Some(key) = client
-            .records
-            .keys()
-            .find(|k| k.0 == crate::envelope::Entity::Revision)
-        {
-            return Err(format!(
-                "device {}: a conflict revision {key:?} appeared although only one device ever edited",
-                client.idx
-            ));
-        }
-    }
-    if let Some(env) = world
-        .server
-        .all_envelopes()
-        .iter()
-        .find(|e| e.header.entity == crate::envelope::Entity::Revision)
-    {
-        return Err(format!(
-            "the server holds a revision envelope {} although only one device ever edited",
-            env.header.id
-        ));
-    }
-    Ok(())
 }

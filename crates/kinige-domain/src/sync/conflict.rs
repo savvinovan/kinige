@@ -2,7 +2,7 @@
 //! `conflict` revision, and what that revision is. A revision's id and content are identical on every device, so creating it twice,
 //! on two devices, is idempotent.
 
-use super::record::Group;
+use super::record::{Group, SUPPORTED_SV};
 use super::{SyncError, corrupt};
 use crate::hlc;
 use crate::jcs;
@@ -73,7 +73,19 @@ impl Lineage {
     }
 }
 
-/// Whether the loser P must become a `conflict` revision of the winner W (§3.4).
+/// The `conflict` revision of the losing version P of `group` of message `message_id` (§3.4).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConflictRevision {
+    /// `message_id[16] || group[1] || hlc(P)[56]`: the input of `crypto_generichash(K_rev, ...)` whose first 16 bytes, with the
+    /// version and variant bits of a v4 UUID ([`uuid_from_bytes`]), are the revision id (§1). The hash is S4b's: this crate has
+    /// no keys.
+    pub id_input: Vec<u8>,
+    /// The revision's `core` group: HLC = `hlc(P)`, so two devices that create it write the same bytes with the same stamp.
+    pub core: Group,
+}
+
+/// Whether the loser P must become a `conflict` revision of the winner W (§3.4). A client that does not support the `sv` of either
+/// version makes none (another device will, §3.4); it cannot read what it would write.
 ///
 /// P and W are concurrent when their contents differ and P is not in W's history. Three tests, in this order:
 /// 1. `hlc(P)` is in `W.supersedes`, or is `W.base`: W was made from P (also when the ack for P was lost and P still counts as
@@ -88,7 +100,11 @@ pub fn needs_conflict_revision(
     loser: &Group,
     loser_is_own_unconfirmed: bool,
 ) -> bool {
-    if group_code(group).is_none() || !content_differs(group, &winner.raw, &loser.raw) {
+    if group_code(group).is_none()
+        || winner.sv > SUPPORTED_SV
+        || loser.sv > SUPPORTED_SV
+        || !content_differs(group, &winner.raw, &loser.raw)
+    {
         return false;
     }
     let lineage = Lineage::parse(&winner.raw);
@@ -132,22 +148,16 @@ pub fn content_differs(group: &str, a: &str, b: &str) -> bool {
     fields.iter().any(|field| a.get(*field) != b.get(*field))
 }
 
-/// The `conflict` revision of the losing version P of `group` of message `message_id` (§3.4).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ConflictRevision {
-    /// `message_id[16] || group[1] || hlc(P)[56]`: the input of `crypto_generichash(K_rev, ...)` whose first 16 bytes, with the
-    /// version and variant bits of a v4 UUID ([`uuid_from_bytes`]), are the revision id (§1). The hash is S4b's: this crate has
-    /// no keys.
-    pub id_input: Vec<u8>,
-    /// The revision's `core` group: HLC = `hlc(P)`, so two devices that create it write the same bytes with the same stamp.
-    pub core: Group,
-}
-
+/// Makes the revision of the losing version P of `group` of message `message_id`. A version with an `sv` this client does not
+/// support cannot be written into a revision (ADR-0001 §3.4: "if it supports the `sv` of both versions"): another device will.
 pub fn conflict_revision(
     message_id: &str,
     group: &str,
     loser: &Group,
 ) -> Result<ConflictRevision, SyncError> {
+    if loser.sv > SUPPORTED_SV {
+        return Err(SyncError::UnsupportedVersion);
+    }
     let code = group_code(group).ok_or_else(|| corrupt("no revisions for this group"))?;
     let mut id_input = uuid_bytes(message_id)
         .ok_or_else(|| corrupt("message id is not a UUID"))?
@@ -171,7 +181,7 @@ pub fn conflict_revision(
     .map_err(corrupt)?;
     Ok(ConflictRevision {
         id_input,
-        core: Group::new(&loser.hlc, super::record::SUPPORTED_SV, &core)?,
+        core: Group::new(&loser.hlc, SUPPORTED_SV, &core)?,
     })
 }
 
