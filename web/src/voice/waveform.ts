@@ -7,7 +7,7 @@ export const WAVEFORM_PEAKS = 64;
 
 /** The decoder works at this rate: a voice note needs no more, and a 30 minute note then takes 58 MB of samples instead of 320 MB. */
 const DECODE_SAMPLE_RATE = 8000;
-/** The decoder looks at the signal in windows of this length; a bar is the loudest window of its share of the note. */
+/** The decoder looks at the signal in windows of this length; a bar is the RMS of its share of the note. */
 const WINDOW_MS = 50;
 
 /** Reads `0x00`..`0xff` of every peak as two hex digits, the form the wire (a header, a command argument) carries. */
@@ -17,34 +17,50 @@ export function peaksToHex(peaks: Uint8Array): string {
   return text;
 }
 
-/** What a level of the recorder's analyser (the root mean square of a window, 0 to 1) looks like on the screen: speech sits low, so the root spreads it. */
+/**
+ * What a level of the recorder's analyser (the root mean square of a window, 0 to 1) looks like on the live meter: speech sits low, so the
+ * root spreads it. Only the live meter of the recording bar uses this; the stored waveform is plain RMS (see [`peaksFromRms`]).
+ */
 export function levelOfRms(rms: number): number {
   return Math.sqrt(Math.min(1, Math.max(0, Number.isFinite(rms) ? rms : 0)));
 }
 
 /**
- * Turns a series of levels (0 to 1, oldest first, any length) into [`WAVEFORM_PEAKS`] peaks: each bar is the loudest level of its share
- * of the series, and the loudest bar is 255, so a quiet voice still fills the height. `null` for an empty series, or a series that is
- * silent all the way through (nothing to draw but a flat line, which the placeholder already is).
+ * A mild curve on the bars of a stored waveform (`bar ** WAVEFORM_CURVE`, with the loudest bar at 1): it lifts the quiet syllables a little so
+ * that speech does not read as a few spikes. Not verified on real speech (the runners have none): the exponent is easy to change, and the
+ * stored bytes only decide what is drawn.
  */
-export function peaksFromLevels(levels: ArrayLike<number>, count: number = WAVEFORM_PEAKS): Uint8Array | null {
-  if (levels.length === 0 || count <= 0) return null;
-  const maxima = new Float64Array(count);
+export const WAVEFORM_CURVE = 0.85;
+
+/**
+ * Turns a series of RMS windows (0 to 1, linear, oldest first, any length) into [`WAVEFORM_PEAKS`] peaks: each bar is the plain RMS of its
+ * share of the series (the root of the mean of the squares), the loudest bar is 255, so a quiet voice still fills the height, and the mild
+ * curve is applied after that. `null` for an empty series, or one that is silent all the way through (a flat row of dots is what the player
+ * draws without peaks anyway).
+ */
+export function peaksFromRms(windows: ArrayLike<number>, count: number = WAVEFORM_PEAKS): Uint8Array | null {
+  if (windows.length === 0 || count <= 0) return null;
+  const bars = new Float64Array(count);
   for (let bar = 0; bar < count; bar += 1) {
-    // The share of bar `bar`: at least one level, so a short series is stretched, never skipped.
-    const from = Math.min(levels.length - 1, Math.floor((bar * levels.length) / count));
-    const to = Math.max(from + 1, Math.floor(((bar + 1) * levels.length) / count));
-    let loudest = 0;
-    for (let i = from; i < Math.min(to, levels.length); i += 1) loudest = Math.max(loudest, levels[i] ?? 0);
-    maxima[bar] = Number.isFinite(loudest) ? loudest : 0;
+    // The share of bar `bar`: at least one window, so a short series is stretched, never skipped.
+    const from = Math.min(windows.length - 1, Math.floor((bar * windows.length) / count));
+    const to = Math.max(from + 1, Math.floor(((bar + 1) * windows.length) / count));
+    let sum = 0;
+    let used = 0;
+    for (let i = from; i < Math.min(to, windows.length); i += 1) {
+      const value = windows[i] ?? 0;
+      sum += Number.isFinite(value) ? value * value : 0;
+      used += 1;
+    }
+    bars[bar] = used > 0 ? Math.sqrt(sum / used) : 0;
   }
-  return normalise(maxima);
+  return normalise(bars);
 }
 
-/** The same for decoded samples (one channel, -1 to 1): the level of a window is `levelOfRms`, so a recorded and a decoded note look alike. */
+/** The same for decoded samples (one channel, -1 to 1): the windows are the RMS of 50 ms, so a recorded and a decoded note look alike. */
 export function peaksFromSamples(samples: ArrayLike<number>, sampleRate: number, count: number = WAVEFORM_PEAKS): Uint8Array | null {
   const window = Math.max(1, Math.round((sampleRate * WINDOW_MS) / 1000));
-  const levels: number[] = [];
+  const windows: number[] = [];
   for (let start = 0; start < samples.length; start += window) {
     const end = Math.min(samples.length, start + window);
     let sum = 0;
@@ -52,16 +68,16 @@ export function peaksFromSamples(samples: ArrayLike<number>, sampleRate: number,
       const value = samples[i] ?? 0;
       sum += value * value;
     }
-    levels.push(levelOfRms(Math.sqrt(sum / (end - start))));
+    windows.push(Math.sqrt(sum / (end - start)));
   }
-  return peaksFromLevels(levels, count);
+  return peaksFromRms(windows, count);
 }
 
-function normalise(maxima: Float64Array): Uint8Array | null {
+function normalise(bars: Float64Array): Uint8Array | null {
   let loudest = 0;
-  for (const value of maxima) loudest = Math.max(loudest, value);
+  for (const value of bars) loudest = Math.max(loudest, value);
   if (loudest <= 0) return null;
-  return Uint8Array.from(maxima, (value) => Math.round((value / loudest) * 255));
+  return Uint8Array.from(bars, (value) => Math.round(((value / loudest) ** WAVEFORM_CURVE) * 255));
 }
 
 /** The decoder of this web view, or `null` where there is none (jsdom, an unusual build). `OfflineAudioContext` needs no audio device. */

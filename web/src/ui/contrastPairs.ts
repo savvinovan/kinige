@@ -52,8 +52,9 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   ...SURFACES.map((background) => ({ foreground: "focus.ring", background, kind: "ui" as const })),
   // The dot of the recording bar (slice 7a) is a shape, not text: the UI threshold on every surface it can sit on.
   ...SURFACES.map((background) => ({ foreground: "status.recording", background, kind: "ui" as const })),
-  // The unplayed bars of a voice note's waveform (slice 7a) are muted on purpose, as in Telegram: what has to be obvious is the step between
-  // them and the played bars (accent), so that pair has the UI threshold; against the plate the bars only have to stay visible.
+  // The unplayed bars of a voice note's waveform (slice 7a) are a muted neutral gray on purpose, as in Telegram: what has to be obvious is the
+  // step between them and the played bars (accent), so that pair has the UI threshold; against the plate they are the darkest gray that still
+  // meets the 2.0 graphic minimum (the minimum is not to be lowered: pick a lighter gray instead).
   { foreground: "accent.default", background: "voice.unplayed", kind: "ui" },
   { foreground: "voice.unplayed", background: "surface.message", kind: "graphic" },
   { foreground: "voice.unplayed", background: "highlight.background", kind: "selection" },

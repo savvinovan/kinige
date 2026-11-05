@@ -1,5 +1,5 @@
 import { openMicrophone, recordingLimitMs } from "virtual:kinige-mic";
-import { levelOfRms, peaksFromLevels } from "./waveform";
+import { levelOfRms, peaksFromRms } from "./waveform";
 
 // One recording on top of the web view's MediaRecorder (slice 7a, ADR-0015). No React here: the hook `useVoiceRecorder` drives it and the
 // tests drive it with a fake `MediaDevices`. The microphone is asked for in `startSession`, which the first click on the microphone button
@@ -48,10 +48,15 @@ export interface Recording {
   peaks: Uint8Array | null;
 }
 
-/** What the live waveform draws: the newest levels (0 to 1, oldest first) and when the newest was taken (`performance.now()`). */
+/**
+ * What the live waveform draws: the newest levels (0 to 1, shaped for the meter, oldest first), when the newest was taken
+ * (`performance.now()`) and how many levels the recording has had in all (with Reduce Motion a level goes to the slot `total` modulo the
+ * number of bars, so the bars stay where they are).
+ */
 export interface LiveLevels {
   levels: readonly number[];
   at: number;
+  total: number;
 }
 
 export interface SessionHooks {
@@ -67,7 +72,7 @@ export class RecorderSession {
   private byteCount = 0;
   private readonly startedAt: number;
   private endedAt: number | null = null;
-  /** Every level of the recording so far, 0 to 255 (a byte per 50 ms: 36 000 of them at the 30 minute limit). */
+  /** The RMS of every 50 ms of the recording so far, linear, 0 to 1 (36 000 numbers at the 30 minute limit). */
   private readonly levelLog: number[] = [];
   private lastLevelAt = 0;
   private context: AudioContext | null = null;
@@ -145,12 +150,12 @@ export class RecorderSession {
   /** The newest `count` levels for the live waveform (fewer at the start of a recording), and when the newest was taken. */
   liveLevels(count: number): LiveLevels {
     const tail = this.levelLog.slice(Math.max(0, this.levelLog.length - Math.max(0, count)));
-    return { levels: tail.map((level) => level / 255), at: this.lastLevelAt };
+    return { levels: tail.map(levelOfRms), at: this.lastLevelAt, total: this.levelLog.length };
   }
 
-  /** The note's waveform: 64 peaks of everything recorded so far, or `null` without an analyser (or in total silence). */
+  /** The note's waveform: 64 peaks of everything recorded so far (plain RMS per bar), or `null` without an analyser (or in total silence). */
   peaks(): Uint8Array | null {
-    return peaksFromLevels(this.levelLog.map((level) => level / 255));
+    return peaksFromRms(this.levelLog);
   }
 
   /**
@@ -229,7 +234,7 @@ export class RecorderSession {
         const centered = (sample - 128) / 128;
         sum += centered * centered;
       }
-      const level = Math.round(levelOfRms(Math.sqrt(sum / samples.length)) * 255);
+      const level = Math.sqrt(sum / samples.length);
       const now = performance.now();
       // A late timer (a hidden window) still keeps the time axis: the level holds for the periods that were missed.
       const periods = Math.min(MAX_CATCH_UP, Math.max(1, Math.round((now - this.lastLevelAt) / LEVEL_PERIOD_MS)));

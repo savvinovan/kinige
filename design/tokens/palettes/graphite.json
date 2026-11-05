@@ -124,9 +124,9 @@
       },
       "voice": {
         "unplayed": {
-          "$value": "#44626a",
-          "$description": "The bars of a voice note's waveform that have not been played yet (slice 7a, acceptance round 2): a clearly muted cousin of the accent, as in Telegram. The played part is accent.default, 3.3:1 away from this color, so the edge of the fill is obvious (the first try, #5b848f, was only 2.0:1 away and the fill could not be told from the rest). A graphic, not text: 2.2:1 on the message plate, 1.6:1 on the highlighted plate (a short-lived jump target; the bars stay visible).",
-          "$extensions": { "kinige": { "origin": "авторский: тон 193°, насыщенность 22 %, светлота 34 %" } }
+          "$value": "#595959",
+          "$description": "The bars of a voice note's waveform that have not been played yet (slice 7a, acceptance round 3): a neutral gray, so the played part (accent.default) stands out by hue as well as by lightness, as in Telegram. It is the darkest neutral gray that still meets the project's 2.0:1 minimum for a graphic on the message plate (#585858 gives 1.99): the largest step from the accent that the rule allows, 3.5:1. On the highlighted plate (a short-lived jump target) it is 1.53:1, enough to stay visible. The earlier teal tries (#5b848f, #44626a) were 2.0:1 and 3.3:1 away from the accent and read as one color.",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 35 %" } }
         }
       },
       "tile": {

@@ -1,19 +1,22 @@
 import { useEffect, useRef } from "react";
 import { LEVEL_PERIOD_MS, type LiveLevels } from "../../voice/recorderSession";
-import { barsFor, cssLengthPx, drawWave, type WaveGeometry } from "./waveDraw";
+import { barsFor, drawWave, snapLengths, type LiveMode, type WaveGeometry } from "./waveDraw";
+import { readWaveLengths } from "./waveTokens";
 
 interface LiveWaveProps {
-  /** The newest `count` levels of the recording (0 to 1, oldest first) and when the newest was taken. Read on every frame; never a render. */
+  /** The newest `count` levels of the recording (0 to 1, oldest first), when the newest was taken and how many there have been. Read on every frame; never a render. */
   read: (count: number) => LiveLevels;
   /** The accessible name of the waveform ("Microphone level"). */
   label: string;
 }
 
 /**
- * The live waveform of the recording bar (slice 7a, round 2): a canvas that fills the whole middle of the bar, between the timer and Send.
- * New bars enter from the right and scroll to the left. The canvas redraws on its own animation frames, reading the recorder through `read`,
- * so a recording never re-renders the bar, let alone the feed (KINIG-47). With Reduce Motion the strip does not slide: it steps once per
- * 100 ms, a level meter that shows the loudness and nothing else. Colours and lengths come from the design tokens through the computed style.
+ * The live waveform of the recording bar (slice 7a): a canvas that fills the whole middle of the bar, between the timer and Send. New bars
+ * enter from the right and scroll to the left. The canvas redraws on its own animation frames, reading the recorder through `read`, so a
+ * recording never re-renders the bar, let alone the feed (KINIG-47). The canvas has one pixel per device pixel and the bars are whole device
+ * pixels (an even rhythm at every density). With Reduce Motion nothing scrolls: the bars stand in fixed slots across the width and only
+ * their heights change, ten times a second (the oldest bar is the one that is overwritten). Lengths and the colour come from the design
+ * tokens through the computed style.
  */
 export function LiveWave({ read, label }: LiveWaveProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -26,17 +29,18 @@ export function LiveWave({ read, label }: LiveWaveProps) {
     let geometry: WaveGeometry | null = null;
     let tokensAt = performance.now();
 
-    /** Measures the element and the tokens; the canvas gets its pixel size only when the box changed. */
+    /** Measures the element and the tokens; the canvas gets its pixel size (the box in device pixels) only when the box changed. */
     const measure = (resizeCanvas: boolean) => {
       const box = element.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
       if (resizeCanvas) {
-        const scale = window.devicePixelRatio || 1;
-        element.width = Math.max(1, Math.round(box.width * scale));
-        element.height = Math.max(1, Math.round(box.height * scale));
-        context.setTransform(scale, 0, 0, scale, 0, 0);
+        element.width = Math.max(1, Math.round(box.width * ratio));
+        element.height = Math.max(1, Math.round(box.height * ratio));
       }
-      const tokens = readTokens(element);
-      geometry = tokens ? { ...tokens, width: box.width, height: box.height } : null;
+      const lengths = readWaveLengths(element, "rec-wave");
+      geometry = lengths
+        ? { ...snapLengths(lengths, ratio), width: element.width, height: element.height, color: getComputedStyle(element).color }
+        : null;
     };
     measure(true);
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => measure(true));
@@ -51,9 +55,9 @@ export function LiveWave({ read, label }: LiveWaveProps) {
         measure(false);
       }
       if (!geometry) return;
-      const { levels, at } = read(barsFor(geometry.width, geometry.barWidth, geometry.gap));
-      const phase = reduced ? 1 : (now - at) / LEVEL_PERIOD_MS;
-      drawWave(context, geometry, levels, phase);
+      const { levels, at, total } = read(barsFor(geometry.width, geometry.barWidth, geometry.gap));
+      const mode: LiveMode = reduced ? { kind: "stay", total } : { kind: "slide", phase: (now - at) / LEVEL_PERIOD_MS };
+      drawWave(context, geometry, levels, mode);
     };
 
     let handle = 0;
@@ -76,19 +80,6 @@ export function LiveWave({ read, label }: LiveWaveProps) {
   }, [read]);
 
   return <canvas ref={canvas} className="recording-bar__wave" role="img" aria-label={label} />;
-}
-
-/** The token lengths and the colour as the element computes them; `null` where a length is not one we understand (nothing is drawn then). */
-function readTokens(element: HTMLElement): Omit<WaveGeometry, "width" | "height"> | null {
-  const style = getComputedStyle(element);
-  const rootPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  const length = (name: string) => cssLengthPx(style.getPropertyValue(name), rootPx);
-  const barWidth = length("--layout-voice-rec-wave-bar-width");
-  const gap = length("--layout-voice-rec-wave-gap");
-  const minHeight = length("--layout-voice-rec-wave-min-height");
-  const maxHeight = length("--layout-voice-rec-wave-height");
-  if (barWidth === null || gap === null || minHeight === null || maxHeight === null) return null;
-  return { barWidth, gap, minHeight, maxHeight, color: style.color };
 }
 
 function prefersReducedMotion(element: HTMLElement): boolean {

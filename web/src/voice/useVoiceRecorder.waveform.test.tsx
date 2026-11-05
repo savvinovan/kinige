@@ -130,9 +130,10 @@ describe("the waveform of a recording", () => {
     expect(sent?.waveform).toHaveLength(64);
     const peaks = Array.from(sent?.waveform ?? []);
     expect(Math.max(...peaks)).toBe(255);
-    // The first half is the quiet part (a quarter of the amplitude, half of the height after the square root), the second the loud part.
-    expect(peaks[10]).toBeGreaterThan(100);
-    expect(peaks[10]).toBeLessThan(140);
+    // The first half is the quiet part: a quarter of the loud part's RMS (plain RMS, not its root), 0.25 ** 0.85 = 0.31 of the height after the
+    // mild curve; the second half is the loud part.
+    expect(peaks[10]).toBeGreaterThan(70);
+    expect(peaks[10]).toBeLessThan(90);
     expect(peaks[50]).toBe(255);
   });
 

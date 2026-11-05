@@ -1,16 +1,4 @@
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type CSSProperties,
-  type KeyboardEvent,
-  type PointerEvent,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type PointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import { useLanguage } from "../../i18n/I18n";
@@ -21,12 +9,15 @@ import { FileCard } from "../attachments/FileCard";
 import { formatSize } from "../attachments/formatSize";
 import { Icon } from "../icons/Icon";
 import { claimPlayback, currentSpeed, nextSpeed, releasePlayback, speedLabel, subscribeSpeed, type PlayingHandle } from "./playerSession";
+import { usePlayerCanvas } from "./usePlayerCanvas";
 import "./voice-player.css";
 
 /** The arrow keys move the position by this much. */
 const SEEK_STEP_MS = 5000;
-/** How many bars the waveform has (the number of peaks, `kinige_domain::attachment::WAVEFORM_PEAKS`). */
-const BARS = 64;
+/** PageUp and PageDown move it by this share of the note. */
+const SEEK_PAGE = 0.1;
+/** The animation frames look at the tokens and the screen density again this often. */
+const MEASURE_EVERY_MS = 1000;
 
 interface VoicePlayerProps {
   /** An `audio` attachment: a recorder's voice note or a Telegram voice or audio file. */
@@ -60,23 +51,6 @@ export function showsWaveform(attachment: AttachmentView): boolean {
   return attachment.kind === "audio" && attachment.state !== "missing" && attachment.byteSize <= FULL_MAX_BYTES && canPlayHere(attachment.mime);
 }
 
-/** The bars of a placeholder: a fixed gentle shape, until the note's own peaks are known (the bubble does not change size). */
-const PLACEHOLDER = Array.from({ length: BARS }, (_, i) => 0.28 + 0.16 * Math.sin(i * 0.6) + 0.08 * Math.sin(i * 1.7));
-
-/** One layer of bars; the height of each is a unitless `--peak` the stylesheet turns into a length from the tokens. */
-const Bars = memo(function Bars({ peaks }: { peaks: Uint8Array | null }) {
-  const shape = useMemo(() => {
-    const filled = peaks !== null && peaks.length === BARS;
-    return Array.from({ length: BARS }, (_, i) => (filled ? (peaks[i] ?? 0) / 255 : (PLACEHOLDER[i] ?? 0)));
-  }, [peaks]);
-  return (
-    <>
-      {shape.map((peak, i) => (
-        <span key={i} className="voice-player__bar" style={{ "--peak": peak.toFixed(3) } as CSSProperties} />
-      ))}
-    </>
-  );
-});
 
 /**
  * A voice note in the bubble (slice 7a, round 2): a big round accent play / pause button and, to its right, a waveform of thin rounded
@@ -98,6 +72,8 @@ export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProp
   const exactMs = useRef(preview?.positionMs ?? 0);
   const shownSecond = useRef(-1);
   const dragging = useRef(false);
+  /** Where the note was when the drag started (a cancelled drag goes back there). */
+  const dragFrom = useRef(0);
   const [started, setStarted] = useState(preview !== undefined);
   const [isPlaying, setIsPlaying] = useState(preview?.playing ?? false);
   const [positionMs, setPositionMs] = useState(preview?.positionMs ?? 0);
@@ -108,6 +84,7 @@ export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProp
 
   const unplayable = failed || !showsWaveform(attachment);
   const peaks = useWaveform(attachment, wave, !unplayable && attachment.state !== "missing");
+  const { canvas, draw, measure } = usePlayerCanvas(peaks);
   const totalMs = attachment.durationMs ?? loadedMs;
   const totalRef = useRef(totalMs);
   const isPreview = preview !== undefined;
@@ -119,12 +96,16 @@ export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProp
     return () => releasePlayback(own);
   }, []);
 
-  /** Draws the fill at `ms`: one CSS variable on the waveform, no render. */
-  const paint = useCallback((ms: number) => {
-    const max = totalRef.current ?? 0;
-    const fraction = max > 0 ? Math.min(1, Math.max(0, ms / max)) : 0;
-    wave.current?.style.setProperty("--voice-progress", `${(fraction * 100).toFixed(2)}%`);
-  }, []);
+  /** Draws the fill at `ms`: the canvas is repainted, no render. The share is also written to `data-progress` (for tests and for looking at it). */
+  const paint = useCallback(
+    (ms: number) => {
+      const max = totalRef.current ?? 0;
+      const fraction = max > 0 ? Math.min(1, Math.max(0, ms / max)) : 0;
+      if (wave.current) wave.current.dataset.progress = fraction.toFixed(4);
+      draw(fraction);
+    },
+    [draw],
+  );
 
   /** Takes a position as the truth: the bars, and the text and the slider value once the whole second changes (or when forced). */
   const settle = useCallback(
@@ -150,9 +131,15 @@ export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProp
   useEffect(() => {
     if (!isPlaying || isPreview) return;
     let frame = 0;
+    let measuredAt = performance.now();
     const step = () => {
       const element = audio.current;
       if (element && !dragging.current) settle(element.currentTime * 1000);
+      const now = performance.now();
+      if (now - measuredAt > MEASURE_EVERY_MS) {
+        measuredAt = now;
+        measure();
+      }
       frame = requestAnimationFrame(step);
     };
     const onVisibility = () => {
@@ -165,7 +152,7 @@ export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProp
       cancelAnimationFrame(frame);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [isPlaying, isPreview, settle]);
+  }, [isPlaying, isPreview, settle, measure]);
 
   const play = useCallback(() => {
     const element = audio.current;
@@ -220,19 +207,30 @@ export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProp
       // An environment without pointer capture (a test): the drag still works over the waveform.
     }
     dragging.current = true;
+    dragFrom.current = exactMs.current;
     settle(msAt(event.clientX), true);
   };
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     if (dragging.current) settle(msAt(event.clientX), true);
   };
-  const onPointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+  /** The button was released: the file moves to where the pointer is. */
+  const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
     if (!dragging.current) return;
     dragging.current = false;
     seekTo(msAt(event.clientX));
   };
+  /** The drag was cancelled (`pointercancel`, or the capture was lost with no `pointerup`): the note stays where it was, nothing seeks. */
+  const onDragCancelled = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    settle(dragFrom.current, true);
+  };
 
   const onKey = (event: KeyboardEvent<HTMLDivElement>) => {
-    const step = event.key === "ArrowRight" ? SEEK_STEP_MS : event.key === "ArrowLeft" ? -SEEK_STEP_MS : 0;
+    const forward = event.key === "ArrowRight" || event.key === "ArrowUp";
+    const back = event.key === "ArrowLeft" || event.key === "ArrowDown";
+    const page = (totalMs ?? 0) * SEEK_PAGE;
+    const step = forward ? SEEK_STEP_MS : back ? -SEEK_STEP_MS : event.key === "PageUp" ? page : event.key === "PageDown" ? -page : 0;
     if (step !== 0) seekTo(exactMs.current + step);
     else if (event.key === "Home") seekTo(0);
     else if (event.key === "End" && totalMs) seekTo(totalMs);
@@ -290,16 +288,12 @@ export function VoicePlayer({ attachment, onOpenFile, preview }: VoicePlayerProp
         aria-disabled={max === 0 || undefined}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerEnd}
-        onPointerCancel={onPointerEnd}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onDragCancelled}
+        onLostPointerCapture={onDragCancelled}
         onKeyDown={onKey}
       >
-        <span className="voice-player__bars" aria-hidden="true">
-          <Bars peaks={peaks} />
-        </span>
-        <span className="voice-player__bars voice-player__bars--played" aria-hidden="true">
-          <Bars peaks={peaks} />
-        </span>
+        <canvas ref={canvas} className="voice-player__canvas" aria-hidden="true" />
       </div>
       <div className="voice-player__meta">
         <span className="voice-player__time">{meta}</span>

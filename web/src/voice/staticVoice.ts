@@ -5,7 +5,7 @@ export function staticVoice(state: VoiceState, handlers: Partial<Omit<VoiceContr
   const noop = () => undefined;
   return {
     store: { get: () => state, subscribe: () => () => undefined },
-    levels: () => ({ levels: [], at: 0 }),
+    levels: () => ({ levels: [], at: 0, total: 0 }),
     start: noop,
     send: noop,
     requestCancel: noop,

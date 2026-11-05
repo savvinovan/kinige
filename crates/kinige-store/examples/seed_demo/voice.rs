@@ -132,8 +132,8 @@ fn samples(seconds: u32, take: Take) -> Vec<i16> {
         .collect()
 }
 
-/// The 64 peaks of a set of samples, the way the app makes them: the loudness of a bar is the square root of its RMS, and the loudest
-/// bar is 255.
+/// The 64 peaks of a set of samples, the way the app makes them (`web/src/voice/waveform.ts`): a bar is the plain RMS of its share of the
+/// samples, the loudest bar is 255, and a mild curve (`** 0.85`) is applied after that.
 fn peaks_of(samples: &[i16]) -> Vec<u8> {
     let bars = 64;
     let per_bar = samples.len().div_ceil(bars).max(1);
@@ -144,13 +144,13 @@ fn peaks_of(samples: &[i16]) -> Vec<u8> {
                 .iter()
                 .map(|s| (f64::from(*s) / f64::from(i16::MAX)).powi(2))
                 .sum();
-            (sum / chunk.len() as f64).sqrt().sqrt()
+            (sum / chunk.len() as f64).sqrt()
         })
         .collect();
     let loudest = levels.iter().copied().fold(f64::MIN_POSITIVE, f64::max);
     let mut peaks: Vec<u8> = levels
         .iter()
-        .map(|level| (level / loudest * 255.0).round() as u8)
+        .map(|level| ((level / loudest).powf(0.85) * 255.0).round() as u8)
         .collect();
     peaks.resize(bars, 0);
     peaks

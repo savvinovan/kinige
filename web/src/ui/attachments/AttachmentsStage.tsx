@@ -51,11 +51,8 @@ export function Bubble({
       markdown={text}
       sentAt={SENT_AT}
       timeBeside={timeBeside}
-      quote={
-        <div className="attachments-scene__slot">
-          {slot ?? <MessageAttachments attachments={attachments} onOpenImage={noop} onOpenFile={noop} />}
-        </div>
-      }
+      // As in the feed (`FeedRow`): the attachments are the `attachments` of the message, so the bubble lays out exactly as in the window.
+      attachments={slot ?? <MessageAttachments attachments={attachments} onOpenImage={noop} onOpenFile={noop} />}
     />
   );
 }

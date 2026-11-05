@@ -15,7 +15,7 @@ const SAMPLE = Array.from({ length: 240 }, (_, i) => {
 });
 
 /** The waveform is not moving here (`at: 0` is long ago, so the strip has finished sliding); the real one slides in from the right. */
-const levels = (count: number) => ({ levels: SAMPLE.slice(-count), at: 0 });
+const levels = (count: number) => ({ levels: SAMPLE.slice(-count), at: 0, total: SAMPLE.length });
 
 function Demo({ state, text = "", narrow = false }: { state: VoiceState; text?: string; narrow?: boolean }) {
   const [value, setValue] = useState(text);
@@ -46,7 +46,7 @@ export const JustStarted: Story = {
   args: { state: { kind: "recording", elapsedMs: 1_000 } },
   render: ({ state }) => (
     <Frame bottom>
-      <Composer value="" onChange={noop} onSubmit={noop} voice={staticVoice(state, { levels: (count) => ({ levels: SAMPLE.slice(0, 9).slice(-count), at: 0 }) })} />
+      <Composer value="" onChange={noop} onSubmit={noop} voice={staticVoice(state, { levels: (count) => ({ levels: SAMPLE.slice(0, 9).slice(-count), at: 0, total: 9 }) })} />
     </Frame>
   ),
 };
@@ -54,7 +54,7 @@ export const JustStarted: Story = {
 /** From 29:00 the timer takes the warning colour. */
 export const NearTheLimit: Story = { args: { state: { kind: "recording", elapsedMs: 29 * 60_000 + 20_000 } } };
 
-/** With Reduce Motion the strip does not slide, it steps ten times a second: the waveform is the level of the microphone, so it stays. */
+/** With Reduce Motion nothing scrolls: the bars stand in fixed slots across the field and only their heights change (the oldest is overwritten). */
 export const ReducedMotion: Story = {
   globals: { reduceMotion: "on" },
   args: { state: { kind: "recording", elapsedMs: 12_000 } },

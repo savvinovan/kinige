@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { decodePeaks, levelOfRms, peaksFromLevels, peaksFromSamples, peaksToHex, WAVEFORM_PEAKS } from "./waveform";
+import { decodePeaks, levelOfRms, peaksFromRms, peaksFromSamples, peaksToHex, WAVEFORM_CURVE, WAVEFORM_PEAKS } from "./waveform";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -23,44 +23,61 @@ describe("levelOfRms", () => {
   });
 });
 
-describe("peaksFromLevels", () => {
-  it("gives exactly 64 peaks, the loudest is 255 and each bar is the loudest level of its share", () => {
-    const levels = Array.from({ length: 640 }, (_, i) => (i === 100 ? 0.5 : 0.1));
-    const peaks = peaksFromLevels(levels);
+describe("peaksFromRms", () => {
+  const curve = (share: number) => Math.round(share ** WAVEFORM_CURVE * 255);
+
+  it("gives exactly 64 peaks; a bar is the plain RMS of its share, the loudest bar is 255 and the mild curve comes after", () => {
+    // One loud window (0.5) among 640 quiet ones (0.1): bar 10 holds windows 100 to 109 and the loud one.
+    const windows = Array.from({ length: 640 }, (_, i) => (i === 100 ? 0.5 : 0.1));
+    const peaks = peaksFromRms(windows);
     expect(peaks).toHaveLength(WAVEFORM_PEAKS);
     expect(Math.max(...(peaks ?? []))).toBe(255);
-    // Level 100 is in the share of bar 10 (levels 100 to 109); the other bars hold 0.1 of 0.5.
     expect(peaks?.[10]).toBe(255);
-    expect(peaks?.[0]).toBe(51);
-    expect(peaks?.[63]).toBe(51);
+    // The other bars: 0.1 against the RMS of ten windows with one 0.5 in them, sqrt((9 * 0.01 + 0.25) / 10) = 0.186.
+    expect(peaks?.[0]).toBe(curve(0.1 / Math.sqrt((9 * 0.01 + 0.25) / 10)));
+    expect(peaks?.[63]).toBe(peaks?.[0]);
   });
 
-  it("stretches a short series over all bars and never skips a level", () => {
-    const peaks = peaksFromLevels([0.2, 0.4]);
+  it("is the RMS of the bar, not its loudest window: one spike among quiet windows does not make the bar as loud as the spike", () => {
+    const peaks = peaksFromRms([0.1, 0.1, 0.1, 0.9, 0.1, 0.1, 0.1, 0.1], 2);
+    // Bar 0: sqrt((3 * 0.01 + 0.81) / 4) = 0.458; bar 1: 0.1.
+    expect(peaks?.[0]).toBe(255);
+    expect(peaks?.[1]).toBe(curve(0.1 / 0.458));
+  });
+
+  it("keeps dynamics: quiet syllables stay clearly lower than loud ones", () => {
+    const windows = Array.from({ length: 640 }, (_, i) => (Math.floor(i / 10) % 2 === 0 ? 0.2 : 0.05));
+    const peaks = Array.from(peaksFromRms(windows) ?? []);
+    expect(Math.max(...peaks)).toBe(255);
+    expect(Math.min(...peaks)).toBeLessThan(110);
+  });
+
+  it("stretches a short series over all bars and never skips a window", () => {
+    const peaks = peaksFromRms([0.2, 0.4]);
     expect(peaks).toHaveLength(WAVEFORM_PEAKS);
-    expect(peaks?.[0]).toBe(128);
+    expect(peaks?.[0]).toBe(curve(0.5));
     expect(peaks?.[63]).toBe(255);
-    const one = peaksFromLevels([0.3]);
+    const one = peaksFromRms([0.3]);
     expect(one).toHaveLength(WAVEFORM_PEAKS);
     expect(new Set(one)).toEqual(new Set([255]));
   });
 
   it("is null for nothing to draw: empty, silent or a count that makes no sense", () => {
-    expect(peaksFromLevels([])).toBeNull();
-    expect(peaksFromLevels([0, 0, 0])).toBeNull();
-    expect(peaksFromLevels([0.5], 0)).toBeNull();
-    expect(peaksFromLevels([0.5], -3)).toBeNull();
+    expect(peaksFromRms([])).toBeNull();
+    expect(peaksFromRms([0, 0, 0])).toBeNull();
+    expect(peaksFromRms([0.5], 0)).toBeNull();
+    expect(peaksFromRms([0.5], -3)).toBeNull();
   });
 
-  it("treats NaN and out-of-range levels as quiet or loud and never throws", () => {
-    const peaks = peaksFromLevels([Number.NaN, 0.5, Number.NaN, 2], 4);
+  it("treats NaN and out-of-range windows as quiet or loud and never throws", () => {
+    const peaks = peaksFromRms([Number.NaN, 0.5, Number.NaN, 2], 4);
     expect(peaks).toHaveLength(4);
     expect(peaks?.every((peak) => peak >= 0 && peak <= 255)).toBe(true);
-    expect(peaksFromLevels([Number.NaN, Number.NaN])).toBeNull();
+    expect(peaksFromRms([Number.NaN, Number.NaN])).toBeNull();
   });
 
   it("a quiet recording still reaches the full height", () => {
-    const quiet = peaksFromLevels(Array.from({ length: 200 }, (_, i) => 0.01 + (i % 10) * 0.001));
+    const quiet = peaksFromRms(Array.from({ length: 200 }, (_, i) => 0.01 + (i % 10) * 0.001));
     expect(Math.max(...(quiet ?? []))).toBe(255);
   });
 });

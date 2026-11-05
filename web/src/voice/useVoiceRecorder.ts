@@ -313,7 +313,7 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
     [],
   );
 
-  const levels = useCallback((count: number): LiveLevels => session.current?.liveLevels(count) ?? { levels: [], at: 0 }, []);
+  const levels = useCallback((count: number): LiveLevels => session.current?.liveLevels(count) ?? { levels: [], at: 0, total: 0 }, []);
 
   return useMemo(
     () => ({ store, levels, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice }),

@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "../test/render";
 import { FakeObserver } from "../test/fakeObserver";
+import { installWaveCanvas } from "../test/waveCanvas";
 import { demoPeaks, demoVoice } from "../ui/attachments/demo";
 import { VoicePlayer } from "../ui/voice/VoicePlayer";
 import {
   ensurePeaks,
+  DECODE_TIMEOUT_MS,
   MAX_DECODE_BYTES,
+  MAX_DECODE_BYTES_UNKNOWN_LENGTH,
   MAX_DECODE_MS,
   resetWaveformSession,
   WaveformSourceContext,
@@ -96,6 +99,57 @@ describe("ensurePeaks", () => {
     ]);
   });
 
+  it("a note with no length in its row is not decoded over 8 MiB (its samples could be too many); with a length 16 MiB is the cap", async () => {
+    const { value, read, save } = source();
+    const noLength = (id: string, byteSize: number) => demoVoice(id, null, { byteSize, mime: "audio/ogg" });
+    expect(await ensurePeaks(value, noLength("big", MAX_DECODE_BYTES_UNKNOWN_LENGTH + 1))).toHaveLength(0);
+    expect(read).not.toHaveBeenCalled();
+    expect(save.mock.calls[0]?.[1]).toHaveLength(0);
+    expect(await ensurePeaks(value, noLength("edge", MAX_DECODE_BYTES_UNKNOWN_LENGTH))).toHaveLength(64);
+    expect(read).toHaveBeenCalledTimes(1);
+    // The same size with a known length is decoded.
+    expect(await ensurePeaks(value, voice("known", { byteSize: MAX_DECODE_BYTES_UNKNOWN_LENGTH + 1 }))).toHaveLength(64);
+  });
+
+  it("a decode that never settles times out after 15 s: nothing is written, the queue moves on, and the note is not tried again this session", async () => {
+    vi.useFakeTimers();
+    try {
+      const never = new Promise<ArrayBuffer>(() => undefined);
+      const read = vi.fn<WaveformSource["read"]>((id) => (id === "stuck" ? never : Promise.resolve(new ArrayBuffer(16))));
+      const { value, save } = source({ read });
+      const stuck = ensurePeaks(value, voice("stuck"));
+      const next = ensurePeaks(value, voice("next"));
+      await vi.advanceTimersByTimeAsync(DECODE_TIMEOUT_MS - 1);
+      expect(save).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await stuck).toBeNull();
+      expect(await next).toHaveLength(64);
+      expect(save.mock.calls.map((call) => call[0])).toEqual(["next"]);
+      // A second ask in the same session does not read the file again.
+      expect(await ensurePeaks(value, voice("stuck"))).toBeNull();
+      expect(read.mock.calls.filter((call) => call[0] === "stuck")).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a decode that finishes after the timeout writes nothing", async () => {
+    vi.useFakeTimers();
+    try {
+      let late: (bytes: ArrayBuffer) => void = () => undefined;
+      const slow = new Promise<ArrayBuffer>((resolve) => (late = resolve));
+      const { value, save } = source({ read: () => slow });
+      const stuck = ensurePeaks(value, voice("slow"));
+      await vi.advanceTimersByTimeAsync(DECODE_TIMEOUT_MS);
+      expect(await stuck).toBeNull();
+      late(new ArrayBuffer(16));
+      await vi.advanceTimersByTimeAsync(10);
+      expect(save).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("a file at exactly 16 MiB is decoded", async () => {
     const { value, read } = source();
     await ensurePeaks(value, voice("edge", { byteSize: MAX_DECODE_BYTES }));
@@ -146,21 +200,29 @@ describe("a player without peaks", () => {
       { language: "en" },
     );
   }
-  const firstBar = (container: HTMLElement) => container.querySelector<HTMLElement>(".voice-player__bar")?.style.getPropertyValue("--peak");
+  let canvas: ReturnType<typeof installWaveCanvas>;
+  /** How many different bar heights the last fill of the waveform has (a flat row of dots has one). */
+  const heights = () => new Set((canvas.fills.at(-1)?.bars ?? []).map((bar) => bar.h)).size;
 
-  beforeEach(() => vi.stubGlobal("IntersectionObserver", FakeObserver));
+  beforeEach(() => {
+    vi.stubGlobal("IntersectionObserver", FakeObserver);
+    canvas = installWaveCanvas();
+  });
 
   it("waits until it is on screen, then decodes once and draws the peaks without changing size", async () => {
     const { value, read, save } = source();
     const { container } = show(voice("a"), value);
     const wave = container.querySelector(".voice-player__wave") as HTMLElement;
-    const placeholder = firstBar(container);
+    const width = container.querySelector("canvas")?.width;
+    // Before the peaks: a flat row of dots.
+    expect(heights()).toBe(1);
     expect(read).not.toHaveBeenCalled();
     expect(FakeObserver.all).toHaveLength(1);
     act(() => FakeObserver.all[0]?.fire(wave));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(firstBar(container)).not.toBe(placeholder));
-    expect(container.querySelectorAll(".voice-player__bar")).toHaveLength(128);
+    await waitFor(() => expect(heights()).toBeGreaterThan(5));
+    expect(canvas.fills.at(-1)?.bars).toHaveLength(64);
+    expect(container.querySelector("canvas")?.width).toBe(width);
     expect(read).toHaveBeenCalledTimes(1);
   });
 
@@ -196,13 +258,24 @@ describe("a player without peaks", () => {
     const { value, read } = source();
     const first = show(voice("a"), value);
     act(() => FakeObserver.all[0]?.fire(first.container.querySelector(".voice-player__wave") as HTMLElement));
-    await waitFor(() => expect(first.container.querySelector(".voice-player__bar")).not.toBeNull());
+    await waitFor(() => expect(heights()).toBeGreaterThan(5));
     await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
     await act(() => Promise.resolve());
     first.unmount();
     const second = show(voice("a"), value);
     expect(FakeObserver.all).toHaveLength(0);
     expect(read).toHaveBeenCalledTimes(1);
-    expect(second.container.querySelectorAll(".voice-player__bar")).toHaveLength(128);
+    expect(second.container.querySelectorAll("canvas")).toHaveLength(1);
+    expect(heights()).toBeGreaterThan(5);
+  });
+
+  it("a note the decoder could not read stays a flat row of dots", async () => {
+    stubDecoder(new Error("EncodingError"));
+    const { value, save } = source();
+    const { container } = show(voice("ogg"), value);
+    act(() => FakeObserver.all[0]?.fire(container.querySelector(".voice-player__wave") as HTMLElement));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0]?.[1]).toHaveLength(0);
+    expect(heights()).toBe(1);
   });
 });

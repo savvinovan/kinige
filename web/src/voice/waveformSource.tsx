@@ -8,8 +8,12 @@ import { decodePeaks } from "./waveform";
 
 /** The decoder is not asked to read more than this many bytes (the same cap as `kinige_store::MAX_DECODE_BYTES`) ... */
 export const MAX_DECODE_BYTES = 16 * 1024 * 1024;
+/** ... or, for a note with no length in its row, more than this many bytes (a long low-bitrate file could take hundreds of MB of samples) ... */
+export const MAX_DECODE_BYTES_UNKNOWN_LENGTH = 8 * 1024 * 1024;
 /** ... or a note longer than this: its samples would take too much memory. */
 export const MAX_DECODE_MS = 20 * 60 * 1000;
+/** One decode (the read and the decoding) gets this long; then the queue moves on and nothing is written. */
+export const DECODE_TIMEOUT_MS = 15_000;
 
 /** What the player needs from the app: the file's bytes and a place for the peaks. The default is none (stories, tests): placeholder bars. */
 export interface WaveformSource {
@@ -22,12 +26,15 @@ export const WaveformSourceContext = createContext<WaveformSource | null>(null);
 /** Peaks the window already knows: decoded this session, or told by the feed. The player on screen again after a scroll finds them here. */
 const known = new Map<string, Uint8Array>();
 const pending = new Map<string, Promise<Uint8Array | null>>();
+/** Notes whose decode timed out this session. */
+const timedOut = new Set<string>();
 let tail: Promise<unknown> = Promise.resolve();
 
 /** Tests only: forget what the session knew. */
 export function resetWaveformSession(): void {
   known.clear();
   pending.clear();
+  timedOut.clear();
   tail = Promise.resolve();
 }
 
@@ -41,17 +48,42 @@ export function ensurePeaks(source: WaveformSource, attachment: AttachmentView):
   if (have) return Promise.resolve(have);
   const running = pending.get(id);
   if (running) return running;
-  const job = tail.then(() => decodeAndSave(source, attachment));
+  // A note whose decode ran out of time is not tried again until the app restarts.
+  if (timedOut.has(id)) return Promise.resolve(null);
+  const job = tail.then(() => decodeWithin(source, attachment));
   tail = job.catch(() => undefined);
   const guarded = job.finally(() => pending.delete(id));
   pending.set(id, guarded);
   return guarded;
 }
 
-async function decodeAndSave(source: WaveformSource, attachment: AttachmentView): Promise<Uint8Array | null> {
+/** One note's decode with a time limit: on a timeout nothing is written, the queue moves on, and the note is retried next session. */
+async function decodeWithin(source: WaveformSource, attachment: AttachmentView): Promise<Uint8Array | null> {
+  const run = { stale: false };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), DECODE_TIMEOUT_MS);
+  });
+  try {
+    const result = await Promise.race([decodeAndSave(source, attachment, run), timeout]);
+    if (result === "timeout") {
+      // The decode may still finish later: it must not write anything then.
+      run.stale = true;
+      timedOut.add(attachment.id);
+      return null;
+    }
+    return result;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function decodeAndSave(source: WaveformSource, attachment: AttachmentView, run: { stale: boolean }): Promise<Uint8Array | null> {
   const id = attachment.id;
+  // With no length in the row (a Telegram voice) the file is not known to be short: a lower cap on the bytes keeps the samples small.
+  const byteCap = attachment.durationMs === null ? MAX_DECODE_BYTES_UNKNOWN_LENGTH : MAX_DECODE_BYTES;
   let peaks: Uint8Array;
-  if (attachment.byteSize > MAX_DECODE_BYTES || (attachment.durationMs ?? 0) > MAX_DECODE_MS) {
+  if (attachment.byteSize > byteCap || (attachment.durationMs ?? 0) > MAX_DECODE_MS) {
     peaks = new Uint8Array(0);
   } else {
     let bytes: ArrayBuffer;
@@ -66,6 +98,7 @@ async function decodeAndSave(source: WaveformSource, attachment: AttachmentView)
       peaks = new Uint8Array(0);
     }
   }
+  if (run.stale) return null;
   known.set(id, peaks);
   // The peaks are shown either way; a save that fails only means the next start decodes again.
   await source.save(id, peaks).catch(() => undefined);

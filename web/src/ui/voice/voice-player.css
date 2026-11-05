@@ -44,8 +44,8 @@
   margin-left: var(--layout-voice-play-nudge);
 }
 
-/* The waveform is a slider (click, drag, arrow keys): two layers of the same bars, the accent one on top and cut at the played share. The cut
-   follows `--voice-progress`, which the component writes on every animation frame while playing, so the fill moves inside a bar too. */
+/* The waveform is a slider (click, drag, arrow keys) that holds one canvas: the muted row of bars with the accent copy of it cut at the played
+   share. The component repaints it on every animation frame while playing, so the fill moves inside a bar too. */
 .voice-player__wave {
   position: relative;
   grid-column: 2;
@@ -63,29 +63,14 @@
   cursor: default;
 }
 
-.voice-player__bars {
-  display: flex;
-  align-items: center;
-  gap: var(--layout-voice-wave-gap);
+/* The canvas has one pixel per device pixel (`usePlayerCanvas`), so the bars are whole device pixels and their rhythm is even. Its size here is
+   the same 64 bars and gaps from the tokens, as a first guess before the script sets it in whole device pixels, so nothing moves. The colour
+   is the played colour; the unplayed one is read from `--color-voice-unplayed` by the script. */
+.voice-player__canvas {
+  display: block;
+  width: calc(64 * (var(--layout-voice-wave-bar-width) + var(--layout-voice-wave-gap)) - var(--layout-voice-wave-gap));
   height: var(--layout-voice-wave-height);
-}
-
-.voice-player__bars--played {
-  position: absolute;
-  inset: 0;
-  clip-path: inset(0 calc(100% - var(--voice-progress, 0%)) 0 0);
-}
-
-.voice-player__bar {
-  flex: none;
-  width: var(--layout-voice-wave-bar-width);
-  height: calc(var(--layout-voice-wave-min-height) + (var(--layout-voice-wave-height) - var(--layout-voice-wave-min-height)) * var(--peak, 0));
-  border-radius: var(--radius-round);
-  background: var(--color-voice-unplayed);
-}
-
-.voice-player__bars--played .voice-player__bar {
-  background: var(--color-accent-default);
+  color: var(--color-accent-default);
 }
 
 /* The meta line: "0:40, 20.7 KB" (the elapsed time while playing) and, once the note has been started, the speed chip. The line height is the

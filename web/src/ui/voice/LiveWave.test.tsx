@@ -63,7 +63,6 @@ beforeEach(() => {
         arcTo: () => undefined,
         closePath: () => undefined,
         fill: () => (fills += 1),
-        setTransform: () => undefined,
         fillStyle: "",
       }) as unknown as CanvasRenderingContext2D,
   );
@@ -83,7 +82,7 @@ const runFrame = () => {
   act(() => callback(performance.now()));
 };
 
-const LEVELS = { levels: [0.2, 0.4, 0.6], at: 0 };
+const LEVELS = { levels: [0.2, 0.4, 0.6], at: 0, total: 3 };
 
 describe("LiveWave", () => {
   it("is one canvas with a name for the screen reader", () => {
@@ -96,8 +95,8 @@ describe("LiveWave", () => {
     render(<LiveWave read={read} label="Microphone level" />, { language: "en" });
     expect(frames.size).toBe(1);
     runFrame();
-    // 0.2 rem + 0.15 rem at 10 px = 3.5 px; 200 px / 3.5 = 58 bars, plus two.
-    expect(read).toHaveBeenLastCalledWith(60);
+    // 0.2 rem at 10 px is a bar of 2 device pixels, 0.15 rem (1.5) a gap of 2 (whole pixels): a pitch of 4; 200 / 4 = 50 bars, plus two.
+    expect(read).toHaveBeenLastCalledWith(52);
     expect(fills).toBe(1);
     expect(moves.length).toBe(3);
     // The next frame is already scheduled: the waveform runs by itself, with no render.
@@ -109,14 +108,16 @@ describe("LiveWave", () => {
   it("slides: the same levels are drawn further left a moment after the newest was taken", () => {
     const now = vi.spyOn(performance, "now");
     now.mockReturnValue(1000);
-    render(<LiveWave read={() => ({ levels: [0.5, 0.5], at: 1000 })} label="Microphone level" />, { language: "en" });
+    render(<LiveWave read={() => ({ levels: [0.5, 0.5], at: 1000, total: 2 })} label="Microphone level" />, { language: "en" });
     runFrame();
     const fresh = moves[0] ?? 0;
     moves = [];
     now.mockReturnValue(1000 + LEVEL_PERIOD_MS / 2);
     runFrame();
-    // Half a period later the newest bar has moved left by half a pitch (1.75 px).
-    expect(fresh - (moves[0] ?? 0)).toBeCloseTo(-1.75, 1);
+    // At phase 0 the newest bar is outside and the first one drawn is the one before it (x 199); half a period later the newest bar has come
+    // in by half a pitch (2 px): it is drawn first, at x 201 (its left side at the edge).
+    expect(fresh).toBe(199);
+    expect(moves[0]).toBe(201);
   });
 
   it("stops the frames and the observer when it goes away", () => {
@@ -128,24 +129,33 @@ describe("LiveWave", () => {
     expect(observers.every((observer) => observer.disconnected)).toBe(true);
   });
 
-  it("with Reduce Motion it does not slide: no animation frames, a step ten times a second, the newest bar flush with the edge", () => {
+  it("with Reduce Motion nothing scrolls: no animation frames, a step ten times a second, the bars in fixed slots", () => {
     vi.useFakeTimers();
     try {
+      let total = 1;
       render(
         <div data-reduce-motion>
-          <LiveWave read={() => ({ levels: [0.3], at: 0 })} label="Microphone level" />
+          <LiveWave read={() => ({ levels: Array.from({ length: total }, () => 0.3), at: 0, total })} label="Microphone level" />
         </div>,
         { language: "en" },
       );
       expect(frames.size).toBe(0);
       const first = fills;
       expect(first).toBe(1);
+      // One bar in the first slot (the bars are whole pixels: 2 wide with gaps of 2 at 10 px root, 50 slots, the first one a radius in).
+      expect(moves).toEqual([3]);
+      moves = [];
+      total = 2;
       act(() => {
-        vi.advanceTimersByTime(LEVEL_PERIOD_MS * 2 * 3);
+        vi.advanceTimersByTime(LEVEL_PERIOD_MS * 2);
+      });
+      expect(fills).toBe(first + 1);
+      // A second level takes the second slot; the first bar did not move.
+      expect(moves).toEqual([3, 7]);
+      act(() => {
+        vi.advanceTimersByTime(LEVEL_PERIOD_MS * 2 * 2);
       });
       expect(fills).toBe(first + 3);
-      // Phase 1: the newest bar's left side is at 200 - 2 px (a bar is 2 px at 10 px root) and the path starts one radius in.
-      expect(moves.every((x) => Math.abs(x - 199) < 0.01)).toBe(true);
     } finally {
       vi.useRealTimers();
     }
@@ -169,7 +179,7 @@ describe("LiveWave", () => {
     const read = vi.fn(() => LEVELS);
     render(<LiveWave read={read} label="Microphone level" />, { language: "en" });
     runFrame();
-    expect(read).toHaveBeenLastCalledWith(60);
+    expect(read).toHaveBeenLastCalledWith(52);
     // The root grows to 20 px: bars are twice as wide, fewer fit.
     vi.mocked(window.getComputedStyle).mockImplementation(style(20));
     now.mockReturnValue(1200);

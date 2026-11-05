@@ -100,8 +100,21 @@ try_press() { [ "$(ax press "$(app_pid)" "$@" 2>&1 | cut -c1-7)" = "pressed" ]; 
 voice_rows() { sqlw "select count(*) from attachment where filename like 'voice-%'"; }
 # The first "m:ss of m:ss" (the waveform slider's value text) of a window dump, in seconds (the elapsed time of the playing note), or empty.
 elapsed_from() { grep -oE '[0-9]+:[0-9]{2} (of|из) [0-9:]+' "$1" | head -1 | python3 -c 'import sys; t=sys.stdin.read().split(" ")[0].strip(); p=[int(x) for x in t.split(":")] if t else []; print(sum(v*60**i for i,v in enumerate(reversed(p))) if p else "")'; }
-# The length in bytes of the saved waveform of every voice note, oldest first: 64 (peaks), 0 (the decoder gave up) or empty (not known yet).
-waveform_lengths() { sqlw "select coalesce(length(l.waveform), '-') from attachment a join attachment_local l on l.attachment_id = a.id where a.filename like 'voice-%' order by a.rowid" | tr '\n' ' '; }
+# The audio notes whose file is on disk (the seeded note whose file is gone never gets a waveform), oldest first; the Telegram-style stub is one.
+AUDIO_LOCAL="from attachment a join attachment_local l on l.attachment_id = a.id where a.kind = 'audio' and l.state = 'local' order by a.rowid"
+# The length in bytes of the saved waveform of each of them: 64 (peaks), 0 (the empty marker) or - (not known yet).
+waveform_lengths() { sqlw "select coalesce(length(l.waveform), '-') ${AUDIO_LOCAL}" | tr '\n' ' '; }
+# The same with the name, the length of the note and what the 0 means: the 20-minute cap (never decoded) is not "the decoder could not read".
+waveform_report() {
+  sqlw "select a.filename, coalesce(a.duration_ms, ''), coalesce(length(l.waveform), '-') ${AUDIO_LOCAL}" | while IFS='|' read -r name ms len; do
+    case "$len" in
+      64) meaning="peaks" ;;
+      0) if [ -n "$ms" ] && [ "$ms" -gt 1200000 ]; then meaning="empty marker: over the 20-minute cap, never decoded"; else meaning="empty marker: the decoder could not read the file"; fi ;;
+      *) meaning="not known yet" ;;
+    esac
+    printf '%s | %s ms | %s bytes | %s\n' "$name" "${ms:-unknown length}" "$len" "$meaning"
+  done
+}
 
 # ---- 1. The feed: players, the missing file, the Telegram-style voice ----
 set_language ru
@@ -159,9 +172,10 @@ for _ in $(seq 1 12); do
   case "$(waveform_lengths)" in *"-"*) sleep 5 ;; *) break ;; esac
 done
 {
-  echo "# length in bytes of the saved waveform of every voice note, oldest first (64 = peaks, 0 = the decoder could not read the file)"
-  echo "$(waveform_lengths)"
-  echo "recorded note: ${RECORDED_WAVE}"
+  echo "# the saved waveform of every audio note whose file is on disk, oldest first: name | length of the note | bytes saved | what it means"
+  echo "# (64 bytes are peaks; 0 is the empty marker, from the 20-minute cap or from a file the decoder could not read; the Telegram-style stub is one of them)"
+  waveform_report
+  echo "recorded note: ${RECORDED_WAVE} bytes"
 } > "$OUT/waveform.txt"
 cat "$OUT/waveform.txt"
 case "$(waveform_lengths)" in *"-"*) echo "finding: a note is still without a waveform (the player never decoded it)" ;; esac

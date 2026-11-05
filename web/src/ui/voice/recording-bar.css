@@ -50,8 +50,9 @@
   color: var(--color-accent-default);
 }
 
-/* Reduce Motion (the system setting or the switch in Storybook and in the settings): the waveform does not slide, it steps ten times a second
-   (`LiveWave`): it is the level of the microphone, information and not decoration, so it stays. */
+/* Reduce Motion (the system setting or the switch in Storybook and in the settings): the waveform does not scroll. The bars stand in fixed slots
+   across the field and only their heights change, ten times a second (`LiveWave`): the level of the microphone is information and not
+   decoration, so it stays. */
 
 .recording-bar__lost,
 .recording-bar__question {
