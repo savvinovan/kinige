@@ -12,6 +12,14 @@ ignore = [
     { id = "RUSTSEC-2026-0370", reason = "zvariant: via zbus -> tauri-plugin-opener and tauri-plugin-single-instance (Linux only)" },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names: via zbus (the same path as zvariant)" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: via zbus (the same path as zvariant)" },
+    # zip 8.6.0 is a build dependency of libsodium-sys-stable 1.24.3 (the binding of ADR-0001 §11, S4b), which pins `zip = "8.6"`. Its
+    # build.rs calls `ZipArchive::extract` only on the Windows MSVC prebuilt of libsodium, after verifying its minisign signature
+    # against libsodium's key: the archive is not attacker-controlled, and nothing of zip reaches the shipped binary. All four are
+    # about `extract` of an untrusted archive. Revisit when the binding moves to zip >= 9.
+    { id = "RUSTSEC-2026-0367", reason = "zip extract (SUID bits): build.rs of libsodium-sys-stable, signed archive, build time only" },
+    { id = "RUSTSEC-2026-0368", reason = "zip extract (symlink targets): build.rs of libsodium-sys-stable, signed archive, build time only" },
+    { id = "RUSTSEC-2026-0369", reason = "zip extract (permissions through symlinks): build.rs of libsodium-sys-stable, signed archive, build time only" },
+    { id = "RUSTSEC-2026-0429", reason = "zip extract (symlink size abort): build.rs of libsodium-sys-stable, signed archive, build time only" },
 ]
 
 [licenses]
@@ -29,6 +37,8 @@ allow = [
     "Apache-2.0 WITH LLVM-exception",
     # clipboard-win, error-code (arboard, Windows only): Boost Software License - permissive, no copyleft.
     "BSL-1.0",
+    # bip39, bitcoin_hashes (kinige-crypto, S4b): CC0-1.0 is a public-domain dedication, it puts no conditions on a binary.
+    "CC0-1.0",
 ]
 confidence-threshold = 0.8
 # The list is shared by all platforms; an unused entry is not an error.

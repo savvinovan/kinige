@@ -45,3 +45,11 @@ codegen-units = 1
 # response through `catch_unwind` and the app keeps working (ADR-0009). With abort this would not work.
 strip = true
 opt-level = "s"
+
+# libsodium (the C library, built by the build script of libsodium-sys-stable from the profile's flags, S4b): at the dev profile's
+# `-O0` one Argon2id of profile 1 takes about 6 s and the tests of kinige-crypto take minutes. Optimized in every profile, so the
+# measurement of profile 1 is the one the shipped app will see rather than that of `opt-level = "s"`.
+[profile.dev.package.libsodium-sys-stable]
+opt-level = 3
+[profile.release.package.libsodium-sys-stable]
+opt-level = 3
