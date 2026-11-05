@@ -2,6 +2,7 @@
 name = "s4a-sync"
 version = "0.0.0"
 edition = "2024"
+license = "MIT"
 publish = false
 
 # A separate crate outside the workspace, like S5: the spike is not part of the project build. The merge and purge rules it
