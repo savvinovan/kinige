@@ -95,8 +95,8 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - run: cargo clippy -p kinige --all-targets -- -D warnings
-      - run: cargo test -p kinige
+      - run: cargo clippy -p kinige -p kinige-crypto --all-targets -- -D warnings
+      - run: cargo test -p kinige -p kinige-crypto
       # The screens driver on the platform it runs on (clippy only; `rust` builds and tests it on Linux).
       - name: Screens driver feature (clippy)
         env:
@@ -121,9 +121,9 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - run: cargo clippy -p kinige -p kinige-store -p kinige-domain -p kinige-mcp --all-targets -- -D warnings
+      - run: cargo clippy -p kinige -p kinige-store -p kinige-domain -p kinige-mcp -p kinige-crypto --all-targets -- -D warnings
       # --no-fail-fast: one run lists every failing test binary, a Windows run is too slow to find them one by one.
-      - run: cargo test --no-fail-fast -p kinige -p kinige-store -p kinige-domain -p kinige-mcp
+      - run: cargo test --no-fail-fast -p kinige -p kinige-store -p kinige-domain -p kinige-mcp -p kinige-crypto
       # The screens driver runs on this platform too (clippy only).
       - name: Screens driver feature (clippy)
         env:

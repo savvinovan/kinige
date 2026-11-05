@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/kinige-domain", "crates/kinige-store", "crates/kinige-mcp", "src-tauri"]
+members = ["crates/kinige-domain", "crates/kinige-store", "crates/kinige-mcp", "crates/kinige-crypto", "src-tauri"]
 
 [workspace.package]
 # The only source of the app version (ADR-0012): tauri.conf.json has no version of its own, Tauri takes this one.
