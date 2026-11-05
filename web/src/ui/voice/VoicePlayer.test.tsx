@@ -9,6 +9,7 @@ import { resetPlayableCache, showsWaveform } from "./VoicePlayer";
 beforeEach(installPlayerMocks);
 
 afterEach(() => {
+  document.documentElement.removeAttribute(TEXT_SCALE_ATTRIBUTE);
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -77,7 +78,6 @@ describe("VoicePlayer", () => {
     document.documentElement.setAttribute(TEXT_SCALE_ATTRIBUTE, "large");
     await vi.waitFor(() => expect(canvas?.width).toBe(64 * 3 + 63 * 2));
     expect(canvas?.style.width).toBe(`${64 * 3 + 63 * 2}px`);
-    document.documentElement.removeAttribute(TEXT_SCALE_ATTRIBUTE);
   });
 
   it("draws a flat row of dots while the note has no peaks, and for the marker 'could not decode', in the same layout", () => {
