@@ -3,6 +3,9 @@
 //! indistinguishable "no such login / wrong key" answers are the rules under test.
 
 use crate::log::Log;
+use crate::records::{
+    PackageRecord, RecoveryRecord, ReissueRecord, package_matches, recovery_matches,
+};
 use kinige_crypto::AccountId;
 use kinige_crypto::envelope::peek;
 use kinige_crypto::ids::{
@@ -48,38 +51,6 @@ struct Stored {
     registered: PackageRecord,
     last_recovery: Option<RecoveryRecord>,
     last_reissue: Option<ReissueRecord>,
-}
-
-/// What registration sent, as hashes: enough to tell the same package again from another one (§A.5) and no key.
-#[derive(Debug)]
-struct PackageRecord {
-    account_id: [u8; 16],
-    login: String,
-    salt: [u8; SALT_LEN],
-    profile: u8,
-    auth_hash: [u8; AUTH_HASH_LEN],
-    rc_hash: [u8; AUTH_HASH_LEN],
-    wrap_pw: Vec<u8>,
-    wrap_rc: Vec<u8>,
-    key_id: u32,
-}
-
-/// The last recovery applied, as hashes (§A.5).
-#[derive(Debug)]
-struct RecoveryRecord {
-    salt: [u8; SALT_LEN],
-    profile: u8,
-    auth_hash: [u8; AUTH_HASH_LEN],
-    wrap_pw: Vec<u8>,
-    rc_hash: [u8; AUTH_HASH_LEN],
-    wrap_rc: Vec<u8>,
-}
-
-/// The last reissue applied: the hash of the new `rc_auth_key` and its `wrap_rc` (§A.5).
-#[derive(Debug)]
-struct ReissueRecord {
-    rc_hash: [u8; AUTH_HASH_LEN],
-    wrap_rc: Vec<u8>,
 }
 
 impl Server {
@@ -430,32 +401,4 @@ fn valid_profile(profile: u8) -> bool {
 
 fn token_hash(token: &Token) -> [u8; AUTH_HASH_LEN] {
     auth_hash(token.as_bytes()).unwrap_or([0; AUTH_HASH_LEN])
-}
-
-/// Whether `package` is the one that was registered: the keys are compared through their hashes (`verify_auth`, `sodium_memcmp`).
-fn package_matches(record: &PackageRecord, package: &Package) -> bool {
-    record.account_id == *package.account_id.as_bytes()
-        && Some(&record.login) == normalize_login(&package.login).as_ref()
-        && record.salt == package.salt
-        && record.profile == package.profile
-        && verify_auth(&record.auth_hash, package.auth_key.as_bytes()).unwrap_or(false)
-        && verify_auth(&record.rc_hash, package.rc_auth_key.as_bytes()).unwrap_or(false)
-        && record.wrap_pw == package.wrap_pw
-        && record.wrap_rc == package.wrap_rc
-        && record.key_id == package.key_id
-}
-
-/// Whether `recovery` (whose hashes the caller made) is the one that was applied.
-fn recovery_matches(
-    record: &RecoveryRecord,
-    recovery: &Recovery,
-    auth: &[u8; AUTH_HASH_LEN],
-    rc: &[u8; AUTH_HASH_LEN],
-) -> bool {
-    record.salt == recovery.password.salt
-        && record.profile == recovery.password.profile
-        && utils::memcmp(&record.auth_hash, auth)
-        && utils::memcmp(&record.rc_hash, rc)
-        && record.wrap_pw == recovery.password.wrap_pw
-        && record.wrap_rc == recovery.wrap_rc
 }

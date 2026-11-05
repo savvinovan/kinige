@@ -5,5 +5,6 @@ pub mod client;
 pub mod leak;
 pub mod link;
 pub mod log;
+mod records;
 pub mod server;
 pub mod wire;

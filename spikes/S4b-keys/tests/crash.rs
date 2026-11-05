@@ -27,7 +27,6 @@ fn nothing_goes_out_before_save_is_confirmed() {
         "no account on the server"
     );
 
-    // The same gate holds for a recovery and for new words.
     let (mut other, other_log) = world();
     let (mut a, words) = register(&mut other, &other_log, LOGIN, PASSWORD);
     let mut recovering = device(&other_log);
