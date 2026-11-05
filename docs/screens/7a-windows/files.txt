@@ -1,5 +1,5 @@
 ﻿windows: Microsoft Windows NT 10.0.26100.0
 recorded notes (the Windows run seeds none): 1
-the note exists after the trash button, Keep recording and Send: yes
+the note exists after Escape (a script-made key through the driver), Keep recording and Send: yes
 container: audio/mp4
-duration_ms: 10373
+duration_ms: 10178
