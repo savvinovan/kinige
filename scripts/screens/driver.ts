@@ -97,7 +97,7 @@ async function run(step: Step, root: Document, patience: number): Promise<string
       return findAll(root, step).length > 0 ? "yes" : "no";
     case "scroll": {
       const element = await need(root, step, patience);
-      element.scrollIntoView?.({ block: "center", inline: "nearest" });
+      element.scrollIntoView?.({ block: "nearest", inline: "nearest" });
       return undefined;
     }
     case "text":
@@ -123,10 +123,13 @@ function describe(query: Query): string {
   return `"${query.name}"${query.role ? ` (${query.role})` : ""}${query.nth ? ` #${query.nth}` : ""}`;
 }
 
-/** A click as a hand makes it: scroll to it, pointer and mouse down and up at its centre, then the click. */
+/**
+ * A click as a hand makes it: scroll to it, pointer and mouse down and up at its centre, then the click. The scroll is the smallest one
+ * (`nearest`): an element already on screen does not move the feed, so a shot taken after a press keeps its framing.
+ */
 function press(element: HTMLElement): void {
   if (isDisabled(element)) throw new Error(`disabled: ${namesOf(element)[0] ?? element.tagName}`);
-  element.scrollIntoView?.({ block: "center", inline: "nearest" });
+  element.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   const point = centre(element);
   pointer(element, "pointerdown", point, 0, 1);
   mouse(element, "mousedown", point, 0, 1);

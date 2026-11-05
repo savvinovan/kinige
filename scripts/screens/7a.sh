@@ -140,7 +140,7 @@ A="$(elapsed_from "$K/debug/playing-a.txt")"
 {
   echo "elapsed right after the picture (the slider's value text through the driver, seconds): ${A:-none}"
   echo "pause button in the window: $(has "${L_PAUSE}" && echo yes || echo no)"
-  echo "'Can't play here' in the window: $(has "${L_CANT}" && echo yes || echo no)"
+  echo "'Can't play here' anywhere in the window (the Telegram-style stub shows it once the web view cannot decode it): $(has "${L_CANT}" && echo yes || echo no)"
   echo "audio route requests before / after the press (app log): ${ROUTE_BEFORE:-0} / $(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
   grep 'audio route: ' "$LOG_FILE" 2> /dev/null | sed -E 's/^\[[^]]*\]\[[^]]*\]//' | head -6
 } > "$OUT/playback.txt"
