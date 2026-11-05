@@ -1,0 +1,329 @@
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type KinigeApi, errorCode } from "../api/KinigeApi";
+import type { ErrorCode } from "../api/generated/ErrorCode";
+import type { MessageView } from "../api/generated/MessageView";
+import {
+  CONFIRM_AFTER_MS,
+  type LiveLevels,
+  MIN_RECORDING_MS,
+  type MicError,
+  type Recording,
+  RecorderSession,
+  micErrorOf,
+} from "./recorderSession";
+
+/** How often the timer and the meter redraw. */
+const TICK_MS = 250;
+
+/** What the composer shows for the microphone. `idle` is the plain microphone button. */
+export type VoiceState =
+  | { kind: "idle" }
+  /** Waiting for the system's answer to the first request; the button is busy. */
+  | { kind: "starting" }
+  | { kind: "recording"; elapsedMs: number }
+  /** "Discard the recording?": the recording goes on underneath. */
+  | { kind: "confirming"; elapsedMs: number }
+  /** The device was unplugged: what was recorded is kept, Send and Discard are offered. */
+  | { kind: "lost"; elapsedMs: number }
+  | { kind: "sending"; elapsedMs: number }
+  /** Saving failed (a full disk): the bytes stay in memory; Retry and Discard. */
+  | { kind: "send-failed"; elapsedMs: number; error: ErrorCode; retryable: boolean }
+  /** One line above the field: access off, no microphone, busy, too short. */
+  | { kind: "notice"; reason: MicError | "too-short" | "too-long" };
+
+/** The recorder's state outside React's tree of state: the timer ticks four times a second and must redraw the composer only, never the window or the feed (KINIG-47). */
+export interface VoiceStore {
+  get: () => VoiceState;
+  subscribe: (listener: () => void) => () => void;
+}
+
+/** The state of "nothing is happening", for a composer without a microphone. */
+export const IDLE_VOICE: VoiceState = { kind: "idle" };
+export const NO_VOICE_STORE: VoiceStore = { get: () => IDLE_VOICE, subscribe: () => () => undefined };
+
+function createVoiceStore(): VoiceStore & { set: (next: VoiceState | ((was: VoiceState) => VoiceState)) => void } {
+  let state: VoiceState = IDLE_VOICE;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    set: (next) => {
+      state = typeof next === "function" ? next(state) : next;
+      for (const listener of [...listeners]) listener();
+    },
+  };
+}
+
+/** What the window holds: stable functions and the store. Holding it does not re-render the holder when the state changes. */
+export type VoiceController = Omit<VoiceControls, "state"> & { store: VoiceStore };
+
+export interface VoiceControls {
+  state: VoiceState;
+  /** The newest `count` levels of the live waveform (0 to 1, oldest first), read by the waveform on its own clock; not part of the state. */
+  levels: (count: number) => LiveLevels;
+  /** The first click on the microphone: asks the system for it and starts. */
+  start: () => void;
+  /** Send, Enter and the auto-send. */
+  send: () => void;
+  /** The trash button and Escape: under 5 seconds drops at once, longer asks first. */
+  requestCancel: () => void;
+  /** "Keep recording" in the confirmation. */
+  keepRecording: () => void;
+  /** "Discard" in the confirmation, after a lost device or a failed save. */
+  discard: () => void;
+  /** "Retry" after a failed save. */
+  retry: () => void;
+  /** "Open settings" on the access-off line. */
+  openSettings: () => void;
+  /** Hides the line above the field. */
+  dismissNotice: () => void;
+}
+
+interface UseVoiceRecorderOptions {
+  api: KinigeApi;
+  /** The open chat; `null` means the trash is open and nothing is recorded. */
+  chatId: string | null;
+  /** The entry the draft replies to (live replies only); the note carries it like a text reply. */
+  replyToId: string | null;
+  /** A note was saved in `chatId` (the chat it was started in). */
+  onSent: (sent: MessageView, chatId: string) => void;
+}
+
+/**
+ * The microphone of the composer (slice 7a): start on click, finish with Send or Enter, cancel with the trash button or Escape (a recording
+ * over five seconds asks first), keep what was recorded when the device is lost, and send by itself at 30 minutes or 48 MiB. The note goes
+ * to the chat it was started in even if the person has opened another one since. A recording still running when the window closes is
+ * lost, as in Telegram.
+ */
+export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceRecorderOptions): VoiceController {
+  const [store] = useState(createVoiceStore);
+  const setState = store.set;
+  const session = useRef<RecorderSession | null>(null);
+  /** What the recording was started for: its own chat and reply. */
+  const target = useRef<{ chatId: string; replyToId: string | null } | null>(null);
+  /** The recording kept after a lost device or a failed save, waiting for Send / Retry / Discard. */
+  const kept = useRef<Recording | null>(null);
+  const confirming = useRef(false);
+  /** The second the timer last showed: the state is set once per second. */
+  const shownSecond = useRef(-1);
+  const busy = useRef(false);
+  /** The latest `send`: the byte limit and the 30 minute timer call it from outside React's render. */
+  const sendRef = useRef<() => void>(() => undefined);
+  const latest = useRef({ chatId, replyToId, onSent });
+  useEffect(() => {
+    latest.current = { chatId, replyToId, onSent };
+  });
+
+  const clear = useCallback(() => {
+    session.current = null;
+    target.current = null;
+    kept.current = null;
+    confirming.current = false;
+    busy.current = false;
+    setState({ kind: "idle" });
+  }, [setState]);
+
+  /**
+   * Saves a finished recording in the chat it was started in. What a second try cannot change is not offered again:
+   * - too short and too long end the recording with a line above the field (the duration is clamped to 30 minutes, so "too long" is only
+   *   a safety net);
+   * - the replied-to entry is gone (`reply_target_not_found`): the note is sent once more with no reply, so the recording is not lost;
+   * - the chat is gone or the bytes are not audio: Discard only, with the reason in words;
+   * - anything else (a full disk, a busy writer) keeps the bytes for Retry.
+   */
+  const save = useCallback(
+    async (recording: Recording) => {
+      const where = target.current;
+      if (!where) return;
+      setState({ kind: "sending", elapsedMs: recording.durationMs });
+      // At most two tries in one go: the second only after `reply_target_not_found`, with the reply dropped.
+      for (;;) {
+        try {
+          const sent = await api.sendVoice(where.chatId, recording.bytes, recording.durationMs, where.replyToId, recording.peaks);
+          latest.current.onSent(sent, where.chatId);
+          clear();
+          return;
+        } catch (reason) {
+          const code = errorCode(reason);
+          if (code === "voice_too_short" || code === "voice_too_long") {
+            clear();
+            setState({ kind: "notice", reason: code === "voice_too_short" ? "too-short" : "too-long" });
+            return;
+          }
+          if (code === "reply_target_not_found" && where.replyToId !== null) {
+            where.replyToId = null;
+            continue;
+          }
+          kept.current = recording;
+          busy.current = false;
+          const retryable = code !== "chat_not_found" && code !== "attachment_unreadable" && code !== "reply_target_not_found";
+          setState({ kind: "send-failed", elapsedMs: recording.durationMs, error: code, retryable });
+          return;
+        }
+      }
+    },
+    [api, clear, setState],
+  );
+
+  const send = useCallback(() => {
+    if (busy.current) return;
+    busy.current = true;
+    const running = session.current;
+    if (running) {
+      session.current = null;
+      running
+        .finish()
+        .then((recording) => {
+          if (recording.durationMs < MIN_RECORDING_MS) {
+            clear();
+            setState({ kind: "notice", reason: "too-short" });
+            return undefined;
+          }
+          return save(recording);
+        })
+        // Reading the chunks failed: nothing can be saved, the microphone is already released.
+        .catch(() => {
+          clear();
+          setState({ kind: "notice", reason: "busy" });
+        });
+      return;
+    }
+    const recording = kept.current;
+    if (recording) void save(recording);
+    else busy.current = false;
+  }, [save, clear, setState]);
+
+  const start = useCallback(() => {
+    shownSecond.current = -1;
+    const where = latest.current.chatId;
+    if (where === null || session.current || busy.current || kept.current) return;
+    busy.current = true;
+    target.current = { chatId: where, replyToId: latest.current.replyToId };
+    setState({ kind: "starting" });
+    RecorderSession.start({
+      onDeviceLost: () => {
+        // The recorder has stopped by itself: keep the bytes and offer Send / Discard.
+        const lost = session.current;
+        if (!lost) return;
+        session.current = null;
+        confirming.current = false;
+        lost
+          .finish()
+          .then((recording) => {
+            kept.current = recording;
+            setState({ kind: "lost", elapsedMs: recording.durationMs });
+          })
+          // Reading the chunks failed: nothing can be kept, and the bar must not stay in limbo.
+          .catch(() => {
+            clear();
+            setState({ kind: "notice", reason: "busy" });
+          });
+      },
+      onByteLimit: () => sendRef.current(),
+    }).then(
+      (started) => {
+        session.current = started;
+        busy.current = false;
+        setState({ kind: "recording", elapsedMs: 0 });
+      },
+      (reason: unknown) => {
+        clear();
+        setState({ kind: "notice", reason: micErrorOf(reason) });
+      },
+    );
+  }, [clear, setState]);
+
+  useEffect(() => {
+    sendRef.current = send;
+  });
+
+  const requestCancel = useCallback(() => {
+    const running = session.current;
+    if (!running) return;
+    if (running.elapsedMs() < CONFIRM_AFTER_MS) {
+      session.current = null;
+      running.abort();
+      clear();
+      return;
+    }
+    confirming.current = true;
+    setState({ kind: "confirming", elapsedMs: running.elapsedMs() });
+  }, [clear, setState]);
+
+  const keepRecording = useCallback(() => {
+    const running = session.current;
+    if (!running) return;
+    confirming.current = false;
+    setState({ kind: "recording", elapsedMs: running.elapsedMs() });
+  }, [setState]);
+
+  const discard = useCallback(() => {
+    const running = session.current;
+    session.current = null;
+    running?.abort();
+    clear();
+  }, [clear]);
+
+  const retry = useCallback(() => {
+    const recording = kept.current;
+    if (!recording || busy.current) return;
+    busy.current = true;
+    void save(recording);
+  }, [save]);
+
+  const openSettings = useCallback(() => {
+    void api.openMicrophoneSettings().catch(() => undefined);
+  }, [api]);
+
+  const dismissNotice = useCallback(() => setState((was) => (was.kind === "notice" ? { kind: "idle" } : was)), [setState]);
+
+  // The timer and the meter follow the session; at 30 minutes the note is sent by itself.
+  // Only the kind is read here: the holder re-renders when the kind changes (a few times per recording), not on every tick.
+  const kind = useSyncExternalStore(store.subscribe, () => store.get().kind);
+  useEffect(() => {
+    if (kind !== "recording" && kind !== "confirming") return;
+    const timer = setInterval(() => {
+      const running = session.current;
+      if (!running) return;
+      const elapsedMs = running.elapsedMs();
+      if (elapsedMs >= running.limitMs()) {
+        sendRef.current();
+        return;
+      }
+      // The state changes once per displayed second: the timer text is the only thing that moves in the accessibility tree, and the
+      // waveform is drawn from `levels()` on its own animation frames without a render (a recording-time dump of the window tree stalled on
+      // a runner while the text changed four times a second).
+      const second = Math.floor(elapsedMs / 1000);
+      if (second === shownSecond.current) return;
+      shownSecond.current = second;
+      setState(confirming.current ? { kind: "confirming", elapsedMs } : { kind: "recording", elapsedMs });
+    }, TICK_MS);
+    return () => clearInterval(timer);
+  }, [kind, setState]);
+
+  // Closing the window (or the whole main window unmounting) loses a running recording and releases the microphone.
+  useEffect(
+    () => () => {
+      session.current?.abort();
+      session.current = null;
+    },
+    [],
+  );
+
+  const levels = useCallback((count: number): LiveLevels => session.current?.liveLevels(count) ?? { levels: [], at: 0, total: 0 }, []);
+
+  return useMemo(
+    () => ({ store, levels, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice }),
+    [store, levels, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice],
+  );
+}
+
+/** The controller with the state read in the holder: the holder re-renders on every change. For tests and small views; the window uses [`useVoiceController`]. */
+export function useVoiceRecorder(options: UseVoiceRecorderOptions): VoiceControls {
+  const controller = useVoiceController(options);
+  const state = useSyncExternalStore(controller.store.subscribe, controller.store.get);
+  return { ...controller, state };
+}

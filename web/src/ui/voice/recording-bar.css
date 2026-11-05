@@ -1,0 +1,117 @@
+/* The recording bar and the microphone notice (slice 7a). Tokens only. The bar takes the place of `.composer__bar`: same fill, radius and height. */
+.recording-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-height: var(--layout-composer-min-height);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width-hairline) solid transparent;
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-field);
+}
+
+.recording-bar--sending {
+  opacity: var(--opacity-disabled);
+}
+
+/* The dot says "live": a plain red disc, no pulsing. */
+.recording-bar__dot {
+  flex: none;
+  width: var(--layout-voice-dot-size);
+  height: var(--layout-voice-dot-size);
+  border-radius: var(--radius-round);
+  background: var(--color-status-recording);
+}
+
+.recording-bar__timer {
+  flex: none;
+  min-width: var(--layout-voice-timer-width);
+  color: var(--color-text-primary);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--type-body-line-height);
+}
+
+/* From 29:00 the timer takes the error colour: the recording ends by itself at 30:00. */
+.recording-bar__timer--warn {
+  color: var(--color-status-error);
+}
+
+/* The live waveform fills the whole middle of the bar, between the timer and Send. It is a canvas: `LiveWave` draws thin rounded bars in the
+   colour of this element (the accent) with the lengths of the `layout.voice.rec-wave-*` tokens, and they scroll in from the right. The
+   canvas is left and right of the other items by the bar's own gap, and as tall as the tallest bar. */
+.recording-bar__wave {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  height: var(--layout-voice-rec-wave-height);
+  color: var(--color-accent-default);
+}
+
+/* Reduce Motion (the system setting or the switch in Storybook and in the settings): the waveform does not scroll. The bars stand in fixed slots
+   across the field and only their heights change, ten times a second (`LiveWave`): the level of the microphone is information and not
+   decoration, so it stays. */
+
+.recording-bar__lost,
+.recording-bar__question {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+}
+
+.recording-bar--confirm,
+.recording-bar--failed {
+  gap: var(--layout-voice-confirm-gap);
+}
+
+.recording-bar__choice {
+  flex: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.recording-bar__choice--keep {
+  background: var(--color-accent-default);
+  color: var(--color-surface-background);
+}
+
+/* The line above the field. */
+.voice-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: 0;
+  margin-bottom: var(--space-2);
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.voice-notice--error {
+  color: var(--color-status-error);
+}
+
+.voice-notice__action {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent-default);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

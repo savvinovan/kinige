@@ -1,0 +1,68 @@
+# processes by CPU (idle, before the press)
+  109  45.2  0.5 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Support/mds
+10322  35.5  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+10277  28.5  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+10306  26.8  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  314  25.3  4.7 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mds_stores
+10279  24.1  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+has Inbox (idle): 1 s -> yes
+has Inbox (idle, again): 2 s -> yes
+press the microphone: 30 s -> /Users/runner/work/kinige/kinige/scripts/screens/lib.sh: line 13: 10717 Alarm clock: 14         perl -e 'alarm shift; ex
+# processes by CPU (recording, check 1)
+10523  59.4  1.5 /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent
+10691  34.7  0.6 /System/Library/CoreServices/System Events.app/Contents/MacOS/System Events
+11406  26.5  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+11175  25.8  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+11162  25.1  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  314  18.6  6.1 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mds_stores
+has Recording (check 1): 30 s -> /Users/runner/work/kinige/kinige/scripts/screens/lib.sh: line 13: 11429 Alarm clock: 14         perl -e 'alarm shift; ex
+# processes by CPU (recording, check 2)
+  314 105.5  7.7 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mds_stores
+10632  74.1  0.6 /System/Library/PrivateFrameworks/SafariSafeBrowsing.framework/com.apple.Safari.SafeBrowsing.Service
+12021   6.0  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  109   5.2  0.7 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Support/mds
+12022   3.2  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+12026   2.8  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+has Recording (check 2): 31 s -> /Users/runner/work/kinige/kinige/scripts/screens/lib.sh: line 13: 12274 Alarm clock: 14         perl -e 'alarm shift; ex
+# processes by CPU (recording, check 3)
+  314 215.3  7.2 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mds_stores
+10632  68.1  0.5 /System/Library/PrivateFrameworks/SafariSafeBrowsing.framework/com.apple.Safari.SafeBrowsing.Service
+  109   4.2  0.9 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Support/mds
+10523   1.2  1.5 /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent
+  926   0.6  0.5 /var/folders/y3/p6x0rn5562l5qyxy7x6jqrsc0000gn/T/provjobd313903384
+  151   0.4  0.5 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+has Recording (check 3): 30 s -> /Users/runner/work/kinige/kinige/scripts/screens/lib.sh: line 13: 13060 Alarm clock: 14         perl -e 'alarm shift; ex
+# processes by CPU (recording, check 4)
+  314  51.5  8.1 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mds_stores
+13869  24.7  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  109  21.6  0.8 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Support/mds
+13855  17.5  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+13852  16.5  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+13851  13.6  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+has Recording (check 4): 30 s -> /Users/runner/work/kinige/kinige/scripts/screens/lib.sh: line 13: 13883 Alarm clock: 14         perl -e 'alarm shift; ex
+# processes by CPU (recording, check 5)
+  314  57.9  7.8 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mds_stores
+14630  25.5  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+14635  24.2  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+  109  19.4  0.8 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Support/mds
+14623  17.3  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+14634  14.3  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+has Recording (check 5): 30 s -> /Users/runner/work/kinige/kinige/scripts/screens/lib.sh: line 13: 14652 Alarm clock: 14         perl -e 'alarm shift; ex
+# processes by CPU (recording, check 6)
+  109  27.0  0.8 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Support/mds
+15551  20.0  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+15582  19.3  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+15515  16.3  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+15581  16.1  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+15580  15.3  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+has Recording (check 6): 30 s -> /Users/runner/work/kinige/kinige/scripts/screens/lib.sh: line 13: 15597 Alarm clock: 14         perl -e 'alarm shift; ex
+web content process: 10523
+press Send: 30 s -> /Users/runner/work/kinige/kinige/scripts/screens/lib.sh: line 13: 16503 Alarm clock: 14         perl -e 'alarm shift; ex
+has Voice note after Send: 31 s -> /Users/runner/work/kinige/kinige/scripts/screens/lib.sh: line 13: 17541 Alarm clock: 14         perl -e 'alarm shift; ex
+# processes by CPU (after Send)
+10523  47.6  1.5 /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent
+18198  34.4  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+18189  29.5  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+10691  28.6  0.6 /System/Library/CoreServices/System Events.app/Contents/MacOS/System Events
+  109  25.9  0.9 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Support/mds
+18190  23.6  0.4 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared

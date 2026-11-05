@@ -275,6 +275,7 @@ fn view(kind: AttachmentKind, name: &str) -> AttachmentView {
         height: None,
         duration_ms: None,
         state: AttachmentState::Local,
+        waveform: None,
     }
 }
 
@@ -292,7 +293,11 @@ fn the_summary_counts_photos_and_files() {
         view(AttachmentKind::File, "menu.pdf"),
         view(AttachmentKind::Audio, "v.ogg"),
     ]);
-    assert_eq!((mixed.photos, mixed.files, mixed.name), (2, 2, None));
+    // Audio is counted as a voice note (slice 7a), not as a file.
+    assert_eq!(
+        (mixed.photos, mixed.files, mixed.voices, mixed.name),
+        (2, 1, 1, None)
+    );
 }
 
 #[test]

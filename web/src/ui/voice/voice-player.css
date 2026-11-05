@@ -1,0 +1,139 @@
+/* The voice note player in a bubble (slice 7a, round 2: the Telegram-like look). Tokens only. A big round button on the left, the waveform of
+   thin rounded bars to its right and the meta line ("0:40, 20.7 KB") under the waveform. The player has the width of its parts (64 bars), so
+   nothing moves when the peaks arrive, when the time changes or when the speed chip appears. The bubble's time sits at the bottom right, on
+   the meta line, and shares its line height. */
+.voice-player {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: var(--layout-voice-player-gap);
+  row-gap: var(--space-1);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 100%;
+  color: var(--color-text-primary);
+}
+
+.voice-player__play {
+  display: inline-flex;
+  flex: none;
+  grid-row: 1 / span 2;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--layout-voice-player-button);
+  height: var(--layout-voice-player-button);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--color-accent-default);
+  color: var(--color-surface-background);
+  cursor: pointer;
+}
+
+.voice-player__play .icon {
+  width: var(--layout-voice-play-icon);
+  height: var(--layout-voice-play-icon);
+  fill: currentColor;
+}
+
+/* The play triangle is moved a little to the right of the circle's middle (its weight is on the left); the pause bars are symmetric. */
+.voice-player__play--idle .icon {
+  margin-left: var(--layout-voice-play-nudge);
+}
+
+/* The waveform is a slider (click, drag, arrow keys) that holds one canvas: the muted row of bars with the accent copy of it cut at the played
+   share. The component repaints it on every animation frame while playing, so the fill moves inside a bar too. */
+.voice-player__wave {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-inline);
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.voice-player__wave[aria-disabled="true"] {
+  cursor: default;
+}
+
+/* The canvas has one pixel per device pixel (`usePlayerCanvas`), so the bars are whole device pixels and their rhythm is even. Its size here is
+   the same 64 bars and gaps from the tokens, as a first guess before the script sets it in whole device pixels, so nothing moves. The colour
+   is the played colour; the unplayed one is read from `--color-voice-unplayed` by the script. */
+.voice-player__canvas {
+  display: block;
+  width: calc(64 * (var(--layout-voice-wave-bar-width) + var(--layout-voice-wave-gap)) - var(--layout-voice-wave-gap));
+  height: var(--layout-voice-wave-height);
+  color: var(--color-accent-default);
+}
+
+/* The meta line: "0:40, 20.7 KB" (the elapsed time while playing) and, once the note has been started, the speed chip. The line height is the
+   bubble's own, so the baseline matches the time at the bubble's bottom right. */
+.voice-player__meta {
+  display: flex;
+  grid-column: 2;
+  grid-row: 2;
+  align-items: center;
+  gap: var(--layout-voice-meta-gap);
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-variant-numeric: tabular-nums;
+  line-height: calc(var(--type-body-size) * var(--type-body-line-height));
+  white-space: nowrap;
+}
+
+.voice-player__speed {
+  flex: none;
+  box-sizing: border-box;
+  min-width: var(--layout-voice-speed-width);
+  margin: 0;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--color-surface-selected);
+  color: var(--color-text-secondary);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.voice-player__speed:hover {
+  color: var(--color-text-primary);
+}
+
+/* The keyboard focus ring is the shared `:focus-visible` rule of base.css. */
+
+/* "Can't play here · Open in default app": one line. */
+.voice-player--unplayable {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--layout-voice-unplayable-padding) 0;
+  color: var(--color-text-secondary);
+}
+
+.voice-player__cant {
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.voice-player__open {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent-default);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

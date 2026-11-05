@@ -240,3 +240,32 @@ fn an_agent_sees_attachment_metadata_and_finds_entries_by_file_name_but_never_a_
     }
     let _ = Language::En;
 }
+
+#[test]
+fn an_agent_sees_a_voice_note_with_its_length_and_never_the_bytes() {
+    let a = agent(AgentMode::Read, true);
+    let mut bytes = vec![0, 0, 0, 0x20];
+    bytes.extend_from_slice(b"ftypM4A ");
+    bytes.resize(2048, 0x5a);
+    let sent = a
+        .store
+        .send_voice(
+            kinige_domain::groups::INBOX_ID,
+            None,
+            &bytes,
+            40_000,
+            &moscow(T0),
+        )
+        .unwrap();
+    let by_id = call(&a.store, "get_entry", json!({"id": sent.id}), T0).unwrap();
+    let voice = &by_id["entry"]["attachments"][0];
+    assert_eq!(voice["kind"], "audio", "{by_id}");
+    assert_eq!(voice["duration_ms"], 40_000);
+    assert_eq!(voice["bytes"], 2048);
+    assert!(voice.get("width").is_none());
+    let text = by_id.to_string();
+    assert!(!text.contains("attachments/") && !text.contains(a.dir.path().to_str().unwrap()));
+    // The word "voice" finds it for the agent too.
+    let found = call(&a.store, "search", json!({"query": "voice"}), T0).unwrap();
+    assert_eq!(entry_ids(&found), vec![sent.id.clone()], "{found}");
+}

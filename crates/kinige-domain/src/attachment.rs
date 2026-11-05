@@ -14,6 +14,15 @@ pub use names::{
     summary_of,
 };
 
+mod voice;
+pub use voice::{
+    MAX_VOICE_MS, MIN_VOICE_MS, VOICE_SEARCH_WORD, VoiceContainer, audio_head_matches,
+    format_duration, is_voice_file_name, playable_audio_mime, voice_file_name,
+};
+
+mod waveform;
+pub use waveform::{WAVEFORM_HEX_LEN, WAVEFORM_PEAKS, waveform_from_hex, waveform_is_storable};
+
 /// The largest attachment: 2 GiB (the free Telegram limit; the user's decision of 03.11.2026).
 pub const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 /// The most attachments in one entry.
@@ -22,6 +31,8 @@ pub const MAX_PER_ENTRY: usize = 10;
 pub const MAX_PASTE_BYTES: usize = 64 * 1024 * 1024;
 /// The largest file `kinige-media://…/full/…` serves: the responder holds the whole body in memory (ADR-0014).
 pub const MAX_FULL_BYTES: u64 = 64 * 1024 * 1024;
+/// The largest `duration_ms` a row may carry: the Telegram import's whole range, a `u32` of seconds in milliseconds.
+pub const MAX_DURATION_MS: i64 = 4_294_967_295_000;
 /// The longest `filename` in bytes (ADR-0001 appendix §C.6).
 pub const MAX_FILENAME_BYTES: usize = 255;
 
@@ -126,6 +137,9 @@ pub struct AttachmentView {
     #[ts(type = "number | null")]
     pub duration_ms: Option<i64>,
     pub state: AttachmentState,
+    /// The waveform of an `audio` attachment, local to this device (ADR-0015): `None` until it is known, an empty list when the
+    /// decoder could not read the file (do not try again), otherwise [`WAVEFORM_PEAKS`] peaks from 0 to 255. Not part of `core`.
+    pub waveform: Option<Vec<u8>>,
 }
 
 /// What an entry's attachments amount to, for the lines that have no room for them: the reply quote, "On this day", the forest
@@ -135,8 +149,13 @@ pub struct AttachmentView {
 #[ts(export, export_to = "AttachmentSummary.ts")]
 pub struct AttachmentSummary {
     pub photos: u32,
-    /// Everything that is not a photo: files, audio, video.
+    /// Files and video: everything that is neither a photo nor audio.
     pub files: u32,
+    /// Audio: the recorder's voice notes and the Telegram voices (slice 7a).
+    pub voices: u32,
+    /// The total of the known durations of the voice notes; `None` when none of them has one.
+    #[ts(type = "number | null")]
+    pub voice_ms: Option<i64>,
     /// The file name when the entry has exactly one attachment.
     pub name: Option<String>,
 }
@@ -258,6 +277,14 @@ fn check(input: &NewAttachment<'_>) -> Result<(), GroupError> {
     if input.kind != AttachmentKind::Image && (input.width.is_some() || input.height.is_some()) {
         return invalid("width and height belong to images");
     }
+    // Every writer must satisfy this: the Telegram import writes seconds as a `u32` times 1000 (slice 7), the recorder 1 s to 30 min
+    // (slice 7a). The recorder's own limits live in `send_voice`, not here.
+    if let Some(duration_ms) = input.duration_ms {
+        let timed = matches!(input.kind, AttachmentKind::Audio | AttachmentKind::Video);
+        if !timed || !(0..=MAX_DURATION_MS).contains(&duration_ms) {
+            return invalid("duration_ms belongs to audio and video, 0 to 4294967295000");
+        }
+    }
     Ok(())
 }
 
@@ -290,3 +317,6 @@ pub fn hex_lower(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod voice_tests;

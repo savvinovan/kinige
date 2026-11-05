@@ -226,7 +226,7 @@ describe("Ответы, импортированные из Telegram", () => {
   const TARGET = entry("tg-1", 2023, 3, 14, "**Анна К.**\nЕдем в субботу?", { chatId: "tg" });
   const REPLY = entry("tg-2", 2023, 3, 14, "Едем", {
     chatId: "tg",
-    replyTo: { id: "tg-1", chatId: "tg", journalDate: "2023-03-14", excerpt: "Анна К. Едем в субботу?", state: "live", yearsLater: 0, attachments: { photos: 0, files: 0, name: null } },
+    replyTo: { id: "tg-1", chatId: "tg", journalDate: "2023-03-14", excerpt: "Анна К. Едем в субботу?", state: "live", yearsLater: 0, attachments: { photos: 0, files: 0, voices: 0, voiceMs: null, name: null } },
   });
   const NO_TARGET = entry("tg-3", 2023, 3, 15, "Ответ на то, чего не передали", { chatId: "tg" });
 

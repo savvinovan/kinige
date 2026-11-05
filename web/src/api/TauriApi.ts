@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { KinigeApi, ListMessagesOptions } from "./KinigeApi";
+import { readVoiceForWaveform, sendVoice, setAttachmentWaveform } from "./tauriVoice";
 import {
   ATTACHMENTS_DRAG,
   ATTACHMENTS_DROPPED,
@@ -96,6 +97,22 @@ export class TauriApi implements KinigeApi {
     } catch (reason) {
       throw toApiError(reason);
     }
+  }
+
+  sendVoice(chatId: string, bytes: Uint8Array, durationMs: number, replyToId?: string | null, waveform?: Uint8Array | null): Promise<MessageView> {
+    return sendVoice(chatId, bytes, durationMs, replyToId, waveform);
+  }
+
+  readVoiceForWaveform(attachmentId: string): Promise<ArrayBuffer> {
+    return readVoiceForWaveform(attachmentId);
+  }
+
+  setAttachmentWaveform(attachmentId: string, peaks: Uint8Array): Promise<void> {
+    return setAttachmentWaveform(attachmentId, peaks);
+  }
+
+  async openMicrophoneSettings(): Promise<void> {
+    await call("open_microphone_settings");
   }
 
   attachDropped(token: string, chatId: string): Promise<AttachOutcome> {

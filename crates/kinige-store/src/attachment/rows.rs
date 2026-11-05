@@ -7,7 +7,7 @@ use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
 use kinige_domain::attachment::{
     AttachmentKind, AttachmentRow, AttachmentState, AttachmentSummary, AttachmentView,
-    MAX_PER_ENTRY, NewAttachment, hex_lower, new_attachment, summary_of,
+    MAX_PER_ENTRY, NewAttachment, hex_lower, new_attachment, summary_of, waveform_from_hex,
 };
 use kinige_domain::history::{deleted_group_supported, purged_of_best_effort};
 use kinige_domain::hlc::is_uuid_v4;
@@ -21,7 +21,8 @@ macro_rules! attachments_column {
     () => {
         "(SELECT json_group_array(json_object('i', a.id, 'k', a.kind, 'n', a.filename, \
          'm', a.mime, 'b', a.byte_size, 'w', a.width, 'h', a.height, 'd', a.duration_ms, \
-         's', COALESCE(l.state, 'missing'), 'o', a.sort_index)) \
+         's', COALESCE(l.state, 'missing'), 'o', a.sort_index, \
+         'p', CASE WHEN l.waveform IS NULL THEN NULL ELSE hex(l.waveform) END)) \
          FROM attachment a LEFT JOIN attachment_local l ON l.attachment_id = a.id \
          WHERE a.message_id = m.id AND a.deleted_at IS NULL)"
     };
@@ -58,6 +59,8 @@ fn parse_one(item: &Value) -> Option<(i64, AttachmentView)> {
             height: side("h"),
             duration_ms: number("d"),
             state,
+            // A waveform that does not read back (a damaged blob) is unknown, not an error: the player draws it again.
+            waveform: text("p").and_then(|hex| waveform_from_hex(&hex)),
         },
     ))
 }
@@ -136,6 +139,7 @@ pub(crate) fn insert_attachment_at(
         height: row.height,
         duration_ms: row.duration_ms,
         state: AttachmentState::Local,
+        waveform: None,
     })
 }
 
@@ -204,6 +208,7 @@ pub(crate) fn draft_views(conn: &Connection, key: &str) -> Result<Vec<Attachment
             height,
             duration_ms: None,
             state: AttachmentState::Local,
+            waveform: None,
         });
     }
     Ok(views)

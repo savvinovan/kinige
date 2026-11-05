@@ -140,6 +140,7 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
         first: (i64, String, String),
         first_has_files: bool,
         photos: u32,
+        voices: u32,
     }
     // Which entries have attachments at all: one index-only pass over `attachment_message`. Only those entries are asked for their
     // counts, so the other nine in ten cost a hash lookup, not a probe of the table (a probe per entry cost a fifth of the pass).
@@ -163,18 +164,23 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
             continue;
         };
         let created: i64 = row.get(1).map_err(read_err)?;
-        let (all, photos) = if owners.contains(id) {
+        let (all, photos, voices) = if owners.contains(id) {
             counts
                 .query_row([id], |row| {
-                    Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
+                    Ok((
+                        row.get::<_, i64>(0)?,
+                        row.get::<_, i64>(1)?,
+                        row.get::<_, i64>(2)?,
+                    ))
                 })
                 .map_err(read_err)?
         } else {
-            (0, 0)
+            (0, 0, 0)
         };
-        let (all, photos) = (
+        let (all, photos, voices) = (
             usize::try_from(all).unwrap_or(0),
-            usize::try_from(photos).unwrap_or(0),
+            u32::try_from(photos).unwrap_or(u32::MAX),
+            u32::try_from(voices).unwrap_or(u32::MAX),
         );
         let note = NoteStat {
             len: body.chars().count(),
@@ -186,15 +192,15 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
                     notes: vec![note],
                     first: (created, id.to_string(), excerpt_of(body)),
                     first_has_files: all > 0,
-                    photos: u32::try_from(photos).unwrap_or(u32::MAX),
+                    photos,
+                    voices,
                 });
             }
             Entry::Occupied(mut slot) => {
                 let day = slot.get_mut();
                 day.notes.push(note);
-                day.photos = day
-                    .photos
-                    .saturating_add(u32::try_from(photos).unwrap_or(u32::MAX));
+                day.photos = day.photos.saturating_add(photos);
+                day.voices = day.voices.saturating_add(voices);
                 if (created, id) < (day.first.0, day.first.1.as_str()) {
                     day.first = (created, id.to_string(), excerpt_of(body));
                     day.first_has_files = all > 0;
@@ -206,6 +212,7 @@ fn year_stats(conn: &Connection, year: i32) -> Result<Vec<DayStats>, StoreError>
     for (date, day) in days {
         let mut stat = DayStats::from_notes(date, &day.notes, Some(day.first.2.clone()));
         stat.photos = day.photos;
+        stat.voices = day.voices;
         // A first entry without text (a photo sent alone) is described by what it holds.
         if day.first.2.is_empty() && day.first_has_files {
             stat.first_summary = Some(summary_for(conn, &day.first.1)?);
@@ -223,9 +230,9 @@ fn year_sql() -> String {
     )
 }
 
-/// The live attachments of one entry (`?1`) and how many of them are photos.
-const COUNTS_SQL: &str = "SELECT COUNT(*), COALESCE(SUM(kind = 'image'), 0) FROM attachment \
-                          WHERE message_id = ?1 AND deleted_at IS NULL";
+/// The live attachments of one entry (`?1`), how many of them are photos and how many are voice notes (`audio`).
+const COUNTS_SQL: &str = "SELECT COUNT(*), COALESCE(SUM(kind = 'image'), 0), COALESCE(SUM(kind = 'audio'), 0) \
+                          FROM attachment WHERE message_id = ?1 AND deleted_at IS NULL";
 
 /// The ids of the entries that have any attachment row (live or not): the index `attachment_message` covers the column, so this reads
 /// no table rows. An entry in the set is then asked for its live counts; an entry outside it has none.

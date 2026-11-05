@@ -1,0 +1,65 @@
+﻿# Facts about audio recording and playback in the webview of the built app (slice 7a probe, Windows runner).
+# windows: Microsoft Windows NT 10.0.26100.0
+
+KINIGE PROBE 7a, without a user gesture
+origin: http://tauri.localhost
+isSecureContext: true
+navigator.mediaDevices: true
+MediaRecorder: function
+AudioContext: function
+userActivation.isActive: false
+userActivation.hasBeenActive: false
+userAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0
+audioinput devices (count only): 0
+MediaRecorder.isTypeSupported(audio/mp4;codecs=mp4a.40.2): true
+MediaRecorder.isTypeSupported(audio/mp4): true
+MediaRecorder.isTypeSupported(audio/webm;codecs=opus): true
+canPlayType(audio/mp4;codecs=mp4a.40.2): probably
+canPlayType(audio/mp4): maybe
+canPlayType(audio/webm;codecs=opus): probably
+canPlayType(audio/ogg; codecs=opus): probably
+recorder type chosen: audio/mp4;codecs=mp4a.40.2
+fake source tracks: 1
+recorder.mimeType: audio/mp4;codecs=mp4a.40.2
+chunks: 5
+bytes: 62618
+seconds (own clock): 5.00
+observed bytes per second: 12519
+first 12 bytes (hex): 00 00 00 24 66 74 79 70 69 73 6f 6d
+decode AudioContext.state: running
+decoded duration (s): 4.95
+decoded channels: 2
+decoded sample rate: 44100
+decoded peak amplitude (0 = silence): 0.201
+----
+KINIGE PROBE 7a, on the first user gesture
+origin: http://tauri.localhost
+isSecureContext: true
+navigator.mediaDevices: true
+MediaRecorder: function
+AudioContext: function
+userActivation.isActive: true
+userActivation.hasBeenActive: true
+userAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0
+audioinput devices (count only): 0
+MediaRecorder.isTypeSupported(audio/mp4;codecs=mp4a.40.2): true
+MediaRecorder.isTypeSupported(audio/mp4): true
+MediaRecorder.isTypeSupported(audio/webm;codecs=opus): true
+canPlayType(audio/mp4;codecs=mp4a.40.2): probably
+canPlayType(audio/mp4): maybe
+canPlayType(audio/webm;codecs=opus): probably
+canPlayType(audio/ogg; codecs=opus): probably
+recorder type chosen: audio/mp4;codecs=mp4a.40.2
+fake source tracks: 1
+recorder.mimeType: audio/mp4;codecs=mp4a.40.2
+chunks: 5
+bytes: 62618
+seconds (own clock): 5.00
+observed bytes per second: 12520
+first 12 bytes (hex): 00 00 00 24 66 74 79 70 69 73 6f 6d
+decode AudioContext.state: running
+decoded duration (s): 4.95
+decoded channels: 2
+decoded sample rate: 44100
+decoded peak amplitude (0 = silence): 0.201
+----

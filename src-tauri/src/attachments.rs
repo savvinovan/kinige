@@ -95,7 +95,7 @@ impl DropTokens {
     }
 }
 
-fn api(error: StoreError) -> ApiError {
+pub(crate) fn api(error: StoreError) -> ApiError {
     // Only the category goes to the process log: never a file name or a path.
     log::error!("store error: {}", error.category());
     error.code().into()
@@ -236,7 +236,7 @@ fn attach_paths(store: &Store, chat_id: &str, paths: &[PathBuf]) -> AttachOutcom
 }
 
 /// A header as text: ASCII, not empty, bounded, percent-decoded (`encodeURIComponent` on the JS side).
-fn header_text(request: &Request<'_>, name: &str) -> Option<String> {
+pub(crate) fn header_text(request: &Request<'_>, name: &str) -> Option<String> {
     let value = request.headers().get(name)?;
     if value.len() > MAX_HEADER_BYTES {
         return None;

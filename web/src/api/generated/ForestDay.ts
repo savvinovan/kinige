@@ -27,6 +27,10 @@ excerpt: string | null,
  */
 photos: number, 
 /**
+ * Live voice notes of the day (slice 7a): "5 notes · 1 voice note" on the day card. Every `audio` attachment counts.
+ */
+voices: number, 
+/**
  * What the day's first entry holds when it has no text (a photo sent alone); `null` otherwise.
  */
 firstSummary: AttachmentSummary | null, };

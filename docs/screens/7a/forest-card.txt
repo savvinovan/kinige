@@ -1,0 +1,2 @@
+# Lines of the window tree of the expanded forest that hold the day card summary
+AXStaticText 14 записей · 8 голосовых · саженец | 14 записей · 8 голосовых · саженец

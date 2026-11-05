@@ -24,9 +24,11 @@ import {
   PanelLeftOpen,
   Palette,
   Paperclip,
+  Pause,
   Pencil,
   Pin,
   PinOff,
+  Play,
   Plus,
   Reply,
   RotateCcw,
@@ -95,6 +97,9 @@ const GLYPHS = {
   file: File,
   audio: AudioLines,
   video: Video,
+  // Slice 7a: the voice note player (the microphone and the trash button of the recording bar are `voice` and `trash` above).
+  play: Play,
+  pause: Pause,
   // KINIG-59: "Colour" in the chat menu.
   palette: Palette,
   // KINIG-87: the photo viewer toolbar (turn left, zoom out, zoom in).

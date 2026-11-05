@@ -255,6 +255,34 @@ export interface KinigeApi {
   /** Files were dropped on the window: the one-time token for `attachDropped`, never a path. */
   onAttachmentsDropped(handler: (token: string) => void): Promise<() => void>;
 
+  // ---- voice notes (slice 7a): main window only ----
+  /**
+   * Saves a recording as a new entry of the chat: no text, one `audio` attachment. `bytes` are the recorder's file, `durationMs` is the
+   * recorder's own clock (1 s to 30 min). Rust decides the container from the first bytes. With `replyToId` the note is a reply, like a
+   * text one. Under a second - `voice_too_short`, over the limit - `voice_too_long`, no such chat - `chat_not_found`, a file that is not
+   * a recording - `attachment_unreadable`, no space - `disk_full`; nothing is written on an error. `waveform` is the recorder's peaks
+   * (64 bytes, 0 to 255): cosmetic and local, so peaks that do not fit are dropped and the note is saved all the same.
+   */
+  sendVoice(
+    chatId: string,
+    bytes: Uint8Array,
+    durationMs: number,
+    replyToId?: string | null,
+    waveform?: Uint8Array | null,
+  ): Promise<MessageView>;
+  /**
+   * The stored bytes of a voice note, for the player's waveform decoder (a note without peaks, from an import or an older version).
+   * Up to 16 MiB; a larger file, a missing one or an unknown id is an error (`attachment_too_large`, `attachment_not_found`).
+   */
+  readVoiceForWaveform(attachmentId: string): Promise<ArrayBuffer>;
+  /**
+   * Saves the peaks the decoder computed: 64 bytes, or an empty array for "this file cannot be decoded, do not try again". Local to
+   * this device; the first value wins. A wrong length is `attachment_unreadable`, an id that is not a voice note `attachment_not_found`.
+   */
+  setAttachmentWaveform(attachmentId: string, peaks: Uint8Array): Promise<void>;
+  /** "Open settings" on the "Microphone access is off" line: the system's microphone privacy page. A fixed page, no argument. */
+  openMicrophoneSettings(): Promise<void>;
+
   // ---- capture window (slice 2): a separate set of commands, Inbox only ----
   /** Everything the window needs on showing: language, text size, today's context, the append target, the draft, an error. */
   captureState(): Promise<CaptureState>;

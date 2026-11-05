@@ -106,6 +106,20 @@
   --layout-chat-dialog-top: 4rem; /** Offset of the chat window from the top edge: the window is pressed to the top, not centered, so the picker that expands under the field does not shift the title (52 px). */
   --layout-trash-entry-lines: 6; /** How many lines of the entry text a trash plate shows; the rest is cut off with an ellipsis (line-clamp). The full text is not needed in the trash: only enough to recognize the entry. */
   --layout-trash-confirm-width: 26rem; /** Width of the 'Delete forever?' confirmation window (338 px at a 13 px root). */
+  --layout-voice-dot-size: 0.7rem; /** The red dot of the recording bar (9 px at a 13 px root). A shape that does not pulse. */
+  --layout-voice-timer-width: 3.6rem; /** Room for the timer of the recording bar up to 59:59 in tabular figures, so the waveform does not move as the seconds change. */
+  --layout-voice-rec-wave-bar-width: 0.2rem; /** Width of one bar of the live waveform in the recording bar (2.6 px at a 13 px root), rounded to whole device pixels. The canvas reads this value from the computed style. */
+  --layout-voice-rec-wave-gap: 0.15rem; /** Gap between the bars of the live waveform in the recording bar. Read by the canvas like the bar width. */
+  --layout-voice-rec-wave-height: 1.6rem; /** Height of the live waveform: the tallest bar. It runs across the whole middle of the bar, between the timer and Send. */
+  --layout-voice-rec-wave-min-height: 0.2rem; /** The shortest bar of the live waveform: silence still shows a line (a dot as wide as the bar). */
+  --layout-voice-player-button: 3.2rem; /** The big round accent play / pause button of the player (41.6 px at a 13 px root, the 40 to 44 px of the Telegram look). */
+  --layout-voice-play-icon: 1.5rem; /** The play / pause glyph inside the big button (19.5 px at a 13 px root): larger than a line icon, drawn filled. */
+  --layout-voice-play-nudge: 0.12rem; /** The play triangle's weight is on its left, so it is moved this much to the right to look centred in the circle (1.6 px at a 13 px root). */
+  --layout-voice-wave-bar-width: 0.16rem; /** Width of one bar of the player's waveform (2.1 px at a 13 px root): thin and rounded. The player draws the bars on a canvas in whole device pixels (this length rounded at the screen's density), so the rhythm of bars and gaps is even at every text size; 64 bars and their gaps make the waveform about 190 to 225 px wide, so the bubble sizes like Telegram's. */
+  --layout-voice-wave-gap: 0.11rem; /** Gap between the bars of the player's waveform (1.4 px at a 13 px root), rounded to whole device pixels like the bar. */
+  --layout-voice-wave-height: 1.6rem; /** Height of the player's waveform: the tallest bar (20.8 px at a 13 px root). The waveform, the line under it and the meta line stand as tall as the 41.6 px round button, as in Telegram. */
+  --layout-voice-wave-min-height: 0.2rem; /** The shortest bar of the player's waveform: silence still shows a rounded dot. */
+  --layout-voice-speed-width: 2.4rem; /** The speed chip ("1×", "1.5×", "2×"): one width for all three, so the chip does not move. */
   --opacity-lightbox-scrim: 0.94; /** The backdrop of the lightbox: the window background colour with this opacity, nearly opaque so the photo stands alone. */
   --opacity-drag-ghost: 0.8; /** The 'ghost' of an entry plate dragged onto a chat in the sidebar (a slice 3 acceptance decision): a copy of the plate under the cursor, quiet but readable. */
   --opacity-forest-front: 0.32; /** Opacity of a tree that stands in front of the selected tree and overlaps it. */
@@ -162,6 +176,8 @@
   --color-highlight-mark: #555555; /** The fill of a found word in the entry text (search, slice 4): a neutral gray, noticeably lighter than the plate (1.8:1) and the highlighted plate (1.5:1). The primary text on it is 7.0:1, the secondary 5.6:1. Tertiary text and the accent are not placed on it: words in links and tags are not highlighted. */
   --color-focus-ring: #88c0d0; /** The keyboard focus ring (buttons, rows, links) and a thin line in the input field. */
   --color-status-error: #d89fa4; /** The 'not sent' state and errors (PRD §1.2 item 9). */
+  --color-status-recording: #ee5a5f; /** The dot of the recording bar (slice 7a): a saturated red that says "live", brighter than the error text color. Used as a shape, not as text: >= 3:1 on every surface (the UI threshold), 3.7:1 on the message plate. */
+  --color-voice-unplayed: #595959; /** The bars of a voice note's waveform that have not been played yet (slice 7a, acceptance round 3): a neutral gray, so the played part (accent.default) stands out by hue as well as by lightness, as in Telegram. It is the darkest neutral gray that still meets the project's 2.0:1 minimum for a graphic on the message plate (#585858 gives 1.99): the largest step from the accent that the rule allows, 3.5:1. On the highlighted plate (a short-lived jump target) it is 1.53:1, enough to stay visible. The earlier teal tries (#5b848f, #44626a) were 2.0:1 and 3.3:1 away from the accent and read as one color. */
   --color-tile-blue: #3c6a9f; /** Tile color "blue". */
   --color-tile-teal: #2b736e; /** Tile color "teal". */
   --color-tile-green: #2d7645; /** Tile color "green". */
@@ -282,6 +298,10 @@
   --layout-action-gap: var(--space-2); /** A transparent gap between the plate and the action row to its right (6.5 px); mouse hover extends into it. */
   --layout-action-offset: var(--space-1); /** Offset of the row from the right edge of the plate when there is no room on the right and the row stands above the plate at its right edge; at the top edge of the feed, also from the top edge of the plate (3.25 px). */
   --layout-search-filters-gap: var(--space-2); /** The gap between search filters (6.5 px). */
+  --layout-voice-confirm-gap: var(--space-2); /** Gap between the question and the two buttons of the discard confirmation. */
+  --layout-voice-player-gap: var(--space-3); /** Gap between the play button and the waveform of the player. */
+  --layout-voice-meta-gap: var(--space-2); /** Gap between the meta line ("0:05, 20.7 KB") and the speed chip. */
+  --layout-voice-unplayable-padding: var(--space-2); /** Padding of the "Can't play here" line. */
   --type-day-family: var(--font-family-sans);
   --type-day-weight: var(--font-weight-medium);
   --type-h1-family: var(--font-family-sans);

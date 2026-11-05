@@ -2,14 +2,14 @@
 // The threshold is chosen by the pair's kind. Text is checked the strictest (4.5:1), so large text (threshold 3:1) passes for sure.
 import { TILE_ROLES } from "./tokenSource";
 
-export type PairKind = "text" | "ui" | "selection" | "decorative" | "hover";
+export type PairKind = "text" | "ui" | "selection" | "graphic" | "decorative" | "hover";
 
 /**
  * Minimum contrast by pair kind. decorative is a project threshold, not WCAG: a border or fill is noticeable but thin. selection is also a
  * project threshold: the selected item is shown by a fill alone, without a border, and it is the only sign of selection (the search row under the arrows). hover is
  * the highlight under the mouse, the quietest of all fills: it is temporary, and the selected row next to it stays more noticeable (decorative, 1.2:1).
  */
-export const MIN_RATIO: Record<PairKind, number> = { text: 4.5, ui: 3, selection: 1.5, decorative: 1.2, hover: 1.15 };
+export const MIN_RATIO: Record<PairKind, number> = { text: 4.5, ui: 3, selection: 1.5, graphic: 2, decorative: 1.2, hover: 1.15 };
 
 export interface ContrastPair {
   foreground: string;
@@ -50,6 +50,14 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
     SURFACES.map((background) => ({ foreground, background, kind: "text" as const })),
   ),
   ...SURFACES.map((background) => ({ foreground: "focus.ring", background, kind: "ui" as const })),
+  // The dot of the recording bar (slice 7a) is a shape, not text: the UI threshold on every surface it can sit on.
+  ...SURFACES.map((background) => ({ foreground: "status.recording", background, kind: "ui" as const })),
+  // The unplayed bars of a voice note's waveform (slice 7a) are a muted neutral gray on purpose, as in Telegram: what has to be obvious is the
+  // step between them and the played bars (accent), so that pair has the UI threshold; against the plate they are the darkest gray that still
+  // meets the 2.0 graphic minimum (the minimum is not to be lowered: pick a lighter gray instead).
+  { foreground: "accent.default", background: "voice.unplayed", kind: "ui" },
+  { foreground: "voice.unplayed", background: "surface.message", kind: "graphic" },
+  { foreground: "voice.unplayed", background: "highlight.background", kind: "selection" },
   // The divider between the sidebar and the feed (the sidebar border) and the empty checkbox outline use the divider / tertiary text role.
   { foreground: "border.divider", background: "surface.background", kind: "decorative" },
   { foreground: "border.divider", background: "surface.paper", kind: "decorative" },

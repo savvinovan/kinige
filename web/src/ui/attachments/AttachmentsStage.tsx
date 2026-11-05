@@ -34,16 +34,25 @@ export function Scene({ children, narrow = false }: { children: ReactNode; narro
 }
 
 /** Storybook only: a bubble with attachments above its text (the integration into `Message` is done by the feed). */
-export function Bubble({ attachments, text = "" }: { attachments: readonly AttachmentView[]; text?: string }) {
+export function Bubble({
+  attachments,
+  text = "",
+  slot,
+  timeBeside = false,
+}: {
+  attachments: readonly AttachmentView[];
+  text?: string;
+  slot?: ReactNode;
+  /** A voice note with no text: the time sits on the player's meta line (as the feed does it). */
+  timeBeside?: boolean;
+}) {
   return (
     <Message
       markdown={text}
       sentAt={SENT_AT}
-      quote={
-        <div className="attachments-scene__slot">
-          <MessageAttachments attachments={attachments} onOpenImage={noop} onOpenFile={noop} />
-        </div>
-      }
+      timeBeside={timeBeside}
+      // As in the feed (`FeedRow`): the attachments are the `attachments` of the message, so the bubble lays out exactly as in the window.
+      attachments={slot ?? <MessageAttachments attachments={attachments} onOpenImage={noop} onOpenFile={noop} />}
     />
   );
 }

@@ -16,7 +16,7 @@ macro_rules! reply_target_object {
     () => {
         "json_object('chat', r.chat_id, 'date', r.journal_date, 'body', substr(r.body_md, 1, 1000), \
          'trash', r.deleted_at IS NOT NULL, \
-         'att', (SELECT json_group_array(json_object('k', a.kind, 'n', a.filename)) FROM attachment a \
+         'att', (SELECT json_group_array(json_object('k', a.kind, 'n', a.filename, 'd', a.duration_ms)) FROM attachment a \
                  WHERE a.message_id = r.id AND a.deleted_at IS NULL))"
     };
 }
@@ -137,6 +137,10 @@ fn attachment_summary(value: Option<&serde_json::Value>) -> kinige_domain::Attac
         .unwrap_or_default();
     kinige_domain::attachment::summarize(items.iter().filter_map(|item| {
         let kind = kinige_domain::AttachmentKind::parse(item.get("k")?.as_str()?)?;
-        Some((kind, item.get("n")?.as_str()?))
+        Some((
+            kind,
+            item.get("n")?.as_str()?,
+            item.get("d").and_then(serde_json::Value::as_i64),
+        ))
     }))
 }

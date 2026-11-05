@@ -62,6 +62,9 @@ pub struct AgentAttachment {
     pub width: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub height: Option<u32>,
+    /// The length of a voice note or other audio or video, in milliseconds (slice 7a); absent when unknown. Never the bytes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration_ms: Option<i64>,
 }
 
 impl AgentEntry {

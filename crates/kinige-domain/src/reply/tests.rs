@@ -127,6 +127,6 @@ fn reply_to_serializes_in_camel_case_with_snake_case_state() {
         serde_json::to_string(&reply_to("r", "2026-10-31", Some(old("Текст", true)))).unwrap();
     assert_eq!(
         json,
-        r#"{"id":"r","chatId":"chat","journalDate":"2023-10-31","excerpt":"Текст","state":"trash","yearsLater":3,"attachments":{"photos":0,"files":0,"name":null}}"#
+        r#"{"id":"r","chatId":"chat","journalDate":"2023-10-31","excerpt":"Текст","state":"trash","yearsLater":3,"attachments":{"photos":0,"files":0,"voices":0,"voiceMs":null,"name":null}}"#
     );
 }

@@ -52,6 +52,8 @@ pub struct ForestDay {
     pub excerpt: Option<String>,
     /// Live photos of the day (slice 7): "5 notes · 3 photos" on the day card.
     pub photos: u32,
+    /// Live voice notes of the day (slice 7a): "5 notes · 1 voice note" on the day card. Every `audio` attachment counts.
+    pub voices: u32,
     /// What the day's first entry holds when it has no text (a photo sent alone); `null` otherwise.
     pub first_summary: Option<AttachmentSummary>,
 }
@@ -131,6 +133,8 @@ pub struct DayStats {
     pub first_body: Option<String>,
     /// Live photos of the day's entries.
     pub photos: u32,
+    /// Live voice notes (`audio` attachments) of the day's entries.
+    pub voices: u32,
     /// What the first entry holds, when its text is empty.
     pub first_summary: Option<AttachmentSummary>,
 }
@@ -144,6 +148,7 @@ impl DayStats {
             weight: day_weight(notes),
             first_body,
             photos: 0,
+            voices: 0,
             first_summary: None,
         }
     }
@@ -164,11 +169,12 @@ pub fn year_table(year: i32, first: FirstWeekday, stats: &[DayStats]) -> Option<
         return None;
     }
     let dims = grid_dims(year, first)?;
-    /// Notes, weight, first body, photos and the first entry's summary of one date.
+    /// Notes, weight, first body, photos, voice notes and the first entry's summary of one date.
     type Merged<'a> = (
         u32,
         f64,
         Option<&'a str>,
+        u32,
         u32,
         Option<&'a AttachmentSummary>,
     );
@@ -179,16 +185,17 @@ pub fn year_table(year: i32, first: FirstWeekday, stats: &[DayStats]) -> Option<
         entry.1 += stat.weight;
         if entry.2.is_none() {
             entry.2 = stat.first_body.as_deref();
-            entry.4 = stat.first_summary.as_ref();
+            entry.5 = stat.first_summary.as_ref();
         }
         entry.3 = entry.3.saturating_add(stat.photos);
+        entry.4 = entry.4.saturating_add(stat.voices);
     }
     let mut days = Vec::with_capacity(366);
     for ordinal in 1..=366 {
         let Some(date) = NaiveDate::from_yo_opt(year, ordinal) else {
             break;
         };
-        let (notes, weight, body, photos, summary) =
+        let (notes, weight, body, photos, voices, summary) =
             by_date.get(&date).copied().unwrap_or_default();
         let pos = day_position(date, first);
         days.push(ForestDay {
@@ -200,6 +207,7 @@ pub fn year_table(year: i32, first: FirstWeekday, stats: &[DayStats]) -> Option<
             stage: stage_of(weight, DEFAULT_W_MAX),
             excerpt: body.map(excerpt).filter(|text| !text.is_empty()),
             photos,
+            voices,
             first_summary: summary.cloned(),
         });
     }

@@ -9,7 +9,7 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 - `docs/slices/<id>-<name>.md` — one-page slice specification (§12.1a).
 - `docs/screens/<slice>/` — screenshots of the real window for acceptance.
 
-Status: slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol + keys) are done; slice 1 (Inbox) is merged; slice 2 (quick capture: window, hotkeys, tray, appending) was accepted by the user on 27.10.2026; slice 3 (chats, entry actions, trash, database backup) and slice 4 (import from Telegram, archive, search with word forms) were accepted on 28.10.2026; slice 4a (MCP server for AI agents) was accepted on 29.10.2026; slice 4b (settings window, settings.json) was accepted on 31.10.2026; slice 5 ("On this day", replies) was accepted on 01.11.2026; slice D2 (visual refresh) accepted 02.11.2026; slice 10a (Windows build) accepted 02.11.2026; slice 6 (the year's forest) accepted 03.11.2026. Build and test commands are in the "Build and tests" section below.
+Status: slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol + keys) are done; slice 1 (Inbox) is merged; slice 2 (quick capture: window, hotkeys, tray, appending) was accepted by the user on 27.10.2026; slice 3 (chats, entry actions, trash, database backup) and slice 4 (import from Telegram, archive, search with word forms) were accepted on 28.10.2026; slice 4a (MCP server for AI agents) was accepted on 29.10.2026; slice 4b (settings window, settings.json) was accepted on 31.10.2026; slice 5 ("On this day", replies) was accepted on 01.11.2026; slice D2 (visual refresh) accepted 02.11.2026; slice 10a (Windows build) accepted 02.11.2026; slice 6 (the year's forest) accepted 03.11.2026; slice 7 (attachments) accepted 04.11.2026. Build and test commands are in the "Build and tests" section below.
 
 ## How we work (mandatory, PRD §12)
 
@@ -69,6 +69,8 @@ Frontend (from `web/`, after `npm ci`):
 - `npm run tokens` — rebuild `src/ui/tokens.css` and `src/ui/themes.css` from `design/tokens/**/*.json` (runs by itself before `dev`, `build`, `storybook`); the result is committed
 - `npm run typecheck`, `npm run lint`, `npm test` (vitest; includes the check "no raw colors and sizes outside tokens.css / themes.css", the contrast of all "color / background" pairs of the palette, and the font check against the woff2 files themselves)
 - `npm run build-storybook`
+
+Voice notes (slice 7a, ADR-0015): the screens runners record from a fake microphone chosen at build time (`KINIGE_FAKE_MIC=1`, aliased in `web/vite.config.ts`); `scripts/check-fake-mic.sh` makes `build-app.sh` and `build-windows.sh` fail if it reached `web/dist` without `KINIGE_ALLOW_FAKE_MIC=1` (only `screens.yml` sets both; `bash scripts/check-fake-mic.test.sh` is its test). The `7a-probe` and `7a-probe-windows` scenarios record what each web view can do.
 
 Storybook visual tests run only on GitHub, in a Playwright container: the comparison is the `visual` job in CI; new baselines via `gh workflow run visual-update.yml --ref <branch>` (captures them and commits to the branch; not allowed in `main`; after the commit it starts CI on the branch by itself). Baselines are not captured on macOS or on ubuntu-server.
 

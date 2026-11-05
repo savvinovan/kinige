@@ -214,5 +214,6 @@ fn view_of(staged: &Staged) -> AttachmentView {
         height: staged.height,
         duration_ms: None,
         state: AttachmentState::Local,
+        waveform: None,
     }
 }

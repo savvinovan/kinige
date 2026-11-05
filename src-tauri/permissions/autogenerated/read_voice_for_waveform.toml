@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-read-voice-for-waveform"
+description = "Enables the read_voice_for_waveform command without any pre-configured scope."
+commands.allow = ["read_voice_for_waveform"]
+
+[[permission]]
+identifier = "deny-read-voice-for-waveform"
+description = "Denies the read_voice_for_waveform command without any pre-configured scope."
+commands.deny = ["read_voice_for_waveform"]

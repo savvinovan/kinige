@@ -115,6 +115,18 @@
           "$value": "#d89fa4",
           "$description": "The 'not sent' state and errors (PRD §1.2 item 9).",
           "$extensions": { "kinige": { "origin": "подгонка: nord11 (красный Aurora), HSL-светлота 56,5 % → 73,5 % при том же тоне и насыщенности" } }
+        },
+        "recording": {
+          "$value": "#ee5a5f",
+          "$description": "The dot of the recording bar (slice 7a): a saturated red that says \"live\", brighter than the error text color. Used as a shape, not as text: >= 3:1 on every surface (the UI threshold), 3.7:1 on the message plate.",
+          "$extensions": { "kinige": { "origin": "авторский: тон 358°, насыщенность 81 %, светлота 64 %" } }
+        }
+      },
+      "voice": {
+        "unplayed": {
+          "$value": "#595959",
+          "$description": "The bars of a voice note's waveform that have not been played yet (slice 7a, acceptance round 3): a neutral gray, so the played part (accent.default) stands out by hue as well as by lightness, as in Telegram. It is the darkest neutral gray that still meets the project's 2.0:1 minimum for a graphic on the message plate (#585858 gives 1.99): the largest step from the accent that the rule allows, 3.5:1. On the highlighted plate (a short-lived jump target) it is 1.53:1, enough to stay visible. The earlier teal tries (#5b848f, #44626a) were 2.0:1 and 3.3:1 away from the accent and read as one color.",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 35 %" } }
         }
       },
       "tile": {

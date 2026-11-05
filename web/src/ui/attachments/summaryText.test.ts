@@ -4,7 +4,13 @@ import { summaryText } from "./summaryText";
 
 const en = createI18n("en").t;
 const ru = createI18n("ru").t;
-const of = (photos: number, files: number, name: string | null = null) => ({ photos, files, name });
+const of = (photos: number, files: number, name: string | null = null, voices = 0, voiceMs: number | null = null) => ({
+  photos,
+  files,
+  voices,
+  voiceMs,
+  name,
+});
 
 describe("summaryText", () => {
   it("английский", () => {
@@ -26,6 +32,18 @@ describe("summaryText", () => {
     expect(summaryText(of(0, 1, "меню.pdf"), ru)).toBe("меню.pdf");
     expect(summaryText(of(2, 3), ru)).toBe("5 вложений");
     expect(summaryText(of(1, 1), ru)).toBe("2 вложения");
+  });
+
+  it("voice notes (slice 7a): one with its length, several as a count, mixed ones as attachments", () => {
+    expect(summaryText(of(0, 0, "v.m4a", 1, 40_000), en)).toBe("Voice note · 0:40");
+    expect(summaryText(of(0, 0, "v.m4a", 1, 3_723_000), en)).toBe("Voice note · 1:02:03");
+    expect(summaryText(of(0, 0, "v.ogg", 1, null), en)).toBe("Voice note");
+    expect(summaryText(of(0, 0, null, 3, 90_000), en)).toBe("3 voice notes");
+    expect(summaryText(of(0, 0, "v.m4a", 1, 40_000), ru)).toBe("Голосовое · 0:40");
+    expect(summaryText(of(0, 0, null, 2), ru)).toBe("2 голосовых сообщения");
+    expect(summaryText(of(0, 0, null, 5), ru)).toBe("5 голосовых сообщений");
+    expect(summaryText(of(1, 0, null, 1, 5_000), en)).toBe("2 attachments");
+    expect(summaryText(of(0, 1, null, 1, 5_000), en)).toBe("2 attachments");
   });
 
   it("один файл без имени и запись без вложений", () => {

@@ -1,0 +1,13 @@
+# The dump starts after the picture and takes tens of seconds, so by the time it reads the player the 40 second note has ended: the
+# elapsed time and the pause button below come from the dump, not from the picture (05-playing.png shows the playing state).
+elapsed in the dump (AX value, seconds): none
+pause button in the dump: no
+'Can't play here' in the dump: no
+audio route requests before / after the press (app log): 0 / 80
+[DEBUG][kinige_lib::audio_route] audio route: 206 2 bytes, asked "bytes=0-1", answered "bytes 0-1/77585"
+[DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=0-7", answered "bytes 0-7/77585"
+[DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=28-35", answered "bytes 28-35/77585"
+[DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=36-43", answered "bytes 36-43/77585"
+[DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=144-151", answered "bytes 144-151/77585"
+[DEBUG][kinige_lib::audio_route] audio route: 206 8 bytes, asked "bytes=2180-2187", answered "bytes 2180-2187/77585"
+playback proof: 80 audio route requests after 0 before the press; elapsed in the dump (note only): none

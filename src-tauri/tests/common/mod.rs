@@ -6,6 +6,7 @@
 // The client of the MCP server over the Unix socket; there is no server on Windows (slice 10a).
 #[cfg(unix)]
 pub mod mcp;
+pub mod voice;
 
 use kinige_lib::builder;
 use kinige_lib::capture::CaptureShell;
@@ -233,7 +234,9 @@ pub fn args_for(command: &str) -> Value {
         "list_agent_log_entries" => json!({"logId": 1}),
         "attach_dropped" => json!({"token": "нет-такого", "chatId": inbox}),
         "remove_draft_attachment" => json!({"chatId": inbox, "attachmentId": "нет-такого"}),
-        "open_attachment" => json!({"attachmentId": "нет-такого"}),
+        "open_attachment" | "read_voice_for_waveform" => json!({"attachmentId": "нет-такого"}),
+        "set_attachment_waveform" => json!({"attachmentId": "нет-такого", "peaks": ""}),
+        // `send_voice` takes a raw body: a JSON call is the "garbage" case and must be an error, never a panic.
         _ => json!({}),
     }
 }
@@ -245,4 +248,6 @@ pub const NEEDS_NATIVE_UI: &[&str] = &[
     "import_telegram_open",
     // The paperclip dialog.
     "attach_pick",
+    // Opens the system settings page of the microphone: never from a test (slice 7a).
+    "open_microphone_settings",
 ];

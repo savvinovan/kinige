@@ -1,0 +1,26 @@
+{
+  "layout": {
+    "voice": {
+      "$type": "dimension",
+      "$description": "Voice notes (slice 7a): the recording bar that replaces the input field while recording, and the player in the feed. Round 2 (the Telegram-like look): the player has a big round button and a waveform of thin rounded bars; the recording bar streams its waveform across the whole field.",
+      "dot-size": { "$value": "0.7rem", "$description": "The red dot of the recording bar (9 px at a 13 px root). A shape that does not pulse." },
+      "timer-width": { "$value": "3.6rem", "$description": "Room for the timer of the recording bar up to 59:59 in tabular figures, so the waveform does not move as the seconds change." },
+      "confirm-gap": { "$value": "{space.2}", "$description": "Gap between the question and the two buttons of the discard confirmation." },
+      "rec-wave-bar-width": { "$value": "0.2rem", "$description": "Width of one bar of the live waveform in the recording bar (2.6 px at a 13 px root), rounded to whole device pixels. The canvas reads this value from the computed style." },
+      "rec-wave-gap": { "$value": "0.15rem", "$description": "Gap between the bars of the live waveform in the recording bar. Read by the canvas like the bar width." },
+      "rec-wave-height": { "$value": "1.6rem", "$description": "Height of the live waveform: the tallest bar. It runs across the whole middle of the bar, between the timer and Send." },
+      "rec-wave-min-height": { "$value": "0.2rem", "$description": "The shortest bar of the live waveform: silence still shows a line (a dot as wide as the bar)." },
+      "player-button": { "$value": "3.2rem", "$description": "The big round accent play / pause button of the player (41.6 px at a 13 px root, the 40 to 44 px of the Telegram look)." },
+      "player-gap": { "$value": "{space.3}", "$description": "Gap between the play button and the waveform of the player." },
+      "play-icon": { "$value": "1.5rem", "$description": "The play / pause glyph inside the big button (19.5 px at a 13 px root): larger than a line icon, drawn filled." },
+      "play-nudge": { "$value": "0.12rem", "$description": "The play triangle's weight is on its left, so it is moved this much to the right to look centred in the circle (1.6 px at a 13 px root)." },
+      "wave-bar-width": { "$value": "0.16rem", "$description": "Width of one bar of the player's waveform (2.1 px at a 13 px root): thin and rounded. The player draws the bars on a canvas in whole device pixels (this length rounded at the screen's density), so the rhythm of bars and gaps is even at every text size; 64 bars and their gaps make the waveform about 190 to 225 px wide, so the bubble sizes like Telegram's." },
+      "wave-gap": { "$value": "0.11rem", "$description": "Gap between the bars of the player's waveform (1.4 px at a 13 px root), rounded to whole device pixels like the bar." },
+      "wave-height": { "$value": "1.6rem", "$description": "Height of the player's waveform: the tallest bar (20.8 px at a 13 px root). The waveform, the line under it and the meta line stand as tall as the 41.6 px round button, as in Telegram." },
+      "wave-min-height": { "$value": "0.2rem", "$description": "The shortest bar of the player's waveform: silence still shows a rounded dot." },
+      "meta-gap": { "$value": "{space.2}", "$description": "Gap between the meta line (\"0:05, 20.7 KB\") and the speed chip." },
+      "speed-width": { "$value": "2.4rem", "$description": "The speed chip (\"1×\", \"1.5×\", \"2×\"): one width for all three, so the chip does not move." },
+      "unplayable-padding": { "$value": "{space.2}", "$description": "Padding of the \"Can't play here\" line." }
+    }
+  }
+}

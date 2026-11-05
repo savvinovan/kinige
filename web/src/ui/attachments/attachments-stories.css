@@ -11,10 +11,6 @@
   max-width: 100%;
 }
 
-.attachments-scene__slot {
-  margin-block-end: var(--space-2);
-}
-
 /* The feed stand-in for the drop overlay: a window-sized area with the overlay on top. */
 .attachments-feed {
   position: relative;

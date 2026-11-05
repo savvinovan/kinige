@@ -26,6 +26,7 @@ import { useMainSearch } from "./useMainSearch";
 import { useOnThisDay } from "./useOnThisDay";
 import { useOpenMessage } from "./useOpenMessage";
 import { useReplyActions } from "./useReplyActions";
+import { useVoice } from "./useVoice";
 import { useSettingsState } from "./useSettingsState";
 import { useChangeCounter, useForestPane } from "./useForestPane";
 import { useTrash } from "./useTrash";
@@ -182,6 +183,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     dismissCard: onThisDay.dismiss,
     onDismissed: () => setToBottom((count) => count + 1),
   });
+  const voice = useVoice({ api, selected, reply, appendSent: feed.appendSent, refreshChats, changeReply });
   const forest = useForestPane({
     api,
     initial: { view: initialSettings.forestView, mode: initialSettings.forestMode },
@@ -257,7 +259,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       onOpenImport={importer.start}
       // The version was not received: the window opens anyway, with a dash instead of the version (the window has no separate channel to the log).
       onOpenAbout={() => void api.appInfo().then((info) => setAbout(info.title), () => setAbout(t("about.unknown")))}
-      composerButtons={{ attach: true, emoji: true }}
+      composerButtons={{ attach: true, emoji: true, voice: true }}
+      voice={voice}
       emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji }}
       chats={sidebarChats}
       moveTargets={moveTargets}

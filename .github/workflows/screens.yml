@@ -74,9 +74,15 @@ jobs:
           sleep 3
           defaults read -g AppleInterfaceStyle || true
 
+      # Slice 7a (voice notes): a build for the 7a scenarios has the fake microphone (an oscillator instead of getUserMedia, no TCC) and,
+      # for 7a-probe and 7a-probe-windows, the probe; no other build has either. scripts/check-fake-mic.sh refuses a bundle with the fake microphone
+      # unless KINIGE_ALLOW_FAKE_MIC=1, which only this workflow sets.
       - name: Build the app
         env:
           KINIGE_IDENTIFIER: me.savvinov.kinige.accept
+          KINIGE_FAKE_MIC: ${{ startsWith(inputs.slice, '7a') && '1' || '' }}
+          KINIGE_ALLOW_FAKE_MIC: ${{ startsWith(inputs.slice, '7a') && '1' || '' }}
+          KINIGE_PROBE: ${{ startsWith(inputs.slice, '7a-probe') && '1' || '' }}
         run: scripts/build-app.sh
 
       - name: Shots scenario
@@ -134,8 +140,13 @@ jobs:
 
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
+      # Slice 7a: see the macOS job (the fake microphone and the probe, only for the 7a scenarios).
       - name: Build the installer
         shell: bash
+        env:
+          KINIGE_FAKE_MIC: ${{ startsWith(inputs.slice, '7a') && '1' || '' }}
+          KINIGE_ALLOW_FAKE_MIC: ${{ startsWith(inputs.slice, '7a') && '1' || '' }}
+          KINIGE_PROBE: ${{ startsWith(inputs.slice, '7a-probe') && '1' || '' }}
         run: scripts/build-windows.sh
 
       # Windows PowerShell 5.1 (`shell: powershell`); keys are injected with SendKeys, the data checks read the database and the disk.

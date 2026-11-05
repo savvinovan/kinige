@@ -203,7 +203,33 @@ fn image(name: &str, file: &str) -> MirrorAttachment {
         is_image: true,
         name: name.to_string(),
         file: file.to_string(),
+        duration_ms: None,
     }
+}
+
+#[test]
+fn a_voice_note_link_is_followed_by_its_length() {
+    let voice = |duration_ms| MirrorEntry {
+        attachments: vec![MirrorAttachment {
+            is_image: false,
+            name: "voice-2026-11-03-213012.m4a".to_string(),
+            file: "voice-2026-11-03-213012.m4a".to_string(),
+            duration_ms,
+        }],
+        ..entry("21:30", "")
+    };
+    assert_eq!(
+        render_day_file("2026-11-03", &[voice(Some(40_000))]),
+        "# 2026-11-03\n\n## 21:30\n\n[voice-2026-11-03-213012.m4a](<2026-11-03/voice-2026-11-03-213012.m4a>) (0:40)\n"
+    );
+    assert!(
+        render_day_file("2026-11-03", &[voice(Some(3_723_000))]).contains(">) (1:02:03)\n"),
+        "hours past 59:59"
+    );
+    assert!(
+        render_day_file("2026-11-03", &[voice(None)]).ends_with(".m4a>)\n"),
+        "no length, nothing after the link"
+    );
 }
 
 #[test]
@@ -215,6 +241,7 @@ fn attachments_are_linked_into_the_day_folder_above_the_text() {
                 is_image: false,
                 name: "menu [v2].pdf".to_string(),
                 file: "menu [v2].pdf".to_string(),
+                duration_ms: None,
             },
         ],
         ..entry("09:12", "Lunch")
