@@ -130,6 +130,49 @@ wait_for "3723" 30 || fail "no player of the hour-long note (3723 seconds)"
 shoot 01-feed
 BEFORE_NOTES="$(voice_rows)"
 
+# ---- 5. Playback: the picture while it plays, then the log of the audio route ----
+ROUTE_BEFORE="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
+press "${L_PLAY}"
+sleep 14
+# The picture first and without a window dump: a dump takes tens of seconds and the 40 second note had ended (and rewound to 0:00) by the
+# time the first run's shot was taken after it. The dumps come after, for the proof in the text. 14 s in, the played part of the waveform
+# stands about a third of the way along: the shot shows the fill stopping inside the bars.
+SHOOT_DUMP=0 shoot 05-playing
+dump playing-a
+cp "$K/debug/playing-a.txt" "$K/debug/shot-05-playing.txt"
+A="$(elapsed_from "$K/debug/playing-a.txt")"
+B="$A"
+{
+  echo "# The dump starts after the picture and takes tens of seconds, so by the time it reads the player the 40 second note has ended: the"
+  echo "# elapsed time and the pause button below come from the dump, not from the picture (05-playing.png shows the playing state)."
+  echo "elapsed in the dump (AX value, seconds): ${A:-none}"
+  echo "pause button in the dump: $(has "${L_PAUSE}" && echo yes || echo no)"
+  echo "'Can't play here' in the dump: $(has "${L_CANT}" && echo yes || echo no)"
+  echo "audio route requests before / after the press (app log): ${ROUTE_BEFORE:-0} / $(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
+  grep 'audio route: ' "$LOG_FILE" 2> /dev/null | sed -E 's/^\[[^]]*\]\[[^]]*\]//' | head -6
+} > "$OUT/playback.txt"
+cat "$OUT/playback.txt"
+# A window dump takes tens of seconds and the 40 second note ends (and rewinds to 0:00) while it runs, so the elapsed time in a dump is
+# only noted, not asserted. The proof of playback is the web view's requests of the audio route (80 of them in the committed run) and the
+# picture, taken before the dump: 05-playing.png shows the pause icon and a moving time.
+ROUTE_AFTER="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
+echo "playback proof: ${ROUTE_AFTER:-0} audio route requests after ${ROUTE_BEFORE:-0} before the press; elapsed in the dump (note only): ${A:-none}" >> "$OUT/playback.txt"
+if [ "${ROUTE_AFTER:-0}" -le "${ROUTE_BEFORE:-0}" ]; then
+  fail "the voice note did not play: the web view made no request of the audio route"
+fi
+
+# ---- 6. Speed: 1x -> 1.5x -> 2x ----
+press "${L_SPEED} 1×"
+sleep 1
+press "${L_SPEED} 1.5×"
+sleep 2
+has "2×" || fail "the speed chip does not say 2×"
+shoot 06-speed-2x
+
+# The note may still be playing: pause it before the recording starts (one accessibility press; no answer is fine when it has ended).
+try_press "${L_PAUSE}" || true
+sleep 2
+
 # ---- 2. Recording: the bar and the timer, then the recording ends by itself ----
 # On a macOS runner every accessibility call hangs for as long as a recording runs (the 7a-load run measured it: the press itself times out,
 # every later call too, the web content process is idle in its sample; the calls recover when the recording ends). So nothing is pressed or
@@ -179,45 +222,6 @@ done
 } > "$OUT/waveform.txt"
 cat "$OUT/waveform.txt"
 case "$(waveform_lengths)" in *"-"*) echo "finding: a note is still without a waveform (the player never decoded it)" ;; esac
-
-# ---- 5. Playback: the picture while it plays, then the log of the audio route ----
-ROUTE_BEFORE="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
-press "${L_PLAY}"
-sleep 14
-# The picture first and without a window dump: a dump takes tens of seconds and the 40 second note had ended (and rewound to 0:00) by the
-# time the first run's shot was taken after it. The dumps come after, for the proof in the text. 14 s in, the played part of the waveform
-# stands about a third of the way along: the shot shows the fill stopping inside the bars.
-SHOOT_DUMP=0 shoot 05-playing
-dump playing-a
-cp "$K/debug/playing-a.txt" "$K/debug/shot-05-playing.txt"
-A="$(elapsed_from "$K/debug/playing-a.txt")"
-B="$A"
-{
-  echo "# The dump starts after the picture and takes tens of seconds, so by the time it reads the player the 40 second note has ended: the"
-  echo "# elapsed time and the pause button below come from the dump, not from the picture (05-playing.png shows the playing state)."
-  echo "elapsed in the dump (AX value, seconds): ${A:-none}"
-  echo "pause button in the dump: $(has "${L_PAUSE}" && echo yes || echo no)"
-  echo "'Can't play here' in the dump: $(has "${L_CANT}" && echo yes || echo no)"
-  echo "audio route requests before / after the press (app log): ${ROUTE_BEFORE:-0} / $(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
-  grep 'audio route: ' "$LOG_FILE" 2> /dev/null | sed -E 's/^\[[^]]*\]\[[^]]*\]//' | head -6
-} > "$OUT/playback.txt"
-cat "$OUT/playback.txt"
-# A window dump takes tens of seconds and the 40 second note ends (and rewinds to 0:00) while it runs, so the elapsed time in a dump is
-# only noted, not asserted. The proof of playback is the web view's requests of the audio route (80 of them in the committed run) and the
-# picture, taken before the dump: 05-playing.png shows the pause icon and a moving time.
-ROUTE_AFTER="$(grep -c 'audio route: ' "$LOG_FILE" 2> /dev/null || true)"
-echo "playback proof: ${ROUTE_AFTER:-0} audio route requests after ${ROUTE_BEFORE:-0} before the press; elapsed in the dump (note only): ${A:-none}" >> "$OUT/playback.txt"
-if [ "${ROUTE_AFTER:-0}" -le "${ROUTE_BEFORE:-0}" ]; then
-  fail "the voice note did not play: the web view made no request of the audio route"
-fi
-
-# ---- 6. Speed: 1x -> 1.5x -> 2x ----
-press "${L_SPEED} 1×"
-sleep 1
-press "${L_SPEED} 1.5×"
-sleep 2
-has "2×" || fail "the speed chip does not say 2×"
-shoot 06-speed-2x
 
 # ---- 7. kill -9: the sent note is back and plays; a recording that was running is gone ----
 # A second recording is started and the process is killed 6 seconds later from the background (the press itself hangs while it runs, see 2).
