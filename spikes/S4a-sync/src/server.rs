@@ -255,10 +255,16 @@ impl Server {
                 .any(|d| d.epoch > known_epoch && d.seq > after);
         }
         let place = |g: u64| self.lineage.iter().position(|x| *x == g);
-        let cursor =
-            place(generation).map_or(2 * self.lineage.len().saturating_sub(2) + 1, |p| 2 * p);
+        // Positions are doubled and shifted by two so that an unknown generation can sit between two known ones, and below the only
+        // one when the lineage has a single generation (then every drop of the current generation is missed).
+        let unknown = if self.lineage.len() < 2 {
+            1
+        } else {
+            2 * (self.lineage.len() - 2) + 3
+        };
+        let cursor = place(generation).map_or(unknown, |p| 2 * p + 2);
         self.drops.iter().any(|d| {
-            let made = 2 * place(d.generation).unwrap_or(0);
+            let made = place(d.generation).map_or(0, |p| 2 * p + 2);
             made > cursor || (made == cursor && d.epoch > known_epoch && d.seq > after)
         })
     }

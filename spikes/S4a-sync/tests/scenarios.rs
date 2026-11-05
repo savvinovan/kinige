@@ -4,7 +4,7 @@ use s4a_sync::client::{Event, FeedSlot, ResyncCause};
 use s4a_sync::directed::{compaction_while_a_restore_resync_pulls, own_writes_after_a_lift};
 use s4a_sync::envelope::{DAY_MS, Entity, Kind};
 use s4a_sync::props;
-use s4a_sync::server::Server;
+use s4a_sync::server::{PullResponse, Server};
 use s4a_sync::switches::Switches;
 use s4a_sync::world::{Op::*, PullFault, PushFault, Schedule, Step, Step::*, World};
 
@@ -475,6 +475,88 @@ fn review_the_initiator_does_not_show_what_it_is_about_to_purge() {
             .iter()
             .any(|item| matches!(item.slot, FeedSlot::Inbox(_)));
         assert_eq!(in_inbox, shown, "{switches:?}");
+    }
+}
+
+/// Review round 3 (guardian), a KNOWN LIMITATION that this test pins: a cursor of an abandoned branch is placed just before the current
+/// generation, on the assumption that the branch was cut from a backup at least as new as the one restored now. Here the first restore
+/// uses an OLDER backup (X alive, no drop) and the second a NEWER one (X purged and compacted, the drop is in the dump); the purging
+/// device is gone. Device A lived on the first branch, is told "not stale" (`GenerationChanged`), and pushes X back. ADR-0001 §6.3
+/// says so; the exact rule that closes it (the compaction time of a drop and the cut time of a branch) is in ADR-0017 for S4c. When
+/// that rule is implemented this test is to be turned round on purpose.
+#[test]
+fn review_round_3_a_branch_cut_from_an_older_backup_than_the_one_restored_now() {
+    let (a, b) = (0, 1);
+    let schedule = two_devices(vec![]);
+    let mut world = World::new(&schedule, Switches::default());
+    world.run(&[
+        Local(a, CreateChat),
+        Local(a, CreateMessage(0)),
+        SyncAll { skip: usize::MAX },
+    ]);
+    let older = world.server.backup(); // X alive, no drop
+    // A is away from here. B deletes and purges X, the server compacts; then B is gone for good.
+    world.run(&[
+        Local(b, DeleteMessage(0)),
+        SyncAll { skip: a },
+        Advance(31 * DAY_MS),
+        Purge(b),
+        SyncAll { skip: a },
+        Advance(181 * DAY_MS),
+        Compact,
+    ]);
+    assert_eq!(world.server.drops_count(), 1);
+    let newer = world.server.backup(); // X compacted away, the drop is in this dump
+    world.server.restore(&older, 7); // a branch from the OLDER backup: X alive again, no drop
+    world.run(&[SyncAll { skip: b }]); // A enters it: X is live on the server and on A
+    let x = world.clients[a]
+        .records
+        .keys()
+        .find(|k| k.0 == Entity::Message)
+        .cloned()
+        .expect("X is live on A in the branch");
+    world.server.restore(&newer, 9); // lineage [G1, G3]: the branch is abandoned
+    world.run(&[SyncAll { skip: b }]); // A: a cursor from a generation the lineage does not know
+    let causes = resync_causes(&world, a);
+    assert_eq!(
+        causes.last(),
+        Some(&ResyncCause::GenerationChanged),
+        "{causes:?}"
+    );
+    assert!(
+        world.clients[a].records.contains_key(&x),
+        "the limitation: X, purged and compacted in the restored backup, is live on A"
+    );
+    assert!(
+        !world.server.is_purged(&x),
+        "and A pushed it back to the server"
+    );
+}
+
+/// A cursor of an unknown generation on a server whose lineage is a single generation sits below it: every drop of the current
+/// generation is missed (round 3).
+#[test]
+fn review_round_3_an_unknown_cursor_on_a_fresh_lineage_misses_the_current_drops() {
+    let schedule = two_devices(vec![
+        Local(0, CreateChat),
+        Local(0, CreateMessage(0)),
+        SyncAll { skip: usize::MAX },
+        Local(1, DeleteMessage(0)),
+        SyncAll { skip: usize::MAX },
+        Advance(31 * DAY_MS),
+        Purge(1),
+        SyncAll { skip: usize::MAX },
+        Advance(181 * DAY_MS),
+        Compact,
+    ]);
+    let mut world = World::new(&schedule, Switches::default());
+    world.run(&schedule.steps);
+    assert_eq!(world.server.lineage().len(), 1);
+    assert_eq!(world.server.drops_count(), 1);
+    let unknown = 0xdead_beef;
+    match world.server.pull(unknown, 1, 0, 10) {
+        PullResponse::GenerationChanged { stale, .. } => assert!(stale),
+        other => panic!("expected GenerationChanged, got {other:?}"),
     }
 }
 
