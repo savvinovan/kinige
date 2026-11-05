@@ -21,3 +21,7 @@ serde = "1"
 serde_json = { version = "1", features = ["raw_value"] }
 # HLC syntax of the header (`hlc::parse`); kinige-domain has no crypto, this crate depends on it and not the other way round.
 kinige-domain = { path = "../kinige-domain" }
+
+[target.'cfg(unix)'.dev-dependencies]
+# Only for the measurement example (peak memory through getrusage).
+libc = "0.2"
