@@ -251,6 +251,35 @@ jobs:
           tool: cargo-deny@0.20.2
 
       - run: cargo deny check advisories licenses sources
+      # The simulation spike is a crate outside the workspace (S4a); its test tooling (proptest) is held to the same rules.
+      - run: cargo deny --manifest-path spikes/S4a-sync/Cargo.toml check --config deny.toml advisories licenses sources
+
+  # Spike S4a (KINIG-94): the simulation of the sync protocol, `spikes/S4a-sync`, a crate outside the workspace so no job above builds
+  # it. Fixed seed and a smaller number of cases keep the job short; plain `cargo test` there runs 10 000 cases per property for 2
+  # devices and 2 000 for 3, and takes about 35 s. The negative controls (a switch that breaks a rule must make a property fail) run
+  # here too, so the properties keep their teeth.
+  s4a:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Rust toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: spikes/S4a-sync
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Simulation, properties and negative controls
+        working-directory: spikes/S4a-sync
+        env:
+          S4A_CASES: "1000"
+          S4A_CASES3: "200"
+          S4A_CONTROL_CASES: "3000"
+          S4A_SEED: "1"
+        run: cargo test
 
   # Secrets in the git history. False positives go in .gitleaksignore (the fingerprint and the reason). The binary is pinned by version and sha256.
   gitleaks:
