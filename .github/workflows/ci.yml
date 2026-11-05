@@ -16,8 +16,8 @@ permissions:
   contents: read
 
 # Line tables instead of full debug info in test builds: backtraces keep file and line, and the target stays far smaller. With full
-# debug info the target grew to 21 GB after slice 7a, and the ubuntu-24.04 image 20261101 (less free disk than 20261025) ran out of
-# space linking the app test binaries: `No space left on device` and ld SIGBUS (signal 7) in `rust` and `coverage` (PR #45).
+# debug info the target was 21 GB, and runners on the ubuntu-24.04 image 20261101.114 ran out of space linking the app test binaries:
+# `No space left on device` and ld SIGBUS (signal 7) in `rust` and `coverage` (PR #45; 20261025.353 and 20261101.360 passed).
 env:
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
 
