@@ -202,6 +202,7 @@ describe("the channel", () => {
     const handlers: ((event: { payload: unknown }) => void)[] = [];
     const invoke = vi.fn(async () => undefined);
     const host: DriverHost = {
+      window: "main",
       listen: vi.fn(async (_event, handler) => {
         handlers.push(handler);
       }),
@@ -217,22 +218,40 @@ describe("the channel", () => {
     await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith("screens_driver_reply", { message: { kind: "ready" } }));
     expect(host.listen).toHaveBeenCalledWith("screens-driver-step", expect.any(Function));
     await act(async () => {
-      handlers[0]?.({ payload: { id: "r1", step: { kind: "has", name: "Go" } } });
+      handlers[0]?.({ payload: { id: "r1", window: "main", step: { kind: "has", name: "Go" } } });
     });
     await vi.waitFor(() =>
       expect(invoke).toHaveBeenCalledWith("screens_driver_reply", { message: { kind: "reply", id: "r1", ok: true, value: "yes", error: undefined } }),
     );
-    handlers[0]?.({ payload: { id: "r2", step: { kind: "nonsense" } } });
+    handlers[0]?.({ payload: { id: "r2", window: "main", step: { kind: "nonsense" } } });
     await vi.waitFor(() =>
       expect(invoke).toHaveBeenCalledWith("screens_driver_reply", { message: { kind: "reply", id: "r2", ok: false, value: undefined, error: "unknown step: nonsense" } }),
     );
+  });
+
+  it("ignores a step addressed to another window: it neither runs nor answers", async () => {
+    // tauri hands an `Any` listener the steps of every window; a hidden capture window must not type into its composer for `main`.
+    page(`<textarea id="composer" aria-label="Note"></textarea>`);
+    const { host, handlers, invoke } = fakeHost();
+    startDriver(host);
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+    const composer = document.getElementById("composer") as HTMLTextAreaElement;
+    composer.focus();
+    for (const window of ["capture", "settings", undefined, 7]) {
+      handlers[0]?.({ payload: { id: "x1", window, step: { kind: "type", text: "not for this window" } } });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(composer.value).toBe("");
+    expect(invoke).toHaveBeenCalledTimes(1);
+    handlers[0]?.({ payload: { id: "x2", window: "main", step: { kind: "type", text: "for this one" } } });
+    await vi.waitFor(() => expect(composer.value).toBe("for this one"));
   });
 
   it("ignores a payload without an id", async () => {
     const { host, handlers, invoke } = fakeHost();
     startDriver(host);
     await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
-    handlers[0]?.({ payload: { step: { kind: "text" } } });
+    handlers[0]?.({ payload: { window: "main", step: { kind: "text" } } });
     handlers[0]?.({ payload: null });
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(invoke).toHaveBeenCalledTimes(1);

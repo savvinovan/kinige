@@ -20,10 +20,6 @@ if (!root) throw new Error("no #root element");
 
 const api = new TauriApi();
 
-// The screens driver (KINIG-92): `undefined` in every normal build (`web/vite.config.ts`). It gets only the two Tauri functions the page
-// already uses; its event and command names live in the driver itself, so a normal bundle holds nothing of it.
-startDriver?.({ listen, invoke });
-
 /** One page for three windows: the capture window opens it with `#capture` (`tauri.conf.json`), the settings window with
  * `#settings` (created on first opening), the main one without a hash. */
 const isCaptureWindow = window.location.hash === "#capture";
@@ -32,6 +28,10 @@ const isSettingsWindow = window.location.hash === "#settings";
 if (isCaptureWindow) document.documentElement.dataset.window = "capture";
 // The settings window: the document does not scroll, only the page on the right does (ui/prefs/prefs.css).
 if (isSettingsWindow) document.documentElement.dataset.window = "settings";
+
+// The screens driver (KINIG-92): `undefined` in every normal build (`web/vite.config.ts`). It gets the two Tauri functions the page already
+// uses and its own window label; its event and command names live in the driver itself, so a normal bundle holds nothing of it.
+startDriver?.({ window: isSettingsWindow ? "settings" : isCaptureWindow ? "capture" : "main", listen, invoke });
 
 // The language and the text size are read before the first frame: the window does not flash a wrong language or size. Rust chooses the language by the system languages.
 const start = isSettingsWindow

@@ -151,7 +151,7 @@ mod with_the_driver {
         );
         assert_eq!(
             steps.lock().unwrap().as_slice(),
-            [json!({"id": "r1", "step": {"kind": "press", "name": "Play"}})]
+            [json!({"id": "r1", "window": "main", "step": {"kind": "press", "name": "Play"}})]
         );
         driven.tick();
         assert_eq!(steps.lock().unwrap().len(), 1, "a step is sent once");

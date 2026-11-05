@@ -9,6 +9,7 @@ declare module "virtual:kinige-mic" {
 declare module "virtual:kinige-driver" {
   export const startDriver:
     | ((host: {
+        window: string;
         listen: (event: string, handler: (event: { payload: unknown }) => void) => Promise<unknown>;
         invoke: (command: string, args: Record<string, unknown>) => Promise<unknown>;
       }) => void)

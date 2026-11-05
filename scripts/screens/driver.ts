@@ -38,13 +38,19 @@ export interface RunOptions {
   patienceMs?: number;
 }
 
-/** The two things this file needs from Tauri, passed in by `main.tsx` (this file cannot import the package from outside `web/`). */
+/** What this file needs from the page, passed in by `main.tsx` (this file cannot import the Tauri package from outside `web/`). */
 export interface DriverHost {
+  /** This window's label (`main`, `settings` or `capture`): a step addressed to another window is not ours to run. */
+  window: string;
   listen: (event: string, handler: (event: { payload: unknown }) => void) => Promise<unknown>;
   invoke: (command: string, args: Record<string, unknown>) => Promise<unknown>;
 }
 
-/** Subscribes to the steps of this window and says it is ready; a step that arrives before this is not delivered. */
+/**
+ * Subscribes to the steps and says this window is ready; a step that arrives before this is not delivered. The subscription is an `Any`
+ * listener, so tauri hands this page the steps meant for every window (`emit_to` reaches all `Any` listeners): the payload names its
+ * window and `handle` drops the others. Without that a hidden window would run a step meant for `main`.
+ */
 export function startDriver(host: DriverHost): void {
   void host
     .listen(STEP_EVENT, (event) => void handle(host, event.payload))
@@ -53,8 +59,8 @@ export function startDriver(host: DriverHost): void {
 }
 
 async function handle(host: DriverHost, payload: unknown): Promise<void> {
-  const request = payload as { id?: unknown; step?: unknown } | null;
-  if (typeof request?.id !== "string") return;
+  const request = payload as { id?: unknown; window?: unknown; step?: unknown } | null;
+  if (typeof request?.id !== "string" || request.window !== host.window) return;
   const answer = await runStep(request.step);
   const message = { kind: "reply", id: request.id, ok: answer.ok, value: answer.ok ? answer.value : undefined, error: answer.ok ? undefined : answer.error };
   await host.invoke(REPLY_COMMAND, { message }).catch(() => undefined);

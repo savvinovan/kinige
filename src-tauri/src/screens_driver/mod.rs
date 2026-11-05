@@ -275,7 +275,12 @@ fn handle_request<R: Runtime>(
         return;
     }
     if app
-        .emit_to(label, STEP_EVENT, json!({ "id": id, "step": step }))
+        // The window is in the payload: tauri hands `emit_to` events to every `Any` listener, and each page drops what is not its own.
+        .emit_to(
+            label,
+            STEP_EVENT,
+            json!({ "id": id, "window": label, "step": step }),
+        )
         .is_err()
     {
         state.forget_pending(id);
@@ -307,3 +312,7 @@ fn drop_stray(path: &Path) {
         let _ = fs::remove_file(path);
     }
 }
+
+#[cfg(test)]
+#[path = "state_tests.rs"]
+mod tests;
