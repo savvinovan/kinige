@@ -71,7 +71,7 @@ pub fn plan(lineage: &[Generation], drops: &[Drop], cursor: &Cursor) -> Plan {
 /// it pulled from 0 when it entered the branch, so it holds what the backup the branch was cut from held, and nothing that was
 /// compacted after that backup. **Which backup is the point:** the branch may itself have been restored from a backup of a branch
 /// (backup, restore, backup of the branch, restore that, and so on), so the device's own generation's cut time is a time on another
-/// /// branch's clock of events. What the device holds descends from the history it shares with this server up to the **fork**: the first
+/// branch's clock of events. What the device holds descends from the history it shares with this server up to the **fork**: the first
 /// generation of the device's lineage, after the first one this server has, that this server's lineage does not have, and the cut
 /// time of that generation is the time of the backup of the shared history it was restored from (the *fork cut*). Every drop of this
 /// server compacted at or after the fork cut is one the device has not seen, whichever generation it was made in. The rule is
