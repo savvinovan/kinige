@@ -15,6 +15,7 @@ pub const FORMAT: u32 = 1;
 pub const MANIFEST_FILE: &str = "manifest.json";
 pub const LINEAGE_FILE: &str = "lineage.json";
 pub const DELETIONS_FILE: &str = "deletions.json";
+pub const CREDENTIALS_FILE: &str = "credentials.json";
 /// The tables copied as text with `COPY`, in the order a restore loads them (`accounts` first: the others refer to it).
 pub const TABLES: [&str; 7] = [
     "accounts",
@@ -85,6 +86,7 @@ impl Manifest {
         let mut expected: Vec<String> = TABLES.iter().map(|t| table_path(t)).collect();
         expected.push(LINEAGE_FILE.to_string());
         expected.push(DELETIONS_FILE.to_string());
+        expected.push(CREDENTIALS_FILE.to_string());
         let mut have: Vec<&str> = self.files.iter().map(|e| e.path.as_str()).collect();
         have.sort_unstable();
         expected.sort_unstable();
@@ -111,19 +113,45 @@ impl Manifest {
         Ok(())
     }
 
-    /// Checks every file of the directory against its entry: it exists, has the length and the hash. Nothing is changed.
+    /// Checks every file of the directory against its entry, blobs included: it exists, has the length and the hash. Nothing is changed.
     pub async fn verify(&self, dir: &Path) -> Result<(), BackupError> {
-        for entry in self.files.iter().chain(&self.blobs) {
-            let path = dir.join(&entry.path);
-            let (len, hash) = hash_file(&path)
-                .await
-                .map_err(|_| BackupError::Missing(entry.path.clone()))?;
-            if len != entry.bytes || hash != entry.hash {
+        self.verify_dump(dir).await?;
+        match self.damaged_blobs(dir).await.first() {
+            Some(path) => Err(BackupError::Hash(path.clone())),
+            None => Ok(()),
+        }
+    }
+
+    /// Checks the files of the dump (the tables and the small files): without every one of them the database cannot be restored, and
+    /// a restore is refused.
+    pub async fn verify_dump(&self, dir: &Path) -> Result<(), BackupError> {
+        for entry in &self.files {
+            if !matches_entry(dir, entry).await? {
                 return Err(BackupError::Hash(entry.path.clone()));
             }
         }
         Ok(())
     }
+
+    /// The blob files of the directory that are missing or are not what the manifest says. One damaged blob must not make a backup
+    /// unrestorable (round 1 of the review of S4c-2): the restore marks such a blob deleted, and its device finds `missing`.
+    pub async fn damaged_blobs(&self, dir: &Path) -> Vec<String> {
+        let mut damaged = Vec::new();
+        for entry in &self.blobs {
+            if !matches!(matches_entry(dir, entry).await, Ok(true)) {
+                damaged.push(entry.path.clone());
+            }
+        }
+        damaged
+    }
+}
+
+/// Whether the file of `entry` is in `dir` with the entry's length and hash. A file that is not there is `Missing`.
+async fn matches_entry(dir: &Path, entry: &Entry) -> Result<bool, BackupError> {
+    let (len, hash) = hash_file(&dir.join(&entry.path))
+        .await
+        .map_err(|_| BackupError::Missing(entry.path.clone()))?;
+    Ok(len == entry.bytes && hash == entry.hash)
 }
 
 /// A row of `lineage.json`. The generation is a decimal string: a random 63-bit number is not safe in a JSON number.
@@ -140,6 +168,22 @@ pub struct Deletion {
     /// Lower-case hex of `crypto_generichash(account_id)`.
     pub account_hash: String,
     pub deleted_ms: u64,
+}
+
+/// A row of `credentials.json` (ADR-0001 §8.9): the credentials an account had after a change, with the time. Bytes are lower-case hex.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CredentialRow {
+    /// Lower-case hex of `crypto_generichash(account_id)`.
+    pub account_hash: String,
+    pub cred_version: u64,
+    pub salt: String,
+    pub profile: i16,
+    pub auth_hash: String,
+    pub rc_hash: String,
+    pub key_id: i32,
+    pub wrap_pw: String,
+    pub wrap_rc: String,
+    pub changed_ms: u64,
 }
 
 pub fn table_path(table: &str) -> String {
@@ -176,7 +220,7 @@ mod tests {
                 hash: "0".repeat(64),
             })
             .collect();
-        for name in [LINEAGE_FILE, DELETIONS_FILE] {
+        for name in [LINEAGE_FILE, DELETIONS_FILE, CREDENTIALS_FILE] {
             files.push(Entry {
                 path: name.to_string(),
                 bytes: 0,

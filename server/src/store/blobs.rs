@@ -49,18 +49,6 @@ pub async fn state(
     })
 }
 
-/// What the account holds in published, not deleted blobs.
-pub async fn live_total(pool: &Pool, account: &str) -> Result<u64, ApiError> {
-    let client = pool.get().await?;
-    let row = client
-        .query_one(
-            "SELECT COALESCE(sum(size), 0)::bigint FROM blobs WHERE account_id = $1 AND deleted_ms IS NULL",
-            &[&account],
-        )
-        .await?;
-    Ok(to_u64(row.try_get(0)?))
-}
-
 /// Records a published blob, once, for an account that still exists.
 pub async fn publish(
     pool: &Pool,
@@ -94,12 +82,67 @@ pub async fn publish(
             ],
         )
         .await?;
+    if inserted == 1 {
+        tx.commit().await?;
+        return Ok(Published::New);
+    }
+    // Nothing was inserted: either the account is gone, or the row appeared between the look above and the insert (another process
+    // published the id). The two must not be confused: the caller deletes the object of an account that is gone and never the object
+    // of a row that exists (round 1 of the review of S4c-2).
+    let row_exists = tx
+        .query_opt(
+            "SELECT deleted_ms FROM blobs WHERE account_id = $1 AND blob_id = $2",
+            &[&account, &blob],
+        )
+        .await?;
     tx.commit().await?;
-    Ok(if inserted == 1 {
-        Published::New
-    } else {
-        Published::AccountGone
+    Ok(match row_exists {
+        Some(row) => {
+            let deleted: Option<i64> = row.try_get("deleted_ms")?;
+            Published::AlreadyThere(deleted.map_or(Known::Published, |_| Known::Deleted))
+        }
+        None => Published::AccountGone,
     })
+}
+
+/// Reserves an upload in the quota **atomically**: the account's row is locked (the lock of a push, so a push of the account waits
+/// for it for the time of a file creation and no longer), the published blobs are summed, and `open` creates the staging file whose name
+/// declares the size, all before the lock is let go; a second reservation of the same account then sees this one. Without the lock two
+/// concurrent starts each saw the room the other was about to take. `Quota` if the account's room is not enough, `Auth` if it is gone.
+pub async fn reserve<T, F, Fut>(
+    pool: &Pool,
+    account: &str,
+    size: u64,
+    quota: u64,
+    declared_by_others: impl FnOnce() -> F,
+    open: impl FnOnce() -> Fut,
+) -> Result<T, ApiError>
+where
+    F: std::future::Future<Output = u64>,
+    Fut: std::future::Future<Output = Result<T, ApiError>>,
+{
+    let mut client = pool.get().await?;
+    let tx = client.transaction().await?;
+    tx.query_opt(
+        "SELECT 1 FROM accounts WHERE id = $1 FOR UPDATE",
+        &[&account],
+    )
+    .await?
+    .ok_or(ApiError::Auth)?;
+    let live = tx
+        .query_one(
+            "SELECT COALESCE(sum(size), 0)::bigint FROM blobs WHERE account_id = $1 AND deleted_ms IS NULL",
+            &[&account],
+        )
+        .await?;
+    let live = to_u64(live.try_get(0)?);
+    let others = declared_by_others().await;
+    if live.saturating_add(others).saturating_add(size) > quota {
+        return Err(ApiError::Quota);
+    }
+    let opened = open().await?;
+    tx.commit().await?;
+    Ok(opened)
 }
 
 /// Marks a blob of the account deleted (the delayed deletion starts here). True if a live blob was marked.

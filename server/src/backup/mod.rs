@@ -3,17 +3,23 @@
 //! needs no `pg_dump` of a matching version), the object of every published blob, and a manifest with the cut time and the hash of every
 //! file. `kinige-server restore <dir>/<backup>` loads it, into the installation it came from or into a clean one, by the same code.
 //!
+//! The dump carries two journals besides the tables: the deletion journal and the credential journal (`journal.rs`), which a restore
+//! re-applies, so that neither a deleted account nor a leaked password comes back with an old backup.
+//!
 //! What the dump leaves out, on purpose: **sessions** (a restore must not bring back a session that a logout, a password change or a
 //! recovery had ended; every device logs in again) and unfinished uploads (they are files in the staging area, and the client starts
 //! over).
 
 mod create;
+pub mod journal;
 pub mod manifest;
 mod restore;
+mod rotate;
 
-pub use create::{Pruned, create, prune};
+pub use create::create;
 pub use manifest::Manifest;
 pub use restore::{Report, restore};
+pub use rotate::{Pruned, prune};
 
 use crate::error::ApiError;
 use std::fmt;
@@ -32,6 +38,8 @@ pub enum BackupError {
     Missing(String),
     /// A file's length or hash is not the manifest's.
     Hash(String),
+    /// A server is running on this database: a restore replaces the tables under it. Stop the server first.
+    ServerRunning,
     /// The backup was taken from another schema than this server's.
     Schema { backup: i32, server: i32 },
 }
@@ -67,11 +75,23 @@ impl fmt::Display for BackupError {
             BackupError::Store => write!(f, "the blob store failed or is missing a blob"),
             BackupError::Manifest(why) => write!(f, "the manifest is not usable: {why}"),
             BackupError::Missing(path) => {
-                write!(f, "{path} is listed in the manifest and is not there")
+                write!(
+                    f,
+                    "{} is listed in the manifest and is not there",
+                    label(path)
+                )
             }
             BackupError::Hash(path) => {
-                write!(f, "{path} is not what the manifest says (length or hash)")
+                write!(
+                    f,
+                    "{} is not what the manifest says (length or hash)",
+                    label(path)
+                )
             }
+            BackupError::ServerRunning => write!(
+                f,
+                "a server is running on this database: stop it before a restore"
+            ),
             BackupError::Schema { backup, server } => write!(
                 f,
                 "the backup is of schema {backup} and this server is of schema {server}"
@@ -81,3 +101,13 @@ impl fmt::Display for BackupError {
 }
 
 impl std::error::Error for BackupError {}
+
+/// What the message says of a file: the name of a dump file, and for a blob only that it is one. A blob's path holds the account id and
+/// the blob id, and an id is never written to a log or to the output of a command (ADR-0001 §8.8).
+fn label(path: &str) -> &str {
+    if path.starts_with("blobs/") {
+        "a blob file"
+    } else {
+        path
+    }
+}

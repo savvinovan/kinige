@@ -73,6 +73,64 @@ pub async fn login_token(rig: &Rig, creds: &kinige_server::testing::Creds) -> St
     answer["token"].as_str().expect("a token").to_string()
 }
 
+/// A number field of a row that `rows` returned.
+pub fn field(row: &str, name: &str) -> u64 {
+    let after = row.split(&format!("\"{name}\":")).nth(1).expect("a field");
+    after
+        .trim_end_matches(['}', ' '])
+        .split(',')
+        .next()
+        .expect("a value")
+        .parse()
+        .expect("a number")
+}
+
+/// The status of a login with `key` (no session is kept).
+pub async fn login_status(
+    rig: &Rig,
+    creds: &kinige_server::testing::Creds,
+    key: &[u8; 32],
+) -> StatusCode {
+    rig.http
+        .post(
+            "/v1/login",
+            None,
+            &serde_json::json!({"login": creds.login, "auth_key": b64(key)}),
+        )
+        .await
+        .0
+}
+
+/// `POST /v1/account/delete` with a session and the password's key.
+pub async fn delete_account(
+    rig: &Rig,
+    acct: &Acct,
+    key: &[u8; 32],
+) -> (StatusCode, serde_json::Value) {
+    rig.http
+        .post(
+            "/v1/account/delete",
+            Some(&acct.token),
+            &serde_json::json!({"auth_key": b64(key)}),
+        )
+        .await
+}
+
+/// A password change from `old` (credential version `version`) to a new random password; returns the new key.
+pub async fn change_password(rig: &Rig, acct: &Acct, version: u64, old: &[u8; 32]) -> [u8; 32] {
+    let (part, new_key, _, _) = acct.creds.new_password(1);
+    let (status, answer) = rig
+        .http
+        .post(
+            "/v1/password/change",
+            Some(&acct.token),
+            &serde_json::json!({"auth_key": b64(old), "expected_version": version, "new": part, "revoke_others": false}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{answer}");
+    new_key
+}
+
 /// A table (or any query) as JSON text, one string per row, in the order the SQL gives.
 pub async fn rows(rig: &Rig, sql: &str) -> Vec<String> {
     let client = rig.state.pool.get().await.expect("connection");

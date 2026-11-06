@@ -52,10 +52,8 @@ pub async fn put(
     )
     .map_err(refusal)?;
     let remaining = size.saturating_sub(offset);
-    match plan {
-        Put::Exists => return Ok(put_answer(BlobPutOutcome::Exists, size)),
-        Put::Start => reserve(&app, &account, &blob, size).await?,
-        Put::Resume => {}
+    if plan == Put::Exists {
+        return Ok(put_answer(BlobPutOutcome::Exists, size));
     }
     // Declared lengths are judged before a byte is read (the request cap and what the blob still needs).
     let declared = number(&headers, header::CONTENT_LENGTH.as_str())?;
@@ -63,15 +61,30 @@ pub async fn put(
         return Err(ApiError::TooLarge);
     }
     let keep = if plan == Put::Start { 0 } else { offset };
-    let (mut file, path) = app
-        .blobs
-        .staging
-        .open(&account, &blob, size, keep)
-        .await
-        .map_err(|error| {
-            log::error!("the staging file cannot be opened: {:?}", error.kind());
-            ApiError::Internal
-        })?;
+    // A start reserves its room in the quota and creates its staging file in one step under the account's lock; a resume has its room.
+    let open = || async {
+        app.blobs
+            .staging
+            .open(&account, &blob, size, keep)
+            .await
+            .map_err(|error| {
+                log::error!("the staging file cannot be opened: {:?}", error.kind());
+                ApiError::Internal
+            })
+    };
+    let (mut file, path) = if plan == Put::Start {
+        blobs::reserve(
+            &app.pool,
+            &account,
+            size,
+            app.config.blob_quota,
+            || app.blobs.staging.declared_total(&account, &blob),
+            open,
+        )
+        .await?
+    } else {
+        open().await?
+    };
     let limit = remaining.min(app.config.blob_request_max);
     let mut written = 0u64;
     let mut source = GuardedBody::new(body, &app.config);
@@ -232,17 +245,6 @@ pub async fn delete(
     Ok(json(StatusCode::OK, &serde_json::json!({})))
 }
 
-/// Checks the quota before an upload is reserved: what the account has published and what its other unfinished uploads declare, plus
-/// this one.
-async fn reserve(app: &AppState, account: &str, blob: &str, size: u64) -> Result<(), ApiError> {
-    let live = blobs::live_total(&app.pool, account).await?;
-    let others = app.blobs.staging.declared_total(account, blob).await;
-    if live.saturating_add(others).saturating_add(size) > app.config.blob_quota {
-        return Err(ApiError::Quota);
-    }
-    Ok(())
-}
-
 /// The last byte is in: the object goes to the store (durable and visible), then the row is written, then the staging file goes.
 async fn publish(
     app: &AppState,
@@ -272,6 +274,7 @@ async fn publish(
             }
         }
         Published::AccountGone => {
+            // Only here, where no row of this id exists and no account can have one: never the object of a row that exists.
             let _ = app.blobs.objects.delete(&key).await;
             app.blobs.staging.remove(account, blob).await;
             Err(ApiError::Auth)

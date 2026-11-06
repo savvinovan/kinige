@@ -11,10 +11,12 @@
 //!    without a manifest, or still named `.tmp-…`, is a backup that did not finish and is never used.
 
 use super::BackupError;
+use super::journal::Journals;
 use super::manifest::{
-    DELETIONS_FILE, Deletion, Entry, FORMAT, LINEAGE_FILE, LineageRow, MANIFEST_FILE, Manifest,
-    TABLES, table_path,
+    CREDENTIALS_FILE, DELETIONS_FILE, Entry, FORMAT, LINEAGE_FILE, LineageRow, MANIFEST_FILE,
+    Manifest, TABLES, hash_file, table_path,
 };
+use super::rotate::newest_valid;
 use crate::blobs::object_key;
 use crate::blobs::objects::{ObjectError, Objects};
 use crate::clock::Clock;
@@ -28,9 +30,6 @@ use std::path::{Path, PathBuf};
 use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
 use tokio_postgres::IsolationLevel;
-
-/// A day: a half-written backup directory older than this is removed by the next prune.
-const TMP_MAX_AGE_MS: u64 = 24 * 60 * 60 * 1000;
 
 /// Writes a backup under `root` and returns its directory and manifest. On any failure nothing is left under `root`.
 pub async fn create(
@@ -77,8 +76,13 @@ async fn build(
     let mut client = pool.get().await?;
     let guard = pool.get().await?;
     lock::exclusive(&guard).await?;
-    let cut_ms = clock.now_ms();
-    let opened = open_snapshot(&mut client).await;
+    // The cut time is the database's clock (or the injected one of a test), raised above the newest cut of the lineage: the same
+    // stamp a compaction, a deletion and a credential change get, read under the same lock (`store::lock`).
+    let connection: &tokio_postgres::Client = &guard;
+    let (cut_ms, opened) = match lock::stamp(connection, clock).await {
+        Ok(cut_ms) => (cut_ms, open_snapshot(&mut client).await),
+        Err(error) => (0, Err(error.into())),
+    };
     let released = lock::release(&guard).await;
     drop(guard);
     let tx = opened?;
@@ -99,7 +103,10 @@ async fn dump_and_copy(
         files.push(dump_table(&tx, tmp, table).await?);
     }
     files.push(dump_lineage(&tx, tmp).await?);
-    files.push(dump_deletions(&tx, tmp).await?);
+    // The journals: read by the code the restore reads the installation's with, in the same snapshot.
+    let journals = Journals::of_installation(&tx).await?;
+    files.push(json_entry(tmp, DELETIONS_FILE, &journals.deletions).await?);
+    files.push(json_entry(tmp, CREDENTIALS_FILE, &journals.credentials).await?);
     let live = live_blobs(&tx).await?;
     tx.commit().await?;
     let mut blobs = Vec::new();
@@ -192,25 +199,6 @@ async fn dump_lineage(tx: &Transaction<'_>, tmp: &Path) -> Result<Entry, BackupE
     json_entry(tmp, LINEAGE_FILE, &lineage).await
 }
 
-async fn dump_deletions(tx: &Transaction<'_>, tmp: &Path) -> Result<Entry, BackupError> {
-    let rows = tx
-        .query(
-            "SELECT account_hash, deleted_ms FROM deletions ORDER BY deleted_ms, account_hash",
-            &[],
-        )
-        .await?;
-    let journal: Vec<Deletion> = rows
-        .iter()
-        .map(|row| {
-            Ok(Deletion {
-                account_hash: hex(&row.try_get::<_, Vec<u8>>("account_hash")?),
-                deleted_ms: to_u64(row.try_get("deleted_ms")?),
-            })
-        })
-        .collect::<Result<_, tokio_postgres::Error>>()?;
-    json_entry(tmp, DELETIONS_FILE, &journal).await
-}
-
 /// The blobs that are published and not deleted at the snapshot: `(account, blob, size)`.
 async fn live_blobs(tx: &Transaction<'_>) -> Result<Vec<(String, String, u64)>, BackupError> {
     let rows = tx
@@ -248,8 +236,14 @@ async fn copy_blob(
             .await
             .map_err(io("create a blob directory"))?;
     }
+    // Linked only after the earlier backup's file has been hashed and found to be what that backup's manifest says: a damaged file
+    // would otherwise be linked into every later backup and make all of them unrestorable (round 1 of the review of S4c-2). On a
+    // mismatch the object is copied from the store.
     if let Some((old, entry)) = reuse.get(&path)
         && entry.bytes == size
+        && hash_file(old)
+            .await
+            .is_ok_and(|(len, hash)| len == entry.bytes && hash == entry.hash)
         && fs::hard_link(old, &target).await.is_ok()
     {
         return Ok(Entry {
@@ -273,76 +267,6 @@ async fn copy_blob(
         return Err(BackupError::Store);
     }
     Ok(Entry { path, bytes, hash })
-}
-
-/// What `prune` removed.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Pruned {
-    pub backups: Vec<String>,
-    pub unfinished: usize,
-}
-
-/// Removes the backups under `root` whose cut time is older than `retention_ms`, **except the newest one**: a server that has not been
-/// backed up for longer than the retention keeps its last backup. Half-written directories older than a day go too. A directory that
-/// is not a valid backup is never removed.
-pub async fn prune(root: &Path, now_ms: u64, retention_ms: u64) -> Result<Pruned, BackupError> {
-    let mut pruned = Pruned::default();
-    let mut valid = Vec::new();
-    let mut entries = fs::read_dir(root)
-        .await
-        .map_err(io("read the backup directory"))?;
-    while let Some(entry) = entries
-        .next_entry()
-        .await
-        .map_err(io("read the backup directory"))?
-    {
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let path = entry.path();
-        if name.starts_with(".tmp-") {
-            let old = fs::metadata(&path)
-                .await
-                .ok()
-                .and_then(|meta| meta.modified().ok())
-                .and_then(|modified| std::time::SystemTime::now().duration_since(modified).ok())
-                .is_some_and(|age| age.as_millis() >= u128::from(TMP_MAX_AGE_MS));
-            if old && fs::remove_dir_all(&path).await.is_ok() {
-                pruned.unfinished += 1;
-            }
-        } else if let Ok(manifest) = Manifest::read(&path).await {
-            valid.push((manifest.cut_ms, path, name));
-        }
-    }
-    valid.sort();
-    let newest = valid.len().saturating_sub(1);
-    for (index, (cut_ms, path, name)) in valid.into_iter().enumerate() {
-        if index != newest
-            && now_ms.saturating_sub(cut_ms) > retention_ms
-            && fs::remove_dir_all(&path).await.is_ok()
-        {
-            pruned.backups.push(name);
-        }
-    }
-    Ok(pruned)
-}
-
-/// The newest valid backup under `root`: the one whose blobs the next backup may link to.
-async fn newest_valid(root: &Path) -> Option<(PathBuf, Manifest)> {
-    let mut entries = fs::read_dir(root).await.ok()?;
-    let mut best: Option<(PathBuf, Manifest)> = None;
-    while let Ok(Some(entry)) = entries.next_entry().await {
-        let path = entry.path();
-        if entry.file_name().to_string_lossy().starts_with(".tmp-") {
-            continue;
-        }
-        if let Ok(manifest) = Manifest::read(&path).await
-            && best
-                .as_ref()
-                .is_none_or(|(_, held)| manifest.cut_ms > held.cut_ms)
-        {
-            best = Some((path, manifest));
-        }
-    }
-    best
 }
 
 /// `backup-<cut time>`, with a suffix if two backups were cut in the same millisecond.

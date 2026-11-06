@@ -1,26 +1,28 @@
-//! `kinige-server restore <backup directory>` (ADR-0020). One code path for "in place" and "into a clean installation": the target
-//! database is migrated (a clean one gets its schema), then in **one transaction** its tables are emptied and loaded from the dump, a
-//! fresh generation is appended to the lineage with the backup's cut time, the deletions newer than the cut time are applied again, and
-//! the sessions are gone. The server must be stopped: nothing here coordinates with a running one beyond the backup lock.
+//! `kinige-server restore <backup directory>` (ADR-0020). One code path for "in place" and "into a clean installation", with the server
+//! stopped: a running server holds a session advisory lock (`store::lock::ServerLock`) and a restore that cannot take it exclusively
+//! refuses to run. The target database is migrated (a clean one gets its schema), then in **one transaction** its tables are emptied and
+//! loaded from the dump, a fresh generation is appended to the lineage with the backup's cut time, the journals are re-applied (accounts
+//! deleted after the backup are deleted again, credentials changed after it are put back), and the sessions are gone.
 //!
-//! Before the database is touched the whole directory is checked against its manifest, then the blobs are copied into the store
-//! (objects never change, so extra ones are harmless and a failed restore has changed nothing a client can see). After the commit, every
+//! Before the database is touched the files of the dump are checked against the manifest; a **blob** file that is missing or damaged
+//! does not stop the restore (it would make every backup unrestorable for one bad file): its row is marked deleted, its device finds
+//! `missing`, and the restore ends with an error line and a non-zero exit. The blobs are then copied into the store (an object that is
+//! already there is kept only if its hash is the manifest's; objects a failed restore put are removed again). After the commit, every
 //! object that no restored row refers to is adopted as a deleted blob: it leaves the store after the retention like any other.
 
 use super::BackupError;
-use super::manifest::{
-    DELETIONS_FILE, Deletion, LINEAGE_FILE, LineageRow, Manifest, TABLES, table_path,
-};
+use super::journal::{Applied, Journals, apply, mark_damaged};
+use super::manifest::{Entry, LINEAGE_FILE, LineageRow, Manifest, TABLES, table_path};
 use crate::blobs::objects::Objects;
+use crate::blobs::parse_key;
 use crate::blobs::sweep::adopt_orphans;
 use crate::clock::Clock;
-use crate::hashing::{account_hash, hex};
-use crate::store::{self, blobs, lock, to_i64};
+use crate::rules::pull::MAX_LINEAGE;
+use crate::store::{self, lock, to_i64};
 use axum::body::Bytes;
 use deadpool_postgres::{Pool, Transaction};
 use futures_util::SinkExt;
 use libsodium_rs::random;
-use std::collections::HashMap;
 use std::path::Path;
 use tokio::fs::{self, File};
 use tokio::io::AsyncReadExt;
@@ -33,11 +35,34 @@ pub struct Report {
     pub cut_ms: u64,
     /// Accounts removed again because the deletion journal says they were deleted after the cut time.
     pub deletions_applied: usize,
+    /// Accounts whose credentials were put back to what the credential journal says they were after the cut time.
+    pub credentials_applied: usize,
     /// Objects in the store that no restored row refers to, now deleted blobs.
     pub orphans: usize,
+    /// The scan for such objects failed after the commit. The restore is done; the next sweep adopts them.
+    pub orphan_scan_failed: bool,
+    /// Blobs of the backup whose file was missing or damaged: their rows are marked deleted (`missing` for a device). The command
+    /// reports it as an error and exits non-zero, with the database restored.
+    pub damaged_blobs: usize,
 }
 
 pub async fn restore(
+    pool: &Pool,
+    objects: &Objects,
+    clock: &dyn Clock,
+    dir: &Path,
+) -> Result<Report, BackupError> {
+    // Held on a connection of its own for the whole restore: a server on this database holds the same lock, shared.
+    let guard = pool.get().await?;
+    if !lock::try_restore(&guard).await? {
+        return Err(BackupError::ServerRunning);
+    }
+    let result = run(pool, objects, clock, dir).await;
+    let _ = lock::release_restore(&guard).await;
+    result
+}
+
+async fn run(
     pool: &Pool,
     objects: &Objects,
     clock: &dyn Clock,
@@ -51,27 +76,28 @@ pub async fn restore(
             server,
         });
     }
-    manifest.verify(dir).await?;
+    manifest.verify_dump(dir).await?;
+    let damaged: Vec<(String, String)> = manifest
+        .damaged_blobs(dir)
+        .await
+        .iter()
+        .filter_map(|path| parse_key(path.strip_prefix("blobs/")?))
+        .collect();
     // Everything that can be judged without the database is judged first: a dump file that is valid by its hash and wrong in content
     // is refused here, before an object is copied.
     let lineage = parse_lineage(read_json(&dir.join(LINEAGE_FILE)).await?)?;
-    let mut journal = checked(read_json(&dir.join(DELETIONS_FILE)).await?)?;
-    // A neighbour with a journal that is not one is passed over: it must not block the restore of this backup.
-    journal.extend(checked(newest_other_journal(dir).await).unwrap_or_default());
+    let mut journals = Journals::of_backup(dir, &manifest).await?;
+    journals.extend(Journals::of_newest_neighbour(dir).await);
     store::migrate(pool).await?;
     let mut copied = Vec::new();
-    let loaded = load(
-        pool,
-        objects,
-        clock.now_ms(),
+    let plan = Plan {
         dir,
-        &manifest,
-        &lineage,
-        journal,
-        &mut copied,
-    )
-    .await;
-    let (generation, deletions_applied, now_ms) = match loaded {
+        manifest: &manifest,
+        lineage: &lineage,
+        damaged: &damaged,
+    };
+    let loaded = load(pool, objects, clock, &plan, journals, &mut copied).await;
+    let (generation, applied, now_ms) = match loaded {
         Ok(done) => done,
         Err(error) => {
             // The objects this restore put into the store are removed again; the database rolled back with its transaction.
@@ -81,32 +107,63 @@ pub async fn restore(
             return Err(error);
         }
     };
-    let orphans = adopt_orphans(pool, objects, now_ms, 0).await?;
+    // The restore is done; a failure of this scan is a warning and not a failure of the restore.
+    let (orphans, orphan_scan_failed) = match adopt_orphans(pool, objects, now_ms, 0).await {
+        Ok(count) => (count, false),
+        Err(_) => {
+            log::warn!(
+                "restore done, but the scan for objects without a row failed; the next sweep does it"
+            );
+            (0, true)
+        }
+    };
+    if !damaged.is_empty() {
+        log::error!(
+            "{} blobs of the backup were missing or damaged: their rows are marked deleted and their devices will find them missing",
+            damaged.len()
+        );
+    }
     log::info!(
-        "restore done, {deletions_applied} deletions applied, {orphans} orphan objects adopted"
+        "restore done, {} deletions and {} credential changes applied again, {orphans} orphan objects adopted",
+        applied.deletions,
+        applied.credentials
     );
     Ok(Report {
         generation,
         cut_ms: manifest.cut_ms,
-        deletions_applied,
+        deletions_applied: applied.deletions,
+        credentials_applied: applied.credentials,
         orphans,
+        orphan_scan_failed,
+        damaged_blobs: damaged.len(),
     })
 }
 
-/// The blobs into the store, then the database in one transaction. Returns the new generation, the deletions applied again and the time.
-#[allow(clippy::too_many_arguments)]
+/// What a restore loads, checked.
+struct Plan<'a> {
+    dir: &'a Path,
+    manifest: &'a Manifest,
+    lineage: &'a [Gen],
+    /// `(account_id, blob_id)` of the blobs whose file is missing or damaged.
+    damaged: &'a [(String, String)],
+}
+
+/// The blobs into the store, then the database in one transaction. Returns the new generation, what the journals did and the time.
 async fn load(
     pool: &Pool,
     objects: &Objects,
-    now_ms: u64,
-    dir: &Path,
-    manifest: &Manifest,
-    lineage: &[Gen],
-    mut journal: Vec<Deletion>,
+    clock: &dyn Clock,
+    plan: &Plan<'_>,
+    mut journals: Journals,
     copied: &mut Vec<String>,
-) -> Result<(u64, usize, u64), BackupError> {
-    for entry in &manifest.blobs {
-        if let Some(key) = copy_blob_in(objects, dir, &entry.path, entry.bytes).await? {
+) -> Result<(u64, Applied, u64), BackupError> {
+    let skipped = |entry: &Entry| {
+        plan.damaged.iter().any(|(account, blob)| {
+            entry.path.strip_prefix("blobs/") == Some(format!("{account}/{blob}").as_str())
+        })
+    };
+    for entry in plan.manifest.blobs.iter().filter(|e| !skipped(e)) {
+        if let Some(key) = copy_blob_in(objects, plan.dir, entry).await? {
             copied.push(key);
         }
     }
@@ -114,17 +171,21 @@ async fn load(
     let tx = client.transaction().await?;
     tx.execute("SELECT pg_advisory_xact_lock($1)", &[&lock::BACKUP_LOCK])
         .await?;
-    // The journal of the installation being replaced, read before it is emptied: the deletions made since the backup are in it.
-    journal.extend(current_journal(&tx).await?);
+    // The journals of the installation being replaced, read before it is emptied: what happened since the backup is in them.
+    journals.extend(Journals::of_installation(&tx).await?);
     tx.batch_execute(
-        "TRUNCATE accounts, envelopes, ops, entity_known, purged_entities, drops, sessions, blobs, deletions, lineage CASCADE",
+        "TRUNCATE accounts, envelopes, ops, entity_known, purged_entities, drops, sessions, blobs, deletions, credential_changes, lineage CASCADE",
     )
     .await?;
     for table in TABLES {
-        load_table(&tx, dir, table).await?;
+        load_table(&tx, plan.dir, table).await?;
     }
-    let generation = append_generation(&tx, lineage, manifest.cut_ms).await?;
-    let applied = apply_journal(&tx, &journal, manifest.cut_ms, now_ms).await?;
+    let generation = append_generation(&tx, plan.lineage, plan.manifest.cut_ms).await?;
+    // After the generation is in: the stamp is raised above the newest cut time of the lineage, the backup's included, whatever this
+    // host's clock says.
+    let now_ms = lock::stamp(&*tx, clock).await?;
+    let applied = apply(&tx, &journals, plan.manifest.cut_ms, now_ms).await?;
+    mark_damaged(&tx, plan.damaged, now_ms).await?;
     tx.commit().await?;
     Ok((generation, applied, now_ms))
 }
@@ -152,34 +213,20 @@ fn parse_lineage(rows: Vec<LineageRow>) -> Result<Vec<Gen>, BackupError> {
         .collect()
 }
 
-/// The journal entries whose hash is a hash and whose time is a time; any other entry makes the whole journal unusable.
-fn checked(journal: Vec<Deletion>) -> Result<Vec<Deletion>, BackupError> {
-    let fine = journal.iter().all(|entry| {
-        entry.account_hash.len() == 64
-            && crate::hashing::unhex(&entry.account_hash).is_some()
-            && i64::try_from(entry.deleted_ms).is_ok()
-    });
-    if fine {
-        Ok(journal)
-    } else {
-        Err(BackupError::Manifest("a journal entry is not a hash"))
-    }
-}
-
-/// Puts a backed-up object into the store unless the store already has an object of that size under that key (an in-place restore).
-/// Returns the key if it put one.
+/// Puts a backed-up object into the store unless the store already has an object under that key with the **manifest's hash** (an
+/// in-place restore): the same size is not enough, a damaged object of the right size must be repaired. Returns the key if it put one.
 async fn copy_blob_in(
     objects: &Objects,
     dir: &Path,
-    path: &str,
-    bytes: u64,
+    entry: &Entry,
 ) -> Result<Option<String>, BackupError> {
-    let key = path.strip_prefix("blobs/").unwrap_or(path);
-    if objects.size(key).await.map_err(|_| BackupError::Store)? == Some(bytes) {
+    let key = entry.path.strip_prefix("blobs/").unwrap_or(&entry.path);
+    let held = objects.hash_of(key).await.map_err(|_| BackupError::Store)?;
+    if held.is_some_and(|(size, hash)| size == entry.bytes && hash == entry.hash) {
         return Ok(None);
     }
     objects
-        .put_file(key, &dir.join(path))
+        .put_file(key, &dir.join(&entry.path))
         .await
         .map_err(|_| BackupError::Store)?;
     Ok(Some(key.to_string()))
@@ -209,7 +256,8 @@ async fn load_table(tx: &Transaction<'_>, dir: &Path, table: &str) -> Result<(),
     Ok(())
 }
 
-/// The restored lineage and one generation more: a random 63-bit id not in it, cut at the backup's time (ADR-0001 §6.3).
+/// The restored lineage and one generation more: a random 63-bit id not in it, cut at the backup's time (ADR-0001 §6.3). The lineage is
+/// kept to its newest `MAX_LINEAGE` generations: one restore adds one, and a device sends its lineage with every pull.
 async fn append_generation(
     tx: &Transaction<'_>,
     lineage: &[Gen],
@@ -239,99 +287,13 @@ async fn append_generation(
         ],
     )
     .await?;
+    let keep = i64::try_from(MAX_LINEAGE).unwrap_or(64);
+    tx.execute(
+        "DELETE FROM lineage WHERE pos <= (SELECT pos FROM lineage ORDER BY pos DESC OFFSET $1 LIMIT 1)",
+        &[&keep],
+    )
+    .await?;
     Ok(u64::try_from(generation).unwrap_or(0))
-}
-
-/// Re-applies the journal: for each entry newer than the cut time whose account is in the restored data, the account is deleted again
-/// (its blobs get the delayed deletion), and every entry is kept in the restored journal (the earliest time per account).
-async fn apply_journal(
-    tx: &Transaction<'_>,
-    journal: &[Deletion],
-    cut_ms: u64,
-    now_ms: u64,
-) -> Result<usize, BackupError> {
-    let mut earliest: HashMap<&str, u64> = HashMap::new();
-    for entry in journal {
-        let slot = earliest
-            .entry(entry.account_hash.as_str())
-            .or_insert(u64::MAX);
-        *slot = (*slot).min(entry.deleted_ms);
-    }
-    for (hash, deleted_ms) in &earliest {
-        let Some(bytes) = crate::hashing::unhex(hash) else {
-            return Err(BackupError::Manifest("a journal entry is not a hash"));
-        };
-        tx.execute(
-            "INSERT INTO deletions (account_hash, deleted_ms) VALUES ($1, $2) ON CONFLICT (account_hash) DO NOTHING",
-            &[&bytes, &to_i64(*deleted_ms, "deleted")?],
-        )
-        .await?;
-    }
-    let mut applied = 0;
-    for row in tx.query("SELECT id FROM accounts", &[]).await? {
-        let id: String = row.try_get("id")?;
-        let Some(hash) = account_hash(&id) else {
-            continue;
-        };
-        // `>=`: a deletion stamped at the cut time itself may not be in the dump (`store::lock`).
-        if earliest
-            .get(hex(&hash).as_str())
-            .is_some_and(|ms| *ms >= cut_ms)
-        {
-            blobs::mark_account_deleted(tx, &id, now_ms).await?;
-            tx.execute("DELETE FROM accounts WHERE id = $1", &[&id])
-                .await?;
-            applied += 1;
-        }
-    }
-    Ok(applied)
-}
-
-/// The journal of the installation in the target database (empty for a clean one).
-async fn current_journal(tx: &Transaction<'_>) -> Result<Vec<Deletion>, BackupError> {
-    let rows = tx
-        .query("SELECT account_hash, deleted_ms FROM deletions", &[])
-        .await?;
-    rows.iter()
-        .map(|row| {
-            Ok(Deletion {
-                account_hash: hex(&row.try_get::<_, Vec<u8>>("account_hash")?),
-                deleted_ms: crate::store::to_u64(row.try_get("deleted_ms")?),
-            })
-        })
-        .collect::<Result<_, tokio_postgres::Error>>()
-        .map_err(BackupError::from)
-}
-
-/// The journal of the newest backup next to `dir` (the backup being restored is not counted): when an older backup is restored into a
-/// clean installation this is where the later deletions are. A neighbour that is not a valid backup is passed over.
-async fn newest_other_journal(dir: &Path) -> Vec<Deletion> {
-    let Some(parent) = dir.parent() else {
-        return Vec::new();
-    };
-    let Ok(mut entries) = fs::read_dir(parent).await else {
-        return Vec::new();
-    };
-    let mut best: Option<(u64, Vec<Deletion>)> = None;
-    while let Ok(Some(entry)) = entries.next_entry().await {
-        let path = entry.path();
-        if path == dir {
-            continue;
-        }
-        let Ok(manifest) = Manifest::read(&path).await else {
-            continue;
-        };
-        if best
-            .as_ref()
-            .is_some_and(|(cut, _)| *cut >= manifest.cut_ms)
-        {
-            continue;
-        }
-        if let Ok(journal) = read_json::<Vec<Deletion>>(&path.join(DELETIONS_FILE)).await {
-            best = Some((manifest.cut_ms, journal));
-        }
-    }
-    best.map(|(_, journal)| journal).unwrap_or_default()
 }
 
 async fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, BackupError> {

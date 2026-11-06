@@ -6,6 +6,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub trait Clock: Send + Sync {
     /// Milliseconds since the Unix epoch.
     fn now_ms(&self) -> u64;
+
+    /// Whether the time that matters for a stamp or a backup's cut time is the **database's** clock, read inside the locked transaction
+    /// (`store::lock::stamp`): the production clock. One process's wall clock is not enough, because the backup may run on another
+    /// host than the server, and a restore into a clean installation on a host whose clock is behind. A test clock returns false and
+    /// is read as it is; both go through the same floor (never below the newest cut time of the lineage).
+    fn is_wall_clock(&self) -> bool {
+        false
+    }
 }
 
 /// Production: the system clock. A clock before 1970 reads as 0.
@@ -19,6 +27,10 @@ impl Clock for SystemClock {
             .ok()
             .and_then(|elapsed| u64::try_from(elapsed.as_millis()).ok())
             .unwrap_or(0)
+    }
+
+    fn is_wall_clock(&self) -> bool {
+        true
     }
 }
 

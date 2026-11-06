@@ -180,6 +180,26 @@ impl Objects {
         Ok(listed)
     }
 
+    /// The size and BLAKE2b hash of the object, read through the store; `None` if there is no such object. A restore compares it with the
+    /// manifest to tell an object that is the backed-up one from one of the same size that is not (round 1 of the review of S4c-2).
+    pub async fn hash_of(&self, key: &str) -> Result<Option<(u64, String)>, ObjectError> {
+        let Some(size) = self.size(key).await? else {
+            return Ok(None);
+        };
+        let mut hasher = Hasher::new();
+        if size > 0 {
+            let whole = ByteRange {
+                start: 0,
+                end: size.saturating_sub(1),
+            };
+            let mut stream = self.read(key, whole).await?;
+            while let Some(chunk) = stream.next().await {
+                hasher.update(&chunk?);
+            }
+        }
+        Ok(Some((size, hasher.finish())))
+    }
+
     /// Writes the object into the file `dest` (created, truncated, synced) and returns its size and hash.
     pub async fn download(&self, key: &str, dest: &Path) -> Result<(u64, String), ObjectError> {
         let size = self.size(key).await?.ok_or(ObjectError::NotFound)?;

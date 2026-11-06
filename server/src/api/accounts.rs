@@ -130,8 +130,8 @@ pub async fn change_password(
     let new = new_password(&request.new)?;
     let cred_version = store::change_password(
         &app.pool,
-        &account,
-        &token,
+        &*app.clock,
+        (&account, &token),
         &old,
         request.expected_version,
         &new,
@@ -209,7 +209,7 @@ pub async fn recover(
         config.recovery_by_addr,
     )?;
     let (token, cred_version) =
-        recovery::recover(&app.pool, app.clock.now_ms(), &login, &old, &new).await?;
+        recovery::recover(&app.pool, &*app.clock, &login, &old, &new).await?;
     Ok(json(
         StatusCode::OK,
         &RecoveryResponse {
@@ -229,7 +229,7 @@ pub async fn reissue_words(
     let auth = AuthKey::from_bytes(key(&request.auth_key, "auth_key")?);
     let new_rc = RcAuthKey::from_bytes(key(&request.new_rc_auth_key, "new_rc_auth_key")?);
     let wrap_rc = wrap(&request.wrap_rc, "wrap_rc")?;
-    recovery::reissue_words(&app.pool, &account, &auth, &new_rc, &wrap_rc).await?;
+    recovery::reissue_words(&app.pool, &*app.clock, &account, &auth, &new_rc, &wrap_rc).await?;
     Ok(json(StatusCode::OK, &serde_json::json!({})))
 }
 

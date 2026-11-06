@@ -238,7 +238,7 @@ async fn verify(path: &str, http: &Client, base: &str) -> Result<(), String> {
         .to_string();
     println!("ok: logged in again");
 
-    // The old cursor is told the generation changed, and gets the cut time of the new one.
+    // The old cursor is told the generation changed, and gets the lineage with the cut time of the new generation.
     let changed = pull(http, base, &token, &state.generation, state.head, 0).await?;
     if changed["result"] != "generation_changed" || changed["generation"] == json!(state.generation)
     {
@@ -246,12 +246,19 @@ async fn verify(path: &str, http: &Client, base: &str) -> Result<(), String> {
             "the old cursor was not told the generation changed: {changed}"
         ));
     }
-    if changed["cut_ms"].as_u64().unwrap_or(0) == 0 {
-        return Err(format!("no cut time in the answer: {changed}"));
+    let lineage = changed["lineage"].as_array().map_or(&[][..], Vec::as_slice);
+    let cut_ms = lineage
+        .last()
+        .and_then(|entry| entry["cut_ms"].as_u64())
+        .unwrap_or(0);
+    if lineage.len() < 2 || cut_ms == 0 {
+        return Err(format!(
+            "no lineage with a cut time in the answer: {changed}"
+        ));
     }
     println!(
-        "ok: the old cursor got generation_changed with cut_ms {}",
-        changed["cut_ms"]
+        "ok: the old cursor got generation_changed with a lineage of {} generations, the last cut at {cut_ms}",
+        lineage.len()
     );
 
     // Everything is there, byte for byte.

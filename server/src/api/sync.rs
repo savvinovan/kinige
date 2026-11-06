@@ -5,10 +5,10 @@
 use super::body::{BodyError, GuardedBody};
 use super::{authed, parse};
 use crate::dto::{
-    PullRequest, PullResponse, PulledEnvelope, PushOutcome, PushResponse, PushResult,
+    LineageEntry, PullRequest, PullResponse, PulledEnvelope, PushOutcome, PushResponse, PushResult,
 };
 use crate::error::{ApiError, json};
-use crate::rules::pull::{Cursor, Plan};
+use crate::rules::pull::{Cursor, Generation, MAX_LINEAGE, Plan};
 use crate::rules::push::Answer;
 use crate::state::AppState;
 use crate::store::envelopes::{self, PushContext};
@@ -71,7 +71,7 @@ pub async fn pull(
             .map_err(|_| ApiError::BadRequest("generation"))?,
         after: bounded(request.after, "after")?,
         known_epoch: bounded(request.known_epoch, "known_epoch")?,
-        cut_ms: bounded(request.cut_ms.unwrap_or(0), "cut_ms")?,
+        lineage: lineage_of(request.lineage.unwrap_or_default())?,
     };
     let limit = request
         .limit
@@ -84,7 +84,14 @@ pub async fn pull(
             generation,
             stale,
             epoch: out.epoch,
-            cut_ms: out.cut_ms,
+            lineage: out
+                .lineage
+                .iter()
+                .map(|g| LineageEntry {
+                    generation: g.id.to_string(),
+                    cut_ms: g.cut_ms,
+                })
+                .collect(),
         },
         Plan::Stale => PullResponse::Stale {
             generation,
@@ -158,21 +165,15 @@ fn cursor_of(headers: &HeaderMap) -> Result<Cursor, ApiError> {
         .and_then(|v| v.to_str().ok())
         .ok_or(ApiError::BadRequest("cursor"))?;
     let mut parts = text.trim().split('.');
-    let (Some(generation), Some(after), Some(epoch)) = (parts.next(), parts.next(), parts.next())
+    // Exactly three parts. A push carries no lineage: a pusher whose generation is not the current one is stale whatever its lineage
+    // says (§A.3), so the lineage of S4c-2's branch-cut rule travels in the pull request only.
+    let (Some(generation), Some(after), Some(epoch), None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
     else {
         return Err(bad);
     };
-    // The optional fourth part is the cut time of the device's generation (S4c-2, ADR-0017); a fifth is a malformed cursor.
-    let cut_ms = match (parts.next(), parts.next()) {
-        (None, _) => 0,
-        (Some(text), None) => bounded(
-            text.parse().map_err(|_| ApiError::BadRequest("cursor"))?,
-            "cursor",
-        )?,
-        (Some(_), Some(_)) => return Err(bad),
-    };
     Ok(Cursor {
-        cut_ms,
+        lineage: Vec::new(),
         generation: generation
             .parse()
             .map_err(|_| ApiError::BadRequest("cursor"))?,
@@ -185,6 +186,28 @@ fn cursor_of(headers: &HeaderMap) -> Result<Cursor, ApiError> {
             "cursor",
         )?,
     })
+}
+
+/// The device's lineage from a pull request: at most `MAX_LINEAGE` entries, ids and cut times that are numbers the database could hold.
+fn lineage_of(entries: Vec<LineageEntry>) -> Result<Vec<Generation>, ApiError> {
+    if entries.len() > MAX_LINEAGE {
+        return Err(ApiError::BadRequest("lineage"));
+    }
+    entries
+        .into_iter()
+        .map(|entry| {
+            Ok(Generation {
+                id: bounded(
+                    entry
+                        .generation
+                        .parse()
+                        .map_err(|_| ApiError::BadRequest("lineage"))?,
+                    "lineage",
+                )?,
+                cut_ms: bounded(entry.cut_ms, "lineage")?,
+            })
+        })
+        .collect()
 }
 
 /// A number the database stores as `bigint`.

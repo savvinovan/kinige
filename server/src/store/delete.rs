@@ -25,7 +25,7 @@ pub async fn delete_account(
     let mut client = pool.get().await?;
     let tx = client.transaction().await?;
     lock::shared(&tx).await?;
-    let now_ms = clock.now_ms();
+    let now_ms = lock::stamp(&*tx, clock).await?;
     let row = locked(&tx, account).await?;
     if !verify_auth(&fixed(&row, "auth_hash")?, auth.as_bytes()).map_err(|_| ApiError::Internal)? {
         log::info!("account deletion refused: wrong key");
@@ -35,6 +35,12 @@ pub async fn delete_account(
     tx.execute(
         "INSERT INTO deletions (account_hash, deleted_ms) VALUES ($1, $2) ON CONFLICT (account_hash) DO NOTHING",
         &[&hash.as_slice(), &to_i64(now_ms, "clock")?],
+    )
+    .await?;
+    // The credentials of a deleted account are data that must go (§8.9); the hash in the deletion journal is all that stays.
+    tx.execute(
+        "DELETE FROM credential_changes WHERE account_hash = $1",
+        &[&hash.as_slice()],
     )
     .await?;
     blobs::mark_account_deleted(&tx, account, now_ms).await?;

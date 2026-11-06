@@ -8,6 +8,7 @@ use kinige_server::blobs::objects::Objects;
 use kinige_server::blobs::staging::Staging;
 use kinige_server::cli::{self, Command};
 use kinige_server::config::Settings;
+use kinige_server::store::lock::ServerLock;
 use kinige_server::{AppState, Clock, SystemClock, compact_loop, logging, router, store};
 use std::env;
 use std::fs;
@@ -78,10 +79,18 @@ async fn run(command: Command) -> Result<(), String> {
                 .await
                 .map_err(|error| error.to_string())?;
             log::info!(
-                "restored: a new generation, {} deletions applied again, {} orphan objects",
+                "restored: a new generation, {} deletions and {} credential changes applied again, {} orphan objects",
                 report.deletions_applied,
+                report.credentials_applied,
                 report.orphans
             );
+            // The database is restored; a damaged blob of the backup is still an error for the operator to see and to act on.
+            if report.damaged_blobs > 0 {
+                return Err(format!(
+                    "the database is restored, but {} blobs of the backup were missing or damaged; they are marked deleted and their devices will upload them again",
+                    report.damaged_blobs
+                ));
+            }
             Ok(())
         }
     }
@@ -98,6 +107,11 @@ async fn serve(settings: Settings, objects: Objects) -> Result<(), String> {
     )
     .await
     .map_err(|error| format!("the database is not usable ({})", error.code()))?;
+    // Held for as long as the server runs: a restore refuses to run while it is held (`store::lock::ServerLock`).
+    let url = store::parse_url(&settings.database_url).map_err(|error| error.code().to_string())?;
+    let _server_lock = ServerLock::acquire(&url)
+        .await
+        .map_err(|error| format!("the server lock cannot be taken ({})", error.code()))?;
     tokio::spawn(compact_loop(state.clone(), settings.compact_every_secs));
     let listener = TcpListener::bind(&settings.listen)
         .await

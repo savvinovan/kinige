@@ -20,7 +20,7 @@ use tokio_postgres::IsolationLevel;
 use tokio_postgres::types::Json;
 
 /// What the request says about itself, the same for every envelope of a batch.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct PushContext {
     pub now_ms: u64,
     pub protocol_ok: bool,
@@ -30,9 +30,9 @@ pub struct PushContext {
 /// A page of the log, or why there is none.
 #[derive(Debug)]
 pub struct PullOut {
-    /// The current generation, the cut time of the restore that made it (0 if none did) and the account's drop epoch (§6.3).
+    /// The current generation, the whole lineage with the cut times (the device keeps it, §6.3) and the account's drop epoch.
     pub generation: u64,
-    pub cut_ms: u64,
+    pub lineage: Vec<Generation>,
     pub epoch: u64,
     pub plan: Plan,
     /// Empty unless the plan is `Page`.
@@ -124,10 +124,9 @@ pub async fn pull(
     let drops = drops_of(&tx, account).await?;
     let plan = pull::plan(&lineage, &drops, cursor);
     let generation = lineage.last().map_or(0, |g| g.id);
-    let cut_ms = lineage.last().map_or(0, |g| g.cut_ms);
     let mut out = PullOut {
         generation,
-        cut_ms,
+        lineage: lineage.clone(),
         epoch,
         plan,
         items: Vec::new(),

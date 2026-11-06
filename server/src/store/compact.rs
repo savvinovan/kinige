@@ -26,7 +26,7 @@ pub async fn account(pool: &Pool, account: &str, clock: &dyn Clock) -> Result<St
     let mut client = pool.get().await?;
     let tx = client.transaction().await?;
     lock::shared(&tx).await?;
-    let now_ms = clock.now_ms();
+    let now_ms = lock::stamp(&*tx, clock).await?;
     let row = tx
         .query_opt(
             "SELECT epoch FROM accounts WHERE id = $1 FOR UPDATE",

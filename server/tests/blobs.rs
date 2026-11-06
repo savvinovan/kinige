@@ -1,6 +1,7 @@
 //! Blobs over HTTP (ADR-0001 §7, appendix §A.2 and §A.6, ADR-0020): upload by offset, resume, overwrite of an unfinished upload, publication,
-//! "already exists", download with a range, the delete and the delayed removal, the purge of an attachment, the limits and the order of the
-//! checks. Every scenario runs against the disk store and, when `KINIGE_TEST_S3_URL` is set, against an S3-compatible store.
+//! "already exists", download with a range, the limits (the quota reserved atomically) and the order of the checks. How a blob ends (delete,
+//! purge, the sweep) is in `blob_lifecycle.rs`. Every scenario runs against the disk store and, when `KINIGE_TEST_S3_URL` is set, against an
+//! S3-compatible store.
 #![cfg(test)]
 #![cfg(feature = "pg-tests")]
 
@@ -12,17 +13,11 @@ use common::blobs::*;
 use common::*;
 use kinige_crypto::blob::open_blob;
 use kinige_crypto::secret::BlobKey;
-use kinige_server::Clock;
-use kinige_server::blobs::sweep;
 use kinige_server::config::Config;
 use kinige_server::testing::{BlobBackend, blob_backends};
 use serde_json::json;
 
 const MIB: usize = 1 << 20;
-
-fn backends() -> Vec<BlobBackend> {
-    blob_backends().expect("the blob backends")
-}
 
 #[tokio::test]
 async fn upload_resume_overwrite_publish_download_range_and_already_exists() {
@@ -469,205 +464,59 @@ async fn a_blob_belongs_to_its_account_and_a_second_writer_to_an_upload_is_told_
     );
 }
 
-#[tokio::test]
-async fn a_delete_marks_the_blob_and_the_object_goes_after_the_retention_and_one_interval() {
-    for backend in backends() {
-        let rig = rig_on(Config::default(), backend).await;
-        let acct = account(&rig).await;
-        let blob = sealed(5000, 3);
-        let id = blob_uuid(1);
-        upload_all(&rig, &acct, &id, &blob).await;
-
-        // An unfinished upload is deleted at once, with its staging file.
-        let part = blob_uuid(2);
-        upload(&rig, &acct, &part, &blob, 0, 100).await;
-        assert_eq!(delete(&rig, &acct, &part).await, StatusCode::OK);
-        assert_eq!(status(&rig, &acct, &part).await["state"], "none");
-
-        assert_eq!(delete(&rig, &acct, &id).await, StatusCode::OK);
-        assert_eq!(
-            delete(&rig, &acct, &id).await,
-            StatusCode::OK,
-            "deleting twice is a success"
-        );
-        assert_eq!(
-            delete(&rig, &acct, &blob_uuid(99)).await,
-            StatusCode::OK,
-            "so is deleting what was never there"
-        );
-        assert_eq!(
-            download(&rig, &acct, &id, None).await.0,
-            StatusCode::NOT_FOUND
-        );
-        assert_eq!(status(&rig, &acct, &id).await["state"], "deleted");
-        let (code, answer) = upload_all(&rig, &acct, &id, &blob).await;
-        assert_eq!(
-            (code, answer["error"].as_str()),
-            (StatusCode::CONFLICT, Some("gone")),
-            "a deleted id is replaced under a new one"
-        );
-        let deleted_at = rig.clock.now_ms();
-        assert_eq!(
-            blob_row(&rig, &acct, &id).await.map(|r| r.1),
-            Some(Some(deleted_at as i64))
-        );
-        // Marked, not removed.
-        assert_eq!(
-            object_size(&rig, &acct, &id).await,
-            Some(blob.len() as u64),
-            "{backend:?}"
-        );
-
-        // 30 days and 23 hours: still there. 31 days: gone, with its row; the id is free again.
-        let config = rig.state.config.clone();
-        rig.clock.advance(31 * DAY - 3_600_000);
-        let swept = sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock)
-            .await
-            .expect("sweep");
-        assert_eq!(swept.removed, 0);
-        assert_eq!(object_size(&rig, &acct, &id).await, Some(blob.len() as u64));
-        rig.clock.advance(3_600_000);
-        let swept = sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock)
-            .await
-            .expect("sweep");
-        assert_eq!(swept.removed, 1);
-        assert!(object_size(&rig, &acct, &id).await.is_none());
-        assert!(blob_row(&rig, &acct, &id).await.is_none());
-    }
-}
-
-#[tokio::test]
-async fn an_accepted_purge_of_an_attachment_marks_the_blob_it_names_in_its_open_header() {
-    let rig = rig().await;
-    let (a, b) = (account(&rig).await, account(&rig).await);
-    let maker = Maker::new();
-    let blob = sealed(3000, 1);
-    let (blob_id, attachment) = (blob_uuid(1), id(40));
-    upload_all(&rig, &a, &blob_id, &blob).await;
-    upload_all(&rig, &b, &blob_id, &blob).await;
-
-    // A purge from B names the same id, and affects only B's blob.
-    let purge_b = maker.purged_attachment(&attachment, &id(60), &blob_id);
-    let (op_b, body_b) = (id(60), purge_b);
-    let result = push(
-        &rig,
-        &b,
-        &Item {
-            entity: "attachment",
-            id: &attachment,
-            op: &op_b,
-            bytes: &body_b,
-        },
-    )
-    .await;
-    assert_eq!(outcome(&result), "ok", "{result}");
-    assert_eq!(
-        blob_row(&rig, &b, &blob_id).await.map(|r| r.1.is_some()),
-        Some(true)
-    );
-    assert_eq!(
-        blob_row(&rig, &a, &blob_id).await.map(|r| r.1.is_some()),
-        Some(false)
-    );
-    assert_eq!(download(&rig, &a, &blob_id, None).await.2, blob);
-    assert_eq!(
-        download(&rig, &b, &blob_id, None).await.0,
-        StatusCode::NOT_FOUND
-    );
-
-    // A purge that names no blob leaves blobs alone.
-    let second = blob_uuid(2);
-    upload_all(&rig, &a, &second, &blob).await;
-    let other_attachment = id(41);
-    let op = id(61);
-    let no_blob = maker.purged(
-        "attachment",
-        &other_attachment,
-        &op,
-        &[
-            ("core", hlc(T0, 0)),
-            ("order", hlc(T0, 0)),
-            ("deleted", hlc(T0, 0)),
-        ],
-    );
-    let result = push(
-        &rig,
-        &a,
-        &Item {
-            entity: "attachment",
-            id: &other_attachment,
-            op: &op,
-            bytes: &no_blob,
-        },
-    )
-    .await;
-    assert_eq!(outcome(&result), "ok");
-    assert_eq!(
-        blob_row(&rig, &a, &second).await.map(|r| r.1.is_some()),
-        Some(false)
-    );
-
-    // The purge that does name it, once accepted, marks it.
-    let (third_attachment, op3) = (id(42), id(62));
-    let purge = maker.purged_attachment(&third_attachment, &op3, &second);
-    let result = push(
-        &rig,
-        &a,
-        &Item {
-            entity: "attachment",
-            id: &third_attachment,
-            op: &op3,
-            bytes: &purge,
-        },
-    )
-    .await;
-    assert_eq!(outcome(&result), "ok");
-    assert_eq!(
-        blob_row(&rig, &a, &second).await.map(|r| r.1.is_some()),
-        Some(true)
-    );
-}
-
-#[tokio::test]
-async fn unfinished_uploads_and_objects_without_a_row_are_cleaned_after_their_age() {
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_quota_is_reserved_atomically_so_concurrent_starts_cannot_overshoot_it() {
+    // Round 1 of the review: the check and the staging file were two steps, and concurrent starts each saw the room the others were about
+    // to take. A quota of 4 MiB and twelve blobs of about 1.5 MiB started at once: two fit, and never a third.
+    let blob_size = sealed(MIB + MIB / 2, 1).len();
+    let quota = 4 * MIB as u64;
     let rig = rig_with(Config {
-        orphan_upload_ms: 0,
+        blob_quota: quota,
         ..Config::default()
     })
     .await;
     let acct = account(&rig).await;
-    let blob = sealed(5000, 3);
-    // An upload nobody finishes.
-    let id = blob_uuid(1);
-    upload(&rig, &acct, &id, &blob, 0, 100).await;
-    assert_eq!(status(&rig, &acct, &id).await["state"], "uploading");
-    // An object that no row refers to (a crash between the put and the row).
-    let lost = blob_uuid(2);
-    let key = kinige_server::blobs::object_key(&acct.creds.account_id, &lost);
-    let staged = rig.db.scratch_dir("lost").expect("dir").join("f");
-    std::fs::write(&staged, &blob).expect("file");
-    rig.state
-        .blobs
-        .objects
-        .put_file(&key, &staged)
-        .await
-        .expect("put");
-
-    let config = rig.state.config.clone();
-    let swept = sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock)
-        .await
-        .expect("sweep");
-    assert_eq!((swept.uploads, swept.adopted), (1, 1));
-    assert_eq!(status(&rig, &acct, &id).await["state"], "none");
-    // The object is now a deleted blob and goes the delayed way.
-    assert_eq!(
-        blob_row(&rig, &acct, &lost).await.map(|r| r.1.is_some()),
-        Some(true)
+    let mut starts = Vec::new();
+    for n in 0u8..12 {
+        let (http, token, id) = (rig.http.clone(), acct.token.clone(), blob_uuid(n));
+        starts.push(tokio::spawn(async move {
+            let (status, _, _) = http
+                .request(
+                    "PUT",
+                    &format!("/v1/blobs/{id}"),
+                    Some(&token),
+                    &[
+                        ("x-kinige-blob-size", blob_size.to_string()),
+                        ("x-kinige-blob-offset", "0".to_string()),
+                    ],
+                    axum::body::Body::from(vec![0u8; 100]),
+                )
+                .await;
+            status
+        }));
+    }
+    let mut accepted = 0u64;
+    for start in starts {
+        match start.await.expect("joined") {
+            StatusCode::OK => accepted += 1,
+            StatusCode::PAYLOAD_TOO_LARGE => {}
+            other => panic!("{other}"),
+        }
+    }
+    assert!(accepted >= 1, "something fits");
+    assert!(
+        accepted * blob_size as u64 <= quota,
+        "{accepted} starts of {blob_size} bytes overshoot the quota of {quota}"
     );
-    assert!(object_size(&rig, &acct, &lost).await.is_some());
-    rig.clock.advance(31 * DAY);
-    sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock)
-        .await
-        .expect("sweep");
-    assert!(object_size(&rig, &acct, &lost).await.is_none());
+    let declared = rig
+        .state
+        .blobs
+        .staging
+        .declared_total(&acct.creds.account_id, "")
+        .await;
+    assert_eq!(declared, accepted * blob_size as u64);
+}
+
+fn backends() -> Vec<BlobBackend> {
+    blob_backends().expect("the blob backends")
 }

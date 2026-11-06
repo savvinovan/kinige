@@ -147,6 +147,11 @@ impl TestDb {
         Ok(dir)
     }
 
+    /// The connection settings of this database, for what needs a connection of its own (the server lock).
+    pub fn pg_config(&self) -> tokio_postgres::Config {
+        self.config.clone()
+    }
+
     /// A pool on this database for raw SQL in a test (the dump, the negative control).
     pub fn pool(&self) -> Result<deadpool_postgres::Pool, String> {
         store::pool_for(self.config.clone()).map_err(|e| e.code().to_string())

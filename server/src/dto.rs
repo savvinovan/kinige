@@ -119,12 +119,20 @@ pub struct PullRequest {
     pub generation: String,
     pub after: u64,
     pub known_epoch: u64,
-    /// The cut time that came with the `GenerationChanged` answer which put the device into its generation (S4c, 2026-11-06, the
-    /// branch-cut rule of ADR-0017); absent for a device that never got one. Only read when the generation is not in the lineage.
+    /// The lineage of the `GenerationChanged` answer that put the device into its generation (S4c, 2026-11-06, the branch-cut rule of
+    /// ADR-0017 and ADR-0001 §6.3), at most `MAX_LINEAGE` entries; absent for a device that never got one. Only read when the
+    /// generation is not in the server's lineage.
     #[serde(default)]
-    pub cut_ms: Option<u64>,
+    pub lineage: Option<Vec<LineageEntry>>,
     #[serde(default)]
     pub limit: Option<usize>,
+}
+
+/// A generation of the lineage with the cut time of the restore that made it (0 for the first, which no restore made).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LineageEntry {
+    pub generation: String,
+    pub cut_ms: u64,
 }
 
 /// The server's answer to a pull (§6.1, §6.3).
@@ -147,9 +155,9 @@ pub enum PullResponse {
         generation: String,
         stale: bool,
         epoch: u64,
-        /// The time of the backup the new generation was cut from (0 if no restore made it): the device keeps it with its cursor and
-        /// sends it back (`PullRequest::cut_ms`, the cursor header), so that a later restore can place this generation.
-        cut_ms: u64,
+        /// The server's lineage, oldest first, ending with `generation`, each with the cut time of its restore: the device keeps it
+        /// with its cursor and sends it back (`PullRequest::lineage`), so that a later restore can find where its branch forked.
+        lineage: Vec<LineageEntry>,
     },
 }
 

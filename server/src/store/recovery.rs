@@ -3,7 +3,8 @@
 
 use super::accounts::{NewPassword, hash_of, locked, profile_of, refuse_downgrade};
 use super::sessions::{self, Token};
-use super::{fixed, to_u64};
+use super::{credentials, fixed, lock, to_u64};
+use crate::clock::Clock;
 use crate::error::ApiError;
 use deadpool_postgres::Pool;
 use kinige_crypto::ids::verify_auth;
@@ -50,7 +51,7 @@ pub async fn recovery_fetch(pool: &Pool, login: &str, rc: &RcAuthKey) -> Result<
 /// an `rc_auth_key` already applied is a separate error. Returns a new session and the new credential version.
 pub async fn recover(
     pool: &Pool,
-    now_ms: u64,
+    clock: &dyn Clock,
     login: &str,
     old: &RcAuthKey,
     new: &NewRecovery,
@@ -59,6 +60,8 @@ pub async fn recover(
     let new_pw = hash_of(new.password.auth_key.as_bytes())?;
     let mut client = pool.get().await?;
     let tx = client.transaction().await?;
+    lock::shared(&tx).await?;
+    let now_ms = lock::stamp(&*tx, clock).await?;
     let row = tx
         .query_opt(
             "SELECT * FROM accounts WHERE login = $1 FOR UPDATE",
@@ -108,6 +111,7 @@ pub async fn recover(
         ],
     )
     .await?;
+    credentials::record(&tx, &account, now_ms).await?;
     // Recovery ends every session, the new one is opened after (decision 7).
     tx.execute("DELETE FROM sessions WHERE account_id = $1", &[&account])
         .await?;
@@ -120,6 +124,7 @@ pub async fn recover(
 /// New words (§8.6, "Reissuing the words"): with a session and the password's `auth_key`; idempotent by the new `rc_auth_key`.
 pub async fn reissue_words(
     pool: &Pool,
+    clock: &dyn Clock,
     account: &str,
     auth: &AuthKey,
     new_rc: &RcAuthKey,
@@ -127,6 +132,8 @@ pub async fn reissue_words(
 ) -> Result<(), ApiError> {
     let mut client = pool.get().await?;
     let tx = client.transaction().await?;
+    lock::shared(&tx).await?;
+    let changed_ms = lock::stamp(&*tx, clock).await?;
     let row = locked(&tx, account).await?;
     if !verify_auth(&fixed(&row, "auth_hash")?, auth.as_bytes()).map_err(|_| ApiError::Internal)? {
         return Err(ApiError::Auth);
@@ -145,6 +152,7 @@ pub async fn reissue_words(
         &[&account, &new_hash.as_slice(), &wrap_rc],
     )
     .await?;
+    credentials::record(&tx, account, changed_ms).await?;
     tx.commit().await?;
     log::info!("words reissued");
     Ok(())
