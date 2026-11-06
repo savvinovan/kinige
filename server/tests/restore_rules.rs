@@ -431,6 +431,21 @@ async fn a_branch_cut_from_an_older_backup_than_the_one_restored_now_is_placed_b
             .await;
         assert_eq!(status, StatusCode::BAD_REQUEST, "{bad}");
     }
+    // A lineage that does not end with the cursor's generation is malformed too (round 2 of the review): it is not the lineage that put
+    // the device into that generation, and the server does not guess which of the two is meant.
+    let ends_elsewhere = json!([{"generation": "7", "cut_ms": 0}]);
+    let (status, answer) = installation
+        .http
+        .post(
+            "/v1/pull",
+            Some(&device.token),
+            &json!({"generation": "8", "after": 1, "known_epoch": 0, "lineage": ends_elsewhere}),
+        )
+        .await;
+    assert_eq!(
+        (status, answer["error"].as_str()),
+        (StatusCode::BAD_REQUEST, Some("lineage"))
+    );
 
     // A push carries no lineage, its cursor has three parts, and a pusher whose generation is not the current one is stale whatever
     // it says: it pulls first (appendix §A.3).
@@ -529,13 +544,18 @@ async fn a_branch_that_was_itself_restored_is_placed_by_where_it_forked_and_not_
         answer["stale"], true,
         "the fork is G1, cut before K: K is missed"
     );
-    // What the rule used to say, with only the device's own generation and its own cut time: not stale. That is the hole.
+    // What the first rule said, with only the device's own generation and its own cut time (after K): not stale. That was the hole.
+    // A lineage cut down to the device's own entry shares nothing with the server's and names no fork (round 2 of the review): cut 0,
+    // everything missed, the safe side.
     let own_only = json!([lineage[2].clone()]);
     assert_eq!(
         ask(own_only).await["stale"],
-        false,
-        "a lineage cut down to the device's own entry names the wrong fork"
+        true,
+        "a lineage cut down to the device's own entry cannot be placed"
     );
+    // The fork is found only past the first shared generation: the same lineage without its shared head is not placed late either.
+    let without_head = json!([lineage[1].clone(), lineage[2].clone()]);
+    assert_eq!(ask(without_head).await["stale"], true);
 }
 
 #[tokio::test]
@@ -553,7 +573,9 @@ async fn the_lineage_is_capped_and_a_device_that_fell_off_it_is_told_it_missed_e
     // A device that got the first generation, with the lineage it was given, and a server that has seen 70 restores since (the rows a
     // backup of such a server holds; making 70 real restores would take a minute for the same state).
     let first = generation(&rig).await;
-    let lineage = json!([{"generation": first.to_string(), "cut_ms": 0}]);
+    // Its cut time is not zero and in the future of every drop: taken as the fork it would say "nothing missed". A lineage that shares
+    // nothing with the server's names no fork at all (round 2 of the review), whatever its first entry's cut time is.
+    let lineage = json!([{"generation": first.to_string(), "cut_ms": 4_000_000_000_000u64}]);
     let client = rig.state.pool.get().await.expect("connection");
     client
         .batch_execute(

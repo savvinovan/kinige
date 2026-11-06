@@ -217,7 +217,6 @@ pub async fn change_password(
     let mut client = pool.get().await?;
     let tx = client.transaction().await?;
     lock::shared(&tx).await?;
-    let changed_ms = lock::stamp(&*tx, clock).await?;
     let row = locked(&tx, account).await?;
     let current = to_u64(row.try_get("cred_version")?);
     if current != expected_version {
@@ -241,7 +240,7 @@ pub async fn change_password(
         ],
     )
     .await?;
-    credentials::record(&tx, account, changed_ms).await?;
+    credentials::record(&tx, account, clock).await?;
     if revoke_others {
         tx.execute(
             "DELETE FROM sessions WHERE account_id = $1 AND token_hash <> $2",

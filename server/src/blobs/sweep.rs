@@ -1,7 +1,8 @@
 //! The delayed physical deletion of blobs (ADR-0001 §7, PRD §10.1, ADR-0020). A deleted blob is only marked; its object leaves the store
 //! once it is older than the backup retention plus one backup interval, so every backup that can still be restored finds its blobs.
 //! The same pass removes unfinished uploads nobody has touched for `orphan_upload_ms`, and adopts objects that no row refers to (a crash
-//! between the `put` and the row) as deleted blobs, which then go the same delayed way.
+//! between the `put` and the row) as deleted blobs, which then go the same delayed way. It also removes the retired entries of the
+//! credential journal on the same window (`store::credentials::prune`): a retired password's wrap lives as long as a deleted blob.
 
 use super::objects::{Listed, Objects};
 use super::{Blobs, object_key, parse_key};
@@ -9,7 +10,7 @@ use crate::clock::Clock;
 use crate::config::Config;
 use crate::error::ApiError;
 use crate::rules::blob::removable;
-use crate::store::blobs;
+use crate::store::{blobs, credentials, lock};
 use deadpool_postgres::Pool;
 use std::collections::HashSet;
 use std::time::Duration;
@@ -23,6 +24,8 @@ pub struct Swept {
     pub uploads: usize,
     /// Objects without a row that were adopted as deleted blobs.
     pub adopted: usize,
+    /// Retired entries of the credential journal removed (older than the retention plus one interval, like a deleted blob).
+    pub journal: u64,
 }
 
 pub async fn run(
@@ -31,11 +34,16 @@ pub async fn run(
     config: &Config,
     clock: &dyn Clock,
 ) -> Result<Swept, ApiError> {
-    let now_ms = clock.now_ms();
+    // The age of a deleted blob and of a journal entry is judged on the clock itself, never on the stamp's floor (round 2).
+    let now_ms = {
+        let client = pool.get().await?;
+        lock::now(&**client, clock).await?
+    };
     let mut swept = Swept::default();
     let keep_ms = config
         .backup_retention_ms
         .saturating_add(config.backup_interval_ms);
+    swept.journal = credentials::prune(pool, now_ms.saturating_sub(keep_ms)).await?;
     for row in blobs::deleted_before(pool, now_ms.saturating_sub(keep_ms)).await? {
         let Some(deleted_ms) = row.deleted_ms else {
             continue;

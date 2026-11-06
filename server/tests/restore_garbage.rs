@@ -275,6 +275,50 @@ async fn one_damaged_or_missing_blob_file_does_not_make_a_backup_unrestorable() 
 }
 
 #[tokio::test]
+async fn in_place_a_damaged_backup_file_does_not_cost_a_blob_the_store_still_holds_intact() {
+    // Round 2 of the review: restoring in place, the store usually still has the object the damaged file was a copy of. Marking its row
+    // deleted would throw away a blob that is there; only a blob that exists nowhere is lost.
+    let rig = rig().await;
+    let acct = account(&rig).await;
+    let kept = seed(&rig, &acct, &Maker::new(), 3).await;
+    let removed = (blob_uuid(20), sealed(5000, 20));
+    let lost = (blob_uuid(21), sealed(6000, 21));
+    upload_all(&rig, &acct, &removed.0, &removed.1).await;
+    upload_all(&rig, &acct, &lost.0, &lost.1).await;
+    let (good, _) = take(&rig).await;
+
+    // The backup's file of `kept` is flipped and the one of `removed` is gone; the store has both intact. `lost` is damaged in the
+    // backup and also gone from the store (deleted by hand): nothing holds it.
+    let file = |blob: &str| good.join(format!("blobs/{}/{}", acct.creds.account_id, blob));
+    let mut damaged = std::fs::read(file(&kept.blob_id)).expect("file");
+    damaged[0] ^= 0x01;
+    std::fs::write(file(&kept.blob_id), damaged).expect("write");
+    std::fs::remove_file(file(&removed.0)).expect("remove");
+    std::fs::remove_file(file(&lost.0)).expect("remove");
+    rig.state
+        .blobs
+        .objects
+        .delete(&kinige_server::blobs::object_key(
+            &acct.creds.account_id,
+            &lost.0,
+        ))
+        .await
+        .expect("delete from the store");
+
+    let report = restore_into(&rig, &good).await;
+    assert_eq!(report.damaged_blobs, 1, "only the blob that exists nowhere");
+    let session = Acct {
+        token: login_token(&rig, &acct.creds).await,
+        creds: acct.creds.clone(),
+    };
+    for (blob, bytes) in [(&kept.blob_id, &kept.blob), (&removed.0, &removed.1)] {
+        assert_eq!(status(&rig, &session, blob).await["state"], "published");
+        assert_eq!(&download(&rig, &session, blob, None).await.2, bytes);
+    }
+    assert_eq!(status(&rig, &session, &lost.0).await["state"], "deleted");
+}
+
+#[tokio::test]
 async fn a_damaged_blob_file_of_an_earlier_backup_is_not_linked_into_the_next_one() {
     let rig = rig().await;
     let acct = account(&rig).await;

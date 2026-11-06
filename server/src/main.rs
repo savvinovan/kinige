@@ -109,7 +109,7 @@ async fn serve(settings: Settings, objects: Objects) -> Result<(), String> {
     .map_err(|error| format!("the database is not usable ({})", error.code()))?;
     // Held for as long as the server runs: a restore refuses to run while it is held (`store::lock::ServerLock`).
     let url = store::parse_url(&settings.database_url).map_err(|error| error.code().to_string())?;
-    let _server_lock = ServerLock::acquire(&url)
+    let mut server_lock = ServerLock::acquire(&url)
         .await
         .map_err(|error| format!("the server lock cannot be taken ({})", error.code()))?;
     tokio::spawn(compact_loop(state.clone(), settings.compact_every_secs));
@@ -117,13 +117,17 @@ async fn serve(settings: Settings, objects: Objects) -> Result<(), String> {
         .await
         .map_err(|_| "the listen address cannot be bound".to_string())?;
     log::info!("listening");
-    axum::serve(
+    let serving = axum::serve(
         listener,
         router(state).into_make_service_with_connect_info::<SocketAddr>(),
     )
-    .with_graceful_shutdown(shutdown())
-    .await
-    .map_err(|_| "the server loop failed".to_string())
+    .with_graceful_shutdown(shutdown());
+    // The lock is taken again by itself when its connection drops; if a restore got it in between, the server must not go on serving
+    // under that restore, and exits with an error (`store::lock::ServerLock`).
+    tokio::select! {
+        served = serving => served.map_err(|_| "the server loop failed".to_string()),
+        () = server_lock.lost() => Err("a restore holds the database: the server lost its lock and stops".to_string()),
+    }
 }
 
 /// Resolves on Ctrl-C or, on Unix, SIGTERM, which is what container runtimes send.

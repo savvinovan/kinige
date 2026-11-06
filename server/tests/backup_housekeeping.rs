@@ -104,6 +104,13 @@ async fn nothing_is_stamped_below_the_newest_cut_time_of_the_lineage_whatever_th
     put(&behind, &session, 40, 140, &msg(&maker, 40, 140, wall)).await;
     let purge = maker.purged("message", &id(40), &id(141), &[("body", hlc(wall, 0))]);
     put(&behind, &session, 40, 141, &purge).await;
+    // 181 days of that host's own time pass (it is still 219 days behind the cut): the purge is old enough by the clock, and the drop is
+    // stamped by the floor, above the cut (round 2: the age is the clock's, the stamp is the floor's).
+    behind.clock.advance(181 * DAY);
+    assert!(
+        behind.clock.now_ms() < cut,
+        "the clock is still behind the cut"
+    );
     compact_now(&behind, &session).await;
     let drops = rows(&behind, "SELECT compacted_ms FROM drops ORDER BY epoch").await;
     assert_eq!(drops.len(), 2, "the drop of the seed and the new one");
@@ -127,6 +134,44 @@ async fn nothing_is_stamped_below_the_newest_cut_time_of_the_lineage_whatever_th
     assert_eq!(status, axum::http::StatusCode::OK);
     let deleted = rows(&behind, "SELECT deleted_ms FROM deletions").await;
     assert!(field(&deleted[0], "deleted_ms") > cut, "{deleted:?}");
+}
+
+#[tokio::test]
+async fn a_restore_from_the_future_does_not_make_everything_old_at_once() {
+    // Round 2 of the review: the floor under the stamps is for the three things compared with a cut time. If it also fed the age of a
+    // `purged`, a restore from a backup cut 1000 days ahead of this host's clock would make every purge 180 days old at once, and
+    // compaction would drop what devices still need to be told about.
+    let rig = rig().await;
+    let acct = account(&rig).await;
+    let maker = Maker::new();
+    put(&rig, &acct, 1, 50, &msg(&maker, 1, 50, T0)).await;
+    let purge = maker.purged("message", &id(1), &id(51), &[("body", hlc(T0, 0))]);
+    put(&rig, &acct, 1, 51, &purge).await;
+    rig.clock.set(T0 + 1000 * DAY);
+    let (dir, manifest) = take(&rig).await;
+    assert!(manifest.cut_ms >= T0 + 1000 * DAY);
+
+    let behind = clean_like(&rig).await;
+    behind.clock.set(T0 + 10 * DAY);
+    restore_into(&behind, &dir).await;
+    let session = Acct {
+        token: login_token(&behind, &acct.creds).await,
+        creds: acct.creds.clone(),
+    };
+
+    // 11 days after the purge, by this host's clock: nothing to drop. The floor sits at the cut, 1000 days ahead.
+    behind.clock.set(T0 + 11 * DAY);
+    let stats = compact_now(&behind, &session).await;
+    assert!(!stats.dropped, "a purge 11 days old is not dropped");
+    assert_eq!(count(&behind, "drops").await, 0);
+    assert_eq!(log_seqs(&behind, &session).await.len(), 2);
+
+    // After 180 days of real time it is dropped, and the drop is stamped by the floor, above the cut.
+    behind.clock.set(T0 + 182 * DAY);
+    let stats = compact_now(&behind, &session).await;
+    assert!(stats.dropped);
+    let drops = rows(&behind, "SELECT compacted_ms FROM drops").await;
+    assert!(field(&drops[0], "compacted_ms") > manifest.cut_ms);
 }
 
 #[tokio::test]

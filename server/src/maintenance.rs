@@ -18,10 +18,11 @@ pub async fn compact_loop(state: AppState, every_secs: u64) {
         }
         match sweep::run(&state.pool, &state.blobs, &state.config, &*state.clock).await {
             Ok(swept) => log::info!(
-                "blob sweep done, {} objects removed, {} unfinished uploads removed, {} orphans adopted",
+                "blob sweep done, {} objects removed, {} unfinished uploads removed, {} orphans adopted, {} retired journal entries removed",
                 swept.removed,
                 swept.uploads,
-                swept.adopted
+                swept.adopted,
+                swept.journal
             ),
             Err(_) => log::warn!("blob sweep failed"),
         }

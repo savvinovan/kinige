@@ -111,7 +111,7 @@ pub async fn recover(
         ],
     )
     .await?;
-    credentials::record(&tx, &account, now_ms).await?;
+    credentials::record(&tx, &account, clock).await?;
     // Recovery ends every session, the new one is opened after (decision 7).
     tx.execute("DELETE FROM sessions WHERE account_id = $1", &[&account])
         .await?;
@@ -133,7 +133,6 @@ pub async fn reissue_words(
     let mut client = pool.get().await?;
     let tx = client.transaction().await?;
     lock::shared(&tx).await?;
-    let changed_ms = lock::stamp(&*tx, clock).await?;
     let row = locked(&tx, account).await?;
     if !verify_auth(&fixed(&row, "auth_hash")?, auth.as_bytes()).map_err(|_| ApiError::Internal)? {
         return Err(ApiError::Auth);
@@ -152,7 +151,7 @@ pub async fn reissue_words(
         &[&account, &new_hash.as_slice(), &wrap_rc],
     )
     .await?;
-    credentials::record(&tx, account, changed_ms).await?;
+    credentials::record(&tx, account, clock).await?;
     tx.commit().await?;
     log::info!("words reissued");
     Ok(())

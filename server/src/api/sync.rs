@@ -64,14 +64,15 @@ pub async fn pull(
 ) -> Result<Response, ApiError> {
     let (account, _) = authed(&app, &headers).await?;
     let request: PullRequest = parse(&body)?;
+    let generation: u64 = request
+        .generation
+        .parse()
+        .map_err(|_| ApiError::BadRequest("generation"))?;
     let cursor = Cursor {
-        generation: request
-            .generation
-            .parse()
-            .map_err(|_| ApiError::BadRequest("generation"))?,
+        generation,
         after: bounded(request.after, "after")?,
         known_epoch: bounded(request.known_epoch, "known_epoch")?,
-        lineage: lineage_of(request.lineage.unwrap_or_default())?,
+        lineage: lineage_of(request.lineage.unwrap_or_default(), generation)?,
     };
     let limit = request
         .limit
@@ -188,12 +189,15 @@ fn cursor_of(headers: &HeaderMap) -> Result<Cursor, ApiError> {
     })
 }
 
-/// The device's lineage from a pull request: at most `MAX_LINEAGE` entries, ids and cut times that are numbers the database could hold.
-fn lineage_of(entries: Vec<LineageEntry>) -> Result<Vec<Generation>, ApiError> {
+/// The device's lineage from a pull request: at most `MAX_LINEAGE` entries, ids and cut times that are numbers the database could hold,
+/// and, if there is any, **ending with the cursor's generation** (the lineage is the one that put the device into that generation; one
+/// that ends elsewhere is malformed, a `400 lineage`, and not guessed at; round 2 of the review of S4c-2). An absent or empty lineage is
+/// allowed: it means "unknown", and the rule then counts every drop as missed.
+fn lineage_of(entries: Vec<LineageEntry>, generation: u64) -> Result<Vec<Generation>, ApiError> {
     if entries.len() > MAX_LINEAGE {
         return Err(ApiError::BadRequest("lineage"));
     }
-    entries
+    let parsed: Vec<Generation> = entries
         .into_iter()
         .map(|entry| {
             Ok(Generation {
@@ -207,7 +211,11 @@ fn lineage_of(entries: Vec<LineageEntry>) -> Result<Vec<Generation>, ApiError> {
                 cut_ms: bounded(entry.cut_ms, "lineage")?,
             })
         })
-        .collect()
+        .collect::<Result<_, ApiError>>()?;
+    if parsed.last().is_some_and(|last| last.id != generation) {
+        return Err(ApiError::BadRequest("lineage"));
+    }
+    Ok(parsed)
 }
 
 /// A number the database stores as `bigint`.

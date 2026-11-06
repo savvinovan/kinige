@@ -71,11 +71,14 @@ pub fn plan(lineage: &[Generation], drops: &[Drop], cursor: &Cursor) -> Plan {
 /// it pulled from 0 when it entered the branch, so it holds what the backup the branch was cut from held, and nothing that was
 /// compacted after that backup. **Which backup is the point:** the branch may itself have been restored from a backup of a branch
 /// (backup, restore, backup of the branch, restore that, and so on), so the device's own generation's cut time is a time on another
-/// branch's clock of events. What the device holds descends from the history it shares with this server up to the **fork**: the first
-/// generation of the device's lineage that this server's lineage does not have, and the cut time of that generation is the time of the
-/// backup of the shared history it was restored from (the *fork cut*). Every drop of this server compacted at or after the fork cut is
-/// one the device has not seen, whichever generation it was made in. A device that sends no lineage, or none that shares a generation
-/// with this server's (the fork is its first generation, cut 0), has missed every drop: "stale", the safe side.
+/// /// branch's clock of events. What the device holds descends from the history it shares with this server up to the **fork**: the first
+/// generation of the device's lineage, after the first one this server has, that this server's lineage does not have, and the cut
+/// time of that generation is the time of the backup of the shared history it was restored from (the *fork cut*). Every drop of this
+/// server compacted at or after the fork cut is one the device has not seen, whichever generation it was made in. The rule is
+/// **conservative, not exact**: it never says "not missed" for a drop the device has missed, and it may say "missed" for one it has
+/// not (a tie at the fork cut, a device that cannot be placed). A device that sends no lineage, or one that shares no generation with
+/// this server's (it may have been trimmed away: the true fork is earlier than anything the device's lineage names), has missed every
+/// drop ("stale", cut 0). The API refuses a lineage that does not end with the cursor's generation (`400 lineage`).
 pub fn missed(lineage: &[Generation], drops: &[Drop], cursor: &Cursor) -> bool {
     if cursor.after == 0 {
         return false;
@@ -92,13 +95,22 @@ pub fn missed(lineage: &[Generation], drops: &[Drop], cursor: &Cursor) -> bool {
     })
 }
 
-/// The cut time of the first generation of the device's lineage that the server's lineage does not have: the time, on the history
-/// both share, of the backup the device's branch was cut from. 0 when there is no such generation to name (the device's lineage is
-/// empty, or every generation of it is the server's while the cursor's is not: nonsense), which makes every drop missed.
+/// The cut time of the fork: the first generation of the device's lineage **after the first one the server's lineage has** that the
+/// server's lineage does not have; its cut time is the time, on the history both share, of the backup the device's branch was cut
+/// from. The device's lineage may start before the server's does (the server keeps the newest `MAX_LINEAGE` generations), so the
+/// entries before the first shared one are not a fork, they are history the server has trimmed. 0, which makes every drop missed,
+/// when no such generation can be named: the device's lineage is empty, **shares no generation with the server's** (its first entry's
+/// cut time is then a time on a history this server no longer has, and the true fork is somewhere before it), or has nothing foreign
+/// after the shared part (nonsense for a cursor whose generation is foreign). A device that cannot be placed is never placed late.
 fn fork_cut(server: &[Generation], device: &[Generation]) -> u64 {
+    let shared = |g: &Generation| server.iter().any(|s| s.id == g.id);
+    let Some(first_shared) = device.iter().position(shared) else {
+        return 0;
+    };
     device
         .iter()
-        .find(|g| !server.iter().any(|s| s.id == g.id))
+        .skip(first_shared)
+        .find(|g| !shared(g))
         .map_or(0, |g| g.cut_ms)
 }
 
@@ -251,6 +263,13 @@ mod tests {
             plan(&[1, 3], &drops, &strangers),
             Plan::GenerationChanged { stale: true }
         );
+        // Round 2 of the review: the device's own lineage was trimmed too, so its first entry has a non-zero cut time. Taken as the
+        // fork it would say "compacted at 5, before 500: not missed", and the true fork is somewhere before it.
+        let trimmed = on_a_branch(&[(5, 500), (6, 600)], 10);
+        assert_eq!(
+            plan(&[1, 3], &drops, &trimmed),
+            Plan::GenerationChanged { stale: true }
+        );
         // A lineage with nothing foreign in it names no fork: nonsense, answered with "stale".
         let nonsense = on_a_branch(&[(1, 0), (3, 50)], 10);
         assert_eq!(
@@ -262,6 +281,23 @@ mod tests {
                     ..nonsense
                 }
             ),
+            Plan::GenerationChanged { stale: true }
+        );
+    }
+
+    #[test]
+    fn what_the_server_trimmed_from_the_front_of_the_device_lineage_is_history_and_not_a_fork() {
+        // The server kept [3, 4] of a longer lineage; the device holds [1 (cut 10), 3 (cut 30), 9 (cut 90)]. Generation 1 is older than
+        // the shared 3 and the server has trimmed it: the fork is 9, cut 90, not 1 (cut 10).
+        let device = on_a_branch(&[(1, 10), (3, 30), (9, 90)], 10);
+        let server = [3, 4];
+        assert_eq!(
+            plan(&server, &[drop_at_ms(4, 1, 40, 50)], &device),
+            Plan::GenerationChanged { stale: false },
+            "compacted at 50, before the fork cut 90: the device holds it"
+        );
+        assert_eq!(
+            plan(&server, &[drop_at_ms(4, 1, 40, 95)], &device),
             Plan::GenerationChanged { stale: true }
         );
     }

@@ -27,6 +27,9 @@ use std::path::Path;
 use tokio::fs::{self, File};
 use tokio::io::AsyncReadExt;
 
+/// How far ahead of the database's clock a backup's cut time may be before the restore says so (round 2 of the review of S4c-2).
+const FUTURE_CUT_MS: u64 = 60 * 60 * 1000;
+
 /// What a restore did, for the operator's log and the tests.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Report {
@@ -77,12 +80,7 @@ async fn run(
         });
     }
     manifest.verify_dump(dir).await?;
-    let damaged: Vec<(String, String)> = manifest
-        .damaged_blobs(dir)
-        .await
-        .iter()
-        .filter_map(|path| parse_key(path.strip_prefix("blobs/")?))
-        .collect();
+    let damaged = damaged_for_good(objects, &manifest, dir).await;
     // Everything that can be judged without the database is judged first: a dump file that is valid by its hash and wrong in content
     // is refused here, before an object is copied.
     let lineage = parse_lineage(read_json(&dir.join(LINEAGE_FILE)).await?)?;
@@ -139,6 +137,36 @@ async fn run(
     })
 }
 
+/// `(account_id, blob_id)` of the blobs whose file in the backup is missing or damaged **and** which the store does not hold intact
+/// either. In place, the store usually still has the object the backup's file was a copy of: its row is kept (round 2 of the review),
+/// and the restore does not copy over it (`copy_blob_in` finds the manifest's hash). Only a blob that exists nowhere is marked deleted.
+async fn damaged_for_good(
+    objects: &Objects,
+    manifest: &Manifest,
+    dir: &Path,
+) -> Vec<(String, String)> {
+    let mut gone = Vec::new();
+    for path in manifest.damaged_blobs(dir).await {
+        let Some(key) = path.strip_prefix("blobs/") else {
+            continue;
+        };
+        let Some(ids) = parse_key(key) else {
+            continue;
+        };
+        let held = objects.hash_of(key).await.ok().flatten();
+        let intact = manifest.blobs.iter().any(|entry| {
+            entry.path == path
+                && held
+                    .as_ref()
+                    .is_some_and(|(size, hash)| *size == entry.bytes && *hash == entry.hash)
+        });
+        if !intact {
+            gone.push(ids);
+        }
+    }
+    gone
+}
+
 /// What a restore loads, checked.
 struct Plan<'a> {
     dir: &'a Path,
@@ -184,6 +212,14 @@ async fn load(
     // After the generation is in: the stamp is raised above the newest cut time of the lineage, the backup's included, whatever this
     // host's clock says.
     let now_ms = lock::stamp(&*tx, clock).await?;
+    // A cut time well ahead of this database's own clock (a backup from a host whose clock was wrong, or a restore on a host that is
+    // behind) makes the stamps run ahead of real time until the clock catches up; ages are not affected (they use the unfloored
+    // clock, `lock::now`), but an operator should know. Kind only, no ids.
+    if plan.manifest.cut_ms > lock::now(&*tx, clock).await?.saturating_add(FUTURE_CUT_MS) {
+        log::error!(
+            "the backup's cut time is more than an hour ahead of this database's clock: stamps run ahead of real time until it catches up"
+        );
+    }
     let applied = apply(&tx, &journals, plan.manifest.cut_ms, now_ms).await?;
     mark_damaged(&tx, plan.damaged, now_ms).await?;
     tx.commit().await?;

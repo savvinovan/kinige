@@ -26,7 +26,9 @@ pub async fn account(pool: &Pool, account: &str, clock: &dyn Clock) -> Result<St
     let mut client = pool.get().await?;
     let tx = client.transaction().await?;
     lock::shared(&tx).await?;
-    let now_ms = lock::stamp(&*tx, clock).await?;
+    // Two times: the age of an envelope is judged on the clock itself, and only the stamp of the drop takes the floor (round 2).
+    let now_ms = lock::now(&*tx, clock).await?;
+    let stamped_ms = lock::stamp(&*tx, clock).await?;
     let row = tx
         .query_opt(
             "SELECT epoch FROM accounts WHERE id = $1 FOR UPDATE",
@@ -80,7 +82,7 @@ pub async fn account(pool: &Pool, account: &str, clock: &dyn Clock) -> Result<St
                 &to_i64(generation, "generation")?,
                 &to_i64(new_epoch, "epoch")?,
                 &to_i64(plan.dropped_max, "seq")?,
-                &to_i64(now_ms, "clock")?,
+                &to_i64(stamped_ms, "clock")?,
             ],
         )
         .await?;
