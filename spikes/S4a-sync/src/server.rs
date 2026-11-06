@@ -53,9 +53,9 @@ pub enum PullResponse {
         generation: u64,
         stale: bool,
         epoch: u64,
-        /// The time of the backup the new generation was cut from (0 if no restore made it): the device keeps it with its cursor and
-        /// sends it back, so that a later restore can place the branch it lives on (ADR-0017, the branch-cut rule).
-        cut_ms: u64,
+        /// The server's lineage, `(generation, cut_ms)` oldest first, ending with `generation`: the device keeps it with its cursor and
+        /// sends it back with every pull, so that a later restore can find where its branch forked (ADR-0017, the branch-cut rule).
+        lineage: Vec<(u64, u64)>,
     },
 }
 
@@ -235,7 +235,7 @@ impl Server {
         }
     }
 
-    /// `cursor.known_epoch` is the `epoch` the device saw in its last page, `cursor.cut_ms` the cut time of its generation.
+    /// `cursor.known_epoch` is the `epoch` the device saw in its last page, `cursor.lineage` the lineage it was given with its generation.
     pub fn pull(&mut self, cursor: Cursor, limit: usize) -> PullResponse {
         let response = self.pull_inner(cursor, limit);
         self.commit_in_flight();
@@ -251,16 +251,21 @@ impl Server {
     ///
     /// A generation that is not in the lineage is a branch that a restore abandoned (S4c-2, the branch-cut rule of ADR-0017). A device on
     /// it pulled from 0 when it entered the branch, so it holds what the backup the branch was cut from held and nothing compacted
-    /// after that backup. The device sends the cut time of its branch; a drop compacted at or after it is missed, whatever generation
-    /// it was made in. A device that sends no cut time (0) has missed every drop. (With the switch `branch_by_position` the branch is
-    /// placed between the backup's generation and the current one, the rule before S4c-2.)
-    fn missed(&self, cursor: Cursor) -> bool {
+    /// after that backup. Which backup: the branch may itself have been restored from a backup of a branch, so the device's own cut
+    /// time is on another branch's clock of events. The device sends its lineage; the **fork** is its first generation this lineage
+    /// does not have, and that generation's cut time is the time of the backup of the shared history it was restored from. A drop
+    /// compacted at or after the fork cut is missed, whatever generation it was made in. A device that sends no lineage, or none that
+    /// shares a generation, has missed every drop. (With the switch `branch_by_position` the branch is placed between the backup's
+    /// generation and the current one, the rule before S4c-2; with `branch_by_own_cut` by the cut of the device's own generation, the
+    /// rule of the first S4c-2 round.)
+    fn missed(&self, cursor: &Cursor) -> bool {
         let Cursor {
             generation,
             seq: after,
             known_epoch,
-            cut_ms,
+            lineage: device,
         } = cursor;
+        let (generation, after, known_epoch) = (*generation, *after, *known_epoch);
         if after == 0 {
             return false;
         }
@@ -272,7 +277,17 @@ impl Server {
         }
         let place = |g: u64| self.lineage.iter().position(|x| *x == g);
         if place(generation).is_none() && !self.switches.branch_by_position {
-            return self.drops.iter().any(|d| d.compacted_ms >= cut_ms);
+            let fork_cut = if self.switches.branch_by_own_cut {
+                // The first rule: the cut of the device's own generation, the last entry it holds.
+                device.last().map_or(0, |(_, cut)| *cut)
+            } else {
+                // `>=` below: a drop stamped at the fork cut itself may or may not be in the backup, so it counts as missed.
+                device
+                    .iter()
+                    .find(|(id, _)| !self.lineage.contains(id))
+                    .map_or(0, |(_, cut)| *cut)
+            };
+            return self.drops.iter().any(|d| d.compacted_ms >= fork_cut);
         }
         // Positions are doubled and shifted by two so that an unknown generation can sit between two known ones, and below the only
         // one when the lineage has a single generation (then every drop of the current generation is missed).
@@ -289,19 +304,15 @@ impl Server {
     }
 
     fn pull_inner(&self, cursor: Cursor, limit: usize) -> PullResponse {
-        let Cursor {
-            generation,
-            seq: after,
-            ..
-        } = cursor;
-        let missed = self.missed(cursor);
+        let (generation, after) = (cursor.generation, cursor.seq);
+        let missed = self.missed(&cursor);
         if generation != self.generation {
             // Both causes at once. The device does not guess from its clock; the drops are held against its cursor by generation.
             return PullResponse::GenerationChanged {
                 generation: self.generation,
                 stale: missed && !self.switches.no_stale_check,
                 epoch: self.epoch,
-                cut_ms: self.cuts.last().copied().unwrap_or(0),
+                lineage: self.lineage_with_cuts(),
             };
         }
         if missed && !self.switches.no_stale_check {
@@ -428,6 +439,15 @@ impl Server {
     /// The generations of this state, oldest first (for the tests).
     pub fn lineage(&self) -> &[u64] {
         &self.lineage
+    }
+
+    /// The lineage with the cut time of each generation, oldest first: what a `GenerationChanged` answer carries.
+    pub fn lineage_with_cuts(&self) -> Vec<(u64, u64)> {
+        self.lineage
+            .iter()
+            .copied()
+            .zip(self.cuts.iter().copied())
+            .collect()
     }
 
     /// The epoch counter (for the tests).

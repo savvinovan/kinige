@@ -435,3 +435,46 @@ pub fn older_then_newer_backup_schedule() -> Schedule {
         ],
     }
 }
+
+/// The round 1 critical of the review of S4c-2 (ADR-0017, the branch-cut rule), nothing random in it: a branch that was itself restored
+/// from a backup of a branch. B1 is cut with the message alive; the message is purged and the drop K compacted; B2 is cut and holds K.
+/// B1 is restored (generation G1), a backup B3 of that branch is cut **after** K and restored (G2); device 0 enters G2 from 0 and has the
+/// message alive. Then B2 is restored: the server's lineage is `[G0, G3]`. The cut time of G2 (B3's) is after K, so a rule that reads
+/// the device's own generation's cut time says "nothing missed" and the message goes back to the server; but the device forked from the
+/// server's history at G1, cut at B1, before K: it has missed K and the message belongs in its quarantine. The device finds it because it
+/// carries its lineage `[G0, G1, G2]`.
+pub fn branch_of_a_branch_schedule() -> Schedule {
+    let (a, b) = (0, 1);
+    let both = usize::MAX;
+    Schedule {
+        clients: 2,
+        skews: vec![0, 0],
+        unbound: vec![false, false],
+        compact_outbox: false,
+        page: 5,
+        batch: 5,
+        steps: vec![
+            Step::Local(a, Op::CreateChat),
+            Step::Local(a, Op::CreateMessage(0)),
+            Step::SyncAll { skip: both },
+            Step::Backup, // B1: the message is alive, no drop
+            Step::Local(b, Op::DeleteMessage(0)),
+            Step::SyncAll { skip: a },
+            Step::Advance(31 * DAY_MS),
+            Step::Purge(b),
+            Step::SyncAll { skip: a },
+            Step::Advance(181 * DAY_MS),
+            Step::Compact, // K
+            Step::Advance(1000),
+            Step::BackupSecond,        // B2: K is in the dump
+            Step::RestoreServer,       // G1, from B1: the message is alive again
+            Step::SyncAll { skip: b }, // device 0 enters G1
+            Step::Advance(1000),
+            Step::Backup,              // B3: a backup of the branch, cut after K
+            Step::RestoreServer,       // G2, from B3
+            Step::SyncAll { skip: b }, // device 0 enters G2 from 0: the lineage it holds is [G0, G1, G2]
+            Step::RestoreSecond,       // B2: the lineage is [G0, G3], G1 and G2 are abandoned
+            Step::SyncAll { skip: b }, // device 0 comes with a cursor from a generation the lineage does not know
+        ],
+    }
+}

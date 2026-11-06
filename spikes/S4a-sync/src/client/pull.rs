@@ -28,13 +28,14 @@ impl Client {
         self.bound || self.resync.is_some()
     }
 
-    /// The cursor `(generation, seq)`, the drop epoch the device last saw and the cut time of its generation (S4c-2, ADR-0017).
+    /// The cursor `(generation, seq)`, the drop epoch the device last saw and the lineage it was given with its generation (S4c-2,
+    /// ADR-0017).
     pub fn pull_request(&self) -> Cursor {
         Cursor {
             generation: self.cursor_generation,
             seq: self.cursor_seq,
             known_epoch: self.known_epoch,
-            cut_ms: self.cut_ms,
+            lineage: self.lineage.clone(),
         }
     }
 
@@ -65,14 +66,14 @@ impl Client {
                 generation,
                 stale,
                 epoch,
-                cut_ms,
+                lineage,
             } => {
                 if self.switches.ignore_generation {
                     self.cursor_generation = generation;
                     return;
                 }
-                // The branch the device now lives on was cut from a backup taken at `cut_ms`; a later restore places it by that time.
-                self.cut_ms = cut_ms;
+                // The device keeps the lineage it was given; a later restore finds where the branch the device lives on forked from it.
+                self.lineage = lineage;
                 let cause = match self.resync.as_ref().map(|r| r.cause) {
                     Some(ResyncCause::Binding) => ResyncCause::Binding,
                     _ if stale => ResyncCause::StaleAndGeneration,

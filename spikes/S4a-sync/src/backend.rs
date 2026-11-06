@@ -16,13 +16,14 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 /// Where the pushing or pulling device stands (appendix §A.3, `stale`; ADR-0017): its generation, its `seq`, the drop epoch it last saw
-/// and the cut time that came with the `GenerationChanged` answer which put it into its generation (0 if none did).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// and the lineage that came with the `GenerationChanged` answer which put it into its generation (empty if none did), as
+/// `(generation, cut_ms)`, oldest first. A push sends no lineage (the real server's cursor header has three parts).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cursor {
     pub generation: u64,
     pub seq: u64,
     pub known_epoch: u64,
-    pub cut_ms: u64,
+    pub lineage: Vec<(u64, u64)>,
 }
 
 /// A backup the server took (S4c-2). Opaque to the world; a server restores only a backup of its own kind.
@@ -32,7 +33,7 @@ pub trait SyncServer {
     /// The current generation.
     fn generation(&self) -> u64;
     /// `cursor` is the pusher's; the in-memory server ignores it, the real server answers `stale` when it is behind a drop it missed.
-    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, cursor: Cursor) -> PushResponse;
+    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, cursor: &Cursor) -> PushResponse;
     fn pull(&mut self, cursor: Cursor, limit: usize) -> PullResponse;
     fn compact(&mut self, now_ms: u64);
     fn head(&self) -> u64;
@@ -65,7 +66,7 @@ impl SyncServer for Server {
         self.generation
     }
 
-    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, _cursor: Cursor) -> PushResponse {
+    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, _cursor: &Cursor) -> PushResponse {
         Server::push(self, env, now_ms)
     }
 

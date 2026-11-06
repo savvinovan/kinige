@@ -10,8 +10,8 @@
 use s4a_sync::backend::with_backend;
 use s4a_sync::client::ResyncCause;
 use s4a_sync::directed::{
-    away_schedule, chain_schedule, chat_purge_schedule, compacted_schedule,
-    compaction_while_a_restore_resync_pulls, older_then_newer_backup_schedule,
+    away_schedule, branch_of_a_branch_schedule, chain_schedule, chat_purge_schedule,
+    compacted_schedule, compaction_while_a_restore_resync_pulls, older_then_newer_backup_schedule,
     own_writes_after_a_lift, restore_epoch_schedule, single_writer_schedule,
 };
 use s4a_sync::envelope::Entity;
@@ -252,6 +252,63 @@ fn p8_a_branch_cut_from_an_older_backup_than_the_one_restored_now_on_a_real_dump
             _ => None,
         })
         .collect();
+    assert_eq!(
+        causes.last(),
+        Some(&ResyncCause::StaleAndGeneration),
+        "{causes:?}"
+    );
+    assert!(!world.clients[a].records.contains_key(&x));
+    assert!(world.clients[a].quarantine.iter().any(|q| q.key == x));
+    assert!(
+        !world
+            .server
+            .all_envelopes()
+            .iter()
+            .any(|e| e.header.key() == x),
+        "nothing of it went back to the real server"
+    );
+    assert_eq!(world.server.drops_count(), 1);
+}
+
+/// The fork rule on real dumps (round 1 of the review of S4c-2, the `review_s4c2_round_1_*` scenario of `scenarios.rs`): a branch that was
+/// itself restored from a backup of a branch. Device 0 holds the lineage `[G0, G1, G2]`; the server is restored from a backup that holds
+/// the drop and its lineage is `[G0, G3]`. The device's own generation's cut time is after the drop, the cut time of its fork is before
+/// it: the real server must say "stale" and the message goes to quarantine.
+#[test]
+fn p8_a_branch_of_a_branch_is_placed_by_its_fork_on_a_real_dump() {
+    let host = RealServerHost::connect().expect("a database on KINIGE_TEST_DATABASE_URL");
+    let schedule = branch_of_a_branch_schedule();
+    let world = with_backend(
+        {
+            let host = host.clone();
+            move || host.server()
+        },
+        || {
+            let mut world = s4a_sync::world::World::new(&schedule, Switches::default());
+            world.run(&schedule.steps);
+            world
+        },
+    );
+    let a = 0;
+    let x = world.clients[1]
+        .tombstones
+        .keys()
+        .find(|k| k.0 == Entity::Message)
+        .cloned()
+        .expect("device 1 holds the tombstone of the purged message");
+    let causes: Vec<ResyncCause> = world.clients[a]
+        .events
+        .iter()
+        .filter_map(|e| match e {
+            s4a_sync::client::Event::Resync(cause) => Some(*cause),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        world.clients[a].lineage.len(),
+        2,
+        "the device ends holding the lineage of the last answer, [G0, G3]"
+    );
     assert_eq!(
         causes.last(),
         Some(&ResyncCause::StaleAndGeneration),

@@ -3,8 +3,8 @@
 use s4a_sync::backend::Cursor;
 use s4a_sync::client::{Event, FeedSlot, ResyncCause};
 use s4a_sync::directed::{
-    compaction_while_a_restore_resync_pulls, older_then_newer_backup_schedule,
-    own_writes_after_a_lift,
+    branch_of_a_branch_schedule, compaction_while_a_restore_resync_pulls,
+    older_then_newer_backup_schedule, own_writes_after_a_lift,
 };
 use s4a_sync::envelope::{DAY_MS, Entity, Kind};
 use s4a_sync::props;
@@ -553,10 +553,76 @@ fn review_round_3_a_branch_cut_from_an_older_backup_than_the_one_restored_now() 
     }
 }
 
-/// A cursor of an unknown generation is placed by the cut time it carries: with none (0) it has missed every drop, with the cut time of
-/// a branch made after the drop it has missed nothing, and a pull from 0 is never stale.
+/// Round 1 of the review of S4c-2 (guardian, critical), the same story one level deeper: the branch was itself restored from a backup of
+/// a branch. The device's lineage is `[G0, G1, G2]`; B3, the backup G2 was cut from, was taken after the drop K, but G1 was cut from B1,
+/// before it, and the device holds what B1 held. Placed by its own generation's cut time (the switch `branch_by_own_cut`, the rule of the
+/// first round) the device is told "not stale" and pushes the purged message back; placed by the fork it is stale and the message is
+/// in its quarantine.
 #[test]
-fn review_round_3_an_unknown_cursor_is_placed_by_its_cut_time() {
+fn review_s4c2_round_1_a_branch_of_a_branch_is_placed_by_where_it_forked() {
+    for (switches, own_cut) in [
+        (Switches::default(), false),
+        (
+            Switches {
+                branch_by_own_cut: true,
+                ..Switches::default()
+            },
+            true,
+        ),
+    ] {
+        let a = 0;
+        let schedule = branch_of_a_branch_schedule();
+        let mut world = World::new(&schedule, switches);
+        world.run(&schedule.steps);
+        assert_eq!(
+            world.memory().lineage().len(),
+            2,
+            "[G0, G3]: the branches are not in it"
+        );
+        assert_eq!(
+            world.clients[a].lineage.len(),
+            2,
+            "the device ends holding the lineage of the last answer, [G0, G3]"
+        );
+        let x = world.clients[1]
+            .tombstones
+            .keys()
+            .find(|k| k.0 == Entity::Message)
+            .cloned()
+            .expect("device 1 holds X's tombstone");
+        let causes = resync_causes(&world, a);
+        let pushed_back = world
+            .server
+            .all_envelopes()
+            .iter()
+            .any(|e| e.header.key() == x);
+        if own_cut {
+            assert_eq!(
+                causes.last(),
+                Some(&ResyncCause::GenerationChanged),
+                "{causes:?}"
+            );
+            assert!(pushed_back, "the first rule: A pushed X back");
+        } else {
+            assert_eq!(
+                causes.last(),
+                Some(&ResyncCause::StaleAndGeneration),
+                "{causes:?}"
+            );
+            assert!(
+                world.clients[a].quarantine.iter().any(|q| q.key == x),
+                "X is in A's quarantine"
+            );
+            assert!(!pushed_back, "and nothing of it went back to the server");
+        }
+    }
+}
+
+/// A cursor of an unknown generation is placed by the fork of the lineage it carries: with none it has missed every drop, with the fork
+/// cut after the drop it has missed nothing, a lineage the server shares in full is nonsense for an unknown cursor (safe side), and a
+/// pull from 0 is never stale.
+#[test]
+fn review_round_3_an_unknown_cursor_is_placed_by_the_fork_of_its_lineage() {
     let schedule = two_devices(vec![
         Local(0, CreateChat),
         Local(0, CreateMessage(0)),
@@ -574,16 +640,25 @@ fn review_round_3_an_unknown_cursor_is_placed_by_its_cut_time() {
     assert_eq!(world.memory().lineage().len(), 1);
     assert_eq!(world.memory().drops_count(), 1);
     let unknown = 0xdead_beef;
-    let ask = |world: &mut World, seq: u64, cut_ms: u64| {
+    // The device's lineage as the fork rule reads it: its first generation the server does not have, with that generation's cut time.
+    let ask_with = |world: &mut World, seq: u64, lineage: Vec<(u64, u64)>| {
         world.server.pull(
             Cursor {
                 generation: unknown,
                 seq,
                 known_epoch: 0,
-                cut_ms,
+                lineage,
             },
             10,
         )
+    };
+    let ask = |world: &mut World, seq: u64, cut_ms: u64| {
+        let lineage = if cut_ms == 0 {
+            Vec::new()
+        } else {
+            vec![(1, 0), (unknown, cut_ms)]
+        };
+        ask_with(world, seq, lineage)
     };
     let stale_of = |response: PullResponse| match response {
         PullResponse::GenerationChanged { stale, .. } => stale,
@@ -609,6 +684,14 @@ fn review_round_3_an_unknown_cursor_is_placed_by_its_cut_time() {
     assert!(
         !stale_of(ask(&mut world, 0, 0)),
         "a pull from 0 is never stale"
+    );
+    assert!(
+        stale_of(ask_with(&mut world, 1, vec![(1, 0)])),
+        "a lineage made only of generations the server has names no fork: the safe side"
+    );
+    assert!(
+        !stale_of(ask_with(&mut world, 1, vec![(unknown, now + 1), (1, 0)])),
+        "the fork is the first entry the server does not have, wherever the shared ones stand"
     );
 }
 

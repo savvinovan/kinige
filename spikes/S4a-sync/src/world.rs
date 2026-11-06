@@ -332,9 +332,9 @@ impl World {
             if !deliver {
                 continue;
             }
-            let response = self.server.push(env, now, cursor);
+            let response = self.server.push(env, now, &cursor);
             if fault == PushFault::Duplicate {
-                let again = self.server.push(env, now, cursor);
+                let again = self.server.push(env, now, &cursor);
                 self.answer(c, env, again, hear);
             }
             self.answer(c, env, response, hear);

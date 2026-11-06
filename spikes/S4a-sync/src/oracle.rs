@@ -375,9 +375,9 @@ pub fn push_is_idempotent(world: &mut World) -> Result<(), String> {
             generation,
             seq: 0,
             known_epoch: 0,
-            cut_ms: 0,
+            lineage: Vec::new(),
         };
-        let response = world.server.push(env, world.now, cursor);
+        let response = world.server.push(env, world.now, &cursor);
         match (response, seq_before) {
             (PushResponse::Duplicate(seq), Some(before)) if seq == before => {}
             (other, _) => {

@@ -153,7 +153,7 @@ impl SyncServer for HttpServer {
         self.generation
     }
 
-    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, cursor: Cursor) -> PushResponse {
+    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, cursor: &Cursor) -> PushResponse {
         self.clock.set(now_ms);
         let header = &env.header;
         let body = encode_frames(&[(
@@ -163,9 +163,10 @@ impl SyncServer for HttpServer {
             env.wire(),
         )])
         .unwrap_or_else(|| panic!("a frame for {}", header.id));
+        // Three parts: a push carries no lineage, a pusher outside the current generation is stale whatever it could say.
         let cursor_text = format!(
-            "{}.{}.{}.{}",
-            cursor.generation, cursor.seq, cursor.known_epoch, cursor.cut_ms
+            "{}.{}.{}",
+            cursor.generation, cursor.seq, cursor.known_epoch
         );
         let (status, answer) =
             self.block(
@@ -204,11 +205,16 @@ impl SyncServer for HttpServer {
     }
 
     fn pull(&mut self, cursor: Cursor, limit: usize) -> PullResponse {
+        let lineage: Vec<_> = cursor
+            .lineage
+            .iter()
+            .map(|(generation, cut_ms)| json!({"generation": generation.to_string(), "cut_ms": cut_ms}))
+            .collect();
         let request = json!({
             "generation": cursor.generation.to_string(),
             "after": cursor.seq,
             "known_epoch": cursor.known_epoch,
-            "cut_ms": cursor.cut_ms,
+            "lineage": lineage,
             "limit": limit,
         });
         let (status, answer) = self.block(self.http.post("/v1/pull", Some(&self.token), &request));
@@ -244,14 +250,23 @@ impl SyncServer for HttpServer {
                 generation,
                 stale,
                 epoch,
-                cut_ms,
+                lineage,
             } => PullResponse::GenerationChanged {
                 generation: generation
                     .parse()
                     .unwrap_or_else(|_| panic!("a generation that is not a number")),
                 stale,
                 epoch,
-                cut_ms,
+                lineage: lineage
+                    .into_iter()
+                    .map(|entry| {
+                        let id = entry
+                            .generation
+                            .parse()
+                            .unwrap_or_else(|_| panic!("a generation that is not a number"));
+                        (id, entry.cut_ms)
+                    })
+                    .collect(),
             },
         }
     }
