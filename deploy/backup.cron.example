@@ -1,6 +1,10 @@
-# A daily backup of the Kinige server with the rotation (spike S4c-2, ADR-0020). Put this in /etc/cron.d/kinige-backup (root's crontab
-# format: minute hour day month weekday user command) after changing the path. It takes a snapshot of Postgres, copies the blobs, writes
-# the manifest and removes backups older than KINIGE_BACKUP_RETENTION_DAYS (30 by default), keeping the newest whatever its age.
+# A daily backup of the Kinige server with the rotation (spike S4c-2, ADR-0020). Put this in /etc/cron.d/kinige-backup after changing the
+# path (the /etc/cron.d format has a user field between the weekday and the command; a per-user crontab does not). It takes a snapshot of
+# Postgres, copies the blobs, writes the manifest and removes backups older than KINIGE_BACKUP_RETENTION_DAYS (30 by default).
+#
+# The newest backup is kept whatever its age, until the next one is made: a server whose cron stopped keeps its last backup instead of
+# none. So a backup that holds a deleted account's data lives until the next backup replaces it as the newest and the retention has
+# passed, not exactly 30 days; to hold the hard bound, keep this entry running (ADR-0001 §8.9, PRD §10.3).
 #
 # The interval between runs must be what KINIGE_BACKUP_INTERVAL_HOURS says (24 by default): a deleted blob stays in the store for the
 # retention plus one interval, which is how long the oldest backup that can still be restored lives.
