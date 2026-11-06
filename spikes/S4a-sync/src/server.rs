@@ -281,11 +281,21 @@ impl Server {
                 // The first rule: the cut of the device's own generation, the last entry it holds.
                 device.last().map_or(0, |(_, cut)| *cut)
             } else {
-                // `>=` below: a drop stamped at the fork cut itself may or may not be in the backup, so it counts as missed.
+                // `>=` below: a drop stamped at the fork cut itself may or may not be in the backup, so it counts as missed. The fork is
+                // the first foreign entry after the first shared one; a lineage that shares nothing (the real server trims its own, and
+                // the device's may be trimmed) names no fork: cut 0, everything missed.
+                let shared = |id: &u64| self.lineage.contains(id);
                 device
                     .iter()
-                    .find(|(id, _)| !self.lineage.contains(id))
-                    .map_or(0, |(_, cut)| *cut)
+                    .position(|(id, _)| shared(id))
+                    .and_then(|first| {
+                        device
+                            .iter()
+                            .skip(first)
+                            .find(|(id, _)| !shared(id))
+                            .map(|(_, cut)| *cut)
+                    })
+                    .unwrap_or(0)
             };
             return self.drops.iter().any(|d| d.compacted_ms >= fork_cut);
         }

@@ -690,8 +690,16 @@ fn review_round_3_an_unknown_cursor_is_placed_by_the_fork_of_its_lineage() {
         "a lineage made only of generations the server has names no fork: the safe side"
     );
     assert!(
-        !stale_of(ask_with(&mut world, 1, vec![(unknown, now + 1), (1, 0)])),
-        "the fork is the first entry the server does not have, wherever the shared ones stand"
+        stale_of(ask_with(&mut world, 1, vec![(unknown, now + 1), (1, 0)])),
+        "a foreign entry before the shared one is history the server trimmed, not a fork: nothing foreign after it, nothing to place"
+    );
+    assert!(
+        stale_of(ask_with(
+            &mut world,
+            1,
+            vec![(unknown, now + 1), (unknown + 1, now + 2)]
+        )),
+        "a lineage that shares nothing names no fork, whatever its cut times"
     );
 }
 
