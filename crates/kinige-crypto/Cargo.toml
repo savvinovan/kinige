@@ -1,0 +1,27 @@
+[package]
+name = "kinige-crypto"
+description = "Kinige envelope and key scheme of ADR-0001 on libsodium (native only, not built for wasm32)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# The binding of ADR-0001 §11 (wrappers over libsodium-sys-stable 1.24.3, which bundles libsodium 1.0.22); pinned: a crypto
+# dependency changes only on purpose.
+libsodium-rs = "=0.3.0"
+# BIP-39 word list and checksum, entropy only, never `to_seed` (ADR-0001 §8.1). CC0-1.0.
+bip39 = { version = "=3.0.0", default-features = false, features = ["std", "zeroize"] }
+# The header and the payload are JSON (§5.2, §5.3); groups stay raw bytes.
+serde = "1"
+serde_json = { version = "1", features = ["raw_value"] }
+# HLC syntax of the header (`hlc::parse`); kinige-domain has no crypto, this crate depends on it and not the other way round.
+kinige-domain = { path = "../kinige-domain" }
+
+[target.'cfg(unix)'.dev-dependencies]
+# Only for the measurement example (peak memory through getrusage).
+libc = "0.2"

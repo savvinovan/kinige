@@ -7,6 +7,8 @@ pub mod directed;
 pub mod envelope;
 pub mod oracle;
 pub mod props;
+#[cfg(feature = "real-envelope")]
+pub mod real;
 pub mod schedules;
 pub mod server;
 pub mod switches;

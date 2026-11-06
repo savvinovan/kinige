@@ -8,3 +8,8 @@ e890b3a46abf561704a85a7f76a274e8054146c7:crates/kinige-store/tests/capture_short
 af7781b820a05d47ee19f7018e734dd368a817df:src-tauri/src/hotkeys.rs:generic-api-key:318
 ad535eefbf0fbcb498d301bf0036ded0a2f23343:crates/kinige-store/tests/capture.rs:generic-api-key:990
 5a55aef0d36771fbaf3d2daa7c8be1d9a5a62a22:crates/kinige-store/tests/capture.rs:generic-api-key:990
+# S4b test vectors (KINIG-96): `auth_key`, `rc_auth_key` and `auth_hash` made by libsodium.js from a fake password and the all-zero BIP-39
+# entropy. They are inputs of a test, not keys of anything. A regeneration of the vectors adds its fingerprints here.
+6baae15554c4ba30dd01ca02b26c99df29fc179a:crates/kinige-crypto/vectors/vectors.json:generic-api-key:11
+6baae15554c4ba30dd01ca02b26c99df29fc179a:crates/kinige-crypto/vectors/vectors.json:generic-api-key:14
+6baae15554c4ba30dd01ca02b26c99df29fc179a:crates/kinige-crypto/vectors/vectors.json:generic-api-key:20
