@@ -3,7 +3,8 @@
 //! the account's epoch grows by one and the drop is stored with the generation it was made in and the time (ADR-0017).
 
 use super::envelopes::{current_generation, drops_of};
-use super::{to_i64, to_u64};
+use super::{lock, to_i64, to_u64};
+use crate::clock::Clock;
 use crate::error::ApiError;
 use crate::rules::compact::{Meta, plan};
 use deadpool_postgres::Pool;
@@ -19,10 +20,13 @@ pub struct Stats {
     pub dropped: bool,
 }
 
-/// Compacts one account at `now_ms`.
-pub async fn account(pool: &Pool, account: &str, now_ms: u64) -> Result<Stats, ApiError> {
+/// Compacts one account at the time `clock` shows **after** the backup lock is taken (`store::lock`): the time stamped on a drop must be
+/// at or above the cut time of every backup that does not contain it.
+pub async fn account(pool: &Pool, account: &str, clock: &dyn Clock) -> Result<Stats, ApiError> {
     let mut client = pool.get().await?;
     let tx = client.transaction().await?;
+    lock::shared(&tx).await?;
+    let now_ms = clock.now_ms();
     let row = tx
         .query_opt(
             "SELECT epoch FROM accounts WHERE id = $1 FOR UPDATE",
@@ -110,15 +114,15 @@ pub async fn account(pool: &Pool, account: &str, now_ms: u64) -> Result<Stats, A
     })
 }
 
-/// Compacts every account at `now_ms`; returns the number of envelopes removed. One account's failure does not stop the others.
-pub async fn all(pool: &Pool, now_ms: u64) -> Result<usize, ApiError> {
+/// Compacts every account; returns the number of envelopes removed. One account's failure does not stop the others.
+pub async fn all(pool: &Pool, clock: &dyn Clock) -> Result<usize, ApiError> {
     let client = pool.get().await?;
     let rows = client.query("SELECT id FROM accounts", &[]).await?;
     drop(client);
     let mut removed = 0;
     for row in rows {
         let id: String = row.try_get("id")?;
-        match account(pool, &id, now_ms).await {
+        match account(pool, &id, clock).await {
             Ok(stats) => removed += stats.removed,
             Err(_) => log::warn!("compaction of one account failed"),
         }

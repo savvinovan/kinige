@@ -18,6 +18,14 @@ pub enum ApiError {
     VersionConflict { current: u64 },
     /// 413: a body or an envelope above its cap, refused before it is buffered.
     TooLarge,
+    /// 413: the account's quota for blobs would be exceeded (S4c-2).
+    Quota,
+    /// 404: no such blob (S4c-2). Routes that do not exist are the framework's own 404.
+    NotFound,
+    /// 408: a request body that went quiet or came in too slowly (S4c-2).
+    Timeout,
+    /// 409: an upload at an offset beyond what the server holds; `received` is where to continue (S4c-2).
+    Offset { received: u64 },
     /// 429.
     RateLimited(Limited),
     /// 500: a database or pool failure. Never the answer to a malformed request.
@@ -29,6 +37,8 @@ struct Body<'a> {
     error: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     current_version: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    received: Option<u64>,
 }
 
 impl ApiError {
@@ -36,8 +46,12 @@ impl ApiError {
         match self {
             ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
             ApiError::Auth => StatusCode::UNAUTHORIZED,
-            ApiError::Conflict(_) | ApiError::VersionConflict { .. } => StatusCode::CONFLICT,
-            ApiError::TooLarge => StatusCode::PAYLOAD_TOO_LARGE,
+            ApiError::NotFound => StatusCode::NOT_FOUND,
+            ApiError::Timeout => StatusCode::REQUEST_TIMEOUT,
+            ApiError::Conflict(_) | ApiError::VersionConflict { .. } | ApiError::Offset { .. } => {
+                StatusCode::CONFLICT
+            }
+            ApiError::TooLarge | ApiError::Quota => StatusCode::PAYLOAD_TOO_LARGE,
             ApiError::RateLimited(_) => StatusCode::TOO_MANY_REQUESTS,
             ApiError::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -49,6 +63,10 @@ impl ApiError {
             ApiError::Auth => "auth",
             ApiError::VersionConflict { .. } => "version_conflict",
             ApiError::TooLarge => "too_large",
+            ApiError::Quota => "quota",
+            ApiError::NotFound => "not_found",
+            ApiError::Timeout => "timeout",
+            ApiError::Offset { .. } => "offset_gap",
             ApiError::RateLimited(_) => "rate_limited",
             ApiError::Internal => "internal",
         }
@@ -61,9 +79,14 @@ impl IntoResponse for ApiError {
             ApiError::VersionConflict { current } => Some(current),
             _ => None,
         };
+        let received = match self {
+            ApiError::Offset { received } => Some(received),
+            _ => None,
+        };
         let body = Body {
             error: self.code(),
             current_version,
+            received,
         };
         let mut response = json(self.status(), &body);
         if let ApiError::RateLimited(limited) = self

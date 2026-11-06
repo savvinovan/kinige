@@ -1,6 +1,6 @@
 [package]
 name = "kinige-server"
-description = "Kinige sync server core: accounts, sessions, push, pull and compaction of ADR-0001 on axum and Postgres (spike S4c-1, ADR-0019)"
+description = "Kinige sync server: accounts, sessions, push, pull and compaction of ADR-0001 on axum and Postgres (spike S4c-1, ADR-0019), blobs, backup and restore (spike S4c-2, ADR-0020)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -21,6 +21,7 @@ path = "src/main.rs"
 # `testing`: the helpers that make a throwaway database and a router on it (`kinige_server::testing`); the S4a simulation uses them.
 testing = ["dep:tower"]
 # `pg-tests`: the suites that need a real Postgres (`KINIGE_TEST_DATABASE_URL`). Without it `cargo test` runs the pure rules only.
+# The blob suites also run against an S3-compatible store when `KINIGE_TEST_S3_URL` is set (see the README).
 pg-tests = ["testing"]
 
 [dependencies]
@@ -32,14 +33,20 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # The web framework. Only HTTP/1 over tokio; the JSON bodies are parsed by hand so that every refusal is our own 4xx (`error.rs`).
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time", "sync", "fs", "io-util"] }
 # Reading a request body frame by frame, so that lengths are judged before the bytes are buffered (`wire.rs`).
 http-body-util = "0.1"
+# Streams: the COPY of a dump and the body of a blob download.
+futures-util = { version = "0.3", default-features = false, features = ["std", "sink"] }
 # The Postgres driver (async, no compile-time query checking) and its pool.
 tokio-postgres = { version = "0.7", features = ["with-serde_json-1"] }
 deadpool-postgres = "0.14"
-# The binding that kinige-crypto already pins: base64 for keys and envelopes on the wire, random bytes, constant-time compare.
+# The binding that kinige-crypto already pins: base64 for keys and envelopes on the wire, random bytes, constant-time compare, and
+# BLAKE2b (`crypto_generichash`) for the hashes of a backup's files.
 libsodium-rs = "=0.3.0"
+# One interface to the blob store, two backends (ADR-0020): `LocalFileSystem` (temporary file, fsync, rename) and Amazon S3 compatible
+# stores. Apache Arrow project, MIT OR Apache-2.0; only the `aws` feature, no other cloud.
+object_store = { version = "0.14", default-features = false, features = ["aws", "fs"] }
 # Only with `testing`: the router is called in process through `ServiceExt::oneshot`, so HTTP parsing is exercised without a socket.
 tower = { version = "0.5", features = ["util"], optional = true }
 

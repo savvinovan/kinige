@@ -119,6 +119,10 @@ pub struct PullRequest {
     pub generation: String,
     pub after: u64,
     pub known_epoch: u64,
+    /// The cut time that came with the `GenerationChanged` answer which put the device into its generation (S4c, 2026-11-06, the
+    /// branch-cut rule of ADR-0017); absent for a device that never got one. Only read when the generation is not in the lineage.
+    #[serde(default)]
+    pub cut_ms: Option<u64>,
     #[serde(default)]
     pub limit: Option<usize>,
 }
@@ -143,6 +147,9 @@ pub enum PullResponse {
         generation: String,
         stale: bool,
         epoch: u64,
+        /// The time of the backup the new generation was cut from (0 if no restore made it): the device keeps it with its cursor and
+        /// sends it back (`PullRequest::cut_ms`, the cursor header), so that a later restore can place this generation.
+        cut_ms: u64,
     },
 }
 
@@ -185,4 +192,47 @@ pub enum PushOutcome {
     ClockSkew,
     TooOld,
     Stale,
+}
+
+/// The answer to an upload request (appendix §A.6, blobs): `partial` while bytes are missing, `published` when this request completed
+/// the blob, `exists` when it was published already (which counts as success, §7).
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BlobPutResponse {
+    pub result: BlobPutOutcome,
+    /// What the server holds of an unfinished upload, or the size of a published blob.
+    pub received: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BlobPutOutcome {
+    Partial,
+    Published,
+    Exists,
+}
+
+/// `GET /v1/blobs/{id}/status`: where an upload stands, so that a client resumes at `received`.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BlobStatus {
+    pub state: BlobState,
+    /// The declared size of an unfinished upload, or the size of a published blob; 0 for `none` and `deleted`.
+    pub size: u64,
+    /// What the server holds of an unfinished upload; the size of a published blob; 0 otherwise.
+    pub received: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BlobState {
+    None,
+    Uploading,
+    Published,
+    /// Deleted: the id cannot be used again; a replacement goes under a new id (§7).
+    Deleted,
+}
+
+/// `POST /v1/account/delete`: the password's `auth_key` again, base64url.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeleteAccountRequest {
+    pub auth_key: String,
 }

@@ -8,7 +8,7 @@
 
 use super::{fixed, to_i64, to_u64};
 use crate::error::ApiError;
-use crate::rules::pull::{self, Cursor, Drop, Plan, page_budget};
+use crate::rules::pull::{self, Cursor, Drop, Generation, Plan, page_budget};
 use crate::rules::push::{Answer, Facts, OpRecord, PurgedRecord, Verdict, decide};
 use crate::wire::Frame;
 use deadpool_postgres::{Pool, Transaction};
@@ -30,8 +30,9 @@ pub struct PushContext {
 /// A page of the log, or why there is none.
 #[derive(Debug)]
 pub struct PullOut {
-    /// The current generation and the account's drop epoch (§6.3).
+    /// The current generation, the cut time of the restore that made it (0 if none did) and the account's drop epoch (§6.3).
     pub generation: u64,
+    pub cut_ms: u64,
     pub epoch: u64,
     pub plan: Plan,
     /// Empty unless the plan is `Page`.
@@ -122,9 +123,11 @@ pub async fn pull(
     let lineage = lineage(&tx).await?;
     let drops = drops_of(&tx, account).await?;
     let plan = pull::plan(&lineage, &drops, cursor);
-    let generation = lineage.last().copied().unwrap_or(0);
+    let generation = lineage.last().map_or(0, |g| g.id);
+    let cut_ms = lineage.last().map_or(0, |g| g.cut_ms);
     let mut out = PullOut {
         generation,
+        cut_ms,
         epoch,
         plan,
         items: Vec::new(),
@@ -219,12 +222,17 @@ async fn known_groups(
         .collect()
 }
 
-async fn lineage(tx: &Transaction<'_>) -> Result<Vec<u64>, ApiError> {
+pub(super) async fn lineage(tx: &Transaction<'_>) -> Result<Vec<Generation>, ApiError> {
     let rows = tx
-        .query("SELECT generation FROM lineage ORDER BY pos", &[])
+        .query("SELECT generation, cut_ms FROM lineage ORDER BY pos", &[])
         .await?;
     rows.iter()
-        .map(|row| Ok(to_u64(row.try_get("generation")?)))
+        .map(|row| {
+            Ok(Generation {
+                id: to_u64(row.try_get("generation")?),
+                cut_ms: to_u64(row.try_get("cut_ms")?),
+            })
+        })
         .collect()
 }
 
@@ -248,7 +256,7 @@ pub(super) async fn drops_of(tx: &Transaction<'_>, account: &str) -> Result<Vec<
 }
 
 pub(super) async fn current_generation(tx: &Transaction<'_>) -> Result<u64, ApiError> {
-    Ok(lineage(tx).await?.last().copied().unwrap_or(0))
+    Ok(lineage(tx).await?.last().map_or(0, |g| g.id))
 }
 
 /// Step 8: the envelope, its `op_id`, the entity's index, and the new head, all in the transaction that holds the account lock.

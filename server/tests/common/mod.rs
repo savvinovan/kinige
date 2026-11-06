@@ -101,13 +101,9 @@ pub async fn put(rig: &Rig, acct: &Acct, n: u8, op_n: u8, bytes: &[u8]) -> Value
 
 /// Compacts the account at the rig's clock.
 pub async fn compact_now(rig: &Rig, acct: &Acct) -> kinige_server::store::compact::Stats {
-    kinige_server::store::compact::account(
-        &rig.state.pool,
-        &acct.creds.account_id,
-        kinige_server::Clock::now_ms(&*rig.clock),
-    )
-    .await
-    .expect("compaction")
+    kinige_server::store::compact::account(&rig.state.pool, &acct.creds.account_id, &*rig.clock)
+        .await
+        .expect("compaction")
 }
 
 pub fn hlc(wall: u64, counter: u32) -> String {

@@ -1,8 +1,14 @@
-//! `kinige-server`: the sync server core (spike S4c-1). Configuration is the environment (see `config::Settings` and the README).
-//! TLS is not terminated here: a reverse proxy does it (S4c-2).
+//! `kinige-server`: the sync server (spikes S4c-1 and S4c-2). Configuration is the environment (see `config::Settings` and the README).
+//! TLS is not terminated here: a reverse proxy does it (`deploy/`). Besides serving, the binary takes and restores backups
+//! (`kinige-server backup <dir> [--prune]`, `kinige-server restore <backup directory>`).
 
-use kinige_server::config::{Config, Settings};
-use kinige_server::{AppState, compact_loop, logging, router};
+use kinige_server::backup;
+use kinige_server::blobs::Blobs;
+use kinige_server::blobs::objects::Objects;
+use kinige_server::blobs::staging::Staging;
+use kinige_server::cli::{self, Command};
+use kinige_server::config::Settings;
+use kinige_server::{AppState, Clock, SystemClock, compact_loop, logging, router, store};
 use std::env;
 use std::fs;
 use std::net::SocketAddr;
@@ -13,26 +19,82 @@ use tokio::signal;
 #[tokio::main]
 async fn main() -> ExitCode {
     logging::init(env::var("KINIGE_LOG").ok().as_deref());
-    match run().await {
+    let args: Vec<String> = env::args().skip(1).collect();
+    let command = match cli::parse(&args) {
+        Ok(command) => command,
+        Err(usage) => {
+            log::error!("{usage}");
+            return ExitCode::from(2);
+        }
+    };
+    match run(command).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(reason) => {
-            log::error!("the server stopped: {reason}");
+            log::error!("the command stopped: {reason}");
             ExitCode::FAILURE
         }
     }
 }
 
-async fn run() -> Result<(), String> {
+async fn run(command: Command) -> Result<(), String> {
     let settings = Settings::from_lookup(
         |name| env::var(name).ok(),
         |path| fs::read_to_string(path).ok(),
     )
     .map_err(|error| error.to_string())?;
+    let objects = Objects::open(&settings.blobs)?;
+    match command {
+        Command::Serve => serve(settings, objects).await,
+        Command::Backup { dir, prune } => {
+            let pool = store::connect(&settings.database_url).map_err(|e| e.code().to_string())?;
+            let clock = SystemClock;
+            let (written, manifest) = backup::create(&pool, &objects, &clock, &dir)
+                .await
+                .map_err(|error| error.to_string())?;
+            log::info!(
+                "backup {} has {} blobs",
+                written
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+                manifest.blobs.len()
+            );
+            if prune {
+                let pruned =
+                    backup::prune(&dir, clock.now_ms(), settings.config.backup_retention_ms)
+                        .await
+                        .map_err(|error| error.to_string())?;
+                log::info!(
+                    "pruned {} backups and {} unfinished ones",
+                    pruned.backups.len(),
+                    pruned.unfinished
+                );
+            }
+            Ok(())
+        }
+        Command::Restore { dir } => {
+            let pool = store::connect(&settings.database_url).map_err(|e| e.code().to_string())?;
+            let report = backup::restore(&pool, &objects, &SystemClock, &dir)
+                .await
+                .map_err(|error| error.to_string())?;
+            log::info!(
+                "restored: a new generation, {} deletions applied again, {} orphan objects",
+                report.deletions_applied,
+                report.orphans
+            );
+            Ok(())
+        }
+    }
+}
+
+async fn serve(settings: Settings, objects: Objects) -> Result<(), String> {
+    let blobs = Blobs::new(objects, Staging::new(settings.blobs.staging_dir()));
     let state = AppState::open(
         &settings.database_url,
         settings.secret,
-        Config::default(),
+        settings.config,
         settings.client_addr_header,
+        blobs,
     )
     .await
     .map_err(|error| format!("the database is not usable ({})", error.code()))?;

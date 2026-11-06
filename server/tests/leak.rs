@@ -13,7 +13,6 @@ use kinige_crypto::ids::auth_hash;
 use kinige_crypto::secret::{Password, SecretBytes};
 use kinige_crypto::words::Words;
 use kinige_crypto::{Profile, keys, wrap};
-use kinige_server::Clock;
 use kinige_server::dto::RegisterRequest;
 use kinige_server::store::compact;
 use kinige_server::wire::{to_b64, uuid_text};
@@ -199,7 +198,7 @@ async fn nothing_the_user_wrote_and_no_secret_is_in_any_table_or_in_the_log() {
     )
     .await;
     rig.clock.advance(181 * DAY);
-    compact::account(&rig.state.pool, &account_text, rig.clock.now_ms())
+    compact::account(&rig.state.pool, &account_text, &*rig.clock)
         .await
         .expect("compaction");
     for (name, text) in [

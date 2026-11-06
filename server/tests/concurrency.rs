@@ -7,7 +7,6 @@
 mod common;
 
 use common::*;
-use kinige_server::Clock;
 use kinige_server::store::compact;
 use kinige_server::testing::Http;
 use serde_json::json;
@@ -306,13 +305,13 @@ async fn compaction_waits_for_a_held_account_lock_and_not_for_another_account() 
     .await
     .expect("lock");
 
-    let now = rig.clock.now_ms();
+    let clock = rig.clock.clone();
     let pool = rig.state.pool.clone();
     let id_a = a.creds.account_id.clone();
-    let waiting = tokio::spawn(async move { compact::account(&pool, &id_a, now).await });
+    let waiting = tokio::spawn(async move { compact::account(&pool, &id_a, &*clock).await });
     timeout(
         Duration::from_secs(2),
-        compact::account(&rig.state.pool, &b.creds.account_id, now),
+        compact::account(&rig.state.pool, &b.creds.account_id, &*rig.clock),
     )
     .await
     .expect("B's compaction finished while A was locked")

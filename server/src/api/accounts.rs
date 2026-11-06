@@ -3,14 +3,16 @@
 
 use super::{ClientAddr, authed, bearer, parse};
 use crate::dto::{
-    ChangePasswordRequest, CredVersionResponse, LoginParamsRequest, LoginParamsResponse,
-    LoginRequest, LoginResponse, PasswordPart, RecoveryFetchRequest, RecoveryFetchResponse,
-    RecoveryRequest, RecoveryResponse, RegisterRequest, ReissueRequest, TokenResponse,
+    ChangePasswordRequest, CredVersionResponse, DeleteAccountRequest, LoginParamsRequest,
+    LoginParamsResponse, LoginRequest, LoginResponse, PasswordPart, RecoveryFetchRequest,
+    RecoveryFetchResponse, RecoveryRequest, RecoveryResponse, RegisterRequest, ReissueRequest,
+    TokenResponse,
 };
 use crate::error::{ApiError, json};
 use crate::rate::Rule;
 use crate::state::AppState;
 use crate::store::accounts::{self as store, NewPassword, Registration};
+use crate::store::delete;
 use crate::store::recovery::{self, NewRecovery};
 use crate::store::sessions::{self, Token};
 use crate::wire::{from_b64, key32, to_b64};
@@ -137,6 +139,21 @@ pub async fn change_password(
     )
     .await?;
     Ok(json(StatusCode::OK, &CredVersionResponse { cred_version }))
+}
+
+/// Account deletion (§8.9): with a session and the password's `auth_key`. The account, its envelopes and sessions go at once, its blobs
+/// after the backup retention, and the deletion journal learns the account's hash.
+pub async fn delete_account(
+    State(app): State<AppState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<Response, ApiError> {
+    let (account, _) = authed(&app, &headers).await?;
+    let request: DeleteAccountRequest = parse(&body)?;
+    let auth = AuthKey::from_bytes(key(&request.auth_key, "auth_key")?);
+    delete::delete_account(&app.pool, &*app.clock, &account, &auth).await?;
+    app.blobs.staging.remove_account(&account).await;
+    Ok(json(StatusCode::OK, &serde_json::json!({})))
 }
 
 /// Step 1 of a recovery: the word check. It shares one budget with the recovery itself (§8.4).

@@ -199,7 +199,12 @@ async fn lengths_and_headers_are_judged_before_the_bodies_are_buffered() {
     for bad in [
         "",
         "1.2",
-        "1.2.3.4",
+        // Three parts and an optional fourth (the cut time, S4c-2); a fifth is malformed, and so is a fourth that is not a number.
+        "1.2.3.4.5",
+        "1.2.3.x",
+        "1.2.3.-4",
+        "1.2.3.99999999999999999999",
+        "1.2.3.",
         "a.b.c",
         "1.-2.3",
         "1.2.99999999999999999999",

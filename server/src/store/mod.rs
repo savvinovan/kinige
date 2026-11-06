@@ -2,8 +2,11 @@
 //! decision they act on is a function in `rules`.
 
 pub mod accounts;
+pub mod blobs;
 pub mod compact;
+pub mod delete;
 pub mod envelopes;
+pub mod lock;
 pub mod recovery;
 pub mod sessions;
 
@@ -18,7 +21,13 @@ const POOL_SIZE: usize = 16;
 const MIGRATION_LOCK: i64 = 0x004b_494e_4947_4501;
 
 /// The migrations, in order. Each is applied once, in its own transaction, and recorded.
-const MIGRATIONS: &[(i32, &str)] = &[(1, include_str!("../../migrations/0001_init.sql"))];
+pub const MIGRATIONS: &[(i32, &str)] = &[
+    (1, include_str!("../../migrations/0001_init.sql")),
+    (
+        2,
+        include_str!("../../migrations/0002_blobs_restore_deletions.sql"),
+    ),
+];
 
 /// A pool for `url` (`postgres://user:password@host:port/database`). No connection is opened yet. TLS to the database is not used: the
 /// database sits next to the server (README).
