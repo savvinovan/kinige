@@ -80,14 +80,48 @@ pub fn revision_id(revision: &ConflictRevision) -> String {
         .unwrap_or_else(|error| panic!("revision id: {error}"))
 }
 
+/// The name of an entity on the wire (§5.2).
+pub fn entity_name(entity: Entity) -> &'static str {
+    match entity {
+        Entity::Chat => "chat",
+        Entity::Message => "message",
+        Entity::Revision => "message_revision",
+    }
+}
+
+/// The entity of a wire name; `None` for one the simulation does not model.
+pub fn entity_of(name: &str) -> Option<Entity> {
+    [Entity::Chat, Entity::Message, Entity::Revision]
+        .into_iter()
+        .find(|entity| entity_name(*entity) == name)
+}
+
+/// An envelope as a server serves it (`kinige-server`'s pull): the bytes, and the `entity`, `id` and `op` the server declares next to
+/// them. The routing fields come from the declaration and the groups from the open header, so the client's `open` compares the authentic
+/// header with exactly what the transport said (ADR-0001 §5.4, ADR-0018 finding 2). `None` if the bytes do not have a readable open header.
+pub(crate) fn transport_header(wire: &[u8], entity: &str, id: &str, op: &str) -> Option<Header> {
+    let open = kinige_crypto::envelope::peek(wire).ok()?;
+    let parsed = WireHeader::parse(open.header).ok()?;
+    Some(Header {
+        entity: entity_of(entity)?,
+        id: id.to_string(),
+        op_id: op.to_string(),
+        kind: match parsed.kind {
+            WireKind::Upsert => Kind::Upsert,
+            WireKind::Purged => Kind::Purged,
+        },
+        groups: parsed
+            .groups
+            .into_iter()
+            .map(|(name, stamp)| (name, (stamp.h, stamp.sv)))
+            .collect(),
+        purged_of: parsed.purged_of,
+    })
+}
+
 fn wire_header(header: &Header) -> WireHeader {
     WireHeader {
-        entity: match header.entity {
-            Entity::Chat => "chat",
-            Entity::Message => "message",
-            Entity::Revision => "message_revision",
-        }
-        .to_string(),
+        entity: entity_name(header.entity).to_string(),
         id: header.id.clone(),
         op: header.op_id.clone(),
         kind: match header.kind {

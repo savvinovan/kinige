@@ -28,6 +28,8 @@ pub enum PushResponse {
     /// The server knows a group newer than the `purged_of` snapshot.
     StalePurge,
     ClockSkew,
+    /// The pusher's cursor is behind a drop it missed (S4c, appendix §A.3): pull first. Only the real server answers it.
+    Stale,
 }
 
 #[derive(Debug, Clone)]

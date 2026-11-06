@@ -98,7 +98,7 @@ impl Oracle {
 
 /// Records the server purged, and records a device holds in quarantine: those leave the "newest write is there" check.
 fn set_aside(world: &World) -> BTreeSet<Key> {
-    let mut out: BTreeSet<Key> = world.server.purged_ever.iter().cloned().collect();
+    let mut out: BTreeSet<Key> = world.server.purged_ever().into_iter().collect();
     for client in &world.clients {
         out.extend(client.quarantine.iter().map(|q| q.key.clone()));
         out.extend(client.tombstones.keys().cloned());
@@ -312,7 +312,7 @@ pub fn quarantine_is_exclusive(world: &World) -> Result<(), String> {
 
 /// Property 4: nothing the server purged is back in a journal. It may sit in quarantine, never live.
 pub fn purged_stays_gone(world: &World) -> Result<(), String> {
-    for key in &world.server.purged_ever {
+    for key in &world.server.purged_ever() {
         for client in &world.clients {
             if client.records.contains_key(key) {
                 return Err(format!(
@@ -363,12 +363,14 @@ pub fn no_orphan_hidden(world: &World) -> Result<(), String> {
 pub fn push_is_idempotent(world: &mut World) -> Result<(), String> {
     let issued = world.server.issued();
     let len = world.server.log_len();
+    let generation = world.server.generation();
     let mut envelopes = world.server.all_envelopes();
     envelopes.reverse();
     let again = envelopes.clone();
     for env in envelopes.iter().chain(again.iter()) {
         let seq_before = world.server.seq_of(&env.header.op_id);
-        let response = world.server.push(env, world.now);
+        // A cursor at 0 is never stale, so the replay is judged on `op_id` alone.
+        let response = world.server.push(env, world.now, (generation, 0, 0));
         match (response, seq_before) {
             (PushResponse::Duplicate(seq), Some(before)) if seq == before => {}
             (other, _) => {
@@ -404,7 +406,7 @@ pub fn server_log_rebuilds_state(world: &mut World) -> Result<(), String> {
         world.now,
     );
     fresh.records.clear();
-    fresh.begin_binding(world.server.generation);
+    fresh.begin_binding(world.server.generation());
     for _ in 0..500 {
         let (generation, after, epoch) = fresh.pull_request();
         let response = world.server.pull(generation, after, epoch, 3);

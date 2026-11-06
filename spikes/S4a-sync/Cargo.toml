@@ -18,11 +18,18 @@ proptest = { version = "1.12", default-features = false, features = ["std"] }
 # Only with the `real-envelope` feature (S4b, KINIG-96): envelopes sealed and opened by the real AEAD and the `conflict` revision id from
 # the real keyed hash.
 kinige-crypto = { path = "../../crates/kinige-crypto", optional = true }
+# Only with the `real-server` feature (S4c-1, KINIG-98): the real server's router and its test helpers (a throwaway database, an in-process
+# client), and a runtime to drive them from the synchronous simulation.
+kinige-server = { path = "../../server", features = ["testing"], optional = true }
+tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 
 [features]
 # Seals every envelope with `kinige-crypto` (XChaCha20-Poly1305, the AD of ADR-0001 §A.1, padding) instead of the hash seal, and derives
 # revision ids with `K_rev`. Off by default: the hash seal is fast, and CI runs the properties with this at a small fixed count.
 real-envelope = ["dep:kinige-crypto"]
+# Every device talks to the real `kinige-server` (Postgres, `KINIGE_TEST_DATABASE_URL`) through its router instead of the in-memory server,
+# so one test checks the protocol, the bytes and the server together. Restore mixes are skipped until S4c-2.
+real-server = ["real-envelope", "dep:kinige-server", "dep:tokio"]
 
 [profile.dev.package.libsodium-sys-stable]
 opt-level = 3

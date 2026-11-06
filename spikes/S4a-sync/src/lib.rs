@@ -2,9 +2,12 @@
 //! duplicated, reordered and dropped delivery. The rules under test are the real ones in `kinige_domain::sync`; this crate is the
 //! server, the clients, the network, the clock, the oracle and the generators around them.
 
+pub mod backend;
 pub mod client;
 pub mod directed;
 pub mod envelope;
+#[cfg(feature = "real-server")]
+pub mod http_server;
 pub mod oracle;
 pub mod props;
 #[cfg(feature = "real-envelope")]

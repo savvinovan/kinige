@@ -73,7 +73,10 @@ fn report(name: &str, schedules: Vec<Schedule>) {
             "quarantined records",
             w.clients.iter().map(|c| c.quarantine.len()).sum(),
         );
-        add("purges accepted by the server", w.server.purged_ever.len());
+        add(
+            "purges accepted by the server",
+            w.server.purged_ever().len(),
+        );
         add(
             "server compactions that dropped a purge",
             usize::from(w.server.drops_count() > 0),

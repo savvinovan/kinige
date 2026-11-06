@@ -75,6 +75,8 @@ impl Client {
                 });
             }
             PushResponse::ClockSkew => {}
+            // Not acked, nothing changes: the next cycle pulls first and sends the row again (S4c, appendix §A.3).
+            PushResponse::Stale => {}
         }
     }
 
