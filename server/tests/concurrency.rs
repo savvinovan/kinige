@@ -7,6 +7,8 @@
 mod common;
 
 use common::*;
+use kinige_server::Clock;
+use kinige_server::store::compact;
 use kinige_server::testing::Http;
 use serde_json::json;
 use std::sync::Arc;
@@ -287,4 +289,44 @@ async fn two_accounts_do_not_block_each_other_and_one_account_does_wait_for_its_
         ),
         (&json!("ok"), &json!(1))
     );
+}
+
+/// The mirror of the test above: compaction takes the same account lock as a push, so it cannot interleave with one; it waits for a
+/// lock that is held, and it does not hold up another account.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn compaction_waits_for_a_held_account_lock_and_not_for_another_account() {
+    let rig = rig().await;
+    let (a, b) = (account(&rig).await, account(&rig).await);
+    let mut holder = rig.state.pool.get().await.expect("connection");
+    let lock = holder.transaction().await.expect("tx");
+    lock.query_one(
+        "SELECT seq_head FROM accounts WHERE id = $1 FOR UPDATE",
+        &[&a.creds.account_id],
+    )
+    .await
+    .expect("lock");
+
+    let now = rig.clock.now_ms();
+    let pool = rig.state.pool.clone();
+    let id_a = a.creds.account_id.clone();
+    let waiting = tokio::spawn(async move { compact::account(&pool, &id_a, now).await });
+    timeout(
+        Duration::from_secs(2),
+        compact::account(&rig.state.pool, &b.creds.account_id, now),
+    )
+    .await
+    .expect("B's compaction finished while A was locked")
+    .expect("compaction");
+    sleep(Duration::from_millis(300)).await;
+    assert!(
+        !waiting.is_finished(),
+        "A's compaction did not wait for A's lock: it could interleave with a push"
+    );
+    lock.commit().await.expect("release");
+    drop(holder);
+    timeout(Duration::from_secs(5), waiting)
+        .await
+        .expect("A's compaction finished after the release")
+        .expect("task")
+        .expect("compaction");
 }

@@ -1,6 +1,6 @@
 //! The server's side of a push, in the order of ADR-0001 appendix §A.4 (server): 3 `op_id` deduplication, 4 `too_old`, 4a `stale`
 //! (S4c, 2026-11-06), 5 `clock_skew`, 6 purged entity, 7 `stale_purge`; step 8, assigning `seq`, is the store's, under the lock. Steps 1
-//! and 2 (lengths and session) are done before this function is reached.
+//! and 2 (the session, then the lengths and the header; swapped by S4c) are done before this function is reached.
 
 use kinige_crypto::header::{Header, Kind};
 use kinige_domain::hlc::{self, SKEW_MAX_MS};

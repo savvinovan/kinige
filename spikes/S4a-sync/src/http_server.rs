@@ -10,13 +10,14 @@ use crate::backend::{Cursor, SyncServer};
 use crate::envelope::{Envelope, Key, Kind};
 use crate::real::entity_name;
 use crate::server::{PullResponse, PushResponse};
+use crate::world::T0;
 use kinige_server::dto::{
     PullResponse as WirePull, PushOutcome, PushResponse as WirePush, PushResult,
 };
 use kinige_server::store::compact;
 use kinige_server::testing::{Creds, Http, TestDb};
 use kinige_server::wire::{encode_frames, from_b64};
-use kinige_server::{AppState, Clock, ManualClock, router};
+use kinige_server::{AppState, Clock, Config, ManualClock, router};
 use serde_json::json;
 use std::future::Future;
 use std::sync::Arc;
@@ -60,13 +61,10 @@ pub struct HttpServer {
 
 impl HttpServer {
     fn new(host: Arc<RealServerHost>) -> HttpServer {
-        let clock = Arc::new(ManualClock::new(crate::world::T0));
+        let clock = Arc::new(ManualClock::new(T0));
         let state = host
             .runtime
-            .block_on(
-                host.db
-                    .state(clock.clone(), kinige_server::Config::default()),
-            )
+            .block_on(host.db.state(clock.clone(), Config::default()))
             .unwrap_or_else(|error| panic!("the real server did not start: {error}"));
         let http = Http::new(router(state.clone()));
         let creds = Creds::random();

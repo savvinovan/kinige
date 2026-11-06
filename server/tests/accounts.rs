@@ -196,6 +196,38 @@ async fn an_unknown_login_looks_exactly_like_a_known_one() {
         .await;
     assert_eq!(unknown, again, "the salt of an unknown login repeats");
 
+    // After a password change the answer for a known login still differs from an unknown one's in the salt only: no credential version,
+    // nothing that tells an account that changed its password from one that did not.
+    let (part, _, _, _) = acct.creds.new_password(1);
+    let (status, _) = rig
+        .http
+        .post(
+            "/v1/password/change",
+            Some(&acct.token),
+            &json!({"auth_key": b64(&acct.creds.auth_key), "expected_version": 1, "new": part, "revoke_others": false}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    let (_, changed) = rig
+        .http
+        .post(
+            "/v1/login/params",
+            None,
+            &json!({"login": acct.creds.login}),
+        )
+        .await;
+    let without_salt = |v: &Value| {
+        let mut object = v.as_object().expect("object").clone();
+        object.remove("salt");
+        object
+    };
+    assert_eq!(without_salt(&changed), without_salt(&unknown));
+    assert_eq!(
+        without_salt(&changed).keys().collect::<Vec<_>>(),
+        vec!["profile"]
+    );
+    assert_ne!(changed["salt"], unknown["salt"]);
+
     // The test runs on one thread, so the lines of this thread are the lines of these two requests.
     let before = logged_here().len();
     let wrong_key = login(&rig, &acct.creds, &array32()).await;
@@ -203,7 +235,7 @@ async fn an_unknown_login_looks_exactly_like_a_known_one() {
     let no_account = login(&rig, &ghost, &array32()).await;
     assert_eq!(wrong_key, no_account, "same status, same body");
     assert_eq!(wrong_key.0, StatusCode::UNAUTHORIZED);
-    // The server's own records (the driver's DEBUG lines name prepared statements, which differ per connection).
+    // The server's own records, which are at INFO.
     let lines: Vec<String> = logged_here()
         .into_iter()
         .skip(before)
@@ -734,4 +766,90 @@ async fn the_database_holds_the_hashes_of_the_keys_and_never_the_keys() {
         auth_hash(&acct.creds.rc_auth_key).expect("hash").to_vec()
     );
     assert_ne!(auth, acct.creds.auth_key.to_vec());
+}
+
+/// Eight registrations at once, all through the router; the statuses, sorted.
+async fn race(rig: &Rig, requests: Vec<kinige_server::dto::RegisterRequest>) -> Vec<(u16, String)> {
+    let mut tasks = Vec::new();
+    for request in requests {
+        let http = rig.http.clone();
+        tasks.push(tokio::spawn(async move {
+            let body = serde_json::to_value(request).expect("json");
+            let (status, answer) = http.post("/v1/register", None, &body).await;
+            (
+                status.as_u16(),
+                answer["error"].as_str().unwrap_or("").to_string(),
+            )
+        }));
+    }
+    let mut out = Vec::new();
+    for task in tasks {
+        out.push(task.await.expect("task"));
+    }
+    out.sort();
+    out
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn racing_registrations_meet_a_clean_answer_and_never_the_unique_index() {
+    let rig = rig().await;
+    // The same login behind eight account ids: one wins, the others are told the login is taken (never a 500, and Postgres is never
+    // asked to refuse a duplicate, so its own log has no `Key (login)=(...) already exists`).
+    let login = Creds::random().login;
+    let requests = (0..8)
+        .map(|_| {
+            let mut r = Creds::random().register_request();
+            r.login = login.clone();
+            r
+        })
+        .collect();
+    let answers = race(&rig, requests).await;
+    assert_eq!(
+        answers.iter().filter(|a| a.0 == 200).count(),
+        1,
+        "{answers:?}"
+    );
+    assert_eq!(
+        answers
+            .iter()
+            .filter(|a| *a == &(409, "login_taken".to_string()))
+            .count(),
+        7,
+        "{answers:?}"
+    );
+
+    // The same package eight times at once is eight successes.
+    let package = Creds::random().register_request();
+    let copy = || {
+        serde_json::from_value::<kinige_server::dto::RegisterRequest>(
+            serde_json::to_value(&package).expect("json"),
+        )
+        .expect("copy")
+    };
+    let answers = race(&rig, (0..8).map(|_| copy()).collect()).await;
+    assert!(answers.iter().all(|a| a.0 == 200), "{answers:?}");
+
+    // One account id behind eight logins: one wins, the others are told the id is taken by another package.
+    let id = Creds::random().account_id;
+    let requests = (0..8)
+        .map(|_| {
+            let mut r = Creds::random().register_request();
+            r.account_id = id.clone();
+            r
+        })
+        .collect();
+    let answers = race(&rig, requests).await;
+    assert_eq!(
+        answers.iter().filter(|a| a.0 == 200).count(),
+        1,
+        "{answers:?}"
+    );
+    assert_eq!(
+        answers
+            .iter()
+            .filter(|a| *a == &(409, "account_id_taken".to_string()))
+            .count(),
+        7,
+        "{answers:?}"
+    );
 }

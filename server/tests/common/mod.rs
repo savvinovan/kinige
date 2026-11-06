@@ -67,6 +67,49 @@ pub fn uuid(n: u8) -> String {
     format!("{n:08x}-0000-4000-8000-{n:012x}")
 }
 
+/// The id of record `n` (and, in the tests, of an op).
+pub fn id(n: u8) -> String {
+    uuid(n)
+}
+
+/// A one-group upsert of message `n` at `wall`, under op `op_n`.
+pub fn msg(maker: &Maker, n: u8, op_n: u8, wall: u64) -> Vec<u8> {
+    maker.upsert(
+        "message",
+        &id(n),
+        &id(op_n),
+        &[("body", hlc(wall, 0))],
+        "fake entry",
+    )
+}
+
+/// Pushes `bytes` as message `n` under op `op_n` and returns the single result.
+pub async fn put(rig: &Rig, acct: &Acct, n: u8, op_n: u8, bytes: &[u8]) -> Value {
+    let (id, op) = (id(n), id(op_n));
+    push(
+        rig,
+        acct,
+        &Item {
+            entity: "message",
+            id: &id,
+            op: &op,
+            bytes,
+        },
+    )
+    .await
+}
+
+/// Compacts the account at the rig's clock.
+pub async fn compact_now(rig: &Rig, acct: &Acct) -> kinige_server::store::compact::Stats {
+    kinige_server::store::compact::account(
+        &rig.state.pool,
+        &acct.creds.account_id,
+        kinige_server::Clock::now_ms(&*rig.clock),
+    )
+    .await
+    .expect("compaction")
+}
+
 pub fn hlc(wall: u64, counter: u32) -> String {
     format!("{wall:013}-{counter:05}-{DEVICE}")
 }

@@ -12,12 +12,9 @@ use kinige_crypto::keys::SALT_LEN;
 use kinige_crypto::secret::{AuthKey, RcAuthKey, ServerSecret};
 use libsodium_rs::utils;
 use tokio_postgres::Row;
-use tokio_postgres::error::SqlState;
 
 /// The profile a login without an account is answered with (§8.4).
 const DEFAULT_PROFILE: u8 = 1;
-/// A few tries when two registrations of one account race (the loser re-reads the winner).
-const REGISTER_TRIES: usize = 3;
 
 /// Everything a registration sends (§8.3), the login already normalized.
 pub struct Registration {
@@ -48,79 +45,80 @@ pub struct LoginOk {
     pub cred_version: u64,
 }
 
+/// What step 1 of the login says. No credential version: it would tell an account that changed its password from one that did not.
 pub struct Params {
     pub salt: [u8; SALT_LEN],
     pub profile: u8,
-    pub cred_version: u64,
 }
 
 /// Registration (§8.3), idempotent by `account_id` (§A.5): the same package again is a success, `account_id` taken by another package
 /// is its own error, and only then is the login looked at, so a repeat after a lost answer never meets "login taken".
+///
+/// Two transaction-scoped advisory locks, the login's first and the account id's second, serialize registrations that could meet in the
+/// unique indexes. The unique violation is then never hit in normal operation, and Postgres never writes `DETAIL: Key (login)=(...)
+/// already exists` into its own log (ADR-0001 §8.8).
 pub async fn register(pool: &Pool, now_ms: u64, r: &Registration) -> Result<Token, ApiError> {
     let auth = hash_of(r.auth_key.as_bytes())?;
     let rc = hash_of(r.rc_auth_key.as_bytes())?;
     let now = to_i64(now_ms, "clock")?;
+    let key_id = i32::try_from(r.key_id).map_err(|_| ApiError::BadRequest("key_id"))?;
     let mut client = pool.get().await?;
-    for _ in 0..REGISTER_TRIES {
-        let tx = client.transaction().await?;
-        let existing = tx
-            .query_opt(
-                "SELECT * FROM accounts WHERE id = $1 FOR UPDATE",
-                &[&r.account_id],
-            )
-            .await?;
-        if let Some(row) = existing {
-            if !same_package(&row, r, &auth, &rc)? {
-                log::info!("register refused: account id taken");
-                return Err(ApiError::Conflict("account_id_taken"));
-            }
-            log::info!("register repeated: same package");
-            let token = sessions::open(&tx, &r.account_id, now_ms).await?;
-            tx.commit().await?;
-            return Ok(token);
-        }
-        let login_taken = tx
-            .query_opt("SELECT 1 FROM accounts WHERE login = $1", &[&r.login])
-            .await?;
-        if login_taken.is_some() {
-            log::info!("register refused: login taken");
-            return Err(ApiError::Conflict("login_taken"));
-        }
-        let inserted = tx
-            .execute(
-                "INSERT INTO accounts (id, login, salt, profile, auth_hash, rc_hash, key_id, wrap_pw, wrap_rc, created_ms) \
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-                &[
-                    &r.account_id,
-                    &r.login,
-                    &r.salt.as_slice(),
-                    &i16::from(r.profile),
-                    &auth.as_slice(),
-                    &rc.as_slice(),
-                    &i32::try_from(r.key_id).map_err(|_| ApiError::BadRequest("key_id"))?,
-                    &r.wrap_pw,
-                    &r.wrap_rc,
-                    &now,
-                ],
-            )
-            .await;
-        match inserted {
-            Ok(_) => {
-                let token = sessions::open(&tx, &r.account_id, now_ms).await?;
-                tx.commit().await?;
-                log::info!("register ok");
-                return Ok(token);
-            }
-            // A concurrent registration won between the reads and the insert: look again.
-            Err(error) if error.code() == Some(&SqlState::UNIQUE_VIOLATION) => continue,
-            Err(error) => return Err(error.into()),
-        }
+    let tx = client.transaction().await?;
+    for lock in [format!("login:{}", r.login), format!("id:{}", r.account_id)] {
+        tx.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+            &[&lock],
+        )
+        .await?;
     }
-    Err(ApiError::Conflict("login_taken"))
+    let existing = tx
+        .query_opt(
+            "SELECT * FROM accounts WHERE id = $1 FOR UPDATE",
+            &[&r.account_id],
+        )
+        .await?;
+    if let Some(row) = existing {
+        if !same_package(&row, r, &auth, &rc)? {
+            log::info!("register refused: account id taken");
+            return Err(ApiError::Conflict("account_id_taken"));
+        }
+        log::info!("register repeated: same package");
+        let token = sessions::open(&tx, &r.account_id, now_ms).await?;
+        tx.commit().await?;
+        return Ok(token);
+    }
+    let login_taken = tx
+        .query_opt("SELECT 1 FROM accounts WHERE login = $1", &[&r.login])
+        .await?;
+    if login_taken.is_some() {
+        log::info!("register refused: login taken");
+        return Err(ApiError::Conflict("login_taken"));
+    }
+    tx.execute(
+        "INSERT INTO accounts (id, login, salt, profile, auth_hash, rc_hash, key_id, wrap_pw, wrap_rc, created_ms) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+        &[
+            &r.account_id,
+            &r.login,
+            &r.salt.as_slice(),
+            &i16::from(r.profile),
+            &auth.as_slice(),
+            &rc.as_slice(),
+            &key_id,
+            &r.wrap_pw,
+            &r.wrap_rc,
+            &now,
+        ],
+    )
+    .await?;
+    let token = sessions::open(&tx, &r.account_id, now_ms).await?;
+    tx.commit().await?;
+    log::info!("register ok");
+    Ok(token)
 }
 
-/// The salt and profile for a login (§8.4 step 1). For an unknown login: a 16-byte salt from `server_secret`, the default profile and
-/// version 1, so the answer has the same shape and repeats. An account with profile 2 differs from that: accepted in §8.4.
+/// The salt and profile for a login (§8.4 step 1). For an unknown login: a 16-byte salt from `server_secret` and the default profile,
+/// so the answer has the same shape and repeats. An account with profile 2 differs from that: accepted in §8.4.
 pub async fn login_params(
     pool: &Pool,
     secret: &ServerSecret,
@@ -129,7 +127,7 @@ pub async fn login_params(
     let client = pool.get().await?;
     let row = client
         .query_opt(
-            "SELECT salt, profile, cred_version FROM accounts WHERE login = $1",
+            "SELECT salt, profile FROM accounts WHERE login = $1",
             &[&login],
         )
         .await?;
@@ -137,13 +135,11 @@ pub async fn login_params(
         return Ok(Params {
             salt: fixed(&row, "salt")?,
             profile: profile_of(&row)?,
-            cred_version: to_u64(row.try_get("cred_version")?),
         });
     }
     Ok(Params {
         salt: unknown_login_salt(secret, login).map_err(|_| ApiError::Internal)?,
         profile: DEFAULT_PROFILE,
-        cred_version: 1,
     })
 }
 

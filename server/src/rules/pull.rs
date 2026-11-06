@@ -70,9 +70,22 @@ pub fn missed(lineage: &[u64], drops: &[Drop], cursor: &Cursor) -> bool {
     })
 }
 
+/// The size of one page: at least one envelope and at least one byte of budget. A budget of 0 would select no row, and `next` would then
+/// be the head: the cursor would skip the log. The first envelope of a page always goes, whatever its size.
+pub fn page_budget(limit: usize, bytes: usize) -> (usize, usize) {
+    (limit.max(1), bytes.max(1))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_page_is_never_empty_by_configuration() {
+        assert_eq!(page_budget(0, 0), (1, 1));
+        assert_eq!(page_budget(200, 8 << 20), (200, 8 << 20));
+        assert_eq!(page_budget(5, 0), (5, 1));
+    }
 
     fn drop_at(generation: u64, epoch: u64, seq: u64) -> Drop {
         Drop {

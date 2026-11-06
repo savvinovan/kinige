@@ -272,7 +272,7 @@ fn garbage_on_every_endpoint_is_a_4xx_and_never_a_5xx() {
             let (status, _) = rig.http.send(request).await;
             prop_assert!(status.as_u16() < 500, "{} {path}: {status}", case.path);
             if must_fail || method == "GET" || path == "/v1/not-a-route" {
-                // Random bytes are not a request; `/v1/login/params` and `/v1/logout` with a session ignore the body or read `{}`.
+                // Random bytes are not a request; `/v1/logout` with a session ignores the body.
                 let ignores_body = matches!(case.path, 3);
                 prop_assert!(
                     status.is_client_error() || (ignores_body && status == StatusCode::OK),

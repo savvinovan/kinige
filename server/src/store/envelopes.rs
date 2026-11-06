@@ -8,7 +8,7 @@
 
 use super::{fixed, to_i64, to_u64};
 use crate::error::ApiError;
-use crate::rules::pull::{self, Cursor, Drop, Plan};
+use crate::rules::pull::{self, Cursor, Drop, Plan, page_budget};
 use crate::rules::push::{Answer, Facts, OpRecord, PurgedRecord, Verdict, decide};
 use crate::wire::Frame;
 use deadpool_postgres::{Pool, Transaction};
@@ -134,6 +134,7 @@ pub async fn pull(
     if plan != Plan::Page {
         return Ok(out);
     }
+    let (limit, page_bytes) = page_budget(limit, page_bytes);
     out.items = page(&tx, account, cursor.after, head, limit, page_bytes).await?;
     if let Some(last) = out.items.last().map(|item| item.seq) {
         let more = tx

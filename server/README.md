@@ -27,7 +27,7 @@ Everything comes from environment variables.
 - `KINIGE_SERVER_SECRET_FILE` (required): a file with 64 hex characters (32 bytes), the `server_secret` that keys the salt returned for an unknown login (§8.4).
 - `KINIGE_LISTEN` (default `127.0.0.1:8080`): the address to listen on.
 - `KINIGE_COMPACT_EVERY_SECS` (default `3600`): how often every account's log is compacted.
-- `KINIGE_CLIENT_ADDR_HEADER` (default none): the name of a header that a trusted reverse proxy sets to the client's address, for the rate limits. Without it the connection's address is used.
+- `KINIGE_CLIENT_ADDR_HEADER` (default none): the name of a header that a trusted reverse proxy sets to the client's address, for the rate limits. Without it the connection's address is used. **If you set it, bind `KINIGE_LISTEN` to the proxy's interface only** (a loopback or a private address the proxy reaches): a client that can connect directly can send that header itself and take a fresh per-address budget on every request.
 - `KINIGE_LOG` (default `info`): `error`, `warn`, `info`, `debug` or `trace`, for the server's own records. Other crates are held at `warn`.
 - `KINIGE_TEST_DATABASE_URL` (tests only): a Postgres server where databases may be created and dropped. Only the `pg-tests` suites read it.
 
@@ -43,6 +43,8 @@ The rate limits are fixed windows in memory. Every attempt counts, a known and a
 ## Logs
 `log` only, to stderr, one line per record: event kinds, ids and error categories. No request body, token, key, login or envelope byte is ever formatted into a record (ADR-0001 §8.8). Dependencies are held at `warn` at every level, because `tokio-postgres` logs every statement with its bound parameters at `debug`; the plain-text scan found it (ADR-0019).
 
+**Postgres's own log is a third channel, and the tests do not read it.** On an error Postgres writes the value that clashed (`DETAIL: Key (login)=(...) already exists`) and, with other settings, whole statements with their parameters. The server does not provoke the first one in normal operation (registration serializes on the login and the account id with advisory locks, so a race does not reach the unique index), but the operator must protect Postgres's log like the server's own, keep `log_statement = none` and `log_parameter_max_length_on_error = 0`, and leave `log_min_duration_statement` off (it logs statements).
+
 ## Tests
 ```text
 cargo test -p kinige-server                          # the pure rules, the wire reader, the config: no database
@@ -54,21 +56,22 @@ cd spikes/S4a-sync && KINIGE_TEST_DATABASE_URL=... cargo test --features real-se
 
 ### What covers each row of §A.3
 Files are in `server/tests/`; unit tests are in the module they test.
-- `ok(seq)`: `push_pull::ok_assigns_consecutive_seqs_and_a_pull_returns_the_bytes_with_the_declared_names`.
-- `duplicate(seq)` and `op_conflict`: `push_pull::duplicate_for_the_same_bytes_and_op_conflict_for_other_bytes` (the nonce is random, so a rebuilt envelope has other bytes).
-- `purged` and `stale_purge`: `push_pull::purged_stale_purge_and_a_repeated_purged_with_the_accepted_snapshot` (a newer group, a group missing from the snapshot, a snapshot that covers everything, and a repeated `purged` answered with the accepted snapshot, ADR-0017).
-- `clock_skew`: `push_pull::clock_skew_beyond_24_hours_and_nothing_is_stored`, `rules::push::tests::the_skew_limit_is_exclusive_and_covers_a_purged_snapshot`.
-- `too_old`: `push_pull::too_old_below_the_minimum_protocol_but_a_duplicate_still_gets_its_answer`.
-- `stale` (the new row): `push_pull::stale_when_the_pushers_cursor_is_behind_a_drop_or_in_another_generation`.
+- `ok(seq)`: `pull_pages::ok_assigns_consecutive_seqs_and_a_pull_returns_the_bytes_with_the_declared_names`.
+- `duplicate(seq)` and `op_conflict`: `push_answers::duplicate_for_the_same_bytes_and_op_conflict_for_other_bytes` (the nonce is random, so a rebuilt envelope has other bytes).
+- `purged` and `stale_purge`: `push_answers::purged_stale_purge_and_a_repeated_purged_with_the_accepted_snapshot` (a newer group, a group missing from the snapshot, a snapshot that covers everything, and a repeated `purged` answered with the accepted snapshot, ADR-0017).
+- `clock_skew`: `push_answers::clock_skew_beyond_24_hours_and_nothing_is_stored`, `rules::push::tests::the_skew_limit_is_exclusive_and_covers_a_purged_snapshot`.
+- `too_old`: `push_answers::too_old_below_the_minimum_protocol_but_a_duplicate_still_gets_its_answer`.
+- `stale` (the new row): `stale_generations::stale_when_the_pushers_cursor_is_behind_a_drop_or_in_any_generation_but_the_current`.
 
 ### What covers each server step of §A.4
-- 1, lengths and the header: `wire::tests::*` (the reader, chunk by chunk), `push_pull::lengths_and_headers_are_judged_before_the_session_and_the_bodies_before_they_are_buffered`, `push_pull::the_batch_has_a_cap_and_every_envelope_of_a_batch_is_answered_in_order`.
-- 2, the session: the same lengths test (a 400 before a 401), `accounts::logout_ends_one_session_and_a_login_can_name_the_token_it_replaces`.
-- 3, `op_id` before the purge rules: `rules::push::tests::a_repeat_is_a_duplicate_or_an_op_conflict_before_every_other_rule`, and in `push_pull` a duplicate after `too_old` and after a purge.
+- 1, the session (swapped with step 2 by S4c): `push_input::the_session_is_judged_before_a_byte_of_the_body_is_read` (a body that records whether it was polled), `api::tests::a_bearer_must_be_a_well_formed_token_before_anything_touches_the_database`, `accounts::logout_ends_one_session_and_a_login_can_name_the_token_it_replaces`.
+- 2, lengths and the header: `wire::tests::*` (the reader, chunk by chunk), `push_input::lengths_and_headers_are_judged_before_the_bodies_are_buffered`, `push_input::the_batch_has_a_cap_and_every_envelope_of_a_batch_is_answered_in_order`.
+- 3, `op_id` before the purge rules: `rules::push::tests::a_repeat_is_a_duplicate_or_an_op_conflict_before_every_other_rule`, and in `push_answers` a duplicate after `too_old` and after a purge.
 - 4, 4a, 5, 6, 7: `rules::push::tests::the_checks_come_in_the_order_of_the_appendix`, `rules::push::tests::stale_purge_when_a_known_group_is_newer_or_missing_from_the_snapshot`.
 - 8, `seq` under the account lock: `concurrency::parallel_pushers_and_a_puller_never_skip_a_seq`, `concurrency::two_accounts_do_not_block_each_other_and_one_account_does_wait_for_its_lock`.
-- Pull and the stale rule: `rules::pull::tests::*`, `push_pull::a_pull_says_stale_or_generation_changed_by_the_rule_of_the_lineage`, `push_pull::a_pull_refuses_what_it_cannot_read_with_a_4xx`.
-- Compaction: `rules::compact::tests::*`, `compaction::*`.
+- Pull and the stale rule: `rules::pull::tests::*`, `stale_generations::a_pull_says_stale_or_generation_changed_by_the_rule_of_the_lineage`, `pull_pages::a_pull_refuses_what_it_cannot_read_with_a_4xx`, `pull_pages::a_page_stops_at_the_byte_cap_and_its_first_envelope_always_goes`.
+- Compaction: `rules::compact::tests::*`, `compaction::*`, `concurrency::compaction_waits_for_a_held_account_lock_and_not_for_another_account`.
+- Registration races: `accounts::racing_registrations_meet_a_clean_answer_and_never_the_unique_index`.
 
 ### Accounts and sessions (§8.3-§8.7, §A.5)
 `accounts.rs` covers registration and its idempotency, what the protocol refuses, an unknown login that looks like a known one (the answer and the log lines), the password change on a credential version (exactly one of six concurrent changes wins), the refusal of a lower profile on a change and on a recovery, `revoke_others`, recovery (the word check, one atomic replacement, every session ended, a repeat is a success, another package is a clash), new words, logout and the login that names the token it replaces, and the rate limits.

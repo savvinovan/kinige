@@ -1,5 +1,6 @@
-//! Push and pull (ADR-0001 §6.1, §A.3, §A.4, §A.6). A push is read frame by frame; the lengths and the open header of every envelope are
-//! judged before its body is buffered (step 1), then the session (step 2), then each envelope goes through steps 3-8 on its own.
+//! Push and pull (ADR-0001 §6.1, §A.3, §A.4, §A.6). A push authenticates first (S4c, 2026-11-06: no body is read for a client without a
+//! session), then reads the body frame by frame, judging the lengths and the open header of every envelope before its body is buffered,
+//! then each envelope goes through steps 3-8 on its own.
 
 use super::{authed, parse};
 use crate::dto::{
@@ -27,12 +28,15 @@ pub async fn push(
     headers: HeaderMap,
     body: Body,
 ) -> Result<Response, ApiError> {
+    // Step 1 (S4c, 2026-11-06): the session, before a byte of the body is read: the shape of the bearer token (no database), then the
+    // session lookup. A client with no valid session gets 401 whatever it sends.
+    let (account, _) = authed(&app, &headers).await?;
     let protocol = protocol_of(&headers)?;
     let cursor = cursor_of(&headers)?;
     if declared_length(&headers).is_some_and(|len| len > app.config.max_push_body) {
         return Err(ApiError::TooLarge);
     }
-    // Step 1: lengths and headers, frame by frame, before the bodies are buffered.
+    // Step 2: lengths and headers, frame by frame, before the bodies are buffered.
     let frames = read_frames(
         BodySource(body),
         app.config.max_push_body,
@@ -40,8 +44,6 @@ pub async fn push(
     )
     .await
     .map_err(wire_error)?;
-    // Step 2: the session.
-    let (account, _) = authed(&app, &headers).await?;
     let ctx = PushContext {
         now_ms: app.clock.now_ms(),
         protocol_ok: protocol >= app.config.min_protocol,

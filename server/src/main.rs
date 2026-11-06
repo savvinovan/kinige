@@ -3,24 +3,29 @@
 
 use kinige_server::config::{Config, Settings};
 use kinige_server::{AppState, compact_loop, logging, router};
+use std::env;
+use std::fs;
 use std::net::SocketAddr;
+use std::process::ExitCode;
+use tokio::net::TcpListener;
+use tokio::signal;
 
 #[tokio::main]
-async fn main() -> std::process::ExitCode {
-    logging::init(std::env::var("KINIGE_LOG").ok().as_deref());
+async fn main() -> ExitCode {
+    logging::init(env::var("KINIGE_LOG").ok().as_deref());
     match run().await {
-        Ok(()) => std::process::ExitCode::SUCCESS,
+        Ok(()) => ExitCode::SUCCESS,
         Err(reason) => {
             log::error!("the server stopped: {reason}");
-            std::process::ExitCode::FAILURE
+            ExitCode::FAILURE
         }
     }
 }
 
 async fn run() -> Result<(), String> {
     let settings = Settings::from_lookup(
-        |name| std::env::var(name).ok(),
-        |path| std::fs::read_to_string(path).ok(),
+        |name| env::var(name).ok(),
+        |path| fs::read_to_string(path).ok(),
     )
     .map_err(|error| error.to_string())?;
     let state = AppState::open(
@@ -32,7 +37,7 @@ async fn run() -> Result<(), String> {
     .await
     .map_err(|error| format!("the database is not usable ({})", error.code()))?;
     tokio::spawn(compact_loop(state.clone(), settings.compact_every_secs));
-    let listener = tokio::net::TcpListener::bind(&settings.listen)
+    let listener = TcpListener::bind(&settings.listen)
         .await
         .map_err(|_| "the listen address cannot be bound".to_string())?;
     log::info!("listening");
@@ -40,9 +45,33 @@ async fn run() -> Result<(), String> {
         listener,
         router(state).into_make_service_with_connect_info::<SocketAddr>(),
     )
-    .with_graceful_shutdown(async {
-        let _ = tokio::signal::ctrl_c().await;
-    })
+    .with_graceful_shutdown(shutdown())
     .await
     .map_err(|_| "the server loop failed".to_string())
+}
+
+/// Resolves on Ctrl-C or, on Unix, SIGTERM, which is what container runtimes send.
+async fn shutdown() {
+    let interrupt = async {
+        let _ = signal::ctrl_c().await;
+    };
+    #[cfg(unix)]
+    {
+        use signal::unix::{SignalKind, signal as unix_signal};
+        let terminate = async {
+            match unix_signal(SignalKind::terminate()) {
+                Ok(mut stream) => {
+                    stream.recv().await;
+                }
+                // No handler could be installed: wait for Ctrl-C only.
+                Err(_) => std::future::pending::<()>().await,
+            }
+        };
+        tokio::select! {
+            () = interrupt => {}
+            () = terminate => {}
+        }
+    }
+    #[cfg(not(unix))]
+    interrupt.await;
 }

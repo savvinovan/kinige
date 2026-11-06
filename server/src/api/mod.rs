@@ -98,3 +98,45 @@ fn bearer(headers: &HeaderMap) -> Option<Token> {
     let value = headers.get(header::AUTHORIZATION)?.to_str().ok()?;
     Token::parse(value.strip_prefix("Bearer ")?.trim())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_route_is_logged_as_it_is_and_a_hostile_request_line_as_other() {
+        for route in ["/v1/push", "/v1/login/params", "/healthz", "/"] {
+            assert_eq!(safe_path(route), route);
+        }
+        let long = "/a".repeat(30);
+        for hostile in [
+            "/v1/login?token=abc",
+            "/v1/%0d%0aINFO fake line",
+            "/V1/PUSH",
+            "/v1/push\n",
+            "/caf\u{e9}",
+            "/a b",
+            "/v1/user@example.test",
+            long.as_str(),
+        ] {
+            assert_eq!(safe_path(hostile), "other", "{hostile:?}");
+        }
+    }
+
+    #[test]
+    fn a_bearer_must_be_a_well_formed_token_before_anything_touches_the_database() {
+        let token = Token::random().encode();
+        let with = |value: &str| {
+            let mut headers = HeaderMap::new();
+            if let Ok(value) = value.parse() {
+                headers.insert(header::AUTHORIZATION, value);
+            }
+            headers
+        };
+        assert!(bearer(&with(&format!("Bearer {token}"))).is_some());
+        for bad in ["", "Bearer", "Bearer ", "Basic abc", "Bearer short", &token] {
+            assert!(bearer(&with(bad)).is_none(), "{bad:?}");
+        }
+        assert!(bearer(&HeaderMap::new()).is_none());
+    }
+}

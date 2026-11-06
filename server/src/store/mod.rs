@@ -68,7 +68,7 @@ pub async fn migrate(pool: &Pool) -> Result<(), ApiError> {
         if done.is_none() {
             tx.batch_execute(sql).await?;
             tx.execute(
-                "INSERT INTO schema_migrations (version, applied_ms) VALUES ($1, 0)",
+                "INSERT INTO schema_migrations (version, applied_ms) VALUES ($1, (extract(epoch FROM now()) * 1000)::bigint)",
                 &[version],
             )
             .await?;

@@ -14,7 +14,6 @@ pub struct LoginParamsRequest {
 pub struct LoginParamsResponse {
     pub salt: String,
     pub profile: u8,
-    pub cred_version: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

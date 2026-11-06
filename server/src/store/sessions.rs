@@ -5,6 +5,7 @@ use crate::wire::{from_b64, to_b64};
 use deadpool_postgres::{Pool, Transaction};
 use kinige_crypto::ids::auth_hash;
 use libsodium_rs::random;
+use libsodium_rs::utils::memzero;
 
 /// A token as the client holds it. Never printed, never logged.
 pub struct Token([u8; 32]);
@@ -34,7 +35,7 @@ impl Token {
 
 impl Drop for Token {
     fn drop(&mut self) {
-        libsodium_rs::utils::memzero(&mut self.0);
+        memzero(&mut self.0);
     }
 }
 

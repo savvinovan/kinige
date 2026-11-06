@@ -44,4 +44,6 @@ libsodium-rs = "=0.3.0"
 tower = { version = "0.5", features = ["util"], optional = true }
 
 [dev-dependencies]
+# A request body that notices whether it was read (`tests/push_input.rs`); already in the tree through hyper and axum.
+http-body = "1"
 proptest = { version = "1.12", default-features = false, features = ["std"] }

@@ -66,7 +66,6 @@ pub async fn login_params(State(app): State<AppState>, body: Bytes) -> Result<Re
         &LoginParamsResponse {
             salt: to_b64(&params.salt),
             profile: params.profile,
-            cred_version: params.cred_version,
         },
     ))
 }
