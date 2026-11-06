@@ -1,6 +1,8 @@
 //! Configuration. [`Config`] is the behaviour of the server (limits, rate-limit numbers) with fixed defaults that the README records;
 //! [`Settings`] is what the process is told by its environment (database, address, secret file). The real numbers are slice 11's.
 
+use crate::blobs::sealed_len_max;
+use crate::blobs::settings::BlobSettings;
 use crate::rate::Rule;
 use kinige_crypto::secret::ServerSecret;
 use std::fmt;
@@ -18,10 +20,30 @@ pub const PROTOCOL_VERSION: u32 = 1;
 /// The smallest body of an account request that is judged: 16 KiB covers the largest (a recovery with two wraps) many times over.
 pub const MAX_JSON_BODY: usize = 16 * 1024;
 const MINUTE_MS: u64 = 60_000;
+const DAY_MS: u64 = 24 * 60 * 60 * 1000;
+const GIB: u64 = 1 << 30;
+const MIB: u64 = 1 << 20;
 
 /// What the server does, with the defaults of the README. Tests change single fields.
 #[derive(Debug, Clone)]
 pub struct Config {
+    /// A request body (push, blob upload) that goes quiet for this long is cut off with a 408 (S4c-2).
+    pub body_idle_ms: u64,
+    /// After this long, a body whose average rate is under `body_min_rate` bytes a second is cut off too.
+    pub body_rate_grace_ms: u64,
+    pub body_min_rate: u64,
+    /// The largest blob, as stored (the file of PRD §4.2, 2 GiB, padded and framed, ADR-0001 §A.2).
+    pub blob_max: u64,
+    /// What one account may keep in blobs (published and being uploaded); a config value, 10 GiB by default.
+    pub blob_quota: u64,
+    /// The most one upload request may carry; a client sends a larger file in several, resuming by offset.
+    pub blob_request_max: u64,
+    /// How long a server backup is kept (Q14 = 30 days), and the time between two backups: a deleted blob is removed only when it is
+    /// older than the sum, so every backup that can still be restored finds its blobs (ADR-0020).
+    pub backup_retention_ms: u64,
+    pub backup_interval_ms: u64,
+    /// An unfinished upload that nobody has touched for this long is deleted.
+    pub orphan_upload_ms: u64,
     pub max_push_body: usize,
     pub max_batch: usize,
     pub page_default: usize,
@@ -40,6 +62,15 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Config {
         Config {
+            body_idle_ms: 20_000,
+            body_rate_grace_ms: 10_000,
+            body_min_rate: 8 * 1024,
+            blob_max: sealed_len_max(),
+            blob_quota: 10 * GIB,
+            blob_request_max: 256 * MIB,
+            backup_retention_ms: 30 * DAY_MS,
+            backup_interval_ms: DAY_MS,
+            orphan_upload_ms: DAY_MS,
             max_push_body: MAX_PUSH_BODY,
             max_batch: MAX_BATCH,
             page_default: PAGE_DEFAULT,
@@ -63,6 +94,9 @@ pub struct Settings {
     pub compact_every_secs: u64,
     /// The name of a request header a trusted reverse proxy sets to the client's address; none by default.
     pub client_addr_header: Option<String>,
+    /// Where blobs live (disk or S3) and the values of `Config` the operator may change (S4c-2).
+    pub blobs: BlobSettings,
+    pub config: Config,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -104,12 +138,15 @@ impl Settings {
         };
         let client_addr_header =
             lookup("KINIGE_CLIENT_ADDR_HEADER").filter(|name| !name.is_empty());
+        let (blobs, config) = BlobSettings::from_lookup(&lookup)?;
         Ok(Settings {
             database_url,
             listen,
             secret,
             compact_every_secs,
             client_addr_header,
+            blobs,
+            config,
         })
     }
 }

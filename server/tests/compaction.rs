@@ -13,7 +13,7 @@ use kinige_server::store::compact;
 const MSG: u8 = 1;
 
 async fn compacted(rig: &Rig, acct: &Acct) -> compact::Stats {
-    compact::account(&rig.state.pool, &acct.creds.account_id, rig.clock.now_ms())
+    compact::account(&rig.state.pool, &acct.creds.account_id, &*rig.clock)
         .await
         .expect("compaction")
 }
@@ -269,7 +269,7 @@ async fn every_account_is_compacted_on_its_own_and_young_envelopes_are_left_alon
     )
     .await;
     rig.clock.advance(181 * DAY);
-    let removed = compact::all(&rig.state.pool, rig.clock.now_ms())
+    let removed = compact::all(&rig.state.pool, &*rig.clock)
         .await
         .expect("all");
     assert_eq!(removed, 2, "account A's two, none of B's");

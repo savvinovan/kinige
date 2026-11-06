@@ -1,0 +1,135 @@
+# The Kinige sync server for self-hosting (spike S4c-2, ADR-0020): the server, Postgres 17, a volume for blobs, a volume for backups and a
+# reverse proxy with TLS. Copy .env.example to .env, fill in the secrets (the file says how), then:
+#   docker compose up -d --build
+# Backups: `docker compose --profile tools run --rm backup` (a cron example is in backup.cron.example).
+# Restore, with the server stopped: `docker compose stop server proxy`, then
+#   `KINIGE_RESTORE_FROM=/backups/backup-<time> docker compose --profile tools run --rm restore`, then `docker compose up -d`.
+# Blobs go on the `blobs` volume. For an S3-compatible store set the KINIGE_S3_* variables in .env instead (the volume is then used for
+# unfinished uploads only).
+
+name: ${COMPOSE_PROJECT_NAME:-kinige}
+
+x-server-environment: &server-environment
+  KINIGE_DATABASE_URL: postgres://kinige:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/kinige
+  KINIGE_SERVER_SECRET_FILE: /run/secrets/server_secret
+  KINIGE_BLOB_DIR: /data/blobs
+  KINIGE_LOG: ${KINIGE_LOG:-info}
+  KINIGE_CLIENT_ADDR_HEADER: X-Real-IP
+  KINIGE_BLOB_QUOTA_GIB: ${KINIGE_BLOB_QUOTA_GIB:-10}
+  KINIGE_BACKUP_RETENTION_DAYS: ${KINIGE_BACKUP_RETENTION_DAYS:-30}
+  KINIGE_BACKUP_INTERVAL_HOURS: ${KINIGE_BACKUP_INTERVAL_HOURS:-24}
+  # Optional S3-compatible blob store: when KINIGE_S3_BUCKET is empty the blobs are on the volume.
+  KINIGE_S3_BUCKET: ${KINIGE_S3_BUCKET:-}
+  KINIGE_S3_ENDPOINT: ${KINIGE_S3_ENDPOINT:-}
+  KINIGE_S3_REGION: ${KINIGE_S3_REGION:-us-east-1}
+  KINIGE_S3_ACCESS_KEY: ${KINIGE_S3_ACCESS_KEY:-}
+  KINIGE_S3_SECRET_KEY: ${KINIGE_S3_SECRET_KEY:-}
+  KINIGE_S3_ALLOW_HTTP: ${KINIGE_S3_ALLOW_HTTP:-0}
+
+x-server: &server
+  image: kinige-server:${KINIGE_IMAGE_TAG:-local}
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+  environment: *server-environment
+  secrets:
+    - server_secret
+  # Not read_only: Compose writes the secret into the container's file system before it starts (tried: it fails on a read-only root).
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  db:
+    # postgres:17, pinned by digest like the image of CI's `server` job.
+    image: postgres:17@sha256:7ad98329d513dd497293b951c195ca354274a77f12ddbbbbf85e68a811823d72
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kinige
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: kinige
+    # The database's own log is a channel the server's tests do not read (server/README.md, "Logs"): nothing that carries a value.
+    command: ["postgres", "-c", "log_statement=none", "-c", "log_parameter_max_length_on_error=0", "-c", "log_min_duration_statement=-1"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kinige -d kinige"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  server:
+    <<: *server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - blobs:/data
+    # `docker stop` sends SIGTERM: the server finishes the requests in flight and exits 0. 30 s is more than a blob publication needs.
+    stop_grace_period: 30s
+    healthcheck:
+      # No curl in the image: bash can open a TCP connection by itself.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /healthz HTTP/1.0\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep -q ' 200 '"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  proxy:
+    # caddy:2-alpine, pinned by digest in Dockerfile.proxy, with the Caddyfile baked in.
+    image: kinige-proxy:${KINIGE_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      KINIGE_DOMAIN: ${KINIGE_DOMAIN:-localhost}
+    ports:
+      - "${PROXY_HTTP_PORT:-80}:80"
+      - "${PROXY_HTTPS_PORT:-443}:443"
+    volumes:
+      - caddy_data:/data
+
+  # One-off commands, `docker compose --profile tools run --rm <name>`. They use the server's image, database and volumes.
+  backup:
+    <<: *server
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - blobs:/data
+      - backups:/backups
+    command: ["backup", "/backups", "--prune"]
+
+  restore:
+    <<: *server
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - blobs:/data
+      - backups:/backups
+    # Compose reads this line for every command, so a missing variable cannot be an error here; the restore of "/backups/set-KINIGE_RESTORE_FROM"
+    # fails on its own, before it changes anything (it is not a backup).
+    command: ["restore", "${KINIGE_RESTORE_FROM:-/backups/set-KINIGE_RESTORE_FROM}"]
+
+secrets:
+  # 64 hex characters (`openssl rand -hex 32`) in .env: it keys the salt the server returns for an unknown login. Keep the same value
+  # when the server moves to another host: a changed one tells an attacker which logins exist. Compose puts it into the container as
+  # the file /run/secrets/server_secret (from the environment, not from a file of this machine: the Docker daemon may be elsewhere).
+  server_secret:
+    environment: KINIGE_SERVER_SECRET
+
+volumes:
+  pgdata:
+  blobs:
+  backups:
+    # A fixed name so that a second stack (a restore drill, a new host) can mount the same backups: BACKUPS_VOLUME in .env.
+    name: ${BACKUPS_VOLUME:-kinige_backups}
+  caddy_data:

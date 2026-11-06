@@ -2,6 +2,8 @@
 //! are small JSON bodies read with a cap (`DefaultBodyLimit`); a push is read frame by frame in `wire.rs`.
 
 mod accounts;
+mod blobs;
+mod body;
 mod sync;
 
 use crate::config::MAX_JSON_BODY;
@@ -13,7 +15,7 @@ use axum::extract::{ConnectInfo, DefaultBodyLimit, Request, State};
 use axum::http::{HeaderMap, header};
 use axum::middleware::{self, Next};
 use axum::response::Response;
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use serde::de::DeserializeOwned;
 use std::net::SocketAddr;
 
@@ -31,14 +33,22 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/recovery/fetch", post(accounts::recovery_fetch))
         .route("/v1/recovery", post(accounts::recover))
         .route("/v1/words/reissue", post(accounts::reissue_words))
+        .route("/v1/account/delete", post(accounts::delete_account))
         .route("/v1/pull", post(sync::pull))
         .layer(DefaultBodyLimit::max(MAX_JSON_BODY));
-    // The push body has no extractor and so no default limit: `wire::read_frames` enforces its own, as it consumes.
-    let push = Router::new().route("/v1/push", post(sync::push));
+    // The push body has no extractor and so no default limit: `wire::read_frames` enforces its own, as it consumes. The same goes for
+    // a blob upload (`api/blobs.rs`), which writes to a file as the bytes arrive.
+    let large = Router::new()
+        .route("/v1/push", post(sync::push))
+        .route(
+            "/v1/blobs/{id}",
+            put(blobs::put).get(blobs::get).delete(blobs::delete),
+        )
+        .route("/v1/blobs/{id}/status", get(blobs::status));
     Router::new()
         .route("/healthz", get(|| async { "ok" }))
         .merge(small)
-        .merge(push)
+        .merge(large)
         .layer(middleware::from_fn_with_state(state.clone(), edge))
         .with_state(state)
 }

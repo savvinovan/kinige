@@ -2,8 +2,12 @@
 //! decision they act on is a function in `rules`.
 
 pub mod accounts;
+pub mod blobs;
 pub mod compact;
+pub mod credentials;
+pub mod delete;
 pub mod envelopes;
+pub mod lock;
 pub mod recovery;
 pub mod sessions;
 
@@ -18,17 +22,31 @@ const POOL_SIZE: usize = 16;
 const MIGRATION_LOCK: i64 = 0x004b_494e_4947_4501;
 
 /// The migrations, in order. Each is applied once, in its own transaction, and recorded.
-const MIGRATIONS: &[(i32, &str)] = &[(1, include_str!("../../migrations/0001_init.sql"))];
+pub const MIGRATIONS: &[(i32, &str)] = &[
+    (1, include_str!("../../migrations/0001_init.sql")),
+    (
+        2,
+        include_str!("../../migrations/0002_blobs_restore_deletions.sql"),
+    ),
+    (
+        3,
+        include_str!("../../migrations/0003_credential_journal.sql"),
+    ),
+];
 
 /// A pool for `url` (`postgres://user:password@host:port/database`). No connection is opened yet. TLS to the database is not used: the
 /// database sits next to the server (README).
 pub fn connect(url: &str) -> Result<Pool, ApiError> {
-    let config = tokio_postgres::Config::from_str(url).map_err(|_| {
+    pool_for(parse_url(url)?)
+}
+
+/// The connection settings of a database URL.
+pub fn parse_url(url: &str) -> Result<tokio_postgres::Config, ApiError> {
+    tokio_postgres::Config::from_str(url).map_err(|_| {
         // The text of the error can echo the URL, password included.
         log::error!("the database URL does not parse");
         ApiError::Internal
-    })?;
-    pool_for(config)
+    })
 }
 
 pub fn pool_for(config: tokio_postgres::Config) -> Result<Pool, ApiError> {

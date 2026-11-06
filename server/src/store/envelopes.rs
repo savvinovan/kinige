@@ -8,7 +8,7 @@
 
 use super::{fixed, to_i64, to_u64};
 use crate::error::ApiError;
-use crate::rules::pull::{self, Cursor, Drop, Plan, page_budget};
+use crate::rules::pull::{self, Cursor, Drop, Generation, Plan, page_budget};
 use crate::rules::push::{Answer, Facts, OpRecord, PurgedRecord, Verdict, decide};
 use crate::wire::Frame;
 use deadpool_postgres::{Pool, Transaction};
@@ -20,7 +20,7 @@ use tokio_postgres::IsolationLevel;
 use tokio_postgres::types::Json;
 
 /// What the request says about itself, the same for every envelope of a batch.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct PushContext {
     pub now_ms: u64,
     pub protocol_ok: bool,
@@ -30,8 +30,9 @@ pub struct PushContext {
 /// A page of the log, or why there is none.
 #[derive(Debug)]
 pub struct PullOut {
-    /// The current generation and the account's drop epoch (§6.3).
+    /// The current generation, the whole lineage with the cut times (the device keeps it, §6.3) and the account's drop epoch.
     pub generation: u64,
+    pub lineage: Vec<Generation>,
     pub epoch: u64,
     pub plan: Plan,
     /// Empty unless the plan is `Page`.
@@ -122,9 +123,10 @@ pub async fn pull(
     let lineage = lineage(&tx).await?;
     let drops = drops_of(&tx, account).await?;
     let plan = pull::plan(&lineage, &drops, cursor);
-    let generation = lineage.last().copied().unwrap_or(0);
+    let generation = lineage.last().map_or(0, |g| g.id);
     let mut out = PullOut {
         generation,
+        lineage: lineage.clone(),
         epoch,
         plan,
         items: Vec::new(),
@@ -219,12 +221,17 @@ async fn known_groups(
         .collect()
 }
 
-async fn lineage(tx: &Transaction<'_>) -> Result<Vec<u64>, ApiError> {
+pub(super) async fn lineage(tx: &Transaction<'_>) -> Result<Vec<Generation>, ApiError> {
     let rows = tx
-        .query("SELECT generation FROM lineage ORDER BY pos", &[])
+        .query("SELECT generation, cut_ms FROM lineage ORDER BY pos", &[])
         .await?;
     rows.iter()
-        .map(|row| Ok(to_u64(row.try_get("generation")?)))
+        .map(|row| {
+            Ok(Generation {
+                id: to_u64(row.try_get("generation")?),
+                cut_ms: to_u64(row.try_get("cut_ms")?),
+            })
+        })
         .collect()
 }
 
@@ -248,7 +255,7 @@ pub(super) async fn drops_of(tx: &Transaction<'_>, account: &str) -> Result<Vec<
 }
 
 pub(super) async fn current_generation(tx: &Transaction<'_>) -> Result<u64, ApiError> {
-    Ok(lineage(tx).await?.last().copied().unwrap_or(0))
+    Ok(lineage(tx).await?.last().map_or(0, |g| g.id))
 }
 
 /// Step 8: the envelope, its `op_id`, the entity's index, and the new head, all in the transaction that holds the account lock.
@@ -315,6 +322,16 @@ async fn write(
                 &[&account, &header.entity, &header.id, &seq_db, &Json(&header.purged_of)],
             )
             .await?;
+            // A purge of an attachment names its blob in the open header (§5.2: the id is in the encrypted `core`, so the purging
+            // device copies it there). The accepted purge marks the blob deleted, in the same transaction; the object leaves the
+            // store after the backup retention (ADR-0020). Only the pusher's own account's blob can be named.
+            if let Some(blob) = &header.blob {
+                tx.execute(
+                    "UPDATE blobs SET deleted_ms = $3 WHERE account_id = $1 AND blob_id = $2 AND deleted_ms IS NULL",
+                    &[&account, blob, &at],
+                )
+                .await?;
+            }
         }
     }
     tx.execute(

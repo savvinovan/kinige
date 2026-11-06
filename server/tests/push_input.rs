@@ -199,7 +199,13 @@ async fn lengths_and_headers_are_judged_before_the_bodies_are_buffered() {
     for bad in [
         "",
         "1.2",
+        // Exactly three parts: a push carries no lineage (S4c-2), a fourth part of any kind is malformed.
         "1.2.3.4",
+        "1.2.3.4.5",
+        "1.2.3.x",
+        "1.2.3.-4",
+        "1.2.3.99999999999999999999",
+        "1.2.3.",
         "a.b.c",
         "1.-2.3",
         "1.2.99999999999999999999",

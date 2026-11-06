@@ -21,6 +21,8 @@ const MAX_ENTITY: usize = 32;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WireError {
     TooLarge,
+    /// The body went quiet or came in too slowly (`api::body`): a 408.
+    Timeout,
     Malformed(&'static str),
 }
 

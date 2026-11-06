@@ -2,12 +2,13 @@
 //! session), then reads the body frame by frame, judging the lengths and the open header of every envelope before its body is buffered,
 //! then each envelope goes through steps 3-8 on its own.
 
+use super::body::{BodyError, GuardedBody};
 use super::{authed, parse};
 use crate::dto::{
-    PullRequest, PullResponse, PulledEnvelope, PushOutcome, PushResponse, PushResult,
+    LineageEntry, PullRequest, PullResponse, PulledEnvelope, PushOutcome, PushResponse, PushResult,
 };
 use crate::error::{ApiError, json};
-use crate::rules::pull::{Cursor, Plan};
+use crate::rules::pull::{Cursor, Generation, MAX_LINEAGE, Plan};
 use crate::rules::push::Answer;
 use crate::state::AppState;
 use crate::store::envelopes::{self, PushContext};
@@ -16,7 +17,6 @@ use axum::body::{Body, Bytes};
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::Response;
-use http_body_util::BodyExt;
 
 /// The request header with the client's protocol version (§4); a push without it is below every minimum.
 const PROTOCOL_HEADER: &str = "x-kinige-protocol";
@@ -38,7 +38,7 @@ pub async fn push(
     }
     // Step 2: lengths and headers, frame by frame, before the bodies are buffered.
     let frames = read_frames(
-        BodySource(body),
+        BodySource(GuardedBody::new(body, &app.config)),
         app.config.max_push_body,
         app.config.max_batch,
     )
@@ -64,13 +64,15 @@ pub async fn pull(
 ) -> Result<Response, ApiError> {
     let (account, _) = authed(&app, &headers).await?;
     let request: PullRequest = parse(&body)?;
+    let generation: u64 = request
+        .generation
+        .parse()
+        .map_err(|_| ApiError::BadRequest("generation"))?;
     let cursor = Cursor {
-        generation: request
-            .generation
-            .parse()
-            .map_err(|_| ApiError::BadRequest("generation"))?,
+        generation,
         after: bounded(request.after, "after")?,
         known_epoch: bounded(request.known_epoch, "known_epoch")?,
+        lineage: lineage_of(request.lineage.unwrap_or_default(), generation)?,
     };
     let limit = request
         .limit
@@ -83,6 +85,14 @@ pub async fn pull(
             generation,
             stale,
             epoch: out.epoch,
+            lineage: out
+                .lineage
+                .iter()
+                .map(|g| LineageEntry {
+                    generation: g.id.to_string(),
+                    cut_ms: g.cut_ms,
+                })
+                .collect(),
         },
         Plan::Stale => PullResponse::Stale {
             generation,
@@ -132,6 +142,7 @@ fn result_of(op: &str, answer: Answer) -> PushResult {
 fn wire_error(error: WireError) -> ApiError {
     match error {
         WireError::TooLarge => ApiError::TooLarge,
+        WireError::Timeout => ApiError::Timeout,
         WireError::Malformed(code) => ApiError::BadRequest(code),
     }
 }
@@ -155,12 +166,15 @@ fn cursor_of(headers: &HeaderMap) -> Result<Cursor, ApiError> {
         .and_then(|v| v.to_str().ok())
         .ok_or(ApiError::BadRequest("cursor"))?;
     let mut parts = text.trim().split('.');
+    // Exactly three parts. A push carries no lineage: a pusher whose generation is not the current one is stale whatever its lineage
+    // says (§A.3), so the lineage of S4c-2's branch-cut rule travels in the pull request only.
     let (Some(generation), Some(after), Some(epoch), None) =
         (parts.next(), parts.next(), parts.next(), parts.next())
     else {
         return Err(bad);
     };
     Ok(Cursor {
+        lineage: Vec::new(),
         generation: generation
             .parse()
             .map_err(|_| ApiError::BadRequest("cursor"))?,
@@ -173,6 +187,35 @@ fn cursor_of(headers: &HeaderMap) -> Result<Cursor, ApiError> {
             "cursor",
         )?,
     })
+}
+
+/// The device's lineage from a pull request: at most `MAX_LINEAGE` entries, ids and cut times that are numbers the database could hold,
+/// and, if there is any, **ending with the cursor's generation** (the lineage is the one that put the device into that generation; one
+/// that ends elsewhere is malformed, a `400 lineage`, and not guessed at; round 2 of the review of S4c-2). An absent or empty lineage is
+/// allowed: it means "unknown", and the rule then counts every drop as missed.
+fn lineage_of(entries: Vec<LineageEntry>, generation: u64) -> Result<Vec<Generation>, ApiError> {
+    if entries.len() > MAX_LINEAGE {
+        return Err(ApiError::BadRequest("lineage"));
+    }
+    let parsed: Vec<Generation> = entries
+        .into_iter()
+        .map(|entry| {
+            Ok(Generation {
+                id: bounded(
+                    entry
+                        .generation
+                        .parse()
+                        .map_err(|_| ApiError::BadRequest("lineage"))?,
+                    "lineage",
+                )?,
+                cut_ms: bounded(entry.cut_ms, "lineage")?,
+            })
+        })
+        .collect::<Result<_, ApiError>>()?;
+    if parsed.last().is_some_and(|last| last.id != generation) {
+        return Err(ApiError::BadRequest("lineage"));
+    }
+    Ok(parsed)
 }
 
 /// A number the database stores as `bigint`.
@@ -194,23 +237,15 @@ fn declared_length(headers: &HeaderMap) -> Option<usize> {
         .ok()
 }
 
-/// The request body as chunks for `wire::read_frames`.
-struct BodySource(Body);
+/// The request body as chunks for `wire::read_frames`, with the clock of `api::body` on it.
+struct BodySource(GuardedBody);
 
 impl Source for BodySource {
     async fn next_chunk(&mut self) -> Result<Option<Vec<u8>>, WireError> {
-        loop {
-            match self.0.frame().await {
-                None => return Ok(None),
-                Some(Err(_)) => return Err(WireError::Malformed("body")),
-                Some(Ok(frame)) => {
-                    if let Ok(data) = frame.into_data()
-                        && !data.is_empty()
-                    {
-                        return Ok(Some(data.to_vec()));
-                    }
-                }
-            }
+        match self.0.next_chunk().await {
+            Ok(chunk) => Ok(chunk.map(|data| data.to_vec())),
+            Err(BodyError::Timeout) => Err(WireError::Timeout),
+            Err(BodyError::Broken) => Err(WireError::Malformed("body")),
         }
     }
 }

@@ -1,7 +1,8 @@
 //! The server behind a trait (S4c-1, KINIG-98). The world, the oracle and the properties talk to a [`SyncServer`]; one implementation is the
 //! in-memory server of `server.rs` (the default, with the switches of the negative controls), the other (feature `real-server`,
 //! `http_server.rs`) is the real `kinige-server` router on Postgres, called in process, so HTTP parsing, SQL and the real envelope bytes are
-//! exercised together with the protocol.
+//! exercised together with the protocol. Since S4c-2 both can take a backup and be restored from it: the in-memory one by cloning, the real
+//! one by `kinige_server::backup` into a clean database, the code path the operator uses.
 //!
 //! Which one a [`World`](crate::world::World) gets is decided by [`with_backend`]: a test installs a factory for the current thread and
 //! every world built inside the closure uses it. Nothing else in the simulation knows the difference.
@@ -9,20 +10,31 @@
 use crate::envelope::{Envelope, Key};
 use crate::server::{PullResponse, PushResponse, Server};
 use crate::switches::Switches;
+use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-/// `(generation, seq, known_epoch)`: where the pushing device stands (appendix §A.3, `stale`).
-pub type Cursor = (u64, u64, u64);
+/// Where the pushing or pulling device stands (appendix §A.3, `stale`; ADR-0017): its generation, its `seq`, the drop epoch it last saw
+/// and the lineage that came with the `GenerationChanged` answer which put it into its generation (empty if none did), as
+/// `(generation, cut_ms)`, oldest first. A push sends no lineage (the real server's cursor header has three parts).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Cursor {
+    pub generation: u64,
+    pub seq: u64,
+    pub known_epoch: u64,
+    pub lineage: Vec<(u64, u64)>,
+}
+
+/// A backup the server took (S4c-2). Opaque to the world; a server restores only a backup of its own kind.
+pub struct Backup(pub Box<dyn Any>);
 
 pub trait SyncServer {
     /// The current generation.
     fn generation(&self) -> u64;
     /// `cursor` is the pusher's; the in-memory server ignores it, the real server answers `stale` when it is behind a drop it missed.
-    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, cursor: Cursor) -> PushResponse;
-    fn pull(&mut self, generation: u64, after: u64, known_epoch: u64, limit: usize)
-    -> PullResponse;
+    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, cursor: &Cursor) -> PushResponse;
+    fn pull(&mut self, cursor: Cursor, limit: usize) -> PullResponse;
     fn compact(&mut self, now_ms: u64);
     fn head(&self) -> u64;
     fn issued(&self) -> u64;
@@ -35,8 +47,12 @@ pub trait SyncServer {
     fn purged_ever(&self) -> Vec<Key>;
     /// How many compactions have dropped a `purged`.
     fn drops_count(&self) -> usize;
-    /// The in-memory server, for backups and restores. `None` for a server that cannot restore (restore is S4c-2): the world then
-    /// skips the `Backup` and `RestoreServer` steps.
+    /// A backup of the server as it is at `now_ms`, the cut time of the generation a restore from it makes.
+    fn backup(&mut self, now_ms: u64) -> Backup;
+    /// Restores from `backup` (taken by this kind of server): a new generation appended to the lineage, cut at the backup's time.
+    /// `nonce` names the new generation for the in-memory server; the real one draws its own.
+    fn restore(&mut self, backup: &Backup, nonce: u64, now_ms: u64);
+    /// The in-memory server, for the scenarios that look inside it (lineage, drops).
     fn as_memory(&self) -> Option<&Server> {
         None
     }
@@ -50,18 +66,12 @@ impl SyncServer for Server {
         self.generation
     }
 
-    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, _cursor: Cursor) -> PushResponse {
+    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, _cursor: &Cursor) -> PushResponse {
         Server::push(self, env, now_ms)
     }
 
-    fn pull(
-        &mut self,
-        generation: u64,
-        after: u64,
-        known_epoch: u64,
-        limit: usize,
-    ) -> PullResponse {
-        Server::pull(self, generation, after, known_epoch, limit)
+    fn pull(&mut self, cursor: Cursor, limit: usize) -> PullResponse {
+        Server::pull(self, cursor, limit)
     }
 
     fn compact(&mut self, now_ms: u64) {
@@ -98,6 +108,16 @@ impl SyncServer for Server {
 
     fn drops_count(&self) -> usize {
         Server::drops_count(self)
+    }
+
+    fn backup(&mut self, now_ms: u64) -> Backup {
+        Backup(Box::new(Server::backup(self, now_ms)))
+    }
+
+    fn restore(&mut self, backup: &Backup, nonce: u64, _now_ms: u64) {
+        if let Some(dump) = backup.0.downcast_ref::<Server>() {
+            Server::restore(self, dump, nonce);
+        }
     }
 
     fn as_memory(&self) -> Option<&Server> {

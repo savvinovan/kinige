@@ -58,8 +58,7 @@ fn main() {
     let started = Instant::now();
     client.begin_binding(server.generation);
     while client.resync.is_some() {
-        let (generation, after, epoch) = client.pull_request();
-        let response = server.pull(generation, after, epoch, 500);
+        let response = server.pull(client.pull_request(), 500);
         client.on_pull_response(response, T0, |_| {});
     }
     let build = started.elapsed();

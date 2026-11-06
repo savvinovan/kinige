@@ -2,6 +2,7 @@
 //! state with it. The checks never use the rules under test (`merge`, `needs_conflict_revision`): they ask only what a person
 //! would, "is the newest write there", "is every version still somewhere".
 
+use crate::backend::Cursor;
 use crate::client::{
     Client, FeedSlot, Write,
     purge::{chat_id_of, deleted_at},
@@ -370,7 +371,13 @@ pub fn push_is_idempotent(world: &mut World) -> Result<(), String> {
     for env in envelopes.iter().chain(again.iter()) {
         let seq_before = world.server.seq_of(&env.header.op_id);
         // A cursor at 0 is never stale, so the replay is judged on `op_id` alone.
-        let response = world.server.push(env, world.now, (generation, 0, 0));
+        let cursor = Cursor {
+            generation,
+            seq: 0,
+            known_epoch: 0,
+            lineage: Vec::new(),
+        };
+        let response = world.server.push(env, world.now, &cursor);
         match (response, seq_before) {
             (PushResponse::Duplicate(seq), Some(before)) if seq == before => {}
             (other, _) => {
@@ -408,8 +415,7 @@ pub fn server_log_rebuilds_state(world: &mut World) -> Result<(), String> {
     fresh.records.clear();
     fresh.begin_binding(world.server.generation());
     for _ in 0..500 {
-        let (generation, after, epoch) = fresh.pull_request();
-        let response = world.server.pull(generation, after, epoch, 3);
+        let response = world.server.pull(fresh.pull_request(), 3);
         fresh.on_pull_response(response, world.now, |_| {});
         if fresh.resync.is_none() && fresh.cursor_seq >= world.server.head() {
             break;

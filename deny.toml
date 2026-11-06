@@ -39,6 +39,9 @@ allow = [
     "BSL-1.0",
     # bip39, bitcoin_hashes (kinige-crypto, S4b): CC0-1.0 is a public-domain dedication, it puts no conditions on a binary.
     "CC0-1.0",
+    # webpki-root-certs (kinige-server, S4c-2: object_store -> reqwest -> rustls-platform-verifier, TLS to an S3 store): the Mozilla root
+    # certificate list as data. CDLA-Permissive-2.0 is permissive: redistribution with the notice, no copyleft on the program.
+    "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.8
 # The list is shared by all platforms; an unused entry is not an error.

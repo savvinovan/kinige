@@ -3,14 +3,16 @@
 
 use super::{ClientAddr, authed, bearer, parse};
 use crate::dto::{
-    ChangePasswordRequest, CredVersionResponse, LoginParamsRequest, LoginParamsResponse,
-    LoginRequest, LoginResponse, PasswordPart, RecoveryFetchRequest, RecoveryFetchResponse,
-    RecoveryRequest, RecoveryResponse, RegisterRequest, ReissueRequest, TokenResponse,
+    ChangePasswordRequest, CredVersionResponse, DeleteAccountRequest, LoginParamsRequest,
+    LoginParamsResponse, LoginRequest, LoginResponse, PasswordPart, RecoveryFetchRequest,
+    RecoveryFetchResponse, RecoveryRequest, RecoveryResponse, RegisterRequest, ReissueRequest,
+    TokenResponse,
 };
 use crate::error::{ApiError, json};
 use crate::rate::Rule;
 use crate::state::AppState;
 use crate::store::accounts::{self as store, NewPassword, Registration};
+use crate::store::delete;
 use crate::store::recovery::{self, NewRecovery};
 use crate::store::sessions::{self, Token};
 use crate::wire::{from_b64, key32, to_b64};
@@ -128,8 +130,8 @@ pub async fn change_password(
     let new = new_password(&request.new)?;
     let cred_version = store::change_password(
         &app.pool,
-        &account,
-        &token,
+        &*app.clock,
+        (&account, &token),
         &old,
         request.expected_version,
         &new,
@@ -137,6 +139,21 @@ pub async fn change_password(
     )
     .await?;
     Ok(json(StatusCode::OK, &CredVersionResponse { cred_version }))
+}
+
+/// Account deletion (§8.9): with a session and the password's `auth_key`. The account, its envelopes and sessions go at once, its blobs
+/// after the backup retention, and the deletion journal learns the account's hash.
+pub async fn delete_account(
+    State(app): State<AppState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<Response, ApiError> {
+    let (account, _) = authed(&app, &headers).await?;
+    let request: DeleteAccountRequest = parse(&body)?;
+    let auth = AuthKey::from_bytes(key(&request.auth_key, "auth_key")?);
+    delete::delete_account(&app.pool, &*app.clock, &account, &auth).await?;
+    app.blobs.staging.remove_account(&account).await;
+    Ok(json(StatusCode::OK, &serde_json::json!({})))
 }
 
 /// Step 1 of a recovery: the word check. It shares one budget with the recovery itself (§8.4).
@@ -192,7 +209,7 @@ pub async fn recover(
         config.recovery_by_addr,
     )?;
     let (token, cred_version) =
-        recovery::recover(&app.pool, app.clock.now_ms(), &login, &old, &new).await?;
+        recovery::recover(&app.pool, &*app.clock, &login, &old, &new).await?;
     Ok(json(
         StatusCode::OK,
         &RecoveryResponse {
@@ -212,7 +229,7 @@ pub async fn reissue_words(
     let auth = AuthKey::from_bytes(key(&request.auth_key, "auth_key")?);
     let new_rc = RcAuthKey::from_bytes(key(&request.new_rc_auth_key, "new_rc_auth_key")?);
     let wrap_rc = wrap(&request.wrap_rc, "wrap_rc")?;
-    recovery::reissue_words(&app.pool, &account, &auth, &new_rc, &wrap_rc).await?;
+    recovery::reissue_words(&app.pool, &*app.clock, &account, &auth, &new_rc, &wrap_rc).await?;
     Ok(json(StatusCode::OK, &serde_json::json!({})))
 }
 

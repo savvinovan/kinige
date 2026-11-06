@@ -3,23 +3,27 @@
 //! with the protocol. Every simulated account is registered through the API with random 32-byte keys (no Argon2id), on a database the host
 //! created for the test run and drops with it.
 //!
-//! Restores are not modelled (S4c-2): `as_memory` is `None`, so the world skips the `Backup` and `RestoreServer` steps, and the mixes that
-//! rely on them (`Mix::RESTORE`, the restore-epoch generator) are not run against this server.
+//! Backups and restores are real (S4c-2): a backup is `kinige_server::backup::create` into a directory, and a restore loads that
+//! directory with `kinige_server::backup::restore` into a **clean database with an empty blob store**, the code path the operator uses
+//! for a restore into a clean installation. The router and the pool are swapped for the new installation's; the sessions are not in a
+//! dump, so the simulated device logs in again, as a real one does after a restore.
 
-use crate::backend::{Cursor, SyncServer};
+use crate::backend::{Backup, Cursor, SyncServer};
 use crate::envelope::{Envelope, Key, Kind};
 use crate::real::entity_name;
 use crate::server::{PullResponse, PushResponse};
 use crate::world::T0;
+use kinige_server::backup;
 use kinige_server::dto::{
     PullResponse as WirePull, PushOutcome, PushResponse as WirePush, PushResult,
 };
 use kinige_server::store::compact;
 use kinige_server::testing::{Creds, Http, TestDb};
-use kinige_server::wire::{encode_frames, from_b64};
-use kinige_server::{AppState, Clock, Config, ManualClock, router};
+use kinige_server::wire::{encode_frames, from_b64, to_b64};
+use kinige_server::{AppState, Config, ManualClock, router};
 use serde_json::json;
 use std::future::Future;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
@@ -53,10 +57,15 @@ pub struct HttpServer {
     state: AppState,
     clock: Arc<ManualClock>,
     account: String,
+    creds: Creds,
     token: String,
     generation: u64,
     /// Entities for which the server accepted a `purged` (the first acceptance answers without a snapshot; a repeat carries one).
     purged: Vec<Key>,
+    /// The clean installations the restores made, kept so that their databases and blob directories live as long as this server.
+    installations: Vec<TestDb>,
+    /// A directory for the backups, removed with the host's database.
+    backups: PathBuf,
 }
 
 impl HttpServer {
@@ -72,19 +81,14 @@ impl HttpServer {
             .runtime
             .block_on(creds.register(&http))
             .unwrap_or_else(|error| panic!("the simulated account did not register: {error}"));
-        let generation = host.runtime.block_on(async {
-            let client = state.pool.get().await.expect("a connection");
-            let row = client
-                .query_one(
-                    "SELECT generation FROM lineage ORDER BY pos DESC LIMIT 1",
-                    &[],
-                )
-                .await
-                .expect("the lineage");
-            u64::try_from(row.get::<_, i64>(0)).expect("a positive generation")
-        });
+        let generation = host.runtime.block_on(current_generation(&state));
+        let backups = host
+            .db
+            .scratch_dir("s4a-backups")
+            .unwrap_or_else(|error| panic!("a directory for the backups: {error}"));
         HttpServer {
             account: creds.account_id.clone(),
+            creds,
             host,
             http,
             state,
@@ -92,7 +96,39 @@ impl HttpServer {
             token,
             generation,
             purged: Vec::new(),
+            installations: Vec::new(),
+            backups,
         }
+    }
+
+    /// The restore of an installation: a clean database and an empty store, the dump loaded by the operator's code path, then the
+    /// device logs in again (a dump has no sessions).
+    fn restore_into_a_clean_installation(&mut self, dir: &std::path::Path, now_ms: u64) {
+        self.clock.set(now_ms);
+        let (db, state, report) = self.block(async {
+            let db = TestDb::create()
+                .await
+                .unwrap_or_else(|error| panic!("a clean database: {error}"));
+            let state = db
+                .state(self.clock.clone(), Config::default())
+                .await
+                .unwrap_or_else(|error| panic!("a clean installation: {error}"));
+            let report = backup::restore(&state.pool, &state.blobs.objects, &*self.clock, dir)
+                .await
+                .unwrap_or_else(|error| panic!("the restore failed: {error}"));
+            (db, state, report)
+        });
+        self.generation = report.generation;
+        self.http = Http::new(router(state.clone()));
+        self.state = state;
+        self.installations.push(db);
+        let login = json!({"login": self.creds.login, "auth_key": to_b64(&self.creds.auth_key)});
+        let (status, answer) = self.block(self.http.post("/v1/login", None, &login));
+        assert_eq!(status, 200, "the device logs in after a restore: {answer}");
+        self.token = answer["token"]
+            .as_str()
+            .unwrap_or_else(|| panic!("a login without a token"))
+            .to_string();
     }
 
     fn block<T>(&self, future: impl Future<Output = T>) -> T {
@@ -117,7 +153,7 @@ impl SyncServer for HttpServer {
         self.generation
     }
 
-    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, cursor: Cursor) -> PushResponse {
+    fn push(&mut self, env: &Arc<Envelope>, now_ms: u64, cursor: &Cursor) -> PushResponse {
         self.clock.set(now_ms);
         let header = &env.header;
         let body = encode_frames(&[(
@@ -127,7 +163,11 @@ impl SyncServer for HttpServer {
             env.wire(),
         )])
         .unwrap_or_else(|| panic!("a frame for {}", header.id));
-        let cursor_text = format!("{}.{}.{}", cursor.0, cursor.1, cursor.2);
+        // Three parts: a push carries no lineage, a pusher outside the current generation is stale whatever it could say.
+        let cursor_text = format!(
+            "{}.{}.{}",
+            cursor.generation, cursor.seq, cursor.known_epoch
+        );
         let (status, answer) =
             self.block(
                 self.http
@@ -164,17 +204,17 @@ impl SyncServer for HttpServer {
         }
     }
 
-    fn pull(
-        &mut self,
-        generation: u64,
-        after: u64,
-        known_epoch: u64,
-        limit: usize,
-    ) -> PullResponse {
+    fn pull(&mut self, cursor: Cursor, limit: usize) -> PullResponse {
+        let lineage: Vec<_> = cursor
+            .lineage
+            .iter()
+            .map(|(generation, cut_ms)| json!({"generation": generation.to_string(), "cut_ms": cut_ms}))
+            .collect();
         let request = json!({
-            "generation": generation.to_string(),
-            "after": after,
-            "known_epoch": known_epoch,
+            "generation": cursor.generation.to_string(),
+            "after": cursor.seq,
+            "known_epoch": cursor.known_epoch,
+            "lineage": lineage,
             "limit": limit,
         });
         let (status, answer) = self.block(self.http.post("/v1/pull", Some(&self.token), &request));
@@ -210,12 +250,23 @@ impl SyncServer for HttpServer {
                 generation,
                 stale,
                 epoch,
+                lineage,
             } => PullResponse::GenerationChanged {
                 generation: generation
                     .parse()
                     .unwrap_or_else(|_| panic!("a generation that is not a number")),
                 stale,
                 epoch,
+                lineage: lineage
+                    .into_iter()
+                    .map(|entry| {
+                        let id = entry
+                            .generation
+                            .parse()
+                            .unwrap_or_else(|_| panic!("a generation that is not a number"));
+                        (id, entry.cut_ms)
+                    })
+                    .collect(),
             },
         }
     }
@@ -225,7 +276,7 @@ impl SyncServer for HttpServer {
         self.block(compact::account(
             &self.state.pool,
             &self.account,
-            self.clock.now_ms(),
+            &*self.clock,
         ))
         .unwrap_or_else(|error| panic!("compaction failed: {}", error.code()));
     }
@@ -286,4 +337,36 @@ impl SyncServer for HttpServer {
         self.block(compact::drops(&self.state.pool, &self.account))
             .map_or(0, |drops| drops.len())
     }
+
+    fn backup(&mut self, now_ms: u64) -> Backup {
+        self.clock.set(now_ms);
+        let (dir, _) = self
+            .block(backup::create(
+                &self.state.pool,
+                &self.state.blobs.objects,
+                &*self.clock,
+                &self.backups,
+            ))
+            .unwrap_or_else(|error| panic!("the backup failed: {error}"));
+        Backup(Box::new(dir))
+    }
+
+    fn restore(&mut self, backup: &Backup, _nonce: u64, now_ms: u64) {
+        if let Some(dir) = backup.0.downcast_ref::<PathBuf>() {
+            self.restore_into_a_clean_installation(dir, now_ms);
+        }
+    }
+}
+
+/// The newest generation of the installation behind `state`.
+async fn current_generation(state: &AppState) -> u64 {
+    let client = state.pool.get().await.expect("a connection");
+    let row = client
+        .query_one(
+            "SELECT generation FROM lineage ORDER BY pos DESC LIMIT 1",
+            &[],
+        )
+        .await
+        .expect("the lineage");
+    u64::try_from(row.get::<_, i64>(0)).expect("a positive generation")
 }

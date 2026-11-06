@@ -8,10 +8,14 @@
 //! Logging is event kinds and error categories only. Request bodies, tokens, keys and envelope bytes never reach the log (§8.8).
 
 pub mod api;
+pub mod backup;
+pub mod blobs;
+pub mod cli;
 pub mod clock;
 pub mod config;
 pub mod dto;
 pub mod error;
+pub mod hashing;
 pub mod logging;
 pub mod maintenance;
 pub mod rate;

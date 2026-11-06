@@ -61,4 +61,12 @@ pub struct Switches {
     pub show_orphans: bool,
     /// Client: a changed `generation` is ignored, the old cursor and `server_known` flags are kept (§6.3).
     pub ignore_generation: bool,
+    /// Server: a cursor whose generation is not in the lineage is placed between the generation of the backup and the current one, as
+    /// before S4c-2, instead of by the fork of the lineage it carries (ADR-0017, the branch-cut rule). Round 3 of the S4a review found
+    /// the hole.
+    pub branch_by_position: bool,
+    /// Server: a cursor whose generation is not in the lineage is placed by the cut time of the device's **own** generation, the rule
+    /// of the first S4c-2 round, instead of the cut time of the fork. Round 1 of the review of S4c-2 found the hole: after a restore of
+    /// a backup of a branch, the own cut time is a time on another branch's clock of events.
+    pub branch_by_own_cut: bool,
 }

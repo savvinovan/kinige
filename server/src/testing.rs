@@ -1,6 +1,10 @@
 //! Helpers for tests and for the S4a simulation (feature `testing`): a throwaway database, an in-process client of the router, and
 //! synthetic credentials. Not part of the server binary. Everything here is synthetic data.
 
+use crate::blobs::Blobs;
+use crate::blobs::objects::Objects;
+use crate::blobs::settings::S3Settings;
+use crate::blobs::staging::Staging;
 use crate::clock::ManualClock;
 use crate::config::Config;
 use crate::dto::{PasswordPart, RegisterRequest};
@@ -23,11 +27,39 @@ use tower::ServiceExt;
 /// The environment variable that points at a Postgres server where databases may be created and dropped.
 pub const TEST_DATABASE_URL: &str = "KINIGE_TEST_DATABASE_URL";
 
-/// A database created for one test and dropped with it (also on a panic). Runs never share state.
+/// The throwaway S3-compatible store of the blob suites (README, "Tests"): `KINIGE_TEST_S3_URL` (`http://host:port`) with
+/// `KINIGE_TEST_S3_BUCKET`, `KINIGE_TEST_S3_ACCESS_KEY` and `KINIGE_TEST_S3_SECRET_KEY`. Each database gets its own key prefix.
+pub const TEST_S3_URL: &str = "KINIGE_TEST_S3_URL";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BlobBackend {
+    Disk,
+    S3,
+}
+
+/// The backends a blob suite runs against: the disk always, S3 when `KINIGE_TEST_S3_URL` is set. With `KINIGE_TEST_REQUIRE_S3=1` (CI)
+/// a missing store is a failure and not a quiet skip.
+pub fn blob_backends() -> Result<Vec<BlobBackend>, String> {
+    let configured = std::env::var(TEST_S3_URL).is_ok();
+    if !configured && std::env::var("KINIGE_TEST_REQUIRE_S3").is_ok_and(|v| v == "1") {
+        return Err(format!(
+            "{TEST_S3_URL} is not set and the S3 suites are required"
+        ));
+    }
+    Ok(if configured {
+        vec![BlobBackend::Disk, BlobBackend::S3]
+    } else {
+        vec![BlobBackend::Disk]
+    })
+}
+
+/// A database created for one test and dropped with it (also on a panic). Runs never share state. The blob directories the test
+/// made go with it.
 pub struct TestDb {
     admin: tokio_postgres::Config,
     name: String,
     config: tokio_postgres::Config,
+    dirs: std::sync::Mutex<Vec<std::path::PathBuf>>,
 }
 
 impl TestDb {
@@ -54,17 +86,70 @@ impl TestDb {
             admin,
             name,
             config,
+            dirs: std::sync::Mutex::default(),
         })
     }
 
-    /// A server state on this database with the migrations applied, on the given clock.
+    /// A server state on this database with the migrations applied, on the given clock, with blobs on a throwaway directory.
     pub async fn state(&self, clock: Arc<ManualClock>, config: Config) -> Result<AppState, String> {
+        self.state_on(clock, config, BlobBackend::Disk).await
+    }
+
+    pub async fn state_on(
+        &self,
+        clock: Arc<ManualClock>,
+        config: Config,
+        backend: BlobBackend,
+    ) -> Result<AppState, String> {
         let pool = store::pool_for(self.config.clone()).map_err(|e| e.code().to_string())?;
         store::migrate(&pool)
             .await
             .map_err(|e| e.code().to_string())?;
         let secret = ServerSecret::random();
-        Ok(AppState::new(pool, clock, secret, config, None))
+        let blobs = self.blobs(backend)?;
+        Ok(AppState::new(pool, clock, secret, config, None, blobs))
+    }
+
+    /// A blob store and staging area of their own: a new directory, and for S3 a new key prefix in the shared bucket.
+    pub fn blobs(&self, backend: BlobBackend) -> Result<Blobs, String> {
+        let dir = self.scratch_dir("blobs")?;
+        let objects = match backend {
+            BlobBackend::Disk => Objects::disk(&dir.join("objects"))?,
+            BlobBackend::S3 => {
+                let var =
+                    |name: &str| std::env::var(name).map_err(|_| format!("{name} is not set"));
+                let settings = S3Settings {
+                    bucket: var("KINIGE_TEST_S3_BUCKET")?,
+                    region: "us-east-1".to_string(),
+                    endpoint: Some(var(TEST_S3_URL)?),
+                    access_key: var("KINIGE_TEST_S3_ACCESS_KEY")?,
+                    secret_key: var("KINIGE_TEST_S3_SECRET_KEY")?,
+                    allow_http: true,
+                };
+                Objects::s3(&settings)?.with_prefix(&self.name)
+            }
+        };
+        Ok(Blobs::new(objects, Staging::new(dir.join("staging"))))
+    }
+
+    /// A new empty directory that is removed with the database.
+    pub fn scratch_dir(&self, label: &str) -> Result<std::path::PathBuf, String> {
+        let dir = std::env::temp_dir().join(format!(
+            "kinige-test-{}-{label}-{}",
+            self.name,
+            hex(&random::bytes(4))
+        ));
+        std::fs::create_dir_all(&dir).map_err(|_| "cannot make a test directory".to_string())?;
+        self.dirs
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .push(dir.clone());
+        Ok(dir)
+    }
+
+    /// The connection settings of this database, for what needs a connection of its own (the server lock).
+    pub fn pg_config(&self) -> tokio_postgres::Config {
+        self.config.clone()
     }
 
     /// A pool on this database for raw SQL in a test (the dump, the negative control).
@@ -75,6 +160,15 @@ impl TestDb {
 
 impl Drop for TestDb {
     fn drop(&mut self) {
+        let dirs = std::mem::take(
+            &mut *self
+                .dirs
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+        );
+        for dir in dirs {
+            let _ = std::fs::remove_dir_all(dir);
+        }
         let admin = self.admin.clone();
         let name = self.name.clone();
         let cleanup = move || {
@@ -124,6 +218,39 @@ impl Http {
             .map(|collected| collected.to_bytes().to_vec())
             .unwrap_or_default();
         (status, bytes)
+    }
+
+    /// Any request, with headers; the answer's status, headers and body.
+    pub async fn request(
+        &self,
+        method: &str,
+        path: &str,
+        token: Option<&str>,
+        headers: &[(&str, String)],
+        body: Body,
+    ) -> (StatusCode, axum::http::HeaderMap, Vec<u8>) {
+        let mut builder = Request::builder().method(method).uri(path);
+        if let Some(token) = token {
+            builder = builder.header("authorization", format!("Bearer {token}"));
+        }
+        for (name, value) in headers {
+            builder = builder.header(*name, value);
+        }
+        let Ok(request) = builder.body(body) else {
+            return (
+                StatusCode::BAD_REQUEST,
+                axum::http::HeaderMap::new(),
+                Vec::new(),
+            );
+        };
+        let Ok(response) = self.router.clone().oneshot(request).await;
+        let (parts, body) = response.into_parts();
+        let bytes = body
+            .collect()
+            .await
+            .map(|collected| collected.to_bytes().to_vec())
+            .unwrap_or_default();
+        (parts.status, parts.headers, bytes)
     }
 
     /// `POST path` with a JSON body and, if given, a bearer token. The answer is parsed as JSON (`Null` if it is not).

@@ -2,7 +2,7 @@
 //! A schedule is a list of steps; nothing is random inside the run, so the same schedule (and the seed that produced it) always
 //! gives the same result.
 
-use crate::backend::{self, SyncServer};
+use crate::backend::{self, Backup, SyncServer};
 use crate::client::{Client, FeedSlot, OpError};
 use crate::envelope::{Entity, Envelope, Key};
 use crate::oracle::Oracle;
@@ -75,6 +75,10 @@ pub enum Step {
     Backup,
     /// The server is restored from the last backup: a new generation.
     RestoreServer,
+    /// A backup kept in the second slot, next to the one `Backup` keeps (S4c-2: the round 3 shape needs an older and a newer backup).
+    BackupSecond,
+    /// The server is restored from the backup of the second slot.
+    RestoreSecond,
     /// A database without an account binds to it.
     Bind(usize),
     /// Every device except `skip` (a device index; one past the last device skips nobody) pulls to the head and pushes everything,
@@ -107,7 +111,8 @@ pub struct World {
     page: usize,
     batch: usize,
     last_page: Vec<Option<PullResponse>>,
-    backup: Option<Server>,
+    backup: Option<Backup>,
+    backup_second: Option<Backup>,
     /// A server restore happened (for the property of §6.3).
     pub restored: bool,
     /// How many restores there have been: the source of the random numbers that name new generations.
@@ -134,6 +139,7 @@ impl World {
             batch: schedule.batch.max(1),
             last_page: vec![None; n],
             backup: None,
+            backup_second: None,
             restored: false,
             restores: 0,
         }
@@ -188,23 +194,11 @@ impl World {
                 }
             }
             Step::Compact => self.server.compact(self.now),
-            // A server that cannot restore (the real one, until S4c-2) has no backup to take: both steps are skipped.
-            Step::Backup => {
-                if let Some(memory) = self.server.as_memory() {
-                    self.backup = Some(memory.backup());
-                }
-            }
-            Step::RestoreServer => {
-                if let (Some(backup), Some(memory)) =
-                    (self.backup.clone(), self.server.as_memory_mut())
-                {
-                    // A random number from outside the server, as a real restore draws one; it cannot repeat in a run.
-                    self.restores += 1;
-                    let nonce = self.restores.wrapping_mul(0x9e37_79b9_7f4a_7c15);
-                    memory.restore(&backup, nonce);
-                    self.restored = true;
-                }
-            }
+            // The cut time of the generation a restore makes is the time of the backup (ADR-0017).
+            Step::Backup => self.backup = Some(self.server.backup(self.now)),
+            Step::BackupSecond => self.backup_second = Some(self.server.backup(self.now)),
+            Step::RestoreServer => self.restore_from(false),
+            Step::RestoreSecond => self.restore_from(true),
             Step::Bind(c) => {
                 let generation = self.server.generation();
                 if let Some(client) = self.clients.get_mut(c) {
@@ -219,6 +213,22 @@ impl World {
         }
         self.sync_clocks();
         self.drain_writes();
+    }
+
+    /// Restores the server from the backup of the given slot, if it has one.
+    fn restore_from(&mut self, second: bool) {
+        let slot = if second {
+            &self.backup_second
+        } else {
+            &self.backup
+        };
+        if let Some(backup) = slot {
+            // A random number from outside the server, as a real restore draws one; it cannot repeat in a run.
+            self.restores += 1;
+            let nonce = self.restores.wrapping_mul(0x9e37_79b9_7f4a_7c15);
+            self.server.restore(backup, nonce, self.now);
+            self.restored = true;
+        }
     }
 
     /// The devices read the shared virtual time from here (the handlers of network answers do not take it as an argument).
@@ -322,9 +332,9 @@ impl World {
             if !deliver {
                 continue;
             }
-            let response = self.server.push(env, now, cursor);
+            let response = self.server.push(env, now, &cursor);
             if fault == PushFault::Duplicate {
-                let again = self.server.push(env, now, cursor);
+                let again = self.server.push(env, now, &cursor);
                 self.answer(c, env, again, hear);
             }
             self.answer(c, env, response, hear);
@@ -348,8 +358,8 @@ impl World {
         if !client.can_pull() {
             return;
         }
-        let (generation, after, known_epoch) = client.pull_request();
-        let response = self.server.pull(generation, after, known_epoch, self.page);
+        let cursor = client.pull_request();
+        let response = self.server.pull(cursor, self.page);
         let delivered = match fault {
             PullFault::Drop => None,
             PullFault::Replay => self

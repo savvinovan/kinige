@@ -7,7 +7,7 @@ use kinige_crypto::header::{GroupStamp, Header, Kind};
 use kinige_crypto::{AccountId, Dek, Operation, seal_operation};
 use kinige_server::config::Config;
 use kinige_server::dto::PushResponse;
-use kinige_server::testing::{Creds, Http, TestDb};
+use kinige_server::testing::{BlobBackend, Creds, Http, TestDb};
 use kinige_server::wire::encode_frames;
 use kinige_server::{AppState, ManualClock, router};
 use serde_json::{Value, json};
@@ -15,6 +15,8 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use std::thread::ThreadId;
 
+pub mod backup;
+pub mod blobs;
 pub mod leak;
 
 /// The virtual "now" of the tests, ms (2027-01-15).
@@ -34,10 +36,18 @@ pub async fn rig() -> Rig {
 }
 
 pub async fn rig_with(config: Config) -> Rig {
+    rig_on(config, BlobBackend::Disk).await
+}
+
+/// A rig whose blobs are on the given backend (the disk always, S3 when `KINIGE_TEST_S3_URL` is set: `blob_backends`).
+pub async fn rig_on(config: Config, backend: BlobBackend) -> Rig {
     capture_logs();
     let db = TestDb::create().await.expect("a test database");
     let clock = Arc::new(ManualClock::new(T0));
-    let state = db.state(clock.clone(), config).await.expect("a state");
+    let state = db
+        .state_on(clock.clone(), config, backend)
+        .await
+        .expect("a state");
     let http = Http::new(router(state.clone()));
     Rig {
         db,
@@ -101,13 +111,9 @@ pub async fn put(rig: &Rig, acct: &Acct, n: u8, op_n: u8, bytes: &[u8]) -> Value
 
 /// Compacts the account at the rig's clock.
 pub async fn compact_now(rig: &Rig, acct: &Acct) -> kinige_server::store::compact::Stats {
-    kinige_server::store::compact::account(
-        &rig.state.pool,
-        &acct.creds.account_id,
-        kinige_server::Clock::now_ms(&*rig.clock),
-    )
-    .await
-    .expect("compaction")
+    kinige_server::store::compact::account(&rig.state.pool, &acct.creds.account_id, &*rig.clock)
+        .await
+        .expect("compaction")
 }
 
 pub fn hlc(wall: u64, counter: u32) -> String {
@@ -186,6 +192,29 @@ impl Maker {
                     .collect(),
             ),
             blob: None,
+        };
+        self.seal(header, BTreeMap::new())
+    }
+
+    /// A `purged` of attachment `id` that names its blob in the open header (ADR-0001 §5.2).
+    pub fn purged_attachment(&self, id: &str, op: &str, blob: &str) -> Vec<u8> {
+        let header = Header {
+            entity: "attachment".to_string(),
+            id: id.to_string(),
+            op: op.to_string(),
+            kind: Kind::Purged,
+            groups: BTreeMap::new(),
+            purged_of: Some(
+                [
+                    ("core", hlc(T0, 0)),
+                    ("order", hlc(T0, 0)),
+                    ("deleted", hlc(T0, 0)),
+                ]
+                .into_iter()
+                .map(|(g, h)| (g.to_string(), h))
+                .collect(),
+            ),
+            blob: Some(blob.to_string()),
         };
         self.seal(header, BTreeMap::new())
     }

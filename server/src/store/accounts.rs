@@ -4,8 +4,10 @@
 //! columns, which are the hashes themselves: no record of a request ever holds a raw key.
 
 use super::sessions::{self, Token};
-use super::{fixed, to_i64, to_u64};
+use super::{credentials, fixed, lock, to_i64, to_u64};
+use crate::clock::Clock;
 use crate::error::ApiError;
+use crate::hashing::account_hash;
 use deadpool_postgres::{Pool, Transaction};
 use kinige_crypto::ids::{auth_hash, unknown_login_salt, verify_auth};
 use kinige_crypto::keys::SALT_LEN;
@@ -86,6 +88,19 @@ pub async fn register(pool: &Pool, now_ms: u64, r: &Registration) -> Result<Toke
         let token = sessions::open(&tx, &r.account_id, now_ms).await?;
         tx.commit().await?;
         return Ok(token);
+    }
+    // A deleted account id is never registered again (round 1 of the review of S4c-2, ADR-0001 §8.9): it is what makes one entry per
+    // account in the deletion journal enough, as a deleted blob id is never published again.
+    let hash = account_hash(&r.account_id).ok_or(ApiError::Internal)?;
+    let deleted = tx
+        .query_opt(
+            "SELECT 1 FROM deletions WHERE account_hash = $1",
+            &[&hash.as_slice()],
+        )
+        .await?;
+    if deleted.is_some() {
+        log::info!("register refused: account id was deleted");
+        return Err(ApiError::Conflict("account_id_taken"));
     }
     let login_taken = tx
         .query_opt("SELECT 1 FROM accounts WHERE login = $1", &[&r.login])
@@ -192,8 +207,8 @@ pub async fn login(
 /// written. A lower profile than the account's is refused. `revoke_others` ends every other session. Returns the new version.
 pub async fn change_password(
     pool: &Pool,
-    account: &str,
-    session: &Token,
+    clock: &dyn Clock,
+    (account, session): (&str, &Token),
     old: &AuthKey,
     expected_version: u64,
     new: &NewPassword,
@@ -201,6 +216,7 @@ pub async fn change_password(
 ) -> Result<u64, ApiError> {
     let mut client = pool.get().await?;
     let tx = client.transaction().await?;
+    lock::shared(&tx).await?;
     let row = locked(&tx, account).await?;
     let current = to_u64(row.try_get("cred_version")?);
     if current != expected_version {
@@ -224,6 +240,7 @@ pub async fn change_password(
         ],
     )
     .await?;
+    credentials::record(&tx, account, clock).await?;
     if revoke_others {
         tx.execute(
             "DELETE FROM sessions WHERE account_id = $1 AND token_hash <> $2",
