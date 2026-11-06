@@ -11,6 +11,8 @@ use libsodium_rs::utils::{
 pub struct Secret {
     pub name: &'static str,
     pub bytes: Vec<u8>,
+    /// Only the whole value counts, not its first 6 bytes: for plain text, where a short prefix could occur by chance.
+    pub whole_only: bool,
 }
 
 impl Secret {
@@ -18,6 +20,15 @@ impl Secret {
         Secret {
             name,
             bytes: bytes.to_vec(),
+            whole_only: false,
+        }
+    }
+
+    pub fn text(name: &'static str, text: &str) -> Secret {
+        Secret {
+            name,
+            bytes: text.as_bytes().to_vec(),
+            whole_only: true,
         }
     }
 }
@@ -28,6 +39,11 @@ pub fn find_leaks(text: &str, secrets: &[Secret]) -> Vec<&'static str> {
         .iter()
         .filter(|secret| {
             let prefix = secret.bytes.get(..6).unwrap_or(&secret.bytes);
+            let prefix = if secret.whole_only {
+                &secret.bytes[..0]
+            } else {
+                prefix
+            };
             [secret.bytes.as_slice(), prefix].into_iter().any(|part| {
                 !part.is_empty()
                     && encodings(part)

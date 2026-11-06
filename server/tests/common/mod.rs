@@ -121,6 +121,14 @@ impl Maker {
         self.seal(header, payload)
     }
 
+    pub fn dek(&self) -> &Dek {
+        &self.dek
+    }
+
+    pub fn account(&self) -> &AccountId {
+        &self.account
+    }
+
     pub fn purged(&self, entity: &str, id: &str, op: &str, snapshot: &[(&str, String)]) -> Vec<u8> {
         let header = Header {
             entity: entity.to_string(),
@@ -255,11 +263,19 @@ static LOGS: OnceLock<Mutex<Vec<(ThreadId, String)>>> = OnceLock::new();
 struct Capture;
 
 impl log::Log for Capture {
-    fn enabled(&self, _: &log::Metadata<'_>) -> bool {
-        true
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        // The most verbose setting an operator can choose (`KINIGE_LOG=trace`), through the filter the binary uses.
+        kinige_server::logging::permits(
+            metadata.level(),
+            metadata.target(),
+            log::LevelFilter::Trace,
+        )
     }
 
     fn log(&self, record: &log::Record<'_>) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
         let line = format!("{} {}", record.level(), record.args());
         LOGS.get_or_init(Mutex::default)
             .lock()
