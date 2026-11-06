@@ -1,6 +1,6 @@
 # ADR-0019: S4c-1 results, the sync server core on axum and Postgres
 
-Date: 2026-11-06. Status: **proposed** until the review of `sync-crypto-guardian` and `slice-reviewer` (KINIG-98; spec `docs/slices/S4c1-server-core.md`, code `server/` with its `README.md`, the simulation in `spikes/S4a-sync`, feature `real-server`). Changes ADR-0001 (revision 10, each change marked "S4c, 2026-11-06"; HTTP shapes in the new appendix §A.6) and the PRD's version history; no change to the schema of the app, to `kinige-store` or to the formats of `kinige-crypto`.
+Date: 2026-11-06. Status: **accepted** after the review of `sync-crypto-guardian` (two rounds) and `slice-reviewer` (KINIG-98; spec `docs/slices/S4c1-server-core.md`, code `server/` with its `README.md`, the simulation in `spikes/S4a-sync`, feature `real-server`). Changes ADR-0001 (revision 10, each change marked "S4c, 2026-11-06"; HTTP shapes in the new appendix §A.6) and the PRD's version history; no change to the schema of the app, to `kinige-store` or to the formats of `kinige-crypto`.
 
 ## What was proven
 The server side of ADR-0001 is buildable on axum and Postgres 17 with the same rules, and keeps them under real concurrency.
