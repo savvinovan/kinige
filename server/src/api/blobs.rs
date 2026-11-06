@@ -99,6 +99,10 @@ pub async fn put(
         return Err(ApiError::Internal);
     }
     drop(file);
+    if ended.is_err() && keep == 0 && written == 0 {
+        // A failed start that stored nothing leaves nothing behind.
+        app.blobs.staging.remove(&account, &blob).await;
+    }
     ended?;
     let received = offset.saturating_add(written);
     if received < size {
@@ -207,8 +211,9 @@ pub async fn status(
 }
 
 /// `DELETE /v1/blobs/{id}`: deletes a blob of the caller's own account. The row is marked and the object stays until the backup retention
-/// is over (ADR-0020); an unfinished upload goes at once. Deleting what is not there is a success. A purge of an attachment reaches its
-/// blob this way: the id is in the encrypted `core` group, so the device that purged sends the delete (ADR-0001 §7).
+/// is over (ADR-0020); an unfinished upload goes at once. Deleting what is not there is a success. This is the request of the re-upload
+/// after `missing` (ADR-0001 §7): the old blob goes after the ack of the new `core`. A purge of an attachment does not need it: the
+/// open header of the `purged` envelope names the blob (§5.2) and the push marks it.
 pub async fn delete(
     State(app): State<AppState>,
     Path(id): Path<String>,

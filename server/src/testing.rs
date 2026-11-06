@@ -215,6 +215,35 @@ impl Http {
         (status, bytes)
     }
 
+    /// Any request, with headers; the answer's status, headers and body.
+    pub async fn request(
+        &self,
+        method: &str,
+        path: &str,
+        token: Option<&str>,
+        headers: &[(&str, String)],
+        body: Body,
+    ) -> (StatusCode, axum::http::HeaderMap, Vec<u8>) {
+        let mut builder = Request::builder().method(method).uri(path);
+        if let Some(token) = token {
+            builder = builder.header("authorization", format!("Bearer {token}"));
+        }
+        for (name, value) in headers {
+            builder = builder.header(*name, value);
+        }
+        let Ok(request) = builder.body(body) else {
+            return (StatusCode::BAD_REQUEST, axum::http::HeaderMap::new(), Vec::new());
+        };
+        let Ok(response) = self.router.clone().oneshot(request).await;
+        let (parts, body) = response.into_parts();
+        let bytes = body
+            .collect()
+            .await
+            .map(|collected| collected.to_bytes().to_vec())
+            .unwrap_or_default();
+        (parts.status, parts.headers, bytes)
+    }
+
     /// `POST path` with a JSON body and, if given, a bearer token. The answer is parsed as JSON (`Null` if it is not).
     pub async fn post(&self, path: &str, token: Option<&str>, body: &Value) -> (StatusCode, Value) {
         let raw = serde_json::to_vec(body).unwrap_or_default();

@@ -129,3 +129,38 @@ async fn a_pull_says_stale_or_generation_changed_by_the_rule_of_the_lineage() {
         "a generation outside the lineage"
     );
 }
+
+/// The S4c-1 carry-over: a pusher whose generation is in the lineage but is not the current one is stale, also when it has missed no drop
+/// (it pulls first, gets `GenerationChanged`, and resyncs); the pusher in the current generation is not.
+#[tokio::test]
+async fn a_push_from_a_generation_in_the_lineage_but_not_the_current_one_is_stale() {
+    let rig = rig().await;
+    let acct = account(&rig).await;
+    let maker = Maker::new();
+    let old = generation(&rig).await;
+    put(&rig, &acct, 1, 50, &msg(&maker, 1, 50, T0)).await;
+    // A restore appended a generation (written by hand here; `tests/backup_restore.rs` restores for real). No drop exists at all.
+    let client = rig.state.pool.get().await.expect("connection");
+    client
+        .execute("INSERT INTO lineage (pos, generation, cut_ms) VALUES (2, 888, 5)", &[])
+        .await
+        .expect("lineage");
+    let fresh = msg(&maker, 2, 51, T0);
+    let (item_id, item_op) = (id(2), id(51));
+    let item = Item {
+        entity: "message",
+        id: &item_id,
+        op: &item_op,
+        bytes: &fresh,
+    };
+    let (status, answer) = push_with(&rig, &acct, &cursor(old, 1, 0), Some("1"), &item).await;
+    assert_eq!(status, StatusCode::OK, "{answer}");
+    assert_eq!(
+        outcome(&answer["results"][0]),
+        "stale",
+        "in the lineage, not current, up to date: stale all the same"
+    );
+    assert_eq!(log_seqs(&rig, &acct).await, vec![1], "and nothing was stored");
+    let (_, answer) = push_with(&rig, &acct, &cursor(888, 1, 0), Some("1"), &item).await;
+    assert_eq!(outcome(&answer["results"][0]), "ok");
+}

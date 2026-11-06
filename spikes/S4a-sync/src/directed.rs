@@ -397,3 +397,41 @@ pub fn restore_epoch_schedule() -> impl Strategy<Value = Schedule> {
             },
         )
 }
+
+/// The round 3 shape (S4c-2, ADR-0017), with nothing random in it: two backups of the original generation, the OLDER before a message is
+/// deleted, purged and compacted away, the NEWER after. The server is restored from the older (a branch, which device 0 enters while
+/// device 1, the purging device, is gone) and then from the newer (the branch is abandoned). Device 0 lived on the branch and must be told
+/// that it missed the drop. It is a schedule and not a hand-made world so that it runs against every server: the in-memory one and the
+/// real one, whose restores are real dumps. (A random generator of this shape finds nothing, by design of the property: once device 1
+/// is back, its tombstone purges the message again and every device converges; the hole is device 1 being gone for good.)
+pub fn older_then_newer_backup_schedule() -> Schedule {
+    let (a, b) = (0, 1);
+    let both = usize::MAX;
+    Schedule {
+        clients: 2,
+        skews: vec![0, 0],
+        unbound: vec![false, false],
+        compact_outbox: false,
+        page: 5,
+        batch: 5,
+        steps: vec![
+            Step::Local(a, Op::CreateChat),
+            Step::Local(a, Op::CreateMessage(0)),
+            Step::SyncAll { skip: both },
+            Step::Backup, // the older: the message is alive, no drop
+            Step::Local(b, Op::DeleteMessage(0)),
+            Step::SyncAll { skip: a },
+            Step::Advance(31 * DAY_MS),
+            Step::Purge(b),
+            Step::SyncAll { skip: a },
+            Step::Advance(181 * DAY_MS),
+            Step::Compact,
+            Step::Advance(1000),
+            Step::BackupSecond, // the newer: the message is purged and compacted away, the drop is in the dump
+            Step::RestoreServer, // a branch from the OLDER backup: the message is alive again
+            Step::SyncAll { skip: b }, // device 0 enters the branch
+            Step::RestoreSecond, // the newer: the branch is abandoned
+            Step::SyncAll { skip: b }, // device 0 comes with a cursor from a generation the lineage does not know
+        ],
+    }
+}

@@ -61,4 +61,7 @@ pub struct Switches {
     pub show_orphans: bool,
     /// Client: a changed `generation` is ignored, the old cursor and `server_known` flags are kept (§6.3).
     pub ignore_generation: bool,
+    /// Server: a cursor whose generation is not in the lineage is placed between the generation of the backup and the current one, as
+    /// before S4c-2, instead of by the cut time it carries (ADR-0017, the branch-cut rule). Round 3 of the S4a review found the hole.
+    pub branch_by_position: bool,
 }

@@ -3,6 +3,7 @@
 
 use super::purge::message_id_of;
 use super::{Client, Event, Local, Quarantined, Resync};
+use crate::backend::Cursor;
 use crate::envelope::{Entity, Envelope, EnvelopeError, Key, Kind};
 use crate::server::PullResponse;
 use crate::switches::Switches;
@@ -27,9 +28,14 @@ impl Client {
         self.bound || self.resync.is_some()
     }
 
-    /// The cursor `(generation, seq)` and the drop epoch the device last saw.
-    pub fn pull_request(&self) -> (u64, u64, u64) {
-        (self.cursor_generation, self.cursor_seq, self.known_epoch)
+    /// The cursor `(generation, seq)`, the drop epoch the device last saw and the cut time of its generation (S4c-2, ADR-0017).
+    pub fn pull_request(&self) -> Cursor {
+        Cursor {
+            generation: self.cursor_generation,
+            seq: self.cursor_seq,
+            known_epoch: self.known_epoch,
+            cut_ms: self.cut_ms,
+        }
     }
 
     /// Starts the first binding (§6.2): a full pull from `seq = 0`, then envelopes for everything that never left the device.
@@ -59,11 +65,14 @@ impl Client {
                 generation,
                 stale,
                 epoch,
+                cut_ms,
             } => {
                 if self.switches.ignore_generation {
                     self.cursor_generation = generation;
                     return;
                 }
+                // The branch the device now lives on was cut from a backup taken at `cut_ms`; a later restore places it by that time.
+                self.cut_ms = cut_ms;
                 let cause = match self.resync.as_ref().map(|r| r.cause) {
                     Some(ResyncCause::Binding) => ResyncCause::Binding,
                     _ if stale => ResyncCause::StaleAndGeneration,

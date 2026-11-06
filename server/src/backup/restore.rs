@@ -52,32 +52,35 @@ pub async fn restore(
         });
     }
     manifest.verify(dir).await?;
-    let newest_journal = newest_other_journal(dir).await;
-    let own_lineage: Vec<LineageRow> = read_json(&dir.join(LINEAGE_FILE)).await?;
-    let own_journal: Vec<Deletion> = read_json(&dir.join(DELETIONS_FILE)).await?;
+    // Everything that can be judged without the database is judged first: a dump file that is valid by its hash and wrong in content
+    // is refused here, before an object is copied.
+    let lineage = parse_lineage(read_json(&dir.join(LINEAGE_FILE)).await?)?;
+    let mut journal = checked(read_json(&dir.join(DELETIONS_FILE)).await?)?;
+    // A neighbour with a journal that is not one is passed over: it must not block the restore of this backup.
+    journal.extend(checked(newest_other_journal(dir).await).unwrap_or_default());
     store::migrate(pool).await?;
-    for entry in &manifest.blobs {
-        copy_blob_in(objects, dir, &entry.path, entry.bytes).await?;
-    }
-    let mut client = pool.get().await?;
-    let tx = client.transaction().await?;
-    tx.execute("SELECT pg_advisory_xact_lock($1)", &[&lock::BACKUP_LOCK])
-        .await?;
-    let now_ms = clock.now_ms();
-    // The journal of the installation being replaced, read before it is emptied: the deletions made since the backup are in it.
-    let mut journal = current_journal(&tx).await?;
-    journal.extend(own_journal);
-    journal.extend(newest_journal);
-    tx.batch_execute(
-        "TRUNCATE accounts, envelopes, ops, entity_known, purged_entities, drops, sessions, blobs, deletions, lineage CASCADE",
+    let mut copied = Vec::new();
+    let loaded = load(
+        pool,
+        objects,
+        clock.now_ms(),
+        dir,
+        &manifest,
+        &lineage,
+        journal,
+        &mut copied,
     )
-    .await?;
-    for table in TABLES {
-        load_table(&tx, dir, table).await?;
-    }
-    let generation = append_generation(&tx, own_lineage, manifest.cut_ms).await?;
-    let deletions_applied = apply_journal(&tx, &journal, manifest.cut_ms, now_ms).await?;
-    tx.commit().await?;
+    .await;
+    let (generation, deletions_applied, now_ms) = match loaded {
+        Ok(done) => done,
+        Err(error) => {
+            // The objects this restore put into the store are removed again; the database rolled back with its transaction.
+            for key in copied {
+                let _ = objects.delete(&key).await;
+            }
+            return Err(error);
+        }
+    };
     let orphans = adopt_orphans(pool, objects, now_ms, 0).await?;
     log::info!(
         "restore done, {deletions_applied} deletions applied, {orphans} orphan objects adopted"
@@ -90,21 +93,95 @@ pub async fn restore(
     })
 }
 
+/// The blobs into the store, then the database in one transaction. Returns the new generation, the deletions applied again and the time.
+#[allow(clippy::too_many_arguments)]
+async fn load(
+    pool: &Pool,
+    objects: &Objects,
+    now_ms: u64,
+    dir: &Path,
+    manifest: &Manifest,
+    lineage: &[Gen],
+    mut journal: Vec<Deletion>,
+    copied: &mut Vec<String>,
+) -> Result<(u64, usize, u64), BackupError> {
+    for entry in &manifest.blobs {
+        if let Some(key) = copy_blob_in(objects, dir, &entry.path, entry.bytes).await? {
+            copied.push(key);
+        }
+    }
+    let mut client = pool.get().await?;
+    let tx = client.transaction().await?;
+    tx.execute("SELECT pg_advisory_xact_lock($1)", &[&lock::BACKUP_LOCK])
+        .await?;
+    // The journal of the installation being replaced, read before it is emptied: the deletions made since the backup are in it.
+    journal.extend(current_journal(&tx).await?);
+    tx.batch_execute(
+        "TRUNCATE accounts, envelopes, ops, entity_known, purged_entities, drops, sessions, blobs, deletions, lineage CASCADE",
+    )
+    .await?;
+    for table in TABLES {
+        load_table(&tx, dir, table).await?;
+    }
+    let generation = append_generation(&tx, lineage, manifest.cut_ms).await?;
+    let applied = apply_journal(&tx, &journal, manifest.cut_ms, now_ms).await?;
+    tx.commit().await?;
+    Ok((generation, applied, now_ms))
+}
+
+/// One row of `lineage.json`, parsed.
+struct Gen {
+    pos: i32,
+    generation: i64,
+    cut_ms: i64,
+}
+
+fn parse_lineage(rows: Vec<LineageRow>) -> Result<Vec<Gen>, BackupError> {
+    rows.into_iter()
+        .map(|row| {
+            Ok(Gen {
+                pos: row.pos,
+                generation: row.generation.parse().map_err(|_| {
+                    BackupError::Manifest("a generation in lineage.json is not a number")
+                })?,
+                cut_ms: i64::try_from(row.cut_ms)
+                    .map_err(|_| BackupError::Manifest("a cut time in lineage.json is too large"))?,
+            })
+        })
+        .collect()
+}
+
+/// The journal entries whose hash is a hash and whose time is a time; any other entry makes the whole journal unusable.
+fn checked(journal: Vec<Deletion>) -> Result<Vec<Deletion>, BackupError> {
+    let fine = journal.iter().all(|entry| {
+        entry.account_hash.len() == 64
+            && crate::hashing::unhex(&entry.account_hash).is_some()
+            && i64::try_from(entry.deleted_ms).is_ok()
+    });
+    if fine {
+        Ok(journal)
+    } else {
+        Err(BackupError::Manifest("a journal entry is not a hash"))
+    }
+}
+
 /// Puts a backed-up object into the store unless the store already has an object of that size under that key (an in-place restore).
+/// Returns the key if it put one.
 async fn copy_blob_in(
     objects: &Objects,
     dir: &Path,
     path: &str,
     bytes: u64,
-) -> Result<(), BackupError> {
+) -> Result<Option<String>, BackupError> {
     let key = path.strip_prefix("blobs/").unwrap_or(path);
     if objects.size(key).await.map_err(|_| BackupError::Store)? == Some(bytes) {
-        return Ok(());
+        return Ok(None);
     }
     objects
         .put_file(key, &dir.join(path))
         .await
-        .map_err(|_| BackupError::Store)
+        .map_err(|_| BackupError::Store)?;
+    Ok(Some(key.to_string()))
 }
 
 /// `COPY <table> FROM STDIN` of the dump file, in one transaction with everything else.
@@ -134,22 +211,18 @@ async fn load_table(tx: &Transaction<'_>, dir: &Path, table: &str) -> Result<(),
 /// The restored lineage and one generation more: a random 63-bit id not in it, cut at the backup's time (ADR-0001 §6.3).
 async fn append_generation(
     tx: &Transaction<'_>,
-    lineage: Vec<LineageRow>,
+    lineage: &[Gen],
     cut_ms: u64,
 ) -> Result<u64, BackupError> {
     let mut held = Vec::new();
     let mut last_pos = 0;
     for row in lineage {
-        let generation: i64 = row
-            .generation
-            .parse()
-            .map_err(|_| BackupError::Manifest("a generation in lineage.json is not a number"))?;
         tx.execute(
             "INSERT INTO lineage (pos, generation, cut_ms) VALUES ($1, $2, $3)",
-            &[&row.pos, &generation, &to_i64(row.cut_ms, "cut")?],
+            &[&row.pos, &row.generation, &row.cut_ms],
         )
         .await?;
-        held.push(generation);
+        held.push(row.generation);
         last_pos = last_pos.max(row.pos);
     }
     let mut generation = random_generation();

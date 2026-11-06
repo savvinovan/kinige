@@ -323,6 +323,16 @@ async fn write(
                 &[&account, &header.entity, &header.id, &seq_db, &Json(&header.purged_of)],
             )
             .await?;
+            // A purge of an attachment names its blob in the open header (§5.2: the id is in the encrypted `core`, so the purging
+            // device copies it there). The accepted purge marks the blob deleted, in the same transaction; the object leaves the
+            // store after the backup retention (ADR-0020). Only the pusher's own account's blob can be named.
+            if let Some(blob) = &header.blob {
+                tx.execute(
+                    "UPDATE blobs SET deleted_ms = $3 WHERE account_id = $1 AND blob_id = $2 AND deleted_ms IS NULL",
+                    &[&account, blob, &at],
+                )
+                .await?;
+            }
         }
     }
     tx.execute(

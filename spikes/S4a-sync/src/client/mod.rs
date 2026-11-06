@@ -118,6 +118,9 @@ pub struct Client {
     pub cursor_seq: u64,
     /// The server's drop epoch in the last page this device applied (sent back with the next pull, see `Server::pull`).
     pub known_epoch: u64,
+    /// The cut time that came with the `GenerationChanged` answer which put the device into its generation (0 if none did): the time of
+    /// the backup the generation was cut from. Sent back with every pull and push (S4c-2, ADR-0017).
+    pub cut_ms: u64,
     /// Pull has reached the head of the server log at least once since the last full resync started (§3.6).
     pub reached_head: bool,
     /// A pull has just reached the head, so a push may follow (ADR-0001 §3.5: "pull first, then push"). One batch uses it up.
@@ -155,6 +158,7 @@ impl Client {
             cursor_generation: 1,
             cursor_seq: 0,
             known_epoch: 0,
+            cut_ms: 0,
             reached_head: false,
             cycle_ready: false,
             resync: None,

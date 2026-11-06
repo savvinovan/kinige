@@ -1,6 +1,7 @@
 //! The in-memory server (ADR-0001 §6.1, §3.5, §A.3, §A.4). It reads only the open header of an envelope and never merges. `seq` is
 //! issued in order under one lock (here: one `&mut self` call), idempotently by `op_id`, and the cursor is `(generation, seq)`.
 
+use crate::backend::Cursor;
 use crate::envelope::{Entity, Envelope, Key, Kind, RETENTION_MS};
 use crate::switches::Switches;
 use kinige_domain::hlc::{self, SKEW_MAX_MS};
@@ -52,6 +53,9 @@ pub enum PullResponse {
         generation: u64,
         stale: bool,
         epoch: u64,
+        /// The time of the backup the new generation was cut from (0 if no restore made it): the device keeps it with its cursor and
+        /// sends it back, so that a later restore can place the branch it lives on (ADR-0017, the branch-cut rule).
+        cut_ms: u64,
     },
 }
 
@@ -63,6 +67,8 @@ struct Drop {
     epoch: u64,
     /// The highest `seq` dropped.
     seq: u64,
+    /// When the compaction ran: a backup cut at or before this time does not contain it.
+    compacted_ms: u64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -71,6 +77,10 @@ pub struct Server {
     pub generation: u64,
     /// The generations this state descends from, oldest first, the current one last. It is part of the dump: a restore appends one.
     lineage: Vec<u64>,
+    /// The cut time of each generation of `lineage` (0 for the first, which no restore made): part of the dump, like the lineage.
+    cuts: Vec<u64>,
+    /// When this state was taken as a backup (0 for a live server): the cut time of the generation a restore from it makes.
+    taken_ms: u64,
     next_seq: u64,
     log: BTreeMap<u64, Stored>,
     /// `op_id -> (seq, bytes id)`.
@@ -97,6 +107,7 @@ impl Server {
         Server {
             generation: 1,
             lineage: vec![1],
+            cuts: vec![0],
             next_seq: 1,
             switches,
             ..Server::default()
@@ -224,15 +235,9 @@ impl Server {
         }
     }
 
-    /// `known_epoch` is the `epoch` the device saw in its last page.
-    pub fn pull(
-        &mut self,
-        generation: u64,
-        after: u64,
-        known_epoch: u64,
-        limit: usize,
-    ) -> PullResponse {
-        let response = self.pull_inner(generation, after, known_epoch, limit);
+    /// `cursor.known_epoch` is the `epoch` the device saw in its last page, `cursor.cut_ms` the cut time of its generation.
+    pub fn pull(&mut self, cursor: Cursor, limit: usize) -> PullResponse {
+        let response = self.pull_inner(cursor, limit);
         self.commit_in_flight();
         response
     }
@@ -244,9 +249,18 @@ impl Server {
     /// - a newer generation: the cursor cannot have seen anything made in it, whatever the `seq`s say (a restored server issues `seq`
     ///   again from the backup's head).
     ///
-    /// A generation that is not in the lineage was made after the backup the lineage ends in, so it stands between the backup's and the
-    /// current one.
-    fn missed(&self, generation: u64, after: u64, known_epoch: u64) -> bool {
+    /// A generation that is not in the lineage is a branch that a restore abandoned (S4c-2, the branch-cut rule of ADR-0017). A device on
+    /// it pulled from 0 when it entered the branch, so it holds what the backup the branch was cut from held and nothing compacted
+    /// after that backup. The device sends the cut time of its branch; a drop compacted at or after it is missed, whatever generation
+    /// it was made in. A device that sends no cut time (0) has missed every drop. (With the switch `branch_by_position` the branch is
+    /// placed between the backup's generation and the current one, the rule before S4c-2.)
+    fn missed(&self, cursor: Cursor) -> bool {
+        let Cursor {
+            generation,
+            seq: after,
+            known_epoch,
+            cut_ms,
+        } = cursor;
         if after == 0 {
             return false;
         }
@@ -257,6 +271,9 @@ impl Server {
                 .any(|d| d.epoch > known_epoch && d.seq > after);
         }
         let place = |g: u64| self.lineage.iter().position(|x| *x == g);
+        if place(generation).is_none() && !self.switches.branch_by_position {
+            return self.drops.iter().any(|d| d.compacted_ms >= cut_ms);
+        }
         // Positions are doubled and shifted by two so that an unknown generation can sit between two known ones, and below the only
         // one when the lineage has a single generation (then every drop of the current generation is missed).
         let unknown = if self.lineage.len() < 2 {
@@ -264,27 +281,27 @@ impl Server {
         } else {
             2 * (self.lineage.len() - 2) + 3
         };
-        let cursor = place(generation).map_or(unknown, |p| 2 * p + 2);
+        let at = place(generation).map_or(unknown, |p| 2 * p + 2);
         self.drops.iter().any(|d| {
             let made = place(d.generation).map_or(0, |p| 2 * p + 2);
-            made > cursor || (made == cursor && d.epoch > known_epoch && d.seq > after)
+            made > at || (made == at && d.epoch > known_epoch && d.seq > after)
         })
     }
 
-    fn pull_inner(
-        &self,
-        generation: u64,
-        after: u64,
-        known_epoch: u64,
-        limit: usize,
-    ) -> PullResponse {
-        let missed = self.missed(generation, after, known_epoch);
+    fn pull_inner(&self, cursor: Cursor, limit: usize) -> PullResponse {
+        let Cursor {
+            generation,
+            seq: after,
+            ..
+        } = cursor;
+        let missed = self.missed(cursor);
         if generation != self.generation {
             // Both causes at once. The device does not guess from its clock; the drops are held against its cursor by generation.
             return PullResponse::GenerationChanged {
                 generation: self.generation,
                 stale: missed && !self.switches.no_stale_check,
                 epoch: self.epoch,
+                cut_ms: self.cuts.last().copied().unwrap_or(0),
             };
         }
         if missed && !self.switches.no_stale_check {
@@ -341,6 +358,7 @@ impl Server {
                 generation: self.generation,
                 epoch: self.epoch,
                 seq: dropped_max,
+                compacted_ms: now_ms,
             });
         }
         let mut best: HashMap<(Key, String), (String, u64)> = HashMap::new();
@@ -375,9 +393,12 @@ impl Server {
         }
     }
 
-    /// A copy of everything, for a restore from a backup.
-    pub fn backup(&self) -> Server {
-        self.clone()
+    /// A copy of everything, for a restore from a backup, cut at `now_ms`: the cut time of the generation a restore from it makes.
+    pub fn backup(&self, now_ms: u64) -> Server {
+        Server {
+            taken_ms: now_ms,
+            ..self.clone()
+        }
     }
 
     /// Restoring from a backup (§6.3), into a clean installation: the new state is the dump and a fresh `generation`, nothing else.
@@ -398,6 +419,8 @@ impl Server {
         }
         state.generation = generation;
         state.lineage.push(generation);
+        state.cuts.push(dump.taken_ms);
+        state.taken_ms = 0;
         state.in_flight = None;
         state
     }

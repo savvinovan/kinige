@@ -1,7 +1,11 @@
 //! Named counterexamples found by the properties, kept as plain scenarios so that they read as a story and stay fixed.
 
+use s4a_sync::backend::Cursor;
 use s4a_sync::client::{Event, FeedSlot, ResyncCause};
-use s4a_sync::directed::{compaction_while_a_restore_resync_pulls, own_writes_after_a_lift};
+use s4a_sync::directed::{
+    compaction_while_a_restore_resync_pulls, older_then_newer_backup_schedule,
+    own_writes_after_a_lift,
+};
 use s4a_sync::envelope::{DAY_MS, Entity, Kind};
 use s4a_sync::props;
 use s4a_sync::server::{PullResponse, Server};
@@ -354,7 +358,7 @@ fn review_round_2_a_restore_into_a_clean_installation_equals_an_in_place_restore
     let schedule = a_cursor_above_the_head_of_the_backup(5);
     let mut used = World::new(&schedule, Switches::default());
     used.run(&schedule.steps[..4]); // up to and including the backup
-    let backup = used.memory().backup();
+    let backup = used.memory().backup(used.now);
     used.run(&schedule.steps[4..]); // months of use, a compaction, drops of epoch 1
     assert!(used.memory().drops_count() > 0);
     let mut clean = Server::new(Switches::default());
@@ -478,65 +482,81 @@ fn review_the_initiator_does_not_show_what_it_is_about_to_purge() {
     }
 }
 
-/// Review round 3 (guardian), a KNOWN LIMITATION that this test pins: a cursor of an abandoned branch is placed just before the current
-/// generation, on the assumption that the branch was cut from a backup at least as new as the one restored now. Here the first restore
-/// uses an OLDER backup (X alive, no drop) and the second a NEWER one (X purged and compacted, the drop is in the dump); the purging
-/// device is gone. Device A lived on the first branch, is told "not stale" (`GenerationChanged`), and pushes X back. ADR-0001 §6.3
-/// says so; the exact rule that closes it (the compaction time of a drop and the cut time of a branch) is in ADR-0017 for S4c. When
-/// that rule is implemented this test is to be turned round on purpose.
+/// Review round 3 (guardian), closed by S4c-2 (the branch-cut rule of ADR-0017). A cursor of an abandoned branch used to be placed just
+/// before the current generation, on the assumption that the branch was cut from a backup at least as new as the one restored now. Here
+/// the first restore uses an OLDER backup (X alive, no drop) and the second a NEWER one (X purged and compacted, the drop is in the
+/// dump); the purging device is gone. Device A lived on the first branch. By position (the switch `branch_by_position`, the old rule)
+/// A is told "not stale" and pushes X back; by the cut time its branch carries, the server sees that the drop was compacted after the
+/// branch was cut, tells A it missed it, and X goes to quarantine.
 #[test]
 fn review_round_3_a_branch_cut_from_an_older_backup_than_the_one_restored_now() {
-    let (a, b) = (0, 1);
-    let schedule = two_devices(vec![]);
-    let mut world = World::new(&schedule, Switches::default());
-    world.run(&[
-        Local(a, CreateChat),
-        Local(a, CreateMessage(0)),
-        SyncAll { skip: usize::MAX },
-    ]);
-    let older = world.memory().backup(); // X alive, no drop
-    // A is away from here. B deletes and purges X, the server compacts; then B is gone for good.
-    world.run(&[
-        Local(b, DeleteMessage(0)),
-        SyncAll { skip: a },
-        Advance(31 * DAY_MS),
-        Purge(b),
-        SyncAll { skip: a },
-        Advance(181 * DAY_MS),
-        Compact,
-    ]);
-    assert_eq!(world.memory().drops_count(), 1);
-    let newer = world.memory().backup(); // X compacted away, the drop is in this dump
-    world.memory_mut().restore(&older, 7); // a branch from the OLDER backup: X alive again, no drop
-    world.run(&[SyncAll { skip: b }]); // A enters it: X is live on the server and on A
-    let x = world.clients[a]
-        .records
-        .keys()
-        .find(|k| k.0 == Entity::Message)
-        .cloned()
-        .expect("X is live on A in the branch");
-    world.memory_mut().restore(&newer, 9); // lineage [G1, G3]: the branch is abandoned
-    world.run(&[SyncAll { skip: b }]); // A: a cursor from a generation the lineage does not know
-    let causes = resync_causes(&world, a);
-    assert_eq!(
-        causes.last(),
-        Some(&ResyncCause::GenerationChanged),
-        "{causes:?}"
-    );
-    assert!(
-        world.clients[a].records.contains_key(&x),
-        "the limitation: X, purged and compacted in the restored backup, is live on A"
-    );
-    assert!(
-        !world.memory().is_purged(&x),
-        "and A pushed it back to the server"
-    );
+    for (switches, old_rule) in [
+        (Switches::default(), false),
+        (
+            Switches {
+                branch_by_position: true,
+                ..Switches::default()
+            },
+            true,
+        ),
+    ] {
+        let a = 0;
+        let schedule = older_then_newer_backup_schedule();
+        let mut world = World::new(&schedule, switches);
+        world.run(&schedule.steps);
+        assert_eq!(
+            world.memory().lineage().len(),
+            2,
+            "[G1, G3]: the branch is not in it"
+        );
+        assert_eq!(world.memory().drops_count(), 1);
+        // X is the message that device 1 purged: its tombstone is the only one.
+        let x = world.clients[1]
+            .tombstones
+            .keys()
+            .find(|k| k.0 == Entity::Message)
+            .cloned()
+            .expect("device 1 holds X's tombstone");
+        let causes = resync_causes(&world, a);
+        let pushed_back = world
+            .server
+            .all_envelopes()
+            .iter()
+            .any(|e| e.header.key() == x);
+        if old_rule {
+            assert_eq!(
+                causes.last(),
+                Some(&ResyncCause::GenerationChanged),
+                "{causes:?}"
+            );
+            assert!(
+                world.clients[a].records.contains_key(&x),
+                "the old rule: X, purged and compacted in the restored backup, is live on A"
+            );
+            assert!(pushed_back, "and A pushed it back to the server");
+        } else {
+            assert_eq!(
+                causes.last(),
+                Some(&ResyncCause::StaleAndGeneration),
+                "{causes:?}"
+            );
+            assert!(
+                !world.clients[a].records.contains_key(&x),
+                "X is not live on A"
+            );
+            assert!(
+                world.clients[a].quarantine.iter().any(|q| q.key == x),
+                "X is in A's quarantine, for the user to decide"
+            );
+            assert!(!pushed_back, "and nothing of it went back to the server");
+        }
+    }
 }
 
-/// A cursor of an unknown generation on a server whose lineage is a single generation sits below it: every drop of the current
-/// generation is missed (round 3).
+/// A cursor of an unknown generation is placed by the cut time it carries: with none (0) it has missed every drop, with the cut time of
+/// a branch made after the drop it has missed nothing, and a pull from 0 is never stale.
 #[test]
-fn review_round_3_an_unknown_cursor_on_a_fresh_lineage_misses_the_current_drops() {
+fn review_round_3_an_unknown_cursor_is_placed_by_its_cut_time() {
     let schedule = two_devices(vec![
         Local(0, CreateChat),
         Local(0, CreateMessage(0)),
@@ -554,10 +574,42 @@ fn review_round_3_an_unknown_cursor_on_a_fresh_lineage_misses_the_current_drops(
     assert_eq!(world.memory().lineage().len(), 1);
     assert_eq!(world.memory().drops_count(), 1);
     let unknown = 0xdead_beef;
-    match world.server.pull(unknown, 1, 0, 10) {
-        PullResponse::GenerationChanged { stale, .. } => assert!(stale),
+    let ask = |world: &mut World, seq: u64, cut_ms: u64| {
+        world.server.pull(
+            Cursor {
+                generation: unknown,
+                seq,
+                known_epoch: 0,
+                cut_ms,
+            },
+            10,
+        )
+    };
+    let stale_of = |response: PullResponse| match response {
+        PullResponse::GenerationChanged { stale, .. } => stale,
         other => panic!("expected GenerationChanged, got {other:?}"),
-    }
+    };
+    let now = world.now;
+    assert!(
+        stale_of(ask(&mut world, 1, 0)),
+        "no cut time: every drop is missed"
+    );
+    assert!(
+        stale_of(ask(&mut world, 1, now - 1)),
+        "a branch cut before the drop"
+    );
+    assert!(
+        stale_of(ask(&mut world, 1, now)),
+        "at the time of the drop: the safe side"
+    );
+    assert!(
+        !stale_of(ask(&mut world, 1, now + 1)),
+        "a branch cut after the drop has missed nothing"
+    );
+    assert!(
+        !stale_of(ask(&mut world, 0, 0)),
+        "a pull from 0 is never stale"
+    );
 }
 
 /// Review (guardian): a record this device holds in quarantine comes back from the server (a device that did not know it edits it).
