@@ -106,16 +106,20 @@ Publishing the same `remote_blob_id` again gets the "already exists" response, w
 | `stale_purge`    | the server knows a group of the entity newer than the `purged_of` snapshot (or a group missing from the snapshot) | pull, re-evaluate; the tombstones of this cascade's children are not sent                                                                                                                                                            |
 | `clock_skew`     | `wall_ms` in any HLC of the header is greater than `server_now + SKEW_MAX`                                        | leaving `clock_skew` (§2)                                                                                                                                                                                                            |
 | `too_old`        | protocol version below the minimum                                                                                | "update the client"                                                                                                                                                                                                                  |
+| `stale`          | the pusher's cursor is behind a drop it missed, or is in a generation the server does not have (S4c, 2026-11-06)  | do not apply anything; pull, re-evaluate and run the cycle again. The envelope is not stored, so nothing needs undoing                                                                                                               |
+
+**S4c, 2026-11-06:** a repeated `purged` is answered `ok` with the `seq` of the accepted one and its `purged_of` (`ok` row, ADR-0017); the row `stale` is new (ADR-0017, S4c items): the push request carries the pusher's cursor and `known_epoch`, and the server judges them by the rule of ADR §6.3, after `too_old` and before `clock_skew`. A repeat of an accepted envelope is still a `duplicate` first, whatever the cursor.
 
 ### A.4. Check order
 
 **Server, push:**
-1. Lengths (§A.1) and header parsing; error → 400.
+1. Lengths (§A.1) and header parsing; error → 400. **S4c, 2026-11-06:** the server judges every envelope's declared length against the cap, then `Layout::parse` of the nine prefix bytes, then the header (`envelope::peek`'s routing fields, parsed strictly), **before it reads the envelope's body**; the whole request body is limited as it is consumed; the `entity`, `id` and `op` declared next to the envelope must equal the header's (`400 header_mismatch`). All envelopes of a request are judged before any is processed: one malformed one refuses the request.
 2. Session and account.
 3. `op_id` deduplication (`duplicate` or `op_conflict`) — **before** all purge rules, so that a repeat of an accepted envelope does not get `purged`.
 4. `too_old`.
+4a. (S4c, 2026-11-06) `stale`: the pusher's cursor `(generation, seq)` and `known_epoch` against the server's drops and lineage, the rule of ADR §6.3 — after `too_old` and before `clock_skew`; a repeat of an accepted envelope was already answered at step 3.
 5. `clock_skew`.
-6. The entity is already purged (`purged`) — for any `kind` except a repeated `purged`, which gives a no-op `ok`.
+6. The entity is already purged (`purged`) — for any `kind` except a repeated `purged`, which gives a no-op `ok` carrying the accepted snapshot (S4c, 2026-11-06).
 7. For `purged`: the `stale_purge` check — each group of the `purged_of` snapshot against the maximum HLC of that group from the entity's headers.
 8. Assigning `seq` under the account lock, writing.
 
@@ -129,19 +133,53 @@ Publishing the same `remote_blob_id` again gets the "already exists" response, w
 7. Tombstone and the purge rules (§3.5).
 8. Merge, the page and the cursor — in one transaction.
 
-**Logs** (§8.8): the request bodies of registration, login, recovery and password change are not logged; tokens and `auth_key` — never, hashes are allowed.
+**Logs** (§8.8): the request bodies of registration, login, recovery and password change are not logged; tokens and `auth_key` — never, hashes are allowed. (S4c, 2026-11-06: nor what a dependency prints, see ADR §8.8.)
 
 ### A.5. Repeating registration and recovery (§8.3, §8.6)
 
 Without a typed-back check, not only a failure before the request is dangerous but also a lost response: the client restarted, built new keys and words, and the saved PDF belongs to nobody. Therefore:
 - the client saves the **prepared package** (`account_id`, login, `salt`, profile, `auth_key`, `rc_auth_key`, `wrap_pw`, `wrap_rc` and the DEK; without the password and the words' entropy) in the OS secret store **before** showing the words, and after a restart repeats the same request until it gets a definite answer. The DEK is in the package so that after a restart the client can work without entering the password again; it lives where it normally does (§8.8). **The KEKs are not in the package (S4b, 2026-11-06):** the wraps are bound to the `account_id`, so after an `account_id` clash the client cannot rebuild them from the package; it asks for the password and the words again (the words on the PDF), and a restart in the middle of that changes nothing else. The clash is a v4 UUID collision, so this path is for a hostile or broken server;
-- the server is idempotent:
+- the server is idempotent (S4c, 2026-11-06: it compares the repeated request with the stored columns, which are the hashes themselves, so no record of a request ever holds a raw key, and compares the keys' hashes with `sodium_memcmp`; a package that was applied and then changed by a later password change or recovery is no longer "the same package", which is the stricter reading):
   - registration — first the `account_id` check: the same package → success, `account_id` taken by another package → a separate error (the client creates a new `account_id` and rebuilds the wraps, §1, the words stay the same); only then whether the login is taken — otherwise a repeat after a lost response would get "login taken";
   - recovery — by the new `rc_auth_key` **and equality of the rest of the package**: the replacement was already made by the same package → success, by another package → a separate error;
 - if the outcome of a recovery is uncertain after a restart (the old `rc_auth_key` is no longer in memory), the client tries to log in with the new password: success = the replacement went through; refusal = the old words have to be entered again (S4b, 2026-11-06: a refusal by the profile rule counts as a refusal: a server that still sends a lower profile than this device has seen has not applied the replacement, since a replacement made here gives the new password at least that profile; the same login settles a lost answer to a password change, §8.5);
 - "Save" counts only after a successful file write or sending to print; cancelling the dialog does not count;
 - if the login is taken, the user picks another login, while `account_id`, the keys and **the words do not change** (`rc_root` does not depend on the login);
 - after a definite answer, the package is deleted from the store.
+
+### A.6. HTTP API (S4c, 2026-11-06)
+
+The shapes `server/` implements (`server/src/dto.rs`, `server/src/wire.rs`; ADR-0019). Everything is under `/v1`, over TLS terminated by a reverse proxy (S4c-2). Nothing here changes a byte of §A.1.
+
+**Conventions.**
+- JSON bodies are UTF-8. Keys, salts, wraps and tokens are **base64url without padding** (RFC 4648 §5) in strings. A **generation** is a decimal string (it is a random 63-bit number, and JSON numbers are not safe above 2^53); `seq`, `epoch`, `after`, versions and sizes are numbers below 2^63.
+- A session is `Authorization: Bearer <token>`, the 32 random bytes of §8.4 in base64url. A missing, malformed or unknown token is `401 {"error":"auth"}`, the same as a wrong key.
+- An error is `{"error":"<code>"}` with a status: `400` the request is not what the protocol allows (the code names the rule, never the content), `401 auth`, `409` the state refuses a well-formed request, `413 too_large`, `429 rate_limited` with `Retry-After`, `500 internal` only for a database failure, never for a malformed request. An unknown route is `404`, a known route with another method `405`.
+- Account bodies are at most 16 KiB. Logins are normalized as in §8.3 and at most 254 characters.
+- A client sends `X-Kinige-Protocol: <n>` (the HTTP protocol version of §4, now 1) on a push; a missing header is version 0.
+
+**Accounts and sessions** (bodies are the structs of `dto.rs`; a field named `…_key` is 32 bytes, a `wrap_…` is the 73 bytes of §A.1):
+- `POST /v1/register` `{account_id, login, salt (16), profile (1|2), auth_key, rc_auth_key, wrap_pw, wrap_rc, key_id}` → `200 {token}`; `409 account_id_taken` (another package behind this id), `409 login_taken`; a repeat of the same package is `200` with a new session (§A.5).
+- `POST /v1/login/params` `{login}` → `200 {salt, profile, cred_version}`, for any login: an unknown one gets the §8.4 salt, profile 1 and version 1. Not rate limited.
+- `POST /v1/login` `{login, auth_key, replaces?}` → `200 {token, account_id, key_id, wrap_pw, cred_version}`; `401 auth` for a wrong key and for an unknown login, with the same body and the same log lines; `429` after the budget. `replaces` is a token of the same account that is ended in the same transaction.
+- `POST /v1/logout` (session) → `200 {}` and the session is ended; `401` for a token that is not a session.
+- `POST /v1/password/change` (session) `{auth_key (old), expected_version, new: {salt, profile, auth_key, wrap_pw}, revoke_others}` → `200 {cred_version}`; `409 version_conflict` with `current_version`; `401 auth` for a wrong old key; `409 profile_downgrade`.
+- `POST /v1/recovery/fetch` `{login, rc_auth_key}` → `200 {account_id, key_id, wrap_rc, profile}`; `401 auth` for a wrong key and an unknown login alike; `429` (shares a budget with the next).
+- `POST /v1/recovery` `{login, old_rc_auth_key, new: {salt, profile, auth_key, wrap_pw}, rc_auth_key, wrap_rc}` → `200 {token, cred_version}` and every other session is ended; a repeat of the same package is `200`; `409 package_mismatch` (the new `rc_auth_key` is already in force behind another package), `409 profile_downgrade`, `401 auth`.
+- `POST /v1/words/reissue` (session) `{auth_key, new_rc_auth_key, wrap_rc}` → `200 {}`; `409 package_mismatch`; `401 auth`.
+
+**Push** `POST /v1/push` (session), headers `X-Kinige-Cursor: <generation>.<seq>.<known_epoch>` (required) and `X-Kinige-Protocol`. The body is a run of **frames**, big-endian, at most 16 MiB and 1000 frames, never empty:
+
+```text
+u8  entity_len (1..=32) | entity (ASCII) | id (16 raw bytes) | op (16 raw bytes) | u32 envelope_len | envelope (§A.1, as it is stored)
+```
+
+The server reads the declared `envelope_len` against `MAX_ENVELOPE` (`413`), the nine prefix bytes with `Layout::parse`, and the header with the strict parser before it reads the rest of the envelope; an unknown `format_version` is `400 unsupported_format` (the server cannot read another format's header); a header that disagrees with the declared `entity`, `id` or `op` is `400 header_mismatch`. The answer is `200 {"results":[{"op","result","seq"?,"purged_of"?}]}`, one per frame in order, where `result` is `ok`, `duplicate`, `op_conflict`, `purged`, `stale_purge`, `clock_skew`, `too_old` or `stale` (§A.3); `seq` is present for `ok` and `duplicate`; `purged_of` for the `ok` of a repeated `purged`. The envelopes of one request are processed one by one, each in its own transaction under the account lock.
+
+**Pull** `POST /v1/pull` (session) `{generation, after, known_epoch, limit?}` → one of:
+- `{"result":"page","generation","after","next","head","epoch","items":[{"seq","entity","id","op","envelope"}]}` — `envelope` is base64url of the stored bytes, `entity`, `id` and `op` are what the server declares for it (the client compares them with the authentic header, §5.4); `next` is the last `seq` of a truncated page, otherwise `head`; the page is at most `limit` (default 200, at most 1000) envelopes and stops once 8 MiB are in it, the first envelope always goes;
+- `{"result":"stale","generation","epoch"}` (§6.3);
+- `{"result":"generation_changed","generation","stale","epoch"}` (§6.3).
 
 ## B. Test plan (S4a — protocol, S4b — envelope and keys)
 
@@ -171,7 +209,7 @@ Everything except the test vectors is property tests: 2–3 clients in one proce
 20. Deleting a chat with a late move of a message into it — the message is shown in Inbox with a mark (derived), nothing is lost, no `placement` envelopes arose.
 21. A database copy with the same `device_id`: an HLC tie is resolved deterministically, the loser's body is in a revision.
 22. An envelope that passes AEAD but fails parsing — `malformed` quarantine, sync continues.
-23. Server: parallel pushes of one account — the cursor does not skip records (S4c).
+23. Server: parallel pushes of one account — the cursor does not skip records (S4c). **S4c-1, 2026-11-06: covered** by `server/tests/concurrency.rs`, with a negative control (`seq` from a plain sequence skips records); see `server/README.md`.
 24. The first binding of a database copy: a record edited on the copy and purged on the original goes to quarantine and is not deleted; an untouched copy is deleted silently.
 25. Two live instances with one `device_id` edit one message with different HLCs — both versions are kept, there is a `conflict` revision (`supersedes` is empty).
 26. A new client (`sv = 2`) resends a snapshot with an old client's `body` — on the old client there is no integrity error, no "read-only" mode, no revision; the `body` bytes are verbatim the same.

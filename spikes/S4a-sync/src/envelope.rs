@@ -133,6 +133,25 @@ impl Envelope {
         }
     }
 
+    /// The sealed bytes of ADR-0001 §A.1: what a real server stores and serves.
+    #[cfg(feature = "real-envelope")]
+    pub fn wire(&self) -> &[u8] {
+        &self.wire
+    }
+
+    /// An envelope as a real server serves it: the bytes and the `entity`, `id` and `op` it declares next to them (feature `real-server`
+    /// builds on it). `None` if the open header cannot be read or the entity is not one the simulation models.
+    #[cfg(feature = "real-envelope")]
+    pub fn from_wire(wire: Vec<u8>, entity: &str, id: &str, op: &str) -> Option<Envelope> {
+        let header = crate::real::transport_header(&wire, entity, id, op)?;
+        Some(Envelope {
+            header,
+            payload: BTreeMap::new(),
+            seal: crate::real::wire_id(&wire),
+            wire,
+        })
+    }
+
     /// The seal, for the server's "same `op_id`, different bytes" comparison.
     pub fn bytes_id(&self) -> u64 {
         self.seal

@@ -97,7 +97,16 @@ Also seen, not defects: the set of `conflict` revisions depends on the order in 
 
 The protocol's share is small. What costs is the bytes: 4.2 times the text, because an `upsert` is a snapshot of five groups (and `vv`) and padding rounds 1.1 KB up to 2 KiB. Encryption (about 100 000 XChaCha20-Poly1305 operations on 2 KB), the network (233 MB) and SQLite are not in these numbers; S4b measures the first, slice 11 the rest.
 
+## Against the real server (S4c-1, KINIG-98, feature `real-server`)
+The simulation's server is a trait (`src/backend.rs`, `SyncServer`). The default is the in-memory server of `server.rs`, with the switches of the negative controls. With the feature `real-server` (which requires `real-envelope`) a test installs a factory with `backend::with_backend`, and every world built inside it talks to `kinige-server` on Postgres instead: `src/http_server.rs` registers a fresh account through the API with random 32-byte keys (no Argon2id), then every push is a request to the router and every pull page is a response, called in process through `tower::ServiceExt::oneshot`, so request parsing, the SQL, the account lock and the real envelope bytes are exercised with the protocol. A page's envelopes come back with the `entity`, `id` and `op` the server declares, and the client's `open` compares them with the authentic header (ADR-0018 finding 2).
+
+```text
+KINIGE_TEST_DATABASE_URL=postgres://postgres:password@host:5432/postgres \
+  cargo test --features real-server --test real_server        # S4A_REAL_CASES=30 (2 devices), S4A_REAL_CASES3=8 (3 devices), S4A_SEED=1
+```
+It runs properties 1-7 and 9 (with the compacted-chain, away-device and chat-purge generators) and one client-side negative control (whole-record last-writer-wins must still fail). **Skipped until S4c-2, because the real server cannot be restored yet:** property 8 (`server_restore`), `Mix::RESTORE`, the restore-epoch generator and the directed restore scenarios; the world skips the `Backup` and `RestoreServer` steps for a server without `as_memory`. The real server answers one thing the in-memory one does not: a push whose cursor is behind a drop it missed gets `stale` (ADR-0001 §A.3, step 4a), which the simulated device treats as "not acked, pull first".
+
 ## Not verified
-- That a real SQLite outbox and the real server give the same results: the model is in memory, one thread; the `seq` lock is a function call.
+- That a real SQLite outbox gives the same results as the model's: the model's outbox is in memory. (The server is real since S4c-1; it ran with `real-server` at small counts, not at the 10 000 of the in-memory runs.)
 - That 30 000 random cases are enough: see Model assumptions.
 - The `vv` rule on data written by slices 1-7 (old groups without `vv` fall back to the old rule; unit-tested, not simulated with mixed devices).

@@ -336,7 +336,7 @@ fn review_round_2_two_restores_in_a_row() {
         Pull(a, PullFault::Ok),
     ]);
     let world = props::run(&schedule, Switches::default()).expect("runs clean");
-    assert_eq!(world.server.lineage().len(), 3);
+    assert_eq!(world.memory().lineage().len(), 3);
     assert_eq!(
         props::no_resurrection(&schedule, Switches::default()),
         Ok(())
@@ -354,25 +354,25 @@ fn review_round_2_a_restore_into_a_clean_installation_equals_an_in_place_restore
     let schedule = a_cursor_above_the_head_of_the_backup(5);
     let mut used = World::new(&schedule, Switches::default());
     used.run(&schedule.steps[..4]); // up to and including the backup
-    let backup = used.server.backup();
+    let backup = used.memory().backup();
     used.run(&schedule.steps[4..]); // months of use, a compaction, drops of epoch 1
-    assert!(used.server.drops_count() > 0);
+    assert!(used.memory().drops_count() > 0);
     let mut clean = Server::new(Switches::default());
     clean.restore(&backup, 42);
-    used.server.restore(&backup, 42);
-    assert_eq!(used.server.generation, clean.generation);
-    assert_eq!(used.server.lineage(), clean.lineage());
-    assert_eq!(used.server.head(), clean.head());
-    assert_eq!(used.server.epoch(), clean.epoch());
-    assert_eq!(used.server.drops_count(), clean.drops_count());
-    assert_eq!(used.server.log_len(), clean.log_len());
+    used.memory_mut().restore(&backup, 42);
+    assert_eq!(used.memory().generation, clean.generation);
+    assert_eq!(used.memory().lineage(), clean.lineage());
+    assert_eq!(used.memory().head(), clean.head());
+    assert_eq!(used.memory().epoch(), clean.epoch());
+    assert_eq!(used.memory().drops_count(), clean.drops_count());
+    assert_eq!(used.memory().log_len(), clean.log_len());
 }
 
 #[test]
 fn review_round_2_a_compaction_during_the_resync_of_a_restore_quarantines() {
     let schedule = compaction_while_a_restore_resync_pulls();
     let world = props::run(&schedule, Switches::default()).expect("runs clean");
-    assert_eq!(world.server.lineage().len(), 2);
+    assert_eq!(world.memory().lineage().len(), 2);
     assert_eq!(
         props::no_resurrection(&schedule, Switches::default()),
         Ok(())
@@ -494,7 +494,7 @@ fn review_round_3_a_branch_cut_from_an_older_backup_than_the_one_restored_now() 
         Local(a, CreateMessage(0)),
         SyncAll { skip: usize::MAX },
     ]);
-    let older = world.server.backup(); // X alive, no drop
+    let older = world.memory().backup(); // X alive, no drop
     // A is away from here. B deletes and purges X, the server compacts; then B is gone for good.
     world.run(&[
         Local(b, DeleteMessage(0)),
@@ -505,9 +505,9 @@ fn review_round_3_a_branch_cut_from_an_older_backup_than_the_one_restored_now() 
         Advance(181 * DAY_MS),
         Compact,
     ]);
-    assert_eq!(world.server.drops_count(), 1);
-    let newer = world.server.backup(); // X compacted away, the drop is in this dump
-    world.server.restore(&older, 7); // a branch from the OLDER backup: X alive again, no drop
+    assert_eq!(world.memory().drops_count(), 1);
+    let newer = world.memory().backup(); // X compacted away, the drop is in this dump
+    world.memory_mut().restore(&older, 7); // a branch from the OLDER backup: X alive again, no drop
     world.run(&[SyncAll { skip: b }]); // A enters it: X is live on the server and on A
     let x = world.clients[a]
         .records
@@ -515,7 +515,7 @@ fn review_round_3_a_branch_cut_from_an_older_backup_than_the_one_restored_now() 
         .find(|k| k.0 == Entity::Message)
         .cloned()
         .expect("X is live on A in the branch");
-    world.server.restore(&newer, 9); // lineage [G1, G3]: the branch is abandoned
+    world.memory_mut().restore(&newer, 9); // lineage [G1, G3]: the branch is abandoned
     world.run(&[SyncAll { skip: b }]); // A: a cursor from a generation the lineage does not know
     let causes = resync_causes(&world, a);
     assert_eq!(
@@ -528,7 +528,7 @@ fn review_round_3_a_branch_cut_from_an_older_backup_than_the_one_restored_now() 
         "the limitation: X, purged and compacted in the restored backup, is live on A"
     );
     assert!(
-        !world.server.is_purged(&x),
+        !world.memory().is_purged(&x),
         "and A pushed it back to the server"
     );
 }
@@ -551,8 +551,8 @@ fn review_round_3_an_unknown_cursor_on_a_fresh_lineage_misses_the_current_drops(
     ]);
     let mut world = World::new(&schedule, Switches::default());
     world.run(&schedule.steps);
-    assert_eq!(world.server.lineage().len(), 1);
-    assert_eq!(world.server.drops_count(), 1);
+    assert_eq!(world.memory().lineage().len(), 1);
+    assert_eq!(world.memory().drops_count(), 1);
     let unknown = 0xdead_beef;
     match world.server.pull(unknown, 1, 0, 10) {
         PullResponse::GenerationChanged { stale, .. } => assert!(stale),

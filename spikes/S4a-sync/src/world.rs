@@ -2,6 +2,7 @@
 //! A schedule is a list of steps; nothing is random inside the run, so the same schedule (and the seed that produced it) always
 //! gives the same result.
 
+use crate::backend::{self, SyncServer};
 use crate::client::{Client, FeedSlot, OpError};
 use crate::envelope::{Entity, Envelope, Key};
 use crate::oracle::Oracle;
@@ -98,7 +99,8 @@ pub struct Schedule {
 
 pub struct World {
     pub now: u64,
-    pub server: Server,
+    /// The in-memory server, or the real one when the thread installed it with `backend::with_backend` (S4c-1).
+    pub server: Box<dyn SyncServer>,
     pub clients: Vec<Client>,
     pub oracle: Oracle,
     pub violations: Vec<String>,
@@ -124,7 +126,7 @@ impl World {
             .collect();
         World {
             now: T0,
-            server: Server::new(switches),
+            server: backend::new_server(switches),
             clients,
             oracle: Oracle::default(),
             violations: Vec::new(),
@@ -135,6 +137,19 @@ impl World {
             restored: false,
             restores: 0,
         }
+    }
+
+    /// The in-memory server, for the scenarios that look inside it (lineage, drops, backups).
+    pub fn memory(&self) -> &Server {
+        self.server
+            .as_memory()
+            .unwrap_or_else(|| panic!("this scenario needs the in-memory server"))
+    }
+
+    pub fn memory_mut(&mut self) -> &mut Server {
+        self.server
+            .as_memory_mut()
+            .unwrap_or_else(|| panic!("this scenario needs the in-memory server"))
     }
 
     pub fn run(&mut self, steps: &[Step]) {
@@ -173,18 +188,25 @@ impl World {
                 }
             }
             Step::Compact => self.server.compact(self.now),
-            Step::Backup => self.backup = Some(self.server.backup()),
+            // A server that cannot restore (the real one, until S4c-2) has no backup to take: both steps are skipped.
+            Step::Backup => {
+                if let Some(memory) = self.server.as_memory() {
+                    self.backup = Some(memory.backup());
+                }
+            }
             Step::RestoreServer => {
-                if let Some(backup) = self.backup.clone() {
+                if let (Some(backup), Some(memory)) =
+                    (self.backup.clone(), self.server.as_memory_mut())
+                {
                     // A random number from outside the server, as a real restore draws one; it cannot repeat in a run.
                     self.restores += 1;
                     let nonce = self.restores.wrapping_mul(0x9e37_79b9_7f4a_7c15);
-                    self.server.restore(&backup, nonce);
+                    memory.restore(&backup, nonce);
                     self.restored = true;
                 }
             }
             Step::Bind(c) => {
-                let generation = self.server.generation;
+                let generation = self.server.generation();
                 if let Some(client) = self.clients.get_mut(c) {
                     client.begin_binding(generation);
                 }
@@ -282,8 +304,8 @@ impl World {
 
     fn push(&mut self, c: usize, fault: PushFault) {
         let now = self.now;
-        let batch = match self.clients.get_mut(c) {
-            Some(client) => client.next_batch(self.batch),
+        let (batch, cursor) = match self.clients.get_mut(c) {
+            Some(client) => (client.next_batch(self.batch), client.pull_request()),
             None => return,
         };
         let mut batch: Vec<Arc<Envelope>> = batch;
@@ -300,9 +322,9 @@ impl World {
             if !deliver {
                 continue;
             }
-            let response = self.server.push(env, now);
+            let response = self.server.push(env, now, cursor);
             if fault == PushFault::Duplicate {
-                let again = self.server.push(env, now);
+                let again = self.server.push(env, now, cursor);
                 self.answer(c, env, again, hear);
             }
             self.answer(c, env, response, hear);
@@ -389,7 +411,7 @@ impl World {
     pub fn quiesce(&mut self) -> Result<(), String> {
         self.sync_clocks();
         for c in 0..self.clients.len() {
-            let generation = self.server.generation;
+            let generation = self.server.generation();
             if let Some(client) = self.clients.get_mut(c) {
                 client.begin_binding(generation);
             }
@@ -432,7 +454,7 @@ impl World {
     fn world_mark(&self) -> String {
         let mut out = format!(
             "{}:{}:{}",
-            self.server.generation,
+            self.server.generation(),
             self.server.issued(),
             self.server.log_len()
         );

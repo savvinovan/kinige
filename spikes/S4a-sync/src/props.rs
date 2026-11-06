@@ -107,7 +107,7 @@ pub fn server_restore(schedule: &Schedule, switches: Switches) -> Result<(), Str
     let Some(first) = world.clients.first() else {
         return Ok(());
     };
-    for key in &world.server.purged_ever {
+    for key in &world.server.purged_ever() {
         if let Some(local) = first.records.get(key) {
             // In the trash is the honest limitation; out of it is fine only if a person restored it (a write after the purge).
             let restored_by_a_person = local

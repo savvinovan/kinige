@@ -191,10 +191,11 @@ async fn control_seq_from_a_plain_sequence_without_the_lock_does_skip_records() 
         }
         done.store(true, Ordering::SeqCst);
         let collected = puller.await.expect("puller");
-        let range = (first + 1)..=(first + TOTAL);
-        let missing: Vec<u64> = range.filter(|s| !collected.contains(s)).collect();
-        if !missing.is_empty() {
-            worst = missing;
+        // The very check the real test applies, on this round's numbers counted from 1.
+        let relative: Vec<u64> = collected.iter().map(|seq| seq - first).collect();
+        let found = defects(&relative, TOTAL);
+        if !found.is_empty() {
+            worst = found;
             break;
         }
     }
@@ -202,11 +203,7 @@ async fn control_seq_from_a_plain_sequence_without_the_lock_does_skip_records() 
         !worst.is_empty(),
         "five rounds of eight racing writers on a plain sequence never skipped a record: the control proves nothing"
     );
-    println!(
-        "negative control: a cursor passed {} seqs that committed later, for example {:?}",
-        worst.len(),
-        worst.iter().take(5).collect::<Vec<_>>()
-    );
+    println!("negative control: the check of the real test fails on a plain sequence: {worst:?}");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

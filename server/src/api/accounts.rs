@@ -10,7 +10,8 @@ use crate::dto::{
 use crate::error::{ApiError, json};
 use crate::rate::Rule;
 use crate::state::AppState;
-use crate::store::accounts::{self as store, NewPassword, NewRecovery, Registration};
+use crate::store::accounts::{self as store, NewPassword, Registration};
+use crate::store::recovery::{self, NewRecovery};
 use crate::store::sessions::{self, Token};
 use crate::wire::{from_b64, key32, to_b64};
 use axum::body::Bytes;
@@ -157,7 +158,7 @@ pub async fn recovery_fetch(
         config.recovery_by_login,
         config.recovery_by_addr,
     )?;
-    let fetched = store::recovery_fetch(&app.pool, &login, &rc).await?;
+    let fetched = recovery::recovery_fetch(&app.pool, &login, &rc).await?;
     Ok(json(
         StatusCode::OK,
         &RecoveryFetchResponse {
@@ -192,7 +193,7 @@ pub async fn recover(
         config.recovery_by_addr,
     )?;
     let (token, cred_version) =
-        store::recover(&app.pool, app.clock.now_ms(), &login, &old, &new).await?;
+        recovery::recover(&app.pool, app.clock.now_ms(), &login, &old, &new).await?;
     Ok(json(
         StatusCode::OK,
         &RecoveryResponse {
@@ -212,7 +213,7 @@ pub async fn reissue_words(
     let auth = AuthKey::from_bytes(key(&request.auth_key, "auth_key")?);
     let new_rc = RcAuthKey::from_bytes(key(&request.new_rc_auth_key, "new_rc_auth_key")?);
     let wrap_rc = wrap(&request.wrap_rc, "wrap_rc")?;
-    store::reissue_words(&app.pool, &account, &auth, &new_rc, &wrap_rc).await?;
+    recovery::reissue_words(&app.pool, &account, &auth, &new_rc, &wrap_rc).await?;
     Ok(json(StatusCode::OK, &serde_json::json!({})))
 }
 

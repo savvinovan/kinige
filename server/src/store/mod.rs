@@ -4,6 +4,7 @@
 pub mod accounts;
 pub mod compact;
 pub mod envelopes;
+pub mod recovery;
 pub mod sessions;
 
 use crate::error::ApiError;

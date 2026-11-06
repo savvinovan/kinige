@@ -1,4 +1,4 @@
-# Kinige (Project Forest) — PRD v0.23
+# Kinige (Project Forest) — PRD v0.24
 
 **Type:** a personal journal and notes in the form of a "chat with yourself", local-first.
 **Platforms:** desktop — macOS first, then Windows and Linux (Tauri 2). Later a web client (decrypts data in the browser) and a phone, if the main app catches on.
@@ -9,6 +9,9 @@ The review this version is based on: [`01-review.md`](01-review.md). Research: [
 
 ## Version history
 
+- **v0.24 (06.11.2026)** — spike S4c-1, the sync server core on axum and Postgres (KINIG-98, `server/`, `docs/adr/0019-s4c1-server-core.md`); ADR-0001 revision 10 and a new appendix §A.6 (the HTTP shapes), §10.1 and §10.3 unchanged:
+  - the server holds accounts, sessions, push, pull and compaction with the rules of ADR-0001; `seq` is issued under an account lock and a puller never sees a gap (with a negative control); no plain text and no secret is in any table or in the log; garbage on every endpoint is a 4xx; the S4a simulation passes against this server;
+  - four changes to the ADR text: a push whose cursor is behind a drop it missed gets `stale`; a repeated `purged` carries the accepted snapshot; the server refuses a lower profile itself and a password change swaps on a credential version; the server log must hold nothing a dependency prints (a database driver logs bound parameters at `debug`).
 - **v0.23 (06.11.2026)** — spike S4b, the envelope and the keys with the real binding (KINIG-96, `crates/kinige-crypto`, `spikes/S4b-keys`, `docs/adr/0018-s4b-envelope-and-keys.md`); ADR-0001 revision 9, §10.3 is unchanged:
   - `libsodium-rs` builds and passes on Linux, macOS and Windows and links libsodium 1.0.22; libsodium.js reproduces every byte of the test vectors, so the web client is unblocked on the format; criteria S4b (§14) are met;
   - seven corrections to the ADR text, none to the bytes: the format byte is checked before the length rules, an authentic header that disagrees with the transport stops the page, the outbox keeps envelope bytes, the revision id is the first 16 bytes of a 32-byte hash, where `max` of the profile rule matters, the binding prints key bytes with `Debug`, libsodium.js needs its sumo build for Argon2id;
