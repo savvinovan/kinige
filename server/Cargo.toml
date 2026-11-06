@@ -17,6 +17,11 @@ name = "kinige_server"
 name = "kinige-server"
 path = "src/main.rs"
 
+# The client of the compose smoke test (`deploy/smoke.sh`): `cargo build --example smoke -p kinige-server --features testing`.
+[[example]]
+name = "smoke"
+required-features = ["testing"]
+
 [features]
 # `testing`: the helpers that make a throwaway database and a router on it (`kinige_server::testing`); the S4a simulation uses them.
 testing = ["dep:tower"]
@@ -54,3 +59,5 @@ tower = { version = "0.5", features = ["util"], optional = true }
 # A request body that notices whether it was read (`tests/push_input.rs`); already in the tree through hyper and axum.
 http-body = "1"
 proptest = { version = "1.12", default-features = false, features = ["std"] }
+# The HTTP client of `examples/smoke.rs`; the same version and TLS provider that `object_store` already brings.
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }

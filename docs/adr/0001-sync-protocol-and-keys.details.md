@@ -93,7 +93,7 @@ Reading:
 - end of file before `TAG_FINAL` is an error; bytes after `TAG_FINAL` are an error;
 - then `sodium_unpad`, and `sha256` and `byte_size` are checked against the `core` group.
 
-Publishing the same `remote_blob_id` again gets the "already exists" response, which is a success. An unfinished upload can be overwritten; a finished blob is immutable. So a damaged blob is replaced only under a new `remote_blob_id` (§7).
+Publishing the same `remote_blob_id` again gets the "already exists" response, which is a success. An unfinished upload can be overwritten; a finished blob is immutable. So a damaged blob is replaced only under a new `remote_blob_id` (§7). **What the server checks (S4c, 2026-11-06):** the length alone, at the first request of an upload and before a byte is stored — `len > 24` and `(len - 24) mod (1 MiB + 17)` is 0 or `17 + k * 1024` with `k >= 1` — and the cap and the quota (§7); the stream is ciphertext, so a blob of the right length and wrong content is published, and the first device to read it finds out by the `sha256` of `core` (`missing`).
 
 ### A.3. Push responses per `op_id`
 
@@ -149,7 +149,7 @@ Without a typed-back check, not only a failure before the request is dangerous b
 
 ### A.6. HTTP API (S4c, 2026-11-06)
 
-The shapes `server/` implements (`server/src/dto.rs`, `server/src/wire.rs`; ADR-0019). Everything is under `/v1`, over TLS terminated by a reverse proxy (S4c-2). Nothing here changes a byte of §A.1.
+The shapes `server/` implements (`server/src/dto.rs`, `server/src/wire.rs`, `server/src/api/`; ADR-0019, extended for blobs, account deletion and the cut time by ADR-0020). Everything is under `/v1`, over TLS terminated by a reverse proxy (`deploy/Caddyfile`, S4c-2). Nothing here changes a byte of §A.1.
 
 **Conventions.**
 - JSON bodies are UTF-8. Keys, salts, wraps and tokens are **base64url without padding** (RFC 4648 §5) in strings. A **generation** is a decimal string (it is a random 63-bit number, and JSON numbers are not safe above 2^53); `seq`, `epoch`, `after`, versions and sizes are numbers below 2^63.
@@ -177,10 +177,21 @@ u8  entity_len (1..=32) | entity (ASCII) | id (16 raw bytes) | op (16 raw bytes)
 
 The server reads the declared `envelope_len` against `MAX_ENVELOPE` (`413`), the nine prefix bytes with `Layout::parse`, and the header with the strict parser before it reads the rest of the envelope; an unknown `format_version` is `400 unsupported_format` (the server cannot read another format's header); a header that disagrees with the declared `entity`, `id` or `op` is `400 header_mismatch`. The answer is `200 {"results":[{"op","result","seq"?,"purged_of"?}]}`, one per frame in order, where `result` is `ok`, `duplicate`, `op_conflict`, `purged`, `stale_purge`, `clock_skew`, `too_old` or `stale` (§A.3); `seq` is present for `ok` and `duplicate`; `purged_of` for the `ok` of a repeated `purged`. The envelopes of one request are processed one by one, each in its own transaction under the account lock. **A failure in the middle** (a database error) leaves the envelopes before it committed and answers `500` with no results: the client does not know which went in, pushes the request again, and the ones that did are `duplicate`, which is harmless.
 
-**Pull** `POST /v1/pull` (session) `{generation, after, known_epoch, limit?}` → one of:
+**Pull** `POST /v1/pull` (session) `{generation, after, known_epoch, cut_ms?, limit?}` (S4c, 2026-11-06: `cut_ms` is the cut time that came with the `GenerationChanged` answer which put the device into its generation, absent or 0 for a device that never had one; it is read only when `generation` is not in the lineage, §6.3) → one of:
 - `{"result":"page","generation","after","next","head","epoch","items":[{"seq","entity","id","op","envelope"}]}` — `envelope` is base64url of the stored bytes, `entity`, `id` and `op` are what the server declares for it (the client compares them with the authentic header, §5.4); `next` is the last `seq` of a truncated page, otherwise `head`; the page is at most `limit` (default 200, at most 1000) envelopes and stops once 8 MiB are in it, the first envelope always goes, and a `limit` or a byte budget of 0 is raised to 1 (a page is never empty by configuration). **The cursor moves to `next` even when `items` is empty** (at the head `next` is `head`), and when `after` is above `head` `next` is `after`, so a cursor never moves backwards. `limit` is clamped to 1..1000, not refused;
 - `{"result":"stale","generation","epoch"}` (§6.3);
-- `{"result":"generation_changed","generation","stale","epoch"}` (§6.3).
+- `{"result":"generation_changed","generation","stale","epoch","cut_ms"}` (§6.3); `cut_ms` (S4c, 2026-11-06) is the cut time of the generation named, 0 if no restore made it.
+
+The push header is `X-Kinige-Cursor: <generation>.<seq>.<known_epoch>[.<cut_ms>]` (S4c, 2026-11-06: the optional fourth part is the same cut time; a fifth part or a fourth that is not a number is `400 cursor`).
+
+**Blobs** (S4c, 2026-11-06; §7, §A.2; every request is authenticated before anything else is read, as a push is; ids are lower-case UUIDs, anything else is `400 blob_id`):
+- `PUT /v1/blobs/{id}` with `X-Kinige-Blob-Size: <total length of the blob as stored>` (required) and `X-Kinige-Blob-Offset: <n>` (default 0); the body is the bytes from that offset. The size must be a length of §A.2 (`400 blob_framing`) and at most the cap (`413 too_large`); the per-account quota is judged on the first request of an upload (`413 quota`); a body longer than the request cap or than the blob still needs is `413 too_large`. An unfinished upload lives in the staging area: offset 0 starts it again (also with another size), an offset up to what the server holds keeps that prefix and overwrites the rest, an offset beyond it is `409 offset_gap` with `received`, another size at an offset above 0 is `409 size_mismatch`, a second request for the same id at the same time is `409 busy`. The answer is `200 {"result":"partial"|"published"|"exists","received":n}`: `published` when the last byte arrived (the object is then in the store and immutable), `exists` for an id published already (nothing of the body is read or compared). An offset equal to the size with no body publishes a complete upload whose publication failed. A deleted id is `409 gone`.
+- `GET /v1/blobs/{id}` → `200` with the blob, `Accept-Ranges: bytes`; with `Range: bytes=a-b|a-|-n` (one range) `206` and `Content-Range`; an unsatisfiable range is `416` with `Content-Range: bytes */size`; an unfinished, deleted or unknown blob is `404 not_found`.
+- `GET /v1/blobs/{id}/status` → `200 {"state":"none"|"uploading"|"published"|"deleted","size","received"}`: where a client resumes.
+- `DELETE /v1/blobs/{id}` → `200 {}` always (deleting what is not there is a success): the row of a published blob is marked, an unfinished upload goes at once. A client sends it only for a blob of its own account, which is the only kind it can name.
+- A request body that goes quiet for longer than `body_idle_ms` (20 s) or whose average rate, after `body_rate_grace_ms` (10 s), is under `body_min_rate` (8 KiB/s) is cut off with `408 timeout`, on a push and on a blob upload alike; what a blob upload had received stays.
+
+**Account deletion** `POST /v1/account/delete` (session) `{auth_key}` → `200 {}`; `401 auth` for a wrong key or no session (§8.9).
 
 ## B. Test plan (S4a — protocol, S4b — envelope and keys)
 

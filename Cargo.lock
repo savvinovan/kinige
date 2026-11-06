@@ -2617,6 +2617,7 @@ dependencies = [
  "log",
  "object_store",
  "proptest",
+ "reqwest",
  "serde",
  "serde_json",
  "tokio",

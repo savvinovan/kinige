@@ -144,8 +144,9 @@ fn parse_lineage(rows: Vec<LineageRow>) -> Result<Vec<Gen>, BackupError> {
                 generation: row.generation.parse().map_err(|_| {
                     BackupError::Manifest("a generation in lineage.json is not a number")
                 })?,
-                cut_ms: i64::try_from(row.cut_ms)
-                    .map_err(|_| BackupError::Manifest("a cut time in lineage.json is too large"))?,
+                cut_ms: i64::try_from(row.cut_ms).map_err(|_| {
+                    BackupError::Manifest("a cut time in lineage.json is too large")
+                })?,
             })
         })
         .collect()

@@ -1,0 +1,40 @@
+# The reverse proxy in front of kinige-server (spike S4c-2, ADR-0020). Caddy terminates TLS and gets its certificates itself:
+#   - a public name (KINIGE_DOMAIN=kinige.example.org, ports 80 and 443 reachable from the internet): Let's Encrypt, automatically;
+#   - KINIGE_DOMAIN=localhost (the default): Caddy's own local CA, a certificate no browser trusts: for trying the stack out.
+# The TLS setup is documented and not tested beyond startup (spec S4c-2). Another proxy works if it keeps the three body limits below.
+{
+	# No telemetry, no admin API reachable from outside the container.
+	admin off
+}
+
+{$KINIGE_DOMAIN:localhost} {
+	# The body caps match the server's own (server/src/config.rs): a request above them is refused here, before the server reads a byte.
+	# A push is at most 16 MiB; one blob upload request at most `blob_request_max` (256 MiB; a larger file is uploaded in several
+	# requests, resuming by offset); every other body is JSON of at most 16 KiB. With nginx the same is client_max_body_size.
+	handle /v1/push {
+		request_body {
+			max_size 16MiB
+		}
+		reverse_proxy server:8080 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle /v1/blobs/* {
+		request_body {
+			max_size 256MiB
+		}
+		reverse_proxy server:8080 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle {
+		request_body {
+			max_size 16KiB
+		}
+		reverse_proxy server:8080 {
+			# The server rate-limits by this header (KINIGE_CLIENT_ADDR_HEADER=X-Real-IP): the proxy sets it to the connection's
+			# address and so replaces whatever a client sent. The server is not published, only the proxy reaches it.
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}

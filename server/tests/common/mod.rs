@@ -205,10 +205,14 @@ impl Maker {
             kind: Kind::Purged,
             groups: BTreeMap::new(),
             purged_of: Some(
-                [("core", hlc(T0, 0)), ("order", hlc(T0, 0)), ("deleted", hlc(T0, 0))]
-                    .into_iter()
-                    .map(|(g, h)| (g.to_string(), h))
-                    .collect(),
+                [
+                    ("core", hlc(T0, 0)),
+                    ("order", hlc(T0, 0)),
+                    ("deleted", hlc(T0, 0)),
+                ]
+                .into_iter()
+                .map(|(g, h)| (g.to_string(), h))
+                .collect(),
             ),
             blob: Some(blob.to_string()),
         };

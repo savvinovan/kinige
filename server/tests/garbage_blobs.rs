@@ -152,7 +152,10 @@ fn garbage_on_the_blob_routes_is_a_4xx_and_never_a_5xx() {
     // The real blob is where it was, the account is alive, and a garbage body for the deletion is a 4xx.
     runtime.block_on(async {
         let (code, _, bytes) = common::blobs::download(&rig, &acct, &blob_uuid(1), None).await;
-        assert!(code == StatusCode::OK && bytes == real || code == StatusCode::NOT_FOUND, "{code}");
+        assert!(
+            code == StatusCode::OK && bytes == real || code == StatusCode::NOT_FOUND,
+            "{code}"
+        );
         for body in [
             json!({}),
             json!({"auth_key": 5}),

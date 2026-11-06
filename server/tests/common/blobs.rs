@@ -36,7 +36,16 @@ pub async fn upload(
 ) -> (StatusCode, Value) {
     let part = blob.get(from..to).expect("a part inside the blob").to_vec();
     let length = part.len();
-    upload_sized(rig, acct, id, blob.len(), from, Body::from(part), Some(length)).await
+    upload_sized(
+        rig,
+        acct,
+        id,
+        blob.len(),
+        from,
+        Body::from(part),
+        Some(length),
+    )
+    .await
 }
 
 /// A request with a body of any kind and no `Content-Length` (a router called in process adds none).
@@ -77,7 +86,10 @@ pub async fn upload_sized(
             body,
         )
         .await;
-    (status, serde_json::from_slice(&bytes).unwrap_or(Value::Null))
+    (
+        status,
+        serde_json::from_slice(&bytes).unwrap_or(Value::Null),
+    )
 }
 
 /// The whole blob in one request.

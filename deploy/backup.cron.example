@@ -1,0 +1,10 @@
+# A daily backup of the Kinige server with the rotation (spike S4c-2, ADR-0020). Put this in /etc/cron.d/kinige-backup (root's crontab
+# format: minute hour day month weekday user command) after changing the path. It takes a snapshot of Postgres, copies the blobs, writes
+# the manifest and removes backups older than KINIGE_BACKUP_RETENTION_DAYS (30 by default), keeping the newest whatever its age.
+#
+# The interval between runs must be what KINIGE_BACKUP_INTERVAL_HOURS says (24 by default): a deleted blob stays in the store for the
+# retention plus one interval, which is how long the oldest backup that can still be restored lives.
+#
+# Copy the backups volume off this machine as well (rsync, restic, a snapshot of the volume): a backup on the disk it protects is
+# not one.
+17 3 * * * root cd /opt/kinige/deploy && docker compose --profile tools run --rm -T backup >> /var/log/kinige-backup.log 2>&1

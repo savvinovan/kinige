@@ -368,8 +368,24 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # S4c-2 (KINIG-99): the throwaway S3-compatible store of the blob suites, SeaweedFS (`weed mini`: one container, configured by
+      # environment alone, which a `services:` container can be; the choice and the facts are in ADR-0020). Pinned by digest.
+      s3:
+        image: chrislusf/seaweedfs:4.52@sha256:57877e32bb90073b37dc109b438ba66e84fd5ed9ced5f5c04f56444ef243ce59
+        env:
+          AWS_ACCESS_KEY_ID: ci-throwaway-s3-access
+          AWS_SECRET_ACCESS_KEY: ci-throwaway-s3-secret-0123456789
+          S3_BUCKET: kinige-test
+        ports:
+          - 8333:8333
     env:
       KINIGE_TEST_DATABASE_URL: postgres://postgres:ci-throwaway-password@localhost:5432/postgres
+      KINIGE_TEST_S3_URL: http://localhost:8333
+      KINIGE_TEST_S3_BUCKET: kinige-test
+      KINIGE_TEST_S3_ACCESS_KEY: ci-throwaway-s3-access
+      KINIGE_TEST_S3_SECRET_KEY: ci-throwaway-s3-secret-0123456789
+      # A missing S3 store is a failure here, not a quiet skip of the S3 half of every blob suite.
+      KINIGE_TEST_REQUIRE_S3: "1"
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
     steps:
       - uses: actions/checkout@v7
@@ -384,9 +400,23 @@ jobs:
             spikes/S4a-sync
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
+      # The store creates its bucket a moment after it listens: wait until a signed listing of the bucket is answered with 200.
+      - name: Wait for the S3 store
+        run: |
+          for _ in $(seq 1 60); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' -A kinige-dev --aws-sigv4 'aws:amz:us-east-1:s3' \
+              --user "${KINIGE_TEST_S3_ACCESS_KEY}:${KINIGE_TEST_S3_SECRET_KEY}" "${KINIGE_TEST_S3_URL}/${KINIGE_TEST_S3_BUCKET}?list-type=2" || true)"
+            [ "$code" = "200" ] && exit 0
+            sleep 2
+          done
+          echo "the S3 store did not come up (last answer: $code)" >&2
+          docker ps -a
+          exit 1
+
       - run: cargo clippy -p kinige-server --features pg-tests --all-targets -- -D warnings
       - run: cargo test -p kinige-server --features pg-tests
 
+      # Property 8 and the restore mixes now run here: every restore is a real dump loaded into a clean database. The count is small and fixed.
       - name: Simulation against the real server
         working-directory: spikes/S4a-sync
         env:
@@ -394,6 +424,28 @@ jobs:
           S4A_REAL_CASES3: "5"
           S4A_SEED: "1"
         run: cargo test --features real-server --test real_server
+
+  # Spike S4c-2 (KINIG-99): the self-hosting stack of `deploy/`, on a runner's own Docker. `deploy/smoke.sh` brings up the server, Postgres,
+  # a blob volume and the proxy with TLS from the repository's Dockerfile and compose file (every image pinned by digest), registers,
+  # pushes, uploads a blob and pulls through the proxy, takes a backup, checks that SIGTERM stops the server with exit code 0, restores
+  # the backup into a SECOND, fresh stack and checks the old cursor (`GenerationChanged`), every envelope and the blob byte for byte.
+  compose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Rust toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Smoke test
+        run: deploy/smoke.sh
 
   # Secrets in the git history. False positives go in .gitleaksignore (the fingerprint and the reason). The binary is pinned by version and sha256.
   gitleaks:

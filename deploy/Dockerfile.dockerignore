@@ -1,0 +1,10 @@
+# The build context of deploy/Dockerfile is the repository root. BuildKit reads this file instead of the root .dockerignore (which is the
+# Storybook container's) for builds with -f deploy/Dockerfile: only what the server's build needs gets into the context.
+*
+!Cargo.toml
+!Cargo.lock
+!crates
+!server
+!src-tauri
+**/target
+**/node_modules

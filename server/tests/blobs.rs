@@ -37,22 +37,36 @@ async fn upload_resume_overwrite_publish_download_range_and_already_exists() {
         assert_eq!(status(&rig, &acct, &id).await["state"], "none");
 
         let (code, answer) = upload(&rig, &acct, &id, &blob, 0, 1_000_000).await;
-        assert_eq!((code, &answer["result"]), (StatusCode::OK, &json!("partial")), "{backend:?}");
+        assert_eq!(
+            (code, &answer["result"]),
+            (StatusCode::OK, &json!("partial")),
+            "{backend:?}"
+        );
         assert_eq!(answer["received"], 1_000_000);
         let state = status(&rig, &acct, &id).await;
         assert_eq!(
-            (state["state"].as_str(), state["size"].as_u64(), state["received"].as_u64()),
+            (
+                state["state"].as_str(),
+                state["size"].as_u64(),
+                state["received"].as_u64()
+            ),
             (Some("uploading"), Some(n as u64), Some(1_000_000)),
         );
 
         // Not published while unfinished: no download, no row, no object.
-        assert_eq!(download(&rig, &acct, &id, None).await.0, StatusCode::NOT_FOUND);
+        assert_eq!(
+            download(&rig, &acct, &id, None).await.0,
+            StatusCode::NOT_FOUND
+        );
         assert!(blob_row(&rig, &acct, &id).await.is_none());
         assert!(object_size(&rig, &acct, &id).await.is_none());
 
         // A gap is refused with the place to continue from, and the unfinished upload is untouched.
         let (code, answer) = upload(&rig, &acct, &id, &blob, 1_000_001, 1_100_000).await;
-        assert_eq!((code, answer["error"].as_str()), (StatusCode::CONFLICT, Some("offset_gap")));
+        assert_eq!(
+            (code, answer["error"].as_str()),
+            (StatusCode::CONFLICT, Some("offset_gap"))
+        );
         assert_eq!(answer["received"], 1_000_000);
 
         // Resume inside what the server holds overwrites the tail: 600 000 .. 2 000 000.
@@ -61,34 +75,68 @@ async fn upload_resume_overwrite_publish_download_range_and_already_exists() {
 
         // Another size at an offset other than 0 is refused; at 0 the upload starts over.
         let other_size = kinige_server::rules::blob::sealed_len(3 * MIB as u64) as usize;
-        let (code, answer) = upload_raw(&rig, &acct, &id, other_size, 2_000_000, Body::from(vec![0u8; 10])).await;
-        assert_eq!((code, answer["error"].as_str()), (StatusCode::CONFLICT, Some("size_mismatch")));
+        let (code, answer) = upload_raw(
+            &rig,
+            &acct,
+            &id,
+            other_size,
+            2_000_000,
+            Body::from(vec![0u8; 10]),
+        )
+        .await;
+        assert_eq!(
+            (code, answer["error"].as_str()),
+            (StatusCode::CONFLICT, Some("size_mismatch"))
+        );
 
         let (_, answer) = upload(&rig, &acct, &id, &blob, 2_000_000, n).await;
-        assert_eq!((answer["result"].as_str(), answer["received"].as_u64()), (Some("published"), Some(n as u64)));
+        assert_eq!(
+            (answer["result"].as_str(), answer["received"].as_u64()),
+            (Some("published"), Some(n as u64))
+        );
 
         // Published: a row, an object of the right size, no staging file, and the download is the blob, byte for byte.
         assert_eq!(blob_row(&rig, &acct, &id).await, Some((n as i64, None)));
         assert_eq!(object_size(&rig, &acct, &id).await, Some(n as u64));
-        assert!(rig.state.blobs.staging.find(&acct.creds.account_id, &id).await.is_none());
+        assert!(
+            rig.state
+                .blobs
+                .staging
+                .find(&acct.creds.account_id, &id)
+                .await
+                .is_none()
+        );
         let (code, headers, bytes) = download(&rig, &acct, &id, None).await;
         assert_eq!(code, StatusCode::OK);
         assert_eq!(headers["content-length"], n.to_string().as_str());
         assert_eq!(headers["accept-ranges"], "bytes");
         assert_eq!(bytes, blob, "{backend:?}");
         let key = BlobKey::from_bytes([7; 32]);
-        assert_eq!(open_blob(&bytes, &key).expect("opens"), plain(MIB * 5 / 2, 7));
+        assert_eq!(
+            open_blob(&bytes, &key).expect("opens"),
+            plain(MIB * 5 / 2, 7)
+        );
 
         // Ranges: a span across a chunk boundary, an open end, a suffix.
-        let (code, headers, bytes) = download(&rig, &acct, &id, Some("bytes=1048000-1049999")).await;
+        let (code, headers, bytes) =
+            download(&rig, &acct, &id, Some("bytes=1048000-1049999")).await;
         assert_eq!(code, StatusCode::PARTIAL_CONTENT);
-        assert_eq!(headers["content-range"], format!("bytes 1048000-1049999/{n}").as_str());
+        assert_eq!(
+            headers["content-range"],
+            format!("bytes 1048000-1049999/{n}").as_str()
+        );
         assert_eq!(bytes, blob[1_048_000..=1_049_999]);
         let (_, _, bytes) = download(&rig, &acct, &id, Some(&format!("bytes={}-", n - 10))).await;
         assert_eq!(bytes, blob[n - 10..]);
         let (_, _, bytes) = download(&rig, &acct, &id, Some("bytes=-25")).await;
         assert_eq!(bytes, blob[n - 25..]);
-        for bad in [&format!("bytes={n}-"), "bytes=5-1", "bytes=0-1,4-5", "pages=1-2", "bytes=x-y"] {
+        for bad in [
+            &format!("bytes={n}-"),
+            "bytes=5-1",
+            "bytes=0-1,4-5",
+            "pages=1-2",
+            "bytes=x-y",
+        ] {
             let (code, headers, _) = download(&rig, &acct, &id, Some(bad)).await;
             assert_eq!(code, StatusCode::RANGE_NOT_SATISFIABLE, "{bad}");
             assert_eq!(headers["content-range"], format!("bytes */{n}").as_str());
@@ -96,10 +144,17 @@ async fn upload_resume_overwrite_publish_download_range_and_already_exists() {
 
         // Publishing the same id again is "already exists", a success, and nothing in the body is read or compared.
         let (code, answer) = upload_all(&rig, &acct, &id, &sealed(MIB * 5 / 2, 9)).await;
-        assert_eq!((code, answer["result"].as_str()), (StatusCode::OK, Some("exists")));
+        assert_eq!(
+            (code, answer["result"].as_str()),
+            (StatusCode::OK, Some("exists"))
+        );
         let (_, answer) = upload_raw(&rig, &acct, &id, n, 0, Body::from("not even a blob")).await;
         assert_eq!(answer["result"], "exists");
-        assert_eq!(download(&rig, &acct, &id, None).await.2, blob, "the first bytes stay");
+        assert_eq!(
+            download(&rig, &acct, &id, None).await.2,
+            blob,
+            "the first bytes stay"
+        );
 
         // An unfinished upload can be overwritten from 0, also with another size.
         let other = blob_uuid(2);
@@ -122,10 +177,13 @@ async fn upload_resume_overwrite_publish_download_range_and_already_exists() {
             .open(&acct.creds.account_id, &third, whole.len() as u64, 0)
             .await
             .expect("staging file");
-        tokio::io::AsyncWriteExt::write_all(&mut file, &whole).await.expect("write");
+        tokio::io::AsyncWriteExt::write_all(&mut file, &whole)
+            .await
+            .expect("write");
         drop(file);
         assert_eq!(status(&rig, &acct, &third).await["received"], whole.len());
-        let (_, answer) = upload_raw(&rig, &acct, &third, whole.len(), whole.len(), Body::empty()).await;
+        let (_, answer) =
+            upload_raw(&rig, &acct, &third, whole.len(), whole.len(), Body::empty()).await;
         assert_eq!(answer["result"], "published", "{backend:?}");
         assert_eq!(download(&rig, &acct, &third, None).await.2, whole);
     }
@@ -142,7 +200,11 @@ async fn a_large_blob_goes_to_the_store_in_parts_on_every_backend() {
         for (from, to) in [(0, 4 * MIB), (4 * MIB, blob.len())] {
             upload(&rig, &acct, &id, &blob, from, to).await;
         }
-        assert_eq!(object_size(&rig, &acct, &id).await, Some(blob.len() as u64), "{backend:?}");
+        assert_eq!(
+            object_size(&rig, &acct, &id).await,
+            Some(blob.len() as u64),
+            "{backend:?}"
+        );
         assert_eq!(download(&rig, &acct, &id, None).await.2, blob);
         let (_, _, tail) = download(&rig, &acct, &id, Some("bytes=9000000-9000099")).await;
         assert_eq!(tail, blob[9_000_000..9_000_100]);
@@ -154,17 +216,39 @@ async fn the_server_checks_the_framing_it_can_see_and_nothing_else() {
     let rig = rig().await;
     let acct = account(&rig).await;
     // Lengths that are not a blob of §A.2 are refused at the first request, before a byte is stored.
-    for (n, size) in [(1, 0usize), (2, 24), (3, 1000), (4, 24 + 1024 + 16), (5, 24 + 1025 + 17), (6, MIB + 24 + 17 + 1)] {
+    for (n, size) in [
+        (1, 0usize),
+        (2, 24),
+        (3, 1000),
+        (4, 24 + 1024 + 16),
+        (5, 24 + 1025 + 17),
+        (6, MIB + 24 + 17 + 1),
+    ] {
         let id = blob_uuid(n);
-        let (code, answer) = upload_raw(&rig, &acct, &id, size, 0, Body::from(vec![1u8; size.min(100)])).await;
-        assert_eq!((code, answer["error"].as_str()), (StatusCode::BAD_REQUEST, Some("blob_framing")), "{size}");
+        let (code, answer) = upload_raw(
+            &rig,
+            &acct,
+            &id,
+            size,
+            0,
+            Body::from(vec![1u8; size.min(100)]),
+        )
+        .await;
+        assert_eq!(
+            (code, answer["error"].as_str()),
+            (StatusCode::BAD_REQUEST, Some("blob_framing")),
+            "{size}"
+        );
         assert_eq!(status(&rig, &acct, &id).await["state"], "none");
     }
     // The right length with other bytes is accepted: the server cannot open the stream and does not pretend to.
     let id = blob_uuid(9);
     let garbage = vec![0xAB; 24 + 1024 + 17];
     let (code, answer) = upload_all(&rig, &acct, &id, &garbage).await;
-    assert_eq!((code, answer["result"].as_str()), (StatusCode::OK, Some("published")));
+    assert_eq!(
+        (code, answer["result"].as_str()),
+        (StatusCode::OK, Some("published"))
+    );
     assert_eq!(download(&rig, &acct, &id, None).await.2, garbage);
 }
 
@@ -182,14 +266,34 @@ async fn limits_come_before_any_byte_is_stored() {
     // The cap of one blob.
     let too_big = sealed(4 * MIB, 1);
     let (code, answer) = upload(&rig, &acct, &blob_uuid(1), &too_big, 0, 100).await;
-    assert_eq!((code, answer["error"].as_str()), (StatusCode::PAYLOAD_TOO_LARGE, Some("too_large")));
-    assert!(rig.state.blobs.staging.find(&acct.creds.account_id, &blob_uuid(1)).await.is_none());
+    assert_eq!(
+        (code, answer["error"].as_str()),
+        (StatusCode::PAYLOAD_TOO_LARGE, Some("too_large"))
+    );
+    assert!(
+        rig.state
+            .blobs
+            .staging
+            .find(&acct.creds.account_id, &blob_uuid(1))
+            .await
+            .is_none()
+    );
 
     // The cap of one request: a body of 2 MiB (declared by Content-Length) is refused before it is read.
     let blob = sealed(2 * MIB + 5, 2);
     let (code, answer) = upload(&rig, &acct, &blob_uuid(2), &blob, 0, 2 * MIB).await;
-    assert_eq!((code, answer["error"].as_str()), (StatusCode::PAYLOAD_TOO_LARGE, Some("too_large")));
-    assert!(rig.state.blobs.staging.find(&acct.creds.account_id, &blob_uuid(2)).await.is_none());
+    assert_eq!(
+        (code, answer["error"].as_str()),
+        (StatusCode::PAYLOAD_TOO_LARGE, Some("too_large"))
+    );
+    assert!(
+        rig.state
+            .blobs
+            .staging
+            .find(&acct.creds.account_id, &blob_uuid(2))
+            .await
+            .is_none()
+    );
 
     // A body longer than the blob still needs is refused too, also without a Content-Length (a stream), and what fits stays.
     let small = sealed(2000, 3);
@@ -212,7 +316,10 @@ async fn limits_come_before_any_byte_is_stored() {
             let to = (at + MIB).min(part.len());
             let (code, answer) = upload(&rig, &acct, &id, part, at, to).await;
             if n == 11 {
-                assert_eq!((code, answer["error"].as_str()), (StatusCode::PAYLOAD_TOO_LARGE, Some("quota")));
+                assert_eq!(
+                    (code, answer["error"].as_str()),
+                    (StatusCode::PAYLOAD_TOO_LARGE, Some("quota"))
+                );
                 break;
             }
             assert_eq!(code, StatusCode::OK, "{answer}");
@@ -244,33 +351,79 @@ async fn every_blob_request_is_authenticated_before_anything_is_read_or_decided(
         ] {
             let (code, _, _) = rig
                 .http
-                .request(method, &path, token, &[("x-kinige-blob-size", "nope".to_string())], Body::from("garbage"))
+                .request(
+                    method,
+                    &path,
+                    token,
+                    &[("x-kinige-blob-size", "nope".to_string())],
+                    Body::from("garbage"),
+                )
                 .await;
             assert_eq!(code, StatusCode::UNAUTHORIZED, "{method} {path} {token:?}");
         }
     }
-    assert!(rig.state.blobs.staging.find(&acct.creds.account_id, &id).await.is_none());
+    assert!(
+        rig.state
+            .blobs
+            .staging
+            .find(&acct.creds.account_id, &id)
+            .await
+            .is_none()
+    );
 
     // With a session the id is judged next, then the headers.
-    for bad in ["x", "../../etc/passwd", "00000000-0000-0000-0000-00000000000G", &id.to_uppercase()] {
+    for bad in [
+        "x",
+        "../../etc/passwd",
+        "00000000-0000-0000-0000-00000000000G",
+        &id.to_uppercase(),
+    ] {
         let (code, _, _) = rig
             .http
-            .request("GET", &format!("/v1/blobs/{bad}"), Some(&acct.token), &[], Body::empty())
+            .request(
+                "GET",
+                &format!("/v1/blobs/{bad}"),
+                Some(&acct.token),
+                &[],
+                Body::empty(),
+            )
             .await;
-        assert!(code == StatusCode::BAD_REQUEST || code == StatusCode::NOT_FOUND, "{bad} {code}");
+        assert!(
+            code == StatusCode::BAD_REQUEST || code == StatusCode::NOT_FOUND,
+            "{bad} {code}"
+        );
     }
     let (code, answer) = upload_raw(&rig, &acct, &id, 0, 0, Body::empty()).await;
-    assert_eq!((code, answer["error"].as_str()), (StatusCode::BAD_REQUEST, Some("blob_framing")));
-    for (name, value) in [("x-kinige-blob-size", "-1"), ("x-kinige-blob-size", "1e3"), ("x-kinige-blob-size", "99999999999999999999")] {
+    assert_eq!(
+        (code, answer["error"].as_str()),
+        (StatusCode::BAD_REQUEST, Some("blob_framing"))
+    );
+    for (name, value) in [
+        ("x-kinige-blob-size", "-1"),
+        ("x-kinige-blob-size", "1e3"),
+        ("x-kinige-blob-size", "99999999999999999999"),
+    ] {
         let (code, _, _) = rig
             .http
-            .request("PUT", &format!("/v1/blobs/{id}"), Some(&acct.token), &[(name, value.to_string())], Body::empty())
+            .request(
+                "PUT",
+                &format!("/v1/blobs/{id}"),
+                Some(&acct.token),
+                &[(name, value.to_string())],
+                Body::empty(),
+            )
             .await;
         assert_eq!(code, StatusCode::BAD_REQUEST, "{value}");
     }
     let (code, _, _) = rig
         .http
-        .request("PUT", &format!("/v1/blobs/{id}"), Some(&acct.token), &[], Body::empty())
+        .request(
+            "PUT",
+            &format!("/v1/blobs/{id}"),
+            Some(&acct.token),
+            &[],
+            Body::empty(),
+        )
         .await;
     assert_eq!(code, StatusCode::BAD_REQUEST, "the size header is required");
     upload_all(&rig, &acct, &id, &blob).await;
@@ -286,7 +439,11 @@ async fn a_blob_belongs_to_its_account_and_a_second_writer_to_an_upload_is_told_
     upload_all(&rig, &a, &id, &blob_a).await;
     // The same id under another account is another blob: the store is keyed by (account_id, remote_blob_id).
     assert_eq!(download(&rig, &b, &id, None).await.0, StatusCode::NOT_FOUND);
-    assert_eq!(delete(&rig, &b, &id).await, StatusCode::OK, "nothing of A's is B's to delete");
+    assert_eq!(
+        delete(&rig, &b, &id).await,
+        StatusCode::OK,
+        "nothing of A's is B's to delete"
+    );
     assert_eq!(download(&rig, &a, &id, None).await.2, blob_a);
     upload_all(&rig, &b, &id, &blob_b).await;
     assert_eq!(download(&rig, &b, &id, None).await.2, blob_b);
@@ -294,11 +451,22 @@ async fn a_blob_belongs_to_its_account_and_a_second_writer_to_an_upload_is_told_
 
     // One writer per upload.
     let busy_id = blob_uuid(2);
-    let held = rig.state.blobs.staging.try_busy(&a.creds.account_id, &busy_id).expect("free");
+    let held = rig
+        .state
+        .blobs
+        .staging
+        .try_busy(&a.creds.account_id, &busy_id)
+        .expect("free");
     let (code, answer) = upload(&rig, &a, &busy_id, &blob_a, 0, 100).await;
-    assert_eq!((code, answer["error"].as_str()), (StatusCode::CONFLICT, Some("busy")));
+    assert_eq!(
+        (code, answer["error"].as_str()),
+        (StatusCode::CONFLICT, Some("busy"))
+    );
     drop(held);
-    assert_eq!(upload(&rig, &a, &busy_id, &blob_a, 0, 100).await.0, StatusCode::OK);
+    assert_eq!(
+        upload(&rig, &a, &busy_id, &blob_a, 0, 100).await.0,
+        StatusCode::OK
+    );
 }
 
 #[tokio::test]
@@ -317,25 +485,51 @@ async fn a_delete_marks_the_blob_and_the_object_goes_after_the_retention_and_one
         assert_eq!(status(&rig, &acct, &part).await["state"], "none");
 
         assert_eq!(delete(&rig, &acct, &id).await, StatusCode::OK);
-        assert_eq!(delete(&rig, &acct, &id).await, StatusCode::OK, "deleting twice is a success");
-        assert_eq!(delete(&rig, &acct, &blob_uuid(99)).await, StatusCode::OK, "so is deleting what was never there");
-        assert_eq!(download(&rig, &acct, &id, None).await.0, StatusCode::NOT_FOUND);
+        assert_eq!(
+            delete(&rig, &acct, &id).await,
+            StatusCode::OK,
+            "deleting twice is a success"
+        );
+        assert_eq!(
+            delete(&rig, &acct, &blob_uuid(99)).await,
+            StatusCode::OK,
+            "so is deleting what was never there"
+        );
+        assert_eq!(
+            download(&rig, &acct, &id, None).await.0,
+            StatusCode::NOT_FOUND
+        );
         assert_eq!(status(&rig, &acct, &id).await["state"], "deleted");
         let (code, answer) = upload_all(&rig, &acct, &id, &blob).await;
-        assert_eq!((code, answer["error"].as_str()), (StatusCode::CONFLICT, Some("gone")), "a deleted id is replaced under a new one");
+        assert_eq!(
+            (code, answer["error"].as_str()),
+            (StatusCode::CONFLICT, Some("gone")),
+            "a deleted id is replaced under a new one"
+        );
         let deleted_at = rig.clock.now_ms();
-        assert_eq!(blob_row(&rig, &acct, &id).await.map(|r| r.1), Some(Some(deleted_at as i64)));
+        assert_eq!(
+            blob_row(&rig, &acct, &id).await.map(|r| r.1),
+            Some(Some(deleted_at as i64))
+        );
         // Marked, not removed.
-        assert_eq!(object_size(&rig, &acct, &id).await, Some(blob.len() as u64), "{backend:?}");
+        assert_eq!(
+            object_size(&rig, &acct, &id).await,
+            Some(blob.len() as u64),
+            "{backend:?}"
+        );
 
         // 30 days and 23 hours: still there. 31 days: gone, with its row; the id is free again.
         let config = rig.state.config.clone();
         rig.clock.advance(31 * DAY - 3_600_000);
-        let swept = sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock).await.expect("sweep");
+        let swept = sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock)
+            .await
+            .expect("sweep");
         assert_eq!(swept.removed, 0);
         assert_eq!(object_size(&rig, &acct, &id).await, Some(blob.len() as u64));
         rig.clock.advance(3_600_000);
-        let swept = sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock).await.expect("sweep");
+        let swept = sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock)
+            .await
+            .expect("sweep");
         assert_eq!(swept.removed, 1);
         assert!(object_size(&rig, &acct, &id).await.is_none());
         assert!(blob_row(&rig, &acct, &id).await.is_none());
@@ -355,29 +549,83 @@ async fn an_accepted_purge_of_an_attachment_marks_the_blob_it_names_in_its_open_
     // A purge from B names the same id, and affects only B's blob.
     let purge_b = maker.purged_attachment(&attachment, &id(60), &blob_id);
     let (op_b, body_b) = (id(60), purge_b);
-    let result = push(&rig, &b, &Item { entity: "attachment", id: &attachment, op: &op_b, bytes: &body_b }).await;
+    let result = push(
+        &rig,
+        &b,
+        &Item {
+            entity: "attachment",
+            id: &attachment,
+            op: &op_b,
+            bytes: &body_b,
+        },
+    )
+    .await;
     assert_eq!(outcome(&result), "ok", "{result}");
-    assert_eq!(blob_row(&rig, &b, &blob_id).await.map(|r| r.1.is_some()), Some(true));
-    assert_eq!(blob_row(&rig, &a, &blob_id).await.map(|r| r.1.is_some()), Some(false));
+    assert_eq!(
+        blob_row(&rig, &b, &blob_id).await.map(|r| r.1.is_some()),
+        Some(true)
+    );
+    assert_eq!(
+        blob_row(&rig, &a, &blob_id).await.map(|r| r.1.is_some()),
+        Some(false)
+    );
     assert_eq!(download(&rig, &a, &blob_id, None).await.2, blob);
-    assert_eq!(download(&rig, &b, &blob_id, None).await.0, StatusCode::NOT_FOUND);
+    assert_eq!(
+        download(&rig, &b, &blob_id, None).await.0,
+        StatusCode::NOT_FOUND
+    );
 
     // A purge that names no blob leaves blobs alone.
     let second = blob_uuid(2);
     upload_all(&rig, &a, &second, &blob).await;
     let other_attachment = id(41);
     let op = id(61);
-    let no_blob = maker.purged("attachment", &other_attachment, &op, &[("core", hlc(T0, 0)), ("order", hlc(T0, 0)), ("deleted", hlc(T0, 0))]);
-    let result = push(&rig, &a, &Item { entity: "attachment", id: &other_attachment, op: &op, bytes: &no_blob }).await;
+    let no_blob = maker.purged(
+        "attachment",
+        &other_attachment,
+        &op,
+        &[
+            ("core", hlc(T0, 0)),
+            ("order", hlc(T0, 0)),
+            ("deleted", hlc(T0, 0)),
+        ],
+    );
+    let result = push(
+        &rig,
+        &a,
+        &Item {
+            entity: "attachment",
+            id: &other_attachment,
+            op: &op,
+            bytes: &no_blob,
+        },
+    )
+    .await;
     assert_eq!(outcome(&result), "ok");
-    assert_eq!(blob_row(&rig, &a, &second).await.map(|r| r.1.is_some()), Some(false));
+    assert_eq!(
+        blob_row(&rig, &a, &second).await.map(|r| r.1.is_some()),
+        Some(false)
+    );
 
     // The purge that does name it, once accepted, marks it.
     let (third_attachment, op3) = (id(42), id(62));
     let purge = maker.purged_attachment(&third_attachment, &op3, &second);
-    let result = push(&rig, &a, &Item { entity: "attachment", id: &third_attachment, op: &op3, bytes: &purge }).await;
+    let result = push(
+        &rig,
+        &a,
+        &Item {
+            entity: "attachment",
+            id: &third_attachment,
+            op: &op3,
+            bytes: &purge,
+        },
+    )
+    .await;
     assert_eq!(outcome(&result), "ok");
-    assert_eq!(blob_row(&rig, &a, &second).await.map(|r| r.1.is_some()), Some(true));
+    assert_eq!(
+        blob_row(&rig, &a, &second).await.map(|r| r.1.is_some()),
+        Some(true)
+    );
 }
 
 #[tokio::test]
@@ -398,16 +646,28 @@ async fn unfinished_uploads_and_objects_without_a_row_are_cleaned_after_their_ag
     let key = kinige_server::blobs::object_key(&acct.creds.account_id, &lost);
     let staged = rig.db.scratch_dir("lost").expect("dir").join("f");
     std::fs::write(&staged, &blob).expect("file");
-    rig.state.blobs.objects.put_file(&key, &staged).await.expect("put");
+    rig.state
+        .blobs
+        .objects
+        .put_file(&key, &staged)
+        .await
+        .expect("put");
 
     let config = rig.state.config.clone();
-    let swept = sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock).await.expect("sweep");
+    let swept = sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock)
+        .await
+        .expect("sweep");
     assert_eq!((swept.uploads, swept.adopted), (1, 1));
     assert_eq!(status(&rig, &acct, &id).await["state"], "none");
     // The object is now a deleted blob and goes the delayed way.
-    assert_eq!(blob_row(&rig, &acct, &lost).await.map(|r| r.1.is_some()), Some(true));
+    assert_eq!(
+        blob_row(&rig, &acct, &lost).await.map(|r| r.1.is_some()),
+        Some(true)
+    );
     assert!(object_size(&rig, &acct, &lost).await.is_some());
     rig.clock.advance(31 * DAY);
-    sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock).await.expect("sweep");
+    sweep::run(&rig.state.pool, &rig.state.blobs, &config, &*rig.clock)
+        .await
+        .expect("sweep");
     assert!(object_size(&rig, &acct, &lost).await.is_none());
 }

@@ -1,0 +1,6 @@
+# syntax=docker/dockerfile:1
+# The reverse proxy with the Caddyfile inside (spike S4c-2). Built in the context deploy/. The file is baked in so that the stack needs no
+# bind mount of a path on the machine that runs `docker compose`: the Docker daemon may be on another host.
+# caddy:2-alpine, pinned by digest.
+FROM caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
+COPY Caddyfile /etc/caddy/Caddyfile

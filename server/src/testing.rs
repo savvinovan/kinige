@@ -232,7 +232,11 @@ impl Http {
             builder = builder.header(*name, value);
         }
         let Ok(request) = builder.body(body) else {
-            return (StatusCode::BAD_REQUEST, axum::http::HeaderMap::new(), Vec::new());
+            return (
+                StatusCode::BAD_REQUEST,
+                axum::http::HeaderMap::new(),
+                Vec::new(),
+            );
         };
         let Ok(response) = self.router.clone().oneshot(request).await;
         let (parts, body) = response.into_parts();

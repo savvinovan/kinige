@@ -142,7 +142,10 @@ async fn a_push_from_a_generation_in_the_lineage_but_not_the_current_one_is_stal
     // A restore appended a generation (written by hand here; `tests/backup_restore.rs` restores for real). No drop exists at all.
     let client = rig.state.pool.get().await.expect("connection");
     client
-        .execute("INSERT INTO lineage (pos, generation, cut_ms) VALUES (2, 888, 5)", &[])
+        .execute(
+            "INSERT INTO lineage (pos, generation, cut_ms) VALUES (2, 888, 5)",
+            &[],
+        )
         .await
         .expect("lineage");
     let fresh = msg(&maker, 2, 51, T0);
@@ -160,7 +163,11 @@ async fn a_push_from_a_generation_in_the_lineage_but_not_the_current_one_is_stal
         "stale",
         "in the lineage, not current, up to date: stale all the same"
     );
-    assert_eq!(log_seqs(&rig, &acct).await, vec![1], "and nothing was stored");
+    assert_eq!(
+        log_seqs(&rig, &acct).await,
+        vec![1],
+        "and nothing was stored"
+    );
     let (_, answer) = push_with(&rig, &acct, &cursor(888, 1, 0), Some("1"), &item).await;
     assert_eq!(outcome(&answer["results"][0]), "ok");
 }

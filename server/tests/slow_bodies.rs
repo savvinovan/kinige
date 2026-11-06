@@ -25,11 +25,14 @@ fn quick() -> Config {
 
 /// A body that sends `pieces` one after another, waiting `gap` before each.
 fn trickle(pieces: Vec<Vec<u8>>, gap: Duration) -> Body {
-    Body::from_stream(stream::unfold(pieces.into_iter(), move |mut rest| async move {
-        let next = rest.next()?;
-        tokio::time::sleep(gap).await;
-        Some((Ok::<_, std::io::Error>(Bytes::from(next)), rest))
-    }))
+    Body::from_stream(stream::unfold(
+        pieces.into_iter(),
+        move |mut rest| async move {
+            let next = rest.next()?;
+            tokio::time::sleep(gap).await;
+            Some((Ok::<_, std::io::Error>(Bytes::from(next)), rest))
+        },
+    ))
 }
 
 #[tokio::test]
@@ -61,21 +64,44 @@ async fn a_client_that_goes_quiet_or_trickles_is_cut_off_with_a_408_on_a_blob_up
         })),
     )
     .await;
-    assert_eq!((code, answer["error"].as_str()), (StatusCode::REQUEST_TIMEOUT, Some("timeout")));
+    assert_eq!(
+        (code, answer["error"].as_str()),
+        (StatusCode::REQUEST_TIMEOUT, Some("timeout"))
+    );
     // What arrived stays, and the upload resumes from there.
     let state = status(&rig, &acct, &id).await;
-    assert_eq!((state["state"].as_str(), state["received"].as_u64()), (Some("uploading"), Some(400)));
+    assert_eq!(
+        (state["state"].as_str(), state["received"].as_u64()),
+        (Some("uploading"), Some(400))
+    );
 
     // Trickling: a few bytes at a time, each within the idle limit, but far under the minimum rate once the grace period is over.
     let pieces: Vec<Vec<u8>> = blob[400..].chunks(20).map(<[u8]>::to_vec).collect();
-    let (code, answer) = upload_raw(&rig, &acct, &id, blob.len(), 400, trickle(pieces, Duration::from_millis(60))).await;
-    assert_eq!((code, answer["error"].as_str()), (StatusCode::REQUEST_TIMEOUT, Some("timeout")), "{answer}");
-    let received = status(&rig, &acct, &id).await["received"].as_u64().expect("received") as usize;
+    let (code, answer) = upload_raw(
+        &rig,
+        &acct,
+        &id,
+        blob.len(),
+        400,
+        trickle(pieces, Duration::from_millis(60)),
+    )
+    .await;
+    assert_eq!(
+        (code, answer["error"].as_str()),
+        (StatusCode::REQUEST_TIMEOUT, Some("timeout")),
+        "{answer}"
+    );
+    let received = status(&rig, &acct, &id).await["received"]
+        .as_u64()
+        .expect("received") as usize;
     assert!(received > 400 && received < blob.len(), "{received}");
 
     // A client that is fast enough finishes from where the server holds it.
     let (code, answer) = upload(&rig, &acct, &id, &blob, received, blob.len()).await;
-    assert_eq!((code, answer["result"].as_str()), (StatusCode::OK, Some("published")));
+    assert_eq!(
+        (code, answer["result"].as_str()),
+        (StatusCode::OK, Some("published"))
+    );
     assert_eq!(download(&rig, &acct, &id, None).await.2, blob);
 }
 
@@ -119,12 +145,23 @@ async fn a_client_that_goes_quiet_or_trickles_is_cut_off_with_a_408_on_a_push() 
     // A byte at a time, 60 ms apart: no chunk is idle for long, the rate is far under the minimum.
     let single: Vec<Vec<u8>> = whole.iter().map(|b| vec![*b]).collect();
     let (status, answer) = send(single, Duration::from_millis(60)).await;
-    assert_eq!((status, answer["error"].as_str()), (StatusCode::REQUEST_TIMEOUT, Some("timeout")), "{answer}");
-    assert!(log_seqs(&rig, &acct).await.is_empty(), "a cut-off push stored nothing");
+    assert_eq!(
+        (status, answer["error"].as_str()),
+        (StatusCode::REQUEST_TIMEOUT, Some("timeout")),
+        "{answer}"
+    );
+    assert!(
+        log_seqs(&rig, &acct).await.is_empty(),
+        "a cut-off push stored nothing"
+    );
 
     // Silence before the first byte.
     let (status, answer) = send(vec![whole[..30].to_vec()], Duration::from_millis(600)).await;
-    assert_eq!((status, answer["error"].as_str()), (StatusCode::REQUEST_TIMEOUT, Some("timeout")), "{answer}");
+    assert_eq!(
+        (status, answer["error"].as_str()),
+        (StatusCode::REQUEST_TIMEOUT, Some("timeout")),
+        "{answer}"
+    );
 
     // The same body in one piece is accepted.
     let (status, answer) = send(vec![whole.clone()], Duration::ZERO).await;
