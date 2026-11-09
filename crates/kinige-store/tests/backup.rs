@@ -8,6 +8,7 @@
 
 mod common;
 
+use common::old_db::downgrade_to;
 use common::ops::*;
 use common::*;
 use kinige_domain::backup::{daily_name, pre_migration_name};
@@ -44,18 +45,9 @@ fn user_version(path: &Path) -> i64 {
         .unwrap()
 }
 
-/// Returns the database to the slice 2 state: without the migration 3 tables, `user_version = 2`.
+/// The slice 2 database: schema 2 as migrations 1-2 make it (no migration 3 tables), `user_version = 2`, with the rows it had.
 fn downgrade_to_two(dir: &Path) {
-    let conn = raw(dir);
-    conn.execute_batch(
-        "DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; DROP TABLE message_tag; \
-         DROP TABLE mirror_chat; DROP TABLE message_ext; DROP TABLE search_fts; DROP TABLE search_map; \
-         DROP TABLE mcp_log; DROP TABLE mcp_log_message; ALTER TABLE draft DROP COLUMN reply_to_id; \
-         DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file; \
-         DELETE FROM app_setting WHERE key = 'search_index_version';",
-    )
-    .unwrap();
-    conn.pragma_update(None, "user_version", 2).unwrap();
+    downgrade_to(dir, 2);
 }
 
 #[test]

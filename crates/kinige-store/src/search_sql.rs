@@ -169,3 +169,66 @@ impl Store {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sql<'a>(filters: Filters<'a>, before: Option<Position<'a>>) -> SearchSql<'a> {
+        SearchSql {
+            chat_condition: "c.deleted_at IS NULL",
+            extra_columns: "c.title, c.id = ?1",
+            leading: vec!["inbox".to_string().into()],
+            query: "kni*".into(),
+            filters,
+            before,
+            limit: 50,
+        }
+    }
+
+    /// The parameters follow the leading ones in the order the conditions are written, and the limit is the last, one above the page.
+    #[test]
+    fn parameters_are_numbered_after_the_leading_ones_in_the_order_of_the_text() {
+        let (text, params) = sql(
+            Filters {
+                favorite: true,
+                tasks: true,
+                chat_id: Some("chat"),
+                from: Some("2026-01-01"),
+                to: Some("2026-12-31"),
+            },
+            Some(Position {
+                journal_date: "2026-06-01",
+                created_at: 7,
+                id: "id",
+            }),
+        )
+        .statement();
+        for part in [
+            "WHERE c.deleted_at IS NULL AND m.deleted_at IS NULL AND search_fts MATCH ?2",
+            " AND m.favorite_at IS NOT NULL AND m.is_task = 1",
+            " AND m.chat_id = ?3 AND m.journal_date >= ?4 AND m.journal_date <= ?5",
+            " AND (m.journal_date, m.created_at, m.id) < (?6, ?7, ?8)",
+            " ORDER BY m.journal_date DESC, m.created_at DESC, m.id DESC LIMIT ?9",
+        ] {
+            assert!(text.contains(part), "{part} is missing from {text}");
+        }
+        assert_eq!(params.len(), 9);
+        assert_eq!(params.first(), Some(&Value::from("inbox".to_string())));
+        assert_eq!(params.get(1), Some(&Value::from("kni*".to_string())));
+        assert_eq!(params.get(6), Some(&Value::from(7_i64)));
+        assert_eq!(params.last(), Some(&Value::from(51_i64)));
+    }
+
+    #[test]
+    fn no_filters_and_no_cursor_leave_only_the_match_and_the_limit() {
+        let (text, params) = sql(Filters::default(), None).statement();
+        assert!(text.contains("search_fts MATCH ?2 ORDER BY"), "{text}");
+        // (The columns read include both, so the conditions are told apart by their `AND`.)
+        assert!(
+            !text.contains(" AND m.favorite_at") && !text.contains(" AND m.is_task"),
+            "{text}"
+        );
+        assert_eq!(params.len(), 3);
+    }
+}

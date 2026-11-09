@@ -8,6 +8,7 @@
 
 mod common;
 
+use common::old_db::downgrade_to;
 use common::ops::*;
 use common::*;
 use kinige_domain::backup::pre_migration_name;
@@ -223,18 +224,8 @@ fn restoring_a_pre_migration_copy_of_schema_two_migrates_the_database_on_open() 
             .unwrap();
     }
     wait_closed(dir.path());
-    // A slice 2 database.
-    let conn = raw(dir.path());
-    conn.execute_batch(
-        "DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; DROP TABLE message_tag; \
-         DROP TABLE mirror_chat; DROP TABLE message_ext; DROP TABLE search_fts; DROP TABLE search_map; \
-         DROP TABLE mcp_log; DROP TABLE mcp_log_message; ALTER TABLE draft DROP COLUMN reply_to_id; \
-         DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file; \
-         DELETE FROM app_setting WHERE key = 'search_index_version';",
-    )
-    .unwrap();
-    conn.pragma_update(None, "user_version", 2).unwrap();
-    drop(conn);
+    // A slice 2 database: schema 2 as migrations 1-2 make it, with the rows it had.
+    downgrade_to(dir.path(), 2);
     // The migration takes a "before update" copy, after which "disaster strikes" the database.
     drop(Store::open_at(options(dir.path()), &at(T0 + 5 * MINUTE)).unwrap());
     wait_closed(dir.path());

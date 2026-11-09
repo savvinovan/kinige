@@ -298,13 +298,8 @@ fn a_slice_7_database_is_upgraded_in_place_and_keeps_every_row() {
         (sent.attachments[0].id.clone(), sent.id)
     };
     let before = synced_rows(dir.path());
-    // Back to the slice 7 state: no `waveform` column, `user_version = 7`.
-    {
-        let conn = raw(dir.path());
-        conn.execute_batch("ALTER TABLE attachment_local DROP COLUMN waveform;")
-            .unwrap();
-        conn.pragma_update(None, "user_version", 7).unwrap();
-    }
+    // The slice 7 database: schema 7 as migrations 1-7 make it (no `waveform` column), with the rows it had.
+    common::old_db::downgrade_to(dir.path(), 7);
     let store = open_without_mirror(dir.path());
     assert_eq!(user_version(dir.path()), LATEST_VERSION);
     assert_eq!(LATEST_VERSION, 8);

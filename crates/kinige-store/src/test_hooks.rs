@@ -3,10 +3,12 @@
 //! dev-dependency turns on (`scripts/check-release-features.sh` proves a release graph does not).
 
 use crate::agent_read::ReadFail;
-use crate::error::read_err;
+use crate::error::{read_err, write_err};
 use crate::recent_chats::LAST_ENTRY_SQL;
-use crate::{AttachFault, BackgroundThread, Store, StoreError};
+use crate::schema::{self, LATEST_VERSION, MigrateError};
+use crate::{AttachFault, BackgroundThread, Store, StoreError, open_connection};
 use kinige_domain::groups::INBOX_ID;
+use std::path::Path;
 use std::sync::Arc;
 
 impl Store {
@@ -131,4 +133,24 @@ impl Store {
             ))
         })
     }
+}
+
+/// Tests only: makes the database file `path` as an app of schema `version` (`1 ..= LATEST_VERSION`) left it: a connection
+/// with the app's settings (WAL), the first `version` entries of the migration list applied the way an upgrade applies them
+/// (each in its own transaction with its Rust step and `user_version`), and nothing else: no device id, no Inbox, no rows.
+/// The first [`Store::open`] adds those, like on any first start, and migrates the rest. A migration test starts here, not from the
+/// current schema with tables dropped. The file must not exist yet.
+#[doc(hidden)]
+pub fn db_at_version(path: &Path, version: i64) -> Result<(), StoreError> {
+    if !(1..=LATEST_VERSION).contains(&version) {
+        return Err(StoreError::Internal(format!("no schema version {version}")));
+    }
+    if path.exists() {
+        return Err(StoreError::Internal("the database file exists".into()));
+    }
+    let mut conn = open_connection(path, false)?;
+    schema::migrate_to(&mut conn, version).map_err(|error| match error {
+        MigrateError::TooNew { found } => StoreError::TooNew(found),
+        MigrateError::Sqlite(error) => write_err(error),
+    })
 }

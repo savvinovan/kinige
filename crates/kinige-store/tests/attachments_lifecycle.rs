@@ -591,13 +591,8 @@ fn migration_six_to_seven_keeps_drafts_and_takes_a_copy_first() {
             .save_chat_draft(INBOX_ID, "черновик до миграции 7", None, &now())
             .unwrap();
     }
-    common::ops::wait_closed(dir.path());
-    {
-        let conn = raw(dir.path());
-        conn.execute_batch("DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file;")
-            .unwrap();
-        conn.pragma_update(None, "user_version", 6).unwrap();
-    }
+    // The slice 5 database: schema 6 as migrations 1-6 make it (no attachment tables), with the rows it had.
+    common::old_db::downgrade_to(dir.path(), 6);
     let later = moscow(T0 + 10 * MINUTE);
     let mut opts = options(dir.path());
     opts.start_mirror = false;

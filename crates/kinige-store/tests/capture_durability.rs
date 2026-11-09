@@ -7,6 +7,7 @@
 mod common;
 
 use common::capture::*;
+use common::old_db::downgrade_to;
 use common::*;
 use kinige_domain::groups::INBOX_ID;
 use kinige_store::{LATEST_VERSION, Store};
@@ -23,19 +24,8 @@ fn migration_two_adds_only_the_draft_table_and_keeps_every_existing_row() {
             .unwrap()
     };
     let before = row(dir.path(), &sent.id);
-    // Return the database to the slice 1 state: without the drafts table and with `user_version = 1`.
-    {
-        let conn = raw(dir.path());
-        conn.execute_batch(
-            "DROP TABLE draft; DROP INDEX message_deleted; DROP TABLE message_revision; DROP TABLE tombstone; \
-             DROP TABLE message_tag; DROP TABLE mirror_chat; DROP TABLE message_ext; DROP TABLE search_fts; \
-             DROP TABLE search_map; DROP TABLE mcp_log; DROP TABLE mcp_log_message; \
-             DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file; \
-             DELETE FROM app_setting WHERE key = 'search_index_version';",
-        )
-        .unwrap();
-        conn.pragma_update(None, "user_version", 1).unwrap();
-    }
+    // The slice 1 database: schema 1 as migration 1 makes it (no drafts table), `user_version = 1`, with the rows it had.
+    downgrade_to(dir.path(), 1);
     let store = open_without_mirror(dir.path());
     let conn = raw(dir.path());
     let version: i64 = conn

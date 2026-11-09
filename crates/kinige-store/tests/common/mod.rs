@@ -5,6 +5,7 @@ pub mod attach;
 pub mod capture;
 pub mod days;
 pub mod import;
+pub mod old_db;
 pub mod ops;
 pub mod settings_file;
 pub mod voice;

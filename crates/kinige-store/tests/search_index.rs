@@ -7,6 +7,7 @@
 
 mod common;
 
+use common::old_db::downgrade_to;
 use common::*;
 use kinige_domain::MessageFlag;
 use kinige_domain::groups::INBOX_ID;
@@ -45,17 +46,9 @@ fn user_version(dir: &Path) -> i64 {
         .unwrap()
 }
 
-/// Returns the database to the slice 3 state: without the migration 4 tables, `user_version = 3`.
+/// The slice 3 database: schema 3 as migrations 1-3 make it (no migration 4 tables), `user_version = 3`, with the rows it had.
 fn downgrade_to_three(dir: &Path) {
-    let conn = raw(dir);
-    conn.execute_batch(
-        "DROP TABLE message_ext; DROP TABLE search_fts; DROP TABLE search_map; \
-         DROP TABLE mcp_log; DROP TABLE mcp_log_message; ALTER TABLE draft DROP COLUMN reply_to_id; \
-         DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file; \
-         DELETE FROM app_setting WHERE key = 'search_index_version';",
-    )
-    .unwrap();
-    conn.pragma_update(None, "user_version", 3).unwrap();
+    downgrade_to(dir, 3);
 }
 
 #[test]

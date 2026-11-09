@@ -76,6 +76,8 @@ pub use settings_file::{
     LOG_TOOL as SETTINGS_LOG_TOOL, MAX_BYTES as SETTINGS_FILE_MAX_BYTES, SettingsFile,
     SettingsFileOptions, ShortcutApplier, ShortcutRefusal, file_path as settings_file_path,
 };
+#[cfg(feature = "test-hooks")]
+pub use test_hooks::db_at_version;
 pub use time::{Now, local_hhmm, offset_secs, utc_stamp};
 
 use backup::BackupShared;
