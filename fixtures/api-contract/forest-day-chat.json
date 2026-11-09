@@ -1,0 +1,22 @@
+{
+  "rule": "The chat a click on a forest day opens: the open chat if it has entries that day, otherwise the chat with the most entries; on a tie the Inbox, and among tied chats without the Inbox the smaller id. A day with no entries opens nothing. `counts` is [chat id, live entries that day]; `inbox` stands for the Inbox id.",
+  "rust": "kinige_domain::forest_year::day_chat",
+  "mock": "web/src/api/mockRules.ts dayChat",
+  "cases": [
+    { "counts": [], "current": null, "expected": null },
+    { "counts": [["a", 0]], "current": null, "expected": null },
+    { "counts": [["a", 2]], "current": null, "expected": "a" },
+    { "counts": [["a", 2], ["b", 3]], "current": null, "expected": "b" },
+    { "counts": [["a", 2], ["b", 3]], "current": "a", "expected": "a" },
+    { "counts": [["a", 2], ["b", 3]], "current": "c", "expected": "b" },
+    { "counts": [["a", 0], ["b", 3]], "current": "a", "expected": "b" },
+    { "counts": [["b", 2], ["a", 2]], "current": null, "expected": "a" },
+    { "counts": [["a", 2], ["b", 2]], "current": null, "expected": "a" },
+    { "counts": [["a", 2], ["inbox", 2]], "current": null, "expected": "inbox" },
+    { "counts": [["inbox", 2], ["a", 2]], "current": null, "expected": "inbox" },
+    { "counts": [["b", 2], ["inbox", 2], ["a", 2]], "current": null, "expected": "inbox" },
+    { "counts": [["a", 3], ["inbox", 2]], "current": null, "expected": "a" },
+    { "counts": [["b", 4], ["a", 4], ["c", 1]], "current": null, "expected": "a" },
+    { "counts": [["a", 1], ["inbox", 1]], "current": "inbox", "expected": "inbox" }
+  ]
+}

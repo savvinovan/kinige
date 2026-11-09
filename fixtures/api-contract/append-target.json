@@ -1,0 +1,19 @@
+{
+  "rule": "The entry that capture may append to: made by the user, not older than ten minutes, on today's journal day. `ageMs` is `now` minus the entry's creation time. The mock never sees the group versions (`sv`) that Rust also checks, so every case here has a supported one.",
+  "rust": "kinige_domain::append::can_append",
+  "mock": "web/src/api/mockRules.ts canAppendTo",
+  "cases": [
+    { "now": "2026-10-21T10:00:00.000Z", "today": "2026-10-21", "origin": "user", "ageMs": 0, "journalDate": "2026-10-21", "expected": true },
+    { "now": "2026-10-21T10:00:00.000Z", "today": "2026-10-21", "origin": "user", "ageMs": 599999, "journalDate": "2026-10-21", "expected": true },
+    { "now": "2026-10-21T10:00:00.000Z", "today": "2026-10-21", "origin": "user", "ageMs": 600000, "journalDate": "2026-10-21", "expected": true },
+    { "now": "2026-10-21T10:00:00.000Z", "today": "2026-10-21", "origin": "user", "ageMs": 600001, "journalDate": "2026-10-21", "expected": false },
+    { "now": "2026-10-21T10:00:00.000Z", "today": "2026-10-21", "origin": "user", "ageMs": -5000, "journalDate": "2026-10-21", "expected": true },
+    { "now": "2026-10-21T10:00:00.000Z", "today": "2026-10-21", "origin": "agent", "ageMs": 1000, "journalDate": "2026-10-21", "expected": false },
+    { "now": "2026-10-21T10:00:00.000Z", "today": "2026-10-21", "origin": "import", "ageMs": 1000, "journalDate": "2026-10-21", "expected": false },
+    { "now": "2026-10-21T10:00:00.000Z", "today": "2026-10-21", "origin": "user", "ageMs": 60000, "journalDate": "2026-10-20", "expected": false },
+    { "now": "2026-10-21T10:00:00.000Z", "today": "2026-10-21", "origin": "user", "ageMs": 60000, "journalDate": "2026-10-22", "expected": false },
+    { "now": "2026-10-21T03:59:00.000Z", "today": "2026-10-20", "origin": "user", "ageMs": 60000, "journalDate": "2026-10-20", "expected": true },
+    { "now": "2026-10-21T03:59:00.000Z", "today": "2026-10-20", "origin": "user", "ageMs": 60000, "journalDate": "2026-10-21", "expected": false },
+    { "now": "2026-10-21T04:05:00.000Z", "today": "2026-10-21", "origin": "user", "ageMs": 420000, "journalDate": "2026-10-20", "expected": false }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "rule": "The quote of an entry that was replied to. Years later: whole years between the two days, 0 for less than a year, for a reply earlier than the original, or for a day that does not exist. Excerpt: plain text on one line (white space collapsed), at most 120 characters, cut at a word boundary with an ellipsis; the mock strips Markdown only roughly, so the cases here have no markup. State: live, trash, or missing (the moved state is in reply-flow.json). A text may be written as a list of parts, where [unit, n] is the unit repeated n times.",
+  "rust": "kinige_domain::reply::{years_later, excerpt, reply_to}",
+  "mock": "web/src/api/mockRules.ts replyQuote and yearsLater, plainSnippet",
+  "yearsLater": [
+    { "old": "2020-05-10", "reply": "2026-05-10", "expected": 6 },
+    { "old": "2020-05-10", "reply": "2026-05-09", "expected": 5 },
+    { "old": "2020-05-10", "reply": "2026-05-11", "expected": 6 },
+    { "old": "2024-02-29", "reply": "2025-02-28", "expected": 0 },
+    { "old": "2024-02-29", "reply": "2025-03-01", "expected": 1 },
+    { "old": "2024-02-29", "reply": "2028-02-29", "expected": 4 },
+    { "old": "2024-02-29", "reply": "2026-02-28", "expected": 1 },
+    { "old": "2026-05-10", "reply": "2026-05-10", "expected": 0 },
+    { "old": "2026-05-10", "reply": "2025-05-10", "expected": 0 },
+    { "old": "2026-05-10", "reply": "2020-01-01", "expected": 0 },
+    { "old": "2020-01-01", "reply": "2020-12-31", "expected": 0 },
+    { "old": "2020-01-01", "reply": "2021-01-01", "expected": 1 },
+    { "old": "2020-02-30", "reply": "2026-01-01", "expected": 0 },
+    { "old": "2020-01-01", "reply": "2026-13-01", "expected": 0 },
+    { "old": "2020-01-01", "reply": "junk", "expected": 0 },
+    { "old": "", "reply": "", "expected": 0 }
+  ],
+  "excerpts": [
+    { "body": "hello world", "expected": "hello world" },
+    { "body": "  spaced   out \n next line\n\n\nend  ", "expected": "spaced out next line end" },
+    { "body": "lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum", "expected": "lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum…" },
+    { "body": [["w", 130]], "expected": [["w", 119], "…"] },
+    { "body": "слово00 слово01 слово02 слово03 слово04 слово05 слово06 слово07 слово08 слово09 слово10 слово11 слово12 слово13 слово14 слово15 слово16 слово17 слово18 слово19 слово20 слово21 слово22 слово23 слово24 слово25 слово26 слово27 слово28 слово29", "expected": "слово00 слово01 слово02 слово03 слово04 слово05 слово06 слово07 слово08 слово09 слово10 слово11 слово12 слово13 слово14…" },
+    { "body": [["a", 119], " ", ["b", 30]], "expected": [["a", 119], "…"] },
+    { "body": [["a", 118], " ", ["b", 30]], "expected": [["a", 118], "…"] },
+    { "body": [["x", 120]], "expected": [["x", 120]] },
+    { "body": [["x", 121]], "expected": [["x", 119], "…"] },
+    { "body": [["a", 60], " ", ["a", 60], " ", ["a", 60], " "], "expected": [["a", 60], "…"] },
+    { "body": "", "expected": "" },
+    { "body": "   \n  ", "expected": "" },
+    { "body": [["😀", 121]], "expected": [["😀", 119], "…"] }
+  ],
+  "quotes": [
+    {
+      "id": "r1", "replyDate": "2026-05-10",
+      "target": { "chatId": "c1", "journalDate": "2020-05-10", "bodyMd": "plain note", "inTrash": false },
+      "expected": { "chatId": "c1", "journalDate": "2020-05-10", "excerpt": "plain note", "state": "live", "yearsLater": 6 }
+    },
+    {
+      "id": "r2", "replyDate": "2026-05-09",
+      "target": { "chatId": "c1", "journalDate": "2020-05-10", "bodyMd": "plain note", "inTrash": true },
+      "expected": { "chatId": "c1", "journalDate": "2020-05-10", "excerpt": "plain note", "state": "trash", "yearsLater": 5 }
+    },
+    {
+      "id": "r3", "replyDate": "2026-05-10",
+      "target": null,
+      "expected": { "chatId": null, "journalDate": null, "excerpt": "", "state": "missing", "yearsLater": 0 }
+    },
+    {
+      "id": "r4", "replyDate": "2019-01-01",
+      "target": { "chatId": "c2", "journalDate": "2020-05-10", "bodyMd": "written later than the reply day", "inTrash": false },
+      "expected": { "chatId": "c2", "journalDate": "2020-05-10", "excerpt": "written later than the reply day", "state": "live", "yearsLater": 0 }
+    }
+  ]
+}

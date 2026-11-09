@@ -1,0 +1,11 @@
+{
+  "rule": "The text after appending: a new paragraph, but an entry with no text yet (a photo sent alone) gets the addition as is.",
+  "rust": "kinige_domain::append::joined_body",
+  "mock": "web/src/api/mockRules.ts joinBody",
+  "cases": [
+    { "old": "first", "addition": "second", "expected": "first\n\nsecond" },
+    { "old": "", "addition": "second", "expected": "second" },
+    { "old": "first\n", "addition": "second", "expected": "first\n\n\nsecond" },
+    { "old": "a\n\nb", "addition": "c\nd", "expected": "a\n\nb\n\nc\nd" }
+  ]
+}

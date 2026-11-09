@@ -1,0 +1,42 @@
+{
+  "rule": "The recent emoji list: the newest first, a repeat moves to the front, the same emoji with and without the variation selector U+FE0F counts as one (the newest spelling is kept), at most 24 are kept, a blank text is `chat_icon_invalid`. Rust accepts only a real emoji sequence (a Unicode table); the mock accepts any text without spaces, so no case here relies on that.",
+  "rust": "Store::add_recent_emoji",
+  "mock": "MockApi.addRecentEmoji",
+  "scenarios": [
+    {
+      "name": "newest first, a repeat moves to the front",
+      "steps": [
+        { "op": "recent", "emoji": "📚", "list": ["📚"] },
+        { "op": "recent", "emoji": "🎬", "list": ["🎬", "📚"] },
+        { "op": "recent", "emoji": "😀", "list": ["😀", "🎬", "📚"] },
+        { "op": "recent", "emoji": "📚", "list": ["📚", "😀", "🎬"] },
+        { "op": "recent", "emoji": "📚", "list": ["📚", "😀", "🎬"] }
+      ]
+    },
+    {
+      "name": "with and without the variation selector is one emoji",
+      "steps": [
+        { "op": "recent", "emoji": "❤", "list": ["❤"] },
+        { "op": "recent", "emoji": "📚", "list": ["📚", "❤"] },
+        { "op": "recent", "emoji": "❤️", "list": ["❤️", "📚"] },
+        { "op": "recent", "emoji": "❤", "list": ["❤", "📚"] }
+      ]
+    },
+    {
+      "name": "a blank text is refused and changes nothing",
+      "steps": [
+        { "op": "recent", "emoji": "📚", "list": ["📚"] },
+        { "op": "recent", "emoji": "", "error": "chat_icon_invalid" },
+        { "op": "recent", "emoji": "   ", "error": "chat_icon_invalid" },
+        { "op": "recent", "emoji": "😀", "list": ["😀", "📚"] }
+      ]
+    },
+    {
+      "name": "at most 24 are kept",
+      "steps": [
+        { "op": "recentMany", "emojis": ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "😚", "😙", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗"], "count": 24, "first": "🤗", "last": "😄" },
+        { "op": "recent", "emoji": "😄", "first": "😄", "count": 24 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "rule": "Chat name: surrounding spaces trimmed, 1 to 128 characters, no control characters inside. Chat emoji: no value or blank means the default, otherwise up to 40 bytes with no spaces or control characters. `repeat` repeats both `text` and `expected` that many times.",
+  "rust": "kinige_domain::chat::normalize_title and normalize_icon; the codes are StoreError::code",
+  "mock": "web/src/api/mockRules.ts normalizeTitle and normalizeIcon",
+  "titles": [
+    { "text": "Work", "expected": "Work" },
+    { "text": "  Work  ", "expected": "Work" },
+    { "text": "Work\n", "expected": "Work" },
+    { "text": " 　Work ", "expected": "Work" },
+    { "text": "\u0085Work\u0085", "expected": "Work" },
+    { "text": "﻿Work", "expected": "﻿Work" },
+    { "text": "", "error": "chat_title_empty" },
+    { "text": "   ", "error": "chat_title_empty" },
+    { "text": "\n\t", "error": "chat_title_empty" },
+    { "text": "two\nlines", "error": "chat_title_empty" },
+    { "text": "tab\there", "error": "chat_title_empty" },
+    { "text": "bell\u0007", "error": "chat_title_empty" },
+    { "text": "x", "repeat": 128, "expected": "x" },
+    { "text": "x", "repeat": 129, "error": "chat_title_too_long" },
+    { "text": "ж", "repeat": 128, "expected": "ж" },
+    { "text": "ж", "repeat": 129, "error": "chat_title_too_long" },
+    { "text": "💬", "repeat": 128, "expected": "💬" },
+    { "text": "💬", "repeat": 129, "error": "chat_title_too_long" }
+  ],
+  "icons": [
+    { "text": null, "expected": "💬" },
+    { "text": "", "expected": "💬" },
+    { "text": "   ", "expected": "💬" },
+    { "text": "📚", "expected": "📚" },
+    { "text": " 📚 ", "expected": "📚" },
+    { "text": "📚\n", "expected": "📚" },
+    { "text": "a b", "error": "chat_icon_invalid" },
+    { "text": "a\tb", "error": "chat_icon_invalid" },
+    { "text": "a\u0007", "error": "chat_icon_invalid" },
+    { "text": "x", "repeat": 40, "expected": "x" },
+    { "text": "x", "repeat": 41, "error": "chat_icon_invalid" },
+    { "text": "🌲", "repeat": 10, "expected": "🌲" },
+    { "text": "🌲", "repeat": 11, "error": "chat_icon_invalid" },
+    { "text": "👩‍❤️‍💋‍👩", "expected": "👩‍❤️‍💋‍👩" }
+  ]
+}
