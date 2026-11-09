@@ -300,6 +300,7 @@ impl Engine {
         self.forget("write-io");
         // The signature is taken right after `rename`, before the hash step: if the file is replaced later, the signature changes and the poll notices it.
         self.last_sig = io::signature(&self.path);
+        #[cfg(feature = "test-hooks")]
         if let Some(step) = &self.options.after_rename {
             step();
         }

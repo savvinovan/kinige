@@ -86,6 +86,7 @@ impl MaintenanceShared {
         self.gated.store(false, Ordering::SeqCst);
     }
 
+    #[cfg(feature = "test-hooks")]
     pub(crate) fn inject_panic(&self) {
         self.panic_next.store(true, Ordering::SeqCst);
     }

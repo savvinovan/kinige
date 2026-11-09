@@ -43,6 +43,7 @@ mod send;
 mod settings;
 mod settings_file;
 mod tags;
+#[cfg(feature = "test-hooks")]
 mod test_hooks;
 mod time;
 mod trash;
@@ -51,9 +52,9 @@ mod writer;
 
 pub use agent::{AgentError, AgentReply, AgentRequest, AgentSettings};
 pub use agent_log::{LOG_DAYS, LOG_MAX_ROWS, LOG_PAGE};
-pub use attachment::{
-    AttachFault, AudioFile, MAX_DECODE_BYTES, Media, MediaVariant, OpenTarget, SweepReport,
-};
+#[cfg(feature = "test-hooks")]
+pub use attachment::AttachFault;
+pub use attachment::{AudioFile, MAX_DECODE_BYTES, Media, MediaVariant, OpenTarget, SweepReport};
 pub use backup::{Integrity, backups_dir, list_backups, verify_database};
 pub use capture::{CONTEXT_LEN, CaptureView};
 pub use draft::MAX_DRAFT_BYTES;
@@ -63,9 +64,11 @@ pub use feed_page::PageAt;
 pub use import::IMPORT_BATCH;
 pub use maintenance::MaintenanceReport;
 pub use recent_chats::RecentChat;
+#[cfg(feature = "test-hooks")]
+pub use recovery::restore_backup_with;
 pub use recovery::{
     RestoreReport, StartupCheck, backups, clear_needs_recovery, database_missing_but_backups_exist,
-    mark_needs_recovery, needs_recovery, restore_backup, restore_backup_with, startup_check,
+    mark_needs_recovery, needs_recovery, restore_backup, startup_check,
 };
 pub use schema::LATEST_VERSION;
 pub use settings_file::{
@@ -88,7 +91,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use writer::Writer;
 
-/// A background thread of the store (for panic tests).
+/// A background thread of the store (for panic tests). Only with the `test-hooks` feature.
+#[cfg(feature = "test-hooks")]
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy)]
 pub enum BackgroundThread {

@@ -71,6 +71,7 @@ impl DropTokens {
     }
 
     /// Tests only: a token that is `age` old (expiry cannot be waited for).
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn put_aged_for_test(&self, paths: Vec<PathBuf>, age: Duration) -> String {
         let token = self.put(paths);
@@ -81,6 +82,7 @@ impl DropTokens {
     }
 
     /// Tests only: how many drops are waiting.
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn pending_for_test(&self) -> usize {
         self.lock().len()

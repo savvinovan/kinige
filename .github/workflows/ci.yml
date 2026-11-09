@@ -75,6 +75,15 @@ jobs:
           rm driver-refusal.log
       - name: kinige-domain for wasm32
         run: cargo build -p kinige-domain --target wasm32-unknown-unknown
+      # The tests' hooks (KINIG-103) are the cargo feature `test-hooks` of `kinige-store` and `kinige`; only the crates' own dev-dependencies turn it on.
+      # The first step compiles what a build for people compiles (libraries and binaries, no dev-dependencies) with warnings denied; the second proves
+      # that the release dependency graph does not have the feature, and that the check fails when the feature is forced on.
+      - name: Without the test hooks (clippy of the code a build for people compiles)
+        run: cargo clippy --workspace --lib --bins -- -D warnings
+      - name: Release graph has no test hooks
+        run: |
+          bash scripts/check-release-features.sh
+          bash scripts/check-release-features.test.sh
       # `cargo test` above regenerated the TS types (ts-rs) and the year tables for the forest stories (slice 6, crates/kinige-domain/tests/forest_fixtures.rs);
       # any difference from what is committed, including new untracked files, fails the job (`git diff` does not see them).
       - name: Generated TS types and forest tables are up to date

@@ -1,6 +1,8 @@
 //! Hooks for the integration tests (`#[doc(hidden)]`): injected panics and faults, and a few probes of the store's internals. Not
-//! part of the API the app uses.
+//! part of the API the app uses: this module exists only with the `test-hooks` feature, which only the crate's own
+//! dev-dependency turns on (`scripts/check-release-features.sh` proves a release graph does not).
 
+use crate::agent_read::ReadFail;
 use crate::error::read_err;
 use crate::recent_chats::LAST_ENTRY_SQL;
 use crate::{AttachFault, BackgroundThread, Store, StoreError};
@@ -67,6 +69,52 @@ impl Store {
                 .map_err(read_err)?;
             rows.collect::<Result<Vec<_>, _>>().map_err(read_err)
         })
+    }
+
+    /// Tests only: runs `held` while an agent read occupies the agent connection (its lock is taken and kept). The window's reads
+    /// made inside `held` must return, because they use their own connection.
+    #[doc(hidden)]
+    pub fn with_agent_read_held_for_test<T>(&self, held: impl FnOnce() -> T) -> T {
+        let _agent = self
+            .inner
+            .agent_reader
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        held()
+    }
+
+    /// Tests only: tries to write through the agent's read connection. It is `query_only`, so the error text is returned
+    /// (`attempt to write a readonly database`) and nothing is written.
+    #[doc(hidden)]
+    pub fn write_through_agent_read_for_test(&self) -> String {
+        let attempt = self.read_agent(|conn| {
+            Ok(conn
+                .execute("UPDATE chat SET title = title || ' (agent)'", [])
+                .map(|_| String::new())
+                .unwrap_or_else(|error| error.to_string()))
+        });
+        attempt.unwrap_or_default()
+    }
+
+    /// Tests only: a panic inside `query_map` on the agent read connection. The following agent reads must keep working.
+    #[doc(hidden)]
+    #[allow(clippy::panic)] // a hook for the integration tests of the panic safety net: the panic is its whole purpose
+    pub fn panic_in_agent_read_for_test(&self) -> Result<(), StoreError> {
+        let result = self.with_reader(|conn| -> Result<(), ReadFail> {
+            let mut statement = conn.prepare("SELECT id FROM chat")?;
+            let rows = statement.query_map([], |_| -> rusqlite::Result<()> {
+                panic!("test: panic in an agent query")
+            })?;
+            for row in rows {
+                row?;
+            }
+            Ok(())
+        });
+        match result {
+            Ok(()) => Ok(()),
+            Err(ReadFail::Store(error)) => Err(error),
+            Err(ReadFail::NotFound) => Err(StoreError::Internal("not found".into())),
+        }
     }
 
     /// Pragmas of the writer connection `(synchronous, fullfsync, journal_mode)`: to check that writes are durable.

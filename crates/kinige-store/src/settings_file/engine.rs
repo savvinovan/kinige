@@ -45,6 +45,7 @@ pub struct SettingsFileOptions {
     /// Something changed (the file was applied, the file was written, a window edit): the Tauri layer tells the windows. Does not block.
     pub on_change: Arc<dyn Fn() + Send + Sync>,
     /// Tests only: a step between the app's `rename` and the hash write (the "an agent replaced the file" race).
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub after_rename: Option<Arc<dyn Fn() + Send + Sync>>,
 }
@@ -55,6 +56,7 @@ impl SettingsFileOptions {
             poll: POLL,
             shortcuts: None,
             on_change,
+            #[cfg(feature = "test-hooks")]
             after_rename: None,
         }
     }
@@ -69,6 +71,7 @@ pub struct SettingsFile {
     thread: Option<JoinHandle<()>>,
     status: Arc<Mutex<SettingsFileState>>,
     /// Finished polls of the file thread (idle ones too). Only for tests, see [`SettingsFile::polls`].
+    #[cfg(feature = "test-hooks")]
     polls: Arc<AtomicU64>,
 }
 
@@ -115,6 +118,7 @@ impl SettingsFile {
             jobs: Some(jobs),
             thread,
             status,
+            #[cfg(feature = "test-hooks")]
             polls,
         }
     }
@@ -148,12 +152,14 @@ impl SettingsFile {
 
     /// How many polls the file thread has finished (a poll that found nothing to do counts too). Tests that assert "the
     /// log did not grow over N polls" wait for this number instead of sleeping.
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn polls(&self) -> u64 {
         self.polls.load(Ordering::SeqCst)
     }
 
     /// Re-read the file now without waiting for a poll (tests).
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn sync_now(&self) {
         let (reply, answer) = mpsc::channel();

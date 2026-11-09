@@ -2549,6 +2549,7 @@ version = "0.9.0"
 dependencies = [
  "arboard",
  "image",
+ "kinige",
  "kinige-domain",
  "kinige-store",
  "log",
@@ -2635,6 +2636,7 @@ dependencies = [
  "iana-time-zone",
  "image",
  "kinige-domain",
+ "kinige-store",
  "libc",
  "log",
  "rusqlite",

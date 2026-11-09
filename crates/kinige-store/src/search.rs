@@ -216,6 +216,7 @@ impl Store {
     }
 
     /// How many times the index was healed in this launch (for tests; not part of the app API).
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn search_heal_count(&self) -> u64 {
         self.search_generation()

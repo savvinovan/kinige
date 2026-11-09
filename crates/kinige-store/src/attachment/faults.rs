@@ -7,7 +7,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 /// A step a test runs inside the pipeline.
 pub(crate) type Hook = Arc<dyn Fn() + Send + Sync>;
 
-/// A failure a test asks for.
+/// A failure a test asks for. Only with the `test-hooks` feature: a build for people cannot ask for one.
+#[cfg(feature = "test-hooks")]
 #[doc(hidden)]
 #[derive(Clone)]
 pub enum AttachFault {
@@ -47,6 +48,7 @@ impl Default for Faults {
 }
 
 impl Faults {
+    #[cfg(feature = "test-hooks")]
     pub(crate) fn set(&self, fault: AttachFault) {
         match fault {
             AttachFault::DiskFullAfter(bytes) => {
