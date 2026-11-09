@@ -38,6 +38,7 @@ mod recovery;
 mod schema;
 mod search;
 mod search_query;
+mod search_sql;
 mod send;
 mod settings;
 mod settings_file;
