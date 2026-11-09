@@ -29,15 +29,24 @@ export function mockSeason(month: number): Season {
   return "winter";
 }
 
-/** `w = Σ min(1, len/200)`, short notes (under 3 characters) do not count; `stage = clamp(round(6·ln(1+w)/ln(31)), 0, 6)`. */
-export function mockStage(lengths: readonly number[]): number {
-  const weight = lengths.filter((len) => len >= 3).reduce((sum, len) => sum + Math.min(1, len / 200), 0);
+/**
+ * `w = Σ min(1, len/200) + 0.5 per attachment`, a note under 3 characters without attachments does not count;
+ * `stage = clamp(round(6·ln(1+w)/ln(31)), 0, 6)`. `attachments[i]` is the attachment count of the note with `lengths[i]`.
+ * `fixtures/api-contract/forest-stage.json` pins it against Rust.
+ */
+export function mockStage(lengths: readonly number[], attachments: readonly number[] = []): number {
+  const weight = lengths.reduce((sum, len, index) => {
+    const files = attachments[index] ?? 0;
+    return len >= 3 || files > 0 ? sum + Math.min(1, len / 200) + 0.5 * files : sum;
+  }, 0);
   if (weight <= 0) return 0;
   return Math.min(6, Math.max(0, Math.round((6 * Math.log1p(weight)) / Math.log1p(30))));
 }
 
 export interface MockDayFacts {
   lengths: number[];
+  /** Attachments of each note, in the order of `lengths` (none when missing). */
+  attachments?: number[];
   excerpt: string | null;
   /** Live photos of the day (slice 7). */
   photos?: number;
@@ -57,7 +66,7 @@ export function mockDays(year: number, first: FirstWeekday, facts: ReadonlyMap<s
       ...cellOf(date),
       season: mockSeason(date.getUTCMonth() + 1),
       notes: day?.lengths.length ?? 0,
-      stage: mockStage(day?.lengths ?? []),
+      stage: mockStage(day?.lengths ?? [], day?.attachments),
       excerpt: day?.excerpt ?? null,
       photos: day?.photos ?? 0,
       voices: day?.voices ?? 0,

@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { INBOX_ID } from "../api/KinigeApi";
-import { mockMessage } from "../api/MockApi";
-import { MOCK_SETTINGS_FILE } from "../api/MockApiSlice4b";
+import { MOCK_SETTINGS_FILE, mockMessage } from "../api/MockApi";
 import type { AgentLogEntry } from "../api/generated/AgentLogEntry";
 import { act, fireEvent, screen, waitFor, within } from "../test/render";
 import { openWindow } from "../test/prefsWindow";

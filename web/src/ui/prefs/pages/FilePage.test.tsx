@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { MOCK_SETTINGS_FILE } from "../../../api/MockApiSlice4b";
+import { MOCK_SETTINGS_FILE } from "../../../api/MockApi";
 import type { SettingsFileState } from "../../../api/generated/SettingsFileState";
 import { fireEvent, render, screen, waitFor, within } from "../../../test/render";
 import { FilePage } from "./FilePage";

@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState } from "react";
 import { INBOX_ID } from "../../api/KinigeApi";
-import { MOCK_SETTINGS_FILE } from "../../api/MockApiSlice4b";
-import { MOCK_AGENT_SOCKET } from "../../api/MockApiSlice4a";
+import { MOCK_AGENT_SOCKET, MOCK_SETTINGS_FILE } from "../../api/MockApi";
 import { mockMessage } from "../../api/mockData";
 import type { AgentAccess } from "../../api/generated/AgentAccess";
 import type { AgentChatChoice } from "../../api/generated/AgentChatChoice";

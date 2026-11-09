@@ -29,7 +29,7 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     // `npm run test:coverage` (CI → Codecov): app code only. Without tests, stories, generated types
-    // and what only tests and Storybook need (MockApi and its data, the settings demo data, the stories frame).
+    // and what only tests and Storybook need (MockApi and its areas and data, the settings demo data, the stories frame).
     coverage: {
       provider: "v8",
       reporter: ["lcov", "text-summary"],
@@ -41,6 +41,8 @@ export default defineConfig({
         "src/api/generated/**",
         "src/api/MockApi*.ts",
         "src/api/mock*.ts",
+        "src/api/mock/**",
+        "src/api/apiContractFixtures.ts",
         "src/api/demoData.ts",
         "src/ui/settings/demo*.ts",
         "src/ui/stories/**",
