@@ -85,7 +85,9 @@
         { "op": "send", "chat": "nowhere", "body": "", "error": "empty_message" },
         { "op": "send", "chat": "nowhere", "body": "reply to nowhere", "replyTo": "m1", "error": "reply_target_not_found" },
         { "op": "send", "chat": "nowhere", "body": "", "replyTo": "m1", "error": "empty_message" },
-        { "op": "saveDraft", "chat": "nowhere", "body": "a draft", "error": "chat_not_found" }
+        { "op": "saveDraft", "chat": "nowhere", "body": "a draft", "error": "chat_not_found" },
+        { "op": "saveDraft", "chat": "nowhere", "body": "a draft", "replyTo": "", "error": "reply_target_not_found" },
+        { "op": "saveDraft", "chat": "a", "body": "a draft", "replyTo": "", "error": "reply_target_not_found" }
       ]
     },
     {

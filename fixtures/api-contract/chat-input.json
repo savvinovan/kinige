@@ -6,9 +6,9 @@
     { "text": "Work", "expected": "Work" },
     { "text": "  Work  ", "expected": "Work" },
     { "text": "Work\n", "expected": "Work" },
-    { "text": " 　Work ", "expected": "Work" },
+    { "text": "\u00a0\u3000Work\u2003", "expected": "Work" },
     { "text": "\u0085Work\u0085", "expected": "Work" },
-    { "text": "﻿Work", "expected": "﻿Work" },
+    { "text": "\ufeffWork", "expected": "\ufeffWork" },
     { "text": "", "error": "chat_title_empty" },
     { "text": "   ", "error": "chat_title_empty" },
     { "text": "\n\t", "error": "chat_title_empty" },
@@ -36,6 +36,6 @@
     { "text": "x", "repeat": 41, "error": "chat_icon_invalid" },
     { "text": "🌲", "repeat": 10, "expected": "🌲" },
     { "text": "🌲", "repeat": 11, "error": "chat_icon_invalid" },
-    { "text": "👩‍❤️‍💋‍👩", "expected": "👩‍❤️‍💋‍👩" }
+    { "text": "👩\u200d❤\ufe0f\u200d💋\u200d👩", "expected": "👩\u200d❤\ufe0f\u200d💋\u200d👩" }
   ]
 }

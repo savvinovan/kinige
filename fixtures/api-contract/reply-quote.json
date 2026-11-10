@@ -1,7 +1,7 @@
 {
   "rule": "The quote of an entry that was replied to. Years later: whole years between the two days, 0 for less than a year, for a reply earlier than the original, or for a day that does not exist. Excerpt: plain text on one line (white space collapsed), at most 120 characters, cut at a word boundary with an ellipsis; the mock strips Markdown only roughly, so the cases here have no markup. State: live, trash, or missing (the moved state is in reply-flow.json). A text may be written as a list of parts, where [unit, n] is the unit repeated n times.",
   "rust": "kinige_domain::reply::{years_later, excerpt, reply_to}",
-  "mock": "web/src/api/mockRules.ts replyQuote and yearsLater, plainSnippet",
+  "mock": "web/src/api/mockRules.ts replyQuote and yearsLater, web/src/api/mockText.ts plainSnippet",
   "yearsLater": [
     { "old": "2020-05-10", "reply": "2026-05-10", "expected": 6 },
     { "old": "2020-05-10", "reply": "2026-05-09", "expected": 5 },

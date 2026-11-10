@@ -33,8 +33,9 @@ export class MockCompose {
   }
 
   saveDraft(chatId: string, body: string, replyToId: string | null = null): Promise<void> {
-    if (!this.s.chats.some((c) => c.id === chatId)) return Promise.reject(new KinigeApiError("chat_not_found"));
+    // As in Rust, a reply id that cannot be an entry is refused before the chat is looked up (mock ids are not UUIDs, so only "").
     if (replyToId !== null && replyToId === "") return Promise.reject(new KinigeApiError("reply_target_not_found"));
+    if (!this.s.chats.some((c) => c.id === chatId)) return Promise.reject(new KinigeApiError("chat_not_found"));
     if (body === "") this.s.drafts.delete(chatId);
     else this.s.drafts.set(chatId, body);
     if (replyToId === null) this.s.replyDrafts.delete(chatId);

@@ -79,11 +79,16 @@ describe("fixtures/api-contract: the pure rules of the mock", () => {
   });
 
   it("append-target: the entry capture appends to", () => {
-    type Entry = { now: string; today: string; origin: string; ageMs: number; journalDate: string; expected: boolean };
+    type Entry = { now: string; today: string; origin: string; ageMs: number; journalDate: string; readOnly?: boolean; expected: boolean };
     for (const entry of fixture<Cases<Entry>>("append-target").cases) {
       const now = Date.parse(entry.now);
       expect(mockJournalDate(new Date(now)), JSON.stringify(entry)).toBe(entry.today);
-      const candidate = { origin: entry.origin, createdAt: now - entry.ageMs, journalDate: entry.journalDate };
+      const candidate = {
+        origin: entry.origin,
+        createdAt: now - entry.ageMs,
+        journalDate: entry.journalDate,
+        readOnly: entry.readOnly ?? false,
+      };
       expect(canAppendTo(candidate, now), JSON.stringify(entry)).toBe(entry.expected);
     }
   });

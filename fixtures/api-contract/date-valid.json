@@ -1,7 +1,7 @@
 {
   "rule": "A journal date is a real calendar day written YYYY-MM-DD, with a year from 1000 to 9999. Future dates are allowed.",
   "rust": "kinige_domain::journal::is_valid_journal_date",
-  "mock": "web/src/api/mockData.ts isRealDate",
+  "mock": "web/src/api/mockRules.ts isRealDate",
   "cases": [
     { "text": "2026-10-21", "valid": true },
     { "text": "2024-02-29", "valid": true },

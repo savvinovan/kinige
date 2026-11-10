@@ -75,7 +75,7 @@ export interface Row {
   deletedAt: number | null;
   /** Texts before each edit (`edit` revisions). */
   revisions: string[];
-  /** The entry is a reply (slice 5): the addressee entry id; the `view.replyTo` quote is built on read (`MockApiBase.viewOf`). */
+  /** The entry is a reply (slice 5): the addressee entry id; the `view.replyTo` quote is built on read (`MockState.viewOf`). */
   replyToId?: string;
 }
 

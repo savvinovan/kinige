@@ -76,11 +76,17 @@ fn the_entry_that_capture_appends_to() {
         let now = at_ms(text(case, "now"));
         let today = text(case, "today");
         assert_eq!(journal_date(now, 0, DAY_BOUNDARY_MINUTES), today, "{case}");
+        // A read-only entry has a group of a newer version than this app knows (`sv` above `SCHEMA_VERSION`).
+        let read_only = case["readOnly"].as_bool().unwrap_or(false);
         let candidate = AppendCandidate {
             origin: text(case, "origin"),
             created_at: now - int(case, "ageMs"),
             journal_date: text(case, "journalDate"),
-            hlc_json: r#"{"body":{"sv":1}}"#,
+            hlc_json: if read_only {
+                r#"{"body":{"sv":999}}"#
+            } else {
+                r#"{"body":{"sv":1}}"#
+            },
         };
         let appends = can_append(&candidate, now, today).unwrap();
         assert_eq!(appends, case["expected"].as_bool().unwrap(), "{case}");

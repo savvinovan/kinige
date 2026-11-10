@@ -31,7 +31,12 @@ export const LIMITS = {
   waveformPeaks: 64,
 } as const;
 
-export const DEFAULT_ICON = "💬";
+export const DEFAULT_ICON = "\u{1F4AC}";
+
+/** U+FE0F, written as a code point so that it is visible in the source. */
+const VARIATION_SELECTOR_16 = String.fromCodePoint(0xfe0f);
+/** Control characters and the bidi overrides and isolates (U+202A..U+202E, U+2066..U+2069): Rust drops them from a file name. */
+const HIDDEN_IN_NAMES = new RegExp("[\\p{Cc}\\u202a-\\u202e\\u2066-\\u2069]", "gu");
 
 /** An entry with no attachments, as the reply quote and the day card say it (slice 7). */
 export const NO_ATTACHMENTS = { photos: 0, files: 0, voices: 0, voiceMs: null, name: null } as const;
@@ -97,9 +102,16 @@ export function daysLeft(deletedAt: number, now: number): number {
   return Math.max(0, Math.ceil((deletedAt + LIMITS.trashDays * DAY_MS - now) / DAY_MS));
 }
 
-/** The entry that capture may append to: made by the user, not older than ten minutes, on today's day. */
-export function canAppendTo(entry: { origin: string; createdAt: number; journalDate: string }, nowMs: number): boolean {
+/**
+ * The entry that capture may append to: made by the user, not older than ten minutes, on today's day, and not read-only (an entry with
+ * a group of a newer version, which Rust refuses to rewrite).
+ */
+export function canAppendTo(
+  entry: { origin: string; createdAt: number; journalDate: string; readOnly: boolean },
+  nowMs: number,
+): boolean {
   return (
+    !entry.readOnly &&
     entry.origin === "user" &&
     entry.journalDate === mockJournalDate(new Date(nowMs)) &&
     nowMs - entry.createdAt <= LIMITS.appendWindowMs
@@ -145,7 +157,7 @@ export function looksLikeEmoji(text: string): boolean {
 
 /** The emoji without the variation selector: with and without it is one emoji in the recent list. */
 export function emojiIdentity(emoji: string): string {
-  return emoji.replaceAll("️", "");
+  return emoji.replaceAll(VARIATION_SELECTOR_16, "");
 }
 
 /** The chat a click on a forest day opens; `counts` is [chat id, live entries that day]. */
@@ -163,7 +175,7 @@ export function dayChat(counts: readonly (readonly [string, number])[], current:
  */
 export function storedExt(name: string): string {
   const last = name.split(/[\\/]/).reverse().find((part) => rustTrim(part) !== "") ?? "";
-  const clean = rustTrim(last.replace(/[\p{Cc}‪-‮⁦-⁩]/gu, ""));
+  const clean = rustTrim(last.replace(HIDDEN_IN_NAMES, ""));
   const dot = clean.lastIndexOf(".");
   const ext = clean.slice(dot + 1).replace(/[A-Z]/g, (letter) => letter.toLowerCase());
   return dot > 0 && /^[a-z0-9]{1,10}$/.test(ext) ? ext : "bin";
