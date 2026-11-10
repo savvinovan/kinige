@@ -3,9 +3,9 @@
 
 Modes (`.claude/settings.json` runs them):
 - `bash`: PreToolUse for Bash. Blocks string-replacement edits and shell writes into sources (rule 8), the user's real
-  data, GUI and system settings on the user's Mac, Claude configs, pushes to main and force pushes, pushes of commits
-  in which gitleaks finds a secret, docker commands on other projects' objects, git in the main checkout by a
-  subagent, and cargo builds on a nearly full disk. Then it records the snapshot for `post`.
+  data, GUI and system settings on the user's Mac, writes to Claude configs, pushes to main and force pushes, pushes of
+  commits in which gitleaks finds a secret, docker commands on other projects' objects, git that changes the main
+  checkout when a subagent runs it, and cargo builds on a nearly full disk. Then it records the snapshot for `post`.
 - `post`: PostToolUse for Bash. Reports source files the command rewrote by script (`snapshot.py`).
 - `paths`: PreToolUse for the file tools. Blocks the user's real data, writes to Claude configs, and edits by a
   subagent in the main checkout instead of its worktree.
@@ -24,7 +24,8 @@ import sys
 
 sys.dont_write_bytecode = True  # no __pycache__ in the checkout the hook runs from
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import snapshot  # noqa: E402  (the guard's own module, next to it)
+import shellparse  # noqa: E402  (the guard's own modules, next to it)
+import snapshot  # noqa: E402
 
 HOME_PREFIX = r"(?:~|\$HOME|\$\{HOME\}|/Users/[^/\s'\"]+)/"
 USER_DATA_RE = re.compile(
@@ -33,13 +34,6 @@ USER_DATA_RE = re.compile(
 )
 USER_DATA_DIRS = ("Library/Application Support/me.savvinov.kinige", "Library/Logs/me.savvinov.kinige", "Documents/Kinige")
 CLAUDE_CONFIGS = (".claude.json", ".claude/settings.json", ".claude/settings.local.json")
-
-SOURCE_PATH_RE = re.compile(
-    r"(?:^|/)(?:crates|src-tauri|web/src|web/\.storybook|server|spikes|scripts|docs|design|deploy|fixtures|\.github"
-    r"|\.claude/(?:agents|hooks|skills))/\S+"
-    r"|(?:^|/)(?:Cargo\.toml|CLAUDE\.md|README\.md|deny\.toml|ATTRIBUTION\.md|rust-toolchain\.toml|clippy\.toml"
-    r"|\.gitleaksignore|package\.json|vite\.config\.ts)$"
-)
 INLINE_WRITE_RE = re.compile(
     r"write_text\(|write_bytes\(|\.write\(|open\([^)]*['\"][wax]b?\+?['\"]|writeFileSync|writeFile\(|fs\.write"
     r"|os\.replace\(|shutil\.(?:copy|move)"
@@ -49,15 +43,23 @@ INLINE_PATH_RE = re.compile(
     r"|Cargo\.toml|CLAUDE\.md|README\.md|deny\.toml"
 )
 SHELLS = ("bash", "sh", "zsh")
+FILE_COPIERS = {"cp", "mv", "install", "rsync", "ln", "dd"}
 GUI_SCRIPTS = ("run-app.sh", "screenshot-window.sh", "measure-cold-start.sh")
-GUI_PROGRAMS = {"osascript", "screencapture", "cliclick", "tccutil"}
+GUI_PROGRAMS = {"open", "osascript", "screencapture", "cliclick", "tccutil", "killall"}
 CARGO_HEAVY = {"build", "test", "clippy", "check", "run", "doc", "bench", "nextest", "tauri", "install"}
 # The tests raise the floor through the environment of the hook process (an agent's command cannot set it).
 MIN_FREE_GIB = float(os.environ.get("KINIGE_GUARD_MIN_FREE_GIB") or 6)
-GIT_MUTATING = {"checkout", "switch", "commit", "merge", "rebase", "reset", "stash", "pull", "cherry-pick", "revert", "am"}
+# What a subagent may run in the main checkout: git that does not change it. Everything else is blocked there.
+GIT_READ_ONLY = {
+    "status", "log", "diff", "show", "fetch", "rev-parse", "ls-files", "ls-tree", "blame", "grep", "merge-base",
+    "cat-file", "describe", "shortlog", "ls-remote", "for-each-ref", "rev-list", "name-rev", "check-ignore", "version",
+    "help", "push",
+}
+PUSH_OPTIONS_WITH_VALUE = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
 DOCKER_REMOVING = {"rm", "stop", "kill", "restart", "pause", "rmi", "down"}
 WORKTREE_DIR = os.path.join(".claude", "worktrees")
 MEMORY_DIRS = (os.path.join(".claude", "agent-memory"), os.path.join(".claude", "agent-memory-local"))
+SPEC_DIR = os.path.join("docs", "slices") + os.sep
 
 RULE8 = (
     "CLAUDE.md rule 8: no edits to source files with string-replacement scripts or shell writes. Use the Edit tool for a "
@@ -90,55 +92,58 @@ def main():
 def check_bash(data):
     command = str((data.get("tool_input") or {}).get("command") or "")
     cwd = str(data.get("cwd") or os.getcwd())
-    problem = check_command(command, data, cwd, depth=0)
+    problem, workdir = check_command(command, data, cwd, depth=0)
     if problem:
         return problem
-    snapshot.save(data, cwd)
+    snapshot.save(data, workdir)
     return None
 
 
 def check_command(command, data, cwd, depth):
-    skeleton, bodies = shell_skeleton(command)
+    """(the first problem or None, the directory the line ends up working in)."""
+    skel, bodies = shellparse.skeleton(command)
     workdir = cwd
-    for words in split_segments(skeleton):
-        words = unwrap(words)
+    for raw in shellparse.segments(skel):
+        words = shellparse.command_words(raw)
         if not words:
             continue
         prog, args = words[0], words[1:]
         name = re.sub(r"^(python)3?[\d.]*$", r"\g<1>3", os.path.basename(prog))
         # A commit message or PR body may name the data paths (git, gh); an inline script's text is all of the command.
-        seen = command if is_inline_script(name, args, words) else " ".join(bodies.get(w, w) for w in words)
+        seen = command if is_inline_script(name, args, words) else " ".join(bodies.get(w, w) for w in raw)
         if name not in ("git", "gh") and USER_DATA_RE.search(seen):
             return ("this command touches the user's real Kinige data (Application Support, Logs or ~/Documents/Kinige). "
-                    "Never open or change it; use a temporary KINIGE_DATA_DIR and KINIGE_MIRROR_DIR with synthetic data.")
+                    "Never open or change it; use a temporary KINIGE_DATA_DIR and KINIGE_MIRROR_DIR with synthetic data."), workdir
         if name == "cd" and args:
             workdir = os.path.normpath(os.path.join(workdir, os.path.expanduser(args[0])))
             continue
         if name in SHELLS and "-c" in args and depth < 3:
-            inner = args[args.index("-c") + 1] if args.index("-c") + 1 < len(args) else ""
-            problem = check_command(bodies.get(inner, inner), data, workdir, depth + 1)
+            at = args.index("-c") + 1
+            inner = args[at] if at < len(args) else ""
+            problem, _ = check_command(bodies.get(inner, inner), data, workdir, depth + 1)
             if problem:
-                return problem
+                return problem, workdir
             continue
-        problem = (check_edit(name, args, words, command) or check_gui(prog, name, args)
-                   or check_claude(name, args, words) or check_git(name, args, data, workdir)
-                   or check_docker(name, args, command) or check_disk(name, args, workdir))
+        problem = (check_edit(name, args, words, command, workdir) or check_gui(prog, name, args)
+                   or check_claude(name, args, words, bodies, command) or check_git(name, args, data, workdir)
+                   or check_docker(name, args) or check_disk(name, args, workdir))
         if problem:
-            return problem
-    return None
+            return problem, workdir
+    return None, workdir
 
 
 def check_post(data):
     command = str((data.get("tool_input") or {}).get("command") or "")
-    skeleton, _ = shell_skeleton(command)
-    programs = [(w[0], w[1] if len(w) > 1 else "") for w in (unwrap(s) for s in split_segments(skeleton)) if w]
-    changed = snapshot.compare(data, programs)
+    skel, _ = shellparse.skeleton(command)
+    words = [w for w in (shellparse.command_words(s) for s in shellparse.segments(skel)) if w]
+    changed = snapshot.compare(data, words)
     if not changed:
         return None
     shown = ", ".join(changed[:10]) + (" and {} more".format(len(changed) - 10) if len(changed) > 10 else "")
-    return ("this Bash command rewrote source files: {}. {} Revert these files (`git checkout -- <path>` for tracked ones, "
-            "delete new ones) and redo the change with Edit or Write. If the command is a generator that is meant to write "
-            "sources, say so in your report so the coordinator adds it to .claude/hooks/snapshot.py.").format(shown, RULE8)
+    return ("after this Bash command these source files differ from before it: {}. {} If this command made the change, "
+            "undo only what it changed (see `git diff`; do not throw away your earlier work in the same files) and make "
+            "the change with Edit or Write. If someone else changed the files meanwhile, or the command is a generator "
+            "meant to write sources, say so in your report.").format(shown, RULE8)
 
 
 def check_paths(data):
@@ -157,22 +162,26 @@ def check_paths(data):
     if writing and any(path == os.path.join(home, c) for c in CLAUDE_CONFIGS):
         return "Claude configs are the user's: do not change them from this project (CLAUDE.md, Environment)."
     project = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or "")
-    if writing and data.get("agent_type") and project and in_main_checkout(path, project):
+    agent = str(data.get("agent_type") or "")
+    if writing and agent and project and in_main_checkout(path, project):
+        if agent == "slice-spec" and os.path.relpath(path, project).startswith(SPEC_DIR):
+            return None
         return ("a subagent edits the main checkout ({}). Work in your own worktree (CLAUDE.md rule 13); the main checkout "
                 "belongs to the coordinator.").format(project)
     return None
 
 
-def check_edit(name, args, words, command):
+def check_edit(name, args, words, command, workdir):
     if name in ("sed", "gsed") and any(re.match(r"-[a-zA-Z]*i", a) or a.startswith("--in-place") for a in args):
         return "`sed -i` edits files in place. " + RULE8
     if name == "perl" and any(re.match(r"-(?![MI])[a-zA-Z0-9]*i", a) for a in args):
         return "`perl -i` edits files in place. " + RULE8
-    target = redirect_target(words) or tee_target(name, args)
-    if target and SOURCE_PATH_RE.search(target):
-        return "the command writes into {} through the shell. {}".format(target, RULE8)
+    for target in shellparse.redirect_targets(words) + shellparse.tee_targets(name, args):
+        if is_repo_source(target, workdir):
+            return "the command writes into {} through the shell. {}".format(target, RULE8)
     if is_inline_script(name, args, words) and INLINE_WRITE_RE.search(command) and INLINE_PATH_RE.search(command):
-        return "an inline {} script writes a repository file. {}".format(name, RULE8)
+        return ("an inline {} script writes and names a repository file. {} Analysis that only reads the repository and "
+                "writes elsewhere goes in a script file in your scratch directory.").format(name, RULE8)
     return None
 
 
@@ -182,12 +191,25 @@ def is_inline_script(name, args, words):
         any(a in ("-c", "-e", "-", "--eval", "-p") for a in args) or "<<" in words)
 
 
+def is_repo_source(target, workdir):
+    """True when `target` (relative to `workdir`) is a source file of a Kinige checkout or worktree."""
+    if "$" in target:
+        return False
+    path = os.path.normpath(os.path.join(workdir, os.path.expanduser(target)))
+    parent = os.path.dirname(path)
+    while parent and not os.path.isdir(parent):
+        parent = os.path.dirname(parent)
+    root = snapshot.kinige_root(parent)
+    if root is None:
+        return False
+    return snapshot.is_source(os.path.relpath(path, os.path.realpath(root)) if path.startswith("/private/")
+                              else os.path.relpath(os.path.realpath(path), os.path.realpath(root)))
+
+
 def check_gui(prog, name, args):
     if name in GUI_PROGRAMS:
-        return ("`{}` drives the user's Mac (GUI, input, screenshots or privacy settings). GUI checks run only on GitHub "
-                "runners through screens.yml.").format(name)
-    if name == "open" and any(a.rstrip("/").endswith(".app") or a == "-a" or a.startswith("x-apple") for a in args):
-        return "`open` launches an app on the user's Mac. Acceptance builds are opened by the user; GUI checks run on screens.yml."
+        return ("`{}` drives the user's Mac (opening apps or files, input, screenshots, privacy settings, system "
+                "processes). GUI checks run only on GitHub runners through screens.yml.").format(name)
     if name == "defaults" and args and args[0] in ("write", "delete"):
         return "`defaults write` changes macOS settings on the user's Mac. Never change system settings."
     script = prog if name.endswith(".sh") else (args[0] if name in SHELLS and args else "")
@@ -196,43 +218,95 @@ def check_gui(prog, name, args):
     return None
 
 
-def check_claude(name, args, words):
+def check_claude(name, args, words, bodies, command):
     if name == "claude" and args and args[0] in ("mcp", "config"):
         return "do not register servers or change Claude configs from this project (kinige-mcp is never registered)."
-    target = redirect_target(words) or tee_target(name, args)
-    if target and any(target.endswith(c) for c in CLAUDE_CONFIGS):
+    targets = shellparse.redirect_targets(words) + shellparse.tee_targets(name, args)
+    if name in FILE_COPIERS:
+        targets += [bodies.get(a, a) for a in args if not a.startswith("-")]
+    if any(t.rstrip("/").endswith(c) for t in targets for c in CLAUDE_CONFIGS):
         return "Claude configs are the user's: do not write them from this project."
+    if is_inline_script(name, args, words) and INLINE_WRITE_RE.search(command) and any(c in command for c in CLAUDE_CONFIGS):
+        return "an inline script writes a Claude config. Claude configs are the user's: do not write them from this project."
     return None
 
 
 def check_git(name, args, data, workdir):
     if name != "git":
         return None
-    sub, rest, repo = git_subcommand(args, workdir)
-    if sub in GIT_MUTATING and data.get("agent_type"):
+    sub, rest, repo = shellparse.git_subcommand(args, workdir)
+    if data.get("agent_type") and not git_read_only(sub, rest):
         project = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or "")
         if project and in_main_checkout(os.path.realpath(repo), project):
-            return "a subagent runs `git {}` in the main checkout. Work in your own worktree (CLAUDE.md rule 13).".format(sub)
+            return ("a subagent runs `git {}` in the main checkout ({}); there only git that changes nothing is allowed. "
+                    "Work in your own worktree (CLAUDE.md rule 13).").format(sub, project)
     if sub != "push":
         return None
-    for a in rest:
+    positional, i = [], 0
+    while i < len(rest):
+        a = rest[i]
+        if a in PUSH_OPTIONS_WITH_VALUE:
+            i += 2
+            continue
         if a in ("--force", "--all", "--mirror") or (re.match(r"-[a-zA-Z]*f[a-zA-Z]*$", a) and not a.startswith("--")):
             return "force pushes and `--all`/`--mirror` are not allowed. Use `--force-with-lease` on your own branch."
-    refspecs = [a for a in rest if not a.startswith("-")][1:]
-    for ref in refspecs:
-        if ref.split(":")[-1].lstrip("+") in ("main", "master", "refs/heads/main", "refs/heads/master"):
-            return "pushing to main is not allowed: changes reach main only through a reviewed PR."
-    return gitleaks_problem(repo, refspecs)
+        if not a.startswith("-"):
+            positional.append(a)
+        i += 1
+    refspecs = positional[1:]
+    if any(r.startswith("+") for r in refspecs):
+        return "a `+refspec` is a force push, which is not allowed. Use `--force-with-lease` on your own branch."
+    sources = [r.split(":")[0] for r in refspecs] or ["HEAD"]
+    targets = [r.split(":")[-1] for r in refspecs]
+    if "HEAD" in sources and not any(":" in r for r in refspecs):
+        targets.append(current_branch(repo))
+    if any(t in ("main", "master", "refs/heads/main", "refs/heads/master") for t in targets):
+        return "pushing to main is not allowed: changes reach main only through a reviewed PR."
+    return gitleaks_problem(repo, sources[0])
 
 
-def check_docker(name, args, command):
+def git_read_only(sub, rest):
+    if sub in GIT_READ_ONLY:
+        return True
+    if sub == "worktree":
+        return bool(rest) and rest[0] in ("add", "list")
+    if sub == "branch":
+        return all(a in ("-a", "-r", "-v", "-vv", "--list", "--show-current", "--all", "--remotes") for a in rest)
+    if sub == "stash":
+        return bool(rest) and rest[0] in ("list", "show")
+    if sub in ("remote", "config"):
+        return not rest or rest[0] in ("-v", "show", "get-url", "--get", "--list", "-l", "get")
+    return False
+
+
+def current_branch(repo):
+    try:
+        out = subprocess.run(["git", "-C", repo, "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True,
+                             timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
+def check_docker(name, args):
     if name != "docker":
         return None
     if "prune" in args:
         return "`docker … prune` would remove other projects' objects on ubuntu-server. Remove your own `kinige-` objects by name."
-    # The whole command line, so `docker rm -f $(docker ps -aq --filter name=kinige-)` counts as targeting ours.
-    if DOCKER_REMOVING & set(args) and "kinige" not in command:
-        return "this docker command targets containers, images or volumes not named `kinige-…`. Touch only your own objects."
+    verbs = [a for a in args if a in DOCKER_REMOVING]
+    if not verbs:
+        return None
+    if "compose" in args:
+        names = [args[i + 1] for i, a in enumerate(args[:-1]) if a in ("-p", "--project-name")]
+        ok = bool(names) and all(n.startswith("kinige") for n in names)
+    else:
+        targets = [a for a in args[args.index(verbs[0]) + 1:] if not a.startswith("-")]
+        # No targets left: they come from a substitution (`docker rm -f $(docker ps -aq --filter name=kinige-)`),
+        # which the segment split removed; that inner command is checked as its own segment.
+        ok = all(t.startswith("kinige") for t in targets)
+    if not ok:
+        return ("this docker command targets objects that are not named `kinige-…` (a compose project needs `-p kinige-…`). "
+                "Touch only your own objects on ubuntu-server.")
     return None
 
 
@@ -245,15 +319,14 @@ def check_disk(name, args, workdir):
     except OSError:
         return None
     if free < MIN_FREE_GIB:
-        return ("only {:.1f} GiB free (the floor is {} GiB). Delete your own CARGO_TARGET_DIR or other files you created, "
+        return ("only {:.1f} GiB free (the floor is {:g} GiB). Delete your own CARGO_TARGET_DIR or other files you created, "
                 "or report to the coordinator; do not clean shared caches.").format(free, MIN_FREE_GIB)
     return None
 
 
-def gitleaks_problem(repo, refspecs):
+def gitleaks_problem(repo, src):
     if not shutil.which("gitleaks"):
         return None
-    src = refspecs[0].split(":")[0].lstrip("+") if refspecs else ""
     try:
         out = subprocess.run(
             ["gitleaks", "git", "--no-banner", "--redact", "--exit-code", "3",
@@ -269,104 +342,11 @@ def gitleaks_problem(repo, refspecs):
     return None
 
 
-def git_subcommand(args, workdir):
-    repo, i = workdir, 0
-    while i < len(args) and args[i].startswith("-"):
-        if args[i] == "-C" and i + 1 < len(args):
-            repo = os.path.normpath(os.path.join(repo, os.path.expanduser(args[i + 1])))
-            i += 2
-        elif args[i] in ("-c", "--git-dir", "--work-tree") and i + 1 < len(args):
-            i += 2
-        else:
-            i += 1
-    if i >= len(args):
-        return "", [], repo
-    return args[i], args[i + 1:], repo
-
-
 def in_main_checkout(path, project):
     if not (path == project or path.startswith(project + os.sep)):
         return False
     rel = os.path.relpath(path, project)
     return not (rel.startswith(WORKTREE_DIR) or rel.startswith(MEMORY_DIRS))
-
-
-def unwrap(words):
-    """The command that `xargs`, `find -exec` or `nice` run, so `xargs sed -i` is checked as `sed -i`."""
-    while words:
-        name = os.path.basename(words[0])
-        if name in ("xargs", "nice", "timeout", "caffeinate"):
-            rest, i = words[1:], 0
-            while i < len(rest) and (rest[i].startswith("-") or (name == "timeout" and i == 0)):
-                i += 2 if rest[i] in ("-n", "-I", "-L", "-P", "-d", "-s", "-E") else 1
-            words = rest[i:]
-        elif name == "find" and ("-exec" in words or "-execdir" in words):
-            key = "-exec" if "-exec" in words else "-execdir"
-            words = [w for w in words[words.index(key) + 1:] if w not in (";", "\\;", "+", "{}")]
-        else:
-            return words
-    return words
-
-
-def redirect_target(words):
-    for i, w in enumerate(words):
-        m = re.match(r"^\d?(?:>>?|&>>?)(.*)$", w)
-        if not m:
-            continue
-        target = m.group(1) or (words[i + 1] if i + 1 < len(words) else "")
-        if target and not target.startswith("&") and target != "/dev/null":
-            return target
-    return ""
-
-
-def tee_target(name, args):
-    if name != "tee":
-        return ""
-    files = [a for a in args if not a.startswith("-")]
-    return files[0] if files else ""
-
-
-def shell_skeleton(command):
-    """The command without heredoc bodies, and its quoted strings.
-
-    A quoted string becomes its text when it is one word (a path, a sed script), otherwise a `QSTRn` placeholder whose
-    text is in the returned dict (for `bash -c`). Commit messages and PR bodies are quoted or heredocs, so an arrow or a
-    path inside them is never read as a redirect.
-    """
-    text = re.sub(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?\n\s*\2[ \t]*(?=\n|$)", r"<< \3", command, flags=re.S)
-    out, bodies, i = [], {}, 0
-    while i < len(text):
-        c = text[i]
-        if c in "'\"":
-            j = text.find(c, i + 1)
-            while c == '"' and j > 0 and text[j - 1] == "\\":
-                j = text.find(c, j + 1)
-            if j < 0:
-                j = len(text)
-            body = text[i + 1:j]
-            if body and not re.search(r"\s", body):
-                out.append(body)
-            else:
-                key = "QSTR{}".format(len(bodies))
-                bodies[key] = body
-                out.append(key)
-            i = j + 1
-            continue
-        out.append(c)
-        i += 1
-    return "".join(out), bodies
-
-
-def split_segments(skeleton):
-    """Words of each simple command, split on `&&`, `||`, `;`, `|`, `(`, `)`, `$(` and newlines; leading VAR=x dropped."""
-    segments = []
-    for part in re.split(r"&&|\|\||[;|\n()`]|\$\(", skeleton):
-        words = re.findall(r"\d?&?>>?\S*|<<|\S+", part)
-        while words and (re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[0])
-                         or words[0] in ("sudo", "time", "command", "exec", "env", "nohup")):
-            words = words[1:]
-        segments.append(words)
-    return segments
 
 
 if __name__ == "__main__":
