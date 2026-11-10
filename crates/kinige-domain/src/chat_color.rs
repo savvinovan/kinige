@@ -90,7 +90,7 @@ mod tests {
     use super::*;
     use crate::groups::INBOX_ID;
 
-    /// The same pairs as in `web/src/api/mockColor.test.ts`, taken from the former TypeScript function `tintForId`.
+    /// The same pairs as in `fixtures/api-contract/chat-color.json`, taken from the former TypeScript function `tintForId`.
     const VECTORS: [(&str, ChatColor); 10] = [
         ("", ChatColor::Teal),
         ("a", ChatColor::Pink),

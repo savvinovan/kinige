@@ -6,6 +6,7 @@
 #   scripts/check-release-features.sh [cargo tree arguments]
 #       default: every member of the workspace. The arguments replace `--workspace`, so a control can force the feature on:
 #       `scripts/check-release-features.sh -p kinige -F kinige-store/test-hooks` must fail (scripts/check-release-features.test.sh).
+# Exit codes: 0 clean, 1 the feature is on, 2 the check could not run (cargo failed, e.g. an unknown feature, or the list of crates is stale).
 # The tree is inverted (`-i <crate>`): a forward `cargo tree` does not print a feature that only the command line turns on, while the
 # inverted one lists every feature that is on for the crate, with whatever asked for it.
 set -euo pipefail
@@ -27,7 +28,9 @@ fi
 PROBLEMS=0
 for crate in "${CRATES[@]}"; do
   # Captured first: a failing `cargo tree` (a typo in the arguments, a broken lockfile) must not look like an empty, clean graph.
-  GRAPH="$(cargo tree --locked -e no-dev,features -i "$crate" "$@")" || { echo "cargo tree failed for $crate" >&2; exit 2; }
+  # `--target=all`: without it `cargo tree` resolves the host's target only, and a `[target.'cfg(windows)'.dependencies]` entry that turns the
+  # feature on would pass on a Mac or Linux runner and ship in the Windows installer.
+  GRAPH="$(cargo tree --locked -e no-dev,features -i "$crate" --target=all "$@")" || { echo "cargo tree failed for $crate" >&2; exit 2; }
   # A sanity check on the output itself: the crate's own default feature is always there.
   # (A here-string, not a pipe: `grep -q` closing the pipe early would fail the pipeline under pipefail.)
   grep -qF "$crate feature \"default\"" <<< "$GRAPH" || { echo "cargo tree shows no features of $crate; the check cannot see anything" >&2; exit 2; }

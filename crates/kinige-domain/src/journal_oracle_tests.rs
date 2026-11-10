@@ -8,50 +8,14 @@ use chrono::{Datelike, NaiveDate, NaiveTime};
 
 const SEED: u64 = 0x4B49_4E49_4745;
 
+const DAY_MS: i64 = 86_400_000;
+
 /// About 253,000 years in milliseconds: well inside the years `chrono` represents (+-262,000), with room for any offset.
 const IN_RANGE_MS: i64 = 8_000_000_000_000_000;
 
 const OFFSETS: [i32; 12] = [
     -43_200, -28_800, -18_000, -3_600, 0, 3_600, 7_200, 10_800, 19_800, 20_700, 43_200, 50_400,
 ];
-
-// The oracle: the code as it was before KINIG-103, copied unchanged.
-
-fn old_journal_date(created_at_ms: i64, utc_offset_secs: i32, boundary_minutes: u32) -> String {
-    let local_secs = created_at_ms.div_euclid(1000) + i64::from(utc_offset_secs);
-    let shifted = local_secs - i64::from(boundary_minutes) * 60;
-    let (year, month, day) = old_civil_from_days(shifted.div_euclid(86_400));
-    format!("{year:04}-{month:02}-{day:02}")
-}
-
-fn old_civil_from_days(days: i64) -> (i64, u32, u32) {
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let day_of_era = z.rem_euclid(146_097);
-    let year_of_era =
-        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
-    let year = year_of_era + era * 400;
-    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-    let mp = (5 * day_of_year + 2) / 153;
-    let day = (day_of_year - (153 * mp + 2) / 5 + 1) as u32;
-    let month = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    (if month <= 2 { year + 1 } else { year }, month, day)
-}
-
-fn old_is_valid_journal_date(text: &str) -> bool {
-    let Some((year, month, day)) = date_parts(text) else {
-        return false;
-    };
-    let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
-    let days = match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 if leap => 29,
-        2 => 28,
-        _ => return false,
-    };
-    year >= 1000 && (1..=days).contains(&day)
-}
 
 #[test]
 fn random_moments_match_the_old_algorithm() {
@@ -236,7 +200,43 @@ fn a_moment_beyond_the_calendar_is_clamped_and_never_panics() {
     );
 }
 
-const DAY_MS: i64 = 86_400_000;
+// The oracle: the code as it was before KINIG-103, copied unchanged.
+
+fn old_journal_date(created_at_ms: i64, utc_offset_secs: i32, boundary_minutes: u32) -> String {
+    let local_secs = created_at_ms.div_euclid(1000) + i64::from(utc_offset_secs);
+    let shifted = local_secs - i64::from(boundary_minutes) * 60;
+    let (year, month, day) = old_civil_from_days(shifted.div_euclid(86_400));
+    format!("{year:04}-{month:02}-{day:02}")
+}
+
+fn old_civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let day_of_era = z.rem_euclid(146_097);
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let year = year_of_era + era * 400;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let mp = (5 * day_of_year + 2) / 153;
+    let day = (day_of_year - (153 * mp + 2) / 5 + 1) as u32;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    (if month <= 2 { year + 1 } else { year }, month, day)
+}
+
+fn old_is_valid_journal_date(text: &str) -> bool {
+    let Some((year, month, day)) = date_parts(text) else {
+        return false;
+    };
+    let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+    let days = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap => 29,
+        2 => 28,
+        _ => return false,
+    };
+    year >= 1000 && (1..=days).contains(&day)
+}
 
 /// xorshift64: enough for test inputs, and the same on every machine.
 struct Rng(u64);

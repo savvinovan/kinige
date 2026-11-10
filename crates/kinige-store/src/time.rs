@@ -101,6 +101,19 @@ fn wall_clock(ms: i64, utc_offset_secs: i32) -> NaiveTime {
 mod tests {
     use super::*;
 
+    /// Milliseconds up to about 253,000 years from the epoch, in both directions: inside what `chrono` holds.
+    const IN_RANGE_MS: i64 = 8_000_000_000_000_000;
+
+    const ZONES: [&str; 7] = [
+        "UTC",
+        "Europe/Berlin",
+        "Europe/Moscow",
+        "America/New_York",
+        "Asia/Kolkata",
+        "Pacific/Auckland",
+        "garbage",
+    ];
+
     #[test]
     fn offsets_follow_daylight_saving_time() {
         // Berlin: 2026-03-29 01:00 UTC is the switch to daylight saving time.
@@ -128,39 +141,6 @@ mod tests {
         assert_eq!(local_hhmm(ms, "garbage"), "01:00");
         assert_eq!(local_hhmm(-60_000, "UTC"), "23:59", "before the epoch");
     }
-
-    // The oracle: the time-of-day code as it was before KINIG-103, copied unchanged.
-
-    fn old_hhmmss(ms: i64, utc_offset_secs: i32) -> String {
-        let local = ms.div_euclid(1000) + i64::from(utc_offset_secs);
-        let seconds = local.rem_euclid(86_400);
-        format!(
-            "{:02}{:02}{:02}",
-            seconds / 3600,
-            seconds % 3600 / 60,
-            seconds % 60
-        )
-    }
-
-    fn old_local_hhmm(created_at_ms: i64, tz: &str) -> String {
-        let offset = offset_secs(tz, created_at_ms).unwrap_or(0);
-        let local = created_at_ms.div_euclid(1000) + i64::from(offset);
-        let minutes = local.rem_euclid(86_400) / 60;
-        format!("{:02}:{:02}", minutes / 60, minutes % 60)
-    }
-
-    /// Milliseconds up to about 253,000 years from the epoch, in both directions: inside what `chrono` holds.
-    const IN_RANGE_MS: i64 = 8_000_000_000_000_000;
-
-    const ZONES: [&str; 7] = [
-        "UTC",
-        "Europe/Berlin",
-        "Europe/Moscow",
-        "America/New_York",
-        "Asia/Kolkata",
-        "Pacific/Auckland",
-        "garbage",
-    ];
 
     #[test]
     fn time_of_day_matches_the_old_arithmetic() {
@@ -231,5 +211,25 @@ mod tests {
             }
             assert_eq!(local_hhmm(ms, "Europe/Berlin"), "00:00");
         }
+    }
+
+    // The oracle: the time-of-day code as it was before KINIG-103, copied unchanged.
+
+    fn old_hhmmss(ms: i64, utc_offset_secs: i32) -> String {
+        let local = ms.div_euclid(1000) + i64::from(utc_offset_secs);
+        let seconds = local.rem_euclid(86_400);
+        format!(
+            "{:02}{:02}{:02}",
+            seconds / 3600,
+            seconds % 3600 / 60,
+            seconds % 60
+        )
+    }
+
+    fn old_local_hhmm(created_at_ms: i64, tz: &str) -> String {
+        let offset = offset_secs(tz, created_at_ms).unwrap_or(0);
+        let local = created_at_ms.div_euclid(1000) + i64::from(offset);
+        let minutes = local.rem_euclid(86_400) / 60;
+        format!("{:02}:{:02}", minutes / 60, minutes % 60)
     }
 }

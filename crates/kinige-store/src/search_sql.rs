@@ -7,7 +7,6 @@
 //! ([`Store::read_healing`]). If the error remains after the rebuild, the database itself is corrupt and the signal goes out
 //! as usual.
 
-use crate::agent_read::ReadFail;
 use crate::view::VIEW_COLUMNS;
 use crate::{Store, StoreError};
 use rusqlite::types::Value;
@@ -117,13 +116,8 @@ impl SearchSql<'_> {
     }
 }
 
-/// Adds a parameter and returns its number.
-fn bind(params: &mut Vec<Value>, value: impl Into<Value>) -> usize {
-    params.push(value.into());
-    params.len()
-}
-
-/// A failure of a read that may be a damaged search index or a corrupt database.
+/// A failure of a read that may be a damaged search index or a corrupt database. Implemented by `StoreError` here and by the
+/// agent's `ReadFail` in `agent_read`.
 pub(crate) trait ReadError: From<StoreError> {
     fn store_error(&self) -> Option<&StoreError>;
 }
@@ -131,15 +125,6 @@ pub(crate) trait ReadError: From<StoreError> {
 impl ReadError for StoreError {
     fn store_error(&self) -> Option<&StoreError> {
         Some(self)
-    }
-}
-
-impl ReadError for ReadFail {
-    fn store_error(&self) -> Option<&StoreError> {
-        match self {
-            ReadFail::Store(error) => Some(error),
-            ReadFail::NotFound => None,
-        }
     }
 }
 
@@ -170,21 +155,15 @@ impl Store {
     }
 }
 
+/// Adds a parameter and returns its number.
+fn bind(params: &mut Vec<Value>, value: impl Into<Value>) -> usize {
+    params.push(value.into());
+    params.len()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn sql<'a>(filters: Filters<'a>, before: Option<Position<'a>>) -> SearchSql<'a> {
-        SearchSql {
-            chat_condition: "c.deleted_at IS NULL",
-            extra_columns: "c.title, c.id = ?1",
-            leading: vec!["inbox".to_string().into()],
-            query: "kni*".into(),
-            filters,
-            before,
-            limit: 50,
-        }
-    }
 
     /// The parameters follow the leading ones in the order the conditions are written, and the limit is the last, one above the page.
     #[test]
@@ -230,5 +209,17 @@ mod tests {
             "{text}"
         );
         assert_eq!(params.len(), 3);
+    }
+
+    fn sql<'a>(filters: Filters<'a>, before: Option<Position<'a>>) -> SearchSql<'a> {
+        SearchSql {
+            chat_condition: "c.deleted_at IS NULL",
+            extra_columns: "c.title, c.id = ?1",
+            leading: vec!["inbox".to_string().into()],
+            query: "kni*".into(),
+            filters,
+            before,
+            limit: 50,
+        }
     }
 }

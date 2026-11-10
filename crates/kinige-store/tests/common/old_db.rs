@@ -9,8 +9,9 @@ use std::path::{Path, PathBuf};
 
 /// Replaces the database in `dir` (closed: no `Store` on it) with one of schema `version` holding the rows the current database
 /// had, table by table and column by column, for the tables and columns that version has. What a later migration added is
-/// not there (no table, no column, no row); the search index is derived, so it is not copied either: the version mark is dropped and
-/// the first open builds the index from the entries, as it does for any database whose index is missing.
+/// not there (no table, no column, no row). From version 4 the search index comes along: the map and the shadow tables of the FTS5
+/// table are copied row for row together with the version mark in `app_setting`, so the first open finds an intact index and does not
+/// rebuild it, as it is across a real migration. Every table is checked to have the same number of rows as its source.
 pub fn downgrade_to(dir: &Path, version: i64) {
     let current = db_path(dir);
     // The store has let go of the file: the last connection to close deletes `-wal` and `-shm` after its checkpoint (the
@@ -26,17 +27,23 @@ pub fn downgrade_to(dir: &Path, version: i64) {
             .unwrap();
         for table in plain_tables(&conn) {
             let columns = shared_columns(&conn, &table);
-            if columns.is_empty() {
-                continue;
-            }
+            assert!(
+                !columns.is_empty(),
+                "{table} has no column in common with the current schema: its rows would be left behind"
+            );
+            // The old schema's own start (migration 4 puts the index version mark into `app_setting`) gives way to the rows.
             conn.execute_batch(&format!(
-                // OR REPLACE: migration 4 has already put the index version mark into `app_setting`; it is deleted below.
-                "INSERT OR REPLACE INTO main.{table} ({columns}) SELECT {columns} FROM current.{table};"
+                "DELETE FROM main.{table}; \
+                 INSERT INTO main.{table} ({columns}) SELECT {columns} FROM current.{table};"
             ))
             .unwrap();
+            assert_eq!(
+                count(&conn, "main", &table),
+                count(&conn, "current", &table),
+                "every row of {table} was copied"
+            );
         }
-        conn.execute_batch("DELETE FROM main.app_setting WHERE key = 'search_index_version'; DETACH DATABASE current;")
-            .unwrap();
+        conn.execute_batch("DETACH DATABASE current;").unwrap();
     }
     fs::remove_file(&current).unwrap();
     for suffix in ["-wal", "-shm"] {
@@ -52,17 +59,24 @@ fn side_file(database: &Path, suffix: &str) -> PathBuf {
     PathBuf::from(name)
 }
 
-/// The ordinary tables of the old schema: not the search index (virtual, with its shadow tables, and the map to it) and not
-/// SQLite's own.
+/// The tables of the old schema that hold rows: the ordinary ones and the shadow tables of the search index (`search_fts_data`
+/// and the others), but not the virtual table itself, which has no rows of its own, and not SQLite's own.
 fn plain_tables(conn: &Connection) -> Vec<String> {
     conn.prepare(
         "SELECT name FROM main.sqlite_master \
-         WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'search_%' ORDER BY name",
+         WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE 'CREATE VIRTUAL%' ORDER BY name",
     )
     .unwrap()
     .query_map([], |row| row.get(0))
     .unwrap()
     .collect::<Result<_, _>>()
+    .unwrap()
+}
+
+fn count(conn: &Connection, schema: &str, table: &str) -> i64 {
+    conn.query_row(&format!("SELECT COUNT(*) FROM {schema}.{table}"), [], |r| {
+        r.get(0)
+    })
     .unwrap()
 }
 

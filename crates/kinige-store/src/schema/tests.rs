@@ -6,7 +6,7 @@
 //! and 8 in v0.9.0, and none of them changed afterwards. (Migration 5 was edited once, on 29.10.2026 in the slice 4a branch,
 //! before the first release; the pinned text is the edited one, which is what every release has.)
 //!
-//! To add a migration, append it to `MIGRATIONS` and append its hash to `PINNED` below; this is the only line that changes.
+//! To add a migration, append it to `MIGRATIONS` and append its hash to `PINNED` below; this is the only entry that changes.
 //! Never edit a pinned one: add a new migration that changes the schema instead.
 
 use super::{LATEST_VERSION, MIGRATIONS};
@@ -14,7 +14,7 @@ use kinige_domain::attachment::hex_lower;
 use sha2::{Digest, Sha256};
 
 /// `(version, SHA-256 of the migration text as a hex string)`.
-const PINNED: [(i64, &str); 8] = [
+const PINNED: &[(i64, &str)] = &[
     (
         1,
         "7a14d665df877c9fd984385e23f1af9541fe940cf6fe250bbe55beb46f1300b2",
@@ -57,7 +57,7 @@ fn every_migration_has_its_pinned_hash() {
         "a migration was added or removed: append its SHA-256 to `PINNED` (and never change a pinned one)"
     );
     assert_eq!(LATEST_VERSION, PINNED.len() as i64);
-    for (index, (sql, (version, pinned))) in MIGRATIONS.iter().zip(PINNED).enumerate() {
+    for (index, (sql, &(version, pinned))) in MIGRATIONS.iter().zip(PINNED).enumerate() {
         assert_eq!(version, index as i64 + 1, "PINNED is in order");
         let actual = hex_lower(Sha256::digest(sql.as_bytes()).as_slice());
         assert_eq!(

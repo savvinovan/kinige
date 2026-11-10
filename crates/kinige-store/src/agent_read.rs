@@ -4,7 +4,7 @@
 use crate::agent::VISIBLE;
 use crate::agent_entry::{chat_title, page, to_entry};
 use crate::error::read_err;
-use crate::search_sql::{Filters, Position, SearchSql};
+use crate::search_sql::{Filters, Position, ReadError, SearchSql};
 use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row_at};
 use crate::{Now, Store, StoreError, read_on};
 use kinige_domain::MessageView;
@@ -50,6 +50,15 @@ pub(crate) enum ReadFail {
 impl From<StoreError> for ReadFail {
     fn from(error: StoreError) -> Self {
         ReadFail::Store(error)
+    }
+}
+
+impl ReadError for ReadFail {
+    fn store_error(&self) -> Option<&StoreError> {
+        match self {
+            ReadFail::Store(error) => Some(error),
+            ReadFail::NotFound => None,
+        }
     }
 }
 

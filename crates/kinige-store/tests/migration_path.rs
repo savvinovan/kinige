@@ -8,30 +8,15 @@
 
 mod common;
 
+use common::old_db::downgrade_to;
 use common::*;
+use kinige_domain::groups::INBOX_ID;
 use kinige_store::{LATEST_VERSION, db_at_version};
+use rusqlite::Connection;
 use std::path::Path;
 
 /// `(type, name, table, sql)` of every object in the database, in a fixed order.
 type Schema = Vec<(String, String, String, Option<String>)>;
-
-fn schema_of(path: &Path) -> Schema {
-    rusqlite::Connection::open(path)
-        .unwrap()
-        .prepare("SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY type, name")
-        .unwrap()
-        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
-        .unwrap()
-        .collect::<Result<_, _>>()
-        .unwrap()
-}
-
-fn user_version(path: &Path) -> i64 {
-    rusqlite::Connection::open(path)
-        .unwrap()
-        .pragma_query_value(None, "user_version", |r| r.get(0))
-        .unwrap()
-}
 
 #[test]
 fn every_old_version_upgrades_to_the_schema_of_a_fresh_database() {
@@ -87,4 +72,62 @@ fn an_old_database_is_never_made_from_nothing_or_over_something() {
         "an existing database is not touched"
     );
     assert_eq!(user_version(&path), 3);
+}
+
+#[test]
+fn from_version_four_the_old_database_keeps_an_intact_search_index_across_the_migration() {
+    for version in 3..LATEST_VERSION {
+        let dir = tempfile::tempdir().unwrap();
+        {
+            let store = open_without_mirror(dir.path());
+            store.send_message(INBOX_ID, "книга", &moscow(T0)).unwrap();
+        }
+        downgrade_to(dir.path(), version);
+        let conn = Connection::open(db_path(dir.path())).unwrap();
+        let mark: Option<String> = conn
+            .query_row(
+                "SELECT value FROM app_setting WHERE key = 'search_index_version'",
+                [],
+                |r| r.get(0),
+            )
+            .ok();
+        if version < 4 {
+            assert_eq!(mark, None, "schema {version} has no index and no mark");
+        } else {
+            assert!(mark.is_some(), "schema {version} keeps the mark");
+            let found: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM search_fts WHERE search_fts MATCH 'книг*'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(found, 1, "schema {version} has the entry in its index");
+        }
+        drop(conn);
+        let store = open_without_mirror(dir.path());
+        let hits = store
+            .search("книга", &Default::default(), None, 10)
+            .unwrap()
+            .hits;
+        assert_eq!(hits.len(), 1, "from schema {version}");
+    }
+}
+
+fn schema_of(path: &Path) -> Schema {
+    Connection::open(path)
+        .unwrap()
+        .prepare("SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY type, name")
+        .unwrap()
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap()
+}
+
+fn user_version(path: &Path) -> i64 {
+    Connection::open(path)
+        .unwrap()
+        .pragma_query_value(None, "user_version", |r| r.get(0))
+        .unwrap()
 }
