@@ -12,6 +12,10 @@ src-tauri/gen/
 # Мост MCP как sidecar (`bundle.externalBin`): кладёт scripts/build-app.sh и scripts/run-app.sh, в build.rs — пустая заглушка.
 src-tauri/binaries/
 .claude/worktrees/
+# Per-machine Claude Code settings, the coordinator's progress file and agents' local memory (KINIG-110).
+.claude/settings.local.json
+.claude/progress.md
+.claude/agent-memory-local/
 # The self-hosting stack (deploy/): the operator's own secrets never get into git.
 deploy/.env
 

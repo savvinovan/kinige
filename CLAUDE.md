@@ -37,6 +37,20 @@ Status: slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol
 15. **The PR title and the message of the branch's first commit carry the Huly task number** (`KINIG-N: …`), so that Huly links the PR to the task. Exception: the release commit and PR `Release vX.Y.Z` from `scripts/release.sh` (ADR-0012) go without a number.
 16. **Repository language is English:** docs, specs, ADRs, code comments, log messages, commits and PRs. UI strings are bilingual (ru/en) via i18n.
 
+**The harness enforces part of this** (`.claude/settings.json`, KINIG-110), for the coordinator and every subagent:
+- **`.claude/hooks/guard.py` blocks:**
+  - string-replacement edits and shell writes into sources (rule 8);
+  - the user's real data paths, GUI and system settings on this Mac, and Claude configs;
+  - pushes to main and force pushes, and a push in which gitleaks finds a secret;
+  - docker commands on objects not named `kinige-…`;
+  - git and edits by a subagent in the main checkout (rule 13);
+  - cargo builds with less than 6 GiB free.
+- **The guard also reports** a source file that a Bash command rewrote by script.
+- **A blocked call says why and what to do instead.** A reviewer's fault-injection probe goes through `git apply` of a patch in its own worktree.
+- **`scripts/pre-pr-check.py`** checks a branch before its PR: files grown past 400 lines, backup files, invisible characters, unaligned tables, whitespace, rustfmt.
+- **Tests:** `python3 -I .claude/hooks/tests/test_hooks.py` and `python3 -I scripts/pre-pr-check.test.py`, both run in CI's `web` job.
+- **Progress file:** the coordinator's `.claude/progress.md` (ignored by git) is re-injected at session start and after compaction.
+
 ## Code style
 
 Applies to new and edited code; don't rewrite existing code en masse.
