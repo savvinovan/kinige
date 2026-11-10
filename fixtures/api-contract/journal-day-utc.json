@@ -1,0 +1,20 @@
+{
+  "rule": "The entry day is the local time minus the 04:00 boundary. The mock knows only UTC; in UTC it must agree with Rust. Other time zones are deliberately not mocked.",
+  "rust": "kinige_domain::journal::journal_date(ms, 0, DAY_BOUNDARY_MINUTES)",
+  "mock": "web/src/api/mockRules.ts mockJournalDate",
+  "cases": [
+    { "atUtc": "2026-10-21T06:12:00.000Z", "day": "2026-10-21" },
+    { "atUtc": "2026-10-21T04:00:00.000Z", "day": "2026-10-21" },
+    { "atUtc": "2026-10-21T03:59:59.999Z", "day": "2026-10-20" },
+    { "atUtc": "2026-10-21T00:00:00.000Z", "day": "2026-10-20" },
+    { "atUtc": "2026-10-21T23:59:59.999Z", "day": "2026-10-21" },
+    { "atUtc": "2026-01-01T03:59:59.999Z", "day": "2025-12-31" },
+    { "atUtc": "2026-01-01T04:00:00.000Z", "day": "2026-01-01" },
+    { "atUtc": "2024-03-01T01:00:00.000Z", "day": "2024-02-29" },
+    { "atUtc": "2026-03-01T01:00:00.000Z", "day": "2026-02-28" },
+    { "atUtc": "2026-12-31T23:59:59.999Z", "day": "2026-12-31" },
+    { "atUtc": "2000-01-01T00:00:00.000Z", "day": "1999-12-31" },
+    { "atUtc": "1970-01-01T03:00:00.000Z", "day": "1969-12-31" },
+    { "atUtc": "1970-01-01T04:00:00.000Z", "day": "1970-01-01" }
+  ]
+}

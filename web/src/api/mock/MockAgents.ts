@@ -1,14 +1,15 @@
-import { KinigeApiError } from "./KinigeApi";
-import { MockApiSlice4 } from "./MockApiSlice4";
-import type { AgentAccess } from "./generated/AgentAccess";
-import type { AgentLogEntry } from "./generated/AgentLogEntry";
-import type { AgentLogPage } from "./generated/AgentLogPage";
-import type { AgentLogRow } from "./generated/AgentLogRow";
-import type { AgentMode } from "./generated/AgentMode";
-import type { AgentSocket } from "./generated/AgentSocket";
+import { KinigeApiError } from "../KinigeApi";
+import { LIMITS } from "../mockRules";
+import type { AgentAccess } from "../generated/AgentAccess";
+import type { AgentLogEntry } from "../generated/AgentLogEntry";
+import type { AgentLogPage } from "../generated/AgentLogPage";
+import type { AgentLogRow } from "../generated/AgentLogRow";
+import type { AgentMode } from "../generated/AgentMode";
+import type { AgentSocket } from "../generated/AgentSocket";
+import type { MockState } from "./MockState";
 
-/** Log rows per page (like `LOG_PAGE` in Rust). */
-export const MOCK_LOG_PAGE = 30;
+/** Log rows per page (`LOG_PAGE` in Rust, pinned by `fixtures/api-contract/constants.json`). */
+export const MOCK_LOG_PAGE = LIMITS.agentLogPage;
 
 const BRIDGE = "/Applications/Kinige.app/Contents/MacOS/kinige-mcp";
 const SOCKET = "/Users/me/Library/Application Support/me.savvinov.kinige/mcp/kinige.sock";
@@ -24,22 +25,21 @@ export const MOCK_AGENT_SOCKET: AgentSocket = {
 };
 
 /**
- * AI agent access in `MockApi` (slice 4a): the flag, the mode, the visible chats (`ai_excluded` ones are not accepted, as in
- * Rust), the call log by pages and the entries of a row. A test fills the log and the row entries through `addAgentLog`.
+ * AI agent access in `MockApi` (slice 4a): the flag, the mode, the visible chats (`ai_excluded` ones are not accepted, as in Rust), the
+ * call log by pages and the entries of a row. A test fills the log and the row entries through `addAgentLog`.
  */
-export abstract class MockApiSlice4a extends MockApiSlice4 {
-  /** The "settings changed" event (a window edit): windows listen to it, implemented in `MockApiSlice4b`. */
-  abstract emitSettingsChanged(): void;
-
-  agentEnabled = false;
-  agentMode: AgentMode = "read";
+export class MockAgents {
+  enabled = false;
+  mode: AgentMode = "read";
   /** Ids of the chats marked "visible to the agent". */
-  agentChats: string[] = [];
+  chats: string[] = [];
   /** Chats with `ai_excluded` (the chat mock has no such flag). */
-  readonly agentExcluded = new Set<string>();
-  agentSocket: AgentSocket = MOCK_AGENT_SOCKET;
+  readonly excluded = new Set<string>();
+  socket: AgentSocket = MOCK_AGENT_SOCKET;
   private logRows: AgentLogRow[] = [];
   private readonly logEntries = new Map<number, AgentLogEntry[]>();
+
+  constructor(private readonly s: MockState) {}
 
   /** A new log row (older rows come earlier in the call order). Returns its `id`. */
   addAgentLog(row: Partial<AgentLogRow> & Pick<AgentLogRow, "tool">, entries: AgentLogEntry[] = []): number {
@@ -61,11 +61,11 @@ export abstract class MockApiSlice4a extends MockApiSlice4 {
   }
 
   getAgentAccess(): Promise<AgentAccess> {
-    return this.run("getAgentAccess", "", () => ({
-      enabled: this.agentEnabled,
-      mode: this.agentMode,
-      chats: this.chats.map((chat) => {
-        const aiExcluded = this.agentExcluded.has(chat.id);
+    return this.s.run("getAgentAccess", "", () => ({
+      enabled: this.enabled,
+      mode: this.mode,
+      chats: this.s.chats.map((chat) => {
+        const aiExcluded = this.excluded.has(chat.id);
         return {
           id: chat.id,
           title: chat.title,
@@ -73,39 +73,39 @@ export abstract class MockApiSlice4a extends MockApiSlice4 {
           isInbox: chat.isInbox,
           count: chat.count,
           aiExcluded,
-          visible: !aiExcluded && this.agentChats.includes(chat.id),
+          visible: !aiExcluded && this.chats.includes(chat.id),
         };
       }),
-      socket: this.agentSocket,
+      socket: this.socket,
     }));
   }
 
   setAgentEnabled(enabled: boolean): Promise<void> {
-    return this.run("setAgentEnabled", String(enabled), () => {
-      this.agentEnabled = enabled;
-      this.emitSettingsChanged();
+    return this.s.run("setAgentEnabled", String(enabled), () => {
+      this.enabled = enabled;
+      this.s.emitSettingsChanged();
     });
   }
 
   setAgentMode(mode: AgentMode): Promise<void> {
-    return this.run("setAgentMode", mode, () => {
-      this.agentMode = mode;
-      this.emitSettingsChanged();
+    return this.s.run("setAgentMode", mode, () => {
+      this.mode = mode;
+      this.s.emitSettingsChanged();
     });
   }
 
   setAgentChats(chatIds: readonly string[]): Promise<void> {
-    return this.run("setAgentChats", chatIds.join(","), () => {
+    return this.s.run("setAgentChats", chatIds.join(","), () => {
       for (const id of chatIds) {
-        if (this.agentExcluded.has(id) || !this.chats.some((chat) => chat.id === id)) throw new KinigeApiError("chat_not_found");
+        if (this.excluded.has(id) || !this.s.chats.some((chat) => chat.id === id)) throw new KinigeApiError("chat_not_found");
       }
-      this.agentChats = [...new Set(chatIds)];
-      this.emitSettingsChanged();
+      this.chats = [...new Set(chatIds)];
+      this.s.emitSettingsChanged();
     });
   }
 
   listAgentLog(before?: number): Promise<AgentLogPage> {
-    return this.run("listAgentLog", String(before ?? ""), () => {
+    return this.s.run("listAgentLog", String(before ?? ""), () => {
       const older = this.logRows.filter((row) => before === undefined || row.id < before);
       const rows = older.slice(0, MOCK_LOG_PAGE);
       return { rows, older: older.length > MOCK_LOG_PAGE ? (rows[rows.length - 1]?.id ?? null) : null };
@@ -113,6 +113,6 @@ export abstract class MockApiSlice4a extends MockApiSlice4 {
   }
 
   listAgentLogEntries(logId: number): Promise<AgentLogEntry[]> {
-    return this.run("listAgentLogEntries", String(logId), () => this.logEntries.get(logId) ?? []);
+    return this.s.run("listAgentLogEntries", String(logId), () => this.logEntries.get(logId) ?? []);
   }
 }

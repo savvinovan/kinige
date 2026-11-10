@@ -1,0 +1,20 @@
+{
+  "rule": "Whole days left before an entry in the trash is deleted for good: 30 on the day of deletion, a partial day counts as a day, never below 0. `sinceDeletedMs` is `now` minus the time of deletion.",
+  "rust": "kinige_domain::history::days_left",
+  "mock": "web/src/api/mockRules.ts daysLeft",
+  "cases": [
+    { "sinceDeletedMs": 0, "expected": 30 },
+    { "sinceDeletedMs": 1, "expected": 30 },
+    { "sinceDeletedMs": 86399999, "expected": 30 },
+    { "sinceDeletedMs": 86400000, "expected": 29 },
+    { "sinceDeletedMs": 86400001, "expected": 29 },
+    { "sinceDeletedMs": 1296000000, "expected": 15 },
+    { "sinceDeletedMs": 2505600000, "expected": 1 },
+    { "sinceDeletedMs": 2505600001, "expected": 1 },
+    { "sinceDeletedMs": 2591999999, "expected": 1 },
+    { "sinceDeletedMs": 2592000000, "expected": 0 },
+    { "sinceDeletedMs": 2592000001, "expected": 0 },
+    { "sinceDeletedMs": 9999999999999, "expected": 0 },
+    { "sinceDeletedMs": -1000, "expected": 31 }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "rule": "Which error code an attachment or a voice note gets, and in which order the checks run. At most 10 tiles in a draft and 10 attachments in an entry; a paste or a voice note over 64 MiB is too large (checked first); a voice note must last from 1 s to 30 min 5 s; a missing chat is `chat_not_found`; a send takes the draft's own tiles, each once, and checks the limit before the ids. A step with `error` must fail with that code, any other step must succeed.",
+  "rust": "Store::{attach_bytes, remove_draft_attachment, send_entry, send_voice, chat_draft}",
+  "mock": "MockApi through the same KinigeApi methods",
+  "scenarios": [
+    {
+      "name": "the eleventh tile is refused and a freed place can be used",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "paste", "chat": "a", "as": "t1" },
+        { "op": "paste", "chat": "a", "as": "t2" },
+        { "op": "paste", "chat": "a", "as": "t3" },
+        { "op": "paste", "chat": "a", "as": "t4" },
+        { "op": "paste", "chat": "a", "as": "t5" },
+        { "op": "paste", "chat": "a", "as": "t6" },
+        { "op": "paste", "chat": "a", "as": "t7" },
+        { "op": "paste", "chat": "a", "as": "t8" },
+        { "op": "paste", "chat": "a", "as": "t9" },
+        { "op": "paste", "chat": "a", "as": "t10" },
+        { "op": "tiles", "chat": "a", "count": 10 },
+        { "op": "paste", "chat": "a", "error": "attachment_limit" },
+        { "op": "removeTile", "chat": "a", "tile": "t3" },
+        { "op": "tiles", "chat": "a", "count": 9 },
+        { "op": "paste", "chat": "a", "as": "t11" },
+        { "op": "tiles", "chat": "a", "count": 10 },
+        { "op": "removeTile", "chat": "a", "tile": "t3", "error": "attachment_not_found" },
+        { "op": "removeTile", "chat": "a", "tile": "ghost", "error": "attachment_not_found" }
+      ]
+    },
+    {
+      "name": "a paste checks the size first, then the chat",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "paste", "chat": "a", "bytes": 67108865, "error": "attachment_too_large" },
+        { "op": "paste", "chat": "nowhere", "bytes": 67108865, "error": "attachment_too_large" },
+        { "op": "paste", "chat": "nowhere", "error": "chat_not_found" },
+        { "op": "tiles", "chat": "a", "count": 0 }
+      ]
+    },
+    {
+      "name": "a tile belongs to its own chat",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "chat", "as": "b" },
+        { "op": "paste", "chat": "a", "as": "t1" },
+        { "op": "removeTile", "chat": "b", "tile": "t1", "error": "attachment_not_found" },
+        { "op": "tiles", "chat": "a", "count": 1 },
+        { "op": "tiles", "chat": "b", "count": 0 },
+        { "op": "sendWith", "chat": "b", "body": "stolen", "ids": ["t1"], "error": "attachment_not_found" },
+        { "op": "tiles", "chat": "a", "count": 1 }
+      ]
+    },
+    {
+      "name": "a send takes the draft's own tiles, each once",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "paste", "chat": "a", "as": "t1" },
+        { "op": "paste", "chat": "a", "as": "t2" },
+        { "op": "sendWith", "chat": "a", "body": "twice", "ids": ["t1", "t1"], "error": "attachment_not_found" },
+        { "op": "sendWith", "chat": "a", "body": "ghost", "ids": ["t1", "ghost"], "error": "attachment_not_found" },
+        { "op": "sendWith", "chat": "a", "body": "", "ids": [], "error": "empty_message" },
+        { "op": "tiles", "chat": "a", "count": 2 },
+        { "op": "sendWith", "chat": "a", "body": "", "ids": ["t2", "t1"], "as": "m1" },
+        { "op": "tiles", "chat": "a", "count": 0 },
+        { "op": "sendWith", "chat": "a", "body": "again", "ids": ["t1"], "error": "attachment_not_found" }
+      ]
+    },
+    {
+      "name": "a send checks the limit before the ids, and the chat before both",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "paste", "chat": "a", "as": "t1" },
+        { "op": "sendWith", "chat": "a", "body": "too many", "ids": ["t1", "t1", "t1", "t1", "t1", "t1", "t1", "t1", "t1", "t1", "t1"], "error": "attachment_limit" },
+        { "op": "sendWith", "chat": "a", "body": "ten ghosts", "ids": ["g", "g", "g", "g", "g", "g", "g", "g", "g", "g"], "error": "attachment_not_found" },
+        { "op": "sendWith", "chat": "nowhere", "body": "to nowhere", "ids": ["t1"], "error": "chat_not_found" },
+        { "op": "sendWith", "chat": "a", "body": "reply to nothing", "ids": ["t1"], "replyTo": "ghost", "error": "reply_target_not_found" },
+        { "op": "tiles", "chat": "a", "count": 1 }
+      ]
+    },
+    {
+      "name": "a voice note lasts from 1 s to 30 min 5 s",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "voice", "chat": "a", "durationMs": 0, "error": "voice_too_short" },
+        { "op": "voice", "chat": "a", "durationMs": 999, "error": "voice_too_short" },
+        { "op": "voice", "chat": "a", "durationMs": -5, "error": "voice_too_short" },
+        { "op": "voice", "chat": "a", "durationMs": 1000, "as": "v1" },
+        { "op": "voice", "chat": "a", "durationMs": 40000, "as": "v2" },
+        { "op": "voice", "chat": "a", "durationMs": 1805000, "as": "v3" },
+        { "op": "voice", "chat": "a", "durationMs": 1805001, "error": "voice_too_long" },
+        { "op": "voice", "chat": "a", "durationMs": 99999999, "error": "voice_too_long" }
+      ]
+    },
+    {
+      "name": "a voice note checks the size, the length, the chat, then the reply target",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "voice", "chat": "a", "bytes": 67108865, "durationMs": 500, "error": "attachment_too_large" },
+        { "op": "voice", "chat": "a", "bytes": 67108865, "durationMs": 40000, "error": "attachment_too_large" },
+        { "op": "voice", "chat": "nowhere", "durationMs": 500, "error": "voice_too_short" },
+        { "op": "voice", "chat": "nowhere", "durationMs": 40000, "error": "chat_not_found" },
+        { "op": "voice", "chat": "a", "durationMs": 40000, "replyTo": "ghost", "error": "reply_target_not_found" },
+        { "op": "voice", "chat": "nowhere", "durationMs": 40000, "replyTo": "ghost", "error": "chat_not_found" }
+      ]
+    }
+  ]
+}

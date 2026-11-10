@@ -1,0 +1,25 @@
+{
+  "rule": "Sizes and limits the mock repeats. A change in Rust fails this file on both sides until the mock follows.",
+  "rust": "see the `constant` function in crates/kinige-store/tests/api_contract.rs",
+  "mock": "web/src/api/mockRules.ts LIMITS",
+  "cases": [
+    { "name": "feedDefaultPage", "value": 200, "what": "entries in a feed page when the caller gives no limit" },
+    { "name": "feedMaxPage", "value": 500, "what": "the largest feed or search page" },
+    { "name": "agentLogPage", "value": 30, "what": "rows in a page of the agent call log" },
+    { "name": "trashDays", "value": 30, "what": "days an entry stays in the trash" },
+    { "name": "appendWindowMs", "value": 600000, "what": "the longest age of an entry capture can append to" },
+    { "name": "chatTitleChars", "value": 128, "what": "the longest chat name" },
+    { "name": "chatIconBytes", "value": 40, "what": "the longest chat emoji in bytes" },
+    { "name": "replyExcerptChars", "value": 120, "what": "the length of a reply quote" },
+    { "name": "onThisDayDetailedYears", "value": 3, "what": "years of the card shown with entries" },
+    { "name": "onThisDayEntriesPerYear", "value": 2, "what": "entries shown per year on the card" },
+    { "name": "onThisDayPreviewChars", "value": 300, "what": "the length of an entry preview on the card" },
+    { "name": "forestExcerptChars", "value": 120, "what": "the length of the day excerpt in the forest" },
+    { "name": "tagChars", "value": 64, "what": "the longest tag in characters" },
+    { "name": "attachmentsPerEntry", "value": 10, "what": "attachments in one entry or draft" },
+    { "name": "pasteMaxBytes", "value": 67108864, "what": "the largest pasted file or voice note" },
+    { "name": "voiceMinMs", "value": 1000, "what": "the shortest voice note" },
+    { "name": "voiceMaxMs", "value": 1805000, "what": "the longest voice note" },
+    { "name": "waveformPeaks", "value": 64, "what": "peaks of a full waveform" }
+  ]
+}

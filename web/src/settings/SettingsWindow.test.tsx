@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MOCK_SETTINGS_FILE } from "../api/MockApiSlice4b";
+import { MOCK_SETTINGS_FILE } from "../api/MockApi";
 import { act, fireEvent, screen, waitFor, within } from "../test/render";
 import { openWindow } from "../test/prefsWindow";
 

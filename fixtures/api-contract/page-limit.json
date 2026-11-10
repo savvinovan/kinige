@@ -1,0 +1,45 @@
+{
+  "rule": "The size of a feed page: 200 entries when the caller gives no limit, never fewer than 1 and never more than 500. The same bounds for a search page (its default of 50 is private to src-tauri, so the fixture always gives a limit when it counts). Search: an empty query gives an empty page before the dates are checked.",
+  "rust": "Store::list_messages and Store::search (the limit is clamped to 1..=MAX_PAGE) and DEFAULT_PAGE for a missing limit",
+  "mock": "MockApi.listMessages and MockApi.searchMessages",
+  "scenarios": [
+    {
+      "name": "a page is 200 by default and 500 at most",
+      "steps": [
+        { "op": "seed", "chat": "inbox", "count": 502 },
+        { "op": "page", "chat": "inbox", "limit": null, "count": 200 },
+        { "op": "page", "chat": "inbox", "limit": 0, "count": 1 },
+        { "op": "page", "chat": "inbox", "limit": 1, "count": 1 },
+        { "op": "page", "chat": "inbox", "limit": 7, "count": 7 },
+        { "op": "page", "chat": "inbox", "limit": 500, "count": 500 },
+        { "op": "page", "chat": "inbox", "limit": 501, "count": 500 },
+        { "op": "page", "chat": "inbox", "limit": 100000, "count": 500 },
+        { "op": "search", "query": "entry", "limit": 7, "count": 7 },
+        { "op": "search", "query": "entry", "limit": 0, "count": 1 },
+        { "op": "search", "query": "entry", "limit": 100000, "count": 500 }
+      ]
+    },
+    {
+      "name": "an empty query is an empty page, a bad date is refused only for a real query",
+      "steps": [
+        { "op": "seed", "chat": "inbox", "count": 3 },
+        { "op": "search", "query": "", "limit": null, "count": 0 },
+        { "op": "search", "query": " ,. ", "limit": null, "count": 0 },
+        { "op": "search", "query": "", "limit": null, "from": "2026-02-30", "count": 0 },
+        { "op": "search", "query": "entry", "limit": null, "from": "2026-02-30", "error": "invalid_date" },
+        { "op": "search", "query": "entry", "limit": null, "to": "junk", "error": "invalid_date" },
+        { "op": "search", "query": "entry", "limit": null, "from": "2026-01-01", "to": "2999-12-31", "count": 3 }
+      ]
+    },
+    {
+      "name": "a small chat returns what it has",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "seed", "chat": "a", "count": 3 },
+        { "op": "page", "chat": "a", "limit": null, "count": 3 },
+        { "op": "page", "chat": "a", "limit": 2, "count": 2 },
+        { "op": "page", "chat": "a", "limit": 0, "count": 1 }
+      ]
+    }
+  ]
+}
