@@ -103,6 +103,12 @@ fn from_version_four_the_old_database_keeps_an_intact_search_index_across_the_mi
                 )
                 .unwrap();
             assert_eq!(found, 1, "schema {version} has the entry in its index");
+            // FTS5 checks its own structure; it fails if the copied index is damaged.
+            conn.execute(
+                "INSERT INTO search_fts(search_fts) VALUES('integrity-check')",
+                [],
+            )
+            .unwrap_or_else(|error| panic!("schema {version}: the index is damaged: {error}"));
         }
         drop(conn);
         let store = open_without_mirror(dir.path());
@@ -111,6 +117,11 @@ fn from_version_four_the_old_database_keeps_an_intact_search_index_across_the_mi
             .unwrap()
             .hits;
         assert_eq!(hits.len(), 1, "from schema {version}");
+        assert_eq!(
+            store.search_heal_count(),
+            0,
+            "from schema {version}: the index was not rebuilt"
+        );
     }
 }
 

@@ -12,7 +12,9 @@ use std::path::{Path, PathBuf};
 /// had, table by table and column by column, for the tables and columns that version has. What a later migration added is
 /// not there (no table, no column, no row). From version 4 the search index comes along: the map and the shadow tables of the FTS5
 /// table are copied row for row together with the version mark in `app_setting`, so the first open finds an intact index and does not
-/// rebuild it, as it is across a real migration. Every table is checked to have the same number of rows as its source.
+/// rebuild it, as it is across a real migration. The copied index carries today's mark (`SEARCH_INDEX_VERSION`): a real v0.5.0-v0.7.0
+/// database has mark 1 and rebuilds on open, which `search_index.rs` covers, so "no rebuild" here is about the schema migration only.
+/// Every table is checked to have the same number of rows as its source.
 pub fn downgrade_to(dir: &Path, version: i64) {
     let current = db_path(dir);
     // Everything the closed store wrote is in the main file and `-wal` is empty (the background threads of a dropped store do not
