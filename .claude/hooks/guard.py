@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 
+sys.dont_write_bytecode = True  # no __pycache__ in the checkout the hook runs from
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import snapshot  # noqa: E402  (the guard's own module, next to it)
 

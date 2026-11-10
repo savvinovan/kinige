@@ -16,6 +16,7 @@ src-tauri/binaries/
 .claude/settings.local.json
 .claude/progress.md
 .claude/agent-memory-local/
+__pycache__/
 # The self-hosting stack (deploy/): the operator's own secrets never get into git.
 deploy/.env
 
