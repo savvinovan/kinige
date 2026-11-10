@@ -1,30 +1,37 @@
 //! `journal_date` is the entry's day with a 04:00 boundary (PRD §4.1). Pure arithmetic: the time zone offset at the moment
-//! of the entry comes from outside, so the daylight saving switch is handled by whoever knows that offset.
+//! of the entry comes from outside, so the daylight saving switch is handled by whoever knows that offset. The calendar is
+//! `chrono`'s (code style rule 6).
+
+use chrono::{DateTime, Datelike, NaiveDate, TimeDelta};
 
 /// The day ends at 04:00: an entry at 00:30 belongs to yesterday. Setting the boundary is not in slice 1.
 pub const DAY_BOUNDARY_MINUTES: u32 = 4 * 60;
 
-/// The entry date `YYYY-MM-DD`: local time (`UTC + offset`) minus the day boundary.
+/// The entry date `YYYY-MM-DD`: local time (`UTC + offset`) minus the day boundary. The date is stored and synced, so the
+/// bytes must not change: `journal_oracle_tests` compares this function with the hand-written algorithm it replaced.
 pub fn journal_date(created_at_ms: i64, utc_offset_secs: i32, boundary_minutes: u32) -> String {
-    let local_secs = created_at_ms.div_euclid(1000) + i64::from(utc_offset_secs);
-    let shifted = local_secs - i64::from(boundary_minutes) * 60;
-    let (year, month, day) = civil_from_days(shifted.div_euclid(86_400));
-    format!("{year:04}-{month:02}-{day:02}")
+    let day = shifted_day(created_at_ms, utc_offset_secs, boundary_minutes);
+    format!("{:04}-{:02}-{:02}", day.year(), day.month(), day.day())
 }
 
-/// Days since 1970-01-01 -> (year, month, day) in the Gregorian calendar (Howard Hinnant's algorithm, `civil_from_days`).
-fn civil_from_days(days: i64) -> (i64, u32, u32) {
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let day_of_era = z.rem_euclid(146_097);
-    let year_of_era =
-        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
-    let year = year_of_era + era * 400;
-    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-    let mp = (5 * day_of_year + 2) / 153;
-    let day = (day_of_year - (153 * mp + 2) / 5 + 1) as u32;
-    let month = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    (if month <= 2 { year + 1 } else { year }, month, day)
+/// The calendar day of the moment `created_at_ms` shifted by the zone offset and back by the day boundary.
+///
+/// Beyond the years `chrono` can represent (about +-262,000), the day is clamped to its first or last day by the sign of
+/// the moment, and nothing panics. No such moment reaches this function in the app: the clock and the zone come from
+/// `chrono` itself, and an imported time is cut to `1970 ... now + 1 day` before it is used.
+fn shifted_day(created_at_ms: i64, utc_offset_secs: i32, boundary_minutes: u32) -> NaiveDate {
+    let shifted = DateTime::from_timestamp_millis(created_at_ms).and_then(|moment| {
+        let offset = TimeDelta::try_seconds(i64::from(utc_offset_secs))?;
+        let boundary = TimeDelta::try_minutes(i64::from(boundary_minutes))?;
+        moment
+            .naive_utc()
+            .checked_add_signed(offset.checked_sub(&boundary)?)
+    });
+    match shifted {
+        Some(moment) => moment.date(),
+        None if created_at_ms < 0 => NaiveDate::MIN,
+        None => NaiveDate::MAX,
+    }
 }
 
 /// `YYYY-MM-DD` with real digits and a month 01-12, a day 01-31 (a format check; whether the date exists is not checked).
@@ -57,35 +64,21 @@ pub fn is_valid_journal_date(text: &str) -> bool {
     let Some((year, month, day)) = date_parts(text) else {
         return false;
     };
-    let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
-    let days = match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 if leap => 29,
-        2 => 28,
-        _ => return false,
-    };
-    year >= 1000 && (1..=days).contains(&day)
+    year >= 1000 && NaiveDate::from_ymd_opt(year, month, day).is_some()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveTime;
 
     /// A UTC moment in ms from components (the test does not depend on the machine's time zone).
     fn utc(y: i64, m: u32, d: u32, h: i64, min: i64) -> i64 {
-        let days = days_from_civil(y, m, d);
-        ((days * 24 + h) * 60 + min) * 60_000
-    }
-
-    fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
-        let y = if m <= 2 { y - 1 } else { y };
-        let era = y.div_euclid(400);
-        let yoe = y.rem_euclid(400);
-        let mp = i64::from(if m > 2 { m - 3 } else { m + 9 });
-        let doy = (153 * mp + 2) / 5 + i64::from(d) - 1;
-        let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-        era * 146_097 + doe - 719_468
+        let midnight = NaiveDate::from_ymd_opt(y as i32, m, d)
+            .unwrap()
+            .and_time(NaiveTime::MIN)
+            .and_utc();
+        midnight.timestamp_millis() + (h * 60 + min) * 60_000
     }
 
     const MOSCOW: i32 = 3 * 3600;

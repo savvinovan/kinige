@@ -141,7 +141,7 @@ pub fn restore_backup(
     now_ms: i64,
     default_mirror: Option<&Path>,
 ) -> Result<RestoreReport, StoreError> {
-    restore_backup_with(
+    restore_with_steps(
         db_path,
         name,
         now_ms,
@@ -153,9 +153,29 @@ pub fn restore_backup(
 
 /// The same with check steps: `before_place` runs after copying and before the first `rename` of the database,
 /// `after_first_rename` -- right after the first `rename` (tests simulate a copy, disk write or rename failure in them).
-/// Not part of the app API.
+/// Not part of the app API: only with the `test-hooks` feature.
+#[cfg(feature = "test-hooks")]
 #[doc(hidden)]
 pub fn restore_backup_with(
+    db_path: &Path,
+    name: &str,
+    now_ms: i64,
+    default_mirror: Option<&Path>,
+    before_place: &dyn Fn() -> Result<(), StoreError>,
+    after_first_rename: &dyn Fn() -> Result<(), StoreError>,
+) -> Result<RestoreReport, StoreError> {
+    restore_with_steps(
+        db_path,
+        name,
+        now_ms,
+        default_mirror,
+        before_place,
+        after_first_rename,
+    )
+}
+
+/// The restore itself; [`restore_backup`] passes steps that do nothing.
+fn restore_with_steps(
     db_path: &Path,
     name: &str,
     now_ms: i64,

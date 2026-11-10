@@ -47,6 +47,7 @@ impl MirrorShared {
         })
     }
 
+    #[cfg(feature = "test-hooks")]
     pub(crate) fn set_batch_hook(&self, hook: Option<BatchHook>) {
         *self
             .batch_hook
@@ -65,6 +66,7 @@ impl MirrorShared {
         }
     }
 
+    #[cfg(feature = "test-hooks")]
     pub(crate) fn inject_panic(&self) {
         self.panic_next.store(true, Ordering::SeqCst);
     }

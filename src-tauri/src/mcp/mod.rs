@@ -65,6 +65,7 @@ impl McpState {
     }
 
     /// For tests only: the next accepted connection brings the listener down with a panic (supervision will restart it).
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn inject_listener_panic_for_test(&self) {
         self.panic_next.store(true, Ordering::SeqCst);
@@ -72,6 +73,7 @@ impl McpState {
 
     /// Test hook: the number of listeners bound so far. A new value means the socket file is final (0600) and the previous
     /// listener, if any, is already gone, so a client that connects now reaches the new one.
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn binds(&self) -> u64 {
         self.binds.load(Ordering::SeqCst)

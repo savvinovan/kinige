@@ -7,6 +7,7 @@
 mod common;
 
 use common::agent::*;
+use common::old_db::downgrade_to;
 use common::*;
 use kinige_domain::AgentMode;
 use kinige_domain::agent::AgentTool;
@@ -293,15 +294,8 @@ fn migration_four_to_five_takes_a_copy_keeps_the_data_and_creates_the_log_tables
             .unwrap()
             .id
     };
-    {
-        let conn = raw(dir.path());
-        conn.execute_batch(
-            "DROP TABLE mcp_log; DROP TABLE mcp_log_message; ALTER TABLE draft DROP COLUMN reply_to_id; \
-             DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file;",
-        )
-        .unwrap();
-        conn.pragma_update(None, "user_version", 4).unwrap();
-    }
+    // The slice 4 database: schema 4 as migrations 1-4 make it (no log tables), with the rows it had.
+    downgrade_to(dir.path(), 4);
     let later = moscow(T0 + 10 * MINUTE);
     let mut options = options(dir.path());
     options.start_mirror = false;

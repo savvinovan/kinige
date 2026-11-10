@@ -18,6 +18,7 @@ mod waveform;
 
 pub use audio::AudioFile;
 pub(crate) use copy::{Hints, Source, Staged, io_error, stage};
+#[cfg(feature = "test-hooks")]
 pub use faults::AttachFault;
 pub(crate) use faults::Faults;
 pub(crate) use media::MediaPool;

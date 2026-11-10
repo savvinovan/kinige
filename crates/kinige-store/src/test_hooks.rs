@@ -1,10 +1,14 @@
 //! Hooks for the integration tests (`#[doc(hidden)]`): injected panics and faults, and a few probes of the store's internals. Not
-//! part of the API the app uses.
+//! part of the API the app uses: this module exists only with the `test-hooks` feature, which only the crate's own
+//! dev-dependency turns on (`scripts/check-release-features.sh` proves a release graph does not).
 
-use crate::error::read_err;
+use crate::agent_read::ReadFail;
+use crate::error::{read_err, write_err};
 use crate::recent_chats::LAST_ENTRY_SQL;
-use crate::{AttachFault, BackgroundThread, Store, StoreError};
+use crate::schema::{self, LATEST_VERSION, MigrateError};
+use crate::{AttachFault, BackgroundThread, Store, StoreError, open_connection};
 use kinige_domain::groups::INBOX_ID;
+use std::path::Path;
 use std::sync::Arc;
 
 impl Store {
@@ -69,6 +73,52 @@ impl Store {
         })
     }
 
+    /// Tests only: runs `held` while an agent read occupies the agent connection (its lock is taken and kept). The window's reads
+    /// made inside `held` must return, because they use their own connection.
+    #[doc(hidden)]
+    pub fn with_agent_read_held_for_test<T>(&self, held: impl FnOnce() -> T) -> T {
+        let _agent = self
+            .inner
+            .agent_reader
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        held()
+    }
+
+    /// Tests only: tries to write through the agent's read connection. It is `query_only`, so the error text is returned
+    /// (`attempt to write a readonly database`) and nothing is written.
+    #[doc(hidden)]
+    pub fn write_through_agent_read_for_test(&self) -> String {
+        let attempt = self.read_agent(|conn| {
+            Ok(conn
+                .execute("UPDATE chat SET title = title || ' (agent)'", [])
+                .map(|_| String::new())
+                .unwrap_or_else(|error| error.to_string()))
+        });
+        attempt.unwrap_or_default()
+    }
+
+    /// Tests only: a panic inside `query_map` on the agent read connection. The following agent reads must keep working.
+    #[doc(hidden)]
+    #[allow(clippy::panic)] // a hook for the integration tests of the panic safety net: the panic is its whole purpose
+    pub fn panic_in_agent_read_for_test(&self) -> Result<(), StoreError> {
+        let result = self.with_reader(|conn| -> Result<(), ReadFail> {
+            let mut statement = conn.prepare("SELECT id FROM chat")?;
+            let rows = statement.query_map([], |_| -> rusqlite::Result<()> {
+                panic!("test: panic in an agent query")
+            })?;
+            for row in rows {
+                row?;
+            }
+            Ok(())
+        });
+        match result {
+            Ok(()) => Ok(()),
+            Err(ReadFail::Store(error)) => Err(error),
+            Err(ReadFail::NotFound) => Err(StoreError::Internal("not found".into())),
+        }
+    }
+
     /// Pragmas of the writer connection `(synchronous, fullfsync, journal_mode)`: to check that writes are durable.
     #[doc(hidden)]
     pub fn writer_pragmas(&self) -> Result<(i64, i64, String), StoreError> {
@@ -83,4 +133,24 @@ impl Store {
             ))
         })
     }
+}
+
+/// Tests only: makes the database file `path` as an app of schema `version` (`1 ..= LATEST_VERSION`) left it: a connection
+/// with the app's settings (WAL), the first `version` entries of the migration list applied the way an upgrade applies them
+/// (each in its own transaction with its Rust step and `user_version`), and nothing else: no device id, no Inbox, no rows.
+/// The first [`Store::open`] adds those, like on any first start, and migrates the rest. A migration test starts here, not from the
+/// current schema with tables dropped. The file must not exist yet.
+#[doc(hidden)]
+pub fn db_at_version(path: &Path, version: i64) -> Result<(), StoreError> {
+    if !(1..=LATEST_VERSION).contains(&version) {
+        return Err(StoreError::Internal(format!("no schema version {version}")));
+    }
+    if path.exists() {
+        return Err(StoreError::Internal("the database file exists".into()));
+    }
+    let mut conn = open_connection(path, false)?;
+    schema::migrate_to(&mut conn, version).map_err(|error| match error {
+        MigrateError::TooNew { found } => StoreError::TooNew(found),
+        MigrateError::Sqlite(error) => write_err(error),
+    })
 }

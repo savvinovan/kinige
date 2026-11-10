@@ -18,6 +18,10 @@ crate-type = ["rlib"]
 # The screens driver (KINIG-92, ADR-0016): the scenario scripts' hands inside the test build. Off by default and refused by build.rs
 # unless KINIGE_ALLOW_SCREENS_DRIVER=1 (only screens.yml sets it). Never in a build for people.
 screens-driver = ["dep:serde"]
+# The hooks of the integration tests (an injected listener panic, a drop token that ages at once; the items marked `#[doc(hidden)]`).
+# Off by default and never on in a release graph: only the dev-dependency on this crate below turns it on, and
+# `scripts/check-release-features.sh` (CI) proves that no build for people enables it, here or in `kinige-store` (KINIG-103).
+test-hooks = []
 
 [build-dependencies]
 tauri-build = { version = "2.7", features = [] }
@@ -57,6 +61,9 @@ rmcp = { version = "=3.6.0", default-features = false, features = ["server"] }
 tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros", "rt"] }
 
 [dev-dependencies]
+# The hooks for the tests of this crate and of the store (resolver 2+ takes the features of dev-dependencies only for the test targets).
+kinige = { path = ".", features = ["test-hooks"] }
+kinige-store = { path = "../crates/kinige-store", features = ["test-hooks"] }
 tauri = { version = "2.12", features = ["test"] }
 tempfile = "3"
 # A small PNG drawn in the attachment tests (the store already uses this crate).

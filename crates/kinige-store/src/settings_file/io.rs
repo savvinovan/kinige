@@ -87,14 +87,19 @@ pub enum ReadOutcome {
 /// checked by descriptor, not by path: the file cannot be swapped between the check and the read. A symlink is read by
 /// its target but marked unsafe; a pipe and a device are not read at all. At most `MAX_BYTES + 1` bytes are read.
 pub fn read_file(path: &Path, dir: &Path) -> ReadOutcome {
-    read_file_with(path, dir, &|| ())
+    read_file_between(path, dir, &|| ())
 }
 
-/// The same with a `between` step after reading and before taking the signature: tests swap the file in it. The
-/// signature is taken before `open` and after reading; if they differ, the file changed during reading, the signature is
-/// empty, and the next poll will read the file again.
-#[doc(hidden)]
+/// The same with a `between` step after reading and before taking the signature: the unit test swaps the file in it. Only in
+/// that test build; the module is private, so it is not API (a hook for the integration tests it was not).
+#[cfg(test)]
 pub fn read_file_with(path: &Path, dir: &Path, between: &dyn Fn()) -> ReadOutcome {
+    read_file_between(path, dir, between)
+}
+
+/// The signature is taken before `open` and after reading (and after the `between` step); if they differ, the file changed
+/// during reading, the signature is empty, and the next poll will read the file again.
+fn read_file_between(path: &Path, dir: &Path, between: &dyn Fn()) -> ReadOutcome {
     let sig_before = signature(path);
     let (file, via_symlink) = match open(path) {
         Ok(opened) => opened,

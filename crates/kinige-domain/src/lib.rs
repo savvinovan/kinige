@@ -39,7 +39,11 @@ pub mod telegram;
 #[cfg(test)]
 mod chat_tests;
 #[cfg(test)]
+mod group_depth_tests;
+#[cfg(test)]
 mod history_tests;
+#[cfg(test)]
+mod journal_oracle_tests;
 #[cfg(test)]
 mod move_tests;
 #[cfg(test)]

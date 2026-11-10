@@ -4,7 +4,8 @@
 
 use crate::error::read_err;
 use crate::feed::{MAX_PAGE, chat_list};
-use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row_at};
+use crate::search_sql::{Filters, Position, SearchSql};
+use crate::view::{VIEW_LEN, view_from_row_at};
 use crate::{Store, StoreError};
 use kinige_domain::chat_color::resolve_color;
 use kinige_domain::groups::INBOX_ID;
@@ -40,53 +41,28 @@ impl Store {
             }
         }
         let limit = limit.clamp(1, MAX_PAGE);
+        let sql = SearchSql {
+            chat_condition: "c.deleted_at IS NULL",
+            extra_columns: "c.title, c.icon, c.id = ?1, c.color",
+            leading: vec![INBOX_ID.to_string().into()],
+            query,
+            filters: Filters {
+                favorite: filters.favorite,
+                tasks: filters.tasks,
+                chat_id: filters.chat_id.as_deref(),
+                from: filters.from.as_deref(),
+                to: filters.to.as_deref(),
+            },
+            before: before.map(|cursor| Position {
+                journal_date: &cursor.journal_date,
+                created_at: cursor.created_at,
+                id: &cursor.id,
+            }),
+            limit,
+        };
         let run = |conn: &Connection| -> Result<SearchPage, StoreError> {
-            let mut sql = format!(
-                "SELECT {VIEW_COLUMNS}, c.title, c.icon, c.id = ?1, c.color \
-                 FROM search_fts f \
-                 JOIN search_map mp ON mp.rowid = f.rowid \
-                 JOIN message m ON m.id = mp.message_id \
-                 JOIN chat c ON c.id = m.chat_id \
-                 WHERE search_fts MATCH ?2 AND m.deleted_at IS NULL AND c.deleted_at IS NULL"
-            );
-            let mut params: Vec<rusqlite::types::Value> =
-                vec![INBOX_ID.to_string().into(), query.clone().into()];
-            if filters.favorite {
-                sql.push_str(" AND m.favorite_at IS NOT NULL");
-            }
-            if filters.tasks {
-                sql.push_str(" AND m.is_task = 1");
-            }
-            for (condition, value) in [
-                ("m.chat_id =", &filters.chat_id),
-                ("m.journal_date >=", &filters.from),
-                ("m.journal_date <=", &filters.to),
-            ] {
-                if let Some(value) = value {
-                    params.push(value.clone().into());
-                    sql.push_str(&format!(" AND {condition} ?{}", params.len()));
-                }
-            }
-            if let Some(cursor) = before {
-                let at = params.len();
-                params.push(cursor.journal_date.clone().into());
-                params.push(cursor.created_at.into());
-                params.push(cursor.id.clone().into());
-                sql.push_str(&format!(
-                    " AND (m.journal_date, m.created_at, m.id) < (?{}, ?{}, ?{})",
-                    at + 1,
-                    at + 2,
-                    at + 3
-                ));
-            }
-            params.push((limit as i64 + 1).into());
-            sql.push_str(&format!(
-                " ORDER BY m.journal_date DESC, m.created_at DESC, m.id DESC LIMIT ?{}",
-                params.len()
-            ));
-            let mut statement = conn.prepare(&sql).map_err(read_err)?;
-            let rows = statement
-                .query_map(rusqlite::params_from_iter(params), |row| {
+            let (found, has_more) = sql
+                .run(conn, |row| {
                     Ok((
                         view_from_row_at(row, 0)?,
                         row.get::<_, String>(VIEW_LEN)?,
@@ -96,9 +72,6 @@ impl Store {
                     ))
                 })
                 .map_err(read_err)?;
-            let mut found = rows.collect::<Result<Vec<_>, _>>().map_err(read_err)?;
-            let has_more = found.len() > limit;
-            found.truncate(limit);
             let older = has_more
                 .then(|| {
                     found.last().map(|(m, ..)| FeedCursor {
@@ -137,17 +110,7 @@ impl Store {
             Ok(SearchPage { chats, hits, older })
         };
         // The search index is a derived table: its corruption is fixed by rebuilding it from the entries, not by a
-        // "database is corrupted" screen. If the error remains after the rebuild, the database itself is corrupted:
-        // the signal goes out as usual.
-        let seen = self.search_generation();
-        let result = match self.read_unnoted(run) {
-            Err(StoreError::SearchIndex(_)) => match self.heal_search_index(seen) {
-                Ok(()) => self.read_unnoted(run),
-                Err(error) => Err(error),
-            },
-            other => other,
-        };
-        self.note_if_corrupt(&result);
-        result
+        // "database is corrupted" screen (`read_healing`).
+        self.read_healing(|| self.read_unnoted(run))
     }
 }

@@ -8,6 +8,7 @@
 mod common;
 
 use common::days::at;
+use common::old_db::downgrade_to;
 use common::*;
 use kinige_domain::ReplyState;
 use kinige_domain::groups::INBOX_ID;
@@ -174,15 +175,8 @@ fn migration_five_to_six_keeps_drafts_and_takes_a_copy_first() {
             .unwrap();
     }
     wait_closed(dir.path());
-    {
-        let conn = raw(dir.path());
-        conn.execute_batch(
-            "ALTER TABLE draft DROP COLUMN reply_to_id; \
-             DROP TABLE attachment; DROP TABLE attachment_local; DROP TABLE draft_attachment; DROP TABLE mirror_file;",
-        )
-        .unwrap();
-        conn.pragma_update(None, "user_version", 5).unwrap();
-    }
+    // The slice 4a database: schema 5 as migrations 1-5 make it (drafts without a reply column), with the rows it had.
+    downgrade_to(dir.path(), 5);
     let later = moscow(T0 + 10 * MINUTE);
     let mut opts = options(dir.path());
     opts.start_mirror = false;

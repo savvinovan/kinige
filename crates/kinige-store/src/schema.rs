@@ -310,11 +310,24 @@ impl From<rusqlite::Error> for MigrateError {
 
 /// Applies the missing migrations, each in its own transaction together with `user_version`.
 pub fn migrate(conn: &mut Connection) -> Result<(), MigrateError> {
+    migrate_to(conn, LATEST_VERSION)
+}
+
+/// [`migrate`] up to the version `target` (clamped to `0 ..= LATEST_VERSION`) and no further: an upgrade stops where the
+/// older app stood. `test_hooks::db_at_version` makes the "old database" of the migration tests with it, so a test starts
+/// from the same statements and the same Rust steps a real upgrade runs.
+pub(crate) fn migrate_to(conn: &mut Connection, target: i64) -> Result<(), MigrateError> {
     let current: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
     if current > LATEST_VERSION {
         return Err(MigrateError::TooNew { found: current });
     }
-    for (index, sql) in MIGRATIONS.iter().enumerate().skip(current as usize) {
+    let end = usize::try_from(target.clamp(0, LATEST_VERSION)).unwrap_or(0);
+    for (index, sql) in MIGRATIONS
+        .iter()
+        .enumerate()
+        .take(end)
+        .skip(current as usize)
+    {
         let tx = conn.transaction()?;
         tx.execute_batch(sql)?;
         after_migration(&tx, index as i64 + 1)?;
@@ -323,3 +336,6 @@ pub fn migrate(conn: &mut Connection) -> Result<(), MigrateError> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

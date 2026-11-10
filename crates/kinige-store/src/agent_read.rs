@@ -4,6 +4,7 @@
 use crate::agent::VISIBLE;
 use crate::agent_entry::{chat_title, page, to_entry};
 use crate::error::read_err;
+use crate::search_sql::{Filters, Position, ReadError, SearchSql};
 use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row_at};
 use crate::{Now, Store, StoreError, read_on};
 use kinige_domain::MessageView;
@@ -16,7 +17,7 @@ use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use kinige_domain::on_this_day::{past_dates, year_of};
 use kinige_domain::search::{fts_query, title_matches};
 use rusqlite::types::Value;
-use rusqlite::{Connection, params_from_iter};
+use rusqlite::{Connection, Row, params_from_iter};
 use serde_json::json;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
@@ -52,6 +53,15 @@ impl From<StoreError> for ReadFail {
     }
 }
 
+impl ReadError for ReadFail {
+    fn store_error(&self) -> Option<&StoreError> {
+        match self {
+            ReadFail::Store(error) => Some(error),
+            ReadFail::NotFound => None,
+        }
+    }
+}
+
 impl From<rusqlite::Error> for ReadFail {
     fn from(error: rusqlite::Error) -> Self {
         ReadFail::Store(read_err(error))
@@ -78,23 +88,10 @@ impl Store {
         args: &ToolArgs,
     ) -> Result<ReadOutput, ReadFail> {
         let run = |conn: &Connection| run_read(conn, args, ctx);
-        let seen = self.search_generation();
-        let result = match self.with_reader(run) {
-            Err(ReadFail::Store(StoreError::SearchIndex(_))) => {
-                match self.heal_search_index(seen) {
-                    Ok(()) => self.with_reader(run),
-                    Err(error) => Err(ReadFail::Store(error)),
-                }
-            }
-            other => other,
-        };
-        if let Err(ReadFail::Store(StoreError::Corrupt(_))) = &result {
-            self.report_corruption();
-        }
-        result
+        self.read_healing(|| self.with_reader(run))
     }
 
-    fn with_reader<T>(
+    pub(crate) fn with_reader<T>(
         &self,
         job: impl FnOnce(&Connection) -> Result<T, ReadFail>,
     ) -> Result<T, ReadFail> {
@@ -113,52 +110,6 @@ impl Store {
                 "panic in an agent query".into(),
             )))
         })
-    }
-
-    /// Tests only: runs `held` while an agent read occupies the agent connection (its lock is taken and kept). The window's reads
-    /// made inside `held` must return, because they use their own connection.
-    #[doc(hidden)]
-    pub fn with_agent_read_held_for_test<T>(&self, held: impl FnOnce() -> T) -> T {
-        let _agent = self
-            .inner
-            .agent_reader
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        held()
-    }
-
-    /// Tests only: tries to write through the agent's read connection. It is `query_only`, so the error text is returned
-    /// (`attempt to write a readonly database`) and nothing is written.
-    #[doc(hidden)]
-    pub fn write_through_agent_read_for_test(&self) -> String {
-        let attempt = self.read_agent(|conn| {
-            Ok(conn
-                .execute("UPDATE chat SET title = title || ' (agent)'", [])
-                .map(|_| String::new())
-                .unwrap_or_else(|error| error.to_string()))
-        });
-        attempt.unwrap_or_default()
-    }
-
-    /// Tests only: a panic inside `query_map` on the agent read connection. The following agent reads must keep working.
-    #[doc(hidden)]
-    #[allow(clippy::panic)] // a hook for the integration tests of the panic safety net: the panic is its whole purpose
-    pub fn panic_in_agent_read_for_test(&self) -> Result<(), StoreError> {
-        let result = self.with_reader(|conn| -> Result<(), ReadFail> {
-            let mut statement = conn.prepare("SELECT id FROM chat")?;
-            let rows = statement.query_map([], |_| -> rusqlite::Result<()> {
-                panic!("test: panic in an agent query")
-            })?;
-            for row in rows {
-                row?;
-            }
-            Ok(())
-        });
-        match result {
-            Ok(()) => Ok(()),
-            Err(ReadFail::Store(error)) => Err(error),
-            Err(ReadFail::NotFound) => Err(StoreError::Internal("not found".into())),
-        }
     }
 }
 
@@ -223,11 +174,14 @@ impl Sql {
 
     fn rows(&self, conn: &Connection) -> Result<Vec<(MessageView, String)>, ReadFail> {
         let mut statement = conn.prepare(&self.text)?;
-        let rows = statement.query_map(params_from_iter(&self.params), |row| {
-            Ok((view_from_row_at(row, 0)?, row.get::<_, String>(VIEW_LEN)?))
-        })?;
+        let rows = statement.query_map(params_from_iter(&self.params), entry_row)?;
         Ok(rows.collect::<Result<Vec<_>, _>>()?)
     }
+}
+
+/// An entry and the title of its chat: the columns `VIEW_COLUMNS, c.title`.
+fn entry_row(row: &Row<'_>) -> rusqlite::Result<(MessageView, String)> {
+    Ok((view_from_row_at(row, 0)?, row.get::<_, String>(VIEW_LEN)?))
 }
 
 fn list_chats(conn: &Connection, ctx: &ReadCtx<'_>) -> Result<ReadOutput, ReadFail> {
@@ -278,40 +232,27 @@ fn search_entries(
     let Some(query) = fts_query(&args.query) else {
         return page(Vec::new(), false, Vec::new(), ctx);
     };
-    let mut sql = Sql::new(format!(
-        "SELECT {VIEW_COLUMNS}, c.title FROM search_fts f \
-         JOIN search_map mp ON mp.rowid = f.rowid \
-         JOIN message m ON m.id = mp.message_id \
-         JOIN chat c ON c.id = m.chat_id \
-         WHERE {VISIBLE} AND m.deleted_at IS NULL"
-    ));
-    sql.and("search_fts MATCH", query);
-    if args.favorites {
-        sql.text.push_str(" AND m.favorite_at IS NOT NULL");
-    }
-    if args.tasks {
-        sql.text.push_str(" AND m.is_task = 1");
-    }
-    for (condition, value) in [
-        ("m.chat_id =", &args.chat_id),
-        ("m.journal_date >=", &args.from),
-        ("m.journal_date <=", &args.to),
-    ] {
-        if let Some(value) = value {
-            sql.and(condition, value.clone());
-        }
-    }
-    if let Some(cursor) = &args.cursor {
+    let sql = SearchSql {
+        chat_condition: VISIBLE,
+        extra_columns: "c.title",
+        leading: Vec::new(),
+        query,
+        filters: Filters {
+            favorite: args.favorites,
+            tasks: args.tasks,
+            chat_id: args.chat_id.as_deref(),
+            from: args.from.as_deref(),
+            to: args.to.as_deref(),
+        },
         // The search goes from new to old: the next page is strictly earlier than the cursor position.
-        keyset(&mut sql, cursor, "<");
-    }
-    sql.text.push_str(&format!(
-        " ORDER BY m.journal_date DESC, m.created_at DESC, m.id DESC LIMIT {}",
-        SEARCH_PAGE + 1
-    ));
-    let mut found = sql.rows(conn)?;
-    let has_more = found.len() > SEARCH_PAGE;
-    found.truncate(SEARCH_PAGE);
+        before: args.cursor.as_ref().map(|cursor| Position {
+            journal_date: &cursor.journal_date,
+            created_at: cursor.created_at,
+            id: &cursor.id,
+        }),
+        limit: SEARCH_PAGE,
+    };
+    let (found, has_more) = sql.run(conn, entry_row)?;
     // The "Chats" row is only on the first page, as a separate statement with the predicate.
     let chats = if args.cursor.is_none() {
         visible_chats(conn, ctx)?
