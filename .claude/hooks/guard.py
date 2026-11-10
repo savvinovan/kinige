@@ -34,6 +34,8 @@ USER_DATA_RE = re.compile(
 )
 USER_DATA_DIRS = ("Library/Application Support/me.savvinov.kinige", "Library/Logs/me.savvinov.kinige", "Documents/Kinige")
 CLAUDE_CONFIGS = (".claude.json", ".claude/settings.json", ".claude/settings.local.json")
+# The user's own configs (under the home directory), not a project's `.claude/settings.json`.
+CLAUDE_CONFIG_RE = re.compile(HOME_PREFIX + r"\.claude(?:\.json|/settings(?:\.local)?\.json)")
 INLINE_WRITE_RE = re.compile(
     r"write_text\(|write_bytes\(|\.write\(|open\([^)]*['\"][wax]b?\+?['\"]|writeFileSync|writeFile\(|fs\.write"
     r"|os\.replace\(|shutil\.(?:copy|move)"
@@ -126,7 +128,7 @@ def check_command(command, data, cwd, depth):
             continue
         problem = (check_edit(name, args, words, command, workdir) or check_gui(prog, name, args)
                    or check_claude(name, args, words, bodies, command) or check_git(name, args, data, workdir)
-                   or check_docker(name, args) or check_disk(name, args, workdir))
+                   or check_docker(name, args, command) or check_disk(name, args, workdir))
         if problem:
             return problem, workdir
     return None, workdir
@@ -202,8 +204,12 @@ def is_repo_source(target, workdir):
     root = snapshot.kinige_root(parent)
     if root is None:
         return False
-    return snapshot.is_source(os.path.relpath(path, os.path.realpath(root)) if path.startswith("/private/")
-                              else os.path.relpath(os.path.realpath(path), os.path.realpath(root)))
+    rel = os.path.relpath(os.path.join(os.path.realpath(parent), os.path.relpath(path, parent)), os.path.realpath(root))
+    if not snapshot.is_source(rel):
+        return False
+    # An ignored file (a coverage log, a build output) is not a source.
+    ignored = subprocess.run(["git", "-C", root, "check-ignore", "-q", "--no-index", rel], capture_output=True, timeout=10)
+    return ignored.returncode != 0
 
 
 def check_gui(prog, name, args):
@@ -222,24 +228,33 @@ def check_claude(name, args, words, bodies, command):
     if name == "claude" and args and args[0] in ("mcp", "config"):
         return "do not register servers or change Claude configs from this project (kinige-mcp is never registered)."
     targets = shellparse.redirect_targets(words) + shellparse.tee_targets(name, args)
-    if name in FILE_COPIERS:
-        targets += [bodies.get(a, a) for a in args if not a.startswith("-")]
-    if any(t.rstrip("/").endswith(c) for t in targets for c in CLAUDE_CONFIGS):
+    files = [bodies.get(a, a) for a in args if not a.startswith("-")]
+    if name in FILE_COPIERS and files:
+        targets.append(files[-1].split("of=", 1)[-1] if name == "dd" else files[-1])  # the destination only
+    if any(is_claude_config(t) for t in targets):
         return "Claude configs are the user's: do not write them from this project."
-    if is_inline_script(name, args, words) and INLINE_WRITE_RE.search(command) and any(c in command for c in CLAUDE_CONFIGS):
+    if is_inline_script(name, args, words) and INLINE_WRITE_RE.search(command) and CLAUDE_CONFIG_RE.search(command):
         return "an inline script writes a Claude config. Claude configs are the user's: do not write them from this project."
     return None
+
+
+def is_claude_config(target):
+    path = os.path.realpath(os.path.expanduser(os.path.expandvars(target)))
+    home = os.path.realpath(os.path.expanduser("~"))
+    return any(path == os.path.join(home, c) for c in CLAUDE_CONFIGS)
 
 
 def check_git(name, args, data, workdir):
     if name != "git":
         return None
     sub, rest, repo = shellparse.git_subcommand(args, workdir)
-    if data.get("agent_type") and not git_read_only(sub, rest):
+    # A directory named by a variable (`cd "$WT"`) is unknown here, so it is not judged as the main checkout.
+    if data.get("agent_type") and "$" not in repo and not git_read_only(sub, rest):
         project = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or "")
         if project and in_main_checkout(os.path.realpath(repo), project):
             return ("a subagent runs `git {}` in the main checkout ({}); there only git that changes nothing is allowed. "
-                    "Work in your own worktree (CLAUDE.md rule 13).").format(sub, project)
+                    "Work in your own worktree: `cd <worktree> && git …` or `git -C <worktree> …` "
+                    "(CLAUDE.md rule 13).").format(sub, project)
     if sub != "push":
         return None
     positional, i = [], 0
@@ -256,7 +271,7 @@ def check_git(name, args, data, workdir):
     refspecs = positional[1:]
     if any(r.startswith("+") for r in refspecs):
         return "a `+refspec` is a force push, which is not allowed. Use `--force-with-lease` on your own branch."
-    sources = [r.split(":")[0] for r in refspecs] or ["HEAD"]
+    sources = [("HEAD" if r.split(":")[0] == "@" else r.split(":")[0]) for r in refspecs] or ["HEAD"]
     targets = [r.split(":")[-1] for r in refspecs]
     if "HEAD" in sources and not any(":" in r for r in refspecs):
         targets.append(current_branch(repo))
@@ -269,7 +284,9 @@ def git_read_only(sub, rest):
     if sub in GIT_READ_ONLY:
         return True
     if sub == "worktree":
-        return bool(rest) and rest[0] in ("add", "list")
+        # `remove` without --force: git refuses a dirty worktree, so another agent's work is safe.
+        return bool(rest) and (rest[0] in ("add", "list", "prune")
+                               or (rest[0] == "remove" and not {"-f", "--force"} & set(rest)))
     if sub == "branch":
         return all(a in ("-a", "-r", "-v", "-vv", "--list", "--show-current", "--all", "--remotes") for a in rest)
     if sub == "stash":
@@ -288,7 +305,7 @@ def current_branch(repo):
     return out.stdout.strip() if out.returncode == 0 else ""
 
 
-def check_docker(name, args):
+def check_docker(name, args, command):
     if name != "docker":
         return None
     if "prune" in args:
@@ -301,9 +318,10 @@ def check_docker(name, args):
         ok = bool(names) and all(n.startswith("kinige") for n in names)
     else:
         targets = [a for a in args[args.index(verbs[0]) + 1:] if not a.startswith("-")]
-        # No targets left: they come from a substitution (`docker rm -f $(docker ps -aq --filter name=kinige-)`),
-        # which the segment split removed; that inner command is checked as its own segment.
-        ok = all(t.startswith("kinige") for t in targets)
+        # No targets left: they come from a substitution or a pipe (`docker rm -f $(docker ps -aq --filter
+        # name=kinige-)`), which the segment split removed. Then the line must select ours by name somewhere;
+        # `docker rm -f $(docker ps -aq)` would remove every project's containers.
+        ok = all(t.startswith("kinige") for t in targets) if targets else "kinige" in command
     if not ok:
         return ("this docker command targets objects that are not named `kinige-…` (a compose project needs `-p kinige-…`). "
                 "Touch only your own objects on ubuntu-server.")

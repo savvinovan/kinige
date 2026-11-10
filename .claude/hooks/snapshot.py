@@ -36,7 +36,7 @@ WRITING_TOOLS = {
 }
 GIT_WRITING = {
     "checkout", "switch", "restore", "apply", "am", "merge", "rebase", "reset", "stash", "pull", "cherry-pick", "revert",
-    "mv", "rm", "clone", "worktree", "submodule",
+    "mv", "rm", "clone", "worktree", "submodule", "bisect",
 }
 REPO_SCRIPT_PREFIXES = ("scripts/", "./scripts/", "deploy/", "./deploy/", "web/node_modules/.bin/", "node_modules/.bin/")
 INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "deno", "bun", "pwsh", "ruby", "perl"}
@@ -106,12 +106,14 @@ def runs_writing_tool(segments):
     for words in segments:
         prog = words[0]
         name = os.path.basename(prog)
-        first = words[1] if len(words) > 1 else ""
+        first = next((w for w in words[1:] if not w.startswith("-")), "")
         if name in WRITING_TOOLS or prog.startswith(REPO_SCRIPT_PREFIXES):
             return True
         if name == "git" and git_writes(words[1:]):
             return True
-        if name in INTERPRETERS and first.startswith(REPO_SCRIPT_PREFIXES):
+        if name == "gh" and "checkout" in words:
+            return True
+        if name.startswith(tuple(INTERPRETERS)) and first.startswith(REPO_SCRIPT_PREFIXES):
             return True
     return False
 
@@ -134,6 +136,8 @@ def store_dir():
 
 
 def save(data, workdir):
+    if data.get("tool_name") == "Monitor":
+        return  # PostToolUse does not run for Monitor, so a snapshot would never be compared
     root = kinige_root(workdir) or kinige_root(str(data.get("cwd") or ""))
     if root is None:
         return
