@@ -69,7 +69,7 @@ tempfile = "3"
 # A small PNG drawn in the attachment tests (the store already uses this crate).
 image = { version = "0.25", default-features = false, features = ["png"] }
 # Only for the "database is newer than the app" test: raise `user_version` of the database file.
-rusqlite = { version = "0.40", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # The capture window as an NSPanel without activating the app: a regular window does not reliably get input while another app is active.
