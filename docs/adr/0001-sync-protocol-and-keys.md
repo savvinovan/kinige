@@ -9,6 +9,32 @@ The group table, byte formats, check order, test plan, schema and sources are mo
 Basis: §4 and §10 of the PRD (`docs/plan/02-prd.md`, v0.8), `research/review-fable.md` items 1–7, 13–16, `research/review-codex.md` items 1–13, 16.
 The PRD is normative. This ADR makes concrete what the PRD left "for the ADR". Deviations from the PRD are marked **[deviation]**; the user accepted them, and the PRD was brought in line in v0.8.
 
+## Index
+
+This file is about 100 KB and the appendix about 80 KB. Read the sections a change touches, not the whole of both. The index is navigation only, and the sections stay normative. Sections named §A–§E are in the appendix.
+
+| Section   | What it settles (read it when you touch this)                                 |
+|-----------|-------------------------------------------------------------------------------|
+| §1        | identifiers: entity ids, `op_id`, revision ids                                |
+| §2        | the HLC: format, tie-break, `SKEW_MAX`, persisted clock state                 |
+| §3.1–§3.3 | full-snapshot `upsert`, field groups (table: appendix §A.0), the merge        |
+| §3.4      | text and move conflicts, `conflict` revisions                                 |
+| §3.5      | deletion, trash, restore, `purged`, tombstones                                |
+| §3.6      | dependency order (a message before its chat), Inbox                           |
+| §4        | `schema_version`, unknown fields, records newer than the client               |
+| §5        | the envelope: header, payload, checks on pull (bytes: §A.1, order: §A.4)      |
+| §6.1–§6.2 | the push and pull cycle, the outbox, the first binding of a database          |
+| §6.3      | full resync: stale cursors, generations, the lineage and fork cut, quarantine |
+| §7        | attachments and blobs (framing: §A.2), delayed deletion                       |
+| §8.1–§8.2 | the key hierarchy, Argon2id profiles (table: §D)                              |
+| §8.3–§8.7 | registration, login, password change, recovery, revoking a device             |
+| §8.8–§8.9 | storage on the device, account deletion and its journals                      |
+| §9–§10    | authentication apart from encryption; what the server sees and can do         |
+| §11       | primitives and libraries                                                      |
+| §A.3–§A.6 | push answers, the check order, repeated registration, the HTTP API            |
+| §B        | the test plan (S4a protocol, S4b envelope and keys)                           |
+| §C        | consequences for the local SQLite schema, slice by slice                      |
+
 ## Terminology
 
 The Russian original used several words for some of these concepts; this translation uses one term each.
