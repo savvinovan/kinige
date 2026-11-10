@@ -80,6 +80,11 @@ BLOCKED_COMMANDS = [
     "docker volume rm other-data && docker ps | grep kinige",
     "docker compose -p other-project down -v",
     "docker compose down",
+    "docker rm -f $(docker ps -aq)",
+    "docker rm -f `docker ps -aq`",
+    "docker ps -aq | xargs docker rm -f",
+    "docker volume rm $(docker volume ls -q)",
+    "git push origin @",
 ]
 
 ALLOWED_COMMANDS = [
@@ -109,6 +114,10 @@ ALLOWED_COMMANDS = [
     "grep -rn 'Documents/Kinige' crates",
     "echo ok >/dev/null 2>&1",
     "ls -la",
+    "python3 -c 'print(open(\"/tmp/x\").read())'",
+    "cd web && npx vitest run > coverage/run.log",
+    "cp ~/.claude/settings.json /tmp/s.json",
+    "python3 - <<'EOF'\nimport json\njson.load(open('.claude/settings.json'))\nopen('/tmp/out.json', 'w').write('{}')\nEOF",
 ]
 
 # Run by a subagent with its cwd in the main checkout (CLAUDE_PROJECT_DIR = the repository).
@@ -116,13 +125,19 @@ SUBAGENT_BLOCKED_GIT = [
     "git checkout -b tools/x", "git clean -fdx", "git restore crates/x.rs", "git add -A", "git branch -D foo",
     "git worktree remove --force .claude/worktrees/x", "git stash", "git reset --hard", "git commit -m x",
 ]
+# Snapshots of the runs go to a directory of their own, removed at the end, not to the shared temp dir.
+SNAPSHOT_TMP = tempfile.mkdtemp(prefix="kinige-guard-snapshots-")
+unittest.addModuleCleanup(shutil.rmtree, SNAPSHOT_TMP, True)
 SUBAGENT_ALLOWED_GIT = [
     "git status", "git log --oneline -3", "git diff", "git fetch -q", "git branch --show-current",
     "git worktree add /tmp/kinige-wt-test -b tools/y", "git worktree list", "git stash list", "git remote -v",
+    "git worktree remove /tmp/kinige-wt-test", "git worktree prune", "cd \"$WT\" && git commit -m x",
+    "git -C \"$WT\" commit -m x",
 ]
 
 
 def run(mode, payload, env=None):
+    env = dict(env or os.environ, TMPDIR=SNAPSHOT_TMP)
     proc = subprocess.run(
         [sys.executable, "-I", GUARD, mode], input=payload if isinstance(payload, str) else json.dumps(payload),
         capture_output=True, text=True, timeout=120, env=env,
@@ -146,6 +161,8 @@ class Repo(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.repo, True)
         for rel in ("crates/kinige-domain/Cargo.toml", "crates/x.rs", "web/src/a.ts", "docs/x.md", "CLAUDE.md"):
             self.write(rel, "x\n")
+        self.write("web/.gitignore", "coverage/\n")
+        os.makedirs(os.path.join(self.repo, "web", "coverage"))
         self.git("init", "-q", "-b", "main")
         self.commit("init")
 
@@ -242,7 +259,8 @@ class PostSnapshot(Repo):
     def test_writing_tools_generated_files_and_deletions_are_not_reported(self):
         cases = [
             ("cargo fmt --all", "crates/x.rs"), ("git checkout -- crates/x.rs", "crates/x.rs"),
-            ("bash scripts/release.sh 1.2.3", "Cargo.toml"), ("python3 /tmp/fix.py", "web/src/api/generated/T.ts"),
+            ("bash scripts/release.sh 1.2.3", "Cargo.toml"), ("python3 -I scripts/gen.py", "web/src/a.ts"),
+            ("python3 /tmp/fix.py", "web/src/api/generated/T.ts"),
             ("python3 /tmp/fix.py", "docs/screens/7/a.png"),
         ]
         for command, rel in cases:

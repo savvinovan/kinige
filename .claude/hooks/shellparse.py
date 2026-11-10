@@ -29,7 +29,9 @@ def skeleton(command):
             if j < 0:
                 j = len(text)
             body = text[i + 1:j]
-            if body and not re.search(r"\s", body):
+            # A one-word body goes back as text (a path, a sed script); one with shell metacharacters stays opaque, so
+            # `python3 -c 'print(open("x").read())'` is not read as a command `open`.
+            if body and not re.search(r"[\s()|;&<>`]", body):
                 out.append(body)
             else:
                 key = "QSTR{}".format(len(bodies))
