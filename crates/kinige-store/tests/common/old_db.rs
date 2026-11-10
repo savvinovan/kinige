@@ -43,6 +43,11 @@ pub fn downgrade_to(dir: &Path, version: i64) {
                 "every row of {table} was copied"
             );
         }
+        if version < 4 {
+            // The mark of an index that this schema does not have yet (the rows of `app_setting` came from the current database).
+            conn.execute_batch("DELETE FROM main.app_setting WHERE key = 'search_index_version';")
+                .unwrap();
+        }
         conn.execute_batch("DETACH DATABASE current;").unwrap();
     }
     fs::remove_file(&current).unwrap();
