@@ -2,6 +2,7 @@
 //! `kinige_store::db_at_version`, the first `n` real entries of the migration list applied the way an upgrade applies them, so
 //! the old tables and columns are exactly what a database of that version had. Only the rows come from the store that wrote them.
 
+use super::ops::wait_closed;
 use super::{db_path, wait_until};
 use rusqlite::Connection;
 use std::fs;
@@ -14,10 +15,11 @@ use std::path::{Path, PathBuf};
 /// rebuild it, as it is across a real migration. Every table is checked to have the same number of rows as its source.
 pub fn downgrade_to(dir: &Path, version: i64) {
     let current = db_path(dir);
-    // The store has let go of the file: the last connection to close deletes `-wal` and `-shm` after its checkpoint (the
-    // background threads of a dropped store do not close theirs instantly), and on Windows an open file cannot be replaced.
-    wait_until("the closed store releases the database", || {
-        !side_file(&current, "-wal").exists() && !side_file(&current, "-shm").exists()
+    // Everything the closed store wrote is in the main file and `-wal` is empty (the background threads of a dropped store do not
+    // close their connections instantly, and the last one to close does not always delete `-wal`, so its absence is no signal).
+    wait_closed(dir);
+    wait_until("the write-ahead log is empty", || {
+        fs::metadata(side_file(&current, "-wal")).map_or(true, |meta| meta.len() == 0)
     });
     let old = dir.join("old-schema.db");
     kinige_store::db_at_version(&old, version).expect("a database of the old schema");
@@ -50,7 +52,10 @@ pub fn downgrade_to(dir: &Path, version: i64) {
         }
         conn.execute_batch("DETACH DATABASE current;").unwrap();
     }
-    fs::remove_file(&current).unwrap();
+    // On Windows an open file cannot be removed: wait for the closed store's last connection to let go.
+    wait_until("the closed store releases the database file", || {
+        !current.exists() || fs::remove_file(&current).is_ok()
+    });
     for suffix in ["-wal", "-shm"] {
         let _ = fs::remove_file(side_file(&current, suffix));
     }
