@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\" bash",
+            "command": "g=\"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\"; [ ! -f \"$g\" ] || python3 -I \"$g\" bash",
             "timeout": 120
           }
         ]
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\" paths",
+            "command": "g=\"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\"; [ ! -f \"$g\" ] || python3 -I \"$g\" paths",
             "timeout": 10
           }
         ]
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\" post",
+            "command": "g=\"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\"; [ ! -f \"$g\" ] || python3 -I \"$g\" post",
             "timeout": 60
           }
         ]
