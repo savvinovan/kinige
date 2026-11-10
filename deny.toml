@@ -20,6 +20,12 @@ ignore = [
     { id = "RUSTSEC-2026-0368", reason = "zip extract (symlink targets): build.rs of libsodium-sys-stable, signed archive, build time only" },
     { id = "RUSTSEC-2026-0369", reason = "zip extract (permissions through symlinks): build.rs of libsodium-sys-stable, signed archive, build time only" },
     { id = "RUSTSEC-2026-0429", reason = "zip extract (symlink size abort): build.rs of libsodium-sys-stable, signed archive, build time only" },
+    # rmcp 3.6.0 is built with `default-features = false, features = ["server"]`: the features it ends up with are `server`,
+    # `transport-async-rw`, `schemars` and `uuid`. Both advisories are about client code behind the `auth` and Streamable HTTP client
+    # features, which are not compiled. Remove both when rmcp is at 3.9 or later (3.9.0 came out on 05.11.2026, so the two-week rule
+    # of `src-tauri/Cargo.toml` allows it from 19.11.2026).
+    { id = "RUSTSEC-2026-0457", reason = "rmcp OAuth client SSRF filter: the auth client is not compiled, the app builds the server feature only" },
+    { id = "RUSTSEC-2026-0462", reason = "rmcp Streamable HTTP client buffering: the client is not compiled, the app builds the server feature only" },
 ]
 
 [licenses]
