@@ -1,0 +1,106 @@
+{
+  "rule": "Replies, from the first send to the old entry being purged. A reply is accepted only to a live entry of the same chat. The quote under a reply and the quote above the field follow the old entry: live, trash, missing; above the field an entry that was moved to another chat is `moved`. Sending clears the draft with its reply line. Errors are checked in this order: empty text, the reply target, the chat. A step with `error` must fail with that code, any other step must succeed.",
+  "rust": "Store::{create_chat, send_reply, save_chat_draft, chat_draft, list_messages, move_message, delete_message, restore_message, purge_message}",
+  "mock": "MockApi through the same KinigeApi methods",
+  "scenarios": [
+    {
+      "name": "the quote under a reply follows the old entry",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "chat", "as": "b" },
+        { "op": "send", "chat": "a", "body": "the old entry", "as": "m1" },
+        { "op": "send", "chat": "a", "body": "the reply", "replyTo": "m1", "as": "m2" },
+        { "op": "feedQuote", "msg": "m2", "state": "live", "quoteChat": "a" },
+        { "op": "move", "msg": "m1", "to": "b" },
+        { "op": "feedQuote", "msg": "m2", "state": "live", "quoteChat": "b" },
+        { "op": "move", "msg": "m1", "to": "a" },
+        { "op": "delete", "msg": "m1" },
+        { "op": "feedQuote", "msg": "m2", "state": "trash", "quoteChat": "a" },
+        { "op": "restore", "msg": "m1" },
+        { "op": "feedQuote", "msg": "m2", "state": "live", "quoteChat": "a" },
+        { "op": "delete", "msg": "m1" },
+        { "op": "purge", "msg": "m1" },
+        { "op": "feedQuote", "msg": "m2", "state": "missing", "quoteChat": null }
+      ]
+    },
+    {
+      "name": "the quote above the field follows the old entry, and a move makes it moved",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "chat", "as": "b" },
+        { "op": "send", "chat": "a", "body": "the old entry", "as": "m1" },
+        { "op": "saveDraft", "chat": "a", "body": "half a thought", "replyTo": "m1" },
+        { "op": "draft", "chat": "a", "body": "half a thought", "quote": "live" },
+        { "op": "move", "msg": "m1", "to": "b" },
+        { "op": "draft", "chat": "a", "body": "half a thought", "quote": "moved" },
+        { "op": "move", "msg": "m1", "to": "a" },
+        { "op": "draft", "chat": "a", "body": "half a thought", "quote": "live" },
+        { "op": "delete", "msg": "m1" },
+        { "op": "draft", "chat": "a", "body": "half a thought", "quote": "trash" },
+        { "op": "purge", "msg": "m1" },
+        { "op": "draft", "chat": "a", "body": "half a thought", "quote": "missing" }
+      ]
+    },
+    {
+      "name": "no reply line without a reply",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "draft", "chat": "a", "body": "", "quote": null },
+        { "op": "saveDraft", "chat": "a", "body": "just text" },
+        { "op": "draft", "chat": "a", "body": "just text", "quote": null }
+      ]
+    },
+    {
+      "name": "sending clears the draft and its reply line",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "send", "chat": "a", "body": "the old entry", "as": "m1" },
+        { "op": "saveDraft", "chat": "a", "body": "answer", "replyTo": "m1" },
+        { "op": "send", "chat": "a", "body": "answer", "replyTo": "m1", "as": "m2" },
+        { "op": "draft", "chat": "a", "body": "", "quote": null }
+      ]
+    },
+    {
+      "name": "a reply is accepted only to a live entry of the same chat",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "chat", "as": "b" },
+        { "op": "send", "chat": "a", "body": "in a", "as": "m1" },
+        { "op": "send", "chat": "b", "body": "reply from b", "replyTo": "m1", "error": "reply_target_not_found" },
+        { "op": "send", "chat": "a", "body": "reply to nothing", "replyTo": "ghost", "error": "reply_target_not_found" },
+        { "op": "delete", "msg": "m1" },
+        { "op": "send", "chat": "a", "body": "reply to trash", "replyTo": "m1", "error": "reply_target_not_found" },
+        { "op": "restore", "msg": "m1" },
+        { "op": "send", "chat": "a", "body": "reply after restore", "replyTo": "m1", "as": "m2" }
+      ]
+    },
+    {
+      "name": "errors are checked in order: empty text, reply target, chat",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "send", "chat": "a", "body": "in a", "as": "m1" },
+        { "op": "send", "chat": "a", "body": "", "error": "empty_message" },
+        { "op": "send", "chat": "a", "body": " \n\t ", "error": "empty_message" },
+        { "op": "send", "chat": "nowhere", "body": "to nowhere", "error": "chat_not_found" },
+        { "op": "send", "chat": "nowhere", "body": "", "error": "empty_message" },
+        { "op": "send", "chat": "nowhere", "body": "reply to nowhere", "replyTo": "m1", "error": "reply_target_not_found" },
+        { "op": "send", "chat": "nowhere", "body": "", "replyTo": "m1", "error": "empty_message" },
+        { "op": "saveDraft", "chat": "nowhere", "body": "a draft", "error": "chat_not_found" },
+        { "op": "saveDraft", "chat": "nowhere", "body": "a draft", "replyTo": "", "error": "reply_target_not_found" },
+        { "op": "saveDraft", "chat": "a", "body": "a draft", "replyTo": "", "error": "reply_target_not_found" }
+      ]
+    },
+    {
+      "name": "moving and purging",
+      "steps": [
+        { "op": "chat", "as": "a" },
+        { "op": "send", "chat": "a", "body": "one", "as": "m1" },
+        { "op": "purge", "msg": "m1", "error": "not_in_trash" },
+        { "op": "move", "msg": "m1", "to": "nowhere", "error": "chat_not_found" },
+        { "op": "move", "msg": "ghost", "to": "a", "error": "message_not_found" },
+        { "op": "delete", "msg": "m1" },
+        { "op": "move", "msg": "m1", "to": "inbox", "error": "message_in_trash" }
+      ]
+    }
+  ]
+}

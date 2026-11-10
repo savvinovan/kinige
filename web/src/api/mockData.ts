@@ -1,4 +1,5 @@
 import { INBOX_ID } from "./KinigeApi";
+import { LIMITS } from "./mockRules";
 import { mockTags } from "./mockTags";
 import type { ChatSummary } from "./generated/ChatSummary";
 import type { Language } from "./generated/Language";
@@ -6,6 +7,11 @@ import type { MessageView } from "./generated/MessageView";
 import type { Settings } from "./generated/Settings";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
+
+// The rules moved to `mockRules.ts`; the names the stories and tests import stay here.
+export { DAY_MS, NO_ATTACHMENTS, isRealDate, yearsLater } from "./mockRules";
+export const APPEND_WINDOW_MS = LIMITS.appendWindowMs;
+export const TRASH_DAYS = LIMITS.trashDays;
 
 export interface MockApiOptions {
   /** "Now" for new entries and the "today" label; the window clock by default. */
@@ -42,12 +48,8 @@ export const DEFAULT_SETTINGS: Settings = {
   backup: { folder: "/Users/me/Library/Application Support/me.savvinov.kinige/backups", lastAt: null, count: 0, error: null },
 };
 
-/** The append window (PRD §2.1): an entry not older than ten minutes. */
-export const APPEND_WINDOW_MS = 10 * 60 * 1000;
 /** How many entries the capture window shows above the field. */
 export const CONTEXT_LEN = 3;
-export const DAY_MS = 24 * 3_600_000;
-export const TRASH_DAYS = 30;
 
 /** An entry for tests and stories: all `MessageView` fields with sensible defaults. */
 export function mockMessage(part: Partial<MessageView> & Pick<MessageView, "id" | "bodyMd">): MessageView {
@@ -73,26 +75,8 @@ export interface Row {
   deletedAt: number | null;
   /** Texts before each edit (`edit` revisions). */
   revisions: string[];
-  /** The entry is a reply (slice 5): the addressee entry id; the `view.replyTo` quote is built on read (`MockApiBase.viewOf`). */
+  /** The entry is a reply (slice 5): the addressee entry id; the `view.replyTo` quote is built on read (`MockState.viewOf`). */
   replyToId?: string;
-}
-
-/** Full years between the old entry's day and the reply day; 0 if under a year or the reply is earlier (like `reply::years_later` in Rust). */
-export function yearsLater(old: string, reply: string): number {
-  if (!isRealDate(old) || !isRealDate(reply)) return 0;
-  const [oy, om, od] = old.split("-").map(Number) as [number, number, number];
-  const [ry, rm, rd] = reply.split("-").map(Number) as [number, number, number];
-  const years = ry - oy - (rm * 32 + rd < om * 32 + od ? 1 : 0);
-  return Math.max(0, years);
-}
-
-/** `YYYY-MM-DD` - an existing date (as in Rust: future dates are allowed). */
-export function isRealDate(text: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
-  const [year, month, day] = text.split("-").map(Number);
-  if ((year ?? 0) < 1000) return false;
-  const date = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1));
-  return date.getUTCFullYear() === year && date.getUTCMonth() === (month ?? 1) - 1 && date.getUTCDate() === day;
 }
 
 /** Feed order `(journal_date, created_at, id)`. */
@@ -107,6 +91,3 @@ export function compareFeed(
 
 /** The media fields of an import preview chat that has none (slice 7). */
 export const NO_MEDIA = { mediaFiles: 0, mediaBytes: 0, mediaMissing: 0 } as const;
-
-/** An entry with no attachments, as the reply quote and the day card say it (slice 7). */
-export const NO_ATTACHMENTS = { photos: 0, files: 0, voices: 0, voiceMs: null, name: null } as const;

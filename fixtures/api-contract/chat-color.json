@@ -1,0 +1,27 @@
+{
+  "rule": "The colour shown for a chat: Inbox is always grey, an explicit pick wins, no pick shows the automatic colour (FNV-1a over the UTF-8 bytes of the id, modulo six hues).",
+  "rust": "kinige_domain::chat_color::resolve_color",
+  "mock": "web/src/api/mockColor.ts resolveColor",
+  "cases": [
+    { "id": "", "picked": null, "expected": "teal" },
+    { "id": "a", "picked": null, "expected": "pink" },
+    { "id": "0b4f7c2e-5d7e-4f38-9a41-6e0f3f8f2c11", "picked": null, "expected": "green" },
+    { "id": "3f1c9a52-8b6e-4d07-a2c4-17e5d9b0c3a8", "picked": null, "expected": "teal" },
+    { "id": "7a2d5e90-1c3b-4f68-8e47-b0a9d2c61f35", "picked": null, "expected": "orange" },
+    { "id": "c8e04b17-9a5d-4c32-b6f1-52d7a83e0c94", "picked": null, "expected": "pink" },
+    { "id": "1d6f8a3b-2e47-4b90-9c5a-8f0e7d34b261", "picked": null, "expected": "teal" },
+    { "id": "e5a79c04-6d18-4a2f-b3e0-94c1f5d72a86", "picked": null, "expected": "teal" },
+    { "id": "92b3d7e1-4f05-4c8a-a6d9-0e1b58c3f470", "picked": null, "expected": "violet" },
+    { "id": "5c0e1f86-a7d3-4429-8b12-d6e9304a7fc5", "picked": null, "expected": "teal" },
+    { "id": "chat-1", "picked": null, "expected": "teal" },
+    { "id": "chat-2", "picked": null, "expected": "pink" },
+    { "id": "00000000-0000-4000-8000-000000000001", "picked": null, "expected": "grey" },
+    { "id": "00000000-0000-4000-8000-000000000001", "picked": "pink", "expected": "grey" },
+    { "id": "a", "picked": "violet", "expected": "violet" },
+    { "id": "a", "picked": "grey", "expected": "grey" },
+    { "id": "чат", "picked": null, "expected": "blue" },
+    { "id": "Работа", "picked": null, "expected": "orange" },
+    { "id": "💬", "picked": null, "expected": "blue" },
+    { "id": "日本語", "picked": null, "expected": "orange" }
+  ]
+}

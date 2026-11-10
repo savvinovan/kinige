@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AgentAccess } from "../../../api/generated/AgentAccess";
-import { MOCK_AGENT_SOCKET } from "../../../api/MockApiSlice4a";
+import { MOCK_AGENT_SOCKET } from "../../../api/MockApi";
 import { render, screen, within } from "../../../test/render";
 import { AccessPage } from "./AccessPage";
 

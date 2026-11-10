@@ -11,14 +11,13 @@ const AUTOMATIC: readonly ChatColor[] = ["blue", "teal", "green", "orange", "pin
 export const INBOX_COLOR: ChatColor = "grey";
 
 /**
- * 32-bit FNV-1a over the id modulo the six hues (the same pairs as the Rust test vectors). The rule is the UTF-8 bytes of the id
- * (ADR-0001 details §C.7); this copy hashes UTF-16 code units, so it equals the rule for ASCII ids only (UUIDs, `inbox`): do not
- * copy it as the rule.
+ * 32-bit FNV-1a over the UTF-8 bytes of the id (ADR-0001 details §C.7) modulo the six hues. `fixtures/api-contract/chat-color.json`
+ * pins the pairs against Rust, ASCII and non-ASCII ids alike.
  */
 export function automaticColor(id: string): ChatColor {
   let hash = 0x811c9dc5;
-  for (let index = 0; index < id.length; index++) {
-    hash ^= id.charCodeAt(index);
+  for (const byte of new TextEncoder().encode(id)) {
+    hash ^= byte;
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
   return AUTOMATIC[hash % AUTOMATIC.length] ?? "blue";
