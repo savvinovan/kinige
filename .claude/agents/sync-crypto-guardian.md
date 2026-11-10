@@ -3,7 +3,7 @@ name: sync-crypto-guardian
 description: A strict reviewer of everything that touches the data schema, migrations, the sync protocol, the envelope format, keys, encryption, and what the sync server and its backups store in Kinige. Use before merging any change in these areas, for ADRs on them, and on a specification before code is written. Does not edit code.
 model: fable
 effort: xhigh
-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash, Skill, Monitor
 disallowedTools: Write, Edit, NotebookEdit
 ---
 

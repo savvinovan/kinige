@@ -66,7 +66,7 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 - **The guard also reports** a source file that a Bash command created or rewrote without a tool that legitimately writes sources, a script edit committed in the same command included.
 - **The guard is a backstop, not a sandbox.** Variables, `eval` and copies of prepared files (`cp`, `mv`) get past the checks before a command; the snapshot after it catches most of them.
 - **A blocked call says why and what to do instead.** A reviewer's fault-injection probe goes through `git apply` of a patch in its own worktree.
-- **`scripts/pre-pr-check.py`** checks a branch before its PR: files grown past 400 lines, backup files, invisible characters, unaligned tables, whitespace, rustfmt.
+- **`scripts/pre-pr-check.py`** checks a branch before its PR: files grown past 400 lines, backup files, invisible characters, unaligned tables, whitespace, rustfmt. CI's `pre-pr-check` job runs it on every pull request, against the PR's base.
 - **Tests:** `python3 -I .claude/hooks/tests/test_hooks.py` and `python3 -I scripts/pre-pr-check.test.py`, both run in CI's `web` job.
 - **Progress file:** the coordinator's `claude-progress.md` at the repository root (ignored by git) is re-injected at session start and after compaction.
 
@@ -74,9 +74,9 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 - **Worktree.** Work in your own worktree.
   - Use the one the prompt names. If it names none, create one under your scratch directory from the main checkout (your starting directory): `git worktree add <scratch>/<name> -b <branch> origin/main` for new work, `git worktree add --detach <scratch>/<name> origin/<branch>` for a review.
   - Start every Bash command with `cd <worktree> &&`: the shell starts in the main checkout each time. The guard blocks edits there, and any git that would change it.
-  - Set `CARGO_TARGET_DIR` inside the worktree. Before you finish, delete it, and for a review also the worktree (rule 13).
+  - Set `CARGO_TARGET_DIR` inside the worktree, and delete it before you finish each round (rule 13).
   - Don't touch files outside your worktree, except your scratch directory and your agent memory.
-  - The worktree stays in place for follow-up rounds of the same task: they come as messages to the same agent. Isolation by `isolation: worktree` is not used, because a resumed agent whose worktree was cleaned up cannot run commands.
+  - **Keep the worktree between rounds.** Follow-up rounds of the same task come as messages to the same agent. Remove the worktree only when the coordinator says the task is over: `git -C <worktree> worktree remove <worktree>`. The coordinator removes implementers' worktrees after their PR is merged. `isolation: worktree` is not used, because a resumed agent whose worktree was cleaned up cannot run commands.
 - **The user's Mac.** Don't launch the app, take screenshots, simulate input or global hotkeys, open the user's data, or change Claude configs and register kinige-mcp.
   - GUI checks run on GitHub runners: see the `screens` skill.
 - **Docker.** It runs only on ubuntu-server. Name your objects `kinige-…` and remove what you created.

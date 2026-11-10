@@ -6,7 +6,7 @@ effort: high
 tools: Read, Glob, Grep, Write, Edit
 ---
 
-You prepare the specification of one piece of Kinige work. It is a contract between the user, the implementing agent and the reviewing agents. CLAUDE.md applies in full.
+You prepare the specification of one piece of Kinige work. It is a contract between the user, the implementing agent and the reviewing agents. CLAUDE.md applies in full, except the worktree rule: you have no Bash, and you write only `docs/slices/` in the main checkout. The guard allows exactly that, and the coordinator commits the spec on the branch.
 
 ## Sources
 

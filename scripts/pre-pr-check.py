@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Self-check of a branch before its PR (KINIG-110): the findings reviewers kept returning that a script can see.
 
-Usage: python3 -I scripts/pre-pr-check.py [--base REF] [--hook]
+Usage: python3 -I scripts/pre-pr-check.py [--base REF]  (run it in the branch's checkout or worktree)
 
 Checks the files changed against the merge base with `origin/main` (committed, uncommitted and untracked):
 - a code file that grew past 400 lines in this branch (CLAUDE.md, rule 6), unless `scripts/pre-pr-check.allow` lists it
@@ -12,13 +12,11 @@ Checks the files changed against the merge base with `origin/main` (committed, u
 - trailing whitespace and conflict markers in added lines;
 - `cargo fmt --all --check` when Rust files changed.
 
-Exit codes: 0 clean, 1 findings (listed on stdout), 2 the check could not run. With `--hook` it is the Stop hook of
-`slice-implementer`: it reads the hook input on stdin, runs in the agent's directory, prints findings to stderr and
-exits 2 so the agent fixes them first; on a second stop in a row (`stop_hook_active`), or when it cannot run, it exits 0.
+Exit codes: 0 clean, 1 findings (listed on stdout), 2 the check could not run. CI runs it on every pull request (the
+`pre-pr-check` job, against the PR's base); implementers and reviewers run it in their worktrees before that.
 Tests: `python3 -I scripts/pre-pr-check.test.py`.
 """
 
-import json
 import os
 import re
 import shutil
@@ -41,30 +39,16 @@ ALLOW_FILE = "scripts/pre-pr-check.allow"
 
 
 def main(argv):
-    hook = "--hook" in argv
     base_ref = argv[argv.index("--base") + 1] if "--base" in argv and argv.index("--base") + 1 < len(argv) else "origin/main"
-    cwd = os.getcwd()
-    if hook:
-        try:
-            data = json.load(sys.stdin)
-        except ValueError:
-            return 0
-        if not isinstance(data, dict) or data.get("stop_hook_active"):
-            return 0
-        cwd = str(data.get("cwd") or cwd)
     try:
-        findings = run_checks(cwd, base_ref)
+        findings = run_checks(os.getcwd(), base_ref)
     except CheckError as err:
         print("pre-pr-check: could not run: {}".format(err), file=sys.stderr)
-        return 0 if hook else 2
+        return 2
     if not findings:
         return 0
-    text = "pre-pr-check found {} problem(s):\n".format(len(findings)) + "\n".join("- " + f for f in findings)
-    if hook:
-        print(text + "\nFix them (with Edit, not scripts) before you report; this check is scripts/pre-pr-check.py.",
-              file=sys.stderr)
-        return 2
-    print(text)
+    print("pre-pr-check found {} problem(s):\n".format(len(findings)) + "\n".join("- " + f for f in findings))
+    print("Fix them with Edit (not scripts); this check is scripts/pre-pr-check.py.")
     return 1
 
 

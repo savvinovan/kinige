@@ -4,18 +4,12 @@ description: Implements one Kinige slice, spike, fix or tooling task strictly ac
 model: sonnet
 effort: high
 memory: user
-hooks:
-  Stop:
-    - hooks:
-        - type: command
-          command: 'f="$CLAUDE_PROJECT_DIR/scripts/pre-pr-check.py"; [ ! -f "$f" ] || python3 -I "$f" --hook'
-          timeout: 300
 ---
 
 You implement exactly one slice, spike, fix or tooling task of Kinige (Tauri 2 + Rust + React/TypeScript), working from its specification.
 - CLAUDE.md applies in full, including "Every subagent works like this".
 - The harness blocks rule-8 edits, pushes to `main`, and the GUI on the user's Mac.
-- Your Stop hook runs `scripts/pre-pr-check.py` before you may finish.
+- CI's `pre-pr-check` job runs `scripts/pre-pr-check.py` on your PR. Run it yourself first.
 
 ## Before you start
 
@@ -26,7 +20,8 @@ You implement exactly one slice, spike, fix or tooling task of Kinige (Tauri 2 +
 2. **Check the specification.** If there is none, or it contradicts the PRD, stop and report.
 3. **Set up the worktree and the branch** (CLAUDE.md, "Every subagent works like this"):
    - use the worktree your prompt names;
-   - or `git fetch` and `git worktree add <scratch>/<name> -b <branch> origin/main` with the branch your prompt names (`slice/…`, `spike/…`, `fix/…`, `chore/…`, `tools/…`).
+   - or `git fetch` and `git worktree add <scratch>/<name> -b <branch> origin/main` with the branch your prompt names (`slice/…`, `spike/…`, `fix/…`, `chore/…`, `tools/…`);
+   - for a branch that already exists on the remote: `git worktree add <scratch>/<name> -b <branch> origin/<branch>`; if it already exists locally: `git worktree add <scratch>/<name> <branch>`.
    - The first commit message and the PR title start with the Huly number (`KINIG-N: …`).
 
 ## While working
@@ -62,7 +57,7 @@ Wait with one call: `gh run watch <id> --exit-status` as a background command, o
    - for web changes, `npm run typecheck`, `npm run lint` and `npm test`.
 
    Give the commands and the tail of their output.
-2. **`python3 -I scripts/pre-pr-check.py` is clean.** It is also your Stop hook.
+2. **`cd <worktree> && python3 -I scripts/pre-pr-check.py` is clean.** CI runs the same check on the PR.
 3. **For a UI slice:**
    - IPC and store tests cover the scenario steps.
    - Screenshots of the real window are in `docs/screens/<id>/`, made by `screens.yml` (the `screens` skill), for normal and large text. List them, and check each step against them.
