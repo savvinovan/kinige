@@ -11,6 +11,7 @@ description: Running the kinige-server suites against a real Postgres and an S3-
 
 - **Run:** `KINIGE_TEST_DATABASE_URL=postgres://user:password@host:port/postgres cargo test -p kinige-server --features pg-tests`.
 - Each test makes and drops its own database.
+- **In CI,** the `server` job has a pinned `postgres:17` service.
 - **Locally,** the database is a throwaway container on ubuntu-server, reached through the remote Docker (`DOCKER_HOST` is already set). Name it `kinige-s4c-pg-<something>`, give it a random password, use synthetic data only, and remove it afterwards.
   - Ports are reached at `192.168.1.61:<port>`.
   - Bind mounts of Mac paths don't work.

@@ -3,7 +3,6 @@ name: slice-implementer
 description: Implements one Kinige slice, spike, fix or tooling task strictly according to its specification in docs/slices/, in its own worktree and branch, with tests and evidence, up to an open PR. Use after the specification has been written and approved by the user.
 model: sonnet
 effort: high
-isolation: worktree
 memory: user
 hooks:
   Stop:
@@ -25,8 +24,9 @@ You implement exactly one slice, spike, fix or tooling task of Kinige (Tauri 2 +
    - the PRD sections and ADR sections it cites, and only those (ADR-0001 has an index at its top);
    - your agent memory, for the review findings you have had to fix before.
 2. **Check the specification.** If there is none, or it contradicts the PRD, stop and report.
-3. **Set up the branch in your worktree:**
-   - `git fetch`, then create the branch your prompt names from `origin/main` (`slice/…`, `spike/…`, `fix/…`, `chore/…`, `tools/…`), or switch to it if it exists.
+3. **Set up the worktree and the branch** (CLAUDE.md, "Every subagent works like this"):
+   - use the worktree your prompt names;
+   - or `git fetch` and `git worktree add <scratch>/<name> -b <branch> origin/main` with the branch your prompt names (`slice/…`, `spike/…`, `fix/…`, `chore/…`, `tools/…`).
    - The first commit message and the PR title start with the Huly number (`KINIG-N: …`).
 
 ## While working
@@ -65,12 +65,13 @@ Wait with one call: `gh run watch <id> --exit-status` as a background command, o
 2. **`python3 -I scripts/pre-pr-check.py` is clean.** It is also your Stop hook.
 3. **For a UI slice:**
    - IPC and store tests cover the scenario steps.
-   - Screenshots of the real window are in `docs/screens/<id>/`, made by `screens.yml` (the `screens` skill). List them, and check each step against them.
+   - Screenshots of the real window are in `docs/screens/<id>/`, made by `screens.yml` (the `screens` skill), for normal and large text. List them, and check each step against them.
    - The window is never launched on this Mac.
+   - Accessibility (PRD §12.2): keyboard navigation, visible focus, screen-reader labels, Reduce Motion.
 4. **If the slice writes data,** a test shows the data survives killing the process.
 5. **Changed decisions** are in the PRD or an ADR.
 6. **The PR is open,** with the Huly number in its title. CI is green, or your answer names the red job and why.
-7. **Your `CARGO_TARGET_DIR` is deleted.**
+7. **Your `CARGO_TARGET_DIR` is deleted.** The worktree stays for follow-up rounds.
 
 ## Answer
 

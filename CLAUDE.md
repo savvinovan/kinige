@@ -10,8 +10,19 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 - `docs/screens/<slice>/` — screenshots of the real window for acceptance.
 
 **Status:**
-- **Accepted by the user:** slices 0–7a. The last one was 7a (voice notes) on 05.11.2026.
-- **Merged:** the sync spikes S4a–S4c (server, ADR-0017–0020) and tech debt E.
+- **Done:** slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol + keys).
+- **Merged:** slice 1 (Inbox).
+- **Accepted by the user:**
+  - 27.10.2026: slice 2 (quick capture);
+  - 28.10: slice 3 (chats, entry actions, trash, database backup) and slice 4 (Telegram import, archive, search);
+  - 29.10: slice 4a (MCP server);
+  - 31.10: slice 4b (settings);
+  - 01.11: slice 5 ("On this day", replies);
+  - 02.11: slice D2 (visual refresh) and slice 10a (Windows build);
+  - 03.11: slice 6 (the year's forest);
+  - 04.11: slice 7 (attachments);
+  - 05.11: slice 7a (voice notes).
+- **Merged since:** the sync spikes S4a–S4c (server, ADR-0017–0020) and tech debt E.
 - **Next:** slice 11, sync in the app.
 - **History:** the PRD changelog (`docs/plan/02-prd.md`, top).
 - **Build and test commands:** the "Build and tests" section below.
@@ -61,9 +72,11 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 
 **Every subagent works like this.** Prompts don't repeat these rules.
 - **Worktree.** Work in your own worktree.
-  - The definitions set `isolation: worktree`. It starts from `origin/main`, so `git fetch` and switch to the branch you were given.
-  - Set `CARGO_TARGET_DIR` inside the worktree and delete it before you finish (rule 13).
-  - Don't touch files outside your worktree, except your scratch directory.
+  - Use the one the prompt names. If it names none, create one under your scratch directory from the main checkout (your starting directory): `git worktree add <scratch>/<name> -b <branch> origin/main` for new work, `git worktree add --detach <scratch>/<name> origin/<branch>` for a review.
+  - Start every Bash command with `cd <worktree> &&`: the shell starts in the main checkout each time. The guard blocks edits there, and any git that would change it.
+  - Set `CARGO_TARGET_DIR` inside the worktree. Before you finish, delete it, and for a review also the worktree (rule 13).
+  - Don't touch files outside your worktree, except your scratch directory and your agent memory.
+  - The worktree stays in place for follow-up rounds of the same task: they come as messages to the same agent. Isolation by `isolation: worktree` is not used, because a resumed agent whose worktree was cleaned up cannot run commands.
 - **The user's Mac.** Don't launch the app, take screenshots, simulate input or global hotkeys, open the user's data, or change Claude configs and register kinige-mcp.
   - GUI checks run on GitHub runners: see the `screens` skill.
 - **Docker.** It runs only on ubuntu-server. Name your objects `kinige-…` and remove what you created.
@@ -122,7 +135,7 @@ App: `scripts/run-app.sh` (dev), `scripts/storybook.sh`, `scripts/build-app.sh` 
 **Versions and releases (ADR-0012): the `release` skill** (`.claude/skills/release/SKILL.md`).
 - Semver: the minor version is the slice number, and 1.0.0 comes after sync.
 - The version lives only in `[workspace.package]` of `Cargo.toml`.
-- Only the coordinator cuts a release, after the user accepts a slice or a batch of fixes. It uses `scripts/release.sh`.
+- Only the coordinator cuts a release, after acceptance of a slice or a batch of fixes. It uses `scripts/release.sh`.
 - A tag is never moved or deleted.
 
 CI (GitHub Actions, `.github/workflows/ci.yml`; status and rerun via `gh run list`, `gh run rerun`) repeats everything listed above except building the `.app`, and adds: the `macos` job (`cargo clippy -p kinige --all-targets -- -D warnings` and `cargo test -p kinige` on `macos-15`: code under `cfg(target_os = "macos")`), the `windows` job (`cargo clippy` and `cargo test` for `kinige`, `kinige-store`, `kinige-domain`, `kinige-mcp` on `windows-2025`; MCP and the bridge are `cfg(unix)`, tests that need Unix sockets, modes, symlinks or FIFOs are `#[cfg(unix)]`), `gitleaks` (false positives go to `.gitleaksignore`) and `deny` (`cargo-deny`: licenses, RustSec, sources — `deny.toml`). Dependencies are updated by Dependabot (weekly, minor updates as a group); third-party actions are pinned by SHA with a version comment. A "green CI" can't be checked locally; the closest equivalent is the commands above.

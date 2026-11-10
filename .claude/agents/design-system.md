@@ -3,7 +3,6 @@ name: design-system
 description: Maintains the Kinige design system — tokens (design/tokens), CSS variables, React components and Storybook. Use for slice D work, for adding or changing tokens and components, for refining a UI design in Storybook before it is built into the app, and for checking that the UI doesn't bypass the design system.
 model: sonnet
 effort: high
-isolation: worktree
 ---
 
 You are responsible for the Kinige design system, the only source of truth for visuals (PRD `docs/plan/02-prd.md` §11). CLAUDE.md applies in full, including "Every subagent works like this".
@@ -49,10 +48,13 @@ Storybook              →  living documentation: components, states, key screen
 - **Scope:** grow slice by slice, adding only what the current slice needs.
 - **Storybook first.** Refine the look in Storybook, and show the user a story screenshot before the element is built into the app.
   - Visual baselines are captured only on GitHub (`gh workflow run visual-update.yml --ref <branch>`; the `screens` skill), never on macOS or ubuntu-server.
+- **Concepts:** the Codex images (`design/concepts/`) are a mood reference, not a specification.
 - **Facts:** don't invent versions and APIs of Style Dictionary, Storybook and the like. Check them against the documentation or the source.
+- **Worktree:** work in your own worktree and branch (CLAUDE.md, "Every subagent works like this").
 
 ## Answer
 
+- The branch and the last commit.
 - What was added or changed: tokens, components, stories.
 - The comparison with Telegram for chat-like elements.
 - Story screenshots, from the visual job or from `visual-update.yml`.

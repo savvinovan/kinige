@@ -11,7 +11,8 @@ The user's Mac never runs the Kinige window for an agent (the guard in `.claude/
 
 Screenshots of the real window for acceptance are captured not by this Mac but by a GitHub macOS runner.
 - **Run:** `gh workflow run screens.yml --ref <branch> -f slice=<id>`. It builds the `.app` and runs `scripts/screens/<slice>.sh` on synthetic data, in a temporary `KINIGE_DATA_DIR` and `KINIGE_MIRROR_DIR`.
-- **Result:** it commits `docs/screens/<slice>/` to the branch. Afterwards run `git pull`; the workflow starts CI on the branch by itself.
+- **Result:** it commits `docs/screens/<slice>/` to the branch. Afterwards run `git pull`, or `git fetch` plus `git switch --detach origin/<branch>` in a reviewer's detached worktree. The workflow starts CI on the branch by itself.
+- **Acceptance screenshots:** normal and large text (PRD §12.1).
 - **Input:**
   - In a scenario that sets `DRIVER=1`, input is the screens driver (see below).
   - Otherwise it is accessibility actions only (`scripts/screens/ax.js`; shared functions are in `scripts/screens/lib.sh`), no keys or mouse.
@@ -26,7 +27,7 @@ Screenshots of the real window for acceptance are captured not by this Mac but b
 - Windows are found with plain Win32, and the screenshot is the window rectangle (`CopyFromScreen`).
 - **Do not use UI Automation or a DevTools port there:** both stalled the WebView2 page on the runner (slice spec, follow-ups).
 - **Data checks don't use the UI.** Python reads the database, and the Markdown copy is read from disk.
-- **No personal-path check on Windows.** Its place is taken by working only in the runner temp directory, on synthetic data. A driver scenario also reads the window text before each shot.
+- **The personal-path check is replaced** by working only in the runner temp directory, on synthetic data. A driver scenario also reads the window text before each shot.
 - The commit step is shared.
 
 **Wait for the run with one call:**

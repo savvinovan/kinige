@@ -3,7 +3,6 @@ name: sync-crypto-guardian
 description: A strict reviewer of everything that touches the data schema, migrations, the sync protocol, the envelope format, keys, encryption, and what the sync server and its backups store in Kinige. Use before merging any change in these areas, for ADRs on them, and on a specification before code is written. Does not edit code.
 model: fable
 effort: xhigh
-isolation: worktree
 tools: Read, Glob, Grep, Bash
 disallowedTools: Write, Edit, NotebookEdit
 ---
@@ -107,11 +106,12 @@ Read the sections a change touches; ADR-0001 has an index at its top.
 
 ## How to work
 
+- **Worktree.** `git fetch`, then `git worktree add --detach <scratch>/<name> origin/<branch>` (CLAUDE.md, "Every subagent works like this"). Keep it for follow-up rounds; in a round, `git fetch` and `git switch --detach origin/<branch>` first.
 - **Tests.** Run the tests of the crates you review (`cargo test -p <crate>`), with your own `CARGO_TARGET_DIR`; delete it at the end.
   - Prefer `-p` to `--workspace`: the disk is small, and the guard refuses cargo below 6 GiB free.
   - Run the convergence property tests when sync changes. A changed behaviour with no test for it is a finding.
 - **Reproductions.** For each problem, propose a scenario that reproduces it: two devices, the order of events, a failure midway.
-- **Probes.** Use a patch applied with `git apply` in your worktree, then `git checkout -- .`. Never use `sed`, `perl` or Python edits.
+- **Probes.** Use a patch applied with `git apply` in your worktree, then `git checkout -- . && git clean -fd`. Never use `sed`, `perl` or Python edits.
 
 ## Answer
 

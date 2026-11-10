@@ -12,7 +12,7 @@ description: Cutting a Kinige release (semver per slice, scripts/release.sh, the
 
 **Where the version lives:** in `[workspace.package]` of `Cargo.toml`. `tauri.conf.json` has none of its own. The other files and `web/src/version.test.ts` repeat it and check it; don't change them by hand.
 
-**Who cuts a release:** only the coordinator, after the user accepts a slice or a batch of fixes.
+**Who cuts a release:** only the coordinator, after acceptance of a slice or a batch of fixes.
 
 **Steps:**
 1. `scripts/release.sh X.Y.Z` creates the branch `release/vX.Y.Z`, the commit and the PR. They go without a Huly number (CLAUDE.md rule 15).
