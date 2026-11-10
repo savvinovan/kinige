@@ -1,19 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
-    "allow": [
-      "Bash(cargo *)",
-      "Bash(npm *)",
-      "Bash(npx *)",
-      "Bash(git *)",
-      "Bash(gh *)",
-      "Bash(bash scripts/*)",
-      "Bash(python3 -I scripts/*)",
-      "Bash(python3 -I .claude/hooks/*)",
-      "Bash(docker *)",
-      "Bash(gitleaks *)",
-      "Bash(rustup *)"
-    ],
     "deny": [
       "Bash(sed -i *)",
       "Bash(perl -i *)",
@@ -63,11 +50,11 @@
     ],
     "SessionStart": [
       {
-        "matcher": "startup|resume|compact|clear",
+        "matcher": "startup|resume|compact|clear|fork",
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/progress.md\"; if [ -f \"$f\" ]; then echo 'The coordinator progress file (.claude/progress.md, ignored by git):'; head -c 8000 \"$f\"; fi",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/claude-progress.md\"; if [ -f \"$f\" ]; then echo 'The coordinator progress file (claude-progress.md, ignored by git):'; head -c 8000 \"$f\"; fi",
             "timeout": 10
           }
         ]

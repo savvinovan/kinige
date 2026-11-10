@@ -44,17 +44,20 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 
 **The harness enforces part of this** (`.claude/settings.json`, KINIG-110), for the coordinator and every subagent:
 - **`.claude/hooks/guard.py` blocks:**
-  - string-replacement edits and shell writes into sources (rule 8);
-  - the user's real data paths, GUI and system settings on this Mac, and Claude configs;
+  - `sed -i`, `perl -i`, shell redirects and `tee` into sources, and inline scripts that write repository files (rule 8);
+  - the user's real data paths;
+  - `open`, `osascript`, screenshots, `killall` and system settings on this Mac;
+  - writes to Claude configs;
   - pushes to main and force pushes, and a push in which gitleaks finds a secret;
-  - docker commands on objects not named `kinige-…`;
-  - git and edits by a subagent in the main checkout (rule 13);
+  - docker removal of objects not named `kinige-…`, and `prune`;
+  - edits by a subagent in the main checkout, and git there that changes anything (rule 13); `slice-spec` may write `docs/slices/`;
   - cargo builds with less than 6 GiB free.
-- **The guard also reports** a source file that a Bash command rewrote by script.
+- **The guard also reports** a source file that a Bash command created or rewrote without a tool that legitimately writes sources, a script edit committed in the same command included.
+- **The guard is a backstop, not a sandbox.** Variables, `eval` and copies of prepared files (`cp`, `mv`) get past the checks before a command; the snapshot after it catches most of them.
 - **A blocked call says why and what to do instead.** A reviewer's fault-injection probe goes through `git apply` of a patch in its own worktree.
 - **`scripts/pre-pr-check.py`** checks a branch before its PR: files grown past 400 lines, backup files, invisible characters, unaligned tables, whitespace, rustfmt.
 - **Tests:** `python3 -I .claude/hooks/tests/test_hooks.py` and `python3 -I scripts/pre-pr-check.test.py`, both run in CI's `web` job.
-- **Progress file:** the coordinator's `.claude/progress.md` (ignored by git) is re-injected at session start and after compaction.
+- **Progress file:** the coordinator's `claude-progress.md` at the repository root (ignored by git) is re-injected at session start and after compaction.
 
 **Every subagent works like this.** Prompts don't repeat these rules.
 - **Worktree.** Work in your own worktree.
