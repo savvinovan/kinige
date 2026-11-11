@@ -4,6 +4,13 @@
 //! loaded from the dump, a fresh generation is appended to the lineage with the backup's cut time, the journals are re-applied (accounts
 //! deleted after the backup are deleted again, credentials changed after it are put back), and the sessions are gone.
 //!
+//! **The restore's lock and its transaction are on one connection** (KINIG-102). A session lock dies with its connection; if the
+//! transaction were on another one, a server could start in the gap, take the lock and serve while the restore went on replacing the
+//! tables under it. On one connection, the lock and the transaction end together: the transaction rolls back. Whether the connection is
+//! lost is told by a probe statement (`SELECT 1`) after a failure, not by `Client::is_closed`, which stays false for a while after the
+//! server terminated the backend. A loss before the commit is [`BackupError::LockLost`] (the objects copied are removed); a loss during
+//! the commit is [`BackupError::OutcomeUnknown`] (they are kept); a loss after it only ends the scan for orphan objects.
+//!
 //! Before the database is touched the files of the dump are checked against the manifest; a **blob** file that is missing or damaged
 //! does not stop the restore (it would make every backup unrestorable for one bad file): its row is marked deleted, its device finds
 //! `missing`, and the restore ends with an error line and a non-zero exit. The blobs are then copied into the store (an object that is
@@ -13,6 +20,7 @@
 use super::BackupError;
 use super::journal::{Applied, Journals, apply, mark_damaged};
 use super::manifest::{Entry, LINEAGE_FILE, LineageRow, Manifest, TABLES, table_path};
+use super::outcome::{Failed, settle};
 use crate::blobs::objects::Objects;
 use crate::blobs::parse_key;
 use crate::blobs::sweep::adopt_orphans;
@@ -20,7 +28,7 @@ use crate::clock::Clock;
 use crate::rules::pull::MAX_LINEAGE;
 use crate::store::{self, lock, to_i64};
 use axum::body::Bytes;
-use deadpool_postgres::{Pool, Transaction};
+use deadpool_postgres::{Object, Pool, Transaction};
 use futures_util::SinkExt;
 use libsodium_rs::random;
 use std::path::Path;
@@ -55,17 +63,19 @@ pub async fn restore(
     clock: &dyn Clock,
     dir: &Path,
 ) -> Result<Report, BackupError> {
-    // Held on a connection of its own for the whole restore: a server on this database holds the same lock, shared.
-    let guard = pool.get().await?;
+    // Held for the whole restore, and the load transaction runs on this same connection: a server on this database holds the same lock,
+    // shared.
+    let mut guard = pool.get().await?;
     if !lock::try_restore(&guard).await? {
         return Err(BackupError::ServerRunning);
     }
-    let result = run(pool, objects, clock, dir).await;
+    let result = run(&mut guard, pool, objects, clock, dir).await;
     let _ = lock::release_restore(&guard).await;
     result
 }
 
 async fn run(
+    guard: &mut Object,
     pool: &Pool,
     objects: &Objects,
     clock: &dyn Clock,
@@ -94,16 +104,10 @@ async fn run(
         lineage: &lineage,
         damaged: &damaged,
     };
-    let loaded = load(pool, objects, clock, &plan, journals, &mut copied).await;
+    let loaded = load(guard, objects, clock, &plan, journals, &mut copied).await;
     let (generation, applied, now_ms) = match loaded {
         Ok(done) => done,
-        Err(error) => {
-            // The objects this restore put into the store are removed again; the database rolled back with its transaction.
-            for key in copied {
-                let _ = objects.delete(&key).await;
-            }
-            return Err(error);
-        }
+        Err(failed) => return Err(settle(guard, objects, copied, failed).await),
     };
     // The restore is done; a failure of this scan is a warning and not a failure of the restore.
     let (orphans, orphan_scan_failed) = match adopt_orphans(pool, objects, now_ms, 0).await {
@@ -176,15 +180,16 @@ struct Plan<'a> {
     damaged: &'a [(String, String)],
 }
 
-/// The blobs into the store, then the database in one transaction. Returns the new generation, what the journals did and the time.
+/// The blobs into the store, then the database in one transaction on the lock's connection. Returns the new generation, what the
+/// journals did and the time.
 async fn load(
-    pool: &Pool,
+    guard: &mut Object,
     objects: &Objects,
     clock: &dyn Clock,
     plan: &Plan<'_>,
-    mut journals: Journals,
+    journals: Journals,
     copied: &mut Vec<String>,
-) -> Result<(u64, Applied, u64), BackupError> {
+) -> Result<(u64, Applied, u64), Failed> {
     let skipped = |entry: &Entry| {
         plan.damaged.iter().any(|(account, blob)| {
             entry.path.strip_prefix("blobs/") == Some(format!("{account}/{blob}").as_str())
@@ -195,34 +200,47 @@ async fn load(
             copied.push(key);
         }
     }
-    let mut client = pool.get().await?;
-    let tx = client.transaction().await?;
+    let tx = guard.transaction().await?;
+    let (generation, applied, now_ms) = replace_tables(&tx, clock, plan, journals).await?;
+    tx.commit().await.map_err(|error| Failed {
+        error: error.into(),
+        at_commit: true,
+    })?;
+    Ok((generation, applied, now_ms))
+}
+
+/// Everything the restore does to the tables, in the open transaction.
+async fn replace_tables(
+    tx: &Transaction<'_>,
+    clock: &dyn Clock,
+    plan: &Plan<'_>,
+    mut journals: Journals,
+) -> Result<(u64, Applied, u64), BackupError> {
     tx.execute("SELECT pg_advisory_xact_lock($1)", &[&lock::BACKUP_LOCK])
         .await?;
     // The journals of the installation being replaced, read before it is emptied: what happened since the backup is in them.
-    journals.extend(Journals::of_installation(&tx).await?);
+    journals.extend(Journals::of_installation(tx).await?);
     tx.batch_execute(
         "TRUNCATE accounts, envelopes, ops, entity_known, purged_entities, drops, sessions, blobs, deletions, credential_changes, lineage CASCADE",
     )
     .await?;
     for table in TABLES {
-        load_table(&tx, plan.dir, table).await?;
+        load_table(tx, plan.dir, table).await?;
     }
-    let generation = append_generation(&tx, plan.lineage, plan.manifest.cut_ms).await?;
+    let generation = append_generation(tx, plan.lineage, plan.manifest.cut_ms).await?;
     // After the generation is in: the stamp is raised above the newest cut time of the lineage, the backup's included, whatever this
     // host's clock says.
-    let now_ms = lock::stamp(&*tx, clock).await?;
+    let now_ms = lock::stamp(&**tx, clock).await?;
     // A cut time well ahead of this database's own clock (a backup from a host whose clock was wrong, or a restore on a host that is
     // behind) makes the stamps run ahead of real time until the clock catches up; ages are not affected (they use the unfloored
     // clock, `lock::now`), but an operator should know. Kind only, no ids.
-    if plan.manifest.cut_ms > lock::now(&*tx, clock).await?.saturating_add(FUTURE_CUT_MS) {
+    if plan.manifest.cut_ms > lock::now(&**tx, clock).await?.saturating_add(FUTURE_CUT_MS) {
         log::error!(
             "the backup's cut time is more than an hour ahead of this database's clock: stamps run ahead of real time until it catches up"
         );
     }
-    let applied = apply(&tx, &journals, plan.manifest.cut_ms, now_ms).await?;
-    mark_damaged(&tx, plan.damaged, now_ms).await?;
-    tx.commit().await?;
+    let applied = apply(tx, &journals, plan.manifest.cut_ms, now_ms).await?;
+    mark_damaged(tx, plan.damaged, now_ms).await?;
     Ok((generation, applied, now_ms))
 }
 
