@@ -174,3 +174,17 @@ pub fn files_under(dir: &std::path::Path) -> Vec<String> {
     out.sort();
     out
 }
+
+/// Copies the directory `from` and everything under it to `to`.
+pub fn copy_dir(from: &std::path::Path, to: &std::path::Path) {
+    std::fs::create_dir_all(to).expect("dir");
+    for entry in std::fs::read_dir(from).expect("dir") {
+        let entry = entry.expect("entry");
+        let target = to.join(entry.file_name());
+        if entry.path().is_dir() {
+            copy_dir(&entry.path(), &target);
+        } else {
+            std::fs::copy(entry.path(), target).expect("copy");
+        }
+    }
+}

@@ -1,7 +1,7 @@
 //! CLAUDE.md rule 12 for the S4c-2 endpoints: random methods, ids, sizes, offsets, ranges and bodies on the blob routes, and random JSON on the
 //! account deletion, give a 4xx and never a 5xx or a panic, and leave nothing half-published behind. A proptest at a fixed count and seed
 //! (`GARBAGE_CASES`, default 300, `GARBAGE_SEED`, default 1). The pure parts have unit tests (`rules::blob`, `cli`, `backup::manifest`);
-//! garbage backups are in `restore_rules.rs`.
+//! garbage backups are in `restore_garbage.rs`.
 #![cfg(test)]
 #![cfg(feature = "pg-tests")]
 
