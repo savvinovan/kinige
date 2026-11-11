@@ -37,6 +37,23 @@ Status: slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol
 15. **The PR title and the message of the branch's first commit carry the Huly task number** (`KINIG-N: …`), so that Huly links the PR to the task. Exception: the release commit and PR `Release vX.Y.Z` from `scripts/release.sh` (ADR-0012) go without a number.
 16. **Repository language is English:** docs, specs, ADRs, code comments, log messages, commits and PRs. UI strings are bilingual (ru/en) via i18n.
 
+**The harness enforces part of this** (`.claude/settings.json`, KINIG-110), for the coordinator and every subagent:
+- **`.claude/hooks/guard.py` blocks:**
+  - `sed -i`, `perl -i`, shell redirects and `tee` into sources, and inline scripts that write repository files (rule 8);
+  - the user's real data paths;
+  - `open`, `osascript`, screenshots, `killall` and system settings on this Mac;
+  - writes to Claude configs;
+  - pushes to main and force pushes, and a push in which gitleaks finds a secret;
+  - docker removal of objects not named `kinige-…` (a list from `$(docker ps -aq …)` or a pipe needs `--filter name=kinige-…`), and `prune`;
+  - edits by a subagent in the main checkout, and git there that changes anything (rule 13); `slice-spec` may write `docs/slices/`;
+  - cargo builds with less than 6 GiB free.
+- **The guard also reports** a source file that a Bash command created or rewrote without a tool that legitimately writes sources, a script edit committed in the same command included.
+- **The guard is a backstop, not a sandbox.** Variables the line does not assign itself, `eval` and copies of prepared files (`cp`, `mv`) get past the checks before a command; the snapshot after it catches most of them.
+- **A blocked call says why and what to do instead.** A reviewer's fault-injection probe goes through `git apply` of a patch in its own worktree.
+- **`scripts/pre-pr-check.py`** checks a branch before its PR: files grown past 400 lines, backup files, invisible characters, unaligned tables, whitespace, rustfmt.
+- **Tests:** `python3 -I .claude/hooks/tests/test_hooks.py` and `python3 -I scripts/pre-pr-check.test.py`, both run in CI's `web` job.
+- **Progress file:** the coordinator's `claude-progress.md` at the repository root (ignored by git) is re-injected at session start and after compaction.
+
 ## Code style
 
 Applies to new and edited code; don't rewrite existing code en masse.

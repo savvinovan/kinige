@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Bash(sed -i *)",
+      "Bash(perl -i *)",
+      "Bash(perl -pi *)",
+      "Bash(claude mcp *)",
+      "Bash(tccutil *)",
+      "Bash(screencapture *)",
+      "Bash(osascript *)",
+      "Bash(docker system prune *)",
+      "Bash(git push --force *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Monitor",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "g=\"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\"; [ ! -f \"$g\" ] || python3 -I \"$g\" bash",
+            "timeout": 120
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Edit|Write|NotebookEdit|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "g=\"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\"; [ ! -f \"$g\" ] || python3 -I \"$g\" paths",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "g=\"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\"; [ ! -f \"$g\" ] || python3 -I \"$g\" post",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact|clear|fork",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/claude-progress.md\"; if [ -f \"$f\" ]; then echo 'The coordinator progress file (claude-progress.md, ignored by git):'; head -c 8000 \"$f\"; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
