@@ -462,6 +462,22 @@ jobs:
       - name: Smoke test
         run: deploy/smoke.sh
 
+  # The self-check of a branch (KINIG-111, scripts/pre-pr-check.py) against the PR's base: long files, backup files,
+  # invisible characters, unaligned tables, whitespace, rustfmt. Pull requests only; a push to main has no base to diff.
+  pre-pr-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Rust toolchain (for rustfmt)
+        run: rustup toolchain install
+      - name: Pre-PR check against the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python3 -I scripts/pre-pr-check.py --base "origin/$BASE_REF"
+
   # Secrets in the git history. False positives go in .gitleaksignore (the fingerprint and the reason). The binary is pinned by version and sha256.
   gitleaks:
     runs-on: ubuntu-24.04

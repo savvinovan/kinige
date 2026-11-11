@@ -1,10 +1,9 @@
 """Controls of scripts/pre-pr-check.py (KINIG-110). Run: python3 -I scripts/pre-pr-check.test.py (CI, the `web` job).
 
 Each case runs the check in a throwaway repository whose `origin/main` is its first commit, and names the exact exit
-code it wants (0 clean, 1 findings, 2 could not run; in `--hook` mode 2 means findings and 0 everything else).
+code it wants (0 clean, 1 findings, 2 could not run).
 """
 
-import json
 import os
 import shutil
 import subprocess
@@ -42,8 +41,8 @@ class PrePrCheck(unittest.TestCase):
         self.git("add", "-A")
         self.git("-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-qm", message)
 
-    def check(self, *args, stdin=None):
-        proc = subprocess.run([sys.executable, "-I", CHECK, *args], cwd=self.repo, input=stdin,
+    def check(self, *args):
+        proc = subprocess.run([sys.executable, "-I", CHECK, *args], cwd=self.repo,
                               capture_output=True, text=True, timeout=120)
         return proc.returncode, proc.stdout + proc.stderr
 
@@ -82,21 +81,13 @@ class PrePrCheck(unittest.TestCase):
         code, out = self.check()
         self.assertEqual(code, 0, out)
 
-    def test_hook_mode(self):
-        self.write("crates/long.rs", "x\n" * 401)
-        payload = json.dumps({"cwd": self.repo, "stop_hook_active": False})
-        code, out = self.check("--hook", stdin=payload)
-        self.assertEqual(code, 2, out)
-        self.assertIn("401 lines", out)
-        for stdin in (json.dumps({"cwd": self.repo, "stop_hook_active": True}), "garbage", "[]",
-                      json.dumps({"cwd": tempfile.gettempdir()})):
-            with self.subTest(stdin=stdin):
-                code, out = self.check("--hook", stdin=stdin)
-                self.assertEqual(code, 0, out)
-
     def test_cannot_run(self):
         code, out = self.check("--base", "refs/remotes/origin/nothing")
         self.assertEqual(code, 2, out)
+        outside = tempfile.mkdtemp(prefix="kinige-prcheck-outside-")
+        self.addCleanup(shutil.rmtree, outside, True)
+        proc = subprocess.run([sys.executable, "-I", CHECK], cwd=outside, capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
 
 
 if __name__ == "__main__":

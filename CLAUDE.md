@@ -9,7 +9,23 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 - `docs/slices/<id>-<name>.md` — one-page slice specification (§12.1a).
 - `docs/screens/<slice>/` — screenshots of the real window for acceptance.
 
-Status: slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol + keys) are done; slice 1 (Inbox) is merged; slice 2 (quick capture: window, hotkeys, tray, appending) was accepted by the user on 27.10.2026; slice 3 (chats, entry actions, trash, database backup) and slice 4 (import from Telegram, archive, search with word forms) were accepted on 28.10.2026; slice 4a (MCP server for AI agents) was accepted on 29.10.2026; slice 4b (settings window, settings.json) was accepted on 31.10.2026; slice 5 ("On this day", replies) was accepted on 01.11.2026; slice D2 (visual refresh) accepted 02.11.2026; slice 10a (Windows build) accepted 02.11.2026; slice 6 (the year's forest) accepted 03.11.2026; slice 7 (attachments) accepted 04.11.2026; slice 7a (voice notes) accepted 05.11.2026. Build and test commands are in the "Build and tests" section below.
+**Status:**
+- **Done:** slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol + keys).
+- **Merged:** slice 1 (Inbox).
+- **Accepted by the user:**
+  - 27.10.2026: slice 2 (quick capture);
+  - 28.10: slice 3 (chats, entry actions, trash, database backup) and slice 4 (Telegram import, archive, search);
+  - 29.10: slice 4a (MCP server);
+  - 31.10: slice 4b (settings);
+  - 01.11: slice 5 ("On this day", replies);
+  - 02.11: slice D2 (visual refresh) and slice 10a (Windows build);
+  - 03.11: slice 6 (the year's forest);
+  - 04.11: slice 7 (attachments);
+  - 05.11: slice 7a (voice notes).
+- **Merged since:** the sync spikes S4a–S4c (server, ADR-0017–0020) and tech debt E.
+- **Next:** slice 11, sync in the app.
+- **History:** the PRD changelog (`docs/plan/02-prd.md`, top).
+- **Build and test commands:** the "Build and tests" section below.
 
 ## How we work (mandatory, PRD §12)
 
@@ -21,7 +37,7 @@ Status: slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol
    - `design-system` — tokens, components, Storybook;
    - `sync-crypto-guardian` — review of everything that touches the data schema, sync and encryption;
    - `codex-second-opinion` — a second opinion from Codex CLI; every piece of advice is verified.
-   The agent that writes the code never reviews itself.
+   The agent that writes the code never reviews itself. Each definition holds its role's rules and its answer format: reviewers and the guardian answer `ACCEPT / REWORK / REJECT`.
 3. **"Done" only with evidence:** test output + screenshots of the real window in `docs/screens/<slice>/`. The next slice starts only after acceptance by the user.
 4. **Visuals come only from design system tokens.** A new color, spacing or shadow first appears in `design/tokens/`.
 5. **Don't invent facts** about libraries, APIs and numbers: verify them (documentation, source code) or write "not verified".
@@ -50,9 +66,26 @@ Status: slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol
 - **The guard also reports** a source file that a Bash command created or rewrote without a tool that legitimately writes sources, a script edit committed in the same command included.
 - **The guard is a backstop, not a sandbox.** Variables the line does not assign itself, `eval` and copies of prepared files (`cp`, `mv`) get past the checks before a command; the snapshot after it catches most of them.
 - **A blocked call says why and what to do instead.** A reviewer's fault-injection probe goes through `git apply` of a patch in its own worktree.
-- **`scripts/pre-pr-check.py`** checks a branch before its PR: files grown past 400 lines, backup files, invisible characters, unaligned tables, whitespace, rustfmt.
+- **`scripts/pre-pr-check.py`** checks a branch before its PR: files grown past 400 lines, backup files, invisible characters, unaligned tables, whitespace, rustfmt. CI's `pre-pr-check` job runs it on every pull request, against the PR's base.
 - **Tests:** `python3 -I .claude/hooks/tests/test_hooks.py` and `python3 -I scripts/pre-pr-check.test.py`, both run in CI's `web` job.
 - **Progress file:** the coordinator's `claude-progress.md` at the repository root (ignored by git) is re-injected at session start and after compaction.
+
+**Every subagent works like this.** Prompts don't repeat these rules.
+- **Worktree.** Work in your own worktree.
+  - Use the one the prompt names. If it names none, create one under your scratch directory from the main checkout (your starting directory): `git worktree add <scratch>/<name> -b <branch> origin/main` for new work, `git worktree add --detach <scratch>/<name> origin/<branch>` for a review.
+  - Start every Bash command with `cd <worktree> &&`: the shell starts in the main checkout each time. The guard blocks edits there, and any git that would change it.
+  - Set `CARGO_TARGET_DIR` inside the worktree, and delete it before you finish each round (rule 13).
+  - Don't touch files outside your worktree, except your scratch directory and your agent memory.
+  - **Keep the worktree between rounds.** Follow-up rounds of the same task come as messages to the same agent. Remove the worktree only when the coordinator says the task is over: `git -C <worktree> worktree remove <worktree>`. The coordinator removes implementers' worktrees after their PR is merged. `isolation: worktree` is not used, because a resumed agent whose worktree was cleaned up cannot run commands.
+- **The user's Mac.** Don't launch the app, take screenshots, simulate input or global hotkeys, open the user's data, or change Claude configs and register kinige-mcp.
+  - GUI checks run on GitHub runners: see the `screens` skill.
+- **Docker.** It runs only on ubuntu-server. Name your objects `kinige-…` and remove what you created.
+- **Commits.** Commit with the repository's git identity, run gitleaks before a push, and never push to `main`.
+- **CI.** Wait for a run with one call: `gh run watch <id> --exit-status` as a background command, or the Monitor tool. Never use `sleep` loops.
+  - If a run is stuck or needs an approval, say so in your answer instead of waiting.
+- **Reading.** Read the sections you need. ADR-0001 has an index at its top; the PRD's sections are numbered.
+  - Don't re-check facts the prompt already gives (free disk, branch, base commit).
+- **Answers.** Give facts with the commands and their output. Say plainly what is not done or not verified.
 
 ## Code style
 
@@ -82,7 +115,7 @@ Rust (from the root):
 - `cargo test --workspace` — also regenerates the TS types in `web/src/api/generated/` (ts-rs, ADR-0002); after changing types in Rust, commit the result; it also rewrites the year tables of the forest stories in `web/src/ui/forest/fixtures/` (built by the real `year_table`, slice 6; CI fails when they differ from the commit)
 - `cargo build -p kinige-domain --target wasm32-unknown-unknown`
 - Test hooks (KINIG-103): injected panics and faults and probes of the internals (`crates/kinige-store/src/test_hooks.rs`, the `#[doc(hidden)]` items of `kinige-store` and `kinige`) live behind the cargo feature `test-hooks`, off by default; only the crates' own dev-dependencies turn it on, so `cargo test` and `cargo clippy --all-targets` see the hooks and a build for people does not. A new hook goes behind the feature. `cargo clippy --workspace --lib --bins -- -D warnings` compiles the code without them; `bash scripts/check-release-features.sh` fails if the release dependency graph enables the feature (`bash scripts/check-release-features.test.sh` is its control; both run in CI).
-- Server against a real Postgres (S4c-1): `KINIGE_TEST_DATABASE_URL=postgres://user:password@host:port/postgres cargo test -p kinige-server --features pg-tests` (each test makes and drops its own database; without the feature and the variable `cargo test --workspace` runs the pure rules only). Locally the database is a throwaway container on ubuntu-server through the remote Docker, named `kinige-s4c-pg-<something>`, with a random password and synthetic data, removed afterwards. The S4a simulation against the server: `cd spikes/S4a-sync && cargo test --features real-server --test real_server` with the same variable. CI has the `server` job with a pinned `postgres:17` service and (S4c-2) a pinned SeaweedFS S3 service for the blob suites (`KINIGE_TEST_S3_URL`, `KINIGE_TEST_S3_BUCKET`, `KINIGE_TEST_S3_ACCESS_KEY`, `KINIGE_TEST_S3_SECRET_KEY`; locally a throwaway `kinige-s4c2-…` container on ubuntu-server), and the `compose` job runs `deploy/smoke.sh` (locally it works against the remote Docker: its projects, volumes and images are prefixed `kinige-s4c2-smoke` and removed on exit). Never run it against a Docker you do not mean to build images on.
+- Server against a real Postgres and S3, the S4a simulation against the server, and the compose smoke test: the `server-tests` skill (`.claude/skills/server-tests/SKILL.md`). It covers `--features pg-tests` with `KINIGE_TEST_DATABASE_URL`, throwaway `kinige-…` containers on ubuntu-server, and CI's `server` and `compose` jobs.
 
 Frontend (from `web/`, after `npm ci`):
 - `npm run tokens` — rebuild `src/ui/tokens.css` and `src/ui/themes.css` from `design/tokens/**/*.json` (runs by itself before `dev`, `build`, `storybook`); the result is committed
@@ -91,17 +124,19 @@ Frontend (from `web/`, after `npm ci`):
 
 `fixtures/api-contract/`: rules `MockApi` repeats from Rust, read by vitest and `cargo test -p kinige-store --test api_contract`; Rust is the source of truth, so a rule change updates the fixture and the mock.
 
-Voice notes (slice 7a, ADR-0015): the screens runners record from a fake microphone chosen at build time (`KINIGE_FAKE_MIC=1`, aliased in `web/vite.config.ts`); `scripts/check-test-hooks.sh` makes `build-app.sh` and `build-windows.sh` fail if it reached `web/dist` without `KINIGE_ALLOW_FAKE_MIC=1` (only `screens.yml` sets both; `bash scripts/check-test-hooks.test.sh` is its test; the same guard covers the screens driver below). The `7a-probe` and `7a-probe-windows` scenarios record what each web view can do.
-
-Screens driver (KINIG-92, ADR-0016): a scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `screens-driver-probe*`) clicks and reads by accessible name through the test build itself: `KINIGE_SCREENS_DRIVER=1` points `virtual:kinige-driver` at `scripts/screens/driver.ts` and `build-app.sh` / `build-windows.sh` add the cargo feature `screens-driver` of `src-tauri` (off by default; `src-tauri/build.rs` refuses it, and the guard refuses the bundle, without `KINIGE_ALLOW_SCREENS_DRIVER=1`, which only `screens.yml` sets). A script writes `requests/<id>.json` into `KINIGE_SCREENS_DRIVER_DIR`, the app answers in `replies/<id>.json`; the shell side is `drive`, `press`, `wait_name`, `has` in `lib.sh`, the PowerShell side `Drive`, `Press`, `Wait-Name`, `Has` in `lib-windows.ps1`. Steps: press, menu, type, key, wait, has, scroll, text, front; no script eval and no IPC passthrough. New scenarios use it; AX and SendKeys are for native UI only (file pickers, the tray and native menus, resizing the window, global hotkeys, which are never simulated).
-
-Storybook visual tests run only on GitHub, in a Playwright container: the comparison is the `visual` job in CI; new baselines via `gh workflow run visual-update.yml --ref <branch>` (captures them and commits to the branch; not allowed in `main`; after the commit it starts CI on the branch by itself). Baselines are not captured on macOS or on ubuntu-server.
+**Screens and visual baselines: the `screens` skill** (`.claude/skills/screens/SKILL.md`). It covers:
+- real-window screenshots through `screens.yml` on macOS and Windows;
+- the screens driver (KINIG-92, ADR-0016) with `DRIVER=1`;
+- the fake microphone of voice-note scenarios (ADR-0015), and the guard `scripts/check-test-hooks.sh` that keeps it and the driver out of a build for people;
+- Storybook baselines through `visual-update.yml`. They are never captured on macOS or ubuntu-server.
 
 App: `scripts/run-app.sh` (dev), `scripts/storybook.sh`, `scripts/build-app.sh` (release `.app` + ad-hoc signature + `codesign --verify` + check of the bundle version against `Cargo.toml`; `KINIGE_BUNDLES=app,dmg` adds a `.dmg`), `scripts/build-windows.sh` (release unsigned NSIS installer under Git Bash on Windows, per-user; checks the installer name and `ProductVersion` of `kinige.exe` against `Cargo.toml`; the MCP bridge is not built there: `src-tauri/tauri.windows.conf.json` empties `bundle.externalBin`), `scripts/screenshot-window.sh <out.png>` (the Kinige window, `screencapture -x -o -l`; for manual debugging and for `screens.yml` itself; agents don't run it on the user's Mac; nothing but the window may get into the screenshot), `scripts/measure-cold-start.sh`, `scripts/mcp-session.py <kinige-mcp> <socket> <protocol file>` (an MCP session through the bridge with our own client, for the acceptance of slice 4a; Claude configs are not touched). Build and run put the bridge into `src-tauri/binaries/kinige-mcp-<triple>` (sidecar, `bundle.externalBin`); on `cargo clippy`/`cargo test` on a clean clone, an empty stub from `build.rs` sits there.
 
-Versions and releases (ADR-0012): semver, minor = slice number (0.5.0 — slices 0–5), patch — fixes between slices, 1.0.0 — after sync. The version lives in `[workspace.package]` of `Cargo.toml` (`tauri.conf.json` has none of its own); the other files and `web/src/version.test.ts` repeat and check it — don't change them by hand. Only the coordinator cuts a release, after acceptance of a slice or a batch of fixes: `scripts/release.sh X.Y.Z` (branch `release/vX.Y.Z`, commit, PR) -> CI and merge -> `scripts/release.sh --tag X.Y.Z` (tag `vX.Y.Z` on `main`, only with a green `ci.yml` on that commit) -> the `release.yml` workflow builds the `.dmg` and `.zip` on a macOS runner and the Windows installer on `windows-2025` and creates a GitHub Release with one `SHA256SUMS`; progress: `gh run list --workflow release.yml`. Rerun for a tag: `gh workflow run release.yml -f tag=vX.Y.Z` (`-f publish=false` — build only). A tag is never moved or deleted: a faulty release is fixed by the next patch.
-
-Screenshots of the real window for acceptance are captured not by this Mac but by a GitHub macOS runner: `gh workflow run screens.yml --ref <branch> -f slice=<id>` builds the `.app`, runs `scripts/screens/<slice>.sh` on synthetic data (temporary `KINIGE_DATA_DIR` and `KINIGE_MIRROR_DIR`) and commits `docs/screens/<slice>/` to the branch (after that, `git pull`; the workflow starts CI on the branch by itself). Input in the scenarios is the screens driver where the scenario sets `DRIVER=1` (see the paragraph above), otherwise accessibility actions only (`scripts/screens/ax.js`, shared functions in `scripts/screens/lib.sh`), no keys or mouse; the workflow doesn't run in `main`. On Windows (slice 10a): `gh workflow run screens.yml --ref <branch> -f slice=10a -f os=windows` builds the NSIS installer on `windows-2025`, installs it silently and runs `scripts/screens/<slice>.ps1` (Windows PowerShell 5.1). Input is the driver where the scenario calls `Enable-Driver`, otherwise keys injected with `SendKeys` after `SetForegroundWindow` (the runner is a disposable VM; Ctrl+K then Tab stops reach the profile menu, there is no Settings accelerator on Windows); windows are found with plain Win32 and the screenshot is the window rectangle (`CopyFromScreen`). Do not use UI Automation or a DevTools port there: both stalled the WebView2 page on the runner (slice spec, follow-ups). The data checks do not use the UI: the database is read by python, the Markdown copy from disk; the personal-path check is replaced by working only in the runner temp directory on synthetic data (a driver scenario also reads the window text before each shot). The commit step is shared.
+**Versions and releases (ADR-0012): the `release` skill** (`.claude/skills/release/SKILL.md`).
+- Semver: the minor version is the slice number, and 1.0.0 comes after sync.
+- The version lives only in `[workspace.package]` of `Cargo.toml`.
+- Only the coordinator cuts a release, after acceptance of a slice or a batch of fixes. It uses `scripts/release.sh`.
+- A tag is never moved or deleted.
 
 CI (GitHub Actions, `.github/workflows/ci.yml`; status and rerun via `gh run list`, `gh run rerun`) repeats everything listed above except building the `.app`, and adds: the `macos` job (`cargo clippy -p kinige --all-targets -- -D warnings` and `cargo test -p kinige` on `macos-15`: code under `cfg(target_os = "macos")`), the `windows` job (`cargo clippy` and `cargo test` for `kinige`, `kinige-store`, `kinige-domain`, `kinige-mcp` on `windows-2025`; MCP and the bridge are `cfg(unix)`, tests that need Unix sockets, modes, symlinks or FIFOs are `#[cfg(unix)]`), `gitleaks` (false positives go to `.gitleaksignore`) and `deny` (`cargo-deny`: licenses, RustSec, sources — `deny.toml`). Dependencies are updated by Dependabot (weekly, minor updates as a group); third-party actions are pinned by SHA with a version comment. A "green CI" can't be checked locally; the closest equivalent is the commands above.
 
