@@ -93,10 +93,11 @@ pub fn single_writer_schedule(clients: usize) -> impl Strategy<Value = Schedule>
     )
     .prop_map(|mut s| {
         for step in &mut s.steps {
-            if let Step::Local(c, op) = step {
-                if *c != 0 && matches!(op, Op::Edit(_) | Op::Move(..)) {
-                    *op = Op::Favorite(0);
-                }
+            if let Step::Local(c, op) = step
+                && *c != 0
+                && matches!(op, Op::Edit(_) | Op::Move(..))
+            {
+                *op = Op::Favorite(0);
             }
         }
         s

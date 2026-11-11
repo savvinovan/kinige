@@ -30,13 +30,13 @@ impl Oracle {
     /// device never repeats or reverses a stamp (also across restarts).
     pub fn record(&mut self, write: Write) -> Option<String> {
         let mut problem = None;
-        if let Some(parent) = &write.parent {
-            if write.hlc <= *parent {
-                problem = Some(format!(
-                    "write {} of {:?}.{} is not above its causal parent {parent}",
-                    write.hlc, write.key, write.group
-                ));
-            }
+        if let Some(parent) = &write.parent
+            && write.hlc <= *parent
+        {
+            problem = Some(format!(
+                "write {} of {:?}.{} is not above its causal parent {parent}",
+                write.hlc, write.key, write.group
+            ));
         }
         if let Some((last_hlc, last_key)) = self.last.get(&write.device) {
             let fine = write.hlc > *last_hlc || (write.hlc == *last_hlc && write.key == *last_key);
@@ -332,13 +332,13 @@ pub fn no_orphan_hidden(world: &World) -> Result<(), String> {
     for client in &world.clients {
         let shown: BTreeSet<String> = client.feed().into_iter().map(|item| item.message).collect();
         for item in client.feed() {
-            if let FeedSlot::Chat(chat) = &item.slot {
-                if !client.records.contains_key(&(Entity::Chat, chat.clone())) {
-                    return Err(format!(
-                        "device {}: message {} is shown in a chat the device does not have",
-                        client.idx, item.message
-                    ));
-                }
+            if let FeedSlot::Chat(chat) = &item.slot
+                && !client.records.contains_key(&(Entity::Chat, chat.clone()))
+            {
+                return Err(format!(
+                    "device {}: message {} is shown in a chat the device does not have",
+                    client.idx, item.message
+                ));
             }
         }
         for ((entity, id), local) in &client.records {

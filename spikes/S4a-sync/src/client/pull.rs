@@ -115,12 +115,12 @@ impl Client {
                 // A compaction that drops a `purged` while a resync of a restore is still pulling from 0 cannot be told "stale" (a pull
                 // from 0 never is), yet a record this device holds and the page no longer has was dropped, not lost in the restore
                 // (S4a review, round 2): quarantine, not push.
-                if epoch > self.known_epoch && !self.switches.no_epoch_check_in_resync {
-                    if let Some(resync) = &mut self.resync {
-                        if resync.cause == ResyncCause::GenerationChanged {
-                            resync.cause = ResyncCause::StaleAndGeneration;
-                        }
-                    }
+                if epoch > self.known_epoch
+                    && !self.switches.no_epoch_check_in_resync
+                    && let Some(resync) = &mut self.resync
+                    && resync.cause == ResyncCause::GenerationChanged
+                {
+                    resync.cause = ResyncCause::StaleAndGeneration;
                 }
                 self.known_epoch = self.known_epoch.max(epoch);
                 let cursor = self.cursor_seq;
@@ -187,14 +187,14 @@ impl Client {
             self.receive_hlc(stamp, now_ms);
         }
         let key = header.key();
-        if let Some(resync) = &mut self.resync {
-            if header.kind == Kind::Upsert {
-                let seen = resync.seen.entry(key.clone()).or_default();
-                for (group, (h, _)) in &header.groups {
-                    let slot = seen.entry(group.clone()).or_default();
-                    if *h > *slot {
-                        slot.clone_from(h);
-                    }
+        if let Some(resync) = &mut self.resync
+            && header.kind == Kind::Upsert
+        {
+            let seen = resync.seen.entry(key.clone()).or_default();
+            for (group, (h, _)) in &header.groups {
+                let slot = seen.entry(group.clone()).or_default();
+                if *h > *slot {
+                    slot.clone_from(h);
                 }
             }
         }
@@ -256,35 +256,35 @@ impl Client {
         }
         if key.0 == Entity::Revision {
             // A revision that arrives after the `purged` of its message is deleted locally and purged (§3.5).
-            if let Some(message) = message_id_of(&incoming) {
-                if self
+            if let Some(message) = message_id_of(&incoming)
+                && self
                     .tombstones
                     .contains_key(&(Entity::Message, message.clone()))
-                {
-                    self.tombstones.insert(
-                        key.clone(),
-                        super::Tombstone {
-                            purged_of: group_hlcs.clone(),
-                            cascade_of: Some(message),
-                            held: None,
-                            confirmed: false,
-                            purged_at: self.now_ms,
-                        },
-                    );
-                    if self.bound {
-                        self.enqueue_purged(key, group_hlcs.clone(), None);
-                    }
-                    return;
+            {
+                self.tombstones.insert(
+                    key.clone(),
+                    super::Tombstone {
+                        purged_of: group_hlcs.clone(),
+                        cascade_of: Some(message),
+                        held: None,
+                        confirmed: false,
+                        purged_at: self.now_ms,
+                    },
+                );
+                if self.bound {
+                    self.enqueue_purged(key, group_hlcs.clone(), None);
                 }
+                return;
             }
         }
         // A record this device holds in quarantine stays there (S4a review, ADR-0001 §6.3): what the server sends for it is merged into
         // the quarantined copy, and the user decides. Applying it live would put the same record in the feed and in quarantine.
-        if !self.records.contains_key(key) && !self.switches.quarantine_applies_live {
-            if let Some(held) = self.quarantine.iter_mut().find(|q| q.key == *key) {
-                held.v = merge(&held.v, &incoming).record;
-                return;
-            }
+        if !self.records.contains_key(key)
+            && !self.switches.quarantine_applies_live
+            && let Some(held) = self.quarantine.iter_mut().find(|q| q.key == *key)
+        {
+            held.v = merge(&held.v, &incoming).record;
+            return;
         }
         let Some(local) = self.records.get(key).map(|l| l.v.clone()) else {
             self.records.insert(
@@ -468,10 +468,11 @@ fn merge_with_switches(local: &Versioned, incoming: &Versioned, switches: &Switc
         // A tie of `wall_ms` and counter between devices is resolved by arrival order (the local copy stays).
         let mut tied = Vec::new();
         for (name, group) in incoming.groups() {
-            if let Some(mine) = local.get(name) {
-                if mine.hlc != group.hlc && mine.hlc.get(..19) == group.hlc.get(..19) {
-                    tied.push((name.to_string(), mine.clone()));
-                }
+            if let Some(mine) = local.get(name)
+                && mine.hlc != group.hlc
+                && mine.hlc.get(..19) == group.hlc.get(..19)
+            {
+                tied.push((name.to_string(), mine.clone()));
             }
         }
         for (name, mine) in tied {
