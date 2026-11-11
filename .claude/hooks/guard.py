@@ -109,8 +109,8 @@ def check_command(command, data, cwd, depth):
     segs = shellparse.segments(skel)
     listing_ours = any(docker_lists_ours(shellparse.command_words(s), bodies) for s in segs)
     for raw in segs:
-        remember_assignments(raw, bodies, env)
-        raw = [expand(w, env) for w in raw]
+        shellparse.remember_assignments(raw, bodies, env)
+        raw = [shellparse.expand(w, env) for w in raw]
         words = shellparse.command_words(raw)
         if not words:
             continue
@@ -137,24 +137,6 @@ def check_command(command, data, cwd, depth):
         if problem:
             return problem, workdir
     return None, workdir
-
-
-def remember_assignments(raw, bodies, env):
-    """Records `NAME=value` segments (and `export NAME=value`), so a later `git -C "$NAME"` or `cd "$NAME"` in the
-    same line is judged by the directory it names. Assignments that prefix a command change only its environment."""
-    words = raw[1:] if raw[:1] == ["export"] else raw
-    if not words or not all(re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w) for w in words):
-        return
-    for w in words:
-        key, value = w.split("=", 1)
-        env[key] = expand(bodies.get(value, value), env)
-
-
-def expand(word, env):
-    """`word` with `$NAME` and `${NAME}` replaced for the variables the line itself assigned; others stay."""
-    if "$" not in word or not env:
-        return word
-    return re.sub(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?", lambda m: env.get(m.group(1), m.group(0)), word)
 
 
 def check_post(data):

@@ -76,6 +76,25 @@ def command_words(words):
     return words
 
 
+def remember_assignments(raw, bodies, env):
+    """Records `NAME=value` segments (and `export NAME=value`) in `env`, so a later `git -C "$NAME"` or `cd "$NAME"`
+    in the same line is judged by the directory it names. Assignments that prefix a command change only its
+    environment, so they are not recorded."""
+    words = raw[1:] if raw[:1] == ["export"] else raw
+    if not words or not all(re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w) for w in words):
+        return
+    for w in words:
+        key, value = w.split("=", 1)
+        env[key] = expand(bodies.get(value, value), env)
+
+
+def expand(word, env):
+    """`word` with `$NAME` and `${NAME}` replaced for the variables the line itself assigned; others stay."""
+    if "$" not in word or not env:
+        return word
+    return re.sub(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?", lambda m: env.get(m.group(1), m.group(0)), word)
+
+
 def redirect_targets(words):
     out = []
     for i, w in enumerate(words):
