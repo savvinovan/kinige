@@ -24,7 +24,8 @@ import sys
 
 sys.dont_write_bytecode = True  # no __pycache__ in the checkout the hook runs from
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import shellparse  # noqa: E402  (the guard's own modules, next to it)
+import gitcheck  # noqa: E402  (the guard's own modules, next to it)
+import shellparse  # noqa: E402
 import snapshot  # noqa: E402
 
 HOME_PREFIX = r"(?:~|\$HOME|\$\{HOME\}|/Users/[^/\s'\"]+)/"
@@ -51,16 +52,8 @@ GUI_PROGRAMS = {"open", "osascript", "screencapture", "cliclick", "tccutil", "ki
 CARGO_HEAVY = {"build", "test", "clippy", "check", "run", "doc", "bench", "nextest", "tauri", "install"}
 # The tests raise the floor through the environment of the hook process (an agent's command cannot set it).
 MIN_FREE_GIB = float(os.environ.get("KINIGE_GUARD_MIN_FREE_GIB") or 6)
-# What a subagent may run in the main checkout: git that does not change it. Everything else is blocked there.
-GIT_READ_ONLY = {
-    "status", "log", "diff", "show", "fetch", "rev-parse", "ls-files", "ls-tree", "blame", "grep", "merge-base",
-    "cat-file", "describe", "shortlog", "ls-remote", "for-each-ref", "rev-list", "name-rev", "check-ignore", "version",
-    "help", "push",
-}
-PUSH_OPTIONS_WITH_VALUE = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
 DOCKER_REMOVING = {"rm", "stop", "kill", "restart", "pause", "rmi", "down"}
-WORKTREE_DIR = os.path.join(".claude", "worktrees")
-MEMORY_DIRS = (os.path.join(".claude", "agent-memory"), os.path.join(".claude", "agent-memory-local"))
+DOCKER_LISTING = {"ps", "ls", "images", "list"}
 SPEC_DIR = os.path.join("docs", "slices") + os.sep
 
 RULE8 = (
@@ -104,8 +97,11 @@ def check_bash(data):
 def check_command(command, data, cwd, depth):
     """(the first problem or None, the directory the line ends up working in)."""
     skel, bodies = shellparse.skeleton(command)
-    workdir = cwd
-    for raw in shellparse.segments(skel):
+    workdir, env = cwd, {}
+    segs, feeds = shellparse.segments(skel), shellparse.feeders(skel)
+    for at, raw in enumerate(segs):
+        shellparse.remember_assignments(raw, bodies, env, cut=at + 1 in feeds[at])
+        raw = [shellparse.expand(w, env) for w in raw]
         words = shellparse.command_words(raw)
         if not words:
             continue
@@ -126,9 +122,12 @@ def check_command(command, data, cwd, depth):
             if problem:
                 return problem, workdir
             continue
+        # The commands whose output feeds this one's arguments: a `$(…)` right after it, or a pipe into it.
+        feeding = [shellparse.command_words(segs[j]) for j in feeds[at]]
         problem = (check_edit(name, args, words, command, workdir) or check_gui(prog, name, args)
-                   or check_claude(name, args, words, bodies, command) or check_git(name, args, data, workdir)
-                   or check_docker(name, args, command) or check_disk(name, args, workdir))
+                   or check_claude(name, args, words, bodies, command)
+                   or gitcheck.check_git(name, args, data, workdir)
+                   or check_docker(name, args, feeding, bodies) or check_disk(name, args, workdir))
         if problem:
             return problem, workdir
     return None, workdir
@@ -165,7 +164,7 @@ def check_paths(data):
         return "Claude configs are the user's: do not change them from this project (CLAUDE.md, Environment)."
     project = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or "")
     agent = str(data.get("agent_type") or "")
-    if writing and agent and project and in_main_checkout(path, project):
+    if writing and agent and project and gitcheck.in_main_checkout(path, project):
         if agent == "slice-spec" and os.path.relpath(path, project).startswith(SPEC_DIR):
             return None
         return ("a subagent edits the main checkout ({}). Work in your own worktree (CLAUDE.md rule 13); the main checkout "
@@ -230,12 +229,30 @@ def check_claude(name, args, words, bodies, command):
     targets = shellparse.redirect_targets(words) + shellparse.tee_targets(name, args)
     files = [bodies.get(a, a) for a in args if not a.startswith("-")]
     if name in FILE_COPIERS and files:
-        targets.append(files[-1].split("of=", 1)[-1] if name == "dd" else files[-1])  # the destination only
+        targets += copy_destinations(name, args, files)
     if any(is_claude_config(t) for t in targets):
         return "Claude configs are the user's: do not write them from this project."
     if is_inline_script(name, args, words) and INLINE_WRITE_RE.search(command) and CLAUDE_CONFIG_RE.search(command):
         return "an inline script writes a Claude config. Claude configs are the user's: do not write them from this project."
     return None
+
+
+def copy_destinations(name, args, files):
+    """Where a copier writes: `of=` for dd, the `-t`/`--target-directory` directory, otherwise the last argument; a
+    directory destination (`cp x/settings.json ~/.claude/`) receives each source under its own name. Copying a config
+    out (`cp ~/.claude/settings.json <scratch>`) reads it and is fine."""
+    if name == "dd":
+        return [a[3:] for a in args if a.startswith("of=")]
+    sources, directory = files[:-1], files[-1]
+    for i, a in enumerate(args):
+        if a == "-t" and i + 1 < len(args):
+            sources, directory = [f for f in files if f != args[i + 1]], args[i + 1]
+        elif a.startswith("--target-directory="):
+            sources, directory = files, a.split("=", 1)[1]
+    into_dir = directory != files[-1] or directory.endswith("/")
+    if into_dir or os.path.isdir(os.path.expanduser(os.path.expandvars(directory))):
+        return [os.path.join(directory, os.path.basename(f.rstrip("/"))) for f in sources]
+    return [directory]
 
 
 def is_claude_config(target):
@@ -244,68 +261,17 @@ def is_claude_config(target):
     return any(path == os.path.join(home, c) for c in CLAUDE_CONFIGS)
 
 
-def check_git(name, args, data, workdir):
-    if name != "git":
-        return None
-    sub, rest, repo = shellparse.git_subcommand(args, workdir)
-    # A directory named by a variable (`cd "$WT"`) is unknown here, so it is not judged as the main checkout.
-    if data.get("agent_type") and "$" not in repo and not git_read_only(sub, rest):
-        project = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or "")
-        if project and in_main_checkout(os.path.realpath(repo), project):
-            return ("a subagent runs `git {}` in the main checkout ({}); there only git that changes nothing is allowed. "
-                    "Work in your own worktree: `cd <worktree> && git …` or `git -C <worktree> …` "
-                    "(CLAUDE.md rule 13).").format(sub, project)
-    if sub != "push":
-        return None
-    positional, i = [], 0
-    while i < len(rest):
-        a = rest[i]
-        if a in PUSH_OPTIONS_WITH_VALUE:
-            i += 2
-            continue
-        if a in ("--force", "--all", "--mirror") or (re.match(r"-[a-zA-Z]*f[a-zA-Z]*$", a) and not a.startswith("--")):
-            return "force pushes and `--all`/`--mirror` are not allowed. Use `--force-with-lease` on your own branch."
-        if not a.startswith("-"):
-            positional.append(a)
-        i += 1
-    refspecs = positional[1:]
-    if any(r.startswith("+") for r in refspecs):
-        return "a `+refspec` is a force push, which is not allowed. Use `--force-with-lease` on your own branch."
-    sources = [("HEAD" if r.split(":")[0] == "@" else r.split(":")[0]) for r in refspecs] or ["HEAD"]
-    targets = [r.split(":")[-1] for r in refspecs]
-    if "HEAD" in sources and not any(":" in r for r in refspecs):
-        targets.append(current_branch(repo))
-    if any(t in ("main", "master", "refs/heads/main", "refs/heads/master") for t in targets):
-        return "pushing to main is not allowed: changes reach main only through a reviewed PR."
-    return gitleaks_problem(repo, sources[0])
+def docker_lists_ours(words, bodies):
+    """A docker listing (`docker ps -aq --filter name=kinige-`) whose filter names our objects."""
+    if not words or os.path.basename(words[0]) != "docker" or not DOCKER_LISTING & set(words[1:]):
+        return False
+    args = words[1:]
+    filters = [bodies.get(args[i + 1], args[i + 1]) for i, a in enumerate(args[:-1]) if a in ("--filter", "-f")]
+    filters += [a.split("=", 1)[1] for a in args if a.startswith("--filter=")]
+    return any("kinige" in f for f in filters)
 
 
-def git_read_only(sub, rest):
-    if sub in GIT_READ_ONLY:
-        return True
-    if sub == "worktree":
-        # `remove` without --force: git refuses a dirty worktree, so another agent's work is safe.
-        return bool(rest) and (rest[0] in ("add", "list", "prune")
-                               or (rest[0] == "remove" and not {"-f", "--force"} & set(rest)))
-    if sub == "branch":
-        return all(a in ("-a", "-r", "-v", "-vv", "--list", "--show-current", "--all", "--remotes") for a in rest)
-    if sub == "stash":
-        return bool(rest) and rest[0] in ("list", "show")
-    if sub in ("remote", "config"):
-        return not rest or rest[0] in ("-v", "show", "get-url", "--get", "--list", "-l", "get")
-    return False
-
-
-def current_branch(repo):
-    try:
-        out = subprocess.run(["git", "-C", repo, "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True,
-                             timeout=10)
-    except (OSError, subprocess.SubprocessError):
-        return ""
-    return out.stdout.strip() if out.returncode == 0 else ""
-
-
-def check_docker(name, args, command):
+def check_docker(name, args, feeding, bodies):
     if name != "docker":
         return None
     if "prune" in args:
@@ -319,9 +285,11 @@ def check_docker(name, args, command):
     else:
         targets = [a for a in args[args.index(verbs[0]) + 1:] if not a.startswith("-")]
         # No targets left: they come from a substitution or a pipe (`docker rm -f $(docker ps -aq --filter
-        # name=kinige-)`), which the segment split removed. Then the line must select ours by name somewhere;
-        # `docker rm -f $(docker ps -aq)` would remove every project's containers.
-        ok = all(t.startswith("kinige") for t in targets) if targets else "kinige" in command
+        # name=kinige-)`), which the segment split removed. Then the listing that feeds this command must filter by
+        # our name; `docker rm -f $(docker ps -aq)` would remove every project's containers, and neither a path with
+        # "kinige" in it (every checkout and scratch path) nor another, filtered listing elsewhere in the line counts.
+        ok = all(t.startswith("kinige") for t in targets) if targets else any(
+            docker_lists_ours(w, bodies) for w in feeding)
     if not ok:
         return ("this docker command targets objects that are not named `kinige-…` (a compose project needs `-p kinige-…`). "
                 "Touch only your own objects on ubuntu-server.")
@@ -340,31 +308,6 @@ def check_disk(name, args, workdir):
         return ("only {:.1f} GiB free (the floor is {:g} GiB). Delete your own CARGO_TARGET_DIR or other files you created, "
                 "or report to the coordinator; do not clean shared caches.").format(free, MIN_FREE_GIB)
     return None
-
-
-def gitleaks_problem(repo, src):
-    if not shutil.which("gitleaks"):
-        return None
-    try:
-        out = subprocess.run(
-            ["gitleaks", "git", "--no-banner", "--redact", "--exit-code", "3",
-             "--log-opts", "{} --not --remotes".format(src or "HEAD"), repo],
-            capture_output=True, text=True, timeout=90,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if out.returncode == 3:
-        tail = "\n".join((out.stdout + out.stderr).strip().splitlines()[-25:])
-        return ("gitleaks found a secret in the commits to push (the repository is public). Fix the commit, or add a "
-                "true false positive to .gitleaksignore.\n" + tail)
-    return None
-
-
-def in_main_checkout(path, project):
-    if not (path == project or path.startswith(project + os.sep)):
-        return False
-    rel = os.path.relpath(path, project)
-    return not (rel.startswith(WORKTREE_DIR) or rel.startswith(MEMORY_DIRS))
 
 
 if __name__ == "__main__":

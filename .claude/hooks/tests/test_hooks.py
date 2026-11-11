@@ -84,7 +84,18 @@ BLOCKED_COMMANDS = [
     "docker rm -f `docker ps -aq`",
     "docker ps -aq | xargs docker rm -f",
     "docker volume rm $(docker volume ls -q)",
+    # A path with "kinige" in it (every checkout and scratch path) does not make a mass removal ours.
+    "cd /tmp/kinige-claude/deploy && docker rm -f $(docker ps -aq)",
+    "docker volume rm $(docker volume ls -q) > /tmp/kinige-claude/rm.log",
+    "docker rm -f $(docker ps -aq --filter name=other) # kinige",
+    # Only the listing that feeds the removal counts, not a filtered one elsewhere in the line.
+    "docker ps -a --filter name=kinige- ; docker rm -f $(docker ps -aq)",
+    "docker volume ls --filter name=kinige && docker volume rm $(docker volume ls -q)",
     "git push origin @",
+    "cp -t ~/.claude /tmp/settings.json",
+    "dd of=$HOME/.claude/settings.json if=/tmp/s.json bs=1",
+    "cp /tmp/x/settings.json ~/.claude/",
+    "cp /tmp/x/.claude.json ~",
 ]
 
 ALLOWED_COMMANDS = [
@@ -109,7 +120,10 @@ ALLOWED_COMMANDS = [
     "git push -o ci.skip origin tools/x",
     "docker rm -f kinige-s4c-pg-x",
     "docker rm -f $(docker ps -aq --filter name=kinige-)",
+    "docker ps -aq --filter 'name=kinige-s4c' | xargs docker rm -f",
+    "docker volume rm $(docker volume ls -q --filter=name=kinige-) > /tmp/rm.log",
     "docker compose -p kinige-s4c2-smoke down -v",
+    "dd if=/tmp/x of=/tmp/y bs=1",
     "docker ps -a",
     "grep -rn 'Documents/Kinige' crates",
     "echo ok >/dev/null 2>&1",
@@ -117,6 +131,7 @@ ALLOWED_COMMANDS = [
     "python3 -c 'print(open(\"/tmp/x\").read())'",
     "cd web && npx vitest run > coverage/run.log",
     "cp ~/.claude/settings.json /tmp/s.json",
+    "cp ~/.claude/settings.json /tmp/",
     "python3 - <<'EOF'\nimport json\njson.load(open('.claude/settings.json'))\nopen('/tmp/out.json', 'w').write('{}')\nEOF",
 ]
 
@@ -133,6 +148,12 @@ SUBAGENT_ALLOWED_GIT = [
     "git worktree add /tmp/kinige-wt-test -b tools/y", "git worktree list", "git stash list", "git remote -v",
     "git worktree remove /tmp/kinige-wt-test", "git worktree prune", "cd \"$WT\" && git commit -m x",
     "git -C \"$WT\" commit -m x",
+    # A value from a substitution is unknown, not empty (an empty one would resolve to the main checkout).
+    "R=$(git -C /tmp/kinige-wt-test rev-parse --show-toplevel); git -C \"$R\" commit -m x",
+    "R=`git -C /tmp/kinige-wt-test rev-parse --show-toplevel`; cd $R && git commit -m x",
+    "WT=$(mktemp -d); cd $WT && git init -q && git commit -m x",
+    "R=\"$(git -C /tmp/kinige-wt-test rev-parse --show-toplevel)\"; git -C \"$R\" commit -m x",
+    "R=.$(echo /tmp/kinige-wt-test); git -C \"$R\" commit -m x",
 ]
 
 
@@ -243,6 +264,9 @@ class PostSnapshot(Repo):
             ("python3 /tmp/fix.py; mkdir -p x", lambda: self.write("crates/x.rs", "fn d() {}\n"), None),
             ("python3 /tmp/fix.py && git commit -qam x", self.edit_and_commit, None),
             ("cd {} && python3 /tmp/fix.py", lambda: self.write("docs/x.md", "y\n"), tempfile.gettempdir()),
+            # `shellcheck` and `shasum` start with `sh` but are not interpreters running a repo script.
+            ("python3 /tmp/fix.py && shellcheck scripts/x.sh", lambda: self.write("crates/x.rs", "fn e() {}\n"), None),
+            ("python3 /tmp/fix.py && shasum scripts/x.sh", lambda: self.write("crates/x.rs", "fn f() {}\n"), None),
         ]
         for command, change, cwd in cases:
             with self.subTest(command=command):
@@ -283,10 +307,12 @@ class MainCheckout(Repo):
             with self.subTest(command=command):
                 code, err = run("bash", bash(command, cwd=self.repo, agent_type="slice-implementer"), self.env())
                 self.assertEqual(code, 2, err)
-        with self.subTest(command="git -C <main> commit"):
-            data = bash("git -C {} commit -m x".format(self.repo), agent_type="slice-reviewer")
-            code, err = run("bash", data, self.env())
-            self.assertEqual(code, 2, err)
+        # A variable the line itself assigns is expanded, so it does not hide the main checkout.
+        for command in ("git -C {} commit -m x", "M={}; git -C \"$M\" clean -fdx", "export M='{}' && cd ${{M}} && git add -A"):
+            with self.subTest(command=command):
+                data = bash(command.format(self.repo), agent_type="slice-reviewer")
+                code, err = run("bash", data, self.env())
+                self.assertEqual(code, 2, err)
         for tool, rel, agent in (("Edit", "crates/x.rs", "slice-implementer"), ("Write", "crates/y.rs", "slice-spec")):
             with self.subTest(tool=tool, rel=rel, agent=agent):
                 data = {"tool_name": tool, "tool_input": {"file_path": os.path.join(self.repo, rel)}, "agent_type": agent}

@@ -60,11 +60,11 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
   - `open`, `osascript`, screenshots, `killall` and system settings on this Mac;
   - writes to Claude configs;
   - pushes to main and force pushes, and a push in which gitleaks finds a secret;
-  - docker removal of objects not named `kinige-…`, and `prune`;
+  - docker removal of objects not named `kinige-…` (a list from `$(docker ps -aq …)` or a pipe needs `--filter name=kinige-…`), and `prune`;
   - edits by a subagent in the main checkout, and git there that changes anything (rule 13); `slice-spec` may write `docs/slices/`;
   - cargo builds with less than 6 GiB free.
 - **The guard also reports** a source file that a Bash command created or rewrote without a tool that legitimately writes sources, a script edit committed in the same command included.
-- **The guard is a backstop, not a sandbox.** Variables, `eval` and copies of prepared files (`cp`, `mv`) get past the checks before a command; the snapshot after it catches most of them.
+- **The guard is a backstop, not a sandbox.** Variables the line does not assign itself, `eval` and copies of prepared files (`cp`, `mv`) get past the checks before a command; the snapshot after it catches most of them.
 - **A blocked call says why and what to do instead.** A reviewer's fault-injection probe goes through `git apply` of a patch in its own worktree.
 - **`scripts/pre-pr-check.py`** checks a branch before its PR: files grown past 400 lines, backup files, invisible characters, unaligned tables, whitespace, rustfmt. CI's `pre-pr-check` job runs it on every pull request, against the PR's base.
 - **Tests:** `python3 -I .claude/hooks/tests/test_hooks.py` and `python3 -I scripts/pre-pr-check.test.py`, both run in CI's `web` job.
