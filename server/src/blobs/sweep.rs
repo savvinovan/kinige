@@ -14,6 +14,7 @@ use crate::store::{blobs, credentials, lock};
 use deadpool_postgres::Pool;
 use std::collections::HashSet;
 use std::time::Duration;
+use tokio_postgres::GenericClient;
 
 /// What one pass did, for the log and the tests.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -66,14 +67,18 @@ pub async fn run(
         .staging
         .remove_older_than(Duration::from_millis(config.orphan_upload_ms))
         .await;
-    swept.adopted = adopt_orphans(pool, &blobs.objects, now_ms, config.orphan_upload_ms).await?;
+    let client = pool.get().await?;
+    swept.adopted =
+        adopt_orphans(&**client, &blobs.objects, now_ms, config.orphan_upload_ms).await?;
     Ok(swept)
 }
 
 /// Objects in the store that no row refers to and that are older than `min_age_ms` become rows marked deleted now. A restore calls this
-/// with an age of 0: nothing is being published while it runs.
+/// with an age of 0: nothing is being published while it runs. It reads and writes through `client`, which for a restore is the
+/// connection that holds the restore's lock: if the lock is lost, the scan stops at its next statement, so that a server that started
+/// in the gap can publish a blob without the scan adopting it as deleted.
 pub async fn adopt_orphans(
-    pool: &Pool,
+    client: &impl GenericClient,
     objects: &Objects,
     now_ms: u64,
     min_age_ms: u64,
@@ -82,7 +87,7 @@ pub async fn adopt_orphans(
         log::warn!("the object store could not be listed");
         return Ok(0);
     };
-    let known: HashSet<String> = blobs::all(pool)
+    let known: HashSet<String> = blobs::all(client)
         .await?
         .into_iter()
         .map(|row| object_key(&row.account_id, &row.blob_id))
@@ -98,7 +103,7 @@ pub async fn adopt_orphans(
             continue;
         }
         if let Some((account, blob)) = parse_key(&key) {
-            blobs::adopt_orphan(pool, &account, &blob, size, now_ms).await?;
+            blobs::adopt_orphan(client, &account, &blob, size, now_ms).await?;
             adopted += 1;
         }
     }

@@ -5,6 +5,7 @@ use super::{to_i64, to_u64};
 use crate::error::ApiError;
 use crate::rules::blob::Known;
 use deadpool_postgres::{Pool, Transaction};
+use tokio_postgres::GenericClient;
 
 /// A row as the sweep and the restore read it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -200,8 +201,7 @@ pub async fn remove_row(pool: &Pool, account: &str, blob: &str) -> Result<(), Ap
 }
 
 /// Every row, for the orphan scan.
-pub async fn all(pool: &Pool) -> Result<Vec<Row>, ApiError> {
-    let client = pool.get().await?;
+pub async fn all(client: &impl GenericClient) -> Result<Vec<Row>, ApiError> {
     let rows = client
         .query(
             "SELECT account_id, blob_id, size, deleted_ms FROM blobs",
@@ -213,13 +213,12 @@ pub async fn all(pool: &Pool) -> Result<Vec<Row>, ApiError> {
 
 /// A row for an object that no row refers to, already marked deleted: it goes through the same delayed removal (a restore, the sweep).
 pub async fn adopt_orphan(
-    pool: &Pool,
+    client: &impl GenericClient,
     account: &str,
     blob: &str,
     size: u64,
     now_ms: u64,
 ) -> Result<(), ApiError> {
-    let client = pool.get().await?;
     client
         .execute(
             "INSERT INTO blobs (account_id, blob_id, size, published_ms, deleted_ms) VALUES ($1, $2, $3, 0, $4) ON CONFLICT DO NOTHING",

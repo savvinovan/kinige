@@ -1,18 +1,17 @@
 //! The server's presence lock (`store::lock::ServerLock`, round 2 of the review of S4c-2). A session advisory lock dies with its
 //! connection; a server that went on without it would let a restore start under it. The lock is taken again when its connection
 //! drops, and if a restore got in first, the server is told to stop.
-//!
-//! And the other side (KINIG-102): a restore holds its own lock on the connection that writes, so that when the connection ends, the lock
-//! and the transaction end together. The tests stop a restore in the middle with triggers in the test's own database and terminate the
-//! backend that holds the lock: after the `TRUNCATE` (a trigger on `lineage` waits for an advisory key the test holds), at the
-//! `COMMIT` (a deferred trigger that raises, and one that terminates its own backend).
+//! And the other side (KINIG-102): a restore holds its lock on the connection that writes, so the lock and the transaction end together.
+//! The tests stop a restore with triggers in the test's own database and terminate the backend that holds the lock: after the `TRUNCATE`
+//! (a trigger on `lineage` waits for an advisory key the test holds), at the `COMMIT` (deferred triggers: one raises, one terminates its
+//! own backend), and in the scan for orphan objects after the commit (a trigger on `blobs`).
 #![cfg(test)]
 #![cfg(feature = "pg-tests")]
 
 mod common;
 
 use common::backup::*;
-use common::blobs::{blob_uuid, object_size, sealed, upload_all};
+use common::blobs::{blob_row, blob_uuid, object_size, sealed, upload_all};
 use common::*;
 use kinige_server::backup::{self, BackupError, Report};
 use kinige_server::store::lock::{self, Retake, SERVER_LOCK, ServerLock};
@@ -81,6 +80,46 @@ async fn a_restore_that_loses_its_lock_after_the_truncate_replaces_nothing_and_r
     let report = restored_when_free(&s).await;
     assert_eq!(count(&s.rig, "lineage").await, 2, "{report:?}");
     assert!(object_size(&s.rig, &s.acct, &s.backed_up).await.is_some());
+}
+
+#[tokio::test]
+async fn a_restore_that_loses_its_lock_in_the_orphan_scan_is_done_and_adopts_nothing() {
+    let s = scene().await;
+    // Held in the scan after the commit: the trigger fires for the rows the scan inserts (published_ms = 0, already deleted).
+    let adopting = "WHEN (NEW.published_ms = 0 AND NEW.deleted_ms IS NOT NULL)";
+    install(&s.rig, &pause_trigger("blobs", adopting)).await;
+    let gate = s.rig.state.pool.get().await.expect("connection");
+    gate.execute("SELECT pg_advisory_lock($1)", &[&PAUSE])
+        .await
+        .expect("the pause key");
+
+    let restoring = start_restore(&s);
+    let waiter = wait_for_waiter(&s.rig, PAUSE).await;
+    assert_eq!(
+        holders(&s.rig).await,
+        vec![waiter],
+        "the scan is on the lock's connection"
+    );
+    assert_eq!(
+        count(&s.rig, "lineage").await,
+        2,
+        "the restore has committed"
+    );
+    terminate(&s.rig, waiter).await;
+    // A server starts in the gap and may publish a blob under the key the scan is about to adopt as deleted.
+    let _server = start_server(&s.rig).await;
+    gate.execute("SELECT pg_advisory_unlock($1)", &[&PAUSE])
+        .await
+        .expect("release");
+
+    let report = finished(restoring).await.expect("the restore is done");
+    assert!(report.orphan_scan_failed, "{report:?}");
+    assert_eq!(report.orphans, 0);
+    assert_eq!(
+        blob_row(&s.rig, &s.acct, &blob_uuid(7)).await,
+        None,
+        "the object of the blob uploaded after the backup was not adopted as deleted"
+    );
 }
 
 #[tokio::test]

@@ -34,6 +34,7 @@ use libsodium_rs::random;
 use std::path::Path;
 use tokio::fs::{self, File};
 use tokio::io::AsyncReadExt;
+use tokio_postgres::Client;
 
 /// How far ahead of the database's clock a backup's cut time may be before the restore says so (round 2 of the review of S4c-2).
 const FUTURE_CUT_MS: u64 = 60 * 60 * 1000;
@@ -109,8 +110,10 @@ async fn run(
         Ok(done) => done,
         Err(failed) => return Err(settle(guard, objects, copied, failed).await),
     };
-    // The restore is done; a failure of this scan is a warning and not a failure of the restore.
-    let (orphans, orphan_scan_failed) = match adopt_orphans(pool, objects, now_ms, 0).await {
+    // The restore is done; a failure of this scan is a warning and not a failure of the restore. It runs on the lock's connection: if the
+    // lock is lost now, the scan stops, and does not adopt as deleted what a server that started in the gap may be publishing.
+    let lock_client: &Client = guard;
+    let (orphans, orphan_scan_failed) = match adopt_orphans(lock_client, objects, now_ms, 0).await {
         Ok(count) => (count, false),
         Err(_) => {
             log::warn!(
