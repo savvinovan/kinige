@@ -346,6 +346,10 @@ jobs:
         working-directory: spikes/S4a-sync
         run: cargo clippy --all-targets -- -D warnings
 
+      - name: Clippy with real envelopes
+        working-directory: spikes/S4a-sync
+        run: cargo clippy --features real-envelope --all-targets -- -D warnings
+
       - name: Simulation, properties and negative controls
         working-directory: spikes/S4a-sync
         env:
