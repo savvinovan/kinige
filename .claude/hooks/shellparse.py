@@ -54,6 +54,18 @@ def segments(skel):
     return [re.findall(r"\d?&?>>?\S*|<<|\S+", part) for part in re.split(r"&&|\|\||[;|\n()`]|\$\(", skel)]
 
 
+def feeders(skel):
+    """For each command of `segments(skel)`, the indexes of the commands whose output becomes its arguments: the one
+    in a `$(…)` or backticks right after it, and the one piped into it (`docker ps -q … | xargs docker rm`)."""
+    parts = re.split(r"(&&|\|\||[;|\n()`]|\$\()", skel.replace(">|", "> "))
+    delims = parts[1::2]
+    out = []
+    for i in range(len(parts[0::2])):
+        fed = [i + 1] if i < len(delims) and delims[i] in ("$(", "`") else []
+        out.append(fed + ([i - 1] if i > 0 and delims[i - 1] == "|" else []))
+    return out
+
+
 def command_words(words):
     """The words from the program on: leading `VAR=value` assignments and prefixes like `sudo` dropped, and the
     command that `xargs`, `find -exec`, `nice` or `timeout` run unwrapped, so `xargs sed -i` reads as `sed -i`."""
@@ -76,16 +88,22 @@ def command_words(words):
     return words
 
 
-def remember_assignments(raw, bodies, env):
+def remember_assignments(raw, bodies, env, cut=False):
     """Records `NAME=value` segments (and `export NAME=value`) in `env`, so a later `git -C "$NAME"` or `cd "$NAME"`
     in the same line is judged by the directory it names. Assignments that prefix a command change only its
-    environment, so they are not recorded."""
+    environment, so they are not recorded. A value this reader cannot know (`R=$(…)`, which the segment split leaves
+    as `R=`, or one built from another substitution) makes the variable unknown, not empty. `cut` says a
+    substitution follows the segment, so its last value (`R=x` of `R=x$(…)`) is incomplete."""
     words = raw[1:] if raw[:1] == ["export"] else raw
     if not words or not all(re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w) for w in words):
         return
     for w in words:
         key, value = w.split("=", 1)
-        env[key] = expand(bodies.get(value, value), env)
+        value = expand(bodies.get(value, value), env)
+        if not value or "$" in value or "`" in value or (cut and w is words[-1]):
+            env.pop(key, None)
+        else:
+            env[key] = value
 
 
 def expand(word, env):

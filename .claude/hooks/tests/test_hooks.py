@@ -88,9 +88,14 @@ BLOCKED_COMMANDS = [
     "cd /tmp/kinige-claude/deploy && docker rm -f $(docker ps -aq)",
     "docker volume rm $(docker volume ls -q) > /tmp/kinige-claude/rm.log",
     "docker rm -f $(docker ps -aq --filter name=other) # kinige",
+    # Only the listing that feeds the removal counts, not a filtered one elsewhere in the line.
+    "docker ps -a --filter name=kinige- ; docker rm -f $(docker ps -aq)",
+    "docker volume ls --filter name=kinige && docker volume rm $(docker volume ls -q)",
     "git push origin @",
     "cp -t ~/.claude /tmp/settings.json",
     "dd of=$HOME/.claude/settings.json if=/tmp/s.json bs=1",
+    "cp /tmp/x/settings.json ~/.claude/",
+    "cp /tmp/x/.claude.json ~",
 ]
 
 ALLOWED_COMMANDS = [
@@ -126,6 +131,7 @@ ALLOWED_COMMANDS = [
     "python3 -c 'print(open(\"/tmp/x\").read())'",
     "cd web && npx vitest run > coverage/run.log",
     "cp ~/.claude/settings.json /tmp/s.json",
+    "cp ~/.claude/settings.json /tmp/",
     "python3 - <<'EOF'\nimport json\njson.load(open('.claude/settings.json'))\nopen('/tmp/out.json', 'w').write('{}')\nEOF",
 ]
 
@@ -142,6 +148,12 @@ SUBAGENT_ALLOWED_GIT = [
     "git worktree add /tmp/kinige-wt-test -b tools/y", "git worktree list", "git stash list", "git remote -v",
     "git worktree remove /tmp/kinige-wt-test", "git worktree prune", "cd \"$WT\" && git commit -m x",
     "git -C \"$WT\" commit -m x",
+    # A value from a substitution is unknown, not empty (an empty one would resolve to the main checkout).
+    "R=$(git -C /tmp/kinige-wt-test rev-parse --show-toplevel); git -C \"$R\" commit -m x",
+    "R=`git -C /tmp/kinige-wt-test rev-parse --show-toplevel`; cd $R && git commit -m x",
+    "WT=$(mktemp -d); cd $WT && git init -q && git commit -m x",
+    "R=\"$(git -C /tmp/kinige-wt-test rev-parse --show-toplevel)\"; git -C \"$R\" commit -m x",
+    "R=.$(echo /tmp/kinige-wt-test); git -C \"$R\" commit -m x",
 ]
 
 
