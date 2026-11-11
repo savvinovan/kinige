@@ -11,6 +11,7 @@ not reported.
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -113,7 +114,8 @@ def runs_writing_tool(segments):
             return True
         if name == "gh" and "checkout" in words:
             return True
-        if name.startswith(tuple(INTERPRETERS)) and first.startswith(REPO_SCRIPT_PREFIXES):
+        # The whole name: `shellcheck` and `shasum` start with `sh` but run nothing.
+        if re.sub(r"^(python)3?[\d.]*$", r"\g<1>3", name) in INTERPRETERS and first.startswith(REPO_SCRIPT_PREFIXES):
             return True
     return False
 

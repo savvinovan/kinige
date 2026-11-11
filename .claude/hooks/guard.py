@@ -59,6 +59,7 @@ GIT_READ_ONLY = {
 }
 PUSH_OPTIONS_WITH_VALUE = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
 DOCKER_REMOVING = {"rm", "stop", "kill", "restart", "pause", "rmi", "down"}
+DOCKER_LISTING = {"ps", "ls", "images", "list"}
 WORKTREE_DIR = os.path.join(".claude", "worktrees")
 MEMORY_DIRS = (os.path.join(".claude", "agent-memory"), os.path.join(".claude", "agent-memory-local"))
 SPEC_DIR = os.path.join("docs", "slices") + os.sep
@@ -104,8 +105,12 @@ def check_bash(data):
 def check_command(command, data, cwd, depth):
     """(the first problem or None, the directory the line ends up working in)."""
     skel, bodies = shellparse.skeleton(command)
-    workdir = cwd
-    for raw in shellparse.segments(skel):
+    workdir, env = cwd, {}
+    segs = shellparse.segments(skel)
+    listing_ours = any(docker_lists_ours(shellparse.command_words(s), bodies) for s in segs)
+    for raw in segs:
+        remember_assignments(raw, bodies, env)
+        raw = [expand(w, env) for w in raw]
         words = shellparse.command_words(raw)
         if not words:
             continue
@@ -128,10 +133,28 @@ def check_command(command, data, cwd, depth):
             continue
         problem = (check_edit(name, args, words, command, workdir) or check_gui(prog, name, args)
                    or check_claude(name, args, words, bodies, command) or check_git(name, args, data, workdir)
-                   or check_docker(name, args, command) or check_disk(name, args, workdir))
+                   or check_docker(name, args, listing_ours) or check_disk(name, args, workdir))
         if problem:
             return problem, workdir
     return None, workdir
+
+
+def remember_assignments(raw, bodies, env):
+    """Records `NAME=value` segments (and `export NAME=value`), so a later `git -C "$NAME"` or `cd "$NAME"` in the
+    same line is judged by the directory it names. Assignments that prefix a command change only its environment."""
+    words = raw[1:] if raw[:1] == ["export"] else raw
+    if not words or not all(re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w) for w in words):
+        return
+    for w in words:
+        key, value = w.split("=", 1)
+        env[key] = expand(bodies.get(value, value), env)
+
+
+def expand(word, env):
+    """`word` with `$NAME` and `${NAME}` replaced for the variables the line itself assigned; others stay."""
+    if "$" not in word or not env:
+        return word
+    return re.sub(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?", lambda m: env.get(m.group(1), m.group(0)), word)
 
 
 def check_post(data):
@@ -230,12 +253,25 @@ def check_claude(name, args, words, bodies, command):
     targets = shellparse.redirect_targets(words) + shellparse.tee_targets(name, args)
     files = [bodies.get(a, a) for a in args if not a.startswith("-")]
     if name in FILE_COPIERS and files:
-        targets.append(files[-1].split("of=", 1)[-1] if name == "dd" else files[-1])  # the destination only
+        targets += copy_destinations(name, args, files)
     if any(is_claude_config(t) for t in targets):
         return "Claude configs are the user's: do not write them from this project."
     if is_inline_script(name, args, words) and INLINE_WRITE_RE.search(command) and CLAUDE_CONFIG_RE.search(command):
         return "an inline script writes a Claude config. Claude configs are the user's: do not write them from this project."
     return None
+
+
+def copy_destinations(name, args, files):
+    """Where a copier writes: `of=` for dd, the `-t`/`--target-directory` directory, otherwise the last argument.
+    Copying a config out (`cp ~/.claude/settings.json <scratch>`) reads it and is fine."""
+    if name == "dd":
+        return [a[3:] for a in args if a.startswith("of=")]
+    for i, a in enumerate(args):
+        directory = (args[i + 1] if a == "-t" and i + 1 < len(args)
+                     else a.split("=", 1)[1] if a.startswith("--target-directory=") else None)
+        if directory is not None:
+            return [os.path.join(directory, os.path.basename(f)) for f in files if f != directory]
+    return [files[-1]]
 
 
 def is_claude_config(target):
@@ -305,7 +341,17 @@ def current_branch(repo):
     return out.stdout.strip() if out.returncode == 0 else ""
 
 
-def check_docker(name, args, command):
+def docker_lists_ours(words, bodies):
+    """A docker listing (`docker ps -aq --filter name=kinige-`) whose filter names our objects."""
+    if not words or os.path.basename(words[0]) != "docker" or not DOCKER_LISTING & set(words[1:]):
+        return False
+    args = words[1:]
+    filters = [bodies.get(args[i + 1], args[i + 1]) for i, a in enumerate(args[:-1]) if a in ("--filter", "-f")]
+    filters += [a.split("=", 1)[1] for a in args if a.startswith("--filter=")]
+    return any("kinige" in f for f in filters)
+
+
+def check_docker(name, args, listing_ours):
     if name != "docker":
         return None
     if "prune" in args:
@@ -319,9 +365,10 @@ def check_docker(name, args, command):
     else:
         targets = [a for a in args[args.index(verbs[0]) + 1:] if not a.startswith("-")]
         # No targets left: they come from a substitution or a pipe (`docker rm -f $(docker ps -aq --filter
-        # name=kinige-)`), which the segment split removed. Then the line must select ours by name somewhere;
-        # `docker rm -f $(docker ps -aq)` would remove every project's containers.
-        ok = all(t.startswith("kinige") for t in targets) if targets else "kinige" in command
+        # name=kinige-)`), which the segment split removed. Then a docker listing in the line must filter by our
+        # name; `docker rm -f $(docker ps -aq)` would remove every project's containers, and a path with "kinige" in
+        # it (every checkout and scratch path) proves nothing.
+        ok = all(t.startswith("kinige") for t in targets) if targets else listing_ours
     if not ok:
         return ("this docker command targets objects that are not named `kinige-…` (a compose project needs `-p kinige-…`). "
                 "Touch only your own objects on ubuntu-server.")
