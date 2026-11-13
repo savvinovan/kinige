@@ -1,20 +1,21 @@
 //! The server's presence lock (`store::lock::ServerLock`, round 2 of the review of S4c-2). A session advisory lock dies with its
-//! connection; a server that went on without it would let a restore start under it. The lock is taken again when its connection
-//! drops, and if a restore got in first, the server is told to stop.
-//! And the other side (KINIG-102): a restore holds its lock on the connection that writes, so the lock and the transaction end together.
-//! The tests stop a restore with triggers in the test's own database and terminate the backend that holds the lock: after the `TRUNCATE`
-//! (a trigger on `lineage` waits for an advisory key the test holds), at the `COMMIT` (deferred triggers: one raises, one terminates its
-//! own backend), and in the scan for orphan objects after the commit (a trigger on `blobs`).
+//! connection; it is taken again when the connection drops, and if a restore got in first, the server is told to stop. And the other
+//! side (KINIG-102): a restore holds its lock on the connection that writes, so the lock and the transaction end together. Its tests
+//! stop a restore with triggers in the test's own database and terminate the backend that holds the lock: after the `TRUNCATE` (a
+//! trigger on `lineage` waits for a key the test holds), at the `COMMIT` (deferred triggers), and in the orphan scan (a trigger on `blobs`).
 #![cfg(test)]
 #![cfg(feature = "pg-tests")]
 
 mod common;
 
+use axum::http::StatusCode;
 use common::backup::*;
 use common::blobs::{blob_row, blob_uuid, object_size, sealed, upload_all};
 use common::*;
 use kinige_server::backup::{self, BackupError, Report};
+use kinige_server::blobs::object_key;
 use kinige_server::store::lock::{self, Retake, SERVER_LOCK, ServerLock};
+use serde_json::Value;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::task::JoinHandle;
@@ -295,8 +296,8 @@ async fn scene() -> Scene {
     let (dir, _) = take(&rig).await;
     put(&rig, &acct, 9, 109, &msg(&maker, 9, 109, T0)).await;
     let (code, _) = upload_all(&rig, &acct, &blob_uuid(7), &sealed(4007, 7)).await;
-    assert_eq!(code, axum::http::StatusCode::OK);
-    let key = kinige_server::blobs::object_key(&acct.creds.account_id, &seeded.blob_id);
+    assert_eq!(code, StatusCode::OK);
+    let key = object_key(&acct.creds.account_id, &seeded.blob_id);
     rig.state.blobs.objects.delete(&key).await.expect("delete");
     Scene {
         rig,
@@ -365,9 +366,8 @@ async fn snapshot(rig: &Rig) -> Vec<Vec<String>> {
 }
 
 /// The head a session of the account from before the restore gets in a pull from 0.
-async fn pulled_head(s: &Scene) -> (axum::http::StatusCode, serde_json::Value) {
-    let generation = generation(&s.rig).await;
-    let (code, page) = pull(&s.rig, &s.acct, generation, 0, 0, 10).await;
+async fn pulled_head(s: &Scene) -> (StatusCode, Value) {
+    let (code, page) = pull(&s.rig, &s.acct, generation(&s.rig).await, 0, 0, 10).await;
     (code, page["head"].clone())
 }
 

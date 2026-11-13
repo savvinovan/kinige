@@ -39,13 +39,16 @@ pub(super) async fn settle(
     failed: Failed,
 ) -> BackupError {
     let lost = guard.query_one("SELECT 1", &[]).await.is_err();
+    let before = failed.error.category();
     let error = match (lost, failed.at_commit) {
         (false, _) => failed.error,
         (true, false) => BackupError::LockLost,
         (true, true) => BackupError::OutcomeUnknown,
     };
     if lost {
-        log::error!("the restore's database connection ended: {error}");
+        log::error!(
+            "the restore's database connection ended (the error before it: {before}): {error}"
+        );
     }
     if error != BackupError::OutcomeUnknown {
         for key in copied {

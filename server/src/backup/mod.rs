@@ -51,6 +51,24 @@ pub enum BackupError {
     Schema { backup: i32, server: i32 },
 }
 
+impl BackupError {
+    /// The kind of the error, for the log: never a path or an id.
+    pub fn category(&self) -> &'static str {
+        match self {
+            BackupError::Database => "database",
+            BackupError::Io(_) => "io",
+            BackupError::Store => "store",
+            BackupError::Manifest(_) => "manifest",
+            BackupError::Missing(_) => "missing",
+            BackupError::Hash(_) => "hash",
+            BackupError::ServerRunning => "server_running",
+            BackupError::LockLost => "lock_lost",
+            BackupError::OutcomeUnknown => "outcome_unknown",
+            BackupError::Schema { .. } => "schema",
+        }
+    }
+}
+
 impl From<ApiError> for BackupError {
     fn from(_: ApiError) -> BackupError {
         BackupError::Database
