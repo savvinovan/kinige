@@ -155,14 +155,14 @@ impl Server {
     fn push_inner(&mut self, env: &Arc<Envelope>, now_ms: u64) -> PushResponse {
         let header = &env.header;
         // 3. op_id deduplication, before every purge rule, so that a repeat of an accepted envelope does not get `purged`.
-        if !self.switches.no_dedup {
-            if let Some(&(seq, bytes)) = self.by_op.get(&header.op_id) {
-                return if bytes == env.bytes_id() {
-                    PushResponse::Duplicate(seq)
-                } else {
-                    PushResponse::OpConflict
-                };
-            }
+        if !self.switches.no_dedup
+            && let Some(&(seq, bytes)) = self.by_op.get(&header.op_id)
+        {
+            return if bytes == env.bytes_id() {
+                PushResponse::Duplicate(seq)
+            } else {
+                PushResponse::OpConflict
+            };
         }
         // 5. clock_skew: `wall_ms` in any HLC of the header beyond `server_now + SKEW_MAX`.
         let too_far = header

@@ -1,6 +1,6 @@
-//! The credential journal across restores, round 2 of the review of S4c-2 (ADR-0001 §8.9, ADR-0020): two changes of one account in the same
-//! millisecond are two entries and the later one wins, and retired credentials do not stay in the journal for longer than a deleted blob
-//! stays in the store. The first round's tests are in `restore_rules.rs`.
+//! The credential journal across restores (ADR-0001 §8.9, ADR-0020): a password or recovery words changed after a backup are not the old
+//! ones again, two changes of one account in the same millisecond are two entries and the later one wins, and retired credentials do not
+//! stay in the journal for longer than a deleted blob stays in the store. The deletion journal is in `restore_rules.rs`.
 #![cfg(test)]
 #![cfg(feature = "pg-tests")]
 
@@ -12,6 +12,114 @@ use common::*;
 use kinige_server::blobs::sweep;
 use kinige_server::testing::{array32, random_wrap};
 use serde_json::json;
+
+#[tokio::test]
+async fn a_password_changed_after_a_backup_is_not_the_old_one_again() {
+    // Round 1 of the review: a restore replaced the credentials with the backup's, so a password changed because it leaked worked again.
+    let rig = rig().await;
+    let acct = account(&rig).await;
+    let old = acct.creds.auth_key;
+    let (older, _) = take(&rig).await;
+    let root = older.parent().expect("root").to_path_buf();
+    rig.clock.advance(DAY);
+    let new = change_password(&rig, &acct, 1, &old).await;
+    assert_eq!(
+        login_status(&rig, &acct.creds, &old).await,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(login_status(&rig, &acct.creds, &new).await, StatusCode::OK);
+    assert_eq!(count(&rig, "credential_changes").await, 1);
+    rig.clock.advance(DAY);
+    let (newer, _) = take_into(&rig, &root).await;
+
+    // In place: the journal of the installation is read before it is replaced. The old password is refused, the new one works.
+    let report = restore_into(&rig, &older).await;
+    assert_eq!(report.credentials_applied, 1);
+    assert_eq!(
+        login_status(&rig, &acct.creds, &old).await,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(login_status(&rig, &acct.creds, &new).await, StatusCode::OK);
+    let version = rows(&rig, "SELECT cred_version FROM accounts").await;
+    assert_eq!(field(&version[0], "cred_version"), 2);
+    assert_eq!(
+        count(&rig, "credential_changes").await,
+        1,
+        "and the journal is kept"
+    );
+
+    // Into a clean installation beside the newer backup: the journal of the neighbour has the change.
+    let clean = clean_like(&rig).await;
+    let report = restore_into(&clean, &older).await;
+    assert_eq!(report.credentials_applied, 1);
+    assert_eq!(
+        login_status(&clean, &acct.creds, &old).await,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        login_status(&clean, &acct.creds, &new).await,
+        StatusCode::OK
+    );
+
+    // The newer backup carries the change itself, and it has nothing to apply.
+    let clean = clean_like(&rig).await;
+    let report = restore_into(&clean, &newer).await;
+    assert_eq!(report.credentials_applied, 0);
+    assert_eq!(
+        login_status(&clean, &acct.creds, &old).await,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        login_status(&clean, &acct.creds, &new).await,
+        StatusCode::OK
+    );
+
+    // The honest limit, as for deletions: the older backup alone, with no journal anywhere, is the old password.
+    let alone_root = rig.db.scratch_dir("alone").expect("dir");
+    copy_dir(&older, &alone_root.join("backup-alone"));
+    let clean = clean_like(&rig).await;
+    restore_into(&clean, &alone_root.join("backup-alone")).await;
+    assert_eq!(
+        login_status(&clean, &acct.creds, &old).await,
+        StatusCode::OK
+    );
+}
+
+#[tokio::test]
+async fn new_recovery_words_after_a_backup_are_not_the_old_words_again() {
+    // New words are a change of credentials too (the old recovery key is the one that may have leaked): after a restore the old words do
+    // not work and the new ones do. The journal entry is the whole credential state, so the password is the one it was.
+    let rig = rig().await;
+    let acct = account(&rig).await;
+    let (dir, _) = take(&rig).await;
+    rig.clock.advance(DAY);
+    let (new_rc, wrap) = (array32(), random_wrap());
+    let (status, answer) = rig
+        .http
+        .post(
+            "/v1/words/reissue",
+            Some(&acct.token),
+            &json!({"auth_key": b64(&acct.creds.auth_key), "new_rc_auth_key": b64(&new_rc), "wrap_rc": b64(&wrap)}),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{answer}");
+    let report = restore_into(&rig, &dir).await;
+    assert_eq!(report.credentials_applied, 1);
+    let fetch = |key: [u8; 32]| {
+        let body = json!({"login": acct.creds.login, "rc_auth_key": b64(&key)});
+        let rig = &rig;
+        async move { rig.http.post("/v1/recovery/fetch", None, &body).await.0 }
+    };
+    assert_eq!(
+        fetch(acct.creds.rc_auth_key).await,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(fetch(new_rc).await, StatusCode::OK);
+    assert_eq!(
+        login_status(&rig, &acct.creds, &acct.creds.auth_key).await,
+        StatusCode::OK
+    );
+}
 
 #[tokio::test]
 async fn changes_in_one_millisecond_are_all_kept_and_the_latest_wins_after_a_restore() {

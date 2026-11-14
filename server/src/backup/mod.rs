@@ -13,6 +13,7 @@
 mod create;
 pub mod journal;
 pub mod manifest;
+mod outcome;
 mod restore;
 mod rotate;
 
@@ -40,8 +41,32 @@ pub enum BackupError {
     Hash(String),
     /// A server is running on this database: a restore replaces the tables under it. Stop the server first.
     ServerRunning,
+    /// The restore's connection ended before the commit, and with it the lock that keeps a server out (a Postgres restart, a network cut,
+    /// an administrator's `pg_terminate_backend`). The transaction rolled back with it. The objects the restore copied were removed.
+    LockLost,
+    /// The restore's connection ended while the commit ran, so whether the database was replaced is not known. The objects the restore
+    /// copied were kept: a rerun finds them by hash, and the sweep adopts the unreferenced ones.
+    OutcomeUnknown,
     /// The backup was taken from another schema than this server's.
     Schema { backup: i32, server: i32 },
+}
+
+impl BackupError {
+    /// The kind of the error, for the log: never a path or an id.
+    pub fn category(&self) -> &'static str {
+        match self {
+            BackupError::Database => "database",
+            BackupError::Io(_) => "io",
+            BackupError::Store => "store",
+            BackupError::Manifest(_) => "manifest",
+            BackupError::Missing(_) => "missing",
+            BackupError::Hash(_) => "hash",
+            BackupError::ServerRunning => "server_running",
+            BackupError::LockLost => "lock_lost",
+            BackupError::OutcomeUnknown => "outcome_unknown",
+            BackupError::Schema { .. } => "schema",
+        }
+    }
 }
 
 impl From<ApiError> for BackupError {
@@ -91,6 +116,14 @@ impl fmt::Display for BackupError {
             BackupError::ServerRunning => write!(
                 f,
                 "a server is running on this database: stop it before a restore"
+            ),
+            BackupError::LockLost => write!(
+                f,
+                "the restore lost its lock (its database connection ended) and replaced nothing in the database: check that no server is running on it, then run the restore again"
+            ),
+            BackupError::OutcomeUnknown => write!(
+                f,
+                "the database connection ended while the restore was committing, so it is not known whether the database was replaced; the blobs it copied were kept: check that no server is running on it, then run the restore again"
             ),
             BackupError::Schema { backup, server } => write!(
                 f,

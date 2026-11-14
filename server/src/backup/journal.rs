@@ -21,12 +21,16 @@ pub struct Journals {
     pub credentials: Vec<CredentialRow>,
 }
 
-impl Journals {
-    pub fn extend(&mut self, other: Journals) {
-        self.deletions.extend(other.deletions);
-        self.credentials.extend(other.credentials);
-    }
+/// What a restore did with the journals.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Applied {
+    /// Accounts deleted again.
+    pub deletions: usize,
+    /// Accounts whose credentials were put back to what they were after the backup.
+    pub credentials: usize,
+}
 
+impl Journals {
     /// The journals of a backup directory, which must be the one `manifest` describes: the files are hashed against it.
     pub async fn of_backup(dir: &Path, manifest: &Manifest) -> Result<Journals, BackupError> {
         Ok(Journals {
@@ -110,15 +114,11 @@ impl Journals {
         }
         best.map(|(_, journals)| journals).unwrap_or_default()
     }
-}
 
-/// What a restore did with the journals.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct Applied {
-    /// Accounts deleted again.
-    pub deletions: usize,
-    /// Accounts whose credentials were put back to what they were after the backup.
-    pub credentials: usize,
+    pub fn extend(&mut self, other: Journals) {
+        self.deletions.extend(other.deletions);
+        self.credentials.extend(other.credentials);
+    }
 }
 
 /// Re-applies the journals to the restored data, and keeps every entry in the restored journals (the union).

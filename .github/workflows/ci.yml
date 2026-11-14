@@ -341,6 +341,15 @@ jobs:
           workspaces: spikes/S4a-sync
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
+      # The spike is outside the workspace, so the clippy step of the `rust` job does not see it (KINIG-102).
+      - name: Clippy
+        working-directory: spikes/S4a-sync
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Clippy with real envelopes
+        working-directory: spikes/S4a-sync
+        run: cargo clippy --features real-envelope --all-targets -- -D warnings
+
       - name: Simulation, properties and negative controls
         working-directory: spikes/S4a-sync
         env:
@@ -430,6 +439,11 @@ jobs:
 
       - run: cargo clippy -p kinige-server --features pg-tests --all-targets -- -D warnings
       - run: cargo test -p kinige-server --features pg-tests
+
+      # The `real-server` code of the spike is not built by the `s4a` job (KINIG-102); this job builds it, so it is linted here.
+      - name: Clippy of the simulation against the real server
+        working-directory: spikes/S4a-sync
+        run: cargo clippy --features real-server --all-targets -- -D warnings
 
       # Property 8 and the restore mixes now run here: every restore is a real dump loaded into a clean database. The count is small and fixed.
       - name: Simulation against the real server

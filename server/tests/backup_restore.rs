@@ -1,7 +1,8 @@
 //! Backup and restore (PRD §10.1, ADR-0001 §6.3, ADR-0020): a backup restores into a clean installation and in place, a blob is never lost
 //! while a backup refers to it, an object of the right size that is not the backed-up one is repaired, and a backup taken during writes
 //! restores with its cut time separating the drops it holds from those it does not. The lock, rotation, the clocks and the plain-text scan
-//! are in `backup_housekeeping.rs`; the rules a restore applies are in `restore_rules.rs`; damaged backups are in `restore_garbage.rs`.
+//! are in `backup_housekeeping.rs`; the rules a restore applies are in `restore_rules.rs`, `restore_credentials.rs` and `restore_branch_cut.rs`; damaged backups are in
+//! `restore_garbage.rs`.
 //! Every scenario that touches blobs runs against the disk store and, with `KINIGE_TEST_S3_URL`, an S3-compatible store.
 #![cfg(test)]
 #![cfg(feature = "pg-tests")]

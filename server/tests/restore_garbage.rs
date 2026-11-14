@@ -506,16 +506,3 @@ async fn replace_and_rehash(dir: &Path, path: &str, bytes: &[u8]) {
     })
     .await;
 }
-
-fn copy_dir(from: &Path, to: &Path) {
-    std::fs::create_dir_all(to).expect("dir");
-    for entry in std::fs::read_dir(from).expect("dir") {
-        let entry = entry.expect("entry");
-        let target = to.join(entry.file_name());
-        if entry.path().is_dir() {
-            copy_dir(&entry.path(), &target);
-        } else {
-            std::fs::copy(entry.path(), target).expect("copy");
-        }
-    }
-}

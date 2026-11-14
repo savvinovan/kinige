@@ -49,7 +49,7 @@ pub fn no_version_lost(schedule: &Schedule, switches: Switches) -> Result<(), St
 }
 
 /// 3. A restore from the trash with a newer HLC reaches the other device and beats the older delete: the newest write of every
-/// group is what the devices hold, and every write is above the version it was made from, even on a clock that is behind.
+///    group is what the devices hold, and every write is above the version it was made from, even on a clock that is behind.
 pub fn restore_beats_delete(schedule: &Schedule, switches: Switches) -> Result<(), String> {
     let world = run(schedule, switches)?;
     oracle::converged(&world)?;
@@ -57,7 +57,7 @@ pub fn restore_beats_delete(schedule: &Schedule, switches: Switches) -> Result<(
 }
 
 /// 4. A device back after 200 days does not resurrect what was deleted and purged: it is told its cursor is stale, resyncs, and the
-/// record goes to quarantine, never back to the journal.
+///    record goes to quarantine, never back to the journal.
 pub fn no_resurrection(schedule: &Schedule, switches: Switches) -> Result<(), String> {
     let world = run(schedule, switches)?;
     oracle::purged_stays_gone(&world)?;
@@ -95,7 +95,7 @@ pub fn no_orphans(schedule: &Schedule, switches: Switches) -> Result<(), String>
 }
 
 /// 8. After a server restore (a new generation) nothing acked after the backup is lost once clients resync. The honest limitation
-/// of ADR-0001 §6.3 is asserted and no more: a record purged after the backup may come back, in the trash.
+///    of ADR-0001 §6.3 is asserted and no more: a record purged after the backup may come back, in the trash.
 pub fn server_restore(schedule: &Schedule, switches: Switches) -> Result<(), String> {
     let mut world = run(schedule, switches)?;
     oracle::converged(&world)?;
@@ -125,7 +125,7 @@ pub fn server_restore(schedule: &Schedule, switches: Switches) -> Result<(), Str
 }
 
 /// 9. (Beyond the eight.) No false conflicts: when one device writes a message's `body` and `placement`, however many times offline,
-/// with or without outbox compaction, and however the network duplicates and reorders, no `conflict` revision is ever made.
+///    with or without outbox compaction, and however the network duplicates and reorders, no `conflict` revision is ever made.
 pub fn no_false_conflicts(schedule: &Schedule, switches: Switches) -> Result<(), String> {
     let world = run(schedule, switches)?;
     oracle::converged(&world)?;
