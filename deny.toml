@@ -5,8 +5,9 @@
 all-features = true
 
 [advisories]
-# Only "unmaintained" for transitive Tauri dependencies on Linux: they can be replaced only by updating Tauri
-# and its plugins. Every entry is reviewed on a Tauri update; vulnerabilities (not "unmaintained") are not added here.
+# Unmaintained crates, and the vulnerabilities whose code is shown not to run on untrusted input in our build (the zip and rmcp blocks
+# say why). The Tauri entries are transitive dependencies on Linux that can be replaced only by updating Tauri and its plugins.
+# Every entry is reviewed when the crate that pulls it is updated.
 ignore = [
     { id = "RUSTSEC-2024-0370", reason = "proc-macro-error: via glib-macros -> gtk3-rs -> tray-icon/wry (Tauri, Linux only)" },
     { id = "RUSTSEC-2026-0370", reason = "zvariant: via zbus -> tauri-plugin-opener and tauri-plugin-single-instance (Linux only)" },
@@ -20,6 +21,24 @@ ignore = [
     { id = "RUSTSEC-2026-0368", reason = "zip extract (symlink targets): build.rs of libsodium-sys-stable, signed archive, build time only" },
     { id = "RUSTSEC-2026-0369", reason = "zip extract (permissions through symlinks): build.rs of libsodium-sys-stable, signed archive, build time only" },
     { id = "RUSTSEC-2026-0429", reason = "zip extract (symlink size abort): build.rs of libsodium-sys-stable, signed archive, build time only" },
+    # KINIG-117, advisories of 17.11.2026, same dependency and the same reasoning. Facts checked in the source of libsodium-sys-stable
+    # 1.24.3 and in `cargo tree -i zip --target all`: zip is reached only as a build dependency of libsodium-sys-stable, with features
+    # `deflate` alone (`default-features = false`); no other crate of the workspace or of the two spikes uses it. The build script's only
+    # calls are `ZipArchive::new` and `ZipArchive::extract` on the minisign-verified MSVC prebuilt. 0545 needs the `aes-crypto` feature
+    # and 0547 the `legacy-zip` feature (neither is enabled), and 0548 is about `ZipStreamReader` (not called). 0546 is about `extract`
+    # of a crafted archive; ours is verified against libsodium's key first (see above). The fix is zip >= 9.0.0 (0548: >= 9.0.5); libsodium-sys-stable 1.24.4 moves to
+    # zip 9.4, but it came out on 06.11.2026, so the two-week rule allows it from 20.11.2026. Remove all of them with that bump.
+    { id = "RUSTSEC-2026-0545", reason = "zip AES entries not authenticated: the aes-crypto feature is not enabled and the build script reads no encrypted entry" },
+    { id = "RUSTSEC-2026-0546", reason = "zip extract (chained symlink targets): build.rs of libsodium-sys-stable, signed archive, build time only" },
+    { id = "RUSTSEC-2026-0547", reason = "zip legacy decoders preallocate the declared size: the legacy-zip feature is not enabled" },
+    { id = "RUSTSEC-2026-0548", reason = "zip ZipStreamReader local-header names: the build script calls ZipArchive only, never ZipStreamReader" },
+    # chrono is unmaintained (all versions; the advisory recommends jiff or time). CLAUDE.md (code style 6) mandates it for time and
+    # dates, so it stays until an ADR picks a replacement. chrono-tz (timezones for chrono, kinige-store) and humantime (object_store
+    # 0.14.2, kinige-server only) belong to the same chronotope organization and were marked unmaintained with it; the latest releases
+    # of chrono, chrono-tz, humantime and object_store are already in use, so no upgrade exists. None of the three is a vulnerability.
+    { id = "RUSTSEC-2026-0543", reason = "chrono unmaintained: mandated by CLAUDE.md code style 6; replacement (jiff, time) needs its own ADR" },
+    { id = "RUSTSEC-2026-0555", reason = "chrono-tz unmaintained: timezone data of chrono in kinige-store; goes with the chrono decision" },
+    { id = "RUSTSEC-2026-0542", reason = "humantime unmaintained: via object_store 0.14.2 in kinige-server (latest release); goes with the chrono decision" },
     # rmcp 3.6.0 is built with `default-features = false, features = ["server"]`: the features it ends up with are `server`,
     # `transport-async-rw`, `schemars` and `uuid`. Both advisories are about client code behind the `auth` and Streamable HTTP client
     # features, which are not compiled. Remove both when rmcp is at 3.9 or later (3.9.0 came out on 05.11.2026, so the two-week rule
