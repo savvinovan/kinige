@@ -33,7 +33,7 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 2. **Agent roles** (`.claude/agents/`):
    - `slice-spec` — writes the slice specification from the PRD;
    - `slice-implementer` — implements the slice from the specification;
-   - `slice-reviewer` — reviews in a clean context: runs the checks and builds the app itself, but does not launch its window on the user's Mac; takes the screenshots of the real window from the macOS runner (`screens.yml`);
+   - `slice-reviewer` — reviews in a clean context: reads CI's full run, runs the tests that prove the claims and builds the app itself, but does not launch its window on the user's Mac; takes the screenshots of the real window from the macOS runner (`screens.yml`);
    - `design-system` — tokens, components, Storybook;
    - `sync-crypto-guardian` — review of everything that touches the data schema, sync and encryption;
    - `codex-second-opinion` — a second opinion from Codex CLI; every piece of advice is verified.
@@ -52,6 +52,11 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 14. **Network requests** from code, scripts and agents (downloading assets, APIs) use the anonymized User-Agent `kinige-dev`. A name, e-mail or other personal data never goes into headers, URLs or request bodies.
 15. **The PR title and the message of the branch's first commit carry the Huly task number** (`KINIG-N: …`), so that Huly links the PR to the task. Exception: the release commit and PR `Release vX.Y.Z` from `scripts/release.sh` (ADR-0012) go without a number.
 16. **Repository language is English:** docs, specs, ADRs, code comments, log messages, commits and PRs. UI strings are bilingual (ru/en) via i18n.
+17. **The full checks run once per slice, not after every stage.** They are slow, and repeating them after each stage costs more than fixing their findings once.
+    - **While the slice is being written** (after every commit and every fix round): only the narrowest checks of what changed, such as `cargo check -p <crate>`, `cargo test -p <crate> <filter>` or one vitest file. No workspace-wide clippy or tests, no whole server suites, no screens, and no waiting for CI. `cargo fmt` is exempt: it takes seconds.
+    - **Once, when everything in the specification's "Included" is written:** the full set. The implementer opens the pull request then, and CI on it runs workspace clippy and tests, the server suites and the web checks; `screens.yml` makes the screenshots. What it finds is fixed in one pass.
+    - **Reviewers and the guardian** read CI's result for the full set and don't repeat it locally. They run the tests and probes that prove the claims. A filtered run of a server suite for one claim or probe is such a test.
+    - Rules 3 and 12 stay: a fix still comes with its regression test, and "done" still needs the evidence. Only the moment of the full run changes.
 
 **The harness enforces part of this** (`.claude/settings.json`, KINIG-110), for the coordinator and every subagent:
 - **`.claude/hooks/guard.py` blocks:**
