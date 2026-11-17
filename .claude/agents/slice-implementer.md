@@ -39,7 +39,9 @@ You implement exactly one slice, spike, fix or tooling task of Kinige (Tauri 2 +
   - A fix of a crash or of data loss gets a regression test.
   - A new parser or IPC command gets a test on garbage input (rule 12).
   - A guard or check script gets negative controls that name exact exit codes, so it cannot pass for the wrong reason (a crash, a missing tool).
-- **Test runs.** While iterating, run the narrowest tests (`cargo test -p <crate> <filter>`). Run the full set once, before the PR.
+- **Test runs (rule 17).** While writing, run only the narrowest checks of what you changed: `cargo check -p <crate>`, `cargo test -p <crate> <filter>`, one vitest file.
+  - Don't run the workspace-wide commands, the server suites or the screens after a stage or a fix round, and don't wait for CI between them.
+  - The full set runs once, in CI, when the slice's code is finished. Fix what it finds in one pass.
 - **Decisions the spec leaves to you.** If one touches sync, keys, the schema or what the server stores, write it in the PR description under "Decisions for the guardian" when you open the PR, not after review.
 - **Commits.** Small and meaningful.
 - **Budget.** Over twice the budget, stop and report what is in the way.
@@ -50,13 +52,9 @@ Wait with one call: `gh run watch <id> --exit-status` as a background command, o
 
 ## Done means
 
-1. **The checks pass:**
-   - `cargo fmt --all --check`;
-   - `cargo clippy --workspace --all-targets -- -D warnings`;
-   - the tests;
-   - for web changes, `npm run typecheck`, `npm run lint` and `npm test`.
-
-   Give the commands and the tail of their output.
+1. **The checks pass, once, in CI on the PR** (rule 17): fmt, clippy, the tests and the web checks.
+   - Locally, run only `cargo fmt --all --check` and the tests you wrote or changed. Give the commands and the tail of their output.
+   - Give the link of the CI run. Fix what it finds in one pass, not job by job.
 2. **`cd <worktree> && python3 -I scripts/pre-pr-check.py` is clean.** CI runs the same check on the PR.
 3. **For a UI slice:**
    - IPC and store tests cover the scenario steps.

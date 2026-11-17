@@ -52,6 +52,11 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 14. **Network requests** from code, scripts and agents (downloading assets, APIs) use the anonymized User-Agent `kinige-dev`. A name, e-mail or other personal data never goes into headers, URLs or request bodies.
 15. **The PR title and the message of the branch's first commit carry the Huly task number** (`KINIG-N: …`), so that Huly links the PR to the task. Exception: the release commit and PR `Release vX.Y.Z` from `scripts/release.sh` (ADR-0012) go without a number.
 16. **Repository language is English:** docs, specs, ADRs, code comments, log messages, commits and PRs. UI strings are bilingual (ru/en) via i18n.
+17. **The full checks run once per slice, not after every stage.** They are slow, and repeating them after each stage costs more than fixing their findings once.
+   - **While the slice is being written** (every stage and every fix round): only the narrowest checks of what changed, such as `cargo check -p <crate>`, `cargo test -p <crate> <filter>` or one vitest file. No workspace-wide commands, no server suites, no screens, and no waiting for CI between stages.
+   - **Once, when the slice's code is finished:** the full set. CI on the pull request runs it (workspace clippy and tests, the server suites, the web checks), and `screens.yml` makes the screenshots. What it finds is fixed then, in one pass.
+   - **Reviewers and the guardian** read CI's result for the full set and don't repeat it locally. They run the tests and probes that prove the claims.
+   - Rules 3 and 12 stay: a fix still comes with its regression test, and "done" still needs the evidence. Only the moment of the full run changes.
 
 **The harness enforces part of this** (`.claude/settings.json`, KINIG-110), for the coordinator and every subagent:
 - **`.claude/hooks/guard.py` blocks:**

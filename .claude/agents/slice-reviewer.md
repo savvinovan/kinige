@@ -38,7 +38,8 @@ When the prompt or a message asks you to look again after fixes:
    - No screenshots, or a scenario that fails on the runner, is a failed review.
 2. **Scope.** Everything from "Included" is done, and nothing from "Not included" has appeared.
 3. **Checks.**
-   - Run fmt, clippy, the tests and `python3 -I scripts/pre-pr-check.py` yourself, with your own `CARGO_TARGET_DIR` (delete it at the end).
+   - The full set (fmt, clippy, the tests, the web checks) runs once per slice, in CI (rule 17). Read its result for the PR's head commit (`gh pr checks <n>`) and don't repeat it locally. A red job, or a run on an older commit, is a finding.
+   - Run `python3 -I scripts/pre-pr-check.py` yourself, and the tests the claims rest on (item 4), with your own `CARGO_TARGET_DIR` (delete it at the end).
    - Give the commands and the results.
 4. **The tests prove the claims.**
    - A test that would still pass with the fix reverted proves nothing.
