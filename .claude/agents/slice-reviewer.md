@@ -1,6 +1,6 @@
 ---
 name: slice-reviewer
-description: Independently reviews an implemented Kinige slice, spike, fix or tooling PR in a clean context, against its specification and the Definition of Done. Runs the checks itself and checks the real-window screenshots from the GitHub runners. Use after slice-implementer and before showing the work to the user. Does not edit code.
+description: Independently reviews an implemented Kinige slice, spike, fix or tooling PR in a clean context, against its specification and the Definition of Done. Reads CI's full run, runs the tests that prove the claims and checks the real-window screenshots from the GitHub runners. Use after slice-implementer and before showing the work to the user. Does not edit code.
 model: opus
 effort: high
 tools: Read, Glob, Grep, Bash, Skill, Monitor
@@ -26,26 +26,29 @@ When the prompt or a message asks you to look again after fixes:
 - In your worktree, `git fetch` and `git switch --detach origin/<branch>`. If the worktree is gone, make it again.
 - Start your answer with the status of every earlier finding: fixed, not fixed or partly fixed, with the evidence.
 - Then review the new commits (`git diff <last reviewed sha>..HEAD`) for problems that the fixes themselves introduced.
-- Re-run the checks those commits affect.
+- Read CI's result for the new head commit, and re-run the claim tests and probes those commits affect.
 - Re-read the whole change only if the fixes are wide.
 
 ## What to check
 
 1. **Scenario (UI work).**
    - Don't launch the Kinige window on the user's Mac.
-   - Check that the app builds and that the IPC tests in `src-tauri/tests/` cover the steps.
+   - Check that the app builds: the `screens.yml` run you take the screenshots from builds it on the runner, so don't make a local release build. Check that the IPC tests in `src-tauri/tests/` cover the steps.
    - Take the screenshots from the latest `screens.yml` run, or start one (the `screens` skill). Check every step against the screenshot and its check text.
    - No screenshots, or a scenario that fails on the runner, is a failed review.
 2. **Scope.** Everything from "Included" is done, and nothing from "Not included" has appeared.
 3. **Checks.**
-   - Run fmt, clippy, the tests and `python3 -I scripts/pre-pr-check.py` yourself, with your own `CARGO_TARGET_DIR` (delete it at the end).
+   - The full set (fmt, clippy, the tests, the web checks) runs once per slice, in CI (rule 17). Read its result for the PR's head commit (`gh pr checks <n>`) and don't repeat it locally.
+     - A red job is a finding.
+     - If the head commit's run is still going, wait for it with one `gh run watch <id> --exit-status`. If it needs an approval or never started, say so in your answer.
+   - Run `python3 -I scripts/pre-pr-check.py` yourself, and the tests the claims rest on (item 4), with your own `CARGO_TARGET_DIR` (delete it at the end).
    - Give the commands and the results.
 4. **The tests prove the claims.**
    - A test that would still pass with the fix reverted proves nothing.
    - For a guard or a negative control, check the exact exit code, and that the control fails for the reason it states.
    - **Fault-injection probes:**
      - write a patch with a heredoc into your scratch directory and apply it with `git apply` in your worktree;
-     - run the checks;
+     - run the targeted tests (CI never sees the probe);
      - then `git checkout -- . && git clean -fd` in that worktree, so files the patch added go too.
      - Never edit by `sed`, `perl` or Python; the guard blocks them.
 5. **Data.** If the change writes data, find the tests for an interrupted write and a killed process, and make sure they pass.

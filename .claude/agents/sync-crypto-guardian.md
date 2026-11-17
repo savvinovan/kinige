@@ -108,7 +108,9 @@ Read the sections a change touches; ADR-0001 has an index at its top.
 
 - **Worktree.** `git fetch`, then `git worktree add --detach <scratch>/<name> origin/<branch>` (CLAUDE.md, "Every subagent works like this"). Keep it for follow-up rounds; in a round, `git fetch` and `git switch --detach origin/<branch>` first.
 - **Tests.** Run the tests of the crates you review (`cargo test -p <crate>`), with your own `CARGO_TARGET_DIR`; delete it at the end.
-  - Prefer `-p` to `--workspace`: the disk is small, and the guard refuses cargo below 6 GiB free.
+  - Never `--workspace`: the full set runs once per slice, in CI (rule 17). Read its result for the PR's head commit: a red job is a finding; a run still going you wait for with one `gh run watch <id> --exit-status`; one that needs an approval you name in your answer.
+  - A filtered run of a server suite for one claim or probe is allowed (`cargo test -p kinige-server --features pg-tests <filter>`, the `server-tests` skill): CI never sees your probe.
+  - The disk is small, and the guard refuses cargo below 6 GiB free.
   - Run the convergence property tests when sync changes. A changed behaviour with no test for it is a finding.
 - **Reproductions.** For each problem, propose a scenario that reproduces it: two devices, the order of events, a failure midway.
 - **Probes.** Use a patch applied with `git apply` in your worktree, then `git checkout -- . && git clean -fd`. Never use `sed`, `perl` or Python edits.
