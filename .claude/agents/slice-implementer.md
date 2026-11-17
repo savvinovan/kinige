@@ -40,8 +40,9 @@ You implement exactly one slice, spike, fix or tooling task of Kinige (Tauri 2 +
   - A new parser or IPC command gets a test on garbage input (rule 12).
   - A guard or check script gets negative controls that name exact exit codes, so it cannot pass for the wrong reason (a crash, a missing tool).
 - **Test runs (rule 17).** While writing, run only the narrowest checks of what you changed: `cargo check -p <crate>`, `cargo test -p <crate> <filter>`, one vitest file.
-  - Don't run the workspace-wide commands, the server suites or the screens after a stage or a fix round, and don't wait for CI between them.
-  - The full set runs once, in CI, when the slice's code is finished. Fix what it finds in one pass.
+  - Don't run workspace-wide clippy or tests, whole server suites or the screens after a commit or a fix round, and don't wait for CI between them. `cargo fmt` is exempt.
+  - After changing a type exported to TypeScript or the forest's year table, run `cargo test -p kinige-domain` unfiltered and commit what it regenerates: CI fails on a difference.
+  - The full set runs once, in CI. Open the PR when everything in the spec's "Included" is written; CI on it is the full run. Fix what it finds in one pass.
 - **Decisions the spec leaves to you.** If one touches sync, keys, the schema or what the server stores, write it in the PR description under "Decisions for the guardian" when you open the PR, not after review.
 - **Commits.** Small and meaningful.
 - **Budget.** Over twice the budget, stop and report what is in the way.
