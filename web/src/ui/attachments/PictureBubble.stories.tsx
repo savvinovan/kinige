@@ -113,6 +113,46 @@ export const Highlighted: Story = {
   render: () => <Bubble attachments={[demoPhoto("h1", "IMG_0013.jpg", 1280, 960)]} extra={{ highlighted: true }} />,
 };
 
+/** A picture whose file is missing, alone and in a grid with good pictures: the tile has the bubble's fill, so the entry still has a visible box. */
+export const MissingPicture: Story = {
+  render: () => (
+    <>
+      <Bubble attachments={[demoPhoto("ms1", "IMG_0018.jpg", 1280, 960, { missing: true })]} />
+      <Bubble attachments={[demoPhoto("ms2", "IMG_0019.jpg", 1280, 960), demoPhoto("ms3", "IMG_0020.jpg", 1280, 960, { missing: true }), demoPhoto("ms4", "IMG_0021.jpg", 960, 1280)]} />
+    </>
+  ),
+};
+
+/** A picture that cannot be decoded (no preview), alone and in a grid with good pictures. */
+export const BrokenPicture: Story = {
+  render: () => (
+    <>
+      <Bubble attachments={[demoPhoto("br1", "IMG_0022.jpg", 1280, 960, { broken: true })]} />
+      <Bubble attachments={[demoPhoto("br2", "IMG_0023.jpg", 1280, 960), demoPhoto("br3", "IMG_0024.jpg", 1280, 960, { broken: true }), demoPhoto("br4", "IMG_0025.jpg", 960, 1280)]} />
+    </>
+  ),
+};
+
+/** A very narrow picture (a 1170 by 12000 strip, 39 px wide): it keeps its size, centred on a strip of the bubble's fill, and the pill is whole. With text the caption has room. */
+export const NarrowStrip: Story = {
+  render: () => (
+    <>
+      <Bubble attachments={[demoPhoto("ns1", "IMG_0026.jpg", 1170, 12000)]} />
+      <Bubble attachments={[demoPhoto("ns2", "IMG_0027.jpg", 1170, 12000)]} text={CAPTION} />
+    </>
+  ),
+};
+
+/** The star, the agent mark and the time in the pill of a 100 px wide picture: the bubble is as wide as the pill needs. */
+export const NarrowPictureWithMarks: Story = {
+  render: () => (
+    <>
+      <Bubble attachments={[demoPhoto("nm1", "IMG_0028.jpg", 100, 300)]} extra={{ favorite: true, byAgent: true }} />
+      <Bubble attachments={[demoPhoto("nm2", "IMG_0029.jpg", 100, 300)]} extra={{ favorite: true }} />
+    </>
+  ),
+};
+
 /** English. */
 export const English: Story = {
   globals: { language: "en" },

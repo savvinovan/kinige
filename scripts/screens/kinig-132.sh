@@ -4,7 +4,8 @@
 # The data are synthetic (seed_demo with KINIGE_SEED_ATTACH=1, the same Inbox as slice 7: an album of four with a caption, a portrait
 # photo with no text, a document, a mixed entry) in a temporary directory; the real database is not touched. Input is accessibility
 # actions only (ax.js): no mouse, no keyboard, no global shortcuts. A real click on the picture under the pill is pointer input: the pill
-# has `pointer-events: none` (checked in message-bleed.css and by vitest), and here an AX press on the picture shows the viewer still opens.
+# has `pointer-events: none` (the rule is checked by web/src/ui/message/messageBleedCss.test.ts), and here an AX press on the picture shows the
+# viewer still opens.
 set -u
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 K="${K:-${RUNNER_TEMP:-/tmp}/kinige-screens}"
@@ -53,16 +54,55 @@ PY
 L_PHOTO="Фото"
 L_VIEWER="Просмотр фото"
 L_CLOSE="Закрыть"
-ALBUM="${L_PHOTO} IMG_0002.jpg"
 ALONE="${L_PHOTO} IMG_0005.jpg"
 CAPTION="Прогулка вдоль реки"
+FIT_LOG="$OUT/fit.txt"
+mkdir -p "$OUT"
+: > "$FIT_LOG"
 
-# The album first, so that its pictures load, then its caption, so that the whole entry, caption and time included, is in the shot.
+# "x y width height" of an element, or nothing when it is not found.
+frame_of() {
+  local text
+  text="$(ax frame "$(app_pid)" "$1" 2>&1)"
+  case "$text" in
+    *[!0-9\ -]* | "") echo "" ;;
+    *) echo "$text" ;;
+  esac
+}
+
+# Whether the album entry is whole in the window: the top of its first picture is below the top of the feed and the caption ends above the
+# composer. The frames are read from the window tree (screen coordinates); the search field marks the top of the window, the field above
+# which the feed ends marks the bottom.
+album_whole() {
+  local top caption search composer
+  top="$(frame_of "${L_PHOTO} IMG_0001.jpg")"
+  caption="$(frame_of "$CAPTION")"
+  search="$(frame_of "Поиск")"
+  composer="$(frame_of "Написать заметку")"
+  echo "frames: first picture [$top] caption [$caption] search [$search] composer [$composer]" >> "$FIT_LOG"
+  [ -n "$top" ] && [ -n "$caption" ] && [ -n "$search" ] && [ -n "$composer" ] || return 1
+  local f
+  read -r -a f <<< "$top $caption $search $composer"
+  # Indexes: 1 first picture y; 5 and 7 caption y and height; 9 search y; 13 composer y.
+  [ "${f[1]}" -ge $((f[9] - 15)) ] && [ $((f[5] + f[7])) -le $((f[13] - 10)) ]
+}
+
+# Brings the whole album entry (pictures, caption, time) into view. A scroll-to-visible puts an element in the middle of the window when it was
+# out of view and does nothing when it was already visible, so the pictures are tried one after another until the entry fits; what was tried
+# and what the frames were is written to fit.txt, whatever the result.
 show_album() {
-  scroll_to "$ALBUM"
-  sleep 3
-  scroll_to "$CAPTION"
-  sleep 3
+  local candidate
+  for candidate in "${L_PHOTO} IMG_0003.jpg" "${L_PHOTO} IMG_0002.jpg" "${L_PHOTO} IMG_0001.jpg" "$CAPTION"; do
+    echo "scroll to: $candidate" >> "$FIT_LOG"
+    scroll_to "$candidate"
+    sleep 4
+    if album_whole; then
+      echo "whole: yes" >> "$FIT_LOG"
+      return 0
+    fi
+    echo "whole: no" >> "$FIT_LOG"
+  done
+  return 0
 }
 
 # ---- 1. A picture with no text: it fills the bubble, the time is a pill on it ----

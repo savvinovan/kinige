@@ -12,6 +12,36 @@
   border-radius: 0;
 }
 
+/* A picture narrower than a caption or a pill (a tall screenshot strip) keeps its own size, centred on a strip of the bubble's fill: the bubble is
+   never narrower than this floor, so the caption does not wrap at a few pixels and the pill is not clipped by the bubble. A picture at least this
+   wide fills the strip, so the fill is not seen. */
+.message--bleed .message-attachments {
+  justify-items: center;
+  min-width: var(--layout-attachment-bleed-min-width);
+  background: var(--color-surface-message);
+}
+
+/* Nothing but pictures: the floor is just what the pill needs (the time, and the star and the agent mark when there are any), as the spacer of a text
+   bubble works it out. */
+.message--bleed-bare .message-attachments {
+  min-width: calc(var(--layout-message-time-reserve) + 2 * var(--layout-attachment-pill-inset));
+}
+
+.message--bleed-bare.message--favorite .message-attachments {
+  min-width: calc(var(--layout-message-time-reserve) + 2 * var(--layout-attachment-pill-inset) + var(--icon-size-mark) + var(--space-1));
+}
+
+.message--bleed-bare.message--agent .message-attachments {
+  min-width: calc(var(--layout-message-time-reserve) + 2 * var(--layout-attachment-pill-inset) + var(--layout-message-agent-mark-reserve));
+}
+
+.message--bleed-bare.message--agent.message--favorite .message-attachments {
+  min-width: calc(
+    var(--layout-message-time-reserve) + 2 * var(--layout-attachment-pill-inset) + var(--layout-message-agent-mark-reserve) + var(--icon-size-mark) +
+      var(--space-1)
+  );
+}
+
 /* The text under the pictures keeps the usual bubble padding. `width: 0` with `min-width: 100%` lets the text take the width of the pictures
    without stretching the bubble past them: a long caption wraps at the picture's edge instead of leaving a strip of bubble beside it. */
 .message--bleed .markdown {
@@ -38,14 +68,31 @@
   padding-bottom: 0;
 }
 
-/* Nothing but pictures: no fill of the bubble around them (a transparent PNG shows the feed behind it). */
+/* Nothing but pictures: no fill of the bubble around them. */
 .message--bleed-bare {
   background: transparent;
 }
 
-/* The fill of a highlighted bubble is hidden by the picture, so the jump target is shown by a ring along the bubble's edge. */
+/* A picture that is missing or cannot be decoded is a tile, and the tile has the bubble's fill, which shows against the feed (1.22:1; the
+   usual tile, the window background, is 1.07:1 from the feed and the entry would read as loose text with a pill). */
+.message--bleed-bare .preview-tile {
+  background: var(--color-surface-message);
+}
+
+/* The fill of a highlighted bubble is hidden by the picture, so the jump target is shown by a ring along the bubble's edge, in the metadata
+   grey (6:1 on the feed), which is easy to see on a jump from search. */
 .message--bleed-bare.message--highlighted {
-  outline: var(--border-width-strong) solid var(--color-highlight-row);
+  outline: var(--border-width-strong) solid var(--color-text-tertiary);
+}
+
+/* Narrow window: the floating action row stands on the bubble's top edge. A frameless bubble has no padding to stand on, so the row goes
+   fully above it and does not cover the top of the picture. */
+.message-wrap--actions-inside:has(> .message--bleed) .message-actions {
+  bottom: 100%;
+}
+
+.message-wrap--actions-flip:has(> .message--bleed) .message-actions {
+  bottom: auto;
 }
 
 .message--bleed-pill .message__meta {
