@@ -87,6 +87,14 @@ export function useAttachments({ api, selected, tiles, addTiles, dropTile, onErr
     [api, selected, dropTile, fail],
   );
 
+  // Rust reads the image of a drag with no file (Telegram, a browser) only while a chat is open to receive it.
+  // One call per change of the answer, never a "false" on the way from one chat to another; `false` also when the window goes.
+  const chatOpen = selected !== null;
+  useEffect(() => {
+    api.setDropTarget(chatOpen).catch(() => undefined);
+  }, [api, chatOpen]);
+  useEffect(() => () => void api.setDropTarget(false).catch(() => undefined), [api]);
+
   // Files dragged over the window and dropped on it. The window event comes from Rust; the paths stay there.
   useEffect(() => {
     const offs: (() => void)[] = [];
