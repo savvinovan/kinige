@@ -21,6 +21,7 @@
       "pending-file-width": { "$value": "11rem", "$description": "Width of a pending file tile (143 px at a 13 px root): a near-square beside the picture tiles." },
       "pending-gap": { "$value": "{space.2}", "$description": "Gap between pending tiles; the row wraps." },
       "pending-area-max-height": { "$value": "36vh", "$description": "The tile area of the composer grows with the lines of tiles up to two lines or this share of the window height, whichever is less; past it the area scrolls inside, so ten tiles never push the feed out of a small window." },
+      "pending-scrollbar-width": { "$value": "0.5rem", "$description": "Width of the quiet scroll bar of the pending tile area (6.5 px at a 13 px root): a thumb with no track, instead of the wide system bar that macOS draws with 'Always show scroll bars'." },
       "pending-action-size": { "$value": "2rem", "$description": "Side of the round x button on a pending tile (26 px at a 13 px root): easier to hit than the small action button." },
       "pending-remove-offset": { "$value": "{space.1}", "$description": "Offset of the x button from the corner of a pending tile." },
       "drop-inset": { "$value": "{space.3}", "$description": "How far the drop outline stands from the edge of the feed." },

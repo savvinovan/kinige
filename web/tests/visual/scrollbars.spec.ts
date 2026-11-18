@@ -155,3 +155,36 @@ test("окно настроек: переход по дереву и «наза�
   await page.getByRole("button", { name: /Журнал обращений.*Настроить/ }).click();
   expect(await top()).toBe(0);
 });
+
+// The composer with the most tiles (ten, KINIG-135): the tile area is the only scrollable block, and its bar is a thin thumb (6.5 px at a 13 px
+// root), not the system's wide track. Two bars side by side were seen in the real window (the first screenshot of the slice's scenario).
+for (const scale of ["default", "large"]) {
+  test(`поле ввода с десятью плитками (${scale}): прокручивается один блок, полоса тонкая`, async ({ page }) => {
+    await open(page, "компоненты-вложения-плитки-над-полем--десять");
+    if (scale === "large") await page.evaluate(() => document.documentElement.setAttribute("data-text-scale", "large"));
+    const scrollers = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>("#storybook-root *")]
+        .map((element) => {
+          const style = getComputedStyle(element);
+          const border = (side: string) => parseFloat(style.getPropertyValue(`border-${side}-width`)) || 0;
+          return {
+            name: `${element.tagName.toLowerCase()}.${element.className}`,
+            overflow: `${style.overflowX}/${style.overflowY}`,
+            verticalBar: element.offsetWidth - element.clientWidth - border("left") - border("right"),
+            horizontalBar: element.offsetHeight - element.clientHeight - border("top") - border("bottom"),
+            taller: element.scrollHeight - element.clientHeight,
+            wider: element.scrollWidth - element.clientWidth,
+          };
+        })
+        .filter((item) => item.verticalBar > 0 || item.horizontalBar > 0 || (!item.overflow.endsWith("/visible") && item.taller > 0) || (!item.overflow.startsWith("visible/") && item.wider > 0)),
+    );
+    expect(scrollers.map((item) => item.name), JSON.stringify(scrollers)).toEqual(["div.composer__tiles"]);
+    const [area] = scrollers;
+    // It really scrolls (ten tiles do not fit), vertically only, and the bar is the thin one.
+    expect(area?.taller).toBeGreaterThan(0);
+    expect(area?.horizontalBar).toBe(0);
+    expect(area?.wider).toBeLessThanOrEqual(0);
+    expect(area?.verticalBar).toBeGreaterThan(0);
+    expect(area?.verticalBar).toBeLessThan(10);
+  });
+}

@@ -71,6 +71,25 @@
   overflow-y: auto;
 }
 
+/* With tiles and a short text the tile area is the only thing that scrolls in the box (the text field scrolls only past 40% of the window
+   height). Its bar is a thin thumb with no track, so it stays quiet and the system's wide track is not drawn inside the box. */
+.composer__tiles::-webkit-scrollbar {
+  width: var(--layout-attachment-pending-scrollbar-width);
+}
+
+.composer__tiles::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.composer__tiles::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-round);
+  background: var(--color-highlight-row);
+}
+
+.composer__tiles::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
 /* A recording is on: the bar below stands in for the field, and the box above keeps only the tiles. */
 .composer__bar--hidden.composer__bar--tiles-only {
   display: flex;
