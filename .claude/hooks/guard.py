@@ -105,6 +105,10 @@ def check_command(command, data, cwd, depth):
         words = shellparse.command_words(raw)
         if not words:
             continue
+        # `12>f` is a redirect in bash and the argument `12` in zsh, so no check can read such a line one way.
+        if any(re.match(r"^\d{2,}[<>]", w) for w in raw):
+            return ("a redirect with a descriptor of two or more digits (`10>file`) is read differently by bash and "
+                    "zsh. Use a one-digit descriptor."), workdir
         # The program and its arguments are read without the redirects: `docker rm -f kinige-x >/dev/null` removes one
         # object, and `2>/dev/null env git push` runs git. The redirects go first, so a prefix word after one is still
         # unwrapped. The checks that read redirects (`check_edit`, `check_claude`) get the full `words`.
@@ -286,7 +290,7 @@ def check_docker(name, args, feeding, bodies):
     # `docker rm --help` only prints the usage. With a name in the line, or after `--` (where `--help` is a name),
     # it is a removal: `docker rm -f portainer & docker rm --help`, `docker rm -f -- portainer --help`.
     after = args[args.index(verbs[0]) + 1:]
-    if "--help" in after and "--" not in args and all(a.startswith("-") for a in after):
+    if "--help" in after and all(re.fullmatch(r"--?[A-Za-z][A-Za-z-]*", a) for a in args if a.startswith("-") or a in after):
         return None
     if "compose" in args:
         names = [args[i + 1] for i, a in enumerate(args[:-1]) if a in ("-p", "--project-name")]

@@ -37,6 +37,17 @@ REDIRECT_BLOCKED = [
     "docker rm -f kinige-x -- --help portainer",
     "echo portainer | xargs docker rm -f -- --help",
     "docker help rm",
+    # A word that a shell may split into `--` and a name is not a flag.
+    "X='- portainer'; docker rm -f -$X --help",
+    "docker rm -f -$X --help",
+    "docker rm -f --help -$X",
+    # zsh, the Bash tool's shell: a descriptor has one digit, so `12345` is a container ID; `<->` is a glob.
+    "docker rm -f kinige-x 12345>/dev/null",
+    "docker rm -f kinige-x 10>/dev/null",
+    "docker rm -f kinige-x 99>&2",
+    "docker rm -f kinige-x 12<>/tmp/w",
+    "docker rm -f kinige-x <->",
+    "docker rm -f kinige-x <1-9>",
     "docker rm -f $(docker ps -aq) >/dev/null",
     "docker rm -f $(docker ps -aq) 2>&1 | tail -1",
     # A redirect into a source file is still the shell write of rule 8.
@@ -79,7 +90,7 @@ REDIRECT_ALLOWED = [
     "docker rm --help",
     "docker rm --help 2>&1 | grep -i volume",
     "docker rm -f kinige-x >& /dev/null",
-    "docker rm -f kinige-x 10>/dev/null",
+    "docker rm -f kinige-x {fd}>/dev/null",
     "2>/dev/null docker rm -f kinige-x",
     "cp /tmp/s.json /tmp/t.json 2>&1",
     "git push -u origin tools/x >/dev/null 2>&1",

@@ -9,9 +9,10 @@ import os
 import re
 
 PREFIX_WORDS = ("sudo", "time", "command", "exec", "env", "nohup", "builtin")
-# A redirect operator at the start of a word, with an optional descriptor (`2`, `10`, `{fd}`): `>`, `>>`, `&>`, `&>>`,
-# `>&`, `>|`, `<`, `<&`, `<>`. Not a heredoc or here-string (`<<`, `<<<`).
-REDIRECT_RE = re.compile(r"^(?:\d+|\{\w+\})?(?:&>>?|>>?[&|]?|<>|<&?(?!<))")
+# A redirect operator at the start of a word, with an optional descriptor (`2`, `{fd}`): `>`, `>>`, `&>`, `&>>`, `>&`,
+# `>|`, `<`, `<&`, `<>`. Not a heredoc or here-string (`<<`, `<<<`). The Bash tool runs zsh, where a descriptor has one
+# digit (`12>f` passes `12` as an argument, and a container ID may be all digits) and `<->`, `<1-9>` are globs.
+REDIRECT_RE = re.compile(r"^(?:\d|\{\w+\})?(?:&>>?|>>?[&|]?|<>|<&|<(?![<\d-]))")
 
 
 def skeleton(command):
