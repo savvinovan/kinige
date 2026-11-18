@@ -192,7 +192,8 @@ press "$(short_date "${OLDER}"), "
 sleep 3
 shoot 08b-calendar-click-opened-the-day
 [ "$(sqlw "select value from app_setting where key = 'forest_mode'")" = "calendar" ] || fail "forest_mode is not 'calendar' in the database"
-press "${L_FOREST}"
+# The mode's radio button: the switch in the top bar has the same name (KINIG-134) and comes first in the tree.
+press "${L_FOREST}" RadioButton
 sleep 2
 
 # ---- 9-10. Today's tree before and after a sent note ----

@@ -198,7 +198,7 @@ describe("expanding, hiding and coming back", () => {
     expect(await screen.findByRole("grid", { name: "Days of 2026" })).toBeInTheDocument();
   });
 
-  it("there is no switch in the trash or in search results, where the forest is never shown", async () => {
+  it("there is no switch in the trash, where the forest is never shown", async () => {
     setup();
     await screen.findByRole("grid", { name: "Days of 2026" });
     fireEvent.click(screen.getByRole("button", { name: /^Trash/ }));
