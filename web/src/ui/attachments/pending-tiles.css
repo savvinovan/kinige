@@ -33,7 +33,11 @@
 .pending-tile--image {
   width: min(
     var(--layout-attachment-pending-image-max-width),
-    calc(var(--layout-attachment-pending-image-height) * var(--pending-aspect, var(--layout-attachment-fallback-aspect)))
+    /* The hairline is part of the box, so the picture area (the box without it) has the picture's shape and leaves no strip beside it. */
+    calc(
+      (var(--layout-attachment-pending-image-height) - 2 * var(--border-width-hairline)) *
+        var(--pending-aspect, var(--layout-attachment-fallback-aspect)) + 2 * var(--border-width-hairline)
+    )
   );
 }
 
