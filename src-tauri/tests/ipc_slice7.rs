@@ -27,6 +27,7 @@ const SLICE_SEVEN: &[&str] = &[
     "attach_pick",
     "attach_paste",
     "attach_dropped",
+    "set_drop_target",
     "remove_draft_attachment",
     "open_attachment",
 ];

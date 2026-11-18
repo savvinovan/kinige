@@ -119,6 +119,10 @@ export class TauriApi implements KinigeApi {
     return call("attach_dropped", { token, chatId });
   }
 
+  async setDropTarget(active: boolean): Promise<void> {
+    await call("set_drop_target", { active });
+  }
+
   async removeDraftAttachment(chatId: string, attachmentId: string): Promise<void> {
     await call("remove_draft_attachment", { chatId, attachmentId });
   }

@@ -1,133 +1,19 @@
 //! What a drop on the main window can carry (KINIG-133, slice 7): files (Finder), a picture with no file (Telegram Desktop, a browser:
 //! image data on the drag pasteboard), or nothing the app understands. The drag is read through a fake `DragSource`, so no window and
 //! no pasteboard are needed; the drop event is the real one, sent to the real handler, and the token is claimed over real IPC.
+//! The limits (TIFF, no chat open, stale images) are in `ipc_drop_limits.rs`; the helpers in `drop_support`.
 
 // A whole integration-test root is test code (see `ipc_slice7.rs`).
 #![cfg(test)]
 
 mod common;
+mod drop_support;
 
 use common::*;
-use kinige_lib::attachments::on_drag_drop_from;
-use kinige_lib::drag_source::{DragImage, DragSource};
+use drop_support::*;
+use kinige_lib::drag_source::DragImage;
 use serde_json::{Value, json};
-use std::cell::Cell;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use tauri::test::MockRuntime;
-use tauri::{DragDropEvent, Listener, PhysicalPosition, WebviewWindow};
-
-const INBOX: &str = kinige_domain::groups::INBOX_ID;
-
-/// A drag that carries what the test says, and counts how often it was asked.
-#[derive(Default)]
-struct FakeDrag {
-    paths: Vec<PathBuf>,
-    image: Option<DragImage>,
-    path_reads: Cell<u32>,
-    image_reads: Cell<u32>,
-}
-
-impl DragSource for FakeDrag {
-    fn file_paths(&self) -> Vec<PathBuf> {
-        self.path_reads.set(self.path_reads.get() + 1);
-        self.paths.clone()
-    }
-
-    fn image(&self) -> Option<DragImage> {
-        self.image_reads.set(self.image_reads.get() + 1);
-        self.image.clone()
-    }
-
-    fn type_names(&self) -> Vec<String> {
-        vec!["public.utf8-plain-text".to_string()]
-    }
-}
-
-fn png_bytes() -> Vec<u8> {
-    let mut bytes = Vec::new();
-    image::ImageEncoder::write_image(
-        image::codecs::png::PngEncoder::new(&mut bytes),
-        &[200u8; 4 * 4 * 3],
-        4,
-        4,
-        image::ExtendedColorType::Rgb8,
-    )
-    .unwrap();
-    bytes
-}
-
-fn enter(paths: Vec<PathBuf>) -> DragDropEvent {
-    DragDropEvent::Enter {
-        paths,
-        position: PhysicalPosition::new(1.0, 1.0),
-    }
-}
-
-fn drop_of(paths: Vec<PathBuf>) -> DragDropEvent {
-    DragDropEvent::Drop {
-        paths,
-        position: PhysicalPosition::new(1.0, 1.0),
-    }
-}
-
-/// Sends the events to the handler and returns the token the window was told about by the last drop.
-struct Dropper {
-    fixture: Fixture,
-    main: WebviewWindow<MockRuntime>,
-    tokens: Arc<Mutex<Vec<String>>>,
-}
-
-impl Dropper {
-    fn new() -> Self {
-        let fixture = fixture();
-        let main = window(&fixture, "main");
-        let tokens = Arc::new(Mutex::new(Vec::<String>::new()));
-        {
-            let tokens = tokens.clone();
-            main.listen("attachments-dropped", move |event| {
-                let token: String = serde_json::from_str(event.payload()).unwrap();
-                tokens.lock().unwrap().push(token);
-            });
-        }
-        Dropper {
-            fixture,
-            main,
-            tokens,
-        }
-    }
-
-    fn send(&self, event: &DragDropEvent, source: &FakeDrag) {
-        on_drag_drop_from(self.fixture.app.handle(), event, source);
-    }
-
-    /// The token of the `n`-th drop (1-based), once the event has arrived.
-    fn token(&self, n: usize) -> String {
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-        while std::time::Instant::now() < deadline {
-            if let Some(token) = self.tokens.lock().unwrap().get(n - 1) {
-                return token.clone();
-            }
-            std::thread::sleep(std::time::Duration::from_millis(15));
-        }
-        panic!("no drop event {n}");
-    }
-
-    fn claim(&self, token: &str) -> Result<Value, Value> {
-        call(
-            &self.main,
-            "attach_dropped",
-            json!({"token": token, "chatId": INBOX}),
-        )
-    }
-
-    fn draft_tiles(&self) -> usize {
-        call(&self.main, "get_draft", json!({"chatId": INBOX})).unwrap()["attachments"]
-            .as_array()
-            .unwrap()
-            .len()
-    }
-}
+use tauri::DragDropEvent;
 
 #[test]
 fn a_picture_with_no_file_is_read_when_the_drag_enters_and_attached_like_a_paste() {
@@ -335,20 +221,4 @@ fn the_event_to_the_window_has_a_token_and_never_the_bytes_or_a_path() {
     let token = dropper.token(1);
     assert_eq!(token.len(), 36, "a UUID, nothing else: {token}");
     assert!(!token.contains("secret-name"));
-}
-
-fn raw_paste(window: &WebviewWindow<MockRuntime>, bytes: Vec<u8>) -> Result<Value, Value> {
-    use tauri::ipc::InvokeBody;
-    use tauri::test::{INVOKE_KEY, get_ipc_response};
-    let mut headers = tauri::http::HeaderMap::new();
-    headers.insert(
-        tauri::http::HeaderName::from_static("x-chat-id"),
-        tauri::http::HeaderValue::from_str(INBOX).unwrap(),
-    );
-    let mut request = request("attach_paste", json!({}));
-    request.body = InvokeBody::Raw(bytes);
-    request.headers = headers;
-    request.invoke_key = INVOKE_KEY.to_string();
-    get_ipc_response(window, request)
-        .map(|body: tauri::ipc::InvokeResponseBody| body.deserialize().unwrap())
 }

@@ -246,6 +246,11 @@ export interface KinigeApi {
   attachPaste(chatId: string, bytes: Uint8Array, nameHint?: string): Promise<AttachmentView>;
   /** Claims a drop: `token` comes from `onAttachmentsDropped`, is single-use and expires. Folders are skipped and counted. */
   attachDropped(token: string, chatId: string): Promise<AttachOutcome>;
+  /**
+   * Whether a chat is open to receive an attachment (`false`: the trash, or no chat). Only then does Rust read the image of a drag that
+   * has no file (a picture from Telegram or a browser) when it enters the window; otherwise nothing is read or held.
+   */
+  setDropTarget(active: boolean): Promise<void>;
   /** The x on a tile: the draft attachment and its file go. */
   removeDraftAttachment(chatId: string, attachmentId: string): Promise<void>;
   /** Open an attachment in its system app (a clone; documents are opened, everything else is shown in the file manager). */

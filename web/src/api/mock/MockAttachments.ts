@@ -38,6 +38,8 @@ export function mockAttachment(id: string, filename: string, part: Partial<Attac
 export class MockAttachments {
   /** What the system file dialog will "pick" next (names); cleared after use. `null`: the user cancels. */
   pickedFiles: string[] | null = null;
+  /** What the window last told Rust through `setDropTarget`: whether a chat is open to receive a drop. */
+  dropTarget = false;
   /** Attachments opened in the system app. */
   readonly openedAttachments: string[] = [];
   /** What a drop token claims (set by `emitAttachmentsDropped`): file names, or the byte length of a dropped image with no file. */
@@ -77,6 +79,12 @@ export class MockAttachments {
       // A drop with no file and no image (text, a link): said so, nothing attached (Rust: `attach_dropped_content`).
       if (dropped.length === 0) return { attached: [], skippedFolders: 0, error: "drop_not_supported" };
       return this.attachNames(chatId, dropped);
+    });
+  }
+
+  setDropTarget(active: boolean): Promise<void> {
+    return this.s.run("setDropTarget", String(active), () => {
+      this.dropTarget = active;
     });
   }
 

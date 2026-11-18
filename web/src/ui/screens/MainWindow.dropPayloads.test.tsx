@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { INBOX_ID } from "../../api/KinigeApi";
 import { DEFAULT_SETTINGS, MockApi } from "../../api/MockApi";
-import { act, render, screen, waitFor } from "../../test/render";
+import { act, fireEvent, render, screen, waitFor } from "../../test/render";
 import { MainWindow } from "./MainWindow";
 
 // What a drop can carry (KINIG-133): files, a picture with no file (dragged from Telegram or a browser), or nothing the app
@@ -52,6 +52,16 @@ describe("MainWindow: what a drop carries", () => {
     act(() => void api.emitImageDropped(1024));
     await waitFor(() => expect(api.tilesOf(INBOX_ID)).toHaveLength(1));
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+  });
+
+  it("tells Rust whether a chat is open to receive a drop: yes in a chat, no in the trash", async () => {
+    const api = setup();
+    await field();
+    await waitFor(() => expect(api.dropTarget).toBe(true));
+    fireEvent.click(await screen.findByRole("button", { name: /^Trash|^Корзина/ }));
+    await waitFor(() => expect(api.dropTarget).toBe(false));
+    fireEvent.click(await screen.findByRole("button", { name: /^Inbox|^Входящие/ }));
+    await waitFor(() => expect(api.dropTarget).toBe(true));
   });
 
   it("a token that was already claimed is refused, not attached twice", async () => {

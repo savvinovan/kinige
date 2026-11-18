@@ -1,17 +1,15 @@
 //! The macOS drag pasteboard (KINIG-133). Tauri's drop event carries only what wry reads from it: the paths of the legacy
 //! `NSFilenamesPboardType` list (wry 0.57, `wkwebview/drag_drop.rs`). A picture dragged out of Telegram Desktop or a browser is image
 //! data or a file promise on that pasteboard, not a file, and arrives as an empty list. This module reads the same pasteboard for what
-//! wry misses: file URLs the legacy list lacks, and the bytes of an image (PNG, JPEG, GIF, WebP as they are; TIFF re-encoded as PNG,
-//! because the store treats a TIFF as a file card). File promises (`NSFilePromiseReceiver`) are not handled.
+//! wry misses: file URLs the legacy list lacks, and the bytes of an image, as the drag gives them (a TIFF is returned as a TIFF: it is
+//! converted later, off the UI thread, by `drag_tiff`). File promises (`NSFilePromiseReceiver`) are not handled.
 //!
-//! Reading is by type name only: no entry text, path or byte count goes to the log.
+//! Nothing is decoded here, and reading is by type name only: no entry text, path or byte count goes to the log.
 
 use crate::drag_source::{DragImage, DragSource};
 use kinige_domain::attachment::MAX_PASTE_BYTES;
-use objc2::rc::Retained;
-use objc2::runtime::AnyObject;
-use objc2_app_kit::{NSBitmapImageFileType, NSBitmapImageRep, NSPasteboard};
-use objc2_foundation::{NSArray, NSData, NSDictionary, NSString, NSURL};
+use objc2_app_kit::NSPasteboard;
+use objc2_foundation::{NSArray, NSData, NSString, NSURL};
 use std::path::PathBuf;
 
 /// `NSPasteboardNameDrag`. The test below compares it with the constant itself.
@@ -20,12 +18,18 @@ const DRAG_PASTEBOARD: &str = "Apple CFPasteboard drag";
 const FILE_URL: &str = "public.file-url";
 const FILENAMES: &str = "NSFilenamesPboardType";
 const TIFF: &str = "public.tiff";
-/// Image types read as they are, in order of preference: a lossless or original copy before a TIFF made from pixels.
-const IMAGE_TYPES: [&str; 4] = [
+/// Image types read as they are, in order of preference: an original copy before a TIFF made from pixels. The `com.trolltech.anymime`
+/// ones are how Qt (Telegram Desktop) names an arbitrary MIME type on the pasteboard: `utiForMime` there is `com.trolltech.anymime.`
+/// plus the MIME type with `/` as `--` (qtbase, `qutimimeconverter.mm`); Telegram sets `image/jpeg` next to its TIFF image data.
+const IMAGE_TYPES: [&str; 8] = [
     "public.png",
     "public.jpeg",
     "com.compuserve.gif",
     "org.webmproject.webp",
+    "com.trolltech.anymime.image--jpeg",
+    "com.trolltech.anymime.image--png",
+    "com.trolltech.anymime.image--gif",
+    "com.trolltech.anymime.image--webp",
 ];
 
 /// The drag pasteboard of this system.
@@ -33,22 +37,24 @@ pub struct SystemDragPasteboard;
 
 impl DragSource for SystemDragPasteboard {
     fn file_paths(&self) -> Vec<PathBuf> {
-        file_paths_of(&NSPasteboard::pasteboardWithName(&NSString::from_str(
-            DRAG_PASTEBOARD,
-        )))
+        file_paths_of(&drag_pasteboard())
     }
 
     fn image(&self) -> Option<DragImage> {
-        image_of(&NSPasteboard::pasteboardWithName(&NSString::from_str(
-            DRAG_PASTEBOARD,
-        )))
+        image_of(&drag_pasteboard())
+    }
+
+    fn generation(&self) -> i64 {
+        i64::try_from(drag_pasteboard().changeCount()).unwrap_or(i64::MIN)
     }
 
     fn type_names(&self) -> Vec<String> {
-        type_names_of(&NSPasteboard::pasteboardWithName(&NSString::from_str(
-            DRAG_PASTEBOARD,
-        )))
+        type_names_of(&drag_pasteboard())
     }
+}
+
+fn drag_pasteboard() -> objc2::rc::Retained<NSPasteboard> {
+    NSPasteboard::pasteboardWithName(&NSString::from_str(DRAG_PASTEBOARD))
 }
 
 fn type_names_of(pasteboard: &NSPasteboard) -> Vec<String> {
@@ -91,49 +97,36 @@ fn legacy_filenames(pasteboard: &NSPasteboard) -> Vec<PathBuf> {
         .collect()
 }
 
-/// The first image on the pasteboard, as bytes the store can read. Over 64 MiB (a paste's limit) is `TooLarge`; the bytes are dropped.
+/// The first image on the pasteboard, as the bytes the drag gave: the first of `IMAGE_TYPES`, else the TIFF. Over 64 MiB is `TooLarge`
+/// and is not copied. Only a copy of the bytes is made; nothing is decoded.
 fn image_of(pasteboard: &NSPasteboard) -> Option<DragImage> {
-    let types = pasteboard.types()?.to_vec();
-    let has = |name: &str| types.iter().any(|kind| kind.to_string() == name);
+    let types = type_names_of(pasteboard);
+    let has = |name: &str| types.iter().any(|kind| kind == name);
     let data_of = |name: &str| pasteboard.dataForType(&NSString::from_str(name));
     if let Some(name) = IMAGE_TYPES.iter().copied().find(|name| has(name)) {
-        return data_of(name).map(|data| bounded(&data));
+        log::debug!("the drag image is taken from {name}");
+        return data_of(name).map(|data| bounded(&data, DragImage::Bytes));
     }
     if has(TIFF) {
-        let tiff = data_of(TIFF)?;
-        // A huge TIFF is refused before it is decoded: the PNG made from it would be as big.
-        if tiff.length() > MAX_PASTE_BYTES {
-            return Some(DragImage::TooLarge);
-        }
-        return tiff_as_png(&tiff).map(|png| bounded(&png));
+        log::debug!("the drag image is taken from {TIFF}");
+        return data_of(TIFF).map(|data| bounded(&data, DragImage::Tiff));
     }
     None
 }
 
-/// The bytes, or `TooLarge` over a paste's limit (the bytes are not copied).
-fn bounded(data: &NSData) -> DragImage {
+/// The bytes in the variant `make`, or `TooLarge` over a paste's limit (the bytes are not copied).
+fn bounded(data: &NSData, make: fn(Vec<u8>) -> DragImage) -> DragImage {
     if data.length() > MAX_PASTE_BYTES {
         DragImage::TooLarge
     } else {
-        DragImage::Bytes(data.to_vec())
-    }
-}
-
-/// A TIFF re-encoded as PNG by the system's own decoder. `None` if it does not decode.
-fn tiff_as_png(tiff: &NSData) -> Option<Retained<NSData>> {
-    let image = NSBitmapImageRep::imageRepWithData(tiff)?;
-    let options: Retained<NSDictionary<NSString, AnyObject>> = NSDictionary::new();
-    // `representationUsingType:properties:` is `unsafe` in objc2 only because the dictionary's value type is not checked; the
-    // dictionary is empty. ADR-0011 lists this call as the second `unsafe` of the app.
-    #[allow(unsafe_code)]
-    unsafe {
-        image.representationUsingType_properties(NSBitmapImageFileType::PNG, &options)
+        make(data.to_vec())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use objc2::rc::Retained;
     #[allow(deprecated)]
     // the legacy list is what wry reads, and the literal above must be its value
     use objc2_app_kit::NSFilenamesPboardType;
@@ -151,19 +144,6 @@ mod tests {
             );
         }
         pasteboard
-    }
-
-    fn png() -> Vec<u8> {
-        let mut bytes = Vec::new();
-        image::ImageEncoder::write_image(
-            image::codecs::png::PngEncoder::new(&mut bytes),
-            &[90u8; 3 * 3 * 3],
-            3,
-            3,
-            image::ExtendedColorType::Rgb8,
-        )
-        .unwrap();
-        bytes
     }
 
     #[test]
@@ -186,34 +166,85 @@ mod tests {
     }
 
     #[test]
-    fn png_and_jpeg_bytes_are_taken_as_they_are() {
-        let board = scratch(&[("public.png", &png())]);
-        assert!(matches!(image_of(&board), Some(DragImage::Bytes(bytes)) if bytes == png()));
+    fn png_and_jpeg_bytes_are_taken_as_they_are_and_before_a_tiff() {
+        let board = scratch(&[("public.png", b"\x89PNGxx")]);
+        assert_eq!(
+            image_of(&board),
+            Some(DragImage::Bytes(b"\x89PNGxx".to_vec()))
+        );
         let board = scratch(&[("public.jpeg", b"\xff\xd8jpeg"), ("public.tiff", b"II*\0")]);
-        assert!(
-            matches!(image_of(&board), Some(DragImage::Bytes(bytes)) if bytes == b"\xff\xd8jpeg")
+        assert_eq!(
+            image_of(&board),
+            Some(DragImage::Bytes(b"\xff\xd8jpeg".to_vec()))
         );
     }
 
     #[test]
-    fn a_tiff_becomes_a_png_and_a_broken_one_is_nothing() {
-        // A TIFF made by the system from the PNG, as an app that drags image data would put it.
-        let tiff = NSBitmapImageRep::imageRepWithData(&NSData::from_vec(png()))
-            .and_then(|image| image.TIFFRepresentation())
-            .unwrap()
-            .to_vec();
-        let board = scratch(&[("public.tiff", &tiff)]);
-        let Some(DragImage::Bytes(bytes)) = image_of(&board) else {
-            panic!("a PNG was expected");
-        };
-        assert_eq!(&bytes[..4], b"\x89PNG");
-        assert!(image_of(&scratch(&[("public.tiff", b"not a tiff")])).is_none());
+    fn telegram_desktop_gives_its_jpeg_under_the_qt_name_and_it_beats_the_tiff() {
+        // What a Qt drag with `setImageData` and `setData("image/jpeg")` offers: a TIFF and the JPEG under the anymime name.
+        let board = scratch(&[
+            ("public.tiff", b"II*\0tiff"),
+            ("com.trolltech.anymime.image--jpeg", b"\xff\xd8telegram"),
+        ]);
+        assert_eq!(
+            image_of(&board),
+            Some(DragImage::Bytes(b"\xff\xd8telegram".to_vec()))
+        );
+        for kind in ["png", "gif", "webp"] {
+            let name = format!("com.trolltech.anymime.image--{kind}");
+            let board = scratch(&[(name.as_str(), b"bytes")]);
+            assert_eq!(
+                image_of(&board),
+                Some(DragImage::Bytes(b"bytes".to_vec())),
+                "{kind}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_tiff_alone_is_returned_as_a_tiff_and_not_decoded_here() {
+        // The bytes are not a TIFF at all: nothing looks inside them while the drag is over the window.
+        let board = scratch(&[("public.tiff", b"not even a tiff")]);
+        assert_eq!(
+            image_of(&board),
+            Some(DragImage::Tiff(b"not even a tiff".to_vec()))
+        );
+    }
+
+    #[test]
+    fn over_the_paste_limit_is_too_large_and_is_not_copied() {
+        let over = NSData::from_vec(vec![0u8; MAX_PASTE_BYTES + 1]);
+        let at = NSData::from_vec(vec![0u8; MAX_PASTE_BYTES]);
+        assert_eq!(bounded(&over, DragImage::Bytes), DragImage::TooLarge);
+        assert_eq!(bounded(&over, DragImage::Tiff), DragImage::TooLarge);
+        assert!(
+            matches!(bounded(&at, DragImage::Bytes), DragImage::Bytes(bytes) if bytes.len() == MAX_PASTE_BYTES)
+        );
+        assert!(
+            matches!(bounded(&at, DragImage::Tiff), DragImage::Tiff(bytes) if bytes.len() == MAX_PASTE_BYTES)
+        );
+    }
+
+    #[test]
+    fn a_pasteboard_with_a_huge_image_says_too_large() {
+        let big = vec![0u8; MAX_PASTE_BYTES + 1];
+        assert_eq!(
+            image_of(&scratch(&[("public.jpeg", &big)])),
+            Some(DragImage::TooLarge)
+        );
+        assert_eq!(
+            image_of(&scratch(&[("public.tiff", &big)])),
+            Some(DragImage::TooLarge)
+        );
     }
 
     #[test]
     fn text_alone_is_no_image() {
-        assert!(image_of(&scratch(&[("public.utf8-plain-text", b"hello")])).is_none());
-        assert!(image_of(&scratch(&[])).is_none());
+        assert_eq!(
+            image_of(&scratch(&[("public.utf8-plain-text", b"hello")])),
+            None
+        );
+        assert_eq!(image_of(&scratch(&[])), None);
     }
 
     #[test]
@@ -227,6 +258,18 @@ mod tests {
         assert!(names.contains(&"public.url".to_string()));
         assert!(names.iter().all(|name| !name.contains("secret")));
         assert!(type_names_of(&scratch(&[])).is_empty());
+    }
+
+    #[test]
+    fn the_generation_changes_with_every_write_to_the_drag_pasteboard() {
+        let board = scratch(&[("public.png", b"a")]);
+        let before = board.changeCount();
+        board.clearContents();
+        assert!(board.setData_forType(
+            Some(&NSData::with_bytes(b"b")),
+            &NSString::from_str("public.png")
+        ));
+        assert_ne!(board.changeCount(), before);
     }
 
     #[test]

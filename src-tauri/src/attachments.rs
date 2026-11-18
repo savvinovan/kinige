@@ -2,127 +2,28 @@
 //! removing a tile and opening a file in its system app. There are no business rules here (they are in `kinige-domain` and
 //! `kinige-store`). The capture window and the settings window are granted none of these commands.
 //!
-//! Paths never reach the frontend. The dialog runs here; a drop is read from the window event and JS gets a single-use token
-//! that expires; a paste crosses IPC as a raw body.
+//! Paths never reach the frontend. The dialog runs here; a drop is read from the window event (`drops.rs`) and JS gets a single-use
+//! token that expires; a paste crosses IPC as a raw body.
 
-use crate::capture::MAIN_LABEL;
-use crate::drag_source::{DragImage, DragSource, SystemDrag};
+pub use crate::drops::{
+    ATTACH_DRAG, ATTACH_DROPPED, DropTokens, Dropped, on_drag_drop, on_drag_drop_from,
+};
+
+use crate::drag_source::DragImage;
+use crate::drag_tiff::tiff_to_png;
 use kinige_domain::attachment::MAX_PASTE_BYTES;
 use kinige_domain::{ApiError, AttachOutcome, AttachmentView, ErrorCode};
 use kinige_store::{Now, Store, StoreError};
 use std::path::PathBuf;
-use std::sync::{Mutex, MutexGuard, PoisonError};
-use std::time::{Duration, Instant};
 use tauri::ipc::{InvokeBody, Request};
-use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime, State};
+use tauri::{AppHandle, Runtime, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
-use uuid::Uuid;
 
 type ApiResult<T> = Result<T, ApiError>;
 
-/// The event for the main window while files are dragged over it: `true` on entering, `false` on leaving or dropping. It shows the
-/// "Drop to attach" overlay.
-pub const ATTACH_DRAG: &str = "attachments-drag";
-/// The event for the main window after a drop: the one-time token for `attach_dropped`.
-pub const ATTACH_DROPPED: &str = "attachments-dropped";
-
-/// How long a drop token lives.
-const TOKEN_TTL: Duration = Duration::from_secs(60);
-/// How many drops are remembered at once: older ones are forgotten.
-const TOKEN_CAP: usize = 8;
-/// How many dropped paths one drop may carry: a bigger one is cut (an entry takes ten attachments anyway).
-const MAX_DROPPED_PATHS: usize = 64;
 /// The longest header value we read: a chat id or a percent-encoded file name.
 const MAX_HEADER_BYTES: usize = 2048;
-
-/// Dropped files (or a dropped image) waiting for the window to claim them. Only the Rust side ever sees the paths and the bytes.
-#[derive(Default)]
-pub struct DropTokens {
-    drops: Mutex<Vec<PendingDrop>>,
-    /// The image of the drag that is over the window now, read when the drag entered (the app that started it can still answer then).
-    staged: Mutex<Option<DragImage>>,
-}
-
-struct PendingDrop {
-    token: String,
-    dropped: Dropped,
-    at: Instant,
-}
-
-/// What a drop carried: files, or, when it carried none, maybe an image. Neither: nothing the app can use.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Dropped {
-    pub paths: Vec<PathBuf>,
-    pub image: Option<DragImage>,
-}
-
-impl DropTokens {
-    fn lock(&self) -> MutexGuard<'_, Vec<PendingDrop>> {
-        self.drops.lock().unwrap_or_else(PoisonError::into_inner)
-    }
-
-    /// Remembers the paths of a drop and returns its token (a UUID v4).
-    pub fn put(&self, paths: Vec<PathBuf>) -> String {
-        self.put_drop(Dropped { paths, image: None })
-    }
-
-    /// Remembers a drop (files, an image or nothing) and returns its token.
-    pub fn put_drop(&self, dropped: Dropped) -> String {
-        let token = Uuid::new_v4().to_string();
-        let mut drops = self.lock();
-        drops.retain(|drop| drop.at.elapsed() < TOKEN_TTL);
-        while drops.len() >= TOKEN_CAP {
-            drops.remove(0);
-        }
-        let mut dropped = dropped;
-        dropped.paths.truncate(MAX_DROPPED_PATHS);
-        drops.push(PendingDrop {
-            token: token.clone(),
-            dropped,
-            at: Instant::now(),
-        });
-        token
-    }
-
-    /// Keeps the image of the drag that just entered the window (`None` forgets the last one).
-    fn stage(&self, image: Option<DragImage>) {
-        *self.staged.lock().unwrap_or_else(PoisonError::into_inner) = image;
-    }
-
-    fn take_staged(&self) -> Option<DragImage> {
-        self.staged
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take()
-    }
-
-    /// Tests only: a token that is `age` old (expiry cannot be waited for).
-    #[cfg(feature = "test-hooks")]
-    #[doc(hidden)]
-    pub fn put_aged_for_test(&self, paths: Vec<PathBuf>, age: Duration) -> String {
-        let token = self.put(paths);
-        if let Some(drop) = self.lock().iter_mut().find(|drop| drop.token == token) {
-            drop.at = Instant::now().checked_sub(age).unwrap_or(drop.at);
-        }
-        token
-    }
-
-    /// Tests only: how many drops are waiting.
-    #[cfg(feature = "test-hooks")]
-    #[doc(hidden)]
-    pub fn pending_for_test(&self) -> usize {
-        self.lock().len()
-    }
-
-    /// What a drop carried, once: the token is spent. An unknown, spent or expired token gives `None`.
-    pub fn take(&self, token: &str) -> Option<Dropped> {
-        let mut drops = self.lock();
-        let index = drops.iter().position(|drop| drop.token == token)?;
-        let drop = drops.remove(index);
-        (drop.at.elapsed() < TOKEN_TTL).then_some(drop.dropped)
-    }
-}
 
 pub(crate) fn api(error: StoreError) -> ApiError {
     // Only the category goes to the process log: never a file name or a path.
@@ -166,7 +67,8 @@ pub fn attach_paste(store: State<'_, Store>, request: Request<'_>) -> ApiResult<
 
 /// Claims a drop: the token comes from the `attachments-dropped` event. Folders in the drop are skipped and counted. A drop with no
 /// file but an image (a picture dragged from Telegram or a browser) is attached like a pasted image; a drop with neither says
-/// `drop_not_supported` in the outcome. An unknown, spent or expired token is `attachment_not_found`.
+/// `drop_not_supported` in the outcome. An unknown, spent or expired token is `attachment_not_found`. Runs off the UI thread, which
+/// is where a dragged TIFF is decoded.
 #[tauri::command(async)]
 pub fn attach_dropped(
     store: State<'_, Store>,
@@ -176,6 +78,13 @@ pub fn attach_dropped(
 ) -> ApiResult<AttachOutcome> {
     let dropped = tokens.take(&token).ok_or(ErrorCode::AttachmentNotFound)?;
     Ok(attach_dropped_content(&store, &chat_id, dropped))
+}
+
+/// The web view says whether a chat is open to receive an attachment. Only then is the image of a drag read when it enters the window:
+/// with the trash open, or no chat, nothing is read and nothing is held. Takes a flag and nothing else.
+#[tauri::command]
+pub fn set_drop_target(tokens: State<'_, DropTokens>, active: bool) {
+    tokens.set_accepting(active);
 }
 
 /// Removes a tile of the chat's draft (and its file).
@@ -212,63 +121,9 @@ pub fn open_attachment<R: Runtime>(
     })
 }
 
-/// A drag over the main window: the overlay goes on and off, a drop leaves a token. Other windows are not asked: a drop on them
-/// does nothing.
-pub fn on_drag_drop<R: Runtime>(app: &AppHandle<R>, event: &DragDropEvent) {
-    on_drag_drop_from(app, event, &SystemDrag);
-}
-
-/// [`on_drag_drop`] with the drag read from `source` (the IPC tests give it a fake one).
-///
-/// Tauri lists only file paths. When a drag enters with none, its image (if it has one) is read at once, while the app that started
-/// the drag still answers; a drop with none uses that image, or reads the drag again. A drop always leaves a token, even an empty
-/// one: the window claims it and says so when there was nothing to attach (before KINIG-133 such a drop did nothing, silently).
-pub fn on_drag_drop_from<R: Runtime>(
-    app: &AppHandle<R>,
-    event: &DragDropEvent,
-    source: &dyn DragSource,
-) {
-    let Some(tokens) = app.try_state::<DropTokens>() else {
-        return;
-    };
-    match event {
-        DragDropEvent::Enter { paths, .. } => {
-            tokens.stage(paths.is_empty().then(|| source.image()).flatten());
-            let _ = app.emit_to(MAIN_LABEL, ATTACH_DRAG, true);
-        }
-        DragDropEvent::Leave => {
-            tokens.stage(None);
-            let _ = app.emit_to(MAIN_LABEL, ATTACH_DRAG, false);
-        }
-        DragDropEvent::Drop { paths, .. } => {
-            let _ = app.emit_to(MAIN_LABEL, ATTACH_DRAG, false);
-            let staged = tokens.take_staged();
-            let mut dropped = Dropped {
-                paths: paths.clone(),
-                image: None,
-            };
-            if dropped.paths.is_empty() {
-                dropped.paths = source.file_paths();
-            }
-            if dropped.paths.is_empty() {
-                dropped.image = staged.or_else(|| source.image());
-                if dropped.image.is_none() {
-                    // Type identifiers only, never contents: the one thing that tells which app sent what.
-                    log::info!(
-                        "a drop had nothing to attach; the drag offered: {}",
-                        source.type_names().join(", ")
-                    );
-                }
-            }
-            let token = tokens.put_drop(dropped);
-            let _ = app.emit_to(MAIN_LABEL, ATTACH_DROPPED, token);
-        }
-        _ => {}
-    }
-}
-
 /// What a drop gives: its files; else its image, the way a pasted image goes (same size limit, same checks, a name made by Rust);
-/// else `drop_not_supported`. Nothing is written unless something is attached.
+/// else `drop_not_supported`. A dragged TIFF becomes a PNG inside the decoder limits, or, if it cannot, is attached as it is (the
+/// store keeps a TIFF as a file card). Nothing is written unless something is attached.
 fn attach_dropped_content(store: &Store, chat_id: &str, dropped: Dropped) -> AttachOutcome {
     if !dropped.paths.is_empty() {
         return attach_paths(store, chat_id, &dropped.paths);
@@ -278,15 +133,21 @@ fn attach_dropped_content(store: &Store, chat_id: &str, dropped: Dropped) -> Att
         skipped_folders: 0,
         error: None,
     };
-    match dropped.image {
-        Some(DragImage::Bytes(bytes)) => {
-            match store.attach_bytes(chat_id, None, &bytes, &Now::system()) {
-                Ok(view) => outcome.attached.push(view),
-                Err(error) => outcome.error = Some(api(error).code),
-            }
+    let bytes = match dropped.image {
+        Some(DragImage::Bytes(bytes)) => bytes,
+        Some(DragImage::Tiff(tiff)) => tiff_to_png(&tiff).unwrap_or(tiff),
+        Some(DragImage::TooLarge) => {
+            outcome.error = Some(ErrorCode::AttachmentTooLarge);
+            return outcome;
         }
-        Some(DragImage::TooLarge) => outcome.error = Some(ErrorCode::AttachmentTooLarge),
-        None => outcome.error = Some(ErrorCode::DropNotSupported),
+        None => {
+            outcome.error = Some(ErrorCode::DropNotSupported);
+            return outcome;
+        }
+    };
+    match store.attach_bytes(chat_id, None, &bytes, &Now::system()) {
+        Ok(view) => outcome.attached.push(view),
+        Err(error) => outcome.error = Some(api(error).code),
     }
     outcome
 }

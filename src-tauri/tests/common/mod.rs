@@ -233,6 +233,7 @@ pub fn args_for(command: &str) -> Value {
         "set_agent_chats" => json!({"chatIds": []}),
         "list_agent_log_entries" => json!({"logId": 1}),
         "attach_dropped" => json!({"token": "нет-такого", "chatId": inbox}),
+        "set_drop_target" => json!({"active": true}),
         "remove_draft_attachment" => json!({"chatId": inbox, "attachmentId": "нет-такого"}),
         "open_attachment" | "read_voice_for_waveform" => json!({"attachmentId": "нет-такого"}),
         "set_attachment_waveform" => json!({"attachmentId": "нет-такого", "peaks": ""}),

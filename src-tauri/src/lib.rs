@@ -11,6 +11,8 @@ mod data_dirs;
 #[cfg(target_os = "macos")]
 mod drag_pasteboard;
 pub mod drag_source;
+pub mod drag_tiff;
+mod drops;
 pub mod guard;
 pub mod hotkeys;
 pub mod import;
@@ -76,6 +78,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             attachments::attach_pick,
             attachments::attach_paste,
             attachments::attach_dropped,
+            attachments::set_drop_target,
             attachments::remove_draft_attachment,
             attachments::open_attachment,
             voice::send_voice,
