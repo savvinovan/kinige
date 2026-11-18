@@ -135,11 +135,11 @@ pub fn seed_attachments(store: &Store, now: &Now, data: &Path, ideas_id: &str) {
             .attach_path(ideas_id, &path, &at(-2 * MINUTE))
             .expect("tile");
     }
-    // KINIG-135: the most the composer takes (ten tiles in all), pictures of several shapes (a portrait, a very wide one, a dark one) and
-    // documents with a long name, for the screens of the pending tiles. Only with `KINIGE_SEED_TILES=1`, so slice 7 keeps its two.
+    // KINIG-135: the most the composer takes (ten tiles in all), pictures of several shapes (a phone screenshot, a very wide one, a dark one)
+    // and documents with a long name, for the screens of the pending tiles. Only with `KINIGE_SEED_TILES=1`, so slice 7 keeps its two.
     if std::env::var_os("KINIGE_SEED_TILES").is_some() {
         for path in [
-            picture("IMG_0020.jpg", 1000, 1600, 2),
+            picture("IMG_0020.jpg", 1170, 2532, 2),
             picture("IMG_0021.jpg", 3000, 1000, 0),
             picture("ночь.jpg", 1600, 1000, 3),
             picture("IMG_0023.jpg", 1000, 1000, 1),

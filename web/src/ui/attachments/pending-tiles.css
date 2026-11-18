@@ -16,7 +16,9 @@
 }
 
 /* Every tile has the same height, so the lines are even whatever mix of pictures and files there is. The surface and the hairline make a tile
-   out of a dark picture on the dark box. The x sits on the top right corner. */
+   out of a dark picture on the dark box. The x sits on the top right corner. The tile does NOT clip (no overflow): the keyboard focus rings of
+   the open button and of the x are drawn outside their boxes and a clipping tile would cut them off. What has to be clipped (the picture, the
+   corners) is clipped by the picture area `.pending-tile__open`. */
 .pending-tile {
   position: relative;
   box-sizing: border-box;
@@ -25,22 +27,26 @@
   border: var(--border-width-hairline) solid var(--color-border-divider);
   border-radius: var(--layout-attachment-album-radius);
   background: var(--color-surface-background);
-  overflow: hidden;
 }
 
-/* A picture: the width follows the picture's shape from the first frame (the variable comes from the component), up to the cap; the picture is
-   never cropped, so a wider one is shown whole on the tile surface. */
+/* A picture: the width follows the picture's shape from the first frame (the variable comes from the component), between the floor (3:4) and
+   the cap (16:9). A wider picture is shown whole on the tile surface; a taller one is cropped from its top (`--tall`). The hairline is part of
+   the box, so the picture area (the box without it) has the picture's shape and leaves no strip beside it. */
 .pending-tile--image {
-  width: min(
-    var(--layout-attachment-pending-image-max-width),
-    /* The hairline is part of the box, so the picture area (the box without it) has the picture's shape and leaves no strip beside it. */
-    calc(
-      (var(--layout-attachment-pending-image-height) - 2 * var(--border-width-hairline)) *
-        var(--pending-aspect, var(--layout-attachment-fallback-aspect)) + 2 * var(--border-width-hairline)
+  width: max(
+    calc(var(--layout-attachment-pending-image-height) * var(--layout-attachment-pending-image-min-aspect)),
+    min(
+      var(--layout-attachment-pending-image-max-width),
+      calc(
+        (var(--layout-attachment-pending-image-height) - 2 * var(--border-width-hairline)) *
+          var(--pending-aspect, var(--layout-attachment-fallback-aspect)) + 2 * var(--border-width-hairline)
+      )
     )
   );
 }
 
+/* The picture area: it fills the tile inside the hairline and clips the picture to the tile's rounded corners. Its own focus ring (the open
+   button) is outside it, so the ring is not clipped by this box. */
 .pending-tile__open {
   position: absolute;
   inset: 0;
@@ -49,13 +55,21 @@
   margin: 0;
   padding: 0;
   border: 0;
+  border-radius: inherit;
   background: transparent;
   color: inherit;
   cursor: default;
+  overflow: hidden;
 }
 
 button.pending-tile__open {
   cursor: pointer;
+}
+
+/* The shared ring (base.css) stands the usual gap outside the tile's outer edge, not outside the picture area, which sits a hairline inside it.
+   The composer's tile area keeps room for the whole ring (composer.css). */
+.pending-tile__open:focus-visible {
+  outline-offset: calc(var(--focus-offset) + var(--border-width-hairline));
 }
 
 .pending-tile__image {
@@ -63,6 +77,12 @@ button.pending-tile__open {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* A picture taller than 3:4 (a phone screenshot): fills the narrowest tile and shows its top, where the header is. */
+.pending-tile--tall .pending-tile__image {
+  object-fit: cover;
+  object-position: top;
 }
 
 /* Any other file: a vertical card, the icon over the name and the size. */

@@ -55,18 +55,23 @@
   border-color: var(--color-status-error);
 }
 
-/* The pending attachments (KINIG-135): a line of their own inside the box, above the text. Two lines of tiles at most (or a share of the
-   window height, whichever is less); past that the area scrolls inside, and a half-shown line is the hint that there is more. */
+/* The pending attachments (KINIG-135): a line of their own inside the box, above the text. Two full lines of tiles at most (or a share of the
+   window height, whichever is less); past that the area scrolls inside, and a half-shown line is the hint that there is more. The box is
+   border-box, so the cap counts the padding in: two lines of tiles, the gap between them and the ring room above and below. */
 .composer__tiles {
+  --composer-tiles-ring-room: calc(var(--focus-width) + var(--focus-offset));
+
   flex: 0 0 100%;
   box-sizing: border-box;
   min-width: 0;
   max-height: min(
-    calc(2 * var(--layout-attachment-pending-image-height) + var(--layout-attachment-pending-gap)),
+    calc(
+      2 * var(--layout-attachment-pending-image-height) + var(--layout-attachment-pending-gap) + 2 * var(--composer-tiles-ring-room)
+    ),
     var(--layout-attachment-pending-area-max-height)
   );
-  /* The room is for the focus ring of a tile, which the clipping of the scroll area would cut. */
-  padding: var(--space-1);
+  /* The room is for the focus ring of a tile (the width of the ring and its gap), which the clipping of the scroll area would cut. */
+  padding: var(--composer-tiles-ring-room);
   overflow-x: hidden;
   overflow-y: auto;
 }

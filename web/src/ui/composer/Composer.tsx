@@ -146,6 +146,16 @@ export function Composer({
     if (!elsewhere) input.current?.focus();
   }, [autoFocus]);
 
+  // The last tile was removed: if its x had the focus, the focus fell to the page; it goes to the text field instead (PRD §12.2). Where the focus
+  // is somewhere else (a send, another chat opened from the sidebar) it is not taken.
+  const hadTiles = useRef(hasTiles);
+  useEffect(() => {
+    const lastGone = hadTiles.current && !hasTiles;
+    hadTiles.current = hasTiles;
+    const active = document.activeElement;
+    if (lastGone && (active === null || active === document.body || active === document.documentElement)) input.current?.focus();
+  }, [hasTiles]);
+
   // The "Send" button does the same as Enter. After a click focus returns to the field: the button itself disappears as soon as the field is empty.
   const send = () => {
     onSubmit?.();

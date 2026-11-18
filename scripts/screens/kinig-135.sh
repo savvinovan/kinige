@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Screens of the pending attachment tiles in the composer (KINIG-135) in the real window on a macOS runner: scripts/screens/kinig-135.sh <built Kinige.app>.
 # The data are synthetic (seed_demo with KINIGE_SEED_ATTACH=1 and KINIGE_SEED_TILES=1: the draft of the chat "Идеи" holds ten tiles, five
-# pictures of several shapes, among them a very wide one and a dark one, and five documents) in a temporary directory; the real database is not
+# pictures of several shapes, among them a phone screenshot, a very wide one and a dark one, and five documents) in a temporary directory; the real database is not
 # touched. Input is accessibility actions only (ax.js): no mouse, no keyboard, no global shortcuts. The native file dialog cannot be driven
 # that way, so the tiles come from the draft the seed wrote; the scenario removes them through the x of each tile.
 set -u
@@ -95,31 +95,38 @@ shoot_light 03-ten-tiles-narrow-640
 echo "window: $(ax resize "$(app_pid)" 1280 800)"
 sleep 3
 
-# ---- 3. Seven tiles go: a dark picture, a picture and a document are left ----
-for name in IMG_0020.jpg IMG_0021.jpg IMG_0023.jpg IMG_0024.jpg "Договор аренды 2026, финальная версия.pdf" "смета на ремонт.pdf" "расписание.pdf"; do
+# ---- 3. The four documents go: six pictures are left, exactly two full lines (at 1280x800 the area shows both whole, with no scroll bar) ----
+for name in "Договор аренды 2026, финальная версия.pdf" "смета на ремонт.pdf" "расписание.pdf" "заметки.pdf"; do
+  remove_tile "$name"
+done
+[ "$(tiles)" = "6" ] || fail "six tiles should be left in the draft ($(tiles))"
+shoot 04-two-full-lines
+
+# ---- 4. Three more go: the phone screenshot (cropped from its top, in the narrowest tile), a picture and a dark one are left ----
+for name in IMG_0021.jpg IMG_0023.jpg IMG_0024.jpg; do
   remove_tile "$name"
 done
 [ "$(tiles)" = "3" ] || fail "three tiles should be left in the draft ($(tiles))"
-shoot 04-three-tiles
+shoot 05-phone-screenshot
 
-# ---- 4. A click on a picture tile opens the viewer on the unsent pictures: no "Open in default app" there ----
+# ---- 5. A click on a picture tile opens the viewer on the unsent pictures: no "Open in default app" there ----
 press "${L_PHOTO} IMG_0009.jpg"
 sleep 3
 has "${L_VIEWER}" || fail "the viewer did not open from the tile"
-has "1 / 2" || fail "the viewer does not page through the two unsent pictures"
+has "1 / 3" || fail "the viewer does not page through the three unsent pictures"
 has "${L_EXTERNAL}" && fail "the viewer of an unsent picture offers to open it in the system app"
-shoot 05-viewer-from-tile
+shoot 06-viewer-from-tile
 press "${L_CLOSE}"
 sleep 2
 has "${L_VIEWER}" && fail "the viewer is still open after Close"
 
-# ---- 5. One picture ----
+# ---- 6. One picture ----
 remove_tile "ночь.jpg"
-remove_tile "заметки.pdf"
+remove_tile "IMG_0020.jpg"
 [ "$(tiles)" = "1" ] || fail "one tile should be left in the draft ($(tiles))"
-shoot 06-one-picture
+shoot 07-one-picture
 
-# ---- 6. English ----
+# ---- 7. English ----
 set_language en
 kill -9 "$(app_pid)"
 sleep 2
@@ -130,6 +137,6 @@ detect_language
 press "${L_IDEAS}"
 sleep 3
 has "${L_REMOVE} IMG_0009.jpg" || fail "english: the tile did not survive kill -9"
-shoot_light 07-en
+shoot_light 08-en
 
 finish

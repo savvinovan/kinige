@@ -27,7 +27,8 @@ interface LightboxProps {
  * A photo over the whole window (slice 7, KINIG-87). A dialog with a scrim, a focus trap and Escape; it returns focus to what opened it.
  * The photo fits the window (contain) and is drawn from `full` when the protocol serves it (`canShowFull`), otherwise from the
  * thumbnail. Left and Right move between the entry's photos (stopping at the ends), "2 / 4" shows the place when there are several.
- * A photo that fails shows "No preview" in the same area; "Open in default app" stays available.
+ * A photo that fails shows "No preview" in the same area. "Open in default app" is there when `onOpenExternal` is given (the feed gives it;
+ * the pending tiles of the composer do not, since Rust opens only sent files).
  * A click on the backdrop closes, a click on the photo closes it at fit size; Cmd or Ctrl + wheel, `+` `-` `0`, a double click and the toolbar
  * zoom, a drag pans, the rotate button and `R` turn it by 90 degrees (view only). The moves are in `useViewerTransform` and `useViewerInput`.
  */
