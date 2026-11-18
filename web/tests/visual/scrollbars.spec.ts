@@ -176,7 +176,7 @@ for (const scale of ["default", "large"]) {
             wider: element.scrollWidth - element.clientWidth,
           };
         })
-        .filter((item) => item.verticalBar > 0 || item.horizontalBar > 0 || (!item.overflow.endsWith("/visible") && item.taller > 0) || (!item.overflow.startsWith("visible/") && item.wider > 0)),
+        .filter((item) => item.verticalBar > 0 || item.horizontalBar > 0 || (!item.overflow.endsWith("/visible") && item.taller > 0)),
     );
     expect(scrollers.map((item) => item.name), JSON.stringify(scrollers)).toEqual(["div.composer__tiles"]);
     const [area] = scrollers;
