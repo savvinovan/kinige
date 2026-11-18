@@ -28,6 +28,8 @@
 
 .composer__bar {
   display: flex;
+  /* The tiles (KINIG-135) take a whole line above the text; the line with the field never wraps (the field has no basis to wrap on). */
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-1);
   box-sizing: border-box;
@@ -51,6 +53,33 @@
 /* Send error: the only case when the field has a border. */
 .composer__bar--invalid {
   border-color: var(--color-status-error);
+}
+
+/* The pending attachments (KINIG-135): a line of their own inside the box, above the text. Two lines of tiles at most (or a share of the
+   window height, whichever is less); past that the area scrolls inside, and a half-shown line is the hint that there is more. */
+.composer__tiles {
+  flex: 0 0 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  max-height: min(
+    calc(2 * var(--layout-attachment-pending-image-height) + var(--layout-attachment-pending-gap)),
+    var(--layout-attachment-pending-area-max-height)
+  );
+  /* The room is for the focus ring of a tile, which the clipping of the scroll area would cut. */
+  padding: var(--space-1);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* A recording is on: the bar below stands in for the field, and the box above keeps only the tiles. */
+.composer__bar--hidden.composer__bar--tiles-only {
+  display: flex;
+  min-height: 0;
+  margin-bottom: var(--space-2);
+}
+
+.composer__bar--tiles-only > :not(.composer__tiles) {
+  display: none;
 }
 
 /* The "emoji" button with the picker: the wrapper is needed so that the panel knows what to stand above; the size and place are the same as for an ordinary button. */

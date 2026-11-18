@@ -44,6 +44,8 @@ describe("MainWindow: вложения", () => {
     fireEvent.change(await field(), { target: { value: "обед" } });
     fireEvent.keyDown(await field(), { key: "Enter" });
 
+    // A picture tile above the field is a button too: wait until the tiles are gone, then the buttons are the feed's.
+    await waitFor(() => expect(screen.queryByRole("list", { name: "Вложения к записи" })).toBeNull());
     expect(await screen.findByRole("button", { name: /Фото IMG_0001\.jpg/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Фото IMG_0002\.jpg/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /menu\.pdf/ })).toBeInTheDocument();
@@ -62,6 +64,7 @@ describe("MainWindow: вложения", () => {
     await pick(api, ["solo.png"]);
     const send = await screen.findByRole("button", { name: "Отправить" });
     fireEvent.click(send);
+    await waitFor(() => expect(screen.queryByRole("list", { name: "Вложения к записи" })).toBeNull());
     expect(await screen.findByRole("button", { name: /Фото solo\.png/ })).toBeInTheDocument();
     const sent = (await api.listMessages(INBOX_ID)).messages;
     expect(sent.map((m) => m.bodyMd)).toEqual([""]);

@@ -11,6 +11,8 @@ interface DemoPhoto {
   height: number;
   /** A picture with an empty background, like a transparent PNG: the bubble shows through. */
   transparent: boolean;
+  /** A flat picture as dark as the window background or as light as the text: how a tile holds a dark or a light photo. */
+  tone: "dark" | "light" | null;
   /** The file cannot be decoded: the browser fires `error` for the picture. */
   broken: boolean;
 }
@@ -31,9 +33,15 @@ export function demoPhoto(
   filename: string,
   width: number,
   height: number,
-  options: { transparent?: boolean; broken?: boolean; missing?: boolean; byteSize?: number } = {},
+  options: { transparent?: boolean; broken?: boolean; missing?: boolean; byteSize?: number; tone?: "dark" | "light" } = {},
 ): AttachmentView {
-  photos.set(id, { width, height, transparent: options.transparent ?? false, broken: options.broken ?? false });
+  photos.set(id, {
+    width,
+    height,
+    transparent: options.transparent ?? false,
+    tone: options.tone ?? null,
+    broken: options.broken ?? false,
+  });
   return {
     id,
     kind: "image",
@@ -82,12 +90,17 @@ function token(name: string): string {
   return typeof document === "undefined" ? "" : getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-function svgUrl({ width, height, transparent }: DemoPhoto, thumb: boolean, id: string): string {
+function svgUrl({ width, height, transparent, tone }: DemoPhoto, thumb: boolean, id: string): string {
   const scale = thumb ? Math.min(1, THUMB_LONG_SIDE / Math.max(width, height)) : 1;
   const drawnWidth = Math.round(width * scale);
   const drawnHeight = Math.round(height * scale);
-  const [from, to] = GRADIENTS[Array.from(id).reduce((sum, symbol) => sum + symbol.charCodeAt(0), 0) % GRADIENTS.length] ?? GRADIENTS[0];
-  const text = token("--color-surface-background");
+  const [from, to] =
+    tone === "dark"
+      ? (["--color-surface-background", "--color-surface-code"] as const)
+      : tone === "light"
+        ? (["--color-text-primary", "--color-text-secondary"] as const)
+        : (GRADIENTS[Array.from(id).reduce((sum, symbol) => sum + symbol.charCodeAt(0), 0) % GRADIENTS.length] ?? GRADIENTS[0]);
+  const text = token(tone === "dark" ? "--color-text-tertiary" : "--color-surface-background");
   const fontSize = Math.round(Math.min(drawnWidth / 8, drawnHeight / 4));
   const label = `${width} x ${height}`;
   const background = transparent

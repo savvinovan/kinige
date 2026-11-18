@@ -118,6 +118,8 @@ export interface AttachmentControls {
   tiles: readonly AttachmentView[];
   onAttach: () => void;
   onRemoveTile: (attachmentId: string) => void;
+  /** A click on a picture tile above the field: the viewer opens on it (KINIG-135). */
+  onOpenTile: (attachmentId: string) => void;
   onPasteFiles: (files: readonly File[]) => void;
   /** Files are dragged over the window: "Drop to attach" over the feed. */
   dragOver: boolean;
@@ -248,7 +250,7 @@ export function MainWindowView({
               autoFocus={interactive}
               emoji={emoji}
               replyStrip={replyStrip}
-              tiles={attachments ? <PendingTiles items={attachments.tiles} onRemove={attachments.onRemoveTile} /> : undefined}
+              tiles={attachments ? <PendingTiles items={attachments.tiles} onRemove={attachments.onRemoveTile} onOpen={attachments.onOpenTile} /> : undefined}
               hasTiles={(attachments?.tiles.length ?? 0) > 0}
               onAttach={attachments?.onAttach}
               onPasteFiles={attachments?.onPasteFiles}

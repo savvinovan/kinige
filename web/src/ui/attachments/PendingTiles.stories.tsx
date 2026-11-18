@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
+import { Composer } from "../composer/Composer";
 import { manyPhotos, withScene } from "./AttachmentsStage";
 import { demoFile, demoPhoto } from "./demo";
 import { PendingTiles } from "./PendingTiles";
@@ -18,17 +19,44 @@ const meta = {
   component: PendingTiles,
   args: { items: MIXED, onRemove: () => undefined },
   decorators: [withScene],
-  // The tiles stand in the composer above the field.
-  render: (args) => <Composer items={args.items} />,
+  // The tiles stand inside the composer's box, above the text line.
+  render: (args) => <ComposerWithTiles items={args.items} />,
 } satisfies Meta<typeof PendingTiles>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Two photos and a PDF, as above the field after choosing them in the dialog. The x removes a tile (it also works in the story). */
+/** Two photos and a PDF, as in the box after choosing them in the dialog. The x removes a tile, a click on a photo would open the viewer. */
 export const ДваФотоИPDF: Story = {};
 
-/** Ten tiles in a 640 px window: the row wraps, every x is reachable. */
+/** One photo: a tile of 144 px height with the photo's own shape. */
+export const ОдноФото: Story = { args: { items: [demoPhoto("one", "IMG_0001.jpg", 1280, 960)] } };
+
+/** A dark photo on the dark box: the surface and the hairline keep the tile visible. */
+export const ТёмноеФото: Story = { args: { items: [demoPhoto("dark", "night.jpg", 1280, 960, { tone: "dark" })] } };
+
+/** A light photo: the x has its own fill and stays visible over it. */
+export const СветлоеФото: Story = { args: { items: [demoPhoto("light", "snow.jpg", 1280, 960, { tone: "light" })] } };
+
+/** A very wide photo (past the width cap: shown whole on the tile surface, never cropped), a wide one, a square one and a tall one. */
+export const ШирокоеИВысокое: Story = {
+  args: {
+    items: [
+      demoPhoto("w1", "panorama.jpg", 3000, 1000),
+      demoPhoto("w2", "IMG_0002.jpg", 1600, 900),
+      demoPhoto("w3", "IMG_0003.jpg", 1024, 1024),
+      demoPhoto("w4", "IMG_0004.jpg", 800, 2400),
+    ],
+  },
+};
+
+/** A file that is not a photo: the icon of the feed, the name and the size. */
+export const ОдинФайл: Story = { args: { items: [demoFile("one-pdf", "Договор аренды.pdf", "file", 2.4 * MEGABYTE)] } };
+
+/**
+ * The most the composer takes (ten) in a 640 px window: the tiles wrap, no horizontal scroll bar; past two lines (or 36% of the window
+ * height) the area scrolls inside, and a half-shown line says there is more.
+ */
 export const Десять: Story = {
   parameters: { narrow: true },
   args: {
@@ -59,16 +87,21 @@ export const Английский: Story = {
   args: { items: [demoPhoto("e1", "IMG_0001.jpg", 1280, 960), demoFile("e2", "menu.pdf", "file", 2.4 * MEGABYTE)] },
 };
 
-/** Large text: the file tiles grow with the text. */
+/** Large text: the file tiles and the text line grow with the text; the photo tiles are content and keep their size. */
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };
 
-/** The composer stand-in: the tiles above a quiet field; the x removes a tile. */
-function Composer({ items }: { items: readonly AttachmentView[] }) {
+/** The real composer with the tiles inside its box; the x removes a tile. */
+function ComposerWithTiles({ items }: { items: readonly AttachmentView[] }) {
   const [rest, setRest] = useState(items);
+  const [value, setValue] = useState("");
   return (
-    <div className="attachments-composer">
-      <PendingTiles items={rest} onRemove={(id) => setRest((was) => was.filter((item) => item.id !== id))} />
-      <span className="attachments-composer__field">…</span>
-    </div>
+    <Composer
+      value={value}
+      onChange={setValue}
+      onSubmit={() => setValue("")}
+      onAttach={() => undefined}
+      tiles={<PendingTiles items={rest} onRemove={(id) => setRest((was) => was.filter((item) => item.id !== id))} onOpen={() => undefined} />}
+      hasTiles={rest.length > 0}
+    />
   );
 }

@@ -21,6 +21,8 @@ interface UseAttachmentsOptions {
 export interface LightboxState {
   images: AttachmentView[];
   index: number;
+  /** The photos are unsent ones of the draft (KINIG-135): Rust opens only sent files in the system app, so there is no such button. */
+  unsent?: boolean;
 }
 
 /** A generic name a browser gives a pasted image ("image.png"): the hint is dropped so that Rust names it `pasted-HHMMSS.<ext>`. */
@@ -119,12 +121,23 @@ export function useAttachments({ api, selected, tiles, addTiles, dropTile, onErr
     if (index >= 0) setLightbox({ images: [...images], index });
   }, []);
 
+  // A picture tile above the field: the lightbox pages through the draft's pictures. `full` and `thumb` are served for a draft attachment too.
+  const openTile = useCallback(
+    (attachmentId: string) => {
+      const images = tiles.filter((a) => a.kind === "image");
+      const index = images.findIndex((a) => a.id === attachmentId);
+      if (index >= 0) setLightbox({ images, index, unsent: true });
+    },
+    [tiles],
+  );
+
   const openFile = useCallback((attachmentId: string) => void api.openAttachment(attachmentId).catch(fail), [api, fail]);
 
   const controls: AttachmentControls = {
     tiles,
     onAttach: attach,
     onRemoveTile: removeTile,
+    onOpenTile: openTile,
     onPasteFiles: (files) => void pasteFiles(files),
     dragOver,
     onOpenImage: openImage,

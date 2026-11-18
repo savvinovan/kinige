@@ -19,8 +19,8 @@ interface LightboxProps {
   index: number;
   onIndexChange: (index: number) => void;
   onClose: () => void;
-  /** "Open in default app": Rust opens the file in the system viewer (Preview). */
-  onOpenExternal: (attachmentId: string) => void;
+  /** "Open in default app": Rust opens the file in the system viewer (Preview). Without it there is no such button (an unsent photo cannot be opened that way). */
+  onOpenExternal?: (attachmentId: string) => void;
 }
 
 /**
@@ -84,9 +84,11 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
             {t("attachments.counter", { index: position + 1, total: images.length })}
           </span>
         ) : null}
-        <Button variant="secondary" className="lightbox__external" onClick={() => onOpenExternal(current.id)}>
-          {t("attachments.openDefault")}
-        </Button>
+        {onOpenExternal ? (
+          <Button variant="secondary" className="lightbox__external" onClick={() => onOpenExternal(current.id)}>
+            {t("attachments.openDefault")}
+          </Button>
+        ) : null}
         {showTile ? null : (
           <div className="lightbox__tools" data-viewer-control>
             <IconButton icon="rotate" label={t("attachments.rotate")} title={tip(t("attachments.rotate"), "R")} onClick={viewer.rotate} />
