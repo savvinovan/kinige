@@ -9,7 +9,6 @@
 use crate::capture::MAIN_LABEL;
 use crate::drag_source::{DragImage, DragSource, SystemDrag, log_names};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, DragDropEvent, Emitter, Manager, Runtime};
@@ -36,7 +35,14 @@ pub struct DropTokens {
     staged: Mutex<Option<Staged>>,
     /// Whether the window has a chat open to receive an attachment (the web view says so, `set_drop_target`). Without one, no image
     /// is read from a drag at all.
-    accepting: AtomicBool,
+    target: Mutex<DropTarget>,
+}
+
+/// The newest answer of the web view and the number of the call that gave it.
+#[derive(Default)]
+struct DropTarget {
+    seq: u64,
+    active: bool,
 }
 
 struct PendingDrop {
@@ -69,15 +75,25 @@ impl DropTokens {
 
     /// Whether a chat is open to receive a drop.
     pub fn accepting(&self) -> bool {
-        self.accepting.load(Ordering::Relaxed)
+        self.target().active
     }
 
-    /// The web view says whether a chat is open. Closing one forgets a staged image.
-    pub fn set_accepting(&self, accepting: bool) {
-        self.accepting.store(accepting, Ordering::Relaxed);
-        if !accepting {
+    /// The web view says whether a chat is open, with the number of its call (they only grow). A call older than the newest one seen
+    /// is ignored, so two calls that arrive out of order cannot leave a stale answer. Closing a chat forgets a staged image.
+    pub fn set_accepting(&self, active: bool, seq: u64) {
+        let mut target = self.target();
+        if seq <= target.seq {
+            return;
+        }
+        *target = DropTarget { seq, active };
+        drop(target);
+        if !active {
             *self.staged() = None;
         }
+    }
+
+    fn target(&self) -> MutexGuard<'_, DropTarget> {
+        self.target.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     /// Remembers the paths of a drop and returns its token (a UUID v4).

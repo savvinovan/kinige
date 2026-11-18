@@ -81,10 +81,11 @@ pub fn attach_dropped(
 }
 
 /// The web view says whether a chat is open to receive an attachment. Only then is the image of a drag read when it enters the window:
-/// with the trash open, or no chat, nothing is read and nothing is held. Takes a flag and nothing else.
+/// with the trash open, or no chat, nothing is read and nothing is held. Takes a flag and the number of the call, which only grows:
+/// a call older than the newest one seen is ignored, so the order of arrival cannot matter.
 #[tauri::command]
-pub fn set_drop_target(tokens: State<'_, DropTokens>, active: bool) {
-    tokens.set_accepting(active);
+pub fn set_drop_target(tokens: State<'_, DropTokens>, active: bool, seq: u64) {
+    tokens.set_accepting(active, seq);
 }
 
 /// Removes a tile of the chat's draft (and its file).

@@ -64,6 +64,19 @@ describe("MainWindow: what a drop carries", () => {
     await waitFor(() => expect(api.dropTarget).toBe(true));
   });
 
+  it("going from one chat to another never says 'no chat' on the way", async () => {
+    const api = new MockApi({ now: NOW, language: "en", chats: [{ id: "books", title: "Books" }] });
+    render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />, { language: "en" });
+    await field();
+    await waitFor(() => expect(api.dropTarget).toBe(true));
+    fireEvent.click(await screen.findByRole("button", { name: /^Books/ }));
+    await waitFor(() => expect(screen.getAllByRole("textbox").length).toBeGreaterThan(0));
+    fireEvent.click(await screen.findByRole("button", { name: /^Inbox/ }));
+    await field();
+    const sent = api.calls.filter((call) => call.startsWith("setDropTarget"));
+    expect(sent).toEqual(["setDropTarget true"]);
+  });
+
   it("a token that was already claimed is refused, not attached twice", async () => {
     const api = setup();
     await field();

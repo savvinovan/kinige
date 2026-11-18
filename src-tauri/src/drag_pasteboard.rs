@@ -134,9 +134,14 @@ mod tests {
         NSPasteboardNameDrag, NSPasteboardTypeFileURL, NSPasteboardTypePNG, NSPasteboardTypeTIFF,
     };
 
-    /// A throwaway pasteboard of this process: neither the user's clipboard nor the real drag pasteboard.
+    /// A throwaway pasteboard with a name of its own (a UUID): neither the user's clipboard nor the real drag pasteboard. Not
+    /// `pasteboardWithUniqueName`: with the tests running in parallel threads and processes it failed in about 5 runs of 100 (a
+    /// write refused, or the types of another test seen); with UUID names none failed in 520.
     fn scratch(types: &[(&str, &[u8])]) -> Retained<NSPasteboard> {
-        let pasteboard = NSPasteboard::pasteboardWithUniqueName();
+        let name = format!("kinige-test-{}", uuid::Uuid::new_v4());
+        let pasteboard = NSPasteboard::pasteboardWithName(&NSString::from_str(&name));
+        // AppKit: a process must claim a pasteboard (`clearContents`) before it writes to it.
+        pasteboard.clearContents();
         for (name, bytes) in types {
             assert!(
                 pasteboard

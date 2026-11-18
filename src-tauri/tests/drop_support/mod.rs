@@ -98,7 +98,7 @@ impl Dropper {
     /// A window with a chat open (the web view has told Rust so).
     pub fn new() -> Self {
         let dropper = Self::without_chat();
-        call(&dropper.main, "set_drop_target", json!({"active": true})).unwrap();
+        dropper.set_target(true, 1);
         dropper
     }
 
@@ -119,6 +119,16 @@ impl Dropper {
             main,
             tokens,
         }
+    }
+
+    /// What the web view tells Rust: a chat is open (or not), as call number `seq`.
+    pub fn set_target(&self, active: bool, seq: u64) {
+        call(
+            &self.main,
+            "set_drop_target",
+            json!({"active": active, "seq": seq}),
+        )
+        .unwrap();
     }
 
     pub fn send(&self, event: &DragDropEvent, source: &FakeDrag) {

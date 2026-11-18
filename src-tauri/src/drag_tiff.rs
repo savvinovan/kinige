@@ -3,8 +3,9 @@
 //!
 //! The decoder is the `image` crate's, in pure Rust, so it is safe to run on any thread; it runs in `attach_dropped`, a command that
 //! is off the UI thread. A TIFF is small on the wire and can be huge once decoded, so the header is read first and the limits of
-//! ADR-0014 apply before any pixel is decoded: 30 000 px on a side and 512 MiB of memory, and for a conversion also at most 50
-//! megapixels. A TIFF over a limit, a broken one or a decoder panic gives `None`: the caller attaches the bytes as they are.
+//! ADR-0014 apply before any pixel is decoded: 30 000 px on a side, and for a conversion also at most 50 megapixels and 128 MiB of
+//! decoded bitmap (see `MAX_DECODED_BYTES` for why that number). A TIFF over a limit, a broken one or a decoder panic gives `None`:
+//! the caller attaches the bytes as they are.
 
 use image::metadata::Orientation;
 use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader, Limits};
@@ -12,11 +13,17 @@ use kinige_domain::attachment::MAX_PASTE_BYTES;
 use std::io::Cursor;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-/// The decoder limits of the thumbnails (`kinige-store`, `attachment/decode.rs`, ADR-0014).
-const MAX_ALLOC: u64 = 512 * 1024 * 1024;
+/// The side limit of the thumbnails (`kinige-store`, `attachment/decode.rs`, ADR-0014).
 const MAX_SIDE: u32 = 30_000;
-/// A conversion decodes the whole bitmap and encodes it again: a bigger picture than this stays a TIFF file card.
+/// A conversion decodes the whole bitmap, turns it, and encodes it again: a bigger picture than this stays a TIFF file card.
 const MAX_PIXELS: u64 = 50_000_000;
+/// The decoded bitmap may take at most 128 MiB. The 512 MiB of the thumbnails limit only the decoder's own allocation, and a
+/// conversion holds more than one copy (the bitmap, the turned copy, the encoder's work), which a reviewer measured at about twice
+/// the bitmap (811 MB for a 392 MB one). 128 MiB loses no realistic input: Qt and AppKit write a TIFF uncompressed, and one that fits
+/// the 64 MiB input cap is at most about 16.7 megapixels of RGBA8 (64 MiB); this admits 33 megapixels of RGBA8 or 16 of RGBA16, a
+/// compressed TIFF twice as large as its input allows. The worst case is then about 2 x 128 MiB, 256 MiB, and the decoder's own
+/// allocation limit is set to that.
+const MAX_DECODED_BYTES: u64 = 128 * 1024 * 1024;
 
 /// The PNG made from a TIFF, with the orientation applied, or `None` if the TIFF is over a limit, does not decode, or the PNG would
 /// be larger than a paste may be.
@@ -32,14 +39,19 @@ pub fn tiff_to_png(tiff: &[u8]) -> Option<Vec<u8>> {
 fn convert(tiff: &[u8]) -> Option<Vec<u8>> {
     let mut reader = ImageReader::with_format(Cursor::new(tiff), ImageFormat::Tiff);
     let mut limits = Limits::default();
-    limits.max_alloc = Some(MAX_ALLOC);
+    limits.max_alloc = Some(2 * MAX_DECODED_BYTES);
     limits.max_image_width = Some(MAX_SIDE);
     limits.max_image_height = Some(MAX_SIDE);
     reader.limits(limits);
-    // Only the header is read here; the side limits are checked in `into_decoder`, the pixel count right below, both before a pixel.
+    // Only the header is read here; the side limits are checked in `into_decoder`, the pixel count and the decoded size right below,
+    // all before a pixel.
     let mut decoder = reader.into_decoder().ok()?;
     let (width, height) = decoder.dimensions();
-    if width == 0 || height == 0 || u64::from(width) * u64::from(height) > MAX_PIXELS {
+    if width == 0
+        || height == 0
+        || u64::from(width) * u64::from(height) > MAX_PIXELS
+        || decoder.total_bytes() > MAX_DECODED_BYTES
+    {
         return None;
     }
     let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
@@ -145,6 +157,20 @@ mod tests {
             "{} bytes on the wire",
             tiff.len()
         );
+        let started = Instant::now();
+        assert!(tiff_to_png(&tiff).is_none());
+        assert!(
+            started.elapsed() < Duration::from_millis(500),
+            "{:?}",
+            started.elapsed()
+        );
+    }
+
+    #[test]
+    fn a_bitmap_over_128_mib_is_refused_even_under_the_pixel_limit() {
+        // 7 000 x 7 000 RGB8 is 49 megapixels (under the 50 megapixel limit) and 147 MB decoded: only the decoded size refuses it.
+        let tiff = packbits_tiff(7_000);
+        assert!(tiff.len() < 8 * 1024 * 1024);
         let started = Instant::now();
         assert!(tiff_to_png(&tiff).is_none());
         assert!(

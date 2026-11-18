@@ -52,6 +52,9 @@ import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
 import type { WeekdaySource } from "./generated/WeekdaySource";
 
+/** The number of the last `set_drop_target` call of this window (see `TauriApi.setDropTarget`). */
+let dropTargetSeq = 0;
+
 /** `KinigeApi` over Tauri commands. Argument names are camelCase: Tauri itself converts them to Rust snake_case. */
 export class TauriApi implements KinigeApi {
   appInfo(): Promise<AppInfo> {
@@ -120,7 +123,10 @@ export class TauriApi implements KinigeApi {
   }
 
   async setDropTarget(active: boolean): Promise<void> {
-    await call("set_drop_target", { active });
+    // Every call carries a number that only grows; Rust ignores one that is older than what it has seen, so two calls that reach it in
+    // the other order cannot leave a stale answer.
+    dropTargetSeq += 1;
+    await call("set_drop_target", { active, seq: dropTargetSeq });
   }
 
   async removeDraftAttachment(chatId: string, attachmentId: string): Promise<void> {

@@ -108,7 +108,7 @@ fn closing_the_chat_forgets_a_staged_image() {
     dropper.send(&enter(vec![]), &source);
     let tokens = dropper.fixture.app.state::<DropTokens>();
     assert_eq!(tokens.images_held_for_test(), (0, true));
-    call(&dropper.main, "set_drop_target", json!({"active": false})).unwrap();
+    dropper.set_target(false, 2);
     assert_eq!(tokens.images_held_for_test(), (0, false));
 }
 
@@ -175,16 +175,44 @@ fn only_the_newest_unclaimed_drop_holds_an_image() {
 }
 
 #[test]
-fn set_drop_target_takes_a_flag_and_nothing_else() {
+fn calls_that_arrive_out_of_order_cannot_leave_a_stale_answer() {
+    // The web view sends false (leaving a chat, call 2) and then true (the next chat, call 3); if they arrive the other way round, the
+    // older one is ignored and a chat stays open for drops.
+    let dropper = Dropper::new();
+    let tokens = dropper.fixture.app.state::<DropTokens>();
+    dropper.set_target(true, 3);
+    dropper.set_target(false, 2);
+    assert!(tokens.accepting(), "the older false was ignored");
+    // The same number again, and an older one, change nothing; a newer one does.
+    dropper.set_target(false, 3);
+    dropper.set_target(false, 1);
+    assert!(tokens.accepting());
+    dropper.set_target(false, 4);
+    assert!(!tokens.accepting());
+    dropper.set_target(true, 3);
+    assert!(!tokens.accepting(), "and an older true cannot reopen it");
+}
+
+#[test]
+fn set_drop_target_takes_a_flag_a_number_and_nothing_else() {
     let dropper = Dropper::new();
     for bad in [
         json!({}),
-        json!({"active": "yes"}),
-        json!({"active": 1}),
-        json!({"active": null}),
-        json!({"active": [true]}),
+        json!({"active": true}),
+        json!({"seq": 5}),
+        json!({"active": "yes", "seq": 5}),
+        json!({"active": 1, "seq": 5}),
+        json!({"active": null, "seq": 5}),
+        json!({"active": [true], "seq": 5}),
+        json!({"active": true, "seq": -1}),
+        json!({"active": true, "seq": "9"}),
+        json!({"active": true, "seq": 1.5}),
+        json!({"active": true, "seq": 1.8446744073709552e19}),
     ] {
-        assert!(call(&dropper.main, "set_drop_target", bad).is_err());
+        assert!(
+            call(&dropper.main, "set_drop_target", bad.clone()).is_err(),
+            "{bad}"
+        );
     }
     let tokens = dropper.fixture.app.state::<DropTokens>();
     assert!(tokens.accepting(), "a refused call changes nothing");
