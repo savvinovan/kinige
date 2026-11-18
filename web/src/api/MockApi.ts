@@ -208,6 +208,11 @@ export class MockApi implements KinigeApi {
     return this.attachments.emitAttachmentsDropped(names, token);
   }
 
+  /** Like a picture dragged from Telegram or a browser: image data and no file. */
+  emitImageDropped(byteLength: number, token?: string): string {
+    return this.attachments.emitImageDropped(byteLength, token);
+  }
+
   /** An entry that appeared "from outside" (the capture window, the clipboard): reaches the feed after the event. */
   addExternalMessage(message: MessageView): void {
     this.capture.addExternalMessage(message);

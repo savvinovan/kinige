@@ -8,6 +8,9 @@ pub mod capture;
 mod command_names;
 mod commands;
 mod data_dirs;
+#[cfg(target_os = "macos")]
+mod drag_pasteboard;
+pub mod drag_source;
 pub mod guard;
 pub mod hotkeys;
 pub mod import;

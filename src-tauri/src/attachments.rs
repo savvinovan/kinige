@@ -6,6 +6,7 @@
 //! that expires; a paste crosses IPC as a raw body.
 
 use crate::capture::MAIN_LABEL;
+use crate::drag_source::{DragImage, DragSource, SystemDrag};
 use kinige_domain::attachment::MAX_PASTE_BYTES;
 use kinige_domain::{ApiError, AttachOutcome, AttachmentView, ErrorCode};
 use kinige_store::{Now, Store, StoreError};
@@ -35,16 +36,25 @@ const MAX_DROPPED_PATHS: usize = 64;
 /// The longest header value we read: a chat id or a percent-encoded file name.
 const MAX_HEADER_BYTES: usize = 2048;
 
-/// Dropped files waiting for the window to claim them. Only the Rust side ever sees the paths.
+/// Dropped files (or a dropped image) waiting for the window to claim them. Only the Rust side ever sees the paths and the bytes.
 #[derive(Default)]
 pub struct DropTokens {
     drops: Mutex<Vec<PendingDrop>>,
+    /// The image of the drag that is over the window now, read when the drag entered (the app that started it can still answer then).
+    staged: Mutex<Option<DragImage>>,
 }
 
 struct PendingDrop {
     token: String,
-    paths: Vec<PathBuf>,
+    dropped: Dropped,
     at: Instant,
+}
+
+/// What a drop carried: files, or, when it carried none, maybe an image. Neither: nothing the app can use.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Dropped {
+    pub paths: Vec<PathBuf>,
+    pub image: Option<DragImage>,
 }
 
 impl DropTokens {
@@ -54,20 +64,37 @@ impl DropTokens {
 
     /// Remembers the paths of a drop and returns its token (a UUID v4).
     pub fn put(&self, paths: Vec<PathBuf>) -> String {
+        self.put_drop(Dropped { paths, image: None })
+    }
+
+    /// Remembers a drop (files, an image or nothing) and returns its token.
+    pub fn put_drop(&self, dropped: Dropped) -> String {
         let token = Uuid::new_v4().to_string();
         let mut drops = self.lock();
         drops.retain(|drop| drop.at.elapsed() < TOKEN_TTL);
         while drops.len() >= TOKEN_CAP {
             drops.remove(0);
         }
-        let mut paths = paths;
-        paths.truncate(MAX_DROPPED_PATHS);
+        let mut dropped = dropped;
+        dropped.paths.truncate(MAX_DROPPED_PATHS);
         drops.push(PendingDrop {
             token: token.clone(),
-            paths,
+            dropped,
             at: Instant::now(),
         });
         token
+    }
+
+    /// Keeps the image of the drag that just entered the window (`None` forgets the last one).
+    fn stage(&self, image: Option<DragImage>) {
+        *self.staged.lock().unwrap_or_else(PoisonError::into_inner) = image;
+    }
+
+    fn take_staged(&self) -> Option<DragImage> {
+        self.staged
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take()
     }
 
     /// Tests only: a token that is `age` old (expiry cannot be waited for).
@@ -88,12 +115,12 @@ impl DropTokens {
         self.lock().len()
     }
 
-    /// The paths of a drop, once: the token is spent. An unknown, spent or expired token gives `None`.
-    pub fn take(&self, token: &str) -> Option<Vec<PathBuf>> {
+    /// What a drop carried, once: the token is spent. An unknown, spent or expired token gives `None`.
+    pub fn take(&self, token: &str) -> Option<Dropped> {
         let mut drops = self.lock();
         let index = drops.iter().position(|drop| drop.token == token)?;
         let drop = drops.remove(index);
-        (drop.at.elapsed() < TOKEN_TTL).then_some(drop.paths)
+        (drop.at.elapsed() < TOKEN_TTL).then_some(drop.dropped)
     }
 }
 
@@ -137,8 +164,9 @@ pub fn attach_paste(store: State<'_, Store>, request: Request<'_>) -> ApiResult<
         .map_err(api)
 }
 
-/// Claims a drop: the token comes from the `attachments-dropped` event. Folders in the drop are skipped and counted. An unknown, spent
-/// or expired token is `attachment_not_found`.
+/// Claims a drop: the token comes from the `attachments-dropped` event. Folders in the drop are skipped and counted. A drop with no
+/// file but an image (a picture dragged from Telegram or a browser) is attached like a pasted image; a drop with neither says
+/// `drop_not_supported` in the outcome. An unknown, spent or expired token is `attachment_not_found`.
 #[tauri::command(async)]
 pub fn attach_dropped(
     store: State<'_, Store>,
@@ -146,8 +174,8 @@ pub fn attach_dropped(
     token: String,
     chat_id: String,
 ) -> ApiResult<AttachOutcome> {
-    let paths = tokens.take(&token).ok_or(ErrorCode::AttachmentNotFound)?;
-    Ok(attach_paths(&store, &chat_id, &paths))
+    let dropped = tokens.take(&token).ok_or(ErrorCode::AttachmentNotFound)?;
+    Ok(attach_dropped_content(&store, &chat_id, dropped))
 }
 
 /// Removes a tile of the chat's draft (and its file).
@@ -187,25 +215,73 @@ pub fn open_attachment<R: Runtime>(
 /// A drag over the main window: the overlay goes on and off, a drop leaves a token. Other windows are not asked: a drop on them
 /// does nothing.
 pub fn on_drag_drop<R: Runtime>(app: &AppHandle<R>, event: &DragDropEvent) {
+    on_drag_drop_from(app, event, &SystemDrag);
+}
+
+/// [`on_drag_drop`] with the drag read from `source` (the IPC tests give it a fake one).
+///
+/// Tauri lists only file paths. When a drag enters with none, its image (if it has one) is read at once, while the app that started
+/// the drag still answers; a drop with none uses that image, or reads the drag again. A drop always leaves a token, even an empty
+/// one: the window claims it and says so when there was nothing to attach (before KINIG-133 such a drop did nothing, silently).
+pub fn on_drag_drop_from<R: Runtime>(
+    app: &AppHandle<R>,
+    event: &DragDropEvent,
+    source: &dyn DragSource,
+) {
+    let Some(tokens) = app.try_state::<DropTokens>() else {
+        return;
+    };
     match event {
-        DragDropEvent::Enter { .. } => {
+        DragDropEvent::Enter { paths, .. } => {
+            tokens.stage(paths.is_empty().then(|| source.image()).flatten());
             let _ = app.emit_to(MAIN_LABEL, ATTACH_DRAG, true);
         }
         DragDropEvent::Leave => {
+            tokens.stage(None);
             let _ = app.emit_to(MAIN_LABEL, ATTACH_DRAG, false);
         }
         DragDropEvent::Drop { paths, .. } => {
             let _ = app.emit_to(MAIN_LABEL, ATTACH_DRAG, false);
-            if paths.is_empty() {
-                return;
+            let staged = tokens.take_staged();
+            let mut dropped = Dropped {
+                paths: paths.clone(),
+                image: None,
+            };
+            if dropped.paths.is_empty() {
+                dropped.paths = source.file_paths();
             }
-            if let Some(tokens) = app.try_state::<DropTokens>() {
-                let token = tokens.put(paths.clone());
-                let _ = app.emit_to(MAIN_LABEL, ATTACH_DROPPED, token);
+            if dropped.paths.is_empty() {
+                dropped.image = staged.or_else(|| source.image());
             }
+            let token = tokens.put_drop(dropped);
+            let _ = app.emit_to(MAIN_LABEL, ATTACH_DROPPED, token);
         }
         _ => {}
     }
+}
+
+/// What a drop gives: its files; else its image, the way a pasted image goes (same size limit, same checks, a name made by Rust);
+/// else `drop_not_supported`. Nothing is written unless something is attached.
+fn attach_dropped_content(store: &Store, chat_id: &str, dropped: Dropped) -> AttachOutcome {
+    if !dropped.paths.is_empty() {
+        return attach_paths(store, chat_id, &dropped.paths);
+    }
+    let mut outcome = AttachOutcome {
+        attached: Vec::new(),
+        skipped_folders: 0,
+        error: None,
+    };
+    match dropped.image {
+        Some(DragImage::Bytes(bytes)) => {
+            match store.attach_bytes(chat_id, None, &bytes, &Now::system()) {
+                Ok(view) => outcome.attached.push(view),
+                Err(error) => outcome.error = Some(api(error).code),
+            }
+        }
+        Some(DragImage::TooLarge) => outcome.error = Some(ErrorCode::AttachmentTooLarge),
+        None => outcome.error = Some(ErrorCode::DropNotSupported),
+    }
+    outcome
 }
 
 /// Attaches files one after another. A folder is skipped and counted; the first error stops the rest and is reported with the tiles

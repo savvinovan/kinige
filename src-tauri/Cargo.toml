@@ -74,3 +74,8 @@ rusqlite = { version = "0.41", features = ["bundled"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 # The capture window as an NSPanel without activating the app: a regular window does not reliably get input while another app is active.
 tauri-nspanel = "2.1.1"
+# The drag pasteboard (KINIG-133): a picture dragged from an app that puts image data, not a file, on it. The same versions wry already
+# builds with (0.3.x), so nothing new is compiled.
+objc2 = "0.6"
+objc2-app-kit = "0.3"
+objc2-foundation = "0.3"
