@@ -252,6 +252,13 @@ pub fn on_drag_drop_from<R: Runtime>(
             }
             if dropped.paths.is_empty() {
                 dropped.image = staged.or_else(|| source.image());
+                if dropped.image.is_none() {
+                    // Type identifiers only, never contents: the one thing that tells which app sent what.
+                    log::info!(
+                        "a drop had nothing to attach; the drag offered: {}",
+                        source.type_names().join(", ")
+                    );
+                }
             }
             let token = tokens.put_drop(dropped);
             let _ = app.emit_to(MAIN_LABEL, ATTACH_DROPPED, token);

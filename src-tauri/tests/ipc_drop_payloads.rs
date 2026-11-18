@@ -38,6 +38,10 @@ impl DragSource for FakeDrag {
         self.image_reads.set(self.image_reads.get() + 1);
         self.image.clone()
     }
+
+    fn type_names(&self) -> Vec<String> {
+        vec!["public.utf8-plain-text".to_string()]
+    }
 }
 
 fn png_bytes() -> Vec<u8> {

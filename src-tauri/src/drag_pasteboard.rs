@@ -43,6 +43,21 @@ impl DragSource for SystemDragPasteboard {
             DRAG_PASTEBOARD,
         )))
     }
+
+    fn type_names(&self) -> Vec<String> {
+        type_names_of(&NSPasteboard::pasteboardWithName(&NSString::from_str(
+            DRAG_PASTEBOARD,
+        )))
+    }
+}
+
+fn type_names_of(pasteboard: &NSPasteboard) -> Vec<String> {
+    let types = pasteboard.types().map(|types| types.to_vec());
+    types
+        .unwrap_or_default()
+        .iter()
+        .map(|kind| kind.to_string())
+        .collect()
 }
 
 /// File URLs of the pasteboard's items; failing that, the legacy list, which an app may fill only after it was asked for a file URL
@@ -199,6 +214,19 @@ mod tests {
     fn text_alone_is_no_image() {
         assert!(image_of(&scratch(&[("public.utf8-plain-text", b"hello")])).is_none());
         assert!(image_of(&scratch(&[])).is_none());
+    }
+
+    #[test]
+    fn the_type_names_are_listed_without_contents() {
+        let board = scratch(&[
+            ("public.utf8-plain-text", b"secret words"),
+            ("public.url", b"x"),
+        ]);
+        let names = type_names_of(&board);
+        assert!(names.contains(&"public.utf8-plain-text".to_string()));
+        assert!(names.contains(&"public.url".to_string()));
+        assert!(names.iter().all(|name| !name.contains("secret")));
+        assert!(type_names_of(&scratch(&[])).is_empty());
     }
 
     #[test]

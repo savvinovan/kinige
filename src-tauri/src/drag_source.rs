@@ -19,6 +19,9 @@ pub trait DragSource {
     fn file_paths(&self) -> Vec<PathBuf>;
     /// The image the drag carries, if it carries one and no file.
     fn image(&self) -> Option<DragImage>;
+    /// The names of the data types the drag offers (type identifiers only, never contents), for the log line of a drop that could not
+    /// be used: the one thing that tells which app sent what.
+    fn type_names(&self) -> Vec<String>;
 }
 
 /// The drag of this system: the drag pasteboard on macOS, nothing elsewhere (Windows and Linux drops are files only).
@@ -36,5 +39,9 @@ impl DragSource for SystemDrag {
 
     fn image(&self) -> Option<DragImage> {
         None
+    }
+
+    fn type_names(&self) -> Vec<String> {
+        Vec::new()
     }
 }
