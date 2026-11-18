@@ -11,7 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-# The binding of ADR-0001 §11 (wrappers over libsodium-sys-stable 1.24.3, which bundles libsodium 1.0.22); pinned: a crypto
+# The binding of ADR-0001 §11 (wrappers over libsodium-sys-stable 1.24.4, which bundles libsodium 1.0.22); pinned: a crypto
 # dependency changes only on purpose.
 libsodium-rs = "=0.3.0"
 # BIP-39 word list and checksum, entropy only, never `to_seed` (ADR-0001 §8.1). CC0-1.0.
