@@ -42,11 +42,10 @@ for (const scale of ["default", "large"]) {
 
 // The keyboard focus ring (2 px, 2 px away, drawn outside the element) must not be cut by any ancestor that clips: the picture button and the x.
 const STORY_WITH_BUTTONS = "двафотоиpdf";
-// The picture of the focused composer is a baseline too (`focus-photo.png`, `focus-remove.png`): the keyboard focus is not drivable in the real
-// window (the screens scenarios use accessibility actions only), so this is where the ring on a tile is looked at.
-for (const [target, selector, shot] of [
-  ["кнопка фото", ".pending-tile__open", "focus-photo.png"],
-  ["крестик", ".pending-tile__remove", "focus-remove.png"],
+// (The look of the ring is in the baselines of the stories "ФокусНаФото" and "ФокусНаКрестике": the keyboard cannot be driven in the real window.)
+for (const [target, selector] of [
+  ["кнопка фото", ".pending-tile__open"],
+  ["крестик", ".pending-tile__remove"],
 ] as const) {
   test(`кольцо фокуса не обрезано: ${target}`, async ({ page }) => {
     await open(page, STORY_WITH_BUTTONS);
@@ -80,6 +79,5 @@ for (const [target, selector, shot] of [
     });
     expect(ring.drawn, "the focus ring is not drawn").toBe(true);
     expect(ring.cuts, JSON.stringify(ring.cuts)).toEqual([]);
-    await expect(page.locator(".composer")).toHaveScreenshot(shot);
   });
 }

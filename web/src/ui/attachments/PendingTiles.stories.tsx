@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import { staticVoice } from "../../voice/staticVoice";
 import type { VoiceController } from "../../voice/useVoiceRecorder";
@@ -65,6 +65,12 @@ export const СкриншотТелефона: Story = {
 /** Exactly two full lines of tiles (six 4:3 photos, three on a line): all of them show at the default window size, with no scrolling. */
 export const ДвеСтроки: Story = { args: { items: Array.from({ length: 6 }, (_, i) => demoPhoto(`two${i}`, `IMG_${String(i + 1).padStart(4, "0")}.jpg`, 1280, 960)) } };
 
+/** The keyboard focus is on the first picture tile: the ring stands outside the tile, whole, not cut by the tile or by the area. */
+export const ФокусНаФото: Story = { render: (args) => <ComposerWithTiles items={args.items} focus=".pending-tile__open" /> };
+
+/** The keyboard focus is on the x of the first tile: the ring is whole at the tile's corner. */
+export const ФокусНаКрестике: Story = { render: (args) => <ComposerWithTiles items={args.items} focus=".pending-tile__remove" /> };
+
 /** A voice recording is on: the tiles stay above, in the box, and the recording bar stands under it. */
 export const СЗаписьюГолоса: Story = { args: { items: MIXED.slice(0, 2) }, render: (args) => <ComposerWithTiles items={args.items} voice={RECORDING} /> };
 
@@ -115,9 +121,23 @@ export const Английский: Story = {
 export const КрупныйТекст: Story = { globals: { textScale: "large" } };
 
 /** The real composer with the tiles inside its box; the x removes a tile. */
-function ComposerWithTiles({ items, error, voice }: { items: readonly AttachmentView[]; error?: string; voice?: VoiceController }) {
+function ComposerWithTiles({
+  items,
+  error,
+  voice,
+  focus,
+}: {
+  items: readonly AttachmentView[];
+  error?: string;
+  voice?: VoiceController;
+  /** A selector: the first element that matches gets the keyboard focus once, to look at its ring. */
+  focus?: string;
+}) {
   const [rest, setRest] = useState(items);
   const [value, setValue] = useState("");
+  useEffect(() => {
+    if (focus) document.querySelector<HTMLElement>(focus)?.focus();
+  }, [focus]);
   return (
     <Composer
       value={value}
