@@ -62,8 +62,8 @@ export const СкриншотТелефона: Story = {
   },
 };
 
-/** Exactly two full lines of tiles (six 4:3 photos, three on a line): all of them show at the default window size, with no scrolling. */
-export const ДвеСтроки: Story = { args: { items: Array.from({ length: 6 }, (_, i) => demoPhoto(`two${i}`, `IMG_${String(i + 1).padStart(4, "0")}.jpg`, 1280, 960)) } };
+/** Exactly two full lines of tiles (six square photos, three or four on a line whatever the column): all of them show at the default window size, with no scrolling. */
+export const ДвеСтроки: Story = { args: { items: Array.from({ length: 6 }, (_, i) => demoPhoto(`two${i}`, `IMG_${String(i + 1).padStart(4, "0")}.jpg`, 1024, 1024)) } };
 
 /** The keyboard focus is on the first picture tile: the ring stands outside the tile, whole, not cut by the tile or by the area. */
 export const ФокусНаФото: Story = { render: (args) => <ComposerWithTiles items={args.items} focus=".pending-tile__open" /> };
