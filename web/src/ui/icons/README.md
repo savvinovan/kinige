@@ -39,7 +39,6 @@ Line SVGs from the [Lucide](https://lucide.dev) set via the npm package `lucide-
 | `upload`       | `upload`                                    | MIT (from Feather) |
 | `expandPane`   | `maximize-2`                                | ISC                |
 | `collapsePane` | `minimize-2`                                | MIT (from Feather) |
-| `hidePane`     | `eye-off`                                   | ISC                |
 | `forest`       | `trees`                                     | ISC                |
 | `file`         | `file`                                      | ISC                |
 | `audio`        | `audio-lines`                               | ISC                |

@@ -90,12 +90,12 @@ PY
 
 labels() {
   if [ "$UI" = "ru" ]; then
-    L_EXPAND="Развернуть лес"; L_COLLAPSE="Свернуть лес"; L_HIDE="Скрыть лес"; L_SHOW="Показать лес"; L_WHOLE="Весь год"
+    L_EXPAND="Развернуть лес"; L_COLLAPSE="Свернуть лес"; L_TOGGLE="Лес"; L_SHOW="Показать лес"; L_WHOLE="Весь год"
     L_AUTUMN="Осень"; L_CALENDAR="Календарь"; L_FOREST="Лес"; L_PREV="Предыдущий год"; L_NEXT="Следующий год"
     L_BOARD="Лес ${YEAR} года"; L_STRIP="Дни ${YEAR} года"; L_PROFILE="Профиль"; L_SEND="Отправить"
     L_INBOX="Входящие"; L_IDEAS="Идеи"
   else
-    L_EXPAND="Expand forest"; L_COLLAPSE="Collapse forest"; L_HIDE="Hide forest"; L_SHOW="Show forest"; L_WHOLE="Whole year"
+    L_EXPAND="Expand forest"; L_COLLAPSE="Collapse forest"; L_TOGGLE="Forest"; L_SHOW="Show forest"; L_WHOLE="Whole year"
     L_AUTUMN="Autumn"; L_CALENDAR="Calendar"; L_FOREST="Forest"; L_PREV="Previous year"; L_NEXT="Next year"
     L_BOARD="Forest of ${YEAR}"; L_STRIP="Days of ${YEAR}"; L_PROFILE="Profile"; L_SEND="Send"
     L_INBOX="Inbox"; L_IDEAS="Идеи"
@@ -231,10 +231,10 @@ shoot_light 13-narrow-640
 echo "window: $(ax resize "$(app_pid)" 1280 800)"
 sleep 3
 
-# ---- 14. Hide from the strip button ----
+# ---- 14. Hide from the forest switch at the right end of the top bar (KINIG-134; it replaced the hide button of the strip) ----
 press "${L_COLLAPSE}"
 sleep 2
-press "${L_HIDE}"
+press "${L_TOGGLE}" Button
 sleep 2
 [ "$(sqlw "select value from app_setting where key = 'forest_view'")" = "hidden" ] || fail "forest_view is not 'hidden' in the database"
 has "${L_EXPAND}" && fail "the forest is still on screen after Hide"

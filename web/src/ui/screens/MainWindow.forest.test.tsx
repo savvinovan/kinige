@@ -32,6 +32,8 @@ function setup(options: MockApiOptions = {}, settings: Partial<Settings> = {}) {
 }
 
 const pane = () => screen.queryByRole("region", { name: "Forest" });
+/** The forest switch at the right end of the top bar (KINIG-134). */
+const toggle = () => screen.getByRole("button", { name: "Forest" });
 const cell = (date: string) => document.querySelector<HTMLElement>(`[data-date="${date}"]`)!;
 const forestCalls = (api: MockApi) => api.calls.filter((c) => c.startsWith("getForestYear"));
 /** jsdom has no layout: puts the first element of `topDate` at the top edge of the feed (earlier ones above, later below) and scrolls. */
@@ -117,10 +119,10 @@ describe("expanding, hiding and coming back", () => {
     expect(screen.getByRole("button", { name: "Winter" })).toBeInTheDocument();
   });
 
-  it("'Hide forest' on the strip removes the pane, and the profile menu brings the strip back", async () => {
+  it("the top bar button removes the pane and the profile menu brings the strip back", async () => {
     const { api } = setup();
     await screen.findByRole("grid", { name: "Days of 2026" });
-    fireEvent.click(screen.getByRole("button", { name: "Hide forest" }));
+    fireEvent.click(toggle());
     expect(pane()).toBeNull();
     expect(api.calls.at(-1)).toBe("setForestView hidden forest");
     const callsWhileHidden = forestCalls(api).length;
@@ -130,13 +132,78 @@ describe("expanding, hiding and coming back", () => {
     expect(forestCalls(api).length).toBeGreaterThan(callsWhileHidden);
   });
 
-  it("hiding from the expanded header and showing again gives the strip, not the board", async () => {
+  it("the pane has no hide button of its own: the top bar button is the only control for it", async () => {
+    setup();
+    await screen.findByRole("grid", { name: "Days of 2026" });
+    expect(screen.queryByRole("button", { name: "Hide forest" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Expand forest" }));
+    await screen.findByRole("application", { name: "Forest of 2026" });
+    expect(screen.queryByRole("button", { name: "Hide forest" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Forest" })).toHaveLength(1);
+  });
+
+  it("the button is one and the same element, in the same place, whether the forest is shown or hidden", async () => {
+    setup();
+    await screen.findByRole("grid", { name: "Days of 2026" });
+    const button = toggle();
+    const bar = button.parentElement!;
+    expect(bar).toHaveClass("main-window__topbar");
+    // The bar comes before the pane, and before the feed when there is no pane.
+    expect(bar.compareDocumentPosition(pane()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(button);
+    expect(pane()).toBeNull();
+    expect(toggle()).toBe(button);
+    expect(toggle().parentElement).toBe(bar);
+    expect(button).toHaveAttribute("aria-pressed", "false");
+    expect(bar.compareDocumentPosition(screen.getByRole("region", { name: "Entries" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(button);
+    expect(await screen.findByRole("grid", { name: "Days of 2026" })).toBeInTheDocument();
+    expect(button).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("the button and the profile menu share one state, in both directions, while the window stays open", async () => {
+    const { api } = setup();
+    await screen.findByRole("grid", { name: "Days of 2026" });
+    // Menu hides: the button follows.
+    fireEvent.click(await menuItem("Hide forest"));
+    expect(pane()).toBeNull();
+    expect(toggle()).toHaveAttribute("aria-pressed", "false");
+    expect(toggle()).toHaveAttribute("title", "Show forest");
+    // Button shows: the menu follows.
+    fireEvent.click(toggle());
+    expect(await screen.findByRole("grid", { name: "Days of 2026" })).toBeInTheDocument();
+    expect(toggle()).toHaveAttribute("aria-pressed", "true");
+    expect(await menuItem("Hide forest")).toBeInTheDocument();
+    // Each change is one stored setting, written once.
+    expect(api.calls.filter((c) => c.startsWith("setForestView"))).toEqual(["setForestView hidden forest", "setForestView strip forest"]);
+  });
+
+  it("showing again from the top bar gives the strip, not the board, and the saved state starts the button the right way", async () => {
     setup({}, { forestView: "expanded" });
     await screen.findByRole("application", { name: "Forest of 2026" });
-    fireEvent.click(screen.getByRole("button", { name: "Hide forest" }));
+    expect(toggle()).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(toggle());
     expect(pane()).toBeNull();
-    fireEvent.click(await menuItem("Show forest"));
+    fireEvent.click(toggle());
     expect(await screen.findByRole("grid", { name: "Days of 2026" })).toBeInTheDocument();
+  });
+
+  it("a hidden forest at start: the button is there, not pressed, and brings the strip back", async () => {
+    setup({}, { forestView: "hidden" });
+    await screen.findByText("Today in the inbox");
+    expect(pane()).toBeNull();
+    expect(toggle()).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(toggle());
+    expect(await screen.findByRole("grid", { name: "Days of 2026" })).toBeInTheDocument();
+  });
+
+  it("there is no switch in the trash or in search results, where the forest is never shown", async () => {
+    setup();
+    await screen.findByRole("grid", { name: "Days of 2026" });
+    fireEvent.click(screen.getByRole("button", { name: /^Trash/ }));
+    await waitFor(() => expect(pane()).toBeNull());
+    expect(screen.queryByRole("button", { name: "Forest" })).toBeNull();
   });
 
   it("the profile menu says 'Hide forest' while it is shown", async () => {
@@ -326,7 +393,7 @@ describe("the forest follows the journal", () => {
     api.failNext("getForestYear", "store_read_failed");
     expect(await screen.findByText("The forest could not be loaded.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Expand forest" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Hide forest" })).toBeInTheDocument();
+    expect(toggle()).toBeInTheDocument();
     // The feed is not affected.
     expect(await screen.findByText("Today in the inbox")).toBeInTheDocument();
   });
