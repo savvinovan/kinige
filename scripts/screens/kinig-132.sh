@@ -55,6 +55,15 @@ L_VIEWER="Просмотр фото"
 L_CLOSE="Закрыть"
 ALBUM="${L_PHOTO} IMG_0002.jpg"
 ALONE="${L_PHOTO} IMG_0005.jpg"
+CAPTION="Прогулка вдоль реки"
+
+# The album first, so that its pictures load, then its caption, so that the whole entry, caption and time included, is in the shot.
+show_album() {
+  scroll_to "$ALBUM"
+  sleep 3
+  scroll_to "$CAPTION"
+  sleep 3
+}
 
 # ---- 1. A picture with no text: it fills the bubble, the time is a pill on it ----
 set_language ru
@@ -72,8 +81,7 @@ sleep 4
 shoot 01-picture-only
 
 # ---- 2. Pictures with a caption: the album edge to edge at the top, the text under it, the time in the footer ----
-scroll_to "$ALBUM"
-sleep 4
+show_album
 shoot 02-pictures-with-text
 
 # ---- 3. The picture is still the button that opens the viewer ----
@@ -91,8 +99,7 @@ sleep 2
 scroll_to "$ALONE"
 sleep 4
 shoot 04-large-text-picture-only
-scroll_to "$ALBUM"
-sleep 4
+show_album
 shoot_light 05-large-text-pictures-with-text
 edit_settings 'd["text_size"] = "normal"'
 
@@ -102,8 +109,7 @@ sleep 3
 scroll_to "$ALONE"
 sleep 3
 shoot_light 06-narrow-640-picture-only
-scroll_to "$ALBUM"
-sleep 3
+show_album
 shoot_light 07-narrow-640-pictures-with-text
 echo "window: $(ax resize "$(app_pid)" 1280 800)"
 sleep 3
