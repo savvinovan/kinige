@@ -71,8 +71,9 @@ restart_app() {
   detect_language
 }
 
-# The switch is pressed by role: "Forest" is also the name of the region and of a radio button of the expanded header.
-toggle() { press "${L_TOGGLE}" Button; sleep 2; }
+# The switch is pressed by role: "Forest" is also the name of the region and of a radio button of the expanded header. WebKit reports a
+# button with `aria-pressed` as AXCheckBox (value 1 = pressed = shown), not AXButton (the first run of this scenario pressed "Button" and found nothing).
+toggle() { press "${L_TOGGLE}" CheckBox; sleep 2; }
 
 # ---- 1. The forest is shown (the default): the switch at the top right, the strip below it ----
 set_language ru

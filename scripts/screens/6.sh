@@ -234,7 +234,7 @@ sleep 3
 # ---- 14. Hide from the forest switch at the right end of the top bar (KINIG-134; it replaced the hide button of the strip) ----
 press "${L_COLLAPSE}"
 sleep 2
-press "${L_TOGGLE}" Button
+press "${L_TOGGLE}" CheckBox
 sleep 2
 [ "$(sqlw "select value from app_setting where key = 'forest_view'")" = "hidden" ] || fail "forest_view is not 'hidden' in the database"
 has "${L_EXPAND}" && fail "the forest is still on screen after Hide"
