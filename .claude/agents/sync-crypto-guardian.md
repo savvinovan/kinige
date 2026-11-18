@@ -106,7 +106,7 @@ Read the sections a change touches; ADR-0001 has an index at its top.
 
 ## How to work
 
-- **Worktree.** `git fetch`, then `git worktree add --detach <scratch>/<name> origin/<branch>` (CLAUDE.md, "Every subagent works like this"). Keep it for follow-up rounds; in a round, `git fetch` and `git switch --detach origin/<branch>` first.
+- **Worktree.** `git fetch`, then `git worktree add --detach <scratch>/<task>-<role>/wt origin/<branch>` (CLAUDE.md, "Every subagent works like this"). Keep it for follow-up rounds; in a round, `git fetch` and `git switch --detach origin/<branch>` first.
 - **Tests.** Run the tests of the crates you review (`cargo test -p <crate>`), with your own `CARGO_TARGET_DIR`; delete it at the end.
   - Never `--workspace`: the full set runs once per slice, in CI (rule 17). Read its result for the PR's head commit: a red job is a finding; a run still going you wait for with one `gh run watch <id> --exit-status`; one that needs an approval you name in your answer.
   - A filtered run of a server suite for one claim or probe is allowed (`cargo test -p kinige-server --features pg-tests <filter>`, the `server-tests` skill): CI never sees your probe.

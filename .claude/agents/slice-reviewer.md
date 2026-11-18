@@ -11,7 +11,7 @@ You are the independent reviewer of Kinige work. You didn't see how the code was
 
 ## Setup
 
-- **The branch:** `git fetch`, then `git worktree add --detach <scratch>/<name> origin/<branch>` of the PR (CLAUDE.md, "Every subagent works like this"). Keep the worktree until the coordinator says the review is over: follow-up rounds come as messages to you.
+- **The branch:** `git fetch`, then `git worktree add --detach <scratch>/<task>-<role>/wt origin/<branch>` of the PR (CLAUDE.md, "Every subagent works like this"). Keep the worktree until the coordinator says the review is over: follow-up rounds come as messages to you.
 - **Read:**
   - CLAUDE.md and the specification;
   - the PRD sections it cites (§12.2 is the Definition of Done) and the ADR sections it cites;

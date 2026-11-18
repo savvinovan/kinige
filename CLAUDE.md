@@ -77,10 +77,11 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 
 **Every subagent works like this.** Prompts don't repeat these rules.
 - **Worktree.** Work in your own worktree.
-  - Use the one the prompt names. If it names none, create one under your scratch directory from the main checkout (your starting directory): `git worktree add <scratch>/<name> -b <branch> origin/main` for new work, `git worktree add --detach <scratch>/<name> origin/<branch>` for a review.
+  - Use the one the prompt names. If it names none, create one under your scratch directory from the main checkout (your starting directory): `git worktree add <scratch>/<task>-<role>/wt -b <branch> origin/main` for new work, `git worktree add --detach <scratch>/<task>-<role>/wt origin/<branch>` for a review.
   - Start every Bash command with `cd <worktree> &&`: the shell starts in the main checkout each time. The guard blocks edits there, and any git that would change it.
   - Set `CARGO_TARGET_DIR` inside the worktree, and delete it before you finish each round (rule 13).
   - Don't touch files outside your worktree, except your scratch directory and your agent memory.
+  - The scratch directory is shared by all agents of the session. Everything of yours goes in your own subdirectory `<scratch>/<task>-<role>/`, such as `KINIG-102-reviewer/`: the worktree in `wt/`, and your files (a throwaway database's password, patches, logs) beside it, never inside the worktree and never in the scratch root.
   - **Keep the worktree between rounds.** Follow-up rounds of the same task come as messages to the same agent. Remove the worktree only when the coordinator says the task is over: `git -C <worktree> worktree remove <worktree>`. The coordinator removes implementers' worktrees after their PR is merged. `isolation: worktree` is not used, because a resumed agent whose worktree was cleaned up cannot run commands.
 - **The user's Mac.** Don't launch the app, take screenshots, simulate input or global hotkeys, open the user's data, or change Claude configs and register kinige-mcp.
   - GUI checks run on GitHub runners: see the `screens` skill.
