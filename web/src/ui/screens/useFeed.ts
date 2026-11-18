@@ -69,6 +69,9 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     (edge === "older" ? setOlder : setNewer)(cursor);
   }, []);
   const loadingEdge = useRef(false);
+  // Grows when the feed is reread from scratch (`restart`): a page that was requested before it and arrives after must not be
+  // merged into the new list or move its cursors back into the middle of the history.
+  const restarts = useRef(0);
   const [loadError, setLoadError] = useState<ErrorCode | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | undefined>(undefined);
@@ -191,9 +194,10 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     const { chatId: id, tag: filter } = current.current;
     if (cursor === null || id === null || loadingEdge.current) return;
     loadingEdge.current = true;
+    const started = restarts.current;
     try {
       const page = await api.listMessages(id, { before: cursor, limit: PAGE_SIZE, tag: filter ?? undefined });
-      if (current.current.chatId !== id || current.current.tag !== filter) return;
+      if (current.current.chatId !== id || current.current.tag !== filter || restarts.current !== started) return;
       setMessages((loaded) => mergeOlder(loaded, page.messages));
       setCursor("older", page.older);
     } catch (reason) {
@@ -209,9 +213,10 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     const { chatId: id, tag: filter } = current.current;
     if (cursor === null || id === null || loadingEdge.current) return;
     loadingEdge.current = true;
+    const started = restarts.current;
     try {
       const page = await api.listMessages(id, { after: cursor, limit: PAGE_SIZE, tag: filter ?? undefined });
-      if (current.current.chatId !== id || current.current.tag !== filter) return;
+      if (current.current.chatId !== id || current.current.tag !== filter || restarts.current !== started) return;
       setMessages((loaded) => mergeOlder(loaded, page.messages));
       setCursor("newer", page.newer);
     } catch (reason) {
@@ -270,6 +275,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     try {
       const page = await api.listMessages(id, { limit: PAGE_SIZE, tag: filter ?? undefined });
       if (current.current.chatId !== id || current.current.tag !== filter) return;
+      restarts.current += 1;
       setMessages((shown) => withDeleted(shown, page.messages, deleted.current, filter));
       setCursor("older", page.older);
       setCursor("newer", page.newer);
@@ -279,6 +285,15 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
       // The feed stays as it was: the next event or "Done" will reread it.
     }
   }, [api, setCursor]);
+
+  /**
+   * "Jump to latest" (KINIG-145): a feed that holds only a window around an old entry (opened from search, "On this day" or a reply
+   * quote) is reread from its live edge: the last page replaces what is loaded, instead of paging through all the history in between.
+   * A feed that already reaches the live edge needs nothing; the feed scrolls to its bottom edge itself.
+   */
+  const jumpToLatest = useCallback(async () => {
+    if (paging.current.newer !== null) await restart();
+  }, [restart]);
 
   const replace = useCallback(
     (view: MessageView) => {
@@ -343,7 +358,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
   );
 
   const ui: FeedUiState = { editingId, deletedIds, editError, markedId: mark?.id ?? null, markTerms: mark?.terms };
-  const feedPaging: FeedPaging = { hasOlder: older !== null, hasNewer: newer !== null, onLoadOlder: loadOlder, onLoadNewer: loadNewer };
+  const feedPaging: FeedPaging = { hasOlder: older !== null, hasNewer: newer !== null, onLoadOlder: loadOlder, onLoadNewer: loadNewer, onJumpToLatest: jumpToLatest };
   const dateTarget = dateFor === null ? undefined : messages.find((m) => m.id === dateFor);
   return {
     messages,

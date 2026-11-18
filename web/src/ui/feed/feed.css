@@ -1,3 +1,41 @@
+/* The feed pane: the scrollable area and what overlays it ("Jump to latest"). It takes the place the feed used to take in the chat area. */
+.feed-pane {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.feed-pane > .feed-scroll {
+  flex: 1;
+}
+
+/* "Jump to latest" (KINIG-145): over the feed at its bottom right corner, above the composer; the feed does not move when it appears.
+   No z-index: the hover action row (z-index 1) paints over it, so a bubble's buttons stay reachable under the button. It fades in like
+   the toast (the duration is 0 under Reduce Motion). */
+.feed-pane .jump-latest {
+  position: absolute;
+  right: var(--layout-feed-padding-inline);
+  bottom: var(--space-4);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
+  background: var(--color-surface-message);
+  box-shadow: var(--shadow-raised);
+  color: var(--color-text-secondary);
+  animation: jump-latest-in var(--motion-duration-medium) var(--motion-easing-enter);
+}
+
+.feed-pane .jump-latest:hover {
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+}
+
+@keyframes jump-latest-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* The feed: the scrollable area, the list of bubbles and day labels. Tokens only. */
 .feed-scroll {
   display: flex;
