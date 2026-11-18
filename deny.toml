@@ -5,14 +5,15 @@
 all-features = true
 
 [advisories]
-# What may be ignored here, and what may not (ADR-0012: security updates are not delayed):
+# What may be ignored here, and what may not (ADR-0012: the two-week rule for new versions, and security updates are not delayed):
 # - "unmaintained": a crate with no maintained release to move to. If it is a direct dependency, the entry names the task that decides
 #   its replacement. The Tauri entries are transitive dependencies on Linux that can be replaced only by updating Tauri and its plugins.
 # - A vulnerability, only when all three hold, and the comment block above the entry says how each point was checked:
 #   (1) the fix cannot be taken yet (for example the release is younger than the two-week rule of `src-tauri/Cargo.toml`);
 #   (2) everywhere the crate appears in the graph (`cargo tree -i <crate> --target all`, the workspace and the spikes), the vulnerable
 #       code is not compiled, or runs only on input that was authenticated first;
-#   (3) the block names the release and the date that remove the entry.
+#   (3) the block names the release and the date that remove the entry; when no fixed release exists yet, it names the advisory
+#       that tracks the fix and the date of the next review instead.
 #   A vulnerability whose code is reachable is never ignored: its fix is taken at once.
 # - An ignore is by advisory id, so it covers every use of the crate. A new dependent on the crate needs the proof of (2) again.
 # Every entry is reviewed when the crate that pulls it is updated, or by the date or task its comment names.

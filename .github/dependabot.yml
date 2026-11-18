@@ -10,6 +10,12 @@ updates:
       interval: weekly
     cooldown:
       default-days: 14
+    # The crypto binding (ADR-0001 section 11) is bumped by hand and goes through the sync-crypto-guardian: it bundles the C code behind
+    # every primitive, and a bump moves its build-time dependencies too (KINIG-109). Dependabot also rewrote the exact `=` pin of rmcp
+    # inside the group PR #64, so an exact pin is not a stop for it.
+    ignore:
+      - dependency-name: "libsodium-rs"
+      - dependency-name: "libsodium-sys-stable"
     groups:
       cargo-minor-patch:
         update-types: [minor, patch]
