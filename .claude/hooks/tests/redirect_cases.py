@@ -16,6 +16,27 @@ REDIRECT_BLOCKED = [
     "docker rm -f 2>/dev/null",
     "docker rm -f </dev/null",
     "docker help >/dev/null; docker rm -f portainer",
+    "docker rm -f kinige-x '>' portainer",
+    # A bare operator that ends its segment is kept, so the words after the substitution are not lost.
+    "docker rm -f kinige-x <(true) portainer",
+    "docker rm -f kinige-x >(cat) portainer",
+    "docker rm -f kinige-x > $(echo f) portainer",
+    "docker rm -f kinige-x < `echo f` portainer",
+    # A prefix word after a leading redirect is still unwrapped.
+    ">/dev/null sudo docker rm -f portainer",
+    "2>/dev/null X=1 docker rm -f portainer",
+    "2>/dev/null env git push origin main",
+    ">/dev/null command git push --force origin tools/x",
+    "2>/dev/null env cp /tmp/s.json ~/.claude/settings.json",
+    # `--help` exempts only a line that names nothing to remove.
+    "docker rm -f portainer & docker rm --help",
+    "docker rm --help & docker rm -f portainer",
+    "docker help & docker rm -f portainer",
+    "docker rm -f portainer &! docker rm --help",
+    "docker rm -f -- portainer --help",
+    "docker rm -f kinige-x -- --help portainer",
+    "echo portainer | xargs docker rm -f -- --help",
+    "docker help rm",
     "docker rm -f $(docker ps -aq) >/dev/null",
     "docker rm -f $(docker ps -aq) 2>&1 | tail -1",
     # A redirect into a source file is still the shell write of rule 8.
@@ -28,6 +49,17 @@ REDIRECT_BLOCKED = [
     "cp /tmp/s.json ~/.claude/settings.json >/dev/null",
     "git push origin 2>&1",
     "git push origin >/dev/null",
+    # The rarer operators: `>&`, `<>`, `<&`, a descriptor of two digits or a named one.
+    "git push origin >& /dev/null",
+    "git push origin <> /dev/null",
+    "git push origin <& 0",
+    "git push origin 10>/dev/null",
+    "git push origin {fd}>/dev/null",
+    "cp /tmp/s.json ~/.claude/settings.json >& /dev/null",
+    "cp /tmp/s.json ~/.claude/settings.json 2>& /dev/null",
+    "cp /tmp/s.json ~/.claude/settings.json <> /dev/null",
+    "cp /tmp/s.json ~/.claude/settings.json 10>/dev/null",
+    "cp /tmp/s.json ~/.claude/settings.json {fd}>/dev/null",
 ]
 
 REDIRECT_ALLOWED = [
@@ -45,7 +77,10 @@ REDIRECT_ALLOWED = [
     "docker ps -aq --filter name=kinige- 2>/dev/null | xargs docker rm -f >/dev/null",
     # The usage text removes nothing.
     "docker rm --help",
-    "docker help rm 2>&1 | grep -i volume",
+    "docker rm --help 2>&1 | grep -i volume",
+    "docker rm -f kinige-x >& /dev/null",
+    "docker rm -f kinige-x 10>/dev/null",
+    "2>/dev/null docker rm -f kinige-x",
     "cp /tmp/s.json /tmp/t.json 2>&1",
     "git push -u origin tools/x >/dev/null 2>&1",
 ]

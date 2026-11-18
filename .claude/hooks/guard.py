@@ -105,9 +105,10 @@ def check_command(command, data, cwd, depth):
         words = shellparse.command_words(raw)
         if not words:
             continue
-        # The arguments are the words without the redirects (`docker rm -f kinige-x >/dev/null` removes one object);
-        # the checks that read redirects (`check_edit`, `check_claude`) get the full `words`.
-        plain = shellparse.without_redirects(words)
+        # The program and its arguments are read without the redirects: `docker rm -f kinige-x >/dev/null` removes one
+        # object, and `2>/dev/null env git push` runs git. The redirects go first, so a prefix word after one is still
+        # unwrapped. The checks that read redirects (`check_edit`, `check_claude`) get the full `words`.
+        plain = shellparse.command_words(shellparse.without_redirects(raw))
         prog, args = (plain or words)[0], plain[1:]
         name = re.sub(r"^(python)3?[\d.]*$", r"\g<1>3", os.path.basename(prog))
         # A commit message or PR body may name the data paths (git, gh); an inline script's text is all of the command.
@@ -280,8 +281,12 @@ def check_docker(name, args, feeding, bodies):
     if "prune" in args:
         return "`docker … prune` would remove other projects' objects on ubuntu-server. Remove your own `kinige-` objects by name."
     verbs = [a for a in args if a in DOCKER_REMOVING]
-    # `docker rm --help` and `docker help rm` only print the usage.
-    if not verbs or "--help" in args or args[:1] == ["help"]:
+    if not verbs:
+        return None
+    # `docker rm --help` only prints the usage. With a name in the line, or after `--` (where `--help` is a name),
+    # it is a removal: `docker rm -f portainer & docker rm --help`, `docker rm -f -- portainer --help`.
+    after = args[args.index(verbs[0]) + 1:]
+    if "--help" in after and "--" not in args and all(a.startswith("-") for a in after):
         return None
     if "compose" in args:
         names = [args[i + 1] for i, a in enumerate(args[:-1]) if a in ("-p", "--project-name")]

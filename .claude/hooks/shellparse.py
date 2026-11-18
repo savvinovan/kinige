@@ -9,6 +9,9 @@ import os
 import re
 
 PREFIX_WORDS = ("sudo", "time", "command", "exec", "env", "nohup", "builtin")
+# A redirect operator at the start of a word, with an optional descriptor (`2`, `10`, `{fd}`): `>`, `>>`, `&>`, `&>>`,
+# `>&`, `>|`, `<`, `<&`, `<>`. Not a heredoc or here-string (`<<`, `<<<`).
+REDIRECT_RE = re.compile(r"^(?:\d+|\{\w+\})?(?:&>>?|>>?[&|]?|<>|<&?(?!<))")
 
 
 def skeleton(command):
@@ -126,17 +129,19 @@ def redirect_targets(words):
 
 
 def without_redirects(words):
-    """`words` without the redirects (`>f`, `2>&1`, `&>f`, `>>f`, `<f`) and the word after a bare operator (`> f`), so a
-    check that reads a command's arguments does not take a redirect for one. `redirect_targets` reads them from the
-    full words. A heredoc `<<` is kept: `is_inline_script` looks for it."""
-    out, skip = [], False
-    for w in words:
-        if skip:
-            skip = False
-        elif re.match(r"^(?:\d?&?>>?|\d?<(?!<))", w):
-            skip = re.fullmatch(r"\d?&?>>?|\d?<", w) is not None
-        else:
-            out.append(w)
+    """`words` without the redirects (`>f`, `2>&1`, `&>f`, `>>f`, `<f`, `>&f`, `<&0`, `<>f`, `10>f`, `{fd}>f`) and the
+    word after a bare operator (`> f`), so a check that reads a command's arguments does not take a redirect for one.
+    `redirect_targets` reads them from the full words. A heredoc `<<` is kept: `is_inline_script` looks for it. So is
+    a bare operator that ends its segment (`> $(…)`, `<(…)`: the split cut its target off), which the checks then
+    read as an argument they do not know, as before."""
+    out, i = [], 0
+    while i < len(words):
+        m = REDIRECT_RE.match(words[i])
+        if not m or (m.end() == len(words[i]) and i + 1 == len(words)):
+            out.append(words[i])
+        elif m.end() == len(words[i]):
+            i += 1
+        i += 1
     return out
 
 
