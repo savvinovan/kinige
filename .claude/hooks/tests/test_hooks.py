@@ -14,6 +14,10 @@ import tempfile
 import unittest
 import uuid
 
+sys.dont_write_bytecode = True  # no __pycache__ in the checkout
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from redirect_cases import REDIRECT_ALLOWED, REDIRECT_BLOCKED  # noqa: E402  (the redirect cases, next to this file)
+
 HOOKS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GUARD = os.path.join(HOOKS, "guard.py")
 HOME = os.path.expanduser("~")
@@ -206,14 +210,14 @@ class Repo(unittest.TestCase):
 
 class BashCommands(Repo):
     def test_blocked(self):
-        for command in BLOCKED_COMMANDS:
+        for command in BLOCKED_COMMANDS + REDIRECT_BLOCKED:
             with self.subTest(command=command):
                 code, err = run("bash", bash(command, cwd=self.repo))
                 self.assertEqual(code, 2, err)
                 self.assertIn("Blocked by .claude/hooks/guard.py", err)
 
     def test_allowed(self):
-        for command in ALLOWED_COMMANDS:
+        for command in ALLOWED_COMMANDS + REDIRECT_ALLOWED:
             with self.subTest(command=command):
                 code, err = run("bash", bash(command, cwd=self.repo))
                 self.assertEqual(code, 0, err)

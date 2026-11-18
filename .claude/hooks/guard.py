@@ -105,7 +105,10 @@ def check_command(command, data, cwd, depth):
         words = shellparse.command_words(raw)
         if not words:
             continue
-        prog, args = words[0], words[1:]
+        # The arguments are the words without the redirects (`docker rm -f kinige-x >/dev/null` removes one object);
+        # the checks that read redirects (`check_edit`, `check_claude`) get the full `words`.
+        plain = shellparse.without_redirects(words)
+        prog, args = (plain or words)[0], plain[1:]
         name = re.sub(r"^(python)3?[\d.]*$", r"\g<1>3", os.path.basename(prog))
         # A commit message or PR body may name the data paths (git, gh); an inline script's text is all of the command.
         seen = command if is_inline_script(name, args, words) else " ".join(bodies.get(w, w) for w in raw)
@@ -277,7 +280,8 @@ def check_docker(name, args, feeding, bodies):
     if "prune" in args:
         return "`docker … prune` would remove other projects' objects on ubuntu-server. Remove your own `kinige-` objects by name."
     verbs = [a for a in args if a in DOCKER_REMOVING]
-    if not verbs:
+    # `docker rm --help` and `docker help rm` only print the usage.
+    if not verbs or "--help" in args or args[:1] == ["help"]:
         return None
     if "compose" in args:
         names = [args[i + 1] for i, a in enumerate(args[:-1]) if a in ("-p", "--project-name")]

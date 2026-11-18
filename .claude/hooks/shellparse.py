@@ -125,6 +125,21 @@ def redirect_targets(words):
     return out
 
 
+def without_redirects(words):
+    """`words` without the redirects (`>f`, `2>&1`, `&>f`, `>>f`, `<f`) and the word after a bare operator (`> f`), so a
+    check that reads a command's arguments does not take a redirect for one. `redirect_targets` reads them from the
+    full words. A heredoc `<<` is kept: `is_inline_script` looks for it."""
+    out, skip = [], False
+    for w in words:
+        if skip:
+            skip = False
+        elif re.match(r"^(?:\d?&?>>?|\d?<(?!<))", w):
+            skip = re.fullmatch(r"\d?&?>>?|\d?<", w) is not None
+        else:
+            out.append(w)
+    return out
+
+
 def tee_targets(name, args):
     return [a for a in args if not a.startswith("-")] if name == "tee" else []
 
