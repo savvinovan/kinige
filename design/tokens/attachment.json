@@ -24,11 +24,15 @@
       "lightbox-padding": { "$value": "{space.5}", "$description": "Margin around the photo and the controls of the lightbox." },
       "lightbox-gap": { "$value": "{space.3}", "$description": "Gap between the controls and the photo of the lightbox." },
       "lightbox-percent-width": { "$value": "3.6rem", "$description": "Minimum width of the zoom percentage button in the lightbox toolbar (47 px at a 13 px root): fits '800%' so the buttons beside it do not move." },
+      "pill-inset": { "$value": "{space.2}", "$description": "KINIG-132: how far the time pill stands from the bottom and right edges of a picture that fills its bubble (6.5 px at a 13 px root)." },
+      "pill-padding-block": { "$value": "0.15rem", "$description": "KINIG-132: top and bottom padding of the time pill on a picture (2 px at a 13 px root); the pill's height is this plus the meta line height." },
+      "pill-padding-inline": { "$value": "{space.2}", "$description": "KINIG-132: left and right padding of the time pill on a picture (6.5 px at a 13 px root)." },
       "story-narrow-width": { "$value": "640px", "$description": "Storybook only: the width of a narrow window in the attachment stories." }
     }
   },
   "opacity": {
     "$type": "number",
+    "attachment-pill": { "$value": 0.6, "$description": "KINIG-132: the fill of the time pill on a picture: the colour attachment.pill-background with this opacity (a pseudo-element carries it, so the text stays fully opaque). At 0.6 black over a pure white picture gives #666666, and the pill text on it is 5.7:1; over a dark picture it only gets darker." },
     "lightbox-scrim": { "$value": 0.94, "$description": "The backdrop of the lightbox: the window background colour with this opacity, nearly opaque so the photo stands alone." }
   }
 }

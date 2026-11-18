@@ -73,6 +73,8 @@ export const FeedRow = memo(function FeedRow({
   // A voice note with no text ends on the player's meta line, which holds the room for the time (slice 7a).
   const lastAttachment = entryAttachments?.at(-1);
   const timeBeside = message.bodyMd.trim() === "" && lastAttachment !== undefined && showsWaveform(lastAttachment);
+  // Pictures only: the album fills the bubble edge to edge (KINIG-132).
+  const imagesOnly = entryAttachments !== undefined && entryAttachments.length > 0 && entryAttachments.every(({ kind }) => kind === "image");
 
   return (
     <li
@@ -97,6 +99,7 @@ export const FeedRow = memo(function FeedRow({
         quote={quote}
         attachments={attachments}
         timeBeside={timeBeside}
+        imagesOnly={imagesOnly}
         tags={message.tags}
         mode={mode}
         editError={mode === "editing" ? editError : undefined}

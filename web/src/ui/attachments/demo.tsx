@@ -13,6 +13,8 @@ interface DemoPhoto {
   transparent: boolean;
   /** The file cannot be decoded: the browser fires `error` for the picture. */
   broken: boolean;
+  /** A near-white or a near-black picture (KINIG-132: the time pill must read on both); otherwise the tinted gradient. */
+  tone: "light" | "dark" | "tint";
 }
 
 const photos = new Map<string, DemoPhoto>();
@@ -24,6 +26,11 @@ const GRADIENTS = [
   ["--color-tile-green", "--color-forest-summer-crown-light"],
   ["--color-tile-orange", "--color-forest-autumn-accent"],
 ] as const;
+// The lightest and the darkest colours of the palette: a screenshot of a white page and of a dark one.
+const TONES: Partial<Record<DemoPhoto["tone"], readonly [string, string]>> = {
+  light: ["--color-text-primary", "--color-text-secondary"],
+  dark: ["--color-surface-background", "--color-surface-code"],
+};
 
 /** A photo attachment; the picture behind its id is drawn by `demoMediaSource`. */
 export function demoPhoto(
@@ -31,9 +38,15 @@ export function demoPhoto(
   filename: string,
   width: number,
   height: number,
-  options: { transparent?: boolean; broken?: boolean; missing?: boolean; byteSize?: number } = {},
+  options: { transparent?: boolean; broken?: boolean; missing?: boolean; byteSize?: number; tone?: "light" | "dark" } = {},
 ): AttachmentView {
-  photos.set(id, { width, height, transparent: options.transparent ?? false, broken: options.broken ?? false });
+  photos.set(id, {
+    width,
+    height,
+    transparent: options.transparent ?? false,
+    broken: options.broken ?? false,
+    tone: options.tone ?? "tint",
+  });
   return {
     id,
     kind: "image",
@@ -82,12 +95,12 @@ function token(name: string): string {
   return typeof document === "undefined" ? "" : getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-function svgUrl({ width, height, transparent }: DemoPhoto, thumb: boolean, id: string): string {
+function svgUrl({ width, height, transparent, tone }: DemoPhoto, thumb: boolean, id: string): string {
   const scale = thumb ? Math.min(1, THUMB_LONG_SIDE / Math.max(width, height)) : 1;
   const drawnWidth = Math.round(width * scale);
   const drawnHeight = Math.round(height * scale);
-  const [from, to] = GRADIENTS[Array.from(id).reduce((sum, symbol) => sum + symbol.charCodeAt(0), 0) % GRADIENTS.length] ?? GRADIENTS[0];
-  const text = token("--color-surface-background");
+  const [from, to] = TONES[tone] ?? GRADIENTS[Array.from(id).reduce((sum, symbol) => sum + symbol.charCodeAt(0), 0) % GRADIENTS.length] ?? GRADIENTS[0];
+  const text = token(tone === "dark" ? "--color-text-primary" : "--color-surface-background");
   const fontSize = Math.round(Math.min(drawnWidth / 8, drawnHeight / 4));
   const label = `${width} x ${height}`;
   const background = transparent
