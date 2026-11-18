@@ -52,8 +52,9 @@ import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
 import type { WeekdaySource } from "./generated/WeekdaySource";
 
-/** The number of the last `set_drop_target` call of this window (see `TauriApi.setDropTarget`). */
-let dropTargetSeq = 0;
+/** The number of the last `set_drop_target` call (see `setDropTarget`). It starts at the clock: Rust keeps the last number while
+ * the app runs and Tauri reloads this page when the web view's process dies, so a count from zero would be ignored. */
+let dropTargetSeq = Date.now();
 
 /** `KinigeApi` over Tauri commands. Argument names are camelCase: Tauri itself converts them to Rust snake_case. */
 export class TauriApi implements KinigeApi {

@@ -171,6 +171,10 @@ describe("TauriApi: the year's forest (slice 6)", () => {
     await api.setDropTarget(true);
     const seqs = invoke.mock.calls.map((call) => (call[1] as { seq: number }).seq);
     expect(seqs).toHaveLength(3);
+    // The count starts at the clock: a page reloaded after the web view's process died must not start below the numbers
+    // Rust has already seen from the page before it.
+    expect(seqs[0]).toBeGreaterThan(Date.UTC(2026, 0, 1));
+    expect(Number.isSafeInteger(seqs[0])).toBe(true);
     expect(seqs[1]).toBeGreaterThan(seqs[0] ?? Infinity);
     expect(seqs[2]).toBeGreaterThan(seqs[1] ?? Infinity);
     expect(invoke.mock.calls.map((call) => (call[1] as { active: boolean }).active)).toEqual([true, false, true]);
