@@ -32,6 +32,7 @@ export function FileCard({ attachment, onOpen, onContextMenu }: FileCardProps) {
       type="button"
       className={missing ? "file-card file-card--missing" : "file-card"}
       aria-label={described}
+      data-attachment-id={attachment.id}
       title={attachment.name}
       aria-disabled={missing || undefined}
       onContextMenu={onContextMenu}

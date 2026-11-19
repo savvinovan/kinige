@@ -12,6 +12,7 @@
     "pendingLabel": "Вложения к записи",
     "dropToAttach": "Отпустите, чтобы прикрепить",
     "remove": "Убрать {{name}}",
+    "removeHidden": "Убрать скрытое фото",
     "openDefault": "Открыть в программе по умолчанию",
     "counter": "{{index}} / {{total}}",
     "close": "Закрыть",

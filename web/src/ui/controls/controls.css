@@ -210,6 +210,16 @@
   min-height: 0;
 }
 
+/* A visible caption above a field (KINIG-136: the details dialog, where an empty field is otherwise an unlabeled box). */
+.text-field__caption {
+  display: block;
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
 .text-field__note {
   margin: 0;
   color: var(--color-text-tertiary);

@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type MutableRefObject, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import type { AttachmentDetailsChanges } from "../../api/generated/AttachmentDetailsChanges";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
@@ -28,6 +28,8 @@ interface DetailsDialogProps {
   /** Sends the edited fields (only those) for one attachment; rejects with an error that `error` shows. */
   onSave: (attachmentId: string, changes: AttachmentDetailsChanges) => Promise<void>;
   onClose: () => void;
+  /** Where the focus goes on close (the button the dialog was opened on); see `Modal`. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
   /** The translated error of the last save, shown under the fields. */
   error?: string;
 }
@@ -49,20 +51,27 @@ const suffixOf = (view: AttachmentView): string => {
  * The picture is on the left, covered when the attachment is hidden, with a "Show" button (the reveal state is shared with the feed). Enter in the name
  * saves, Escape cancels, an entry with several attachments shows "2 / 4" and the arrows. It sends only the fields that changed.
  */
-export function DetailsDialog({ attachments, index, onIndexChange, onSave, onClose, error }: DetailsDialogProps) {
+export function DetailsDialog({ attachments, index, onIndexChange, onSave, onClose, returnFocusRef, error }: DetailsDialogProps) {
   const { t } = useTranslation();
+  // A step by the arrow buttons remounts the form (a new attachment is a new form), and the button that was pressed goes with it: the new form
+  // puts the focus on the same button again.
+  const refocus = useRef<Step | null>(null);
   const current = attachments[Math.min(Math.max(index, 0), attachments.length - 1)];
   if (!current) return null;
   const position = attachments.indexOf(current);
   return (
-    <Modal title={t("attachments.dialog.title")} closeLabel={t("attachments.dialog.close")} onClose={onClose}>
+    <Modal title={t("attachments.dialog.title")} closeLabel={t("attachments.dialog.close")} onClose={onClose} returnFocusRef={returnFocusRef}>
       <DetailsForm
         // A new attachment is a new form: its own fields, not the last one's.
         key={current.id}
         attachment={current}
         position={position}
         total={attachments.length}
-        onStep={(direction) => onIndexChange(position + direction)}
+        onStep={(direction, byButton) => {
+          refocus.current = byButton ? direction : null;
+          onIndexChange(position + direction);
+        }}
+        refocus={refocus}
         onSave={onSave}
         onClose={onClose}
         error={error}
@@ -71,17 +80,21 @@ export function DetailsDialog({ attachments, index, onIndexChange, onSave, onClo
   );
 }
 
+type Step = -1 | 1;
+
 interface FormProps {
   attachment: AttachmentView;
   position: number;
   total: number;
-  onStep: (direction: -1 | 1) => void;
+  /** `byButton`: the step came from the arrow button, not the keyboard arrows. */
+  onStep: (direction: Step, byButton: boolean) => void;
+  refocus: MutableRefObject<Step | null>;
   onSave: DetailsDialogProps["onSave"];
   onClose: () => void;
   error?: string;
 }
 
-function DetailsForm({ attachment, position, total, onStep, onSave, onClose, error }: FormProps) {
+function DetailsForm({ attachment, position, total, onStep, refocus, onSave, onClose, error }: FormProps) {
   const { t } = useTranslation();
   const mediaUrl = useMediaUrl();
   const { isRevealed, reveal } = useReveal();
@@ -119,21 +132,44 @@ function DetailsForm({ attachment, position, total, onStep, onSave, onClose, err
     event.preventDefault();
     if (!busy) void save(onClose);
   };
-  // The arrows move between attachments, except in a text field, where they move the caret.
-  const keys = (event: KeyboardEvent<HTMLElement>) => {
-    const inField = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
-    if (inField || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  const panel = () => form.current?.closest<HTMLElement>(".modal__panel") ?? null;
+  // The arrows move between attachments, except in a text field, where they move the caret. They are heard on the whole window, not on the form:
+  // the window puts the focus on the header's close button first, which is not inside the form.
+  const keys = (event: KeyboardEvent) => {
+    // A text field keeps the arrows for its caret; a checkbox does not use them.
+    const inField =
+      event.target instanceof HTMLTextAreaElement || (event.target instanceof HTMLInputElement && !["checkbox", "radio", "button"].includes(event.target.type));
+    const inside = event.target instanceof Node && panel()?.contains(event.target) === true;
+    if (!inside || inField || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     const direction = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
     if (direction !== 0 && position + direction >= 0 && position + direction < total) {
       event.preventDefault();
-      void save(() => onStep(direction));
+      void save(() => onStep(direction, false));
     }
   };
+  const latestKeys = useRef(keys);
+  useEffect(() => {
+    latestKeys.current = keys;
+  });
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => latestKeys.current(event);
+    document.addEventListener("keydown", listener);
+    return () => document.removeEventListener("keydown", listener);
+  }, []);
+  // A form that replaced the last one (a step) takes the focus the removed button had: the same arrow button, or the window itself.
+  useEffect(() => {
+    const want = refocus.current;
+    refocus.current = null;
+    const button = want === null ? null : form.current?.querySelector<HTMLElement>(`[data-step="${want}"]`);
+    if (button) button.focus();
+    else if (document.activeElement === document.body) panel()?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const count = [...description].length;
   const shape = attachment.width && attachment.height ? ({ "--details-aspect": `${attachment.width / attachment.height}` } as CSSProperties) : undefined;
 
   return (
-    <form className="details" ref={form} onSubmit={submit} onKeyDown={keys}>
+    <form className="details" ref={form} onSubmit={submit}>
       <div className="details__picture">
         <div className="details__frame" style={shape}>
           {image ? (
@@ -151,7 +187,15 @@ function DetailsForm({ attachment, position, total, onStep, onSave, onClose, err
           )}
         </div>
         {covered ? (
-          <Button variant="secondary" aria-label={t("attachments.showLabel")} onClick={() => reveal(attachment.id)}>
+          <Button
+            variant="secondary"
+            aria-label={t("attachments.showLabel")}
+            onClick={() => {
+              // The button goes with the cover: the focus goes to the window first (as in the viewer), or it would fall to the page.
+              panel()?.focus();
+              reveal(attachment.id);
+            }}
+          >
             {t("attachments.show")}
           </Button>
         ) : null}
@@ -161,7 +205,8 @@ function DetailsForm({ attachment, position, total, onStep, onSave, onClose, err
               icon="chevronLeft"
               label={t("attachments.dialog.previous")}
               aria-disabled={position === 0 || undefined}
-              onClick={() => position > 0 && void save(() => onStep(-1))}
+              data-step="-1"
+              onClick={() => position > 0 && void save(() => onStep(-1, true))}
             />
             <span className="details__position" aria-live="polite">
               {t("attachments.dialog.position", { index: position + 1, total })}
@@ -170,14 +215,16 @@ function DetailsForm({ attachment, position, total, onStep, onSave, onClose, err
               icon="chevronRight"
               label={t("attachments.dialog.next")}
               aria-disabled={position === total - 1 || undefined}
-              onClick={() => position < total - 1 && void save(() => onStep(1))}
+              data-step="1"
+              onClick={() => position < total - 1 && void save(() => onStep(1, true))}
             />
           </div>
         ) : null}
       </div>
       <div className="details__fields">
-        <TextField label={t("attachments.dialog.name")} value={stem} suffix={suffixOf(attachment)} disabled={busy} onChange={(event) => setStem(event.target.value)} />
+        <TextField caption={t("attachments.dialog.name")} label={t("attachments.dialog.name")} value={stem} suffix={suffixOf(attachment)} disabled={busy} onChange={(event) => setStem(event.target.value)} />
         <TextAreaField
+          caption={t("attachments.dialog.description")}
           label={t("attachments.dialog.description")}
           value={description}
           disabled={busy}

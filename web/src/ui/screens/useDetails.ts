@@ -10,6 +10,8 @@ export interface DetailsState {
   attachments: AttachmentView[];
   index: number;
   error: ErrorCode | null;
+  /** The attachment whose button (a tile's "Details", a photo or a file card) gets the focus back on close: the one the dialog was opened on. */
+  returnTo: string;
 }
 
 interface UseDetailsOptions {
@@ -35,7 +37,7 @@ export function useDetails({ api, tiles, updateTile, patchAttachment, onError }:
     (attachmentId: string) => {
       const list = tiles.filter((tile) => tile.kind !== "audio");
       const index = list.findIndex((tile) => tile.id === attachmentId);
-      if (index >= 0) setState({ scope: "draft", attachments: list, index, error: null });
+      if (index >= 0) setState({ scope: "draft", attachments: list, index, error: null, returnTo: attachmentId });
     },
     [tiles],
   );
@@ -43,7 +45,7 @@ export function useDetails({ api, tiles, updateTile, patchAttachment, onError }:
   const openSent = useCallback((entryAttachments: readonly AttachmentView[], attachmentId: string) => {
     const list = entryAttachments.filter((attachment) => attachment.kind !== "audio");
     const index = list.findIndex((attachment) => attachment.id === attachmentId);
-    if (index >= 0) setState({ scope: "sent", attachments: list, index, error: null });
+    if (index >= 0) setState({ scope: "sent", attachments: list, index, error: null, returnTo: attachmentId });
   }, []);
 
   const save = useCallback(

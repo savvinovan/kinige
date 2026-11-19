@@ -139,7 +139,7 @@ function ImageTile({ item, onRemove, onOpen, onDetails }: TileProps & { onOpen?:
         <Surface label={missing ? `${label}. ${t("attachments.missing")}` : undefined}>{picture}</Surface>
       )}
       <DetailsButton item={item} covered={covered} onDetails={onDetails} />
-      <RemoveButton item={item} onRemove={onRemove} />
+      <RemoveButton item={item} onRemove={onRemove} covered={covered} />
     </div>
   );
 }
@@ -183,13 +183,14 @@ function FileTile({ item, onRemove, onDetails }: TileProps) {
   );
 }
 
-function RemoveButton({ item, onRemove }: TileProps) {
+function RemoveButton({ item, onRemove, covered = false }: TileProps & { covered?: boolean }) {
   const { t } = useTranslation();
   return (
     <IconButton
       icon="close"
       className="pending-tile__remove"
-      label={t("attachments.remove", { name: item.name })}
+      // The name of a covered photo is not read out through this button either (as in the cover's own label and in "Details").
+      label={covered ? t("attachments.removeHidden") : t("attachments.remove", { name: item.name })}
       data-remove-for={item.id}
       onClick={() => onRemove(item.id)}
     />

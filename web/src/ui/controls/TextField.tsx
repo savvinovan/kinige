@@ -13,13 +13,20 @@ interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "ar
   inputRef?: Ref<HTMLInputElement>;
   /** A fixed text after the input, not editable (KINIG-136: the extension of an attachment's name, `.jpg`). It is read out with the field's description. */
   suffix?: string;
+  /** A visible caption above the field (the details dialog). The screen reader still gets `label`; the caption is not read twice. */
+  caption?: string;
 }
 
 /** A single-line input field (search and the like). No outline: a dark fill, focus is the caret and a lighter fill; a border only for an error. */
-export function TextField({ label, icon, error, className, inputRef, suffix, ...rest }: TextFieldProps) {
+export function TextField({ label, icon, error, className, inputRef, suffix, caption, ...rest }: TextFieldProps) {
   const errorId = useId();
   return (
     <div className={`text-field${className ? ` ${className}` : ""}`}>
+      {caption ? (
+        <span className="text-field__caption" aria-hidden="true">
+          {caption}
+        </span>
+      ) : null}
       <label className={`text-field__box${error ? " text-field__box--invalid" : ""}`}>
         {icon ? <Icon name={icon} /> : null}
         <input

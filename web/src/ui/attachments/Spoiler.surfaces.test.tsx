@@ -63,8 +63,11 @@ describe("the pending tile with a hidden photo", () => {
     expect(container.querySelectorAll("img")).toHaveLength(1);
     expect(asked).toEqual(["thumb/p2"]);
     expect(container.querySelector("[data-spoiler-face]")).not.toBeNull();
-    // A hidden photo's name is not read out: its Details button says so, and the x names the photo (a name is not a picture).
+    // A hidden photo's name is not read out: its Details button and its x say so, and neither carries the name.
     expect(screen.getByRole("button", { name: "Details of a hidden photo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove hidden photo" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /beach/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Remove IMG_0002.jpg" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Details of IMG_0002.jpg" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Details of lunch.pdf" })).toBeInTheDocument();
 
@@ -75,6 +78,8 @@ describe("the pending tile with a hidden photo", () => {
     expect(asked).toContain("thumb/h1");
     expect(container.querySelector("[data-spoiler-face]")).toBeNull();
     expect(open).toHaveFocus();
+    // Shown, the x names the photo again.
+    expect(screen.getByRole("button", { name: "Remove beach.jpg" })).toBeInTheDocument();
     // Revealed, a click opens the viewer as it always did.
     fireEvent.click(screen.getByRole("button", { name: "Beach, July" }));
     expect(onOpen).toHaveBeenCalledWith("h1");

@@ -12,6 +12,7 @@
     "pendingLabel": "Attachments to send",
     "dropToAttach": "Drop to attach",
     "remove": "Remove {{name}}",
+    "removeHidden": "Remove hidden photo",
     "openDefault": "Open in default app",
     "counter": "{{index}} / {{total}}",
     "close": "Close",

@@ -100,6 +100,7 @@ function AlbumCell({ image, index, onOpen, onContextMenu, compact = false }: Cel
         type="button"
         ref={open}
         className="album__open"
+        data-attachment-id={image.id}
         aria-label={covered ? t("attachments.hiddenPhoto") : missing ? `${label}. ${t("attachments.missing")}` : label}
         aria-disabled={(!covered && missing) || undefined}
         onClick={press}
