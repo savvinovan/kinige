@@ -34,11 +34,9 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
   const keepButton = useRef<HTMLButtonElement>(null);
   const kept = state.kind === "lost" && state.cause === "hidden";
   const [asking, setAsking] = useState(false);
+  // The question belongs to one kept recording: when there is none, it is forgotten (state adjusted while rendering, not in an effect).
+  if (!kept && asking) setAsking(false);
   const question = state.kind === "confirming" || (kept && asking);
-
-  useEffect(() => {
-    if (!kept) setAsking(false);
-  }, [kept]);
 
   // Focus moves to Send when the bar appears, and to "Keep recording" while it asks: Enter then never discards by accident. A kept recording
   // of the capture window takes it on the bar itself: no single key sends or deletes it, Tab reaches Discard and Send.
