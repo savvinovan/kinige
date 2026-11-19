@@ -4,6 +4,7 @@ import type { AgentLogPage } from "./generated/AgentLogPage";
 import type { AgentMode } from "./generated/AgentMode";
 import type { AppInfo } from "./generated/AppInfo";
 import type { AttachOutcome } from "./generated/AttachOutcome";
+import type { AttachmentDetailsChanges } from "./generated/AttachmentDetailsChanges";
 import type { AttachmentView } from "./generated/AttachmentView";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
@@ -253,6 +254,18 @@ export interface KinigeApi {
   setDropTarget(active: boolean): Promise<void>;
   /** The x on a tile: the draft attachment and its file go. */
   removeDraftAttachment(chatId: string, attachmentId: string): Promise<void>;
+  /**
+   * "Details" on a tile (slice 7b): a name (the stem; Rust keeps the original extension), a description, a spoiler flag (images only).
+   * `changes` has only the fields that were edited: an absent key leaves the field, `null` clears a name or a description, `spoiler` is
+   * `true` or `false`. Counting and normalizing are Rust's (the UI counter is advisory). Returns the tile as it is now. A rule broken is
+   * `attachment_details_invalid`, an unknown tile `attachment_not_found`; nothing is written on an error.
+   */
+  setDraftAttachmentDetails(attachmentId: string, changes: AttachmentDetailsChanges): Promise<AttachmentView>;
+  /**
+   * The same for a sent attachment (the dialog from the entry, and "Hide as spoiler" from the context menu, which sends only `spoiler`).
+   * The entry does not become "edited". An entry in the trash is `message_in_trash`, a read-only attachment `read_only`.
+   */
+  setAttachmentDetails(attachmentId: string, changes: AttachmentDetailsChanges): Promise<AttachmentView>;
   /** Open an attachment in its system app (a clone; documents are opened, everything else is shown in the file manager). */
   openAttachment(attachmentId: string): Promise<void>;
   /** Files are dragged over the window (`true`) or left it / were dropped (`false`): the "Drop to attach" overlay. */

@@ -43,10 +43,14 @@ fn text<'a>(case: &'a Value, key: &str) -> &'a str {
         .unwrap_or_else(|| panic!("`{key}` is not a string in {case}"))
 }
 
-/// A text written as a string or as a list of parts, where `[unit, n]` is the unit repeated `n` times.
+/// A text written as a string or as a list of parts, where `[unit, n]` is the unit repeated `n` times and `{"cp": n}` is the one
+/// character with code point `n` (for what the file must not hold itself: a bidi override).
 fn spec(value: &Value) -> String {
     match value {
         Value::String(text) => text.clone(),
+        Value::Object(part) => char::from_u32(u32::try_from(part["cp"].as_u64().unwrap()).unwrap())
+            .unwrap()
+            .to_string(),
         Value::Array(parts) => parts
             .iter()
             .map(|part| match part {

@@ -175,6 +175,11 @@ pub fn view_in_feed(store: &Store, message_id: &str, id: &str, now: &Now) -> Att
         .expect("the attachment is in the entry")
 }
 
+/// One number from the database: `SELECT COUNT(*) ...`.
+pub fn count(dir: &Path, sql: &str) -> i64 {
+    raw(dir).query_row(sql, [], |r| r.get(0)).unwrap()
+}
+
 /// A few lines the tests use to say what a group holds.
 pub fn json_of(text: &str) -> Value {
     serde_json::from_str(text).unwrap()

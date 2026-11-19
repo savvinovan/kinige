@@ -81,6 +81,23 @@ class PrePrCheck(unittest.TestCase):
         code, out = self.check()
         self.assertEqual(code, 0, out)
 
+    def test_generated_types_may_end_a_line_with_a_space(self):
+        # ts-rs writes `export type X = { ` and `field: T, ` with a trailing space; the file is generated and cannot be fixed by hand.
+        self.write("web/src/api/generated/Thing.ts", "export type Thing = { \nid: string, };\n")
+        code, out = self.check()
+        self.assertEqual(code, 0, out)
+        # The exemption is that folder only: the same text elsewhere is a finding (exit 1), and a conflict marker there still is.
+        self.write("web/src/api/other.ts", "export type Thing = { \nid: string, };\n")
+        code, out = self.check()
+        self.assertEqual(code, 1, out)
+        self.assertIn("web/src/api/other.ts:1: trailing whitespace", out)
+        self.assertNotIn("generated", out)
+        os.remove(os.path.join(self.repo, "web/src/api/other.ts"))
+        self.write("web/src/api/generated/Thing.ts", "<<<<<<< HEAD\nid: string,\n")
+        code, out = self.check()
+        self.assertEqual(code, 1, out)
+        self.assertIn("a conflict marker", out)
+
     def test_cannot_run(self):
         code, out = self.check("--base", "refs/remotes/origin/nothing")
         self.assertEqual(code, 2, out)

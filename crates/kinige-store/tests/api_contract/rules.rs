@@ -5,7 +5,7 @@ use chrono::DateTime;
 use kinige_domain::append::{APPEND_WINDOW_MS, AppendCandidate, can_append, joined_body};
 use kinige_domain::attachment::{
     AttachmentSummary, ImageFormat, MAX_PASTE_BYTES, MAX_PER_ENTRY, MAX_VOICE_MS, MIN_VOICE_MS,
-    WAVEFORM_PEAKS, classify, stored_ext,
+    WAVEFORM_PEAKS, classify, normalize_description, normalize_name, stored_ext,
 };
 use kinige_domain::chat::{
     ChatInputError, MAX_ICON_BYTES, MAX_TITLE_CHARS, normalize_icon, normalize_title,
@@ -225,6 +225,31 @@ fn the_kind_of_an_attachment() {
         if let Some(expected) = opt_text(case, "mime") {
             assert_eq!(mime, expected, "{case}");
         }
+    }
+}
+
+#[test]
+fn the_counting_of_attachment_details() {
+    let file = fixture("attachment-text");
+    for case in list(&file, "names") {
+        let (stem, original) = (spec(&case["stem"]), spec(&case["original"]));
+        let got = normalize_name(&stem, &original).map_err(|_| "error");
+        assert_eq!(got, expected_details(case), "{case}");
+    }
+    for case in list(&file, "descriptions") {
+        let got = normalize_description(&spec(&case["text"])).map_err(|_| "error");
+        assert_eq!(got, expected_details(case), "{case}");
+    }
+}
+
+/// `Ok(Some(text))`, `Ok(None)` for `null`, or `Err("error")`, from `expect` and `error` of a case.
+fn expected_details(case: &Value) -> Result<Option<String>, &'static str> {
+    if case["error"].as_bool() == Some(true) {
+        return Err("error");
+    }
+    match &case["expect"] {
+        Value::Null => Ok(None),
+        other => Ok(Some(spec(other))),
     }
 }
 

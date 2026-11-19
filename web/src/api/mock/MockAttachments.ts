@@ -1,7 +1,9 @@
 import { KinigeApiError } from "../KinigeApi";
 import { mockMessage } from "../mockData";
 import { LIMITS, attachmentKind, storedExt } from "../mockRules";
+import { applyDetails } from "../mockDetails";
 import type { AttachOutcome } from "../generated/AttachOutcome";
+import type { AttachmentDetailsChanges } from "../generated/AttachmentDetailsChanges";
 import type { AttachmentView } from "../generated/AttachmentView";
 import type { MessageView } from "../generated/MessageView";
 import type { MockState } from "./MockState";
@@ -19,6 +21,9 @@ export function mockAttachment(id: string, filename: string, part: Partial<Attac
     id,
     kind,
     filename,
+    name: filename,
+    description: null,
+    spoiler: false,
     mime: image ? `image/${ext === "jpg" ? "jpeg" : ext}` : "application/octet-stream",
     byteSize: 2048,
     width: image ? PICTURE_W : null,
@@ -93,6 +98,34 @@ export class MockAttachments {
       const tiles = this.s.draftTiles.get(chatId) ?? [];
       if (!tiles.some((t) => t.id === attachmentId)) throw new KinigeApiError("attachment_not_found");
       this.s.draftTiles.set(chatId, tiles.filter((t) => t.id !== attachmentId));
+    });
+  }
+
+  setDraftAttachmentDetails(attachmentId: string, changes: AttachmentDetailsChanges): Promise<AttachmentView> {
+    return this.s.run("setDraftAttachmentDetails", attachmentId, () => {
+      for (const [chatId, tiles] of this.s.draftTiles) {
+        const tile = tiles.find((t) => t.id === attachmentId);
+        if (!tile) continue;
+        const next = applyDetails(tile, changes);
+        this.s.draftTiles.set(
+          chatId,
+          tiles.map((t) => (t === tile ? next : t)),
+        );
+        return next;
+      }
+      throw new KinigeApiError("attachment_not_found");
+    });
+  }
+
+  setAttachmentDetails(attachmentId: string, changes: AttachmentDetailsChanges): Promise<AttachmentView> {
+    return this.s.run("setAttachmentDetails", attachmentId, () => {
+      const row = this.s.rows.find((r) => r.view.attachments.some((a) => a.id === attachmentId));
+      const current = row?.view.attachments.find((a) => a.id === attachmentId);
+      if (!row || !current) throw new KinigeApiError("attachment_not_found");
+      if (row.deletedAt !== null) throw new KinigeApiError("message_in_trash");
+      const next = applyDetails(current, changes);
+      row.view = { ...row.view, attachments: row.view.attachments.map((a) => (a === current ? next : a)) };
+      return next;
     });
   }
 
