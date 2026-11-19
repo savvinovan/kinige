@@ -4,14 +4,17 @@ whole: no
 scroll to: Фото IMG_0001.jpg
 frames: first picture [303 263 233 175] caption [316 624 309 17] search [45 71 198 19] composer [360 654 128 17]
 whole: no
-scroll to: Фото IMG_0002.jpg
-frames: first picture [303 263 233 175] caption [316 624 309 17] search [45 71 198 19] composer [360 654 128 17]
-whole: no
-scroll to: позвонить маме
-frames: first picture [303 263 233 175] caption [316 624 309 17] search [45 71 198 19] composer [360 654 128 17]
+scroll to: Прогулка вдоль реки
+frames: first picture [303 247 233 175] caption [316 608 309 17] search [45 71 198 19] composer [360 654 128 17]
 whole: no
 scroll to: Фото IMG_0001.jpg
-frames: first picture [303 263 233 175] caption [316 624 309 17] search [45 71 198 19] composer [360 654 128 17]
+frames: first picture [303 247 233 175] caption [316 608 309 17] search [45 71 198 19] composer [360 654 128 17]
+whole: no
+scroll to: Прогулка вдоль реки
+frames: first picture [303 247 233 175] caption [316 608 309 17] search [45 71 198 19] composer [360 654 128 17]
+whole: no
+scroll to: Фото IMG_0001.jpg
+frames: first picture [303 247 233 175] caption [316 608 309 17] search [45 71 198 19] composer [360 654 128 17]
 whole: no
 scroll to: Прогулка вдоль реки
 frames: first picture [365 -116 290 218] caption [381 333 383 21] search [57 75 247 24] composer [427 641 158 21]
