@@ -62,4 +62,16 @@ describe("message-bleed.css", () => {
       expect(rule(selector), selector).toContain("--layout-attachment-pill-inset");
     }
   });
+
+  // The pixels themselves are sampled in a real browser (tests/visual/picture-bubble.spec.ts); these keep the two causes out of the stylesheet.
+  it("a single picture covers its box, so no row of anything else shows at its edge", () => {
+    expect(rule(".message--bleed .album--single .album__image")).toMatch(/object-fit:\s*cover/);
+  });
+
+  it("the bubble's fill is only beside a picture, never behind it: no background on the strip itself", () => {
+    expect(rule(".message--bleed .message-attachments")).not.toMatch(/background/);
+    // The two side columns of the grid, one rule for both.
+    const sides = ".message--bleed .message-attachments::before,\n.message--bleed .message-attachments::after";
+    expect(rule(sides)).toMatch(/background:\s*var\(--color-surface-message\)/);
+  });
 });

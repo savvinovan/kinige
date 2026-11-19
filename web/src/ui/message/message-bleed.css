@@ -12,13 +12,43 @@
   border-radius: 0;
 }
 
+/* A single picture fills its box exactly. The box has the original's shape, the thumbnail's shape differs from it by rounding (a 1170 by 2532
+   picture is 296 by 640 as a thumbnail: 0.4625 against 0.4621), and `contain` (the plain bubble's rule, where the bubble's own fill is behind it and
+   the row cannot be seen) left a row of a different colour at the picture's edge in a frameless bubble (round 2 had the strip's fill there, a row
+   of #2b2b2b between the picture and the feed). `cover` crops less than a pixel and leaves no row.
+   (tests/visual/picture-bubble.spec.ts samples the edges.) */
+.message--bleed .album--single .album__image {
+  object-fit: cover;
+}
+
 /* A picture narrower than a caption or a pill (a tall screenshot strip) keeps its own size, centred on a strip of the bubble's fill: the bubble is
-   never narrower than this floor, so the caption does not wrap at a few pixels and the pill is not clipped by the bubble. A picture at least this
-   wide fills the strip, so the fill is not seen. */
+   never narrower than this floor, so the caption does not wrap at a few pixels and the pill is not clipped by the bubble. The fill is only what
+   is beside the picture: two pseudo-elements are the side columns of the grid (the picture's column is as wide as the picture and no wider), so
+   a picture that fills the bubble has no fill under or around it (a transparent PNG sits on the feed, as in a bubble with no fill). */
 .message--bleed .message-attachments {
-  justify-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(0, 1fr);
+  gap: 0;
   min-width: var(--layout-attachment-bleed-min-width);
+}
+
+.message--bleed .message-attachments::before,
+.message--bleed .message-attachments::after {
+  content: "";
+  grid-row: 1;
   background: var(--color-surface-message);
+}
+
+.message--bleed .message-attachments::before {
+  grid-column: 1;
+}
+
+.message--bleed .message-attachments::after {
+  grid-column: 3;
+}
+
+.message--bleed .message-attachments > .album {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 /* Nothing but pictures: the floor is just what the pill needs (the time, and the star and the agent mark when there are any), as the spacer of a text
