@@ -1,11 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { demoEntry, demoMessages } from "../../api/demoData";
 import { Frame } from "../stories/Frame";
-import { Feed } from "./Feed";
+import { Feed, type FeedPaging } from "./Feed";
 
 // "Today" in the stories is pinned (Tuesday, 20 October 2026) so that day labels and snapshots are stable.
 const NOW = new Date(2026, 9, 20, 17, 0);
 const TODAY = "2026-10-20";
+// A window around an old entry: older pages above, the live edge not loaded below.
+const WINDOWED: FeedPaging = {
+  hasOlder: true,
+  hasNewer: true,
+  onLoadOlder: () => undefined,
+  onLoadNewer: () => undefined,
+  onJumpToLatest: () => Promise.resolve(),
+};
 
 const meta = {
   title: "Компоненты/Лента",
@@ -54,6 +62,15 @@ export const МеткиДней: Story = {
     ],
   },
 };
+
+/** KINIG-145: the feed holds only a window around an old entry (opened from search): the "Jump to latest" button is at the bottom right, over the feed. */
+export const КПоследним: Story = { args: { paging: WINDOWED } };
+
+/** The same with large text: the button grows with the text, and stays inside the feed, above the composer. */
+export const КПоследнимКрупныйТекст: Story = { args: { paging: WINDOWED }, globals: { textScale: "large" } };
+
+/** The same in English (the tooltip and the screen reader label are "Jump to latest"). */
+export const КПоследнимEn: Story = { args: { paging: WINDOWED }, globals: { language: "en" } };
 
 /** Day labels and the hint in English: "March 14, 2025", "Yesterday", "Today". */
 export const Английский: Story = { globals: { language: "en" } };
