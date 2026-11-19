@@ -25,6 +25,6 @@
   padding: var(--space-1) var(--space-4) 0;
 }
 
-.main-window__chat > .feed-scroll {
+.main-window__chat > .feed-pane {
   flex: 1;
 }

@@ -15,7 +15,7 @@ import { OnThisDayCard } from "../onthisday/OnThisDayCard";
 import { ReplyStrip } from "../reply/ReplyStrip";
 import { SearchResults } from "../search/SearchResults";
 import { DateDialogs } from "./DateDialogs";
-import { EMPTY_LIST, toSidebar, useCheckOnWindowFocus, useMoveTargets } from "./mainWindowParts";
+import { EMPTY_LIST, focusComposer, toSidebar, useCheckOnWindowFocus, useMoveTargets } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
 import { useAttachments } from "./useAttachments";
 import { useChatDialog } from "./useChatDialog";
@@ -280,7 +280,13 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       today={feed.today}
       feedUi={feed.ui}
       feedActions={feed.actions}
-      feedPaging={feed.paging}
+      // "Jump to latest": the composer takes the focus, as after sending (the feed itself scrolls to its bottom edge), and also when the
+      // button goes away under the focus without a press (the feed reached its end by another way).
+      feedPaging={{
+        ...feed.paging,
+        onJumpToLatest: () => feed.paging.onJumpToLatest().finally(focusComposer),
+        onJumpFocusLost: focusComposer,
+      }}
       feedScrollTo={feed.scrollTo}
       feedToBottom={toBottom}
       feedLoading={selected === INBOX_ID && tag === null && !(feed.loaded && onThisDay.ready)}

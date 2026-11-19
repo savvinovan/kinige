@@ -230,7 +230,8 @@
     "label": "Entries",
     "empty": "Nothing here yet. Write your first note below.",
     "today": "Today",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "jumpToLatest": "Jump to latest"
   },
   "onThisDay": {
     "label": "On this day",

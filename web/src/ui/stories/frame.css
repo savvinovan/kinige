@@ -39,7 +39,7 @@
   height: var(--layout-window-height);
 }
 
-.story-feed > .feed-scroll {
+.story-feed > .feed-pane {
   flex: 1;
 }
 
