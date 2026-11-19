@@ -44,6 +44,12 @@
   gap: var(--space-1);
 }
 
+/* The top bar switch (KINIG-134): quiet; pressed (the forest is shown) is the hover fill and the stronger colour, no border or label. */
+.forest-toggle[aria-pressed="true"] {
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+}
+
 .forest-pane__year {
   margin: 0;
   color: var(--color-text-secondary);

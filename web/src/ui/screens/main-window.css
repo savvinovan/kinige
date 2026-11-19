@@ -15,6 +15,16 @@
   background: var(--color-surface-paper);
 }
 
+/* KINIG-134: a thin bar above the forest pane (or above the feed while the forest is hidden) with the forest switch at the right end.
+   It has the same height in both states, so the button never moves; it has no border and no label. */
+.main-window__topbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--space-1) var(--space-4) 0;
+}
+
 .main-window__chat > .feed-pane {
   flex: 1;
 }

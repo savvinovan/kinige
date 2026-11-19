@@ -39,7 +39,6 @@ function pane(view: "strip" | "expanded") {
       onYearChange={noop}
       onView={noop}
       onMode={noop}
-      onHide={noop}
     />
   );
 }
@@ -70,8 +69,29 @@ export const StripAboveTheFeed: Story = { args: { forest: pane("strip") } };
 /** The strip expanded into the isometric board; the feed stays below it. */
 export const ExpandedAboveTheFeed: Story = { args: { forest: pane("expanded") } };
 
-/** The forest hidden: the feed takes its place and starts at the top. */
-export const Hidden: Story = {};
+/**
+ * The forest hidden (KINIG-134): the switch stays at the top right, where it was, not pressed; the feed starts under the bar.
+ * Compare with `StripAboveTheFeed`: the button is in the same place.
+ */
+export const Hidden: Story = { args: { forestMenu: { hidden: true, onToggle: noop } } };
+
+/** Hidden, English, large text: the switch keeps its place and does not touch the feed. */
+export const HiddenEnglishLargeText: Story = {
+  args: { forestMenu: { hidden: true, onToggle: noop } },
+  globals: { language: "en", textScale: "large" },
+};
+
+/** Hidden in the 640 px window. */
+export const NarrowHidden: Story = {
+  args: { forestMenu: { hidden: true, onToggle: noop } },
+  decorators: [
+    (Story) => (
+      <div className="screen-narrow">
+        <Story />
+      </div>
+    ),
+  ],
+};
 
 /** English, large text. */
 export const EnglishLargeText: Story = { args: { forest: pane("strip") }, globals: { language: "en", textScale: "large" } };

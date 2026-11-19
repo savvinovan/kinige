@@ -11,6 +11,7 @@ import type { ComposerButtons } from "../composer/Composer";
 import { ComposerPane } from "../composer/ComposerPane";
 import { Feed, type FeedActions, type FeedPaging, type FeedUiState, type ScrollRequest } from "../feed/Feed";
 import type { FeedMessage } from "../feed/buildFeed";
+import { ForestToggle } from "../forest/ForestToggle";
 import type { MoveTarget } from "../message/moveTargets";
 import { type ChatAction, type ChatTint, Sidebar, type SidebarChat, type SidebarSearch } from "../sidebar/Sidebar";
 import { TagFilterBar } from "../tag/TagFilterBar";
@@ -101,7 +102,11 @@ interface MainWindowViewProps {
     dropTargetId: string | null;
     ghost: ReactNode;
   };
-  /** Slice 6: the forest pane above the feed (not in the trash or in search results), the feed's top day for it, and the profile menu item. */
+  /**
+   * Slice 6: the forest pane above the feed (not in the trash or in search results), the feed's top day for it, and the one switch
+   * of its visibility. KINIG-134: the switch is the button of the top bar above the pane and the item of the profile menu; both
+   * read `hidden` and call `onToggle`, so they cannot disagree. Without it there is neither the bar nor the menu item.
+   */
   forest?: ReactNode;
   onFeedTopDay?: (journalDate: string | null) => void;
   forestMenu?: { hidden: boolean; onToggle: () => void };
@@ -215,6 +220,11 @@ export function MainWindowView({
           />
         ) : (
           <>
+            {forestMenu ? (
+              <div className="main-window__topbar">
+                <ForestToggle hidden={forestMenu.hidden} onToggle={forestMenu.onToggle} />
+              </div>
+            ) : null}
             {forest}
             {tagFilter ? <TagFilterBar tag={tagFilter.tag} onClear={tagFilter.onClear} /> : null}
             <Feed
