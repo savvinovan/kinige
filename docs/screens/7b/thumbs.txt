@@ -1,22 +1,22 @@
-[the chat just opened, nothing hidden was touched]
+[the covers are in frame, the album has not been on screen]
 thumbnail files: 1
-image d749d62f  hidden=1  thumbnail=no
-image 3274c83d  hidden=1  thumbnail=no
-image 21e9b0ca  hidden=0  thumbnail=no
-image e80a4ad6  hidden=1  thumbnail=no
-image 165ed74c  hidden=0  thumbnail=no
-image 43deae5b  hidden=0  thumbnail=no
-image fc759ef4  hidden=0  thumbnail=no
-image 14f5c166  hidden=0  thumbnail=yes
-image ec5ff3c5  hidden=1  thumbnail=no
-[the feed shows the covers]
-thumbnail files: 1
-image d749d62f  hidden=1  thumbnail=no
-image 3274c83d  hidden=1  thumbnail=no
-image 21e9b0ca  hidden=0  thumbnail=no
-image e80a4ad6  hidden=1  thumbnail=no
-image 165ed74c  hidden=0  thumbnail=no
-image 43deae5b  hidden=0  thumbnail=no
-image fc759ef4  hidden=0  thumbnail=no
-image 14f5c166  hidden=0  thumbnail=yes
-image ec5ff3c5  hidden=1  thumbnail=no
+IMG_0101.jpg  hidden=1  thumbnail=no
+IMG_0102.jpg  hidden=1  thumbnail=no
+IMG_0103.jpg  hidden=0  thumbnail=no
+IMG_0104.jpg  hidden=1  thumbnail=no
+IMG_0105.jpg  hidden=0  thumbnail=no
+IMG_0106.jpg  hidden=0  thumbnail=no
+IMG_0107.jpg  hidden=0  thumbnail=no
+IMG_0108.jpg  hidden=0  thumbnail=yes
+IMG_0109.jpg  hidden=1  thumbnail=no
+[the album has been on screen]
+thumbnail files: 4
+IMG_0101.jpg  hidden=1  thumbnail=no
+IMG_0102.jpg  hidden=1  thumbnail=no
+IMG_0103.jpg  hidden=0  thumbnail=yes
+IMG_0104.jpg  hidden=1  thumbnail=no
+IMG_0105.jpg  hidden=0  thumbnail=yes
+IMG_0106.jpg  hidden=0  thumbnail=yes
+IMG_0107.jpg  hidden=0  thumbnail=no
+IMG_0108.jpg  hidden=0  thumbnail=yes
+IMG_0109.jpg  hidden=1  thumbnail=no

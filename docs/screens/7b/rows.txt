@@ -1,4 +1,6 @@
-# The three details groups and the HLC record of one attachment (core is never printed: it holds the file key).
-{"name":"закат.jpg"}|{"description":"Закат над заливом, июль"}|{"spoiler":true}|{"core":{"h":"1795096809701-00013-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1},"deleted":{"h":"1795096809701-00013-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1},"description":{"h":"1795096809701-00015-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1},"name":{"h":"1795096809701-00014-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1},"order":{"h":"1795096809701-00013-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1},"privacy":{"h":"1795096809701-00016-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1}}
-# the same columns the window reads
-закат.jpg|Закат над заливом, июль|1
+[IMG_0108.jpg before any edit]
+{"name":null}|{"description":null}|{"spoiler":false}|1795102241963-00032-2c6fadf9-67b0-4ff0-a1a6-a85e2cbdf283|1795102241963-00032-2c6fadf9-67b0-4ff0-a1a6-a85e2cbdf283|1795102241963-00032-2c6fadf9-67b0-4ff0-a1a6-a85e2cbdf283
+columns: ||0
+[IMG_0108.jpg after the dialog]
+{"name":"ужин.jpg"}|{"description":"Ужин на веранде"}|{"spoiler":true}|1795102371184-00000-2c6fadf9-67b0-4ff0-a1a6-a85e2cbdf283|1795102371184-00001-2c6fadf9-67b0-4ff0-a1a6-a85e2cbdf283|1795102371184-00002-2c6fadf9-67b0-4ff0-a1a6-a85e2cbdf283
+columns: ужин.jpg|Ужин на веранде|1
