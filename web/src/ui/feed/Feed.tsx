@@ -107,6 +107,9 @@ interface FeedProps {
    */
   onOpenImage?: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
   onOpenFile?: (attachmentId: string) => void;
+  /** KINIG-136: the details dialog on an attachment (the context menus), and the spoiler alone ("Hide as spoiler"). */
+  onAttachmentDetails?: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
+  onAttachmentSpoiler?: (attachmentId: string, spoiler: boolean) => void;
 }
 
 /**
@@ -135,6 +138,8 @@ export function Feed({
   listKey,
   onOpenImage,
   onOpenFile,
+  onAttachmentDetails,
+  onAttachmentSpoiler,
 }: FeedProps) {
   const { t } = useTranslation();
   const language = useLanguage();
@@ -340,6 +345,8 @@ export function Feed({
                   onOpenReply={onOpenReply}
                   onOpenImage={onOpenImage}
                   onOpenFile={onOpenFile}
+                  onAttachmentDetails={onAttachmentDetails}
+                  onAttachmentSpoiler={onAttachmentSpoiler}
                   actions={actions}
                   moveTargets={moveTargets}
                   onDragStart={onDragStart}

@@ -11,10 +11,12 @@ interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "ar
   error?: string;
   /** A reference to the `<input>` (⌘F puts focus in the field). */
   inputRef?: Ref<HTMLInputElement>;
+  /** A fixed text after the input, not editable (KINIG-136: the extension of an attachment's name, `.jpg`). It is read out with the field's description. */
+  suffix?: string;
 }
 
 /** A single-line input field (search and the like). No outline: a dark fill, focus is the caret and a lighter fill; a border only for an error. */
-export function TextField({ label, icon, error, className, inputRef, ...rest }: TextFieldProps) {
+export function TextField({ label, icon, error, className, inputRef, suffix, ...rest }: TextFieldProps) {
   const errorId = useId();
   return (
     <div className={`text-field${className ? ` ${className}` : ""}`}>
@@ -28,6 +30,7 @@ export function TextField({ label, icon, error, className, inputRef, ...rest }: 
           aria-describedby={error ? errorId : undefined}
           {...rest}
         />
+        {suffix ? <span className="text-field__suffix">{suffix}</span> : null}
       </label>
       {error ? (
         <p className="text-field__error" id={errorId} role="alert">

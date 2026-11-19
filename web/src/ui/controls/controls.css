@@ -190,6 +190,35 @@
   opacity: 1;
 }
 
+/* KINIG-136: a fixed suffix after the input (the extension of a file name) and the multi-line variant with its counter. */
+.text-field__suffix {
+  flex: none;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  user-select: none;
+}
+
+.text-field__box--multiline {
+  align-items: flex-start;
+  padding-block: var(--space-2);
+}
+
+.text-field__input--multiline {
+  resize: none;
+  min-height: 0;
+}
+
+.text-field__note {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  text-align: end;
+}
+
 .text-field__error {
   margin: 0;
   color: var(--color-status-error);
