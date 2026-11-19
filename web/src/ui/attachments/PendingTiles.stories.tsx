@@ -85,7 +85,7 @@ export const ОдинФайл: Story = { args: { items: [demoFile("one-pdf", "Д
 
 /**
  * The most the composer takes (ten) in a 640 px window: the tiles wrap, no horizontal scroll bar; past two lines (or 40% of the window
- * height) the area scrolls inside, and a half-shown line says there is more.
+ * height) the area scrolls inside, with its thin bar (the capture hides scroll bars, so the baseline shows two whole lines only).
  */
 export const Десять: Story = {
   parameters: { narrow: true },

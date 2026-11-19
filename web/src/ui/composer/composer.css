@@ -56,7 +56,7 @@
 }
 
 /* The pending attachments (KINIG-135): a line of their own inside the box, above the text. Two full lines of tiles at most (or a share of the
-   window height, whichever is less); past that the area scrolls inside, and a half-shown line is the hint that there is more. The box is
+   window height, whichever is less); scrolling starts with the third line (its thin scroll bar says there is more). The box is
    border-box, so the cap counts the padding in: two lines of tiles, the gap between them and the ring room above and below. */
 .composer__tiles {
   --composer-tiles-ring-room: calc(var(--focus-width) + var(--focus-offset));
