@@ -67,6 +67,8 @@ L_VIEWER="Просмотр фото"
 L_CLOSE="Закрыть"
 ALONE="${L_PHOTO} IMG_0005.jpg"
 CAPTION="Прогулка вдоль реки"
+# The entry just above the album in the feed (text of the seed's "Купить билеты на субботу и позвонить маме.").
+BEFORE="позвонить маме"
 FIT_LOG="$OUT/fit.txt"
 mkdir -p "$OUT"
 : > "$FIT_LOG"
@@ -95,15 +97,19 @@ album_whole() {
   local f
   read -r -a f <<< "$top $caption $search $composer"
   # Indexes: 1 first picture y; 5 and 7 caption y and height; 9 search y; 13 composer y.
-  [ "${f[1]}" -ge $((f[9] - 15)) ] && [ $((f[5] + f[7])) -le $((f[13] - 10)) ]
+  # The composer's text is the middle of its field: the feed ends about 50 px above it (first run: a caption that ended 13 px above the text was
+  # behind the composer, although the check allowed it), and the bubble ends about 12 px under the caption, so 65.
+  [ "${f[1]}" -ge $((f[9] - 15)) ] && [ $((f[5] + f[7])) -le $((f[13] - 65)) ]
 }
 
-# Brings the whole album entry (pictures, caption, time) into view. A scroll-to-visible puts an element in the middle of the window when it was
-# out of view and does nothing when it was already visible, so the pictures are tried one after another until the entry fits; what was tried
-# and what the frames were is written to fit.txt, whatever the result.
+# Brings the whole album entry (pictures, caption, time) into view. A scroll-to-visible moves the feed only as far as the element needs
+# (the entry above the album, coming from below, ends at the top of the feed with the album under it: on the first run a picture of the album
+# ended up at the top or in the middle, and the caption was behind the composer or the first row above the window), and does nothing when it
+# was already visible, so the candidates are tried one after another until the entry fits; what was tried and what the frames were is
+# written to fit.txt, whatever the result.
 show_album() {
   local candidate
-  for candidate in "${L_PHOTO} IMG_0003.jpg" "${L_PHOTO} IMG_0002.jpg" "${L_PHOTO} IMG_0001.jpg" "$CAPTION"; do
+  for candidate in "$BEFORE" "${L_PHOTO} IMG_0003.jpg" "${L_PHOTO} IMG_0002.jpg" "${L_PHOTO} IMG_0001.jpg" "$CAPTION"; do
     echo "scroll to: $candidate" >> "$FIT_LOG"
     scroll_to "$candidate"
     sleep 4
