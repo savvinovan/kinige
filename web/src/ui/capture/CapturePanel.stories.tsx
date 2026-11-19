@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState } from "react";
 import { demoEntry } from "../../api/demoData";
+import { staticVoice } from "../../voice/staticVoice";
+import type { VoiceState } from "../../voice/useVoiceRecorder";
 import { EmojiStoryData } from "../emoji/EmojiStoryData";
 import type { FeedMessage } from "../feed/buildFeed";
+import { storyLevels } from "../voice/storyLevels";
 import { CapturePanel } from "./CapturePanel";
 import "./capture-stories.css";
 
@@ -44,10 +47,12 @@ interface DemoProps {
   focusSend?: boolean;
   /** The emoji picker is open on show: the panel in the flow above the field, the window taller. */
   pickerOpen?: boolean;
+  /** The microphone (KINIG-153), frozen in this state; without it the story has no microphone button, as the first stories of the slice. */
+  voice?: VoiceState;
 }
 
 /** The capture window at its own size on a "desk"; the text in the field is live, Enter clears it, as after sending. */
-function Demo({ context, appendTargetId = null, value: initial = "", error, narrow = false, focusSend = false, pickerOpen = false }: DemoProps) {
+function Demo({ context, appendTargetId = null, value: initial = "", error, narrow = false, focusSend = false, pickerOpen = false, voice }: DemoProps) {
   const [value, setValue] = useState(initial);
   const [open, setOpen] = useState(pickerOpen);
   const host = useRef<HTMLDivElement>(null);
@@ -74,6 +79,7 @@ function Demo({ context, appendTargetId = null, value: initial = "", error, narr
               open,
               onOpenChange: setOpen,
             }}
+            voice={voice ? staticVoice(voice, { levels: storyLevels }) : undefined}
           />
         </div>
       </div>
@@ -188,5 +194,34 @@ export const EnПусто: Story = { args: { context: [] }, globals: { language:
 /** English: an error. */
 export const EnОшибка: Story = {
   args: { context: ONE, value: "and one more thing", error: "Could not save the entry. The text is still in the field." },
+  globals: { language: "en" },
+};
+
+// ---- The microphone (KINIG-153): the main window's button and recording bar in the capture panel. Every story also shoots at large text. ----
+
+/** An empty field: the microphone button where the main window has it, right of the emoji button. */
+export const МикрофонПустоеПоле: Story = { args: { appendTargetId: "c", voice: { kind: "idle" } } };
+
+/** Recording at 0:12: the bar stands in for the field at the same height, the trash on the left, Send on the right; the window does not move. */
+export const МикрофонЗапись: Story = { args: { appendTargetId: "c", voice: { kind: "recording", elapsedMs: 12_000 } } };
+
+/** English, recording, with the context above. */
+export const EnМикрофонЗапись: Story = {
+  args: { context: ONE, appendTargetId: "a", voice: { kind: "recording", elapsedMs: 83_000 } },
+  globals: { language: "en" },
+};
+
+/** A recording over five seconds asks before it is dropped: the question and two choices have to fit the panel's width in Russian too. */
+export const МикрофонВопросОбУдалении: Story = { args: { voice: { kind: "confirming", elapsedMs: 12_000 } } };
+
+/** The window was hidden mid-recording: what was recorded waits, and it says so without blaming the device. */
+export const МикрофонЗаписьОстановлена: Story = { args: { voice: { kind: "lost", elapsedMs: 12_000, cause: "hidden" } } };
+
+/** The first use, access is off in the system settings: one line above the field with "Open settings", the field is where it was. */
+export const МикрофонДоступВыключен: Story = { args: { appendTargetId: "c", voice: { kind: "notice", reason: "denied" } } };
+
+/** The main window is recording: the one microphone is taken, so this window says "unavailable" and starts nothing. */
+export const EnМикрофонЗанят: Story = {
+  args: { context: ONE, voice: { kind: "notice", reason: "busy" } },
   globals: { language: "en" },
 };
