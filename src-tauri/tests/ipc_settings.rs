@@ -130,7 +130,7 @@ fn the_main_window_lost_the_moved_commands_and_keeps_get_settings_and_the_new_op
 
 #[test]
 fn the_capture_window_still_has_exactly_seven_commands_and_none_of_the_settings_ones() {
-    assert_eq!(CAPTURE_COMMANDS.len(), 7);
+    assert_eq!(CAPTURE_COMMANDS, CAPTURE_SET);
     let fixture = fixture();
     let capture = window(&fixture, "capture");
     for command in SETTINGS_COMMANDS.iter().chain(&["open_settings"]) {

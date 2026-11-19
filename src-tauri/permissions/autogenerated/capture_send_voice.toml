@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-capture-send-voice"
+description = "Enables the capture_send_voice command without any pre-configured scope."
+commands.allow = ["capture_send_voice"]
+
+[[permission]]
+identifier = "deny-capture-send-voice"
+description = "Denies the capture_send_voice command without any pre-configured scope."
+commands.deny = ["capture_send_voice"]

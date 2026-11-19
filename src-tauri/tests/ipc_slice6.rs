@@ -33,17 +33,8 @@ fn year_of(main: &tauri::WebviewWindow<tauri::test::MockRuntime>, year: i64) -> 
 #[test]
 fn slice_six_commands_are_main_only_and_the_capture_set_is_unchanged() {
     assert_eq!(
-        CAPTURE_COMMANDS,
-        [
-            "capture_state",
-            "capture_send",
-            "capture_append",
-            "capture_save_draft",
-            "capture_hide",
-            "capture_resize",
-            "capture_add_recent_emoji"
-        ],
-        "the capture window still has seven commands"
+        CAPTURE_COMMANDS, CAPTURE_SET,
+        "the capture window's set is unchanged by this slice"
     );
     let fixture = fixture();
     let main = window(&fixture, "main");

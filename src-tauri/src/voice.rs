@@ -3,10 +3,12 @@
 //! rules here (they are in `kinige-domain` and `kinige-store`).
 
 use crate::attachments::{api, header_text};
-use crate::capture::MAIN_LABEL;
+use crate::capture::{CAPTURE_LABEL, MAIN_LABEL, notify_entries_changed};
 use kinige_domain::attachment::{MAX_PASTE_BYTES, waveform_from_hex};
+use kinige_domain::groups::INBOX_ID;
 use kinige_domain::{ApiError, ErrorCode, MessageView};
 use kinige_store::{Now, Store};
+use std::sync::{Mutex, MutexGuard, PoisonError};
 use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::webview::{PermissionKind, PermissionResponse};
 use tauri::{AppHandle, Runtime, State};
@@ -14,6 +16,42 @@ use tauri::{AppHandle, Runtime, State};
 use tauri_plugin_opener::OpenerExt;
 
 type ApiResult<T> = Result<T, ApiError>;
+
+/// Which window has the microphone open (or is waiting for the system's answer to the first request). The device is shared by the two
+/// windows that record, the main one and the capture window, and each page has its own recorder: this is what keeps them to one
+/// recording at a time (KINIG-153). It also tells the capture window not to hide on a loss of focus while its recording runs.
+#[derive(Default)]
+pub struct MicrophoneClaim(Mutex<Option<&'static str>>);
+
+impl MicrophoneClaim {
+    /// Takes the microphone for `label`. False when the other window holds it; taking it again is fine.
+    pub fn hold(&self, label: &'static str) -> bool {
+        let mut holder = self.holder();
+        match *holder {
+            Some(other) if other != label => false,
+            _ => {
+                *holder = Some(label);
+                true
+            }
+        }
+    }
+
+    /// Gives the microphone back. A window cannot release the other one's claim.
+    pub fn release(&self, label: &str) {
+        let mut holder = self.holder();
+        if *holder == Some(label) {
+            *holder = None;
+        }
+    }
+
+    pub fn is_held_by(&self, label: &str) -> bool {
+        *self.holder() == Some(label)
+    }
+
+    fn holder(&self) -> MutexGuard<'_, Option<&'static str>> {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
 
 /// The page of the system settings with the microphone switches. A fixed URL: the command takes no argument, so nothing the web
 /// view says can reach the opener (`open_external_url` would refuse these schemes, which is why this is a separate command).
@@ -28,23 +66,10 @@ const MICROPHONE_SETTINGS_URL: &str = "ms-settings:privacy-microphone";
 /// duration, the size, the chat and the reply target; nothing is written on an error.
 #[tauri::command(async)]
 pub fn send_voice(store: State<'_, Store>, request: Request<'_>) -> ApiResult<MessageView> {
-    let InvokeBody::Raw(bytes) = request.body() else {
-        return Err(ErrorCode::AttachmentUnreadable.into());
-    };
-    if bytes.len() > MAX_PASTE_BYTES {
-        return Err(ErrorCode::AttachmentTooLarge.into());
-    }
+    let bytes = recording_body(&request)?;
     let chat_id = header_text(&request, "x-chat-id").ok_or(ErrorCode::ChatNotFound)?;
-    let duration_ms = header_text(&request, "x-duration-ms")
-        .as_deref()
-        .and_then(parse_duration_ms)
-        .ok_or(ErrorCode::AttachmentUnreadable)?;
+    let (duration_ms, waveform) = recording_headers(&request)?;
     let reply_to = header_text(&request, "x-reply-to");
-    // The waveform is cosmetic and local: a header that does not read as 64 peaks is ignored, the note is still saved.
-    let waveform = header_text(&request, "x-waveform")
-        .as_deref()
-        .and_then(waveform_from_hex)
-        .filter(|peaks| !peaks.is_empty());
     store
         .send_voice_with_waveform(
             &chat_id,
@@ -55,6 +80,79 @@ pub fn send_voice(store: State<'_, Store>, request: Request<'_>) -> ApiResult<Me
             &Now::system(),
         )
         .map_err(api)
+}
+
+/// The quick capture window's recording (KINIG-153): the same body and headers as `send_voice` but no chat and no reply, because this
+/// window writes only to Inbox and has no way to name another chat (§12.3). The text draft of the window is not touched. The main
+/// window hears about the new entry like it does about a text note.
+#[tauri::command(async)]
+pub fn capture_send_voice<R: Runtime>(
+    app: AppHandle<R>,
+    store: State<'_, Store>,
+    request: Request<'_>,
+) -> ApiResult<MessageView> {
+    let bytes = recording_body(&request)?;
+    let (duration_ms, waveform) = recording_headers(&request)?;
+    let sent = store
+        .send_voice_with_waveform(
+            INBOX_ID,
+            None,
+            bytes,
+            duration_ms,
+            waveform.as_deref(),
+            &Now::system(),
+        )
+        .map_err(api)?;
+    notify_entries_changed(&app);
+    Ok(sent)
+}
+
+/// The raw body of a recording: not JSON, and under the 64 MiB cap of the IPC.
+fn recording_body<'a>(request: &'a Request<'_>) -> ApiResult<&'a [u8]> {
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err(ErrorCode::AttachmentUnreadable.into());
+    };
+    if bytes.len() > MAX_PASTE_BYTES {
+        return Err(ErrorCode::AttachmentTooLarge.into());
+    }
+    Ok(bytes)
+}
+
+/// `x-duration-ms` (the product limits are the store's) and `x-waveform`. The waveform is cosmetic and local: a header that does not read
+/// as 64 peaks is ignored, the note is still saved.
+fn recording_headers(request: &Request<'_>) -> ApiResult<(i64, Option<Vec<u8>>)> {
+    let duration_ms = header_text(request, "x-duration-ms")
+        .as_deref()
+        .and_then(parse_duration_ms)
+        .ok_or(ErrorCode::AttachmentUnreadable)?;
+    let waveform = header_text(request, "x-waveform")
+        .as_deref()
+        .and_then(waveform_from_hex)
+        .filter(|peaks| !peaks.is_empty());
+    Ok((duration_ms, waveform))
+}
+
+/// `held = true`: the window is about to open the microphone; the answer says whether it may (false: the other window records). `held =
+/// false`: it let the device go. Both windows have their own command, so the claim is the caller's without a label argument that a page
+/// could lie about.
+#[tauri::command]
+pub fn microphone_hold(claim: State<'_, MicrophoneClaim>, held: bool) -> bool {
+    hold_for(&claim, MAIN_LABEL, held)
+}
+
+/// The capture window's `microphone_hold`.
+#[tauri::command]
+pub fn capture_hold_microphone(claim: State<'_, MicrophoneClaim>, held: bool) -> bool {
+    hold_for(&claim, CAPTURE_LABEL, held)
+}
+
+fn hold_for(claim: &MicrophoneClaim, label: &'static str, held: bool) -> bool {
+    if held {
+        claim.hold(label)
+    } else {
+        claim.release(label);
+        true
+    }
 }
 
 /// The stored bytes of a voice note, for the player's waveform decoder (ADR-0015): the same checks as the `audio` route plus a cap of
@@ -89,6 +187,16 @@ pub fn set_attachment_waveform(
 /// dialog, no argument, no data in or out.
 #[tauri::command(async)]
 pub fn open_microphone_settings<R: Runtime>(app: AppHandle<R>) -> ApiResult<()> {
+    open_settings_page(&app)
+}
+
+/// The capture window's `open_microphone_settings`: the same fixed page, so its "Microphone access is off" line can offer the button too.
+#[tauri::command(async)]
+pub fn capture_open_microphone_settings<R: Runtime>(app: AppHandle<R>) -> ApiResult<()> {
+    open_settings_page(&app)
+}
+
+fn open_settings_page<R: Runtime>(app: &AppHandle<R>) -> ApiResult<()> {
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     {
         app.opener()
@@ -105,14 +213,16 @@ pub fn open_microphone_settings<R: Runtime>(app: AppHandle<R>) -> ApiResult<()> 
     }
 }
 
-/// The web view's own permission prompts (`tauri::Builder::on_permission_request`). Only the main window may use the microphone;
-/// the camera, screen capture and geolocation are refused to every window; anything else keeps the platform default (which is what
-/// keeps the clipboard-read allowance wry grants on Windows). Without a handler wry on macOS grants every capture request, camera
-/// included. On macOS only camera and microphone requests reach the handler; the refusals of geolocation and screen capture are
-/// effective on Windows and Linux (ADR-0015).
+/// The web view's own permission prompts (`tauri::Builder::on_permission_request`). Only the main window and the quick capture window
+/// (KINIG-153) may use the microphone; the camera, screen capture and geolocation are refused to every window; anything else keeps the
+/// platform default (which is what keeps the clipboard-read allowance wry grants on Windows). Without a handler wry on macOS grants
+/// every capture request, camera included. On macOS only camera and microphone requests reach the handler; the refusals of geolocation
+/// and screen capture are effective on Windows and Linux (ADR-0015).
 pub fn permission_decision(label: &str, kind: PermissionKind) -> PermissionResponse {
     match kind {
-        PermissionKind::Microphone if label == MAIN_LABEL => PermissionResponse::Allow,
+        PermissionKind::Microphone if label == MAIN_LABEL || label == CAPTURE_LABEL => {
+            PermissionResponse::Allow
+        }
         PermissionKind::Microphone
         | PermissionKind::Camera
         | PermissionKind::DisplayCapture
@@ -155,13 +265,33 @@ mod tests {
     }
 
     #[test]
-    fn only_the_main_window_may_use_the_microphone() {
+    fn only_the_main_and_the_capture_windows_may_use_the_microphone() {
         use PermissionKind::*;
         use PermissionResponse::*;
-        assert_eq!(permission_decision("main", Microphone), Allow);
-        for label in ["capture", "settings", "", "Main", "other"] {
+        for label in ["main", "capture"] {
+            assert_eq!(permission_decision(label, Microphone), Allow, "{label}");
+        }
+        for label in ["settings", "", "Main", "Capture", "other"] {
             assert_eq!(permission_decision(label, Microphone), Deny, "{label}");
         }
+    }
+
+    #[test]
+    fn the_microphone_has_one_holder_at_a_time() {
+        let claim = MicrophoneClaim::default();
+        assert!(claim.hold("main"));
+        assert!(claim.hold("main"), "taking it again is fine");
+        assert!(!claim.hold("capture"), "the other window is refused");
+        assert!(claim.is_held_by("main") && !claim.is_held_by("capture"));
+        claim.release("capture");
+        assert!(
+            claim.is_held_by("main"),
+            "a window cannot release the other one's claim"
+        );
+        claim.release("main");
+        assert!(claim.hold("capture"), "free again once the holder lets go");
+        claim.release("main");
+        assert!(claim.is_held_by("capture"));
     }
 
     #[test]

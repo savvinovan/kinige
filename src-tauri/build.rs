@@ -92,6 +92,7 @@ fn main() {
         "open_attachment",
         "send_voice",
         "open_microphone_settings",
+        "microphone_hold",
         "read_voice_for_waveform",
         "set_attachment_waveform",
         "set_text_size",
@@ -114,6 +115,9 @@ fn main() {
         "capture_hide",
         "capture_resize",
         "capture_add_recent_emoji",
+        "capture_send_voice",
+        "capture_hold_microphone",
+        "capture_open_microphone_settings",
     ];
     // The screens driver's one command exists only with the feature (and its permission, `allow-screens-driver-reply`, with it).
     let mut commands = list.to_vec();

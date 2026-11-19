@@ -66,6 +66,8 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     media_protocol::register(builder)
         // The web view's own permission prompts (slice 7a): the microphone for `main` only, no camera, screen capture or location.
         .on_permission_request(|webview, kind| voice::permission_decision(webview.label(), kind))
+        // Which of the two recording windows has the microphone (KINIG-153).
+        .manage(voice::MicrophoneClaim::default())
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -83,6 +85,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             attachments::open_attachment,
             voice::send_voice,
             voice::open_microphone_settings,
+            voice::microphone_hold,
             voice::read_voice_for_waveform,
             voice::set_attachment_waveform,
             commands::get_settings,
@@ -140,6 +143,9 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             capture::capture_hide,
             capture::capture_resize,
             capture::capture_add_recent_emoji,
+            voice::capture_send_voice,
+            voice::capture_hold_microphone,
+            voice::capture_open_microphone_settings,
             #[cfg(feature = "screens-driver")]
             screens_driver::screens_driver_reply,
         ]))
@@ -348,6 +354,12 @@ pub fn run() {
         .setup(move |app| fail_fast(setup(app)))
         .on_window_event(on_window_event)
         .on_page_load(|webview, payload| {
+            // A page that starts loading has no recorder yet: a claim left by a page that was reloaded or died must not lock the other window out.
+            if payload.event() == PageLoadEvent::Started
+                && let Some(claim) = webview.app_handle().try_state::<voice::MicrophoneClaim>()
+            {
+                claim.release(webview.label());
+            }
             // Cold start measurement (`scripts/measure-cold-start.sh`): a mark for when the main window page has loaded.
             // Without `KINIGE_TIMING=1` the level of the `kinige-timing` target is off, and nothing is written.
             if webview.label() == MAIN_LABEL && payload.event() == PageLoadEvent::Finished {
