@@ -53,6 +53,8 @@ export interface FeedPaging {
    * reloads the last page; one that already reaches it has nothing to do. The feed scrolls to its bottom edge when this settles.
    */
   onJumpToLatest: () => Promise<void>;
+  /** The "Jump to latest" button disappeared while it held the focus without being pressed: the parent says where the focus goes. */
+  onJumpFocusLost?: () => void;
 }
 
 /** A request to scroll the feed to an entry (a jump from search): a new `nonce` is a new request, even for the same entry. */
@@ -196,6 +198,15 @@ export function Feed({
   };
   // The list changed (a page came, an entry was added or removed): the content height, and with it the distance, may have changed.
   useLayoutEffect(measureFar, [measureFar, items]);
+  // The window was resized: the area grew or shrank, so a screen is another distance. Not every engine sends a `scroll` for it
+  // (Playwright's WebKit does not when the area grows until the end is within a screen).
+  useEffect(() => {
+    const root = scroller.current;
+    if (!root || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measureFar);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [measureFar]);
 
   // The list edge appeared in the scroll area: load the next page. The `column-reverse` area keeps the bottom edge in
   // place, so entries added at the TOP shift nothing; those added at the bottom do shift things, and the effect below fixes that.
@@ -340,7 +351,7 @@ export function Feed({
         {hasOlder ? <div className="feed__edge" ref={olderEdge} aria-hidden="true" /> : null}
       </div>
       {/* After the area in the markup, so Tab reaches it right after the feed and before the composer. */}
-      {!loading && items.length > 0 && (hasNewer || far) ? <JumpToLatest onJump={() => void jumpToLatest()} /> : null}
+      {!loading && items.length > 0 && (hasNewer || far) ? <JumpToLatest onJump={() => void jumpToLatest()} onFocusLost={paging?.onJumpFocusLost} /> : null}
     </div>
   );
 }

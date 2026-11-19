@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { demoEntry } from "../../api/demoData";
-import { fireEvent, render, screen, waitFor } from "../../test/render";
+import { act, fireEvent, render, screen, waitFor } from "../../test/render";
 import { Feed, type FeedPaging } from "./Feed";
 
 // "Jump to latest" (KINIG-145): the show and hide rule, the click on a loaded feed and on a window around an old entry, the keyboard path.
@@ -125,5 +125,64 @@ describe("Feed: the click", () => {
     expect(scroller.compareDocumentPosition(jump) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     jump.focus();
     expect(jump).toHaveFocus();
+  });
+});
+
+describe("Feed: the focus when the button goes away without a press", () => {
+  it("the feed reaches its end while the button holds the focus: the parent is asked where the focus goes", () => {
+    const onJumpFocusLost = vi.fn();
+    render(<Feed messages={MESSAGES} today="2026-10-12" paging={paging({ onJumpFocusLost })} />);
+    scrollerAt(SCREEN * 3);
+    (button() as HTMLElement).focus();
+    expect(button()).toHaveFocus();
+    // The trackpad, VoiceOver or newer pages bring the end within a screen: the button goes, and with it the focus (to `<body>`).
+    scrollerAt(0);
+    expect(button()).toBeNull();
+    expect(onJumpFocusLost).toHaveBeenCalledTimes(1);
+  });
+
+  it("the button goes while the focus is elsewhere: nobody is asked", () => {
+    const onJumpFocusLost = vi.fn();
+    render(<Feed messages={MESSAGES} today="2026-10-12" paging={paging({ onJumpFocusLost })} />);
+    scrollerAt(SCREEN * 3);
+    (button() as HTMLElement).focus();
+    screen.getByRole("region", { name: "Записи" }).focus();
+    scrollerAt(0);
+    expect(button()).toBeNull();
+    expect(onJumpFocusLost).not.toHaveBeenCalled();
+  });
+});
+
+describe("Feed: the window is resized", () => {
+  it("the area grows until the end is within a screen, with no scroll event: the button goes; it comes back when the area shrinks", () => {
+    const observers: FakeResize[] = [];
+    class FakeResize {
+      disconnected = false;
+      constructor(readonly callback: () => void) {
+        observers.push(this);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {
+        this.disconnected = true;
+      }
+    }
+    vi.stubGlobal("ResizeObserver", FakeResize);
+    try {
+      const { unmount } = render(<Feed messages={MESSAGES} today="2026-10-12" paging={paging()} />);
+      const scroller = scrollerAt(SCREEN + 100);
+      expect(button()).not.toBeNull();
+      Object.defineProperty(scroller, "clientHeight", { configurable: true, value: SCREEN + 200 });
+      act(() => observers.forEach((observer) => observer.callback()));
+      expect(button()).toBeNull();
+      Object.defineProperty(scroller, "clientHeight", { configurable: true, value: SCREEN });
+      act(() => observers.forEach((observer) => observer.callback()));
+      expect(button()).not.toBeNull();
+      unmount();
+      expect(observers.length).toBeGreaterThan(0);
+      expect(observers.every((observer) => observer.disconnected)).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

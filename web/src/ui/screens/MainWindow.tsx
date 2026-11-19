@@ -280,10 +280,12 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       today={feed.today}
       feedUi={feed.ui}
       feedActions={feed.actions}
-      // "Jump to latest": the composer takes the focus, as after sending (the feed itself scrolls to its bottom edge).
+      // "Jump to latest": the composer takes the focus, as after sending (the feed itself scrolls to its bottom edge), and also when the
+      // button goes away under the focus without a press (the feed reached its end by another way).
       feedPaging={{
         ...feed.paging,
         onJumpToLatest: () => feed.paging.onJumpToLatest().finally(focusComposer),
+        onJumpFocusLost: focusComposer,
       }}
       feedScrollTo={feed.scrollTo}
       feedToBottom={toBottom}
