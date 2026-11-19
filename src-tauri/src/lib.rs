@@ -80,6 +80,8 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             attachments::attach_dropped,
             attachments::set_drop_target,
             attachments::remove_draft_attachment,
+            attachments::set_draft_attachment_details,
+            attachments::set_attachment_details,
             attachments::open_attachment,
             voice::send_voice,
             voice::open_microphone_settings,

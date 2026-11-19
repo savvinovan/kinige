@@ -5,7 +5,8 @@
 use super::names::{ext_suffix, extension, sanitize_filename};
 use super::{AttachmentKind, MAX_FILENAME_BYTES};
 use crate::groups::SCHEMA_VERSION;
-use serde::Deserialize;
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer};
 use serde_json::{Map, Value, json, value::RawValue};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -37,22 +38,47 @@ impl std::error::Error for DetailsError {}
 /// The changes a command carries (`set_attachment_details`, `set_draft_attachment_details`): each field is "leave" (the key is
 /// absent) or a value. `null` clears the name or the description; the spoiler takes `true` or `false`, never `null`; a key that is not
 /// one of the three is refused. Counting and normalizing are Rust's (`normalize_name`, `normalize_description`).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, TS)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, TS)]
 #[ts(export, export_to = "AttachmentDetailsChanges.ts")]
 pub struct AttachmentDetailsChanges {
     /// The stem of the display name: the original extension is a fixed suffix Rust appends. Empty or `null` is the original.
-    #[serde(default, with = "sent_value")]
     #[ts(optional = nullable, as = "Option<String>")]
     pub name: Option<Option<String>>,
     /// Plain text; empty or `null` is none.
-    #[serde(default, with = "sent_value")]
     #[ts(optional = nullable, as = "Option<String>")]
     pub description: Option<Option<String>>,
     /// Only for an `image`. `null` is refused.
-    #[serde(default, with = "sent_flag")]
     #[ts(optional, as = "Option<bool>")]
     pub spoiler: Option<bool>,
+}
+
+/// The wire form: only an object reads (serde would also read a struct from an array, so `["x"]` would be a name), no unknown key, no
+/// `null` for the spoiler. An error says what is wrong, never the value: serde's own text quotes an unexpected string, and an error
+/// reaches the frontend and may reach a log.
+impl<'de> Deserialize<'de> for AttachmentDetailsChanges {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Wire {
+            #[serde(default, with = "sent_value")]
+            name: Option<Option<String>>,
+            #[serde(default, with = "sent_value")]
+            description: Option<Option<String>>,
+            #[serde(default, with = "sent_flag")]
+            spoiler: Option<bool>,
+        }
+        let value = Value::deserialize(deserializer)?;
+        if !value.is_object() {
+            return Err(D::Error::custom("the changes must be an object"));
+        }
+        let wire: Wire = serde_json::from_value(value)
+            .map_err(|_| D::Error::custom("the changes do not read"))?;
+        Ok(AttachmentDetailsChanges {
+            name: wire.name,
+            description: wire.description,
+            spoiler: wire.spoiler,
+        })
+    }
 }
 
 /// A key that is present: its value, `null` included. (A key that is absent never reaches here: `default` leaves `None`.)

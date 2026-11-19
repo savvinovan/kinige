@@ -373,3 +373,6 @@ mod voice_tests;
 
 #[cfg(test)]
 mod details_tests;
+
+#[cfg(test)]
+mod changes_tests;
