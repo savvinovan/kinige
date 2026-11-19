@@ -75,16 +75,25 @@ export function useAttachments({ api, selected, tiles, addTiles, dropTile, onErr
   );
 
   const removeTile = useCallback(
-    (attachmentId: string) => {
-      if (selected === null) return;
-      api
-        .removeDraftAttachment(selected, attachmentId)
-        .then(() => dropTile(attachmentId))
-        // The tile is already gone in Rust: the row catches up.
-        .catch((reason: unknown) => {
-          if (errorCode(reason) === "attachment_not_found") dropTile(attachmentId);
-          else fail(reason);
-        });
+    (attachmentId: string): Promise<boolean> => {
+      if (selected === null) return Promise.resolve(false);
+      return (
+        api
+          .removeDraftAttachment(selected, attachmentId)
+          .then(() => {
+            dropTile(attachmentId);
+            return true;
+          })
+          // The tile is already gone in Rust: the row catches up.
+          .catch((reason: unknown) => {
+            if (errorCode(reason) === "attachment_not_found") {
+              dropTile(attachmentId);
+              return true;
+            }
+            fail(reason);
+            return false;
+          })
+      );
     },
     [api, selected, dropTile, fail],
   );

@@ -117,7 +117,8 @@ interface MainWindowViewProps {
 export interface AttachmentControls {
   tiles: readonly AttachmentView[];
   onAttach: () => void;
-  onRemoveTile: (attachmentId: string) => void;
+  /** Removes a pending tile; the promise says whether it is gone (`false`: the removal failed and the tile stays). */
+  onRemoveTile: (attachmentId: string) => Promise<boolean>;
   /** A click on a picture tile above the field: the viewer opens on it (KINIG-135). */
   onOpenTile: (attachmentId: string) => void;
   onPasteFiles: (files: readonly File[]) => void;

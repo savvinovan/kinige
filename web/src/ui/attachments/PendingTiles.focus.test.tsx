@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
-import { fireEvent, render, screen } from "../../test/render";
+import { act, fireEvent, render, screen } from "../../test/render";
 import { Composer } from "../composer/Composer";
 import { demoFile, demoPhoto } from "./demo";
 import { PendingTiles } from "./PendingTiles";
@@ -62,6 +62,39 @@ describe("плитки: фокус после крестика с клавиат
     fireEvent.click(remove("a.jpg"));
     expect(outside).toHaveFocus();
     outside.remove();
+  });
+
+  it("медленное удаление: фокус успели перевести в поле ввода, плитка ушла, фокус остаётся в поле", () => {
+    let finish = () => undefined as void;
+    const slow = (id: string, set: (update: (was: readonly AttachmentView[]) => readonly AttachmentView[]) => void) =>
+      new Promise<boolean>((resolve) => {
+        finish = () => {
+          set((was) => was.filter((item) => item.id !== id));
+          resolve(true);
+        };
+      });
+    function SlowWindow() {
+      const [items, setItems] = useState<readonly AttachmentView[]>(ITEMS);
+      return <Composer value="" onChange={() => undefined} tiles={<PendingTiles items={items} onRemove={(id) => slow(id, setItems)} />} hasTiles />;
+    }
+    render(<SlowWindow />, { language: "en" });
+    pressRemove("a.jpg");
+    screen.getByRole("textbox").focus();
+    expect(screen.getByRole("textbox")).toHaveFocus();
+    act(() => finish());
+    expect(screen.queryByRole("button", { name: "Remove a.jpg" })).toBeNull();
+    expect(screen.getByRole("textbox")).toHaveFocus();
+  });
+
+  it("удаление не удалось: плитка остаётся, а позже, когда она всё же уходит, фокус не переводят по устаревшему ожиданию", async () => {
+    const failing = () => Promise.resolve(false);
+    const { rerender } = render(<PendingTiles items={ITEMS} onRemove={failing} />, { language: "en" });
+    pressRemove("a.jpg");
+    await act(async () => undefined);
+    expect(remove("a.jpg")).toHaveFocus();
+    // The tile goes by another way (the draft changed elsewhere): nobody asked for a hand-over any more.
+    rerender(<PendingTiles items={ITEMS.slice(1)} onRemove={failing} />);
+    expect(document.body).toHaveFocus();
   });
 
   it("пока плитка не убрана (Rust ещё не ответил), фокус остаётся на её крестике", () => {

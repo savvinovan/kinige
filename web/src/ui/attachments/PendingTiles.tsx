@@ -17,8 +17,8 @@ export const TALL_PICTURE_ASPECT = 0.75;
 interface PendingTilesProps {
   /** The unsent attachments of the draft, in order. */
   items: readonly AttachmentView[];
-  /** The x on a tile. */
-  onRemove: (attachmentId: string) => void;
+  /** The x on a tile. It may return a promise that says whether the tile is gone (`false`: it failed and stays), so no focus hand-over is left waiting. */
+  onRemove: (attachmentId: string) => void | Promise<boolean>;
   /** A click or Enter on a picture tile: its attachment id (the window opens the viewer). Without it a picture is not a button. */
   onOpen?: (attachmentId: string) => void;
 }
@@ -32,11 +32,14 @@ interface PendingTilesProps {
 export function PendingTiles({ items, onRemove, onOpen }: PendingTilesProps) {
   const { t } = useTranslation();
   const list = useRef<HTMLUListElement>(null);
-  const handOver = useFocusHandOver(items, list);
+  const { arm, disarm } = useFocusHandOver(items, list);
   if (items.length === 0) return null;
   const remove = (attachmentId: string) => {
-    handOver(attachmentId);
-    onRemove(attachmentId);
+    arm(attachmentId);
+    // A removal that failed leaves the tile and no hand-over waiting for it.
+    void Promise.resolve(onRemove(attachmentId)).then((gone) => {
+      if (gone === false) disarm(attachmentId);
+    });
   };
   return (
     <ul className="pending-tiles" aria-label={t("attachments.pendingLabel")} ref={list}>
@@ -52,7 +55,9 @@ export function PendingTiles({ items, onRemove, onOpen }: PendingTilesProps) {
 /**
  * Keyboard focus after a tile's x (PRD §12.2): the removed button disappears, and the focus must not drop to the page. It goes to the x of
  * the next tile, else of the previous one. When the last tile goes, the list goes too and the composer gives the focus to the text field.
- * Returns the function to call with the id right before the removal starts (the list changes later: the removal is asked of Rust first).
+ * `arm(id)` is called right before the removal starts (the list changes later: the removal is asked of Rust first); `disarm(id)` when it failed.
+ * The focus moves only if it is on the page (`<body>`) when the tile goes, as the removed button had it: if the person has focused something
+ * else meanwhile (a slow removal), it stays there.
  */
 function useFocusHandOver(items: readonly AttachmentView[], list: { current: HTMLUListElement | null }) {
   const waiting = useRef<{ removed: string; next: string | undefined } | null>(null);
@@ -60,17 +65,22 @@ function useFocusHandOver(items: readonly AttachmentView[], list: { current: HTM
     const pending = waiting.current;
     if (!pending || items.some((item) => item.id === pending.removed)) return;
     waiting.current = null;
-    if (pending.next === undefined) return;
+    const active = document.activeElement;
+    if (pending.next === undefined || (active !== null && active !== document.body && active !== document.documentElement)) return;
     const buttons = list.current?.querySelectorAll<HTMLElement>("[data-remove-for]") ?? [];
     for (const button of buttons) if (button.dataset.removeFor === pending.next) button.focus();
   }, [items, list]);
-  return (removed: string) => {
+  const arm = (removed: string) => {
     const at = items.findIndex((item) => item.id === removed);
     // Only a press of the x that has the focus hands it over: after a mouse click the focus is where the person left it.
     const focused = document.activeElement;
     const own = list.current?.contains(focused) === true && focused instanceof HTMLElement && focused.dataset.removeFor === removed;
     waiting.current = own ? { removed, next: (items[at + 1] ?? items[at - 1])?.id } : null;
   };
+  const disarm = (removed: string) => {
+    if (waiting.current?.removed === removed) waiting.current = null;
+  };
+  return { arm, disarm };
 }
 
 type TileProps = { item: AttachmentView; onRemove: (attachmentId: string) => void };
