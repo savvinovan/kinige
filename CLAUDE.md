@@ -23,6 +23,7 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
   - 04.11: slice 7 (attachments);
   - 05.11: slice 7a (voice notes).
 - **Merged since:** the sync spikes S4a–S4c (server, ADR-0017–0020) and tech debt E.
+- **In review:** slice 7b, attachment details (name, description, spoiler; KINIG-136); it lands before slice 5a (reactions, KINIG-138), which reuses its add-group function.
 - **Next:** slice 11, sync in the app.
 - **History:** the PRD changelog (`docs/plan/02-prd.md`, top).
 - **Build and test commands:** the "Build and tests" section below.

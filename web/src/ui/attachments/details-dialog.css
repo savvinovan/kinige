@@ -7,13 +7,14 @@
   padding: var(--space-6);
 }
 
-/* In a narrow window the fields do not fit beside the picture and wrap under it (no media query: the fields ask for two file-tile widths). */
+/* The picture is as wide as a pending tile is high. In a narrow window the fields do not fit beside it and wrap under it (no media query: they ask for
+   a file tile and a half). */
 .details__picture {
   display: grid;
   flex: none;
   justify-items: center;
   gap: var(--space-3);
-  width: var(--layout-attachment-pending-image-max-width);
+  width: var(--layout-attachment-pending-image-height);
   max-width: 100%;
 }
 
@@ -60,7 +61,7 @@
 
 .details__fields {
   display: grid;
-  flex: 1 1 calc(2 * var(--layout-attachment-pending-file-width));
+  flex: 1 1 calc(1.5 * var(--layout-attachment-pending-file-width));
   gap: var(--space-4);
   min-width: 0;
 }

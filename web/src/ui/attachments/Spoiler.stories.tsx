@@ -98,11 +98,11 @@ export const AlbumWithACoveredCell: Story = {
   ),
 };
 
-/** A tall screenshot strip, covered: it keeps its own narrow size centred on the strip of the bubble's fill. */
+/** A tall screenshot strip, covered, with a caption (so the bubble keeps its floor width): the cover keeps its own narrow size centred on the strip of the bubble's fill. */
 export const CoveredTallStrip: Story = {
   render: () => (
     <RevealProvider viewKey="s">
-      <Bubble attachments={[hidden("t1", "Screenshot.png", 390, 2400)]} />
+      <Bubble attachments={[hidden("t1", "Screenshot.png", 390, 2400)]} text="Скриншот" />
     </RevealProvider>
   ),
 };
