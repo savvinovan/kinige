@@ -13,7 +13,7 @@ use crate::{Now, Store, StoreError};
 use kinige_domain::add_group::add_group;
 use kinige_domain::attachment::{
     AttachmentDetailsChanges, AttachmentKind, AttachmentView, DESCRIPTION_GROUP, Details,
-    NAME_GROUP, PRIVACY_GROUP, normalize_description, normalize_name, read_details,
+    NAME_GROUP, PRIVACY_GROUP, check_kind, normalize_description, normalize_name, read_details,
 };
 use kinige_domain::groups::parse_groups_raw;
 use kinige_domain::hlc::is_uuid_v4;
@@ -144,14 +144,15 @@ impl Plan {
     }
 }
 
-/// Normalizes what was sent and keeps only what differs from `current`. The spoiler belongs to an `image`: on another kind any value
-/// is refused.
+/// Normalizes what was sent and keeps only what differs from `current`. What a kind takes is `check_kind`'s rule: the spoiler belongs to
+/// an `image`, an `audio` takes nothing.
 fn plan_changes(
     kind: AttachmentKind,
     original: &str,
     current: &Details,
     changes: &AttachmentDetailsChanges,
 ) -> Result<Plan, StoreError> {
+    check_kind(kind, changes)?;
     let mut plan = Plan::default();
     if let Some(sent) = &changes.name {
         let name = match sent {
@@ -168,9 +169,6 @@ fn plan_changes(
         plan.description = (text != current.description).then_some(text);
     }
     if let Some(spoiler) = changes.spoiler {
-        if kind != AttachmentKind::Image {
-            return Err(StoreError::AttachmentDetailsInvalid);
-        }
         plan.spoiler = (spoiler != current.spoiler).then_some(spoiler);
     }
     Ok(plan)

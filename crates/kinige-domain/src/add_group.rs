@@ -4,7 +4,7 @@
 //! existing row: two devices that each added all of them would let one device's rename uncover the other's hidden photo.
 //!
 //! The rules:
-//! - "absent" means absent from both `groups_raw` and `hlc_json`; present in only one of them is `Corrupt`;
+//! - the two maps must name the same groups (any difference, in any group, is `Corrupt`); "absent" means absent from both;
 //! - the new group's HLC is strictly greater than every HLC of the record (every entry parsed strictly);
 //! - the other groups, unknown groups and the extra fields of the other `hlc_json` entries stay byte-identical.
 
@@ -38,14 +38,15 @@ pub fn add_group(
     let mut groups = parse_groups_raw(current.groups_raw)?;
     let mut hlcs: BTreeMap<String, Box<RawValue>> =
         serde_json::from_str(current.hlc_json).map_err(corrupt)?;
-    match (groups.contains_key(group), hlcs.contains_key(group)) {
-        (false, false) => {}
-        (true, true) => return Err(GroupError::Invalid("the group is already there")),
-        _ => {
-            return Err(corrupt(format!(
-                "group {group} is in only one of the two maps"
-            )));
-        }
+    // The two maps must name the same groups, whatever the group being added: a record that has one in only one of them could never
+    // become an envelope (`Versioned::from_columns` refuses it), and adding to it would hide that behind a new group.
+    if !groups.keys().eq(hlcs.keys()) {
+        return Err(corrupt(
+            "groups_raw and hlc_json name different groups".to_string(),
+        ));
+    }
+    if groups.contains_key(group) {
+        return Err(GroupError::Invalid("the group is already there"));
     }
 
     hlc::parse(new_hlc).map_err(|e| corrupt(format!("new HLC: {e}")))?;

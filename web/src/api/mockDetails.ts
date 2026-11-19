@@ -67,6 +67,8 @@ export function validDisplayName(name: string, original: string): boolean {
 export function applyDetails(view: AttachmentView, changes: AttachmentDetailsChanges): AttachmentView {
   const sent = changes as Record<string, unknown>;
   if (Object.keys(sent).some((key) => key !== "name" && key !== "description" && key !== "spoiler")) throw invalid();
+  // An audio (a voice note, or a song attached as a file) takes no details at all, a clear included (`check_kind` in Rust).
+  if (view.kind === "audio" && Object.values(sent).some((value) => value !== undefined)) throw invalid();
   const next = { ...view };
   if ("name" in sent && sent.name !== undefined) {
     if (sent.name !== null && typeof sent.name !== "string") throw invalid();

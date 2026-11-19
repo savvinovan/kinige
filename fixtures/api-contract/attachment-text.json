@@ -46,5 +46,17 @@
     { "name": "a backspace", "text": "a\u0008b", "error": true },
     { "name": "a C1 control inside", "text": "a\u0085b", "error": true },
     { "name": "Markdown and HTML are plain text", "text": "# not a heading <b>x</b> [y](z)", "expect": "# not a heading <b>x</b> [y](z)" }
+  ],
+  "kinds_rule": "Which fields of the changes a kind takes (`check_kind`): an image takes name, description and spoiler; a file takes name and description, never a spoiler; an audio (a voice note, or a song attached as a file) takes none, a clear (`null`) included, because the window shows no details for it. Empty changes are fine for every kind. `expect` is `ok` or `error` (`attachment_details_invalid`).",
+  "kinds": [
+    { "name": "an image takes a name", "kind": "image", "changes": { "name": "beach" }, "expect": "ok" },
+    { "name": "an image takes a spoiler", "kind": "image", "changes": { "spoiler": true }, "expect": "ok" },
+    { "name": "a file takes a name and a description", "kind": "file", "changes": { "name": "menu", "description": "Lunch" }, "expect": "ok" },
+    { "name": "a file takes no spoiler, true or false", "kind": "file", "changes": { "spoiler": false }, "expect": "error" },
+    { "name": "an audio takes no name", "kind": "audio", "changes": { "name": "renamed" }, "expect": "error" },
+    { "name": "an audio takes no description", "kind": "audio", "changes": { "description": "about it" }, "expect": "error" },
+    { "name": "an audio takes no clear either", "kind": "audio", "changes": { "name": null }, "expect": "error" },
+    { "name": "an audio takes no spoiler", "kind": "audio", "changes": { "spoiler": true }, "expect": "error" },
+    { "name": "nothing changed is fine for an audio", "kind": "audio", "changes": {}, "expect": "ok" }
   ]
 }

@@ -17,7 +17,7 @@ pub use names::{
 mod details;
 pub use details::{
     AttachmentDetailsChanges, DESCRIPTION_GROUP, Details, DetailsError, MAX_DESCRIPTION_BYTES,
-    MAX_DESCRIPTION_CHARS, NAME_GROUP, PRIVACY_GROUP, description_group, name_group,
+    MAX_DESCRIPTION_CHARS, NAME_GROUP, PRIVACY_GROUP, check_kind, description_group, name_group,
     normalize_description, normalize_name, privacy_group, read_details, valid_display_name,
 };
 

@@ -57,7 +57,8 @@ fn parse_one(item: &Value) -> Option<(i64, AttachmentView)> {
             name: name_of(&filename, text("dn").as_deref()),
             filename,
             description: text("ds"),
-            spoiler: number("sp").is_some_and(|flag| flag != 0) && kind == AttachmentKind::Image,
+            // Fails closed, as the read function does: anything but a stored 0 (a non-number included) is covered.
+            spoiler: number("sp") != Some(0) && kind == AttachmentKind::Image,
             mime: text("m")?,
             byte_size: number("b")?,
             width: side("w"),

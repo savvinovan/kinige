@@ -32,7 +32,7 @@ code (the `mock/` folder and `mockRules.ts` do), and do not pin it.
 | `forest-day-chat.json`   | the chat a click on a forest day opens                             | `forest_year::day_chat`                   |
 | `attachment-kind.json`   | the kind of an attachment from its name                            | `attachment::{stored_ext, classify}`      |
 | `attachment-errors.json` | attachment and voice limits and the order of the checks (scenario) | `Store`                                   |
-| `attachment-text.json`   | name and description of an attachment: counting and normal form    | `attachment::normalize_*`                 |
+| `attachment-text.json`   | attachment details: counting, normal form, fields per kind         | `attachment::{normalize_*, check_kind}`   |
 
 ## Scenarios
 

@@ -169,6 +169,85 @@ fn a_group_in_only_one_of_the_two_maps_is_corrupt() {
 }
 
 #[test]
+fn a_record_whose_two_maps_name_different_groups_takes_no_group_at_all() {
+    // `privacy` is only in `groups_raw`: adding `name` (a group that is absent from both) must not hide that behind a new group.
+    let (groups, hlcs) = legacy();
+    let mut only_bytes: Map<String, serde_json::Value> = serde_json::from_str(&groups).unwrap();
+    only_bytes.insert("privacy".into(), json!({"spoiler": false}));
+    let mut only_hlc: Map<String, serde_json::Value> = serde_json::from_str(&hlcs).unwrap();
+    only_hlc.insert("zz_other".into(), json!({"h": hlc(1_000), "sv": 1}));
+    let cases = [
+        (serde_json::to_string(&only_bytes).unwrap(), hlcs.clone()),
+        (groups.clone(), serde_json::to_string(&only_hlc).unwrap()),
+    ];
+    for case in &cases {
+        for (group, value) in [
+            ("name", name_group(Some("a.jpg"))),
+            ("description", description_group(Some("x"))),
+        ] {
+            let result = add_group(
+                &groups_of(case),
+                "attachment",
+                group,
+                &value,
+                &hlc(9_000),
+                None,
+            );
+            assert!(
+                matches!(result, Err(GroupError::Corrupt(_))),
+                "{group}: {result:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn rewrite_field_keeps_the_unknown_fields_of_a_group_and_takes_only_the_details_groups() {
+    let mut row = legacy();
+    let mut groups: Map<String, serde_json::Value> = serde_json::from_str(&row.0).unwrap();
+    let mut hlcs: Map<String, serde_json::Value> = serde_json::from_str(&row.1).unwrap();
+    groups.insert(
+        "privacy".into(),
+        json!({"future": {"a": [1, 2]}, "spoiler": true}),
+    );
+    hlcs.insert("privacy".into(), json!({"h": hlc(1_000), "sv": 1}));
+    row = (
+        serde_json::to_string(&groups).unwrap(),
+        serde_json::to_string(&hlcs).unwrap(),
+    );
+    let done = rewrite_field(
+        &groups_of(&row),
+        "privacy",
+        &hlc(9_000),
+        None,
+        ("spoiler", json!(false)),
+    )
+    .unwrap();
+    let after: Map<String, serde_json::Value> = serde_json::from_str(&done.groups_raw).unwrap();
+    assert_eq!(
+        after["privacy"].to_string(),
+        r#"{"future":{"a":[1,2]},"spoiler":false}"#
+    );
+    // Any other group is refused, a corrupt `core` included: it is not replaced by an object.
+    for group in ["core", "body", "order", "deleted", "zz_future"] {
+        let result = rewrite_field(
+            &groups_of(&row),
+            group,
+            &hlc(9_000),
+            None,
+            ("spoiler", json!(false)),
+        );
+        assert_eq!(
+            result,
+            Err(GroupError::Invalid(
+                "this group may not be rewritten field by field"
+            )),
+            "{group}"
+        );
+    }
+}
+
+#[test]
 fn only_the_allowlisted_groups_of_the_entity_may_be_added() {
     let old = legacy();
     for (entity, group) in [
@@ -207,126 +286,4 @@ fn only_the_allowlisted_groups_of_the_entity_may_be_added() {
     assert_eq!(result, Err(GroupError::TooLarge));
 }
 
-// ---- convergence ----
-
-#[derive(Clone, Copy, Debug)]
-enum Op {
-    Name(&'static str),
-    Describe(&'static str),
-    Hide,
-    Show,
-}
-
-const OPS: [Op; 5] = [
-    Op::Name("a.jpg"),
-    Op::Name("b.jpg"),
-    Op::Describe("x"),
-    Op::Hide,
-    Op::Show,
-];
-
-fn field(op: Op) -> (&'static str, serde_json::Value) {
-    match op {
-        Op::Name(name) => ("name", name_group(Some(name))),
-        Op::Describe(text) => ("description", description_group(Some(text))),
-        Op::Hide => ("privacy", privacy_group(true)),
-        Op::Show => ("privacy", privacy_group(false)),
-    }
-}
-
-/// One device's edit, as `set_attachment_details` does it: rewrite the group when it is there, add it when it is not.
-fn apply(row: &(String, String), op: Op, at: u64) -> (String, String) {
-    let (group, value) = field(op);
-    let present = serde_json::from_str::<Map<String, serde_json::Value>>(&row.1)
-        .unwrap()
-        .contains_key(group);
-    let done = if present {
-        let (key, field_value) = value.as_object().unwrap().iter().next().unwrap();
-        rewrite_field(
-            &groups_of(row),
-            group,
-            &hlc(at),
-            None,
-            (key, field_value.clone()),
-        )
-    } else {
-        add_group(&groups_of(row), "attachment", group, &value, &hlc(at), None)
-    }
-    .unwrap();
-    (done.groups_raw, done.hlc_json)
-}
-
-fn details(row: &(String, String)) -> Details {
-    read_details(AttachmentKind::Image, "IMG_0001.jpg", &row.0, &row.1)
-}
-
-fn sequences() -> Vec<Vec<Op>> {
-    let mut all = vec![Vec::new()];
-    for first in OPS {
-        all.push(vec![first]);
-        for second in OPS {
-            all.push(vec![first, second]);
-        }
-    }
-    all
-}
-
-/// What the last writer of each field leaves: the op with the highest HLC per group, over both devices.
-fn expected(edits: &[(Op, u64)]) -> Details {
-    let last = |group: &str| {
-        edits
-            .iter()
-            .filter(|(op, _)| field(*op).0 == group)
-            .max_by_key(|(_, at)| *at)
-            .map(|(op, _)| *op)
-    };
-    Details {
-        display_name: match last("name") {
-            Some(Op::Name(name)) => Some(name.to_string()),
-            _ => None,
-        },
-        description: match last("description") {
-            Some(Op::Describe(text)) => Some(text.to_string()),
-            _ => None,
-        },
-        spoiler: matches!(last("privacy"), Some(Op::Hide)),
-    }
-}
-
-#[test]
-fn details_edits_from_two_devices_converge_in_every_merge_order() {
-    let base = legacy();
-    for (a_clock, b_clock) in [(1_000u64, 2_000u64), (2_000, 1_000)] {
-        for a_ops in sequences() {
-            for b_ops in sequences() {
-                let (mut a, mut b) = (base.clone(), base.clone());
-                let mut edits = Vec::new();
-                for (i, op) in a_ops.iter().enumerate() {
-                    let at = 10_000 + a_clock * (i as u64 + 1) * 2;
-                    a = apply(&a, *op, at);
-                    edits.push((*op, at));
-                }
-                for (i, op) in b_ops.iter().enumerate() {
-                    let at = 10_000 + b_clock * (i as u64 + 1) * 2 + 1;
-                    b = apply(&b, *op, at);
-                    edits.push((*op, at));
-                }
-                let (va, vb) = (
-                    Versioned::from_columns(&a.0, &a.1).unwrap(),
-                    Versioned::from_columns(&b.0, &b.1).unwrap(),
-                );
-                let ab = merge(&va, &vb).record;
-                let ba = merge(&vb, &va).record;
-                assert_eq!(ab, ba, "{a_ops:?} against {b_ops:?}");
-                let merged = ab.to_columns().unwrap();
-                assert_eq!(
-                    details(&merged),
-                    expected(&edits),
-                    "{a_ops:?} against {b_ops:?}: a rename keeps the spoiler, a hide keeps the name and the text"
-                );
-                // The unknown group survives every merge.
-                assert!(merged.0.contains("zz_future"));
-            }
-        }
-    }
-}
+mod convergence;

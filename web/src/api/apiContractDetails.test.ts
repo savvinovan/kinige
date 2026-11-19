@@ -20,9 +20,16 @@ interface NameCase extends Case {
 interface DescriptionCase extends Case {
   text: Spec;
 }
+interface KindCase {
+  name: string;
+  kind: "image" | "file" | "audio";
+  changes: Record<string, unknown>;
+  expect: "ok" | "error";
+}
 interface Details {
   names: NameCase[];
   descriptions: DescriptionCase[];
+  kinds: KindCase[];
 }
 
 /** The result, `null` for none, or `{ error: code }`. */
@@ -48,6 +55,15 @@ describe("fixtures/api-contract/attachment-text", () => {
   it("descriptions: normalized, then counted in scalar values", () => {
     for (const entry of fixture<Details>("attachment-text").descriptions) {
       expect(outcome(() => normalizeDescription(spec(entry.text))), entry.name).toEqual(wanted(entry));
+    }
+  });
+
+  it("kinds: which fields an image, a file and an audio take", () => {
+    const base = mockAttachment("k1", "IMG_0001.jpg");
+    for (const entry of fixture<Details>("attachment-text").kinds) {
+      const view = { ...base, kind: entry.kind };
+      const got = outcome(() => (applyDetails(view, entry.changes as never), "ok"));
+      expect(got, entry.name).toEqual(entry.expect === "ok" ? "ok" : { error: "attachment_details_invalid" });
     }
   });
 

@@ -8,6 +8,7 @@
 //!   are not touched;
 //! - a group whose `sv` is higher than supported is not rewritten ([`GroupError::UnsupportedVersion`]); corrupt bytes are an error.
 
+use crate::attachment::{DESCRIPTION_GROUP, NAME_GROUP, PRIVACY_GROUP};
 use crate::groups::{GroupError, SCHEMA_VERSION, parse_groups_raw};
 use crate::hlc;
 use crate::jcs;
@@ -101,6 +102,9 @@ pub fn rewrite_group(
 /// Sets one field of a group under a new HLC, for a group that a person edits locally (slice 7b). Unlike [`rewrite_group`] it takes
 /// a group whose old bytes are not an object (another client's mistyped value): the local edit replaces it with an object that holds
 /// the field. An object keeps its other fields verbatim.
+///
+/// Only the three details groups of an attachment: pointed at `body`, `core` or any other group it would replace a non-object instead of
+/// reporting the corruption, so anything else is refused.
 pub fn rewrite_field(
     current: &Groups<'_>,
     group: &str,
@@ -108,6 +112,11 @@ pub fn rewrite_field(
     max_bytes: Option<usize>,
     (key, value): (&str, Value),
 ) -> Result<Rewritten, GroupError> {
+    if ![NAME_GROUP, DESCRIPTION_GROUP, PRIVACY_GROUP].contains(&group) {
+        return Err(GroupError::Invalid(
+            "this group may not be rewritten field by field",
+        ));
+    }
     rewrite_value(current, group, new_hlc, max_bytes, |old, _| {
         let mut object = match old {
             Value::Object(object) => object,

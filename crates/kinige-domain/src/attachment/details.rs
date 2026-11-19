@@ -114,6 +114,24 @@ pub struct Details {
     pub spoiler: bool,
 }
 
+/// Which fields a kind takes. An `image` takes all three, a `file` a name and a description (not a spoiler), and an `audio` (a voice note,
+/// or a song attached as a file) takes none: the window shows no details for it, so a value Rust accepted would be synced bytes that the
+/// window could neither show nor undo. Refused at the input, whatever the value (`null` included). [`read_details`] stays kind-agnostic
+/// for the name and the description, so a later slice can allow them for `audio` without a change of the format.
+pub fn check_kind(
+    kind: AttachmentKind,
+    changes: &AttachmentDetailsChanges,
+) -> Result<(), DetailsError> {
+    let any = changes.name.is_some() || changes.description.is_some() || changes.spoiler.is_some();
+    match kind {
+        AttachmentKind::Audio if any => Err(DetailsError("an audio attachment has no details")),
+        _ if kind != AttachmentKind::Image && changes.spoiler.is_some() => {
+            Err(DetailsError("only a photo can be hidden"))
+        }
+        _ => Ok(()),
+    }
+}
+
 /// The name the person typed (the stem) as the whole display name, or `None` for "the original": trimmed, no C0, DEL, C1, path
 /// separator or bidi override, the extension of `original` appended, at most 255 bytes. An empty stem and a name equal to the
 /// original are `None`. The rule the read function applies to a stored name is the same ([`valid_display_name`]).
