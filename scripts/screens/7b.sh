@@ -147,7 +147,8 @@ rows_block "IMG_0108.jpg before any edit"
 # 01: the lone cover, and below it the covered photo with a description, whose caption line says so (scrolled to from above, so it ends at the
 # bottom of the frame with its whole entry above it).
 drive_raw "$(drive_window)" "{\"kind\":\"scroll\",$(driver_query "${L_COVER}"),\"nth\":0}" > /dev/null
-sleep 2
+sleep 3
+shoot 01a-lone-cover
 scroll_to "${L_DESC_HIDDEN}"
 sleep 3
 thumbs_block "the covers are in frame, the album has not been on screen"
@@ -195,16 +196,20 @@ press "${L_CLOSE}"
 sleep 2
 
 # ---- 4. The right-click menu of a photo: Hide as spoiler covers it at once ----
-scroll_to "кофейня.jpg"
-show_menu "кофейня.jpg"
+scroll_to "Кофейня на углу"
+show_menu "Кофейня на углу"
 wait_name "${L_HIDE_AS}" 10000 "" MenuItem || fail "the photo's menu did not open"
 shoot 04-photo-menu
 press "${L_HIDE_AS}" MenuItem
 sleep 3
 scroll_to "${L_DESC_HIDDEN}"
 shoot 04b-hidden-from-the-menu
+has "${L_DESC_HIDDEN}" || fail "the photo hidden from the menu does not say its description is hidden"
 
-# ---- 5. The tiles: a covered one, a shown one and a file ----
+# ---- 5. The tiles: a covered one, a shown one and a file. The feed is taken to its end first (the "jump to latest" button), so that Send below
+# is judged from the end: the entry must be in frame after it. ----
+press "${L_JUMP}"
+sleep 3
 COVERS="$(count_label "${L_COVER}")"
 [ -n "$COVERS" ] && [ "$COVERS" -ge 2 ] || fail "no covered tiles to press (covers: ${COVERS:-?})"
 press_nth "${L_COVER}" $((COVERS - 1))
