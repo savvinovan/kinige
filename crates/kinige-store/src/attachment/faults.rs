@@ -19,6 +19,9 @@ pub enum AttachFault {
     /// A step right after the stored file is renamed into place and before the row is committed (the test panics in it:
     /// the writer job is lost like a killed process, the transaction rolls back).
     AfterRename(Hook),
+    /// A step in `set_attachment_details` after every write and before the commit (the test panics in it: the transaction rolls
+    /// back and the groups, columns, index and copy marks stay as they were).
+    DetailsBeforeCommit(Hook),
     /// Deleting files after a purge fails.
     DeleteFails,
     /// The next thumbnail decodes into a panic (debug builds only).
@@ -33,6 +36,7 @@ pub(crate) struct Faults {
     decoder_panics: AtomicBool,
     mid_copy: Mutex<Option<Hook>>,
     after_rename: Mutex<Option<Hook>>,
+    details_before_commit: Mutex<Option<Hook>>,
 }
 
 impl Default for Faults {
@@ -43,6 +47,7 @@ impl Default for Faults {
             decoder_panics: AtomicBool::new(false),
             mid_copy: Mutex::new(None),
             after_rename: Mutex::new(None),
+            details_before_commit: Mutex::new(None),
         }
     }
 }
@@ -56,6 +61,9 @@ impl Faults {
             }
             AttachFault::MidCopy(hook) => *lock(&self.mid_copy) = Some(hook),
             AttachFault::AfterRename(hook) => *lock(&self.after_rename) = Some(hook),
+            AttachFault::DetailsBeforeCommit(hook) => {
+                *lock(&self.details_before_commit) = Some(hook);
+            }
             AttachFault::DeleteFails => self.delete_fails.store(true, Ordering::SeqCst),
             AttachFault::DecoderPanics => self.decoder_panics.store(true, Ordering::SeqCst),
             AttachFault::Clear => {
@@ -64,6 +72,7 @@ impl Faults {
                 self.decoder_panics.store(false, Ordering::SeqCst);
                 *lock(&self.mid_copy) = None;
                 *lock(&self.after_rename) = None;
+                *lock(&self.details_before_commit) = None;
             }
         }
     }
@@ -87,6 +96,10 @@ impl Faults {
 
     pub(crate) fn run_after_rename(&self) {
         run(&self.after_rename);
+    }
+
+    pub(crate) fn run_before_details_commit(&self) {
+        run(&self.details_before_commit);
     }
 }
 

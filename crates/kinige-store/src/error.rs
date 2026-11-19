@@ -1,4 +1,5 @@
 use kinige_domain::ErrorCode;
+use kinige_domain::attachment::DetailsError;
 use kinige_domain::chat::ChatInputError;
 use kinige_domain::groups::{BodyError, GroupError};
 use std::fmt;
@@ -57,6 +58,8 @@ pub enum StoreError {
     VoiceTooShort,
     /// The recording is longer than the recorder allows (30 minutes): not saved.
     VoiceTooLong,
+    /// A name, description or spoiler of an attachment broke a rule (slice 7b): nothing was written.
+    AttachmentDetailsInvalid,
     /// The database was created by a newer app version (schema `found`): downgrade is not supported (PRD §10.4).
     TooNew(i64),
     /// Writing to the database failed: nothing was written (the transaction rolled back).
@@ -98,6 +101,7 @@ impl StoreError {
             StoreError::AttachmentNotFound => ErrorCode::AttachmentNotFound,
             StoreError::VoiceTooShort => ErrorCode::VoiceTooShort,
             StoreError::VoiceTooLong => ErrorCode::VoiceTooLong,
+            StoreError::AttachmentDetailsInvalid => ErrorCode::AttachmentDetailsInvalid,
             StoreError::TooNew(_) => ErrorCode::DatabaseTooNew,
             StoreError::Write(_) => ErrorCode::StoreWriteFailed,
             StoreError::Read(_) => ErrorCode::StoreReadFailed,
@@ -137,6 +141,7 @@ impl StoreError {
             StoreError::AttachmentNotFound => "attachment_not_found",
             StoreError::VoiceTooShort => "voice_too_short",
             StoreError::VoiceTooLong => "voice_too_long",
+            StoreError::AttachmentDetailsInvalid => "attachment_details_invalid",
             StoreError::TooNew(_) => "too_new",
             StoreError::Write(_) => "write",
             StoreError::Read(_) => "read",
@@ -176,6 +181,7 @@ impl fmt::Display for StoreError {
             StoreError::AttachmentNotFound => f.write_str("draft attachment not found"),
             StoreError::VoiceTooShort => f.write_str("recording is too short"),
             StoreError::VoiceTooLong => f.write_str("recording is too long"),
+            StoreError::AttachmentDetailsInvalid => f.write_str("attachment details are invalid"),
             StoreError::TooNew(found) => {
                 write!(
                     f,
@@ -197,6 +203,12 @@ impl From<BodyError> for StoreError {
             BodyError::Empty => StoreError::Empty,
             BodyError::TooLarge => StoreError::TooLarge,
         }
+    }
+}
+
+impl From<DetailsError> for StoreError {
+    fn from(_: DetailsError) -> Self {
+        StoreError::AttachmentDetailsInvalid
     }
 }
 

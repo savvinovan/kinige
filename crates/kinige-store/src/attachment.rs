@@ -7,10 +7,12 @@
 mod audio;
 mod copy;
 mod decode;
+mod details;
 mod draft;
 mod faults;
 mod media;
 mod open;
+mod promote;
 mod rows;
 mod sweep;
 mod voice;
@@ -24,9 +26,10 @@ pub(crate) use faults::Faults;
 pub(crate) use media::MediaPool;
 pub use media::{Media, MediaVariant};
 pub use open::OpenTarget;
+pub(crate) use promote::{draft_views, promote_draft};
 pub(crate) use rows::{
-    NewFile, PurgedFile, attachments_column, delete_for_purge, draft_views, insert_attachment,
-    insert_attachment_at, live_count, parse_attachments, promote_draft, summary_for,
+    DraftDetails, NewFile, PurgedFile, attachments_column, delete_for_purge, insert_attachment,
+    insert_attachment_at, live_count, parse_attachments, summary_for,
 };
 pub use sweep::SweepReport;
 pub use waveform::MAX_DECODE_BYTES;

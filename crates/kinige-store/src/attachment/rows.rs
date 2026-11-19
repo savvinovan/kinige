@@ -1,27 +1,27 @@
 //! Attachment rows: reading them into views, turning draft attachments into attachments in the send transaction, and the
 //! tombstones of a purge (ADR-0001 appendix §C.6, ADR-0014).
 
-use super::Dirs;
 use crate::StoreError;
 use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
 use kinige_domain::attachment::{
     AttachmentKind, AttachmentRow, AttachmentState, AttachmentSummary, AttachmentView,
-    MAX_PER_ENTRY, NewAttachment, hex_lower, new_attachment, summary_of, waveform_from_hex,
+    NewAttachment, hex_lower, new_attachment, summary_of, waveform_from_hex,
 };
 use kinige_domain::history::{deleted_group_supported, purged_of_best_effort};
-use kinige_domain::hlc::is_uuid_v4;
 use rusqlite::{Connection, OptionalExtension, Transaction};
 use serde_json::Value;
 use uuid::Uuid;
 
 /// The live attachments of the entry `m` as one JSON array, a column of `view::VIEW_COLUMNS`. `LEFT JOIN`: a row without a local
-/// row counts as `missing`. The order is restored in Rust (`o`), because the aggregate does not promise one.
+/// row counts as `missing`. The order is restored in Rust (`o`), because the aggregate does not promise one. `dn`, `ds` and `sp` are
+/// the details columns of slice 7b (the read function's output, never raw bytes).
 macro_rules! attachments_column {
     () => {
         "(SELECT json_group_array(json_object('i', a.id, 'k', a.kind, 'n', a.filename, \
          'm', a.mime, 'b', a.byte_size, 'w', a.width, 'h', a.height, 'd', a.duration_ms, \
          's', COALESCE(l.state, 'missing'), 'o', a.sort_index, \
+         'dn', a.display_name, 'ds', a.description, 'sp', a.spoiler, \
          'p', CASE WHEN l.waveform IS NULL THEN NULL ELSE hex(l.waveform) END)) \
          FROM attachment a LEFT JOIN attachment_local l ON l.attachment_id = a.id \
          WHERE a.message_id = m.id AND a.deleted_at IS NULL)"
@@ -47,12 +47,17 @@ fn parse_one(item: &Value) -> Option<(i64, AttachmentView)> {
         "local" => AttachmentState::Local,
         _ => AttachmentState::Missing,
     };
+    let kind = AttachmentKind::parse(&text("k")?)?;
+    let filename = text("n")?;
     Some((
         number("o")?,
         AttachmentView {
             id: text("i")?,
-            kind: AttachmentKind::parse(&text("k")?)?,
-            filename: text("n")?,
+            kind,
+            name: name_of(&filename, text("dn").as_deref()),
+            filename,
+            description: text("ds"),
+            spoiler: number("sp").is_some_and(|flag| flag != 0) && kind == AttachmentKind::Image,
             mime: text("m")?,
             byte_size: number("b")?,
             width: side("w"),
@@ -63,6 +68,19 @@ fn parse_one(item: &Value) -> Option<(i64, AttachmentView)> {
             waveform: text("p").and_then(|hex| waveform_from_hex(&hex)),
         },
     ))
+}
+
+/// The name to show: the display name if there is one, otherwise the original.
+pub(crate) fn name_of(filename: &str, display_name: Option<&str>) -> String {
+    display_name.unwrap_or(filename).to_string()
+}
+
+/// The details a new attachment is created with (slice 7b): the draft's values, or the defaults for a voice note and an import.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct DraftDetails {
+    pub display_name: Option<String>,
+    pub description: Option<String>,
+    pub spoiler: bool,
 }
 
 /// A file ready to become an attachment: it already lies in `attachments/` under `file_name`.
@@ -77,6 +95,7 @@ pub(crate) struct NewFile {
     pub width: Option<u32>,
     pub height: Option<u32>,
     pub duration_ms: Option<i64>,
+    pub details: DraftDetails,
 }
 
 /// Writes the `attachment` and `attachment_local` rows of one file under an HLC of its own, with a fresh `remote_blob_id` (UUID
@@ -120,6 +139,9 @@ pub(crate) fn insert_attachment_at(
             duration_ms: file.duration_ms,
             remote_blob_id: &remote_blob_id,
             blob_key: &blob_key,
+            display_name: file.details.display_name.as_deref(),
+            description: file.details.description.as_deref(),
+            spoiler: file.details.spoiler,
         },
         hlc,
     )?;
@@ -132,7 +154,10 @@ pub(crate) fn insert_attachment_at(
     Ok(AttachmentView {
         id: row.id,
         kind: row.kind,
+        name: name_of(&row.filename, row.display_name.as_deref()),
         filename: row.filename,
+        description: row.description,
+        spoiler: row.spoiler,
         mime: row.mime,
         byte_size: row.byte_size,
         width: row.width,
@@ -146,8 +171,9 @@ pub(crate) fn insert_attachment_at(
 fn write_row(tx: &Transaction<'_>, row: &AttachmentRow) -> Result<(), StoreError> {
     tx.execute(
         "INSERT INTO attachment (id, message_id, kind, sort_index, sha256, filename, mime, byte_size, width, height, \
-         duration_ms, remote_blob_id, blob_key, hlc_json, server_known, schema_version, groups_raw) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?16)",
+         duration_ms, remote_blob_id, blob_key, hlc_json, server_known, schema_version, groups_raw, display_name, \
+         description, spoiler) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?16, ?17, ?18, ?19)",
         rusqlite::params![
             row.id,
             row.message_id,
@@ -164,134 +190,14 @@ fn write_row(tx: &Transaction<'_>, row: &AttachmentRow) -> Result<(), StoreError
             row.blob_key,
             row.hlc_json,
             row.schema_version,
-            row.groups_raw
+            row.groups_raw,
+            row.display_name,
+            row.description,
+            row.spoiler
         ],
     )
     .map_err(write_err)?;
     Ok(())
-}
-
-/// The draft attachments of a draft key as views, in order.
-pub(crate) fn draft_views(conn: &Connection, key: &str) -> Result<Vec<AttachmentView>, StoreError> {
-    let mut statement = conn
-        .prepare_cached(
-            "SELECT attachment_id, kind, filename, mime, byte_size, width, height FROM draft_attachment \
-             WHERE draft_key = ?1 ORDER BY sort_index, created_at, attachment_id",
-        )
-        .map_err(read_err)?;
-    let rows = statement
-        .query_map([key], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, i64>(4)?,
-                row.get::<_, Option<u32>>(5)?,
-                row.get::<_, Option<u32>>(6)?,
-            ))
-        })
-        .map_err(read_err)?;
-    let mut views = Vec::new();
-    for found in rows {
-        let (id, kind, filename, mime, byte_size, width, height) = found.map_err(read_err)?;
-        let Some(kind) = AttachmentKind::parse(&kind) else {
-            continue;
-        };
-        views.push(AttachmentView {
-            id,
-            kind,
-            filename,
-            mime,
-            byte_size,
-            width,
-            height,
-            duration_ms: None,
-            state: AttachmentState::Local,
-            waveform: None,
-        });
-    }
-    Ok(views)
-}
-
-/// Turns the draft attachments `ids` of the draft `key` into attachments of the entry `message_id`, in the order given. Only the
-/// draft's own attachments, each once, at most ten, files present: otherwise nothing is written (the caller rolls back).
-pub(crate) fn promote_draft(
-    tx: &Transaction<'_>,
-    dirs: &Dirs,
-    key: &str,
-    ids: &[String],
-    message_id: &str,
-    now_ms: i64,
-) -> Result<Vec<AttachmentView>, StoreError> {
-    if ids.len() > MAX_PER_ENTRY {
-        return Err(StoreError::AttachmentLimit);
-    }
-    let mut seen: Vec<&str> = Vec::with_capacity(ids.len());
-    let mut files = Vec::with_capacity(ids.len());
-    for id in ids {
-        if !is_uuid_v4(id) || seen.contains(&id.as_str()) {
-            return Err(StoreError::AttachmentNotFound);
-        }
-        seen.push(id);
-        files.push(load_draft_file(tx, key, id)?);
-    }
-    let mut views = Vec::with_capacity(files.len());
-    for (index, file) in files.iter().enumerate() {
-        let on_disk = dirs
-            .stored(&file.file_name)
-            .is_some_and(|path| path.is_file());
-        if !on_disk {
-            return Err(StoreError::AttachmentUnreadable);
-        }
-        let sort_index = u32::try_from(index).unwrap_or(u32::MAX);
-        views.push(insert_attachment(tx, message_id, sort_index, file, now_ms)?);
-        tx.execute(
-            "DELETE FROM draft_attachment WHERE attachment_id = ?1",
-            [&file.id],
-        )
-        .map_err(write_err)?;
-    }
-    Ok(views)
-}
-
-fn load_draft_file(tx: &Transaction<'_>, key: &str, id: &str) -> Result<NewFile, StoreError> {
-    tx.query_row(
-        "SELECT kind, filename, mime, byte_size, width, height, sha256, file_name FROM draft_attachment \
-         WHERE attachment_id = ?1 AND draft_key = ?2",
-        (id, key),
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, i64>(3)?,
-                row.get::<_, Option<u32>>(4)?,
-                row.get::<_, Option<u32>>(5)?,
-                row.get::<_, String>(6)?,
-                row.get::<_, String>(7)?,
-            ))
-        },
-    )
-    .optional()
-    .map_err(read_err)?
-    .and_then(
-        |(kind, filename, mime, byte_size, width, height, sha256, file_name)| {
-            Some(NewFile {
-                id: id.to_string(),
-                file_name,
-                sha256,
-                byte_size,
-                filename,
-                kind: AttachmentKind::parse(&kind)?,
-                mime,
-                width,
-                height,
-                duration_ms: None,
-            })
-        },
-    )
-    .ok_or(StoreError::AttachmentNotFound)
 }
 
 /// A file left behind by a purge: the stored file and thumbnails are deleted after the commit.

@@ -10,8 +10,15 @@ use ts_rs::TS;
 
 mod names;
 pub use names::{
-    classify, is_openable_document, mirror_file_names, sanitize_filename, stored_ext, summarize,
-    summary_of,
+    classify, ext_suffix, extension, is_openable_document, mirror_file_names, sanitize_filename,
+    stored_ext, summarize, summary_of,
+};
+
+mod details;
+pub use details::{
+    AttachmentDetailsChanges, DESCRIPTION_GROUP, Details, DetailsError, MAX_DESCRIPTION_BYTES,
+    MAX_DESCRIPTION_CHARS, NAME_GROUP, PRIVACY_GROUP, description_group, name_group,
+    normalize_description, normalize_name, privacy_group, read_details, valid_display_name,
 };
 
 mod voice;
@@ -127,7 +134,14 @@ pub enum AttachmentState {
 pub struct AttachmentView {
     pub id: String,
     pub kind: AttachmentKind,
+    /// The original name, immutable (`core.filename`).
     pub filename: String,
+    /// The name to show: the display name if there is one, otherwise `filename` (slice 7b). The extension is always the original's.
+    pub name: String,
+    /// What the person wrote about it; `None` is none (slice 7b).
+    pub description: Option<String>,
+    /// Covered in the Kinige window until clicked; only an `image` can be (slice 7b). A cover against a glance, not a lock.
+    pub spoiler: bool,
     pub mime: String,
     #[ts(type = "number")]
     pub byte_size: i64,
@@ -179,6 +193,12 @@ pub struct NewAttachment<'a> {
     pub remote_blob_id: &'a str,
     /// 64 lowercase hex characters (32 bytes from the OS CSPRNG).
     pub blob_key: &'a str,
+    /// The whole display name (stem and the original extension), or `None` for the original (slice 7b).
+    pub display_name: Option<&'a str>,
+    /// A normalized description, or `None`.
+    pub description: Option<&'a str>,
+    /// Covered in the window; only for an `image`.
+    pub spoiler: bool,
 }
 
 /// A whole row of the `attachment` table: the parsed columns and the groups' bytes.
@@ -197,13 +217,18 @@ pub struct AttachmentRow {
     pub duration_ms: Option<i64>,
     pub remote_blob_id: String,
     pub blob_key: String,
+    /// The columns of slice 7b: what [`read_details`] gives for the groups' bytes.
+    pub display_name: Option<String>,
+    pub description: Option<String>,
+    pub spoiler: bool,
     pub hlc_json: String,
     pub schema_version: u32,
     pub groups_raw: String,
 }
 
-/// A new attachment with the groups `core`, `order` and `deleted` under one HLC and `sv = 1` (appendix §C.6). The values
-/// are checked here, because they reach the bytes that sync will send: nothing out of the format gets through.
+/// A new attachment with the groups `core`, `order`, `deleted`, `name`, `description` and `privacy` under one HLC and `sv = 1`
+/// (appendix §C.6, §C.8). The values are checked here, because they reach the bytes that sync will send: nothing out of the
+/// format gets through.
 pub fn new_attachment(input: &NewAttachment<'_>, hlc: &str) -> Result<AttachmentRow, GroupError> {
     check(input)?;
     let core = json!({
@@ -226,8 +251,13 @@ pub fn new_attachment(input: &NewAttachment<'_>, hlc: &str) -> Result<Attachment
         ("core", core),
         ("order", json!({"sort_index": input.sort_index})),
         ("deleted", json!({"deleted_at": null})),
+        (NAME_GROUP, name_group(input.display_name)),
+        (DESCRIPTION_GROUP, description_group(input.description)),
+        (PRIVACY_GROUP, privacy_group(input.spoiler)),
     ];
     let (groups_raw, hlc_json) = assemble(&groups, hlc)?;
+    // The columns are the read function's output for these very bytes, so they cannot differ from what a reader of the groups sees.
+    let details = read_details(input.kind, input.filename, &groups_raw, &hlc_json);
     Ok(AttachmentRow {
         id: input.id.to_string(),
         message_id: input.message_id.to_string(),
@@ -242,6 +272,9 @@ pub fn new_attachment(input: &NewAttachment<'_>, hlc: &str) -> Result<Attachment
         duration_ms: input.duration_ms,
         remote_blob_id: input.remote_blob_id.to_string(),
         blob_key: input.blob_key.to_string(),
+        display_name: details.display_name,
+        description: details.description,
+        spoiler: details.spoiler,
         hlc_json,
         schema_version: SCHEMA_VERSION,
         groups_raw,
@@ -276,6 +309,23 @@ fn check(input: &NewAttachment<'_>) -> Result<(), GroupError> {
     }
     if input.kind != AttachmentKind::Image && (input.width.is_some() || input.height.is_some()) {
         return invalid("width and height belong to images");
+    }
+    // Details (slice 7b): the bytes that sync sends hold only what the rules accept, and a spoiler is an image's.
+    if input
+        .display_name
+        .is_some_and(|name| !valid_display_name(name, input.filename))
+        || input.display_name == Some(input.filename)
+    {
+        return invalid("display_name");
+    }
+    if input
+        .description
+        .is_some_and(|text| normalize_description(text) != Ok(Some(text.to_string())))
+    {
+        return invalid("description");
+    }
+    if input.spoiler && input.kind != AttachmentKind::Image {
+        return invalid("a spoiler belongs to images");
     }
     // Every writer must satisfy this: the Telegram import writes seconds as a `u32` times 1000 (slice 7), the recorder 1 s to 30 min
     // (slice 7a). The recorder's own limits live in `send_voice`, not here.
@@ -320,3 +370,6 @@ mod tests;
 
 #[cfg(test)]
 mod voice_tests;
+
+#[cfg(test)]
+mod details_tests;

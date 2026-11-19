@@ -25,6 +25,9 @@ fn audio(duration_ms: Option<i64>) -> NewAttachment<'static> {
         duration_ms,
         remote_blob_id: BLOB,
         blob_key: KEY,
+        display_name: None,
+        description: None,
+        spoiler: false,
     }
 }
 
@@ -83,6 +86,9 @@ fn the_summary_counts_audio_as_voice_notes_with_their_total_length() {
         id: ID.to_string(),
         kind,
         filename: name.to_string(),
+        name: name.to_string(),
+        description: None,
+        spoiler: false,
         mime: "x/y".to_string(),
         byte_size: 1,
         width: None,

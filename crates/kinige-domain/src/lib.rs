@@ -1,5 +1,6 @@
 //! Kinige domain rules. No IO; also builds for `wasm32` (PRD §3.2).
 
+pub mod add_group;
 pub mod agent;
 pub mod agent_api;
 pub mod agent_reply;

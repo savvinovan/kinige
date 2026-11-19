@@ -15,8 +15,10 @@ pub(crate) struct DayAttachment {
     pub message_id: String,
     pub id: String,
     pub is_image: bool,
-    /// The name the user knows.
+    /// The name the user knows: the display name if the attachment was renamed, otherwise the original (slice 7b).
     pub filename: String,
+    /// The description, if any: the link text of the day file (slice 7b).
+    pub description: Option<String>,
     /// The name inside the day folder: safe and unique there.
     pub name: String,
     /// The stored file in `attachments/` if this device has it.
@@ -25,7 +27,7 @@ pub(crate) struct DayAttachment {
     pub duration_ms: Option<i64>,
 }
 
-/// `(message id, attachment id, kind, filename, stored file name, local state, duration)` of one row of the day query.
+/// `(message id, attachment id, kind, shown name, stored file name, local state, duration, description)` of one row of the day query.
 type DayRow = (
     String,
     String,
@@ -34,6 +36,7 @@ type DayRow = (
     Option<String>,
     Option<String>,
     Option<i64>,
+    Option<String>,
 );
 
 /// The live attachments of a chat day in the order of the entries (`created_at`, `id`, `sort_index`), with the day folder names.
@@ -44,7 +47,8 @@ pub(crate) fn day_attachments(
     journal_date: &str,
 ) -> rusqlite::Result<Vec<DayAttachment>> {
     let mut statement = reader.prepare(
-        "SELECT a.message_id, a.id, a.kind, a.filename, l.file_name, l.state, a.duration_ms \
+        "SELECT a.message_id, a.id, a.kind, COALESCE(a.display_name, a.filename), l.file_name, l.state, a.duration_ms, \
+         a.description \
          FROM attachment a JOIN message m ON m.id = a.message_id \
          LEFT JOIN attachment_local l ON l.attachment_id = a.id \
          WHERE m.chat_id = ?1 AND m.journal_date = ?2 AND m.deleted_at IS NULL AND a.deleted_at IS NULL \
@@ -60,6 +64,7 @@ pub(crate) fn day_attachments(
                 row.get(4)?,
                 row.get(5)?,
                 row.get(6)?,
+                row.get(7)?,
             ))
         })?
         .collect::<rusqlite::Result<_>>()?;
@@ -69,13 +74,17 @@ pub(crate) fn day_attachments(
         .into_iter()
         .zip(names)
         .map(
-            |((message_id, id, kind, filename, file_name, state, duration_ms), name)| {
+            |(
+                (message_id, id, kind, filename, file_name, state, duration_ms, description),
+                name,
+            )| {
                 DayAttachment {
                     message_id,
                     id,
                     is_image: kind == "image",
                     duration_ms: duration_ms.filter(|_| kind == "audio"),
                     filename,
+                    description,
                     name,
                     source: file_name
                         .filter(|stored| {

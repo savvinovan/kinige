@@ -1,4 +1,4 @@
-//! SQLite schema and migrations (`PRAGMA user_version`). Migration 8 (slice 7a) adds the local waveform column of a voice note; migration 7 (slice 7) adds attachments; migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
+//! SQLite schema and migrations (`PRAGMA user_version`). Migration 9 (slice 7b) adds the details of an attachment; migration 8 (slice 7a) adds the local waveform column of a voice note; migration 7 (slice 7) adds attachments; migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
 //! index; migration 3 (slice 3) adds revisions, tombstones and derived local tables; migration 2 adds the local table
 //! of drafts (slice 2).
 //! Migration 1 creates only the tables that slice 1 writes to
@@ -268,6 +268,21 @@ pub(crate) const MIGRATION_8: &str = "
 ALTER TABLE attachment_local ADD COLUMN waveform BLOB;
 ";
 
+/// Migration 9 (slice 7b, appendix ADR-0001 §C.8): the details of an attachment. Columns only, added with `ALTER TABLE .. ADD COLUMN` (a
+/// metadata change in SQLite, no rewrite); no row changes, so every row of version 8 keeps its bytes and there is no backfill: an
+/// absent group means its default (the invariant of §C.8).
+/// - `attachment.display_name`, `description`, `spoiler` -- the output of `kinige_domain::attachment::read_details` for the row's
+///   groups (`name`, `description`, `privacy`); the raw bytes stay verbatim in `groups_raw`;
+/// - the same three on the local `draft_attachment`, where there is no group yet.
+pub(crate) const MIGRATION_9: &str = "
+ALTER TABLE attachment ADD COLUMN display_name TEXT;
+ALTER TABLE attachment ADD COLUMN description TEXT;
+ALTER TABLE attachment ADD COLUMN spoiler INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE draft_attachment ADD COLUMN display_name TEXT;
+ALTER TABLE draft_attachment ADD COLUMN description TEXT;
+ALTER TABLE draft_attachment ADD COLUMN spoiler INTEGER NOT NULL DEFAULT 0;
+";
+
 /// Migrations in order; the version number is the index + 1.
 const MIGRATIONS: &[&str] = &[
     MIGRATION_1,
@@ -278,6 +293,7 @@ const MIGRATIONS: &[&str] = &[
     MIGRATION_6,
     MIGRATION_7,
     MIGRATION_8,
+    MIGRATION_9,
 ];
 
 /// The schema version this app understands.

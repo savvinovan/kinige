@@ -89,6 +89,44 @@ pub fn rewrite_group(
     max_bytes: Option<usize>,
     edit: impl FnOnce(&mut Map<String, Value>, &str) -> Result<(), GroupError>,
 ) -> Result<Rewritten, GroupError> {
+    rewrite_value(current, group, new_hlc, max_bytes, |old, old_hlc| {
+        let Value::Object(mut object) = old else {
+            return Err(corrupt(format!("group {group} is not an object")));
+        };
+        edit(&mut object, old_hlc)?;
+        Ok(Value::Object(object))
+    })
+}
+
+/// Sets one field of a group under a new HLC, for a group that a person edits locally (slice 7b). Unlike [`rewrite_group`] it takes
+/// a group whose old bytes are not an object (another client's mistyped value): the local edit replaces it with an object that holds
+/// the field. An object keeps its other fields verbatim.
+pub fn rewrite_field(
+    current: &Groups<'_>,
+    group: &str,
+    new_hlc: &str,
+    max_bytes: Option<usize>,
+    (key, value): (&str, Value),
+) -> Result<Rewritten, GroupError> {
+    rewrite_value(current, group, new_hlc, max_bytes, |old, _| {
+        let mut object = match old {
+            Value::Object(object) => object,
+            _ => Map::new(),
+        };
+        object.insert(key.to_string(), value);
+        Ok(Value::Object(object))
+    })
+}
+
+/// The shared steps: the group and its HLC entry must be there, in a supported `sv`, strict stamps, the new one strictly greater;
+/// `build` makes the new group value from the old one and the old HLC.
+fn rewrite_value(
+    current: &Groups<'_>,
+    group: &str,
+    new_hlc: &str,
+    max_bytes: Option<usize>,
+    build: impl FnOnce(Value, &str) -> Result<Value, GroupError>,
+) -> Result<Rewritten, GroupError> {
     let mut groups = parse_groups_raw(current.groups_raw)?;
     let mut hlcs: BTreeMap<String, Box<RawValue>> =
         serde_json::from_str(current.hlc_json).map_err(corrupt)?;
@@ -96,9 +134,7 @@ pub fn rewrite_group(
     let old_group = groups
         .get(group)
         .ok_or_else(|| corrupt(format!("no group {group}")))?;
-    let Value::Object(mut object) = serde_json::from_str(old_group.get()).map_err(corrupt)? else {
-        return Err(corrupt(format!("group {group} is not an object")));
-    };
+    let old_value: Value = serde_json::from_str(old_group.get()).map_err(corrupt)?;
     let old_entry: Value = serde_json::from_str(
         hlcs.get(group)
             .ok_or_else(|| corrupt(format!("no HLC for group {group}")))?
@@ -124,9 +160,9 @@ pub fn rewrite_group(
         return Err(GroupError::HlcNotNewer);
     }
 
-    edit(&mut object, &old_hlc)?;
+    let new_value = build(old_value, &old_hlc)?;
 
-    let text = jcs::canonical_string(&Value::Object(object))?;
+    let text = jcs::canonical_string(&new_value)?;
     if max_bytes.is_some_and(|max| text.len() > max) {
         return Err(GroupError::TooLarge);
     }
@@ -141,8 +177,16 @@ pub fn rewrite_group(
         RawValue::from_string(entry).map_err(corrupt)?,
     );
 
-    let schema_version = hlcs
-        .values()
+    Ok(Rewritten {
+        groups_raw: serde_json::to_string(&groups).map_err(corrupt)?,
+        hlc_json: serde_json::to_string(&hlcs).map_err(corrupt)?,
+        schema_version: max_schema_version(&hlcs),
+    })
+}
+
+/// The maximum `sv` over the `hlc_json` entries, at least the supported one (ADR-0001 §4): the record's `schema_version`.
+pub(crate) fn max_schema_version(hlcs: &BTreeMap<String, Box<RawValue>>) -> u32 {
+    hlcs.values()
         .filter_map(|entry| {
             serde_json::from_str::<Map<String, Value>>(entry.get())
                 .ok()?
@@ -152,13 +196,7 @@ pub fn rewrite_group(
         .max()
         .map_or(SCHEMA_VERSION, |max| {
             u32::try_from(max).unwrap_or(u32::MAX).max(SCHEMA_VERSION)
-        });
-
-    Ok(Rewritten {
-        groups_raw: serde_json::to_string(&groups).map_err(corrupt)?,
-        hlc_json: serde_json::to_string(&hlcs).map_err(corrupt)?,
-        schema_version,
-    })
+        })
 }
 
 /// A read-only entry: at least one of its groups has an `sv` higher than supported (ADR-0001 §4 item 4). A corrupt

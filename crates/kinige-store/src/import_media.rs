@@ -3,8 +3,8 @@
 //! pipeline); the writer transaction of the batch renames them into place and writes the rows (stage 2).
 
 use crate::attachment::{
-    Dirs, Faults, Hints, NewFile, Source, Staged, insert_attachment, insert_attachment_at,
-    make_dir, stage,
+    Dirs, DraftDetails, Faults, Hints, NewFile, Source, Staged, insert_attachment,
+    insert_attachment_at, make_dir, stage,
 };
 use crate::message_body::replace_body_without_revision;
 use crate::messages::load;
@@ -131,6 +131,8 @@ impl StagedMedia {
             duration_ms: self
                 .duration_ms
                 .filter(|_| matches!(staged.kind, AttachmentKind::Audio | AttachmentKind::Video)),
+            // Imported media come with no details and uncovered (slice 7b): whether the export carries Telegram's own flag is not verified.
+            details: DraftDetails::default(),
         }
     }
 
