@@ -136,6 +136,9 @@ describe("Album with hidden photos", () => {
             <button type="button" onClick={() => setView("b")}>
               next
             </button>
+            <button type="button" onClick={() => setView("a")}>
+              back
+            </button>
             <Album images={[hidden("1")]} onOpen={vi.fn()} />
           </>
         </Stage>
@@ -156,6 +159,10 @@ describe("Album with hidden photos", () => {
     expect(container.querySelector("img")).not.toBeNull();
     // Another chat.
     fireEvent.click(screen.getByRole("button", { name: "next" }));
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("[data-spoiler-face]")).not.toBeNull();
+    // And back to the first chat: what was shown there before is covered, not remembered (found in the real window).
+    fireEvent.click(screen.getByRole("button", { name: "back" }));
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector("[data-spoiler-face]")).not.toBeNull();
   });

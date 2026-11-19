@@ -37,8 +37,11 @@ interface RevealProviderProps {
  */
 export function RevealProvider({ viewKey, initial = [], children }: RevealProviderProps) {
   const [revealed, setRevealed] = useState<{ viewKey: string | null; ids: ReadonlySet<string> }>({ viewKey, ids: new Set(initial) });
-  // A set that belongs to another view counts as empty: the cover is back in the same render as the new view, not one render later.
-  const ids = revealed.viewKey === viewKey ? revealed.ids : EMPTY;
+  // A set that belongs to another view counts as empty: the cover is back in the same render as the new view, not one render later. And
+  // it is dropped, not kept: coming back to the first view must not bring its old set back (found in the real window).
+  const stale = revealed.viewKey !== viewKey;
+  if (stale) setRevealed({ viewKey, ids: EMPTY });
+  const ids = stale ? EMPTY : revealed.ids;
 
   const reveal = useCallback(
     (attachmentId: string) =>
