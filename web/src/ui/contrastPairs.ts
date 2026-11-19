@@ -100,4 +100,7 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { foreground: "surface.message", background: "surface.code", kind: "decorative" },
   // The empty task checkbox (the component border, WCAG 1.4.11) is drawn in the tertiary text color on the bubble.
   { foreground: "text.tertiary", background: "surface.message", kind: "ui" },
+  // A bubble of pictures only has no fill (KINIG-132): the ring of a highlighted one (the tertiary text color) stands on the feed, and the tile of
+  // a missing or undecodable picture (the bubble's fill) stands off the feed so the entry still has a visible box.
+  { foreground: "text.tertiary", background: "surface.paper", kind: "ui" },
 ];
