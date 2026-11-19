@@ -64,7 +64,7 @@ interface SidebarProps {
   onOpenImport?: () => void;
   /** "About" in the profile menu (KINIG-54). */
   onOpenAbout?: () => void;
-  /** "Show forest" / "Hide forest" in the profile menu (slice 6): the only way back after the forest is hidden. */
+  /** "Show forest" / "Hide forest" in the profile menu (slice 6); the switch in the top bar does the same (KINIG-134). */
   forestMenu?: { hidden: boolean; onToggle: () => void };
   /** The chat an entry is dragged over right now (acceptance decision): target highlight; the rows themselves are always targets (`data-chat-drop`). */
   dropTargetId?: string | null;

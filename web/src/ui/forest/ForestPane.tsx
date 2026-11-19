@@ -30,15 +30,15 @@ export interface ForestPaneProps {
   onYearChange: (year: number) => void;
   onView: (view: "strip" | "expanded") => void;
   onMode: (mode: ForestMode) => void;
-  onHide: () => void;
 }
 
 const SEASONS: readonly Season[] = ["winter", "spring", "summer", "autumn"];
 
 /**
  * The forest above the feed: the strip (a flat heat map of the year) or, expanded, the board (oblique projection) or the calendar under a
- * header with the year, "Whole year", the season zooms, the "Forest / Calendar" switch, collapse and hide. It is a region of the
- * main window, not a screen of its own; nothing here loads data (the host passes the year table).
+ * header with the year, "Whole year", the season zooms, the "Forest / Calendar" switch and collapse. Hiding it is the `ForestToggle` of
+ * the main window's top bar, not a control of the pane. It is a region of the main window, not a screen of its own; nothing here loads
+ * data (the host passes the year table).
  */
 export function ForestPane(props: ForestPaneProps) {
   const { t } = useTranslation();
@@ -73,7 +73,7 @@ interface HeaderProps extends ForestPaneProps {
   label: string;
 }
 
-function StripHeader({ label, onView, onHide }: HeaderProps) {
+function StripHeader({ label, onView }: HeaderProps) {
   const { t } = useTranslation();
   return (
     <header className="forest-pane__header">
@@ -81,13 +81,12 @@ function StripHeader({ label, onView, onHide }: HeaderProps) {
       <div className="forest-pane__spacer" />
       <div className="forest-pane__actions">
         <IconButton small icon="expandPane" label={t("forest.expand")} onClick={() => onView("expanded")} />
-        <IconButton small icon="hidePane" label={t("forest.hide")} onClick={onHide} />
       </div>
     </header>
   );
 }
 
-function ExpandedHeader({ label, table, minYear, maxYear, year, mode, onYearChange, onMode, onView, onHide, onZoom }: HeaderProps & { onZoom: (target: ZoomRequest["target"]) => void }) {
+function ExpandedHeader({ label, table, minYear, maxYear, year, mode, onYearChange, onMode, onView, onZoom }: HeaderProps & { onZoom: (target: ZoomRequest["target"]) => void }) {
   const { t } = useTranslation();
   const shown = table?.year ?? year;
   return (
@@ -123,7 +122,6 @@ function ExpandedHeader({ label, table, minYear, maxYear, year, mode, onYearChan
       />
       <div className="forest-pane__actions">
         <IconButton small icon="collapsePane" label={t("forest.collapse")} onClick={() => onView("strip")} />
-        <IconButton small icon="hidePane" label={t("forest.hide")} onClick={onHide} />
       </div>
     </header>
   );

@@ -15,7 +15,6 @@ const props: ForestPaneProps = {
   onYearChange: vi.fn(),
   onView: vi.fn(),
   onMode: vi.fn(),
-  onHide: vi.fn(),
 };
 
 describe("the pane before its year has arrived", () => {
