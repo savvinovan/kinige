@@ -6,7 +6,23 @@ import type { AttachmentState } from "./AttachmentState";
  * An attachment as the interface sees it, in an entry or in a draft. It never carries `blob_key`, `remote_blob_id`, a path
  * or the stored file name.
  */
-export type AttachmentView = { id: string, kind: AttachmentKind, filename: string, mime: string, byteSize: number, 
+export type AttachmentView = { id: string, kind: AttachmentKind, 
+/**
+ * The original name, immutable (`core.filename`).
+ */
+filename: string, 
+/**
+ * The name to show: the display name if there is one, otherwise `filename` (slice 7b). The extension is always the original's.
+ */
+name: string, 
+/**
+ * What the person wrote about it; `None` is none (slice 7b).
+ */
+description: string | null, 
+/**
+ * Covered in the Kinige window until clicked; only an `image` can be (slice 7b). A cover against a glance, not a lock.
+ */
+spoiler: boolean, mime: string, byteSize: number, 
 /**
  * Pixels after the EXIF orientation; only for `image` (the feed reserves the box before the file loads).
  */

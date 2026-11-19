@@ -1,7 +1,9 @@
 import { memo, useMemo, type PointerEvent } from "react";
+import { useTranslation } from "react-i18next";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { MessageAttachments } from "../attachments/MessageAttachments";
+import { useReveal } from "../attachments/reveal";
 import { Message } from "../message/Message";
 import type { MoveTarget } from "../message/moveTargets";
 import { ReplyQuote } from "../reply/ReplyQuote";
@@ -24,6 +26,9 @@ interface FeedRowProps {
   onOpenReply?: (quote: ReplyTo) => void;
   onOpenImage?: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
   onOpenFile?: (attachmentId: string) => void;
+  /** KINIG-136: the details dialog on an attachment of the entry (the entry's attachments are given, for the arrows of the dialog), and the spoiler alone. */
+  onAttachmentDetails?: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
+  onAttachmentSpoiler?: (attachmentId: string, spoiler: boolean) => void;
   actions?: FeedActions;
   moveTargets?: readonly MoveTarget[];
   onDragStart?: (messageId: string) => (event: PointerEvent<HTMLElement>, plate: HTMLElement) => void;
@@ -45,10 +50,14 @@ export const FeedRow = memo(function FeedRow({
   onOpenReply,
   onOpenImage,
   onOpenFile,
+  onAttachmentDetails,
+  onAttachmentSpoiler,
   actions,
   moveTargets,
   onDragStart,
 }: FeedRowProps) {
+  const { t } = useTranslation();
+  const { isRevealed } = useReveal();
   const id = message.id;
   const sentAt = useMemo(() => new Date(message.createdAt), [message.createdAt]);
   const retry = useMemo(() => (onRetry ? () => onRetry(id) : undefined), [onRetry, id]);
@@ -66,10 +75,26 @@ export const FeedRow = memo(function FeedRow({
           attachments={entryAttachments}
           onOpenImage={(attachmentId) => onOpenImage?.(entryAttachments, attachmentId)}
           onOpenFile={(attachmentId) => onOpenFile?.(attachmentId)}
+          onDetails={onAttachmentDetails ? (attachmentId) => onAttachmentDetails(entryAttachments, attachmentId) : undefined}
+          onSpoiler={onAttachmentSpoiler}
         />
       ) : undefined,
-    [entryAttachments, onOpenImage, onOpenFile],
+    [entryAttachments, onOpenImage, onOpenFile, onAttachmentDetails, onAttachmentSpoiler],
   );
+  // KINIG-136: "Attachment details…" in the entry's menu, on the first attachment that has details (a voice note has none).
+  const detailsTarget = entryAttachments?.find((attachment) => attachment.kind !== "audio");
+  const openDetails = useMemo(
+    () => (onAttachmentDetails && entryAttachments && detailsTarget ? () => onAttachmentDetails(entryAttachments, detailsTarget.id) : undefined),
+    [onAttachmentDetails, entryAttachments, detailsTarget],
+  );
+  // A single photo with a description and no text: the description is the entry's one line; a covered photo says "Description hidden" there.
+  const only = entryAttachments?.length === 1 && entryAttachments[0]?.kind === "image" ? entryAttachments[0] : undefined;
+  const caption =
+    only?.description && message.bodyMd.trim() === ""
+      ? only.spoiler && !isRevealed(only.id)
+        ? { text: t("attachments.descriptionHidden"), muted: true }
+        : { text: only.description, muted: false }
+      : undefined;
   // A voice note with no text ends on the player's meta line, which holds the room for the time (slice 7a).
   const lastAttachment = entryAttachments?.at(-1);
   const timeBeside = message.bodyMd.trim() === "" && lastAttachment !== undefined && showsWaveform(lastAttachment);
@@ -100,6 +125,8 @@ export const FeedRow = memo(function FeedRow({
         attachments={attachments}
         timeBeside={timeBeside}
         imagesOnly={imagesOnly}
+        caption={imagesOnly ? caption : undefined}
+        onAttachmentDetails={openDetails}
         tags={message.tags}
         mode={mode}
         editError={mode === "editing" ? editError : undefined}

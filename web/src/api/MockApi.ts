@@ -165,6 +165,8 @@ export class MockApi implements KinigeApi {
   setDropTarget: KinigeApi["setDropTarget"] = (active) => this.attachments.setDropTarget(active);
   removeDraftAttachment: KinigeApi["removeDraftAttachment"] = (chatId, id) => this.attachments.removeDraftAttachment(chatId, id);
   openAttachment: KinigeApi["openAttachment"] = (id) => this.attachments.openAttachment(id);
+  setDraftAttachmentDetails: KinigeApi["setDraftAttachmentDetails"] = (id, changes) => this.attachments.setDraftAttachmentDetails(id, changes);
+  setAttachmentDetails: KinigeApi["setAttachmentDetails"] = (id, changes) => this.attachments.setAttachmentDetails(id, changes);
   onAttachmentsDrag: KinigeApi["onAttachmentsDrag"] = (handler) => this.attachments.onAttachmentsDrag(handler);
   onAttachmentsDropped: KinigeApi["onAttachmentsDropped"] = (handler) => this.attachments.onAttachmentsDropped(handler);
   sendVoice: KinigeApi["sendVoice"] = (chatId, bytes, ms, replyToId, waveform) => this.voice.sendVoice(chatId, bytes, ms, replyToId, waveform);

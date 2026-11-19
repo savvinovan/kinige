@@ -66,8 +66,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     media_protocol::register(builder)
         // The web view's own permission prompts (slice 7a): the microphone for `main` only, no camera, screen capture or location.
         .on_permission_request(|webview, kind| voice::permission_decision(webview.label(), kind))
-        // Which of the two recording windows has the microphone (KINIG-153).
-        .manage(voice::MicrophoneClaim::default())
+        .manage(voice::MicrophoneClaim::default()) // which recording window has the microphone (KINIG-153)
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -82,6 +81,8 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             attachments::attach_dropped,
             attachments::set_drop_target,
             attachments::remove_draft_attachment,
+            attachments::set_draft_attachment_details,
+            attachments::set_attachment_details,
             attachments::open_attachment,
             voice::send_voice,
             voice::open_microphone_settings,
@@ -350,7 +351,6 @@ pub fn run() {
         }
         Ok(())
     };
-    // A dead web content process (macOS): the page's microphone claim goes and the page reloads (`voice::on_page_terminated`).
     #[cfg(target_os = "macos")]
     let configured = configured.on_web_content_process_terminate(voice::on_page_terminated);
     let built = configured

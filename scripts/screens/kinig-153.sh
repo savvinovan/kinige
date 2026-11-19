@@ -232,7 +232,7 @@ capture_present || fail "the capture window hid after Discard"
 # seconds here, so no question) is what drops it.
 press "${L_MIC}"
 wait_name "${L_RECORDING}" 10000 || fail "the recording bar did not show for the hide"
-sleep 3
+sleep 1
 drive_raw capture '{"kind":"hide"}' > /dev/null
 wait_capture_hidden || fail "the capture window did not hide on the app's hide request"
 [ "$(voice_in_inbox)" = "$((BEFORE_NOTES + 2))" ] || fail "hiding the window saved the recording"
@@ -244,9 +244,14 @@ wait_capture_hidden || fail "Esc did not hide the window with a kept recording"
 show_capture
 wait_capture_says "${L_STOPPED}" 10 || fail "Esc discarded the kept recording"
 [ "$(voice_in_inbox)" = "$((BEFORE_NOTES + 2))" ] || fail "a kept recording was saved by Esc"
+# Under five seconds the trash button drops it at once; at five or more it would ask. The shot's text has the kept time: the check below makes a
+# question impossible to mistake for a drop (it must be absent, and the microphone button must be back).
+grep -qE "Recording stopped · 0:0[0-4]" "$K/debug/shot-09-recording-kept-large.txt" || fail "the kept recording is five seconds or more: the trash button would ask first"
 press "${L_TRASH_REC}"
 for _ in $(seq 1 10); do capture_says "${L_STOPPED}" || break; sleep 1; done
 capture_says "${L_STOPPED}" && fail "the trash button did not drop the kept recording"
+capture_says "${L_DISCARD_Q}" && fail "the trash button asked the question instead of dropping a short kept recording"
+has "${L_MIC}" || fail "the microphone button is not back after dropping the kept recording"
 [ "$(voice_in_inbox)" = "$((BEFORE_NOTES + 2))" ] || fail "a discarded kept recording was saved"
 drive "$(drive_window)" '{"kind":"key","key":"Escape"}'
 wait_capture_hidden || fail "Esc did not hide the idle capture window"

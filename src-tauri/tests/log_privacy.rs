@@ -211,6 +211,58 @@ fn the_forest_commands_log_no_dates_excerpts_or_chat_ids() {
     }
 }
 
+/// Attachment details (slice 7b): a name, a description and arguments that do not read, on success and on every refusal, stay out of the
+/// process log. serde's error text quotes an unexpected string, so no deserialization error may reach the log with its content.
+#[test]
+fn the_details_commands_log_no_names_descriptions_or_rejected_arguments() {
+    use kinige_store::{Now, Store};
+    use tauri::Manager;
+    install_logger();
+    let fixture = fixture();
+    let window = window(&fixture, "main");
+    let tile = fixture
+        .app
+        .state::<Store>()
+        .attach_bytes(
+            kinige_domain::groups::INBOX_ID,
+            Some("scan.pdf"),
+            b"%PDF-1.4",
+            &Now::system(),
+        )
+        .unwrap()
+        .id;
+    for command in ["set_draft_attachment_details", "set_attachment_details"] {
+        for changes in [
+            json!({"name": format!("{MARK}-name"), "description": format!("{MARK} описание")}),
+            json!({"name": format!("{MARK}/slash")}),
+            json!({"description": format!("{MARK}\u{0}nul")}),
+            json!({"name": format!("{MARK}\u{202e}bidi")}),
+            json!({"description": MARK.repeat(1000)}),
+            json!({"spoiler": format!("{MARK}-string")}),
+            json!({"spoiler": null, MARK: format!("{MARK}-value")}),
+            json!({"name": [MARK], "unknownkey": MARK}),
+        ] {
+            let _ = call(
+                &window,
+                command,
+                json!({"attachmentId": tile, "changes": changes}),
+            );
+        }
+        let _ = call(
+            &window,
+            command,
+            json!({"attachmentId": format!("{MARK}-id"), "changes": {"name": format!("{MARK}-x")}}),
+        );
+    }
+    let lines = CAPTURED.lock().unwrap().clone();
+    for line in &lines {
+        assert!(
+            !line.to_uppercase().contains(MARK),
+            "attachment details in the log: {line}"
+        );
+    }
+}
+
 /// The settings file (slice 4b, ADR-0010): a mark in an unknown key, a chat title, an invalid value, a folder path and in
 /// a broken file does not get into the process log, neither on applying, nor on a parse error, nor on unsafe permissions.
 #[test]

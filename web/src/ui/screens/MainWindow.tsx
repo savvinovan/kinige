@@ -15,10 +15,12 @@ import { OnThisDayCard } from "../onthisday/OnThisDayCard";
 import { ReplyStrip } from "../reply/ReplyStrip";
 import { SearchResults } from "../search/SearchResults";
 import { DateDialogs } from "./DateDialogs";
+import { DetailsHost } from "./DetailsHost";
 import { EMPTY_LIST, focusComposer, toSidebar, useCheckOnWindowFocus, useMoveTargets } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
 import { useAttachments } from "./useAttachments";
 import { useChatDialog } from "./useChatDialog";
+import { useDetails } from "./useDetails";
 import { useComposerDraft } from "./useComposerDraft";
 import { type FocusTarget, useFeed } from "./useFeed";
 import { useImport } from "./useImport";
@@ -55,7 +57,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const [about, setAbout] = useState<string | null>(null);
   // The number of the "to the bottom edge of the feed" request: grows after the "On this day" card is hidden.
   const [toBottom, setToBottom] = useState(0);
-  const { text: draftText, reply, tiles, addTiles, dropTile, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
+  const { text: draftText, reply, tiles, addTiles, updateTile, dropTile, changeReply, refreshReply, clear: clearDraft, plan: planDraft, saver: draftSaver, switchChat, type: typeDraft } =
     useComposerDraft(api, selected);
   const prefs = useSettingsState(api, initialSettings);
   const { settings } = prefs;
@@ -91,6 +93,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   });
   const { reload: reloadFeed, restart: restartFeed } = feed;
   const attachments = useAttachments({ api, selected, tiles, addTiles, dropTile, onError: setComposerError });
+  const details = useDetails({ api, tiles, updateTile, patchAttachment: feed.patchAttachment, onError: setComposerError });
   const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
   useCheckOnWindowFocus(feed.checkDay);
   const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
@@ -325,7 +328,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       onDraftChange={changeDraft}
       onSubmit={submit}
       composerError={composerError ? t(`error.${composerError}`) : undefined}
-      attachments={attachments.controls}
+      attachments={{ ...attachments.controls, onDetailsTile: details.openDraft, onAttachmentDetails: details.openSent, onAttachmentSpoiler: details.setSpoiler }}
       onOpenLink={openLink}
       onOpenSettings={() => void api.openSettings().catch(() => undefined)}
       overlay={
@@ -352,6 +355,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
               onOpenExternal={attachments.lightbox.unsent ? undefined : attachments.openFile}
             />
           ) : null}
+          <DetailsHost details={details} />
           {about !== null ? <AboutDialog title={about} onClose={() => setAbout(null)} /> : null}
           <DateDialogs
             language={language}

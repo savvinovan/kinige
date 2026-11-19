@@ -33,7 +33,18 @@ export function demoPhoto(
   filename: string,
   width: number,
   height: number,
-  options: { transparent?: boolean; broken?: boolean; missing?: boolean; byteSize?: number; tone?: "dark" | "light" } = {},
+  options: {
+    transparent?: boolean;
+    broken?: boolean;
+    missing?: boolean;
+    byteSize?: number;
+    tone?: "dark" | "light";
+    /** The display name (slice 7b), with the original's extension. */
+    name?: string;
+    description?: string | null;
+    /** Covered until clicked. */
+    spoiler?: boolean;
+  } = {},
 ): AttachmentView {
   photos.set(id, {
     width,
@@ -46,6 +57,9 @@ export function demoPhoto(
     id,
     kind: "image",
     filename,
+    name: options.name ?? filename,
+    description: options.description ?? null,
+    spoiler: options.spoiler ?? false,
     mime: options.transparent ? "image/png" : "image/jpeg",
     byteSize: options.byteSize ?? width * height,
     width,
@@ -63,9 +77,24 @@ export function demoFile(
   kind: Exclude<AttachmentKind, "image">,
   byteSize: number,
   state: AttachmentView["state"] = "local",
+  details: { name?: string; description?: string | null } = {},
 ): AttachmentView {
   const mime = kind === "audio" ? "audio/mpeg" : kind === "video" ? "video/mp4" : "application/pdf";
-  return { id, kind, filename, mime, byteSize, width: null, height: null, durationMs: null, state, waveform: null };
+  return {
+    id,
+    kind,
+    filename,
+    name: details.name ?? filename,
+    description: details.description ?? null,
+    spoiler: false,
+    mime,
+    byteSize,
+    width: null,
+    height: null,
+    durationMs: null,
+    state,
+    waveform: null,
+  };
 }
 
 /** The pictures of the stories: a gradient (or an empty background) with the size written on it. */
@@ -142,6 +171,9 @@ export function demoVoice(
     id,
     kind: "audio",
     filename: options.filename ?? "voice-2026-11-04-213012.m4a",
+    name: options.filename ?? "voice-2026-11-04-213012.m4a",
+    description: null,
+    spoiler: false,
     mime: options.mime ?? "audio/mp4",
     byteSize: options.byteSize ?? Math.round(((durationMs ?? 40_000) / 1000) * 8000),
     width: null,

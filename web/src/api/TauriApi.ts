@@ -1,18 +1,9 @@
-import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { KinigeApi, ListMessagesOptions } from "./KinigeApi";
+import { attachPaste, setAttachmentDetails, setDraftAttachmentDetails } from "./tauriAttachments";
 import * as voice from "./tauriVoice";
 import {
-  ATTACHMENTS_DRAG,
-  ATTACHMENTS_DROPPED,
-  DATABASE_CORRUPT,
-  ENTRIES_CHANGED,
-  IMPORT_PROGRESS,
-  OPEN_CHAT,
-  OPEN_MESSAGE,
-  SETTINGS_CHANGED,
-  call,
-  toApiError,
+  ATTACHMENTS_DRAG, ATTACHMENTS_DROPPED, DATABASE_CORRUPT, ENTRIES_CHANGED, IMPORT_PROGRESS, OPEN_CHAT, OPEN_MESSAGE, SETTINGS_CHANGED, call,
 } from "./tauriCall";
 import type { AgentAccess } from "./generated/AgentAccess";
 import type { AgentLogEntry } from "./generated/AgentLogEntry";
@@ -20,6 +11,7 @@ import type { AgentLogPage } from "./generated/AgentLogPage";
 import type { AgentMode } from "./generated/AgentMode";
 import type { AppInfo } from "./generated/AppInfo";
 import type { AttachOutcome } from "./generated/AttachOutcome";
+import type { AttachmentDetailsChanges } from "./generated/AttachmentDetailsChanges";
 import type { AttachmentView } from "./generated/AttachmentView";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
@@ -92,15 +84,16 @@ export class TauriApi implements KinigeApi {
     return call("attach_pick", { chatId });
   }
 
-  async attachPaste(chatId: string, bytes: Uint8Array, nameHint?: string): Promise<AttachmentView> {
-    // A raw body: the chat id and the name go in headers (ASCII, so the name is percent-encoded; Rust decodes and cleans it).
-    const headers: Record<string, string> = { "x-chat-id": chatId };
-    if (nameHint) headers["x-name-hint"] = encodeURIComponent(nameHint);
-    try {
-      return await invoke<AttachmentView>("attach_paste", bytes, { headers });
-    } catch (reason) {
-      throw toApiError(reason);
-    }
+  attachPaste(chatId: string, bytes: Uint8Array, nameHint?: string): Promise<AttachmentView> {
+    return attachPaste(chatId, bytes, nameHint);
+  }
+
+  setDraftAttachmentDetails(attachmentId: string, changes: AttachmentDetailsChanges): Promise<AttachmentView> {
+    return setDraftAttachmentDetails(attachmentId, changes);
+  }
+
+  setAttachmentDetails(attachmentId: string, changes: AttachmentDetailsChanges): Promise<AttachmentView> {
+    return setAttachmentDetails(attachmentId, changes);
   }
 
   // Voice notes (slice 7a) and the capture window's own (KINIG-153): the commands are in `tauriVoice.ts`.

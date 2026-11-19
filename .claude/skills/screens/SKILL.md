@@ -36,7 +36,7 @@ Screenshots of the real window for acceptance are captured not by this Mac but b
 
 ## The screens driver (KINIG-92, ADR-0016)
 
-A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `screens-driver-probe*`) clicks and reads by accessible name through the test build itself.
+A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `7b`, `screens-driver-probe*`) clicks and reads by accessible name through the test build itself.
 
 **How it is switched on:**
 - `KINIGE_SCREENS_DRIVER=1` points `virtual:kinige-driver` at `scripts/screens/driver.ts`.

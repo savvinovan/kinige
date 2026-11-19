@@ -200,6 +200,18 @@ describe("the window is hidden while it records (its hotkey, closing, or Rust gi
     expect(screen.getByRole("status")).toHaveTextContent("Recording stopped · 0:08");
   });
 
+  it("the bar takes the focus itself the moment the recording is kept, before the window is shown again (its own focus effect)", async () => {
+    await setup();
+    await startRecording();
+    // The focus is on Send while recording.
+    expect(screen.getByRole("button", { name: "Send the voice note" })).toHaveFocus();
+    await settle(8000);
+    await hideRequest();
+    const focused = document.activeElement as HTMLElement;
+    expect(focused.tagName).not.toBe("BUTTON");
+    expect(focused).toHaveAttribute("data-kept", "hidden");
+  });
+
   it("the reopened window puts the focus on the bar and on no button, so Space or Enter send and delete nothing", async () => {
     const { api } = await keptAfterReopen(8000);
     const focused = document.activeElement as HTMLElement;

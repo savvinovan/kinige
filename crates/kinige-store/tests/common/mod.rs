@@ -4,6 +4,7 @@ pub mod agent;
 pub mod attach;
 pub mod capture;
 pub mod days;
+pub mod details;
 pub mod import;
 pub mod old_db;
 pub mod ops;

@@ -5,7 +5,7 @@
 //! A crash between the rename and the commit leaves an orphan for the sweep.
 
 use super::copy::{Hints, Source, stage};
-use super::{Dirs, Faults, NewFile, insert_attachment};
+use super::{Dirs, DraftDetails, Faults, NewFile, insert_attachment};
 use crate::draft::{chat_key, delete_empty_draft};
 use crate::error::{read_err, write_err};
 use crate::send::{insert_new_message, insert_reply_message};
@@ -97,6 +97,8 @@ impl Store {
                 width: None,
                 height: None,
                 duration_ms: Some(duration_ms),
+                // A voice note has no details (slice 7b): the three groups are written with their defaults.
+                details: DraftDetails::default(),
             },
             part: part.clone(),
             waveform: waveform

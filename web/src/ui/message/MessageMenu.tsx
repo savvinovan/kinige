@@ -16,6 +16,8 @@ interface MessageMenuProps {
   onToggleFavorite?: () => void;
   onChangeDate?: () => void;
   onDelete?: () => void;
+  /** "Attachment details…" (KINIG-136): shown only for an entry with attachments that have details (not for a voice note alone). */
+  onAttachmentDetails?: () => void;
   /** Where the entry can be moved (the "Move to chat" submenu) and what to do on choice; without them the item is disabled. */
   moveTargets?: readonly MoveTarget[];
   onMoveTo?: (chatId: string) => void;
@@ -41,6 +43,7 @@ export function MessageMenu({
   onToggleFavorite,
   onChangeDate,
   onDelete,
+  onAttachmentDetails,
   moveTargets = [],
   onMoveTo,
   onCopy,
@@ -63,6 +66,7 @@ export function MessageMenu({
     },
     { id: "date", label: t("message.changeDate"), icon: "calendar", disabled: off(onChangeDate) },
     { id: "move", label: t("message.moveTo"), icon: "moveTo", disabled: !canMove },
+    ...(onAttachmentDetails ? [{ id: "attachments", label: t("attachments.detailsEntryMenu"), icon: "edit" as const, disabled: readOnly }] : []),
     { id: "delete", label: t("message.delete"), icon: "trash", danger: true, separatorBefore: true, disabled: off(onDelete) },
   ];
 
@@ -86,6 +90,7 @@ export function MessageMenu({
     favorite: onToggleFavorite,
     date: onChangeDate,
     delete: onDelete,
+    attachments: onAttachmentDetails,
   };
 
   return (

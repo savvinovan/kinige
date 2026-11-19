@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Main window: its own commands without core:default, plus subscription to app events (\"entries changed\", \"open chat\", \"settings changed\", \"open entry\"); the \"On this day\" commands (slice 5) and the forest commands (slice 6); the attachment commands (slice 7); the voice note commands (slice 7a); no JS permissions of the opener, dialog and global-shortcut plugins. The settings window commands are revoked from it (slice 4b)",
+  "description": "Main window: its own commands without core:default, plus subscription to app events (\"entries changed\", \"open chat\", \"settings changed\", \"open entry\"); the \"On this day\" commands (slice 5) and the forest commands (slice 6); the attachment commands (slice 7) and the details commands (slice 7b); the voice note commands (slice 7a); no JS permissions of the opener, dialog and global-shortcut plugins. The settings window commands are revoked from it (slice 4b)",
   "windows": [
     "main"
   ],
@@ -51,6 +51,8 @@
     "allow-attach-dropped",
     "allow-set-drop-target",
     "allow-remove-draft-attachment",
+    "allow-set-draft-attachment-details",
+    "allow-set-attachment-details",
     "allow-open-attachment",
     "allow-send-voice",
     "allow-open-microphone-settings",

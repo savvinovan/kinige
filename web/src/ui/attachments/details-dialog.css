@@ -1,0 +1,81 @@
+/* The attachment details dialog (KINIG-136): the picture on the left, the fields on the right. Tokens only; nothing animates. */
+.details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-6);
+  padding: var(--space-6);
+}
+
+/* The picture is as wide as a pending tile is high. In a narrow window the fields do not fit beside it and wrap under it (no media query: they ask for
+   a file tile and a half). */
+.details__picture {
+  display: grid;
+  flex: none;
+  justify-items: center;
+  gap: var(--space-3);
+  width: var(--layout-attachment-pending-image-height);
+  max-width: 100%;
+}
+
+/* The picture's own shape inside the tile height of the composer, so a tall photo is not stretched and a cover has the photo's box. */
+.details__frame {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-height: var(--layout-attachment-pending-image-height);
+  aspect-ratio: var(--details-aspect, var(--layout-attachment-fallback-aspect));
+  overflow: hidden;
+  border-radius: var(--layout-attachment-album-radius);
+  background: var(--color-surface-background);
+}
+
+.details__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.details__file {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-accent-default);
+}
+
+.details__steps {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.details__position {
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--type-small-line-height);
+}
+
+.details__fields {
+  display: grid;
+  flex: 1 1 calc(1.5 * var(--layout-attachment-pending-file-width));
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.details__error {
+  margin: 0;
+  color: var(--color-status-error);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+.details__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}

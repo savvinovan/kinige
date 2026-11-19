@@ -1,0 +1,22 @@
+[the covers are in frame, the album has not been on screen]
+thumbnail files: 1
+IMG_0101.jpg  hidden=1  thumbnail=no
+IMG_0102.jpg  hidden=1  thumbnail=no
+IMG_0103.jpg  hidden=0  thumbnail=no
+IMG_0104.jpg  hidden=1  thumbnail=no
+IMG_0105.jpg  hidden=0  thumbnail=no
+IMG_0106.jpg  hidden=0  thumbnail=no
+IMG_0107.jpg  hidden=0  thumbnail=no
+IMG_0108.jpg  hidden=0  thumbnail=yes
+IMG_0109.jpg  hidden=1  thumbnail=no
+[the album has been on screen]
+thumbnail files: 4
+IMG_0101.jpg  hidden=1  thumbnail=no
+IMG_0102.jpg  hidden=1  thumbnail=no
+IMG_0103.jpg  hidden=0  thumbnail=yes
+IMG_0104.jpg  hidden=1  thumbnail=no
+IMG_0105.jpg  hidden=0  thumbnail=yes
+IMG_0106.jpg  hidden=0  thumbnail=yes
+IMG_0107.jpg  hidden=0  thumbnail=no
+IMG_0108.jpg  hidden=0  thumbnail=yes
+IMG_0109.jpg  hidden=1  thumbnail=no

@@ -89,6 +89,8 @@ fn main() {
         "attach_dropped",
         "set_drop_target",
         "remove_draft_attachment",
+        "set_draft_attachment_details",
+        "set_attachment_details",
         "open_attachment",
         "send_voice",
         "open_microphone_settings",

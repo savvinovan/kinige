@@ -139,6 +139,11 @@
           "$value": "#ffffff",
           "$description": "KINIG-132: the time, the star and the 'added by agent' mark inside the time pill on a picture. White on the pill: 5.7:1 over a pure white picture, 21:1 over a black one (the tests check both).",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 100 %" } }
+        },
+        "cover": {
+          "$value": "#3c3c3c",
+          "$description": "KINIG-136: the cover of a hidden photo (spoiler): a quiet flat gray in the photo's own box, with a crossed-out eye and 'Hidden' on it in text.secondary. It stands apart from the bubble's fill (1.28:1 against surface.message, where the cover sits in a bubble with text) and from the feed (1.6:1, where a bubble with no fill leaves it bare), and the label on it is 8:1. Flat on purpose: a blur of a small thumbnail still shows colours and shapes.",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 24 %" } }
         }
       },
       "tile": {

@@ -14,6 +14,7 @@ import {
   Database,
   Download,
   Ellipsis,
+  EyeOff,
   File,
   Info,
   Maximize2,
@@ -104,6 +105,8 @@ const GLYPHS = {
   rotate: RotateCcw,
   zoomOut: ZoomOut,
   zoomIn: ZoomIn,
+  // KINIG-136: the cover of a hidden photo (a crossed-out eye).
+  eyeOff: EyeOff,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

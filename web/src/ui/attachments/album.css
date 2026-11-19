@@ -74,12 +74,29 @@
   height: 100%;
 }
 
-.album__cell--button {
+/* The picture's button fills the cell (the cell is a box, so the "Hide" button of a revealed photo can sit in its corner as a sibling: a button
+   is never inside a button). */
+.album__open {
+  position: absolute;
+  inset: 0;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
 }
 
+.album__open[aria-disabled="true"] {
+  cursor: default;
+}
+
 /* The ring goes inside the cell: the neighbours are a few pixels away and the bubble may clip what sticks out. */
-.album__cell--button:focus-visible {
+.album__open:focus-visible {
   outline-offset: calc(var(--focus-width) * -1);
 }
 

@@ -82,6 +82,34 @@
   padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
 }
 
+/* KINIG-136: the description of a single photo is the entry's one line of text: it takes the width of the picture like the text under it, is cut with an
+   ellipsis, and the spacer at its end leaves room for the time (no pill). A covered photo says "Description hidden" in the muted colour in the same
+   line, so the reveal swaps the text and changes no height. */
+.message--bleed .message__caption {
+  display: flex;
+  box-sizing: border-box;
+  width: 0;
+  min-width: 100%;
+  margin: 0;
+  padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
+}
+
+.message__caption-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message__caption .message__spacer {
+  flex: none;
+}
+
+.message__caption--muted .message__caption-text {
+  color: var(--color-text-tertiary);
+}
+
 /* A reply quote above the pictures keeps its padding, as in Telegram: the quote sits on the bubble's fill and the picture starts under it. */
 .message--bleed .reply-quote {
   width: 0;
