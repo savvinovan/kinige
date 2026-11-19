@@ -169,20 +169,94 @@ describe("the window is hidden while it records (its hotkey, closing, or Rust gi
     expect(api.hideCount).toBe(2);
   });
 
-  it("Esc on a kept recording discards it (the bar's own rule) and does not hide the window", async () => {
-    const { api } = await setup();
+  /** Records for `ms`, has the window hidden by the hotkey's request, and shows it again: the kept recording is on screen. */
+  async function keptAfterReopen(ms: number) {
+    const opened = await setup();
     await startRecording();
-    await settle(8000);
+    await settle(ms);
     await hideRequest();
     await act(async () => {
       window.dispatchEvent(new Event(SHOWN_EVENT));
+      // Rust gives the reopened window the key: the page puts the focus where the bar wants it.
+      window.dispatchEvent(new Event("focus"));
       await vi.advanceTimersByTimeAsync(20);
     });
+    expect(screen.getByRole("status")).toHaveTextContent("Recording stopped");
+    return opened;
+  }
+
+  it("Esc on a reopened window hides it and keeps the recording: the habitual key loses nothing", async () => {
+    const { api } = await keptAfterReopen(8000);
+    expect(api.hideCount).toBe(1);
     escape();
     await settle();
-    expect(api.hideCount).toBe(1);
+    expect(api.hideCount).toBe(2);
     expect(api.sentVoices).toHaveLength(0);
+    expect(screen.getByRole("status")).toHaveTextContent("Recording stopped · 0:08");
+    // And again: it is still there, Esc after Esc.
+    escape();
+    await settle();
+    expect(api.hideCount).toBe(3);
+    expect(screen.getByRole("status")).toHaveTextContent("Recording stopped · 0:08");
+  });
+
+  it("the reopened window puts the focus on the bar and on no button, so Space or Enter send and delete nothing", async () => {
+    const { api } = await keptAfterReopen(8000);
+    const focused = document.activeElement as HTMLElement;
+    expect(focused.tagName).not.toBe("BUTTON");
+    expect(focused).toHaveAttribute("data-kept", "hidden");
+    expect(focused).toHaveAttribute("role", "group");
+    // jsdom does not turn a key on a button into a click, so the focus is the proof; a key on the bar itself does nothing.
+    for (const key of ["Enter", " "]) {
+      fireEvent.keyDown(focused, { key });
+      fireEvent.keyUp(focused, { key });
+    }
+    await settle();
+    expect(api.sentVoices).toHaveLength(0);
+    expect(screen.getByRole("status")).toHaveTextContent("Recording stopped");
+    // The buttons are still there for Tab and the pointer.
+    expect(screen.getByRole("button", { name: "Send the voice note" })).not.toHaveFocus();
+    expect(screen.getByRole("button", { name: "Discard the recording" })).not.toHaveFocus();
+  });
+
+  it("the trash button of a kept recording over five seconds asks first; Keep leaves it, Discard drops it", async () => {
+    const { api } = await keptAfterReopen(8000);
+    fireEvent.click(screen.getByRole("button", { name: "Discard the recording" }));
+    await settle();
+    expect(screen.getByRole("alertdialog", { name: "Discard the recording?" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Keep recording" })).toHaveFocus();
+    // Esc while it asks hides the window as everywhere else; the question and the recording are still there.
+    escape();
+    await settle();
+    expect(api.hideCount).toBe(2);
+    expect(screen.getByRole("alertdialog", { name: "Discard the recording?" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Keep recording" }));
+    await settle();
+    expect(screen.getByRole("status")).toHaveTextContent("Recording stopped · 0:08");
+    fireEvent.click(screen.getByRole("button", { name: "Discard the recording" }));
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await settle();
     expect(mic()).toBeInTheDocument();
+    expect(api.sentVoices).toHaveLength(0);
+  });
+
+  it("a kept recording under five seconds is dropped by the trash button at once", async () => {
+    const { api } = await keptAfterReopen(3000);
+    fireEvent.click(screen.getByRole("button", { name: "Discard the recording" }));
+    await settle();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(mic()).toBeInTheDocument();
+    expect(api.sentVoices).toHaveLength(0);
+  });
+
+  it("Send on a kept recording still sends it to the Inbox and hides the window", async () => {
+    const { api } = await keptAfterReopen(8000);
+    fireEvent.click(screen.getByRole("button", { name: "Send the voice note" }));
+    await settle();
+    expect(api.sentVoices).toHaveLength(1);
+    expect(api.sentVoices[0]?.chatId).toBe(INBOX_ID);
+    expect(api.hideCount).toBe(2);
   });
 
   it("while the system's permission prompt is still up nothing is recorded behind the hidden window", async () => {

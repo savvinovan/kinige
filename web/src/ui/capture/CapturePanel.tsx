@@ -84,7 +84,7 @@ export function CapturePanel({ context, appendTargetId, value, onChange, onSend,
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.isComposing) return;
       // The recording bar stands in for the field and answers Esc itself (it registers its own listener): the window stays.
-      if (voiceRef.current && barOwnsEscape(voiceRef.current.store.get().kind)) return;
+      if (voiceRef.current && barOwnsEscape(voiceRef.current.store.get())) return;
       event.preventDefault();
       // The picker is open (focus is in the field, not in the picker: Esc from the picker does not reach here): it closes first, the window stays.
       const picker = emojiRef.current;
@@ -95,9 +95,13 @@ export function CapturePanel({ context, appendTargetId, value, onChange, onSend,
       }
       onHideRef.current();
     };
-    // While the recording bar stands in for the field the field is not there to take the caret: the bar's Send (or "Keep recording" while it asks) does.
+    // While the recording bar stands in for the field the field is not there to take the caret: the bar's Send (or "Keep recording" while it
+    // asks) does. A recording kept after a hide takes the focus on the bar itself, not on a button: the first Space or Enter on a reopened window must
+    // not send a stale note (KINIG-153).
     const focusField = () =>
-      (root.current?.querySelector<HTMLElement>(".recording-bar .composer__action button, .recording-bar__choice--keep") ?? root.current?.querySelector("textarea"))?.focus();
+      (root.current?.querySelector<HTMLElement>(".recording-bar[data-kept]") ??
+        root.current?.querySelector<HTMLElement>(".recording-bar .composer__action button, .recording-bar__choice--keep") ??
+        root.current?.querySelector("textarea"))?.focus();
     document.addEventListener("keydown", onKeyDown);
     window.addEventListener("focus", focusField);
     return () => {

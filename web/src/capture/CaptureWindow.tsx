@@ -44,7 +44,8 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
   const [shown, setShown] = useState(0);
   useEffect(() => {
     const field = document.querySelector("textarea");
-    if (!field) return;
+    // While the recording bar stands in for the field the panel puts the focus where the bar wants it (`CapturePanel`), not into the field.
+    if (!field || document.querySelector(".recording-bar")) return;
     field.focus();
     field.setSelectionRange(field.value.length, field.value.length);
   }, [shown]);
