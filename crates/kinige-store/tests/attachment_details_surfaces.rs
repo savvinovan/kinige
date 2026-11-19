@@ -148,9 +148,14 @@ fn the_markdown_copy_writes_a_hidden_photo_like_any_other_and_a_description_cann
             &later(),
         )
         .unwrap();
-    wait_until("the PDF under its new name", || {
-        common::attach::names(&folder).contains(&"обед.pdf".to_string())
-    });
+    // The file is copied before the day file is rewritten: wait for both, or the test reads the old day file.
+    wait_until(
+        "the PDF under its new name, in the folder and in the day file",
+        || {
+            common::attach::names(&folder).contains(&"обед.pdf".to_string())
+                && std::fs::read_to_string(&day_file).is_ok_and(|text| text.contains("обед.pdf"))
+        },
+    );
     let text = std::fs::read_to_string(&day_file).unwrap();
     assert!(
         text.contains(
@@ -178,13 +183,13 @@ fn the_markdown_copy_writes_a_hidden_photo_like_any_other_and_a_description_cann
     store
         .set_attachment_details(&photo, &changes(json!({"name": "sea"})), &later())
         .unwrap();
-    wait_until("the old file to go", || {
-        common::attach::names(&folder) == ["mine.txt", "sea.jpg", "обед.pdf"]
-    });
-    assert!(
-        std::fs::read_to_string(&day_file)
-            .unwrap()
-            .contains("![Beach, July](<2026-11-18/sea.jpg>)")
+    wait_until(
+        "the old file to go and the day file to name the new one",
+        || {
+            common::attach::names(&folder) == ["mine.txt", "sea.jpg", "обед.pdf"]
+                && std::fs::read_to_string(&day_file)
+                    .is_ok_and(|text| text.contains("![Beach, July](<2026-11-18/sea.jpg>)"))
+        },
     );
 }
 
