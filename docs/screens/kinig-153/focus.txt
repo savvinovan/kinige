@@ -1,0 +1,2 @@
+capture window on screen after the main window took the focus: yes
+recording bar still in the capture window: yes
