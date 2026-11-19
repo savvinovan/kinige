@@ -102,14 +102,15 @@ album_whole() {
   [ "${f[1]}" -ge $((f[9] - 15)) ] && [ $((f[5] + f[7])) -le $((f[13] - 65)) ]
 }
 
-# Brings the whole album entry (pictures, caption, time) into view. A scroll-to-visible moves the feed only as far as the element needs
-# (the entry above the album, coming from below, ends at the top of the feed with the album under it: on the first run a picture of the album
-# ended up at the top or in the middle, and the caption was behind the composer or the first row above the window), and does nothing when it
-# was already visible, so the candidates are tried one after another until the entry fits; what was tried and what the frames were is
-# written to fit.txt, whatever the result.
+# Brings the whole album entry (pictures, caption, time) into view. A scroll-to-visible puts an element that is far out of view in the
+# middle of the window, moves the feed only as far as needed when the element is partly visible (it ends at the nearest edge), and does
+# nothing when it is whole in the window (what the runs showed). So the caption goes first: it is centred, which leaves the first picture
+# partly above the window (or the whole entry in view, in a small window); the first picture is next: it is only partly visible, so it
+# is brought to the top edge of the feed, and the caption ends well above the composer. Each candidate is tried until the entry fits;
+# what was tried and what the frames were is written to fit.txt, whatever the result.
 show_album() {
   local candidate
-  for candidate in "$BEFORE" "${L_PHOTO} IMG_0003.jpg" "${L_PHOTO} IMG_0002.jpg" "${L_PHOTO} IMG_0001.jpg" "$CAPTION"; do
+  for candidate in "$CAPTION" "${L_PHOTO} IMG_0001.jpg" "${L_PHOTO} IMG_0002.jpg" "$BEFORE" "${L_PHOTO} IMG_0001.jpg"; do
     echo "scroll to: $candidate" >> "$FIT_LOG"
     scroll_to "$candidate"
     sleep 4
