@@ -49,6 +49,7 @@
     "allow-attach-pick",
     "allow-attach-paste",
     "allow-attach-dropped",
+    "allow-set-drop-target",
     "allow-remove-draft-attachment",
     "allow-open-attachment",
     "allow-send-voice",

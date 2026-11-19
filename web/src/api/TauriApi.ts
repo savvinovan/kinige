@@ -52,6 +52,10 @@ import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
 import type { WeekdaySource } from "./generated/WeekdaySource";
 
+/** The number of the last `set_drop_target` call (see `setDropTarget`). It starts at the clock: Rust keeps the last number while
+ * the app runs and Tauri reloads this page when the web view's process dies, so a count from zero would be ignored. */
+let dropTargetSeq = Date.now();
+
 /** `KinigeApi` over Tauri commands. Argument names are camelCase: Tauri itself converts them to Rust snake_case. */
 export class TauriApi implements KinigeApi {
   appInfo(): Promise<AppInfo> {
@@ -117,6 +121,13 @@ export class TauriApi implements KinigeApi {
 
   attachDropped(token: string, chatId: string): Promise<AttachOutcome> {
     return call("attach_dropped", { token, chatId });
+  }
+
+  async setDropTarget(active: boolean): Promise<void> {
+    // Every call carries a number that only grows; Rust ignores one that is older than what it has seen, so two calls that reach it in
+    // the other order cannot leave a stale answer.
+    dropTargetSeq += 1;
+    await call("set_drop_target", { active, seq: dropTargetSeq });
   }
 
   async removeDraftAttachment(chatId: string, attachmentId: string): Promise<void> {

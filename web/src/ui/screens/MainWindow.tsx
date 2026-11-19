@@ -343,7 +343,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
               index={attachments.lightbox.index}
               onIndexChange={attachments.setLightboxIndex}
               onClose={attachments.closeLightbox}
-              onOpenExternal={attachments.openFile}
+              onOpenExternal={attachments.lightbox.unsent ? undefined : attachments.openFile}
             />
           ) : null}
           {about !== null ? <AboutDialog title={about} onClose={() => setAbout(null)} /> : null}

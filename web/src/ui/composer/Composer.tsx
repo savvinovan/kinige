@@ -54,9 +54,9 @@ interface ComposerProps {
   autoFocus?: boolean;
   /** The "Reply to entry" line above the field (slice 5, `ReplyStrip`); main window only. */
   replyStrip?: ReactNode;
-  /** The unsent attachments (slice 7, `PendingTiles`): a row above the field, under the reply strip. Main window only. */
+  /** The unsent attachments (slice 7, `PendingTiles`): inside the field's box, on a line above the text (KINIG-135). Main window only. */
   tiles?: ReactNode;
-  /** There is at least one tile: the entry can be sent with no text. */
+  /** There is at least one tile: the tiles are drawn, and the entry can be sent with no text. */
   hasTiles?: boolean;
   /** The paperclip (slice 7): opens the file dialog. Without it the button is only drawn and unavailable. */
   onAttach?: () => void;
@@ -81,6 +81,15 @@ function barOf(state: VoiceState) {
     state.kind === "send-failed"
     ? state
     : null;
+}
+
+/** The classes of the field's box: `hidden` while the recording bar stands in for the field, but the tiles stay (`tiles-only`). */
+function barClass(invalid: boolean, hidden: boolean, hasTiles: boolean): string {
+  const classes = ["composer__bar"];
+  if (invalid) classes.push("composer__bar--invalid");
+  if (hidden) classes.push("composer__bar--hidden");
+  if (hidden && hasTiles) classes.push("composer__bar--tiles-only");
+  return classes.join(" ");
 }
 
 /** Inside a code block (an odd number of ``` fences is open) Enter is a new line, not submit (spec §5). */
@@ -137,6 +146,16 @@ export function Composer({
     if (!elsewhere) input.current?.focus();
   }, [autoFocus]);
 
+  // The last tile was removed: if its x had the focus, the focus fell to the page; it goes to the text field instead (PRD §12.2). Where the focus
+  // is somewhere else (a send, another chat opened from the sidebar) it is not taken.
+  const hadTiles = useRef(hasTiles);
+  useEffect(() => {
+    const lastGone = hadTiles.current && !hasTiles;
+    hadTiles.current = hasTiles;
+    const active = document.activeElement;
+    if (lastGone && (active === null || active === document.body || active === document.documentElement)) input.current?.focus();
+  }, [hasTiles]);
+
   // The "Send" button does the same as Enter. After a click focus returns to the field: the button itself disappears as soon as the field is empty.
   const send = () => {
     onSubmit?.();
@@ -179,14 +198,14 @@ export function Composer({
     <div className={floating ? "composer composer--floating" : "composer"}>
       {error && !floating ? errorLine : null}
       {replyStrip}
-      {tiles}
       {voice && (voiceState.kind === "notice" || voiceState.kind === "starting") ? (
         <VoiceNotice state={voiceState} onOpenSettings={voice.openSettings} onDismiss={voice.dismissNotice} />
       ) : null}
       {/* The place of the "inline" emoji picker (capture window): empty it has no height, with the panel it pushes the field up. */}
       {floating && emoji?.placement === "inline" ? <div className="composer__emoji-host" ref={setEmojiHost} /> : null}
-      {voice && bar ? <RecordingBar state={bar} controls={voice} /> : null}
-      <div className={`composer__bar${error ? " composer__bar--invalid" : ""}${bar ? " composer__bar--hidden" : ""}`}>
+      <div className={barClass(Boolean(error), Boolean(bar), hasTiles)}>
+        {/* The tiles stand inside the box, on the line above the text, so the box and its focus line surround both. */}
+        {hasTiles ? <div className="composer__tiles">{tiles}</div> : null}
         {buttons.attach ? (
           <IconButton icon="attach" label={t("composer.attach")} unavailable={viewOnly || !onAttach} onClick={onAttach} />
         ) : null}
@@ -228,6 +247,8 @@ export function Composer({
           </span>
         ) : null}
       </div>
+      {/* While recording, the bar stands under the tiles (the box above shows only them). */}
+      {voice && bar ? <RecordingBar state={bar} controls={voice} /> : null}
       {floating ? (
         <div className="composer__status">
           {errorLine}

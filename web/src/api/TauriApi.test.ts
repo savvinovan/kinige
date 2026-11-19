@@ -163,6 +163,24 @@ describe("TauriApi: the year's forest (slice 6)", () => {
     expect(invoke).toHaveBeenLastCalledWith("set_forest_view", { view: "expanded", mode: "calendar" });
   });
 
+  it("set_drop_target carries a number that only grows, so Rust can drop a call that arrives late", async () => {
+    invoke.mockResolvedValue(undefined);
+    const api = new TauriApi();
+    await api.setDropTarget(true);
+    await api.setDropTarget(false);
+    await api.setDropTarget(true);
+    const seqs = invoke.mock.calls.map((call) => (call[1] as { seq: number }).seq);
+    expect(seqs).toHaveLength(3);
+    // The count starts at the clock: a page reloaded after the web view's process died must not start below the numbers
+    // Rust has already seen from the page before it.
+    expect(seqs[0]).toBeGreaterThan(Date.UTC(2026, 0, 1));
+    expect(Number.isSafeInteger(seqs[0])).toBe(true);
+    expect(seqs[1]).toBeGreaterThan(seqs[0] ?? Infinity);
+    expect(seqs[2]).toBeGreaterThan(seqs[1] ?? Infinity);
+    expect(invoke.mock.calls.map((call) => (call[1] as { active: boolean }).active)).toEqual([true, false, true]);
+    expect(invoke.mock.calls.every((call) => call[0] === "set_drop_target")).toBe(true);
+  });
+
   it("an error code from Rust becomes a KinigeApiError", async () => {
     invoke.mockRejectedValue({ code: "invalid_date" });
     await expect(new TauriApi().getForestYear(0, "monday")).rejects.toMatchObject({ code: "invalid_date" });

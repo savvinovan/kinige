@@ -57,6 +57,7 @@ const CODES = [
   "voice_too_short",
   "voice_too_long",
   "folders_not_attached",
+  "drop_not_supported",
   "internal",
 ] as const satisfies readonly ErrorCode[];
 

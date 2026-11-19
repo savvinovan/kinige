@@ -114,7 +114,6 @@ export function useForestPane({ api, initial, chatId, refreshKey, ready, openEnt
         onYearChange={setYear}
         onView={(view) => change({ ...state, view })}
         onMode={(mode) => change({ ...state, mode })}
-        onHide={() => change({ ...state, view: "hidden" })}
       />
     );
 
@@ -122,7 +121,7 @@ export function useForestPane({ api, initial, chatId, refreshKey, ready, openEnt
     pane,
     hidden,
     onTopDay,
-    /** "Show forest" brings the strip back; "Hide forest" hides it. */
+    /** The one switch of the top bar button and the profile menu item: "Show forest" brings the strip back, "Hide forest" hides it. */
     toggleHidden: () => change({ ...state, view: hidden ? "strip" : "hidden" }),
   };
 }

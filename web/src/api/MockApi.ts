@@ -162,6 +162,7 @@ export class MockApi implements KinigeApi {
   attachPick: KinigeApi["attachPick"] = (chatId) => this.attachments.attachPick(chatId);
   attachPaste: KinigeApi["attachPaste"] = (chatId, bytes, nameHint) => this.attachments.attachPaste(chatId, bytes, nameHint);
   attachDropped: KinigeApi["attachDropped"] = (token, chatId) => this.attachments.attachDropped(token, chatId);
+  setDropTarget: KinigeApi["setDropTarget"] = (active) => this.attachments.setDropTarget(active);
   removeDraftAttachment: KinigeApi["removeDraftAttachment"] = (chatId, id) => this.attachments.removeDraftAttachment(chatId, id);
   openAttachment: KinigeApi["openAttachment"] = (id) => this.attachments.openAttachment(id);
   onAttachmentsDrag: KinigeApi["onAttachmentsDrag"] = (handler) => this.attachments.onAttachmentsDrag(handler);
@@ -206,6 +207,16 @@ export class MockApi implements KinigeApi {
   /** Like a drop of the named files on the window: the token the window claims with `attachDropped`. */
   emitAttachmentsDropped(names: string[], token?: string): string {
     return this.attachments.emitAttachmentsDropped(names, token);
+  }
+
+  /** Whether the window has told Rust that a chat is open to receive a drop (`setDropTarget`). */
+  get dropTarget(): boolean {
+    return this.attachments.dropTarget;
+  }
+
+  /** Like a picture dragged from Telegram or a browser: image data and no file. */
+  emitImageDropped(byteLength: number, token?: string): string {
+    return this.attachments.emitImageDropped(byteLength, token);
   }
 
   /** An entry that appeared "from outside" (the capture window, the clipboard): reaches the feed after the event. */
