@@ -435,6 +435,7 @@
     "voice_too_short": "Too short to save.",
     "voice_too_long": "The recording is longer than 30 minutes and was not saved.",
     "folders_not_attached": "Folders are not attached.",
+    "drop_not_supported": "Nothing in what you dropped could be attached. Drop a picture or a file, or use the paperclip.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },

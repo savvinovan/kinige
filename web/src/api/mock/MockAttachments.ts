@@ -38,10 +38,12 @@ export function mockAttachment(id: string, filename: string, part: Partial<Attac
 export class MockAttachments {
   /** What the system file dialog will "pick" next (names); cleared after use. `null`: the user cancels. */
   pickedFiles: string[] | null = null;
+  /** What the window last told Rust through `setDropTarget`: whether a chat is open to receive a drop. */
+  dropTarget = false;
   /** Attachments opened in the system app. */
   readonly openedAttachments: string[] = [];
-  /** What a drop token claims (set by `emitAttachmentsDropped`). */
-  private readonly drops = new Map<string, string[]>();
+  /** What a drop token claims (set by `emitAttachmentsDropped`): file names, or the byte length of a dropped image with no file. */
+  private readonly drops = new Map<string, string[] | number>();
   private readonly dragListeners = new Set<(over: boolean) => void>();
   private readonly dropListeners = new Set<(token: string) => void>();
 
@@ -70,10 +72,19 @@ export class MockAttachments {
 
   attachDropped(token: string, chatId: string): Promise<AttachOutcome> {
     return this.s.run("attachDropped", `${token} ${chatId}`, () => {
-      const names = this.drops.get(token);
-      if (!names) throw new KinigeApiError("attachment_not_found");
+      const dropped = this.drops.get(token);
+      if (!dropped) throw new KinigeApiError("attachment_not_found");
       this.drops.delete(token);
-      return this.attachNames(chatId, names);
+      if (typeof dropped === "number") return this.attachDroppedImage(chatId, dropped);
+      // A drop with no file and no image (text, a link): said so, nothing attached (Rust: `attach_dropped_content`).
+      if (dropped.length === 0) return { attached: [], skippedFolders: 0, error: "drop_not_supported" };
+      return this.attachNames(chatId, dropped);
+    });
+  }
+
+  setDropTarget(active: boolean): Promise<void> {
+    return this.s.run("setDropTarget", String(active), () => {
+      this.dropTarget = active;
     });
   }
 
@@ -117,11 +128,29 @@ export class MockAttachments {
     return token;
   }
 
+  /** Like a picture dragged from Telegram or a browser: image data of `byteLength` bytes, no file. It is attached like a paste. */
+  emitImageDropped(byteLength: number, token = `drop-${++this.s.counter}`): string {
+    this.drops.set(token, byteLength);
+    for (const handler of [...this.dropListeners]) handler(token);
+    return token;
+  }
+
   /** An entry that already has attachments (for feed tests): ids are stable, the files are "present". */
   addMessageWithAttachments(part: Partial<MessageView> & { id: string; bodyMd: string }, attachments: AttachmentView[]): MessageView {
     const message = mockMessage({ ...part, attachments });
     this.s.rows.push({ view: message, deletedAt: null, revisions: [] });
     return message;
+  }
+
+  private attachDroppedImage(chatId: string, byteLength: number): AttachOutcome {
+    const outcome: AttachOutcome = { attached: [], skippedFolders: 0, error: null };
+    try {
+      if (byteLength > LIMITS.pasteMaxBytes) throw new KinigeApiError("attachment_too_large");
+      outcome.attached.push(this.addTile(chatId, "pasted-120000.png", byteLength));
+    } catch (error) {
+      outcome.error = error instanceof KinigeApiError ? error.code : "internal";
+    }
+    return outcome;
   }
 
   private attachNames(chatId: string, names: string[]): AttachOutcome {

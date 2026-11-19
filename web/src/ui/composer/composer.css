@@ -28,6 +28,8 @@
 
 .composer__bar {
   display: flex;
+  /* The tiles (KINIG-135) take a whole line above the text; the line with the field never wraps (the field has no basis to wrap on). */
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-1);
   box-sizing: border-box;
@@ -51,6 +53,57 @@
 /* Send error: the only case when the field has a border. */
 .composer__bar--invalid {
   border-color: var(--color-status-error);
+}
+
+/* The pending attachments (KINIG-135): a line of their own inside the box, above the text. Two full lines of tiles at most (or a share of the
+   window height, whichever is less); scrolling starts with the third line (its thin scroll bar says there is more). The box is
+   border-box, so the cap counts the padding in: two lines of tiles, the gap between them and the ring room above and below. */
+.composer__tiles {
+  --composer-tiles-ring-room: calc(var(--focus-width) + var(--focus-offset));
+
+  flex: 0 0 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  max-height: min(
+    calc(
+      2 * var(--layout-attachment-pending-image-height) + var(--layout-attachment-pending-gap) + 2 * var(--composer-tiles-ring-room)
+    ),
+    var(--layout-attachment-pending-area-max-height)
+  );
+  /* The room is for the focus ring of a tile (the width of the ring and its gap), which the clipping of the scroll area would cut. */
+  padding: var(--composer-tiles-ring-room);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* With tiles and a short text the tile area is the only thing that scrolls in the box (the text field scrolls only past 40% of the window
+   height). Its bar is a thin thumb with no track, so it stays quiet and the system's wide track is not drawn inside the box. */
+.composer__tiles::-webkit-scrollbar {
+  width: var(--layout-attachment-pending-scrollbar-width);
+}
+
+.composer__tiles::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.composer__tiles::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-round);
+  background: var(--color-highlight-row);
+}
+
+.composer__tiles::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* A recording is on: the bar below stands in for the field, and the box above keeps only the tiles. */
+.composer__bar--hidden.composer__bar--tiles-only {
+  display: flex;
+  min-height: 0;
+  margin-bottom: var(--space-2);
+}
+
+.composer__bar--tiles-only > :not(.composer__tiles) {
+  display: none;
 }
 
 /* The "emoji" button with the picker: the wrapper is needed so that the panel knows what to stand above; the size and place are the same as for an ordinary button. */

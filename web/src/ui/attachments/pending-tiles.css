@@ -1,10 +1,10 @@
-/* The tiles above the composer field. Tokens only; the row wraps. The row stands in the same column as the field (`.composer > *`
-   centers a child in the feed column, so the inline margins stay `auto`) and has a gap above the field. */
+/* The tiles inside the composer's box, above the text line (KINIG-135). Tokens only; nothing animates. The list wraps and never scrolls
+   sideways; the composer limits the height of the area and scrolls it vertically (composer.css). */
 .pending-tiles {
   display: flex;
   flex-wrap: wrap;
   gap: var(--layout-attachment-pending-gap);
-  margin-block: 0 var(--space-2);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -15,34 +15,85 @@
   max-width: 100%;
 }
 
+/* Every tile has the same height, so the lines are even whatever mix of pictures and files there is. The surface and the hairline make a tile
+   out of a dark picture on the dark box. The x sits on the top right corner. The tile does NOT clip (no overflow): the keyboard focus rings of
+   the open button and of the x are drawn outside their boxes and a clipping tile would cut them off. What has to be clipped (the picture, the
+   corners) is clipped by the picture area `.pending-tile__open`. */
 .pending-tile {
   position: relative;
   box-sizing: border-box;
-  height: var(--layout-attachment-pending-size);
+  height: var(--layout-attachment-pending-image-height);
+  max-width: 100%;
+  border: var(--border-width-hairline) solid var(--color-border-divider);
   border-radius: var(--layout-attachment-album-radius);
+  background: var(--color-surface-background);
+}
+
+/* A picture: the width follows the picture's shape from the first frame (the variable comes from the component), between the floor (3:4) and
+   the cap (16:9). A wider picture is shown whole on the tile surface; a taller one is cropped from its top (`--tall`). The hairline is part of
+   the box, so the picture area (the box without it) has the picture's shape and leaves no strip beside it. */
+.pending-tile--image {
+  width: max(
+    calc(var(--layout-attachment-pending-image-height) * var(--layout-attachment-pending-image-min-aspect)),
+    min(
+      var(--layout-attachment-pending-image-max-width),
+      calc(
+        (var(--layout-attachment-pending-image-height) - 2 * var(--border-width-hairline)) *
+          var(--pending-aspect, var(--layout-attachment-fallback-aspect)) + 2 * var(--border-width-hairline)
+      )
+    )
+  );
+}
+
+/* The picture area: it fills the tile inside the hairline and clips the picture to the tile's rounded corners. Its own focus ring (the open
+   button) is outside it, so the ring is not clipped by this box. */
+.pending-tile__open {
+  position: absolute;
+  inset: 0;
+  display: block;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  cursor: default;
   overflow: hidden;
 }
 
-.pending-tile--image {
-  width: var(--layout-attachment-pending-size);
+button.pending-tile__open {
+  cursor: pointer;
+}
+
+/* The shared ring (base.css) stands the usual gap outside the tile's outer edge, not outside the picture area, which sits a hairline inside it.
+   The composer's tile area keeps room for the whole ring (composer.css). */
+.pending-tile__open:focus-visible {
+  outline-offset: calc(var(--focus-offset) + var(--border-width-hairline));
 }
 
 .pending-tile__image {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
+/* A picture taller than 3:4 (a phone screenshot): fills the narrowest tile and shows its top, where the header is. */
+.pending-tile--tall .pending-tile__image {
+  object-fit: cover;
+  object-position: top;
+}
+
+/* Any other file: a vertical card, the icon over the name and the size. */
 .pending-tile--file {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--layout-attachment-file-gap);
+  justify-content: center;
+  gap: var(--layout-attachment-file-padding);
   width: var(--layout-attachment-pending-file-width);
-  max-width: 100%;
-  padding: var(--layout-attachment-file-padding);
-  padding-inline-end: var(--space-1);
-  background: var(--color-surface-field-active);
+  padding: var(--layout-attachment-file-gap);
   color: var(--color-text-primary);
 }
 
@@ -50,16 +101,22 @@
   display: grid;
   flex: none;
   place-items: center;
+  width: var(--layout-attachment-file-icon-box);
+  height: var(--layout-attachment-file-icon-box);
+  border-radius: var(--layout-attachment-album-radius);
+  background: var(--color-surface-selected);
   color: var(--color-accent-default);
 }
 
 .pending-tile__text {
   display: grid;
-  flex: 1;
   min-width: 0;
+  max-width: 100%;
+  text-align: center;
 }
 
 .pending-tile__name {
+  justify-content: center;
   font-family: var(--type-small-family);
   font-size: var(--type-small-size);
   line-height: var(--type-small-line-height);
@@ -72,23 +129,18 @@
   line-height: var(--type-meta-line-height);
 }
 
-/* "No preview" and "File is missing" in a small tile sit at the bottom, away from the x in the corner. */
-.pending-tile--image .preview-tile {
-  align-items: end;
-}
-
-/* On a photo the x needs its own fill to be seen over any picture; in a file tile it sits at the end of the row. */
+/* The x: its own fill and a hairline, so it is seen over any picture, light or dark. A larger target than the small action button. */
 .pending-tile .pending-tile__remove {
+  position: absolute;
+  top: var(--layout-attachment-pending-remove-offset);
+  right: var(--layout-attachment-pending-remove-offset);
+  width: var(--layout-attachment-pending-action-size);
+  height: var(--layout-attachment-pending-action-size);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
   background: var(--color-surface-background);
   color: var(--color-text-primary);
 }
 
 .pending-tile .pending-tile__remove:hover {
   background: var(--color-surface-selected);
-}
-
-.pending-tile--image .pending-tile__remove {
-  position: absolute;
-  top: var(--layout-attachment-pending-remove-offset);
-  right: var(--layout-attachment-pending-remove-offset);
 }

@@ -82,6 +82,9 @@ pub enum ErrorCode {
     VoiceTooLong,
     /// A folder was in a drop: it is skipped ("Folders are not attached"); the files of the same drop were attached.
     FoldersNotAttached,
+    /// Something was dropped on the window but it carries no file and no image the app can use (text, a link, a file promise that
+    /// was not kept): nothing was attached (KINIG-133).
+    DropNotSupported,
     Internal,
 }
 
