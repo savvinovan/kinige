@@ -17,7 +17,7 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 
 # The forest strip makes the window tree large and slows every search for an element: this scenario is about the feed, so the forest
 # is hidden first (the saved view state of slice 6), like in the slice 7 scenario.
-export AX_TIMEOUT=60
+export AX_TIMEOUT=120
 export DUMP_TIMEOUT=180
 
 SETTINGS_FILE="$K/data/settings.json"
@@ -27,6 +27,17 @@ rm -rf "$K/data" "$K/mirror"
 mkdir -p "$K/data" "$K/mirror"
 KINIGE_SEED_ATTACH=1 cargo run --release -q -p kinige-store --example seed_demo -- "$K/data" "$K/mirror"
 sqlite3 "$K/data/kinige.db" "insert or replace into app_setting(key, value) values ('forest_view', 'hidden')"
+# The Inbox keeps its newest KEEP entries (the pictures are the newest the seed writes) and the older ones move to an archived chat before the
+# app starts: ax.js visits an element at a time, and an element late in the tree of the whole Inbox (21 entries, three of them albums with
+# pictures) was not reached within AX_TIMEOUT on the first run (a timeout reads as "not found"; the run took over an hour). A guard makes a seed that no longer
+# has the album among the newest entries fail before the app is launched.
+INBOX="00000000-0000-4000-8000-000000000001"
+KEEP=10
+ARCHIVED="$(sqlite3 "$K/data/kinige.db" "select id from chat where archived_at is not null and id != '$INBOX' limit 1")"
+[ -n "${ARCHIVED}" ] || { echo "ERROR: no archived chat in the seed"; exit 1; }
+sqlite3 "$K/data/kinige.db" "update message set chat_id = '$ARCHIVED' where chat_id = '$INBOX' and deleted_at is null and id not in (select id from message where chat_id = '$INBOX' and deleted_at is null order by journal_date desc, created_at desc, id desc limit $KEEP)"
+KEPT_ALBUM="$(sqlite3 "$K/data/kinige.db" "select count(*) from message where chat_id = '$INBOX' and deleted_at is null and body_md like 'Прогулка вдоль реки%'")"
+[ "${KEPT_ALBUM}" = "1" ] || { echo "ERROR: the album entry is not among the ${KEEP} newest entries of the Inbox"; exit 1; }
 trap 'cp "$OUT"/*.png "$K/debug/" 2> /dev/null' EXIT
 prepare_app "$SOURCE_APP"
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")"
@@ -125,6 +136,8 @@ show_album
 shoot 02-pictures-with-text
 
 # ---- 3. The picture is still the button that opens the viewer ----
+scroll_to "$ALONE"
+sleep 3
 press "$ALONE"
 sleep 3
 has "${L_VIEWER}" || fail "the viewer did not open from the picture with the pill on it"
