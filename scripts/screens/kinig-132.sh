@@ -67,8 +67,8 @@ L_VIEWER="Просмотр фото"
 L_CLOSE="Закрыть"
 ALONE="${L_PHOTO} IMG_0005.jpg"
 CAPTION="Прогулка вдоль реки"
-# The entry just above the album in the feed (text of the seed's "Купить билеты на субботу и позвонить маме.").
-BEFORE="позвонить маме"
+# An entry below the album (the document with a caption, after the portrait picture): asking for it takes the album far out of view.
+AFTER="Меню на субботу"
 FIT_LOG="$OUT/fit.txt"
 mkdir -p "$OUT"
 : > "$FIT_LOG"
@@ -104,14 +104,14 @@ album_whole() {
 
 # Brings the whole album entry (pictures, caption, time) into view. What the runs showed of a scroll-to-visible: an element that is out of
 # view (or behind the composer) is put in the middle of the window; one that is partly visible is moved only as far as needed, to the
-# nearest edge; one that is whole in the window does not move the feed. So the first picture and the caption are asked for in turn: the
-# picture centres the album's first row, the caption then centres the last line (the first picture ends up partly above the window), and
-# the picture, now partly visible, is brought to the top edge of the feed with the caption well above the composer. A small window fits
-# after one step. The candidates are tried until the entry fits; what was tried and what the frames were is written to fit.txt, whatever
-# the result.
+# nearest edge; one that is whole in the window does not move the feed. So the entry below the album goes first (the album is far above the
+# window), then the album's second row, which is centred: the album then starts near the top of the window and its caption is well above the
+# composer. If that does not fit (large text: the album is taller), the caption and the first picture are asked for in turn: the caption
+# leaves the first picture partly above the window, and the picture, partly visible, is brought to the top edge of the feed. The candidates
+# are tried until the entry fits; what was tried and what the frames were is written to fit.txt, whatever the result.
 show_album() {
   local candidate
-  for candidate in "$CAPTION" "${L_PHOTO} IMG_0001.jpg" "$CAPTION" "${L_PHOTO} IMG_0001.jpg" "$CAPTION" "${L_PHOTO} IMG_0001.jpg"; do
+  for candidate in "$AFTER" "${L_PHOTO} IMG_0003.jpg" "$CAPTION" "${L_PHOTO} IMG_0001.jpg" "$CAPTION" "${L_PHOTO} IMG_0001.jpg"; do
     echo "scroll to: $candidate" >> "$FIT_LOG"
     scroll_to "$candidate"
     sleep 4
