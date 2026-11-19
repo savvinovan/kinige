@@ -67,8 +67,9 @@ L_VIEWER="Просмотр фото"
 L_CLOSE="Закрыть"
 ALONE="${L_PHOTO} IMG_0005.jpg"
 CAPTION="Прогулка вдоль реки"
-# An entry below the album (the document with a caption, after the portrait picture): asking for it takes the album far out of view.
-AFTER="Меню на субботу"
+# The newest entry of the Inbox, a few entries below the album: asking for it takes the album fully out of view (the "On this day" card, which
+# comes with the date, changes how far a nearer entry moves the feed, so a nearer one is not enough).
+AFTER="${L_PHOTO} IMG_0007.jpg"
 FIT_LOG="$OUT/fit.txt"
 mkdir -p "$OUT"
 : > "$FIT_LOG"
