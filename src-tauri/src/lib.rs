@@ -354,11 +354,8 @@ pub fn run() {
         .setup(move |app| fail_fast(setup(app)))
         .on_window_event(on_window_event)
         .on_page_load(|webview, payload| {
-            // A page that starts loading has no recorder yet: a claim left by a page that was reloaded or died must not lock the other window out.
-            if payload.event() == PageLoadEvent::Started
-                && let Some(claim) = webview.app_handle().try_state::<voice::MicrophoneClaim>()
-            {
-                claim.release(webview.label());
+            if payload.event() == PageLoadEvent::Started {
+                voice::on_page_start(webview);
             }
             // Cold start measurement (`scripts/measure-cold-start.sh`): a mark for when the main window page has loaded.
             // Without `KINIGE_TIMING=1` the level of the `kinige-timing` target is off, and nothing is written.

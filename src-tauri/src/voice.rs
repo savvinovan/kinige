@@ -11,7 +11,7 @@ use kinige_store::{Now, Store};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use tauri::ipc::{InvokeBody, Request, Response};
 use tauri::webview::{PermissionKind, PermissionResponse};
-use tauri::{AppHandle, Runtime, State};
+use tauri::{AppHandle, Manager, Runtime, State};
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use tauri_plugin_opener::OpenerExt;
 
@@ -130,6 +130,13 @@ fn recording_headers(request: &Request<'_>) -> ApiResult<(i64, Option<Vec<u8>>)>
         .and_then(waveform_from_hex)
         .filter(|peaks| !peaks.is_empty());
     Ok((duration_ms, waveform))
+}
+
+/// A page that starts loading has no recorder yet: a claim left by a page that was reloaded or died must not lock the other window out.
+pub fn on_page_start<R: Runtime>(webview: &tauri::Webview<R>) {
+    if let Some(claim) = webview.app_handle().try_state::<MicrophoneClaim>() {
+        claim.release(webview.label());
+    }
 }
 
 /// `held = true`: the window is about to open the microphone; the answer says whether it may (false: the other window records). `held =
