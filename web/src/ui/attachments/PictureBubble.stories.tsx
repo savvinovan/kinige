@@ -133,9 +133,14 @@ export const BrokenPicture: Story = {
   ),
 };
 
-/** A phone screenshot (1170 by 2532): its thumbnail is 296 by 640, a shape that differs from the original's by rounding. No row of the bubble's fill may show at any edge (tests/visual/picture-bubble.spec.ts). */
+/** A phone screenshot (1170 by 2532) below an ordinary photo, as in a feed (where it stands decides how the browser snaps it): its thumbnail is 296 by 640, a shape that differs from the original's by rounding. No row of the bubble's fill may show at any edge (tests/visual/picture-bubble.spec.ts). */
 export const PhoneScreenshot: Story = {
-  render: () => <Bubble attachments={[demoPhoto("ps1", "IMG_0030.png", 1170, 2532)]} />,
+  render: () => (
+    <>
+      <Bubble attachments={[demoPhoto("ps0", "IMG_0029.jpg", 777, 601)]} />
+      <Bubble attachments={[demoPhoto("ps1", "IMG_0030.png", 1170, 2532)]} />
+    </>
+  ),
 };
 
 /** A very narrow picture (a 1170 by 12000 strip, 39 px wide): it keeps its size, centred on a strip of the bubble's fill, and the pill is whole. With text the caption has room. */

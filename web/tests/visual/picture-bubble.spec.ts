@@ -9,6 +9,8 @@ import { expect, test, type Page } from "@playwright/test";
 const story = (name: string) => `компоненты-вложения-картинка-без-рамки--${name}`;
 const EDGE_BAND = 3; // device pixels
 const SAME_COLOR = 3; // per channel: the fill and "the pixel is the fill"
+const OFFSETS = [0, 0.25, 0.5, 0.75]; // CSS pixels, both ways
+const SCREENSHOT_AT = 1; // in the story "phone-screenshot" the screenshot is the second bubble, below an ordinary photo (as in a feed)
 
 async function open(page: Page, name: string) {
   await page.goto(`/iframe.html?id=${encodeURIComponent(story(name))}&viewMode=story`);
@@ -18,13 +20,26 @@ async function open(page: Page, name: string) {
   await page.evaluate(() => Promise.all([...document.images].map((image) => image.decode().catch(() => undefined))));
 }
 
-/** How many pixels of the bubble's outermost bands (not its rounded corners) have the colour of the bubble's fill; per edge. */
-async function fillAtEdges(page: Page) {
-  const bubble = page.locator("#storybook-root .message--bleed").first();
+/**
+ * How many pixels of the bubble's outermost bands (not its rounded corners) have the colour of the bubble's fill; per edge. The bubble is moved
+ * by (dx, dy) CSS pixels first: the browser snaps a picture to whole device pixels, so a row of fill at its edge shows only at some positions
+ * (in the feed the bubble's position depends on what is above it), and the check has to look at several.
+ */
+async function fillAtEdges(page: Page, index: number, dx = 0, dy = 0) {
+  await page.evaluate(
+    ({ index, dx, dy }) => {
+      const element = document.querySelectorAll<HTMLElement>("#storybook-root .message--bleed")[index];
+      if (!element) throw new Error("no bubble");
+      element.style.marginLeft = `${dx}px`;
+      element.style.marginTop = `${dy}px`;
+    },
+    { index, dx, dy },
+  );
+  const bubble = page.locator("#storybook-root .message--bleed").nth(index);
   const picture = (await bubble.screenshot()).toString("base64");
   return page.evaluate(
-    async ({ picture, band, tolerance }) => {
-      const bubble = document.querySelector<HTMLElement>("#storybook-root .message--bleed");
+    async ({ picture, band, tolerance, index }) => {
+      const bubble = document.querySelectorAll<HTMLElement>("#storybook-root .message--bleed")[index];
       if (!bubble) throw new Error("no bubble");
       const fill = getComputedStyle(document.documentElement).getPropertyValue("--color-surface-message").trim();
       const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(fill);
@@ -39,7 +54,7 @@ async function fillAtEdges(page: Page) {
       if (!context) throw new Error("no canvas");
       context.drawImage(image, 0, 0);
       const { data, width, height } = context.getImageData(0, 0, image.width, image.height);
-      const scale = image.width / bubble.getBoundingClientRect().width;
+      const scale = window.devicePixelRatio;
       const corner = Math.ceil(parseFloat(getComputedStyle(bubble).borderTopLeftRadius) * scale) + 1;
       const isFill = (x: number, y: number) => {
         const at = (y * width + x) * 4;
@@ -60,7 +75,7 @@ async function fillAtEdges(page: Page) {
       }
       return { ...count, scale, size: `${width}x${height}`, fill };
     },
-    { picture, band: EDGE_BAND, tolerance: SAME_COLOR },
+    { picture, band: EDGE_BAND, tolerance: SAME_COLOR, index },
   );
 }
 
@@ -70,14 +85,20 @@ for (const scale of [1, 2]) {
 
     test("скриншот телефона: у краёв картинки нет полосы заливки пузыря", async ({ page }) => {
       await open(page, "phone-screenshot");
-      const edges = await fillAtEdges(page);
-      expect(edges.scale, JSON.stringify(edges)).toBe(scale);
-      expect([edges.top, edges.bottom, edges.left, edges.right], JSON.stringify(edges)).toEqual([0, 0, 0, 0]);
+      const found: unknown[] = [];
+      for (const dy of OFFSETS) {
+        for (const dx of OFFSETS) {
+          const edges = await fillAtEdges(page, SCREENSHOT_AT, dx, dy);
+          expect(edges.scale, JSON.stringify(edges)).toBe(scale);
+          if (edges.top + edges.bottom + edges.left + edges.right > 0) found.push({ dx, dy, ...edges });
+        }
+      }
+      expect(found, JSON.stringify(found)).toEqual([]);
     });
 
     test("контроль: то же измерение видит заливку по бокам узкой картинки", async ({ page }) => {
       await open(page, "narrow-strip");
-      const edges = await fillAtEdges(page);
+      const edges = await fillAtEdges(page, 0);
       // The picture is 39 px wide in a bubble of at least the floor width: the strips beside it are the fill, so the sampler has to find them.
       expect(edges.left, JSON.stringify(edges)).toBeGreaterThan(0);
       expect(edges.right, JSON.stringify(edges)).toBeGreaterThan(0);

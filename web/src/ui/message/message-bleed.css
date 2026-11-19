@@ -27,6 +27,7 @@
    a picture that fills the bubble has no fill under or around it (a transparent PNG sits on the feed, as in a bubble with no fill). */
 .message--bleed .message-attachments {
   grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(0, 1fr);
+  justify-items: stretch;
   gap: 0;
   min-width: var(--layout-attachment-bleed-min-width);
 }
