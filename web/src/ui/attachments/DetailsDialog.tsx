@@ -71,7 +71,7 @@ export function DetailsDialog({ attachments, index, onIndexChange, onSave, onClo
           refocus.current = byButton ? direction : null;
           onIndexChange(position + direction);
         }}
-        refocus={refocus}
+        refocusRef={refocus}
         onSave={onSave}
         onClose={onClose}
         error={error}
@@ -88,13 +88,13 @@ interface FormProps {
   total: number;
   /** `byButton`: the step came from the arrow button, not the keyboard arrows. */
   onStep: (direction: Step, byButton: boolean) => void;
-  refocus: MutableRefObject<Step | null>;
+  refocusRef: MutableRefObject<Step | null>;
   onSave: DetailsDialogProps["onSave"];
   onClose: () => void;
   error?: string;
 }
 
-function DetailsForm({ attachment, position, total, onStep, refocus, onSave, onClose, error }: FormProps) {
+function DetailsForm({ attachment, position, total, onStep, refocusRef, onSave, onClose, error }: FormProps) {
   const { t } = useTranslation();
   const mediaUrl = useMediaUrl();
   const { isRevealed, reveal } = useReveal();
@@ -158,8 +158,8 @@ function DetailsForm({ attachment, position, total, onStep, refocus, onSave, onC
   }, []);
   // A form that replaced the last one (a step) takes the focus the removed button had: the same arrow button, or the window itself.
   useEffect(() => {
-    const want = refocus.current;
-    refocus.current = null;
+    const want = refocusRef.current;
+    refocusRef.current = null;
     const button = want === null ? null : form.current?.querySelector<HTMLElement>(`[data-step="${want}"]`);
     if (button) button.focus();
     else if (document.activeElement === document.body) panel()?.focus();
