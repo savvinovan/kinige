@@ -95,12 +95,15 @@ shoot_light 03-ten-tiles-narrow-640
 echo "window: $(ax resize "$(app_pid)" 1280 800)"
 sleep 3
 
-# ---- 3. The four documents go: six pictures are left, exactly two full lines (at 1280x800 the area shows both whole, with no scroll bar) ----
+# ---- 3. The four documents go: six pictures are left, two lines of tiles ----
+# The runner's screen limits the window to 1024x683 (the resize to 1280x800 above is clamped: "window: 1024 683" in the log), and the area is
+# 40% of the window height, so the second line is cut here by the cap. Two whole lines at 1280x800 are in the Storybook baseline
+# "Плитки над полем: ДвеСтроки" and in tests/visual/pending-tiles.spec.ts, not in a real-window shot.
 for name in "Договор аренды 2026, финальная версия.pdf" "смета на ремонт.pdf" "расписание.pdf" "заметки.pdf"; do
   remove_tile "$name"
 done
 [ "$(tiles)" = "6" ] || fail "six tiles should be left in the draft ($(tiles))"
-shoot 04-two-full-lines
+shoot 04-six-pictures-short-window
 
 # ---- 4. Three more go: the phone screenshot (cropped from its top, in the narrowest tile), a picture and a dark one are left ----
 for name in IMG_0021.jpg IMG_0023.jpg IMG_0024.jpg; do
