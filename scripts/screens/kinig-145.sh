@@ -82,11 +82,13 @@ restart_app() {
 }
 
 # The oldest kept entry whose text ends with its date (the seed writes such a line for each of the last days), so that its text is unique
-# in the window. Scrolling to it puts the feed more than a screen above its end: at least ten entries are newer than it (checked).
+# in the window. Scrolling to it puts the feed more than a screen above its end: at least eight entries (about 100 px each, against a feed
+# of about 500 px) are newer than it (checked).
 EARLY="$(sqlw "select journal_date from message where chat_id = '$INBOX' and deleted_at is null and body_md like '% · ' || journal_date order by journal_date, created_at, id limit 1")"
 [ -n "${EARLY}" ] || { echo "ERROR: no dated entry in the Inbox"; exit 1; }
-NEWER="$(sqlw "select count(*) from message where chat_id = '$INBOX' and deleted_at is null and journal_date > '${EARLY}'")"
-[ "${NEWER}" -ge 10 ] || { echo "ERROR: only ${NEWER} entries are newer than the oldest dated one (${EARLY})"; exit 1; }
+# Counted in the feed's own order (day, time, id), not by day: the newest day of a run holds fewer entries than the others.
+NEWER="$(sqlw "select count(*) from message m, (select journal_date jd, created_at ca, id i from message where chat_id = '$INBOX' and deleted_at is null and body_md like '% · ' || journal_date order by journal_date, created_at, id limit 1) e where m.chat_id = '$INBOX' and m.deleted_at is null and (m.journal_date, m.created_at, m.id) > (e.jd, e.ca, e.i)")"
+[ "${NEWER}" -ge 8 ] || { echo "ERROR: only ${NEWER} entries are newer than the oldest dated one (${EARLY})"; exit 1; }
 EARLY_MARK="· ${EARLY}"
 echo "the oldest dated entry: ${EARLY}, ${NEWER} entries are newer, the Inbox holds $(sqlw "select count(*) from message where chat_id = '$INBOX' and deleted_at is null") entries"
 
