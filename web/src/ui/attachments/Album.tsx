@@ -1,10 +1,12 @@
-import { useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import { albumRows } from "./albumRows";
 import { useMediaUrl } from "./mediaUrl";
 import { photoLabel } from "./photoLabel";
 import { PreviewTile } from "./PreviewTile";
+import { useReveal } from "./reveal";
+import { HideButton, SpoilerFace } from "./SpoilerFace";
 import "./album.css";
 
 interface AlbumProps {
@@ -12,6 +14,8 @@ interface AlbumProps {
   images: readonly AttachmentView[];
   /** A click or Enter on a photo: its index in `images`. */
   onOpen: (index: number) => void;
+  /** A right click on a photo (the attachment menu): its index in `images` and the pointer's place. */
+  onContextMenu?: (index: number, event: MouseEvent<HTMLElement>) => void;
 }
 
 /**
@@ -20,14 +24,17 @@ interface AlbumProps {
  * arriving does not move the feed. Two to ten photos form a grid of rows (`albumRows`): every cell is a fixed-ratio box from the
  * tokens and the photo fills it with a crop. A photo that cannot be decoded (`onError`) or whose file is missing keeps its box and
  * shows a text tile. No zoom and no fade: nothing moves.
+ *
+ * A hidden photo (KINIG-136, `spoiler`) is a cover in the same box until its click reveals it: no `img` and no request before that. In a row of
+ * three the cover shows the eye only.
  */
-export function Album({ images, onOpen }: AlbumProps) {
+export function Album({ images, onOpen, onContextMenu }: AlbumProps) {
   const [first] = images;
   if (first === undefined) return null;
   if (images.length === 1) {
     return (
       <div className="album album--single" style={singleBox(first)}>
-        <AlbumCell image={first} index={0} onOpen={onOpen} />
+        <AlbumCell image={first} index={0} onOpen={onOpen} onContextMenu={onContextMenu} />
       </div>
     );
   }
@@ -40,7 +47,7 @@ export function Album({ images, onOpen }: AlbumProps) {
         return (
           <div className={`album__row album__row--${Math.min(count, 3)}`} key={start}>
             {images.slice(start, start + count).map((image, offset) => (
-              <AlbumCell key={image.id} image={image} index={start + offset} onOpen={onOpen} />
+              <AlbumCell key={image.id} image={image} index={start + offset} onOpen={onOpen} onContextMenu={onContextMenu} compact={count >= 3} />
             ))}
           </div>
         );
@@ -49,35 +56,74 @@ export function Album({ images, onOpen }: AlbumProps) {
   );
 }
 
-function AlbumCell({ image, index, onOpen }: { image: AttachmentView; index: number; onOpen: (index: number) => void }) {
+interface CellProps {
+  image: AttachmentView;
+  index: number;
+  onOpen: (index: number) => void;
+  onContextMenu?: (index: number, event: MouseEvent<HTMLElement>) => void;
+  /** A cell of a row of three: the cover shows the eye without the word. */
+  compact?: boolean;
+}
+
+function AlbumCell({ image, index, onOpen, onContextMenu, compact = false }: CellProps) {
   const { t } = useTranslation();
   const mediaUrl = useMediaUrl();
+  const { isRevealed, reveal, hide } = useReveal();
   const [failed, setFailed] = useState(false);
+  const open = useRef<HTMLButtonElement>(null);
+  const covered = image.spoiler && !isRevealed(image.id);
+  const missing = image.state === "missing";
   const label = photoLabel(image, t);
+  const menu = onContextMenu ? (event: MouseEvent<HTMLElement>) => onContextMenu(index, event) : undefined;
 
-  if (image.state === "missing") {
+  // A missing file that is not hidden is only a tile. A hidden one keeps its button, so the cover can be pressed and the focus stays put when
+  // it turns into the tile (a cover is never "File is missing" with a name).
+  if (missing && !image.spoiler) {
     return (
-      <div className="album__cell" role="img" aria-label={`${label}. ${t("attachments.missing")}`}>
+      <div className="album__cell" role="img" aria-label={`${label}. ${t("attachments.missing")}`} onContextMenu={menu}>
         <PreviewTile reason="missing" />
       </div>
     );
   }
+  const press = () => {
+    if (covered) reveal(image.id);
+    else if (!missing) onOpen(index);
+  };
+  // The focus goes to the picture's button before the Hide button disappears with the cover coming back.
+  const cover = () => {
+    open.current?.focus();
+    hide(image.id);
+  };
   return (
-    <button type="button" className="album__cell album__cell--button" aria-label={label} onClick={() => onOpen(index)}>
-      {failed ? (
-        <PreviewTile reason="noPreview" />
-      ) : (
-        <img
-          className="album__image"
-          src={mediaUrl("thumb", image.id)}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          draggable={false}
-          onError={() => setFailed(true)}
-        />
-      )}
-    </button>
+    <div className={image.spoiler && !covered ? "album__cell has-hide" : "album__cell"} onContextMenu={menu}>
+      <button
+        type="button"
+        ref={open}
+        className="album__open"
+        aria-label={covered ? t("attachments.hiddenPhoto") : missing ? `${label}. ${t("attachments.missing")}` : label}
+        aria-disabled={(!covered && missing) || undefined}
+        onClick={press}
+      >
+        {covered ? (
+          <SpoilerFace compact={compact} />
+        ) : missing ? (
+          <PreviewTile reason="missing" />
+        ) : failed ? (
+          <PreviewTile reason="noPreview" />
+        ) : (
+          <img
+            className="album__image"
+            src={mediaUrl("thumb", image.id)}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+            onError={() => setFailed(true)}
+          />
+        )}
+      </button>
+      {image.spoiler && !covered ? <HideButton onHide={cover} /> : null}
+    </div>
   );
 }
 

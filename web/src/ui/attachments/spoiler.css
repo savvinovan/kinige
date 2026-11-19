@@ -1,0 +1,79 @@
+/* The cover of a hidden photo and the "Hide" pill (KINIG-136). Tokens only; nothing animates, and the cover has no hover state. */
+
+/* The cover fills the box its parent reserves (the album cell, the pending tile, the viewer's frame): the box was sized from the photo's
+   width and height before anything loaded, so a reveal changes what is drawn and nothing else. A flat fill, no blur: a strong blur of a
+   small thumbnail still shows colours and shapes. */
+.spoiler-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  box-sizing: border-box;
+  padding: var(--layout-attachment-tile-text-padding);
+  background: var(--color-attachment-cover);
+  color: var(--color-text-secondary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+}
+
+.spoiler-face__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The face without a button of its own (the viewer and the dialog show the face and a "Show" button next to it): it fills a box that is
+   not a button, in the same place. */
+.spoiler-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--layout-attachment-album-radius);
+}
+
+/* "Hide" in the corner of a revealed photo. Its fill is transparent until the photo is hovered or has keyboard focus; the button is there all the
+   time, so tabbing reaches it and the layout does not change. The fill is the time pill's colour and opacity, so the word reads over any picture. */
+.spoiler-hide {
+  position: absolute;
+  top: var(--layout-attachment-pill-inset);
+  left: var(--layout-attachment-pill-inset);
+  z-index: 1;
+  padding: var(--layout-attachment-pill-padding-block) var(--layout-attachment-pill-padding-inline);
+  border: 0;
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: transparent;
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  line-height: var(--type-meta-line-height);
+  cursor: pointer;
+}
+
+.spoiler-hide::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--color-attachment-pill-background);
+  opacity: 0;
+}
+
+.spoiler-hide__text {
+  position: relative;
+}
+
+.has-hide:hover > .spoiler-hide,
+.has-hide:focus-within > .spoiler-hide,
+.spoiler-hide:focus-visible {
+  color: var(--color-attachment-pill-text);
+}
+
+.has-hide:hover > .spoiler-hide::before,
+.has-hide:focus-within > .spoiler-hide::before,
+.spoiler-hide:focus-visible::before {
+  opacity: var(--opacity-attachment-pill);
+}

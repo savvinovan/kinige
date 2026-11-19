@@ -9,6 +9,8 @@ import { FileName } from "./fileName";
 import { useMediaUrl } from "./mediaUrl";
 import { photoLabel } from "./photoLabel";
 import { PreviewTile } from "./PreviewTile";
+import { useReveal } from "./reveal";
+import { SpoilerFace } from "./SpoilerFace";
 import "./pending-tiles.css";
 
 /** A picture narrower than this (width / height, 3:4) is cropped from its top in the narrowest tile; the same number as the token `layout.attachment.pending-image-min-aspect`, which sets the tile's width (a test compares them). */
@@ -21,15 +23,18 @@ interface PendingTilesProps {
   onRemove: (attachmentId: string) => void | Promise<boolean>;
   /** A click or Enter on a picture tile: its attachment id (the window opens the viewer). Without it a picture is not a button. */
   onOpen?: (attachmentId: string) => void;
+  /** "Details" (a pencil) on a tile, to the left of the x: its attachment id (the window opens the dialog). Without it there is no such button. */
+  onDetails?: (attachmentId: string) => void;
 }
 
 /**
  * The tiles inside the composer's box, above the text line (slice 7, KINIG-135): a picture in a tile of one height with its own aspect ratio
  * kept, a card with the icon, the name and the size for any other file, and a round x on the top right corner of each. The tiles wrap, so
  * ten of them stay reachable at any window width without a horizontal scroll bar; the composer scrolls the area vertically past two lines.
- * Nothing animates when a tile comes or goes.
+ * Nothing animates when a tile comes or goes. A hidden photo (KINIG-136) is a cover that fills the tile until its first click; both round buttons
+ * stay on top of it.
  */
-export function PendingTiles({ items, onRemove, onOpen }: PendingTilesProps) {
+export function PendingTiles({ items, onRemove, onOpen, onDetails }: PendingTilesProps) {
   const { t } = useTranslation();
   const list = useRef<HTMLUListElement>(null);
   const { arm, disarm } = useFocusHandOver(items, list);
@@ -45,7 +50,11 @@ export function PendingTiles({ items, onRemove, onOpen }: PendingTilesProps) {
     <ul className="pending-tiles" aria-label={t("attachments.pendingLabel")} ref={list}>
       {items.map((item) => (
         <li className="pending-tiles__item" key={item.id}>
-          {item.kind === "image" ? <ImageTile item={item} onRemove={remove} onOpen={onOpen} /> : <FileTile item={item} onRemove={remove} />}
+          {item.kind === "image" ? (
+            <ImageTile item={item} onRemove={remove} onOpen={onOpen} onDetails={onDetails} />
+          ) : (
+            <FileTile item={item} onRemove={remove} onDetails={onDetails} />
+          )}
         </li>
       ))}
     </ul>
@@ -83,39 +92,65 @@ function useFocusHandOver(items: readonly AttachmentView[], list: { current: HTM
   return { arm, disarm };
 }
 
-type TileProps = { item: AttachmentView; onRemove: (attachmentId: string) => void };
+type TileProps = { item: AttachmentView; onRemove: (attachmentId: string) => void; onDetails?: (attachmentId: string) => void };
 
-function ImageTile({ item, onRemove, onOpen }: TileProps & { onOpen?: (attachmentId: string) => void }) {
+function ImageTile({ item, onRemove, onOpen, onDetails }: TileProps & { onOpen?: (attachmentId: string) => void }) {
   const { t } = useTranslation();
   const mediaUrl = useMediaUrl();
+  const { isRevealed, reveal } = useReveal();
   const [failed, setFailed] = useState(false);
   const missing = item.state === "missing";
-  const label = photoLabel(item, t);
+  const covered = item.spoiler && !isRevealed(item.id);
+  const label = covered ? t("attachments.hiddenPhoto") : photoLabel(item, t);
   const openable = onOpen !== undefined && !missing;
-  const picture =
-    missing || failed ? (
-      <PreviewTile reason={missing ? "missing" : "noPreview"} />
-    ) : (
+  // A hidden photo is a button from its first frame to its last, so the focus stays on it when the cover goes (and the first click is a reveal).
+  const asButton = openable || item.spoiler;
+  let picture: ReactNode;
+  if (covered) picture = <SpoilerFace />;
+  else if (missing || failed) picture = <PreviewTile reason={missing ? "missing" : "noPreview"} />;
+  else {
+    picture = (
       <img
         className="pending-tile__image"
         src={mediaUrl("thumb", item.id)}
-        alt={openable ? "" : label}
+        alt={asButton ? "" : label}
         draggable={false}
         onError={() => setFailed(true)}
       />
     );
+  }
+  const press = () => {
+    if (covered) reveal(item.id);
+    else if (openable) onOpen(item.id);
+  };
   return (
     <div className={isTall(item) ? "pending-tile pending-tile--image pending-tile--tall" : "pending-tile pending-tile--image"} style={imageBox(item)}>
-      {openable ? (
-        <button type="button" className="pending-tile__open" aria-label={label} onClick={() => onOpen(item.id)}>
+      {asButton ? (
+        <button
+          type="button"
+          className="pending-tile__open"
+          aria-label={covered || !missing ? label : `${label}. ${t("attachments.missing")}`}
+          aria-disabled={(!covered && !openable) || undefined}
+          onClick={press}
+        >
           {picture}
         </button>
       ) : (
         <Surface label={missing ? `${label}. ${t("attachments.missing")}` : undefined}>{picture}</Surface>
       )}
+      <DetailsButton item={item} covered={covered} onDetails={onDetails} />
       <RemoveButton item={item} onRemove={onRemove} />
     </div>
   );
+}
+
+/** "Details" (a pencil): the same round button as the x, to its left. It is not there when the window gives no handler. */
+function DetailsButton({ item, covered, onDetails }: { item: AttachmentView; covered: boolean; onDetails?: (attachmentId: string) => void }) {
+  const { t } = useTranslation();
+  if (!onDetails) return null;
+  // A hidden photo's name is not read out either until it is shown.
+  const label = covered ? t("attachments.detailsOfHidden") : t("attachments.detailsOf", { name: item.name });
+  return <IconButton icon="edit" className="pending-tile__details" label={label} data-details-for={item.id} onClick={() => onDetails(item.id)} />;
 }
 
 /** The picture area of a tile that is not a button: a missing picture is announced as one image with its state. */
@@ -129,7 +164,7 @@ function Surface({ label, children }: { label?: string; children: ReactNode }) {
   );
 }
 
-function FileTile({ item, onRemove }: TileProps) {
+function FileTile({ item, onRemove, onDetails }: TileProps) {
   const { t } = useTranslation();
   const language = useLanguage();
   const missing = item.state === "missing";
@@ -139,9 +174,10 @@ function FileTile({ item, onRemove }: TileProps) {
         <Icon name={fileIcon(item.kind)} />
       </span>
       <span className="pending-tile__text">
-        <FileName name={item.filename} className="pending-tile__name" />
+        <FileName name={item.name} className="pending-tile__name" />
         <span className="pending-tile__meta">{missing ? t("attachments.missing") : fileMetaText(item, language, t)}</span>
       </span>
+      <DetailsButton item={item} covered={false} onDetails={onDetails} />
       <RemoveButton item={item} onRemove={onRemove} />
     </div>
   );
@@ -153,7 +189,7 @@ function RemoveButton({ item, onRemove }: TileProps) {
     <IconButton
       icon="close"
       className="pending-tile__remove"
-      label={t("attachments.remove", { name: item.filename })}
+      label={t("attachments.remove", { name: item.name })}
       data-remove-for={item.id}
       onClick={() => onRemove(item.id)}
     />
