@@ -1,0 +1,24 @@
+scroll to: Фото IMG_0007.jpg
+frames: first picture [303 -1076 233 175] caption [316 -715 309 17] search [45 71 198 19] composer [360 657 128 17]
+whole: no
+scroll to: Фото IMG_0003.jpg
+frames: first picture [303 86 233 175] caption [316 447 309 17] search [45 71 198 19] composer [360 657 128 17]
+whole: yes
+scroll to: Фото IMG_0007.jpg
+frames: first picture [365 -1409 290 218] caption [381 -960 383 21] search [57 75 247 24] composer [427 644 158 21]
+whole: no
+scroll to: Фото IMG_0003.jpg
+frames: first picture [365 15 290 218] caption [381 464 383 21] search [57 75 247 24] composer [427 644 158 21]
+whole: no
+scroll to: Прогулка вдоль реки
+frames: first picture [365 15 290 218] caption [381 464 383 21] search [57 75 247 24] composer [427 644 158 21]
+whole: no
+scroll to: Фото IMG_0001.jpg
+frames: first picture [365 83 290 218] caption [381 532 383 21] search [57 75 247 24] composer [427 644 158 21]
+whole: yes
+scroll to: Фото IMG_0007.jpg
+frames: first picture [292 -757 153 115] caption [304 -517 243 35] search [45 71 198 19] composer [342 657 127 17]
+whole: no
+scroll to: Фото IMG_0003.jpg
+frames: first picture [292 176 153 115] caption [304 416 243 35] search [45 71 198 19] composer [342 657 127 17]
+whole: yes

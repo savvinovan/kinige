@@ -1,0 +1,159 @@
+/* KINIG-132: an entry whose attachments are all pictures (Message sets `message--bleed`). As in Telegram, the picture or the grid fills the bubble
+   edge to edge and the bubble's rounded corners clip it. Loaded after message.css, so these rules win over the plain bubble where the specificity is equal. */
+
+/* The bubble has no padding and clips what sticks out. The hover actions are siblings of the bubble, so the clip does not touch them. */
+.message--bleed {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* The corners come from the bubble, so the album's own rounding goes: the picture would otherwise show a notch of the bubble in every corner. */
+.message--bleed .album__cell {
+  border-radius: 0;
+}
+
+/* A single picture fills its box exactly. The box has the original's shape, the thumbnail's shape differs from it by rounding (a 1170 by 2532
+   picture is 296 by 640 as a thumbnail: 0.4625 against 0.4621), and `contain` (the plain bubble's rule, where the bubble's own fill is behind it and
+   the row cannot be seen) left a row of a different colour at the picture's edge in a frameless bubble (round 2 had the strip's fill there, a row
+   of #2b2b2b between the picture and the feed). `cover` crops less than a pixel and leaves no row.
+   (tests/visual/picture-bubble.spec.ts samples the edges.) */
+.message--bleed .album--single .album__image {
+  object-fit: cover;
+}
+
+/* A picture narrower than a caption or a pill (a tall screenshot strip) keeps its own size, centred on a strip of the bubble's fill: the bubble is
+   never narrower than this floor, so the caption does not wrap at a few pixels and the pill is not clipped by the bubble. The fill is only what
+   is beside the picture: two pseudo-elements are the side columns of the grid (the picture's column is as wide as the picture and no wider), so
+   a picture that fills the bubble has no fill under or around it (a transparent PNG sits on the feed, as in a bubble with no fill). */
+.message--bleed .message-attachments {
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(0, 1fr);
+  justify-items: stretch;
+  gap: 0;
+  min-width: var(--layout-attachment-bleed-min-width);
+}
+
+.message--bleed .message-attachments::before,
+.message--bleed .message-attachments::after {
+  content: "";
+  grid-row: 1;
+  background: var(--color-surface-message);
+}
+
+.message--bleed .message-attachments::before {
+  grid-column: 1;
+}
+
+.message--bleed .message-attachments::after {
+  grid-column: 3;
+}
+
+.message--bleed .message-attachments > .album {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+/* Nothing but pictures: the floor is just what the pill needs (the time, and the star and the agent mark when there are any), as the spacer of a text
+   bubble works it out. */
+.message--bleed-bare .message-attachments {
+  min-width: calc(var(--layout-message-time-reserve) + 2 * var(--layout-attachment-pill-inset));
+}
+
+.message--bleed-bare.message--favorite .message-attachments {
+  min-width: calc(var(--layout-message-time-reserve) + 2 * var(--layout-attachment-pill-inset) + var(--icon-size-mark) + var(--space-1));
+}
+
+.message--bleed-bare.message--agent .message-attachments {
+  min-width: calc(var(--layout-message-time-reserve) + 2 * var(--layout-attachment-pill-inset) + var(--layout-message-agent-mark-reserve));
+}
+
+.message--bleed-bare.message--agent.message--favorite .message-attachments {
+  min-width: calc(
+    var(--layout-message-time-reserve) + 2 * var(--layout-attachment-pill-inset) + var(--layout-message-agent-mark-reserve) + var(--icon-size-mark) +
+      var(--space-1)
+  );
+}
+
+/* The text under the pictures keeps the usual bubble padding. `width: 0` with `min-width: 100%` lets the text take the width of the pictures
+   without stretching the bubble past them: a long caption wraps at the picture's edge instead of leaving a strip of bubble beside it. */
+.message--bleed .markdown {
+  box-sizing: border-box;
+  width: 0;
+  min-width: 100%;
+  padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
+}
+
+/* A reply quote above the pictures keeps its padding, as in Telegram: the quote sits on the bubble's fill and the picture starts under it. */
+.message--bleed .reply-quote {
+  width: 0;
+  min-width: calc(100% - 2 * var(--layout-message-padding-inline));
+  margin: var(--layout-message-padding-block) var(--layout-message-padding-inline) var(--space-2);
+}
+
+/* The entry ends with a code block: the time has a line of its own under it, and the text's own bottom padding stays above that line. */
+.message--bleed.message--time-below {
+  padding-bottom: calc(var(--type-body-size) * var(--type-body-line-height));
+}
+
+/* No text: the time is a pill on the picture, bottom right. Everything the footer shows (the star, the agent mark, the time) is in it. */
+.message--bleed-pill.message--time-below {
+  padding-bottom: 0;
+}
+
+/* Nothing but pictures: no fill of the bubble around them. */
+.message--bleed-bare {
+  background: transparent;
+}
+
+/* A picture that is missing or cannot be decoded is a tile, and the tile has the bubble's fill, which shows against the feed (1.22:1; the
+   usual tile, the window background, is 1.07:1 from the feed and the entry would read as loose text with a pill). */
+.message--bleed-bare .preview-tile {
+  background: var(--color-surface-message);
+}
+
+/* The fill of a highlighted bubble is hidden by the picture, so the jump target is shown by a ring along the bubble's edge, in the metadata
+   grey (6:1 on the feed), which is easy to see on a jump from search. */
+.message--bleed-bare.message--highlighted {
+  outline: var(--border-width-strong) solid var(--color-text-tertiary);
+}
+
+/* Narrow window: the floating action row stands on the bubble's top edge. A frameless bubble has no padding to stand on, so the row goes
+   fully above it and does not cover the top of the picture. */
+.message-wrap--actions-inside:has(> .message--bleed) .message-actions {
+  bottom: 100%;
+}
+
+.message-wrap--actions-flip:has(> .message--bleed) .message-actions {
+  bottom: auto;
+}
+
+.message--bleed-pill .message__meta {
+  right: var(--layout-attachment-pill-inset);
+  bottom: var(--layout-attachment-pill-inset);
+  padding: var(--layout-attachment-pill-padding-block) var(--layout-attachment-pill-padding-inline);
+  border-radius: var(--radius-round);
+  color: var(--color-attachment-pill-text);
+  line-height: var(--type-meta-line-height);
+  /* The pill never takes a click: the picture under it opens in the viewer. */
+  pointer-events: none;
+}
+
+/* The translucent fill is a layer of its own, so the opacity does not fade the text. */
+.message--bleed-pill .message__meta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--color-attachment-pill-background);
+  opacity: var(--opacity-attachment-pill);
+}
+
+.message--bleed-pill .message__meta > * {
+  position: relative;
+}
+
+.message--bleed-pill .message__time,
+.message--bleed-pill .message__origin,
+.message--bleed-pill .message__mark {
+  color: var(--color-attachment-pill-text);
+  line-height: var(--type-meta-line-height);
+}
