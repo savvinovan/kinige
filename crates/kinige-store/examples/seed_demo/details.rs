@@ -1,5 +1,5 @@
 //! Slice 7b demo data (KINIG-136): a small chat "Вложения" with hidden photos, a described photo, a renamed file card, an album with one hidden cell, a trashed
-//! hidden photo, and two pending tiles (one hidden, with its details) in the chat's draft. Synthetic pictures only. Only with `KINIGE_SEED_DETAILS=1`,
+//! hidden photo, and three pending tiles (two hidden, one with its details, and a file) in the chat's draft. Synthetic pictures only. Only with `KINIGE_SEED_DETAILS=1`,
 //! so earlier scenarios keep their data.
 
 use image::{ImageEncoder, Rgb, RgbImage};
@@ -114,6 +114,23 @@ pub fn seed_details(store: &Store, now: &Now, data: &Path) {
             },
         )
         .expect("tile details");
+    // A second hidden tile with no details: the scenario shows it, so one covered and one shown tile stand side by side.
+    let second = store
+        .attach_path(
+            &chat,
+            &picture("IMG_0111.jpg", 2),
+            &at(19 * MINUTE + 30_000),
+        )
+        .expect("second tile");
+    store
+        .set_draft_attachment_details(
+            &second.id,
+            &AttachmentDetailsChanges {
+                spoiler: Some(true),
+                ..AttachmentDetailsChanges::default()
+            },
+        )
+        .expect("second tile details");
     let file = store
         .attach_path(&chat, &document("notes.pdf"), &at(19 * MINUTE))
         .expect("file tile");
