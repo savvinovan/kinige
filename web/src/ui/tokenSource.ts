@@ -49,6 +49,7 @@ export const PALETTE_ROLES = [
   "voice.unplayed",
   "attachment.pill-background",
   "attachment.pill-text",
+  "attachment.cover",
   ...TILE_ROLES,
 ] as const;
 

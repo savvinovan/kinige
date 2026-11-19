@@ -30,9 +30,9 @@ describe("MainWindow: плитка фото над полем открывает
     expect(api.tilesOf(INBOX_ID)).toHaveLength(3);
   });
 
-  it("плитка файла не кнопка просмотра: у неё только ×", async () => {
+  it("плитка файла не кнопка просмотра: у неё только «Свойства» (KINIG-136) и ×", async () => {
     await withTiles(["menu.pdf"]);
     const tiles = screen.getByRole("list", { name: "Attachments to send" });
-    expect(within(tiles).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(["Remove menu.pdf"]);
+    expect(within(tiles).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(["Details of menu.pdf", "Remove menu.pdf"]);
   });
 });

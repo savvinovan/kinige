@@ -147,7 +147,11 @@ fn day_entries(
                     .filter(|item| item.message_id == message_id)
                     .map(|item| MirrorAttachment {
                         is_image: item.is_image,
-                        name: item.filename.clone(),
+                        // The link text: the description if there is one, otherwise the name (slice 7b).
+                        name: item
+                            .description
+                            .clone()
+                            .unwrap_or_else(|| item.filename.clone()),
                         file: item.name.clone(),
                         duration_ms: item.duration_ms,
                     })

@@ -119,14 +119,20 @@ pub fn render_day_file(journal_date: &str, entries: &[MirrorEntry]) -> String {
     out
 }
 
-/// The link line of an attachment. The path is in angle brackets, the link text is escaped (`\`, `[`, `]`).
+/// The link line of an attachment. The path is in angle brackets. The link text is one line (a line break becomes a space) with
+/// `\`, `[`, `]`, `` ` ``, `<` and `>` escaped, so that a description can neither close the link, open a code span or raw HTML, nor
+/// start a heading or a list in the day file (slice 7b).
 fn attachment_line(journal_date: &str, attachment: &MirrorAttachment) -> String {
     let mut text = String::with_capacity(attachment.name.len());
     for c in attachment.name.chars() {
-        if matches!(c, '\\' | '[' | ']') {
-            text.push('\\');
+        match c {
+            '\n' | '\r' => text.push(' '),
+            '\\' | '[' | ']' | '`' | '<' | '>' => {
+                text.push('\\');
+                text.push(c);
+            }
+            _ => text.push(c),
         }
-        text.push(c);
     }
     let bang = if attachment.is_image { "!" } else { "" };
     let length = attachment

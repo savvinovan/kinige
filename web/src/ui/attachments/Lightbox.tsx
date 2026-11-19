@@ -6,6 +6,8 @@ import { IconButton } from "../controls/IconButton";
 import { canShowFull, useMediaUrl } from "./mediaUrl";
 import { photoLabel } from "./photoLabel";
 import { PreviewTile } from "./PreviewTile";
+import { useReveal } from "./reveal";
+import { SpoilerFace } from "./SpoilerFace";
 import { useDialogKeys } from "./useDialogKeys";
 import { useViewerInput } from "./useViewerInput";
 import { useViewerTransform } from "./useViewerTransform";
@@ -45,10 +47,14 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
   const current = images[Math.min(Math.max(index, 0), last)];
   const position = current ? images.indexOf(current) : 0;
 
+  const { isRevealed, reveal } = useReveal();
+  // A hidden photo is the cover with a "Show" button until it is revealed (here or in the feed: the state is shared); no picture is asked for.
+  const covered = current !== undefined && current.spoiler && !isRevealed(current.id);
+
   const failed = current ? (failures[current.id] ?? 0) : 0;
   const full = current ? canShowFull(current) : false;
   const variant = full && failed === 0 ? "full" : "thumb";
-  const showTile = !current || current.state === "missing" || failed >= (full ? 2 : 1);
+  const showTile = !current || covered || current.state === "missing" || failed >= (full ? 2 : 1);
   const source = current ? `${current.id}-${variant}` : "";
   const natural = loaded[source] ?? (current && variant === "full" ? declaredSize(current) : null);
 
@@ -143,7 +149,7 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
         <figure className="lightbox__figure" ref={figure}>
           {showTile ? (
             <div className="lightbox__tile" data-viewer-image>
-              <PreviewTile reason={current.state === "missing" ? "missing" : "noPreview"} />
+              {covered ? <SpoilerFace /> : <PreviewTile reason={current.state === "missing" ? "missing" : "noPreview"} />}
             </div>
           ) : (
             <img
@@ -173,6 +179,25 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
           />
         ) : null}
       </div>
+      {covered ? (
+        <footer className="lightbox__caption">
+          <Button
+            variant="secondary"
+            aria-label={t("attachments.showLabel")}
+            onClick={() => {
+              // The "Show" button goes with the cover: the focus stays in the dialog, not on the page.
+              root.current?.focus();
+              reveal(current.id);
+            }}
+          >
+            {t("attachments.show")}
+          </Button>
+        </footer>
+      ) : current.description ? (
+        <footer className="lightbox__caption">
+          <p className="lightbox__description">{current.description}</p>
+        </footer>
+      ) : null}
     </div>
   );
 }

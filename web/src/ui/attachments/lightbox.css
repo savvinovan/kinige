@@ -115,6 +115,30 @@
 }
 
 /* "No preview" in the same area: a box of the default photo shape. */
+/* Under the photo (KINIG-136): the description of a shown photo, or the "Show" button of a hidden one. It stays above a photo zoomed past the stage. */
+.lightbox__caption {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  justify-content: center;
+  max-height: calc(var(--type-body-line-height) * var(--type-body-size) * 4);
+  overflow: auto;
+}
+
+.lightbox__description {
+  max-width: var(--layout-attachment-album-max-width);
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+  text-align: center;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
 .lightbox__tile {
   position: relative;
   width: var(--layout-attachment-album-max-width);

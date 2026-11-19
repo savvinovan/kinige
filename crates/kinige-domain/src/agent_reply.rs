@@ -56,7 +56,15 @@ pub struct AgentEntry {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AgentAttachment {
     pub kind: &'static str,
+    /// The display name (slice 7b): the original unless the person renamed it.
     pub name: String,
+    /// What the person wrote about the attachment (slice 7b); absent when there is none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Present, as `true`, only on a photo that is covered in the Kinige window (slice 7b): a cover against a glance, so the agent can
+    /// tell the person chose to hide it. Everything else about the attachment is returned as for any other.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub spoiler: bool,
     pub bytes: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<u32>,

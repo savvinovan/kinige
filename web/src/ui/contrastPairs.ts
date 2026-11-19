@@ -103,4 +103,13 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   // A bubble of pictures only has no fill (KINIG-132): the ring of a highlighted one (the tertiary text color) stands on the feed, and the tile of
   // a missing or undecodable picture (the bubble's fill) stands off the feed so the entry still has a visible box.
   { foreground: "text.tertiary", background: "surface.paper", kind: "ui" },
+  // The cover of a hidden photo (KINIG-136): it stands off the bubble's fill, where it sits in a bubble with text, and off the feed, where a
+  // bubble with no fill leaves it bare; the eye and the word on it are the secondary text, and the tertiary one is still readable.
+  { foreground: "attachment.cover", background: "surface.message", kind: "decorative" },
+  { foreground: "attachment.cover", background: "surface.paper", kind: "decorative" },
+  { foreground: "attachment.cover", background: "surface.background", kind: "decorative" },
+  { foreground: "text.primary", background: "attachment.cover", kind: "text" },
+  { foreground: "text.secondary", background: "attachment.cover", kind: "text" },
+  { foreground: "text.tertiary", background: "attachment.cover", kind: "text" },
+  { foreground: "focus.ring", background: "attachment.cover", kind: "ui" },
 ];

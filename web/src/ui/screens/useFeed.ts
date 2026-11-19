@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type KinigeApi, errorCode } from "../../api/KinigeApi";
+import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { MessagePage } from "../../api/generated/MessagePage";
 import type { MessageView } from "../../api/generated/MessageView";
@@ -357,6 +358,12 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     [api, dateFor, replace],
   );
 
+  /** A sent attachment's new details (KINIG-136): the photo or the card is replaced in its entry, which is otherwise as it was. */
+  const patchAttachment = useCallback((view: AttachmentView) => {
+    const changed = (m: FeedMessage) => (m.attachments ?? []).some((a) => a.id === view.id);
+    setMessages((list) => list.map((m) => (changed(m) ? { ...m, attachments: (m.attachments ?? []).map((a) => (a.id === view.id ? view : a)) } : m)));
+  }, []);
+
   const ui: FeedUiState = { editingId, deletedIds, editError, markedId: mark?.id ?? null, markTerms: mark?.terms };
   const feedPaging: FeedPaging = { hasOlder: older !== null, hasNewer: newer !== null, onLoadOlder: loadOlder, onLoadNewer: loadNewer, onJumpToLatest: jumpToLatest };
   const dateTarget = dateFor === null ? undefined : messages.find((m) => m.id === dateFor);
@@ -374,6 +381,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     checkDay,
     restart,
     appendSent,
+    patchAttachment,
     dateTarget,
     closeDate: () => setDateFor(null),
     pickDate,

@@ -130,7 +130,8 @@ button.pending-tile__open {
 }
 
 /* The x: its own fill and a hairline, so it is seen over any picture, light or dark. A larger target than the small action button. */
-.pending-tile .pending-tile__remove {
+.pending-tile .pending-tile__remove,
+.pending-tile .pending-tile__details {
   position: absolute;
   top: var(--layout-attachment-pending-remove-offset);
   right: var(--layout-attachment-pending-remove-offset);
@@ -141,6 +142,12 @@ button.pending-tile__open {
   color: var(--color-text-primary);
 }
 
-.pending-tile .pending-tile__remove:hover {
+/* "Details" (KINIG-136): the same round button, to the left of the x. Both stay on top of the cover of a hidden photo. */
+.pending-tile .pending-tile__details {
+  right: calc(var(--layout-attachment-pending-remove-offset) + var(--layout-attachment-pending-action-size) + var(--space-1));
+}
+
+.pending-tile .pending-tile__remove:hover,
+.pending-tile .pending-tile__details:hover {
   background: var(--color-surface-selected);
 }

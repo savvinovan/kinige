@@ -11,7 +11,7 @@ pub use crate::drops::{
 
 use crate::drag_source::DragImage;
 use crate::drag_tiff::tiff_to_png;
-use kinige_domain::attachment::MAX_PASTE_BYTES;
+use kinige_domain::attachment::{AttachmentDetailsChanges, MAX_PASTE_BYTES};
 use kinige_domain::{ApiError, AttachOutcome, AttachmentView, ErrorCode};
 use kinige_store::{Now, Store, StoreError};
 use std::path::PathBuf;
@@ -97,6 +97,33 @@ pub fn remove_draft_attachment(
 ) -> ApiResult<()> {
     store
         .remove_draft_attachment(&chat_id, &attachment_id)
+        .map_err(api)
+}
+
+/// "Details" on a tile of the input field (slice 7b): a name, a description, a spoiler flag. The arguments are read into
+/// `AttachmentDetailsChanges`: an absent key leaves the field, `null` clears a name or a description, `spoiler: null`, a mistyped value
+/// and an unknown key are refused when the arguments are read, before this body runs. Counting and normalizing are Rust's.
+#[tauri::command(async)]
+pub fn set_draft_attachment_details(
+    store: State<'_, Store>,
+    attachment_id: String,
+    changes: AttachmentDetailsChanges,
+) -> ApiResult<AttachmentView> {
+    store
+        .set_draft_attachment_details(&attachment_id, &changes)
+        .map_err(api)
+}
+
+/// "Details" of a sent attachment, and "Hide as spoiler" from the menu (only the spoiler is sent). One writer transaction; the entry
+/// does not become "edited".
+#[tauri::command(async)]
+pub fn set_attachment_details(
+    store: State<'_, Store>,
+    attachment_id: String,
+    changes: AttachmentDetailsChanges,
+) -> ApiResult<AttachmentView> {
+    store
+        .set_attachment_details(&attachment_id, &changes, &Now::system())
         .map_err(api)
 }
 

@@ -6,7 +6,8 @@ Both sides read the same file: `web/src/api/apiContract.test.ts` and `apiContrac
 file is updated, the mock test fails until the mock follows; if the mock drifts, the file fails it.
 
 Rust is the source of truth. A value here that the Rust test disagrees with is a wrong fixture, not a Rust bug to hide.
-The data is synthetic. A text may be written as a list of parts, where `[unit, n]` is the unit repeated `n` times.
+The data is synthetic. A text may be written as a list of parts, where `[unit, n]` is the unit repeated `n` times and `{ "cp": n }` is
+the one character with code point `n` (for a character the file must not hold itself, such as a bidi override).
 
 A rule the mock repeats gets a file here. A rule the mock keeps rough on purpose does not: say so in the comment of the mock
 code (the `mock/` folder and `mockRules.ts` do), and do not pin it.
@@ -31,6 +32,7 @@ code (the `mock/` folder and `mockRules.ts` do), and do not pin it.
 | `forest-day-chat.json`   | the chat a click on a forest day opens                             | `forest_year::day_chat`                   |
 | `attachment-kind.json`   | the kind of an attachment from its name                            | `attachment::{stored_ext, classify}`      |
 | `attachment-errors.json` | attachment and voice limits and the order of the checks (scenario) | `Store`                                   |
+| `attachment-text.json`   | attachment details: counting, normal form, fields per kind         | `attachment::{normalize_*, check_kind}`   |
 
 ## Scenarios
 
