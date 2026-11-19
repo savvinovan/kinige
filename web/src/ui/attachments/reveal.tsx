@@ -26,6 +26,8 @@ export function useCovered(image: AttachmentView): boolean {
 interface RevealProviderProps {
   /** The chat view (a chat id, or the trash): when it changes every photo is covered again. */
   viewKey: string | null;
+  /** Storybook and tests only: photos that are shown from the start (the app starts with none). */
+  initial?: readonly string[];
   children: ReactNode;
 }
 
@@ -33,8 +35,8 @@ interface RevealProviderProps {
  * Holds the revealed ids for one chat view. Leaving the chat or the trash, and the window going away (closed to the menu bar, hidden), covers
  * everything again; so does a restart, because nothing is saved. The viewer, the details dialog and the feed share this one state.
  */
-export function RevealProvider({ viewKey, children }: RevealProviderProps) {
-  const [revealed, setRevealed] = useState<{ viewKey: string | null; ids: ReadonlySet<string> }>({ viewKey, ids: new Set() });
+export function RevealProvider({ viewKey, initial = [], children }: RevealProviderProps) {
+  const [revealed, setRevealed] = useState<{ viewKey: string | null; ids: ReadonlySet<string> }>({ viewKey, ids: new Set(initial) });
   // A set that belongs to another view counts as empty: the cover is back in the same render as the new view, not one render later.
   const ids = revealed.viewKey === viewKey ? revealed.ids : EMPTY;
 
