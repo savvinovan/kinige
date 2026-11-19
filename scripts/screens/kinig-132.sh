@@ -102,15 +102,16 @@ album_whole() {
   [ "${f[1]}" -ge $((f[9] - 15)) ] && [ $((f[5] + f[7])) -le $((f[13] - 65)) ]
 }
 
-# Brings the whole album entry (pictures, caption, time) into view. A scroll-to-visible puts an element that is far out of view in the
-# middle of the window, moves the feed only as far as needed when the element is partly visible (it ends at the nearest edge), and does
-# nothing when it is whole in the window (what the runs showed). So the caption goes first: it is centred, which leaves the first picture
-# partly above the window (or the whole entry in view, in a small window); the first picture is next: it is only partly visible, so it
-# is brought to the top edge of the feed, and the caption ends well above the composer. Each candidate is tried until the entry fits;
-# what was tried and what the frames were is written to fit.txt, whatever the result.
+# Brings the whole album entry (pictures, caption, time) into view. What the runs showed of a scroll-to-visible: an element that is out of
+# view (or behind the composer) is put in the middle of the window; one that is partly visible is moved only as far as needed, to the
+# nearest edge; one that is whole in the window does not move the feed. So the first picture and the caption are asked for in turn: the
+# picture centres the album's first row, the caption then centres the last line (the first picture ends up partly above the window), and
+# the picture, now partly visible, is brought to the top edge of the feed with the caption well above the composer. A small window fits
+# after one step. The candidates are tried until the entry fits; what was tried and what the frames were is written to fit.txt, whatever
+# the result.
 show_album() {
   local candidate
-  for candidate in "$CAPTION" "${L_PHOTO} IMG_0001.jpg" "${L_PHOTO} IMG_0002.jpg" "$BEFORE" "${L_PHOTO} IMG_0001.jpg"; do
+  for candidate in "$CAPTION" "${L_PHOTO} IMG_0001.jpg" "$CAPTION" "${L_PHOTO} IMG_0001.jpg" "$CAPTION" "${L_PHOTO} IMG_0001.jpg"; do
     echo "scroll to: $candidate" >> "$FIT_LOG"
     scroll_to "$candidate"
     sleep 4
