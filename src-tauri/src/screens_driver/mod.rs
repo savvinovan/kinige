@@ -9,7 +9,7 @@
 
 mod request;
 
-use crate::capture::{MAIN_LABEL, show_main};
+use crate::capture::{CAPTURE_LABEL, MAIN_LABEL, show_capture, show_main};
 use request::{
     MAX_REPLY_TEXT_BYTES, Message, REQUESTS_DIR, Reject, Reply, Request, Step, id_of_file_name,
     parse_request, read_request_file, valid_id, write_reply,
@@ -247,6 +247,11 @@ fn handle_request<R: Runtime>(
     if matches!(step, Step::Front {}) {
         if label == MAIN_LABEL {
             show_main(app);
+        } else if label == CAPTURE_LABEL {
+            // The quick capture window is shown the way the hotkey and the icon menu show it (a panel on macOS, placed on the screen
+            // with the cursor): a scenario cannot press a global shortcut, and the icon menu did not open for accessibility on the
+            // runner (KINIG-153).
+            show_capture(app);
         } else {
             let _ = webview.unminimize();
             let _ = webview.show();

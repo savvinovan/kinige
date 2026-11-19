@@ -4,9 +4,9 @@
 # The app is built with the fake microphone and the screens driver (screens.yml: a tone through the real MediaRecorder, no device, no TCC prompt;
 # the same guard as slice 7a keeps both out of a build for people). The data are synthetic (seed_demo) in a temporary directory. Input is the
 # screens driver in the capture and the main window (KINIG-92): it finds elements by their accessible name inside each web view. The capture window
-# is shown through the menu bar icon's "New note" item (an accessibility click on a native menu; global shortcuts are never simulated), so the
-# hotkey path is NOT covered here (vitest and the Rust tests cover the page's and the window's side of it). The first-use permission prompt and a
-# real microphone are NOT covered: they stay with the person who accepts it.
+# is shown by the driver's `front` step, which runs the app's own `show_capture` (global shortcuts are never simulated), so the hotkey path is
+# NOT covered here (vitest and the Rust tests cover the page's and the window's side of it). The first-use permission prompt and a real
+# microphone are NOT covered: they stay with the person who accepts it.
 # The fake microphone ends a recording by itself after 14 seconds (scripts/screens/fake-mic.ts), so every recording below is planned to be
 # finished or dropped within about ten.
 set -u
@@ -82,14 +82,13 @@ wait_capture_hidden() {
   return 1
 }
 
-# The capture window through the menu bar icon: click the status item, then "New note" in its menu (accessibility, not a key).
+# The capture window through the driver's `front` for it: the app runs its own `show_capture`, as for the hotkey and the icon menu (the first
+# run of this scenario tried the icon menu through System Events: its menu did not exist for accessibility, "Invalid index"). A hidden
+# window's page answers the driver too, so a press that works is no proof the window is on screen: `capture_present` is that proof.
 show_capture() {
-  local pid attempt
+  local attempt
   for attempt in 1 2 3; do
-    pid="$(app_pid)"
-    limit 40 osascript -e "tell application \"System Events\" to tell (first process whose unix id is ${pid}) to click menu bar item 1 of menu bar 2" > "$K/debug/tray-open-${attempt}.txt" 2>&1
-    sleep 1.5
-    limit 40 osascript -e "tell application \"System Events\" to tell (first process whose unix id is ${pid}) to click menu item \"${L_NEW_NOTE}\" of menu 1 of menu bar item 1 of menu bar 2" > "$K/debug/tray-item-${attempt}.txt" 2>&1
+    drive_raw capture '{"kind":"front"}' > /dev/null
     for _ in $(seq 1 10); do
       if capture_present; then
         sleep 1
