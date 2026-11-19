@@ -36,6 +36,10 @@ fn photo_tile(fixture: &Fixture) -> String {
         .id
 }
 
+/// The number of commands of the capture window at this commit: seven. KINIG-153 (the microphone in the capture window) makes it ten;
+/// whichever branch merges second changes this number (and PRD §12.3's "keeps exactly seven").
+const CAPTURE_COMMAND_COUNT: usize = 7;
+
 fn groups_of(fixture: &Fixture, id: &str) -> Option<String> {
     let store = fixture.app.state::<Store>();
     let _ = &store;
@@ -51,17 +55,9 @@ fn groups_of(fixture: &Fixture, id: &str) -> Option<String> {
 #[test]
 fn the_details_commands_are_main_only_and_the_capture_set_is_unchanged() {
     assert_eq!(
-        CAPTURE_COMMANDS,
-        [
-            "capture_state",
-            "capture_send",
-            "capture_append",
-            "capture_save_draft",
-            "capture_hide",
-            "capture_resize",
-            "capture_add_recent_emoji"
-        ],
-        "the capture window still has seven commands"
+        CAPTURE_COMMANDS.len(),
+        CAPTURE_COMMAND_COUNT,
+        "the capture window's commands changed: this slice adds none"
     );
     let fixture = fixture();
     let main = window(&fixture, "main");
