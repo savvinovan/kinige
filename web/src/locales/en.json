@@ -55,6 +55,7 @@
     "noDevice": "No microphone found",
     "busy": "The microphone is unavailable",
     "disconnected": "Microphone disconnected · {{time}}",
+    "stopped": "Recording stopped · {{time}}",
     "tooShort": "Too short to save",
     "tooLong": "Too long to save",
     "sendFailed": "The voice note was not saved.",

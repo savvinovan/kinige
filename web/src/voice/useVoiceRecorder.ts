@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { type KinigeApi, errorCode } from "../api/KinigeApi";
 import type { ErrorCode } from "../api/generated/ErrorCode";
 import type { MessageView } from "../api/generated/MessageView";
+import { useMicrophoneClaim } from "./useMicrophoneClaim";
 import {
   CONFIRM_AFTER_MS,
   type LiveLevels,
@@ -23,8 +24,11 @@ export type VoiceState =
   | { kind: "recording"; elapsedMs: number }
   /** "Discard the recording?": the recording goes on underneath. */
   | { kind: "confirming"; elapsedMs: number }
-  /** The device was unplugged: what was recorded is kept, Send and Discard are offered. */
-  | { kind: "lost"; elapsedMs: number }
+  /**
+   * The device was unplugged (no `cause`) or the window went away mid-recording (`cause: "hidden"`, the capture window): what was recorded
+   * is kept, the microphone is released, Send and Discard are offered.
+   */
+  | { kind: "lost"; elapsedMs: number; cause?: "hidden" }
   | { kind: "sending"; elapsedMs: number }
   /** Saving failed (a full disk): the bytes stay in memory; Retry and Discard. */
   | { kind: "send-failed"; elapsedMs: number; error: ErrorCode; retryable: boolean }
@@ -80,10 +84,20 @@ export interface VoiceControls {
   openSettings: () => void;
   /** Hides the line above the field. */
   dismissNotice: () => void;
+  /**
+   * The window is about to be hidden (the capture window: Esc, its hotkey, closing): a recording is stopped and kept as it is, with the
+   * microphone released, and shows as "Recording stopped" with Send and Discard when the window comes back. A start still waiting for the
+   * system's answer is dropped when the answer comes. Anything else is left alone. The promise settles when the device has been let go, so a
+   * window can wait for it before it hides.
+   */
+  park: () => Promise<void>;
 }
 
+/** What the recorder needs of the API: the main window's `KinigeApi` has it all; the capture window maps it onto its own commands (`captureVoiceApi`). */
+export type VoiceApi = Pick<KinigeApi, "sendVoice" | "holdMicrophone" | "openMicrophoneSettings">;
+
 interface UseVoiceRecorderOptions {
-  api: KinigeApi;
+  api: VoiceApi;
   /** The open chat; `null` means the trash is open and nothing is recorded. */
   chatId: string | null;
   /** The entry the draft replies to (live replies only); the note carries it like a text reply. */
@@ -117,14 +131,20 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
     latest.current = { chatId, replyToId, onSent };
   });
 
+  const microphone = useMicrophoneClaim(api);
+  /** `park` came while the system was still answering the first request: the recorder is dropped as soon as it starts. */
+  const parking = useRef(false);
+
   const clear = useCallback(() => {
     session.current = null;
     target.current = null;
     kept.current = null;
     confirming.current = false;
     busy.current = false;
+    parking.current = false;
+    microphone.release();
     setState({ kind: "idle" });
-  }, [setState]);
+  }, [microphone, setState]);
 
   /**
    * Saves a finished recording in the chat it was started in. What a second try cannot change is not offered again:
@@ -177,6 +197,7 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
       running
         .finish()
         .then((recording) => {
+          microphone.release();
           if (recording.durationMs < MIN_RECORDING_MS) {
             clear();
             setState({ kind: "notice", reason: "too-short" });
@@ -194,47 +215,85 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
     const recording = kept.current;
     if (recording) void save(recording);
     else busy.current = false;
-  }, [save, clear, setState]);
+  }, [save, clear, microphone, setState]);
+
+  /**
+   * Stops a running recording and keeps what was recorded for Send / Discard, with the microphone released: the device was lost, or the
+   * window is going away (`cause: "hidden"`; under a second of that is dropped with the "too short" line instead).
+   */
+  const keep = useCallback(
+    (running: RecorderSession, cause?: "hidden"): Promise<void> => {
+      session.current = null;
+      confirming.current = false;
+      return running
+        .finish()
+        .then((recording) => {
+          microphone.release();
+          if (cause && recording.durationMs < MIN_RECORDING_MS) {
+            clear();
+            setState({ kind: "notice", reason: "too-short" });
+            return;
+          }
+          kept.current = recording;
+          setState({ kind: "lost", elapsedMs: recording.durationMs, ...(cause ? { cause } : {}) });
+        })
+        // Reading the chunks failed: nothing can be kept, and the bar must not stay in limbo.
+        .catch(() => {
+          clear();
+          setState({ kind: "notice", reason: "busy" });
+        });
+    },
+    [clear, microphone, setState],
+  );
 
   const start = useCallback(() => {
     shownSecond.current = -1;
     const where = latest.current.chatId;
     if (where === null || session.current || busy.current || kept.current) return;
     busy.current = true;
+    parking.current = false;
     target.current = { chatId: where, replyToId: latest.current.replyToId };
     setState({ kind: "starting" });
-    RecorderSession.start({
-      onDeviceLost: () => {
-        // The recorder has stopped by itself: keep the bytes and offer Send / Discard.
-        const lost = session.current;
-        if (!lost) return;
-        session.current = null;
-        confirming.current = false;
-        lost
-          .finish()
-          .then((recording) => {
-            kept.current = recording;
-            setState({ kind: "lost", elapsedMs: recording.durationMs });
-          })
-          // Reading the chunks failed: nothing can be kept, and the bar must not stay in limbo.
-          .catch(() => {
-            clear();
-            setState({ kind: "notice", reason: "busy" });
-          });
-      },
-      onByteLimit: () => sendRef.current(),
-    }).then(
-      (started) => {
-        session.current = started;
-        busy.current = false;
-        setState({ kind: "recording", elapsedMs: 0 });
-      },
-      (reason: unknown) => {
+    void microphone.take().then((granted) => {
+      if (!granted) {
+        // The other window is recording: one microphone, one recording.
         clear();
-        setState({ kind: "notice", reason: micErrorOf(reason) });
-      },
-    );
-  }, [clear, setState]);
+        setState({ kind: "notice", reason: "busy" });
+        return;
+      }
+      RecorderSession.start({
+        // The recorder has stopped by itself: keep the bytes and offer Send / Discard.
+        onDeviceLost: () => {
+          const lost = session.current;
+          if (lost) keep(lost);
+        },
+        onByteLimit: () => sendRef.current(),
+      }).then(
+        (started) => {
+          if (parking.current) {
+            // The window was hidden while the system asked: nothing was recorded, nothing to keep.
+            started.abort();
+            clear();
+            return;
+          }
+          session.current = started;
+          busy.current = false;
+          setState({ kind: "recording", elapsedMs: 0 });
+        },
+        (reason: unknown) => {
+          clear();
+          setState({ kind: "notice", reason: micErrorOf(reason) });
+        },
+      );
+    });
+  }, [clear, keep, microphone, setState]);
+
+  const park = useCallback((): Promise<void> => {
+    const running = session.current;
+    if (running) return keep(running, "hidden");
+    if (store.get().kind === "starting") parking.current = true;
+    return Promise.resolve();
+  }, [keep, store]);
 
   useEffect(() => {
     sendRef.current = send;
@@ -316,8 +375,8 @@ export function useVoiceController({ api, chatId, replyToId, onSent }: UseVoiceR
   const levels = useCallback((count: number): LiveLevels => session.current?.liveLevels(count) ?? { levels: [], at: 0, total: 0 }, []);
 
   return useMemo(
-    () => ({ store, levels, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice }),
-    [store, levels, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice],
+    () => ({ store, levels, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice, park }),
+    [store, levels, start, send, requestCancel, keepRecording, discard, retry, openSettings, dismissNotice, park],
   );
 }
 

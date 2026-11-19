@@ -36,7 +36,7 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
 
   // Escape works wherever the focus is (the person may have clicked into the feed): cancel, or "keep" while the question is open.
   useEffect(() => {
-    if (state.kind !== "recording" && state.kind !== "confirming" && state.kind !== "lost" && state.kind !== "send-failed") return;
+    if (!barOwnsEscape(state.kind)) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
@@ -91,7 +91,7 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
       <IconButton icon="trash" label={t("voice.discardRecording")} onClick={trash} disabled={sending} />
       {state.kind === "lost" ? (
         <p className="recording-bar__lost" role="status">
-          {t("voice.disconnected", { time })}
+          {t(state.cause === "hidden" ? "voice.stopped" : "voice.disconnected", { time })}
         </p>
       ) : (
         <>
@@ -109,6 +109,11 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
       </span>
     </div>
   );
+}
+
+/** The states in which the bar answers Escape. A window with its own Escape (the capture window hides on it) leaves it to the bar then. */
+export function barOwnsEscape(kind: VoiceState["kind"]): boolean {
+  return kind === "recording" || kind === "confirming" || kind === "lost" || kind === "send-failed";
 }
 
 function failureText(t: TFunction, code: ErrorCode): string {

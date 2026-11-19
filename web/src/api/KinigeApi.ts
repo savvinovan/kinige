@@ -287,6 +287,12 @@ export interface KinigeApi {
   setAttachmentWaveform(attachmentId: string, peaks: Uint8Array): Promise<void>;
   /** "Open settings" on the "Microphone access is off" line: the system's microphone privacy page. A fixed page, no argument. */
   openMicrophoneSettings(): Promise<void>;
+  /**
+   * The microphone is shared by the two windows that record, and each has its own recorder (KINIG-153). `true` asks for it before the device is
+   * opened: the answer is `false` when the other window holds it, so a second recording never starts. `false` lets it go; the answer is `true`.
+   * Windows that reload or hide let go by themselves.
+   */
+  holdMicrophone(held: boolean): Promise<boolean>;
 
   // ---- capture window (slice 2): a separate set of commands, Inbox only ----
   /** Everything the window needs on showing: language, text size, today's context, the append target, the draft, an error. */
@@ -305,4 +311,10 @@ export interface KinigeApi {
   captureResize(height: number): Promise<void>;
   /** The emoji chosen in the capture window picker goes first in the shared "recent" list; the reply is the whole list. */
   captureAddRecentEmoji(emoji: string): Promise<string[]>;
+  /** A recording of the capture window (KINIG-153): like `sendVoice`, but always a new entry in the Inbox, with no chat and no reply to name. */
+  captureSendVoice(bytes: Uint8Array, durationMs: number, waveform?: Uint8Array | null): Promise<MessageView>;
+  /** The capture window's `holdMicrophone`. */
+  captureHoldMicrophone(held: boolean): Promise<boolean>;
+  /** The capture window's `openMicrophoneSettings`. */
+  captureOpenMicrophoneSettings(): Promise<void>;
 }
