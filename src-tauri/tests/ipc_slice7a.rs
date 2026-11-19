@@ -1,5 +1,5 @@
 //! Slice 7a (voice notes) over IPC on the mock runtime with the real capabilities: `send_voice` and `open_microphone_settings` belong to
-//! the main window only (the capture window keeps its seven commands, the settings window is denied), and garbage comes back as errors
+//! the main window only (the capture window has its own three, `ipc_capture_voice.rs`; the settings window is denied), and garbage comes back as errors
 //! without a panic and without writing anything. The `audio` route is in `ipc_slice7a_route.rs`.
 
 // A whole integration-test root is test code: `cfg(test)` gives helpers outside #[test] the same clippy.toml allowances

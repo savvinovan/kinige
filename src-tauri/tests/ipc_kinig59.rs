@@ -1,5 +1,5 @@
 //! KINIG-59 over IPC on the mock runtime with the real capabilities: `set_chat_color` belongs to the main window only (the capture
-//! window keeps exactly seven commands, the settings window is denied), the colour reaches the chat list, search hits and trash
+//! window's set is unchanged (`CAPTURE_SET`), the settings window is denied), the colour reaches the chat list, search hits and trash
 //! plates resolved, and garbage comes back as an error without writing anything.
 
 // A whole integration-test root is test code: `cfg(test)` gives helpers outside #[test] the same clippy.toml allowances

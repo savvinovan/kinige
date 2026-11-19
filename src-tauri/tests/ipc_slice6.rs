@@ -1,5 +1,5 @@
 //! Slice 6 over IPC on the mock runtime with the real capabilities: the forest commands belong to the main window only
-//! (the capture window keeps exactly seven commands, the settings window is denied), and garbage arguments come back as
+//! (the capture window's set is unchanged, `CAPTURE_SET`, the settings window is denied), and garbage arguments come back as
 //! errors without a panic and without writing anything.
 
 // A whole integration-test root is test code: `cfg(test)` gives helpers outside #[test] the same clippy.toml allowances

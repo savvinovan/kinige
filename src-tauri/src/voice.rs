@@ -10,7 +10,7 @@ use kinige_domain::{ApiError, ErrorCode, MessageView};
 use kinige_store::{Now, Store};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use tauri::ipc::{InvokeBody, Request, Response};
-use tauri::webview::{PermissionKind, PermissionResponse};
+use tauri::webview::{PageLoadEvent, PermissionKind, PermissionResponse};
 use tauri::{AppHandle, Manager, Runtime, State};
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use tauri_plugin_opener::OpenerExt;
@@ -132,10 +132,33 @@ fn recording_headers(request: &Request<'_>) -> ApiResult<(i64, Option<Vec<u8>>)>
     Ok((duration_ms, waveform))
 }
 
-/// A page that starts loading has no recorder yet: a claim left by a page that was reloaded or died must not lock the other window out.
-pub fn on_page_start<R: Runtime>(webview: &tauri::Webview<R>) {
-    if let Some(claim) = webview.app_handle().try_state::<MicrophoneClaim>() {
-        claim.release(webview.label());
+/// A page that starts loading has no recorder yet: a claim left by a page that was reloaded must not lock the other window out. Called
+/// from `on_page_load` with every event; only `Started` counts.
+pub fn on_page_load_event<R: Runtime>(webview: &tauri::Webview<R>, event: PageLoadEvent) {
+    if event == PageLoadEvent::Started {
+        release_for(webview.app_handle(), webview.label());
+    }
+}
+
+/// macOS: the web content process of a page died (WebKit's `webViewWebContentProcessDidTerminate`). With no handler set, tauri-runtime-wry
+/// 2.12.3 reloads the page (and `Started` then releases the claim); a handler replaces that default, so this one does both, in the other
+/// order of importance: the dead page's claim goes first (its recorder is gone, and the other window must not say "unavailable" until a
+/// restart), a capture window that was on screen is hidden (a blank panel that ignores everything must not stay), then the page reloads.
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+pub fn on_page_terminated<R: Runtime>(webview: &tauri::Webview<R>) {
+    release_for(webview.app_handle(), webview.label());
+    if webview.label() == CAPTURE_LABEL {
+        crate::capture::hide_capture(webview.app_handle());
+    }
+    if webview.reload().is_err() {
+        log::error!("could not reload a page after its web content process ended");
+    }
+}
+
+/// Takes back the claim of a window label (not the other window's).
+fn release_for<R: Runtime>(app: &AppHandle<R>, label: &str) {
+    if let Some(claim) = app.try_state::<MicrophoneClaim>() {
+        claim.release(label);
     }
 }
 
@@ -281,6 +304,61 @@ mod tests {
         for label in ["settings", "", "Main", "Capture", "other"] {
             assert_eq!(permission_decision(label, Microphone), Deny, "{label}");
         }
+    }
+
+    /// A mock app with the claim managed, a main and a capture window, and `holder` holding the microphone.
+    fn app_with(
+        holder: &'static str,
+    ) -> (
+        tauri::App<tauri::test::MockRuntime>,
+        tauri::WebviewWindow<tauri::test::MockRuntime>,
+        tauri::WebviewWindow<tauri::test::MockRuntime>,
+    ) {
+        let app = tauri::test::mock_app();
+        app.manage(MicrophoneClaim::default());
+        let make = |label: &str| {
+            tauri::WebviewWindowBuilder::new(&app, label, Default::default())
+                .build()
+                .expect("a mock window")
+        };
+        let (main, capture) = (make(MAIN_LABEL), make(CAPTURE_LABEL));
+        assert!(app.state::<MicrophoneClaim>().hold(holder));
+        (app, main, capture)
+    }
+
+    #[test]
+    fn a_page_that_starts_loading_drops_its_own_claim_and_not_the_others() {
+        // A reloaded page has no recorder: its claim from before the reload must not lock the other window out.
+        let (app, main, capture) = app_with(CAPTURE_LABEL);
+        on_page_load_event(main.as_ref(), PageLoadEvent::Started);
+        assert!(
+            app.state::<MicrophoneClaim>().is_held_by(CAPTURE_LABEL),
+            "the main page loading is not the capture page's business"
+        );
+        on_page_load_event(capture.as_ref(), PageLoadEvent::Finished);
+        assert!(
+            app.state::<MicrophoneClaim>().is_held_by(CAPTURE_LABEL),
+            "only the start of a load counts"
+        );
+        on_page_load_event(capture.as_ref(), PageLoadEvent::Started);
+        assert!(!app.state::<MicrophoneClaim>().is_held_by(CAPTURE_LABEL));
+        assert!(app.state::<MicrophoneClaim>().hold(MAIN_LABEL));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_dead_web_content_process_gives_its_claim_back_and_the_page_reloads() {
+        // The main page dies while recording: the capture window must be able to record at once, not "unavailable until a restart".
+        let (app, main, capture) = app_with(MAIN_LABEL);
+        on_page_terminated(main.as_ref());
+        assert!(!app.state::<MicrophoneClaim>().is_held_by(MAIN_LABEL));
+        assert!(app.state::<MicrophoneClaim>().hold(CAPTURE_LABEL));
+        // The capture page dies while recording: its claim goes too, and the other window's is untouched.
+        on_page_terminated(capture.as_ref());
+        assert!(!app.state::<MicrophoneClaim>().is_held_by(CAPTURE_LABEL));
+        assert!(app.state::<MicrophoneClaim>().hold(MAIN_LABEL));
+        on_page_terminated(capture.as_ref());
+        assert!(app.state::<MicrophoneClaim>().is_held_by(MAIN_LABEL));
     }
 
     #[test]

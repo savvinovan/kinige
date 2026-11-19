@@ -1,5 +1,5 @@
 //! Slice 7 over IPC on the mock runtime with the real capabilities: the attachment commands belong to the main window only (the
-//! capture window keeps exactly seven commands, the settings window is denied), garbage comes back as errors without a panic and
+//! capture window's set is unchanged (`CAPTURE_SET`), the settings window is denied), garbage comes back as errors without a panic and
 //! without writing anything, the drop token is single-use, and the `kinige-media` protocol answers only `main`.
 
 // A whole integration-test root is test code: `cfg(test)` gives helpers outside #[test] the same clippy.toml allowances

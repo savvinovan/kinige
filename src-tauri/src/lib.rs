@@ -350,13 +350,14 @@ pub fn run() {
         }
         Ok(())
     };
+    // A dead web content process (macOS): the page's microphone claim goes and the page reloads (`voice::on_page_terminated`).
+    #[cfg(target_os = "macos")]
+    let configured = configured.on_web_content_process_terminate(voice::on_page_terminated);
     let built = configured
         .setup(move |app| fail_fast(setup(app)))
         .on_window_event(on_window_event)
         .on_page_load(|webview, payload| {
-            if payload.event() == PageLoadEvent::Started {
-                voice::on_page_start(webview);
-            }
+            voice::on_page_load_event(webview, payload.event());
             // Cold start measurement (`scripts/measure-cold-start.sh`): a mark for when the main window page has loaded.
             // Without `KINIGE_TIMING=1` the level of the `kinige-timing` target is off, and nothing is written.
             if webview.label() == MAIN_LABEL && payload.event() == PageLoadEvent::Finished {

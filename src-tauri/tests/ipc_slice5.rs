@@ -1,5 +1,5 @@
 //! Slice 5 through IPC on a mock runtime with the real capabilities: "On this day" and replies. The commands exist only for the main
-//! window; the capture window still has exactly seven commands, the new ones are refused to the `settings` window; `capture_send` does not accept a reply.
+//! window; the capture window's set is unchanged (`CAPTURE_SET`), the new ones are refused to the `settings` window; `capture_send` does not accept a reply.
 
 // The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
 // of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
