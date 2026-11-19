@@ -1,30 +1,24 @@
-scroll to: Прогулка вдоль реки
-frames: first picture [303 -249 233 175] caption [316 112 309 17] search [45 71 198 19] composer [360 654 128 17]
+scroll to: Меню на субботу
+frames: first picture [303 -425 233 175] caption [316 -64 309 17] search [45 71 198 19] composer [360 654 128 17]
 whole: no
-scroll to: Фото IMG_0001.jpg
-frames: first picture [303 263 233 175] caption [316 624 309 17] search [45 71 198 19] composer [360 654 128 17]
+scroll to: Фото IMG_0003.jpg
+frames: first picture [303 85 233 175] caption [316 446 309 17] search [45 71 198 19] composer [360 654 128 17]
+whole: yes
+scroll to: Меню на субботу
+frames: first picture [365 -618 290 218] caption [381 -169 383 21] search [57 75 247 24] composer [427 641 158 21]
 whole: no
-scroll to: Прогулка вдоль реки
-frames: first picture [303 247 233 175] caption [316 608 309 17] search [45 71 198 19] composer [360 654 128 17]
-whole: no
-scroll to: Фото IMG_0001.jpg
-frames: first picture [303 247 233 175] caption [316 608 309 17] search [45 71 198 19] composer [360 654 128 17]
-whole: no
-scroll to: Прогулка вдоль реки
-frames: first picture [303 247 233 175] caption [316 608 309 17] search [45 71 198 19] composer [360 654 128 17]
-whole: no
-scroll to: Фото IMG_0001.jpg
-frames: first picture [303 247 233 175] caption [316 608 309 17] search [45 71 198 19] composer [360 654 128 17]
+scroll to: Фото IMG_0003.jpg
+frames: first picture [365 13 290 218] caption [381 462 383 21] search [57 75 247 24] composer [427 641 158 21]
 whole: no
 scroll to: Прогулка вдоль реки
-frames: first picture [365 -116 290 218] caption [381 333 383 21] search [57 75 247 24] composer [427 641 158 21]
+frames: first picture [365 13 290 218] caption [381 462 383 21] search [57 75 247 24] composer [427 641 158 21]
 whole: no
 scroll to: Фото IMG_0001.jpg
 frames: first picture [365 83 290 218] caption [381 532 383 21] search [57 75 247 24] composer [427 641 158 21]
 whole: yes
-scroll to: Прогулка вдоль реки
-frames: first picture [292 -145 153 115] caption [304 95 243 35] search [45 71 198 19] composer [342 656 127 17]
+scroll to: Меню на субботу
+frames: first picture [292 -338 153 115] caption [304 -98 243 35] search [45 71 198 19] composer [342 656 127 17]
 whole: no
-scroll to: Фото IMG_0001.jpg
-frames: first picture [292 294 153 115] caption [304 534 243 35] search [45 71 198 19] composer [342 656 127 17]
+scroll to: Фото IMG_0003.jpg
+frames: first picture [292 177 153 115] caption [304 417 243 35] search [45 71 198 19] composer [342 656 127 17]
 whole: yes
