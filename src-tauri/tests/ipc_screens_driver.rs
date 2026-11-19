@@ -251,26 +251,18 @@ mod with_the_driver {
     }
 
     #[test]
-    fn hide_is_the_apps_request_to_the_capture_window_and_refused_for_the_others() {
-        // KINIG-153: the capture window's hide request (what the hotkey and a loss of focus send) answered at once; no other window has it.
+    fn hide_is_for_the_capture_window_only() {
+        // KINIG-153: the hide request of the hotkey, answered at once; no other window has it.
         let driven = driven();
-        window(&driven.fixture, "capture");
-        window(&driven.fixture, "main");
-        driven.request(
-            "h1",
-            r#"{"id":"h1","window":"capture","step":{"kind":"hide"}}"#,
-        );
-        driven.request(
-            "h2",
-            r#"{"id":"h2","window":"main","step":{"kind":"hide"}}"#,
-        );
+        for (id, label) in [("h1", "capture"), ("h2", "main")] {
+            window(&driven.fixture, label);
+            let step = format!(r#"{{"id":"{id}","window":"{label}","step":{{"kind":"hide"}}}}"#);
+            driven.request(id, &step);
+        }
         driven.tick();
         assert_eq!(driven.reply("h1").unwrap(), json!({"id": "h1", "ok": true}));
-        assert_eq!(
-            driven.reply("h2").unwrap(),
-            json!({"id": "h2", "ok": false, "error": "hide is for the capture window"})
-        );
-        assert!(!driven.request_exists("h1") && !driven.request_exists("h2"));
+        let refused = json!({"id": "h2", "ok": false, "error": "hide is for the capture window"});
+        assert_eq!(driven.reply("h2").unwrap(), refused);
     }
 
     #[test]

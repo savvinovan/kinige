@@ -60,7 +60,7 @@ PY
 
 L_INBOX="Inbox"; L_NEW_NOTE="New note"; L_MIC="Record voice note"; L_SEND_VOICE="Send the voice note"; L_RECORDING="Recording"
 L_TRASH_REC="Discard the recording"; L_DISCARD_Q="Discard the recording?"; L_DISCARD="Discard"; L_BUSY="The microphone is unavailable"
-L_DISMISS="Dismiss"; L_NOTE="Voice note, "
+L_DISMISS="Dismiss"; L_NOTE="Voice note, "; L_STOPPED="Recording stopped"
 
 voice_rows() { sqlw "select count(*) from attachment where filename like 'voice-%'"; }
 voice_in_inbox() {
@@ -93,7 +93,8 @@ show_capture() {
       if capture_present; then
         sleep 1
         in_capture
-        wait_name "${L_MIC}" 20000 || fail "the capture window has no microphone button"
+        # The field's microphone button, or the recording bar of a kept recording that stands in for the field.
+        wait_name "${L_MIC}" 10000 || wait_name "${L_RECORDING}," 10000 || fail "the capture window has neither the microphone button nor a recording bar"
         return 0
       fi
       sleep 1
@@ -112,6 +113,16 @@ shoot_capture() {
 shoot_main() {
   in_main
   shoot "$1" main
+}
+
+# Whether the capture window's text (what a person reads, labels included) has these words; the driver's `has` matches accessible names only.
+capture_says() { driver_text capture "$K/debug/says.txt" 5 > /dev/null 2>&1 && grep -q "$1" "$K/debug/says.txt"; }
+wait_capture_says() {
+  for _ in $(seq 1 "${2:-10}"); do
+    capture_says "$1" && return 0
+    sleep 1
+  done
+  return 1
 }
 
 # A press that is allowed to find nothing (no scenario error): the recording may have ended by itself already.
@@ -216,6 +227,27 @@ press "${L_DISCARD}" Button
 wait_name "${L_DISCARD_Q}" 5000 gone || fail "Discard did not close the question"
 capture_present || fail "the capture window hid after Discard"
 [ "$(voice_in_inbox)" = "$((BEFORE_NOTES + 2))" ] || fail "a discarded recording was saved"
+# A recording is hidden mid-way (the driver's `hide` is the app's own request, the one the hotkey and closing the window make): the window
+# goes, nothing is saved, and the recording is kept. Reopened, it says so; Esc hides the window and keeps it; the trash button (under five
+# seconds here, so no question) is what drops it.
+press "${L_MIC}"
+wait_name "${L_RECORDING}" 10000 || fail "the recording bar did not show for the hide"
+sleep 3
+drive_raw capture '{"kind":"hide"}' > /dev/null
+wait_capture_hidden || fail "the capture window did not hide on the app's hide request"
+[ "$(voice_in_inbox)" = "$((BEFORE_NOTES + 2))" ] || fail "hiding the window saved the recording"
+show_capture
+wait_capture_says "${L_STOPPED}" 10 || fail "the kept recording is not there when the window comes back"
+shoot_capture 09-recording-kept-large
+drive "$(drive_window)" '{"kind":"key","key":"Escape"}'
+wait_capture_hidden || fail "Esc did not hide the window with a kept recording"
+show_capture
+wait_capture_says "${L_STOPPED}" 10 || fail "Esc discarded the kept recording"
+[ "$(voice_in_inbox)" = "$((BEFORE_NOTES + 2))" ] || fail "a kept recording was saved by Esc"
+press "${L_TRASH_REC}"
+for _ in $(seq 1 10); do capture_says "${L_STOPPED}" || break; sleep 1; done
+capture_says "${L_STOPPED}" && fail "the trash button did not drop the kept recording"
+[ "$(voice_in_inbox)" = "$((BEFORE_NOTES + 2))" ] || fail "a discarded kept recording was saved"
 drive "$(drive_window)" '{"kind":"key","key":"Escape"}'
 wait_capture_hidden || fail "Esc did not hide the idle capture window"
 edit_settings 'd["text_size"] = "normal"'
