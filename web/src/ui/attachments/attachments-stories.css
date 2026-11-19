@@ -22,17 +22,3 @@
   min-height: var(--layout-window-height);
   padding: var(--space-5);
 }
-
-/* The composer stand-in under the pending tiles. */
-.attachments-composer {
-  display: grid;
-  gap: var(--space-3);
-  box-sizing: border-box;
-  padding: var(--space-3);
-  border-radius: var(--radius-panel);
-  background: var(--color-surface-field);
-}
-
-.attachments-composer__field {
-  color: var(--color-text-tertiary);
-}
