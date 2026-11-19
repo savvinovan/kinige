@@ -1,0 +1,4 @@
+# The three details groups and the HLC record of one attachment (core is never printed: it holds the file key).
+{"name":"закат.jpg"}|{"description":"Закат над заливом, июль"}|{"spoiler":true}|{"core":{"h":"1795096809701-00013-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1},"deleted":{"h":"1795096809701-00013-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1},"description":{"h":"1795096809701-00015-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1},"name":{"h":"1795096809701-00014-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1},"order":{"h":"1795096809701-00013-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1},"privacy":{"h":"1795096809701-00016-21bf0495-f7ae-4fe6-8762-6a395932a2e1","sv":1}}
+# the same columns the window reads
+закат.jpg|Закат над заливом, июль|1
