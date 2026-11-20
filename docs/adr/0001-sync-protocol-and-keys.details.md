@@ -430,7 +430,7 @@ An account's profile only grows (§8.2). **Checked (S4b, 2026-11-06):** the two 
 - libsodium headers and sources (`stable`): `include/sodium/crypto_{aead_xchacha20poly1305,secretstream_xchacha20poly1305,pwhash_argon2id,kdf_blake2b,generichash_blake2b}.h`, `crypto_pwhash/argon2/pwhash_argon2id.c` (one lane), `configure.ac` (1.0.22): https://github.com/jedisct1/libsodium/tree/stable
 - Crates:
   - https://docs.rs/libsodium-rs/latest/libsodium_rs/ — 0.3.0 of 2026-10-14, the crate was created on 2025-04-04 (crates.io);
-  - https://github.com/jedisct1/libsodium-sys-stable — 1.24.3;
+  - https://github.com/jedisct1/libsodium-sys-stable — 1.24.3 at S4b, 1.24.4 since KINIG-109;
   - https://docs.rs/bip39/latest/bip39/struct.Mnemonic.html — 3.0.0, `parse_in_normalized`, `to_entropy`;
   - https://docs.rs/chacha20poly1305/ — 0.11;
   - `sodiumoxide` has been archived since 2022: https://github.com/sodiumoxide/sodiumoxide;
