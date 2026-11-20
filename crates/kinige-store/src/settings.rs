@@ -249,7 +249,7 @@ impl Store {
         Ok(())
     }
 
-    /// The copy folder changed (by the window or the settings file): the previous copy error is cleared, the writer wakes
+    /// The copy folder changed (by the settings window): the previous copy error is cleared, the writer wakes
     /// up and writes the days into the new folder at once, not after the next entry or a restart.
     pub(crate) fn mirror_dir_changed(&self) {
         self.inner.mirror.clear_error();

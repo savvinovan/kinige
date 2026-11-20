@@ -48,6 +48,8 @@ A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `7b`, `screens-driver-probe
 - The shell side is `drive`, `press`, `wait_name` and `has` in `lib.sh`; the PowerShell side is `Drive`, `Press`, `Wait-Name` and `Has` in `lib-windows.ps1`.
 - **Steps:** press, menu, type, key, wait, has, scroll, text, front, hide (`hide` is the capture window's own request to hide, done by the app; `front` on it is the app's real show). There is no script eval and no IPC passthrough.
 
+**Large text (KINIG-160, ADR-0022):** a scenario sets it with `set_text_size large|normal` from `lib.sh`, whatever its own input is. It sends driver steps (profile menu, "Settings", the radio button of the settings window) and checks the database, because there is no settings file to edit any more. `screens.yml` builds the driver for every scenario that uses it, and `prepare_app` always gives the app a driver directory. The settings window stays open afterwards (the driver has no step to close a window). Nothing in the app switches agent access on: a scenario that needs access sets `mcp_enabled`, `mcp_mode` and `mcp_chats` with `sqlite3` on its throwaway database (see `7b.sh`; `5d.sh` restores them in a `trap`).
+
 New scenarios use the driver. AX and SendKeys are for native UI only: file pickers, the tray and native menus, resizing the window. Global hotkeys are never simulated.
 
 ## Voice-note scenarios (slice 7a, ADR-0015)

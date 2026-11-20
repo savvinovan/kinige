@@ -1,4 +1,4 @@
-/* The "Settings" window (slice 4b): the window frame, a section page, subscreens, the "Настроить ›" row, the settings file. Tokens only.
+/* The "Settings" window (slice 4b): the window frame, a section page, subscreens, the "Настроить ›" row. Tokens only.
    The only scrollable area of the window is `.prefs__page`; everything else (the tree, lists, the log, code blocks) is shown
    in full, without its own scroll or a maximum height. The warning when enabling access is a `Modal` over the window: the page
    under it does not change its `overflow`, and its content does not shift even with "Always show scroll bars". */

@@ -96,7 +96,7 @@ impl Store {
     }
 
     /// Remembers how much of the forest is shown and whether it is the board or the calendar. Local, not synced, not
-    /// written to `settings.json`; both values are saved in one transaction.
+    /// readable by agents (ADR-0022); both values are saved in one transaction.
     pub fn set_forest_view(&self, view: ForestView, mode: ForestMode) -> Result<(), StoreError> {
         self.write(move |conn| {
             let tx = conn.transaction().map_err(write_err)?;
