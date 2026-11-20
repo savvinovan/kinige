@@ -203,12 +203,13 @@ describe("the Stickers tab", () => {
     // The grid scrolls: the sections report where they are (jsdom has no layout), and the mark follows the last one that reached the top.
     const scroll = dialog().querySelector(".sticker-panel__scroll") as HTMLElement;
     const sections = [...dialog().querySelectorAll<HTMLElement>(".sticker-panel__section")];
-    scroll.getBoundingClientRect = () => ({ top: 100 }) as DOMRect;
-    sections[0]!.getBoundingClientRect = () => ({ top: 20 }) as DOMRect;
-    sections[1]!.getBoundingClientRect = () => ({ top: 300 }) as DOMRect;
+    const at = (y: number) => () => ({ top: y }) as DOMRect;
+    scroll.getBoundingClientRect = at(100);
+    sections[0]!.getBoundingClientRect = at(20);
+    sections[1]!.getBoundingClientRect = at(300);
     fireEvent.scroll(scroll);
     expect(marked()).toEqual(["From Telegram"]);
-    sections[1]!.getBoundingClientRect = () => ({ top: 104 }) as DOMRect;
+    sections[1]!.getBoundingClientRect = at(104);
     fireEvent.scroll(scroll);
     expect(marked()).toEqual(["Cats"]);
     // The "+" is never marked.
