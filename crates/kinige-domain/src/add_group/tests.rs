@@ -39,11 +39,13 @@ fn legacy() -> (String, String) {
         display_name: None,
         description: None,
         spoiler: false,
+        sticker: false,
+        sticker_emoji: None,
     };
     let row = new_attachment(&input, &hlc(1_000)).unwrap();
     let mut groups: Map<String, serde_json::Value> = serde_json::from_str(&row.groups_raw).unwrap();
     let mut hlcs: Map<String, serde_json::Value> = serde_json::from_str(&row.hlc_json).unwrap();
-    for group in ["name", "description", "privacy"] {
+    for group in ["name", "description", "privacy", "sticker"] {
         groups.remove(group);
         hlcs.remove(group);
     }

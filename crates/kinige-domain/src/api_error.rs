@@ -92,6 +92,36 @@ pub enum ErrorCode {
     ReactionInvalid,
     /// The entry has 10 live reactions, or has had 32 different emoji, so another emoji cannot be put on it (slice 5a).
     ReactionLimit,
+    /// The sticker is not in the library or its file is gone (slice 5c).
+    StickerNotFound,
+    /// The library file is not a sticker any more (it fails the probe): it is never sent as a photo.
+    StickerUnreadable,
+    /// A sticker entry has no text and no details to edit, and is never appended to (slice 5c).
+    StickerEntryReadOnly,
+    /// The link is not a sticker pack link or a pack name.
+    StickerPackLinkInvalid,
+    /// No bot token is saved: the pack cannot be downloaded.
+    StickerPackNoToken,
+    /// Telegram has no pack with this name.
+    StickerPackNotFound,
+    /// Telegram did not accept the bot token.
+    StickerPackTokenRefused,
+    /// Telegram could not be reached (no network, a proxy, a TLS failure, a timeout).
+    StickerPackUnreachable,
+    /// Telegram asks to wait (HTTP 429); nothing is retried.
+    StickerPackWait,
+    /// The pack has only animated or video stickers.
+    StickerPackOnlyAnimated,
+    /// More than 200 stickers or 64 MiB: nothing was added.
+    StickerPackTooLarge,
+    /// Another pack is downloading: one job at a time.
+    StickerPackBusy,
+    /// Telegram answered something that is not a pack or a file.
+    StickerPackBadResponse,
+    /// The bot token is not of the form `<number>:<letters, digits, - and _>`.
+    TelegramTokenInvalid,
+    /// The OS secret store refused or is locked: the token is neither saved nor read (there is no file fallback).
+    SecretStoreUnavailable,
     Internal,
 }
 

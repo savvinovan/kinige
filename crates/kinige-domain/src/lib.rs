@@ -33,6 +33,7 @@ pub mod rewrite;
 pub mod search;
 pub mod settings_file;
 pub mod shortcuts;
+pub mod stickers;
 pub mod sync;
 pub mod tags;
 pub mod tasks;

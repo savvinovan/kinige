@@ -37,6 +37,8 @@ fn input() -> NewAttachment<'static> {
         display_name: Some("beach.jpg"),
         description: Some("Beach, July"),
         spoiler: true,
+        sticker: false,
+        sticker_emoji: None,
     }
 }
 
