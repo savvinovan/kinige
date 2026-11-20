@@ -207,7 +207,7 @@ fn the_sticker_shows_up_in_the_quote_the_copy_the_search_the_forest_and_to_an_ag
     // The quote: "Sticker" with the emoji, in the summary of the reply target.
     let reply = a
         .store
-        .send_reply(INBOX_ID, "ответ", Some(&sent.id), &now())
+        .send_reply(INBOX_ID, "ответ", Some(&sent.id), &moscow(T0 + MINUTE))
         .unwrap();
     let summary = &reply.reply_to.as_ref().unwrap().attachments;
     assert!(summary.sticker);

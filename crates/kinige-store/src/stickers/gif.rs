@@ -20,7 +20,7 @@ impl Store {
                      JOIN attachment_local l ON l.attachment_id = a.id AND l.state = 'local' \
                      WHERE a.kind = 'image' AND a.mime = 'image/gif' AND a.spoiler = 0 AND a.deleted_at IS NULL \
                        AND m.deleted_at IS NULL AND a.width IS NOT NULL AND a.height IS NOT NULL \
-                     ORDER BY m.created_at DESC, a.id",
+                     ORDER BY m.created_at DESC, a.rowid DESC",
                 )
                 .map_err(read_err)?;
             let rows = statement

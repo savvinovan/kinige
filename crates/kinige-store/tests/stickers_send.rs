@@ -273,7 +273,7 @@ fn a_gif_sent_again_is_a_new_attachment_with_a_fresh_blob_id_and_key_and_no_deta
         .unwrap();
     let source_id = original.attachments[0].id.clone();
     let again = store
-        .send_gif_again(INBOX_ID, &source_id, None, &now())
+        .send_gif_again(INBOX_ID, &source_id, None, &moscow(T0 + MINUTE))
         .unwrap();
     let copy = &again.attachments[0];
     assert_ne!(copy.id, source_id);

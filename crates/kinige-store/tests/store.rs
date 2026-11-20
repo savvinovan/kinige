@@ -56,6 +56,9 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
             "search_fts_docsize",
             "search_fts_idx",
             "search_map",
+            // The sticker library (migration 11): local, not synced.
+            "sticker",
+            "sticker_pack",
             "sync_state",
             "tombstone"
         ]
