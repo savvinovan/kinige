@@ -153,5 +153,28 @@ FAILS=0
 press 'Say "hi"' > /dev/null 2>&1
 expect_seen "a name with quotes is escaped" "\"name\":\"$FAKE_ESCAPED\""
 
+# ---- set_text_size (KINIG-160): the text size through the settings window, in a scenario whose own input is AX (DRIVER unset) ----
+sql() { printf '%s' "$STORED"; }
+: > "$WORK/seen"
+(DRIVER="" STORED=large; FAILS=0; set_text_size large > "$WORK/last-output" 2>&1; exit "$FAILS") || { echo "set_text_size large FAILS WRONGLY: $(cat "$WORK/last-output")"; PROBLEMS=$((PROBLEMS + 1)); }
+expect_seen "the profile menu is opened in the main window" '"window":"main","step":{"kind":"press","name":"Profile"}'
+expect_seen "Settings is pressed in the main window" '"window":"main","step":{"kind":"press","name":"Settings"}'
+expect_seen "the settings window is waited for" '"window":"settings","step":{"kind":"wait","name":"Large","role":"radio","timeoutMs":2000}'
+expect_seen "the radio button is pressed in the settings window" '"window":"settings","step":{"kind":"press","name":"Large","role":"radio"}'
+[ "$(grep -c '"kind"' "$WORK/seen")" = "4" ] || { echo "set_text_size sent more than four steps: $(cat "$WORK/seen")"; PROBLEMS=$((PROBLEMS + 1)); }
+if grep -E '"kind":"(type|key|hide)"' "$WORK/seen" > /dev/null; then
+  echo "set_text_size sent a step that is not a click"
+  PROBLEMS=$((PROBLEMS + 1))
+fi
+if grep -iE 'agent|access|доступ|Allow' "$WORK/seen" > /dev/null; then
+  echo "set_text_size touched agent access"
+  PROBLEMS=$((PROBLEMS + 1))
+fi
+# "Normal" is the default: a database that never held a size passes; any other value for either size is a scenario error.
+(STORED=""; FAILS=0; set_text_size normal > /dev/null 2>&1; exit "$FAILS") || { echo "set_text_size normal FAILS WRONGLY on an empty database"; PROBLEMS=$((PROBLEMS + 1)); }
+(STORED="normal"; FAILS=0; set_text_size large > /dev/null 2>&1; exit "$FAILS") && { echo "DOES NOT FAIL: the database stayed normal after 'large'"; PROBLEMS=$((PROBLEMS + 1)); }
+(STORED=""; FAILS=0; set_text_size large > /dev/null 2>&1; exit "$FAILS") && { echo "DOES NOT FAIL: an empty database after 'large'"; PROBLEMS=$((PROBLEMS + 1)); }
+(STORED="large"; FAILS=0; set_text_size huge > /dev/null 2>&1; exit "$FAILS") && { echo "DOES NOT FAIL: an unknown size"; PROBLEMS=$((PROBLEMS + 1)); }
+
 [ "$PROBLEMS" -eq 0 ] && echo "lib.sh: checks passed"
 exit "$PROBLEMS"
