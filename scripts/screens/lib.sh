@@ -204,6 +204,27 @@ focus_on() {
   sleep "$PAUSE"
 }
 
+# `hover_on <text> [role] [nth]` / `hover_off <text> [role] [nth]`: the pointer onto an element and off it (the driver's `hover` step, KINIG-138): the
+# events a real pointer sends, nothing pressed or focused. It is how a scenario shows what the page shows on hover (an entry's action row). The driver only.
+hover_step() {
+  local leave="$1" result query
+  shift
+  if [ "$DRIVER" != "1" ]; then
+    echo "hover $*: needs the screens driver"
+    fail "no hover without the driver: $*"
+    return 0
+  fi
+  query="$(driver_query "$1" "${2:-}")"
+  [ -n "${3:-}" ] && query="$query,\"nth\":$3"
+  [ "$leave" = "1" ] && query="$query,\"leave\":true"
+  if drive "$(drive_window)" "{\"kind\":\"hover\",$query}"; then result=done; else result="$DRIVE_ERROR"; fi
+  echo "hover$([ "$leave" = "1" ] && echo " off") $*: $result"
+  [ "$result" = "done" ] || fail "hover step failed: $*"
+  sleep "$PAUSE"
+}
+hover_on() { hover_step 0 "$@"; }
+hover_off() { hover_step 1 "$@"; }
+
 # A right click without a mouse: the AX action AXShowMenu on a button, or the driver's `contextmenu` event (the context menu of a sidebar
 # chat opens).
 show_menu() {

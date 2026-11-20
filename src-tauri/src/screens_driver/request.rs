@@ -99,6 +99,18 @@ pub enum Step {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         nth: Option<u32>,
     },
+    /// The pointer moves onto the element, or off it with `leave` (KINIG-138): the page gets `pointerover`, `pointerenter` and `pointermove` (or
+    /// `pointerout` and `pointerleave`) along the element's ancestors, as a real pointer would send them, and nothing is pressed or focused. It is how
+    /// a scenario shows what the page shows on hover (an entry's action row, which is driven by those events), because the runner has no pointer.
+    Hover {
+        name: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        role: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        nth: Option<u32>,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        leave: bool,
+    },
     // Struct variants, not unit ones: serde ignores `deny_unknown_fields` for a unit variant of a tagged enum.
     Text {},
     Front {},
@@ -256,6 +268,7 @@ pub fn parse_request(file_id: &str, bytes: &[u8]) -> Result<Request, Reject> {
                 | "has"
                 | "scroll"
                 | "focus"
+                | "hover"
                 | "text"
                 | "front"
                 | "hide"
@@ -287,6 +300,9 @@ impl Step {
             Step::Press { name, role, nth }
             | Step::Menu { name, role, nth }
             | Step::Focus { name, role, nth }
+            | Step::Hover {
+                name, role, nth, ..
+            }
             | Step::Scroll { name, role, nth } => name_ok(name) && role_ok(role) && nth_ok(nth),
             Step::Type { name, text } => {
                 name.as_deref().is_none_or(name_ok) && text.chars().count() <= MAX_TYPED_CHARS

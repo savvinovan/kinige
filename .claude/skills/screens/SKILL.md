@@ -46,8 +46,9 @@ A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `7b`, `5a`, `screens-driver
 **How a step runs:**
 - The script writes `requests/<id>.json` into `KINIGE_SCREENS_DRIVER_DIR`, and the app answers in `replies/<id>.json`.
 - The shell side is `drive`, `press`, `wait_name` and `has` in `lib.sh`; the PowerShell side is `Drive`, `Press`, `Wait-Name` and `Has` in `lib-windows.ps1`.
-- **Steps:** press, menu, type, key, wait, has, scroll, focus, text, front, hide (`hide` is the capture window's own request to hide, done by the app; `front` on it is the app's real show). There is no script eval and no IPC passthrough.
-- **`focus`** (KINIG-138) puts the keyboard focus on an element and sends no pointer event. A script cannot hover, so it is how a scenario shows UI that appears with the focus inside it, such as an entry's hover bar. In `lib.sh` it is `focus_on <text> [role] [nth]`.
+- **Steps:** press, menu, type, key, wait, has, scroll, focus, hover, text, front, hide (`hide` is the capture window's own request to hide, done by the app; `front` on it is the app's real show). There is no script eval and no IPC passthrough.
+- **`focus`** (KINIG-138) puts the keyboard focus on an element and sends no pointer event: it shows UI that appears with the focus inside it, such as an entry's hover bar as the keyboard shows it (name such a shot after the keyboard). In `lib.sh` it is `focus_on <text> [role] [nth]`.
+- **`hover`** (KINIG-138) moves the pointer onto an element, or off it with `"leave":true`: the page gets `pointerover`, `pointerenter` along the ancestors (outermost first) and `pointermove`, or `pointerout` and `pointerleave`, as a real pointer sends them; nothing is pressed or focused. It shows what the page draws on hover when the page's hover logic listens for those events (an entry's hover bar); it does not set the CSS `:hover` state. In `lib.sh`: `hover_on` and `hover_off <text> [role] [nth]`.
 
 New scenarios use the driver. AX and SendKeys are for native UI only: file pickers, the tray and native menus, resizing the window. Global hotkeys are never simulated.
 

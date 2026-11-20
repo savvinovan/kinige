@@ -63,7 +63,7 @@ labels() {
   if [ "$UI" = "ru" ]; then
     L_INBOX="Входящие"; L_TRASH="Корзина"; L_SEARCH="Поиск"; L_NONE="Ничего не найдено."; L_RESULTS="Результаты поиска"
     L_HEART_BTN="Реакция $HEART"; L_ADD="Поставить реакцию"; L_ADD_CARD="Поставить реакцию на запись"; L_DIALOG="Выбор реакции"; L_MORE="Ещё эмодзи"
-    L_ADD_ITEM="Поставить реакцию…"; L_LATE="1 год спустя"; L_REACT_WORD="Реакция"; L_EMOJI_SEARCH="Найти эмодзи"; L_FIRE_WORD="огонь"
+    L_ADD_ITEM="Поставить реакцию…"; L_LATE="1 год спустя"; L_REACT_WORD="Реакция"; L_EMOJI_SEARCH="Найти эмодзи"; L_FIRE_WORD="Огонь"
     L_LIMIT="На записи не больше 10 реакций"
   else
     L_INBOX="Inbox"; L_TRASH="Trash"; L_SEARCH="Search"; L_NONE="Nothing found."; L_RESULTS="Search results"
@@ -160,12 +160,19 @@ rows_block "before any reaction of the scenario"
 # 01: the bar of the entry that has none: three quick emoji, "Add reaction", a divider, then the usual buttons. (The entry's own words are also the
 # first words of an entry of a past year, so the scroll goes to the next entry, which is only today's.)
 scroll_to "Идея для приложения"
-focus_on "$L_HEART_BTN" button "$FIRST_OF_TODAY"
+hover_on "$L_HEART_BTN" button "$FIRST_OF_TODAY"
 sleep 2
 shoot 01-hover-bar
 has "$L_ADD" || fail "the bar has no Add reaction button"
+# 01b: the same bar shown by the keyboard (the pointer is off the entry, the focus is inside it), which is what Tab does.
+hover_off "$L_HEART_BTN" button "$FIRST_OF_TODAY"
+sleep 1
+focus_on "$L_HEART_BTN" button "$FIRST_OF_TODAY"
+sleep 2
+shoot 01b-keyboard-focus-bar
 
 # ---- 2. A click on the heart: a chip under the text, nothing flies, no toast ----
+hover_on "$L_HEART_BTN" button "$FIRST_OF_TODAY"
 press_nth "$L_HEART_BTN" "$FIRST_OF_TODAY" button
 sleep 3
 [ "$(live_rows "$AWAKE")" = "1" ] || fail "the click on the heart did not put a reaction on the entry (index $FIRST_OF_TODAY of $COUNT)"
@@ -177,17 +184,20 @@ has "Снять" || has "Remove" || fail "no chip is on screen after the click"
 focus_on "$L_ADD" button "$FIRST_OF_TODAY"
 press_nth "$L_ADD" "$FIRST_OF_TODAY" button
 wait_name "$L_DIALOG" 10000 || fail "the picker did not open"
+sleep 1
+shoot 03-picker
+# The search for the fire; the name is matched as written (a capital letter: "Огонь" is the fire, "Бенгальский огонь" a sparkler).
 type_into "$L_EMOJI_SEARCH" "$L_FIRE_WORD"
 sleep 2
-shoot 03-picker
+shoot 03b-picker-search
 press "$L_FIRE_WORD" gridcell
 sleep 3
+PICKED="🔥"
+[ "$(sqlw "select count(*) from message_reaction where message_id = '$AWAKE' and emoji = '$PICKED'")" = "1" ] || fail "the pick from the picker is not the fire (or put nothing)"
 [ "$(live_rows "$AWAKE")" = "2" ] || fail "the pick from the picker did not put a second reaction"
 wait_name "$L_DIALOG" 10000 gone || fail "the picker did not close after a pick"
 rows_block "after the pick"
-# Whichever emoji the search put first: the popover below offers it, as the latest of the recent ones.
-PICKED="$(sqlw "select emoji from message_reaction where message_id = '$AWAKE' and key != '$(sqlw "select key from message_reaction where message_id = '$AWAKE' order by put_at limit 1")' limit 1")"
-[ -n "$PICKED" ] || fail "no second emoji in the entry's rows"
+# The fire is now the latest of the recent reactions: the card's popover below offers it.
 L_PICKED_BTN="$L_REACT_WORD $PICKED"
 
 # ---- 4. Several chips, the late one: the card's entry carries "1 year later" ----
@@ -197,7 +207,8 @@ shoot 04-several-chips
 has "$L_LATE" || fail "no chip says it was put a year later"
 
 # ---- 5. The card: the smile button, the small popover, a pick, the chip under the entry ----
-scroll_to "$L_ADD_CARD"
+# The scroll goes to the second year of the card, so the first entry (and its smile button) stands in the middle of the view and the popover has room.
+scroll_to "3 года назад"
 focus_on "$L_ADD_CARD" button 0
 press_nth "$L_ADD_CARD" 0 button
 wait_name "$L_DIALOG" 10000 || fail "the card's popover did not open"

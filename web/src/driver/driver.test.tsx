@@ -126,6 +126,25 @@ describe("press, menu, scroll", () => {
     expect(missing.ok).toBe(false);
   });
 
+  it("hovers: pointerover, pointerenter down the ancestors and pointermove, and off it pointerout and pointerleave; no press, focus or click (KINIG-138)", async () => {
+    page(`<ul><li id="row"><div id="bubble"><button aria-label="React">r</button></div></li></ul>`);
+    const seen: string[] = [];
+    const log = (type: string) => (event: Event) => seen.push(`${type}:${(event.currentTarget as Element).id || (event.currentTarget as Element).tagName}`);
+    for (const id of ["row", "bubble"]) {
+      for (const type of ["pointerenter", "pointerleave", "pointerover", "pointerout", "pointerdown", "mousedown", "click", "focusin"]) {
+        document.getElementById(id)?.addEventListener(type, log(type));
+      }
+    }
+    expect(await runStep({ kind: "hover", name: "React" }, FAST)).toEqual({ ok: true });
+    // The outer element is entered first; `pointerover` bubbles up from the button.
+    expect(seen).toEqual(["pointerover:bubble", "pointerover:row", "pointerenter:row", "pointerenter:bubble"]);
+    expect(document.activeElement).toBe(document.body);
+    seen.length = 0;
+    expect(await runStep({ kind: "hover", name: "React", leave: true }, FAST)).toEqual({ ok: true });
+    expect(seen).toEqual(["pointerout:bubble", "pointerout:row", "pointerleave:bubble", "pointerleave:row"]);
+    expect((await runStep({ kind: "hover", name: "Nothing" }, FAST)).ok).toBe(false);
+  });
+
   it("says when an element cannot take the focus", async () => {
     page(`<p aria-label="Row">Row</p>`);
     const answer = await runStep({ kind: "focus", name: "Row" }, FAST);
