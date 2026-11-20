@@ -78,7 +78,7 @@ Telegram Desktop keeps every setting inside its settings panel, with no file to 
 | 1. No file controls, nothing read | vitest: no "Settings file" item, no `getSettingsFile` call; shot `01`                 |
 | 1. `settings.json` untouched      | store test: a start leaves its bytes and mtime; `untouched-file.txt` from the runner  |
 | 2. Text size by an agent          | store and MCP server tests; `mcp-session.txt`; shots `03`, `07` without a restart     |
-| 3. Shortcuts read-only            | `setting_not_writable`, no `register` on the fake registrar, `app_setting` unchanged  |
+| 3. Shortcuts read-only            | `setting_not_writable`, `app_setting` unchanged; no path to `Hotkeys` (by design)     |
 | 4. Access and folder refused      | per forbidden key: `setting_not_writable`, `app_setting` unchanged, one log row       |
 | Raw key names refused             | every `app_setting` key name and case or space variant: table byte-identical          |
 | 5. Modes and access off           | `read` gets `mcp_read_only`, off gets `mcp_disabled`; `tools/list` 6 and 10           |
