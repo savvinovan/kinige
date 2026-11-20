@@ -1,2 +1,2 @@
-A photo was shown, the window was closed (to the menu bar) and shown again; the process is the same (pid 12726).
+A photo was shown, the window was closed (to the menu bar) and shown again; the process is the same (pid 7672).
 no Hide button: the photo is covered again
