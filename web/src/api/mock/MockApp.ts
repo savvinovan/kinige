@@ -16,6 +16,7 @@ export class MockApp {
   /** A restart for the restore was requested. */
   restartRequested = false;
   private readonly corruptListeners = new Set<() => void>();
+  private readonly hidingListeners = new Set<() => void>();
 
   constructor(private readonly s: MockState) {}
 
@@ -64,6 +65,18 @@ export class MockApp {
   /** Like the "integrity check found corruption" event. */
   emitDatabaseCorrupt(): void {
     for (const handler of [...this.corruptListeners]) handler();
+  }
+
+  onMainWindowHiding(handler: () => void): Promise<() => void> {
+    this.hidingListeners.add(handler);
+    return Promise.resolve(() => {
+      this.hidingListeners.delete(handler);
+    });
+  }
+
+  /** Like the Rust event sent when the main window is closed (hidden) by the red button or ⌘W. */
+  emitMainWindowHiding(): void {
+    for (const handler of [...this.hidingListeners]) handler();
   }
 
   restartForRecovery(): Promise<void> {

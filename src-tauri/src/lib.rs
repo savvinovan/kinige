@@ -17,6 +17,7 @@ pub mod guard;
 pub mod hotkeys;
 pub mod import;
 pub mod logging;
+pub mod main_window;
 pub mod media_protocol;
 // The MCP server is a Unix socket (ADR-0009). Without Unix (Windows, slice 10a) a stub with the same surface stands in:
 // there is no socket and the "AI agent access" page sees `unsupported`.
@@ -231,15 +232,14 @@ pub(crate) fn resume_after_restore<R: Runtime>(app: &AppHandle<R>) -> Result<(),
         .map_err(StoreError::Internal)
 }
 
-/// Closing the main window hides it, the app lives in the menu bar; closing the capture window is the same as Esc.
+/// Closing the main window hides it (and stops a recording, `main_window.rs`), the app lives in the menu bar; closing the capture window is the same as Esc.
 /// Public so that the IPC tests can send a window a drop (only `main` leaves a token).
 pub fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
     #[cfg(feature = "screens-driver")]
     screens_driver::on_window_event(window, event);
     match (window.label(), event) {
         (MAIN_LABEL, WindowEvent::CloseRequested { api, .. }) => {
-            api.prevent_close();
-            let _ = window.hide();
+            main_window::on_close_requested(window, api)
         }
         // Files dragged over the main window: the overlay and, on a drop, a token (slice 7). Other windows ignore drops.
         (MAIN_LABEL, WindowEvent::DragDrop(event)) => {

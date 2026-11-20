@@ -33,6 +33,7 @@ const QUOTE: ReplyTo = {
   excerpt: "Проснулся рано, до завтрака записал мысль про журнал.",
   state: "live",
   yearsLater: 0,
+  attachments: { photos: 0, files: 0, voices: 0, voiceMs: null, name: null },
 };
 
 function pane(view: "strip" | "expanded") {
