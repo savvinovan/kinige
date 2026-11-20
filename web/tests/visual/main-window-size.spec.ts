@@ -34,6 +34,13 @@ for (const scale of ["default", "large"]) {
           wider: root.scrollWidth - innerWidth,
           taller: root.scrollHeight - innerHeight,
           composer: inside(".composer"),
+          // The field is the top element at its own centre: a feed squeezed to nothing must not paint or catch clicks over it (the real window at 372 px
+          // inner height, KINIG-76 screens, had the last entry over the field).
+          uncovered: (() => {
+            const box = document.querySelector<HTMLElement>(".composer")?.getBoundingClientRect();
+            const hit = box ? document.elementFromPoint(box.left + box.width / 2, box.top + 20) : null;
+            return Boolean(hit?.closest(".composer"));
+          })(),
           toggle: inside(".forest-toggle"),
           title: inside(".main-window__title"),
         };
@@ -41,6 +48,7 @@ for (const scale of ["default", "large"]) {
       expect(metrics.wider).toBeLessThanOrEqual(0);
       expect(metrics.taller).toBeLessThanOrEqual(0);
       expect(metrics.composer).toBe(true);
+      expect(metrics.uncovered).toBe(true);
       expect(metrics.toggle).not.toBe(false);
       expect(metrics.title).toBe(true);
     });
@@ -68,6 +76,20 @@ for (const scale of ["default", "large"]) {
     });
   }
 }
+
+// A window 28 px lower than the smallest (the runner's 400 px outer window has a 372 px page, the title bar taking the rest): the expanded board still
+// leaves the field whole and uncovered, the feed gives way to nothing and shows nothing over it. Fails without `overflow: hidden` on `.feed-pane`.
+test("the expanded board at 372 px of height at large text: the feed squeezed to nothing paints nothing over the field", async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 372 });
+  await open(page, FOREST("expanded-above-the-feed"), "large");
+  const hit = await page.evaluate(() => {
+    const box = document.querySelector<HTMLElement>(".composer")!.getBoundingClientRect();
+    const top = document.elementFromPoint(box.left + box.width / 2, box.top + 20);
+    return { composerBottom: box.bottom - innerHeight, covered: !top?.closest(".composer"), by: String(top?.className ?? "") };
+  });
+  expect(hit.composerBottom).toBeLessThanOrEqual(0);
+  expect(hit.covered, hit.by).toBe(false);
+});
 
 // The same bar for every title and for both states of the forest: the switch's box does not move (KINIG-150).
 test("the forest switch is in the same place and the bar has the same height for Inbox, a 200-character name, shown and hidden", async ({ page }) => {
