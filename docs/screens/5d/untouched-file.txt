@@ -1,0 +1,6 @@
+# A synthetic settings.json planted before the first launch, an old temporary file of Kinige's own and a look-alike.
+settings.json before: sha256 e54f7dde51448c4465a2fd33be89bc5dfe462f6bfc2520172e3ea0772187591c, mtime 1767323040, bytes 120
+settings.json after:  sha256 e54f7dde51448c4465a2fd33be89bc5dfe462f6bfc2520172e3ea0772187591c, mtime 1767323040, bytes 120
+.settings.json.<32 hex>.tmp: removed
+hyphenated look-alike: kept
+text_size in the database: large
