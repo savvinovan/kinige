@@ -1,5 +1,5 @@
-//! The settings window (slice 4b, ADR-0010) through IPC on a mock runtime with the real capabilities: the "window -> commands" matrix,
-//! negative tests, the `settings-changed` and `open-message` events, the "Settings file".
+//! The settings window (slice 4b, ADR-0022) through IPC on a mock runtime with the real capabilities: the "window -> commands" matrix,
+//! negative tests, the `settings-changed` and `open-message` events, and `get_settings_file` unknown to every window.
 
 // The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
 // of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
@@ -115,7 +115,6 @@ fn the_main_window_lost_the_moved_commands_and_keeps_get_settings_and_the_new_op
         "set_agent_chats",
         "list_agent_log",
         "list_agent_log_entries",
-        "get_settings_file",
         "settings_open_entry",
     ] {
         assert!(!MAIN_COMMANDS.contains(&command), "{command}");
@@ -208,27 +207,27 @@ fn an_edit_from_the_settings_window_notifies_both_windows_but_not_the_capture_wi
         call(&main, "get_settings", json!({})).unwrap()["textSize"],
         "large"
     );
-    // The text size got into the file too.
-    let text = std::fs::read_to_string(fixture.data.path().join("settings.json")).unwrap();
-    assert!(text.contains("\"text_size\": \"large\""), "{text}");
+    // Nothing is written next to the database: the settings live only in SQLite (ADR-0022).
+    assert!(!fixture.data.path().join("settings.json").exists());
 }
 
 #[test]
-fn the_settings_file_state_reports_the_path_and_a_broken_file() {
+fn the_settings_file_command_is_gone_from_every_window_and_every_list() {
     let fixture = fixture();
-    let settings = window(&fixture, "settings");
-    let state = call(&settings, "get_settings_file", json!({})).unwrap();
+    for label in ["main", "settings", "capture"] {
+        let window = window(&fixture, label);
+        let error = call(&window, "get_settings_file", json!({})).unwrap_err();
+        assert!(is_acl_denial(&error), "{label}: {error}");
+    }
+    for list in [COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS, CAPTURE_COMMANDS] {
+        assert!(!list.contains(&"get_settings_file"));
+    }
     assert_eq!(
-        state["path"],
-        fixture
-            .data
-            .path()
-            .join("settings.json")
-            .to_string_lossy()
-            .as_ref()
+        CAPTURE_COMMANDS.len(),
+        10,
+        "the capture window keeps its ten"
     );
-    assert_eq!(state["problem"], Value::Null);
-    assert_eq!(state["issues"], json!([]));
+    assert_eq!(CAPTURE_COMMANDS, CAPTURE_SET);
 }
 
 #[test]

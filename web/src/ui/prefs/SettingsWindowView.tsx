@@ -4,7 +4,6 @@ import type { AgentLogEntry } from "../../api/generated/AgentLogEntry";
 import type { AgentMode } from "../../api/generated/AgentMode";
 import type { Language } from "../../api/generated/Language";
 import type { Settings } from "../../api/generated/Settings";
-import type { SettingsFileState } from "../../api/generated/SettingsFileState";
 import type { ShortcutKind } from "../../api/generated/ShortcutKind";
 import type { TextSize } from "../../api/generated/TextSize";
 import type { AgentLogView } from "../agents/AgentLog";
@@ -14,7 +13,6 @@ import { AccessChatsPage } from "./pages/AccessChatsPage";
 import { AccessLogPage } from "./pages/AccessLogPage";
 import { AccessPage } from "./pages/AccessPage";
 import { AppearancePage } from "./pages/AppearancePage";
-import { FilePage } from "./pages/FilePage";
 import { MirrorPage } from "./pages/MirrorPage";
 import { ShortcutsPage } from "./pages/ShortcutsPage";
 import { type Route, parentOf } from "./routes";
@@ -25,7 +23,6 @@ export interface SettingsWindowViewProps {
   onNavigate: (route: Route) => void;
   settings: Settings;
   access: AgentAccess;
-  file: SettingsFileState;
   log: AgentLogView;
   language: Language;
   /** "Now" for time marks; by default the window clock. Fixed in tests and stories. */
@@ -60,13 +57,11 @@ export interface SettingsWindowViewProps {
  * over the window. The subscreens ("Видимые чаты", "Журнал обращений") open from "Доступ ИИ-агентов" and are highlighted in the tree.
  */
 export function SettingsWindowView(props: SettingsWindowViewProps) {
-  const { onNavigate, file, access, now } = props;
+  const { onNavigate, access, now } = props;
   // Windows has no AI-agent access yet: the access page stands alone, without "Visible chats" and "Access log".
   const accessUnavailable = access.socket.error === "unsupported";
   const route: Route = accessUnavailable && parentOf(props.route) === "access" ? "access" : props.route;
   const without: Route[] = accessUnavailable ? ["access/chats", "access/log"] : [];
-  const changed = file.changed;
-  const problems: Route[] = file.problem || file.unsafeReason || file.issues.length > 0 ? ["file"] : [];
   const back = () => onNavigate(parentOf(route));
   // One scrollable block for all pages: on every navigation (the tree, "Настроить ›", "back") the page opens
   // at the top, not where the previous one stopped. (Recreating the block by the route `key` was checked with screenshots on the runner:
@@ -77,12 +72,10 @@ export function SettingsWindowView(props: SettingsWindowViewProps) {
   }, [route]);
   return (
     <div className="prefs">
-      <SettingsTree route={route} onNavigate={onNavigate} withProblems={problems} defaultExpanded={props.treeExpanded} without={without} />
+      <SettingsTree route={route} onNavigate={onNavigate} defaultExpanded={props.treeExpanded} without={without} />
       <main className="prefs__page" ref={page}>
         <div className="prefs__column">
-          {route === "appearance" ? (
-            <AppearancePage textSize={props.settings.textSize} onTextSizeChange={props.onTextSizeChange} changedAt={changed.appearance} now={now} />
-          ) : null}
+          {route === "appearance" ? <AppearancePage textSize={props.settings.textSize} onTextSizeChange={props.onTextSizeChange} /> : null}
           {route === "shortcuts" ? (
             <ShortcutsPage
               shortcuts={props.settings.shortcuts}
@@ -90,8 +83,6 @@ export function SettingsWindowView(props: SettingsWindowViewProps) {
               onChange={props.onShortcutChange}
               onReset={props.onShortcutReset}
               onRecording={props.onShortcutRecording}
-              changedAt={changed.shortcuts}
-              now={now}
             />
           ) : null}
           {route === "mirror" ? (
@@ -100,7 +91,6 @@ export function SettingsWindowView(props: SettingsWindowViewProps) {
               choosing={props.choosing}
               actionError={props.pickError}
               onChooseFolder={props.onChooseFolder}
-              changedAt={changed.mirror}
               now={now}
             />
           ) : null}
@@ -111,12 +101,10 @@ export function SettingsWindowView(props: SettingsWindowViewProps) {
               onEnabledChange={props.onEnabledChange}
               onModeChange={props.onModeChange}
               onOpen={onNavigate}
-              changedAt={changed.access}
-              now={now}
             />
           ) : null}
           {route === "access/chats" ? (
-            <AccessChatsPage chats={access.chats} disabled={!access.enabled} onToggle={props.onChatToggle} onBack={back} changedAt={changed.access} now={now} />
+            <AccessChatsPage chats={access.chats} disabled={!access.enabled} onToggle={props.onChatToggle} onBack={back} />
           ) : null}
           {route === "access/log" ? (
             <AccessLogPage
@@ -129,7 +117,6 @@ export function SettingsWindowView(props: SettingsWindowViewProps) {
               onBack={back}
             />
           ) : null}
-          {route === "file" ? <FilePage file={file} /> : null}
         </div>
       </main>
       {props.warning ? <EnableWarning onConfirm={props.onConfirmEnable} onCancel={props.onCancelEnable} /> : null}

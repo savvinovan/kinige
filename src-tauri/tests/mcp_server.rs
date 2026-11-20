@@ -21,12 +21,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 use tauri::{Listener, Manager};
 
-const READ_TOOLS: [&str; 5] = [
+const READ_TOOLS: [&str; 6] = [
     "list_chats",
     "search",
     "get_entries",
     "on_this_day",
     "get_entry",
+    "get_settings",
 ];
 
 fn log_tools(mcp: &Mcp) -> Vec<(String, String, String)> {
@@ -79,11 +80,11 @@ fn handshake_lists_tools_by_mode_and_two_clients_work_at_once() {
         (ha.join().unwrap(), hb.join().unwrap())
     });
     assert!(!ra.0 && !rb.0);
-    // The "read and write" mode gives all eight tools (after a new connection).
+    // The "read and write" mode gives all ten tools (after a new connection).
     mcp.store().set_agent_mode(AgentMode::ReadWrite).unwrap();
     let mut c = mcp.client();
     c.handshake("Client C");
-    assert_eq!(c.tool_names().len(), 8);
+    assert_eq!(c.tool_names().len(), 10);
     // The log: one connect row per client.
     let connects = log_tools(&mcp)
         .into_iter()
@@ -112,7 +113,7 @@ fn disabled_access_shows_only_the_tools_and_instructions_and_refuses_every_call(
     assert!(hello["result"]["instructions"].is_string());
     assert_eq!(
         client.tool_names().len(),
-        8,
+        10,
         "the list is visible, it holds no data"
     );
     for (tool, arguments) in [
@@ -285,7 +286,7 @@ fn journal_unavailable_when_corruption_was_found() {
         "{text}"
     );
     // The tool list stays (it holds no data).
-    assert_eq!(client.tool_names().len(), 5);
+    assert_eq!(client.tool_names().len(), 6);
 }
 
 #[test]

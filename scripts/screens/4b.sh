@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Shots of slice 4b (the Settings window and the settings.json file) in the real window on the macOS runner: scripts/screens/4b.sh <built Kinige.app>.
+# Shots of slice 4b (the Settings window) in the real window on the macOS runner: scripts/screens/4b.sh <built Kinige.app>.
 # The data is synthetic (seed_demo) in a temporary directory; the real database is not touched. The result is $OUT (docs/screens/4b).
-# Input is accessibility actions only (ax.js): no mouse, no keyboard, no global shortcuts. The settings file is edited
-# by the scenario itself (as an "editor" or an agent): a temporary file next to it and mv, the way editors do.
+# Input is accessibility actions only (ax.js): no mouse, no keyboard, no global shortcuts. Since KINIG-160 the settings file is gone:
+# the shots of its page (08, 09, 09b, 11, 12) and `settings-file.txt` were deleted (git history keeps them), and the large text is set in the window.
 set -u
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 K="${K:-${RUNNER_TEMP:-/tmp}/kinige-screens}"
@@ -12,7 +12,6 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 # shellcheck source=lib.sh
 . "$REPO/scripts/screens/lib.sh"
 
-SETTINGS_FILE="$K/data/settings.json"
 SOCKET="$K/data/mcp/kinige.sock"
 BRIDGE="$APP/Contents/MacOS/kinige-mcp"
 INBOX="00000000-0000-4000-8000-000000000001"
@@ -24,32 +23,6 @@ cargo run --release -q -p kinige-store --example seed_demo -- "$K/data" "$K/mirr
 prepare_app "$SOURCE_APP"
 WORK="$(chat_id 'Работа')"
 BOOKS="$(chat_id 'Книги')"
-
-# Editing the file "from outside": a temporary file and mv (mode 0600). The argument is the content.
-write_settings() {
-  printf '%s' "$1" > "$K/data/.editor.tmp"
-  chmod 600 "$K/data/.editor.tmp"
-  mv "$K/data/.editor.tmp" "$SETTINGS_FILE"
-  sleep 4
-}
-
-# Editing the file through python: the code changes the dictionary d.
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
-}
 
 setting() { sql "select value from app_setting where key = '$1'"; }
 
@@ -140,74 +113,25 @@ press "Access log"
 scroll_to "Show more"
 shoot_settings 07-access-log-long
 
-# ---- 6. A settings file without errors; the file before and after an edit from the window ----
-press "Settings file"
-shoot_settings 08-file-ok
-{
-  echo "# settings.json: a synthetic file on the runner. The file permissions (ls -l) and the content."
-  echo "== as the app wrote it =="
-  ls -l "$SETTINGS_FILE"
-  cat "$SETTINGS_FILE"
-} > "$OUT/settings-file.txt"
-# A foreign key in the file (an "agent" added a note): the app keeps it even after an edit from the window.
-edit_settings 'd["x_my_note"] = "keep me"'
-press "Appearance"
-press "Large"
-sleep 3
-{
-  echo
-  echo "== a foreign key x_my_note was added to the file; \"Large\" was selected in the window =="
-  ls -l "$SETTINGS_FILE"
-  cat "$SETTINGS_FILE"
-} >> "$OUT/settings-file.txt"
-grep -q '"x_my_note": "keep me"' "$SETTINGS_FILE" && grep -q '"text_size": "large"' "$SETTINGS_FILE" || fail "the edit from the window lost the foreign key or was not written"
-[ "$(stat -f %Lp "$SETTINGS_FILE")" = "600" ] || fail "the file mode is not 0600"
-press "Normal"
-sleep 3
-edit_settings 'd.pop("x_my_note", None)'
-
-# ---- 7. An external edit: the text size and the chat "Работа" in the agent access ----
-cp "$SETTINGS_FILE" "$K/debug/settings-good.json"
-edit_settings 'd["text_size"] = "large"; d["agent_access"]["chats"].append({"title": "Работа"})'
-{
-  echo
-  echo "== an external edit: text_size = large, the chat \"Работа\" was added to agent_access.chats (by title) =="
-  cat "$SETTINGS_FILE"
-} >> "$OUT/settings-file.txt"
-[ "$(setting text_size)" = "large" ] || fail "text_size from the file was not applied"
-sql "select value from app_setting where key = 'mcp_chats'" | grep -q "$WORK" || fail "the chat from the file is not marked"
+# ---- 6. Large text, set the way a person sets it (KINIG-160, ADR-0022: there is no settings file) ----
+# The helper opens the settings window with the screens driver, goes to Appearance (the window was left on the access log) and presses
+# "Large"; it ends with the main window in front, so this scenario brings the settings window forward again for its own steps.
+set_text_size large
+in_settings
+drive_raw settings '{"kind":"front"}' > /dev/null
+sleep 1
 press "AI agent access"
-has "Changed via settings.json" || fail "no \"Changed via settings.json\" line"
-shoot_settings 09-after-external-edit
+has "settings.json" && fail "the window mentions settings.json"
+has "Changed via" && fail "a \"Changed via\" line is shown"
 press "Access log"
-has "access changed" || fail "the log has no \"settings.json · access changed\" line"
-shoot_settings 09b-access-log-after-edit
+shoot_settings 09b-access-log
 shoot_main 10-main-large-text
 
-# ---- 8. The file cannot be parsed ----
-write_settings '{"text_size": '
-press "Settings file"
-has "could not be read" || fail "no \"file could not be read\" message"
-shoot_settings 11-file-unreadable
-[ "$(setting text_size)" = "large" ] || fail "the broken file changed the settings"
-
-# ---- 9. Errors of several keys ----
-write_settings '{"text_size":"huge","shortcuts":{"capture":"???"},"mirror":{"folder":"relative/path"},"agent_access":{"mode":"write","chats":[{"id":"no-such-chat"}]},"surprise":1}'
-has "text_size: this value is not allowed" || fail "no text_size error"
-has "shortcuts.capture: this shortcut cannot be used" || fail "no shortcut error"
-has "mirror.folder: the folder path must be absolute" || fail "no mirror folder error"
-has "agent_access.mode: this value is not allowed" || fail "no mode error"
-has "agent_access.chats[0]: no such chat" || fail "no chat error"
-has "surprise" || fail "no warning about the unknown key"
-shoot_settings 12-file-key-errors
-[ "$(setting text_size)" = "large" ] || fail "the key errors changed the settings"
-write_settings "$(cat "$K/debug/settings-good.json" | python3 -c 'import json,sys; d=json.load(sys.stdin); d["text_size"]="large"; print(json.dumps(d))')"
-
-# ---- 10. Large text ----
+# ---- 7. Large text in the settings window itself ----
 press "AI agent access"
 shoot_settings 13-large-text
 
-# ---- 11. The smallest window size ----
+# ---- 8. The smallest window size ----
 {
   echo "# The window is shrunk to 100 x 100: the window has a minimum size (640 x 440), it does not get smaller."
   echo "size after the request: $(ax resize "$(app_pid)" 100 100)"
@@ -216,18 +140,15 @@ cat "$OUT/min-size.txt"
 sleep 2
 shoot_settings 14-min-size
 
-# ---- 12. kill -9 after an edit in the window and after an edit of the file ----
+# ---- 9. kill -9 after an edit in the window: "Large" survives ----
 press "Appearance"
 press "Normal"
 sleep 3
-edit_settings 'd["text_size"] = "large"'
+press "Large"
+sleep 3
+[ "$(setting text_size)" = "large" ] || fail "the edit in the window was not stored"
 kill -9 "$(app_pid)"
 sleep 2
-{
-  echo
-  echo "== kill -9 after an edit in the window (Normal) and an edit of the file (large) =="
-  cat "$SETTINGS_FILE"
-} >> "$OUT/settings-file.txt"
 launch_window
 wait_for_window
 sleep 2
@@ -239,13 +160,6 @@ sleep 2
 in_settings
 press "Appearance"
 shoot_settings 15-after-kill9
-{
-  echo
-  echo "== after the restart =="
-  cat "$SETTINGS_FILE"
-  echo "text_size in the database: $(setting text_size)"
-  echo "agent access: $(setting mcp_enabled), mode: $(setting mcp_mode), chats: $(setting mcp_chats | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')"
-} >> "$OUT/settings-file.txt"
 [ "$(setting text_size)" = "large" ] || fail "after kill -9 text_size is not large"
 
 finish

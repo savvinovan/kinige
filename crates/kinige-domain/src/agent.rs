@@ -1,9 +1,13 @@
 //! AI agent over MCP (ADR-0009, slice 4a): parsing and validating tool arguments, reply shapes, the "log without
 //! content". No IO. Access rights are not checked here: the store checks them every time inside the query.
 
+use crate::TextSize;
+use crate::agent_prefs::{SettingKey, parse_set_setting};
 use crate::hlc::is_uuid;
 use crate::journal::is_valid_journal_date;
 use serde_json::{Map, Value};
+
+pub use crate::agent_log_args::{args_json, refusal_args_json};
 
 /// Search query length in characters: a longer query makes no sense for the word index.
 pub const MAX_QUERY_CHARS: usize = 1000;
@@ -35,18 +39,24 @@ pub enum AgentTool {
     AddEntry,
     AppendToLastEntry,
     SetTaskDone,
+    /// Slice 5d: the settings an agent may know (any mode).
+    GetSettings,
+    /// Slice 5d: the text size, and only that (the "Read and write" mode).
+    SetSetting,
 }
 
 impl AgentTool {
-    pub const ALL: [AgentTool; 8] = [
+    pub const ALL: [AgentTool; 10] = [
         AgentTool::ListChats,
         AgentTool::Search,
         AgentTool::GetEntries,
         AgentTool::OnThisDay,
         AgentTool::GetEntry,
+        AgentTool::GetSettings,
         AgentTool::AddEntry,
         AgentTool::AppendToLastEntry,
         AgentTool::SetTaskDone,
+        AgentTool::SetSetting,
     ];
 
     pub fn name(self) -> &'static str {
@@ -59,6 +69,8 @@ impl AgentTool {
             AgentTool::AddEntry => "add_entry",
             AgentTool::AppendToLastEntry => "append_to_last_entry",
             AgentTool::SetTaskDone => "set_task_done",
+            AgentTool::GetSettings => "get_settings",
+            AgentTool::SetSetting => "set_setting",
         }
     }
 
@@ -70,7 +82,10 @@ impl AgentTool {
     pub fn writes(self) -> bool {
         matches!(
             self,
-            AgentTool::AddEntry | AgentTool::AppendToLastEntry | AgentTool::SetTaskDone
+            AgentTool::AddEntry
+                | AgentTool::AppendToLastEntry
+                | AgentTool::SetTaskDone
+                | AgentTool::SetSetting
         )
     }
 }
@@ -157,6 +172,12 @@ pub enum ToolArgs {
         item: Option<usize>,
         item_text: Option<String>,
     },
+    GetSettings,
+    /// `value` is set only for the writable setting (the text size); a setting the user alone may change has none.
+    SetSetting {
+        key: SettingKey,
+        value: Option<TextSize>,
+    },
 }
 
 /// Parsing the `arguments` of a tool call. Extra fields are ignored (clients add their own), types and formats are strict.
@@ -217,6 +238,11 @@ pub fn parse_args(
             item: item_field(args)?,
             item_text: item_text_field(args)?,
         },
+        AgentTool::GetSettings => ToolArgs::GetSettings,
+        AgentTool::SetSetting => {
+            let (key, value) = parse_set_setting(args)?;
+            ToolArgs::SetSetting { key, value }
+        }
     })
 }
 
@@ -316,60 +342,6 @@ fn cursor_field(args: &Map<String, Value>) -> Result<Option<AgentCursor>, ArgErr
         Some(text) => AgentCursor::decode(text)
             .map(Some)
             .ok_or_else(|| bad("cursor is not valid")),
-    }
-}
-
-/// `args_json` of the call log is an **allow-list** of the parsed arguments' fields: chat, dates, flags and `query`, truncated
-/// to [`LOG_QUERY_CHARS`]. The entry text (`text`) and entry ids are never here: ids go to `mcp_log_message`.
-pub fn args_json(args: &ToolArgs) -> String {
-    let mut out = Map::new();
-    match args {
-        ToolArgs::ListChats | ToolArgs::GetEntry { .. } => {}
-        ToolArgs::Search(search) => {
-            put(
-                &mut out,
-                "query",
-                Some(&truncate_chars(&search.query, LOG_QUERY_CHARS)),
-            );
-            put(&mut out, "chat_id", search.chat_id.as_ref());
-            put(&mut out, "from", search.from.as_ref());
-            put(&mut out, "to", search.to.as_ref());
-            flag(&mut out, "favorites", search.favorites);
-            flag(&mut out, "tasks", search.tasks);
-            flag(&mut out, "page", search.cursor.is_some());
-        }
-        ToolArgs::GetEntries(entries) => {
-            put(&mut out, "from", Some(&entries.from));
-            put(&mut out, "to", Some(&entries.to));
-            put(&mut out, "chat_id", entries.chat_id.as_ref());
-            flag(&mut out, "page", entries.cursor.is_some());
-        }
-        ToolArgs::OnThisDay { date } => put(&mut out, "date", date.as_ref()),
-        ToolArgs::AddEntry { chat_id, task, .. } => {
-            put(&mut out, "chat_id", chat_id.as_ref());
-            flag(&mut out, "task", *task);
-        }
-        ToolArgs::AppendToLastEntry { chat_id, .. } => put(&mut out, "chat_id", chat_id.as_ref()),
-        ToolArgs::SetTaskDone { done, item, .. } => {
-            out.insert("done".into(), Value::Bool(*done));
-            // Only the item number: its text never reaches the log.
-            if let Some(item) = item {
-                out.insert("item".into(), Value::from(*item));
-            }
-        }
-    }
-    Value::Object(out).to_string()
-}
-
-fn put(out: &mut Map<String, Value>, key: &str, value: Option<&String>) {
-    if let Some(value) = value {
-        out.insert(key.into(), Value::String(value.clone()));
-    }
-}
-
-fn flag(out: &mut Map<String, Value>, key: &str, on: bool) {
-    if on {
-        out.insert(key.into(), Value::Bool(true));
     }
 }
 

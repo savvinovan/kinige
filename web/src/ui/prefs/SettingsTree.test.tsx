@@ -6,9 +6,9 @@ import { fireEvent, render, screen, within } from "../../test/render";
 import { SettingsTree } from "./SettingsTree";
 import type { Route } from "./routes";
 
-function Host({ start = "appearance", problems = [] }: { start?: Route; problems?: Route[] }) {
+function Host({ start = "appearance" }: { start?: Route }) {
   const [route, setRoute] = useState<Route>(start);
-  return <SettingsTree route={route} onNavigate={setRoute} withProblems={problems} />;
+  return <SettingsTree route={route} onNavigate={setRoute} />;
 }
 
 const nav = () => screen.getByRole("navigation", { name: "Разделы настроек" });
@@ -87,17 +87,12 @@ describe("Дерево настроек: сворачивание", () => {
     expect(within(nav()).queryByRole("button", { current: "page" })).toBeNull();
   });
 
-  it("метка ошибки подпункта видна на разделе, пока группа свёрнута, и на самом подпункте, когда развёрнута", () => {
-    render(<Host problems={["access/log"]} />);
-    expect(within(nav()).getByRole("button", { name: "Доступ ИИ-агентов, есть проблемы" })).toBeInTheDocument();
+  it("в дереве четыре раздела и нет пункта «Файл настроек» и метки ошибки (слайс 5d)", () => {
+    const { container } = render(<Host />);
     fireEvent.click(chevron());
-    expect(within(nav()).getByRole("button", { name: "Доступ ИИ-агентов" })).toBeInTheDocument();
-    expect(within(nav()).getByRole("button", { name: "Журнал обращений, есть проблемы" })).toBeInTheDocument();
-  });
-
-  it("метка ошибки у раздела без вложенных остаётся как была", () => {
-    render(<Host problems={["file"]} />);
-    expect(within(nav()).getByRole("button", { name: "Файл настроек, есть проблемы" })).toBeInTheDocument();
+    expect(names()).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов", "Видимые чаты", "Журнал обращений"]);
+    expect(within(nav()).queryByRole("button", { name: /Файл настроек/ })).toBeNull();
+    expect(container.querySelector(".settings-tree__mark")).toBeNull();
   });
 
   it("выбранный пункт — только заливка: в стилях дерева нет рамки, контура и тени", () => {
@@ -132,13 +127,14 @@ describe("Дерево настроек: клавиатура по образц�
     expect(names()).not.toContain("Видимые чаты");
   });
 
-  it("↑ и ↓ ходят только по видимым пунктам: свёрнутую группу ↓ перепрыгивает", () => {
+  it("↑ и ↓ ходят только по видимым пунктам: у свёрнутой группы вложенных нет, ↓ на последнем остаётся на месте", () => {
     render(<Host />);
     access().focus();
     press(access(), "ArrowDown");
-    expect(within(nav()).getByRole("button", { name: "Файл настроек" })).toHaveFocus();
-    press(within(nav()).getByRole("button", { name: "Файл настроек" }), "ArrowUp");
     expect(access()).toHaveFocus();
+    press(access(), "ArrowUp");
+    expect(within(nav()).getByRole("button", { name: "Копии" })).toHaveFocus();
+    access().focus();
     press(access(), "ArrowRight");
     press(access(), "ArrowDown");
     expect(within(nav()).getByRole("button", { name: "Видимые чаты" })).toHaveFocus();
@@ -152,8 +148,8 @@ describe("Дерево настроек: клавиатура по образц�
     press(copies, "ArrowRight");
     expect(copies).toHaveFocus();
     press(copies, "End");
-    expect(within(nav()).getByRole("button", { name: "Файл настроек" })).toHaveFocus();
-    press(within(nav()).getByRole("button", { name: "Файл настроек" }), "Home");
+    expect(access()).toHaveFocus();
+    press(access(), "Home");
     expect(within(nav()).getByRole("button", { name: "Оформление" })).toHaveFocus();
   });
 
@@ -219,7 +215,7 @@ describe("Дерево настроек: состояние помнится", (
 describe("Settings tree: routes that are not offered (Windows has no AI-agent access, slice 10a)", () => {
   it("without the nested items the access section is an ordinary item: no chevron, no aria-expanded, nothing nested", () => {
     render(<SettingsTree route="access" onNavigate={vi.fn()} without={["access/chats", "access/log"]} />);
-    expect(names()).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов", "Файл настроек"]);
+    expect(names()).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов"]);
     expect(access()).not.toHaveAttribute("aria-expanded");
     expect(screen.queryByTestId("tree-chevron-access")).toBeNull();
     // Right arrow does not open anything and keeps the focus on the item.

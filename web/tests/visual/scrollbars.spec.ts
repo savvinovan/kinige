@@ -71,7 +71,7 @@ test("полосы прокрутки тёмные, а не светлые на 
 // (the `--hide-scrollbars` flag is removed above), as with "Always show scroll bars". The tree on the left, the chat lists, the log,
 // the code blocks and the paths have no scrolling of their own; the provider warning lies over the window and does not move the page under it.
 const PREFS = (story: string) => `экраны-окно-настроек--${story}`;
-const PREFS_STORIES = ["оформление", "доступвыключен", "видимыечаты", "журналдлинный", "файлбезошибок", "ошибкиключей", "длинныепутииназвания", "наименьшийразмер", "наименьшийразмерподэкран"];
+const PREFS_STORIES = ["оформление", "доступвыключен", "видимыечаты", "журналдлинный", "наименьшийразмер", "наименьшийразмерподэкран"];
 
 for (const story of PREFS_STORIES) {
   for (const scale of ["default", "large"]) {

@@ -488,7 +488,8 @@
       "title": "Mode",
       "read": "Read only",
       "readWrite": "Read and write",
-      "hint": "After changing the mode, reconnect the agent."
+      "hint": "After changing the mode, reconnect the agent.",
+      "settingsHint": "In read and write mode an agent can also change the text size. In either mode it can read the text size and the shortcuts."
     },
     "chats": {
       "title": "Chats visible to the agent",
@@ -523,6 +524,10 @@
       "collapse": "Hide entries of this request",
       "unknownClient": "unknown client",
       "withQuery": "{{tool}} “{{query}}”",
+      "withSetting": "{{tool}}: {{setting}}",
+      "setting": {
+        "text_size": "text size"
+      },
       "tool": {
         "connect": "connected",
         "disconnect": "disconnected",
@@ -535,6 +540,8 @@
         "add_entry": "add entry",
         "append_to_last_entry": "append to entry",
         "set_task_done": "mark task",
+        "get_settings": "read the settings",
+        "set_setting": "changed a setting",
         "settings_file": "access changed",
         "unknown": "unknown request"
       },
@@ -545,6 +552,7 @@
         "no_agent_entry": "denied: nothing to append to",
         "not_a_task": "denied: not a task",
         "invalid_argument": "denied: invalid request",
+        "not_writable": "denied: settings window only",
         "error": "failed"
       },
       "entries_one": "{{count, number}} entry",
@@ -553,18 +561,15 @@
   },
   "prefs": {
     "treeLabel": "Settings sections",
-    "errorMark": "has problems",
     "backTo": "Back to {{section}}",
     "configure": "Configure",
-    "changedByFile": "Changed via settings.json · {{time}}",
     "section": {
       "appearance": "Appearance",
       "shortcuts": "Keyboard shortcuts",
       "mirror": "Copies",
       "access": "AI agent access",
       "accessChats": "Visible chats",
-      "accessLog": "Access log",
-      "file": "Settings file"
+      "accessLog": "Access log"
     },
     "appearance": {
       "description": "How large the text is throughout Kinige."
@@ -574,49 +579,6 @@
       "chatsValue": "{{visible}} of {{total}}",
       "logRow": "Access log",
       "logValue": "What agents asked for and wrote"
-    },
-    "file": {
-      "description": "All settings live in one plain text file. You, or an AI agent, can edit it: Kinige notices the change within a couple of seconds.",
-      "pathLabel": "File",
-      "copyPath": "Copy path",
-      "copied": "Copied",
-      "copyFailed": "Could not copy",
-      "ok": "The file has no errors",
-      "problemsTitle": "Problems",
-      "unknownTitle": "Unknown keys",
-      "unknownKey": "{{key}}: Kinige does not know this key, ignores it and keeps it in the file",
-      "unknownMore_one": "and {{count}} more unknown key",
-      "unknownMore_other": "and {{count}} more unknown keys",
-      "problem": {
-        "parse": "The file could not be read: line {{line}}, column {{column}}. Nothing was changed.",
-        "not_object": "The file must be a JSON object. Nothing was changed.",
-        "not_utf8": "The file is not UTF-8 text. Nothing was changed.",
-        "bom": "The file starts with a byte order mark: save it as UTF-8 without BOM. Nothing was changed.",
-        "too_large": "The file is larger than 1 MiB. Nothing was changed.",
-        "io": "Kinige could not read or write the file."
-      },
-      "unsafe": {
-        "symlink": "The file is a symbolic link, so access and folder keys from it are ignored.",
-        "not_regular": "This is not a regular file, so it is not read.",
-        "owner": "The file belongs to another user, so access and folder keys from it are ignored.",
-        "permissions": "Other users can write to the file, so access and folder keys from it are ignored. Make it writable only by you (chmod 600), then save the file again.",
-        "directory": "Other users can write to the data folder, so access and folder keys from the file are ignored."
-      },
-      "issue": {
-        "type": "{{key}}: wrong type of value",
-        "value": "{{key}}: this value is not allowed",
-        "shortcut_invalid": "{{key}}: this shortcut cannot be used",
-        "shortcut_duplicate": "{{key}}: the other action already uses this shortcut",
-        "shortcut_taken": "{{key}}: the shortcut is used by another app or the system",
-        "folder_not_absolute": "{{key}}: the folder path must be absolute",
-        "folder_missing": "{{key}}: the folder does not exist",
-        "folder_inside_data": "{{key}}: the folder must not be inside Kinige's data folder",
-        "unsafe_ignored": "{{key}}: ignored because the file is not safe",
-        "chat_not_found": "{{key}}: no such chat",
-        "chat_ambiguous": "{{key}}: several chats have this name, use the id",
-        "chat_excluded": "{{key}}: this chat is excluded from AI",
-        "unsupported": "{{key}}: not available on this system yet, ignored"
-      }
     }
   },
   "settings": {

@@ -5,7 +5,6 @@ import { BackupRow } from "../../settings/BackupRow";
 import { MirrorStatusLine } from "../../settings/MirrorStatusLine";
 import { PathRow } from "../../settings/PathRow";
 import { StatusNote } from "../../settings/StatusNote";
-import { ChangedByFile } from "../ChangedByFile";
 import "../../settings/settings.css";
 
 interface MirrorPageProps {
@@ -15,12 +14,11 @@ interface MirrorPageProps {
   /** The already translated error text of the folder choice. */
   actionError?: string;
   onChooseFolder: () => void;
-  changedAt: number | null;
   now?: Date;
 }
 
 /** "Копии": the Markdown copy (folder, state, the "plain text" warning) and the database file copy. */
-export function MirrorPage({ settings, choosing = false, actionError, onChooseFolder, changedAt, now }: MirrorPageProps) {
+export function MirrorPage({ settings, choosing = false, actionError, onChooseFolder, now }: MirrorPageProps) {
   const { t } = useTranslation();
   const titleId = useId();
   const { mirror } = settings;
@@ -42,7 +40,6 @@ export function MirrorPage({ settings, choosing = false, actionError, onChooseFo
         <StatusNote tone="quiet" icon="info">
           {t("settings.mirror.warning")}
         </StatusNote>
-        <ChangedByFile at={changedAt} now={now} />
       </div>
       <div className="prefs-block">
         <h3 className="settings__heading">{t("settings.backup.title")}</h3>

@@ -2,19 +2,15 @@ import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import type { TextSize } from "../../../api/generated/TextSize";
 import { SegmentedChoice } from "../../settings/SegmentedChoice";
-import { ChangedByFile } from "../ChangedByFile";
 import "../../settings/settings.css";
 
 interface AppearancePageProps {
   textSize: TextSize;
   onTextSizeChange: (size: TextSize) => void;
-  /** When the section was changed through the file (UTC, ms). */
-  changedAt: number | null;
-  now?: Date;
 }
 
 /** "Оформление": the text size. */
-export function AppearancePage({ textSize, onTextSizeChange, changedAt, now }: AppearancePageProps) {
+export function AppearancePage({ textSize, onTextSizeChange }: AppearancePageProps) {
   const { t } = useTranslation();
   const titleId = useId();
   return (
@@ -36,7 +32,6 @@ export function AppearancePage({ textSize, onTextSizeChange, changedAt, now }: A
             { value: "large", label: t("settings.textSize.large") },
           ]}
         />
-        <ChangedByFile at={changedAt} now={now} />
       </div>
     </section>
   );

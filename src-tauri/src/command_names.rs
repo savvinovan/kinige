@@ -58,8 +58,8 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "set_attachment_waveform",
 ];
 
-/// Commands of the settings window (capability `settings`, slice 4b, ADR-0010): settings, shortcuts, AI agent access, the
-/// settings file and "open an entry from the log". The window has no feed, search, entry, import or restore.
+/// Commands of the settings window (capability `settings`, slice 4b, ADR-0022): settings, shortcuts, AI agent access and
+/// "open an entry from the log". The window has no feed, search, entry, import or restore.
 pub const SETTINGS_COMMANDS: &[&str] = &[
     "get_language",
     "get_settings",
@@ -74,7 +74,6 @@ pub const SETTINGS_COMMANDS: &[&str] = &[
     "set_agent_chats",
     "list_agent_log",
     "list_agent_log_entries",
-    "get_settings_file",
     "settings_open_entry",
 ];
 
@@ -159,7 +158,6 @@ pub const COMMANDS: &[&str] = &[
     "set_agent_chats",
     "list_agent_log",
     "list_agent_log_entries",
-    "get_settings_file",
     "settings_open_entry",
     "capture_state",
     "capture_send",

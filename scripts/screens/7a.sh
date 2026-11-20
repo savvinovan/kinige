@@ -19,7 +19,6 @@ DRIVER=1
 
 export AX_TIMEOUT=30
 
-SETTINGS_FILE="$K/data/settings.json"
 PROBE_FORMATS="$REPO/docs/screens/7a-probe/formats.txt"
 
 # Keep the probe's facts if a probe run is committed; the scenario deletes only its own outputs.
@@ -44,23 +43,6 @@ rm -f "$LOG_FILE"
 
 sqlw() { sqlite3 -cmd '.timeout 5000' "$K/data/kinige.db" "$@"; }
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
-
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
-}
 
 labels() {
   if [ "$UI" = "ru" ]; then
@@ -261,10 +243,10 @@ wait_for "Inbox" 60 || fail "the window did not show the Inbox in English"
 sleep 3
 detect_language
 shoot 10-en
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 sleep 2
 shoot 11-large-text
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 # Resizing the window is native: the one accessibility call left in this scenario.
 echo "window: $(ax resize "$(app_pid)" 640 800)"
 sleep 3

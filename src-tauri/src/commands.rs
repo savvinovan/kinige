@@ -2,14 +2,15 @@
 //! to the frontend as codes (`ApiError`), the texts are in the translation files.
 
 use crate::hotkeys::Hotkeys;
+use crate::settings_window::notify_changed;
 use kinige_domain::link::{LinkError, validate_external_url};
 use kinige_domain::{
     ApiError, AppInfo, ChatDraft, ChatList, ErrorCode, FeedCursor, FirstWeekday, ForestMode,
     ForestTarget, ForestView, ForestYear, Language, MessagePage, MessageView, OnThisDay, Settings,
     ShortcutKind, TextSize, WeekdaySource,
 };
-use kinige_store::{DEFAULT_PAGE, Now, PageAt, SettingsFile, Store, StoreError};
-use tauri::{AppHandle, Manager, Runtime, State};
+use kinige_store::{DEFAULT_PAGE, Now, PageAt, Store, StoreError};
+use tauri::{AppHandle, Runtime, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -19,21 +20,6 @@ fn api(error: StoreError) -> ApiError {
     // Only the category goes to the process log: the text of an internal error (SQLite, serde) may contain pieces of data.
     log::error!("store error: {}", error.category());
     error.code().into()
-}
-
-fn code(error: StoreError) -> ErrorCode {
-    api(error).code
-}
-
-/// Editing settings through the file thread (ADR-0010): it applies an external edit if the file changed, performs the edit and
-/// writes the file. A stopped thread gives `internal`.
-pub(crate) fn edit<T: Send + 'static>(
-    file: &SettingsFile,
-    change: impl FnOnce(&Store) -> Result<T, ErrorCode> + Send + 'static,
-) -> ApiResult<T> {
-    file.edit(change)
-        .unwrap_or(Err(ErrorCode::Internal))
-        .map_err(ApiError::from)
 }
 
 /// App information for `KinigeApi.appInfo()`.
@@ -198,36 +184,35 @@ pub fn set_forest_view(
 
 /// Changing a keyboard shortcut: check before saving, registration in the system, saving. A refusal is an error code, the previous
 /// shortcut keeps working. The reply is the whole settings.
+///
+/// The command stays `async`: it runs on a pool thread, never on the main thread. `Hotkeys::change` takes its change lock and
+/// registers the shortcut through `run_on_main_thread`, so a sync command (the main thread) waiting for that lock while a
+/// pool thread holds it and waits for the main thread would deadlock.
 #[tauri::command(async)]
 pub fn set_shortcut<R: Runtime>(
     app: AppHandle<R>,
     store: State<'_, Store>,
     hotkeys: State<'_, Hotkeys>,
-    file: State<'_, SettingsFile>,
     kind: ShortcutKind,
     accelerator: String,
 ) -> ApiResult<Settings> {
-    // The edit goes through the file thread: it applies an external edit if there is one, and writes the file (ADR-0010).
-    edit(&file, move |store| {
-        let hotkeys = app.try_state::<Hotkeys>().ok_or(ErrorCode::Internal)?;
-        hotkeys.change(store, kind, &accelerator)
-    })?;
+    hotkeys
+        .change(&store, kind, &accelerator)
+        .map_err(ApiError::from)?;
+    notify_changed(&app);
     settings_with_shortcuts(&store, &hotkeys)
 }
 
-/// "Reset": the default shortcut with the same checks.
+/// "Reset": the default shortcut with the same checks. `async` for the same reason as [`set_shortcut`].
 #[tauri::command(async)]
 pub fn reset_shortcut<R: Runtime>(
     app: AppHandle<R>,
     store: State<'_, Store>,
     hotkeys: State<'_, Hotkeys>,
-    file: State<'_, SettingsFile>,
     kind: ShortcutKind,
 ) -> ApiResult<Settings> {
-    edit(&file, move |store| {
-        let hotkeys = app.try_state::<Hotkeys>().ok_or(ErrorCode::Internal)?;
-        hotkeys.reset(store, kind)
-    })?;
+    hotkeys.reset(&store, kind).map_err(ApiError::from)?;
+    notify_changed(&app);
     settings_with_shortcuts(&store, &hotkeys)
 }
 
@@ -238,9 +223,17 @@ pub fn shortcut_recording(hotkeys: State<'_, Hotkeys>, active: bool) {
     hotkeys.set_recording(active);
 }
 
+/// The text size, from the settings window. The MCP tool `set_setting` writes the same row (`put_text_size`) and tells the
+/// windows the same way.
 #[tauri::command(async)]
-pub fn set_text_size(file: State<'_, SettingsFile>, size: TextSize) -> ApiResult<()> {
-    edit(&file, move |store| store.set_text_size(size).map_err(code))
+pub fn set_text_size<R: Runtime>(
+    app: AppHandle<R>,
+    store: State<'_, Store>,
+    size: TextSize,
+) -> ApiResult<()> {
+    store.set_text_size(size).map_err(api)?;
+    notify_changed(&app);
+    Ok(())
 }
 
 /// The system dialog for choosing the Markdown copy folder. The dialog is called here, from Rust: the window has no JS permissions for dialogs,
@@ -250,7 +243,6 @@ pub fn choose_mirror_folder<R: Runtime>(
     app: AppHandle<R>,
     store: State<'_, Store>,
     hotkeys: State<'_, Hotkeys>,
-    file: State<'_, SettingsFile>,
 ) -> ApiResult<Settings> {
     let mut dialog = app.dialog().file();
     if let Some(current) = store.get_settings().map_err(api)?.mirror.folder {
@@ -267,9 +259,8 @@ pub fn choose_mirror_folder<R: Runtime>(
         if !path.is_dir() {
             return Err(ErrorCode::FolderPickFailed.into());
         }
-        edit(&file, move |store| {
-            store.set_mirror_dir(&path).map_err(code)
-        })?;
+        store.set_mirror_dir(&path).map_err(api)?;
+        notify_changed(&app);
     }
     settings_with_shortcuts(&store, &hotkeys)
 }

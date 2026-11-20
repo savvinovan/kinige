@@ -17,9 +17,15 @@ const TOOLS = {
   add_entry: "agent.log.tool.add_entry",
   append_to_last_entry: "agent.log.tool.append_to_last_entry",
   set_task_done: "agent.log.tool.set_task_done",
-  // Access changed through settings.json (slice 4b): the label is by tool, not by client name, because a client names itself.
+  get_settings: "agent.log.tool.get_settings",
+  set_setting: "agent.log.tool.set_setting",
+  // Rows the retired settings file (slices 4b to 5c) left in the log: no code writes them any more and rotation drops them within 90
+  // days. The label is by tool, not by client name, because a client names itself.
   settings_file: "agent.log.tool.settings_file",
 } as const;
+
+/** The settings a `set_setting` row can name in the log (only these are shown by name). */
+const SETTINGS = { text_size: "agent.log.setting.text_size" } as const;
 
 const OUTCOMES = {
   disabled: "agent.log.outcome.disabled",
@@ -28,6 +34,7 @@ const OUTCOMES = {
   no_agent_entry: "agent.log.outcome.no_agent_entry",
   not_a_task: "agent.log.outcome.not_a_task",
   invalid_argument: "agent.log.outcome.invalid_argument",
+  not_writable: "agent.log.outcome.not_writable",
 } as const;
 
 const isTool = (tool: string): tool is keyof typeof TOOLS => tool in TOOLS;
@@ -54,7 +61,12 @@ export function shortDay(journalDate: string, now: Date, language: Language): st
 /** A log row: "14:02 · Claude Desktop · поиск «Raft» · 3 записи" or "... · отказано: только чтение". */
 export function logLine(row: AgentLogRow, now: Date, language: Language, t: TFunction): string {
   const tool = t(isTool(row.tool) ? TOOLS[row.tool] : "agent.log.tool.unknown");
-  const action = row.query ? t("agent.log.withQuery", { tool, query: row.query }) : tool;
+  const named = row.tool === "set_setting" && row.outcome === "ok" && row.setting !== null && row.setting in SETTINGS;
+  const action = row.query
+    ? t("agent.log.withQuery", { tool, query: row.query })
+    : named
+      ? t("agent.log.withSetting", { tool, setting: t(SETTINGS[row.setting as keyof typeof SETTINGS]) })
+      : tool;
   const parts = [logTime(row.at, now, language), row.client || t("agent.log.unknownClient"), action];
   if (row.outcome !== "ok") {
     parts.push(t(isOutcome(row.outcome) ? OUTCOMES[row.outcome] : "agent.log.outcome.error"));

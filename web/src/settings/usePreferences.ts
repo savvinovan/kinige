@@ -7,7 +7,6 @@ import type { AgentLogRow } from "../api/generated/AgentLogRow";
 import type { AgentMode } from "../api/generated/AgentMode";
 import type { ErrorCode } from "../api/generated/ErrorCode";
 import type { Settings } from "../api/generated/Settings";
-import type { SettingsFileState } from "../api/generated/SettingsFileState";
 import type { ShortcutKind } from "../api/generated/ShortcutKind";
 import type { TextSize } from "../api/generated/TextSize";
 import { useLanguage } from "../i18n/I18n";
@@ -22,20 +21,20 @@ const REFRESH_MS = 2000;
 export interface PreferencesInitial {
   settings: Settings;
   access: AgentAccess;
-  file: SettingsFileState;
   log: { rows: AgentLogRow[]; older: number | null };
 }
 
 /** Reads the initial data of the settings window (before the first frame). */
 export async function loadPreferences(api: KinigeApi): Promise<PreferencesInitial> {
-  const [settings, access, file, log] = await Promise.all([api.getSettings(), api.getAgentAccess(), api.getSettingsFile(), api.listAgentLog()]);
-  return { settings, access, file, log: { rows: log.rows, older: log.older } };
+  const [settings, access, log] = await Promise.all([api.getSettings(), api.getAgentAccess(), api.listAgentLog()]);
+  return { settings, access, log: { rows: log.rows, older: log.older } };
 }
 
 /**
- * The state of the "Настройки" (Settings) window (slice 4b): settings, agent access, the file, the log; the window actions. The window gets no feed:
+ * The state of the "Настройки" (Settings) window (slice 4b): settings, agent access, the log; the window actions. The window gets no feed:
  * an entry from the log is opened by the `settingsOpenEntry` command (the main window will open the chat itself). The data is reread on the
- * `settings-changed` event (an edit from this window, another window or the file) and once every two seconds (backups state, agent calls).
+ * `settings-changed` event (an edit from this window, another window or an agent's text-size change) and once every two seconds (backups
+ * state, agent calls).
  */
 export function usePreferences(api: KinigeApi, initial: PreferencesInitial) {
   const { t } = useTranslation();
@@ -43,7 +42,6 @@ export function usePreferences(api: KinigeApi, initial: PreferencesInitial) {
   const [route, setRoute] = useState<Route>("appearance");
   const [settings, setSettings] = useState(initial.settings);
   const [access, setAccess] = useState(initial.access);
-  const [file, setFile] = useState(initial.file);
   const [first, setFirst] = useState(initial.log);
   const [extra, setExtra] = useState<{ rows: AgentLogRow[]; older: number | null } | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -59,15 +57,9 @@ export function usePreferences(api: KinigeApi, initial: PreferencesInitial) {
 
   const refresh = useCallback(async () => {
     try {
-      const [fresh, freshAccess, freshFile, page] = await Promise.all([
-        api.getSettings(),
-        api.getAgentAccess(),
-        api.getSettingsFile(),
-        api.listAgentLog(),
-      ]);
+      const [fresh, freshAccess, page] = await Promise.all([api.getSettings(), api.getAgentAccess(), api.listAgentLog()]);
       setSettings(fresh);
       setAccess(freshAccess);
-      setFile(freshFile);
       setFirst({ rows: page.rows, older: page.older });
     } catch {
       // The window keeps its previous data; the next refresh will retry.
@@ -144,7 +136,6 @@ export function usePreferences(api: KinigeApi, initial: PreferencesInitial) {
     onNavigate: navigate,
     settings,
     access,
-    file,
     log: { rows, hasMore: (extra ? extra.older : first.older) !== null, expandedId, entries, gone },
     language,
     warning,

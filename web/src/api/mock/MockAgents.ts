@@ -50,6 +50,7 @@ export class MockAgents {
         at: Date.UTC(2026, 9, 28, 11, 2),
         client: "Claude Desktop",
         query: null,
+        setting: null,
         outcome: "ok",
         count: entries.length,
         ...row,

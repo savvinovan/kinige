@@ -104,7 +104,6 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             commands::reset_shortcut,
             commands::shortcut_recording,
             settings_window::open_settings,
-            settings_window::get_settings_file,
             settings_window::settings_open_entry,
             actions::create_chat,
             actions::rename_chat,
@@ -187,16 +186,13 @@ fn start_services<R: Runtime>(
         capture::request_hide,
     )?;
     tray::setup(app, commands::get_language())?;
-    // The settings file is applied first (ADR-0010): before registering shortcuts and before the MCP listener.
-    let db = db_path(app)?;
-    let data_dir = db.parent().ok_or("no data directory")?.to_path_buf();
-    let settings_file = settings_window::start_file(app, &store, data_dir);
+    // Nothing is read from a file (ADR-0022): the old temporary files of the retired settings file go, and that is all.
+    store.remove_settings_file_leftovers();
     let hotkeys = Hotkeys::new(Box::new(PluginRegistrar { app: app.clone() }));
     // A shortcut the system did not accept stays "unassigned" in the settings; the rest works.
     hotkeys.register_saved(&store);
     app.manage(store);
     app.manage(hotkeys);
-    app.manage(settings_file);
     settings_window::set_available(app, true);
     app.manage(CaptureShell::default());
     app.manage(import::ImportState::default());
