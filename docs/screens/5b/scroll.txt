@@ -1,0 +1,108 @@
+== 1280x800 normal text, the strip
+inner.width=1024
+inner.height=653
+document.clientWidth=1024
+document.clientHeight=653
+document.scrollWidth=1024
+document.scrollHeight=653
+body.scrollWidth=1024
+body.scrollHeight=653
+window: 640 400
+== 640x400 normal text, the long name, the strip
+inner.width=640
+inner.height=372
+document.clientWidth=640
+document.clientHeight=372
+document.scrollWidth=640
+document.scrollHeight=372
+body.scrollWidth=640
+body.scrollHeight=372
+lower.0=span.visually-hidden absolute top=408 bottom=409 height=1
+lower.1=span.visually-hidden absolute top=446 bottom=447 height=1
+lower.2=span.visually-hidden absolute top=484 bottom=485 height=1
+lower.3=span.visually-hidden absolute top=523 bottom=524 height=1
+lower.4=span.visually-hidden absolute top=561 bottom=562 height=1
+lower.5=span.visually-hidden absolute top=599 bottom=600 height=1
+lower.6=span.visually-hidden absolute top=637 bottom=638 height=1
+window: 1024 683
+== 1280x800 large text, the strip
+inner.width=1024
+inner.height=655
+document.clientWidth=1024
+document.clientHeight=655
+document.scrollWidth=1024
+document.scrollHeight=655
+body.scrollWidth=1024
+body.scrollHeight=655
+lower.0=span.visually-hidden absolute top=702 bottom=703 height=1
+lower.1=span.visually-hidden absolute top=750 bottom=751 height=1
+lower.2=span.visually-hidden absolute top=798 bottom=799 height=1
+window: 640 400
+== 640x400 large text, the forest hidden
+inner.width=640
+inner.height=372
+document.clientWidth=640
+document.clientHeight=372
+document.scrollWidth=640
+document.scrollHeight=372
+body.scrollWidth=640
+body.scrollHeight=372
+lower.0=span.visually-hidden absolute top=414 bottom=415 height=1
+lower.1=span.visually-hidden absolute top=462 bottom=463 height=1
+lower.2=span.visually-hidden absolute top=510 bottom=511 height=1
+lower.3=span.visually-hidden absolute top=558 bottom=559 height=1
+lower.4=span.visually-hidden absolute top=606 bottom=607 height=1
+lower.5=span.visually-hidden absolute top=654 bottom=655 height=1
+lower.6=span.visually-hidden absolute top=702 bottom=703 height=1
+lower.7=span.visually-hidden absolute top=750 bottom=751 height=1
+== 640x400 large text, the strip
+inner.width=640
+inner.height=372
+document.clientWidth=640
+document.clientHeight=372
+document.scrollWidth=640
+document.scrollHeight=372
+body.scrollWidth=640
+body.scrollHeight=372
+lower.0=span.visually-hidden absolute top=414 bottom=415 height=1
+lower.1=span.visually-hidden absolute top=462 bottom=463 height=1
+lower.2=span.visually-hidden absolute top=510 bottom=511 height=1
+lower.3=span.visually-hidden absolute top=558 bottom=559 height=1
+lower.4=span.visually-hidden absolute top=606 bottom=607 height=1
+lower.5=span.visually-hidden absolute top=654 bottom=655 height=1
+lower.6=span.visually-hidden absolute top=702 bottom=703 height=1
+lower.7=span.visually-hidden absolute top=750 bottom=751 height=1
+== 640x400 large text, the board
+inner.width=640
+inner.height=372
+document.clientWidth=640
+document.clientHeight=372
+document.scrollWidth=640
+document.scrollHeight=372
+body.scrollWidth=640
+body.scrollHeight=372
+lower.0=span.visually-hidden absolute top=414 bottom=415 height=1
+lower.1=span.visually-hidden absolute top=462 bottom=463 height=1
+lower.2=span.visually-hidden absolute top=510 bottom=511 height=1
+lower.3=span.visually-hidden absolute top=558 bottom=559 height=1
+lower.4=span.visually-hidden absolute top=606 bottom=607 height=1
+lower.5=span.visually-hidden absolute top=654 bottom=655 height=1
+lower.6=span.visually-hidden absolute top=702 bottom=703 height=1
+lower.7=span.visually-hidden absolute top=750 bottom=751 height=1
+== 640x400 normal text, the board
+inner.width=640
+inner.height=372
+document.clientWidth=640
+document.clientHeight=372
+document.scrollWidth=640
+document.scrollHeight=372
+body.scrollWidth=640
+body.scrollHeight=372
+lower.0=span.visually-hidden absolute top=408 bottom=409 height=1
+lower.1=span.visually-hidden absolute top=446 bottom=447 height=1
+lower.2=span.visually-hidden absolute top=484 bottom=485 height=1
+lower.3=span.visually-hidden absolute top=523 bottom=524 height=1
+lower.4=span.visually-hidden absolute top=561 bottom=562 height=1
+lower.5=span.visually-hidden absolute top=599 bottom=600 height=1
+lower.6=span.visually-hidden absolute top=637 bottom=638 height=1
+window: 1024 683
