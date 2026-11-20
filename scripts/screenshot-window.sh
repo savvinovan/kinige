@@ -3,7 +3,7 @@
 # Usage:
 #   scripts/screenshot-window.sh <out.png> [process name, kinige by default] [mode]
 # Modes (which window of the process to capture):
-#   main     - the largest window of the normal layer 0 (the main window; default);
+#   main     - the largest window of the normal layer 0 that is not the settings window (the main window; default);
 #   capture  - the quick capture window: no title, above the others (layer above 0), up to 700 px wide;
 #   settings - the "Settings" window (slice 4b): normal layer 0, title "Settings" or "Настройки" (the Russian UI title);
 #   menu     - the dropdown menu of the menu bar icon (layer above 0, a window without a title, narrower than 400 px and shorter than 400 px);
@@ -44,7 +44,9 @@ function run(argv) {
   } else if (mode === "menu") {
     found = mine.filter((w) => w.kCGWindowLayer > 0 && w.kCGWindowBounds.Width < 400 && w.kCGWindowBounds.Height < 400 && w.kCGWindowBounds.Height > 40);
   } else {
-    found = mine.filter((w) => w.kCGWindowLayer === 0);
+    // The main window is the largest of layer 0 WITHOUT the settings window: after a resize to 640 px the open settings window (860 px)
+    // is the larger one and would be taken for the main window (KINIG-160).
+    found = mine.filter((w) => w.kCGWindowLayer === 0 && !/^(Settings|Настройки)$/.test(String(w.kCGWindowName || "")));
   }
   found.sort((a, b) => area(b) - area(a));
   return found.length ? String(found[0].kCGWindowNumber) : "";
