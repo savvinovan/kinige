@@ -15,9 +15,13 @@ interface ChatTopBarProps {
 export function ChatTopBar({ title, forestMenu }: ChatTopBarProps) {
   return (
     <div className="main-window__topbar">
-      <h1 className="main-window__title" title={title}>
-        {title}
-      </h1>
+      {title === "" ? (
+        <div className="main-window__title" />
+      ) : (
+        <h1 className="main-window__title" title={title}>
+          {title}
+        </h1>
+      )}
       {forestMenu ? <ForestToggle hidden={forestMenu.hidden} onToggle={forestMenu.onToggle} /> : null}
     </div>
   );

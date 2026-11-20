@@ -48,10 +48,14 @@ afterEach(() => {
   Reflect.deleteProperty(navigator, "mediaDevices");
 });
 
-function setup() {
+function mount() {
   const api = new MockApi({ now: NOW, language: "en", chats: [{ id: "chat-2", title: "Books", icon: "📚" }] });
-  render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />, { language: "en" });
-  return api;
+  const view = render(<MainWindow api={api} initialSettings={DEFAULT_SETTINGS} />, { language: "en" });
+  return { api, unmount: view.unmount };
+}
+
+function setup() {
+  return mount().api;
 }
 
 const mic = () => screen.findByRole("button", { name: "Record voice note" });
@@ -154,11 +158,23 @@ describe("closing the main window while recording", () => {
     expect(await screen.findByRole("alertdialog", { name: "Discard the recording?" })).toBeInTheDocument();
   }, 15_000);
 
-  it("nothing happens when nothing is recording, and a close after an unmount is ignored", async () => {
+  it("nothing happens when nothing is recording", async () => {
     const api = setup();
     await mic();
     await closeWindow(api);
     expect(await mic()).toBeInTheDocument();
     expect(claimCalls(api)).toEqual([]);
+  });
+
+  it("a close after the window's page is gone is ignored: the listener was removed, nothing stops or throws", async () => {
+    const { api, unmount } = mount();
+    fireEvent.click(await mic());
+    await recording();
+    await wait(1100);
+    unmount();
+    // The page's own cleanup lets go of the tracks and the claim; the close that comes after it finds no listener and does no further work.
+    const callsBefore = api.calls.length;
+    await closeWindow(api);
+    expect(api.calls.length).toBe(callsBefore);
   });
 });

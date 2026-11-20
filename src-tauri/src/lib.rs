@@ -71,6 +71,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .on_window_event(on_window_event) // not in `run`: the IPC tests send a close through it
         .invoke_handler(guarded::<R>(tauri::generate_handler![
             commands::app_info,
             commands::get_language,
@@ -355,7 +356,6 @@ pub fn run() {
     let configured = configured.on_web_content_process_terminate(voice::on_page_terminated);
     let built = configured
         .setup(move |app| fail_fast(setup(app)))
-        .on_window_event(on_window_event)
         .on_page_load(|webview, payload| {
             voice::on_page_load_event(webview, payload.event());
             // Cold start measurement (`scripts/measure-cold-start.sh`): a mark for when the main window page has loaded.
