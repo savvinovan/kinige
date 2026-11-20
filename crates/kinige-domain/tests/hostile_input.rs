@@ -191,6 +191,7 @@ fn text_renderers_never_panic_on_hostile_markdown() {
             body_md: body.to_string(),
             reply,
             attachments: Vec::new(),
+            reactions: Vec::new(),
         };
         let entries = [
             entry(text, None),

@@ -17,6 +17,8 @@ export interface FeedActionsDeps {
   onTag: (tag: string) => void;
   /** The journal changed (slice 6: the forest reads it again). */
   mutated: () => void;
+  /** A reaction was put on this device (slice 5a): the settings read the quick set and the recent list again. */
+  onReacted?: () => void;
   setMessages: Dispatch<SetStateAction<FeedMessage[]>>;
   setEditingId: Dispatch<SetStateAction<string | null>>;
   setEditError: Dispatch<SetStateAction<string | undefined>>;
@@ -33,6 +35,7 @@ export function useFeedActions({
   reload,
   onTag,
   mutated,
+  onReacted,
   setMessages,
   setEditingId,
   setEditError,
@@ -71,6 +74,16 @@ export function useFeedActions({
       onToggleTask: (id, on) => setFlag(id, "task", on),
       onToggleDone: (id, done) => setFlag(id, "task_done", done),
       onToggleFavorite: (id, on) => setFlag(id, "favorite", on),
+      onReact: (id, emoji, on) => {
+        api
+          .setMessageReaction(id, emoji, on)
+          .then((view) => {
+            replace(view);
+            // The quick set and the picker's recent list follow what was put on this device.
+            if (on) onReacted?.();
+          })
+          .catch(fail);
+      },
       onChangeDate: (id) => setDateFor(id),
       onDelete: (id) => {
         api
@@ -120,6 +133,6 @@ export function useFeedActions({
           .catch(fail);
       },
     }),
-    [api, t, replace, setFlag, refreshChats, fail, reload, onTag, mutated, setMessages, setEditingId, setEditError, setDeletedIds, setDateFor],
+    [api, t, replace, setFlag, refreshChats, fail, reload, onTag, mutated, onReacted, setMessages, setEditingId, setEditError, setDeletedIds, setDateFor],
   );
 }

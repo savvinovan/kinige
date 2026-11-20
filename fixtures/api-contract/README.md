@@ -33,6 +33,8 @@ code (the `mock/` folder and `mockRules.ts` do), and do not pin it.
 | `attachment-kind.json`   | the kind of an attachment from its name                            | `attachment::{stored_ext, classify}`      |
 | `attachment-errors.json` | attachment and voice limits and the order of the checks (scenario) | `Store`                                   |
 | `attachment-text.json`   | attachment details: counting, normal form, fields per kind         | `attachment::{normalize_*, check_kind}`   |
+| `reaction-key.json`      | the key of an emoji, what is one emoji, the quick set              | `reactions::reaction_key`                 |
+| `reaction-flow.json`     | reactions end to end, the caps, the trash (scenario)               | `Store::set_message_reaction`             |
 
 ## Scenarios
 
@@ -61,3 +63,6 @@ or `ghost` is passed as it is). A step with `error` must fail with exactly that 
 | `voice`      | `chat`, `bytes`?, `durationMs`, `replyTo`?, `as`? | send a voice note                                                 |
 | `recent`     | `emoji`, then `list`, or `first` and `count`      | add a recent emoji and check the list                             |
 | `recentMany` | `emojis`, `count`, `first`, `last`                | add many and check the ends                                       |
+| `react`      | `msg`, `emoji`, `on`, `minute`?                   | put or remove a reaction at that minute of the scenario           |
+| `reactCycle` | `msg`, `first`, `count`                           | put and remove `count` characters from the code point `first`     |
+| `reactions`  | `msg`, `list`, `keysHad`                          | the entry shows these emoji in the order put and had that many    |

@@ -34,6 +34,7 @@ mod mirror;
 mod mirror_day;
 mod mirror_files;
 mod on_this_day;
+mod reactions;
 mod recent_chats;
 mod recovery;
 mod schema;
@@ -239,6 +240,7 @@ impl Store {
         })?;
         send::ensure_initialized(&mut conn, now)?;
         search::rebuild_if_stale(&mut conn)?;
+        reactions::rebuild_if_stale(&mut conn)?;
 
         let reader = open_connection(&options.db_path, true)?;
         let agent_reader = open_connection(&options.db_path, true)?;

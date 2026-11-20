@@ -1,0 +1,15 @@
+{
+  "layout": {
+    "reaction": {
+      "$type": "dimension",
+      "chip-height": { "$value": "1.85rem", "$description": "KINIG-138 (restyled): the height of a reaction chip inside a bubble (about 24 px at a 13 px root), fully rounded: tall enough to read as a button and not as a line of text. The emoji in it is the body text size." },
+      "chip-padding": { "$value": "{space.3}", "$description": "KINIG-138 (restyled): the left and right padding of a chip (9.75 px), so the pill is wider than its emoji and reads as a chip." },
+      "gap": { "$value": "{space.2}", "$description": "KINIG-138 (restyled): the gap between chips, and between the rows when they wrap (6.5 px)." },
+      "row-offset": { "$value": "{space.3}", "$description": "KINIG-138 (restyled): the space between the text of an entry and its row of chips (9.75 px), so the chips are clearly apart from the text; an entry whose text is one emoji no longer looks like its chips." },
+      "divider-height": { "$value": "1.1rem", "$description": "KINIG-138: the height of the thin divider between the reaction buttons and the other buttons of the hover bar (14 px)." },
+      "story-stage": { "$value": "30rem", "$description": "KINIG-138: the height of the Storybook stage that gives the full emoji picker room (stories only)." },
+      "story-column": { "$value": "20rem", "$description": "KINIG-138: the height of the Storybook column in which a bubble stands at the bottom, as in the feed (stories only)." },
+      "popover-gap": { "$value": "{space.1}", "$description": "KINIG-138: the gap between the buttons of the quick-reaction popover." }
+    }
+  }
+}

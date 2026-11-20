@@ -29,6 +29,10 @@ export const LIMITS = {
   voiceMinMs: 1000,
   voiceMaxMs: 1_805_000,
   waveformPeaks: 64,
+  reactionsLive: 10,
+  reactionKeys: 32,
+  reactionsRecent: 8,
+  reactionsQuick: 3,
 } as const;
 
 export const DEFAULT_ICON = "\u{1F4AC}";

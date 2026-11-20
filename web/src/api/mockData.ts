@@ -46,6 +46,8 @@ export const DEFAULT_SETTINGS: Settings = {
   forestShownView: "strip",
   forestMode: "forest",
   recentEmoji: [],
+  quickReactions: ["❤️", "\u{1F602}", "\u{1F622}"],
+  recentReactions: [],
   backup: { folder: "/Users/me/Library/Application Support/me.savvinov.kinige/backups", lastAt: null, count: 0, error: null },
 };
 
@@ -67,6 +69,10 @@ export function mockMessage(part: Partial<MessageView> & Pick<MessageView, "id" 
     origin: "user",
     replyTo: null,
     attachments: [],
+    reactions: [],
+    reactionKeysHad: [],
+    reactionKeyCount: 0,
+    reactionLiveCount: 0,
     ...part,
   };
 }
@@ -78,6 +84,8 @@ export interface Row {
   revisions: string[];
   /** The entry is a reply (slice 5): the addressee entry id; the `view.replyTo` quote is built on read (`MockState.viewOf`). */
   replyToId?: string;
+  /** The keys of every emoji the entry has had a reaction of, removed ones included (slice 5a); made from the view on the first use. */
+  reactionKeys?: Set<string>;
 }
 
 /** Feed order `(journal_date, created_at, id)`. */

@@ -51,6 +51,10 @@ const PINNED: &[(i64, &str)] = &[
         9,
         "4b8bf3b2a6a1ff7fb0312f3cb2d45c6249ef57ea789290b34936514c9d25d738",
     ),
+    (
+        10,
+        "3cd8f6b1fff9643542207fce1eced73f14c4da38737408c2fb263f811b9d1fae",
+    ),
 ];
 
 #[test]

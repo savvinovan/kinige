@@ -64,6 +64,7 @@ fn main() {
         "edit_message",
         "toggle_task_item",
         "set_message_flag",
+        "set_message_reaction",
         "set_message_date",
         "move_message",
         "list_trash",

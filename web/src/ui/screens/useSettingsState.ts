@@ -45,11 +45,19 @@ export function useSettingsState(api: KinigeApi, initialSettings: Settings) {
     [api],
   );
 
+  /** A reaction was put on this device: the quick set and the recent reactions are read again (they are local to the device). */
+  const refreshReactions = useCallback(() => {
+    api
+      .getSettings()
+      .then((fresh) => setSettings((old) => ({ ...old, quickReactions: fresh.quickReactions, recentReactions: fresh.recentReactions })))
+      .catch(() => undefined);
+  }, [api]);
+
   const toggleCollapsed = () => {
     const collapsed = !settings.sidebarCollapsed;
     setSettings((old) => ({ ...old, sidebarCollapsed: collapsed }));
     api.setSidebarCollapsed(collapsed).catch(() => undefined);
   };
 
-  return { settings, recordEmoji, toggleCollapsed };
+  return { settings, recordEmoji, refreshReactions, toggleCollapsed };
 }

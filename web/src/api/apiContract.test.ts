@@ -4,6 +4,7 @@ import { INBOX_ID, errorCode } from "./KinigeApi";
 import { mockAttachment } from "./MockApi";
 import { resolveColor } from "./mockColor";
 import { mockStage } from "./mockForest";
+import { isReactionEmoji, quickReactions, reactionKey } from "./mockReactions";
 import {
   LIMITS,
   attachmentKind,
@@ -170,6 +171,17 @@ describe("fixtures/api-contract: the pure rules of the mock", () => {
       const counts = entry.counts.map(([id, count]) => [real(id) ?? id, count] as const);
       expect(dayChat(counts, real(entry.current)), JSON.stringify(entry)).toBe(real(entry.expected));
     }
+  });
+
+  it("reaction-key: the key of an emoji, what is one emoji, the quick set", () => {
+    const file = fixture<{
+      keys: { emoji: Spec; key: Spec }[];
+      valid: { text: Spec; valid: boolean }[];
+      quick: { recent: Spec[]; expected: Spec[] }[];
+    }>("reaction-key");
+    for (const entry of file.keys) expect(reactionKey(spec(entry.emoji)), JSON.stringify(entry)).toBe(spec(entry.key));
+    for (const entry of file.valid) expect(isReactionEmoji(spec(entry.text)), JSON.stringify(entry)).toBe(entry.valid);
+    for (const entry of file.quick) expect(quickReactions(entry.recent.map(spec)), JSON.stringify(entry)).toEqual(entry.expected.map(spec));
   });
 
   it("attachment-kind: what the name of a file makes of it", () => {

@@ -18,6 +18,7 @@ import { MockEntries } from "./mock/MockEntries";
 import { MockForest } from "./mock/MockForest";
 import { MockImport, type MockImportFile } from "./mock/MockImport";
 import { MockOnThisDay } from "./mock/MockOnThisDay";
+import { MockReactions } from "./mock/MockReactions";
 import { MockSearch } from "./mock/MockSearch";
 import { MockSettings } from "./mock/MockSettings";
 import { type MockMethod, MockState } from "./mock/MockState";
@@ -42,6 +43,7 @@ export class MockApi implements KinigeApi {
   private readonly app: MockApp;
   private readonly chats: MockChats;
   private readonly entries: MockEntries;
+  private readonly reactions: MockReactions;
   private readonly compose: MockCompose;
   private readonly trash: MockTrash;
   private readonly search: MockSearch;
@@ -60,6 +62,7 @@ export class MockApi implements KinigeApi {
     this.app = new MockApp(state);
     this.chats = new MockChats(state);
     this.entries = new MockEntries(state);
+    this.reactions = new MockReactions(state);
     this.compose = new MockCompose(state);
     this.trash = new MockTrash(state);
     this.search = new MockSearch(state);
@@ -100,6 +103,7 @@ export class MockApi implements KinigeApi {
   editMessage: KinigeApi["editMessage"] = (id, body) => this.entries.editMessage(id, body);
   toggleTaskItem: KinigeApi["toggleTaskItem"] = (id, index, checked) => this.entries.toggleTaskItem(id, index, checked);
   setMessageFlag: KinigeApi["setMessageFlag"] = (id, flag, on) => this.entries.setMessageFlag(id, flag, on);
+  setMessageReaction: KinigeApi["setMessageReaction"] = (id, emoji, on) => this.reactions.setMessageReaction(id, emoji, on);
   setMessageDate: KinigeApi["setMessageDate"] = (id, journalDate) => this.entries.setMessageDate(id, journalDate);
   moveMessage: KinigeApi["moveMessage"] = (id, chatId) => this.entries.moveMessage(id, chatId);
   sendMessage: KinigeApi["sendMessage"] = (chatId, body, replyToId, attachmentIds) =>

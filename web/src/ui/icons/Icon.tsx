@@ -35,6 +35,7 @@ import {
   Search,
   Settings,
   Smile,
+  SmilePlus,
   SquareCheck,
   Star,
   Trash2,
@@ -107,6 +108,8 @@ const GLYPHS = {
   zoomIn: ZoomIn,
   // KINIG-136: the cover of a hidden photo (a crossed-out eye).
   eyeOff: EyeOff,
+  // KINIG-138: "Add reaction" in the hover bar (a smile with a plus).
+  reactionAdd: SmilePlus,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

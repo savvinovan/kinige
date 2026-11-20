@@ -5,7 +5,9 @@ use crate::agent_read::{ReadCtx, ReadFail, ReadOutput};
 use chrono::{DateTime, FixedOffset};
 use kinige_domain::MessageView;
 use kinige_domain::agent::{AgentCursor, LIST_TEXT_CHARS};
-use kinige_domain::agent_reply::{AgentAttachment, AgentChat, AgentEntry, AgentPage, fit_entries};
+use kinige_domain::agent_reply::{
+    AgentAttachment, AgentChat, AgentEntry, AgentPage, AgentReaction, fit_entries,
+};
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::tasks::task_items;
 
@@ -86,6 +88,14 @@ pub(crate) fn to_entry(view: &MessageView, chat_title: &str) -> AgentEntry {
                 width: a.width,
                 height: a.height,
                 duration_ms: a.duration_ms,
+            })
+            .collect(),
+        reactions: view
+            .reactions
+            .iter()
+            .map(|reaction| AgentReaction {
+                emoji: reaction.emoji.clone(),
+                put: local_time(reaction.put_at, &reaction.put_tz),
             })
             .collect(),
         truncated: false,

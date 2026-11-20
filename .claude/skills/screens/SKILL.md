@@ -36,7 +36,7 @@ Screenshots of the real window for acceptance are captured not by this Mac but b
 
 ## The screens driver (KINIG-92, ADR-0016)
 
-A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `7b`, `screens-driver-probe*`) clicks and reads by accessible name through the test build itself.
+A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `7b`, `5a`, `screens-driver-probe*`) clicks and reads by accessible name through the test build itself.
 
 **How it is switched on:**
 - `KINIGE_SCREENS_DRIVER=1` points `virtual:kinige-driver` at `scripts/screens/driver.ts`.
@@ -46,10 +46,12 @@ A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `7b`, `screens-driver-probe
 **How a step runs:**
 - The script writes `requests/<id>.json` into `KINIGE_SCREENS_DRIVER_DIR`, and the app answers in `replies/<id>.json`.
 - The shell side is `drive`, `press`, `wait_name` and `has` in `lib.sh`; the PowerShell side is `Drive`, `Press`, `Wait-Name` and `Has` in `lib-windows.ps1`.
-- **Steps:** press, menu, type, key, wait, has, scroll, text, metrics, front, hide, close.
+- **Steps:** press, menu, type, key, wait, has, scroll, focus, hover, text, metrics, front, hide, close.
   - `hide` is the capture window's own request to hide, done by the app; `front` on it is the app's real show.
   - `close` is the main window's own close request, the one the red button and ⌘W make (KINIG-156). A recording makes every accessibility call of a runner hang, so a scenario cannot click the red button then.
   - `metrics` reads the window's and the document's sizes as numbers (KINIG-76).
+  - `focus` (KINIG-138) puts the keyboard focus on an element and sends no pointer event: it shows UI that appears with the focus inside it, such as an entry's hover bar as the keyboard shows it (name such a shot after the keyboard). In `lib.sh` it is `focus_on <text> [role] [nth]`.
+  - `hover` (KINIG-138) moves the pointer onto an element, or off it with `"leave":true`: the page gets `pointerover`, `pointerenter` along the ancestors (outermost first) and `pointermove`, or `pointerout` and `pointerleave`, as a real pointer sends them; nothing is pressed or focused. It shows what the page draws on hover when the page's hover logic listens for those events (an entry's hover bar); it does not set the CSS `:hover` state. In `lib.sh`: `hover_on` and `hover_off <text> [role] [nth]`.
   - There is no script eval and no IPC passthrough.
 
 **Large text (KINIG-160, ADR-0022):** a scenario sets it with `set_text_size large|normal` from `lib.sh`, whatever its own input is. It sends driver steps (profile menu, "Settings", the radio button of the settings window) and checks the database, because there is no settings file to edit any more. `screens.yml` builds the driver for every scenario that uses it, and `prepare_app` always gives the app a driver directory. The settings window stays open afterwards (the driver has no step to close a window). Nothing in the app switches agent access on: a scenario that needs access sets `mcp_enabled`, `mcp_mode` and `mcp_chats` with `sqlite3` on its throwaway database (see `7b.sh`; `5d.sh` restores them in a `trap`).

@@ -10,7 +10,7 @@
 # A commit by GITHUB_TOKEN does not start CI by itself (a push event), but starting through workflow_dispatch by GITHUB_TOKEN is allowed:
 # the last step of the commit job starts ci.yml on the branch (the actions: write permission is needed, only this job has it).
 # Input is accessibility actions only (scripts/screens/ax.js): the runner gives osascript the Accessibility permission (checked by a probe).
-# KINIG-92 (ADR-0016): a scenario that sets DRIVER=1 (7a, 7a-windows, 7b and the screens-driver probes) uses the screens driver inside the app
+# KINIG-92 (ADR-0016): a scenario that sets DRIVER=1 (7a, 7a-windows, 7b, 5a and the screens-driver probes) uses the screens driver inside the app
 # instead: the build is made with it (below), the scenario passes KINIGE_SCREENS_DRIVER_DIR to the app (LSEnvironment on macOS, the
 # environment on Windows). AX and SendKeys are for native UI only.
 # KINIG-160 (ADR-0022): the macOS build of 4b, 5, 5d, 6, 7, 7a, 7b, chat-color, kinig-132, kinig-134, kinig-135, kinig-145, kinig-153 and viewer

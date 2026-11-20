@@ -359,6 +359,7 @@ describe("MainWindow слайс 3: английский", () => {
     fireEvent.contextMenu(article("Buy bread"));
     expect(within(screen.getByRole("menu")).getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
       "Copy",
+      "Add reaction…",
       "Edit",
       "Make a task",
       "Add to favorites",

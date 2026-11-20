@@ -1,4 +1,4 @@
-//! SQLite schema and migrations (`PRAGMA user_version`). Migration 9 (slice 7b) adds the details of an attachment; migration 8 (slice 7a) adds the local waveform column of a voice note; migration 7 (slice 7) adds attachments; migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
+//! SQLite schema and migrations (`PRAGMA user_version`). Migration 10 (slice 5a) adds the derived tables of reactions; migration 9 (slice 7b) adds the details of an attachment; migration 8 (slice 7a) adds the local waveform column of a voice note; migration 7 (slice 7) adds attachments; migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
 //! index; migration 3 (slice 3) adds revisions, tombstones and derived local tables; migration 2 adds the local table
 //! of drafts (slice 2).
 //! Migration 1 creates only the tables that slice 1 writes to
@@ -283,6 +283,34 @@ ALTER TABLE draft_attachment ADD COLUMN description TEXT;
 ALTER TABLE draft_attachment ADD COLUMN spoiler INTEGER NOT NULL DEFAULT 0;
 ";
 
+/// Migration 10 (slice 5a, appendix ADR-0001 §C.9): the derived tables of reactions. `CREATE TABLE` only; no row of a synced table changes
+/// and nothing synced changes shape. Both tables are local, derived from the `reactions` group by one function
+/// (`kinige_domain::reactions::shown`) and rebuilt from the groups when `app_setting.reaction_rules_version` differs.
+/// - `message_reaction` -- one row per live reaction the reader lets through (valid emoji, a time and a zone): `key` is the comparison key,
+///   `emoji` the form the picker gave. The primary key `(message_id, key)` is the lookup by message the feed's join uses;
+/// - `message_reaction_keys` -- what the first table cannot say once reactions are removed or hidden: `keys` is a JSON array of the comparison
+///   keys of the items whose emoji is a valid emoji sequence, removal markers included, in key order (which emoji a full entry can still
+///   take; the text of an item that is not an emoji is never stored here); `item_count` is how many items the group holds and `live_count`
+///   how many of them are live, whatever they look like (what the 32-key and the 10-live caps count; the interface counts the same, so it never allows what the store refuses).
+///   A row exists for a message whose group is well-formed and not empty.
+pub(crate) const MIGRATION_10: &str = "
+CREATE TABLE message_reaction (
+  message_id TEXT NOT NULL,
+  key TEXT NOT NULL,
+  emoji TEXT NOT NULL,
+  put_at INTEGER NOT NULL,
+  put_tz TEXT NOT NULL,
+  PRIMARY KEY (message_id, key)
+) WITHOUT ROWID;
+
+CREATE TABLE message_reaction_keys (
+  message_id TEXT PRIMARY KEY,
+  keys TEXT NOT NULL,
+  item_count INTEGER NOT NULL,
+  live_count INTEGER NOT NULL
+) WITHOUT ROWID;
+";
+
 /// Migrations in order; the version number is the index + 1.
 const MIGRATIONS: &[&str] = &[
     MIGRATION_1,
@@ -294,6 +322,7 @@ const MIGRATIONS: &[&str] = &[
     MIGRATION_7,
     MIGRATION_8,
     MIGRATION_9,
+    MIGRATION_10,
 ];
 
 /// The schema version this app understands.
@@ -307,6 +336,9 @@ fn after_migration(tx: &rusqlite::Transaction<'_>, version: i64) -> rusqlite::Re
     if version == 4 {
         crate::ext::rebuild_all(tx)?;
         crate::search::rebuild_all(tx)?;
+    }
+    if version == 10 {
+        crate::reactions::rebuild_all(tx)?;
     }
     Ok(())
 }

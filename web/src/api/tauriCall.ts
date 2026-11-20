@@ -61,6 +61,8 @@ const CODES = [
   "folders_not_attached",
   "drop_not_supported",
   "attachment_details_invalid",
+  "reaction_invalid",
+  "reaction_limit",
   "internal",
 ] as const satisfies readonly ErrorCode[];
 

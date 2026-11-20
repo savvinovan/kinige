@@ -11,13 +11,92 @@
 use crate::groups::{GroupError, SCHEMA_VERSION, parse_groups_raw};
 use crate::hlc;
 use crate::jcs;
-use crate::rewrite::{Groups, Rewritten, corrupt, max_schema_version};
-use serde_json::{Value, json, value::RawValue};
+use crate::rewrite::{
+    Groups, Rewritten, corrupt, max_schema_version, rewrite_field, rewrite_group,
+};
+use serde_json::{Map, Value, json, value::RawValue};
 use std::collections::BTreeMap;
 
-/// The groups that may be absent from a record, per entity (slice 7b: an attachment's details; slice 5a adds the message's
-/// `reactions`). Any other missing group stays an error: an entry without `body` is corrupt.
-const MAY_BE_ABSENT: &[(&str, &[&str])] = &[("attachment", &["name", "description", "privacy"])];
+/// The groups that may be absent from a record, per entity (slice 7b: an attachment's details; slice 5a: the message's
+/// `reactions`). Any other missing group stays an error: an entry without `body` is corrupt. Allowed by entity and group, not by group
+/// name alone: `reactions` on an attachment is refused.
+const MAY_BE_ABSENT: &[(&str, &[&str])] = &[
+    ("attachment", &["name", "description", "privacy"]),
+    ("message", &["reactions"]),
+];
+
+/// Sets one field of a group a person edits locally: the group is rewritten when the record has it ([`rewrite_field`]) and added with
+/// just that field when it does not ([`add_group`]). The one place that makes the choice, so 7b's details and 5a's reactions share it.
+/// A record that has the group in only one of its two maps is `Corrupt` on either path.
+pub fn rewrite_or_add_field(
+    current: &Groups<'_>,
+    entity: &str,
+    group: &str,
+    new_hlc: &str,
+    max_bytes: Option<usize>,
+    (key, value): (&str, Value),
+) -> Result<Rewritten, GroupError> {
+    // The allowlist decides for both paths, like `rewrite_or_add_group`: a group that may not be added is not edited here either.
+    if !is_allowed(entity, group) {
+        return Err(GroupError::Invalid("this group may not be added"));
+    }
+    if has_group(current, group)? {
+        rewrite_field(current, group, new_hlc, max_bytes, (key, value))
+    } else {
+        add_group(
+            current,
+            entity,
+            group,
+            &json!({ key: value }),
+            new_hlc,
+            max_bytes,
+        )
+    }
+}
+
+/// Rewrites a whole group object with `edit` when the record has the group, and adds the group, starting from an empty object, when it
+/// does not (slice 5a: the reactions are one group with a list). Only the groups on the allowlist; the same dispatch as
+/// [`rewrite_or_add_field`].
+pub fn rewrite_or_add_group(
+    current: &Groups<'_>,
+    entity: &str,
+    group: &str,
+    new_hlc: &str,
+    max_bytes: Option<usize>,
+    edit: impl FnOnce(&mut Map<String, Value>) -> Result<(), GroupError>,
+) -> Result<Rewritten, GroupError> {
+    if !is_allowed(entity, group) {
+        return Err(GroupError::Invalid("this group may not be added"));
+    }
+    if has_group(current, group)? {
+        rewrite_group(current, group, new_hlc, max_bytes, |object, _| edit(object))
+    } else {
+        let mut object = Map::new();
+        edit(&mut object)?;
+        add_group(
+            current,
+            entity,
+            group,
+            &Value::Object(object),
+            new_hlc,
+            max_bytes,
+        )
+    }
+}
+
+/// Whether either of the two maps names the group: a group in only one of them is corrupt, and the writer that is then chosen reports it.
+pub fn has_group(current: &Groups<'_>, group: &str) -> Result<bool, GroupError> {
+    let in_bytes = parse_groups_raw(current.groups_raw)?.contains_key(group);
+    let in_hlc: BTreeMap<String, Value> =
+        serde_json::from_str(current.hlc_json).map_err(corrupt)?;
+    Ok(in_bytes || in_hlc.contains_key(group))
+}
+
+fn is_allowed(entity: &str, group: &str) -> bool {
+    MAY_BE_ABSENT
+        .iter()
+        .any(|(name, groups)| *name == entity && groups.contains(&group))
+}
 
 /// Adds `group` with the canonical bytes of `value` under `new_hlc` and `sv = 1` to a record of `entity` that does not have it.
 /// `max_bytes` limits the group's canonical bytes.
@@ -29,10 +108,7 @@ pub fn add_group(
     new_hlc: &str,
     max_bytes: Option<usize>,
 ) -> Result<Rewritten, GroupError> {
-    let allowed = MAY_BE_ABSENT
-        .iter()
-        .any(|(name, groups)| *name == entity && groups.contains(&group));
-    if !allowed {
+    if !is_allowed(entity, group) {
         return Err(GroupError::Invalid("this group may not be added"));
     }
     let mut groups = parse_groups_raw(current.groups_raw)?;

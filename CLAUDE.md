@@ -21,9 +21,10 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
   - 02.11: slice D2 (visual refresh) and slice 10a (Windows build);
   - 03.11: slice 6 (the year's forest);
   - 04.11: slice 7 (attachments);
-  - 05.11: slice 7a (voice notes).
+  - 05.11: slice 7a (voice notes);
+  - 20.11: slice 7b (an attachment's name, description and spoiler).
 - **Merged since:** the sync spikes S4a–S4c (server, ADR-0017–0020) and tech debt E.
-- **In review:** slice 7b, attachment details (name, description, spoiler; KINIG-136); it lands before slice 5a (reactions, KINIG-138), which reuses its add-group function.
+- **In review:** slice 5a, reactions on entries (KINIG-138).
 - **In review:** the small fixes batch 5b (KINIG-150 the chat name in the top bar and the forest that comes back as it was, KINIG-156 closing the main window stops a recording, KINIG-76 no page scroll bar); it ships in one delivery with 5a.
 - **Next:** slice 11, sync in the app.
 - **History:** the PRD changelog (`docs/plan/02-prd.md`, top).

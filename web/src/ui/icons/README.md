@@ -50,6 +50,7 @@ Line SVGs from the [Lucide](https://lucide.dev) set via the npm package `lucide-
 | `zoomOut`      | `zoom-out`                                  | MIT (from Feather) |
 | `zoomIn`       | `zoom-in`                                   | MIT (from Feather) |
 | `eyeOff`       | `eye-off`                                   | ISC                |
+| `reactionAdd`  | `smile-plus`                                | ISC                |
 
 The origin of the slice 3 icons was checked against the Feather list in the `LICENSE` of package 1.60.0: `trash-2`, `calendar`, `plus`, `chevron-right`, `database` are there, the rest are ISC.
 
@@ -60,6 +61,8 @@ The slice 7a icons (`play`, `pause`) are not in the Feather list of that `LICENS
 The KINIG-87 icons: `zoom-in` and `zoom-out` are in the Feather list of the `LICENSE` of 1.60.0 (MIT); `rotate-ccw` is not, so it is ISC.
 
 The KINIG-136 icon `eye-off` (the cover of a hidden photo) is not in the Feather list of that `LICENSE` (checked against 1.66.0, the pinned version), so it is ISC.
+
+The KINIG-138 icon `smile-plus` ("Add reaction" in the hover bar) is not in the Feather list either (`smile` is, `smile-plus` is not; checked against the `LICENSE` of the installed package), so it is ISC.
 
 Which icons came from Feather can be seen in the list in the package's `LICENSE`; checked against version 1.60.0.
 
