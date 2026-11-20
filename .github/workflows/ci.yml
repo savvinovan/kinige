@@ -158,33 +158,6 @@ jobs:
           KINIGE_ALLOW_SCREENS_DRIVER: "1"
         run: cargo clippy -p kinige --features screens-driver --all-targets -- -D warnings
 
-  # Slice 5c (KINIG-151, ADR-0021), by hand only: `gh workflow run ci.yml --ref <branch>`. Does a second ad-hoc-signed build read the keychain
-  # item the first build wrote? `spikes/5c-keychain` is built twice with different tags (two binaries, as two builds of the app are), both
-  # signed ad hoc like the app, and run on the runner's keychain (`run.sh`). The job prints every result and never fails on a keychain
-  # error: a human reads the log (a prompt that nobody can answer shows as a timeout, status 142).
-  keychain:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: macos-15
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Rust toolchain
-        run: rustup toolchain install
-
-      - name: Two ad-hoc-signed builds
-        working-directory: spikes/5c-keychain
-        run: |
-          for tag in a b; do
-            BUILD_TAG=$tag CARGO_TARGET_DIR="$RUNNER_TEMP/kc-$tag" cargo build --release
-            cp "$RUNNER_TEMP/kc-$tag/release/keychain-check" "$RUNNER_TEMP/kc-$tag.bin"
-            codesign --force --sign - "$RUNNER_TEMP/kc-$tag.bin"
-            codesign -dv "$RUNNER_TEMP/kc-$tag.bin" 2>&1 | grep -E "Identifier|CDHash|Signature"
-          done
-
-      - name: Build A writes, build B reads
-        run: bash spikes/5c-keychain/run.sh "$RUNNER_TEMP/kc-a.bin" "$RUNNER_TEMP/kc-b.bin"
-
   # Rust coverage -> Codecov (badges in the README, a comment in the PR). Informational: the threshold does not fail CI (codecov.yml).
   # A separate job: the instrumented build (cargo llvm-cov) does not share artifacts with `rust` and runs in parallel with it.
   # The web coverage is taken in the `web` job by the same vitest run as the check.

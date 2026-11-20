@@ -45,6 +45,15 @@ check "the driver positive control passes with both halves" pass "$GUARD" "$WORK
 check "the driver positive control fails when the binary lacks it" fail "$GUARD" "$WORK/driver" --binary "$WORK/clean.bin" --expect screens-driver
 check "the driver positive control fails when web/dist lacks it" fail "$GUARD" "$WORK/clean" --binary "$WORK/driver.bin" --expect screens-driver
 check "the driver positive control fails on a clean build" fail "$GUARD" "$WORK/clean" --expect screens-driver
+# The Bot API test hooks (slice 5c): in the binary only.
+printf 'ELF\0\0 bot hooks on \0kinige-bot-test-hooks-5c\0' > "$WORK/bot.bin"
+check "the bot hooks in the binary fail without the opt-in" fail "$GUARD" "$WORK/clean" --binary "$WORK/bot.bin"
+check "the screens opt-in lets them through" pass env KINIGE_ALLOW_SCREENS_DRIVER=1 "$GUARD" "$WORK/clean" --binary "$WORK/bot.bin"
+check "the fake microphone's opt-in does not" fail env KINIGE_ALLOW_FAKE_MIC=1 "$GUARD" "$WORK/clean" --binary "$WORK/bot.bin"
+check "an opt-in other than 1 does not (bot hooks)" fail env KINIGE_ALLOW_SCREENS_DRIVER=yes "$GUARD" "$WORK/clean" --binary "$WORK/bot.bin"
+check "the bot hooks positive control passes with them" pass "$GUARD" "$WORK/clean" --binary "$WORK/bot.bin" --expect bot-hooks
+check "the bot hooks positive control fails on a clean binary" fail "$GUARD" "$WORK/clean" --binary "$WORK/clean.bin" --expect bot-hooks
+check "the bot hooks positive control needs a binary" fail "$GUARD" "$WORK/clean" --expect bot-hooks
 # Bad usage.
 check "a missing directory fails" fail "$GUARD" "$WORK/nope"
 check "a missing binary fails" fail "$GUARD" "$WORK/clean" --binary "$WORK/nope.bin"

@@ -6,8 +6,8 @@ license = "MIT"
 publish = false
 
 # Slice 5c (KINIG-151, ADR-0021): does a second ad-hoc-signed build read the keychain item the first build wrote? A throwaway crate outside
-# the workspace, like the other spikes; `.github/workflows/keychain-check.yml` builds it twice with different `BUILD_TAG`s (so the two
-# binaries differ, as two builds of the app do) and signs both ad hoc. It handles a fixed fake secret and nothing else.
+# the workspace, like the other spikes; the README says how to build it twice with different `BUILD_TAG`s (so the two binaries differ, as
+# two builds of the app do) and sign both ad hoc. It handles a fixed fake secret and nothing else.
 [workspace]
 
 [target.'cfg(target_os = "macos")'.dependencies]

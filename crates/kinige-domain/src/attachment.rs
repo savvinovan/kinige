@@ -360,4 +360,7 @@ mod sticker_rules_tests;
 mod details_tests;
 
 #[cfg(test)]
+mod details_large_tests;
+
+#[cfg(test)]
 mod changes_tests;

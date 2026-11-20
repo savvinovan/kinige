@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The keychain check of slice 5c (KINIG-151, ADR-0021), run by the `keychain` job of ci.yml on a macOS runner: `run.sh <build A> <build B>`.
+# The keychain check of slice 5c (KINIG-151, ADR-0021), run on a macOS runner (see README.md): `run.sh <build A> <build B>`.
 # Two builds of the same program, signed ad hoc, take turns on one keychain item. A prompt that nobody can answer shows as a timeout
 # (status 142, SIGALRM after 20 s); the script never stops on an error, it prints every result, and a human reads the log.
 #   1. default access, as `SecItemAdd` gives it: the item trusts the program that made it;

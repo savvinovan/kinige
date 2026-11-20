@@ -389,13 +389,3 @@ fn reading_is_total_and_yields_only_valid_values() {
         assert!(kind == AttachmentKind::Image || !details.spoiler);
     }
 }
-
-#[test]
-fn a_900_kib_description_reads_as_none_and_does_not_fail() {
-    let huge = "a".repeat(900 * 1024);
-    let groups = json!({"description": {"description": huge}, "name": {"name": null}}).to_string();
-    let hlcs = json!({"description": {"h": hlc(1), "sv": 1}, "name": {"h": hlc(1), "sv": 1}});
-    let details = read_details(AttachmentKind::Image, "a.jpg", &groups, &hlcs.to_string());
-    assert_eq!(details.description, None);
-    assert!(!details.spoiler);
-}

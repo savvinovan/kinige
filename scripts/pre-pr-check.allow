@@ -1,1 +1,0 @@
-crates/kinige-domain/src/attachment/details_tests.rs  # 401 lines: slice 5c added two struct fields to its fixture; the file is slice 7b's tests and is not worth a split for one line
