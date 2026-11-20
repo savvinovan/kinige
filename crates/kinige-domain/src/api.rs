@@ -7,6 +7,7 @@ use crate::backup::BackupStatus;
 use crate::chat_color::ChatColor;
 use crate::forest_year::{ForestMode, ForestView};
 use crate::lang::Language;
+use crate::reactions::present::ReactionView;
 use crate::reply::ReplyTo;
 use crate::shortcuts::ShortcutStatus;
 use serde::{Deserialize, Serialize};
@@ -79,6 +80,10 @@ pub struct MessageView {
     pub reply_to: Option<ReplyTo>,
     /// The live attachments in their order (slice 7). Empty for most entries.
     pub attachments: Vec<AttachmentView>,
+    /// The live reactions in the order they were put (slice 5a). Empty for most entries, and for an entry whose group is not well-formed.
+    pub reactions: Vec<ReactionView>,
+    /// How many different emoji the entry has ever had a reaction of, removed ones included: at 32 no new emoji can be put on it.
+    pub reaction_keys_had: u32,
 }
 
 /// The draft of the chat input field (slice 5): the text and the entry being replied to.
@@ -273,6 +278,10 @@ pub struct Settings {
     pub sidebar_collapsed: bool,
     /// The picker's recent emoji, the freshest first (slice 3).
     pub recent_emoji: Vec<String>,
+    /// The three emoji of the hover bar and the reaction popover: the recent reactions, then the fixed set (slice 5a). Local to the device.
+    pub quick_reactions: Vec<String>,
+    /// The reactions put on this device, the freshest first, at most 8: the picker's "Recent" section in reaction mode (slice 5a).
+    pub recent_reactions: Vec<String>,
     /// The database file backup (slice 3).
     pub backup: BackupStatus,
     /// How much of the forest is shown above the feed (slice 6); local, not synced, not in `settings.json`.
@@ -343,10 +352,12 @@ mod tests {
             origin: "agent".into(),
             reply_to: None,
             attachments: Vec::new(),
+            reactions: Vec::new(),
+            reaction_keys_had: 0,
         };
         assert_eq!(
             serde_json::to_string(&view).unwrap(),
-            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false,"origin":"agent","replyTo":null,"attachments":[]}"#
+            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false,"origin":"agent","replyTo":null,"attachments":[],"reactions":[],"reactionKeysHad":0}"#
         );
     }
 

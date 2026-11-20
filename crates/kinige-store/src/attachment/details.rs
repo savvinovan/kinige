@@ -10,17 +10,15 @@ use crate::hlc_state::next_hlc;
 use crate::send::mark_dirty;
 use crate::view::load_view;
 use crate::{Now, Store, StoreError};
-use kinige_domain::add_group::add_group;
+use kinige_domain::add_group::rewrite_or_add_field;
 use kinige_domain::attachment::{
     AttachmentDetailsChanges, AttachmentKind, AttachmentView, DESCRIPTION_GROUP, Details,
     NAME_GROUP, PRIVACY_GROUP, check_kind, normalize_description, normalize_name, read_details,
 };
-use kinige_domain::groups::parse_groups_raw;
 use kinige_domain::hlc::is_uuid_v4;
-use kinige_domain::rewrite::{Groups, is_read_only, rewrite_field};
+use kinige_domain::rewrite::{Groups, is_read_only};
 use rusqlite::{OptionalExtension, Transaction, TransactionBehavior};
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 impl Store {
@@ -206,29 +204,10 @@ fn write_groups(
             groups_raw: &raw,
             hlc_json: &hlcs,
         };
-        let done = if has_group(&raw, &hlcs, group)? {
-            rewrite_field(&current, group, &hlc, None, (key, value))?
-        } else {
-            add_group(
-                &current,
-                "attachment",
-                group,
-                &json!({ key: value }),
-                &hlc,
-                None,
-            )?
-        };
+        let done = rewrite_or_add_field(&current, "attachment", group, &hlc, None, (key, value))?;
         (raw, hlcs, schema_version) = (done.groups_raw, done.hlc_json, done.schema_version);
     }
     Ok((raw, hlcs, schema_version))
-}
-
-/// Whether either map has the group: a group in only one of them is corrupt, and the writer that is then chosen reports it.
-fn has_group(groups_raw: &str, hlc_json: &str, group: &str) -> Result<bool, StoreError> {
-    let in_bytes = parse_groups_raw(groups_raw)?.contains_key(group);
-    let in_hlc: BTreeMap<String, Value> = serde_json::from_str(hlc_json)
-        .map_err(|_| StoreError::Internal("hlc_json does not parse".into()))?;
-    Ok(in_bytes || in_hlc.contains_key(group))
 }
 
 /// A sent attachment and its entry, as the edit sees them.
