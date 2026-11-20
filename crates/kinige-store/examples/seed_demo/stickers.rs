@@ -7,10 +7,14 @@
 
 use image::codecs::gif::{GifEncoder, Repeat};
 use image::{Delay, Frame, ImageEncoder, Rgba, RgbaImage};
+use kinige_domain::Language;
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::stickers::PackSource;
+use kinige_domain::telegram::parse_export;
 use kinige_store::{NewPack, Now, PackItem, Store};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 const MINUTE: i64 = 60_000;
 /// The face colors of the drawn stickers.
@@ -100,6 +104,78 @@ fn gif(width: u32, height: u32, frames: u32) -> Vec<u8> {
     bytes
 }
 
+/// A synthetic Telegram export of "Saved Messages" with sticker messages, imported twice like a person re-importing after the update: first without
+/// the files (the "not imported" lines of before 5c), one entry is then edited, then with them (the unedited ones become stickers, the edited one
+/// keeps its text and gets the sticker as a picture). A TGS and a file the export did not download stay placeholders.
+fn import_export_stickers(store: &Store, now: &Now, files: &Path) {
+    let root = files.join("tg-export");
+    std::fs::create_dir_all(root.join("stickers")).expect("export folder");
+    for (name, tint) in [("a.webp", 3), ("b.webp", 5), ("c.webp", 6)] {
+        std::fs::write(
+            root.join("stickers").join(name),
+            sticker_png_or_webp(512, tint, true),
+        )
+        .expect("sticker file");
+    }
+    std::fs::write(root.join("stickers/d.tgs"), b"\x1f\x8b synthetic").expect("tgs");
+    let base = now.ms / 1000 - 3 * 86_400;
+    let sticker = |id: i64, path: &str, mime: &str, emoji: &str| {
+        format!(
+            r#"{{"id":{id},"type":"message","date":"x","date_unixtime":"{unix}","from":"Я","from_id":"user1000001","file":"{path}","file_name":"sticker.webp","media_type":"sticker","sticker_emoji":"{emoji}","mime_type":"{mime}","file_size":1000,"width":512,"height":512,"text":"","text_entities":[]}}"#,
+            unix = base + id * 60
+        )
+    };
+    let messages = [
+        sticker(11, "stickers/a.webp", "image/webp", "😺"),
+        sticker(12, "stickers/b.webp", "image/webp", "😸"),
+        sticker(13, "stickers/a.webp", "image/webp", "😺"),
+        sticker(14, "stickers/c.webp", "image/webp", "🐱"),
+        sticker(15, "stickers/d.tgs", "application/x-tgsticker", "🐟"),
+        sticker(
+            16,
+            "(File not included. Change data exporting settings to download.)",
+            "image/webp",
+            "🐟",
+        ),
+    ];
+    let json = format!(
+        r#"{{"personal_information":{{"user_id":1000001}},"chats":{{"list":[{{"type":"saved_messages","id":1000001,"messages":[{}]}}]}}}}"#,
+        messages.join(",")
+    );
+    let export = Arc::new(parse_export(&json).expect("the synthetic export parses"));
+    let ids: Vec<String> = export.chats.iter().map(|c| c.id.clone()).collect();
+    let run = |media: Option<&Path>| {
+        store
+            .import_telegram_with_media(
+                export.clone(),
+                ids.clone(),
+                Language::Ru,
+                now,
+                |_| {},
+                Arc::new(AtomicBool::new(false)),
+                media,
+            )
+            .expect("import of the synthetic stickers");
+    };
+    run(None);
+    let page = store
+        .list_messages(INBOX_ID, None, 200, now)
+        .expect("the Inbox feed");
+    let edited = page
+        .messages
+        .iter()
+        .find(|m| m.body_md.contains("🐱") && m.body_md.contains("не импортирован"))
+        .expect("the imported entry of the fourth sticker");
+    store
+        .edit_message(
+            &edited.id,
+            &format!("{}\nЭтот кот мой любимый", edited.body_md),
+            now,
+        )
+        .expect("edit");
+    run(Some(root.as_path()));
+}
+
 pub fn seed_stickers(store: &Store, now: &Now, data: &Path) {
     let at = |minutes_ago: i64| Now::at(now.ms - minutes_ago * MINUTE, &now.tz);
     let files = data.join("seed-files");
@@ -168,6 +244,8 @@ pub fn seed_stickers(store: &Store, now: &Now, data: &Path) {
             .send_entry(INBOX_ID, "", None, &[tile.id], &at(ago))
             .expect("send the gif");
     }
+
+    import_export_stickers(store, now, &files);
 
     // What the scenario's fake server serves for the pack the scenario adds by its link.
     if let Some(dir) = std::env::var_os("KINIGE_SEED_FAKE_BOT_DIR") {
