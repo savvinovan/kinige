@@ -18,6 +18,8 @@ interface MessageMenuProps {
   onDelete?: () => void;
   /** "Attachment details…" (KINIG-136): shown only for an entry with attachments that have details (not for a voice note alone). */
   onAttachmentDetails?: () => void;
+  /** "Add reaction…" (slice 5a): opens the quick popover at the menu's place. Absent for an entry that cannot take reactions from here. */
+  onAddReaction?: () => void;
   /** Where the entry can be moved (the "Move to chat" submenu) and what to do on choice; without them the item is disabled. */
   moveTargets?: readonly MoveTarget[];
   onMoveTo?: (chatId: string) => void;
@@ -44,6 +46,7 @@ export function MessageMenu({
   onChangeDate,
   onDelete,
   onAttachmentDetails,
+  onAddReaction,
   moveTargets = [],
   onMoveTo,
   onCopy,
@@ -56,6 +59,7 @@ export function MessageMenu({
 
   const main: MenuItem[] = [
     { id: "copy", label: t("message.copy"), icon: "copy" },
+    ...(onAddReaction ? [{ id: "react", label: t("message.addReaction"), icon: "reactionAdd" as const, disabled: readOnly }] : []),
     { id: "edit", label: t("message.edit"), icon: "edit", disabled: off(onEdit) },
     { id: "task", label: isTask ? t("message.untask") : t("message.task"), icon: "task", disabled: off(onToggleTask) },
     {
@@ -91,6 +95,7 @@ export function MessageMenu({
     date: onChangeDate,
     delete: onDelete,
     attachments: onAttachmentDetails,
+    react: onAddReaction,
   };
 
   return (

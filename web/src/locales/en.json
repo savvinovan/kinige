@@ -275,6 +275,7 @@
     "compact_other": "{{date}} · {{count}} entries",
     "reply": "Reply",
     "replyLabel": "Reply to the entry of {{date}}",
+    "reactLabel": "Add a reaction to the entry of {{date}}",
     "openLabel": "Open the entry of {{date}}, {{time}}",
     "openDayLabel": "Open {{date}} in the feed"
   },
@@ -362,7 +363,23 @@
     "editHint": "Enter saves, Esc cancels",
     "deleted": "Deleted",
     "restore": "Restore",
-    "restoreLabel": "Restore the deleted entry"
+    "restoreLabel": "Restore the deleted entry",
+    "addReaction": "Add reaction…"
+  },
+  "reaction": {
+    "row": "Reactions",
+    "add": "Add reaction",
+    "button": "Reaction {{emoji}}",
+    "dialog": "Choose a reaction",
+    "more": "More",
+    "limitLive": "At most 10 reactions on an entry",
+    "limitKeys": "This entry has had 32 different reactions",
+    "putToday": "Put today at {{time}}",
+    "putOn": "Put on {{date}}",
+    "yearsLater_one": "{{count}} year later",
+    "yearsLater_other": "{{count}} years later",
+    "yearsShort": "{{count}} y",
+    "removeLabel": "{{emoji}}, {{put}}. Remove"
   },
   "tag": {
     "filterLabel": "Tag filter",

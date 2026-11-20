@@ -1,0 +1,13 @@
+{
+  "layout": {
+    "reaction": {
+      "$type": "dimension",
+      "chip-height": { "$value": "1.55rem", "$description": "KINIG-138: the height of a reaction chip inside a bubble (about 20 px at a 13 px root), fully rounded. The emoji in it is the body text size." },
+      "chip-padding": { "$value": "{space.2}", "$description": "KINIG-138: the left and right padding of a chip (6.5 px)." },
+      "gap": { "$value": "{space.1}", "$description": "KINIG-138: the gap between chips, and between the rows when they wrap (3.25 px, about the 4 px of the design)." },
+      "row-offset": { "$value": "{space.1}", "$description": "KINIG-138: the space between the text of an entry and its row of chips." },
+      "divider-height": { "$value": "1.1rem", "$description": "KINIG-138: the height of the thin divider between the reaction buttons and the other buttons of the hover bar (14 px)." },
+      "popover-gap": { "$value": "{space.1}", "$description": "KINIG-138: the gap between the buttons of the quick-reaction popover." }
+    }
+  }
+}

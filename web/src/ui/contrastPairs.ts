@@ -29,6 +29,7 @@ const SURFACES = [
   "surface.card",
   "surface.field",
   "surface.field-active",
+  "surface.chip",
   "highlight.background",
 ];
 const TEXT_ROLES = ["text.primary", "text.secondary", "text.tertiary", "accent.default", "status.error"];
@@ -112,4 +113,7 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { foreground: "text.secondary", background: "attachment.cover", kind: "text" },
   { foreground: "text.tertiary", background: "attachment.cover", kind: "text" },
   { foreground: "focus.ring", background: "attachment.cover", kind: "ui" },
+  // A reaction chip (KINIG-138) is a quiet neutral fill on the bubble and on the "On this day" card; the text on it is checked with every surface above.
+  { foreground: "surface.chip", background: "surface.message", kind: "decorative" },
+  { foreground: "surface.chip", background: "surface.card", kind: "decorative" },
 ];

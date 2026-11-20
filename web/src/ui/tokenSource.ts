@@ -35,6 +35,7 @@ export const PALETTE_ROLES = [
   "surface.card",
   "surface.field",
   "surface.field-active",
+  "surface.chip",
   "text.primary",
   "text.secondary",
   "text.tertiary",

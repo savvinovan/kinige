@@ -53,6 +53,11 @@
           "$value": "#343434",
           "$description": "The fill of an input field when it has the cursor: slightly lighter (1.14:1 to the normal one). Together with the fill change, a focused field has a thin line in the focus color.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 20,4 %" } }
+        },
+        "chip": {
+          "$value": "#3a3a3a",
+          "$description": "KINIG-138: the fill of a reaction chip inside a bubble or a card: quiet and neutral, every chip is the person's own so there is no accent tint. It stands off the bubble's fill by 1.25:1, and primary text on it is 10.4:1, tertiary text (the 'N y' age) 4.95:1.",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 22,7 %" } }
         }
       },
       "text": {

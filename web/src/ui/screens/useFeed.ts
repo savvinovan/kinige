@@ -37,6 +37,8 @@ interface UseFeedOptions {
   focus?: FocusTarget | null;
   /** The entries of the journal changed through this feed (sent, edited, deleted, restored, moved, re-dated): the forest reloads. */
   onMutated?: () => void;
+  /** A reaction was put (slice 5a): the quick set and the recent list of the settings are read again. */
+  onReacted?: () => void;
 }
 
 /**
@@ -44,7 +46,7 @@ interface UseFeedOptions {
  * No optimistic display: an entry changes after Rust replies. A deleted entry stays in place, dimmed ("Deleted ·
  * Restore"), until the person leaves the chat (user decision 1).
  */
-export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus = null, onMutated }: UseFeedOptions) {
+export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus = null, onMutated, onReacted }: UseFeedOptions) {
   const mutatedRef = useRef(onMutated);
   useEffect(() => {
     mutatedRef.current = onMutated;
@@ -336,6 +338,7 @@ export function useFeed({ api, chatId, tag, refreshChats, onError, onTag, focus 
     reload,
     onTag,
     mutated,
+    onReacted,
     setMessages,
     setEditingId,
     setEditError,

@@ -22,6 +22,8 @@ export interface FeedActions {
   onToggleTask(id: string, on: boolean): void;
   onToggleDone(id: string, done: boolean): void;
   onToggleFavorite(id: string, on: boolean): void;
+  /** Put (`on`) or remove a reaction (slice 5a). Optional: stories of the feed that predate reactions do not give it. */
+  onReact?(id: string, emoji: string, on: boolean): void;
   onChangeDate(id: string): void;
   onDelete(id: string): void;
   onRestore(id: string): void;

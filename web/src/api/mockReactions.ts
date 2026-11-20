@@ -1,3 +1,4 @@
+import { reactionKey } from "../ui/reactions/reactionKey";
 import { LIMITS } from "./mockRules";
 
 // The rules of reactions (slice 5a) that `MockApi` repeats from Rust, pinned by `fixtures/api-contract/reaction-key.json` and
@@ -18,10 +19,8 @@ const EMOJI_SEQUENCE = new RegExp(
   "u",
 );
 
-/** The comparison key of an emoji: the string without U+FE0F (`reactions::reaction_key` in Rust). */
-export function reactionKey(emoji: string): string {
-  return emoji.replaceAll(VS16, "");
-}
+// The key is the interface's own function (the buttons compare by it too); the fixture pins it against Rust.
+export { reactionKey };
 
 /** Whether a text is one emoji of at most 40 bytes (`emoji::is_emoji_sequence` in Rust). */
 export function isReactionEmoji(text: string): boolean {

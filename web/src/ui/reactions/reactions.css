@@ -1,0 +1,143 @@
+/* Reactions (slice 5a): the chips under the text of an entry, the emoji buttons of the hover bar and the quick popover. Tokens only. */
+
+/* The row: left-aligned, wrapping inside the bubble. The right end of its last line is where the entry's time sits (Message puts it there), so the
+   row leaves room for it on every line. */
+.reaction-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--layout-reaction-gap);
+  margin-top: var(--layout-reaction-row-offset);
+  padding-right: var(--layout-message-time-reserve);
+}
+
+.reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  box-sizing: border-box;
+  height: var(--layout-reaction-chip-height);
+  margin: 0;
+  padding: 0 var(--layout-reaction-chip-padding);
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--color-surface-chip);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-emoji);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+  white-space: nowrap;
+}
+
+/* The "N y" age of a late reaction: quiet, in the time's type. */
+.reaction-chip__age {
+  color: var(--color-text-tertiary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--type-meta-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+.reaction-chip--button {
+  cursor: pointer;
+  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.reaction-chip--button:hover {
+  background: var(--color-highlight-row);
+}
+
+.reaction-chip--button:hover .reaction-chip__age {
+  color: var(--color-text-secondary);
+}
+
+/* A chip inside the card of "On this day" or a search row sits on its own fill; nothing else changes. */
+.reaction-row--card {
+  padding-right: 0;
+}
+
+/* The emoji buttons of the hover bar: the size of the small icon buttons, the emoji at the body size; pressed has a quiet fill. */
+.reaction-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--layout-action-size);
+  height: var(--layout-action-size);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-emoji);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
+  cursor: pointer;
+  transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
+}
+
+.reaction-button:hover {
+  background: var(--color-surface-hover);
+}
+
+.reaction-button[aria-pressed="true"] {
+  background: var(--color-surface-selected);
+}
+
+/* A button that cannot add (10 live, 32 had) or on a read-only entry: muted, the reason is in its tooltip. */
+.reaction-button[aria-disabled="true"],
+.reaction-button[aria-disabled="true"]:hover {
+  background: transparent;
+  cursor: default;
+  opacity: var(--opacity-disabled);
+}
+
+.reaction-button[aria-disabled="true"][aria-pressed="true"] {
+  background: var(--color-surface-selected);
+}
+
+/* The thin divider between the reaction buttons and the other buttons of the bar. */
+.message-actions__divider {
+  align-self: center;
+  width: var(--border-width-hairline);
+  height: var(--layout-reaction-divider-height);
+  background: var(--color-border-divider);
+}
+
+/* The picker panel for reactions: over the window, shifts nothing; the quick one is a short row, the full one holds the emoji picker. */
+.reaction-picker {
+  position: fixed;
+  z-index: 3;
+  box-sizing: border-box;
+  /* A fixed box: the percentage is of the window. */
+  max-height: calc(100% - var(--space-4));
+  padding: var(--space-2);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-message);
+  box-shadow: var(--shadow-overlay);
+}
+
+.reaction-picker--full {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--emoji-panel-width), calc(100% - var(--space-4)));
+}
+
+.reaction-picker__quick {
+  display: flex;
+  align-items: center;
+  gap: var(--layout-reaction-popover-gap);
+}
+
+.reaction-picker__more {
+  margin-left: var(--space-1);
+}
+
+/* An entry of pictures only that has reactions: the album still fills the bubble edge to edge (message-bleed.css), and the chips sit under it with the
+   bubble's usual padding; the time is at the end of their row, not a pill on the picture. */
+.message--bleed .reaction-row {
+  margin-top: 0;
+  padding: var(--layout-reaction-row-offset) calc(var(--layout-message-time-reserve) + var(--layout-message-padding-inline))
+    var(--layout-message-padding-block) var(--layout-message-padding-inline);
+}

@@ -127,6 +127,8 @@ export const FeedRow = memo(function FeedRow({
         imagesOnly={imagesOnly}
         caption={imagesOnly ? caption : undefined}
         onAttachmentDetails={openDetails}
+        reactions={message.reactions}
+        reactionKeysHad={message.reactionKeysHad}
         tags={message.tags}
         mode={mode}
         editError={mode === "editing" ? editError : undefined}
@@ -147,6 +149,7 @@ function messageHandlers(actions: FeedActions, id: string) {
     onToggleTask: (on: boolean) => actions.onToggleTask(id, on),
     onToggleDone: (done: boolean) => actions.onToggleDone(id, done),
     onToggleFavorite: (on: boolean) => actions.onToggleFavorite(id, on),
+    onReact: actions.onReact ? (emoji: string, on: boolean) => actions.onReact?.(id, emoji, on) : undefined,
     onChangeDate: () => actions.onChangeDate(id),
     onDelete: () => actions.onDelete(id),
     onRestore: () => actions.onRestore(id),

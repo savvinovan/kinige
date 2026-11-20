@@ -303,6 +303,7 @@
     "compact_other": "{{date}} · {{count}} записи",
     "reply": "Ответить",
     "replyLabel": "Ответить на запись {{date}}",
+    "reactLabel": "Поставить реакцию на запись {{date}}",
     "openLabel": "Открыть запись {{date}}, {{time}}",
     "openDayLabel": "Открыть день {{date}} в ленте"
   },
@@ -400,7 +401,25 @@
     "editHint": "Enter — сохранить, Esc — отмена",
     "deleted": "Удалено",
     "restore": "Вернуть",
-    "restoreLabel": "Вернуть удалённую запись"
+    "restoreLabel": "Вернуть удалённую запись",
+    "addReaction": "Поставить реакцию…"
+  },
+  "reaction": {
+    "row": "Реакции",
+    "add": "Поставить реакцию",
+    "button": "Реакция {{emoji}}",
+    "dialog": "Выбор реакции",
+    "more": "Ещё",
+    "limitLive": "На записи не больше 10 реакций",
+    "limitKeys": "На этой записи уже были 32 разные реакции",
+    "putToday": "Поставлена сегодня в {{time}}",
+    "putOn": "Поставлена {{date}}",
+    "yearsLater_one": "{{count}} год спустя",
+    "yearsLater_few": "{{count}} года спустя",
+    "yearsLater_many": "{{count}} лет спустя",
+    "yearsLater_other": "{{count}} года спустя",
+    "yearsShort": "{{count}} г.",
+    "removeLabel": "{{emoji}}, {{put}}. Снять"
   },
   "tag": {
     "filterLabel": "Фильтр по тегу",
