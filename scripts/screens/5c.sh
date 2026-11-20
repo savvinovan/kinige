@@ -166,6 +166,9 @@ sleep 3
 shoot 06-feed-stickers
 
 # ---- 7. The re-imported entries: a sticker where there was a placeholder, the edited one keeps its text ----
+# A scroll lands the element on the nearest edge. The picture sits above the text, so come from above: the day's date line first
+# (Russian UI; a miss changes nothing), then the edited entry slides in from the bottom edge with its picture.
+scroll_quiet "17 ноября"
 scroll_to "$L_CAT_ENTRY"
 sleep 3
 shoot 07-reimported
