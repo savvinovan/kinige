@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createI18n } from "../../i18n";
-import { summaryText } from "./summaryText";
+import { demoPhoto } from "./demo";
+import { summaryOf, summaryText } from "./summaryText";
 
 const en = createI18n("en").t;
 const ru = createI18n("ru").t;
@@ -10,6 +11,8 @@ const of = (photos: number, files: number, name: string | null = null, voices = 
   voices,
   voiceMs,
   name,
+  sticker: false,
+  stickerEmoji: null,
 });
 
 describe("summaryText", () => {
@@ -44,6 +47,22 @@ describe("summaryText", () => {
     expect(summaryText(of(0, 0, null, 5), ru)).toBe("5 голосовых сообщений");
     expect(summaryText(of(1, 0, null, 1, 5_000), en)).toBe("2 attachments");
     expect(summaryText(of(0, 1, null, 1, 5_000), en)).toBe("2 attachments");
+  });
+
+  it("a sticker (slice 5c): 'Sticker 😺', without an emoji just 'Sticker'", () => {
+    const sticker = { ...of(1, 0, "sticker.webp"), sticker: true, stickerEmoji: "\u{1F63A}" };
+    expect(summaryText(sticker, en)).toBe("Sticker \u{1F63A}");
+    expect(summaryText(sticker, ru)).toBe("Стикер \u{1F63A}");
+    expect(summaryText({ ...sticker, stickerEmoji: null }, en)).toBe("Sticker");
+    expect(summaryText({ ...sticker, stickerEmoji: null }, ru)).toBe("Стикер");
+  });
+
+  it("summaryOf mirrors Rust: only a single uncovered sticker marks the summary", () => {
+    const sticker = { ...demoPhoto("s", "sticker.webp", 512, 512), sticker: true, stickerEmoji: "\u{1F63A}" };
+    expect(summaryOf([sticker])).toMatchObject({ photos: 1, sticker: true, stickerEmoji: "\u{1F63A}" });
+    expect(summaryOf([{ ...sticker, spoiler: true }])).toMatchObject({ photos: 1, sticker: false, stickerEmoji: null });
+    expect(summaryOf([sticker, demoPhoto("p", "p.jpg", 10, 10)])).toMatchObject({ photos: 2, sticker: false });
+    expect(summaryOf([{ ...sticker, sticker: false }])).toMatchObject({ sticker: false });
   });
 
   it("один файл без имени и запись без вложений", () => {

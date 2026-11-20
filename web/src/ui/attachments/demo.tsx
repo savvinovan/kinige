@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { AttachmentKind } from "../../api/generated/AttachmentKind";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
+import { libraryStickerUrl, stickerArt } from "../stickers/stickerArt";
 import { MediaSourceContext, type MediaSource } from "./mediaUrl";
 
 // Synthetic attachments for stories (and MockApi): gradients with the pixel size written on them, drawn as SVG data URLs. No third-party
@@ -15,6 +16,10 @@ interface DemoPhoto {
   tone: "dark" | "light" | null;
   /** The file cannot be decoded: the browser fires `error` for the picture. */
   broken: boolean;
+  /** A sticker (slice 5c) with this emoji: drawn by `stickerArt` instead of a gradient with the size on it. `null` is a sticker without an emoji. */
+  sticker?: { emoji: string | null };
+  /** A GIF: its `full` picture says "playing" (stories). */
+  gif?: boolean;
 }
 
 const photos = new Map<string, DemoPhoto>();
@@ -44,6 +49,10 @@ export function demoPhoto(
     description?: string | null;
     /** Covered until clicked. */
     spoiler?: boolean;
+    /** Slice 5c: the record says it is a sticker, with this emoji (`null`: without one). Its picture is a sticker, its type WebP. */
+    sticker?: { emoji: string | null };
+    /** Slice 5c: the type, for a GIF (`image/gif`) or anything else; the default follows `transparent`. */
+    mime?: string;
   } = {},
 ): AttachmentView {
   photos.set(id, {
@@ -52,6 +61,8 @@ export function demoPhoto(
     transparent: options.transparent ?? false,
     tone: options.tone ?? null,
     broken: options.broken ?? false,
+    sticker: options.sticker,
+    gif: options.mime?.toLowerCase() === "image/gif",
   });
   return {
     id,
@@ -60,7 +71,9 @@ export function demoPhoto(
     name: options.name ?? filename,
     description: options.description ?? null,
     spoiler: options.spoiler ?? false,
-    mime: options.transparent ? "image/png" : "image/jpeg",
+    sticker: options.sticker !== undefined,
+    stickerEmoji: options.sticker?.emoji ?? null,
+    mime: options.mime ?? (options.sticker ? "image/webp" : options.transparent ? "image/png" : "image/jpeg"),
     byteSize: options.byteSize ?? width * height,
     width,
     height,
@@ -87,6 +100,8 @@ export function demoFile(
     name: details.name ?? filename,
     description: details.description ?? null,
     spoiler: false,
+    sticker: false,
+    stickerEmoji: null,
     mime,
     byteSize,
     width: null,
@@ -99,9 +114,12 @@ export function demoFile(
 
 /** The pictures of the stories: a gradient (or an empty background) with the size written on it. */
 export const demoMediaSource: MediaSource = (variant, id) => {
+  // A library sticker is looked up by its library id, not by an attachment id (slice 5c).
+  if (variant === "sticker") return libraryStickerUrl(id) ?? BROKEN;
   const photo = photos.get(id);
   if (!photo) return BROKEN;
   if (photo.broken) return BROKEN;
+  if (photo.sticker) return stickerArt(photo.sticker.emoji, id, photo.width, photo.height);
   const key = `${variant}/${id}`;
   const cached = cache.get(key);
   if (cached) return cached;
@@ -119,7 +137,7 @@ function token(name: string): string {
   return typeof document === "undefined" ? "" : getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-function svgUrl({ width, height, transparent, tone }: DemoPhoto, thumb: boolean, id: string): string {
+function svgUrl({ width, height, transparent, tone, gif }: DemoPhoto, thumb: boolean, id: string): string {
   const scale = thumb ? Math.min(1, THUMB_LONG_SIDE / Math.max(width, height)) : 1;
   const drawnWidth = Math.round(width * scale);
   const drawnHeight = Math.round(height * scale);
@@ -131,7 +149,8 @@ function svgUrl({ width, height, transparent, tone }: DemoPhoto, thumb: boolean,
         : (GRADIENTS[Array.from(id).reduce((sum, symbol) => sum + symbol.charCodeAt(0), 0) % GRADIENTS.length] ?? GRADIENTS[0]);
   const text = token(tone === "dark" ? "--color-text-tertiary" : "--color-surface-background");
   const fontSize = Math.round(Math.min(drawnWidth / 8, drawnHeight / 4));
-  const label = `${width} x ${height}`;
+  // A GIF that plays is its `full` file: the stories mark it, so a story can tell the first frame from the playing GIF.
+  const label = `${width} x ${height}${gif && !thumb ? " · playing" : ""}`;
   const background = transparent
     ? ""
     : `<rect width="${drawnWidth}" height="${drawnHeight}" fill="url(#g)"/>`;
@@ -174,6 +193,8 @@ export function demoVoice(
     name: options.filename ?? "voice-2026-11-04-213012.m4a",
     description: null,
     spoiler: false,
+    sticker: false,
+    stickerEmoji: null,
     mime: options.mime ?? "audio/mp4",
     byteSize: options.byteSize ?? Math.round(((durationMs ?? 40_000) / 1000) * 8000),
     width: null,

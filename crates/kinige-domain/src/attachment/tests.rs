@@ -28,6 +28,8 @@ fn input() -> NewAttachment<'static> {
         display_name: None,
         description: None,
         spoiler: false,
+        sticker: false,
+        sticker_emoji: None,
     }
 }
 
@@ -49,9 +51,19 @@ fn the_core_group_matches_the_reference_bytes_of_appendix_c6() {
     assert_eq!(groups["name"].get(), r#"{"name":null}"#);
     assert_eq!(groups["description"].get(), r#"{"description":null}"#);
     assert_eq!(groups["privacy"].get(), r#"{"spoiler":false}"#);
-    assert_eq!(groups.len(), 6);
+    // Slice 5c: the sticker group, written on every new attachment, with the reference bytes of appendix §C.10.
+    assert_eq!(groups["sticker"].get(), r#"{"emoji":null,"sticker":false}"#);
+    assert_eq!(groups.len(), 7);
     let hlcs: serde_json::Value = serde_json::from_str(&row.hlc_json).unwrap();
-    for group in ["core", "order", "deleted", "name", "description", "privacy"] {
+    for group in [
+        "core",
+        "order",
+        "deleted",
+        "name",
+        "description",
+        "privacy",
+        "sticker",
+    ] {
         assert_eq!(hlcs[group]["h"], hlc().as_str());
         assert_eq!(hlcs[group]["sv"], 1);
     }
@@ -279,6 +291,8 @@ fn view(kind: AttachmentKind, name: &str) -> AttachmentView {
         name: name.to_string(),
         description: None,
         spoiler: false,
+        sticker: false,
+        sticker_emoji: None,
         mime: "x/y".to_string(),
         byte_size: 1,
         width: None,

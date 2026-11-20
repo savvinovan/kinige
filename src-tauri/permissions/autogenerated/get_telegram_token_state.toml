@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-get-telegram-token-state"
+description = "Enables the get_telegram_token_state command without any pre-configured scope."
+commands.allow = ["get_telegram_token_state"]
+
+[[permission]]
+identifier = "deny-get-telegram-token-state"
+description = "Denies the get_telegram_token_state command without any pre-configured scope."
+commands.deny = ["get_telegram_token_state"]

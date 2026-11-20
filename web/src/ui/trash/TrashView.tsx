@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { Language } from "../../api/generated/Language";
 import type { TrashItem } from "../../api/generated/TrashItem";
 import { MessageAttachments } from "../attachments/MessageAttachments";
+import { stickerOf } from "../attachments/stickerRule";
+import { StickerImage } from "../stickers/StickerImage";
 import { renderContextMarkdown } from "../capture/contextMarkdown";
 import { Button } from "../controls/Button";
 import { formatDayLabel } from "../feed/dates";
@@ -58,6 +60,7 @@ export function TrashView({ items, language, today, busyId = null, error, onRest
               const { message } = item;
               const chat = item.chatIsInbox && item.chatTitle === "" ? t("chat.inbox") : item.chatTitle;
               const busy = busyId === message.id;
+              const sticker = stickerOf(message.bodyMd, message.attachments);
               const left = item.daysLeft <= 0 ? t("trash.deletesToday") : t("trash.daysLeft", { count: item.daysLeft });
               return (
                 <li key={message.id}>
@@ -71,7 +74,10 @@ export function TrashView({ items, language, today, busyId = null, error, onRest
                         {formatDayLabel(message.journalDate, today, language, labels)} · {left}
                       </span>
                     </header>
-                    {message.attachments.length > 0 ? (
+                    {sticker ? (
+                      // A sticker in the trash is drawn as a sticker too (slice 5c), with no viewer behind it.
+                      <StickerImage attachment={sticker} />
+                    ) : message.attachments.length > 0 ? (
                       // The photos and files go to the trash with the entry and show there until it is restored or deleted for good.
                       <MessageAttachments
                         attachments={message.attachments}

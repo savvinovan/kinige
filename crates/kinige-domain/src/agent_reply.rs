@@ -77,6 +77,12 @@ pub struct AgentAttachment {
     /// tell the person chose to hide it. Everything else about the attachment is returned as for any other.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub spoiler: bool,
+    /// Present, as `true`, only on an image the record says is a sticker (slice 5c, ADR-0009); the image itself is an ordinary attachment.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub sticker: bool,
+    /// The sticker's emoji, only a valid emoji sequence; absent otherwise.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub emoji: Option<String>,
     pub bytes: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<u32>,

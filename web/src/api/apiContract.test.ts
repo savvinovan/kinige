@@ -119,7 +119,7 @@ describe("fixtures/api-contract: the pure rules of the mock", () => {
       expect(plainSnippet(spec(entry.body), LIMITS.replyExcerptChars), JSON.stringify(entry).slice(0, 80)).toBe(spec(entry.expected));
     }
     for (const entry of file.quotes) {
-      const target = entry.target && { ...entry.target, attachments: { photos: 0, files: 0, voices: 0, voiceMs: null, name: null } };
+      const target = entry.target && { ...entry.target, attachments: { photos: 0, files: 0, voices: 0, voiceMs: null, name: null, sticker: false, stickerEmoji: null } };
       const { id, attachments, ...quote } = replyQuote(entry.id, entry.replyDate, target ?? undefined);
       expect(id).toBe(entry.id);
       expect(attachments.photos).toBe(0);

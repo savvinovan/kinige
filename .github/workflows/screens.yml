@@ -88,8 +88,8 @@ jobs:
           KINIGE_FAKE_MIC: ${{ (startsWith(inputs.slice, '7a') || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
           KINIGE_ALLOW_FAKE_MIC: ${{ (startsWith(inputs.slice, '7a') || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
           KINIGE_PROBE: ${{ startsWith(inputs.slice, '7a-probe') && '1' || '' }}
-          KINIGE_SCREENS_DRIVER: ${{ (inputs.slice == '7a' || inputs.slice == '7b' || inputs.slice == '5a' || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
-          KINIGE_ALLOW_SCREENS_DRIVER: ${{ (inputs.slice == '7a' || inputs.slice == '7b' || inputs.slice == '5a' || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
+          KINIGE_SCREENS_DRIVER: ${{ (inputs.slice == '7a' || inputs.slice == '7b' || inputs.slice == '5a' || inputs.slice == '5c' || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
+          KINIGE_ALLOW_SCREENS_DRIVER: ${{ (inputs.slice == '7a' || inputs.slice == '7b' || inputs.slice == '5a' || inputs.slice == '5c' || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
         run: scripts/build-app.sh
 
       - name: Shots scenario

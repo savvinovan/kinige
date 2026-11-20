@@ -30,6 +30,10 @@ interface MessageActionsProps {
   readOnly: boolean;
   /** Handlers without an argument: Message decides "turn on / off" from the current state. No handler - the button is only drawn. */
   onEdit?: () => void;
+  /** An entry that has no text to edit (a sticker, slice 5c): there is no "Edit" button at all, not a disabled one. */
+  noEdit?: boolean;
+  /** An entry that has no text to copy (a sticker: its body is empty): there is no "Copy" button either. */
+  noCopy?: boolean;
   onToggleTask?: () => void;
   onToggleFavorite?: () => void;
   /** "More": open the context menu at the button. */
@@ -59,6 +63,8 @@ export function MessageActions({
   favorite,
   readOnly,
   onEdit,
+  noEdit = false,
+  noCopy = false,
   onToggleTask,
   onToggleFavorite,
   onMore,
@@ -87,6 +93,8 @@ export function MessageActions({
   };
 
   // Entry action button: no handler - "Coming later", read-only entry - disabled with an explanation.
+  // Without "Copy" or "Edit" the buttons after them move up one place, so the places the arrows count are the places in the row.
+  const place = (index: number) => first + index - (noCopy && index > 0 ? 1 : 0) - (noEdit && index > 1 ? 1 : 0);
   const action = (index: number, icon: IconName, label: string, handler: (() => void) | undefined, on = false) => (
     <IconButton
       small
@@ -95,8 +103,8 @@ export function MessageActions({
       className={on ? `message-actions__on${icon === "favorite" ? " message-actions__filled" : ""}` : undefined}
       unavailable={!handler && !readOnly}
       {...(readOnly ? { "aria-disabled": true, title: `${label}. ${t("error.read_only")}` } : {})}
-      tabIndex={active === first + index ? 0 : -1}
-      onFocus={() => setActive(first + index)}
+      tabIndex={active === place(index) ? 0 : -1}
+      onFocus={() => setActive(place(index))}
       onClick={() => {
         if (!readOnly) handler?.();
       }}
@@ -144,15 +152,17 @@ export function MessageActions({
             <span className="message-actions__divider" aria-hidden="true" />
           </>
         ) : null}
-        <IconButton
-          small
-          icon={copyState === "copied" ? "done" : "copy"}
-          label={t(COPY_KEY[copyState])}
-          tabIndex={active === first ? 0 : -1}
-          onFocus={() => setActive(first)}
-          onClick={onCopy}
-        />
-        {action(1, "edit", t("message.edit"), onEdit)}
+        {noCopy ? null : (
+          <IconButton
+            small
+            icon={copyState === "copied" ? "done" : "copy"}
+            label={t(COPY_KEY[copyState])}
+            tabIndex={active === first ? 0 : -1}
+            onFocus={() => setActive(first)}
+            onClick={onCopy}
+          />
+        )}
+        {noEdit ? null : action(1, "edit", t("message.edit"), onEdit)}
         {action(2, "task", isTask ? t("message.untask") : t("message.task"), onToggleTask, isTask)}
         {action(3, "favorite", favorite ? t("message.unfavorite") : t("message.favorite"), onToggleFavorite, favorite)}
         <IconButton
@@ -161,8 +171,8 @@ export function MessageActions({
           label={t("message.more")}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          tabIndex={active === first + 4 ? 0 : -1}
-          onFocus={() => setActive(first + 4)}
+          tabIndex={active === place(4) ? 0 : -1}
+          onFocus={() => setActive(place(4))}
           onClick={(event) => onMore(positionBelow(event.currentTarget))}
         />
         <span className="visually-hidden" role="status">

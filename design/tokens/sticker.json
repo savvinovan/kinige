@@ -1,0 +1,28 @@
+{
+  "sticker": {
+    "columns": {
+      "$type": "number",
+      "$value": 5,
+      "$description": "Slice 5c: columns in the Stickers tab grid of the emoji window. The same number is in the code as STICKER_COLUMNS (the arrow keys move by a row); the test stickers/stickerTokens.test.ts compares both."
+    },
+    "gif-columns": {
+      "$type": "number",
+      "$value": 3,
+      "$description": "Slice 5c: columns in the GIFs tab grid. The same number is in the code as GIF_COLUMNS; the same test compares both."
+    }
+  },
+  "layout": {
+    "sticker": {
+      "$type": "dimension",
+      "$description": "Stickers and GIFs (slice 5c): the emoji window's Stickers and GIFs tabs, the sticker in the feed, the GIF badge. A picture is content, not text, so the sizes in px do not grow with the text scale.",
+      "long-side": { "$value": "160px", "$description": "The long side of a sticker in the feed (Telegram draws one at about this size): the box is fitted to it from the sticker's width and height before the picture loads, so nothing jumps." },
+      "fallback-glyph": { "$value": "calc({layout.sticker.long-side} / 2)", "$description": "The size of the emoji that stands in the box of a sticker whose file is missing or cannot be decoded: half the long side, so the glyph fits the box." },
+      "strip-icon": { "$value": "32px", "$description": "The side of a pack icon in the strip above the sticker grid, and the height of the strip's buttons." },
+      "strip-gap": { "$value": "{space.1}", "$description": "Gap between the pack icons of the strip." },
+      "cell-padding": { "$value": "{space.1}", "$description": "Padding inside a sticker cell of the grid, around the picture." },
+      "gif-gap": { "$value": "{space.1}", "$description": "Gap between the still frames of the GIFs tab." },
+      "gif-radius": { "$value": "{radius.tile-small}", "$description": "Corners of a still frame in the GIFs tab." },
+      "badge-inset": { "$value": "{space.1}", "$description": "How far the GIF badge stands from the corner of a still frame or a cell." }
+    }
+  }
+}

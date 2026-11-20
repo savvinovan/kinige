@@ -8,6 +8,7 @@ use crate::send::{insert_new_message, mark_dirty};
 use crate::view::{VIEW_COLUMNS, VIEW_LEN, view_from_row, view_from_row_at};
 use crate::{Now, Store, StoreError};
 use kinige_domain::append::{AppendCandidate, CurrentBody, can_append, joined_body, rewrite_body};
+use kinige_domain::attachment::sticker_of;
 use kinige_domain::groups::{self, GroupError, INBOX_ID};
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 use kinige_domain::{CaptureAction, CaptureOutcome, MessageView};
@@ -46,6 +47,11 @@ struct LastMessage {
 }
 
 impl LastMessage {
+    /// Drawn as a sticker (slice 5c): never an append target. A covered one is not, so its cover can still be removed.
+    fn is_sticker(&self) -> bool {
+        sticker_of(&self.view.body_md, &self.view.attachments).is_some()
+    }
+
     fn candidate(&self) -> AppendCandidate<'_> {
         AppendCandidate {
             origin: &self.origin,
@@ -104,6 +110,7 @@ impl Store {
                 .map_err(read_err)?
                 // A damaged entry does not bother the window: there is no hint, and ⌘Enter will report the error itself.
                 .filter(|last| can_append(&last.candidate(), now_ms, &today).unwrap_or(false))
+                .filter(|last| !last.is_sticker())
                 .map(|last| last.view.id);
             let draft = conn
                 .query_row(
@@ -173,7 +180,10 @@ impl Store {
                 .map_err(write_err)?;
             let today = journal_date(now.ms, now.utc_offset_secs, DAY_BOUNDARY_MINUTES);
             let target = match last_message(&tx).map_err(write_err)? {
-                Some(last) if can_append(&last.candidate(), now.ms, &today).map_err(group_err)? => {
+                Some(last)
+                    if can_append(&last.candidate(), now.ms, &today).map_err(group_err)?
+                        && !last.is_sticker() =>
+                {
                     Some(last)
                 }
                 _ => None,

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-get-sticker-library"
+description = "Enables the get_sticker_library command without any pre-configured scope."
+commands.allow = ["get_sticker_library"]
+
+[[permission]]
+identifier = "deny-get-sticker-library"
+description = "Denies the get_sticker_library command without any pre-configured scope."
+commands.deny = ["get_sticker_library"]

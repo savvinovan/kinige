@@ -14,6 +14,7 @@ import { useLanguage } from "../i18n/I18n";
 import type { SettingsWindowViewProps } from "../ui/prefs/SettingsWindowView";
 import type { Route } from "../ui/prefs/routes";
 import { applyTextSize } from "../ui/screens/textSize";
+import { useTelegramToken } from "./useTelegramToken";
 
 /** How often the open window rereads the backups state, the socket and the first log page (agent calls arrive on their own). */
 const REFRESH_MS = 2000;
@@ -56,6 +57,7 @@ export function usePreferences(api: KinigeApi, initial: PreferencesInitial) {
   const [shortcutErrors, setShortcutErrors] = useState<Partial<Record<ShortcutKind, string>>>({});
 
   useEffect(() => applyTextSize(settings.textSize), [settings.textSize]);
+  const token = useTelegramToken(api, route === "stickers");
 
   const refresh = useCallback(async () => {
     try {
@@ -152,6 +154,7 @@ export function usePreferences(api: KinigeApi, initial: PreferencesInitial) {
     pickError: pickError ? t(`error.${pickError}`) : undefined,
     shortcutErrors,
     accessError: accessError ? t(`error.${accessError}`) : undefined,
+    token,
     onTextSizeChange: (size: TextSize) => {
       // The size is applied at once; a failure brings the previous one back on reread.
       setSettings((old) => ({ ...old, textSize: size }));

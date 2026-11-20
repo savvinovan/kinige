@@ -17,7 +17,8 @@ macro_rules! reply_target_object {
     () => {
         "json_object('chat', r.chat_id, 'date', r.journal_date, 'body', substr(r.body_md, 1, 1000), \
          'trash', r.deleted_at IS NOT NULL, \
-         'att', (SELECT json_group_array(json_object('k', a.kind, 'n', COALESCE(a.display_name, a.filename), 'd', a.duration_ms)) FROM attachment a \
+         'att', (SELECT json_group_array(json_object('k', a.kind, 'n', COALESCE(a.display_name, a.filename), 'd', a.duration_ms, \
+                 'st', a.sticker AND NOT a.spoiler, 'se', a.sticker_emoji)) FROM attachment a \
                  WHERE a.message_id = r.id AND a.deleted_at IS NULL))"
     };
 }
@@ -145,10 +146,18 @@ fn attachment_summary(value: Option<&serde_json::Value>) -> kinige_domain::Attac
         .unwrap_or_default();
     kinige_domain::attachment::summarize(items.iter().filter_map(|item| {
         let kind = kinige_domain::AttachmentKind::parse(item.get("k")?.as_str()?)?;
+        // `st` is the sticker flag already combined with "not covered" (slice 5c); a damaged value is a picture.
+        let sticker = item.get("st").and_then(serde_json::Value::as_i64) == Some(1);
+        let mark = sticker.then(|| {
+            kinige_domain::attachment::StickerMark(
+                item.get("se").and_then(serde_json::Value::as_str),
+            )
+        });
         Some((
             kind,
             item.get("n")?.as_str()?,
             item.get("d").and_then(serde_json::Value::as_i64),
+            mark,
         ))
     }))
 }

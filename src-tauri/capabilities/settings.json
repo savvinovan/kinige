@@ -21,6 +21,9 @@
     "allow-list-agent-log-entries",
     "allow-get-settings-file",
     "allow-settings-open-entry",
+    "allow-get-telegram-token-state",
+    "allow-set-telegram-bot-token",
+    "allow-clear-telegram-bot-token",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

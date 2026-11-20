@@ -30,6 +30,8 @@ The `core` group is written at creation. Derived data (`body_search`, `day_activ
 
 **Slice 5a (2026-11-20): one more group, of a `message`** (appendix §C.9; the table above is not widened for it): `reactions` = `{"items":[{"at":<ms>|null,"e":"<emoji>","h":"<HLC>","tz":"<IANA zone>"|null}, …]}`, `sv = 1`, written by the first reaction on an entry and **absent from every message written before it and from every message that never had one**. It is additive (§4 rule 1), so `schema_version` stays 1. It is on the add-group allowlist (`message`: `reactions`), by entity and group: `reactions` on an attachment, or any other missing group of a message, stays an error.
 
+**Slice 5c (2026-11-20): one more group, of an `attachment`** (appendix §C.10; the table above is not widened for it): `sticker` = `{"emoji":<string|null>,"sticker":<bool>}`, `sv = 1`, written **on every new attachment** under its creation HLC (a photo's says `{"emoji":null,"sticker":false}`, so the open header does not tell a sticker from a photo) and **never written or rewritten afterwards**; it is absent from every row written before 5c and there is no backfill. It is not on the add-group allowlist.
+
 Each group's value is canonical JSON (RFC 8785, restricted: strings, booleans, `null`, objects, arrays, integers within ±2⁵³). Other clients' groups are stored and resent verbatim (§3.3).
 
 **Conventions (as implemented in slice 1).**
@@ -434,6 +436,32 @@ An entry can carry several different emoji, each at most once, each with the tim
 - **The recent list** (`app_setting.recent_reactions`, up to 8, a broken value is empty) is device-local on purpose: not synced and not in `settings.json`, so each device's hover bar follows what was used on it. It is written in the reaction's own transaction and a removal does not touch it.
 - **Conflicts and older clients.** None until slice 11 (open item in §B). An older client keeps the unknown group raw in `groups_raw`, merges it by HLC, resends it verbatim and does not mark the record read-only (`sv = 1`, §4 rule 1); a database migrated here is refused by an older app with `too_new`, as for every migration.
 - **What the server learns** is in §10: that an entry's reactions changed, and when; the same class as `flags`.
+
+### C.10. Slice 5c refinement (20.11.2026, KINIG-151, stickers)
+
+A sticker is an ordinary `image` attachment that the record says is a sticker (PRD §2.3, §6). The bytes and the reader below are a public contract (revision 14).
+
+- **The group** `sticker` on `attachment`, `sv = 1`, canonical JCS: `{"emoji":<string|null>,"sticker":<bool>}`. **Reference bytes:** `{"emoji":"😺","sticker":true}`; a photo's is `{"emoji":null,"sticker":false}`. **Every new attachment gets it** at the creation HLC, like §C.8's three groups: a draft sent, a voice note, the Telegram media import, a sticker sent, a GIF sent again. It is additive: `schema_version` stays 1 and `core` is untouched. **No writer after creation**: it is never rewritten or added later, and it is not on the add-group allowlist (`add_group` and `rewrite_or_add_*` refuse it). Rows from before 5c have no group; a test pins that after every attachment command the bytes and the HLC of the group are unchanged (absent stays absent).
+- **Writer rule.** `"sticker":true` is written only by `send_sticker` and by the export import, and only after this device's probe of the bytes passes (WebP or PNG, not animated, header at most 512 × 512, at most 2 MiB); the probe is run again at send time and a file that fails it refuses the command, it is never sent as a photo. The writer refuses a record whose `core` does not satisfy the bounds below, and an emoji that is not a valid sequence.
+- **The reader reads only the record** (`kinige_domain::attachment::read_sticker`): it does no local probe and never errors. **Core bounds:** `core.kind = image`, `core.mime` is `image/webp` or `image/png`, `core.width` and `core.height` each 1 to 512, `core.byte_size` at most 2 MiB. **The group itself:** at most 1 KiB, canonical JCS, present in both maps (`groups_raw` and `hlc_json`) with `sv = 1`. **Every failure reads as an ordinary picture**, which hides nothing, and the bytes are kept verbatim. An emoji that is not `is_emoji_sequence` (at most 40 bytes) never reaches the columns, the view, the Markdown copy, MCP or the log.
+
+  | `sticker` group as stored                                                | Drawn as                   |
+  |--------------------------------------------------------------------------|----------------------------|
+  | absent from both maps (every row written before 5c)                      | a picture                  |
+  | `sticker` is `false`                                                     | a picture                  |
+  | `sticker` is `true`, `emoji` is a valid emoji sequence                   | a sticker with its emoji   |
+  | `sticker` is `true`, `emoji` is `null`, absent, mistyped or not an emoji | a sticker without an emoji |
+  | `sticker` is absent or not a boolean; the group is not an object         | a picture                  |
+  | an unsupported or missing `sv`; in only one of the two maps; over 1 KiB  | a picture                  |
+  | the group is not canonical JCS                                           | a picture                  |
+  | any value, when `core` fails the bounds above                            | a picture                  |
+
+- **Derived columns (migration 11).** `attachment.sticker` and `attachment.sticker_emoji` come from one function, used by the write, migration 11, the rebuild on open and, later, pull. `app_setting.sticker_rules_version` triggers a rebuild on a mismatch, with a fingerprint test (it includes the emoji table it shares with §C.9) that fails until the version is bumped. Migration 11 is `CREATE TABLE sticker_pack`, `CREATE TABLE sticker` and two `ALTER TABLE .. ADD COLUMN`; no synced row changes and a test shows the version 10 rows byte-identical after it. Its hash is appended to `PINNED`.
+- **The display rule** (`sticker_of`): an entry is drawn as a sticker when its body is empty, its only live attachment reads as a sticker, and it is not covered (§C.8). A covered one is drawn as the cover, so that a cover that came from another device can still be removed. Such an entry is never an append target, and the store refuses `edit_message` and `set_attachment_details` on it.
+- **§C.6's placeholder rewrite** (no `edit` revision) also covers the sticker line of an imported entry: a late sticker removes the placeholder only from an entry nobody edited.
+- **Older clients** keep the group raw, resend it, and show a sticker as a picture in a bubble.
+- **What the server learns:** nothing new from the header (§10). From the padded blob size it may guess that a small image is a sticker.
+- **For slice 11.** The library, the recents and the bot token do not travel; each sent sticker is its own blob. A pulled sticker is drawn from `core` and the group before its blob arrives, in the box from `core.width` and `core.height`. Pull writes the two derived columns with the same reader function. Two devices that re-import the same export produce duplicate sticker attachments (the §C.3 limitation). A peer can send a `sticker` group on a legacy row; the reader's bounds are the defence.
 
 ## D. libsodium primitives and Argon2id profiles
 

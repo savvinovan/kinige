@@ -173,7 +173,9 @@ pub fn open_with_folder(
     export: TgExport,
     folder: Option<PathBuf>,
 ) -> ApiResult<ImportOpened> {
-    let preview = store.import_preview(&export).map_err(api)?;
+    let preview = store
+        .import_preview_with_media(&export, folder.as_deref())
+        .map_err(api)?;
     let session = state.open(export, folder);
     Ok(ImportOpened { session, preview })
 }

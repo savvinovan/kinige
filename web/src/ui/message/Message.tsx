@@ -8,6 +8,7 @@ import { MessageCaption, type Caption } from "./MessageCaption";
 import { MessageEditor } from "./MessageEditor";
 import { MessageMenu } from "./MessageMenu";
 import { MessageMeta } from "./MessageMeta";
+import { messageClasses } from "./messageClasses";
 import type { MoveTarget } from "./moveTargets";
 import { selectedTextIn, useCopy } from "./useCopy";
 import { useActionsPlacement } from "./useActionsPlacement";
@@ -16,6 +17,7 @@ import type { ReactionView } from "../../api/generated/ReactionView";
 import { useMessageReactions, type ReactionCounts } from "../reactions/useMessageReactions";
 import "./message.css";
 import "./message-bleed.css";
+import "./message-sticker.css";
 import "./markdown.css";
 
 const NO_REACTIONS: readonly ReactionView[] = [];
@@ -59,6 +61,11 @@ export interface MessageProps {
   timeBeside?: boolean;
   /** Every attachment of the entry is a picture (KINIG-132): the album fills the bubble edge to edge, and without text the time is a pill on it. */
   imagesOnly?: boolean;
+  /**
+   * Slice 5c: the entry is drawn as a sticker (`stickerOf`: no text, one uncovered sticker). `attachments` is the sticker's picture; the bubble has no frame, the time is a
+   * pill on the picture and the chips go under it. The entry has no "Edit" (hidden, not disabled), and the window passes no details for it.
+   */
+  sticker?: boolean;
   /** KINIG-136: a single photo's description as the one line of the entry (no text): the time sits at its end and there is no pill. */
   caption?: Caption;
   /** KINIG-136: "Attachment details…" in the entry's menu (an entry with attachments that have details). */
@@ -133,6 +140,7 @@ export const Message = memo(function Message({
   attachments,
   timeBeside = false,
   imagesOnly = false,
+  sticker = false,
   caption,
   onAttachmentDetails,
   reactions = NO_REACTIONS,
@@ -261,24 +269,10 @@ export const Message = memo(function Message({
     handler ? () => handler(!current) : undefined;
   const checkLocked = !viewing || readOnly || !onToggleDone;
 
-  // KINIG-132: every attachment is a picture and the bubble is a plain one: the album fills the bubble edge to edge, as in Telegram. Without text
-  // the time moves onto the picture as a pill; without text and without a quote the bubble has no fill of its own.
-  const bleed = imagesOnly && Boolean(attachments) && viewing && !failed && !isTask;
-  const bleedPill = bleed && markdown.trim() === "" && !captioned && !reacted;
-  const classes = ["message"];
-  if (attachments) classes.push("message--has-attachments");
-  if (bleed) classes.push("message--bleed");
-  if (bleedPill) classes.push("message--bleed-pill");
-  if (bleedPill && !quote) classes.push("message--bleed-bare");
-  if (highlighted) classes.push("message--highlighted");
-  if (timeBelow) classes.push("message--time-below");
-  if (reacted) classes.push("message--reacted");
-  if (isTask) classes.push("message--task");
-  if (isTask && taskDone) classes.push("message--task-done");
-  if (favorite && mode !== "deleted") classes.push("message--favorite");
-  if (byAgent && mode !== "deleted") classes.push("message--agent");
-  if (mode === "editing") classes.push("message--editing");
-  if (mode === "deleted") classes.push("message--deleted");
+  // The look of the bubble: the plain one, KINIG-132's picture bubble that the album fills edge to edge, or a sticker's frameless one (messageClasses.ts).
+  const textless = markdown.trim() === "";
+  const { className, stickerFrame } = messageClasses({ hasAttachments: Boolean(attachments), imagesOnly, sticker, mode, failed, isTask, taskDone, textless, captioned, reacted, hasQuote: Boolean(quote), highlighted, timeBelow, favorite, byAgent });
+  const meta = <MessageMeta sentAt={sentAt} timeZone={timeZone} mode={mode} favorite={favorite} byAgent={byAgent} onRestore={onRestore} />;
 
   return (
     <>
@@ -300,7 +294,7 @@ export const Message = memo(function Message({
         onKeyDown={handleKeyDown}
       >
         <article
-          className={classes.join(" ")}
+          className={className}
           ref={plate}
           tabIndex={-1}
           onPointerDown={
@@ -326,7 +320,8 @@ export const Message = memo(function Message({
           ) : null}
           <div className="message__content">
             {mode === "view" ? quote : null}
-            {mode !== "editing" ? attachments : null}
+            {/* A sticker: the time pill sits on its picture, so the picture and the time share a box (the chips and the quote stay outside it). */}
+            {mode === "editing" ? null : stickerFrame ? <div className="message__sticker">{attachments}{meta}</div> : attachments}
             {mode === "editing" ? (
               <MessageEditor initial={markdown} onSave={(text) => onSaveEdit?.(text)} onCancel={() => onCancelEdit?.()} />
             ) : captioned && caption ? (
@@ -355,7 +350,7 @@ export const Message = memo(function Message({
               </p>
             ) : null}
           </div>
-          <MessageMeta sentAt={sentAt} timeZone={timeZone} mode={mode} favorite={favorite} byAgent={byAgent} onRestore={onRestore} />
+          {stickerFrame ? null : meta}
         </article>
         {viewing ? (
           <MessageActions
@@ -364,7 +359,9 @@ export const Message = memo(function Message({
             isTask={isTask}
             favorite={favorite}
             readOnly={readOnly}
-            onEdit={onEdit}
+            onEdit={sticker ? undefined : onEdit}
+            noEdit={sticker}
+            noCopy={sticker}
             onToggleTask={toggle(onToggleTask, isTask)}
             onToggleFavorite={toggle(onToggleFavorite, favorite)}
             onMore={openMenu}
@@ -381,7 +378,9 @@ export const Message = memo(function Message({
           isTask={isTask}
           favorite={favorite}
           readOnly={readOnly}
-          onEdit={onEdit}
+          onEdit={sticker ? undefined : onEdit}
+          noEdit={sticker}
+          noCopy={sticker}
           onToggleTask={toggle(onToggleTask, isTask)}
           onToggleFavorite={toggle(onToggleFavorite, favorite)}
           onChangeDate={onChangeDate}

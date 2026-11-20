@@ -10,6 +10,7 @@ pub mod old_db;
 pub mod ops;
 pub mod reactions;
 pub mod settings_file;
+pub mod stickers;
 pub mod voice;
 
 use kinige_store::{Now, Store, StoreOptions};

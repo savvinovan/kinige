@@ -43,6 +43,7 @@ mod search_sql;
 mod send;
 mod settings;
 mod settings_file;
+mod stickers;
 mod tags;
 #[cfg(feature = "test-hooks")]
 mod test_hooks;
@@ -77,6 +78,7 @@ pub use settings_file::{
     LOG_TOOL as SETTINGS_LOG_TOOL, MAX_BYTES as SETTINGS_FILE_MAX_BYTES, SettingsFile,
     SettingsFileOptions, ShortcutApplier, ShortcutRefusal, file_path as settings_file_path,
 };
+pub use stickers::{NewPack, PackItem, PackStage, StickerSweep};
 #[cfg(feature = "test-hooks")]
 pub use test_hooks::db_at_version;
 pub use time::{Now, local_hhmm, offset_secs, utc_stamp};
@@ -242,6 +244,7 @@ impl Store {
         send::ensure_initialized(&mut conn, now)?;
         search::rebuild_if_stale(&mut conn)?;
         reactions::rebuild_if_stale(&mut conn)?;
+        stickers::rebuild_if_stale(&mut conn)?;
 
         let reader = open_connection(&options.db_path, true)?;
         let agent_reader = open_connection(&options.db_path, true)?;

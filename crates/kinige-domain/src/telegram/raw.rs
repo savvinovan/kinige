@@ -234,6 +234,8 @@ impl RawMessage {
             | TgMedia::VideoMessage
             | TgMedia::VoiceMessage
             | TgMedia::AudioFile => (self.file.as_ref()?, &self.file_size),
+            // A static sticker (slice 5c) is a WebP; TGS (`application/x-tgsticker`), WebM and anything else stay placeholders.
+            TgMedia::Sticker { .. } if self.is_webp() => (self.file.as_ref()?, &self.file_size),
             _ => return None,
         };
         let path = path
@@ -255,6 +257,14 @@ impl RawMessage {
             height: small(&self.height),
             duration_seconds: small(&self.duration_seconds),
         })
+    }
+
+    /// `mime_type` is `image/webp`: the export's mark of a static sticker.
+    fn is_webp(&self) -> bool {
+        self.mime_type
+            .as_ref()
+            .and_then(Lenient::value)
+            .is_some_and(|mime| mime == "image/webp")
     }
 
     /// The order of checks matters: a photo and a sticker can have both `file` and `media_type`.

@@ -12,6 +12,10 @@ interface MessageMenuProps {
   readOnly: boolean;
   /** No handler - the item is visible but disabled. */
   onEdit?: () => void;
+  /** An entry that has no text to edit (a sticker, slice 5c): "Edit" is not in the menu at all, not a disabled item. */
+  noEdit?: boolean;
+  /** An entry that has no text to copy (a sticker: its body is empty): "Copy" is not in the menu either. */
+  noCopy?: boolean;
   onToggleTask?: () => void;
   onToggleFavorite?: () => void;
   onChangeDate?: () => void;
@@ -43,6 +47,8 @@ export function MessageMenu({
   favorite,
   readOnly,
   onEdit,
+  noEdit = false,
+  noCopy = false,
   onToggleTask,
   onToggleFavorite,
   onChangeDate,
@@ -61,11 +67,11 @@ export function MessageMenu({
   const canMove = !readOnly && onMoveTo !== undefined && moveTargets.some((target) => !target.current);
 
   const main: MenuItem[] = [
-    { id: "copy", label: t("message.copy"), icon: "copy" },
+    ...(noCopy ? [] : [{ id: "copy", label: t("message.copy"), icon: "copy" as const }]),
     ...(onAddReaction
       ? [{ id: "react", label: t("message.addReaction"), icon: "reactionAdd" as const, disabled: readOnly || addReactionReason !== undefined, hint: addReactionReason }]
       : []),
-    { id: "edit", label: t("message.edit"), icon: "edit", disabled: off(onEdit) },
+    ...(noEdit ? [] : [{ id: "edit", label: t("message.edit"), icon: "edit" as const, disabled: off(onEdit) }]),
     { id: "task", label: isTask ? t("message.untask") : t("message.task"), icon: "task", disabled: off(onToggleTask) },
     {
       id: "favorite",

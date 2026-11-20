@@ -51,6 +51,7 @@ Line SVGs from the [Lucide](https://lucide.dev) set via the npm package `lucide-
 | `zoomIn`       | `zoom-in`                                   | MIT (from Feather) |
 | `eyeOff`       | `eye-off`                                   | ISC                |
 | `reactionAdd`  | `smile-plus`                                | ISC                |
+| `recent`       | `clock`                                     | MIT (from Feather) |
 
 The origin of the slice 3 icons was checked against the Feather list in the `LICENSE` of package 1.60.0: `trash-2`, `calendar`, `plus`, `chevron-right`, `database` are there, the rest are ISC.
 

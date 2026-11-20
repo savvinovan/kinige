@@ -60,6 +60,9 @@ pub(crate) fn draft_views(conn: &Connection, key: &str) -> Result<Vec<Attachment
             filename,
             description,
             spoiler: spoiler != 0 && kind == AttachmentKind::Image,
+            // A tile of the input field is never a sticker: stickers are sent from the library, not drafted.
+            sticker: false,
+            sticker_emoji: None,
             mime,
             byte_size,
             width,
@@ -161,6 +164,7 @@ fn load_draft_file(tx: &Transaction<'_>, key: &str, id: &str) -> Result<NewFile,
                 height,
                 duration_ms: None,
                 details,
+                sticker: None,
             })
         },
     )
