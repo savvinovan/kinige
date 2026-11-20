@@ -147,7 +147,7 @@ function Year({
               <ReactionRow
                 reactions={entry.message.reactions}
                 outside
-                onRemove={onReact ? (emoji) => onReact(entry.message.id, emoji, false) : undefined}
+                onRemove={onReact && !entry.message.readOnly ? (emoji) => onReact(entry.message.id, emoji, false) : undefined}
               />
             </li>
           );

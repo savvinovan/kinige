@@ -192,7 +192,8 @@ export const Message = memo(function Message({
   // Action row: to the right of the bubble; in a narrow window, slightly above the bubble at its right edge; at the top edge of the feed, inside.
   // Visible while the mouse is in the feed row (and a short delay after it leaves). Details are in useActionsPlacement.
   const { wrap, inside, flip, shown } = useActionsPlacement(`${html}|${mode}|${reactions.length}`);
-  const reaction = useMessageReactions({ reactions, keysHad: reactionKeysHad, onReact, readOnly, barShown: shown || showActions || menu !== null, wrap, plate });
+  // A deleted entry keeps its chips as labels: nothing in the trash is changed.
+  const reaction = useMessageReactions({ reactions, keysHad: reactionKeysHad, onReact, readOnly: readOnly || mode === "deleted", barShown: shown || showActions || menu !== null, wrap, plate });
 
   useEditWidth(plate, mode, html);
 
