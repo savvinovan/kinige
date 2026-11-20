@@ -63,12 +63,12 @@ labels() {
   if [ "$UI" = "ru" ]; then
     L_INBOX="Входящие"; L_TRASH="Корзина"; L_SEARCH="Поиск"; L_NONE="Ничего не найдено."; L_RESULTS="Результаты поиска"
     L_HEART_BTN="Реакция $HEART"; L_ADD="Поставить реакцию"; L_ADD_CARD="Поставить реакцию на запись"; L_DIALOG="Выбор реакции"; L_MORE="Ещё"
-    L_ADD_ITEM="Поставить реакцию…"; L_LATE="1 год спустя"; L_SAD_BTN="Реакция 😢"; L_EMOJI_SEARCH="Найти эмодзи"; L_FIRE_WORD="огонь"
+    L_ADD_ITEM="Поставить реакцию…"; L_LATE="1 год спустя"; L_FIRE_BTN="Реакция 🔥"; L_EMOJI_SEARCH="Найти эмодзи"; L_FIRE_WORD="огонь"
     L_LIMIT="На записи не больше 10 реакций"
   else
     L_INBOX="Inbox"; L_TRASH="Trash"; L_SEARCH="Search"; L_NONE="Nothing found."; L_RESULTS="Search results"
     L_HEART_BTN="Reaction $HEART"; L_ADD="Add reaction"; L_ADD_CARD="Add a reaction to the entry"; L_DIALOG="Choose a reaction"; L_MORE="More"
-    L_ADD_ITEM="Add reaction…"; L_LATE="1 year later"; L_SAD_BTN="Reaction 😢"; L_EMOJI_SEARCH="Search emoji"; L_FIRE_WORD="fire"
+    L_ADD_ITEM="Add reaction…"; L_LATE="1 year later"; L_FIRE_BTN="Reaction 🔥"; L_EMOJI_SEARCH="Search emoji"; L_FIRE_WORD="fire"
     L_LIMIT="At most 10 reactions on an entry"
   fi
 }
@@ -175,7 +175,7 @@ wait_name "$L_DIALOG" 10000 || fail "the picker did not open"
 type_into "$L_EMOJI_SEARCH" "$L_FIRE_WORD"
 sleep 2
 shoot 03-picker
-press "$L_FIRE_WORD" button
+press "$L_FIRE_WORD" gridcell
 sleep 3
 [ "$(live_rows "$AWAKE")" = "2" ] || fail "the pick from the picker did not put a second reaction"
 wait_name "$L_DIALOG" 10000 gone || fail "the picker did not close after a pick"
@@ -196,11 +196,13 @@ sleep 1
 shoot 05-card-popover
 CARD_ENTRY="$(sqlw "select message_id from message_reaction where emoji = '🥲' limit 1")"
 BEFORE_CARD="$(sqlw "select count(*) from message_reaction where message_id = '$CARD_ENTRY'")"
-COUNT_SAD="$(count_buttons "$L_SAD_BTN")"
-press_nth "$L_SAD_BTN" $((COUNT_SAD - 1)) button
+# The popover's quick emoji are the recent ones first (the fire and the heart of the steps above), then the fixed ones; its buttons come last in the markup.
+COUNT_FIRE="$(count_buttons "$L_FIRE_BTN")"
+[ "$COUNT_FIRE" -ge 1 ] || fail "the popover has no fire button"
+press_nth "$L_FIRE_BTN" $((COUNT_FIRE - 1)) button
 sleep 3
 wait_name "$L_DIALOG" 10000 gone || fail "the popover did not close after a pick"
-[ "$(sqlw "select count(*) from message_reaction where emoji = '😢'")" -ge 1 ] || fail "the pick in the card's popover put nothing"
+[ "$(sqlw "select count(*) from message_reaction where message_id = '$CARD_ENTRY' and emoji = '🔥'")" = "1" ] || fail "the pick in the card's popover put nothing on the card's entry"
 shoot 05b-card-chip
 rows_block "after the card popover"
 echo "reactions on the first card entry: before $BEFORE_CARD, after $(sqlw "select count(*) from message_reaction where message_id = '$CARD_ENTRY'")" >> "$OUT/rows.txt"
