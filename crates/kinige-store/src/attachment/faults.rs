@@ -22,6 +22,9 @@ pub enum AttachFault {
     /// A step in `set_attachment_details` after every write and before the commit (the test panics in it: the transaction rolls
     /// back and the groups, columns, index and copy marks stay as they were).
     DetailsBeforeCommit(Hook),
+    /// A step in `set_message_reaction` after the group and the derived rows are written and before the commit (slice 5a; the test
+    /// panics in it: the transaction rolls back and the group, the rows and the recent list stay as they were).
+    ReactionBeforeCommit(Hook),
     /// Deleting files after a purge fails.
     DeleteFails,
     /// The next thumbnail decodes into a panic (debug builds only).
@@ -37,6 +40,7 @@ pub(crate) struct Faults {
     mid_copy: Mutex<Option<Hook>>,
     after_rename: Mutex<Option<Hook>>,
     details_before_commit: Mutex<Option<Hook>>,
+    reaction_before_commit: Mutex<Option<Hook>>,
 }
 
 impl Default for Faults {
@@ -48,6 +52,7 @@ impl Default for Faults {
             mid_copy: Mutex::new(None),
             after_rename: Mutex::new(None),
             details_before_commit: Mutex::new(None),
+            reaction_before_commit: Mutex::new(None),
         }
     }
 }
@@ -64,6 +69,9 @@ impl Faults {
             AttachFault::DetailsBeforeCommit(hook) => {
                 *lock(&self.details_before_commit) = Some(hook);
             }
+            AttachFault::ReactionBeforeCommit(hook) => {
+                *lock(&self.reaction_before_commit) = Some(hook);
+            }
             AttachFault::DeleteFails => self.delete_fails.store(true, Ordering::SeqCst),
             AttachFault::DecoderPanics => self.decoder_panics.store(true, Ordering::SeqCst),
             AttachFault::Clear => {
@@ -73,6 +81,7 @@ impl Faults {
                 *lock(&self.mid_copy) = None;
                 *lock(&self.after_rename) = None;
                 *lock(&self.details_before_commit) = None;
+                *lock(&self.reaction_before_commit) = None;
             }
         }
     }
@@ -100,6 +109,10 @@ impl Faults {
 
     pub(crate) fn run_before_details_commit(&self) {
         run(&self.details_before_commit);
+    }
+
+    pub(crate) fn run_before_reaction_commit(&self) {
+        run(&self.reaction_before_commit);
     }
 }
 

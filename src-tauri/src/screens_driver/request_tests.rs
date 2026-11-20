@@ -38,6 +38,9 @@ fn every_step_kind_parses() {
         r#"{"kind":"wait","name":"a","gone":true,"timeoutMs":5000}"#,
         r#"{"kind":"has","name":"a"}"#,
         r#"{"kind":"scroll","name":"a"}"#,
+        r#"{"kind":"focus","name":"a","role":"button","nth":1}"#,
+        r#"{"kind":"hover","name":"a","role":"button","nth":1}"#,
+        r#"{"kind":"hover","name":"a","leave":true}"#,
         r#"{"kind":"text"}"#,
         r#"{"kind":"front"}"#,
         r#"{"kind":"hide"}"#,
@@ -131,6 +134,22 @@ fn garbage_is_refused_with_a_category_and_never_panics() {
         ),
         (
             r#"{"id":"r1","window":"main","step":{"kind":"press","name":"a","role":"Button"}}"#,
+            Reject::InvalidStep,
+        ),
+        (
+            r#"{"id":"r1","window":"main","step":{"kind":"hover"}}"#,
+            Reject::InvalidStep,
+        ),
+        (
+            r#"{"id":"r1","window":"main","step":{"kind":"hover","name":"a","leave":"yes"}}"#,
+            Reject::InvalidStep,
+        ),
+        (
+            r#"{"id":"r1","window":"main","step":{"kind":"hover","name":"a","nth":-1}}"#,
+            Reject::InvalidStep,
+        ),
+        (
+            r#"{"id":"r1","window":"main","step":{"kind":"hover","name":"a","x":1}}"#,
             Reject::InvalidStep,
         ),
         (

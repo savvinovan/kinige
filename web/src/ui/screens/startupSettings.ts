@@ -11,6 +11,8 @@ export const RECOVERY_SETTINGS: Settings = {
   forestView: "strip",
   forestMode: "forest",
   recentEmoji: [],
+  quickReactions: [],
+  recentReactions: [],
   backup: { folder: null, lastAt: null, count: 0, error: null },
 };
 

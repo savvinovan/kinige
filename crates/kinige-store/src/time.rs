@@ -2,6 +2,7 @@
 
 use chrono::{DateTime, Local, NaiveTime, Offset, TimeDelta, TimeZone, Utc};
 use chrono_tz::Tz;
+use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, journal_date};
 
 /// "Now" for one operation: UTC in ms, the device's IANA zone and its offset at that moment (including daylight saving
 /// time). Operations receive it from outside, so tests set the time and the zone themselves.
@@ -83,6 +84,11 @@ pub fn local_hhmm(created_at_ms: i64, tz: &str) -> String {
     wall_clock(created_at_ms, offset)
         .format("%H:%M")
         .to_string()
+}
+
+/// The `journal_date` (04:00 boundary) of the moment `ms` in the zone `tz`; an unknown zone reads as UTC. The day a reaction was put on.
+pub(crate) fn journal_day_in(ms: i64, tz: &str) -> String {
+    journal_date(ms, offset_secs(tz, ms).unwrap_or(0), DAY_BOUNDARY_MINUTES)
 }
 
 /// The time of day at the moment `ms` in a zone with the offset `utc_offset_secs`. A moment beyond the years `chrono` can

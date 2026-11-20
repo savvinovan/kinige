@@ -27,6 +27,7 @@ pub mod link;
 pub mod message_ops;
 pub mod mirror;
 pub mod on_this_day;
+pub mod reactions;
 pub mod reply;
 pub mod rewrite;
 pub mod search;
@@ -72,6 +73,7 @@ pub use import::{
 };
 pub use lang::Language;
 pub use on_this_day::{OnThisDay, OnThisDayEntry, OnThisDayYear};
+pub use reactions::present::ReactionView;
 pub use reply::{ReplyState, ReplyTo};
 pub use settings_file::{
     FileChanges, FileProblem, FileProblemKind, KeyIssue, KeyIssueKind, SettingsFileState,

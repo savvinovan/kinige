@@ -2,9 +2,11 @@
 
 use crate::error::{read_err, write_err};
 use crate::forest::stored_view;
+use crate::reactions::RECENT_KEY;
 use crate::send::mark_all_dirty;
 use crate::{Store, StoreError};
 use kinige_domain::emoji::emoji_identity;
+use kinige_domain::reactions::present::{parse_recent, quick_reactions};
 use kinige_domain::shortcuts::canonical_accelerator;
 use kinige_domain::{
     MirrorStatus, Settings, ShortcutKind, ShortcutState, ShortcutStatus, TextSize,
@@ -84,22 +86,34 @@ impl Store {
     /// shortcut is taken is decided by the system at registration, and the Tauri layer overlays it.
     pub fn get_settings(&self) -> Result<Settings, StoreError> {
         let default = self.inner.default_mirror_dir.clone();
-        let (text_size, folder, pending_days, shortcuts, collapsed, recent, forest) =
-            self.read(|conn| {
-                let text_size = get_setting(conn, KEY_TEXT_SIZE).map_err(read_err)?;
-                let folder = effective_mirror_dir(conn, default.as_deref()).map_err(read_err)?;
-                let pending: i64 = conn
-                    .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |row| row.get(0))
-                    .map_err(read_err)?;
-                let shortcuts = shortcut_statuses(conn).map_err(read_err)?;
-                let collapsed = get_setting(conn, KEY_SIDEBAR_COLLAPSED).map_err(read_err)?;
-                let recent = recent_emoji(conn).map_err(read_err)?;
-                let forest = stored_view(conn).map_err(read_err)?;
-                Ok((
-                    text_size, folder, pending, shortcuts, collapsed, recent, forest,
-                ))
-            })?;
+        let (
+            text_size,
+            folder,
+            pending_days,
+            shortcuts,
+            collapsed,
+            recent,
+            forest,
+            recent_reactions,
+        ) = self.read(|conn| {
+            let text_size = get_setting(conn, KEY_TEXT_SIZE).map_err(read_err)?;
+            let folder = effective_mirror_dir(conn, default.as_deref()).map_err(read_err)?;
+            let pending: i64 = conn
+                .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |row| row.get(0))
+                .map_err(read_err)?;
+            let shortcuts = shortcut_statuses(conn).map_err(read_err)?;
+            let collapsed = get_setting(conn, KEY_SIDEBAR_COLLAPSED).map_err(read_err)?;
+            let recent = recent_emoji(conn).map_err(read_err)?;
+            let forest = stored_view(conn).map_err(read_err)?;
+            let reactions = get_setting(conn, RECENT_KEY).map_err(read_err)?;
+            Ok((
+                text_size, folder, pending, shortcuts, collapsed, recent, forest, reactions,
+            ))
+        })?;
+        let recent_reactions = parse_recent(recent_reactions.as_deref());
         Ok(Settings {
+            quick_reactions: quick_reactions(&recent_reactions),
+            recent_reactions,
             forest_view: forest.0,
             forest_mode: forest.1,
             sidebar_collapsed: collapsed.as_deref() == Some("1"),

@@ -88,6 +88,10 @@ pub enum ErrorCode {
     /// A name, a description or a spoiler flag broke a rule of slice 7b (a control or path character in the name, a name over 255
     /// bytes, a description over 1,024 characters, a spoiler on a file that is not an image): nothing was written.
     AttachmentDetailsInvalid,
+    /// The reaction is not one emoji (slice 5a): nothing was written.
+    ReactionInvalid,
+    /// The entry has 10 live reactions, or has had 32 different emoji, so another emoji cannot be put on it (slice 5a).
+    ReactionLimit,
     Internal,
 }
 

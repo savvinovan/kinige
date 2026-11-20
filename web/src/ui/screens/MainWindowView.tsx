@@ -15,6 +15,7 @@ import { ForestToggle } from "../forest/ForestToggle";
 import type { MoveTarget } from "../message/moveTargets";
 import { type ChatAction, type ChatTint, Sidebar, type SidebarChat, type SidebarSearch } from "../sidebar/Sidebar";
 import { RevealProvider } from "../attachments/reveal";
+import { ReactionChoicesProvider, type ReactionChoices } from "../reactions/ReactionsContext";
 import { TagFilterBar } from "../tag/TagFilterBar";
 import { TrashView } from "../trash/TrashView";
 import type { VoiceController } from "../../voice/useVoiceRecorder";
@@ -68,6 +69,8 @@ interface MainWindowViewProps {
   /** The emoji picker in the composer: recent ones, the language and "picked" (remember in recents). */
   emoji?: { recent: readonly string[]; language: Language; onPicked?: (emoji: string) => void };
   onOpenSettings?: () => void;
+  /** Slice 5a: the three quick emoji of the hover bar and the recent reactions of the picker; without it the bar has none to offer. */
+  reactionChoices?: ReactionChoices;
   /** The "Search" field in the sidebar, drawn without working (D1 stories). The working field is `search`. */
   showSearch?: boolean;
   /** Working search (slice 4): the sidebar field; the results are `searchResults`. */
@@ -139,6 +142,8 @@ export interface AttachmentControls {
   onAttachmentSpoiler?: (attachmentId: string, spoiler: boolean) => void;
 }
 
+const NO_CHOICES: ReactionChoices = { quick: [], recent: [] };
+
 /**
  * Main window: sidebar + feed (or trash) + composer. There is no chat-title row above the feed: the selected chat is
  * highlighted in the sidebar (§6). View only: data comes from outside (in Storybook directly, in the app via `MainWindow`).
@@ -148,7 +153,9 @@ export function MainWindowView(props: MainWindowViewProps) {
   // the trash, the viewer and the details dialog share it, and so does every story of this view.
   return (
     <RevealProvider viewKey={props.selectedChatId}>
-      <MainWindowBody {...props} />
+      <ReactionChoicesProvider value={props.reactionChoices ?? NO_CHOICES}>
+        <MainWindowBody {...props} />
+      </ReactionChoicesProvider>
     </RevealProvider>
   );
 }

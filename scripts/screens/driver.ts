@@ -27,6 +27,8 @@ export type Step =
   | { kind: "wait"; name: string; role?: string; gone?: boolean; timeoutMs: number }
   | { kind: "has"; name: string; role?: string }
   | ({ kind: "scroll" } & Query)
+  | ({ kind: "focus" } & Query)
+  | ({ kind: "hover"; leave?: boolean } & Query)
   | { kind: "text" };
 
 export type Answer = { ok: true; value?: string } | { ok: false; error: string };
@@ -106,6 +108,19 @@ async function run(step: Step, root: Document, patience: number): Promise<string
       element.scrollIntoView?.({ block: "nearest", inline: "nearest" });
       return undefined;
     }
+    case "focus": {
+      // KINIG-138: the keyboard focus, as Tab leaves it. A script cannot hover, so this is how a scenario shows what appears with the focus inside
+      // (the hover bar of an entry); no pointer event is sent and nothing is pressed.
+      const element = await need(root, step, patience);
+      element.focus();
+      if (element.ownerDocument.activeElement !== element) throw new Error(`could not focus: ${describe(step)}`);
+      return undefined;
+    }
+    case "hover": {
+      // KINIG-138: the pointer onto the element (or off it): the events a real pointer sends, along the ancestors, and nothing else. No press, no focus.
+      hover(await need(root, step, patience), step.leave === true);
+      return undefined;
+    }
     case "text":
       return windowText(root);
     default:
@@ -147,6 +162,30 @@ function press(element: HTMLElement): void {
   pointer(element, "pointerup", point, 0, 0);
   mouse(element, "mouseup", point, 0, 0);
   element.click();
+}
+
+/**
+ * The pointer arrives on the element, or leaves it. A browser sends `pointerover` (bubbling) to the element and `pointerenter` (not bubbling) to
+ * each ancestor it has newly entered, outermost first; leaving is the mirror image. The page's hover logic (an entry's action row listens for
+ * `pointerenter` on its row) sees what it sees from a real pointer. `pointermove` follows an arrival at the element's centre.
+ */
+function hover(element: HTMLElement, leave: boolean): void {
+  const point = centre(element);
+  const chain: Element[] = [];
+  for (let node: Element | null = element; node; node = node.parentElement) chain.push(node);
+  const send = (target: Element, type: string, bubbles: boolean) => {
+    const init = { bubbles, cancelable: false, composed: true, clientX: point.x, clientY: point.y, button: 0, buttons: 0 };
+    if (typeof PointerEvent === "undefined") target.dispatchEvent(new MouseEvent(type.replace("pointer", "mouse"), init));
+    else target.dispatchEvent(new PointerEvent(type, { ...init, pointerId: 1, pointerType: "mouse", isPrimary: true }));
+  };
+  if (leave) {
+    send(element, "pointerout", true);
+    for (const node of chain) send(node, "pointerleave", false);
+    return;
+  }
+  send(element, "pointerover", true);
+  for (const node of [...chain].reverse()) send(node, "pointerenter", false);
+  send(element, "pointermove", true);
 }
 
 /** A right click: the page gets `contextmenu` at the element's centre. */

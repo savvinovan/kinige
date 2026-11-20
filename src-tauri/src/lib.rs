@@ -37,8 +37,11 @@ pub mod settings_window;
 pub mod startup;
 pub mod tray;
 pub mod voice;
+mod window_events;
 
-use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
+pub use window_events::on_window_event;
+
+use capture::{CaptureShell, MAIN_LABEL};
 use data_dirs::{db_path, default_mirror_dir};
 use hotkeys::{Hotkeys, PluginRegistrar};
 use kinige_store::{Store, StoreError, StoreOptions};
@@ -51,7 +54,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use tauri::webview::PageLoadEvent;
-use tauri::{AppHandle, Manager, Runtime, WindowEvent};
+use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_global_shortcut::ShortcutState;
 
 #[cfg(feature = "screens-driver")]
@@ -117,6 +120,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             actions::edit_message,
             actions::toggle_task_item,
             actions::set_message_flag,
+            actions::set_message_reaction,
             actions::set_message_date,
             actions::move_message,
             actions::list_trash,
@@ -181,7 +185,7 @@ fn start_services<R: Runtime>(
     #[cfg(target_os = "macos")]
     panel::convert(
         app,
-        CAPTURE_LABEL,
+        capture::CAPTURE_LABEL,
         capture::on_capture_key,
         capture::on_capture_blur,
         capture::request_hide,
@@ -229,36 +233,6 @@ pub(crate) fn resume_after_restore<R: Runtime>(app: &AppHandle<R>) -> Result<(),
     rx.recv()
         .map_err(|e| StoreError::Internal(e.to_string()))?
         .map_err(StoreError::Internal)
-}
-
-/// Closing the main window hides it, the app lives in the menu bar; closing the capture window is the same as Esc.
-/// Public so that the IPC tests can send a window a drop (only `main` leaves a token).
-pub fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
-    #[cfg(feature = "screens-driver")]
-    screens_driver::on_window_event(window, event);
-    match (window.label(), event) {
-        (MAIN_LABEL, WindowEvent::CloseRequested { api, .. }) => {
-            api.prevent_close();
-            let _ = window.hide();
-        }
-        // Files dragged over the main window: the overlay and, on a drop, a token (slice 7). Other windows ignore drops.
-        (MAIN_LABEL, WindowEvent::DragDrop(event)) => {
-            attachments::on_drag_drop(window.app_handle(), event)
-        }
-        (CAPTURE_LABEL, WindowEvent::CloseRequested { api, .. }) => {
-            api.prevent_close();
-            capture::request_hide(window.app_handle());
-        }
-        // A click into another window or another app: the capture window hides, the draft is saved.
-        (CAPTURE_LABEL, WindowEvent::Focused(false)) => {
-            capture::on_capture_blur(window.app_handle())
-        }
-        // The settings window closes completely; a shortcut recording, if in progress, is cancelled.
-        (settings_window::SETTINGS_LABEL, WindowEvent::Destroyed) => {
-            settings_window::on_destroyed(window.app_handle())
-        }
-        _ => {}
-    }
 }
 
 pub fn run() {

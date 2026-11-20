@@ -8,6 +8,7 @@ import { Button } from "../controls/Button";
 import { formatDayLabel } from "../feed/dates";
 import { Modal } from "../settings/Modal";
 import { StatusNote } from "../settings/StatusNote";
+import { ReactionRow } from "../reactions/ReactionRow";
 import { ChatTile } from "../sidebar/ChatTile";
 import "../message/markdown.css";
 import "./trash.css";
@@ -83,6 +84,8 @@ export function TrashView({ items, language, today, busyId = null, error, onRest
                       // The same safe rendering as in the feed (markdown.ts), only without links and Tab stops.
                       dangerouslySetInnerHTML={{ __html: renderContextMarkdown(message.bodyMd, taskLabels) }}
                     />
+                    {/* The chips show but cannot be changed: an entry in the trash is not edited (slice 5a). */}
+                    <ReactionRow reactions={message.reactions} outside />
                     <footer className="trash-entry__actions">
                       <Button
                         variant="secondary"

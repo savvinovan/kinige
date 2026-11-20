@@ -11,9 +11,14 @@ import { MessageMeta } from "./MessageMeta";
 import type { MoveTarget } from "./moveTargets";
 import { selectedTextIn, useCopy } from "./useCopy";
 import { useActionsPlacement } from "./useActionsPlacement";
+import { useEditWidth } from "./useEditWidth";
+import type { ReactionView } from "../../api/generated/ReactionView";
+import { useMessageReactions, type ReactionCounts } from "../reactions/useMessageReactions";
 import "./message.css";
 import "./message-bleed.css";
 import "./markdown.css";
+
+const NO_REACTIONS: readonly ReactionView[] = [];
 
 export interface MessageProps {
   /** Message text in Markdown. Raw HTML in it is not rendered (§6). */
@@ -58,6 +63,11 @@ export interface MessageProps {
   caption?: Caption;
   /** KINIG-136: "Attachment details…" in the entry's menu (an entry with attachments that have details). */
   onAttachmentDetails?: () => void;
+  /** Slice 5a: the live reactions, as chips under the text with the time at the end of their row; the keys of every emoji the entry has had; the counts the caps use. */
+  reactions?: readonly ReactionView[];
+  reactionKeysHad?: readonly string[]; reactionCounts?: ReactionCounts;
+  /** Put (`on`) or remove a reaction. Without it the chips are plain labels and the bar has no reaction buttons. */
+  onReact?: (emoji: string, on: boolean) => void;
   /** Entry tags (lower case, without `#`), determined by Rust: highlighted and clickable in the text. */
   tags?: readonly string[];
   /** Words of the entry found by search, as written in it (Rust returns them): highlighted whole (slice 4). */
@@ -125,6 +135,10 @@ export const Message = memo(function Message({
   imagesOnly = false,
   caption,
   onAttachmentDetails,
+  reactions = NO_REACTIONS,
+  reactionKeysHad,
+  reactionCounts,
+  onReact,
   tags,
   markTerms,
   mode = "view",
@@ -151,6 +165,9 @@ export const Message = memo(function Message({
   const labelTodo = t("message.taskTodo");
   const labelItem = t("message.taskItem");
   const interactiveTasks = viewing && !readOnly && onToggleTaskItem !== undefined;
+  // Reactions: chips under the text, and the time moves to the right end of their row. The text keeps its spacer for the time, so the bubble does not
+  // get narrower and the hover bar, which stands at its right edge, does not move sideways when the first reaction is put.
+  const reacted = reactions.length > 0 && mode !== "editing";
   const tagsKey = (tags ?? []).join(" ");
   // Search words are separated by a space: a word is a run of letters and digits, with no space in it.
   const markKey = (markTerms ?? []).join(" ");
@@ -167,7 +184,7 @@ export const Message = memo(function Message({
   );
   // The message ends with a block (code): the last line has no spacer, the time sits under the block.
   const captioned = caption !== undefined && markdown.trim() === "" && mode === "view";
-  const timeBelow = !failed && !html.includes("message__spacer") && !(timeBeside && mode !== "editing") && !captioned;
+  const timeBelow = !failed && !reacted && !html.includes("message__spacer") && !(timeBeside && mode !== "editing") && !captioned;
 
   const plate = useRef<HTMLElement>(null);
   const { state: copyState, copy } = useCopy();
@@ -175,30 +192,11 @@ export const Message = memo(function Message({
 
   // Action row: to the right of the bubble; in a narrow window, slightly above the bubble at its right edge; at the top edge of the feed, inside.
   // Visible while the mouse is in the feed row (and a short delay after it leaves). Details are in useActionsPlacement.
-  const { wrap, inside, flip, shown } = useActionsPlacement(`${html}|${mode}`);
+  const { wrap, inside, flip, shown } = useActionsPlacement(`${html}|${mode}|${reactions.length}`);
+  // A deleted entry keeps its chips as labels: nothing in the trash is changed.
+  const reaction = useMessageReactions({ reactions, keysHad: reactionKeysHad, counts: reactionCounts, onReact, readOnly: readOnly || mode === "deleted", barShown: shown || showActions || menu !== null, wrap, plate });
 
-  // Bubble width before editing: while the bubble is normal, its width is remembered (and updated on resize); on entering
-  // edit mode it is pinned by the `--message-edit-width` variable, so the bubble changes only its height.
-  const viewWidth = useRef(0);
-  useLayoutEffect(() => {
-    const element = plate.current;
-    if (!element || mode === "editing") return;
-    viewWidth.current = element.offsetWidth;
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => {
-      viewWidth.current = element.offsetWidth;
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [mode, html]);
-  useLayoutEffect(() => {
-    const element = plate.current;
-    if (!element || mode !== "editing") return;
-    if (viewWidth.current > 0) element.style.setProperty("--message-edit-width", `${viewWidth.current}px`);
-    return () => {
-      element.style.removeProperty("--message-edit-width");
-    };
-  }, [mode]);
+  useEditWidth(plate, mode, html);
 
   // Editing is over (Enter or Esc): the field disappears, and focus must stay on the entry, otherwise the keyboard loses its place
   // (found in a live check). The bubble is not in the Tab order (tabIndex -1) but takes focus programmatically; Shift+F10 on it
@@ -266,7 +264,7 @@ export const Message = memo(function Message({
   // KINIG-132: every attachment is a picture and the bubble is a plain one: the album fills the bubble edge to edge, as in Telegram. Without text
   // the time moves onto the picture as a pill; without text and without a quote the bubble has no fill of its own.
   const bleed = imagesOnly && Boolean(attachments) && viewing && !failed && !isTask;
-  const bleedPill = bleed && markdown.trim() === "" && !captioned;
+  const bleedPill = bleed && markdown.trim() === "" && !captioned && !reacted;
   const classes = ["message"];
   if (attachments) classes.push("message--has-attachments");
   if (bleed) classes.push("message--bleed");
@@ -274,6 +272,7 @@ export const Message = memo(function Message({
   if (bleedPill && !quote) classes.push("message--bleed-bare");
   if (highlighted) classes.push("message--highlighted");
   if (timeBelow) classes.push("message--time-below");
+  if (reacted) classes.push("message--reacted");
   if (isTask) classes.push("message--task");
   if (isTask && taskDone) classes.push("message--task-done");
   if (favorite && mode !== "deleted") classes.push("message--favorite");
@@ -286,7 +285,7 @@ export const Message = memo(function Message({
       <div
         className={[
           "message-wrap",
-          showActions || shown || menu ? "message-wrap--actions" : "",
+          showActions || shown || menu || reaction.picking ? "message-wrap--actions" : "",
           inside ? "message-wrap--actions-inside" : "",
           inside && flip ? "message-wrap--actions-flip" : "",
         ]
@@ -346,6 +345,7 @@ export const Message = memo(function Message({
                 {editError}
               </p>
             ) : null}
+            {mode !== "editing" ? reaction.row : null}
             {failed ? (
               <p className="message__error">
                 {t("message.notSent")}{" "}
@@ -369,9 +369,11 @@ export const Message = memo(function Message({
             onToggleFavorite={toggle(onToggleFavorite, favorite)}
             onMore={openMenu}
             menuOpen={menu !== null}
+            reactions={reaction.bar}
           />
         ) : null}
       </div>
+      {reaction.panel}
       {/* The menu is a sibling node, not a child of the wrapper: events from it (right click, keys) do not bubble into the bubble. */}
       {menu && viewing ? (
         <MessageMenu
@@ -385,6 +387,8 @@ export const Message = memo(function Message({
           onChangeDate={onChangeDate}
           onDelete={onDelete}
           onAttachmentDetails={onAttachmentDetails}
+          onAddReaction={reaction.openFromMenu && menu ? () => reaction.openFromMenu?.(menu.position) : undefined}
+          addReactionReason={reaction.menuReason}
           moveTargets={moveTargets}
           onMoveTo={onMoveTo}
           onCopy={() => copyNow(menu.selection)}

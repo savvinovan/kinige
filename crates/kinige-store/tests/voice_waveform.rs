@@ -302,7 +302,7 @@ fn a_slice_7_database_is_upgraded_in_place_and_keeps_every_row() {
     common::old_db::downgrade_to(dir.path(), 7);
     let store = open_without_mirror(dir.path());
     assert_eq!(user_version(dir.path()), LATEST_VERSION);
-    assert_eq!(LATEST_VERSION, 9);
+    assert_eq!(LATEST_VERSION, 10);
     assert_eq!(synced_rows(dir.path()), before, "no synced row changed");
     assert_eq!(count(dir.path(), "SELECT COUNT(*) FROM message"), 1);
     let found = shown(&store);

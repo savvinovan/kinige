@@ -107,6 +107,10 @@
   --layout-window-height: 100vh; /** The height of the app window: the whole window. */
   --layout-window-narrow: 45rem; /** Width of the 'narrow window' in Storybook stories (585 px). */
   --layout-on-this-day-entry-lines: 3; /** How many lines of the entry text a row of the 'On this day' card shows (slice 5); the rest is cut off with an ellipsis (line-clamp). The full text opens in the feed by clicking the entry. */
+  --layout-reaction-chip-height: 1.85rem; /** KINIG-138 (restyled): the height of a reaction chip inside a bubble (about 24 px at a 13 px root), fully rounded: tall enough to read as a button and not as a line of text. The emoji in it is the body text size. */
+  --layout-reaction-divider-height: 1.1rem; /** KINIG-138: the height of the thin divider between the reaction buttons and the other buttons of the hover bar (14 px). */
+  --layout-reaction-story-stage: 30rem; /** KINIG-138: the height of the Storybook stage that gives the full emoji picker room (stories only). */
+  --layout-reaction-story-column: 20rem; /** KINIG-138: the height of the Storybook column in which a bubble stands at the bottom, as in the feed (stories only). */
   --layout-recovery-width: 36rem; /** Width of the column of the 'Database is damaged' screen (468 px at a 13 px root); in a narrow window the column takes the window width minus the margins. */
   --layout-recovery-list-max-height: 24rem; /** Largest height of the copies list (312 px at a 13 px root): a longer list scrolls inside, the heading and the button stay in place. */
   --layout-chat-dialog-width: 27rem; /** Width of the 'New chat' / 'Rename' / 'Chat emoji' window (351 px at a 13 px root): narrower than the settings window, the picker inside takes the content width. */
@@ -174,9 +178,13 @@
   --color-surface-card: #2b2b2b; /** The fill of the 'On this day' card (slice 5) in the feed: lighter than the paper (1.22:1), with no border and no shadow. The feed 'paper' itself lies on surface.paper, so a card with the same fill would dissolve in it. */
   --color-surface-field: #2b2b2b; /** The fill of an input field with no outline: the search, the composer. */
   --color-surface-field-active: #343434; /** The fill of an input field when it has the cursor: slightly lighter (1.14:1 to the normal one). Together with the fill change, a focused field has a thin line in the focus color. */
+  --color-surface-chip: #6d9bab; /** KINIG-138 (restyled after the user's review of the acceptance build): the fill of a reaction chip that can be pressed (the feed, the 'On this day' card), a clearly lighter pill tinted with the accent, so it reads as a button at a glance without a border. It stands off the bubble's and the card's fill by 4.7:1 (the boundary needs 3:1), off the highlighted bubble by 3.5:1 and off the selected search row by 3.1:1. The text on it is the dark text.on-chip (6.1:1); the light text roles are not placed on it. */
+  --color-surface-chip-hover: #82b3c1; /** KINIG-138: the fill of a pressable reaction chip under the pointer or with the keyboard focus: clearly lighter than the resting chip (1.32:1 to it) and still tinted with the accent. The dark text.on-chip on it is 8.0:1. */
+  --color-surface-chip-static: #959595; /** KINIG-138: the fill of a reaction chip that cannot be pressed (the trash, search rows, a read-only entry): the same lightness as the pressable one but a neutral gray with no accent and no hover, so it is flatter. It stands off the bubble's fill by 4.7:1 and off the selected search row by 3.1:1. The dark text.on-chip on it is 6.2:1. */
   --color-text-primary: #f5f5f5; /** The primary entry text: almost white, neutral. */
   --color-text-secondary: #dedede; /** Secondary text: captions, chat names, the day label. */
   --color-text-tertiary: #ababab; /** Metadata: the time, hints, the entry counter, icons. A quiet gray, not an accent. */
+  --color-text-on-chip: #141414; /** KINIG-138: the text on a reaction chip (the 'N y' age): dark, because the chip fills are light enough to stand off the bubble by 3:1, and light text would not reach 4.5:1 on them. 6.1:1 on the resting chip, 8.0:1 on the hovered one, 6.2:1 on the static one. */
   --color-accent-default: #88c0d0; /** A muted accent: links, a checked task, the 'Send' button, the cursor. */
   --color-border-divider: #333333; /** A thin divider: the border of the sidebar and the feed (decorative). */
   --color-highlight-background: #3e3e3e; /** The fill of a highlighted message (found by search, a jump by link): noticeably lighter than the plate (1.32:1; D2: was #3a3a3a) and lighter than the selected row (1.22:1). The time, the error and the accent on it stay at >= 4.6:1. */
@@ -311,6 +319,10 @@
   --layout-action-gap: var(--space-2); /** A transparent gap between the plate and the action row to its right (6.5 px); mouse hover extends into it. */
   --layout-action-offset: var(--space-1); /** Offset of the row from the right edge of the plate when there is no room on the right and the row stands above the plate at its right edge; at the top edge of the feed, also from the top edge of the plate (3.25 px). */
   --layout-search-filters-gap: var(--space-2); /** The gap between search filters (6.5 px). */
+  --layout-reaction-chip-padding: var(--space-3); /** KINIG-138 (restyled): the left and right padding of a chip (9.75 px), so the pill is wider than its emoji and reads as a chip. */
+  --layout-reaction-gap: var(--space-2); /** KINIG-138 (restyled): the gap between chips, and between the rows when they wrap (6.5 px). */
+  --layout-reaction-row-offset: var(--space-3); /** KINIG-138 (restyled): the space between the text of an entry and its row of chips (9.75 px), so the chips are clearly apart from the text; an entry whose text is one emoji no longer looks like its chips. */
+  --layout-reaction-popover-gap: var(--space-1); /** KINIG-138: the gap between the buttons of the quick-reaction popover. */
   --layout-voice-confirm-gap: var(--space-2); /** Gap between the question and the two buttons of the discard confirmation. */
   --layout-voice-player-gap: var(--space-3); /** Gap between the play button and the waveform of the player. */
   --layout-voice-meta-gap: var(--space-2); /** Gap between the meta line ("0:05, 20.7 KB") and the speed chip. */

@@ -12,12 +12,15 @@ use kinige_domain::chat::{
     ChatInputError, MAX_ICON_BYTES, MAX_TITLE_CHARS, normalize_icon, normalize_title,
 };
 use kinige_domain::chat_color::resolve_color;
+use kinige_domain::emoji::is_emoji_sequence;
 use kinige_domain::forest::{DEFAULT_W_MAX, NoteStat, day_weight, stage_of};
 use kinige_domain::forest_year::day_chat;
 use kinige_domain::groups::INBOX_ID;
 use kinige_domain::history::{TRASH_DAYS, days_left};
 use kinige_domain::journal::{DAY_BOUNDARY_MINUTES, is_valid_journal_date, journal_date};
 use kinige_domain::on_this_day::{DETAILED_YEARS, ENTRIES_PER_YEAR, PREVIEW_CHARS};
+use kinige_domain::reactions::present::{MAX_RECENT, QUICK_COUNT, quick_reactions};
+use kinige_domain::reactions::{MAX_KEYS, MAX_LIVE, reaction_key};
 use kinige_domain::reply::{EXCERPT_CHARS, ReplyTarget, excerpt, reply_to, years_later};
 use kinige_domain::tags::{MAX_TAG_CHARS, parse_tags};
 use kinige_domain::tasks::set_task_item;
@@ -259,6 +262,27 @@ fn the_fields_a_kind_takes() {
     }
 }
 
+#[test]
+fn the_key_of_a_reaction_what_is_one_and_the_quick_set() {
+    let file = fixture("reaction-key");
+    for case in list(&file, "keys") {
+        assert_eq!(
+            reaction_key(&spec(&case["emoji"])),
+            spec(&case["key"]),
+            "{case}"
+        );
+    }
+    for case in list(&file, "valid") {
+        let valid = case["valid"].as_bool().unwrap();
+        assert_eq!(is_emoji_sequence(&spec(&case["text"])), valid, "{case}");
+    }
+    for case in list(&file, "quick") {
+        let recent: Vec<String> = list(case, "recent").iter().map(spec).collect();
+        let expected: Vec<String> = list(case, "expected").iter().map(spec).collect();
+        assert_eq!(quick_reactions(&recent), expected, "{case}");
+    }
+}
+
 /// `Ok(Some(text))`, `Ok(None)` for `null`, or `Err("error")`, from `expect` and `error` of a case.
 fn expected_details(case: &Value) -> Result<Option<String>, &'static str> {
     if case["error"].as_bool() == Some(true) {
@@ -286,6 +310,10 @@ fn constant(name: &str) -> i64 {
         "attachmentsPerEntry" => MAX_PER_ENTRY,
         "pasteMaxBytes" => MAX_PASTE_BYTES,
         "waveformPeaks" => WAVEFORM_PEAKS,
+        "reactionsLive" => MAX_LIVE,
+        "reactionKeys" => MAX_KEYS,
+        "reactionsRecent" => MAX_RECENT,
+        "reactionsQuick" => QUICK_COUNT,
         "trashDays" => return TRASH_DAYS,
         "appendWindowMs" => return APPEND_WINDOW_MS,
         "voiceMinMs" => return MIN_VOICE_MS,

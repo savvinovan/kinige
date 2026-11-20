@@ -41,6 +41,9 @@ fn migration_from_scratch_creates_exactly_the_tables_of_the_slice() {
             "mcp_log_message",
             "message",
             "message_ext",
+            // Reactions (migration 10): derived, local rows of the synced `reactions` group.
+            "message_reaction",
+            "message_reaction_keys",
             "message_revision",
             "message_tag",
             "mirror_chat",

@@ -19,6 +19,7 @@ import { DetailsHost } from "./DetailsHost";
 import { EMPTY_LIST, focusComposer, toSidebar, useCheckOnWindowFocus, useMoveTargets } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
 import { useAttachments } from "./useAttachments";
+import { useCardReactions } from "./useCardReactions";
 import { useChatDialog } from "./useChatDialog";
 import { useDetails } from "./useDetails";
 import { useComposerDraft } from "./useComposerDraft";
@@ -90,11 +91,19 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onTag: setTag,
     focus,
     onMutated: bumpMutations,
+    onReacted: prefs.refreshReactions,
   });
   const { reload: reloadFeed, restart: restartFeed } = feed;
   const attachments = useAttachments({ api, selected, tiles, addTiles, dropTile, onError: setComposerError });
   const details = useDetails({ api, tiles, updateTile, patchAttachment: feed.patchAttachment, onError: setComposerError });
   const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
+  const { choices: reactionChoices, reactOnCard } = useCardReactions({
+    api,
+    settings,
+    refreshCard: onThisDay.refresh,
+    refreshReactions: prefs.refreshReactions,
+    onError: setComposerError,
+  });
   useCheckOnWindowFocus(feed.checkDay);
   const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
   const moveTargets = useMoveTargets(sidebarChats, selected, t);
@@ -265,6 +274,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       composerButtons={{ attach: true, emoji: true, voice: true }}
       voice={voice}
       emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji }}
+      reactionChoices={reactionChoices}
       chats={sidebarChats}
       moveTargets={moveTargets}
       drag={{ onDragStart: drag.begin, dropTargetId: drag.overChatId, ghost: drag.ghost }}
@@ -307,6 +317,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
                   onOpen={(messageId) => openEntry(INBOX_ID, messageId)}
                   onReply={startReply}
                   onDismiss={hideCard}
+                  onReact={reactOnCard}
                 />
               ),
             }

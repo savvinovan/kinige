@@ -132,6 +132,12 @@ export interface KinigeApi {
   toggleTaskItem(id: string, index: number, checked: boolean): Promise<MessageView>;
   /** Task, done (tasks only), favorite. */
   setMessageFlag(id: string, flag: MessageFlag, on: boolean): Promise<MessageView>;
+  /**
+   * Puts (`on`) or removes a reaction (slice 5a): one emoji; an entry holds at most 10 live reactions and has at most 32 different ones
+   * ever. Putting what is already there and removing what is not write nothing. Not an edit. Errors, nothing written:
+   * `reaction_invalid` (not one emoji), `reaction_limit` (a put over the caps), `message_in_trash`, `read_only`, `message_not_found`.
+   */
+  setMessageReaction(id: string, emoji: string, on: boolean): Promise<MessageView>;
   /** "Change date": `YYYY-MM-DD`, future dates are allowed. */
   setMessageDate(id: string, journalDate: string): Promise<MessageView>;
   /** "Move to chat" (the entry menu, dragging onto a chat): the day and the text do not change, not into the trash. */
