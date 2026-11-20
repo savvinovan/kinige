@@ -8,7 +8,6 @@ pub mod details;
 pub mod import;
 pub mod old_db;
 pub mod ops;
-pub mod settings_file;
 pub mod voice;
 
 use kinige_store::{Now, Store, StoreOptions};

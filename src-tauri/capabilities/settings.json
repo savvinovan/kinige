@@ -19,7 +19,6 @@
     "allow-set-agent-chats",
     "allow-list-agent-log",
     "allow-list-agent-log-entries",
-    "allow-get-settings-file",
     "allow-settings-open-entry",
     "core:event:allow-listen",
     "core:event:allow-unlisten"

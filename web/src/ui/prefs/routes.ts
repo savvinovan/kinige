@@ -1,10 +1,10 @@
 /** Pages of the "Settings" window (slice 4b): the tree sections and the subscreens of "AI agent access". */
-export type Route = "appearance" | "shortcuts" | "mirror" | "access" | "access/chats" | "access/log" | "file";
+export type Route = "appearance" | "shortcuts" | "mirror" | "access" | "access/chats" | "access/log";
 
 export interface TreeItem {
   route: Route;
   /** The name key in the translation files. */
-  label: `prefs.section.${"appearance" | "shortcuts" | "mirror" | "access" | "accessChats" | "accessLog" | "file"}`;
+  label: `prefs.section.${"appearance" | "shortcuts" | "mirror" | "access" | "accessChats" | "accessLog"}`;
   /** 0 is a section, 1 is a nested item (subscreen). */
   level: 0 | 1;
 }
@@ -17,7 +17,6 @@ export const TREE: readonly TreeItem[] = [
   { route: "access", label: "prefs.section.access", level: 0 },
   { route: "access/chats", label: "prefs.section.accessChats", level: 1 },
   { route: "access/log", label: "prefs.section.accessLog", level: 1 },
-  { route: "file", label: "prefs.section.file", level: 0 },
 ];
 
 /** The section a subscreen belongs to; for a section, itself. */

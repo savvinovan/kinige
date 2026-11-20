@@ -43,6 +43,16 @@ pub(crate) fn get_setting(conn: &Connection, key: &str) -> rusqlite::Result<Opti
     .optional()
 }
 
+/// Writes the text size on a connection that already holds the writer (a transaction of the caller's).
+pub(crate) fn put_text_size(conn: &Connection, size: TextSize) -> Result<(), StoreError> {
+    conn.execute(
+        "INSERT INTO app_setting(key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (KEY_TEXT_SIZE, size.as_setting()),
+    )
+    .map_err(write_err)?;
+    Ok(())
+}
+
 /// The copy folder: chosen by the user or the default. `None` means the copy is off. The second value is "is default".
 pub(crate) fn effective_mirror_dir(
     conn: &Connection,
@@ -171,16 +181,9 @@ impl Store {
         })
     }
 
-    /// "Text size": stored, survives a restart.
+    /// "Text size": stored, survives a restart. The settings window and the MCP tool `set_setting` write it the same way.
     pub fn set_text_size(&self, size: TextSize) -> Result<(), StoreError> {
-        self.write(move |conn| {
-            conn.execute(
-                "INSERT INTO app_setting(key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                (KEY_TEXT_SIZE, size.as_setting()),
-            )
-            .map_err(write_err)?;
-            Ok(())
-        })
+        self.write(move |conn| put_text_size(conn, size))
     }
 
     /// The sidebar is collapsed to an emoji strip or expanded: stored, survives a restart.
@@ -246,7 +249,7 @@ impl Store {
         Ok(())
     }
 
-    /// The copy folder changed (by the window or the settings file): the previous copy error is cleared, the writer wakes
+    /// The copy folder changed (by the settings window): the previous copy error is cleared, the writer wakes
     /// up and writes the days into the new folder at once, not after the next entry or a restart.
     pub(crate) fn mirror_dir_changed(&self) {
         self.inner.mirror.clear_error();

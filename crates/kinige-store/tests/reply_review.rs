@@ -1,5 +1,5 @@
 //! Fixes from the slice 5 review: a target moved to another chat; the access log without quotes; a target that arrives
-//! later; hiding the card does not reach `settings.json`; pages where every entry has a reply (column offsets `VIEW_LEN`).
+//! later; hiding the card does not reach an agent's settings reply; pages where every entry has a reply (column offsets `VIEW_LEN`).
 
 // The integration test root is test code as a whole: `cfg(test)` gives helpers outside #[test] the same clippy.toml
 // relaxations (unwrap/expect/panic/indexing) as the tests in src/.
@@ -7,12 +7,12 @@
 
 mod common;
 
+use common::agent::{agent, call};
 use common::days::at;
-use common::settings_file::rig;
 use common::*;
 use kinige_domain::AgentMode;
 use kinige_domain::groups::INBOX_ID;
-use kinige_domain::{ReplyState, SearchFilters, TextSize};
+use kinige_domain::{ReplyState, SearchFilters};
 use kinige_store::StoreError;
 use serde_json::json;
 
@@ -136,21 +136,30 @@ fn a_target_that_arrives_later_turns_the_quote_from_missing_to_live_without_a_re
 }
 
 #[test]
-fn dismissing_the_card_never_reaches_settings_json() {
-    let rig = rig();
-    rig.store.dismiss_on_this_day("2026-10-31").unwrap();
-    // Any settings edit rewrites the file: the hide key is absent both before and after.
-    rig.file
-        .edit(|store| store.set_text_size(TextSize::Large))
-        .unwrap()
-        .unwrap();
-    let text = String::from_utf8(rig.bytes()).unwrap();
-    assert!(!text.contains("on_this_day"), "{text}");
-    assert!(!text.contains("2026-10-31"), "{text}");
-    assert_eq!(
-        rig.setting("on_this_day_dismissed").as_deref(),
-        Some("2026-10-31")
-    );
+fn dismissing_the_card_never_reaches_an_agent_settings_reply() {
+    let a = agent(AgentMode::ReadWrite, false);
+    a.store.dismiss_on_this_day("2026-10-31").unwrap();
+    // A settings edit and a read of the settings: the hide key is absent before and after.
+    let changed = call(
+        &a.store,
+        "set_setting",
+        json!({"key": "text_size", "value": "large"}),
+        T0,
+    )
+    .unwrap();
+    let read = call(&a.store, "get_settings", json!({}), T0).unwrap();
+    for reply in [changed.to_string(), read.to_string()] {
+        assert!(!reply.contains("on_this_day"), "{reply}");
+        assert!(!reply.contains("2026-10-31"), "{reply}");
+    }
+    let stored: Option<String> = raw(a.dir.path())
+        .query_row(
+            "SELECT value FROM app_setting WHERE key = 'on_this_day_dismissed'",
+            [],
+            |r| r.get(0),
+        )
+        .ok();
+    assert_eq!(stored.as_deref(), Some("2026-10-31"));
 }
 
 #[test]

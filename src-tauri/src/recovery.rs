@@ -211,12 +211,12 @@ pub fn restart_for_recovery<R: Runtime>(app: AppHandle<R>) -> ApiResult<()> {
     app.restart();
 }
 
-/// The restore outcome for the window: where the copy folder from the backup database and the folder named in `settings.json` moved to.
+/// The restore outcome for the window: where the copy folder that was there moved to.
 fn outcome_of(report: RestoreReport) -> RestoreOutcome {
-    let text = |folder: PathBuf| folder.to_string_lossy().into_owned();
     RestoreOutcome {
-        previous_mirror: report.previous_mirror.map(text),
-        settings_file_mirror: report.settings_file_mirror.map(text),
+        previous_mirror: report
+            .previous_mirror
+            .map(|folder| folder.to_string_lossy().into_owned()),
     }
 }
 
@@ -225,24 +225,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_outcome_names_the_folder_moved_aside_for_the_settings_file_only_when_there_is_one() {
-        let both = outcome_of(RestoreReport {
+    fn the_outcome_names_the_folder_moved_aside_only_when_there_is_one() {
+        let moved = outcome_of(RestoreReport {
             previous_mirror: Some(PathBuf::from("/a/Kinige-before-restore-1")),
-            settings_file_mirror: Some(PathBuf::from("/b/Kinige-B-before-restore-1")),
         });
         assert_eq!(
-            both.previous_mirror.as_deref(),
+            moved.previous_mirror.as_deref(),
             Some("/a/Kinige-before-restore-1")
         );
         assert_eq!(
-            both.settings_file_mirror.as_deref(),
-            Some("/b/Kinige-B-before-restore-1")
+            outcome_of(RestoreReport {
+                previous_mirror: None
+            })
+            .previous_mirror,
+            None
         );
-        let same = outcome_of(RestoreReport {
-            previous_mirror: Some(PathBuf::from("/a/Kinige-before-restore-1")),
-            settings_file_mirror: None,
-        });
-        assert_eq!(same.settings_file_mirror, None);
     }
 
     #[test]

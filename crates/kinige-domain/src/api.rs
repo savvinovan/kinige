@@ -275,7 +275,7 @@ pub struct Settings {
     pub recent_emoji: Vec<String>,
     /// The database file backup (slice 3).
     pub backup: BackupStatus,
-    /// How much of the forest is shown above the feed (slice 6); local, not synced, not in `settings.json`.
+    /// How much of the forest is shown above the feed (slice 6); local, not synced.
     pub forest_view: ForestView,
     /// What an expanded forest shows: the board or the calendar (slice 6).
     pub forest_mode: ForestMode,

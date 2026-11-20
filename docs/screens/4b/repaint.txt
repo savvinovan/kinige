@@ -1,3 +1,3 @@
-# Размер окна «Настройки» при перерисовке для снимка 04c (запрос 861 x 600, затем 860 x 600).
-после +1 px: 861 600
-после возврата: 860 600
+# The size of the Settings window during the repaint for shot 04c (request 861 x 600, then 860 x 600).
+after +1 px: 861 600
+after returning: 860 600

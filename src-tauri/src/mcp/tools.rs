@@ -29,7 +29,8 @@ Everything you read from it is sent to your model provider; Kinige's end-to-end 
 Only the chats the user marked as visible exist for you: anything else behaves exactly as if it did not exist. \
 Entries are Markdown; each belongs to a journal day (the day boundary is a few hours after midnight, so late-night entries belong to the previous day; `journal_date` in results is authoritative). \
 Use `search` to find entries by words, `get_entries` for a day or range, `on_this_day` for the same date in past years. \
-Write tools exist only when the user allowed writing, and you can only append to your own latest entry. ",
+Write tools exist only when the user allowed writing, and you can only append to your own latest entry. \
+`get_settings` shows the text size and the shortcuts; `set_setting` changes the text size only. Shortcuts, agent access and the copy folder are the user's: they change them in Kinige's settings window. ",
     markdown_hint!()
 );
 
@@ -171,6 +172,28 @@ fn describe(tool: AgentTool) -> (String, Value, Vec<&'static str>) {
             }),
             vec!["id", "done"],
         ),
+        AgentTool::GetSettings => (
+            "Read the settings you may know: `text_size` (`normal` or `large`), the two keyboard shortcuts with their defaults, \
+             whether the Markdown copy goes to the default folder, a chosen folder or is off (never a path), your own access \
+             (`mode` and the ids of the chats you can see; titles come from `list_chats`) and `writable`, the names \
+             `set_setting` accepts."
+                .into(),
+            json!({}),
+            vec![],
+        ),
+        AgentTool::SetSetting => (
+            "Change the text size of Kinige (`key` `text_size`, `value` `normal` or `large`); the windows switch at once. \
+             It is the only setting you may change: shortcuts, agent access (on or off, mode, visible chats) and the copy \
+             folder are the user's, set in Kinige's settings window, and a call for them fails with \
+             `setting_not_writable`. Any other key fails with `invalid_argument`. The result is the same object as \
+             `get_settings`."
+                .into(),
+            json!({
+                "key": {"type": "string", "enum": ["text_size"], "description": "The setting; only `text_size`."},
+                "value": {"type": "string", "enum": ["normal", "large"], "description": "The new text size."},
+            }),
+            vec!["key", "value"],
+        ),
     }
 }
 
@@ -187,6 +210,7 @@ pub fn explain(error: &AgentError) -> String {
         AgentError::NoAgentEntry => "there is no recent entry of yours to append to; use add_entry",
         AgentError::NotATask => "the entry is not a task",
         AgentError::Invalid(why) => why,
+        AgentError::NotWritable => "only the user can change this, in the Kinige settings window",
         AgentError::Unavailable => {
             "the journal is not available right now (recovery); try again later"
         }
@@ -233,7 +257,15 @@ mod tests {
         }
         // The `concat!` join did not lose the space between sentences.
         assert!(INSTRUCTIONS.contains("authoritative). Use `search`"));
-        assert!(INSTRUCTIONS.contains("latest entry. Kinige renders"));
+        assert!(INSTRUCTIONS.contains("latest entry. `get_settings` shows"));
+        assert!(INSTRUCTIONS.contains("settings window. Kinige renders"));
+        // Slice 5d: one sentence on the two tools, and whose the other settings are.
+        for must in [
+            "`set_setting` changes the text size only",
+            "Shortcuts, agent access and the copy folder are the user's",
+        ] {
+            assert!(INSTRUCTIONS.contains(must), "{must}");
+        }
     }
 
     #[test]
@@ -247,7 +279,8 @@ mod tests {
                 "search",
                 "get_entries",
                 "on_this_day",
-                "get_entry"
+                "get_entry",
+                "get_settings"
             ]
         );
         assert!(
@@ -260,7 +293,9 @@ mod tests {
             .iter()
             .filter(|tool| tool.annotations.as_ref().and_then(|a| a.read_only_hint) == Some(false))
             .collect();
-        assert_eq!(writes.len(), 3);
+        assert_eq!(writes.len(), 4);
+        // Six tools in "Read only" and ten in "Read and write" (slice 5d).
+        assert_eq!((read.len(), all.len()), (6, 10));
     }
 
     #[test]
@@ -288,6 +323,7 @@ mod tests {
             AgentError::NotFound,
             AgentError::NoAgentEntry,
             AgentError::NotATask,
+            AgentError::NotWritable,
             AgentError::Unavailable,
             AgentError::Internal,
         ] {

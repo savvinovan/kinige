@@ -21,7 +21,6 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 export AX_TIMEOUT=150
 
 INBOX="00000000-0000-4000-8000-000000000001"
-SETTINGS_FILE="$K/data/settings.json"
 
 rm -f "$OUT"/*.png "$OUT"/*.txt "$OUT"/*.md
 rm -rf "$K/data" "$K/mirror" "$K/bench"
@@ -32,24 +31,6 @@ BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Conten
 
 sqlw() { sqlite3 -cmd '.timeout 5000' "$K/data/kinige.db" "$@"; }
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
-
-# Editing settings.json "from outside" (as in 4b.sh): a temporary file and a replace. The code changes the dictionary d.
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
-}
 
 # The date "31 октября 2023" / "October 31, 2023" from YYYY-MM-DD in the language of the window.
 long_date() {
@@ -168,14 +149,14 @@ shoot 09-books-chat
 
 # ---- 11. Large text (the dismissal is cleared, returning to Inbox reads the card again) ----
 sqlw "delete from app_setting where key = 'on_this_day_dismissed'"
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 press "${L_INBOX}"
 sleep 2
 has "${L_HIDE}" || fail "no card after the dismissal was cleared"
 # The card is tall: the feed is open at the bottom edge, the card title with the first year is scrolled into view.
 scroll_to "${L_HIDE}"
 shoot 11-large-text
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 
 # ---- 12-13. An imported personal Telegram chat: quotes without the "N years later" caption ----
 press "${L_ANNA}"

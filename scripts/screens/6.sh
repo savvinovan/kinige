@@ -25,7 +25,6 @@ export AX_TIMEOUT=150
 export DUMP_TIMEOUT=420
 
 INBOX="00000000-0000-4000-8000-000000000001"
-SETTINGS_FILE="$K/data/settings.json"
 
 rm -f "$OUT"/*.png "$OUT"/*.txt
 rm -rf "$K/data" "$K/mirror" "$K/bench"
@@ -45,24 +44,6 @@ shoot_light() { SHOOT_DUMP=0 shoot "$@"; }
 
 sqlw() { sqlite3 -cmd '.timeout 5000' "$K/data/kinige.db" "$@"; }
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
-
-# Edit settings.json from outside (as 5.sh does): a temporary file and a replace. The code changes the dictionary d.
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
-}
 
 # "12 сентября" / "September 12" from YYYY-MM-DD in the language of the window.
 short_date() {
@@ -220,10 +201,10 @@ detect_language
 shoot 11-en
 
 # ---- 12. Large text ----
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 sleep 2
 shoot_light 12-large-text
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 
 # ---- 13. A 640 px window ----
 echo "window: $(ax resize "$(app_pid)" 640 800)"

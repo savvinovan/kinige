@@ -27,7 +27,7 @@ recentEmoji: Array<string>,
  */
 backup: BackupStatus, 
 /**
- * How much of the forest is shown above the feed (slice 6); local, not synced, not in `settings.json`.
+ * How much of the forest is shown above the feed (slice 6); local, not synced.
  */
 forestView: ForestView, 
 /**

@@ -1,4 +1,4 @@
-/* The "Settings" window (slice 4b): the window frame, a section page, subscreens, the "Настроить ›" row, the settings file. Tokens only.
+/* The "Settings" window (slice 4b): the window frame, a section page, subscreens, the "Настроить ›" row. Tokens only.
    The only scrollable area of the window is `.prefs__page`; everything else (the tree, lists, the log, code blocks) is shown
    in full, without its own scroll or a maximum height. The warning when enabling access is a `Modal` over the window: the page
    under it does not change its `overflow`, and its content does not shift even with "Always show scroll bars". */
@@ -61,14 +61,6 @@ html[data-window="settings"] body {
   border-top: var(--border-width-hairline) solid var(--color-border-divider);
 }
 
-/* "Изменено через settings.json · 14:02": a quiet line next to the section; space for it is not reserved in advance and it shifts nothing, because it is last in the block. */
-.prefs-changed {
-  margin: 0;
-  color: var(--color-text-tertiary);
-  font-family: var(--type-meta-family);
-  font-size: var(--type-meta-size);
-  line-height: var(--type-meta-line-height);
-}
 
 /* The subscreen header: a back arrow and "Section > Name". */
 .prefs-subscreen {
@@ -207,25 +199,4 @@ html[data-window="settings"] body {
 .configure-row__action .icon {
   width: var(--icon-size-small);
   height: var(--icon-size-small);
-}
-
-/* The settings file: the path, the state, the list of problems. */
-.prefs-file {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.prefs-file__item {
-  min-width: 0;
-}
-
-.prefs-file__heading {
-  margin: 0;
-  color: var(--color-text-tertiary);
-  font-family: var(--type-meta-family);
-  font-size: var(--type-meta-size);
-  line-height: var(--type-meta-line-height);
 }

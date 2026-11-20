@@ -27,7 +27,13 @@ struct Inner {
 /// The state of the app shortcuts.
 pub struct Hotkeys {
     registrar: Box<dyn Registrar>,
+    /// The state key presses and the settings window read. Held only for a short read or write, never across `register`.
     inner: Mutex<Inner>,
+    /// Serializes shortcut changes (slice 5d, ADR-0022): two quick `set_shortcut` or `reset_shortcut` calls from the window
+    /// must not interleave their check, register, save and release. It is a second mutex, separate from `inner`: a change that
+    /// waits in `register` (the plugin runs it on the main thread) must not block `on_shortcut` or `overlay`. Taken only by the
+    /// two `async` commands, so never on the main thread.
+    change_lock: Mutex<()>,
     /// A new shortcut is being recorded in "Settings": presses must not open the capture window (otherwise an already assigned
     /// shortcut could not be pressed in the recording field).
     recording: AtomicBool,
@@ -44,6 +50,7 @@ impl Hotkeys {
         Hotkeys {
             registrar,
             inner: Mutex::new(Inner::default()),
+            change_lock: Mutex::new(()),
             recording: AtomicBool::new(false),
         }
     }
@@ -51,6 +58,13 @@ impl Hotkeys {
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
         // A poisoned lock means a panic in the middle of a shortcut change; the data in it stays consistent field by field.
         self.inner
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// The change lock. A poisoned one only means a panic in the middle of a change; the state under `inner` stays consistent.
+    fn change_guard(&self) -> std::sync::MutexGuard<'_, ()> {
+        self.change_lock
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
@@ -110,6 +124,7 @@ impl Hotkeys {
         kind: ShortcutKind,
         accelerator: &str,
     ) -> Result<(), ErrorCode> {
+        let _change = self.change_guard();
         let canonical = store.check_shortcut(kind, accelerator).map_err(code)?;
         self.apply(
             kind,
@@ -121,6 +136,7 @@ impl Hotkeys {
 
     /// "Reset": the default shortcut, with the same checks.
     pub fn reset(&self, store: &Store, kind: ShortcutKind) -> Result<(), ErrorCode> {
+        let _change = self.change_guard();
         let canonical = store
             .check_shortcut(kind, kind.default_accelerator())
             .map_err(code)?;
@@ -240,5 +256,7 @@ pub(crate) mod fake {
     }
 }
 
+#[cfg(test)]
+mod lock_tests;
 #[cfg(test)]
 mod tests;

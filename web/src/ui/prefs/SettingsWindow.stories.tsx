@@ -1,14 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState } from "react";
 import { INBOX_ID } from "../../api/KinigeApi";
-import { MOCK_AGENT_SOCKET, MOCK_SETTINGS_FILE } from "../../api/MockApi";
+import { MOCK_AGENT_SOCKET } from "../../api/MockApi";
 import { mockMessage } from "../../api/mockData";
 import type { AgentAccess } from "../../api/generated/AgentAccess";
 import type { AgentChatChoice } from "../../api/generated/AgentChatChoice";
 import type { AgentLogEntry } from "../../api/generated/AgentLogEntry";
 import type { AgentLogRow } from "../../api/generated/AgentLogRow";
 import type { Settings } from "../../api/generated/Settings";
-import type { SettingsFileState } from "../../api/generated/SettingsFileState";
 import { DEFAULT_SETTINGS } from "../../api/mockData";
 import type { AgentLogView } from "../agents/AgentLog";
 import { DEFAULT_SHORTCUTS } from "../settings/demoShortcuts";
@@ -55,13 +54,16 @@ const row = (id: number, patch: Partial<AgentLogRow> & Pick<AgentLogRow, "tool">
   at: at(14, 2),
   client: "Claude Desktop",
   query: null,
+  setting: null,
   outcome: "ok",
   count: 0,
   ...patch,
 });
 
 const ROWS: AgentLogRow[] = [
-  row(6, { tool: "settings_file", client: "settings.json", at: at(14, 8) }),
+  row(9, { tool: "set_setting", setting: "shortcuts.capture", outcome: "not_writable", at: at(14, 9) }),
+  row(8, { tool: "set_setting", setting: "text_size", at: at(14, 8) }),
+  row(7, { tool: "get_settings", at: at(14, 7) }),
   row(5, { tool: "add_entry", at: at(14, 6), outcome: "read_only" }),
   row(4, { tool: "add_entry", at: at(14, 5), count: 1 }),
   row(3, { tool: "search", at: at(14, 2), query: "Raft", count: 3 }),
@@ -88,14 +90,11 @@ const EXPANDED: Record<number, AgentLogEntry[]> = {
 const LOG: AgentLogView = { rows: ROWS, hasMore: false, expandedId: null, entries: {}, gone: new Set() };
 const EMPTY_LOG: AgentLogView = { rows: [], hasMore: false, expandedId: null, entries: {}, gone: new Set() };
 
-const file = (patch: Partial<SettingsFileState> = {}): SettingsFileState => ({ ...MOCK_SETTINGS_FILE, ...patch });
-
 const BASE: SettingsWindowViewProps = {
   route: "appearance",
   onNavigate: noop,
   settings: SETTINGS,
   access: access(),
-  file: file(),
   log: LOG,
   language: "ru",
   now: NOW,
@@ -219,14 +218,8 @@ export const ДоступНедоступен: Story = {
 /** The model provider warning is a single Modal over the window; the page under it stays in place. */
 export const ПредупреждениеПриВключении: Story = { args: { route: "access", access: OFF, warning: true } };
 
-/** Enabled, "чтение и запись"; the section was changed through the file: a quiet line next to it. */
-export const ДоступВключён: Story = {
-  args: {
-    route: "access",
-    access: access({ mode: "read_write" }),
-    file: file({ changed: { appearance: null, shortcuts: null, mirror: null, access: at(14, 8) } }),
-  },
-};
+/** Enabled, "чтение и запись": under the mode, the quiet line about what an agent may do with the settings. */
+export const ДоступВключён: Story = { args: { route: "access", access: access({ mode: "read_write" }) } };
 
 /** The "Видимые чаты" subscreen: the whole list, "Дневник" is excluded from AI. */
 export const ВидимыеЧаты: Story = { args: { route: "access/chats" } };
@@ -234,7 +227,7 @@ export const ВидимыеЧаты: Story = { args: { route: "access/chats" } }
 /** The "Журнал обращений" subscreen: empty. */
 export const ЖурналПуст: Story = { args: { route: "access/log", log: EMPTY_LOG } };
 
-/** The "Журнал обращений" subscreen: a row is expanded, "Показать ещё" at the bottom of the page; the "settings.json · доступ изменён" row. */
+/** The "Журнал обращений" subscreen: a row is expanded, "Показать ещё" at the bottom of the page; the rows of the two settings tools. */
 export const ЖурналДлинный: Story = {
   args: {
     route: "access/log",
@@ -245,52 +238,6 @@ export const ЖурналДлинный: Story = {
       entries: EXPANDED,
       gone: new Set(),
     },
-  },
-};
-
-/** A settings file without errors: the path, "Копировать путь". */
-export const ФайлБезОшибок: Story = { args: { route: "file" } };
-
-/** The file did not parse: line and column; the tree item has an error mark. */
-export const ФайлНеРазобран: Story = {
-  args: { route: "file", file: file({ problem: { kind: "parse", line: 1, column: 15 } }) },
-};
-
-/** Errors of several keys and an unknown key: the rest is applied. */
-export const ОшибкиКлючей: Story = {
-  args: {
-    route: "file",
-    file: file({
-      issues: [
-        { key: "text_size", kind: "value" },
-        { key: "shortcuts.capture", kind: "shortcut_taken" },
-        { key: "mirror.folder", kind: "folder_missing" },
-        { key: "agent_access.mode", kind: "type" },
-        { key: "agent_access.chats[1]", kind: "chat_ambiguous" },
-        { key: "agent_access.chats[2]", kind: "chat_excluded" },
-      ],
-      unknownKeys: ["surprise", "shortcuts.extra"],
-    }),
-  },
-};
-
-/** Unsafe file permissions: the access keys and folders from it are not applied. */
-export const ФайлНебезопасен: Story = {
-  args: {
-    route: "file",
-    file: file({ unsafeReason: "permissions", issues: [{ key: "agent_access", kind: "unsafe_ignored" }] }),
-  },
-};
-
-/** Long paths and names wrap or are truncated with an ellipsis. */
-export const ДлинныеПутиИНазвания: Story = {
-  args: {
-    route: "file",
-    file: file({
-      path: "/Users/someone-with-a-very-long-account-name/Library/Application Support/me.savvinov.kinige/some/deeply/nested/folder/with/long/names/settings.json",
-      issues: [{ key: "agent_access.chats[12345678901234567890]", kind: "chat_not_found" }],
-      unknownKeys: ["очень_длинное_неизвестное_имя_ключа_которое_не_помещается_в_строку_и_должно_переноситься_по_словам_или_в_любом_месте"],
-    }),
   },
 };
 
@@ -321,11 +268,6 @@ export const EnglishAccess: Story = en(ДоступВключён);
 export const EnglishVisibleChats: Story = en(ВидимыеЧаты);
 export const EnglishLogEmpty: Story = en(ЖурналПуст);
 export const EnglishLogLong: Story = en(ЖурналДлинный);
-export const EnglishFileOk: Story = en(ФайлБезОшибок);
-export const EnglishFile: Story = en(ФайлНеРазобран, { file: file({ problem: { kind: "parse", line: 3, column: 9 }, issues: [{ key: "text_size", kind: "value" }] }) });
-export const EnglishKeyErrors: Story = en(ОшибкиКлючей);
-export const EnglishUnsafe: Story = en(ФайлНебезопасен);
-export const EnglishLongNames: Story = en(ДлинныеПутиИНазвания);
 export const EnglishMinSize: Story = en(НаименьшийРазмер);
 export const EnglishMinSizeSubscreen: Story = en(НаименьшийРазмерПодэкран);
 export const EnglishShortcutsRecording: Story = en(СочетанияЗапись);

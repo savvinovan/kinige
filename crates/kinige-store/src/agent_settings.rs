@@ -18,6 +18,14 @@ pub(crate) fn put(conn: &Connection, key: &str, value: &str) -> rusqlite::Result
     Ok(())
 }
 
+/// In the restore transaction: agent access is off, no chat is visible and the mode is "Read only", whatever the backup held
+/// (ADR-0022). Nothing else of `app_setting` is touched, the `settings_file_hash` row included.
+pub(crate) fn narrow_access_after_restore(conn: &Connection) -> rusqlite::Result<()> {
+    put(conn, KEY_ENABLED, "0")?;
+    put(conn, KEY_CHATS, "[]")?;
+    put(conn, KEY_MODE, AgentMode::Read.setting())
+}
+
 impl Store {
     /// Access state for the window: the switch, the mode, all chats with a "visible to the agent" mark. The Tauri layer
     /// fills in the socket state.

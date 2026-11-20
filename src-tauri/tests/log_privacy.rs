@@ -263,66 +263,77 @@ fn the_details_commands_log_no_names_descriptions_or_rejected_arguments() {
     }
 }
 
-/// The settings file (slice 4b, ADR-0010): a mark in an unknown key, a chat title, an invalid value, a folder path and in
-/// a broken file does not get into the process log, neither on applying, nor on a parse error, nor on unsafe permissions.
+/// The settings tools (slice 5d, ADR-0022): a mark in the key, the value, a copy folder path and a leftover file name does not get
+/// into the process log, neither on a refusal, nor on a change, nor in the start-up clean-up (which logs a count only).
 #[test]
-fn the_settings_file_logs_only_categories_never_keys_titles_values_or_paths() {
-    use kinige_store::SettingsFile;
+fn the_settings_tools_log_only_categories_never_keys_values_or_paths() {
+    use kinige_domain::AgentMode;
+    use kinige_store::{AgentRequest, Now, Store};
     use tauri::Manager;
     install_logger();
     let fixture = fixture();
-    let file = fixture.app.state::<SettingsFile>();
-    let path = fixture.data.path().join("settings.json");
-    let write = |text: String, mode: u32| {
-        std::fs::write(&path, text).unwrap();
-        // The file mode applies on Unix only; Windows ignores it (ADR-0010, Windows note).
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).unwrap();
-        }
-        #[cfg(not(unix))]
-        let _ = mode;
-        file.sync_now();
-    };
-    write(
-        json!({
-            format!("{MARK}-unknown-key"): 1,
-            "shortcuts": {format!("{MARK}-nested"): 2, "capture": format!("{MARK}-bad-shortcut")},
-            "text_size": format!("{MARK}-huge"),
-            "mirror": {"folder": format!("/{MARK}/no/such/folder")},
-            "agent_access": {
-                "enabled": true,
-                "mode": format!("{MARK}-mode"),
-                "chats": [{"id": format!("{MARK}-id"), "title": format!("{MARK} название")}, {"title": format!("{MARK} другое")}],
+    let store = fixture.app.state::<Store>();
+    store.set_agent_mode(AgentMode::ReadWrite).unwrap();
+    store.set_agent_enabled(true).unwrap();
+    let folder = fixture.data.path().join(format!("{MARK}-copy"));
+    std::fs::create_dir(&folder).unwrap();
+    store.set_mirror_dir(&folder).unwrap();
+    std::fs::write(
+        fixture
+            .data
+            .path()
+            .join(".settings.json.0123456789abcdef0123456789abcdef.tmp"),
+        b"x",
+    )
+    .unwrap();
+    assert_eq!(store.remove_settings_file_leftovers(), 1);
+    let call = |tool: &str, arguments: serde_json::Value| {
+        let arguments = arguments.as_object().cloned();
+        let _ = store.agent_call(
+            &AgentRequest {
+                client: "Probe",
+                tool,
+                arguments: arguments.as_ref(),
+                inbox_title: "Inbox",
             },
-        })
-        .to_string(),
-        0o600,
+            &Now::system(),
+        );
+    };
+    call("get_settings", json!({}));
+    call(
+        "set_setting",
+        json!({"key": format!("{MARK}-key"), "value": format!("{MARK}-value")}),
     );
-    // Unsafe permissions, a broken file, non-UTF-8.
-    write(
-        json!({"agent_access": {"enabled": true}, format!("{MARK}-x"): 1}).to_string(),
-        0o666,
+    call(
+        "set_setting",
+        json!({"key": "text_size", "value": format!("{MARK}-huge")}),
     );
-    write(format!("{{\"{MARK}\": "), 0o600);
-    std::fs::write(&path, [0xFF, 0xFE, b'{']).unwrap();
-    file.sync_now();
+    call(
+        "set_setting",
+        json!({"key": "mirror.folder", "value": format!("/{MARK}/folder")}),
+    );
+    call(
+        "set_setting",
+        json!({"key": "shortcuts.capture", "value": format!("{MARK}-accelerator")}),
+    );
+    call("set_setting", json!({"key": "text_size", "value": "large"}));
     let lines = CAPTURED.lock().unwrap().clone();
-    assert!(
-        lines.iter().any(|line| line.contains("settings file")),
-        "the file events get into the log as categories: {lines:?}"
-    );
     for line in &lines {
         assert!(
             !line.to_uppercase().contains(MARK),
-            "user input from the settings file in the log: {line}"
+            "user input in the log: {line}"
         );
         assert!(
-            !line.contains("settings.json") || !line.contains('/'),
-            "a path in the log: {line}"
+            !line.contains("settings.json.0123"),
+            "a file name in the log: {line}"
         );
     }
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.contains("removed 1 leftover temporary files")),
+        "the clean-up logs its count: {lines:?}"
+    );
 }
 
 /// Voice notes (slice 7a): the raw-body command refuses garbage in every header, and none of the user's values (chat id, reply target,
