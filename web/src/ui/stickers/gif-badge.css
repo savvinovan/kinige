@@ -1,0 +1,29 @@
+/* The "GIF" badge on the corner of a still frame (the GIFs tab and a GIF in the feed): the same pill as the time on a picture, a translucent fill on a
+   layer of its own so the text stays opaque. Tokens only. */
+.gif-badge {
+  position: absolute;
+  right: var(--layout-sticker-badge-inset);
+  bottom: var(--layout-sticker-badge-inset);
+  padding: var(--layout-attachment-pill-padding-block) var(--layout-attachment-pill-padding-inline);
+  border-radius: var(--radius-round);
+  color: var(--color-attachment-pill-text);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--type-meta-line-height);
+  /* The badge never takes a click: the cell under it does. */
+  pointer-events: none;
+}
+
+.gif-badge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--color-attachment-pill-background);
+  opacity: var(--opacity-attachment-pill);
+}
+
+.gif-badge > span {
+  position: relative;
+}

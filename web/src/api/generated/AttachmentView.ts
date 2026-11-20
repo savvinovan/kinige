@@ -22,7 +22,15 @@ description: string | null,
 /**
  * Covered in the Kinige window until clicked; only an `image` can be (slice 7b). A cover against a glance, not a lock.
  */
-spoiler: boolean, mime: string, byteSize: number, 
+spoiler: boolean, 
+/**
+ * The record says it is a sticker (slice 5c, `sticker` group); the feed draws the entry as one when it has no text and this is not covered.
+ */
+sticker: boolean, 
+/**
+ * The sticker's emoji, only a valid emoji sequence.
+ */
+stickerEmoji: string | null, mime: string, byteSize: number, 
 /**
  * Pixels after the EXIF orientation; only for `image` (the feed reserves the box before the file loads).
  */

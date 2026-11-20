@@ -39,11 +39,13 @@ fn legacy() -> (String, String) {
         display_name: None,
         description: None,
         spoiler: false,
+        sticker: false,
+        sticker_emoji: None,
     };
     let row = new_attachment(&input, &hlc(1_000)).unwrap();
     let mut groups: Map<String, serde_json::Value> = serde_json::from_str(&row.groups_raw).unwrap();
     let mut hlcs: Map<String, serde_json::Value> = serde_json::from_str(&row.hlc_json).unwrap();
-    for group in ["name", "description", "privacy"] {
+    for group in ["name", "description", "privacy", "sticker"] {
         groups.remove(group);
         hlcs.remove(group);
     }
@@ -255,6 +257,9 @@ fn only_the_allowlisted_groups_of_the_entity_may_be_added() {
         ("attachment", "order"),
         ("attachment", "deleted"),
         ("attachment", "zz_future"),
+        // Slice 5c: the sticker group has no writer after creation, so it is never added to an older row.
+        ("attachment", "sticker"),
+        ("message", "sticker"),
         ("message", "body"),
         ("message", "name"),
         ("chat", "privacy"),
@@ -295,6 +300,7 @@ fn the_allowlist_decides_on_the_rewrite_paths_too() {
         ("message", "core"),
         ("attachment", "core"),
         ("attachment", "order"),
+        ("attachment", "sticker"),
         ("attachment", "zz_future"),
     ] {
         let by_group =

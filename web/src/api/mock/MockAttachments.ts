@@ -2,6 +2,7 @@ import { KinigeApiError } from "../KinigeApi";
 import { mockMessage } from "../mockData";
 import { LIMITS, attachmentKind, storedExt } from "../mockRules";
 import { applyDetails } from "../mockDetails";
+import { stickerOf } from "../../ui/attachments/stickerRule";
 import type { AttachOutcome } from "../generated/AttachOutcome";
 import type { AttachmentDetailsChanges } from "../generated/AttachmentDetailsChanges";
 import type { AttachmentView } from "../generated/AttachmentView";
@@ -24,6 +25,8 @@ export function mockAttachment(id: string, filename: string, part: Partial<Attac
     name: filename,
     description: null,
     spoiler: false,
+    sticker: false,
+    stickerEmoji: null,
     mime: image ? `image/${ext === "jpg" ? "jpeg" : ext}` : "application/octet-stream",
     byteSize: 2048,
     width: image ? PICTURE_W : null,
@@ -123,6 +126,8 @@ export class MockAttachments {
       const current = row?.view.attachments.find((a) => a.id === attachmentId);
       if (!row || !current) throw new KinigeApiError("attachment_not_found");
       if (row.deletedAt !== null) throw new KinigeApiError("message_in_trash");
+      // An entry drawn as a sticker has no details to change; a covered one is not drawn as a sticker, so its cover can still be removed (slice 5c).
+      if (stickerOf(row.view.bodyMd, row.view.attachments)) throw new KinigeApiError("sticker_entry_read_only");
       const next = applyDetails(current, changes);
       row.view = { ...row.view, attachments: row.view.attachments.map((a) => (a === current ? next : a)) };
       return next;

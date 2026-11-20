@@ -1,4 +1,4 @@
-//! SQLite schema and migrations (`PRAGMA user_version`). Migration 10 (slice 5a) adds the derived tables of reactions; migration 9 (slice 7b) adds the details of an attachment; migration 8 (slice 7a) adds the local waveform column of a voice note; migration 7 (slice 7) adds attachments; migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
+//! SQLite schema and migrations (`PRAGMA user_version`). Migration 11 (slice 5c) adds the sticker library and the derived columns of the sticker group; migration 10 (slice 5a) adds the derived tables of reactions; migration 9 (slice 7b) adds the details of an attachment; migration 8 (slice 7a) adds the local waveform column of a voice note; migration 7 (slice 7) adds attachments; migration 6 (slice 5) adds a reply to the draft; migration 5 (slice 4a) adds the agent access log; migration 4 (slice 4) adds the index of external import ids and the search
 //! index; migration 3 (slice 3) adds revisions, tombstones and derived local tables; migration 2 adds the local table
 //! of drafts (slice 2).
 //! Migration 1 creates only the tables that slice 1 writes to
@@ -7,6 +7,9 @@
 //! `schema_version` exist from the first write: they cannot be fixed retroactively.
 
 use rusqlite::Connection;
+
+mod migration_11;
+use migration_11::MIGRATION_11;
 
 const MIGRATION_1: &str = "
 CREATE TABLE chat (
@@ -323,6 +326,7 @@ const MIGRATIONS: &[&str] = &[
     MIGRATION_8,
     MIGRATION_9,
     MIGRATION_10,
+    MIGRATION_11,
 ];
 
 /// The schema version this app understands.
@@ -339,6 +343,9 @@ fn after_migration(tx: &rusqlite::Transaction<'_>, version: i64) -> rusqlite::Re
     }
     if version == 10 {
         crate::reactions::rebuild_all(tx)?;
+    }
+    if version == 11 {
+        crate::stickers::rebuild_all(tx)?;
     }
     Ok(())
 }

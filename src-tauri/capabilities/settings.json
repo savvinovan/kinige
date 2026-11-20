@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "settings-window",
-  "description": "Settings window (slice 4b, ADR-0010): settings, shortcuts, AI agent access, the settings file and the access log; no feed, search, entry, import or restore",
+  "description": "Settings window (slice 4b, ADR-0010): settings, shortcuts, AI agent access, the access log and the Telegram bot token; no feed, search, entry, import or restore",
   "windows": [
     "settings"
   ],
@@ -20,6 +20,9 @@
     "allow-list-agent-log",
     "allow-list-agent-log-entries",
     "allow-settings-open-entry",
+    "allow-get-telegram-token-state",
+    "allow-set-telegram-bot-token",
+    "allow-clear-telegram-bot-token",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

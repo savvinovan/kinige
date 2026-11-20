@@ -194,22 +194,35 @@ pub fn is_openable_document(ext: &str) -> bool {
 
 /// The summary of an entry's attachments for lines that have no room for them.
 pub fn summary_of(attachments: &[AttachmentView]) -> AttachmentSummary {
-    summarize(
-        attachments
-            .iter()
-            .map(|a| (a.kind, a.name.as_str(), a.duration_ms)),
-    )
+    summarize(attachments.iter().map(|a| {
+        let mark = (a.sticker && !a.spoiler).then_some(StickerMark(a.sticker_emoji.as_deref()));
+        (a.kind, a.name.as_str(), a.duration_ms, mark)
+    }))
 }
 
-/// The same from `(kind, file name, duration)` triples, for places that read only those columns (the reply quote). Every `audio`
-/// attachment counts as a voice note (slice 7a, decision 9): the Telegram voices and the recorder's files alike.
+/// An uncovered sticker among the items of [`summarize`], with its emoji when it has a valid one (slice 5c).
+#[derive(Debug, Clone, Copy)]
+pub struct StickerMark<'a>(pub Option<&'a str>);
+
+/// The same from `(kind, file name, duration, sticker)` items, for places that read only those columns (the reply quote). Every `audio`
+/// attachment counts as a voice note (slice 7a, decision 9): the Telegram voices and the recorder's files alike. An entry whose only
+/// attachment is an uncovered sticker says so (`sticker`, `sticker_emoji`): the line reads "Sticker 😺" instead of "Photo".
 pub fn summarize<'a>(
-    items: impl Iterator<Item = (AttachmentKind, &'a str, Option<i64>)>,
+    items: impl Iterator<
+        Item = (
+            AttachmentKind,
+            &'a str,
+            Option<i64>,
+            Option<StickerMark<'a>>,
+        ),
+    >,
 ) -> AttachmentSummary {
     let (mut photos, mut files, mut voices) = (0u32, 0u32, 0u32);
     let mut voice_ms: Option<i64> = None;
     let mut only = None;
-    for (kind, name, duration_ms) in items {
+    let mut sticker: Option<StickerMark<'a>> = None;
+    for (kind, name, duration_ms, mark) in items {
+        sticker = mark;
         match kind {
             AttachmentKind::Image => photos = photos.saturating_add(1),
             AttachmentKind::Audio => {
@@ -223,12 +236,15 @@ pub fn summarize<'a>(
         only = Some(name);
     }
     let single = photos.saturating_add(files).saturating_add(voices) == 1;
+    let sticker = sticker.filter(|_| single && photos == 1);
     AttachmentSummary {
         photos,
         files,
         voices,
         voice_ms,
         name: only.filter(|_| single).map(str::to_string),
+        sticker: sticker.is_some(),
+        sticker_emoji: sticker.and_then(|mark| mark.0).map(str::to_string),
     }
 }
 

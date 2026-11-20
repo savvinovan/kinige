@@ -44,6 +44,7 @@ mod search_sql;
 mod send;
 mod settings;
 mod settings_leftovers;
+mod stickers;
 mod tags;
 #[cfg(feature = "test-hooks")]
 mod test_hooks;
@@ -73,6 +74,7 @@ pub use recovery::{
     mark_needs_recovery, needs_recovery, restore_backup, startup_check,
 };
 pub use schema::LATEST_VERSION;
+pub use stickers::{NewPack, PackItem, PackStage, StickerSweep};
 #[cfg(feature = "test-hooks")]
 pub use test_hooks::db_at_version;
 pub use time::{Now, local_hhmm, offset_secs, utc_stamp};
@@ -241,6 +243,7 @@ impl Store {
         send::ensure_initialized(&mut conn, now)?;
         search::rebuild_if_stale(&mut conn)?;
         reactions::rebuild_if_stale(&mut conn)?;
+        stickers::rebuild_if_stale(&mut conn)?;
 
         let reader = open_connection(&options.db_path, true)?;
         let agent_reader = open_connection(&options.db_path, true)?;

@@ -34,6 +34,7 @@ pub mod reply;
 pub mod rewrite;
 pub mod search;
 pub mod shortcuts;
+pub mod stickers;
 pub mod sync;
 pub mod tags;
 pub mod tasks;

@@ -28,10 +28,11 @@ pub use media::{Media, MediaVariant};
 pub use open::OpenTarget;
 pub(crate) use promote::{draft_views, promote_draft};
 pub(crate) use rows::{
-    DraftDetails, NewFile, PurgedFile, attachments_column, delete_for_purge, insert_attachment,
-    insert_attachment_at, live_count, parse_attachments, summary_for,
+    DraftDetails, NewFile, PurgedFile, StickerNote, attachments_column, delete_for_purge,
+    insert_attachment, insert_attachment_at, live_count, parse_attachments, summary_for,
 };
 pub use sweep::SweepReport;
+pub(crate) use sweep::remove_other_processes;
 pub use waveform::MAX_DECODE_BYTES;
 
 use kinige_domain::hlc::is_uuid_v4;
@@ -69,6 +70,26 @@ impl Dirs {
 
     pub(crate) fn orphans(&self) -> PathBuf {
         self.attachments().join(".orphans")
+    }
+
+    /// The sticker library's files, `<data>/stickers/<id>.<ext>` (slice 5c): a directory of its own, never `attachments/`.
+    pub(crate) fn stickers(&self) -> PathBuf {
+        self.data.join("stickers")
+    }
+
+    /// A library file by its name `<uuid>.<ext>`; any other name gives `None`: no path is built from anything else.
+    pub(crate) fn library_file(&self, name: &str) -> Option<PathBuf> {
+        is_stored_name(name).then(|| self.stickers().join(name))
+    }
+
+    /// `stickers/.tmp/` of all processes; the sticker sweep removes the directories of the other ones.
+    pub(crate) fn stickers_tmp_root(&self) -> PathBuf {
+        self.stickers().join(".tmp")
+    }
+
+    /// The pack downloads in progress of this process.
+    pub(crate) fn stickers_tmp(&self) -> PathBuf {
+        self.stickers_tmp_root().join(&self.process)
     }
 
     pub(crate) fn thumbs(&self) -> PathBuf {

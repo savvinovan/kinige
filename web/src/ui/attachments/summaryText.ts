@@ -10,16 +10,21 @@ import { formatDuration } from "../../voice/format";
  */
 export function summaryOf(attachments: readonly AttachmentView[]): AttachmentSummary {
   const photos = attachments.filter((a) => a.kind === "image").length;
+  // Slice 5c: the line reads "Sticker 😺" when the only attachment is an uncovered sticker (`summarize` in Rust: a mark on the last item, kept
+  // only for a single picture).
+  const only = attachments.length === 1 ? attachments[0] : undefined;
+  const sticker = only !== undefined && photos === 1 && only.sticker && !only.spoiler;
   const voiceNotes = attachments.filter((a) => a.kind === "audio");
   const lengths = voiceNotes.flatMap((a) => (a.durationMs === null ? [] : [a.durationMs]));
   const files = attachments.length - photos - voiceNotes.length;
-  const only = attachments.length === 1 ? attachments[0] : undefined;
   return {
     photos,
     files,
     voices: voiceNotes.length,
     voiceMs: lengths.length > 0 ? lengths.reduce((sum, ms) => sum + ms, 0) : null,
     name: only ? only.filename : null,
+    sticker,
+    stickerEmoji: sticker ? only.stickerEmoji : null,
   };
 }
 
@@ -28,8 +33,9 @@ export function summaryOf(attachments: readonly AttachmentView[]): AttachmentSum
  * "3 photos", the file name for one file, "2 files", "Voice note · 0:40", "3 voice notes", "5 attachments" for a mix. Empty for an entry
  * without attachments.
  */
-export function summaryText({ photos, files, voices, voiceMs, name }: AttachmentSummary, t: TFunction): string {
+export function summaryText({ photos, files, voices, voiceMs, name, sticker, stickerEmoji }: AttachmentSummary, t: TFunction): string {
   if (photos === 0 && files === 0 && voices === 0) return "";
+  if (sticker) return stickerEmoji ? t("attachments.summary.sticker", { emoji: stickerEmoji }) : t("attachments.summary.stickerNoEmoji");
   if (files === 0 && voices === 0) return photos === 1 ? t("attachments.summary.photo") : t("attachments.summary.photos", { count: photos });
   if (photos === 0 && files === 0) {
     if (voices > 1) return t("attachments.summary.voices", { count: voices });

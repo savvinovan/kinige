@@ -17,7 +17,9 @@ crate-type = ["rlib"]
 [features]
 # The screens driver (KINIG-92, ADR-0016): the scenario scripts' hands inside the test build. Off by default and refused by build.rs
 # unless KINIGE_ALLOW_SCREENS_DRIVER=1 (only screens.yml sets it). Never in a build for people.
-screens-driver = ["dep:serde"]
+# Slice 5c: the screens build also turns the Bot API test hooks on (a fake server on the runner's localhost and an in-memory token store);
+# `scripts/check-test-hooks.sh` finds their marker in the binary and the same opt-in lets it through.
+screens-driver = ["dep:serde", "test-hooks"]
 # The hooks of the integration tests (an injected listener panic, a drop token that ages at once; the items marked `#[doc(hidden)]`).
 # Off by default and never on in a release graph: only the dev-dependency on this crate below turns it on, and
 # `scripts/check-release-features.sh` (CI) proves that no build for people enables it, here or in `kinige-store` (KINIG-103).
@@ -63,6 +65,11 @@ rmcp = { version = "=3.9.0", default-features = false, features = ["server"] }
 # The Unix socket and timers of the MCP server (tokio is already in the tree through tauri).
 tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros", "rt"] }
 
+# The Bot API client of slice 5c (ADR-0021): the only outbound HTTP of the app. `rustls` is the aws-lc-rs provider with the OS trust store
+# (rustls-platform-verifier); `system-proxy` reads the macOS and Windows proxy settings (an app started from Finder has no environment
+# variables). No `http2`, `charset`, `gzip` or cookies: HTTP/1.1 and identity bodies only. No `json` or `stream`: the body is read by chunks.
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "system-proxy"] }
+
 [dev-dependencies]
 # The hooks for the tests of this crate and of the store (resolver 2+ takes the features of dev-dependencies only for the test targets).
 kinige = { path = ".", features = ["test-hooks"] }
@@ -83,3 +90,6 @@ tauri-nspanel = "2.1.1"
 objc2 = "0.6"
 objc2-app-kit = "0.3"
 objc2-foundation = "0.3"
+# The bot token of slice 5c (ADR-0021) is a generic-password item of the login keychain. The version the lock file already holds (reqwest's
+# trust store reads through it too).
+security-framework = "3.7"

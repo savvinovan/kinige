@@ -245,8 +245,8 @@ fn year_sql() -> String {
     )
 }
 
-/// The live attachments of one entry (`?1`), how many of them are photos and how many are voice notes (`audio`).
-const COUNTS_SQL: &str = "SELECT COUNT(*), COALESCE(SUM(kind = 'image'), 0), COALESCE(SUM(kind = 'audio'), 0) \
+/// The live attachments of one entry (`?1`), how many of them are photos (a sticker is not one, slice 5c) and how many are voice notes (`audio`).
+const COUNTS_SQL: &str = "SELECT COUNT(*), COALESCE(SUM(kind = 'image' AND sticker = 0), 0), COALESCE(SUM(kind = 'audio'), 0) \
                           FROM attachment WHERE message_id = ?1 AND deleted_at IS NULL";
 
 /// The ids of the entries that have any attachment row (live or not): the index `attachment_message` covers the column, so this reads

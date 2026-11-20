@@ -1,14 +1,13 @@
 import type { PointerEvent, ReactNode } from "react";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import { useTranslation } from "react-i18next";
-import type { Language } from "../../api/generated/Language";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import type { TrashItem } from "../../api/generated/TrashItem";
 import { useLanguage } from "../../i18n/I18n";
 import { DropOverlay } from "../attachments/DropOverlay";
 import { PendingTiles } from "../attachments/PendingTiles";
 import type { DraftText } from "../../draft/draftText";
-import type { ComposerButtons } from "../composer/Composer";
+import type { ComposerButtons, ComposerEmoji } from "../composer/Composer";
 import { ComposerPane } from "../composer/ComposerPane";
 import { Feed, type FeedActions, type FeedPaging, type FeedUiState, type ScrollRequest } from "../feed/Feed";
 import type { FeedMessage } from "../feed/buildFeed";
@@ -69,7 +68,7 @@ interface MainWindowViewProps {
   /** The error above the composer (already translated text). */
   composerError?: string;
   /** The emoji picker in the composer: recent ones, the language and "picked" (remember in recents). */
-  emoji?: { recent: readonly string[]; language: Language; onPicked?: (emoji: string) => void };
+  emoji?: ComposerEmoji;
   onOpenSettings?: () => void;
   /** Slice 5a: the three quick emoji of the hover bar and the recent reactions of the picker; without it the bar has none to offer. */
   reactionChoices?: ReactionChoices;

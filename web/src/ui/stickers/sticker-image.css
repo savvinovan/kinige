@@ -1,0 +1,31 @@
+/* A sticker in the feed (slice 5c): no bubble, no frame; the box is fitted to the long side token from the picture's shape. Tokens only. */
+.sticker-image {
+  /* The long side is `layout.sticker.long-side`; the short side follows from the aspect: a wide sticker is as wide as the token, a tall one as high. */
+  position: relative;
+  box-sizing: border-box;
+  width: calc(var(--layout-sticker-long-side) * min(1, var(--sticker-aspect, 1)));
+  aspect-ratio: var(--sticker-aspect, 1);
+  max-width: 100%;
+}
+
+.sticker-image__picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Dragging a sticker out of the window is not offered; the entry itself is dragged to a chat (`useRecordDrag`). */
+  user-select: none;
+}
+
+/* The file is missing or cannot be decoded: the sticker's own emoji fills the box, so the entry still says what it was. */
+.sticker-image__fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-family-emoji);
+  font-size: var(--layout-sticker-fallback-glyph);
+  line-height: var(--icon-emoji-line-height);
+  overflow: hidden;
+}

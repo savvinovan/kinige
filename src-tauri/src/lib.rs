@@ -36,6 +36,7 @@ pub mod recovery;
 pub mod screens_driver;
 pub mod settings_window;
 pub mod startup;
+pub mod stickers;
 pub mod tray;
 pub mod voice;
 mod window_events;
@@ -94,6 +95,16 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             voice::microphone_hold,
             voice::read_voice_for_waveform,
             voice::set_attachment_waveform,
+            stickers::get_sticker_library,
+            stickers::pack_command::add_sticker_pack,
+            stickers::cancel_sticker_pack,
+            stickers::remove_sticker_pack,
+            stickers::send_sticker,
+            stickers::list_journal_gifs,
+            stickers::send_gif_again,
+            stickers::get_telegram_token_state,
+            stickers::set_telegram_bot_token,
+            stickers::clear_telegram_bot_token,
             commands::get_settings,
             commands::set_text_size,
             commands::choose_mirror_folder,
@@ -203,6 +214,8 @@ fn start_services<R: Runtime>(
     app.manage(CaptureShell::default());
     app.manage(import::ImportState::default());
     app.manage(attachments::DropTokens::default());
+    // Stickers (slice 5c): the token store and the Bot API client are made on first use; nothing reads the secret store or opens a socket here.
+    app.manage(stickers::StickerShell::production());
     // The icon was built without the store (it was not yet in the app state): the recent chats now.
     tray::refresh(app);
     // The MCP server goes last, after `app.manage(store)`: a socket failure does not stop the journal (the error is visible in the settings).

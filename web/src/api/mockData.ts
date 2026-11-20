@@ -100,3 +100,6 @@ export function compareFeed(
 
 /** The media fields of an import preview chat that has none (slice 7). */
 export const NO_MEDIA = { mediaFiles: 0, mediaBytes: 0, mediaMissing: 0 } as const;
+
+/** The stickers line of an import preview for an export that has none (slice 5c). */
+export const NO_STICKERS = { sent: 0, different: 0, skipped: 0 } as const;

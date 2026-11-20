@@ -36,6 +36,10 @@ prepare_app() {
   rm -rf "$DRIVE_DIR"
   mkdir -p "$DRIVE_DIR"
   plutil -insert LSEnvironment.KINIGE_SCREENS_DRIVER_DIR -string "$DRIVE_DIR" "$APP/Contents/Info.plist"
+  # More environment for the app (slice 5c: the fake Bot API server and the in-memory token store): `LS_ENV="NAME=value NAME2=value2"`, no spaces in a value.
+  for entry in ${LS_ENV:-}; do
+    plutil -insert "LSEnvironment.${entry%%=*}" -string "${entry#*=}" "$APP/Contents/Info.plist"
+  done
   codesign --force --deep -s - "$APP"
 }
 

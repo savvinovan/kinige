@@ -35,7 +35,7 @@ pub struct Media {
     pub bytes: Vec<u8>,
 }
 
-pub(super) type Job = Box<dyn FnOnce() + Send>;
+pub(crate) type Job = Box<dyn FnOnce() + Send>;
 
 /// The threads behind [`Store::media_async`].
 pub(crate) struct MediaPool {
@@ -44,7 +44,7 @@ pub(crate) struct MediaPool {
 
 impl MediaPool {
     /// Queues a job; `false` if the pool has stopped.
-    pub(super) fn submit(&self, job: Job) -> bool {
+    pub(crate) fn submit(&self, job: Job) -> bool {
         self.jobs.send(job).is_ok()
     }
 

@@ -21,6 +21,7 @@ import { MockOnThisDay } from "./mock/MockOnThisDay";
 import { MockReactions } from "./mock/MockReactions";
 import { MockSearch } from "./mock/MockSearch";
 import { MockSettings } from "./mock/MockSettings";
+import { MockStickers, type MockRemotePack } from "./mock/MockStickers";
 import { type MockMethod, MockState } from "./mock/MockState";
 import { MockTrash } from "./mock/MockTrash";
 import { MockVoice } from "./mock/MockVoice";
@@ -30,6 +31,7 @@ export { MOCK_AGENT_SOCKET, MOCK_LOG_PAGE } from "./mock/MockAgents";
 export { mockAttachment } from "./mock/MockAttachments";
 export { MOCK_BACKUP_NAME, type MockImportFile } from "./mock/MockImport";
 export type { MockMethod } from "./mock/MockState";
+export type { MockRemotePack };
 
 /**
  * `KinigeApi` in memory: the same interface as `TauriApi`, for tests and Storybook. Stores chats and entries, counts counters, keeps the
@@ -55,6 +57,7 @@ export class MockApi implements KinigeApi {
   private readonly forest: MockForest;
   private readonly attachments: MockAttachments;
   private readonly voice: MockVoice;
+  private readonly stickers: MockStickers;
 
   constructor(options: MockApiOptions = {}) {
     const state = new MockState(options);
@@ -74,6 +77,7 @@ export class MockApi implements KinigeApi {
     this.forest = new MockForest(state);
     this.attachments = new MockAttachments(state);
     this.voice = new MockVoice(state, this.compose);
+    this.stickers = new MockStickers(state, this.compose);
   }
 
   // ---- the app ----
@@ -179,6 +183,24 @@ export class MockApi implements KinigeApi {
   captureSendVoice: KinigeApi["captureSendVoice"] = (bytes, ms, waveform) => this.voice.captureSendVoice(bytes, ms, waveform ?? null);
   captureHoldMicrophone: KinigeApi["captureHoldMicrophone"] = (held) => this.voice.holdMicrophone("capture", held);
   captureOpenMicrophoneSettings: KinigeApi["captureOpenMicrophoneSettings"] = () => this.voice.captureOpenMicrophoneSettings();
+
+  // ---- stickers, GIFs and the bot token (slice 5c) ----
+  getStickerLibrary: KinigeApi["getStickerLibrary"] = () => this.stickers.getStickerLibrary();
+  addStickerPack: KinigeApi["addStickerPack"] = (link) => this.stickers.addStickerPack(link);
+  cancelStickerPack: KinigeApi["cancelStickerPack"] = () => this.stickers.cancelStickerPack();
+  removeStickerPack: KinigeApi["removeStickerPack"] = (packId) => this.stickers.removeStickerPack(packId);
+  sendSticker: KinigeApi["sendSticker"] = (chatId, stickerId, replyToId) => this.stickers.sendSticker(chatId, stickerId, replyToId ?? null);
+  listJournalGifs: KinigeApi["listJournalGifs"] = () => this.stickers.listJournalGifs();
+  sendGifAgain: KinigeApi["sendGifAgain"] = (chatId, id, replyToId) => this.stickers.sendGifAgain(chatId, id, replyToId ?? null);
+  onStickerPackProgress: KinigeApi["onStickerPackProgress"] = (handler) => this.stickers.onStickerPackProgress(handler);
+  getTelegramTokenState: KinigeApi["getTelegramTokenState"] = () => this.stickers.getTelegramTokenState();
+  setTelegramBotToken: KinigeApi["setTelegramBotToken"] = (token) => this.stickers.setTelegramBotToken(token);
+  clearTelegramBotToken: KinigeApi["clearTelegramBotToken"] = () => this.stickers.clearTelegramBotToken();
+
+  /** The mock's sticker library, pretend Telegram and bot token flag: stories and tests seed and read them here. */
+  get stickerLibrary(): MockStickers {
+    return this.stickers;
+  }
 
   // ---- for tests and stories: failures, events, entries ----
 

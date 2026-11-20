@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, MockApi } from "../../api/MockApi";
-import { NO_MEDIA } from "../../api/mockData";
+import { NO_MEDIA, NO_STICKERS } from "../../api/mockData";
 import type { ImportPreview } from "../../api/generated/ImportPreview";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
 import { MainWindow } from "./MainWindow";
@@ -15,6 +15,7 @@ const PREVIEW: ImportPreview = {
     { id: "2000003", name: "Пустой", kind: "personal", total: 0, existing: 0, ...NO_MEDIA },
   ],
   skippedChats: 3,
+  stickers: NO_STICKERS,
 };
 
 function setup(language: "ru" | "en" = "ru") {
@@ -123,7 +124,7 @@ describe("Импорт: выбор чатов", () => {
     const api = setup();
     const dialog = await openDialog();
     await pick();
-    api.importFile = { chats: [{ id: "9", name: "Новый", kind: "personal", total: 5, existing: 0, ...NO_MEDIA }], skippedChats: 0 };
+    api.importFile = { chats: [{ id: "9", name: "Новый", kind: "personal", total: 5, existing: 0, ...NO_MEDIA }], skippedChats: 0, stickers: NO_STICKERS };
     fireEvent.click(within(dialog).getByRole("button", { name: "Другой файл…" }));
     expect(await within(dialog).findByRole("checkbox", { name: "Новый" })).not.toBeChecked();
     expect(within(dialog).queryByRole("checkbox", { name: "Избранное" })).toBeNull();
@@ -131,7 +132,7 @@ describe("Импорт: выбор чатов", () => {
 
   it("файл без чатов для импорта: тихая строка", async () => {
     const api = setup();
-    api.importFile = { chats: [], skippedChats: 2 };
+    api.importFile = { chats: [], skippedChats: 2, stickers: NO_STICKERS };
     const dialog = await openDialog();
     fireEvent.click(within(dialog).getByRole("button", { name: "Выбрать result.json…" }));
     expect(await within(dialog).findByText("В файле нет чатов, которые можно импортировать.")).toBeInTheDocument();
@@ -202,7 +203,7 @@ describe("Импорт: прогресс, остановка, отчёт", () =>
 
   it("повторный импорт того же файла: новых записей нет, «пропущено, уже импортировано»", async () => {
     const api = setup();
-    api.importFile = { chats: [{ id: "1000001", name: null, kind: "saved", total: 1682, existing: 1682, ...NO_MEDIA }], skippedChats: 0 };
+    api.importFile = { chats: [{ id: "1000001", name: null, kind: "saved", total: 1682, existing: 1682, ...NO_MEDIA }], skippedChats: 0, stickers: NO_STICKERS };
     const dialog = await openDialog();
     await pick();
     fireEvent.click(within(dialog).getByRole("button", { name: "Импортировать" }));

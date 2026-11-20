@@ -211,6 +211,8 @@ fn view_of(staged: &Staged) -> AttachmentView {
         name: staged.filename.clone(),
         description: None,
         spoiler: false,
+        sticker: false,
+        sticker_emoji: None,
         mime: staged.mime.clone(),
         byte_size: i64::try_from(staged.byte_size).unwrap_or(i64::MAX),
         width: staged.width,

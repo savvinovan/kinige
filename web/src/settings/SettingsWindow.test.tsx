@@ -17,13 +17,13 @@ describe("Окно «Настройки»: дерево разделов", () =>
       .getAllByRole("button")
       .map((button) => button.textContent);
     // Groups are collapsed by default: nested items are not visible until "Доступ ИИ-агентов" (AI agent access) is open or the chevron is pressed.
-    expect(names).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов"]);
+    expect(names).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Стикеры", "Доступ ИИ-агентов"]);
     fireEvent.click(within(tree()).getByRole("button", { name: "Доступ ИИ-агентов" }));
     expect(
       within(tree())
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов", "Видимые чаты", "Журнал обращений"]);
+    ).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Стикеры", "Доступ ИИ-агентов", "Видимые чаты", "Журнал обращений"]);
     fireEvent.click(within(tree()).getByRole("button", { name: "Оформление" }));
     expect(current()).toHaveTextContent("Оформление");
     expect(within(tree()).getAllByRole("button", { current: "page" })).toHaveLength(1);
@@ -54,8 +54,8 @@ describe("Окно «Настройки»: дерево разделов", () =>
     fireEvent.keyDown(buttons[buttons.length - 1]!, { key: "Home" });
     expect(buttons[0]).toHaveFocus();
     // Enter on an item is an ordinary button press: the page opens, the selected item changes.
-    buttons[3]!.focus();
-    fireEvent.click(buttons[3]!);
+    buttons[4]!.focus();
+    fireEvent.click(buttons[4]!);
     expect(current()).toHaveTextContent("Доступ ИИ-агентов");
   });
 
@@ -195,7 +195,7 @@ describe("Окно «Настройки»: английский", () => {
       .getAllByRole("button")
       .map((button) => button.textContent);
     // The group is collapsed by default; the chevron expands it.
-    expect(names).toEqual(["Appearance", "Keyboard shortcuts", "Copies", "AI agent access"]);
+    expect(names).toEqual(["Appearance", "Keyboard shortcuts", "Copies", "Stickers", "AI agent access"]);
     fireEvent.click(screen.getByTestId("tree-chevron-access"));
     expect(screen.getByRole("button", { name: "Visible chats" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Access log" })).toBeInTheDocument();

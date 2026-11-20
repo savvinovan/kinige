@@ -203,7 +203,7 @@ fn load_drafts(conn: &Connection) -> rusqlite::Result<HashMap<String, String>> {
 }
 
 /// Directories of `root` that belong to a process other than ours; they are left from a crash.
-fn remove_other_processes(root: &Path, own: &str) -> usize {
+pub(crate) fn remove_other_processes(root: &Path, own: &str) -> usize {
     let Ok(entries) = fs::read_dir(root) else {
         return 0;
     };

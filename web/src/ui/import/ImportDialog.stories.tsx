@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ImportPreview } from "../../api/generated/ImportPreview";
 import type { ImportReport } from "../../api/generated/ImportReport";
-import { NO_MEDIA } from "../../api/mockData";
+import { NO_MEDIA, NO_STICKERS } from "../../api/mockData";
 import { ImportDialog } from "./ImportDialog";
 
 // The "Import from Telegram" window step by step: file -> chats -> progress -> report; errors, an empty list, long names, en, large text.
@@ -15,6 +15,7 @@ const PREVIEW: ImportPreview = {
     { id: "2000004", name: "Пустой чат", kind: "personal", total: 0, existing: 0, ...NO_MEDIA },
   ],
   skippedChats: 7,
+  stickers: { sent: 230, different: 41, skipped: 12 },
 };
 
 const REPORT: ImportReport = {
@@ -37,6 +38,7 @@ const REPORT: ImportReport = {
 const MEDIA_PREVIEW: ImportPreview = {
   chats: [{ id: "1000001", name: null, kind: "saved", total: 1682, existing: 0, mediaFiles: 1240, mediaBytes: 7_194_000_000, mediaMissing: 12 }],
   skippedChats: 0,
+  stickers: NO_STICKERS,
 };
 
 const meta = {
@@ -87,6 +89,7 @@ export const ДлинныеИмена: Story = {
     selected: new Set(["x0"]),
     preview: {
       skippedChats: 0,
+      stickers: NO_STICKERS,
       chats: Array.from({ length: 24 }, (_, i) => ({
         id: `x${i}`,
         name: `Очень длинное имя собеседника номер ${i + 1}, которое не помещается в строку окна импорта and Some English Words`,
@@ -100,7 +103,7 @@ export const ДлинныеИмена: Story = {
 };
 
 /** The file has no chats that can be imported. */
-export const НетЧатов: Story = { args: { step: "choose", preview: { chats: [], skippedChats: 4 } } };
+export const НетЧатов: Story = { args: { step: "choose", preview: { chats: [], skippedChats: 4, stickers: NO_STICKERS } } };
 
 /** A start error: the database backup was not made, nothing was written. */
 export const ОшибкаЗапуска: Story = { args: { step: "choose", preview: PREVIEW, error: "import_backup_failed" } };

@@ -1,0 +1,14 @@
+/* A GIF in its cell (slice 5c). The box is the album's; the thumbnail and the GIF are drawn in it the same way, so the swap moves nothing. Tokens only. */
+.gif-cell {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+/* In the feed the time pill takes the bottom right corner of a picture bubble, so the badge goes to the top left. */
+.gif-cell > .gif-badge {
+  top: var(--layout-sticker-badge-inset);
+  right: auto;
+  bottom: auto;
+  left: var(--layout-sticker-badge-inset);
+}

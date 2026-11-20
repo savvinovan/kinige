@@ -43,7 +43,7 @@ describe("the card of a day with photos (slice 7)", () => {
     expect(plain.container.querySelector(".day-card__summary")?.textContent).toBe("5 notes · a large tree");
     plain.unmount();
     const photoOnly = render(
-      <DayCard day={{ ...DAY, excerpt: "", photos: 1, firstSummary: { photos: 1, files: 0, voices: 0, voiceMs: null, name: "IMG_0001.jpg" } }} pinned />,
+      <DayCard day={{ ...DAY, excerpt: "", photos: 1, firstSummary: { photos: 1, files: 0, voices: 0, voiceMs: null, name: "IMG_0001.jpg", sticker: false, stickerEmoji: null } }} pinned />,
       { language: "en" },
     );
     expect(photoOnly.container.querySelector(".day-card__summary")?.textContent).toBe("5 notes · 1 photo · a large tree");

@@ -75,6 +75,68 @@ pub fn gif(width: u32, height: u32) -> Vec<u8> {
     bytes
 }
 
+/// A still lossless WebP drawn by code (a sticker of the tests: nothing of Telegram's).
+pub fn webp(width: u32, height: u32) -> Vec<u8> {
+    let image = RgbaImage::from_fn(width, height, |x, y| {
+        Rgba([
+            (x % 256) as u8,
+            (y % 256) as u8,
+            160,
+            if x < 3 { 0 } else { 255 },
+        ])
+    });
+    let mut bytes = Vec::new();
+    image::codecs::webp::WebPEncoder::new_lossless(&mut bytes)
+        .write_image(
+            image.as_raw(),
+            width,
+            height,
+            image::ExtendedColorType::Rgba8,
+        )
+        .unwrap();
+    bytes
+}
+
+/// An animated WebP: the `VP8X` animation flag, an `ANIM` chunk and one `ANMF` frame that holds the still's bitstream.
+pub fn animated_webp(width: u32, height: u32) -> Vec<u8> {
+    let still = webp(width, height);
+    let frame = still.get(12..).unwrap().to_vec();
+    let u24 = |n: u32| n.to_le_bytes()[..3].to_vec();
+    let mut vp8x = vec![0b0000_0010, 0, 0, 0];
+    vp8x.extend(u24(width - 1));
+    vp8x.extend(u24(height - 1));
+    let mut anmf = [u24(0), u24(0), u24(width - 1), u24(height - 1), u24(100)].concat();
+    anmf.push(0);
+    anmf.extend(frame);
+    let mut body = b"WEBP".to_vec();
+    body.extend(riff_chunk(b"VP8X", &vp8x));
+    body.extend(riff_chunk(b"ANIM", &[0, 0, 0, 0, 0, 0]));
+    body.extend(riff_chunk(b"ANMF", &anmf));
+    let mut out = b"RIFF".to_vec();
+    out.extend((body.len() as u32).to_le_bytes());
+    out.extend(body);
+    out
+}
+
+fn riff_chunk(kind: &[u8; 4], data: &[u8]) -> Vec<u8> {
+    let mut out = kind.to_vec();
+    out.extend((data.len() as u32).to_le_bytes());
+    out.extend(data);
+    if data.len() % 2 == 1 {
+        out.push(0);
+    }
+    out
+}
+
+/// A PNG with an `acTL` chunk before its data: an animated PNG.
+pub fn apng(width: u32, height: u32) -> Vec<u8> {
+    let still = png(width, height);
+    let mut out = still.get(..33).unwrap().to_vec();
+    chunk(&mut out, b"acTL", &[0, 0, 0, 1, 0, 0, 0, 0]);
+    out.extend_from_slice(still.get(33..).unwrap());
+    out
+}
+
 /// A JPEG with an Exif block that says orientation = `orientation` (1..=8) right after the start marker.
 pub fn jpeg_with_orientation(width: u32, height: u32, orientation: u8) -> Vec<u8> {
     let plain = jpeg(width, height);

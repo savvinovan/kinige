@@ -33,6 +33,11 @@ import type { SearchPage } from "./generated/SearchPage";
 import type { Settings } from "./generated/Settings";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
+import type { JournalGif } from "./generated/JournalGif";
+import type { StickerLibrary } from "./generated/StickerLibrary";
+import type { StickerPackAdded } from "./generated/StickerPackAdded";
+import type { StickerPackProgress } from "./generated/StickerPackProgress";
+import type { TelegramTokenState } from "./generated/TelegramTokenState";
 import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
 import type { WeekdaySource } from "./generated/WeekdaySource";
@@ -311,6 +316,38 @@ export interface KinigeApi {
    * Windows that reload or hide let go by themselves.
    */
   holdMicrophone(held: boolean): Promise<boolean>;
+
+  // ---- stickers and GIFs (slice 5c): main window only ----
+  /** The Stickers tab: the recent stickers, the packs ("From Telegram" first, then in the order added) and whether a bot token is saved (a flag). */
+  getStickerLibrary(): Promise<StickerLibrary>;
+  /**
+   * Downloads the pack named by `link` (`https://t.me/addstickers/<name>`, `t.me/addstickers/<name>` or a bare name) and writes it all or nothing;
+   * the answer comes when it is written. One job at a time (`sticker_pack_busy`). Without a saved token `sticker_pack_no_token` and no request.
+   * Cancelling (`cancelStickerPack`) rejects it with `sticker_pack_cancelled`, which is not an error for the window. The progress is `onStickerPackProgress`.
+   */
+  addStickerPack(link: string): Promise<StickerPackAdded>;
+  /** Stops the running pack job; nothing is added. Idempotent: with no job it does nothing. */
+  cancelStickerPack(): Promise<void>;
+  /** "Remove pack": the pack and its library files go; the stickers already sent stay in the entries. */
+  removeStickerPack(packId: string): Promise<void>;
+  /**
+   * Click on a sticker: a new entry of `chatId` with an empty body and the sticker as its one picture; `replyToId` is a pending reply, as for `sendVoice`.
+   * The text draft and the tiles are not touched. `sticker_not_found` (no such library sticker), `sticker_unreadable` (its file failed the probe again).
+   */
+  sendSticker(chatId: string, stickerId: string, replyToId?: string | null): Promise<MessageView>;
+  /** The GIFs tab: the journal's own live, uncovered GIFs, one per content, newest first. */
+  listJournalGifs(): Promise<JournalGif[]>;
+  /** A click on a GIF of the tab: a copy of that GIF as a new entry (a reply like `sendSticker`). A covered or missing one is `attachment_not_found`. */
+  sendGifAgain(chatId: string, attachmentId: string, replyToId?: string | null): Promise<MessageView>;
+  /** The pack job's progress (counts only). Returns the unsubscribe function. */
+  onStickerPackProgress(handler: (progress: StickerPackProgress) => void): Promise<() => void>;
+
+  // ---- Telegram bot token (slice 5c): settings window only; the token never comes back ----
+  getTelegramTokenState(): Promise<TelegramTokenState>;
+  /** Saves the token in the OS secret store. `telegram_token_invalid`, `secret_store_unavailable`, `secret_store_denied`. */
+  setTelegramBotToken(token: string): Promise<TelegramTokenState>;
+  /** Deletes the saved token (always asks the secret store, whatever the flag says). */
+  clearTelegramBotToken(): Promise<TelegramTokenState>;
 
   // ---- capture window (slice 2): a separate set of commands, Inbox only ----
   /** Everything the window needs on showing: language, text size, today's context, the append target, the draft, an error. */

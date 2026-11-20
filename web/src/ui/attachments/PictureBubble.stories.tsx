@@ -19,7 +19,7 @@ const QUOTE: ReplyTo = {
   excerpt: "Так будет лучше: перестать откладывать",
   state: "live",
   yearsLater: 3,
-  attachments: { photos: 0, files: 0, voices: 0, voiceMs: null, name: null },
+  attachments: { photos: 0, files: 0, voices: 0, voiceMs: null, name: null, sticker: false, stickerEmoji: null },
 };
 const quote = <ReplyQuote quote={QUOTE} onOpen={() => undefined} />;
 

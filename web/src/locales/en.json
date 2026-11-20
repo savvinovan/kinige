@@ -37,6 +37,7 @@
     "detailsOfHidden": "Details of a hidden photo",
     "detailsMenu": "Details…",
     "detailsEntryMenu": "Attachment details…",
+    "gifPlay": "{{label}}. Press to play the GIF",
     "hideAsSpoiler": "Hide as spoiler",
     "showWithoutSpoiler": "Show without spoiler",
     "dialog": {
@@ -63,6 +64,8 @@
       "files_other": "{{count, number}} files",
       "mixed_one": "{{count, number}} attachment",
       "mixed_other": "{{count, number}} attachments",
+      "sticker": "Sticker {{emoji}}",
+      "stickerNoEmoji": "Sticker",
       "voice": "Voice note · {{time}}",
       "voiceNoTime": "Voice note",
       "voices_one": "{{count, number}} voice note",
@@ -163,6 +166,56 @@
     "loading": "Loading emoji…",
     "empty": "Nothing found"
   },
+  "stickers": {
+    "tabs": {
+      "label": "Emoji, stickers and GIFs",
+      "emoji": "Emoji",
+      "stickers": "Stickers",
+      "gifs": "GIFs"
+    },
+    "sticker": "Sticker {{emoji}}",
+    "stickerNoEmoji": "Sticker",
+    "packs": "Sticker packs",
+    "recent": "Recent",
+    "fromTelegram": "From Telegram",
+    "addPack": "Add a sticker pack",
+    "removePack": "Remove pack",
+    "empty": "No stickers yet: import your Telegram export or add a pack by its link",
+    "loading": "Loading stickers…",
+    "loadFailed": "Could not load the stickers.",
+    "sendFailed": "The sticker was not sent.",
+    "gifs": {
+      "label": "GIFs",
+      "item": "GIF, {{width}} by {{height}}",
+      "badge": "GIF",
+      "empty": "No GIFs yet: drop, paste or attach a GIF",
+      "choose": "Choose a GIF file…",
+      "loading": "Loading GIFs…",
+      "loadFailed": "Could not load the GIFs."
+    },
+    "remove": {
+      "title": "Remove pack",
+      "question": "Remove «{{title}}»? The stickers you sent stay in your entries.",
+      "confirm": "Remove",
+      "cancel": "Cancel"
+    },
+    "add": {
+      "title": "Add a sticker pack",
+      "link": "Pack link",
+      "placeholder": "https://t.me/addstickers/Name",
+      "add": "Add",
+      "cancel": "Cancel",
+      "done": "Done",
+      "starting": "Contacting Telegram…",
+      "progress": "Downloading {{done, number}} of {{total, number}}",
+      "progressLabel": "Pack download",
+      "added_one": "Added «{{title}}»: {{count, number}} sticker.",
+      "added_other": "Added «{{title}}»: {{count, number}} stickers.",
+      "skipped_one": "{{count, number}} animated or video sticker was skipped.",
+      "skipped_other": "{{count, number}} animated or video stickers were skipped.",
+      "openSettings": "Open Settings"
+    }
+  },
   "profile": {
     "defaultName": "Me",
     "button": "Profile: {{name}}",
@@ -180,7 +233,8 @@
   },
   "import": {
     "title": "Import from Telegram",
-    "instruction": "Export your data in Telegram Desktop: “Export Telegram data” or “Export chat history”, in JSON format. To bring in photos, files, videos and voice messages too, export them with the chat and keep result.json in the same folder as they are: they are copied into Kinige. Stickers and animations stay as a note in the entry.",
+    "instruction": "Export your data in Telegram Desktop: “Export Telegram data” or “Export chat history”, in JSON format. To bring in photos, files, videos and voice messages too, export them with the chat and keep result.json in the same folder as they are: they are copied into Kinige. Static stickers become pictures; animated stickers and animations stay as a note in the entry.",
+    "stickers": "Stickers: {{sent, number}} sent, {{different, number}} different · animated or video, skipped: {{skipped, number}}",
     "media_one": "Media: {{count, number}} file, {{size}}",
     "media_other": "Media: {{count, number}} files, {{size}}",
     "mediaNone": "Media: none in the export",
@@ -490,6 +544,24 @@
     "drop_not_supported": "Nothing in what you dropped could be attached. Drop a picture or a file, or use the paperclip.",
     "reaction_invalid": "That is not a single emoji. Nothing was changed.",
     "reaction_limit": "This entry cannot take another reaction. Remove one first, or pick an emoji it already had.",
+    "sticker_not_found": "That sticker is no longer in your library.",
+    "sticker_unreadable": "The file of that sticker could not be read. Nothing was sent.",
+    "sticker_entry_read_only": "A sticker has no text or details to change.",
+    "sticker_pack_link_invalid": "That is not a pack link. Use https://t.me/addstickers/Name or just the name.",
+    "sticker_pack_no_token": "Add your bot token in Settings → Stickers",
+    "sticker_pack_not_found": "No pack with this name",
+    "sticker_pack_token_refused": "Telegram didn't accept the bot token: check it in Settings",
+    "sticker_pack_unreachable": "Couldn't reach Telegram",
+    "sticker_pack_wait": "Telegram asks to wait: try again in a minute",
+    "sticker_pack_only_animated": "This pack has only animated or video stickers",
+    "sticker_pack_too_large": "The pack is too large",
+    "sticker_pack_busy": "A pack is already downloading",
+    "sticker_pack_bad_response": "Telegram's answer could not be read. Nothing was added.",
+    "sticker_pack_cancelled": "Cancelled.",
+    "telegram_token_invalid": "That is not a bot token. A token looks like 123456:ABC-def and comes from Telegram's BotFather.",
+    "secret_store_unavailable": "The system keychain is not available, so the token was not saved.",
+    "secret_store_unsupported": "Adding a pack by its link is not supported on this system yet: there is no place to keep the bot token. The stickers of a Telegram export work.",
+    "secret_store_denied": "macOS asked for access to the saved token and it was not given. Allow the request macOS shows and try again.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },
@@ -587,6 +659,7 @@
       "appearance": "Appearance",
       "shortcuts": "Keyboard shortcuts",
       "mirror": "Copies",
+      "stickers": "Stickers",
       "access": "AI agent access",
       "accessChats": "Visible chats",
       "accessLog": "Access log"
@@ -639,6 +712,19 @@
         "shift": "Shift",
         "cmd": "Command"
       }
+    },
+    "stickers": {
+      "title": "Telegram bot token",
+      "description": "Kinige uses your own bot only to download the packs you name. The token is stored on this computer and sent only to Telegram.",
+      "tokenLabel": "Telegram bot token",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Token saved",
+      "remove": "Remove",
+      "removeLabel": "Remove the saved bot token",
+      "itemLeft": "The old token is still in the system keychain: macOS did not let Kinige delete it. You can delete the item “me.savvinov.kinige” in Keychain Access.",
+      "learns": "What Telegram learns when you add a pack: the bot token (so the bot and the Telegram account that created it), the name of the pack, your IP address (or your proxy's), the app's name and version, and when. It learns nothing of your journal.",
+      "keychain": "The token is kept in the system keychain. After an update of Kinige, macOS may ask once to allow it to use the token."
     },
     "textSize": {
       "title": "Text size",

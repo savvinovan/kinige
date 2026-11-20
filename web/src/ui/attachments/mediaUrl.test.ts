@@ -11,6 +11,14 @@ describe("mediaUrl", () => {
     expect(mediaUrl("full", "abc")).toBe("kinige-media://localhost/full/abc");
   });
 
+  it("a library sticker (slice 5c) is built like thumb and full, on both platforms", () => {
+    const agent = vi.spyOn(navigator, "userAgent", "get");
+    agent.mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15");
+    expect(mediaUrl("sticker", "5f0c")).toBe("kinige-media://localhost/sticker/5f0c");
+    agent.mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Edg/130.0");
+    expect(mediaUrl("sticker", "5f0c")).toBe("http://kinige-media.localhost/sticker/5f0c");
+  });
+
   it("в Windows: http-источник kinige-media.localhost", () => {
     vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Edg/130.0");
     expect(mediaUrl("thumb", "abc")).toBe("http://kinige-media.localhost/thumb/abc");

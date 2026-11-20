@@ -29,6 +29,7 @@ import { useMainSearch } from "./useMainSearch";
 import { useOnThisDay } from "./useOnThisDay";
 import { useOpenMessage } from "./useOpenMessage";
 import { useReplyActions } from "./useReplyActions";
+import { useStickers } from "./useStickers";
 import { useVoice } from "./useVoice";
 import { useSettingsState } from "./useSettingsState";
 import { useChangeCounter, useForestPane } from "./useForestPane";
@@ -196,6 +197,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onDismissed: () => setToBottom((count) => count + 1),
   });
   const voice = useVoice({ api, selected, reply, appendSent: feed.appendSent, refreshChats, changeReply });
+  const stickers = useStickers({ api, selected, reply, appendSent: feed.appendSent, refreshChats, changeReply, onError: setComposerError, onChooseGif: attachments.controls.onAttach });
   const forest = useForestPane({
     api,
     initial: {
@@ -277,7 +279,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       onOpenAbout={() => void api.appInfo().then((info) => setAbout(info.title), () => setAbout(t("about.unknown")))}
       composerButtons={{ attach: true, emoji: true, voice: true }}
       voice={voice}
-      emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji }}
+      emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji, stickers: stickers.host }}
       reactionChoices={reactionChoices}
       chats={sidebarChats}
       moveTargets={moveTargets}
@@ -371,6 +373,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
             />
           ) : null}
           <DetailsHost details={details} />
+          {stickers.overlay}
           {about !== null ? <AboutDialog title={about} onClose={() => setAbout(null)} /> : null}
           <DateDialogs
             language={language}
