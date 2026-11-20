@@ -122,7 +122,7 @@ export function ReactionPicker({ anchor, start, quick, recent, state, language, 
               onSwitch={(on) => choose(emoji, on)}
             />
           ))}
-          <Button variant="inline" className="reaction-picker__more" onClick={() => setMode("full")}>
+          <Button variant="inline" className="reaction-picker__more" aria-label={t("reaction.moreLabel")} onClick={() => setMode("full")}>
             {t("reaction.more")}
           </Button>
         </div>

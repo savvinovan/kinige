@@ -372,6 +372,7 @@
     "button": "Reaction {{emoji}}",
     "dialog": "Choose a reaction",
     "more": "More",
+    "moreLabel": "More emoji",
     "limitLive": "At most 10 reactions on an entry",
     "limitKeys": "This entry has had 32 different reactions",
     "putToday": "Put today at {{time}}",

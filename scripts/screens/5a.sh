@@ -62,12 +62,12 @@ PY
 labels() {
   if [ "$UI" = "ru" ]; then
     L_INBOX="Входящие"; L_TRASH="Корзина"; L_SEARCH="Поиск"; L_NONE="Ничего не найдено."; L_RESULTS="Результаты поиска"
-    L_HEART_BTN="Реакция $HEART"; L_ADD="Поставить реакцию"; L_ADD_CARD="Поставить реакцию на запись"; L_DIALOG="Выбор реакции"; L_MORE="Ещё"
+    L_HEART_BTN="Реакция $HEART"; L_ADD="Поставить реакцию"; L_ADD_CARD="Поставить реакцию на запись"; L_DIALOG="Выбор реакции"; L_MORE="Ещё эмодзи"
     L_ADD_ITEM="Поставить реакцию…"; L_LATE="1 год спустя"; L_REACT_WORD="Реакция"; L_EMOJI_SEARCH="Найти эмодзи"; L_FIRE_WORD="огонь"
     L_LIMIT="На записи не больше 10 реакций"
   else
     L_INBOX="Inbox"; L_TRASH="Trash"; L_SEARCH="Search"; L_NONE="Nothing found."; L_RESULTS="Search results"
-    L_HEART_BTN="Reaction $HEART"; L_ADD="Add reaction"; L_ADD_CARD="Add a reaction to the entry"; L_DIALOG="Choose a reaction"; L_MORE="More"
+    L_HEART_BTN="Reaction $HEART"; L_ADD="Add reaction"; L_ADD_CARD="Add a reaction to the entry"; L_DIALOG="Choose a reaction"; L_MORE="More emoji"
     L_ADD_ITEM="Add reaction…"; L_LATE="1 year later"; L_REACT_WORD="Reaction"; L_EMOJI_SEARCH="Search emoji"; L_FIRE_WORD="fire"
     L_LIMIT="At most 10 reactions on an entry"
   fi
@@ -127,12 +127,17 @@ escape_key() { drive "$(drive_window)" '{"kind":"key","key":"Escape","code":"Esc
 entry_id() { sqlw "select id from message where body_md like '$1%' and deleted_at is null order by created_at desc limit 1"; }
 live_rows() { sqlw "select count(*) from message_reaction where message_id = '$1'"; }
 rows_block() {
+  local group hlc recent
   {
     echo "[$1]"
     sqlw "select substr(m.body_md, 1, 18), r.key, r.emoji, r.put_tz, datetime(r.put_at / 1000, 'unixepoch') from message_reaction r join message m on m.id = r.message_id order by m.created_at, r.put_at"
-    echo "group of the entry the scenario reacts to: $(sqlw "select json_extract(groups_raw, '\$.reactions') from message where id = '${AWAKE:-}'")"
-    echo "hlc of the group: $(sqlw "select json_extract(hlc_json, '\$.reactions.h') from message where id = '${AWAKE:-}'")"
-    echo "recent list: $(sqlw "select value from app_setting where key = 'recent_reactions'")"
+    # An empty value leaves no space at the end of the line (the files in docs/screens are checked for trailing whitespace).
+    group="$(sqlw "select json_extract(groups_raw, '\$.reactions') from message where id = '${AWAKE:-}'")"
+    echo "group of the entry the scenario reacts to:${group:+ $group}"
+    hlc="$(sqlw "select json_extract(hlc_json, '\$.reactions.h') from message where id = '${AWAKE:-}'")"
+    echo "hlc of the group:${hlc:+ $hlc}"
+    recent="$(sqlw "select value from app_setting where key = 'recent_reactions'")"
+    echo "recent list:${recent:+ $recent}"
   } >> "$OUT/rows.txt"
 }
 
@@ -207,6 +212,9 @@ press_nth "$L_PICKED_BTN" $((COUNT_PICKED - 1)) button
 sleep 3
 wait_name "$L_DIALOG" 10000 gone || fail "the popover did not close after a pick"
 [ "$(sqlw "select count(*) from message_reaction where message_id = '$CARD_ENTRY' and emoji = '$PICKED'")" = "1" ] || fail "the pick in the card's popover put nothing on the card's entry"
+# The line under the card's first entry ("1 more entry of this day") is scrolled to, so the entry and its new chip are in the shot.
+scroll_to "запись этого дня"
+sleep 2
 shoot 05b-card-chip
 rows_block "after the card popover"
 echo "reactions on the first card entry: before $BEFORE_CARD, after $(sqlw "select count(*) from message_reaction where message_id = '$CARD_ENTRY'")" >> "$OUT/rows.txt"

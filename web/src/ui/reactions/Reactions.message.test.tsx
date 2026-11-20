@@ -277,7 +277,7 @@ describe("окно выбора реакции", () => {
     fireEvent.keyDown(plate, { key: "F10", shiftKey: true });
     fireEvent.click(screen.getByRole("menuitem", { name: "Поставить реакцию…" }));
     const dialog = await screen.findByRole("dialog", { name: "Выбор реакции" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Ещё" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Ещё эмодзи" }));
     expect(await within(dialog).findByRole("searchbox")).toHaveFocus();
     expect(within(dialog).getByRole("region", { name: "Недавние" })).toBeInTheDocument();
   });
