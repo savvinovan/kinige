@@ -222,11 +222,11 @@ describe("MockApi: GIFs of the journal", () => {
 describe("MockApi: the bot token", () => {
   it("saves a token of the right shape, reads back only the flag, removes it", async () => {
     const { api } = setup();
-    expect(await api.getTelegramTokenState()).toEqual({ saved: false });
-    expect(await api.setTelegramBotToken(" 123456:ABC-def_1 ")).toEqual({ saved: true });
-    expect(await api.getTelegramTokenState()).toEqual({ saved: true });
+    expect(await api.getTelegramTokenState()).toEqual({ saved: false, itemLeft: false });
+    expect(await api.setTelegramBotToken(" 123456:ABC-def_1 ")).toEqual({ saved: true, itemLeft: false });
+    expect(await api.getTelegramTokenState()).toEqual({ saved: true, itemLeft: false });
     expect((await api.getStickerLibrary()).hasToken).toBe(true);
-    expect(await api.clearTelegramBotToken()).toEqual({ saved: false });
+    expect(await api.clearTelegramBotToken()).toEqual({ saved: false, itemLeft: false });
     // The token is never in the call log.
     expect(api.calls.join("\n")).not.toContain("ABC-def");
   });
@@ -236,6 +236,6 @@ describe("MockApi: the bot token", () => {
     for (const bad of ["", "abc", "123456", "123456:", ":abc", "12 34:abc", `${"9".repeat(21)}:abc`, `1:${"x".repeat(101)}`, "1:a/b"]) {
       await expect(api.setTelegramBotToken(bad), bad).rejects.toMatchObject({ code: "telegram_token_invalid" });
     }
-    expect(await api.getTelegramTokenState()).toEqual({ saved: false });
+    expect(await api.getTelegramTokenState()).toEqual({ saved: false, itemLeft: false });
   });
 });

@@ -38,6 +38,8 @@ const STICKER_BYTES = 12_000;
 export class MockStickers {
   /** Whether a bot token is saved (the flag the window sees; the token itself is never kept). */
   hasToken = false;
+  /** The system refuses to delete the saved item (the prompt was denied): Remove then answers `itemLeft`. */
+  denyDelete = false;
   /** The packs "Telegram" knows by name; the default one is a typical pack with a few animated ones skipped. */
   readonly remotePacks = new Map<string, MockRemotePack>([["TestPack", { title: "Test Pack", stickers: 27, skipped: 3 }]]);
   /** How many progress events a pack job sends (the last one is "all"). */
@@ -203,7 +205,7 @@ export class MockStickers {
   }
 
   getTelegramTokenState(): Promise<TelegramTokenState> {
-    return this.s.run("getTelegramTokenState", "", () => ({ saved: this.hasToken }));
+    return this.s.run("getTelegramTokenState", "", () => ({ saved: this.hasToken, itemLeft: false }));
   }
 
   setTelegramBotToken(token: string): Promise<TelegramTokenState> {
@@ -211,14 +213,15 @@ export class MockStickers {
     return this.s.run("setTelegramBotToken", "", () => {
       if (!isBotToken(token.trim())) throw new KinigeApiError("telegram_token_invalid");
       this.hasToken = true;
-      return { saved: true };
+      return { saved: true, itemLeft: false };
     });
   }
 
+  /** Remove: Rust always clears the flag; when the system refuses the delete (`denyDelete`) the answer says the old item is left. */
   clearTelegramBotToken(): Promise<TelegramTokenState> {
     return this.s.run("clearTelegramBotToken", "", () => {
       this.hasToken = false;
-      return { saved: false };
+      return { saved: false, itemLeft: this.denyDelete };
     });
   }
 

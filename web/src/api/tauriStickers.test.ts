@@ -53,7 +53,7 @@ describe("the sticker, GIF and token commands", () => {
 
   it("the new error codes of Rust become KinigeApiError with their own code, not `internal`", async () => {
     const api = new TauriApi();
-    for (const code of ["sticker_pack_cancelled", "secret_store_denied", "secret_store_unavailable", "sticker_pack_wait", "telegram_token_invalid"]) {
+    for (const code of ["sticker_pack_cancelled", "secret_store_denied", "secret_store_unavailable", "secret_store_unsupported", "sticker_pack_wait", "telegram_token_invalid"]) {
       invoke.mockRejectedValue({ code });
       await expect(api.addStickerPack("X"), code).rejects.toMatchObject({ code });
     }

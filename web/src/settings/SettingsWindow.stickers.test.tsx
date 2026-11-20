@@ -33,8 +33,10 @@ describe("Settings → Stickers", () => {
     expect(screen.getByText("Kinige uses your own bot only to download the packs you name. The token is stored on this computer and sent only to Telegram.")).toBeInTheDocument();
     expect(field()).toHaveAttribute("type", "password");
     expect(field()).toHaveAttribute("autocomplete", "off");
-    expect(screen.getByText(/What Telegram learns when you add a pack: the bot token, the name of the pack, your IP address/)).toBeInTheDocument();
-    expect(screen.getByText(/After an update macOS may ask once to allow Kinige to use it/)).toBeInTheDocument();
+    // What Telegram learns includes the account that created the bot (PRD §10.3).
+    expect(screen.getByText(/What Telegram learns when you add a pack: the bot token \(so the bot and the Telegram account that created it\), the name of the pack, your IP address/)).toBeInTheDocument();
+    // The prompt comes after an update of Kinige, not of macOS.
+    expect(screen.getByText(/After an update of Kinige, macOS may ask once to allow it to use the token/)).toBeInTheDocument();
   });
 
   it("Save sends the token and clears the field at once; then 'Token saved' with Remove replaces the field", async () => {
@@ -65,7 +67,8 @@ describe("Settings → Stickers", () => {
   it.each([
     ["telegram_token_invalid", "That is not a bot token. A token looks like 123456:ABC-def and comes from Telegram's BotFather."],
     ["secret_store_unavailable", "The system keychain is not available, so the token was not saved."],
-    ["secret_store_denied", "macOS asked for access to the saved token and it was not given. Press “Remove”, then save the token again."],
+    ["secret_store_denied", "macOS asked for access to the saved token and it was not given. Allow the request macOS shows and try again."],
+    ["secret_store_unsupported", "Adding a pack by its link is not supported on this system yet: there is no place to keep the bot token. The stickers of a Telegram export work."],
   ] as const)("%s is one line under the field, and the field is empty again", async (code, text) => {
     const api = await open();
     api.failNext("setTelegramBotToken", code);
@@ -83,14 +86,35 @@ describe("Settings → Stickers", () => {
     expect(screen.queryByText("Token saved")).toBeNull();
   });
 
-  it("with a token already saved the section opens on 'Token saved'; a denied removal says what to do", async () => {
+  it("Remove clears the token and says nothing more when the item was deleted", async () => {
+    await open(true);
+    expect(await screen.findByText("Token saved")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove the saved bot token" }));
+    expect(await screen.findByLabelText("Telegram bot token")).toBeInTheDocument();
+    expect(screen.queryByText(/still in the system keychain/)).toBeNull();
+  });
+
+  it("when macOS refuses to delete the old item, Remove still clears the token and one line says where the old item is (N2)", async () => {
     const api = await open(true);
     expect(await screen.findByText("Token saved")).toBeInTheDocument();
-    api.failNext("clearTelegramBotToken", "secret_store_denied");
+    api.stickerLibrary.denyDelete = true;
     fireEvent.click(screen.getByRole("button", { name: "Remove the saved bot token" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Press “Remove”, then save the token again.");
-    // Still saved: the item was not removed.
-    expect(within(screen.getByRole("main")).getByText("Token saved")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Telegram bot token")).toBeInTheDocument();
+    expect(screen.queryByText("Token saved")).toBeNull();
+    expect(screen.getByText(/still in the system keychain: macOS did not let Kinige delete it\. You can delete the item “me\.savvinov\.kinige” in Keychain Access\./)).toBeInTheDocument();
+    // The next save or removal clears the line.
+    fireEvent.change(field(), { target: { value: TOKEN } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Token saved")).toBeInTheDocument();
+    expect(screen.queryByText(/still in the system keychain/)).toBeNull();
+  });
+
+  it("the section is named after its field, so the page does not say 'Stickers' twice", async () => {
+    await open();
+    const main = within(screen.getByRole("main"));
+    expect(main.getByRole("heading", { level: 2, name: "Stickers" })).toBeInTheDocument();
+    expect(main.getByRole("heading", { level: 3, name: "Telegram bot token" })).toBeInTheDocument();
+    expect(main.queryByRole("heading", { level: 3, name: "Stickers" })).toBeNull();
   });
 
   it("Russian: the labels and the section name", async () => {

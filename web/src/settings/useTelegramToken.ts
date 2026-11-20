@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { type KinigeApi, errorCode } from "../api/KinigeApi";
 import type { ErrorCode } from "../api/generated/ErrorCode";
+import type { TelegramTokenState } from "../api/generated/TelegramTokenState";
 import type { TokenControls } from "../ui/prefs/pages/StickersPage";
 
 /**
@@ -12,6 +13,8 @@ export function useTelegramToken(api: KinigeApi, active: boolean): TokenControls
   const [saved, setSaved] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ErrorCode | null>(null);
+  // Only the answer of "Remove" says it: the system refused to delete the old item, so it is still in the keychain.
+  const [itemLeft, setItemLeft] = useState(false);
 
   useEffect(() => {
     if (!active) return;
@@ -29,11 +32,15 @@ export function useTelegramToken(api: KinigeApi, active: boolean): TokenControls
     };
   }, [api, active]);
 
-  const run = (action: Promise<{ saved: boolean }>) => {
+  const run = (action: Promise<TelegramTokenState>) => {
     setBusy(true);
     setError(null);
+    setItemLeft(false);
     action
-      .then((state) => setSaved(state.saved))
+      .then((state) => {
+        setSaved(state.saved);
+        setItemLeft(state.itemLeft);
+      })
       .catch((reason: unknown) => setError(errorCode(reason)))
       .finally(() => setBusy(false));
   };
@@ -42,6 +49,7 @@ export function useTelegramToken(api: KinigeApi, active: boolean): TokenControls
     saved,
     busy,
     error,
+    itemLeft,
     onSave: (token) => run(api.setTelegramBotToken(token)),
     onRemove: () => run(api.clearTelegramBotToken()),
   };

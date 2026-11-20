@@ -14,19 +14,28 @@ export interface TokenControls {
   busy: boolean;
   /** The error of the last save or removal. */
   error: ErrorCode | null;
+  /** After "Remove": the system refused to delete the old item, so the old token is still in the keychain (one quiet line says where). */
+  itemLeft: boolean;
   onSave: (token: string) => void;
   onRemove: () => void;
 }
 
 /** The page with no window behind it (stories of the whole settings window): an empty field that does nothing. */
-export const NO_TOKEN_CONTROLS: TokenControls = { saved: false, busy: false, error: null, onSave: () => undefined, onRemove: () => undefined };
+export const NO_TOKEN_CONTROLS: TokenControls = {
+  saved: false,
+  busy: false,
+  error: null,
+  itemLeft: false,
+  onSave: () => undefined,
+  onRemove: () => undefined,
+};
 
 /**
  * "Stickers": the line about what the bot is for, a password-style field "Telegram bot token" with Save, and once a token is saved "Token saved" with
  * Remove (slice 5c). Two quiet notes: what Telegram learns, and the keychain. The field is cleared as soon as Save is pressed, whatever the answer, so the
  * token does not stay on screen or in the window's state; an error stands under it as one line. Until a token is saved Kinige makes no request to Telegram.
  */
-export function StickersPage({ saved, busy, error, onSave, onRemove }: TokenControls) {
+export function StickersPage({ saved, busy, error, itemLeft, onSave, onRemove }: TokenControls) {
   const { t } = useTranslation();
   const titleId = useId();
   const [token, setToken] = useState("");
@@ -76,6 +85,11 @@ export function StickersPage({ saved, busy, error, onSave, onRemove }: TokenCont
         {error ? (
           <StatusNote tone="error" icon="alert" role="alert">
             {t(`error.${error}`)}
+          </StatusNote>
+        ) : null}
+        {itemLeft && saved === false ? (
+          <StatusNote tone="quiet" icon="info" role="status">
+            {t("settings.stickers.itemLeft")}
           </StatusNote>
         ) : null}
         <StatusNote tone="quiet" icon="info">

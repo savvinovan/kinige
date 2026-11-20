@@ -5,7 +5,7 @@ import "../prefs.css";
 
 // Settings → Stickers (slice 5c): the bot token row. The token is typed, sent, and never shown again.
 const noop = () => undefined;
-const base: TokenControls = { saved: false, busy: false, error: null, onSave: noop, onRemove: noop };
+const base: TokenControls = { saved: false, busy: false, error: null, itemLeft: false, onSave: noop, onRemove: noop };
 
 const meta = {
   title: "Настройки/Стикеры: токен бота",
@@ -41,8 +41,16 @@ export const ОшибкаФормат: Story = { args: { error: "telegram_token_
 
 export const ОшибкаСвязкаКлючей: Story = { args: { error: "secret_store_unavailable" } };
 
-/** macOS asked for access to the saved token and it was not given: the text says to press Remove and save the token again. */
+/** macOS asked for access to the saved token and it was not given: the text says to allow the request macOS shows and to try again. */
 export const ОшибкаДоступ: Story = { args: { saved: true, error: "secret_store_denied" } };
+
+/** "Remove" was pressed and macOS refused to delete the old item: the flag is off, so the field is back, and one line says where the old token is. */
+export const СтарыйТокенОстался: Story = { args: { saved: false, itemLeft: true } };
+
+export const СтарыйТокенОсталсяEn: Story = { args: { saved: false, itemLeft: true }, globals: { language: "en" } };
+
+/** Windows and Linux have no secret store in this slice: saving is refused with its own line. */
+export const ОшибкаНетХранилища: Story = { args: { saved: false, error: "secret_store_unsupported" } };
 
 export const ПустоEn: Story = { globals: { language: "en" } };
 

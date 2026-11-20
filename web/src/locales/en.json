@@ -560,7 +560,8 @@
     "sticker_pack_cancelled": "Cancelled.",
     "telegram_token_invalid": "That is not a bot token. A token looks like 123456:ABC-def and comes from Telegram's BotFather.",
     "secret_store_unavailable": "The system keychain is not available, so the token was not saved.",
-    "secret_store_denied": "macOS asked for access to the saved token and it was not given. Press “Remove”, then save the token again.",
+    "secret_store_unsupported": "Adding a pack by its link is not supported on this system yet: there is no place to keep the bot token. The stickers of a Telegram export work.",
+    "secret_store_denied": "macOS asked for access to the saved token and it was not given. Allow the request macOS shows and try again.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },
@@ -751,7 +752,7 @@
       }
     },
     "stickers": {
-      "title": "Stickers",
+      "title": "Telegram bot token",
       "description": "Kinige uses your own bot only to download the packs you name. The token is stored on this computer and sent only to Telegram.",
       "tokenLabel": "Telegram bot token",
       "save": "Save",
@@ -759,8 +760,9 @@
       "saved": "Token saved",
       "remove": "Remove",
       "removeLabel": "Remove the saved bot token",
-      "learns": "What Telegram learns when you add a pack: the bot token, the name of the pack, your IP address (or your proxy's), the app's name and version, and when. It learns nothing of your journal.",
-      "keychain": "The token is kept in the system keychain. After an update macOS may ask once to allow Kinige to use it."
+      "itemLeft": "The old token is still in the system keychain: macOS did not let Kinige delete it. You can delete the item “me.savvinov.kinige” in Keychain Access.",
+      "learns": "What Telegram learns when you add a pack: the bot token (so the bot and the Telegram account that created it), the name of the pack, your IP address (or your proxy's), the app's name and version, and when. It learns nothing of your journal.",
+      "keychain": "The token is kept in the system keychain. After an update of Kinige, macOS may ask once to allow it to use the token."
     },
     "textSize": {
       "title": "Text size",

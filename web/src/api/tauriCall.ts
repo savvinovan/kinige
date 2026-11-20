@@ -78,6 +78,7 @@ const CODES = [
   "sticker_pack_bad_response",
   "telegram_token_invalid",
   "secret_store_unavailable",
+  "secret_store_unsupported",
   "secret_store_denied",
   "sticker_pack_cancelled",
   "internal",
