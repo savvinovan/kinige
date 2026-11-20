@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { KinigeApi } from "../../api/KinigeApi";
 import type { JournalGif } from "../../api/generated/JournalGif";
@@ -54,7 +54,17 @@ interface PickerTabsProps {
 export function PickerTabs({ initialTab = "emoji", recent, language, onPick, onClose, host }: PickerTabsProps) {
   const { t } = useTranslation();
   const idPrefix = useId();
-  const [tab, setTab] = useState<PickerTab>(() => host.tabMemory?.recall() ?? initialTab);
+  // The tab the window remembers (`null` the first time, and in the stories): the panel opens on it.
+  const [remembered] = useState<PickerTab | null>(() => host.tabMemory?.recall() ?? null);
+  const [tab, setTab] = useState<PickerTab>(remembered ?? initialTab);
+  // Opening on a remembered Stickers or GIFs tab: nothing in it takes focus by itself (on Emoji the search does), so the selected tab does, and Esc and
+  // Tab are heard from there (`EmojiPopover`).
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    opened.current = true;
+    if (remembered !== null && remembered !== "emoji") document.getElementById(`${idPrefix}-tab-${remembered}`)?.focus();
+  }, [remembered, idPrefix]);
   // Focus goes to the emoji search only when the panel opens: coming back to the Emoji tab with the arrows must leave focus on the tab list.
   const [switched, setSwitched] = useState(false);
   const change = (next: PickerTab) => {

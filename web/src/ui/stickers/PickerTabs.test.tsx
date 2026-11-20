@@ -57,6 +57,14 @@ describe("the emoji window with tabs", () => {
     render(panelElement(panel), { language: "en" });
     expect(tab("Stickers")).toHaveAttribute("aria-selected", "true");
     await screen.findByRole("toolbar", { name: "Sticker packs" });
+    // Focus is inside the dialog, on the selected tab (the emoji search is not there to take it): Tab walks the panel and Esc closes it, from there.
+    expect(tab("Stickers")).toHaveFocus();
+    fireEvent.keyDown(document.activeElement as Element, { key: "Tab" });
+    expect(dialog().contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).not.toBe(tab("Stickers"));
+    expect(panel.onClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(document.activeElement as Element, { key: "Escape" });
+    expect(panel.onClose).toHaveBeenCalledWith(true);
     fireEvent.click(tab("Emoji"));
     expect(lastTab.current).toBe("emoji");
     expect(Object.keys(window.localStorage ?? {})).toEqual([]);
@@ -212,6 +220,21 @@ describe("the Stickers tab", () => {
     sections[1]!.getBoundingClientRect = at(104);
     fireEvent.scroll(scroll);
     expect(marked()).toEqual(["Cats"]);
+    // A last pack shorter than the grid never reaches its top: at the end of the scroll it is the marked one (the metrics are the area's own).
+    sections[1]!.getBoundingClientRect = at(300);
+    const metrics = (height: number, client: number, top: number) => {
+      for (const [name, value] of Object.entries({ scrollHeight: height, clientHeight: client, scrollTop: top })) Object.defineProperty(scroll, name, { value, configurable: true });
+    };
+    metrics(1000, 300, 400);
+    fireEvent.scroll(scroll);
+    expect(marked()).toEqual(["From Telegram"]);
+    metrics(1000, 300, 700);
+    fireEvent.scroll(scroll);
+    expect(marked()).toEqual(["Cats"]);
+    // Nothing to scroll (no layout, or everything fits): the end rule does not apply.
+    metrics(300, 300, 0);
+    fireEvent.scroll(scroll);
+    expect(marked()).toEqual(["From Telegram"]);
     // The "+" is never marked.
     expect(icon("Add a sticker pack")).not.toHaveAttribute("aria-current");
   });

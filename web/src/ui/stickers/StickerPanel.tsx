@@ -58,13 +58,17 @@ export function StickerPanel({ library, onSend, onAddPack, onRemovePack }: Stick
     sectionRefs.current[index]?.scrollIntoView?.({ block: "start" });
   };
 
-  // The strip marks the pack whose section is at the top of the grid: the last section that has reached the top edge (a few pixels of slack).
+  // The strip marks the pack whose section is at the top of the grid: the last section that has reached the top edge (a few pixels of slack). A last pack
+  // shorter than the grid never reaches the top, so at the end of the scroll the last section is the marked one.
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
-    const top = event.currentTarget.getBoundingClientRect().top + VIEWED_SLACK;
+    const area = event.currentTarget;
+    const top = area.getBoundingClientRect().top + VIEWED_SLACK;
     let index = 0;
     sectionRefs.current.forEach((section, at) => {
       if (section && section.getBoundingClientRect().top <= top) index = at;
     });
+    const scrollable = area.scrollHeight > area.clientHeight;
+    if (scrollable && area.scrollTop + area.clientHeight >= area.scrollHeight - VIEWED_SLACK) index = Math.max(index, sections.length - 1);
     setViewed(index);
   };
 
