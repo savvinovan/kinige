@@ -176,6 +176,38 @@ fn import_export_stickers(store: &Store, now: &Now, files: &Path) {
     run(Some(root.as_path()));
 }
 
+/// A GIF of about 7.5 MiB: 400 x 300 frames of pseudo-random pixels (they do not compress), 70 of them, so the file is near the autoplay limit of 8 MiB.
+fn noisy_gif(seed: u32) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    {
+        let mut encoder = GifEncoder::new(&mut bytes);
+        encoder.set_repeat(Repeat::Infinite).expect("repeat");
+        let mut state = 0x9E37_79B9u32 ^ seed.wrapping_mul(2_654_435_761);
+        for _ in 0..70 {
+            let image = RgbaImage::from_fn(400, 300, |_, _| {
+                state ^= state << 13;
+                state ^= state >> 17;
+                state ^= state << 5;
+                Rgba([
+                    (state >> 24) as u8,
+                    (state >> 16) as u8,
+                    (state >> 8) as u8,
+                    255,
+                ])
+            });
+            encoder
+                .encode_frame(Frame::from_parts(
+                    image,
+                    0,
+                    0,
+                    Delay::from_numer_denom_ms(80, 1),
+                ))
+                .expect("gif frame");
+        }
+    }
+    bytes
+}
+
 pub fn seed_stickers(store: &Store, now: &Now, data: &Path) {
     let at = |minutes_ago: i64| Now::at(now.ms - minutes_ago * MINUTE, &now.tz);
     let files = data.join("seed-files");
@@ -246,6 +278,32 @@ pub fn seed_stickers(store: &Store, now: &Now, data: &Path) {
     }
 
     import_export_stickers(store, now, &files);
+
+    // The memory measurement (`docs/screens/5c/gif-memory.txt`): six GIFs of about 7.5 MiB, under the 8 MiB autoplay limit, and one of 1.96 megapixels,
+    // under the 2 Mpx limit, in a chat of their own so that the feed of Inbox stays as the other shots show it.
+    if std::env::var_os("KINIGE_SEED_GIF_MEMORY").is_some() {
+        let chat = store
+            .create_chat("GIF", Some("🎞"), &at(20))
+            .expect("chat")
+            .id;
+        let heavy: Vec<(String, Vec<u8>)> = (0..6)
+            .map(|n| (format!("heavy-{n}.gif"), noisy_gif(n as u32)))
+            .chain(std::iter::once((
+                "wide.gif".to_string(),
+                gif(1400, 1400, 4),
+            )))
+            .collect();
+        for (n, (name, bytes)) in heavy.iter().enumerate() {
+            let path: PathBuf = files.join(name);
+            std::fs::write(&path, bytes).expect("gif");
+            let tile = store
+                .attach_path(&chat, &path, &at(19 - n as i64))
+                .expect("attach the gif");
+            store
+                .send_entry(&chat, "", None, &[tile.id], &at(19 - n as i64))
+                .expect("send the gif");
+        }
+    }
 
     // What the scenario's fake server serves for the pack the scenario adds by its link.
     if let Some(dir) = std::env::var_os("KINIGE_SEED_FAKE_BOT_DIR") {
