@@ -141,6 +141,17 @@ describe("the dialog in each state (presentational)", () => {
     onOpenSettings: vi.fn(),
   };
 
+  it("a denied keychain prompt asks to allow the request and try again, never mentions Remove, and offers Open Settings", () => {
+    const onOpenSettings = vi.fn();
+    render(<AddPackDialog {...base} onOpenSettings={onOpenSettings} link="TestPack" state={{ phase: "idle", error: "secret_store_denied" }} />, { language: "en" });
+    expect(within(dialog()).getByRole("alert")).toHaveTextContent("Allow the request macOS shows and try again.");
+    expect(within(dialog()).queryByText(/Remove/)).toBeNull();
+    fireEvent.click(within(dialog()).getByRole("button", { name: "Open Settings" }));
+    expect(onOpenSettings).toHaveBeenCalledOnce();
+    // The form is still there, so "try again" is one press of Add.
+    expect(within(dialog()).getByRole("button", { name: "Add" })).toBeInTheDocument();
+  });
+
   it("the first answer is not in yet: 'Contacting Telegram…' and an empty bar; Cancel says it is cancelling and takes no second press", () => {
     const onCancelJob = vi.fn();
     const { rerender } = render(<AddPackDialog {...base} onCancelJob={onCancelJob} state={{ phase: "running", done: null, total: null, cancelling: false }} />, { language: "en" });

@@ -49,7 +49,9 @@ export function AddPackDialog({ state, hasToken, link, onLinkChange, onAdd, onCa
     <Modal title={t("stickers.add.title")} closeLabel={t("common.close")} onClose={onClose} closable={!running}>
       <div className="add-pack">
         {state.phase === "idle" && noToken ? <NoToken onOpenSettings={onOpenSettings} onClose={onClose} /> : null}
-        {state.phase === "idle" && !noToken ? <Form state={state} link={link} onLinkChange={onLinkChange} onSubmit={submit} onClose={onClose} /> : null}
+        {state.phase === "idle" && !noToken ? (
+          <Form state={state} link={link} onLinkChange={onLinkChange} onSubmit={submit} onClose={onClose} onOpenSettings={onOpenSettings} />
+        ) : null}
         {state.phase === "running" ? <Running state={state} onCancel={onCancelJob} /> : null}
         {state.phase === "done" ? <Done result={state.result} onClose={onClose} /> : null}
       </div>
@@ -82,9 +84,10 @@ interface FormProps {
   onLinkChange: (link: string) => void;
   onSubmit: (event: FormEvent) => void;
   onClose: () => void;
+  onOpenSettings: () => void;
 }
 
-function Form({ state, link, onLinkChange, onSubmit, onClose }: FormProps) {
+function Form({ state, link, onLinkChange, onSubmit, onClose, onOpenSettings }: FormProps) {
   const { t } = useTranslation();
   return (
     <form className="add-pack__form" onSubmit={onSubmit}>
@@ -103,6 +106,11 @@ function Form({ state, link, onLinkChange, onSubmit, onClose }: FormProps) {
         </StatusNote>
       ) : null}
       <div className="add-pack__actions">
+        {state.error === "secret_store_denied" ? (
+          <Button variant="secondary" onClick={onOpenSettings}>
+            {t("stickers.add.openSettings")}
+          </Button>
+        ) : null}
         <Button variant="accent" onClick={onClose}>
           {t("stickers.add.cancel")}
         </Button>
