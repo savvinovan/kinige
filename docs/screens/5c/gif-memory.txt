@@ -2,12 +2,12 @@
 (8 MiB and 2,000,000 pixels). A GIF that 'moves' is one whose two shots 0.5 s apart differ; 'still' is one whose shots are the same.
 
 Autoplay (Reduce Motion off for the page): each GIF plays while it is on screen
-before: 168784
-wide.gif: 180864 KB; two shots 0.5 s apart: differ: 213924 pixels, box 304,52,770,598
-heavy-5.gif: 185472 KB; two shots 0.5 s apart: differ: 55606 pixels, box 304,52,623,228
-heavy-4.gif: 185440 KB; two shots 0.5 s apart: differ: 214083 pixels, box 304,52,770,598
-heavy-3.gif: 185472 KB; two shots 0.5 s apart: differ: 213576 pixels, box 304,52,770,598
-heavy-2.gif: 185440 KB; two shots 0.5 s apart: differ: 213488 pixels, box 304,52,770,598
-heavy-1.gif: 185472 KB; two shots 0.5 s apart: differ: 53130 pixels, box 304,52,623,228
-heavy-0.gif: 182624 KB; two shots 0.5 s apart: differ: 52659 pixels, box 304,52,623,228
-peak: 185472 KB
+before: 186848
+wide.gif: 201856 KB; two shots 0.5 s apart: differ: 164856 pixels, box 304,242,770,598
+heavy-5.gif: 201840 KB; two shots 0.5 s apart: differ: 165718 pixels, box 304,242,770,598
+heavy-4.gif: 202064 KB; two shots 0.5 s apart: differ: 220461 pixels, box 304,52,770,598
+heavy-3.gif: 202016 KB; two shots 0.5 s apart: differ: 48488 pixels, box 304,52,623,228
+heavy-2.gif: 204592 KB; two shots 0.5 s apart: differ: 48367 pixels, box 304,52,623,228
+heavy-1.gif: 204640 KB; two shots 0.5 s apart: differ: 220377 pixels, box 304,52,770,598
+heavy-0.gif: 201904 KB; two shots 0.5 s apart: differ: 55339 pixels, box 304,52,623,228
+peak: 204640 KB
