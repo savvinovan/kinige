@@ -135,7 +135,8 @@ impl Store {
         self.read(|conn| {
             let mut statement = conn
                 .prepare(
-                    "SELECT l.id, l.at, l.client, l.tool, json_extract(l.args_json, '$.query'), l.outcome, l.entry_count \
+                    "SELECT l.id, l.at, l.client, l.tool, json_extract(l.args_json, '$.query'), l.outcome, l.entry_count, \
+                     CASE WHEN l.tool = 'set_setting' THEN json_extract(l.args_json, '$.key') END \
                      FROM mcp_log l WHERE l.id < COALESCE(?1, 9223372036854775807) \
                      ORDER BY l.id DESC LIMIT ?2",
                 )
@@ -150,6 +151,7 @@ impl Store {
                         query: row.get(4)?,
                         outcome: row.get(5)?,
                         count: row.get(6)?,
+                        setting: row.get(7)?,
                     })
                 })
                 .map_err(read_err)?;
