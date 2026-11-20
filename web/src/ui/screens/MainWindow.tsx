@@ -189,7 +189,11 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
   const voice = useVoice({ api, selected, reply, appendSent: feed.appendSent, refreshChats, changeReply });
   const forest = useForestPane({
     api,
-    initial: { view: initialSettings.forestView, mode: initialSettings.forestMode },
+    initial: {
+      view: initialSettings.forestView,
+      shown: initialSettings.forestShownView,
+      mode: initialSettings.forestMode,
+    },
     chatId: selected,
     ready: feed.loaded,
     refreshKey: `${mutations}:${feed.today}`,
