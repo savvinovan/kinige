@@ -2,7 +2,7 @@
 # Shots of slice 4b (the Settings window) in the real window on the macOS runner: scripts/screens/4b.sh <built Kinige.app>.
 # The data is synthetic (seed_demo) in a temporary directory; the real database is not touched. The result is $OUT (docs/screens/4b).
 # Input is accessibility actions only (ax.js): no mouse, no keyboard, no global shortcuts. Since KINIG-160 the settings file is gone:
-# the shots of its page (08, 09, 11, 12) and `settings-file.txt` stay in docs/screens/4b as history, and the large text is set in the window.
+# the shots of its page (08, 09, 09b, 11, 12) and `settings-file.txt` were deleted (git history keeps them), and the large text is set in the window.
 set -u
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 K="${K:-${RUNNER_TEMP:-/tmp}/kinige-screens}"
@@ -114,9 +114,12 @@ scroll_to "Show more"
 shoot_settings 07-access-log-long
 
 # ---- 6. Large text, set the way a person sets it (KINIG-160, ADR-0022: there is no settings file) ----
-# The helper opens the settings window with the screens driver and presses "Large"; no page of the window mentions a file any more.
+# The helper opens the settings window with the screens driver, goes to Appearance (the window was left on the access log) and presses
+# "Large"; it ends with the main window in front, so this scenario brings the settings window forward again for its own steps.
 set_text_size large
 in_settings
+drive_raw settings '{"kind":"front"}' > /dev/null
+sleep 1
 press "AI agent access"
 has "settings.json" && fail "the window mentions settings.json"
 has "Changed via" && fail "a \"Changed via\" line is shown"

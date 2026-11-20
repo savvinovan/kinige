@@ -83,7 +83,7 @@ jobs:
       # for 7a-probe and 7a-probe-windows, the probe; no other build has either. scripts/check-test-hooks.sh refuses a bundle with the fake
       # microphone unless KINIGE_ALLOW_FAKE_MIC=1, which only this workflow sets.
       # KINIG-92 (ADR-0016): a scenario that sets DRIVER=1 (7a and the screens-driver probe) needs the screens driver inside the app: the
-      # cargo feature and the web half, allowed by KINIGE_ALLOW_SCREENS_DRIVER=1, which only this workflow sets. Other scenarios do not get it.
+      # cargo feature and the web half, allowed by KINIGE_ALLOW_SCREENS_DRIVER=1, which only this workflow sets. The scenarios in the list below get it (since KINIG-160 these include every one that sets the large text with `set_text_size`); others do not.
       - name: Build the app
         env:
           KINIGE_IDENTIFIER: me.savvinov.kinige.accept

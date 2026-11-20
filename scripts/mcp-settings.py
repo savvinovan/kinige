@@ -73,11 +73,38 @@ settings = json.loads(expect("get_settings", tool("get_settings")))
 if sorted(settings) != ["agent_access", "markdown_copy", "shortcuts", "text_size", "writable"]:
     problems.append(f"get_settings keys: {sorted(settings)}")
 
-note("2. a shortcut is the user's: refused, nothing changes (the reply is the same object as before)")
+note("2. a raw database key name, a variant of a known name, a wrong value: invalid_argument")
+for key in ["mcp_enabled", "mcp_mode", "mcp_chats", "mirror_dir", "shortcut_capture", "Text_Size", " text_size"]:
+    expect(key, tool("set_setting", {"key": key, "value": "large"}), "invalid_argument")
+expect("wrong value", tool("set_setting", {"key": "text_size", "value": "huge"}), "invalid_argument")
+
+note("3. the one setting an agent may change: the text size; both windows switch at once")
+changed = json.loads(expect("text_size large", tool("set_setting", {"key": "text_size", "value": "large"})))
+if changed.get("text_size") != "large":
+    problems.append(f"set_setting reply: {changed}")
+if json.loads(expect("get_settings again", tool("get_settings"))).get("text_size") != "large":
+    problems.append("get_settings did not show the new size")
+
+note("4. Read only: reading works, a change is refused")
+set_key("mcp_mode", "read")
+read_tools = call("tools/list")["result"]["tools"]
+note(f"tools/list in Read only: {len(read_tools)} tools: " + ", ".join(sorted(t["name"] for t in read_tools)))
+if len(read_tools) != 6 or any(t["name"] in ("set_setting", "add_entry") for t in read_tools):
+    problems.append(f"expected 6 read tools in Read only, got {len(read_tools)}")
+expect("read mode get_settings", tool("get_settings"))
+expect("read mode set_setting", tool("set_setting", {"key": "text_size", "value": "normal"}), "mcp_read_only")
+
+note("5. access off (switched in the database, as the settings window would): every call is refused")
+set_key("mcp_enabled", "0")
+expect("off get_settings", tool("get_settings"), "mcp_disabled")
+expect("off set_setting", tool("set_setting", {"key": "text_size", "value": "normal"}), "mcp_disabled")
+set_key("mcp_enabled", "1")
+set_key("mcp_mode", "read_write")
+
+# These come last, so the newest rows of the access log (on top of its page) are the six "denied: settings window only".
+note("6. a shortcut, agent access and the copy folder are the user's: the answer is a setting_not_writable error and nothing changes")
 expect("shortcuts.capture", tool("set_setting", {"key": "shortcuts.capture", "value": "Ctrl+Alt+KeyJ"}), "setting_not_writable")
 expect("shortcuts.clipboard", tool("set_setting", {"key": "shortcuts.clipboard", "value": "Meta+KeyV"}), "setting_not_writable")
-
-note("3. agent access and the copy folder are the user's too")
 for key, value in [
     ("agent_access.enabled", False),
     ("agent_access.mode", "read"),
@@ -85,30 +112,6 @@ for key, value in [
     ("mirror.folder", "/tmp/elsewhere"),
 ]:
     expect(key, tool("set_setting", {"key": key, "value": value}), "setting_not_writable")
-
-note("4. a raw database key name, a variant of a known name, a wrong value: invalid_argument")
-for key in ["mcp_enabled", "mcp_mode", "mcp_chats", "mirror_dir", "shortcut_capture", "Text_Size", " text_size"]:
-    expect(key, tool("set_setting", {"key": key, "value": "large"}), "invalid_argument")
-expect("wrong value", tool("set_setting", {"key": "text_size", "value": "huge"}), "invalid_argument")
-
-note("5. the one setting an agent may change: the text size; both windows switch at once")
-changed = json.loads(expect("text_size large", tool("set_setting", {"key": "text_size", "value": "large"})))
-if changed.get("text_size") != "large":
-    problems.append(f"set_setting reply: {changed}")
-if json.loads(expect("get_settings again", tool("get_settings"))).get("text_size") != "large":
-    problems.append("get_settings did not show the new size")
-
-note("6. Read only: reading works, a change is refused")
-set_key("mcp_mode", "read")
-expect("read mode get_settings", tool("get_settings"))
-expect("read mode set_setting", tool("set_setting", {"key": "text_size", "value": "normal"}), "mcp_read_only")
-
-note("7. access off (switched in the database, as the settings window would): every call is refused")
-set_key("mcp_enabled", "0")
-expect("off get_settings", tool("get_settings"), "mcp_disabled")
-expect("off set_setting", tool("set_setting", {"key": "text_size", "value": "normal"}), "mcp_disabled")
-set_key("mcp_enabled", "1")
-set_key("mcp_mode", "read_write")
 
 proc.stdin.close()
 proc.wait(timeout=10)

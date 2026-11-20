@@ -101,7 +101,12 @@ press "Access log"
 has "changed a setting" || fail "the log has no \"changed a setting\" row"
 has "read the settings" || fail "the log has no \"read the settings\" row"
 has "denied: settings window only" || fail "the log has no \"denied: settings window only\" row"
+# The newest rows (on top) are the six refusals; the older rows are scrolled into the second shot.
 shoot_settings 04-access-log
+echo "scroll to the older rows: $(ax scroll "$(app_pid)" "changed a setting: text size" 2>&1)"
+sleep 1
+has "changed a setting: text size" || fail "the log has no \"changed a setting: text size\" row"
+shoot_settings 04b-access-log-older
 
 # ---- 5. The settings window in large text ----
 press "Appearance"

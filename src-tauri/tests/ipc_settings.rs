@@ -1,5 +1,5 @@
-//! The settings window (slice 4b, ADR-0010) through IPC on a mock runtime with the real capabilities: the "window -> commands" matrix,
-//! negative tests, the `settings-changed` and `open-message` events, the "Settings file".
+//! The settings window (slice 4b, ADR-0022) through IPC on a mock runtime with the real capabilities: the "window -> commands" matrix,
+//! negative tests, the `settings-changed` and `open-message` events, and `get_settings_file` unknown to every window.
 
 // The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
 // of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
