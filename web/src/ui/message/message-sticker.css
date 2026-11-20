@@ -6,6 +6,9 @@
 .message--sticker .message__sticker {
   position: relative;
   display: block;
+  /* Only as wide as the picture: the pill is against the picture's corner, not the corner of a wider row (the shot of the first screens run). */
+  width: fit-content;
+  max-width: 100%;
 }
 
 /* Nothing but the picture and its pill: no minimum width (the picture's own box is the width), no clip of the picture by the bubble's corners. */

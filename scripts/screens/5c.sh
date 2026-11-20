@@ -55,12 +55,14 @@ labels() {
   if [ "$UI" = "ru" ]; then
     L_INBOX="Входящие"; L_TRASH="Корзина"; L_SEARCH="Поиск"; L_NONE="Ничего не найдено."; L_SETTINGS="Настройки"
     L_EMOJI="Эмодзи"; L_TAB_STICKERS="Стикеры"; L_TAB_GIFS="GIF"; L_STICKER="Стикер $CAT"; L_ADD_PACK="Добавить набор стикеров"
-    L_LINK="Ссылка на набор"; L_ADD="Добавить"; L_NO_TOKEN="Добавьте токен бота в Настройки → Стикеры"; L_PROGRESS="Загружено"; L_ADDED="Добавлен набор"
+    L_LINK="Ссылка на набор"; L_ADD="Добавить"; L_NO_TOKEN="Добавьте токен бота в Настройках"; L_PROGRESS="Загружено"; L_ADDED="Добавлен набор"
+    L_OPEN_SETTINGS="Открыть Настройки"; L_TABS="Эмодзи, стикеры и GIF"
     L_TOKEN_FIELD="Токен бота Telegram"; L_SAVE="Сохранить"; L_SAVED="Токен сохранён"; L_DONE="Готово"; L_CAT_ENTRY="Этот кот мой любимый"
   else
     L_INBOX="Inbox"; L_TRASH="Trash"; L_SEARCH="Search"; L_NONE="Nothing found."; L_SETTINGS="Settings"
     L_EMOJI="Emoji"; L_TAB_STICKERS="Stickers"; L_TAB_GIFS="GIFs"; L_STICKER="Sticker $CAT"; L_ADD_PACK="Add a sticker pack"
-    L_LINK="Pack link"; L_ADD="Add"; L_NO_TOKEN="Add your bot token in Settings → Stickers"; L_PROGRESS="Downloading"; L_ADDED="Added"
+    L_LINK="Pack link"; L_ADD="Add"; L_NO_TOKEN="Add your bot token in Settings"; L_PROGRESS="Downloading"; L_ADDED="Added"
+    L_OPEN_SETTINGS="Open Settings"; L_TABS="Emoji, stickers and GIFs"
     L_TOKEN_FIELD="Telegram bot token"; L_SAVE="Save"; L_SAVED="Token saved"; L_DONE="Done"; L_CAT_ENTRY="Этот кот мой любимый"
   fi
 }
@@ -83,7 +85,11 @@ type_into() {
   sleep "$PAUSE"
 }
 escape_key() { drive "$(drive_window)" '{"kind":"key","key":"Escape","code":"Escape"}' > /dev/null 2>&1 || true; sleep "$PAUSE"; }
-open_panel() { press "$L_EMOJI" button; sleep 2; }
+# The panel is a toggle: the state is read from the window first, so a panel that stayed open is not closed by the press that should open it.
+open_panel() { has "$L_TABS" || press "$L_EMOJI" button; sleep 2; }
+close_panel() { if has "$L_TABS"; then press "$L_EMOJI" button; fi; sleep 2; }
+# A scroll that may find nothing (the feed draws the entries near the window only): no scenario error either way.
+scroll_quiet() { drive_raw "$(drive_window)" "{\"kind\":\"scroll\",$(driver_query "$1")}" > /dev/null 2>&1 || true; sleep "$PAUSE"; }
 count_where() { sqlw "select count(*) from $1"; }
 
 # ---- 1. The Stickers tab: the strip of packs and the grid under the headings ----
@@ -95,28 +101,24 @@ sleep 4
 detect_language
 [ "$(count_where "sticker_pack")" = "2" ] || fail "the seed has not two packs (Cats and From Telegram)"
 open_panel
-press "$L_TAB_STICKERS"
+press "$L_TAB_STICKERS" tab
 wait_name "$L_STICKER" 10000 || fail "the Stickers tab shows no sticker"
 sleep 2
 shoot 01-stickers-tab
 
 # ---- 2. "+" without a token: the dialog says where to add it ----
 press "$L_ADD_PACK" button
-wait_name "$L_LINK" 10000 || fail "the add-pack dialog did not open"
-type_into "$L_LINK" "$LINK"
+wait_name "$L_NO_TOKEN" 10000 || fail "the add-pack dialog without a token does not say where to add it"
 sleep 2
 shoot 02-add-without-token
-has "$L_NO_TOKEN" || fail "the dialog without a token does not say where to add it"
 [ -s "$OUT/requests.txt" ] && fail "a request reached the fake server before a token was saved"
-escape_key
-escape_key
 
-# ---- 3. Settings: the token, saved, with "Remove" ----
-press "$L_SETTINGS"
+# ---- 3. Settings, from the dialog's "Open Settings": the token, saved, with "Remove" ----
+press "$L_OPEN_SETTINGS" button
 wait_for_settings
 in_settings
 # The Stickers page of Settings (the route is named like the tab).
-press "$L_TAB_STICKERS"
+has "$L_TOKEN_FIELD" || press "$L_TAB_STICKERS"
 wait_name "$L_TOKEN_FIELD" 10000 || fail "Settings has no token field"
 type_into "$L_TOKEN_FIELD" "$TOKEN"
 press "$L_SAVE" button
@@ -126,10 +128,14 @@ shoot_settings 03-settings-token
 [ "$(sqlw "select value from app_setting where key = 'telegram_token_saved'")" = "1" ] || fail "the saved flag is not set"
 if sqlite3 "$K/data/kinige.db" .dump | grep -q "fake-token-for-screens"; then fail "the token is in the database"; fi
 in_main
+# The dialog of step 2 may still be open behind the Settings window: it is closed by its Cancel (or has closed itself), and the panel is closed too.
+has "$L_NO_TOKEN" && press "Отмена" button
+has "$L_NO_TOKEN" && press "Cancel" button
+close_panel
 
 # ---- 4-5. Adding the pack: progress, then the result with the skipped one ----
 open_panel
-press "$L_TAB_STICKERS"
+press "$L_TAB_STICKERS" tab
 press "$L_ADD_PACK" button
 wait_name "$L_LINK" 10000 || fail "the add-pack dialog did not open"
 type_into "$L_LINK" "$LINK"
@@ -150,11 +156,11 @@ sleep 2
 # ---- 6. A sticker sent at once: no bubble, the draft stays ----
 STICKERS_BEFORE="$(sqlw "select count(*) from attachment where sticker = 1")"
 open_panel
-press "$L_TAB_STICKERS"
+press "$L_TAB_STICKERS" tab
 press "$L_STICKER" button
 sleep 3
 [ "$(sqlw "select count(*) from attachment where sticker = 1")" = "$((STICKERS_BEFORE + 1))" ] || fail "the click did not send a sticker"
-escape_key
+close_panel
 scroll_to "Как тебе новые наклейки"
 sleep 3
 shoot 06-feed-stickers
@@ -168,10 +174,10 @@ shoot 07-reimported
 
 # ---- 9. The GIFs tab: the journal's own GIFs ----
 open_panel
-press "$L_TAB_GIFS"
+press "$L_TAB_GIFS" tab
 sleep 3
 shoot 09-gifs-tab
-escape_key
+close_panel
 
 # ---- 10. The GIFs in the feed: the small one plays, the large one shows its first frame with a badge ----
 scroll_to "cat-large"
@@ -189,7 +195,7 @@ press "GIF" button
 sleep 4
 PEAK=0
 for n in 1 2 3 4 5 6 7; do
-  scroll_to "heavy-$((n % 6)).gif"
+  scroll_quiet "heavy-$((7 - n)).gif"
   sleep 3
   RSS="$(web_rss)"
   echo "after scrolling to GIF $n: $RSS" >> "$OUT/gif-memory.txt"
@@ -241,7 +247,7 @@ set_language en
 restart_app
 [ "$UI" = "en" ] || fail "the window is not in English after the restart"
 open_panel
-press "$L_TAB_STICKERS"
+press "$L_TAB_STICKERS" tab
 wait_name "$L_STICKER" 10000 || fail "the English Stickers tab shows no sticker"
 sleep 2
 shoot 13-english
@@ -250,7 +256,7 @@ shoot 13-english
 sqlw "insert or replace into app_setting(key, value) values ('text_size', 'large')"
 restart_app
 open_panel
-press "$L_TAB_STICKERS"
+press "$L_TAB_STICKERS" tab
 sleep 3
 shoot 14-large-text
 sqlw "insert or replace into app_setting(key, value) values ('text_size', 'normal')"
@@ -260,7 +266,7 @@ restart_app
 echo "window: $(ax resize "$(app_pid)" 640 800)"
 sleep 3
 open_panel
-press "$L_TAB_STICKERS"
+press "$L_TAB_STICKERS" tab
 sleep 3
 shoot 15-narrow-640
 echo "window: $(ax resize "$(app_pid)" 1280 800)"
