@@ -111,7 +111,8 @@ fn a_change_blocked_in_register_blocks_neither_key_presses_nor_the_overlay() {
         entered_rx.recv_timeout(Duration::from_secs(10)).unwrap();
         // The change sits in `register` with the change lock held. A key press and the window's read still answer at once.
         let (done, answered) = mpsc::channel();
-        scope.spawn(|| {
+        let (hotkeys, store) = (&hotkeys, &store);
+        scope.spawn(move || {
             let kind = hotkeys.kind_for(|accelerator| accelerator == "Alt+Shift+KeyV");
             let mut settings = store.get_settings().unwrap();
             hotkeys.overlay(&mut settings);
