@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { JournalGif } from "../../api/generated/JournalGif";
 import type { StickerLibrary } from "../../api/generated/StickerLibrary";
 import { MockApi } from "../../api/MockApi";
@@ -27,6 +28,7 @@ const LIBRARY = demoLibrary(
 );
 
 function Plate({ tab, children, focus = false }: { tab: "stickers" | "gifs"; children: ReactNode; focus?: boolean }) {
+  const { t } = useTranslation();
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (focus) host.current?.querySelector<HTMLElement>(".sticker-panel__cell, .gif-panel__cell")?.focus();
@@ -37,13 +39,13 @@ function Plate({ tab, children, focus = false }: { tab: "stickers" | "gifs"; chi
         <div className="story-picker-plate" ref={host}>
           <Tabs
             tabs={[
-              { value: "emoji", label: "Emoji" },
-              { value: "stickers", label: "Stickers" },
-              { value: "gifs", label: "GIFs" },
+              { value: "emoji", label: t("stickers.tabs.emoji") },
+              { value: "stickers", label: t("stickers.tabs.stickers") },
+              { value: "gifs", label: t("stickers.tabs.gifs") },
             ]}
             value={tab}
             onChange={noop}
-            label="Emoji, stickers and GIFs"
+            label={t("stickers.tabs.label")}
             idPrefix="story"
           />
           <div className="picker-tabs__panel">{children}</div>
