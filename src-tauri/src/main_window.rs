@@ -20,6 +20,8 @@ pub fn on_close_requested<R: Runtime>(window: &Window<R>, api: &CloseRequestApi)
 
 /// Tells the page, then hides the window. Public for the IPC tests, which cannot build a `CloseRequestApi`.
 pub fn hide<R: Runtime>(window: &Window<R>) {
-    let _ = window.app_handle().emit_to(MAIN_LABEL, MAIN_WINDOW_HIDING, ());
+    let _ = window
+        .app_handle()
+        .emit_to(MAIN_LABEL, MAIN_WINDOW_HIDING, ());
     let _ = window.hide();
 }

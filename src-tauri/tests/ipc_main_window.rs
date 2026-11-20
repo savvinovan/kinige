@@ -43,7 +43,9 @@ fn closing_the_main_window_tells_only_its_page_and_carries_nothing() {
 
     hide(&main.as_ref().window());
 
-    wait_until("the event reaches main", || !to_main.lock().unwrap().is_empty());
+    wait_until("the event reaches main", || {
+        !to_main.lock().unwrap().is_empty()
+    });
     assert_eq!(*to_main.lock().unwrap(), ["null"], "one event, no payload");
     assert!(to_capture.lock().unwrap().is_empty());
     assert!(to_settings.lock().unwrap().is_empty());
