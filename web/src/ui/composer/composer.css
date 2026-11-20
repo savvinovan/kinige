@@ -1,5 +1,11 @@
 /* Composer: the input field with buttons. Tokens only. */
+/* KINIG-76: when the expanded forest takes the window's height the feed pane shrinks to nothing, but its list keeps its own padding and the pane is
+   positioned, so the last entry painted (and caught clicks) over the field below it. The composer is a positioned layer of its own, after the feed in
+   the document: it paints and answers above the feed. z-index 0, not above: the "Drop to attach" overlay (z-index 1) stays over it, as before. The
+   shadow of "Jump to latest" is not clipped, which a clip on the pane would have done. */
 .composer {
+  position: relative;
+  z-index: 0;
   box-sizing: border-box;
   padding: var(--space-3) var(--layout-feed-padding-inline) var(--layout-feed-padding-block);
   background: var(--color-surface-paper);

@@ -5,9 +5,6 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  /* KINIG-76: when the expanded forest takes the window's height the pane shrinks to nothing, but its list keeps its own padding and so still paints
-     (and catches clicks) over the field below it. The pane clips it; the list scrolls inside as before. */
-  overflow: hidden;
 }
 
 .feed-pane > .feed-scroll {

@@ -78,7 +78,7 @@ for (const scale of ["default", "large"]) {
 }
 
 // A window 28 px lower than the smallest (the runner's 400 px outer window has a 372 px page, the title bar taking the rest): the expanded board still
-// leaves the field whole and uncovered, the feed gives way to nothing and shows nothing over it. Fails without `overflow: hidden` on `.feed-pane`.
+// leaves the field whole and uncovered, the feed gives way to nothing and shows nothing over it. Fails without the composer's own layer (`composer.css`).
 test("the expanded board at 372 px of height at large text: the feed squeezed to nothing paints nothing over the field", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 372 });
   await open(page, FOREST("expanded-above-the-feed"), "large");
