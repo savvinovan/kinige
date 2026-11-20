@@ -16,6 +16,7 @@ const CHATS = withTints([
   { id: INBOX_ID, name: "", isInbox: true, emoji: "📥", count: 1724 },
   { id: "work", name: "Работа", emoji: "💼", count: 987, pinned: true },
   { id: "books", name: "Книги", emoji: "📚", count: 1234 },
+  { id: "long", name: "Очень длинное название чата, которое не помещается в строку: ".repeat(4).slice(0, 200), emoji: "📝", count: 3 },
 ]);
 
 const MESSAGES = [
@@ -91,6 +92,28 @@ export const NarrowHidden: Story = {
       </div>
     ),
   ],
+};
+
+/** KINIG-150: the bar names the open chat at its left end; the switch stays at the right end, where the Inbox story has it. */
+export const TitleShortName: Story = { args: { selectedChatId: "books", forest: pane("strip") } };
+
+/** A 200-character name: one line cut with an ellipsis, the switch does not move. Shown and hidden, in the 640 px window. */
+export const TitleVeryLongName: Story = { args: { selectedChatId: "long", forest: pane("strip") } };
+export const TitleVeryLongNameHidden: Story = {
+  args: { selectedChatId: "long", forestMenu: { hidden: true, onToggle: noop } },
+  decorators: [
+    (Story) => (
+      <div className="screen-narrow">
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+/** English, large text, a long name, the forest hidden. */
+export const TitleLargeTextEnglish: Story = {
+  args: { selectedChatId: "long", forestMenu: { hidden: true, onToggle: noop } },
+  globals: { language: "en", textScale: "large" },
 };
 
 /** English, large text. */
