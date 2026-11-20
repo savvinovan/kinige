@@ -90,6 +90,15 @@ pub enum Step {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         nth: Option<u32>,
     },
+    /// Puts the keyboard focus on the element (KINIG-138): what Tab does, and the only way a scenario shows UI that appears with the focus inside
+    /// it (the hover bar of an entry), because a script cannot hover. It sends no pointer event and presses nothing.
+    Focus {
+        name: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        role: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        nth: Option<u32>,
+    },
     // Struct variants, not unit ones: serde ignores `deny_unknown_fields` for a unit variant of a tagged enum.
     Text {},
     Front {},
@@ -246,6 +255,7 @@ pub fn parse_request(file_id: &str, bytes: &[u8]) -> Result<Request, Reject> {
                 | "wait"
                 | "has"
                 | "scroll"
+                | "focus"
                 | "text"
                 | "front"
                 | "hide"
@@ -276,6 +286,7 @@ impl Step {
         match self {
             Step::Press { name, role, nth }
             | Step::Menu { name, role, nth }
+            | Step::Focus { name, role, nth }
             | Step::Scroll { name, role, nth } => name_ok(name) && role_ok(role) && nth_ok(nth),
             Step::Type { name, text } => {
                 name.as_deref().is_none_or(name_ok) && text.chars().count() <= MAX_TYPED_CHARS

@@ -27,6 +27,7 @@ export type Step =
   | { kind: "wait"; name: string; role?: string; gone?: boolean; timeoutMs: number }
   | { kind: "has"; name: string; role?: string }
   | ({ kind: "scroll" } & Query)
+  | ({ kind: "focus" } & Query)
   | { kind: "text" };
 
 export type Answer = { ok: true; value?: string } | { ok: false; error: string };
@@ -104,6 +105,14 @@ async function run(step: Step, root: Document, patience: number): Promise<string
     case "scroll": {
       const element = await need(root, step, patience);
       element.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+      return undefined;
+    }
+    case "focus": {
+      // KINIG-138: the keyboard focus, as Tab leaves it. A script cannot hover, so this is how a scenario shows what appears with the focus inside
+      // (the hover bar of an entry); no pointer event is sent and nothing is pressed.
+      const element = await need(root, step, patience);
+      element.focus();
+      if (element.ownerDocument.activeElement !== element) throw new Error(`could not focus: ${describe(step)}`);
       return undefined;
     }
     case "text":

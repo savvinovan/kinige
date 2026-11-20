@@ -36,7 +36,7 @@ Screenshots of the real window for acceptance are captured not by this Mac but b
 
 ## The screens driver (KINIG-92, ADR-0016)
 
-A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `7b`, `screens-driver-probe*`) clicks and reads by accessible name through the test build itself.
+A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `7b`, `5a`, `screens-driver-probe*`) clicks and reads by accessible name through the test build itself.
 
 **How it is switched on:**
 - `KINIGE_SCREENS_DRIVER=1` points `virtual:kinige-driver` at `scripts/screens/driver.ts`.
@@ -46,7 +46,8 @@ A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `7b`, `screens-driver-probe
 **How a step runs:**
 - The script writes `requests/<id>.json` into `KINIGE_SCREENS_DRIVER_DIR`, and the app answers in `replies/<id>.json`.
 - The shell side is `drive`, `press`, `wait_name` and `has` in `lib.sh`; the PowerShell side is `Drive`, `Press`, `Wait-Name` and `Has` in `lib-windows.ps1`.
-- **Steps:** press, menu, type, key, wait, has, scroll, text, front, hide (`hide` is the capture window's own request to hide, done by the app; `front` on it is the app's real show). There is no script eval and no IPC passthrough.
+- **Steps:** press, menu, type, key, wait, has, scroll, focus, text, front, hide (`hide` is the capture window's own request to hide, done by the app; `front` on it is the app's real show). There is no script eval and no IPC passthrough.
+- **`focus`** (KINIG-138) puts the keyboard focus on an element and sends no pointer event. A script cannot hover, so it is how a scenario shows UI that appears with the focus inside it, such as an entry's hover bar. In `lib.sh` it is `focus_on <text> [role] [nth]`.
 
 New scenarios use the driver. AX and SendKeys are for native UI only: file pickers, the tray and native menus, resizing the window. Global hotkeys are never simulated.
 

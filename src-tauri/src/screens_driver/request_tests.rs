@@ -38,6 +38,7 @@ fn every_step_kind_parses() {
         r#"{"kind":"wait","name":"a","gone":true,"timeoutMs":5000}"#,
         r#"{"kind":"has","name":"a"}"#,
         r#"{"kind":"scroll","name":"a"}"#,
+        r#"{"kind":"focus","name":"a","role":"button","nth":1}"#,
         r#"{"kind":"text"}"#,
         r#"{"kind":"front"}"#,
         r#"{"kind":"hide"}"#,

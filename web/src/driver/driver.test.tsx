@@ -112,6 +112,25 @@ describe("press, menu, scroll", () => {
     expect(scroll).toHaveBeenCalled();
     expect((await runStep({ kind: "scroll", name: "Nothing" }, FAST)).ok).toBe(false);
   });
+
+  it("focuses an element and sends no pointer event or click (KINIG-138)", async () => {
+    page(`<div><button aria-label="Copy">c</button><button aria-label="Copy 2">d</button></div>`);
+    const seen: string[] = [];
+    for (const type of ["pointerdown", "mousedown", "click", "pointerenter", "mouseover"]) document.addEventListener(type, () => seen.push(type), true);
+    expect(await runStep({ kind: "focus", name: "Copy 2" }, FAST)).toEqual({ ok: true });
+    expect(document.activeElement).toBe(document.querySelectorAll("button")[1]);
+    expect(seen).toEqual([]);
+    expect(await runStep({ kind: "focus", name: "Copy", nth: 1 }, FAST)).toEqual({ ok: true });
+    expect(document.activeElement).toBe(document.querySelectorAll("button")[1]);
+    const missing = await runStep({ kind: "focus", name: "Nothing" }, FAST);
+    expect(missing.ok).toBe(false);
+  });
+
+  it("says when an element cannot take the focus", async () => {
+    page(`<p aria-label="Row">Row</p>`);
+    const answer = await runStep({ kind: "focus", name: "Row" }, FAST);
+    expect(answer).toEqual({ ok: false, error: expect.stringContaining("could not focus") });
+  });
 });
 
 describe("type and key", () => {

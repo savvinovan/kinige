@@ -184,6 +184,26 @@ press() {
   sleep "$PAUSE"
 }
 
+# `focus_on <text> [role] [nth]`: the keyboard focus on an element (the driver's `focus` step, KINIG-138). A script cannot hover, so this is how a
+# scenario shows what appears with the focus inside it (the hover bar of an entry). The driver only; nothing is pressed.
+focus_on() {
+  local result query
+  if [ "$DRIVER" != "1" ]; then
+    echo "focus $*: needs the screens driver"
+    fail "no focus without the driver: $*"
+    return 0
+  fi
+  query="$(driver_query "$1" "${2:-}")"
+  [ -n "${3:-}" ] && query="$query,\"nth\":$3"
+  if drive "$(drive_window)" "{\"kind\":\"focus\",$query}"; then result=focused; else result="$DRIVE_ERROR"; fi
+  echo "focus $*: $result"
+  case "$result" in
+    focused) ;;
+    *) fail "not focused: $*" ;;
+  esac
+  sleep "$PAUSE"
+}
+
 # A right click without a mouse: the AX action AXShowMenu on a button, or the driver's `contextmenu` event (the context menu of a sidebar
 # chat opens).
 show_menu() {
