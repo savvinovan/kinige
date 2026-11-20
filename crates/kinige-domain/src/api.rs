@@ -278,7 +278,7 @@ pub struct Settings {
     /// How much of the forest is shown above the feed (slice 6); local, not synced.
     pub forest_view: ForestView,
     /// The view "Show forest" brings back: the last shown one, the strip or the board, never `hidden` (KINIG-150); local,
-    /// not synced, not in `settings.json`.
+    /// not synced, not readable by agents (ADR-0022).
     pub forest_shown_view: ForestView,
     /// What an expanded forest shows: the board or the calendar (slice 6).
     pub forest_mode: ForestMode,

@@ -22,7 +22,6 @@ DRIVER=1
 
 export AX_TIMEOUT=30
 
-SETTINGS_FILE="$K/data/settings.json"
 L_INBOX="Inbox"; L_TOGGLE="Forest"; L_EXPAND="Expand forest"; L_COLLAPSE="Collapse forest"; L_PROJECTS="Проекты"; L_LONG="Очень длинное"
 L_MIC="Record voice note"; L_RECORDING="Recording,"; L_STOPPED="Recording stopped"; L_SEND_VOICE="Send the voice note"; L_TRASH_REC="Discard the recording"
 
@@ -49,23 +48,6 @@ set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
 setting() { sqlw "select coalesce(value, '') from app_setting where key = '$1'"; }
 voice_in_chat() {
   sqlw "select count(*) from attachment a join message m on m.id = a.message_id join chat c on c.id = m.chat_id where a.filename like 'voice-%' and c.title = '$1' and m.deleted_at is null"
-}
-
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
 }
 
 # Whether the capture window is on screen: a window above the normal layer, 500 to 700 px wide (the icon's menu is narrower).
@@ -165,11 +147,11 @@ press "${L_INBOX}"
 sleep 2
 
 # ---- 2. Large text in the default window (the runner's screen limits it to 1024 x 683, whatever `resize 1280 800` asks) ----
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 sleep 2
 shoot 03-large-text-default-window
 check_page_scroll "the default window (1024x683 outer on the runner) large text, the strip"
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 
 # ---- 3. The board is hidden and comes back as the board, also after kill -9 ----
 press "${L_EXPAND}"
@@ -241,7 +223,7 @@ sleep 2
 shoot 09-note-sent
 
 # ---- 6. The smallest window with large text: the page never scrolls, the field is whole ----
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 resize 640 400
 check_page_scroll "640x400 large text, the forest hidden"
 shoot 10-min-large-hidden
@@ -255,7 +237,7 @@ press "${L_EXPAND}"
 has "${L_COLLAPSE}" || fail "the board did not open at 640x400"
 check_page_scroll "640x400 large text, the board"
 shoot 12-min-large-board
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 check_page_scroll "640x400 normal text, the board"
 shoot 13-min-normal-board
 resize 1280 800

@@ -32,7 +32,7 @@ backup: BackupStatus,
 forestView: ForestView, 
 /**
  * The view "Show forest" brings back: the last shown one, the strip or the board, never `hidden` (KINIG-150); local,
- * not synced, not in `settings.json`.
+ * not synced, not readable by agents (ADR-0022).
  */
 forestShownView: ForestView, 
 /**
