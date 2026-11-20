@@ -118,7 +118,8 @@ async function run(step: Step, root: Document, patience: number): Promise<string
 
 /**
  * The sizes that decide whether the page scrolls (KINIG-76): the window's inner size and the document's scrolling element, as `name=value`
- * lines. A read only; the page scrolls in a direction when its scroll size is larger than its client size. Numbers only, no page content.
+ * lines, then the first elements that stand lower than the window (`lower.N=tag.class top bottom height`, so a scroll bar can be traced to its
+ * element). A read only; the page scrolls in a direction when its scroll size is larger than its client size. Numbers and class names, no page content.
  */
 function pageMetrics(root: Document): string {
   const view = root.defaultView;
@@ -134,7 +135,19 @@ function pageMetrics(root: Document): string {
     ["body.scrollWidth", body?.scrollWidth ?? 0],
     ["body.scrollHeight", body?.scrollHeight ?? 0],
   ];
-  return lines.map(([name, value]) => `${name}=${value}`).join("\n");
+  const text = lines.map(([name, value]) => `${name}=${value}`);
+  // The outermost elements that stand lower than the window (the first six, in document order): their tag, class and sizes, no page content.
+  const height = view?.innerHeight ?? 0;
+  let shown = 0;
+  for (const element of Array.from(root.querySelectorAll("body *"))) {
+    if (shown >= 6) break;
+    const box = element.getBoundingClientRect();
+    if (box.height <= 0 || box.bottom <= height + 1) continue;
+    const name = `${element.tagName.toLowerCase()}.${(element.getAttribute("class") ?? "").split(" ")[0]}`;
+    text.push(`lower.${shown}=${name} top=${Math.round(box.top)} bottom=${Math.round(box.bottom)} height=${Math.round(box.height)}`);
+    shown += 1;
+  }
+  return text.join("\n");
 }
 
 /** The element of the query, waiting up to `patience` for it to show; an error names what was not found. */
