@@ -1,10 +1,10 @@
 # Peak resident size (KB) of the web content process, sampled while the chat 'GIF' (six GIFs near 7.5 MiB and one of 1.96 megapixels, all under the autoplay limits) scrolls past
-before opening the chat: 231152
-after scrolling to GIF 1: 232976
-after scrolling to GIF 2: 231552
-after scrolling to GIF 3: 214112
-after scrolling to GIF 4: 204528
-after scrolling to GIF 5: 207232
-after scrolling to GIF 6: 207264
-after scrolling to GIF 7: 207360
-peak: 232976 KB
+before opening the chat: 223040
+after scrolling to GIF 1: 223808
+after scrolling to GIF 2: 223936
+after scrolling to GIF 3: 225040
+after scrolling to GIF 4: 225440
+after scrolling to GIF 5: 225456
+after scrolling to GIF 6: 225520
+after scrolling to GIF 7: 227616
+peak: 227616 KB
