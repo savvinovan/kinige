@@ -63,6 +63,11 @@ rmcp = { version = "=3.8.0", default-features = false, features = ["server"] }
 # The Unix socket and timers of the MCP server (tokio is already in the tree through tauri).
 tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros", "rt"] }
 
+# The Bot API client of slice 5c (ADR-0021): the only outbound HTTP of the app. `rustls` is the aws-lc-rs provider with the OS trust store
+# (rustls-platform-verifier); `system-proxy` reads the macOS and Windows proxy settings (an app started from Finder has no environment
+# variables). No `http2`, `charset`, `gzip` or cookies: HTTP/1.1 and identity bodies only. No `json` or `stream`: the body is read by chunks.
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "system-proxy"] }
+
 [dev-dependencies]
 # The hooks for the tests of this crate and of the store (resolver 2+ takes the features of dev-dependencies only for the test targets).
 kinige = { path = ".", features = ["test-hooks"] }
