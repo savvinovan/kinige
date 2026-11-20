@@ -160,8 +160,8 @@ jobs:
 
   # Slice 5c (KINIG-151, ADR-0021), by hand only: `gh workflow run ci.yml --ref <branch>`. Does a second ad-hoc-signed build read the keychain
   # item the first build wrote? `spikes/5c-keychain` is built twice with different tags (two binaries, as two builds of the app are), both
-  # signed ad hoc like the app, and run on the runner's own keychain and on a new unlocked one. The job prints the result and never fails
-  # on a keychain error: a human reads the log (a prompt that nobody can answer shows as a timeout, status 142).
+  # signed ad hoc like the app, and run on the runner's keychain (`run.sh`). The job prints every result and never fails on a keychain
+  # error: a human reads the log (a prompt that nobody can answer shows as a timeout, status 142).
   keychain:
     if: github.event_name == 'workflow_dispatch'
     runs-on: macos-15
@@ -182,34 +182,8 @@ jobs:
             codesign -dv "$RUNNER_TEMP/kc-$tag.bin" 2>&1 | grep -E "Identifier|CDHash|Signature"
           done
 
-      - name: Build A writes, build B reads (the runner's own keychain)
-        run: |
-          run() { perl -e 'alarm 60; exec @ARGV' "$@"; echo "  exit status $?"; }
-          security list-keychains -d user; security default-keychain
-          run "$RUNNER_TEMP/kc-a.bin" write
-          run "$RUNNER_TEMP/kc-b.bin" read
-          run "$RUNNER_TEMP/kc-a.bin" read
-          run "$RUNNER_TEMP/kc-b.bin" write
-          run "$RUNNER_TEMP/kc-a.bin" read
-          run "$RUNNER_TEMP/kc-b.bin" delete
-          run "$RUNNER_TEMP/kc-a.bin" delete
-
-      - name: Build A writes, build B reads (a new unlocked keychain)
-        run: |
-          run() { perl -e 'alarm 60; exec @ARGV' "$@"; echo "  exit status $?"; }
-          security create-keychain -p kc-check "$RUNNER_TEMP/kc.keychain-db"
-          security set-keychain-settings -t 3600 -u "$RUNNER_TEMP/kc.keychain-db"
-          security unlock-keychain -p kc-check "$RUNNER_TEMP/kc.keychain-db"
-          security list-keychains -d user -s "$RUNNER_TEMP/kc.keychain-db"
-          security default-keychain -d user -s "$RUNNER_TEMP/kc.keychain-db"
-          security default-keychain
-          run "$RUNNER_TEMP/kc-a.bin" write
-          run "$RUNNER_TEMP/kc-b.bin" read
-          run "$RUNNER_TEMP/kc-a.bin" read
-          run "$RUNNER_TEMP/kc-b.bin" write
-          run "$RUNNER_TEMP/kc-a.bin" read
-          run "$RUNNER_TEMP/kc-b.bin" delete
-          run "$RUNNER_TEMP/kc-a.bin" delete
+      - name: Build A writes, build B reads
+        run: bash spikes/5c-keychain/run.sh "$RUNNER_TEMP/kc-a.bin" "$RUNNER_TEMP/kc-b.bin"
 
   # Rust coverage -> Codecov (badges in the README, a comment in the PR). Informational: the threshold does not fail CI (codecov.yml).
   # A separate job: the instrumented build (cargo llvm-cov) does not share artifacts with `rust` and runs in parallel with it.
