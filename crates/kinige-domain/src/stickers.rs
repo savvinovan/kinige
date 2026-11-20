@@ -118,6 +118,14 @@ pub struct StickerPackAdded {
     pub skipped: u32,
 }
 
+/// What Settings knows about the bot token: only whether one is saved. The token never comes back.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "TelegramTokenState.ts")]
+pub struct TelegramTokenState {
+    pub saved: bool,
+}
+
 /// The pack name of a link: `https://t.me/addstickers/<name>`, `t.me/addstickers/<name>` or the bare name. Our rule, not Telegram's
 /// (`^[A-Za-z0-9_]{1,64}$`; Telegram's own are not verified). Anything else, a query or a second segment included, is `None`.
 pub fn pack_name(input: &str) -> Option<&str> {

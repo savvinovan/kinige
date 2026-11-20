@@ -60,6 +60,13 @@
     "allow-microphone-hold",
     "allow-read-voice-for-waveform",
     "allow-set-attachment-waveform",
+    "allow-get-sticker-library",
+    "allow-add-sticker-pack",
+    "allow-cancel-sticker-pack",
+    "allow-remove-sticker-pack",
+    "allow-send-sticker",
+    "allow-list-journal-gifs",
+    "allow-send-gif-again",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

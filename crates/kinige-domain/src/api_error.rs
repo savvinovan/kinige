@@ -122,6 +122,11 @@ pub enum ErrorCode {
     TelegramTokenInvalid,
     /// The OS secret store refused or is locked: the token is neither saved nor read (there is no file fallback).
     SecretStoreUnavailable,
+    /// The OS asked for access to the saved token and it was dismissed or denied (macOS asks once after an update, ADR-0021): the job
+    /// wrote nothing. "Remove" and saving the token again takes the item over.
+    SecretStoreDenied,
+    /// The pack download was cancelled: nothing was added. Not an error for the window, which just closes the progress.
+    StickerPackCancelled,
     Internal,
 }
 

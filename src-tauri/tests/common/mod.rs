@@ -4,6 +4,8 @@
 #![allow(dead_code)]
 
 // The client of the MCP server over the Unix socket; there is no server on Windows (slice 10a).
+pub mod bot_env;
+pub mod fake_bot;
 #[cfg(unix)]
 pub mod mcp;
 pub mod voice;
@@ -12,6 +14,8 @@ use kinige_lib::builder;
 use kinige_lib::capture::CaptureShell;
 use kinige_lib::hotkeys::{Hotkeys, Refused, Registrar};
 use kinige_lib::recovery::Recovery;
+use kinige_lib::stickers::secret::MemorySecrets;
+use kinige_lib::stickers::{BotClient, StickerShell};
 use kinige_store::{Store, StoreOptions};
 use serde_json::{Value, json};
 use std::collections::HashSet;
@@ -86,6 +90,19 @@ pub struct Fixture {
     pub app: App<MockRuntime>,
     pub registrar: Arc<FakeRegistrar>,
     pub data: tempfile::TempDir,
+    /// The bot token store of slice 5c, in memory and counting its calls (the secret store of the OS is never touched in a test).
+    pub secrets: Arc<MemorySecrets>,
+}
+
+/// Manages the sticker state with an in-memory token store and a client whose base is a port nobody listens on: a test that reaches the
+/// network by mistake fails with "unreachable", it never reaches Telegram.
+pub fn manage_stickers(app: &App<MockRuntime>) -> Arc<MemorySecrets> {
+    let secrets = Arc::new(MemorySecrets::default());
+    app.manage(StickerShell::new(
+        secrets.clone(),
+        Box::new(|| BotClient::with_base("http://127.0.0.1:9", false)),
+    ));
+    secrets
 }
 
 pub fn fixture() -> Fixture {
@@ -115,10 +132,12 @@ pub fn fixture_with_taken(taken: &[&str]) -> Fixture {
     app.manage(kinige_lib::import::ImportState::default());
     app.manage(kinige_lib::attachments::DropTokens::default());
     app.manage(Recovery::new(db_path, false));
+    let secrets = manage_stickers(&app);
     Fixture {
         app,
         registrar,
         data,
+        secrets,
     }
 }
 
@@ -148,10 +167,12 @@ pub fn fixture_with_corruption_hook() -> Fixture {
     app.manage(kinige_lib::import::ImportState::default());
     app.manage(kinige_lib::attachments::DropTokens::default());
     app.manage(Recovery::new(db_path, false).with_corruption_flag(flag));
+    let secrets = manage_stickers(&app);
     Fixture {
         app,
         registrar,
         data,
+        secrets,
     }
 }
 
@@ -163,6 +184,7 @@ pub fn fixture_without_store(db_path: &std::path::Path) -> Fixture {
         app,
         registrar: Arc::new(FakeRegistrar::default()),
         data: tempfile::tempdir().unwrap(),
+        secrets: Arc::default(),
     }
 }
 
@@ -174,6 +196,7 @@ pub fn fixture_too_new(db_path: &std::path::Path) -> Fixture {
         app,
         registrar: Arc::new(FakeRegistrar::default()),
         data: tempfile::tempdir().unwrap(),
+        secrets: Arc::default(),
     }
 }
 
@@ -241,6 +264,11 @@ pub fn args_for(command: &str) -> Value {
             json!({"attachmentId": "нет-такого", "changes": {"name": "пляж"}})
         }
         "set_attachment_waveform" => json!({"attachmentId": "нет-такого", "peaks": ""}),
+        "add_sticker_pack" => json!({"link": "TestPack"}),
+        "remove_sticker_pack" => json!({"packId": "нет-такого"}),
+        "send_sticker" => json!({"chatId": inbox, "stickerId": "нет-такого"}),
+        "send_gif_again" => json!({"chatId": inbox, "attachmentId": "нет-такого"}),
+        "set_telegram_bot_token" => json!({"token": "42:fake-token-for-tests"}),
         "microphone_hold" | "capture_hold_microphone" => json!({"held": false}),
         // `send_voice` takes a raw body: a JSON call is the "garbage" case and must be an error, never a panic.
         _ => json!({}),

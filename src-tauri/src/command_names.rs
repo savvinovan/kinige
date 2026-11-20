@@ -57,6 +57,13 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "microphone_hold",
     "read_voice_for_waveform",
     "set_attachment_waveform",
+    "get_sticker_library",
+    "add_sticker_pack",
+    "cancel_sticker_pack",
+    "remove_sticker_pack",
+    "send_sticker",
+    "list_journal_gifs",
+    "send_gif_again",
 ];
 
 /// Commands of the settings window (capability `settings`, slice 4b, ADR-0010): settings, shortcuts, AI agent access, the
@@ -77,6 +84,9 @@ pub const SETTINGS_COMMANDS: &[&str] = &[
     "list_agent_log_entries",
     "get_settings_file",
     "settings_open_entry",
+    "get_telegram_token_state",
+    "set_telegram_bot_token",
+    "clear_telegram_bot_token",
 ];
 
 /// Commands of the capture window (capability `capture`): only Inbox, without `chat_id` (§12.3).
@@ -150,6 +160,13 @@ pub const COMMANDS: &[&str] = &[
     "microphone_hold",
     "read_voice_for_waveform",
     "set_attachment_waveform",
+    "get_sticker_library",
+    "add_sticker_pack",
+    "cancel_sticker_pack",
+    "remove_sticker_pack",
+    "send_sticker",
+    "list_journal_gifs",
+    "send_gif_again",
     "set_text_size",
     "choose_mirror_folder",
     "set_shortcut",
@@ -163,6 +180,9 @@ pub const COMMANDS: &[&str] = &[
     "list_agent_log_entries",
     "get_settings_file",
     "settings_open_entry",
+    "get_telegram_token_state",
+    "set_telegram_bot_token",
+    "clear_telegram_bot_token",
     "capture_state",
     "capture_send",
     "capture_append",

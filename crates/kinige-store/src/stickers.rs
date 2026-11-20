@@ -16,7 +16,7 @@ pub(crate) use probe::{StickerProbe, probe_sticker};
 pub(crate) use send::is_sticker_entry;
 pub use sweep::StickerSweep;
 
-use crate::attachment::{Dirs, Faults};
+use crate::attachment::{Dirs, Faults, Media};
 use crate::error::{read_err, write_err};
 use crate::settings::get_setting;
 use crate::{Store, StoreError};
@@ -24,7 +24,7 @@ use kinige_domain::attachment::AttachmentKind;
 use kinige_domain::attachment::sticker::{RULES_VERSION, StickerCore, clean_emoji, read_sticker};
 use kinige_domain::hlc::is_uuid_v4;
 use kinige_domain::stickers::{
-    MAX_RECENT, PackSource, StickerLibrary, StickerPackView, StickerView,
+    MAX_RECENT, MAX_STICKER_BYTES, PackSource, StickerLibrary, StickerPackView, StickerView,
 };
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use std::collections::HashMap;
@@ -34,6 +34,8 @@ use std::path::{Path, PathBuf};
 const VERSION_KEY: &str = "sticker_rules_version";
 /// `app_setting`: the stickers sent from this device, the most recent first (a JSON array of library ids, at most [`MAX_RECENT`]).
 const RECENT_KEY: &str = "recent_stickers";
+/// `app_setting`: "1" when a bot token is saved in the OS secret store. A flag only; the token is never in the database.
+const TOKEN_FLAG_KEY: &str = "telegram_token_saved";
 
 /// Every derived column is rebuilt from the groups, and the rules version is stored.
 pub(crate) fn rebuild_all(conn: &Connection) -> rusqlite::Result<()> {
@@ -143,6 +145,60 @@ impl Store {
                 let path = dirs.library_file(&format!("{id}.{ext}"))?;
                 path.is_file().then_some((path, mime))
             }))
+        })
+    }
+
+    /// [`Store::sticker_file`] with the bytes, on the media pool, for the `sticker/<id>` path of the protocol. `None` is 404: a bad id, no row,
+    /// no file, a file over 2 MiB. The probe is not repeated here (the picture is only displayed, and a file is probed at send time).
+    pub fn sticker_media_async(
+        &self,
+        id: String,
+        done: impl FnOnce(Option<Media>) + Send + 'static,
+    ) {
+        let store = self.clone();
+        let job: Box<dyn FnOnce() + Send> = Box::new(move || {
+            let media = store
+                .sticker_file(&id)
+                .ok()
+                .flatten()
+                .and_then(|(path, content_type)| {
+                    let meta = std::fs::metadata(&path).ok()?;
+                    if meta.len() > MAX_STICKER_BYTES {
+                        return None;
+                    }
+                    let bytes = std::fs::read(path).ok()?;
+                    Some(Media {
+                        content_type,
+                        bytes,
+                    })
+                });
+            done(media);
+        });
+        if !self.inner.media_pool.submit(job) {
+            log::error!("media: the pool has stopped");
+        }
+    }
+
+    /// Whether the bot token is said to be saved: a plain flag in `app_setting` that can disagree with the OS secret store (a restored
+    /// database, a removed item); the pack job corrects it when it reads the store. Never the token itself.
+    pub fn telegram_token_saved(&self) -> Result<bool, StoreError> {
+        self.read(|conn| {
+            Ok(get_setting(conn, TOKEN_FLAG_KEY)
+                .map_err(read_err)?
+                .as_deref()
+                == Some("1"))
+        })
+    }
+
+    /// Sets the flag of [`Store::telegram_token_saved`].
+    pub fn set_telegram_token_saved(&self, saved: bool) -> Result<(), StoreError> {
+        self.write(move |conn| {
+            conn.execute(
+                "INSERT INTO app_setting (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (TOKEN_FLAG_KEY, if saved { "1" } else { "0" }),
+            )
+            .map_err(write_err)?;
+            Ok(())
         })
     }
 
