@@ -65,9 +65,11 @@
   - **The write:** one writer job renames the files into `stickers/` first, then writes the rows in one transaction, last. A replaced pack's old files are deleted after the commit.
   - **The sweep** is a writer job after the first frame, like slice 7's `attachment/sweep.rs`, so it cannot interleave with a pack write. It removes `stickers/.tmp/` of other processes and library files without a row, and never touches `attachments/`.
 - **The Bot API client (`src-tauri`, Rust only).** The web view never makes the request, so the CSP does not change.
-  - **Requests:** `reqwest` 0.13.5 to the fixed host `api.telegram.org`. Every URL is built with a URL builder (path segments, query pairs), never by concatenation. No redirect is followed: a 3xx is a bad response. No `Accept-Encoding` is sent, and a `Content-Encoding` answer is refused. The User-Agent is `kinige/<version>` and nothing else identifying (CLAUDE.md rule 14 covers development requests; ADR-0021 states this one).
+  - **Requests:** `reqwest` 0.13.5 to the fixed host `api.telegram.org`. Every URL is built with a URL builder (path segments, query pairs), never by concatenation. No redirect is followed: a 3xx is a bad response. No `Accept-Encoding` is sent; `Content-Encoding: identity` is tolerated, and any other value is refused. The User-Agent is `kinige/<version>` and nothing else identifying (CLAUDE.md rule 14 covers development requests; ADR-0021 states this one).
   - **Trust anchors** are the OS store. A root CA installed on the machine can therefore read the token; PRD §10.3 states this.
   - **The system proxy is honoured.** The user's network reaches Telegram only through a proxy or a VPN. An HTTP proxy tunnels HTTPS by CONNECT, so the token stays inside TLS.
+    - This needs reqwest's `system-proxy` feature (`hyper-util/client-proxy-system`), which reads the macOS and Windows system settings. With default features off, only environment variables are read, and an app started from Finder has none.
+    - Expected to work: HTTP and HTTPS proxies from the system settings. SOCKS: not verified; the implementer checks it. A system VPN needs nothing.
   - **The TLS provider's Windows build** is checked first. If it fails, the fallback is `rustls-no-provider` with `ring`.
   - **Timeouts:** 10 s to connect, 30 s per request, 10 min per pack.
   - **Response caps:** 1 MiB for `getStickerSet` and 16 KiB for `getFile`. A `file_path` must match `^[A-Za-z0-9_./-]{1,256}$`, with no `..` segment and no leading `/`. The JSON is read in `kinige-domain` into a validated structure; unknown fields are ignored.
@@ -75,11 +77,11 @@
   - **Test-only switches:** the base-URL override and the in-memory token store exist only under the compile-time `test-hooks` feature, and `scripts/check-test-hooks.sh` is extended to catch them. A test token passes our loose rule but not the real Telegram shape, because gitleaks flags the real shape.
 - **The token.** It is read only when a pack is downloaded: never at startup, and never on opening the panel or Settings.
   - It must match `^[0-9]{1,20}:[A-Za-z0-9_-]{1,100}$` (our rule; Telegram's format is not verified).
-  - The settings window writes it (`set_telegram_bot_token`, `clear_telegram_bot_token`) and reads back only `{saved}`.
-  - `saved` is a plain flag in `app_setting`, corrected when a read finds no item. Where the token lives: "For the guardian".
+  - The settings window writes it (`set_telegram_bot_token`, `clear_telegram_bot_token`) and reads back only `{saved}`. `clear_telegram_bot_token` always deletes the keychain item, whatever the flag says.
+  - `saved` is a plain flag in `app_setting`. It can disagree with the keychain, for example after a database restore; the next read corrects it. Where the token lives: "For the guardian".
 - **Sending.** `send_sticker(chat_id, sticker_id, reply_to_id?)` re-probes the library file and copies it through `attach_bytes`' pipeline. One writer transaction then writes the entry: an empty body, the attachment with `"sticker":true`, the index (the stem `sticker`), `mirror_dirty` and the recents. A file that fails the probe refuses the command: it is never sent as a photo. The text draft and the pending tiles are untouched, and the pending reply is used and cleared, as by `send_voice`.
 - **Sending a GIF again.** `send_gif_again(chat_id, attachment_id, reply_to_id?)` does the same for a live GIF of the journal. The copy gets a fresh `remote_blob_id` and `blob_key`, and 7b's details are not copied. The store refuses a covered source.
-- **A sticker entry** (empty body, one live attachment that reads as a sticker) is never an append target (`can_append`). The store itself refuses `edit_message` and `set_attachment_details` on it, and the window hides "Edit", "Details…" and the spoiler.
+- **A sticker entry** (an entry drawn as a sticker, so never a covered one) is never an append target (`can_append`). A covered one is excluded so that a cover which came from another device can still be removed with `set_attachment_details` and `spoiler: false`. The store itself refuses `edit_message` and `set_attachment_details` on it, and the window hides "Edit", "Details…" and the spoiler.
 - **IPC (§12.3).**
   - `main` gets the library read (with `has_token: bool`), `add_sticker_pack`, `cancel_sticker_pack`, `remove_sticker_pack`, `send_sticker`, `list_journal_gifs`, `send_gif_again` and a progress event (counts only).
   - `settings` gets only the token commands.
@@ -116,6 +118,7 @@
 - A Telegram login, and listing your installed packs: no Bot API method does that.
 - Syncing the library; sticker search; favourites; reordering packs; a pack preview; a proxy setting inside Kinige (the system proxy is used).
 - **GIF catalogue search.** Giphy and Klipy forbid storing copies of their media, and a journal keeps what it shows. Tenor's API shut down on 2026-06-30. Search waits for Klipy's written approval.
+- A file fallback for the token on Linux without Secret Service: it comes with the Linux build (slice 10). Until then the token cannot be saved there.
 - Stickers and GIFs in the quick capture window. Stickers made from your own picture: PRD §2.3 lists them, but the user's decisions name two sources, so they come later. Telegram "animation" messages stay placeholders.
 
 ## Reference (UI work)
@@ -208,8 +211,9 @@ A 1280 × 800 window.
   | `sticker` is `true`, `emoji` is `null`, absent, mistyped or not an emoji | a sticker without an emoji |
   | `sticker` is absent or not a boolean; the group is not an object         | a picture                  |
   | an unsupported or missing `sv`; in only one of the two maps; over 1 KiB  | a picture                  |
+  | the group is not canonical JCS                                           | a picture                  |
   | any value, when `core` fails the bounds above                            | a picture                  |
-- **Derived columns.** `attachment.sticker` and `sticker_emoji` come from one function, used by the write, migration 11, the rebuild on open and, later, pull. `app_setting.sticker_rules_version` triggers a rebuild on a mismatch, with a fingerprint test, as 5a's `reaction_rules_version` does.
+- **Derived columns.** `attachment.sticker` and `sticker_emoji` come from one function, used by the write, migration 11, the rebuild on open and, later, pull. `app_setting.sticker_rules_version` triggers a rebuild on a mismatch, with a fingerprint test, as 5a's `reaction_rules_version` does. The fingerprint includes the emoji table it shares with 5a.
 - **Older clients** keep the group raw, resend it, and show a sticker as a picture in a bubble.
 - **What the server learns.** Nothing new from the header. From the padded blob size it may guess that a small image is a sticker.
 - **Migration 11.** Local tables, the recents and the two columns; no synced row changes. Its hash goes after 5a's in `PINNED`. KINIG-160 runs in parallel and removes no table; whichever lands second renumbers if needed.
@@ -217,10 +221,10 @@ A 1280 × 800 window.
 - **The token lives in the OS secret store**, as PRD §9.2 rules for secrets.
   - **Where:**
     - macOS: a generic-password item, service `me.savvinov.kinige`, account `telegram-bot-token`, not synchronizable;
-    - Windows: Credential Manager, the same name, with no file fallback;
+    - Windows: Credential Manager, the same name;
     - Linux: Secret Service.
-  - **A refused or locked keychain** is its own error category. It never falls back to a file silently.
-  - **The only file fallback** is for Linux without Secret Service: a warning before saving, mode 0600 in a 0700 directory under the OS config directory. That directory is outside the data folder, the backups, the Markdown copy and any export.
+  - **Debug builds** use the service `me.savvinov.kinige.dev`, so a plain development run never touches the real item.
+  - **A refused or locked keychain** is its own error category. There is no file fallback.
   - **Never** in `app_setting` (the database goes into 7 daily backups), the log, `settings.json`, MCP, the capture window or the main window.
   - **Before the UI is built,** the implementer verifies that a second ad-hoc-signed build reads the first build's item. If it errors, they come back for a ruling.
 - **The network.**
@@ -228,7 +232,7 @@ A 1280 × 800 window.
   - the token only in the paths of that host;
   - the OS trust anchors and the system proxy, both stated in PRD §10.3;
   - log lines carry event kinds and categories only.
-- **What Telegram learns:** the bot token, so the bot and the Telegram account that created it; the names of the packs you add; your IP address (or your proxy's); and when. It never learns anything of the journal.
+- **What Telegram learns:** the bot token, so the bot and the Telegram account that created it; the names of the packs you add; your IP address (or your proxy's); the app's name and version (the User-Agent); and when. It never learns anything of the journal.
 
 ## For slice 11
 - The library, the recents and the token do not travel; each sent sticker is its own blob.
