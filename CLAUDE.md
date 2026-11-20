@@ -21,7 +21,8 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
   - 02.11: slice D2 (visual refresh) and slice 10a (Windows build);
   - 03.11: slice 6 (the year's forest);
   - 04.11: slice 7 (attachments);
-  - 05.11: slice 7a (voice notes).
+  - 05.11: slice 7a (voice notes);
+  - 20.11: slice 7b (an attachment's name, description and spoiler).
 - **Merged since:** the sync spikes S4a–S4c (server, ADR-0017–0020) and tech debt E.
 - **In review:** slice 7b, attachment details (name, description, spoiler; KINIG-136); it lands before slice 5a (reactions, KINIG-138), which reuses its add-group function.
 - **Next:** slice 11, sync in the app.
