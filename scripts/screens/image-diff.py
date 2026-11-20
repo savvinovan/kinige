@@ -2,7 +2,8 @@
 """Compares two PNG screenshots of the same window (slice 5c, the GIF steps of `5c.sh`): `image-diff.py a.png b.png`.
 
 Exit 0: the pictures are identical. Exit 1: they differ; the line printed says how many pixels and the bounding box (`x0,y0,x1,y1`, edges included).
-Exit 2: a file cannot be read as a PNG this script understands (8 bits per channel, RGB or RGBA, not interlaced) or the sizes differ; the line says why.
+Exit 2: a file cannot be read as a PNG this script understands (8 bits per channel, RGB or RGBA, not interlaced), the sizes differ, or an option is malformed.
+Exit 3: they differ but the box breaks a condition given with `--min-box=WxH` (at least that wide and that tall) or `--within=x0,y0,x1,y1` (inside that box).
 Standard library only, so it runs on the runner and in a test. The steps use it to prove that a GIF moves (two shots half a second apart differ) and
 that nothing else does (the same two shots before the GIF is pressed are identical).
 """
@@ -80,9 +81,9 @@ def read_png(path):
     return width, height, pixel, rows
 
 
-def main(argv):
+def main(argv, min_box=None, within=None):
     if len(argv) != 3:
-        print("usage: image-diff.py a.png b.png")
+        print("usage: image-diff.py [--min-box=WxH] [--within=x0,y0,x1,y1] a.png b.png")
         return 2
     try:
         first, second = read_png(argv[1]), read_png(argv[2])
@@ -105,9 +106,38 @@ def main(argv):
     if changed == 0:
         print("identical")
         return 0
-    print(f"differ: {changed} pixels, box {x0},{y0},{x1},{y1}")
+    summary = f"differ: {changed} pixels, box {x0},{y0},{x1},{y1}"
+    # A caret blinking in a field also "differs": the box must be a picture's, not a line's (`--min-box`), and where the picture is (`--within`).
+    if min_box is not None and (x1 - x0 + 1 < min_box[0] or y1 - y0 + 1 < min_box[1]):
+        print(f"{summary}; too small, the box must be at least {min_box[0]}x{min_box[1]}")
+        return 3
+    if within is not None and not (x0 >= within[0] and y0 >= within[1] and x1 <= within[2] and y1 <= within[3]):
+        print(f"{summary}; not inside {within[0]},{within[1]},{within[2]},{within[3]}")
+        return 3
+    print(summary)
     return 1
 
 
+def options(argv):
+    """(positional arguments, min box or None, within box or None); `None` for the arguments when an option is malformed."""
+    rest, min_box, within = [], None, None
+    try:
+        for argument in argv[1:]:
+            if argument.startswith("--min-box="):
+                width, height = argument[len("--min-box=") :].split("x")
+                min_box = (int(width), int(height))
+            elif argument.startswith("--within="):
+                box = tuple(int(part) for part in argument[len("--within=") :].split(","))
+                if len(box) != 4:
+                    raise ValueError
+                within = box
+            else:
+                rest.append(argument)
+    except ValueError:
+        return None, None, None
+    return rest, min_box, within
+
+
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    positional, min_box, within = options(sys.argv)
+    sys.exit(2 if positional is None else main(["image-diff.py", *positional], min_box, within))

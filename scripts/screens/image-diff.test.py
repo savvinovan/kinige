@@ -38,7 +38,7 @@ def grid(width, height, base=(10, 20, 30, 255)):
 
 
 class ImageDiff(unittest.TestCase):
-    def run_script(self, first, second):
+    def run_script(self, first, second, *options):
         with tempfile.TemporaryDirectory() as folder:
             paths = []
             for index, content in enumerate((first, second)):
@@ -46,8 +46,47 @@ class ImageDiff(unittest.TestCase):
                 with open(path, "wb") as handle:
                     handle.write(content)
                 paths.append(path)
-            done = subprocess.run([sys.executable, "-I", SCRIPT, *paths], capture_output=True, text=True)
+            done = subprocess.run([sys.executable, "-I", SCRIPT, *options, *paths], capture_output=True, text=True)
             return done.returncode, done.stdout.strip(), done.stderr.strip()
+
+    def blob(self):
+        """A 3x2 box of changed pixels at (2,1) to (4,2) in a 10x6 picture."""
+        moved = grid(10, 6)
+        for y in (1, 2):
+            for x in (2, 3, 4):
+                moved[y][x] = (250, 200, 60, 255)
+        return png(grid(10, 6)), png(moved)
+
+    def test_a_box_that_is_too_small_exits_3_a_big_enough_one_exits_1(self):
+        before, after = self.blob()
+        code, out, _ = self.run_script(before, after, "--min-box=4x2")
+        self.assertEqual(code, 3, out)
+        self.assertIn("too small", out)
+        code, out, _ = self.run_script(before, after, "--min-box=3x3")
+        self.assertEqual(code, 3, out)
+        code, out, _ = self.run_script(before, after, "--min-box=3x2")
+        self.assertEqual((code, out), (1, "differ: 6 pixels, box 2,1,4,2"))
+
+    def test_a_box_outside_the_given_one_exits_3_inside_exits_1(self):
+        before, after = self.blob()
+        code, out, _ = self.run_script(before, after, "--within=3,0,9,5")
+        self.assertEqual(code, 3, out)
+        self.assertIn("not inside", out)
+        code, out, _ = self.run_script(before, after, "--within=2,1,4,2")
+        self.assertEqual(code, 1, out)
+        code, out, _ = self.run_script(before, after, "--within=0,0,9,5", "--min-box=3x2")
+        self.assertEqual(code, 1, out)
+
+    def test_identical_pictures_stay_0_whatever_the_options_say(self):
+        code, out, _ = self.run_script(png(grid(4, 4)), png(grid(4, 4)), "--min-box=100x100")
+        self.assertEqual((code, out), (0, "identical"))
+
+    def test_malformed_options_exit_2(self):
+        before, after = self.blob()
+        for option in ("--min-box=wide", "--min-box=3", "--within=1,2,3", "--within=a,b,c,d"):
+            code, out, err = self.run_script(before, after, option)
+            self.assertEqual(code, 2, f"{option}: {out} {err}")
+            self.assertNotIn("Traceback", err, option)
 
     def test_identical_pictures_exit_0(self):
         code, out, err = self.run_script(png(grid(5, 4)), png(grid(5, 4)))
