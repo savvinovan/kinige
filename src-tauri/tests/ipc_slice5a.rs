@@ -88,14 +88,14 @@ fn a_reaction_goes_through_the_feed_the_settings_and_back() {
     let sent = send(&main, "Сдал экзамен!");
     let id = sent["id"].as_str().unwrap();
     assert_eq!(sent["reactions"], json!([]));
-    assert_eq!(sent["reactionKeysHad"], 0);
+    assert_eq!(sent["reactionKeysHad"], json!([]));
 
     let put = call(&main, COMMAND, json!({"id": id, "emoji": "❤️", "on": true})).unwrap();
     assert_eq!(put["reactions"][0]["emoji"], "❤️");
     assert_eq!(put["reactions"][0]["yearsLater"], 0);
     assert!(put["reactions"][0]["putAt"].is_number());
     assert!(put["reactions"][0]["putTz"].is_string());
-    assert_eq!(put["reactionKeysHad"], 1);
+    assert_eq!(put["reactionKeysHad"], json!(["\u{2764}"]));
     assert!(put["bodyMd"] == sent["bodyMd"] && put["favoriteAt"] == Value::Null);
 
     let page = call(&main, "list_messages", json!({"chatId": INBOX})).unwrap();
@@ -109,7 +109,7 @@ fn a_reaction_goes_through_the_feed_the_settings_and_back() {
 
     let removed = call(&main, COMMAND, json!({"id": id, "emoji": "❤", "on": false})).unwrap();
     assert_eq!(removed["reactions"].as_array().map(Vec::len), Some(1));
-    assert_eq!(removed["reactionKeysHad"], 2);
+    assert_eq!(removed["reactionKeysHad"], json!(["\u{2764}", "🔥"]));
     // The trash shows them and refuses a change.
     call(&main, "delete_message", json!({"id": id})).unwrap();
     assert_eq!(

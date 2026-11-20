@@ -82,8 +82,9 @@ pub struct MessageView {
     pub attachments: Vec<AttachmentView>,
     /// The live reactions in the order they were put (slice 5a). Empty for most entries, and for an entry whose group is not well-formed.
     pub reactions: Vec<ReactionView>,
-    /// How many different emoji the entry has ever had a reaction of, removed ones included: at 32 no new emoji can be put on it.
-    pub reaction_keys_had: u32,
+    /// The comparison keys (`reaction_key`) of every emoji the entry has ever had a reaction of, removed ones included: at 32 no new emoji can
+    /// be put on it, and the interface knows which ones it still can. Empty for an entry that never had a reaction.
+    pub reaction_keys_had: Vec<String>,
 }
 
 /// The draft of the chat input field (slice 5): the text and the entry being replied to.
@@ -353,11 +354,11 @@ mod tests {
             reply_to: None,
             attachments: Vec::new(),
             reactions: Vec::new(),
-            reaction_keys_had: 0,
+            reaction_keys_had: Vec::new(),
         };
         assert_eq!(
             serde_json::to_string(&view).unwrap(),
-            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false,"origin":"agent","replyTo":null,"attachments":[],"reactions":[],"reactionKeysHad":0}"#
+            r#"{"id":"i","chatId":"c","bodyMd":"b","journalDate":"2026-10-21","createdAt":1,"createdTz":"UTC","isTask":true,"taskDoneAt":null,"favoriteAt":5,"tags":["идея"],"readOnly":false,"origin":"agent","replyTo":null,"attachments":[],"reactions":[],"reactionKeysHad":[]}"#
         );
     }
 

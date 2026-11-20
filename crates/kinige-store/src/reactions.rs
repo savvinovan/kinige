@@ -27,8 +27,9 @@ const VERSION_KEY: &str = "reaction_rules_version";
 /// `app_setting`: the reactions put on this device, freshest first (JSON array). Not synced and not in `settings.json`.
 pub(crate) const RECENT_KEY: &str = "recent_reactions";
 
-/// The two columns of a view query for the table `m`: how many items the entry's group holds, and its live reactions as an array of
-/// `{k, e, a, z}` (key, emoji, put at, zone). The order is restored in Rust, because the aggregate does not promise one.
+/// The two columns of a view query for the table `m`: the keys of the items the entry's group holds (a JSON array of strings), and its
+/// live reactions as an array of `{k, e, a, z}` (key, emoji, put at, zone). The order is restored in Rust, because the aggregate does
+/// not promise one.
 macro_rules! reactions_columns {
     () => {
         "(SELECT keys FROM message_reaction_keys WHERE message_id = m.id), \
@@ -40,12 +41,15 @@ pub(crate) use reactions_columns;
 
 /// The entry's reactions and the number of items its group holds, from the [`reactions_columns`] values. A damaged element is skipped.
 pub(crate) fn parse_columns(
-    keys: Option<i64>,
+    keys: Option<String>,
     json: Option<String>,
     entry_date: &str,
-) -> (Vec<ReactionView>, u32) {
+) -> (Vec<ReactionView>, Vec<String>) {
+    let keys: Vec<String> = keys
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default();
     let Some(Value::Array(items)) = json.and_then(|text| serde_json::from_str(&text).ok()) else {
-        return (Vec::new(), 0);
+        return (Vec::new(), keys);
     };
     let mut reactions: Vec<Reaction> = items.iter().filter_map(parse_one).collect();
     reactions.sort_by(|a, b| (a.put_at, &a.key).cmp(&(b.put_at, &b.key)));
@@ -56,7 +60,7 @@ pub(crate) fn parse_columns(
             ReactionView::new(reaction, entry_date, &put_date)
         })
         .collect();
-    (views, keys.and_then(|n| u32::try_from(n).ok()).unwrap_or(0))
+    (views, keys)
 }
 
 fn parse_one(item: &Value) -> Option<Reaction> {
@@ -79,12 +83,15 @@ pub(crate) fn write_rows(
 ) -> rusqlite::Result<()> {
     remove_rows(conn, id)?;
     let group = shown(groups_raw, hlc_json);
-    if group.keys == 0 {
+    if group.keys.is_empty() {
         return Ok(());
     }
     conn.execute(
         "INSERT INTO message_reaction_keys (message_id, keys) VALUES (?1, ?2)",
-        rusqlite::params![id, group.keys as i64],
+        rusqlite::params![
+            id,
+            serde_json::to_string(&group.keys).unwrap_or_else(|_| "[]".to_string())
+        ],
     )?;
     let mut insert = conn.prepare_cached(
         "INSERT INTO message_reaction (message_id, key, emoji, put_at, put_tz) VALUES (?1, ?2, ?3, ?4, ?5)",

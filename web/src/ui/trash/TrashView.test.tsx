@@ -22,7 +22,7 @@ const item = (id: string, patch: Partial<TrashItem> = {}, body = "Купить �
     replyTo: null,
     attachments: [],
     reactions: [],
-    reactionKeysHad: 0,
+    reactionKeysHad: [],
   },
   chatTitle: "Книги",
   chatIcon: "📚",

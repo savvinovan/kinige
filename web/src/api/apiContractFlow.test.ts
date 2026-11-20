@@ -142,7 +142,7 @@ class World {
         const page = await api.listMessages(this.chatOf.get(message) ?? "");
         const view = page.messages.find((m) => m.id === message);
         expect(view?.reactions.map((reaction) => reaction.emoji)).toEqual((step.list as Spec[]).map(spec));
-        expect(view?.reactionKeysHad).toBe(step.keysHad);
+        expect(view?.reactionKeysHad.length).toBe(step.keysHad);
         break;
       }
       case "recent":

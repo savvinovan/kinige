@@ -154,7 +154,7 @@ fn a_removal_leaves_a_marker_and_a_second_put_gets_a_new_time() {
     );
     let got = record.shown();
     assert!(got.reactions.is_empty());
-    assert_eq!(got.keys, 1, "the marker stays");
+    assert_eq!(got.keys.len(), 1, "the marker stays");
     assert!(
         !record.change(HEART, false, AT).unwrap(),
         "removing twice writes nothing"
@@ -163,7 +163,7 @@ fn a_removal_leaves_a_marker_and_a_second_put_gets_a_new_time() {
     let got = record.shown();
     assert_eq!(got.reactions[0].put_at, AT + 5_000);
     assert_eq!(got.reactions[0].emoji, HEART);
-    assert_eq!(got.keys, 1);
+    assert_eq!(got.keys.len(), 1);
 }
 
 #[test]

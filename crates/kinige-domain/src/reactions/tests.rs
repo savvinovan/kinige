@@ -100,7 +100,8 @@ fn a_well_formed_group_shows_its_live_reactions_in_the_order_put() {
         item("😢", None, None, 4_000),
     ]);
     let got = shown_of(&group);
-    assert_eq!(got.keys, 3, "a removal marker counts as a key");
+    assert_eq!(got.keys.len(), 3, "a removal marker counts as a key");
+    assert_eq!(got.keys, ["\u{2764}", "🔥", "😢"], "in key order");
     let emoji: Vec<_> = got.reactions.iter().map(|r| r.emoji.as_str()).collect();
     assert_eq!(emoji, ["\u{2764}\u{FE0F}", "🔥"]);
     assert_eq!(got.reactions[0].put_tz, "Europe/Moscow");
@@ -310,7 +311,7 @@ fn hostile_items_are_counted_but_never_shown() {
         item("👍", Some(AT), Some("UTC"), 2_000),
     ];
     let got = shown_of(&group_of(&items));
-    assert_eq!(got.keys, 9);
+    assert_eq!(got.keys.len(), 9);
     let emoji: Vec<_> = got.reactions.iter().map(|r| r.emoji.as_str()).collect();
     assert_eq!(
         emoji,

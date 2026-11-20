@@ -21,17 +21,17 @@ export class MockReactions {
       if (!isReactionEmoji(emoji)) throw new KinigeApiError("reaction_invalid");
       const key = reactionKey(emoji);
       const view = row.view;
-      const had = (row.reactionKeys ??= new Set(view.reactions.map((reaction) => reactionKey(reaction.emoji))));
       const live = view.reactions;
+      const had = (row.reactionKeys ??= new Set([...view.reactionKeysHad, ...live.map((reaction) => reactionKey(reaction.emoji))]));
       const there = live.some((reaction) => reactionKey(reaction.emoji) === key);
       if (on === there) return this.s.viewOf(row);
       if (on) {
         if (live.length >= LIMITS.reactionsLive) throw new KinigeApiError("reaction_limit");
-        if (!had.has(key) && Math.max(view.reactionKeysHad, had.size) >= LIMITS.reactionKeys) throw new KinigeApiError("reaction_limit");
+        if (!had.has(key) && had.size >= LIMITS.reactionKeys) throw new KinigeApiError("reaction_limit");
         const now = this.s.now();
         const put = { emoji, putAt: now.getTime(), putTz: "UTC", yearsLater: yearsLater(view.journalDate, mockJournalDate(now)) };
         had.add(key);
-        row.view = { ...view, reactions: [...live, put], reactionKeysHad: Math.max(view.reactionKeysHad, had.size) };
+        row.view = { ...view, reactions: [...live, put], reactionKeysHad: [...had].sort() };
         const recent = pushRecentReaction(this.s.settings.recentReactions, emoji);
         this.s.settings = { ...this.s.settings, recentReactions: recent, quickReactions: quickReactions(recent) };
       } else {

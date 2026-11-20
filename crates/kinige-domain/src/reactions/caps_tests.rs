@@ -36,7 +36,7 @@ fn the_eleventh_live_reaction_is_refused_and_nothing_is_dropped() {
         record.change(&emoji[0], true, AT),
         Err(ReactionError::Limit)
     );
-    assert_eq!(record.shown().keys, 11);
+    assert_eq!(record.shown().keys.len(), 11);
 }
 
 #[test]
@@ -47,7 +47,7 @@ fn the_thirty_third_key_is_refused_even_after_most_were_removed_and_the_old_ones
         record.change(e, true, AT).unwrap();
         record.change(e, false, AT).unwrap();
     }
-    assert_eq!(record.shown().keys, 32);
+    assert_eq!(record.shown().keys.len(), 32);
     assert!(record.shown().reactions.is_empty());
     let before = record.bytes();
     assert_eq!(
@@ -74,7 +74,7 @@ fn a_group_over_the_caps_from_elsewhere_is_shown_in_full_refuses_a_put_and_allow
     assert_eq!(record.change("🎉", true, AT), Err(ReactionError::Limit));
     assert!(record.change(&emoji(0x1F600, 1)[0], false, AT).unwrap());
     assert_eq!(record.shown().reactions.len(), 11);
-    assert_eq!(record.shown().keys, 12, "nothing was trimmed");
+    assert_eq!(record.shown().keys.len(), 12, "nothing was trimmed");
     assert_eq!(
         record.change("🎉", true, AT),
         Err(ReactionError::Limit),
@@ -90,7 +90,7 @@ fn a_put_replaces_a_live_item_whose_emoji_is_not_one() {
     assert!(record.change(HEART, true, AT + 9).unwrap());
     let got = record.shown();
     assert_eq!(
-        (got.reactions.len(), got.keys),
+        (got.reactions.len(), got.keys.len()),
         (1, 1),
         "replaced, not added"
     );

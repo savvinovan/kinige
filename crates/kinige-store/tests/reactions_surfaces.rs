@@ -470,7 +470,7 @@ fn an_older_peers_groups_that_are_not_well_formed_show_nothing_and_raise_no_erro
     assert!(
         page.messages
             .iter()
-            .all(|m| m.reactions.is_empty() && m.reaction_keys_had == 0)
+            .all(|m| m.reactions.is_empty() && m.reaction_keys_had.is_empty())
     );
     assert_eq!(all_rows(dir.path()), (Vec::new(), Vec::new()));
 }

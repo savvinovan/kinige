@@ -58,7 +58,7 @@ impl World {
         let expected: Vec<String> = list(step, "list").iter().map(spec).collect();
         check(got, expected, "reactions")?;
         check(
-            i64::from(view.reaction_keys_had),
+            view.reaction_keys_had.len() as i64,
             int(step, "keysHad"),
             "keys had",
         )?;

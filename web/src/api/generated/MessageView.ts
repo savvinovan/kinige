@@ -56,6 +56,7 @@ attachments: Array<AttachmentView>,
  */
 reactions: Array<ReactionView>, 
 /**
- * How many different emoji the entry has ever had a reaction of, removed ones included: at 32 no new emoji can be put on it.
+ * The comparison keys (`reaction_key`) of every emoji the entry has ever had a reaction of, removed ones included: at 32 no new emoji can
+ * be put on it, and the interface knows which ones it still can. Empty for an entry that never had a reaction.
  */
-reactionKeysHad: number, };
+reactionKeysHad: Array<string>, };

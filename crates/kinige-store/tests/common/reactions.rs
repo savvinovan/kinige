@@ -72,7 +72,7 @@ pub fn all_rows(
     dir: &Path,
 ) -> (
     Vec<(String, String, String, i64, String)>,
-    Vec<(String, i64)>,
+    Vec<(String, String)>,
 ) {
     let conn = raw(dir);
     let reactions = conn

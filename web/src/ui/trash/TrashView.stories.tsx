@@ -25,7 +25,7 @@ const entry = (id: string, body: string, patch: Partial<TrashItem> = {}, journal
     replyTo: null,
     attachments: [],
     reactions: [],
-    reactionKeysHad: 0,
+    reactionKeysHad: [],
   },
   chatTitle: "Входящие",
   chatIcon: "📥",

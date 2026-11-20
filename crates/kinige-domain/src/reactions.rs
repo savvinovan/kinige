@@ -55,8 +55,9 @@ pub struct Reaction {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Shown {
     pub reactions: Vec<Reaction>,
-    /// Items in the group, removal markers included: what the 32-key cap counts.
-    pub keys: usize,
+    /// The keys of the group's items, removal markers included, in key order: what the 32-key cap counts, and what the interface needs to
+    /// know which emoji a full entry can still take.
+    pub keys: Vec<String>,
 }
 
 /// The comparison key of an emoji: the string without U+FE0F, compared in UTF-8 byte order (promise 3). `❤` and `❤️` are one
@@ -129,7 +130,11 @@ impl Group {
         reactions.sort_by(|a, b| (a.put_at, &a.key).cmp(&(b.put_at, &b.key)));
         Shown {
             reactions,
-            keys: self.items.len(),
+            keys: {
+                let mut keys: Vec<String> = self.items.iter().map(|i| i.key.clone()).collect();
+                keys.sort();
+                keys
+            },
         }
     }
 }

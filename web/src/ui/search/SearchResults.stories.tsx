@@ -28,7 +28,7 @@ const hit = (id: string, snippet: string, terms: string[], patch: Partial<Search
     replyTo: null,
     attachments: [],
     reactions: [],
-    reactionKeysHad: 0,
+    reactionKeysHad: [],
   },
   chatTitle: "",
   chatIcon: "📥",

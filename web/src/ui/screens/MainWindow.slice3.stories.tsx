@@ -103,7 +103,7 @@ const trashEntry = (id: string, body: string, daysLeft: number, chat: [string, s
     replyTo: null,
     attachments: [],
     reactions: [],
-    reactionKeysHad: 0,
+    reactionKeysHad: [],
   },
   chatTitle: chat[0],
   chatIcon: chat[1],

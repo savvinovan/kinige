@@ -40,7 +40,11 @@ fn the_first_put_adds_the_group_above_every_hlc_and_shows_the_chip_without_an_ed
     assert_eq!(view.reactions[0].put_at, later(2).ms);
     assert_eq!(view.reactions[0].put_tz, "Europe/Moscow");
     assert_eq!(view.reactions[0].years_later, 0);
-    assert_eq!(view.reaction_keys_had, 1);
+    assert_eq!(
+        view.reaction_keys_had,
+        ["\u{2764}"],
+        "the key, without VS16"
+    );
 
     // The other groups are byte-identical, and the new group's HLC is above all of them.
     let after = message_groups(dir.path(), "message", &sent.id);
@@ -95,7 +99,11 @@ fn a_put_of_a_live_emoji_writes_nothing_and_a_removal_leaves_a_marker_and_a_new_
 
     let removed = set(&store, &sent.id, HEART, false, &later(10));
     assert!(removed.reactions.is_empty());
-    assert_eq!(removed.reaction_keys_had, 1, "the marker still counts");
+    assert_eq!(
+        removed.reaction_keys_had.len(),
+        1,
+        "the marker still counts"
+    );
     assert!(
         rows(dir.path(), &sent.id).is_empty(),
         "the derived row is gone"
@@ -113,7 +121,7 @@ fn a_put_of_a_live_emoji_writes_nothing_and_a_removal_leaves_a_marker_and_a_new_
         later(20).ms,
         "putting it back gives the new time"
     );
-    assert_eq!(again.reaction_keys_had, 1);
+    assert_eq!(again.reaction_keys_had.len(), 1);
 }
 
 #[test]
@@ -331,7 +339,10 @@ fn the_eleventh_live_reaction_and_the_thirty_third_key_are_refused_and_nothing_i
     }
     let view = store.list_messages(INBOX_ID, None, 10, &later(7)).unwrap();
     let shown = view.messages.iter().find(|m| m.id == other.id).unwrap();
-    assert_eq!((shown.reactions.len(), shown.reaction_keys_had), (0, 32));
+    assert_eq!(
+        (shown.reactions.len(), shown.reaction_keys_had.len()),
+        (0, 32)
+    );
     let before = group(dir.path(), &other.id);
     let error = store
         .set_message_reaction(&other.id, &keys[32], true, &later(8))
@@ -378,7 +389,7 @@ fn a_group_over_the_caps_from_elsewhere_is_shown_in_full_refuses_a_put_and_allow
     assert_eq!(error.code(), ErrorCode::ReactionLimit);
     let view = set(&store, &sent.id, &emoji(0x1F600, 1)[0], false, &later(4));
     assert_eq!(view.reactions.len(), 11);
-    assert_eq!(view.reaction_keys_had, 12, "nothing was trimmed");
+    assert_eq!(view.reaction_keys_had.len(), 12, "nothing was trimmed");
 }
 
 #[test]
