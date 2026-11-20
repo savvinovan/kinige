@@ -1,21 +1,21 @@
-opening an empty database: 89 ms
-parse: 353 ms, 156 MB of JSON, chats 1, messages 100000
-preview: 907 ms, chats to import 1, entries 100000
-import: 61647 ms (616.5 us per message); imported 100000, skipped: already present 0, service 0, empty 0; attachment placeholders 0; chats created 0; backup: true
-repeated import: 1283 ms, new 0, already present 100000
-database size: before 0.3 MB, after 389.1 MB
-cold start: open 4 ms, first page (200 entries) 58 ms
-"On this day" over 200 days: p50 15.5 ms, p95 72.0 ms, max 148.2 ms; entries in the card on average 6.0
-opening Inbox (a page of 200 entries + the card, 5 years): 75 ms
-forest year table (get_forest_year, 120 calls over 2018..2023): p50 134.0 ms, p95 204.7 ms, max 342.9 ms; 16665 notes counted per call on average
-forest day target: 0.3 ms (found: true)
-search over 200 words from the entries (prefix query, page of 50): p50 46.1 ms, p95 310.9 ms, max 1578.5 ms; found on average 45.8
-search of a frequent one-letter word: 11.0 ms, found on the page 0
-search of a frequent one-letter word: 6.8 ms, found on the page 0
-search of a frequent one-letter word: 13.1 ms, found on the page 0
-while an AI agent searches in a loop on its own connection: feed page (200 entries) p50 6.9 ms, p95 12.5 ms, max 19.4 ms; recent chats p50 0.0 ms, p95 0.0 ms, max 0.1 ms; the agent's search p50 36.8 ms, p95 332.4 ms, max 332.4 ms (19 searches)
+opening an empty database: 138 ms
+parse: 417 ms, 156 MB of JSON, chats 1, messages 100000
+preview: 830 ms, chats to import 1, entries 100000
+import: 69987 ms (699.9 us per message); imported 100000, skipped: already present 0, service 0, empty 0; attachment placeholders 0; chats created 0; backup: true
+repeated import: 1545 ms, new 0, already present 100000
+database size: before 0.3 MB, after 389.2 MB
+cold start: open 3 ms, first page (200 entries) 13 ms
+"On this day" over 200 days: p50 3.9 ms, p95 7.3 ms, max 9.0 ms; entries in the card on average 6.0
+opening Inbox (a page of 200 entries + the card, 5 years): 18 ms
+forest year table (get_forest_year, 120 calls over 2018..2023): p50 144.3 ms, p95 405.0 ms, max 570.2 ms; 16665 notes counted per call on average
+forest day target: 0.9 ms (found: true)
+search over 200 words from the entries (prefix query, page of 50): p50 42.8 ms, p95 241.1 ms, max 349.8 ms; found on average 45.1
+search of a frequent one-letter word: 8.0 ms, found on the page 0
+search of a frequent one-letter word: 7.3 ms, found on the page 0
+search of a frequent one-letter word: 8.4 ms, found on the page 0
+while an AI agent searches in a loop on its own connection: feed page (200 entries) p50 6.7 ms, p95 10.5 ms, max 16.4 ms; recent chats p50 0.0 ms, p95 0.0 ms, max 0.2 ms; the agent's search p50 96.2 ms, p95 258.9 ms, max 258.9 ms (16 searches)
 recent chats, plan of the old query (SQLite 3.54.1, planner statistics tables: 0): SCAN c | SEARCH m EXISTS USING INDEX message_feed (chat_id=?) | CORRELATED SCALAR SUBQUERY 2 | SEARCH m USING INDEX message_feed (chat_id=?) | USE TEMP B-TREE FOR ORDER BY
-recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), before (MAX(created_at) over every entry, 5 rounds; on the bundled SQLite the cost grows sharply and depends on the data, so this is a stress case, not what the tray takes on a typical journal): p50 265274.5 ms, p95 295006.5 ms, max 295006.5 ms
-recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), after (last entry in feed order, message_feed, 40 rounds): p50 0.1 ms, p95 0.1 ms, max 4.2 ms
-reactions put on 10000 entries (a tenth): 18.8 s
-opening Inbox with reactions on a tenth of the entries (page of 200, 17 with reactions, + the card, 100 opens): p50 7.3 ms, p95 8.3 ms, max 11.0 ms
+recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), before (MAX(created_at) over every entry, 5 rounds; on the bundled SQLite the cost grows sharply and depends on the data, so this is a stress case, not what the tray takes on a typical journal): p50 341417.5 ms, p95 350680.5 ms, max 350680.5 ms
+recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), after (last entry in feed order, message_feed, 40 rounds): p50 0.1 ms, p95 0.1 ms, max 5.2 ms
+reactions put on 10000 entries (a tenth): 38.3 s
+opening Inbox with reactions on a tenth of the entries (page of 200, 17 with reactions, + the card, 100 opens): p50 11.8 ms, p95 16.7 ms, max 23.5 ms
