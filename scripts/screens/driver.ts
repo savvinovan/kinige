@@ -27,7 +27,8 @@ export type Step =
   | { kind: "wait"; name: string; role?: string; gone?: boolean; timeoutMs: number }
   | { kind: "has"; name: string; role?: string }
   | ({ kind: "scroll" } & Query)
-  | { kind: "text" };
+  | { kind: "text" }
+  | { kind: "metrics" };
 
 export type Answer = { ok: true; value?: string } | { ok: false; error: string };
 
@@ -108,9 +109,32 @@ async function run(step: Step, root: Document, patience: number): Promise<string
     }
     case "text":
       return windowText(root);
+    case "metrics":
+      return pageMetrics(root);
     default:
       throw new Error(`unknown step: ${String((step as { kind?: unknown } | null)?.kind)}`);
   }
+}
+
+/**
+ * The sizes that decide whether the page scrolls (KINIG-76): the window's inner size and the document's scrolling element, as `name=value`
+ * lines. A read only; the page scrolls in a direction when its scroll size is larger than its client size. Numbers only, no page content.
+ */
+function pageMetrics(root: Document): string {
+  const view = root.defaultView;
+  const scrolling = root.scrollingElement ?? root.documentElement;
+  const body = root.body;
+  const lines: [string, number][] = [
+    ["inner.width", view?.innerWidth ?? 0],
+    ["inner.height", view?.innerHeight ?? 0],
+    ["document.clientWidth", scrolling.clientWidth],
+    ["document.clientHeight", scrolling.clientHeight],
+    ["document.scrollWidth", scrolling.scrollWidth],
+    ["document.scrollHeight", scrolling.scrollHeight],
+    ["body.scrollWidth", body?.scrollWidth ?? 0],
+    ["body.scrollHeight", body?.scrollHeight ?? 0],
+  ];
+  return lines.map(([name, value]) => `${name}=${value}`).join("\n");
 }
 
 /** The element of the query, waiting up to `patience` for it to show; an error names what was not found. */
