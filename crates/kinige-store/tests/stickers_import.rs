@@ -265,6 +265,36 @@ fn a_repeated_import_adds_nothing_and_old_entries_get_their_sticker_once() {
     assert_eq!(count(data.path(), "SELECT COUNT(*) FROM sticker"), 2);
 }
 
+/// The name of an imported sticker says what its bytes are: a PNG is `sticker.png`, even when the export called it WebP.
+#[test]
+fn an_imported_png_sticker_is_named_by_its_detected_format() {
+    let data = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(data.path());
+    let export = folder(&[
+        ("stickers/p.webp", png(200, 200)),
+        ("stickers/w.webp", webp(300, 300)),
+    ]);
+    let parsed = export_of(&[
+        sticker(1, "stickers/p.webp", "image/webp", "😺"),
+        sticker(2, "stickers/w.webp", "image/webp", "🔥"),
+    ]);
+    let report = import_with(&store, &parsed, Some(export.path()));
+    assert_eq!(report.media_attached, 2, "{report:?}");
+    let names: Vec<(String, String)> = feed(&store)
+        .iter()
+        .flat_map(|m| m.attachments.iter())
+        .map(|a| (a.filename.clone(), a.mime.clone()))
+        .collect();
+    assert!(
+        names.contains(&("sticker.png".to_string(), "image/png".to_string())),
+        "{names:?}"
+    );
+    assert!(
+        names.contains(&("sticker.webp".to_string(), "image/webp".to_string())),
+        "{names:?}"
+    );
+}
+
 #[test]
 fn a_hostile_emoji_and_path_in_the_export_reach_nothing() {
     let data = tempfile::tempdir().unwrap();

@@ -105,6 +105,7 @@ pub(crate) fn prepare(
     };
     let own_name = path.file_name().map(|n| n.to_string_lossy().into_owned());
     let name = match sticker_emoji {
+        // Renamed after staging, by the detected format.
         Some(_) => Some(format!("{FILE_STEM}.webp")),
         None => file.name.clone().or(own_name),
     };
@@ -112,11 +113,15 @@ pub(crate) fn prepare(
         name: name.as_deref(),
         mime: file.mime.as_deref(),
     };
-    let staged = match stage(dirs, faults, Source::Path(&path), &hints) {
+    let mut staged = match stage(dirs, faults, Source::Path(&path), &hints) {
         Ok(staged) => staged,
         Err(StoreError::DiskFull) => return Prepared::DiskFull,
         Err(_) => return Prepared::Skipped,
     };
+    if sticker_emoji.is_some() && staged.mime == "image/png" {
+        // The name says what the bytes are (the detected format, not the export's word): a PNG sticker is `sticker.png`.
+        staged.filename = format!("{FILE_STEM}.png");
+    }
     let sticker = match sticker_emoji {
         Some(emoji) => match probe_sticker(&staged.part) {
             Some(probe) => Some((emoji.and_then(clean_emoji).map(str::to_owned), probe)),
