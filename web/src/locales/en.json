@@ -470,6 +470,8 @@
     "folders_not_attached": "Folders are not attached.",
     "attachment_details_invalid": "That name or description is not accepted. Nothing was changed.",
     "drop_not_supported": "Nothing in what you dropped could be attached. Drop a picture or a file, or use the paperclip.",
+    "reaction_invalid": "That is not a single emoji. Nothing was changed.",
+    "reaction_limit": "This entry cannot take another reaction. Remove one first, or pick an emoji it already had.",
     "internal": "Something went wrong.",
     "loadFailed": "Could not load Kinige"
   },

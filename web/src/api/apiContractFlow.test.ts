@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixture } from "./apiContractFixtures";
+import { fixture, spec, type Spec } from "./apiContractFixtures";
 import { INBOX_ID, errorCode } from "./KinigeApi";
 import { MockApi } from "./MockApi";
 
@@ -16,7 +16,7 @@ interface Scenarios {
   scenarios: { name: string; steps: Step[] }[];
 }
 
-const FILES = ["reply-flow", "page-limit", "attachment-errors", "recent-emoji"];
+const FILES = ["reply-flow", "page-limit", "attachment-errors", "recent-emoji", "reaction-flow"];
 
 describe("fixtures/api-contract: the scenarios on MockApi", () => {
   for (const file of FILES) {
@@ -36,7 +36,10 @@ describe("fixtures/api-contract: the scenarios on MockApi", () => {
 
 /** The mock, the ids that labels stand for, and the chat each entry was sent to. */
 class World {
-  private readonly api = new MockApi();
+  /** The clock of the mock: a `react` step moves it to its minute, so the order put is the order of the minutes. */
+  private readonly start = Date.now();
+  private clock = this.start;
+  private readonly api = new MockApi({ now: () => new Date(this.clock) });
   private readonly labels = new Map<string, string>([["inbox", INBOX_ID]]);
   private readonly chatOf = new Map<string, string>();
 
@@ -121,6 +124,25 @@ class World {
       case "voice": {
         const bytes = new Uint8Array(typeof step.bytes === "number" ? step.bytes : 4096);
         this.sent(step.as, chat, (await api.sendVoice(chat, bytes, Number(step.durationMs), replyTo)).id);
+        break;
+      }
+      case "react":
+        this.clock = this.start + Number(step.minute ?? 0) * 60_000;
+        await api.setMessageReaction(this.id(step.msg), spec(step.emoji as Spec), step.on === true);
+        break;
+      case "reactCycle":
+        for (let offset = 0; offset < Number(step.count); offset++) {
+          const emoji = String.fromCodePoint(Number(step.first) + offset);
+          await api.setMessageReaction(this.id(step.msg), emoji, true);
+          await api.setMessageReaction(this.id(step.msg), emoji, false);
+        }
+        break;
+      case "reactions": {
+        const message = this.id(step.msg);
+        const page = await api.listMessages(this.chatOf.get(message) ?? "");
+        const view = page.messages.find((m) => m.id === message);
+        expect(view?.reactions.map((reaction) => reaction.emoji)).toEqual((step.list as Spec[]).map(spec));
+        expect(view?.reactionKeysHad).toBe(step.keysHad);
         break;
       }
       case "recent":

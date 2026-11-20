@@ -237,6 +237,10 @@ export class TauriApi implements KinigeApi {
     return call("set_message_flag", { id, flag, on });
   }
 
+  setMessageReaction(id: string, emoji: string, on: boolean): Promise<MessageView> {
+    return call("set_message_reaction", { id, emoji, on });
+  }
+
   setMessageDate(id: string, journalDate: string): Promise<MessageView> {
     return call("set_message_date", { id, journalDate });
   }

@@ -117,7 +117,12 @@ fn a_reaction_goes_through_the_feed_the_settings_and_back() {
         "🔥"
     );
     assert_eq!(
-        call(&main, COMMAND, json!({"id": id, "emoji": "🔥", "on": false})).unwrap_err(),
+        call(
+            &main,
+            COMMAND,
+            json!({"id": id, "emoji": "🔥", "on": false})
+        )
+        .unwrap_err(),
         json!({"code": "message_in_trash"})
     );
 }
@@ -129,12 +134,32 @@ fn the_limits_and_the_garbage_come_back_as_codes_and_write_nothing() {
     let sent = send(&main, "text");
     let id = sent["id"].as_str().unwrap().to_string();
     let code = |emoji: Value| {
-        call(&main, COMMAND, json!({"id": id, "emoji": emoji, "on": true})).unwrap_err()
+        call(
+            &main,
+            COMMAND,
+            json!({"id": id, "emoji": emoji, "on": true}),
+        )
+        .unwrap_err()
     };
     // An emoji that is not one: empty, text, two emoji, a lone VS16 or ZWJ, controls, a megabyte.
     let big = "x".repeat(1 << 20);
-    for text in ["", " ", "text", "😂😂", "\u{FE0F}", "\u{200D}", "\u{7}", "<b>", big.as_str()] {
-        assert_eq!(code(json!(text)), json!({"code": "reaction_invalid"}), "{:.10}", text);
+    for text in [
+        "",
+        " ",
+        "text",
+        "😂😂",
+        "\u{FE0F}",
+        "\u{200D}",
+        "\u{7}",
+        "<b>",
+        big.as_str(),
+    ] {
+        assert_eq!(
+            code(json!(text)),
+            json!({"code": "reaction_invalid"}),
+            "{:.10}",
+            text
+        );
     }
     // Shapes that are not a string, a missing field, a field of another type, and an id that is no id: rejected before or in the handler.
     for args in [
@@ -151,16 +176,30 @@ fn the_limits_and_the_garbage_come_back_as_codes_and_write_nothing() {
     ] {
         assert!(call(&main, COMMAND, args.clone()).is_err(), "{args}");
     }
-    for bad_id in ["", "x", &"y".repeat(1 << 16), "00000000-0000-4000-8000-000000000001"] {
+    for bad_id in [
+        "",
+        "x",
+        &"y".repeat(1 << 16),
+        "00000000-0000-4000-8000-000000000001",
+    ] {
         assert_eq!(
-            call(&main, COMMAND, json!({"id": bad_id, "emoji": "🔥", "on": true})).unwrap_err(),
+            call(
+                &main,
+                COMMAND,
+                json!({"id": bad_id, "emoji": "🔥", "on": true})
+            )
+            .unwrap_err(),
             json!({"code": "message_not_found"}),
             "{:.10}",
             bad_id
         );
     }
     let page = call(&main, "list_messages", json!({"chatId": INBOX})).unwrap();
-    assert_eq!(page["messages"][0]["reactions"], json!([]), "nothing was written");
+    assert_eq!(
+        page["messages"][0]["reactions"],
+        json!([]),
+        "nothing was written"
+    );
     // The caps arrive as `reaction_limit`.
     for i in 0..10u32 {
         let e = char::from_u32(0x1F600 + i).unwrap().to_string();
@@ -177,10 +216,27 @@ fn neither_an_emoji_nor_an_id_nor_a_typed_value_of_a_reaction_reaches_the_log() 
     let sent = send(&main, "log probe");
     let id = sent["id"].as_str().unwrap();
     call(&main, COMMAND, json!({"id": id, "emoji": RARE, "on": true})).unwrap();
-    call(&main, COMMAND, json!({"id": id, "emoji": RARE, "on": false})).unwrap();
-    let _ = call(&main, COMMAND, json!({"id": id, "emoji": format!("{MARK}{RARE}"), "on": true}));
-    let _ = call(&main, COMMAND, json!({"id": format!("{MARK}-id"), "emoji": RARE, "on": true}));
-    let _ = call(&main, COMMAND, json!({"id": id, "emoji": MARK.repeat(1000), "on": false}));
+    call(
+        &main,
+        COMMAND,
+        json!({"id": id, "emoji": RARE, "on": false}),
+    )
+    .unwrap();
+    let _ = call(
+        &main,
+        COMMAND,
+        json!({"id": id, "emoji": format!("{MARK}{RARE}"), "on": true}),
+    );
+    let _ = call(
+        &main,
+        COMMAND,
+        json!({"id": format!("{MARK}-id"), "emoji": RARE, "on": true}),
+    );
+    let _ = call(
+        &main,
+        COMMAND,
+        json!({"id": id, "emoji": MARK.repeat(1000), "on": false}),
+    );
     // A refusal of the cap, which has the most to say, and a trashed entry.
     for i in 0..10u32 {
         let e = char::from_u32(0x1F600 + i).unwrap().to_string();
@@ -189,7 +245,10 @@ fn neither_an_emoji_nor_an_id_nor_a_typed_value_of_a_reaction_reaches_the_log() 
     let _ = call(&main, COMMAND, json!({"id": id, "emoji": RARE, "on": true}));
     let lines = CAPTURED.lock().unwrap().clone();
     for line in &lines {
-        assert!(!line.to_uppercase().contains(MARK), "typed value in the log: {line}");
+        assert!(
+            !line.to_uppercase().contains(MARK),
+            "typed value in the log: {line}"
+        );
         assert!(!line.contains(RARE), "reaction emoji in the log: {line}");
         assert!(!line.contains(id), "entry id in the log: {line}");
     }

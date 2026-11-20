@@ -29,6 +29,13 @@ fn the_recent_emoji_list() {
     run_file("recent-emoji");
 }
 
+#[test]
+fn reactions_from_the_first_put_to_the_caps() {
+    run_file("reaction-flow");
+}
+
+mod reactions;
+
 /// Every scenario of the file, each on its own store.
 fn run_file(name: &str) {
     for scenario in list(&fixture(name), "scenarios") {
@@ -240,6 +247,9 @@ impl World {
                 check_recent(step, &list)?;
                 Ok(Ok(()))
             }
+            "react" => self.react(step),
+            "reactCycle" => self.react_cycle(step),
+            "reactions" => self.check_reactions(step),
             other => Err(format!("unknown step {other}")),
         }
     }

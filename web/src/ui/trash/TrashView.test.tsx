@@ -21,6 +21,8 @@ const item = (id: string, patch: Partial<TrashItem> = {}, body = "Купить �
     origin: "user",
     replyTo: null,
     attachments: [],
+    reactions: [],
+    reactionKeysHad: 0,
   },
   chatTitle: "Книги",
   chatIcon: "📚",
