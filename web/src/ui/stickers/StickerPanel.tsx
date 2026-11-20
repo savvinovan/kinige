@@ -1,4 +1,4 @@
-import { useId, useRef } from "react";
+import { useId, useRef, useState, type UIEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { StickerLibrary } from "../../api/generated/StickerLibrary";
 import type { StickerPackView } from "../../api/generated/StickerPackView";
@@ -9,6 +9,9 @@ import { packTitle } from "./packTitle";
 import { StickerStrip, type StripTarget } from "./StickerStrip";
 import { useRovingGrid } from "./useRovingGrid";
 import "./stickers.css";
+
+/** How many pixels below the top edge of the grid a section still counts as "at the top" for the strip's mark. */
+const VIEWED_SLACK = 8;
 
 interface StickerPanelProps {
   /** `null` while the library is being read; `"failed"` when it could not be. */
@@ -35,6 +38,7 @@ export function StickerPanel({ library, onSend, onAddPack, onRemovePack }: Stick
   const mediaUrl = useMediaUrl();
   const headingId = useId();
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
+  const [viewed, setViewed] = useState(0);
   const ready = library !== null && library !== "failed" ? library : null;
   const sections: Section[] = ready
     ? [
@@ -50,7 +54,18 @@ export function StickerPanel({ library, onSend, onAddPack, onRemovePack }: Stick
   const jump = (target: StripTarget) => {
     const hasRecent = (ready?.recent.length ?? 0) > 0;
     const index = target.kind === "recent" ? 0 : (hasRecent ? 1 : 0) + target.index;
+    setViewed(index);
     sectionRefs.current[index]?.scrollIntoView?.({ block: "start" });
+  };
+
+  // The strip marks the pack whose section is at the top of the grid: the last section that has reached the top edge (a few pixels of slack).
+  const onScroll = (event: UIEvent<HTMLDivElement>) => {
+    const top = event.currentTarget.getBoundingClientRect().top + VIEWED_SLACK;
+    let index = 0;
+    sectionRefs.current.forEach((section, at) => {
+      if (section && section.getBoundingClientRect().top <= top) index = at;
+    });
+    setViewed(index);
   };
 
   return (
@@ -58,11 +73,12 @@ export function StickerPanel({ library, onSend, onAddPack, onRemovePack }: Stick
       <StickerStrip
         packs={ready?.packs ?? []}
         hasRecent={(ready?.recent.length ?? 0) > 0}
+        viewed={sections.length > 0 ? Math.min(viewed, sections.length - 1) : null}
         onJump={jump}
         onAddPack={onAddPack}
         onRemovePack={onRemovePack}
       />
-      <div className="sticker-panel__scroll" onKeyDown={grid.onKeyDown}>
+      <div className="sticker-panel__scroll" onKeyDown={grid.onKeyDown} onScroll={onScroll}>
         {library === null ? <p className="sticker-panel__note">{t("stickers.loading")}</p> : null}
         {library === "failed" ? (
           <p className="sticker-panel__note" role="alert">

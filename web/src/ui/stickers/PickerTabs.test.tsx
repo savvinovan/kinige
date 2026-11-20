@@ -3,6 +3,7 @@ import { INBOX_ID } from "../../api/KinigeApi";
 import { demoPhoto } from "../attachments/demo";
 import { installEmojiLayoutStub } from "../../test/emoji";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
+import type { PickerTab } from "./PickerTabs";
 import { type Panel, makeHost, panelElement, seededApi } from "./stickerTestKit";
 
 let restoreLayout: () => void;
@@ -40,6 +41,26 @@ describe("the emoji window with tabs", () => {
     expect(within(dialog()).getByRole("searchbox", { name: "Search emoji" })).toHaveFocus();
     // The open panel is labelled by its tab.
     expect(within(dialog()).getByRole("tabpanel")).toHaveAccessibleName("Emoji");
+  });
+
+  it("opens on the tab it was last left on, for the session only: the host's in-memory ref, no setting", async () => {
+    const api = seededApi();
+    const lastTab: { current: PickerTab } = { current: "emoji" };
+    const tabMemory = { recall: () => lastTab.current, remember: (next: PickerTab) => void (lastTab.current = next) };
+    const panel: Panel = { api, onClose: vi.fn(), onPick: vi.fn(), host: { ...makeHost(api), tabMemory } };
+    const first = render(panelElement(panel), { language: "en" });
+    expect(tab("Emoji")).toHaveAttribute("aria-selected", "true");
+    await showStickers();
+    expect(lastTab.current).toBe("stickers");
+    first.unmount();
+    // The next opening (a new popover on the same host) is on Stickers, and reads the library, not the emoji data.
+    render(panelElement(panel), { language: "en" });
+    expect(tab("Stickers")).toHaveAttribute("aria-selected", "true");
+    await screen.findByRole("toolbar", { name: "Sticker packs" });
+    fireEvent.click(tab("Emoji"));
+    expect(lastTab.current).toBe("emoji");
+    expect(Object.keys(window.localStorage ?? {})).toEqual([]);
+    expect(calls(panel)).not.toMatch(/setSettings|updateSettings/);
   });
 
   it("nothing is read before a tab is shown: not at opening, not while only Emoji is open", async () => {
@@ -168,6 +189,30 @@ describe("the Stickers tab", () => {
     expect(within(strip).getAllByRole("button")[0]).toHaveAccessibleName("Recent");
     const recent = within(dialog().querySelector("section") as HTMLElement).getAllByRole("button");
     expect(recent).toHaveLength(2);
+  });
+
+  it("the strip marks the pack whose section is at the top of the grid: on opening, after a click on an icon, and while the grid scrolls", async () => {
+    open();
+    await showStickers();
+    const strip = within(dialog()).getByRole("toolbar", { name: "Sticker packs" });
+    const icon = (name: string) => within(strip).getByRole("button", { name });
+    const marked = () => within(strip).getAllByRole("button").filter((b) => b.getAttribute("aria-current") === "true").map((b) => b.getAttribute("aria-label"));
+    expect(marked()).toEqual(["From Telegram"]);
+    fireEvent.click(icon("Cats"));
+    expect(marked()).toEqual(["Cats"]);
+    // The grid scrolls: the sections report where they are (jsdom has no layout), and the mark follows the last one that reached the top.
+    const scroll = dialog().querySelector(".sticker-panel__scroll") as HTMLElement;
+    const sections = [...dialog().querySelectorAll<HTMLElement>(".sticker-panel__section")];
+    scroll.getBoundingClientRect = () => ({ top: 100 }) as DOMRect;
+    sections[0]!.getBoundingClientRect = () => ({ top: 20 }) as DOMRect;
+    sections[1]!.getBoundingClientRect = () => ({ top: 300 }) as DOMRect;
+    fireEvent.scroll(scroll);
+    expect(marked()).toEqual(["From Telegram"]);
+    sections[1]!.getBoundingClientRect = () => ({ top: 104 }) as DOMRect;
+    fireEvent.scroll(scroll);
+    expect(marked()).toEqual(["Cats"]);
+    // The "+" is never marked.
+    expect(icon("Add a sticker pack")).not.toHaveAttribute("aria-current");
   });
 
   it("empty: one line tells how to get stickers, and the strip with the + stays", async () => {

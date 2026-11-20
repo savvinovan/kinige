@@ -23,12 +23,20 @@ export interface StickersHost {
   onRemovePack: (pack: StickerPackView) => void;
   /** "Choose a GIF file…": the paperclip flow (the panel closes first). */
   onChooseGif: () => void;
+  /** The tab the panel was last left on, kept by the window for the session (in memory only, never a setting): the panel opens on it. */
+  tabMemory?: TabMemory;
+}
+
+/** Where the window keeps the last tab: read when the panel opens, written when a tab is chosen. */
+export interface TabMemory {
+  recall: () => PickerTab;
+  remember: (tab: PickerTab) => void;
 }
 
 export type PickerTab = "emoji" | "stickers" | "gifs";
 
 interface PickerTabsProps {
-  /** The tab the panel opens on: Emoji (stories show the others from the start). */
+  /** The tab the panel opens on, when the host remembers none: Emoji (stories show the others from the start). */
   initialTab?: PickerTab;
   recent: readonly string[];
   language: Language;
@@ -39,19 +47,20 @@ interface PickerTabsProps {
 }
 
 /**
- * The three tabs of the emoji window in the main window (slice 5c): Emoji, Stickers, GIFs, as in Telegram. The panel opens on Emoji with focus in its
- * search, as before; a tab's data is read only while that tab is shown (never at startup, never while only Emoji is open). Tab, with the arrows, walks
+ * The three tabs of the emoji window in the main window (slice 5c): Emoji, Stickers, GIFs, as in Telegram. The panel opens on the tab it was last left
+ * on in this session (Emoji the first time, with focus in its search, as before); a tab's data is read only while that tab is shown (never at startup, never while only Emoji is open). Tab, with the arrows, walks
  * the tab list and the open tab's controls; Esc closes the whole panel (`EmojiPopover`).
  */
 export function PickerTabs({ initialTab = "emoji", recent, language, onPick, onClose, host }: PickerTabsProps) {
   const { t } = useTranslation();
   const idPrefix = useId();
-  const [tab, setTab] = useState<PickerTab>(initialTab);
+  const [tab, setTab] = useState<PickerTab>(() => host.tabMemory?.recall() ?? initialTab);
   // Focus goes to the emoji search only when the panel opens: coming back to the Emoji tab with the arrows must leave focus on the tab list.
   const [switched, setSwitched] = useState(false);
   const change = (next: PickerTab) => {
     setSwitched(true);
     setTab(next);
+    host.tabMemory?.remember(next);
   };
 
   return (

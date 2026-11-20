@@ -1,11 +1,11 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { type KinigeApi, errorCode } from "../../api/KinigeApi";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
 import type { MessageView } from "../../api/generated/MessageView";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import type { StickerPackView } from "../../api/generated/StickerPackView";
 import { AddPackHost } from "../stickers/AddPackHost";
-import type { StickersHost } from "../stickers/PickerTabs";
+import type { PickerTab, StickersHost, TabMemory } from "../stickers/PickerTabs";
 import { RemovePackHost } from "../stickers/RemovePackDialog";
 
 interface UseStickersOptions {
@@ -32,6 +32,17 @@ interface UseStickersOptions {
 export function useStickers({ api, selected, reply, appendSent, refreshChats, changeReply, onError, onChooseGif }: UseStickersOptions) {
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<StickerPackView | null>(null);
+  // The tab the panel was left on, for this window's session only: in memory, not a setting.
+  const lastTab = useRef<PickerTab>("emoji");
+  const tabMemory = useMemo<TabMemory>(
+    () => ({
+      recall: () => lastTab.current,
+      remember: (tab) => {
+        lastTab.current = tab;
+      },
+    }),
+    [],
+  );
   const replyId = reply !== null && reply.state === "live" ? reply.id : null;
 
   const deliver = useCallback(
@@ -64,8 +75,9 @@ export function useStickers({ api, selected, reply, appendSent, refreshChats, ch
             onAddPack: () => setAdding(true),
             onRemovePack: setRemoving,
             onChooseGif,
+            tabMemory,
           },
-    [api, selected, deliver, replyId, onChooseGif],
+    [api, selected, deliver, replyId, onChooseGif, tabMemory],
   );
 
   const overlay: ReactNode = (

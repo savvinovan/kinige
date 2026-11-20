@@ -13,6 +13,8 @@ interface StickerStripProps {
   packs: readonly StickerPackView[];
   /** Whether "Recent" is in the strip (it is when something was sent). */
   hasRecent: boolean;
+  /** The section at the top of the grid, as an index into the strip's buttons (Recent, then the packs): that icon is marked. `null` when there is none. */
+  viewed: number | null;
   /** A click on an icon: the grid scrolls to that section. */
   onJump: (target: StripTarget) => void;
   onAddPack: () => void;
@@ -24,7 +26,7 @@ interface StickerStripProps {
  * A toolbar with one Tab stop (roving tabindex); left, right, Home and End move along it. A pack icon is its first sticker. A right click on a pack
  * icon (or the menu key, Shift+F10) opens "Remove pack"; Recent has no menu. 32 px high, from the token `layout.sticker.strip-icon`.
  */
-export function StickerStrip({ packs, hasRecent, onJump, onAddPack, onRemovePack }: StickerStripProps) {
+export function StickerStrip({ packs, hasRecent, viewed, onJump, onAddPack, onRemovePack }: StickerStripProps) {
   const { t } = useTranslation();
   const mediaUrl = useMediaUrl();
   const strip = useRef<HTMLDivElement>(null);
@@ -59,7 +61,15 @@ export function StickerStrip({ packs, hasRecent, onJump, onAddPack, onRemovePack
   return (
     <div className="sticker-strip" ref={strip} role="toolbar" aria-label={t("stickers.packs")} aria-orientation="horizontal" onKeyDown={onKeyDown}>
       {hasRecent ? (
-        <button type="button" className="sticker-strip__item" aria-label={t("stickers.recent")} title={t("stickers.recent")} {...bind(0)} onClick={() => onJump({ kind: "recent" })}>
+        <button
+          type="button"
+          className="sticker-strip__item"
+          aria-label={t("stickers.recent")}
+          title={t("stickers.recent")}
+          aria-current={viewed === 0 || undefined}
+          {...bind(0)}
+          onClick={() => onJump({ kind: "recent" })}
+        >
           <Icon name="recent" />
         </button>
       ) : null}
@@ -71,6 +81,7 @@ export function StickerStrip({ packs, hasRecent, onJump, onAddPack, onRemovePack
             key={pack.id}
             title={title}
             src={first ? mediaUrl("sticker", first.id) : null}
+            current={viewed === offset + index}
             {...bind(offset + index)}
             onClick={() => onJump({ kind: "pack", index })}
             onMenu={(position) => setMenu({ pack, position })}
@@ -100,16 +111,28 @@ export function StickerStrip({ packs, hasRecent, onJump, onAddPack, onRemovePack
 interface PackButtonProps {
   title: string;
   src: string | null;
+  /** The pack of the section at the top of the grid. */
+  current: boolean;
   tabIndex: number;
   onFocus: () => void;
   onClick: () => void;
   onMenu: (position: MenuPosition) => void;
 }
 
-function PackButton({ title, src, tabIndex, onFocus, onClick, onMenu }: PackButtonProps) {
+function PackButton({ title, src, current, tabIndex, onFocus, onClick, onMenu }: PackButtonProps) {
   const trigger = useMenuTrigger(onMenu);
   return (
-    <button type="button" className="sticker-strip__item" aria-label={title} title={title} tabIndex={tabIndex} onFocus={onFocus} onClick={onClick} {...trigger}>
+    <button
+      type="button"
+      className="sticker-strip__item"
+      aria-label={title}
+      title={title}
+      aria-current={current || undefined}
+      tabIndex={tabIndex}
+      onFocus={onFocus}
+      onClick={onClick}
+      {...trigger}
+    >
       {src ? <img className="sticker-strip__image" src={src} alt="" draggable={false} /> : null}
     </button>
   );
