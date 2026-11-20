@@ -74,12 +74,13 @@ describe("ряд реакций под текстом", () => {
     expect(container.querySelector(".message__spacer")).not.toBeNull();
   });
 
-  it("чипы идут в порядке постановки внутри плашки, время переезжает в конец их ряда (у текста нет места под время)", () => {
+  it("чипы идут в порядке постановки внутри плашки, время в конце их ряда; у текста остаётся место под время, чтобы плашка не сужалась", () => {
     const { container } = setup({ reactions: [chip(HEART), chip("🔥")] });
     const row = within(container.querySelector<HTMLElement>(".message")!).getByRole("group", { name: "Реакции" });
     expect(within(row).getAllByRole("button").map((b) => b.textContent)).toEqual([HEART, "🔥"]);
     expect(container.querySelector(".message")).toHaveClass("message--reacted");
-    expect(container.querySelector(".message__spacer")).toBeNull();
+    expect(container.querySelector(".message__spacer")).not.toBeNull();
+    expect(container.querySelector(".message--time-below")).toBeNull();
     expect(container.querySelector(".message__time")).toBeInTheDocument();
   });
 

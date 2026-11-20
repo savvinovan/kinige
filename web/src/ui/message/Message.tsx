@@ -165,7 +165,8 @@ export const Message = memo(function Message({
   const labelTodo = t("message.taskTodo");
   const labelItem = t("message.taskItem");
   const interactiveTasks = viewing && !readOnly && onToggleTaskItem !== undefined;
-  // Reactions: chips under the text, and the time moves to the right end of their row (so the text has no time spacer at its end).
+  // Reactions: chips under the text, and the time moves to the right end of their row. The text keeps its spacer for the time, so the bubble does not
+  // get narrower and the hover bar, which stands at its right edge, does not move sideways when the first reaction is put.
   const reacted = reactions.length > 0 && mode !== "editing";
   const tagsKey = (tags ?? []).join(" ");
   // Search words are separated by a space: a word is a run of letters and digits, with no space in it.
@@ -173,13 +174,13 @@ export const Message = memo(function Message({
   const html = useMemo(
     () =>
       renderMarkdown(markdown, {
-        timeSpacer: !failed && !reacted,
+        timeSpacer: !failed,
         taskLabels: { done: labelDone, todo: labelTodo, item: labelItem },
         tags: tagsKey === "" ? undefined : tagsKey.split(" "),
         interactiveTasks,
         marks: markKey === "" ? undefined : markKey.split(" "),
       }),
-    [markdown, failed, reacted, labelDone, labelTodo, labelItem, tagsKey, interactiveTasks, markKey],
+    [markdown, failed, labelDone, labelTodo, labelItem, tagsKey, interactiveTasks, markKey],
   );
   // The message ends with a block (code): the last line has no spacer, the time sits under the block.
   const captioned = caption !== undefined && markdown.trim() === "" && mode === "view";
