@@ -176,14 +176,14 @@ fn import_export_stickers(store: &Store, now: &Now, files: &Path) {
     run(Some(root.as_path()));
 }
 
-/// A GIF of about 7.5 MiB: 400 x 300 frames of pseudo-random pixels (they do not compress), 70 of them, so the file is near the autoplay limit of 8 MiB.
+/// A GIF of about 7.5 MiB: 400 x 300 frames of pseudo-random pixels (they do not compress), 45 of them (about 7.4 MiB), so the file is near the autoplay limit of 8 MiB.
 fn noisy_gif(seed: u32) -> Vec<u8> {
     let mut bytes = Vec::new();
     {
         let mut encoder = GifEncoder::new(&mut bytes);
         encoder.set_repeat(Repeat::Infinite).expect("repeat");
         let mut state = 0x9E37_79B9u32 ^ seed.wrapping_mul(2_654_435_761);
-        for _ in 0..70 {
+        for _ in 0..45 {
             let image = RgbaImage::from_fn(400, 300, |_, _| {
                 state ^= state << 13;
                 state ^= state >> 17;
