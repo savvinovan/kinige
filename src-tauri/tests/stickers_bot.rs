@@ -31,6 +31,32 @@ fn without_a_token_there_is_no_request_and_the_secret_store_is_read_once() {
     assert_eq!(server.count(), 0);
 }
 
+/// "Remove" is final: with the flag off (Remove was pressed, and the keychain refused to delete the old item, or the flag was never set) the job reads
+/// nothing from the keychain, makes no request and adds nothing, even though the store still holds a good token.
+#[test]
+fn with_the_flag_off_the_job_reads_nothing_even_if_the_keychain_still_holds_a_token() {
+    let env = env();
+    let server = healthy(2);
+    env.store.set_telegram_token_saved(false).unwrap();
+    assert_eq!(
+        env.secrets.peek().as_deref(),
+        Some(TOKEN),
+        "the old item is there"
+    );
+    let before = env.secrets.calls();
+    assert_eq!(
+        code(env.run(&server.base(), LINK).unwrap_err()),
+        ErrorCode::StickerPackNoToken
+    );
+    assert_eq!(env.secrets.calls(), before, "not one read");
+    assert!(
+        !env.store.telegram_token_saved().unwrap(),
+        "a read that did not happen cannot set the flag back"
+    );
+    assert_eq!(server.count(), 0);
+    env.nothing_written();
+}
+
 #[test]
 fn a_dismissed_prompt_ends_the_job_with_its_own_error_and_writes_nothing() {
     let env = env();

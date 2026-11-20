@@ -44,8 +44,14 @@ pub async fn run(ctx: &JobContext, link: &str) -> Result<StickerPackAdded, ApiEr
     }
 }
 
-/// The one read of the token, off the main thread (it may wait for a system prompt). A missing token also corrects the flag of Settings.
+/// The one read of the token, off the main thread (it may wait for a system prompt). **The flag of Settings comes first**: with it off (never saved, or
+/// "Remove" was pressed, whatever the keychain still holds) the job reads nothing and ends as "no token", so "Remove" is final. A missing token also
+/// corrects the flag.
 async fn read_token(ctx: &JobContext) -> Result<String, ApiError> {
+    let saved = ctx.store.telegram_token_saved().map_err(store_error)?;
+    if !saved {
+        return Err(ErrorCode::StickerPackNoToken.into());
+    }
     let secrets = ctx.secrets.clone();
     let read = tauri::async_runtime::spawn_blocking(move || secrets.get())
         .await

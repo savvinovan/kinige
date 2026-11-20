@@ -181,8 +181,8 @@ fn garbage_is_an_error_with_a_code_and_never_a_panic_and_writes_nothing() {
     assert!(call(&main, "add_sticker_pack", json!({})).is_err());
     assert_eq!(
         fixture.secrets.calls(),
-        1,
-        "only the good link read the store (and found nothing); nothing was saved"
+        0,
+        "no token was ever saved, so even the good link read nothing; nothing was saved"
     );
     assert_eq!(fixture.secrets.peek(), None);
 }
@@ -318,13 +318,24 @@ fn assert_unsupported_everywhere(fixture: &Fixture) {
         json!({"saved": false, "itemLeft": false}),
         "there is nothing to delete, and that is no error"
     );
+    // No token was saved, so a pack by its link is "no token" (the dialog sends the person to Settings, which says why it cannot be saved)...
     assert_eq!(
         call(&main, "add_sticker_pack", json!({"link": "TestPack"})).unwrap_err(),
-        json!({"code": "secret_store_unsupported"})
+        json!({"code": "sticker_pack_no_token"})
     );
     assert_eq!(
         call(&main, "get_sticker_library", json!({})).unwrap()["hasToken"],
         false
+    );
+    // ...and a database that says "saved" (restored from another computer) meets the store's own answer when the job reads.
+    fixture
+        .app
+        .state::<Store>()
+        .set_telegram_token_saved(true)
+        .unwrap();
+    assert_eq!(
+        call(&main, "add_sticker_pack", json!({"link": "TestPack"})).unwrap_err(),
+        json!({"code": "secret_store_unsupported"})
     );
 }
 

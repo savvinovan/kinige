@@ -60,8 +60,11 @@ pub fn env() -> Env {
     options.start_maintenance = false;
     let secrets = Arc::new(MemorySecrets::default());
     secrets.set(TOKEN).unwrap();
+    let store = Store::open(options).unwrap();
+    // A token was saved through Settings: the flag is on, as the job requires (a test of the flag off sets it off itself).
+    store.set_telegram_token_saved(true).unwrap();
     Env {
-        store: Store::open(options).unwrap(),
+        store,
         _dir: dir,
         secrets,
         cancel: Arc::default(),

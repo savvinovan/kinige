@@ -51,8 +51,10 @@ fn a_pack_job_killed_in_the_middle_leaves_no_pack_and_the_sweep_clears_the_rest(
         // The child: it runs the job and never finishes, the parent kills it while the second file is awaited.
         let secrets = Arc::new(MemorySecrets::default());
         secrets.set(TOKEN).unwrap();
+        let store = store_in(&PathBuf::from(dir));
+        store.set_telegram_token_saved(true).unwrap();
         let context = JobContext {
-            store: store_in(&PathBuf::from(dir)),
+            store,
             client: Arc::new(BotClient::with_base(&base, false).unwrap()),
             secrets,
             cancel: Arc::default(),
@@ -115,6 +117,7 @@ fn a_pack_job_killed_in_the_middle_leaves_no_pack_and_the_sweep_clears_the_rest(
     let healthy = healthy(3);
     let secrets = Arc::new(MemorySecrets::default());
     secrets.set(TOKEN).unwrap();
+    store.set_telegram_token_saved(true).unwrap();
     let context = JobContext {
         store: store.clone(),
         client: Arc::new(BotClient::with_base(&healthy.base(), false).unwrap()),
