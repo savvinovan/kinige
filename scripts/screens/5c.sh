@@ -6,11 +6,11 @@
 # and `KINIGE_TEST_TOKEN_STORE=memory` keeps the token in memory, so nothing touches a keychain or Telegram). Input is the screens driver (DRIVER=1).
 #
 # What it proves in the real window: the panel and its tabs, no token and then a token saved in Settings, a pack added by its link with progress and a
-# result that counts what it skipped (`requests.txt`: what the fake server saw, with the token as <token>), a sticker sent at once, the re-imported entries
-# (an unedited one is a sticker, the edited one keeps its text and shows a picture), the GIFs tab and the GIFs in the feed, kill -9 (the library and the sent
-# stickers stay), search and the trash, English, large text and 640 px; `mirror.txt` and `mcp.txt` are what the copy and an agent see; `gif-memory.txt` is the
-# peak of the web content process with the heavy GIFs; `cold-start.txt` is the start with this data. The import preview of the synthetic export (the line
-# "Stickers: N sent...") needs the system file dialog, which no script drives: its numbers are a store test (`stickers_import.rs`) and a story.
+# result that counts what it skipped (`requests.txt`: what the fake server saw, token as <token>), a sticker sent at once, the re-imported entries, the GIFs
+# tab and the GIFs in the feed (`reduce-motion.txt`: the runner's Reduce Motion and whether a small GIF moves, pressed or on its own), kill -9, search and
+# the trash, English, large text and 640 px; `mirror.txt` and `mcp.txt` are what the copy and an agent see; `gif-memory.txt` is the web content process with
+# the heavy GIFs still and playing; `cold-start.txt` is the start with this data. The import preview line ("Stickers: N sent...") needs the system file
+# dialog, which no script drives: its numbers are a store test (`stickers_import.rs`) and a story.
 set -u
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 K="${K:-${RUNNER_TEMP:-/tmp}/kinige-screens}"
@@ -23,6 +23,7 @@ DRIVER=1
 
 # The cat face and the heart as bytes: the file holds no invisible character, and bash 3.2 of the runner has no \u escape.
 CAT=$'\xf0\x9f\x98\xba'
+FIRE=$'\xf0\x9f\x94\xa5'
 TOKEN="42:fake-token-for-screens"
 LINK="https://t.me/addstickers/ScreensPack"
 SOCKET="$K/data/mcp/kinige.sock"
@@ -58,12 +59,14 @@ labels() {
     L_LINK="Ссылка на набор"; L_ADD="Добавить"; L_NO_TOKEN="Добавьте токен бота в Настройках"; L_PROGRESS="Загружено"; L_ADDED="Добавлен набор"
     L_OPEN_SETTINGS="Открыть Настройки"; L_TABS="Эмодзи, стикеры и GIF"
     L_TOKEN_FIELD="Токен бота Telegram"; L_SAVE="Сохранить"; L_SAVED="Токен сохранён"; L_DONE="Готово"; L_CAT_ENTRY="Этот кот мой любимый"
+    L_COMPOSER="Написать заметку"; L_FIRE_CHIP="$FIRE, "
   else
     L_INBOX="Inbox"; L_TRASH="Trash"; L_SEARCH="Search"; L_NONE="Nothing found."; L_SETTINGS="Settings"
     L_EMOJI="Emoji"; L_TAB_STICKERS="Stickers"; L_TAB_GIFS="GIFs"; L_STICKER="Sticker $CAT"; L_ADD_PACK="Add a sticker pack"
     L_LINK="Pack link"; L_ADD="Add"; L_NO_TOKEN="Add your bot token in Settings"; L_PROGRESS="Downloading"; L_ADDED="Added"
     L_OPEN_SETTINGS="Open Settings"; L_TABS="Emoji, stickers and GIFs"
     L_TOKEN_FIELD="Telegram bot token"; L_SAVE="Save"; L_SAVED="Token saved"; L_DONE="Done"; L_CAT_ENTRY="Этот кот мой любимый"
+    L_COMPOSER="Write a note"; L_FIRE_CHIP="$FIRE, "
   fi
 }
 detect_language() {
@@ -91,6 +94,27 @@ close_panel() { if has "$L_TABS"; then press "$L_EMOJI" button; fi; sleep 2; }
 # A scroll that may find nothing (the feed draws the entries near the window only): no scenario error either way.
 scroll_quiet() { drive_raw "$(drive_window)" "{\"kind\":\"scroll\",$(driver_query "$1")}" > /dev/null 2>&1 || true; sleep "$PAUSE"; }
 count_where() { sqlw "select count(*) from $1"; }
+
+# A shot of the window for a comparison, not for the record: it stays in the debug folder. `moves_between <name>` takes two of them about half a second
+# apart and says (in $MOVES and $MOVES_CODE: 0 identical, 1 they differ, 2 not comparable) whether anything on the screen moved in between.
+snap() { KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" "$1" kinige main > /dev/null 2>&1; }
+moves_between() {
+  snap "$K/debug/$1-a.png"
+  sleep 0.5
+  snap "$K/debug/$1-b.png"
+  MOVES="$(python3 -I "$REPO/scripts/screens/image-diff.py" "$K/debug/$1-a.png" "$K/debug/$1-b.png" 2>&1)"
+  MOVES_CODE=$?
+  echo "moves $1: $MOVES (exit $MOVES_CODE)"
+}
+# The same, up to three tries: a GIF whose frame happens to be the same half a second later is no proof of anything, three equal pairs are.
+moves_in_three() {
+  for _ in 1 2 3; do
+    moves_between "$1"
+    [ "$MOVES_CODE" = "1" ] && return 0
+    [ "$MOVES_CODE" = "2" ] && return 0
+    sleep 0.3
+  done
+}
 
 # ---- 1. The Stickers tab: the strip of packs and the grid under the headings ----
 set_language ru
@@ -161,9 +185,19 @@ press "$L_STICKER" button
 sleep 3
 [ "$(sqlw "select count(*) from attachment where sticker = 1")" = "$((STICKERS_BEFORE + 1))" ] || fail "the click did not send a sticker"
 close_panel
+# The sticker with its reaction chips: focusing a chip brings it to the middle of the window (a focus scrolls an element that is out of view into the
+# middle) and shows the hover bar of the entry, which has no Edit and no Copy (a sticker has no text). Then the focus goes to the field: the bar is gone
+# and the sticker stays in the frame.
+focus_on "$L_FIRE_CHIP" button
+sleep 2
+shoot 06b-hover-bar-on-sticker
+focus_on "$L_COMPOSER" textbox
+sleep 2
+shoot 06-feed-stickers
+# The sticker that replies to an entry: its quote above it.
 scroll_to "Как тебе новые наклейки"
 sleep 3
-shoot 06-feed-stickers
+shoot 06c-reply-sticker
 
 # ---- 7. The re-imported entries: a sticker where there was a placeholder, the edited one keeps its text ----
 # A scroll lands the element on the nearest edge. The picture sits above the text, so come from above: the day's date line first
@@ -182,29 +216,105 @@ sleep 3
 shoot 09-gifs-tab
 close_panel
 
-# ---- 10. The GIFs in the feed: the small one plays, the large one shows its first frame with a badge ----
+# ---- 10. The GIFs in the feed: the large one (over two megapixels) shows its first frame with a badge and waits for a click ----
 scroll_to "cat-large"
 sleep 3
 shoot 10-gifs-feed
 has "GIF" || fail "no GIF badge in the feed"
 
-# ---- gif-memory.txt: the web content process while the seven heavy GIFs scroll through ----
-web_rss() { ps -axo rss=,comm= | awk '/WebContent/ { if ($1 > m) m = $1 } END { print m + 0 }'; }
+# ---- 10a. Reduce Motion on the runner, and the GIF that fits the autoplay limits (cat-small.gif: 320 x 240, 8 frames, far under 8 MiB and 2 Mpx) ----
+# The label of a GIF of that size asks for a click ("Press to play the GIF") only when the page reports Reduce Motion (`GifCell`: `waitsForClick`), so the
+# label is the window's own report. Under Reduce Motion this proves the click path: still, pressed, moving, scrolled away, still again. Without it, the
+# autoplay path: moving on its own. A picture is compared with the one half a second later (`image-diff.py`): the control is the same pair with nothing playing.
+SMALL="cat-small.gif, 320 на 240"
+SMALL_WAITS="$SMALL. Нажмите, чтобы воспроизвести GIF"
+rm_state() { if has "$SMALL_WAITS"; then echo reduced; else echo "not reduced"; fi; }
+RM="$OUT/reduce-motion.txt"
+scroll_to "cat-small.gif"
+sleep 3
+STATE_START="$(rm_state)"
 {
-  echo "# Peak resident size (KB) of the web content process, sampled while the chat 'GIF' (six GIFs near 7.5 MiB and one of 1.96 megapixels, all under the autoplay limits) scrolls past"
-  echo "before opening the chat: $(web_rss)"
+  echo "# Reduce Motion on the runner and what the small GIF (cat-small.gif) does in the real window"
+  echo "the window's report at the start (the label of a GIF of that size asks for a click only when the page sees prefers-reduced-motion): $STATE_START"
+  echo "defaults read com.apple.universalaccess reduceMotion: $(defaults read com.apple.universalaccess reduceMotion 2>&1 | head -1)"
+} > "$RM"
+if [ "$STATE_START" = "reduced" ]; then
+  moves_between click-control # the control: nothing plays, so the two shots are the same
+  echo "Reduce Motion, nothing pressed, two shots 0.5 s apart: $MOVES" >> "$RM"
+  [ "$MOVES_CODE" = "0" ] || fail "the window moves while no GIF plays, so a moving GIF would prove nothing: $MOVES"
+  press "$SMALL" button
+  sleep 2
+  if has "$SMALL" && ! has "$SMALL_WAITS"; then echo "pressed: the label no longer asks for a click" >> "$RM"; else fail "pressing cat-small.gif did not start it (its label still asks for a click)"; fi
+  shoot 10b-gif-pressed
+  moves_in_three click-playing
+  echo "pressed, two shots 0.5 s apart: $MOVES" >> "$RM"
+  [ "$MOVES_CODE" = "1" ] || fail "the pressed GIF does not move in the real window: $MOVES"
+  scroll_to "17 ноября" # far away and back: the click is forgotten when the GIF leaves the screen, so it asks again
+  sleep 3
+  scroll_to "cat-small.gif"
+  sleep 3
+  if has "$SMALL_WAITS"; then echo "scrolled away and back: the label asks for a click again" >> "$RM"; else fail "after scrolling away the GIF still plays: it should ask for a click again"; fi
+else
+  echo "Reduce Motion is off here: the autoplay path is tried below without changing anything" >> "$RM"
+fi
+
+# Autoplay, the second half: where Reduce Motion is on, try to turn it off. THE RUNNER ONLY (this script runs from screens.yml, never on a person's Mac).
+# Whether the runner allows it is not verified: the answer is the window's report after a restart of the app.
+if [ "$STATE_START" = "reduced" ]; then
+  defaults write com.apple.universalaccess reduceMotion -bool false > "$K/debug/reduce-motion-write.txt" 2>&1
+  echo "defaults write com.apple.universalaccess reduceMotion -bool false: exit $? $(head -c 200 "$K/debug/reduce-motion-write.txt")" >> "$RM"
+  restart_app
+  scroll_to "cat-small.gif"
+  sleep 3
+fi
+STATE_NOW="$(rm_state)"
+echo "the window's report now: $STATE_NOW" >> "$RM"
+if [ "$STATE_NOW" = "not reduced" ]; then
+  # Autoplay: no click is asked for, and it moves on its own while it is on screen.
+  has "$SMALL" && ! has "$SMALL_WAITS" || fail "the small GIF is not found without its click label"
+  shoot 10c-gif-autoplay
+  moves_in_three autoplay
+  echo "autoplay, two shots 0.5 s apart: $MOVES" >> "$RM"
+  [ "$MOVES_CODE" = "1" ] || fail "the GIF does not autoplay in the real window: $MOVES"
+else
+  echo "AUTOPLAY IS UNPROVEN IN THE REAL WINDOW: Reduce Motion stays on for the page on this runner, so the autoplay branch of GifCell did not run (it is proven by jsdom tests only)" >> "$RM"
+fi
+cat "$RM"
+
+# ---- gif-memory.txt: the web content process while the seven heavy GIFs scroll through, still and then playing ----
+web_rss() { ps -axo rss=,comm= | awk '/WebContent/ { if ($1 > m) m = $1 } END { print m + 0 }'; }
+HEAVY="wide.gif heavy-5.gif heavy-4.gif heavy-3.gif heavy-2.gif heavy-1.gif heavy-0.gif"
+# measure_pass <title> <press: yes|no>: each GIF is scrolled to, pressed when the window waits for a click, and sampled with its movement checked.
+measure_pass() {
+  local name rss peak=0
+  { echo; echo "$1"; echo "before: $(web_rss)"; } >> "$OUT/gif-memory.txt"
+  for name in $HEAVY; do
+    scroll_quiet "$name"
+    sleep 3
+    if [ "$2" = "yes" ]; then
+      drive_raw "$(drive_window)" "{\"kind\":\"press\",$(driver_query "$name" button)}" > /dev/null 2>&1 || true
+      sleep 3
+    fi
+    moves_between "memory-$name"
+    rss="$(web_rss)"
+    echo "$name: $rss KB; two shots 0.5 s apart: $MOVES" >> "$OUT/gif-memory.txt"
+    [ "$rss" -gt "$peak" ] && peak="$rss"
+  done
+  echo "peak: $peak KB" >> "$OUT/gif-memory.txt"
+}
+{
+  echo "# Resident size (KB) of the web content process while the chat 'GIF' scrolls past: six GIFs of about 7.4 MiB and one of 1.96 megapixels, all under the autoplay limits"
+  echo "(8 MiB and 2,000,000 pixels). A GIF that 'moves' is one whose two shots 0.5 s apart differ; 'still' is one whose shots are the same."
 } > "$OUT/gif-memory.txt"
 press "GIF" button
 sleep 4
-PEAK=0
-for n in 1 2 3 4 5 6 7; do
-  scroll_quiet "heavy-$((7 - n)).gif"
-  sleep 3
-  RSS="$(web_rss)"
-  echo "after scrolling to GIF $n: $RSS" >> "$OUT/gif-memory.txt"
-  [ "$RSS" -gt "$PEAK" ] && PEAK="$RSS"
-done
-echo "peak: $PEAK KB" >> "$OUT/gif-memory.txt"
+if [ "$STATE_NOW" = "reduced" ]; then
+  measure_pass "Pass 1, Reduce Motion on, nothing pressed: first frames only" no
+  scroll_quiet "wide.gif"
+  measure_pass "Pass 2, Reduce Motion on, each GIF pressed so that it plays" yes
+else
+  measure_pass "Autoplay (Reduce Motion off for the page): each GIF plays while it is on screen" no
+fi
 press "$L_INBOX" button
 sleep 3
 

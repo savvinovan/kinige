@@ -228,6 +228,9 @@ jobs:
       - name: Shot scenario helpers (an empty window dump is an error)
         working-directory: .
         run: bash scripts/screens/lib.test.sh
+      - name: Screenshot comparison (the GIF steps of 5c.sh; every exit code named)
+        working-directory: .
+        run: python3 -I scripts/screens/image-diff.test.py
       - name: Test hooks guard (a build with the runners' fake microphone or screens driver must fail)
         working-directory: .
         run: bash scripts/check-test-hooks.test.sh
