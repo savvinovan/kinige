@@ -79,7 +79,7 @@ pub fn columns(dir: &Path, id: &str) -> (Option<String>, Option<String>, i64) {
         .unwrap()
 }
 
-/// Makes the row look as one written before 7b: no `name`, `description` or `privacy` group, default columns.
+/// Makes the row look as one written before 7b (and so before 5c): no `name`, `description`, `privacy` or `sticker` group, default columns.
 pub fn make_legacy(dir: &Path, id: &str) {
     let conn = raw(dir);
     let (groups_raw, hlc_json): (String, String) = conn
@@ -91,12 +91,13 @@ pub fn make_legacy(dir: &Path, id: &str) {
         .unwrap();
     let mut raw_groups: BTreeMap<String, Value> = serde_json::from_str(&groups_raw).unwrap();
     let mut hlc_entries: BTreeMap<String, Value> = serde_json::from_str(&hlc_json).unwrap();
-    for group in ["name", "description", "privacy"] {
+    for group in ["name", "description", "privacy", "sticker"] {
         raw_groups.remove(group);
         hlc_entries.remove(group);
     }
     conn.execute(
-        "UPDATE attachment SET groups_raw = ?1, hlc_json = ?2, display_name = NULL, description = NULL, spoiler = 0 WHERE id = ?3",
+        "UPDATE attachment SET groups_raw = ?1, hlc_json = ?2, display_name = NULL, description = NULL, spoiler = 0, \
+         sticker = 0, sticker_emoji = NULL WHERE id = ?3",
         (
             serde_json::to_string(&raw_groups).unwrap(),
             serde_json::to_string(&hlc_entries).unwrap(),

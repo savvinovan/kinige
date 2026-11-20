@@ -35,7 +35,9 @@ fn a_new_attachment_has_the_three_groups_with_the_defaults_under_its_creation_hl
         assert_eq!(found["description"], r#"{"description":null}"#);
         assert_eq!(found["privacy"], r#"{"spoiler":false}"#);
         let stamps = hlcs(dir.path(), id);
-        assert_eq!(stamps.len(), 6);
+        // Slice 5c adds the `sticker` group under the same HLC; a photo's is `{"emoji":null,"sticker":false}`.
+        assert_eq!(found["sticker"], r#"{"emoji":null,"sticker":false}"#);
+        assert_eq!(stamps.len(), 7);
         let first = stamps["core"]["h"].clone();
         assert!(
             stamps
