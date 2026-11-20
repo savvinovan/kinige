@@ -109,6 +109,8 @@
   --layout-on-this-day-entry-lines: 3; /** How many lines of the entry text a row of the 'On this day' card shows (slice 5); the rest is cut off with an ellipsis (line-clamp). The full text opens in the feed by clicking the entry. */
   --layout-reaction-chip-height: 1.55rem; /** KINIG-138: the height of a reaction chip inside a bubble (about 20 px at a 13 px root), fully rounded. The emoji in it is the body text size. */
   --layout-reaction-divider-height: 1.1rem; /** KINIG-138: the height of the thin divider between the reaction buttons and the other buttons of the hover bar (14 px). */
+  --layout-reaction-story-stage: 30rem; /** KINIG-138: the height of the Storybook stage that gives the full emoji picker room (stories only). */
+  --layout-reaction-story-column: 20rem; /** KINIG-138: the height of the Storybook column in which a bubble stands at the bottom, as in the feed (stories only). */
   --layout-recovery-width: 36rem; /** Width of the column of the 'Database is damaged' screen (468 px at a 13 px root); in a narrow window the column takes the window width minus the margins. */
   --layout-recovery-list-max-height: 24rem; /** Largest height of the copies list (312 px at a 13 px root): a longer list scrolls inside, the heading and the button stay in place. */
   --layout-chat-dialog-width: 27rem; /** Width of the 'New chat' / 'Rename' / 'Chat emoji' window (351 px at a 13 px root): narrower than the settings window, the picker inside takes the content width. */

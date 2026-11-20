@@ -67,13 +67,13 @@ pub fn rows(dir: &Path, id: &str) -> Vec<(String, String, i64, String)> {
         .collect()
 }
 
+/// A `message_reaction` row: message id, key, emoji, put at, zone.
+pub type ReactionRow = (String, String, String, i64, String);
+/// A `message_reaction_keys` row: message id, the keys as JSON.
+pub type KeysRow = (String, String);
+
 /// Every derived row of the database, for "rebuilt equals incremental".
-pub fn all_rows(
-    dir: &Path,
-) -> (
-    Vec<(String, String, String, i64, String)>,
-    Vec<(String, String)>,
-) {
+pub fn all_rows(dir: &Path) -> (Vec<ReactionRow>, Vec<KeysRow>) {
     let conn = raw(dir);
     let reactions = conn
         .prepare(

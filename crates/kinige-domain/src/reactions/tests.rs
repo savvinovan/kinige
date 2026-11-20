@@ -352,10 +352,10 @@ fn garbage_and_huge_records_do_not_panic_or_show_anything() {
             groups_raw: &raw,
             hlc_json: &hlcs,
         };
-        match read_group(&current) {
-            Ok(Stored::Group(_)) => panic!("garbage accepted: {group:.20}"),
-            Ok(_) | Err(_) => {}
-        }
+        assert!(
+            !matches!(read_group(&current), Ok(Stored::Group(_))),
+            "garbage accepted: {group:.20}"
+        );
         assert_eq!(shown(&raw, &hlcs), Shown::default());
     }
     assert_eq!(shown("not json", "{}"), Shown::default());

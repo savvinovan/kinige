@@ -134,6 +134,18 @@
   margin-left: var(--space-1);
 }
 
+/* Storybook only: a stage tall enough for the full picker, and the column-reverse box the feed stands in. */
+.reaction-story-stage {
+  min-height: var(--layout-reaction-story-stage);
+}
+
+.reaction-story-column {
+  display: flex;
+  flex-direction: column-reverse;
+  height: var(--layout-reaction-story-column);
+  overflow: hidden;
+}
+
 /* An entry of pictures only that has reactions: the album still fills the bubble edge to edge (message-bleed.css), and the chips sit under it with the
    bubble's usual padding; the time is at the end of their row, not a pill on the picture. */
 .message--bleed .reaction-row {

@@ -127,15 +127,22 @@ function OpenCardPopover() {
 }
 export const КарточкаСОкном: Story = { render: () => <OpenCardPopover /> };
 
+/** A 24-pixel square at (40, 40) in the stage: where the picker's opener would be (a rectangle in window pixels, not a style). */
+const STORY_ANCHOR = anchorAt(40, 24);
+
+function anchorAt(origin: number, size: number) {
+  return { left: origin, top: origin, right: origin + size, bottom: origin + size };
+}
+
 /** The picker in reaction mode: the recent reactions on top. */
 function Full({ children }: { children: ReactNode }) {
-  return <div style={{ minHeight: "30rem" }}>{children}</div>;
+  return <div className="reaction-story-stage">{children}</div>;
 }
 export const ВыборПолный: Story = {
   render: () => (
     <Full>
       <ReactionPicker
-        anchor={{ left: 40, top: 40, right: 64, bottom: 64 }}
+        anchor={STORY_ANCHOR}
         start="full"
         quick={[HEART, "😂", "😢"]}
         recent={["🔥", HEART, "🥲"]}
@@ -216,7 +223,7 @@ export const СтрокаПоиска: Story = {
 function Feedlike() {
   const [reactions, setReactions] = useState<ReactionView[]>([]);
   return (
-    <div className="story-column" style={{ display: "flex", flexDirection: "column-reverse", height: "20rem", overflow: "hidden" }}>
+    <div className="story-column reaction-story-column">
       <div>
         {message({ showActions: true, reactions, onReact: (emoji, on) => setReactions((list) => (on ? [...list, chip(emoji)] : list.filter((r) => r.emoji !== emoji))) })}
       </div>

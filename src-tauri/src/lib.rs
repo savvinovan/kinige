@@ -41,7 +41,7 @@ mod window_events;
 
 pub use window_events::on_window_event;
 
-use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
+use capture::{CaptureShell, MAIN_LABEL};
 use data_dirs::{db_path, default_mirror_dir};
 use hotkeys::{Hotkeys, PluginRegistrar};
 use kinige_store::{Store, StoreError, StoreOptions};
@@ -185,7 +185,7 @@ fn start_services<R: Runtime>(
     #[cfg(target_os = "macos")]
     panel::convert(
         app,
-        CAPTURE_LABEL,
+        capture::CAPTURE_LABEL,
         capture::on_capture_key,
         capture::on_capture_blur,
         capture::request_hide,
