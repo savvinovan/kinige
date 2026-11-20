@@ -33,6 +33,9 @@ pub const MAX_GROUP_BYTES: usize = 8 * 1024;
 pub const MAX_TZ_BYTES: usize = 64;
 /// The largest `at`: a millisecond time in the year 2286.
 pub const MAX_AT: i64 = 9_999_999_999_999;
+/// The version of the rules that turn the group into derived rows (what [`shown`] lets through). The store keeps it in
+/// `app_setting.reaction_rules_version` and rebuilds every row on open when it differs, like the search index's.
+pub const RULES_VERSION: u32 = 1;
 
 const VS16: char = '\u{FE0F}';
 

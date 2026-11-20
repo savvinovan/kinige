@@ -2,6 +2,7 @@ use kinige_domain::ErrorCode;
 use kinige_domain::attachment::DetailsError;
 use kinige_domain::chat::ChatInputError;
 use kinige_domain::groups::{BodyError, GroupError};
+use kinige_domain::reactions::write::ReactionError;
 use std::fmt;
 
 /// Store error. The frontend gets only the code (`ErrorCode`); details stay in the process log.
@@ -60,6 +61,10 @@ pub enum StoreError {
     VoiceTooLong,
     /// A name, description or spoiler of an attachment broke a rule (slice 7b): nothing was written.
     AttachmentDetailsInvalid,
+    /// The reaction is not one emoji (slice 5a): nothing was written.
+    ReactionInvalid,
+    /// The entry has 10 live reactions, or has had 32 different emoji: a new emoji cannot be put on it (slice 5a).
+    ReactionLimit,
     /// The database was created by a newer app version (schema `found`): downgrade is not supported (PRD §10.4).
     TooNew(i64),
     /// Writing to the database failed: nothing was written (the transaction rolled back).
@@ -102,6 +107,8 @@ impl StoreError {
             StoreError::VoiceTooShort => ErrorCode::VoiceTooShort,
             StoreError::VoiceTooLong => ErrorCode::VoiceTooLong,
             StoreError::AttachmentDetailsInvalid => ErrorCode::AttachmentDetailsInvalid,
+            StoreError::ReactionInvalid => ErrorCode::ReactionInvalid,
+            StoreError::ReactionLimit => ErrorCode::ReactionLimit,
             StoreError::TooNew(_) => ErrorCode::DatabaseTooNew,
             StoreError::Write(_) => ErrorCode::StoreWriteFailed,
             StoreError::Read(_) => ErrorCode::StoreReadFailed,
@@ -142,6 +149,8 @@ impl StoreError {
             StoreError::VoiceTooShort => "voice_too_short",
             StoreError::VoiceTooLong => "voice_too_long",
             StoreError::AttachmentDetailsInvalid => "attachment_details_invalid",
+            StoreError::ReactionInvalid => "reaction_invalid",
+            StoreError::ReactionLimit => "reaction_limit",
             StoreError::TooNew(_) => "too_new",
             StoreError::Write(_) => "write",
             StoreError::Read(_) => "read",
@@ -182,6 +191,8 @@ impl fmt::Display for StoreError {
             StoreError::VoiceTooShort => f.write_str("recording is too short"),
             StoreError::VoiceTooLong => f.write_str("recording is too long"),
             StoreError::AttachmentDetailsInvalid => f.write_str("attachment details are invalid"),
+            StoreError::ReactionInvalid => f.write_str("the reaction is not one emoji"),
+            StoreError::ReactionLimit => f.write_str("too many reactions on the entry"),
             StoreError::TooNew(found) => {
                 write!(
                     f,
@@ -209,6 +220,16 @@ impl From<BodyError> for StoreError {
 impl From<DetailsError> for StoreError {
     fn from(_: DetailsError) -> Self {
         StoreError::AttachmentDetailsInvalid
+    }
+}
+
+impl From<ReactionError> for StoreError {
+    fn from(error: ReactionError) -> Self {
+        match error {
+            ReactionError::Invalid => StoreError::ReactionInvalid,
+            ReactionError::Limit => StoreError::ReactionLimit,
+            ReactionError::Group(group) => group.into(),
+        }
     }
 }
 

@@ -48,8 +48,20 @@ pub struct AgentEntry {
     /// (ADR-0009); the field is absent for an entry without attachments.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub attachments: Vec<AgentAttachment>,
+    /// The reactions the person put on the entry (slice 5a), in the order put; the field is absent when there are none. An agent only
+    /// reads them: there is no tool to put one.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub reactions: Vec<AgentReaction>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub truncated: bool,
+}
+
+/// One reaction as an agent sees it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AgentReaction {
+    pub emoji: String,
+    /// When it was put, in the form of `created`: local time in the zone the reaction carries, with the offset at that moment.
+    pub put: String,
 }
 
 /// One attachment as an agent sees it.
