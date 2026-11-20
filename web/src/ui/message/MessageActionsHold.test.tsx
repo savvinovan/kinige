@@ -9,6 +9,11 @@ import { Message } from "./Message";
 const sentAt = new Date(2026, 10, 18, 9, 5);
 const chip: ReactionView = { emoji: "🔥", putAt: 0, putTz: "UTC", yearsLater: 0 };
 const SHIFT = "--actions-shift";
+/** How far the row has been moved (the number of pixels in `--actions-shift`), or `null` when the property is not set. */
+const shiftOf = (actions: HTMLElement) => {
+  const value = actions.style.getPropertyValue(SHIFT);
+  return value === "" ? null : Number.parseFloat(value);
+};
 
 /** The layout the stubs describe: a wide bubble (the row stands over its top edge) and the wrapper's top relative to the feed. */
 const layout = { wrapWidth: 480, wrapTop: 100 };
@@ -63,13 +68,13 @@ describe("ряд действий удерживает место, когда п
   it("реакция добавляет ряд чипов, плашка растёт вверх на 25 px: ряд сдвигается на 25 px вниз, под указателем остаётся та же кнопка; снятие возвращает", () => {
     const { rerender, row, actions } = setup();
     enter(row);
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("");
+    expect(shiftOf(actions())).toBeNull();
     layout.wrapTop = 75;
     rerender(feed([chip]));
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("25px");
+    expect(shiftOf(actions())).toBe(25);
     layout.wrapTop = 100;
     rerender(feed([]));
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("0px");
+    expect(shiftOf(actions())).toBe(0);
   });
 
   it("прокрутка лишь переносит точку отсчёта: сдвига от неё нет, а рост после неё считается от нового места", () => {
@@ -77,10 +82,10 @@ describe("ряд действий удерживает место, когда п
     enter(row);
     layout.wrapTop = 60;
     act(() => void container.querySelector(".feed-scroll")?.dispatchEvent(new Event("scroll")));
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("");
+    expect(shiftOf(actions())).toBeNull();
     layout.wrapTop = 35;
     rerender(feed([chip]));
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("25px");
+    expect(shiftOf(actions())).toBe(25);
   });
 
   it("узкая плашка: ряд справа от неё стоит на нижней линии и не сдвигается", () => {
@@ -89,7 +94,7 @@ describe("ряд действий удерживает место, когда п
     enter(row);
     layout.wrapTop = 75;
     rerender(feed([chip]));
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("0px");
+    expect(shiftOf(actions())).toBe(0);
   });
 
   it("когда указатель ушёл и задержка прошла, сдвиг снимается; следующее наведение начинает с места по умолчанию", () => {
@@ -97,12 +102,12 @@ describe("ряд действий удерживает место, когда п
     enter(row);
     layout.wrapTop = 75;
     rerender(feed([chip]));
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("25px");
+    expect(shiftOf(actions())).toBe(25);
     leave(row);
     advance(5000);
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("");
+    expect(shiftOf(actions())).toBeNull();
     enter(row);
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("");
+    expect(shiftOf(actions())).toBeNull();
   });
 
   it("фокус внутри держит ряд так же, а потеря фокуса его отпускает", () => {
@@ -111,9 +116,9 @@ describe("ряд действий удерживает место, когда п
     act(() => button.focus());
     layout.wrapTop = 75;
     rerender(feed([chip]));
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("25px");
+    expect(shiftOf(actions())).toBe(25);
     act(() => button.blur());
-    expect(actions().style.getPropertyValue(SHIFT)).toBe("");
+    expect(shiftOf(actions())).toBeNull();
   });
 });
 
