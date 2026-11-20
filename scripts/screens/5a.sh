@@ -157,9 +157,9 @@ AWAKE="$(entry_id 'Проснулся рано')"
 [ "$(live_rows "$AWAKE")" = "0" ] || fail "the entry to react to already has a reaction"
 rows_block "before any reaction of the scenario"
 
-# 01: the bar of the entry that has none: three quick emoji, "Add reaction", a divider, then the usual buttons. (The entry's own words are also the
-# first words of an entry of a past year, so the scroll goes to the next entry, which is only today's.)
-scroll_to "Идея для приложения"
+# 01: the bar of the entry that has none, as a pointer on the entry shows it (the driver's `hover`): three quick emoji, "Add reaction", a divider, then
+# the usual buttons. A hover does not scroll, so the feed is scrolled to the entry first, by words that no entry of a past year has.
+scroll_to "Проснулся рано и до завтра"
 hover_on "$L_HEART_BTN" button "$FIRST_OF_TODAY"
 sleep 2
 shoot 01-hover-bar
