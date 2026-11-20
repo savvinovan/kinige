@@ -354,6 +354,9 @@ mod voice_tests;
 mod sticker_tests;
 
 #[cfg(test)]
+mod sticker_rules_tests;
+
+#[cfg(test)]
 mod details_tests;
 
 #[cfg(test)]

@@ -269,7 +269,7 @@ fn a_gif_sent_again_is_a_new_attachment_with_a_fresh_blob_id_and_key_and_no_deta
         )
         .unwrap();
     let original = store
-        .send_entry(INBOX_ID, "", None, &[tile.id.clone()], &now())
+        .send_entry(INBOX_ID, "", None, std::slice::from_ref(&tile.id), &now())
         .unwrap();
     let source_id = original.attachments[0].id.clone();
     let again = store

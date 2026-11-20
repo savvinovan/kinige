@@ -7,7 +7,6 @@
 mod common;
 
 use common::agent::{agent, call};
-use common::attach::*;
 use common::details::{changes, groups, hlcs, photo_and_pdf};
 use common::old_db::downgrade_to;
 use common::stickers::*;

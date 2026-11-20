@@ -71,6 +71,7 @@ pub(crate) struct StagedMedia {
 }
 
 /// What preparing the file of one message gave.
+#[allow(clippy::large_enum_variant)] // one value per message, on the stack of the import loop; a box would only add a deref at each use
 pub(crate) enum Prepared {
     /// The export holds no file for it (a note instead of a path, or the file is not there).
     Missing,

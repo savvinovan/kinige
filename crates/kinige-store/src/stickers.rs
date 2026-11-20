@@ -41,50 +41,41 @@ pub(crate) fn rebuild_all(conn: &Connection) -> rusqlite::Result<()> {
         "UPDATE attachment SET sticker = 0, sticker_emoji = NULL WHERE sticker != 0 OR sticker_emoji IS NOT NULL",
         [],
     )?;
-    let found: Vec<(
-        String,
-        String,
-        String,
-        Option<u32>,
-        Option<u32>,
-        i64,
-        String,
-        String,
-    )> = {
+    let found: Vec<Candidate> = {
         let mut statement = conn.prepare(
             "SELECT id, kind, mime, width, height, byte_size, groups_raw, hlc_json FROM attachment \
              WHERE instr(groups_raw, '\"sticker\"') > 0",
         )?;
         let rows = statement.query_map([], |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-                row.get(4)?,
-                row.get(5)?,
-                row.get(6)?,
-                row.get(7)?,
-            ))
+            Ok(Candidate {
+                id: row.get(0)?,
+                kind: row.get(1)?,
+                mime: row.get(2)?,
+                width: row.get(3)?,
+                height: row.get(4)?,
+                byte_size: row.get(5)?,
+                groups_raw: row.get(6)?,
+                hlc_json: row.get(7)?,
+            })
         })?;
         rows.collect::<Result<_, _>>()?
     };
-    for (id, kind, mime, width, height, byte_size, groups_raw, hlc_json) in found {
-        let Some(kind) = AttachmentKind::parse(&kind) else {
+    for row in found {
+        let Some(kind) = AttachmentKind::parse(&row.kind) else {
             continue;
         };
         let core = StickerCore {
             kind,
-            mime: &mime,
-            width,
-            height,
-            byte_size,
+            mime: &row.mime,
+            width: row.width,
+            height: row.height,
+            byte_size: row.byte_size,
         };
-        let read = read_sticker(&core, &groups_raw, &hlc_json);
+        let read = read_sticker(&core, &row.groups_raw, &row.hlc_json);
         if read.sticker {
             conn.execute(
                 "UPDATE attachment SET sticker = 1, sticker_emoji = ?2 WHERE id = ?1",
-                (&id, &read.emoji),
+                (&row.id, &read.emoji),
             )?;
         }
     }
@@ -94,6 +85,18 @@ pub(crate) fn rebuild_all(conn: &Connection) -> rusqlite::Result<()> {
         (VERSION_KEY, RULES_VERSION.to_string()),
     )?;
     Ok(())
+}
+
+/// An attachment row as the rebuild reads it: the columns of the core and the two maps.
+struct Candidate {
+    id: String,
+    kind: String,
+    mime: String,
+    width: Option<u32>,
+    height: Option<u32>,
+    byte_size: i64,
+    groups_raw: String,
+    hlc_json: String,
 }
 
 /// On opening the database: the rules version stored differs from the app's, so the columns are rebuilt in one transaction.
