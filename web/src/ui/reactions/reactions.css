@@ -139,7 +139,8 @@
   min-height: var(--layout-reaction-story-stage);
 }
 
-.reaction-story-column {
+/* Two classes: the frame's `.story-column` (a grid) is loaded after this file and must not win. */
+.story-column.reaction-story-column {
   display: flex;
   flex-direction: column-reverse;
   height: var(--layout-reaction-story-column);
