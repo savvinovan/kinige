@@ -40,7 +40,7 @@ LONG_TITLE="$(python3 -c 'print(("Очень длинное название ч�
 sqlite3 "$K/data/kinige.db" "update chat set title = '${LONG_TITLE}' where title = 'Мама'"
 # Scroll bars are always shown on this disposable runner; the app starts after this.
 defaults write NSGlobalDomain AppleShowScrollBars -string Always
-trap 'cp "$OUT"/*.png "$K/debug/" 2> /dev/null' EXIT
+trap 'cp "$OUT"/*.png "$OUT"/*.txt "$K/debug/" 2> /dev/null' EXIT
 prepare_app "$SOURCE_APP"
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")"
 
@@ -117,7 +117,7 @@ check_page_scroll() {
     return 0
   fi
   values="$(drive_value)"
-  { echo "== ${stage}"; printf '%s\n' "$values"; } >> "$OUT/scroll.txt"
+  { echo "== ${stage}"; printf '%s\n' "$values"; } | tee -a "$OUT/scroll.txt"
   val() { printf '%s\n' "$values" | sed -n "s/^$1=//p"; }
   [ -n "$(val document.scrollHeight)" ] || fail "the metrics at ${stage} have no document.scrollHeight"
   [ "$(val document.scrollHeight)" -le "$(val document.clientHeight)" ] || fail "the page scrolls vertically at ${stage} ($(val document.scrollHeight) > $(val document.clientHeight))"
