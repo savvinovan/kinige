@@ -169,6 +169,51 @@ fn static_stickers_become_sticker_entries_and_one_pack_item_per_content() {
 }
 
 #[test]
+fn the_preview_counts_the_stickers_sent_the_different_ones_and_the_ones_that_stay_placeholders() {
+    let data = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(data.path());
+    let export = folder(&[
+        ("stickers/a.webp", webp(300, 300)),
+        ("stickers/b.webp", webp(301, 300)),
+        ("stickers/a-again.webp", webp(300, 300)),
+        ("stickers/s.tgs", b"\x1f\x8b gzip".to_vec()),
+    ]);
+    let parsed = export_of(&[
+        sticker(1, "stickers/a.webp", "image/webp", "😺"),
+        sticker(2, "stickers/b.webp", "image/webp", "🔥"),
+        sticker(3, "stickers/a-again.webp", "image/webp", "😺"),
+        sticker(4, "stickers/s.tgs", "application/x-tgsticker", "🐟"),
+        sticker(
+            5,
+            "(File not included. Change data exporting settings to download.)",
+            "image/webp",
+            "🐟",
+        ),
+        sticker(6, "../../etc/passwd", "image/webp", "🐟"),
+        msg(7, SAVED_T + 7, "просто текст", &format!("user{OWNER}")),
+    ]);
+    let preview = store
+        .import_preview_with_media(&parsed, Some(export.path()))
+        .unwrap();
+    assert_eq!(
+        (
+            preview.stickers.sent,
+            preview.stickers.different,
+            preview.stickers.skipped
+        ),
+        (3, 2, 3)
+    );
+    // Without the folder the files cannot be compared: different paths count.
+    let blind = store.import_preview(&parsed).unwrap();
+    assert_eq!(
+        blind.stickers.sent, 4,
+        "the path of the hostile one is the importer's to refuse"
+    );
+    assert_eq!(blind.stickers.different, 4);
+    assert_eq!(blind.stickers.skipped, 2);
+}
+
+#[test]
 fn a_repeated_import_adds_nothing_and_old_entries_get_their_sticker_once() {
     let data = tempfile::tempdir().unwrap();
     let store = open_without_mirror(data.path());

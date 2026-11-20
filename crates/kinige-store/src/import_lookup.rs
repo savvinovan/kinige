@@ -2,12 +2,19 @@
 
 use crate::StoreError;
 use crate::error::read_err;
+use crate::import_media::{MediaPath, media_path};
 use kinige_domain::Language;
+use kinige_domain::attachment::hex_lower;
 use kinige_domain::chat::{MAX_TITLE_CHARS, normalize_title};
-use kinige_domain::import::{EXT_SRC_TELEGRAM, ImportChatKind};
-use kinige_domain::telegram::{TgChat, TgChatKind, TgMessage, render_body, render_body_attached};
+use kinige_domain::import::{EXT_SRC_TELEGRAM, ImportChatKind, StickerPreview};
+use kinige_domain::stickers::MAX_STICKER_BYTES;
+use kinige_domain::telegram::{
+    TgChat, TgChatKind, TgExport, TgMedia, TgMessage, render_body, render_body_attached,
+};
 use rusqlite::{Connection, OptionalExtension};
+use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 
 pub(crate) fn supported_kind(chat: &TgChat) -> Option<ImportChatKind> {
     match chat.kind {
@@ -95,6 +102,50 @@ pub(crate) fn author_of<'a>(chat: &'a TgChat, message: &'a TgMessage) -> Option<
 pub(crate) fn file_of(message: &TgMessage) -> Option<(bool, u64)> {
     let file = message.file.as_ref()?;
     Some((file.path.is_some(), file.size.unwrap_or(0)))
+}
+
+/// The sticker line of the preview (slice 5c): static stickers whose file the export holds, how many of them differ by content, and the
+/// sticker messages that stay placeholders. A file that is not in the folder (or not a plain file inside it) counts as skipped.
+pub(crate) fn sticker_preview(export: &TgExport, root: Option<&Path>) -> StickerPreview {
+    let mut seen: HashSet<String> = HashSet::new();
+    let mut preview = StickerPreview::default();
+    let stickers = export
+        .chats
+        .iter()
+        .filter(|chat| supported_kind(chat).is_some())
+        .flat_map(|chat| chat.messages.iter())
+        .filter(|message| {
+            !message.service && matches!(message.media, Some(TgMedia::Sticker { .. }))
+        });
+    for message in stickers {
+        let path = message.file.as_ref().and_then(|file| file.path.as_deref());
+        let key = path.and_then(|relative| match root {
+            Some(root) => match media_path(root, relative) {
+                MediaPath::Found(found) => content_key(&found),
+                _ => None,
+            },
+            None => Some(relative.to_string()),
+        });
+        match key {
+            Some(key) => {
+                preview.sent += 1;
+                seen.insert(key);
+            }
+            None => preview.skipped += 1,
+        }
+    }
+    preview.different = i64::try_from(seen.len()).unwrap_or(i64::MAX);
+    preview
+}
+
+/// The SHA-256 of a sticker-sized file; a larger one is not read (it could not be a sticker).
+fn content_key(path: &Path) -> Option<String> {
+    let meta = std::fs::metadata(path).ok()?;
+    if meta.len() > MAX_STICKER_BYTES {
+        return None;
+    }
+    let bytes = std::fs::read(path).ok()?;
+    Some(hex_lower(Sha256::digest(&bytes).as_slice()))
 }
 
 /// The text of an old entry with and without its placeholder line, in both languages: the entry is found unedited if its text is
