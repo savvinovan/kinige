@@ -88,6 +88,30 @@ describe("ряд действий удерживает место, когда п
     expect(shiftOf(actions())).toBe(25);
   });
 
+  it("запись у верхнего края ленты: рост плашки не переворачивает ряд внутрь (ряд остаётся там, где его нашёл указатель), а сдвиг считается по-прежнему", () => {
+    const { container, rerender, row, actions } = setup();
+    const wrap = container.querySelector(".message-wrap") as HTMLElement;
+    enter(row);
+    expect(wrap).not.toHaveClass("message-wrap--actions-flip"); // 100 px of room above the bubble
+    layout.wrapTop = 5; // the bubble grew upwards and now stands close to the feed's top edge
+    rerender(feed([chip]));
+    expect(wrap).not.toHaveClass("message-wrap--actions-flip");
+    expect(shiftOf(actions())).toBe(95);
+  });
+
+  it("прокрутка после сдвига начинает размещение заново: сдвиг снят, следующий рост считается от нового места", () => {
+    const { container, rerender, row, actions } = setup();
+    enter(row);
+    layout.wrapTop = 75;
+    rerender(feed([chip]));
+    expect(shiftOf(actions())).toBe(25);
+    act(() => void container.querySelector(".feed-scroll")?.dispatchEvent(new Event("scroll")));
+    expect(shiftOf(actions())).toBeNull();
+    layout.wrapTop = 50;
+    rerender(feed([chip, { ...chip, emoji: "😂" }]));
+    expect(shiftOf(actions())).toBe(25);
+  });
+
   it("узкая плашка: ряд справа от неё стоит на нижней линии и не сдвигается", () => {
     layout.wrapWidth = 200;
     const { rerender, row, actions } = setup();

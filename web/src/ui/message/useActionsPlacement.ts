@@ -56,7 +56,8 @@ function settle(element: HTMLElement, held: Held | null, inside: boolean): void 
  * - `shown`: the hover zone is the whole feed row (`.feed__item` across the column), not just the bubble; outside the feed, the wrapper itself.
  *   After the mouse leaves, the row stays for another `motion.delay.hide-actions` (about 180 ms): you can reach the icon diagonally.
  * - while the entry is held (pointer in it, or focus inside it) the row keeps its place on screen when the bubble changes height (`Held`), and `flip` is
- *   measured again on entering, on focus and on scrolling, so a row shown by the keyboard for an entry that came into view later is not on its text.
+ *   measured when the entry is first held (pointer or focus) and on scrolling, not when the bubble changes height, so a row shown by the keyboard for
+ *   an entry that came into view later is not on its text, and the row does not jump when a put makes the bubble taller near the feed's top edge.
  */
 export function useActionsPlacement(deps: unknown) {
   const wrap = useRef<HTMLDivElement>(null);
@@ -73,7 +74,9 @@ export function useActionsPlacement(deps: unknown) {
     const measure = () => {
       const beside = element.offsetWidth + actions.offsetWidth > column.clientWidth;
       setInside(beside);
-      setFlip(noRoomAbove(element));
+      // A held entry keeps its `flip`: the bubble grew upwards, the row is anchored where the pointer found it, and a new look at the room above would
+      // move the row under the pointer (found in the real window: the row jumped by the height of the chips row near the feed's top edge).
+      if (!held.current) setFlip(noRoomAbove(element));
       settle(element, held.current, beside);
     };
     measure();
@@ -93,14 +96,17 @@ export function useActionsPlacement(deps: unknown) {
     let pointer = false;
     let focus = false;
 
-    // Scrolling moves the wrapper without changing the row's place in it: only the reference point moves, and `flip` is measured again.
+    // Scrolling starts the row's placement afresh: the shift goes, the reference point moves and `flip` is measured again.
     const scrolled = () => {
-      if (held.current) held.current.top = element.getBoundingClientRect().top;
+      if (held.current) {
+        held.current = { top: element.getBoundingClientRect().top, shift: 0 };
+        element.querySelector<HTMLElement>(".message-actions")?.style.removeProperty(SHIFT);
+      }
       setFlip(noRoomAbove(element));
     };
     const hold = () => {
-      setFlip(noRoomAbove(element));
       if (held.current) return;
+      setFlip(noRoomAbove(element));
       held.current = { top: element.getBoundingClientRect().top, shift: 0 };
       scroller?.addEventListener("scroll", scrolled, { passive: true });
     };
