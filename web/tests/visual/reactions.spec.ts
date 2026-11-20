@@ -34,6 +34,49 @@ for (const scale of ["default", "large"]) {
   });
 }
 
+// A full-width bubble (the bar does not fit to its right, so it stands over its top edge) in the real feed's structure: a put and a removal grow the bubble
+// upwards, and the pressed button must stay under the pointer (within a pixel), with the feed at its end and scrolled to the middle.
+for (const where of ["конце", "середине"]) {
+  for (const scale of ["default", "large"]) {
+    test(`широкая запись в ${where}: нажатая кнопка ряда остаётся под указателем при добавлении и снятии (${scale})`, async ({ page }) => {
+      await page.goto(`/iframe.html?id=${encodeURIComponent(`компоненты-реакции-в-ленте--широкаязаписьв${where}`)}&viewMode=story`);
+      await page.locator("li[data-target] article.message").waitFor();
+      await page.evaluate(() => document.fonts.ready);
+      if (scale === "large") await page.evaluate(() => document.documentElement.setAttribute("data-text-scale", "large"));
+      if (where === "середине") await page.locator("li[data-target]").evaluate((node) => node.scrollIntoView({ block: "center" }));
+      const bubble = page.locator("li[data-target] article.message");
+      await bubble.hover();
+      const wrap = page.locator("li[data-target] .message-wrap");
+      await expect(wrap).toHaveClass(/message-wrap--actions-inside/); // the case under test: the bar does not fit on the right
+      const button = page.locator("li[data-target] .reaction-button").first();
+      const center = async () => {
+        const box = await button.boundingBox();
+        if (!box) throw new Error("no button");
+        return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      };
+      // At rest the bar does not cover the text more than its top padding (what the bar on main did).
+      const first = await page.locator("li[data-target] .message__content").boundingBox();
+      const barBox = await page.locator("li[data-target] .message-actions__bar").boundingBox();
+      if (!first || !barBox) throw new Error("no content or bar");
+      expect(barBox.y + barBox.height, JSON.stringify({ first, barBox })).toBeLessThanOrEqual(first.y + 1);
+
+      const before = await center();
+      await button.click(); // puts the heart: a row of chips, the bubble grows upwards
+      await expect(page.locator("li[data-target] .reaction-chip")).toHaveCount(1);
+      const afterPut = await center();
+      expect(Math.abs(afterPut.y - before.y), JSON.stringify({ before, afterPut })).toBeLessThan(1);
+      expect(Math.abs(afterPut.x - before.x)).toBeLessThan(1);
+      // The pointer is where it was: the element under it is still that button.
+      const under = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest(".reaction-button")?.getAttribute("aria-pressed"), before);
+      expect(under).toBe("true");
+      await button.click(); // removes it: the bubble shrinks
+      await expect(page.locator("li[data-target] .reaction-chip")).toHaveCount(0);
+      const afterRemove = await center();
+      expect(Math.abs(afterRemove.y - before.y), JSON.stringify({ before, afterRemove })).toBeLessThan(1);
+    });
+  }
+}
+
 // The time sits at the right end of the row of chips, level with its last line (not above or below it).
 test("время на одной линии с рядом чипов, у правого края плашки", async ({ page }) => {
   await open(page, "чиподин");

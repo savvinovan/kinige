@@ -96,6 +96,13 @@
   background: var(--color-surface-selected);
 }
 
+/* "More" of the small popover when nothing new can be added (10 live): muted, the reason is in its tooltip. */
+.reaction-picker__more[aria-disabled="true"] {
+  cursor: default;
+  opacity: var(--opacity-disabled);
+  text-decoration: none;
+}
+
 /* The thin divider between the reaction buttons and the other buttons of the bar. */
 .message-actions__divider {
   align-self: center;
@@ -140,6 +147,10 @@
 }
 
 /* Two classes: the frame's `.story-column` (a grid) is loaded after this file and must not win. */
+.feed-scroll.reaction-story-feed {
+  height: var(--layout-reaction-story-column);
+}
+
 .story-column.reaction-story-column {
   display: flex;
   flex-direction: column-reverse;

@@ -107,7 +107,8 @@
 .on-this-day__entry:hover .on-this-day__reply,
 .on-this-day__entry:focus-within .on-this-day__reply,
 .on-this-day__entry:hover .on-this-day__react,
-.on-this-day__entry:focus-within .on-this-day__react {
+.on-this-day__entry:focus-within .on-this-day__react,
+.on-this-day__react--open {
   opacity: 1;
 }
 

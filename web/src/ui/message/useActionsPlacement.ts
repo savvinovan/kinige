@@ -24,6 +24,29 @@ function noRoomAbove(element: HTMLElement): boolean {
   return element.getBoundingClientRect().top - scroller.getBoundingClientRect().top < above;
 }
 
+/** The custom property the row's `transform` reads (message.css): how far the row has been moved to stay under the pointer. */
+const SHIFT = "--actions-shift";
+
+/**
+ * The entry the pointer or the keyboard is on (slice 5a). A put or a removal adds or takes away a row of chips; the feed grows the bubble upwards, so a row
+ * anchored to the bubble's top would move and the next click would land on the text. While the entry is held, every change of the wrapper's top is
+ * handed back as a shift of the row, in the same frame (a layout effect or a resize observer, before paint), so the pressed button stays where the
+ * pointer is, whether the feed is at its end or scrolled. `top` is the wrapper's top as of the last look.
+ */
+interface Held {
+  top: number;
+  shift: number;
+}
+
+/** Hands the movement of the wrapper since the last look back to the row. Only the row beside the top edge ("inside") moves with it. */
+function settle(element: HTMLElement, held: Held | null, inside: boolean): void {
+  if (!held) return;
+  const top = element.getBoundingClientRect().top;
+  held.shift = inside ? held.shift + held.top - top : 0;
+  held.top = top;
+  element.querySelector<HTMLElement>(".message-actions")?.style.setProperty(SHIFT, `${held.shift}px`);
+}
+
 /**
  * Where the action row stands and when it is visible.
  *
@@ -32,12 +55,15 @@ function noRoomAbove(element: HTMLElement): boolean {
  * - `flip`: there is no room above the bubble (the first message at the top edge of the feed) - the row is pressed inside the bubble instead of being clipped.
  * - `shown`: the hover zone is the whole feed row (`.feed__item` across the column), not just the bubble; outside the feed, the wrapper itself.
  *   After the mouse leaves, the row stays for another `motion.delay.hide-actions` (about 180 ms): you can reach the icon diagonally.
+ * - while the entry is held (pointer in it, or focus inside it) the row keeps its place on screen when the bubble changes height (`Held`), and `flip` is
+ *   measured again on entering, on focus and on scrolling, so a row shown by the keyboard for an entry that came into view later is not on its text.
  */
 export function useActionsPlacement(deps: unknown) {
   const wrap = useRef<HTMLDivElement>(null);
   const [inside, setInside] = useState(false);
   const [flip, setFlip] = useState(false);
   const [shown, setShown] = useState(false);
+  const held = useRef<Held | null>(null);
 
   useLayoutEffect(() => {
     const element = wrap.current;
@@ -45,8 +71,10 @@ export function useActionsPlacement(deps: unknown) {
     const actions = element?.querySelector<HTMLElement>(".message-actions");
     if (!element || !column || !actions) return;
     const measure = () => {
-      setInside(element.offsetWidth + actions.offsetWidth > column.clientWidth);
+      const beside = element.offsetWidth + actions.offsetWidth > column.clientWidth;
+      setInside(beside);
       setFlip(noRoomAbove(element));
+      settle(element, held.current, beside);
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
@@ -60,24 +88,64 @@ export function useActionsPlacement(deps: unknown) {
     const element = wrap.current;
     if (!element) return;
     const zone = element.closest<HTMLElement>(".feed__item") ?? element;
+    const scroller = element.closest<HTMLElement>(".feed-scroll");
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let pointer = false;
+    let focus = false;
+
+    // Scrolling moves the wrapper without changing the row's place in it: only the reference point moves, and `flip` is measured again.
+    const scrolled = () => {
+      if (held.current) held.current.top = element.getBoundingClientRect().top;
+      setFlip(noRoomAbove(element));
+    };
+    const hold = () => {
+      setFlip(noRoomAbove(element));
+      if (held.current) return;
+      held.current = { top: element.getBoundingClientRect().top, shift: 0 };
+      scroller?.addEventListener("scroll", scrolled, { passive: true });
+    };
+    const drop = () => {
+      if (pointer || focus || !held.current) return;
+      held.current = null;
+      scroller?.removeEventListener("scroll", scrolled);
+      element.querySelector<HTMLElement>(".message-actions")?.style.removeProperty(SHIFT);
+    };
 
     const enter = () => {
       clearTimeout(timer);
-      setFlip(noRoomAbove(element));
+      pointer = true;
+      hold();
       setShown(true);
     };
     const leave = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => setShown(false), hideDelayMs());
+      timer = setTimeout(() => {
+        pointer = false;
+        setShown(false);
+        drop();
+      }, hideDelayMs());
+    };
+    const focusIn = () => {
+      focus = true;
+      hold();
+    };
+    const focusOut = (event: FocusEvent) => {
+      if (event.relatedTarget instanceof Node && element.contains(event.relatedTarget)) return;
+      focus = false;
+      drop();
     };
 
     zone.addEventListener("pointerenter", enter);
     zone.addEventListener("pointerleave", leave);
+    element.addEventListener("focusin", focusIn);
+    element.addEventListener("focusout", focusOut);
     return () => {
       clearTimeout(timer);
+      scroller?.removeEventListener("scroll", scrolled);
       zone.removeEventListener("pointerenter", enter);
       zone.removeEventListener("pointerleave", leave);
+      element.removeEventListener("focusin", focusIn);
+      element.removeEventListener("focusout", focusOut);
     };
   }, []);
 

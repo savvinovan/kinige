@@ -285,7 +285,7 @@ export const Message = memo(function Message({
       <div
         className={[
           "message-wrap",
-          showActions || shown || menu ? "message-wrap--actions" : "",
+          showActions || shown || menu || reaction.picking ? "message-wrap--actions" : "",
           inside ? "message-wrap--actions-inside" : "",
           inside && flip ? "message-wrap--actions-flip" : "",
         ]
@@ -388,6 +388,7 @@ export const Message = memo(function Message({
           onDelete={onDelete}
           onAttachmentDetails={onAttachmentDetails}
           onAddReaction={reaction.openFromMenu && menu ? () => reaction.openFromMenu?.(menu.position) : undefined}
+          addReactionReason={reaction.menuReason}
           moveTargets={moveTargets}
           onMoveTo={onMoveTo}
           onCopy={() => copyNow(menu.selection)}

@@ -1,8 +1,10 @@
 import { useState, type ReactNode, type RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import type { ReactionView } from "../../api/generated/ReactionView";
 import { useLanguage } from "../../i18n/I18n";
 import type { ReactionBar } from "../message/MessageActions";
 import type { MenuPosition } from "../menu/ContextMenu";
+import { pickerRefusal } from "./reactionLimits";
 import { ReactionPicker, type PickerAnchor } from "./ReactionPicker";
 import { ReactionRow } from "./ReactionRow";
 import { useReactionChoices } from "./ReactionsContext";
@@ -39,6 +41,7 @@ function useFrozen<T>(value: T, frozen: boolean): T {
  * (WebKit does not focus a button on click, so the element focused at open time is not a safe thing to remember).
  */
 export function useMessageReactions({ reactions, keysHad, onReact, readOnly, barShown, wrap, plate }: Options) {
+  const { t } = useTranslation();
   const language = useLanguage();
   const { quick, recent } = useReactionChoices();
   const [picker, setPicker] = useState<Picker | null>(null);
@@ -69,6 +72,10 @@ export function useMessageReactions({ reactions, keysHad, onReact, readOnly, bar
     /** Chips under the text: removable when the entry can be changed, plain labels otherwise. */
     row: <ReactionRow reactions={reactions} onRemove={onReact && !readOnly ? (emoji) => onReact(emoji, false) : undefined} />,
     has: reactions.length > 0,
+    /** The picker is open: the bar stays on screen (its opener is the panel's owner and must not vanish under it). */
+    picking: picker !== null,
+    /** Why the menu item "Add reaction…" is shut (10 live), or `undefined` when it is open. */
+    menuReason: pickerRefusal(state) === "live" ? t("reaction.limitLive") : undefined,
     /** "Add reaction…" of the menu: the quick popover at the menu's position. */
     openFromMenu: onReact && !readOnly ? (at: MenuPosition) => setPicker({ anchor: { left: at.x, top: at.y, right: at.x, bottom: at.y }, start: "quick", from: "menu" }) : undefined,
     panel: (picker && onReact ? (

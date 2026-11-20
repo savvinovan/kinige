@@ -70,7 +70,7 @@ function EntryReaction({ entry, date, onReact }: { entry: OnThisDayEntry; date: 
       <IconButton
         small
         icon="reactionAdd"
-        className="on-this-day__react"
+        className={anchor ? "on-this-day__react on-this-day__react--open" : "on-this-day__react"}
         data-react-entry={message.id}
         label={t("onThisDay.reactLabel", { date })}
         aria-haspopup="dialog"

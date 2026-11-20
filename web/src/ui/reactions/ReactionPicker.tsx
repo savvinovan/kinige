@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { Language } from "../../i18n";
 import { EmojiPicker } from "../emoji/EmojiPicker";
 import { Button } from "../controls/Button";
-import { isLive, putRefusal, type ReactionState } from "./reactionLimits";
+import { isLive, pickerRefusal, putRefusal, type ReactionState } from "./reactionLimits";
 import { ReactionButton } from "./ReactionButton";
 import "./reactions.css";
 
@@ -46,6 +46,8 @@ export function ReactionPicker({ anchor, start, quick, recent, state, language, 
   const { t } = useTranslation();
   const panel = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState(start);
+  // At 10 live reactions the full picker could only end in a refusal: "More" is shut, like the bar's "Add reaction" button.
+  const full = pickerRefusal(state) !== null;
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -122,7 +124,16 @@ export function ReactionPicker({ anchor, start, quick, recent, state, language, 
               onSwitch={(on) => choose(emoji, on)}
             />
           ))}
-          <Button variant="inline" className="reaction-picker__more" aria-label={t("reaction.moreLabel")} onClick={() => setMode("full")}>
+          <Button
+            variant="inline"
+            className="reaction-picker__more"
+            aria-label={t("reaction.moreLabel")}
+            aria-disabled={full || undefined}
+            title={full ? `${t("reaction.moreLabel")}. ${t("reaction.limitLive")}` : undefined}
+            onClick={() => {
+              if (!full) setMode("full");
+            }}
+          >
             {t("reaction.more")}
           </Button>
         </div>

@@ -23,6 +23,8 @@ export interface MenuItem {
   danger?: boolean;
   /** The item is visible but unavailable (`aria-disabled`); the arrows skip it. */
   disabled?: boolean;
+  /** Why a disabled item cannot be used: its tooltip says so ("Add reaction…" on an entry that has 10). */
+  hint?: string;
   /** A thin line above the item: groups of actions. */
   separatorBefore?: boolean;
 }
@@ -166,6 +168,7 @@ export function ContextMenu({ items, position, label, onSelect, onClose, onBack,
             className={`context-menu__item${item.danger ? " context-menu__item--danger" : ""}`}
             tabIndex={-1}
             aria-disabled={item.disabled ? true : undefined}
+            title={item.disabled && item.hint ? `${item.label}. ${item.hint}` : undefined}
             aria-checked={item.checked}
             aria-haspopup={item.submenu ? "menu" : undefined}
             onClick={() => {
