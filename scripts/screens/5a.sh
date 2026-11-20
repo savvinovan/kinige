@@ -41,10 +41,21 @@ BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Conten
 sqlw() { sqlite3 -cmd '.timeout 5000' "$K/data/kinige.db" "$@"; }
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
 
+# The day label above the seed's first Inbox entry ("D месяца", the Russian window), which the seed puts 2 days and 9 hours before the run: the day
+# depends on the hour the run starts at, so it is read from the database and never written into this file (a fixed "17 ноября" failed on 20.11 at
+# 22:00 UTC; it is a plain "D месяца" label while the entry is not yesterday and not in another year).
+first_entry_day_label() {
+  local date months
+  date="$(sqlw "select journal_date from message where body_md like 'Проснулся рано и до завтрака%' and deleted_at is null order by created_at limit 1")"
+  months=(января февраля марта апреля мая июня июля августа сентября октября ноября декабря)
+  [ -n "$date" ] || { fail "the seed's first Inbox entry has no journal date"; return 1; }
+  echo "$((10#${date:8:2})) ${months[$((10#${date:5:2} - 1))]}"
+}
+
 # The pointer and the keyboard focus leave the entry the scenario reacts to (the driver's `hover` off it, and the focus to the composer), so that no
 # action bar of it stays on screen in the next shots. The feed is scrolled to the entry first, which a hover off it needs.
 release_entry() {
-  scroll_to "17 ноября"
+  scroll_to "$(first_entry_day_label)"
   locate_today
   hover_off "$L_HEART_BTN" button "$FIRST_OF_TODAY"
   focus_on "$L_COMPOSER" textbox
@@ -151,7 +162,7 @@ rows_block "before any reaction of the scenario"
 # 01: the bar of the entry that has none, as a pointer on the entry shows it (the driver's `hover`): three quick emoji, "Add reaction", a divider, then
 # the usual buttons. A hover does not scroll, so the feed is scrolled first: to the day label above the entry (the label is at the top edge, the entry under
 # it with room above it for the bar, which is not pressed inside the bubble then).
-scroll_to "17 ноября"
+scroll_to "$(first_entry_day_label)"
 hover_on "$L_HEART_BTN" button "$FIRST_OF_TODAY"
 sleep 2
 shoot 01-hover-bar
