@@ -55,7 +55,7 @@ labels() {
   if [ "$UI" = "ru" ]; then
     L_INBOX="Входящие"; L_TRASH="Корзина"; L_SEARCH="Поиск"; L_NONE="Ничего не найдено."; L_SETTINGS="Настройки"
     L_EMOJI="Эмодзи"; L_TAB_STICKERS="Стикеры"; L_TAB_GIFS="GIF"; L_STICKER="Стикер $CAT"; L_ADD_PACK="Добавить набор стикеров"
-    L_LINK="Ссылка на набор"; L_ADD="Добавить"; L_NO_TOKEN="Добавьте токен бота в Настройки → Стикеры"; L_PROGRESS="Загрузка"; L_ADDED="Добавлен"
+    L_LINK="Ссылка на набор"; L_ADD="Добавить"; L_NO_TOKEN="Добавьте токен бота в Настройки → Стикеры"; L_PROGRESS="Загружено"; L_ADDED="Добавлен набор"
     L_TOKEN_FIELD="Токен бота Telegram"; L_SAVE="Сохранить"; L_SAVED="Токен сохранён"; L_DONE="Готово"; L_CAT_ENTRY="Этот кот мой любимый"
   else
     L_INBOX="Inbox"; L_TRASH="Trash"; L_SEARCH="Search"; L_NONE="Nothing found."; L_SETTINGS="Settings"
@@ -115,6 +115,8 @@ escape_key
 press "$L_SETTINGS"
 wait_for_settings
 in_settings
+# The Stickers page of Settings (the route is named like the tab).
+press "$L_TAB_STICKERS"
 wait_name "$L_TOKEN_FIELD" 10000 || fail "Settings has no token field"
 type_into "$L_TOKEN_FIELD" "$TOKEN"
 press "$L_SAVE" button
