@@ -73,6 +73,77 @@ fn the_columns_are_rebuilt_from_the_groups_when_the_rules_version_differs() {
     assert_eq!(columns_of(dir.path(), &id).0, 0);
 }
 
+/// N1: a cell of another type or out of range in a candidate row (SQLite lets a column hold anything) must not stop the database from
+/// opening, now or on any later open: the row is a picture, and the other rows are rebuilt.
+#[test]
+fn a_row_whose_cells_do_not_fit_is_a_picture_and_the_database_still_opens() {
+    let dir = tempfile::tempdir().unwrap();
+    let ids: Vec<String> = {
+        let store = open_without_mirror(dir.path());
+        (0..6)
+            .map(|n| send_one(&store, &format!("Pack{n}")).0)
+            .collect()
+    };
+    common::ops::wait_closed(dir.path());
+    let hostile = [
+        "width = -1",
+        "width = 5000000000",
+        "height = 'tall'",
+        "byte_size = 'big'",
+        "mime = x'ff00'",
+    ];
+    let conn = raw(dir.path());
+    for (id, set) in ids.iter().zip(hostile) {
+        conn.execute(&format!("UPDATE attachment SET {set} WHERE id = ?1"), [id])
+            .unwrap();
+    }
+    conn.execute(
+        "DELETE FROM app_setting WHERE key = 'sticker_rules_version'",
+        [],
+    )
+    .unwrap();
+    drop(conn);
+    // Twice: a failure on the first open would repeat on every one.
+    for _ in 0..2 {
+        drop(open_without_mirror(dir.path()));
+        common::ops::wait_closed(dir.path());
+        for id in &ids[..5] {
+            assert_eq!(columns_of(dir.path(), id), (0, None), "{id}");
+        }
+        assert_eq!(
+            columns_of(dir.path(), &ids[5]),
+            (1, Some("😺".to_string()))
+        );
+        raw(dir.path())
+            .execute(
+                "DELETE FROM app_setting WHERE key = 'sticker_rules_version'",
+                [],
+            )
+            .unwrap();
+    }
+}
+
+/// The column is filtered again on the way to the view: a damaged `sticker_emoji` under a matching version reaches no view.
+#[test]
+fn a_damaged_emoji_column_reaches_no_view() {
+    let dir = tempfile::tempdir().unwrap();
+    let (id, _) = {
+        let store = open_without_mirror(dir.path());
+        send_one(&store, "One")
+    };
+    common::ops::wait_closed(dir.path());
+    raw(dir.path())
+        .execute(
+            "UPDATE attachment SET sticker_emoji = '<b>x</b>' WHERE id = ?1",
+            [&id],
+        )
+        .unwrap();
+    let store = open_without_mirror(dir.path());
+    let page = store.list_messages(INBOX_ID, None, 10, &now()).unwrap();
+    assert!(page.messages[0].attachments[0].sticker);
+    assert_eq!(page.messages[0].attachments[0].sticker_emoji, None);
+}
+
 #[test]
 fn a_hostile_emoji_from_another_device_reaches_no_column_view_copy_or_agent() {
     let a = agent(AgentMode::Read, true);

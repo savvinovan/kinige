@@ -8,6 +8,7 @@ use kinige_domain::attachment::{
     AttachmentKind, AttachmentRow, AttachmentState, AttachmentSummary, AttachmentView,
     NewAttachment, hex_lower, new_attachment, summary_of, waveform_from_hex,
 };
+use kinige_domain::attachment::sticker::clean_emoji;
 use kinige_domain::history::{deleted_group_supported, purged_of_best_effort};
 use rusqlite::{Connection, OptionalExtension, Transaction};
 use serde_json::Value;
@@ -61,7 +62,8 @@ fn parse_one(item: &Value) -> Option<(i64, AttachmentView)> {
             spoiler: number("sp") != Some(0) && kind == AttachmentKind::Image,
             // A derived column: anything but a stored 1 is a picture (the reader's rule: every failure hides nothing).
             sticker: number("st") == Some(1) && kind == AttachmentKind::Image,
-            sticker_emoji: text("se"),
+            // Filtered here too: a derived column is not trusted to hold a valid emoji (a hand-edited or damaged cell reaches no view).
+            sticker_emoji: text("se").and_then(|emoji| clean_emoji(&emoji).map(str::to_string)),
             mime: text("m")?,
             byte_size: number("b")?,
             width: side("w"),

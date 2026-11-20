@@ -26,6 +26,7 @@ use kinige_domain::hlc::is_uuid_v4;
 use kinige_domain::stickers::{
     MAX_RECENT, MAX_STICKER_BYTES, PackSource, StickerLibrary, StickerPackView, StickerView,
 };
+use rusqlite::types::ValueRef;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -48,19 +49,9 @@ pub(crate) fn rebuild_all(conn: &Connection) -> rusqlite::Result<()> {
             "SELECT id, kind, mime, width, height, byte_size, groups_raw, hlc_json FROM attachment \
              WHERE instr(groups_raw, '\"sticker\"') > 0",
         )?;
-        let rows = statement.query_map([], |row| {
-            Ok(Candidate {
-                id: row.get(0)?,
-                kind: row.get(1)?,
-                mime: row.get(2)?,
-                width: row.get(3)?,
-                height: row.get(4)?,
-                byte_size: row.get(5)?,
-                groups_raw: row.get(6)?,
-                hlc_json: row.get(7)?,
-            })
-        })?;
-        rows.collect::<Result<_, _>>()?
+        let rows = statement.query_map([], |row| Ok(Candidate::read(row)))?;
+        // A row whose cells do not fit the types is a picture, never an error: it must not stop the database from opening.
+        rows.filter_map(|row| row.transpose()).collect::<Result<_, _>>()?
     };
     for row in found {
         let Some(kind) = AttachmentKind::parse(&row.kind) else {
@@ -99,6 +90,32 @@ struct Candidate {
     byte_size: i64,
     groups_raw: String,
     hlc_json: String,
+}
+
+impl Candidate {
+    /// Reads the cells without trusting their types (SQLite lets any cell hold anything): `None` when one does not fit, which is a picture.
+    /// A side that is negative or does not fit in 32 bits is `None` and fails the core's check, like a missing one.
+    fn read(row: &rusqlite::Row<'_>) -> Option<Self> {
+        let text = |index: usize| match row.get_ref(index) {
+            Ok(ValueRef::Text(bytes)) => std::str::from_utf8(bytes).ok().map(str::to_owned),
+            _ => None,
+        };
+        let number = |index: usize| match row.get_ref(index) {
+            Ok(ValueRef::Integer(value)) => Some(value),
+            _ => None,
+        };
+        let side = |index: usize| number(index).and_then(|value| u32::try_from(value).ok());
+        Some(Self {
+            id: text(0)?,
+            kind: text(1)?,
+            mime: text(2)?,
+            width: side(3),
+            height: side(4),
+            byte_size: number(5)?,
+            groups_raw: text(6)?,
+            hlc_json: text(7)?,
+        })
+    }
 }
 
 /// On opening the database: the rules version stored differs from the app's, so the columns are rebuilt in one transaction.
