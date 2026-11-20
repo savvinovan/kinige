@@ -57,9 +57,9 @@ uuid = { version = "1.28", features = ["v4"] }
 # A dragged TIFF (what Telegram Desktop puts on the drag as its image data) is turned into a PNG, with the decoder limits of ADR-0014
 # (KINIG-133). The store reads JPEG, PNG, GIF and WebP only; a TIFF stays a file card there. Also draws the PNGs of the attachment tests.
 image = { version = "0.25", default-features = false, features = ["png", "tiff"] }
-# The MCP server inside the app (ADR-0009): the official Rust SDK. Pinned exactly; updates come from Dependabot only once a release is at least two weeks old (3.6.0 on 05.11.2026, released 20.10.2026).
+# The MCP server inside the app (ADR-0009): the official Rust SDK. Pinned exactly; updates come from Dependabot only once a release is at least two weeks old (3.9.0, released 05.11.2026, is merged on or after 20.11.2026 together with the libsodium-sys-stable bump of KINIG-109).
 # Only the `server` feature (no macros, no HTTP): the tools are described by hand, there are no network transports (§12.3).
-rmcp = { version = "=3.8.0", default-features = false, features = ["server"] }
+rmcp = { version = "=3.9.0", default-features = false, features = ["server"] }
 # The Unix socket and timers of the MCP server (tokio is already in the tree through tauri).
 tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros", "rt"] }
 
