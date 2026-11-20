@@ -161,6 +161,13 @@
   cursor: pointer;
 }
 
+/* The ring of a keyboard-focused still frame (the rule of base.css draws it): inside the frame, above its neighbours. Outside, it was half covered by the
+   cells drawn after it (they are positioned, for the badge) and cut at the edges of the scroll area. */
+.gif-panel__cell:focus-visible {
+  z-index: 1;
+  outline-offset: calc(-1 * var(--focus-width));
+}
+
 .gif-panel__image {
   display: block;
   width: 100%;
