@@ -8,6 +8,7 @@ use super::tools::{INSTRUCTIONS, explain, tools};
 use crate::capture::notify_entries_changed;
 use crate::commands::get_language;
 use crate::recovery::Recovery;
+use crate::settings_window::notify_changed;
 use kinige_domain::Language;
 use kinige_store::{AgentError, AgentRequest, Now, Store};
 use rmcp::model::ProtocolVersion;
@@ -206,6 +207,10 @@ impl<R: Runtime> ServerHandler for McpServer<R> {
                 if reply.changed {
                     // An open feed is refreshed quietly: the window is not brought forward and does not get focus.
                     notify_entries_changed(&self.app);
+                }
+                if reply.settings_changed {
+                    // As after a click in the settings window: both windows read the settings again. No window is shown or focused.
+                    notify_changed(&self.app);
                 }
                 CallToolResult::success(vec![ContentBlock::text(reply.text)])
             }

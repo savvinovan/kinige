@@ -1,16 +1,17 @@
-//! The "Settings" window (slice 4b, ADR-0010): a separate Tauri window, the app menu (Cmd+,) and the icon menu, events to windows, a bridge to
-//! global shortcuts for the settings file. The file rules live in `kinige-store`; here only the window and the platform.
+//! The "Settings" window (slice 4b, ADR-0022): a separate Tauri window, the app menu (Cmd+,) and the icon menu, and the event
+//! that tells the windows a setting changed. Settings live only in SQLite; the rules are in `kinige-store`, here only the window
+//! and the platform.
 
 use crate::capture::{MAIN_LABEL, show_main};
 use crate::hotkeys::Hotkeys;
-use kinige_domain::{ApiError, ErrorCode, SettingsFileState, ShortcutKind};
-use kinige_store::{SettingsFile, SettingsFileOptions, ShortcutApplier, ShortcutRefusal, Store};
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex, PoisonError};
+use kinige_domain::ApiError;
+use kinige_store::Store;
+use std::sync::{Mutex, PoisonError};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State, WebviewUrl, WebviewWindowBuilder};
 
 pub const SETTINGS_LABEL: &str = "settings";
-/// An event for the `main` and `settings` windows: the settings changed (by a window, another window or the file). No data: the windows read on their own.
+/// An event for the `main` and `settings` windows: the settings changed (by a window, another window or an agent's `set_setting`).
+/// No data: the windows read on their own.
 pub const SETTINGS_CHANGED: &str = "settings-changed";
 /// An event for the main window: open an entry in the feed (from the access log in the settings window).
 pub const OPEN_MESSAGE: &str = "open-message";
@@ -94,7 +95,8 @@ pub fn on_destroyed<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Tells both windows that the settings changed. Does not block: it is also called from the file thread.
+/// Tells both windows that the settings changed. Shows no window and moves no focus (rule 11); does not block, so it is also
+/// called from the MCP server's task.
 pub fn notify_changed<R: Runtime>(app: &AppHandle<R>) {
     let _ = app.emit_to(MAIN_LABEL, SETTINGS_CHANGED, ());
     let _ = app.emit_to(SETTINGS_LABEL, SETTINGS_CHANGED, ());
@@ -105,43 +107,6 @@ pub fn set_available<R: Runtime>(app: &AppHandle<R>, available: bool) {
     if let Some(item) = app.try_state::<AppSettingsItem<R>>() {
         let _ = item.0.set_enabled(available);
     }
-}
-
-/// Hotkeys for the settings file: the same steps as when changing a shortcut in the window (check, register, save).
-struct HotkeyBridge<R: Runtime> {
-    app: AppHandle<R>,
-}
-
-impl<R: Runtime> ShortcutApplier for HotkeyBridge<R> {
-    fn apply(
-        &self,
-        store: &Store,
-        kind: ShortcutKind,
-        accelerator: &str,
-    ) -> Result<(), ShortcutRefusal> {
-        let Some(hotkeys) = self.app.try_state::<Hotkeys>() else {
-            return Err(ShortcutRefusal::Invalid);
-        };
-        hotkeys
-            .change(store, kind, accelerator)
-            .map_err(|code| match code {
-                ErrorCode::ShortcutTaken => ShortcutRefusal::Taken,
-                ErrorCode::ShortcutDuplicate => ShortcutRefusal::Duplicate,
-                _ => ShortcutRefusal::Invalid,
-            })
-    }
-}
-
-/// Starts the settings file thread. The file is applied synchronously, before registering shortcuts and before the MCP listener.
-pub fn start_file<R: Runtime>(
-    app: &AppHandle<R>,
-    store: &Store,
-    data_dir: PathBuf,
-) -> SettingsFile {
-    let handle = app.clone();
-    let mut options = SettingsFileOptions::new(Arc::new(move || notify_changed(&handle)));
-    options.shortcuts = Some(Arc::new(HotkeyBridge { app: app.clone() }));
-    SettingsFile::start(store.clone(), data_dir, options)
 }
 
 /// Opens the settings window from the main window (profile -> "Settings"). On Windows the command is `async`: a window
@@ -162,15 +127,6 @@ pub fn open_from_event<R: Runtime>(app: &AppHandle<R>) {
     }
     #[cfg(not(windows))]
     open(app);
-}
-
-/// The file path, its state and key errors. The command is not `async`, that is, it runs on the main thread: it only reads
-/// the state under a short lock and never waits for the file thread. The file thread, on the contrary, waits for the main thread (registering
-/// shortcuts in the plugin goes through `run_on_main_thread`), so no main thread command may wait for it --
-/// otherwise a deadlock would result (`open_settings`, `shortcut_recording` and this command do not wait).
-#[tauri::command]
-pub fn get_settings_file(file: State<'_, SettingsFile>) -> SettingsFileState {
-    file.state()
 }
 
 /// Open an entry from the access log in the main window. The entry is checked here: deleted forever or in the trash gives

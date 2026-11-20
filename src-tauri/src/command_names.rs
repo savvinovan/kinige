@@ -74,7 +74,6 @@ pub const SETTINGS_COMMANDS: &[&str] = &[
     "set_agent_chats",
     "list_agent_log",
     "list_agent_log_entries",
-    "get_settings_file",
     "settings_open_entry",
 ];
 
@@ -159,7 +158,6 @@ pub const COMMANDS: &[&str] = &[
     "set_agent_chats",
     "list_agent_log",
     "list_agent_log_entries",
-    "get_settings_file",
     "settings_open_entry",
     "capture_state",
     "capture_send",
