@@ -1,5 +1,5 @@
 {
-  "rule": "Reactions end to end (slice 5a): a put, a put of what is already there, a removal and a put back; what is not one emoji; the caps (10 live, 32 different ever) and their order; the trash and an unknown entry. Times are minutes after the start of the scenario, so the order put is the order of the minutes. A text is a string or a list of parts ({ cp: n } is one character, here the variation selector U+FE0F).",
+  "rule": "Reactions end to end (slice 5a): a put, a put of what is already there, a removal and a put back; what is not one emoji; the caps (10 live, 32 different ever) and their order; the trash and an unknown entry; the emoji is checked before the entry is looked up (a garbage emoji on a trashed or an unknown entry is `reaction_invalid`). Times are minutes after the start of the scenario, so the order put is the order of the minutes. A text is a string or a list of parts ({ cp: n } is one character, here the variation selector U+FE0F).",
   "rust": "Store::set_message_reaction and Store::list_messages_page",
   "mock": "web/src/api/mock/MockReactions.ts",
   "scenarios": [
@@ -74,10 +74,12 @@
         { "op": "delete", "msg": "a" },
         { "op": "react", "msg": "a", "emoji": "🔥", "on": false, "error": "message_in_trash" },
         { "op": "react", "msg": "a", "emoji": "😂", "on": true, "error": "message_in_trash" },
+        { "op": "react", "msg": "a", "emoji": "<b>", "on": true, "error": "reaction_invalid" },
         { "op": "restore", "msg": "a" },
         { "op": "reactions", "msg": "a", "list": ["🔥"], "keysHad": 1 },
         { "op": "react", "msg": "a", "emoji": "🔥", "on": false },
-        { "op": "react", "msg": "ghost", "emoji": "🔥", "on": true, "error": "message_not_found" }
+        { "op": "react", "msg": "ghost", "emoji": "🔥", "on": true, "error": "message_not_found" },
+        { "op": "react", "msg": "ghost", "emoji": "text", "on": true, "error": "reaction_invalid" }
       ]
     }
   ]

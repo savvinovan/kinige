@@ -62,8 +62,9 @@ reactions: Array<ReactionView>,
  */
 reactionKeysHad: Array<string>, 
 /**
- * How many items the entry's group holds, hidden ones and removal markers included: what the 32-key cap counts, so the interface refuses
- * a new emoji exactly when the store does.
+ * How many items the entry's group holds, hidden ones and removal markers included: what the 32-key cap counts. The interface never
+ * allows a put the store would refuse; in two corners it refuses one the store would allow (a put that replaces a hidden item of the same key,
+ * at 10 live or at 32 items).
  */
 reactionKeyCount: number, 
 /**

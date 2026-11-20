@@ -14,11 +14,12 @@ export class MockReactions {
 
   setMessageReaction(id: string, emoji: string, on: boolean): Promise<MessageView> {
     return this.s.run("setMessageReaction", `${id} ${emoji} ${on}`, () => {
+      // As in Rust, the emoji is checked before the entry is looked up: a garbage emoji on an unknown or trashed entry is `reaction_invalid`.
+      if (!isReactionEmoji(emoji)) throw new KinigeApiError("reaction_invalid");
       const row = this.s.rows.find((r) => r.view.id === id);
       if (!row) throw new KinigeApiError("message_not_found");
       if (row.deletedAt !== null) throw new KinigeApiError("message_in_trash");
       this.s.writable(row);
-      if (!isReactionEmoji(emoji)) throw new KinigeApiError("reaction_invalid");
       const key = reactionKey(emoji);
       const view = row.view;
       const live = view.reactions;

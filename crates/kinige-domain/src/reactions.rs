@@ -61,8 +61,9 @@ pub struct Shown {
     pub keys: Vec<String>,
     /// How many items the group holds, whatever they look like, markers included: what the 32-key cap counts.
     pub item_count: usize,
-    /// How many items are live (put and not removed), whatever they look like: what the 10-live cap counts, so the interface and the store
-    /// agree even when a hidden item takes one of the places.
+    /// How many items are live (put and not removed), whatever they look like: what the 10-live cap counts. The interface counts
+    /// the same items, so it never allows a put the store would refuse; in two corners it refuses one the store would allow (a put that replaces a
+    /// hidden item of the same key, at 10 live or at 32 items).
     pub live_count: usize,
 }
 

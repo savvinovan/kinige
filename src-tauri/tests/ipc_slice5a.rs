@@ -110,6 +110,29 @@ fn a_reaction_goes_through_the_feed_the_settings_and_back() {
     let removed = call(&main, COMMAND, json!({"id": id, "emoji": "❤", "on": false})).unwrap();
     assert_eq!(removed["reactions"].as_array().map(Vec::len), Some(1));
     assert_eq!(removed["reactionKeysHad"], json!(["\u{2764}", "🔥"]));
+    // The two counts the caps use come through in the right order, and are not equal: three items held, one live (two removed).
+    assert_eq!(
+        (
+            removed["reactionKeyCount"].clone(),
+            removed["reactionLiveCount"].clone()
+        ),
+        (json!(2), json!(1))
+    );
+    call(&main, COMMAND, json!({"id": id, "emoji": "😂", "on": true})).unwrap();
+    let three = call(
+        &main,
+        COMMAND,
+        json!({"id": id, "emoji": "😂", "on": false}),
+    )
+    .unwrap();
+    assert_eq!(
+        (
+            three["reactionKeyCount"].clone(),
+            three["reactionLiveCount"].clone()
+        ),
+        (json!(3), json!(1))
+    );
+    assert_eq!(three["reactionKeysHad"], json!(["\u{2764}", "🔥", "😂"]));
     // The trash shows them and refuses a change.
     call(&main, "delete_message", json!({"id": id})).unwrap();
     assert_eq!(

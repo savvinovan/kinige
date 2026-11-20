@@ -291,7 +291,7 @@ ALTER TABLE draft_attachment ADD COLUMN spoiler INTEGER NOT NULL DEFAULT 0;
 /// - `message_reaction_keys` -- what the first table cannot say once reactions are removed or hidden: `keys` is a JSON array of the comparison
 ///   keys of the items whose emoji is a valid emoji sequence, removal markers included, in key order (which emoji a full entry can still
 ///   take; the text of an item that is not an emoji is never stored here); `item_count` is how many items the group holds and `live_count`
-///   how many of them are live, whatever they look like (what the 32-key and the 10-live caps count, so the interface and the store agree).
+///   how many of them are live, whatever they look like (what the 32-key and the 10-live caps count; the interface counts the same, so it never allows what the store refuses).
 ///   A row exists for a message whose group is well-formed and not empty.
 pub(crate) const MIGRATION_10: &str = "
 CREATE TABLE message_reaction (

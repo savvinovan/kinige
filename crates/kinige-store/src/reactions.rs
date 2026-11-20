@@ -30,10 +30,13 @@ pub(crate) const RECENT_KEY: &str = "recent_reactions";
 
 /// The two columns of a view query for the table `m`: what the entry has had (`{keys, items, live}`: the emoji keys, the number of items
 /// and the number of live ones), and its live reactions as an array of `{k, e, a, z}` (key, emoji, put at, zone). The order is restored in
-/// Rust, because the aggregate does not promise one.
+/// Rust, because the aggregate does not promise one. A `keys` text that is not valid JSON is passed as an empty list (`json()` would raise an
+/// error and fail the whole page, and nothing would rebuild the row: the rules version matches), so one damaged row costs that entry its keys
+/// and nothing else.
 macro_rules! reactions_columns {
     () => {
-        "(SELECT json_object('keys', json(k.keys), 'items', k.item_count, 'live', k.live_count) \
+        "(SELECT json_object('keys', CASE WHEN json_valid(k.keys) THEN json(k.keys) ELSE json('[]') END, \
+                             'items', k.item_count, 'live', k.live_count) \
           FROM message_reaction_keys k WHERE k.message_id = m.id), \
          (SELECT json_group_array(json_object('k', r.key, 'e', r.emoji, 'a', r.put_at, 'z', r.put_tz)) \
           FROM message_reaction r WHERE r.message_id = m.id)"
@@ -49,7 +52,8 @@ pub(crate) struct Had {
     pub(crate) live: u32,
 }
 
-/// The entry's reactions and what it has had, from the [`reactions_columns`] values. A damaged element is skipped.
+/// The entry's reactions and what it has had, from the [`reactions_columns`] values. Nothing here fails: a damaged element of the reactions array
+/// is skipped, and a `keys` value that is not a list of strings gives no keys (a damaged count reads as 0).
 pub(crate) fn parse_columns(
     had: Option<String>,
     json: Option<String>,

@@ -5,6 +5,7 @@ use super::tests::{group_of, item, record};
 use super::write::ReactionError;
 use super::write_tests::{AT, HEART, Record};
 use super::*;
+use crate::emoji::MAX_EMOJI_BYTES;
 
 /// An item whose emoji is not one: markup, and a text of 3,000 bytes. They are live, so they take places of the 10-live cap.
 fn hostile() -> Vec<Value> {
@@ -123,8 +124,38 @@ fn rules_fingerprint() -> u64 {
         MAX_GROUP_BYTES as u64,
         MAX_TZ_BYTES as u64,
         MAX_AT as u64,
+        MAX_EMOJI_BYTES as u64,
     ] {
         mix_u64(&mut hash, limit);
+    }
+    // What `shown` makes of fixed groups: the live and marker items, a zone that is valid and ones that are not, an emoji that is one and text that is
+    // not, so the zone rule and the filters are covered as they act together, not only each on its own.
+    let items = [
+        item("😂", Some(AT), Some("UTC"), 2_000),
+        item("😂", None, None, 2_000),
+        item("🔥", Some(AT), Some("Europe/Moscow"), 2_000),
+        item("🔥", Some(AT), Some(""), 2_000),
+        item("🎉", Some(AT), Some(&"z".repeat(MAX_TZ_BYTES)), 2_000),
+        item("🎉", Some(AT), Some(&"z".repeat(MAX_TZ_BYTES + 1)), 2_000),
+        item("👍", Some(AT), Some("a\nb"), 2_000),
+        item("😢", Some(AT), None, 2_000),
+        item("<b>", Some(AT), Some("UTC"), 2_000),
+        item("\u{FE0F}", Some(AT), Some("UTC"), 2_000),
+    ];
+    for item in items {
+        let (raw, hlcs) = record(Some(&group_of(&[item])), 5_000);
+        let got = shown(&raw, &hlcs);
+        for n in [
+            got.reactions.len(),
+            got.keys.len(),
+            got.item_count,
+            got.live_count,
+        ] {
+            mix_u64(&mut hash, n as u64);
+        }
+        got.keys
+            .iter()
+            .for_each(|key| key.bytes().for_each(|byte| mix(&mut hash, byte)));
     }
     hash
 }
@@ -135,7 +166,7 @@ fn the_rules_version_is_tied_to_the_rules_it_stands_for() {
     // device rebuilds its derived rows on open, and then update both numbers here.
     assert_eq!(
         (RULES_VERSION, rules_fingerprint()),
-        (1, 1_195_285_269_939_224_153)
+        (1, 78_395_572_624_291_689)
     );
 }
 

@@ -86,8 +86,9 @@ pub struct MessageView {
     /// be put on it, and the interface knows which ones it still can. Only emoji: the text of an item that is not one is never carried here.
     /// Empty for an entry that never had a reaction.
     pub reaction_keys_had: Vec<String>,
-    /// How many items the entry's group holds, hidden ones and removal markers included: what the 32-key cap counts, so the interface refuses
-    /// a new emoji exactly when the store does.
+    /// How many items the entry's group holds, hidden ones and removal markers included: what the 32-key cap counts. The interface never
+    /// allows a put the store would refuse; in two corners it refuses one the store would allow (a put that replaces a hidden item of the same key,
+    /// at 10 live or at 32 items).
     pub reaction_key_count: u32,
     /// How many of those are live, hidden ones included: what the 10-live cap counts. It can be more than `reactions.len()` when a group from
     /// elsewhere holds items that show nothing.

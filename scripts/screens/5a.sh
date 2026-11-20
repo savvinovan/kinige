@@ -59,17 +59,26 @@ PY
   sleep 4
 }
 
+# The pointer and the keyboard focus leave the entry the scenario reacts to (the driver's `hover` off it, and the focus to the composer), so that no
+# action bar of it stays on screen in the next shots. The feed is scrolled to the entry first, which a hover off it needs.
+release_entry() {
+  scroll_to "17 ноября"
+  locate_today
+  hover_off "$L_HEART_BTN" button "$FIRST_OF_TODAY"
+  focus_on "$L_COMPOSER" textbox
+}
+
 labels() {
   if [ "$UI" = "ru" ]; then
     L_INBOX="Входящие"; L_TRASH="Корзина"; L_SEARCH="Поиск"; L_NONE="Ничего не найдено."; L_RESULTS="Результаты поиска"
     L_HEART_BTN="Реакция $HEART"; L_ADD="Поставить реакцию"; L_ADD_CARD="Поставить реакцию на запись"; L_DIALOG="Выбор реакции"; L_MORE="Ещё эмодзи"
     L_ADD_ITEM="Поставить реакцию…"; L_LATE="1 год спустя"; L_REACT_WORD="Реакция"; L_EMOJI_SEARCH="Найти эмодзи"; L_FIRE_WORD="Огонь"
-    L_LIMIT="На записи не больше 10 реакций"
+    L_LIMIT="На записи не больше 10 реакций"; L_COMPOSER="Написать заметку"
   else
     L_INBOX="Inbox"; L_TRASH="Trash"; L_SEARCH="Search"; L_NONE="Nothing found."; L_RESULTS="Search results"
     L_HEART_BTN="Reaction $HEART"; L_ADD="Add reaction"; L_ADD_CARD="Add a reaction to the entry"; L_DIALOG="Choose a reaction"; L_MORE="More emoji"
     L_ADD_ITEM="Add reaction…"; L_LATE="1 year later"; L_REACT_WORD="Reaction"; L_EMOJI_SEARCH="Search emoji"; L_FIRE_WORD="fire"
-    L_LIMIT="At most 10 reactions on an entry"
+    L_LIMIT="At most 10 reactions on an entry"; L_COMPOSER="Write a note"
   fi
 }
 
@@ -202,7 +211,9 @@ rows_block "after the pick"
 L_PICKED_BTN="$L_REACT_WORD $PICKED"
 
 # ---- 4. Several chips, the late one: the card's entry carries "1 year later" ----
-scroll_to "Купить билеты"
+# The pointer and the focus leave the entry first, so that no bar of it stays on screen; the feed is then at the entry (its two chips) with the card's
+# late chip under it.
+release_entry
 sleep 2
 shoot 04-several-chips
 has "$L_LATE" || fail "no chip says it was put a year later"

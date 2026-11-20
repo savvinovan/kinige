@@ -6,7 +6,8 @@ export type ReactionLimit = "live" | "keys";
 
 /**
  * What the caps count: every item the entry's group holds, and every live one, hidden items (a group from elsewhere, an item that shows nothing)
- * included, so the interface refuses exactly what the store would.
+ * included, so the interface never allows what the store would refuse. In two corners it refuses what the store would allow: a put that replaces a hidden
+ * item of the same key, at 10 live or at 32 items (the store replaces such an item, the interface cannot tell which key a hidden item has).
  */
 export interface ReactionCounts {
   key: number;
