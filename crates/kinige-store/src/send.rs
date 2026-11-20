@@ -239,6 +239,8 @@ fn insert_built_message(
         attachments: Vec::new(),
         reactions: Vec::new(),
         reaction_keys_had: Vec::new(),
+        reaction_key_count: 0,
+        reaction_live_count: 0,
     })
 }
 

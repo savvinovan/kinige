@@ -4,14 +4,19 @@ import type { ReactionView } from "../../api/generated/ReactionView";
 import { useLanguage } from "../../i18n/I18n";
 import type { ReactionBar } from "../message/MessageActions";
 import type { MenuPosition } from "../menu/ContextMenu";
-import { pickerRefusal } from "./reactionLimits";
+import { pickerRefusal, type ReactionCounts } from "./reactionLimits";
+
+export type { ReactionCounts };
+const NO_KEYS: readonly string[] = [];
 import { ReactionPicker, type PickerAnchor } from "./ReactionPicker";
 import { ReactionRow } from "./ReactionRow";
 import { useReactionChoices } from "./ReactionsContext";
 
 interface Options {
   reactions: readonly ReactionView[];
-  keysHad: readonly string[];
+  keysHad?: readonly string[];
+  /** What the caps count (hidden items included); without it the lists above are what is counted. */
+  counts?: ReactionCounts;
   /** Put (`on`) or remove a reaction. Without it nothing can be changed: the chips are labels and the bar has no reaction buttons. */
   onReact?: (emoji: string, on: boolean) => void;
   readOnly: boolean;
@@ -40,13 +45,13 @@ function useFrozen<T>(value: T, frozen: boolean): T {
  * bar's "Add reaction" button and the menu item "Add reaction…" open. A panel returns focus to the control that opened it, found when it closes
  * (WebKit does not focus a button on click, so the element focused at open time is not a safe thing to remember).
  */
-export function useMessageReactions({ reactions, keysHad, onReact, readOnly, barShown, wrap, plate }: Options) {
+export function useMessageReactions({ reactions, keysHad = NO_KEYS, counts, onReact, readOnly, barShown, wrap, plate }: Options) {
   const { t } = useTranslation();
   const language = useLanguage();
   const { quick, recent } = useReactionChoices();
   const [picker, setPicker] = useState<Picker | null>(null);
   const shownQuick = useFrozen(quick, barShown || picker !== null);
-  const state = { reactions, keysHad };
+  const state = { reactions, keysHad, counts };
 
   const bar: ReactionBar | undefined =
     onReact === undefined

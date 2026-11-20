@@ -51,7 +51,7 @@ fn read(group: &str, group_hlc: u64) -> Stored {
 
 #[test]
 fn the_key_drops_variation_selector_16_and_nothing_else() {
-    // The reference vectors of ADR-0001 appendix §C.9; the fixture `fixtures/api-contract/reactions.json` repeats them.
+    // The reference vectors of ADR-0001 appendix §C.9; the fixture `fixtures/api-contract/reaction-key.json` repeats them.
     let vectors: &[(&str, &str)] = &[
         ("\u{2764}\u{FE0F}", "\u{2764}"),
         ("\u{2764}", "\u{2764}"),
@@ -311,7 +311,8 @@ fn hostile_items_are_counted_but_never_shown() {
         item("👍", Some(AT), Some("UTC"), 2_000),
     ];
     let got = shown_of(&group_of(&items));
-    assert_eq!(got.keys.len(), 9);
+    // Nine items count toward the 32-key cap, but only the six whose emoji is an emoji leave a key (the text of the other three goes nowhere).
+    assert_eq!((got.item_count, got.live_count, got.keys.len()), (9, 9, 6));
     let emoji: Vec<_> = got.reactions.iter().map(|r| r.emoji.as_str()).collect();
     assert_eq!(
         emoji,

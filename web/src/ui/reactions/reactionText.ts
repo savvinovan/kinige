@@ -4,13 +4,16 @@ import type { Language } from "../../i18n";
 
 const DAY_SHIFT_MS = 4 * 3_600_000;
 
-/** The calendar day of the moment `ms` in the zone `timeZone`, with the 04:00 day boundary (the entry day's rule); an unknown zone falls back to the window's. */
+/**
+ * The calendar day of the moment `ms` in the zone `timeZone`, with the 04:00 day boundary (the entry day's rule). A zone this device does not know
+ * reads as UTC, as it does in Rust (`journal_day_in`), so the chip, the copy and the agent give the same day.
+ */
 function dayKey(ms: number, timeZone: string): string {
   const shifted = new Date(ms - DAY_SHIFT_MS);
   try {
     return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone }).format(shifted);
   } catch {
-    return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(shifted);
+    return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" }).format(shifted);
   }
 }
 
@@ -20,7 +23,7 @@ function longDate(ms: number, timeZone: string, language: Language): string {
   try {
     parts = new Intl.DateTimeFormat(language, { ...options, timeZone }).formatToParts(new Date(ms - DAY_SHIFT_MS));
   } catch {
-    parts = new Intl.DateTimeFormat(language, options).formatToParts(new Date(ms - DAY_SHIFT_MS));
+    parts = new Intl.DateTimeFormat(language, { ...options, timeZone: "UTC" }).formatToParts(new Date(ms - DAY_SHIFT_MS));
   }
   // The Russian format appends " г." to the year; the rest of the interface writes the date without it.
   const last = parts.at(-1);
@@ -33,7 +36,7 @@ function clock(ms: number, timeZone: string, language: Language): string {
   try {
     return new Intl.DateTimeFormat(language, { ...options, timeZone }).format(new Date(ms));
   } catch {
-    return new Intl.DateTimeFormat(language, options).format(new Date(ms));
+    return new Intl.DateTimeFormat(language, { ...options, timeZone: "UTC" }).format(new Date(ms));
   }
 }
 

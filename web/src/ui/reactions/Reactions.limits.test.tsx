@@ -27,11 +27,21 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
-function entry(reactions: ReactionView[]) {
+function entry(reactions: ReactionView[], counts?: { key: number; live: number }, keysHad: string[] = []) {
   return render(
     <StubEmojiData>
       <ReactionChoicesProvider value={{ quick: [HEART, "😂", "😢"], recent: [] }}>
-        <Message markdown="Сдал экзамен!" sentAt={sentAt} timeZone="UTC" reactions={reactions} reactionKeysHad={[]} onReact={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />
+        <Message
+          markdown="Сдал экзамен!"
+          sentAt={sentAt}
+          timeZone="UTC"
+          reactions={reactions}
+          reactionKeysHad={keysHad}
+          reactionCounts={counts}
+          onReact={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />
       </ReactionChoicesProvider>
     </StubEmojiData>,
   );
@@ -112,5 +122,39 @@ describe("пока открыт выбор, его кнопка видна", () 
     expect(opener).toHaveClass("on-this-day__react--open");
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(opener).not.toHaveClass("on-this-day__react--open");
+  });
+});
+
+describe("элементы группы, которых не видно, занимают места так же, как в хранилище", () => {
+  const barButton = (name: RegExp | string) => screen.getAllByRole("button", { name }).find((b) => b.closest(".message-actions")) as HTMLElement;
+
+  it("девять видимых реакций и один скрытый живой элемент: это десять, кнопки добавления закрыты, как закроет хранилище", () => {
+    entry(TEN.slice(0, 9), { key: 10, live: 10 });
+    expect(barButton("Поставить реакцию")).toHaveAttribute("aria-disabled", "true");
+    expect(barButton("Реакция 😢")).toHaveAttribute("aria-disabled", "true");
+    entry(TEN.slice(0, 9), { key: 9, live: 9 });
+    expect(screen.getAllByRole("button", { name: "Реакция 😢" })[1]).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("тридцать два ключа с невидимыми: новый эмодзи закрыт, а уже бывший ещё переключается", () => {
+    entry([], { key: 32, live: 0 }, ["❤"]);
+    const sad = screen.getByRole("button", { name: "Реакция 😢" });
+    expect(sad).toHaveAttribute("aria-disabled", "true");
+    expect(sad.getAttribute("title")).toContain("На этой записи уже были 32 разные реакции");
+    expect(screen.getByRole("button", { name: `Реакция ${HEART}` })).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("число меньше увиденного не обманывает: берётся большее (запись без счётчиков или с нулями)", () => {
+    entry(TEN, { key: 0, live: 0 });
+    expect(screen.getByRole("button", { name: "Реакция 😢" })).toHaveAttribute("aria-disabled", "true");
+  });
+});
+
+describe("зона, которой нет на этом устройстве, читается как UTC, как в Rust", () => {
+  it("всплывающая подсказка чипа называет день по UTC", () => {
+    // 2026-11-19 23:30 UTC with the 04:00 boundary is the day of 19 November in UTC; a window zone far from UTC would say another one.
+    const chip: ReactionView = { emoji: HEART, putAt: Date.UTC(2026, 10, 19, 23, 30), putTz: "Not/AZone", yearsLater: 0 };
+    entry([chip]);
+    expect(screen.getByRole("button", { name: /^❤️?, Поставлена 19 ноября 2026/ })).toBeInTheDocument();
   });
 });

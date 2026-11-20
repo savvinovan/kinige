@@ -297,6 +297,11 @@ fn hostile_items_in_a_group_from_elsewhere_show_nowhere() {
         item("🙏", json!(1_792_000_000_000i64), json!(5)),
         item("😢", json!(1_792_000_000_000i64), Value::Null),
         item("👍", json!(1_792_000_000_000i64), json!("UTC")),
+        item(
+            &"x".repeat(3_000),
+            json!(1_792_000_000_000i64),
+            json!("UTC"),
+        ),
     ];
     let bytes = kinige_domain::jcs::canonical_string(&json!({ "items": items })).unwrap();
     put_group(dir, &sent.id, &bytes, &stamp(9), 1);
@@ -315,6 +320,23 @@ fn hostile_items_in_a_group_from_elsewhere_show_nowhere() {
         .flat_map(|m| m.reactions.iter().map(|r| r.emoji.clone()))
         .collect();
     assert_eq!(got, ["👍"]);
+    // What the entry has had reaches the view as the keys of real emoji only: none of the markup and none of the 3,000 bytes. The caps still count
+    // all eight items (all live), so the interface refuses what the store would.
+    let hostile = view.messages.iter().find(|m| m.id == sent.id).unwrap();
+    assert_eq!(
+        hostile.reaction_keys_had,
+        ["🎉", "👍", "🔥", "😢", "🙏"],
+        "in key order"
+    );
+    assert_eq!(
+        (hostile.reaction_key_count, hostile.reaction_live_count),
+        (8, 8)
+    );
+    let carried = serde_json::to_string(hostile).unwrap();
+    assert!(
+        !carried.contains("script") && !carried.contains("xxxx"),
+        "the text of a hostile item never reaches the view"
+    );
     store
         .send_entry(INBOX_ID, "trigger the copy", None, &[], &later(2))
         .unwrap();

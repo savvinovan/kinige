@@ -51,13 +51,19 @@ pub struct Reaction {
     pub put_tz: String,
 }
 
-/// What a stored group shows: the live valid reactions in the order they were put (ties by key), and how many different keys the group holds.
+/// What a stored group shows: the live valid reactions in the order they were put (ties by key), the keys of the emoji the entry has had,
+/// and the two counts the caps are decided by.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Shown {
     pub reactions: Vec<Reaction>,
-    /// The keys of the group's items, removal markers included, in key order: what the 32-key cap counts, and what the interface needs to
-    /// know which emoji a full entry can still take.
+    /// The keys of the items whose emoji is a valid emoji sequence, removal markers included, in key order: which emoji a full entry can
+    /// still take. An item that is not an emoji (a group from elsewhere) leaves no text here: nothing of it reaches the view, the copy or MCP.
     pub keys: Vec<String>,
+    /// How many items the group holds, whatever they look like, markers included: what the 32-key cap counts.
+    pub item_count: usize,
+    /// How many items are live (put and not removed), whatever they look like: what the 10-live cap counts, so the interface and the store
+    /// agree even when a hidden item takes one of the places.
+    pub live_count: usize,
 }
 
 /// The comparison key of an emoji: the string without U+FE0F, compared in UTF-8 byte order (promise 3). `❤` and `❤️` are one
@@ -128,13 +134,18 @@ impl Group {
     pub fn shown(&self) -> Shown {
         let mut reactions: Vec<Reaction> = self.items.iter().filter_map(Item::shown).collect();
         reactions.sort_by(|a, b| (a.put_at, &a.key).cmp(&(b.put_at, &b.key)));
+        let mut keys: Vec<String> = self
+            .items
+            .iter()
+            .filter(|item| is_emoji_sequence(item.emoji()))
+            .map(|item| item.key.clone())
+            .collect();
+        keys.sort();
         Shown {
             reactions,
-            keys: {
-                let mut keys: Vec<String> = self.items.iter().map(|i| i.key.clone()).collect();
-                keys.sort();
-                keys
-            },
+            keys,
+            item_count: self.items.len(),
+            live_count: self.live_count(),
         }
     }
 }
@@ -214,6 +225,8 @@ pub fn shown(groups_raw: &str, hlc_json: &str) -> Shown {
 
 #[cfg(test)]
 mod caps_tests;
+#[cfg(test)]
+mod hardening_tests;
 #[cfg(test)]
 mod present_tests;
 #[cfg(test)]

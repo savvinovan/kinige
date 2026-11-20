@@ -69,7 +69,7 @@ pub fn rows(dir: &Path, id: &str) -> Vec<(String, String, i64, String)> {
 
 /// A `message_reaction` row: message id, key, emoji, put at, zone.
 pub type ReactionRow = (String, String, String, i64, String);
-/// A `message_reaction_keys` row: message id, the keys as JSON.
+/// A `message_reaction_keys` row: message id, the keys as JSON, the item count and the live count (joined by `|`).
 pub type KeysRow = (String, String);
 
 /// Every derived row of the database, for "rebuilt equals incremental".
@@ -87,7 +87,7 @@ pub fn all_rows(dir: &Path) -> (Vec<ReactionRow>, Vec<KeysRow>) {
         .map(Result::unwrap)
         .collect();
     let keys = conn
-        .prepare("SELECT message_id, keys FROM message_reaction_keys ORDER BY 1")
+        .prepare("SELECT message_id, keys || '|' || item_count || '|' || live_count FROM message_reaction_keys ORDER BY 1")
         .unwrap()
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
         .unwrap()

@@ -57,6 +57,17 @@ attachments: Array<AttachmentView>,
 reactions: Array<ReactionView>, 
 /**
  * The comparison keys (`reaction_key`) of every emoji the entry has ever had a reaction of, removed ones included: at 32 no new emoji can
- * be put on it, and the interface knows which ones it still can. Empty for an entry that never had a reaction.
+ * be put on it, and the interface knows which ones it still can. Only emoji: the text of an item that is not one is never carried here.
+ * Empty for an entry that never had a reaction.
  */
-reactionKeysHad: Array<string>, };
+reactionKeysHad: Array<string>, 
+/**
+ * How many items the entry's group holds, hidden ones and removal markers included: what the 32-key cap counts, so the interface refuses
+ * a new emoji exactly when the store does.
+ */
+reactionKeyCount: number, 
+/**
+ * How many of those are live, hidden ones included: what the 10-live cap counts. It can be more than `reactions.len()` when a group from
+ * elsewhere holds items that show nothing.
+ */
+reactionLiveCount: number, };

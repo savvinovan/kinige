@@ -15,6 +15,7 @@ use crate::view::load_view;
 use crate::{Now, Store, StoreError};
 use kinige_domain::MessageView;
 use kinige_domain::ReactionView;
+use kinige_domain::emoji::is_emoji_sequence;
 use kinige_domain::hlc::is_uuid_v4;
 use kinige_domain::reactions::present::{parse_recent, push_recent};
 use kinige_domain::reactions::write::{apply, plan};
@@ -27,29 +28,36 @@ const VERSION_KEY: &str = "reaction_rules_version";
 /// `app_setting`: the reactions put on this device, freshest first (JSON array). Not synced and not in `settings.json`.
 pub(crate) const RECENT_KEY: &str = "recent_reactions";
 
-/// The two columns of a view query for the table `m`: the keys of the items the entry's group holds (a JSON array of strings), and its
-/// live reactions as an array of `{k, e, a, z}` (key, emoji, put at, zone). The order is restored in Rust, because the aggregate does
-/// not promise one.
+/// The two columns of a view query for the table `m`: what the entry has had (`{keys, items, live}`: the emoji keys, the number of items
+/// and the number of live ones), and its live reactions as an array of `{k, e, a, z}` (key, emoji, put at, zone). The order is restored in
+/// Rust, because the aggregate does not promise one.
 macro_rules! reactions_columns {
     () => {
-        "(SELECT keys FROM message_reaction_keys WHERE message_id = m.id), \
+        "(SELECT json_object('keys', json(k.keys), 'items', k.item_count, 'live', k.live_count) \
+          FROM message_reaction_keys k WHERE k.message_id = m.id), \
          (SELECT json_group_array(json_object('k', r.key, 'e', r.emoji, 'a', r.put_at, 'z', r.put_tz)) \
           FROM message_reaction r WHERE r.message_id = m.id)"
     };
 }
 pub(crate) use reactions_columns;
 
-/// The entry's reactions and the number of items its group holds, from the [`reactions_columns`] values. A damaged element is skipped.
+/// What an entry has had: the emoji keys, how many items its group holds and how many are live (hidden ones included in both counts).
+#[derive(Debug, Default)]
+pub(crate) struct Had {
+    pub(crate) keys: Vec<String>,
+    pub(crate) items: u32,
+    pub(crate) live: u32,
+}
+
+/// The entry's reactions and what it has had, from the [`reactions_columns`] values. A damaged element is skipped.
 pub(crate) fn parse_columns(
-    keys: Option<String>,
+    had: Option<String>,
     json: Option<String>,
     entry_date: &str,
-) -> (Vec<ReactionView>, Vec<String>) {
-    let keys: Vec<String> = keys
-        .and_then(|text| serde_json::from_str(&text).ok())
-        .unwrap_or_default();
+) -> (Vec<ReactionView>, Had) {
+    let had = parse_had(had.as_deref());
     let Some(Value::Array(items)) = json.and_then(|text| serde_json::from_str(&text).ok()) else {
-        return (Vec::new(), keys);
+        return (Vec::new(), had);
     };
     let mut reactions: Vec<Reaction> = items.iter().filter_map(parse_one).collect();
     reactions.sort_by(|a, b| (a.put_at, &a.key).cmp(&(b.put_at, &b.key)));
@@ -60,7 +68,32 @@ pub(crate) fn parse_columns(
             ReactionView::new(reaction, entry_date, &put_date)
         })
         .collect();
-    (views, keys)
+    (views, had)
+}
+
+fn parse_had(text: Option<&str>) -> Had {
+    let Some(Value::Object(object)) = text.and_then(|text| serde_json::from_str(text).ok()) else {
+        return Had::default();
+    };
+    let count = |name: &str| {
+        object
+            .get(name)
+            .and_then(Value::as_u64)
+            .and_then(|n| u32::try_from(n).ok())
+            .unwrap_or(0)
+    };
+    let keys = match object.get("keys") {
+        Some(Value::Array(list)) => list
+            .iter()
+            .filter_map(|k| k.as_str().map(str::to_string))
+            .collect(),
+        _ => Vec::new(),
+    };
+    Had {
+        keys,
+        items: count("items"),
+        live: count("live"),
+    }
 }
 
 fn parse_one(item: &Value) -> Option<Reaction> {
@@ -83,14 +116,18 @@ pub(crate) fn write_rows(
 ) -> rusqlite::Result<()> {
     remove_rows(conn, id)?;
     let group = shown(groups_raw, hlc_json);
-    if group.keys.is_empty() {
+    if group.item_count == 0 {
         return Ok(());
     }
+    // The counts are bounded by the group's 8 KiB, far below `i64`; a value that did not fit would be stored as the largest one.
+    let count = |n: usize| i64::try_from(n).unwrap_or(i64::MAX);
     conn.execute(
-        "INSERT INTO message_reaction_keys (message_id, keys) VALUES (?1, ?2)",
+        "INSERT INTO message_reaction_keys (message_id, keys, item_count, live_count) VALUES (?1, ?2, ?3, ?4)",
         rusqlite::params![
             id,
-            serde_json::to_string(&group.keys).unwrap_or_else(|_| "[]".to_string())
+            serde_json::to_string(&group.keys).unwrap_or_else(|_| "[]".to_string()),
+            count(group.item_count),
+            count(group.live_count)
         ],
     )?;
     let mut insert = conn.prepare_cached(
@@ -167,6 +204,10 @@ impl Store {
         on: bool,
         now: &Now,
     ) -> Result<MessageView, StoreError> {
+        // Both arguments are checked before anything is read: a garbage emoji is `ReactionInvalid` whatever the id is (PRD §12.3).
+        if !is_emoji_sequence(emoji) {
+            return Err(StoreError::ReactionInvalid);
+        }
         if !is_uuid_v4(id) {
             return Err(StoreError::MessageNotFound);
         }

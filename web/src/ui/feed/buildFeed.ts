@@ -36,6 +36,9 @@ export interface FeedMessage {
   /** The live reactions in the order put (slice 5a), and the keys of every emoji the entry has had. */
   reactions?: readonly ReactionView[];
   reactionKeysHad?: readonly string[];
+  /** What the caps count, hidden items included (see `ReactionCounts`). */
+  reactionKeyCount?: number;
+  reactionLiveCount?: number;
 }
 
 export type FeedItem =

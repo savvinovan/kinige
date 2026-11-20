@@ -288,9 +288,11 @@ ALTER TABLE draft_attachment ADD COLUMN spoiler INTEGER NOT NULL DEFAULT 0;
 /// (`kinige_domain::reactions::shown`) and rebuilt from the groups when `app_setting.reaction_rules_version` differs.
 /// - `message_reaction` -- one row per live reaction the reader lets through (valid emoji, a time and a zone): `key` is the comparison key,
 ///   `emoji` the form the picker gave. The primary key `(message_id, key)` is the lookup by message the feed's join uses;
-/// - `message_reaction_keys` -- the keys of all the items the group holds, removal markers included, as a JSON array of strings in key order:
-///   what the 32-key cap counts and which emoji a full entry can still take, which the first table cannot say once the reactions are
-///   removed. A row exists for a message whose group is well-formed and not empty.
+/// - `message_reaction_keys` -- what the first table cannot say once reactions are removed or hidden: `keys` is a JSON array of the comparison
+///   keys of the items whose emoji is a valid emoji sequence, removal markers included, in key order (which emoji a full entry can still
+///   take; the text of an item that is not an emoji is never stored here); `item_count` is how many items the group holds and `live_count`
+///   how many of them are live, whatever they look like (what the 32-key and the 10-live caps count, so the interface and the store agree).
+///   A row exists for a message whose group is well-formed and not empty.
 pub(crate) const MIGRATION_10: &str = "
 CREATE TABLE message_reaction (
   message_id TEXT NOT NULL,
@@ -303,7 +305,9 @@ CREATE TABLE message_reaction (
 
 CREATE TABLE message_reaction_keys (
   message_id TEXT PRIMARY KEY,
-  keys TEXT NOT NULL
+  keys TEXT NOT NULL,
+  item_count INTEGER NOT NULL,
+  live_count INTEGER NOT NULL
 ) WITHOUT ROWID;
 ";
 

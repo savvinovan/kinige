@@ -13,13 +13,12 @@ import { selectedTextIn, useCopy } from "./useCopy";
 import { useActionsPlacement } from "./useActionsPlacement";
 import { useEditWidth } from "./useEditWidth";
 import type { ReactionView } from "../../api/generated/ReactionView";
-import { useMessageReactions } from "../reactions/useMessageReactions";
+import { useMessageReactions, type ReactionCounts } from "../reactions/useMessageReactions";
 import "./message.css";
 import "./message-bleed.css";
 import "./markdown.css";
 
 const NO_REACTIONS: readonly ReactionView[] = [];
-const NO_KEYS: readonly string[] = [];
 
 export interface MessageProps {
   /** Message text in Markdown. Raw HTML in it is not rendered (§6). */
@@ -64,9 +63,9 @@ export interface MessageProps {
   caption?: Caption;
   /** KINIG-136: "Attachment details…" in the entry's menu (an entry with attachments that have details). */
   onAttachmentDetails?: () => void;
-  /** Slice 5a: the live reactions, as chips under the text with the time at the end of their row; the keys of every emoji the entry has had. */
+  /** Slice 5a: the live reactions, as chips under the text with the time at the end of their row; the keys of every emoji the entry has had; the counts the caps use. */
   reactions?: readonly ReactionView[];
-  reactionKeysHad?: readonly string[];
+  reactionKeysHad?: readonly string[]; reactionCounts?: ReactionCounts;
   /** Put (`on`) or remove a reaction. Without it the chips are plain labels and the bar has no reaction buttons. */
   onReact?: (emoji: string, on: boolean) => void;
   /** Entry tags (lower case, without `#`), determined by Rust: highlighted and clickable in the text. */
@@ -137,7 +136,8 @@ export const Message = memo(function Message({
   caption,
   onAttachmentDetails,
   reactions = NO_REACTIONS,
-  reactionKeysHad = NO_KEYS,
+  reactionKeysHad,
+  reactionCounts,
   onReact,
   tags,
   markTerms,
@@ -194,7 +194,7 @@ export const Message = memo(function Message({
   // Visible while the mouse is in the feed row (and a short delay after it leaves). Details are in useActionsPlacement.
   const { wrap, inside, flip, shown } = useActionsPlacement(`${html}|${mode}|${reactions.length}`);
   // A deleted entry keeps its chips as labels: nothing in the trash is changed.
-  const reaction = useMessageReactions({ reactions, keysHad: reactionKeysHad, onReact, readOnly: readOnly || mode === "deleted", barShown: shown || showActions || menu !== null, wrap, plate });
+  const reaction = useMessageReactions({ reactions, keysHad: reactionKeysHad, counts: reactionCounts, onReact, readOnly: readOnly || mode === "deleted", barShown: shown || showActions || menu !== null, wrap, plate });
 
   useEditWidth(plate, mode, html);
 

@@ -36,6 +36,10 @@ pub fn rewrite_or_add_field(
     max_bytes: Option<usize>,
     (key, value): (&str, Value),
 ) -> Result<Rewritten, GroupError> {
+    // The allowlist decides for both paths, like `rewrite_or_add_group`: a group that may not be added is not edited here either.
+    if !is_allowed(entity, group) {
+        return Err(GroupError::Invalid("this group may not be added"));
+    }
     if has_group(current, group)? {
         rewrite_field(current, group, new_hlc, max_bytes, (key, value))
     } else {

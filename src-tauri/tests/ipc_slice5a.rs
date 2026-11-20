@@ -194,6 +194,22 @@ fn the_limits_and_the_garbage_come_back_as_codes_and_write_nothing() {
             bad_id
         );
     }
+    // The order of the checks: the emoji is checked before the entry is looked up, so garbage on an id nobody has is `reaction_invalid`, not
+    // `message_not_found`; a good emoji on that id is `message_not_found`.
+    for bad_id in ["", "x", "00000000-0000-4000-8000-000000000001"] {
+        for text in ["", "text", "😂😂", "<b>"] {
+            assert_eq!(
+                call(
+                    &main,
+                    COMMAND,
+                    json!({"id": bad_id, "emoji": text, "on": true})
+                )
+                .unwrap_err(),
+                json!({"code": "reaction_invalid"}),
+                "{bad_id} {text}"
+            );
+        }
+    }
     let page = call(&main, "list_messages", json!({"chatId": INBOX})).unwrap();
     assert_eq!(
         page["messages"][0]["reactions"],

@@ -48,8 +48,7 @@ pub(crate) fn view_from_row_at(row: &Row<'_>, first: usize) -> rusqlite::Result<
     let reply_id: Option<String> = row.get(first + 11)?;
     let target_json: Option<String> = row.get(first + 12)?;
     let attachments = parse_attachments(row.get(first + 13)?);
-    let (reactions, reaction_keys_had) =
-        parse_columns(row.get(first + 14)?, row.get(first + 15)?, &journal_date);
+    let (reactions, had) = parse_columns(row.get(first + 14)?, row.get(first + 15)?, &journal_date);
     let reply_to = reply_id.map(|id| {
         let target = target_json.as_deref().and_then(parse_target);
         reply_to(&id, &journal_date, target)
@@ -70,7 +69,9 @@ pub(crate) fn view_from_row_at(row: &Row<'_>, first: usize) -> rusqlite::Result<
         reply_to,
         attachments,
         reactions,
-        reaction_keys_had,
+        reaction_keys_had: had.keys,
+        reaction_key_count: had.items,
+        reaction_live_count: had.live,
     })
 }
 

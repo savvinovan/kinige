@@ -70,6 +70,8 @@ export function mockMessage(part: Partial<MessageView> & Pick<MessageView, "id" 
     attachments: [],
     reactions: [],
     reactionKeysHad: [],
+    reactionKeyCount: 0,
+    reactionLiveCount: 0,
     ...part,
   };
 }

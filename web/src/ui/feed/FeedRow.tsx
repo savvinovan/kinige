@@ -63,6 +63,8 @@ export const FeedRow = memo(function FeedRow({
   const retry = useMemo(() => (onRetry ? () => onRetry(id) : undefined), [onRetry, id]);
   const handlers = useMemo(() => (actions ? messageHandlers(actions, id) : undefined), [actions, id]);
   const dragStart = useMemo(() => onDragStart?.(id), [onDragStart, id]);
+  const { reactionKeyCount = 0, reactionLiveCount = 0 } = message;
+  const reactionCounts = useMemo(() => ({ key: reactionKeyCount, live: reactionLiveCount }), [reactionKeyCount, reactionLiveCount]);
   const quote = useMemo(
     () => (message.replyTo ? <ReplyQuote quote={message.replyTo} onOpen={onOpenReply} /> : undefined),
     [message.replyTo, onOpenReply],
@@ -129,6 +131,7 @@ export const FeedRow = memo(function FeedRow({
         onAttachmentDetails={openDetails}
         reactions={message.reactions}
         reactionKeysHad={message.reactionKeysHad}
+        reactionCounts={reactionCounts}
         tags={message.tags}
         mode={mode}
         editError={mode === "editing" ? editError : undefined}

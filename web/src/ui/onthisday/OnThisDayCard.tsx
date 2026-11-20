@@ -64,7 +64,7 @@ function EntryReaction({ entry, date, onReact }: { entry: OnThisDayEntry; date: 
   const [anchor, setAnchor] = useState<PickerAnchor | null>(null);
   const { message } = entry;
   if (!onReact || message.readOnly) return null;
-  const state = { reactions: message.reactions, keysHad: message.reactionKeysHad };
+  const state = { reactions: message.reactions, keysHad: message.reactionKeysHad, counts: { key: message.reactionKeyCount, live: message.reactionLiveCount } };
   return (
     <>
       <IconButton

@@ -31,11 +31,11 @@ export class MockReactions {
         const now = this.s.now();
         const put = { emoji, putAt: now.getTime(), putTz: "UTC", yearsLater: yearsLater(view.journalDate, mockJournalDate(now)) };
         had.add(key);
-        row.view = { ...view, reactions: [...live, put], reactionKeysHad: [...had].sort() };
+        row.view = { ...view, reactions: [...live, put], reactionKeysHad: [...had].sort(), reactionKeyCount: had.size, reactionLiveCount: live.length + 1 };
         const recent = pushRecentReaction(this.s.settings.recentReactions, emoji);
         this.s.settings = { ...this.s.settings, recentReactions: recent, quickReactions: quickReactions(recent) };
       } else {
-        row.view = { ...view, reactions: live.filter((reaction) => reactionKey(reaction.emoji) !== key) };
+        row.view = { ...view, reactions: live.filter((reaction) => reactionKey(reaction.emoji) !== key), reactionLiveCount: live.length - 1 };
       }
       return this.s.viewOf(row);
     });

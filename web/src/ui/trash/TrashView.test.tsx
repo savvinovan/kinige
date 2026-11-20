@@ -23,6 +23,8 @@ const item = (id: string, patch: Partial<TrashItem> = {}, body = "Купить �
     attachments: [],
     reactions: [],
     reactionKeysHad: [],
+    reactionKeyCount: 0,
+    reactionLiveCount: 0,
   },
   chatTitle: "Книги",
   chatIcon: "📚",
