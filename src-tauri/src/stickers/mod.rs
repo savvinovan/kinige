@@ -177,11 +177,12 @@ pub fn send_gif_again<R: Runtime>(
 pub fn get_telegram_token_state(store: State<'_, Store>) -> ApiResult<TelegramTokenState> {
     Ok(TelegramTokenState {
         saved: store.telegram_token_saved().map_err(api)?,
+        item_left: false,
     })
 }
 
-/// Settings: saves the token in the OS secret store. A write by this build succeeds without a prompt and takes over an item another
-/// build made (ADR-0021). The token is never logged, echoed or written anywhere else; a wrong shape is `telegram_token_invalid`.
+/// Settings: saves the token in the OS secret store. What the system does when another build made the item is not verified in full
+/// (ADR-0021, "not verified"). The token is never logged, echoed or written anywhere else; a wrong shape is `telegram_token_invalid`.
 #[tauri::command(async)]
 pub fn set_telegram_bot_token(
     store: State<'_, Store>,
@@ -195,11 +196,15 @@ pub fn set_telegram_bot_token(
     // `(async)` runs this on a pool thread, never the main thread: a system prompt may block here.
     shell.secrets.set(token).map_err(secret_error)?;
     store.set_telegram_token_saved(true).map_err(api)?;
-    Ok(TelegramTokenState { saved: true })
+    Ok(TelegramTokenState {
+        saved: true,
+        item_left: false,
+    })
 }
 
-/// Settings: "Remove". The flag goes first and the item is always deleted, whatever the flag said. An item that another build owns cannot
-/// be deleted by this one; that is not an error here, because saving a new token replaces it (ADR-0021).
+/// Settings: "Remove". The flag goes first and the item is always deleted, whatever the flag said. When the system refuses the delete (it
+/// asked for access and was denied, or the item belongs to another build), the command still succeeds, because Kinige no longer uses the
+/// token, and the answer says `item_left`: the old token is still in the keychain, and Settings tells the user where to delete it.
 #[tauri::command(async)]
 pub fn clear_telegram_bot_token(
     store: State<'_, Store>,
@@ -207,7 +212,19 @@ pub fn clear_telegram_bot_token(
 ) -> ApiResult<TelegramTokenState> {
     store.set_telegram_token_saved(false).map_err(api)?;
     match shell.secrets.delete() {
-        Ok(()) | Err(SecretError::Denied) => Ok(TelegramTokenState { saved: false }),
+        Ok(()) => Ok(TelegramTokenState {
+            saved: false,
+            item_left: false,
+        }),
+        Err(SecretError::Denied) => Ok(TelegramTokenState {
+            saved: false,
+            item_left: true,
+        }),
+        // No store on this system: there is no item to delete, and nothing was ever saved.
+        Err(SecretError::Unsupported) => Ok(TelegramTokenState {
+            saved: false,
+            item_left: false,
+        }),
         Err(other) => Err(secret_error(other).into()),
     }
 }
@@ -216,5 +233,6 @@ fn secret_error(error: SecretError) -> ErrorCode {
     match error {
         SecretError::Denied => ErrorCode::SecretStoreDenied,
         SecretError::Unavailable => ErrorCode::SecretStoreUnavailable,
+        SecretError::Unsupported => ErrorCode::SecretStoreUnsupported,
     }
 }

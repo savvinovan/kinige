@@ -14,7 +14,7 @@ use kinige_lib::builder;
 use kinige_lib::capture::CaptureShell;
 use kinige_lib::hotkeys::{Hotkeys, Refused, Registrar};
 use kinige_lib::recovery::Recovery;
-use kinige_lib::stickers::secret::MemorySecrets;
+use kinige_lib::stickers::secret::{MemorySecrets, OsSecrets, SecretStore};
 use kinige_lib::stickers::{BotClient, StickerShell};
 use kinige_store::{Store, StoreOptions};
 use serde_json::{Value, json};
@@ -97,9 +97,20 @@ pub struct Fixture {
 /// Manages the sticker state with an in-memory token store and a client whose base is a port nobody listens on: a test that reaches the
 /// network by mistake fails with "unreachable", it never reaches Telegram.
 pub fn manage_stickers(app: &App<MockRuntime>) -> Arc<MemorySecrets> {
+    manage_stickers_over(app, false)
+}
+
+/// `real_store`: the shell holds the secret store of this platform (`OsSecrets`) instead of the in-memory one. Only for a test that
+/// runs where that store answers without touching anything (Windows and Linux: "unsupported"); never on macOS, where it is the keychain.
+fn manage_stickers_over(app: &App<MockRuntime>, real_store: bool) -> Arc<MemorySecrets> {
     let secrets = Arc::new(MemorySecrets::default());
+    let store: Arc<dyn SecretStore> = if real_store {
+        Arc::new(OsSecrets)
+    } else {
+        secrets.clone()
+    };
     app.manage(StickerShell::new(
-        secrets.clone(),
+        store,
         Box::new(|| BotClient::with_base("http://127.0.0.1:9", false)),
     ));
     secrets
@@ -109,7 +120,17 @@ pub fn fixture() -> Fixture {
     fixture_with_taken(&[])
 }
 
+/// A fixture whose sticker shell holds the platform's own secret store. Compiled everywhere, called only off macOS.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+pub fn fixture_with_os_secrets() -> Fixture {
+    fixture_built(&[], true)
+}
+
 pub fn fixture_with_taken(taken: &[&str]) -> Fixture {
+    fixture_built(taken, false)
+}
+
+fn fixture_built(taken: &[&str], real_store: bool) -> Fixture {
     let data = tempfile::tempdir().unwrap();
     let db_path = data.path().join("kinige.db");
     let mut options = StoreOptions::new(&db_path, Some(data.path().join("mirror")));
@@ -132,7 +153,7 @@ pub fn fixture_with_taken(taken: &[&str]) -> Fixture {
     app.manage(kinige_lib::import::ImportState::default());
     app.manage(kinige_lib::attachments::DropTokens::default());
     app.manage(Recovery::new(db_path, false));
-    let secrets = manage_stickers(&app);
+    let secrets = manage_stickers_over(&app, real_store);
     Fixture {
         app,
         registrar,

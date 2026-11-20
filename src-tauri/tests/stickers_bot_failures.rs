@@ -76,11 +76,12 @@ fn every_failure_has_its_category_and_adds_nothing() {
             ErrorCode::StickerPackBadResponse,
         ),
         (
+            // A body that would be accepted on its own: only the header refuses it, so removing the check fails this case.
             "gzip",
             Reply::Raw(
                 200,
                 vec![("content-encoding".into(), "gzip".into())],
-                b"\x1f\x8b".to_vec(),
+                set_json("Valid", 2, &[]).into_bytes(),
             ),
             ErrorCode::StickerPackBadResponse,
         ),

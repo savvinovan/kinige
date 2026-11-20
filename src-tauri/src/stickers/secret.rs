@@ -1,6 +1,7 @@
 //! Where the Telegram bot token lives (slice 5c, ADR-0021, PRD §9.2): the OS secret store, nothing else.
 //!   macOS: a generic-password item, service `me.savvinov.kinige` (`.dev` in a debug build), account `telegram-bot-token`, not synchronizable;
-//!   Windows: a Credential Manager entry under the same names; Linux: no store yet (Secret Service comes with the Linux build, slice 10).
+//!   Windows and Linux: no store in this slice, every call answers `Unsupported` (Credential Manager is not shipped, ADR-0021; Secret Service
+//!   comes with the Linux build, slice 10).
 //! There is no file fallback. A call may block on a system prompt (macOS asks once after an update, because every ad-hoc build is a new
 //! program for the keychain), so it never runs on the main thread, at startup, or on opening Settings or the panel: the commands call it
 //! through `spawn_blocking`, and only a pack download reads the token.
@@ -12,8 +13,10 @@ use std::sync::Arc;
 pub enum SecretError {
     /// The system asked for access and it was dismissed or denied, or the item belongs to another build and cannot be changed.
     Denied,
-    /// No store, a locked or missing keychain, or any other failure.
+    /// A locked or missing keychain, or any other failure.
     Unavailable,
+    /// This system has no store yet (Windows, Linux): nothing is saved, nothing is read, there is nothing to delete.
+    Unsupported,
 }
 
 /// The token store. `get` of a missing item is `Ok(None)`; `delete` of a missing item is `Ok(())`.
@@ -24,9 +27,9 @@ pub trait SecretStore: Send + Sync {
 }
 
 /// The names of the item.
-#[cfg_attr(target_os = "linux", allow(dead_code))]
+#[cfg(target_os = "macos")]
 const ACCOUNT: &str = "telegram-bot-token";
-#[cfg(any(target_os = "macos", windows))]
+#[cfg(target_os = "macos")]
 fn service() -> &'static str {
     if cfg!(debug_assertions) {
         "me.savvinov.kinige.dev"
@@ -98,48 +101,22 @@ fn classify(code: i32) -> Result<(), SecretError> {
     }
 }
 
-#[cfg(windows)]
+/// Windows and Linux: no store in this slice (ADR-0021). The Windows Credential Manager entry of the `keyring` crate persists as
+/// "enterprise" (it can roam with a domain account) and no job has ever run that code, so it is not shipped; Linux has no Secret Service
+/// yet (slice 10). The token cannot be saved there, and a pack cannot be added by its link; the stickers of a Telegram export work
+/// everywhere, because they need no token.
+#[cfg(not(target_os = "macos"))]
 impl SecretStore for OsSecrets {
     fn get(&self) -> Result<Option<String>, SecretError> {
-        match entry()?.get_password() {
-            Ok(token) => Ok(Some(token)),
-            Err(keyring::Error::NoEntry) => Ok(None),
-            Err(_) => Err(SecretError::Unavailable),
-        }
-    }
-
-    fn set(&self, token: &str) -> Result<(), SecretError> {
-        entry()?
-            .set_password(token)
-            .map_err(|_| SecretError::Unavailable)
-    }
-
-    fn delete(&self) -> Result<(), SecretError> {
-        match entry()?.delete_credential() {
-            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-            Err(_) => Err(SecretError::Unavailable),
-        }
-    }
-}
-
-#[cfg(windows)]
-fn entry() -> Result<keyring::Entry, SecretError> {
-    keyring::Entry::new(service(), ACCOUNT).map_err(|_| SecretError::Unavailable)
-}
-
-/// Linux: the file fallback is out of scope until the Linux build (slice 10), so the token cannot be saved there.
-#[cfg(not(any(target_os = "macos", windows)))]
-impl SecretStore for OsSecrets {
-    fn get(&self) -> Result<Option<String>, SecretError> {
-        Err(SecretError::Unavailable)
+        Err(SecretError::Unsupported)
     }
 
     fn set(&self, _token: &str) -> Result<(), SecretError> {
-        Err(SecretError::Unavailable)
+        Err(SecretError::Unsupported)
     }
 
     fn delete(&self) -> Result<(), SecretError> {
-        Err(SecretError::Unavailable)
+        Err(SecretError::Unsupported)
     }
 }
 

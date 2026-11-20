@@ -118,12 +118,16 @@ pub struct StickerPackAdded {
     pub skipped: u32,
 }
 
-/// What Settings knows about the bot token: only whether one is saved. The token never comes back.
+/// What Settings knows about the bot token: whether one is saved, and after a "Remove" whether the system refused to delete the old item.
+/// The token never comes back.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "TelegramTokenState.ts")]
 pub struct TelegramTokenState {
     pub saved: bool,
+    /// Only the answer of "Remove": the system refused to delete the item (it asked for access and was denied), so the old token is still in
+    /// the keychain although Kinige no longer uses it. Settings then says so, in one line.
+    pub item_left: bool,
 }
 
 /// The pack name of a link: `https://t.me/addstickers/<name>`, `t.me/addstickers/<name>` or the bare name. Our rule, not Telegram's

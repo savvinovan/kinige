@@ -113,5 +113,7 @@ fn cancel_adds_nothing_and_leaves_no_file() {
         code(env.run(&server.base(), LINK).unwrap_err()),
         ErrorCode::StickerPackCancelled
     );
+    // Cancel during the keychain prompt: the token was read, and not one request is made after it.
+    assert_eq!(server.count(), 0, "no getStickerSet after a cancel");
     env.nothing_written();
 }

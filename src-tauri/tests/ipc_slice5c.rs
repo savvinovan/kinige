@@ -195,7 +195,7 @@ fn nothing_reads_the_secret_store_until_a_pack_is_downloaded() {
     assert_eq!(library["hasToken"], false);
     assert_eq!(
         call(&settings, "get_telegram_token_state", json!({})).unwrap(),
-        json!({"saved": false})
+        json!({"saved": false, "itemLeft": false})
     );
     call(&main, "get_settings", json!({})).unwrap();
     call(&settings, "get_settings", json!({})).unwrap();
@@ -221,13 +221,13 @@ fn the_token_is_saved_through_settings_as_a_flag_and_is_nowhere_on_disk() {
     .unwrap();
     assert_eq!(
         saved,
-        json!({"saved": true}),
+        json!({"saved": true, "itemLeft": false}),
         "the reply never carries the token"
     );
     assert_eq!(fixture.secrets.peek().as_deref(), Some(TOKEN));
     assert_eq!(
         call(&settings, "get_telegram_token_state", json!({})).unwrap(),
-        json!({"saved": true})
+        json!({"saved": true, "itemLeft": false})
     );
     assert_eq!(
         call(&main, "get_sticker_library", json!({})).unwrap()["hasToken"],
@@ -252,12 +252,12 @@ fn the_token_is_saved_through_settings_as_a_flag_and_is_nowhere_on_disk() {
     // Remove: the flag first, the item always deleted, whatever the flag says.
     assert_eq!(
         call(&settings, "clear_telegram_bot_token", json!({})).unwrap(),
-        json!({"saved": false})
+        json!({"saved": false, "itemLeft": false})
     );
     assert_eq!(fixture.secrets.peek(), None);
     assert_eq!(
         call(&settings, "clear_telegram_bot_token", json!({})).unwrap(),
-        json!({"saved": false}),
+        json!({"saved": false, "itemLeft": false}),
         "twice is fine"
     );
     let lines = CAPTURED.lock().unwrap()[mark..].to_vec();
@@ -278,6 +278,52 @@ fn any_file_contains(dir: &Path, needle: &[u8]) -> bool {
     })
 }
 
+/// N3 (the `windows` job runs it, and Linux would): where the platform has no secret store, saving a token and adding a pack by its link
+/// are refused with their own error, Remove is harmless, and nothing is written. Never compiled in on macOS, where the store is the keychain.
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn the_real_store_of_this_platform_answers_unsupported() {
+    let fixture = fixture_with_os_secrets();
+    assert_unsupported_everywhere(&fixture);
+    assert_eq!(fixture.secrets.calls(), 0, "the in-memory store was not used");
+}
+
+/// The same answers from a store that says "unsupported", on every platform.
+#[test]
+fn a_store_that_is_unsupported_refuses_the_token_and_the_pack_and_saves_nothing() {
+    let fixture = fixture();
+    fixture
+        .secrets
+        .fail_with(Some(kinige_lib::stickers::secret::SecretError::Unsupported));
+    assert_unsupported_everywhere(&fixture);
+}
+
+fn assert_unsupported_everywhere(fixture: &Fixture) {
+    let (main, settings) = (window(fixture, "main"), window(fixture, "settings"));
+    assert_eq!(
+        call(&settings, "set_telegram_bot_token", json!({"token": TOKEN})).unwrap_err(),
+        json!({"code": "secret_store_unsupported"})
+    );
+    assert_eq!(
+        call(&settings, "get_telegram_token_state", json!({})).unwrap(),
+        json!({"saved": false, "itemLeft": false}),
+        "no flag is set for a token that was not saved"
+    );
+    assert_eq!(
+        call(&settings, "clear_telegram_bot_token", json!({})).unwrap(),
+        json!({"saved": false, "itemLeft": false}),
+        "there is nothing to delete, and that is no error"
+    );
+    assert_eq!(
+        call(&main, "add_sticker_pack", json!({"link": "TestPack"})).unwrap_err(),
+        json!({"code": "secret_store_unsupported"})
+    );
+    assert_eq!(
+        call(&main, "get_sticker_library", json!({})).unwrap()["hasToken"],
+        false
+    );
+}
+
 #[test]
 fn a_refused_secret_store_is_its_own_error_and_the_flag_stays_off() {
     let fixture = fixture();
@@ -291,14 +337,28 @@ fn a_refused_secret_store_is_its_own_error_and_the_flag_stays_off() {
     );
     assert_eq!(
         call(&settings, "get_telegram_token_state", json!({})).unwrap(),
-        json!({"saved": false})
+        json!({"saved": false, "itemLeft": false})
     );
-    // A denied delete (an item another build owns) still clears the flag: saving again takes the item over.
+    // A denied delete (the system asked for access and it was refused) still clears the flag, and the answer says that the old item is
+    // left in the keychain, so that Settings can tell the user where it is (N2). A plain delete never says it.
     fixture
         .secrets
         .fail_with(Some(kinige_lib::stickers::secret::SecretError::Denied));
     assert_eq!(
         call(&settings, "clear_telegram_bot_token", json!({})).unwrap(),
-        json!({"saved": false})
+        json!({"saved": false, "itemLeft": true})
+    );
+    assert_eq!(
+        call(&settings, "get_telegram_token_state", json!({})).unwrap(),
+        json!({"saved": false, "itemLeft": false}),
+        "the flag is off; the state read says nothing about the keychain"
+    );
+    // Another failure of the store is an error, with the flag off.
+    fixture
+        .secrets
+        .fail_with(Some(kinige_lib::stickers::secret::SecretError::Unavailable));
+    assert_eq!(
+        call(&settings, "clear_telegram_bot_token", json!({})).unwrap_err(),
+        json!({"code": "secret_store_unavailable"})
     );
 }

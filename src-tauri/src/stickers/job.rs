@@ -34,6 +34,10 @@ pub async fn run(ctx: &JobContext, link: &str) -> Result<StickerPackAdded, ApiEr
         .ok_or(ErrorCode::StickerPackLinkInvalid)?
         .to_string();
     let token = read_token(ctx).await?;
+    // The read may have waited for a system prompt, and "Cancel" may have been pressed meanwhile: then not one request is made.
+    if ctx.cancel.load(Ordering::SeqCst) {
+        return Err(ErrorCode::StickerPackCancelled.into());
+    }
     match tokio::time::timeout(JOB_TIMEOUT, download_and_write(ctx, &token, &name)).await {
         Ok(result) => result,
         Err(_) => Err(ErrorCode::StickerPackUnreachable.into()),
@@ -60,6 +64,7 @@ async fn read_token(ctx: &JobContext) -> Result<String, ApiError> {
         }
         Err(SecretError::Denied) => Err(ErrorCode::SecretStoreDenied.into()),
         Err(SecretError::Unavailable) => Err(ErrorCode::SecretStoreUnavailable.into()),
+        Err(SecretError::Unsupported) => Err(ErrorCode::SecretStoreUnsupported.into()),
     }
 }
 

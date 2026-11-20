@@ -90,7 +90,3 @@ objc2-foundation = "0.3"
 # The bot token of slice 5c (ADR-0021) is a generic-password item of the login keychain. The version the lock file already holds (reqwest's
 # trust store reads through it too).
 security-framework = "3.7"
-
-[target.'cfg(windows)'.dependencies]
-# The bot token on Windows is a Credential Manager entry (ADR-0021). The 3.x API of the crate; only the Windows store.
-keyring = { version = "3.6", default-features = false, features = ["windows-native"] }
