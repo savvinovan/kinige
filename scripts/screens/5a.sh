@@ -105,6 +105,21 @@ count_label() {
   driver_text "$(drive_window)" "$K/debug/count.txt" || return 1
   grep -cxF -- "$1" "$K/debug/count.txt" || true
 }
+# How many buttons carry the label. The window text lists a button twice (its aria-label and its title, which are the same words), except a button
+# that cannot add: its title is the label and the reason, so it is listed once. At most one button of a label is in that state here (the entry that
+# has ten), so the lines divided by two, rounded up, are the buttons.
+count_buttons() {
+  local lines
+  lines="$(count_label "$1")" || return 1
+  echo $(((lines + 1) / 2))
+}
+# The places of today's four entries among the bars the feed has drawn now (the markup is oldest first, today's entries are the last four).
+locate_today() {
+  COUNT="$(count_buttons "$L_HEART_BTN")"
+  [ -n "$COUNT" ] && [ "$COUNT" -ge 4 ] || fail "the feed shows ${COUNT:-?} bars, today's four entries need at least four"
+  LAST=$((COUNT - 1))
+  FIRST_OF_TODAY=$((COUNT - 4))
+}
 # The key of Escape, to the focused element.
 escape_key() { drive "$(drive_window)" '{"kind":"key","key":"Escape","code":"Escape"}' > /dev/null 2>&1 || true; sleep "$PAUSE"; }
 
@@ -131,10 +146,7 @@ wait_name "Входящие" 60000 || fail "the window did not show the Inbox"
 sleep 4
 detect_language
 wait_name "Купить билеты" 30000 || fail "the Inbox did not show today's entries"
-COUNT="$(count_label "$L_HEART_BTN")"
-[ -n "$COUNT" ] && [ "$COUNT" -ge 4 ] || fail "the feed shows ${COUNT:-?} bars, today's four entries need at least four"
-LAST=$((COUNT - 1))
-FIRST_OF_TODAY=$((COUNT - 4))
+locate_today
 AWAKE="$(entry_id 'Проснулся рано')"
 [ -n "$AWAKE" ] || fail "no entry to react to"
 [ "$(live_rows "$AWAKE")" = "0" ] || fail "the entry to react to already has a reaction"
@@ -184,7 +196,7 @@ sleep 1
 shoot 05-card-popover
 CARD_ENTRY="$(sqlw "select message_id from message_reaction where emoji = '🥲' limit 1")"
 BEFORE_CARD="$(sqlw "select count(*) from message_reaction where message_id = '$CARD_ENTRY'")"
-COUNT_SAD="$(count_label "$L_SAD_BTN")"
+COUNT_SAD="$(count_buttons "$L_SAD_BTN")"
 press_nth "$L_SAD_BTN" $((COUNT_SAD - 1)) button
 sleep 3
 wait_name "$L_DIALOG" 10000 gone || fail "the popover did not close after a pick"
@@ -247,6 +259,7 @@ wait_name "$L_DIALOG" 10000 gone || fail "Esc did not close the popover"
 
 # ---- 10. Ten reactions: the buttons that would add are muted and say why ----
 scroll_to "Планы на выходные"
+locate_today
 focus_on "$L_HEART_BTN" button $((COUNT - 3))
 sleep 2
 shoot 10-ten-reactions
@@ -283,6 +296,7 @@ echo "window: $(ax resize "$(app_pid)" 640 800)"
 sleep 3
 scroll_to "Купить билеты"
 sleep 3
+locate_today
 focus_on "$L_HEART_BTN" button "$LAST"
 sleep 2
 shoot 13-narrow-640
