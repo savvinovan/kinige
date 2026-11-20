@@ -1,8 +1,8 @@
 import type { TFunction } from "i18next";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ErrorCode } from "../../api/generated/ErrorCode";
-import { WARN_FROM_MS } from "../../voice/recorderSession";
+import { CONFIRM_AFTER_MS, WARN_FROM_MS } from "../../voice/recorderSession";
 import { formatDuration } from "../../voice/format";
 import type { VoiceControls, VoiceState } from "../../voice/useVoiceRecorder";
 import { IconButton } from "../controls/IconButton";
@@ -21,22 +21,34 @@ interface RecordingBarProps {
  * tabular figures (the warning colour from 29:00), the live waveform across the whole middle of the field (new bars enter from the right and
  * scroll left; see `LiveWave`) and the round accent Send on the right. It keeps the height of the field. Focus goes to Send; Enter sends,
  * Escape cancels (a recording over five seconds asks first).
+ *
+ * A recording kept because the capture window was hidden (`lost` with `cause: "hidden"`, KINIG-153) is different: it is there when the window
+ * comes back, where the habitual keys are Esc, Space and Enter, so none of them may send or delete it. Esc is left to the window (it hides
+ * and keeps the recording), the focus goes to the bar itself and not to a button, and the trash button asks first over five seconds, as it
+ * does for a recording that is running.
  */
 export function RecordingBar({ state, controls }: RecordingBarProps) {
   const { t } = useTranslation();
+  const bar = useRef<HTMLDivElement>(null);
   const sendButton = useRef<HTMLSpanElement>(null);
   const keepButton = useRef<HTMLButtonElement>(null);
-  const confirming = state.kind === "confirming";
+  const kept = state.kind === "lost" && state.cause === "hidden";
+  const [asking, setAsking] = useState(false);
+  // The question belongs to one kept recording: when there is none, it is forgotten (state adjusted while rendering, not in an effect).
+  if (!kept && asking) setAsking(false);
+  const question = state.kind === "confirming" || (kept && asking);
 
-  // Focus moves to Send when the bar appears, and to "Keep recording" while it asks: Enter then never discards by accident.
+  // Focus moves to Send when the bar appears, and to "Keep recording" while it asks: Enter then never discards by accident. A kept recording
+  // of the capture window takes it on the bar itself: no single key sends or deletes it, Tab reaches Discard and Send.
   useEffect(() => {
-    if (confirming) keepButton.current?.focus();
+    if (question) keepButton.current?.focus();
+    else if (kept) bar.current?.focus();
     else sendButton.current?.querySelector("button")?.focus();
-  }, [confirming]);
+  }, [question, kept]);
 
   // Escape works wherever the focus is (the person may have clicked into the feed): cancel, or "keep" while the question is open.
   useEffect(() => {
-    if (state.kind !== "recording" && state.kind !== "confirming" && state.kind !== "lost" && state.kind !== "send-failed") return;
+    if (!barOwnsEscape(state)) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       event.preventDefault();
@@ -46,16 +58,21 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [state.kind, controls]);
+  }, [state, controls]);
 
-  if (state.kind === "confirming") {
+  if (question) {
     return (
       <div className="recording-bar recording-bar--confirm" role="alertdialog" aria-label={t("voice.discardTitle")}>
         <p className="recording-bar__question">{t("voice.discardTitle")}</p>
         <button type="button" className="recording-bar__choice" onClick={controls.discard}>
           {t("voice.discard")}
         </button>
-        <button type="button" className="recording-bar__choice recording-bar__choice--keep" ref={keepButton} onClick={controls.keepRecording}>
+        <button
+          type="button"
+          className="recording-bar__choice recording-bar__choice--keep"
+          ref={keepButton}
+          onClick={state.kind === "confirming" ? controls.keepRecording : () => setAsking(false)}
+        >
           {t("voice.keep")}
         </button>
       </div>
@@ -81,17 +98,21 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
     );
   }
 
-  const trash = state.kind === "recording" ? controls.requestCancel : controls.discard;
+  const askFirst = kept && state.elapsedMs >= CONFIRM_AFTER_MS;
+  const trash = state.kind === "recording" ? controls.requestCancel : askFirst ? () => setAsking(true) : controls.discard;
   return (
     <div
       className={`recording-bar${sending ? " recording-bar--sending" : ""}`}
       role="group"
       aria-label={t("voice.recording", { time })}
+      ref={bar}
+      tabIndex={kept ? -1 : undefined}
+      data-kept={kept ? "hidden" : undefined}
     >
       <IconButton icon="trash" label={t("voice.discardRecording")} onClick={trash} disabled={sending} />
       {state.kind === "lost" ? (
         <p className="recording-bar__lost" role="status">
-          {t("voice.disconnected", { time })}
+          {t(state.cause === "hidden" ? "voice.stopped" : "voice.disconnected", { time })}
         </p>
       ) : (
         <>
@@ -109,6 +130,12 @@ export function RecordingBar({ state, controls }: RecordingBarProps) {
       </span>
     </div>
   );
+}
+
+/** The states in which the bar answers Escape. A window with its own Escape (the capture window hides on it) leaves it to the bar then. */
+export function barOwnsEscape(state: VoiceState): boolean {
+  if (state.kind === "lost") return state.cause !== "hidden";
+  return state.kind === "recording" || state.kind === "confirming" || state.kind === "send-failed";
 }
 
 function failureText(t: TFunction, code: ErrorCode): string {

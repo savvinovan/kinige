@@ -40,6 +40,7 @@ fn every_step_kind_parses() {
         r#"{"kind":"scroll","name":"a"}"#,
         r#"{"kind":"text"}"#,
         r#"{"kind":"front"}"#,
+        r#"{"kind":"hide"}"#,
     ] {
         let text = format!(r#"{{"id":"r1","window":"capture","step":{step}}}"#);
         assert!(parse(&text).is_ok(), "{step}");

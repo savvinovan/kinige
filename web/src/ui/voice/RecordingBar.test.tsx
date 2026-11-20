@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "../../test/render";
 import { staticVoice } from "../../voice/staticVoice";
 import type { VoiceController, VoiceState } from "../../voice/useVoiceRecorder";
 import { Composer } from "../composer/Composer";
+import { barOwnsEscape } from "./RecordingBar";
 
 function controls(state: VoiceState): VoiceController {
   return {
@@ -23,6 +24,19 @@ function show(state: VoiceState, language: "en" | "ru" = "en") {
   const result = render(<Composer value="" onChange={() => undefined} onSubmit={() => undefined} voice={voice} />, { language });
   return { voice, ...result };
 }
+
+describe("which states answer Escape", () => {
+  it("a running recording, its question and a failed save do; a lost device does; a recording kept after a hide does not (the window's Esc hides it)", () => {
+    expect(barOwnsEscape({ kind: "recording", elapsedMs: 1000 })).toBe(true);
+    expect(barOwnsEscape({ kind: "confirming", elapsedMs: 9000 })).toBe(true);
+    expect(barOwnsEscape({ kind: "send-failed", elapsedMs: 9000, error: "disk_full", retryable: true })).toBe(true);
+    expect(barOwnsEscape({ kind: "lost", elapsedMs: 9000 })).toBe(true);
+    expect(barOwnsEscape({ kind: "lost", elapsedMs: 9000, cause: "hidden" })).toBe(false);
+    expect(barOwnsEscape({ kind: "idle" })).toBe(false);
+    expect(barOwnsEscape({ kind: "starting" })).toBe(false);
+    expect(barOwnsEscape({ kind: "notice", reason: "busy" })).toBe(false);
+  });
+});
 
 describe("the microphone button", () => {
   it("is live with a recorder and starts on click; without one it is only drawn", () => {

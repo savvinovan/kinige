@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "capture-window",
-  "description": "Quick capture window: only Inbox and its own draft, no reading of the feed, settings, links or events",
+  "description": "Quick capture window: only Inbox, its own draft and its own voice note commands (recording to Inbox, the microphone claim, the microphone settings page); no reading of the feed, settings, links or events",
   "windows": ["capture"],
   "permissions": [
     "allow-capture-state",
@@ -10,6 +10,9 @@
     "allow-capture-save-draft",
     "allow-capture-hide",
     "allow-capture-resize",
-    "allow-capture-add-recent-emoji"
+    "allow-capture-add-recent-emoji",
+    "allow-capture-send-voice",
+    "allow-capture-hold-microphone",
+    "allow-capture-open-microphone-settings"
   ]
 }

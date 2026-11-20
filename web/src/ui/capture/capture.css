@@ -190,3 +190,9 @@
   color: var(--color-text-tertiary);
 }
 
+/* While the recording bar (or its question) stands in for the field, ⌘Enter does nothing, so the hint "⌘Enter — append" is not shown: it keeps its
+   line, so the window does not change height, and `visibility` takes it out of what a screen reader reads (KINIG-153). */
+.capture-panel:has(.recording-bar) .composer__hint {
+  visibility: hidden;
+}
+

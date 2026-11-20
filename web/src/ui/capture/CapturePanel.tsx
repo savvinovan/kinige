@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
 import { summaryOf, summaryText } from "../attachments/summaryText";
+import type { VoiceController } from "../../voice/useVoiceRecorder";
 import { Composer } from "../composer/Composer";
+import { barOwnsEscape } from "../voice/RecordingBar";
 import { formatTime } from "../feed/dates";
 import type { FeedMessage } from "../feed/buildFeed";
 import "../message/markdown.css";
@@ -39,6 +41,12 @@ export interface CapturePanelProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
   };
+  /**
+   * The microphone (KINIG-153): the same button and recording bar as the main window's field. While the bar stands in for the field it owns Esc
+   * (cancel, or "keep recording" while it asks), so the first Esc does not hide the window; every other state hides it as before. Without it
+   * there is no microphone button.
+   */
+  voice?: VoiceController;
 }
 
 /**
@@ -55,7 +63,7 @@ export interface CapturePanelProps {
  * The window is created hidden and shown many times, so autofocus on mount is not enough: every time the window gets focus
  * the caret is put back into the field. Esc hides the window wherever focus is (except IME input).
  */
-export function CapturePanel({ context, appendTargetId, value, onChange, onSend, onAppend, onHide, error, onHeight, emoji }: CapturePanelProps) {
+export function CapturePanel({ context, appendTargetId, value, onChange, onSend, onAppend, onHide, error, onHeight, emoji, voice }: CapturePanelProps) {
   const { t } = useTranslation();
   const language = useLanguage();
   const root = useRef<HTMLDivElement>(null);
@@ -64,15 +72,19 @@ export function CapturePanel({ context, appendTargetId, value, onChange, onSend,
   const onHideRef = useRef(onHide);
   const onHeightRef = useRef(onHeight);
   const emojiRef = useRef(emoji);
+  const voiceRef = useRef(voice);
   useEffect(() => {
     onHideRef.current = onHide;
     onHeightRef.current = onHeight;
     emojiRef.current = emoji;
+    voiceRef.current = voice;
   });
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.isComposing) return;
+      // The recording bar stands in for the field and answers Esc itself (it registers its own listener): the window stays.
+      if (voiceRef.current && barOwnsEscape(voiceRef.current.store.get())) return;
       event.preventDefault();
       // The picker is open (focus is in the field, not in the picker: Esc from the picker does not reach here): it closes first, the window stays.
       const picker = emojiRef.current;
@@ -83,7 +95,13 @@ export function CapturePanel({ context, appendTargetId, value, onChange, onSend,
       }
       onHideRef.current();
     };
-    const focusField = () => root.current?.querySelector("textarea")?.focus();
+    // While the recording bar stands in for the field the field is not there to take the caret: the bar's Send (or "Keep recording" while it
+    // asks) does. A recording kept after a hide takes the focus on the bar itself, not on a button: the first Space or Enter on a reopened window must
+    // not send a stale note (KINIG-153).
+    const focusField = () =>
+      (root.current?.querySelector<HTMLElement>(".recording-bar[data-kept]") ??
+        root.current?.querySelector<HTMLElement>(".recording-bar .composer__action button, .recording-bar__choice--keep") ??
+        root.current?.querySelector("textarea"))?.focus();
     document.addEventListener("keydown", onKeyDown);
     window.addEventListener("focus", focusField);
     return () => {
@@ -146,7 +164,8 @@ export function CapturePanel({ context, appendTargetId, value, onChange, onSend,
           onChange={onChange}
           onSubmit={onSend}
           onAppend={onAppend}
-          buttons={emoji ? { emoji: true } : {}}
+          buttons={{ emoji: Boolean(emoji), voice: Boolean(voice) }}
+          voice={voice}
           emoji={
             emoji
               ? {

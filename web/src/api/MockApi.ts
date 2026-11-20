@@ -173,6 +173,10 @@ export class MockApi implements KinigeApi {
   readVoiceForWaveform: KinigeApi["readVoiceForWaveform"] = (id) => this.voice.readVoiceForWaveform(id);
   setAttachmentWaveform: KinigeApi["setAttachmentWaveform"] = (id, peaks) => this.voice.setAttachmentWaveform(id, peaks);
   openMicrophoneSettings: KinigeApi["openMicrophoneSettings"] = () => this.voice.openMicrophoneSettings();
+  holdMicrophone: KinigeApi["holdMicrophone"] = (held) => this.voice.holdMicrophone("main", held);
+  captureSendVoice: KinigeApi["captureSendVoice"] = (bytes, ms, waveform) => this.voice.captureSendVoice(bytes, ms, waveform ?? null);
+  captureHoldMicrophone: KinigeApi["captureHoldMicrophone"] = (held) => this.voice.holdMicrophone("capture", held);
+  captureOpenMicrophoneSettings: KinigeApi["captureOpenMicrophoneSettings"] = () => this.voice.captureOpenMicrophoneSettings();
 
   // ---- for tests and stories: failures, events, entries ----
 
@@ -278,6 +282,8 @@ export class MockApi implements KinigeApi {
   get openedAttachments() { return this.attachments.openedAttachments; }
   get sentVoices() { return this.voice.sentVoices; }
   get microphoneSettingsOpened() { return this.voice.microphoneSettingsOpened; }
+  /** Which window holds the microphone claim, if any (the same rule as Rust's `MicrophoneClaim`). */
+  get microphoneHolder() { return this.voice.microphoneHolder; }
   get voiceFiles() { return this.voice.voiceFiles; }
   get savedWaveforms() { return this.voice.savedWaveforms; }
 

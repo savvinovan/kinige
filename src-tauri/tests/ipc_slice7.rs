@@ -1,5 +1,5 @@
 //! Slice 7 over IPC on the mock runtime with the real capabilities: the attachment commands belong to the main window only (the
-//! capture window keeps exactly seven commands, the settings window is denied), garbage comes back as errors without a panic and
+//! capture window's set is unchanged (`CAPTURE_SET`), the settings window is denied), garbage comes back as errors without a panic and
 //! without writing anything, the drop token is single-use, and the `kinige-media` protocol answers only `main`.
 
 // A whole integration-test root is test code: `cfg(test)` gives helpers outside #[test] the same clippy.toml allowances
@@ -77,17 +77,8 @@ fn wait_until(what: &str, mut condition: impl FnMut() -> bool) {
 #[test]
 fn slice_seven_commands_are_main_only_and_the_capture_set_is_unchanged() {
     assert_eq!(
-        CAPTURE_COMMANDS,
-        [
-            "capture_state",
-            "capture_send",
-            "capture_append",
-            "capture_save_draft",
-            "capture_hide",
-            "capture_resize",
-            "capture_add_recent_emoji"
-        ],
-        "the capture window still has seven commands"
+        CAPTURE_COMMANDS, CAPTURE_SET,
+        "the capture window's set is unchanged by this slice"
     );
     let fixture = fixture();
     let main = window(&fixture, "main");

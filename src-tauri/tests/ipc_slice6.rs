@@ -1,5 +1,5 @@
 //! Slice 6 over IPC on the mock runtime with the real capabilities: the forest commands belong to the main window only
-//! (the capture window keeps exactly seven commands, the settings window is denied), and garbage arguments come back as
+//! (the capture window's set is unchanged, `CAPTURE_SET`, the settings window is denied), and garbage arguments come back as
 //! errors without a panic and without writing anything.
 
 // A whole integration-test root is test code: `cfg(test)` gives helpers outside #[test] the same clippy.toml allowances
@@ -33,17 +33,8 @@ fn year_of(main: &tauri::WebviewWindow<tauri::test::MockRuntime>, year: i64) -> 
 #[test]
 fn slice_six_commands_are_main_only_and_the_capture_set_is_unchanged() {
     assert_eq!(
-        CAPTURE_COMMANDS,
-        [
-            "capture_state",
-            "capture_send",
-            "capture_append",
-            "capture_save_draft",
-            "capture_hide",
-            "capture_resize",
-            "capture_add_recent_emoji"
-        ],
-        "the capture window still has seven commands"
+        CAPTURE_COMMANDS, CAPTURE_SET,
+        "the capture window's set is unchanged by this slice"
     );
     let fixture = fixture();
     let main = window(&fixture, "main");

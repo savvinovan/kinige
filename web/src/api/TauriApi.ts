@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import type { KinigeApi, ListMessagesOptions } from "./KinigeApi";
 import { attachPaste, setAttachmentDetails, setDraftAttachmentDetails } from "./tauriAttachments";
-import { readVoiceForWaveform, sendVoice, setAttachmentWaveform } from "./tauriVoice";
+import * as voice from "./tauriVoice";
 import {
   ATTACHMENTS_DRAG, ATTACHMENTS_DROPPED, DATABASE_CORRUPT, ENTRIES_CHANGED, IMPORT_PROGRESS, OPEN_CHAT, OPEN_MESSAGE, SETTINGS_CHANGED, call,
 } from "./tauriCall";
@@ -96,21 +96,15 @@ export class TauriApi implements KinigeApi {
     return setAttachmentDetails(attachmentId, changes);
   }
 
-  sendVoice(chatId: string, bytes: Uint8Array, durationMs: number, replyToId?: string | null, waveform?: Uint8Array | null): Promise<MessageView> {
-    return sendVoice(chatId, bytes, durationMs, replyToId, waveform);
-  }
-
-  readVoiceForWaveform(attachmentId: string): Promise<ArrayBuffer> {
-    return readVoiceForWaveform(attachmentId);
-  }
-
-  setAttachmentWaveform(attachmentId: string, peaks: Uint8Array): Promise<void> {
-    return setAttachmentWaveform(attachmentId, peaks);
-  }
-
-  async openMicrophoneSettings(): Promise<void> {
-    await call("open_microphone_settings");
-  }
+  // Voice notes (slice 7a) and the capture window's own (KINIG-153): the commands are in `tauriVoice.ts`.
+  readonly sendVoice = voice.sendVoice;
+  readonly readVoiceForWaveform = voice.readVoiceForWaveform;
+  readonly setAttachmentWaveform = voice.setAttachmentWaveform;
+  readonly openMicrophoneSettings = voice.openMicrophoneSettings;
+  readonly holdMicrophone = voice.holdMicrophone;
+  readonly captureSendVoice = voice.captureSendVoice;
+  readonly captureHoldMicrophone = voice.captureHoldMicrophone;
+  readonly captureOpenMicrophoneSettings = voice.captureOpenMicrophoneSettings;
 
   attachDropped(token: string, chatId: string): Promise<AttachOutcome> {
     return call("attach_dropped", { token, chatId });

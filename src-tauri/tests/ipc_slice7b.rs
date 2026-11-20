@@ -1,5 +1,5 @@
 //! Slice 7b over IPC on the mock runtime with the real capabilities: the two details commands belong to the main window only (the
-//! capture window keeps exactly seven commands, the settings window is denied both), the details travel with the draft and the sent
+//! capture window's set is unchanged (`CAPTURE_SET`), the settings window is denied both), the details travel with the draft and the sent
 //! entry, and garbage comes back as an error without a panic and without writing anything.
 
 // A whole integration-test root is test code: `cfg(test)` gives helpers outside #[test] the same clippy.toml allowances
@@ -36,10 +36,6 @@ fn photo_tile(fixture: &Fixture) -> String {
         .id
 }
 
-/// The number of commands of the capture window at this commit: seven. KINIG-153 (the microphone in the capture window) makes it ten;
-/// whichever branch merges second changes this number (and PRD §12.3's "keeps exactly seven").
-const CAPTURE_COMMAND_COUNT: usize = 7;
-
 fn groups_of(fixture: &Fixture, id: &str) -> Option<String> {
     let store = fixture.app.state::<Store>();
     let _ = &store;
@@ -55,8 +51,7 @@ fn groups_of(fixture: &Fixture, id: &str) -> Option<String> {
 #[test]
 fn the_details_commands_are_main_only_and_the_capture_set_is_unchanged() {
     assert_eq!(
-        CAPTURE_COMMANDS.len(),
-        CAPTURE_COMMAND_COUNT,
+        CAPTURE_COMMANDS, CAPTURE_SET,
         "the capture window's commands changed: this slice adds none"
     );
     let fixture = fixture();

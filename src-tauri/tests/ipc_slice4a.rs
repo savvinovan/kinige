@@ -23,11 +23,10 @@ const SLICE_FOUR_A: &[&str] = &[
 ];
 
 #[test]
-fn agent_commands_are_settings_only_and_the_capture_window_still_has_seven() {
+fn agent_commands_are_settings_only_and_the_capture_set_is_unchanged() {
     assert_eq!(
-        CAPTURE_COMMANDS.len(),
-        7,
-        "the capture window still has seven commands"
+        CAPTURE_COMMANDS, CAPTURE_SET,
+        "the capture window's set is unchanged by this slice"
     );
     let fixture = fixture();
     let settings = window(&fixture, "settings");

@@ -46,7 +46,7 @@ A scenario that sets `DRIVER=1` (`7a`, `7a-windows`, `7b`, `screens-driver-probe
 **How a step runs:**
 - The script writes `requests/<id>.json` into `KINIGE_SCREENS_DRIVER_DIR`, and the app answers in `replies/<id>.json`.
 - The shell side is `drive`, `press`, `wait_name` and `has` in `lib.sh`; the PowerShell side is `Drive`, `Press`, `Wait-Name` and `Has` in `lib-windows.ps1`.
-- **Steps:** press, menu, type, key, wait, has, scroll, text, front. There is no script eval and no IPC passthrough.
+- **Steps:** press, menu, type, key, wait, has, scroll, text, front, hide (`hide` is the capture window's own request to hide, done by the app; `front` on it is the app's real show). There is no script eval and no IPC passthrough.
 
 New scenarios use the driver. AX and SendKeys are for native UI only: file pickers, the tray and native menus, resizing the window. Global hotkeys are never simulated.
 

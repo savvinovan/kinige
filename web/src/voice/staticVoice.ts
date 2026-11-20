@@ -14,6 +14,7 @@ export function staticVoice(state: VoiceState, handlers: Partial<Omit<VoiceContr
     retry: noop,
     openSettings: noop,
     dismissNotice: noop,
+    park: () => Promise.resolve(),
     ...handlers,
   };
 }

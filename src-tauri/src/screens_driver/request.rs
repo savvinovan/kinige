@@ -93,6 +93,9 @@ pub enum Step {
     // Struct variants, not unit ones: serde ignores `deny_unknown_fields` for a unit variant of a tagged enum.
     Text {},
     Front {},
+    /// The capture window only (KINIG-153): the app asks it to hide the way the hotkey, closing the window and a loss of focus do
+    /// (`capture::request_hide`), which no key or click in the page can do. Done by the app, like `front`.
+    Hide {},
 }
 
 /// What a window sends back through `screens_driver_reply`.
@@ -235,7 +238,18 @@ pub fn parse_request(file_id: &str, bytes: &[u8]) -> Result<Request, Reject> {
         .and_then(Value::as_str);
     if !matches!(
         kind,
-        Some("press" | "menu" | "type" | "key" | "wait" | "has" | "scroll" | "text" | "front")
+        Some(
+            "press"
+                | "menu"
+                | "type"
+                | "key"
+                | "wait"
+                | "has"
+                | "scroll"
+                | "text"
+                | "front"
+                | "hide"
+        )
     ) {
         return Err(Reject::UnknownStep);
     }
@@ -286,7 +300,7 @@ impl Step {
                 ..
             } => name_ok(name) && role_ok(role) && *timeout_ms <= MAX_WAIT_MS,
             Step::Has { name, role } => name_ok(name) && role_ok(role),
-            Step::Text {} | Step::Front {} => true,
+            Step::Text {} | Step::Front {} | Step::Hide {} => true,
         }
     }
 }

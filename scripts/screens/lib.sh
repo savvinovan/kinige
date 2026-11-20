@@ -73,10 +73,11 @@ dump_complete() { [ -s "$1" ] && grep -q '^ *AX' "$1" && ! grep -q 'Alarm clock'
 # does not come within DRIVE_TIMEOUT seconds, or that says ok:false, is a scenario error naming the step. No AX call and no window dump.
 
 # Which window a driver step goes to, from AX_WINDOW (the same variable that selects the AX window): "Settings" or "Настройки" is the
-# settings window, anything else the main one.
+# settings window, "Capture" the quick capture window (KINIG-153), anything else the main one.
 drive_window() {
   case "${AX_WINDOW:-}" in
     Settings* | Настройки*) echo settings ;;
+    Capture*) echo capture ;;
     *) echo main ;;
   esac
 }
@@ -256,7 +257,8 @@ shoot() {
   local name="$1"
   local mode="${2:-main}"
   if [ "$DRIVER" = "1" ]; then
-    drive_raw "$(drive_window)" '{"kind":"front"}' > /dev/null
+    # Not for the capture window: it is a panel the app shows itself, and `front` would show it as an ordinary window and take the key from the main one.
+    [ "$mode" = "capture" ] || drive_raw "$(drive_window)" '{"kind":"front"}' > /dev/null
     sleep 1
     # The text through the driver (467 ms on an idle window in the probe, where an AX dump took up to 3 minutes): every shot is checked, none is skipped.
     if ! driver_text "$(drive_window)" "$K/debug/shot-$name.txt"; then
@@ -291,6 +293,7 @@ shoot() {
 # the window named by AX_WINDOW; the shot mode tells screenshot-window.sh which window to capture.
 in_settings() { export AX_WINDOW=Settings; }
 in_main() { export AX_WINDOW=Kinige; }
+in_capture() { export AX_WINDOW=Capture; }
 shoot_settings() { in_settings; shoot "$1" settings; }
 shoot_main() { in_main; shoot "$1" main; in_settings; }
 settings_windows() { KINIGE_PID="$(app_pid)" limit 30 "$REPO/scripts/screenshot-window.sh" /dev/null kinige list 2>/dev/null | awk -F'\t' '$5 == "Settings" || $5 == "Настройки"' | wc -l | tr -d ' '; }

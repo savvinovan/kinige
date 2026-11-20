@@ -103,6 +103,18 @@ AX_WINDOW=Kinige expect "a press that is found" pass press "Play"
 expect_seen "press goes to the main window" '"window":"main","step":{"kind":"press","name":"Play"}'
 AX_WINDOW=Settings expect "a press in the settings window" pass press "Dark" RadioButton
 expect_seen "press in settings, with the role mapped" '"window":"settings","step":{"kind":"press","name":"Dark","role":"radio"}'
+AX_WINDOW=Capture expect "a press in the capture window" pass press "Record voice note"
+expect_seen "press in the quick capture window" '"window":"capture","step":{"kind":"press","name":"Record voice note"}'
+# KINIG-153: the shot of the capture window never sends `front` (it would show the panel as an ordinary window and take the key from the
+# main one); the text for the personal path check still comes from the capture window.
+: > "$WORK/seen"
+printf 'A note in the capture window' > "$WORK/text-answer"
+AX_WINDOW=Capture expect "a shot of the capture window" pass shoot "capture-shot" capture
+expect_seen "the capture shot reads the capture window's text" '"window":"capture","step":{"kind":"text"}'
+if grep -qF '"kind":"front"' "$WORK/seen"; then
+  echo "THE CAPTURE SHOT SENT front"
+  PROBLEMS=$((PROBLEMS + 1))
+fi
 expect "a press that finds nothing is a scenario error" fail press "Missing"
 expect "a step nobody answers is a scenario error" fail press "Silent"
 expect "show_menu" pass show_menu "Inbox"

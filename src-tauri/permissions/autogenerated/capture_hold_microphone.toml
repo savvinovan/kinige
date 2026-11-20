@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-capture-hold-microphone"
+description = "Enables the capture_hold_microphone command without any pre-configured scope."
+commands.allow = ["capture_hold_microphone"]
+
+[[permission]]
+identifier = "deny-capture-hold-microphone"
+description = "Denies the capture_hold_microphone command without any pre-configured scope."
+commands.deny = ["capture_hold_microphone"]

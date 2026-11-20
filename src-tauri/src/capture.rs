@@ -1,6 +1,7 @@
 //! The quick capture window (PRD §5.1): showing and hiding, window commands, the clipboard hotkey. The rules for appending and storage are in
 //! `kinige-domain` and `kinige-store`; here only the window and the platform.
 
+use crate::voice::MicrophoneClaim;
 use kinige_domain::{ApiError, CaptureOutcome, CaptureState, ErrorCode};
 use kinige_store::{Now, Store, StoreError};
 use std::sync::Mutex;
@@ -215,6 +216,10 @@ fn hide_capture_on_main<R: Runtime>(app: &AppHandle<R>) {
         return;
     }
     trace("hide");
+    // Whatever hid it, a hidden window holds no microphone (the page normally lets go first; this is for a page that did not answer).
+    if let Some(claim) = app.try_state::<MicrophoneClaim>() {
+        claim.release(CAPTURE_LABEL);
+    }
     #[cfg(target_os = "macos")]
     let as_panel = crate::panel::hide(app, CAPTURE_LABEL);
     #[cfg(not(target_os = "macos"))]
@@ -264,10 +269,23 @@ pub fn on_capture_key<R: Runtime>(_app: &AppHandle<R>) {
 }
 
 /// The capture window lost key status (a click into another window, another app): it hides, saving the draft
-/// (§5.1). If the window is already hidden, `request_hide` does nothing.
+/// (§5.1). If the window is already hidden, `request_hide` does nothing. Not while it holds the microphone (a recording, or the wait for
+/// the system's permission prompt, which takes the key status itself): a recording never goes on in a window nobody sees, so the window
+/// stays until the person sends, cancels or presses Esc or the hotkey (KINIG-153).
 pub fn on_capture_blur<R: Runtime>(app: &AppHandle<R>) {
     trace("resign");
-    request_hide(app);
+    if hides_on_blur(app) {
+        request_hide(app);
+    } else {
+        trace("resign ignored: recording");
+    }
+}
+
+/// Whether a loss of focus hides the window: not while the capture window itself holds the microphone (the main window's recording
+/// does not keep it).
+fn hides_on_blur<R: Runtime>(app: &AppHandle<R>) -> bool {
+    !app.try_state::<MicrophoneClaim>()
+        .is_some_and(|claim| claim.is_held_by(CAPTURE_LABEL))
 }
 
 /// The capture hotkey: the window is closed -- show it, open -- hide it, saving the draft.
