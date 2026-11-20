@@ -15,8 +15,8 @@ export function useChangeCounter(): [number, () => void] {
 
 interface UseForestPaneOptions {
   api: KinigeApi;
-  /** The state saved from the last run (`Settings`), read before the first frame. */
-  initial: { view: ForestView; mode: ForestMode };
+  /** The state saved from the last run (`Settings`), read before the first frame; `shown` is the view "Show forest" brings back. */
+  initial: { view: ForestView; shown: ForestView; mode: ForestMode };
   /** The open chat; `null` in the trash. A click prefers it when it has entries that day. */
   chatId: string | null;
   /** Any change here reloads the table: local entry changes, the "entries changed" event, a new journal day. */
@@ -33,7 +33,8 @@ interface UseForestPaneOptions {
  * The first weekday comes from the system locale once; the table is not requested while the forest is hidden.
  */
 export function useForestPane({ api, initial, chatId, refreshKey, ready, openEntry }: UseForestPaneOptions) {
-  const [state, setState] = useState(initial);
+  // The view that is shown now is the remembered one; only a hidden start needs the saved `shown`.
+  const [state, setState] = useState(() => ({ ...initial, shown: initial.view === "hidden" ? initial.shown : initial.view }));
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [table, setTable] = useState<ForestYear | null>(null);
   const [failed, setFailed] = useState(false);
@@ -74,9 +75,10 @@ export function useForestPane({ api, initial, chatId, refreshKey, ready, openEnt
     if (date !== null && (previous === null || previous.slice(0, 4) !== date.slice(0, 4))) setYear(Number(date.slice(0, 4)));
   }, []);
 
+  // A shown view (the strip or the board) is remembered; Rust keeps the same value (`set_forest_view`), so a restart agrees.
   const change = useCallback(
     (next: { view: ForestView; mode: ForestMode }) => {
-      setState(next);
+      setState((current) => ({ ...next, shown: next.view === "hidden" ? current.shown : next.view }));
       api.setForestView(next.view, next.mode).catch(() => undefined);
     },
     [api],
@@ -121,7 +123,7 @@ export function useForestPane({ api, initial, chatId, refreshKey, ready, openEnt
     pane,
     hidden,
     onTopDay,
-    /** The one switch of the top bar button and the profile menu item: "Show forest" brings the strip back, "Hide forest" hides it. */
-    toggleHidden: () => change({ ...state, view: hidden ? "strip" : "hidden" }),
+    /** The one switch of the top bar button and the profile menu item: "Show forest" brings back the view it had (the strip or the board), "Hide forest" hides it. */
+    toggleHidden: () => change({ mode: state.mode, view: hidden ? state.shown : "hidden" }),
   };
 }

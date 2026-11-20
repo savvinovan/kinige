@@ -43,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ],
   sidebarCollapsed: false,
   forestView: "strip",
+  forestShownView: "strip",
   forestMode: "forest",
   recentEmoji: [],
   backup: { folder: "/Users/me/Library/Application Support/me.savvinov.kinige/backups", lastAt: null, count: 0, error: null },

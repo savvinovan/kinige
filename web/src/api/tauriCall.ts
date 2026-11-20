@@ -7,6 +7,8 @@ import type { ErrorCode } from "./generated/ErrorCode";
 export const ENTRIES_CHANGED = "entries-changed";
 export const OPEN_CHAT = "open-chat";
 export const DATABASE_CORRUPT = "database-corrupt";
+/** The main window is being hidden by a close (`main_window::MAIN_WINDOW_HIDING`): a recording is stopped and kept first (KINIG-156). */
+export const MAIN_WINDOW_HIDING = "main-window-hiding";
 /** Settings changed and an entry is asked to be opened (`settings_window::SETTINGS_CHANGED`, `OPEN_MESSAGE`). */
 export const SETTINGS_CHANGED = "settings-changed";
 export const OPEN_MESSAGE = "open-message";

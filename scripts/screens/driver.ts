@@ -27,7 +27,8 @@ export type Step =
   | { kind: "wait"; name: string; role?: string; gone?: boolean; timeoutMs: number }
   | { kind: "has"; name: string; role?: string }
   | ({ kind: "scroll" } & Query)
-  | { kind: "text" };
+  | { kind: "text" }
+  | { kind: "metrics" };
 
 export type Answer = { ok: true; value?: string } | { ok: false; error: string };
 
@@ -108,9 +109,56 @@ async function run(step: Step, root: Document, patience: number): Promise<string
     }
     case "text":
       return windowText(root);
+    case "metrics":
+      return pageMetrics(root);
     default:
       throw new Error(`unknown step: ${String((step as { kind?: unknown } | null)?.kind)}`);
   }
+}
+
+/**
+ * The sizes that decide whether the page scrolls (KINIG-76): the window's inner size and the document's scrolling element, as `name=value`
+ * lines, then the first elements that stand lower than the window (`lower.N=tag.class top bottom height`, so a scroll bar can be traced to its
+ * element). A read only; the page scrolls in a direction when its scroll size is larger than its client size. Numbers and class names, no page content.
+ */
+function pageMetrics(root: Document): string {
+  const view = root.defaultView;
+  const scrolling = root.scrollingElement ?? root.documentElement;
+  const body = root.body;
+  const lines: [string, number][] = [
+    ["inner.width", view?.innerWidth ?? 0],
+    ["inner.height", view?.innerHeight ?? 0],
+    ["document.clientWidth", scrolling.clientWidth],
+    ["document.clientHeight", scrolling.clientHeight],
+    ["document.scrollWidth", scrolling.scrollWidth],
+    ["document.scrollHeight", scrolling.scrollHeight],
+    ["body.scrollWidth", body?.scrollWidth ?? 0],
+    ["body.scrollHeight", body?.scrollHeight ?? 0],
+  ];
+  const text = lines.map(([name, value]) => `${name}=${value}`);
+  // The first eight elements that stand lower than the window and that no ancestor clips by its overflow (an element out of flow whose containing
+  // block is outside the clipping ancestor is not clipped by it: that is how the chat list's hidden counts made the page scroll): their tag, class,
+  // position and sizes, no page content. The position is the usual answer, the sizes say where.
+  const height = view?.innerHeight ?? 0;
+  const clipped = (element: Element): boolean => {
+    for (let up = element.parentElement; up && up !== body; up = up.parentElement) {
+      if (view?.getComputedStyle(up).overflowY !== "visible") return true;
+    }
+    return false;
+  };
+  let shown = 0;
+  for (const element of Array.from(root.querySelectorAll("body *"))) {
+    if (shown >= 8) break;
+    const box = element.getBoundingClientRect();
+    if (box.height <= 0 || box.bottom <= height + 1) continue;
+    const position = view?.getComputedStyle(element).position ?? "";
+    // An absolutely positioned element is listed even under an ancestor that clips: it may be clipped by that ancestor or not, by its containing block.
+    if (clipped(element) && position !== "absolute") continue;
+    const name = `${element.tagName.toLowerCase()}.${(element.getAttribute("class") ?? "").split(" ")[0]}`;
+    text.push(`lower.${shown}=${name} ${position} top=${Math.round(box.top)} bottom=${Math.round(box.bottom)} height=${Math.round(box.height)}`);
+    shown += 1;
+  }
+  return text.join("\n");
 }
 
 /** The element of the query, waiting up to `patience` for it to show; an error names what was not found. */

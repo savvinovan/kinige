@@ -39,8 +39,10 @@ fn every_step_kind_parses() {
         r#"{"kind":"has","name":"a"}"#,
         r#"{"kind":"scroll","name":"a"}"#,
         r#"{"kind":"text"}"#,
+        r#"{"kind":"metrics"}"#,
         r#"{"kind":"front"}"#,
         r#"{"kind":"hide"}"#,
+        r#"{"kind":"close"}"#,
     ] {
         let text = format!(r#"{{"id":"r1","window":"capture","step":{step}}}"#);
         assert!(parse(&text).is_ok(), "{step}");
@@ -159,6 +161,11 @@ fn garbage_is_refused_with_a_category_and_never_panics() {
         ),
         (
             r#"{"id":"r1","window":"main","step":{"kind":"text"},"extra":1}"#,
+            Reject::InvalidStep,
+        ),
+        // The metrics step takes no argument: a script cannot ask it for anything else.
+        (
+            r#"{"id":"r1","window":"main","step":{"kind":"metrics","selector":"body"}}"#,
             Reject::InvalidStep,
         ),
     ];

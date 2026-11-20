@@ -22,6 +22,10 @@
 
 /* The list scrolls only vertically: long names are truncated with an ellipsis instead of widening the sidebar. */
 .sidebar nav {
+  /* KINIG-76, the page-level scroll bar of the main window: every chat row holds a `.visually-hidden` count for the screen reader, which is absolutely
+     positioned. Without a positioned ancestor its containing block is the page, so this scroll area did not clip it and a list longer than the window
+     (about 17 chats, or a short window) made the whole page scroll. The list is the containing block now, and clips them. */
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-x: hidden;

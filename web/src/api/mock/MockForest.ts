@@ -65,7 +65,9 @@ export class MockForest {
 
   setForestView(view: ForestView, mode: ForestMode): Promise<void> {
     return this.s.run("setForestView", `${view} ${mode}`, () => {
-      this.s.settings = { ...this.s.settings, forestView: view, forestMode: mode };
+      // Like `set_forest_view` in Rust: a shown view is also the one "Show forest" brings back.
+      const shown = view === "hidden" ? this.s.settings.forestShownView : view;
+      this.s.settings = { ...this.s.settings, forestView: view, forestShownView: shown, forestMode: mode };
     });
   }
 }

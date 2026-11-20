@@ -68,6 +68,9 @@ tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros",
 kinige = { path = ".", features = ["test-hooks"] }
 kinige-store = { path = "../crates/kinige-store", features = ["test-hooks"] }
 tauri = { version = "2.12", features = ["test"] }
+# Only to build a `CloseRequested` window event for the app's own handler (`tests/ipc_main_window.rs`): the mock runtime never calls the handlers a
+# builder registers, and `tauri` does not re-export this type. Already in the tree through tauri.
+tauri-runtime = "2.12"
 tempfile = "3"
 # Only for the "database is newer than the app" test: raise `user_version` of the database file.
 rusqlite = { version = "0.41", features = ["bundled"] }

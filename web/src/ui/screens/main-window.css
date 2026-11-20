@@ -1,4 +1,13 @@
 /* Main window: sidebar on the left, feed and composer on the right, full window height. Tokens only. */
+/* KINIG-76: the document of the main window never scrolls, in either direction: only the feed and the sidebar list do. `data-window="main"` is set by
+   main.tsx, like the settings window's (prefs.css) and the capture window's (capture.css). It is a guard, not the fix: what overflowed is made to fit
+   (the reply strip's label shrinks), so the guard never cuts the field. It holds only while the journal is on screen (`:has(.main-window)`): the
+   recovery screens of the same window are a column that may be taller than the window and scroll the page. */
+html[data-window="main"]:has(.main-window),
+html[data-window="main"]:has(.main-window) body {
+  overflow: hidden;
+}
+
 .main-window {
   display: flex;
   height: var(--layout-window-height);
@@ -15,14 +24,31 @@
   background: var(--color-surface-paper);
 }
 
-/* KINIG-134: a thin bar above the forest pane (or above the feed while the forest is hidden) with the forest switch at the right end.
-   It has the same height in both states, so the button never moves; it has no border and no label. */
+/* KINIG-134, KINIG-150: a thin bar above the forest pane (or above the feed while the forest is hidden): the open chat's name at the
+   left end, the forest switch at the right end. The height is the switch's whatever the title is (it is one line), so nothing
+   moves between states; no border, no label. */
 .main-window__topbar {
   display: flex;
   flex: none;
   align-items: center;
-  justify-content: flex-end;
+  gap: var(--space-2);
+  min-height: calc(var(--layout-action-size) + var(--space-1));
   padding: var(--space-1) var(--space-4) 0;
+}
+
+/* The name: the sidebar's chat-name style in the heading weight, one line, cut with an ellipsis; the switch keeps its place. */
+.main-window__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-family: var(--type-nav-family);
+  font-size: var(--type-nav-size);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--type-nav-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .main-window__chat > .feed-pane {

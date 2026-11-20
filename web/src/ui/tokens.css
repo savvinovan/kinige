@@ -106,6 +106,8 @@
   --layout-search-snippet-lines: 3; /** How many lines of the snippet a search result row shows; the rest is cut off with an ellipsis (line-clamp). */
   --layout-window-height: 100vh; /** The height of the app window: the whole window. */
   --layout-window-narrow: 45rem; /** Width of the 'narrow window' in Storybook stories (585 px). */
+  --layout-window-min-width: 640px; /** Minimum width of the main window (KINIG-76): `minWidth` of the main window in tauri.conf.json (checked by the configuration test). The Storybook stories of the smallest window use it as their frame. */
+  --layout-window-min-height: 400px; /** Minimum height of the main window: `minHeight` of the main window in tauri.conf.json (checked by the configuration test). At it, with large text, nothing scrolls except the feed and the sidebar list. */
   --layout-on-this-day-entry-lines: 3; /** How many lines of the entry text a row of the 'On this day' card shows (slice 5); the rest is cut off with an ellipsis (line-clamp). The full text opens in the feed by clicking the entry. */
   --layout-recovery-width: 36rem; /** Width of the column of the 'Database is damaged' screen (468 px at a 13 px root); in a narrow window the column takes the window width minus the margins. */
   --layout-recovery-list-max-height: 24rem; /** Largest height of the copies list (312 px at a 13 px root): a longer list scrolls inside, the heading and the button stay in place. */

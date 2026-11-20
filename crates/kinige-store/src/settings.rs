@@ -101,7 +101,8 @@ impl Store {
             })?;
         Ok(Settings {
             forest_view: forest.0,
-            forest_mode: forest.1,
+            forest_shown_view: forest.1,
+            forest_mode: forest.2,
             sidebar_collapsed: collapsed.as_deref() == Some("1"),
             recent_emoji: recent,
             backup: self.inner.backup.status(&self.inner.db_path),
