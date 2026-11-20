@@ -222,6 +222,7 @@ pub fn args_for(command: &str) -> Value {
         "toggle_task_item" => json!({"id": "нет-такой", "index": 0, "checked": true}),
         "move_message" => json!({"id": "нет-такой", "chatId": inbox}),
         "set_message_flag" => json!({"id": "нет-такой", "flag": "task", "on": true}),
+        "set_message_reaction" => json!({"id": "нет-такой", "emoji": "🔥", "on": true}),
         "set_message_date" => json!({"id": "нет-такой", "journalDate": "2026-10-01"}),
         "set_sidebar_collapsed" => json!({"collapsed": true}),
         "add_recent_emoji" | "capture_add_recent_emoji" => json!({"emoji": "📚"}),

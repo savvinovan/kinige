@@ -26,6 +26,7 @@
     "allow-edit-message",
     "allow-toggle-task-item",
     "allow-set-message-flag",
+    "allow-set-message-reaction",
     "allow-set-message-date",
     "allow-move-message",
     "allow-list-trash",
