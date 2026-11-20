@@ -1,4 +1,4 @@
-== 1280x800 normal text, the strip
+== the default window (1024x683 outer on the runner) normal text, the strip
 inner.width=1024
 inner.height=653
 document.clientWidth=1024
@@ -25,7 +25,7 @@ lower.4=span.visually-hidden absolute top=561 bottom=562 height=1
 lower.5=span.visually-hidden absolute top=599 bottom=600 height=1
 lower.6=span.visually-hidden absolute top=637 bottom=638 height=1
 window: 1024 683
-== 1280x800 large text, the strip
+== the default window (1024x683 outer on the runner) large text, the strip
 inner.width=1024
 inner.height=655
 document.clientWidth=1024
