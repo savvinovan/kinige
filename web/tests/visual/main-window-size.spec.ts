@@ -11,7 +11,7 @@ const SLICE5 = (story: string) => `экраны-главное-окно-в-эт�
 
 // The framed stories are measured inside their frame (it is the window); the others fill the 640 x 400 viewport.
 const FRAMED = ["hidden", "hidden-large-text", "strip", "strip-large-text", "expanded", "expanded-large-text", "reply-strip-hidden", "reply-strip-strip-large-text", "reply-strip-expanded-large-text"].map(MIN);
-const UNFRAMED = [FOREST("hidden"), FOREST("strip-above-the-feed"), FOREST("expanded-above-the-feed"), FOREST("title-very-long-name"), SLICE5("ответназапись"), SLICE5("английскийкрупный")];
+const UNFRAMED = [FOREST("hidden"), FOREST("strip-above-the-feed"), FOREST("expanded-above-the-feed"), FOREST("title-very-long-name"), FOREST("many-chats"), SLICE5("ответназапись"), SLICE5("английскийкрупный")];
 
 async function open(page: Page, id: string, scale: string) {
   await page.goto(`/iframe.html?id=${encodeURIComponent(id)}&viewMode=story`);

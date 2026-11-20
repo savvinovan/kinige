@@ -116,6 +116,14 @@ export const TitleLargeTextEnglish: Story = {
   globals: { language: "en", textScale: "large" },
 };
 
+/**
+ * KINIG-76: a long chat list (the seed's 19 chats) in a short window: only the list scrolls, never the page. What made the page scroll was the
+ * screen reader's count text of each row, which sat outside the list's clip; the Playwright check (`main-window-size.spec.ts`) reads the page's size.
+ */
+export const ManyChats: Story = {
+  args: { chats: [...CHATS, ...withTints(Array.from({ length: 16 }, (_, i) => ({ id: `many${i}`, name: `Чат ${i + 1}`, emoji: "💬", count: 3 + i })))] },
+};
+
 /** English, large text. */
 export const EnglishLargeText: Story = { args: { forest: pane("strip") }, globals: { language: "en", textScale: "large" } };
 
