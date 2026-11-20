@@ -172,9 +172,21 @@ fn a_crash_between_the_renames_and_the_rows_leaves_no_pack_and_the_sweep_clears_
         .join("stickers/.tmp/00000000-0000-4000-8000-00000000dead/job");
     std::fs::create_dir_all(&dead).unwrap();
     std::fs::write(dead.join("0.part"), b"half").unwrap();
-    // A sent sticker's own file in `attachments/` is not the library's: the sweep never touches it.
+    // A sent sticker's own file in `attachments/` is not the library's: the sweep never touches it, even a file no row owns (that is the
+    // attachment sweep's business) and one whose name looks like a library file.
+    std::fs::create_dir_all(dir.path().join("attachments")).unwrap();
+    let kept = [
+        "attachments/6f1c2d3e-4a5b-4c6d-8e7f-0123456789ab.webp",
+        "attachments/not-a-library-file.bin",
+    ];
+    for name in kept {
+        std::fs::write(dir.path().join(name), b"sent").unwrap();
+    }
     let report = store.sweep_stickers().unwrap();
     assert_eq!((report.files_removed, report.stale_dirs), (2, 1));
+    for name in kept {
+        assert!(dir.path().join(name).is_file(), "{name} was removed");
+    }
     assert!(library_files(dir.path()).is_empty());
     assert!(
         !dir.path()
