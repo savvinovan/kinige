@@ -3,3 +3,17 @@
   max-width: var(--layout-window-narrow);
   border-right: var(--border-width-hairline) solid var(--color-border-divider);
 }
+
+/* Storybook stories only: the smallest main window (layout.window.min-*), in a frame of that size. The window's own height is 100vh, so
+   inside the frame it takes the frame's. The frame clips like the OS window; the checks measure the sizes, not what is cut. */
+.story-main-min {
+  box-sizing: content-box;
+  width: var(--layout-window-min-width);
+  height: var(--layout-window-min-height);
+  border: var(--border-width-hairline) solid var(--color-border-divider);
+  overflow: clip;
+}
+
+.story-main-min .main-window {
+  height: 100%;
+}

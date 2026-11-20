@@ -3,7 +3,7 @@ import type { KinigeApi, ListMessagesOptions } from "./KinigeApi";
 import { attachPaste, setAttachmentDetails, setDraftAttachmentDetails } from "./tauriAttachments";
 import * as voice from "./tauriVoice";
 import {
-  ATTACHMENTS_DRAG, ATTACHMENTS_DROPPED, DATABASE_CORRUPT, ENTRIES_CHANGED, IMPORT_PROGRESS, OPEN_CHAT, OPEN_MESSAGE, SETTINGS_CHANGED, call,
+  ATTACHMENTS_DRAG, ATTACHMENTS_DROPPED, DATABASE_CORRUPT, ENTRIES_CHANGED, IMPORT_PROGRESS, MAIN_WINDOW_HIDING, OPEN_CHAT, OPEN_MESSAGE, SETTINGS_CHANGED, call,
 } from "./tauriCall";
 import type { AgentAccess } from "./generated/AgentAccess";
 import type { AgentLogEntry } from "./generated/AgentLogEntry";
@@ -262,6 +262,10 @@ export class TauriApi implements KinigeApi {
 
   onOpenChat(handler: (chatId: string) => void): Promise<() => void> {
     return listen<string>(OPEN_CHAT, (event) => handler(event.payload));
+  }
+
+  onMainWindowHiding(handler: () => void): Promise<() => void> {
+    return listen(MAIN_WINDOW_HIDING, () => handler());
   }
 
   startupState(): Promise<StartupState> {

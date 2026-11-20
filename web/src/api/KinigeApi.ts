@@ -144,6 +144,8 @@ export interface KinigeApi {
   addRecentEmoji(emoji: string): Promise<string[]>;
   /** The tray menu: "open this chat". Returns the unsubscribe function. */
   onOpenChat(handler: (chatId: string) => void): Promise<() => void>;
+  /** The main window is being hidden by a close (the red button, ⌘W): a recording must stop and be kept first (KINIG-156). Not sent for minimizing or ⌘H. */
+  onMainWindowHiding(handler: () => void): Promise<() => void>;
 
   // ---- startup and database backups (slice 3) ----
   /** The journal or the "Database is corrupted" window with a list of backups. */

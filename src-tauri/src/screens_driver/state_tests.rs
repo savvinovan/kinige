@@ -57,6 +57,44 @@ fn only_the_window_that_was_sent_a_step_may_answer_it() {
     assert!(!state.take_pending("r1", "main"), "once");
 }
 
+/// The reply a request file gets from `handle_request`, for a step the app does itself (no page is involved).
+fn reply_to(window: &str, step: &str) -> serde_json::Value {
+    let dir = tempfile::tempdir().unwrap();
+    let app = tauri::test::mock_app();
+    for label in [MAIN_LABEL, CAPTURE_LABEL] {
+        tauri::WebviewWindowBuilder::new(&app, label, Default::default())
+            .build()
+            .unwrap();
+    }
+    let requests = dir.path().join("requests");
+    fs::create_dir_all(&requests).unwrap();
+    let path = requests.join("r1.json");
+    fs::write(
+        &path,
+        format!(r#"{{"id":"r1","window":"{window}","step":{step}}}"#),
+    )
+    .unwrap();
+    handle_request(
+        app.handle(),
+        &DriverState::new(None),
+        dir.path(),
+        "r1",
+        &path,
+    );
+    let reply = fs::read(dir.path().join("replies").join("r1.json")).unwrap();
+    serde_json::from_slice(&reply).unwrap()
+}
+
+#[test]
+fn close_is_for_the_main_window_only() {
+    // The main window gets the close request (the same one the red button sends); the capture window is refused.
+    let ok = reply_to("main", r#"{"kind":"close"}"#);
+    assert_eq!(ok["ok"], true, "{ok}");
+    let refused = reply_to("capture", r#"{"kind":"close"}"#);
+    assert_eq!(refused["ok"], false, "{refused}");
+    assert_eq!(refused["error"], "close is for the main window");
+}
+
 #[test]
 fn ready_is_per_window_and_a_destroyed_window_must_say_it_again() {
     let state = DriverState::new(None);

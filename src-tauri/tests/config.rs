@@ -182,6 +182,28 @@ fn settings_window_sizes_match_the_design_tokens() {
 }
 
 #[test]
+fn main_window_min_size_matches_the_design_tokens() {
+    // The smallest main window is the frame of the 640 x 400 stories and of the "no page scroll" checks (KINIG-76).
+    let tokens = read("../design/tokens/layout.json");
+    let conf = read("tauri.conf.json");
+    let main = conf["app"]["windows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|w| w["label"] == "main")
+        .expect("the main window is in the static list");
+    let px = |name: &str| -> f64 {
+        tokens["layout"]["window"][name]["$value"]
+            .as_str()
+            .and_then(|value| value.strip_suffix("px"))
+            .and_then(|value| value.parse().ok())
+            .unwrap_or_else(|| panic!("no layout.window.{name} token in px"))
+    };
+    assert_eq!(px("min-width"), main["minWidth"].as_f64().unwrap());
+    assert_eq!(px("min-height"), main["minHeight"].as_f64().unwrap());
+}
+
+#[test]
 fn the_settings_window_is_not_in_the_static_window_list() {
     // The window is created on first open (the cold start does not change), the capability is bound to its name.
     let conf = read("tauri.conf.json");

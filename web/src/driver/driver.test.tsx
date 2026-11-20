@@ -187,6 +187,26 @@ describe("wait, has, text", () => {
   });
 });
 
+describe("metrics", () => {
+  it("answers the window's and the document's sizes as name=value lines, numbers only", async () => {
+    page(`<p>Words that must not be in the answer</p>`);
+    const answer = await runStep({ kind: "metrics" });
+    expect(answer.ok).toBe(true);
+    const lines = (answer.ok ? (answer.value ?? "") : "").split("\n");
+    expect(lines.map((line) => line.split("=")[0])).toEqual([
+      "inner.width",
+      "inner.height",
+      "document.clientWidth",
+      "document.clientHeight",
+      "document.scrollWidth",
+      "document.scrollHeight",
+      "body.scrollWidth",
+      "body.scrollHeight",
+    ]);
+    for (const line of lines) expect(line).toMatch(/^[a-z.A-Z]+=\d+$/);
+  });
+});
+
 describe("garbage", () => {
   it("answers an error to anything that is not a step, and never throws", async () => {
     page("<p>x</p>");

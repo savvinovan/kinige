@@ -194,6 +194,22 @@ fn the_view_and_mode_settings_fall_back_to_the_defaults() {
     for view in [ForestView::Hidden, ForestView::Strip, ForestView::Expanded] {
         assert_eq!(ForestView::from_setting(Some(view.as_setting())), view);
     }
+    // The remembered shown view: empty, wrong case, NUL, `hidden` and an unknown word are the strip, never `Hidden`.
+    for (stored, want) in [
+        (None, ForestView::Strip),
+        (Some("strip"), ForestView::Strip),
+        (Some("expanded"), ForestView::Expanded),
+        (Some("hidden"), ForestView::Strip),
+        (Some(""), ForestView::Strip),
+        (Some("Expanded"), ForestView::Strip),
+        (Some("\u{0}"), ForestView::Strip),
+        (Some("expanded\u{0}"), ForestView::Strip),
+        (Some("sideways"), ForestView::Strip),
+    ] {
+        assert_eq!(ForestView::shown_from_setting(stored), want, "{stored:?}");
+    }
+    assert!(!ForestView::Hidden.is_shown());
+    assert!(ForestView::Strip.is_shown() && ForestView::Expanded.is_shown());
     assert_eq!(ForestMode::from_setting(None), ForestMode::Forest);
     assert_eq!(
         ForestMode::from_setting(Some("calendar")),

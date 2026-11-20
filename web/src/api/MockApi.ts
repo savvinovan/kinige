@@ -81,6 +81,7 @@ export class MockApi implements KinigeApi {
   restoreBackup: KinigeApi["restoreBackup"] = (name) => this.app.restoreBackup(name);
   onDatabaseCorrupt: KinigeApi["onDatabaseCorrupt"] = (handler) => this.app.onDatabaseCorrupt(handler);
   restartForRecovery: KinigeApi["restartForRecovery"] = () => this.app.restartForRecovery();
+  onMainWindowHiding: KinigeApi["onMainWindowHiding"] = (handler) => this.app.onMainWindowHiding(handler);
 
   // ---- chats ----
   listChats: KinigeApi["listChats"] = () => this.chats.listChats();
@@ -200,6 +201,11 @@ export class MockApi implements KinigeApi {
   /** Like the "integrity check found corruption" event. */
   emitDatabaseCorrupt(): void {
     this.app.emitDatabaseCorrupt();
+  }
+
+  /** Like the Rust event sent when the main window is closed (hidden) by the red button or ⌘W. */
+  emitMainWindowHiding(): void {
+    this.app.emitMainWindowHiding();
   }
 
   /** Like the Rust events while files are dragged over the window. */

@@ -87,11 +87,11 @@ jobs:
       - name: Build the app
         env:
           KINIGE_IDENTIFIER: me.savvinov.kinige.accept
-          KINIGE_FAKE_MIC: ${{ (startsWith(inputs.slice, '7a') || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
-          KINIGE_ALLOW_FAKE_MIC: ${{ (startsWith(inputs.slice, '7a') || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
+          KINIGE_FAKE_MIC: ${{ (startsWith(inputs.slice, '7a') || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153' || inputs.slice == '5b') && '1' || '' }}
+          KINIGE_ALLOW_FAKE_MIC: ${{ (startsWith(inputs.slice, '7a') || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153' || inputs.slice == '5b') && '1' || '' }}
           KINIGE_PROBE: ${{ startsWith(inputs.slice, '7a-probe') && '1' || '' }}
-          KINIGE_SCREENS_DRIVER: ${{ (contains('|4b|5|5d|6|7|7a|7b|chat-color|kinig-132|kinig-134|kinig-135|kinig-145|kinig-153|viewer|', format('|{0}|', inputs.slice)) || startsWith(inputs.slice, 'screens-driver')) && '1' || '' }}
-          KINIGE_ALLOW_SCREENS_DRIVER: ${{ (contains('|4b|5|5d|6|7|7a|7b|chat-color|kinig-132|kinig-134|kinig-135|kinig-145|kinig-153|viewer|', format('|{0}|', inputs.slice)) || startsWith(inputs.slice, 'screens-driver')) && '1' || '' }}
+          KINIGE_SCREENS_DRIVER: ${{ (contains('|4b|5|5a|5b|5c|5c-gifs|5d|6|7|7a|7b|chat-color|kinig-132|kinig-134|kinig-135|kinig-145|kinig-153|viewer|', format('|{0}|', inputs.slice)) || startsWith(inputs.slice, 'screens-driver')) && '1' || '' }}
+          KINIGE_ALLOW_SCREENS_DRIVER: ${{ (contains('|4b|5|5a|5b|5c|5c-gifs|5d|6|7|7a|7b|chat-color|kinig-132|kinig-134|kinig-135|kinig-145|kinig-153|viewer|', format('|{0}|', inputs.slice)) || startsWith(inputs.slice, 'screens-driver')) && '1' || '' }}
         run: scripts/build-app.sh
 
       - name: Shots scenario

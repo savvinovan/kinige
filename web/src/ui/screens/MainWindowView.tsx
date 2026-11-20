@@ -1,5 +1,6 @@
 import type { PointerEvent, ReactNode } from "react";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
+import { useTranslation } from "react-i18next";
 import type { Language } from "../../api/generated/Language";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import type { TrashItem } from "../../api/generated/TrashItem";
@@ -11,8 +12,9 @@ import type { ComposerButtons } from "../composer/Composer";
 import { ComposerPane } from "../composer/ComposerPane";
 import { Feed, type FeedActions, type FeedPaging, type FeedUiState, type ScrollRequest } from "../feed/Feed";
 import type { FeedMessage } from "../feed/buildFeed";
-import { ForestToggle } from "../forest/ForestToggle";
+import { ChatTopBar } from "./ChatTopBar";
 import type { MoveTarget } from "../message/moveTargets";
+import { displayName } from "../sidebar/chats";
 import { type ChatAction, type ChatTint, Sidebar, type SidebarChat, type SidebarSearch } from "../sidebar/Sidebar";
 import { RevealProvider } from "../attachments/reveal";
 import { TagFilterBar } from "../tag/TagFilterBar";
@@ -140,8 +142,9 @@ export interface AttachmentControls {
 }
 
 /**
- * Main window: sidebar + feed (or trash) + composer. There is no chat-title row above the feed: the selected chat is
- * highlighted in the sidebar (§6). View only: data comes from outside (in Storybook directly, in the app via `MainWindow`).
+ * Main window: sidebar + feed (or trash) + composer. Above the feed (not in the trash or in search results) is the thin bar
+ * with the open chat's name and the forest switch (§6, KINIG-150); the chat is highlighted in the sidebar as well. View only:
+ * data comes from outside (in Storybook directly, in the app via `MainWindow`).
  */
 export function MainWindowView(props: MainWindowViewProps) {
   // A hidden photo is shown only until the chat (or the trash) is left, the window hides or the app restarts (KINIG-136): the state lives here, so the feed,
@@ -198,6 +201,8 @@ function MainWindowBody({
   voice,
 }: MainWindowViewProps) {
   const language = useLanguage();
+  const { t } = useTranslation();
+  const openChat = chats.find((chat) => chat.id === selectedChatId);
   return (
     <div className="main-window">
       <Sidebar
@@ -235,11 +240,7 @@ function MainWindowBody({
           />
         ) : (
           <>
-            {forestMenu ? (
-              <div className="main-window__topbar">
-                <ForestToggle hidden={forestMenu.hidden} onToggle={forestMenu.onToggle} />
-              </div>
-            ) : null}
+            <ChatTopBar title={openChat ? displayName(openChat, t) : ""} forestMenu={forestMenu} />
             {forest}
             {tagFilter ? <TagFilterBar tag={tagFilter.tag} onClear={tagFilter.onClear} /> : null}
             <Feed
