@@ -32,6 +32,8 @@ interface MessageActionsProps {
   onEdit?: () => void;
   /** An entry that has no text to edit (a sticker, slice 5c): there is no "Edit" button at all, not a disabled one. */
   noEdit?: boolean;
+  /** An entry that has no text to copy (a sticker: its body is empty): there is no "Copy" button either. */
+  noCopy?: boolean;
   onToggleTask?: () => void;
   onToggleFavorite?: () => void;
   /** "More": open the context menu at the button. */
@@ -62,6 +64,7 @@ export function MessageActions({
   readOnly,
   onEdit,
   noEdit = false,
+  noCopy = false,
   onToggleTask,
   onToggleFavorite,
   onMore,
@@ -90,8 +93,8 @@ export function MessageActions({
   };
 
   // Entry action button: no handler - "Coming later", read-only entry - disabled with an explanation.
-  // Without "Edit" the buttons after it move up one place, so the places the arrows count are the places in the row.
-  const place = (index: number) => first + (noEdit && index > 1 ? index - 1 : index);
+  // Without "Copy" or "Edit" the buttons after them move up one place, so the places the arrows count are the places in the row.
+  const place = (index: number) => first + index - (noCopy && index > 0 ? 1 : 0) - (noEdit && index > 1 ? 1 : 0);
   const action = (index: number, icon: IconName, label: string, handler: (() => void) | undefined, on = false) => (
     <IconButton
       small
@@ -149,14 +152,16 @@ export function MessageActions({
             <span className="message-actions__divider" aria-hidden="true" />
           </>
         ) : null}
-        <IconButton
-          small
-          icon={copyState === "copied" ? "done" : "copy"}
-          label={t(COPY_KEY[copyState])}
-          tabIndex={active === first ? 0 : -1}
-          onFocus={() => setActive(first)}
-          onClick={onCopy}
-        />
+        {noCopy ? null : (
+          <IconButton
+            small
+            icon={copyState === "copied" ? "done" : "copy"}
+            label={t(COPY_KEY[copyState])}
+            tabIndex={active === first ? 0 : -1}
+            onFocus={() => setActive(first)}
+            onClick={onCopy}
+          />
+        )}
         {noEdit ? null : action(1, "edit", t("message.edit"), onEdit)}
         {action(2, "task", isTask ? t("message.untask") : t("message.task"), onToggleTask, isTask)}
         {action(3, "favorite", favorite ? t("message.unfavorite") : t("message.favorite"), onToggleFavorite, favorite)}

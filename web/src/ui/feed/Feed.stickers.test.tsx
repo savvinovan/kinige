@@ -79,22 +79,26 @@ describe("a sticker in the feed", () => {
     expect(within(article).queryByRole("button", { name: /Sticker|Photo/ })).toBeNull();
   });
 
-  it("the hover bar has no Edit; its other buttons and its menu keep working; the menu has no Edit and no attachment details", () => {
+  it("the hover bar has no Edit and no Copy (the body is empty); its other buttons and its menu keep working; the menu has neither and no attachment details", () => {
     const { article } = show(entry("a", [sticker()]));
     const wrap = article.parentElement as HTMLElement;
     const bar = within(wrap).getByRole("toolbar", { name: "Entry actions" });
-    expect(within(bar).queryByRole("button", { name: "Edit" })).toBeNull();
-    for (const name of ["Copy", "Make a task", "Add to favorites", "More"]) {
+    for (const name of ["Edit", "Copy"]) {
+      expect(within(bar).queryByRole("button", { name }), name).toBeNull();
+    }
+    for (const name of ["Make a task", "Add to favorites", "More"]) {
       expect(within(bar).getByRole("button", { name })).toBeInTheDocument();
     }
     // One Tab stop in the row, and the arrows still count the buttons that are there.
     expect(within(bar).getAllByRole("button").filter((b) => b.tabIndex === 0)).toHaveLength(1);
     fireEvent.contextMenu(article);
     const menu = screen.getByRole("menu");
-    for (const name of ["Copy", "Make a task", "Add to favorites", "Change date…", "Move to chat", "Delete"]) {
+    for (const name of ["Make a task", "Add to favorites", "Change date…", "Move to chat", "Delete"]) {
       expect(within(menu).getByRole("menuitem", { name })).toBeInTheDocument();
     }
-    expect(within(menu).queryByRole("menuitem", { name: "Edit" })).toBeNull();
+    for (const name of ["Edit", "Copy"]) {
+      expect(within(menu).queryByRole("menuitem", { name }), name).toBeNull();
+    }
     expect(within(menu).queryByRole("menuitem", { name: /details/i })).toBeNull();
     expect(within(menu).queryByRole("menuitem", { name: /spoiler/i })).toBeNull();
   });
@@ -105,6 +109,7 @@ describe("a sticker in the feed", () => {
     expect(article.querySelector(".sticker-image")).toBeNull();
     expect(article.querySelector(".album")).not.toBeNull();
     expect(within(article.parentElement as HTMLElement).getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(within(article.parentElement as HTMLElement).getByRole("button", { name: "Copy" })).toBeInTheDocument();
     expect(within(article).getByText("an old note")).toBeInTheDocument();
   });
 

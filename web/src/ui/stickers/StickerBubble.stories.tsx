@@ -73,7 +73,7 @@ export const Ответ: Story = {
   ),
 };
 
-/** The hover row has no Edit: copy, task, favorite, more, and the reaction buttons. */
+/** The hover row has no Edit and no Copy (there is no text): task, favorite, more, and the reaction buttons. */
 export const РядДействийБезПравки: Story = { render: () => <Sticker attachment={sticker("a1")} extra={{ showActions: true }} /> };
 
 /** The jump target found by search: a ring along the picture. */
