@@ -20,8 +20,8 @@ You implement exactly one slice, spike, fix or tooling task of Kinige (Tauri 2 +
 2. **Check the specification.** If there is none, or it contradicts the PRD, stop and report.
 3. **Set up the worktree and the branch** (CLAUDE.md, "Every subagent works like this"):
    - use the worktree your prompt names;
-   - or `git fetch` and `git worktree add <scratch>/<name> -b <branch> origin/main` with the branch your prompt names (`slice/…`, `spike/…`, `fix/…`, `chore/…`, `tools/…`);
-   - for a branch that already exists on the remote: `git worktree add <scratch>/<name> -b <branch> origin/<branch>`; if it already exists locally: `git worktree add <scratch>/<name> <branch>`.
+   - or `git fetch` and `git worktree add <scratch>/<task>-<role>/wt -b <branch> origin/main` with the branch your prompt names (`slice/…`, `spike/…`, `fix/…`, `chore/…`, `tools/…`);
+   - for a branch that already exists on the remote: `git worktree add <scratch>/<task>-<role>/wt -b <branch> origin/<branch>`; if it already exists locally: `git worktree add <scratch>/<task>-<role>/wt <branch>`.
    - The first commit message and the PR title start with the Huly number (`KINIG-N: …`).
 
 ## While working

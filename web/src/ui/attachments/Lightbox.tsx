@@ -6,6 +6,8 @@ import { IconButton } from "../controls/IconButton";
 import { canShowFull, useMediaUrl } from "./mediaUrl";
 import { photoLabel } from "./photoLabel";
 import { PreviewTile } from "./PreviewTile";
+import { useReveal } from "./reveal";
+import { SpoilerFace } from "./SpoilerFace";
 import { useDialogKeys } from "./useDialogKeys";
 import { useViewerInput } from "./useViewerInput";
 import { useViewerTransform } from "./useViewerTransform";
@@ -19,15 +21,16 @@ interface LightboxProps {
   index: number;
   onIndexChange: (index: number) => void;
   onClose: () => void;
-  /** "Open in default app": Rust opens the file in the system viewer (Preview). */
-  onOpenExternal: (attachmentId: string) => void;
+  /** "Open in default app": Rust opens the file in the system viewer (Preview). Without it there is no such button (an unsent photo cannot be opened that way). */
+  onOpenExternal?: (attachmentId: string) => void;
 }
 
 /**
  * A photo over the whole window (slice 7, KINIG-87). A dialog with a scrim, a focus trap and Escape; it returns focus to what opened it.
  * The photo fits the window (contain) and is drawn from `full` when the protocol serves it (`canShowFull`), otherwise from the
  * thumbnail. Left and Right move between the entry's photos (stopping at the ends), "2 / 4" shows the place when there are several.
- * A photo that fails shows "No preview" in the same area; "Open in default app" stays available.
+ * A photo that fails shows "No preview" in the same area. "Open in default app" is there when `onOpenExternal` is given (the feed gives it;
+ * the pending tiles of the composer do not, since Rust opens only sent files).
  * A click on the backdrop closes, a click on the photo closes it at fit size; Cmd or Ctrl + wheel, `+` `-` `0`, a double click and the toolbar
  * zoom, a drag pans, the rotate button and `R` turn it by 90 degrees (view only). The moves are in `useViewerTransform` and `useViewerInput`.
  */
@@ -44,10 +47,14 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
   const current = images[Math.min(Math.max(index, 0), last)];
   const position = current ? images.indexOf(current) : 0;
 
+  const { isRevealed, reveal } = useReveal();
+  // A hidden photo is the cover with a "Show" button until it is revealed (here or in the feed: the state is shared); no picture is asked for.
+  const covered = current !== undefined && current.spoiler && !isRevealed(current.id);
+
   const failed = current ? (failures[current.id] ?? 0) : 0;
   const full = current ? canShowFull(current) : false;
   const variant = full && failed === 0 ? "full" : "thumb";
-  const showTile = !current || current.state === "missing" || failed >= (full ? 2 : 1);
+  const showTile = !current || covered || current.state === "missing" || failed >= (full ? 2 : 1);
   const source = current ? `${current.id}-${variant}` : "";
   const natural = loaded[source] ?? (current && variant === "full" ? declaredSize(current) : null);
 
@@ -84,9 +91,11 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
             {t("attachments.counter", { index: position + 1, total: images.length })}
           </span>
         ) : null}
-        <Button variant="secondary" className="lightbox__external" onClick={() => onOpenExternal(current.id)}>
-          {t("attachments.openDefault")}
-        </Button>
+        {onOpenExternal ? (
+          <Button variant="secondary" className="lightbox__external" onClick={() => onOpenExternal(current.id)}>
+            {t("attachments.openDefault")}
+          </Button>
+        ) : null}
         {showTile ? null : (
           <div className="lightbox__tools" data-viewer-control>
             <IconButton icon="rotate" label={t("attachments.rotate")} title={tip(t("attachments.rotate"), "R")} onClick={viewer.rotate} />
@@ -140,7 +149,7 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
         <figure className="lightbox__figure" ref={figure}>
           {showTile ? (
             <div className="lightbox__tile" data-viewer-image>
-              <PreviewTile reason={current.state === "missing" ? "missing" : "noPreview"} />
+              {covered ? <SpoilerFace /> : <PreviewTile reason={current.state === "missing" ? "missing" : "noPreview"} />}
             </div>
           ) : (
             <img
@@ -170,6 +179,25 @@ export function Lightbox({ images, index, onIndexChange, onClose, onOpenExternal
           />
         ) : null}
       </div>
+      {covered ? (
+        <footer className="lightbox__caption">
+          <Button
+            variant="secondary"
+            aria-label={t("attachments.showLabel")}
+            onClick={() => {
+              // The "Show" button goes with the cover: the focus stays in the dialog, not on the page.
+              root.current?.focus();
+              reveal(current.id);
+            }}
+          >
+            {t("attachments.show")}
+          </Button>
+        </footer>
+      ) : current.description ? (
+        <footer className="lightbox__caption">
+          <p className="lightbox__description">{current.description}</p>
+        </footer>
+      ) : null}
     </div>
   );
 }

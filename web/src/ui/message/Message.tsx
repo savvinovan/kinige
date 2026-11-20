@@ -1,18 +1,18 @@
 import { memo, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useLanguage } from "../../i18n/I18n";
 import { Button } from "../controls/Button";
-import { formatTime } from "../feed/dates";
-import { Icon } from "../icons/Icon";
 import { positionBelow, type MenuPosition } from "../menu/ContextMenu";
 import { renderMarkdown } from "./markdown";
 import { MessageActions } from "./MessageActions";
+import { MessageCaption, type Caption } from "./MessageCaption";
 import { MessageEditor } from "./MessageEditor";
 import { MessageMenu } from "./MessageMenu";
+import { MessageMeta } from "./MessageMeta";
 import type { MoveTarget } from "./moveTargets";
 import { selectedTextIn, useCopy } from "./useCopy";
 import { useActionsPlacement } from "./useActionsPlacement";
 import "./message.css";
+import "./message-bleed.css";
 import "./markdown.css";
 
 export interface MessageProps {
@@ -52,6 +52,12 @@ export interface MessageProps {
    * line ("0:40, 20.7 KB"), as in Telegram, so the bubble reserves no extra line for it.
    */
   timeBeside?: boolean;
+  /** Every attachment of the entry is a picture (KINIG-132): the album fills the bubble edge to edge, and without text the time is a pill on it. */
+  imagesOnly?: boolean;
+  /** KINIG-136: a single photo's description as the one line of the entry (no text): the time sits at its end and there is no pill. */
+  caption?: Caption;
+  /** KINIG-136: "Attachment details…" in the entry's menu (an entry with attachments that have details). */
+  onAttachmentDetails?: () => void;
   /** Entry tags (lower case, without `#`), determined by Rust: highlighted and clickable in the text. */
   tags?: readonly string[];
   /** Words of the entry found by search, as written in it (Rust returns them): highlighted whole (slice 4). */
@@ -116,6 +122,9 @@ export const Message = memo(function Message({
   quote,
   attachments,
   timeBeside = false,
+  imagesOnly = false,
+  caption,
+  onAttachmentDetails,
   tags,
   markTerms,
   mode = "view",
@@ -136,7 +145,6 @@ export const Message = memo(function Message({
   onDragStart,
 }: MessageProps) {
   const { t } = useTranslation();
-  const language = useLanguage();
   const failed = status === "failed";
   const viewing = mode === "view";
   const labelDone = t("message.taskDone");
@@ -158,7 +166,8 @@ export const Message = memo(function Message({
     [markdown, failed, labelDone, labelTodo, labelItem, tagsKey, interactiveTasks, markKey],
   );
   // The message ends with a block (code): the last line has no spacer, the time sits under the block.
-  const timeBelow = !failed && !html.includes("message__spacer") && !(timeBeside && mode !== "editing");
+  const captioned = caption !== undefined && markdown.trim() === "" && mode === "view";
+  const timeBelow = !failed && !html.includes("message__spacer") && !(timeBeside && mode !== "editing") && !captioned;
 
   const plate = useRef<HTMLElement>(null);
   const { state: copyState, copy } = useCopy();
@@ -254,8 +263,15 @@ export const Message = memo(function Message({
     handler ? () => handler(!current) : undefined;
   const checkLocked = !viewing || readOnly || !onToggleDone;
 
+  // KINIG-132: every attachment is a picture and the bubble is a plain one: the album fills the bubble edge to edge, as in Telegram. Without text
+  // the time moves onto the picture as a pill; without text and without a quote the bubble has no fill of its own.
+  const bleed = imagesOnly && Boolean(attachments) && viewing && !failed && !isTask;
+  const bleedPill = bleed && markdown.trim() === "" && !captioned;
   const classes = ["message"];
   if (attachments) classes.push("message--has-attachments");
+  if (bleed) classes.push("message--bleed");
+  if (bleedPill) classes.push("message--bleed-pill");
+  if (bleedPill && !quote) classes.push("message--bleed-bare");
   if (highlighted) classes.push("message--highlighted");
   if (timeBelow) classes.push("message--time-below");
   if (isTask) classes.push("message--task");
@@ -314,6 +330,8 @@ export const Message = memo(function Message({
             {mode !== "editing" ? attachments : null}
             {mode === "editing" ? (
               <MessageEditor initial={markdown} onSave={(text) => onSaveEdit?.(text)} onCancel={() => onCancelEdit?.()} />
+            ) : captioned && caption ? (
+              <MessageCaption caption={caption} />
             ) : markdown.trim() === "" && attachments ? null : (
               <div
                 className="markdown"
@@ -337,28 +355,7 @@ export const Message = memo(function Message({
               </p>
             ) : null}
           </div>
-          <div className="message__meta">
-            {mode === "deleted" ? (
-              <span className="message__deleted">
-                {t("message.deleted")} ·{" "}
-                <Button variant="inline" onClick={onRestore} aria-label={t("message.restoreLabel")}>
-                  {t("message.restore")}
-                </Button>
-              </span>
-            ) : (
-              <>
-                {favorite ? (
-                  <span className="message__mark" role="img" aria-label={t("message.favoriteMark")}>
-                    <Icon name="favorite" />
-                  </span>
-                ) : null}
-                {byAgent ? <span className="message__origin">{t("message.byAgent")} · </span> : null}
-                <time className="message__time" dateTime={sentAt.toISOString()}>
-                  {formatTime(sentAt, language, timeZone)}
-                </time>
-              </>
-            )}
-          </div>
+          <MessageMeta sentAt={sentAt} timeZone={timeZone} mode={mode} favorite={favorite} byAgent={byAgent} onRestore={onRestore} />
         </article>
         {viewing ? (
           <MessageActions
@@ -387,6 +384,7 @@ export const Message = memo(function Message({
           onToggleFavorite={toggle(onToggleFavorite, favorite)}
           onChangeDate={onChangeDate}
           onDelete={onDelete}
+          onAttachmentDetails={onAttachmentDetails}
           moveTargets={moveTargets}
           onMoveTo={onMoveTo}
           onCopy={() => copyNow(menu.selection)}

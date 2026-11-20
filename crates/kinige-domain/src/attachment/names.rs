@@ -120,18 +120,35 @@ fn truncate_keeping_ext(name: &str, max: usize) -> String {
 /// otherwise the one of the detected image format, otherwise `bin`.
 pub fn stored_ext(original_name: &str, detected: Option<ImageFormat>) -> String {
     let name = sanitize_filename(original_name);
-    if let Some((stem, ext)) = name.rsplit_once('.') {
-        let ext = ext.to_ascii_lowercase();
-        if !stem.is_empty()
-            && (1..=10).contains(&ext.len())
-            && ext
-                .bytes()
-                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
-        {
-            return ext;
-        }
+    let ext = extension(&name).to_ascii_lowercase();
+    if (1..=10).contains(&ext.len())
+        && ext
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+    {
+        return ext;
     }
     detected.map_or("bin", ImageFormat::ext).to_string()
+}
+
+/// The extension of a name without its dot: what follows the last dot when something stands before it; empty if none (`README`,
+/// `.bashrc`, `a.`). The one function the name rule, the Markdown copy and "Open in default app" share (KINIG-136): callers that
+/// compare extensions compare bytes or ASCII-folded bytes, never Unicode lowercasing.
+pub fn extension(name: &str) -> &str {
+    match name.rsplit_once('.') {
+        Some((stem, ext)) if !stem.is_empty() => ext,
+        _ => "",
+    }
+}
+
+/// The extension with its dot (`.jpg`), or empty: the suffix a display name keeps from the original.
+pub fn ext_suffix(name: &str) -> &str {
+    let ext = extension(name);
+    if ext.is_empty() {
+        return "";
+    }
+    name.get(name.len().saturating_sub(ext.len() + 1)..)
+        .unwrap_or_default()
 }
 
 /// The kind and MIME of a new attachment. `image` is the format the header reader recognised (decided by content, not by the
@@ -180,7 +197,7 @@ pub fn summary_of(attachments: &[AttachmentView]) -> AttachmentSummary {
     summarize(
         attachments
             .iter()
-            .map(|a| (a.kind, a.filename.as_str(), a.duration_ms)),
+            .map(|a| (a.kind, a.name.as_str(), a.duration_ms)),
     )
 }
 
@@ -255,8 +272,6 @@ fn mirror_safe(filename: &str) -> String {
 
 /// `("a (2)", ".jpg")` pieces of a name: the stem and the extension with its dot (empty if none).
 fn split_ext(name: &str) -> (&str, &str) {
-    match name.rfind('.') {
-        Some(dot) if dot > 0 => name.split_at(dot),
-        _ => (name, ""),
-    }
+    let cut = name.len().saturating_sub(ext_suffix(name).len());
+    name.split_at_checked(cut).unwrap_or((name, ""))
 }

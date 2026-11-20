@@ -1,5 +1,5 @@
 //! Slice 5 through IPC on a mock runtime with the real capabilities: "On this day" and replies. The commands exist only for the main
-//! window; the capture window still has exactly seven commands, the new ones are refused to the `settings` window; `capture_send` does not accept a reply.
+//! window; the capture window's set is unchanged (`CAPTURE_SET`), the new ones are refused to the `settings` window; `capture_send` does not accept a reply.
 
 // The whole root of the integration tests is test code: `cfg(test)` gives helpers outside #[test] the same relaxations
 // of clippy.toml (unwrap/expect/panic/indexing) as the tests in src/.
@@ -19,17 +19,8 @@ const SLICE_FIVE: &[&str] = &["get_on_this_day", "dismiss_on_this_day"];
 #[test]
 fn slice_five_commands_are_main_only_and_the_capture_set_is_unchanged() {
     assert_eq!(
-        CAPTURE_COMMANDS,
-        [
-            "capture_state",
-            "capture_send",
-            "capture_append",
-            "capture_save_draft",
-            "capture_hide",
-            "capture_resize",
-            "capture_add_recent_emoji"
-        ],
-        "the capture window still has seven commands"
+        CAPTURE_COMMANDS, CAPTURE_SET,
+        "the capture window's set is unchanged by this slice"
     );
     let fixture = fixture();
     let main = window(&fixture, "main");

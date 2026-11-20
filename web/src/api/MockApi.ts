@@ -162,14 +162,21 @@ export class MockApi implements KinigeApi {
   attachPick: KinigeApi["attachPick"] = (chatId) => this.attachments.attachPick(chatId);
   attachPaste: KinigeApi["attachPaste"] = (chatId, bytes, nameHint) => this.attachments.attachPaste(chatId, bytes, nameHint);
   attachDropped: KinigeApi["attachDropped"] = (token, chatId) => this.attachments.attachDropped(token, chatId);
+  setDropTarget: KinigeApi["setDropTarget"] = (active) => this.attachments.setDropTarget(active);
   removeDraftAttachment: KinigeApi["removeDraftAttachment"] = (chatId, id) => this.attachments.removeDraftAttachment(chatId, id);
   openAttachment: KinigeApi["openAttachment"] = (id) => this.attachments.openAttachment(id);
+  setDraftAttachmentDetails: KinigeApi["setDraftAttachmentDetails"] = (id, changes) => this.attachments.setDraftAttachmentDetails(id, changes);
+  setAttachmentDetails: KinigeApi["setAttachmentDetails"] = (id, changes) => this.attachments.setAttachmentDetails(id, changes);
   onAttachmentsDrag: KinigeApi["onAttachmentsDrag"] = (handler) => this.attachments.onAttachmentsDrag(handler);
   onAttachmentsDropped: KinigeApi["onAttachmentsDropped"] = (handler) => this.attachments.onAttachmentsDropped(handler);
   sendVoice: KinigeApi["sendVoice"] = (chatId, bytes, ms, replyToId, waveform) => this.voice.sendVoice(chatId, bytes, ms, replyToId, waveform);
   readVoiceForWaveform: KinigeApi["readVoiceForWaveform"] = (id) => this.voice.readVoiceForWaveform(id);
   setAttachmentWaveform: KinigeApi["setAttachmentWaveform"] = (id, peaks) => this.voice.setAttachmentWaveform(id, peaks);
   openMicrophoneSettings: KinigeApi["openMicrophoneSettings"] = () => this.voice.openMicrophoneSettings();
+  holdMicrophone: KinigeApi["holdMicrophone"] = (held) => this.voice.holdMicrophone("main", held);
+  captureSendVoice: KinigeApi["captureSendVoice"] = (bytes, ms, waveform) => this.voice.captureSendVoice(bytes, ms, waveform ?? null);
+  captureHoldMicrophone: KinigeApi["captureHoldMicrophone"] = (held) => this.voice.holdMicrophone("capture", held);
+  captureOpenMicrophoneSettings: KinigeApi["captureOpenMicrophoneSettings"] = () => this.voice.captureOpenMicrophoneSettings();
 
   // ---- for tests and stories: failures, events, entries ----
 
@@ -206,6 +213,16 @@ export class MockApi implements KinigeApi {
   /** Like a drop of the named files on the window: the token the window claims with `attachDropped`. */
   emitAttachmentsDropped(names: string[], token?: string): string {
     return this.attachments.emitAttachmentsDropped(names, token);
+  }
+
+  /** Whether the window has told Rust that a chat is open to receive a drop (`setDropTarget`). */
+  get dropTarget(): boolean {
+    return this.attachments.dropTarget;
+  }
+
+  /** Like a picture dragged from Telegram or a browser: image data and no file. */
+  emitImageDropped(byteLength: number, token?: string): string {
+    return this.attachments.emitImageDropped(byteLength, token);
   }
 
   /** An entry that appeared "from outside" (the capture window, the clipboard): reaches the feed after the event. */
@@ -265,6 +282,8 @@ export class MockApi implements KinigeApi {
   get openedAttachments() { return this.attachments.openedAttachments; }
   get sentVoices() { return this.voice.sentVoices; }
   get microphoneSettingsOpened() { return this.voice.microphoneSettingsOpened; }
+  /** Which window holds the microphone claim, if any (the same rule as Rust's `MicrophoneClaim`). */
+  get microphoneHolder() { return this.voice.microphoneHolder; }
   get voiceFiles() { return this.voice.voiceFiles; }
   get savedWaveforms() { return this.voice.savedWaveforms; }
 

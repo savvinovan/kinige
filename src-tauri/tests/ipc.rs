@@ -109,17 +109,8 @@ const SLICE_THREE: &[&str] = &[
 #[test]
 fn every_slice_three_command_is_main_only_and_the_capture_set_is_unchanged() {
     assert_eq!(
-        CAPTURE_COMMANDS,
-        [
-            "capture_state",
-            "capture_send",
-            "capture_append",
-            "capture_save_draft",
-            "capture_hide",
-            "capture_resize",
-            "capture_add_recent_emoji"
-        ],
-        "the capture window set: the six commands of slice 2 and one from the slice 3 acceptance decisions (recent emoji)"
+        CAPTURE_COMMANDS, CAPTURE_SET,
+        "the capture window set: the six commands of slice 2, one from the slice 3 acceptance decisions (recent emoji) and three for voice notes (KINIG-153)"
     );
     let fixture = fixture();
     let main = window(&fixture, "main");

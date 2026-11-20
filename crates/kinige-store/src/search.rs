@@ -14,7 +14,7 @@ use crate::Store;
 use crate::StoreError;
 use crate::error::{is_search_index_error, write_err};
 use crate::settings::get_setting;
-use kinige_domain::attachment::{VOICE_SEARCH_WORD, is_voice_file_name};
+use kinige_domain::attachment::{VOICE_SEARCH_WORD, ext_suffix, is_voice_file_name};
 use kinige_domain::search::{SEARCH_INDEX_VERSION, index_text};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use std::sync::atomic::Ordering;
@@ -72,14 +72,23 @@ pub(crate) fn take_rebuilt() -> bool {
 /// The text of an entry's index row: its body plus the stems of its live attachments' file names, extension left out (slice 7).
 /// The `attachment` table may be missing while migrations run (migration 4 rebuilds the index before migration 7 exists).
 fn index_source(conn: &Connection, message_id: &str, body_md: &str) -> rusqlite::Result<String> {
+    // Slice 7b: the stems of the display name (the original name is not indexed once renamed) and the description of every live
+    // attachment, hidden or not. A voice note has neither and is found by its word.
     let names = match conn
         .prepare_cached(
-            "SELECT filename FROM attachment WHERE message_id = ?1 AND deleted_at IS NULL ORDER BY sort_index",
+            "SELECT filename, display_name, description FROM attachment WHERE message_id = ?1 AND deleted_at IS NULL \
+             ORDER BY sort_index",
         )
         .and_then(|mut statement| {
             statement
-                .query_map([message_id], |row| row.get::<_, String>(0))?
-                .collect::<rusqlite::Result<Vec<String>>>()
+                .query_map([message_id], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                    ))
+                })?
+                .collect::<rusqlite::Result<Vec<_>>>()
         }) {
         Ok(names) => names,
         Err(rusqlite::Error::SqliteFailure(_, Some(message))) if message.contains("no such table") => {
@@ -88,16 +97,19 @@ fn index_source(conn: &Connection, message_id: &str, body_md: &str) -> rusqlite:
         Err(error) => return Err(error),
     };
     let mut text = body_md.to_string();
-    for name in names {
+    for (filename, display_name, description) in names {
         text.push('\n');
         // A recorder's file is found by the word "voice", not by the date and time in its name (slice 7a).
-        if is_voice_file_name(&name) {
+        if is_voice_file_name(&filename) {
             text.push_str(VOICE_SEARCH_WORD);
         } else {
-            text.push_str(
-                name.rsplit_once('.')
-                    .map_or(name.as_str(), |(stem, _)| stem),
-            );
+            let name = display_name.as_deref().unwrap_or(&filename);
+            let stem_end = name.len().saturating_sub(ext_suffix(name).len());
+            text.push_str(name.get(..stem_end).unwrap_or(name));
+        }
+        if let Some(description) = description {
+            text.push('\n');
+            text.push_str(&description);
         }
     }
     Ok(text)

@@ -25,6 +25,9 @@ fn input() -> NewAttachment<'static> {
         duration_ms: None,
         remote_blob_id: BLOB,
         blob_key: KEY,
+        display_name: None,
+        description: None,
+        spoiler: false,
     }
 }
 
@@ -42,9 +45,13 @@ fn the_core_group_matches_the_reference_bytes_of_appendix_c6() {
     assert_eq!(groups["core"].get(), CORE_REFERENCE);
     assert_eq!(groups["order"].get(), r#"{"sort_index":0}"#);
     assert_eq!(groups["deleted"].get(), r#"{"deleted_at":null}"#);
-    assert_eq!(groups.len(), 3);
+    // Slice 7b: the three groups of the details, always written, under the creation HLC (appendix §C.8).
+    assert_eq!(groups["name"].get(), r#"{"name":null}"#);
+    assert_eq!(groups["description"].get(), r#"{"description":null}"#);
+    assert_eq!(groups["privacy"].get(), r#"{"spoiler":false}"#);
+    assert_eq!(groups.len(), 6);
     let hlcs: serde_json::Value = serde_json::from_str(&row.hlc_json).unwrap();
-    for group in ["core", "order", "deleted"] {
+    for group in ["core", "order", "deleted", "name", "description", "privacy"] {
         assert_eq!(hlcs[group]["h"], hlc().as_str());
         assert_eq!(hlcs[group]["sv"], 1);
     }
@@ -269,6 +276,9 @@ fn view(kind: AttachmentKind, name: &str) -> AttachmentView {
         id: ID.to_string(),
         kind,
         filename: name.to_string(),
+        name: name.to_string(),
+        description: None,
+        spoiler: false,
         mime: "x/y".to_string(),
         byte_size: 1,
         width: None,

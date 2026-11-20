@@ -53,6 +53,21 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* The description: plain text, at most two lines (the whole of it is in the viewer and in the details dialog). */
+.file-card__description {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 .file-card__meta {
   min-width: 0;
   color: var(--color-text-tertiary);

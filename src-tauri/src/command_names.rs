@@ -46,10 +46,14 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "attach_pick",
     "attach_paste",
     "attach_dropped",
+    "set_drop_target",
     "remove_draft_attachment",
+    "set_draft_attachment_details",
+    "set_attachment_details",
     "open_attachment",
     "send_voice",
     "open_microphone_settings",
+    "microphone_hold",
     "read_voice_for_waveform",
     "set_attachment_waveform",
 ];
@@ -83,6 +87,9 @@ pub const CAPTURE_COMMANDS: &[&str] = &[
     "capture_hide",
     "capture_resize",
     "capture_add_recent_emoji",
+    "capture_send_voice",
+    "capture_hold_microphone",
+    "capture_open_microphone_settings",
 ];
 
 /// All app commands. The list matches `AppManifest::commands` in `build.rs`: first the main window commands, then the
@@ -131,10 +138,14 @@ pub const COMMANDS: &[&str] = &[
     "attach_pick",
     "attach_paste",
     "attach_dropped",
+    "set_drop_target",
     "remove_draft_attachment",
+    "set_draft_attachment_details",
+    "set_attachment_details",
     "open_attachment",
     "send_voice",
     "open_microphone_settings",
+    "microphone_hold",
     "read_voice_for_waveform",
     "set_attachment_waveform",
     "set_text_size",
@@ -157,6 +168,9 @@ pub const COMMANDS: &[&str] = &[
     "capture_hide",
     "capture_resize",
     "capture_add_recent_emoji",
+    "capture_send_voice",
+    "capture_hold_microphone",
+    "capture_open_microphone_settings",
 ];
 
 /// The screens driver's one command (KINIG-92, ADR-0016): it exists, and its capability is read, only in a build with the cargo feature

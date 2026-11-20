@@ -86,7 +86,7 @@ export const Английский: Story = {
   globals: { language: "en" },
   render: () => (
     <>
-      <Bubble attachments={[demoPhoto("e1", "IMG_0001.jpg", 1280, 960, { broken: true })]} text="Balcony view" />
+      <Bubble attachments={[demoPhoto("album-e1", "IMG_0001.jpg", 1280, 960, { broken: true })]} text="Balcony view" />
       <Bubble attachments={[...manyPhotos(3, "e"), demoPhoto("e9", "IMG_0009.jpg", 800, 600, { missing: true })]} text="Four photos, one missing" />
     </>
   ),

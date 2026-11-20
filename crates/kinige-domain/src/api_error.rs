@@ -82,6 +82,12 @@ pub enum ErrorCode {
     VoiceTooLong,
     /// A folder was in a drop: it is skipped ("Folders are not attached"); the files of the same drop were attached.
     FoldersNotAttached,
+    /// Something was dropped on the window but it carries no file and no image the app can use (text, a link, a file promise that
+    /// was not kept): nothing was attached (KINIG-133).
+    DropNotSupported,
+    /// A name, a description or a spoiler flag broke a rule of slice 7b (a control or path character in the name, a name over 255
+    /// bytes, a description over 1,024 characters, a spoiler on a file that is not an image): nothing was written.
+    AttachmentDetailsInvalid,
     Internal,
 }
 

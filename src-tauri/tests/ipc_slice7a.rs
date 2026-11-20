@@ -1,5 +1,5 @@
 //! Slice 7a (voice notes) over IPC on the mock runtime with the real capabilities: `send_voice` and `open_microphone_settings` belong to
-//! the main window only (the capture window keeps its seven commands, the settings window is denied), and garbage comes back as errors
+//! the main window only (the capture window has its own three, `ipc_capture_voice.rs`; the settings window is denied), and garbage comes back as errors
 //! without a panic and without writing anything. The `audio` route is in `ipc_slice7a_route.rs`.
 
 // A whole integration-test root is test code: `cfg(test)` gives helpers outside #[test] the same clippy.toml allowances
@@ -16,25 +16,16 @@ use serde_json::{Value, json};
 const COMMANDS_7A: &[&str] = &[
     "send_voice",
     "open_microphone_settings",
+    "microphone_hold",
     "read_voice_for_waveform",
     "set_attachment_waveform",
 ];
 
 #[test]
-fn the_voice_commands_are_main_only_and_the_capture_set_is_unchanged() {
-    assert_eq!(
-        CAPTURE_COMMANDS,
-        [
-            "capture_state",
-            "capture_send",
-            "capture_append",
-            "capture_save_draft",
-            "capture_hide",
-            "capture_resize",
-            "capture_add_recent_emoji"
-        ],
-        "the capture window still has seven commands"
-    );
+fn the_voice_commands_are_main_only_and_the_capture_window_has_its_own_three() {
+    // Since KINIG-153 the capture window records too, with commands of its own (`ipc_capture_voice.rs`): none of the main window's
+    // voice commands is shared with it.
+    assert_eq!(CAPTURE_COMMANDS, CAPTURE_SET);
     let fixture = fixture();
     let capture = window(&fixture, "capture");
     let settings = window(&fixture, "settings");

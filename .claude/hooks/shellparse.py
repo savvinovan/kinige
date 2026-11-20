@@ -9,6 +9,10 @@ import os
 import re
 
 PREFIX_WORDS = ("sudo", "time", "command", "exec", "env", "nohup", "builtin")
+# A redirect operator at the start of a word, with an optional descriptor (`2`, `{fd}`): `>`, `>>`, `&>`, `&>>`, `>&`,
+# `>|`, `<`, `<&`, `<>`. Not a heredoc or here-string (`<<`, `<<<`). The Bash tool runs zsh, where a descriptor has one
+# digit (`12>f` passes `12` as an argument, and a container ID may be all digits) and `<->`, `<1-9>` are globs.
+REDIRECT_RE = re.compile(r"^(?:\d|\{\w+\})?(?:&>>?|>>?[&|]?|<>|<&|<(?![<\d-]))")
 
 
 def skeleton(command):
@@ -122,6 +126,23 @@ def redirect_targets(words):
         target = m.group(1) or (words[i + 1] if i + 1 < len(words) else "")
         if target and not target.startswith("&") and target != "/dev/null":
             out.append(target)
+    return out
+
+
+def without_redirects(words):
+    """`words` without the redirects (`>f`, `2>&1`, `&>f`, `>>f`, `<f`, `>&f`, `<&0`, `<>f`, `10>f`, `{fd}>f`) and the
+    word after a bare operator (`> f`), so a check that reads a command's arguments does not take a redirect for one.
+    `redirect_targets` reads them from the full words. A heredoc `<<` is kept: `is_inline_script` looks for it. So is
+    a bare operator that ends its segment (`> $(…)`, `<(…)`: the split cut its target off), which the checks then
+    read as an argument they do not know, as before."""
+    out, i = [], 0
+    while i < len(words):
+        m = REDIRECT_RE.match(words[i])
+        if not m or (m.end() == len(words[i]) and i + 1 == len(words)):
+            out.append(words[i])
+        elif m.end() == len(words[i]):
+            i += 1
+        i += 1
     return out
 
 

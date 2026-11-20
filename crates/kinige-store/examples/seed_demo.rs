@@ -36,12 +36,15 @@ use std::sync::atomic::AtomicBool;
 
 #[path = "seed_demo/attach.rs"]
 mod attach;
+#[path = "seed_demo/details.rs"]
+mod details;
 #[path = "seed_demo/forest.rs"]
 mod forest;
 #[path = "seed_demo/voice.rs"]
 mod voice;
 
 use attach::seed_attachments;
+use details::seed_details;
 use forest::seed_forest;
 use voice::seed_voice;
 
@@ -188,6 +191,10 @@ fn main() {
     // Photos and files (slice 7) only when asked, like the forest.
     if std::env::var_os("KINIGE_SEED_ATTACH").is_some() {
         seed_attachments(&store, &now, &data, &ideas.id);
+    }
+    // The details of attachments (slice 7b, KINIG-136) only when asked.
+    if std::env::var_os("KINIGE_SEED_DETAILS").is_some() {
+        seed_details(&store, &now, &data);
     }
     // Voice notes (slice 7a) only when asked.
     if std::env::var_os("KINIGE_SEED_VOICE").is_some() {

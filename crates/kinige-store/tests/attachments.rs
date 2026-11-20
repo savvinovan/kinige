@@ -150,13 +150,17 @@ fn sending_turns_the_draft_attachments_into_synced_rows_with_their_own_keys() {
         );
         assert!(is_hex64(blob_key) && is_hex64(sha));
         let groups: Value = serde_json::from_str(groups_raw).unwrap();
-        assert_eq!(groups.as_object().unwrap().len(), 3, "core, order, deleted");
+        assert_eq!(
+            groups.as_object().unwrap().len(),
+            6,
+            "core, order, deleted and, since slice 7b, name, description, privacy"
+        );
         assert_eq!(groups["order"]["sort_index"], index);
         assert_eq!(groups["core"]["blob_key"], blob_key.as_str());
         assert_eq!(groups["core"]["remote_blob_id"], blob_id.as_str());
         assert_eq!(groups["core"]["message_id"], sent.id.as_str());
         let hlc: Value = serde_json::from_str(hlc_json).unwrap();
-        let stamps: Vec<&str> = ["core", "order", "deleted"]
+        let stamps: Vec<&str> = ["core", "order", "deleted", "name", "description", "privacy"]
             .iter()
             .map(|g| hlc[g]["h"].as_str().unwrap())
             .collect();

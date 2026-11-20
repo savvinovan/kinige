@@ -4,12 +4,12 @@
 //!
 //! The channel is files, no ports: a script writes `requests/<id>.json` (a temporary file, then a rename); a thread polls the directory
 //! every 100 ms and sends the step to that window as an app event; the page runs it (`scripts/screens/driver.ts`) and answers through
-//! `screens_driver_reply`; the answer becomes `replies/<id>.json`. Only `front` is done here, by the app itself.
+//! `screens_driver_reply`; the answer becomes `replies/<id>.json`. Only `front` and `hide` are done here, by the app itself.
 //! Garbage in a request gets an error reply (or is dropped with a log line of its category) and never writes outside the directory.
 
 mod request;
 
-use crate::capture::{MAIN_LABEL, show_main};
+use crate::capture::{CAPTURE_LABEL, MAIN_LABEL, request_hide, show_capture, show_main};
 use request::{
     MAX_REPLY_TEXT_BYTES, Message, REQUESTS_DIR, Reject, Reply, Request, Step, id_of_file_name,
     parse_request, read_request_file, valid_id, write_reply,
@@ -244,9 +244,25 @@ fn handle_request<R: Runtime>(
         answer(dir, path, Reply::error(id, "no such window"));
         return;
     };
+    if matches!(step, Step::Hide {}) {
+        // The request the hotkey and a loss of focus make: the page saves its draft, parks a recording and hides the window (KINIG-153).
+        let reply = if label == CAPTURE_LABEL {
+            request_hide(app);
+            Reply::ok(id, None)
+        } else {
+            Reply::error(id, "hide is for the capture window")
+        };
+        answer(dir, path, reply);
+        return;
+    }
     if matches!(step, Step::Front {}) {
         if label == MAIN_LABEL {
             show_main(app);
+        } else if label == CAPTURE_LABEL {
+            // The quick capture window is shown the way the hotkey and the icon menu show it (a panel on macOS, placed on the screen
+            // with the cursor): a scenario cannot press a global shortcut, and the icon menu did not open for accessibility on the
+            // runner (KINIG-153).
+            show_capture(app);
         } else {
             let _ = webview.unminimize();
             let _ = webview.show();

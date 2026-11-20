@@ -34,6 +34,12 @@ description: Running the kinige-server suites against a real Postgres and an S3-
 
 ## Clean up
 
+**Remove a throwaway container together with its volumes.** The Postgres image declares a volume, so a container started without a named one gets an anonymous volume, and a plain `docker rm -f` leaves it on the server. Its name is a hash, so the guard then refuses to remove it. Either way works:
+- start the container with `docker run --rm …`, and stop it with `docker stop <name>`;
+- or remove it with `docker rm -f -v <name>`.
+
+Both remove anonymous volumes only. Name a volume you create yourself `kinige-…` and remove it by name.
+
 When you're done, both of these must show nothing of yours:
 - `docker ps -a --filter name=kinige-`
 - `docker volume ls --filter name=kinige-`

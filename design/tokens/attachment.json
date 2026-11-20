@@ -16,19 +16,29 @@
       "file-padding": { "$value": "{space.2}", "$description": "Padding of a file card around the icon and the text." },
       "file-gap": { "$value": "{space.3}", "$description": "Gap between the icon box and the text of a file card." },
       "file-icon-box": { "$value": "2.8rem", "$description": "Side of the square under the icon of a file card (36 px at a 13 px root)." },
-      "pending-size": { "$value": "4.5rem", "$description": "Side of a pending tile in the composer (58 px at a 13 px root); the height of a file tile." },
-      "pending-file-width": { "$value": "13rem", "$description": "Width of a pending file tile (169 px at a 13 px root)." },
+      "pending-image-height": { "$value": "144px", "$description": "Height of every pending tile in the composer, a picture's and a file's (KINIG-135): big enough to tell the picture. A picture is content, not text, so the size is in px and does not grow with the text scale." },
+      "pending-image-max-width": { "$value": "256px", "$description": "Widest a pending picture tile goes: 16:9 of the 144 px height, so a 16:9 picture fills its tile; a wider one is shown whole (the aspect ratio kept) with bars on the tile surface." },
+      "pending-image-min-aspect": { "$type": "number", "$value": 0.75, "$description": "Narrowest a pending picture tile goes, as width / height (3:4, 108 px at the 144 px height): a taller picture (a phone screenshot) is shown cropped from its top, so its header stays readable and the x does not cover the tile. ui/attachments/PendingTiles.tsx has the same number (a test compares them)." },
+      "pending-file-width": { "$value": "11rem", "$description": "Width of a pending file tile (143 px at a 13 px root): a near-square beside the picture tiles." },
       "pending-gap": { "$value": "{space.2}", "$description": "Gap between pending tiles; the row wraps." },
+      "pending-area-max-height": { "$value": "40vh", "$description": "The tile area of the composer grows with the lines of tiles up to two full lines or this share of the window height, whichever is less; past it the area scrolls inside, so ten tiles never push the feed out of a small window. 40vh is the text field's own limit; it holds two full lines (about 303 px) from a window height of about 760 px, so the default 1280x800 shows two whole lines." },
+      "pending-scrollbar-width": { "$value": "0.5rem", "$description": "Width of the quiet scroll bar of the pending tile area (6.5 px at a 13 px root): a thumb with no track, instead of the wide system bar that macOS draws with 'Always show scroll bars'." },
+      "pending-action-size": { "$value": "2rem", "$description": "Side of the round x button on a pending tile (26 px at a 13 px root): easier to hit than the small action button." },
       "pending-remove-offset": { "$value": "{space.1}", "$description": "Offset of the x button from the corner of a pending tile." },
       "drop-inset": { "$value": "{space.3}", "$description": "How far the drop outline stands from the edge of the feed." },
       "lightbox-padding": { "$value": "{space.5}", "$description": "Margin around the photo and the controls of the lightbox." },
       "lightbox-gap": { "$value": "{space.3}", "$description": "Gap between the controls and the photo of the lightbox." },
       "lightbox-percent-width": { "$value": "3.6rem", "$description": "Minimum width of the zoom percentage button in the lightbox toolbar (47 px at a 13 px root): fits '800%' so the buttons beside it do not move." },
+      "bleed-min-width": { "$value": "12rem", "$description": "KINIG-132: the narrowest a bubble of pictures can be when the pictures fill it edge to edge (156 px at a 13 px root): a picture narrower than this (a tall strip) is centred on a strip of the bubble's fill, so a caption does not wrap at a few pixels and the pill is not clipped. A bubble with no text and no quote only needs room for its pill and uses a smaller floor (message-bleed.css)." },
+      "pill-inset": { "$value": "{space.2}", "$description": "KINIG-132: how far the time pill stands from the bottom and right edges of a picture that fills its bubble (6.5 px at a 13 px root)." },
+      "pill-padding-block": { "$value": "0.15rem", "$description": "KINIG-132: top and bottom padding of the time pill on a picture (2 px at a 13 px root); the pill's height is this plus the meta line height." },
+      "pill-padding-inline": { "$value": "{space.2}", "$description": "KINIG-132: left and right padding of the time pill on a picture (6.5 px at a 13 px root)." },
       "story-narrow-width": { "$value": "640px", "$description": "Storybook only: the width of a narrow window in the attachment stories." }
     }
   },
   "opacity": {
     "$type": "number",
+    "attachment-pill": { "$value": 0.6, "$description": "KINIG-132: the fill of the time pill on a picture: the colour attachment.pill-background with this opacity (a pseudo-element carries it, so the text stays fully opaque). At 0.6 black over a pure white picture gives #666666, and the pill text on it is 5.7:1; over a dark picture it only gets darker." },
     "lightbox-scrim": { "$value": 0.94, "$description": "The backdrop of the lightbox: the window background colour with this opacity, nearly opaque so the photo stands alone." }
   }
 }

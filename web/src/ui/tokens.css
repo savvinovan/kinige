@@ -7,9 +7,16 @@
   --layout-attachment-cell-aspect-3: 1; /** Width / height of a cell in a row of three photos (square). */
   --layout-attachment-fallback-aspect: 1.33; /** Width / height of the box of a photo whose size is not known (4:3). */
   --layout-attachment-file-icon-box: 2.8rem; /** Side of the square under the icon of a file card (36 px at a 13 px root). */
-  --layout-attachment-pending-size: 4.5rem; /** Side of a pending tile in the composer (58 px at a 13 px root); the height of a file tile. */
-  --layout-attachment-pending-file-width: 13rem; /** Width of a pending file tile (169 px at a 13 px root). */
+  --layout-attachment-pending-image-height: 144px; /** Height of every pending tile in the composer, a picture's and a file's (KINIG-135): big enough to tell the picture. A picture is content, not text, so the size is in px and does not grow with the text scale. */
+  --layout-attachment-pending-image-max-width: 256px; /** Widest a pending picture tile goes: 16:9 of the 144 px height, so a 16:9 picture fills its tile; a wider one is shown whole (the aspect ratio kept) with bars on the tile surface. */
+  --layout-attachment-pending-image-min-aspect: 0.75; /** Narrowest a pending picture tile goes, as width / height (3:4, 108 px at the 144 px height): a taller picture (a phone screenshot) is shown cropped from its top, so its header stays readable and the x does not cover the tile. ui/attachments/PendingTiles.tsx has the same number (a test compares them). */
+  --layout-attachment-pending-file-width: 11rem; /** Width of a pending file tile (143 px at a 13 px root): a near-square beside the picture tiles. */
+  --layout-attachment-pending-area-max-height: 40vh; /** The tile area of the composer grows with the lines of tiles up to two full lines or this share of the window height, whichever is less; past it the area scrolls inside, so ten tiles never push the feed out of a small window. 40vh is the text field's own limit; it holds two full lines (about 303 px) from a window height of about 760 px, so the default 1280x800 shows two whole lines. */
+  --layout-attachment-pending-scrollbar-width: 0.5rem; /** Width of the quiet scroll bar of the pending tile area (6.5 px at a 13 px root): a thumb with no track, instead of the wide system bar that macOS draws with 'Always show scroll bars'. */
+  --layout-attachment-pending-action-size: 2rem; /** Side of the round x button on a pending tile (26 px at a 13 px root): easier to hit than the small action button. */
   --layout-attachment-lightbox-percent-width: 3.6rem; /** Minimum width of the zoom percentage button in the lightbox toolbar (47 px at a 13 px root): fits '800%' so the buttons beside it do not move. */
+  --layout-attachment-bleed-min-width: 12rem; /** KINIG-132: the narrowest a bubble of pictures can be when the pictures fill it edge to edge (156 px at a 13 px root): a picture narrower than this (a tall strip) is centred on a strip of the bubble's fill, so a caption does not wrap at a few pixels and the pill is not clipped. A bubble with no text and no quote only needs room for its pill and uses a smaller floor (message-bleed.css). */
+  --layout-attachment-pill-padding-block: 0.15rem; /** KINIG-132: top and bottom padding of the time pill on a picture (2 px at a 13 px root); the pill's height is this plus the meta line height. */
   --layout-attachment-story-narrow-width: 640px; /** Storybook only: the width of a narrow window in the attachment stories. */
   --layout-calendar-width: 23rem; /** Width of the calendar window (299 px at a 13 px root); in a narrow window the panel takes the window width minus the margins. */
   --layout-calendar-cell: 2.7rem; /** Side of a day cell in the month grid (35 px): seven cells fit in the window with margins. */
@@ -120,6 +127,7 @@
   --layout-voice-wave-height: 1.6rem; /** Height of the player's waveform: the tallest bar (20.8 px at a 13 px root). The waveform, the line under it and the meta line stand as tall as the 41.6 px round button, as in Telegram. */
   --layout-voice-wave-min-height: 0.2rem; /** The shortest bar of the player's waveform: silence still shows a rounded dot. */
   --layout-voice-speed-width: 2.4rem; /** The speed chip ("1×", "1.5×", "2×"): one width for all three, so the chip does not move. */
+  --opacity-attachment-pill: 0.6; /** KINIG-132: the fill of the time pill on a picture: the colour attachment.pill-background with this opacity (a pseudo-element carries it, so the text stays fully opaque). At 0.6 black over a pure white picture gives #666666, and the pill text on it is 5.7:1; over a dark picture it only gets darker. */
   --opacity-lightbox-scrim: 0.94; /** The backdrop of the lightbox: the window background colour with this opacity, nearly opaque so the photo stands alone. */
   --opacity-drag-ghost: 0.8; /** The 'ghost' of an entry plate dragged onto a chat in the sidebar (a slice 3 acceptance decision): a copy of the plate under the cursor, quiet but readable. */
   --opacity-forest-front: 0.32; /** Opacity of a tree that stands in front of the selected tree and overlaps it. */
@@ -178,6 +186,9 @@
   --color-status-error: #d89fa4; /** The 'not sent' state and errors (PRD §1.2 item 9). */
   --color-status-recording: #ee5a5f; /** The dot of the recording bar (slice 7a): a saturated red that says "live", brighter than the error text color. Used as a shape, not as text: >= 3:1 on every surface (the UI threshold), 3.7:1 on the message plate. */
   --color-voice-unplayed: #595959; /** The bars of a voice note's waveform that have not been played yet (slice 7a, acceptance round 3): a neutral gray, so the played part (accent.default) stands out by hue as well as by lightness, as in Telegram. It is the darkest neutral gray that still meets the project's 2.0:1 minimum for a graphic on the message plate (#585858 gives 1.99): the largest step from the accent that the rule allows, 3.5:1. On the highlighted plate (a short-lived jump target) it is 1.53:1, enough to stay visible. The earlier teal tries (#5b848f, #44626a) were 2.0:1 and 3.3:1 away from the accent and read as one color. */
+  --color-attachment-pill-background: #000000; /** KINIG-132: the fill of the time pill drawn on a picture that fills its bubble, as in Telegram. Used with the opacity token opacity.attachment-pill (0.6), so a picture shows through it. Black, because the pill must read on a light picture as well as on a dark one: the worst case is a pure white picture, where the pill becomes #666666. */
+  --color-attachment-pill-text: #ffffff; /** KINIG-132: the time, the star and the 'added by agent' mark inside the time pill on a picture. White on the pill: 5.7:1 over a pure white picture, 21:1 over a black one (the tests check both). */
+  --color-attachment-cover: #3c3c3c; /** KINIG-136: the cover of a hidden photo (spoiler): a quiet flat gray in the photo's own box, with a crossed-out eye and 'Hidden' on it in text.secondary. It stands apart from the bubble's fill (1.28:1 against surface.message, where the cover sits in a bubble with text) and from the feed (1.6:1, where a bubble with no fill leaves it bare), and the label on it is 8:1. Flat on purpose: a blur of a small thumbnail still shows colours and shapes. */
   --color-tile-blue: #3c6a9f; /** Tile color "blue". */
   --color-tile-teal: #2b736e; /** Tile color "teal". */
   --color-tile-green: #2d7645; /** Tile color "green". */
@@ -290,6 +301,8 @@
   --layout-attachment-drop-inset: var(--space-3); /** How far the drop outline stands from the edge of the feed. */
   --layout-attachment-lightbox-padding: var(--space-5); /** Margin around the photo and the controls of the lightbox. */
   --layout-attachment-lightbox-gap: var(--space-3); /** Gap between the controls and the photo of the lightbox. */
+  --layout-attachment-pill-inset: var(--space-2); /** KINIG-132: how far the time pill stands from the bottom and right edges of a picture that fills its bubble (6.5 px at a 13 px root). */
+  --layout-attachment-pill-padding-inline: var(--space-2); /** KINIG-132: left and right padding of the time pill on a picture (6.5 px at a 13 px root). */
   --layout-message-gap-group: var(--space-4); /** The gap between series and around the day label (13 px; D2: was 9.75). */
   --layout-feed-padding-inline: var(--space-6); /** The feed margin on the left and right (26 px; D2: was 19.5). */
   --layout-feed-padding-block: var(--space-5); /** The feed margin at the top and bottom (19.5 px; D2: was 9.75). */

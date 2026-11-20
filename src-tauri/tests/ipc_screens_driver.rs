@@ -251,6 +251,21 @@ mod with_the_driver {
     }
 
     #[test]
+    fn hide_is_for_the_capture_window_only() {
+        // KINIG-153: the hide request of the hotkey, answered at once; no other window has it.
+        let driven = driven();
+        for (id, label) in [("h1", "capture"), ("h2", "main")] {
+            window(&driven.fixture, label);
+            let step = format!(r#"{{"id":"{id}","window":"{label}","step":{{"kind":"hide"}}}}"#);
+            driven.request(id, &step);
+        }
+        driven.tick();
+        assert_eq!(driven.reply("h1").unwrap(), json!({"id": "h1", "ok": true}));
+        let refused = json!({"id": "h2", "ok": false, "error": "hide is for the capture window"});
+        assert_eq!(driven.reply("h2").unwrap(), refused);
+    }
+
+    #[test]
     fn a_window_that_does_not_exist_gets_an_error_not_a_hang() {
         let driven = driven();
         driven.request(

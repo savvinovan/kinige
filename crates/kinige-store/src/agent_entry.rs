@@ -79,7 +79,9 @@ pub(crate) fn to_entry(view: &MessageView, chat_title: &str) -> AgentEntry {
             .iter()
             .map(|a| AgentAttachment {
                 kind: a.kind.as_str(),
-                name: a.filename.clone(),
+                name: a.name.clone(),
+                description: a.description.clone(),
+                spoiler: a.spoiler,
                 bytes: a.byte_size,
                 width: a.width,
                 height: a.height,

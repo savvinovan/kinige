@@ -28,6 +28,7 @@ MAX_LINES = 400
 CODE_EXT = (".rs", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".py", ".sh", ".ps1", ".css")
 EXEMPT = ("crates/kinige-store/migrations/", "server/migrations/", "web/src/api/generated/", "web/src/ui/forest/fixtures/",
           "web/src/ui/tokens.css", "web/src/ui/themes.css")
+GENERATED_TYPES = "web/src/api/generated/"
 BACKUP_RE = re.compile(r"(\.bak|\.orig|\.rej|\.swp|~)$")
 # Zero-width space and non-joiner, LRM and RLM, bidi embeddings and isolates, word joiner and invisible operators, BOM,
 # soft hyphen. The zero-width joiner U+200D is left out: emoji sequences need it. Built from code points so that this
@@ -186,7 +187,9 @@ def whitespace(added):
     out = []
     for p, lines in sorted(added.items()):
         for n, text in sorted(lines.items()):
-            if text != text.rstrip(" \t"):
+            # ts-rs writes a space at the end of the lines of a multi-line type; the file is generated, and CI fails if it differs from
+            # what `cargo test -p kinige-domain` writes, so it cannot be fixed by hand.
+            if text != text.rstrip(" \t") and not p.startswith(GENERATED_TYPES):
                 out.append("{}:{}: trailing whitespace".format(p, n))
             elif re.match(r"(<{7}|>{7}) |={7}$", text):
                 out.append("{}:{}: a conflict marker".format(p, n))

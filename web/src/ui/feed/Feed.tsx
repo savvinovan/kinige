@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, type PointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../i18n/I18n";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
@@ -7,8 +7,12 @@ import type { MoveTarget } from "../message/moveTargets";
 import { type FeedMessage, buildFeed } from "./buildFeed";
 import { formatDayLabel } from "./dates";
 import { FeedRow } from "./FeedRow";
+import { JumpToLatest } from "./JumpToLatest";
 import { topDayOf } from "./topDay";
 import "./feed.css";
+
+/** How far from the bottom edge the person has to be, in screens, before the "Jump to latest" button appears. */
+const JUMP_AFTER_SCREENS = 1;
 
 /** Actions on feed entries; each receives the entry id. Without them bubbles behave as in D1 (buttons are drawn and disabled). */
 export interface FeedActions {
@@ -44,6 +48,13 @@ export interface FeedPaging {
   hasNewer: boolean;
   onLoadOlder: () => void;
   onLoadNewer: () => void;
+  /**
+   * "Jump to latest" (KINIG-145): makes the loaded feed reach the live edge. A feed that holds only a window around an old entry
+   * reloads the last page; one that already reaches it has nothing to do. The feed scrolls to its bottom edge when this settles.
+   */
+  onJumpToLatest: () => Promise<void>;
+  /** The "Jump to latest" button disappeared while it held the focus without being pressed: the parent says where the focus goes. */
+  onJumpFocusLost?: () => void;
 }
 
 /** A request to scroll the feed to an entry (a jump from search): a new `nonce` is a new request, even for the same entry. */
@@ -96,6 +107,9 @@ interface FeedProps {
    */
   onOpenImage?: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
   onOpenFile?: (attachmentId: string) => void;
+  /** KINIG-136: the details dialog on an attachment (the context menus), and the spoiler alone ("Hide as spoiler"). */
+  onAttachmentDetails?: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
+  onAttachmentSpoiler?: (attachmentId: string, spoiler: boolean) => void;
 }
 
 /**
@@ -124,6 +138,8 @@ export function Feed({
   listKey,
   onOpenImage,
   onOpenFile,
+  onAttachmentDetails,
+  onAttachmentSpoiler,
 }: FeedProps) {
   const { t } = useTranslation();
   const language = useLanguage();
@@ -173,6 +189,30 @@ export function Feed({
   };
   useEffect(() => () => cancelAnimationFrame(reportFrame.current), []);
 
+  // "Jump to latest" (KINIG-145): the button shows while the live edge is not loaded, or while the person is more than a screen above the
+  // bottom edge. `column-reverse` counts the distance from the edge as a negative `scrollTop` (the sign differs between engines: `abs`).
+  const [far, setFar] = useState(false);
+  const [jumps, setJumps] = useState(0);
+  const measureFar = useCallback(() => {
+    const root = scroller.current;
+    if (root) setFar(Math.abs(root.scrollTop) > root.clientHeight * JUMP_AFTER_SCREENS);
+  }, []);
+  const jumpToLatest = async () => {
+    await paged.current?.onJumpToLatest();
+    setJumps((count) => count + 1);
+  };
+  // The list changed (a page came, an entry was added or removed): the content height, and with it the distance, may have changed.
+  useLayoutEffect(measureFar, [measureFar, items]);
+  // The window was resized: the area grew or shrank, so a screen is another distance. Not every engine sends a `scroll` for it
+  // (Playwright's WebKit does not when the area grows until the end is within a screen).
+  useEffect(() => {
+    const root = scroller.current;
+    if (!root || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measureFar);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [measureFar]);
+
   // The list edge appeared in the scroll area: load the next page. The `column-reverse` area keeps the bottom edge in
   // place, so entries added at the TOP shift nothing; those added at the bottom do shift things, and the effect below fixes that.
   useEffect(() => {
@@ -216,15 +256,18 @@ export function Feed({
 
   // A jump from search: the entry in the center of the area. Instant, without smooth scrolling (quiet UI, Reduce Motion).
   // The `column-reverse` area: the bottom edge is `scrollTop = 0`. Scrolling happens on the parent's request, not on first show.
-  const bottomSeen = useRef(toBottom);
+  // The requests to go to the bottom edge come from the parent (`toBottom`) and from the "Jump to latest" button (`jumps`).
+  const bottomKey = `${toBottom}:${jumps}`;
+  const bottomSeen = useRef(bottomKey);
   useLayoutEffect(() => {
-    if (bottomSeen.current === toBottom) return;
-    bottomSeen.current = toBottom;
+    if (bottomSeen.current === bottomKey) return;
+    bottomSeen.current = bottomKey;
     if (scroller.current) scroller.current.scrollTop = 0;
     // The bottom is no jump to a day: the day at the top is what the board has to follow.
     listening.current = true;
     reportTop();
-  }, [toBottom]);
+    measureFar();
+  }, [bottomKey, measureFar]);
 
   // Once per request (`nonce`): the entry may not have reached the feed yet, in which case scrolling waits for it to appear, but once it finds the entry
   // it does not come back. Otherwise sending a reply, loading pages and the card appearing would each time pull the feed back.
@@ -253,62 +296,69 @@ export function Feed({
   }, [items, loading]);
 
   return (
-    // The scrollable area takes keyboard focus, otherwise the feed cannot be scrolled without a mouse.
-    <div
-      className="feed-scroll"
-      tabIndex={0}
-      role="region"
-      aria-label={t("feed.label")}
-      ref={scroller}
-      onPointerDown={() => {
-        listen();
-        onPointerDownFeed?.();
-      }}
-      onWheel={listen}
-      onTouchStart={listen}
-      onKeyDown={listen}
-      onScroll={() => {
-        if (listening.current) reportSoon();
-      }}
-    >
-      {/* In `column-reverse` the first one in the markup stands at the bottom: the bottom edge (new) goes before the list, the top one (old) after it. */}
-      {hasNewer ? <div className="feed__edge" ref={newerEdge} aria-hidden="true" /> : null}
-      {loading ? null : items.length === 0 ? (
-        <p className="feed__empty">{emptyText ?? t("feed.empty")}</p>
-      ) : (
-        <ol className="feed">
-          {items.map((item) =>
-            item.kind === "day" ? (
-              <li className="feed__item feed__item--day" key={item.key} data-journal-date={item.journalDate}>
-                <h2 className="day-label">{formatDayLabel(item.journalDate, today, language, labels)}</h2>
-              </li>
-            ) : item.kind === "card" ? (
-              <li className="feed__item feed__item--card" key={item.key}>
-                {card?.node}
-              </li>
-            ) : (
-              <FeedRow
-                key={item.key}
-                message={item.message}
-                inSeries={item.inSeries}
-                marked={ui?.markedId === item.message.id}
-                markTerms={ui?.markedId === item.message.id ? ui?.markTerms : undefined}
-                mode={ui?.editingId === item.message.id ? "editing" : ui?.deletedIds?.has(item.message.id) ? "deleted" : "view"}
-                editError={ui?.editingId === item.message.id ? ui?.editError : undefined}
-                onRetry={onRetry}
-                onOpenLink={onOpenLink}
-                onOpenReply={onOpenReply}
-                onOpenImage={onOpenImage}
-                onOpenFile={onOpenFile}
-                actions={actions}
-                moveTargets={moveTargets}
-                onDragStart={onDragStart}
-              />
-            ),
-          )}
-        </ol>
-      )}
-      {hasOlder ? <div className="feed__edge" ref={olderEdge} aria-hidden="true" /> : null}
+    <div className="feed-pane">
+      {/* The scrollable area takes keyboard focus, otherwise the feed cannot be scrolled without a mouse. */}
+      <div
+        className="feed-scroll"
+        tabIndex={0}
+        role="region"
+        aria-label={t("feed.label")}
+        ref={scroller}
+        onPointerDown={() => {
+          listen();
+          onPointerDownFeed?.();
+        }}
+        onWheel={listen}
+        onTouchStart={listen}
+        onKeyDown={listen}
+        onScroll={() => {
+          measureFar();
+          if (listening.current) reportSoon();
+        }}
+      >
+        {/* In `column-reverse` the first one in the markup stands at the bottom: the bottom edge (new) goes before the list, the top one (old) after it. */}
+        {hasNewer ? <div className="feed__edge" ref={newerEdge} aria-hidden="true" /> : null}
+        {loading ? null : items.length === 0 ? (
+          <p className="feed__empty">{emptyText ?? t("feed.empty")}</p>
+        ) : (
+          <ol className="feed">
+            {items.map((item) =>
+              item.kind === "day" ? (
+                <li className="feed__item feed__item--day" key={item.key} data-journal-date={item.journalDate}>
+                  <h2 className="day-label">{formatDayLabel(item.journalDate, today, language, labels)}</h2>
+                </li>
+              ) : item.kind === "card" ? (
+                <li className="feed__item feed__item--card" key={item.key}>
+                  {card?.node}
+                </li>
+              ) : (
+                <FeedRow
+                  key={item.key}
+                  message={item.message}
+                  inSeries={item.inSeries}
+                  marked={ui?.markedId === item.message.id}
+                  markTerms={ui?.markedId === item.message.id ? ui?.markTerms : undefined}
+                  mode={ui?.editingId === item.message.id ? "editing" : ui?.deletedIds?.has(item.message.id) ? "deleted" : "view"}
+                  editError={ui?.editingId === item.message.id ? ui?.editError : undefined}
+                  onRetry={onRetry}
+                  onOpenLink={onOpenLink}
+                  onOpenReply={onOpenReply}
+                  onOpenImage={onOpenImage}
+                  onOpenFile={onOpenFile}
+                  onAttachmentDetails={onAttachmentDetails}
+                  onAttachmentSpoiler={onAttachmentSpoiler}
+                  actions={actions}
+                  moveTargets={moveTargets}
+                  onDragStart={onDragStart}
+                />
+              ),
+            )}
+          </ol>
+        )}
+        {hasOlder ? <div className="feed__edge" ref={olderEdge} aria-hidden="true" /> : null}
+      </div>
+      {/* After the area in the markup, so Tab reaches it right after the feed and before the composer. */}
+      {!loading && items.length > 0 && (hasNewer || far) ? <JumpToLatest onJump={() => void jumpToLatest()} onFocusLost={paging?.onJumpFocusLost} /> : null}
     </div>
   );
 }

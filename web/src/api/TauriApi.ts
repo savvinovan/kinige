@@ -1,18 +1,9 @@
-import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { KinigeApi, ListMessagesOptions } from "./KinigeApi";
-import { readVoiceForWaveform, sendVoice, setAttachmentWaveform } from "./tauriVoice";
+import { attachPaste, setAttachmentDetails, setDraftAttachmentDetails } from "./tauriAttachments";
+import * as voice from "./tauriVoice";
 import {
-  ATTACHMENTS_DRAG,
-  ATTACHMENTS_DROPPED,
-  DATABASE_CORRUPT,
-  ENTRIES_CHANGED,
-  IMPORT_PROGRESS,
-  OPEN_CHAT,
-  OPEN_MESSAGE,
-  SETTINGS_CHANGED,
-  call,
-  toApiError,
+  ATTACHMENTS_DRAG, ATTACHMENTS_DROPPED, DATABASE_CORRUPT, ENTRIES_CHANGED, IMPORT_PROGRESS, OPEN_CHAT, OPEN_MESSAGE, SETTINGS_CHANGED, call,
 } from "./tauriCall";
 import type { AgentAccess } from "./generated/AgentAccess";
 import type { AgentLogEntry } from "./generated/AgentLogEntry";
@@ -20,6 +11,7 @@ import type { AgentLogPage } from "./generated/AgentLogPage";
 import type { AgentMode } from "./generated/AgentMode";
 import type { AppInfo } from "./generated/AppInfo";
 import type { AttachOutcome } from "./generated/AttachOutcome";
+import type { AttachmentDetailsChanges } from "./generated/AttachmentDetailsChanges";
 import type { AttachmentView } from "./generated/AttachmentView";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
@@ -51,6 +43,10 @@ import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
 import type { WeekdaySource } from "./generated/WeekdaySource";
+
+/** The number of the last `set_drop_target` call (see `setDropTarget`). It starts at the clock: Rust keeps the last number while
+ * the app runs and Tauri reloads this page when the web view's process dies, so a count from zero would be ignored. */
+let dropTargetSeq = Date.now();
 
 /** `KinigeApi` over Tauri commands. Argument names are camelCase: Tauri itself converts them to Rust snake_case. */
 export class TauriApi implements KinigeApi {
@@ -88,35 +84,37 @@ export class TauriApi implements KinigeApi {
     return call("attach_pick", { chatId });
   }
 
-  async attachPaste(chatId: string, bytes: Uint8Array, nameHint?: string): Promise<AttachmentView> {
-    // A raw body: the chat id and the name go in headers (ASCII, so the name is percent-encoded; Rust decodes and cleans it).
-    const headers: Record<string, string> = { "x-chat-id": chatId };
-    if (nameHint) headers["x-name-hint"] = encodeURIComponent(nameHint);
-    try {
-      return await invoke<AttachmentView>("attach_paste", bytes, { headers });
-    } catch (reason) {
-      throw toApiError(reason);
-    }
+  attachPaste(chatId: string, bytes: Uint8Array, nameHint?: string): Promise<AttachmentView> {
+    return attachPaste(chatId, bytes, nameHint);
   }
 
-  sendVoice(chatId: string, bytes: Uint8Array, durationMs: number, replyToId?: string | null, waveform?: Uint8Array | null): Promise<MessageView> {
-    return sendVoice(chatId, bytes, durationMs, replyToId, waveform);
+  setDraftAttachmentDetails(attachmentId: string, changes: AttachmentDetailsChanges): Promise<AttachmentView> {
+    return setDraftAttachmentDetails(attachmentId, changes);
   }
 
-  readVoiceForWaveform(attachmentId: string): Promise<ArrayBuffer> {
-    return readVoiceForWaveform(attachmentId);
+  setAttachmentDetails(attachmentId: string, changes: AttachmentDetailsChanges): Promise<AttachmentView> {
+    return setAttachmentDetails(attachmentId, changes);
   }
 
-  setAttachmentWaveform(attachmentId: string, peaks: Uint8Array): Promise<void> {
-    return setAttachmentWaveform(attachmentId, peaks);
-  }
-
-  async openMicrophoneSettings(): Promise<void> {
-    await call("open_microphone_settings");
-  }
+  // Voice notes (slice 7a) and the capture window's own (KINIG-153): the commands are in `tauriVoice.ts`.
+  readonly sendVoice = voice.sendVoice;
+  readonly readVoiceForWaveform = voice.readVoiceForWaveform;
+  readonly setAttachmentWaveform = voice.setAttachmentWaveform;
+  readonly openMicrophoneSettings = voice.openMicrophoneSettings;
+  readonly holdMicrophone = voice.holdMicrophone;
+  readonly captureSendVoice = voice.captureSendVoice;
+  readonly captureHoldMicrophone = voice.captureHoldMicrophone;
+  readonly captureOpenMicrophoneSettings = voice.captureOpenMicrophoneSettings;
 
   attachDropped(token: string, chatId: string): Promise<AttachOutcome> {
     return call("attach_dropped", { token, chatId });
+  }
+
+  async setDropTarget(active: boolean): Promise<void> {
+    // Every call carries a number that only grows; Rust ignores one that is older than what it has seen, so two calls that reach it in
+    // the other order cannot leave a stale answer.
+    dropTargetSeq += 1;
+    await call("set_drop_target", { active, seq: dropTargetSeq });
   }
 
   async removeDraftAttachment(chatId: string, attachmentId: string): Promise<void> {

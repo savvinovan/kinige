@@ -8,6 +8,11 @@ pub mod capture;
 mod command_names;
 mod commands;
 mod data_dirs;
+#[cfg(target_os = "macos")]
+mod drag_pasteboard;
+pub mod drag_source;
+pub mod drag_tiff;
+mod drops;
 pub mod guard;
 pub mod hotkeys;
 pub mod import;
@@ -61,6 +66,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     media_protocol::register(builder)
         // The web view's own permission prompts (slice 7a): the microphone for `main` only, no camera, screen capture or location.
         .on_permission_request(|webview, kind| voice::permission_decision(webview.label(), kind))
+        .manage(voice::MicrophoneClaim::default()) // which recording window has the microphone (KINIG-153)
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -73,10 +79,14 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             attachments::attach_pick,
             attachments::attach_paste,
             attachments::attach_dropped,
+            attachments::set_drop_target,
             attachments::remove_draft_attachment,
+            attachments::set_draft_attachment_details,
+            attachments::set_attachment_details,
             attachments::open_attachment,
             voice::send_voice,
             voice::open_microphone_settings,
+            voice::microphone_hold,
             voice::read_voice_for_waveform,
             voice::set_attachment_waveform,
             commands::get_settings,
@@ -134,6 +144,9 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             capture::capture_hide,
             capture::capture_resize,
             capture::capture_add_recent_emoji,
+            voice::capture_send_voice,
+            voice::capture_hold_microphone,
+            voice::capture_open_microphone_settings,
             #[cfg(feature = "screens-driver")]
             screens_driver::screens_driver_reply,
         ]))
@@ -338,10 +351,13 @@ pub fn run() {
         }
         Ok(())
     };
+    #[cfg(target_os = "macos")]
+    let configured = configured.on_web_content_process_terminate(voice::on_page_terminated);
     let built = configured
         .setup(move |app| fail_fast(setup(app)))
         .on_window_event(on_window_event)
         .on_page_load(|webview, payload| {
+            voice::on_page_load_event(webview, payload.event());
             // Cold start measurement (`scripts/measure-cold-start.sh`): a mark for when the main window page has loaded.
             // Without `KINIGE_TIMING=1` the level of the `kinige-timing` target is off, and nothing is written.
             if webview.label() == MAIN_LABEL && payload.event() == PageLoadEvent::Finished {

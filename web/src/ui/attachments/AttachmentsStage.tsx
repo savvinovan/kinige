@@ -2,7 +2,7 @@ import type { Decorator } from "@storybook/react-vite";
 import type { ReactNode } from "react";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import "../feed/feed.css";
-import { Message } from "../message/Message";
+import { Message, type MessageProps } from "../message/Message";
 import { Frame } from "../stories/Frame";
 import { DemoMedia, demoPhoto } from "./demo";
 import { MessageAttachments } from "./MessageAttachments";
@@ -39,10 +39,16 @@ export function Bubble({
   text = "",
   slot,
   timeBeside = false,
+  quote,
+  extra,
 }: {
+  /** Other props of the bubble: the star, the agent mark, the open action row. */
+  extra?: Partial<MessageProps>;
   attachments: readonly AttachmentView[];
   text?: string;
   slot?: ReactNode;
+  /** A reply quote above the attachments (as `FeedRow` passes it). */
+  quote?: ReactNode;
   /** A voice note with no text: the time sits on the player's meta line (as the feed does it). */
   timeBeside?: boolean;
 }) {
@@ -51,6 +57,9 @@ export function Bubble({
       markdown={text}
       sentAt={SENT_AT}
       timeBeside={timeBeside}
+      imagesOnly={attachments.length > 0 && attachments.every(({ kind }) => kind === "image")}
+      quote={quote}
+      {...extra}
       // As in the feed (`FeedRow`): the attachments are the `attachments` of the message, so the bubble lays out exactly as in the window.
       attachments={slot ?? <MessageAttachments attachments={attachments} onOpenImage={noop} onOpenFile={noop} />}
     />

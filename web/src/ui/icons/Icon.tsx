@@ -88,10 +88,9 @@ const GLYPHS = {
   settings: Settings,
   download: Download,
   upload: Upload,
-  // Slice 6: the forest above the feed (expand and collapse the pane, hide it, its profile menu item).
+  // Slice 6: the forest above the feed (expand and collapse the pane). KINIG-134: `forest` is also the icon of the top bar switch.
   expandPane: Maximize2,
   collapsePane: Minimize2,
-  hidePane: EyeOff,
   forest: Trees,
   // Slice 7: the file card (a plain file, audio and video are shown as files).
   file: File,
@@ -106,6 +105,8 @@ const GLYPHS = {
   rotate: RotateCcw,
   zoomOut: ZoomOut,
   zoomIn: ZoomIn,
+  // KINIG-136: the cover of a hidden photo (a crossed-out eye).
+  eyeOff: EyeOff,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

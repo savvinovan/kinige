@@ -44,7 +44,6 @@ function PaneStory({ table = FOREST_2026, mode = "forest", selected = "2026-09-1
         onYearChange={noop}
         onView={noop}
         onMode={noop}
-        onHide={noop}
       />
       <div className="forest-story__feed">The feed</div>
     </div>

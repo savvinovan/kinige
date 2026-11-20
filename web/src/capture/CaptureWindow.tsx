@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type KinigeApi, errorCode } from "../api/KinigeApi";
+import { INBOX_ID, type KinigeApi, errorCode } from "../api/KinigeApi";
 import type { CaptureState } from "../api/generated/CaptureState";
 import type { ErrorCode } from "../api/generated/ErrorCode";
 import { useDraftSaver } from "../draft/useDraftSaver";
+import { useVoiceController } from "../voice/useVoiceRecorder";
+import { captureVoiceApi } from "./captureVoiceApi";
 import { applyTextSize } from "../ui/screens/textSize";
 import { CapturePanel } from "../ui/capture/CapturePanel";
 import { useInputModality } from "../ui/useInputModality";
@@ -42,7 +44,8 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
   const [shown, setShown] = useState(0);
   useEffect(() => {
     const field = document.querySelector("textarea");
-    if (!field) return;
+    // While the recording bar stands in for the field the panel puts the focus where the bar wants it (`CapturePanel`), not into the field.
+    if (!field || document.querySelector(".recording-bar")) return;
     field.focus();
     field.setSelectionRange(field.value.length, field.value.length);
   }, [shown]);
@@ -50,11 +53,27 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
   /** The window height follows the content; a resize failure does not prevent writing (the window keeps its old size). */
   const resize = useCallback((height: number) => void api.captureResize(height).catch(() => undefined), [api]);
 
-  /** Saves the draft and hides the window. */
+  // The microphone (KINIG-153): the main window's recorder on the capture window's commands. A note goes to the Inbox, like a typed one, and the
+  // window then hides the way it does after a text note (nothing else to clear: the text draft is the field's, not the note's).
+  const voiceApi = useMemo(() => captureVoiceApi(api), [api]);
+  const voice = useVoiceController({
+    api: voiceApi,
+    chatId: INBOX_ID,
+    replyToId: null,
+    onSent: () => {
+      setPickerOpen(false);
+      void api.captureHide().catch(() => undefined);
+    },
+  });
+
+  /**
+   * Saves the draft and hides the window. A recording that is still running is stopped and kept first (the microphone is released, the bytes
+   * wait as "Recording stopped" for the next time the window opens): a hidden window never goes on recording and nothing is lost.
+   */
   const hide = useCallback(() => {
     setPickerOpen(false);
-    void flush().finally(() => void api.captureHide().catch(() => undefined));
-  }, [api, flush]);
+    void Promise.all([voice.park(), flush()]).finally(() => void api.captureHide().catch(() => undefined));
+  }, [api, flush, voice]);
 
   // On show: a fresh context and draft (entries could appear from the main window, the clipboard and another screen), the text size.
   useEffect(() => {
@@ -137,6 +156,7 @@ export function CaptureWindow({ api, initial }: CaptureWindowProps) {
         open: pickerOpen,
         onOpenChange: setPickerOpen,
       }}
+      voice={voice}
     />
   );
 }

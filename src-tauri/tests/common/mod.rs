@@ -233,13 +233,33 @@ pub fn args_for(command: &str) -> Value {
         "set_agent_chats" => json!({"chatIds": []}),
         "list_agent_log_entries" => json!({"logId": 1}),
         "attach_dropped" => json!({"token": "нет-такого", "chatId": inbox}),
+        "set_drop_target" => json!({"active": true, "seq": 1}),
         "remove_draft_attachment" => json!({"chatId": inbox, "attachmentId": "нет-такого"}),
         "open_attachment" | "read_voice_for_waveform" => json!({"attachmentId": "нет-такого"}),
+        "set_draft_attachment_details" | "set_attachment_details" => {
+            json!({"attachmentId": "нет-такого", "changes": {"name": "пляж"}})
+        }
         "set_attachment_waveform" => json!({"attachmentId": "нет-такого", "peaks": ""}),
+        "microphone_hold" | "capture_hold_microphone" => json!({"held": false}),
         // `send_voice` takes a raw body: a JSON call is the "garbage" case and must be an error, never a panic.
         _ => json!({}),
     }
 }
+
+/// The capture window's whole command set: the seven of slices 2 and 3 and, since KINIG-153, three for voice notes (recording to Inbox, the
+/// microphone claim, the settings page of the microphone). Every test that states the set compares with this one.
+pub const CAPTURE_SET: [&str; 10] = [
+    "capture_state",
+    "capture_send",
+    "capture_append",
+    "capture_save_draft",
+    "capture_hide",
+    "capture_resize",
+    "capture_add_recent_emoji",
+    "capture_send_voice",
+    "capture_hold_microphone",
+    "capture_open_microphone_settings",
+];
 
 /// These commands cannot be called for real in a mock runtime: a dialog waits for the OS main thread, a restart ends the process.
 pub const NEEDS_NATIVE_UI: &[&str] = &[
@@ -250,4 +270,5 @@ pub const NEEDS_NATIVE_UI: &[&str] = &[
     "attach_pick",
     // Opens the system settings page of the microphone: never from a test (slice 7a).
     "open_microphone_settings",
+    "capture_open_microphone_settings",
 ];

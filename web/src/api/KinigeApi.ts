@@ -4,6 +4,7 @@ import type { AgentLogPage } from "./generated/AgentLogPage";
 import type { AgentMode } from "./generated/AgentMode";
 import type { AppInfo } from "./generated/AppInfo";
 import type { AttachOutcome } from "./generated/AttachOutcome";
+import type { AttachmentDetailsChanges } from "./generated/AttachmentDetailsChanges";
 import type { AttachmentView } from "./generated/AttachmentView";
 import type { CaptureOutcome } from "./generated/CaptureOutcome";
 import type { CaptureState } from "./generated/CaptureState";
@@ -246,8 +247,25 @@ export interface KinigeApi {
   attachPaste(chatId: string, bytes: Uint8Array, nameHint?: string): Promise<AttachmentView>;
   /** Claims a drop: `token` comes from `onAttachmentsDropped`, is single-use and expires. Folders are skipped and counted. */
   attachDropped(token: string, chatId: string): Promise<AttachOutcome>;
+  /**
+   * Whether a chat is open to receive an attachment (`false`: the trash, or no chat). Only then does Rust read the image of a drag that
+   * has no file (a picture from Telegram or a browser) when it enters the window; otherwise nothing is read or held.
+   */
+  setDropTarget(active: boolean): Promise<void>;
   /** The x on a tile: the draft attachment and its file go. */
   removeDraftAttachment(chatId: string, attachmentId: string): Promise<void>;
+  /**
+   * "Details" on a tile (slice 7b): a name (the stem; Rust keeps the original extension), a description, a spoiler flag (images only).
+   * `changes` has only the fields that were edited: an absent key leaves the field, `null` clears a name or a description, `spoiler` is
+   * `true` or `false`. Counting and normalizing are Rust's (the UI counter is advisory). Returns the tile as it is now. A rule broken is
+   * `attachment_details_invalid`, an unknown tile `attachment_not_found`; nothing is written on an error.
+   */
+  setDraftAttachmentDetails(attachmentId: string, changes: AttachmentDetailsChanges): Promise<AttachmentView>;
+  /**
+   * The same for a sent attachment (the dialog from the entry, and "Hide as spoiler" from the context menu, which sends only `spoiler`).
+   * The entry does not become "edited". An entry in the trash is `message_in_trash`, a read-only attachment `read_only`.
+   */
+  setAttachmentDetails(attachmentId: string, changes: AttachmentDetailsChanges): Promise<AttachmentView>;
   /** Open an attachment in its system app (a clone; documents are opened, everything else is shown in the file manager). */
   openAttachment(attachmentId: string): Promise<void>;
   /** Files are dragged over the window (`true`) or left it / were dropped (`false`): the "Drop to attach" overlay. */
@@ -282,6 +300,12 @@ export interface KinigeApi {
   setAttachmentWaveform(attachmentId: string, peaks: Uint8Array): Promise<void>;
   /** "Open settings" on the "Microphone access is off" line: the system's microphone privacy page. A fixed page, no argument. */
   openMicrophoneSettings(): Promise<void>;
+  /**
+   * The microphone is shared by the two windows that record, and each has its own recorder (KINIG-153). `true` asks for it before the device is
+   * opened: the answer is `false` when the other window holds it, so a second recording never starts. `false` lets it go; the answer is `true`.
+   * Windows that reload or hide let go by themselves.
+   */
+  holdMicrophone(held: boolean): Promise<boolean>;
 
   // ---- capture window (slice 2): a separate set of commands, Inbox only ----
   /** Everything the window needs on showing: language, text size, today's context, the append target, the draft, an error. */
@@ -300,4 +324,10 @@ export interface KinigeApi {
   captureResize(height: number): Promise<void>;
   /** The emoji chosen in the capture window picker goes first in the shared "recent" list; the reply is the whole list. */
   captureAddRecentEmoji(emoji: string): Promise<string[]>;
+  /** A recording of the capture window (KINIG-153): like `sendVoice`, but always a new entry in the Inbox, with no chat and no reply to name. */
+  captureSendVoice(bytes: Uint8Array, durationMs: number, waveform?: Uint8Array | null): Promise<MessageView>;
+  /** The capture window's `holdMicrophone`. */
+  captureHoldMicrophone(held: boolean): Promise<boolean>;
+  /** The capture window's `openMicrophoneSettings`. */
+  captureOpenMicrophoneSettings(): Promise<void>;
 }

@@ -5,7 +5,7 @@
 use super::make_dir;
 use crate::error::read_err;
 use crate::{Store, StoreError};
-use kinige_domain::attachment::{is_openable_document, mirror_file_names};
+use kinige_domain::attachment::{extension, is_openable_document, mirror_file_names};
 use kinige_domain::hlc::is_uuid_v4;
 use rusqlite::OptionalExtension;
 use std::fs;
@@ -28,13 +28,13 @@ impl Store {
         if !is_uuid_v4(attachment_id) {
             return Err(StoreError::AttachmentNotFound);
         }
-        let (filename, file_name): (String, String) = self
+        let (filename, display_name, file_name): (String, Option<String>, String) = self
             .read(|conn| {
                 conn.query_row(
-                    "SELECT a.filename, l.file_name FROM attachment a \
+                    "SELECT a.filename, a.display_name, l.file_name FROM attachment a \
                      JOIN attachment_local l ON l.attachment_id = a.id WHERE a.id = ?1",
                     [attachment_id],
-                    |row| Ok((row.get(0)?, row.get(1)?)),
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
                 )
                 .optional()
                 .map_err(read_err)
@@ -46,7 +46,13 @@ impl Store {
             .filter(|path| path.is_file())
             .ok_or(StoreError::AttachmentUnreadable)?;
         let stored_ext = file_name.rsplit('.').next().unwrap_or("bin");
-        let name = clone_name(&filename, stored_ext);
+        // The verdict (open or only reveal) and the clone's extension come from the original name, `core.filename` (ADR-0014, slice 7b):
+        // a rename gives the clone at most its stem, so a `README` can never be opened as something else by what it was called.
+        let original = clone_name(&filename, stored_ext);
+        let name = match display_name.as_deref() {
+            Some(shown) => clone_name(shown, stored_ext),
+            None => original.clone(),
+        };
         let dir = dirs.open_dir().join(attachment_id);
         make_dir(&dir).map_err(|_| StoreError::AttachmentUnreadable)?;
         let path = dir.join(&name);
@@ -54,7 +60,7 @@ impl Store {
             clone_file(&source, &dir, &name).map_err(|_| StoreError::AttachmentUnreadable)?;
         }
         Ok(OpenTarget {
-            reveal_only: !is_openable_document(extension(&name)),
+            reveal_only: !is_openable_document(extension(&original)),
             path,
         })
     }
@@ -73,14 +79,6 @@ fn clone_name(filename: &str, stored_ext: &str) -> String {
         format!("{safe}.{stored_ext}")
     } else {
         safe
-    }
-}
-
-/// The lowercase extension of a name, without the dot; empty if none.
-fn extension(name: &str) -> &str {
-    match name.rsplit_once('.') {
-        Some((stem, ext)) if !stem.is_empty() => ext,
-        _ => "",
     }
 }
 

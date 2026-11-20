@@ -1,0 +1,2 @@
+search for the old file name of the renamed photo:
+nothing found (as it should be)

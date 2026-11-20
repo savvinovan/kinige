@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-draft-attachment-details"
+description = "Enables the set_draft_attachment_details command without any pre-configured scope."
+commands.allow = ["set_draft_attachment_details"]
+
+[[permission]]
+identifier = "deny-set-draft-attachment-details"
+description = "Denies the set_draft_attachment_details command without any pre-configured scope."
+commands.deny = ["set_draft_attachment_details"]

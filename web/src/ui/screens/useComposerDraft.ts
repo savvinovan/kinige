@@ -53,6 +53,11 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
     setTiles((was) => [...was, ...added.filter((tile) => !was.some((known) => known.id === tile.id))]);
   }, []);
 
+  /** "Details" saved on a tile (KINIG-136): the tile is replaced by what Rust returned, in the same place. */
+  const updateTile = useCallback((view: AttachmentView) => {
+    setTiles((was) => was.map((tile) => (tile.id === view.id ? view : tile)));
+  }, []);
+
   /** The x on a tile (after Rust has removed the file). */
   const dropTile = useCallback((attachmentId: string) => {
     setTiles((was) => was.filter((tile) => tile.id !== attachmentId));
@@ -140,5 +145,5 @@ export function useComposerDraft(api: KinigeApi, selected: string | null) {
     };
   }, [flush]);
 
-  return { text, reply, tiles, addTiles, dropTile, changeReply, refreshReply, clear, plan, saver, switchChat, type };
+  return { text, reply, tiles, addTiles, updateTile, dropTile, changeReply, refreshReply, clear, plan, saver, switchChat, type };
 }

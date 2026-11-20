@@ -129,6 +129,23 @@
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 35 %" } }
         }
       },
+      "attachment": {
+        "pill-background": {
+          "$value": "#000000",
+          "$description": "KINIG-132: the fill of the time pill drawn on a picture that fills its bubble, as in Telegram. Used with the opacity token opacity.attachment-pill (0.6), so a picture shows through it. Black, because the pill must read on a light picture as well as on a dark one: the worst case is a pure white picture, where the pill becomes #666666.",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 0 %" } }
+        },
+        "pill-text": {
+          "$value": "#ffffff",
+          "$description": "KINIG-132: the time, the star and the 'added by agent' mark inside the time pill on a picture. White on the pill: 5.7:1 over a pure white picture, 21:1 over a black one (the tests check both).",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 100 %" } }
+        },
+        "cover": {
+          "$value": "#3c3c3c",
+          "$description": "KINIG-136: the cover of a hidden photo (spoiler): a quiet flat gray in the photo's own box, with a crossed-out eye and 'Hidden' on it in text.secondary. It stands apart from the bubble's fill (1.28:1 against surface.message, where the cover sits in a bubble with text) and from the feed (1.6:1, where a bubble with no fill leaves it bare), and the label on it is 8:1. Flat on purpose: a blur of a small thumbnail still shows colours and shapes.",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 24 %" } }
+        }
+      },
       "tile": {
         "$description": "Letter tiles of chats without an emoji (D2): a rounded square with the first letter of the title in text.primary. Saturated but muted colors; the lightness of each is picked so that text.primary on it is at least 5:1 (the tests require 4.5:1). Every tile is at least 1.2:1 apart from the window background, the hover fill and the selected row.",
         "blue": {

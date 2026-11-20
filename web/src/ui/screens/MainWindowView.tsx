@@ -11,8 +11,10 @@ import type { ComposerButtons } from "../composer/Composer";
 import { ComposerPane } from "../composer/ComposerPane";
 import { Feed, type FeedActions, type FeedPaging, type FeedUiState, type ScrollRequest } from "../feed/Feed";
 import type { FeedMessage } from "../feed/buildFeed";
+import { ForestToggle } from "../forest/ForestToggle";
 import type { MoveTarget } from "../message/moveTargets";
 import { type ChatAction, type ChatTint, Sidebar, type SidebarChat, type SidebarSearch } from "../sidebar/Sidebar";
+import { RevealProvider } from "../attachments/reveal";
 import { TagFilterBar } from "../tag/TagFilterBar";
 import { TrashView } from "../trash/TrashView";
 import type { VoiceController } from "../../voice/useVoiceRecorder";
@@ -101,7 +103,11 @@ interface MainWindowViewProps {
     dropTargetId: string | null;
     ghost: ReactNode;
   };
-  /** Slice 6: the forest pane above the feed (not in the trash or in search results), the feed's top day for it, and the profile menu item. */
+  /**
+   * Slice 6: the forest pane above the feed (not in the trash or in search results), the feed's top day for it, and the one switch
+   * of its visibility. KINIG-134: the switch is the button of the top bar above the pane and the item of the profile menu; both
+   * read `hidden` and call `onToggle`, so they cannot disagree. Without it there is neither the bar nor the menu item.
+   */
   forest?: ReactNode;
   onFeedTopDay?: (journalDate: string | null) => void;
   forestMenu?: { hidden: boolean; onToggle: () => void };
@@ -117,20 +123,37 @@ interface MainWindowViewProps {
 export interface AttachmentControls {
   tiles: readonly AttachmentView[];
   onAttach: () => void;
-  onRemoveTile: (attachmentId: string) => void;
+  /** Removes a pending tile; the promise says whether it is gone (`false`: the removal failed and the tile stays). */
+  onRemoveTile: (attachmentId: string) => Promise<boolean>;
+  /** A click on a picture tile above the field: the viewer opens on it (KINIG-135). */
+  onOpenTile: (attachmentId: string) => void;
   onPasteFiles: (files: readonly File[]) => void;
   /** Files are dragged over the window: "Drop to attach" over the feed. */
   dragOver: boolean;
   /** A photo of an entry: the entry's attachments (the lightbox pages through its photos) and the photo clicked. */
   onOpenImage: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
   onOpenFile: (attachmentId: string) => void;
+  /** KINIG-136: "Details" on a tile above the field; "Attachment details…" and "Details…" of a sent attachment (with the entry's attachments); the spoiler alone. */
+  onDetailsTile?: (attachmentId: string) => void;
+  onAttachmentDetails?: (entryAttachments: readonly AttachmentView[], attachmentId: string) => void;
+  onAttachmentSpoiler?: (attachmentId: string, spoiler: boolean) => void;
 }
 
 /**
  * Main window: sidebar + feed (or trash) + composer. There is no chat-title row above the feed: the selected chat is
  * highlighted in the sidebar (§6). View only: data comes from outside (in Storybook directly, in the app via `MainWindow`).
  */
-export function MainWindowView({
+export function MainWindowView(props: MainWindowViewProps) {
+  // A hidden photo is shown only until the chat (or the trash) is left, the window hides or the app restarts (KINIG-136): the state lives here, so the feed,
+  // the trash, the viewer and the details dialog share it, and so does every story of this view.
+  return (
+    <RevealProvider viewKey={props.selectedChatId}>
+      <MainWindowBody {...props} />
+    </RevealProvider>
+  );
+}
+
+function MainWindowBody({
   chats,
   selectedChatId,
   messages,
@@ -212,6 +235,11 @@ export function MainWindowView({
           />
         ) : (
           <>
+            {forestMenu ? (
+              <div className="main-window__topbar">
+                <ForestToggle hidden={forestMenu.hidden} onToggle={forestMenu.onToggle} />
+              </div>
+            ) : null}
             {forest}
             {tagFilter ? <TagFilterBar tag={tagFilter.tag} onClear={tagFilter.onClear} /> : null}
             <Feed
@@ -234,6 +262,8 @@ export function MainWindowView({
               listKey={selectedChatId ?? "trash"}
               onOpenImage={attachments?.onOpenImage}
               onOpenFile={attachments?.onOpenFile}
+              onAttachmentDetails={attachments?.onAttachmentDetails}
+              onAttachmentSpoiler={attachments?.onAttachmentSpoiler}
             />
             {attachments ? <DropOverlay visible={attachments.dragOver} /> : null}
             <ComposerPane
@@ -248,7 +278,11 @@ export function MainWindowView({
               autoFocus={interactive}
               emoji={emoji}
               replyStrip={replyStrip}
-              tiles={attachments ? <PendingTiles items={attachments.tiles} onRemove={attachments.onRemoveTile} /> : undefined}
+              tiles={
+                attachments ? (
+                  <PendingTiles items={attachments.tiles} onRemove={attachments.onRemoveTile} onOpen={attachments.onOpenTile} onDetails={attachments.onDetailsTile} />
+                ) : undefined
+              }
               hasTiles={(attachments?.tiles.length ?? 0) > 0}
               onAttach={attachments?.onAttach}
               onPasteFiles={attachments?.onPasteFiles}
