@@ -118,14 +118,14 @@ fn a_change_blocked_in_register_blocks_neither_key_presses_nor_the_overlay() {
             hotkeys.overlay(&mut settings);
             let _ = done.send((kind, settings.shortcuts.len()));
         });
-        let (kind, shortcuts) = answered
-            .recv_timeout(Duration::from_secs(5))
-            .expect("a press and the overlay must not wait for a change");
-        assert_eq!(kind, Some(ShortcutKind::Clipboard));
-        assert_eq!(shortcuts, 2);
+        let reply = answered.recv_timeout(Duration::from_secs(5));
+        // The gate opens before any assertion, so a failure fails the test instead of hanging the scope.
         let (lock, wake) = &*open;
         *lock.lock().unwrap() = true;
         wake.notify_all();
         change.join().unwrap();
+        let (kind, shortcuts) = reply.expect("a press and the overlay must not wait for a change");
+        assert_eq!(kind, Some(ShortcutKind::Clipboard));
+        assert_eq!(shortcuts, 2);
     });
 }
