@@ -136,15 +136,23 @@ function pageMetrics(root: Document): string {
     ["body.scrollHeight", body?.scrollHeight ?? 0],
   ];
   const text = lines.map(([name, value]) => `${name}=${value}`);
-  // The outermost elements that stand lower than the window (the first six, in document order): their tag, class and sizes, no page content.
+  // The first eight elements that stand lower than the window and that no ancestor clips (an ancestor with its own overflow, such as the chat
+  // list, keeps what it holds out of the page's scroll size): their tag, class, position and sizes, no page content.
   const height = view?.innerHeight ?? 0;
+  const clipped = (element: Element): boolean => {
+    for (let up = element.parentElement; up && up !== body; up = up.parentElement) {
+      if (view?.getComputedStyle(up).overflowY !== "visible") return true;
+    }
+    return false;
+  };
   let shown = 0;
   for (const element of Array.from(root.querySelectorAll("body *"))) {
-    if (shown >= 6) break;
+    if (shown >= 8) break;
     const box = element.getBoundingClientRect();
-    if (box.height <= 0 || box.bottom <= height + 1) continue;
+    if (box.height <= 0 || box.bottom <= height + 1 || clipped(element)) continue;
     const name = `${element.tagName.toLowerCase()}.${(element.getAttribute("class") ?? "").split(" ")[0]}`;
-    text.push(`lower.${shown}=${name} top=${Math.round(box.top)} bottom=${Math.round(box.bottom)} height=${Math.round(box.height)}`);
+    const position = view?.getComputedStyle(element).position ?? "";
+    text.push(`lower.${shown}=${name} ${position} top=${Math.round(box.top)} bottom=${Math.round(box.bottom)} height=${Math.round(box.height)}`);
     shown += 1;
   }
   return text.join("\n");
