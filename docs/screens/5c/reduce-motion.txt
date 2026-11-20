@@ -3,8 +3,8 @@ the window's report at the start (the label of a GIF of that size asks for a cli
 defaults read com.apple.universalaccess reduceMotion: 1
 Reduce Motion, nothing pressed, two shots 0.5 s apart: identical
 pressed: the label no longer asks for a click
-pressed, two shots 0.5 s apart: differ: 69834 pixels, box 304,52,623,291
+pressed, two shots 0.5 s apart: differ: 69385 pixels, box 304,52,623,291
 scrolled away and back: the label asks for a click again
 defaults write com.apple.universalaccess reduceMotion -bool false: exit 0
 the window's report now: not reduced
-autoplay, two shots 0.5 s apart: differ: 69495 pixels, box 304,52,623,291
+autoplay, two shots 0.5 s apart (options --min-box=100x100 --within=300,48,627,295): differ: 69240 pixels, box 304,52,623,291
