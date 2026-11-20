@@ -4,6 +4,8 @@ import type { AttachmentView } from "../../api/generated/AttachmentView";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { MessageAttachments } from "../attachments/MessageAttachments";
 import { useReveal } from "../attachments/reveal";
+import { stickerOf } from "../attachments/stickerRule";
+import { StickerImage } from "../stickers/StickerImage";
 import { Message } from "../message/Message";
 import type { MoveTarget } from "../message/moveTargets";
 import { ReplyQuote } from "../reply/ReplyQuote";
@@ -70,9 +72,13 @@ export const FeedRow = memo(function FeedRow({
     [message.replyTo, onOpenReply],
   );
   const entryAttachments = message.attachments;
+  // Slice 5c: an entry with no text and one uncovered sticker is drawn as a sticker (no bubble, no viewer, no details); anything else is a picture as before.
+  const sticker = stickerOf(message.bodyMd, entryAttachments);
   const attachments = useMemo(
     () =>
-      entryAttachments && entryAttachments.length > 0 ? (
+      sticker ? (
+        <StickerImage attachment={sticker} />
+      ) : entryAttachments && entryAttachments.length > 0 ? (
         <MessageAttachments
           attachments={entryAttachments}
           onOpenImage={(attachmentId) => onOpenImage?.(entryAttachments, attachmentId)}
@@ -81,10 +87,10 @@ export const FeedRow = memo(function FeedRow({
           onSpoiler={onAttachmentSpoiler}
         />
       ) : undefined,
-    [entryAttachments, onOpenImage, onOpenFile, onAttachmentDetails, onAttachmentSpoiler],
+    [sticker, entryAttachments, onOpenImage, onOpenFile, onAttachmentDetails, onAttachmentSpoiler],
   );
-  // KINIG-136: "Attachment details…" in the entry's menu, on the first attachment that has details (a voice note has none).
-  const detailsTarget = entryAttachments?.find((attachment) => attachment.kind !== "audio");
+  // KINIG-136: "Attachment details…" in the entry's menu, on the first attachment that has details (a voice note has none; a sticker has none either).
+  const detailsTarget = sticker ? undefined : entryAttachments?.find((attachment) => attachment.kind !== "audio");
   const openDetails = useMemo(
     () => (onAttachmentDetails && entryAttachments && detailsTarget ? () => onAttachmentDetails(entryAttachments, detailsTarget.id) : undefined),
     [onAttachmentDetails, entryAttachments, detailsTarget],
@@ -127,7 +133,8 @@ export const FeedRow = memo(function FeedRow({
         attachments={attachments}
         timeBeside={timeBeside}
         imagesOnly={imagesOnly}
-        caption={imagesOnly ? caption : undefined}
+        sticker={sticker !== null}
+        caption={imagesOnly && !sticker ? caption : undefined}
         onAttachmentDetails={openDetails}
         reactions={message.reactions}
         reactionKeysHad={message.reactionKeysHad}

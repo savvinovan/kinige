@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { INBOX_ID } from "../../api/KinigeApi";
 import { DEFAULT_SETTINGS, MockApi, type MockApiOptions, mockMessage } from "../../api/MockApi";
-import { NO_MEDIA } from "../../api/mockData";
+import { NO_MEDIA, NO_STICKERS } from "../../api/mockData";
 import type { ChatDraft } from "../../api/generated/ChatDraft";
 import type { ImportPreview } from "../../api/generated/ImportPreview";
 import { act, fireEvent, render, screen, waitFor, within } from "../../test/render";
@@ -15,6 +15,7 @@ const BOOKS = { id: "books", title: "Книги", icon: "📚" };
 const PREVIEW: ImportPreview = {
   chats: [{ id: "1000001", name: null, kind: "saved", total: 3, existing: 0, ...NO_MEDIA }],
   skippedChats: 0,
+  stickers: NO_STICKERS,
 };
 
 describe("MainWindow: черновик у каждого чата", () => {

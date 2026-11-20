@@ -115,6 +115,8 @@
   --layout-recovery-list-max-height: 24rem; /** Largest height of the copies list (312 px at a 13 px root): a longer list scrolls inside, the heading and the button stay in place. */
   --layout-chat-dialog-width: 27rem; /** Width of the 'New chat' / 'Rename' / 'Chat emoji' window (351 px at a 13 px root): narrower than the settings window, the picker inside takes the content width. */
   --layout-chat-dialog-top: 4rem; /** Offset of the chat window from the top edge: the window is pressed to the top, not centered, so the picker that expands under the field does not shift the title (52 px). */
+  --layout-sticker-long-side: 160px; /** The long side of a sticker in the feed (Telegram draws one at about this size): the box is fitted to it from the sticker's width and height before the picture loads, so nothing jumps. */
+  --layout-sticker-strip-icon: 32px; /** The side of a pack icon in the strip above the sticker grid, and the height of the strip's buttons. */
   --layout-trash-entry-lines: 6; /** How many lines of the entry text a trash plate shows; the rest is cut off with an ellipsis (line-clamp). The full text is not needed in the trash: only enough to recognize the entry. */
   --layout-trash-confirm-width: 26rem; /** Width of the 'Delete forever?' confirmation window (338 px at a 13 px root). */
   --layout-voice-dot-size: 0.7rem; /** The red dot of the recording bar (9 px at a 13 px root). A shape that does not pulse. */
@@ -276,6 +278,8 @@
   --space-6: 2rem;
   --space-7: 3rem;
   --space-8: 4rem;
+  --sticker-columns: 5; /** Slice 5c: columns in the Stickers tab grid of the emoji window. The same number is in the code as STICKER_COLUMNS (the arrow keys move by a row); the test stickers/stickerTokens.test.ts compares both. */
+  --sticker-gif-columns: 3; /** Slice 5c: columns in the GIFs tab grid. The same number is in the code as GIF_COLUMNS; the same test compares both. */
   --type-day-size: 0.9rem;
   --type-day-line-height: 1.3;
   --type-h1-size: 1.29rem;
@@ -323,6 +327,12 @@
   --layout-reaction-gap: var(--space-2); /** KINIG-138 (restyled): the gap between chips, and between the rows when they wrap (6.5 px). */
   --layout-reaction-row-offset: var(--space-3); /** KINIG-138 (restyled): the space between the text of an entry and its row of chips (9.75 px), so the chips are clearly apart from the text; an entry whose text is one emoji no longer looks like its chips. */
   --layout-reaction-popover-gap: var(--space-1); /** KINIG-138: the gap between the buttons of the quick-reaction popover. */
+  --layout-sticker-fallback-glyph: calc(var(--layout-sticker-long-side) / 2); /** The size of the emoji that stands in the box of a sticker whose file is missing or cannot be decoded: half the long side, so the glyph fits the box. */
+  --layout-sticker-strip-gap: var(--space-1); /** Gap between the pack icons of the strip. */
+  --layout-sticker-cell-padding: var(--space-1); /** Padding inside a sticker cell of the grid, around the picture. */
+  --layout-sticker-gif-gap: var(--space-1); /** Gap between the still frames of the GIFs tab. */
+  --layout-sticker-gif-radius: var(--radius-tile-small); /** Corners of a still frame in the GIFs tab. */
+  --layout-sticker-badge-inset: var(--space-1); /** How far the GIF badge stands from the corner of a still frame or a cell. */
   --layout-voice-confirm-gap: var(--space-2); /** Gap between the question and the two buttons of the discard confirmation. */
   --layout-voice-player-gap: var(--space-3); /** Gap between the play button and the waveform of the player. */
   --layout-voice-meta-gap: var(--space-2); /** Gap between the meta line ("0:05, 20.7 KB") and the speed chip. */

@@ -1,0 +1,163 @@
+/* The Stickers and GIFs tabs of the emoji window (slice 5c). Tokens only; focus rings come from base.css (`:focus-visible`). */
+.sticker-panel,
+.gif-panel {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--emoji-panel-height);
+  min-height: 0;
+  color: var(--color-text-primary);
+  font-family: var(--type-small-family);
+  font-size: var(--type-small-size);
+  line-height: var(--type-small-line-height);
+}
+
+/* The place of the open tab under the tab list: the tab's own height is the panel's (`--emoji-panel-height`), so switching tabs does not resize the window. */
+.picker-tabs__panel {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: var(--space-2);
+}
+
+/* The pack strip: one row of 32 px buttons, scrolls sideways without a scroll bar when there are many packs. */
+.sticker-strip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--layout-sticker-strip-gap);
+  padding: var(--space-1) 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.sticker-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.sticker-strip__item {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--layout-sticker-strip-icon);
+  height: var(--layout-sticker-strip-icon);
+  margin: 0;
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.sticker-strip__item:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.sticker-strip__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* The grid scrolls with the wheel and the keyboard; no scroll bar, so the five columns are the same on every system. */
+.sticker-panel__scroll,
+.gif-panel__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.sticker-panel__scroll::-webkit-scrollbar,
+.gif-panel__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.sticker-panel__note {
+  margin: 0;
+  padding: var(--space-5) var(--space-2);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+/* A pack heading in the secondary text; a long title is cut with an ellipsis (the whole title is in `title`). */
+.sticker-panel__heading {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-family: var(--type-meta-family);
+  font-size: var(--type-meta-size);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--type-meta-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sticker-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--sticker-columns), minmax(0, 1fr));
+}
+
+.sticker-panel__cell {
+  box-sizing: border-box;
+  aspect-ratio: 1;
+  margin: 0;
+  padding: var(--layout-sticker-cell-padding);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  cursor: pointer;
+}
+
+.sticker-panel__cell:hover {
+  background: var(--color-surface-hover);
+}
+
+.sticker-panel__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* The GIFs tab: "Choose a GIF file…" on top, then still frames in three columns, newest first. */
+.gif-panel__choose {
+  flex: none;
+  align-self: flex-start;
+  margin: var(--space-1) 0;
+}
+
+.gif-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--sticker-gif-columns), minmax(0, 1fr));
+  gap: var(--layout-sticker-gif-gap);
+}
+
+.gif-panel__cell {
+  position: relative;
+  box-sizing: border-box;
+  aspect-ratio: 1;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--layout-sticker-gif-radius);
+  background: var(--color-surface-field);
+  cursor: pointer;
+}
+
+.gif-panel__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

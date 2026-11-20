@@ -16,6 +16,7 @@ import { AccessPage } from "./pages/AccessPage";
 import { AppearancePage } from "./pages/AppearancePage";
 import { FilePage } from "./pages/FilePage";
 import { MirrorPage } from "./pages/MirrorPage";
+import { NO_TOKEN_CONTROLS, StickersPage, type TokenControls } from "./pages/StickersPage";
 import { ShortcutsPage } from "./pages/ShortcutsPage";
 import { type Route, parentOf } from "./routes";
 import "./prefs.css";
@@ -39,6 +40,8 @@ export interface SettingsWindowViewProps {
   pickError?: string;
   shortcutErrors?: Partial<Record<ShortcutKind, string>>;
   accessError?: string;
+  /** The Telegram bot token of the Stickers page (slice 5c); without it the page shows an empty field and does nothing (stories). */
+  token?: TokenControls;
   onTextSizeChange: (size: TextSize) => void;
   onChooseFolder: () => void;
   onShortcutChange: (kind: ShortcutKind, accelerator: string) => void;
@@ -104,6 +107,7 @@ export function SettingsWindowView(props: SettingsWindowViewProps) {
               now={now}
             />
           ) : null}
+          {route === "stickers" ? <StickersPage {...(props.token ?? NO_TOKEN_CONTROLS)} /> : null}
           {route === "access" ? (
             <AccessPage
               access={access}

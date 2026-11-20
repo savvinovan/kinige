@@ -12,6 +12,8 @@ interface MessageMenuProps {
   readOnly: boolean;
   /** No handler - the item is visible but disabled. */
   onEdit?: () => void;
+  /** An entry that has no text to edit (a sticker, slice 5c): "Edit" is not in the menu at all, not a disabled item. */
+  noEdit?: boolean;
   onToggleTask?: () => void;
   onToggleFavorite?: () => void;
   onChangeDate?: () => void;
@@ -43,6 +45,7 @@ export function MessageMenu({
   favorite,
   readOnly,
   onEdit,
+  noEdit = false,
   onToggleTask,
   onToggleFavorite,
   onChangeDate,
@@ -65,7 +68,7 @@ export function MessageMenu({
     ...(onAddReaction
       ? [{ id: "react", label: t("message.addReaction"), icon: "reactionAdd" as const, disabled: readOnly || addReactionReason !== undefined, hint: addReactionReason }]
       : []),
-    { id: "edit", label: t("message.edit"), icon: "edit", disabled: off(onEdit) },
+    ...(noEdit ? [] : [{ id: "edit", label: t("message.edit"), icon: "edit" as const, disabled: off(onEdit) }]),
     { id: "task", label: isTask ? t("message.untask") : t("message.task"), icon: "task", disabled: off(onToggleTask) },
     {
       id: "favorite",

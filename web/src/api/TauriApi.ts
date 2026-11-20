@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import type { KinigeApi, ListMessagesOptions } from "./KinigeApi";
-import { attachPaste, setAttachmentDetails, setDraftAttachmentDetails } from "./tauriAttachments";
+import { attachPaste, setAttachmentDetails, setDraftAttachmentDetails, setDropTarget } from "./tauriAttachments";
+import * as stickers from "./tauriStickers";
 import * as voice from "./tauriVoice";
 import {
   ATTACHMENTS_DRAG, ATTACHMENTS_DROPPED, DATABASE_CORRUPT, ENTRIES_CHANGED, IMPORT_PROGRESS, OPEN_CHAT, OPEN_MESSAGE, SETTINGS_CHANGED, call,
@@ -43,10 +44,6 @@ import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
 import type { TrashItem } from "./generated/TrashItem";
 import type { WeekdaySource } from "./generated/WeekdaySource";
-
-/** The number of the last `set_drop_target` call (see `setDropTarget`). It starts at the clock: Rust keeps the last number while
- * the app runs and Tauri reloads this page when the web view's process dies, so a count from zero would be ignored. */
-let dropTargetSeq = Date.now();
 
 /** `KinigeApi` over Tauri commands. Argument names are camelCase: Tauri itself converts them to Rust snake_case. */
 export class TauriApi implements KinigeApi {
@@ -96,6 +93,19 @@ export class TauriApi implements KinigeApi {
     return setAttachmentDetails(attachmentId, changes);
   }
 
+  // Stickers, GIFs and the bot token (slice 5c): the commands are in `tauriStickers.ts`.
+  readonly getStickerLibrary = stickers.getStickerLibrary;
+  readonly addStickerPack = stickers.addStickerPack;
+  readonly cancelStickerPack = stickers.cancelStickerPack;
+  readonly removeStickerPack = stickers.removeStickerPack;
+  readonly sendSticker = stickers.sendSticker;
+  readonly listJournalGifs = stickers.listJournalGifs;
+  readonly sendGifAgain = stickers.sendGifAgain;
+  readonly onStickerPackProgress = stickers.onStickerPackProgress;
+  readonly getTelegramTokenState = stickers.getTelegramTokenState;
+  readonly setTelegramBotToken = stickers.setTelegramBotToken;
+  readonly clearTelegramBotToken = stickers.clearTelegramBotToken;
+
   // Voice notes (slice 7a) and the capture window's own (KINIG-153): the commands are in `tauriVoice.ts`.
   readonly sendVoice = voice.sendVoice;
   readonly readVoiceForWaveform = voice.readVoiceForWaveform;
@@ -110,12 +120,7 @@ export class TauriApi implements KinigeApi {
     return call("attach_dropped", { token, chatId });
   }
 
-  async setDropTarget(active: boolean): Promise<void> {
-    // Every call carries a number that only grows; Rust ignores one that is older than what it has seen, so two calls that reach it in
-    // the other order cannot leave a stale answer.
-    dropTargetSeq += 1;
-    await call("set_drop_target", { active, seq: dropTargetSeq });
-  }
+  readonly setDropTarget = setDropTarget;
 
   async removeDraftAttachment(chatId: string, attachmentId: string): Promise<void> {
     await call("remove_draft_attachment", { chatId, attachmentId });

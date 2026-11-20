@@ -2,6 +2,7 @@ import { type ListMessagesOptions, KinigeApiError } from "../KinigeApi";
 import { compareFeed } from "../mockData";
 import { isRealDate, pageLimit } from "../mockRules";
 import { toggleTaskItem } from "../mockTasks";
+import { stickerOf } from "../../ui/attachments/stickerRule";
 import type { FeedCursor } from "../generated/FeedCursor";
 import type { MessageFlag } from "../generated/MessageFlag";
 import type { MessagePage } from "../generated/MessagePage";
@@ -31,6 +32,8 @@ export class MockEntries {
     return this.s.run("editMessage", `${id} ${body}`, () => {
       const row = this.s.row(id);
       this.s.writable(row);
+      // An entry drawn as a sticker has no text to edit (slice 5c).
+      if (stickerOf(row.view.bodyMd, row.view.attachments)) throw new KinigeApiError("sticker_entry_read_only");
       const text = body.replace(/\r\n?/g, "\n").trim();
       if (text === "") throw new KinigeApiError("empty_message");
       return this.s.setBody(row, text);

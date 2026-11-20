@@ -219,7 +219,7 @@ describe("Дерево настроек: состояние помнится", (
 describe("Settings tree: routes that are not offered (Windows has no AI-agent access, slice 10a)", () => {
   it("without the nested items the access section is an ordinary item: no chevron, no aria-expanded, nothing nested", () => {
     render(<SettingsTree route="access" onNavigate={vi.fn()} without={["access/chats", "access/log"]} />);
-    expect(names()).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов", "Файл настроек"]);
+    expect(names()).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Стикеры", "Доступ ИИ-агентов", "Файл настроек"]);
     expect(access()).not.toHaveAttribute("aria-expanded");
     expect(screen.queryByTestId("tree-chevron-access")).toBeNull();
     // Right arrow does not open anything and keeps the focus on the item.
