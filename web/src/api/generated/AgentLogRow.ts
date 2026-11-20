@@ -21,7 +21,11 @@ tool: string,
  */
 query: string | null, 
 /**
- * `ok`, `disabled`, `read_only`, `not_found`, `no_agent_entry`, `not_a_task`, `invalid_argument`, `error`.
+ * The setting a `set_setting` call named (one of the seven known names or `other`; slice 5d); `null` for every other row.
+ */
+setting: string | null, 
+/**
+ * `ok`, `disabled`, `read_only`, `not_found`, `no_agent_entry`, `not_a_task`, `invalid_argument`, `not_writable`, `error`.
  */
 outcome: string, 
 /**

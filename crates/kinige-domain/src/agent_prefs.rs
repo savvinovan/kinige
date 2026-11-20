@@ -202,6 +202,47 @@ mod tests {
     }
 
     #[test]
+    fn set_setting_arguments_are_parsed_strictly_and_a_user_only_name_carries_no_value() {
+        use crate::agent::{AgentTool, ToolArgs, parse_args};
+        let parse = |value: Value| {
+            let map = value.as_object().cloned();
+            parse_args(AgentTool::SetSetting, map.as_ref())
+        };
+        assert_eq!(
+            parse(serde_json::json!({"key": "text_size", "value": "large"})),
+            Ok(ToolArgs::SetSetting {
+                key: SettingKey::TextSize,
+                value: Some(TextSize::Large)
+            })
+        );
+        // A name the user alone may change parses without looking at the value; the store refuses it.
+        assert_eq!(
+            parse(serde_json::json!({"key": "mirror.folder", "value": ["anything"]})),
+            Ok(ToolArgs::SetSetting {
+                key: SettingKey::MirrorFolder,
+                value: None
+            })
+        );
+        for bad in [
+            serde_json::json!({}),
+            serde_json::json!({"key": "text_size"}),
+            serde_json::json!({"key": "text_size", "value": "Large"}),
+            serde_json::json!({"key": "text_size", "value": 1}),
+            serde_json::json!({"key": "Text_Size", "value": "large"}),
+            serde_json::json!({"key": "mcp_enabled", "value": "1"}),
+            serde_json::json!({"key": ["text_size"], "value": "large"}),
+            serde_json::json!({"key": null, "value": "large"}),
+        ] {
+            assert!(parse(bad.clone()).is_err(), "{bad}");
+        }
+        assert!(parse_args(AgentTool::SetSetting, None).is_err());
+        assert_eq!(
+            parse_args(AgentTool::GetSettings, None),
+            Ok(ToolArgs::GetSettings)
+        );
+    }
+
+    #[test]
     fn a_text_size_is_exactly_normal_or_large() {
         assert_eq!(parse_text_size("normal"), Some(TextSize::Normal));
         assert_eq!(parse_text_size("large"), Some(TextSize::Large));
