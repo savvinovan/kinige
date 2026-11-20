@@ -1,10 +1,13 @@
-# Peak resident size (KB) of the web content process, sampled while the chat 'GIF' (six GIFs near 7.5 MiB and one of 1.96 megapixels, all under the autoplay limits) scrolls past
-before opening the chat: 223040
-after scrolling to GIF 1: 223808
-after scrolling to GIF 2: 223936
-after scrolling to GIF 3: 225040
-after scrolling to GIF 4: 225440
-after scrolling to GIF 5: 225456
-after scrolling to GIF 6: 225520
-after scrolling to GIF 7: 227616
-peak: 227616 KB
+# Resident size (KB) of the web content process while the chat 'GIF' scrolls past: six GIFs of about 7.4 MiB and one of 1.96 megapixels, all under the autoplay limits
+(8 MiB and 2,000,000 pixels). A GIF that 'moves' is one whose two shots 0.5 s apart differ; 'still' is one whose shots are the same.
+
+Autoplay (Reduce Motion off for the page): each GIF plays while it is on screen
+before: 168784
+wide.gif: 180864 KB; two shots 0.5 s apart: differ: 213924 pixels, box 304,52,770,598
+heavy-5.gif: 185472 KB; two shots 0.5 s apart: differ: 55606 pixels, box 304,52,623,228
+heavy-4.gif: 185440 KB; two shots 0.5 s apart: differ: 214083 pixels, box 304,52,770,598
+heavy-3.gif: 185472 KB; two shots 0.5 s apart: differ: 213576 pixels, box 304,52,770,598
+heavy-2.gif: 185440 KB; two shots 0.5 s apart: differ: 213488 pixels, box 304,52,770,598
+heavy-1.gif: 185472 KB; two shots 0.5 s apart: differ: 53130 pixels, box 304,52,623,228
+heavy-0.gif: 182624 KB; two shots 0.5 s apart: differ: 52659 pixels, box 304,52,623,228
+peak: 185472 KB
