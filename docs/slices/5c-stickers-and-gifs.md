@@ -118,7 +118,7 @@
 - A Telegram login, and listing your installed packs: no Bot API method does that.
 - Syncing the library; sticker search; favourites; reordering packs; a pack preview; a proxy setting inside Kinige (the system proxy is used).
 - **GIF catalogue search.** Giphy and Klipy forbid storing copies of their media, and a journal keeps what it shows. Tenor's API shut down on 2026-06-30. Search waits for Klipy's written approval.
-- A file fallback for the token on Linux without Secret Service: it comes with the Linux build (slice 10). Until then the token cannot be saved there.
+- A secret store on **Windows** and **Linux** (ruling of the guardian review): there, saving a token is refused ("not supported on this system yet") and a pack cannot be added by its link; the stickers of an export work everywhere. Credential Manager through `keyring` is dropped (its entry persists as "enterprise" and no job has run it); Secret Service and a file fallback come with those builds (slice 10).
 - Stickers and GIFs in the quick capture window. Stickers made from your own picture: PRD §2.3 lists them, but the user's decisions name two sources, so they come later. Telegram "animation" messages stay placeholders.
 
 ## Reference (UI work)
@@ -221,8 +221,7 @@ A 1280 × 800 window.
 - **The token lives in the OS secret store**, as PRD §9.2 rules for secrets.
   - **Where:**
     - macOS: a generic-password item, service `me.savvinov.kinige`, account `telegram-bot-token`, not synchronizable;
-    - Windows: Credential Manager, the same name;
-    - Linux: Secret Service.
+    - Windows and Linux: none in this slice (see "Not included").
   - **Debug builds** use the service `me.savvinov.kinige.dev`, so a plain development run never touches the real item.
   - **A refused or locked keychain** is its own error category. There is no file fallback.
   - **Never** in `app_setting` (the database goes into 7 daily backups), the log, `settings.json`, MCP, the capture window or the main window.
