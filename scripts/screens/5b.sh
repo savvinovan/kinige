@@ -152,7 +152,7 @@ sleep 3
 has "${L_EXPAND}" || fail "no strip at the start"
 drive_raw main '{"kind":"text"}' 15 && drive_value > "$K/debug/inbox-text.txt"
 shoot 01-inbox-title-strip
-check_page_scroll "1280x800 normal text, the strip"
+check_page_scroll "the default window (1024x683 outer on the runner) normal text, the strip"
 
 # ---- 1. A 128-character chat name in the smallest window: one line, the switch does not move ----
 press "${L_LONG}"
@@ -164,11 +164,11 @@ resize 1280 800
 press "${L_INBOX}"
 sleep 2
 
-# ---- 2. Large text at 1280 x 800 ----
+# ---- 2. Large text in the default window (the runner's screen limits it to 1024 x 683, whatever `resize 1280 800` asks) ----
 edit_settings 'd["text_size"] = "large"'
 sleep 2
-shoot 03-large-text-1280
-check_page_scroll "1280x800 large text, the strip"
+shoot 03-large-text-default-window
+check_page_scroll "the default window (1024x683 outer on the runner) large text, the strip"
 edit_settings 'd["text_size"] = "normal"'
 
 # ---- 3. The board is hidden and comes back as the board, also after kill -9 ----

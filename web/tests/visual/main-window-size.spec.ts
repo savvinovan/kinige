@@ -41,10 +41,16 @@ for (const scale of ["default", "large"]) {
             const hit = box ? document.elementFromPoint(box.left + box.width / 2, box.top + 20) : null;
             return Boolean(hit?.closest(".composer"));
           })(),
+          // The empty field is one line high: its placeholder must be one line too, or its second line is cut in half (large text at 640 px, KINIG-76 review).
+          placeholder: (() => {
+            const input = document.querySelector(".composer__input");
+            return input ? getComputedStyle(input, "::placeholder").whiteSpace : null;
+          })(),
           toggle: inside(".forest-toggle"),
           title: inside(".main-window__title"),
         };
       });
+      expect(metrics.placeholder).toBe("nowrap");
       expect(metrics.wider).toBeLessThanOrEqual(0);
       expect(metrics.taller).toBeLessThanOrEqual(0);
       expect(metrics.composer).toBe(true);

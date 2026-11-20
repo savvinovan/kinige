@@ -177,9 +177,14 @@
   outline: none;
 }
 
+/* One line, cut with an ellipsis (KINIG-76 review): the empty field is one line high, and at large text in a 640 px window "Write a note…" wrapped
+   into a second line that the field cut in half. */
 .composer__input::placeholder {
+  overflow: hidden;
   color: var(--color-text-tertiary);
   opacity: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Floating quick capture panel (floating): the fill, border and rounding come from the panel around, the field is only a line inside it.
