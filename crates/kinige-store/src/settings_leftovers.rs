@@ -57,17 +57,18 @@ mod tests {
     #[test]
     fn only_the_exact_name_shape_matches() {
         let hex = "0123456789abcdef0123456789abcdef";
+        let short = "0123456789abcdef0123456789abcde";
         assert!(is_leftover_name(&format!(".settings.json.{hex}.tmp")));
         for wrong in [
             "settings.json".to_string(),
             ".settings.json".to_string(),
             format!(".settings.json.{}.tmp", hex.to_uppercase()),
-            format!(".settings.json.{}.tmp", &hex[..31]),
+            format!(".settings.json.{short}.tmp"),
             format!(".settings.json.{hex}0.tmp"),
             format!(".settings.json.{hex}.tmp.bak"),
             format!("x.settings.json.{hex}.tmp"),
             ".settings.json.01234567-89ab-cdef-0123-456789abcdef.tmp".to_string(),
-            format!(".settings.json.{}g.tmp", &hex[..31]),
+            format!(".settings.json.{short}g.tmp"),
             String::new(),
         ] {
             assert!(!is_leftover_name(&wrong), "{wrong}");

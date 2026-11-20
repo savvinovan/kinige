@@ -219,12 +219,7 @@ fn the_settings_file_command_is_gone_from_every_window_and_every_list() {
         let error = call(&window, "get_settings_file", json!({})).unwrap_err();
         assert!(is_acl_denial(&error), "{label}: {error}");
     }
-    for list in [
-        &COMMANDS[..],
-        &MAIN_COMMANDS[..],
-        &SETTINGS_COMMANDS[..],
-        &CAPTURE_COMMANDS[..],
-    ] {
+    for list in [COMMANDS, MAIN_COMMANDS, SETTINGS_COMMANDS, CAPTURE_COMMANDS] {
         assert!(!list.contains(&"get_settings_file"));
     }
     assert_eq!(

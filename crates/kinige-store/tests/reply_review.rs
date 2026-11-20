@@ -12,7 +12,7 @@ use common::days::at;
 use common::*;
 use kinige_domain::AgentMode;
 use kinige_domain::groups::INBOX_ID;
-use kinige_domain::{ReplyState, SearchFilters, TextSize};
+use kinige_domain::{ReplyState, SearchFilters};
 use kinige_store::StoreError;
 use serde_json::json;
 
