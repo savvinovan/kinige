@@ -101,8 +101,8 @@ The review this version is based on: [`01-review.md`](01-review.md). Research: [
   - slice 5 in the roadmap (§15).
 
 - **v0.12 (30.10.2026)** — for slice 4b (`docs/slices/4b-settings.md`) and ADR-0010:
-  - settings are a separate window with a tree of sections ("Appearance", "Keyboard shortcuts", "Copies", "AI agent access" with the sub-screens "Visible chats" and "Access log"; the "Settings file" page went in slice 5d), ⌘, and an item in the tray icon menu; the main window no longer shows settings (§2.1, §11.3);
-  - settings live only in `app_setting` (SQLite); since slice 5d (KINIG-160, ADR-0022) there is no `settings.json` (it was an input for settings in slice 4b, ADR-0010): Kinige does not read, write or delete a file of that name, and removes only its own old `.settings.json.<32 hex>.tmp` files at start. An agent reads the settings and changes the text size through two MCP tools (§9.3);
+  - settings are a separate window with a tree of sections ("Appearance", "Keyboard shortcuts", "Copies", "AI agent access" with the sub-screens "Visible chats" and "Access log", "Settings file"), ⌘, and an item in the tray icon menu; the main window no longer shows settings (§2.1, §11.3);
+  - the `settings.json` file in the data directory is an input for settings (text, shortcuts, copy folder, AI agent access): the app and a human or an agent edit it, changes are picked up within 1–2 s; the effective state stays in `app_setting` (§5.1, §9.3, ADR-0010);
   - agent access can be turned on through the file: an unsafe file (a symlink, writable by group or everyone) does not apply such keys, every change from the file is a line in the access log (§9.3);
   - IPC matrix: the `settings` window with its own capability, the moved commands are revoked from the main window (§12.3);
   - slice 4b in the roadmap (§15).
@@ -112,7 +112,7 @@ The review this version is based on: [`01-review.md`](01-review.md). Research: [
   - import from Telegram: "Saved Messages" → Inbox, private chats → new chats 💬, the original entry time is kept (`created_at`, `journal_date`), the HLC stamp is the moment of import (§5, §9).
 
 - **v0.10 (22.10.2026)** — for the user's decisions on slice 2 (`docs/slices/2-quick-capture.md`) and ADR-0006:
-  - default shortcuts: the capture window — **temporarily ⌃⌥N** instead of ⌥Space (on the author's machine ⌥Space and ⌥⇧Space are taken by ChatGPT and Gemini, ⌃Space and ⌃⌥Space by keyboard layout switching, ⌘Space by Raycast; 22.10.2026), saving the clipboard — ⌥⇧V; custom shortcuts are set in "Settings" only (an agent can read them but never change them, §9.3, ADR-0022), a taken shortcut is shown there too (§5.1);
+  - default shortcuts: the capture window — **temporarily ⌃⌥N** instead of ⌥Space (on the author's machine ⌥Space and ⌥⇧Space are taken by ChatGPT and Gemini, ⌃Space and ⌃⌥Space by keyboard layout switching, ⌘Space by Raycast; 22.10.2026), saving the clipboard — ⌥⇧V; custom shortcuts are set in "Settings", a taken shortcut is shown there too (§5.1);
   - on success the clipboard hotkey blinks the menu bar icon, on failure it opens the capture window with the clipboard text and the error (§5.1);
   - appending (⌘Enter) is the first rewrite of the `body` group without an `edit` revision; the target rule: `origin = 'user'`, not older than 10 minutes, today's journal day (§5.1, §9.3, ADR-0006);
   - drafts are the local `draft` table (§5, §5.1); the capture window has its own capability (§12.3).

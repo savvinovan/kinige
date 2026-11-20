@@ -159,9 +159,27 @@ sql() { printf '%s' "$STORED"; }
 (DRIVER="" STORED=large; FAILS=0; set_text_size large > "$WORK/last-output" 2>&1; exit "$FAILS") || { echo "set_text_size large FAILS WRONGLY: $(cat "$WORK/last-output")"; PROBLEMS=$((PROBLEMS + 1)); }
 expect_seen "the profile menu is opened in the main window" '"window":"main","step":{"kind":"press","name":"Profile"}'
 expect_seen "Settings is pressed in the main window" '"window":"main","step":{"kind":"press","name":"Settings"}'
-expect_seen "the settings window is waited for" '"window":"settings","step":{"kind":"wait","name":"Large","role":"radio","timeoutMs":2000}'
+expect_seen "the settings window is waited for" '"window":"settings","step":{"kind":"wait","name":"Appearance","timeoutMs":2000}'
+expect_seen "the Appearance page is opened (the window may be on another page)" '"window":"settings","step":{"kind":"press","name":"Appearance","role":"button"}'
+expect_seen "the radio button is waited for on that page" '"window":"settings","step":{"kind":"wait","name":"Large","role":"radio","timeoutMs":4000}'
 expect_seen "the radio button is pressed in the settings window" '"window":"settings","step":{"kind":"press","name":"Large","role":"radio"}'
-[ "$(grep -c '"kind"' "$WORK/seen")" = "4" ] || { echo "set_text_size sent more than four steps: $(cat "$WORK/seen")"; PROBLEMS=$((PROBLEMS + 1)); }
+[ "$(grep -c '"kind"' "$WORK/seen")" = "7" ] || { echo "set_text_size sent other than seven steps: $(cat "$WORK/seen")"; PROBLEMS=$((PROBLEMS + 1)); }
+# The last step puts the main window in front (an AX call without AX_WINDOW acts on the frontmost window), on a failure too.
+expect_last_step() {
+  if [ "$(tail -n 1 "$WORK/seen" | sed -e 's/^{"id":"[A-Za-z0-9]*",//')" != '"window":"main","step":{"kind":"front"}}' ]; then
+    echo "NOT LAST: $1 (last step: $(tail -n 1 "$WORK/seen"))"
+    PROBLEMS=$((PROBLEMS + 1))
+  fi
+}
+expect_last_step "the main window is put in front at the end"
+: > "$WORK/seen"
+(STORED="normal"; FAILS=0; set_text_size large > /dev/null 2>&1; exit "$FAILS") > /dev/null
+expect_last_step "the main window is put in front after a failed check"
+: > "$WORK/seen"
+(STORED="large"; FAILS=0; set_text_size huge > /dev/null 2>&1; exit "$FAILS") > /dev/null
+expect_last_step "the main window is put in front after a refused size"
+: > "$WORK/seen"
+(DRIVER="" STORED=large; FAILS=0; set_text_size large > /dev/null 2>&1)
 if grep -E '"kind":"(type|key|hide)"' "$WORK/seen" > /dev/null; then
   echo "set_text_size sent a step that is not a click"
   PROBLEMS=$((PROBLEMS + 1))
