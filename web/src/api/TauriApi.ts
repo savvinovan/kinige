@@ -37,7 +37,6 @@ import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { SearchFilters } from "./generated/SearchFilters";
 import type { SearchPage } from "./generated/SearchPage";
 import type { Settings } from "./generated/Settings";
-import type { SettingsFileState } from "./generated/SettingsFileState";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
@@ -339,10 +338,6 @@ export class TauriApi implements KinigeApi {
 
   async openSettings(): Promise<void> {
     await call("open_settings");
-  }
-
-  getSettingsFile(): Promise<SettingsFileState> {
-    return call("get_settings_file");
   }
 
   async settingsOpenEntry(id: string): Promise<void> {

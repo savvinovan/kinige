@@ -31,7 +31,6 @@ import type { RestoreOutcome } from "./generated/RestoreOutcome";
 import type { SearchFilters } from "./generated/SearchFilters";
 import type { SearchPage } from "./generated/SearchPage";
 import type { Settings } from "./generated/Settings";
-import type { SettingsFileState } from "./generated/SettingsFileState";
 import type { ShortcutKind } from "./generated/ShortcutKind";
 import type { StartupState } from "./generated/StartupState";
 import type { TextSize } from "./generated/TextSize";
@@ -197,17 +196,15 @@ export interface KinigeApi {
   /** The entries a call touched; one deleted forever comes with `message: null`. */
   listAgentLogEntries(logId: number): Promise<AgentLogEntry[]>;
 
-  // ---- settings window and the settings.json file (slice 4b, ADR-0010) ----
+  // ---- settings window (slice 4b; settings live only in SQLite since slice 5d, ADR-0022) ----
   /** Open the settings window from the main window (opening again raises the same window). */
   openSettings(): Promise<void>;
-  /** The `settings.json` path, what is wrong with it and which keys have errors; for the settings window. */
-  getSettingsFile(): Promise<SettingsFileState>;
   /**
    * Open an entry from the call log in the main window feed. Rust checks the entry: deleted forever or in the trash -
    * `message_not_found`; the content is not given to the settings window.
    */
   settingsOpenEntry(id: string): Promise<void>;
-  /** Settings changed: by the window, another window or the file (other people's edits are seen within seconds). Returns the unsubscribe function. */
+  /** Settings changed: by the window, another window or an agent's text-size change (other people's edits are seen within seconds). Returns the unsubscribe function. */
   onSettingsChanged(handler: () => void): Promise<() => void>;
   /** The settings window asks to open an entry: the main window opens the chat at that entry. Returns the unsubscribe function. */
   onOpenMessage(handler: (target: { chatId: string; messageId: string }) => void): Promise<() => void>;

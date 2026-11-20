@@ -50,7 +50,7 @@ export class MockApp {
       const folder = this.s.settings.mirror.folder;
       const previousMirror = folder ? `${folder}-before-restore-20261021T061200Z` : null;
       this.s.startup = { needsRecovery: false, backups: [], databaseTooNew: false, corruptionFound: false };
-      return { previousMirror, settingsFileMirror: null };
+      return { previousMirror };
     });
   }
 

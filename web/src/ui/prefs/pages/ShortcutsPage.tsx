@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import type { ShortcutKind } from "../../../api/generated/ShortcutKind";
 import type { ShortcutStatus } from "../../../api/generated/ShortcutStatus";
 import { ShortcutRow } from "../../settings/ShortcutRow";
-import { ChangedByFile } from "../ChangedByFile";
 import { SettingsGroup } from "../SettingsGroup";
 import "../../settings/settings.css";
 
@@ -15,12 +14,10 @@ interface ShortcutsPageProps {
   onReset: (kind: ShortcutKind) => void;
   /** Recording a new shortcut started or finished: Rust disables the global shortcuts for that time. */
   onRecording: (active: boolean) => void;
-  changedAt: number | null;
-  now?: Date;
 }
 
 /** "Keyboard shortcuts": two global shortcuts with a status, change and reset. */
-export function ShortcutsPage({ shortcuts, errors, onChange, onReset, onRecording, changedAt, now }: ShortcutsPageProps) {
+export function ShortcutsPage({ shortcuts, errors, onChange, onReset, onRecording }: ShortcutsPageProps) {
   const { t } = useTranslation();
   const titleId = useId();
   return (
@@ -42,7 +39,6 @@ export function ShortcutsPage({ shortcuts, errors, onChange, onReset, onRecordin
             />
           ))}
         </SettingsGroup>
-        <ChangedByFile at={changedAt} now={now} />
       </div>
     </section>
   );

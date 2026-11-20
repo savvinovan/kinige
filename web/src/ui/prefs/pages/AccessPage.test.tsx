@@ -8,7 +8,7 @@ const access = (patch: Partial<AgentAccess> = {}): AgentAccess => ({ enabled: fa
 const unsupported = access({ enabled: true, socket: { ...MOCK_AGENT_SOCKET, listening: false, error: "unsupported", bridgePath: null, socketPath: null, desktopConfig: null, codeCommand: null } });
 
 function page(value: AgentAccess, language: "ru" | "en") {
-  render(<AccessPage access={value} onEnabledChange={vi.fn()} onModeChange={vi.fn()} onOpen={vi.fn()} changedAt={null} />, { language });
+  render(<AccessPage access={value} onEnabledChange={vi.fn()} onModeChange={vi.fn()} onOpen={vi.fn()} />, { language });
   return screen.getByRole("region", { name: /Доступ ИИ-агентов|AI agent access/ });
 }
 

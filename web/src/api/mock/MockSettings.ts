@@ -2,25 +2,13 @@ import { KinigeApiError } from "../KinigeApi";
 import { DEFAULT_SHORTCUTS } from "../mockData";
 import type { ErrorCode } from "../generated/ErrorCode";
 import type { Settings } from "../generated/Settings";
-import type { SettingsFileState } from "../generated/SettingsFileState";
 import type { ShortcutKind } from "../generated/ShortcutKind";
 import type { TextSize } from "../generated/TextSize";
 import type { MockState } from "./MockState";
 
-/** The settings file state with no problems: a path and empty lists. */
-export const MOCK_SETTINGS_FILE: SettingsFileState = {
-  path: "/Users/me/Library/Application Support/me.savvinov.kinige/settings.json",
-  problem: null,
-  unsafeReason: null,
-  issues: [],
-  unknownKeys: [],
-  unknownMore: 0,
-  changed: { appearance: null, shortcuts: null, mirror: null, access: null },
-};
-
 /**
- * Settings in `MockApi`: the text size, the copy folder, the shortcuts, and (slice 4b, ADR-0010) the `settings.json` file state that a
- * test or a story sets as it likes, the "settings window is open" counter and opening an entry from the log.
+ * Settings in `MockApi`: the text size, the copy folder, the shortcuts, the "settings window is open" counter and opening an
+ * entry from the log.
  */
 export class MockSettings {
   /** The next folder choice fails with this error. */
@@ -31,8 +19,6 @@ export class MockSettings {
   pickedFolder: string | null;
   /** Shortcut recording mode records: `true` at the start, `false` at the end. */
   readonly recordingLog: boolean[] = [];
-  /** What `getSettingsFile` returns: a test replaces it fully or partly. */
-  settingsFile: SettingsFileState = MOCK_SETTINGS_FILE;
   /** How many times the settings window was asked to open. */
   openSettingsCount = 0;
   /** Entries that the settings window asked to open in the feed: `settingsOpenEntry` sends them to the main window. */
@@ -81,10 +67,6 @@ export class MockSettings {
   shortcutRecording(active: boolean): Promise<void> {
     this.recordingLog.push(active);
     return Promise.resolve();
-  }
-
-  getSettingsFile(): Promise<SettingsFileState> {
-    return this.s.run("getSettingsFile", "", () => this.settingsFile);
   }
 
   openSettings(): Promise<void> {

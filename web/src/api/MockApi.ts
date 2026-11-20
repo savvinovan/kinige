@@ -8,7 +8,6 @@ import type { AttachmentView } from "./generated/AttachmentView";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { ImportReport } from "./generated/ImportReport";
 import type { MessageView } from "./generated/MessageView";
-import type { SettingsFileState } from "./generated/SettingsFileState";
 import { MockAgents } from "./mock/MockAgents";
 import { MockApp } from "./mock/MockApp";
 import { MockAttachments } from "./mock/MockAttachments";
@@ -29,7 +28,6 @@ export { DEFAULT_SETTINGS, type MockApiOptions, mockMessage } from "./mockData";
 export { MOCK_AGENT_SOCKET, MOCK_LOG_PAGE } from "./mock/MockAgents";
 export { mockAttachment } from "./mock/MockAttachments";
 export { MOCK_BACKUP_NAME, type MockImportFile } from "./mock/MockImport";
-export { MOCK_SETTINGS_FILE } from "./mock/MockSettings";
 export type { MockMethod } from "./mock/MockState";
 
 /**
@@ -128,7 +126,6 @@ export class MockApi implements KinigeApi {
   setShortcut: KinigeApi["setShortcut"] = (kind, accelerator) => this.settings.setShortcut(kind, accelerator);
   resetShortcut: KinigeApi["resetShortcut"] = (kind) => this.settings.resetShortcut(kind);
   shortcutRecording: KinigeApi["shortcutRecording"] = (active) => this.settings.shortcutRecording(active);
-  getSettingsFile: KinigeApi["getSettingsFile"] = () => this.settings.getSettingsFile();
   openSettings: KinigeApi["openSettings"] = () => this.settings.openSettings();
   settingsOpenEntry: KinigeApi["settingsOpenEntry"] = (id) => this.settings.settingsOpenEntry(id);
   onOpenMessage: KinigeApi["onOpenMessage"] = (handler) => this.settings.onOpenMessage(handler);
@@ -299,8 +296,6 @@ export class MockApi implements KinigeApi {
   set failNextCapture(code: ErrorCode | null) { this.capture.failNext = code; }
   get pickedFolder() { return this.settings.pickedFolder; }
   set pickedFolder(folder: string | null) { this.settings.pickedFolder = folder; }
-  get settingsFile() { return this.settings.settingsFile; }
-  set settingsFile(file: SettingsFileState) { this.settings.settingsFile = file; }
   get importFile() { return this.importer.file; }
   set importFile(file: MockImportFile) { this.importer.file = file; }
   get importReportPatch() { return this.importer.reportPatch; }
