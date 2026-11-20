@@ -1,4 +1,13 @@
 /* Main window: sidebar on the left, feed and composer on the right, full window height. Tokens only. */
+/* KINIG-76: the document of the main window never scrolls, in either direction: only the feed and the sidebar list do. `data-window="main"` is set by
+   main.tsx, like the settings window's (prefs.css) and the capture window's (capture.css). It is a guard, not the fix: what overflowed is made to fit
+   (the reply strip's label shrinks), so the guard never cuts the field. It holds only while the journal is on screen (`:has(.main-window)`): the
+   recovery screens of the same window are a column that may be taller than the window and scroll the page. */
+html[data-window="main"]:has(.main-window),
+html[data-window="main"]:has(.main-window) body {
+  overflow: hidden;
+}
+
 .main-window {
   display: flex;
   height: var(--layout-window-height);
