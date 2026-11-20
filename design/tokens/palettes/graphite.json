@@ -55,9 +55,19 @@
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 20,4 %" } }
         },
         "chip": {
-          "$value": "#3a3a3a",
-          "$description": "KINIG-138: the fill of a reaction chip inside a bubble or a card: quiet and neutral, every chip is the person's own so there is no accent tint. It stands off the bubble's fill by 1.25:1, and primary text on it is 10.4:1, tertiary text (the 'N y' age) 4.95:1.",
-          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 22,7 %" } }
+          "$value": "#6d9bab",
+          "$description": "KINIG-138 (restyled after the user's review of the acceptance build): the fill of a reaction chip that can be pressed (the feed, the 'On this day' card), a clearly lighter pill tinted with the accent, so it reads as a button at a glance without a border. It stands off the bubble's and the card's fill by 4.7:1 (the boundary needs 3:1), off the highlighted bubble by 3.5:1 and off the selected search row by 3.1:1. The text on it is the dark text.on-chip (6.1:1); the light text roles are not placed on it.",
+          "$extensions": { "kinige": { "origin": "авторский: подкраска акцента, тон 195°, насыщенность 27 %, светлота 55 %" } }
+        },
+        "chip-hover": {
+          "$value": "#82b3c1",
+          "$description": "KINIG-138: the fill of a pressable reaction chip under the pointer or with the keyboard focus: clearly lighter than the resting chip (1.32:1 to it) and still tinted with the accent. The dark text.on-chip on it is 8.0:1.",
+          "$extensions": { "kinige": { "origin": "авторский: подкраска акцента, тон 193°, насыщенность 34 %, светлота 63 %" } }
+        },
+        "chip-static": {
+          "$value": "#959595",
+          "$description": "KINIG-138: the fill of a reaction chip that cannot be pressed (the trash, search rows, a read-only entry): the same lightness as the pressable one but a neutral gray with no accent and no hover, so it is flatter. It stands off the bubble's fill by 4.7:1 and off the selected search row by 3.1:1. The dark text.on-chip on it is 6.2:1.",
+          "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 58,4 %" } }
         }
       },
       "text": {
@@ -75,6 +85,11 @@
           "$value": "#ababab",
           "$description": "Metadata: the time, hints, the entry counter, icons. A quiet gray, not an accent.",
           "$extensions": { "kinige": { "origin": "авторский: нейтральный серый, светлота 67 %" } }
+        },
+        "on-chip": {
+          "$value": "#141414",
+          "$description": "KINIG-138: the text on a reaction chip (the 'N y' age): dark, because the chip fills are light enough to stand off the bubble by 3:1, and light text would not reach 4.5:1 on them. 6.1:1 on the resting chip, 8.0:1 on the hovered one, 6.2:1 on the static one.",
+          "$extensions": { "kinige": { "origin": "авторский: то же значение, что surface.background" } }
         }
       },
       "accent": {

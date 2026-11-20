@@ -20,34 +20,36 @@
   padding: 0 var(--layout-reaction-chip-padding);
   border: 0;
   border-radius: var(--radius-round);
-  background: var(--color-surface-chip);
-  color: var(--color-text-primary);
+  /* A chip that cannot be pressed (the trash, search rows, a read-only entry) is the flat one: a neutral gray, no accent, no hover. A pill that stands off
+     the bubble by fill alone (3:1 at least, checked in the palette's contrast test), with no border. */
+  background: var(--color-surface-chip-static);
+  color: var(--color-text-on-chip);
   font-family: var(--font-family-emoji);
   font-size: var(--type-body-size);
   line-height: var(--type-body-line-height);
   white-space: nowrap;
 }
 
-/* The "N y" age of a late reaction: quiet, in the time's type. */
+/* The "N y" age of a late reaction: in the time's type, in the dark text the chip's fill needs. */
 .reaction-chip__age {
-  color: var(--color-text-tertiary);
+  color: var(--color-text-on-chip);
   font-family: var(--type-meta-family);
   font-size: var(--type-meta-size);
   font-weight: var(--type-meta-weight);
   font-variant-numeric: tabular-nums;
 }
 
+/* The pressable chip (the feed, the "On this day" card) is tinted with the accent and reads as a button; under the pointer and with the keyboard focus
+   it is clearly lighter (the keyboard focus also has the ring of base.css). */
 .reaction-chip--button {
+  background: var(--color-surface-chip);
   cursor: pointer;
   transition: background-color var(--motion-duration-short) var(--motion-easing-standard);
 }
 
-.reaction-chip--button:hover {
-  background: var(--color-highlight-row);
-}
-
-.reaction-chip--button:hover .reaction-chip__age {
-  color: var(--color-text-secondary);
+.reaction-chip--button:hover,
+.reaction-chip--button:focus-visible {
+  background: var(--color-surface-chip-hover);
 }
 
 /* A chip inside the card of "On this day" or a search row sits on its own fill; nothing else changes. */

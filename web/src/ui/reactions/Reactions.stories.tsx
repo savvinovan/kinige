@@ -69,6 +69,11 @@ export const РядАнглийский: Story = { globals: { language: "en" }, 
 /** One chip. */
 export const ЧипОдин: Story = { render: () => message({ reactions: [chip(HEART)] }) };
 
+/** An entry whose text is a single emoji (the user's example): the chips must not look like more of the text: they are pills with a gap above them. */
+export const ТекстОдинЭмодзи: Story = {
+  render: () => message({ reactions: [chip(HEART), chip("🔥"), chip("😂")], reactionKeysHad: ["❤", "🔥", "😂"] }, "🎉"),
+};
+
 /** Ten chips wrap inside the bubble, the time at the end of the last row. */
 export const ЧипыДесять: Story = { render: () => message({ reactions: DIFFERENT.map((e) => chip(e)) }, "Короткая запись") };
 

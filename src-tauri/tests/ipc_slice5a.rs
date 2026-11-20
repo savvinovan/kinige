@@ -110,7 +110,8 @@ fn a_reaction_goes_through_the_feed_the_settings_and_back() {
     let removed = call(&main, COMMAND, json!({"id": id, "emoji": "❤", "on": false})).unwrap();
     assert_eq!(removed["reactions"].as_array().map(Vec::len), Some(1));
     assert_eq!(removed["reactionKeysHad"], json!(["\u{2764}", "🔥"]));
-    // The two counts the caps use come through in the right order, and are not equal: three items held, one live (two removed).
+    // The two counts the caps use come through in the right order, and are not equal: after ❤️ and 🔥 were put and ❤️ removed, the group holds two items
+    // and one is live, (2, 1); after 😂 is put and removed it holds three and one is live, (3, 1).
     assert_eq!(
         (
             removed["reactionKeyCount"].clone(),
