@@ -6,8 +6,11 @@ export const FULL_MAX_BYTES = 64 * 1024 * 1024;
 
 const FULL_MIMES: ReadonlySet<string> = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
-/** `audio` (slice 7a) is the voice note player's source: served with `Range`, only when the player is first pressed. */
-export type MediaVariant = "thumb" | "full" | "audio";
+/**
+ * `audio` (slice 7a) is the voice note player's source: served with `Range`, only when the player is first pressed. `sticker` (slice 5c) is
+ * a sticker of the library, by its library id (not an attachment id): `kinige-media://localhost/sticker/<library id>`, main window only.
+ */
+export type MediaVariant = "thumb" | "full" | "audio" | "sticker";
 
 /** Where a picture of an attachment comes from: the real protocol in the app, synthetic images in stories and tests. */
 export type MediaSource = (variant: MediaVariant, id: string) => string;

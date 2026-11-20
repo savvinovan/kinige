@@ -3,16 +3,21 @@
 //! `kinige-store`.
 
 use crate::groups::{GroupError, SCHEMA_VERSION, assemble};
-use crate::hlc::is_uuid_v4;
 use serde::Serialize;
 use serde_json::json;
 use ts_rs::TS;
 
+mod check;
+use check::check;
+
 mod names;
 pub use names::{
-    classify, ext_suffix, extension, is_openable_document, mirror_file_names, sanitize_filename,
-    stored_ext, summarize, summary_of,
+    StickerMark, classify, ext_suffix, extension, is_openable_document, mirror_file_names,
+    sanitize_filename, stored_ext, summarize, summary_of,
 };
+
+pub mod sticker;
+pub use sticker::{STICKER_GROUP, Sticker, StickerCore, read_sticker, sticker_group, sticker_of};
 
 mod details;
 pub use details::{
@@ -142,6 +147,10 @@ pub struct AttachmentView {
     pub description: Option<String>,
     /// Covered in the Kinige window until clicked; only an `image` can be (slice 7b). A cover against a glance, not a lock.
     pub spoiler: bool,
+    /// The record says it is a sticker (slice 5c, `sticker` group); the feed draws the entry as one when it has no text and this is not covered.
+    pub sticker: bool,
+    /// The sticker's emoji, only a valid emoji sequence.
+    pub sticker_emoji: Option<String>,
     pub mime: String,
     #[ts(type = "number")]
     pub byte_size: i64,
@@ -172,6 +181,9 @@ pub struct AttachmentSummary {
     pub voice_ms: Option<i64>,
     /// The file name when the entry has exactly one attachment.
     pub name: Option<String>,
+    /// The only attachment is an uncovered sticker: the line reads "Sticker 😺" (slice 5c).
+    pub sticker: bool,
+    pub sticker_emoji: Option<String>,
 }
 
 /// Everything the `core`, `order` and `deleted` groups of a new attachment are built from.
@@ -199,6 +211,10 @@ pub struct NewAttachment<'a> {
     pub description: Option<&'a str>,
     /// Covered in the window; only for an `image`.
     pub spoiler: bool,
+    /// Written only by `send_sticker`, a GIF sent again never, and the export import, after this device's probe of the bytes (slice 5c).
+    pub sticker: bool,
+    /// A valid emoji sequence (see [`sticker::clean_emoji`]), only for a sticker.
+    pub sticker_emoji: Option<&'a str>,
 }
 
 /// A whole row of the `attachment` table: the parsed columns and the groups' bytes.
@@ -221,6 +237,9 @@ pub struct AttachmentRow {
     pub display_name: Option<String>,
     pub description: Option<String>,
     pub spoiler: bool,
+    /// The derived columns of slice 5c: what [`read_sticker`] gives for the groups' bytes.
+    pub sticker: bool,
+    pub sticker_emoji: Option<String>,
     pub hlc_json: String,
     pub schema_version: u32,
     pub groups_raw: String,
@@ -254,10 +273,25 @@ pub fn new_attachment(input: &NewAttachment<'_>, hlc: &str) -> Result<Attachment
         (NAME_GROUP, name_group(input.display_name)),
         (DESCRIPTION_GROUP, description_group(input.description)),
         (PRIVACY_GROUP, privacy_group(input.spoiler)),
+        (
+            STICKER_GROUP,
+            sticker_group(input.sticker_emoji, input.sticker),
+        ),
     ];
     let (groups_raw, hlc_json) = assemble(&groups, hlc)?;
     // The columns are the read function's output for these very bytes, so they cannot differ from what a reader of the groups sees.
     let details = read_details(input.kind, input.filename, &groups_raw, &hlc_json);
+    let sticker = read_sticker(
+        &StickerCore {
+            kind: input.kind,
+            mime: input.mime,
+            width: input.width,
+            height: input.height,
+            byte_size: input.byte_size,
+        },
+        &groups_raw,
+        &hlc_json,
+    );
     Ok(AttachmentRow {
         id: input.id.to_string(),
         message_id: input.message_id.to_string(),
@@ -275,67 +309,12 @@ pub fn new_attachment(input: &NewAttachment<'_>, hlc: &str) -> Result<Attachment
         display_name: details.display_name,
         description: details.description,
         spoiler: details.spoiler,
+        sticker: sticker.sticker,
+        sticker_emoji: sticker.emoji,
         hlc_json,
         schema_version: SCHEMA_VERSION,
         groups_raw,
     })
-}
-
-fn check(input: &NewAttachment<'_>) -> Result<(), GroupError> {
-    let invalid = |why: &'static str| Err(GroupError::Invalid(why));
-    if !is_uuid_v4(input.id) || !is_uuid_v4(input.message_id) {
-        return invalid("attachment or message id is not a UUID v4");
-    }
-    if !is_uuid_v7(input.remote_blob_id) {
-        return invalid("remote_blob_id is not a UUID v7");
-    }
-    if !is_hex64(input.sha256) || !is_hex64(input.blob_key) {
-        return invalid("sha256 or blob_key is not 64 lowercase hex characters");
-    }
-    if input.filename.is_empty()
-        || input.filename.len() > MAX_FILENAME_BYTES
-        || sanitize_filename(input.filename) != input.filename
-    {
-        return invalid("filename");
-    }
-    if input.mime.is_empty() || input.mime.len() > 255 || input.mime.chars().any(char::is_control) {
-        return invalid("mime");
-    }
-    if input.byte_size < 0 || input.byte_size as u64 > MAX_FILE_BYTES {
-        return invalid("byte_size");
-    }
-    if input.sort_index as usize >= MAX_PER_ENTRY {
-        return invalid("sort_index");
-    }
-    if input.kind != AttachmentKind::Image && (input.width.is_some() || input.height.is_some()) {
-        return invalid("width and height belong to images");
-    }
-    // Details (slice 7b): the bytes that sync sends hold only what the rules accept, and a spoiler is an image's.
-    if input
-        .display_name
-        .is_some_and(|name| !valid_display_name(name, input.filename))
-        || input.display_name == Some(input.filename)
-    {
-        return invalid("display_name");
-    }
-    if input
-        .description
-        .is_some_and(|text| normalize_description(text) != Ok(Some(text.to_string())))
-    {
-        return invalid("description");
-    }
-    if input.spoiler && input.kind != AttachmentKind::Image {
-        return invalid("a spoiler belongs to images");
-    }
-    // Every writer must satisfy this: the Telegram import writes seconds as a `u32` times 1000 (slice 7), the recorder 1 s to 30 min
-    // (slice 7a). The recorder's own limits live in `send_voice`, not here.
-    if let Some(duration_ms) = input.duration_ms {
-        let timed = matches!(input.kind, AttachmentKind::Audio | AttachmentKind::Video);
-        if !timed || !(0..=MAX_DURATION_MS).contains(&duration_ms) {
-            return invalid("duration_ms belongs to audio and video, 0 to 4294967295000");
-        }
-    }
-    Ok(())
 }
 
 /// A UUID v7 in lower case: `7` at the start of the third group, variant `8`, `9`, `a` or `b` at the start of the fourth.
@@ -372,7 +351,16 @@ mod tests;
 mod voice_tests;
 
 #[cfg(test)]
+mod sticker_tests;
+
+#[cfg(test)]
+mod sticker_rules_tests;
+
+#[cfg(test)]
 mod details_tests;
+
+#[cfg(test)]
+mod details_large_tests;
 
 #[cfg(test)]
 mod changes_tests;

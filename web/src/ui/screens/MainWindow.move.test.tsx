@@ -76,7 +76,8 @@ describe("«Переместить в чат»: меню записи", () => {
     setup();
     await screen.findByText("Купить хлеб");
     fireEvent.contextMenu(article("Купить хлеб"));
-    for (let i = 0; i < 5; i++) fireEvent.keyDown(menu(), { key: "ArrowDown" });
+    // Copy, Add reaction…, Edit, Task, Favorite, Change date…, then "Move to chat".
+    for (let i = 0; i < 6; i++) fireEvent.keyDown(menu(), { key: "ArrowDown" });
     expect(item("Переместить в чат")).toHaveFocus();
     fireEvent.click(document.activeElement as HTMLElement);
     await waitFor(() => expect(item("Назад")).toHaveFocus());

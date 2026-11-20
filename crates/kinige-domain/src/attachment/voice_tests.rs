@@ -28,6 +28,8 @@ fn audio(duration_ms: Option<i64>) -> NewAttachment<'static> {
         display_name: None,
         description: None,
         spoiler: false,
+        sticker: false,
+        sticker_emoji: None,
     }
 }
 
@@ -89,6 +91,8 @@ fn the_summary_counts_audio_as_voice_notes_with_their_total_length() {
         name: name.to_string(),
         description: None,
         spoiler: false,
+        sticker: false,
+        sticker_emoji: None,
         mime: "x/y".to_string(),
         byte_size: 1,
         width: None,

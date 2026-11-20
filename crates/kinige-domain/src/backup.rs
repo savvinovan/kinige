@@ -103,8 +103,6 @@ pub struct StartupState {
 pub struct RestoreOutcome {
     /// Where the previous Markdown copy folder was moved (`<name>-before-restore-<stamp>`); `null` means there was no folder.
     pub previous_mirror: Option<String>,
-    /// Where the copy folder named in `settings.json` was moved, if it is a different one (slice 4b); `null` means there was no such folder.
-    pub settings_file_mirror: Option<String>,
 }
 
 /// The name of the daily backup for the local date `YYYY-MM-DD`.

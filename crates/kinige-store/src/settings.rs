@@ -2,9 +2,11 @@
 
 use crate::error::{read_err, write_err};
 use crate::forest::stored_view;
+use crate::reactions::RECENT_KEY;
 use crate::send::mark_all_dirty;
 use crate::{Store, StoreError};
 use kinige_domain::emoji::emoji_identity;
+use kinige_domain::reactions::present::{parse_recent, quick_reactions};
 use kinige_domain::shortcuts::canonical_accelerator;
 use kinige_domain::{
     MirrorStatus, Settings, ShortcutKind, ShortcutState, ShortcutStatus, TextSize,
@@ -41,6 +43,16 @@ pub(crate) fn get_setting(conn: &Connection, key: &str) -> rusqlite::Result<Opti
         |row| row.get(0),
     )
     .optional()
+}
+
+/// Writes the text size on a connection that already holds the writer (a transaction of the caller's).
+pub(crate) fn put_text_size(conn: &Connection, size: TextSize) -> Result<(), StoreError> {
+    conn.execute(
+        "INSERT INTO app_setting(key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (KEY_TEXT_SIZE, size.as_setting()),
+    )
+    .map_err(write_err)?;
+    Ok(())
 }
 
 /// The copy folder: chosen by the user or the default. `None` means the copy is off. The second value is "is default".
@@ -84,24 +96,37 @@ impl Store {
     /// shortcut is taken is decided by the system at registration, and the Tauri layer overlays it.
     pub fn get_settings(&self) -> Result<Settings, StoreError> {
         let default = self.inner.default_mirror_dir.clone();
-        let (text_size, folder, pending_days, shortcuts, collapsed, recent, forest) =
-            self.read(|conn| {
-                let text_size = get_setting(conn, KEY_TEXT_SIZE).map_err(read_err)?;
-                let folder = effective_mirror_dir(conn, default.as_deref()).map_err(read_err)?;
-                let pending: i64 = conn
-                    .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |row| row.get(0))
-                    .map_err(read_err)?;
-                let shortcuts = shortcut_statuses(conn).map_err(read_err)?;
-                let collapsed = get_setting(conn, KEY_SIDEBAR_COLLAPSED).map_err(read_err)?;
-                let recent = recent_emoji(conn).map_err(read_err)?;
-                let forest = stored_view(conn).map_err(read_err)?;
-                Ok((
-                    text_size, folder, pending, shortcuts, collapsed, recent, forest,
-                ))
-            })?;
+        let (
+            text_size,
+            folder,
+            pending_days,
+            shortcuts,
+            collapsed,
+            recent,
+            forest,
+            recent_reactions,
+        ) = self.read(|conn| {
+            let text_size = get_setting(conn, KEY_TEXT_SIZE).map_err(read_err)?;
+            let folder = effective_mirror_dir(conn, default.as_deref()).map_err(read_err)?;
+            let pending: i64 = conn
+                .query_row("SELECT COUNT(*) FROM mirror_dirty", [], |row| row.get(0))
+                .map_err(read_err)?;
+            let shortcuts = shortcut_statuses(conn).map_err(read_err)?;
+            let collapsed = get_setting(conn, KEY_SIDEBAR_COLLAPSED).map_err(read_err)?;
+            let recent = recent_emoji(conn).map_err(read_err)?;
+            let forest = stored_view(conn).map_err(read_err)?;
+            let reactions = get_setting(conn, RECENT_KEY).map_err(read_err)?;
+            Ok((
+                text_size, folder, pending, shortcuts, collapsed, recent, forest, reactions,
+            ))
+        })?;
+        let recent_reactions = parse_recent(recent_reactions.as_deref());
         Ok(Settings {
+            quick_reactions: quick_reactions(&recent_reactions),
+            recent_reactions,
             forest_view: forest.0,
-            forest_mode: forest.1,
+            forest_shown_view: forest.1,
+            forest_mode: forest.2,
             sidebar_collapsed: collapsed.as_deref() == Some("1"),
             recent_emoji: recent,
             backup: self.inner.backup.status(&self.inner.db_path),
@@ -171,16 +196,9 @@ impl Store {
         })
     }
 
-    /// "Text size": stored, survives a restart.
+    /// "Text size": stored, survives a restart. The settings window and the MCP tool `set_setting` write it the same way.
     pub fn set_text_size(&self, size: TextSize) -> Result<(), StoreError> {
-        self.write(move |conn| {
-            conn.execute(
-                "INSERT INTO app_setting(key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                (KEY_TEXT_SIZE, size.as_setting()),
-            )
-            .map_err(write_err)?;
-            Ok(())
-        })
+        self.write(move |conn| put_text_size(conn, size))
     }
 
     /// The sidebar is collapsed to an emoji strip or expanded: stored, survives a restart.
@@ -246,7 +264,7 @@ impl Store {
         Ok(())
     }
 
-    /// The copy folder changed (by the window or the settings file): the previous copy error is cleared, the writer wakes
+    /// The copy folder changed (by the settings window): the previous copy error is cleared, the writer wakes
     /// up and writes the days into the new folder at once, not after the next entry or a restart.
     pub(crate) fn mirror_dir_changed(&self) {
         self.inner.mirror.clear_error();

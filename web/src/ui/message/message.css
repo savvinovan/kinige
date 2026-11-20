@@ -17,6 +17,8 @@
   left: 100%;
   z-index: 1;
   padding-left: var(--layout-action-gap);
+  /* A put or a removal changes the bubble's height; useActionsPlacement hands that back so the pressed button stays under the pointer. */
+  transform: translateY(var(--actions-shift, 0));
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--motion-duration-short) var(--motion-easing-standard);

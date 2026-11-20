@@ -19,6 +19,7 @@ import { DetailsHost } from "./DetailsHost";
 import { EMPTY_LIST, focusComposer, toSidebar, useCheckOnWindowFocus, useMoveTargets } from "./mainWindowParts";
 import { MainWindowView } from "./MainWindowView";
 import { useAttachments } from "./useAttachments";
+import { useCardReactions } from "./useCardReactions";
 import { useChatDialog } from "./useChatDialog";
 import { useDetails } from "./useDetails";
 import { useComposerDraft } from "./useComposerDraft";
@@ -28,6 +29,7 @@ import { useMainSearch } from "./useMainSearch";
 import { useOnThisDay } from "./useOnThisDay";
 import { useOpenMessage } from "./useOpenMessage";
 import { useReplyActions } from "./useReplyActions";
+import { useStickers } from "./useStickers";
 import { useVoice } from "./useVoice";
 import { useSettingsState } from "./useSettingsState";
 import { useChangeCounter, useForestPane } from "./useForestPane";
@@ -90,11 +92,19 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onTag: setTag,
     focus,
     onMutated: bumpMutations,
+    onReacted: prefs.refreshReactions,
   });
   const { reload: reloadFeed, restart: restartFeed } = feed;
   const attachments = useAttachments({ api, selected, tiles, addTiles, dropTile, onError: setComposerError });
   const details = useDetails({ api, tiles, updateTile, patchAttachment: feed.patchAttachment, onError: setComposerError });
   const onThisDay = useOnThisDay({ api, enabled: selected === INBOX_ID && tag === null });
+  const { choices: reactionChoices, reactOnCard } = useCardReactions({
+    api,
+    settings,
+    refreshCard: onThisDay.refresh,
+    refreshReactions: prefs.refreshReactions,
+    onError: setComposerError,
+  });
   useCheckOnWindowFocus(feed.checkDay);
   const sidebarChats = useMemo(() => list.chats.map(toSidebar), [list.chats]);
   const moveTargets = useMoveTargets(sidebarChats, selected, t);
@@ -187,9 +197,14 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
     onDismissed: () => setToBottom((count) => count + 1),
   });
   const voice = useVoice({ api, selected, reply, appendSent: feed.appendSent, refreshChats, changeReply });
+  const stickers = useStickers({ api, selected, reply, appendSent: feed.appendSent, refreshChats, changeReply, onError: setComposerError, onChooseGif: attachments.controls.onAttach });
   const forest = useForestPane({
     api,
-    initial: { view: initialSettings.forestView, mode: initialSettings.forestMode },
+    initial: {
+      view: initialSettings.forestView,
+      shown: initialSettings.forestShownView,
+      mode: initialSettings.forestMode,
+    },
     chatId: selected,
     ready: feed.loaded,
     refreshKey: `${mutations}:${feed.today}`,
@@ -264,7 +279,8 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
       onOpenAbout={() => void api.appInfo().then((info) => setAbout(info.title), () => setAbout(t("about.unknown")))}
       composerButtons={{ attach: true, emoji: true, voice: true }}
       voice={voice}
-      emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji }}
+      emoji={{ recent: settings.recentEmoji, language, onPicked: prefs.recordEmoji, stickers: stickers.host }}
+      reactionChoices={reactionChoices}
       chats={sidebarChats}
       moveTargets={moveTargets}
       drag={{ onDragStart: drag.begin, dropTargetId: drag.overChatId, ghost: drag.ghost }}
@@ -307,6 +323,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
                   onOpen={(messageId) => openEntry(INBOX_ID, messageId)}
                   onReply={startReply}
                   onDismiss={hideCard}
+                  onReact={reactOnCard}
                 />
               ),
             }
@@ -356,6 +373,7 @@ export function MainWindow({ api, initialSettings }: MainWindowProps) {
             />
           ) : null}
           <DetailsHost details={details} />
+          {stickers.overlay}
           {about !== null ? <AboutDialog title={about} onClose={() => setAbout(null)} /> : null}
           <DateDialogs
             language={language}

@@ -27,7 +27,10 @@ export type Step =
   | { kind: "wait"; name: string; role?: string; gone?: boolean; timeoutMs: number }
   | { kind: "has"; name: string; role?: string }
   | ({ kind: "scroll" } & Query)
-  | { kind: "text" };
+  | ({ kind: "focus" } & Query)
+  | ({ kind: "hover"; leave?: boolean } & Query)
+  | { kind: "text" }
+  | { kind: "metrics" };
 
 export type Answer = { ok: true; value?: string } | { ok: false; error: string };
 
@@ -106,11 +109,71 @@ async function run(step: Step, root: Document, patience: number): Promise<string
       element.scrollIntoView?.({ block: "nearest", inline: "nearest" });
       return undefined;
     }
+    case "focus": {
+      // KINIG-138: the keyboard focus, as Tab leaves it. A script cannot hover, so this is how a scenario shows what appears with the focus inside
+      // (the hover bar of an entry); no pointer event is sent and nothing is pressed.
+      const element = await need(root, step, patience);
+      element.focus();
+      if (element.ownerDocument.activeElement !== element) throw new Error(`could not focus: ${describe(step)}`);
+      return undefined;
+    }
+    case "hover": {
+      // KINIG-138: the pointer onto the element (or off it): the events a real pointer sends, along the ancestors, and nothing else. No press, no focus.
+      hover(await need(root, step, patience), step.leave === true);
+      return undefined;
+    }
     case "text":
       return windowText(root);
+    case "metrics":
+      return pageMetrics(root);
     default:
       throw new Error(`unknown step: ${String((step as { kind?: unknown } | null)?.kind)}`);
   }
+}
+
+/**
+ * The sizes that decide whether the page scrolls (KINIG-76): the window's inner size and the document's scrolling element, as `name=value`
+ * lines, then the first elements that stand lower than the window (`lower.N=tag.class top bottom height`, so a scroll bar can be traced to its
+ * element). A read only; the page scrolls in a direction when its scroll size is larger than its client size. Numbers and class names, no page content.
+ */
+function pageMetrics(root: Document): string {
+  const view = root.defaultView;
+  const scrolling = root.scrollingElement ?? root.documentElement;
+  const body = root.body;
+  const lines: [string, number][] = [
+    ["inner.width", view?.innerWidth ?? 0],
+    ["inner.height", view?.innerHeight ?? 0],
+    ["document.clientWidth", scrolling.clientWidth],
+    ["document.clientHeight", scrolling.clientHeight],
+    ["document.scrollWidth", scrolling.scrollWidth],
+    ["document.scrollHeight", scrolling.scrollHeight],
+    ["body.scrollWidth", body?.scrollWidth ?? 0],
+    ["body.scrollHeight", body?.scrollHeight ?? 0],
+  ];
+  const text = lines.map(([name, value]) => `${name}=${value}`);
+  // The first eight elements that stand lower than the window and that no ancestor clips by its overflow (an element out of flow whose containing
+  // block is outside the clipping ancestor is not clipped by it: that is how the chat list's hidden counts made the page scroll): their tag, class,
+  // position and sizes, no page content. The position is the usual answer, the sizes say where.
+  const height = view?.innerHeight ?? 0;
+  const clipped = (element: Element): boolean => {
+    for (let up = element.parentElement; up && up !== body; up = up.parentElement) {
+      if (view?.getComputedStyle(up).overflowY !== "visible") return true;
+    }
+    return false;
+  };
+  let shown = 0;
+  for (const element of Array.from(root.querySelectorAll("body *"))) {
+    if (shown >= 8) break;
+    const box = element.getBoundingClientRect();
+    if (box.height <= 0 || box.bottom <= height + 1) continue;
+    const position = view?.getComputedStyle(element).position ?? "";
+    // An absolutely positioned element is listed even under an ancestor that clips: it may be clipped by that ancestor or not, by its containing block.
+    if (clipped(element) && position !== "absolute") continue;
+    const name = `${element.tagName.toLowerCase()}.${(element.getAttribute("class") ?? "").split(" ")[0]}`;
+    text.push(`lower.${shown}=${name} ${position} top=${Math.round(box.top)} bottom=${Math.round(box.bottom)} height=${Math.round(box.height)}`);
+    shown += 1;
+  }
+  return text.join("\n");
 }
 
 /** The element of the query, waiting up to `patience` for it to show; an error names what was not found. */
@@ -147,6 +210,30 @@ function press(element: HTMLElement): void {
   pointer(element, "pointerup", point, 0, 0);
   mouse(element, "mouseup", point, 0, 0);
   element.click();
+}
+
+/**
+ * The pointer arrives on the element, or leaves it. A browser sends `pointerover` (bubbling) to the element and `pointerenter` (not bubbling) to
+ * each ancestor it has newly entered, outermost first; leaving is the mirror image. The page's hover logic (an entry's action row listens for
+ * `pointerenter` on its row) sees what it sees from a real pointer. `pointermove` follows an arrival at the element's centre.
+ */
+function hover(element: HTMLElement, leave: boolean): void {
+  const point = centre(element);
+  const chain: Element[] = [];
+  for (let node: Element | null = element; node; node = node.parentElement) chain.push(node);
+  const send = (target: Element, type: string, bubbles: boolean) => {
+    const init = { bubbles, cancelable: false, composed: true, clientX: point.x, clientY: point.y, button: 0, buttons: 0 };
+    if (typeof PointerEvent === "undefined") target.dispatchEvent(new MouseEvent(type.replace("pointer", "mouse"), init));
+    else target.dispatchEvent(new PointerEvent(type, { ...init, pointerId: 1, pointerType: "mouse", isPrimary: true }));
+  };
+  if (leave) {
+    send(element, "pointerout", true);
+    for (const node of chain) send(node, "pointerleave", false);
+    return;
+  }
+  send(element, "pointerover", true);
+  for (const node of [...chain].reverse()) send(node, "pointerenter", false);
+  send(element, "pointermove", true);
 }
 
 /** A right click: the page gets `contextmenu` at the element's centre. */

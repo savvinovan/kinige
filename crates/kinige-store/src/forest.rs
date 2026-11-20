@@ -22,6 +22,8 @@ use std::collections::{BTreeMap, HashSet};
 
 pub(crate) const KEY_FOREST_VIEW: &str = "forest_view";
 pub(crate) const KEY_FOREST_MODE: &str = "forest_mode";
+/// The strip or the board, whichever was shown last: what "Show forest" brings back (KINIG-150). Never `hidden`.
+pub(crate) const KEY_FOREST_SHOWN_VIEW: &str = "forest_shown_view";
 
 /// How many characters of a day's first entry the year table carries (the excerpt shown is far shorter).
 const EXCERPT_CHARS: usize = 4096;
@@ -96,14 +98,21 @@ impl Store {
     }
 
     /// Remembers how much of the forest is shown and whether it is the board or the calendar. Local, not synced, not
-    /// written to `settings.json`; both values are saved in one transaction.
+    /// readable by agents (ADR-0022). A shown view (the strip or the board) is also remembered as the one "Show forest"
+    /// brings back (KINIG-150); hiding leaves that one as it was. All the values are saved in one transaction.
     pub fn set_forest_view(&self, view: ForestView, mode: ForestMode) -> Result<(), StoreError> {
         self.write(move |conn| {
             let tx = conn.transaction().map_err(write_err)?;
+            let shown = view
+                .is_shown()
+                .then(|| (KEY_FOREST_SHOWN_VIEW, view.as_setting()));
             for (key, value) in [
                 (KEY_FOREST_VIEW, view.as_setting()),
                 (KEY_FOREST_MODE, mode.as_setting()),
-            ] {
+            ]
+            .into_iter()
+            .chain(shown)
+            {
                 tx.execute(
                     "INSERT INTO app_setting(key, value) VALUES (?1, ?2) \
                      ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -117,14 +126,20 @@ impl Store {
     }
 }
 
-/// How the stored view state reads back: unknown or missing values are the defaults (the strip, the board).
-pub(crate) fn stored_view(conn: &Connection) -> rusqlite::Result<(ForestView, ForestMode)> {
-    let view = get_setting(conn, KEY_FOREST_VIEW)?;
-    let mode = get_setting(conn, KEY_FOREST_MODE)?;
-    Ok((
-        ForestView::from_setting(view.as_deref()),
-        ForestMode::from_setting(mode.as_deref()),
-    ))
+/// How the stored view state reads back: the view, the view "Show forest" brings back, and the mode. Unknown or missing
+/// values are the defaults (the strip, the board). A database written before the remembered view existed has no such key:
+/// its shown view is the stored view when that is not `hidden`, else the strip.
+pub(crate) fn stored_view(
+    conn: &Connection,
+) -> rusqlite::Result<(ForestView, ForestView, ForestMode)> {
+    let view = ForestView::from_setting(get_setting(conn, KEY_FOREST_VIEW)?.as_deref());
+    let shown = match get_setting(conn, KEY_FOREST_SHOWN_VIEW)? {
+        Some(stored) => ForestView::shown_from_setting(Some(&stored)),
+        None if view.is_shown() => view,
+        None => ForestView::Strip,
+    };
+    let mode = ForestMode::from_setting(get_setting(conn, KEY_FOREST_MODE)?.as_deref());
+    Ok((view, shown, mode))
 }
 
 /// The facts of every day of `year` that has live entries, in calendar order. The rows are read over the `message_day`
@@ -230,8 +245,8 @@ fn year_sql() -> String {
     )
 }
 
-/// The live attachments of one entry (`?1`), how many of them are photos and how many are voice notes (`audio`).
-const COUNTS_SQL: &str = "SELECT COUNT(*), COALESCE(SUM(kind = 'image'), 0), COALESCE(SUM(kind = 'audio'), 0) \
+/// The live attachments of one entry (`?1`), how many of them are photos (a sticker is not one, slice 5c) and how many are voice notes (`audio`).
+const COUNTS_SQL: &str = "SELECT COUNT(*), COALESCE(SUM(kind = 'image' AND sticker = 0), 0), COALESCE(SUM(kind = 'audio'), 0) \
                           FROM attachment WHERE message_id = ?1 AND deleted_at IS NULL";
 
 /// The ids of the entries that have any attachment row (live or not): the index `attachment_message` covers the column, so this reads

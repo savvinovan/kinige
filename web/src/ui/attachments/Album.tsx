@@ -2,6 +2,8 @@ import { useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
 import { albumRows } from "./albumRows";
+import { GifCell } from "./GifCell";
+import { isGif } from "./gifRules";
 import { useMediaUrl } from "./mediaUrl";
 import { photoLabel } from "./photoLabel";
 import { PreviewTile } from "./PreviewTile";
@@ -94,35 +96,41 @@ function AlbumCell({ image, index, onOpen, onContextMenu, compact = false }: Cel
     open.current?.focus();
     hide(image.id);
   };
+  // Slice 5c: a GIF that is there is a `GifCell` (it plays while on screen, by its own rules). A covered one loads nothing until it is revealed.
+  const gif = isGif(image) && !covered && !missing && !failed;
   return (
     <div className={image.spoiler && !covered ? "album__cell has-hide" : "album__cell"} onContextMenu={menu}>
-      <button
-        type="button"
-        ref={open}
-        className="album__open"
-        data-attachment-id={image.id}
-        aria-label={covered ? t("attachments.hiddenPhoto") : missing ? `${label}. ${t("attachments.missing")}` : label}
-        aria-disabled={(!covered && missing) || undefined}
-        onClick={press}
-      >
-        {covered ? (
-          <SpoilerFace compact={compact} />
-        ) : missing ? (
-          <PreviewTile reason="missing" />
-        ) : failed ? (
-          <PreviewTile reason="noPreview" />
-        ) : (
-          <img
-            className="album__image"
-            src={mediaUrl("thumb", image.id)}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-            onError={() => setFailed(true)}
-          />
-        )}
-      </button>
+      {gif ? (
+        <GifCell ref={open} image={image} label={label} onOpen={() => onOpen(index)} onFailed={() => setFailed(true)} />
+      ) : (
+        <button
+          type="button"
+          ref={open}
+          className="album__open"
+          data-attachment-id={image.id}
+          aria-label={covered ? t("attachments.hiddenPhoto") : missing ? `${label}. ${t("attachments.missing")}` : label}
+          aria-disabled={(!covered && missing) || undefined}
+          onClick={press}
+        >
+          {covered ? (
+            <SpoilerFace compact={compact} />
+          ) : missing ? (
+            <PreviewTile reason="missing" />
+          ) : failed ? (
+            <PreviewTile reason="noPreview" />
+          ) : (
+            <img
+              className="album__image"
+              src={mediaUrl("thumb", image.id)}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+              onError={() => setFailed(true)}
+            />
+          )}
+        </button>
+      )}
       {image.spoiler && !covered ? <HideButton onHide={cover} /> : null}
     </div>
   );

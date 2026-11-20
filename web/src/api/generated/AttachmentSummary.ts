@@ -20,4 +20,8 @@ voiceMs: number | null,
 /**
  * The file name when the entry has exactly one attachment.
  */
-name: string | null, };
+name: string | null, 
+/**
+ * The only attachment is an uncovered sticker: the line reads "Sticker 😺" (slice 5c).
+ */
+sticker: boolean, stickerEmoji: string | null, };

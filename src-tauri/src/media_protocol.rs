@@ -1,6 +1,6 @@
 //! The `kinige-media` protocol (slice 7, ADR-0014): the only way the webview reads attachment files.
-//! `kinige-media://localhost/{thumb|full|audio}/<uuid>` (on Windows `http://kinige-media.localhost/...`). `audio` (slice 7a) serves a
-//! voice note with `Range` support; see `audio_route`.
+//! `kinige-media://localhost/{thumb|full|audio|sticker}/<uuid>` (on Windows `http://kinige-media.localhost/...`). `audio` (slice 7a) serves a
+//! voice note with `Range` support; see `audio_route`. `sticker` (slice 5c) serves a file of the sticker library by its library id.
 //!
 //! A custom protocol does not go through the capability system, so the window is checked here: only the webview labelled `main`
 //! is answered, the others get 403. The label is fixed when the webview is created, it is not read from the request. The path
@@ -79,6 +79,12 @@ pub fn answer_range(
             None => done(empty(StatusCode::NOT_FOUND)),
         });
     }
+    if let Some(id) = parse_sticker(path) {
+        return store.sticker_media_async(id, move |media| match media {
+            Some(media) => done(found(media)),
+            None => done(empty(StatusCode::NOT_FOUND)),
+        });
+    }
     let Some((variant, id)) = parse(path) else {
         return done(empty(StatusCode::NOT_FOUND));
     };
@@ -98,6 +104,12 @@ fn parse(path: &str) -> Option<(MediaVariant, String)> {
         _ => return None,
     };
     kinige_domain::hlc::is_uuid_v4(id).then(|| (variant, id.to_string()))
+}
+
+/// `/sticker/<uuid>`; nothing else (slice 5c): a library file, WebP or PNG, at most 2 MiB, by its library id.
+fn parse_sticker(path: &str) -> Option<String> {
+    let id = path.strip_prefix("/sticker/")?;
+    kinige_domain::hlc::is_uuid_v4(id).then(|| id.to_string())
 }
 
 /// `/audio/<uuid>`; nothing else (slice 7a).

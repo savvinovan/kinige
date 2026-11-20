@@ -11,6 +11,7 @@ const row = (patch: Partial<AgentLogRow> = {}): AgentLogRow => ({
   client: "Claude Desktop",
   tool: "search",
   query: "Raft",
+  setting: null,
   outcome: "ok",
   count: 3,
   ...patch,
@@ -44,7 +45,22 @@ describe("строка журнала", () => {
     expect(logLine(row({ tool: "disconnect", ...session }), NOW, "en", tr("en"))).toBe("14:02 · Claude Desktop · disconnected");
   });
 
-  it("доступ изменён через settings.json: подпись по инструменту, а не по имени клиента", () => {
+  it("настройки (слайс 5d): чтение, изменение с названием настройки и отказ без него", () => {
+    const base = { query: null, count: 0 };
+    expect(logLine(row({ tool: "get_settings", ...base }), NOW, "en", tr("en"))).toBe("14:02 · Claude Desktop · read the settings");
+    expect(logLine(row({ tool: "get_settings", ...base }), NOW, "ru", tr("ru"))).toBe("14:02 · Claude Desktop · чтение настроек");
+    const changed = { tool: "set_setting", setting: "text_size", ...base };
+    expect(logLine(row(changed), NOW, "en", tr("en"))).toBe("14:02 · Claude Desktop · changed a setting: text size");
+    expect(logLine(row(changed), NOW, "ru", tr("ru"))).toBe("14:02 · Claude Desktop · изменение настройки: размер текста");
+    const denied = { tool: "set_setting", setting: "shortcuts.capture", outcome: "not_writable", ...base };
+    expect(logLine(row(denied), NOW, "en", tr("en"))).toBe("14:02 · Claude Desktop · changed a setting · denied: settings window only");
+    expect(logLine(row(denied), NOW, "ru", tr("ru"))).toBe("14:02 · Claude Desktop · изменение настройки · отказано: только в окне настроек");
+    // A name the window does not know is not shown, whatever a row holds.
+    expect(logLine(row({ ...changed, setting: "other" }), NOW, "en", tr("en"))).toBe("14:02 · Claude Desktop · changed a setting");
+    expect(logLine(row({ ...changed, outcome: "read_only" }), NOW, "en", tr("en"))).toBe("14:02 · Claude Desktop · changed a setting · denied: read only");
+  });
+
+  it("старые строки «settings.json · доступ изменён» (слайс 4b) остаются с подписью по инструменту, а не по имени клиента", () => {
     const file = { tool: "settings_file", client: "settings.json", query: null, count: 0 };
     expect(logLine(row(file), NOW, "ru", tr("ru"))).toBe("14:02 · settings.json · доступ изменён");
     expect(logLine(row(file), NOW, "en", tr("en"))).toBe("14:02 · settings.json · access changed");

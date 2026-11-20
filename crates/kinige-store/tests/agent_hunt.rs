@@ -57,6 +57,8 @@ fn every_tool_survives_garbage_arguments_and_only_valid_calls_write() {
         "favorites",
         "tasks",
         "cursor",
+        "key",
+        "value",
         "extra",
     ];
     let mut created = 0usize;

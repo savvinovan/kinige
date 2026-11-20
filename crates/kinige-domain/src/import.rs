@@ -117,6 +117,24 @@ pub struct ImportPreview {
     pub chats: Vec<ImportChatPreview>,
     #[ts(type = "number")]
     pub skipped_chats: i64,
+    /// The stickers of the selectable chats (slice 5c): "230 sent, 41 different, 12 animated or video skipped".
+    pub stickers: StickerPreview,
+}
+
+/// What the export holds of stickers, for the preview line.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "StickerPreview.ts")]
+pub struct StickerPreview {
+    /// Static stickers (`image/webp`) whose file the export holds, one per message.
+    #[ts(type = "number")]
+    pub sent: i64,
+    /// How many of them are different files (by content).
+    #[ts(type = "number")]
+    pub different: i64,
+    /// Sticker messages that stay placeholders: animated (TGS), video (WebM), or a file the export did not download.
+    #[ts(type = "number")]
+    pub skipped: i64,
 }
 
 /// The answer to choosing a file: the session number (the parsed export waits in Rust) and what was found in it. The

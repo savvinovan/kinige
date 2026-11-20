@@ -25,6 +25,13 @@ describe("Сайдбар: правила CSS", () => {
     });
   }
 
+  // KINIG-76: the rows hold absolutely positioned `.visually-hidden` text; the list is their containing block, or they escape its clip and the page scrolls.
+  it("список чатов — содержащий блок для скрытого текста строк: position: relative и своя прокрутка", () => {
+    const nav = ruleFor(".sidebar nav");
+    expect(nav).toMatch(/position:\s*relative/);
+    expect(nav).toMatch(/overflow-y:\s*auto/);
+  });
+
   it("выбранная строка остаётся выбранной под указателем", () => {
     expect(ruleFor(".chat-row--selected:hover")).toContain("background: var(--color-surface-selected)");
     expect(ruleFor(".rail-button--selected:hover")).toContain("background: var(--color-surface-selected)");

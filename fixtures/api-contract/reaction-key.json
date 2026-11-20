@@ -1,0 +1,51 @@
+{
+  "rule": "Reactions (slice 5a). The comparison key of an emoji is the string without U+FE0F (promise 3 of ADR-0001 appendix C.9: its own pinned function, not the picker's identity). A reaction is one emoji sequence, at most 40 bytes. The quick set of the hover bar is the recent reactions, then the fixed set (heart, face with tears of joy, crying face), without repeats by key, three of them. A text is a string or a list of parts: [unit, n] is the unit repeated n times, { cp: n } the one character with code point n (VS16 and ZWJ are written that way so that the file does not hold them).",
+  "rust": "kinige_domain::reactions::{reaction_key, present::quick_reactions}, kinige_domain::emoji::is_emoji_sequence",
+  "mock": "web/src/api/mockReactions.ts reactionKey, isReactionEmoji, quickReactions",
+  "keys": [
+    { "emoji": ["❤", { "cp": 65039 }], "key": "❤" },
+    { "emoji": "❤", "key": "❤" },
+    { "emoji": "😂", "key": "😂" },
+    { "emoji": "👍🏽", "key": "👍🏽" },
+    { "emoji": ["❤", { "cp": 65039 }, { "cp": 8205 }, "🔥"], "key": ["❤", { "cp": 8205 }, "🔥"] },
+    { "emoji": ["1", { "cp": 65039 }, { "cp": 8419 }], "key": ["1", { "cp": 8419 }] },
+    { "emoji": ["🏳", { "cp": 65039 }, { "cp": 8205 }, "🌈"], "key": ["🏳", { "cp": 8205 }, "🌈"] },
+    { "emoji": "🇷🇺", "key": "🇷🇺" },
+    { "emoji": "", "key": "" },
+    { "emoji": [{ "cp": 65039 }], "key": "" },
+    { "emoji": [{ "cp": 65039 }, { "cp": 65039 }, "x", { "cp": 65039 }], "key": "x" }
+  ],
+  "valid": [
+    { "text": "😂", "valid": true },
+    { "text": ["❤", { "cp": 65039 }], "valid": true },
+    { "text": "❤", "valid": true },
+    { "text": "👍🏽", "valid": true },
+    { "text": "🇷🇺", "valid": true },
+    { "text": ["1", { "cp": 65039 }, { "cp": 8419 }], "valid": true },
+    { "text": ["👨", { "cp": 8205 }, "👩", { "cp": 8205 }, "👧", { "cp": 8205 }, "👦"], "valid": true },
+    { "text": ["🏳", { "cp": 65039 }, { "cp": 8205 }, "🌈"], "valid": true },
+    { "text": "", "valid": false },
+    { "text": " ", "valid": false },
+    { "text": "a", "valid": false },
+    { "text": "ab", "valid": false },
+    { "text": "😂😂", "valid": false },
+    { "text": "😂 ", "valid": false },
+    { "text": " 😂", "valid": false },
+    { "text": [{ "cp": 65039 }], "valid": false },
+    { "text": [{ "cp": 8205 }], "valid": false },
+    { "text": ["😂", { "cp": 8205 }], "valid": false },
+    { "text": [{ "cp": 7 }], "valid": false },
+    { "text": "<b>", "valid": false },
+    { "text": ["😂", { "cp": 0 }], "valid": false },
+    { "text": [["😂", 11]], "valid": false },
+    { "text": [["x", 41]], "valid": false },
+    { "text": [["👩", 10]], "valid": false }
+  ],
+  "quick": [
+    { "recent": [], "expected": [["❤", { "cp": 65039 }], "😂", "😢"] },
+    { "recent": ["🔥", ["❤", { "cp": 65039 }]], "expected": ["🔥", ["❤", { "cp": 65039 }], "😂"] },
+    { "recent": ["🔥", "🎉", "🙏", "👍"], "expected": ["🔥", "🎉", "🙏"] },
+    { "recent": ["❤", "🔥"], "expected": ["❤", "🔥", "😂"] },
+    { "recent": ["😢", "😂"], "expected": ["😢", "😂", ["❤", { "cp": 65039 }]] }
+  ]
+}

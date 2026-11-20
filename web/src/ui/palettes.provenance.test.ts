@@ -22,6 +22,8 @@ const [name, palette] = Object.entries(palettes)[0] ?? [];
 
 /** Roles that must come from Nord: accent, focus ring and error. The rest is our own. */
 const FROM_NORD = ["accent.default", "focus.ring", "status.error"];
+/** Our own tinted colors that are not tiles: the recording dot and the pressable reaction chip in its two states. */
+const TINTED = ["status.recording", "surface.chip", "surface.chip-hover"];
 
 describe("происхождение цветов палитры graphite", () => {
   it("палитра одна, у неё есть первоисточник Nord для акцента и ошибки", () => {
@@ -50,9 +52,9 @@ describe("происхождение цветов палитры graphite", () =
           expect(origin.startsWith(`${match?.[0]} `), `"${origin}" must start with "${match?.[0]} "`).toBe(true);
         });
       }
-    } else if ((TILE_ROLES as readonly string[]).includes(role) || role === "status.recording") {
-      // The tiles are tinted (D2), and so is the recording dot (slice 7a): hue, saturation and lightness are recorded in the origin and match
-      // the color. (The unplayed bars of a waveform are a neutral gray and take the branch below.)
+    } else if ((TILE_ROLES as readonly string[]).includes(role) || TINTED.includes(role)) {
+      // The tiles are tinted (D2), and so are the recording dot (slice 7a) and the pressable reaction chip (KINIG-138): hue, saturation and lightness
+      // are recorded in the origin and match the color. (The unplayed bars of a waveform are a neutral gray and take the branch below.)
       it(`${role}: авторская подкраска, не выданная за Nord, тон, насыщенность и светлота как в описании`, () => {
         expect(origin.startsWith(OWN), origin).toBe(true);
         expect(nord.map(([, value]) => value)).not.toContain(hex);

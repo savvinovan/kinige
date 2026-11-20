@@ -27,6 +27,19 @@
   line-height: var(--type-small-line-height);
 }
 
+/* The bot token row (slice 5c): the field and "Save", or "Token saved" and "Remove". The field takes the room that is left. */
+.token-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.token-row__field {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Rows of one section (keyboard shortcuts) with a gap larger than between the elements of a row. */
 .settings__rows {
   display: grid;

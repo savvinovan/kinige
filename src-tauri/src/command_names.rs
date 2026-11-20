@@ -23,6 +23,7 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "edit_message",
     "toggle_task_item",
     "set_message_flag",
+    "set_message_reaction",
     "set_message_date",
     "move_message",
     "list_trash",
@@ -56,10 +57,17 @@ pub const MAIN_COMMANDS: &[&str] = &[
     "microphone_hold",
     "read_voice_for_waveform",
     "set_attachment_waveform",
+    "get_sticker_library",
+    "add_sticker_pack",
+    "cancel_sticker_pack",
+    "remove_sticker_pack",
+    "send_sticker",
+    "list_journal_gifs",
+    "send_gif_again",
 ];
 
-/// Commands of the settings window (capability `settings`, slice 4b, ADR-0010): settings, shortcuts, AI agent access, the
-/// settings file and "open an entry from the log". The window has no feed, search, entry, import or restore.
+/// Commands of the settings window (capability `settings`, slice 4b, ADR-0022): settings, shortcuts, AI agent access and
+/// "open an entry from the log". The window has no feed, search, entry, import or restore.
 pub const SETTINGS_COMMANDS: &[&str] = &[
     "get_language",
     "get_settings",
@@ -74,8 +82,10 @@ pub const SETTINGS_COMMANDS: &[&str] = &[
     "set_agent_chats",
     "list_agent_log",
     "list_agent_log_entries",
-    "get_settings_file",
     "settings_open_entry",
+    "get_telegram_token_state",
+    "set_telegram_bot_token",
+    "clear_telegram_bot_token",
 ];
 
 /// Commands of the capture window (capability `capture`): only Inbox, without `chat_id` (§12.3).
@@ -115,6 +125,7 @@ pub const COMMANDS: &[&str] = &[
     "edit_message",
     "toggle_task_item",
     "set_message_flag",
+    "set_message_reaction",
     "set_message_date",
     "move_message",
     "list_trash",
@@ -148,6 +159,13 @@ pub const COMMANDS: &[&str] = &[
     "microphone_hold",
     "read_voice_for_waveform",
     "set_attachment_waveform",
+    "get_sticker_library",
+    "add_sticker_pack",
+    "cancel_sticker_pack",
+    "remove_sticker_pack",
+    "send_sticker",
+    "list_journal_gifs",
+    "send_gif_again",
     "set_text_size",
     "choose_mirror_folder",
     "set_shortcut",
@@ -159,8 +177,10 @@ pub const COMMANDS: &[&str] = &[
     "set_agent_chats",
     "list_agent_log",
     "list_agent_log_entries",
-    "get_settings_file",
     "settings_open_entry",
+    "get_telegram_token_state",
+    "set_telegram_bot_token",
+    "clear_telegram_bot_token",
     "capture_state",
     "capture_send",
     "capture_append",

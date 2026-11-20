@@ -5,6 +5,7 @@ use crate::agent::{AgentError, AgentReply, Call, VISIBLE, load_settings};
 use crate::agent_entry::to_entry;
 use crate::agent_log::insert_log;
 use crate::agent_read::chat_visible;
+use crate::agent_setting_tools::set_text_size_in_tx;
 use crate::error::write_err;
 use crate::hlc_state::next_hlc;
 use crate::message_body::edit_body;
@@ -21,7 +22,7 @@ use kinige_domain::message_ops::{self, FlagChange};
 use kinige_domain::tasks::{TaskItemError, set_task_item, task_items};
 use kinige_domain::{AgentMode, MessageView};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
-use serde_json::{Value, json};
+use serde_json::json;
 
 /// The outcome of execution inside the transaction.
 enum Fail {
@@ -44,8 +45,9 @@ impl From<rusqlite::Error> for Fail {
 }
 
 struct Done {
-    message_id: String,
-    reply: Value,
+    /// The entries the call touched (none for a setting).
+    ids: Vec<String>,
+    reply: AgentReply,
 }
 
 /// The writer job for a write tool. The outer `Err` is a storage failure (nothing written); the inner one is a refusal
@@ -70,7 +72,6 @@ pub(crate) fn run_write_job(
     let tool = call.tool.name();
     match result {
         Ok(done) => {
-            let ids = [done.message_id];
             insert_log(
                 &tx,
                 call.now.ms,
@@ -78,14 +79,11 @@ pub(crate) fn run_write_job(
                 tool,
                 &call.args_json,
                 "ok",
-                &ids,
+                &done.ids,
             )
             .map_err(write_err)?;
             tx.commit().map_err(write_err)?;
-            Ok(Ok(AgentReply {
-                text: done.reply.to_string(),
-                changed: true,
-            }))
+            Ok(Ok(done.reply))
         }
         Err(Fail::Refused(error)) => {
             drop(tx);
@@ -97,7 +95,7 @@ pub(crate) fn run_write_job(
                 call.now.ms,
                 &call.client,
                 tool,
-                &call.args_json,
+                &call.failed_args_json,
                 error.outcome(),
                 &[],
             )
@@ -125,6 +123,14 @@ fn execute(tx: &Transaction<'_>, call: &Call, args: &ToolArgs) -> Result<Done, F
             item,
             item_text,
         } => set_task_done(tx, call, id, *done, *item, item_text.as_deref()),
+        ToolArgs::SetSetting {
+            key,
+            value: Some(size),
+        } if key.writable() => Ok(Done {
+            ids: Vec::new(),
+            reply: set_text_size_in_tx(tx, call, *size)?,
+        }),
+        ToolArgs::SetSetting { .. } => Err(Fail::Refused(AgentError::NotWritable)),
         _ => Err(StoreError::Internal("read tool in a write".into()).into()),
     }
 }
@@ -320,8 +326,12 @@ fn done(
     // twice the size of the text itself. The entry in the database stays whole, only the reply is cut (the `truncated` flag).
     let (entries, _) = fit_entries(vec![to_entry(view, &title)]);
     Ok(Done {
-        message_id: view.id.clone(),
-        reply: json!({ "action": action, "entry": entries.first() }),
+        ids: vec![view.id.clone()],
+        reply: AgentReply {
+            text: json!({ "action": action, "entry": entries.first() }).to_string(),
+            changed: true,
+            settings_changed: false,
+        },
     })
 }
 

@@ -27,6 +27,29 @@ impl Store {
         self.inner.mirror.set_batch_hook(hook);
     }
 
+    /// Tests only: a step of an agent's write call after the first access check and before the writer transaction; `None`
+    /// removes it. In the step the test switches access off, to prove the transaction checks again (slice 5d).
+    #[doc(hidden)]
+    pub fn set_agent_gap_hook_for_test(&self, hook: Option<Arc<dyn Fn() + Send + Sync>>) {
+        *self
+            .inner
+            .agent_gap_hook
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = hook;
+    }
+
+    pub(crate) fn run_agent_gap_hook(&self) {
+        let hook = self
+            .inner
+            .agent_gap_hook
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
+        if let Some(hook) = hook {
+            hook();
+        }
+    }
+
     /// Tests only: the next pass of the background copy (`mirror`) or maintenance (`maintenance`) panics once.
     #[doc(hidden)]
     pub fn inject_background_panic_for_test(&self, thread: BackgroundThread) {

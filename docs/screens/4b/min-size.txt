@@ -1,2 +1,2 @@
-# Окно уменьшено до 100 x 100: наименьший размер задан окну (640 x 440), меньше оно не становится.
-размер после запроса: 640 440
+# The window is shrunk to 100 x 100: the window has a minimum size (640 x 440), it does not get smaller.
+size after the request: 640 440

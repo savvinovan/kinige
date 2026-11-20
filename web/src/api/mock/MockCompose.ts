@@ -53,6 +53,7 @@ export class MockCompose {
     replyToId: string | null,
     attach: (tiles: AttachmentView[]) => AttachmentView[],
     withAttachments: boolean,
+    keepText = false,
   ): MessageView {
     if (this.failNextSend) {
       const code = this.failNextSend;
@@ -78,7 +79,8 @@ export class MockCompose {
     const row = { view: message, deletedAt: null, revisions: [], replyToId: replyToId ?? undefined };
     this.s.rows.push(row);
     if (attachments.length > 0) this.s.draftTiles.set(chatId, tiles.filter((t) => !attachments.includes(t)));
-    this.s.drafts.delete(chatId);
+    // A sticker or a GIF sent again leaves the text draft (and the tiles) alone and uses up only the pending reply line.
+    if (!keepText) this.s.drafts.delete(chatId);
     this.s.replyDrafts.delete(chatId);
     return this.s.viewOf(row);
   }

@@ -105,14 +105,3 @@ html[data-input="keyboard"] .settings-tree__row:has(.settings-tree__button:focus
   min-width: 0;
   overflow-wrap: anywhere;
 }
-
-.settings-tree__mark {
-  display: inline-flex;
-  flex: none;
-  color: var(--color-status-error);
-}
-
-.settings-tree__mark .icon {
-  width: var(--icon-size-small);
-  height: var(--icon-size-small);
-}

@@ -90,12 +90,38 @@ pub enum Step {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         nth: Option<u32>,
     },
+    /// Puts the keyboard focus on the element (KINIG-138): what Tab does, and the only way a scenario shows UI that appears with the focus inside
+    /// it (the hover bar of an entry), because a script cannot hover. It sends no pointer event and presses nothing.
+    Focus {
+        name: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        role: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        nth: Option<u32>,
+    },
+    /// The pointer moves onto the element, or off it with `leave` (KINIG-138): the page gets `pointerover`, `pointerenter` and `pointermove` (or
+    /// `pointerout` and `pointerleave`) along the element's ancestors, as a real pointer would send them, and nothing is pressed or focused. It is how
+    /// a scenario shows what the page shows on hover (an entry's action row, which is driven by those events), because the runner has no pointer.
+    Hover {
+        name: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        role: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        nth: Option<u32>,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        leave: bool,
+    },
     // Struct variants, not unit ones: serde ignores `deny_unknown_fields` for a unit variant of a tagged enum.
     Text {},
+    /// The sizes of the window and of the document, as numbers (KINIG-76): whether the page scrolls. A read only.
+    Metrics {},
     Front {},
     /// The capture window only (KINIG-153): the app asks it to hide the way the hotkey, closing the window and a loss of focus do
     /// (`capture::request_hide`), which no key or click in the page can do. Done by the app, like `front`.
     Hide {},
+    /// The main window only (KINIG-156): the window's own close request, which the red button and ⌘W make (`Window::close` sends
+    /// `CloseRequested` first). A recording makes every accessibility call of a runner hang, so a scenario cannot click the red button then.
+    Close {},
 }
 
 /// What a window sends back through `screens_driver_reply`.
@@ -246,9 +272,13 @@ pub fn parse_request(file_id: &str, bytes: &[u8]) -> Result<Request, Reject> {
                 | "wait"
                 | "has"
                 | "scroll"
+                | "focus"
+                | "hover"
                 | "text"
+                | "metrics"
                 | "front"
                 | "hide"
+                | "close"
         )
     ) {
         return Err(Reject::UnknownStep);
@@ -276,6 +306,10 @@ impl Step {
         match self {
             Step::Press { name, role, nth }
             | Step::Menu { name, role, nth }
+            | Step::Focus { name, role, nth }
+            | Step::Hover {
+                name, role, nth, ..
+            }
             | Step::Scroll { name, role, nth } => name_ok(name) && role_ok(role) && nth_ok(nth),
             Step::Type { name, text } => {
                 name.as_deref().is_none_or(name_ok) && text.chars().count() <= MAX_TYPED_CHARS
@@ -300,7 +334,9 @@ impl Step {
                 ..
             } => name_ok(name) && role_ok(role) && *timeout_ms <= MAX_WAIT_MS,
             Step::Has { name, role } => name_ok(name) && role_ok(role),
-            Step::Text {} | Step::Front {} | Step::Hide {} => true,
+            Step::Text {} | Step::Metrics {} | Step::Front {} | Step::Hide {} | Step::Close {} => {
+                true
+            }
         }
     }
 }

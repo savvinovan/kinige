@@ -99,6 +99,7 @@ impl Store {
                 duration_ms: Some(duration_ms),
                 // A voice note has no details (slice 7b): the three groups are written with their defaults.
                 details: DraftDetails::default(),
+                sticker: None,
             },
             part: part.clone(),
             waveform: waveform

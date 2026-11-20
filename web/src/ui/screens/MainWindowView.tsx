@@ -1,20 +1,22 @@
 import type { PointerEvent, ReactNode } from "react";
 import type { AttachmentView } from "../../api/generated/AttachmentView";
-import type { Language } from "../../api/generated/Language";
+import { useTranslation } from "react-i18next";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import type { TrashItem } from "../../api/generated/TrashItem";
 import { useLanguage } from "../../i18n/I18n";
 import { DropOverlay } from "../attachments/DropOverlay";
 import { PendingTiles } from "../attachments/PendingTiles";
 import type { DraftText } from "../../draft/draftText";
-import type { ComposerButtons } from "../composer/Composer";
+import type { ComposerButtons, ComposerEmoji } from "../composer/Composer";
 import { ComposerPane } from "../composer/ComposerPane";
 import { Feed, type FeedActions, type FeedPaging, type FeedUiState, type ScrollRequest } from "../feed/Feed";
 import type { FeedMessage } from "../feed/buildFeed";
-import { ForestToggle } from "../forest/ForestToggle";
+import { ChatTopBar } from "./ChatTopBar";
 import type { MoveTarget } from "../message/moveTargets";
+import { displayName } from "../sidebar/chats";
 import { type ChatAction, type ChatTint, Sidebar, type SidebarChat, type SidebarSearch } from "../sidebar/Sidebar";
 import { RevealProvider } from "../attachments/reveal";
+import { ReactionChoicesProvider, type ReactionChoices } from "../reactions/ReactionsContext";
 import { TagFilterBar } from "../tag/TagFilterBar";
 import { TrashView } from "../trash/TrashView";
 import type { VoiceController } from "../../voice/useVoiceRecorder";
@@ -66,8 +68,10 @@ interface MainWindowViewProps {
   /** The error above the composer (already translated text). */
   composerError?: string;
   /** The emoji picker in the composer: recent ones, the language and "picked" (remember in recents). */
-  emoji?: { recent: readonly string[]; language: Language; onPicked?: (emoji: string) => void };
+  emoji?: ComposerEmoji;
   onOpenSettings?: () => void;
+  /** Slice 5a: the three quick emoji of the hover bar and the recent reactions of the picker; without it the bar has none to offer. */
+  reactionChoices?: ReactionChoices;
   /** The "Search" field in the sidebar, drawn without working (D1 stories). The working field is `search`. */
   showSearch?: boolean;
   /** Working search (slice 4): the sidebar field; the results are `searchResults`. */
@@ -139,16 +143,21 @@ export interface AttachmentControls {
   onAttachmentSpoiler?: (attachmentId: string, spoiler: boolean) => void;
 }
 
+const NO_CHOICES: ReactionChoices = { quick: [], recent: [] };
+
 /**
- * Main window: sidebar + feed (or trash) + composer. There is no chat-title row above the feed: the selected chat is
- * highlighted in the sidebar (§6). View only: data comes from outside (in Storybook directly, in the app via `MainWindow`).
+ * Main window: sidebar + feed (or trash) + composer. Above the feed (not in the trash or in search results) is the thin bar
+ * with the open chat's name and the forest switch (§6, KINIG-150); the chat is highlighted in the sidebar as well. View only:
+ * data comes from outside (in Storybook directly, in the app via `MainWindow`).
  */
 export function MainWindowView(props: MainWindowViewProps) {
   // A hidden photo is shown only until the chat (or the trash) is left, the window hides or the app restarts (KINIG-136): the state lives here, so the feed,
   // the trash, the viewer and the details dialog share it, and so does every story of this view.
   return (
     <RevealProvider viewKey={props.selectedChatId}>
-      <MainWindowBody {...props} />
+      <ReactionChoicesProvider value={props.reactionChoices ?? NO_CHOICES}>
+        <MainWindowBody {...props} />
+      </ReactionChoicesProvider>
     </RevealProvider>
   );
 }
@@ -198,6 +207,8 @@ function MainWindowBody({
   voice,
 }: MainWindowViewProps) {
   const language = useLanguage();
+  const { t } = useTranslation();
+  const openChat = chats.find((chat) => chat.id === selectedChatId);
   return (
     <div className="main-window">
       <Sidebar
@@ -235,11 +246,7 @@ function MainWindowBody({
           />
         ) : (
           <>
-            {forestMenu ? (
-              <div className="main-window__topbar">
-                <ForestToggle hidden={forestMenu.hidden} onToggle={forestMenu.onToggle} />
-              </div>
-            ) : null}
+            <ChatTopBar title={openChat ? displayName(openChat, t) : ""} forestMenu={forestMenu} />
             {forest}
             {tagFilter ? <TagFilterBar tag={tagFilter.tag} onClear={tagFilter.onClear} /> : null}
             <Feed

@@ -26,6 +26,7 @@
     "allow-edit-message",
     "allow-toggle-task-item",
     "allow-set-message-flag",
+    "allow-set-message-reaction",
     "allow-set-message-date",
     "allow-move-message",
     "allow-list-trash",
@@ -59,6 +60,13 @@
     "allow-microphone-hold",
     "allow-read-voice-for-waveform",
     "allow-set-attachment-waveform",
+    "allow-get-sticker-library",
+    "allow-add-sticker-pack",
+    "allow-cancel-sticker-pack",
+    "allow-remove-sticker-pack",
+    "allow-send-sticker",
+    "allow-list-journal-gifs",
+    "allow-send-gif-again",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]

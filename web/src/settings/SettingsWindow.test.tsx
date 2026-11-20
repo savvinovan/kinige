@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MOCK_SETTINGS_FILE } from "../api/MockApi";
 import { act, fireEvent, screen, waitFor, within } from "../test/render";
 import { openWindow } from "../test/prefsWindow";
 
@@ -18,13 +17,13 @@ describe("Окно «Настройки»: дерево разделов", () =>
       .getAllByRole("button")
       .map((button) => button.textContent);
     // Groups are collapsed by default: nested items are not visible until "Доступ ИИ-агентов" (AI agent access) is open or the chevron is pressed.
-    expect(names).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов", "Файл настроек"]);
+    expect(names).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Стикеры", "Доступ ИИ-агентов"]);
     fireEvent.click(within(tree()).getByRole("button", { name: "Доступ ИИ-агентов" }));
     expect(
       within(tree())
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Доступ ИИ-агентов", "Видимые чаты", "Журнал обращений", "Файл настроек"]);
+    ).toEqual(["Оформление", "Сочетания клавиш", "Копии", "Стикеры", "Доступ ИИ-агентов", "Видимые чаты", "Журнал обращений"]);
     fireEvent.click(within(tree()).getByRole("button", { name: "Оформление" }));
     expect(current()).toHaveTextContent("Оформление");
     expect(within(tree()).getAllByRole("button", { current: "page" })).toHaveLength(1);
@@ -55,8 +54,8 @@ describe("Окно «Настройки»: дерево разделов", () =>
     fireEvent.keyDown(buttons[buttons.length - 1]!, { key: "Home" });
     expect(buttons[0]).toHaveFocus();
     // Enter on an item is an ordinary button press: the page opens, the selected item changes.
-    buttons[3]!.focus();
-    fireEvent.click(buttons[3]!);
+    buttons[4]!.focus();
+    fireEvent.click(buttons[4]!);
     expect(current()).toHaveTextContent("Доступ ИИ-агентов");
   });
 
@@ -76,18 +75,14 @@ describe("Окно «Настройки»: дерево разделов", () =>
     expect(current()).toHaveTextContent("Журнал обращений");
   });
 
-  it("у пункта «Файл настроек» метка ошибки, пока файл не разобран, небезопасен или в нём есть ошибки ключей", async () => {
+  it("нет пункта «Файл настроек», метки ошибки и обращения к файлу настроек (слайс 5d)", async () => {
     const api = await openWindow();
+    expect(within(tree()).queryByRole("button", { name: /Файл настроек/ })).toBeNull();
     expect(within(tree()).queryByRole("button", { name: /есть проблемы/ })).toBeNull();
-    api.settingsFile = { ...MOCK_SETTINGS_FILE, problem: { kind: "parse", line: 1, column: 15 } };
     act(() => api.emitSettingsChanged());
-    expect(await within(tree()).findByRole("button", { name: "Файл настроек, есть проблемы" })).toBeInTheDocument();
-    api.settingsFile = { ...MOCK_SETTINGS_FILE, issues: [{ key: "text_size", kind: "value" }] };
-    act(() => api.emitSettingsChanged());
-    await within(tree()).findByRole("button", { name: "Файл настроек, есть проблемы" });
-    api.settingsFile = MOCK_SETTINGS_FILE;
-    act(() => api.emitSettingsChanged());
-    await waitFor(() => expect(within(tree()).queryByRole("button", { name: /есть проблемы/ })).toBeNull());
+    await waitFor(() => expect(api.calls.filter((call) => call.startsWith("getSettings")).length).toBeGreaterThan(1));
+    expect(api.calls.some((call) => /SettingsFile/.test(call))).toBe(false);
+    expect(document.body.textContent).not.toMatch(/settings\.json/);
   });
 });
 
@@ -125,7 +120,7 @@ describe("Окно «Настройки»: прокрутка страницы",
     fireEvent.click(within(tree()).getByRole("button", { name: "Доступ ИИ-агентов" }));
     scrollTo300();
     act(() => api.emitSettingsChanged());
-    await waitFor(() => expect(api.calls.filter((call) => call.startsWith("getSettingsFile")).length).toBeGreaterThan(1));
+    await waitFor(() => expect(api.calls.filter((call) => call.startsWith("getSettings")).length).toBeGreaterThan(1));
     expect(scroller().scrollTop).toBe(300);
   });
 });
@@ -185,22 +180,7 @@ describe("Окно «Настройки»: оформление и копии", 
     expect(screen.queryByText("Копия актуальна")).toBeNull();
   });
 
-  it("«Изменено через settings.json · время» стоит рядом с разделом, который поменял файл", async () => {
-    const api = await openWindow();
-    api.settingsFile = {
-      ...MOCK_SETTINGS_FILE,
-      changed: { appearance: Date.UTC(2026, 9, 28, 11, 2), shortcuts: null, mirror: Date.UTC(2026, 9, 28, 11, 5), access: null },
-    };
-    act(() => api.emitSettingsChanged());
-    expect(await screen.findByText(/Изменено через settings\.json · .*\d{2}:\d{2}/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Изменено через settings\.json/)).toHaveLength(1);
-    fireEvent.click(within(tree()).getByRole("button", { name: "Копии" }));
-    expect(screen.getAllByText(/Изменено через settings\.json/)).toHaveLength(1);
-    fireEvent.click(within(tree()).getByRole("button", { name: "Сочетания клавиш" }));
-    expect(screen.queryByText(/Изменено через settings\.json/)).toBeNull();
-  });
-
-  it("событие «настройки изменились» перечитывает размер текста: правка файла видна без перезапуска", async () => {
+  it("событие «настройки изменились» перечитывает размер текста: смена агентом видна без перезапуска", async () => {
     const api = await openWindow();
     await api.setTextSize("large");
     await waitFor(() => expect(document.documentElement).toHaveAttribute("data-text-scale", "large"));
@@ -215,7 +195,7 @@ describe("Окно «Настройки»: английский", () => {
       .getAllByRole("button")
       .map((button) => button.textContent);
     // The group is collapsed by default; the chevron expands it.
-    expect(names).toEqual(["Appearance", "Keyboard shortcuts", "Copies", "AI agent access", "Settings file"]);
+    expect(names).toEqual(["Appearance", "Keyboard shortcuts", "Copies", "Stickers", "AI agent access"]);
     fireEvent.click(screen.getByTestId("tree-chevron-access"));
     expect(screen.getByRole("button", { name: "Visible chats" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Access log" })).toBeInTheDocument();

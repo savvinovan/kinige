@@ -33,7 +33,7 @@ getrandom = "0.4"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 chrono-tz = "0.10"
 iana-time-zone = "0.1"
-# Settings file (ADR-0010): a hash of the written bytes; permissions, owner and O_NOFOLLOW. Both crates are already in Cargo.lock.
+# Attachments (ADR-0014) hash their bytes with sha2 and open files with libc's O_NOFOLLOW; the settings file that first used both went in slice 5d.
 sha2 = "0.11"
 
 [target.'cfg(unix)'.dependencies]

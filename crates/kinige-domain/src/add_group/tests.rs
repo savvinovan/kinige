@@ -39,11 +39,13 @@ fn legacy() -> (String, String) {
         display_name: None,
         description: None,
         spoiler: false,
+        sticker: false,
+        sticker_emoji: None,
     };
     let row = new_attachment(&input, &hlc(1_000)).unwrap();
     let mut groups: Map<String, serde_json::Value> = serde_json::from_str(&row.groups_raw).unwrap();
     let mut hlcs: Map<String, serde_json::Value> = serde_json::from_str(&row.hlc_json).unwrap();
-    for group in ["name", "description", "privacy"] {
+    for group in ["name", "description", "privacy", "sticker"] {
         groups.remove(group);
         hlcs.remove(group);
     }
@@ -255,6 +257,9 @@ fn only_the_allowlisted_groups_of_the_entity_may_be_added() {
         ("attachment", "order"),
         ("attachment", "deleted"),
         ("attachment", "zz_future"),
+        // Slice 5c: the sticker group has no writer after creation, so it is never added to an older row.
+        ("attachment", "sticker"),
+        ("message", "sticker"),
         ("message", "body"),
         ("message", "name"),
         ("chat", "privacy"),
@@ -284,6 +289,63 @@ fn only_the_allowlisted_groups_of_the_entity_may_be_added() {
         Some(50),
     );
     assert_eq!(result, Err(GroupError::TooLarge));
+}
+
+/// The allowlist decides for the rewrite paths as well as for adding: a group that is on the record but may not be added is not edited by
+/// `rewrite_or_add_*` either (removing the check left every other test green).
+#[test]
+fn the_allowlist_decides_on_the_rewrite_paths_too() {
+    let old = legacy();
+    for (entity, group) in [
+        ("message", "core"),
+        ("attachment", "core"),
+        ("attachment", "order"),
+        ("attachment", "sticker"),
+        ("attachment", "zz_future"),
+    ] {
+        let by_group =
+            rewrite_or_add_group(&groups_of(&old), entity, group, &hlc(9_000), None, |_| {
+                Ok(())
+            });
+        assert_eq!(
+            by_group,
+            Err(GroupError::Invalid("this group may not be added")),
+            "group: {entity} {group}"
+        );
+        let by_field = rewrite_or_add_field(
+            &groups_of(&old),
+            entity,
+            group,
+            &hlc(9_000),
+            None,
+            ("x", json!(1)),
+        );
+        assert_eq!(
+            by_field,
+            Err(GroupError::Invalid("this group may not be added")),
+            "field: {entity} {group}"
+        );
+    }
+    // The group of the allowlist that the record has is rewritten.
+    let with_name = add_group(
+        &groups_of(&old),
+        "attachment",
+        "name",
+        &name_group(Some("a.jpg")),
+        &hlc(2_000),
+        None,
+    )
+    .unwrap();
+    let with_name = (with_name.groups_raw, with_name.hlc_json);
+    let again = rewrite_or_add_field(
+        &groups_of(&with_name),
+        "attachment",
+        "name",
+        &hlc(3_000),
+        None,
+        ("name", json!("b.jpg")),
+    );
+    assert!(again.is_ok(), "{again:?}");
 }
 
 mod convergence;

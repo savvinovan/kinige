@@ -6,6 +6,7 @@ fn entry(time: &str, body: &str) -> MirrorEntry {
         body_md: body.to_string(),
         reply: None,
         attachments: Vec::new(),
+        reactions: Vec::new(),
     }
 }
 
@@ -261,5 +262,42 @@ fn an_entry_without_text_ends_after_its_last_attachment() {
     assert_eq!(
         render_day_file("2026-11-03", &[photo_only, entry("09:13", "next")]),
         "# 2026-11-03\n\n## 09:12\n\n![a.png](<2026-11-03/a.png>)\n\n## 09:13\n\nnext\n"
+    );
+}
+
+#[test]
+fn reactions_are_one_line_under_the_text_and_the_attachments() {
+    let reactions = vec![
+        ("\u{2764}\u{FE0F}".to_string(), "2026-11-18".to_string()),
+        ("🔥".to_string(), "2026-11-18".to_string()),
+    ];
+    let with_text = MirrorEntry {
+        reactions: reactions.clone(),
+        ..entry("09:12", "Passed the exam!")
+    };
+    let photo_only = MirrorEntry {
+        attachments: vec![image("a.png", "a.png")],
+        reactions: reactions.clone(),
+        ..entry("09:13", "")
+    };
+    let both = MirrorEntry {
+        attachments: vec![image("b.png", "b.png")],
+        reactions: reactions[..1].to_vec(),
+        ..entry("09:14", "Lunch")
+    };
+    assert_eq!(
+        render_day_file(
+            "2026-11-18",
+            &[with_text, photo_only, both, entry("09:15", "plain")]
+        ),
+        "# 2026-11-18\n\n## 09:12\n\nPassed the exam!\n\n\u{2764}\u{FE0F} 2026-11-18 · 🔥 2026-11-18\n\
+         \n## 09:13\n\n![a.png](<2026-11-18/a.png>)\n\n\u{2764}\u{FE0F} 2026-11-18 · 🔥 2026-11-18\n\
+         \n## 09:14\n\n![b.png](<2026-11-18/b.png>)\n\nLunch\n\n\u{2764}\u{FE0F} 2026-11-18\n\
+         \n## 09:15\n\nplain\n"
+    );
+    assert_eq!(
+        render_day_file("2026-11-18", &[entry("09:12", "x")]),
+        "# 2026-11-18\n\n## 09:12\n\nx\n",
+        "an entry without reactions looks as before"
     );
 }

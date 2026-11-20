@@ -12,12 +12,20 @@ interface MessageMenuProps {
   readOnly: boolean;
   /** No handler - the item is visible but disabled. */
   onEdit?: () => void;
+  /** An entry that has no text to edit (a sticker, slice 5c): "Edit" is not in the menu at all, not a disabled item. */
+  noEdit?: boolean;
+  /** An entry that has no text to copy (a sticker: its body is empty): "Copy" is not in the menu either. */
+  noCopy?: boolean;
   onToggleTask?: () => void;
   onToggleFavorite?: () => void;
   onChangeDate?: () => void;
   onDelete?: () => void;
   /** "Attachment details…" (KINIG-136): shown only for an entry with attachments that have details (not for a voice note alone). */
   onAttachmentDetails?: () => void;
+  /** "Add reaction…" (slice 5a): opens the quick popover at the menu's place. Absent for an entry that cannot take reactions from here. */
+  onAddReaction?: () => void;
+  /** Why "Add reaction…" cannot be used (10 live reactions): the item is shut and says so in its tooltip. */
+  addReactionReason?: string;
   /** Where the entry can be moved (the "Move to chat" submenu) and what to do on choice; without them the item is disabled. */
   moveTargets?: readonly MoveTarget[];
   onMoveTo?: (chatId: string) => void;
@@ -39,11 +47,15 @@ export function MessageMenu({
   favorite,
   readOnly,
   onEdit,
+  noEdit = false,
+  noCopy = false,
   onToggleTask,
   onToggleFavorite,
   onChangeDate,
   onDelete,
   onAttachmentDetails,
+  onAddReaction,
+  addReactionReason,
   moveTargets = [],
   onMoveTo,
   onCopy,
@@ -55,8 +67,11 @@ export function MessageMenu({
   const canMove = !readOnly && onMoveTo !== undefined && moveTargets.some((target) => !target.current);
 
   const main: MenuItem[] = [
-    { id: "copy", label: t("message.copy"), icon: "copy" },
-    { id: "edit", label: t("message.edit"), icon: "edit", disabled: off(onEdit) },
+    ...(noCopy ? [] : [{ id: "copy", label: t("message.copy"), icon: "copy" as const }]),
+    ...(onAddReaction
+      ? [{ id: "react", label: t("message.addReaction"), icon: "reactionAdd" as const, disabled: readOnly || addReactionReason !== undefined, hint: addReactionReason }]
+      : []),
+    ...(noEdit ? [] : [{ id: "edit", label: t("message.edit"), icon: "edit" as const, disabled: off(onEdit) }]),
     { id: "task", label: isTask ? t("message.untask") : t("message.task"), icon: "task", disabled: off(onToggleTask) },
     {
       id: "favorite",
@@ -91,6 +106,7 @@ export function MessageMenu({
     date: onChangeDate,
     delete: onDelete,
     attachments: onAttachmentDetails,
+    react: onAddReaction,
   };
 
   return (

@@ -6,6 +6,7 @@ mod agent;
 mod agent_entry;
 mod agent_log;
 mod agent_read;
+mod agent_setting_tools;
 mod agent_settings;
 mod agent_write;
 mod attachment;
@@ -33,6 +34,7 @@ mod mirror;
 mod mirror_day;
 mod mirror_files;
 mod on_this_day;
+mod reactions;
 mod recent_chats;
 mod recovery;
 mod schema;
@@ -41,7 +43,8 @@ mod search_query;
 mod search_sql;
 mod send;
 mod settings;
-mod settings_file;
+mod settings_leftovers;
+mod stickers;
 mod tags;
 #[cfg(feature = "test-hooks")]
 mod test_hooks;
@@ -71,11 +74,7 @@ pub use recovery::{
     mark_needs_recovery, needs_recovery, restore_backup, startup_check,
 };
 pub use schema::LATEST_VERSION;
-pub use settings_file::{
-    FILE_NAME as SETTINGS_FILE_NAME, FileError, LOG_CLIENT as SETTINGS_LOG_CLIENT,
-    LOG_TOOL as SETTINGS_LOG_TOOL, MAX_BYTES as SETTINGS_FILE_MAX_BYTES, SettingsFile,
-    SettingsFileOptions, ShortcutApplier, ShortcutRefusal, file_path as settings_file_path,
-};
+pub use stickers::{NewPack, PackItem, PackStage, StickerSweep};
 #[cfg(feature = "test-hooks")]
 pub use test_hooks::db_at_version;
 pub use time::{Now, local_hhmm, offset_secs, utc_stamp};
@@ -169,6 +168,9 @@ pub(crate) struct Inner {
     media_pool: attachment::MediaPool,
     /// Images whose thumbnail did not decode in this launch: not tried again on every render.
     thumb_failed: Mutex<HashSet<String>>,
+    /// Tests only: a step of `agent_call` between the first access check and the writer job (`test_hooks`).
+    #[cfg(feature = "test-hooks")]
+    agent_gap_hook: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
 }
 
 impl Drop for Inner {
@@ -240,6 +242,8 @@ impl Store {
         })?;
         send::ensure_initialized(&mut conn, now)?;
         search::rebuild_if_stale(&mut conn)?;
+        reactions::rebuild_if_stale(&mut conn)?;
+        stickers::rebuild_if_stale(&mut conn)?;
 
         let reader = open_connection(&options.db_path, true)?;
         let agent_reader = open_connection(&options.db_path, true)?;
@@ -263,6 +267,8 @@ impl Store {
                 faults: Arc::default(),
                 media_pool,
                 thumb_failed: Mutex::default(),
+                #[cfg(feature = "test-hooks")]
+                agent_gap_hook: Mutex::default(),
             }),
         };
         if options.start_mirror {

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-clear-telegram-bot-token"
+description = "Enables the clear_telegram_bot_token command without any pre-configured scope."
+commands.allow = ["clear_telegram_bot_token"]
+
+[[permission]]
+identifier = "deny-clear-telegram-bot-token"
+description = "Denies the clear_telegram_bot_token command without any pre-configured scope."
+commands.deny = ["clear_telegram_bot_token"]

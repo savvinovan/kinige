@@ -11,6 +11,7 @@ import { IconButton } from "../controls/IconButton";
 import { formatDayLabel } from "../feed/dates";
 import { SegmentedChoice } from "../settings/SegmentedChoice";
 import { StatusNote } from "../settings/StatusNote";
+import { ReactionRow } from "../reactions/ReactionRow";
 import { ChatTile } from "../sidebar/ChatTile";
 import { HighlightedText } from "./HighlightedText";
 import "./search.css";
@@ -190,6 +191,8 @@ export function SearchResults(props: SearchResultsProps) {
                     terms={hit.terms}
                   />
                 </p>
+                {/* The chips of the entry: plain labels; search does not look inside reactions (slice 5a). */}
+                <ReactionRow reactions={hit.message.reactions} outside />
               </li>
             );
           })}

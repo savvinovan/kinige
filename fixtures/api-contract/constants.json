@@ -20,6 +20,10 @@
     { "name": "pasteMaxBytes", "value": 67108864, "what": "the largest pasted file or voice note" },
     { "name": "voiceMinMs", "value": 1000, "what": "the shortest voice note" },
     { "name": "voiceMaxMs", "value": 1805000, "what": "the longest voice note" },
-    { "name": "waveformPeaks", "value": 64, "what": "peaks of a full waveform" }
+    { "name": "waveformPeaks", "value": 64, "what": "peaks of a full waveform" },
+    { "name": "reactionsLive", "value": 10, "what": "live reactions on an entry when a new one is put" },
+    { "name": "reactionKeys", "value": 32, "what": "different emoji an entry may ever have had a reaction of" },
+    { "name": "reactionsRecent", "value": 8, "what": "recent reactions a device remembers" },
+    { "name": "reactionsQuick", "value": 3, "what": "quick emoji of the hover bar" }
   ]
 }

@@ -152,8 +152,8 @@ fn sending_turns_the_draft_attachments_into_synced_rows_with_their_own_keys() {
         let groups: Value = serde_json::from_str(groups_raw).unwrap();
         assert_eq!(
             groups.as_object().unwrap().len(),
-            6,
-            "core, order, deleted and, since slice 7b, name, description, privacy"
+            7,
+            "core, order, deleted and, since slice 7b, name, description, privacy, and since slice 5c, sticker"
         );
         assert_eq!(groups["order"]["sort_index"], index);
         assert_eq!(groups["core"]["blob_key"], blob_key.as_str());

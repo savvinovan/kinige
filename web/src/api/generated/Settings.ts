@@ -23,13 +23,26 @@ sidebarCollapsed: boolean,
  */
 recentEmoji: Array<string>, 
 /**
+ * The three emoji of the hover bar and the reaction popover: the recent reactions, then the fixed set (slice 5a). Local to the device.
+ */
+quickReactions: Array<string>, 
+/**
+ * The reactions put on this device, the freshest first, at most 8: the picker's "Recent" section in reaction mode (slice 5a).
+ */
+recentReactions: Array<string>, 
+/**
  * The database file backup (slice 3).
  */
 backup: BackupStatus, 
 /**
- * How much of the forest is shown above the feed (slice 6); local, not synced, not in `settings.json`.
+ * How much of the forest is shown above the feed (slice 6); local, not synced.
  */
 forestView: ForestView, 
+/**
+ * The view "Show forest" brings back: the last shown one, the strip or the board, never `hidden` (KINIG-150); local,
+ * not synced, not readable by agents (ADR-0022).
+ */
+forestShownView: ForestView, 
 /**
  * What an expanded forest shows: the board or the calendar (slice 6).
  */

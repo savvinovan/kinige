@@ -211,7 +211,7 @@ fn pass(
             return false;
         }
         shared.run_batch_hook();
-        // The folder may have been changed during the pass (the window or `settings.json`): the change marks all days
+        // The folder may have been changed during the pass (the settings window): the change marks all days
         // again, and we must neither write the days marked by this pass to the old folder nor clear the marks -- the new
         // folder would stay empty. The pass starts over with the new folder; the marks are intact.
         if !matches!(effective_mirror_dir(reader, default_dir), Ok((Some(now), _)) if now == dir) {

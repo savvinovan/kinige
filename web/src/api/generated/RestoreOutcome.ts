@@ -7,8 +7,4 @@ export type RestoreOutcome = {
 /**
  * Where the previous Markdown copy folder was moved (`<name>-before-restore-<stamp>`); `null` means there was no folder.
  */
-previousMirror: string | null, 
-/**
- * Where the copy folder named in `settings.json` was moved, if it is a different one (slice 4b); `null` means there was no such folder.
- */
-settingsFileMirror: string | null, };
+previousMirror: string | null, };

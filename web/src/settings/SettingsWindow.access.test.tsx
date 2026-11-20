@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { INBOX_ID } from "../api/KinigeApi";
-import { MOCK_SETTINGS_FILE, mockMessage } from "../api/MockApi";
+import { mockMessage } from "../api/MockApi";
 import type { AgentLogEntry } from "../api/generated/AgentLogEntry";
 import { act, fireEvent, screen, waitFor, within } from "../test/render";
 import { openWindow } from "../test/prefsWindow";
@@ -120,17 +120,31 @@ describe("Доступ ИИ-агентов: страница и предупре
     expect(within(page).queryByRole("button", { name: /Копировать/ })).toBeNull();
   });
 
-  it("«Изменено через settings.json · время» рядом с доступом; в журнале строка «доступ изменён»", async () => {
+  it("под режимом одна тихая строка про настройки агента; пометки «изменено» нет (слайс 5d)", async () => {
     const { api, page } = await openAccess();
     api.agentEnabled = true;
-    api.settingsFile = { ...MOCK_SETTINGS_FILE, changed: { appearance: null, shortcuts: null, mirror: null, access: AT } };
-    api.addAgentLog({ tool: "settings_file", client: "settings.json", at: AT, count: 0 });
     act(() => api.emitSettingsChanged());
-    expect(await within(page).findByText(/Изменено через settings\.json · .*\d{2}:\d{2}/)).toBeInTheDocument();
-    expect(within(page).getByRole("checkbox", { name: ENABLE })).toBeChecked();
-    fireEvent.click(within(page).getByRole("button", { name: /Журнал обращений.*Настроить/ }));
+    expect(
+      await within(page).findByText(
+        "В режиме чтения и записи агент может также менять размер текста. В любом режиме он видит размер текста и сочетания клавиш.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(page).queryByText(/Изменено через/)).toBeNull();
+  });
+
+  it("в журнале строки настроек: чтение, изменение размера текста и отказ «только в окне настроек»", async () => {
+    const { api, page } = await openAccess();
+    api.addAgentLog({ tool: "get_settings", at: AT, count: 0 });
+    api.addAgentLog({ tool: "set_setting", setting: "text_size", at: AT + 60_000, count: 0 });
+    api.addAgentLog({ tool: "set_setting", setting: "shortcuts.capture", outcome: "not_writable", at: AT + 120_000, count: 0 });
+    act(() => api.emitSettingsChanged());
+    fireEvent.click(await within(page).findByRole("button", { name: /Журнал обращений.*Настроить/ }));
     const log = await screen.findByRole("region", { name: "Журнал обращений" });
-    expect(within(log).getByText(/settings\.json · доступ изменён/)).toBeInTheDocument();
+    const rowsOf = (list: HTMLElement) => within(list).getAllByRole("listitem").filter((li) => li.className.includes("agent-log__row"));
+    await waitFor(() => expect(rowsOf(log)).toHaveLength(3));
+    expect(rowsOf(log)[0]).toHaveTextContent(/Claude Desktop · изменение настройки · отказано: только в окне настроек$/);
+    expect(rowsOf(log)[1]).toHaveTextContent(/Claude Desktop · изменение настройки: размер текста$/);
+    expect(rowsOf(log)[2]).toHaveTextContent(/Claude Desktop · чтение настроек$/);
   });
 
   it("на английском: те же элементы", async () => {

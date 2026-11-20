@@ -1,0 +1,86 @@
+{
+  "rule": "Reactions end to end (slice 5a): a put, a put of what is already there, a removal and a put back; what is not one emoji; the caps (10 live, 32 different ever) and their order; the trash and an unknown entry; the emoji is checked before the entry is looked up (a garbage emoji on a trashed or an unknown entry is `reaction_invalid`). Times are minutes after the start of the scenario, so the order put is the order of the minutes. A text is a string or a list of parts ({ cp: n } is one character, here the variation selector U+FE0F).",
+  "rust": "Store::set_message_reaction and Store::list_messages_page",
+  "mock": "web/src/api/mock/MockReactions.ts",
+  "scenarios": [
+    {
+      "name": "put, put again, remove, put back",
+      "steps": [
+        { "op": "send", "chat": "inbox", "body": "Passed the exam!", "as": "a" },
+        { "op": "react", "msg": "a", "emoji": ["❤", { "cp": 65039 }], "on": true, "minute": 1 },
+        { "op": "react", "msg": "a", "emoji": "🔥", "on": true, "minute": 2 },
+        { "op": "reactions", "msg": "a", "list": [["❤", { "cp": 65039 }], "🔥"], "keysHad": 2 },
+        { "op": "react", "msg": "a", "emoji": "❤", "on": true, "minute": 5 },
+        { "op": "reactions", "msg": "a", "list": [["❤", { "cp": 65039 }], "🔥"], "keysHad": 2 },
+        { "op": "react", "msg": "a", "emoji": "❤", "on": false, "minute": 6 },
+        { "op": "reactions", "msg": "a", "list": ["🔥"], "keysHad": 2 },
+        { "op": "react", "msg": "a", "emoji": ["❤", { "cp": 65039 }], "on": true, "minute": 7 },
+        { "op": "reactions", "msg": "a", "list": ["🔥", ["❤", { "cp": 65039 }]], "keysHad": 2 },
+        { "op": "react", "msg": "a", "emoji": "😂", "on": false, "minute": 8 },
+        { "op": "reactions", "msg": "a", "list": ["🔥", ["❤", { "cp": 65039 }]], "keysHad": 2 }
+      ]
+    },
+    {
+      "name": "what is not one emoji is refused and nothing is written",
+      "steps": [
+        { "op": "send", "chat": "inbox", "body": "text", "as": "a" },
+        { "op": "react", "msg": "a", "emoji": "", "on": true, "error": "reaction_invalid" },
+        { "op": "react", "msg": "a", "emoji": "a", "on": true, "error": "reaction_invalid" },
+        { "op": "react", "msg": "a", "emoji": "😂😂", "on": true, "error": "reaction_invalid" },
+        { "op": "react", "msg": "a", "emoji": " ", "on": true, "error": "reaction_invalid" },
+        { "op": "react", "msg": "a", "emoji": [{ "cp": 65039 }], "on": true, "error": "reaction_invalid" },
+        { "op": "react", "msg": "a", "emoji": "<b>", "on": false, "error": "reaction_invalid" },
+        { "op": "reactions", "msg": "a", "list": [], "keysHad": 0 }
+      ]
+    },
+    {
+      "name": "the eleventh live reaction is refused, and a removed one comes back only while there is room",
+      "steps": [
+        { "op": "send", "chat": "inbox", "body": "text", "as": "a" },
+        { "op": "react", "msg": "a", "emoji": "😀", "on": true, "minute": 1 },
+        { "op": "react", "msg": "a", "emoji": "😁", "on": true, "minute": 2 },
+        { "op": "react", "msg": "a", "emoji": "😂", "on": true, "minute": 3 },
+        { "op": "react", "msg": "a", "emoji": "🤣", "on": true, "minute": 4 },
+        { "op": "react", "msg": "a", "emoji": "😃", "on": true, "minute": 5 },
+        { "op": "react", "msg": "a", "emoji": "😄", "on": true, "minute": 6 },
+        { "op": "react", "msg": "a", "emoji": "😅", "on": true, "minute": 7 },
+        { "op": "react", "msg": "a", "emoji": "😆", "on": true, "minute": 8 },
+        { "op": "react", "msg": "a", "emoji": "😉", "on": true, "minute": 9 },
+        { "op": "react", "msg": "a", "emoji": "😊", "on": true, "minute": 10 },
+        { "op": "react", "msg": "a", "emoji": "🎉", "on": true, "minute": 11, "error": "reaction_limit" },
+        { "op": "reactions", "msg": "a", "list": ["😀", "😁", "😂", "🤣", "😃", "😄", "😅", "😆", "😉", "😊"], "keysHad": 10 },
+        { "op": "react", "msg": "a", "emoji": "😀", "on": false, "minute": 12 },
+        { "op": "react", "msg": "a", "emoji": "🎉", "on": true, "minute": 13 },
+        { "op": "react", "msg": "a", "emoji": "😀", "on": true, "minute": 14, "error": "reaction_limit" },
+        { "op": "reactions", "msg": "a", "list": ["😁", "😂", "🤣", "😃", "😄", "😅", "😆", "😉", "😊", "🎉"], "keysHad": 11 }
+      ]
+    },
+    {
+      "name": "the thirty-third different emoji is refused even when all the others were removed",
+      "steps": [
+        { "op": "send", "chat": "inbox", "body": "text", "as": "b" },
+        { "op": "reactCycle", "msg": "b", "first": 127744, "count": 32 },
+        { "op": "reactions", "msg": "b", "list": [], "keysHad": 32 },
+        { "op": "react", "msg": "b", "emoji": "🙏", "on": true, "error": "reaction_limit" },
+        { "op": "react", "msg": "b", "emoji": [{ "cp": 127750 }], "on": true },
+        { "op": "reactions", "msg": "b", "list": [[{ "cp": 127750 }]], "keysHad": 32 }
+      ]
+    },
+    {
+      "name": "the trash and an entry that is not there",
+      "steps": [
+        { "op": "send", "chat": "inbox", "body": "text", "as": "a" },
+        { "op": "react", "msg": "a", "emoji": "🔥", "on": true },
+        { "op": "delete", "msg": "a" },
+        { "op": "react", "msg": "a", "emoji": "🔥", "on": false, "error": "message_in_trash" },
+        { "op": "react", "msg": "a", "emoji": "😂", "on": true, "error": "message_in_trash" },
+        { "op": "react", "msg": "a", "emoji": "<b>", "on": true, "error": "reaction_invalid" },
+        { "op": "restore", "msg": "a" },
+        { "op": "reactions", "msg": "a", "list": ["🔥"], "keysHad": 1 },
+        { "op": "react", "msg": "a", "emoji": "🔥", "on": false },
+        { "op": "react", "msg": "ghost", "emoji": "🔥", "on": true, "error": "message_not_found" },
+        { "op": "react", "msg": "ghost", "emoji": "text", "on": true, "error": "reaction_invalid" }
+      ]
+    }
+  ]
+}

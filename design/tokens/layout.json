@@ -109,7 +109,9 @@
     },
     "window": {
       "height": { "$value": "100vh", "$description": "The height of the app window: the whole window." },
-      "narrow": { "$value": "45rem", "$description": "Width of the 'narrow window' in Storybook stories (585 px)." }
+      "narrow": { "$value": "45rem", "$description": "Width of the 'narrow window' in Storybook stories (585 px)." },
+      "min-width": { "$value": "640px", "$description": "Minimum width of the main window (KINIG-76): `minWidth` of the main window in tauri.conf.json (checked by the configuration test). The Storybook stories of the smallest window use it as their frame." },
+      "min-height": { "$value": "400px", "$description": "Minimum height of the main window: `minHeight` of the main window in tauri.conf.json (checked by the configuration test). At it, with large text, nothing scrolls except the feed and the sidebar list." }
     }
   }
 }

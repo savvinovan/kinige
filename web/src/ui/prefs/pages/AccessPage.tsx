@@ -6,7 +6,6 @@ import { AgentConnect } from "../../agents/AgentConnect";
 import { Checkbox } from "../../controls/Checkbox";
 import { SegmentedChoice } from "../../settings/SegmentedChoice";
 import { StatusNote } from "../../settings/StatusNote";
-import { ChangedByFile } from "../ChangedByFile";
 import { ConfigureRow } from "../ConfigureRow";
 import { SettingsGroup } from "../SettingsGroup";
 import type { Route } from "../routes";
@@ -21,15 +20,13 @@ interface AccessPageProps {
   onEnabledChange: (enabled: boolean) => void;
   onModeChange: (mode: AgentMode) => void;
   onOpen: (route: Route) => void;
-  changedAt: number | null;
-  now?: Date;
 }
 
 /**
  * "Доступ ИИ-агентов": the access checkbox, the mode, "Как подключить" and two "Настроить ›" rows, "Видимые чаты" and "Журнал
  * обращений" (the long lists live on subscreens). While access is off, the mode and chats are unavailable, the log is visible.
  */
-export function AccessPage({ access, error, onEnabledChange, onModeChange, onOpen, changedAt, now }: AccessPageProps) {
+export function AccessPage({ access, error, onEnabledChange, onModeChange, onOpen }: AccessPageProps) {
   const { t } = useTranslation();
   const titleId = useId();
   const modeId = useId();
@@ -66,7 +63,6 @@ export function AccessPage({ access, error, onEnabledChange, onModeChange, onOpe
             {error}
           </StatusNote>
         ) : null}
-        <ChangedByFile at={changedAt} now={now} />
       </div>
       <div className="prefs-block" aria-labelledby={modeId} role="group">
         <h3 className="settings__heading" id={modeId}>
@@ -83,6 +79,7 @@ export function AccessPage({ access, error, onEnabledChange, onModeChange, onOpe
           ]}
         />
         <p className="settings__description">{t("agent.mode.hint")}</p>
+        <p className="settings__description">{t("agent.mode.settingsHint")}</p>
       </div>
       <div className="prefs-block">
         {visible === 0 ? <p className="settings__description">{t("agent.chats.description")}</p> : null}

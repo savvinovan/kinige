@@ -1,0 +1,45 @@
+/* Slice 5c: an entry drawn as a sticker (Message sets `message--sticker` on top of `message--bleed message--bleed-pill message--bleed-bare`). As in Telegram there
+   is no bubble: the picture stands on the feed, the time is a small pill on its corner, the chips go under it, and a reply quote above it is a small bubble of
+   its own. Loaded after message-bleed.css and reactions.css, so these rules win where the specificity is equal. Tokens only. */
+
+/* The box of the sticker and its time pill: the pill is placed against this box, not against the whole bubble (the chips are under it). */
+.message--sticker .message__sticker {
+  position: relative;
+  display: block;
+  /* Only as wide as the picture: the pill is against the picture's corner, not the corner of a wider row (the shot of the first screens run). */
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* Nothing but the picture and its pill: no minimum width (the picture's own box is the width), no clip of the picture by the bubble's corners. */
+.message--sticker {
+  width: fit-content;
+  overflow: visible;
+}
+
+/* The reply quote is a bubble of its own above the sticker: the bubble's fill and corners, a small gap to the picture. */
+.message--sticker .reply-quote {
+  width: auto;
+  min-width: 0;
+  margin: 0 0 var(--space-1);
+  padding: var(--layout-message-padding-block) var(--layout-message-padding-inline);
+  border-radius: var(--radius-message);
+  background: var(--color-surface-message);
+}
+
+/* The chips sit under the sticker at its left edge: no room is kept for a time at their end, the time is on the picture. */
+.message--sticker .reaction-row {
+  margin-top: 0;
+  padding: var(--space-1) 0 0;
+}
+
+/* A sticker highlighted by a jump from search: the ring is along the picture's box, not the (invisible) bubble. */
+.message--sticker.message--highlighted {
+  outline: none;
+}
+
+.message--sticker.message--highlighted .sticker-image {
+  outline: var(--border-width-strong) solid var(--color-text-tertiary);
+  outline-offset: var(--space-1);
+  border-radius: var(--radius-message);
+}

@@ -83,7 +83,7 @@ fn every_tool_survives_garbage_arguments_and_the_server_lives_on() {
     client.handshake("Hunter");
     let listed = client.request("tools/list", json!({}));
     let tools = listed["result"]["tools"].as_array().expect("the tool list");
-    assert_eq!(tools.len(), 8, "the hunter must see all the tools");
+    assert_eq!(tools.len(), 10, "the hunter must see all the tools");
 
     for tool in tools {
         let name = tool["name"].as_str().expect("the name");

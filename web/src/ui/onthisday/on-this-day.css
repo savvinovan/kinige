@@ -49,8 +49,17 @@
 
 .on-this-day__entry {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-1);
+}
+
+/* Slice 5a: the chips of a card entry sit on a row of their own under its text, in line with the text. */
+.on-this-day__entry > .reaction-row {
+  flex: 0 0 100%;
+  margin: 0;
+  padding: 0 var(--space-3);
+  box-sizing: border-box;
 }
 
 /* An entry: a full-width button with text up to three lines and the time. No hover fill (quiet UI). */
@@ -90,12 +99,16 @@
 }
 
 /* "Reply" appears on hovering the entry and on focus within; the space for the button is always reserved, so the row does not jump. */
-.on-this-day__reply {
+.on-this-day__reply,
+.on-this-day__react {
   opacity: 0;
 }
 
 .on-this-day__entry:hover .on-this-day__reply,
-.on-this-day__entry:focus-within .on-this-day__reply {
+.on-this-day__entry:focus-within .on-this-day__reply,
+.on-this-day__entry:hover .on-this-day__react,
+.on-this-day__entry:focus-within .on-this-day__react,
+.on-this-day__react--open {
   opacity: 1;
 }
 

@@ -148,6 +148,20 @@ pub fn set_message_flag(
         .map_err(api)
 }
 
+/// Puts (`on`) or removes a reaction (slice 5a): one emoji, at most 10 live and 32 different ever on an entry. Not an edit. The
+/// capture window has no such command.
+#[tauri::command(async)]
+pub fn set_message_reaction(
+    store: State<'_, Store>,
+    id: String,
+    emoji: String,
+    on: bool,
+) -> ApiResult<MessageView> {
+    store
+        .set_message_reaction(&id, &emoji, on, &Now::system())
+        .map_err(api)
+}
+
 /// "Change date": `YYYY-MM-DD`; future dates are allowed.
 #[tauri::command(async)]
 pub fn set_message_date(

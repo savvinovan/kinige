@@ -96,7 +96,9 @@ pub struct AgentLogRow {
     pub tool: String,
     /// The search query (up to 128 characters).
     pub query: Option<String>,
-    /// `ok`, `disabled`, `read_only`, `not_found`, `no_agent_entry`, `not_a_task`, `invalid_argument`, `error`.
+    /// The setting a `set_setting` call named (one of the seven known names or `other`; slice 5d); `null` for every other row.
+    pub setting: Option<String>,
+    /// `ok`, `disabled`, `read_only`, `not_found`, `no_agent_entry`, `not_a_task`, `invalid_argument`, `not_writable`, `error`.
     pub outcome: String,
     /// How many entries the call touched. Written together with the row and does not change after "Delete permanently" (expanding
     /// will show fewer entries, the window will say how many were deleted).

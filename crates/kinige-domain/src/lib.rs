@@ -3,6 +3,8 @@
 pub mod add_group;
 pub mod agent;
 pub mod agent_api;
+pub mod agent_log_args;
+pub mod agent_prefs;
 pub mod agent_reply;
 pub mod api;
 pub mod api_error;
@@ -27,11 +29,12 @@ pub mod link;
 pub mod message_ops;
 pub mod mirror;
 pub mod on_this_day;
+pub mod reactions;
 pub mod reply;
 pub mod rewrite;
 pub mod search;
-pub mod settings_file;
 pub mod shortcuts;
+pub mod stickers;
 pub mod sync;
 pub mod tags;
 pub mod tasks;
@@ -72,11 +75,8 @@ pub use import::{
 };
 pub use lang::Language;
 pub use on_this_day::{OnThisDay, OnThisDayEntry, OnThisDayYear};
+pub use reactions::present::ReactionView;
 pub use reply::{ReplyState, ReplyTo};
-pub use settings_file::{
-    FileChanges, FileProblem, FileProblemKind, KeyIssue, KeyIssueKind, SettingsFileState,
-    UnsafeReason,
-};
 pub use shortcuts::{ShortcutKind, ShortcutState, ShortcutStatus};
 
 /// App information that the frontend receives through `KinigeApi`.

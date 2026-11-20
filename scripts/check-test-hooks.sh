@@ -10,14 +10,18 @@
 #   fake-mic         kinige-fake-microphone-7a  in web/dist (scripts/screens/fake-mic.ts)   KINIGE_ALLOW_FAKE_MIC=1
 #   screens-driver   kinige-screens-driver-92   in web/dist (scripts/screens/driver.ts) and in the Rust binary
 #                    (src-tauri/src/screens_driver)                                         KINIGE_ALLOW_SCREENS_DRIVER=1
+#   bot-hooks        kinige-bot-test-hooks-5c   in the Rust binary only (the base-URL override of the Bot API client and the
+#                    in-memory token store, src-tauri/src/stickers, slice 5c, ADR-0021)    KINIGE_ALLOW_SCREENS_DRIVER=1
+#                    (the screens build turns the cargo feature `test-hooks` on with the driver, so the same opt-in covers it)
 # The web target is `web/dist`, not the .app: Tauri embeds the assets compressed, so searching the bundle would find nothing.
 # The Rust binary is searched as it is: string literals are stored as they are, also with `strip = true`.
 set -euo pipefail
 
 FAKE_MIC_MARKER="kinige-fake-microphone-7a"
 DRIVER_MARKER="kinige-screens-driver-92"
+BOT_MARKER="kinige-bot-test-hooks-5c"
 
-usage() { echo "usage: $0 <dist directory> [--binary <executable>] [--expect fake-mic|screens-driver]" >&2; exit 2; }
+usage() { echo "usage: $0 <dist directory> [--binary <executable>] [--expect fake-mic|screens-driver|bot-hooks]" >&2; exit 2; }
 
 DIST="${1:-}"
 [ -n "$DIST" ] || usage
@@ -48,6 +52,10 @@ if [ -n "$EXPECT" ]; then
         in_binary "$DRIVER_MARKER" || { echo "the screens driver is not in $BINARY, but this build must have it" >&2; exit 1; }
       fi
       ;;
+    bot-hooks)
+      [ -n "$BINARY" ] || usage
+      in_binary "$BOT_MARKER" || { echo "the Bot API test hooks are not in $BINARY, but this build must have them" >&2; exit 1; }
+      ;;
     *) usage ;;
   esac
   exit 0
@@ -66,6 +74,10 @@ if [ "${KINIGE_ALLOW_SCREENS_DRIVER:-}" != "1" ]; then
   fi
   if [ -n "$BINARY" ] && grep -aqF "$DRIVER_MARKER" "$BINARY"; then
     echo "the screens driver is in $BINARY (the screens-driver cargo feature was on?); refusing to build a bundle with it." >&2
+    PROBLEMS=$((PROBLEMS + 1))
+  fi
+  if [ -n "$BINARY" ] && grep -aqF "$BOT_MARKER" "$BINARY"; then
+    echo "the Bot API test hooks (a base-URL override and an in-memory token store) are in $BINARY (the test-hooks cargo feature was on?); refusing to build a bundle with them." >&2
     PROBLEMS=$((PROBLEMS + 1))
   fi
   if [ "$PROBLEMS" -gt 0 ]; then echo "Only the screens workflow may do this, with KINIGE_ALLOW_SCREENS_DRIVER=1." >&2; fi
