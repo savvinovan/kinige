@@ -110,10 +110,7 @@ fn a_row_whose_cells_do_not_fit_is_a_picture_and_the_database_still_opens() {
         for id in &ids[..5] {
             assert_eq!(columns_of(dir.path(), id), (0, None), "{id}");
         }
-        assert_eq!(
-            columns_of(dir.path(), &ids[5]),
-            (1, Some("😺".to_string()))
-        );
+        assert_eq!(columns_of(dir.path(), &ids[5]), (1, Some("😺".to_string())));
         raw(dir.path())
             .execute(
                 "DELETE FROM app_setting WHERE key = 'sticker_rules_version'",

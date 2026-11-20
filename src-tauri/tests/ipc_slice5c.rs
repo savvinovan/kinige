@@ -285,7 +285,11 @@ fn any_file_contains(dir: &Path, needle: &[u8]) -> bool {
 fn the_real_store_of_this_platform_answers_unsupported() {
     let fixture = fixture_with_os_secrets();
     assert_unsupported_everywhere(&fixture);
-    assert_eq!(fixture.secrets.calls(), 0, "the in-memory store was not used");
+    assert_eq!(
+        fixture.secrets.calls(),
+        0,
+        "the in-memory store was not used"
+    );
 }
 
 /// The same answers from a store that says "unsupported", on every platform.

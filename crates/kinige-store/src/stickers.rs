@@ -51,7 +51,8 @@ pub(crate) fn rebuild_all(conn: &Connection) -> rusqlite::Result<()> {
         )?;
         let rows = statement.query_map([], |row| Ok(Candidate::read(row)))?;
         // A row whose cells do not fit the types is a picture, never an error: it must not stop the database from opening.
-        rows.filter_map(|row| row.transpose()).collect::<Result<_, _>>()?
+        rows.filter_map(|row| row.transpose())
+            .collect::<Result<_, _>>()?
     };
     for row in found {
         let Some(kind) = AttachmentKind::parse(&row.kind) else {

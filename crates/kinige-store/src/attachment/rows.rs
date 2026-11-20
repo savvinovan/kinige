@@ -4,11 +4,11 @@
 use crate::StoreError;
 use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
+use kinige_domain::attachment::sticker::clean_emoji;
 use kinige_domain::attachment::{
     AttachmentKind, AttachmentRow, AttachmentState, AttachmentSummary, AttachmentView,
     NewAttachment, hex_lower, new_attachment, summary_of, waveform_from_hex,
 };
-use kinige_domain::attachment::sticker::clean_emoji;
 use kinige_domain::history::{deleted_group_supported, purged_of_best_effort};
 use rusqlite::{Connection, OptionalExtension, Transaction};
 use serde_json::Value;
