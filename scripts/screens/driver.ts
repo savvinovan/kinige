@@ -155,6 +155,25 @@ function pageMetrics(root: Document): string {
     text.push(`lower.${shown}=${name} ${position} top=${Math.round(box.top)} bottom=${Math.round(box.bottom)} height=${Math.round(box.height)}`);
     shown += 1;
   }
+  // When the page does scroll: which parts of the window it stops scrolling without. Each part is hidden for the length of one read (no paint
+  // in between, restored at once) and the document's scroll height is read again; the part whose absence brings it down is the cause.
+  if (scrolling.scrollHeight > scrolling.clientHeight) {
+    const parts = new Set<Element>();
+    for (const selector of [":scope > body > *", ".main-window > *", ".sidebar > *", ".sidebar nav > *", ".sidebar__section > *", ".main-window__chat > *"]) {
+      for (const part of Array.from(root.querySelectorAll(selector.replace(":scope > ", "")))) parts.add(part);
+    }
+    let probed = 0;
+    for (const part of parts) {
+      if (probed >= 40 || !(part instanceof HTMLElement)) continue;
+      const was = part.style.display;
+      part.style.display = "none";
+      const without = scrolling.scrollHeight;
+      part.style.display = was;
+      const name = `${part.tagName.toLowerCase()}.${(part.getAttribute("class") ?? "").split(" ")[0]}`;
+      text.push(`without.${probed}=${name} -> ${without}`);
+      probed += 1;
+    }
+  }
   return text.join("\n");
 }
 
