@@ -60,9 +60,11 @@
   color: var(--color-text-primary);
 }
 
-/* The pack whose section is at the top of the grid: the selected fill, as the selected chat in the sidebar (and `aria-current`, for a screen reader). */
+/* The pack whose section is at the top of the grid: the selected fill and the accent line of the selected tab (the line is the cue that does not rely on a
+   fill that is only a shade lighter than the panel); `aria-current` says it to a screen reader. */
 .sticker-strip__item[aria-current="true"] {
   background: var(--color-surface-selected);
+  box-shadow: inset 0 calc(-1 * var(--focus-width)) 0 var(--color-accent-default);
   color: var(--color-text-primary);
 }
 
