@@ -20,7 +20,6 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 export AX_TIMEOUT=120
 export DUMP_TIMEOUT=180
 
-SETTINGS_FILE="$K/data/settings.json"
 
 rm -f "$OUT"/*.png "$OUT"/*.txt
 rm -rf "$K/data" "$K/mirror"
@@ -44,23 +43,6 @@ BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Conten
 
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
 shoot_light() { SHOOT_DUMP=0 shoot "$@"; }
-
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
-}
 
 L_PHOTO="Фото"
 L_VIEWER="Просмотр фото"
@@ -156,14 +138,14 @@ sleep 2
 has "${L_VIEWER}" && fail "the viewer is still open after Close"
 
 # ---- 4. Large text ----
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 sleep 2
 scroll_to "$ALONE"
 sleep 4
 shoot 04-large-text-picture-only
 show_album
 shoot_light 05-large-text-pictures-with-text
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 
 # ---- 5. A 640 px window ----
 echo "window: $(ax resize "$(app_pid)" 640 800)"

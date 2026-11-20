@@ -19,7 +19,6 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 export AX_TIMEOUT=60
 export DUMP_TIMEOUT=180
 
-SETTINGS_FILE="$K/data/settings.json"
 
 rm -f "$OUT"/*.png "$OUT"/*.txt
 rm -rf "$K/data" "$K/mirror"
@@ -32,23 +31,6 @@ BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Conten
 
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
 shoot_light() { SHOOT_DUMP=0 shoot "$@"; }
-
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
-}
 
 labels() {
   if [ "$UI" = "ru" ]; then
@@ -116,11 +98,11 @@ check "rotated once, zoomed twice: 200%"
 shoot_light 03-rotated-zoomed
 
 # ---- 4. Large text with the viewer open: the toolbar grows, the percentage keeps its width ----
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 sleep 2
 has "200%" || fail "the viewer lost its zoom when the text size changed"
 shoot_light 04-large-text-rotated-zoomed
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 sleep 2
 
 # ---- 5. The percentage resets to fit; another photo starts upright and at fit ----

@@ -13,6 +13,8 @@
 # KINIG-92 (ADR-0016): a scenario that sets DRIVER=1 (7a, 7a-windows, 7b and the screens-driver probes) uses the screens driver inside the app
 # instead: the build is made with it (below), the scenario passes KINIGE_SCREENS_DRIVER_DIR to the app (LSEnvironment on macOS, the
 # environment on Windows). AX and SendKeys are for native UI only.
+# KINIG-160 (ADR-0022): the macOS build of 4b, 5, 5d, 6, 7, 7a, 7b, chat-color, kinig-132, kinig-134, kinig-135, kinig-145, kinig-153 and viewer
+# has the driver too, because they set the large text in the settings window (`set_text_size` in lib.sh) instead of a settings file.
 name: Screens
 
 on:
@@ -88,8 +90,8 @@ jobs:
           KINIGE_FAKE_MIC: ${{ (startsWith(inputs.slice, '7a') || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
           KINIGE_ALLOW_FAKE_MIC: ${{ (startsWith(inputs.slice, '7a') || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
           KINIGE_PROBE: ${{ startsWith(inputs.slice, '7a-probe') && '1' || '' }}
-          KINIGE_SCREENS_DRIVER: ${{ (inputs.slice == '7a' || inputs.slice == '7b' || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
-          KINIGE_ALLOW_SCREENS_DRIVER: ${{ (inputs.slice == '7a' || inputs.slice == '7b' || startsWith(inputs.slice, 'screens-driver') || inputs.slice == 'kinig-153') && '1' || '' }}
+          KINIGE_SCREENS_DRIVER: ${{ (contains('|4b|5|5d|6|7|7a|7b|chat-color|kinig-132|kinig-134|kinig-135|kinig-145|kinig-153|viewer|', format('|{0}|', inputs.slice)) || startsWith(inputs.slice, 'screens-driver')) && '1' || '' }}
+          KINIGE_ALLOW_SCREENS_DRIVER: ${{ (contains('|4b|5|5d|6|7|7a|7b|chat-color|kinig-132|kinig-134|kinig-135|kinig-145|kinig-153|viewer|', format('|{0}|', inputs.slice)) || startsWith(inputs.slice, 'screens-driver')) && '1' || '' }}
         run: scripts/build-app.sh
 
       - name: Shots scenario

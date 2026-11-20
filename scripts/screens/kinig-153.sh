@@ -22,7 +22,6 @@ DRIVER=1
 export AX_TIMEOUT=30
 
 INBOX="00000000-0000-4000-8000-000000000001"
-SETTINGS_FILE="$K/data/settings.json"
 
 rm -f "$OUT"/*.png "$OUT"/*.txt
 rm -rf "$K/data" "$K/mirror"
@@ -40,23 +39,6 @@ BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Conten
 
 sqlw() { sqlite3 -cmd '.timeout 5000' "$K/data/kinige.db" "$@"; }
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
-
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
-}
 
 L_INBOX="Inbox"; L_NEW_NOTE="New note"; L_MIC="Record voice note"; L_SEND_VOICE="Send the voice note"; L_RECORDING="Recording"
 L_TRASH_REC="Discard the recording"; L_DISCARD_Q="Discard the recording?"; L_DISCARD="Discard"; L_BUSY="The microphone is unavailable"
@@ -204,7 +186,7 @@ wait_name "${L_NOTE}" 20000 || fail "the main window's Inbox shows no voice note
 wait_capture_hidden || fail "the capture window stayed on screen with nothing recording"
 
 # ---- 6. Large text: the bar and the question must fit the small window ----
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 show_capture
 shoot_capture 06-idle-large
 press "${L_MIC}"
@@ -255,7 +237,7 @@ has "${L_MIC}" || fail "the microphone button is not back after dropping the kep
 [ "$(voice_in_inbox)" = "$((BEFORE_NOTES + 2))" ] || fail "a discarded kept recording was saved"
 drive "$(drive_window)" '{"kind":"key","key":"Escape"}'
 wait_capture_hidden || fail "Esc did not hide the idle capture window"
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 
 # ---- Privacy: no file names or device names in the log ----
 LOG_FILE="$HOME/Library/Logs/$BUNDLE_ID/kinige.log"
