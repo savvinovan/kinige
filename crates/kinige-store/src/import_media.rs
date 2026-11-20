@@ -3,15 +3,17 @@
 //! pipeline); the writer transaction of the batch renames them into place and writes the rows (stage 2).
 
 use crate::attachment::{
-    Dirs, DraftDetails, Faults, Hints, NewFile, Source, Staged, insert_attachment,
+    Dirs, DraftDetails, Faults, Hints, NewFile, Source, Staged, StickerNote, insert_attachment,
     insert_attachment_at, make_dir, stage,
 };
 use crate::message_body::replace_body_without_revision;
 use crate::messages::load;
 use crate::send::mark_dirty;
+use crate::stickers::{StickerProbe, add_to_export_pack, probe_sticker};
 use crate::{Now, StoreError};
 use kinige_domain::attachment::AttachmentKind;
-use kinige_domain::telegram::TgFile;
+use kinige_domain::attachment::sticker::{FILE_STEM, clean_emoji};
+use kinige_domain::telegram::{TgFile, TgMedia};
 use rusqlite::Transaction;
 use std::fs;
 use std::io::ErrorKind;
@@ -63,6 +65,9 @@ pub(crate) fn media_path(root: &Path, relative: &str) -> MediaPath {
 pub(crate) struct StagedMedia {
     pub staged: Staged,
     pub duration_ms: Option<i64>,
+    /// A static sticker of the export that passed the probe (slice 5c): its emoji and the facts of its header. It becomes an attachment
+    /// that reads as a sticker and an item of the pack "From Telegram".
+    pub sticker: Option<(Option<String>, StickerProbe)>,
 }
 
 /// What preparing the file of one message gave.
@@ -76,8 +81,15 @@ pub(crate) enum Prepared {
     Ready(StagedMedia),
 }
 
-/// Resolves and copies the file of a message.
-pub(crate) fn prepare(dirs: &Dirs, faults: &Faults, root: &Path, file: &TgFile) -> Prepared {
+/// Resolves and copies the file of a message. For a sticker message (`media` is `Sticker`) the copy must also pass the sticker probe
+/// (WebP or PNG, not animated, at most 512 by 512 and 2 MiB), otherwise it is skipped and the entry keeps its placeholder.
+pub(crate) fn prepare(
+    dirs: &Dirs,
+    faults: &Faults,
+    root: &Path,
+    file: &TgFile,
+    media: Option<&TgMedia>,
+) -> Prepared {
     let Some(relative) = file.path.as_deref() else {
         return Prepared::Missing;
     };
@@ -86,22 +98,41 @@ pub(crate) fn prepare(dirs: &Dirs, faults: &Faults, root: &Path, file: &TgFile) 
         MediaPath::Missing => return Prepared::Missing,
         MediaPath::Bad => return Prepared::Skipped,
     };
+    let sticker_emoji = match media {
+        Some(TgMedia::Sticker { emoji }) => Some(emoji.as_deref()),
+        _ => None,
+    };
     let own_name = path.file_name().map(|n| n.to_string_lossy().into_owned());
-    let name = file.name.clone().or(own_name);
+    let name = match sticker_emoji {
+        Some(_) => Some(format!("{FILE_STEM}.webp")),
+        None => file.name.clone().or(own_name),
+    };
     let hints = Hints {
         name: name.as_deref(),
         mime: file.mime.as_deref(),
     };
-    match stage(dirs, faults, Source::Path(&path), &hints) {
-        Ok(staged) => Prepared::Ready(StagedMedia {
-            staged,
-            duration_ms: file
-                .duration_seconds
-                .map(|seconds| i64::from(seconds).saturating_mul(1000)),
-        }),
-        Err(StoreError::DiskFull) => Prepared::DiskFull,
-        Err(_) => Prepared::Skipped,
-    }
+    let staged = match stage(dirs, faults, Source::Path(&path), &hints) {
+        Ok(staged) => staged,
+        Err(StoreError::DiskFull) => return Prepared::DiskFull,
+        Err(_) => return Prepared::Skipped,
+    };
+    let sticker = match sticker_emoji {
+        Some(emoji) => match probe_sticker(&staged.part) {
+            Some(probe) => Some((emoji.and_then(clean_emoji).map(str::to_owned), probe)),
+            None => {
+                let _ = fs::remove_file(&staged.part);
+                return Prepared::Skipped;
+            }
+        },
+        None => None,
+    };
+    Prepared::Ready(StagedMedia {
+        staged,
+        duration_ms: file
+            .duration_seconds
+            .map(|seconds| i64::from(seconds).saturating_mul(1000)),
+        sticker,
+    })
 }
 
 impl StagedMedia {
@@ -133,7 +164,30 @@ impl StagedMedia {
                 .filter(|_| matches!(staged.kind, AttachmentKind::Audio | AttachmentKind::Video)),
             // Imported media come with no details and uncovered (slice 7b): whether the export carries Telegram's own flag is not verified.
             details: DraftDetails::default(),
+            sticker: self.sticker.as_ref().map(|(emoji, _)| StickerNote {
+                emoji: emoji.clone(),
+            }),
         }
+    }
+
+    /// For a sticker: the placed file is copied into the library once per content (the pack "From Telegram"). In the batch transaction,
+    /// after the attachment's rows.
+    fn add_to_library(&self, tx: &Transaction<'_>, dirs: &Dirs) -> Result<(), StoreError> {
+        let Some((emoji, probe)) = &self.sticker else {
+            return Ok(());
+        };
+        let placed = dirs
+            .stored(&self.staged.file_name)
+            .ok_or_else(|| StoreError::Internal("bad stored file name".into()))?;
+        add_to_export_pack(
+            tx,
+            dirs,
+            &placed,
+            probe,
+            &self.staged.sha256,
+            self.bytes(),
+            emoji.as_deref(),
+        )
     }
 
     /// Stage 2: the copy goes into `attachments/` under its final name.
@@ -156,6 +210,7 @@ pub(crate) fn attach_to_new(
 ) -> Result<(), StoreError> {
     media.place(dirs)?;
     insert_attachment_at(tx, hlc, message_id, 0, &media.new_file())?;
+    media.add_to_library(tx, dirs)?;
     Ok(())
 }
 
@@ -206,6 +261,7 @@ pub(crate) fn attach_late(
     }
     late.media.place(dirs)?;
     insert_attachment(tx, &late.message_id, 0, &late.media.new_file(), now.ms)?;
+    late.media.add_to_library(tx, dirs)?;
     let rewrite = untouched_since_import(&loaded.hlc_json).then(|| {
         late.renderings
             .iter()

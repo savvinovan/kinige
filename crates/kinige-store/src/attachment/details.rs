@@ -8,6 +8,7 @@
 use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
 use crate::send::mark_dirty;
+use crate::stickers::is_sticker_entry;
 use crate::view::load_view;
 use crate::{Now, Store, StoreError};
 use kinige_domain::add_group::rewrite_or_add_field;
@@ -82,6 +83,11 @@ impl Store {
             let target = load_target(&tx, &id)?;
             if is_read_only(&target.hlc_json)? {
                 return Err(StoreError::ReadOnly);
+            }
+            // An entry drawn as a sticker has no details to change (slice 5c). A covered one is not drawn as a sticker: its cover can still
+            // be removed here.
+            if is_sticker_entry(&tx, &target.message_id)? {
+                return Err(StoreError::StickerEntryReadOnly);
             }
             let current = read_details(
                 target.kind,

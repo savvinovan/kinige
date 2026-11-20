@@ -21,7 +21,7 @@ macro_rules! attachments_column {
         "(SELECT json_group_array(json_object('i', a.id, 'k', a.kind, 'n', a.filename, \
          'm', a.mime, 'b', a.byte_size, 'w', a.width, 'h', a.height, 'd', a.duration_ms, \
          's', COALESCE(l.state, 'missing'), 'o', a.sort_index, \
-         'dn', a.display_name, 'ds', a.description, 'sp', a.spoiler, \
+         'dn', a.display_name, 'ds', a.description, 'sp', a.spoiler, 'st', a.sticker, 'se', a.sticker_emoji, \
          'p', CASE WHEN l.waveform IS NULL THEN NULL ELSE hex(l.waveform) END)) \
          FROM attachment a LEFT JOIN attachment_local l ON l.attachment_id = a.id \
          WHERE a.message_id = m.id AND a.deleted_at IS NULL)"
@@ -59,6 +59,9 @@ fn parse_one(item: &Value) -> Option<(i64, AttachmentView)> {
             description: text("ds"),
             // Fails closed, as the read function does: anything but a stored 0 (a non-number included) is covered.
             spoiler: number("sp") != Some(0) && kind == AttachmentKind::Image,
+            // A derived column: anything but a stored 1 is a picture (the reader's rule: every failure hides nothing).
+            sticker: number("st") == Some(1) && kind == AttachmentKind::Image,
+            sticker_emoji: text("se"),
             mime: text("m")?,
             byte_size: number("b")?,
             width: side("w"),
@@ -97,6 +100,14 @@ pub(crate) struct NewFile {
     pub height: Option<u32>,
     pub duration_ms: Option<i64>,
     pub details: DraftDetails,
+    /// A sticker (slice 5c): only `send_sticker` and the export import set it, after this device's probe of the bytes.
+    pub sticker: Option<StickerNote>,
+}
+
+/// What a sticker's attachment says about itself: its emoji, only a valid emoji sequence.
+#[derive(Debug, Clone)]
+pub(crate) struct StickerNote {
+    pub emoji: Option<String>,
 }
 
 /// Writes the `attachment` and `attachment_local` rows of one file under an HLC of its own, with a fresh `remote_blob_id` (UUID
@@ -143,6 +154,8 @@ pub(crate) fn insert_attachment_at(
             display_name: file.details.display_name.as_deref(),
             description: file.details.description.as_deref(),
             spoiler: file.details.spoiler,
+            sticker: file.sticker.is_some(),
+            sticker_emoji: file.sticker.as_ref().and_then(|note| note.emoji.as_deref()),
         },
         hlc,
     )?;
@@ -159,6 +172,8 @@ pub(crate) fn insert_attachment_at(
         filename: row.filename,
         description: row.description,
         spoiler: row.spoiler,
+        sticker: row.sticker,
+        sticker_emoji: row.sticker_emoji,
         mime: row.mime,
         byte_size: row.byte_size,
         width: row.width,
@@ -173,8 +188,8 @@ fn write_row(tx: &Transaction<'_>, row: &AttachmentRow) -> Result<(), StoreError
     tx.execute(
         "INSERT INTO attachment (id, message_id, kind, sort_index, sha256, filename, mime, byte_size, width, height, \
          duration_ms, remote_blob_id, blob_key, hlc_json, server_known, schema_version, groups_raw, display_name, \
-         description, spoiler) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?16, ?17, ?18, ?19)",
+         description, spoiler, sticker, sticker_emoji) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 0, ?15, ?16, ?17, ?18, ?19, ?20, ?21)",
         rusqlite::params![
             row.id,
             row.message_id,
@@ -194,7 +209,9 @@ fn write_row(tx: &Transaction<'_>, row: &AttachmentRow) -> Result<(), StoreError
             row.groups_raw,
             row.display_name,
             row.description,
-            row.spoiler
+            row.spoiler,
+            row.sticker,
+            row.sticker_emoji
         ],
     )
     .map_err(write_err)?;

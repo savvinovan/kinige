@@ -84,6 +84,8 @@ pub(crate) fn to_entry(view: &MessageView, chat_title: &str) -> AgentEntry {
                 name: a.name.clone(),
                 description: a.description.clone(),
                 spoiler: a.spoiler,
+                sticker: a.sticker,
+                emoji: a.sticker_emoji.clone().filter(|_| a.sticker),
                 bytes: a.byte_size,
                 width: a.width,
                 height: a.height,

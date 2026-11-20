@@ -65,6 +65,12 @@ pub enum StoreError {
     ReactionInvalid,
     /// The entry has 10 live reactions, or has had 32 different emoji: a new emoji cannot be put on it (slice 5a).
     ReactionLimit,
+    /// The sticker is not in the library, or its file is gone (slice 5c).
+    StickerNotFound,
+    /// The library file fails the sticker probe: it is refused, never sent as a photo.
+    StickerUnreadable,
+    /// The entry is drawn as a sticker: it has no text to edit and no details (slice 5c).
+    StickerEntryReadOnly,
     /// The database was created by a newer app version (schema `found`): downgrade is not supported (PRD §10.4).
     TooNew(i64),
     /// Writing to the database failed: nothing was written (the transaction rolled back).
@@ -109,6 +115,9 @@ impl StoreError {
             StoreError::AttachmentDetailsInvalid => ErrorCode::AttachmentDetailsInvalid,
             StoreError::ReactionInvalid => ErrorCode::ReactionInvalid,
             StoreError::ReactionLimit => ErrorCode::ReactionLimit,
+            StoreError::StickerNotFound => ErrorCode::StickerNotFound,
+            StoreError::StickerUnreadable => ErrorCode::StickerUnreadable,
+            StoreError::StickerEntryReadOnly => ErrorCode::StickerEntryReadOnly,
             StoreError::TooNew(_) => ErrorCode::DatabaseTooNew,
             StoreError::Write(_) => ErrorCode::StoreWriteFailed,
             StoreError::Read(_) => ErrorCode::StoreReadFailed,
@@ -151,6 +160,9 @@ impl StoreError {
             StoreError::AttachmentDetailsInvalid => "attachment_details_invalid",
             StoreError::ReactionInvalid => "reaction_invalid",
             StoreError::ReactionLimit => "reaction_limit",
+            StoreError::StickerNotFound => "sticker_not_found",
+            StoreError::StickerUnreadable => "sticker_unreadable",
+            StoreError::StickerEntryReadOnly => "sticker_entry_read_only",
             StoreError::TooNew(_) => "too_new",
             StoreError::Write(_) => "write",
             StoreError::Read(_) => "read",
@@ -193,6 +205,9 @@ impl fmt::Display for StoreError {
             StoreError::AttachmentDetailsInvalid => f.write_str("attachment details are invalid"),
             StoreError::ReactionInvalid => f.write_str("the reaction is not one emoji"),
             StoreError::ReactionLimit => f.write_str("too many reactions on the entry"),
+            StoreError::StickerNotFound => f.write_str("sticker not found"),
+            StoreError::StickerUnreadable => f.write_str("sticker file is not a sticker"),
+            StoreError::StickerEntryReadOnly => f.write_str("a sticker entry cannot be changed"),
             StoreError::TooNew(found) => {
                 write!(
                     f,

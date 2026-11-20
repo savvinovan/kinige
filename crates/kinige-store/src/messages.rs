@@ -7,6 +7,7 @@ use crate::error::{read_err, write_err};
 use crate::hlc_state::next_hlc;
 use crate::message_body::edit_body;
 use crate::send::mark_dirty;
+use crate::stickers::is_sticker_entry;
 use crate::view::load_view;
 use crate::{Now, Store, StoreError};
 use kinige_domain::groups::normalize_body_or_empty;
@@ -171,6 +172,10 @@ impl Store {
             let tx = begin(conn)?;
             let loaded = load(&tx, &id)?;
             loaded.ensure_writable()?;
+            // An entry drawn as a sticker has no text to edit (slice 5c): the window hides "Edit", and the store refuses.
+            if is_sticker_entry(&tx, &id)? {
+                return Err(StoreError::StickerEntryReadOnly);
+            }
             if body.is_empty() && live_count(&tx, &id)? == 0 {
                 return Err(StoreError::Empty);
             }

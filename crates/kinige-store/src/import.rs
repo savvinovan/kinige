@@ -195,7 +195,8 @@ impl Store {
                         if let (Some(root), Some(file), Some(owner)) =
                             (root.as_deref(), message.file.as_ref(), owner)
                         {
-                            match prepare(&self.dirs(), self.faults(), root, file) {
+                            let media_kind = message.media.as_ref();
+                            match prepare(&self.dirs(), self.faults(), root, file, media_kind) {
                                 Prepared::Ready(media) => {
                                     batch_files += 1;
                                     batch_bytes += media.bytes();
@@ -218,7 +219,8 @@ impl Store {
                         let author = author_of(chat, message);
                         let mut media: Option<StagedMedia> = None;
                         if let (Some(root), Some(file)) = (root.as_deref(), message.file.as_ref()) {
-                            match prepare(&self.dirs(), self.faults(), root, file) {
+                            let media_kind = message.media.as_ref();
+                            match prepare(&self.dirs(), self.faults(), root, file, media_kind) {
                                 Prepared::Ready(staged) => media = Some(staged),
                                 Prepared::Missing => run.report.media_missing += 1,
                                 Prepared::Skipped => run.report.media_skipped += 1,
