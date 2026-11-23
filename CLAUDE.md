@@ -22,11 +22,9 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
   - 03.11: slice 6 (the year's forest);
   - 04.11: slice 7 (attachments);
   - 05.11: slice 7a (voice notes);
-  - 20.11: slice 7b (an attachment's name, description and spoiler).
+  - 20.11: slice 7b (an attachment's name, description and spoiler);
+  - 23.11: one delivery of four slices: 5a (reactions), 5b (the chat name in the top bar, the forest comes back as it was before hiding, a closed main window stops a recording, no page scroll bar), 5c (stickers from Telegram and your own GIFs) and 5d (settings only in SQLite; an agent reads them and changes the text size through MCP; `settings.json` is gone). Four PRs, merged through one integration PR and accepted from one build.
 - **Merged since:** the sync spikes S4a–S4c (server, ADR-0017–0020) and tech debt E.
-- **In review:** slice 5a, reactions on entries (KINIG-138), and slice 5c, stickers from Telegram and your own GIFs (KINIG-151); they are accepted together.
-- **In review:** the small fixes batch 5b (KINIG-150 the chat name in the top bar and the forest that comes back as it was, KINIG-156 closing the main window stops a recording, KINIG-76 no page scroll bar); it ships in one delivery with 5a and 5c.
-- **In review:** slice 5d, settings only in SQLite and read through MCP (KINIG-160, ADR-0022; `settings.json` is gone); it ships in the same delivery, built together as one integration branch (KINIG-151).
 - **Next:** slice 11, sync in the app.
 - **History:** the PRD changelog (`docs/plan/02-prd.md`, top).
 - **Build and test commands:** the "Build and tests" section below.
