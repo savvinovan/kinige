@@ -74,8 +74,8 @@ pub struct TgMessage {
     /// Text in pieces with a formatting kind. Empty text is an empty vector.
     pub text: Vec<TgSpan>,
     pub media: Option<TgMedia>,
-    /// The file of a photo, a file, a video, a voice message or audio (slice 7): where it lies in the export. Stickers and
-    /// animations stay placeholders and have none.
+    /// The file of a photo, a file, a video, a voice message, audio or a static sticker (`image/webp`, slice 5c): where it lies in the
+    /// export. Animated and video stickers and animations stay placeholders and have none.
     pub file: Option<TgFile>,
 }
 

@@ -111,6 +111,8 @@ fn purge(
     )
     .map_err(write_err)?;
     crate::ext::remove(tx, &target.id).map_err(write_err)?;
+    // The derived rows of the entry's reactions go with it: the group is part of the record, reactions are not records of their own.
+    crate::reactions::remove_rows(tx, &target.id).map_err(write_err)?;
     // The entry's traces in the agent access log go with it; the access row itself stays (ADR-0009).
     crate::agent_log::delete_log_messages(tx, &target.id).map_err(write_err)?;
     tx.execute("DELETE FROM message WHERE id = ?1", [&target.id])

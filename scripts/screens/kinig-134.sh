@@ -17,7 +17,6 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 export AX_TIMEOUT=150
 export DUMP_TIMEOUT=420
 
-SETTINGS_FILE="$K/data/settings.json"
 
 rm -f "$OUT"/*.png "$OUT"/*.txt
 rm -rf "$K/data" "$K/mirror"
@@ -30,23 +29,6 @@ shoot_light() { SHOOT_DUMP=0 shoot "$@"; }
 sqlw() { sqlite3 -cmd '.timeout 5000' "$K/data/kinige.db" "$@"; }
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
 forest_view() { sqlw "select coalesce(value, '') from app_setting where key = 'forest_view'"; }
-
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
-}
 
 labels() {
   if [ "$UI" = "ru" ]; then
@@ -127,10 +109,10 @@ shoot 08-en-hidden
 
 # ---- 9. Large text and a 640 px window ----
 toggle
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 sleep 2
 shoot_light 09-large-text
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 echo "window: $(ax resize "$(app_pid)" 640 800)"
 sleep 3
 shoot_light 10-narrow-640

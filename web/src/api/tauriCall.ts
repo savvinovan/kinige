@@ -7,11 +7,15 @@ import type { ErrorCode } from "./generated/ErrorCode";
 export const ENTRIES_CHANGED = "entries-changed";
 export const OPEN_CHAT = "open-chat";
 export const DATABASE_CORRUPT = "database-corrupt";
+/** The main window is being hidden by a close (`main_window::MAIN_WINDOW_HIDING`): a recording is stopped and kept first (KINIG-156). */
+export const MAIN_WINDOW_HIDING = "main-window-hiding";
 /** Settings changed and an entry is asked to be opened (`settings_window::SETTINGS_CHANGED`, `OPEN_MESSAGE`). */
 export const SETTINGS_CHANGED = "settings-changed";
 export const OPEN_MESSAGE = "open-message";
 /** Import progress (`import::IMPORT_PROGRESS`); it reaches the main window only. */
 export const IMPORT_PROGRESS = "import-progress";
+/** Sticker pack download progress (`stickers::STICKER_PACK_PROGRESS`, slice 5c); it reaches the main window only. */
+export const STICKER_PACK_PROGRESS = "sticker-pack-progress";
 /** Files dragged over the window and dropped on it (`attachments::ATTACH_DRAG`, `ATTACH_DROPPED`); the main window only. */
 export const ATTACHMENTS_DRAG = "attachments-drag";
 export const ATTACHMENTS_DROPPED = "attachments-dropped";
@@ -59,6 +63,26 @@ const CODES = [
   "folders_not_attached",
   "drop_not_supported",
   "attachment_details_invalid",
+  "reaction_invalid",
+  "reaction_limit",
+  "sticker_not_found",
+  "sticker_unreadable",
+  "sticker_entry_read_only",
+  "sticker_pack_link_invalid",
+  "sticker_pack_no_token",
+  "sticker_pack_not_found",
+  "sticker_pack_token_refused",
+  "sticker_pack_unreachable",
+  "sticker_pack_wait",
+  "sticker_pack_only_animated",
+  "sticker_pack_too_large",
+  "sticker_pack_busy",
+  "sticker_pack_bad_response",
+  "telegram_token_invalid",
+  "secret_store_unavailable",
+  "secret_store_unsupported",
+  "secret_store_denied",
+  "sticker_pack_cancelled",
   "internal",
 ] as const satisfies readonly ErrorCode[];
 

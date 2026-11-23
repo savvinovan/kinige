@@ -2,7 +2,7 @@
 //! and deleting an empty day.
 
 use crate::mirror_files::{DayAttachment, day_attachments, sync_day_folder};
-use crate::time::local_hhmm;
+use crate::time::{journal_day_in, local_hhmm};
 use crate::writer::Writer;
 use kinige_domain::MirrorError;
 use kinige_domain::mirror::{
@@ -104,6 +104,7 @@ fn day_entries(
     journal_date: &str,
     attachments: &[DayAttachment],
 ) -> rusqlite::Result<Vec<MirrorEntry>> {
+    let reactions = day_reactions(reader, chat_id, journal_date)?;
     let mut statement = reader.prepare(
         "SELECT m.body_md, m.created_at, m.created_tz, m.reply_to_id, \
                 r.chat_id, r.journal_date, r.created_at, r.created_tz, r.deleted_at IS NOT NULL, m.id \
@@ -156,7 +157,36 @@ fn day_entries(
                         duration_ms: item.duration_ms,
                     })
                     .collect(),
+                reactions: reactions.get(&message_id).cloned().unwrap_or_default(),
             })
         })?
         .collect()
+}
+
+/// The live reactions of the day's entries, per entry, in the order put: each as the emoji and the day it was put on in its own zone
+/// (slice 5a). The derived rows are the source, so a group that is not well-formed adds no line.
+fn day_reactions(
+    reader: &Connection,
+    chat_id: &str,
+    journal_date: &str,
+) -> rusqlite::Result<BTreeMap<String, Vec<(String, String)>>> {
+    let mut statement = reader.prepare(
+        "SELECT r.message_id, r.emoji, r.put_at, r.put_tz FROM message_reaction r \
+         JOIN message m ON m.id = r.message_id \
+         WHERE m.chat_id = ?1 AND m.journal_date = ?2 AND m.deleted_at IS NULL \
+         ORDER BY r.put_at, r.key",
+    )?;
+    let rows = statement.query_map((chat_id, journal_date), |row| {
+        let (put_at, put_tz): (i64, String) = (row.get(2)?, row.get(3)?);
+        Ok((
+            row.get::<_, String>(0)?,
+            (row.get::<_, String>(1)?, journal_day_in(put_at, &put_tz)),
+        ))
+    })?;
+    let mut by_entry: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
+    for row in rows {
+        let (message_id, reaction) = row?;
+        by_entry.entry(message_id).or_default().push(reaction);
+    }
+    Ok(by_entry)
 }

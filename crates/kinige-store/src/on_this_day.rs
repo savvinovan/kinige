@@ -14,8 +14,8 @@ use kinige_domain::on_this_day::{
 };
 use rusqlite::{Connection, OptionalExtension};
 
-/// `app_setting`: the `journal_date` until the end of which the card is hidden. Local, not synced, not written to
-/// `settings.json` (it is not a setting but the state of the day).
+/// `app_setting`: the `journal_date` until the end of which the card is hidden. Local, not synced, not readable by
+/// agents (it is not a setting but the state of the day).
 const DISMISSED_KEY: &str = "on_this_day_dismissed";
 
 impl Store {

@@ -23,7 +23,7 @@ This is a personal project and it is early. The interface is in English and Russ
 - "On this day" shows what you wrote on the same date in earlier years, and you can reply to an old note "N years later".
 - The forest of the year: each day is a tree that grows with how much you wrote. Click a day and the feed jumps to it. There is a calendar view too.
 - An MCP server, so AI agents can search and read your journal and add to Inbox. You choose which chats they see (macOS only for now).
-- A settings window, plus a `settings.json` you can edit by hand.
+- A settings window. Agents can read the settings and change the text size through MCP; shortcuts, agent access and the copy folder stay yours.
 
 Not there yet: photos and files, voice notes, sync, Linux.
 

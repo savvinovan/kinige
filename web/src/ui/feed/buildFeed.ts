@@ -1,4 +1,5 @@
 import type { AttachmentView } from "../../api/generated/AttachmentView";
+import type { ReactionView } from "../../api/generated/ReactionView";
 import type { ReplyTo } from "../../api/generated/ReplyTo";
 import { continuesSeries } from "./dates";
 
@@ -32,6 +33,12 @@ export interface FeedMessage {
   replyTo?: ReplyTo | null;
   /** The live photos and files of the entry (slice 7), in order. */
   attachments?: readonly AttachmentView[];
+  /** The live reactions in the order put (slice 5a), and the keys of every emoji the entry has had. */
+  reactions?: readonly ReactionView[];
+  reactionKeysHad?: readonly string[];
+  /** What the caps count, hidden items included (see `ReactionCounts`). */
+  reactionKeyCount?: number;
+  reactionLiveCount?: number;
 }
 
 export type FeedItem =

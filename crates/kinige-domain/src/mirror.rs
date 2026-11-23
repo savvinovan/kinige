@@ -21,6 +21,7 @@
 //! code in ``` and ~~~ fences stays as is.
 
 use crate::journal::is_journal_date;
+use crate::reactions::present::markdown_line;
 
 /// An entry for the day file: the time is already converted to the entry's time zone.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,6 +33,9 @@ pub struct MirrorEntry {
     pub reply: Option<MirrorReply>,
     /// The entry's attachments in order (slice 7); their files lie in the folder named after the day, next to the day file.
     pub attachments: Vec<MirrorAttachment>,
+    /// The live reactions in the order they were put, each as the emoji and the `YYYY-MM-DD` it was put on in its own zone (slice 5a):
+    /// one line under the text, `❤️ 2026-11-18 · 🔥 2026-11-18`. No reactions, no line.
+    pub reactions: Vec<(String, String)>,
 }
 
 /// An attachment as the day file links it (ADR-0014): `![name](<YYYY-MM-DD/file>)` for an image, `[name](<YYYY-MM-DD/file>)` otherwise.
@@ -113,6 +117,12 @@ pub fn render_day_file(journal_date: &str, entries: &[MirrorEntry]) -> String {
         } else if !entry.attachments.is_empty() {
             // Drop the blank line left after the last attachment: an entry without text ends with it.
             out.truncate(out.trim_end_matches('\n').len());
+            out.push('\n');
+        }
+        if let Some(line) = markdown_line(&entry.reactions) {
+            out.truncate(out.trim_end_matches('\n').len());
+            out.push_str("\n\n");
+            out.push_str(&line);
             out.push('\n');
         }
     }

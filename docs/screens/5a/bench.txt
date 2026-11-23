@@ -1,0 +1,21 @@
+opening an empty database: 44 ms
+parse: 327 ms, 156 MB of JSON, chats 1, messages 100000
+preview: 800 ms, chats to import 1, entries 100000
+import: 48580 ms (485.8 us per message); imported 100000, skipped: already present 0, service 0, empty 0; attachment placeholders 0; chats created 0; backup: true
+repeated import: 1426 ms, new 0, already present 100000
+database size: before 0.4 MB, after 389.5 MB
+cold start: open 4 ms, first page (200 entries) 19 ms
+"On this day" over 200 days: p50 13.0 ms, p95 40.1 ms, max 184.5 ms; entries in the card on average 6.0
+opening Inbox (a page of 200 entries + the card, 5 years): 13 ms
+forest year table (get_forest_year, 120 calls over 2018..2023): p50 104.5 ms, p95 173.0 ms, max 219.5 ms; 16665 notes counted per call on average
+forest day target: 0.3 ms (found: true)
+search over 200 words from the entries (prefix query, page of 50): p50 27.5 ms, p95 182.4 ms, max 258.1 ms; found on average 45.8
+search of a frequent one-letter word: 6.4 ms, found on the page 0
+search of a frequent one-letter word: 7.0 ms, found on the page 0
+search of a frequent one-letter word: 5.9 ms, found on the page 0
+while an AI agent searches in a loop on its own connection: feed page (200 entries) p50 6.4 ms, p95 11.3 ms, max 31.9 ms; recent chats p50 0.0 ms, p95 0.0 ms, max 0.1 ms; the agent's search p50 24.0 ms, p95 160.8 ms, max 281.1 ms (36 searches)
+recent chats, plan of the old query (SQLite 3.54.1, planner statistics tables: 0): SCAN c | SEARCH m EXISTS USING INDEX message_feed (chat_id=?) | CORRELATED SCALAR SUBQUERY 2 | SEARCH m USING INDEX message_feed (chat_id=?) | USE TEMP B-TREE FOR ORDER BY
+recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), before (MAX(created_at) over every entry, 5 rounds; on the bundled SQLite the cost grows sharply and depends on the data, so this is a stress case, not what the tray takes on a typical journal): p50 253040.7 ms, p95 264263.0 ms, max 264263.0 ms
+recent chats (tray menu, 5 of 40 chats, 97561 entries outside Inbox), after (last entry in feed order, message_feed, 40 rounds): p50 0.1 ms, p95 0.1 ms, max 1.7 ms
+reactions put on 10000 entries (a tenth): 22.9 s
+opening Inbox with reactions on a tenth of the entries (page of 200, 17 with reactions, + the card, 100 opens): p50 7.5 ms, p95 12.2 ms, max 16.8 ms

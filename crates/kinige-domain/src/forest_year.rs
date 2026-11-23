@@ -103,6 +103,20 @@ impl ForestView {
             _ => ForestView::Strip,
         }
     }
+
+    /// The remembered shown view (`app_setting.forest_shown_view`, KINIG-150): the one "Show forest" brings back. Only
+    /// `expanded` is expanded; `hidden`, a missing key and anything unknown are the strip, so it is never `Hidden`.
+    pub fn shown_from_setting(value: Option<&str>) -> ForestView {
+        match value {
+            Some("expanded") => ForestView::Expanded,
+            _ => ForestView::Strip,
+        }
+    }
+
+    /// Whether this view is a shown one (the strip or the board), the ones that are remembered.
+    pub fn is_shown(self) -> bool {
+        self != ForestView::Hidden
+    }
 }
 
 impl ForestMode {

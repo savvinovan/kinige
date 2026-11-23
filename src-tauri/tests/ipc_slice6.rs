@@ -269,7 +269,24 @@ fn the_view_state_round_trips_through_settings_and_refuses_garbage() {
     .unwrap();
     let settings = call(&main, "get_settings", json!({})).unwrap();
     assert_eq!(settings["forestView"], "expanded");
+    assert_eq!(settings["forestShownView"], "expanded");
     assert_eq!(settings["forestMode"], "calendar");
+    // Hiding keeps the remembered view (KINIG-150).
+    call(
+        &main,
+        "set_forest_view",
+        json!({"view": "hidden", "mode": "calendar"}),
+    )
+    .unwrap();
+    let settings = call(&main, "get_settings", json!({})).unwrap();
+    assert_eq!(settings["forestView"], "hidden");
+    assert_eq!(settings["forestShownView"], "expanded");
+    call(
+        &main,
+        "set_forest_view",
+        json!({"view": "expanded", "mode": "calendar"}),
+    )
+    .unwrap();
     for (view, mode) in [
         (json!("sideways"), json!("forest")),
         (json!("strip"), json!("tree")),

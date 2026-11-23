@@ -31,11 +31,15 @@ prepare_app() {
   cp -R "$source" "$APP"
   plutil -insert LSEnvironment -json \
     "{\"KINIGE_DATA_DIR\":\"$K/data\",\"KINIGE_MIRROR_DIR\":\"$K/mirror\"}" "$APP/Contents/Info.plist"
-  if [ "$DRIVER" = "1" ]; then
-    rm -rf "$DRIVE_DIR"
-    mkdir -p "$DRIVE_DIR"
-    plutil -insert LSEnvironment.KINIGE_SCREENS_DRIVER_DIR -string "$DRIVE_DIR" "$APP/Contents/Info.plist"
-  fi
+  # Every scenario gets the driver's directory: `set_text_size` sends driver steps whatever the scenario's own input is. A build without the
+  # driver (the feature is off unless screens.yml turns it on) ignores the variable.
+  rm -rf "$DRIVE_DIR"
+  mkdir -p "$DRIVE_DIR"
+  plutil -insert LSEnvironment.KINIGE_SCREENS_DRIVER_DIR -string "$DRIVE_DIR" "$APP/Contents/Info.plist"
+  # More environment for the app (slice 5c: the fake Bot API server and the in-memory token store): `LS_ENV="NAME=value NAME2=value2"`, no spaces in a value.
+  for entry in ${LS_ENV:-}; do
+    plutil -insert "LSEnvironment.${entry%%=*}" -string "${entry#*=}" "$APP/Contents/Info.plist"
+  done
   codesign --force --deep -s - "$APP"
 }
 
@@ -184,6 +188,47 @@ press() {
   sleep "$PAUSE"
 }
 
+# `focus_on <text> [role] [nth]`: the keyboard focus on an element (the driver's `focus` step, KINIG-138). A script cannot hover, so this is how a
+# scenario shows what appears with the focus inside it (the hover bar of an entry). The driver only; nothing is pressed.
+focus_on() {
+  local result query
+  if [ "$DRIVER" != "1" ]; then
+    echo "focus $*: needs the screens driver"
+    fail "no focus without the driver: $*"
+    return 0
+  fi
+  query="$(driver_query "$1" "${2:-}")"
+  [ -n "${3:-}" ] && query="$query,\"nth\":$3"
+  if drive "$(drive_window)" "{\"kind\":\"focus\",$query}"; then result=focused; else result="$DRIVE_ERROR"; fi
+  echo "focus $*: $result"
+  case "$result" in
+    focused) ;;
+    *) fail "not focused: $*" ;;
+  esac
+  sleep "$PAUSE"
+}
+
+# `hover_on <text> [role] [nth]` / `hover_off <text> [role] [nth]`: the pointer onto an element and off it (the driver's `hover` step, KINIG-138): the
+# events a real pointer sends, nothing pressed or focused. It is how a scenario shows what the page shows on hover (an entry's action row). The driver only.
+hover_step() {
+  local leave="$1" result query
+  shift
+  if [ "$DRIVER" != "1" ]; then
+    echo "hover $*: needs the screens driver"
+    fail "no hover without the driver: $*"
+    return 0
+  fi
+  query="$(driver_query "$1" "${2:-}")"
+  [ -n "${3:-}" ] && query="$query,\"nth\":$3"
+  [ "$leave" = "1" ] && query="$query,\"leave\":true"
+  if drive "$(drive_window)" "{\"kind\":\"hover\",$query}"; then result=done; else result="$DRIVE_ERROR"; fi
+  echo "hover$([ "$leave" = "1" ] && echo " off") $*: $result"
+  [ "$result" = "done" ] || fail "hover step failed: $*"
+  sleep "$PAUSE"
+}
+hover_on() { hover_step 0 "$@"; }
+hover_off() { hover_step 1 "$@"; }
+
 # A right click without a mouse: the AX action AXShowMenu on a button, or the driver's `contextmenu` event (the context menu of a sidebar
 # chat opens).
 show_menu() {
@@ -308,6 +353,10 @@ wait_for_settings() {
 
 sql() { sqlite3 "$K/data/kinige.db" "$@"; }
 chat_id() { sql "select id from chat where title = '$1'"; }
+
+# `drive_any` and `set_text_size` (KINIG-160) live in lib-text-size.sh next to this file.
+# shellcheck source=lib-text-size.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib-text-size.sh"
 
 finish() {
   echo "scenario errors: $FAILS"

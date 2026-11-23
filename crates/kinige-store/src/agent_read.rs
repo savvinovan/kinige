@@ -120,12 +120,12 @@ fn run_read(conn: &Connection, args: &ToolArgs, ctx: &ReadCtx<'_>) -> Result<Rea
         ToolArgs::GetEntries(entries) => get_entries(conn, entries, ctx),
         ToolArgs::OnThisDay { date } => on_this_day(conn, date.as_deref(), ctx),
         ToolArgs::GetEntry { id } => get_entry(conn, id, ctx),
-        // Write tools never get here: `agent_write` handles them.
+        // Write tools never get here: `agent_write` handles them; `get_settings` has its own read (`Store::read_for`).
         ToolArgs::AddEntry { .. }
         | ToolArgs::AppendToLastEntry { .. }
-        | ToolArgs::SetTaskDone { .. } => {
-            Err(StoreError::Internal("write tool in a read".into()).into())
-        }
+        | ToolArgs::SetTaskDone { .. }
+        | ToolArgs::SetSetting { .. }
+        | ToolArgs::GetSettings => Err(StoreError::Internal("write tool in a read".into()).into()),
     }
 }
 

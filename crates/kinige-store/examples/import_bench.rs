@@ -19,20 +19,20 @@
     clippy::string_slice
 )]
 
-use kinige_domain::Language;
-use kinige_domain::SearchFilters;
 use kinige_domain::forest::FirstWeekday;
 use kinige_domain::telegram::{TgExport, parse_export};
+use kinige_domain::{Language, SearchFilters};
 use kinige_store::{Now, Store, StoreOptions};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, atomic::AtomicBool};
 use std::time::Instant;
 
 #[path = "import_bench/contention.rs"]
 mod contention;
 #[path = "import_bench/media.rs"]
 mod media;
+#[path = "import_bench/reactions.rs"]
+mod reactions;
 
 use media::{MediaPlan, attachment_benches};
 
@@ -278,6 +278,7 @@ fn main() {
     // KINIG-47, last: the recent chats bench moves entries between chats in the table (a throw-away database).
     contention::agent_contention_bench(&store, &words);
     contention::recent_chats_bench(&store, &data);
+    reactions::reaction_bench(&store, &data);
 }
 
 fn ms(t: Instant) -> f64 {

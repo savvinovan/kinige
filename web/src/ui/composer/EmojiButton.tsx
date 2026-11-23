@@ -4,6 +4,7 @@ import type { Language } from "../../i18n";
 import { IconButton } from "../controls/IconButton";
 import { EmojiInline } from "../emoji/EmojiInline";
 import { EmojiPopover } from "../emoji/EmojiPopover";
+import type { StickersHost } from "../stickers/PickerTabs";
 
 /** Emoji picker in the input field (slice 3). */
 export interface ComposerEmoji {
@@ -20,6 +21,8 @@ export interface ComposerEmoji {
   /** Whether the picker is open, if the owner controls it (capture window: Esc closes the picker first). Without it the state is inside the button. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Slice 5c, the main window: the popover gets the Stickers and GIFs tabs. The capture window gives none and keeps the plain emoji picker. */
+  stickers?: StickersHost;
 }
 
 interface EmojiButtonProps extends ComposerEmoji {
@@ -35,7 +38,7 @@ interface EmojiButtonProps extends ComposerEmoji {
  * The "emoji" button of the input field: opens the picker panel above itself. The choice inserts the emoji instead of the selection (or at the caret
  * position), the caret goes after it, focus returns to the field, the panel closes.
  */
-export function EmojiButton({ recent, language, onPicked, placement = "popover", open: controlled, onOpenChange, field, value, onChange, host }: EmojiButtonProps) {
+export function EmojiButton({ recent, language, onPicked, placement = "popover", open: controlled, onOpenChange, stickers, field, value, onChange, host }: EmojiButtonProps) {
   const { t } = useTranslation();
   const [inner, setInner] = useState(false);
   const open = controlled ?? inner;
@@ -84,7 +87,7 @@ export function EmojiButton({ recent, language, onPicked, placement = "popover",
         <EmojiInline recent={recent} language={language} host={host} onPick={pick} onClose={close} />
       ) : null}
       {open && placement === "popover" ? (
-        <EmojiPopover recent={recent} language={language} anchor={anchor} onPick={pick} onClose={close} />
+        <EmojiPopover recent={recent} language={language} anchor={anchor} onPick={pick} onClose={close} stickers={stickers} />
       ) : null}
     </span>
   );

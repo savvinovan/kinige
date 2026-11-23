@@ -4,7 +4,7 @@ import { Icon } from "../icons/Icon";
 import { GROUPS, type Route, TREE, groupOf, parentOf } from "./routes";
 import "./settings-tree.css";
 
-/** Where the window remembers which tree groups are expanded between launches (this window only, not `settings.json`). */
+/** Where the window remembers which tree groups are expanded between launches (this window only). */
 const STORAGE_KEY = "kinige.settingsTree.expanded";
 
 function loadExpanded(): Route[] {
@@ -28,8 +28,6 @@ function saveExpanded(groups: ReadonlySet<Route>) {
 interface SettingsTreeProps {
   route: Route;
   onNavigate: (route: Route) => void;
-  /** Items that have an error: a mark next to the name (for now this is "Файл настроек"). For a collapsed group, on the section. */
-  withProblems?: readonly Route[];
   /** Groups expanded on open (Storybook stories); without it the saved state is used. */
   defaultExpanded?: readonly Route[];
   /** Routes that are not offered at all (Windows has no AI-agent access yet: no "Visible chats" and "Access log"). */
@@ -48,7 +46,7 @@ interface SettingsTreeProps {
  * page. `aria-expanded` is on a section with nested items. In the Tab order there is one item, the selected one, or if it is hidden in a
  * collapsed group, the section of that group. The focus ring is `:focus-visible` only (from the keyboard). There is no motion.
  */
-export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpanded, without = [] }: SettingsTreeProps) {
+export function SettingsTree({ route, onNavigate, defaultExpanded, without = [] }: SettingsTreeProps) {
   const { t } = useTranslation();
   // The nested items that are offered; a group left without any is an ordinary item.
   const childrenOf = (item: Route): readonly Route[] | undefined => {
@@ -63,7 +61,7 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
     return open;
   });
 
-  // Any navigation (the tree, "Настроить ›", "back", a file error) expands the group of the current page. The state
+  // Any navigation (the tree, "Настроить ›", "back") expands the group of the current page. The state
   // is adjusted during rendering, not in an effect: no extra frame with a collapsed group.
   const [seenRoute, setSeenRoute] = useState(route);
   if (seenRoute !== route) {
@@ -137,10 +135,8 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
           const children = childrenOf(item.route);
           const open = expanded.has(item.route);
           const current = item.route === route;
-          // A collapsed group with the current subitem is highlighted; the subitem's error mark is visible on the section while the group is collapsed.
+          // A collapsed group with the current subitem is highlighted.
           const containsCurrent = !!children && !open && parentOf(route) === item.route && !current;
-          const problem =
-            withProblems.includes(item.route) || (!!children && !open && children.some((child) => withProblems.includes(child)));
           return (
             <li key={item.route} className="settings-tree__item">
               <div
@@ -166,7 +162,6 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
                   className="settings-tree__button"
                   aria-current={current ? "page" : undefined}
                   aria-expanded={children ? open : undefined}
-                  aria-label={problem ? `${t(item.label)}, ${t("prefs.errorMark")}` : undefined}
                   tabIndex={item.route === tabStop ? 0 : -1}
                   onClick={() => {
                     // The name both opens the section and expands the group, including when the page is already open (the route does not change).
@@ -175,11 +170,6 @@ export function SettingsTree({ route, onNavigate, withProblems = [], defaultExpa
                   }}
                 >
                   <span className="settings-tree__label">{t(item.label)}</span>
-                  {problem ? (
-                    <span className="settings-tree__mark">
-                      <Icon name="alert" />
-                    </span>
-                  ) : null}
                 </button>
               </div>
             </li>

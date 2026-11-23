@@ -1,6 +1,8 @@
 import { INBOX_ID, KinigeApiError } from "./KinigeApi";
 import { WHITE_SPACE_CHAR, plainSnippet, rustTrim } from "./mockText";
+import { stickerOf } from "../ui/attachments/stickerRule";
 import type { AttachmentSummary } from "./generated/AttachmentSummary";
+import type { AttachmentView } from "./generated/AttachmentView";
 import type { ReplyTo } from "./generated/ReplyTo";
 
 // The rules of Rust that `MockApi` repeats. Each one is pinned against the real function by a file in `fixtures/api-contract/`, read
@@ -29,6 +31,10 @@ export const LIMITS = {
   voiceMinMs: 1000,
   voiceMaxMs: 1_805_000,
   waveformPeaks: 64,
+  reactionsLive: 10,
+  reactionKeys: 32,
+  reactionsRecent: 8,
+  reactionsQuick: 3,
 } as const;
 
 export const DEFAULT_ICON = "\u{1F4AC}";
@@ -39,7 +45,7 @@ const VARIATION_SELECTOR_16 = String.fromCodePoint(0xfe0f);
 const HIDDEN_IN_NAMES = new RegExp("[\\p{Cc}\\u202a-\\u202e\\u2066-\\u2069]", "gu");
 
 /** An entry with no attachments, as the reply quote and the day card say it (slice 7). */
-export const NO_ATTACHMENTS = { photos: 0, files: 0, voices: 0, voiceMs: null, name: null } as const;
+export const NO_ATTACHMENTS = { photos: 0, files: 0, voices: 0, voiceMs: null, name: null, sticker: false, stickerEmoji: null } as const;
 
 const VIDEO_EXTS = ["mp4", "m4v", "mov", "webm", "mkv", "avi", "mpg", "mpeg", "3gp", "wmv", "flv"];
 const AUDIO_EXTS = ["mp3", "m4a", "aac", "wav", "flac", "ogg", "oga", "opus", "aiff", "aif", "wma", "amr"];
@@ -107,11 +113,13 @@ export function daysLeft(deletedAt: number, now: number): number {
  * a group of a newer version, which Rust refuses to rewrite).
  */
 export function canAppendTo(
-  entry: { origin: string; createdAt: number; journalDate: string; readOnly: boolean },
+  entry: { origin: string; createdAt: number; journalDate: string; readOnly: boolean; bodyMd?: string; attachments?: readonly AttachmentView[] },
   nowMs: number,
 ): boolean {
   return (
     !entry.readOnly &&
+    // An entry drawn as a sticker is never an append target (slice 5c).
+    (entry.bodyMd === undefined || stickerOf(entry.bodyMd, entry.attachments) === null) &&
     entry.origin === "user" &&
     entry.journalDate === mockJournalDate(new Date(nowMs)) &&
     nowMs - entry.createdAt <= LIMITS.appendWindowMs

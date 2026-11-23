@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { OnThisDay } from "../../api/generated/OnThisDay";
 import type { OnThisDayEntry } from "../../api/generated/OnThisDayEntry";
@@ -9,7 +9,13 @@ import { summaryOf, summaryText } from "../attachments/summaryText";
 import { Button } from "../controls/Button";
 import { IconButton } from "../controls/IconButton";
 import { formatLongDate, formatTime } from "../feed/dates";
+import { ReactionPicker, type PickerAnchor } from "../reactions/ReactionPicker";
+import { ReactionRow } from "../reactions/ReactionRow";
+import { useReactionChoices } from "../reactions/ReactionsContext";
 import "./on-this-day.css";
+
+/** Put (`on`) or remove a reaction on a card entry. */
+type CardReact = (messageId: string, emoji: string, on: boolean) => void;
 
 interface OnThisDayCardProps {
   card: OnThisDay;
@@ -19,6 +25,8 @@ interface OnThisDayCardProps {
   onReply: (entry: OnThisDayEntry) => void;
   /** The cross: hide until the next journal day. */
   onDismiss: () => void;
+  /** Slice 5a: the smile button next to "Reply" and removable chips. Without it the card shows the chips as labels and has no button. */
+  onReact?: CardReact;
 }
 
 /**
@@ -26,7 +34,7 @@ interface OnThisDayCardProps {
  * entries, text up to three lines, time, "Reply"), below that "N more entries of this day >"; older years get one row each, "31 октября 2019 ·
  * 5 записей >". A filled card, no border or shadow; "Reply" appears on hover and focus (no motion).
  */
-export function OnThisDayCard({ card, onOpen, onReply, onDismiss }: OnThisDayCardProps) {
+export function OnThisDayCard({ card, onOpen, onReply, onDismiss, onReact }: OnThisDayCardProps) {
   const { t } = useTranslation();
   const language = useLanguage();
   const titleId = useId();
@@ -39,9 +47,52 @@ export function OnThisDayCard({ card, onOpen, onReply, onDismiss }: OnThisDayCar
         <IconButton small icon="close" label={t("onThisDay.hide")} onClick={onDismiss} />
       </header>
       {card.years.map((year) => (
-        <Year key={year.journalDate} year={year} language={language} onOpen={onOpen} onReply={onReply} />
+        <Year key={year.journalDate} year={year} language={language} onOpen={onOpen} onReply={onReply} onReact={onReact} />
       ))}
     </section>
+  );
+}
+
+/**
+ * The smile button next to "Reply" (slice 5a): it opens the small popover with the three quick emoji and "More". The chip it puts appears under the
+ * entry in the card (the owner reads the card again) and in the feed when the entry is opened. Not drawn for an entry that cannot take reactions.
+ */
+function EntryReaction({ entry, date, onReact }: { entry: OnThisDayEntry; date: string; onReact?: CardReact }) {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const { quick, recent } = useReactionChoices();
+  const [anchor, setAnchor] = useState<PickerAnchor | null>(null);
+  const { message } = entry;
+  if (!onReact || message.readOnly) return null;
+  const state = { reactions: message.reactions, keysHad: message.reactionKeysHad, counts: { key: message.reactionKeyCount, live: message.reactionLiveCount } };
+  return (
+    <>
+      <IconButton
+        small
+        icon="reactionAdd"
+        className={anchor ? "on-this-day__react on-this-day__react--open" : "on-this-day__react"}
+        data-react-entry={message.id}
+        label={t("onThisDay.reactLabel", { date })}
+        aria-haspopup="dialog"
+        onClick={(event) => setAnchor(event.currentTarget.getBoundingClientRect())}
+      />
+      {anchor ? (
+        <ReactionPicker
+          anchor={anchor}
+          start="quick"
+          quick={quick}
+          recent={recent}
+          state={state}
+          language={language}
+          onReact={(emoji, on) => onReact(message.id, emoji, on)}
+          onClose={(returnFocus) => {
+            setAnchor(null);
+            // The button is looked up now: WebKit does not focus a button on click, and the card may have been redrawn meanwhile.
+            if (returnFocus) document.querySelector<HTMLElement>(`[data-react-entry="${message.id}"]`)?.focus();
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -50,11 +101,13 @@ function Year({
   language,
   onOpen,
   onReply,
+  onReact,
 }: {
   year: OnThisDayYear;
   language: Language;
   onOpen: (messageId: string) => void;
   onReply: (entry: OnThisDayEntry) => void;
+  onReact?: CardReact;
 }) {
   const { t } = useTranslation();
   const date = formatLongDate(year.journalDate, language);
@@ -89,7 +142,13 @@ function Year({
                   {time}
                 </time>
               </button>
+              <EntryReaction entry={entry} date={date} onReact={onReact} />
               <IconButton small icon="reply" className="on-this-day__reply" label={t("onThisDay.replyLabel", { date })} onClick={() => onReply(entry)} />
+              <ReactionRow
+                reactions={entry.message.reactions}
+                outside
+                onRemove={onReact && !entry.message.readOnly ? (emoji) => onReact(entry.message.id, emoji, false) : undefined}
+              />
             </li>
           );
         })}

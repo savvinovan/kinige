@@ -9,8 +9,11 @@ export const RECOVERY_SETTINGS: Settings = {
   shortcuts: [],
   sidebarCollapsed: false,
   forestView: "strip",
+  forestShownView: "strip",
   forestMode: "forest",
   recentEmoji: [],
+  quickReactions: [],
+  recentReactions: [],
   backup: { folder: null, lastAt: null, count: 0, error: null },
 };
 

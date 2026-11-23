@@ -206,23 +206,110 @@ fn damaged_stored_view_state_reads_as_the_defaults() {
     );
 }
 
-#[test]
-fn the_view_state_is_exactly_two_app_setting_keys() {
-    let dir = tempfile::tempdir().unwrap();
-    let store = open_without_mirror(dir.path());
-    store
-        .set_forest_view(ForestView::Expanded, ForestMode::Calendar)
-        .unwrap();
-    let keys: Vec<String> = raw(dir.path())
+fn forest_keys(dir: &std::path::Path) -> Vec<String> {
+    raw(dir)
         .prepare("SELECT key FROM app_setting WHERE key LIKE 'forest%' ORDER BY key")
         .unwrap()
         .query_map([], |row| row.get(0))
         .unwrap()
         .map(Result::unwrap)
-        .collect();
+        .collect()
+}
+
+#[test]
+fn the_view_state_is_exactly_three_app_setting_keys() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    store
+        .set_forest_view(ForestView::Expanded, ForestMode::Calendar)
+        .unwrap();
     assert_eq!(
-        keys,
-        ["forest_mode", "forest_view"],
-        "two app_setting keys and nothing else"
+        forest_keys(dir.path()),
+        ["forest_mode", "forest_shown_view", "forest_view"],
+        "three app_setting keys and nothing else, all device-local"
     );
+}
+
+/// Hiding keeps the remembered view; showing a view replaces it (KINIG-150: the forest comes back as it was).
+#[test]
+fn hiding_keeps_the_shown_view_and_showing_replaces_it() {
+    let dir = tempfile::tempdir().unwrap();
+    {
+        let store = open_without_mirror(dir.path());
+        let settings = store.get_settings().unwrap();
+        assert_eq!(
+            settings.forest_shown_view,
+            ForestView::Strip,
+            "a fresh database"
+        );
+        store
+            .set_forest_view(ForestView::Expanded, ForestMode::Forest)
+            .unwrap();
+        store
+            .set_forest_view(ForestView::Hidden, ForestMode::Forest)
+            .unwrap();
+        let settings = store.get_settings().unwrap();
+        assert_eq!(
+            (settings.forest_view, settings.forest_shown_view),
+            (ForestView::Hidden, ForestView::Expanded)
+        );
+    }
+    // The same after a restart.
+    let store = open_without_mirror(dir.path());
+    let settings = store.get_settings().unwrap();
+    assert_eq!(
+        (settings.forest_view, settings.forest_shown_view),
+        (ForestView::Hidden, ForestView::Expanded)
+    );
+    store
+        .set_forest_view(ForestView::Strip, ForestMode::Forest)
+        .unwrap();
+    store
+        .set_forest_view(ForestView::Hidden, ForestMode::Forest)
+        .unwrap();
+    assert_eq!(
+        store.get_settings().unwrap().forest_shown_view,
+        ForestView::Strip
+    );
+}
+
+#[test]
+fn an_older_database_without_the_remembered_view_and_garbage_in_it_read_as_the_strip() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = open_without_mirror(dir.path());
+    // An older database: `hidden`, no remembered view -> the strip; `expanded`, no remembered view -> the board.
+    let put_view = |value: &str| {
+        raw(dir.path())
+            .execute(
+                "INSERT INTO app_setting(key, value) VALUES ('forest_view', ?1) \
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                [value],
+            )
+            .unwrap();
+    };
+    put_view("hidden");
+    assert_eq!(
+        store.get_settings().unwrap().forest_shown_view,
+        ForestView::Strip
+    );
+    put_view("expanded");
+    assert_eq!(
+        store.get_settings().unwrap().forest_shown_view,
+        ForestView::Expanded
+    );
+    // A remembered view that is `hidden` or garbage is the strip, whatever the view says.
+    for garbage in ["hidden", "", "Expanded", "sideways", "expanded\u{0}"] {
+        raw(dir.path())
+            .execute(
+                "INSERT INTO app_setting(key, value) VALUES ('forest_shown_view', ?1) \
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                [garbage],
+            )
+            .unwrap();
+        assert_eq!(
+            store.get_settings().unwrap().forest_shown_view,
+            ForestView::Strip,
+            "{garbage:?}"
+        );
+    }
 }

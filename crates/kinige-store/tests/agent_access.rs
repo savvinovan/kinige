@@ -27,6 +27,8 @@ fn minimal(tool: AgentTool, chat: &str, entry: &str) -> Value {
         AgentTool::AddEntry => json!({"text": "заметка агента", "chat_id": chat}),
         AgentTool::AppendToLastEntry => json!({"text": "дополнение", "chat_id": chat}),
         AgentTool::SetTaskDone => json!({"id": entry, "done": true}),
+        AgentTool::GetSettings => json!({}),
+        AgentTool::SetSetting => json!({"key": "text_size", "value": "large"}),
     }
 }
 
@@ -243,6 +245,7 @@ fn read_only_mode_refuses_every_write_and_writes_nothing() {
         AgentTool::AddEntry,
         AgentTool::AppendToLastEntry,
         AgentTool::SetTaskDone,
+        AgentTool::SetSetting,
     ] {
         assert_eq!(
             call(&a.store, tool.name(), minimal(tool, &a.work, &id), T0),
@@ -252,7 +255,7 @@ fn read_only_mode_refuses_every_write_and_writes_nothing() {
     assert_eq!(count(a.dir.path(), "message"), 1);
     assert_eq!(count(a.dir.path(), "message_revision"), 0);
     let rows = log_rows(a.dir.path());
-    assert_eq!(rows.len(), 3);
+    assert_eq!(rows.len(), 4);
     assert!(rows.iter().all(|row| row.3 == "read_only"));
     // Reading works in this mode.
     assert!(call(&a.store, "get_entry", json!({"id": id}), T0).is_ok());

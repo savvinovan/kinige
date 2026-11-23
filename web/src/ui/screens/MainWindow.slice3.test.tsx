@@ -342,9 +342,11 @@ describe("MainWindow слайс 3: теги и корзина", () => {
     await api.deleteMessage("d1");
     api.emitEntriesChanged();
     fireEvent.click(await screen.findByRole("button", { name: /^Корзина/ }));
-    await screen.findByText("в корзине");
+    // The feed's copy of the entry also says "в корзине" until the trash view takes its place: wait for the trash's own button, in its region.
+    const region = await screen.findByRole("region", { name: "Корзина" });
+    const restore = await within(region).findByRole("button", { name: /^Восстановить/ });
     api.failNext("restoreMessage", "message_not_found");
-    fireEvent.click(screen.getByRole("button", { name: /^Восстановить/ }));
+    fireEvent.click(restore);
     expect(await screen.findByRole("alert")).toHaveTextContent("Запись не найдена");
   });
 });
@@ -357,6 +359,7 @@ describe("MainWindow слайс 3: английский", () => {
     fireEvent.contextMenu(article("Buy bread"));
     expect(within(screen.getByRole("menu")).getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
       "Copy",
+      "Add reaction…",
       "Edit",
       "Make a task",
       "Add to favorites",

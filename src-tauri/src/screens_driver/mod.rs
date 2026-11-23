@@ -255,6 +255,16 @@ fn handle_request<R: Runtime>(
         answer(dir, path, reply);
         return;
     }
+    if matches!(step, Step::Close {}) {
+        // The close request of the red button and ⌘W, which `main_window` answers by telling the page and hiding the window (KINIG-156).
+        let reply = if label == MAIN_LABEL && webview.close().is_ok() {
+            Reply::ok(id, None)
+        } else {
+            Reply::error(id, "close is for the main window")
+        };
+        answer(dir, path, reply);
+        return;
+    }
     if matches!(step, Step::Front {}) {
         if label == MAIN_LABEL {
             show_main(app);

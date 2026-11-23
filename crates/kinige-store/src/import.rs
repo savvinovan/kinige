@@ -12,7 +12,7 @@
 use crate::import_batch::Row;
 use crate::import_lookup::{
     author_of, entries_with_files, file_of, find_import_chat, imported_messages, renderings,
-    supported_kind,
+    sticker_preview, supported_kind,
 };
 use crate::import_media::{Late, Prepared, StagedMedia, prepare};
 use crate::import_time::{Timeline, journal_date_of};
@@ -46,6 +46,18 @@ struct Run {
 impl Store {
     /// What was found in the export: the chats that can be imported, the number of entries and how many are already imported.
     pub fn import_preview(&self, export: &TgExport) -> Result<ImportPreview, StoreError> {
+        self.import_preview_with_media(export, None)
+    }
+
+    /// The same with the folder of `result.json` (slice 5c): the sticker line counts different files by content, which needs the files.
+    /// Without the folder, "different" counts different paths.
+    pub fn import_preview_with_media(
+        &self,
+        export: &TgExport,
+        media_root: Option<&Path>,
+    ) -> Result<ImportPreview, StoreError> {
+        let root = media_root.and_then(|folder| std::fs::canonicalize(folder).ok());
+        let stickers = sticker_preview(export, root.as_deref());
         let mut chats = Vec::new();
         let mut skipped_chats = 0;
         for chat in &export.chats {
@@ -85,6 +97,7 @@ impl Store {
         Ok(ImportPreview {
             chats,
             skipped_chats,
+            stickers,
         })
     }
 
@@ -195,7 +208,8 @@ impl Store {
                         if let (Some(root), Some(file), Some(owner)) =
                             (root.as_deref(), message.file.as_ref(), owner)
                         {
-                            match prepare(&self.dirs(), self.faults(), root, file) {
+                            let media_kind = message.media.as_ref();
+                            match prepare(&self.dirs(), self.faults(), root, file, media_kind) {
                                 Prepared::Ready(media) => {
                                     batch_files += 1;
                                     batch_bytes += media.bytes();
@@ -218,7 +232,8 @@ impl Store {
                         let author = author_of(chat, message);
                         let mut media: Option<StagedMedia> = None;
                         if let (Some(root), Some(file)) = (root.as_deref(), message.file.as_ref()) {
-                            match prepare(&self.dirs(), self.faults(), root, file) {
+                            let media_kind = message.media.as_ref();
+                            match prepare(&self.dirs(), self.faults(), root, file, media_kind) {
                                 Prepared::Ready(staged) => media = Some(staged),
                                 Prepared::Missing => run.report.media_missing += 1,
                                 Prepared::Skipped => run.report.media_skipped += 1,

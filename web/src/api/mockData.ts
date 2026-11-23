@@ -43,8 +43,11 @@ export const DEFAULT_SETTINGS: Settings = {
   ],
   sidebarCollapsed: false,
   forestView: "strip",
+  forestShownView: "strip",
   forestMode: "forest",
   recentEmoji: [],
+  quickReactions: ["❤️", "\u{1F602}", "\u{1F622}"],
+  recentReactions: [],
   backup: { folder: "/Users/me/Library/Application Support/me.savvinov.kinige/backups", lastAt: null, count: 0, error: null },
 };
 
@@ -66,6 +69,10 @@ export function mockMessage(part: Partial<MessageView> & Pick<MessageView, "id" 
     origin: "user",
     replyTo: null,
     attachments: [],
+    reactions: [],
+    reactionKeysHad: [],
+    reactionKeyCount: 0,
+    reactionLiveCount: 0,
     ...part,
   };
 }
@@ -77,6 +84,8 @@ export interface Row {
   revisions: string[];
   /** The entry is a reply (slice 5): the addressee entry id; the `view.replyTo` quote is built on read (`MockState.viewOf`). */
   replyToId?: string;
+  /** The keys of every emoji the entry has had a reaction of, removed ones included (slice 5a); made from the view on the first use. */
+  reactionKeys?: Set<string>;
 }
 
 /** Feed order `(journal_date, created_at, id)`. */
@@ -91,3 +100,6 @@ export function compareFeed(
 
 /** The media fields of an import preview chat that has none (slice 7). */
 export const NO_MEDIA = { mediaFiles: 0, mediaBytes: 0, mediaMissing: 0 } as const;
+
+/** The stickers line of an import preview for an export that has none (slice 5c). */
+export const NO_STICKERS = { sent: 0, different: 0, skipped: 0 } as const;

@@ -17,6 +17,7 @@ pub mod guard;
 pub mod hotkeys;
 pub mod import;
 pub mod logging;
+pub mod main_window;
 pub mod media_protocol;
 // The MCP server is a Unix socket (ADR-0009). Without Unix (Windows, slice 10a) a stub with the same surface stands in:
 // there is no socket and the "AI agent access" page sees `unsupported`.
@@ -35,10 +36,14 @@ pub mod recovery;
 pub mod screens_driver;
 pub mod settings_window;
 pub mod startup;
+pub mod stickers;
 pub mod tray;
 pub mod voice;
+mod window_events;
 
-use capture::{CAPTURE_LABEL, CaptureShell, MAIN_LABEL};
+pub use window_events::on_window_event;
+
+use capture::{CaptureShell, MAIN_LABEL};
 use data_dirs::{db_path, default_mirror_dir};
 use hotkeys::{Hotkeys, PluginRegistrar};
 use kinige_store::{Store, StoreError, StoreOptions};
@@ -51,7 +56,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use tauri::webview::PageLoadEvent;
-use tauri::{AppHandle, Manager, Runtime, WindowEvent};
+use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_global_shortcut::ShortcutState;
 
 #[cfg(feature = "screens-driver")]
@@ -70,6 +75,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
         .plugin(guard::plugin())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .on_window_event(on_window_event) // not in `run`: the IPC tests send a close through it
         .invoke_handler(guarded::<R>(tauri::generate_handler![
             commands::app_info,
             commands::get_language,
@@ -89,6 +95,16 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             voice::microphone_hold,
             voice::read_voice_for_waveform,
             voice::set_attachment_waveform,
+            stickers::get_sticker_library,
+            stickers::pack_command::add_sticker_pack,
+            stickers::cancel_sticker_pack,
+            stickers::remove_sticker_pack,
+            stickers::send_sticker,
+            stickers::list_journal_gifs,
+            stickers::send_gif_again,
+            stickers::get_telegram_token_state,
+            stickers::set_telegram_bot_token,
+            stickers::clear_telegram_bot_token,
             commands::get_settings,
             commands::set_text_size,
             commands::choose_mirror_folder,
@@ -104,7 +120,6 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             commands::reset_shortcut,
             commands::shortcut_recording,
             settings_window::open_settings,
-            settings_window::get_settings_file,
             settings_window::settings_open_entry,
             actions::create_chat,
             actions::rename_chat,
@@ -117,6 +132,7 @@ pub fn builder<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
             actions::edit_message,
             actions::toggle_task_item,
             actions::set_message_flag,
+            actions::set_message_reaction,
             actions::set_message_date,
             actions::move_message,
             actions::list_trash,
@@ -181,26 +197,25 @@ fn start_services<R: Runtime>(
     #[cfg(target_os = "macos")]
     panel::convert(
         app,
-        CAPTURE_LABEL,
+        capture::CAPTURE_LABEL,
         capture::on_capture_key,
         capture::on_capture_blur,
         capture::request_hide,
     )?;
     tray::setup(app, commands::get_language())?;
-    // The settings file is applied first (ADR-0010): before registering shortcuts and before the MCP listener.
-    let db = db_path(app)?;
-    let data_dir = db.parent().ok_or("no data directory")?.to_path_buf();
-    let settings_file = settings_window::start_file(app, &store, data_dir);
+    // Nothing is read from a file (ADR-0022): the old temporary files of the retired settings file go, and that is all.
+    store.remove_settings_file_leftovers();
     let hotkeys = Hotkeys::new(Box::new(PluginRegistrar { app: app.clone() }));
     // A shortcut the system did not accept stays "unassigned" in the settings; the rest works.
     hotkeys.register_saved(&store);
     app.manage(store);
     app.manage(hotkeys);
-    app.manage(settings_file);
     settings_window::set_available(app, true);
     app.manage(CaptureShell::default());
     app.manage(import::ImportState::default());
     app.manage(attachments::DropTokens::default());
+    // Stickers (slice 5c): the token store and the Bot API client are made on first use; nothing reads the secret store or opens a socket here.
+    app.manage(stickers::StickerShell::production());
     // The icon was built without the store (it was not yet in the app state): the recent chats now.
     tray::refresh(app);
     // The MCP server goes last, after `app.manage(store)`: a socket failure does not stop the journal (the error is visible in the settings).
@@ -229,36 +244,6 @@ pub(crate) fn resume_after_restore<R: Runtime>(app: &AppHandle<R>) -> Result<(),
     rx.recv()
         .map_err(|e| StoreError::Internal(e.to_string()))?
         .map_err(StoreError::Internal)
-}
-
-/// Closing the main window hides it, the app lives in the menu bar; closing the capture window is the same as Esc.
-/// Public so that the IPC tests can send a window a drop (only `main` leaves a token).
-pub fn on_window_event<R: Runtime>(window: &tauri::Window<R>, event: &WindowEvent) {
-    #[cfg(feature = "screens-driver")]
-    screens_driver::on_window_event(window, event);
-    match (window.label(), event) {
-        (MAIN_LABEL, WindowEvent::CloseRequested { api, .. }) => {
-            api.prevent_close();
-            let _ = window.hide();
-        }
-        // Files dragged over the main window: the overlay and, on a drop, a token (slice 7). Other windows ignore drops.
-        (MAIN_LABEL, WindowEvent::DragDrop(event)) => {
-            attachments::on_drag_drop(window.app_handle(), event)
-        }
-        (CAPTURE_LABEL, WindowEvent::CloseRequested { api, .. }) => {
-            api.prevent_close();
-            capture::request_hide(window.app_handle());
-        }
-        // A click into another window or another app: the capture window hides, the draft is saved.
-        (CAPTURE_LABEL, WindowEvent::Focused(false)) => {
-            capture::on_capture_blur(window.app_handle())
-        }
-        // The settings window closes completely; a shortcut recording, if in progress, is cancelled.
-        (settings_window::SETTINGS_LABEL, WindowEvent::Destroyed) => {
-            settings_window::on_destroyed(window.app_handle())
-        }
-        _ => {}
-    }
 }
 
 pub fn run() {
@@ -355,7 +340,6 @@ pub fn run() {
     let configured = configured.on_web_content_process_terminate(voice::on_page_terminated);
     let built = configured
         .setup(move |app| fail_fast(setup(app)))
-        .on_window_event(on_window_event)
         .on_page_load(|webview, payload| {
             voice::on_page_load_event(webview, payload.event());
             // Cold start measurement (`scripts/measure-cold-start.sh`): a mark for when the main window page has loaded.

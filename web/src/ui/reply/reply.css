@@ -61,9 +61,14 @@
   color: var(--color-text-tertiary);
 }
 
+/* The label gives way after the start of the entry has gone (KINIG-76): at large text in the smallest window "Reply to the entry of 31 October 2023" is
+   wider than the column, and a label that never shrank pushed the cross out of the window and made the page scroll sideways. The whole date is in the group's name. */
 .reply-strip__label {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-text-tertiary);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

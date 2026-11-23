@@ -8,7 +8,6 @@ import type { AttachmentView } from "./generated/AttachmentView";
 import type { ErrorCode } from "./generated/ErrorCode";
 import type { ImportReport } from "./generated/ImportReport";
 import type { MessageView } from "./generated/MessageView";
-import type { SettingsFileState } from "./generated/SettingsFileState";
 import { MockAgents } from "./mock/MockAgents";
 import { MockApp } from "./mock/MockApp";
 import { MockAttachments } from "./mock/MockAttachments";
@@ -19,8 +18,10 @@ import { MockEntries } from "./mock/MockEntries";
 import { MockForest } from "./mock/MockForest";
 import { MockImport, type MockImportFile } from "./mock/MockImport";
 import { MockOnThisDay } from "./mock/MockOnThisDay";
+import { MockReactions } from "./mock/MockReactions";
 import { MockSearch } from "./mock/MockSearch";
 import { MockSettings } from "./mock/MockSettings";
+import { MockStickers, type MockRemotePack } from "./mock/MockStickers";
 import { type MockMethod, MockState } from "./mock/MockState";
 import { MockTrash } from "./mock/MockTrash";
 import { MockVoice } from "./mock/MockVoice";
@@ -29,8 +30,8 @@ export { DEFAULT_SETTINGS, type MockApiOptions, mockMessage } from "./mockData";
 export { MOCK_AGENT_SOCKET, MOCK_LOG_PAGE } from "./mock/MockAgents";
 export { mockAttachment } from "./mock/MockAttachments";
 export { MOCK_BACKUP_NAME, type MockImportFile } from "./mock/MockImport";
-export { MOCK_SETTINGS_FILE } from "./mock/MockSettings";
 export type { MockMethod } from "./mock/MockState";
+export type { MockRemotePack };
 
 /**
  * `KinigeApi` in memory: the same interface as `TauriApi`, for tests and Storybook. Stores chats and entries, counts counters, keeps the
@@ -44,6 +45,7 @@ export class MockApi implements KinigeApi {
   private readonly app: MockApp;
   private readonly chats: MockChats;
   private readonly entries: MockEntries;
+  private readonly reactions: MockReactions;
   private readonly compose: MockCompose;
   private readonly trash: MockTrash;
   private readonly search: MockSearch;
@@ -55,6 +57,7 @@ export class MockApi implements KinigeApi {
   private readonly forest: MockForest;
   private readonly attachments: MockAttachments;
   private readonly voice: MockVoice;
+  private readonly stickers: MockStickers;
 
   constructor(options: MockApiOptions = {}) {
     const state = new MockState(options);
@@ -62,6 +65,7 @@ export class MockApi implements KinigeApi {
     this.app = new MockApp(state);
     this.chats = new MockChats(state);
     this.entries = new MockEntries(state);
+    this.reactions = new MockReactions(state);
     this.compose = new MockCompose(state);
     this.trash = new MockTrash(state);
     this.search = new MockSearch(state);
@@ -73,6 +77,7 @@ export class MockApi implements KinigeApi {
     this.forest = new MockForest(state);
     this.attachments = new MockAttachments(state);
     this.voice = new MockVoice(state, this.compose);
+    this.stickers = new MockStickers(state, this.compose);
   }
 
   // ---- the app ----
@@ -83,6 +88,7 @@ export class MockApi implements KinigeApi {
   restoreBackup: KinigeApi["restoreBackup"] = (name) => this.app.restoreBackup(name);
   onDatabaseCorrupt: KinigeApi["onDatabaseCorrupt"] = (handler) => this.app.onDatabaseCorrupt(handler);
   restartForRecovery: KinigeApi["restartForRecovery"] = () => this.app.restartForRecovery();
+  onMainWindowHiding: KinigeApi["onMainWindowHiding"] = (handler) => this.app.onMainWindowHiding(handler);
 
   // ---- chats ----
   listChats: KinigeApi["listChats"] = () => this.chats.listChats();
@@ -101,6 +107,7 @@ export class MockApi implements KinigeApi {
   editMessage: KinigeApi["editMessage"] = (id, body) => this.entries.editMessage(id, body);
   toggleTaskItem: KinigeApi["toggleTaskItem"] = (id, index, checked) => this.entries.toggleTaskItem(id, index, checked);
   setMessageFlag: KinigeApi["setMessageFlag"] = (id, flag, on) => this.entries.setMessageFlag(id, flag, on);
+  setMessageReaction: KinigeApi["setMessageReaction"] = (id, emoji, on) => this.reactions.setMessageReaction(id, emoji, on);
   setMessageDate: KinigeApi["setMessageDate"] = (id, journalDate) => this.entries.setMessageDate(id, journalDate);
   moveMessage: KinigeApi["moveMessage"] = (id, chatId) => this.entries.moveMessage(id, chatId);
   sendMessage: KinigeApi["sendMessage"] = (chatId, body, replyToId, attachmentIds) =>
@@ -128,7 +135,6 @@ export class MockApi implements KinigeApi {
   setShortcut: KinigeApi["setShortcut"] = (kind, accelerator) => this.settings.setShortcut(kind, accelerator);
   resetShortcut: KinigeApi["resetShortcut"] = (kind) => this.settings.resetShortcut(kind);
   shortcutRecording: KinigeApi["shortcutRecording"] = (active) => this.settings.shortcutRecording(active);
-  getSettingsFile: KinigeApi["getSettingsFile"] = () => this.settings.getSettingsFile();
   openSettings: KinigeApi["openSettings"] = () => this.settings.openSettings();
   settingsOpenEntry: KinigeApi["settingsOpenEntry"] = (id) => this.settings.settingsOpenEntry(id);
   onOpenMessage: KinigeApi["onOpenMessage"] = (handler) => this.settings.onOpenMessage(handler);
@@ -178,6 +184,24 @@ export class MockApi implements KinigeApi {
   captureHoldMicrophone: KinigeApi["captureHoldMicrophone"] = (held) => this.voice.holdMicrophone("capture", held);
   captureOpenMicrophoneSettings: KinigeApi["captureOpenMicrophoneSettings"] = () => this.voice.captureOpenMicrophoneSettings();
 
+  // ---- stickers, GIFs and the bot token (slice 5c) ----
+  getStickerLibrary: KinigeApi["getStickerLibrary"] = () => this.stickers.getStickerLibrary();
+  addStickerPack: KinigeApi["addStickerPack"] = (link) => this.stickers.addStickerPack(link);
+  cancelStickerPack: KinigeApi["cancelStickerPack"] = () => this.stickers.cancelStickerPack();
+  removeStickerPack: KinigeApi["removeStickerPack"] = (packId) => this.stickers.removeStickerPack(packId);
+  sendSticker: KinigeApi["sendSticker"] = (chatId, stickerId, replyToId) => this.stickers.sendSticker(chatId, stickerId, replyToId ?? null);
+  listJournalGifs: KinigeApi["listJournalGifs"] = () => this.stickers.listJournalGifs();
+  sendGifAgain: KinigeApi["sendGifAgain"] = (chatId, id, replyToId) => this.stickers.sendGifAgain(chatId, id, replyToId ?? null);
+  onStickerPackProgress: KinigeApi["onStickerPackProgress"] = (handler) => this.stickers.onStickerPackProgress(handler);
+  getTelegramTokenState: KinigeApi["getTelegramTokenState"] = () => this.stickers.getTelegramTokenState();
+  setTelegramBotToken: KinigeApi["setTelegramBotToken"] = (token) => this.stickers.setTelegramBotToken(token);
+  clearTelegramBotToken: KinigeApi["clearTelegramBotToken"] = () => this.stickers.clearTelegramBotToken();
+
+  /** The mock's sticker library, pretend Telegram and bot token flag: stories and tests seed and read them here. */
+  get stickerLibrary(): MockStickers {
+    return this.stickers;
+  }
+
   // ---- for tests and stories: failures, events, entries ----
 
   /** The next call of this command fails with an error (once). */
@@ -203,6 +227,11 @@ export class MockApi implements KinigeApi {
   /** Like the "integrity check found corruption" event. */
   emitDatabaseCorrupt(): void {
     this.app.emitDatabaseCorrupt();
+  }
+
+  /** Like the Rust event sent when the main window is closed (hidden) by the red button or ⌘W. */
+  emitMainWindowHiding(): void {
+    this.app.emitMainWindowHiding();
   }
 
   /** Like the Rust events while files are dragged over the window. */
@@ -299,8 +328,6 @@ export class MockApi implements KinigeApi {
   set failNextCapture(code: ErrorCode | null) { this.capture.failNext = code; }
   get pickedFolder() { return this.settings.pickedFolder; }
   set pickedFolder(folder: string | null) { this.settings.pickedFolder = folder; }
-  get settingsFile() { return this.settings.settingsFile; }
-  set settingsFile(file: SettingsFileState) { this.settings.settingsFile = file; }
   get importFile() { return this.importer.file; }
   set importFile(file: MockImportFile) { this.importer.file = file; }
   get importReportPatch() { return this.importer.reportPatch; }

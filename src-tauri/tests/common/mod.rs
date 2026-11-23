@@ -4,6 +4,8 @@
 #![allow(dead_code)]
 
 // The client of the MCP server over the Unix socket; there is no server on Windows (slice 10a).
+pub mod bot_env;
+pub mod fake_bot;
 #[cfg(unix)]
 pub mod mcp;
 pub mod voice;
@@ -12,6 +14,8 @@ use kinige_lib::builder;
 use kinige_lib::capture::CaptureShell;
 use kinige_lib::hotkeys::{Hotkeys, Refused, Registrar};
 use kinige_lib::recovery::Recovery;
+use kinige_lib::stickers::secret::{MemorySecrets, OsSecrets, SecretStore};
+use kinige_lib::stickers::{BotClient, StickerShell};
 use kinige_store::{Store, StoreOptions};
 use serde_json::{Value, json};
 use std::collections::HashSet;
@@ -68,31 +72,51 @@ fn new_app() -> App<MockRuntime> {
         .expect("could not build the app")
 }
 
-/// The settings file thread for tests: polling is rare, events to windows are not needed.
-pub fn settings_file(
-    app: &tauri::AppHandle<MockRuntime>,
-    store: &Store,
-    dir: &std::path::Path,
-) -> kinige_store::SettingsFile {
-    let handle = app.clone();
-    let mut options = kinige_store::SettingsFileOptions::new(Arc::new(move || {
-        kinige_lib::settings_window::notify_changed(&handle)
-    }));
-    options.poll = std::time::Duration::from_secs(3600);
-    kinige_store::SettingsFile::start(store.clone(), dir.to_path_buf(), options)
-}
-
 pub struct Fixture {
     pub app: App<MockRuntime>,
     pub registrar: Arc<FakeRegistrar>,
     pub data: tempfile::TempDir,
+    /// The bot token store of slice 5c, in memory and counting its calls (the secret store of the OS is never touched in a test).
+    pub secrets: Arc<MemorySecrets>,
+}
+
+/// Manages the sticker state with an in-memory token store and a client whose base is a port nobody listens on: a test that reaches the
+/// network by mistake fails with "unreachable", it never reaches Telegram.
+pub fn manage_stickers(app: &App<MockRuntime>) -> Arc<MemorySecrets> {
+    manage_stickers_over(app, false)
+}
+
+/// `real_store`: the shell holds the secret store of this platform (`OsSecrets`) instead of the in-memory one. Only for a test that
+/// runs where that store answers without touching anything (Windows and Linux: "unsupported"); never on macOS, where it is the keychain.
+fn manage_stickers_over(app: &App<MockRuntime>, real_store: bool) -> Arc<MemorySecrets> {
+    let secrets = Arc::new(MemorySecrets::default());
+    let store: Arc<dyn SecretStore> = if real_store {
+        Arc::new(OsSecrets)
+    } else {
+        secrets.clone()
+    };
+    app.manage(StickerShell::new(
+        store,
+        Box::new(|| BotClient::with_base("http://127.0.0.1:9", false)),
+    ));
+    secrets
 }
 
 pub fn fixture() -> Fixture {
     fixture_with_taken(&[])
 }
 
+/// A fixture whose sticker shell holds the platform's own secret store. Compiled everywhere, called only off macOS.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+pub fn fixture_with_os_secrets() -> Fixture {
+    fixture_built(&[], true)
+}
+
 pub fn fixture_with_taken(taken: &[&str]) -> Fixture {
+    fixture_built(taken, false)
+}
+
+fn fixture_built(taken: &[&str], real_store: bool) -> Fixture {
     let data = tempfile::tempdir().unwrap();
     let db_path = data.path().join("kinige.db");
     let mut options = StoreOptions::new(&db_path, Some(data.path().join("mirror")));
@@ -108,17 +132,18 @@ pub fn fixture_with_taken(taken: &[&str]) -> Fixture {
     let hotkeys = Hotkeys::new(Box::new(Shared(registrar.clone())));
     hotkeys.register_saved(&store);
     let app = new_app();
-    app.manage(settings_file(app.handle(), &store, data.path()));
     app.manage(store);
     app.manage(hotkeys);
     app.manage(CaptureShell::default());
     app.manage(kinige_lib::import::ImportState::default());
     app.manage(kinige_lib::attachments::DropTokens::default());
     app.manage(Recovery::new(db_path, false));
+    let secrets = manage_stickers_over(&app, real_store);
     Fixture {
         app,
         registrar,
         data,
+        secrets,
     }
 }
 
@@ -141,17 +166,18 @@ pub fn fixture_with_corruption_hook() -> Fixture {
     let registrar = Arc::new(FakeRegistrar::default());
     let hotkeys = Hotkeys::new(Box::new(Shared(registrar.clone())));
     hotkeys.register_saved(&store);
-    app.manage(settings_file(app.handle(), &store, data.path()));
     app.manage(store);
     app.manage(hotkeys);
     app.manage(CaptureShell::default());
     app.manage(kinige_lib::import::ImportState::default());
     app.manage(kinige_lib::attachments::DropTokens::default());
     app.manage(Recovery::new(db_path, false).with_corruption_flag(flag));
+    let secrets = manage_stickers(&app);
     Fixture {
         app,
         registrar,
         data,
+        secrets,
     }
 }
 
@@ -163,6 +189,7 @@ pub fn fixture_without_store(db_path: &std::path::Path) -> Fixture {
         app,
         registrar: Arc::new(FakeRegistrar::default()),
         data: tempfile::tempdir().unwrap(),
+        secrets: Arc::default(),
     }
 }
 
@@ -174,6 +201,7 @@ pub fn fixture_too_new(db_path: &std::path::Path) -> Fixture {
         app,
         registrar: Arc::new(FakeRegistrar::default()),
         data: tempfile::tempdir().unwrap(),
+        secrets: Arc::default(),
     }
 }
 
@@ -222,6 +250,7 @@ pub fn args_for(command: &str) -> Value {
         "toggle_task_item" => json!({"id": "нет-такой", "index": 0, "checked": true}),
         "move_message" => json!({"id": "нет-такой", "chatId": inbox}),
         "set_message_flag" => json!({"id": "нет-такой", "flag": "task", "on": true}),
+        "set_message_reaction" => json!({"id": "нет-такой", "emoji": "🔥", "on": true}),
         "set_message_date" => json!({"id": "нет-такой", "journalDate": "2026-10-01"}),
         "set_sidebar_collapsed" => json!({"collapsed": true}),
         "add_recent_emoji" | "capture_add_recent_emoji" => json!({"emoji": "📚"}),
@@ -240,6 +269,11 @@ pub fn args_for(command: &str) -> Value {
             json!({"attachmentId": "нет-такого", "changes": {"name": "пляж"}})
         }
         "set_attachment_waveform" => json!({"attachmentId": "нет-такого", "peaks": ""}),
+        "add_sticker_pack" => json!({"link": "TestPack"}),
+        "remove_sticker_pack" => json!({"packId": "нет-такого"}),
+        "send_sticker" => json!({"chatId": inbox, "stickerId": "нет-такого"}),
+        "send_gif_again" => json!({"chatId": inbox, "attachmentId": "нет-такого"}),
+        "set_telegram_bot_token" => json!({"token": "42:fake-token-for-tests"}),
         "microphone_hold" | "capture_hold_microphone" => json!({"held": false}),
         // `send_voice` takes a raw body: a JSON call is the "garbage" case and must be an error, never a panic.
         _ => json!({}),

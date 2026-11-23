@@ -1,4 +1,4 @@
-# Окно «Настройки» открывается из профиля; повторное нажатие поднимает то же окно, второго не появляется.
-окон «Settings» до нажатия: 0
-после первого нажатия: 1
-после второго нажатия: 1
+# The Settings window opens from the profile; a second press raises the same window, no second one appears.
+Settings windows before the press: 0
+after the first press: 1
+after the second press: 1

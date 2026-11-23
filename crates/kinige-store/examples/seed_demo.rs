@@ -8,7 +8,8 @@
 //! pictures and documents attached to entries, pending tiles, a missing file, a trashed photo and a Telegram import with
 //! photos, only with `KINIGE_SEED_ATTACH=1`. KINIG-59 - one chat without an emoji has an explicit colour (always); entries in the three
 //! chats without an emoji, one of them in the trash, only with `KINIGE_SEED_COLOR=1`.
-//! Slice 7a - voice notes, only with `KINIGE_SEED_VOICE=1`.
+//! Slice 7a - voice notes, only with `KINIGE_SEED_VOICE=1`. Slice 5a - reactions on today's entries and on the "On this day" entries, only with `KINIGE_SEED_REACTIONS=1`.
+//! Slice 5c - a drawn sticker pack, stickers and GIFs in Inbox and the files of the scenario's fake Bot API server, only with `KINIGE_SEED_STICKERS=1`.
 //!
 //! Usage: `cargo run -p kinige-store --example seed_demo -- <data directory> [<Markdown copy folder>]`
 
@@ -40,12 +41,18 @@ mod attach;
 mod details;
 #[path = "seed_demo/forest.rs"]
 mod forest;
+#[path = "seed_demo/reactions.rs"]
+mod reactions;
+#[path = "seed_demo/stickers.rs"]
+mod stickers;
 #[path = "seed_demo/voice.rs"]
 mod voice;
 
 use attach::seed_attachments;
 use details::seed_details;
 use forest::seed_forest;
+use reactions::seed_reactions;
+use stickers::seed_stickers;
 use voice::seed_voice;
 
 const MINUTE: i64 = 60_000;
@@ -199,6 +206,14 @@ fn main() {
     // Voice notes (slice 7a) only when asked.
     if std::env::var_os("KINIGE_SEED_VOICE").is_some() {
         seed_voice(&store, &now, &data);
+    }
+    // Reactions (slice 5a, KINIG-138) only when asked: on today's entries and on the entries of the "On this day" card.
+    if std::env::var_os("KINIGE_SEED_REACTIONS").is_some() {
+        seed_reactions(&store, &now);
+    }
+    // Stickers and GIFs (slice 5c, KINIG-151) only when asked: a library pack, stickers and GIFs in Inbox, the files of the fake Bot API server.
+    if std::env::var_os("KINIGE_SEED_STICKERS").is_some() {
+        seed_stickers(&store, &now, &data);
     }
     // The day's copy for the line in "Settings".
     store.run_maintenance(&at(0)).unwrap();

@@ -1,6 +1,6 @@
 # ADR-0010: The settings window and the `settings.json` file — the file as input, `app_setting` as state
 
-Date: 2026-10-30. Status: **proposed** (slice 4b; revision 2 — after the `sync-crypto-guardian` review of 30.10.2026, "accept with changes"; guardian will check the full PR again, the user accepts). PRD §2.1, §5.1, §9.3, §11.3, §12.3; ADR-0005, -0006, -0009; the spec `docs/slices/4b-settings.md`.
+Date: 2026-10-30. Status: **superseded by ADR-0022** (KINIG-160, 20.11.2026: the file is gone, settings live only in `app_setting`; this text is kept as history). Was: **proposed** (slice 4b; revision 2 — after the `sync-crypto-guardian` review of 30.10.2026, "accept with changes"; guardian will check the full PR again, the user accepts). PRD §2.1, §5.1, §9.3, §11.3, §12.3; ADR-0005, -0006, -0009; the spec `docs/slices/4b-settings.md`.
 
 ## Context
 Settings live in the `app_setting` table and are changed only by the window. The user wants (KINIG-39) settings as a separate window with a tree of sections, and a file that can be edited in an editor or handed to an agent — "everything, including AI access". This is the first path by which the agent's access to the journal (ADR-0009) is turned on not by a click in the Kinige window but by a write to a file.

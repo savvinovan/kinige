@@ -88,6 +88,48 @@ pub enum ErrorCode {
     /// A name, a description or a spoiler flag broke a rule of slice 7b (a control or path character in the name, a name over 255
     /// bytes, a description over 1,024 characters, a spoiler on a file that is not an image): nothing was written.
     AttachmentDetailsInvalid,
+    /// The reaction is not one emoji (slice 5a): nothing was written.
+    ReactionInvalid,
+    /// The entry has 10 live reactions, or has had 32 different emoji, so another emoji cannot be put on it (slice 5a).
+    ReactionLimit,
+    /// The sticker is not in the library or its file is gone (slice 5c).
+    StickerNotFound,
+    /// The library file is not a sticker any more (it fails the probe): it is never sent as a photo.
+    StickerUnreadable,
+    /// A sticker entry has no text and no details to edit, and is never appended to (slice 5c).
+    StickerEntryReadOnly,
+    /// The link is not a sticker pack link or a pack name.
+    StickerPackLinkInvalid,
+    /// No bot token is saved: the pack cannot be downloaded.
+    StickerPackNoToken,
+    /// Telegram has no pack with this name.
+    StickerPackNotFound,
+    /// Telegram did not accept the bot token.
+    StickerPackTokenRefused,
+    /// Telegram could not be reached (no network, a proxy, a TLS failure, a timeout).
+    StickerPackUnreachable,
+    /// Telegram asks to wait (HTTP 429); nothing is retried.
+    StickerPackWait,
+    /// The pack has only animated or video stickers.
+    StickerPackOnlyAnimated,
+    /// More than 200 stickers or 64 MiB: nothing was added.
+    StickerPackTooLarge,
+    /// Another pack is downloading: one job at a time.
+    StickerPackBusy,
+    /// Telegram answered something that is not a pack or a file.
+    StickerPackBadResponse,
+    /// The bot token is not of the form `<number>:<letters, digits, - and _>`.
+    TelegramTokenInvalid,
+    /// The OS secret store refused or is locked: the token is neither saved nor read (there is no file fallback).
+    SecretStoreUnavailable,
+    /// This system has no secret store in this slice (Windows, Linux; ADR-0021): a token cannot be saved, so a pack cannot be added by its
+    /// link. The stickers of a Telegram export work everywhere.
+    SecretStoreUnsupported,
+    /// The OS asked for access to the saved token and it was dismissed or denied (macOS asks once after an update, ADR-0021): the job
+    /// wrote nothing. The window asks the user to allow the request macOS shows and to try again.
+    SecretStoreDenied,
+    /// The pack download was cancelled: nothing was added. Not an error for the window, which just closes the progress.
+    StickerPackCancelled,
     Internal,
 }
 

@@ -8,12 +8,12 @@
 //! empty database. The Markdown copy folder is renamed to `<name>-before-restore-<stamp>` and all days are marked for
 //! rewriting: otherwise the first edit of a day would overwrite the file with entries made after the backup snapshot.
 
+use crate::agent_settings::narrow_access_after_restore;
 use crate::backup::{backups_dir, list_backups};
 use crate::error::{read_err, write_err};
 use crate::schema::LATEST_VERSION;
 use crate::send::mark_all_dirty;
 use crate::settings::effective_mirror_dir;
-use crate::settings_file;
 use crate::{StoreError, time::utc_stamp};
 use kinige_domain::BackupInfo;
 use kinige_domain::backup::classify;
@@ -125,8 +125,6 @@ fn usable(path: &Path) -> bool {
 pub struct RestoreReport {
     /// Where the previous Markdown copy folder went; `None` means the copy is off or there was no folder.
     pub previous_mirror: Option<PathBuf>,
-    /// Where the copy folder named in `settings.json` (ADR-0010) went, if it is a different one; `None` means there was no such folder.
-    pub settings_file_mirror: Option<PathBuf>,
 }
 
 /// Restores the database from the backup `name` (a file name from [`backups`]). The corrupt database (if the file exists)
@@ -207,23 +205,13 @@ fn restore_with_steps(
     } else {
         None
     };
-    // The folder from `settings.json` (ADR-0010) is also moved aside if it is a different one: the file will apply on top
-    // of the restored database, set this folder as the copy and mark all days for rewriting, and the copy writer deletes
-    // day files in the folder that are not in the database, that is, days that appeared after the snapshot. The file is
-    // only read, with the same safety checks.
-    let from_file = db_path
-        .parent()
-        .and_then(|data_dir| settings_file::mirror_folder_from_file(data_dir, default_mirror));
     let mut moved: Vec<(PathBuf, PathBuf)> = Vec::new();
     let undo_move = |moved: &[(PathBuf, PathBuf)]| {
         for (from, to) in moved.iter().rev() {
             let _ = fs::rename(to, from);
         }
     };
-    for folder in mirror.iter().chain(from_file.iter()) {
-        if !folder.is_dir() || moved.iter().any(|(from, _)| from == folder) {
-            continue;
-        }
+    if let Some(folder) = mirror.as_ref().filter(|folder| folder.is_dir()) {
         match move_aside(folder, now_ms) {
             Ok(target) => moved.push((folder.clone(), target)),
             Err(error) => {
@@ -304,9 +292,8 @@ fn restore_with_steps(
         )
         .map_err(write_err)?;
         mark_all_dirty(&tx).map_err(write_err)?;
-        // Agent access is not carried over from the backup (ADR-0010): the result is exactly as in the settings file, and if
-        // the file is unsafe or not parsed -- off. The backup has no hash of the file: the file will apply as an external edit.
-        settings_file::reset_access_after_restore(&tx).map_err(write_err)?;
+        // A restore can only narrow agent access (ADR-0022): off, no chats, "Read only", whatever the backup held.
+        narrow_access_after_restore(&tx).map_err(write_err)?;
         tx.commit().map_err(write_err)?;
     }
     // Check: after the replacement the database can be read.
@@ -322,15 +309,7 @@ fn restore_with_steps(
             .map(|(_, target)| target.clone())
     };
     let previous_mirror = target_of(&mirror).or(earlier);
-    let settings_file_mirror = if from_file == mirror {
-        None
-    } else {
-        target_of(&from_file)
-    };
-    Ok(RestoreReport {
-        previous_mirror,
-        settings_file_mirror,
-    })
+    Ok(RestoreReport { previous_mirror })
 }
 
 /// The latest folder `<name>-before-restore-...` next to `folder` (names with a UTC stamp sort by time, the suffix `-2`

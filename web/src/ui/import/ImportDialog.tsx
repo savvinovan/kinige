@@ -118,6 +118,9 @@ function ChooseStep({ error, preview, selected, opening, onToggle, onRun, onPick
         <p className="import__text import__text--quiet">{t("import.skippedChats", { count: preview.skippedChats })}</p>
       ) : null}
       <MediaLine chats={chats.filter((chat) => chosen.has(chat.id) && chat.total > 0)} />
+      {preview && preview.stickers.sent + preview.stickers.skipped > 0 ? (
+        <p className="import__text import__text--quiet">{t("import.stickers", preview.stickers)}</p>
+      ) : null}
 
       {chats.length > 0 ? <p className="import__text import__text--quiet">{t("import.twoDevices")}</p> : null}
       <div className="import__actions">

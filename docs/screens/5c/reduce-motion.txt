@@ -1,0 +1,10 @@
+# Reduce Motion on the runner and what the small GIF (cat-small.gif) does in the real window
+the window's report at the start (the label of a GIF of that size asks for a click only when the page sees prefers-reduced-motion): reduced
+defaults read com.apple.universalaccess reduceMotion: 1
+Reduce Motion, nothing pressed, two shots 0.5 s apart: identical
+pressed: the label no longer asks for a click
+pressed, two shots 0.5 s apart: differ: 74182 pixels, box 304,55,623,294
+scrolled away and back: the label asks for a click again
+defaults write com.apple.universalaccess reduceMotion -bool false: exit 0
+the window's report now: not reduced
+autoplay, two shots 0.5 s apart (options --min-box=100x100 --within=300,51,627,298): differ: 73708 pixels, box 304,55,623,294

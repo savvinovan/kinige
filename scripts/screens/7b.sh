@@ -21,8 +21,6 @@ DRIVER=1
 # shellcheck source=lib.sh
 . "$REPO/scripts/screens/lib.sh"
 
-SETTINGS_FILE="$K/data/settings.json"
-
 rm -f "$OUT"/*.png "$OUT"/*.txt
 rm -rf "$K/data" "$K/mirror" "$K/bench"
 mkdir -p "$K/data" "$K/mirror" "$OUT"
@@ -30,6 +28,9 @@ mkdir -p "$K/data" "$K/mirror" "$OUT"
 "$REPO/scripts/check-test-hooks.sh" "$REPO/web/dist" --binary "$SOURCE_APP/Contents/MacOS/kinige" --expect screens-driver || { echo "ERROR: the screens driver is not in this build"; FAILS=$((FAILS + 1)); }
 KINIGE_SEED_DETAILS=1 cargo run --release -q -p kinige-store --example seed_demo -- "$K/data" "$K/mirror"
 sqlite3 "$K/data/kinige.db" "insert or replace into app_setting(key, value) values ('forest_view', 'hidden')"
+# Agent access for step 12 is switched on in the database before launch, as a person would in the settings window (KINIG-160, ADR-0022). This
+# is the only path: nothing inside the app switches access on, and the settings file that used to do it is gone.
+sqlite3 "$K/data/kinige.db" "insert or replace into app_setting(key, value) values ('mcp_enabled', '1'), ('mcp_mode', 'read'), ('mcp_chats', json_array((select id from chat where title = 'Вложения')))"
 trap 'cp "$OUT"/*.png "$K/debug/" 2> /dev/null' EXIT
 prepare_app "$SOURCE_APP"
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")"
@@ -38,23 +39,6 @@ BRIDGE="$APP/Contents/MacOS/kinige-mcp"
 
 sqlw() { sqlite3 -cmd '.timeout 5000' "$K/data/kinige.db" "$@"; }
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
-
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
-}
 
 labels() {
   L_CAPTION="Закат над заливом, июль"
@@ -305,7 +289,6 @@ grep -q 'закат.jpg' "$OUT/mirror.txt" || fail "the renamed hidden photo is 
 grep -q 'ужин.jpg' "$OUT/mirror.txt" || fail "the photo hidden from the dialog is not in the Markdown copy under its new name"
 
 # ---- 12. An agent reads the chat through the bridge: name, description and flag ----
-edit_settings 'd["agent_access"]["enabled"] = True; d["agent_access"]["mode"] = "read"; d["agent_access"]["chats"] = [{"title": "Вложения"}]'
 limit 60 python3 "$REPO/scripts/mcp-read.py" "$BRIDGE" "$SOCKET" "$OUT/mcp.txt" || fail "the agent session"
 # The tool's answer is JSON inside a JSON string, so its quotes are escaped in the protocol file.
 grep -Eq 'spoiler[^a-z]+true' "$OUT/mcp.txt" || fail "the agent does not see a hidden photo's flag"
@@ -342,12 +325,12 @@ sleep 3
 shoot 15-english
 
 # ---- 16. Large text ----
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 sleep 2
 scroll_to "${L_COVER}"
 sleep 3
 shoot 16-large-text
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 
 # ---- 17. A 640 px window ----
 echo "window: $(ax resize "$(app_pid)" 640 800)"

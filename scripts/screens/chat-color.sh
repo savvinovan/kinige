@@ -18,7 +18,6 @@ SOURCE_APP="${1:?usage: $0 <path to the built Kinige.app>}"
 export AX_TIMEOUT=60
 export DUMP_TIMEOUT=180
 
-SETTINGS_FILE="$K/data/settings.json"
 
 rm -f "$OUT"/*.png "$OUT"/*.txt
 rm -rf "$K/data" "$K/mirror" "$K/bench"
@@ -34,23 +33,6 @@ rm -f "$LOG_FILE"
 
 sqlw() { sqlite3 -cmd '.timeout 5000' "$K/data/kinige.db" "$@"; }
 set_language() { defaults write "$BUNDLE_ID" AppleLanguages -array "$1"; }
-
-edit_settings() {
-  python3 - "$SETTINGS_FILE" "$1" <<'PY'
-import json, os, sys
-path, code = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    d = json.load(f)
-exec(code)
-tmp = os.path.join(os.path.dirname(path), ".editor.tmp")
-with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-    f.write("\n")
-os.chmod(tmp, 0o600)
-os.replace(tmp, path)
-PY
-  sleep 4
-}
 
 labels() {
   if [ "$UI" = "ru" ]; then
@@ -184,12 +166,12 @@ grep -q "both picks survived" "$OUT/after-kill9.txt" || fail "a colour pick did 
 shoot 08-after-kill9
 
 # ---- 9. Large text ----
-edit_settings 'd["text_size"] = "large"'
+set_text_size large
 sleep 2
 show_menu "Проекты"
 press "${L_COLOUR}" MenuItem
 shoot 09-large-text
-edit_settings 'd["text_size"] = "normal"'
+set_text_size normal
 
 # ---- Privacy of the log: no chat names or entry texts ----
 if sed -E 's/^\[[^]]*\]\[[^]]*\]//' "$LOG_FILE" | grep -E "Проекты|Linux notes|Мама|Цветн" > "$K/debug/log-private.txt" 2>&1; then

@@ -112,4 +112,22 @@ export const CONTRAST_PAIRS: ContrastPair[] = [
   { foreground: "text.secondary", background: "attachment.cover", kind: "text" },
   { foreground: "text.tertiary", background: "attachment.cover", kind: "text" },
   { foreground: "focus.ring", background: "attachment.cover", kind: "ui" },
+  // A reaction chip (KINIG-138) is a button by its fill alone, with no border (the user's review of the acceptance build: the first, quiet fills
+  // were almost the bubble's own). The chip's boundary against what it sits on is a graphical object that must be told apart (WCAG 1.4.11, 3:1,
+  // the `ui` kind): on the bubble, on the "On this day" card (the trash and search rows use the bubble's fill), and on the two fills a bubble takes
+  // as a state (the highlighted bubble, the search row under the arrows). The pressable chip's hover and focus fill, and the flat chip that cannot
+  // be pressed (the trash, search, a read-only entry), are held to the same threshold against the resting fills.
+  ...["surface.chip", "surface.chip-static"].flatMap((foreground) =>
+    ["surface.message", "surface.card", "highlight.background", "highlight.row"].map((background) => ({ foreground, background, kind: "ui" as const })),
+  ),
+  ...["surface.message", "surface.card", "highlight.background", "highlight.row"].map((background) => ({
+    foreground: "surface.chip-hover",
+    background,
+    kind: "ui" as const,
+  })),
+  // Hover must be visibly stronger than rest: the hovered chip is clearly lighter than the resting one (a step between two light fills, 1.32:1,
+  // so the project's `decorative` threshold; the hover fill also stands off the bubble by more than the resting one does).
+  { foreground: "surface.chip-hover", background: "surface.chip", kind: "decorative" },
+  // The text on a chip is the dark `text.on-chip` (the 'N y' age), checked as text on every chip fill; the light text roles are not placed on chips.
+  ...["surface.chip", "surface.chip-hover", "surface.chip-static"].map((background) => ({ foreground: "text.on-chip", background, kind: "text" as const })),
 ];

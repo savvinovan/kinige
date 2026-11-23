@@ -236,6 +236,10 @@ impl Store {
         if let Err(error) = self.sweep_attachments(now) {
             log::warn!("attachment sweep: {}", error.category());
         }
+        // The sticker library's leftovers (slice 5c): staging folders of other processes and library files without a row. A writer job.
+        if let Err(error) = self.sweep_stickers() {
+            log::warn!("sticker sweep: {}", error.category());
+        }
         if has_daily(&dir, &today) {
             self.inner.backup.set_error(None);
             return Ok(report);

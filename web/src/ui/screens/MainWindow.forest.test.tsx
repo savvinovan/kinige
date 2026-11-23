@@ -179,14 +179,13 @@ describe("expanding, hiding and coming back", () => {
     expect(api.calls.filter((c) => c.startsWith("setForestView"))).toEqual(["setForestView hidden forest", "setForestView strip forest"]);
   });
 
-  it("showing again from the top bar gives the strip, not the board, and the saved state starts the button the right way", async () => {
+  it("the saved state starts the button the right way (showing it again is in MainWindow.forestRestore.test.tsx)", async () => {
     setup({}, { forestView: "expanded" });
     await screen.findByRole("application", { name: "Forest of 2026" });
     expect(toggle()).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(toggle());
     expect(pane()).toBeNull();
-    fireEvent.click(toggle());
-    expect(await screen.findByRole("grid", { name: "Days of 2026" })).toBeInTheDocument();
+    expect(toggle()).toHaveAttribute("aria-pressed", "false");
   });
 
   it("a hidden forest at start: the button is there, not pressed, and brings the strip back", async () => {

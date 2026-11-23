@@ -28,6 +28,8 @@ const isSettingsWindow = window.location.hash === "#settings";
 if (isCaptureWindow) document.documentElement.dataset.window = "capture";
 // The settings window: the document does not scroll, only the page on the right does (ui/prefs/prefs.css).
 if (isSettingsWindow) document.documentElement.dataset.window = "settings";
+// The main window: the document does not scroll either (ui/screens/main-window.css, KINIG-76).
+if (!isCaptureWindow && !isSettingsWindow) document.documentElement.dataset.window = "main";
 
 // The screens driver (KINIG-92): `undefined` in every normal build (`web/vite.config.ts`). It gets the two Tauri functions the page already
 // uses and its own window label; its event and command names live in the driver itself, so a normal bundle holds nothing of it.
