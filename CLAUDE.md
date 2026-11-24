@@ -10,6 +10,7 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 - `docs/screens/<slice>/` — screenshots of the real window for acceptance.
 
 **Status:**
+
 - **Done:** slice 0 (skeleton), D1 (design system foundation) and ADR-0001 (protocol + keys).
 - **Merged:** slice 1 (Inbox).
 - **Accepted by the user:**
@@ -39,7 +40,7 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
    - `design-system` — tokens, components, Storybook;
    - `sync-crypto-guardian` — review of everything that touches the data schema, sync and encryption;
    - `codex-second-opinion` — a second opinion from Codex CLI; every piece of advice is verified.
-   The agent that writes the code never reviews itself. Each definition holds its role's rules and its answer format: reviewers and the guardian answer `ACCEPT / REWORK / REJECT`.
+     The agent that writes the code never reviews itself. Each definition holds its role's rules and its answer format: reviewers and the guardian answer `ACCEPT / REWORK / REJECT`.
 3. **"Done" only with evidence:** test output + screenshots of the real window in `docs/screens/<slice>/`. The next slice starts only after acceptance by the user.
 4. **Visuals come only from design system tokens.** A new color, spacing or shadow first appears in `design/tokens/`.
 5. **Don't invent facts** about libraries, APIs and numbers: verify them (documentation, source code) or write "not verified".
@@ -61,6 +62,7 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
     - Rules 3 and 12 stay: a fix still comes with its regression test, and "done" still needs the evidence. Only the moment of the full run changes.
 
 **The harness enforces part of this** (`.claude/settings.json`, KINIG-110), for the coordinator and every subagent:
+
 - **`.claude/hooks/guard.py` blocks:**
   - `sed -i`, `perl -i`, shell redirects and `tee` into sources, and inline scripts that write repository files (rule 8);
   - the user's real data paths;
@@ -78,6 +80,7 @@ A personal journal shaped like a "chat with yourself": you write as in a messeng
 - **Progress file:** the coordinator's `claude-progress.md` at the repository root (ignored by git) is re-injected at session start and after compaction.
 
 **Every subagent works like this.** Prompts don't repeat these rules.
+
 - **Worktree.** Work in your own worktree.
   - Use the one the prompt names. If it names none, create one under your scratch directory from the main checkout (your starting directory): `git worktree add <scratch>/<task>-<role>/wt -b <branch> origin/main` for new work, `git worktree add --detach <scratch>/<task>-<role>/wt origin/<branch>` for a review.
   - Start every Bash command with `cd <worktree> &&`: the shell starts in the main checkout each time. The guard blocks edits there, and any git that would change it.
@@ -118,6 +121,7 @@ Applies to new and edited code; don't rewrite existing code en masse.
 Layout: `crates/kinige-domain` (rules, no IO, builds for wasm32), `crates/kinige-store` (SQLite, migrations, single writer, Markdown copy), `crates/kinige-crypto` (envelope and keys on libsodium, ADR-0018), `server/` (`kinige-server`: the sync server on axum and Postgres, a lib and a binary, Linux first; spike S4c-1, ADR-0019, and S4c-2, ADR-0020: blobs on a disk or S3-compatible store, `backup` and `restore` commands, account deletion; its `README.md` has the configuration and the test map), `deploy/` (the self-hosting stack: a pinned `Dockerfile`, `docker-compose.yml`, `Caddyfile`, `.env.example` with placeholders only, `backup.cron.example`, and `smoke.sh`, which CI's `compose` job runs; images pinned by digest; nothing is bind-mounted from the machine that runs compose, so a remote Docker daemon works), `src-tauri/` (thin Tauri 2 layer), `web/` (React + TS + Vite + Storybook), `design/tokens/` (DTCG), `scripts/`, `.github/workflows/ci.yml`. Rust and Node versions are pinned in `rust-toolchain.toml` and `.node-version`. Details and the startup measurement method are in `README.md`.
 
 Rust (from the root):
+
 - `cargo fmt --all --check`
 - `cargo clippy --workspace --all-targets -- -D warnings`
 - `cargo test --workspace` — also regenerates the TS types in `web/src/api/generated/` (ts-rs, ADR-0002); after changing types in Rust, commit the result; it also rewrites the year tables of the forest stories in `web/src/ui/forest/fixtures/` (built by the real `year_table`, slice 6; CI fails when they differ from the commit)
@@ -126,6 +130,7 @@ Rust (from the root):
 - Server against a real Postgres and S3, the S4a simulation against the server, and the compose smoke test: the `server-tests` skill (`.claude/skills/server-tests/SKILL.md`). It covers `--features pg-tests` with `KINIGE_TEST_DATABASE_URL`, throwaway `kinige-…` containers on ubuntu-server, and CI's `server` and `compose` jobs.
 
 Frontend (from `web/`, after `npm ci`):
+
 - `npm run tokens` — rebuild `src/ui/tokens.css` and `src/ui/themes.css` from `design/tokens/**/*.json` (runs by itself before `dev`, `build`, `storybook`); the result is committed
 - `npm run typecheck`, `npm run lint`, `npm test` (vitest; includes the check "no raw colors and sizes outside tokens.css / themes.css", the contrast of all "color / background" pairs of the palette, and the font check against the woff2 files themselves)
 - `npm run build-storybook`
@@ -133,6 +138,7 @@ Frontend (from `web/`, after `npm ci`):
 `fixtures/api-contract/`: rules `MockApi` repeats from Rust, read by vitest and `cargo test -p kinige-store --test api_contract`; Rust is the source of truth, so a rule change updates the fixture and the mock.
 
 **Screens and visual baselines: the `screens` skill** (`.claude/skills/screens/SKILL.md`). It covers:
+
 - real-window screenshots through `screens.yml` on macOS and Windows;
 - the screens driver (KINIG-92, ADR-0016) with `DRIVER=1`;
 - the fake microphone of voice-note scenarios (ADR-0015), and the guard `scripts/check-test-hooks.sh` that keeps it and the driver out of a build for people;
@@ -141,6 +147,7 @@ Frontend (from `web/`, after `npm ci`):
 App: `scripts/run-app.sh` (dev), `scripts/storybook.sh`, `scripts/build-app.sh` (release `.app` + ad-hoc signature + `codesign --verify` + check of the bundle version against `Cargo.toml`; `KINIGE_BUNDLES=app,dmg` adds a `.dmg`), `scripts/build-windows.sh` (release unsigned NSIS installer under Git Bash on Windows, per-user; checks the installer name and `ProductVersion` of `kinige.exe` against `Cargo.toml`; the MCP bridge is not built there: `src-tauri/tauri.windows.conf.json` empties `bundle.externalBin`), `scripts/screenshot-window.sh <out.png>` (the Kinige window, `screencapture -x -o -l`; for manual debugging and for `screens.yml` itself; agents don't run it on the user's Mac; nothing but the window may get into the screenshot), `scripts/measure-cold-start.sh`, `scripts/mcp-session.py <kinige-mcp> <socket> <protocol file>` (an MCP session through the bridge with our own client, for the acceptance of slice 4a; Claude configs are not touched). Build and run put the bridge into `src-tauri/binaries/kinige-mcp-<triple>` (sidecar, `bundle.externalBin`); on `cargo clippy`/`cargo test` on a clean clone, an empty stub from `build.rs` sits there.
 
 **Versions and releases (ADR-0012): the `release` skill** (`.claude/skills/release/SKILL.md`).
+
 - Semver: the minor version is the slice number, and 1.0.0 comes after sync.
 - The version lives only in `[workspace.package]` of `Cargo.toml`.
 - Only the coordinator cuts a release, after acceptance of a slice or a batch of fixes. It uses `scripts/release.sh`.
